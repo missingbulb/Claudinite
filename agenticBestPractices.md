@@ -26,3 +26,4 @@ worked here. Each is one tight rule; the worked example lives in its own doc.
   reviewed in a PR, go stale against renamed paths the repo's own tests would
   have caught, and miss conventions the repo later adds — whereas a doc the
   repo's checks and lessons pass touches stays current for free.
+- **After each task, run a brief efficiency analysis of its tool and process usage — separate from lesson capture.** Ask whether it could have used fewer operations (redundant calls, work that could be batched, polling that could have been a single wait) and less wall time without harming quality (independent serial calls that could have run in parallel, unnecessary sleeps). Flag any process that has already returned its result but is being waited out on shutdown — it can be killed once its output is in hand. Close with one concrete speed-up recommendation, or an explicit "no changes recommended." The bar is high — most runs won't yield one.
