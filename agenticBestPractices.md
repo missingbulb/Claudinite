@@ -26,3 +26,9 @@ worked here. Each is one tight rule; the worked example lives in its own doc.
   reviewed in a PR, go stale against renamed paths the repo's own tests would
   have caught, and miss conventions the repo later adds — whereas a doc the
   repo's checks and lessons pass touches stays current for free.
+- **A SessionStart hook gates work through the session context it injects, not
+  by blocking.** The hook's stdout becomes context the agent reads — the runtime
+  never intercepts it — so enforcement is the agent's instruction-following, not
+  the hook itself. Use it for setup/environment validation: output a STOP
+  directive on failure (the agent asks the user before proceeding); emit nothing
+  on success.
