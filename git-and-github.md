@@ -93,9 +93,13 @@ workflow that introduces a new label breaks the first time it runs. Create it
 idempotently before the edit (`gh label create "<name>" --color … 2>/dev/null ||
 true`), then `--add-label`.
 
-## A CI job that reads submodule files must fetch submodules in its checkout
+## Mark large committed fixtures `linguist-vendored` to fix language stats
 
-`actions/checkout` does **not** fetch submodules by default — the submodule directory is an empty folder in CI unless you pass `submodules: true` (or `recurse-submodules: true`). Without it, any gate that reads submodule content passes vacuously: the check is a no-op, not a signal. Add the flag to every CI job whose tests read submodule content.
+Large committed fixture files (full-page HTML, generated data dumps) can dwarf
+actual source by byte count and cause GitHub to mislabel the repo's primary
+language. Add a `.gitattributes` entry for each such path (e.g.
+`test/fixtures/*.html linguist-vendored`) to tell Linguist to ignore it; apply
+the same annotation whenever you add another large generated or fixture file.
 
 ## Merging gotchas
 
