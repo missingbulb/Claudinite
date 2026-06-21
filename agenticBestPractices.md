@@ -27,4 +27,10 @@ worked here. Each is one tight rule; the worked example lives in its own doc.
   have caught, and miss conventions the repo later adds — whereas a doc the
   repo's checks and lessons pass touches stays current for free.
 - **After each task, run a brief efficiency analysis of its tool and process usage — separate from lesson capture.** Ask whether it could have used fewer operations (redundant calls, work that could be batched, polling that could have been a single wait) and less wall time without harming quality (independent serial calls that could have run in parallel, unnecessary sleeps). Flag any process that has already returned its result but is being waited out on shutdown — it can be killed once its output is in hand. Close with one concrete speed-up recommendation, or an explicit "no changes recommended." The bar is high — most runs won't yield one.
+- **A SessionStart hook gates work through the session context it injects, not
+  by blocking.** The hook's stdout becomes context the agent reads — the runtime
+  never intercepts it — so enforcement is the agent's instruction-following, not
+  the hook itself. Use it for setup/environment validation: output a STOP
+  directive on failure (the agent asks the user before proceeding); emit nothing
+  on success.
 - **When driving a CI-gated merge via API/MCP poll rather than the shell, merge on an already-green required check — don't trigger or wait for a duplicate run.** A push already ran CI on the head commit; opening a PR on the same commit fires an identical second run that adds no signal. If the check isn't yet green, poll on a rolling backoff (e.g. 5 s → 10 s → 15 s → 30 s) until it settles; never tight-poll; and don't subscribe for green — CI success transitions are frequently not delivered as webhook events, so the green signal never arrives.

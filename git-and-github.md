@@ -114,6 +114,24 @@ true`), then `--add-label`.
 
 `actions/checkout` does **not** fetch submodules by default — the submodule directory is an empty folder in CI unless you pass `submodules: true` (or `recurse-submodules: true`). Without it, any gate that reads submodule content passes vacuously: the check is a no-op, not a signal. Add the flag to every CI job whose tests read submodule content.
 
+## Mark large committed fixtures `linguist-vendored` to fix language stats
+
+Large committed fixture files (full-page HTML, generated data dumps) can dwarf
+actual source by byte count and cause GitHub to mislabel the repo's primary
+language. Add a `.gitattributes` entry for each such path (e.g.
+`test/fixtures/*.html linguist-vendored`) to tell Linguist to ignore it; apply
+the same annotation whenever you add another large generated or fixture file.
+
+## GitHub Markdown inside a `<td>` requires surrounding blank lines
+
+In a GitHub-rendered Markdown file, cmark-gfm re-enters Markdown mode inside a
+raw `<td>` only when blank lines surround the cell's content — without them the
+cell is treated as a raw HTML block and its content is shown verbatim (no
+`![img]()`, no `**bold**`, no links). GitHub's sanitizer strips `style` / CSS,
+so a flexbox two-column layout won't render; use a plain `<table>` with
+`align` / `valign` / `width` instead. GFM pipe-table cells can't hold
+multi-line prose — use the raw-`<table>` form when a cell needs it.
+
 ## Merging gotchas
 
 These conflict/merge traps are independent of any one project's file layout.
