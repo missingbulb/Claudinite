@@ -85,6 +85,10 @@ remote branch is rejected non-fast-forward (so the run can't even open its PR).
 Give every run its own branch: append a per-run-unique suffix (`$RANDOM` / a
 short token) to the readable prefix.
 
+## Issue-form URL prefilling works only for text fields
+
+A GitHub issue form's `input` and `textarea` fields can be pre-seeded via URL query params (`?field-id=value`), but `dropdown` and `checkboxes` fields silently ignore the param with no error. When a deep link must seed a value into an issue form (e.g., a "report this" link), make that field a plain text input, even if a dropdown or checkboxes control would otherwise be preferable.
+
 ## A workflow that adds a brand-new label must create it first
 
 `gh issue edit --add-label "<name>"` fails when the label doesn't exist yet —
