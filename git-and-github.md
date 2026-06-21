@@ -66,6 +66,23 @@ matter how granularly the branch is committed.
     fetch --prune` (drop the stale tracking ref) then a plain `git push -u origin
     <branch>` just recreates it.
 
+## In a squash-merge repo, "commits ahead of main" does not mean "unmerged"
+
+A squash-merge creates a new commit on `main` that the branch's own commits are
+unreachable from, so a branch whose work has already landed still shows ahead by
+N. **"Ahead by N" never alone means unmerged.** Determine real status by
+content, not raw count:
+
+1. **PR state** — a merged PR means the work is in `main`; safe to delete
+   however many commits show ahead.
+2. **Content diff** — `git diff --stat main..branch`: if everything the branch
+   adds is already in `main`, the work landed (catches a squash with no
+   surviving PR).
+3. **No merge-base** — `git merge-base` fails when a force-push rewrote `main`
+   and orphaned the branch; can't be proven in or out mechanically; needs human
+   review, never an automatic delete.
+4. Otherwise — genuine unmerged work.
+
 ## A push or PR made with the Actions `GITHUB_TOKEN` does not start another workflow
 
 GitHub suppresses workflow runs triggered by the built-in `GITHUB_TOKEN` to
