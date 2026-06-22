@@ -21,7 +21,10 @@ A consuming repo's daily "optimize-procedures" routine spots a portable lesson i
 its *local* docs and files a `claudinite-lesson`-labelled issue there. A
 deterministic Action in that repo (`claudinite-lesson-handoff.yml`) copies the
 issue **here** as a new `claudinite-lesson`-labelled issue — carrying a
-provenance backlink to the source issue — then closes the source.
+provenance backlink to the source issue — then closes the source **as a
+duplicate of** the new issue here (GitHub `state_reason: duplicate` with
+`duplicate_of` set to the new issue's number), not as *not planned*. This keeps
+the source's timeline pointing at the canonical issue that now owns the lesson.
 
 So every issue this routine sees is a **self-contained proposal that assumes no
 knowledge of the originating repo**. Judge it on its own text plus this corpus.
