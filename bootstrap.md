@@ -24,3 +24,12 @@ hook so every clone and session has the corpus:
 ```sh
 git submodule update --init --recursive
 ```
+
+## 4. Note it in the consumer's README
+
+Add a one-line mention so contributors know what the submodule is:
+
+```md
+Shared Claude guidelines are mounted at `.claudinite/` via
+[Claudinite](https://github.com/missingbulb/Claudinite).
+```
