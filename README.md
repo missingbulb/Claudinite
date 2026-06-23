@@ -15,6 +15,7 @@ consuming repo's own docs and reference these by relative path.
 
 - [engineeringPractices.md](engineeringPractices.md) — general software-engineering practices, independent of any one project.
 - [textAndFileManipulation.md](textAndFileManipulation.md) — mechanics of searching, extracting, and rewriting text across files (grep/sed sweeps, renames, broken references).
+- [testingPractices.md](testingPractices.md) — practices for writing trustworthy tests (see-it-fail, snapshot/golden discipline, CI-only and heavy-browser tests, coverage gating).
 - [agenticBestPractices.md](agenticBestPractices.md) — durable, project-agnostic practices for building and running AI agents.
 - [git-and-github.md](git-and-github.md) — portable git & GitHub procedures (task lifecycle, commit history, CI-trigger rules, merge gotchas).
 - [working-discipline.md](working-discipline.md) — general working habits (confirm-before-building, the warnings policy).

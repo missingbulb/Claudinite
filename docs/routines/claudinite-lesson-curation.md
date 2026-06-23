@@ -67,6 +67,7 @@ Route by *kind* to exactly one owning doc:
 | Lesson kind | Owning doc |
 | --- | --- |
 | General software-engineering practice | [engineeringPractices.md](../../engineeringPractices.md) |
+| Testing practice (writing trustworthy tests, snapshots, coverage gating) | [testingPractices.md](../../testingPractices.md) |
 | Searching / rewriting text across files (grep/sed sweeps, renames, broken references) | [textAndFileManipulation.md](../../textAndFileManipulation.md) |
 | AI-agent practice (building / running agents) | [agenticBestPractices.md](../../agenticBestPractices.md) |
 | git / GitHub procedure | [git-and-github.md](../../git-and-github.md) |
