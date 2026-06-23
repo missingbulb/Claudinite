@@ -11,10 +11,8 @@ A consuming repo mounts this as a submodule (e.g. at `docs/claude/shared/`) and
 `@import`s these files from its `CLAUDE.md`. Project-*specific* rules stay in the
 consuming repo's own docs and reference these by relative path.
 
-**Just adding Claudinite?** Follow the bootstrap runbook:
-[docs/adopting-claudinite.md](docs/adopting-claudinite.md) — an ordered,
-agent-executable onboarding path from "submodule added" to "rules mounted and
-working."
+**Just adding Claudinite?** See [bootstrap.md](bootstrap.md) for how a consuming
+repo mounts and imports these shared guidelines.
 
 ## Contents
 
