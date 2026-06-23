@@ -7,12 +7,15 @@ the owner's personal interaction preferences — maintained **once** here and
 mounted into each consuming repo as a git submodule, so they don't have to be
 copy-pasted per project.
 
-A consuming repo mounts this as a submodule (e.g. at `docs/claude/shared/`) and
-`@import`s these files from its `CLAUDE.md`. Project-*specific* rules stay in the
-consuming repo's own docs and reference these by relative path.
+A consuming repo mounts this as a submodule (at `.claudinite/`) and `@import`s it
+from its `CLAUDE.md`. Project-*specific* rules stay in the consuming repo's own
+docs and reference these by relative path.
 
-**Just adding Claudinite?** See [bootstrap.md](bootstrap.md) for how a consuming
-repo mounts and imports these shared guidelines.
+**Just adding Claudinite?** Tell the agent on the consuming repo:
+
+> Read https://github.com/missingbulb/Claudinite/blob/main/README.md and bootstrap it.
+
+See [bootstrap.md](bootstrap.md) for the manual steps.
 
 ## Contents
 
