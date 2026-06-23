@@ -30,11 +30,11 @@ See [bootstrap.md](bootstrap.md) for the manual steps.
 
 ## Repository operations
 
-Beyond the portable corpus above, `docs/routines/` holds the specs for this
+Beyond the portable corpus above, `routines/` holds the specs for this
 repo's own maintenance routines — Claudinite-internal operations that are **not**
 part of the mounted corpus and are not `@import`ed by consumers:
 
-- [docs/routines/claudinite-lesson-curation.md](docs/routines/claudinite-lesson-curation.md) — curates inbound `claudinite-lesson` proposal issues into reviewed docs PRs against the corpus.
+- [routines/claudinite-lesson-curation.md](routines/claudinite-lesson-curation.md) — curates inbound `claudinite-lesson` proposal issues into reviewed docs PRs against the corpus.
 
 ## A submodule's caveats (for consumers)
 

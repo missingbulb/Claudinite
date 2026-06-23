@@ -7,7 +7,7 @@ repos mount read-only as a git submodule.
 
 This doc is the spec. The Claude Code launcher that runs the routine is a **thin
 pointer** to this file, never an inlined copy of it (see
-[agenticBestPractices.md](../../agenticBestPractices.md) — "Keep an unattended
+[agenticBestPractices.md](../agenticBestPractices.md) — "Keep an unattended
 routine's instructions in a repo doc, not inlined in the launcher's config"). The
 routine is a concrete instance of the "daily lessons pass" and "standing tracking
 issue" rules in that same doc.
@@ -46,7 +46,7 @@ Requires the `claudinite-lesson` label to exist here (see [Label](#label)).
 ## Run on a capable model
 
 Every step below is a judgment call — portability, duplication, ownership, "does
-this clear the bar". Per [agenticBestPractices.md](../../agenticBestPractices.md)
+this clear the bar". Per [agenticBestPractices.md](../agenticBestPractices.md)
 ("Match the agent model to the judgment it must make"), run this routine on a
 capable model. A downgraded model ships a plausible-but-wrong **acceptance** —
 exactly the failure that pollutes the shared canon — where a capable model
@@ -66,14 +66,14 @@ Route by *kind* to exactly one owning doc:
 
 | Lesson kind | Owning doc |
 | --- | --- |
-| General software-engineering practice | [engineeringPractices.md](../../engineeringPractices.md) |
-| Testing practice (writing trustworthy tests, snapshots, coverage gating) | [testingPractices.md](../../testingPractices.md) |
-| Searching / rewriting text across files (grep/sed sweeps, renames, broken references) | [textAndFileManipulation.md](../../textAndFileManipulation.md) |
-| AI-agent practice (building / running agents) | [agenticBestPractices.md](../../agenticBestPractices.md) |
-| git / GitHub procedure | [git-and-github.md](../../git-and-github.md) |
-| Working discipline / general working habit | [working-discipline.md](../../working-discipline.md) |
-| Agent architecture (structuring unattended agents) | [agent-architecture.md](../../agent-architecture.md) |
-| Owner interaction preference / trigger phrase | [ownerPreferences.md](../../ownerPreferences.md) |
+| General software-engineering practice | [engineeringPractices.md](../engineeringPractices.md) |
+| Testing practice (writing trustworthy tests, snapshots, coverage gating) | [testingPractices.md](../testingPractices.md) |
+| Searching / rewriting text across files (grep/sed sweeps, renames, broken references) | [textAndFileManipulation.md](../textAndFileManipulation.md) |
+| AI-agent practice (building / running agents) | [agenticBestPractices.md](../agenticBestPractices.md) |
+| git / GitHub procedure | [git-and-github.md](../git-and-github.md) |
+| Working discipline / general working habit | [working-discipline.md](../working-discipline.md) |
+| Agent architecture (structuring unattended agents) | [agent-architecture.md](../agent-architecture.md) |
+| Owner interaction preference / trigger phrase | [ownerPreferences.md](../ownerPreferences.md) |
 
 This table is the *current* set of owning docs, not a closed one — read it from
 the repo, not from memory, since the corpus can grow (see
@@ -133,14 +133,14 @@ no tracker entry.
   bullet — but never dilute what's there. Otherwise add a new terse bullet.
 - **Bounded write surface:** edit only the single owning doc, touch no other doc,
   and do not "improve" unrelated rules while you're in there (per
-  [agent-architecture.md](../../agent-architecture.md)). The **one** sanctioned
+  [agent-architecture.md](../agent-architecture.md)). The **one** sanctioned
   way to add a corpus file is the rare, high-bar path in
   [§4c](#4c-accept--create-a-new-corpus-doc-rare) — and even then the write
   surface is exactly the new doc plus its README and routing-table entries,
   nothing more.
 - **Open a PR; never push to the default branch.** Branch off the default branch
   with a per-run-unique branch name (append a random suffix — see
-  [git-and-github.md](../../git-and-github.md), "An automated job needs a unique
+  [git-and-github.md](../git-and-github.md), "An automated job needs a unique
   branch per run"). Reference the inbound issue in the commit and PR
   (`Refs #<inbound>`). **Never merge** — a human reviews and merges.
 - **Comment the PR link on the inbound issue.** The inbound issue is the
@@ -208,7 +208,7 @@ repo and does not create or edit it — it only keys its trigger on it. The labe
 is owned by the party that files the inbound issues: the consuming repo's
 `claudinite-lesson-handoff.yml` Action ensures it here idempotently
 (create-if-missing, no-op if present) before applying it, per
-[git-and-github.md](../../git-and-github.md) ("A workflow that adds a brand-new
+[git-and-github.md](../git-and-github.md) ("A workflow that adds a brand-new
 label must create it first"). For reference, its canonical definition is color
 `BFD4F2`, description "Portable lesson handed off from a consuming repo."
 
