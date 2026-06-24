@@ -36,17 +36,10 @@ proposal can't stand on its own text, that is itself grounds to reject.
 One run handles one inbound issue:
 
 - **Label-triggered (preferred):** fire when an issue gains the
-  `claudinite-lesson` label in this repo **and** the issue was filed by
-  `missingbulb`.
+  `claudinite-lesson` label in this repo.
 - **Daily scan (fallback):** list open `claudinite-lesson` issues and process
   each one not yet handled — no curation PR opened for it and no decision comment
-  posted on it yet — skipping any issue not filed by `missingbulb`.
-
-**Author gate:** only process issues whose author is `missingbulb`. The label
-alone is not sufficient — an issue carrying the `claudinite-lesson` label but
-filed by any other account is ignored (no PR, no decision comment). This keeps an
-arbitrary outside account from injecting into the shared corpus merely by applying
-the label.
+  posted on it yet.
 
 Requires the `claudinite-lesson` label to exist here (see [Label](#label)).
 
