@@ -1,69 +1,78 @@
 # Adopting Claudinite
 
-How a consuming repo bootstraps these shared guidelines.
+How a consuming repo bootstraps these shared guidelines. Bootstrapping is
+**idempotent** — safe to re-run on a fresh repo or one that already adopted
+Claudinite; every step first checks whether its requirement is met and only acts
+on what's missing, so re-running never duplicates work or clobbers existing
+setup.
 
-Bootstrapping is **idempotent and accumulative**: run it on a fresh repo to
-adopt Claudinite, or re-run it on a repo that already adopted Claudinite to
-true up any requirements added since. Every step below first **checks** whether
-the requirement is already satisfied and only acts on what's missing, so
-re-running never duplicates work or clobbers existing setup. When new
-requirements are added to this list later, re-running bootstrap is how a
-consumer picks them up.
+Pick the method for where your sessions run.
+**Claude Code on the web → Method B** (the submodule clone 403s on cloud, where
+the git credential is scoped to the session's own repo).
 
-## 1. Add the submodule
+## Method A — submodule
 
-Check first — skip if `.claudinite/` is already a registered submodule:
+Pinned and reproducible. Add the submodule (skip if `.claudinite/` is already
+registered) and import the corpus from `CLAUDE.md`:
 
 ```sh
-if ! git config --file .gitmodules --get-regexp '^submodule\..*\.path$' \
-     | grep -q ' \.claudinite$'; then
-  git submodule add https://github.com/missingbulb/Claudinite.git .claudinite
+git submodule add https://github.com/missingbulb/Claudinite.git .claudinite
+grep -qxF '@.claudinite/README.md' CLAUDE.md 2>/dev/null \
+  || printf '\n@.claudinite/README.md\n' >> CLAUDE.md
+# Fresh clones: git submodule update --init --recursive (add to your setup script)
+```
+
+Submodules aren't pulled automatically, so the consumer's setup or SessionStart
+hook should run `git submodule update --init --recursive` for every clone and
+session.
+
+## Method B — session-start tarball sync
+
+Auto-updating, no git credential needed. A SessionStart hook fetches the repo as
+a tarball over plain HTTPS into a gitignored `.claudinite/`, pulling latest
+`main` each session.
+
+**1.** Add `.claude/hooks/sync-claudinite.sh` (`chmod +x`):
+
+```sh
+#!/bin/bash
+# Sync Claudinite into .claudinite/ over plain HTTPS (codeload is allowlisted;
+# a submodule clone 403s on cloud). Pulls latest main; fails soft when offline.
+# Set CLAUDINITE_REF to a tag/SHA to pin instead of tracking main.
+set -euo pipefail
+REF="${CLAUDINITE_REF:-main}"
+URL="https://codeload.github.com/missingbulb/Claudinite/tar.gz/refs/heads/${REF}"
+dest="${CLAUDE_PROJECT_DIR:-.}/.claudinite"
+tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
+if curl -fsSL --retry 2 --max-time 30 "$URL" -o "$tmp/c.tgz" 2>/dev/null \
+   && tar -tzf "$tmp/c.tgz" >/dev/null 2>&1; then
+  rm -rf "$dest.new"; mkdir -p "$dest.new"
+  tar -xzf "$tmp/c.tgz" -C "$dest.new" --strip-components=1
+  rm -rf "$dest"; mv "$dest.new" "$dest"; exit 0
 fi
+[ -f "$dest/README.md" ] && exit 0   # offline: keep prior copy
+echo "Claudinite sync failed, no local copy; @.claudinite/README.md unresolved." >&2
+exit 0
 ```
 
-If the submodule is registered but its working tree is empty (a fresh clone),
-initialize it instead:
+**2.** Register it in `.claude/settings.json`:
 
-```sh
-git submodule update --init --recursive .claudinite
+```json
+{ "hooks": { "SessionStart": [ { "hooks": [
+  { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/sync-claudinite.sh" }
+] } ] } }
 ```
 
-## 2. Import the corpus from `CLAUDE.md`
+**3.** Gitignore the cache — add `.claudinite/` and `.claudinite.new/`.
 
-The consumer's `CLAUDE.md` must `@import` the corpus. Add the line only if it
-isn't already present:
+**4.** Import the corpus — append `@.claudinite/README.md` to `CLAUDE.md`:
 
 ```sh
 grep -qxF '@.claudinite/README.md' CLAUDE.md 2>/dev/null \
   || printf '\n@.claudinite/README.md\n' >> CLAUDE.md
 ```
 
-## 3. Initialize the submodule in fresh clones and sessions
+Run the hook once locally to populate `.claudinite/` before first use.
 
-Submodules aren't pulled automatically. The consumer's SessionStart hook must
-run the init so every clone and session has the corpus. Confirm this command is
-present in the hook and add it if missing:
-
-```sh
-git submodule update --init --recursive
-```
-
-If the consumer has no SessionStart hook yet, create one containing this
-command. If a hook exists but doesn't run it, append the command.
-
-## 4. Note it in the consumer's README
-
-The consumer's README should mention the submodule so contributors know what it
-is. Add this only if no Claudinite mention already exists:
-
-```md
-Shared Claude guidelines are mounted at `.claudinite/` via
-[Claudinite](https://github.com/missingbulb/Claudinite).
-```
-
-## Re-running
-
-Re-run these steps any time — for example after this list grows. Each step is a
-no-op when its requirement is already met, so a fully-bootstrapped repo passes
-through cleanly while a partially-bootstrapped one gets only the missing pieces
-filled in.
+**Pinning a tag/SHA:** set `CLAUDINITE_REF` and change the URL path to
+`.../tar.gz/<ref>` (drop `refs/heads/`).
