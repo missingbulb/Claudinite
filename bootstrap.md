@@ -17,8 +17,8 @@ registered) and import the corpus from `CLAUDE.md`:
 
 ```sh
 git submodule add https://github.com/missingbulb/Claudinite.git .claudinite
-grep -qxF '@.claudinite/README.md' CLAUDE.md 2>/dev/null \
-  || printf '\n@.claudinite/README.md\n' >> CLAUDE.md
+grep -qxF '@.claudinite/CLAUDE.md' CLAUDE.md 2>/dev/null \
+  || printf '\n@.claudinite/CLAUDE.md\n' >> CLAUDE.md
 # Fresh clones: git submodule update --init --recursive (add to your setup script)
 ```
 
@@ -51,7 +51,7 @@ if curl -fsSL --retry 2 --max-time 30 "$URL" -o "$tmp/c.tgz" 2>/dev/null \
   rm -rf "$dest"; mv "$dest.new" "$dest"; exit 0
 fi
 [ -f "$dest/README.md" ] && exit 0   # offline: keep prior copy
-echo "Claudinite sync failed, no local copy; @.claudinite/README.md unresolved." >&2
+echo "Claudinite sync failed, no local copy; @.claudinite/CLAUDE.md unresolved." >&2
 exit 0
 ```
 
@@ -65,11 +65,11 @@ exit 0
 
 **3.** Gitignore the cache — add `.claudinite/` and `.claudinite.new/`.
 
-**4.** Import the corpus — append `@.claudinite/README.md` to `CLAUDE.md`:
+**4.** Import the corpus — append `@.claudinite/CLAUDE.md` to `CLAUDE.md`:
 
 ```sh
-grep -qxF '@.claudinite/README.md' CLAUDE.md 2>/dev/null \
-  || printf '\n@.claudinite/README.md\n' >> CLAUDE.md
+grep -qxF '@.claudinite/CLAUDE.md' CLAUDE.md 2>/dev/null \
+  || printf '\n@.claudinite/CLAUDE.md\n' >> CLAUDE.md
 ```
 
 Run the hook once locally to populate `.claudinite/` before first use.
