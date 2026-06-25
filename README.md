@@ -45,6 +45,7 @@ the mounted corpus and are not imported by consumers:
 
 - [routines/claudinite-lesson-curation.md](routines/claudinite-lesson-curation.md) — curates inbound `claudinite-lesson` proposal issues into reviewed docs PRs against the corpus.
 - [routines/auto-branch-report.md](routines/auto-branch-report.md) — project-agnostic nightly open-branch status report any consuming repo can vendor and run.
+- [maintenance/item-routing.md](maintenance/item-routing.md) — the shared method for evaluating whether a proposed item is worthy of the corpus and routing it to the right file group; the curation routine and other callers defer to it.
 
 ## Submodule caveats (for consumers)
 

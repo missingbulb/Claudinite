@@ -72,6 +72,13 @@ input.
 
 ### 2. Identify the owning doc
 
+The worthiness gates and routing axes applied across steps 2–4 are the corpus's
+shared method — kept once in
+[../maintenance/item-routing.md](../maintenance/item-routing.md) so this routine
+and every other caller decide the same way. This section and the next two are the
+curation-routine instance of that method; read the shared doc for the underlying
+rationale rather than re-deriving it.
+
 Route by *kind* to exactly one owning doc:
 
 | Lesson kind | Owning doc |
