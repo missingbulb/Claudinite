@@ -24,15 +24,17 @@ Unlike everything below, these rules aren't tied to one kind of task, so they're
 
 ### general/ — the task-based corpus (read the doc that matches your task)
 
-- [general/engineeringPractices.md](general/engineeringPractices.md) — general software-engineering practices, independent of any one project.
-- [general/bug-investigations.md](general/bug-investigations.md) — how to investigate a bug and pin down its root cause (version-gap triage, re-deriving the cause after a failed fix, probing for one real datapoint before broadcasting a theory).
-- [general/filePlacement.md](general/filePlacement.md) — where files should live in a repo: the reference-distance metric (keep references at distance 0/1), the high-reach code smell, and the mandated-location exemption (`.github/`, `.claude/`, root manifests) and the test-location exemption (don't move files to shorten test references — defer to the project's test-location standard).
-- [general/textAndFileManipulation.md](general/textAndFileManipulation.md) — mechanics of searching, extracting, and rewriting text across files (grep/sed sweeps, renames, broken references).
-- [general/testingPractices.md](general/testingPractices.md) — practices for writing trustworthy tests (see-it-fail, snapshot/golden discipline, CI-only and heavy-browser tests, coverage gating).
-- [general/agenticBestPractices.md](general/agenticBestPractices.md) — durable, project-agnostic practices for building and running AI agents.
-- [general/extracting-lessons.md](general/extracting-lessons.md) — how to mine a working session for durable improvements (misunderstandings, suboptimal actions, long waits) so the next run needs less.
-- [general/git-and-github.md](general/git-and-github.md) — portable git & GitHub procedures (commit history, CI-trigger rules, merge gotchas).
-- [general/agent-architecture.md](general/agent-architecture.md) — structural rules for unattended, automation-invoked agents.
+Each line names the trigger that should send you to the doc — match it against the task in front of you, and read the doc *before* acting when it fires.
+
+- [general/engineeringPractices.md](general/engineeringPractices.md) — **Read before writing or editing code.** Naming by scope, single-source-of-truth with drift guards, GENERATED-file discipline, earning each dependency, verifying real platform behavior, fresh-checkout install errors.
+- [general/bug-investigations.md](general/bug-investigations.md) — **Read when investigating a bug, or when a fix didn't hold.** Version-gap triage before theorizing, re-deriving the cause after a recurrence, getting one real datapoint before broadcasting a theory.
+- [general/filePlacement.md](general/filePlacement.md) — **Read before placing, moving, or renaming a file, or when reviewing where one lives.** The reference-distance metric (keep references at distance 0/1), the high-reach code smell, and the mandated-location (`.github/`, `.claude/`, root manifests) and test-location exemptions.
+- [general/textAndFileManipulation.md](general/textAndFileManipulation.md) — **Read before a grep/sed sweep, a rename, or a path relocation.** Scoping a replace, searching segment tokens after a rename, Markdown links that carry the path twice, references that break with no test failure.
+- [general/testingPractices.md](general/testingPractices.md) — **Read before writing or changing a test.** See-it-fail discipline, driving snapshots/goldens through the real code path, CI-only and heavy-browser tests, fuzzy-metric high-watermark gating.
+- [general/agenticBestPractices.md](general/agenticBestPractices.md) — **Read when building or running an AI agent or unattended routine.** The daily lessons pass, matching model to judgment, per-routine tracking issues, doc-not-inlined instructions, post-task efficiency analysis.
+- [general/extracting-lessons.md](general/extracting-lessons.md) — **Read when running a retrospective / lessons pass over a session.** The friction signals (clarifying round-trips, backtracks, long waits), the durable-and-reusable bar, and "no new lessons" as a valid result.
+- [general/git-and-github.md](general/git-and-github.md) — **Read when doing git/GitHub work beyond the baseline lifecycle** — committing in layers, recovering a branch after a squash-merge, dispatching CI, resolving a merge. CI-trigger rules, the `GITHUB_TOKEN` recursion gotcha, merge-relocation traps.
+- [general/agent-architecture.md](general/agent-architecture.md) — **Read before structuring an unattended (automation-invoked) agent.** Leave it only the judgment step and hard-code the rest; bound its write surface and enforce that from outside with a post-hoc diff check.
 
 ### preferences/ — per-user interaction preferences
 
