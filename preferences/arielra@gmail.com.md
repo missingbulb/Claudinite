@@ -1,44 +1,11 @@
 # Owner interaction preferences
 
-Personal preferences from the repo owner for how the assistant should
-interact — tone, summary style, end-of-turn conventions, how results and
-decisions are surfaced, and the phrases the owner uses to trigger defined
-commands. These are **not** project conventions
-(those live in the [general/](../general/) corpus); they're how the owner likes to be
-worked with. Where a preference triggers a command whose mechanics are a project
-convention, the mechanics stay in their own doc and the entry here just owns the
-trigger phrase.
+Personal preferences from the repo owner for how the assistant should interact — tone, summary style, end-of-turn conventions, how results and decisions are surfaced, and the phrases the owner uses to trigger defined commands. These are **not** project conventions (those live in the [general/](../general/) corpus); they're how the owner likes to be worked with. Where a preference triggers a command whose mechanics are a project convention, the mechanics stay in their own doc and the entry here just owns the trigger phrase.
 
 ## Preferences
 
-- **When there's nothing left to do, say so boldly at the end of the
-  conversation.** Don't bury a "this is complete / I'm blocked / nothing further
-  to do" behind hedging — make the terminal state unmistakable. **Set it apart
-  visually so it catches the eye:** put the terminal state — or, when work
-  remains, the list of open/outstanding items — in its own callout (a Markdown
-  blockquote box, e.g. `> ✅ All done` or `> ⚠️ Still open: …`), not trailing
-  prose the owner has to scan for. One or the other always gets the box: the
-  done-signal when nothing remains, the open-items list when something does.
-- **"LGTM"** is the owner's phrase for the merge-to-main command: it asks for
-  the change in front of the owner to be merged into `main`. It's an
-  owner-triggered command; the mechanics — squash, CI-green, when the
-  twice-green gate applies — live in the consuming project's GitHub-procedures
-  doc.
-- **"bump version"** is the owner's phrase for raising a project's version
-  (a minor bump by default). It's an owner-triggered command; the mechanics —
-  which files to edit and how a release follows — live in the consuming
-  project's workflow doc.
-- **"learned lessons"** is the owner's phrase to trigger a reflection pass over
-  the current conversation: review it on a capable model and capture only
-  genuinely new, durable, reusable insights — deduping against what's already
-  documented — plus a separate, equally high-barred efficiency pass over the
-  run's tool/process usage. **"No new lessons" / "no changes recommended" is a
-  valid, common outcome** — say so and write nothing rather than padding the docs
-  to look productive. Never run it unprompted; the owner decides when. It's an
-  owner-triggered command; the capture mechanics — which doc owns which lesson,
-  the routing — live in the consuming project's docs.
-- **Put decisions and approvals in an `AskUserQuestion` popup, not buried in
-  prose.** The owner is frequently on mobile, where a popup notifies and a
-  question embedded in a paragraph is easy to miss. When you need the owner to
-  choose or approve something, ask through the structured popup with explicit
-  options rather than asking in running text.
+- **When there's nothing left to do, say so boldly at the end of the conversation.** Don't bury a "this is complete / I'm blocked / nothing further to do" behind hedging — make the terminal state unmistakable. **Set it apart visually so it catches the eye:** put the terminal state — or, when work remains, the list of open/outstanding items — in its own callout (a Markdown blockquote box, e.g. `> ✅ All done` or `> ⚠️ Still open: …`), not trailing prose the owner has to scan for. One or the other always gets the box: the done-signal when nothing remains, the open-items list when something does.
+- **"LGTM"** is the owner's phrase for the merge-to-main command: it asks for the change in front of the owner to be merged into `main`. It's an owner-triggered command; the mechanics — squash, CI-green, when the twice-green gate applies — live in the consuming project's GitHub-procedures doc.
+- **"bump version"** is the owner's phrase for raising a project's version (a minor bump by default). It's an owner-triggered command; the mechanics — which files to edit and how a release follows — live in the consuming project's workflow doc.
+- **"learned lessons"** is the owner's phrase to trigger a reflection pass over the current conversation: review it on a capable model and capture only genuinely new, durable, reusable insights — deduping against what's already documented — plus a separate, equally high-barred efficiency pass over the run's tool/process usage. **"No new lessons" / "no changes recommended" is a valid, common outcome** — say so and write nothing rather than padding the docs to look productive. Never run it unprompted; the owner decides when. It's an owner-triggered command; the capture mechanics — which doc owns which lesson, the routing — live in the consuming project's docs.
+- **Put decisions and approvals in an `AskUserQuestion` popup, not buried in prose.** The owner is frequently on mobile, where a popup notifies and a question embedded in a paragraph is easy to miss. When you need the owner to choose or approve something, ask through the structured popup with explicit options rather than asking in running text.

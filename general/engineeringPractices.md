@@ -1,18 +1,6 @@
 # Engineering practices
 
-General software-engineering practices, independent of any one project. (These
-are portable, shared rules; project-specific rules — architecture, test
-mechanics — live in the consuming repo's own docs. The portable
-git/GitHub-operational practices — branch/commit history, merging, automated-job
-branches — live in [git-and-github.md](git-and-github.md); the mechanics of
-searching and rewriting text across files — grep/sed sweeps, renames, broken
-references — live in [textAndFileManipulation.md](textAndFileManipulation.md);
-and the practices for writing trustworthy tests — see-it-fail, snapshot/golden
-discipline, CI-only and heavy-browser tests, coverage gating — live in
-[testingPractices.md](testingPractices.md); and how to investigate a bug and
-pin down its root cause — version-gap triage, re-deriving after a failed fix,
-probing for a real datapoint — lives in
-[bug-investigations.md](bug-investigations.md).)
+General software-engineering practices, independent of any one project. (These are portable, shared rules; project-specific rules — architecture, test mechanics — live in the consuming repo's own docs. The portable git/GitHub-operational practices — branch/commit history, merging, automated-job branches — live in [git-and-github.md](git-and-github.md); the mechanics of searching and rewriting text across files — grep/sed sweeps, renames, broken references — live in [textAndFileManipulation.md](textAndFileManipulation.md); and the practices for writing trustworthy tests — see-it-fail, snapshot/golden discipline, CI-only and heavy-browser tests, coverage gating — live in [testingPractices.md](testingPractices.md); and how to investigate a bug and pin down its root cause — version-gap triage, re-deriving after a failed fix, probing for a real datapoint — lives in [bug-investigations.md](bug-investigations.md).)
 
 - Name by scope/responsibility, not technology or mechanism.
 - Keep a single source of truth for derived or duplicated data — generate the rest from it instead of hand-editing, and have a test fail if it drifts. When the duplicate mirrors executable logic you can't generate from (e.g. a static list shadowing a set of predicate/matcher functions), drift-guard it by *executing the real logic* against the list in both directions — every entry accepted by some predicate, and every predicate satisfied by some entry — rather than parsing the logic out. When a string literal must appear in files that can't share an import (e.g. a label that spans a YAML workflow guard and a JS module), add a JSON entry to `test/uber/shared_constants/` with the expected occurrence count per file (that guard counts every occurrence of the literal, comments included — so keep incidental mentions out of a guarded file, or fix its count; see that directory for examples). The guard matches the *flat* literal, so an occurrence wrapped across a line break (e.g. a Markdown-reflowed prose mention of `` `the-label` ``) is invisible to it — and to a `grep`/`sed` rename — and slips through silently; keep a guarded literal on one line wherever it appears.
