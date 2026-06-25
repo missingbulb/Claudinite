@@ -32,6 +32,15 @@ knowledge of the originating repo**. Judge it on its own text plus this corpus.
 The backlink is provenance only; do not chase it for missing context — if the
 proposal can't stand on its own text, that is itself grounds to reject.
 
+Each proposal is already a **distilled rule**, not a raw transcript: upstream, a
+consuming repo mined a working session or its issue/PR history and wrote the
+lesson down (the session-reflection method is
+[general/extracting-lessons.md](../general/extracting-lessons.md)). So this routine
+is the *receiving* filter — it dedupes and routes a finished rule — not the place
+that reads conversations. Hold proposals to that standard: a proposal still
+phrased as "here's what happened" rather than a portable rule is itself below the
+bar.
+
 ## Trigger
 
 One run handles one inbound issue:
