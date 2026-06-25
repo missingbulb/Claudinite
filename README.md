@@ -50,6 +50,7 @@ Read in this order on any given task:
 ### general/ — the always-applicable corpus
 
 - [general/engineeringPractices.md](general/engineeringPractices.md) — general software-engineering practices, independent of any one project.
+- [general/filePlacement.md](general/filePlacement.md) — where files should live in a repo: the reference-distance metric (keep references at distance 0/1), the high-reach code smell, and the mandated-location exemption (`.github/`, `.claude/`, root manifests).
 - [general/textAndFileManipulation.md](general/textAndFileManipulation.md) — mechanics of searching, extracting, and rewriting text across files (grep/sed sweeps, renames, broken references).
 - [general/testingPractices.md](general/testingPractices.md) — practices for writing trustworthy tests (see-it-fail, snapshot/golden discipline, CI-only and heavy-browser tests, coverage gating).
 - [general/agenticBestPractices.md](general/agenticBestPractices.md) — durable, project-agnostic practices for building and running AI agents.
