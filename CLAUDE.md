@@ -20,6 +20,7 @@ Unlike everything below, these rules aren't tied to one kind of task, so they're
 - **Suppressing a warning is not a small fix** — muting it with a flag (`--disable-warning`, `eslint-disable`, swallowing it) hides the signal instead of resolving it. Never reach for suppression as the quick path; it's only ever a deliberate, reviewed decision inside the dedicated-issue path below, once the real fix has been weighed and rejected.
 - **When a warning can't be fixed now** with a small cause-addressing change without hindering current work (e.g. it's waiting on an upstream release, or the real fix is a larger refactor), open a dedicated issue for it (unless one's already open) so it's tracked and not lost — then move on. Resolving it (real fix, or a consciously-chosen suppression) happens in that issue's own change.
 - **An approval applies only *backward*** — to the work already in front of the owner when it's given, never to anything requested or done *after* it. A later follow-up, even a fix to the just-approved change, needs its own explicit approval; don't carry one approval forward, and don't treat a chosen answer to a multiple-choice prompt as authorization just because an option's wording mentioned the action. When in doubt, surface the new state and wait for a fresh approval.
+- **Every new task follows the same lifecycle:** (1) create a GitHub issue describing the task before starting work; (2) develop on a branch, referencing that issue number in commit messages (`Refs #123`, `Fixes #123`, `Closes #123`); (3) update the issue's status (comments / close) as work progresses and when it's done. The rest of the git/GitHub procedures — commit-in-layers, CI-trigger rules, merge gotchas — stay task-based in [general/git-and-github.md](general/git-and-github.md).
 
 ### general/ — the task-based corpus (read the doc that matches your task)
 
@@ -30,7 +31,7 @@ Unlike everything below, these rules aren't tied to one kind of task, so they're
 - [general/testingPractices.md](general/testingPractices.md) — practices for writing trustworthy tests (see-it-fail, snapshot/golden discipline, CI-only and heavy-browser tests, coverage gating).
 - [general/agenticBestPractices.md](general/agenticBestPractices.md) — durable, project-agnostic practices for building and running AI agents.
 - [general/extracting-lessons.md](general/extracting-lessons.md) — how to mine a working session for durable improvements (misunderstandings, suboptimal actions, long waits) so the next run needs less.
-- [general/git-and-github.md](general/git-and-github.md) — portable git & GitHub procedures (task lifecycle, commit history, CI-trigger rules, merge gotchas).
+- [general/git-and-github.md](general/git-and-github.md) — portable git & GitHub procedures (commit history, CI-trigger rules, merge gotchas).
 - [general/agent-architecture.md](general/agent-architecture.md) — structural rules for unattended, automation-invoked agents.
 
 ### preferences/ — per-user interaction preferences

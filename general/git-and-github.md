@@ -1,14 +1,6 @@
 # Portable git & GitHub procedures
 
-The project-agnostic half of how we drive GitHub: the issue → branch → PR lifecycle, the branch/commit-history rules for PR work, the CI-trigger rules, and how we keep merge-conflict churn cheap across parallel branches. Project-specific GitHub procedures (the merge-to-main command, when to open a PR early, the merge-cheaply poll loop tuned to the local environment, and the generated-file merge rules) live in the consuming repo's own GitHub-procedures doc.
-
-## The task lifecycle
-
-For every new task:
-
-1. Create a GitHub issue describing the task before starting work.
-2. Develop on a branch; reference that issue number in commit messages (e.g. `Refs #123`, `Fixes #123`, or `Closes #123`).
-3. Update the issue's status (comments / close) as work progresses and when it's done.
+The project-agnostic half of how we drive GitHub: the branch/commit-history rules for PR work, the CI-trigger rules, and how we keep merge-conflict churn cheap across parallel branches. (The issue → branch → PR task lifecycle that every task follows lives in the always-on baseline in the root [CLAUDE.md](../CLAUDE.md), not here — it's not task-gated.) Project-specific GitHub procedures (the merge-to-main command, when to open a PR early, the merge-cheaply poll loop tuned to the local environment, and the generated-file merge rules) live in the consuming repo's own GitHub-procedures doc.
 
 ## Branch and commit history
 
