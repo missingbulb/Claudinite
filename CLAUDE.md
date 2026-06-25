@@ -21,12 +21,15 @@ Read in this order on any given task:
    the specific doc whose subject matches what you're doing (see the list below);
    you don't need to read all of them for every task, but this directory is where
    the default working rules live.
-2. **Who you're working with → [preferences/](preferences/).** One `<user>.md`
-   file per person who uses Claudinite, holding that person's interaction
-   preferences and trigger phrases. **Read the file matching the current user**
-   (identify them from the session / git `user.email`), and only that file. Today
-   the only such file is [preferences/missingbulb.md](preferences/missingbulb.md)
-   (the repo owner). If no file matches the current user, there are no personal
+2. **Who you're working with → [preferences/](preferences/).** One file per
+   person who uses Claudinite, **named for that person's email address** (e.g.
+   `preferences/arielra@gmail.com.md`), holding their interaction preferences and
+   trigger phrases. **This is the one mandatory read — the exception to the
+   soft-pointer rule above: at session start, before any work, read
+   `preferences/$CLAUDE_CODE_USER_EMAIL.md`** — the file whose name is exactly the
+   current user's email, taken verbatim from the `CLAUDE_CODE_USER_EMAIL`
+   environment variable (`@` and `.` are valid in filenames; no escaping). Read
+   only that file. If no file with that exact name exists, there are no personal
    preferences to apply — proceed on the general rules alone.
 3. **What you're building with → [technologies/](technologies/).** One file per
    technology (e.g. [Node.js](technologies/nodejs.md),
@@ -50,14 +53,15 @@ Read in this order on any given task:
 
 ### preferences/ — per-user interaction preferences
 
-**Read only `preferences/<CURRENT_USER_NAME>.md`** — the single file matching the
-current user (resolve `<CURRENT_USER_NAME>` from the session / git `user.email`).
-Do **not** read the other users' files; their preferences don't apply to this
-session. If no file matches the current user, there are none to apply.
+**At session start, read `preferences/$CLAUDE_CODE_USER_EMAIL.md`** — the single
+file whose name is exactly the current user's email (from the
+`CLAUDE_CODE_USER_EMAIL` environment variable, used verbatim — `@` and `.` need no
+escaping). Read only that file; other users' preferences don't apply. If no file
+with that exact name exists, there are none to apply.
 
 Files present today:
 
-- [preferences/missingbulb.md](preferences/missingbulb.md) — the repo owner's personal interaction preferences and trigger phrases.
+- [preferences/arielra@gmail.com.md](preferences/arielra@gmail.com.md) — the repo owner's personal interaction preferences and trigger phrases.
 
 ### technologies/ — per-technology practices
 
