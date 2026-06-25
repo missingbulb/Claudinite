@@ -12,9 +12,7 @@ corpus and consuming repos do not `@import` it.
 An "item" is one **distilled, portable rule** — not a transcript, not a
 narration of what happened. A candidate still phrased as "here's what we did" has
 not been distilled yet and is below the bar on form alone, before any of the
-tests below. The method that turns a raw session into a distilled rule is
-[../general/extracting-lessons.md](../general/extracting-lessons.md); this doc
-picks up once a rule exists and decides its fate.
+tests below. This doc picks up once a distilled rule exists and decides its fate.
 
 ## Worthiness — does it earn a place at all
 
@@ -56,13 +54,16 @@ Routing is robust when it keys on **stable file groups**, not on the current
 roster of individual files (which grows over time). The corpus is organized into
 a few groups, each with its own selection rule:
 
-1. **The portable-practice group** — the durable, project-agnostic engineering,
-   agentic, git/GitHub, testing, investigation, discipline, and architecture
-   rules. Within it, files are partitioned **by kind of practice**: each file
-   owns one recurring subject cluster. Route by matching the item's *kind* to the
-   file whose cluster already owns that subject. Read the group's own index/table
-   from the repo to find the current owner for a kind — never from memory, since
-   the set of clusters can grow.
+1. **The skills group** — durable, project-agnostic practices that fit the
+   general definition of a **skill**: each file is a self-contained, reusable unit
+   of know-how the agent applies whenever its subject comes up (engineering,
+   agentic, git/GitHub, testing, investigation, discipline, architecture). These
+   are *not* Claude skills in the harness sense — no `SKILL.md`, no invocation
+   mechanism — but conceptually they are exactly that: portable capabilities,
+   partitioned **by kind of practice** with each file owning one recurring subject
+   cluster. Route by matching the item's *kind* to the file whose cluster already
+   owns that subject. Read the group's own index from the repo to find the current
+   owner for a kind — never from memory, since the set of clusters can grow.
 2. **The per-user group** — interaction preferences and trigger phrases, **one
    file per person**, named for that person's identity. Route an item of this
    kind to the file for the user it belongs to; it never goes in the
@@ -95,10 +96,6 @@ evidence it does not belong in shared canon. Resolve it in this order:
   than a missed one. Creating a file also obliges registering it where the corpus
   is indexed and in any routing table, in the same change, so it never lands
   orphaned.
-
-Placing a brand-new file follows the corpus's normal placement judgment
-([../general/filePlacement.md](../general/filePlacement.md)): it goes in the group
-directory its kind belongs to, alongside its neighbors.
 
 ## Keep the write surface bounded
 
