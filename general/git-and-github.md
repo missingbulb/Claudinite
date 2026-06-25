@@ -60,6 +60,15 @@ matter how granularly the branch is committed.
     fighting the replay.
   - **If the merge auto-deleted the remote branch, start follow-up work on a new branch off `origin/main`** rather than reusing the old name — it has no stale tracking ref and no rebase dance. If you do reuse the old name: `--force-with-lease` actively *fails* — `git push --force-with-lease` rejects with `stale info` then `couldn't find remote ref <branch>` because the lease expects a remote branch that no longer exists. There's nothing to overwrite, so `git fetch --prune` (drop the stale tracking ref) then a plain `git push -u origin <branch>` just recreates it.
 
+## Sync early to keep merge conflicts small
+
+Conflict size scales with how long a branch lives and how far it drifts from the
+default branch. Sync early rather than at the end: when starting work on a branch
+— and periodically while it's open — merge or rebase the latest default branch in
+first, so the branch carries current sources instead of discovering the gap at
+merge time. A one-commit-per-PR squash history already keeps each branch a single
+reviewable unit, so shorter-lived, freshly-synced branches are the norm.
+
 ## In a squash-merge repo, "commits ahead of main" does not mean "unmerged"
 
 A squash-merge creates a new commit on `main` that the branch's own commits are
