@@ -1,42 +1,13 @@
 # Agentic best practices
 
-Durable, project-agnostic practices for running AI agents — distilled from what
-worked here. Each is one tight rule; the worked example lives in its own doc.
+Durable, project-agnostic practices for running AI agents — distilled from what worked here. Each is one tight rule; the worked example lives in its own doc.
 
-- **A daily "lessons learned" pass keeps hard-won insights from evaporating.**
-  Run it over recent activity to fold durable, reusable lessons into shared docs
-  before they're forgotten. Key discipline: dedupe ruthlessly against the
-  existing docs, route each lesson to the doc that owns it, keep additions terse
-  — and most days add nothing. Routing into an existing doc is the default; a
-  genuinely new, recurring cluster that no existing doc owns can warrant a *new*
-  doc, but that's a rare, deliberate exception — when unsure, route into the
-  closest existing doc or reject, never spin up a doc for a lone lesson. (Worked
-  example: `docs/claude/auto-lessons.md`.)
+- **A daily "lessons learned" pass keeps hard-won insights from evaporating.** Run it over recent activity to fold durable, reusable lessons into shared docs before they're forgotten. Key discipline: dedupe ruthlessly against the existing docs, route each lesson to the doc that owns it, keep additions terse — and most days add nothing. Routing into an existing doc is the default; a genuinely new, recurring cluster that no existing doc owns can warrant a *new* doc, but that's a rare, deliberate exception — when unsure, route into the closest existing doc or reject, never spin up a doc for a lone lesson. (Worked example: `docs/claude/auto-lessons.md`.)
 - **Match the agent model to the judgment it must make.** A weaker/cheaper model is adequate for mechanical extraction but fails silently on judgment calls — it ships a plausible-but-wrong output where a capable model would correctly bail. Downgrade only for tasks the weaker model reliably handles. (Downgrading the auto-extractor agent to Haiku led it to ship a bare-title case off a listing page instead of stopping; Sonnet bailed correctly — `docs/claude/auto-extractor.md`.)
-- **Give each unattended recurring routine its own standing tracking issue as a
-  self-improvement log.** Log every run that produces a change there — as a
-  **dated comment**, not a sub-issue — so the routine's output accumulates in one
-  reviewable feed, making it easy to audit what it did over time and to tell when
-  the routine itself needs tuning. One issue per routine, not a shared parent;
-  have the routine find its issue by a stable attribute (title/label) rather than
-  a bare number that can dangle, and **reopen it if it was closed** while runs
-  still need logging. (Worked examples: `docs/claude/auto-lessons.md` #365,
-  `docs/claude/auto-fallback-coverage.md` #366,
-  `docs/claude/auto-branch-report.md` #399.)
-- **Keep an unattended routine's instructions in a repo doc, not inlined in the
-  launcher's config.** The launcher prompt (a CC web routine, a cron job's
-  embedded text) should be a thin pointer to a versioned in-repo doc; the doc
-  carries the real spec. Inlined instructions drift silently — they can't be
-  reviewed in a PR, go stale against renamed paths the repo's own tests would
-  have caught, and miss conventions the repo later adds — whereas a doc the
-  repo's checks and lessons pass touches stays current for free.
+- **Give each unattended recurring routine its own standing tracking issue as a self-improvement log.** Log every run that produces a change there — as a **dated comment**, not a sub-issue — so the routine's output accumulates in one reviewable feed, making it easy to audit what it did over time and to tell when the routine itself needs tuning. One issue per routine, not a shared parent; have the routine find its issue by a stable attribute (title/label) rather than a bare number that can dangle, and **reopen it if it was closed** while runs still need logging. (Worked examples: `docs/claude/auto-lessons.md` #365, `docs/claude/auto-fallback-coverage.md` #366, `docs/claude/auto-branch-report.md` #399.)
+- **Keep an unattended routine's instructions in a repo doc, not inlined in the launcher's config.** The launcher prompt (a CC web routine, a cron job's embedded text) should be a thin pointer to a versioned in-repo doc; the doc carries the real spec. Inlined instructions drift silently — they can't be reviewed in a PR, go stale against renamed paths the repo's own tests would have caught, and miss conventions the repo later adds — whereas a doc the repo's checks and lessons pass touches stays current for free.
 - **After each task, run a brief efficiency analysis of its tool and process usage — separate from lesson capture.** Ask whether it could have used fewer operations (redundant calls, work that could be batched, polling that could have been a single wait) and less wall time without harming quality (independent serial calls that could have run in parallel, unnecessary sleeps). Flag any process that has already returned its result but is being waited out on shutdown — it can be killed once its output is in hand. Close with one concrete speed-up recommendation, or an explicit "no changes recommended." The bar is high — most runs won't yield one.
-- **A SessionStart hook gates work through the session context it injects, not
-  by blocking.** The hook's stdout becomes context the agent reads — the runtime
-  never intercepts it — so enforcement is the agent's instruction-following, not
-  the hook itself. Use it for setup/environment validation: output a STOP
-  directive on failure (the agent asks the user before proceeding); emit nothing
-  on success.
+- **A SessionStart hook gates work through the session context it injects, not by blocking.** The hook's stdout becomes context the agent reads — the runtime never intercepts it — so enforcement is the agent's instruction-following, not the hook itself. Use it for setup/environment validation: output a STOP directive on failure (the agent asks the user before proceeding); emit nothing on success.
 - **For an open-ended visual/layout requirement, render real candidate designs and let the owner pick before building one.** When the spec leaves *how it looks or groups* open, drive the production renderer with hand-shaped fake data and put 2–4 *actually-rendered* options in front of the owner, rather than fully implementing, testing, and snapshot-approving a single interpretation that a later reorientation then discards wholesale. Reach for throwaway mockups through the real render path at the first sign of layout ambiguity — *ahead* of the implement→test→snapshot-approve cycle, which only kicks in once a change already exists.
 - **When asked to *show* or *see* a visual artifact, deliver the image into the chat — not a path or a link.** Surface the file itself so it renders inline; a link or bare path makes the owner go fetch it. For a tiny artifact (e.g. a 16/32px icon) also include an exact nearest-neighbor upscale, labelled as enlarged, so the detail stays legible.
 - **When a routine regenerates a reviewable artifact (a gallery, a snapshot set, a report), surface it in the chat the same turn you commit it** — a URL to the branch's copy, or the file rendered inline — so review is one click away instead of a hunt. (Complements the show/see rule above: that's for an artifact the owner asked to *see*; this is for one a routine *regenerates*.)

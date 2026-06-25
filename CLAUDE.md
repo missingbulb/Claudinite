@@ -1,42 +1,14 @@
 # Claudinite — how to traverse this corpus
 
-**You are reading this because you're working in a repo that uses Claudinite —
-either this source repo itself, or a consumer that mounted it at `.claudinite/`
-and imported `@.claudinite/CLAUDE.md`. This file is an index, not a payload — do
-not read the whole corpus up front.** Loading every doc would bloat your context
-with rules irrelevant to the task in front of you. Instead, treat the links below
-as a **map**, and read a file **only when the task at hand calls for it.**
+**You are reading this because you're working in a repo that uses Claudinite — either this source repo itself, or a consumer that mounted it at `.claudinite/` and imported `@.claudinite/CLAUDE.md`. This file is an index, not a payload — do not read the whole corpus up front.** Loading every doc would bloat your context with rules irrelevant to the task in front of you. Instead, treat the links below as a **map**, and read a file **only when the task at hand calls for it.**
 
-The links in this file are deliberately **plain relative links, not `@`-imports.**
-An `@` prefix would force-load the target into context immediately; a plain link
-is a *soft* pointer — an instruction to go read that file **when, and only when,
-it's relevant.** Honor that: follow a pointer on demand, don't pre-load it. Keep
-this same soft style if you add pointers here — never wire the corpus together
-with `@`-imports.
+The links in this file are deliberately **plain relative links, not `@`-imports.** An `@` prefix would force-load the target into context immediately; a plain link is a *soft* pointer — an instruction to go read that file **when, and only when, it's relevant.** Honor that: follow a pointer on demand, don't pre-load it. Keep this same soft style if you add pointers here — never wire the corpus together with `@`-imports.
 
 Read in this order on any given task:
 
-1. **Always-on baseline → [general/](general/).** The durable engineering,
-   agentic, git, and discipline rules that apply to essentially any task. Read
-   the specific doc whose subject matches what you're doing (see the list below);
-   you don't need to read all of them for every task, but this directory is where
-   the default working rules live.
-2. **Who you're working with → [preferences/](preferences/).** One file per
-   person who uses Claudinite, **named for that person's email address** (e.g.
-   `preferences/jane@example.com.md`), holding their interaction preferences and
-   trigger phrases. **This is a mandatory read — an exception to the
-   soft-pointer rule above: at session start, before any work, read
-   `preferences/$CLAUDE_CODE_USER_EMAIL.md`** — the file whose name is exactly the
-   current user's email, taken verbatim from the `CLAUDE_CODE_USER_EMAIL`
-   environment variable (`@` and `.` are valid in filenames; no escaping). Read
-   only that file. If no file with that exact name exists, there are no personal
-   preferences to apply — proceed on the general rules alone.
-3. **What you're building with → [technologies/](technologies/).** One file per
-   technology (e.g. [Node.js](technologies/nodejs.md),
-   [Chrome extensions](technologies/chrome-extension.md),
-   [Flutter](technologies/flutter.md), [HTML](technologies/html.md)). **Read only
-   the file(s) for the technology the current task actually touches.** Skip this
-   directory entirely for tasks that touch none of them.
+1. **Always-on baseline → [general/](general/).** The durable engineering, agentic, git, and discipline rules that apply to essentially any task. Read the specific doc whose subject matches what you're doing (see the list below); you don't need to read all of them for every task, but this directory is where the default working rules live.
+2. **Who you're working with → [preferences/](preferences/).** One file per person who uses Claudinite, **named for that person's email address** (e.g. `preferences/jane@example.com.md`), holding their interaction preferences and trigger phrases. **This is a mandatory read — an exception to the soft-pointer rule above: at session start, before any work, read `preferences/$CLAUDE_CODE_USER_EMAIL.md`** — the file whose name is exactly the current user's email, taken verbatim from the `CLAUDE_CODE_USER_EMAIL` environment variable (`@` and `.` are valid in filenames; no escaping). Read only that file. If no file with that exact name exists, there are no personal preferences to apply — proceed on the general rules alone.
+3. **What you're building with → [technologies/](technologies/).** One file per technology (e.g. [Node.js](technologies/nodejs.md), [Chrome extensions](technologies/chrome-extension.md), [Flutter](technologies/flutter.md), [HTML](technologies/html.md)). **Read only the file(s) for the technology the current task actually touches.** Skip this directory entirely for tasks that touch none of them.
 
 ### general/ — the always-applicable corpus
 
@@ -53,11 +25,7 @@ Read in this order on any given task:
 
 ### preferences/ — per-user interaction preferences
 
-**At session start, read `preferences/$CLAUDE_CODE_USER_EMAIL.md`** — the single
-file whose name is exactly the current user's email (from the
-`CLAUDE_CODE_USER_EMAIL` environment variable, used verbatim — `@` and `.` need no
-escaping). Read only that file; other users' preferences don't apply. If no file
-with that exact name exists, there are none to apply.
+**At session start, read `preferences/$CLAUDE_CODE_USER_EMAIL.md`** — the single file whose name is exactly the current user's email (from the `CLAUDE_CODE_USER_EMAIL` environment variable, used verbatim — `@` and `.` need no escaping). Read only that file; other users' preferences don't apply. If no file with that exact name exists, there are none to apply.
 
 ### technologies/ — per-technology practices
 
@@ -65,5 +33,4 @@ with that exact name exists, there are none to apply.
 
 ---
 
-For what this repo *is*, how consuming repos mount it, and its internal
-maintenance routines, see [README.md](README.md).
+For what this repo *is*, how consuming repos mount it, and its internal maintenance routines, see [README.md](README.md).

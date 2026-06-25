@@ -1,13 +1,6 @@
 # Testing practices
 
-Portable practices for writing tests you can actually trust — proving a test
-fails before relying on it, snapshot/golden discipline, CI-only and
-heavy-browser tests, and how to gate a fuzzy quality metric. These are
-project-agnostic; a consuming repo's own test *mechanics* (runner, layout,
-which suites exist) stay in its own docs. (General software-engineering
-practices live in [engineeringPractices.md](engineeringPractices.md); CI-trigger
-rules and the `GITHUB_TOKEN` workflow-recursion gotcha live in
-[git-and-github.md](git-and-github.md).)
+Portable practices for writing tests you can actually trust — proving a test fails before relying on it, snapshot/golden discipline, CI-only and heavy-browser tests, and how to gate a fuzzy quality metric. These are project-agnostic; a consuming repo's own test *mechanics* (runner, layout, which suites exist) stay in its own docs. (General software-engineering practices live in [engineeringPractices.md](engineeringPractices.md); CI-trigger rules and the `GITHUB_TOKEN` workflow-recursion gotcha live in [git-and-github.md](git-and-github.md).)
 
 - See a test fail before you trust it: write it red before the fix (green after), or break what it guards and watch it go red. A test that has never failed proves nothing.
 - Before trusting a new transform/normalizer, run it over the *real existing corpus* it will process, not just hand-picked test inputs — the live data exposes edge cases your examples won't. (A hostname-apex helper passed its tests but mis-stripped `tel-aviv.gov.il` → `gov.il`; the gap only surfaced when the function was run over the actual list of existing URLs.) Relatedly, prefer a generic structural rule over a hand-maintained list of special cases: the enumerated list needs per-instance upkeep and silently has gaps, while a rule keyed on structure (e.g. "a known registry label under any 2-letter ccTLD") covers the whole class at once.
