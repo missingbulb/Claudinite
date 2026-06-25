@@ -24,3 +24,11 @@ hindering current work (e.g. it's waiting on an upstream release, or the real
 fix is a larger refactor), open a dedicated issue for it (unless one is already
 open) so it's tracked and not lost — then move on. Resolving it (real fix, or a
 consciously-chosen suppression) happens in that issue's own change.
+
+An approval — to merge, to ship, to proceed — applies only *backward*, to the
+work already in front of the owner when it's given, never to anything requested
+or done *after* it. A later follow-up, even a fix to the just-approved change,
+needs its own explicit approval; don't carry one approval forward, and don't
+treat a chosen answer to a multiple-choice prompt as authorization just because
+an option's wording mentioned the action. When in doubt, surface the new state
+and wait for a fresh approval.

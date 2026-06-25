@@ -116,6 +116,15 @@ language. Add a `.gitattributes` entry for each such path (e.g.
 `test/fixtures/*.html linguist-vendored`) to tell Linguist to ignore it; apply
 the same annotation whenever you add another large generated or fixture file.
 
+## Renaming a directory that houses a submodule
+
+`git mv` on a directory containing a submodule rewrites `.gitmodules` and the
+index correctly but leaves `.git/config` stale — its old
+`[submodule "<old/path>"]` entry lingers, so any operation that consults
+`.git/config` (submodule status, checkout) sees the old path until you fix it.
+Run `git submodule sync && git submodule update --init` after the move to
+propagate the new path and re-register the submodule.
+
 ## GitHub Markdown inside a `<td>` requires surrounding blank lines
 
 In a GitHub-rendered Markdown file, cmark-gfm re-enters Markdown mode inside a
