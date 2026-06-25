@@ -60,6 +60,15 @@ matter how granularly the branch is committed.
     fighting the replay.
   - **If the merge auto-deleted the remote branch, start follow-up work on a new branch off `origin/main`** rather than reusing the old name — it has no stale tracking ref and no rebase dance. If you do reuse the old name: `--force-with-lease` actively *fails* — `git push --force-with-lease` rejects with `stale info` then `couldn't find remote ref <branch>` because the lease expects a remote branch that no longer exists. There's nothing to overwrite, so `git fetch --prune` (drop the stale tracking ref) then a plain `git push -u origin <branch>` just recreates it.
 
+## Sync early to keep merge conflicts small
+
+Conflict size scales with how long a branch lives and how far it drifts from the
+default branch. Sync early rather than at the end: when starting work on a branch
+— and periodically while it's open — merge or rebase the latest default branch in
+first, so the branch carries current sources instead of discovering the gap at
+merge time. A one-commit-per-PR squash history already keeps each branch a single
+reviewable unit, so shorter-lived, freshly-synced branches are the norm.
+
 ## In a squash-merge repo, "commits ahead of main" does not mean "unmerged"
 
 A squash-merge creates a new commit on `main` that the branch's own commits are
@@ -72,10 +81,15 @@ content, not raw count:
 2. **Content diff** — `git diff --stat main..branch`: if everything the branch
    adds is already in `main`, the work landed (catches a squash with no
    surviving PR).
-3. **No merge-base** — `git merge-base` fails when a force-push rewrote `main`
+3. **Superseded elsewhere** — the branch's work may have landed in `main` under
+   a *different path or form* (a doc distilled into another, a feature
+   re-implemented), so a file/line diff still shows its additions as branch-side
+   and it reads as unmerged. Before concluding so, check whether its *intent*
+   already exists in `main` — grep for the concept, not just the exact path.
+4. **No merge-base** — `git merge-base` fails when a force-push rewrote `main`
    and orphaned the branch; can't be proven in or out mechanically; needs human
    review, never an automatic delete.
-4. Otherwise — genuine unmerged work.
+5. Otherwise — genuine unmerged work.
 
 ## A push or PR made with the Actions `GITHUB_TOKEN` does not start another workflow
 
@@ -116,6 +130,15 @@ language. Add a `.gitattributes` entry for each such path (e.g.
 `test/fixtures/*.html linguist-vendored`) to tell Linguist to ignore it; apply
 the same annotation whenever you add another large generated or fixture file.
 
+## Renaming a directory that houses a submodule
+
+`git mv` on a directory containing a submodule rewrites `.gitmodules` and the
+index correctly but leaves `.git/config` stale — its old
+`[submodule "<old/path>"]` entry lingers, so any operation that consults
+`.git/config` (submodule status, checkout) sees the old path until you fix it.
+Run `git submodule sync && git submodule update --init` after the move to
+propagate the new path and re-register the submodule.
+
 ## GitHub Markdown inside a `<td>` requires surrounding blank lines
 
 In a GitHub-rendered Markdown file, cmark-gfm re-enters Markdown mode inside a
@@ -124,7 +147,9 @@ cell is treated as a raw HTML block and its content is shown verbatim (no
 `![img]()`, no `**bold**`, no links). GitHub's sanitizer strips `style` / CSS,
 so a flexbox two-column layout won't render; use a plain `<table>` with
 `align` / `valign` / `width` instead. GFM pipe-table cells can't hold
-multi-line prose — use the raw-`<table>` form when a cell needs it.
+multi-line prose — use the raw-`<table>` form when a cell needs it. A leading
+inline `<!-- … -->` comment also opens an HTML block, so keep any such marker as
+the *last* token on the line, leaving the line to *start* as Markdown.
 
 ## Merging gotchas
 

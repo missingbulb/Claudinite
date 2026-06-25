@@ -50,6 +50,9 @@ corpus and are not imported by consumers:
 projects to vendor and run** — not Claudinite's own upkeep:
 
 - [routines/auto-branch-report.md](routines/auto-branch-report.md) — project-agnostic nightly open-branch status report any consuming repo can vendor and run.
+- [routines/auto-lessons.md](routines/auto-lessons.md) — daily lessons digest: reviews the last 24h of activity and opens a PR folding any durable, reusable insight into the project's docs (most days, nothing).
+- [routines/auto-optimize-procedures.md](routines/auto-optimize-procedures.md) — daily routine reconciling a consumer's local docs against the shared canon in both directions: prune/rephrase local docs the canon now covers (a PR), and promote generalizable local items up (one bundled handoff-labelled issue), without removing them locally.
+- [routines/claudinite-handoff.md](routines/claudinite-handoff.md) — the up-path: how a portable lesson travels from a consuming repo into Claudinite (the handoff label, the deterministic cross-repo Action and its PAT, and the Claudinite-side curation routine).
 
 ## Submodule caveats (for consumers)
 
