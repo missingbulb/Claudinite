@@ -66,10 +66,14 @@ convention and had it corrected in review.
 
 **Convert to:** a rule pointing at the right approach or tool, a pointer to the
 existing helper/convention so it's found first, or a **footgun note placed where
-it'll be read.** Co-locate it in a file's own header comment when you'd only hit
-the trap *while editing that file* (a mistake of commission); put it in a central
-gotchas doc when you could hit it *without* reading that file (a mistake of
-omission, or a cross-cutting invariant). The test: next time the agent takes the
+it'll be read.** Place it by where the trap is hit, not in a central bucket: a
+gotcha from **misusing a specific API, class, or library goes as a comment right
+at the usage site** — next to the call itself, where the next editor of that line
+sees it — never collected into a centralized gotchas list. Co-locate it in a
+file's own header comment when the trap spans the whole file and you'd only hit it
+*while editing that file*. Reserve a central gotchas doc for what no single usage
+site owns: a trap you could hit *without* reading the relevant file (a mistake of
+omission), or a cross-cutting invariant. The test: next time the agent takes the
 good path first, not after a detour.
 
 ### 3. Long wall-time waits — and measure them
