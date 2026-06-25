@@ -98,6 +98,29 @@ But the exemption is **narrow and one-directional**:
   could place the file nearer its dependencies and the tooling wouldn't care, the
   normal rule still applies.
 
+## Special case: test files
+
+Tests are a common source of long references that are **not** placement smells.
+A project's test-location convention — a mirrored `test/` or `tests/` tree, a
+`__tests__/` folder, a `*_test.go` sibling, a `spec/` root — fixes where a test
+file lives, and that location is often far from the file under test. The
+resulting long reference from the test to the tested file is **forced by the
+convention, not by misplacement.**
+
+**Don't move files to shorten a test reference, or vice versa.** Where a project
+already has a standard for test locations, that standard wins: leave the tested
+file where its production neighbors are (distance 0/1 from *them*), leave the
+test where the convention puts it, and accept the distance between them. Relocating
+production code to sit nearer its test — or scattering tests next to code when the
+project mirrors them into a separate tree — trades a real, project-wide standard
+for a metric the standard already overrides.
+
+Apply the same narrowness as the mandated-location case: the exemption covers the
+**test → tested-file** reference that the convention forces, and it presumes the
+project *has* such a convention. Absent any standard, ordinary placement judgment
+still applies — co-locating a test with the code it exercises is a perfectly good
+distance-0 choice.
+
 ## Why this works
 
 - **Locality of change.** Edits ripple to neighbors, not across the repo. When
