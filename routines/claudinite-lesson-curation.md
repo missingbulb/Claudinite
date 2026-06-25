@@ -71,6 +71,7 @@ Route by *kind* to exactly one owning doc:
 | Testing practice (writing trustworthy tests, snapshots, coverage gating) | [general/testingPractices.md](../general/testingPractices.md) |
 | Searching / rewriting text across files (grep/sed sweeps, renames, broken references) | [general/textAndFileManipulation.md](../general/textAndFileManipulation.md) |
 | AI-agent practice (building / running agents) | [general/agenticBestPractices.md](../general/agenticBestPractices.md) |
+| Method for extracting lessons from a session (reflection / self-improvement) | [general/extracting-lessons.md](../general/extracting-lessons.md) |
 | git / GitHub procedure | [general/git-and-github.md](../general/git-and-github.md) |
 | Working discipline / general working habit | [general/working-discipline.md](../general/working-discipline.md) |
 | Agent architecture (structuring unattended agents) | [general/agent-architecture.md](../general/agent-architecture.md) |
