@@ -77,6 +77,7 @@ Route by *kind* to exactly one owning doc:
 | Lesson kind | Owning doc |
 | --- | --- |
 | General software-engineering practice | [general/engineeringPractices.md](../general/engineeringPractices.md) |
+| Bug investigation / root-cause diagnosis (triage, re-deriving a cause, probing for a datapoint) | [general/bug-investigations.md](../general/bug-investigations.md) |
 | Testing practice (writing trustworthy tests, snapshots, coverage gating) | [general/testingPractices.md](../general/testingPractices.md) |
 | Searching / rewriting text across files (grep/sed sweeps, renames, broken references) | [general/textAndFileManipulation.md](../general/textAndFileManipulation.md) |
 | AI-agent practice (building / running agents) | [general/agenticBestPractices.md](../general/agenticBestPractices.md) |

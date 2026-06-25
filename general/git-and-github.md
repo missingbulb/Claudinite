@@ -58,13 +58,7 @@ matter how granularly the branch is committed.
     origin/main <last-squash-merged-commit>` (then `git push --force-with-lease`).
     If the new work is small, a `git reset --hard origin/main` + redo beats
     fighting the replay.
-  - **If the merge auto-deleted the remote branch, the resync push needs no
-    force — `--force-with-lease` actively *fails*.** Reusing the same local
-    branch name after its PR merged, `git push --force-with-lease` rejects with
-    `stale info` then `couldn't find remote ref <branch>`: the lease expects a
-    remote branch that no longer exists. There's nothing to overwrite, so `git
-    fetch --prune` (drop the stale tracking ref) then a plain `git push -u origin
-    <branch>` just recreates it.
+  - **If the merge auto-deleted the remote branch, start follow-up work on a new branch off `origin/main`** rather than reusing the old name — it has no stale tracking ref and no rebase dance. If you do reuse the old name: `--force-with-lease` actively *fails* — `git push --force-with-lease` rejects with `stale info` then `couldn't find remote ref <branch>` because the lease expects a remote branch that no longer exists. There's nothing to overwrite, so `git fetch --prune` (drop the stale tracking ref) then a plain `git push -u origin <branch>` just recreates it.
 
 ## In a squash-merge repo, "commits ahead of main" does not mean "unmerged"
 
