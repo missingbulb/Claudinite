@@ -23,8 +23,8 @@ Read in this order on any given task:
    the default working rules live.
 2. **Who you're working with → [preferences/](preferences/).** One file per
    person who uses Claudinite, **named for that person's email address** (e.g.
-   `preferences/arielra@gmail.com.md`), holding their interaction preferences and
-   trigger phrases. **This is the one mandatory read — the exception to the
+   `preferences/jane@example.com.md`), holding their interaction preferences and
+   trigger phrases. **This is a mandatory read — an exception to the
    soft-pointer rule above: at session start, before any work, read
    `preferences/$CLAUDE_CODE_USER_EMAIL.md`** — the file whose name is exactly the
    current user's email, taken verbatim from the `CLAUDE_CODE_USER_EMAIL`
@@ -58,10 +58,6 @@ file whose name is exactly the current user's email (from the
 `CLAUDE_CODE_USER_EMAIL` environment variable, used verbatim — `@` and `.` need no
 escaping). Read only that file; other users' preferences don't apply. If no file
 with that exact name exists, there are none to apply.
-
-Files present today:
-
-- [preferences/arielra@gmail.com.md](preferences/arielra@gmail.com.md) — the repo owner's personal interaction preferences and trigger phrases.
 
 ### technologies/ — per-technology practices
 
