@@ -59,6 +59,13 @@ Read in this order on any given task:
 
 ### preferences/ — per-user interaction preferences
 
+**Read only `preferences/<CURRENT_USER_NAME>.md`** — the single file matching the
+current user (resolve `<CURRENT_USER_NAME>` from the session / git `user.email`).
+Do **not** read the other users' files; their preferences don't apply to this
+session. If no file matches the current user, there are none to apply.
+
+Files present today:
+
 - [preferences/missingbulb.md](preferences/missingbulb.md) — the repo owner's personal interaction preferences and trigger phrases.
 
 ### technologies/ — per-technology practices
