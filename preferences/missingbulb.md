@@ -13,7 +13,12 @@ trigger phrase.
 
 - **When there's nothing left to do, say so boldly at the end of the
   conversation.** Don't bury a "this is complete / I'm blocked / nothing further
-  to do" behind hedging — make the terminal state unmistakable.
+  to do" behind hedging — make the terminal state unmistakable. **Set it apart
+  visually so it catches the eye:** put the terminal state — or, when work
+  remains, the list of open/outstanding items — in its own callout (a Markdown
+  blockquote box, e.g. `> ✅ All done` or `> ⚠️ Still open: …`), not trailing
+  prose the owner has to scan for. One or the other always gets the box: the
+  done-signal when nothing remains, the open-items list when something does.
 - **"LGTM"** is the owner's phrase for the merge-to-main command: it asks for
   the change in front of the owner to be merged into `main`. It's an
   owner-triggered command; the mechanics — squash, CI-green, when the
