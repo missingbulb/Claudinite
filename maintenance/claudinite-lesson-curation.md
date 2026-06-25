@@ -73,7 +73,7 @@ input.
 ### 2. Identify the owning doc
 
 Route the lesson to exactly one owning doc using the corpus's shared method,
-kept once in [../maintenance/item-routing.md](../maintenance/item-routing.md) so
+kept once in [item-routing.md](item-routing.md) so
 this routine and every other caller decide the same way. The worthiness gates and
 routing axes that govern steps 2–4 all live there; read it rather than
 re-deriving them here. Read the corpus's own index for the *current* set of docs

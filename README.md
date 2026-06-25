@@ -39,13 +39,13 @@ steps for both → [bootstrap.md](bootstrap.md).**
 
 ## Repository operations
 
-Beyond the portable corpus above, `routines/` holds the specs for this repo's own
-maintenance routines — Claudinite-internal operations that are **not** part of
-the mounted corpus and are not imported by consumers:
+Beyond the portable corpus above, `routines/` and `maintenance/` hold the specs
+for this repo's own upkeep — Claudinite-internal operations that are **not** part
+of the mounted corpus and are not imported by consumers:
 
-- [routines/claudinite-lesson-curation.md](routines/claudinite-lesson-curation.md) — curates inbound `claudinite-lesson` proposal issues into reviewed docs PRs against the corpus.
-- [routines/auto-branch-report.md](routines/auto-branch-report.md) — project-agnostic nightly open-branch status report any consuming repo can vendor and run.
+- [maintenance/claudinite-lesson-curation.md](maintenance/claudinite-lesson-curation.md) — curates inbound `claudinite-lesson` proposal issues into reviewed docs PRs against the corpus.
 - [maintenance/item-routing.md](maintenance/item-routing.md) — the shared method for evaluating whether a proposed item is worthy of the corpus and routing it to the right file group; the curation routine and other callers defer to it.
+- [routines/auto-branch-report.md](routines/auto-branch-report.md) — project-agnostic nightly open-branch status report any consuming repo can vendor and run.
 
 ## Submodule caveats (for consumers)
 
