@@ -37,12 +37,6 @@ trigger phrase.
   to look productive. Never run it unprompted; the owner decides when. It's an
   owner-triggered command; the capture mechanics — which doc owns which lesson,
   the routing — live in the consuming project's docs.
-- **Surface visual artifacts inline, as images — never a path or a link.** When
-  the owner asks to **"show"** or **"see"** something visual (a snapshot, a diff,
-  a generated diagram, an icon), deliver the actual image **into the chat** so it
-  renders; a link just makes the owner go fetch it. For a tiny artifact (e.g. a
-  16/32px icon) also include an exact nearest-neighbor upscale, labelled as
-  enlarged, so the detail stays legible.
 - **Put decisions and approvals in an `AskUserQuestion` popup, not buried in
   prose.** The owner is frequently on mobile, where a popup notifies and a
   question embedded in a paragraph is easy to miss. When you need the owner to

@@ -72,10 +72,15 @@ content, not raw count:
 2. **Content diff** — `git diff --stat main..branch`: if everything the branch
    adds is already in `main`, the work landed (catches a squash with no
    surviving PR).
-3. **No merge-base** — `git merge-base` fails when a force-push rewrote `main`
+3. **Superseded elsewhere** — the branch's work may have landed in `main` under
+   a *different path or form* (a doc distilled into another, a feature
+   re-implemented), so a file/line diff still shows its additions as branch-side
+   and it reads as unmerged. Before concluding so, check whether its *intent*
+   already exists in `main` — grep for the concept, not just the exact path.
+4. **No merge-base** — `git merge-base` fails when a force-push rewrote `main`
    and orphaned the branch; can't be proven in or out mechanically; needs human
    review, never an automatic delete.
-4. Otherwise — genuine unmerged work.
+5. Otherwise — genuine unmerged work.
 
 ## A push or PR made with the Actions `GITHUB_TOKEN` does not start another workflow
 
@@ -133,7 +138,9 @@ cell is treated as a raw HTML block and its content is shown verbatim (no
 `![img]()`, no `**bold**`, no links). GitHub's sanitizer strips `style` / CSS,
 so a flexbox two-column layout won't render; use a plain `<table>` with
 `align` / `valign` / `width` instead. GFM pipe-table cells can't hold
-multi-line prose — use the raw-`<table>` form when a cell needs it.
+multi-line prose — use the raw-`<table>` form when a cell needs it. A leading
+inline `<!-- … -->` comment also opens an HTML block, so keep any such marker as
+the *last* token on the line, leaving the line to *start* as Markdown.
 
 ## Merging gotchas
 
