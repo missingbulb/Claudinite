@@ -72,38 +72,15 @@ input.
 
 ### 2. Identify the owning doc
 
-The worthiness gates and routing axes applied across steps 2–4 are the corpus's
-shared method — kept once in
-[../maintenance/item-routing.md](../maintenance/item-routing.md) so this routine
-and every other caller decide the same way. This section and the next two are the
-curation-routine instance of that method; read the shared doc for the underlying
-rationale rather than re-deriving it.
-
-Route by *kind* to exactly one owning doc:
-
-| Lesson kind | Owning doc |
-| --- | --- |
-| General software-engineering practice | [general/engineeringPractices.md](../general/engineeringPractices.md) |
-| Bug investigation / root-cause diagnosis (triage, re-deriving a cause, probing for a datapoint) | [general/bug-investigations.md](../general/bug-investigations.md) |
-| Testing practice (writing trustworthy tests, snapshots, coverage gating) | [general/testingPractices.md](../general/testingPractices.md) |
-| Searching / rewriting text across files (grep/sed sweeps, renames, broken references) | [general/textAndFileManipulation.md](../general/textAndFileManipulation.md) |
-| AI-agent practice (building / running agents) | [general/agenticBestPractices.md](../general/agenticBestPractices.md) |
-| Method for extracting lessons from a session (reflection / self-improvement) | [general/extracting-lessons.md](../general/extracting-lessons.md) |
-| git / GitHub procedure | [general/git-and-github.md](../general/git-and-github.md) |
-| Working discipline / general working habit | [general/working-discipline.md](../general/working-discipline.md) |
-| Agent architecture (structuring unattended agents) | [general/agent-architecture.md](../general/agent-architecture.md) |
-| Owner / user interaction preference / trigger phrase | [preferences/](../preferences/) — the matching `<user>.md` |
-| Technology-specific practice (Node.js, Chrome extension, Flutter, HTML, …) | [technologies/](../technologies/) — the matching `<tech>.md` |
-
-This table is the *current* set of owning docs, not a closed one — read it from
-the repo, not from memory, since the corpus can grow (see
-[Creating a new corpus doc](#4c-accept--create-a-new-corpus-doc-rare)).
-
-If a lesson plausibly fits two docs, pick the single best owner — never split one
-lesson across docs. If it fits **none** of the existing docs, that is *usually* a
-reject signal: it is probably project-specific, not portable. The rare exception
-— a lesson that is clearly portable and durable but opens a genuinely new
-recurring cluster no existing doc owns — is handled by
+Route the lesson to exactly one owning doc using the corpus's shared method,
+kept once in [../maintenance/item-routing.md](../maintenance/item-routing.md) so
+this routine and every other caller decide the same way. The worthiness gates and
+routing axes that govern steps 2–4 all live there; read it rather than
+re-deriving them here. Read the corpus's own index for the *current* set of docs
+when you route — from the repo, not from memory, since the corpus can grow. A
+lesson that fits **no** existing doc is *usually* a reject signal (probably
+project-specific, not portable); the rare exception — a clearly portable, durable
+lesson that opens a genuinely new recurring cluster no doc owns — is handled by
 [§4c](#4c-accept--create-a-new-corpus-doc-rare), not by forcing it into an
 ill-fitting doc.
 
