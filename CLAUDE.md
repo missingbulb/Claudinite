@@ -20,7 +20,7 @@ Read in this order on any given task:
 - [general/agenticBestPractices.md](general/agenticBestPractices.md) — durable, project-agnostic practices for building and running AI agents.
 - [general/extracting-lessons.md](general/extracting-lessons.md) — how to mine a working session for durable improvements (misunderstandings, suboptimal actions, long waits) so the next run needs less.
 - [general/git-and-github.md](general/git-and-github.md) — portable git & GitHub procedures (task lifecycle, commit history, CI-trigger rules, merge gotchas).
-- [general/working-discipline.md](general/working-discipline.md) — general working habits (confirm-before-building, the warnings policy).
+- [general/working-discipline.md](general/working-discipline.md) — general working habits (problem-first: agree on the problem before implementing a requested change, confirm-before-building, the warnings policy).
 - [general/agent-architecture.md](general/agent-architecture.md) — structural rules for unattended, automation-invoked agents.
 
 ### preferences/ — per-user interaction preferences
