@@ -10,7 +10,7 @@ Portable Claude instructions/rules shared across projects — the **project-agno
 
 ## For the reading agent: how to traverse this corpus
 
-**The agent-facing index lives in [CLAUDE.md](CLAUDE.md), not here.** It is the map of the corpus — the read order (always/ baseline → tasks/ → preferences/ → technologies/), the per-directory contents, and the soft-pointer rule (follow links on demand, never `@`-import them — except the small always-on baseline, which the index force-loads via `@`). Consumers mount it as `@.claudinite/CLAUDE.md`; an agent working in this repo loads it as the repo's own `CLAUDE.md`. Start there.
+**The agent-facing index lives in [CLAUDE.md](CLAUDE.md), not here.** It is the map of the corpus — the read order (always/ baseline → preferences/ → technologies/ → tasks/), the per-directory contents, and the soft-pointer rule (follow links on demand, never `@`-import them — except the small always-on baseline, which the index force-loads via `@`). Consumers mount it as `@.claudinite/CLAUDE.md`; an agent working in this repo loads it as the repo's own `CLAUDE.md`. Start there.
 
 ---
 
