@@ -1,5 +1,12 @@
 # Claudinite — corpus index
 
+> 🛑 **STOP — this is your first action, before anything else in this file or this session.**
+> Before you answer, plan, or call any tool — including for a request that looks trivial or one-off —
+> you MUST read `preferences/$CLAUDE_CODE_USER_EMAIL.md` (substitute the env var's value; that one file only).
+> Treat it as a precondition: if you have not read it, you are not ready to act. "It's just a quick message"
+> is exactly the case this gate exists to catch.
+> No such file → no personal preferences; proceed. Then continue with the index below.
+
 **Routing index, not a payload. Do not read the corpus up front.** Read a file only when its trigger below fires. Links are soft pointers — read on demand, never pre-load — except the always-on baseline, which is `@`-imported and loads every session. Keep new pointers soft; never `@`-import `tasks/`.
 
 ## always/ — loads every session (force-loaded via `@`; nothing to decide)
