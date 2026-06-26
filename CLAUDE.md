@@ -9,6 +9,7 @@
 
 @always/working-discipline.md
 @always/task-lifecycle.md
+@always/temporary-workarounds.md
 
 Every file in `always/` is `@`-imported here — add an `@`-line when you add one.
 
