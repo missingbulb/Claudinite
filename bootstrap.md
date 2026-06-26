@@ -2,6 +2,8 @@
 
 How a consuming repo bootstraps these shared guidelines. Bootstrapping is **idempotent** — safe to re-run on a fresh repo or one that already adopted Claudinite; every step first checks whether its requirement is met and only acts on what's missing, so re-running never duplicates work or clobbers existing setup.
 
+Two parts: **(1)** mount the corpus — pick Method A or B by where your sessions run; **(2)** register the preferences SessionStart hook (same for both methods). Do both.
+
 Pick the method for where your sessions run. **Claude Code on the web → Method B** (the submodule clone 403s on cloud, where the git credential is scoped to the session's own repo).
 
 ## Method A — submodule
@@ -64,3 +66,26 @@ grep -qxF '@.claudinite/CLAUDE.md' CLAUDE.md 2>/dev/null \
 Run the hook once locally to populate `.claudinite/` before first use.
 
 **Pinning a tag/SHA:** set `CLAUDINITE_REF` and change the URL path to `.../tar.gz/<ref>` (drop `refs/heads/`).
+
+## Part 2 — preferences SessionStart hook (both methods)
+
+The owner's per-user interaction preferences live in `.claudinite/preferences/<email>.md`. Rather than instructing the agent to go read that file (an instruction that fires unreliably), a SessionStart hook injects it into context automatically. The hook script ships **inside Claudinite** at `.claudinite/preferences/inject-preferences.sh` and self-locates its preferences relative to itself, so there's nothing to copy — you only register it in your repo's own `.claude/settings.json`:
+
+```json
+{ "hooks": { "SessionStart": [ { "hooks": [
+  { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claudinite/preferences/inject-preferences.sh" }
+] } ] } }
+```
+
+The hook expands `CLAUDE_CODE_USER_EMAIL`, reads the matching `preferences/<email>.md`, and prints it to stdout (which Claude Code adds to the session context). It fails soft — no env var, or no matching file, injects nothing.
+
+**Ordering (Method B):** `.claudinite/` must already exist when this hook runs, so it has to come **after** the `sync-claudinite.sh` entry. Add it as a second entry in the same `SessionStart` array (hooks run in array order):
+
+```json
+{ "hooks": { "SessionStart": [ { "hooks": [
+  { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/sync-claudinite.sh" },
+  { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claudinite/preferences/inject-preferences.sh" }
+] } ] } }
+```
+
+**Ordering (Method A):** make sure `git submodule update --init --recursive` (your setup/SessionStart step that populates `.claudinite/`) runs before this hook.

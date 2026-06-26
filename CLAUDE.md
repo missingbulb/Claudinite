@@ -1,11 +1,7 @@
 # Claudinite — corpus index
 
-> 🛑 **STOP — this is your first action, before anything else in this file or this session.**
-> Before you answer, plan, or call any tool — including for a request that looks trivial or one-off —
-> you MUST read `preferences/$CLAUDE_CODE_USER_EMAIL.md` (substitute the env var's value; that one file only).
-> Treat it as a precondition: if you have not read it, you are not ready to act. "It's just a quick message"
-> is exactly the case this gate exists to catch.
-> No such file → no personal preferences; proceed. Then continue with the index below.
+> ℹ️ The owner's personal preferences are injected automatically by a SessionStart hook — they're already in
+> context above (or absent, meaning none are configured). Honor them; there is nothing to go read.
 
 **Routing index, not a payload. Do not read the corpus up front.** Read a file only when its trigger below fires. Links are soft pointers — read on demand, never pre-load — except the always-on baseline, which is `@`-imported and loads every session. Keep new pointers soft; never `@`-import `tasks/`.
 
@@ -16,9 +12,9 @@
 
 Every file in `always/` is `@`-imported here — add an `@`-line when you add one.
 
-## preferences/ — imperative: read at session start, before any work
+## preferences/ — auto-injected by the SessionStart hook
 
-Read `preferences/$CLAUDE_CODE_USER_EMAIL.md` — that file only, its name the current user's email taken verbatim from `CLAUDE_CODE_USER_EMAIL` (`@` and `.` need no escaping). **Skipping it is all but certain to cause problems: you act without the trigger phrases and conventions the user relies on.** No such file → no personal preferences; proceed.
+`preferences/<email>.md` holds the owner's per-user interaction preferences. The `preferences/inject-preferences.sh` SessionStart hook (registered in `.claude/settings.json`) loads the current user's file into context at session start — you don't read it yourself.
 
 ## technologies/ — read only the file(s) the task touches; otherwise skip
 
