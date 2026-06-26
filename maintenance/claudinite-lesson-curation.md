@@ -53,6 +53,8 @@ Reject (no PR) when any of these holds:
 
 Post a brief comment on the inbound issue naming the reason (covered by `<doc>` / not portable / below the bar), open **no** PR, and close the issue as *not planned*. A human can reopen if they disagree. Log notable rejections to the tracker (see [Tracking issue](#tracking-issue)); routine, obvious duplicates need no tracker entry.
 
+**When the reason is duplication, quantify it — don't just say "already covered."** State the degree of overlap precisely: is the existing rule **almost identical in phrasing** to the proposal, or is it **worded differently but identical in effect** (same outcome in every case, just said another way)? Name the existing rule and quote or point to the overlapping text so a human can verify the call. **And justify keeping what's there:** explain why the existing phrasing is at least as good as — or better than — the one the proposal offers, so the rejection reads as a deliberate "the canon already says this, better" rather than a reflexive dismissal. If the proposal's wording is genuinely sharper, that is not a plain reject — fold the improvement into the existing rule per [§4b](#4b-accept--open-a-docs-pr) ("if the lesson genuinely sharpens one, fold it into that rule") instead.
+
 ### 4b. Accept → open a docs PR
 
 - **Route** the lesson into its owning doc as **one tight rule**, matching that doc's existing voice and format (e.g. a bold-thesis bullet in `agenticBestPractices.md`; a dense imperative bullet in `engineeringPractices.md`; a `##` section in `git-and-github.md`). Keep it terse.
