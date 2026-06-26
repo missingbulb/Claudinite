@@ -1,11 +1,7 @@
 # Claudinite — corpus index
 
-> ℹ️ **Your personal preferences load automatically — you don't read them.**
-> A SessionStart hook (`.claude/hooks/inject-preferences.sh`) expands `CLAUDE_CODE_USER_EMAIL`, reads that
-> user's `preferences/<email>.md`, and injects it into this session's context for you. So the owner's
-> trigger phrases and conventions are already in context above — honor them; there is nothing to go read.
-> If no preferences block appears (the hook didn't run, or the user has no file), there are simply no
-> personal preferences — proceed. See the `preferences/` section below for the rare manual fallback.
+> ℹ️ The owner's personal preferences are injected automatically by a SessionStart hook — they're already in
+> context above (or absent, meaning none are configured). Honor them; there is nothing to go read.
 
 **Routing index, not a payload. Do not read the corpus up front.** Read a file only when its trigger below fires. Links are soft pointers — read on demand, never pre-load — except the always-on baseline, which is `@`-imported and loads every session. Keep new pointers soft; never `@`-import `tasks/`.
 
@@ -16,9 +12,9 @@
 
 Every file in `always/` is `@`-imported here — add an `@`-line when you add one.
 
-## preferences/ — auto-injected by the SessionStart hook (don't read it yourself)
+## preferences/ — auto-injected by the SessionStart hook
 
-`preferences/<email>.md` holds the owner's per-user interaction preferences (the trigger phrases and conventions you rely on). You do **not** read it manually — the `inject-preferences` SessionStart hook (registered in `.claude/settings.json`) resolves `CLAUDE_CODE_USER_EMAIL`, reads that one file, and injects its contents into context for you at session start. This replaced the old soft "read this file" instruction, which fired unreliably. **Rare manual fallback:** if no preferences block is in context *and* you have shell access, you may read `preferences/$CLAUDE_CODE_USER_EMAIL.md` yourself (that file only; `@` and `.` need no escaping) — but in the normal case the hook has already done it.
+`preferences/<email>.md` holds the owner's per-user interaction preferences. The `preferences/inject-preferences.sh` SessionStart hook (registered in `.claude/settings.json`) loads the current user's file into context at session start — you don't read it yourself.
 
 ## technologies/ — read only the file(s) the task touches; otherwise skip
 

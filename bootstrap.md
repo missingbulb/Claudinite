@@ -69,11 +69,11 @@ Run the hook once locally to populate `.claudinite/` before first use.
 
 ## Part 2 — preferences SessionStart hook (both methods)
 
-The owner's per-user interaction preferences live in `.claudinite/preferences/<email>.md`. Rather than instructing the agent to go read that file (an instruction that fires unreliably), a SessionStart hook injects it into context automatically. The hook script ships **inside Claudinite** at `.claudinite/.claude/hooks/inject-preferences.sh` and self-locates its preferences relative to itself, so there's nothing to copy — you only register it in your repo's own `.claude/settings.json`:
+The owner's per-user interaction preferences live in `.claudinite/preferences/<email>.md`. Rather than instructing the agent to go read that file (an instruction that fires unreliably), a SessionStart hook injects it into context automatically. The hook script ships **inside Claudinite** at `.claudinite/preferences/inject-preferences.sh` and self-locates its preferences relative to itself, so there's nothing to copy — you only register it in your repo's own `.claude/settings.json`:
 
 ```json
 { "hooks": { "SessionStart": [ { "hooks": [
-  { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claudinite/.claude/hooks/inject-preferences.sh" }
+  { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claudinite/preferences/inject-preferences.sh" }
 ] } ] } }
 ```
 
@@ -84,7 +84,7 @@ The hook expands `CLAUDE_CODE_USER_EMAIL`, reads the matching `preferences/<emai
 ```json
 { "hooks": { "SessionStart": [ { "hooks": [
   { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/sync-claudinite.sh" },
-  { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claudinite/.claude/hooks/inject-preferences.sh" }
+  { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claudinite/preferences/inject-preferences.sh" }
 ] } ] } }
 ```
 
