@@ -1,6 +1,6 @@
 # Portable git & GitHub procedures
 
-The project-agnostic half of how we drive GitHub: the branch/commit-history rules for PR work, the CI-trigger rules, and how we keep merge-conflict churn cheap across parallel branches. (The issue → branch → PR task lifecycle that every task follows lives in [task-lifecycle.md](task-lifecycle.md), which the root [CLAUDE.md](../CLAUDE.md) `@`-imports into its always-on baseline — it's not task-gated, so it doesn't live here.) Project-specific GitHub procedures (the merge-to-main command, when to open a PR early, the merge-cheaply poll loop tuned to the local environment, and the generated-file merge rules) live in the consuming repo's own GitHub-procedures doc.
+The project-agnostic half of how we drive GitHub: the branch/commit-history rules for PR work, the CI-trigger rules, and how we keep merge-conflict churn cheap across parallel branches. (The issue → branch → PR task lifecycle that every task follows lives in [task-lifecycle.md](../always/task-lifecycle.md), which the root [CLAUDE.md](../CLAUDE.md) `@`-imports into its always-on baseline — it's not task-gated, so it doesn't live here.) Project-specific GitHub procedures (the merge-to-main command, when to open a PR early, the merge-cheaply poll loop tuned to the local environment, and the generated-file merge rules) live in the consuming repo's own GitHub-procedures doc.
 
 ## Branch and commit history
 

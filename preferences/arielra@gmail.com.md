@@ -1,6 +1,6 @@
 # Owner interaction preferences
 
-Personal preferences from the repo owner for how the assistant should interact — tone, summary style, end-of-turn conventions, how results and decisions are surfaced, and the phrases the owner uses to trigger defined commands. These are **not** project conventions (those live in the [general/](../general/) corpus); they're how the owner likes to be worked with. Where a preference triggers a command whose mechanics are a project convention, the mechanics stay in their own doc and the entry here just owns the trigger phrase.
+Personal preferences from the repo owner for how the assistant should interact — tone, summary style, end-of-turn conventions, how results and decisions are surfaced, and the phrases the owner uses to trigger defined commands. These are **not** project conventions (those live in the [always/](../always/) and [tasks/](../tasks/) corpus); they're how the owner likes to be worked with. Where a preference triggers a command whose mechanics are a project convention, the mechanics stay in their own doc and the entry here just owns the trigger phrase.
 
 ## Preferences
 
