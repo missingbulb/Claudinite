@@ -9,9 +9,9 @@
 
 Every file in `always/` is `@`-imported here — add an `@`-line when you add one.
 
-## preferences/ — read once, at session start
+## preferences/ — imperative: read at session start, before any work
 
-Read `preferences/$CLAUDE_CODE_USER_EMAIL.md` — that file only, its name the current user's email taken verbatim from `CLAUDE_CODE_USER_EMAIL` (`@` and `.` need no escaping). No such file → no personal preferences; proceed.
+Read `preferences/$CLAUDE_CODE_USER_EMAIL.md` — that file only, its name the current user's email taken verbatim from `CLAUDE_CODE_USER_EMAIL` (`@` and `.` need no escaping). **Skipping it is all but certain to cause problems: you act without the trigger phrases and conventions the user relies on.** No such file → no personal preferences; proceed.
 
 ## technologies/ — read only the file(s) the task touches; otherwise skip
 

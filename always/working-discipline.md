@@ -2,6 +2,8 @@
 
 The working discipline that isn't itself a GitHub operation — general habits for how to approach a change, independent of any one project.
 
+Start every requested change from the *problem*, not the solution. When the owner asks for a change, don't begin implementing it until the two of you share an explicit understanding of the problem it's meant to solve **and** have agreed that the requested change is the best way to solve it — a different fix, or no change at all, may serve the underlying problem better. Treat the request as a description of a desired outcome, not a specification to execute on sight; surface your read of the problem, raise a better approach if you see one, and reach consensus first. This applies to any repository, not just this one.
+
 Confirm a behavior isn't already provided before building a mechanism for it — verify the gap against a real run first; the cheapest fix is often that it already works.
 
 Fix build/test/CI warnings, don't tolerate them: a clean run with no warnings makes a genuinely new warning or error stand out, so noise here costs detection later. Prefer a small, targeted fix that addresses the *cause* in the same change.
