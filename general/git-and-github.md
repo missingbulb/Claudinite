@@ -68,6 +68,10 @@ Large committed fixture files (full-page HTML, generated data dumps) can dwarf a
 
 In a GitHub-rendered Markdown file, cmark-gfm re-enters Markdown mode inside a raw `<td>` only when blank lines surround the cell's content — without them the cell is treated as a raw HTML block and its content is shown verbatim (no `![img]()`, no `**bold**`, no links). GitHub's sanitizer strips `style` / CSS, so a flexbox two-column layout won't render; use a plain `<table>` with `align` / `valign` / `width` instead. GFM pipe-table cells can't hold multi-line prose — use the raw-`<table>` form when a cell needs it. A leading inline `<!-- … -->` comment also opens an HTML block, so keep any such marker as the *last* token on the line, leaving the line to *start* as Markdown.
 
+## `commit.gpgsign = true` does not cover merge commits
+
+`commit.gpgsign = true` signs ordinary commits but does not apply to `git merge` — each merge produces an unsigned commit even with signing fully configured. In a repo that enforces commit verification, this requires a fix-up after the fact. Cover merges proactively: either pass `-S` to every `git merge` call, or set `merge.gpgsign = true` globally so merges are signed the same way commits are.
+
 ## Merging gotchas
 
 These conflict/merge traps are independent of any one project's file layout.
