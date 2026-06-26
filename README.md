@@ -10,7 +10,7 @@ Portable Claude instructions/rules shared across projects — the **project-agno
 
 ## For the reading agent: how to traverse this corpus
 
-**The agent-facing index lives in [CLAUDE.md](CLAUDE.md), not here.** It is the map of the corpus — the read order (general → preferences → technologies), the per-directory contents, and the soft-pointer rule (follow links on demand, never `@`-import them). Consumers mount it as `@.claudinite/CLAUDE.md`; an agent working in this repo loads it as the repo's own `CLAUDE.md`. Start there.
+**The agent-facing index lives in [CLAUDE.md](CLAUDE.md), not here.** It is the map of the corpus — the read order (always/ baseline → preferences/ → technologies/ → tasks/), the per-directory contents, and the soft-pointer rule (follow links on demand, never `@`-import them — except the small always-on baseline, which the index force-loads via `@`). Consumers mount it as `@.claudinite/CLAUDE.md`; an agent working in this repo loads it as the repo's own `CLAUDE.md`. Start there.
 
 ---
 
@@ -21,7 +21,7 @@ Two ways to mount Claudinite (at `.claudinite/`) — pick by where your sessions
 - **Submodule** — pinned and reproducible. Use for local checkouts, CI, or any git client whose credential spans more than one repo.
 - **Session-start tarball sync** — auto-updating, no git credential needed. Use for **Claude Code on the web**, where the credential is scoped to the session's own repo and a submodule clone of this repo 403s at the proxy.
 
-Either way, the corpus is imported with `@.claudinite/CLAUDE.md` in the consumer's `CLAUDE.md` — that single `@`-import pulls in **the index only** ([CLAUDE.md](CLAUDE.md)), and that index then softly routes to the rest. **Setup steps for both → [bootstrap.md](bootstrap.md).**
+Either way, the corpus is imported with `@.claudinite/CLAUDE.md` in the consumer's `CLAUDE.md` — that single `@`-import pulls in **the index plus the small always-on baseline it `@`-imports** ([CLAUDE.md](CLAUDE.md) and the baseline files it force-loads), and that index then softly routes to the rest on demand. **Setup steps for both → [bootstrap.md](bootstrap.md).**
 
 ## Repository operations
 

@@ -1,8 +1,8 @@
 # Claudinite lesson-curation routine
 
-Operational spec for the unattended routine that turns inbound `claudinite-lesson` proposal issues into reviewed docs PRs against this repo's **portable corpus** — the `*.md` rule files under `general/` (general practices), `preferences/` (per-user), and `technologies/` (per-technology) that consuming repos mount read-only as a git submodule.
+Operational spec for the unattended routine that turns inbound `claudinite-lesson` proposal issues into reviewed docs PRs against this repo's **portable corpus** — the `*.md` rule files under `always/` (the always-on baseline) and `tasks/` (on-demand practices), `preferences/` (per-user), and `technologies/` (per-technology) that consuming repos mount read-only as a git submodule.
 
-This doc is the spec. The Claude Code launcher that runs the routine is a **thin pointer** to this file, never an inlined copy of it (see [agenticBestPractices.md](../general/agenticBestPractices.md) — "Keep an unattended routine's instructions in a repo doc, not inlined in the launcher's config"). The routine is a concrete instance of the "daily lessons pass" and "standing tracking issue" rules in that same doc.
+This doc is the spec. The Claude Code launcher that runs the routine is a **thin pointer** to this file, never an inlined copy of it (see [agenticBestPractices.md](../tasks/agenticBestPractices.md) — "Keep an unattended routine's instructions in a repo doc, not inlined in the launcher's config"). The routine is a concrete instance of the "daily lessons pass" and "standing tracking issue" rules in that same doc.
 
 This file is Claudinite-internal operations: it is **not** part of the mounted corpus, and consuming repos do not `@import` it.
 
@@ -12,7 +12,7 @@ A consuming repo's daily "optimize-procedures" routine spots a portable lesson i
 
 So every issue this routine sees is a **self-contained proposal that assumes no knowledge of the originating repo**. Judge it on its own text plus this corpus. The backlink is provenance only; do not chase it for missing context — if the proposal can't stand on its own text, that is itself grounds to reject.
 
-Each proposal is already a **distilled rule**, not a raw transcript: upstream, a consuming repo mined a working session or its issue/PR history and wrote the lesson down (the session-reflection method is [general/extracting-lessons.md](../general/extracting-lessons.md)). So this routine is the *receiving* filter — it dedupes and routes a finished rule — not the place that reads conversations. Hold proposals to that standard: a proposal still phrased as "here's what happened" rather than a portable rule is itself below the bar.
+Each proposal is already a **distilled rule**, not a raw transcript: upstream, a consuming repo mined a working session or its issue/PR history and wrote the lesson down (the session-reflection method is [tasks/extracting-lessons.md](../tasks/extracting-lessons.md)). So this routine is the *receiving* filter — it dedupes and routes a finished rule — not the place that reads conversations. Hold proposals to that standard: a proposal still phrased as "here's what happened" rather than a portable rule is itself below the bar.
 
 ## Trigger
 
@@ -25,7 +25,7 @@ Requires the `claudinite-lesson` label to exist here (see [Label](#label)).
 
 ## Run on a capable model
 
-Every step below is a judgment call — portability, duplication, ownership, "does this clear the bar". Per [agenticBestPractices.md](../general/agenticBestPractices.md) ("Match the agent model to the judgment it must make"), run this routine on a capable model. A downgraded model ships a plausible-but-wrong **acceptance** — exactly the failure that pollutes the shared canon — where a capable model correctly rejects.
+Every step below is a judgment call — portability, duplication, ownership, "does this clear the bar". Per [agenticBestPractices.md](../tasks/agenticBestPractices.md) ("Match the agent model to the judgment it must make"), run this routine on a capable model. A downgraded model ships a plausible-but-wrong **acceptance** — exactly the failure that pollutes the shared canon — where a capable model correctly rejects.
 
 ## What each run does
 
@@ -60,8 +60,8 @@ Post a brief comment on the inbound issue naming the reason (covered by `<doc>` 
 - **Route** the lesson into its owning doc as **one tight rule**, matching that doc's existing voice and format (e.g. a bold-thesis bullet in `agenticBestPractices.md`; a dense imperative bullet in `engineeringPractices.md`; a `##` section in `git-and-github.md`). Keep it terse.
 - **The worked example stays in its own repo.** Add the distilled, portable rule only — do not paste in the originating project's files, issue numbers, or example. (The corpus's existing worked-example pointers refer to consuming repos; a freshly curated rule carries none unless one already lives in this corpus.)
 - **Never weaken or restate an existing rule.** If the lesson genuinely sharpens one, fold it into that rule with a minimal edit rather than adding a redundant bullet — but never dilute what's there. Otherwise add a new terse bullet.
-- **Bounded write surface:** edit only the single owning doc, touch no other doc, and do not "improve" unrelated rules while you're in there (per [agent-architecture.md](../general/agent-architecture.md)). The **one** sanctioned way to add a corpus file is the rare, high-bar path in [§4c](#4c-accept--create-a-new-corpus-doc-rare) — and even then the write surface is exactly the new doc plus its README and routing-table entries, nothing more.
-- **Open a PR; never push to the default branch.** Branch off the default branch with a per-run-unique branch name (append a random suffix — see [git-and-github.md](../general/git-and-github.md), "An automated job needs a unique branch per run"). Reference the inbound issue in the commit and PR (`Refs #<inbound>`). **Never merge** — a human reviews and merges.
+- **Bounded write surface:** edit only the single owning doc, touch no other doc, and do not "improve" unrelated rules while you're in there (per [agent-architecture.md](../tasks/agent-architecture.md)). The **one** sanctioned way to add a corpus file is the rare, high-bar path in [§4c](#4c-accept--create-a-new-corpus-doc-rare) — and even then the write surface is exactly the new doc plus its README and routing-table entries, nothing more.
+- **Open a PR; never push to the default branch.** Branch off the default branch with a per-run-unique branch name (append a random suffix — see [git-and-github.md](../tasks/git-and-github.md), "An automated job needs a unique branch per run"). Reference the inbound issue in the commit and PR (`Refs #<inbound>`). **Never merge** — a human reviews and merges.
 - **Comment the PR link on the inbound issue.** The inbound issue is the canonical home for the lesson until the PR merges; leave it **open** until then (it closes when the human merges, or stays as the live record).
 
 ### 4c. Accept → create a new corpus doc (rare)
@@ -76,7 +76,7 @@ When unsure whether a lesson clears this bar, **reject** — same default as eve
 
 When it genuinely clears the bar, the accepting PR touches a **bounded** set and nothing else:
 
-- **Create the new doc** in the corpus directory its kind belongs to (`general/` for a new practice area, `technologies/` for a new technology), with the same shape and voice as the existing corpus docs: an `H1` title, a short framing paragraph stating it's portable / project-agnostic and pointing at adjacent docs, then the one distilled rule (terse, no originating-project example — same constraints as [§4b](#4b-accept--open-a-docs-pr)).
+- **Create the new doc** in the corpus directory its kind belongs to (`tasks/` for a new on-demand practice area, `always/` for a rule that applies to essentially every task, `technologies/` for a new technology), with the same shape and voice as the existing corpus docs: an `H1` title, a short framing paragraph stating it's portable / project-agnostic and pointing at adjacent docs, then the one distilled rule (terse, no originating-project example — same constraints as [§4b](#4b-accept--open-a-docs-pr)).
 - **Register it in the same PR**, so the doc never lands orphaned: add it to the README contents list, and add a routing-table row to this spec ([§2](#2-identify-the-owning-doc)) so future lessons of that kind route to it.
 - **Everything else is unchanged from [§4b](#4b-accept--open-a-docs-pr):** open a PR off the default branch with a per-run-unique branch name, `Refs #<inbound>`, comment the PR link on the inbound issue, and **never merge** — the human review is the backstop for this heavier write surface.
 
@@ -97,7 +97,7 @@ The routine's standing self-improvement log is the issue titled exactly:
 
 ## Label
 
-This routine **assumes the `claudinite-lesson` label already exists** in this repo and does not create or edit it — it only keys its trigger on it. The label is owned by the party that files the inbound issues: the consuming repo's `claudinite-lesson-handoff.yml` Action ensures it here idempotently (create-if-missing, no-op if present) before applying it, per [git-and-github.md](../general/git-and-github.md) ("A workflow that adds a brand-new label must create it first"). For reference, its canonical definition is color `BFD4F2`, description "Portable lesson handed off from a consuming repo."
+This routine **assumes the `claudinite-lesson` label already exists** in this repo and does not create or edit it — it only keys its trigger on it. The label is owned by the party that files the inbound issues: the consuming repo's `claudinite-lesson-handoff.yml` Action ensures it here idempotently (create-if-missing, no-op if present) before applying it, per [git-and-github.md](../tasks/git-and-github.md) ("A workflow that adds a brand-new label must create it first"). For reference, its canonical definition is color `BFD4F2`, description "Portable lesson handed off from a consuming repo."
 
 ## What this routine must never do
 
