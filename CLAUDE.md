@@ -35,4 +35,4 @@ Every file in `always/` is `@`-imported here — add an `@`-line when you add on
 
 ---
 
-Repo internals — what this repo is, how consumers mount it, the maintenance routines → [README.md](README.md).
+Repo internals — what this repo is, how consumers mount it, the maintenance routines, and this repo's own GitHub procedures (the `LGTM`/merge-to-main recipe) → [README.md](README.md).
