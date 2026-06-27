@@ -18,9 +18,17 @@ There's no cost to a branch carrying many commits when the project uses a **squa
   - **`git rebase origin/main` only drops the old commit cleanly when the branch carried a *single* squash-merged commit.** When it carried *several* commits that `main` squashed into *one* (then kept developing), git can't match them to the squash as already-applied, so it replays them and conflicts mid-rebase. Replant only the genuinely-new commits instead: `git rebase --onto origin/main <last-squash-merged-commit>` (then `git push --force-with-lease`). If the new work is small, a `git reset --hard origin/main` + redo beats fighting the replay.
   - **If the merge auto-deleted the remote branch, start follow-up work on a new branch off `origin/main`** rather than reusing the old name — it has no stale tracking ref and no rebase dance. If you do reuse the old name: `--force-with-lease` actively *fails* — `git push --force-with-lease` rejects with `stale info` then `couldn't find remote ref <branch>` because the lease expects a remote branch that no longer exists. There's nothing to overwrite, so `git fetch --prune` (drop the stale tracking ref) then a plain `git push -u origin <branch>` just recreates it.
 
+## An automated commit-nag is not authorization to commit drift
+
+An automated prompt to commit the working tree (a stop-hook, a CI nag) tells you the tree is dirty — not that the changes are yours or intended. Before obeying, inspect what actually changed (`git status` / `git diff`): if it's environment/setup drift — a submodule pointer moved by `git submodule update` at clone time, a lockfile a setup script regenerated, generated artifacts — revert it rather than committing it onto your branch. Committing drift slips an unintended dependency or generated-file bump into an unrelated change.
+
 ## Sync early to keep merge conflicts small
 
 Conflict size scales with how long a branch lives and how far it drifts from the default branch. Sync early rather than at the end: when starting work on a branch — and periodically while it's open — merge or rebase the latest default branch in first, so the branch carries current sources instead of discovering the gap at merge time. A one-commit-per-PR squash history already keeps each branch a single reviewable unit, so shorter-lived, freshly-synced branches are the norm.
+
+## After a remote-side merge, fetch before branching off origin/main
+
+A GitHub API/UI (or any remote-side) merge does **not** advance your local `origin/main` — it stays at the pre-merge commit until you `git fetch`. Branching off `origin/main` immediately after a remote merge forks the pre-merge state, silently missing the just-merged work; symptoms surface later as a missing file or a failed `git mv` on the new branch. Fix: `git fetch origin main` before creating the branch.
 
 ## In a squash-merge repo, "commits ahead of main" does not mean "unmerged"
 
