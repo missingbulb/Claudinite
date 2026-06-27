@@ -89,3 +89,9 @@ The hook expands `CLAUDE_CODE_USER_EMAIL`, reads the matching `preferences/<emai
 ```
 
 **Ordering (Method A):** make sure `git submodule update --init --recursive` (your setup/SessionStart step that populates `.claudinite/`) runs before this hook.
+
+## Part 3 — bespoke merge policy (optional, only if you diverge)
+
+The portable merge-to-main recipe ships in the always-on baseline ([`.claudinite/always/merge-to-main.md`](always/merge-to-main.md)) and needs **nothing** from you — its default is squash-merge via a PR, gating on CI only when the repo has it. Adopt it and you're done.
+
+Only if your project genuinely diverges (a non-squash method, a twice-green or extra-approval gate): put that policy in its own file in your repo and **name that file explicitly in your `CLAUDE.md`**. The recipe reads a project's merge-policy file only when the project's `CLAUDE.md` points to one, and lets it override the divergent points (merge method, CI gating).
