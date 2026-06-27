@@ -29,7 +29,6 @@ Beyond the portable corpus above, `maintenance/` holds the specs for this repo's
 
 - [maintenance/claudinite-lesson-curation.md](maintenance/claudinite-lesson-curation.md) — curates inbound `claudinite-lesson` proposal issues into reviewed docs PRs against the corpus.
 - [maintenance/item-routing.md](maintenance/item-routing.md) — the shared method for evaluating whether a proposed item is worthy of the corpus and routing it to the right file group; the curation routine and other callers defer to it.
-- [maintenance/github-procedures.md](maintenance/github-procedures.md) — this repo's own GitHub-procedures doc: the deterministic `LGTM`/merge-to-main recipe (squash via PR, no CI gate, never delete the remote branch).
 
 `routines/`, by contrast, holds project-agnostic routine specs **for consuming projects to vendor and run** — not Claudinite's own upkeep:
 
