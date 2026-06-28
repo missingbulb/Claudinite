@@ -1,6 +1,6 @@
 # Adopting Claudinite
 
-How a consuming repo bootstraps these shared guidelines. Bootstrapping is **idempotent** — safe to re-run on a fresh repo or one that already adopted Claudinite; every step first checks whether its requirement is met and only acts on what's missing, so re-running never duplicates work or clobbers existing setup.
+How a consuming repo bootstraps these shared guidelines. Bootstrapping is **idempotent** — safe to re-run on a fresh repo or one that already adopted Claudinite (re-running is also how an existing repo picks up changes to these steps). Two kinds of step: a **generated artifact** that Claudinite owns (the `sync-claudinite.sh` hook) is re-written to match its canonical block every run, so re-bootstrapping refreshes a stale copy; **your own config** (the `@.claudinite/CLAUDE.md` import line, `settings.json` entries) is only added to what's missing, never clobbered. Re-running never duplicates work.
 
 Two parts: **(1)** mount the corpus — pick Method A or B by where your sessions run; **(2)** register the preferences SessionStart hook (same for both methods). Do both.
 
@@ -23,7 +23,7 @@ Submodules aren't pulled automatically, so the consumer's setup or SessionStart 
 
 Auto-updating, no git credential needed. A SessionStart hook fetches the repo as a tarball over plain HTTPS into a gitignored `.claudinite/`, pulling latest `main` each session.
 
-**1.** Add `.claude/hooks/sync-claudinite.sh` (`chmod +x`):
+**1.** Write `.claude/hooks/sync-claudinite.sh` (`chmod +x`) with exactly the block below. This is a generated artifact Claudinite owns — **overwrite** an existing copy rather than skipping it, so a re-bootstrap picks up updates (e.g. the marker-preserve line added in step 3):
 
 ```sh
 #!/bin/bash
@@ -65,6 +65,12 @@ project mounts Claudinite. The folder's contents are auto-populated (and
 gitignored) by .claude/hooks/sync-claudinite.sh at session start; only this
 marker is tracked.
 EOF
+# Drop any wholesale-ignore lines from an earlier bootstrap — a bare `.claudinite/`
+# excludes the whole dir, and git won't descend into it, so the `!` negation below
+# can't re-include the marker unless that line is gone first.
+if [ -f .gitignore ]; then
+  grep -vxE '\.claudinite/|\.claudinite\.new/' .gitignore > .gitignore.tmp && mv .gitignore.tmp .gitignore
+fi
 for rule in '/.claudinite/*' '!/.claudinite/.gitkeep' '/.claudinite.new/'; do
   grep -qxF "$rule" .gitignore 2>/dev/null || echo "$rule" >> .gitignore
 done
