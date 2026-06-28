@@ -95,3 +95,9 @@ The hook expands `CLAUDE_CODE_USER_EMAIL`, reads the matching `preferences/<emai
 The portable merge-to-main recipe ships in the always-on baseline ([`.claudinite/always/merge-to-main.md`](always/merge-to-main.md)) and needs **nothing** from you — its default is squash-merge via a PR, gating on CI only when the repo has it. Adopt it and you're done.
 
 Only if your project genuinely diverges (a non-squash method, a twice-green or extra-approval gate): put that policy in its own file in your repo and **name that file explicitly in your `CLAUDE.md`**. The recipe reads a project's merge-policy file only when the project's `CLAUDE.md` points to one, and lets it override the divergent points (merge method, CI gating).
+
+## Part 4 — daily maintenance (optional)
+
+The corpus ships a set of unattended daily routines for a consuming repo — a lessons digest, a local-docs/canon reconciliation, a nightly branch-status report (the `routines/` specs). You don't wire these up one by one. Schedule **a single routine** — [`.claudinite/routines/auto-daily-maintenance.md`](routines/auto-daily-maintenance.md) — which dispatches every member routine as its own isolated subagent, so one scheduled job guarantees all of them run each day and a failure in one can't stop the others.
+
+To adopt: register **one** daily schedule (the Claude Code Routines UI, a cron, or a CI nightly trigger) whose prompt is the thin pointer at the bottom of that doc, substituting the path where `.claudinite/` is mounted and your default branch. Do **not** also schedule the member routines individually — that would double-run them. Adding a future daily routine later means adding one line to that doc's member list, not registering another schedule.

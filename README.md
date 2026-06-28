@@ -32,6 +32,7 @@ Beyond the portable corpus above, `maintenance/` holds the specs for this repo's
 
 `routines/`, by contrast, holds project-agnostic routine specs **for consuming projects to vendor and run** — not Claudinite's own upkeep:
 
+- [routines/auto-daily-maintenance.md](routines/auto-daily-maintenance.md) — **the single scheduled entry point.** One daily routine that dispatches every daily maintenance routine below as its own isolated subagent, so a consumer registers one schedule and is guaranteed all members run each day. Schedule **this**, not the members individually.
 - [routines/auto-branch-report.md](routines/auto-branch-report.md) — project-agnostic nightly open-branch status report any consuming repo can vendor and run.
 - [routines/auto-lessons.md](routines/auto-lessons.md) — daily lessons digest: reviews the last 24h of activity and opens a PR folding any durable, reusable insight into the project's docs (most days, nothing).
 - [routines/auto-optimize-procedures.md](routines/auto-optimize-procedures.md) — daily routine reconciling a consumer's local docs against the shared canon in both directions: prune/rephrase local docs the canon now covers (a PR), and promote generalizable local items up (one bundled handoff-labelled issue), without removing them locally.
