@@ -39,6 +39,7 @@ if curl -fsSL --retry 2 --max-time 30 "$URL" -o "$tmp/c.tgz" 2>/dev/null \
    && tar -tzf "$tmp/c.tgz" >/dev/null 2>&1; then
   rm -rf "$dest.new"; mkdir -p "$dest.new"
   tar -xzf "$tmp/c.tgz" -C "$dest.new" --strip-components=1
+  [ -f "$dest/.gitkeep" ] && cp "$dest/.gitkeep" "$dest.new/.gitkeep"  # keep the committed signal marker
   rm -rf "$dest"; mv "$dest.new" "$dest"; exit 0
 fi
 [ -f "$dest/README.md" ] && exit 0   # offline: keep prior copy
@@ -54,7 +55,22 @@ exit 0
 ] } ] } }
 ```
 
-**3.** Gitignore the cache — add `.claudinite/` and `.claudinite.new/`.
+**3.** Commit `.claudinite/` as a tracked **signal** while ignoring its synced contents. Keep one marker file under version control and gitignore everything else, so the repo carries a one-glance signal that it mounts Claudinite, while the synced corpus underneath stays out of git (idempotent):
+
+```sh
+mkdir -p .claudinite
+[ -f .claudinite/.gitkeep ] || cat > .claudinite/.gitkeep <<'EOF'
+DO NOT DELETE. This file keeps .claudinite/ committed as a signal that this
+project mounts Claudinite. The folder's contents are auto-populated (and
+gitignored) by .claude/hooks/sync-claudinite.sh at session start; only this
+marker is tracked.
+EOF
+for rule in '/.claudinite/*' '!/.claudinite/.gitkeep' '/.claudinite.new/'; do
+  grep -qxF "$rule" .gitignore 2>/dev/null || echo "$rule" >> .gitignore
+done
+```
+
+The `/.claudinite/*` + `!/.claudinite/.gitkeep` pair ignores the synced contents but keeps the marker tracked, so `.claudinite/` exists in the repo as an empty-but-committed folder. The sync hook above preserves this marker across its `rm -rf`/swap, so the working tree stays clean after each session sync.
 
 **4.** Import the corpus — append `@.claudinite/CLAUDE.md` to `CLAUDE.md`:
 
