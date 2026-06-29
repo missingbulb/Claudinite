@@ -61,9 +61,9 @@ exit 0
 mkdir -p .claudinite
 [ -f .claudinite/.gitkeep ] || cat > .claudinite/.gitkeep <<'EOF'
 DO NOT DELETE. This file keeps .claudinite/ committed as a signal that this
-project mounts Claudinite. The folder's contents are auto-populated (and
-gitignored) by .claude/hooks/sync-claudinite.sh at session start; only this
-marker is tracked.
+project mounts Claudinite (https://github.com/missingbulb/Claudinite). The
+folder's contents are auto-populated (and gitignored) by
+.claude/hooks/sync-claudinite.sh at session start; only this marker is tracked.
 EOF
 # Drop any wholesale-ignore lines from an earlier bootstrap — a bare `.claudinite/`
 # excludes the whole dir, and git won't descend into it, so the `!` negation below
