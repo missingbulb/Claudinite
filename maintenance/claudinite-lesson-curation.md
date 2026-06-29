@@ -35,7 +35,7 @@ Extract the candidate lesson from the issue: the durable rule it proposes, the k
 
 ### 2. Identify the owning doc
 
-Route the lesson to exactly one owning doc using the corpus's shared method, kept once in [item-routing.md](item-routing.md) so this routine and every other caller decide the same way. The worthiness gates and routing axes that govern steps 2–4 all live there; read it rather than re-deriving them here. Read the corpus's own index for the *current* set of docs when you route — from the repo, not from memory, since the corpus can grow. A lesson that fits **no** existing doc is *usually* a reject signal (probably project-specific, not portable); the rare exception — a clearly portable, durable lesson that opens a genuinely new recurring cluster no doc owns — is handled by [§4c](#4c-accept--create-a-new-corpus-doc-rare), not by forcing it into an ill-fitting doc.
+Route the lesson to exactly one owning doc using the corpus's shared method, kept once in [item-routing.md](item-routing.md) so this routine and every other caller decide the same way. The worthiness gates and routing axes that govern steps 2–4 all live there; read it rather than re-deriving them here. Read the corpus's own index for the *current* set of docs when you route — from the repo, not from memory, since the corpus can grow. A lesson that fits **no** existing doc is not a reject signal by itself: a worthy lesson that opens a genuinely new cluster no doc owns gets its own doc via [§4c](#4c-accept--create-a-new-corpus-doc-rare), rather than being forced into an ill-fitting doc — but a lesson that misses the worthiness bar is still rejected whether or not a doc exists for it.
 
 ### 3. Dedupe ruthlessly — against the *entire* corpus
 
@@ -60,19 +60,13 @@ Post a brief comment on the inbound issue naming the reason (covered by `<doc>` 
 - **Route** the lesson into its owning doc as **one tight rule**, matching that doc's existing voice and format (e.g. a bold-thesis bullet in `agenticBestPractices.md`; a dense imperative bullet in `engineeringPractices.md`; a `##` section in `git-and-github.md`). Keep it terse.
 - **The worked example stays in its own repo.** Add the distilled, portable rule only — do not paste in the originating project's files, issue numbers, or example. (The corpus's existing worked-example pointers refer to consuming repos; a freshly curated rule carries none unless one already lives in this corpus.)
 - **Never weaken or restate an existing rule.** If the lesson genuinely sharpens one, fold it into that rule with a minimal edit rather than adding a redundant bullet — but never dilute what's there. Otherwise add a new terse bullet.
-- **Bounded write surface:** edit only the single owning doc, touch no other doc, and do not "improve" unrelated rules while you're in there (per [agent-architecture.md](../tasks/agent-architecture.md)). The **one** sanctioned way to add a corpus file is the rare, high-bar path in [§4c](#4c-accept--create-a-new-corpus-doc-rare) — and even then the write surface is exactly the new doc plus its README and routing-table entries, nothing more.
+- **Bounded write surface:** edit only the single owning doc, touch no other doc, and do not "improve" unrelated rules while you're in there (per [agent-architecture.md](../tasks/agent-architecture.md)). The **one** sanctioned way to add a corpus file is the new-corpus-doc path in [§4c](#4c-accept--create-a-new-corpus-doc-rare) — and even then the write surface is exactly the new doc plus its README and routing-table entries, nothing more.
 - **Open a PR; never push to the default branch.** Branch off the default branch with a per-run-unique branch name (append a random suffix — see [git-and-github.md](../tasks/git-and-github.md), "An automated job needs a unique branch per run"). Reference the inbound issue in the commit and PR (`Refs #<inbound>`). **Never merge** — a human reviews and merges.
 - **Comment the PR link on the inbound issue.** The inbound issue is the canonical home for the lesson until the PR merges; leave it **open** until then (it closes when the human merges, or stays as the live record).
 
 ### 4c. Accept → create a new corpus doc (rare)
 
-The default is always to route into an existing doc; this path is the rare exception, not a routine option. Create a new corpus doc **only** when *all* hold:
-
-- The lesson is clearly portable and durable (it would survive every gate in [§3](#3-dedupe-ruthlessly--against-the-entire-corpus) on its own).
-- It opens a **genuinely new cluster** — a kind of lesson no existing doc owns — that you expect to **recur**, not a lone orphan. A single lesson that fits nowhere is almost always a reject, not a new doc.
-- Routing it into the closest existing doc would **distort** that doc (force an off-topic rule into it, or blur its stated scope) rather than merely sit slightly off-center.
-
-When unsure whether a lesson clears this bar, **reject** — same default as everywhere else. A spurious new doc fragments the corpus and is harder to undo than a missed one.
+Routing into an existing doc is the first choice; a new doc is for when **no** existing doc's scope genuinely fits. The bar for creating one is owned by [item-routing.md](item-routing.md) ("When nothing fits") — defer to it, don't restate it: create a new doc when the lesson clears the full Worthiness bar (distilled, portable, durable and reusable, not already covered anywhere in the corpus) **and** no existing doc genuinely fits it. Don't add extra new-doc-only hurdles beyond that — no "expect it to recur", no "would distort the closest doc", no defaulting to reject on a close new-doc call. The per-item bar in [§3](#3-dedupe-ruthlessly--against-the-entire-corpus) is unchanged: a lesson that misses it is still rejected whether or not a doc exists for it.
 
 When it genuinely clears the bar, the accepting PR touches a **bounded** set and nothing else:
 
@@ -104,5 +98,5 @@ This routine **assumes the `claudinite-lesson` label already exists** in this re
 - Never merge a PR, and never push a doc change directly to the default branch.
 - Never accept on a tie — default to reject when unsure.
 - Never weaken, restate, or duplicate an existing rule.
-- Never edit anything outside the one owning doc, and never "improve" unrelated rules while you're in there — the sole exception is the rare, high-bar new-corpus-doc path in [§4c](#4c-accept--create-a-new-corpus-doc-rare), whose write surface is itself bounded to the new doc plus its README and routing-table entries. Never comment on or alter the originating repo.
+- Never edit anything outside the one owning doc, and never "improve" unrelated rules while you're in there — the sole exception is the new-corpus-doc path in [§4c](#4c-accept--create-a-new-corpus-doc-rare), whose write surface is itself bounded to the new doc plus its README and routing-table entries. Never comment on or alter the originating repo.
 - Never inline this spec into the launcher — the launcher stays a thin pointer here.

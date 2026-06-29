@@ -47,7 +47,7 @@ The single highest-leverage move for **less human feedback**: the questions a us
 A friction signal is only worth writing down when the fix is **durable, reusable, and generalizable beyond this one session.** Before adding anything:
 
 - **Dedupe ruthlessly** against the existing docs — a lesson already covered (even worded differently, even in another doc) is not a new lesson.
-- **Route to the doc that owns it**, and keep the addition **terse** — one tight rule in the existing voice. A genuinely new, *recurring* cluster that no doc owns can warrant a new doc, but that's a rare, deliberate exception; when unsure, route into the closest doc or drop it — never spin up a doc for a lone lesson.
+- **Route to the doc that owns it**, and keep the addition **terse** — one tight rule in the existing voice. Routing into an existing doc is the first choice; when **no** existing doc's scope genuinely fits, a worthy lesson (distilled, portable, durable and reusable, not already covered) earns its own new doc — a new category is meant to be learnable. A new doc is for when nothing fits, not a way to dodge folding into an existing owner.
 - **Promote what's portable.** A lesson true for projects beyond this one belongs in shared, cross-project canon, not buried in one repo's local docs — hand it up through whatever cross-project promotion path your project uses, rather than letting a reusable insight stay stuck locally.
 - **One-offs don't qualify.** A situational detail, a restatement of a generic truism, or something already implied by an existing rule is below the bar.
 
