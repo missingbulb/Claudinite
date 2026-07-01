@@ -28,6 +28,7 @@ Either way, the corpus is imported with `@.claudinite/CLAUDE.md` in the consumer
 Beyond the portable corpus above, `maintenance/` holds the specs for this repo's own upkeep — Claudinite-internal operations that are **not** part of the mounted corpus and are not imported by consumers:
 
 - [maintenance/claudinite-lesson-curation.md](maintenance/claudinite-lesson-curation.md) — curates inbound `claudinite-lesson` proposal issues into reviewed docs PRs against the corpus.
+- [maintenance/claudinite-instruction-extraction.md](maintenance/claudinite-instruction-extraction.md) — the pull-path: a daily Claudinite-initiated routine that code-searches for consumers, reads their project-specific instructions read-only, and opens one docs PR promoting the portable ones (mirror of the consumer-initiated up-path; changes land only in Claudinite).
 - [maintenance/item-routing.md](maintenance/item-routing.md) — the shared method for evaluating whether a proposed item is worthy of the corpus and routing it to the right file group; the curation routine and other callers defer to it.
 
 `routines/`, by contrast, holds project-agnostic routine specs **for consuming projects to vendor and run** — not Claudinite's own upkeep:
