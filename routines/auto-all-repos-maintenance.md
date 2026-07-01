@@ -24,10 +24,15 @@ Not a member: [claudinite-handoff.md](claudinite-handoff.md) is a **deterministi
 
 ## Step 1 — discover the fleet (which repos to maintain)
 
-Maintain **only repos that have opted into Claudinite**, detected by the tracked marker every vendored repo carries: a version-controlled **`.claudinite/.gitkeep`** file (bootstrap step 3 commits it as a one-glance signal that the repo mounts Claudinite). A repo without that tracked marker has none of the members vendored, so running them there is meaningless — skip it.
+Maintain **only repos that have opted into Claudinite**, detected by the tracked `.claudinite/` signal every vendored repo carries. Mounting the corpus commits that signal in one of two forms, depending on the mount method (see [bootstrap.md](../bootstrap.md)) — **both count**:
+
+- **Method B (tarball sync):** a version-controlled **`.claudinite/.gitkeep`** file.
+- **Method A (submodule):** a **`.claudinite` submodule registered in `.gitmodules`** pointing at the Claudinite repo (the working tree shows `.claudinite/` as a gitlink, not a `.gitkeep`).
+
+A repo carrying neither has none of the members vendored, so running them there is meaningless — skip it.
 
 1. **Enumerate every repo the token can access** — page through the full list (repo-search / list-repositories tooling); do not stop at the first page. Missing a repo here silently drops it from the day's run, so enumeration must be exhaustive.
-2. **Keep only opted-in repos** — for each candidate, confirm a **tracked `.claudinite/.gitkeep` on that repo's default branch** (a get-file-contents check is authoritative; a fleet-wide code search for the marker is a fine fast pre-filter, but the search index lags, so confirm with the file check before acting). No marker → skip.
+2. **Keep only opted-in repos** — for each candidate, confirm **either signal on that repo's default branch** via the API: a get-file-contents on `.claudinite/.gitkeep` (Method B), **or** `.gitmodules` naming a `.claudinite` submodule whose URL is the Claudinite repo (Method A). Either present → opted in; a get-file-contents check is authoritative, and a fleet-wide code search is a fine fast pre-filter, but the search index lags, so confirm with the file check before acting. Neither → skip. Don't assume only one method across the fleet — different repos mount differently, so check for both.
 3. **Drop repos that can't be maintained** — skip **archived / read-only** repos (a PR can't be opened against them). Skipping these is normal, not a failure; don't log them.
 
 The result is the day's **member-repo list**. If enumeration itself fails or returns only partially (an API error mid-page), you **cannot guarantee the fleet was covered** — treat that as a failure and log it (see Tracking), because a repo dropped by a broken enumeration looks identical to a repo that has no work.
