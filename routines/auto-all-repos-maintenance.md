@@ -12,14 +12,15 @@ This routine **replaces** scheduling anything individually **and** replaces any 
 
 ## What it sequences
 
-Two things run each day. The **growth lifecycle** (three phases with a barrier between each) and the **nightly branch report** (independent, no ordering constraint):
+Two things run each day. This routine only **sequences** them across the fleet — what each actually does lives in its own doc, not here:
 
-1. [../growth/extract.md](../growth/extract.md) — **phase 1, per member repo.** Mines each project's last-24h activity into its **own** docs, project-specific, commits to that repo's `main`.
-2. [../growth/promote.md](../growth/promote.md) — **phase 2, central, once.** Reads every member repo's local docs, generalizes the portable lessons, and commits them into the canon (this home repo) directly.
-3. [../growth/dedup.md](../growth/dedup.md) — **phase 3, per member repo.** Prunes local items the now-updated canon covers, commits to that repo's `main`.
-4. [auto-branch-report.md](auto-branch-report.md) — the nightly open-branch status report (read-only on the repo; its own tracking issue). Runs per member repo **and** against the home repo.
+1. The **[growth lifecycle](../growth/README.md)** — runs in **phases, with a barrier between each**, over every opted-in repo. That doc owns the phases and their order; this routine just drives them in it. The specs it dispatches:
+   - [../growth/extract.md](../growth/extract.md) — phase 1, per member repo.
+   - [../growth/promote.md](../growth/promote.md) — phase 2, central, once.
+   - [../growth/dedup.md](../growth/dedup.md) — phase 3, per member repo.
+2. The **[nightly branch report](auto-branch-report.md)** — independent of the growth phases (no ordering constraint), run per member repo **and** against the home repo.
 
-**Extending it:** a new per-repo growth step is a line in the phase it belongs to; a new independent routine (like the branch report) is a line in step 4 of the flow below. Never register a new schedule and never add a per-repo dispatch layer — the single scheduled routine runs everything in every opted-in repo automatically the next day.
+**Extending it:** a new per-repo growth phase is a line in the growth lifecycle; a new independent routine (like the branch report) is another entry here. Never register a new schedule and never add a per-repo dispatch layer — the single scheduled routine runs everything in every opted-in repo automatically the next day.
 
 ## Step 1 — discover the fleet (which repos to maintain)
 
@@ -31,24 +32,19 @@ Maintain **only repos that have opted into Claudinite**, detected by the tracked
 1. **Enumerate every repo the token can access** — page through the full list; do not stop at the first page. Missing a repo here silently drops it from the day's run, so enumeration must be exhaustive.
 2. **Keep only opted-in repos** — for each candidate, confirm **either signal on that repo's default branch** via the API: a get-file-contents on `.claudinite/.gitkeep` (Method B), **or** `.gitmodules` naming a `.claudinite` submodule whose URL is the Claudinite repo (Method A). A fleet-wide code search is a fine fast pre-filter, but the search index lags, so confirm with the file check before acting. Don't assume only one method across the fleet.
 3. **Drop repos that can't be maintained** — skip **archived / read-only** repos (a commit can't be pushed to them). Skipping these is normal; don't log them.
-4. **The home repo is not a member repo** — it is the canon, not a Claudinite *consumer*, so it never carries the opt-in marker and steps 1–2 never reach it. Include it **only** for the branch-report step (step 4 of the flow) — its own branches still need cleaning. Do **not** run the growth phases against the home repo: extract/dedup reconcile a *consumer's* local docs against the canon (meaningless for the canon itself), and promote *reads* the consumers and *writes* the home repo as its output.
+4. **The home repo is not a member repo** — it is the canon, not a Claudinite *consumer*, so it never carries the opt-in marker and steps 1–2 never reach it. Include it **only** for the branch report — its own branches still need cleaning — and do **not** run the growth phases against it (the growth lifecycle targets consumers, not the canon itself).
 
 The result is the day's **member-repo list**. If enumeration itself fails or returns only partially, you **cannot guarantee the fleet was covered** — treat that as a failure and log it (see Tracking).
 
 ## Step 2 — run the flow: phased, with barriers, in isolation
 
-The growth phases have a **hard ordering** — phase 3 prunes what phase 2 promoted, which is what phase 1 fed — so unlike a flat grid of independent members, this routine runs them in **sequence with a barrier between each phase**. Within a phase the per-repo runs are mutually independent and run **concurrently**; the barrier only gates one phase against the next.
+The growth phases run in a **fixed order with a barrier between each** — the [growth lifecycle](../growth/README.md) owns that order and why; this routine's job is only to honor it. So unlike a flat grid of independent members, run the phases **in sequence, waiting for each to fully settle before starting the next**. Within a phase the per-repo runs are independent and run **concurrently**; the barrier only gates one phase against the next.
 
-Dispatch **each per-repo run as its own subagent**. The subagent boundary delivers the guarantee the owner cares about: **failure isolation** (a run that errors, stalls, or exits early fails *its own* subagent only), **context isolation** (a clean context per run), and **behavior unchanged** (each subagent runs its phase **exactly as that phase's doc specifies** — same write surface, same commit-to-main, same own tracking issue, same "most days do nothing"). This routine adds **no** new behavior to any phase.
+Dispatch **each per-repo run as its own subagent**, passing that phase's own thin-pointer prompt (targeting the repo and its default branch). The subagent boundary delivers the guarantee the owner cares about: **failure isolation** (a run that errors, stalls, or exits early fails *its own* subagent only), **context isolation** (a clean context per run), and **behavior unchanged** (each subagent runs its phase **exactly as that phase's doc specifies**). This routine adds **no** behavior to any phase.
 
-Run the flow in this order:
+Run the growth phases in their numbered order (phase 1 → 2 → 3 above), waiting at each barrier before the next. Run the independent **branch report** concurrently alongside them — it has no ordering dependency — per member repo and against the home repo.
 
-1. **Phase 1 — extract, all member repos in parallel.** One subagent per member repo running [../growth/extract.md](../growth/extract.md) against that repo. Launch all, **wait for all to settle** (the barrier) before phase 2 — promotion must see every project's freshly-captured lessons.
-2. **Phase 2 — promote, one central subagent.** A single subagent running [../growth/promote.md](../growth/promote.md): it reads every member repo's local docs and commits the accepted, generalized lessons into the canon (this home repo). **Wait for it to settle** (the barrier) before phase 3 — dedup must see the updated canon.
-3. **Phase 3 — dedup, all member repos in parallel.** One subagent per member repo running [../growth/dedup.md](../growth/dedup.md) against that repo. Launch all, wait for all to settle.
-4. **Branch report — independent, any time.** One subagent per member repo **and** one for the home repo running [auto-branch-report.md](auto-branch-report.md). This has no ordering dependency on the growth phases, so run it concurrently alongside them (e.g. kick it off with phase 1); just ensure every branch-report subagent is launched and waited on.
-
-If the fleet is large, cap concurrency **within** a phase to a sane batch size, but **every** run in a phase must be launched and **waited on** — a launched-but-unwaited run is not a guaranteed run, and an un-awaited phase-1 run means promotion may miss a lesson. Wait for **everything** to settle before finishing.
+If the fleet is large, cap concurrency **within** a phase to a sane batch size, but **every** run in a phase must be launched and **waited on** — a launched-but-unwaited run is not a guaranteed run, and an un-awaited earlier phase means a later phase runs on incomplete input. Wait for **everything** to settle before finishing.
 
 ## What the orchestrator itself must not do
 
@@ -69,20 +65,20 @@ So on a normal day this routine writes nothing at all, and the only entries that
 
 Keep the routine's config a **thin pointer** to this doc, not an inlined copy. Vendor this file (and the [growth/](../growth/README.md) and branch-report specs) in your home repo, then schedule **this one routine** daily, pasting a prompt like the following and substituting the path where you vendored these docs:
 
-> Run the fleet daily maintenance routine exactly as specified in `<path/to/routines/auto-all-repos-maintenance.md>`. Enumerate **every** repo the GitHub token can access (page through all of them), keep only those carrying the tracked `.claudinite/` opt-in signal on their default branch (a `.claudinite/.gitkeep` file, or a `.claudinite` submodule in `.gitmodules` pointing at Claudinite), and skip archived/read-only repos. Then run the growth lifecycle in order, in isolated subagents: **phase 1 (extract)** in every member repo in parallel and wait for all to settle; then **phase 2 (promote)** once, centrally, reading every member repo and committing generalized lessons into this home repo, and wait for it to settle; then **phase 3 (dedup)** in every member repo in parallel. Alongside, run the **branch-report** (`auto-branch-report.md`) in every member repo **and** against this home repo. Each subagent runs its own step's doc verbatim, targeting its repo and default branch, committing straight to `main` per that doc — never merging. Wait for everything to settle. You are a sequencer only: never commit docs, edit the canon, or write to any step's tracking issue. Log **only failures** — a run that didn't complete, a barrier never reached, or a fleet you couldn't fully enumerate — to this routine's own standing tracking issue in this home repo (found **by title**), naming the repo and phase affected; on a clean day, log nothing.
+> Run the fleet daily maintenance routine exactly as specified in `<path/to/routines/auto-all-repos-maintenance.md>`. Enumerate **every** repo the GitHub token can access (page through all of them), keep only those carrying the tracked `.claudinite/` opt-in signal on their default branch (a `.claudinite/.gitkeep` file, or a `.claudinite` submodule in `.gitmodules` pointing at Claudinite), and skip archived/read-only repos. Then run the **growth lifecycle** (see `growth/README.md`) across them in isolated subagents — its phases in order, waiting for each to settle at the barrier before the next, each phase run per that phase's own doc verbatim (targeting the repo and its default branch, committing straight to `main`, never merging). Run the independent **branch report** (`auto-branch-report.md`) concurrently, in every member repo **and** against this home repo. Wait for everything to settle. You are a sequencer only: never commit docs, edit the canon, or write to any step's tracking issue. Log **only failures** — a run that didn't complete, a barrier never reached, or a fleet you couldn't fully enumerate — to this routine's own standing tracking issue in this home repo (found **by title**), naming the repo and phase affected; on a clean day, log nothing.
 
 Schedule it daily in your scheduler (the Claude Code Routines UI, a cron, or a CI nightly trigger), from the home repo.
 
 ## Run on a capable model
 
-Every phase makes **judgment calls** — deciding whether a lesson is genuinely new, generalizing it correctly before it lands in shared canon with no PR behind it, proving a local item is covered before pruning it, squash/superseded detection. A downgraded model fails these silently — see each phase's own "run on a capable model" note. This routine's own step (marker detection, enumeration, dispatch) is mechanical, but it drives those judgment-heavy phases, so run this routine — and therefore its subagents — on a capable model.
+Every phase makes **judgment calls** — see each phase's own "run on a capable model" note. This routine's own step (marker detection, enumeration, dispatch) is mechanical, but it drives those judgment-heavy phases, so run this routine — and therefore its subagents — on a capable model.
 
 ## What this routine must never do
 
 - **Never run a phase's logic itself** — it dispatches phases into subagents; it does not merge, commit, edit docs, or open any phase's output except its own failure log.
 - **Never maintain a non-opted-in repo** — only repos with a tracked `.claudinite/` marker.
 - **Never let one run's failure block another** — each run is its own isolated subagent, and every run is launched and waited on regardless of how the others fare.
-- **Never break the phase ordering** — phase 2 waits for all of phase 1, phase 3 waits for phase 2; only the branch report is unordered.
+- **Never break the phase ordering** — run the growth phases in the lifecycle's order, waiting at each barrier; only the branch report is unordered.
 - **Never also schedule the phases separately, or a per-repo maintenance routine** — this routine is their single schedule across the whole fleet.
 - **Never log on a clean day** — it logs only failures to its own home-repo tracking issue.
 - **Never inline this spec, or a phase's spec, into the launcher** — the launcher stays a thin pointer here, and this routine passes each phase its own thin-pointer prompt.
