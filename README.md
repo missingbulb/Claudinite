@@ -25,18 +25,21 @@ Either way, the corpus is imported with `@.claudinite/CLAUDE.md` in the consumer
 
 ## Repository operations
 
-Beyond the portable corpus above, `maintenance/` holds the specs for this repo's own upkeep — Claudinite-internal operations that are **not** part of the mounted corpus and are not imported by consumers:
+Beyond the portable corpus above, two folders hold the machinery that keeps it fed and tidy — Claudinite-internal orchestration, **not** part of the mounted corpus.
 
-- [maintenance/claudinite-lesson-curation.md](maintenance/claudinite-lesson-curation.md) — curates inbound `claudinite-lesson` proposal issues into reviewed docs PRs against the corpus.
-- [maintenance/item-routing.md](maintenance/item-routing.md) — the shared method for evaluating whether a proposed item is worthy of the corpus and routing it to the right file group; the curation routine and other callers defer to it.
+`growth/` holds the **growth lifecycle**: how a lesson is learned in a consuming project, lifted into the canon when it's portable, and pruned back out once the canon owns it — three phases with a barrier between each, sequenced daily by the fleet orchestrator. See **[growth/README.md](growth/README.md)** for the full map; the pieces are:
 
-`routines/`, by contrast, holds project-agnostic routine specs **for consuming projects to vendor and run** — not Claudinite's own upkeep:
+- [growth/extract.md](growth/extract.md) — **phase 1, per project.** Captures the last 24h of bugs/PRs/commits into the project's **own** docs, at the project's own level (generalizing is phase 2's job), committing to the project's `main`.
+- [growth/promote.md](growth/promote.md) — **phase 2, central.** Reads every project's local docs, **generalizes** the portable lessons, routes each to the right canon home, and commits to Claudinite's `main`. This is the sole judgment gate before shared canon; it replaces the old cross-repo handoff (Action + PAT + labelled issue), which is gone.
+- [growth/dedup.md](growth/dedup.md) — **phase 3, per project.** Prunes local items the now-updated canon covers, **keeping** items the canon states too generally for that project. Commits to the project's `main`.
+- [growth/item-routing.md](growth/item-routing.md) — the shared worthiness + routing method the promote phase (and any other caller) defers to.
 
-- [routines/auto-all-repos-maintenance.md](routines/auto-all-repos-maintenance.md) — **the single scheduled entry point.** One daily routine, scheduled once from a home repo, that discovers **every** Claudinite-vendored repo the token can access (by the tracked `.claudinite/.gitkeep` marker) and dispatches every daily maintenance member routine below directly, per repo, as its own isolated subagent — so one schedule covers the whole fleet and every member is guaranteed to run in every repo each day, with no member or repo able to stop the others. Schedule **this**, not the members individually.
+`routines/` holds the scheduled jobs:
+
+- [routines/auto-all-repos-maintenance.md](routines/auto-all-repos-maintenance.md) — **the single scheduled entry point.** One daily routine, scheduled once from a home repo, that discovers **every** Claudinite-vendored repo the token can access (by the tracked `.claudinite/` marker) and sequences the growth lifecycle across the fleet — phase 1 in every repo (parallel) → barrier → phase 2 once (central) → barrier → phase 3 in every repo (parallel) — plus the nightly branch report, each run as its own isolated subagent so no repo or phase can stop the others. Schedule **this**, nothing else.
 - [routines/auto-branch-report.md](routines/auto-branch-report.md) — project-agnostic nightly open-branch status report any consuming repo can vendor and run.
-- [routines/auto-lessons.md](routines/auto-lessons.md) — daily lessons digest: reviews the last 24h of activity and opens a PR folding any durable, reusable insight into the project's docs (most days, nothing).
-- [routines/auto-optimize-procedures.md](routines/auto-optimize-procedures.md) — daily routine reconciling a consumer's local docs against the shared canon in both directions: prune/rephrase local docs the canon now covers (a PR), and promote generalizable local items up (one bundled handoff-labelled issue), without removing them locally.
-- [routines/claudinite-handoff.md](routines/claudinite-handoff.md) — the up-path: how a portable lesson travels from a consuming repo into Claudinite (the handoff label, the deterministic cross-repo Action and its PAT, and the Claudinite-side curation routine).
+
+**Where things commit:** every growth phase is unattended and commits straight to `main` (no PR) — the owner opted these daily routines into direct-to-main. The owner's *on-demand, in-session* "learned lessons" command is separate and still delivers a PR for review.
 
 ## Submodule caveats (for consumers)
 

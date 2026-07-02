@@ -1,87 +1,84 @@
 # Fleet daily maintenance routine (the single scheduled entry point)
 
-A portable, **project-agnostic** spec for the **one** daily routine that maintains **every repo the owner has opted into Claudinite** — scheduled once, from a single home repo, and reaching all the others. It carries no maintenance logic of its own: it is a thin orchestrator that discovers the fleet and, for each opted-in repo, dispatches every daily maintenance **member routine** directly as its own isolated subagent, deferring each member's behavior entirely to that member's own doc. The point is twofold: the owner registers **a single schedule** for **all** their repos instead of one per repo, and every member is **guaranteed to run** in every repo each day because the orchestrator isolates each (repo, member) run — one repo, or one member, failing, stalling, or exiting early cannot stop the others.
+A portable, **project-agnostic** spec for the **one** daily routine that maintains **every repo the owner has opted into Claudinite** — scheduled once, from a single home repo, and reaching all the others. It carries no maintenance logic of its own: it is a thin orchestrator that discovers the fleet and sequences the [growth lifecycle](../growth/README.md) across it, plus the nightly branch report, deferring each step's behavior entirely to that step's own doc. The point is twofold: the owner registers **a single schedule** for **all** their repos instead of one per repo, and every step is **guaranteed to run** in every repo because the orchestrator isolates each run — one repo, or one step, failing, stalling, or exiting early cannot stop the others.
 
-This routine dispatches the members **directly**, per repo — there is no intermediate per-repo orchestrator to schedule. It **replaces** scheduling the members individually **and** replaces any per-repo maintenance schedule: schedule *this* one, in one home repo, and nothing else. Do **not** also schedule the members (you'd double-run them), and do **not** register a per-repo maintenance routine inside each repo (this routine already covers every repo). The members' specs stay exactly as written — unchanged and still vendored — this routine only decides *which repos* run them and *in what isolation*.
+This routine **replaces** scheduling anything individually **and** replaces any per-repo maintenance schedule: schedule *this* one, in one home repo, and nothing else. Do **not** also schedule the phases, and do **not** register a per-repo maintenance routine inside each repo (this routine already covers every repo). The step specs stay exactly as written — this routine only decides *which repos* run them, *in what order*, and *in what isolation*.
 
 ## Conventions used in this doc
 
 - **Home repo.** This routine is scheduled from, and keeps its tracking issue in, a single fixed **home repo** — the repo where you vendor and schedule this doc (for the reference deployment, that's Claudinite itself). "Home repo" below means that repo; every *other* repo it maintains is a **member repo**.
-- **Default branch.** Each member repo's own default branch is whatever *that* repo uses; the members substitute it per repo, so this routine never assumes `main` for a member repo.
-- **GitHub API access, fleet-wide.** This routine reaches **many** repos, so it works entirely through the **GitHub API tooling** your environment exposes (the **GitHub MCP tools**, or `gh` where available) — enumerating repos, reading the opt-in marker, and letting the members open PRs / read PRs / file issues. It needs a token whose scope spans the whole fleet, not just the home repo. In sandboxed/automation environments the shell often reaches only a git-over-HTTPS proxy scoped to the session's own repo and **no cross-repo checkout is possible** — so the members, like this routine, must operate over the API (get-file / push-files / create-PR), never by cloning each member repo. Use the MCP tools there, never `gh`/`curl`. The orchestrator itself only touches its own tracking issue (below), and only on a failure.
+- **Default branch.** Each member repo's own default branch is whatever *that* repo uses; the phases substitute it per repo, so this routine never assumes `main` for a member repo.
+- **GitHub API access, fleet-wide.** This routine reaches **many** repos, so it works entirely through the **GitHub API tooling** your environment exposes (the **GitHub MCP tools**, or `gh` where available) — enumerating repos, reading the opt-in marker, reading each project's docs, and committing. It needs a token whose scope spans the whole fleet. In sandboxed/automation environments the shell often reaches only a git-over-HTTPS proxy scoped to the session's own repo and **no cross-repo checkout is possible** — so every step, like this routine, must operate over the API (get-file / push-files / create-commit), never by cloning each member repo. Use the MCP tools there, never `gh`/`curl`.
 
-## The members
+## What it sequences
 
-Every daily/nightly maintenance routine, dispatched by this one into every opted-in repo:
+Two things run each day. This routine only **sequences** them across the fleet — what each actually does lives in its own doc, not here:
 
-1. [auto-lessons.md](auto-lessons.md) — the daily lessons digest (opens a PR; most days nothing).
-2. [auto-optimize-procedures.md](auto-optimize-procedures.md) — reconcile local docs against the pinned canon both ways (a PR down, one bundled handoff issue up).
-3. [auto-branch-report.md](auto-branch-report.md) — the nightly open-branch status report (read-only on the repo; its own tracking issue).
+1. The **[growth lifecycle](../growth/README.md)** — runs in **phases, with a barrier between each**, over every opted-in repo. That doc owns the phases and their order; this routine just drives them in it. The specs it dispatches:
+   - [../growth/extract.md](../growth/extract.md) — phase 1, per member repo.
+   - [../growth/promote.md](../growth/promote.md) — phase 2, central, once.
+   - [../growth/dedup.md](../growth/dedup.md) — phase 3, per member repo.
+2. The **[nightly branch report](auto-branch-report.md)** — independent of the growth phases (no ordering constraint), run per member repo **and** against the home repo.
 
-Not a member: [claudinite-handoff.md](claudinite-handoff.md) is a **deterministic Action**, not a scheduled routine — it fires off the handoff label, so it is not dispatched here.
-
-**Extending it is the whole simplification:** when a new daily routine is added, add **one line** to this member list — do **not** register a new schedule and do **not** add a per-repo dispatch layer. The single scheduled routine then runs it in every opted-in repo automatically the next day.
+**Extending it:** a new per-repo growth phase is a line in the growth lifecycle; a new independent routine (like the branch report) is another entry here. Never register a new schedule and never add a per-repo dispatch layer — the single scheduled routine runs everything in every opted-in repo automatically the next day.
 
 ## Step 1 — discover the fleet (which repos to maintain)
 
 Maintain **only repos that have opted into Claudinite**, detected by the tracked `.claudinite/` signal every vendored repo carries. Mounting the corpus commits that signal in one of two forms, depending on the mount method (see [bootstrap.md](../bootstrap.md)) — **both count**:
 
 - **Method B (tarball sync):** a version-controlled **`.claudinite/.gitkeep`** file.
-- **Method A (submodule):** a **`.claudinite` submodule registered in `.gitmodules`** pointing at the Claudinite repo (the working tree shows `.claudinite/` as a gitlink, not a `.gitkeep`).
+- **Method A (submodule):** a **`.claudinite` submodule registered in `.gitmodules`** pointing at the Claudinite repo.
 
-A repo carrying neither has none of the members vendored, so running them there is meaningless — skip it.
+1. **Enumerate every repo the token can access** — page through the full list; do not stop at the first page. Missing a repo here silently drops it from the day's run, so enumeration must be exhaustive.
+2. **Keep only opted-in repos** — for each candidate, confirm **either signal on that repo's default branch** via the API: a get-file-contents on `.claudinite/.gitkeep` (Method B), **or** `.gitmodules` naming a `.claudinite` submodule whose URL is the Claudinite repo (Method A). A fleet-wide code search is a fine fast pre-filter, but the search index lags, so confirm with the file check before acting. Don't assume only one method across the fleet.
+3. **Drop repos that can't be maintained** — skip **archived / read-only** repos (a commit can't be pushed to them). Skipping these is normal; don't log them.
+4. **The home repo is not a member repo** — it is the canon, not a Claudinite *consumer*, so it never carries the opt-in marker and steps 1–2 never reach it. Include it **only** for the branch report — its own branches still need cleaning — and do **not** run the growth phases against it (the growth lifecycle targets consumers, not the canon itself).
 
-1. **Enumerate every repo the token can access** — page through the full list (repo-search / list-repositories tooling); do not stop at the first page. Missing a repo here silently drops it from the day's run, so enumeration must be exhaustive.
-2. **Keep only opted-in repos** — for each candidate, confirm **either signal on that repo's default branch** via the API: a get-file-contents on `.claudinite/.gitkeep` (Method B), **or** `.gitmodules` naming a `.claudinite` submodule whose URL is the Claudinite repo (Method A). Either present → opted in; a get-file-contents check is authoritative, and a fleet-wide code search is a fine fast pre-filter, but the search index lags, so confirm with the file check before acting. Neither → skip. Don't assume only one method across the fleet — different repos mount differently, so check for both.
-3. **Drop repos that can't be maintained** — skip **archived / read-only** repos (a PR can't be opened against them). Skipping these is normal, not a failure; don't log them.
-4. **Always include the home repo — for the branch-report member only.** The home repo (where this routine and the corpus live) accumulates its own open branches from routine PRs, but it is the corpus itself, not a Claudinite *consumer*, so it never carries the opt-in marker and steps 1–2 above never reach it. Add it to the day's runs for [auto-branch-report.md](auto-branch-report.md) **only** — its branches still need cleaning. Do **not** run the other members (lessons, optimize-procedures) against the home repo: those reconcile a *consumer's* local docs against the mounted canon, which is meaningless for the corpus that *is* the canon.
+The result is the day's **member-repo list**. If enumeration itself fails or returns only partially, you **cannot guarantee the fleet was covered** — treat that as a failure and log it (see Tracking).
 
-The result is the day's **member-repo list** (every opted-in repo × every member, plus the home repo for the branch-report member alone). If enumeration itself fails or returns only partially (an API error mid-page), you **cannot guarantee the fleet was covered** — treat that as a failure and log it (see Tracking), because a repo dropped by a broken enumeration looks identical to a repo that has no work.
+## Step 2 — run the flow: phased, with barriers, in isolation
 
-## Step 2 — run every member in every repo, in isolation
+The growth phases run in a **fixed order with a barrier between each** — the [growth lifecycle](../growth/README.md) owns that order and why; this routine's job is only to honor it. So unlike a flat grid of independent members, run the phases **in sequence, waiting for each to fully settle before starting the next**. Within a phase the per-repo runs are independent and run **concurrently**; the barrier only gates one phase against the next.
 
-For **each** member repo, dispatch **each member as its own subagent** — a grid of (repo, member) runs, one subagent per cell. The subagent boundary is what delivers the guarantee the owner cares about:
+Dispatch **each per-repo run as its own subagent**, instructing it to run that phase per its doc (targeting the repo and its default branch). The subagent boundary delivers the guarantee the owner cares about: **failure isolation** (a run that errors, stalls, or exits early fails *its own* subagent only), **context isolation** (a clean context per run), and **behavior unchanged** (each subagent runs its phase **exactly as that phase's doc specifies**). This routine adds **no** behavior to any phase.
 
-- **Failure isolation.** A run that errors, stalls, or exits early fails *its own* subagent only; every other member, in that repo and every other, still runs. No single member and no single repo can take the day's run down with it.
-- **Context isolation.** Each cell runs in a clean context, so one member's large diff or one repo's long transcript doesn't crowd out another's.
-- **Behavior unchanged.** Each subagent runs its member **exactly as that member's doc specifies** — same write surface, same PR-vs-issue output, same own tracking issue (in that member repo), same "most days do nothing," same "never merge." This routine adds **no** new behavior to any member; it only decides *that*, *in what repo*, and *in what isolation* they run, never *what* they do.
+Run the growth phases in their numbered order (phase 1 → 2 → 3 above), waiting at each barrier before the next. Run the independent **branch report** concurrently alongside them — it has no ordering dependency — per member repo and against the home repo.
 
-Within a repo the members are mutually independent — they open PRs on distinct dated branches, file distinct issues, and the branch report is read-only — and across repos every run is confined to its own repo, so no two cells can collide. They may therefore all run **concurrently** for speed. Run them in parallel subagents; if the fleet is large, cap concurrency to a sane batch size, but **every** cell must be launched and **waited on** — a launched-but-unwaited cell is not a guaranteed run. Pass each subagent its member's own thin-pointer launcher prompt (from that member's doc) verbatim, substituting **the target member repo**, that repo's default branch, and the path where it vendored the member (conventionally `.claudinite/routines/`).
-
-Wait for **all** cells to settle before finishing.
+If the fleet is large, cap concurrency **within** a phase to a sane batch size, but **every** run in a phase must be launched and **waited on** — a launched-but-unwaited run is not a guaranteed run, and an un-awaited earlier phase means a later phase runs on incomplete input. Wait for **everything** to settle before finishing.
 
 ## What the orchestrator itself must not do
 
-The orchestrator is a sequencer, not a maintainer. It **never** merges, pushes, edits docs, opens a member's PR, or writes to a member's tracking issue — every such action belongs to the member that owns it, inside that member's own subagent, in that member's repo. The orchestrator's *only* write is the failure log on its **own** tracking issue in the home repo (next section). Keep it that thin; resist the temptation to "fix up" a member's output from the orchestrator.
+The orchestrator is a sequencer, not a maintainer. It **never** merges, commits docs, edits the canon, opens a phase's PR/commit, or writes to a phase's tracking issue — every such action belongs to the phase that owns it, inside that phase's own subagent. The orchestrator's *only* write is the failure log on its **own** tracking issue in the home repo (next section). Keep it that thin.
 
 ## Tracking: log only failures, on the home repo's own issue
 
-This routine keeps its **own** standing tracking issue **in the home repo**, separate from every member's — found **by title**, never a hard-coded number (a bare number can dangle, and it differs per repo). Open it if it doesn't exist; reopen it if it was closed while a run still needs logging.
+This routine keeps its **own** standing tracking issue **in the home repo**, separate from every phase's — found **by title**, never a hard-coded number. Open it if it doesn't exist; reopen it if it was closed while a run still needs logging.
 
-It logs **failures only** — the orchestrator's job is to guarantee every member *ran* in every opted-in repo, so the one thing worth surfacing is a run that **didn't** complete:
+It logs **failures only** — the orchestrator's job is to guarantee every phase *ran* where it should, so the one thing worth surfacing is a run that **didn't** complete:
 
-- **Any (repo, member) subagent failed, stalled, or exited without completing**, or **fleet enumeration failed / was incomplete** → post a **dated comment** naming the **repo and member** affected (or the enumeration error) and the symptom, so a silently-skipped run can't go unnoticed. This is exactly the case a member can't self-report — a member that crashes before reaching its own logging step leaves no trace on its own issue, and a repo dropped by broken enumeration never started at all.
-- **Every member completed in every opted-in repo** (whether it made changes or correctly did nothing) → **log nothing.** Members already log their own *changes* to their own issues in their own repos; a fleet-wide "all green" roll-up here would just be noise. Silent days stay silent.
+- **Any subagent failed, stalled, or exited without completing** (name the repo and phase), or **fleet enumeration failed / was incomplete**, or **a barrier could not be reached** (a phase-1 or phase-2 run never settled, so the next phase ran on incomplete input) → post a **dated comment** naming what was affected and the symptom.
+- **Every phase completed everywhere it should** (whether it changed anything or correctly did nothing) → **log nothing.** Phases already log their own *changes* to their own issues; a fleet-wide "all green" roll-up here would just be noise.
 
-So on a normal day this routine writes nothing at all — the members speak for themselves through their own PRs and issues in their own repos — and the only entries that ever accumulate on the home issue are the failures you actually need to see.
+So on a normal day this routine writes nothing at all, and the only entries that ever accumulate on the home issue are the failures you actually need to see.
 
 ## The launcher (Claude Code routine)
 
-Keep the routine's config a **thin pointer** to this doc, not an inlined copy — inlined instructions drift against renamed paths and miss conventions the project later adds. Vendor this file (and the member files) in your home repo (e.g. under a `routines/` path of your choosing), then schedule **this one routine** daily, pasting a prompt like the following and substituting the path where you vendored these docs:
+Keep the routine's config a **thin pointer** to this doc, not an inlined copy. Vendor this file (and the [growth/](../growth/README.md) and branch-report specs) in your home repo, then schedule **this one routine** daily, pasting a prompt like the following and substituting the path where you vendored these docs:
 
-> Run the fleet daily maintenance routine exactly as specified in `<path/to/auto-all-repos-maintenance.md>`. Enumerate **every** repo the GitHub token can access (page through all of them), keep only those carrying the tracked `.claudinite/` opt-in signal on their default branch — either a `.claudinite/.gitkeep` file (Method B) or a `.claudinite` submodule in `.gitmodules` pointing at Claudinite (Method A) — and skip archived/read-only repos. For **each** remaining repo, dispatch **every** member listed in that doc as its own subagent — concurrently and in isolation, so one repo or one member failing can't stop the others — each running that member's own launcher prompt verbatim (per that member's doc), targeting that repo and its default branch. **Also run the branch-report member (`auto-branch-report.md`) against this home repo** even though it carries no marker — its branches need cleaning too — but do **not** run the other members against the home repo. Wait for all runs to settle. You are a sequencer only: never merge, push, edit docs, or write to any member's tracking issue — each member owns its own output in its own repo. Log **only failures** — a (repo, member) run that didn't complete, or a fleet you couldn't fully enumerate — to this routine's own standing tracking issue in this home repo (found **by title**), naming the repo and member affected; on a clean day where every member finished in every opted-in repo, log nothing.
+> Run the fleet daily maintenance routine exactly as specified in `<path/to/routines/auto-all-repos-maintenance.md>`. Enumerate **every** repo the GitHub token can access (page through all of them), keep only those carrying the tracked `.claudinite/` opt-in signal on their default branch (a `.claudinite/.gitkeep` file, or a `.claudinite` submodule in `.gitmodules` pointing at Claudinite), and skip archived/read-only repos. Then run the **growth lifecycle** (see `growth/README.md`) across them in isolated subagents — its phases in order, waiting for each to settle at the barrier before the next, each phase run per its doc (targeting the repo and its default branch, committing straight to `main`, never merging). Run the independent **branch report** (`auto-branch-report.md`) concurrently, in every member repo **and** against this home repo. Wait for everything to settle. You are a sequencer only: never commit docs, edit the canon, or write to any step's tracking issue. Log **only failures** — a run that didn't complete, a barrier never reached, or a fleet you couldn't fully enumerate — to this routine's own standing tracking issue in this home repo (found **by title**), naming the repo and phase affected; on a clean day, log nothing.
 
-Schedule it daily in your scheduler (the Claude Code Routines UI, a cron, or a CI nightly trigger), from the home repo. The fleet can't schedule itself, so this doc is the spec and the single home-repo routine is the trigger.
+Schedule it daily in your scheduler (the Claude Code Routines UI, a cron, or a CI nightly trigger), from the home repo.
 
 ## Run on a capable model
 
-Every member makes **judgment calls** (squash/superseded detection, deciding whether a lesson is genuinely new, proving a local item is covered by the canon before pruning it). A downgraded model fails these silently — see each member's own "run on a capable model" note. This routine's own step (marker detection, complete enumeration, dispatch) is mechanical, but it drives those judgment-heavy members, so run this routine — and therefore its member subagents — on a capable model.
+Every phase makes **judgment calls** — see each phase's own "run on a capable model" note. This routine's own step (marker detection, enumeration, dispatch) is mechanical, but it drives those judgment-heavy phases, so run this routine — and therefore its subagents — on a capable model.
 
 ## What this routine must never do
 
-- **Never run a member's logic itself** — it dispatches members into subagents, per repo; it does not merge, push, edit docs, or open any member's PR/issue except its own failure log.
-- **Never maintain a non-opted-in repo** — only repos with a tracked `.claudinite/.gitkeep` marker; a missing marker means the members aren't vendored there.
-- **Never let one member's or one repo's failure block another** — each (repo, member) cell runs in its own isolated subagent, and every cell is launched and waited on regardless of how the others fare.
-- **Never also schedule the members separately, or a per-repo maintenance routine** — this routine is their single schedule across the whole fleet; anything else double-runs them.
-- **Never log on a clean day** — it logs only failures to its own home-repo tracking issue; members self-report their own changes to their own issues.
-- **Never inline this spec, or a member's spec, into the launcher** — the launcher stays a thin pointer here, and this routine passes each member its own thin-pointer prompt.
+- **Never run a phase's logic itself** — it dispatches phases into subagents; it does not merge, commit, edit docs, or open any phase's output except its own failure log.
+- **Never maintain a non-opted-in repo** — only repos with a tracked `.claudinite/` marker.
+- **Never let one run's failure block another** — each run is its own isolated subagent, and every run is launched and waited on regardless of how the others fare.
+- **Never break the phase ordering** — run the growth phases in the lifecycle's order, waiting at each barrier; only the branch report is unordered.
+- **Never also schedule the phases separately, or a per-repo maintenance routine** — this routine is their single schedule across the whole fleet.
+- **Never log on a clean day** — it logs only failures to its own home-repo tracking issue.
+- **Never inline this spec, or a phase's spec, into the launcher** — the launcher stays a thin pointer here.

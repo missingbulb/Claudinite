@@ -14,6 +14,10 @@
 
 Every file in `always/` is `@`-imported here — add an `@`-line when you add one.
 
+One doc **outside** `always/` is also force-loaded. The merge flow ([always/merge-to-main.md](always/merge-to-main.md), itself always-loaded) runs a lessons pass on **every** merge, so its method has to be in context, not fetched on demand — an unconditional step can't rely on a soft-pointer read firing. It lives with the rest of the lesson lifecycle in `growth/`, and is `@`-imported here:
+
+@growth/extracting-lessons.md
+
 ## preferences/ — auto-injected by the SessionStart hook
 
 `preferences/<email>.md` holds the owner's per-user interaction preferences. The `preferences/inject-preferences.sh` SessionStart hook (registered in `.claude/settings.json`) loads the current user's file into context at session start — you don't read it yourself.
@@ -30,7 +34,6 @@ Every file in `always/` is `@`-imported here — add an `@`-line when you add on
 - [tasks/textAndFileManipulation.md](tasks/textAndFileManipulation.md) — **Read before a grep/sed sweep, a rename, or a path relocation.** Scoping a replace, searching segment tokens after a rename, Markdown links that carry the path twice, references that break with no test failure.
 - [tasks/testingPractices.md](tasks/testingPractices.md) — **Read before writing or changing a test.** See-it-fail discipline, driving snapshots/goldens through the real code path, CI-only and heavy-browser tests, fuzzy-metric high-watermark gating.
 - [tasks/agenticBestPractices.md](tasks/agenticBestPractices.md) — **Read when building or running an AI agent or unattended routine.** The daily lessons pass, matching model to judgment, per-routine tracking issues, doc-not-inlined instructions, post-task efficiency analysis.
-- [tasks/extracting-lessons.md](tasks/extracting-lessons.md) — **Read when running a retrospective / lessons pass over a session.** The friction signals (clarifying round-trips, backtracks, long waits), the durable-and-reusable bar, and "no new lessons" as a valid result.
 - [tasks/git-and-github.md](tasks/git-and-github.md) — **Read when doing git/GitHub work beyond the baseline lifecycle** — committing in layers, recovering a branch after a squash-merge, dispatching CI, resolving a merge. CI-trigger rules, the `GITHUB_TOKEN` recursion gotcha, merge-relocation traps.
 - [tasks/agent-architecture.md](tasks/agent-architecture.md) — **Read before structuring an unattended (automation-invoked) agent.** Leave it only the judgment step and hard-code the rest; bound its write surface and enforce that from outside with a post-hoc diff check.
 

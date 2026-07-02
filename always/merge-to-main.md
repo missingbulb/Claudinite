@@ -16,7 +16,7 @@ The two divergent points — **`squash`** as the method and **CI gating** — ar
 
 ## After the merge: reflect (every session, every user)
 
-Once the merge has landed and local `main` is synced, run a **lessons-learned pass** over the session that just closed, per [tasks/extracting-lessons.md](../tasks/extracting-lessons.md) (which owns the method). The point here is only the **trigger**: it fires on **every** merge to `main`, for **every** user — not only when someone asks.
+Once the merge has landed and local `main` is synced, run a **lessons-learned pass** over the session that just closed, per [growth/extracting-lessons.md](../growth/extracting-lessons.md) (which owns the method). The point here is only the **trigger**: it fires on **every** merge to `main`, for **every** user — not only when someone asks.
 
 **Skip it only when the merge you just landed *is itself* a lessons-pass PR** — reflecting on a reflection has nothing new to mine, and skipping keeps the trigger from looping on its own output.
 

@@ -1,21 +1,21 @@
 # Evaluating and routing a new item
 
-The shared method for two decisions every proposed addition to this corpus must pass through: **is it worthy** of inclusion at all, and if so, **where does it go**. Any routine or person that adds an item — the lesson-curation routine, an on-demand "learned lessons" pass, a hand edit — applies this same protocol, so the decision-making lives here once instead of being re-derived per caller.
+The shared method for two decisions every proposed addition to this corpus must pass through: **is it worthy** of inclusion at all, and if so, **where does it go**. Any routine or person that adds an item — the [growth promote phase](promote.md), an on-demand "learned lessons" pass, a hand edit — applies this same protocol, so the decision-making lives here once instead of being re-derived per caller.
 
-This is a Claudinite-internal maintenance doc: it is **not** part of the mounted corpus and consuming repos do not `@import` it.
+This is a Claudinite-internal doc used by the growth lifecycle (see [growth/README.md](README.md)): it is **not** part of the mounted corpus and consuming repos do not `@import` it.
 
 An "item" is one **distilled, portable rule** — not a transcript, not a narration of what happened. A candidate still phrased as "here's what we did" has not been distilled yet and is below the bar on form alone, before any of the tests below. This doc picks up once a distilled rule exists and decides its fate.
 
 ## Worthiness — does it earn a place at all
 
-The corpus is read read-only by every consuming repo, so a wrong or duplicative item pollutes shared canon and costs every future reader. The bar is therefore high and the **default is to reject**. Admit an item only when **all** hold:
+The corpus is read read-only by every consuming repo, so a **duplicative** item (already covered) or an **undistilled** one (a story or a truism, not a rule) pollutes shared canon and costs every future reader. The bar guards against *those* — it is **not** a bar on *scope*: an item useful to only one project today can still earn a place (see Portable). Admit an item only when **all** hold:
 
 - **Distilled.** It is a single tight rule in the imperative, not a story, a log, or a restatement of a generic truism.
-- **Portable.** It is true for any consuming project read cold — it does not lean on one project's files, services, or mechanics. An item that only makes sense with a particular repo's context belongs in that repo's local docs, not here.
+- **Portable — would a *future* project benefit?** Not "useful to every project today." An item can help only **one** project right now and still belong here, so long as another project — **especially one with a similar tech stack or process** — would benefit when it arrives. Being specific to a technology or a process is **not** disqualifying: generalize it and route it to that technology's or practice's home. What disqualifies is leaning on *this* project's non-transferable particulars — a product requirement, or a one-off incident in how it happened to call some API. The test, a genuinely hard one: *if another project with a similar tech stack came along, would it benefit from this?* Yes → portable; only-ever-this-product → local.
 - **Durable and reusable.** It will still apply on a future, unseen task — not a one-off, not a situational detail, not something already implied by an existing rule.
 - **Not already covered.** The insight does not already exist **anywhere** in the corpus, even worded differently or owned by a different file. This is checked against the *entire* corpus, not just the file it would land in — see [Dedupe against the whole corpus](#dedupe-against-the-whole-corpus).
 
-Reject on any miss. Reject on a tie. A rejection is a **common, expected, healthy** outcome — most candidates do not clear this bar, and saying "nothing worthy here" and writing nothing is always preferable to padding the canon to look productive. Failing none of these tests does not by itself force admission; when genuinely unsure, still reject — a missed item is cheaper to recover than a spurious one is to undo.
+Reject on any miss — but the misses that matter are *undistilled*, *already-covered*, or *genuinely one-off*, not merely *narrow*. When you're torn over a real, non-duplicate rule, lean toward **keeping** it — the goal is a broad library. When you're torn over whether something is a duplicate, or a rule at all, leave it out. The failure to avoid is padding the canon with restatements of what's already there; admitting a narrow-but-reusable rule is not that failure.
 
 ### Dedupe against the whole corpus
 
