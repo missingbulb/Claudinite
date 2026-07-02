@@ -1,8 +1,8 @@
 # Growth phase 1 — extract lessons (per project)
 
-Phase 1 of the [growth lifecycle](README.md): review a project's recent activity and fold any durable, reusable lesson into the project's own docs — at the project's own level, without straining to generalize it. It commits to the project's default branch; finding nothing to add on a given run is a perfectly good outcome.
+Phase 1 of the [growth lifecycle](README.md): review a project's recent activity and fold any durable, reusable lesson into the project's own docs — at the project's own level, without straining to generalize it. It opens a PR against the project's default branch for the owner to approve; finding nothing to add on a given run is a perfectly good outcome.
 
-> This is the **unattended daily** routine. The owner's on-demand, in-session "learned lessons" command is a separate thing that stays a PR for review; this one commits directly.
+> This is the **unattended daily** routine. Like the owner's on-demand, in-session "learned lessons" command, it delivers its edits as a PR for review — an unattended routine never commits straight to `main`.
 
 ## Capture at the project's own level
 
@@ -23,9 +23,9 @@ Write each lesson at whatever level reads naturally for this project — refer t
 
 If an edit touches something a test reads (a doc constant, a code path), run the project's offline test suite and keep it green before pushing.
 
-## Output: commit straight to main
+## Output: open a PR for review
 
-If it found at least one genuinely new lesson, it **commits the edits and pushes to `main` directly** — no PR. This is an unattended routine, on a capable model, writing the project's *own* docs (not the shared canon); the owner has opted these daily routines into direct-to-main. Keep commits terse and reference the tracking issue. A run that finds nothing and commits nothing is fine — and common.
+If it found at least one genuinely new lesson, it **commits the edits on a branch and opens a PR against `main`** for the owner to approve — never a direct push to `main`. This is an unattended routine, on a capable model, writing the project's *own* docs (not the shared canon); the owner wants a human approval gate on every growth change. Keep the commit and PR terse and reference the tracking issue. A run that finds nothing and opens no PR is fine — and common.
 
 ## Tracking: log each run under the routine's own issue
 
@@ -33,9 +33,9 @@ When a run adds a lesson, log it on this routine's standing tracking issue — f
 
 ## Run on a capable model
 
-Deciding whether a lesson is genuinely new and durable — and deduping it against what's already documented — is a **judgment call**, not mechanical extraction. A downgraded model adds noise or restates what's there, and here it commits straight to `main` with no PR to catch it. Run this routine on a capable model.
+Deciding whether a lesson is genuinely new and durable — and deduping it against what's already documented — is a **judgment call**, not mechanical extraction. A downgraded model adds noise or restates what's there; the review PR is a backstop, but a weak model just floods the owner with low-value PRs to review. Run this routine on a capable model.
 
 ## What this routine must never do
 
 - **Never touch the shared canon** — this phase writes only the project's *own* docs; lifting a lesson up into the canon is [promote](promote.md)'s job.
-- **Don't add noise** — a duplicate or hallucinated "lesson" is worse than adding nothing, the more so committed straight to `main`.
+- **Don't add noise** — a duplicate or hallucinated "lesson" is worse than adding nothing, the more so when it becomes a PR the owner must review.
