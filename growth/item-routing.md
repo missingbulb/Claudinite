@@ -1,8 +1,8 @@
 # Evaluating and routing a new item
 
-The shared method for two decisions every proposed addition to this corpus must pass through: **is it worthy** of inclusion at all, and if so, **where does it go**. Any routine or person that adds an item — the lesson-curation routine, an on-demand "learned lessons" pass, a hand edit — applies this same protocol, so the decision-making lives here once instead of being re-derived per caller.
+The shared method for two decisions every proposed addition to this corpus must pass through: **is it worthy** of inclusion at all, and if so, **where does it go**. Any routine or person that adds an item — the [growth promote phase](promote.md), an on-demand "learned lessons" pass, a hand edit — applies this same protocol, so the decision-making lives here once instead of being re-derived per caller.
 
-This is a Claudinite-internal maintenance doc: it is **not** part of the mounted corpus and consuming repos do not `@import` it.
+This is a Claudinite-internal doc used by the growth lifecycle (see [growth/README.md](README.md)): it is **not** part of the mounted corpus and consuming repos do not `@import` it.
 
 An "item" is one **distilled, portable rule** — not a transcript, not a narration of what happened. A candidate still phrased as "here's what we did" has not been distilled yet and is below the bar on form alone, before any of the tests below. This doc picks up once a distilled rule exists and decides its fate.
 
