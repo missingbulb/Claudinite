@@ -12,7 +12,7 @@ Phase 2  PROMOTE   central, once              → commit to Claudinite main
 Phase 3  DEDUP     per project, in parallel   → commit to each project's main
 ```
 
-- **[extract.md](extract.md)** — phase 1, per project. Mines the last 24h of bugs/PRs/commits into the project's **own** docs, phrased in the project's **specific** language (no generalizing). Commits to the project's `main`; logs to a per-project tracking issue.
+- **[extract.md](extract.md)** — phase 1, per project. Captures the last 24h of bugs/PRs/commits into the project's **own** docs, at the project's own level (generalizing is phase 2's job). Commits to the project's `main`; logs to a per-project tracking issue.
 - **[promote.md](promote.md)** — phase 2, central. Reads every project's local docs, **generalizes** the portable lessons, routes each to the right canon home, and commits to Claudinite's `main`. This is the sole judgment gate before shared canon.
 - **[dedup.md](dedup.md)** — phase 3, per project. Prunes local items the (now-updated) canon covers, **keeping** items the canon states too generally for that project. Commits to the project's `main`.
 - **[item-routing.md](item-routing.md)** — the shared worthiness + routing method phase 2 (and any other caller) defers to, so every decision about admitting and placing an item is made the same way.

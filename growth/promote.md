@@ -1,14 +1,8 @@
 # Growth phase 2 — promote lessons into the canon (central)
 
-Operational spec for the **central** routine that lifts portable lessons out of every consuming project's local docs and folds them into Claudinite's shared **corpus** — the `*.md` rule files under `always/` (the always-on baseline), `tasks/` (on-demand practices), `preferences/` (per-user), and `technologies/` (per-technology) that consuming repos mount read-only. It is phase 2 of the [growth lifecycle](README.md): [extract](extract.md) captured project-specific lessons; this phase generalizes the portable ones up; [dedup](dedup.md) later prunes the local copies the canon now covers.
+Phase 2 of the [growth lifecycle](README.md), run **once, centrally, from the Claudinite home repo** — not per project: read every consuming project's local docs, lift the portable lessons into the shared canon, and commit them to the canon's default branch. It is Claudinite-internal — consuming repos don't vendor or `@import` it.
 
-This runs **once, centrally, from the Claudinite home repo** — not per project. It is Claudinite-internal: consuming repos do **not** vendor or `@import` it. It replaces the old cross-repo handoff entirely (the labelled-issue path, the consumer-side Action, and the Claudinite-scoped PAT are gone): because this routine runs from the home repo with a **fleet-wide token**, it reads every project directly and writes the canon directly — there is no repo boundary to tunnel an issue across.
-
-## Why this can be central (and the safety cost)
-
-A session *inside* a consuming repo can't write to the read-only canon, which is why the up-path used to need an Action + PAT. This routine doesn't run inside a consumer — it runs from the home repo, reads each consumer's docs over the API, and pushes to the canon over the API. One routine, no plumbing.
-
-The cost: promotion is now the **sole judgment gate before shared canon** — there is no human PR behind it (the owner opted the unattended routines into direct-to-main). Phase 1 deliberately stays project-specific, so it is **not** a second opinion on portability. That makes this routine's judgment the only thing standing between a bad rule and every project that reads the canon. Compensate the only way available: **run on a capable model, dedupe against the whole corpus, and default to reject when unsure** (below). A wrong acceptance here silently pollutes every consumer.
+Promotion is the **sole judgment gate before shared canon**: it commits directly, with no human PR behind it, and phase 1 stays project-specific by design, so it's no second opinion on portability. This routine's judgment is the only thing between a bad rule and every project that reads the canon — so keep the bar high. The strictness below (dedupe against the whole corpus, default to reject when unsure) is what compensates for the missing PR.
 
 ## Run on a capable model
 
@@ -52,9 +46,8 @@ The routine's standing self-improvement log is the issue titled exactly:
 
 ## What this routine must never do
 
-- **Never require the old handoff plumbing** — no labelled issues, no consumer-side Action, no Claudinite-scoped PAT; it reads projects and writes the canon directly over the fleet-wide token.
+- **Never wait on an inbound issue or label** — this routine reads the projects directly; there's no handoff queue to consume.
 - **Never promote a non-portable item** — a lesson that only makes sense with one project's context stays in that project's local docs.
 - **Never accept on a tie** — default to reject when unsure; a wrong acceptance pollutes every consumer with no PR to catch it.
 - **Never weaken, restate, or duplicate an existing rule** — fold a genuine sharpening in per [item-routing.md](item-routing.md) instead.
 - **Never edit anything outside the one owning doc** per accepted lesson — the sole exception is the bounded new-doc path in [item-routing.md](item-routing.md). Never alter the origin project.
-- **Never inline this spec into the launcher** — the launcher stays a thin pointer here.

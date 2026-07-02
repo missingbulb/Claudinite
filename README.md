@@ -29,7 +29,7 @@ Beyond the portable corpus above, two folders hold the machinery that keeps it f
 
 `growth/` holds the **growth lifecycle**: how a lesson is learned in a consuming project, lifted into the canon when it's portable, and pruned back out once the canon owns it — three phases with a barrier between each, sequenced daily by the fleet orchestrator. See **[growth/README.md](growth/README.md)** for the full map; the pieces are:
 
-- [growth/extract.md](growth/extract.md) — **phase 1, per project.** Mines the last 24h of bugs/PRs/commits into the project's **own** docs in the project's **specific** language (no generalizing), committing to the project's `main`.
+- [growth/extract.md](growth/extract.md) — **phase 1, per project.** Captures the last 24h of bugs/PRs/commits into the project's **own** docs, at the project's own level (generalizing is phase 2's job), committing to the project's `main`.
 - [growth/promote.md](growth/promote.md) — **phase 2, central.** Reads every project's local docs, **generalizes** the portable lessons, routes each to the right canon home, and commits to Claudinite's `main`. This is the sole judgment gate before shared canon; it replaces the old cross-repo handoff (Action + PAT + labelled issue), which is gone.
 - [growth/dedup.md](growth/dedup.md) — **phase 3, per project.** Prunes local items the now-updated canon covers, **keeping** items the canon states too generally for that project. Commits to the project's `main`.
 - [growth/item-routing.md](growth/item-routing.md) — the shared worthiness + routing method the promote phase (and any other caller) defers to.

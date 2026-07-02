@@ -1,52 +1,41 @@
 # Growth phase 1 — extract lessons (per project)
 
-A portable, **project-agnostic** spec for the daily Claude Code routine that reviews the last 24h of activity and folds any durable, reusable lesson into the project's **own** Markdown docs — the first phase of the [growth lifecycle](README.md) (extract → [promote](promote.md) → [dedup](dedup.md)). Any consuming repo can run it: it makes **no assumptions about a particular project's files, services, or doc layout** beyond "the project keeps its guidance in Markdown docs." It runs unattended, so **most days it correctly adds nothing.**
+Phase 1 of the [growth lifecycle](README.md): review a project's recent activity and fold any durable, reusable lesson into the project's own docs — at the project's own level, without straining to generalize it. It commits to the project's default branch; finding nothing to add on a given run is a perfectly good outcome.
 
-> This is the **unattended daily** routine. The on-demand, in-session "learned lessons" command the owner triggers by hand is a *separate* thing that stays a PR for review (see the owner's preferences and [tasks/extracting-lessons.md](../tasks/extracting-lessons.md)); this daily routine commits straight to the project's own default branch.
+> This is the **unattended daily** routine. The owner's on-demand, in-session "learned lessons" command is a separate thing that stays a PR for review; this one commits directly.
 
-## This phase captures — it does not generalize
+## Capture at the project's own level
 
-Keep every lesson in the **language of the current project**: name its files, its services, its concrete mechanics. **Do not** generalize, abstract, or try to make a lesson portable here — that is [phase 2](promote.md)'s job, run centrally over every project at once. A lesson phrased for this one repo is exactly what this phase wants; over-generalizing here just pre-empts (worse) the judgment the promote phase is built to make. Capture specifically, let promote lift.
+Write each lesson at whatever level reads naturally for this project — refer to its files, services, or mechanics wherever that's what makes the lesson clear, but don't force either extreme: don't contort a lesson to be hyper-specific, and don't polish it into a general, portable rule. Making a lesson portable is [promote](promote.md)'s job, done centrally later; here, just capture it usefully and let promote lift whatever turns out to travel.
 
 ## Conventions used in this doc
 
-- **Default branch.** Below, `main` stands for **your repository's default branch** — substitute `master`, `trunk`, `develop`, or whatever your repo uses.
-- **GitHub API access.** Reading issue/PR activity and updating the tracking issue go through your environment's GitHub API tooling — the **GitHub MCP tools** or the `gh` CLI. In sandboxed/automation environments the shell often reaches only a **git-over-HTTPS proxy with no GitHub API**; there, use the MCP tools, never `gh` / `curl`, which will fail or hang. Use whichever your runtime actually exposes.
-- **The project's local docs.** The set identified in [growth/README.md](README.md). That's the corpus this phase writes into — the project's own docs, never the mounted canon; don't scan the tree for stray Markdown.
-- **The doc that owns a lesson.** "Route each to the doc that owns it" means whichever of those local docs covers that kind of lesson — a gotchas doc, an engineering-practices doc, an architecture doc, a procedures doc. This spec only says *route by kind*; the target files are the consuming project's own.
+- **Default branch.** `main` stands for **your repository's default branch** — substitute whatever your repo uses.
+- **GitHub API access.** Reading issue/PR activity and updating the tracking issue go through your environment's GitHub API tooling — the **GitHub MCP tools** or the `gh` CLI. In sandboxed/automation environments the shell often reaches only a **git-over-HTTPS proxy with no GitHub API**; there, use the MCP tools, never `gh` / `curl`. Use whichever your runtime exposes.
+- **The project's local docs.** The set identified in [growth/README.md](README.md) — the project's own guidance, never the mounted canon.
 
 ## How it finds lessons (scoped to the last 24h)
 
-1. **Activity gate, first.** Count commits + updated issues/PRs in the window. If there were none, stop — a quiet day has nothing to learn from.
+1. **Activity gate, first.** Count commits + updated issues/PRs in the window. None → stop; a quiet day has nothing to learn from.
 2. **Read the window.** The last-24h **commits** (`git log --since`, full bodies, diffs where a fix is non-obvious) and **issue/PR activity** (`updated:>=<since>`, then the changed comments).
-3. **Extract only durable, reusable lessons** — gotchas, engineering practices, test discipline, architecture rules, project mechanics — and **dedupe** each against the existing local docs. When in doubt, leave it out; adding noise is worse than adding nothing.
-4. **Route each to the local doc that owns it**, keeping every addition terse and in this project's own voice (see the routing convention above).
-5. **Most days: nothing** — no edits, no commit. That's what keeps the capture worth reading.
+3. **Extract only durable, reusable lessons** — gotchas, engineering practices, test discipline, architecture rules, project mechanics — and **dedupe** each against what the project already documents. When in doubt, leave it out.
+4. **Put each lesson where it will be read.** A lesson can land in the local doc that owns its kind, or — for a gotcha tied to one call site — as a comment right at that site. Which fits is a placement call [tasks/extracting-lessons.md](../tasks/extracting-lessons.md) owns (usage-site comment vs. central doc); follow it rather than defaulting everything to a doc. Keep each addition terse and in the project's own voice.
 
-Its write surface is **Markdown docs only** — never code, tests, or workflows. If an edit lands in a doc that a test reads (some projects guard doc constants in tests), run the project's offline test suite and keep it green before pushing.
+If an edit touches something a test reads (a doc constant, a code path), run the project's offline test suite and keep it green before pushing.
 
 ## Output: commit straight to main
 
-If it found at least one genuinely new lesson, it **commits the doc edits and pushes them to `main` directly** — no PR, no human gate. This is an unattended routine writing a project's *own local* docs (not the shared canon), captured on a capable model; the owner has opted these daily routines into direct-to-main. Keep each commit terse and reference the routine's tracking issue (below). Most days there is nothing to commit.
+If it found at least one genuinely new lesson, it **commits the edits and pushes to `main` directly** — no PR. This is an unattended routine, on a capable model, writing the project's *own* docs (not the shared canon); the owner has opted these daily routines into direct-to-main. Keep commits terse and reference the tracking issue. A run that finds nothing and commits nothing is fine — and common.
 
 ## Tracking: log each run under the routine's own issue
 
-When a run adds a lesson, log it on this routine's standing tracking issue — found **by title**, never a hard-coded number (a bare number can dangle, and it differs per repo); open it if it doesn't exist. Log the run as a **dated comment** on that issue — **not** a sub-issue — so the issue accumulates a scrollable history of every run over time, and each entry names **what instruction was added to this project and where**. The issue is long-lived: if it was **closed**, **reopen it** when a run needs logging. Each daily automated routine keeps its **own** such issue — a running self-improvement log of what it did.
-
-## The launcher (Claude Code routine)
-
-Keep the routine's config a **thin pointer** to this doc, not an inlined copy — inlined instructions drift against renamed paths and miss conventions the project later adds. This phase is normally dispatched by the fleet orchestrator ([routines/auto-all-repos-maintenance.md](../routines/auto-all-repos-maintenance.md)), which passes a prompt like the following, substituting the target repo and its default branch:
-
-> Run growth phase 1 (extract lessons) for this repository exactly as specified in `<path/to/growth/extract.md>`: review the last 24h of commits and issue/PR activity, extract only genuinely new, durable, reusable lessons (deduped against the existing local docs), and **if any qualify**, route each into the local doc that owns it, phrased in **this project's own specific language** — do not generalize. Edit **Markdown docs only**, keep the offline test suite green, **commit and push straight to `main`** (no PR), and log the run — naming what was added and where — on the routine's standing tracking issue (found **by title**). Most days, find nothing and do nothing.
+When a run adds a lesson, log it on this routine's standing tracking issue — found **by title**, never a hard-coded number (a bare number can dangle, and it differs per repo); open it if it doesn't exist, reopen it if it was closed while runs still need logging. Log the run as a **dated comment** — not a sub-issue — so the issue accumulates a scrollable history, each entry naming **what was added and where**.
 
 ## Run on a capable model
 
-Deciding whether a lesson is genuinely new and durable — and deduping it against the existing docs — is a **judgment call**, not mechanical extraction. A downgraded model floods the docs with noise or restates what's already there, and here it commits that noise straight to `main` with no PR to catch it. Run this routine on a capable model.
+Deciding whether a lesson is genuinely new and durable — and deduping it against what's already documented — is a **judgment call**, not mechanical extraction. A downgraded model adds noise or restates what's there, and here it commits straight to `main` with no PR to catch it. Run this routine on a capable model.
 
 ## What this routine must never do
 
-- **Never generalize a lesson** — capture it in this project's own language; generalizing is [phase 2](promote.md)'s job.
-- **Never write outside Markdown docs** — no code, tests, or workflows.
-- **Never touch the shared canon** — this phase writes only the project's *own* local docs.
-- **Never pad the docs** — most days add nothing; a duplicate or hallucinated "lesson" is worse than silence, and worse still when it lands on `main` unreviewed.
-- **Never inline this spec into the launcher** — the launcher stays a thin pointer here.
+- **Never touch the shared canon** — this phase writes only the project's *own* docs; lifting a lesson up into the canon is [promote](promote.md)'s job.
+- **Don't add noise** — a duplicate or hallucinated "lesson" is worse than adding nothing, the more so committed straight to `main`.
