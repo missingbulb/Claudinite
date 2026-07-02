@@ -14,6 +14,12 @@ The portable recipe for landing the change in front of the owner on `main` — t
 
 The two divergent points — **`squash`** as the method and **CI gating** — are exactly what a bespoke policy file changes.
 
+## After the merge: reflect (every session, every user)
+
+Once the merge has landed and local `main` is synced, run a **lessons-learned pass** over the session that just closed, per [tasks/extracting-lessons.md](../tasks/extracting-lessons.md) (which owns the method). The point here is only the **trigger**: it fires on **every** merge to `main`, for **every** user — not only when someone asks.
+
+**Skip it only when the merge you just landed *is itself* a lessons-pass PR** — reflecting on a reflection has nothing new to mine, and skipping keeps the trigger from looping on its own output.
+
 ## Don't
 
 - **Don't** re-read the issue to confirm it closed — `Closes #<issue>` does that on merge; trust it.
