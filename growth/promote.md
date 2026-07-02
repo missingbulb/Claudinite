@@ -32,7 +32,7 @@ Only now, holding the generalized rule, decide if it earns a place — by the ba
 - **Route** each accepted rule to its **one** owning doc; [item-routing.md](item-routing.md) owns that placement call (which group, tech vs. practice, tool vs. process, or a new doc when nothing fits). Match the target doc's voice and format; pick exactly one owner, never split or duplicate.
 - **Write it terse — when + what.** State the relevance (*when* it applies) and the rule (*what* to do); that's the body. Add a *why* only to flag severity, and keep it to a few words — don't explain the world.
 - **Bounded write surface.** Edit only the one owning doc; don't "improve" unrelated rules while you're in there. Adding a new corpus file is the sole exception, via the new-doc path [item-routing.md](item-routing.md) owns, which bounds what that change may touch.
-- **Open a PR against `main`.** Push the accepted edits to a branch and open a single PR against Claudinite's default branch for the owner to approve — one PR for the whole run's accepted lessons, not one per lesson or per doc — never a direct push. Keep the commit and PR terse; reference this routine's tracking issue (below).
+- **Open a PR against `main`.** Push the accepted edits to a **per-run-unique branch** (not a bare date, so a same-day re-run doesn't collide — canon: [an automated job needs a unique branch per run](../tasks/git-and-github.md#an-automated-job-needs-a-unique-branch-per-run)) and open a single PR against Claudinite's default branch for the owner to approve — one PR for the whole run's accepted lessons, not one per lesson or per doc — never a direct push. Keep the commit and PR terse; reference this routine's tracking issue (below).
 
 ### 5. Log the run to the tracker
 
