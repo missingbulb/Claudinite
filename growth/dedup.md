@@ -18,7 +18,12 @@ When the canon has **absorbed** a practice a local doc still carries — most of
 - **Removes** the now-duplicated local item, since the canon is the single source of truth for portable rules.
 - **Rephrases** a local procedure when the canon's wording of the same idea has changed, so the local docs stay consistent with the canon they point at.
 
-**Keep a local item the canon states too generally for this project.** The canon is deliberately project-agnostic, so its version of a rule is sometimes broader than what this project needs. When the local item carries a **sharper, project-specific** cut — a concrete threshold, a named file, a tighter constraint the general rule doesn't pin down — it isn't redundant: keep it. Prune only when the canon covers the local item with **no loss** of the specificity this project relies on. This is what keeps a project from dissolving its own hard-won specifics into a too-general canon rule.
+**Keep a local item only if it says *more* than the canon — not merely says it more specifically.** Every local item is more specific than the canon, so specificity alone is never the test. Distinguish two cases:
+
+- **The general rule in local dress** — it makes the canon's point but leans on this project's classes, files, or names to make it. Once the canon covers the point, those names were only illustration: prune it.
+- **A stronger point about a narrower case** — it asserts something the canon's general rule leaves out: a tighter constraint, a sharper claim that holds for this project's narrower situation. Keep it.
+
+So ask not "is it specific" (it always is) but "does it only lean on specific names to make the general point, or does it make a point the canon doesn't?" Prune the first; keep the second.
 
 ## Discipline
 
@@ -38,4 +43,4 @@ Proving the mounted canon genuinely covers a local item before pruning it — an
 
 - **Never edit the read-only canon** — it only prunes *local* docs against it.
 - **Never prune a local item without quoting the mounted-canon line that covers it** — when unsure, leave it.
-- **Never prune a local item that holds a sharper, project-specific cut** the general canon rule doesn't cover — keep the project's specificity.
+- **Never prune a local item that makes a stronger point about a narrower case** than the canon — that isn't redundancy. (A local item that only restates the canon in project-specific names *is* prunable once the canon covers the point.)

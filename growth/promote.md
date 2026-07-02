@@ -20,12 +20,12 @@ Generalize first, then decide worthiness — never the reverse. A rule phrased f
 
 - **Work the rule standalone.** Judge and rewrite it on its own merits, independent of the doc it came from and whatever that doc named things — origin naming and grouping carry no weight.
 - **Strip the project.** Remove the origin's names, files, and example; the worked example stays in its origin repo. Promote the distilled rule only.
-- **Re-test a technology mention.** If the rule names or is framed around a specific technology, decide whether it's *truly* tied to that technology or a broader practice that merely surfaced there — lift it to the broader scope when it fits.
+- **A technology mention isn't a disqualifier.** If the rule names a specific technology, lift it to the broadest scope that stays true — and if it really is tied to that technology, it still belongs in the canon, in that technology's home. Tech-specific is fine; *product*-specific is not.
 - **Tool vs. process.** If the rule is about using a specific tool *and* about a process, make the call on which it really belongs to, and frame it for that home.
 
 ### 3. Then judge worthiness — deduped against the *entire* corpus
 
-Only now, holding the generalized rule, decide if it earns a place. Apply the worthiness + routing method [item-routing.md](item-routing.md) owns — don't restate its gates here. Dedupe against **every** corpus doc, not just the one you'd expect to own it — the same insight is often already there under a different heading. Default to reject when unsure; rejection is the common, healthy outcome.
+Only now, holding the generalized rule, decide if it earns a place — by the bar [item-routing.md](item-routing.md) owns; don't restate its gates here. Lean **inclusive**: the goal is a broad library, so keep anything a future project (especially one with a similar tech stack) could use, even if only one project benefits today. Be strict about just one thing — duplication: dedupe against **every** corpus doc, not only the one you'd expect to own it, since the same insight is often already there under a different heading.
 
 ### 4. Route and write — directly to the canon's default branch
 
@@ -50,8 +50,6 @@ The routine's standing self-improvement log is the issue titled exactly:
 
 ## What this routine must never do
 
-- **Never wait on an inbound issue or label** — this routine reads the projects directly; there's no handoff queue to consume.
-- **Never promote a non-portable item** — a lesson that only makes sense with one project's context stays in that project's local docs.
-- **Never accept on a tie** — default to reject when unsure; a wrong acceptance pollutes every consumer with no PR to catch it.
+- **Never promote a product-specific or one-off item** — a product requirement, or a single incident in how the project used some API, stays in that project's local docs.
 - **Never weaken, restate, or duplicate an existing rule** — fold a genuine sharpening in per [item-routing.md](item-routing.md) instead.
 - **Never edit anything outside the one owning doc** per accepted lesson — the sole exception is the bounded new-doc path in [item-routing.md](item-routing.md). Never alter the origin project.
