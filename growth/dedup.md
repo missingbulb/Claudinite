@@ -1,6 +1,6 @@
 # Growth phase 3 — dedup local docs against the canon (per project)
 
-Phase 3 of the [growth lifecycle](README.md): reconcile a project's local docs against the shared **canon** it consumes (Claudinite, vendored read-only), pruning local items the canon now covers. It runs after promotion has updated the canon, and commits to the project's default branch. Often there's nothing to prune, and that's fine.
+Phase 3 of the [growth lifecycle](README.md): reconcile a project's local docs against the shared **canon** it consumes (Claudinite, vendored read-only), pruning local items the canon now covers. It runs after promotion, and opens a PR against the project's default branch for the owner to approve. Often there's nothing to prune, and that's fine.
 
 > This phase only prunes local docs against the canon; lifting local items up into the canon is [promote](promote.md)'s job.
 
@@ -8,7 +8,7 @@ Phase 3 of the [growth lifecycle](README.md): reconcile a project's local docs a
 
 - **Default branch.** `main` stands for **your repository's default branch** — substitute whatever your repo uses.
 - **GitHub API access.** Updating the tracking issue goes through your environment's GitHub API tooling — the **GitHub MCP tools** or the `gh` CLI. In sandboxed/automation environments the shell often reaches only a **git-over-HTTPS proxy with no GitHub API**; there, use the MCP tools, never `gh` / `curl`. Use whichever your runtime exposes.
-- **The mounted canon.** The exact canon revision your project currently consumes — compare against *that*, not a live fetch. Under session-start sync it's the latest `main` (so a lesson promoted earlier this cycle is already visible); under a pinned submodule it's the pin (so the item lands here only once the pointer is bumped). Either way you prune only against what the project actually mounts.
+- **The mounted canon.** The exact canon revision your project currently consumes — compare against *that*, not a live fetch. Under session-start sync it's the latest `main` (so a promotion is visible only once its PR is merged, not the moment phase 2 opens it); under a pinned submodule it's the pin (so the item lands here only once the pointer is bumped). Either way you prune only against what the project actually mounts.
 - **The project's local docs.** The set identified in [growth/README.md](README.md). That's the corpus this phase prunes within; the mounted canon is never a prune target, only the yardstick you prune *against*.
 
 ## What it does: prune / rephrase local docs the canon now covers
@@ -28,7 +28,7 @@ So ask not "is it specific" (it always is) but "does it only lean on specific na
 ## Discipline
 
 - **Only remove a local item you can show the mounted canon genuinely covers — quote the canon line.** When unsure, leave it; a wrongful prune deletes a real local lesson.
-- **Commit to `main` directly** — no PR. This is an unattended routine, on a capable model, editing the project's *own* docs; the owner has opted these daily routines into direct-to-main.
+- **Open a single PR against `main`** — one PR for the whole run's prunes, not one per item — never a direct push. This is an unattended routine, on a capable model, editing the project's *own* docs; the owner wants a human approval gate on every growth change.
 - If an edit touches something a test reads, run the project's offline test suite and keep it green before pushing.
 
 ## Tracking
@@ -37,7 +37,7 @@ Log each run that changed a doc as a **dated comment** on this routine's standin
 
 ## Run on a capable model
 
-Proving the mounted canon genuinely covers a local item before pruning it — and telling "the canon now owns this" from "the canon states this too generally, keep the local cut" — is a **judgment call**. A downgraded model prunes a real lesson, and here it commits that loss straight to `main` with no PR to catch it. Run this routine on a capable model.
+Proving the mounted canon genuinely covers a local item before pruning it — and telling "the canon now owns this" from "the canon states this too generally, keep the local cut" — is a **judgment call**. A downgraded model prunes a real lesson; the review PR is a backstop, but a wrongful prune is easy to wave through in review, so don't lean on it. Run this routine on a capable model.
 
 ## What this routine must never do
 

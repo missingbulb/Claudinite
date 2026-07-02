@@ -1,12 +1,12 @@
 # Growth phase 2 — promote lessons into the canon (central)
 
-Phase 2 of the [growth lifecycle](README.md), run **once, centrally, from the Claudinite home repo** — not per project: read every consuming project's local docs, lift the portable lessons into the shared canon, and commit them to the canon's default branch. It is Claudinite-internal — consuming repos don't vendor or `@import` it.
+Phase 2 of the [growth lifecycle](README.md), run **once, centrally, from the Claudinite home repo** — not per project: read every consuming project's local docs, lift the portable lessons into the shared canon, and open a PR against the canon's default branch for the owner to approve. It is Claudinite-internal — consuming repos don't vendor or `@import` it.
 
-Promotion is the **sole judgment gate before shared canon**: it commits directly, with no human PR behind it, and phase 1 stays project-specific by design, so it's no second opinion on portability. This routine's judgment is the only thing between a bad rule and every project that reads the canon — so keep the bar high. The strictness below (dedupe against the whole corpus, default to reject when unsure) is what compensates for the missing PR.
+Promotion is the **judgment gate before shared canon**: it opens a PR for the owner's approval, but don't lean on that review as the portability check — phase 1 stays project-specific by design, so it's no second opinion, and the owner can't re-derive every portability call in review. This routine's judgment is the real thing between a bad rule and every project that reads the canon — so keep the bar high. The strictness below (dedupe against the whole corpus, default to reject when unsure) is what keeps junk out of the PR in the first place.
 
 ## Run on a capable model
 
-Every step is a judgment call — portability, duplication, ownership, "does this clear the bar," how to generalize a project-specific lesson without distorting it. Per [agenticBestPractices.md](../tasks/agenticBestPractices.md) ("Match the agent model to the judgment it must make"), run this routine on a capable model. A downgraded model ships a plausible-but-wrong **acceptance** — exactly the failure that pollutes shared canon — where a capable model correctly rejects.
+Every step is a judgment call — portability, duplication, ownership, "does this clear the bar," how to generalize a project-specific lesson without distorting it. Per [agenticBestPractices.md](../tasks/agenticBestPractices.md) ("Match the agent model to the judgment it must make"), run this routine on a capable model. A downgraded model ships a plausible-but-wrong **acceptance** into the PR — exactly the failure the review is least likely to catch — where a capable model correctly rejects.
 
 ## What each run does
 
@@ -32,7 +32,7 @@ Only now, holding the generalized rule, decide if it earns a place — by the ba
 - **Route** each accepted rule to its **one** owning doc; [item-routing.md](item-routing.md) owns that placement call (which group, tech vs. practice, tool vs. process, or a new doc when nothing fits). Match the target doc's voice and format; pick exactly one owner, never split or duplicate.
 - **Write it terse — when + what.** State the relevance (*when* it applies) and the rule (*what* to do); that's the body. Add a *why* only to flag severity, and keep it to a few words — don't explain the world.
 - **Bounded write surface.** Edit only the one owning doc; don't "improve" unrelated rules while you're in there. Adding a new corpus file is the sole exception, via the new-doc path [item-routing.md](item-routing.md) owns, which bounds what that change may touch.
-- **Commit straight to `main`.** Push the accepted edits directly to Claudinite's default branch — no PR. Keep commits terse; reference this routine's tracking issue (below).
+- **Open a PR against `main`.** Push the accepted edits to a branch and open a single PR against Claudinite's default branch for the owner to approve — one PR for the whole run's accepted lessons, not one per lesson or per doc — never a direct push. Keep the commit and PR terse; reference this routine's tracking issue (below).
 
 ### 5. Log the run to the tracker
 

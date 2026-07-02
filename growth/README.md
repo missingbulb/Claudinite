@@ -5,18 +5,20 @@ This folder holds the **growth lifecycle**: how a lesson is learned in a consumi
 The lifecycle is **three phases with a barrier between each**, sequenced daily by the fleet orchestrator ([../routines/auto-all-repos-maintenance.md](../routines/auto-all-repos-maintenance.md)):
 
 ```
-Phase 1  EXTRACT   per project, in parallel   → commit to each project's main
-   ⟨barrier: every project has finished extracting⟩
-Phase 2  PROMOTE   central, once              → commit to Claudinite main
-   ⟨barrier: the canon is updated⟩
-Phase 3  DEDUP     per project, in parallel   → commit to each project's main
+Phase 1  EXTRACT   per project, in parallel   → PR against each project's main
+   ⟨barrier: every project has opened its extract PR⟩
+Phase 2  PROMOTE   central, once              → PR against Claudinite main
+   ⟨barrier: promotion's PR is opened⟩
+Phase 3  DEDUP     per project, in parallel   → PR against each project's main
 ```
 
-- **[extract.md](extract.md)** — phase 1, per project. Captures the last 24h of bugs/PRs/commits into the project's **own** docs, at the project's own level (generalizing is phase 2's job). Commits to the project's `main`; logs to a per-project tracking issue.
-- **[promote.md](promote.md)** — phase 2, central. Reads every project's local docs, **generalizes** the portable lessons, routes each to the right canon home, and commits to Claudinite's `main`. This is the sole judgment gate before shared canon.
-- **[dedup.md](dedup.md)** — phase 3, per project. Prunes local items the (now-updated) canon covers, **keeping** items the canon states too generally for that project. Commits to the project's `main`.
+Every phase opens a **PR for the owner to approve** — none commits to `main` unattended. Because of that, a phase reads only what's **already merged** on `main`, not the still-open PR the previous phase just opened this cycle: a lesson flows extract → promote → dedup across **approval cycles**, not within one night. The daily order and barriers are kept so each phase still runs on the freshest *merged* state, but the propagation now spans however long the owner's approvals take.
+
+- **[extract.md](extract.md)** — phase 1, per project. Captures the last 24h of bugs/PRs/commits into the project's **own** docs, at the project's own level (generalizing is phase 2's job). Opens a PR against the project's `main`; logs to a per-project tracking issue.
+- **[promote.md](promote.md)** — phase 2, central. Reads every project's local docs, **generalizes** the portable lessons, routes each to the right canon home, and opens a PR against Claudinite's `main`. This is the sole judgment gate before shared canon.
+- **[dedup.md](dedup.md)** — phase 3, per project. Prunes local items the canon covers, **keeping** items the canon states too generally for that project. Opens a PR against the project's `main`.
 - **[item-routing.md](item-routing.md)** — the shared worthiness + routing method phase 2 (and any other caller) defers to, so every decision about admitting and placing an item is made the same way.
-- **[extracting-lessons.md](extracting-lessons.md)** — the method for mining a single working session for lessons: the owner's on-demand "learned lessons" command, and the pass the merge flow runs after every merge. Delivered as a PR for review, not committed straight to `main` like the daily phases. **Force-loaded every session** (`@`-imported from the root [CLAUDE.md](../CLAUDE.md)) because the always-loaded merge flow references it and an unconditional step can't rely on a soft-pointer read.
+- **[extracting-lessons.md](extracting-lessons.md)** — the method for mining a single working session for lessons: the owner's on-demand "learned lessons" command, and the pass the merge flow runs after every merge. Delivered as a PR for review — the same approval gate the daily phases now use. **Force-loaded every session** (`@`-imported from the root [CLAUDE.md](../CLAUDE.md)) because the always-loaded merge flow references it and an unconditional step can't rely on a soft-pointer read.
 
 ## Identifying a project's local docs (the same way in all three phases)
 
@@ -26,7 +28,7 @@ The three phases only differ in *how they read that set*, never in *which set it
 
 ## Two design choices baked in here
 
-- **Unattended → direct to main.** Every phase above commits straight to `main` with no PR — these are unattended daily routines run on a capable model, and the owner opted them into direct-to-main. (The owner's *on-demand, in-session* "learned lessons" command is separate and still delivers a PR for review — see [extracting-lessons.md](extracting-lessons.md) and the owner preferences.)
-- **Central promotion, no plumbing.** Phase 2 runs from the Claudinite home repo with a fleet-wide token, so it reads every project and writes the canon directly. That's why the old handoff machinery (a consumer-side Action, a Claudinite-scoped PAT, a labelled-issue up-path) no longer exists: there's no repo boundary left to tunnel across.
+- **Unattended → PR for approval.** Every phase above opens a PR for the owner to approve rather than committing to `main` — these are unattended daily routines run on a capable model, and the owner wants a human approval gate on every growth change. (The owner's *on-demand, in-session* "learned lessons" command delivers a PR the same way — see [extracting-lessons.md](extracting-lessons.md) and the owner preferences.)
+- **Central promotion, no plumbing.** Phase 2 runs from the Claudinite home repo with a fleet-wide token, so it reads every project and opens its canon PR directly in this repo. That's why the old handoff machinery (a consumer-side Action, a Claudinite-scoped PAT, a labelled-issue up-path) no longer exists: there's no repo boundary left to tunnel across.
 
 These specs are Claudinite-internal orchestration inputs, with one exception: [extracting-lessons.md](extracting-lessons.md) is `@`-imported by the root index and force-loads every session. Of the rest, consuming repos vendor the per-project phases ([extract.md](extract.md), [dedup.md](dedup.md)) the same way they vendor the other routines; [promote.md](promote.md) and [item-routing.md](item-routing.md) run only centrally and are not `@import`ed by consumers.
