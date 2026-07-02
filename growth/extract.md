@@ -12,7 +12,8 @@ Keep every lesson in the **language of the current project**: name its files, it
 
 - **Default branch.** Below, `main` stands for **your repository's default branch** — substitute `master`, `trunk`, `develop`, or whatever your repo uses.
 - **GitHub API access.** Reading issue/PR activity and updating the tracking issue go through your environment's GitHub API tooling — the **GitHub MCP tools** or the `gh` CLI. In sandboxed/automation environments the shell often reaches only a **git-over-HTTPS proxy with no GitHub API**; there, use the MCP tools, never `gh` / `curl`, which will fail or hang. Use whichever your runtime actually exposes.
-- **The doc that owns a lesson.** "Route each to the doc that owns it" means whichever of *your local* docs covers that kind of lesson — a gotchas doc, an engineering-practices doc, an architecture doc, a procedures doc. This spec only says *route by kind*; the target files are the consuming project's own.
+- **The project's local docs.** Identified the same way in every phase: the docs reachable by following the pointer graph from the repo's root `CLAUDE.md`, **minus** the mounted canon under `.claudinite/` (see [growth/README.md](README.md)). That `CLAUDE.md`-anchored set is the corpus this phase writes into — don't scan the tree for stray Markdown.
+- **The doc that owns a lesson.** "Route each to the doc that owns it" means whichever of those local docs covers that kind of lesson — a gotchas doc, an engineering-practices doc, an architecture doc, a procedures doc. This spec only says *route by kind*; the target files are the consuming project's own.
 
 ## How it finds lessons (scoped to the last 24h)
 

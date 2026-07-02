@@ -17,6 +17,12 @@ Phase 3  DEDUP     per project, in parallel   → commit to each project's main
 - **[dedup.md](dedup.md)** — phase 3, per project. Prunes local items the (now-updated) canon covers, **keeping** items the canon states too generally for that project. Commits to the project's `main`.
 - **[item-routing.md](item-routing.md)** — the shared worthiness + routing method phase 2 (and any other caller) defers to, so every decision about admitting and placing an item is made the same way.
 
+## Identifying a project's local docs (the same way in all three phases)
+
+Every phase operates on a project's **local instruction docs**, and all three identify them the **same way**: by following the import/pointer graph out from the repo's **root `CLAUDE.md`** — the very graph the agent itself loads — and treating everything under the mounted canon at `.claudinite/` as **read-only canon, not local docs**. So "a project's local docs" means precisely *the project's own docs reachable from its `CLAUDE.md`, minus the canon it mounts*. Don't scan the whole tree for stray Markdown; the `CLAUDE.md` graph is the authoritative set, and a doc no `CLAUDE.md` path reaches isn't part of the project's instructions.
+
+The three phases only differ in *how they read that set*, never in *which set it is*: phases 1 and 3 run inside the repo and read it from the working tree; phase 2 runs centrally and walks the same graph over the GitHub API (get-file-contents from `CLAUDE.md` outward). Extract writes into it, promote reads from it, dedup prunes within it — all against the identical, `CLAUDE.md`-anchored corpus.
+
 ## Two design choices baked in here
 
 - **Unattended → direct to main.** Every phase above commits straight to `main` with no PR — these are unattended daily routines run on a capable model, and the owner opted them into direct-to-main. (The owner's *on-demand, in-session* "learned lessons" command is separate and still delivers a PR for review — see [../tasks/extracting-lessons.md](../tasks/extracting-lessons.md) and the owner preferences.)
