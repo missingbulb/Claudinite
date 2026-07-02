@@ -14,20 +14,24 @@ Every step is a judgment call — portability, duplication, ownership, "does thi
 
 Enumerate every opted-in repo the token can access (the same discovery the fleet orchestrator uses; see [routines/auto-all-repos-maintenance.md](../routines/auto-all-repos-maintenance.md)). For each, read its **local instruction docs** — the set identified in [growth/README.md](README.md). You're outside the repo here, so read them over the API (get-file-contents, never a checkout — cross-repo clones aren't available in the sandboxed environment). The candidate pool is every distilled rule sitting in those local docs — both lessons [extract](extract.md) added this cycle and any portable local item never promoted before. You don't need to tell new from old: the dedup step below drops anything the canon already carries, so an already-promoted item simply falls out.
 
-### 2. For each candidate, judge worthiness and generalize
+### 2. Generalize each candidate — *before* judging whether it belongs
 
-Judge each candidate with the worthiness + routing method [item-routing.md](item-routing.md) owns — apply it, don't restate its gates here. Most local items won't clear it (they're project-specific by design); those stay local and this routine leaves them untouched.
+Generalize first, then decide worthiness — never the reverse. A rule phrased for its origin project can look non-portable, or unlike anything already in the canon, until you've lifted it; deciding fitness first would wrongly reject it. The act of generalizing is itself the portability probe — a rule that goes vacuous when lifted, or only makes sense with its project's context, isn't portable; leave it local.
 
-When a candidate does clear the bar but is phrased for its origin project, **generalize it**: strip the project-specific names and restate it as one tight, project-agnostic rule. The worked example stays in its origin repo — promote the distilled rule only, never paste in the origin project's files, issue numbers, or example.
+- **Work the rule standalone.** Judge and rewrite it on its own merits, independent of the doc it came from and whatever that doc named things — origin naming and grouping carry no weight.
+- **Strip the project.** Remove the origin's names, files, and example; the worked example stays in its origin repo. Promote the distilled rule only.
+- **Re-test a technology mention.** If the rule names or is framed around a specific technology, decide whether it's *truly* tied to that technology or a broader practice that merely surfaced there — lift it to the broader scope when it fits.
+- **Tool vs. process.** If the rule is about using a specific tool *and* about a process, make the call on which it really belongs to, and frame it for that home.
 
-### 3. Dedupe against the *entire* corpus
+### 3. Then judge worthiness — deduped against the *entire* corpus
 
-Read **every corpus doc** before accepting anything, not just the doc you expect to own the item — the same insight is frequently already present under a different heading. This is [item-routing.md](item-routing.md)'s dedupe gate; the operating stance it demands of this routine is to **default to reject when unsure**. Rejection is the common, expected, healthy outcome — most candidates don't clear the bar.
+Only now, holding the generalized rule, decide if it earns a place. Apply the worthiness + routing method [item-routing.md](item-routing.md) owns — don't restate its gates here. Dedupe against **every** corpus doc, not just the one you'd expect to own it — the same insight is often already there under a different heading. Default to reject when unsure; rejection is the common, healthy outcome.
 
 ### 4. Route and write — directly to the canon's default branch
 
-- **Route** each accepted lesson into its **one** owning doc using [item-routing.md](item-routing.md), matching that doc's existing voice and format (a bold-thesis bullet in `agenticBestPractices.md`; a dense imperative bullet in `engineeringPractices.md`; a `##` section in `git-and-github.md`; a per-technology file under `technologies/`; a `tasks/` file for a subject-gated practice; `always/` only for a rule that applies to essentially every task). Pick exactly one owner; never split or duplicate across docs.
-- **Bounded write surface.** Each accepted lesson edits only its single owning doc; don't "improve" unrelated rules while you're in there. Adding a *new* corpus file is the sole exception, and only via the new-doc path [item-routing.md](item-routing.md) owns ("When nothing fits") — which also bounds what that change may touch.
+- **Route** each accepted rule to its **one** owning doc; [item-routing.md](item-routing.md) owns that placement call (which group, tech vs. practice, tool vs. process, or a new doc when nothing fits). Match the target doc's voice and format; pick exactly one owner, never split or duplicate.
+- **Write it terse — when + what.** State the relevance (*when* it applies) and the rule (*what* to do); that's the body. Add a *why* only to flag severity, and keep it to a few words — don't explain the world.
+- **Bounded write surface.** Edit only the one owning doc; don't "improve" unrelated rules while you're in there. Adding a new corpus file is the sole exception, via the new-doc path [item-routing.md](item-routing.md) owns, which bounds what that change may touch.
 - **Commit straight to `main`.** Push the accepted edits directly to Claudinite's default branch — no PR. Keep commits terse; reference this routine's tracking issue (below).
 
 ### 5. Log the run to the tracker
