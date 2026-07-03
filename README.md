@@ -36,8 +36,8 @@ Beyond the portable corpus above, two folders hold the machinery that keeps it f
 
 `routines/` holds the scheduled jobs:
 
-- [routines/auto-all-repos-maintenance.md](routines/auto-all-repos-maintenance.md) — **the single scheduled entry point.** One daily routine, scheduled once from a home repo, that discovers **every** Claudinite-vendored repo the token can access (by the tracked `.claudinite/` marker) and sequences the growth lifecycle across the fleet — phase 1 in every repo (parallel) → barrier → phase 2 once (central) → barrier → phase 3 in every repo (parallel) — plus the nightly branch report, each run as its own isolated subagent so no repo or phase can stop the others. Schedule **this**, nothing else.
-- [routines/auto-branch-report.md](routines/auto-branch-report.md) — project-agnostic nightly open-branch status report any consuming repo can vendor and run.
+- [routines/auto-all-repos-maintenance.md](routines/auto-all-repos-maintenance.md) — **the single scheduled entry point.** One daily routine, scheduled once from a home repo, that discovers **every** Claudinite-vendored repo the token can access (by the tracked `.claudinite/` marker) and sequences the growth lifecycle across the fleet — phase 1 in every repo (parallel) → barrier → phase 2 once (central) → barrier → phase 3 in every repo (parallel) — plus the nightly repo tidy-up, each run as its own isolated subagent so no repo or phase can stop the others. Schedule **this**, nothing else.
+- [routines/auto-repo-tidy.md](routines/auto-repo-tidy.md) — project-agnostic nightly repo tidy-up (open PRs, branches, and issues) any consuming repo can vendor and run.
 
 **Where things land:** every growth phase is unattended and opens a PR for the owner to approve — nothing commits to `main` on its own. Because a phase reads only what's already merged, lessons flow extract → promote → dedup across approval cycles, not in one night. The owner's *on-demand, in-session* "learned lessons" command delivers a PR the same way.
 
