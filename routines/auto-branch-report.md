@@ -18,7 +18,7 @@ For every remote branch except the default branch:
 - **open PR**, if any — via the GitHub API tooling described above;
 - **safe to delete?** — yes only when the branch's content is already in `main`.
 
-And for every branch with commits ahead that is **not** already merged, a 1–3 sentence **description of the changes** it carries (from its commit subjects/bodies and diffstat) — so the table is actionable without checking out each branch.
+And for every branch with commits ahead that is **not** already merged, a 1–3 sentence **description of the changes** it carries (from its commit subjects/bodies and diffstat) — so the table is actionable without checking out each branch. Derive both **status and description from the commits and diff, never from the branch name** — names are auto-generated (`eager-wozniak`) or get repurposed to unrelated work, so a name-based guess routinely mislabels a branch.
 
 ## The crux: raw "commits ahead" is misleading — be squash-aware
 
