@@ -48,6 +48,10 @@ A squash-merge creates a new commit on `main` that the branch's own commits are 
 
 GitHub suppresses workflow runs triggered by the built-in `GITHUB_TOKEN` to prevent recursion, so a workflow's own `git push` or `gh pr create` won't fire another workflow (e.g. a `test` or cache-refresh workflow). The one exception is `workflow_dispatch` / `repository_dispatch` — which is why an automation pipeline that needs the downstream checks to run must dispatch them explicitly. A run dispatched against a branch executes on its head commit, so its checks still attach to the PR.
 
+## Gate an optional CI job on a repo variable, not a secret
+
+`secrets.*` are not available in a job-level `if:`, so a job gated on a secret can't evaluate its condition and **fails (red)** instead of skipping. Put a non-sensitive flag (a deploy-role ARN, a feature toggle) in a repository **variable** and gate with `if: ${{ vars.X != '' }}` so the job is **skipped (neutral)** until it's configured — keeping the default branch green for anyone who hasn't set the integration up. Reserve secrets for the values consumed *inside* the job's steps.
+
 ## An automated job needs a unique branch per run
 
 An automated or scheduled job that derives its branch name from a non-unique key (e.g. the date) collides with itself on a repeat run for that key — `git checkout -b` fails when the branch already exists, and a push to the diverged remote branch is rejected non-fast-forward (so the run can't even open its PR). Give every run its own branch: append a per-run-unique suffix (`$RANDOM` / a short token) to the readable prefix.
