@@ -34,7 +34,7 @@ Per open issue, take the **first** that applies:
 - Small and quick to do → label `quick-win` + comment scoping it.
 - Else → leave it.
 
-Create a label if it's missing. Close **only** when done-ness is verifiable in `main`; otherwise comment, don't close.
+Create a label if it's missing. **"Implemented in `main`" = the issue's actual ask is true of `main`'s content now** — confirm by finding it there and cite it, never infer it from a linked PR merging or the issue merely looking done. Can't point to it ⇒ comment, don't close.
 
 ## Report
 
