@@ -18,6 +18,10 @@ applies because of what the project *is* — its category.
 
 Add a row when you add a template.
 
+## The generator prompt — [generate-project-instructions.md](generate-project-instructions.md)
+
+Distinct from the category templates above: not a per-class playbook but the **tool that produces one project's working-instructions doc**. Pasted into any repo, it investigates the repo, works out the project's category from evidence (its own axes + gallery, finer-grained than this catalog), and writes the instruction set scaled to that category. It's the concrete procedure behind the reverse flow below — run it when a project hasn't chosen a category, or its category has no template yet. Where the category it lands on already has a catalog template, base the doc on / link that template; where it doesn't, the doc it produces is the seed for a new one.
+
 ## How a project picks a template — the two directions
 
 ### Forward — categorize at bootstrap (matching template exists)
@@ -43,12 +47,17 @@ when nothing in the catalog matches: name the general class of work this project
 is (one line). A project that can't name its category hasn't understood itself
 yet — define it first.
 
+Run [generate-project-instructions.md](generate-project-instructions.md) to do
+both at once: it determines the category and writes the project's own
+working-instructions doc for it.
+
 A category with **no matching template is a signal to uplevel**: the
 project-type-level working procedures for that class deserve a template so the
 *next* project of that variety starts from it instead of re-deriving them. To
-uplevel, distil the portable, subject-matter-free procedures for the class into
-a new `templates/<class>.md` (mirror the research template's principle-first
-shape), add a catalog row, and link it back from the project.
+uplevel, distil the portable, subject-matter-free procedures for the class out
+of that generated doc into a new `templates/<class>.md` (mirror the research
+template's principle-first shape), add a catalog row, and link it back from the
+project.
 
 **When the uplevel runs (proposed — see issue #115 to confirm the trigger):**
 the *gap* is detected at bootstrap (no catalog match → the project declares its
