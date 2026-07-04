@@ -337,8 +337,8 @@ sessions**, not in any committed file. If the owner revives such a session and
 points it at this playbook, here is the instruction for that revived session:
 
 > **Your job in this revived session is to mine our conversation for *process and
-> working-style preferences*, and fold them into
-> `docs/research_process_playbook.md` — NOT to continue the research task itself.**
+> working-style preferences*, and fold them into this playbook — NOT to continue
+> the research task itself.**
 > Re-read the whole dialogue and extract only the durable, project-agnostic
 > signal about *how the owner wants research run*: how they want results shown;
 > what they praised or rejected about the workflow (not just the algorithm);
