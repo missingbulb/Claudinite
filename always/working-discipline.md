@@ -8,6 +8,8 @@ Confirm a behavior isn't already provided before building a mechanism for it —
 
 When feedback flags a misunderstanding, don't reflexively expand the artifact to compensate. First check whether it's already correct — if it is, say so and push back rather than editing; a misread doesn't imply the text is wrong (the sibling of the rule above). And size writing to its idea: "open one issue" takes a sentence, not three paragraphs — prose padded to preempt confusion usually breeds it.
 
+When correcting or auditing an artifact against an authoritative source, derive the corrected version from the *source* before reading the existing draft — reading the draft first anchors you to its framing and quietly carries its errors into your "fix." Build from the source, then diff against the old draft to surface what was actually wrong; a clean-room rebuild catches biases an edit-in-place pass silently inherits.
+
 Fix build/test/CI warnings, don't tolerate them: a clean run with no warnings makes a genuinely new warning or error stand out, so noise here costs detection later. Prefer a small, targeted fix that addresses the *cause* in the same change.
 
 Suppressing a warning — muting it with a flag (e.g. `--disable-warning`), `eslint-disable`, swallowing it, etc. — is **not** a small fix: it hides the signal instead of resolving it. Never reach for suppression as the quick path. It's only ever an option inside the dedicated-issue path below, as a deliberate, reviewed decision once the real fix has been weighed and rejected — never an unattended default.
