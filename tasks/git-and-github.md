@@ -2,6 +2,10 @@
 
 The project-agnostic half of how we drive GitHub: the branch/commit-history rules for PR work, the CI-trigger rules, and how we keep merge-conflict churn cheap across parallel branches. (The issue → branch → PR task lifecycle that every task follows lives in [task-lifecycle.md](../always/task-lifecycle.md), which the root [CLAUDE.md](../CLAUDE.md) `@`-imports into its always-on baseline — it's not task-gated, so it doesn't live here.) Project-specific GitHub procedures (the merge-to-main command, when to open a PR early, the merge-cheaply poll loop tuned to the local environment, and the generated-file merge rules) live in the consuming repo's own GitHub-procedures doc.
 
+## Updating an issue's status: comment, don't overwrite
+
+To post a **status update** on an issue (the lifecycle's "update the issue's status" step), use `add_issue_comment`. **Don't** reach for `issue_write` with `method: update` — that edits the issue itself and **replaces the whole body**, silently wiping the original description. Reserve `issue_write`/`update` for genuinely editing the issue (retitling, rewriting the body on purpose).
+
 ## Branch and commit history
 
 ### Commit often, in layers
