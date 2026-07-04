@@ -60,6 +60,10 @@ An automated or scheduled job that derives its branch name from a non-unique key
 
 `gh issue edit --add-label "<name>"` fails when the label doesn't exist yet — unlike applying an already-defined label, GitHub won't create it on demand, so a workflow that introduces a new label breaks the first time it runs. Create it idempotently before the edit (`gh label create "<name>" --color … 2>/dev/null || true`), then `--add-label`.
 
+## A GitHub Actions `run:` step's default shell has no `pipefail`
+
+GitHub's implicit default run-shell is `bash -e {0}` — **without** `pipefail` — so a step piping through another command (e.g. `cmd 2>&1 | tee log`) reports the *last* command's exit code, not the piped command's: a failing command still shows the step green. Set `defaults.run.shell: bash` (job- or step-level), which GitHub runs as `bash --noprofile --norc -eo pipefail {0}`, so the step fails when any command in the pipe fails.
+
 ## A CI job that reads submodule files must fetch submodules in its checkout
 
 `actions/checkout` does **not** fetch submodules by default — the submodule directory is an empty folder in CI unless you pass `submodules: true` (or `recurse-submodules: true`). Without it, any gate that reads submodule content passes vacuously: the check is a no-op, not a signal. Add the flag to every CI job whose tests read submodule content.
