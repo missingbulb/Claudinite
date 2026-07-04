@@ -22,6 +22,10 @@ One doc **outside** `always/` is also force-loaded. The merge flow ([always/merg
 
 `preferences/<email>.md` holds the owner's per-user interaction preferences. The `preferences/inject-preferences.sh` SessionStart hook (registered in `.claude/settings.json`) loads the current user's file into context at session start — you don't read it yourself.
 
+## templates/ — the project's *type*, not a per-task doc; consulted at bootstrap
+
+`templates/` holds one project-agnostic playbook per **class of project** the owner runs (research/algorithm-iteration is the first). A project doesn't read these per task — it **links the one template that matches its category** from its own `CLAUDE.md`, once, and follows it. Picking (or, when none fits, defining) that category is a **bootstrap** step ([bootstrap.md](bootstrap.md), Part 5); the catalog and the pick-or-uplevel process live in [templates/README.md](templates/README.md).
+
 ## technologies/ — read only the file(s) the task touches; otherwise skip
 
 [Node.js](technologies/nodejs.md) · [Chrome extension](technologies/chrome-extension.md) · [AWS SAM](technologies/aws-sam.md) · [Flutter](technologies/flutter.md) · [HTML](technologies/html.md)
