@@ -93,6 +93,12 @@ through them.
 Write down your read of the category before drafting — it is the decision that
 everything downstream depends on.
 
+If this repo mounts Claudinite (a `.claudinite/` directory is present), check
+`.claudinite/templates/` for a playbook matching the category you land on. If
+one exists, base this document on it and **link** it rather than restating its
+guidance; the shared template stays the source of truth and you write only this
+project's specifics.
+
 ## Step 3 — Decide the document's shape from the category
 
 Include the sections a project of this category actually needs; omit the ones
@@ -156,3 +162,10 @@ CONTRIBUTING.md / AGENTS.md / CLAUDE.md / docs guide if one exists, otherwise
 create one (propose the path). Before finalizing, give me a short summary of the
 category you settled on (Step 2) and which conditional sections you included or
 skipped and why.
+
+If this repo mounts Claudinite and the category you settled on had **no**
+matching template under `.claudinite/templates/`, flag that: the
+project-agnostic core of the doc you just wrote is the seed for a new
+`.claudinite/templates/<category>.md` so the next project of this kind starts
+from it. Note it in your summary; authoring the shared template is a separate,
+owner-approved step.
