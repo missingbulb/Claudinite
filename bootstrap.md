@@ -123,3 +123,17 @@ Only if your project genuinely diverges (a non-squash method, a twice-green or e
 **A consuming project schedules nothing and wires up no plumbing.** The [growth lifecycle](growth/README.md) (extract → promote → dedup) and the nightly repo tidy-up all run **centrally**, from the owner's home repo, by the fleet routine [`routines/auto-all-repos-maintenance.md`](routines/auto-all-repos-maintenance.md) — which finds this repo by the tracked `.claudinite/` marker you committed above. No per-repo schedule, up-path, or plumbing to install; mounting the corpus is nearly the whole opt-in.
 
 The catch: the routine only maintains repos on its access list — a per-repo allowlist the owner keeps in the routine's UI — so the marker alone doesn't enroll a repo until the owner adds it there. So **as part of bootstrap, open a GitHub issue in this repo's tracker assigned to `missingbulb`** asking to add the project to that list. Idempotent: search first, skip if one (open or closed) already exists.
+
+## Part 5 — categorize the project (pick or define a template)
+
+**Only for a fresh / empty project** — one without its own established `CLAUDE.md` working style yet. A project that already documents how it's run has answered this; skip.
+
+The owner runs recurring **classes** of project, each with a shared, project-agnostic playbook in [`templates/`](templates/README.md). Categorizing a new project against that catalog is what lets it inherit the right working procedures from day one.
+
+1. **Read the catalog** in [templates/README.md](templates/README.md) and **ask the owner** which class this project is — offer the catalog entries as the options ("is this one of these types?").
+2. **A template fits →** declare the type and **link the template** from this project's `CLAUDE.md` (soft pointer, don't inline — the template stays canonical in Claudinite):
+   ```
+   > **Project type:** research-project — follows [.claudinite/templates/research-project.md](.claudinite/templates/research-project.md).
+   ```
+   Then write the project's *own* concrete specifics (inputs, metrics, invariants, run commands) in its own docs, as the linked template instructs.
+3. **No template fits →** the project still owes a **category declaration** in its `CLAUDE.md` (name the general class in one line — a project that can't name its category hasn't understood itself yet). A missing template for that class is a signal to **uplevel** it into a new `templates/<class>.md`; see the reverse-direction process in [templates/README.md](templates/README.md) for how and when.
