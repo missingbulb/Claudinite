@@ -1,36 +1,80 @@
-# Writing instruction docs for Claude
+# Writing instruction files coding agents follow
 
-How to author a Markdown instruction file — a practice doc, a project `CLAUDE.md`, a routine spec — so Claude follows it reliably. These files are prompts; the rules below are downstream of Anthropic's own prompting guidance, cited inline to the Sources footer.
+How to author the files an AI coding agent reads — a project CLAUDE.md, a convention doc, an
+agent or automation spec — so it follows them reliably. Grounded entirely in Anthropic's
+published guidance; bracketed numbers cite the sources listed at the end.
 
-## Right altitude
+## Know what an instruction file is (and isn't)
 
-- Write concrete rules Claude applies with judgment — the "Goldilocks zone between two common failure modes" [ctx]: hardcoded, brittle branching on one side, and vague high-level guidance that "falsely assumes shared context" on the other. Aim "specific enough to guide behavior effectively, yet flexible enough to provide the model with strong heuristics" [ctx].
-- Encode only what deviates from Claude's defaults; anything it already gets right is noise. Prune test: for each line ask "Would removing this cause Claude to make mistakes?" — if not, cut it [cc].
+- Treat the file as context, not enforced configuration: the agent reads it and tries to
+  follow it, with no guarantee of strict compliance. Anything that must happen every time
+  (block a write, run a linter before commit) belongs in a deterministic hook instead. [1][2]
+- Everything loaded at session start competes for a finite attention budget, and recall
+  degrades as context grows ("context rot"). Aim for the smallest set of high-signal tokens
+  that produces the behavior you want. [4]
+- Keep the always-loaded file to facts that apply broadly in every session. Move multi-step
+  procedures and sometimes-relevant domain knowledge into on-demand skills, and rules that
+  matter for only part of the codebase into path-scoped rule files. [1][2]
 
-## Terseness is about adherence, not just tokens
+## Decide each line's right to exist
 
-- Bloat doesn't only cost context — it makes Claude *ignore* your real instructions: "Bloated CLAUDE.md files cause Claude to ignore your actual instructions" [cc]. A rule that keeps getting missed usually means the file is too long, not that the rule is too weak.
-- Aim for "the smallest possible set of high-signal tokens" [ctx]; specific, concise instructions are followed more consistently [mem].
-- Keep an always-loaded file (a `CLAUDE.md`) under ~200 lines — longer "reduce[s] adherence" [mem]. When it grows, move on-demand or file-scoped rules into a skill or a path-scoped rule instead of padding it; `@`-imports still load at launch, so they organize context, they don't save it [mem][cc].
+- Include what the agent can't infer from code: build and test commands, style rules that
+  differ from language defaults, repo etiquette (branch naming, PR conventions),
+  project-specific architecture decisions, required env vars, non-obvious gotchas. [2]
+- Exclude what it can figure out by reading code: standard conventions, file-by-file codebase
+  descriptions, detailed API docs (link instead), frequently changing facts, and self-evident
+  practices like "write clean code". [2]
+- For each line, ask: "Would removing this cause the agent to make mistakes?" If not, cut it.
+  Bloated instruction files cause the agent to ignore the instructions that matter. [2]
+- Target under 200 lines per CLAUDE.md; longer files consume more context and reduce
+  adherence. Splitting into imports organizes but does not save context — imports still load
+  at launch. [1]
 
-## Write each rule to be verifiable
+## Write each rule
 
-- Lead with when it applies, then a concrete imperative you could check: "Use 2-space indentation" not "Format code properly"; "Run `npm test` before committing" not "Test your changes" [mem].
-- Prefer positive instructions — tell Claude what to do, not what to avoid ("write flowing prose" over "don't use markdown") [pe].
-- State the *why* only when it changes behavior, and put it in a trailing clause — never woven into the imperative. A reason can help Claude generalize the rule [pe], but the imperative alone must stand on its own, and the rationale is re-read cost on every load.
-- One rule, one idea; ensure no two rules contradict — between conflicting instructions Claude "may pick one arbitrarily" [mem].
+- Be concrete enough to verify: "Use 2-space indentation", not "Format code properly";
+  "Run `npm test` before committing", not "Test your changes". [1]
+- Apply the golden rule: show the instruction to a colleague with minimal context — if they'd
+  be confused, the agent will be too. [3]
+- State the motivation behind a rule, not just the rule; the model generalizes from the
+  explanation. [3]
+- Tell the agent what to do instead of what not to do: "write flowing prose paragraphs"
+  steers better than "do not use markdown". [3]
+- Use numbered steps when the order or completeness of steps matters. [3]
+- Prefer a few (3–5) diverse, canonical examples over a laundry list of edge-case rules, and
+  wrap them in `<example>` tags so they can't be mistaken for instructions. [3][4]
+- Pitch rules at the right altitude: specific enough to guide behavior, flexible enough to
+  leave the model strong heuristics — avoiding both brittle hardcoded if-then logic and vague
+  guidance that assumes shared context. [4]
+- Reserve emphasis ("IMPORTANT", "YOU MUST") for tuning adherence on rules that slip. [2]
 
-## Examples, structure, iteration
+## Structure the file
 
-- Examples are among the most reliable ways to steer format and tone — "for an LLM, examples are the 'pictures' worth a thousand words" [ctx]. Give a few (3–5) diverse, canonical examples wrapped in `<example>` tags; don't dump "a laundry list of edge cases" [ctx][pe].
-- Group with markdown headers and bullets over dense paragraphs, and open with a one-line scope [mem].
-- Golden rule: "Show your prompt to a colleague with minimal context... If they'd be confused, Claude will be too" [pe] — write for a brilliant new hire, not a mind-reader.
-- Treat the doc as a prompt: after editing, confirm Claude's behavior actually shifts, and reserve emphasis ("IMPORTANT", "YOU MUST") for the few rules that need it — current models over-trigger on aggressive phrasing [cc][pe].
-- Instructions are advisory, not enforcement. For an action that must happen every time (before every commit, after each edit), a hook guarantees it where a doc cannot [mem][cc].
+- Group related rules under markdown headers and bullets; the agent scans structure the way
+  readers do, and organized sections are easier to follow than dense paragraphs. [1]
+- Separate content types — background, instructions, tool guidance, output format — into
+  distinct sections with consistent, descriptive names (Markdown headers or XML tags). [3][4]
+- Make a task spec self-contained: name the files and interfaces involved, state what is out
+  of scope, and end with an end-to-end verification step that proves the work. [2]
+- Give the agent a check it can run — a test suite, build exit code, linter, or comparison
+  script. Without one, "looks done" is its only stopping signal. [2]
+
+## Maintain it like code
+
+- Start minimal and add rules in response to observed failures: the agent makes the same
+  mistake a second time, a review catches something it should have known, or you retype last
+  session's correction. [1][4]
+- Test edits by observing whether behavior actually shifts. If a rule keeps being ignored,
+  the file is probably too long and the rule is lost in the noise. [2]
+- Remove contradictions: if two rules conflict — including across nested or imported files —
+  the agent may pick one arbitrarily. [1]
+- Prune regularly. If the agent already behaves correctly without a rule, delete it or
+  convert it to a hook. Check the file into version control so the team contributes and it
+  compounds in value. [2]
 
 ## Sources
 
-- [ctx] — Effective context engineering for AI agents: https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents
-- [cc] — Claude Code best practices: https://code.claude.com/docs/en/best-practices
-- [mem] — Claude Code memory (CLAUDE.md): https://code.claude.com/docs/en/memory
-- [pe] — Prompt engineering, be clear and direct: https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/be-clear-and-direct
+- [1] https://code.claude.com/docs/en/memory
+- [2] https://code.claude.com/docs/en/best-practices
+- [3] https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/be-clear-and-direct
+- [4] https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents
