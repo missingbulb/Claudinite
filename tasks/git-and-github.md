@@ -68,6 +68,12 @@ An automated or scheduled job that derives its branch name from a non-unique key
 
 GitHub's implicit default run-shell is `bash -e {0}` — **without** `pipefail` — so a step piping through another command (e.g. `cmd 2>&1 | tee log`) reports the *last* command's exit code, not the piped command's: a failing command still shows the step green. Set `defaults.run.shell: bash` (job- or step-level), which GitHub runs as `bash --noprofile --norc -eo pipefail {0}`, so the step fails when any command in the pipe fails.
 
+## An unattended workflow must escalate its own failure to a human-visible state
+
+A workflow with no human watching the run — scheduled, triggered by a push/merge, or a fire-and-forget manual dispatch, with no other path that reaches a person — must converge a failure to something a human will see (e.g. open, or append to, a standing per-workflow tracking issue) rather than merely exiting red in the Actions list, where nobody looks. Skip this only when the failure is already loud: a `pull_request`/push CI run that blocks merge with a red required check the author is watching, or a workflow that already flags the triggering issue itself on failure.
+
+When the escalation is itself a separate reusable workflow invoked via `workflow_call`, permissions don't propagate implicitly through the chain: the job that calls it needs the permission explicitly granted (e.g. `issues: write`), and if that reusable workflow in turn calls another one, the middle workflow must forward the same grant to its own call — a caller two levels up granting it once is not enough.
+
 ## A CI job that reads submodule files must fetch submodules in its checkout
 
 `actions/checkout` does **not** fetch submodules by default — the submodule directory is an empty folder in CI unless you pass `submodules: true` (or `recurse-submodules: true`). Without it, any gate that reads submodule content passes vacuously: the check is a no-op, not a signal. Add the flag to every CI job whose tests read submodule content.
