@@ -94,6 +94,10 @@ In a GitHub-rendered Markdown file, cmark-gfm re-enters Markdown mode inside a r
 
 `commit.gpgsign = true` signs ordinary commits but does not apply to `git merge` — each merge produces an unsigned commit even with signing fully configured. In a repo that enforces commit verification, this requires a fix-up after the fact. Cover merges proactively: either pass `-S` to every `git merge` call, or set `merge.gpgsign = true` globally so merges are signed the same way commits are.
 
+## When access is scoped to an explicit repo list, query per-repo — never an org/user-wide search
+
+A broad call (e.g. `search_repositories` with `org:X`, or any list/search tool that takes no repo argument) returns every repo the token can see, not just an allowed subset — filtering the result afterward doesn't undo the fact that disallowed repos' data was already pulled into the call. When operating under a repo allowlist, scope every call explicitly instead: pass the specific `owner`/`repo` params, or anchor the query to `repo:owner/name`, one call per repo in the allowlist rather than one broad call filtered after the fact.
+
 ## Merging gotchas
 
 These conflict/merge traps are independent of any one project's file layout.
