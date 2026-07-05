@@ -57,6 +57,8 @@ Tests are a common source of long references that are **not** placement smells. 
 
 Apply the same narrowness as the mandated-location case: the exemption covers the **test → tested-file** reference that the convention forces, and it presumes the project *has* such a convention. Absent any standard, ordinary placement judgment still applies — co-locating a test with the code it exercises is a perfectly good distance-0 choice.
 
+**When picking a test-location convention from scratch, mirror the source tree — one test per source file at the same relative path** (`src/<area>/<name>` tested by `test/<area>/<name>.test`). The path *is* the link: a source file never has to name its own test in a comment, and a missing or misfiled test is obvious at a glance. Keep departures (whole-interaction tests, tests with no single source file to mirror) few and deliberate.
+
 ## Tooling acts on paths: encode act-on-able distinctions structurally
 
 A file's path is an interface not only for developers but for automated processes — build globs, linters, and access rules often act on a file by its location alone, without reading its content. When two kinds of file must be treated differently by tooling that reads only paths, make the distinction **structural**: give each kind its own folder so the path itself carries the signal.

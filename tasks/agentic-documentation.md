@@ -37,7 +37,10 @@ published guidance; bracketed numbers cite the sources listed at the end.
 - Apply the golden rule: show the instruction to a colleague with minimal context — if they'd
   be confused, the agent will be too. [3]
 - State the motivation behind a rule, not just the rule; the model generalizes from the
-  explanation. [3]
+  explanation. [3] Keep the *why* out of the imperative itself, though — a trailing sentence
+  or parenthetical after the rule, never rewoven into it. The rationale helps a human reviewer
+  judge whether the rule is right; once it's settled, it's noise to the agent, which only needs
+  the constraint stated plainly.
 - Tell the agent what to do instead of what not to do: "write flowing prose paragraphs"
   steers better than "do not use markdown". [3]
 - Use numbered steps when the order or completeness of steps matters. [3]
