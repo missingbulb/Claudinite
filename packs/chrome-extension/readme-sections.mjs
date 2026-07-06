@@ -4,7 +4,7 @@ const rule = {
   id: 'cer/readme-sections',
   severity: 'blocking',
   description: 'The README carries the standard Install and Releasing sections',
-  doc: 'technologies/chrome-extension-release.md',
+  doc: 'packs/chrome-extension/RELEASE.md',
   why: 'every extension repo documents install and release the same way, from the standard template',
 
   run(ctx) {

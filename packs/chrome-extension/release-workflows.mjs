@@ -14,7 +14,7 @@ const rule = {
   id: 'cer/release-workflows',
   severity: 'blocking',
   description: 'The four standard release stubs must exist, carry their exact name:, and call their canon reusable workflow',
-  doc: 'technologies/chrome-extension-release.md',
+  doc: 'packs/chrome-extension/RELEASE.md',
   why: 'every extension repo ships the same pipeline; the logic lives once in the canon, stubs own only triggers and repo values',
 
   run(ctx) {

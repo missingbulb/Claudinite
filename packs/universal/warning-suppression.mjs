@@ -14,7 +14,7 @@ const rule = {
   id: 'warning-suppression',
   severity: 'blocking',
   description: 'New warning-suppression markers in the diff need the dedicated-issue path, not the quick path',
-  doc: 'always/working-discipline.md',
+  doc: 'packs/universal/RULES.md',
   why: 'suppression hides the signal instead of resolving it',
 
   run(ctx) {

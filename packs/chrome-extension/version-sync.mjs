@@ -5,7 +5,7 @@ const rule = {
   id: 'cer/version-sync',
   severity: 'blocking',
   description: "The manifest's version is the single source of truth; package.json must equal it",
-  doc: 'technologies/chrome-extension-release.md',
+  doc: 'packs/chrome-extension/RELEASE.md',
   why: 'a version that diverges ships the wrong number to the store or refuses to publish',
 
   run(ctx) {

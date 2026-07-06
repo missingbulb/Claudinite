@@ -10,7 +10,7 @@ const rule = {
   id: 'cer/release-layout',
   severity: 'blocking',
   description: 'Release machinery lives in dev/build/release/ with the repo release doc and store artifacts',
-  doc: 'technologies/chrome-extension-release.md',
+  doc: 'packs/chrome-extension/RELEASE.md',
   why: 'the dashboard is filled from the submission kit; the privacy page deploys from PRIVACY.md',
 
   run(ctx) {

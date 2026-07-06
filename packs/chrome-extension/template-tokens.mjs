@@ -5,7 +5,7 @@ const rule = {
   id: 'cer/template-tokens',
   severity: 'blocking',
   description: 'No __TOKEN__ placeholder may survive in the release workflows',
-  doc: 'technologies/chrome-extension-release.md',
+  doc: 'packs/chrome-extension/RELEASE.md',
   why: 'the setup contract says: grep for __ afterwards; no token may survive',
 
   run(ctx) {

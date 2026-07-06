@@ -1,3 +1,8 @@
+---
+name: generate-project-instructions
+description: Work out a project's category and write its default working-instructions doc. Use when a project has no established working style yet, or its category has no pack — during bootstrap of a fresh/empty repo.
+---
+
 # Prompt: generate the default working-instructions for this project
 
 Paste this into a session inside any repository. It asks the session to work out

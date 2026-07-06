@@ -5,6 +5,6 @@ description: Raise the project's version — a minor bump by default. Use when t
 
 The mechanics are the consuming project's — its release/workflow doc names which files carry
 the version and how a release follows. For a Chrome-extension repo the standard applies
-([technologies/chrome-extension-release.md](../../technologies/chrome-extension-release.md)):
+([the chrome-extension pack's RELEASE.md](../../packs/chrome-extension/RELEASE.md)):
 edit the manifest and `package.json` together on a branch (default the next **minor**), land on
 `main` via a normal PR — merging the bump *is* cutting the release.

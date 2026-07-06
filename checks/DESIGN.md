@@ -1,7 +1,9 @@
 # Checks — deterministic enforcement of the corpus (design)
 
-> **Status: proposal** (issue #127). No checks exist yet; this doc is the blueprint the
-> implementation follows. The per-rule audit of the existing corpus lives in
+> **Status: implemented** (issue #127, #131). The runner, universal + technology packs, Stop
+> hook, PreToolUse guard, and the pack-prose loader are live; the corpus is reorganized into
+> `packs/` (prose + checks, active by declaration) and `skills/` (activity-scoped procedures).
+> This doc is the rationale and the ongoing design record. The per-rule audit lives in
 > [conversion-inventory.md](conversion-inventory.md).
 
 ## The problem
@@ -63,15 +65,21 @@ Two classes deliberately **stay as instructions**:
 ## Architecture
 
 ```
-checks/
-  run.js                      # dependency-free Node CLI (the only entry point)
-  lib/                        # shared: git diff scoping, findings format, Markdown link parser
-  packs/
-    universal/                # always on: reference-integrity, file-placement,
-                              #   task-lifecycle, warning-suppression, claude-md
-    github-actions/           # the workflow lints
-    node/
-    chrome-extension-release/ # the release-standard conformance suite
+packs/                        # the mounted corpus: prose + checks, active by declaration
+  registry.mjs                #   structural discovery — any packs/<name>/pack.mjs is a pack
+  load-active-prose.mjs       #   SessionStart hook: emits active packs' RULES.md
+  universal/                  #   always on: RULES.md (baseline) + the universal checks
+  chrome-extension/           #   RULES.md (gotchas) + RELEASE.md (standard) + conformance checks
+  github-actions/             #   the workflow lints (no prose)
+  node/  aws-sam/  html/  flutter/     # prose-only tech packs
+  research-project/           #   a project-CLASS pack (prose-only, declared)
+checks/                       # the ENGINE only (runs the packs' checks)
+  run.mjs                     #   dependency-free Node CLI
+  lib/                        #   git diff scoping, findings format, markdown + manifest helpers
+  stop-hook.mjs               #   blocks the agent's stop on blocking findings
+  pretooluse-guard.mjs        #   blocks forbidden actions before they run
+  test/                       #   fixtures (scratch git repos), red-first
+skills/                       # activity-scoped procedures, surfaced on demand
 ```
 
 **Runner contract.** `node .claudinite/checks/run.js`. Dependency-free Node — no `npm install`
@@ -226,7 +234,7 @@ The skill-by-skill catalog — each skill, its trigger, and the doc it replaces 
 (`skills/<name>/SKILL.md`), the same way this design seeded `checks/`.
 
 What stays always-loaded after this: a trimmed
-[../always/working-discipline.md](../always/working-discipline.md), the judgment core of
+[../packs/universal/RULES.md](../packs/universal/RULES.md), the judgment core of
 [../tasks/engineeringPractices.md](../tasks/engineeringPractices.md) (its trigger — "writing
 code" — is near-universal, so a skill gains little; revisit with telemetry), and a much smaller
 index. The routing index largely dissolves: routing *is what skill descriptions do natively*.

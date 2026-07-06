@@ -7,7 +7,7 @@ const rule = {
   id: 'cer/permission-justifications',
   severity: 'blocking',
   description: 'Every manifest permission needs a justification in STORE-LISTING.md, in the same change',
-  doc: 'technologies/chrome-extension-release.md',
+  doc: 'packs/chrome-extension/RELEASE.md',
   why: 'the store requires a written justification per permission; the kit must never lag the manifest',
 
   run(ctx) {

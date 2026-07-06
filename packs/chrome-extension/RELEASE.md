@@ -4,10 +4,10 @@ Every Chrome-extension repo of ours ships the **same** release pipeline: same wo
 Chrome Web Store API usage, same secrets, same versioning and artifact rules, same README install
 sections. This doc is that contract, the setup steps for a new extension repo, and the manual
 Chrome Web Store actions the automation can't do. The workflow **logic** lives once, in this
-repo's [.github/workflows/](../.github/workflows/), as `workflow_call`-only **reusable
-workflows** (plus the [report-failure](../.github/actions/report-failure/action.yml) composite
+repo's [.github/workflows/](../../.github/workflows/), as `workflow_call`-only **reusable
+workflows** (plus the [report-failure](../../.github/actions/report-failure/action.yml) composite
 action); each extension repo carries only four **thin stubs** — triggers + repo values —
-templated in [chrome-extension-release/](chrome-extension-release/): **copy the stubs, don't
+templated in [stubs/](stubs/): **copy the stubs, don't
 re-derive them**. The stubs reference the canon `@main`, so a merged canon change reaches every
 extension repo's next run automatically — changing the standard's logic needs no per-repo PR;
 only a change to the *stub shape itself* still propagates by hand. Reference implementation:
@@ -145,7 +145,7 @@ Until the extension's first store publication, replace the store line with:
 
 ## Setting up a new extension repo
 
-1. Copy the four stub files from [chrome-extension-release/](chrome-extension-release/) into
+1. Copy the four stub files from [stubs/](stubs/) into
    `.github/workflows/`. Replace every `__ZIP_NAME__` / `__BUMP_PATCH_CMD__` /
    `__FILTER_SHIPPED_CMD__` token, and — only if the repo deviates from the defaults — set the
    `with:` overrides flagged in each stub's header (`manifest_path`, `package_json_path`,
@@ -175,7 +175,7 @@ extension; the upstream reference is
    [developer dashboard](https://chrome.google.com/webstore/devconsole) (one-time $5 fee).
 2. **Add new item** → upload the release zip. If the extension pins its ID with a manifest
    `key` (needed when OAuth redirect URIs depend on a stable ID — see
-   [chrome-extension.md](chrome-extension.md)), the **first** upload must NOT contain the
+   [the chrome-extension pack RULES](RULES.md)), the **first** upload must NOT contain the
    `key`: the store assigns the ID at first upload, and you copy the dashboard's Package-tab
    public key back into the build afterwards. Record the 32-char item ID → the
    `CHROME_EXTENSION_ID` secret.
