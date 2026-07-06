@@ -23,4 +23,3 @@ Once the merge has landed and local `main` is synced, run a **lessons-learned pa
 ## Don't
 
 - **Don't** re-read the issue to confirm it closed — `Closes #<issue>` does that on merge; trust it.
-- **Don't** try to delete the remote branch: the PreToolUse guard blocks it outright (the delete-push fails in this environment). Leave it — deleting the *local* branch is fine.
