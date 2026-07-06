@@ -10,18 +10,26 @@
 - **hook** — PreToolUse gate, blocks before the action runs.
 - **skill** — becomes an on-demand procedure; unloads from always-on context.
 - **setting** — platform enforces it (GitHub repo/branch settings); no code at all.
-- **stays** — process/judgment guidance; remains an instruction. *(judge)* = a Phase-4
-  LLM-judge candidate.
-- **knowledge** — platform gotcha; stays soft-loaded, near-zero standing cost, no conversion.
+- **stays** — process/judgment guidance; remains an instruction. *(judge)* = a deferred
+  LLM-judge candidate. A whole doc (or a doc's residue after its checks are carved out) that
+  stays is *delivered* as a skill per DESIGN.md's catalog — same content, harness-managed
+  trigger instead of an index line the agent must remember to follow.
+- **knowledge** — platform gotcha; content unchanged, no enforcement possible — delivered as a
+  `paths`-/description-triggered skill.
 
 ## Verdict up front
 
 ~125 discrete instructions audited. **~45 convert to deterministic mechanisms** (≈40 checks
-across five packs, 4 hooks, 2 settings, plus two whole docs becoming skills); **~60 stay** as
-process/judgment; **~20 are knowledge** that shouldn't convert. So: a majority of
-*instructions* — no. A majority of the **always-loaded context burden** — yes: four of the five
-force-loaded docs unload entirely, and the two most breakage-prone task docs (filePlacement,
-textAndFileManipulation) shrink to rationale.
+across five packs, 4 hooks, 2 settings, plus two whole docs becoming command skills); **~60
+stay as instructions** (process/judgment) and **~20 are knowledge** — but *staying* no longer
+means an index soft pointer: the stays/knowledge docs and residues are **delivered as skills**
+(DESIGN.md's catalog), trading the remembered trigger for a harness-managed one at roughly the
+same token cost. So: a majority of *instructions* enforced mechanically — no, ~40%. A majority
+of the **always-loaded context burden** eliminated — yes: four of the five force-loaded docs
+unload entirely, the two most breakage-prone task docs (filePlacement,
+textAndFileManipulation) shrink to rationale, and the routing index largely dissolves into
+skill descriptions. Force-loaded prose that remains: trimmed working-discipline and the
+engineeringPractices judgment core.
 
 ## always/ — the force-loaded baseline (highest standing cost)
 
@@ -148,16 +156,19 @@ textAndFileManipulation) shrink to rationale.
 
 | Doc | Disposition |
 |---|---|
-| bug-investigations.md (all 3 rules) | stays — pure investigative process |
-| agent-architecture.md (all 4 rules) | stays — it is this design's own rationale |
-| agenticBestPractices.md (~13 rules) | stays, mostly in-flight agent behavior. Convertible slivers: `@import`-only-baseline → **check** `universal/claude-md` *(adv)* flagging new `@`-imports; per-routine tracking issue → **check** *(adv)*, deferred (needs API) |
-| agentic-documentation.md (~20 rules) | mostly stays *(judge)*. Convertible: <200-line budget → **check** `universal/claude-md`; emphasis ("IMPORTANT"/"YOU MUST") count threshold → **check** *(adv)*; examples in `<example>` tags → **check** *(adv)* |
+| bug-investigations.md (all 3 rules) | stays — pure investigative process → `bug-investigation` **skill** |
+| agent-architecture.md (all 4 rules) | stays — it is this design's own rationale → folds into the `unattended-agents` **skill** |
+| agenticBestPractices.md (~13 rules) | stays, mostly in-flight agent behavior → `unattended-agents` **skill**. Convertible slivers: `@import`-only-baseline → **check** `universal/claude-md` *(adv)* flagging new `@`-imports; per-routine tracking issue → **check** *(adv)*, deferred (needs API) |
+| agentic-documentation.md (~20 rules) | mostly stays *(judge)* → `authoring-agent-docs` **skill**. Convertible: <200-line budget → **check** `universal/claude-md`; emphasis ("IMPORTANT"/"YOU MUST") count threshold → **check** *(adv)*; examples in `<example>` tags → **check** *(adv)* |
+
+(The stays-residues of testingPractices, textAndFileManipulation, and git-and-github likewise
+become the `writing-tests`, `repo-text-sweeps`, and `git-github-advanced` skills.)
 
 ## technologies/
 
 | Doc | Disposition |
 |---|---|
-| nodejs.md (2), html.md (1), aws-sam.md (3), chrome-extension.md (8), flutter.md (stub) | knowledge — runtime gotchas no local check can observe; already soft-loaded |
+| nodejs.md (2), html.md (1), aws-sam.md (3), chrome-extension.md (8), flutter.md (stub) | knowledge — runtime gotchas no local check can observe → delivered as the `nodejs-testing`, `html`, `aws-sam`, `chrome-extension` **skills**, `paths`-scoped where the file globs identify the technology |
 | **chrome-extension-release.md — the contract** | **check** `chrome-extension-release/` conformance suite (~12): five workflows with exact `name:`s · no surviving `__TOKENS__` · manifest ↔ `package.json` version sync · kebab-cased zip name · README Install/Releasing sections · `PRIVACY.md` present · STORE-LISTING justification row per manifest permission · release machinery under `dev/build/release/` · store-asset inventory (128px icon, ≥1 screenshot) · assets generator-backed · dependency-free bumper/filter scripts *(adv)*. Doc keeps the setup narrative and manual store steps |
 
 ## templates/ & bootstrap.md
