@@ -72,6 +72,11 @@ on:
 permissions:
   contents: write
 
+# The implicit run shell has no pipefail; several steps pipe.
+defaults:
+  run:
+    shell: bash
+
 jobs:
   release:
     runs-on: ubuntu-latest

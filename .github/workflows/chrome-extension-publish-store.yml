@@ -40,6 +40,11 @@ on:
 permissions:
   contents: read
 
+# The implicit run shell has no pipefail; several steps pipe.
+defaults:
+  run:
+    shell: bash
+
 jobs:
   publish:
     runs-on: ubuntu-latest

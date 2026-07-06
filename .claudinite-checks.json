@@ -18,6 +18,41 @@
       "reason": "legacy merge (PR #98) from before the squash-only policy was enforced; left in history"
     },
     {
+      "rule": "squash-merge-history",
+      "path": "main@cdf2cca",
+      "reason": "legacy direct branch merge (tarball-sync doc) from before the squash-only policy; left in history"
+    },
+    {
+      "rule": "squash-merge-history",
+      "path": "main@bce9e05",
+      "reason": "legacy merge (PR #29) from before the squash-only policy was enforced; left in history"
+    },
+    {
+      "rule": "squash-merge-history",
+      "path": "main@b7f1021",
+      "reason": "legacy merge (PR #26) from before the squash-only policy was enforced; left in history"
+    },
+    {
+      "rule": "squash-merge-history",
+      "path": "main@8c23e59",
+      "reason": "legacy merge (PR #21) from before the squash-only policy was enforced; left in history"
+    },
+    {
+      "rule": "squash-merge-history",
+      "path": "main@45f8fa0",
+      "reason": "legacy merge (PR #20) from before the squash-only policy was enforced; left in history"
+    },
+    {
+      "rule": "squash-merge-history",
+      "path": "main@28111e9",
+      "reason": "legacy merge (PR #19) from before the squash-only policy was enforced; left in history"
+    },
+    {
+      "rule": "squash-merge-history",
+      "path": "main@ba46c94",
+      "reason": "legacy merge (PR #15) from before the squash-only policy was enforced; left in history"
+    },
+    {
       "rule": "file-placement",
       "path": "skills/",
       "reason": "thin-wrapper skills deliberately reach into the corpus docs they wrap — the skill is the trigger, the doc stays canonical (checks/DESIGN.md, skills section)"
@@ -26,6 +61,11 @@
       "rule": "file-placement",
       "path": "always/merge-to-main.md",
       "reason": "a corpus doc naming its own skill wrapper — the other half of the deliberate doc-skill pairing"
+    },
+    {
+      "rule": "file-placement",
+      "path": "technologies/chrome-extension-release.md",
+      "reason": "the release standard names the canon workflows and report-failure action it mandates — documentation naming its subject, whose location .github/ dictates"
     }
   ]
 }

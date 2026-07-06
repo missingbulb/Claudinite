@@ -16,15 +16,17 @@ const MANIFEST = JSON.stringify({
   permissions: ['storage'], host_permissions: ['https://e.com/*'],
 });
 
+const stub = (name, canon) =>
+  `name: "${name}"\non: push\njobs:\n  run:\n    uses: missingbulb/Claudinite/.github/workflows/${canon}@main\n    secrets: inherit\n`;
+
 // The full conformant fixture; individual tests break one piece at a time.
 const CONFORMANT = {
   'extension/manifest.json': MANIFEST,
   'package.json': JSON.stringify({ name: 'x', version: '1.2.3' }),
-  '.github/workflows/release.yml': 'name: "Release: Create Package"\non: push\n',
-  '.github/workflows/publish-chrome-store.yml': 'name: "Release: Publish to Chrome Web Store"\non: push\n',
-  '.github/workflows/daily-release.yml': 'name: "Release: Daily Auto-Release"\non: push\n',
-  '.github/workflows/deploy-privacy-page.yml': 'name: Deploy privacy policy to GitHub Pages\non: push\n',
-  '.github/workflows/report-failure.yml': 'name: Report workflow failure\non: push\n',
+  '.github/workflows/release.yml': stub('Release: Create Package', 'chrome-extension-release.yml'),
+  '.github/workflows/publish-chrome-store.yml': stub('Release: Publish to Chrome Web Store', 'chrome-extension-publish-store.yml'),
+  '.github/workflows/daily-release.yml': stub('Release: Daily Auto-Release', 'chrome-extension-daily-release.yml'),
+  '.github/workflows/deploy-privacy-page.yml': stub('Deploy privacy policy to GitHub Pages', 'deploy-privacy-page.yml'),
   'dev/build/release/releasing.md': 'x\n',
   'dev/build/release/store_artifacts/PRIVACY.md': 'x\n',
   'dev/build/release/store_artifacts/STORE-LISTING.md': 'justifies storage and https://e.com/*\n',
@@ -40,16 +42,20 @@ test('a fully conformant extension repo is clean across the pack', () => {
   } finally { cleanup(root); }
 });
 
-test('release-workflows: flags a missing workflow and a wrong name:', () => {
+test('release-workflows: flags a missing stub, a wrong name:, and a stub not calling its canon workflow', () => {
   const files = { ...CONFORMANT };
-  delete files['.github/workflows/report-failure.yml'];
-  files['.github/workflows/release.yml'] = 'name: Wrong Name\non: push\n';
+  delete files['.github/workflows/daily-release.yml'];
+  files['.github/workflows/release.yml'] =
+    files['.github/workflows/release.yml'].replace('Release: Create Package', 'Wrong Name');
+  files['.github/workflows/publish-chrome-store.yml'] =
+    'name: "Release: Publish to Chrome Web Store"\non: push\njobs:\n  run:\n    steps:\n      - run: echo inlined logic\n';
   const root = makeRepo({ changed: files });
   try {
     const findings = run(releaseWorkflows, root);
-    assert.equal(findings.length, 2);
-    assert.ok(findings.some((f) => /report-failure\.yml/.test(f.what)));
+    assert.equal(findings.length, 3);
+    assert.ok(findings.some((f) => /daily-release\.yml is missing/.test(f.what)));
     assert.ok(findings.some((f) => /Wrong Name/.test(f.what)));
+    assert.ok(findings.some((f) => /does not call the canon/.test(f.what)));
   } finally { cleanup(root); }
 });
 

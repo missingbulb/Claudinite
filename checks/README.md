@@ -20,7 +20,9 @@ acceptances); `--changed` exists only for adopting a repo with a backlog. **Base
 delta rules (new suppression markers, commits referencing an issue) and `--changed` scoping
 diff against the merge-base with `origin/main` (falling back to `origin/master`, `main`,
 `master`) — a stale `origin/main` widens that delta, so fetch when findings look like they
-aren't yours.
+aren't yours. **Shallow-clone note:** history rules (`squash-merge-history`) see only the
+fetched depth — a shallow sandbox clone under-reports; CI checks out with `fetch-depth: 0`
+and is authoritative.
 
 ## Configuration — `.claudinite-checks.json` (repo root)
 
