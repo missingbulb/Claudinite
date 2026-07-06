@@ -10,7 +10,7 @@ Portable Claude instructions/rules shared across projects — the **project-agno
 
 ## For the reading agent: how to traverse this corpus
 
-**The agent-facing index lives in [CLAUDE.md](CLAUDE.md), not here.** It is the map of the corpus — the read order (always/ baseline → preferences/ → technologies/ → tasks/), the per-directory contents, and the soft-pointer rule (follow links on demand, never `@`-import them — except the small always-on baseline, which the index force-loads via `@`). Consumers mount it as `@.claudinite/CLAUDE.md`; an agent working in this repo loads it as the repo's own `CLAUDE.md`. Start there.
+**The agent-facing index lives in [CLAUDE.md](CLAUDE.md), not here.** It is the map of the corpus — two homes selected by *when* a rule is active: **`packs/<name>/`** (prose + checks, active once per session by the project's `.claudinite-checks.json` declaration; `universal` always on; the active packs' prose is injected by a SessionStart hook) and **`skills/<name>/`** (activity-scoped procedures the harness surfaces on demand). Consumers mount it as `@.claudinite/CLAUDE.md`; an agent working in this repo loads it as the repo's own `CLAUDE.md`. Start there.
 
 ---
 
@@ -21,7 +21,7 @@ Two ways to mount Claudinite (at `.claudinite/`) — pick by where your sessions
 - **Submodule** — pinned and reproducible. Use for local checkouts, CI, or any git client whose credential spans more than one repo.
 - **Session-start tarball sync** — auto-updating, no git credential needed. Use for **Claude Code on the web**, where the credential is scoped to the session's own repo and a submodule clone of this repo 403s at the proxy.
 
-Either way, the corpus is imported with `@.claudinite/CLAUDE.md` in the consumer's `CLAUDE.md` — that single `@`-import pulls in **the index plus the small always-on baseline it `@`-imports** ([CLAUDE.md](CLAUDE.md) and the baseline files it force-loads), and that index then softly routes to the rest on demand. **Setup steps for both → [bootstrap.md](bootstrap.md).**
+Either way, the corpus is imported with `@.claudinite/CLAUDE.md` in the consumer's `CLAUDE.md` — that single `@`-import pulls in the index map, and SessionStart hooks inject the active packs' prose (the baseline plus whatever the project declares) so nothing else has to be force-loaded. **Setup steps for both → [bootstrap.md](bootstrap.md).**
 
 ## Repository operations
 
@@ -33,6 +33,8 @@ Beyond the portable corpus above, two folders hold the machinery that keeps it f
 - [growth/promote.md](growth/promote.md) — **phase 2, central.** Reads every project's local docs, **generalizes** the portable lessons, routes each to the right canon home, and opens a PR against Claudinite's `main`. This is the sole judgment gate before shared canon; it replaces the old cross-repo handoff (Action + PAT + labelled issue), which is gone.
 - [growth/dedup.md](growth/dedup.md) — **phase 3, per project.** Prunes local items the canon covers, **keeping** items the canon states too generally for that project. Opens a PR against the project's `main`.
 - [growth/item-routing.md](growth/item-routing.md) — the shared worthiness + routing method the promote phase (and any other caller) defers to.
+
+The mounted corpus itself is **`packs/`** (each `packs/<name>/` bundling a pack's prose `RULES.md` and its check modules, discovered structurally by [packs/registry.mjs](packs/registry.mjs) and activated by declaration) and **`skills/`** (activity-scoped procedures — catalog: [skills/README.md](skills/README.md)). `checks/` holds only the **engine** that runs the packs' checks — the dependency-free runner, its lib, the Stop hook and PreToolUse guard, and their tests. Usage and configuration → [checks/README.md](checks/README.md); design → [checks/DESIGN.md](checks/DESIGN.md); the per-rule audit → [checks/conversion-inventory.md](checks/conversion-inventory.md).
 
 `routines/` holds the scheduled jobs:
 

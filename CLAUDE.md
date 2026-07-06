@@ -1,46 +1,48 @@
 # Claudinite — corpus index
 
-> ℹ️ The owner's personal preferences are injected automatically by a SessionStart hook — they're already in
-> context above (or absent, meaning none are configured). Honor them; there is nothing to go read.
+> ℹ️ The owner's personal preferences and the active packs' prose are both injected automatically by
+> SessionStart hooks — they're already in context above. Honor them; there is nothing to go read.
 
-**Routing index, not a payload. Do not read the corpus up front.** Read a file only when its trigger below fires. Links are soft pointers — read on demand, never pre-load — except the always-on baseline, which is `@`-imported and loads every session. Keep new pointers soft; never `@`-import `tasks/`.
+**Routing map, not a payload.** Two homes hold the corpus, selected by *when* a rule is active:
 
-## always/ — loads every session (force-loaded via `@`; nothing to decide)
+- **`packs/<name>/`** — a bundle of prose (a pack's `RULES.md`) **and** checks, selected **once per
+  session** by the project's declaration in `.claudinite-checks.json` (`universal` is always on). The
+  active packs' prose loads at session start via `packs/load-active-prose.mjs`; the checks run at every
+  Stop and in CI. This is the "decided once, seldom changes" set.
+- **`skills/<name>/`** — activity-scoped procedures, surfaced **on demand** by the harness when the work
+  in front of you matches the skill. Catalog: [skills/README.md](skills/README.md).
 
-@always/working-discipline.md
-@always/task-lifecycle.md
-@always/merge-to-main.md
-@always/temporary-workarounds.md
+Everything enforceable is a check or a hook; everything always-relevant-to-a-project is pack prose;
+everything activity-scoped is a skill. Before adding *any* rule as prose, run the promotion ladder in
+[checks/DESIGN.md](checks/DESIGN.md): a platform setting, a hook, a check, or a skill that can carry it
+beats prose.
 
-Every file in `always/` is `@`-imported here — add an `@`-line when you add one.
+## packs/ — prose + checks, active when declared (`universal` always)
 
-One doc **outside** `always/` is also force-loaded. The merge flow ([always/merge-to-main.md](always/merge-to-main.md), itself always-loaded) runs a lessons pass on **every** merge, so its method has to be in context, not fetched on demand — an unconditional step can't rely on a soft-pointer read firing. It lives with the rest of the lesson lifecycle in `growth/`, and is `@`-imported here:
+- **[packs/universal/](packs/universal/RULES.md)** — the always-on baseline: working discipline, the
+  task lifecycle, and the universal checks. Loaded every session.
+- **Technology packs**, active when the project declares them (bootstrap's `--init` seeds the
+  declaration from a fingerprint): `chrome-extension` (gotchas + the release/store standard in its
+  [RELEASE.md](packs/chrome-extension/RELEASE.md) + the conformance checks), `github-actions` (workflow
+  lints), `node`, `aws-sam`, `html`, `flutter`.
+- **Project-class packs**, declared by kind of project: `research-project` (the
+  algorithm-iteration playbook — [packs/research-project/RULES.md](packs/research-project/RULES.md)).
 
-@growth/extracting-lessons.md
+The `pack-declaration` check keeps the declaration honest against the repo's real fingerprint — including
+telling the session that introduces a new technology to declare its pack.
+
+## skills/ — activity-scoped procedures, surfaced on demand
+
+The catalog and each skill's trigger live in [skills/README.md](skills/README.md): the command skills
+(`merge-to-main`, `lessons-learned`, `bump-version`, `adopt-claudinite`, `generate-project-instructions`)
+and the practice skills (`bug-investigation`, `writing-tests`, `repo-text-sweeps`, `authoring-agent-docs`,
+`unattended-agents`, `git-github-advanced`).
 
 ## preferences/ — auto-injected by the SessionStart hook
 
-`preferences/<email>.md` holds the owner's per-user interaction preferences. The `preferences/inject-preferences.sh` SessionStart hook (registered in `.claude/settings.json`) loads the current user's file into context at session start — you don't read it yourself.
-
-## templates/ — the project's *type*, not a per-task doc; consulted at bootstrap
-
-`templates/` holds one project-agnostic playbook per **class of project** the owner runs (research/algorithm-iteration is the first). A project doesn't read these per task — it **links the one template that matches its category** from its own `CLAUDE.md`, once, and follows it. Picking (or, when none fits, defining) that category is a **bootstrap** step ([bootstrap.md](bootstrap.md), Part 5); the catalog and the pick-or-uplevel process live in [templates/README.md](templates/README.md).
-
-## technologies/ — read only the file(s) the task touches; otherwise skip
-
-[Node.js](technologies/nodejs.md) · [Chrome extension](technologies/chrome-extension.md) · [Chrome extension release/store standard](technologies/chrome-extension-release.md) · [AWS SAM](technologies/aws-sam.md) · [Flutter](technologies/flutter.md) · [HTML](technologies/html.md)
-
-## tasks/ — read the matching doc *before* acting; match the trigger to the task in front of you, not the topic
-
-- [tasks/engineeringPractices.md](tasks/engineeringPractices.md) — **Read before writing or editing code.** Naming by scope, single-source-of-truth with drift guards, GENERATED-file discipline, earning each dependency, verifying real platform behavior, fresh-checkout install errors.
-- [tasks/bug-investigations.md](tasks/bug-investigations.md) — **Read when investigating a bug, or when a fix didn't hold.** Version-gap triage before theorizing, re-deriving the cause after a recurrence, getting one real datapoint before broadcasting a theory.
-- [tasks/filePlacement.md](tasks/filePlacement.md) — **Read before placing, moving, or renaming a file, or when reviewing where one lives.** The reference-distance metric (keep references at distance 0/1), the high-reach code smell, and the mandated-location (`.github/`, `.claude/`, root manifests) and test-location exemptions.
-- [tasks/textAndFileManipulation.md](tasks/textAndFileManipulation.md) — **Read before a grep/sed sweep, a rename, or a path relocation.** Scoping a replace, searching segment tokens after a rename, Markdown links that carry the path twice, references that break with no test failure.
-- [tasks/testingPractices.md](tasks/testingPractices.md) — **Read before writing or changing a test.** See-it-fail discipline, driving snapshots/goldens through the real code path, CI-only and heavy-browser tests, fuzzy-metric high-watermark gating.
-- [tasks/agenticBestPractices.md](tasks/agenticBestPractices.md) — **Read when building or running an AI agent or unattended routine.** The daily lessons pass, matching model to judgment, per-routine tracking issues, doc-not-inlined instructions, post-task efficiency analysis.
-- [tasks/agentic-documentation.md](tasks/agentic-documentation.md) — **Read before writing or editing a Claude instruction doc** (a practice doc, a project `CLAUDE.md`, a routine spec). Right altitude, terseness-for-adherence and the ~200-line budget, verifiable imperatives, positive phrasing, examples used well, and instructions-vs-hooks — grounded in Anthropic's published guidance.
-- [tasks/git-and-github.md](tasks/git-and-github.md) — **Read when doing git/GitHub work beyond the baseline lifecycle** — committing in layers, recovering a branch after a squash-merge, dispatching CI, resolving a merge. CI-trigger rules, the `GITHUB_TOKEN` recursion gotcha, merge-relocation traps.
-- [tasks/agent-architecture.md](tasks/agent-architecture.md) — **Read before structuring an unattended (automation-invoked) agent.** Leave it only the judgment step and hard-code the rest; bound its write surface and enforce that from outside with a post-hoc diff check.
+`preferences/<email>.md` holds the owner's per-user interaction preferences. The
+`preferences/inject-preferences.sh` SessionStart hook loads the current user's file into context — you
+don't read it yourself.
 
 ---
 

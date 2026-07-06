@@ -1,6 +1,6 @@
 # Evaluating and routing a new item
 
-The shared method for two decisions every proposed addition to this corpus must pass through: **is it worthy** of inclusion at all, and if so, **where does it go**. Any routine or person that adds an item — the [growth promote phase](promote.md), an on-demand "learned lessons" pass, a hand edit — applies this same protocol, so the decision-making lives here once instead of being re-derived per caller.
+The shared method for three decisions every proposed addition to this corpus must pass through: **is it worthy** of inclusion at all, **which mechanism** should carry it, and — only for prose — **where does it go**. Any routine or person that adds an item — the [growth promote phase](promote.md), an on-demand "learned lessons" pass, a hand edit — applies this same protocol, so the decision-making lives here once instead of being re-derived per caller.
 
 This is a Claudinite-internal doc used by the growth lifecycle (see [growth/README.md](README.md)): it is **not** part of the mounted corpus and consuming repos do not `@import` it.
 
@@ -21,7 +21,11 @@ Reject on any miss — but the misses that matter are *undistilled*, *already-co
 
 Before admitting anything, read across the corpus, not only the file you expect to own the item. The same insight is frequently already present under a different heading or in an adjacent group. If it sharpens an **existing** rule, fold it in with a minimal edit rather than adding a second bullet that says nearly the same thing — and never weaken or restate what is already there in the process.
 
-## Routing — picking the right file
+## Mechanism triage — prose is the fallback, not the default
+
+A worthy item next descends the **promotion ladder** ([../checks/DESIGN.md](../checks/DESIGN.md) owns it): platform setting (always paired with its verifying check) → PreToolUse hook → conformance check → skill → prose. The *first* rung that can carry the item wins — a rule about repo state becomes a check whose failure message *is* the lesson; a bad action to prevent becomes a guard; a procedure or knowledge with a nameable trigger becomes (or joins) a skill. Only an item none of those can carry — judgment, in-flight behavior, signature-less knowledge — proceeds to the file routing below, and its landing **names that reason** in the promote log so conversion rates stay auditable.
+
+## Routing — picking the right file (rung-5 items only)
 
 Routing is robust when it keys on **stable file groups**, not on the current roster of individual files (which grows over time). The corpus is organized into a few groups, each with its own selection rule:
 

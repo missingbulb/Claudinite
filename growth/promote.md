@@ -6,7 +6,7 @@ Promotion is the **judgment gate before shared canon**: it opens a PR for the ow
 
 ## Run on a capable model
 
-Every step is a judgment call — portability, duplication, ownership, "does this clear the bar," how to generalize a project-specific lesson without distorting it. Per [agenticBestPractices.md](../tasks/agenticBestPractices.md) ("Match the agent model to the judgment it must make"), run this routine on a capable model. A downgraded model ships a plausible-but-wrong **acceptance** into the PR — exactly the failure the review is least likely to catch — where a capable model correctly rejects.
+Every step is a judgment call — portability, duplication, ownership, "does this clear the bar," how to generalize a project-specific lesson without distorting it. Per [the unattended-agents skill](../skills/unattended-agents/SKILL.md) ("Match the agent model to the judgment it must make"), run this routine on a capable model. A downgraded model ships a plausible-but-wrong **acceptance** into the PR — exactly the failure the review is least likely to catch — where a capable model correctly rejects.
 
 ## What each run does
 
@@ -27,12 +27,13 @@ Generalize first, then decide worthiness — never the reverse. A rule phrased f
 
 Only now, holding the generalized rule, decide if it earns a place — by the bar [item-routing.md](item-routing.md) owns; don't restate its gates here. Lean **inclusive**: the goal is a broad library, so keep anything a future project (especially one with a similar tech stack) could use, even if only one project benefits today. Be strict about just one thing — duplication: dedupe against **every** corpus doc, not only the one you'd expect to own it, since the same insight is often already there under a different heading.
 
-### 4. Route and write — directly to the canon's default branch
+### 4. Triage the mechanism, then route — directly to the canon's default branch
 
-- **Route** each accepted rule to its **one** owning doc; [item-routing.md](item-routing.md) owns that placement call (which group, tech vs. practice, tool vs. process, or a new doc when nothing fits). Match the target doc's voice and format; pick exactly one owner, never split or duplicate.
+- **Descend the promotion ladder first** — [item-routing.md](item-routing.md)'s mechanism triage. Prose is the fallback, not the default: a lesson a check can carry is **authored as the check** in this same PR — the rule module in the right pack, the failure message carrying the generalized lesson, **plus a fixture test proving it fires** on a violating input and stays quiet on a clean one (see-it-fail applies to checks). When a confident detection-plus-fixture can't be authored unattended, land the lesson as prose **and** open a tagged conformance-backlog issue — a visible miss to sweep later, never a silently-shipped broken check.
+- **Route** each rung-5 (prose) rule to its **one** owning doc; [item-routing.md](item-routing.md) owns that placement call (which group, tech vs. practice, tool vs. process, or a new doc when nothing fits). Match the target doc's voice and format; pick exactly one owner, never split or duplicate.
 - **Write it terse — when + what.** State the relevance (*when* it applies) and the rule (*what* to do); that's the body. Add a *why* only to flag severity, and keep it to a few words — don't explain the world.
-- **Bounded write surface.** Edit only the one owning doc; don't "improve" unrelated rules while you're in there. Adding a new corpus file is the sole exception, via the new-doc path [item-routing.md](item-routing.md) owns, which bounds what that change may touch.
-- **Open a PR against `main`.** Push the accepted edits to a per-run-unique branch (see [git-and-github.md](../tasks/git-and-github.md#an-automated-job-needs-a-unique-branch-per-run)) and open a single PR against Claudinite's default branch for the owner to approve — one PR for the whole run's accepted lessons, not one per lesson or per doc — never a direct push. Keep the commit and PR terse; reference this routine's tracking issue (below).
+- **Bounded write surface.** Edit only the one owning doc — or, for a check-conversion, only the new rule module, its registration in the pack registry, and its fixture test. Don't "improve" unrelated rules or checks while you're in there. Adding a new corpus file is the other exception, via the new-doc path [item-routing.md](item-routing.md) owns, which bounds what that change may touch.
+- **Open a PR against `main`.** Push the accepted edits to a per-run-unique branch (see [the git-github-advanced skill](../skills/git-github-advanced/SKILL.md)) and open a single PR against Claudinite's default branch for the owner to approve — one PR for the whole run's accepted lessons, not one per lesson or per doc — never a direct push. Keep the commit and PR terse; reference this routine's tracking issue (below).
 
 ### 5. Log the run to the tracker
 
@@ -46,7 +47,7 @@ The routine's standing self-improvement log is the issue titled exactly:
 
 - **Find it by title, never by a hard-coded number** (a bare number can dangle).
 - **Open it if missing; reopen it if it was closed** while runs still need logging.
-- Log each run as a **dated comment** — not a sub-issue — so history accumulates in one scrollable feed: the date, and per lesson the origin repo, the owning doc it landed in, and the generalized rule (or, for a notable rejection, the reason and the existing rule that already covers it).
+- Log each run as a **dated comment** — not a sub-issue — so history accumulates in one scrollable feed: the date, and per lesson the origin repo, the **ladder rung it landed on** (check id / skill / owning doc — with the named reason when prose was the fallback), and the generalized rule (or, for a notable rejection, the reason and the existing rule that already covers it).
 
 ## What this routine must never do
 

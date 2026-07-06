@@ -25,10 +25,14 @@ When the canon has **absorbed** a practice a local doc still carries — most of
 
 So ask not "is it specific" (it always is) but "does it only lean on specific names to make the general point, or does it make a point the canon doesn't?" Prune the first; keep the second.
 
+## A canon check covers an item too — and more strongly than prose
+
+The canon carries rules as **conformance checks**, not only prose. A local item is covered when a canon check *enforces* it — stronger coverage than a stated line, since the rule runs on every session and CI pass. Consult the machine-readable rule catalog (`node .claudinite/checks/run.mjs --list`: id, severity, description, doc pointer) alongside the prose corpus, and when a check covers the item, **quote the rule id** where you'd otherwise quote a canon line. The keep-test below is unchanged: a local item that says *more* than the check detects (a stronger point about a narrower case) stays.
+
 ## Discipline
 
-- **Only remove a local item you can show the mounted canon genuinely covers — quote the canon line.** When unsure, leave it; a wrongful prune deletes a real local lesson.
-- **Open a single PR against `main`** from a per-run-unique branch (see [git-and-github.md](../tasks/git-and-github.md#an-automated-job-needs-a-unique-branch-per-run)) — one PR for the whole run's prunes, not one per item — never a direct push. This is an unattended routine, on a capable model, editing the project's *own* docs; the owner wants a human approval gate on every growth change.
+- **Only remove a local item you can show the mounted canon genuinely covers — quote the canon line (or the covering check's rule id).** When unsure, leave it; a wrongful prune deletes a real local lesson.
+- **Open a single PR against `main`** from a per-run-unique branch (see [the git-github-advanced skill](../skills/git-github-advanced/SKILL.md)) — one PR for the whole run's prunes, not one per item — never a direct push. This is an unattended routine, on a capable model, editing the project's *own* docs; the owner wants a human approval gate on every growth change.
 - If an edit touches something a test reads, run the project's offline test suite and keep it green before pushing.
 
 ## Tracking

@@ -1,0 +1,56 @@
+{
+  "packs": ["github-actions"],
+  "rules": {},
+  "accept": [
+    {
+      "rule": "file-placement",
+      "path": "packs/",
+      "reason": "pack check modules deliberately share the checks/ engine lib — a named cross-cutting concern per skills/file-placement/SKILL.md; packs are organized by pack, not by dependency"
+    },
+    {
+      "rule": "squash-merge-history",
+      "path": "main@221abc6",
+      "reason": "legacy merge (PR #41) from before the squash-only policy was enforced; left in history"
+    },
+    {
+      "rule": "squash-merge-history",
+      "path": "main@abc0645",
+      "reason": "legacy merge (PR #98) from before the squash-only policy was enforced; left in history"
+    },
+    {
+      "rule": "squash-merge-history",
+      "path": "main@cdf2cca",
+      "reason": "legacy direct branch merge (tarball-sync doc) from before the squash-only policy; left in history"
+    },
+    {
+      "rule": "squash-merge-history",
+      "path": "main@bce9e05",
+      "reason": "legacy merge (PR #29) from before the squash-only policy was enforced; left in history"
+    },
+    {
+      "rule": "squash-merge-history",
+      "path": "main@b7f1021",
+      "reason": "legacy merge (PR #26) from before the squash-only policy was enforced; left in history"
+    },
+    {
+      "rule": "squash-merge-history",
+      "path": "main@8c23e59",
+      "reason": "legacy merge (PR #21) from before the squash-only policy was enforced; left in history"
+    },
+    {
+      "rule": "squash-merge-history",
+      "path": "main@45f8fa0",
+      "reason": "legacy merge (PR #20) from before the squash-only policy was enforced; left in history"
+    },
+    {
+      "rule": "squash-merge-history",
+      "path": "main@28111e9",
+      "reason": "legacy merge (PR #19) from before the squash-only policy was enforced; left in history"
+    },
+    {
+      "rule": "squash-merge-history",
+      "path": "main@ba46c94",
+      "reason": "legacy merge (PR #15) from before the squash-only policy was enforced; left in history"
+    }
+  ]
+}
