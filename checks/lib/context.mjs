@@ -104,6 +104,15 @@ export function buildContext({ root, mode = 'changed', baseOverride = null }) {
       return added;
     },
 
+    // Merge commits along a ref's first-parent chain (the squash-only effect check).
+    mergeCommitsOn(ref) {
+      const out = gitTry(root, 'log', '--merges', '--first-parent', '--format=%h %s', ref);
+      return lines(out).map((l) => {
+        const i = l.indexOf(' ');
+        return { sha: l.slice(0, i), subject: l.slice(i + 1) };
+      });
+    },
+
     // Fixed-string search across tracked files; git grep exits 1 on no match.
     grepTracked(needle) {
       const out = gitTry(root, 'grep', '-n', '-F', needle, '--', '.');

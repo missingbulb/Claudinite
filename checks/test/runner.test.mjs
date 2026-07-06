@@ -94,7 +94,8 @@ test('--list emits the machine-readable rule catalog', () => {
     const r = runCli(root, '--list');
     assert.equal(r.status, 0);
     for (const id of ['reference-integrity', 'markdown-link-labels', 'task-lifecycle',
-                      'warning-suppression', 'file-placement', 'pack-declaration']) {
+                      'warning-suppression', 'file-placement', 'pack-declaration',
+                      'squash-merge-history']) {
       assert.match(r.stdout, new RegExp(`^${id}\t`, 'm'));
     }
   } finally { cleanup(root); }

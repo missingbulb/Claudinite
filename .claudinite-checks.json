@@ -6,6 +6,16 @@
       "rule": "file-placement",
       "path": "checks/packs/",
       "reason": "pack modules deliberately share the checks-level lib/ — a named cross-cutting concern per tasks/filePlacement.md; the pack tree is organized by pack, not by dependency"
+    },
+    {
+      "rule": "squash-merge-history",
+      "path": "main@221abc6",
+      "reason": "legacy merge (PR #41) from before the squash-only policy was enforced; left in history"
+    },
+    {
+      "rule": "squash-merge-history",
+      "path": "main@abc0645",
+      "reason": "legacy merge (PR #98) from before the squash-only policy was enforced; left in history"
     }
   ]
 }

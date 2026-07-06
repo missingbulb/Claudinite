@@ -8,6 +8,7 @@ import taskLifecycle from '../packs/universal/task-lifecycle.mjs';
 import warningSuppression from '../packs/universal/warning-suppression.mjs';
 import filePlacement from '../packs/universal/file-placement.mjs';
 import packDeclaration from '../packs/universal/pack-declaration.mjs';
+import squashMergeHistory from '../packs/universal/squash-merge-history.mjs';
 
 function run(rule, root, mode = 'changed') {
   const ctx = buildContext({ root, mode });
@@ -129,6 +130,27 @@ test('pack-declaration: silent when declaration matches reality', () => {
   try {
     assert.equal(run(packDeclaration, root).length, 0);
   } finally { cleanup(root); }
+});
+
+test('squash-merge-history: flags a merge commit on main, silent on linear history', () => {
+  const linear = makeRepo({ changed: { 'f.txt': 'x\n' } });
+  const merged = makeRepo({ changed: {} });
+  try {
+    git(merged, 'checkout', '-q', 'main');
+    git(merged, 'checkout', '-q', '-b', 'side');
+    writeFiles(merged, { 's.txt': 'x\n' });
+    git(merged, 'add', '-A');
+    git(merged, 'commit', '-q', '-m', 'side work');
+    git(merged, 'checkout', '-q', 'main');
+    git(merged, 'merge', '-q', '--no-ff', '-m', 'merge side', 'side');
+    git(merged, 'checkout', '-q', 'feature');
+
+    const findings = run(squashMergeHistory, merged);
+    assert.equal(findings.length, 1);
+    assert.match(findings[0].what, /merge side/);
+    assert.match(findings[0].file, /^main@/);
+    assert.equal(run(squashMergeHistory, linear).length, 0);
+  } finally { cleanup(linear); cleanup(merged); }
 });
 
 test('changed-mode scoping: pre-existing violations elsewhere are not reported', () => {
