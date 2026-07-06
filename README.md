@@ -36,6 +36,8 @@ Beyond the portable corpus above, two folders hold the machinery that keeps it f
 
 `checks/` holds the **deterministic-enforcement layer** — the corpus rules that convert into machine-run checks executed when a consuming repo's session finishes (Stop hook) and in CI. Usage and configuration → [checks/README.md](checks/README.md); design → [checks/DESIGN.md](checks/DESIGN.md); the per-rule audit → [checks/conversion-inventory.md](checks/conversion-inventory.md).
 
+`skills/` holds the **Agent Skills** the corpus's procedures and knowledge convert into (design stage — the catalog is [skills/README.md](skills/README.md)).
+
 `routines/` holds the scheduled jobs:
 
 - [routines/auto-all-repos-maintenance.md](routines/auto-all-repos-maintenance.md) — **the single scheduled entry point.** One daily routine, scheduled once from a home repo, that discovers **every** Claudinite-vendored repo the token can access (by the tracked `.claudinite/` marker) and sequences the growth lifecycle across the fleet — phase 1 in every repo (parallel) → barrier → phase 2 once (central) → barrier → phase 3 in every repo (parallel) — plus the nightly repo tidy-up, each run as its own isolated subagent so no repo or phase can stop the others. Schedule **this**, nothing else.

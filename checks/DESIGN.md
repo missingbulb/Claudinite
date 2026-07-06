@@ -221,22 +221,9 @@ scales with the context window — many verbose skills degrade matching), and ke
 
 ### The catalog
 
-| Skill | Trigger | Replaces |
-|---|---|---|
-| `merge-to-main` | owner's "LGTM" (+ `/merge-to-main`) | [../always/merge-to-main.md](../always/merge-to-main.md) — force-loaded today; ends with the lessons pass |
-| `lessons-learned` | owner's "learned lessons"; invoked by `merge-to-main` | [../growth/extracting-lessons.md](../growth/extracting-lessons.md) — force-loaded today |
-| `bump-version` | owner's "bump version" | preference entry; delegates to the project's release doc |
-| `adopt-claudinite` | bootstrap request | [../bootstrap.md](../bootstrap.md) as an executable procedure |
-| `bug-investigation` | description-matched: investigating a bug, a fix that didn't hold | [../tasks/bug-investigations.md](../tasks/bug-investigations.md) |
-| `writing-tests` | description-matched: writing/changing tests | the stays-residue of [../tasks/testingPractices.md](../tasks/testingPractices.md) |
-| `repo-text-sweeps` | description-matched: grep/sed sweep, rename, relocation | the procedure-residue of [../tasks/textAndFileManipulation.md](../tasks/textAndFileManipulation.md) |
-| `authoring-agent-docs` | description-matched: writing a Claude instruction doc | [../tasks/agentic-documentation.md](../tasks/agentic-documentation.md) |
-| `unattended-agents` | description-matched: building agents/routines | [../tasks/agent-architecture.md](../tasks/agent-architecture.md) + [../tasks/agenticBestPractices.md](../tasks/agenticBestPractices.md) residue |
-| `git-github-advanced` | description-matched: beyond-baseline git/GitHub work | the knowledge-residue of [../tasks/git-and-github.md](../tasks/git-and-github.md) |
-| `chrome-extension` | `paths`-scoped to manifest/extension globs + description | [../technologies/chrome-extension.md](../technologies/chrome-extension.md) (+ pointer to the release standard, whose *enforcement* is the conformance pack) |
-| `nodejs-testing` | `paths`-scoped to test globs + description | [../technologies/nodejs.md](../technologies/nodejs.md) |
-| `aws-sam` | `paths`-scoped to `template.yaml` + description | [../technologies/aws-sam.md](../technologies/aws-sam.md) |
-| `html` | description-matched | [../technologies/html.md](../technologies/html.md) |
+The skill-by-skill catalog — each skill, its trigger, and the doc it replaces — lives in
+[../skills/README.md](../skills/README.md), next to where the skills themselves will land
+(`skills/<name>/SKILL.md`), the same way this design seeded `checks/`.
 
 What stays always-loaded after this: a trimmed
 [../always/working-discipline.md](../always/working-discipline.md), the judgment core of
