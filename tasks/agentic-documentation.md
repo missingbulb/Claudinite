@@ -37,7 +37,10 @@ published guidance; bracketed numbers cite the sources listed at the end.
 - Apply the golden rule: show the instruction to a colleague with minimal context — if they'd
   be confused, the agent will be too. [3]
 - State the motivation behind a rule, not just the rule; the model generalizes from the
-  explanation. [3]
+  explanation. [3] Keep that why structurally separate from the rule itself — a trailing
+  parenthetical or short follow-up sentence, never woven into the instruction — so the
+  load-bearing sentence stays scannable while the rationale still reaches a reader judging
+  whether the rule still applies.
 - Tell the agent what to do instead of what not to do: "write flowing prose paragraphs"
   steers better than "do not use markdown". [3]
 - Use numbered steps when the order or completeness of steps matters. [3]
