@@ -158,61 +158,95 @@ extension; the upstream reference is
 3. Complete the listing — 128px store icon, description, category, ≥ 1280×800 screenshot — by
    pasting from the repo's submission kit (`store_artifacts/STORE-LISTING.md`).
 4. Privacy tab: paste the kit's single-purpose statement, per-permission justifications, and
-   data-usage declarations; set the **Privacy policy URL** to the `/privacy/` Pages URL —
-   deploy it first via the privacy workflow's dispatch so the URL is live when the reviewer
-   clicks it.
+   data-usage declarations; set the **Privacy policy** field (bottom of the tab) to the
+   `/privacy/` Pages URL. **Before submitting**: deploy the privacy page via the privacy
+   workflow's dispatch, load the URL in a browser to confirm it's live, and paste that exact
+   permalink — never a guessed path. Google re-fetches this URL on **every** publish, and an
+   unreachable link fails the publish (see [When a store publish fails](#when-a-store-publish-fails)).
 5. Submit for review — approval takes hours to a few days (`ITEM_PENDING_REVIEW` = success).
-   Every subsequent upload must carry a **strictly higher** version, which is why the pipeline
-   always bumps before it ships.
+   While the item is **pending review the API rejects uploads** — hold the pipeline dry run
+   until the first review completes. Every subsequent upload must carry a **strictly higher**
+   version, which is why the pipeline always bumps before it ships; a "version must be
+   greater" rejection on a dry run is a **pass** — it proves the credential wiring works
+   end to end.
 
 ### Minting the API credentials (once per extension)
 
-In a Google Cloud project: enable the **Chrome Web Store API**; **publish** the OAuth consent
-screen — left in "Testing", it issues refresh tokens that silently expire after 7 days and break
-the publish workflow a week later; create a **Desktop app** OAuth client → `CHROME_CLIENT_ID` /
-`CHROME_CLIENT_SECRET`. Then mint the refresh token by hand (Google blocks the out-of-band flow,
-so the Desktop client's `http://localhost` redirect is required and step 2 reads the code out of
-a failing redirect):
+Browser-only — no local tooling needed. Two standing rules for every step below:
 
-```sh
-export CHROME_CLIENT_ID="…"
-export CHROME_CLIENT_SECRET="…"
+- Every "sign in with Google" must use the **same Google account that owns the store listing**,
+  and will hit a **"Google hasn't verified this app"** interstitial — click **Advanced** →
+  **"Go to \<app\> (unsafe)"** → **Allow**. That's fine and permanent: you are this OAuth app's
+  only user, so **ignore every verification prompt and never start verification** — an
+  unverified app's tokens work indefinitely.
+- Before acting on any Cloud-console page, confirm the **top-bar project picker** shows the
+  project created in step 1.
 
-# 1. Open this URL (incognito, signed into only the developer account), approve.
-echo "https://accounts.google.com/o/oauth2/auth?response_type=code&scope=https://www.googleapis.com/auth/chromewebstore&access_type=offline&prompt=consent&redirect_uri=http://localhost&client_id=${CHROME_CLIENT_ID}"
+**Google Cloud setup:**
 
-# 2. The browser redirects to http://localhost/?code=… and FAILS TO LOAD (expected).
-#    Copy the code= value out of the address bar.
-export CHROME_AUTH_CODE="…"
+1. **Create a project**: <https://console.cloud.google.com/projectcreate> — any name, keep
+   "No organization" → **Create**. Confirm the top-bar project picker switched to it.
+2. **Enable the Chrome Web Store API**:
+   <https://console.cloud.google.com/apis/library/chromewebstore.googleapis.com> → **Enable**.
+3. **Configure the OAuth consent screen** (the console now brands this "Google Auth
+   Platform"): <https://console.cloud.google.com/auth/overview> → **Get started** → app name +
+   support email → Audience: **External** → contact email → agree → **Create**.
+4. **Publish the app to production**: <https://console.cloud.google.com/auth/audience> →
+   **Publish app** → **Confirm**. Left in "Testing", refresh tokens silently expire after
+   7 days — the unattended daily release dies a week later.
+5. **Create the OAuth client**: <https://console.cloud.google.com/auth/clients> → **Create
+   client** → type **Web application** (NOT Desktop — Desktop clients can't take custom
+   redirect URIs; the client type makes no difference to `chrome-webstore-upload-cli`, the
+   refresh-token grant is identical) → add authorized redirect URI exactly
+   `https://developers.google.com/oauthplayground` → **Create**. The client ID and secret are
+   `CHROME_CLIENT_ID` / `CHROME_CLIENT_SECRET`.
 
-# 3. Exchange it for the refresh token (the code is single-use).
-curl -s "https://accounts.google.com/o/oauth2/token" \
-  -d "client_id=${CHROME_CLIENT_ID}" \
-  -d "client_secret=${CHROME_CLIENT_SECRET}" \
-  -d "code=${CHROME_AUTH_CODE}" \
-  -d "grant_type=authorization_code" \
-  -d "redirect_uri=http://localhost" | jq -r .refresh_token
-```
+**Mint the refresh token in the OAuth 2.0 Playground:**
 
-The printed string is `CHROME_REFRESH_TOKEN`. Add it plus the other three as the repository
-secrets. If minting fails:
+1. Open <https://developers.google.com/oauthplayground> → gear icon (top right) → check
+   **Use your own OAuth credentials** → paste the client ID + secret.
+2. In Step 1, ignore the API list: type `https://www.googleapis.com/auth/chromewebstore` into
+   **Input your own scopes** → **Authorize APIs** → sign in as the listing owner → past the
+   unverified interstitial → **Allow**.
+3. Step 2 → **Exchange authorization code for tokens** → copy the **Refresh token** (starts
+   `1//`). Ignore the access token — it expires hourly; the CLI mints its own.
+4. **Empty Refresh-token field?** Consent wasn't force-prompted: in the gear panel set
+   **Force prompt: Consent** and redo the authorize step.
 
-| Symptom | Fix |
-| --- | --- |
-| `access_denied` / "app is being tested" | Add yourself as a test user, or **publish** the consent screen. |
-| `invalid_request` / "OOB flow blocked" | Use a Desktop client (`http://localhost` redirect), not `urn:ietf:wg:oauth:2.0:oob`. |
-| `500` on the consent page | Retry in an incognito window signed into a single account. |
-| `invalid_grant` at token exchange | The authorization code is stale/used — restart the flow for a fresh one. |
+Add all four values as repository secrets at
+`https://github.com/<owner>/<repo>/settings/secrets/actions/new`:
+`CHROME_EXTENSION_ID`, `CHROME_CLIENT_ID`, `CHROME_CLIENT_SECRET`, `CHROME_REFRESH_TOKEN`.
+
+**Alternative — local Node**: `npx chrome-webstore-upload-keys` walks the same flow from a
+terminal (it needs the client to be a **Desktop app**, whose `http://localhost` redirect it
+uses). Use it only when a Node-equipped machine is at hand; the Playground route above is the
+default because it assumes nothing about the operator's machine.
 
 ### Routine shipping
 
 - Nothing to do for accumulated work: the daily auto-release ships any day whose merges touched
   shipped files, on its own patch bump.
 - A deliberate release now: **"bump version"** (default minor) → merge the PR (that cuts the
-  GitHub Release) → run **Release: Publish to Chrome Web Store** from the Actions tab (blank
+  GitHub Release) → run **Release: Publish to Chrome Web Store** from its dispatch page,
+  `https://github.com/<owner>/<repo>/actions/workflows/publish-chrome-store.yml` (blank
   tag = latest release).
 - Once the store approves, Chrome auto-pushes the update to installed users within hours — no
   reinstall.
+
+### When a store publish fails
+
+- **HTTP 400 `Publish condition not met: Privacy policy link is not reachable.`** — Google
+  fetches the listing's privacy-policy URL at publish time, and re-checks it on **every**
+  publish. Fix it on the item's **Privacy** tab in the
+  [developer dashboard](https://chrome.google.com/webstore/devconsole)
+  (`https://chrome.google.com/webstore/devconsole/<publisher-id>/<item-id>/edit/privacy`,
+  bottom field, "Privacy policy"): set it to the exact live `/privacy/` permalink → **Save
+  draft** → re-run the publish.
+- **Upload rejected while `ITEM_PENDING_REVIEW`** — the API can't upload while a review is in
+  flight; wait for the review to complete, then re-run.
+- **"version must be greater" than the live one** — expected whenever the zip's version isn't
+  strictly higher; on a credentials dry run this is success, otherwise let the daily bump (or
+  "bump version") raise it first.
 
 ### When a change touches the extension's permissions
 
