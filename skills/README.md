@@ -1,9 +1,11 @@
 # Skills — the catalog
 
-> **Status: design stage.** The skills below don't exist yet — this catalog is the worklist
-> for the skills phases of [checks/DESIGN.md](../checks/DESIGN.md) (which owns the rationale,
-> the delivery mechanics, and the probabilistic-trigger caveat). Each skill lands here as
-> `skills/<name>/SKILL.md` and gets symlinked into a consumer's `.claude/skills/`.
+> **Status: delivered — all catalog skills exist as thin wrappers.** Each skill is a
+> harness-managed *trigger* (`skills/<name>/SKILL.md`, symlinked into a consumer's
+> `.claude/skills/` by bootstrap Part 7); the content stays canonical in the corpus doc the
+> skill points at, so consumers without symlinks lose nothing — the index soft pointers still
+> route. Rationale, delivery mechanics, and the probabilistic-trigger caveat live in
+> [checks/DESIGN.md](../checks/DESIGN.md).
 
 | Skill | Trigger | Replaces |
 |---|---|---|

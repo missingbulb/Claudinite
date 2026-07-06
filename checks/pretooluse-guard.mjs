@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Claude Code PreToolUse guard: blocks Bash commands that delete a remote branch
-// (the delete-push fails in this environment — formerly always/temporary-workarounds.md).
+// (the delete-push fails in this environment, so it can never succeed).
 // Exit 2 blocks the tool call and feeds stderr back to the agent. Registered
 // per-repo — see bootstrap.md.
 let input = '';

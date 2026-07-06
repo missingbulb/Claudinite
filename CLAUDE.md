@@ -33,6 +33,13 @@ here is now carried by that machinery:
 
 `templates/` holds one project-agnostic playbook per **class of project** the owner runs (research/algorithm-iteration is the first). A project doesn't read these per task — it **links the one template that matches its category** from its own `CLAUDE.md`, once, and follows it. Picking (or, when none fits, defining) that category is a **bootstrap** step ([bootstrap.md](bootstrap.md), Part 5); the catalog and the pick-or-uplevel process live in [templates/README.md](templates/README.md).
 
+## technologies/ and tasks/ — carried by mounted skills; the lines below are the fallback
+
+Every trigger in the next two sections is also carried by a mounted **skill** (the catalog:
+[skills/README.md](skills/README.md)) — where bootstrap Part 7's symlinks are in place, the
+harness surfaces the right doc itself. The soft pointers below remain for repos not yet
+re-bootstrapped and as the human-readable map.
+
 ## technologies/ — read only the file(s) the task touches; otherwise skip
 
 [Node.js](technologies/nodejs.md) · [Chrome extension](technologies/chrome-extension.md) · [Chrome extension release/store standard](technologies/chrome-extension-release.md) · [AWS SAM](technologies/aws-sam.md) · [Flutter](technologies/flutter.md) · [HTML](technologies/html.md)
