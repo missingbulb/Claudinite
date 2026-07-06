@@ -72,7 +72,7 @@ packs/                        # the mounted corpus: prose + checks, active by de
   chrome-extension/           #   RULES.md (gotchas) + RELEASE.md (standard) + conformance checks
   github-actions/             #   the workflow lints (no prose)
   node/  aws-sam/  html/  flutter/     # prose-only tech packs
-  research-project/           #   a project-CLASS pack (prose-only, declared)
+  research-iteration/  ground-truth/  session-continuity/   # project-class packs (prose-only, declared)
 checks/                       # the ENGINE only (runs the packs' checks)
   run.mjs                     #   dependency-free Node CLI
   lib/                        #   git diff scoping, findings format, markdown + manifest helpers

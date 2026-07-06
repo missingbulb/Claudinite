@@ -25,8 +25,11 @@ beats prose.
   declaration from a fingerprint): `chrome-extension` (gotchas + the release/store standard in its
   [RELEASE.md](packs/chrome-extension/RELEASE.md) + the conformance checks), `github-actions` (workflow
   lints), `node`, `aws-sam`, `html`, `flutter`.
-- **Project-class packs**, declared by kind of project: `research-project` (the algorithm-iteration
-  playbook — [packs/research-project/RULES.md](packs/research-project/RULES.md)).
+- **Project-class packs**, declared by kind of project. The algorithm-iteration class declares
+  [`research-iteration`](packs/research-iteration/RULES.md) (show-the-work methodology),
+  [`ground-truth`](packs/ground-truth/RULES.md) (dataset & anti-overfitting discipline), and
+  [`session-continuity`](packs/session-continuity/RULES.md) (resumability — reusable by any
+  long-running project).
 
 The `pack-declaration` check keeps the declaration honest against the repo's real fingerprint — including
 telling the session that introduces a new technology to declare its pack.
