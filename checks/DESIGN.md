@@ -89,6 +89,9 @@ fingerprint and declaration disagree in *either* direction: technology markers f
 pack undeclared ("add the pack"), or a declared pack whose technology has left the repo
 ("drop it"). Bootstrap writes the initial declaration from the fingerprint; from then on the
 declaration is the truth that executes and the fingerprint is the guard that keeps it true.
+This meta-check also *is* the "declare a newly adopted technology" instruction — no standing
+rule needed: the session that introduces the technology gets the finding telling it to add the
+pack, and from then on that pack runs everywhere.
 `.claudinite-checks.json` additionally holds per-rule **overrides** and **acceptances**.
 
 **Acceptances are the escape hatch — deterministic and reviewable.** Rules with judgment
@@ -181,7 +184,10 @@ better odds than a soft pointer, never a guarantee. That is precisely why this d
 division of labor puts nothing that *must* happen on a skill: enforcement lives in hooks,
 checks, and settings, which are deterministic by construction; skills carry only guidance whose
 worst-case miss is today's status quo. In particular, check execution never depends on skill
-routing — the Stop hook runs the declared packs whether or not any skill fired. Two documented limits
+routing — the Stop hook runs the declared packs whether or not any skill fired. The split is
+therefore **per-rule, not per-doc**: a doc's enforceable rules go to a pack (which runs
+unconditionally for every project that declares it), its judgment residue rides the skill, and
+there is deliberately no one-to-one correspondence between an instruction file and a pack. Two documented limits
 to respect: keep descriptions tight (the listing truncates them, and the description budget
 scales with the context window — many verbose skills degrade matching), and keep each
 `SKILL.md` body well under 500 lines.

@@ -119,8 +119,11 @@ procedure: [dev/build/release/releasing.md](dev/build/release/releasing.md).
 ```
 
 Until the extension's first store publication, replace the store line with:
+
+```markdown
 *Not yet on the Chrome Web Store — the listing goes live after the first manual publish (see
 [dev/build/release/releasing.md](dev/build/release/releasing.md)).*
+```
 
 ## Setting up a new extension repo
 
