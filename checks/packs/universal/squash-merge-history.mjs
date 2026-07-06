@@ -6,7 +6,7 @@ import { finding } from '../../lib/findings.mjs';
 // accepted individually while a new one still fires.
 const rule = {
   id: 'squash-merge-history',
-  severity: 'advisory',
+  severity: 'blocking',
   description: "The default branch's first-parent history must be squash-only (no merge commits)",
   doc: 'always/merge-to-main.md',
   why: 'the squash-only repo setting can be off or bypassed; the history is the effect that proves it held',

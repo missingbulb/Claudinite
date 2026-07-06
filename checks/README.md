@@ -59,6 +59,7 @@ One module per rule under `packs/<pack>/`, exporting
 violation, `why` the one-line motivation, `fix` the exact remedy, `doc` the corpus doc that owns
 the depth. Write the fixture test first and see it fail (`test/`, scratch git repos via
 [test/helpers.mjs](test/helpers.mjs)) — a violating fixture must find, a clean one must not.
-New rules ship `advisory` and are promoted to `blocking` after observed precision. A new
+A new rule ships at its real severity, fail-fast: `blocking` when a finding is a defect to
+fix, `advisory` only when the rule's own semantics are directional (a smell to judge). A new
 technology pack also registers its fingerprint in
 [packs/fingerprints.mjs](packs/fingerprints.mjs) and flips `available: true`.

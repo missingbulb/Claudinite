@@ -12,7 +12,7 @@ const MARKERS = [
 
 const rule = {
   id: 'warning-suppression',
-  severity: 'advisory',
+  severity: 'blocking',
   description: 'New warning-suppression markers in the diff need the dedicated-issue path, not the quick path',
   doc: 'always/working-discipline.md',
   why: 'suppression hides the signal instead of resolving it',

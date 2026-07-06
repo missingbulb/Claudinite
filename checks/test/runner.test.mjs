@@ -27,11 +27,23 @@ test('exit 1 with a rendered finding on a blocking violation; exit 0 when clean'
 
 test('advisory findings alone do not fail the run', () => {
   const root = makeRepo({
-    changed: { 'a.js': '// eslint-disable-next-line no-undef\ny();\n' },
+    base: { 'deep/far/util.mjs': 'export const x = 1;\n' },
+    changed: { 'src/mod.mjs': "import { x } from '../deep/far/util.mjs';\nexport { x };\n" },
   });
   try {
     const r = runCli(root);
     assert.equal(r.status, 0);
+    assert.match(r.stdout, /file-placement/);
+  } finally { cleanup(root); }
+});
+
+test('a new suppression marker blocks the run (fail fast)', () => {
+  const root = makeRepo({
+    changed: { 'a.js': '// eslint-disable-next-line no-undef\ny();\n' },
+  });
+  try {
+    const r = runCli(root);
+    assert.equal(r.status, 1);
     assert.match(r.stdout, /warning-suppression/);
   } finally { cleanup(root); }
 });

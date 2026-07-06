@@ -172,10 +172,15 @@ order of strength:
 - **A converted rule leaves its doc.** The check's failure message owns the rule now; the doc
   keeps only rationale and the judgment parts. Keeping both pays twice and springs the corpus's
   own drift trap (two sources of truth).
-- **Advisory first, blocking after proven precision.** A new check reports without blocking
-  until observed false-positive-free. False positives are the failure mode that kills the
-  system: a check that wrongly blocks Stop teaches the agent to fight the harness and the owner
-  to disable the pack.
+- **Fail fast: a new check ships at its real severity — blocking for defect-kind rules.** A
+  wrong blocking check surfaces in the very next session and gets fixed; an advisory false
+  positive is noise nobody reads, so a burn-in stage never actually observes the precision it
+  waits for. The escape hatches bound a bad check's blast radius: a reasoned acceptance, a
+  severity override, and the Stop hook's own two-block release. `advisory` remains a per-rule
+  **kind**, not a stage — for rules whose own semantics are directional (file-placement's
+  metric is "a direction, not a hard gate"), where a finding is a smell to judge, not a defect
+  to fix. Revisit delayed adoption only if the fleet grows people who can be hurt by a wrong
+  block.
 - **Telemetry drives retirement.** The runner logs firings; the fleet-maintenance routine
   already reads every vendored repo and can report "rules that never fired in N days" —
   obsolescence made measurable, the property instructions never had.
@@ -313,7 +318,7 @@ conversion is a promotion-time judgment, made once, centrally.
 ## Phasing
 
 1. **Runner + Stop hook + first universal packs** — reference-integrity, task-lifecycle,
-   warning-suppression (blocking after burn-in); file-placement (advisory). Bootstrap gains the
+   warning-suppression (blocking); file-placement (advisory by kind). Bootstrap gains the
    hook-registration step.
 2. **github-actions lint pack + chrome-extension-release conformance pack**, piloted on one
    extension repo.
