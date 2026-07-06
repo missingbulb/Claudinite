@@ -18,6 +18,12 @@ const rule = {
     });
     if (!usesEsbuild) return [];
 
+    // Single-package repos only: with more than one package.json this is a
+    // multi-package repo where the SAM function may build from a different
+    // manifest, and a root devDependency esbuild for other tooling is legitimate
+    // (an adversarial-mining false positive). Skip rather than misfire.
+    if (ctx.tracked.filter((f) => f.endsWith('package.json')).length !== 1) return [];
+
     const pkgText = ctx.read('package.json');
     if (pkgText === null) return [];
     let pkg;

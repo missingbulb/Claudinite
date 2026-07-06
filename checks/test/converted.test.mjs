@@ -20,6 +20,14 @@ test('claude-md-length: flags a CLAUDE.md over 200 lines, passes a short one', (
   } finally { cleanup(long); cleanup(short); }
 });
 
+test('claude-md-length: a long NON-root CLAUDE.md is not flagged (FP fix)', () => {
+  // a fixture/example CLAUDE.md that never loads must not be flagged
+  const root = makeRepo({ changed: { 'test/fixtures/CLAUDE.md': `${'x\n'.repeat(250)}` } });
+  try {
+    assert.equal(run(claudeMdLength, root).length, 0);
+  } finally { cleanup(root); }
+});
+
 test('generated-merge-driver: flags a GENERATED file lacking a merge=ours entry, passes when present', () => {
   const bad = makeRepo({ changed: { 'foo.GENERATED.json': '{}\n', 'src/a.mjs': 'export const x=1;\n' } });
   const good = makeRepo({
@@ -62,4 +70,19 @@ test('esbuild-dependency: flags devDependency esbuild under SAM esbuild build, p
     assert.equal(run(esbuildDependency, good).length, 0);
     assert.equal(run(esbuildDependency, noSam).length, 0);
   } finally { cleanup(bad); cleanup(good); cleanup(noSam); }
+});
+
+test('esbuild-dependency: a multi-package repo is not flagged (FP fix)', () => {
+  // root esbuild devDep is legitimate tooling when the SAM function builds from
+  // its own manifest — more than one package.json means skip
+  const root = makeRepo({
+    changed: {
+      'template.yaml': 'Resources:\n  Fn:\n    Metadata:\n      BuildMethod: esbuild\n',
+      'package.json': JSON.stringify({ devDependencies: { esbuild: '^0.20' } }),
+      'fn/package.json': JSON.stringify({ dependencies: { esbuild: '^0.20' } }),
+    },
+  });
+  try {
+    assert.equal(run(esbuildDependency, root).length, 0);
+  } finally { cleanup(root); }
 });
