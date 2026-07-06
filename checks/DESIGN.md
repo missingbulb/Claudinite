@@ -75,12 +75,21 @@ enforcement) scopes to files touched since `merge-base(origin/main, HEAD)` plus 
 so a session is never blocked on pre-existing violations it didn't cause; `--all` exists for
 adoption audits and CI sweeps.
 
-**Pack selection is structural, not configured.** Per the corpus's own
-structural-classifier rule: the runner fingerprints the repo — `.github/workflows/` →
-github-actions pack; `package.json` → node pack; a `manifest.json` with `manifest_version` →
-extension packs; the five release-workflow `name:`s → the conformance suite. Universal packs
-always run. `.claudinite-checks.json` exists only for **overrides** (disable a pack/rule) and
-**acceptances**.
+**Pack selection: declared for deterministic execution, fingerprinted against drift.** The
+packs a project runs are **pinned in `.claudinite-checks.json`**
+(`"packs": ["github-actions", "chrome-extension-release"]`; universal packs run unconditionally
+and are never declared). Execution is a closed, declared set: every rule in a declared pack
+runs on every run — Stop hook and CI alike — with no inference at execution time, so "the
+project uses technology X" deterministically implies "every X check ran." What keeps the
+declaration honest is the corpus's own drift-guard pattern (a duplicate of executable truth
+gets a test that fails on divergence): a universal meta-check **fingerprints** the repo —
+`.github/workflows/` → github-actions; a `manifest.json` with `manifest_version` → the
+extension packs; the five release-workflow `name:`s → the conformance suite — and fails when
+fingerprint and declaration disagree in *either* direction: technology markers found with the
+pack undeclared ("add the pack"), or a declared pack whose technology has left the repo
+("drop it"). Bootstrap writes the initial declaration from the fingerprint; from then on the
+declaration is the truth that executes and the fingerprint is the guard that keeps it true.
+`.claudinite-checks.json` additionally holds per-rule **overrides** and **acceptances**.
 
 **Acceptances are the escape hatch — deterministic and reviewable.** Rules with judgment
 exemptions (filePlacement's "deliberate cross-cutting concern") need a way to say "yes, on
@@ -162,9 +171,17 @@ a skill's name + description sit in context every session (progressive disclosur
 loads only on invocation), about what an index line costs today. The real gain is **trigger
 reliability**: today a `tasks/` doc helps only if the agent remembers to follow the index line
 ("read before writing a test") — an instruction-following step that fails silently. Skill
-matching is harness-managed and trained-for, skills are user-invocable as `/name` too, and
-technology skills can be **`paths`-scoped** (glob frontmatter) so they surface exactly when the
-matching files are touched — a structural trigger, not a remembered one. Two documented limits
+matching is harness-managed and trained-for, skills are user-invocable as `/name` too (manual
+invocation is deterministic — it runs when typed), and technology skills can be
+**`paths`-scoped** (glob frontmatter) so they surface exactly when the matching files are
+touched — a structural trigger, not a remembered one.
+
+Be clear about what this is *not*: **model-invocation of a skill is still probabilistic** —
+better odds than a soft pointer, never a guarantee. That is precisely why this design's
+division of labor puts nothing that *must* happen on a skill: enforcement lives in hooks,
+checks, and settings, which are deterministic by construction; skills carry only guidance whose
+worst-case miss is today's status quo. In particular, check execution never depends on skill
+routing — the Stop hook runs the declared packs whether or not any skill fired. Two documented limits
 to respect: keep descriptions tight (the listing truncates them, and the description budget
 scales with the context window — many verbose skills degrade matching), and keep each
 `SKILL.md` body well under 500 lines.
@@ -200,18 +217,26 @@ index. The routing index largely dissolves: routing *is what skill descriptions 
   bootstrap symlinks `.claude/skills/<name>` → there. Symlinked skill directories are
   documented, supported behavior, and skill changes are picked up live within a session — so
   the tarball sync populating the target after session start still lands.
-- **End-state — Claudinite as a plugin.** Plugins bundle exactly this design's pieces: skills,
-  commands, and hooks (SessionStart, Stop, PreToolUse), with bundled scripts addressable via
-  `${CLAUDE_PLUGIN_ROOT}`. The Claudinite repo doubles as its own marketplace
-  (`.claude-plugin/marketplace.json`); a consumer repo commits two keys in
-  `.claude/settings.json` (`extraKnownMarketplaces` + `enabledPlugins`) and every session in it
-  gets the whole layer — hooks registered, skills discovered, runner shipped — with updates
-  tracking the plugin repo's `main` (no `version` field → every commit is an update). That
-  collapses most of bootstrap and retires the tarball-sync/symlink plumbing. One documented
-  limit: a plugin cannot inject always-on CLAUDE.md-style prose, so the small residual baseline
-  keeps the existing `@`-import (or moves into the plugin's SessionStart hook output, which
-  becomes session context the same way the preferences hook works today). Phase 5; the symlink
-  route ships value without waiting for it.
+- **Later, maybe — Claudinite as a plugin (contingent on a spike).** A plugin is nothing
+  exotic: a directory layout inside an ordinary git repo (`skills/`, `commands/`,
+  `hooks/hooks.json`, a `plugin.json` manifest) plus a `.claude-plugin/marketplace.json` that
+  lets the repo serve as its own catalog. **No publication to Anthropic** — any git repo works
+  as a marketplace directly, and the repo may carry arbitrary other content alongside the
+  plugin dirs, so Claudinite would remain exactly the freely-amended GitHub repo it is (growth
+  PRs, this doc, everything — unchanged). The draw: plugins bundle precisely this design's
+  pieces — skills, commands, and hooks (SessionStart, Stop, PreToolUse) with bundled scripts
+  addressable via `${CLAUDE_PLUGIN_ROOT}` — and a consumer repo can commit
+  `extraKnownMarketplaces` + `enabledPlugins` in `.claude/settings.json` to enable it for
+  everyone. **Why it is not the plan of record:** the docs leave the operational questions that
+  matter most to this system unanswered — how promptly consumers receive updates (manual
+  `/plugin marketplace update` is documented; session-start auto-refresh is not), whether
+  web/cloud sessions load marketplace plugins at all, and whether plugin hooks behave
+  identically to settings-registered ones. A daily-growth corpus lives or dies on update
+  latency, and the current SessionStart tarball sync *guarantees* latest-`main` every session.
+  So: phases 1–4 ship entirely on the existing mount + symlinks and depend on the plugin route
+  for nothing; adopt it only if a Phase-5 spike proves same-day propagation, web support, and
+  hook parity. (Also documented: a plugin cannot inject always-on CLAUDE.md-style prose, so the
+  residual baseline keeps its `@`-import either way.)
 
 ## Growth pipeline: checks-first promotion
 
@@ -271,7 +296,8 @@ conversion is a promotion-time judgment, made once, centrally.
    [../growth/promote.md](../growth/promote.md),
    [../growth/item-routing.md](../growth/item-routing.md), and
    [../growth/dedup.md](../growth/dedup.md).
-5. **Plugin packaging** — Claudinite doubles as its own marketplace; hooks, skills, and the
-   runner ship as one installable unit; bootstrap collapses to two committed settings keys.
+5. **(Contingent) plugin packaging** — only after a spike proves same-day update propagation,
+   web-session support, and hook parity; until then the mount + symlink delivery is the plan of
+   record and nothing depends on this phase.
 6. **(Deferred)** LLM-judge checks in CI for judgment rules (naming, comment quality) —
    possible, but nondeterministic and token-costly; revisit only after 1–4 prove out.
