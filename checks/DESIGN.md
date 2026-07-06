@@ -39,7 +39,7 @@ picked per rule:
 |---|---|---|
 | **Post-hoc check** (this system) | The rule constrains the *state of the repo* after work | file placement, dangling references, workflow lint, lifecycle compliance |
 | **PreToolUse hook** | The action must be blocked *before* it runs | never delete a remote branch; don't `issue_write`-overwrite an issue body |
-| **Skill / script** | The rule is a *procedure* run on a trigger | the merge-to-main recipe; the lessons pass |
+| **Skill / script** | A *procedure* or *knowledge* with a nameable (or path-scoped) trigger | the merge-to-main recipe; the lessons pass; the technology gotcha files |
 | **Platform setting** | The platform enforces it outright, for free | squash-only merges; branch protection |
 
 Two classes deliberately **stay as instructions**:
@@ -49,8 +49,9 @@ Two classes deliberately **stay as instructions**:
   them post-hoc would also catch violations only after the expensive rework they exist to
   prevent.
 - **Platform-gotcha knowledge** (`technologies/`) — jsdom vs. Chrome, MV3 path resolution, SAM
-  esbuild traps. These prevent runtime failures no local check can observe; they're also
-  already soft-loaded, so their standing cost is near zero. Exception: the
+  esbuild traps. These prevent runtime failures no local check can observe, so they can't
+  become checks — but their *delivery* still improves: they become `paths`-scoped skills (see
+  [Skills](#skills--the-on-demand-layer-for-what-checks-cant-carry)). Exception: the
   chrome-extension-release **contract** is a conformance suite waiting to be written.
 
 ## Architecture
@@ -145,6 +146,116 @@ what the platform will enforce outright is waste.
   already reads every vendored repo and can report "rules that never fired in N days" —
   obsolescence made measurable, the property instructions never had.
 
+## Skills — the on-demand layer for what checks can't carry
+
+Checks carry the *enforceable* rules. Everything else that today rides on soft pointers —
+procedures, task-gated practices, technology knowledge — moves to **Agent Skills**, a mechanism
+the system doesn't use yet. The docs' own decision rule fits exactly: *"Create a skill when …
+a section of CLAUDE.md has grown into a procedure rather than a fact"*, and knowledge-bearing
+skills are explicitly endorsed (*"reference content adds knowledge … conventions, patterns,
+style guides, domain knowledge"*). The official hook-vs-skill line mirrors this design's ladder:
+*"Use a hook when the action must happen the same way every time … Use a skill when Claude
+should decide how to apply the steps, or when the content is knowledge rather than a script."*
+
+**What a skill buys over a CLAUDE.md soft pointer.** The token economics are roughly neutral —
+a skill's name + description sit in context every session (progressive disclosure: the body
+loads only on invocation), about what an index line costs today. The real gain is **trigger
+reliability**: today a `tasks/` doc helps only if the agent remembers to follow the index line
+("read before writing a test") — an instruction-following step that fails silently. Skill
+matching is harness-managed and trained-for, skills are user-invocable as `/name` too, and
+technology skills can be **`paths`-scoped** (glob frontmatter) so they surface exactly when the
+matching files are touched — a structural trigger, not a remembered one. Two documented limits
+to respect: keep descriptions tight (the listing truncates them, and the description budget
+scales with the context window — many verbose skills degrade matching), and keep each
+`SKILL.md` body well under 500 lines.
+
+### The catalog
+
+| Skill | Trigger | Replaces |
+|---|---|---|
+| `merge-to-main` | owner's "LGTM" (+ `/merge-to-main`) | [../always/merge-to-main.md](../always/merge-to-main.md) — force-loaded today; ends with the lessons pass |
+| `lessons-learned` | owner's "learned lessons"; invoked by `merge-to-main` | [../growth/extracting-lessons.md](../growth/extracting-lessons.md) — force-loaded today |
+| `bump-version` | owner's "bump version" | preference entry; delegates to the project's release doc |
+| `adopt-claudinite` | bootstrap request | [../bootstrap.md](../bootstrap.md) as an executable procedure |
+| `bug-investigation` | description-matched: investigating a bug, a fix that didn't hold | [../tasks/bug-investigations.md](../tasks/bug-investigations.md) |
+| `writing-tests` | description-matched: writing/changing tests | the stays-residue of [../tasks/testingPractices.md](../tasks/testingPractices.md) |
+| `repo-text-sweeps` | description-matched: grep/sed sweep, rename, relocation | the procedure-residue of [../tasks/textAndFileManipulation.md](../tasks/textAndFileManipulation.md) |
+| `authoring-agent-docs` | description-matched: writing a Claude instruction doc | [../tasks/agentic-documentation.md](../tasks/agentic-documentation.md) |
+| `unattended-agents` | description-matched: building agents/routines | [../tasks/agent-architecture.md](../tasks/agent-architecture.md) + [../tasks/agenticBestPractices.md](../tasks/agenticBestPractices.md) residue |
+| `git-github-advanced` | description-matched: beyond-baseline git/GitHub work | the knowledge-residue of [../tasks/git-and-github.md](../tasks/git-and-github.md) |
+| `chrome-extension` | `paths`-scoped to manifest/extension globs + description | [../technologies/chrome-extension.md](../technologies/chrome-extension.md) (+ pointer to the release standard, whose *enforcement* is the conformance pack) |
+| `nodejs-testing` | `paths`-scoped to test globs + description | [../technologies/nodejs.md](../technologies/nodejs.md) |
+| `aws-sam` | `paths`-scoped to `template.yaml` + description | [../technologies/aws-sam.md](../technologies/aws-sam.md) |
+| `html` | description-matched | [../technologies/html.md](../technologies/html.md) |
+
+What stays always-loaded after this: a trimmed
+[../always/working-discipline.md](../always/working-discipline.md), the judgment core of
+[../tasks/engineeringPractices.md](../tasks/engineeringPractices.md) (its trigger — "writing
+code" — is near-universal, so a skill gains little; revisit with telemetry), and a much smaller
+index. The routing index largely dissolves: routing *is what skill descriptions do natively*.
+
+### Delivery — incremental now, plugin end-state
+
+- **Now (works with both mount methods):** skills live in `.claudinite/skills/<name>/`;
+  bootstrap symlinks `.claude/skills/<name>` → there. Symlinked skill directories are
+  documented, supported behavior, and skill changes are picked up live within a session — so
+  the tarball sync populating the target after session start still lands.
+- **End-state — Claudinite as a plugin.** Plugins bundle exactly this design's pieces: skills,
+  commands, and hooks (SessionStart, Stop, PreToolUse), with bundled scripts addressable via
+  `${CLAUDE_PLUGIN_ROOT}`. The Claudinite repo doubles as its own marketplace
+  (`.claude-plugin/marketplace.json`); a consumer repo commits two keys in
+  `.claude/settings.json` (`extraKnownMarketplaces` + `enabledPlugins`) and every session in it
+  gets the whole layer — hooks registered, skills discovered, runner shipped — with updates
+  tracking the plugin repo's `main` (no `version` field → every commit is an update). That
+  collapses most of bootstrap and retires the tarball-sync/symlink plumbing. One documented
+  limit: a plugin cannot inject always-on CLAUDE.md-style prose, so the small residual baseline
+  keeps the existing `@`-import (or moves into the plugin's SessionStart hook output, which
+  becomes session context the same way the preferences hook works today). Phase 5; the symlink
+  route ships value without waiting for it.
+
+## Growth pipeline: checks-first promotion
+
+New lessons enter the canon through the growth lifecycle (extract → promote → dedup). Today
+[../growth/promote.md](../growth/promote.md) generalizes a lesson and routes it to a prose doc.
+Under this design, **prose becomes the fallback, not the default** — the point of promotion is
+to relieve every project's context, and a check relieves it completely while prose only
+relocates it.
+
+**The promotion ladder.** Every lesson that clears the worthiness bar is triaged down the same
+mechanism order as the conversion table above — the *first* rung that can carry it wins:
+
+1. **Platform setting** — the platform enforces it outright.
+2. **PreToolUse hook** — a bad action to block before it runs.
+3. **Post-hoc check** — a constraint on repo state.
+4. **Skill** — a procedure or knowledge with a nameable trigger.
+5. **Prose canon** — only for what none of the above can carry, and the landing **names its
+   reason** (judgment / in-flight behavior / platform knowledge), logged per lesson in the
+   promote tracking issue so conversion rates are auditable.
+
+Concretely, three growth docs change:
+
+- **[../growth/item-routing.md](../growth/item-routing.md)** gains a step 0: *mechanism triage*
+  before file routing. "Which doc owns this" is only asked for lessons that fall through to
+  rung 5.
+- **[../growth/promote.md](../growth/promote.md)**: for a rung-3 lesson, the routine authors
+  the check in the same PR — rule id, detection, the failure message (which *is* the
+  generalized lesson text), **plus a fixture proving it fires** on a violating input and stays
+  quiet on a clean one (see-it-fail applies to checks too). When it can't produce a confident
+  detection + fixture, it lands the lesson as prose **and** opens a tagged conversion-backlog
+  issue — a visible miss to sweep later, never a silently-shipped broken check.
+- **[../growth/dedup.md](../growth/dedup.md)**: a canon **check** covers a local prose item the
+  same way a canon line does — better, since the coverage is enforced rather than stated. The
+  runner exposes the rule catalog machine-readably (`run.js --list`: rule id, description,
+  failure message, doc pointer); dedup quotes a **rule id** where it today quotes a canon line.
+  This answers the obvious worry — "the canon won't have the instruction, only a test": the
+  check *carries* its instruction as data (its failure message), so dedup compares against the
+  catalog exactly as it compares against prose today, and more mechanically, since rule ids are
+  stable where prose wording drifts. The keep-test is unchanged: a local item that says *more*
+  than the check detects (a stronger point about a narrower case) stays.
+
+Phase 1 (extract) is untouched: project-local capture stays prose at the project's own level —
+conversion is a promotion-time judgment, made once, centrally.
+
 ## Phasing
 
 1. **Runner + Stop hook + first universal packs** — reference-integrity, task-lifecycle,
@@ -152,7 +263,15 @@ what the platform will enforce outright is waste.
    hook-registration step.
 2. **github-actions lint pack + chrome-extension-release conformance pack**, piloted on one
    extension repo.
-3. **Baseline restructure** — merge-to-main → skill + squash-only setting; extracting-lessons →
-   skill; temporary-workarounds → PreToolUse hook; slim the converted docs and the index.
-4. **(Deferred)** LLM-judge checks in CI for judgment rules (naming, comment quality) —
-   possible, but nondeterministic and token-costly; revisit only after 1–3 prove out.
+3. **Baseline restructure** — the first skills (`merge-to-main`, `lessons-learned`) + the
+   squash-only setting; temporary-workarounds → PreToolUse hook; slim the converted docs and
+   the index.
+4. **Skills layer + growth pivot** — the rest of the catalog (practice + technology skills,
+   symlink delivery in bootstrap), and the promotion ladder lands in
+   [../growth/promote.md](../growth/promote.md),
+   [../growth/item-routing.md](../growth/item-routing.md), and
+   [../growth/dedup.md](../growth/dedup.md).
+5. **Plugin packaging** — Claudinite doubles as its own marketplace; hooks, skills, and the
+   runner ship as one installable unit; bootstrap collapses to two committed settings keys.
+6. **(Deferred)** LLM-judge checks in CI for judgment rules (naming, comment quality) —
+   possible, but nondeterministic and token-costly; revisit only after 1–4 prove out.
