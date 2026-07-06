@@ -16,6 +16,16 @@
       "rule": "squash-merge-history",
       "path": "main@abc0645",
       "reason": "legacy merge (PR #98) from before the squash-only policy was enforced; left in history"
+    },
+    {
+      "rule": "file-placement",
+      "path": "skills/",
+      "reason": "thin-wrapper skills deliberately reach into the corpus docs they wrap — the skill is the trigger, the doc stays canonical (checks/DESIGN.md, skills section)"
+    },
+    {
+      "rule": "file-placement",
+      "path": "always/merge-to-main.md",
+      "reason": "a corpus doc naming its own skill wrapper — the other half of the deliberate doc-skill pairing"
     }
   ]
 }

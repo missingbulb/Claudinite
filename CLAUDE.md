@@ -5,18 +5,25 @@
 
 **Routing index, not a payload. Do not read the corpus up front.** Read a file only when its trigger below fires. Links are soft pointers — read on demand, never pre-load — except the always-on baseline, which is `@`-imported and loads every session. Keep new pointers soft; never `@`-import `tasks/`.
 
-## always/ — loads every session (force-loaded via `@`; nothing to decide)
+## always/ — force-loaded baseline (kept deliberately small)
 
 @always/working-discipline.md
-@always/task-lifecycle.md
-@always/merge-to-main.md
-@always/temporary-workarounds.md
 
-Every file in `always/` is `@`-imported here — add an `@`-line when you add one.
+Only broadly-applicable *judgment* earns an `@`-line. Before adding one, run the promotion
+ladder in [checks/DESIGN.md](checks/DESIGN.md): a rule that a platform setting, a hook, a
+conformance check, or a skill can carry never enters the baseline. What used to be force-loaded
+here is now carried by that machinery:
 
-One doc **outside** `always/` is also force-loaded. The merge flow ([always/merge-to-main.md](always/merge-to-main.md), itself always-loaded) runs a lessons pass on **every** merge, so its method has to be in context, not fetched on demand — an unconditional step can't rely on a soft-pointer read firing. It lives with the rest of the lesson lifecycle in `growth/`, and is `@`-imported here:
-
-@growth/extracting-lessons.md
+- **Task lifecycle** (issue → branch → PR) — enforced by the `task-lifecycle` conformance
+  check; the method stays in [always/task-lifecycle.md](always/task-lifecycle.md).
+- **Merge to main** (the owner's merge phrase) — the `merge-to-main` skill
+  ([skills/merge-to-main/SKILL.md](skills/merge-to-main/SKILL.md)); the recipe stays canonical
+  in [always/merge-to-main.md](always/merge-to-main.md).
+- **Post-merge lessons pass** — the `lessons-learned` skill
+  ([skills/lessons-learned/SKILL.md](skills/lessons-learned/SKILL.md)); the method stays
+  canonical in [growth/extracting-lessons.md](growth/extracting-lessons.md).
+- **Remote-branch deletion** — blocked outright by the PreToolUse guard
+  ([checks/pretooluse-guard.mjs](checks/pretooluse-guard.mjs)); no instruction needed.
 
 ## preferences/ — auto-injected by the SessionStart hook
 

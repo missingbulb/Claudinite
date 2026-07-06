@@ -1,6 +1,6 @@
 # Merge to `main`
 
-The portable recipe for landing the change in front of the owner on `main` — the *mechanics* behind the owner's merge-to-main command (the owner's preferences own the trigger *phrase*; this file owns the *how*). Loaded every session — the root [CLAUDE.md](../CLAUDE.md) `@`-imports it — so the flow is in context the moment it's asked for, with no rediscovery.
+The portable recipe for landing the change in front of the owner on `main` — the *mechanics* behind the owner's merge-to-main command (the owner's preferences own the trigger *phrase*; this file owns the *how*). Invoked through the `merge-to-main` skill ([../skills/merge-to-main/SKILL.md](../skills/merge-to-main/SKILL.md)); this doc stays the canonical recipe.
 
 **A project's bespoke merge policy overrides this default.** Most projects need nothing here — this default is the whole story. A project that genuinely diverges (a different merge method, a CI/twice-green gate, an extra approval) **states so by naming its merge-policy file explicitly in its own `CLAUDE.md`**. When that declaration is present, read that file first and let it override the divergent points below; when it's absent, follow this default as-is. Don't go hunting for a policy file that the project's `CLAUDE.md` doesn't name.
 
@@ -23,4 +23,4 @@ Once the merge has landed and local `main` is synced, run a **lessons-learned pa
 ## Don't
 
 - **Don't** re-read the issue to confirm it closed — `Closes #<issue>` does that on merge; trust it.
-- **Don't** fight a forbidden branch deletion: if a workaround bars deleting the remote branch (this environment does — see [temporary-workarounds.md](temporary-workarounds.md)), leave it; deleting the *local* branch is fine.
+- **Don't** try to delete the remote branch: the PreToolUse guard blocks it outright (the delete-push fails in this environment). Leave it — deleting the *local* branch is fine.
