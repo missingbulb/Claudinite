@@ -34,6 +34,8 @@ Beyond the portable corpus above, two folders hold the machinery that keeps it f
 - [growth/dedup.md](growth/dedup.md) — **phase 3, per project.** Prunes local items the canon covers, **keeping** items the canon states too generally for that project. Opens a PR against the project's `main`.
 - [growth/item-routing.md](growth/item-routing.md) — the shared worthiness + routing method the promote phase (and any other caller) defers to.
 
+`checks/` holds the **deterministic-enforcement layer** — the corpus rules that convert into machine-run checks executed when a consuming repo's session finishes (currently at the design stage: [checks/DESIGN.md](checks/DESIGN.md), with the per-rule audit in [checks/conversion-inventory.md](checks/conversion-inventory.md)).
+
 `routines/` holds the scheduled jobs:
 
 - [routines/auto-all-repos-maintenance.md](routines/auto-all-repos-maintenance.md) — **the single scheduled entry point.** One daily routine, scheduled once from a home repo, that discovers **every** Claudinite-vendored repo the token can access (by the tracked `.claudinite/` marker) and sequences the growth lifecycle across the fleet — phase 1 in every repo (parallel) → barrier → phase 2 once (central) → barrier → phase 3 in every repo (parallel) — plus the nightly repo tidy-up, each run as its own isolated subagent so no repo or phase can stop the others. Schedule **this**, nothing else.
