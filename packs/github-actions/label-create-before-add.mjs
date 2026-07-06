@@ -5,7 +5,7 @@ const rule = {
   id: 'gha/label-create-before-add',
   severity: 'advisory',
   description: 'A workflow applying a label should create it idempotently first',
-  doc: 'tasks/git-and-github.md',
+  doc: 'skills/git-github-advanced/SKILL.md',
   why: '--add-label fails when the label does not exist yet — GitHub will not create it on demand',
 
   run(ctx) {

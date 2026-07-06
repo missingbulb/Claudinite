@@ -5,7 +5,7 @@ const rule = {
   id: 'gha/scheduled-failure-escalation',
   severity: 'advisory',
   description: 'A scheduled workflow must escalate its own failure to a human-visible state',
-  doc: 'tasks/git-and-github.md',
+  doc: 'skills/git-github-advanced/SKILL.md',
   why: 'nobody watches a scheduled run — a red run in the Actions list reaches no one',
 
   run(ctx) {

@@ -5,7 +5,7 @@ const rule = {
   id: 'gha/checkout-submodules',
   severity: 'blocking',
   description: 'In a repo with submodules, every actions/checkout must pass submodules: true',
-  doc: 'tasks/git-and-github.md',
+  doc: 'skills/git-github-advanced/SKILL.md',
   why: 'checkout does not fetch submodules by default, so any gate reading submodule content passes vacuously',
 
   run(ctx) {

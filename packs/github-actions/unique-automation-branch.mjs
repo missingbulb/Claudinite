@@ -7,7 +7,7 @@ const rule = {
   id: 'gha/unique-automation-branch',
   severity: 'advisory',
   description: 'An automated job needs a per-run-unique branch name, not a date-keyed one',
-  doc: 'tasks/git-and-github.md',
+  doc: 'skills/git-github-advanced/SKILL.md',
   why: 'a date-keyed branch collides with itself on a repeat run for the same key',
 
   run(ctx) {

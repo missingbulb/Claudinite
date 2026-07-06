@@ -5,7 +5,7 @@ const rule = {
   id: 'gha/secrets-in-job-if',
   severity: 'blocking',
   description: 'A job-level if: cannot read secrets.* — the job fails red instead of skipping',
-  doc: 'tasks/git-and-github.md',
+  doc: 'skills/git-github-advanced/SKILL.md',
   why: 'secrets are not available in a job-level if:, so the condition cannot evaluate and the job fails instead of skipping',
 
   run(ctx) {

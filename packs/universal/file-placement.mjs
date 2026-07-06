@@ -1,5 +1,4 @@
 import { dirname, join, normalize } from 'node:path';
-import { extractLinks } from '../../checks/lib/markdown.mjs';
 import { finding } from '../../checks/lib/findings.mjs';
 
 const CODE_EXT = /\.(mjs|cjs|jsx?|tsx?)$/;
@@ -22,29 +21,28 @@ function distance(fromDir, toDir) {
 const rule = {
   id: 'file-placement',
   severity: 'advisory',
-  description: 'A file should mostly reference files at folder distance 0–2; distance 3+ is reach',
-  doc: 'tasks/filePlacement.md',
+  description: 'A code file should mostly reference files at folder distance 0–2; distance 3+ is reach',
+  doc: 'skills/file-placement/SKILL.md',
   why: 'the folder tree should encode the dependency graph; far reaches make it lie',
 
   run(ctx) {
     const out = [];
     for (const file of ctx.files) {
       if (EXEMPT_SOURCE(file)) continue;
-      const isMd = file.endsWith('.md');
-      if (!isMd && !CODE_EXT.test(file)) continue;
+      // Reference-distance is a *code* dependency-graph metric — a docs corpus's
+      // tree mirrors topics, not a dependency graph, so cross-topic doc citations
+      // are healthy, not a smell. Markdown links are governed by reference-integrity
+      // and markdown-link-labels instead.
+      if (!CODE_EXT.test(file)) continue;
       const text = ctx.read(file);
       if (text === null) continue;
 
       const refs = [];
-      if (isMd) {
-        for (const l of extractLinks(text)) refs.push({ target: l.target, line: l.line });
-      } else {
-        text.split('\n').forEach((lineText, i) => {
-          let m;
-          CODE_REF.lastIndex = 0;
-          while ((m = CODE_REF.exec(lineText)) !== null) refs.push({ target: m[1], line: i + 1 });
-        });
-      }
+      text.split('\n').forEach((lineText, i) => {
+        let m;
+        CODE_REF.lastIndex = 0;
+        while ((m = CODE_REF.exec(lineText)) !== null) refs.push({ target: m[1], line: i + 1 });
+      });
 
       for (const { target, line } of refs) {
         const resolved = normalize(join(dirname(file), target));

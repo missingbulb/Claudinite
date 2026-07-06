@@ -10,7 +10,7 @@ const rule = {
   id: 'markdown-link-labels',
   severity: 'blocking',
   description: 'A Markdown link whose visible label is a path must agree with its target',
-  doc: 'tasks/textAndFileManipulation.md',
+  doc: 'skills/repo-text-sweeps/SKILL.md',
   why: 'a Markdown link carries its path twice — an href-only rewrite leaves the doc pointing right but reading wrong',
 
   run(ctx) {

@@ -6,7 +6,7 @@ const rule = {
   id: 'reference-integrity',
   severity: 'blocking',
   description: 'Relative Markdown links must resolve, and no tracked file may reference a deleted path',
-  doc: 'tasks/textAndFileManipulation.md',
+  doc: 'skills/repo-text-sweeps/SKILL.md',
   why: 'a dangling reference breaks silently — no test fails when a doc link or index entry points at nothing',
 
   run(ctx) {

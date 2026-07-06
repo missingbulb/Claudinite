@@ -25,7 +25,7 @@ If an edit touches something a test reads (a doc constant, a code path), run the
 
 ## Output: open a PR for review
 
-If it found at least one genuinely new lesson, it **commits the edits on a per-run-unique branch** (see [git-and-github.md](../tasks/git-and-github.md#an-automated-job-needs-a-unique-branch-per-run)) **and opens a single PR against `main`** for the owner to approve — one PR for the whole run, not one per lesson — never a direct push to `main`. This is an unattended routine, on a capable model, writing the project's *own* docs (not the shared canon); the owner wants a human approval gate on every growth change. Keep the commit and PR terse and reference the tracking issue. A run that finds nothing and opens no PR is fine — and common.
+If it found at least one genuinely new lesson, it **commits the edits on a per-run-unique branch** (see [the git-github-advanced skill](../skills/git-github-advanced/SKILL.md)) **and opens a single PR against `main`** for the owner to approve — one PR for the whole run, not one per lesson — never a direct push to `main`. This is an unattended routine, on a capable model, writing the project's *own* docs (not the shared canon); the owner wants a human approval gate on every growth change. Keep the commit and PR terse and reference the tracking issue. A run that finds nothing and opens no PR is fine — and common.
 
 ## Tracking: log each run under the routine's own issue
 

@@ -8,7 +8,7 @@ const rule = {
   id: 'gha/run-pipefail',
   severity: 'blocking',
   description: 'A workflow piping in run: steps needs shell: bash — the default shell has no pipefail',
-  doc: 'tasks/git-and-github.md',
+  doc: 'skills/git-github-advanced/SKILL.md',
   why: "GitHub's implicit run shell is bash -e without pipefail, so a failing piped command still shows the step green",
 
   run(ctx) {

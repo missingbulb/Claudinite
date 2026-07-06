@@ -1,3 +1,8 @@
+---
+name: file-placement
+description: Where a file should live — the reference-distance metric, the high-reach code smell, and the mandated-location and test-location exemptions. Use before placing, moving, or renaming a file, or when reviewing where one lives.
+---
+
 # File placement
 
 Where a file *lives* in a repository is a design decision, not a clerical one. This doc gives a portable rule for judging that placement: keep files close to the files they actually depend on. It is project-agnostic — the consuming repo's own docs own any project-specific layout conventions (where tests go, where generated output lands, framework-mandated folders, etc.). This is about the *shape* of the dependency graph relative to the folder tree, not about naming.
@@ -79,3 +84,4 @@ This complements the reference-distance metric, which asks *what a file depends 
 - When **placing a new file**, put it where its distance-0/1 neighbors are — with the files it will import and that will import it. If no such home exists, that's a hint the structure needs a new folder, not that the file goes "somewhere."
 - When **reviewing**, scan a file's imports/links and ask how far each reaches. A cluster of distance-2+ references is a refactor prompt, not a nit.
 - Use it as a **direction, not a hard gate.** The goal is low *average* reach and no surprising *far* reach — not a mechanical ban on distance ≥ 2.
+

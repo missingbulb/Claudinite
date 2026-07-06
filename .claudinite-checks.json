@@ -5,7 +5,7 @@
     {
       "rule": "file-placement",
       "path": "packs/",
-      "reason": "pack check modules deliberately share the checks/ engine lib — a named cross-cutting concern per tasks/filePlacement.md; packs are organized by pack, not by dependency"
+      "reason": "pack check modules deliberately share the checks/ engine lib — a named cross-cutting concern per skills/file-placement/SKILL.md; packs are organized by pack, not by dependency"
     },
     {
       "rule": "squash-merge-history",
@@ -51,21 +51,6 @@
       "rule": "squash-merge-history",
       "path": "main@ba46c94",
       "reason": "legacy merge (PR #15) from before the squash-only policy was enforced; left in history"
-    },
-    {
-      "rule": "file-placement",
-      "path": "skills/",
-      "reason": "thin-wrapper skills deliberately reach into the corpus docs they wrap — the skill is the trigger, the doc stays canonical (checks/DESIGN.md, skills section)"
-    },
-    {
-      "rule": "file-placement",
-      "path": "always/merge-to-main.md",
-      "reason": "a corpus doc naming its own skill wrapper — the other half of the deliberate doc-skill pairing"
-    },
-    {
-      "rule": "file-placement",
-      "path": "technologies/chrome-extension-release.md",
-      "reason": "the release standard names the canon workflows and report-failure action it mandates — documentation naming its subject, whose location .github/ dictates"
     }
   ]
 }

@@ -8,7 +8,7 @@ const rule = {
   id: 'squash-merge-history',
   severity: 'blocking',
   description: "The default branch's first-parent history must be squash-only (no merge commits)",
-  doc: 'always/merge-to-main.md',
+  doc: 'skills/merge-to-main/SKILL.md',
   why: 'the squash-only repo setting can be off or bypassed; the history is the effect that proves it held',
 
   run(ctx) {

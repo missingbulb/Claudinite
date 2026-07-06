@@ -58,7 +58,7 @@ engineeringPractices judgment core.
 
 **Baseline outcome: five force-loaded docs → working-discipline (trimmed) plus a slimmer index.**
 
-## tasks/filePlacement.md — the flagship conversion
+## skills/file-placement/SKILL.md — the flagship conversion
 
 | Rule | Disposition |
 |---|---|
@@ -71,7 +71,7 @@ engineeringPractices judgment core.
 | Tooling acts on paths → structural, fail-safe splits | stays *(judge)* |
 | Doc's remaining role | shrinks to rationale + "what to do about a smell" |
 
-## tasks/textAndFileManipulation.md — outcomes convert, procedure follows them out
+## skills/repo-text-sweeps/SKILL.md — outcomes convert, procedure follows them out
 
 | Rule | Disposition |
 |---|---|
@@ -85,7 +85,7 @@ engineeringPractices judgment core.
 | Derive structural-check file sets from `git ls-files` | stays; the runner obeys it |
 | `Write` tool, never `cp` from harness-internal paths | stays (in-flight) |
 
-## tasks/git-and-github.md — a lint pack plus two hooks
+## skills/git-github-advanced/SKILL.md — a lint pack plus two hooks
 
 | Rule | Disposition |
 |---|---|
@@ -113,7 +113,7 @@ engineeringPractices judgment core.
 | Repo-allowlist scoping: query per-repo, never org-wide | stays (in-flight) |
 | Merging gotchas (relocation refs, invariant reintroduction, porting across invariants) | stays/knowledge — reference-integrity re-run after a merge covers part |
 
-## tasks/engineeringPractices.md
+## skills/engineering-practices/SKILL.md
 
 | Rule | Disposition |
 |---|---|
@@ -136,7 +136,7 @@ engineeringPractices judgment core.
 | `git ls-files` for tree-walking checks | stays; runner obeys |
 | Comments carry *why*; a path spelled in one canonical place | **check** *(adv)*, partial: same path re-spelled across many comments; the *why* half stays *(judge)* |
 
-## tasks/testingPractices.md
+## skills/writing-tests/SKILL.md
 
 | Rule | Disposition |
 |---|---|

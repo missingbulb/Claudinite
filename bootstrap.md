@@ -114,7 +114,7 @@ The hook expands `CLAUDE_CODE_USER_EMAIL`, reads the matching `preferences/<emai
 
 ## Part 3 — bespoke merge policy (optional, only if you diverge)
 
-The portable merge-to-main recipe ships in the always-on baseline ([`always/merge-to-main.md`](always/merge-to-main.md), mounted at `.claudinite/`) and needs **nothing** from you — its default is squash-merge via a PR, gating on CI only when the repo has it. Adopt it and you're done.
+The portable merge-to-main recipe ships as the `merge-to-main` skill ([skills/merge-to-main/SKILL.md](skills/merge-to-main/SKILL.md)) and needs **nothing** from you — its default is squash-merge via a PR, gating on CI only when the repo has it. Adopt it and you're done.
 
 Only if your project genuinely diverges (a non-squash method, a twice-green or extra-approval gate): put that policy in its own file in your repo and **name that file explicitly in your `CLAUDE.md`**. The recipe reads a project's merge-policy file only when the project's `CLAUDE.md` points to one, and lets it override the divergent points (merge method, CI gating).
 
@@ -128,7 +128,7 @@ The catch: the routine only maintains repos on its access list — a per-repo al
 
 **Only for a fresh / empty project** — one without its own established `CLAUDE.md` working style yet. A project that already documents how it's run has answered this; skip.
 
-The owner runs recurring **classes** of project, each carried by one or more **project-class packs** (prose-only packs a project declares, no fingerprint — e.g. the algorithm-iteration class declares [`research-iteration`](packs/research-iteration/RULES.md), [`ground-truth`](packs/ground-truth/RULES.md), and [`session-continuity`](packs/session-continuity/RULES.md)). Categorizing a new project is just declaring the packs that fit, alongside its technology packs from Part 3's `--init`:
+The owner runs recurring **classes** of project, each carried by a **project-class pack** (a prose-only pack a project declares, no fingerprint — e.g. [`research-project`](packs/research-project/RULES.md), the algorithm-iteration playbook). Categorizing a new project is just declaring the pack that fits, alongside its technology packs from Part 3's `--init`:
 
 1. **Match the class** — ask the owner which class this project is, offering the project-class packs under [`packs/`](packs/) as the options.
 2. **A class pack fits →** add its id to `"packs"` in `.claudinite-checks.json`. Its prose then loads every session (via the pack-prose hook), and the project writes its *own* concrete specifics (inputs, metrics, invariants, run commands) in its own docs.

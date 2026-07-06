@@ -114,6 +114,16 @@ test('file-placement: flags a distance-3+ reference, exempts tests and mandated 
   } finally { cleanup(bad); cleanup(exempt); }
 });
 
+test('file-placement: does not flag markdown prose links (code metric only)', () => {
+  const root = makeRepo({
+    base: { 'deep/far/other.md': 'x\n' },
+    changed: { 'doc.md': 'see [other](../deep/far/other.md)\n' },
+  });
+  try {
+    assert.equal(run(filePlacement, root).length, 0);
+  } finally { cleanup(root); }
+});
+
 test('pack-declaration: flags an unknown declared pack', () => {
   const root = makeRepo({
     changed: { '.claudinite-checks.json': '{ "packs": ["no-such-pack"] }\n' },

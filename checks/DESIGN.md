@@ -29,7 +29,7 @@ Anthropic's published guidance says this directly: hooks exist to provide "deter
 (hooks guide); CLAUDE.md is "context, not enforced" (memory doc); and the core best-practice is
 "give Claude a check it can run … Claude does the work, runs the check, reads the result, and
 iterates until the check passes" (best practices). The corpus already states the principle in
-[../tasks/agent-architecture.md](../tasks/agent-architecture.md): *"Prose is a request; the
+[the unattended-agents skill](../skills/unattended-agents/SKILL.md): *"Prose is a request; the
 post-hoc diff check is the guarantee."* This design scales that sentence up.
 
 ## What converts — and what doesn't
@@ -72,7 +72,7 @@ packs/                        # the mounted corpus: prose + checks, active by de
   chrome-extension/           #   RULES.md (gotchas) + RELEASE.md (standard) + conformance checks
   github-actions/             #   the workflow lints (no prose)
   node/  aws-sam/  html/  flutter/     # prose-only tech packs
-  research-iteration/  ground-truth/  session-continuity/   # project-class packs (prose-only, declared)
+  research-project/           #   a project-class pack (prose-only, declared)
 checks/                       # the ENGINE only (runs the packs' checks)
   run.mjs                     #   dependency-free Node CLI
   lib/                        #   git diff scoping, findings format, markdown + manifest helpers
@@ -132,7 +132,7 @@ file-placement/reference-distance  src/report/render.js:12
   Why: the folder tree should encode the dependency graph; far reaches make it lie.
   Fix: move dates.js next to its users, lift it to a common ancestor, or accept it
        in .claudinite-checks.json with a reason if it's a deliberate cross-cutting util.
-  More: .claudinite/tasks/filePlacement.md
+  More: .claudinite/skills/file-placement/SKILL.md
 ```
 
 </example>
@@ -235,7 +235,7 @@ The skill-by-skill catalog — each skill, its trigger, and the doc it replaces 
 
 What stays always-loaded after this: a trimmed
 [../packs/universal/RULES.md](../packs/universal/RULES.md), the judgment core of
-[../tasks/engineeringPractices.md](../tasks/engineeringPractices.md) (its trigger — "writing
+[the engineering-practices skill](../skills/engineering-practices/SKILL.md) (its trigger — "writing
 code" — is near-universal, so a skill gains little; revisit with telemetry), and a much smaller
 index. The routing index largely dissolves: routing *is what skill descriptions do natively*.
 
