@@ -41,8 +41,17 @@ Follow the promote phase's check-authoring discipline
 4. **Trim the prose** to rationale — the check owns enforcement now; leaving both pays twice and
    springs the drift trap.
 
-When you can't produce a confident detection + fixture, **leave the prose and log the candidate**
-to a tagged conversion-backlog issue rather than shipping a shaky check.
+**Before rejecting a candidate as false-positive-prone, ask whether a small *scoped structural
+parser* removes the FP that a text-grep can't.** A regex sees text presence; the false positive
+is usually that the pattern appears in a place the rule doesn't mean. Parsing just enough
+structure to scope the match to where it counts often converts a "reject" into a clean check —
+navigate the artifact's structure, not its bytes. (The two SAM YAML checks needed a minimal
+template parser: `Authorization` is only wrong *inside the OriginRequestPolicy's own headers*,
+and the handler-subdir rule only applies with a single entry point and no `OutBase`.) Keep the
+parser scoped to your need, not general — and it earns the same adversarial-fixture bar.
+
+When even a scoped parser can't make detection confident, **leave the prose and log the
+candidate** to a tagged conversion-backlog issue rather than shipping a shaky check.
 
 ## Bounds
 
