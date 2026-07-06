@@ -28,7 +28,7 @@ One doc **outside** `always/` is also force-loaded. The merge flow ([always/merg
 
 ## technologies/ — read only the file(s) the task touches; otherwise skip
 
-[Node.js](technologies/nodejs.md) · [Chrome extension](technologies/chrome-extension.md) · [AWS SAM](technologies/aws-sam.md) · [Flutter](technologies/flutter.md) · [HTML](technologies/html.md)
+[Node.js](technologies/nodejs.md) · [Chrome extension](technologies/chrome-extension.md) · [Chrome extension release/store standard](technologies/chrome-extension-release.md) · [AWS SAM](technologies/aws-sam.md) · [Flutter](technologies/flutter.md) · [HTML](technologies/html.md)
 
 ## tasks/ — read the matching doc *before* acting; match the trigger to the task in front of you, not the topic
 
