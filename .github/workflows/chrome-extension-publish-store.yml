@@ -1,0 +1,122 @@
+name: "Chrome extension: Publish to Chrome Web Store (reusable)"
+
+# Reusable workflow of the chrome-extension-release standard — the logic behind
+# every extension repo's "Release: Publish to Chrome Web Store" stub.
+# workflow_call ONLY: it never runs in Claudinite itself; the calling repo's
+# stub owns the workflow_dispatch trigger, and the daily auto-release
+# (chrome-extension-daily-release.yml) calls it with the tag it just released.
+#
+# Takes the extension zip from a GitHub Release of the CALLING repo and uploads
+# it to the Chrome Web Store (optionally publishing it to users), via the Web
+# Store API using chrome-webstore-upload-cli, then refreshes the Pages-hosted
+# privacy page.
+#
+# Callers must pass `secrets: inherit` so the four store secrets resolve from
+# the calling repo (Settings → Secrets and variables → Actions):
+#   CHROME_EXTENSION_ID     the item/app ID from the Web Store dashboard URL
+#   CHROME_CLIENT_ID        OAuth client ID  } minted once against the
+#   CHROME_CLIENT_SECRET    OAuth client secret } Chrome Web Store API — see the
+#   CHROME_REFRESH_TOKEN    OAuth refresh token } Claudinite chrome-extension-release guide.
+#
+# The calling job must grant `permissions: contents: read, pages: write,
+# id-token: write, issues: write` (store download + privacy-page deploy + the
+# failure reporters).
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: "Release tag to publish (blank = latest release)"
+        required: false
+        type: string
+      auto_publish:
+        description: "Publish to users after upload (false = leave it as a draft in the dashboard)"
+        type: boolean
+        default: true
+      zip_name:
+        description: "The release asset's stable zip filename (e.g. crossword-chat.zip)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # chrome-webstore-upload-cli reads these env vars directly.
+      EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+      CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+      CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+      REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+    steps:
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Fail early if credentials are missing
+        run: |
+          missing=
+          for v in EXTENSION_ID CLIENT_ID CLIENT_SECRET REFRESH_TOKEN; do
+            [ -n "${!v}" ] || missing="$missing $v"
+          done
+          if [ -n "$missing" ]; then
+            echo "Missing required secret(s):$missing" >&2
+            echo "Add them under Settings → Secrets and variables → Actions (see dev/build/release/releasing.md), and make sure the caller passes secrets: inherit." >&2
+            exit 1
+          fi
+
+      - name: Download the release zip
+        run: |
+          mkdir -p dist
+          # An empty tag makes `gh release download` pick the latest release.
+          gh release download ${{ inputs.tag }} \
+            --repo "${{ github.repository }}" \
+            --pattern "${{ inputs.zip_name }}" \
+            --dir dist
+          ls -l dist
+
+      - name: Show the version being published
+        run: |
+          echo "Publishing $(unzip -p dist/${{ inputs.zip_name }} manifest.json | grep '"version"')"
+
+      - name: Upload to the Chrome Web Store
+        run: |
+          flags=
+          if [ "${{ inputs.auto_publish }}" = "false" ]; then
+            echo "auto_publish is off — uploading as a draft (publish it from the dashboard)."
+          else
+            flags="--auto-publish"
+          fi
+          npx --yes chrome-webstore-upload-cli@3 upload \
+            --source dist/${{ inputs.zip_name }} \
+            $flags
+
+  # Refresh the Pages-hosted privacy policy alongside the store upload, from the
+  # same PRIVACY.md the listing points at. The deploy lives in its own reusable
+  # workflow so a repo can ALSO run it on its own (via its deploy stub) to make
+  # the URL live without uploading to the store. It reports its OWN failures, so
+  # the issues:write below lets that reporter run.
+  deploy-privacy-page:
+    uses: missingbulb/Claudinite/.github/workflows/deploy-privacy-page.yml@main
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+      issues: write
+
+  # This workflow is run by hand and then left alone, so a failed upload
+  # otherwise just turns the run red with nobody alerted. Open/append a tracking
+  # issue instead. Covers only `publish`; the deploy-privacy-page reusable
+  # workflow reports its own failures.
+  report-failure:
+    needs: publish
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: missingbulb/Claudinite/.github/actions/report-failure@main
+        with:
+          workflow: "Release: Publish to Chrome Web Store"
