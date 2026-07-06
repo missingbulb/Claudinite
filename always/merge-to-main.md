@@ -8,7 +8,7 @@ The portable recipe for landing the change in front of the owner on `main` — t
 
 1. Load both GitHub tools in **one** `ToolSearch`: `create_pull_request` + `merge_pull_request`.
 2. No PR open for the branch yet? `create_pull_request` (base `main`); end the body with `Closes #<issue>`, and take the PR number from the returned URL.
-3. Gate on CI **only if the repo has it** (`.github/workflows/` non-empty): wait for checks to go green first. No CI → no gate; don't wait or go looking for one.
+3. Gate on CI **only if the repo has it** — a workflow that actually runs on PRs/pushes. `workflow_call`-only reusable workflows (this repo hosts some) are *not* CI: they never run here, so a non-empty `.github/workflows/` alone proves nothing; check the PR for check runs instead. No CI → no gate; don't wait for checks that will never come.
 4. `merge_pull_request`, `merge_method: squash`, title `<subject> (#<pr>)`. Merge directly — don't pre-read status; the call fails loudly if it isn't mergeable.
 5. Sync local `main`: `git checkout main && git pull origin main`.
 

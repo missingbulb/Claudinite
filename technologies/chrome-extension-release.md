@@ -3,11 +3,20 @@
 Every Chrome-extension repo of ours ships the **same** release pipeline: same workflows, same
 Chrome Web Store API usage, same secrets, same versioning and artifact rules, same README install
 sections. This doc is that contract, the setup steps for a new extension repo, and the manual
-Chrome Web Store actions the automation can't do. The canonical workflow files live in
-[chrome-extension-release/](chrome-extension-release/) — **copy them, don't re-derive them**.
-Reference implementation: `missingbulb/GoogleCalendarEventCreator`; also adopted by `TLDR` and
-`CrosswordChat`. When the standard changes, change it here first, then propagate to every
-extension repo.
+Chrome Web Store actions the automation can't do. The workflow **logic** lives once, in this
+repo's [.github/workflows/](../.github/workflows/), as `workflow_call`-only **reusable
+workflows** (plus the [report-failure](../.github/actions/report-failure/action.yml) composite
+action); each extension repo carries only four **thin stubs** — triggers + repo values —
+templated in [chrome-extension-release/](chrome-extension-release/): **copy the stubs, don't
+re-derive them**. The stubs reference the canon `@main`, so a merged canon change reaches every
+extension repo's next run automatically — changing the standard's logic needs no per-repo PR;
+only a change to the *stub shape itself* still propagates by hand. Reference implementation:
+`missingbulb/GoogleCalendarEventCreator`; also adopted by `TLDR` and `CrosswordChat`.
+
+Naming in the flat `.github/workflows/` namespace: Chrome-specific logic carries the
+`chrome-extension-` prefix (future publish standards — other stores — will live beside it);
+genuinely platform-agnostic pieces (`deploy-privacy-page.yml`, the `report-failure` action) keep
+general names so other standards reuse them as-is. When in doubt, prefix.
 
 ## The contract
 
@@ -35,19 +44,28 @@ extension repo.
 - A release is GitHub Release **`vX.Y.Z`**, tagged at the released commit, with the zip as its
   only asset and auto-generated notes.
 
-**Workflows** — five files with these exact `name:`s (the failure reporter keys tracking issues
-on them):
+**Workflows** — four stub files per repo with these exact `name:`s (the failure reporter keys
+tracking issues on them), each calling its reusable canon workflow:
 
-| file | `name:` | trigger | what it does |
+| stub file | `name:` | trigger (owned by the stub) | canon workflow it calls — what it does |
 |---|---|---|---|
-| `release.yml` | Release: Create Package | push to `main` touching the manifest; dispatch; `workflow_call(ref)` | version guard (clean no-op if already released) → full test gate → `npm run build` → GitHub Release |
-| `publish-chrome-store.yml` | Release: Publish to Chrome Web Store | dispatch(`tag`, `auto_publish`); `workflow_call` | download the release zip → upload via the store API (publish to users unless `auto_publish: false` → dashboard draft) → refresh the privacy page |
-| `daily-release.yml` | Release: Daily Auto-Release | schedule `0 3 * * *`; dispatch | shipped-file diff vs the latest release tag → patch bump pushed to `main` → calls the two workflows above |
-| `deploy-privacy-page.yml` | Deploy privacy policy to GitHub Pages | dispatch; `workflow_call` | publishes `store_artifacts/PRIVACY.md` at the `/privacy/` permalink |
-| `report-failure.yml` | Report workflow failure | `workflow_call(workflow)` | opens/appends the standing per-workflow `workflow-failure` tracking issue |
+| `release.yml` | Release: Create Package | push to `main` touching the manifest; dispatch | `chrome-extension-release.yml` — version guard (clean no-op if already released) → full test gate → build → GitHub Release |
+| `publish-chrome-store.yml` | Release: Publish to Chrome Web Store | dispatch(`tag`, `auto_publish`) | `chrome-extension-publish-store.yml` — download the release zip → upload via the store API (publish to users unless `auto_publish: false` → dashboard draft) → refresh the privacy page |
+| `daily-release.yml` | Release: Daily Auto-Release | schedule `0 3 * * *`; dispatch | `chrome-extension-daily-release.yml` — shipped-file diff vs the latest release tag → patch bump pushed to `main` → calls the two canon workflows above |
+| `deploy-privacy-page.yml` | Deploy privacy policy to GitHub Pages | dispatch | `deploy-privacy-page.yml` — publishes `store_artifacts/PRIVACY.md` at the `/privacy/` permalink |
 
-- Every unattended workflow (all of the above; not PR CI) carries a `report-failure` job — a red
-  run must reach a human as an issue, never sit unseen in the Actions list.
+- Repo-specific values travel as `with:` inputs — `zip_path`/`zip_name`, `manifest_path`, and
+  (only where the repo deviates from the defaults) `package_json_path`, `setup_command`,
+  `test_command`, `build_command`, `build_env` (KEY=VALUE lines exported to test/build; every
+  listed key must be non-empty or the run fails — how a repo injects release config from
+  repository variables without ever shipping a placeholder zip). Store secrets travel via
+  `secrets: inherit`.
+- Every unattended workflow (all of the above; not PR CI) reports failures through the
+  `report-failure` composite action baked into the canon workflows — a red run must reach a
+  human as a standing per-workflow `workflow-failure` tracking issue, never sit unseen in the
+  Actions list. Repos no longer carry a `report-failure.yml`; a repo's own non-standard
+  unattended workflows use the action directly
+  (`uses: missingbulb/Claudinite/.github/actions/report-failure@main`).
 - Daily auto-release semantics: the baseline is the **latest release tag**, not a 24-hour window
   (self-healing after a failed day); "deployable" = membership in the shipping set; the patch
   bump is pushed straight to `main` (`[skip ci]`) because the store rejects a version that isn't
@@ -124,18 +142,21 @@ Until the extension's first store publication, replace the store line with:
 
 ## Setting up a new extension repo
 
-1. Copy the five workflow files from [chrome-extension-release/](chrome-extension-release/) into
+1. Copy the four stub files from [chrome-extension-release/](chrome-extension-release/) into
    `.github/workflows/`. Replace every `__ZIP_NAME__` / `__BUMP_PATCH_CMD__` /
-   `__FILTER_SHIPPED_CMD__` token, and — only if the extension doesn't live at `extension/` —
-   the manifest/`package.json` paths flagged in each file's header. Grep for `__` afterwards; no
-   token may survive.
+   `__FILTER_SHIPPED_CMD__` token, and — only if the repo deviates from the defaults — set the
+   `with:` overrides flagged in each stub's header (`manifest_path`, `package_json_path`,
+   `setup_command`, `test_command`, `build_command`, `build_env`), the same values in
+   `release.yml` and `daily-release.yml`. Grep for `__` afterwards; no token may survive.
 2. Create `dev/build/release/` — zip builder + shipping-set module, dependency-free patch-bumper
    and shipped-paths filter, tests for each, `releasing.md`, and `store_artifacts/` with
    `PRIVACY.md` and the `STORE-LISTING.md` submission kit — adapting from the reference repo's
    `dev/build/release/`.
 3. Wire `npm run build` to the zip builder; add the two README sections above.
 4. One-time GitHub setup: Pages → Source = "GitHub Actions". The four `CHROME_*` secrets come
-   later, after the first manual publish.
+   later, after the first manual publish. (Once per *account*, not per repo: if Claudinite is
+   private, its reusable workflows must be callable — Claudinite Settings → Actions → General →
+   Access → "Accessible from repositories owned by the user"; nothing to do if it's public.)
 5. Do the first manual publication (below). From then on the daily pipeline owns routine
    shipping.
 
