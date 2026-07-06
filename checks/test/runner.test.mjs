@@ -113,6 +113,24 @@ test('--list emits the machine-readable rule catalog', () => {
   } finally { cleanup(root); }
 });
 
+test('a declared pack runs; an undeclared fingerprinted pack demands declaration', () => {
+  const wf = { '.github/workflows/x.yml': 'name: x\non: push\njobs:\n  t:\n    runs-on: ubuntu-latest\n    if: ${{ secrets.T }}\n    steps:\n      - run: echo hi\n' };
+  const undeclared = makeRepo({ changed: wf });
+  const declared = makeRepo({
+    changed: { ...wf, '.claudinite-checks.json': JSON.stringify({ packs: ['github-actions'] }) },
+  });
+  try {
+    const u = runCli(undeclared);
+    assert.equal(u.status, 1);
+    assert.match(u.stdout, /pack-declaration/);
+    assert.doesNotMatch(u.stdout, /gha\//); // pack rules don't run until declared
+    const d = runCli(declared);
+    assert.equal(d.status, 1);
+    assert.match(d.stdout, /gha\/secrets-in-job-if/);
+    assert.doesNotMatch(d.stdout, /pack-declaration/);
+  } finally { cleanup(undeclared); cleanup(declared); }
+});
+
 test('--init writes the pack declaration once and is idempotent', () => {
   const root = makeRepo({ changed: {} });
   try {

@@ -1,4 +1,16 @@
 import referenceIntegrity from './universal/reference-integrity.mjs';
+import secretsInJobIf from './github-actions/secrets-in-job-if.mjs';
+import runPipefail from './github-actions/run-pipefail.mjs';
+import checkoutSubmodules from './github-actions/checkout-submodules.mjs';
+import scheduledFailureEscalation from './github-actions/scheduled-failure-escalation.mjs';
+import labelCreateBeforeAdd from './github-actions/label-create-before-add.mjs';
+import uniqueAutomationBranch from './github-actions/unique-automation-branch.mjs';
+import releaseWorkflows from './chrome-extension-release/release-workflows.mjs';
+import templateTokens from './chrome-extension-release/template-tokens.mjs';
+import versionSync from './chrome-extension-release/version-sync.mjs';
+import releaseLayout from './chrome-extension-release/release-layout.mjs';
+import permissionJustifications from './chrome-extension-release/permission-justifications.mjs';
+import readmeSections from './chrome-extension-release/readme-sections.mjs';
 import markdownLinkLabels from './universal/markdown-link-labels.mjs';
 import taskLifecycle from './universal/task-lifecycle.mjs';
 import warningSuppression from './universal/warning-suppression.mjs';
@@ -17,6 +29,22 @@ export const PACK_RULES = {
     filePlacement,
     packDeclaration,
     squashMergeHistory,
+  ],
+  'github-actions': [
+    secretsInJobIf,
+    runPipefail,
+    checkoutSubmodules,
+    scheduledFailureEscalation,
+    labelCreateBeforeAdd,
+    uniqueAutomationBranch,
+  ],
+  'chrome-extension-release': [
+    releaseWorkflows,
+    templateTokens,
+    versionSync,
+    releaseLayout,
+    permissionJustifications,
+    readmeSections,
   ],
 };
 
