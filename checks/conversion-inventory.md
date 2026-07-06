@@ -21,10 +21,12 @@
 
 ~125 discrete instructions audited. **~45 convert to deterministic mechanisms** (≈40 checks
 across five packs, 4 hooks, 2 settings, plus two whole docs becoming command skills); **~60
-stay as instructions** (process/judgment) and **~20 are knowledge** — but *staying* no longer
-means an index soft pointer: the stays/knowledge docs and residues are **delivered as skills**
-(DESIGN.md's catalog), trading the remembered trigger for a harness-managed one at roughly the
-same token cost. So: a majority of *instructions* enforced mechanically — no, ~40%. A majority
+stay as instructions** (process/judgment) and **~20 are knowledge** — of which roughly half
+carry a static signature in the artifact and convert into tech-pack checks (Phase 2), the
+failing check teaching the gotcha at write-time instead of runtime. What genuinely stays no
+longer means an index soft pointer either: the stays docs and signature-less residues are
+**delivered as skills** (DESIGN.md's catalog), trading the remembered trigger for a
+harness-managed one at roughly the same token cost. So: a majority of *instructions* enforced mechanically — no, ~40%. A majority
 of the **always-loaded context burden** eliminated — yes: four of the five force-loaded docs
 unload entirely, the two most breakage-prone task docs (filePlacement,
 textAndFileManipulation) shrink to rationale, and the routing index largely dissolves into
@@ -45,7 +47,7 @@ engineeringPractices judgment core.
 | task-lifecycle: issue before work; commits reference it | **check** `universal/task-lifecycle`: commits since merge-base carry `#N`; the issue exists |
 | task-lifecycle: update issue status as work progresses | **check** *(adv)*, partial — full flow lives in the merge skill |
 | merge-to-main: the recipe (~4 calls) | **skill** (trigger stays the owner's "LGTM" preference) |
-| merge-to-main: squash as the method | **setting** — GitHub "allow squash merging" only |
+| merge-to-main: squash as the method | **setting** — GitHub "allow squash merging" only — verified by **check** `universal/squash-merge-history` *(adv)*: no merge commits in main's first-parent history (the effect), plus a CI-surface config check later |
 | merge-to-main: gate on CI only if the repo has it | folds into the skill |
 | merge-to-main: lessons pass on every merge | folds into the skill (deterministic step, not a remembered trigger) |
 | merge-to-main: don't re-read the issue; don't fight branch deletion | folds into the skill |
@@ -87,7 +89,7 @@ engineeringPractices judgment core.
 |---|---|
 | Status updates: comment, don't `issue_write`-overwrite | **hook** — PreToolUse warns/blocks `issue_write` `update` with a body |
 | Commit often, in layers; tests-first ordering | stays |
-| Don't rewrite published/shared history | **hook** (block force-push to protected branches) + **setting** (branch protection) |
+| Don't rewrite published/shared history | **hook** (block force-push to protected branches) + **setting** (branch protection) — the setting verified by a fleet-surface config check (branch-protection reads need an owner token) |
 | Squash-merge branch-sync gotchas (rebase --onto, stale lease) | knowledge |
 | Commit-nag ≠ authorization to commit drift | stays |
 | Open a PR early when the artifact is CI-only | stays |
@@ -168,7 +170,10 @@ become the `writing-tests`, `repo-text-sweeps`, and `git-github-advanced` skills
 
 | Doc | Disposition |
 |---|---|
-| nodejs.md (2), html.md (1), aws-sam.md (3), chrome-extension.md (8), flutter.md (stub) | knowledge — runtime gotchas no local check can observe → delivered as the `nodejs-testing`, `html`, `aws-sam`, `chrome-extension` **skills**, `paths`-scoped where the file globs identify the technology |
+| aws-sam.md (3) | all three carry static signatures → **check** `aws-sam/` pack: `Handler` still naming the entry's subdirectory under `BuildMethod: esbuild`; esbuild declared in `devDependencies`; a custom origin-request policy listing `Authorization`. Diagnostic residue → `aws-sam` **skill** |
+| chrome-extension.md (8) | ~4 have signatures → **check** `chrome-extension/` pack: `SetIcon({path: …})`; non-root-absolute paths handed to chrome APIs in the service worker; `interactive: false` paired with `prompt=consent`; `getAuthToken` in a JWT-backend repo *(adv, heuristic)*. Signature-less rest (shared-global augmentation, CDP probing, CORS) → `chrome-extension` **skill** |
+| nodejs.md (2) | heuristic signatures only → *(adv)* lints in the `node` pack (`innerText \|\| textContent` fallback in jsdom-tested code; jsdom fragment parsing without `runScripts`); knowledge → `nodejs-testing` **skill** |
+| html.md (1), flutter.md (stub) | no static signature (runtime parser behavior) → **skill** |
 | **chrome-extension-release.md — the contract** | **check** `chrome-extension-release/` conformance suite (~12): five workflows with exact `name:`s · no surviving `__TOKENS__` · manifest ↔ `package.json` version sync · kebab-cased zip name · README Install/Releasing sections · `PRIVACY.md` present · STORE-LISTING justification row per manifest permission · release machinery under `dev/build/release/` · store-asset inventory (128px icon, ≥1 screenshot) · assets generator-backed · dependency-free bumper/filter scripts *(adv)*. Doc keeps the setup narrative and manual store steps |
 
 ## templates/ & bootstrap.md

@@ -48,11 +48,17 @@ Two classes deliberately **stay as instructions**:
   quality. They shape work *in flight* and leave no artifact a check can inspect. Converting
   them post-hoc would also catch violations only after the expensive rework they exist to
   prevent.
-- **Platform-gotcha knowledge** (`technologies/`) — jsdom vs. Chrome, MV3 path resolution, SAM
-  esbuild traps. These prevent runtime failures no local check can observe, so they can't
-  become checks — but their *delivery* still improves: they become `paths`-scoped skills (see
-  [Skills](#skills--the-on-demand-layer-for-what-checks-cant-carry)). Exception: the
-  chrome-extension-release **contract** is a conformance suite waiting to be written.
+- **Platform-gotcha knowledge** (`technologies/`) — split **per gotcha**, by whether the bad
+  pattern has a *static signature in the artifact*. Where it does, it converts to a tech-pack
+  check — a SAM `Handler` still carrying the entry's subdirectory under an esbuild build, an
+  esbuild declared in `devDependencies`, a `SetIcon({path: …})`, a CloudFront custom
+  origin-request policy listing `Authorization` — and the agent never needs to know the gotcha
+  in advance: writing the bad pattern fails the check in the same session, moving discovery
+  from runtime (often the first deploy or invoke) to write-time, with the gotcha's teaching in
+  the failure message. Only the signature-less residue stays as skill knowledge: runtime
+  divergence invisible in the artifact (jsdom *behaving* unlike Chrome, CORS being decided
+  server-side) and diagnostic know-how. The chrome-extension-release **contract** is the
+  largest signature-rich case — a conformance suite waiting to be written.
 
 ## Architecture
 
@@ -68,12 +74,16 @@ checks/
     chrome-extension-release/ # the release-standard conformance suite
 ```
 
-**Runner contract.** `node .claudinite/checks/run.js [--changed|--all]`. Dependency-free Node —
-no `npm install` step exists on the tarball mount, and the corpus's own "earn each dependency"
-rule applies to us first. Exit 0 = clean, exit 1 = findings. `--changed` (the default for
-enforcement) scopes to files touched since `merge-base(origin/main, HEAD)` plus untracked files,
-so a session is never blocked on pre-existing violations it didn't cause; `--all` exists for
-adoption audits and CI sweeps.
+**Runner contract.** `node .claudinite/checks/run.js`. Dependency-free Node — no `npm install`
+step exists on the tarball mount, and the corpus's own "earn each dependency" rule applies to
+us first. Exit 0 = clean, exit 1 = blocking findings. The default scope is the **whole repo**:
+on a text corpus the full sweep costs milliseconds, and only full scope sees cross-file
+breakage — a change in one file dangling a reference in an unchanged one. The steady state is
+a repo at zero findings (or reviewed acceptances), held there by every run. `--changed`
+(diff vs the merge-base with main) exists only as a transitional aid while adopting a repo
+that carries a backlog — it is not the enforcement default. (Rules that are inherently about
+the *delta* — new suppression markers, commits referencing an issue — diff against the
+merge-base in either scope.)
 
 **Pack selection: declared for deterministic execution, fingerprinted against drift.** The
 packs a project runs are **pinned in `.claudinite-checks.json`**
@@ -129,7 +139,7 @@ as the existing SessionStart hooks):
 1. The Stop hook fires when the agent finishes a turn.
 2. It **fast-exits in milliseconds** when no tracked file differs from `main` — conversational
    turns cost nothing.
-3. Otherwise it runs `run.js --changed`; on findings it exits 2 with the findings on stderr.
+3. Otherwise it runs the full sweep; on findings it exits 2 with the findings on stderr.
    Claude Code blocks the stop and feeds that text back to the agent, which fixes the
    violations **in the same session**. A clean run stops silently.
 
@@ -137,13 +147,25 @@ Loop safety comes from convergence (fixed findings stop firing) plus Claude Code
 protection (it overrides a Stop hook after ~8 consecutive blocks).
 
 **CI is the backstop, not the mechanism.** Hooks fire only in Claude Code sessions; a human
-editing on GitHub web, or any other tool, bypasses them. A CI job running the same
-`run.js --changed --base origin/main` catches those — same rules, same messages, one source of
-truth.
+editing on GitHub web, or any other tool, bypasses them. A CI job running the same full sweep
+catches those — same rules, same messages, one source of truth.
 
-**Prefer a platform setting when one exists.** Squash-only merging is a GitHub repo setting;
-force-push protection is branch protection. Zero tokens, zero code, zero test — a check for
-what the platform will enforce outright is waste.
+**Prefer a platform setting when one exists — but never trust it.** Squash-only merging is a
+GitHub repo setting; force-push protection is branch protection. The setting does the
+*enforcing*, but it's configuration like any other: it can be off, get switched off, or be
+bypassed, and nothing notices. So every setting rung pairs with a check that verifies it, in
+order of strength:
+
+- **Effect check (preferred)** — offline and deterministic, it verifies the *outcome* the
+  setting guarantees rather than the setting itself: squash-only ⇒ no merge commits in the
+  default branch's first-parent history (`squash-merge-history` in the universal pack). It
+  catches both the setting being off *and* anyone bypassing it — and it found two historical
+  merge commits on this very repo's `main` the moment it first ran.
+- **Config check** — reads the setting via the platform API and fails when it's off. Needs a
+  network-capable surface: rules carry a surface tag, the Stop hook runs only offline rules,
+  CI runs what its repo token can read (e.g. the allow-merge-commit flags), and the fleet
+  maintenance routine covers settings a repo token can't (e.g. branch protection). Follow-up
+  work alongside the Phase 2 packs.
 
 ## Governance
 
@@ -255,7 +277,8 @@ relocates it.
 **The promotion ladder.** Every lesson that clears the worthiness bar is triaged down the same
 mechanism order as the conversion table above — the *first* rung that can carry it wins:
 
-1. **Platform setting** — the platform enforces it outright.
+1. **Platform setting** — the platform enforces it outright, always paired with the check
+   that verifies it holds (effect check first, config check where a token can read it).
 2. **PreToolUse hook** — a bad action to block before it runs.
 3. **Post-hoc check** — a constraint on repo state.
 4. **Skill** — a procedure or knowledge with a nameable trigger.
