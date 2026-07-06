@@ -1,6 +1,6 @@
 import { dirname, join, normalize } from 'node:path';
-import { extractLinks } from '../../lib/markdown.mjs';
-import { finding } from '../../lib/findings.mjs';
+import { extractLinks } from '../../checks/lib/markdown.mjs';
+import { finding } from '../../checks/lib/findings.mjs';
 
 const rule = {
   id: 'reference-integrity',

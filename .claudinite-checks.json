@@ -4,8 +4,8 @@
   "accept": [
     {
       "rule": "file-placement",
-      "path": "checks/packs/",
-      "reason": "pack modules deliberately share the checks-level lib/ — a named cross-cutting concern per tasks/filePlacement.md; the pack tree is organized by pack, not by dependency"
+      "path": "packs/",
+      "reason": "pack check modules deliberately share the checks/ engine lib — a named cross-cutting concern per tasks/filePlacement.md; packs are organized by pack, not by dependency"
     },
     {
       "rule": "squash-merge-history",

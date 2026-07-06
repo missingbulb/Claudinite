@@ -1,4 +1,4 @@
-import { finding } from '../../lib/findings.mjs';
+import { finding } from '../../checks/lib/findings.mjs';
 
 // The contract's four thin stubs, each with its exact name: (the failure
 // reporter keys tracking issues on them) and the canon reusable workflow it

@@ -1,5 +1,5 @@
-import { finding } from '../../lib/findings.mjs';
-import { findExtensionManifest } from '../fingerprints.mjs';
+import { finding } from '../../checks/lib/findings.mjs';
+import { findExtensionManifest } from '../../checks/lib/manifest.mjs';
 
 const LISTING = 'dev/build/release/store_artifacts/STORE-LISTING.md';
 

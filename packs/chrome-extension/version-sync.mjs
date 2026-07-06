@@ -1,5 +1,5 @@
-import { finding } from '../../lib/findings.mjs';
-import { findExtensionManifest } from '../fingerprints.mjs';
+import { finding } from '../../checks/lib/findings.mjs';
+import { findExtensionManifest } from '../../checks/lib/manifest.mjs';
 
 const rule = {
   id: 'cer/version-sync',

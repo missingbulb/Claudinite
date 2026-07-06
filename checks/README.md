@@ -55,13 +55,14 @@ and is authoritative.
 
 ## Adding a rule
 
-One module per rule under `packs/<pack>/`, exporting
-`{ id, severity, description, doc, why, run(ctx) }` — register it in
-[packs/packs.mjs](packs/packs.mjs). The failure message *is* the instruction: `what` states the
+One module per rule under `../packs/<pack>/`, exporting
+`{ id, severity, description, doc, why, run(ctx) }` — list it in that pack's
+`../packs/<pack>/pack.mjs` manifest. The failure message *is* the instruction: `what` states the
 violation, `why` the one-line motivation, `fix` the exact remedy, `doc` the corpus doc that owns
 the depth. Write the fixture test first and see it fail (`test/`, scratch git repos via
 [test/helpers.mjs](test/helpers.mjs)) — a violating fixture must find, a clean one must not.
 A new rule ships at its real severity, fail-fast: `blocking` when a finding is a defect to
-fix, `advisory` only when the rule's own semantics are directional (a smell to judge). A new
-technology pack also registers its fingerprint in
-[packs/fingerprints.mjs](packs/fingerprints.mjs) and flips `available: true`.
+fix, `advisory` only when the rule's own semantics are directional (a smell to judge). A whole
+new pack is just a `../packs/<name>/` directory with a `pack.mjs` (its `id`, fingerprint
+`detect`, `rules`, and optional `prose`) — [packs/registry.mjs](../packs/registry.mjs)
+discovers it structurally, no list to edit.

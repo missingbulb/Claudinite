@@ -2,13 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, deletePath, cleanup, git, writeFiles } from './helpers.mjs';
 import { buildContext } from '../lib/context.mjs';
-import referenceIntegrity from '../packs/universal/reference-integrity.mjs';
-import linkLabels from '../packs/universal/markdown-link-labels.mjs';
-import taskLifecycle from '../packs/universal/task-lifecycle.mjs';
-import warningSuppression from '../packs/universal/warning-suppression.mjs';
-import filePlacement from '../packs/universal/file-placement.mjs';
-import packDeclaration from '../packs/universal/pack-declaration.mjs';
-import squashMergeHistory from '../packs/universal/squash-merge-history.mjs';
+import referenceIntegrity from '../../packs/universal/reference-integrity.mjs';
+import linkLabels from '../../packs/universal/markdown-link-labels.mjs';
+import taskLifecycle from '../../packs/universal/task-lifecycle.mjs';
+import warningSuppression from '../../packs/universal/warning-suppression.mjs';
+import filePlacement from '../../packs/universal/file-placement.mjs';
+import packDeclaration from '../../packs/universal/pack-declaration.mjs';
+import squashMergeHistory from '../../packs/universal/squash-merge-history.mjs';
 
 function run(rule, root, mode = 'changed') {
   const ctx = buildContext({ root, mode });

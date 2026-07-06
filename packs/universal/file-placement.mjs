@@ -1,6 +1,6 @@
 import { dirname, join, normalize } from 'node:path';
-import { extractLinks } from '../../lib/markdown.mjs';
-import { finding } from '../../lib/findings.mjs';
+import { extractLinks } from '../../checks/lib/markdown.mjs';
+import { finding } from '../../checks/lib/findings.mjs';
 
 const CODE_EXT = /\.(mjs|cjs|jsx?|tsx?)$/;
 const CODE_REF = /(?:from\s+|require\(\s*|import\(\s*)['"](\.{1,2}\/[^'"]+)['"]/g;

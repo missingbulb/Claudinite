@@ -1,4 +1,4 @@
-import { finding } from '../../lib/findings.mjs';
+import { finding } from '../../checks/lib/findings.mjs';
 
 // The effect check behind the squash-only platform setting: the setting is never
 // trusted — a merge commit in main's first-parent history proves it was off or

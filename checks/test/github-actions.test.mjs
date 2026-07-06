@@ -2,12 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from './helpers.mjs';
 import { buildContext } from '../lib/context.mjs';
-import secretsInJobIf from '../packs/github-actions/secrets-in-job-if.mjs';
-import runPipefail from '../packs/github-actions/run-pipefail.mjs';
-import checkoutSubmodules from '../packs/github-actions/checkout-submodules.mjs';
-import scheduledEscalation from '../packs/github-actions/scheduled-failure-escalation.mjs';
-import labelCreate from '../packs/github-actions/label-create-before-add.mjs';
-import uniqueBranch from '../packs/github-actions/unique-automation-branch.mjs';
+import secretsInJobIf from '../../packs/github-actions/secrets-in-job-if.mjs';
+import runPipefail from '../../packs/github-actions/run-pipefail.mjs';
+import checkoutSubmodules from '../../packs/github-actions/checkout-submodules.mjs';
+import scheduledEscalation from '../../packs/github-actions/scheduled-failure-escalation.mjs';
+import labelCreate from '../../packs/github-actions/label-create-before-add.mjs';
+import uniqueBranch from '../../packs/github-actions/unique-automation-branch.mjs';
 
 const run = (rule, root) => rule.run(buildContext({ root, mode: 'all' }));
 const WF = '.github/workflows/x.yml';

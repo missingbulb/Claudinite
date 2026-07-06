@@ -1,4 +1,4 @@
-import { finding } from '../../lib/findings.mjs';
+import { finding } from '../../checks/lib/findings.mjs';
 
 const MARKERS = [
   /eslint-disable/,
@@ -22,8 +22,9 @@ const rule = {
     for (const file of ctx.files) {
       // Markers are only live in code — a doc *discussing* them isn't suppressing anything.
       if (file.endsWith('.md')) continue;
-      // The checks tree spells these markers as detection patterns and test fixtures.
-      if (/(^|\/)checks\/(packs|test)\//.test(file)) continue;
+      // Pack check modules spell these markers as detection patterns; the engine's
+      // tests spell them as fixtures. Neither is a live suppression.
+      if (/^packs\//.test(file) || /(^|\/)checks\/test\//.test(file)) continue;
       for (const { line, text } of ctx.addedLines(file)) {
         if (MARKERS.some((m) => m.test(text))) {
           out.push(finding(rule, {

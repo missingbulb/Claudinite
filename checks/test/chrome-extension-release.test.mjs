@@ -2,12 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from './helpers.mjs';
 import { buildContext } from '../lib/context.mjs';
-import releaseWorkflows from '../packs/chrome-extension-release/release-workflows.mjs';
-import templateTokens from '../packs/chrome-extension-release/template-tokens.mjs';
-import versionSync from '../packs/chrome-extension-release/version-sync.mjs';
-import releaseLayout from '../packs/chrome-extension-release/release-layout.mjs';
-import permissionJustifications from '../packs/chrome-extension-release/permission-justifications.mjs';
-import readmeSections from '../packs/chrome-extension-release/readme-sections.mjs';
+import releaseWorkflows from '../../packs/chrome-extension/release-workflows.mjs';
+import templateTokens from '../../packs/chrome-extension/template-tokens.mjs';
+import versionSync from '../../packs/chrome-extension/version-sync.mjs';
+import releaseLayout from '../../packs/chrome-extension/release-layout.mjs';
+import permissionJustifications from '../../packs/chrome-extension/permission-justifications.mjs';
+import readmeSections from '../../packs/chrome-extension/readme-sections.mjs';
 
 const run = (rule, root) => rule.run(buildContext({ root, mode: 'all' }));
 

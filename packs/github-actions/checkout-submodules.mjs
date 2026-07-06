@@ -1,5 +1,5 @@
-import { finding } from '../../lib/findings.mjs';
-import { workflowFiles } from '../../lib/workflows.mjs';
+import { finding } from '../../checks/lib/findings.mjs';
+import { workflowFiles } from '../../checks/lib/workflows.mjs';
 
 const rule = {
   id: 'gha/checkout-submodules',
