@@ -71,10 +71,28 @@ independent of the file's location. The store listing's Privacy-tab URL points *
 at a `blob/main` link. The page redeploys on every store publish and by standalone dispatch.
 One-time: repo Settings → Pages → Source = "GitHub Actions".
 
+**The submission kit** — `dev/build/release/store_artifacts/STORE-LISTING.md` pre-writes every
+answer the dashboard asks for: the listing copy (name, summary, detailed description, category),
+the graphic-asset file map, and the Privacy-practices answers — the single-purpose statement, a
+justification for **every** permission the manifest requests (`permissions`, `host_permissions`,
+and `optional_*` alike), the remote-code answer, the data-usage declarations and certifications,
+the privacy-policy URL — plus notes for the Google reviewer. The dashboard is filled **from**
+this file, at the initial submission and at every resubmission; it must never lag the manifest.
+
+**Store assets & icons** — required inventory: a 128 px store icon; the manifest icons the
+extension ships (16/32/48/128), living inside the extension source where the manifest points;
+at least one 1280×800 (or 640×400) screenshot; optionally 440×280 small and 1400×560 marquee
+promo tiles. Listing-only images live in `store_artifacts/`; shipped icons live in the extension
+source. Every asset comes from a **committed, deterministic generator script** — regenerate and
+commit, never hand-edit a generated PNG. The generator's tech is the repo's choice (the
+reference repo draws with stdlib-only Python; CrosswordChat rasterizes SVG/HTML with headless
+Chromium); what's fixed is that every asset is reproducible from the repo.
+
 **Layout** — release machinery lives in `dev/build/release/`: the zip builder + shipping-set
 module, the patch-bumper, the shipped-paths filter (each with tests), `releasing.md` (the repo's
 own release doc: its concrete names/paths/listing facts, delegating the shared procedure to this
-guide), and `store_artifacts/` (PRIVACY.md, listing screenshots, icon/asset generators).
+guide), and `store_artifacts/` (PRIVACY.md, the STORE-LISTING.md submission kit, listing
+screenshots, icon/asset generators).
 
 ## README template
 
@@ -112,8 +130,9 @@ Until the extension's first store publication, replace the store line with:
    the manifest/`package.json` paths flagged in each file's header. Grep for `__` afterwards; no
    token may survive.
 2. Create `dev/build/release/` — zip builder + shipping-set module, dependency-free patch-bumper
-   and shipped-paths filter, tests for each, `releasing.md`, and `store_artifacts/PRIVACY.md` —
-   adapting from the reference repo's `dev/build/release/`.
+   and shipped-paths filter, tests for each, `releasing.md`, and `store_artifacts/` with
+   `PRIVACY.md` and the `STORE-LISTING.md` submission kit — adapting from the reference repo's
+   `dev/build/release/`.
 3. Wire `npm run build` to the zip builder; add the two README sections above.
 4. One-time GitHub setup: Pages → Source = "GitHub Actions". The four `CHROME_*` secrets come
    later, after the first manual publish.
@@ -136,12 +155,12 @@ extension; the upstream reference is
    `key`: the store assigns the ID at first upload, and you copy the dashboard's Package-tab
    public key back into the build afterwards. Record the 32-char item ID → the
    `CHROME_EXTENSION_ID` secret.
-3. Complete the listing: 128px store icon, description, category, ≥ 1280×800 screenshot. Keep
-   the submission copy (descriptions, justifications, reviewer notes) in
-   `dev/build/release/store_artifacts/` so a resubmission is copy-paste.
-4. Privacy tab: justify each requested permission, declare data usage, and set the **Privacy
-   policy URL** to the `/privacy/` Pages URL — deploy it first via the privacy workflow's
-   dispatch so the URL is live when the reviewer clicks it.
+3. Complete the listing — 128px store icon, description, category, ≥ 1280×800 screenshot — by
+   pasting from the repo's submission kit (`store_artifacts/STORE-LISTING.md`).
+4. Privacy tab: paste the kit's single-purpose statement, per-permission justifications, and
+   data-usage declarations; set the **Privacy policy URL** to the `/privacy/` Pages URL —
+   deploy it first via the privacy workflow's dispatch so the URL is live when the reviewer
+   clicks it.
 5. Submit for review — approval takes hours to a few days (`ITEM_PENDING_REVIEW` = success).
    Every subsequent upload must carry a **strictly higher** version, which is why the pipeline
    always bumps before it ships.
@@ -194,3 +213,21 @@ secrets. If minting fails:
   tag = latest release).
 - Once the store approves, Chrome auto-pushes the update to installed users within hours — no
   reinstall.
+
+### When a change touches the extension's permissions
+
+Any PR that changes the manifest's `permissions`, `host_permissions`, or `optional_*`:
+
+1. Update the justification table in the repo's `store_artifacts/STORE-LISTING.md` in the
+   **same PR** — the store requires a written justification for every requested permission, so
+   the answer must exist before anyone faces the dashboard.
+2. Open a tracking issue for the manual dashboard step: the Privacy-practices tab must carry
+   the new justification, and the store blocks publishing the new version until it does — so
+   the next store publish (daily or manual) stalls on it. (If the daily pipeline hits it first,
+   the failed publish lands on its `workflow-failure` tracking issue; the proactive issue beats
+   the reactive one.) After updating the dashboard, re-run the publish.
+3. Expect deeper store review than a plain code update — permission changes re-open scrutiny.
+4. A new **required** permission that carries an install-time warning disables the extension
+   for existing users until each one re-approves it — prefer `optional_permissions` /
+   `optional_host_permissions` requested at runtime (`chrome.permissions.request`) when the
+   feature allows.
