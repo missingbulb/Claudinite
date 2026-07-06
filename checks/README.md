@@ -8,17 +8,19 @@ Dependency-free Node ≥ 18 — no install step.
 ## Running
 
 ```sh
-node checks/run.mjs             # --changed (default): files changed vs the merge-base with main
-node checks/run.mjs --all       # whole-repo sweep (adoption audits, CI on main)
+node checks/run.mjs             # whole-repo sweep (the default — Stop hook and CI both run this)
+node checks/run.mjs --changed   # transitional: only files changed vs the merge-base with main
 node checks/run.mjs --list      # machine-readable rule catalog (id, severity, description, doc)
 node checks/run.mjs --init      # write .claudinite-checks.json from the technology fingerprint
 ```
 
 Exit 1 when blocking findings exist; advisory findings never fail a run. In a consuming repo
-the paths start with `.claudinite/`. **Scoping note:** `--changed` diffs against the merge-base
-with `origin/main` (falling back to `origin/master`, `main`, `master`) — a stale `origin/main`
-widens the scope to changes that already landed, so fetch when findings look like they aren't
-yours.
+the paths start with `.claudinite/`. The steady state is a repo at zero findings (or reviewed
+acceptances); `--changed` exists only for adopting a repo with a backlog. **Base-ref note:**
+delta rules (new suppression markers, commits referencing an issue) and `--changed` scoping
+diff against the merge-base with `origin/main` (falling back to `origin/master`, `main`,
+`master`) — a stale `origin/main` widens that delta, so fetch when findings look like they
+aren't yours.
 
 ## Configuration — `.claudinite-checks.json` (repo root)
 
@@ -46,8 +48,8 @@ yours.
   `.claude/settings.json` (see [bootstrap.md](../bootstrap.md)). Fast-exits when nothing changed
   vs the base; on blocking findings exits 2 so the session fixes them before stopping.
   Self-limiting: after blocking twice on identical findings it lets the stop through.
-- **CI** — run `node checks/run.mjs --all` (or `--changed --base origin/main` on PRs) as the
-  backstop for edits made outside Claude sessions.
+- **CI** — run `node checks/run.mjs` as the backstop for edits made outside Claude sessions;
+  same sweep, same messages.
 
 ## Adding a rule
 

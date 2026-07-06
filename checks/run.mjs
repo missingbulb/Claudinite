@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Claudinite conformance-check runner (see DESIGN.md). Dependency-free Node ≥18.
-//   --changed   scope to files changed vs the merge-base with main (default)
-//   --all       whole-repo sweep (adoption audits, CI)
+//   (default)   whole-repo sweep — milliseconds on a text corpus, sees cross-file breakage
+//   --changed   transitional: scope to files changed vs the merge-base with main
+//               (adopting a repo with a backlog only — not the enforcement default)
 //   --base REF  override the base ref
 //   --list      machine-readable rule catalog (id, severity, description, doc)
 //   --init      write .claudinite-checks.json from the technology fingerprint
@@ -40,7 +41,7 @@ if (has('--init')) {
   process.exit(0);
 }
 
-const mode = has('--all') ? 'all' : 'changed';
+const mode = has('--changed') ? 'changed' : 'all';
 const ctx = buildContext({ root, mode, baseOverride: value('--base') });
 
 let findings = [];

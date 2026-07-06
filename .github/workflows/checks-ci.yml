@@ -20,4 +20,4 @@ jobs:
       - name: Unit tests
         run: node --test checks/test/*.test.mjs
       - name: Conformance sweep
-        run: node checks/run.mjs --all
+        run: node checks/run.mjs

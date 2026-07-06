@@ -27,7 +27,7 @@ if (!dirty) {
 }
 if (!dirty) process.exit(0);
 
-const run = spawnSync(process.execPath, [runner, '--changed'], {
+const run = spawnSync(process.execPath, [runner], {
   cwd: projectRoot, encoding: 'utf8',
 });
 if (run.status === 0) {
@@ -49,7 +49,7 @@ if (existsSync(stateFile)) {
 const count = state.hash === hash ? state.count + 1 : 1;
 writeFileSync(stateFile, JSON.stringify({ hash, count }));
 if (count > 2) {
-  console.log('claudinite checks: the same blocking findings survived 2 fix attempts — letting the stop through. Run `node ' + runner + ' --changed` to see them.');
+  console.log('claudinite checks: the same blocking findings survived 2 fix attempts — letting the stop through. Run `node ' + runner + '` to see them.');
   process.exit(0);
 }
 
