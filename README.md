@@ -34,7 +34,7 @@ Beyond the portable corpus above, two folders hold the machinery that keeps it f
 - [growth/dedup.md](growth/dedup.md) — **phase 3, per project.** Prunes local items the canon covers, **keeping** items the canon states too generally for that project. Opens a PR against the project's `main`.
 - [growth/item-routing.md](growth/item-routing.md) — the shared worthiness + routing method the promote phase (and any other caller) defers to.
 
-`checks/` holds the **deterministic-enforcement layer** — the corpus rules that convert into machine-run checks executed when a consuming repo's session finishes (currently at the design stage: [checks/DESIGN.md](checks/DESIGN.md), with the per-rule audit in [checks/conversion-inventory.md](checks/conversion-inventory.md)).
+`checks/` holds the **deterministic-enforcement layer** — the corpus rules that convert into machine-run checks executed when a consuming repo's session finishes (Stop hook) and in CI. Usage and configuration → [checks/README.md](checks/README.md); design → [checks/DESIGN.md](checks/DESIGN.md); the per-rule audit → [checks/conversion-inventory.md](checks/conversion-inventory.md).
 
 `routines/` holds the scheduled jobs:
 

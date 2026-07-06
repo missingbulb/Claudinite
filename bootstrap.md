@@ -114,7 +114,7 @@ The hook expands `CLAUDE_CODE_USER_EMAIL`, reads the matching `preferences/<emai
 
 ## Part 3 — bespoke merge policy (optional, only if you diverge)
 
-The portable merge-to-main recipe ships in the always-on baseline ([`.claudinite/always/merge-to-main.md`](always/merge-to-main.md)) and needs **nothing** from you — its default is squash-merge via a PR, gating on CI only when the repo has it. Adopt it and you're done.
+The portable merge-to-main recipe ships in the always-on baseline ([`always/merge-to-main.md`](always/merge-to-main.md), mounted at `.claudinite/`) and needs **nothing** from you — its default is squash-merge via a PR, gating on CI only when the repo has it. Adopt it and you're done.
 
 Only if your project genuinely diverges (a non-squash method, a twice-green or extra-approval gate): put that policy in its own file in your repo and **name that file explicitly in your `CLAUDE.md`**. The recipe reads a project's merge-policy file only when the project's `CLAUDE.md` points to one, and lets it override the divergent points (merge method, CI gating).
 
@@ -137,3 +137,25 @@ The owner runs recurring **classes** of project, each with a shared, project-agn
    ```
    Then write the project's *own* concrete specifics (inputs, metrics, invariants, run commands) in its own docs, as the linked template instructs.
 3. **No template fits (or the category is unclear) →** run [templates/generate-project-instructions.md](templates/generate-project-instructions.md): it works out the project's category from the repo itself and writes the project's own working-instructions doc. The project still owes a one-line **category declaration** in its `CLAUDE.md` (a project that can't name its category hasn't understood itself yet), and a category with no template is a signal to **uplevel** a new `templates/<class>.md` from that generated doc — see the reverse-direction process in [templates/README.md](templates/README.md).
+
+## Part 6 — conformance checks (Stop hook + pack declaration)
+
+The corpus's enforceable rules run as deterministic checks — usage, configuration, and the rule catalog live in [checks/README.md](checks/README.md). Two idempotent steps wire a consumer up:
+
+**1.** Register the Stop hook in `.claude/settings.json` (skip if already present). It runs the checks on what the session changed and blocks the stop while blocking findings remain, so they're fixed in the session that caused them:
+
+```json
+{ "hooks": { "Stop": [ { "hooks": [
+  { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/checks/stop-hook.mjs" }
+] } ] } }
+```
+
+No ordering constraint: Stop fires at end of turn, long after the SessionStart sync (Method B) or submodule update (Method A) has populated `.claudinite/`.
+
+**2.** Write the initial pack declaration from the repo's technology fingerprint (skips itself if the file already exists):
+
+```sh
+node .claudinite/checks/run.mjs --init
+```
+
+From then on the declared packs run deterministically every session and in CI; the `pack-declaration` check keeps the declaration matched to the technologies actually in the repo — including telling the session that introduces a new technology to declare its pack.
