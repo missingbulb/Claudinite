@@ -91,7 +91,8 @@ Chromium); what's fixed is that every asset is reproducible from the repo.
 **Layout** — release machinery lives in `dev/build/release/`: the zip builder + shipping-set
 module, the patch-bumper, the shipped-paths filter (each with tests), `releasing.md` (the repo's
 own release doc: its concrete names/paths/listing facts, delegating the shared procedure to this
-guide), and `store_artifacts/` (PRIVACY.md, the STORE-LISTING.md submission kit, listing
+guide by **naming the relevant section and restating none of it** — even a one-clause summary of
+a procedure drifts when this guide changes), and `store_artifacts/` (PRIVACY.md, the STORE-LISTING.md submission kit, listing
 screenshots, icon/asset generators).
 
 ## README template
