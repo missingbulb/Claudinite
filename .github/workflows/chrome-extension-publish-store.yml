@@ -68,7 +68,7 @@ jobs:
           done
           if [ -n "$missing" ]; then
             echo "Missing required secret(s):$missing" >&2
-            echo "Add them under Settings → Secrets and variables → Actions (see dev/build/release/releasing.md), and make sure the caller passes secrets: inherit." >&2
+            echo "Add them under Settings → Secrets and variables → Actions (see the chrome-extension release standard in Claudinite), and make sure the caller passes secrets: inherit." >&2
             exit 1
           fi
 

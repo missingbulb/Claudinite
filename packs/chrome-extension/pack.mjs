@@ -1,23 +1,15 @@
 import { findExtensionManifest } from '../../checks/lib/manifest.mjs';
-import releaseWorkflows from './release-workflows.mjs';
-import templateTokens from './template-tokens.mjs';
-import versionSync from './version-sync.mjs';
-import releaseLayout from './release-layout.mjs';
-import permissionJustifications from './permission-justifications.mjs';
-import readmeSections from './readme-sections.mjs';
 
+// The coding pack: MV3 build/runtime gotchas that apply whenever you are writing
+// an extension, fingerprinted by the manifest. Release and Chrome-Web-Store
+// publication are a separate, opt-in concern — the chrome-extension-release pack
+// (its RELEASE.md and conformance checks), declared when the project is ready to
+// ship. This pack carries prose only; it has no checks of its own.
 export default {
   id: 'chrome-extension',
   always: false,
   marker: 'a manifest.json declaring manifest_version',
   detect: (ctx) => findExtensionManifest(ctx) !== null,
   prose: 'RULES.md',
-  rules: [
-    releaseWorkflows,
-    templateTokens,
-    versionSync,
-    releaseLayout,
-    permissionJustifications,
-    readmeSections,
-  ],
+  rules: [],
 };

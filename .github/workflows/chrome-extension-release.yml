@@ -9,7 +9,7 @@ name: "Chrome extension: Create Package (reusable)"
 # currently committed in the extension manifest. It does NOT change the version —
 # bumping is a deliberate, human step (ask Claude to "bump version"; it edits the
 # manifest and package.json on a branch and lands on main via a normal PR — see
-# the repo's dev/build/release/releasing.md).
+# the chrome-extension release standard in Claudinite).
 #
 # If the manifest version already matches the latest published release, the run
 # is a clean no-op — so manifest edits that aren't version bumps don't cut a

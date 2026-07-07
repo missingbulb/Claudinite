@@ -69,7 +69,8 @@ packs/                        # the mounted corpus: prose + checks, active by de
   registry.mjs                #   structural discovery — any packs/<name>/pack.mjs is a pack
   load-active-prose.mjs       #   SessionStart hook: emits active packs' RULES.md
   universal/                  #   always on: RULES.md (baseline) + the universal checks
-  chrome-extension/           #   RULES.md (gotchas) + RELEASE.md (standard) + conformance checks
+  chrome-extension/           #   MV3 coding gotchas (RULES.md, prose only)
+  chrome-extension-release/   #   RELEASE.md (standard) + stubs + conformance checks (opt-in)
   github-actions/             #   the workflow lints (no prose)
   node/  aws-sam/  html/  flutter/     # prose-only tech packs
   research-project/           #   a project-class pack (prose-only, declared)
