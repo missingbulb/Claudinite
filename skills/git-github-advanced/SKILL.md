@@ -83,6 +83,10 @@ When the escalation is itself a separate reusable workflow invoked via `workflow
 
 `actions/checkout` does **not** fetch submodules by default — the submodule directory is an empty folder in CI unless you pass `submodules: true` (or `recurse-submodules: true`). Without it, any gate that reads submodule content passes vacuously: the check is a no-op, not a signal. Add the flag to every CI job whose tests read submodule content.
 
+## A CI job that inspects commit shape must check out the PR head, not the merge ref
+
+On `pull_request`, `actions/checkout` checks out the synthetic `refs/pull/N/merge` commit by default — an ephemeral merge of the PR head into the base — so `HEAD` is itself a merge commit, not the branch tip. Any job that reasons about commit *shape* or history (merge commits, commit count, `--first-parent`, commit messages) reads that synthetic merge and misfires: a "no merge commits" check false-positives even on a linear branch, since `HEAD` is a merge. Check out the head SHA (`ref: ${{ github.event.pull_request.head.sha || github.sha }}`) so CI evaluates the same branch tip a local run does.
+
 ## Mark large committed fixtures `linguist-vendored` to fix language stats
 
 Large committed fixture files (full-page HTML, generated data dumps) can dwarf actual source by byte count and cause GitHub to mislabel the repo's primary language. Add a `.gitattributes` entry for each such path (e.g. `test/fixtures/*.html linguist-vendored`) to tell Linguist to ignore it; apply the same annotation whenever you add another large generated or fixture file.
