@@ -89,28 +89,24 @@ Run the hook once locally to populate `.claudinite/` before first use.
 
 **Pinning a tag/SHA:** set `CLAUDINITE_REF` and change the URL path to `.../tar.gz/<ref>` (drop `refs/heads/`).
 
-## Part 2 — preferences SessionStart hook (both methods)
+## Part 2 — SessionStart context hooks (both methods)
 
-The owner's per-user interaction preferences live in `.claudinite/preferences/<email>.md`. Rather than instructing the agent to go read that file (an instruction that fires unreliably), a SessionStart hook injects it into context automatically. The hook script ships **inside Claudinite** at `.claudinite/preferences/inject-preferences.sh` and self-locates its preferences relative to itself, so there's nothing to copy — you only register it in your repo's own `.claude/settings.json`:
+Two SessionStart hooks inject context automatically each session, so no behavior rides on the agent remembering to read a file. Both ship **inside Claudinite** and self-locate, so there is nothing to copy — you only register them in your repo's own `.claude/settings.json`, and both must run **after** `.claudinite/` is populated (see ordering below). Both fail soft.
 
-```json
-{ "hooks": { "SessionStart": [ { "hooks": [
-  { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claudinite/preferences/inject-preferences.sh" }
-] } ] } }
-```
+- **Preferences** — the owner's per-user interaction preferences live in `.claudinite/preferences/<email>.md`. The hook `.claudinite/preferences/inject-preferences.sh` expands `CLAUDE_CODE_USER_EMAIL`, reads the matching file, and prints it to stdout (which Claude Code adds to the session context); no env var or no matching file injects nothing.
+- **Active-pack prose** — the always-on `universal` baseline (working discipline, the task lifecycle) plus every pack the project declares in `.claudinite-checks.json` carry their guidance as `RULES.md` prose. The hook `.claudinite/packs/load-active-prose.mjs` emits it each session. **Without this hook, declaring a pack has no effect** — the `@.claudinite/CLAUDE.md` import pulls only the corpus *index*, never a pack's prose, and not even the universal baseline. This is the hook Part 5's "its prose then loads every session" relies on.
 
-The hook expands `CLAUDE_CODE_USER_EMAIL`, reads the matching `preferences/<email>.md`, and prints it to stdout (which Claude Code adds to the session context). It fails soft — no env var, or no matching file, injects nothing.
-
-**Ordering (Method B):** `.claudinite/` must already exist when this hook runs, so it has to come **after** the `sync-claudinite.sh` entry. Add it as a second entry in the same `SessionStart` array (hooks run in array order):
+Register both — and, for Method B, the `sync-claudinite.sh` entry first — in one `SessionStart` array. Hooks run in array order, and both context hooks must come **after** whatever populates `.claudinite/`:
 
 ```json
 { "hooks": { "SessionStart": [ { "hooks": [
   { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/sync-claudinite.sh" },
-  { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claudinite/preferences/inject-preferences.sh" }
+  { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claudinite/preferences/inject-preferences.sh" },
+  { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/packs/load-active-prose.mjs" }
 ] } ] } }
 ```
 
-**Ordering (Method A):** make sure `git submodule update --init --recursive` (your setup/SessionStart step that populates `.claudinite/`) runs before this hook.
+**Method A:** drop the `sync-claudinite.sh` entry and make sure `git submodule update --init --recursive` (your setup/SessionStart step that populates `.claudinite/`) runs before the two context hooks.
 
 ## Part 3 — bespoke merge policy (optional, only if you diverge)
 
