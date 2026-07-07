@@ -148,10 +148,10 @@ The corpus's enforceable rules run as deterministic checks — usage, configurat
 
 No ordering constraint: Stop fires at end of turn, long after the SessionStart sync (Method B) or submodule update (Method A) has populated `.claudinite/`.
 
-**2.** Register the PreToolUse guard alongside it (same file; skip if present). It deterministically blocks commands the corpus forbids outright — currently remote-branch-delete pushes, which fail in this environment:
+**2.** Register the PreToolUse guard alongside it (same file; skip if present). It deterministically blocks actions the corpus forbids outright — currently remote-branch-delete pushes (which fail in this environment) and deferred PR self-check-in scheduling (a `send_later`/`ScheduleWakeup`/`create_trigger` call to "confirm CI goes green" or re-arm a PR watch — query the check-run status directly instead):
 
 ```json
-{ "hooks": { "PreToolUse": [ { "matcher": "Bash", "hooks": [
+{ "hooks": { "PreToolUse": [ { "matcher": "Bash|send_later|create_trigger|ScheduleWakeup", "hooks": [
   { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/checks/pretooluse-guard.mjs" }
 ] } ] } }
 ```
