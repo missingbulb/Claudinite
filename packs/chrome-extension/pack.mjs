@@ -3,7 +3,8 @@ import releaseWorkflows from './release-workflows.mjs';
 import templateTokens from './template-tokens.mjs';
 import versionSync from './version-sync.mjs';
 import releaseLayout from './release-layout.mjs';
-import permissionJustifications from './permission-justifications.mjs';
+import privacyPermissionAlignment from './privacy-permission-alignment.mjs';
+import permissionAddedStoreIssue from './permission-added-store-issue.mjs';
 import readmeSections from './readme-sections.mjs';
 
 export default {
@@ -17,7 +18,8 @@ export default {
     templateTokens,
     versionSync,
     releaseLayout,
-    permissionJustifications,
+    privacyPermissionAlignment,
+    permissionAddedStoreIssue,
     readmeSections,
   ],
 };

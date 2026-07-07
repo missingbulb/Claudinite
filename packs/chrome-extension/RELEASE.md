@@ -89,13 +89,23 @@ independent of the file's location. The store listing's Privacy-tab URL points *
 at a `blob/main` link. The page redeploys on every store publish and by standalone dispatch.
 One-time: repo Settings → Pages → Source = "GitHub Actions".
 
-**The submission kit** — `dev/build/release/store_artifacts/STORE-LISTING.md` pre-writes every
-answer the dashboard asks for: the listing copy (name, summary, detailed description, category),
-the graphic-asset file map, and the Privacy-practices answers — the single-purpose statement, a
-justification for **every** permission the manifest requests (`permissions`, `host_permissions`,
-and `optional_*` alike), the remote-code answer, the data-usage declarations and certifications,
-the privacy-policy URL — plus notes for the Google reviewer. The dashboard is filled **from**
-this file, at the initial submission and at every resubmission; it must never lag the manifest.
+**Store listing & permission justifications live in the dashboard, not the repo** — the listing
+copy (name, summary, detailed description, category), the graphic-asset choices, and the
+Privacy-practices answers (single-purpose statement, a justification for **every** permission the
+manifest requests — `permissions`, `host_permissions`, and `optional_*` alike — the remote-code
+answer, data-usage declarations, reviewer notes) are all Chrome Web Store dashboard state. We keep
+**no** repo copy of them: a mirror only drifts from the dashboard it duplicates. They are authored
+once, at the first publication (tracked by a one-time issue — see setup below), and edited in the
+dashboard thereafter. What the repo *does* hold and enforce is the privacy policy and its
+agreement with the manifest:
+
+- `dev/build/release/store_artifacts/PRIVACY.md` is the privacy policy, deployed verbatim as the
+  public `/privacy/` page the listing points at.
+- `cer/privacy-permission-alignment` (test the world) blocks whenever a permission the manifest
+  requests isn't disclosed in `PRIVACY.md` — the one alignment that must hold at all times.
+- `cer/permission-added-store-issue` (test the work) fires when a change *adds* a permission,
+  prompting the one step that can't be automated: open a tracking issue to add that permission's
+  justification on the dashboard's Privacy-practices tab before the next publish.
 
 **Store assets & icons** — required inventory: a 128 px store icon; the manifest icons the
 extension ships (16/32/48/128), living inside the extension source where the manifest points;
@@ -107,10 +117,10 @@ reference repo draws with stdlib-only Python; CrosswordChat rasterizes SVG/HTML 
 Chromium); what's fixed is that every asset is reproducible from the repo.
 
 **Layout** — release machinery lives in `dev/build/release/`: the zip builder + shipping-set
-module, the patch-bumper, the shipped-paths filter (each with tests), `releasing.md` (the repo's
-own release doc: its concrete names/paths/listing facts, delegating the shared procedure to this
-guide), and `store_artifacts/` (PRIVACY.md, the STORE-LISTING.md submission kit, listing
-screenshots, icon/asset generators).
+module, the patch-bumper, the shipped-paths filter (each with tests), and `store_artifacts/`
+(`PRIVACY.md`, listing screenshots, icon/asset generators). No per-repo release doc: the concrete
+names and paths live in the workflow stubs and `manifest.json`/`package.json`, and the shared
+procedure lives once, in this guide — a repo copy would only drift from it.
 
 ## README template
 
@@ -132,15 +142,14 @@ Or load the latest development build:
 
 The version users see is [`<manifest path>`](<manifest path>)'s `version`. Merging a version
 bump to `main` cuts GitHub Release `vX.Y.Z` with `<zip>` attached, and the daily auto-release
-ships shipped-file changes to the Chrome Web Store on its own (patch-bumping as needed). Full
-procedure: [dev/build/release/releasing.md](dev/build/release/releasing.md).
+ships shipped-file changes to the Chrome Web Store on its own (patch-bumping as needed).
 ```
 
 Until the extension's first store publication, replace the store line with:
 
 ```markdown
-*Not yet on the Chrome Web Store — the listing goes live after the first manual publish (see
-[dev/build/release/releasing.md](dev/build/release/releasing.md)).*
+*Not yet on the Chrome Web Store — the listing goes live after the first manual publish (tracked
+in the repo's first-publication issue).*
 ```
 
 ## Setting up a new extension repo
@@ -152,16 +161,19 @@ Until the extension's first store publication, replace the store line with:
    `setup_command`, `test_command`, `build_command`, `build_env`), the same values in
    `release.yml` and `daily-release.yml`. Grep for `__` afterwards; no token may survive.
 2. Create `dev/build/release/` — zip builder + shipping-set module, dependency-free patch-bumper
-   and shipped-paths filter, tests for each, `releasing.md`, and `store_artifacts/` with
-   `PRIVACY.md` and the `STORE-LISTING.md` submission kit — adapting from the reference repo's
-   `dev/build/release/`.
+   and shipped-paths filter, tests for each, and `store_artifacts/` with `PRIVACY.md` and the
+   icon/asset generators — adapting from the reference repo's `dev/build/release/`. No
+   `releasing.md` and no `STORE-LISTING.md`: the release procedure lives in this guide, and the
+   listing copy / permission justifications are dashboard state (above).
 3. Wire `npm run build` to the zip builder; add the two README sections above.
 4. One-time GitHub setup: Pages → Source = "GitHub Actions". The four `CHROME_*` secrets come
    later, after the first manual publish. (Once per *account*, not per repo: if Claudinite is
    private, its reusable workflows must be callable — Claudinite Settings → Actions → General →
    Access → "Accessible from repositories owned by the user"; nothing to do if it's public.)
-5. Do the first manual publication (below). From then on the daily pipeline owns routine
-   shipping.
+5. Open the **first-publication tracking issue** (idempotent — search the tracker first, skip if
+   one already exists, open or closed) so the one-time manual publication below is tracked as
+   state, not carried as a repo file. It points to the "First publication" steps here; do them,
+   then close the issue. From then on the daily pipeline owns routine shipping.
 
 ## Manual actions — publishing to the Chrome Web Store
 
@@ -179,11 +191,13 @@ extension; the upstream reference is
    `key`: the store assigns the ID at first upload, and you copy the dashboard's Package-tab
    public key back into the build afterwards. Record the 32-char item ID → the
    `CHROME_EXTENSION_ID` secret.
-3. Complete the listing — 128px store icon, description, category, ≥ 1280×800 screenshot — by
-   pasting from the repo's submission kit (`store_artifacts/STORE-LISTING.md`).
-4. Privacy tab: paste the kit's single-purpose statement, per-permission justifications, and
-   data-usage declarations; set the **Privacy policy** field (bottom of the tab) to the
-   `/privacy/` Pages URL. **Before submitting**: deploy the privacy page via the privacy
+3. Complete the listing — 128px store icon, name, summary, detailed description, category,
+   ≥ 1280×800 screenshot — authoring the copy **directly in the dashboard** (this is where it
+   lives; the repo keeps no copy). Screenshots and icons come from `store_artifacts/`.
+4. Privacy tab: write the single-purpose statement, a justification for **every** permission the
+   manifest requests, and the data-usage declarations, directly in the dashboard; set the
+   **Privacy policy** field (bottom of the tab) to the `/privacy/` Pages URL — the same policy
+   `PRIVACY.md` deploys. **Before submitting**: deploy the privacy page via the privacy
    workflow's dispatch, load the URL in a browser to confirm it's live, and paste that exact
    permalink — never a guessed path. Google re-fetches this URL on **every** publish, and an
    unreachable link fails the publish (see [When a store publish fails](#when-a-store-publish-fails)).
@@ -276,14 +290,15 @@ default because it assumes nothing about the operator's machine.
 
 Any PR that changes the manifest's `permissions`, `host_permissions`, or `optional_*`:
 
-1. Update the justification table in the repo's `store_artifacts/STORE-LISTING.md` in the
-   **same PR** — the store requires a written justification for every requested permission, so
-   the answer must exist before anyone faces the dashboard.
-2. Open a tracking issue for the manual dashboard step: the Privacy-practices tab must carry
-   the new justification, and the store blocks publishing the new version until it does — so
-   the next store publish (daily or manual) stalls on it. (If the daily pipeline hits it first,
-   the failed publish lands on its `workflow-failure` tracking issue; the proactive issue beats
-   the reactive one.) After updating the dashboard, re-run the publish.
+1. Disclose the permission in `PRIVACY.md` in the **same PR** — the deployed privacy policy must
+   reflect what the extension can access. `cer/privacy-permission-alignment` blocks the change
+   until it does.
+2. Adding a permission trips `cer/permission-added-store-issue` (advisory): open a tracking issue
+   for the manual dashboard step — the Privacy-practices tab must carry a written justification
+   for the new permission, and the store blocks publishing the new version until it does, so the
+   next store publish (daily or manual) stalls on it. (If the daily pipeline hits it first, the
+   failed publish lands on its `workflow-failure` tracking issue; the proactive issue beats the
+   reactive one.) After updating the dashboard, re-run the publish.
 3. Expect deeper store review than a plain code update — permission changes re-open scrutiny.
 4. A new **required** permission that carries an install-time warning disables the extension
    for existing users until each one re-approves it — prefer `optional_permissions` /

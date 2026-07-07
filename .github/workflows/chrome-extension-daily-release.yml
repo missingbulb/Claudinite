@@ -130,7 +130,8 @@ jobs:
 
   # The store needs a strictly-higher version, so the release starts with a
   # patch bump pushed straight to main (this workflow's one deliberate
-  # exception to bumps-are-a-human-PR — see dev/build/release/releasing.md). If
+  # exception to bumps-are-a-human-PR — see the chrome-extension release
+  # standard in Claudinite). If
   # main moved between checkout and push the push fails non-fast-forward; that's
   # a loud red the reporter turns into an issue, and the next day's run catches
   # everything up.

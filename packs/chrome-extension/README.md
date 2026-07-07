@@ -9,8 +9,9 @@ Active when a `manifest.json` declares `manifest_version`. Carries MV3 gotcha pr
 | `cer/release-workflows` | four stubs call canon workflows | blocking |
 | `cer/template-tokens` | no unreplaced `__TOKEN__` survives | blocking |
 | `cer/version-sync` | manifest and package.json versions agree | blocking |
-| `cer/release-layout` | release machinery + store artifacts present | blocking |
-| `cer/permission-justifications` | every permission justified in listing | blocking |
+| `cer/release-layout` | privacy policy source present | blocking |
+| `cer/privacy-permission-alignment` | every permission disclosed in PRIVACY.md | blocking |
+| `cer/permission-added-store-issue` | added permission → open store-dashboard issue | advisory |
 | `cer/readme-sections` | README has Install + Releasing | blocking |
 
 ## Prose gotchas (`RULES.md`)

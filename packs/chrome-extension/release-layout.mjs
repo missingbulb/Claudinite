@@ -1,23 +1,26 @@
 import { finding } from '../../checks/lib/findings.mjs';
 
+// The privacy policy is the one release artifact that must live in the repo: it
+// is deployed verbatim as the public /privacy/ page the store listing points
+// at. The release procedure itself is not duplicated per-repo — it lives once
+// in RELEASE.md — and the listing copy / per-permission justifications are
+// Chrome Web Store dashboard state, not files (see RELEASE.md).
 const REQUIRED = [
-  'dev/build/release/releasing.md',
   'dev/build/release/store_artifacts/PRIVACY.md',
-  'dev/build/release/store_artifacts/STORE-LISTING.md',
 ];
 
 const rule = {
   id: 'cer/release-layout',
   severity: 'blocking',
-  description: 'Release machinery lives in dev/build/release/ with the repo release doc and store artifacts',
+  description: 'The privacy policy source lives at the standard store_artifacts path',
   doc: 'packs/chrome-extension/RELEASE.md',
-  why: 'the dashboard is filled from the submission kit; the privacy page deploys from PRIVACY.md',
+  why: 'the privacy page deploys from PRIVACY.md, and the store listing points at that live URL',
 
   run(ctx) {
     return REQUIRED.filter((p) => !ctx.exists(p)).map((p) =>
       finding(rule, {
         file: p,
-        what: `required release-machinery file ${p} is missing`,
+        what: `required release artifact ${p} is missing`,
         fix: 'create it per the layout in the release standard (adapt from the reference repo)',
       })
     );

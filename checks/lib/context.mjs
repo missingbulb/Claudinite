@@ -86,6 +86,16 @@ export function buildContext({ root, mode = 'changed', baseOverride = null }) {
       try { return readFileSync(join(root, path), 'utf8'); } catch { return null; }
     },
 
+    // File content at the scoping base (the merge-base with the base branch), or
+    // null if the file didn't exist there or no base resolves. Lets a delta
+    // check compare structured state — e.g. a manifest's permission set — against
+    // the baseline precisely, immune to text-diff line noise (JSON trailing
+    // commas make appending an array element re-touch the previous line).
+    readBase(path) {
+      if (!mergeBase) return null;
+      return gitTry(root, 'show', `${mergeBase}:${path}`);
+    },
+
     // Added lines of one file relative to the scoping base (untracked file = every line).
     addedLines(file) {
       if (!tracked.includes(file)) {
