@@ -14,7 +14,7 @@
 | `lessons-learned` | owner's "learned lessons"; invoked by `merge-to-main` ([growth/extracting-lessons.md](../growth/extracting-lessons.md)) |
 | `bump-version` | owner's "bump version" — delegates to the project's release pack/doc |
 | `adopt-claudinite` | bootstrap request — runs [bootstrap.md](../bootstrap.md) |
-| `generate-project-instructions` | fresh/empty project with no class pack — extracts a reusable `packs/<class>/` seed + a thin project overlay |
+| `generate-project-instructions` | fresh/empty project, or a facet no pack covers — extracts reusable `packs/<facet>/` seeds (class / technology / aspect / domain) + a thin project overlay |
 
 **Practice skills** (description-matched to the activity in front of you — full content inlined):
 
