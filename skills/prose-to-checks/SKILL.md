@@ -41,8 +41,14 @@ Follow the promote phase's check-authoring discipline
 4. **Trim the prose** to rationale — the check owns enforcement now; leaving both pays twice and
    springs the drift trap.
 
-When you can't produce a confident detection + fixture, **leave the prose and log the candidate**
-to a tagged conversion-backlog issue rather than shipping a shaky check.
+**Before writing a rule off as un-checkable, try parsing the file's structure instead of grepping
+its text.** Grep finds the pattern anywhere; parsing finds it in the one spot the rule means —
+which kills the false alarm. (Example: `Authorization` is only wrong inside a CloudFront policy's
+*own* header list, not elsewhere in the template.) Parse only as much as you need, and hold the
+check to the same fixture bar.
+
+When even a scoped parser can't make detection confident, **leave the prose and log the
+candidate** to a tagged conversion-backlog issue rather than shipping a shaky check.
 
 ## Bounds
 
