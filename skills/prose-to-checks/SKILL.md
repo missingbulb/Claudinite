@@ -41,14 +41,11 @@ Follow the promote phase's check-authoring discipline
 4. **Trim the prose** to rationale — the check owns enforcement now; leaving both pays twice and
    springs the drift trap.
 
-**Before rejecting a candidate as false-positive-prone, ask whether a small *scoped structural
-parser* removes the FP that a text-grep can't.** A regex sees text presence; the false positive
-is usually that the pattern appears in a place the rule doesn't mean. Parsing just enough
-structure to scope the match to where it counts often converts a "reject" into a clean check —
-navigate the artifact's structure, not its bytes. (The two SAM YAML checks needed a minimal
-template parser: `Authorization` is only wrong *inside the OriginRequestPolicy's own headers*,
-and the handler-subdir rule only applies with a single entry point and no `OutBase`.) Keep the
-parser scoped to your need, not general — and it earns the same adversarial-fixture bar.
+**Before writing a rule off as un-checkable, try parsing the file's structure instead of grepping
+its text.** Grep finds the pattern anywhere; parsing finds it in the one spot the rule means —
+which kills the false alarm. (Example: `Authorization` is only wrong inside a CloudFront policy's
+*own* header list, not elsewhere in the template.) Parse only as much as you need, and hold the
+check to the same fixture bar.
 
 When even a scoped parser can't make detection confident, **leave the prose and log the
 candidate** to a tagged conversion-backlog issue rather than shipping a shaky check.
