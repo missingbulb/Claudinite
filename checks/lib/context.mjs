@@ -26,17 +26,18 @@ function lines(out) {
 
 export function loadConfig(root) {
   const path = join(root, '.claudinite-checks.json');
-  if (!existsSync(path)) return { packs: [], rules: {}, accept: [], error: null };
+  if (!existsSync(path)) return { packs: [], rules: {}, accept: [], sharedConstants: [], error: null };
   try {
     const raw = JSON.parse(readFileSync(path, 'utf8'));
     return {
       packs: Array.isArray(raw.packs) ? raw.packs : [],
       rules: raw.rules && typeof raw.rules === 'object' ? raw.rules : {},
       accept: Array.isArray(raw.accept) ? raw.accept : [],
+      sharedConstants: Array.isArray(raw.sharedConstants) ? raw.sharedConstants : [],
       error: null,
     };
   } catch (e) {
-    return { packs: [], rules: {}, accept: [], error: e.message };
+    return { packs: [], rules: {}, accept: [], sharedConstants: [], error: e.message };
   }
 }
 
