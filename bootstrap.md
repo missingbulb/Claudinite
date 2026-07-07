@@ -122,7 +122,7 @@ Only if your project genuinely diverges (a non-squash method, a twice-green or e
 
 **A consuming project schedules nothing and wires up no plumbing.** The [growth lifecycle](growth/README.md) (extract → promote → dedup) and the nightly repo tidy-up all run **centrally**, from the owner's home repo, by the fleet routine [`routines/auto-all-repos-maintenance.md`](routines/auto-all-repos-maintenance.md) — which finds this repo by the tracked `.claudinite/` marker you committed above. No per-repo schedule, up-path, or plumbing to install; mounting the corpus is nearly the whole opt-in.
 
-The catch: the routine only maintains repos on its access list — a per-repo allowlist the owner keeps in the routine's UI — so the marker alone doesn't enroll a repo until the owner adds it there. So **as part of bootstrap, open a GitHub issue in this repo's tracker assigned to `missingbulb`** asking to add the project to that list. Idempotent: search first, skip if one (open or closed) already exists.
+The catch: the routine only maintains repos on its access list — a per-repo allowlist the owner keeps in the routine's UI — so the marker alone doesn't enroll a repo until the owner adds it there. So **as part of bootstrap, open a GitHub issue in this repo's tracker assigned to `missingbulb`** asking to add the project to that list. Idempotent: search first, skip if one (open or closed) already exists. This is a **first-adoption** step: when the fleet routine re-bootstraps a repo it already maintains, it skips this outright — reaching that repo already proves it's on the access list, so there's nothing to request.
 
 ## Part 5 — categorize the project (declare its class pack)
 
