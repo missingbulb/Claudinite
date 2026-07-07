@@ -16,7 +16,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Bash|send_later|create_trigger|ScheduleWakeup",
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
