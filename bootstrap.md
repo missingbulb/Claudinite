@@ -132,7 +132,7 @@ The owner runs recurring **classes** of project, each carried by a **project-cla
 
 1. **Match the class** — ask the owner which class this project is, offering the project-class packs under [`packs/`](packs/) as the options.
 2. **A class pack fits →** add its id to `"packs"` in `.claudinite-checks.json`. Its prose then loads every session (via the pack-prose hook), and the project writes its *own* concrete specifics (inputs, metrics, invariants, run commands) in its own docs.
-3. **No class pack fits →** run the `generate-project-instructions` skill: it works out the project's category from the repo itself and writes the project's own working-instructions doc. A recurring class with no pack is a signal to **uplevel** a new `packs/<class>/` prose pack from that generated doc, so the *next* project of that variety declares it instead of re-deriving.
+3. **No class pack fits →** run the `generate-project-instructions` skill: it works out the project's class from the repo itself and **extracts** its working instructions into their homes — a new `packs/<class>/` prose pack proposed to Claudinite as the primary deliverable (so the *next* project of that variety declares it instead of re-deriving), and a thin project-specific overlay in the project's own docs. The declaration is added here once that pack merges and the mount re-syncs.
 
 ## Part 6 — conformance checks and guards (hooks + pack declaration)
 
