@@ -9,6 +9,7 @@ import warningSuppression from '../../packs/universal/warning-suppression.mjs';
 import filePlacement from '../../packs/universal/file-placement.mjs';
 import packDeclaration from '../../packs/universal/pack-declaration.mjs';
 import squashMergeHistory from '../../packs/universal/squash-merge-history.mjs';
+import sharedConstants from '../../packs/universal/shared-constants.mjs';
 
 function run(rule, root, mode = 'changed') {
   const ctx = buildContext({ root, mode });
@@ -176,6 +177,58 @@ test('squash-merge-history: flags a merge the work introduces, silent on linear 
     assert.equal(run(squashMergeHistory, linear).length, 0);
     assert.equal(run(squashMergeHistory, preexisting).length, 0);
   } finally { cleanup(linear); cleanup(introduced); cleanup(preexisting); }
+});
+
+test('shared-constants: flags a count mismatch, passes when every declared count matches', () => {
+  const entry = { what: 'repo slug', value: 'org/Repo', counts: { 'a.txt': 2, 'b.txt': 1 } };
+  const config = (e) => `${JSON.stringify({ sharedConstants: [e] })}\n`;
+  const bad = makeRepo({ changed: {
+    '.claudinite-checks.json': config(entry),
+    'a.txt': 'org/Repo appears just once\n', // expected 2, found 1
+    'b.txt': 'org/Repo\n',
+  } });
+  const good = makeRepo({ changed: {
+    '.claudinite-checks.json': config(entry),
+    'a.txt': 'org/Repo and again org/Repo\n', // 2
+    'b.txt': 'org/Repo\n',                    // 1
+  } });
+  try {
+    const findings = run(sharedConstants, bad);
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].file, 'a.txt');
+    assert.match(findings[0].what, /expected 2 occurrence/);
+    assert.equal(run(sharedConstants, good).length, 0);
+  } finally { cleanup(bad); cleanup(good); }
+});
+
+test('shared-constants: flags a declared file that no longer exists', () => {
+  const root = makeRepo({ changed: {
+    '.claudinite-checks.json': `${JSON.stringify({ sharedConstants: [{ what: 'moved', value: 'V', counts: { 'gone.txt': 1 } }] })}\n`,
+  } });
+  try {
+    const findings = run(sharedConstants, root);
+    assert.equal(findings.length, 1);
+    assert.match(findings[0].what, /gone\.txt.*does not exist/);
+  } finally { cleanup(root); }
+});
+
+test('shared-constants: flags an entry missing its self-documenting "what"', () => {
+  const root = makeRepo({ changed: {
+    '.claudinite-checks.json': `${JSON.stringify({ sharedConstants: [{ value: 'V', counts: { 'a.txt': 1 } }] })}\n`,
+    'a.txt': 'V\n',
+  } });
+  try {
+    const findings = run(sharedConstants, root);
+    assert.equal(findings.length, 1);
+    assert.match(findings[0].what, /malformed/);
+  } finally { cleanup(root); }
+});
+
+test('shared-constants: silent when no cases are declared', () => {
+  const root = makeRepo({ changed: { 'a.txt': 'anything\n' } });
+  try {
+    assert.equal(run(sharedConstants, root).length, 0);
+  } finally { cleanup(root); }
 });
 
 test('changed-mode scoping: pre-existing violations elsewhere are not reported', () => {
