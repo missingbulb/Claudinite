@@ -31,6 +31,12 @@ packs are the prose-only manifests with `detect: null`). If one fits this projec
 generate: declare it in `.claudinite-checks.json`, write the overlay (step 6), and stop. Mint a new
 pack only for a genuinely uncovered class.
 
+A pack that fits but that this project's evidence **sharpens or contradicts** gets a refinement PR to
+that pack, not a fork: run the same evidence pass and portability strip (steps 2 and 4) and fold what
+survives into the existing `RULES.md`. Each further project of a class is another exemplar — the pack
+should read as the intersection-plus-union of all of them, and a rule only one exemplar supports
+should say so or wait.
+
 ## 2. Gather the evidence
 
 Read the project before writing a word: README and existing docs, `CLAUDE.md` and everything it
