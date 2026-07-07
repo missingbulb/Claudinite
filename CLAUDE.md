@@ -26,7 +26,10 @@ beats prose.
   manifest), `chrome-extension-release` (the *opt-in* release/store standard in its
   [RELEASE.md](packs/chrome-extension-release/RELEASE.md) + the conformance checks — declared when the
   project is ready to ship, fingerprinted by its `Release: *` workflow stubs), `github-actions`
-  (workflow lints), `node`, `aws-sam`, `html`, `flutter`.
+  (workflow lints), `node`, `aws-sam`, `html`, `flutter`, `firebase` (rules/functions/deploy
+  discipline, fingerprinted by `firebase.json`) with its opt-in `firebase-release` (dev/prod
+  project split + App Check store gating — declared near shipping), and the stubs `android`,
+  `ios`, `play-store-release`, `app-store-release` (filled when first exercised).
 - **Project-class packs**, declared by kind of project: `research-project` (the
   algorithm-iteration playbook — [packs/research-project/RULES.md](packs/research-project/RULES.md))
   and `spec-driven-product` (the executable-spec product playbook —
