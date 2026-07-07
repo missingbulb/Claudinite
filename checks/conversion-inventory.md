@@ -49,7 +49,7 @@ engineeringPractices judgment core.
 | task-lifecycle: issue before work; commits reference it | **check** `universal/task-lifecycle`: commits since merge-base carry `#N`; the issue exists |
 | task-lifecycle: update issue status as work progresses | **check** *(adv)*, partial — full flow lives in the merge skill |
 | merge-to-main: the recipe (~4 calls) | **skill** (trigger stays the owner's "LGTM" preference) |
-| merge-to-main: squash as the method | **setting** — GitHub "allow squash merging" only — verified by **check** `universal/squash-merge-history`: no merge commits in main's first-parent history (the effect), plus a CI-surface config check later |
+| merge-to-main: squash as the method | **setting** — GitHub "allow squash merging" only — verified by **check** `universal/squash-merge-history`: the change introduces no merge commits (scoped to the work — its own commits since the merge-base — not the repo's whole history), plus a CI-surface config check later |
 | merge-to-main: gate on CI only if the repo has it | folds into the skill |
 | merge-to-main: lessons pass on every merge | folds into the skill (deterministic step, not a remembered trigger) |
 | merge-to-main: don't re-read the issue; don't fight branch deletion | folds into the skill |

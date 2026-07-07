@@ -104,9 +104,13 @@ export function buildContext({ root, mode = 'changed', baseOverride = null }) {
       return added;
     },
 
-    // Merge commits along a ref's first-parent chain (the squash-only effect check).
-    mergeCommitsOn(ref) {
-      const out = gitTry(root, 'log', '--merges', '--first-parent', '--format=%h %s', ref);
+    // Merge commits the current change introduces — those on HEAD's first-parent
+    // chain since the merge-base with the base branch (the squash-only effect
+    // check, scoped to the work). Empty when no base resolves or the branch is
+    // even with it; pre-existing merges already on the base are out of range.
+    introducedMergeCommits() {
+      if (!mergeBase) return [];
+      const out = gitTry(root, 'log', '--merges', '--first-parent', '--format=%h %s', `${mergeBase}..HEAD`);
       return lines(out).map((l) => {
         const i = l.indexOf(' ');
         return { sha: l.slice(0, i), subject: l.slice(i + 1) };

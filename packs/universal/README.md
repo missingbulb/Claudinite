@@ -11,7 +11,7 @@ Always on — the baseline every session loads (`RULES.md`, injected by the pack
 | `task-lifecycle` | branch commits reference an issue | blocking |
 | `warning-suppression` | no new suppression markers | blocking |
 | `pack-declaration` | declaration matches repo fingerprint | blocking |
-| `squash-merge-history` | main has no merge commits | blocking |
+| `squash-merge-history` | change introduces no merge commits | blocking |
 | `file-placement` | code references stay near | advisory |
 | `claude-md-length` | root CLAUDE.md under ~200 lines | advisory |
 | `generated-merge-driver` | GENERATED files get merge=ours | advisory |
