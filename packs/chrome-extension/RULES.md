@@ -2,7 +2,7 @@
 
 Portable, project-agnostic practices for building Chrome (and Chromium) extensions — manifest versions, background/service workers, content scripts, permissions, packaging and store review — true for any extension read cold.
 
-> **Releasing, versioning, and Chrome Web Store publication are standardized** — before building or changing any release/publish machinery in an extension repo, read [RELEASE.md](RELEASE.md) and copy its canonical workflows instead of re-deriving them.
+> **Releasing, versioning, and Chrome Web Store publication are standardized** — before building or changing any release/publish machinery in an extension repo, read the [chrome-extension-release standard](../chrome-extension-release/RELEASE.md) (its pack, declared when you're ready to ship) and copy its canonical workflows instead of re-deriving them.
 
 - An MV3 service worker's relative paths resolve against the worker's **own** file location, not the extension root. Any path handed to a Chrome API (`importScripts`, `action.setIcon`) or `fetch` must be extension-root absolute — a leading slash, or `chrome.runtime.getURL(...)`. A bare relative path silently fails: it can abort the worker on import, or make an API call reject with a fetch error while the worker keeps running.
 - `chrome.declarativeContent`'s `SetIcon` action needs `imageData`, not `path` — the documented `path` option is unreliable in practice (it can silently leave the icon unset). `declarativeContent` rules are evaluated by the browser process, so the icon must already be raw pixels at registration time; since a service worker has no DOM, build the `imageData` by decoding the packaged icon yourself: `fetch(getURL(icon)) → blob → createImageBitmap → OffscreenCanvas.drawImage → getImageData`.

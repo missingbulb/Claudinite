@@ -16,7 +16,7 @@ const rule = {
   id: 'cer/permission-added-store-issue',
   severity: 'advisory',
   description: 'A permission added to the manifest needs a manual store-dashboard justification — open a tracking issue',
-  doc: 'packs/chrome-extension/RELEASE.md',
+  doc: 'packs/chrome-extension-release/RELEASE.md',
   why: 'the store requires a written justification per permission and blocks publishing the new version until the dashboard carries it; that step is manual, so a proactive issue beats the reactive publish failure',
 
   run(ctx) {

@@ -1,18 +1,8 @@
 # chrome-extension pack
 
-Active when a `manifest.json` declares `manifest_version`. Carries MV3 gotcha prose (`RULES.md`), the release & Chrome-Web-Store standard (`RELEASE.md`), and the release conformance checks.
+Active when a `manifest.json` declares `manifest_version` — the MV3 build/runtime gotchas that apply while you're *coding* an extension. Prose only (`RULES.md`), no checks.
 
-## Checks (hardcoded) — the release standard
-
-| Check | Enforces (≤5 words) | Severity |
-|---|---|---|
-| `cer/release-workflows` | four stubs call canon workflows | blocking |
-| `cer/template-tokens` | no unreplaced `__TOKEN__` survives | blocking |
-| `cer/version-sync` | manifest and package.json versions agree | blocking |
-| `cer/release-layout` | privacy policy source present | blocking |
-| `cer/privacy-permission-alignment` | every permission disclosed in PRIVACY.md | blocking |
-| `cer/permission-added-store-issue` | added permission → open store-dashboard issue | advisory |
-| `cer/readme-sections` | README has Install + Releasing | blocking |
+Releasing and Chrome-Web-Store publication are a separate, opt-in concern: the [`chrome-extension-release`](../chrome-extension-release/README.md) pack (its `RELEASE.md` standard + conformance checks), declared when the project is ready to ship.
 
 ## Prose gotchas (`RULES.md`)
 
@@ -26,5 +16,3 @@ Active when a `manifest.json` declares `manifest_version`. Carries MV3 gotcha pr
 | MV3 loads ES modules natively | prose |
 | Silent token refresh needs prompt=none | prose |
 | host_permissions does not bypass CORS | prose |
-
-`RELEASE.md` is the release/store-publication contract (setup steps and the manual store actions) — its invariants are mostly enforced by the checks above.

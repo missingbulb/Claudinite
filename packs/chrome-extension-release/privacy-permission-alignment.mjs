@@ -13,7 +13,7 @@ const rule = {
   id: 'cer/privacy-permission-alignment',
   severity: 'blocking',
   description: 'Every manifest permission is disclosed in the privacy document',
-  doc: 'packs/chrome-extension/RELEASE.md',
+  doc: 'packs/chrome-extension-release/RELEASE.md',
   why: 'the deployed privacy policy must disclose everything the extension can access; an undisclosed permission is a store-review and trust failure',
 
   run(ctx) {

@@ -2,8 +2,9 @@ import { finding } from '../../checks/lib/findings.mjs';
 
 // The contract's four thin stubs, each with its exact name: (the failure
 // reporter keys tracking issues on them) and the canon reusable workflow it
-// must call (technologies/chrome-extension-release.md).
-const STUBS = {
+// must call (packs/chrome-extension-release/RELEASE.md). Exported so the pack's
+// detect fingerprint can recognize a repo that already ships the pipeline.
+export const STUBS = {
   'release.yml': { name: 'Release: Create Package', canon: 'chrome-extension-release.yml' },
   'publish-chrome-store.yml': { name: 'Release: Publish to Chrome Web Store', canon: 'chrome-extension-publish-store.yml' },
   'daily-release.yml': { name: 'Release: Daily Auto-Release', canon: 'chrome-extension-daily-release.yml' },
@@ -14,7 +15,7 @@ const rule = {
   id: 'cer/release-workflows',
   severity: 'blocking',
   description: 'The four standard release stubs must exist, carry their exact name:, and call their canon reusable workflow',
-  doc: 'packs/chrome-extension/RELEASE.md',
+  doc: 'packs/chrome-extension-release/RELEASE.md',
   why: 'every extension repo ships the same pipeline; the logic lives once in the canon, stubs own only triggers and repo values',
 
   run(ctx) {
@@ -26,7 +27,7 @@ const rule = {
         out.push(finding(rule, {
           file: path,
           what: `${file} is missing`,
-          fix: 'copy the stub from technologies/chrome-extension-release/ and fill in the repo values',
+          fix: 'copy the stub from the chrome-extension-release pack stubs/ and fill in the repo values',
         }));
         continue;
       }

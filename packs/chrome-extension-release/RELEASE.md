@@ -187,7 +187,7 @@ extension; the upstream reference is
    [developer dashboard](https://chrome.google.com/webstore/devconsole) (one-time $5 fee).
 2. **Add new item** → upload the release zip. If the extension pins its ID with a manifest
    `key` (needed when OAuth redirect URIs depend on a stable ID — see
-   [the chrome-extension pack RULES](RULES.md)), the **first** upload must NOT contain the
+   [the chrome-extension pack RULES](../chrome-extension/RULES.md)), the **first** upload must NOT contain the
    `key`: the store assigns the ID at first upload, and you copy the dashboard's Package-tab
    public key back into the build afterwards. Record the 32-char item ID → the
    `CHROME_EXTENSION_ID` secret.

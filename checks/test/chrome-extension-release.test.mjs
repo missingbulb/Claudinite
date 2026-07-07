@@ -2,13 +2,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from './helpers.mjs';
 import { buildContext } from '../lib/context.mjs';
-import releaseWorkflows from '../../packs/chrome-extension/release-workflows.mjs';
-import templateTokens from '../../packs/chrome-extension/template-tokens.mjs';
-import versionSync from '../../packs/chrome-extension/version-sync.mjs';
-import releaseLayout from '../../packs/chrome-extension/release-layout.mjs';
-import privacyPermissionAlignment from '../../packs/chrome-extension/privacy-permission-alignment.mjs';
-import permissionAddedStoreIssue from '../../packs/chrome-extension/permission-added-store-issue.mjs';
-import readmeSections from '../../packs/chrome-extension/readme-sections.mjs';
+import releasePack from '../../packs/chrome-extension-release/pack.mjs';
+import releaseWorkflows from '../../packs/chrome-extension-release/release-workflows.mjs';
+import templateTokens from '../../packs/chrome-extension-release/template-tokens.mjs';
+import versionSync from '../../packs/chrome-extension-release/version-sync.mjs';
+import releaseLayout from '../../packs/chrome-extension-release/release-layout.mjs';
+import privacyPermissionAlignment from '../../packs/chrome-extension-release/privacy-permission-alignment.mjs';
+import permissionAddedStoreIssue from '../../packs/chrome-extension-release/permission-added-store-issue.mjs';
+import readmeSections from '../../packs/chrome-extension-release/readme-sections.mjs';
 
 const run = (rule, root) => rule.run(buildContext({ root, mode: 'all' }));
 
@@ -139,6 +140,15 @@ test('permission-added-store-issue: silent when no permission was added', () => 
   try {
     assert.deepEqual(run(permissionAddedStoreIssue, root), []);
   } finally { cleanup(root); }
+});
+
+test('pack fingerprint: opt-in — a manifest alone does not trip detect; the Release: * stubs do', () => {
+  const codingOnly = makeRepo({ base: { 'extension/manifest.json': MANIFEST } });
+  const shipping = makeRepo({ base: CONFORMANT });
+  try {
+    assert.equal(releasePack.detect(buildContext({ root: codingOnly, mode: 'all' })), false);
+    assert.equal(releasePack.detect(buildContext({ root: shipping, mode: 'all' })), true);
+  } finally { cleanup(codingOnly); cleanup(shipping); }
 });
 
 test('readme-sections: flags a README missing the Install or Releasing section', () => {

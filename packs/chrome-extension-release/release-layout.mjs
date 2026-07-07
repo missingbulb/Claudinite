@@ -13,7 +13,7 @@ const rule = {
   id: 'cer/release-layout',
   severity: 'blocking',
   description: 'The privacy policy source lives at the standard store_artifacts path',
-  doc: 'packs/chrome-extension/RELEASE.md',
+  doc: 'packs/chrome-extension-release/RELEASE.md',
   why: 'the privacy page deploys from PRIVACY.md, and the store listing points at that live URL',
 
   run(ctx) {

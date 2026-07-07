@@ -22,9 +22,11 @@ beats prose.
 - **[packs/universal/](packs/universal/RULES.md)** — the always-on baseline: working discipline, the
   task lifecycle, and the universal checks. Loaded every session.
 - **Technology packs**, active when the project declares them (bootstrap's `--init` seeds the
-  declaration from a fingerprint): `chrome-extension` (gotchas + the release/store standard in its
-  [RELEASE.md](packs/chrome-extension/RELEASE.md) + the conformance checks), `github-actions` (workflow
-  lints), `node`, `aws-sam`, `html`, `flutter`.
+  declaration from a fingerprint): `chrome-extension` (MV3 coding gotchas, fingerprinted by the
+  manifest), `chrome-extension-release` (the *opt-in* release/store standard in its
+  [RELEASE.md](packs/chrome-extension-release/RELEASE.md) + the conformance checks — declared when the
+  project is ready to ship, fingerprinted by its `Release: *` workflow stubs), `github-actions`
+  (workflow lints), `node`, `aws-sam`, `html`, `flutter`.
 - **Project-class packs**, declared by kind of project: `research-project` (the
   algorithm-iteration playbook — [packs/research-project/RULES.md](packs/research-project/RULES.md)).
 
