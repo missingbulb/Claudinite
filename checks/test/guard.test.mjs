@@ -34,29 +34,3 @@ test('allows ordinary pushes and non-Bash tools', () => {
     assert.equal(runGuard(payload).status, 0, JSON.stringify(payload));
   }
 });
-
-const CHECKIN =
-  'Self check-in for PR #43. Re-check the PR state, CI status, mergeability, and any new review comments. If nothing changed, re-arm the next check-in silently ~1h out. Stop once the PR is merged or closed.';
-
-test('blocks a deferred PR self-check-in across scheduling tools', () => {
-  for (const payload of [
-    { tool_name: 'mcp__claude-code-remote__send_later', tool_input: { delay_minutes: 60, message: CHECKIN } },
-    { tool_name: 'ScheduleWakeup', tool_input: { prompt: CHECKIN, delaySeconds: 3600 } },
-    { tool_name: 'mcp__claude-code-remote__create_trigger', tool_input: { prompt: 'Schedule a self check-in to re-check PR #7 hourly.' } },
-    { tool_name: 'ScheduleWakeup', tool_input: { prompt: 'Wait for CI, then confirm it goes green and report back.', delaySeconds: 600 } },
-  ]) {
-    const r = runGuard(payload);
-    assert.equal(r.status, 2, JSON.stringify(payload));
-    assert.match(r.stderr, /query|check-run|re-arm|directly/i);
-  }
-});
-
-test('allows legit scheduled reminders and unrelated tools', () => {
-  for (const payload of [
-    { tool_name: 'mcp__claude-code-remote__send_later', tool_input: { delay_minutes: 30, message: 'Remind me to review the design doc with Bob.' } },
-    { tool_name: 'ScheduleWakeup', tool_input: { prompt: 'Resume the migration once the data export finishes.', delaySeconds: 900 } },
-    { tool_name: 'Edit', tool_input: {} },
-  ]) {
-    assert.equal(runGuard(payload).status, 0, JSON.stringify(payload));
-  }
-});

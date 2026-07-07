@@ -87,6 +87,10 @@ When the escalation is itself a separate reusable workflow invoked via `workflow
 
 On `pull_request`, `actions/checkout` checks out the synthetic `refs/pull/N/merge` commit by default — an ephemeral merge of the PR head into the base — so `HEAD` is itself a merge commit, not the branch tip. Any job that reasons about commit *shape* or history (merge commits, commit count, `--first-parent`, commit messages) reads that synthetic merge and misfires: a "no merge commits" check false-positives even on a linear branch, since `HEAD` is a merge. Check out the head SHA (`ref: ${{ github.event.pull_request.head.sha || github.sha }}`) so CI evaluates the same branch tip a local run does.
 
+## To read a PR's CI result, look at its check runs — `get_status` misses Actions
+
+GitHub **Actions** reports results as **check runs**, not the legacy **commit statuses**, so `pull_request_read` `method: get_status` returns `state: pending`, `total_count: 0` for a PR whose Actions CI has already **passed** — reading falsely as "no CI / not started," which can skip a real gate or trigger an endless wait. Gate on CI by reading the **check runs for the PR head SHA** (`get_check_run`, or the workflow run for that SHA) instead. Target the head SHA directly rather than `actions_list`-ing the repo's runs — that returns every run, its output is huge, and a specific check-run/SHA query is both correct and cheap.
+
 ## Mark large committed fixtures `linguist-vendored` to fix language stats
 
 Large committed fixture files (full-page HTML, generated data dumps) can dwarf actual source by byte count and cause GitHub to mislabel the repo's primary language. Add a `.gitattributes` entry for each such path (e.g. `test/fixtures/*.html linguist-vendored`) to tell Linguist to ignore it; apply the same annotation whenever you add another large generated or fixture file.
