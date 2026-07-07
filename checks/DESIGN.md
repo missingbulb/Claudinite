@@ -165,10 +165,13 @@ bypassed, and nothing notices. So every setting rung pairs with a check that ver
 order of strength:
 
 - **Effect check (preferred)** — offline and deterministic, it verifies the *outcome* the
-  setting guarantees rather than the setting itself: squash-only ⇒ no merge commits in the
-  default branch's first-parent history (`squash-merge-history` in the universal pack). It
-  catches both the setting being off *and* anyone bypassing it — and it found two historical
-  merge commits on this very repo's `main` the moment it first ran.
+  setting guarantees rather than the setting itself: squash-only ⇒ the change lands squashed,
+  so its own commits carry no merge commit (`squash-merge-history` in the universal pack). It
+  is scoped to the work — the merge commits the current change introduces on HEAD's first-parent
+  chain since the merge-base — not the repo's whole history: it catches the setting being off or
+  bypassed *for this change* without re-auditing (and demanding acceptances for) legacy merges
+  already on `main` that the work never touched. Testing the work, not the world, is what keeps
+  the check from firing on every unrelated session.
 - **Config check** — reads the setting via the platform API and fails when it's off. Needs a
   network-capable surface: rules carry a surface tag, the Stop hook runs only offline rules,
   CI runs what its repo token can read (e.g. the allow-merge-commit flags), and the fleet

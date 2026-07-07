@@ -142,25 +142,40 @@ test('pack-declaration: silent when declaration matches reality', () => {
   } finally { cleanup(root); }
 });
 
-test('squash-merge-history: flags a merge commit on main, silent on linear history', () => {
+test('squash-merge-history: flags a merge the work introduces, silent on linear history and pre-existing main merges', () => {
   const linear = makeRepo({ changed: { 'f.txt': 'x\n' } });
-  const merged = makeRepo({ changed: {} });
-  try {
-    git(merged, 'checkout', '-q', 'main');
-    git(merged, 'checkout', '-q', '-b', 'side');
-    writeFiles(merged, { 's.txt': 'x\n' });
-    git(merged, 'add', '-A');
-    git(merged, 'commit', '-q', '-m', 'side work');
-    git(merged, 'checkout', '-q', 'main');
-    git(merged, 'merge', '-q', '--no-ff', '-m', 'merge side', 'side');
-    git(merged, 'checkout', '-q', 'feature');
 
-    const findings = run(squashMergeHistory, merged);
+  // A merge commit on the feature branch itself — the current change introduces it → fires.
+  const introduced = makeRepo({ changed: { 'f.txt': 'x\n' } });
+  git(introduced, 'checkout', '-q', '-b', 'side');
+  writeFiles(introduced, { 's.txt': 'x\n' });
+  git(introduced, 'add', '-A');
+  git(introduced, 'commit', '-q', '-m', 'side work');
+  git(introduced, 'checkout', '-q', 'feature');
+  git(introduced, 'merge', '-q', '--no-ff', '-m', 'merge side into feature', 'side');
+
+  // A merge commit already on main, before the branch's work — the repo's history, not the work → silent.
+  const preexisting = makeRepo({ changed: {} });
+  git(preexisting, 'checkout', '-q', 'main');
+  git(preexisting, 'checkout', '-q', '-b', 'side');
+  writeFiles(preexisting, { 's.txt': 'x\n' });
+  git(preexisting, 'add', '-A');
+  git(preexisting, 'commit', '-q', '-m', 'side work');
+  git(preexisting, 'checkout', '-q', 'main');
+  git(preexisting, 'merge', '-q', '--no-ff', '-m', 'merge side', 'side');
+  git(preexisting, 'checkout', '-q', '-B', 'feature', 'main'); // branch fresh off post-merge main
+  writeFiles(preexisting, { 'w.txt': 'x\n' });
+  git(preexisting, 'add', '-A');
+  git(preexisting, 'commit', '-q', '-m', 'feature work');
+
+  try {
+    const findings = run(squashMergeHistory, introduced);
     assert.equal(findings.length, 1);
-    assert.match(findings[0].what, /merge side/);
-    assert.match(findings[0].file, /^main@/);
+    assert.match(findings[0].what, /merge side into feature/);
+    assert.match(findings[0].file, /^feature@/);
     assert.equal(run(squashMergeHistory, linear).length, 0);
-  } finally { cleanup(linear); cleanup(merged); }
+    assert.equal(run(squashMergeHistory, preexisting).length, 0);
+  } finally { cleanup(linear); cleanup(introduced); cleanup(preexisting); }
 });
 
 test('changed-mode scoping: pre-existing violations elsewhere are not reported', () => {
