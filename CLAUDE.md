@@ -30,7 +30,10 @@ beats prose.
 - **Project-class packs**, declared by kind of project: `research-project` (the
   algorithm-iteration playbook — [packs/research-project/RULES.md](packs/research-project/RULES.md))
   and `spec-driven-product` (the executable-spec product playbook —
-  [packs/spec-driven-product/RULES.md](packs/spec-driven-product/RULES.md)).
+  [packs/spec-driven-product/RULES.md](packs/spec-driven-product/RULES.md)) with its mechanics
+  companion `executable-requirements` (the framework standard — layout, gates, kinds incl. the
+  storyboard `saga` kind, gallery, determinism; fingerprinted by `dev/requirements/requirements.md`
+  — [packs/executable-requirements/RULES.md](packs/executable-requirements/RULES.md)).
 
 The `pack-declaration` check keeps the declaration honest against the repo's real fingerprint — including
 telling the session that introduces a new technology to declare its pack.
