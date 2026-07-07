@@ -231,6 +231,55 @@ test('shared-constants: silent when no cases are declared', () => {
   } finally { cleanup(root); }
 });
 
+test('shared-constants: regex mode passes in sync, flags differing matched values', () => {
+  const entry = { what: 'extension version', value: '"version": "\\d+\\.\\d+\\.\\d+"', regex: true, counts: { 'm.json': 1, 'p.json': 1 } };
+  const config = `${JSON.stringify({ sharedConstants: [entry] })}\n`;
+  const synced = makeRepo({ changed: {
+    '.claudinite-checks.json': config,
+    'm.json': '{ "version": "1.5.0" }\n',
+    'p.json': '{ "version": "1.5.0" }\n',
+  } });
+  const drifted = makeRepo({ changed: {
+    '.claudinite-checks.json': config,
+    'm.json': '{ "version": "1.5.1" }\n', // 1 match, but differs from p.json
+    'p.json': '{ "version": "1.5.0" }\n',
+  } });
+  try {
+    assert.equal(run(sharedConstants, synced).length, 0);
+    const findings = run(sharedConstants, drifted);
+    assert.equal(findings.length, 1);
+    assert.match(findings[0].what, /differing values/);
+  } finally { cleanup(synced); cleanup(drifted); }
+});
+
+test('shared-constants: regex mode still enforces the per-file count', () => {
+  const entry = { what: 'version', value: '"version": "\\d+\\.\\d+\\.\\d+"', regex: true, counts: { 'm.json': 1, 'p.json': 1 } };
+  const root = makeRepo({ changed: {
+    '.claudinite-checks.json': `${JSON.stringify({ sharedConstants: [entry] })}\n`,
+    'm.json': '{ "name": "x" }\n', // 0 matches, expected 1
+    'p.json': '{ "version": "1.5.0" }\n',
+  } });
+  try {
+    const findings = run(sharedConstants, root);
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].file, 'm.json');
+    assert.match(findings[0].what, /expected 1 occurrence.*found 0/);
+  } finally { cleanup(root); }
+});
+
+test('shared-constants: flags an invalid regex pattern', () => {
+  const entry = { what: 'broken', value: '(', regex: true, counts: { 'a.txt': 1 } };
+  const root = makeRepo({ changed: {
+    '.claudinite-checks.json': `${JSON.stringify({ sharedConstants: [entry] })}\n`,
+    'a.txt': 'anything\n',
+  } });
+  try {
+    const findings = run(sharedConstants, root);
+    assert.equal(findings.length, 1);
+    assert.match(findings[0].what, /not a valid regular expression/);
+  } finally { cleanup(root); }
+});
+
 test('changed-mode scoping: pre-existing violations elsewhere are not reported', () => {
   const root = makeRepo({
     base: { 'legacy.md': '[dangling](nowhere.md)\n' },
