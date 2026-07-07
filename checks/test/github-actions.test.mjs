@@ -8,6 +8,7 @@ import checkoutSubmodules from '../../packs/github-actions/checkout-submodules.m
 import scheduledEscalation from '../../packs/github-actions/scheduled-failure-escalation.mjs';
 import labelCreate from '../../packs/github-actions/label-create-before-add.mjs';
 import uniqueBranch from '../../packs/github-actions/unique-automation-branch.mjs';
+import pagesArtifactSymlinks from '../../packs/github-actions/pages-artifact-symlinks.mjs';
 
 const run = (rule, root) => rule.run(buildContext({ root, mode: 'all' }));
 const WF = '.github/workflows/x.yml';
@@ -204,4 +205,68 @@ jobs:
     assert.equal(run(uniqueBranch, bad).length, 1);
     assert.equal(run(uniqueBranch, good).length, 0);
   } finally { cleanup(bad); cleanup(good); }
+});
+
+test('pages-artifact-symlinks: Pages upload of the repo root with mounted skill symlinks and no prune', () => {
+  const SKILL = { '.claude/skills/merge-to-main': 'symlink-placeholder\n' };
+  const uploadRoot =
+`name: Deploy to GitHub Pages
+on:
+  push:
+    branches: [main]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+`;
+  // Breaks: root upload + dangling .claude/skills/* symlinks + no prune step.
+  const bad = makeRepo({ changed: { ...SKILL, [WF]: uploadRoot } });
+  // Pruned before upload — safe.
+  const pruned = makeRepo({ changed: { ...SKILL, [WF]:
+`name: Deploy to GitHub Pages
+on:
+  push:
+    branches: [main]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rm -rf .claude .claudinite
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+` } });
+  // Uploads a dedicated build dir, not the repo root — safe.
+  const buildDir = makeRepo({ changed: { ...SKILL, [WF]:
+`name: Deploy to GitHub Pages
+on:
+  push:
+    branches: [main]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+` } });
+  // No mounted skill symlinks — nothing to dangle, so the gate is off.
+  const noSkills = makeRepo({ changed: { [WF]: uploadRoot } });
+  try {
+    const findings = run(pagesArtifactSymlinks, bad);
+    assert.equal(findings.length, 1);
+    assert.match(findings[0].what, /upload-pages-artifact/);
+    assert.equal(run(pagesArtifactSymlinks, pruned).length, 0);
+    assert.equal(run(pagesArtifactSymlinks, buildDir).length, 0);
+    assert.equal(run(pagesArtifactSymlinks, noSkills).length, 0);
+  } finally { cleanup(bad); cleanup(pruned); cleanup(buildDir); cleanup(noSkills); }
 });

@@ -12,3 +12,4 @@ Active when the repo has `.github/workflows/`. Workflow lints only — no prose.
 | `gha/scheduled-failure-escalation` | scheduled workflow escalates its failure | advisory |
 | `gha/label-create-before-add` | create a label before adding | advisory |
 | `gha/unique-automation-branch` | automated branch names are unique | advisory |
+| `gha/pages-artifact-symlinks` | Pages upload prunes tooling symlinks | blocking |
