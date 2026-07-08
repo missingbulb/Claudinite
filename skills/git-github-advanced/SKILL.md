@@ -43,6 +43,10 @@ Conflict size scales with how long a branch lives and how far it drifts from the
 
 A GitHub API/UI (or any remote-side) merge does **not** advance your local `origin/main` — it stays at the pre-merge commit until you `git fetch`. Branching off `origin/main` immediately after a remote merge forks the pre-merge state, silently missing the just-merged work; symptoms surface later as a missing file or a failed `git mv` on the new branch. Fix: `git fetch origin main` before creating the branch.
 
+## Phantom conformance findings on unauthored history mean a stale diff base
+
+A Stop-hook or CI conformance check diffs your branch against `origin/main`. In a fresh cloud sandbox that ref can be **stale** — behind real `main` by whole merged PRs, or a divergent snapshot — so the check compares against the wrong base and flags **blocking findings on commits and code you never wrote**: a `squash-merge-history` on already-merged merge commits, a `warning-suppression` on a pre-existing line. Findings anchored to history you didn't author are the tell. **Don't satisfy them** — never rewrite merged history or edit pre-existing code to clear a phantom. `git fetch origin <default-branch>` to advance the ref, then re-run; they vanish against the true base. The same stale ref bases new work on outdated product code (you build a test against a button two PRs behind, then rebase and redo) — so fetch before building against `main`, too.
+
 ## In a squash-merge repo, "commits ahead of main" does not mean "unmerged"
 
 A squash-merge creates a new commit on `main` that the branch's own commits are unreachable from, so a branch whose work has already landed still shows ahead by N. **"Ahead by N" never alone means unmerged.** Determine real status by content, not raw count:
