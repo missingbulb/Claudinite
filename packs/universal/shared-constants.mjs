@@ -13,6 +13,21 @@ function countOccurrences(text, value) {
   return n;
 }
 
+// Module technologies whose files can `import` a shared definition from one
+// another (the JS/TS family). A shared-constant only earns its keep for a value
+// copied across files that CAN'T share an import — JSON manifests, a YAML
+// workflow + a JS module, prod code + a config file. When every watched file is
+// one of these, the copy is redundant: export the value once and import it.
+const IMPORTABLE_EXTENSIONS = new Set([
+  'js', 'mjs', 'cjs', 'jsx', 'ts', 'tsx', 'mts', 'cts',
+]);
+
+function fileExtension(path) {
+  const base = path.slice(path.lastIndexOf('/') + 1);
+  const dot = base.lastIndexOf('.');
+  return dot > 0 ? base.slice(dot + 1).toLowerCase() : '';
+}
+
 // Data-driven drift guard for a value that must be copied across files that can't
 // share an import (a label spanning a YAML workflow guard and a JS module; a repo
 // slug in prod code and its test). The cases are declared per-repo in
@@ -27,6 +42,11 @@ function countOccurrences(text, value) {
 // matched as a regular expression, counts still bound the matches per file, and
 // every matched substring across all the declared files must be byte-identical —
 // so the guard catches drift without pinning (and re-pinning) the current value.
+//
+// An entry whose watched files are all the same import-capable technology (all
+// JS/TS) is a misuse, not drift: those files CAN share an import, so the value
+// should live in one module and be imported — not copied and byte-counted. The
+// guard flags such an entry so the redundancy is fixed at the source.
 const rule = {
   id: 'shared-constants',
   severity: 'blocking',
@@ -53,6 +73,20 @@ const rule = {
           file: '.claudinite-checks.json',
           what: `malformed sharedConstants ${label}: needs a non-empty "value", a "what" naming the places and why the split is forced, and a non-empty "counts" map`,
           fix: 'shape each entry as { "what": "...", "value": "...", "counts": { "repo/relative/path": N } }',
+        }));
+        return;
+      }
+
+      // Redundancy guard: a shared-constant is for a value copied across files
+      // that CAN'T share an import. If every watched file is the same
+      // import-capable technology (all JS/TS), they can — so the entry is the
+      // wrong tool; the value should be exported once and imported.
+      const paths = Object.keys(entry.counts);
+      if (paths.length > 1 && paths.every((p) => IMPORTABLE_EXTENSIONS.has(fileExtension(p)))) {
+        out.push(finding(rule, {
+          file: '.claudinite-checks.json',
+          what: `sharedConstants ${label} watches only same-technology files that can share an import (${paths.join(', ')}) — a shared-constant is for a value copied across files that CAN'T`,
+          fix: `export ${label} from one module and import it into the other(s), then drop this entry (${entry.what})`,
         }));
         return;
       }

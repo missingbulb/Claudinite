@@ -234,6 +234,30 @@ test('shared-constants: flags an entry missing its self-documenting "what"', () 
   } finally { cleanup(root); }
 });
 
+test('shared-constants: flags an entry whose files are all the same import-capable technology', () => {
+  // Two JS files can share an import — a shared-constant is redundant.
+  const redundant = { what: 'a slug', value: 'org/Repo', counts: { 'src/mod.js': 1, 'test/mod.test.js': 1 } };
+  const bad = makeRepo({ changed: {
+    '.claudinite-checks.json': `${JSON.stringify({ sharedConstants: [redundant] })}\n`,
+    'src/mod.js': 'org/Repo\n',
+    'test/mod.test.js': 'org/Repo\n',
+  } });
+  // A value spanning two technologies (a JS module and a YAML workflow) genuinely
+  // can't share an import — legitimate, not flagged.
+  const legit = { what: 'label', value: 'ci-label', counts: { 'a.js': 1, 'w.yml': 1 } };
+  const good = makeRepo({ changed: {
+    '.claudinite-checks.json': `${JSON.stringify({ sharedConstants: [legit] })}\n`,
+    'a.js': 'ci-label\n',
+    'w.yml': 'ci-label\n',
+  } });
+  try {
+    const findings = run(sharedConstants, bad);
+    assert.equal(findings.length, 1);
+    assert.match(findings[0].what, /share an import/);
+    assert.equal(run(sharedConstants, good).length, 0);
+  } finally { cleanup(bad); cleanup(good); }
+});
+
 test('shared-constants: silent when no cases are declared', () => {
   const root = makeRepo({ changed: { 'a.txt': 'anything\n' } });
   try {
