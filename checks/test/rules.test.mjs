@@ -105,6 +105,21 @@ test('warning-suppression: a doc discussing markers is not a suppression', () =>
   } finally { cleanup(root); }
 });
 
+test('warning-suppression: skips linguist-vendored and linguist-generated files', () => {
+  const root = makeRepo({ changed: {
+    '.gitattributes': 'vendor/** linguist-vendored\ngen/** linguist-generated\n',
+    'vendor/page.html': '<script>/* eslint-disable */\n</script>\n', // recorded third-party fixture
+    'gen/out.js': '// @ts-nocheck\nx();\n',                          // machine-written
+    'src/mine.js': '// eslint-disable-next-line no-undef\ny();\n',   // the project's own code
+  } });
+  try {
+    // All three carry markers, but only the project's own file is a suppression it decided.
+    const findings = run(warningSuppression, root, 'all');
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].file, 'src/mine.js');
+  } finally { cleanup(root); }
+});
+
 test('file-placement: flags a distance-3+ reference, exempts tests and mandated locations', () => {
   const bad = makeRepo({
     base: { 'deep/far/util.mjs': 'export const x = 1;\n' },
