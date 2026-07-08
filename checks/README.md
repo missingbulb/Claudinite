@@ -65,3 +65,15 @@ fix, `advisory` only when the rule's own semantics are directional (a smell to j
 new pack is just a `../packs/<name>/` directory with a `pack.mjs` (its `id`, fingerprint
 `detect`, `rules`, and optional `prose`) — [packs/registry.mjs](../packs/registry.mjs)
 discovers it structurally, no list to edit.
+
+**A check that validates one skill's action lives with that skill**, not in a pack: drop the
+rule module and a `checks.mjs` (default export = an array of rules) in `../skills/<name>/`, keep
+its test beside it, and [skills/registry.mjs](../skills/registry.mjs) discovers it. **But a
+skill check runs everywhere.** A technology-pack check only runs where the project *declared*
+that pack; a skill check is never declared, so the engine runs it on every repo and every
+sweep — including repos where the skill's action never happened. That declaration gate you don't
+get, `run(ctx)` must supply itself: **detect relevance first, cheaply and specifically, and
+return `[]` when the artifact is absent** (`routine-structure` keys off a `routine.md` existing
+before it asserts anything). Getting this wrong doesn't cost a little — it fires false findings
+on every unrelated repo the corpus is mounted in, so make the relevance signal narrow and put it
+at the top of `run`.

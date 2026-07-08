@@ -81,7 +81,44 @@ checks/                       # the ENGINE only (runs the packs' checks)
   pretooluse-guard.mjs        #   blocks forbidden actions before they run
   test/                       #   fixtures (scratch git repos), red-first
 skills/                       # activity-scoped procedures, surfaced on demand
+  registry.mjs                #   structural discovery — any skills/<name>/checks.mjs owns checks
+  <name>/checks.mjs           #   the test-the-world checks that validate this skill's action
 ```
+
+**Skill-owned checks.** A skill defines the performance of an *action*; the test-the-world
+check that validates that action's result belongs **beside the SKILL.md that defines it**, not
+in a pack that owns none of the context. So a skill may carry its own checks — the
+`routine-structure` check lives in `skills/unattended-agents/`, next to the routine-authoring
+prose it enforces, with its test co-located too. Discovery mirrors the packs: any
+`skills/<name>/checks.mjs` (default export = an array of rules) is picked up structurally by
+`skills/registry.mjs` and run by the same engine. Skill checks are **never declared and always
+run** (like the universal pack) — a skill isn't a technology a project opts into. That is the
+one hazard to design around: a technology-pack check only runs where the project *declared* that
+pack, but a skill check runs on **every** repo and every sweep, including ones where the skill's
+action never happened. The declaration gate a pack check gets for free, a skill check's `run`
+must supply itself — **detect relevance first, cheaply and specifically, and return `[]` when
+the artifact is absent** (`routine-structure` keys off a `routine.md` existing before it asserts
+anything). Get that wrong and the check fires false findings on every unrelated repo the corpus
+is mounted in. Reserve skill checks for the world-state a skill's action leaves behind; a rule
+with no skill to anchor it stays a universal check.
+
+**Where a check goes — the litmus test.** Classify by what the checked *artifact* is, not by
+which doc teaches the fix (the `doc` pointer is where you *learn* the remedy — most universal
+checks point at a skill, so it is **not** the classifier):
+
+- present in ~every repo (markdown links, file layout, the root `CLAUDE.md`, git history, a
+  branch's issue reference) → a **universal** check;
+- present only when a declared **technology** is (a workflow, a SAM template, the release
+  stubs) → a **technology-pack** check, whose relevance is gated by declaration;
+- present **only because one skill's discrete action created it** (a routine folder, from
+  authoring a routine) → a **skill** check.
+
+Only the third — *the artifact would not exist had the action never run* — earns a home in the
+skill. `routine-structure` is the sole current case: a routine folder exists only because
+someone authored a routine. `squash-merge-history` points at the merge-to-main skill but stays
+universal, because git history exists in every repo and is disturbed by any merge, not only that
+skill's action; `claude-md-length`, `file-placement`, and `generated-merge-driver` likewise
+inspect artifacts every repo has, so they stay universal despite naming a skill in `doc`.
 
 **Runner contract.** `node .claudinite/checks/run.js`. Dependency-free Node — no `npm install`
 step exists on the tarball mount, and the corpus's own "earn each dependency" rule applies to

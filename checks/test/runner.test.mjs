@@ -142,3 +142,15 @@ test('--init writes the pack declaration once and is idempotent', () => {
     assert.equal(readFileSync(join(root, '.claudinite-checks.json'), 'utf8'), first);
   } finally { cleanup(root); }
 });
+
+test('a skill-owned check is discovered and run through the CLI, and listed', () => {
+  const root = makeRepo({ changed: {
+    'dev/routines/demo/routine.md': 'Run `bash dev/routines/demo/preconditions.sh`.\n',
+  } });
+  try {
+    const r = runCli(root);
+    assert.equal(r.status, 1); // routine-structure lives in skills/, not a pack, yet still runs
+    assert.match(r.stdout, /routine-structure/);
+    assert.match(runCli(root, '--list').stdout, /^routine-structure\t/m);
+  } finally { cleanup(root); }
+});
