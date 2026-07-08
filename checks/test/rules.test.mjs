@@ -74,18 +74,28 @@ test('task-lifecycle: silent on main itself', () => {
   } finally { cleanup(root); }
 });
 
-test('warning-suppression: flags a newly added suppression marker, ignores pre-existing ones', () => {
+test('warning-suppression: flags a newly added suppression marker', () => {
   const bad = makeRepo({ changed: { 'a.js': 'x();\n// eslint-disable-next-line no-undef\ny();\n' } });
-  const preexisting = makeRepo({
-    base: { 'a.js': '// eslint-disable-next-line no-undef\ny();\n' },
-    changed: { 'b.js': 'clean();\n' },
-  });
   try {
     const findings = run(warningSuppression, bad);
     assert.equal(findings.length, 1);
     assert.equal(findings[0].file, 'a.js');
-    assert.equal(run(warningSuppression, preexisting).length, 0);
-  } finally { cleanup(bad); cleanup(preexisting); }
+    assert.match(findings[0].what, /eslint-disable/);
+  } finally { cleanup(bad); }
+});
+
+test('warning-suppression: check-the-world — flags a pre-existing marker in an untouched file (all mode)', () => {
+  const root = makeRepo({
+    base: { 'a.js': '// eslint-disable-next-line no-undef\ny();\n' },
+    changed: { 'b.js': 'clean();\n' },
+  });
+  try {
+    // The whole-repo sweep sees the legacy suppression in a.js even though this
+    // change never touched it; the diff-scoped `changed` mode would miss it.
+    const findings = run(warningSuppression, root, 'all');
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].file, 'a.js');
+  } finally { cleanup(root); }
 });
 
 test('warning-suppression: a doc discussing markers is not a suppression', () => {
