@@ -62,7 +62,11 @@ Environment separation (dev/prod projects, App Check, store gating) lives in the
 
 ## 4. Deploy layout and aliases
 
-- **`firebase.json` at the repo root** with a `predeploy` build hook for functions
+- **Keep the Firebase project root self-contained** — the directory holding `firebase.json`, its
+  `.firebaserc`, rules/indexes, and `functions/`. That root may be the repo root or a dedicated
+  subfolder (e.g. `firebase/`); the CLI walks up to find `firebase.json` and resolves every path
+  inside it *relative to that file*, so a subfolder needs no path edits — just run deploys from it
+  (or pass `--config <dir>/firebase.json`). Wire a `predeploy` build hook for functions
   (`npm --prefix functions run build`) so a deploy can never ship stale JS; keep compiled output
   (`functions/lib/`) and `.firebase/` gitignored.
 - **Commit `.firebaserc` with named aliases and make the default the safe target** (see
