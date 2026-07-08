@@ -127,6 +127,11 @@ code produces every actual, and the product ships on green.**
 - **Regenerate, never hand-edit.** The gallery is derived output of a committed generator; fixing it
   means fixing the source (or the generator) and regenerating — a hand-touched render lies about the
   product until the next regeneration overwrites it.
+- **The deterministic golden-image method this leans on is canon in the writing-tests skill** —
+  matching the render engine to the surface (a bit-exact rasterizer for inline-styled/SVG surfaces, a
+  headless browser for pages that use grid/vars/emoji/form-widgets), bundled fonts, capturing a
+  host-page surface with styles inlined, and a drift gate on the embedded gallery. The pack states the
+  *what* (approving the gallery is approving the product); the skill owns the *how*.
 
 ## 8. Ship automatically while `main` stays green
 
