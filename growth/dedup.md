@@ -32,7 +32,7 @@ The canon carries rules as **conformance checks**, not only prose. A local item 
 ## Discipline
 
 - **Only remove a local item you can show the mounted canon genuinely covers — quote the canon line (or the covering check's rule id).** When unsure, leave it; a wrongful prune deletes a real local lesson.
-- **Open a single PR against `main`** from a per-run-unique branch (see [the git-github-advanced skill](../skills/git-github-advanced/SKILL.md)) — one PR for the whole run's prunes, not one per item — never a direct push. This is an unattended routine, on a capable model, editing the project's *own* docs; the owner wants a human approval gate on every growth change.
+- **Open a single PR against `main`** from a per-run-unique branch (see [the git-github-advanced skill](../skills/git-github-advanced/SKILL.md)) — one PR for the whole run's prunes, not one per item — never a direct push. This is an unattended routine, on a capable model, and a **wrongful prune deletes a real local lesson**, so — unlike extract, which commits its additive edits straight to `main` — this phase keeps a human approval gate.
 - If an edit touches something a test reads, run the project's offline test suite and keep it green before pushing.
 
 ## Tracking

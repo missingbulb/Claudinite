@@ -29,7 +29,7 @@ Beyond the portable corpus above, two folders hold the machinery that keeps it f
 
 `growth/` holds the **growth lifecycle**: how a lesson is learned in a consuming project, lifted into the canon when it's portable, and pruned back out once the canon owns it — three phases with a barrier between each, sequenced daily by the fleet orchestrator. See **[growth/README.md](growth/README.md)** for the full map; the pieces are:
 
-- [growth/extract.md](growth/extract.md) — **phase 1, per project.** Captures the last 24h of bugs/PRs/commits into the project's **own** docs, at the project's own level (generalizing is phase 2's job), opening a PR against the project's `main`.
+- [growth/extract.md](growth/extract.md) — **phase 1, per project.** Captures the last 24h of bugs/PRs/commits into the project's **own** docs, at the project's own level (generalizing is phase 2's job), committing directly to the project's `main` (no per-run PR — it writes only local docs).
 - [growth/promote.md](growth/promote.md) — **phase 2, central.** Reads every project's local docs, **generalizes** the portable lessons, routes each to the right canon home, and opens a PR against Claudinite's `main`. This is the sole judgment gate before shared canon; it replaces the old cross-repo handoff (Action + PAT + labelled issue), which is gone.
 - [growth/dedup.md](growth/dedup.md) — **phase 3, per project.** Prunes local items the canon covers, **keeping** items the canon states too generally for that project. Opens a PR against the project's `main`.
 - [growth/item-routing.md](growth/item-routing.md) — the shared worthiness + routing method the promote phase (and any other caller) defers to.
@@ -41,7 +41,7 @@ The mounted corpus itself is **`packs/`** (each `packs/<name>/` bundling a pack'
 - [routines/auto-all-repos-maintenance.md](routines/auto-all-repos-maintenance.md) — **the single scheduled entry point.** One daily routine, scheduled once from a home repo, that discovers **every** Claudinite-vendored repo the token can access (by the tracked `.claudinite/` marker) and sequences the growth lifecycle across the fleet — phase 1 in every repo (parallel) → barrier → phase 2 once (central) → barrier → phase 3 in every repo (parallel) — plus the nightly repo tidy-up, each run as its own isolated subagent so no repo or phase can stop the others. Schedule **this**, nothing else.
 - [routines/auto-repo-tidy.md](routines/auto-repo-tidy.md) — project-agnostic nightly repo tidy-up (open PRs, branches, and issues) any consuming repo can vendor and run.
 
-**Where things land:** every growth phase is unattended and opens a PR for the owner to approve — nothing commits to `main` on its own. Because a phase reads only what's already merged, lessons flow extract → promote → dedup across approval cycles, not in one night. The owner's *on-demand, in-session* "learned lessons" command delivers a PR the same way.
+**Where things land:** **extract** (phase 1) commits directly to each project's `main` (it writes only local docs), while **promote** (phase 2, the canon gate) and **dedup** (phase 3) each open a PR for the owner to approve. Every phase reads only what's already merged: extract lands on `main` immediately, so promote picks it up the same night, but promote still opens a PR, so promote → dedup waits an approval cycle. The owner's *on-demand, in-session* "learned lessons" command still delivers a PR.
 
 ## Submodule caveats (for consumers)
 
