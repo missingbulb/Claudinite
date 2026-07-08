@@ -9,7 +9,9 @@ name: "Chrome extension: Publish to Chrome Web Store (reusable)"
 # Takes the extension zip from a GitHub Release of the CALLING repo and uploads
 # it to the Chrome Web Store (optionally publishing it to users), via the Web
 # Store API using chrome-webstore-upload-cli, then refreshes the Pages-hosted
-# privacy page.
+# privacy page. The privacy page redeploys on every publish — there is no
+# separate privacy workflow and no privacy-only mode; the store listing points
+# at a page that always tracks this repo's PRIVACY.md.
 #
 # Callers must pass `secrets: inherit` so the four store secrets resolve from
 # the calling repo (Settings → Secrets and variables → Actions):
@@ -98,11 +100,12 @@ jobs:
             --source dist/${{ inputs.zip_name }} \
             $flags
 
-  # Refresh the Pages-hosted privacy policy alongside the store upload, from the
-  # same PRIVACY.md the listing points at. The deploy lives in its own reusable
-  # workflow so a repo can ALSO run it on its own (via its deploy stub) to make
-  # the URL live without uploading to the store. It reports its OWN failures, so
-  # the issues:write below lets that reporter run.
+  # Refresh the Pages-hosted privacy policy on every publish, from the same
+  # PRIVACY.md the listing points at. No needs on publish, so it also deploys
+  # when the upload leg fails (e.g. before the first publication, when the store
+  # item and secrets don't exist yet) — that's how the /privacy/ URL first goes
+  # live. It reports its OWN failures, so the issues:write below lets that
+  # reporter run.
   deploy-privacy-page:
     uses: missingbulb/Claudinite/.github/workflows/deploy-privacy-page.yml@main
     permissions:
@@ -112,7 +115,7 @@ jobs:
       issues: write
 
   # This workflow is run by hand and then left alone, so a failed upload
-  # otherwise just turns the run red with nobody alerted. Open/append a tracking
+  # otherwise just turns the run red with nobody alerted. Open a fresh failure
   # issue instead. Covers only `publish`; the deploy-privacy-page reusable
   # workflow reports its own failures.
   report-failure:
