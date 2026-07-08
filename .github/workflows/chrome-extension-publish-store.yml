@@ -11,6 +11,13 @@ name: "Chrome extension: Publish to Chrome Web Store (reusable)"
 # Store API using chrome-webstore-upload-cli, then refreshes the Pages-hosted
 # privacy page.
 #
+# privacy_only mode: with privacy_only: true the store upload is skipped and
+# only the privacy page is (re)deployed — the one job that made a standalone
+# "deploy the privacy page" workflow worth having (e.g. making the /privacy/
+# URL live BEFORE the first store submission, when no release exists to upload
+# yet). Folding it in here means one store-facing publish stub instead of two,
+# and no separate deploy-privacy-page dispatch stub to carry.
+#
 # Callers must pass `secrets: inherit` so the four store secrets resolve from
 # the calling repo (Settings → Secrets and variables → Actions):
 #   CHROME_EXTENSION_ID     the item/app ID from the Web Store dashboard URL
@@ -36,6 +43,10 @@ on:
         description: "The release asset's stable zip filename (e.g. crossword-chat.zip)"
         required: true
         type: string
+      privacy_only:
+        description: "Skip the store upload and only (re)deploy the privacy page (e.g. before the first store submission, when there's no release to upload yet)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -47,6 +58,8 @@ defaults:
 
 jobs:
   publish:
+    # privacy_only runs the deploy-privacy-page job alone (no store upload).
+    if: ${{ !inputs.privacy_only }}
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -98,11 +111,13 @@ jobs:
             --source dist/${{ inputs.zip_name }} \
             $flags
 
-  # Refresh the Pages-hosted privacy policy alongside the store upload, from the
-  # same PRIVACY.md the listing points at. The deploy lives in its own reusable
-  # workflow so a repo can ALSO run it on its own (via its deploy stub) to make
-  # the URL live without uploading to the store. It reports its OWN failures, so
-  # the issues:write below lets that reporter run.
+  # Refresh the Pages-hosted privacy policy from the same PRIVACY.md the listing
+  # points at. Runs in BOTH modes (no needs on publish): alongside a store
+  # upload, and as the sole job when privacy_only skips the upload — that
+  # privacy_only path is what makes the URL live on its own (e.g. before the
+  # first store submission), replacing the old standalone deploy-privacy-page
+  # stub. It reports its OWN failures, so the issues:write below lets that
+  # reporter run.
   deploy-privacy-page:
     uses: missingbulb/Claudinite/.github/workflows/deploy-privacy-page.yml@main
     permissions:
@@ -112,7 +127,7 @@ jobs:
       issues: write
 
   # This workflow is run by hand and then left alone, so a failed upload
-  # otherwise just turns the run red with nobody alerted. Open/append a tracking
+  # otherwise just turns the run red with nobody alerted. Open a fresh failure
   # issue instead. Covers only `publish`; the deploy-privacy-page reusable
   # workflow reports its own failures.
   report-failure:

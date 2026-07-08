@@ -32,7 +32,6 @@ const CONFORMANT = {
   '.github/workflows/release.yml': stub('Release: Create Package', 'chrome-extension-release.yml'),
   '.github/workflows/publish-chrome-store.yml': stub('Release: Publish to Chrome Web Store', 'chrome-extension-publish-store.yml'),
   '.github/workflows/daily-release.yml': stub('Release: Daily Auto-Release', 'chrome-extension-daily-release.yml'),
-  '.github/workflows/deploy-privacy-page.yml': stub('Deploy privacy policy to GitHub Pages', 'deploy-privacy-page.yml'),
   'dev/build/release/store_artifacts/PRIVACY.md': PRIVACY,
   'README.md': '# x\n\n## Install\n\nx\n\n## Releasing\n\nx\n',
 };

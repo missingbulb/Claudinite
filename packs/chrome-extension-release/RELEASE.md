@@ -6,7 +6,7 @@ sections. This doc is that contract, the setup steps for a new extension repo, a
 Chrome Web Store actions the automation can't do. The workflow **logic** lives once, in this
 repo's [.github/workflows/](../../.github/workflows/), as `workflow_call`-only **reusable
 workflows** (plus the [report-failure](../../.github/actions/report-failure/action.yml) composite
-action); each extension repo carries only four **thin stubs** — triggers + repo values —
+action); each extension repo carries only three **thin stubs** — triggers + repo values —
 templated in [stubs/](stubs/): **copy the stubs, don't
 re-derive them**. The stubs reference the canon `@main`, so a merged canon change reaches every
 extension repo's next run automatically — changing the standard's logic needs no per-repo PR;
@@ -44,15 +44,18 @@ general names so other standards reuse them as-is. When in doubt, prefix.
 - A release is GitHub Release **`vX.Y.Z`**, tagged at the released commit, with the zip as its
   only asset and auto-generated notes.
 
-**Workflows** — four stub files per repo with these exact `name:`s (the failure reporter keys
+**Workflows** — three stub files per repo with these exact `name:`s (the failure reporter keys
 tracking issues on them), each calling its reusable canon workflow:
 
 | stub file | `name:` | trigger (owned by the stub) | canon workflow it calls — what it does |
 |---|---|---|---|
 | `release.yml` | Release: Create Package | push to `main` touching the manifest; dispatch | `chrome-extension-release.yml` — version guard (clean no-op if already released) → full test gate → build → GitHub Release |
-| `publish-chrome-store.yml` | Release: Publish to Chrome Web Store | dispatch(`tag`, `auto_publish`) | `chrome-extension-publish-store.yml` — download the release zip → upload via the store API (publish to users unless `auto_publish: false` → dashboard draft) → refresh the privacy page |
+| `publish-chrome-store.yml` | Release: Publish to Chrome Web Store | dispatch(`tag`, `auto_publish`, `privacy_only`) | `chrome-extension-publish-store.yml` — download the release zip → upload via the store API (publish to users unless `auto_publish: false` → dashboard draft) → refresh the privacy page. `privacy_only: true` skips the upload and only (re)deploys the `/privacy/` page (via the `deploy-privacy-page.yml` reusable) — e.g. before the first store submission |
 | `daily-release.yml` | Release: Daily Auto-Release | schedule `0 3 * * *`; dispatch | `chrome-extension-daily-release.yml` — shipped-file diff vs the latest release tag → patch bump pushed to `main` → calls the two canon workflows above |
-| `deploy-privacy-page.yml` | Deploy privacy policy to GitHub Pages | dispatch | `deploy-privacy-page.yml` — publishes `store_artifacts/PRIVACY.md` at the `/privacy/` permalink |
+
+The privacy page has **no stub of its own**: its deploy is the `privacy_only` mode of the publish
+stub (and refreshes automatically on every publish). The platform-agnostic `deploy-privacy-page.yml`
+reusable workflow lives on in the canon, called from there — a repo never dispatches it directly.
 
 - Repo-specific values travel as `with:` inputs — `zip_path`/`zip_name`, `manifest_path`, and
   (only where the repo deviates from the defaults) `package_json_path`, `setup_command`,
@@ -62,9 +65,10 @@ tracking issues on them), each calling its reusable canon workflow:
   `secrets: inherit`.
 - Every unattended workflow (all of the above; not PR CI) reports failures through the
   `report-failure` composite action baked into the canon workflows — a red run must reach a
-  human as a standing per-workflow `workflow-failure` tracking issue, never sit unseen in the
-  Actions list. Repos no longer carry a `report-failure.yml`; a repo's own non-standard
-  unattended workflows use the action directly
+  human, never sit unseen in the Actions list. Each failure opens a **fresh** `workflow-failure`
+  issue, and any earlier open failure issues for the **same** workflow are closed as duplicates of
+  it, so the newest failure is always the single open bug to triage. Repos no longer carry a
+  `report-failure.yml`; a repo's own non-standard unattended workflows use the action directly
   (`uses: missingbulb/Claudinite/.github/actions/report-failure@main`).
 - Daily auto-release semantics: the baseline is the **latest release tag**, not a 24-hour window
   (self-healing after a failed day); "deployable" = membership in the shipping set; the patch
@@ -86,7 +90,8 @@ repository **secrets**, same names in every repo:
 **Privacy page** — the policy source is `dev/build/release/store_artifacts/PRIVACY.md`; a Jekyll
 `permalink: /privacy/` pins the public URL `https://<owner>.github.io/<repo>/privacy/`
 independent of the file's location. The store listing's Privacy-tab URL points **there**, never
-at a `blob/main` link. The page redeploys on every store publish and by standalone dispatch.
+at a `blob/main` link. The page redeploys on every store publish and, on its own, via the publish
+stub's `privacy_only` mode.
 One-time: repo Settings → Pages → Source = "GitHub Actions".
 
 **Store listing & permission justifications live in the dashboard, not the repo** — the listing
@@ -154,7 +159,7 @@ in the repo's first-publication issue).*
 
 ## Setting up a new extension repo
 
-1. Copy the four stub files from [stubs/](stubs/) into
+1. Copy the three stub files from [stubs/](stubs/) into
    `.github/workflows/`. Replace every `__ZIP_NAME__` / `__BUMP_PATCH_CMD__` /
    `__FILTER_SHIPPED_CMD__` token, and — only if the repo deviates from the defaults — set the
    `with:` overrides flagged in each stub's header (`manifest_path`, `package_json_path`,
@@ -197,10 +202,10 @@ extension; the upstream reference is
 4. Privacy tab: write the single-purpose statement, a justification for **every** permission the
    manifest requests, and the data-usage declarations, directly in the dashboard; set the
    **Privacy policy** field (bottom of the tab) to the `/privacy/` Pages URL — the same policy
-   `PRIVACY.md` deploys. **Before submitting**: deploy the privacy page via the privacy
-   workflow's dispatch, load the URL in a browser to confirm it's live, and paste that exact
-   permalink — never a guessed path. Google re-fetches this URL on **every** publish, and an
-   unreachable link fails the publish (see [When a store publish fails](#when-a-store-publish-fails)).
+   `PRIVACY.md` deploys. **Before submitting**: deploy the privacy page by running **Release:
+   Publish to Chrome Web Store** with `privacy_only` checked, load the URL in a browser to confirm
+   it's live, and paste that exact permalink — never a guessed path. Google re-fetches this URL on
+   **every** publish, and an unreachable link fails the publish (see [When a store publish fails](#when-a-store-publish-fails)).
 5. Submit for review — approval takes hours to a few days (`ITEM_PENDING_REVIEW` = success).
    While the item is **pending review the API rejects uploads** — hold the pipeline dry run
    until the first review completes. Every subsequent upload must carry a **strictly higher**

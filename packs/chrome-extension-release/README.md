@@ -1,6 +1,6 @@
 # chrome-extension-release pack
 
-The release & Chrome-Web-Store publication standard for our extensions — the reusable workflows' contract, the setup steps, the manual store actions (`RELEASE.md`), the four workflow `stubs/`, and the conformance checks. **Opt-in**: a project declares it in `.claudinite-checks.json` when it's ready to ship (a `manifest.json` alone does not pull it in). Declaring it is the cue to scaffold the release machinery — the checks below drive creating the files, and setup opens the one-time first-publication issue.
+The release & Chrome-Web-Store publication standard for our extensions — the reusable workflows' contract, the setup steps, the manual store actions (`RELEASE.md`), the three workflow `stubs/`, and the conformance checks. **Opt-in**: a project declares it in `.claudinite-checks.json` when it's ready to ship (a `manifest.json` alone does not pull it in). Declaring it is the cue to scaffold the release machinery — the checks below drive creating the files, and setup opens the one-time first-publication issue.
 
 Fingerprint: a repo already carrying the standard's `Release: *` workflow stubs. The `pack-declaration` drift guard uses it to keep the declaration honest (and to migrate a repo that shipped release before this pack existed).
 
@@ -8,7 +8,7 @@ Fingerprint: a repo already carrying the standard's `Release: *` workflow stubs.
 
 | Check | Enforces (≤5 words) | Severity |
 |---|---|---|
-| `cer/release-workflows` | four stubs call canon workflows | blocking |
+| `cer/release-workflows` | three stubs call canon workflows | blocking |
 | `cer/template-tokens` | no unreplaced `__TOKEN__` survives | blocking |
 | `cer/version-sync` | manifest and package.json versions agree | blocking |
 | `cer/release-layout` | privacy policy source present | blocking |

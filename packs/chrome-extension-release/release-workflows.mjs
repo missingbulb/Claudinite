@@ -1,20 +1,23 @@
 import { finding } from '../../checks/lib/findings.mjs';
 
-// The contract's four thin stubs, each with its exact name: (the failure
+// The contract's three thin stubs, each with its exact name: (the failure
 // reporter keys tracking issues on them) and the canon reusable workflow it
 // must call (packs/chrome-extension-release/RELEASE.md). Exported so the pack's
 // detect fingerprint can recognize a repo that already ships the pipeline.
+// The privacy page has no stub of its own: its deploy is a privacy_only mode of
+// the publish stub (and runs automatically on every publish); the
+// deploy-privacy-page reusable workflow lives on in the canon, called from
+// there.
 export const STUBS = {
   'release.yml': { name: 'Release: Create Package', canon: 'chrome-extension-release.yml' },
   'publish-chrome-store.yml': { name: 'Release: Publish to Chrome Web Store', canon: 'chrome-extension-publish-store.yml' },
   'daily-release.yml': { name: 'Release: Daily Auto-Release', canon: 'chrome-extension-daily-release.yml' },
-  'deploy-privacy-page.yml': { name: 'Deploy privacy policy to GitHub Pages', canon: 'deploy-privacy-page.yml' },
 };
 
 const rule = {
   id: 'cer/release-workflows',
   severity: 'blocking',
-  description: 'The four standard release stubs must exist, carry their exact name:, and call their canon reusable workflow',
+  description: 'The three standard release stubs must exist, carry their exact name:, and call their canon reusable workflow',
   doc: 'packs/chrome-extension-release/RELEASE.md',
   why: 'every extension repo ships the same pipeline; the logic lives once in the canon, stubs own only triggers and repo values',
 

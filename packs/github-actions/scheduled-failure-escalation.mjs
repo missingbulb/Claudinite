@@ -18,7 +18,7 @@ const rule = {
       out.push(finding(rule, {
         file: wf,
         what: 'runs on a schedule but has no visible failure escalation (no failure() job, no report-failure call)',
-        fix: 'add a job that runs on failure() and opens/appends to a standing per-workflow tracking issue (or call a shared report-failure workflow)',
+        fix: 'add a job that runs on failure() and opens a workflow-failure tracking issue a human will see (or use the shared report-failure action)',
       }));
     }
     return out;

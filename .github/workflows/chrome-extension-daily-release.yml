@@ -33,7 +33,7 @@ name: "Chrome extension: Daily Auto-Release (reusable)"
 #      the privacy page as that workflow always does).
 #
 # Unattended (scheduled), so failures must reach a human: the called workflows
-# report their own job failures to their standing tracking issues, and the
+# report their own job failures as fresh tracking issues, and the
 # report-failure job below covers this workflow's own jobs — including a
 # called workflow failing to even start.
 #
@@ -200,11 +200,11 @@ jobs:
       zip_name: ${{ inputs.zip_name }}
     secrets: inherit
 
-  # Scheduled + nobody watching = every failure must converge to the standing
-  # tracking issue. Covering release/publish here too can double-report (their
-  # internal reporters also fire on their own job failures) — accepted, so that
-  # a called workflow failing before its internal reporter can run (e.g. a
-  # workflow-file error) still reaches a human.
+  # Scheduled + nobody watching = every failure must converge to a fresh
+  # tracking issue a human sees. Covering release/publish here too can
+  # double-report (their internal reporters also fire on their own job failures)
+  # — accepted, so that a called workflow failing before its internal reporter
+  # can run (e.g. a workflow-file error) still reaches a human.
   report-failure:
     needs: [check, bump, release, publish]
     if: failure()

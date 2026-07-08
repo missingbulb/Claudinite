@@ -38,13 +38,18 @@ Create a label if it's missing. **"Implemented in `main`" = the issue's actual a
 
 ## Report
 
-Post to the standing tracker issue (find it **by title** `Repo Tidy Tracker`; open one if absent). Keep it short: PR keepers, branch keepers + safe-to-delete count, issue actions taken. Comment **only if the picture changed** since the last one — silent otherwise. Keep the tracker **open** while any PR/branch is closeable or any issue awaits a decision; else close it.
+One standing tracker issue, found **by title** `Repo Tidy Tracker` (open one if absent; reopen it if it was closed while anything still needs tracking). Never a fresh issue per run, never a bare number that can dangle. Each run touches it two ways:
+
+- **Rewrite the issue body** to **today's current state**, dated at the top, so the newest snapshot is always what you see first when you open the issue — PR keepers, branch keepers + safe-to-delete count, and the issue actions in force. The body is the live picture; it replaces yesterday's, it doesn't accumulate.
+- **Add a dated comment** with today's status, so the body's snapshots leave a per-run trail in the thread you can scroll back through.
+
+Keep it short in both places. Keep the tracker **open** while any PR/branch is closeable or any issue awaits a decision; else close it (the body still shows the final clean state).
 
 ## Launcher
 
 Vendor this file; point the nightly routine at it:
 
-> Run the repo tidy-up exactly per `<path/to/auto-repo-tidy.md>`: assess open PRs and branches read-only (report only what should stay open, plus a safe-to-delete/closeable summary); act on open issues (close/label/comment per the doc); then post to the tracker (by title) only if something changed. Never push, delete, merge, or close a PR or branch.
+> Run the repo tidy-up exactly per `<path/to/auto-repo-tidy.md>`: assess open PRs and branches read-only (report only what should stay open, plus a safe-to-delete/closeable summary); act on open issues (close/label/comment per the doc); then update the standing tracker (by title) — rewrite its body to today's current state, dated at the top, and add a dated status comment. Never push, delete, merge, or close a PR or branch.
 
 Schedule it nightly.
 
@@ -54,4 +59,4 @@ Schedule it nightly.
 - Close an issue whose done-ness isn't verifiable in `main`.
 - Call a branch safe to delete on commit count alone — prove the content is in `main`.
 - Auto-touch an orphaned (pre-rewrite) branch — human eye.
-- Post when nothing changed.
+- Open a second tracker, or a fresh tracker per run — one standing issue, found by title, body kept current.
