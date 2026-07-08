@@ -102,6 +102,24 @@ anything). Get that wrong and the check fires false findings on every unrelated 
 is mounted in. Reserve skill checks for the world-state a skill's action leaves behind; a rule
 with no skill to anchor it stays a universal check.
 
+**Where a check goes — the litmus test.** Classify by what the checked *artifact* is, not by
+which doc teaches the fix (the `doc` pointer is where you *learn* the remedy — most universal
+checks point at a skill, so it is **not** the classifier):
+
+- present in ~every repo (markdown links, file layout, the root `CLAUDE.md`, git history, a
+  branch's issue reference) → a **universal** check;
+- present only when a declared **technology** is (a workflow, a SAM template, the release
+  stubs) → a **technology-pack** check, whose relevance is gated by declaration;
+- present **only because one skill's discrete action created it** (a routine folder, from
+  authoring a routine) → a **skill** check.
+
+Only the third — *the artifact would not exist had the action never run* — earns a home in the
+skill. `routine-structure` is the sole current case: a routine folder exists only because
+someone authored a routine. `squash-merge-history` points at the merge-to-main skill but stays
+universal, because git history exists in every repo and is disturbed by any merge, not only that
+skill's action; `claude-md-length`, `file-placement`, and `generated-merge-driver` likewise
+inspect artifacts every repo has, so they stay universal despite naming a skill in `doc`.
+
 **Runner contract.** `node .claudinite/checks/run.js`. Dependency-free Node — no `npm install`
 step exists on the tarball mount, and the corpus's own "earn each dependency" rule applies to
 us first. Exit 0 = clean, exit 1 = blocking findings. The default scope is the **whole repo**:
