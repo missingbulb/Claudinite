@@ -3,8 +3,14 @@ import { finding } from '../../checks/lib/findings.mjs';
 
 // A routine is a folder whose entry point is `routine.md` (the standard name),
 // alongside the deterministic scripts it invokes. This check asserts the
-// prose↔script wiring that the unattended-agents skill mandates — inert on any
-// repo with no routine.md, so it costs nothing until the convention applies.
+// prose↔script wiring that the unattended-agents skill mandates.
+//
+// RELEVANCE FIRST (see checks/README.md "Adding a rule"): a skill check has no
+// declaration gate — the engine runs it on EVERY repo, including ones with no
+// routines — so `run` must detect relevance before asserting anything. Here the
+// signal is a `routine.md` existing: `routineDirs` is empty on any repo without
+// one, every loop below is over an empty set, and the check no-ops. Keep that
+// gate narrow and up front; a broad signal would fire false findings everywhere.
 const ENTRY = 'routine.md';
 const PHASE_SCRIPTS = ['preconditions.sh', 'postconditions.sh'];
 

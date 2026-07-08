@@ -92,9 +92,15 @@ in a pack that owns none of the context. So a skill may carry its own checks —
 prose it enforces, with its test co-located too. Discovery mirrors the packs: any
 `skills/<name>/checks.mjs` (default export = an array of rules) is picked up structurally by
 `skills/registry.mjs` and run by the same engine. Skill checks are **never declared and always
-run** (like the universal pack) — a skill isn't a technology a project opts into, and these are
-standing invariants, each inert until its artifact exists. Reserve them for the world-state a
-skill's action leaves behind; a rule with no skill to anchor it stays a universal check.
+run** (like the universal pack) — a skill isn't a technology a project opts into. That is the
+one hazard to design around: a technology-pack check only runs where the project *declared* that
+pack, but a skill check runs on **every** repo and every sweep, including ones where the skill's
+action never happened. The declaration gate a pack check gets for free, a skill check's `run`
+must supply itself — **detect relevance first, cheaply and specifically, and return `[]` when
+the artifact is absent** (`routine-structure` keys off a `routine.md` existing before it asserts
+anything). Get that wrong and the check fires false findings on every unrelated repo the corpus
+is mounted in. Reserve skill checks for the world-state a skill's action leaves behind; a rule
+with no skill to anchor it stays a universal check.
 
 **Runner contract.** `node .claudinite/checks/run.js`. Dependency-free Node — no `npm install`
 step exists on the tarball mount, and the corpus's own "earn each dependency" rule applies to
