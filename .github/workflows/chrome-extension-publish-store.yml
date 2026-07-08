@@ -9,14 +9,9 @@ name: "Chrome extension: Publish to Chrome Web Store (reusable)"
 # Takes the extension zip from a GitHub Release of the CALLING repo and uploads
 # it to the Chrome Web Store (optionally publishing it to users), via the Web
 # Store API using chrome-webstore-upload-cli, then refreshes the Pages-hosted
-# privacy page.
-#
-# privacy_only mode: with privacy_only: true the store upload is skipped and
-# only the privacy page is (re)deployed — the one job that made a standalone
-# "deploy the privacy page" workflow worth having (e.g. making the /privacy/
-# URL live BEFORE the first store submission, when no release exists to upload
-# yet). Folding it in here means one store-facing publish stub instead of two,
-# and no separate deploy-privacy-page dispatch stub to carry.
+# privacy page. The privacy page redeploys on every publish — there is no
+# separate privacy workflow and no privacy-only mode; the store listing points
+# at a page that always tracks this repo's PRIVACY.md.
 #
 # Callers must pass `secrets: inherit` so the four store secrets resolve from
 # the calling repo (Settings → Secrets and variables → Actions):
@@ -43,10 +38,6 @@ on:
         description: "The release asset's stable zip filename (e.g. crossword-chat.zip)"
         required: true
         type: string
-      privacy_only:
-        description: "Skip the store upload and only (re)deploy the privacy page (e.g. before the first store submission, when there's no release to upload yet)"
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -58,8 +49,6 @@ defaults:
 
 jobs:
   publish:
-    # privacy_only runs the deploy-privacy-page job alone (no store upload).
-    if: ${{ !inputs.privacy_only }}
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -111,12 +100,11 @@ jobs:
             --source dist/${{ inputs.zip_name }} \
             $flags
 
-  # Refresh the Pages-hosted privacy policy from the same PRIVACY.md the listing
-  # points at. Runs in BOTH modes (no needs on publish): alongside a store
-  # upload, and as the sole job when privacy_only skips the upload — that
-  # privacy_only path is what makes the URL live on its own (e.g. before the
-  # first store submission), replacing the old standalone deploy-privacy-page
-  # stub. It reports its OWN failures, so the issues:write below lets that
+  # Refresh the Pages-hosted privacy policy on every publish, from the same
+  # PRIVACY.md the listing points at. No needs on publish, so it also deploys
+  # when the upload leg fails (e.g. before the first publication, when the store
+  # item and secrets don't exist yet) — that's how the /privacy/ URL first goes
+  # live. It reports its OWN failures, so the issues:write below lets that
   # reporter run.
   deploy-privacy-page:
     uses: missingbulb/Claudinite/.github/workflows/deploy-privacy-page.yml@main

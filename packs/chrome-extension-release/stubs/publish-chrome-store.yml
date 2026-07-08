@@ -9,11 +9,8 @@ name: "Release: Publish to Chrome Web Store"
 # exists and you're ready to ship it to users. The daily auto-release also
 # publishes, but through the canon workflows directly — not through this stub.
 #
-# Privacy page: check "privacy_only" to just (re)deploy the /privacy/ page
-# without uploading anything to the store — e.g. before the first store
-# submission, to make the URL live so the store's publish-time fetch of it
-# succeeds. (This replaces the old standalone deploy-privacy-page stub; the
-# page is also refreshed automatically on every real publish.)
+# The /privacy/ page is (re)deployed as part of every publish, from the same
+# PRIVACY.md the listing points at — no separate privacy workflow or option.
 #
 # secrets: inherit passes the four CHROME_* store secrets (see the
 # chrome-extension release standard in Claudinite) into the canon workflow.
@@ -31,10 +28,6 @@ on:
         description: "Publish to users after upload (uncheck to leave it as a draft in the dashboard)"
         type: boolean
         default: true
-      privacy_only:
-        description: "Skip the store upload — only (re)deploy the /privacy/ page (e.g. before the first store submission)"
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -48,6 +41,5 @@ jobs:
     with:
       tag: ${{ inputs.tag }}
       auto_publish: ${{ inputs.auto_publish }}
-      privacy_only: ${{ inputs.privacy_only }}
       zip_name: __ZIP_NAME__
     secrets: inherit

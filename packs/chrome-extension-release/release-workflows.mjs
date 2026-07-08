@@ -4,8 +4,8 @@ import { finding } from '../../checks/lib/findings.mjs';
 // reporter keys tracking issues on them) and the canon reusable workflow it
 // must call (packs/chrome-extension-release/RELEASE.md). Exported so the pack's
 // detect fingerprint can recognize a repo that already ships the pipeline.
-// The privacy page has no stub of its own: its deploy is a privacy_only mode of
-// the publish stub (and runs automatically on every publish); the
+// The privacy page has no stub of its own: it redeploys as part of every
+// publish (via the publish workflow's deploy-privacy-page leg); the
 // deploy-privacy-page reusable workflow lives on in the canon, called from
 // there.
 export const STUBS = {

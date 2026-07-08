@@ -50,12 +50,14 @@ tracking issues on them), each calling its reusable canon workflow:
 | stub file | `name:` | trigger (owned by the stub) | canon workflow it calls — what it does |
 |---|---|---|---|
 | `release.yml` | Release: Create Package | push to `main` touching the manifest; dispatch | `chrome-extension-release.yml` — version guard (clean no-op if already released) → full test gate → build → GitHub Release |
-| `publish-chrome-store.yml` | Release: Publish to Chrome Web Store | dispatch(`tag`, `auto_publish`, `privacy_only`) | `chrome-extension-publish-store.yml` — download the release zip → upload via the store API (publish to users unless `auto_publish: false` → dashboard draft) → refresh the privacy page. `privacy_only: true` skips the upload and only (re)deploys the `/privacy/` page (via the `deploy-privacy-page.yml` reusable) — e.g. before the first store submission |
+| `publish-chrome-store.yml` | Release: Publish to Chrome Web Store | dispatch(`tag`, `auto_publish`) | `chrome-extension-publish-store.yml` — download the release zip → upload via the store API (publish to users unless `auto_publish: false` → dashboard draft) → refresh the `/privacy/` page (via the `deploy-privacy-page.yml` reusable) |
 | `daily-release.yml` | Release: Daily Auto-Release | schedule `0 3 * * *`; dispatch | `chrome-extension-daily-release.yml` — shipped-file diff vs the latest release tag → patch bump pushed to `main` → calls the two canon workflows above |
 
-The privacy page has **no stub of its own**: its deploy is the `privacy_only` mode of the publish
-stub (and refreshes automatically on every publish). The platform-agnostic `deploy-privacy-page.yml`
-reusable workflow lives on in the canon, called from there — a repo never dispatches it directly.
+The privacy page has **no stub of its own** and no dedicated option: it redeploys as part of **every**
+publish, from the same `PRIVACY.md` the listing points at. The publish workflow runs that deploy leg
+even when the store upload fails (so the `/privacy/` URL goes live before the first publication too —
+see below). The platform-agnostic `deploy-privacy-page.yml` reusable workflow lives on in the canon,
+called from there — a repo never dispatches it directly.
 
 - Repo-specific values travel as `with:` inputs — `zip_path`/`zip_name`, `manifest_path`, and
   (only where the repo deviates from the defaults) `package_json_path`, `setup_command`,
@@ -90,8 +92,9 @@ repository **secrets**, same names in every repo:
 **Privacy page** — the policy source is `dev/build/release/store_artifacts/PRIVACY.md`; a Jekyll
 `permalink: /privacy/` pins the public URL `https://<owner>.github.io/<repo>/privacy/`
 independent of the file's location. The store listing's Privacy-tab URL points **there**, never
-at a `blob/main` link. The page redeploys on every store publish and, on its own, via the publish
-stub's `privacy_only` mode.
+at a `blob/main` link. The page redeploys on every store publish — the publish workflow's
+privacy-deploy leg runs regardless of whether the upload leg succeeds, so it also brings the URL up
+for the very first publication.
 One-time: repo Settings → Pages → Source = "GitHub Actions".
 
 **Store listing & permission justifications live in the dashboard, not the repo** — the listing
@@ -202,10 +205,12 @@ extension; the upstream reference is
 4. Privacy tab: write the single-purpose statement, a justification for **every** permission the
    manifest requests, and the data-usage declarations, directly in the dashboard; set the
    **Privacy policy** field (bottom of the tab) to the `/privacy/` Pages URL — the same policy
-   `PRIVACY.md` deploys. **Before submitting**: deploy the privacy page by running **Release:
-   Publish to Chrome Web Store** with `privacy_only` checked, load the URL in a browser to confirm
-   it's live, and paste that exact permalink — never a guessed path. Google re-fetches this URL on
-   **every** publish, and an unreachable link fails the publish (see [When a store publish fails](#when-a-store-publish-fails)).
+   `PRIVACY.md` deploys. **Before submitting**: bring the privacy page up by running **Release:
+   Publish to Chrome Web Store** once — its privacy-deploy leg runs even though the store-upload leg
+   fails at this stage (no store item or secrets yet — the designed pre-publication state), so the
+   `/privacy/` page goes live. Load the URL in a browser to confirm it's live, and paste that exact
+   permalink — never a guessed path. Google re-fetches this URL on **every** publish, and an
+   unreachable link fails the publish (see [When a store publish fails](#when-a-store-publish-fails)).
 5. Submit for review — approval takes hours to a few days (`ITEM_PENDING_REVIEW` = success).
    While the item is **pending review the API rejects uploads** — hold the pipeline dry run
    until the first review completes. Every subsequent upload must carry a **strictly higher**

@@ -8,13 +8,12 @@
 #
 # Deliberately NOT Chrome-specific (hence the unprefixed name): any publish
 # standard whose store listing needs a live privacy-policy URL deploys through
-# it. workflow_call ONLY — it never runs in Claudinite itself. It is invoked
-# two ways:
-#   - by a repo's thin "Deploy privacy policy to GitHub Pages" dispatch stub —
-#     deploy the page on its own (e.g. to make the URL live for a store
-#     submission) WITHOUT uploading anything to a store.
-#   - by "Chrome extension: Publish to Chrome Web Store" so the page is
-#     refreshed whenever the listing ships.
+# it. workflow_call ONLY — it never runs in Claudinite itself. It is invoked by
+# "Chrome extension: Publish to Chrome Web Store" so the page is refreshed
+# whenever the listing ships (and, because that publish workflow runs this leg
+# even when the upload leg fails, it's also how the /privacy/ URL first goes
+# live before the first publication). There is no standalone privacy dispatch
+# stub — a repo never calls this directly.
 #
 # One-time owner setup in the calling repo: Pages source = "GitHub Actions"
 # (repo Settings → Pages). Production deploys only from the default branch (the
