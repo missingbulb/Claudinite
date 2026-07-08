@@ -2,8 +2,8 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
 
-function sh(root, cmd, args, { allowFail = false } = {}) {
-  const r = spawnSync(cmd, args, { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+function sh(root, cmd, args, { allowFail = false, input = undefined } = {}) {
+  const r = spawnSync(cmd, args, { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, input });
   if (r.status !== 0 && !allowFail) {
     throw new Error(`${cmd} ${args.join(' ')} failed (${r.status}): ${r.stderr}`);
   }
@@ -70,6 +70,28 @@ export function buildContext({ root, mode = 'changed', baseOverride = null }) {
 
   const branch = (gitTry(root, 'rev-parse', '--abbrev-ref', 'HEAD') || '').trim();
 
+  // Files git marks vendored or generated (linguist-vendored / linguist-generated
+  // in .gitattributes) — third-party or machine-written content, not the project's
+  // own code. A check reasoning about "the project's code" (e.g. warning-suppression)
+  // skips these: a marker inside a recorded fixture or a generated file isn't a
+  // suppression decision the project made. Computed once, lazily, via `git
+  // check-attr` so .gitattributes patterns/precedence are honored natively (paths
+  // fed on stdin so a large repo can't overflow the arg list).
+  let vendoredCache = null;
+  const vendored = () => {
+    if (vendoredCache) return vendoredCache;
+    vendoredCache = new Set();
+    if (files.length) {
+      const out = sh(root, 'git', ['check-attr', '--stdin', 'linguist-vendored', 'linguist-generated'],
+        { allowFail: true, input: files.join('\n') + '\n' });
+      for (const line of (out || '').split('\n')) {
+        const m = /^(.*): (?:linguist-vendored|linguist-generated): (.*)$/.exec(line);
+        if (m && m[2] === 'set') vendoredCache.add(m[1]);
+      }
+    }
+    return vendoredCache;
+  };
+
   return {
     root,
     mode,
@@ -81,6 +103,7 @@ export function buildContext({ root, mode = 'changed', baseOverride = null }) {
     commits,
     branch,
     config: loadConfig(root),
+    vendored,
 
     exists: (path) => existsSync(join(root, path)),
     read(path) {

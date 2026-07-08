@@ -24,6 +24,7 @@ const rule = {
   // .claudinite-checks.json (reason required), not by only ever looking at the diff.
   run(ctx) {
     const out = [];
+    const vendored = ctx.vendored();
     for (const file of ctx.files) {
       // Markers are only live in code — a doc *discussing* them isn't suppressing anything.
       if (file.endsWith('.md')) continue;
@@ -32,6 +33,11 @@ const rule = {
       // sweep these skips are load-bearing (in consuming repos the mounted corpus
       // is gitignored/submodule and never in ctx.files, so they only fire here).
       if (/^packs\//.test(file) || /(^|\/)checks\/test\//.test(file)) continue;
+      // Vendored/generated files (linguist-vendored / linguist-generated in
+      // .gitattributes) are third-party or machine-written — a marker inside a
+      // recorded fixture or a generated file is not the project's suppression
+      // decision, so it must not fire this check.
+      if (vendored.has(file)) continue;
       const text = ctx.read(file);
       if (text === null) continue;
       text.split('\n').forEach((lineText, i) => {
