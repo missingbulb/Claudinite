@@ -5,16 +5,16 @@ This folder holds the **growth lifecycle**: how a lesson is learned in a consumi
 The lifecycle is **three phases with a barrier between each**, sequenced daily by the fleet orchestrator ([../routines/auto-all-repos-maintenance.md](../routines/auto-all-repos-maintenance.md)):
 
 ```
-Phase 1  EXTRACT   per project, in parallel   → PR against each project's main
-   ⟨barrier: every project has opened its extract PR⟩
+Phase 1  EXTRACT   per project, in parallel   → commits directly to each project's main
+   ⟨barrier: every project's extract run has finished⟩
 Phase 2  PROMOTE   central, once              → PR against Claudinite main
    ⟨barrier: promotion's PR is opened⟩
 Phase 3  DEDUP     per project, in parallel   → PR against each project's main
 ```
 
-Every phase opens a **PR for the owner to approve** — none commits to `main` unattended. Because of that, a phase reads only what's **already merged** on `main`, not the still-open PR the previous phase just opened this cycle: a lesson flows extract → promote → dedup across **approval cycles**, not within one night. The daily order and barriers are kept so each phase still runs on the freshest *merged* state, but the propagation now spans however long the owner's approvals take.
+**Phase 1 commits straight to `main`; phases 2 and 3 open a PR for the owner to approve** (see [the design choice below](#two-design-choices-baked-in-here)). Every phase still reads only what's **already merged** on `main`. Because extract now lands on `main` immediately, promote reads that same night's extractions when it runs after the barrier — so extract → promote propagates **within one night**. Promote, though, still opens a PR, so its canon changes aren't merged until the owner approves; dedup therefore reads the *previously* merged canon, and promote → dedup still spans an **approval cycle**. The daily order and barriers are kept so each phase runs on the freshest *merged* state.
 
-- **[extract.md](extract.md)** — phase 1, per project. Captures the last 24h of bugs/PRs/commits into the project's **own** docs, at the project's own level (generalizing is phase 2's job). Opens a PR against the project's `main`; logs to a per-project tracking issue.
+- **[extract.md](extract.md)** — phase 1, per project. Captures the last 24h of bugs/PRs/commits into the project's **own** docs, at the project's own level (generalizing is phase 2's job). **Commits directly to the project's `main`** (no per-run PR — it writes only local docs); logs to a per-project tracking issue.
 - **[promote.md](promote.md)** — phase 2, central. Reads every project's local docs, **generalizes** the portable lessons, routes each to the right canon home, and opens a PR against Claudinite's `main`. This is the sole judgment gate before shared canon.
 - **[dedup.md](dedup.md)** — phase 3, per project. Prunes local items the canon covers, **keeping** items the canon states too generally for that project. Opens a PR against the project's `main`.
 - **[item-routing.md](item-routing.md)** — the shared worthiness + routing method phase 2 (and any other caller) defers to, so every decision about admitting and placing an item is made the same way.
@@ -29,7 +29,7 @@ The three phases only differ in *how they read that set*, never in *which set it
 
 ## Two design choices baked in here
 
-- **Unattended → PR for approval.** Every phase above opens a PR for the owner to approve rather than committing to `main` — these are unattended daily routines run on a capable model, and the owner wants a human approval gate on every growth change. (The owner's *on-demand, in-session* "learned lessons" command delivers a PR the same way — see [extracting-lessons.md](extracting-lessons.md) and the owner preferences.)
+- **Review gates by blast radius, not uniformly.** **Promote** (phase 2) opens a PR — it's the sole judgment gate before the **shared canon** every repo reads, so it always needs a human eye. **Dedup** (phase 3) opens a PR too — a wrongful prune deletes a real local lesson. **Extract** (phase 1) and the nightly **re-bootstrap**, by contrast, commit **directly to `main`**: extract writes only a project's *own* local docs, re-bootstrap only refreshes mechanical wiring, and the owner has opted out of a per-run PR on both to keep the fleet's daily maintenance from flooding review requests. (The owner's *on-demand, in-session* "learned lessons" command still delivers a PR — see [extracting-lessons.md](extracting-lessons.md) and the owner preferences.)
 - **Central promotion, no plumbing.** Phase 2 runs from the Claudinite home repo with a fleet-wide token, so it reads every project and opens its canon PR directly in this repo. That's why the old handoff machinery (a consumer-side Action, a Claudinite-scoped PAT, a labelled-issue up-path) no longer exists: there's no repo boundary left to tunnel across.
 
 These specs are Claudinite-internal orchestration inputs. [extracting-lessons.md](extracting-lessons.md) is the content of the `lessons-learned` skill, surfaced on demand rather than force-loaded. Of the rest, consuming repos vendor the per-project phases ([extract.md](extract.md), [dedup.md](dedup.md)) the same way they vendor the other routines; [promote.md](promote.md), [item-routing.md](item-routing.md), and the prose-to-checks sweep run only centrally.

@@ -1,8 +1,8 @@
 # Growth phase 1 — extract lessons (per project)
 
-Phase 1 of the [growth lifecycle](README.md): review a project's recent activity and fold any durable, reusable lesson into the project's own docs — at the project's own level, without straining to generalize it. It opens a PR against the project's default branch for the owner to approve; finding nothing to add on a given run is a perfectly good outcome.
+Phase 1 of the [growth lifecycle](README.md): review a project's recent activity and fold any durable, reusable lesson into the project's own docs — at the project's own level, without straining to generalize it. It **commits directly to the project's default branch** (no per-run PR); finding nothing to add on a given run is a perfectly good outcome.
 
-> This is the **unattended daily** routine. Like the owner's on-demand, in-session "learned lessons" command, it delivers its edits as a PR for review — an unattended routine never commits straight to `main`.
+> This is the **unattended daily** routine. **Unlike** the owner's on-demand, in-session "learned lessons" command (which delivers a PR for review), this phase commits straight to `main`: it writes only the project's *own* local docs, and the owner has opted out of a per-run review gate here to keep the fleet's daily lesson-capture from piling up PRs. The shared canon stays gated — lifting anything up into it is [promote](promote.md)'s job, and promote *does* open a PR.
 
 ## Capture at the project's own level
 
@@ -21,11 +21,11 @@ Write each lesson at whatever level reads naturally for this project — refer t
 3. **Extract only durable, reusable lessons** — gotchas, engineering practices, test discipline, architecture rules, project mechanics — and **dedupe** each against what the project already documents. When in doubt, leave it out.
 4. **Put each lesson where it will be read.** A lesson can land in the local doc that owns its kind, or — for a gotcha tied to one call site — as a comment right at that site. Which fits is a placement call [extracting-lessons.md](extracting-lessons.md) owns (usage-site comment vs. central doc); follow it rather than defaulting everything to a doc. Keep each addition terse and in the project's own voice.
 
-If an edit touches something a test reads (a doc constant, a code path), run the project's offline test suite and keep it green before pushing.
+If an edit touches something a test reads (a doc constant, a code path), run the project's offline test suite and keep it green before committing.
 
-## Output: open a PR for review
+## Output: commit to `main`
 
-If it found at least one genuinely new lesson, it **commits the edits on a per-run-unique branch** (see [the git-github-advanced skill](../skills/git-github-advanced/SKILL.md)) **and opens a single PR against `main`** for the owner to approve — one PR for the whole run, not one per lesson — never a direct push to `main`. This is an unattended routine, on a capable model, writing the project's *own* docs (not the shared canon); the owner wants a human approval gate on every growth change. Keep the commit and PR terse and reference the tracking issue. A run that finds nothing and opens no PR is fine — and common.
+If it found at least one genuinely new lesson, it **commits the edits directly to `main`** — one commit for the whole run, not one per lesson. This writes only the project's *own* local docs (not the shared canon), and the owner has opted for a direct commit here rather than a per-run PR, to keep the fleet's daily lesson-capture from flooding review requests. Keep the commit terse and reference the tracking issue. A run that finds nothing and commits nothing is fine — and common.
 
 ## Tracking: log each run under the routine's own issue
 
@@ -33,9 +33,9 @@ When a run adds a lesson, log it on this routine's standing tracking issue — f
 
 ## Run on a capable model
 
-Deciding whether a lesson is genuinely new and durable — and deduping it against what's already documented — is a **judgment call**, not mechanical extraction. A downgraded model adds noise or restates what's there; the review PR is a backstop, but a weak model just floods the owner with low-value PRs to review. Run this routine on a capable model.
+Deciding whether a lesson is genuinely new and durable — and deduping it against what's already documented — is a **judgment call**, not mechanical extraction. A downgraded model adds noise or restates what's there, and there's **no per-run PR gate here to catch it** — the commit lands straight in the project's docs — so the capable-model requirement matters all the more. Run this routine on a capable model.
 
 ## What this routine must never do
 
 - **Never touch the shared canon** — this phase writes only the project's *own* docs; lifting a lesson up into the canon is [promote](promote.md)'s job.
-- **Don't add noise** — a duplicate or hallucinated "lesson" is worse than adding nothing, the more so when it becomes a PR the owner must review.
+- **Don't add noise** — a duplicate or hallucinated "lesson" is worse than adding nothing, the more so when it lands directly in the project's docs with no review gate.
