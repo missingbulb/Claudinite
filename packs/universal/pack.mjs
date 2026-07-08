@@ -8,7 +8,6 @@ import squashMergeHistory from './squash-merge-history.mjs';
 import claudeMdLength from './claude-md-length.mjs';
 import generatedMergeDriver from './generated-merge-driver.mjs';
 import sharedConstants from './shared-constants.mjs';
-import routineStructure from './routine-structure.mjs';
 
 // The always-on pack: its prose is the baseline every session loads, its checks
 // run for every project. Never declared (always active), never fingerprinted.
@@ -29,6 +28,5 @@ export default {
     claudeMdLength,
     generatedMergeDriver,
     sharedConstants,
-    routineStructure,
   ],
 };

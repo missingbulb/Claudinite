@@ -11,6 +11,7 @@ import { join } from 'node:path';
 import { buildContext } from './lib/context.mjs';
 import { applyConfig, render } from './lib/findings.mjs';
 import { loadPacks, isActive } from '../packs/registry.mjs';
+import { loadSkillRules } from '../skills/registry.mjs';
 
 const args = process.argv.slice(2);
 const has = (flag) => args.includes(flag);
@@ -18,9 +19,12 @@ const value = (flag) => (args.includes(flag) ? args[args.indexOf(flag) + 1] : nu
 const root = value('--root') || process.cwd();
 
 const packs = await loadPacks();
+// Skills own the test-the-world checks that validate their action (co-located
+// with the SKILL.md), discovered alongside the packs and always run.
+const skillRules = await loadSkillRules();
 
 if (has('--list')) {
-  const rules = packs.flatMap((p) => p.rules);
+  const rules = [...packs.flatMap((p) => p.rules), ...skillRules];
   for (const r of rules.sort((a, b) => a.id.localeCompare(b.id))) {
     console.log(`${r.id}\t${r.severity}\t${r.description}\t${r.doc}`);
   }
@@ -58,6 +62,10 @@ for (const pack of packs) {
     if (ctx.config.rules[rule.id] === 'off') continue;
     findings.push(...rule.run(ctx));
   }
+}
+for (const rule of skillRules) {
+  if (ctx.config.rules[rule.id] === 'off') continue;
+  findings.push(...rule.run(ctx));
 }
 findings = applyConfig(findings, ctx.config);
 findings.sort((a, b) => (a.severity === b.severity ? 0 : a.severity === 'blocking' ? -1 : 1));

@@ -6,6 +6,11 @@
       "rule": "file-placement",
       "path": "packs/",
       "reason": "pack check modules deliberately share the checks/ engine lib — a named cross-cutting concern per skills/file-placement/SKILL.md; packs are organized by pack, not by dependency"
+    },
+    {
+      "rule": "file-placement",
+      "path": "skills/unattended-agents/routine-structure.mjs",
+      "reason": "a skill's test-the-world check module deliberately shares the checks/ engine lib (findings.mjs) — the same cross-cutting concern as the packs/ acceptance; the check is co-located with the skill whose action it validates, not organized by dependency"
     }
   ]
 }

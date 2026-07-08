@@ -81,7 +81,20 @@ checks/                       # the ENGINE only (runs the packs' checks)
   pretooluse-guard.mjs        #   blocks forbidden actions before they run
   test/                       #   fixtures (scratch git repos), red-first
 skills/                       # activity-scoped procedures, surfaced on demand
+  registry.mjs                #   structural discovery — any skills/<name>/checks.mjs owns checks
+  <name>/checks.mjs           #   the test-the-world checks that validate this skill's action
 ```
+
+**Skill-owned checks.** A skill defines the performance of an *action*; the test-the-world
+check that validates that action's result belongs **beside the SKILL.md that defines it**, not
+in a pack that owns none of the context. So a skill may carry its own checks — the
+`routine-structure` check lives in `skills/unattended-agents/`, next to the routine-authoring
+prose it enforces, with its test co-located too. Discovery mirrors the packs: any
+`skills/<name>/checks.mjs` (default export = an array of rules) is picked up structurally by
+`skills/registry.mjs` and run by the same engine. Skill checks are **never declared and always
+run** (like the universal pack) — a skill isn't a technology a project opts into, and these are
+standing invariants, each inert until its artifact exists. Reserve them for the world-state a
+skill's action leaves behind; a rule with no skill to anchor it stays a universal check.
 
 **Runner contract.** `node .claudinite/checks/run.js`. Dependency-free Node — no `npm install`
 step exists on the tarball mount, and the corpus's own "earn each dependency" rule applies to
