@@ -183,3 +183,25 @@ done
 ```
 
 Commit the symlinks. Re-run the loop on re-bootstrap to pick up newly added skills; without the symlinks the skills still work as soft pointers from the index, just without harness-managed triggering.
+
+## Part 8 — environment requirements (only if an active pack declares one)
+
+Some packs declare a toolchain a cloud session needs but the Claude Code Web base image doesn't ship — e.g. `flutter` needs the Flutter SDK (see [packs/README.md](packs/README.md#environment-requirements-env)). The install belongs in the environment **image** (built once, snapshotted, reused), not a per-session hook. Skip this Part entirely if no active pack has an `env` field — `node .claudinite/packs/env.mjs setup` prints an empty setup and the check stays silent.
+
+**1.** Register the SessionStart assertion in `.claude/settings.json` — it probes each active pack's requirement and alerts (via the halt-gate context) if the environment is missing or stale. It runs after `.claudinite/` is populated, so add it alongside the other context hooks (Method B: after `sync-claudinite.sh`):
+
+```json
+{ "hooks": { "SessionStart": [ { "hooks": [
+  { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/packs/env.mjs check" }
+] } ] } }
+```
+
+**2.** Generate the setup script — a machine-owned artifact aggregating every active pack's `setup`:
+
+```sh
+node .claudinite/packs/env.mjs setup > .claude/environment-setup.sh
+```
+
+Commit it. Regenerate (and re-run this line) whenever a pack's `env` changes; the SessionStart check catches an environment still on the old version.
+
+**3.** Apply it to the environment: copy the **full contents** of `.claude/environment-setup.sh` into the web environment's **Setup script** field (web UI → environment selector → edit environment → Setup script), then start a fresh session so Anthropic snapshots the filesystem with the toolchain installed. The network policy must reach whatever the setup fragments fetch (for `flutter`: `github.com`, `storage.googleapis.com`, `pub.dev`).

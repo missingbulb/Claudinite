@@ -19,6 +19,26 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 
 Activity-scoped practice prose lives in [../skills/](../skills/README.md), not in a pack.
 
+## Environment requirements (`env`)
+
+A pack may declare a toolchain a cloud session needs but the Claude Code Web base image doesn't ship — e.g. the `flutter` pack needs the Flutter SDK. The install belongs in the environment **image** (built once, snapshotted, reused), never a per-session hook that reinstalls every start. A pack declares it in an optional `env` field on its `pack.mjs`:
+
+```js
+env: {
+  label: 'Flutter SDK',                         // human name for messages
+  version: 1,                                   // bump on any change to `setup`
+  setup: '<bash>',                              // idempotent install fragment for the image
+  probe: 'command -v flutter >/dev/null 2>&1',  // exit 0 iff present in the running env
+}
+```
+
+[`env.mjs`](env.mjs) drives both directions from the repo's **active** packs (same activation as prose/checks):
+
+- `node .claudinite/packs/env.mjs setup` aggregates every active pack's `setup` into a single **generated** `environment-setup.sh` (with a combined version flag) — the script the project pastes into its web environment's Setup-script field.
+- `node .claudinite/packs/env.mjs check` is a SessionStart hook (web only) that **asserts** — it runs each active pack's `probe` and compares the recorded version flag, emitting the halt-gate context to alert the user when a requirement is missing or the setup script is stale. It never installs.
+
+Wiring a consumer up is [bootstrap.md](../bootstrap.md) Part 8. A pack with no `env` field adds nothing.
+
 ## Corpus tally — checks vs prose
 
 | | Count |
