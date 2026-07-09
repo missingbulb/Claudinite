@@ -19,6 +19,34 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 
 Activity-scoped practice prose lives in [../skills/](../skills/README.md), not in a pack.
 
+## Environment requirements (`env`)
+
+A pack may declare a toolchain (or per-repo deps) a cloud session needs but the Claude Code Web base image doesn't ship — the `flutter` pack needs the Flutter SDK; the `node` pack needs the repo's `npm` modules. Install belongs in the environment **image** (built once, snapshotted, reused), never a per-session hook. A pack declares it in an optional `env` field on its `pack.mjs`:
+
+```js
+env: {
+  label: 'Flutter SDK',                         // human name for the check's messages
+  setup: '<bash>',                              // idempotent install fragment for the image
+  probe: 'command -v flutter >/dev/null 2>&1',  // exit 0 iff present in the running env
+}
+```
+
+`setup` and `probe` may be a **string**, or a **function of the project's per-pack params** — a project supplies parameters about its own usage in `.claudinite-checks.json` under `packConfig`, so one pack fragment fits every repo. The `node` pack uses this for where `npm ci` runs:
+
+```js
+// packs/node/pack.mjs
+setup: (p) => (p.dirs?.length ? p.dirs : ['.']).map((d) => `( cd "${d}" && npm ci ) || true`).join('\n'),
+// a repo's .claudinite-checks.json: { "packConfig": { "node": { "dirs": ["firebase/functions"] } } }
+```
+
+[`env.mjs`](env.mjs) drives everything from the repo's **active** packs (same activation as prose/checks):
+
+- `node .claudinite/packs/env.mjs install` runs every active pack's `setup` in the checkout. The corpus's one generic [`environment-setup.sh`](../environment-setup.sh) (synced into every consumer's `.claudinite/`) calls this after syncing the corpus.
+- `node .claudinite/packs/env.mjs check` is a SessionStart hook (web only) that **asserts** — it runs each `probe` directly against the running environment and injects the halt-gate context if a requirement is missing. No version flag: the probes are the source of truth, and a genuinely new requirement fails its probe and prompts a re-run. Never installs.
+- `node .claudinite/packs/env.mjs plan` prints what `install` would run (review / debug).
+
+Wiring a consumer up — the check hook + `packConfig`, with the script pasted from the corpus copy — is [bootstrap.md](../bootstrap.md) Part 8. A pack with no `env` field adds nothing; universal git hygiene lives in the generic script, not a pack.
+
 ## Corpus tally — checks vs prose
 
 | | Count |
