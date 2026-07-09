@@ -23,6 +23,13 @@ diff against the merge-base with `origin/main` (falling back to `origin/master`,
 aren't yours. `squash-merge-history` is one of these delta rules: it scopes to the merge
 commits the current change introduces since that merge-base, not the repo's whole history.
 
+**Vendored/generated files are out of the sweep.** Files git marks `linguist-vendored` or
+`linguist-generated` in `.gitattributes` — recorded third-party fixtures, machine-written
+output — are not the project's own code, so the engine drops them from the default file set and
+**every** check skips them (no per-rule `accept` needed). Mark a subtree vendored/generated
+rather than accepting each finding it triggers. The one exception is `generated-merge-driver`,
+which reasons *about* generated files and so still inspects them.
+
 ## Configuration — `.claudinite-checks.json` (repo root)
 
 ```json

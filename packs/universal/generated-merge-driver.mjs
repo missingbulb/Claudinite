@@ -17,7 +17,10 @@ const rule = {
   why: 'without merge=ours a conflicting merge on a generated file gets hand-resolved and desyncs from its source',
 
   run(ctx) {
-    const generated = ctx.files.filter((f) => f.split('/').pop().includes('GENERATED'));
+    // allFiles, not files: this is the one check that reasons *about* generated files,
+    // so it must see them even when a repo also marks them linguist-generated (which
+    // the engine otherwise drops from ctx.files).
+    const generated = ctx.allFiles.filter((f) => f.split('/').pop().includes('GENERATED'));
     if (!generated.length) return [];
     const patterns = (ctx.read('.gitattributes') || '')
       .split('\n')

@@ -24,6 +24,27 @@ function lines(out) {
   return (out || '').split('\n').filter(Boolean);
 }
 
+// Files git marks vendored or generated (linguist-vendored / linguist-generated in
+// .gitattributes) — third-party or machine-written content, not the project's own
+// code. `buildContext` drops these from the default `ctx.files`, so every check that
+// reasons about "the project's code" skips them for free: a suppression marker inside
+// a recorded fixture, a placement "violation" in a generated artifact, and a dangling
+// link in a vendored doc are none of them the project's decision. `git check-attr`
+// honors .gitattributes patterns/precedence natively (paths on stdin so a large repo
+// can't overflow the arg list). The unfiltered set stays on `ctx.allFiles` for the one
+// check that reasons *about* generated files (generated-merge-driver).
+function vendoredSet(root, files) {
+  const set = new Set();
+  if (!files.length) return set;
+  const out = sh(root, 'git', ['check-attr', '--stdin', 'linguist-vendored', 'linguist-generated'],
+    { allowFail: true, input: files.join('\n') + '\n' });
+  for (const line of (out || '').split('\n')) {
+    const m = /^(.*): (?:linguist-vendored|linguist-generated): (.*)$/.exec(line);
+    if (m && m[2] === 'set') set.add(m[1]);
+  }
+  return set;
+}
+
 export function loadConfig(root) {
   const path = join(root, '.claudinite-checks.json');
   if (!existsSync(path)) return { packs: [], rules: {}, accept: [], sharedConstants: [], error: null };
@@ -51,14 +72,19 @@ export function buildContext({ root, mode = 'changed', baseOverride = null }) {
   const tracked = lines(gitTry(root, 'ls-files'));
   const untracked = lines(gitTry(root, 'ls-files', '--others', '--exclude-standard'));
 
-  let files;
+  let scanned;
   if (mode === 'all') {
-    files = [...tracked, ...untracked];
+    scanned = [...tracked, ...untracked];
   } else {
     const vsBase = lines(gitTry(root, 'diff', '--name-only', '--diff-filter=d', diffBase));
-    files = [...new Set([...vsBase, ...untracked])];
+    scanned = [...new Set([...vsBase, ...untracked])];
   }
-  files = files.filter((f) => existsSync(join(root, f)) && statSync(join(root, f)).isFile());
+  // Every in-scope regular file, vendored/generated included.
+  const allFiles = scanned.filter((f) => existsSync(join(root, f)) && statSync(join(root, f)).isFile());
+  // The default sweep excludes vendored/generated files, so `ctx.files` is the
+  // project's OWN authored code and every check skips them for free (see vendoredSet).
+  const vendored = vendoredSet(root, allFiles);
+  const files = allFiles.filter((f) => !vendored.has(f));
 
   const deleted = mergeBase ? lines(gitTry(root, 'diff', '--name-only', '--diff-filter=D', mergeBase)) : [];
 
@@ -70,40 +96,18 @@ export function buildContext({ root, mode = 'changed', baseOverride = null }) {
 
   const branch = (gitTry(root, 'rev-parse', '--abbrev-ref', 'HEAD') || '').trim();
 
-  // Files git marks vendored or generated (linguist-vendored / linguist-generated
-  // in .gitattributes) — third-party or machine-written content, not the project's
-  // own code. A check reasoning about "the project's code" (e.g. warning-suppression)
-  // skips these: a marker inside a recorded fixture or a generated file isn't a
-  // suppression decision the project made. Computed once, lazily, via `git
-  // check-attr` so .gitattributes patterns/precedence are honored natively (paths
-  // fed on stdin so a large repo can't overflow the arg list).
-  let vendoredCache = null;
-  const vendored = () => {
-    if (vendoredCache) return vendoredCache;
-    vendoredCache = new Set();
-    if (files.length) {
-      const out = sh(root, 'git', ['check-attr', '--stdin', 'linguist-vendored', 'linguist-generated'],
-        { allowFail: true, input: files.join('\n') + '\n' });
-      for (const line of (out || '').split('\n')) {
-        const m = /^(.*): (?:linguist-vendored|linguist-generated): (.*)$/.exec(line);
-        if (m && m[2] === 'set') vendoredCache.add(m[1]);
-      }
-    }
-    return vendoredCache;
-  };
-
   return {
     root,
     mode,
     baseRef,
     mergeBase,
     files,
+    allFiles,
     tracked,
     deleted,
     commits,
     branch,
     config: loadConfig(root),
-    vendored,
 
     exists: (path) => existsSync(join(root, path)),
     read(path) {
