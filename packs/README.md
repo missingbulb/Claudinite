@@ -26,7 +26,6 @@ A pack may declare a toolchain (or per-repo deps) a cloud session needs but the 
 ```js
 env: {
   label: 'Flutter SDK',                         // human name for the check's messages
-  version: 1,                                   // bump on any change to `setup`
   setup: '<bash>',                              // idempotent install fragment for the image
   probe: 'command -v flutter >/dev/null 2>&1',  // exit 0 iff present in the running env
 }
@@ -42,11 +41,11 @@ setup: (p) => (p.dirs?.length ? p.dirs : ['.']).map((d) => `( cd "${d}" && npm c
 
 [`env.mjs`](env.mjs) drives everything from the repo's **active** packs (same activation as prose/checks):
 
-- `node .claudinite/packs/env.mjs install` runs every active pack's `setup` in the checkout and stamps the aggregate version flag (outside the checkout, in the cached filesystem). The project's one generic `environment-setup.sh` calls this after syncing the corpus.
-- `node .claudinite/packs/env.mjs check` is a SessionStart hook (web only) that **asserts** — runs each `probe` and compares the version flag, injecting the halt-gate context when a requirement is missing or stale. Never installs.
+- `node .claudinite/packs/env.mjs install` runs every active pack's `setup` in the checkout. The corpus's one generic [`environment-setup.sh`](../environment-setup.sh) (synced into every consumer's `.claudinite/`) calls this after syncing the corpus.
+- `node .claudinite/packs/env.mjs check` is a SessionStart hook (web only) that **asserts** — it runs each `probe` directly against the running environment and injects the halt-gate context if a requirement is missing. No version flag: the probes are the source of truth, and a genuinely new requirement fails its probe and prompts a re-run. Never installs.
 - `node .claudinite/packs/env.mjs plan` prints what `install` would run (review / debug).
 
-Wiring a consumer up — the one generic script + the check hook + `packConfig` — is [bootstrap.md](../bootstrap.md) Part 8. A pack with no `env` field adds nothing; universal git hygiene lives in the generic script, not a pack.
+Wiring a consumer up — the check hook + `packConfig`, with the script pasted from the corpus copy — is [bootstrap.md](../bootstrap.md) Part 8. A pack with no `env` field adds nothing; universal git hygiene lives in the generic script, not a pack.
 
 ## Corpus tally — checks vs prose
 

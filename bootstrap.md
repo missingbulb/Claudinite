@@ -188,42 +188,11 @@ Commit the symlinks. Re-run the loop on re-bootstrap to pick up newly added skil
 
 The web base image is minimal — it ships no Flutter SDK, a repo's `npm` modules aren't cloned, etc. Install belongs in the environment **image** (built once, then Anthropic snapshots the filesystem and reuses it), NOT a per-session hook that would reinstall every start. The division of labour:
 
-- **The project holds ONE generic script** (`.claude/environment-setup.sh`, identical across projects — the block below). You paste it into the environment's Setup-script field.
-- **The packs hold the requirements.** A pack declares what it needs (and its version) in an `env` field ([packs/README.md](packs/README.md#environment-requirements-env)); the generic script asks `packs/env.mjs install` to run whatever THIS repo's *active* packs declare. Per-toolchain logic and versions live in Claudinite, not the project.
-- **A SessionStart hook only asserts.** `env.mjs check` probes each requirement + the stamped version and, if the environment is missing or stale, injects the halt-gate directive telling the assistant to have you re-paste. It never installs.
+- **The corpus holds the one generic script** — [`environment-setup.sh`](environment-setup.sh), synced into every consumer's `.claudinite/`. It's identical for every project, so a project commits **no** copy of its own; it just wires the check hook (below) and pastes the corpus script into its environment.
+- **The packs hold the requirements.** A pack declares what it needs in an `env` field ([packs/README.md](packs/README.md#environment-requirements-env)); the generic script asks `packs/env.mjs install` to run whatever THIS repo's *active* packs declare. Per-toolchain logic lives in Claudinite, not the project.
+- **A SessionStart hook only asserts.** `env.mjs check` *probes* each requirement directly (Flutter on PATH, `node_modules` present) and, if one is missing, injects the halt-gate directive telling the assistant to have you re-paste. It never installs, and there is no version flag — the probes are the source of truth.
 
-**1.** Commit `.claude/environment-setup.sh` with exactly this generic body (Claudinite owns it — overwrite a stale copy on re-bootstrap):
-
-```bash
-#!/usr/bin/env bash
-# GENERIC Claudinite cloud environment setup — identical across projects.
-# Paste the FULL body into the Claude Code Web environment's "Setup script"
-# field (environment settings). Runs once when the environment is created; the
-# filesystem is snapshotted and reused, so installs aren't repaid per session.
-# Per-toolchain install logic + versions live in Claudinite packs (packs/env.mjs,
-# driven by this repo's .claudinite-checks.json), NOT here.
-set -euo pipefail
-
-# The Setup script runs as root starting in the checkout's PARENT dir. cd into
-# the checkout — the one dir under here that mounts Claudinite.
-root="$(dirname "$(find "$PWD" -maxdepth 2 -name .claudinite-checks.json 2>/dev/null | head -n1)")"
-cd "$root"
-
-# 1. Prime the Claudinite corpus so the pack env declarations + env.mjs exist
-#    before the first session (the SessionStart sync keeps it current after).
-bash .claude/hooks/sync-claudinite.sh || true
-
-# 2. Generated-file merge hygiene — universal, cheap, harmless where unused: the
-#    `ours` driver .gitattributes maps GENERATED files to, plus conflict-replay.
-git config merge.ours.driver true
-git config rerere.enabled true
-
-# 3. Install every active pack's declared environment requirement (Flutter SDK,
-#    node deps, …) and stamp the version flag the SessionStart check validates.
-node .claudinite/packs/env.mjs install
-```
-
-**2.** Register the SessionStart assertion in `.claude/settings.json` (after `sync-claudinite.sh` populates `.claudinite/`):
+**1.** Register the SessionStart assertion in `.claude/settings.json` (after `sync-claudinite.sh` populates `.claudinite/`, since it imports `env.mjs`):
 
 ```json
 { "hooks": { "SessionStart": [ { "hooks": [
@@ -231,12 +200,12 @@ node .claudinite/packs/env.mjs install
 ] } ] } }
 ```
 
-**3.** Give the packs any per-repo parameters they need in `.claudinite-checks.json` under `packConfig` — e.g. where the `node` pack should run `npm ci` (default: repo root):
+**2.** Give the packs any per-repo parameters they need in `.claudinite-checks.json` under `packConfig` — e.g. where the `node` pack should run `npm ci` (default: repo root):
 
 ```json
 { "packConfig": { "node": { "dirs": ["firebase/functions"] } } }
 ```
 
-**4.** Apply it: copy the full body of `.claude/environment-setup.sh` into the web environment's **Setup script** field (web UI → environment selector → edit environment → Setup script), then start a fresh session so the snapshot rebuilds. The network policy must reach whatever the active packs' setup fetches (for `flutter`: `github.com`, `storage.googleapis.com`, `pub.dev`; for `node`: the npm registry).
+**3.** Apply the setup to the environment: copy the full body of **`.claudinite/environment-setup.sh`** (present after a corpus sync; or copy it from the Claudinite repo) into the web environment's **Setup script** field (web UI → environment selector → edit environment → Setup script), then start a fresh session so the snapshot rebuilds. The network policy must reach whatever the active packs' setup fetches (for `flutter`: `github.com`, `storage.googleapis.com`, `pub.dev`; for `node`: the npm registry).
 
-Bump a pack's `env.version` whenever its `setup` changes; the aggregate is stamped at install and the SessionStart check flags any environment still on an older aggregate. A repo with no env-declaring active pack still benefits from the generic script (the corpus sync + git hygiene); `env.mjs install` simply installs nothing and the check stays silent.
+When a pack adds or changes a requirement, nothing in the project changes — the generic script is stable. A genuinely new requirement fails its `probe`, so the SessionStart check flags existing environments to re-paste + rebuild; that re-run installs the new requirement and becomes the new truth. A repo with no env-declaring active pack still benefits from the generic script (the corpus sync + git hygiene); `env.mjs install` simply installs nothing and the check stays silent.

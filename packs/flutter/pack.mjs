@@ -21,7 +21,6 @@ export default {
   // how the SessionStart check asserts it — see packs/env.mjs.
   env: {
     label: 'Flutter SDK',
-    version: 1,
     setup: [
       'if [ ! -x /opt/flutter/bin/flutter ]; then',
       '  git clone --depth 1 -b stable https://github.com/flutter/flutter.git /opt/flutter',

@@ -1,30 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolve } from 'node:path';
 import { makeRepo, cleanup } from './helpers.mjs';
-import { activeEnvs, aggregateVersion, evaluate, flagPath } from '../../packs/env.mjs';
+import { activeEnvs, evaluate } from '../../packs/env.mjs';
 
-const env = (over = {}) => ({ id: 'x', label: 'X', version: 1, setup: 'sx', probe: 'true', ...over });
+const env = (over = {}) => ({ id: 'x', label: 'X', setup: 'sx', probe: 'true', ...over });
 
-test('aggregateVersion is stable and shifts on version/pack change', () => {
-  const a = [env()];
-  assert.equal(aggregateVersion(a), aggregateVersion([env()]));
-  assert.notEqual(aggregateVersion(a), aggregateVersion([env({ version: 2 })]));
-  assert.notEqual(aggregateVersion(a), aggregateVersion([env(), env({ id: 'y' })]));
-});
-
-test('evaluate: clean / missing tool / no flag / stale / nothing to assert', () => {
-  const e = [env({ label: 'Flutter SDK' })];
-  const v = aggregateVersion(e);
-  assert.deepEqual(evaluate(e, { probe: () => true, actualFlag: v }), []);
-  assert.match(evaluate(e, { probe: () => false, actualFlag: v })[0], /Flutter SDK is not installed/);
-  assert.match(evaluate(e, { probe: () => true, actualFlag: null })[0], /has not been applied/);
-  assert.match(evaluate(e, { probe: () => true, actualFlag: 'deadbeef' })[0], /out of date/);
-  assert.deepEqual(evaluate([], { probe: () => false, actualFlag: null }), []);
-});
-
-test('flagPath is the checkout parent, not the checkout', () => {
-  assert.equal(flagPath('/home/user/Repo'), resolve('/home/user/.claudinite-environment-version'));
+test('evaluate: reports each requirement whose probe is false, nothing when all pass', () => {
+  const e = [env({ label: 'Flutter SDK' }), env({ id: 'y', label: 'Node deps' })];
+  assert.deepEqual(evaluate(e, () => true), []);
+  assert.deepEqual(evaluate(e, (x) => x.id !== 'x'), ['Flutter SDK is not installed']);
+  assert.deepEqual(evaluate(e, () => false), ['Flutter SDK is not installed', 'Node deps is not installed']);
+  assert.deepEqual(evaluate([], () => false), []);
 });
 
 test('activeEnvs resolves the flutter (string) env when declared', async () => {

@@ -24,7 +24,6 @@ export default {
   // from the checkout — the `cd "$d"` is relative to it.
   env: {
     label: 'Node dependencies (npm ci)',
-    version: 1,
     setup: (p) =>
       (p.dirs?.length ? p.dirs : ['.'])
         .map((d) => `( cd "${d}" && npm ci ) || true`)
