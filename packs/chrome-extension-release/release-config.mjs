@@ -1,55 +1,75 @@
 import { finding } from '../../checks/lib/findings.mjs';
 
-// `.github/release.config` is OPTIONAL — a single-package repo whose layout
-// matches the defaults omits it entirely. When present, every key must be one
-// the read-release-config action understands; a typo would otherwise be silently
-// ignored (falling back to the default) and ship the wrong thing. This check is
-// the guard that turns a misspelled key into a failed review. Keep KNOWN_KEYS in
-// sync with .github/actions/read-release-config/read-config.mjs.
-const KNOWN_KEYS = new Set([
+// `.github/release.config` is REQUIRED and fully explicit — every extension repo
+// declares its release values, there are no silent defaults (a default that
+// "happens to match" a repo's layout is a drift risk: change the default, or the
+// thing it assumed, and the repo ships the wrong artifact with no signal). This
+// check enforces the file's presence, that exactly the required keys are set,
+// and that no unknown (typo'd) key sneaks in. Keep REQUIRED_KEYS in sync with
+// .github/actions/read-release-config/read-config.mjs. `zip_name` is NOT a key
+// (derived from zip_path's basename) and neither is the build command (always
+// `npm run build`).
+const REQUIRED_KEYS = [
   'manifest_path',
   'package_json_path',
   'setup_command',
   'test_command',
-  'build_command',
-  'zip_name',
-  'zip_path',
   'ship_paths',
-]);
+  'zip_path',
+];
 
 const rule = {
   id: 'cer/release-config',
   severity: 'blocking',
-  description: 'Every key in .github/release.config must be one the read-release-config action understands',
+  description: '.github/release.config exists and sets exactly the required release keys',
   doc: 'packs/chrome-extension-release/RELEASE.md',
-  why: 'an unrecognized key is silently ignored — the run would fall back to the default and ship the wrong thing',
+  why: 'the release config is explicit with no defaults — a missing/typo\'d key would ship the wrong thing with no signal',
 
   run(ctx) {
-    const text = ctx.read('.github/release.config');
-    if (text === null) return []; // optional file
+    const path = '.github/release.config';
+    const text = ctx.read(path);
+    if (text === null) {
+      return [finding(rule, {
+        file: path,
+        what: 'missing — the release config is required and fully explicit (no defaults)',
+        fix: `create it with the required keys: ${REQUIRED_KEYS.join(', ')}`,
+      })];
+    }
 
     const out = [];
+    const seen = new Set();
     text.split('\n').forEach((raw, i) => {
       const line = raw.trim();
       if (!line || line.startsWith('#')) return;
       const eq = line.indexOf('=');
       if (eq === -1) {
         out.push(finding(rule, {
-          file: '.github/release.config', line: i + 1,
+          file: path, line: i + 1,
           what: `line is not KEY=value or a # comment: "${line}"`,
           fix: 'use dotenv syntax — KEY=value, one per line',
         }));
         return;
       }
       const key = line.slice(0, eq).trim();
-      if (!KNOWN_KEYS.has(key)) {
+      if (!REQUIRED_KEYS.includes(key)) {
         out.push(finding(rule, {
-          file: '.github/release.config', line: i + 1,
+          file: path, line: i + 1,
           what: `unknown key "${key}"`,
-          fix: `use one of: ${[...KNOWN_KEYS].join(', ')}`,
+          fix: `valid keys: ${REQUIRED_KEYS.join(', ')}`,
         }));
       }
+      seen.add(key);
     });
+
+    for (const key of REQUIRED_KEYS) {
+      if (!seen.has(key)) {
+        out.push(finding(rule, {
+          file: path,
+          what: `missing required key "${key}"`,
+          fix: `add "${key}=..." (every key is explicit; "setup_command=" may be empty to mean no install)`,
+        }));
+      }
+    }
     return out;
   },
 };

@@ -4,10 +4,10 @@ name: Release
 # create-package, daily auto-release, and Chrome Web Store publish — lives in the
 # Claudinite canon as reusable workflows (referenced @main, so canon changes
 # apply here automatically). This file owns only the triggers; it passes NO repo
-# values. Everything repo-specific is read from the standard's defaults plus an
-# OPTIONAL `.github/release.config` — a single-package extension whose layout
-# matches the defaults (extension/ + package.json, zip = kebab repo name) needs
-# no config file at all. Copy this stub verbatim; there is nothing to substitute.
+# values. Every repo-specific value is declared explicitly in the REQUIRED
+# `.github/release.config` (six keys, no defaults) — copy this stub verbatim and
+# write that config. The zip asset name is derived from the config's `zip_path`,
+# and the build is always `npm run build`, so neither is a config key.
 #
 # Three operations, one file:
 #   * push to main            → create-package (a clean no-op unless the manifest
@@ -22,13 +22,13 @@ name: Release
 # baked into the canon reusable workflows, so collapsing to one file loses no
 # per-operation triage.
 #
-# secrets: inherit passes the four CHROME_* store secrets (and, for a repo that
-# uses build_env, its repository variables) through to the canon workflows.
+# secrets: inherit passes the four CHROME_* store secrets through to the canon
+# workflows.
 #
-# A repo whose build bakes in release config (e.g. an API base URL) uncomments a
-# build_env block on the create-package and daily jobs — the ONLY place a repo
-# references its repository variables; every key must be non-empty or the run
-# fails, so a mis-configured zip can't ship. Example:
+# A repo whose build bakes in per-environment config (e.g. an API base URL)
+# uncomments a build_env block on the create-package and daily jobs — the ONLY
+# place a repo references its repository variables; every key must be non-empty
+# or the run fails, so a mis-configured zip can't ship. Example:
 #       build_env: |
 #         API_BASE_URL=${{ vars.API_BASE_URL }}
 on:

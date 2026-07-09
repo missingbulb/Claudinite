@@ -8,7 +8,7 @@ import { finding } from '../../checks/lib/findings.mjs';
 // detect fingerprint can recognize a repo that already ships the pipeline.
 // The privacy page has no stub of its own: it redeploys as part of every publish
 // (via the publish workflow's deploy-privacy-page leg).
-export const STUB_FILE = 'release.yml';
+export const STUB_FILE = 'chrome-extension-release.yml';
 export const STUB_NAME = 'Release';
 export const CANON_WORKFLOWS = [
   'chrome-extension-release.yml',

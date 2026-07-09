@@ -8,15 +8,16 @@ repo's [.github/workflows/](../../.github/workflows/), as `workflow_call`-only *
 workflows** (plus the [report-failure](../../.github/actions/report-failure/action.yml),
 [read-release-config](../../.github/actions/read-release-config/action.yml) and
 [bump-extension-patch](../../.github/actions/bump-extension-patch/action.yml) composite actions);
-each extension repo carries only **one thin stub** — [`stubs/release.yml`](stubs/release.yml),
-triggers only — plus, *only if it deviates from the defaults*, an optional
-`.github/release.config`. **Copy the stub verbatim** — there are no tokens to replace. The stub
-references the canon `@main`, so a merged canon change reaches every extension repo's next run
-automatically — changing the standard's logic needs no per-repo PR; only a change to the *stub
-shape itself* still propagates by hand. Everything a repo used to carry as workflow values —
-the zip name (now derived from the repo name), the version files, and the previously per-repo
-`bump` and `filter` scripts — is a canon default or reads from `release.config`, so no repo ships
-a bump or filter script any more. Reference implementation:
+each extension repo carries only **one thin stub** —
+[`stubs/chrome-extension-release.yml`](stubs/chrome-extension-release.yml), triggers only — plus a
+**required** `.github/release.config` (six explicit keys, **no defaults**). **Copy the stub
+verbatim** — there are no tokens to replace — and write the config. The stub references the canon
+`@main`, so a merged canon change reaches every extension repo's next run automatically — changing
+the standard's logic needs no per-repo PR; only a change to the *stub shape itself* still
+propagates by hand. Everything a repo used to carry as workflow values — the version files, the
+zip location, the test gate, the shipping set, and the previously per-repo `bump`/`filter` scripts
+— is either canon logic (the bump/filter, and `npm run build`) or an explicit `release.config` key,
+so no repo ships a bump or filter script any more. Reference implementation:
 `missingbulb/GoogleCalendarEventCreator`; also adopted by `TLDR` and `CrosswordChat`.
 
 Naming in the flat `.github/workflows/` namespace: Chrome-specific logic carries the
@@ -39,9 +40,9 @@ general names so other standards reuse them as-is. When in doubt, prefix.
 
 **Artifact**
 
-- `npm run build` at the repo root produces `dist/<zip>`, where `<zip>` is the **kebab-cased repo
-  name** + `.zip` (e.g. `google-calendar-event-creator.zip`, `tldr.zip`, `crossword-chat.zip`) —
-  stable, never version-stamped, so
+- `npm run build` produces the zip at the config's `zip_path`, whose filename is conventionally the
+  **kebab-cased repo name** + `.zip` (e.g. `google-calendar-event-creator.zip`, `tldr.zip`,
+  `crossword-chat.zip`) — stable, never version-stamped, so
   `https://github.com/<owner>/<repo>/releases/latest/download/<zip>` is a permanent
   newest-build URL. `manifest.json` sits at the zip's top level.
 - The zip's contents come from a single shipping-set source of truth in `dev/build/release/`,
@@ -50,7 +51,7 @@ general names so other standards reuse them as-is. When in doubt, prefix.
 - A release is GitHub Release **`vX.Y.Z`**, tagged at the released commit, with the zip as its
   only asset and auto-generated notes.
 
-**Workflow** — **one** stub file per repo, [`release.yml`](stubs/release.yml), named exactly
+**Workflow** — **one** stub file per repo, [`chrome-extension-release.yml`](stubs/chrome-extension-release.yml), named exactly
 `Release`. It owns only the triggers; its three `if:`-guarded jobs each call a canon reusable
 workflow. The failure reporter keys tracking issues on the **per-operation** names baked into the
 canon workflows (`Release: Create Package`, `Release: Publish to Chrome Web Store`, `Release: Daily
@@ -71,14 +72,16 @@ upload fails (so the `/privacy/` URL goes live before the first publication too 
 platform-agnostic `deploy-privacy-page.yml` reusable workflow lives on in the canon, called from
 there — a repo never dispatches it directly.
 
-- Repo-specific values do **not** travel as `with:` inputs any more — the canon reads them from the
-  repo itself via the `read-release-config` action, so the stub is copy-verbatim. The **zip name**
-  is derived from the repo name (kebab-cased + `.zip`); everything else has a default and is
-  overridden **only where a repo deviates** by an optional `.github/release.config` (dotenv):
-  `manifest_path`, `package_json_path`, `setup_command`, `test_command`, `build_command`,
-  `zip_path`, `ship_paths`. A single-package repo laid out on the defaults (extension in
-  `extension/`, `package.json` at the root, whole-directory shipping set) needs **no config file at
-  all**. Unknown keys are rejected by `cer/release-config` so a typo fails review.
+- Repo-specific values do **not** travel as `with:` inputs — the canon reads them from the repo
+  itself via the `read-release-config` action, so the stub is copy-verbatim. They live in a
+  **required, fully explicit** `.github/release.config` (dotenv) — **six keys, no defaults**, because
+  a default that "happens to match" a repo's layout silently ships the wrong thing when the layout or
+  the default later changes:
+  `manifest_path`, `package_json_path`, `setup_command` (`""` = no install, stated),
+  `test_command`, `ship_paths`, `zip_path`. Two things are **not** keys because they never vary:
+  the **build** is always `npm run build`, and the **zip asset name** is `basename(zip_path)`.
+  `cer/release-config` fails the review on a missing file, a missing required key, or an unknown
+  (typo'd) key.
 - The one value that stays in the **stub** (not the config file) is `build_env` — KEY=VALUE lines a
   repo whose build bakes in release config passes on the `create-package` and `daily` jobs, because
   it must reference `${{ vars.* }}` statically. Every listed key must be non-empty or the run fails,
@@ -93,8 +96,8 @@ there — a repo never dispatches it directly.
   `report-failure.yml`; a repo's own non-standard unattended workflows use the action directly
   (`uses: missingbulb/Claudinite/.github/actions/report-failure@main`).
 - Daily auto-release semantics: the baseline is the **latest release tag**, not a 24-hour window
-  (self-healing after a failed day); "deployable" = a change under one of the repo's `ship_paths`
-  (default: the extension directory); the patch bump is pushed straight to `main` (`[skip ci]`)
+  (self-healing after a failed day); "deployable" = a change under one of the repo's explicit
+  `ship_paths` roots; the patch bump is pushed straight to `main` (`[skip ci]`)
   because the store rejects a version that isn't strictly higher; release + publish are invoked via
   `workflow_call` because a `GITHUB_TOKEN` push triggers no workflows. Days with no shipped-file
   change are a clean no-op.
@@ -153,7 +156,7 @@ Chromium); what's fixed is that every asset is reproducible from the repo.
 module (with its test), and `store_artifacts/` (`PRIVACY.md`, listing screenshots, icon/asset
 generators). The patch-bumper and shipped-paths filter that used to live here are **gone** — they
 are canon logic now. No per-repo release doc: the concrete names and paths live in
-`manifest.json`/`package.json` and the optional `.github/release.config`, and the shared procedure
+`manifest.json`/`package.json` and the required `.github/release.config`, and the shared procedure
 lives once, in this guide — a repo copy would only drift from it.
 
 ## README template
@@ -188,14 +191,14 @@ in the repo's first-publication issue).*
 
 ## Setting up a new extension repo
 
-1. Copy the single stub [`stubs/release.yml`](stubs/release.yml) into `.github/workflows/`
-   **verbatim** — there are no tokens to replace. Then, **only if the repo deviates from the
-   defaults**, add `.github/release.config` (dotenv) with just the keys that differ —
-   `manifest_path`, `package_json_path`, `setup_command`, `test_command`, `build_command`,
-   `zip_path`, `ship_paths`. A single-package repo on the standard layout adds **no** config file.
-   If the build bakes in per-environment config, uncomment the `build_env` block on the
-   `create-package` and `daily` jobs (the only place the stub isn't verbatim) and set the matching
-   repository **variables** (see step 5).
+1. Copy the single stub [`stubs/chrome-extension-release.yml`](stubs/chrome-extension-release.yml)
+   into `.github/workflows/` **verbatim** — there are no tokens to replace. Then write the
+   **required** `.github/release.config` (dotenv) with **all six** keys, explicitly — no defaults:
+   `manifest_path`, `package_json_path`, `setup_command` (`""` = no install), `test_command`,
+   `ship_paths`, `zip_path`. (The build is always `npm run build`, and the zip asset name is
+   `basename(zip_path)`, so neither is a key.) If the build bakes in per-environment config,
+   uncomment the `build_env` block on the `create-package` and `daily` jobs (the only place the stub
+   isn't verbatim) and set the matching repository **variables** (see step 5).
 2. Create `dev/build/release/` — zip builder + shipping-set module (with its test) and
    `store_artifacts/` with `PRIVACY.md` and the icon/asset generators — adapting from the reference
    repo's `dev/build/release/`. **No** per-repo patch-bumper or shipped-paths filter (those are
@@ -203,9 +206,9 @@ in the repo's first-publication issue).*
    against the build by the repo's own ship-set test. No `releasing.md` and no `STORE-LISTING.md`:
    the release procedure lives in this guide, and the listing copy / permission justifications are
    dashboard state (above).
-3. Make `npm test` the full release gate and `npm run build` produce the zip (a monorepo can set a
-   root `build` that delegates, e.g. `npm --prefix client run build`, so no `build_command`
-   override is needed). Add the two README sections above.
+3. Wire `npm run build` to produce the zip at `zip_path` (a monorepo sets a root `build` that
+   delegates, e.g. `npm --prefix client run build`) and set `test_command` to the repo's full
+   release gate. Add the two README sections above.
 4. One-time GitHub setup: Pages → Source = "GitHub Actions". The four `CHROME_*` secrets come
    later, after the first manual publish. (Once per *account*, not per repo: if Claudinite is
    private, its reusable workflows must be callable — Claudinite Settings → Actions → General →
@@ -316,7 +319,7 @@ default because it assumes nothing about the operator's machine.
   shipped files, on its own patch bump.
 - A deliberate release now: **"bump version"** (default minor) → merge the PR (that cuts the
   GitHub Release) → run the **Release** workflow with **mode: publish** from its dispatch page,
-  `https://github.com/<owner>/<repo>/actions/workflows/release.yml` (blank tag = latest release).
+  `https://github.com/<owner>/<repo>/actions/workflows/chrome-extension-release.yml` (blank tag = latest release).
 - Once the store approves, Chrome auto-pushes the update to installed users within hours — no
   reinstall.
 

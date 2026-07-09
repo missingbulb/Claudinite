@@ -25,7 +25,7 @@ const PRIVACY = 'We use storage to save settings locally, and connect to https:/
 
 // The ONE thin stub: named "Release", calling all three canon reusable workflows
 // from its three if:-guarded jobs. Copied verbatim by every repo — no tokens.
-const RELEASE_STUB = [
+const STUB = [
   'name: Release',
   'on:',
   '  push:',
@@ -55,18 +55,28 @@ const RELEASE_STUB = [
   '',
 ].join('\n');
 
+// The required, fully-explicit release config (six keys, no defaults).
+const RELEASE_CONFIG = [
+  'manifest_path=extension/manifest.json',
+  'package_json_path=package.json',
+  'setup_command=npm ci',
+  'test_command=npm test',
+  'ship_paths=extension',
+  'zip_path=dist/x.zip',
+  '',
+].join('\n');
+
 // The full conformant fixture; individual tests break one piece at a time.
 const CONFORMANT = {
   'extension/manifest.json': MANIFEST,
   'package.json': JSON.stringify({ name: 'x', version: '1.2.3' }),
-  '.github/workflows/release.yml': RELEASE_STUB,
+  '.github/workflows/chrome-extension-release.yml': STUB,
+  '.github/release.config': RELEASE_CONFIG,
   'dev/build/release/store_artifacts/PRIVACY.md': PRIVACY,
   'README.md': '# x\n\n## Install\n\nx\n\n## Releasing\n\nx\n',
 };
 
 test('a fully conformant extension repo is clean across the pack', () => {
-  // Committed on main (base): the manifest is already shipped, so the
-  // permission-added delta check sees no additions.
   const root = makeRepo({ base: CONFORMANT });
   try {
     for (const rule of [releaseWorkflows, templateTokens, releaseConfig, versionSync, releaseLayout, privacyPermissionAlignment, permissionAddedStoreIssue, readmeSections]) {
@@ -77,19 +87,18 @@ test('a fully conformant extension repo is clean across the pack', () => {
 
 test('release-workflows: flags a missing stub', () => {
   const files = { ...CONFORMANT };
-  delete files['.github/workflows/release.yml'];
+  delete files['.github/workflows/chrome-extension-release.yml'];
   const root = makeRepo({ changed: files });
   try {
     const findings = run(releaseWorkflows, root);
     assert.equal(findings.length, 1);
-    assert.match(findings[0].what, /release\.yml is missing/);
+    assert.match(findings[0].what, /chrome-extension-release\.yml is missing/);
   } finally { cleanup(root); }
 });
 
 test('release-workflows: flags a wrong name: and a canon workflow it does not call', () => {
   const files = { ...CONFORMANT };
-  // Rename the workflow and drop the publish canon reference.
-  files['.github/workflows/release.yml'] = RELEASE_STUB
+  files['.github/workflows/chrome-extension-release.yml'] = STUB
     .replace('name: Release', 'name: Wrong Name')
     .replace('    uses: missingbulb/Claudinite/.github/workflows/chrome-extension-publish-store.yml@main', '    steps:\n      - run: echo inlined');
   const root = makeRepo({ changed: files });
@@ -103,7 +112,7 @@ test('release-workflows: flags a wrong name: and a canon workflow it does not ca
 
 test('template-tokens: flags a surviving __TOKEN__', () => {
   const files = { ...CONFORMANT };
-  files['.github/workflows/release.yml'] = RELEASE_STUB.replace('name: Release', 'name: Release\nenv:\n  ZIP: __ZIP_NAME__');
+  files['.github/workflows/chrome-extension-release.yml'] = STUB.replace('name: Release', 'name: Release\nenv:\n  ZIP: __ZIP_NAME__');
   const root = makeRepo({ changed: files });
   try {
     const findings = run(templateTokens, root);
@@ -112,28 +121,37 @@ test('template-tokens: flags a surviving __TOKEN__', () => {
   } finally { cleanup(root); }
 });
 
-test('release-config: the file is optional (a repo on the defaults omits it)', () => {
-  const root = makeRepo({ base: CONFORMANT }); // no .github/release.config
+test('release-config: the file is REQUIRED', () => {
+  const files = { ...CONFORMANT };
+  delete files['.github/release.config'];
+  const root = makeRepo({ changed: files });
   try {
-    assert.deepEqual(run(releaseConfig, root), []);
+    const findings = run(releaseConfig, root);
+    assert.equal(findings.length, 1);
+    assert.match(findings[0].what, /missing/);
   } finally { cleanup(root); }
 });
 
-test('release-config: flags an unknown (typo\'d) key and a malformed line', () => {
+test('release-config: flags a missing required key, an unknown key, and a malformed line', () => {
   const files = {
     ...CONFORMANT,
     '.github/release.config': [
-      'manifest_path=client/manifest.json',   // valid
-      'manfiest_path=oops',                    // typo
-      'this is not a config line',             // malformed
+      'manifest_path=extension/manifest.json',
+      'package_json_path=package.json',
+      'setup_command=npm ci',
+      'test_command=npm test',
+      'ship_paths=extension',
+      // zip_path OMITTED -> missing required key
+      'zpi_path=dist/x.zip',        // typo -> unknown key
+      'this is not a config line',  // malformed
     ].join('\n') + '\n',
   };
   const root = makeRepo({ changed: files });
   try {
     const findings = run(releaseConfig, root);
-    assert.equal(findings.length, 2);
-    assert.ok(findings.some((f) => /unknown key "manfiest_path"/.test(f.what)));
+    assert.ok(findings.some((f) => /unknown key "zpi_path"/.test(f.what)));
     assert.ok(findings.some((f) => /not KEY=value/.test(f.what)));
+    assert.ok(findings.some((f) => /missing required key "zip_path"/.test(f.what)));
   } finally { cleanup(root); }
 });
 
@@ -177,7 +195,6 @@ test('privacy-permission-alignment: every manifest permission must be disclosed 
 });
 
 test('permission-added-store-issue: an added permission raises an advisory to open the dashboard issue (test the work)', () => {
-  // Pretty-printed so only the new permission is an added line in the diff.
   const manifest = (perms) => JSON.stringify({
     manifest_version: 3, name: 'x', version: '1.2.3',
     permissions: perms, host_permissions: ['https://e.com/*'],
@@ -196,7 +213,6 @@ test('permission-added-store-issue: an added permission raises an advisory to op
 });
 
 test('permission-added-store-issue: silent when no permission was added', () => {
-  // The manifest already shipped on main; this change adds none.
   const root = makeRepo({ base: CONFORMANT });
   try {
     assert.deepEqual(run(permissionAddedStoreIssue, root), []);

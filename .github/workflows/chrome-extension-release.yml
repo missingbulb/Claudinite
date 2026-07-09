@@ -135,9 +135,12 @@ jobs:
         if: steps.version.outputs.release == 'true'
         run: ${{ steps.cfg.outputs.test_command }}
 
+      # The build is universal across every extension repo (a monorepo wires a
+      # root `build` script that delegates), so it is mandated here, not a config
+      # key.
       - name: Build extension zip
         if: steps.version.outputs.release == 'true'
-        run: ${{ steps.cfg.outputs.build_command }}
+        run: npm run build
 
       # Publish the Release. action-gh-release creates the tag (vX.Y.Z) at the
       # released commit when it doesn't exist — pinned explicitly to the commit
