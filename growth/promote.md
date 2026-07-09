@@ -10,9 +10,11 @@ Every step is a judgment call — portability, duplication, ownership, "does thi
 
 ## What each run does
 
-### 1. Enumerate the fleet and read every project's local docs
+### 1. Enumerate the fleet and read every project's local **`.md` instruction docs**
 
-Enumerate every opted-in repo the token can access (the same discovery the fleet orchestrator uses; see [routines/auto-all-repos-maintenance.md](../routines/auto-all-repos-maintenance.md)). For each, read its **local instruction docs** — the set identified in [growth/README.md](README.md). You're outside the repo here, so read them over the API (get-file-contents, never a checkout — cross-repo clones aren't available in the sandboxed environment). The candidate pool is every distilled rule sitting in those local docs — both lessons [extract](extract.md) added this cycle and any portable local item never promoted before. You don't need to tell new from old: the dedup step below drops anything the canon already carries, so an already-promoted item simply falls out.
+Enumerate every opted-in repo the token can access (the same discovery the fleet orchestrator uses; see [routines/auto-all-repos-maintenance.md](../routines/auto-all-repos-maintenance.md)). For each, read its **local instruction docs** — the set identified in [growth/README.md](README.md). You're outside the repo here, so read them over the API (get-file-contents, never a checkout — cross-repo clones aren't available in the sandboxed environment).
+
+**Only `.md` instruction files are in scope — never source, code comments, or config.** The candidate pool is exactly the rules written *as prose in those `.md` docs* (the ones reachable from the root `CLAUDE.md` graph): lessons [extract](extract.md) added this cycle, plus any portable `.md` item never promoted before. A lesson [extract](extract.md) deliberately placed as a **code comment at its call site** — or anything living in a non-`.md` artifact — is **out of scope and stays put**: its whole value is being *at that call site*, so lifting it into shared prose strips the very context that made it right, and a rule keyed on "this specific symbol/line is special" is a local-by-construction note, not a portable one. If a genuinely portable rule looks trapped in a code comment, that means it was mis-placed at extract time — leave it for a future extract pass to re-home as prose; **never promote from source.** You don't need to tell new from old: the dedup step below drops anything the canon already carries, so an already-promoted item simply falls out.
 
 ### 2. Generalize each candidate — *before* judging whether it belongs
 
@@ -51,6 +53,7 @@ The routine's standing self-improvement log is the issue titled exactly:
 
 ## What this routine must never do
 
+- **Never mine a non-`.md` source** — code comments, source files, and config are out of scope; only rules already written as prose in a project's `.md` instruction docs are candidates. A lesson placed at a code call site stays there — promoting it strips the call-site context that is the whole point of that placement.
 - **Never promote a product-specific or one-off item** — a product requirement, or a single incident in how the project used some API, stays in that project's local docs.
 - **Never weaken, restate, or duplicate an existing rule** — fold a genuine sharpening in per [item-routing.md](item-routing.md) instead.
 - **Never edit anything outside the one owning doc** per accepted lesson — the sole exception is the bounded new-doc path in [item-routing.md](item-routing.md). Never alter the origin project.
