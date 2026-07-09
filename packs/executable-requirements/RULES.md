@@ -71,6 +71,22 @@ states without losing the claim.
 - Saga steps drive the **same real entry point** as every other kind (the shipped app shell/render
   function) — a saga must never become a scripted slideshow of hand-arranged states.
 
+**Animated saga goldens** (recording the motion, not the frames). A per-step frame proves a resting
+state; a saga can instead be **one animated golden** — an APNG per leaf — recording the real UI
+*moving* between steps, so a transition is proven, not just its endpoints. What keeps it
+delay-free and deterministic:
+
+- **Strip dead delay, keep the animation.** Render time is virtual, so a scripted wait is a run of
+  *identical* frames — dedup consecutive identical frames and clamp any single hold, so the golden
+  holds motion, never waiting (a 3 s wait must not become 3 s of golden).
+- **Lossless, so byte-identity still holds.** Encode APNG, not GIF (whose palette and dithering
+  aren't deterministic); the comparison stays exact byte-identity and a mismatch writes a per-frame
+  `expected | actual | diff` to the gitignored failures dir. Capture at a low DPR — lossless costs
+  no fidelity for it. Flutter reads each frame off the `RepaintBoundary` via `toImage` inside
+  `runAsync` (the fake-async test zone won't otherwise complete the byte read).
+- **Mark the gesture.** Paint an expanding ring at each real pointer gesture over the pre-reaction
+  frame so the strip shows *where* the user acted; programmatic world changes draw none.
+
 ## 5. Determinism or it isn't spec
 
 A rendered expected is only owner-ownable if it is byte-stable forever:
