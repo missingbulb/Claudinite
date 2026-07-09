@@ -1,9 +1,12 @@
 name: "Chrome extension: Create Package (reusable)"
 
 # Reusable workflow of the chrome-extension-release standard — the logic behind
-# every extension repo's "Release: Create Package" stub. workflow_call ONLY: it
-# never runs in Claudinite itself; the calling repo's stub owns the triggers
-# (push-on-manifest-change, dispatch) and passes this repo's values as inputs.
+# every extension repo's release "create-package" job. workflow_call ONLY: it
+# never runs in Claudinite itself; the calling repo's single `release.yml` stub
+# owns the triggers and passes NO repo values. All repo-specific values come from
+# the caller's optional `.github/release.config` (read by the read-release-config
+# composite action) plus the standard's defaults — the zip name is derived from
+# the repo name, so a single-package repo needs no config at all.
 #
 # Builds and publishes a GitHub Release of the extension at the version that is
 # currently committed in the extension manifest. It does NOT change the version —
@@ -12,8 +15,9 @@ name: "Chrome extension: Create Package (reusable)"
 # the chrome-extension release standard in Claudinite).
 #
 # If the manifest version already matches the latest published release, the run
-# is a clean no-op — so manifest edits that aren't version bumps don't cut a
-# release.
+# is a clean no-op — so pushes to main that aren't version bumps don't cut a
+# release. (The caller stub triggers this on every push to main and relies on
+# that no-op, so it needs no per-repo manifest path in its trigger.)
 #
 # The `ref` input exists for the daily auto-release
 # (chrome-extension-daily-release.yml), which calls this after pushing its
@@ -30,41 +34,12 @@ on:
         description: "Commit to release (blank = the commit that triggered the run)"
         required: false
         type: string
-      zip_path:
-        description: "Repo-relative path of the built zip (e.g. dist/crossword-chat.zip)"
-        required: true
-        type: string
-      manifest_path:
-        description: "Path of the extension manifest (the version's source of truth)"
-        required: false
-        type: string
-        default: extension/manifest.json
-      package_json_path:
-        description: "Path of the package.json kept in sync with the manifest"
-        required: false
-        type: string
-        default: package.json
-      setup_command:
-        description: "Dependency-install command; empty string skips install (and npm caching)"
-        required: false
-        type: string
-        default: npm ci
-      test_command:
-        description: "The repo's complete local test gate (multiline = one command per line, fail-fast)"
-        required: false
-        type: string
-        default: npm test
-      build_command:
-        description: "Command that produces the zip at zip_path"
-        required: false
-        type: string
-        default: npm run build
       build_env:
         description: >-
-          Optional KEY=VALUE lines exported to the test/build steps. Every
-          listed key must have a non-empty value or the run fails — so a repo
-          that injects release config (from repository variables) can't ship a
-          mis-configured zip.
+          Optional KEY=VALUE lines exported to the test/build steps (a repo that
+          bakes release config from repository variables into its build passes
+          them here). Every listed key must have a non-empty value or the run
+          fails — so a mis-configured zip can't ship.
         required: false
         type: string
         default: ""
@@ -87,15 +62,21 @@ jobs:
           # github.sha checkout.
           ref: ${{ inputs.ref }}
 
+      # Resolve manifest_path / package_json_path / setup_command / test_command /
+      # build_command / zip_path from the caller's .github/release.config (all
+      # optional) + defaults; zip_name is derived from the repo name.
+      - id: cfg
+        uses: missingbulb/Claudinite/.github/actions/read-release-config@main
+
       - uses: actions/setup-node@v5
         with:
           node-version: 22
           # npm caching needs a lockfile; a repo that skips install has none.
-          cache: ${{ inputs.setup_command != '' && 'npm' || '' }}
+          cache: ${{ steps.cfg.outputs.setup_command != '' && 'npm' || '' }}
 
       - name: Install dependencies
-        if: inputs.setup_command != ''
-        run: ${{ inputs.setup_command }}
+        if: steps.cfg.outputs.setup_command != ''
+        run: ${{ steps.cfg.outputs.setup_command }}
 
       # Export the caller's release config and refuse to proceed on an empty
       # value — this is the generic form of "fail fast rather than ship a
@@ -119,22 +100,23 @@ jobs:
       # store's source of truth, kept in sync with package.json). When it already
       # matches the latest published release (or a matching tag exists), there's
       # nothing to release: skip cleanly (release=false) rather than fail, so a
-      # non-bump manifest change doesn't turn the run red. A drift between the
-      # manifest and package.json, or a malformed version, is a real mistake and
-      # fails the run.
+      # non-bump push doesn't turn the run red. A drift between the manifest and
+      # package.json, or a malformed version, is a real mistake and fails the run.
       - name: Resolve and guard version
         id: version
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MANIFEST_PATH: ${{ steps.cfg.outputs.manifest_path }}
+          PACKAGE_JSON_PATH: ${{ steps.cfg.outputs.package_json_path }}
         run: |
-          version="$(node -p "require('./${{ inputs.manifest_path }}').version")"
+          version="$(node -p "require('./$MANIFEST_PATH').version")"
           if ! echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "${{ inputs.manifest_path }} version '$version' is not X.Y.Z." >&2
+            echo "$MANIFEST_PATH version '$version' is not X.Y.Z." >&2
             exit 1
           fi
-          pkg_version="$(node -p "require('./${{ inputs.package_json_path }}').version")"
+          pkg_version="$(node -p "require('./$PACKAGE_JSON_PATH').version")"
           if [ "$pkg_version" != "$version" ]; then
-            echo "${{ inputs.package_json_path }} ($pkg_version) and ${{ inputs.manifest_path }} ($version) disagree — bump both together." >&2
+            echo "$PACKAGE_JSON_PATH ($pkg_version) and $MANIFEST_PATH ($version) disagree — bump both together." >&2
             exit 1
           fi
           latest="$(gh release view --json tagName -q .tagName 2>/dev/null | sed 's/^v//' || true)"
@@ -151,11 +133,11 @@ jobs:
       # The same gates CI runs on every PR.
       - name: Run the full test gate
         if: steps.version.outputs.release == 'true'
-        run: ${{ inputs.test_command }}
+        run: ${{ steps.cfg.outputs.test_command }}
 
       - name: Build extension zip
         if: steps.version.outputs.release == 'true'
-        run: ${{ inputs.build_command }}
+        run: ${{ steps.cfg.outputs.build_command }}
 
       # Publish the Release. action-gh-release creates the tag (vX.Y.Z) at the
       # released commit when it doesn't exist — pinned explicitly to the commit
@@ -168,14 +150,14 @@ jobs:
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           target_commitish: ${{ inputs.ref || github.sha }}
-          files: ${{ inputs.zip_path }}
+          files: ${{ steps.cfg.outputs.zip_path }}
           generate_release_notes: true
 
   # Auto-runs on a bump-merge to main with no human watching, so a silent failure
   # here means the release never gets cut and the "bump version" flow stalls
   # unnoticed. Surface it as a tracking issue. (A clean no-op release=false run is
   # success, not failure, so it never reaches here.) The issue is keyed on the
-  # standard's stub name, stable across repos and callers.
+  # standard's job name, stable across repos and callers.
   report-failure:
     needs: release
     if: failure()

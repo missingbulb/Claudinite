@@ -1,10 +1,13 @@
 name: "Chrome extension: Publish to Chrome Web Store (reusable)"
 
 # Reusable workflow of the chrome-extension-release standard — the logic behind
-# every extension repo's "Release: Publish to Chrome Web Store" stub.
-# workflow_call ONLY: it never runs in Claudinite itself; the calling repo's
-# stub owns the workflow_dispatch trigger, and the daily auto-release
+# every extension repo's store publish. workflow_call ONLY: it never runs in
+# Claudinite itself; the calling repo's single `release.yml` stub owns the
+# workflow_dispatch trigger, and the daily auto-release
 # (chrome-extension-daily-release.yml) calls it with the tag it just released.
+# The zip name is read from the caller's `.github/release.config` (defaulting to
+# the kebab-cased repo name), so the stub passes no repo values — only the
+# runtime tag / auto_publish choice.
 #
 # Takes the extension zip from a GitHub Release of the CALLING repo and uploads
 # it to the Chrome Web Store (optionally publishing it to users), via the Web
@@ -34,10 +37,6 @@ on:
         description: "Publish to users after upload (false = leave it as a draft in the dashboard)"
         type: boolean
         default: true
-      zip_name:
-        description: "The release asset's stable zip filename (e.g. crossword-chat.zip)"
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -58,6 +57,12 @@ jobs:
       CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
       REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
     steps:
+      # Shallow checkout only so the config action can read .github/release.config.
+      - uses: actions/checkout@v5
+
+      - id: cfg
+        uses: missingbulb/Claudinite/.github/actions/read-release-config@main
+
       - uses: actions/setup-node@v5
         with:
           node-version: 22
@@ -75,20 +80,26 @@ jobs:
           fi
 
       - name: Download the release zip
+        env:
+          ZIP_NAME: ${{ steps.cfg.outputs.zip_name }}
         run: |
           mkdir -p dist
           # An empty tag makes `gh release download` pick the latest release.
           gh release download ${{ inputs.tag }} \
             --repo "${{ github.repository }}" \
-            --pattern "${{ inputs.zip_name }}" \
+            --pattern "$ZIP_NAME" \
             --dir dist
           ls -l dist
 
       - name: Show the version being published
+        env:
+          ZIP_NAME: ${{ steps.cfg.outputs.zip_name }}
         run: |
-          echo "Publishing $(unzip -p dist/${{ inputs.zip_name }} manifest.json | grep '"version"')"
+          echo "Publishing $(unzip -p "dist/$ZIP_NAME" manifest.json | grep '"version"')"
 
       - name: Upload to the Chrome Web Store
+        env:
+          ZIP_NAME: ${{ steps.cfg.outputs.zip_name }}
         run: |
           flags=
           if [ "${{ inputs.auto_publish }}" = "false" ]; then
@@ -97,7 +108,7 @@ jobs:
             flags="--auto-publish"
           fi
           npx --yes chrome-webstore-upload-cli@3 upload \
-            --source dist/${{ inputs.zip_name }} \
+            --source "dist/$ZIP_NAME" \
             $flags
 
   # Refresh the Pages-hosted privacy policy on every publish, from the same

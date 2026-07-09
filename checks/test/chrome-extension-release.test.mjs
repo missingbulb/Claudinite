@@ -5,6 +5,7 @@ import { buildContext } from '../lib/context.mjs';
 import releasePack from '../../packs/chrome-extension-release/pack.mjs';
 import releaseWorkflows from '../../packs/chrome-extension-release/release-workflows.mjs';
 import templateTokens from '../../packs/chrome-extension-release/template-tokens.mjs';
+import releaseConfig from '../../packs/chrome-extension-release/release-config.mjs';
 import versionSync from '../../packs/chrome-extension-release/version-sync.mjs';
 import releaseLayout from '../../packs/chrome-extension-release/release-layout.mjs';
 import privacyPermissionAlignment from '../../packs/chrome-extension-release/privacy-permission-alignment.mjs';
@@ -22,16 +23,43 @@ const MANIFEST = JSON.stringify({
 // invariant cer/privacy-permission-alignment enforces.
 const PRIVACY = 'We use storage to save settings locally, and connect to https://e.com/* to fetch data.\n';
 
-const stub = (name, canon) =>
-  `name: "${name}"\non: push\njobs:\n  run:\n    uses: missingbulb/Claudinite/.github/workflows/${canon}@main\n    secrets: inherit\n`;
+// The ONE thin stub: named "Release", calling all three canon reusable workflows
+// from its three if:-guarded jobs. Copied verbatim by every repo — no tokens.
+const RELEASE_STUB = [
+  'name: Release',
+  'on:',
+  '  push:',
+  '    branches: [main]',
+  '  schedule:',
+  '    - cron: "0 3 * * *"',
+  '  workflow_dispatch:',
+  '    inputs:',
+  '      mode:',
+  '        type: choice',
+  '        options: [publish, package, daily]',
+  '        default: publish',
+  'permissions:',
+  '  contents: write',
+  '  pages: write',
+  '  id-token: write',
+  '  issues: write',
+  'jobs:',
+  '  create-package:',
+  '    uses: missingbulb/Claudinite/.github/workflows/chrome-extension-release.yml@main',
+  '  publish:',
+  '    uses: missingbulb/Claudinite/.github/workflows/chrome-extension-publish-store.yml@main',
+  '    secrets: inherit',
+  '  daily:',
+  '    uses: missingbulb/Claudinite/.github/workflows/chrome-extension-daily-release.yml@main',
+  '    secrets: inherit',
+  '',
+].join('\n');
 
 // The full conformant fixture; individual tests break one piece at a time.
 const CONFORMANT = {
   'extension/manifest.json': MANIFEST,
   'package.json': JSON.stringify({ name: 'x', version: '1.2.3' }),
-  '.github/workflows/release.yml': stub('Release: Create Package', 'chrome-extension-release.yml'),
-  '.github/workflows/publish-chrome-store.yml': stub('Release: Publish to Chrome Web Store', 'chrome-extension-publish-store.yml'),
-  '.github/workflows/daily-release.yml': stub('Release: Daily Auto-Release', 'chrome-extension-daily-release.yml'),
+  '.github/workflows/release.yml': RELEASE_STUB,
   'dev/build/release/store_artifacts/PRIVACY.md': PRIVACY,
   'README.md': '# x\n\n## Install\n\nx\n\n## Releasing\n\nx\n',
 };
@@ -41,37 +69,71 @@ test('a fully conformant extension repo is clean across the pack', () => {
   // permission-added delta check sees no additions.
   const root = makeRepo({ base: CONFORMANT });
   try {
-    for (const rule of [releaseWorkflows, templateTokens, versionSync, releaseLayout, privacyPermissionAlignment, permissionAddedStoreIssue, readmeSections]) {
+    for (const rule of [releaseWorkflows, templateTokens, releaseConfig, versionSync, releaseLayout, privacyPermissionAlignment, permissionAddedStoreIssue, readmeSections]) {
       assert.deepEqual(run(rule, root), [], `rule ${rule.id} should be clean`);
     }
   } finally { cleanup(root); }
 });
 
-test('release-workflows: flags a missing stub, a wrong name:, and a stub not calling its canon workflow', () => {
+test('release-workflows: flags a missing stub', () => {
   const files = { ...CONFORMANT };
-  delete files['.github/workflows/daily-release.yml'];
-  files['.github/workflows/release.yml'] =
-    files['.github/workflows/release.yml'].replace('Release: Create Package', 'Wrong Name');
-  files['.github/workflows/publish-chrome-store.yml'] =
-    'name: "Release: Publish to Chrome Web Store"\non: push\njobs:\n  run:\n    steps:\n      - run: echo inlined logic\n';
+  delete files['.github/workflows/release.yml'];
   const root = makeRepo({ changed: files });
   try {
     const findings = run(releaseWorkflows, root);
-    assert.equal(findings.length, 3);
-    assert.ok(findings.some((f) => /daily-release\.yml is missing/.test(f.what)));
+    assert.equal(findings.length, 1);
+    assert.match(findings[0].what, /release\.yml is missing/);
+  } finally { cleanup(root); }
+});
+
+test('release-workflows: flags a wrong name: and a canon workflow it does not call', () => {
+  const files = { ...CONFORMANT };
+  // Rename the workflow and drop the publish canon reference.
+  files['.github/workflows/release.yml'] = RELEASE_STUB
+    .replace('name: Release', 'name: Wrong Name')
+    .replace('    uses: missingbulb/Claudinite/.github/workflows/chrome-extension-publish-store.yml@main', '    steps:\n      - run: echo inlined');
+  const root = makeRepo({ changed: files });
+  try {
+    const findings = run(releaseWorkflows, root);
+    assert.equal(findings.length, 2);
     assert.ok(findings.some((f) => /Wrong Name/.test(f.what)));
-    assert.ok(findings.some((f) => /does not call the canon/.test(f.what)));
+    assert.ok(findings.some((f) => /does not call the canon reusable workflow chrome-extension-publish-store\.yml/.test(f.what)));
   } finally { cleanup(root); }
 });
 
 test('template-tokens: flags a surviving __TOKEN__', () => {
   const files = { ...CONFORMANT };
-  files['.github/workflows/release.yml'] = 'name: "Release: Create Package"\non: push\nenv:\n  ZIP: __ZIP_NAME__\n';
+  files['.github/workflows/release.yml'] = RELEASE_STUB.replace('name: Release', 'name: Release\nenv:\n  ZIP: __ZIP_NAME__');
   const root = makeRepo({ changed: files });
   try {
     const findings = run(templateTokens, root);
     assert.equal(findings.length, 1);
     assert.match(findings[0].what, /__ZIP_NAME__/);
+  } finally { cleanup(root); }
+});
+
+test('release-config: the file is optional (a repo on the defaults omits it)', () => {
+  const root = makeRepo({ base: CONFORMANT }); // no .github/release.config
+  try {
+    assert.deepEqual(run(releaseConfig, root), []);
+  } finally { cleanup(root); }
+});
+
+test('release-config: flags an unknown (typo\'d) key and a malformed line', () => {
+  const files = {
+    ...CONFORMANT,
+    '.github/release.config': [
+      'manifest_path=client/manifest.json',   // valid
+      'manfiest_path=oops',                    // typo
+      'this is not a config line',             // malformed
+    ].join('\n') + '\n',
+  };
+  const root = makeRepo({ changed: files });
+  try {
+    const findings = run(releaseConfig, root);
+    assert.equal(findings.length, 2);
+    assert.ok(findings.some((f) => /unknown key "manfiest_path"/.test(f.what)));
+    assert.ok(findings.some((f) => /not KEY=value/.test(f.what)));
   } finally { cleanup(root); }
 });
 
@@ -141,7 +203,7 @@ test('permission-added-store-issue: silent when no permission was added', () => 
   } finally { cleanup(root); }
 });
 
-test('pack fingerprint: opt-in — a manifest alone does not trip detect; the Release: * stubs do', () => {
+test('pack fingerprint: opt-in — a manifest alone does not trip detect; the single Release stub does', () => {
   const codingOnly = makeRepo({ base: { 'extension/manifest.json': MANIFEST } });
   const shipping = makeRepo({ base: CONFORMANT });
   try {

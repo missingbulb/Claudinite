@@ -1,37 +1,92 @@
-name: "Release: Create Package"
+name: Release
 
-# Thin stub of the chrome-extension-release standard: the logic lives in the
-# Claudinite canon as a reusable workflow (referenced @main, so canon changes
-# apply here automatically). This file owns only the triggers and this repo's
-# values.
+# The ONE thin stub of the chrome-extension-release standard. All the logic —
+# create-package, daily auto-release, and Chrome Web Store publish — lives in the
+# Claudinite canon as reusable workflows (referenced @main, so canon changes
+# apply here automatically). This file owns only the triggers; it passes NO repo
+# values. Everything repo-specific is read from the standard's defaults plus an
+# OPTIONAL `.github/release.config` — a single-package extension whose layout
+# matches the defaults (extension/ + package.json, zip = kebab repo name) needs
+# no config file at all. Copy this stub verbatim; there is nothing to substitute.
 #
-# Cutting a release is merging a version bump to main (the push trigger below);
-# it's also runnable from the Actions tab. What the workflow does — the version
-# guard (clean no-op if already released), the full test gate, the build, the
-# GitHub Release — is documented in the called workflow.
+# Three operations, one file:
+#   * push to main            → create-package (a clean no-op unless the manifest
+#                               version was bumped, so ordinary pushes don't cut a
+#                               release — no per-repo manifest path in the trigger)
+#   * schedule (03:00 UTC)    → daily auto-release (ship a store update if a
+#                               shipped file changed since the last release)
+#   * "Run workflow" dispatch → pick a mode: publish (default), package, or daily
 #
-# Per-repo substitution points (chrome-extension-release standard):
-#   __ZIP_NAME__              the stable zip name (kebab-cased repo name + .zip)
-#   extension/manifest.json   the manifest path (trigger + input)
-#   with:-overrides           only where the repo deviates from the defaults —
-#                             package_json_path, setup_command, test_command,
-#                             build_command, build_env (see the reusable
-#                             workflow's inputs)
+# The Actions-tab entry is named "Release"; the failure reporter keys its
+# tracking issues on the per-operation names ("Release: Create Package", etc.)
+# baked into the canon reusable workflows, so collapsing to one file loses no
+# per-operation triage.
+#
+# secrets: inherit passes the four CHROME_* store secrets (and, for a repo that
+# uses build_env, its repository variables) through to the canon workflows.
+#
+# A repo whose build bakes in release config (e.g. an API base URL) uncomments a
+# build_env block on the create-package and daily jobs — the ONLY place a repo
+# references its repository variables; every key must be non-empty or the run
+# fails, so a mis-configured zip can't ship. Example:
+#       build_env: |
+#         API_BASE_URL=${{ vars.API_BASE_URL }}
 on:
-  workflow_dispatch: {}
   push:
-    branches:
-      - main
-    paths:
-      - extension/manifest.json
+    branches: [main]
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "What to run"
+        type: choice
+        options: [publish, package, daily]
+        default: publish
+      tag:
+        description: "publish: release tag to publish (blank = latest release)"
+        required: false
+        type: string
+      auto_publish:
+        description: "publish: publish to users after upload (uncheck = dashboard draft)"
+        type: boolean
+        default: true
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
   issues: write
 
+# Daily runs (scheduled, or a mode=daily dispatch) share one queue so a manual
+# dispatch can't race the scheduled bump-push; every other run gets its own group.
+concurrency: >-
+  ${{ (github.event_name == 'schedule' ||
+       (github.event_name == 'workflow_dispatch' && inputs.mode == 'daily'))
+      && 'daily-release' || github.run_id }}
+
 jobs:
-  release:
+  create-package:
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && inputs.mode == 'package')
     uses: missingbulb/Claudinite/.github/workflows/chrome-extension-release.yml@main
+    # build_env: uncomment on this job and `daily` if the build needs repo config
+    #   with:
+    #     build_env: |
+    #       API_BASE_URL=${{ vars.API_BASE_URL }}
+
+  publish:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'publish'
+    uses: missingbulb/Claudinite/.github/workflows/chrome-extension-publish-store.yml@main
     with:
-      zip_path: dist/__ZIP_NAME__
-      manifest_path: extension/manifest.json
+      tag: ${{ inputs.tag }}
+      auto_publish: ${{ inputs.auto_publish }}
+    secrets: inherit
+
+  daily:
+    if: >-
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && inputs.mode == 'daily')
+    uses: missingbulb/Claudinite/.github/workflows/chrome-extension-daily-release.yml@main
+    secrets: inherit

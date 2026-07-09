@@ -5,12 +5,18 @@ Chrome Web Store API usage, same secrets, same versioning and artifact rules, sa
 sections. This doc is that contract, the setup steps for a new extension repo, and the manual
 Chrome Web Store actions the automation can't do. The workflow **logic** lives once, in this
 repo's [.github/workflows/](../../.github/workflows/), as `workflow_call`-only **reusable
-workflows** (plus the [report-failure](../../.github/actions/report-failure/action.yml) composite
-action); each extension repo carries only three **thin stubs** — triggers + repo values —
-templated in [stubs/](stubs/): **copy the stubs, don't
-re-derive them**. The stubs reference the canon `@main`, so a merged canon change reaches every
-extension repo's next run automatically — changing the standard's logic needs no per-repo PR;
-only a change to the *stub shape itself* still propagates by hand. Reference implementation:
+workflows** (plus the [report-failure](../../.github/actions/report-failure/action.yml),
+[read-release-config](../../.github/actions/read-release-config/action.yml) and
+[bump-extension-patch](../../.github/actions/bump-extension-patch/action.yml) composite actions);
+each extension repo carries only **one thin stub** — [`stubs/release.yml`](stubs/release.yml),
+triggers only — plus, *only if it deviates from the defaults*, an optional
+`.github/release.config`. **Copy the stub verbatim** — there are no tokens to replace. The stub
+references the canon `@main`, so a merged canon change reaches every extension repo's next run
+automatically — changing the standard's logic needs no per-repo PR; only a change to the *stub
+shape itself* still propagates by hand. Everything a repo used to carry as workflow values —
+the zip name (now derived from the repo name), the version files, and the previously per-repo
+`bump` and `filter` scripts — is a canon default or reads from `release.config`, so no repo ships
+a bump or filter script any more. Reference implementation:
 `missingbulb/GoogleCalendarEventCreator`; also adopted by `TLDR` and `CrosswordChat`.
 
 Naming in the flat `.github/workflows/` namespace: Chrome-specific logic carries the
@@ -44,27 +50,41 @@ general names so other standards reuse them as-is. When in doubt, prefix.
 - A release is GitHub Release **`vX.Y.Z`**, tagged at the released commit, with the zip as its
   only asset and auto-generated notes.
 
-**Workflows** — three stub files per repo with these exact `name:`s (the failure reporter keys
-tracking issues on them), each calling its reusable canon workflow:
+**Workflow** — **one** stub file per repo, [`release.yml`](stubs/release.yml), named exactly
+`Release`. It owns only the triggers; its three `if:`-guarded jobs each call a canon reusable
+workflow. The failure reporter keys tracking issues on the **per-operation** names baked into the
+canon workflows (`Release: Create Package`, `Release: Publish to Chrome Web Store`, `Release: Daily
+Auto-Release`) — not on the stub's `name:` — so collapsing to one file loses no per-operation
+triage:
 
-| stub file | `name:` | trigger (owned by the stub) | canon workflow it calls — what it does |
-|---|---|---|---|
-| `release.yml` | Release: Create Package | push to `main` touching the manifest; dispatch | `chrome-extension-release.yml` — version guard (clean no-op if already released) → full test gate → build → GitHub Release |
-| `publish-chrome-store.yml` | Release: Publish to Chrome Web Store | dispatch(`tag`, `auto_publish`) | `chrome-extension-publish-store.yml` — download the release zip → upload via the store API (publish to users unless `auto_publish: false` → dashboard draft) → refresh the `/privacy/` page (via the `deploy-privacy-page.yml` reusable) |
-| `daily-release.yml` | Release: Daily Auto-Release | schedule `0 3 * * *`; dispatch | `chrome-extension-daily-release.yml` — shipped-file diff vs the latest release tag → patch bump pushed to `main` → calls the two canon workflows above |
+| job (trigger) | canon workflow it calls — what it does |
+|---|---|
+| `create-package` (push to `main`; dispatch `mode: package`) | `chrome-extension-release.yml` — version guard (a clean no-op unless the manifest version was bumped, so ordinary pushes don't cut a release) → full test gate → build → GitHub Release |
+| `publish` (dispatch `mode: publish` — the default — with `tag`, `auto_publish`) | `chrome-extension-publish-store.yml` — download the release zip → upload via the store API (publish to users unless `auto_publish: false` → dashboard draft) → refresh the `/privacy/` page (via the `deploy-privacy-page.yml` reusable) |
+| `daily` (schedule `0 3 * * *`; dispatch `mode: daily`) | `chrome-extension-daily-release.yml` — shipped-file diff vs the latest release tag → patch bump pushed to `main` → calls the two canon workflows above |
 
-The privacy page has **no stub of its own** and no dedicated option: it redeploys as part of **every**
-publish, from the same `PRIVACY.md` the listing points at. The publish workflow runs that deploy leg
-even when the store upload fails (so the `/privacy/` URL goes live before the first publication too —
-see below). The platform-agnostic `deploy-privacy-page.yml` reusable workflow lives on in the canon,
-called from there — a repo never dispatches it directly.
+The `create-package` job triggers on **every** push to `main` (no per-repo manifest path in the
+trigger) and relies on the version guard to no-op unless a bump landed. The privacy page has **no
+job of its own** and no dedicated option: it redeploys as part of **every** publish, from the same
+`PRIVACY.md` the listing points at. The publish workflow runs that deploy leg even when the store
+upload fails (so the `/privacy/` URL goes live before the first publication too — see below). The
+platform-agnostic `deploy-privacy-page.yml` reusable workflow lives on in the canon, called from
+there — a repo never dispatches it directly.
 
-- Repo-specific values travel as `with:` inputs — `zip_path`/`zip_name`, `manifest_path`, and
-  (only where the repo deviates from the defaults) `package_json_path`, `setup_command`,
-  `test_command`, `build_command`, `build_env` (KEY=VALUE lines exported to test/build; every
-  listed key must be non-empty or the run fails — how a repo injects release config from
-  repository variables without ever shipping a placeholder zip). Store secrets travel via
-  `secrets: inherit`.
+- Repo-specific values do **not** travel as `with:` inputs any more — the canon reads them from the
+  repo itself via the `read-release-config` action, so the stub is copy-verbatim. The **zip name**
+  is derived from the repo name (kebab-cased + `.zip`); everything else has a default and is
+  overridden **only where a repo deviates** by an optional `.github/release.config` (dotenv):
+  `manifest_path`, `package_json_path`, `setup_command`, `test_command`, `build_command`,
+  `zip_path`, `ship_paths`. A single-package repo laid out on the defaults (extension in
+  `extension/`, `package.json` at the root, whole-directory shipping set) needs **no config file at
+  all**. Unknown keys are rejected by `cer/release-config` so a typo fails review.
+- The one value that stays in the **stub** (not the config file) is `build_env` — KEY=VALUE lines a
+  repo whose build bakes in release config passes on the `create-package` and `daily` jobs, because
+  it must reference `${{ vars.* }}` statically. Every listed key must be non-empty or the run fails,
+  so a repo can't ship a placeholder-configured zip. These are the genuine per-**environment**
+  values that must not be committed; they live in repository **variables** (Settings → Secrets and
+  variables → Actions → Variables). Store secrets travel via `secrets: inherit`.
 - Every unattended workflow (all of the above; not PR CI) reports failures through the
   `report-failure` composite action baked into the canon workflows — a red run must reach a
   human, never sit unseen in the Actions list. Each failure opens a **fresh** `workflow-failure`
@@ -73,12 +93,17 @@ called from there — a repo never dispatches it directly.
   `report-failure.yml`; a repo's own non-standard unattended workflows use the action directly
   (`uses: missingbulb/Claudinite/.github/actions/report-failure@main`).
 - Daily auto-release semantics: the baseline is the **latest release tag**, not a 24-hour window
-  (self-healing after a failed day); "deployable" = membership in the shipping set; the patch
-  bump is pushed straight to `main` (`[skip ci]`) because the store rejects a version that isn't
-  strictly higher; release + publish are invoked via `workflow_call` because a `GITHUB_TOKEN`
-  push triggers no workflows. Days with no shipped-file change are a clean no-op.
-- The patch-bumper and shipped-paths filter run on a bare runner (no `npm ci`), so both scripts
-  must be dependency-free Node.
+  (self-healing after a failed day); "deployable" = a change under one of the repo's `ship_paths`
+  (default: the extension directory); the patch bump is pushed straight to `main` (`[skip ci]`)
+  because the store rejects a version that isn't strictly higher; release + publish are invoked via
+  `workflow_call` because a `GITHUB_TOKEN` push triggers no workflows. Days with no shipped-file
+  change are a clean no-op.
+- The patch bump and the shipped-file filter are **canon logic**, not per-repo scripts: the bump is
+  the `bump-extension-patch` composite action (token-replaces the version in `manifest_path` +
+  `package_json_path`), and the filter is a `ship_paths` prefix match in the daily workflow. Both,
+  and the `read-release-config` action, are dependency-free and run on a bare runner (no `npm ci`).
+  A repo whose shipping set is a curated subset (not a whole directory) lists it in `ship_paths` and
+  keeps its build's own ship-set test honest against that list.
 - Until the four store secrets exist, the publish leg fails **loudly** (a fail-early step lists
   the missing names, and the tracking issue nags) — that is the designed state for a repo that
   hasn't finished its first manual publication; releases and zips still work.
@@ -125,10 +150,11 @@ reference repo draws with stdlib-only Python; CrosswordChat rasterizes SVG/HTML 
 Chromium); what's fixed is that every asset is reproducible from the repo.
 
 **Layout** — release machinery lives in `dev/build/release/`: the zip builder + shipping-set
-module, the patch-bumper, the shipped-paths filter (each with tests), and `store_artifacts/`
-(`PRIVACY.md`, listing screenshots, icon/asset generators). No per-repo release doc: the concrete
-names and paths live in the workflow stubs and `manifest.json`/`package.json`, and the shared
-procedure lives once, in this guide — a repo copy would only drift from it.
+module (with its test), and `store_artifacts/` (`PRIVACY.md`, listing screenshots, icon/asset
+generators). The patch-bumper and shipped-paths filter that used to live here are **gone** — they
+are canon logic now. No per-repo release doc: the concrete names and paths live in
+`manifest.json`/`package.json` and the optional `.github/release.config`, and the shared procedure
+lives once, in this guide — a repo copy would only drift from it.
 
 ## README template
 
@@ -162,26 +188,40 @@ in the repo's first-publication issue).*
 
 ## Setting up a new extension repo
 
-1. Copy the three stub files from [stubs/](stubs/) into
-   `.github/workflows/`. Replace every `__ZIP_NAME__` / `__BUMP_PATCH_CMD__` /
-   `__FILTER_SHIPPED_CMD__` token, and — only if the repo deviates from the defaults — set the
-   `with:` overrides flagged in each stub's header (`manifest_path`, `package_json_path`,
-   `setup_command`, `test_command`, `build_command`, `build_env`), the same values in
-   `release.yml` and `daily-release.yml`. Grep for `__` afterwards; no token may survive.
-2. Create `dev/build/release/` — zip builder + shipping-set module, dependency-free patch-bumper
-   and shipped-paths filter, tests for each, and `store_artifacts/` with `PRIVACY.md` and the
-   icon/asset generators — adapting from the reference repo's `dev/build/release/`. No
-   `releasing.md` and no `STORE-LISTING.md`: the release procedure lives in this guide, and the
-   listing copy / permission justifications are dashboard state (above).
-3. Wire `npm run build` to the zip builder; add the two README sections above.
+1. Copy the single stub [`stubs/release.yml`](stubs/release.yml) into `.github/workflows/`
+   **verbatim** — there are no tokens to replace. Then, **only if the repo deviates from the
+   defaults**, add `.github/release.config` (dotenv) with just the keys that differ —
+   `manifest_path`, `package_json_path`, `setup_command`, `test_command`, `build_command`,
+   `zip_path`, `ship_paths`. A single-package repo on the standard layout adds **no** config file.
+   If the build bakes in per-environment config, uncomment the `build_env` block on the
+   `create-package` and `daily` jobs (the only place the stub isn't verbatim) and set the matching
+   repository **variables** (see step 5).
+2. Create `dev/build/release/` — zip builder + shipping-set module (with its test) and
+   `store_artifacts/` with `PRIVACY.md` and the icon/asset generators — adapting from the reference
+   repo's `dev/build/release/`. **No** per-repo patch-bumper or shipped-paths filter (those are
+   canon now); a curated shipping set is expressed as `ship_paths` in `release.config`, kept honest
+   against the build by the repo's own ship-set test. No `releasing.md` and no `STORE-LISTING.md`:
+   the release procedure lives in this guide, and the listing copy / permission justifications are
+   dashboard state (above).
+3. Make `npm test` the full release gate and `npm run build` produce the zip (a monorepo can set a
+   root `build` that delegates, e.g. `npm --prefix client run build`, so no `build_command`
+   override is needed). Add the two README sections above.
 4. One-time GitHub setup: Pages → Source = "GitHub Actions". The four `CHROME_*` secrets come
    later, after the first manual publish. (Once per *account*, not per repo: if Claudinite is
    private, its reusable workflows must be callable — Claudinite Settings → Actions → General →
    Access → "Accessible from repositories owned by the user"; nothing to do if it's public.)
 5. Open the **first-publication tracking issue** (idempotent — search the tracker first, skip if
-   one already exists, open or closed) so the one-time manual publication below is tracked as
-   state, not carried as a repo file. It points to the "First publication" steps here; do them,
-   then close the issue. From then on the daily pipeline owns routine shipping.
+   one already exists, open or closed) so the one-time manual setup below is tracked as state, not
+   carried as a repo file. Its checklist:
+   - Set the four `CHROME_*` **secrets** (minted below) — Settings → Secrets and variables →
+     Actions → Secrets.
+   - **Only if the stub uses `build_env`**: set the repository **variables** it references. These
+     are automatable where API access exists — the issue carries a ready-to-run script, e.g.
+     `gh variable set API_BASE_URL --repo <owner>/<repo> --body "https://…"` (repeat per key) —
+     rather than a click-through, so the one manual part is minting the store credentials, not
+     copying config into Settings.
+   - Do the "First publication" steps below, then close the issue. From then on the daily pipeline
+     owns routine shipping.
 
 ## Manual actions — publishing to the Chrome Web Store
 
@@ -205,8 +245,8 @@ extension; the upstream reference is
 4. Privacy tab: write the single-purpose statement, a justification for **every** permission the
    manifest requests, and the data-usage declarations, directly in the dashboard; set the
    **Privacy policy** field (bottom of the tab) to the `/privacy/` Pages URL — the same policy
-   `PRIVACY.md` deploys. **Before submitting**: bring the privacy page up by running **Release:
-   Publish to Chrome Web Store** once — its privacy-deploy leg runs even though the store-upload leg
+   `PRIVACY.md` deploys. **Before submitting**: bring the privacy page up by running the **Release**
+   workflow once with **mode: publish** — its privacy-deploy leg runs even though the store-upload leg
    fails at this stage (no store item or secrets yet — the designed pre-publication state), so the
    `/privacy/` page goes live. Load the URL in a browser to confirm it's live, and paste that exact
    permalink — never a guessed path. Google re-fetches this URL on **every** publish, and an
@@ -275,9 +315,8 @@ default because it assumes nothing about the operator's machine.
 - Nothing to do for accumulated work: the daily auto-release ships any day whose merges touched
   shipped files, on its own patch bump.
 - A deliberate release now: **"bump version"** (default minor) → merge the PR (that cuts the
-  GitHub Release) → run **Release: Publish to Chrome Web Store** from its dispatch page,
-  `https://github.com/<owner>/<repo>/actions/workflows/publish-chrome-store.yml` (blank
-  tag = latest release).
+  GitHub Release) → run the **Release** workflow with **mode: publish** from its dispatch page,
+  `https://github.com/<owner>/<repo>/actions/workflows/release.yml` (blank tag = latest release).
 - Once the store approves, Chrome auto-pushes the update to installed users within hours — no
   reinstall.
 
