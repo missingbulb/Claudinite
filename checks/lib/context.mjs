@@ -47,7 +47,9 @@ function vendoredSet(root, files) {
 
 export function loadConfig(root) {
   const path = join(root, '.claudinite-checks.json');
-  if (!existsSync(path)) return { packs: [], rules: {}, accept: [], sharedConstants: [], error: null };
+  if (!existsSync(path)) {
+    return { packs: [], rules: {}, accept: [], sharedConstants: [], packConfig: {}, error: null };
+  }
   try {
     const raw = JSON.parse(readFileSync(path, 'utf8'));
     return {
@@ -55,10 +57,14 @@ export function loadConfig(root) {
       rules: raw.rules && typeof raw.rules === 'object' ? raw.rules : {},
       accept: Array.isArray(raw.accept) ? raw.accept : [],
       sharedConstants: Array.isArray(raw.sharedConstants) ? raw.sharedConstants : [],
+      // Per-pack parameters a project supplies about its own usage — e.g. the
+      // dirs a repo's package.json lives in for the node pack's env install.
+      // Consumed by whatever pack machinery reads it (currently env.mjs).
+      packConfig: raw.packConfig && typeof raw.packConfig === 'object' ? raw.packConfig : {},
       error: null,
     };
   } catch (e) {
-    return { packs: [], rules: {}, accept: [], sharedConstants: [], error: e.message };
+    return { packs: [], rules: {}, accept: [], sharedConstants: [], packConfig: {}, error: e.message };
   }
 }
 

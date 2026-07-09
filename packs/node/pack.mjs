@@ -15,4 +15,23 @@ export default {
   detect: (ctx) => hasMarkerNearRoot(ctx, 'package.json'),
   prose: 'RULES.md',
   rules: [],
+  // The Node runtime ships in the base image, but a repo's (often uncommitted,
+  // devDependency) modules don't — so `npm test`/build would trigger a
+  // confusing mid-session install. Install them at environment-image build. The
+  // package.json location varies per repo, so it's a per-project param: set
+  // `packConfig.node.dirs` in .claudinite-checks.json (default: repo root). A
+  // cloud setup script starts in the checkout's PARENT, so env.mjs runs this
+  // from the checkout — the `cd "$d"` is relative to it.
+  env: {
+    label: 'Node dependencies (npm ci)',
+    version: 1,
+    setup: (p) =>
+      (p.dirs?.length ? p.dirs : ['.'])
+        .map((d) => `( cd "${d}" && npm ci ) || true`)
+        .join('\n'),
+    probe: (p) =>
+      (p.dirs?.length ? p.dirs : ['.'])
+        .map((d) => `[ -d "${d}/node_modules" ]`)
+        .join(' && '),
+  },
 };

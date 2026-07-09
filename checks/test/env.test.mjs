@@ -1,63 +1,70 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { resolve } from 'node:path';
 import { makeRepo, cleanup } from './helpers.mjs';
-import { activeEnvs, aggregateVersion, emitSetup, evaluate } from '../../packs/env.mjs';
+import { activeEnvs, aggregateVersion, evaluate, flagPath } from '../../packs/env.mjs';
 
-const flutterEnv = { id: 'flutter', label: 'Flutter SDK', version: 1, setup: 'install-flutter', probe: 'true' };
+const env = (over = {}) => ({ id: 'x', label: 'X', version: 1, setup: 'sx', probe: 'true', ...over });
 
-test('aggregateVersion is stable and shifts when a version bumps', () => {
-  const v = aggregateVersion([flutterEnv]);
-  assert.equal(v, aggregateVersion([{ ...flutterEnv }]));
-  assert.notEqual(v, aggregateVersion([{ ...flutterEnv, version: 2 }]));
-  assert.notEqual(v, aggregateVersion([flutterEnv, { id: 'x', version: 1 }]));
+test('aggregateVersion is stable and shifts on version/pack change', () => {
+  const a = [env()];
+  assert.equal(aggregateVersion(a), aggregateVersion([env()]));
+  assert.notEqual(aggregateVersion(a), aggregateVersion([env({ version: 2 })]));
+  assert.notEqual(aggregateVersion(a), aggregateVersion([env(), env({ id: 'y' })]));
 });
 
-test('evaluate: clean when every probe passes and the flag matches', () => {
-  const problems = evaluate([flutterEnv], { probe: () => true, actualFlag: aggregateVersion([flutterEnv]) });
-  assert.deepEqual(problems, []);
-});
-
-test('evaluate: a failing probe reports the missing tool', () => {
-  const problems = evaluate([flutterEnv], { probe: () => false, actualFlag: aggregateVersion([flutterEnv]) });
-  assert.equal(problems.length, 1);
-  assert.match(problems[0], /Flutter SDK is not installed/);
-});
-
-test('evaluate: present but no flag → setup not applied', () => {
-  const problems = evaluate([flutterEnv], { probe: () => true, actualFlag: null });
-  assert.match(problems[0], /has not been applied/);
-});
-
-test('evaluate: present but stale flag → out of date', () => {
-  const problems = evaluate([flutterEnv], { probe: () => true, actualFlag: 'deadbeef' });
-  assert.match(problems[0], /out of date/);
-});
-
-test('evaluate: no env requirements → nothing to assert', () => {
+test('evaluate: clean / missing tool / no flag / stale / nothing to assert', () => {
+  const e = [env({ label: 'Flutter SDK' })];
+  const v = aggregateVersion(e);
+  assert.deepEqual(evaluate(e, { probe: () => true, actualFlag: v }), []);
+  assert.match(evaluate(e, { probe: () => false, actualFlag: v })[0], /Flutter SDK is not installed/);
+  assert.match(evaluate(e, { probe: () => true, actualFlag: null })[0], /has not been applied/);
+  assert.match(evaluate(e, { probe: () => true, actualFlag: 'deadbeef' })[0], /out of date/);
   assert.deepEqual(evaluate([], { probe: () => false, actualFlag: null }), []);
 });
 
-test('emitSetup embeds each fragment and writes the version flag', () => {
-  const script = emitSetup([flutterEnv]);
-  assert.match(script, /^#!\/bin\/bash/);
-  assert.match(script, /install-flutter/);
-  assert.match(script, new RegExp(`echo "${aggregateVersion([flutterEnv])}"`));
-  assert.match(emitSetup([]), /No active pack declares an environment requirement/);
+test('flagPath is the checkout parent, not the checkout', () => {
+  assert.equal(flagPath('/home/user/Repo'), resolve('/home/user/.claudinite-environment-version'));
 });
 
-test('activeEnvs reads the declared packs of a repo', async () => {
-  const root = makeRepo({ base: { '.claudinite-checks.json': JSON.stringify({ packs: ['flutter'], rules: {}, accept: [] }) } });
+test('activeEnvs resolves the flutter (string) env when declared', async () => {
+  const root = makeRepo({ base: { '.claudinite-checks.json': JSON.stringify({ packs: ['flutter'] }) } });
   try {
-    const envs = await activeEnvs(root);
-    const flutter = envs.find((e) => e.id === 'flutter');
-    assert.ok(flutter, 'flutter env is active when declared');
-    assert.equal(flutter.label, 'Flutter SDK');
-    assert.match(flutter.probe, /flutter/);
+    const f = (await activeEnvs(root)).find((e) => e.id === 'flutter');
+    assert.ok(f, 'flutter env active when declared');
+    assert.equal(f.label, 'Flutter SDK');
+    assert.match(f.setup, /flutter\/flutter\.git/);
+    assert.match(f.probe, /command -v flutter/);
   } finally { cleanup(root); }
 });
 
-test('activeEnvs is empty when no active pack declares one', async () => {
-  const root = makeRepo({ base: { '.claudinite-checks.json': JSON.stringify({ packs: [], rules: {}, accept: [] }) } });
+test('activeEnvs resolves the node env from per-repo packConfig.dirs (function form)', async () => {
+  const root = makeRepo({
+    base: {
+      '.claudinite-checks.json': JSON.stringify({
+        packs: ['node'],
+        packConfig: { node: { dirs: ['firebase/functions'] } },
+      }),
+    },
+  });
+  try {
+    const n = (await activeEnvs(root)).find((e) => e.id === 'node');
+    assert.ok(n);
+    assert.match(n.setup, /cd "firebase\/functions" && npm ci/);
+    assert.match(n.probe, /firebase\/functions\/node_modules/);
+  } finally { cleanup(root); }
+});
+
+test('node env defaults to the repo root when no packConfig is given', async () => {
+  const root = makeRepo({ base: { '.claudinite-checks.json': JSON.stringify({ packs: ['node'] }) } });
+  try {
+    const n = (await activeEnvs(root)).find((e) => e.id === 'node');
+    assert.match(n.setup, /cd "\." && npm ci/);
+  } finally { cleanup(root); }
+});
+
+test('activeEnvs is empty when no env-declaring pack is active', async () => {
+  const root = makeRepo({ base: { '.claudinite-checks.json': JSON.stringify({ packs: [] }) } });
   try {
     assert.deepEqual(await activeEnvs(root), []);
   } finally { cleanup(root); }

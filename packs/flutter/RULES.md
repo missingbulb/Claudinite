@@ -66,6 +66,7 @@ executable-requirements UI suite); keep anything project-specific in the consumi
 - **The web sandbox ships no Flutter SDK.** Claude Code on the web boots without Flutter, so tests,
   `flutter analyze`, and golden regen can't run until it's installed. Install belongs in the
   environment **image** (built once, snapshotted, reused) — never a per-session hook that reinstalls
-  every start. This pack declares that need in its `env` block ([pack.mjs](pack.mjs)); Claudinite
-  aggregates it into the `environment-setup.sh` a project pastes into its web environment and asserts
-  it at session start (see [packs/env.mjs](../env.mjs) and [bootstrap.md](../../bootstrap.md)).
+  every start. This pack declares that need in its `env` block ([pack.mjs](pack.mjs)); a project pastes
+  one generic `environment-setup.sh` that runs every active pack's requirement via
+  [packs/env.mjs](../env.mjs) and asserts it at session start (see [bootstrap.md](../../bootstrap.md)
+  Part 8).
