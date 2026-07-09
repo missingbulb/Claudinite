@@ -47,6 +47,8 @@ A GitHub API/UI (or any remote-side) merge does **not** advance your local `orig
 
 A Stop-hook or CI conformance check diffs your branch against `origin/main`. In a fresh cloud sandbox that ref can be **stale** — behind real `main` by whole merged PRs — so the check reads the wrong base and can flag findings on commits or code you never touched. Before acting on a finding you don't recognize, `git fetch origin <default-branch>` and re-run: a stale-base phantom disappears, and whatever survives against the current base is real — fix that. (The same stale ref bases new work on outdated product code, so fetch before building against `main`, too.)
 
+The same reflex applies when a **real** (not phantom) red check blocks *your* PR and you've correctly pinned it as pre-existing and unrelated to your diff: that "not mine" diagnosis is a **sync-the-base** signal, not a fix-it-yourself-or-ask-the-user one — `main` has often *already fixed* it since you branched, so merge/rebase the latest base into your branch and re-check before proposing a fix or escalating.
+
 ## In a squash-merge repo, "commits ahead of main" does not mean "unmerged"
 
 A squash-merge creates a new commit on `main` that the branch's own commits are unreachable from, so a branch whose work has already landed still shows ahead by N. **"Ahead by N" never alone means unmerged.** Determine real status by content, not raw count:
