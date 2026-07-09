@@ -10,7 +10,7 @@ workflows** (plus the [report-failure](../../.github/actions/report-failure/acti
 [bump-extension-patch](../../.github/actions/bump-extension-patch/action.yml) composite actions);
 each extension repo carries only **one thin stub** —
 [`stubs/chrome-extension-release.yml`](stubs/chrome-extension-release.yml), triggers only — plus a
-**required** `.github/release.config` (six explicit keys, **no defaults**). **Copy the stub
+**required** `.github/release.config` (five explicit keys, **no defaults**). **Copy the stub
 verbatim** — there are no tokens to replace — and write the config. The stub references the canon
 `@main`, so a merged canon change reaches every extension repo's next run automatically — changing
 the standard's logic needs no per-repo PR; only a change to the *stub shape itself* still
@@ -40,9 +40,10 @@ general names so other standards reuse them as-is. When in doubt, prefix.
 
 **Artifact**
 
-- `npm run build` produces the zip at the config's `zip_path`, whose filename is conventionally the
-  **kebab-cased repo name** + `.zip` (e.g. `google-calendar-event-creator.zip`, `tldr.zip`,
-  `crossword-chat.zip`) — stable, never version-stamped, so
+- `npm run build` produces the zip at the **forced-uniform** standard location
+  `dist/<kebab-cased repo name>.zip` (e.g. `dist/google-calendar-event-creator.zip`, `dist/tldr.zip`,
+  `dist/crossword-chat.zip`) — the place/name is derived, not a config choice; a repo's build must
+  write there. Stable, never version-stamped, so
   `https://github.com/<owner>/<repo>/releases/latest/download/<zip>` is a permanent
   newest-build URL. `manifest.json` sits at the zip's top level.
 - The zip's contents come from a single shipping-set source of truth in `dev/build/release/`,
@@ -74,12 +75,13 @@ there — a repo never dispatches it directly.
 
 - Repo-specific values do **not** travel as `with:` inputs — the canon reads them from the repo
   itself via the `read-release-config` action, so the stub is copy-verbatim. They live in a
-  **required, fully explicit** `.github/release.config` (dotenv) — **six keys, no defaults**, because
+  **required, fully explicit** `.github/release.config` (dotenv) — **five keys, no defaults**, because
   a default that "happens to match" a repo's layout silently ships the wrong thing when the layout or
   the default later changes:
   `manifest_path`, `package_json_path`, `setup_command` (`""` = no install, stated),
-  `test_command`, `ship_paths`, `zip_path`. Two things are **not** keys because they never vary:
-  the **build** is always `npm run build`, and the **zip asset name** is `basename(zip_path)`.
+  `test_command`, `ship_paths`. Two things are **not** keys because they are **forced-uniform
+  structure**, not a per-repo choice: the **build** is always `npm run build`, and the **zip** lives
+  at `dist/<kebab repo name>.zip` (both `zip_path` and the asset name are derived).
   `cer/release-config` fails the review on a missing file, a missing required key, or an unknown
   (typo'd) key.
 - The one value that stays in the **stub** (not the config file) is `build_env` — KEY=VALUE lines a
@@ -193,10 +195,10 @@ in the repo's first-publication issue).*
 
 1. Copy the single stub [`stubs/chrome-extension-release.yml`](stubs/chrome-extension-release.yml)
    into `.github/workflows/` **verbatim** — there are no tokens to replace. Then write the
-   **required** `.github/release.config` (dotenv) with **all six** keys, explicitly — no defaults:
+   **required** `.github/release.config` (dotenv) with **all five** keys, explicitly — no defaults:
    `manifest_path`, `package_json_path`, `setup_command` (`""` = no install), `test_command`,
-   `ship_paths`, `zip_path`. (The build is always `npm run build`, and the zip asset name is
-   `basename(zip_path)`, so neither is a key.) If the build bakes in per-environment config,
+   `ship_paths`. (The build is always `npm run build`, and the zip lives at the derived
+   `dist/<kebab repo name>.zip`, so neither is a key.) If the build bakes in per-environment config,
    uncomment the `build_env` block on the `create-package` and `daily` jobs (the only place the stub
    isn't verbatim) and set the matching repository **variables** (see step 5).
 2. Create `dev/build/release/` — zip builder + shipping-set module (with its test) and
@@ -206,9 +208,9 @@ in the repo's first-publication issue).*
    against the build by the repo's own ship-set test. No `releasing.md` and no `STORE-LISTING.md`:
    the release procedure lives in this guide, and the listing copy / permission justifications are
    dashboard state (above).
-3. Wire `npm run build` to produce the zip at `zip_path` (a monorepo sets a root `build` that
-   delegates, e.g. `npm --prefix client run build`) and set `test_command` to the repo's full
-   release gate. Add the two README sections above.
+3. Wire `npm run build` to produce the zip at the standard `dist/<kebab repo name>.zip` (a monorepo
+   sets a root `build` that delegates, e.g. `npm --prefix client run build`) and set `test_command`
+   to the repo's full release gate. Add the two README sections above.
 4. One-time GitHub setup: Pages → Source = "GitHub Actions". The four `CHROME_*` secrets come
    later, after the first manual publish. (Once per *account*, not per repo: if Claudinite is
    private, its reusable workflows must be callable — Claudinite Settings → Actions → General →

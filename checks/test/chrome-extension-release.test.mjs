@@ -55,14 +55,14 @@ const STUB = [
   '',
 ].join('\n');
 
-// The required, fully-explicit release config (six keys, no defaults).
+// The required, fully-explicit release config (five keys, no defaults; the zip
+// location is forced-uniform structure, so it is derived, not a key).
 const RELEASE_CONFIG = [
   'manifest_path=extension/manifest.json',
   'package_json_path=package.json',
   'setup_command=npm ci',
   'test_command=npm test',
   'ship_paths=extension',
-  'zip_path=dist/x.zip',
   '',
 ].join('\n');
 
@@ -140,18 +140,17 @@ test('release-config: flags a missing required key, an unknown key, and a malfor
       'package_json_path=package.json',
       'setup_command=npm ci',
       'test_command=npm test',
-      'ship_paths=extension',
-      // zip_path OMITTED -> missing required key
-      'zpi_path=dist/x.zip',        // typo -> unknown key
+      // ship_paths OMITTED -> missing required key
+      'shpi_paths=extension',       // typo -> unknown key
       'this is not a config line',  // malformed
     ].join('\n') + '\n',
   };
   const root = makeRepo({ changed: files });
   try {
     const findings = run(releaseConfig, root);
-    assert.ok(findings.some((f) => /unknown key "zpi_path"/.test(f.what)));
+    assert.ok(findings.some((f) => /unknown key "shpi_paths"/.test(f.what)));
     assert.ok(findings.some((f) => /not KEY=value/.test(f.what)));
-    assert.ok(findings.some((f) => /missing required key "zip_path"/.test(f.what)));
+    assert.ok(findings.some((f) => /missing required key "ship_paths"/.test(f.what)));
   } finally { cleanup(root); }
 });
 

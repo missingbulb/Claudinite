@@ -15,13 +15,14 @@
 //   setup_command       dependency-install command ("" = no install, stated)
 //   test_command        the full release test gate
 //   ship_paths          space-separated shipped roots (the daily change filter)
-//   zip_path            where the build writes the zip (build is always
-//                       `npm run build`, so it is not a key)
 //
-// zip_name is DERIVED as basename(zip_path) — the one mechanical value, taken
-// from an explicit required key rather than guessed from the repo name.
+// Two things are NOT keys because they are FORCED-uniform structure, not a
+// per-repo choice: the build is always `npm run build`, and the zip lives at the
+// standard place/name `dist/<kebab repo name>.zip` (derived here as `zip_path` +
+// `zip_name`). A repo's build must write there.
 //
-// Dependency-free (node: built-ins only) so it runs on a bare runner.
+// Env: REPO_NAME (github.event.repository.name) for the zip derivation;
+// GITHUB_OUTPUT for the sink. Dependency-free (node: built-ins only).
 
 import { readFileSync, existsSync, appendFileSync } from 'node:fs';
 
@@ -33,7 +34,6 @@ const REQUIRED_KEYS = [
   'setup_command',
   'test_command',
   'ship_paths',
-  'zip_path',
 ];
 
 function fail(msg) {
@@ -41,9 +41,18 @@ function fail(msg) {
   process.exit(1);
 }
 
-// Parse the dotenv config into a plain object (later keys win). setup_command
-// may be empty (an explicit "no install") — present-but-empty is valid, absent
-// is not.
+// PascalCase / camelCase / ALLCAPS repo name -> kebab, for the standard zip name
+// (GoogleCalendarEventCreator -> google-calendar-event-creator,
+// CrosswordChat -> crossword-chat, TLDR -> tldr).
+function kebab(name) {
+  return name
+    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1-$2')
+    .toLowerCase();
+}
+
+// setup_command may be empty (an explicit "no install") — present-but-empty is
+// valid, absent is not.
 function parseConfig(text) {
   const cfg = {};
   text.split('\n').forEach((raw, i) => {
@@ -64,6 +73,9 @@ function parseConfig(text) {
   return cfg;
 }
 
+const repoName = process.env.REPO_NAME;
+if (!repoName) fail('REPO_NAME env is required (github.event.repository.name).');
+
 if (!existsSync(CONFIG_PATH)) {
   fail(`${CONFIG_PATH} is required — every extension repo declares its release config explicitly (see the chrome-extension-release standard in Claudinite).`);
 }
@@ -76,15 +88,17 @@ if (missing.length) fail(`${CONFIG_PATH} is missing required key(s): ${missing.j
 const unknown = Object.keys(cfg).filter((k) => !REQUIRED_KEYS.includes(k));
 if (unknown.length) fail(`${CONFIG_PATH} has unknown key(s): ${unknown.join(', ')} (valid: ${REQUIRED_KEYS.join(', ')})`);
 
+const zipName = `${kebab(repoName)}.zip`;
+
 const outputs = {
   manifest_path: cfg.manifest_path,
   package_json_path: cfg.package_json_path,
   setup_command: cfg.setup_command,
   test_command: cfg.test_command,
   ship_paths: cfg.ship_paths,
-  zip_path: cfg.zip_path,
-  // Derived: the release asset filename is the built zip's basename.
-  zip_name: cfg.zip_path.split('/').pop(),
+  // Forced-uniform structure: the build writes the zip here.
+  zip_name: zipName,
+  zip_path: `dist/${zipName}`,
 };
 
 const sink = process.env.GITHUB_OUTPUT;
@@ -93,7 +107,6 @@ if (!sink) {
   process.exit(0);
 }
 
-// Multiline-safe delimiter form, so a value with spaces round-trips.
 let block = '';
 for (const [k, v] of Object.entries(outputs)) {
   block += `${k}<<__RELEASE_CFG__\n${v}\n__RELEASE_CFG__\n`;

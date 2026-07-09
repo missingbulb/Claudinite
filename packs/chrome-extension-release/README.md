@@ -10,7 +10,7 @@ Fingerprint: a repo already carrying the standard's single `Release` workflow st
 |---|---|---|
 | `cer/release-workflows` | single `Release` stub calls canon workflows | blocking |
 | `cer/template-tokens` | no unreplaced `__TOKEN__` survives | blocking |
-| `cer/release-config` | `.github/release.config` present with all 6 required keys, no unknowns | blocking |
+| `cer/release-config` | `.github/release.config` present with all 5 required keys, no unknowns | blocking |
 | `cer/version-sync` | manifest and package.json versions agree | blocking |
 | `cer/release-layout` | privacy policy source present | blocking |
 | `cer/privacy-permission-alignment` | every permission disclosed in PRIVACY.md (test the world) | blocking |

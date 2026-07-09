@@ -24,10 +24,10 @@ outputs:
     description: Space-separated shipped roots (the daily change filter)
     value: ${{ steps.cfg.outputs.ship_paths }}
   zip_path:
-    description: Repo-relative path the build (npm run build) writes the zip to
+    description: Standard zip location the build writes to — dist/<kebab repo>.zip
     value: ${{ steps.cfg.outputs.zip_path }}
   zip_name:
-    description: Release asset filename, derived as basename(zip_path)
+    description: Release asset filename — <kebab repo>.zip
     value: ${{ steps.cfg.outputs.zip_name }}
 
 runs:
@@ -35,4 +35,6 @@ runs:
   steps:
     - id: cfg
       shell: bash
+      env:
+        REPO_NAME: ${{ github.event.repository.name }}
       run: node "${{ github.action_path }}/read-config.mjs"

@@ -6,16 +6,16 @@ import { finding } from '../../checks/lib/findings.mjs';
 // thing it assumed, and the repo ships the wrong artifact with no signal). This
 // check enforces the file's presence, that exactly the required keys are set,
 // and that no unknown (typo'd) key sneaks in. Keep REQUIRED_KEYS in sync with
-// .github/actions/read-release-config/read-config.mjs. `zip_name` is NOT a key
-// (derived from zip_path's basename) and neither is the build command (always
-// `npm run build`).
+// .github/actions/read-release-config/read-config.mjs. Two things are NOT keys —
+// they are forced-uniform structure, not a per-repo choice: the build is always
+// `npm run build`, and the zip lives at `dist/<kebab repo name>.zip` (so both
+// `zip_path` and `zip_name` are derived, not configured).
 const REQUIRED_KEYS = [
   'manifest_path',
   'package_json_path',
   'setup_command',
   'test_command',
   'ship_paths',
-  'zip_path',
 ];
 
 const rule = {
