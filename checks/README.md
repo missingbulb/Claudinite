@@ -12,6 +12,8 @@ node checks/run.mjs             # whole-repo sweep (the default — Stop hook an
 node checks/run.mjs --changed   # transitional: only files changed vs the merge-base with main
 node checks/run.mjs --list      # machine-readable rule catalog (id, severity, description, doc)
 node checks/run.mjs --init      # write .claudinite-checks.json from the technology fingerprint
+
+node --test checks/test/*.test.mjs skills/*/*.test.mjs   # the test suite, exactly as CI runs it
 ```
 
 Exit 1 when blocking findings exist; advisory findings never fail a run. In a consuming repo
