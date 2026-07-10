@@ -86,6 +86,8 @@ done
 
 The `/.claudinite/*` + `!/.claudinite/.gitkeep` pair ignores the synced contents but keeps the marker tracked, so `.claudinite/` exists in the repo as an empty-but-committed folder. The sync hook above preserves this marker across its `rm -rf`/swap, so the working tree stays clean after each session sync.
 
+Because those synced contents are gitignored — absent on any plain checkout, notably a CI runner, which runs no session hook — committed code that CI executes (a test, a tool, a check) must never `import`/`require` a canon helper from `.claudinite/`: it resolves in a local session but fails module-not-found in CI. Inline the helper's logic instead, and point a comment back at the canonical source.
+
 **4.** Import the corpus — append `@.claudinite/CLAUDE.md` to `CLAUDE.md`:
 
 ```sh
