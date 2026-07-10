@@ -1,15 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, deletePath, cleanup, git, writeFiles } from './helpers.mjs';
-import { buildContext } from '../lib/context.mjs';
-import referenceIntegrity from '../../packs/universal/reference-integrity.mjs';
-import linkLabels from '../../packs/universal/markdown-link-labels.mjs';
-import taskLifecycle from '../../packs/universal/task-lifecycle.mjs';
-import warningSuppression from '../../packs/universal/warning-suppression.mjs';
-import filePlacement from '../../packs/universal/file-placement.mjs';
-import packDeclaration from '../../packs/universal/pack-declaration.mjs';
-import squashMergeHistory from '../../packs/universal/squash-merge-history.mjs';
-import sharedConstants from '../../packs/universal/shared-constants.mjs';
+import { makeRepo, deletePath, cleanup, git, writeFiles } from '../../checks/test/helpers.mjs';
+import { buildContext } from '../../checks/lib/context.mjs';
+import referenceIntegrity from './reference-integrity.mjs';
+import linkLabels from './markdown-link-labels.mjs';
+import taskLifecycle from './task-lifecycle.mjs';
+import warningSuppression from './warning-suppression.mjs';
+import filePlacement from './file-placement.mjs';
+import packDeclaration from './pack-declaration.mjs';
+import squashMergeHistory from './squash-merge-history.mjs';
+import sharedConstants from './shared-constants.mjs';
+import claudeMdLength from './claude-md-length.mjs';
+import generatedMergeDriver from './generated-merge-driver.mjs';
 
 function run(rule, root, mode = 'changed') {
   const ctx = buildContext({ root, mode });
@@ -326,6 +328,65 @@ test('shared-constants: flags an invalid regex pattern', () => {
     const findings = run(sharedConstants, root);
     assert.equal(findings.length, 1);
     assert.match(findings[0].what, /not a valid regular expression/);
+  } finally { cleanup(root); }
+});
+
+test('claude-md-length: flags a CLAUDE.md over 200 lines, passes a short one', () => {
+  const long = makeRepo({ changed: { 'CLAUDE.md': `${'x\n'.repeat(250)}` } });
+  const short = makeRepo({ changed: { 'CLAUDE.md': '# short\n\nfacts only\n' } });
+  try {
+    const findings = run(claudeMdLength, long, 'all');
+    assert.equal(findings.length, 1);
+    assert.match(findings[0].what, /25[0-9]|251 lines/);
+    assert.equal(findings[0].severity, 'advisory');
+    assert.equal(run(claudeMdLength, short, 'all').length, 0);
+  } finally { cleanup(long); cleanup(short); }
+});
+
+test('claude-md-length: a long NON-root CLAUDE.md is not flagged (FP fix)', () => {
+  // a fixture/example CLAUDE.md that never loads must not be flagged
+  const root = makeRepo({ changed: { 'test/fixtures/CLAUDE.md': `${'x\n'.repeat(250)}` } });
+  try {
+    assert.equal(run(claudeMdLength, root, 'all').length, 0);
+  } finally { cleanup(root); }
+});
+
+test('generated-merge-driver: flags a GENERATED file lacking a merge=ours entry, passes when present', () => {
+  const bad = makeRepo({ changed: { 'foo.GENERATED.json': '{}\n', 'src/a.mjs': 'export const x=1;\n' } });
+  const good = makeRepo({
+    changed: { 'foo.GENERATED.json': '{}\n', '.gitattributes': 'foo.GENERATED.json merge=ours\n' },
+  });
+  const noGenerated = makeRepo({ changed: { 'plain.json': '{}\n' } });
+  try {
+    const findings = run(generatedMergeDriver, bad, 'all');
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].file, 'foo.GENERATED.json');
+    assert.equal(run(generatedMergeDriver, good, 'all').length, 0);
+    assert.equal(run(generatedMergeDriver, noGenerated, 'all').length, 0);
+  } finally { cleanup(bad); cleanup(good); cleanup(noGenerated); }
+});
+
+test('generated-merge-driver: a glob merge=ours pattern covers matching files', () => {
+  const root = makeRepo({
+    changed: { 'a.GENERATED.md': 'x\n', '.gitattributes': '*.GENERATED.md merge=ours\n' },
+  });
+  try {
+    assert.equal(run(generatedMergeDriver, root, 'all').length, 0);
+  } finally { cleanup(root); }
+});
+
+test('generated-merge-driver: still inspects a GENERATED file that is also linguist-generated', () => {
+  // The engine drops linguist-generated files from ctx.files, but this check reads
+  // ctx.allFiles — so a GENERATED file carrying the attr (and lacking merge=ours) is
+  // still caught rather than silently disappearing from the sweep.
+  const root = makeRepo({ changed: {
+    'foo.GENERATED.json': '{}\n',
+    '.gitattributes': 'foo.GENERATED.json linguist-generated\n', // no merge=ours entry
+  } });
+  try {
+    const findings = run(generatedMergeDriver, root, 'all');
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].file, 'foo.GENERATED.json');
   } finally { cleanup(root); }
 });
 

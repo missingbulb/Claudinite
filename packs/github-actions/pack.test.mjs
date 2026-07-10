@@ -1,14 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, cleanup } from './helpers.mjs';
-import { buildContext } from '../lib/context.mjs';
-import secretsInJobIf from '../../packs/github-actions/secrets-in-job-if.mjs';
-import runPipefail from '../../packs/github-actions/run-pipefail.mjs';
-import checkoutSubmodules from '../../packs/github-actions/checkout-submodules.mjs';
-import scheduledEscalation from '../../packs/github-actions/scheduled-failure-escalation.mjs';
-import labelCreate from '../../packs/github-actions/label-create-before-add.mjs';
-import uniqueBranch from '../../packs/github-actions/unique-automation-branch.mjs';
-import pagesArtifactSymlinks from '../../packs/github-actions/pages-artifact-symlinks.mjs';
+import { makeRepo, cleanup } from '../../checks/test/helpers.mjs';
+import { buildContext } from '../../checks/lib/context.mjs';
+import secretsInJobIf from './secrets-in-job-if.mjs';
+import runPipefail from './run-pipefail.mjs';
+import checkoutSubmodules from './checkout-submodules.mjs';
+import scheduledEscalation from './scheduled-failure-escalation.mjs';
+import labelCreate from './label-create-before-add.mjs';
+import uniqueBranch from './unique-automation-branch.mjs';
+import pagesArtifactSymlinks from './pages-artifact-symlinks.mjs';
 
 const run = (rule, root) => rule.run(buildContext({ root, mode: 'all' }));
 const WF = '.github/workflows/x.yml';

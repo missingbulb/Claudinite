@@ -10,6 +10,11 @@ import firebase from '../../packs/firebase/pack.mjs';
 // root OR one directory down, so a monorepo (Flutter in app/, Node in
 // functions/, Firebase project root in firebase/) is detected — but a marker
 // nested deeper (a fixture/example tree) is not.
+//
+// This file lives with the ENGINE tests deliberately: it tests the shared
+// detect *convention* by sweeping several packs per test, not any one pack's
+// behavior. A single pack's own fingerprint tests belong in that pack's
+// pack.test.mjs (see packs/chrome-extension-release/pack.test.mjs).
 function detect(pack, files) {
   const root = makeRepo({ base: files });
   try {

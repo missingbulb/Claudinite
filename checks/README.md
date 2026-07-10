@@ -13,7 +13,7 @@ node checks/run.mjs --changed   # transitional: only files changed vs the merge-
 node checks/run.mjs --list      # machine-readable rule catalog (id, severity, description, doc)
 node checks/run.mjs --init      # write .claudinite-checks.json from the technology fingerprint
 
-node --test checks/test/*.test.mjs skills/*/*.test.mjs   # the test suite, exactly as CI runs it
+node --test checks/test/*.test.mjs packs/*.test.mjs packs/*/*.test.mjs skills/*/*.test.mjs   # the test suite, exactly as CI runs it
 ```
 
 Exit 1 when blocking findings exist; advisory findings never fail a run. In a consuming repo
@@ -74,8 +74,11 @@ One module per rule under `../packs/<pack>/`, exporting
 `{ id, severity, description, doc, why, run(ctx) }` — list it in that pack's
 `../packs/<pack>/pack.mjs` manifest. The failure message *is* the instruction: `what` states the
 violation, `why` the one-line motivation, `fix` the exact remedy, `doc` the corpus doc that owns
-the depth. Write the fixture test first and see it fail (`test/`, scratch git repos via
-[test/helpers.mjs](test/helpers.mjs)) — a violating fixture must find, a clean one must not.
+the depth. Write the fixture test first and see it fail — a violating fixture must find, a clean
+one must not. Pack tests are **co-located**: they live in the pack's own
+`../packs/<pack>/pack.test.mjs` (scratch git repos via the shared
+[test/helpers.mjs](test/helpers.mjs)); `checks/test/` holds only the engine's tests (runner,
+guard, lib parsers) and the deliberately cross-pack `pack-detect.test.mjs`.
 A new rule ships at its real severity, fail-fast: `blocking` when a finding is a defect to
 fix, `advisory` only when the rule's own semantics are directional (a smell to judge). A whole
 new pack is just a `../packs/<name>/` directory with a `pack.mjs` (its `id`, fingerprint

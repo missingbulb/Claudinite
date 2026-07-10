@@ -1,6 +1,6 @@
 # packs/ — the corpus content, active by declaration
 
-Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session start when the pack is active) and its **checks** (run at every Stop and in CI). `universal` is always on; technology and project-class packs activate when declared in `.claudinite-checks.json` (bootstrap's `--init` seeds the declaration from a fingerprint). Discovery is structural — any `packs/<name>/pack.mjs` is a pack. Each pack's `README.md` lists its rules with a ≤5-word description and whether each is **hardcoded** (a check) or **prose**.
+Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session start when the pack is active), its **checks** (run at every Stop and in CI), and its **tests** (`pack.test.mjs`, co-located like a skill's — `checks/test/` keeps only the engine's own tests). `universal` is always on; technology and project-class packs activate when declared in `.claudinite-checks.json` (bootstrap's `--init` seeds the declaration from a fingerprint). Discovery is structural — any `packs/<name>/pack.mjs` is a pack. Each pack's `README.md` lists its rules with a ≤5-word description and whether each is **hardcoded** (a check) or **prose**.
 
 ## Packs
 
@@ -9,7 +9,7 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 | [universal](universal/README.md) | always | 9 | ~8 (working-discipline + task-lifecycle) |
 | [github-actions](github-actions/README.md) | `.github/workflows/` | 6 | 0 |
 | [chrome-extension](chrome-extension/README.md) | manifest_version manifest | 0 | 8 |
-| [chrome-extension-release](chrome-extension-release/README.md) | `Release: *` workflow stubs (opt-in) | 7 | 0 (+ RELEASE contract) |
+| [chrome-extension-release](chrome-extension-release/README.md) | the `Release to Chrome Store` workflow stub (opt-in) | 7 | 0 (+ RELEASE contract) |
 | [node](node/README.md) | root package.json | 0 | 2 |
 | [aws-sam](aws-sam/README.md) | SAM template | 3 | 3 |
 | [html](html/README.md) | declared | 0 | 1 |
