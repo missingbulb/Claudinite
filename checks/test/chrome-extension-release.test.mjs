@@ -23,15 +23,16 @@ const MANIFEST = JSON.stringify({
 // invariant cer/privacy-permission-alignment enforces.
 const PRIVACY = 'We use storage to save settings locally, and connect to https://e.com/* to fetch data.\n';
 
-// The ONE thin stub: named "Release", calling all three canon reusable workflows
-// from its three if:-guarded jobs. Copied verbatim by every repo — no tokens.
+// The ONE thin stub: named "Release to Chrome Store", scheduled at the contract
+// cron, calling all three canon reusable workflows from its three if:-guarded
+// jobs. Copied verbatim by every repo — no tokens.
 const STUB = [
-  'name: Release',
+  'name: Release to Chrome Store',
   'on:',
   '  push:',
   '    branches: [main]',
   '  schedule:',
-  '    - cron: "0 3 * * *"',
+  '    - cron: "30 0 * * *"',
   '  workflow_dispatch:',
   '    inputs:',
   '      mode:',
@@ -99,7 +100,7 @@ test('release-workflows: flags a missing stub', () => {
 test('release-workflows: flags a wrong name: and a canon workflow it does not call', () => {
   const files = { ...CONFORMANT };
   files['.github/workflows/chrome-extension-release.yml'] = STUB
-    .replace('name: Release', 'name: Wrong Name')
+    .replace('name: Release to Chrome Store', 'name: Wrong Name')
     .replace('    uses: missingbulb/Claudinite/.github/workflows/chrome-extension-publish-store.yml@main', '    steps:\n      - run: echo inlined');
   const root = makeRepo({ changed: files });
   try {
@@ -110,9 +111,21 @@ test('release-workflows: flags a wrong name: and a canon workflow it does not ca
   } finally { cleanup(root); }
 });
 
+test('release-workflows: flags a stale schedule cron (the pre-rename 03:00 UTC)', () => {
+  const files = { ...CONFORMANT };
+  files['.github/workflows/chrome-extension-release.yml'] = STUB
+    .replace('    - cron: "30 0 * * *"', '    - cron: "0 3 * * *"');
+  const root = makeRepo({ changed: files });
+  try {
+    const findings = run(releaseWorkflows, root);
+    assert.equal(findings.length, 1);
+    assert.match(findings[0].what, /"0 3 \* \* \*".*requires "30 0 \* \* \*"/);
+  } finally { cleanup(root); }
+});
+
 test('template-tokens: flags a surviving __TOKEN__', () => {
   const files = { ...CONFORMANT };
-  files['.github/workflows/chrome-extension-release.yml'] = STUB.replace('name: Release', 'name: Release\nenv:\n  ZIP: __ZIP_NAME__');
+  files['.github/workflows/chrome-extension-release.yml'] = STUB.replace('name: Release to Chrome Store', 'name: Release to Chrome Store\nenv:\n  ZIP: __ZIP_NAME__');
   const root = makeRepo({ changed: files });
   try {
     const findings = run(templateTokens, root);
@@ -225,6 +238,18 @@ test('pack fingerprint: opt-in — a manifest alone does not trip detect; the si
     assert.equal(releasePack.detect(buildContext({ root: codingOnly, mode: 'all' })), false);
     assert.equal(releasePack.detect(buildContext({ root: shipping, mode: 'all' })), true);
   } finally { cleanup(codingOnly); cleanup(shipping); }
+});
+
+test('pack fingerprint: a legacy "Release"-named stub still fingerprints as carrying the pack', () => {
+  const files = { ...CONFORMANT };
+  files['.github/workflows/chrome-extension-release.yml'] = STUB
+    .replace('name: Release to Chrome Store', 'name: Release');
+  const root = makeRepo({ base: files });
+  try {
+    assert.equal(releasePack.detect(buildContext({ root, mode: 'all' })), true);
+    // ...while the conformance rule flags the stale name so the repo re-copies the stub.
+    assert.ok(run(releaseWorkflows, root).some((f) => /name: is "Release"/.test(f.what)));
+  } finally { cleanup(root); }
 });
 
 test('readme-sections: flags a README missing the Install or Releasing section', () => {
