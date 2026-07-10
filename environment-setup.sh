@@ -19,7 +19,12 @@ cd "$root"
 
 # 1. Prime the Claudinite corpus so the pack env declarations + env.mjs exist
 #    before the first session (the SessionStart sync keeps it current after).
-bash .claude/hooks/sync-claudinite.sh || true
+#    Current layout first; fall back to the legacy pre-relocation hook path.
+if [ -f .claudinite/sync-claudinite.sh ]; then
+  bash .claudinite/sync-claudinite.sh || true
+else
+  bash .claude/hooks/sync-claudinite.sh || true
+fi
 
 # 2. Generated-file merge hygiene — universal, cheap, harmless where unused: the
 #    `ours` driver .gitattributes maps GENERATED files to, plus conflict-replay.

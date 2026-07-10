@@ -1,6 +1,6 @@
 # Adopting Claudinite
 
-How a consuming repo bootstraps these shared guidelines. Bootstrapping is **idempotent** — safe to re-run on a fresh repo or one that already adopted Claudinite (re-running is also how an existing repo picks up changes to these steps). Two kinds of step: a **generated artifact** that Claudinite owns (the `sync-claudinite.sh` hook) is re-written to match its canonical block every run, so re-bootstrapping refreshes a stale copy; **your own config** (the `@.claudinite/CLAUDE.md` import line, `settings.json` entries) is only added to what's missing, never clobbered. Re-running never duplicates work.
+How a consuming repo bootstraps these shared guidelines. Bootstrapping is **idempotent** — safe to re-run on a fresh repo or one that already adopted Claudinite (re-running is also how an existing repo picks up changes to these steps). Two kinds of step: a **generated artifact** that Claudinite owns (the tracked `.claudinite/sync-claudinite.sh` hook) is re-written to match its canonical source every run, so re-bootstrapping refreshes a stale copy — and corrects its `settings.json` registration when it still points at the legacy `.claude/hooks/` path; **your own config** (the `@.claudinite/CLAUDE.md` import line, other `settings.json` entries) is only added to what's missing, never clobbered. Re-running never duplicates work.
 
 Two parts: **(1)** mount the corpus — pick Method A or B by where your sessions run; **(2)** register the preferences SessionStart hook (same for both methods). Do both.
 
@@ -21,70 +21,49 @@ Submodules aren't pulled automatically, so the consumer's setup or SessionStart 
 
 ## Method B — session-start tarball sync
 
-Auto-updating, no git credential needed. A SessionStart hook fetches the repo as a tarball over plain HTTPS into a gitignored `.claudinite/`, pulling latest `main` each session.
+Auto-updating, no git credential needed. A SessionStart hook fetches the repo as a tarball over plain HTTPS into a gitignored `.claudinite/`, pulling latest `main` each session. The hook lives *inside* that folder: `.claudinite/sync-claudinite.sh` is the folder's one **tracked** file, doubling as the committed signal that the repo mounts Claudinite — there is no separate marker file.
 
-**1.** Write `.claude/hooks/sync-claudinite.sh` (`chmod +x`) with exactly the block below. This is a generated artifact Claudinite owns — **overwrite** an existing copy rather than skipping it, so a re-bootstrap picks up updates (e.g. the marker-preserve line added in step 3):
-
-```sh
-#!/bin/bash
-# Sync Claudinite into .claudinite/ over plain HTTPS (codeload is allowlisted;
-# a submodule clone 403s on cloud). Pulls latest main. On a failed sync it keeps
-# any prior copy silently; only when there is NO copy at all (the harness would be
-# absent) does it inject a directive telling the assistant to halt and ask.
-# Set CLAUDINITE_REF to a tag/SHA to pin instead of tracking main.
-set -euo pipefail
-REF="${CLAUDINITE_REF:-main}"
-URL="https://codeload.github.com/missingbulb/Claudinite/tar.gz/refs/heads/${REF}"
-dest="${CLAUDE_PROJECT_DIR:-.}/.claudinite"
-tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
-if curl -fsSL --retry 2 --max-time 30 "$URL" -o "$tmp/c.tgz" 2>/dev/null \
-   && tar -tzf "$tmp/c.tgz" >/dev/null 2>&1; then
-  rm -rf "$dest.new"; mkdir -p "$dest.new"
-  tar -xzf "$tmp/c.tgz" -C "$dest.new" --strip-components=1
-  [ -f "$dest/.gitkeep" ] && cp "$dest/.gitkeep" "$dest.new/.gitkeep"  # keep the committed signal marker
-  rm -rf "$dest"; mv "$dest.new" "$dest"; exit 0
-fi
-[ -f "$dest/README.md" ] && exit 0   # offline: prior copy present, harness still loads
-# No prior copy: the harness is absent and the session would run vanilla. A SessionStart
-# hook can't block or prompt on its own, so inject a directive telling the assistant to
-# halt and confirm with the user before doing any work. stdout is added to the session
-# context; the message is plain text (no double quotes or backslashes) so it embeds in
-# the JSON string directly.
-printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' \
-  "CLAUDINITE NOT LOADED: the sync failed and no local .claudinite/ copy exists, so @.claudinite/CLAUDE.md is unresolved and none of the Claudinite harness (packs, skills, preferences) is active this session. STOP: before running any other tool, answering, or starting the requested task, use the AskUserQuestion tool to ask the user whether to proceed without the harness or pause and retry the sync; do not proceed until they answer."
-exit 0
-```
-
-**2.** Register it in `.claude/settings.json`:
-
-```json
-{ "hooks": { "SessionStart": [ { "hooks": [
-  { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/sync-claudinite.sh" }
-] } ] } }
-```
-
-**3.** Commit `.claudinite/` as a tracked **signal** while ignoring its synced contents. Keep one marker file under version control and gitignore everything else, so the repo carries a one-glance signal that it mounts Claudinite, while the synced corpus underneath stays out of git (idempotent):
+**1.** Populate `.claudinite/` — one tarball pull delivers the corpus *and* places the hook. The hook's canonical source is [`sync-claudinite.sh`](sync-claudinite.sh) at the Claudinite repo root — never write an inline copy of its body. It is a generated artifact Claudinite owns: on a re-bootstrap, **overwrite** the tracked copy with the canon's current one rather than skipping it, so a stale hook gets refreshed:
 
 ```sh
 mkdir -p .claudinite
-[ -f .claudinite/.gitkeep ] || cat > .claudinite/.gitkeep <<'EOF'
-DO NOT DELETE. This file keeps .claudinite/ committed as a signal that this
-project mounts Claudinite (https://github.com/missingbulb/Claudinite). The
-folder's contents are auto-populated (and gitignored) by
-.claude/hooks/sync-claudinite.sh at session start; only this marker is tracked.
-EOF
-# Drop any wholesale-ignore lines from an earlier bootstrap — a bare `.claudinite/`
-# excludes the whole dir, and git won't descend into it, so the `!` negation below
-# can't re-include the marker unless that line is gone first.
-if [ -f .gitignore ]; then
-  grep -vxE '\.claudinite/|\.claudinite\.new/' .gitignore > .gitignore.tmp && mv .gitignore.tmp .gitignore
-fi
-for rule in '/.claudinite/*' '!/.claudinite/.gitkeep' '/.claudinite.new/'; do
-  grep -qxF "$rule" .gitignore 2>/dev/null || echo "$rule" >> .gitignore
-done
+curl -fsSL https://codeload.github.com/missingbulb/Claudinite/tar.gz/main \
+  | tar -xz --strip-components=1 -C .claudinite
+chmod +x .claudinite/sync-claudinite.sh
 ```
 
-The `/.claudinite/*` + `!/.claudinite/.gitkeep` pair ignores the synced contents but keeps the marker tracked, so `.claudinite/` exists in the repo as an empty-but-committed folder. The sync hook above preserves this marker across its `rm -rf`/swap, so the working tree stays clean after each session sync.
+**2.** Register it in `.claude/settings.json`. If an entry still points at the legacy `.claude/hooks/sync-claudinite.sh` path, **fix that entry in place** — this is the one settings entry a re-bootstrap corrects rather than leaves alone:
+
+```json
+{ "hooks": { "SessionStart": [ { "hooks": [
+  { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claudinite/sync-claudinite.sh" }
+] } ] } }
+```
+
+**3.** Track the hook while gitignoring everything else it syncs (idempotent). The `/.claudinite/*` + `!/.claudinite/sync-claudinite.sh` pair keeps just the hook under version control, so the repo carries a one-glance signal that it mounts Claudinite while the synced corpus underneath stays out of git:
+
+```sh
+# Drop rules from earlier bootstraps: a bare `.claudinite/` wholesale-ignore blocks
+# the `!` negation below (git won't descend into a fully-ignored dir), and the
+# `!/.claudinite/.gitkeep` negation belongs to the retired legacy marker.
+if [ -f .gitignore ]; then
+  grep -vxE '\.claudinite/|\.claudinite\.new/|!/\.claudinite/\.gitkeep' .gitignore > .gitignore.tmp && mv .gitignore.tmp .gitignore
+fi
+for rule in '/.claudinite/*' '!/.claudinite/sync-claudinite.sh' '/.claudinite.new/'; do
+  grep -qxF "$rule" .gitignore 2>/dev/null || echo "$rule" >> .gitignore
+done
+git add .claudinite/sync-claudinite.sh
+```
+
+The hook preserves its own tracked copy across its `rm -rf`/swap — the tracked copy wins over the tarball's — so the working tree stays clean after each session sync even while the canon's copy has moved ahead; the nightly re-bootstrap is the tracked copy's update path.
+
+**3b — migrate the legacy layout** (hook at `.claude/hooks/sync-claudinite.sh`, marker `.claudinite/.gitkeep`). Steps 1–3 already placed the relocated hook, corrected its registration, and rewrote the gitignore rules; what remains is deleting the two legacy files — idempotent, a no-op on a current repo. The fleet's nightly re-bootstrap applies this to every member transparently: a direct commit to the member's default branch, no PR, no prompt:
+
+```sh
+[ -f .claude/hooks/sync-claudinite.sh ] && git rm -q .claude/hooks/sync-claudinite.sh || true
+[ -f .claudinite/.gitkeep ] && git rm -q .claudinite/.gitkeep || true
+rmdir .claude/hooks 2>/dev/null || true
+```
 
 Because those synced contents are gitignored — absent on any plain checkout, notably a CI runner, which runs no session hook — committed code that CI executes (a test, a tool, a check) must never `import`/`require` a canon helper from `.claudinite/`: it resolves in a local session but fails module-not-found in CI. Inline the helper's logic instead, and point a comment back at the canonical source.
 
@@ -95,9 +74,9 @@ grep -qxF '@.claudinite/CLAUDE.md' CLAUDE.md 2>/dev/null \
   || printf '\n@.claudinite/CLAUDE.md\n' >> CLAUDE.md
 ```
 
-Run the hook once locally to populate `.claudinite/` before first use.
+Step 1 already populated `.claudinite/`, so the corpus is usable immediately — no extra priming run needed.
 
-**Pinning a tag/SHA:** set `CLAUDINITE_REF` and change the URL path to `.../tar.gz/<ref>` (drop `refs/heads/`).
+**Pinning a branch/tag/SHA:** set `CLAUDINITE_REF` in the environment — the hook fetches `.../tar.gz/$CLAUDINITE_REF`, and codeload accepts any ref there. Never hand-edit the hook to pin: it's canon-owned, and a re-bootstrap overwrites it.
 
 ## Part 2 — SessionStart context hooks (both methods)
 
@@ -112,7 +91,7 @@ Register both — and, for Method B, the `sync-claudinite.sh` entry first — in
 
 ```json
 { "hooks": { "SessionStart": [ { "hooks": [
-  { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/sync-claudinite.sh" },
+  { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claudinite/sync-claudinite.sh" },
   { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claudinite/preferences/inject-preferences.sh" },
   { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/packs/load-active-prose.mjs" }
 ] } ] } }
