@@ -53,7 +53,7 @@ general names so other standards reuse them as-is. When in doubt, prefix.
   only asset and auto-generated notes.
 
 **Workflow** — **one** stub file per repo, [`chrome-extension-release.yml`](stubs/chrome-extension-release.yml), named exactly
-`Release`. It owns only the triggers; its three `if:`-guarded jobs each call a canon reusable
+`Release to Chrome Store`. It owns only the triggers; its three `if:`-guarded jobs each call a canon reusable
 workflow. The failure reporter keys tracking issues on the **per-operation** names baked into the
 canon workflows (`Release: Create Package`, `Release: Publish to Chrome Web Store`, `Release: Daily
 Auto-Release`) — not on the stub's `name:` — so collapsing to one file loses no per-operation
@@ -63,7 +63,7 @@ triage:
 |---|---|
 | `create-package` (push to `main`; dispatch `mode: package`) | `chrome-extension-release.yml` — version guard (a clean no-op unless the manifest version was bumped, so ordinary pushes don't cut a release) → full test gate → build → GitHub Release |
 | `publish` (dispatch `mode: publish` — the default — with `tag`, `auto_publish`) | `chrome-extension-publish-store.yml` — download the release zip → upload via the store API (publish to users unless `auto_publish: false` → dashboard draft) → refresh the `/privacy/` page (via the `deploy-privacy-page.yml` reusable) |
-| `daily` (schedule `0 3 * * *`; dispatch `mode: daily`) | `chrome-extension-daily-release.yml` — shipped-file diff vs the latest release tag → patch bump pushed to `main` → calls the two canon workflows above |
+| `daily` (schedule `30 0 * * *`; dispatch `mode: daily`) | `chrome-extension-daily-release.yml` — shipped-file diff vs the latest release tag → patch bump pushed to `main` → calls the two canon workflows above |
 
 The `create-package` job triggers on **every** push to `main` (no per-repo manifest path in the
 trigger) and relies on the version guard to no-op unless a bump landed. The privacy page has **no

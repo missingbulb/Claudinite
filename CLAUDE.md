@@ -25,7 +25,7 @@ beats prose.
   declaration from a fingerprint): `chrome-extension` (MV3 coding gotchas, fingerprinted by the
   manifest), `chrome-extension-release` (the *opt-in* release/store standard in its
   [RELEASE.md](packs/chrome-extension-release/RELEASE.md) + the conformance checks — declared when the
-  project is ready to ship, fingerprinted by its single `Release` workflow stub), `github-actions`
+  project is ready to ship, fingerprinted by its single `Release to Chrome Store` workflow stub), `github-actions`
   (workflow lints), `node`, `aws-sam`, `html`, `flutter`, `firebase` (rules/functions/deploy
   discipline, fingerprinted by `firebase.json`) with its opt-in `firebase-release` (dev/prod
   project split + App Check store gating — declared near shipping), and the stubs `android`,
