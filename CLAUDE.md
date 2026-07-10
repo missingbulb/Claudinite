@@ -57,3 +57,4 @@ don't read it yourself.
 ---
 
 Repo internals — what this repo is, how consumers mount it, the maintenance routines → [README.md](README.md).
+Changing the canon without hurting consuming repos → [consumer-safe-changes.md](consumer-safe-changes.md) (provisional).
