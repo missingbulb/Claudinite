@@ -23,6 +23,13 @@ diff against the merge-base with `origin/main` (falling back to `origin/master`,
 aren't yours. `squash-merge-history` is one of these delta rules: it scopes to the merge
 commits the current change introduces since that merge-base, not the repo's whole history.
 
+**Stale-mount note:** a stale mount can likewise surface a spurious finding that an
+already-merged canon fix would skip — the mount is refreshed by the SessionStart sync hook, so a
+session that began before the fix landed still runs the older rules. Before committing a
+workaround for a finding (an `accept` subtree, a suppression pragma), re-run the sync hook and
+re-check: when the fix is known to have landed upstream, a stale mount is the likelier cause than
+a real violation.
+
 **Vendored/generated files are out of the sweep.** Files git marks `linguist-vendored` or
 `linguist-generated` in `.gitattributes` — recorded third-party fixtures, machine-written
 output — are not the project's own code, so the engine drops them from the default file set and
