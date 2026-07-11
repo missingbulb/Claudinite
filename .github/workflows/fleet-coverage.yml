@@ -1,0 +1,39 @@
+# Thin launcher only — the census logic lives in routines/check-fleet-coverage.mjs,
+# specced by routines/auto-fleet-bootstrap.md ("The coverage census").
+#
+# Needs the FLEET_GITHUB_TOKEN repo secret: a fine-grained PAT for this account
+# covering ALL repositories with Contents + Metadata (read) and Issues
+# (read/write). The default GITHUB_TOKEN sees only this repo, which defeats a
+# fleet-wide census — the run fails with a pointed message until the secret exists.
+name: Fleet Coverage
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+defaults:
+  run:
+    shell: bash
+permissions:
+  contents: read
+jobs:
+  census:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Enumerate the fleet and converge adoption issues
+        env:
+          FLEET_GITHUB_TOKEN: ${{ secrets.FLEET_GITHUB_TOKEN }}
+        run: node routines/check-fleet-coverage.mjs
+  report-failure:
+    needs: census
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: missingbulb/Claudinite/.github/actions/report-failure@main
+        with:
+          workflow: "Fleet Coverage"

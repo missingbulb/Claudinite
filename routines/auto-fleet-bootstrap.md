@@ -15,9 +15,10 @@ It is **sequenced by the [fleet maintenance routine](auto-all-repos-maintenance.
 independent, unordered steps — never scheduled on its own — and that routine dispatches it like its
 other steps: **one isolated subagent per target repo**. Like every fleet step it works **entirely
 over the GitHub API tooling** (MCP tools, or `gh` where available), never by cloning the target
-repo. Both populations commit **directly to the target repo's default branch** — no PR: mechanical,
-idempotent regeneration the owner has opted not to gate (the review-gates-by-blast-radius choice
-documented in [../growth/README.md](../growth/README.md)).
+repo. Member-side changes land **directly on the target repo's default branch by default** — no PR:
+mechanical, idempotent regeneration the owner has opted not to gate (the review-gates-by-blast-radius
+choice documented in [../growth/README.md](../growth/README.md)) — unless the member itself opts into
+PR delivery via the per-member flag (see "Delivery" below).
 
 ## Members: the re-bootstrap
 
@@ -37,6 +38,46 @@ same proof **closes** it: if the enrollment issue (title
 `Enroll <PROJECT_NAME> in Claudinite fleet maintenance`, found **by title**) is still open, close it
 (`completed`) with a one-line comment noting maintenance now reaches the repo. Idempotent — most
 days it's already closed and there's nothing to do.
+
+## Aligning members with the canon's current rules and checks
+
+The wiring refresh keeps the *mount* current; alignment keeps the *repo* current. When the canon
+moves — a new conformance check lands, a rule's remedy changes, a generated artifact is renamed — a
+member drifts without anyone touching it, and nothing fixes it until someone happens to work there.
+So each member run also **evaluates the repo against its own declared packs' current checks** (the
+same engine and rule modules its Stop hook and CI run, applied over API-read files — or a tarball
+where the environment allows) and **applies the aligning fix** when a failing check's own `fix`
+instruction states the remedy — mechanical, scoped to the files the violated rule governs.
+
+The write surface stays hard-bounded (this is an unattended agent editing consumer repos):
+
+- **Fix only what a failing check names**, exactly per that check's stated remedy — never refactor
+  around it, never touch product logic beyond it.
+- **A finding that needs judgment** — the remedy is directional, the change would alter behavior,
+  or there's any doubt — is **not edited**: open an issue in the member repo naming the finding and
+  the suggested remedy, and move on.
+- **Deliver like every member-side change** — per the member's delivery flag (below).
+- Most days there are no new violations: no edits, no issues, nothing to log.
+
+## Delivery: push or pull request (the per-member flag)
+
+Member-side changes — the wiring refresh and the alignment fixes — default to a **direct commit to
+the member's default branch**. A project that wants to gate them declares it in its own
+`.claudinite-checks.json`:
+
+```json
+{ "maintenance": { "delivery": "pr" } }
+```
+
+- **`push`** (the default — also when the key, the file, or a recognizable value is absent): commit
+  directly.
+- **`pr`**: put the change on the stable automation branch `claudinite/maintenance`, open a PR to
+  the member's default branch, and **never merge it** — the owner gates. Idempotent across nights:
+  while that PR is open, amend the same branch and PR; never stack a second one.
+
+Read the flag fresh from the member's default branch each run. **Adoption necessarily ignores it** —
+the file doesn't exist until the bootstrap creates it, so a first adoption lands as a direct commit
+(the account-wide default the owner chose); from the next night on, the member's own flag governs.
 
 ## Uncovered repos: the adoption
 
@@ -71,7 +112,8 @@ surface a repo whose *contents* the run still can't touch — per-repo read/writ
 the environment's access list, and an unattended run can never grant itself a repo. A repo the
 sweep can see but not read or write is a failure to surface, not to retry blindly: log it on the
 tracker below as unreachable-pending-grant so the owner acts once, and let the next day's run
-re-attempt idempotently — the tracker doubles as the owner's to-grant queue.
+re-attempt idempotently. The durable per-repo queue is kept by the coverage census (below) as one
+adoption issue per repo; the tracker logs what each sweep run encountered.
 
 ## The opt-out list (gates adoption only)
 
@@ -88,6 +130,32 @@ The list gates **adoption**, nothing else. A repo that already mounts the corpus
 its own committed marker — listing it here neither stops its re-bootstrap nor uninstalls anything.
 To genuinely withdraw a covered repo: unmount it in that repo (remove the marker and wiring), **and**
 list it here so the next day's sweep doesn't just re-adopt it.
+
+## The coverage census (deterministic, in GitHub Actions)
+
+Knowing the fleet's coverage must not depend on what any session's token happens to see, so the
+home repo also runs a **daily deterministic census**:
+[fleet-coverage.yml](../.github/workflows/fleet-coverage.yml) runs
+[check-fleet-coverage.mjs](check-fleet-coverage.mjs) with a `FLEET_GITHUB_TOKEN` secret
+(fine-grained PAT: this account, **all repositories**, Contents + Metadata read, Issues
+read/write), so its reach never shrinks to a session allowlist. It enumerates every repo under the
+owner, classifies each by the same signals as the sweep (covered / uncovered / opted-out / skipped
+fork-or-archived), publishes the picture in the run summary, and **converges one adoption issue per
+actionable uncovered repo** in the home repo — title `Adopt <owner>/<repo> into the Claudinite
+fleet`, label `fleet-adoption`:
+
+- **Uncovered, not opted out, no open issue** → open it (or reopen a *completed*-closed one whose
+  repo is still uncovered; a *not-planned* close is the owner declining and is left alone — the
+  standing form of "no" is the opt-out list).
+- **Open issue whose repo is now covered / opted out / gone** → close it (`completed` /
+  `not_planned`) with a one-line comment.
+- **A marker check that errors** → the repo is **unknown, not uncovered** (the sweep's own rule):
+  no issue, and the run fails so the cause escalates through the workflow-failure path.
+
+The adoption issue is the owner's one manual step — grant the repo to the maintenance routine's
+environment, or opt it out — and the machinery does the rest: the next nightly sweep adopts what
+got granted, and the next census closes the issue. The census itself **never bootstraps, commits
+to, or otherwise touches any repo**: it is read-only knowledge plus the queue in the home repo.
 
 ## Tracking: standing issue in the home repo
 
@@ -123,8 +191,12 @@ there. Run the sweep's subagents on a capable model.
   pending-grant and move on; adoption waits for access.
 - **Never uninstall.** The list gates *adoption*, not removal: a covered repo later added to the
   opt-out list is simply left alone, and unmounting it is the owner's manual call.
-- **Never open a PR, and never register a separate schedule** — both halves commit directly, and the
-  sweep runs only where the fleet routine sequences it.
+- **Never let alignment edit beyond a failing check's own remedy** — a judgment-needing finding
+  becomes an issue in the member repo, not an edit.
+- **Never open a PR the member didn't opt into, and never merge one** — direct commit is the
+  default; a PR happens only under the member's `pr` flag, and only the owner lands it.
+- **Never register a separate agent schedule** — the sweep runs only where the fleet routine
+  sequences it (the deterministic census workflow is CI, not a second maintenance routine).
 - **Never open the enrollment issue on a re-bootstrap, and never skip it on an adoption** — being
   reached proves a member enrolled (close a lingering one instead); an adopted repo isn't enrolled
   yet, and the issue is the owner's only cue.
