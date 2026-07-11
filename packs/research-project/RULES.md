@@ -278,6 +278,15 @@ first-class experiments:
   couldn't. "We already tried X" rarely covers a genuinely different approach.
 - **Evaluate it the same way as any change**: diagnose the wall it targets, build
   the evidence that the wall is real (or isn't), prototype, and show a comparison.
+- **Beat the naive baseline, or drop it.** A more sophisticated or signal-driven
+  method is only worth adopting if it *measurably* out-scores the simple/uniform
+  baseline — sophistication is not accuracy when the guiding signal is noisy or
+  penetrates the structure unevenly, and a "smarter" local correction can lose to a
+  plain uniform one. Keep the roles of a signal distinct, too: a feature that is
+  excellent for *visualising or validating* a structure can be wrong for *defining*
+  it — gating the output directly on such a signal can erode the very structure you
+  are measuring. Always check the fancier route against the naive one before keeping
+  it.
 - **Document the outcome fully**, including the routes that hit a wall and *why*
   (name the specific trade-off or signal that defeated them). If the idea needs
   capabilities the environment won't allow (§10), record the concrete route to
