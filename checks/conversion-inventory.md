@@ -44,12 +44,12 @@ engineeringPractices judgment core.
 | working-discipline: misread ≠ wrong artifact; size writing to its idea | stays |
 | working-discipline: clean-room rebuild from the authoritative source | stays |
 | working-discipline: fix warnings, don't tolerate | per-project CI config (fail on warnings); rule text leaves baseline |
-| working-discipline: never suppress a warning as the quick path | **check** `universal/warning-suppression`: diff adds `eslint-disable`, `@ts-ignore`, `--disable-warning`-style markers → finding demands the dedicated-issue path |
+| working-discipline: never suppress a warning as the quick path | **check** `basics/warning-suppression`: diff adds `eslint-disable`, `@ts-ignore`, `--disable-warning`-style markers → finding demands the dedicated-issue path |
 | working-discipline: approval applies only backward | stays |
-| task-lifecycle: issue before work; commits reference it | **check** `universal/task-lifecycle`: commits since merge-base carry `#N`; the issue exists |
+| task-lifecycle: issue before work; commits reference it | **check** `basics/task-lifecycle`: commits since merge-base carry `#N`; the issue exists |
 | task-lifecycle: update issue status as work progresses | **check** *(adv)*, partial — full flow lives in the merge skill |
 | merge-to-main: the recipe (~4 calls) | **skill** (trigger stays the owner's "LGTM" preference) |
-| merge-to-main: squash as the method | **setting** — GitHub "allow squash merging" only — verified by **check** `universal/squash-merge-history`: the change introduces no merge commits (scoped to the work — its own commits since the merge-base — not the repo's whole history), plus a CI-surface config check later |
+| merge-to-main: squash as the method | **setting** — GitHub "allow squash merging" only — verified by **check** `basics/squash-merge-history`: the change introduces no merge commits (scoped to the work — its own commits since the merge-base — not the repo's whole history), plus a CI-surface config check later |
 | merge-to-main: gate on CI only if the repo has it | folds into the skill |
 | merge-to-main: lessons pass on every merge | folds into the skill (deterministic step, not a remembered trigger) |
 | merge-to-main: don't re-read the issue; don't fight branch deletion | folds into the skill |
@@ -62,7 +62,7 @@ engineeringPractices judgment core.
 
 | Rule | Disposition |
 |---|---|
-| Reference-distance metric (0/1 healthy, 2+ reach; edge-counting) | **check** `universal/file-placement` *(adv)* — the metric is already specified mechanically |
+| Reference-distance metric (0/1 healthy, 2+ reach; edge-counting) | **check** `basics/file-placement` *(adv)* — the metric is already specified mechanically |
 | Mandated-location exemption (`.github/`, `.claude/`, root manifests) | codes into the check as an exemption list |
 | Keep the mandated file thin (launcher → one near entry point) | **check** *(adv)*: count of distinct deep references from a mandated file |
 | Test-location-convention exemption | codes into the check: detect the project's test root, exempt test→tested |
@@ -75,7 +75,7 @@ engineeringPractices judgment core.
 
 | Rule | Disposition |
 |---|---|
-| Grep inbound references after delete/rename | **check** `universal/reference-integrity`: dangling relative links, imports, index entries |
+| Grep inbound references after delete/rename | **check** `basics/reference-integrity`: dangling relative links, imports, index entries |
 | Double-prefix / URL corruption in a naive sweep | outcome caught by reference-integrity + project tests; procedure text shrinks |
 | `path.join`-segment references survive a rename pass | stays (in-flight; no "old path" known post-hoc) — outcome partially caught by tests |
 | Specific→catch-all half-converted paths | same — outcome caught by reference-integrity where the result dangles |
@@ -162,8 +162,8 @@ engineeringPractices judgment core.
 |---|---|
 | bug-investigations.md (all 3 rules) | stays — pure investigative process → `bug-investigation` **skill** |
 | agent-architecture.md (all 4 rules) | stays — it is this design's own rationale → folds into the `unattended-agents` **skill** |
-| agenticBestPractices.md (~13 rules) | stays, mostly in-flight agent behavior → `unattended-agents` **skill**. Convertible slivers: `@import`-only-baseline → **check** `universal/claude-md` *(adv)* flagging new `@`-imports; per-routine tracking issue → **check** *(adv)*, deferred (needs API) |
-| agentic-documentation.md (~20 rules) | mostly stays *(judge)* → `authoring-agent-docs` **skill**. Convertible: <200-line budget → **check** `universal/claude-md`; emphasis ("IMPORTANT"/"YOU MUST") count threshold → **check** *(adv)*; examples in `<example>` tags → **check** *(adv)* |
+| agenticBestPractices.md (~13 rules) | stays, mostly in-flight agent behavior → `unattended-agents` **skill**. Convertible slivers: `@import`-only-baseline → **check** `basics/claude-md` *(adv)* flagging new `@`-imports; per-routine tracking issue → **check** *(adv)*, deferred (needs API) |
+| agentic-documentation.md (~20 rules) | mostly stays *(judge)* → `authoring-agent-docs` **skill**. Convertible: <200-line budget → **check** `basics/claude-md`; emphasis ("IMPORTANT"/"YOU MUST") count threshold → **check** *(adv)*; examples in `<example>` tags → **check** *(adv)* |
 
 (The stays-residues of testingPractices, textAndFileManipulation, and git-and-github likewise
 become the `writing-tests`, `repo-text-sweeps`, and `git-github-advanced` skills.)
@@ -182,5 +182,5 @@ become the `writing-tests`, `repo-text-sweeps`, and `git-github-advanced` skills
 
 | Rule | Disposition |
 |---|---|
-| Every project declares a category in its CLAUDE.md | **check** `universal/claude-md` *(adv)*: consumer CLAUDE.md lacking a category/template declaration |
+| Every project declares a category in its CLAUDE.md | **check** `basics/claude-md` *(adv)*: consumer CLAUDE.md lacking a category/template declaration |
 | Bootstrap steps, template catalog, generator prompt | stays — procedures run at adoption, not per session. Bootstrap *gains* the Stop-hook registration step (Phase 1) |

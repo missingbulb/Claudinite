@@ -8,7 +8,8 @@ const skillsDir = dirname(fileURLToPath(import.meta.url));
 // the SKILL.md that defines that action rather than in a pack. Discover them
 // structurally: any skills/<name>/checks.mjs (default export = array of rules) is
 // picked up — no registry list to maintain. Skill checks are never declared and
-// always run (like the universal pack); each is inert until its artifact exists.
+// always run (unlike packs, which — basics included — run only when
+// declared); each is inert until its artifact exists.
 export async function loadSkillRules() {
   const rules = [];
   for (const name of readdirSync(skillsDir, { withFileTypes: true })

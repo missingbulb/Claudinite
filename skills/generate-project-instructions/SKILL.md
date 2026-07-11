@@ -103,7 +103,7 @@ Then gate the pack-bound rules on the promotion ladder ([checks/DESIGN.md](../..
 rule a deterministic check could enforce, or a procedure with a nameable trigger a skill could carry,
 gets flagged as a check/skill candidate in the seed rather than settling permanently as prose. What
 remains in a `RULES.md` is the always-relevant judgment core of its facet. Dedupe it against the
-corpus — a rule the universal baseline or an existing skill already owns is not pack material.
+corpus — a rule the basics baseline or an existing skill already owns is not pack material.
 
 ## 4. Write each pack
 

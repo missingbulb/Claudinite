@@ -28,7 +28,9 @@ tracker; members still get re-bootstrapped.
 Per member repo (never the home repo — the canon doesn't mount itself):
 
 - **Re-bootstrap** — re-run the idempotent bootstrap ([../bootstrap.md](../bootstrap.md)) to
-  refresh the mount and the wiring it owns. Most days nothing drifted → commit nothing.
+  refresh the mount and the wiring it owns. Most days nothing drifted → commit nothing. A pack
+  declaration missing `basics` is drift — no pack is active by default, so the bootstrap's
+  backfill step materializes the explicit `"basics"` entry.
 - **Align** — evaluate the repo against its declared packs' current checks (the same engine its
   Stop hook and CI run). Apply a failing check's own `fix` remedy, never more; a finding needing
   judgment becomes an issue in the member repo, not an edit.

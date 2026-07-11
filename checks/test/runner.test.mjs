@@ -13,8 +13,9 @@ function runCli(root, ...args) {
 }
 
 test('exit 1 with a rendered finding on a blocking violation; exit 0 when clean', () => {
-  const bad = makeRepo({ changed: { 'doc.md': '[gone](missing.md)\n' } });
-  const good = makeRepo({ changed: { 'doc.md': '[ok](README.md)\n' } });
+  const basics = { '.claudinite-checks.json': JSON.stringify({ packs: ['basics'] }) };
+  const bad = makeRepo({ changed: { 'doc.md': '[gone](missing.md)\n', ...basics } });
+  const good = makeRepo({ changed: { 'doc.md': '[ok](README.md)\n', ...basics } });
   try {
     const r = runCli(bad);
     assert.equal(r.status, 1);
@@ -27,7 +28,10 @@ test('exit 1 with a rendered finding on a blocking violation; exit 0 when clean'
 
 test('advisory findings alone do not fail the run', () => {
   const root = makeRepo({
-    base: { 'deep/far/util.mjs': 'export const x = 1;\n' },
+    base: {
+      'deep/far/util.mjs': 'export const x = 1;\n',
+      '.claudinite-checks.json': JSON.stringify({ packs: ['basics'] }),
+    },
     changed: { 'src/mod.mjs': "import { x } from '../deep/far/util.mjs';\nexport { x };\n" },
   });
   try {
@@ -39,7 +43,10 @@ test('advisory findings alone do not fail the run', () => {
 
 test('a new suppression marker blocks the run (fail fast)', () => {
   const root = makeRepo({
-    changed: { 'a.js': '// eslint-disable-next-line no-undef\ny();\n' },
+    changed: {
+      'a.js': '// eslint-disable-next-line no-undef\ny();\n',
+      '.claudinite-checks.json': JSON.stringify({ packs: ['basics'] }),
+    },
   });
   try {
     const r = runCli(root);
@@ -53,6 +60,7 @@ test('an acceptance with a reason silences its finding; without a reason it is i
     changed: {
       'doc.md': '[gone](missing.md)\n',
       '.claudinite-checks.json': JSON.stringify({
+        packs: ['basics'],
         accept: [{ rule: 'reference-integrity', path: 'doc.md', reason: 'target lands in the next PR' }],
       }),
     },
@@ -61,6 +69,7 @@ test('an acceptance with a reason silences its finding; without a reason it is i
     changed: {
       'doc.md': '[gone](missing.md)\n',
       '.claudinite-checks.json': JSON.stringify({
+        packs: ['basics'],
         accept: [{ rule: 'reference-integrity', path: 'doc.md' }],
       }),
     },
@@ -79,6 +88,7 @@ test('an acceptance path ending in "/" covers the whole subtree', () => {
       'docs/a.md': '[gone](missing.md)\n',
       'docs/deep/b.md': '[gone](missing.md)\n',
       '.claudinite-checks.json': JSON.stringify({
+        packs: ['basics'],
         accept: [{ rule: 'reference-integrity', path: 'docs/', reason: 'targets land in a follow-up PR' }],
       }),
     },
@@ -92,7 +102,7 @@ test('severity override in config demotes a blocking rule to advisory', () => {
   const root = makeRepo({
     changed: {
       'doc.md': '[gone](missing.md)\n',
-      '.claudinite-checks.json': JSON.stringify({ rules: { 'reference-integrity': 'advisory' } }),
+      '.claudinite-checks.json': JSON.stringify({ packs: ['basics'], rules: { 'reference-integrity': 'advisory' } }),
     },
   });
   try {
@@ -115,9 +125,11 @@ test('--list emits the machine-readable rule catalog', () => {
 
 test('a declared pack runs; an undeclared fingerprinted pack demands declaration', () => {
   const wf = { '.github/workflows/x.yml': 'name: x\non: push\njobs:\n  t:\n    runs-on: ubuntu-latest\n    if: ${{ secrets.T }}\n    steps:\n      - run: echo hi\n' };
-  const undeclared = makeRepo({ changed: wf });
+  const undeclared = makeRepo({
+    changed: { ...wf, '.claudinite-checks.json': JSON.stringify({ packs: ['basics'] }) },
+  });
   const declared = makeRepo({
-    changed: { ...wf, '.claudinite-checks.json': JSON.stringify({ packs: ['github-actions'] }) },
+    changed: { ...wf, '.claudinite-checks.json': JSON.stringify({ packs: ['basics', 'github-actions'] }) },
   });
   try {
     const u = runCli(undeclared);
@@ -137,12 +149,30 @@ test('--init writes the pack declaration once and is idempotent', () => {
     assert.equal(runCli(root, '--init').status, 0);
     assert.ok(existsSync(join(root, '.claudinite-checks.json')));
     const first = readFileSync(join(root, '.claudinite-checks.json'), 'utf8');
-    assert.deepEqual(JSON.parse(first).packs, []);
+    // No pack is active by default, so --init materializes the basics baseline.
+    assert.deepEqual(JSON.parse(first).packs, ['basics']);
     // The delivery selection is materialized, never an implicit default.
     assert.equal(JSON.parse(first).maintenance.delivery, 'push');
     assert.equal(runCli(root, '--init').status, 0);
     assert.equal(readFileSync(join(root, '.claudinite-checks.json'), 'utf8'), first);
   } finally { cleanup(root); }
+});
+
+test('no pack runs undeclared — basics included', () => {
+  // Same blocking violation as above, but nothing declared: the baseline is
+  // explicit opt-in, so the run stays silent and green.
+  const bare = makeRepo({ changed: { 'doc.md': '[gone](missing.md)\n' } });
+  const empty = makeRepo({ changed: {
+    'doc.md': '[gone](missing.md)\n',
+    '.claudinite-checks.json': JSON.stringify({ packs: [] }),
+  } });
+  try {
+    for (const root of [bare, empty]) {
+      const r = runCli(root);
+      assert.equal(r.status, 0);
+      assert.doesNotMatch(r.stdout, /reference-integrity/);
+    }
+  } finally { cleanup(bare); cleanup(empty); }
 });
 
 test('a skill-owned check is discovered and run through the CLI, and listed', () => {

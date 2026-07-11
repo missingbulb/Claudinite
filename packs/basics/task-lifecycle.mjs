@@ -4,7 +4,7 @@ const rule = {
   id: 'task-lifecycle',
   severity: 'blocking',
   description: 'Work on a branch must reference a GitHub issue in at least one commit message',
-  doc: 'packs/universal/RULES.md',
+  doc: 'packs/basics/RULES.md',
   why: 'every task starts from an issue; the reference is what ties the branch to it',
 
   run(ctx) {

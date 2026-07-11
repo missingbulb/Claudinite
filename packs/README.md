@@ -1,12 +1,12 @@
 # packs/ — the corpus content, active by declaration
 
-Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session start when the pack is active) and its **checks** (run at every Stop and in CI). `universal` is always on; technology and project-class packs activate when declared in `.claudinite-checks.json` (bootstrap's `--init` seeds the declaration from a fingerprint). Discovery is structural — any `packs/<name>/pack.mjs` is a pack. Each pack's `README.md` lists its rules with a ≤5-word description and whether each is **hardcoded** (a check) or **prose**.
+Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session start when the pack is active) and its **checks** (run at every Stop and in CI). **No pack is active by default** — every pack, the `basics` baseline included, activates only when declared in `.claudinite-checks.json` (bootstrap's `--init` seeds `basics` plus the fingerprinted technology packs; the nightly re-bootstrap backfills the explicit `basics` declaration into existing consumers). Discovery is structural — any `packs/<name>/pack.mjs` is a pack. Each pack's `README.md` lists its rules with a ≤5-word description and whether each is **hardcoded** (a check) or **prose**.
 
 ## Packs
 
 | Pack | Active when | Checks | Prose rules |
 |---|---|---|---|
-| [universal](universal/README.md) | always | 9 | ~8 (working-discipline + task-lifecycle) |
+| [basics](basics/README.md) | declared (seeded by `--init`) | 9 | ~8 (working-discipline + task-lifecycle) |
 | [github-actions](github-actions/README.md) | `.github/workflows/` | 6 | 0 |
 | [chrome-extension](chrome-extension/README.md) | manifest_version manifest | 0 | 8 |
 | [chrome-extension-release](chrome-extension-release/README.md) | `Release: *` workflow stubs (opt-in) | 7 | 0 (+ RELEASE contract) |
@@ -51,7 +51,7 @@ Wiring a consumer up — the check hook + `packConfig`, with the script pasted f
 
 | | Count |
 |---|---|
-| **Hardcoded conformance checks** | **25** (9 universal + 6 github-actions + 7 chrome-extension-release + 3 aws-sam) |
+| **Hardcoded conformance checks** | **25** (9 basics + 6 github-actions + 7 chrome-extension-release + 3 aws-sam) |
 | PreToolUse guard | 1 (remote-branch-delete) |
 | Platform setting | 1 (squash-only) |
 | **Prose rules** — packs + practice skills + baseline | **~150** |

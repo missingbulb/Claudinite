@@ -83,7 +83,7 @@ Step 1 already populated `.claudinite/`, so the corpus is usable immediately —
 Two SessionStart hooks inject context automatically each session, so no behavior rides on the agent remembering to read a file. Both ship **inside Claudinite** and self-locate, so there is nothing to copy — you only register them in your repo's own `.claude/settings.json`, and both must run **after** `.claudinite/` is populated (see ordering below).
 
 - **Preferences** — the owner's per-user interaction preferences live in `.claudinite/preferences/<email>.md`. The hook `.claudinite/preferences/inject-preferences.sh` expands `CLAUDE_CODE_USER_EMAIL`, reads the matching file, and prints it to stdout (which Claude Code adds to the session context). When it **can't** inject them — no `CLAUDE_CODE_USER_EMAIL`, or no matching `<email>.md` — it doesn't silently skip; it fires the halt-gate below so the session doesn't proceed unaware.
-- **Active-pack prose** — the always-on `universal` baseline (working discipline, the task lifecycle) plus every pack the project declares in `.claudinite-checks.json` carry their guidance as `RULES.md` prose. The hook `.claudinite/packs/load-active-prose.mjs` emits it each session. **Without this hook, declaring a pack has no effect** — the `@.claudinite/CLAUDE.md` import pulls only the corpus *index*, never a pack's prose, and not even the universal baseline. This is the hook Part 5's "its prose then loads every session" relies on.
+- **Active-pack prose** — every pack the project declares in `.claudinite-checks.json` carries its guidance as `RULES.md` prose, and that includes the `basics` baseline (working discipline, the task lifecycle): **no pack is active by default** — Part 6's `--init` seeds the `basics` declaration and its backfill step adds it to a pre-existing file. The hook `.claudinite/packs/load-active-prose.mjs` emits the active packs' prose each session. **Without this hook, declaring a pack has no effect** — the `@.claudinite/CLAUDE.md` import pulls only the corpus *index*, never a pack's prose, not even the basics baseline. This is the hook Part 5's "its prose then loads every session" relies on.
 
 > **The halt-gate capability.** A SessionStart hook **cannot** block the session or prompt interactively — no exit code halts session start (exit 2 only prints stderr to the *user*, which never reaches the assistant's context). But a hook's **stdout is injected into the session context**. So when a hook can't do its job, instead of failing silently it emits JSON — `{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"…"}}` — whose message directs the assistant to **STOP and use `AskUserQuestion`** before doing any work. The assistant carries out the confirmation the hook itself can't, turning an un-blockable hook into an effective, in-your-face gate. Both `sync-claudinite.sh` (Method B, when the sync fails and no local copy exists) and `inject-preferences.sh` (when preferences can't be injected) use exactly this. Keep the message plain text — no double quotes or backslashes — so it embeds in the JSON string without escaping.
 
@@ -143,7 +143,7 @@ No ordering constraint: Stop fires at end of turn, long after the SessionStart s
 ] } ] } }
 ```
 
-**3.** Write the initial pack declaration from the repo's technology fingerprint (skips itself if the file already exists):
+**3.** Write the initial pack declaration — the `basics` baseline plus the repo's technology fingerprint (skips itself if the file already exists):
 
 ```sh
 node .claudinite/checks/run.mjs --init
@@ -151,7 +151,13 @@ node .claudinite/checks/run.mjs --init
 
 From then on the declared packs run deterministically every session and in CI; the `pack-declaration` check keeps the declaration matched to the technologies actually in the repo — including telling the session that introduces a new technology to declare its pack.
 
-**4.** Make the maintenance-delivery selection explicit (idempotent — a no-op when the key already exists). Every consumer's `.claudinite-checks.json` carries `"maintenance": { "delivery": "push" | "pr" }` — there is deliberately no implicit default, so the knob is always visible in the file where you'd change it (`pr` = the nightly fleet sweep delivers its re-bootstrap/alignment changes as a never-merged PR instead of a direct push). `--init` above already seeds `push` into a fresh file; this backfills a pre-existing one:
+**4.** Make the `basics` declaration explicit (idempotent — a no-op when it's already declared). **No pack is active by default, `basics` included**: a repo gets the baseline prose and checks only by declaring the pack, so the declaration is visible — and droppable — in the one file where every pack selection lives. `--init` above already seeds it into a fresh file; this backfills a pre-existing one:
+
+```sh
+node -e 'const fs=require("fs"),f=".claudinite-checks.json";const j=JSON.parse(fs.readFileSync(f,"utf8"));j.packs=Array.isArray(j.packs)?j.packs:[];if(!j.packs.includes("basics")){j.packs.unshift("basics");fs.writeFileSync(f,JSON.stringify(j,null,2)+"\n")}'
+```
+
+**5.** Make the maintenance-delivery selection explicit (idempotent — a no-op when the key already exists). Every consumer's `.claudinite-checks.json` carries `"maintenance": { "delivery": "push" | "pr" }` — there is deliberately no implicit default, so the knob is always visible in the file where you'd change it (`pr` = the nightly fleet sweep delivers its re-bootstrap/alignment changes as a never-merged PR instead of a direct push). `--init` above already seeds `push` into a fresh file; this backfills a pre-existing one:
 
 ```sh
 node -e 'const fs=require("fs"),f=".claudinite-checks.json";const j=JSON.parse(fs.readFileSync(f,"utf8"));if(!(j.maintenance&&j.maintenance.delivery)){j.maintenance=Object.assign({},j.maintenance,{delivery:"push"});fs.writeFileSync(f,JSON.stringify(j,null,2)+"\n")}'

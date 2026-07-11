@@ -1,6 +1,6 @@
 # Checks — deterministic enforcement of the corpus (design)
 
-> **Status: implemented** (issue #127, #131). The runner, universal + technology packs, Stop
+> **Status: implemented** (issue #127, #131). The runner, basics + technology packs, Stop
 > hook, PreToolUse guard, and the pack-prose loader are live; the corpus is reorganized into
 > `packs/` (prose + checks, active by declaration) and `skills/` (activity-scoped procedures).
 > This doc is the rationale and the ongoing design record. The per-rule audit lives in
@@ -68,7 +68,7 @@ Two classes deliberately **stay as instructions**:
 packs/                        # the mounted corpus: prose + checks, active by declaration
   registry.mjs                #   structural discovery — any packs/<name>/pack.mjs is a pack
   load-active-prose.mjs       #   SessionStart hook: emits active packs' RULES.md
-  universal/                  #   always on: RULES.md (baseline) + the universal checks
+  basics/                     #   the baseline: RULES.md + the core checks (declared like any pack)
   chrome-extension/           #   MV3 coding gotchas (RULES.md, prose only)
   chrome-extension-release/   #   RELEASE.md (standard) + stubs + conformance checks (opt-in)
   github-actions/             #   the workflow lints (no prose)
@@ -92,7 +92,7 @@ in a pack that owns none of the context. So a skill may carry its own checks —
 prose it enforces, with its test co-located too. Discovery mirrors the packs: any
 `skills/<name>/checks.mjs` (default export = an array of rules) is picked up structurally by
 `skills/registry.mjs` and run by the same engine. Skill checks are **never declared and always
-run** (like the universal pack) — a skill isn't a technology a project opts into. That is the
+run** — a skill isn't something a project opts into the way it declares a pack. That is the
 one hazard to design around: a technology-pack check only runs where the project *declared* that
 pack, but a skill check runs on **every** repo and every sweep, including ones where the skill's
 action never happened. The declaration gate a pack check gets for free, a skill check's `run`
@@ -100,14 +100,14 @@ must supply itself — **detect relevance first, cheaply and specifically, and r
 the artifact is absent** (`routine-structure` keys off a `routine.md` existing before it asserts
 anything). Get that wrong and the check fires false findings on every unrelated repo the corpus
 is mounted in. Reserve skill checks for the world-state a skill's action leaves behind; a rule
-with no skill to anchor it stays a universal check.
+with no skill to anchor it stays a basics check.
 
 **Where a check goes — the litmus test.** Classify by what the checked *artifact* is, not by
-which doc teaches the fix (the `doc` pointer is where you *learn* the remedy — most universal
+which doc teaches the fix (the `doc` pointer is where you *learn* the remedy — most basics
 checks point at a skill, so it is **not** the classifier):
 
 - present in ~every repo (markdown links, file layout, the root `CLAUDE.md`, git history, a
-  branch's issue reference) → a **universal** check;
+  branch's issue reference) → a **basics** check;
 - present only when a declared **technology** is (a workflow, a SAM template, the release
   stubs) → a **technology-pack** check, whose relevance is gated by declaration;
 - present **only because one skill's discrete action created it** (a routine folder, from
@@ -116,9 +116,9 @@ checks point at a skill, so it is **not** the classifier):
 Only the third — *the artifact would not exist had the action never run* — earns a home in the
 skill. `routine-structure` is the sole current case: a routine folder exists only because
 someone authored a routine. `squash-merge-history` points at the merge-to-main skill but stays
-universal, because git history exists in every repo and is disturbed by any merge, not only that
+in basics, because git history exists in every repo and is disturbed by any merge, not only that
 skill's action; `claude-md-length`, `file-placement`, and `generated-merge-driver` likewise
-inspect artifacts every repo has, so they stay universal despite naming a skill in `doc`.
+inspect artifacts every repo has, so they stay in basics despite naming a skill in `doc`.
 
 **Runner contract.** `node .claudinite/checks/run.js`. Dependency-free Node — no `npm install`
 step exists on the tarball mount, and the corpus's own "earn each dependency" rule applies to
@@ -133,12 +133,13 @@ merge-base in either scope.)
 
 **Pack selection: declared for deterministic execution, fingerprinted against drift.** The
 packs a project runs are **pinned in `.claudinite-checks.json`**
-(`"packs": ["github-actions", "chrome-extension-release"]`; universal packs run unconditionally
-and are never declared). Execution is a closed, declared set: every rule in a declared pack
+(`"packs": ["basics", "github-actions", "chrome-extension-release"]`; no pack runs
+undeclared — the `basics` baseline too is declared explicitly, seeded by bootstrap).
+Execution is a closed, declared set: every rule in a declared pack
 runs on every run — Stop hook and CI alike — with no inference at execution time, so "the
 project uses technology X" deterministically implies "every X check ran." What keeps the
 declaration honest is the corpus's own drift-guard pattern (a duplicate of executable truth
-gets a test that fails on divergence): a universal meta-check **fingerprints** the repo —
+gets a test that fails on divergence): a basics meta-check **fingerprints** the repo —
 `.github/workflows/` → github-actions; a `manifest.json` with `manifest_version` → the
 extension packs; the five release-workflow `name:`s → the conformance suite — and fails when
 fingerprint and declaration disagree in *either* direction: technology markers found with the
@@ -204,7 +205,7 @@ order of strength:
 
 - **Effect check (preferred)** — offline and deterministic, it verifies the *outcome* the
   setting guarantees rather than the setting itself: squash-only ⇒ the change lands squashed,
-  so its own commits carry no merge commit (`squash-merge-history` in the universal pack). It
+  so its own commits carry no merge commit (`squash-merge-history` in the basics pack). It
   is scoped to the work — the merge commits the current change introduces on HEAD's first-parent
   chain since the merge-base — not the repo's whole history: it catches the setting being off or
   bypassed *for this change* without re-auditing (and demanding acceptances for) legacy merges
@@ -275,7 +276,7 @@ The skill-by-skill catalog — each skill, its trigger, and the doc it replaces 
 (`skills/<name>/SKILL.md`), the same way this design seeded `checks/`.
 
 What stays always-loaded after this: a trimmed
-[../packs/universal/RULES.md](../packs/universal/RULES.md), the judgment core of
+[../packs/basics/RULES.md](../packs/basics/RULES.md), the judgment core of
 [the engineering-practices skill](../skills/engineering-practices/SKILL.md) (its trigger — "writing
 code" — is near-universal, so a skill gains little; revisit with telemetry), and a much smaller
 index. The routing index largely dissolves: routing *is what skill descriptions do natively*.
@@ -353,7 +354,7 @@ conversion is a promotion-time judgment, made once, centrally.
 
 ## Phasing
 
-1. **Runner + Stop hook + first universal packs** — reference-integrity, task-lifecycle,
+1. **Runner + Stop hook + first basics checks** — reference-integrity, task-lifecycle,
    warning-suppression (blocking); file-placement (advisory by kind). Bootstrap gains the
    hook-registration step.
 2. **github-actions lint pack + chrome-extension-release conformance pack**, piloted on one

@@ -1,6 +1,6 @@
-# universal pack
+# basics pack
 
-Always on — the baseline every session loads (`RULES.md`, injected by the pack-prose hook) plus the checks that run for every project.
+The baseline pack — the `RULES.md` prose every session loads (injected by the pack-prose hook) plus the core checks. Declared explicitly like every other pack — no pack is active by default; bootstrap seeds the declaration and the nightly re-bootstrap backfills it into existing consumers.
 
 ## Checks (hardcoded)
 

@@ -14,7 +14,7 @@ const rule = {
   id: 'warning-suppression',
   severity: 'blocking',
   description: 'Warning-suppression markers need the dedicated-issue path, not the quick path',
-  doc: 'packs/universal/RULES.md',
+  doc: 'packs/basics/RULES.md',
   why: 'suppression hides the signal instead of resolving it',
 
   // Check-the-world, not check-the-work: a suppression marker is a repo-state
