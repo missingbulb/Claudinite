@@ -1,15 +1,15 @@
 # packs/ — the corpus content, active by declaration
 
-Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session start when the pack is active) and its **checks** (run at every Stop and in CI). **No pack is active by default** — every pack, the `basics` baseline included, activates only when declared in `.claudinite-checks.json` (bootstrap's `--init` seeds `basics` plus the fingerprinted technology packs; the nightly re-bootstrap backfills the explicit `basics` declaration into existing consumers). Discovery is structural — any `packs/<name>/pack.mjs` is a pack. Each pack's `README.md` lists its rules with a ≤5-word description and whether each is **hardcoded** (a check) or **prose**.
+Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session start when the pack is active), its **checks** (run at every Stop and in CI), and the **skills** it requires (mounted at session start). **No pack is active by default** — every pack, the `basics` baseline included, activates only when declared in `.claudinite-checks.json` (bootstrap's `--init` seeds `basics` plus the fingerprinted technology packs; the nightly re-bootstrap backfills the explicit `basics` declaration into existing consumers). Discovery is structural — any `packs/<name>/pack.mjs` is a pack. Each pack's `README.md` lists its rules with a ≤5-word description and whether each is **hardcoded** (a check) or **prose**.
 
 ## Packs
 
 | Pack | Active when | Checks | Prose rules |
 |---|---|---|---|
-| [basics](basics/README.md) | declared (seeded by `--init`) | 9 | ~8 (working-discipline + task-lifecycle) |
-| [github-actions](github-actions/README.md) | `.github/workflows/` | 6 | 0 |
+| [basics](basics/README.md) | declared (seeded by `--init`) | 11 | ~8 (working-discipline + task-lifecycle) |
+| [github-actions](github-actions/README.md) | `.github/workflows/` | 7 | 0 |
 | [chrome-extension](chrome-extension/README.md) | manifest_version manifest | 0 | 8 |
-| [chrome-extension-release](chrome-extension-release/README.md) | `Release: *` workflow stubs (opt-in) | 7 | 0 (+ RELEASE contract) |
+| [chrome-extension-release](chrome-extension-release/README.md) | `Release: *` workflow stubs (opt-in) | 8 | 0 (+ RELEASE contract) |
 | [node](node/README.md) | root package.json | 0 | 2 |
 | [aws-sam](aws-sam/README.md) | SAM template | 3 | 3 |
 | [html](html/README.md) | declared | 0 | 1 |
@@ -18,6 +18,16 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 | [spec-driven-product](spec-driven-product/README.md) | declared (class) | 0 | 25 (8 sections) |
 
 Activity-scoped practice prose lives in [../skills/](../skills/README.md), not in a pack.
+
+## Skill requirements (`skills`)
+
+A pack declares the skills its projects need in an optional `skills` field on its `pack.mjs` — a plain array of `skills/<name>/` names:
+
+```js
+skills: ['merge-to-main', 'writing-tests'],
+```
+
+The SessionStart hook [`../skills/mount-skills.mjs`](../skills/mount-skills.mjs) mounts the **union over the active packs** (same activation as prose/checks/env) as session-generated `.claude/skills/<name>` symlinks — nothing committed, and a self-ignoring `.claude/skills/.gitignore` keeps them out of git status. Several packs requiring the same skill is normal; a skill required by **no** pack never reaches any consumer, which is why the `skill-ownership` check (corpus CI) blocks both an unowned skill and a declaration naming a skill that doesn't exist. The baseline activities every project has (`merge-to-main`, `writing-tests`, `bug-investigation`, …) ride the `basics` pack's list; move a skill to a narrower pack when it stops being a baseline activity.
 
 ## Environment requirements (`env`)
 
@@ -51,11 +61,11 @@ Wiring a consumer up — the check hook + `packConfig`, with the script pasted f
 
 | | Count |
 |---|---|
-| **Hardcoded conformance checks** | **25** (9 basics + 6 github-actions + 7 chrome-extension-release + 3 aws-sam) |
+| **Hardcoded conformance checks** | **29** (11 basics + 7 github-actions + 8 chrome-extension-release + 3 aws-sam) |
 | PreToolUse guard | 1 (remote-branch-delete) |
 | Platform setting | 1 (squash-only) |
 | **Prose rules** — packs + practice skills + baseline | **~150** |
 | Prose — research-project playbook (class pack) | 54 |
 | Prose — spec-driven-product playbook (class pack) | 25 |
 
-**Ratio ≈ 25 hardcoded : ~150 prose ≈ 1 : 6** (~14% of rules mechanized). Read against the *convertible* subset instead of all rules, it's higher: the audit ([../checks/conversion-inventory.md](../checks/conversion-inventory.md)) found only ~45 rules have any static signature — the other ~105 are judgment, in-flight process, or runtime knowledge that *should* stay prose — and ~25 of that ~45 are now checks. The `prose-to-checks` sweep keeps working the remainder; its adversarial pass rejects candidates whose detection would false-positive (the two SAM YAML checks needed a structural parser to stay FP-free), so the yield is deliberately small and high-precision.
+**Ratio ≈ 29 hardcoded : ~150 prose ≈ 1 : 5** (~16% of rules mechanized). Read against the *convertible* subset instead of all rules, it's higher: the audit ([../checks/conversion-inventory.md](../checks/conversion-inventory.md)) found only ~45 rules have any static signature — the other ~105 are judgment, in-flight process, or runtime knowledge that *should* stay prose — and ~25 of that ~45 are now checks. The `prose-to-checks` sweep keeps working the remainder; its adversarial pass rejects candidates whose detection would false-positive (the two SAM YAML checks needed a structural parser to stay FP-free), so the yield is deliberately small and high-precision.

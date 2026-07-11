@@ -165,17 +165,29 @@ node -e 'const fs=require("fs"),f=".claudinite-checks.json";const j=JSON.parse(f
 
 ## Part 7 — mount the skills
 
-The corpus's procedures and knowledge surface as Agent Skills (the catalog lives in [skills/README.md](skills/README.md)). Claude Code loads project skills from `.claude/skills/`, and a skill entry may be a symlink — so mounting is one idempotent loop linking every corpus skill:
+The corpus's procedures and knowledge surface as Agent Skills (the catalog lives in [skills/README.md](skills/README.md)), and the set a repo mounts is **derived from its active packs**: each pack declares the skills it requires (`skills` in its `pack.mjs` — the baseline skills ride `basics`), and the SessionStart hook [`skills/mount-skills.mjs`](skills/mount-skills.mjs) (re)generates `.claude/skills/<name>` symlinks for the union over the declared packs — created, retargeted, and removed as the declaration changes. The mounts are **session-generated, never committed**: a committed link dangles on every plain checkout (CI, a Pages deploy — the hazard `gha/pages-artifact-symlinks` guards), and a catalog or declaration change would need a commit in every consumer. The hook also maintains a self-ignoring `.claude/skills/.gitignore`, so the generated links never dirty the tree; entries it doesn't own — a project's own skills — are never touched.
+
+**1.** Migrate the legacy committed symlinks (earlier bootstraps committed one per skill). Idempotent — a no-op on a current repo — and scoped so a project's own tracked skills are untouched:
 
 ```sh
-mkdir -p .claude/skills
-for d in .claudinite/skills/*/; do
-  n=$(basename "$d")
-  [ -e ".claude/skills/$n" ] || ln -s "../../.claudinite/skills/$n" ".claude/skills/$n"
+for f in $(git ls-files .claude/skills); do
+  [ -L "$f" ] && readlink "$f" | grep -q '\.claudinite/skills/' && git rm -q "$f"
 done
 ```
 
-Commit the symlinks. Re-run the loop on re-bootstrap to pick up newly added skills; without the symlinks the skills still work as soft pointers from the index, just without harness-managed triggering.
+**2.** Register the hook in the `SessionStart` array of `.claude/settings.json` (skip if present). It must come **after** whatever populates `.claudinite/` — the sync entry for Method B, the submodule update for Method A — like the two context hooks of Part 2:
+
+```json
+{ "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/skills/mount-skills.mjs" }
+```
+
+**3.** Run it once now, so the current session already has the mounts:
+
+```sh
+node .claudinite/skills/mount-skills.mjs
+```
+
+Skill entries in `.claude/skills/` may be symlinks, and skill content is picked up live within a session — the same property the Method B tarball sync already relies on — so mounts generated at session start trigger normally. Without them the skills still work as soft pointers from the index, just without harness-managed triggering.
 
 ## Part 8 — cloud environment setup (Claude Code on the web)
 

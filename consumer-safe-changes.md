@@ -26,8 +26,8 @@ channel has a different blast radius and a different rollback story:
   consumer holds its own copy, which drifts silently unless a check enforces its shape. Changing
   the source file alone only affects repos bootstrapped *after* the change.
 - **Bootstrap wiring** (the committed artifacts [bootstrap.md](bootstrap.md) seeds into each
-  consumer: the tracked sync hook, `settings.json` hook registrations, gitignore rules, skill
-  symlinks, the pack declaration) — propagates through the **nightly re-bootstrap**, which
+  consumer: the tracked sync hook, `settings.json` hook registrations, gitignore rules, the
+  pack declaration) — propagates through the **nightly re-bootstrap**, which
   re-runs the idempotent bootstrap on every member and commits drift **directly to its default
   branch**, no PR. Fleet-wide but lagging one nightly; the rollback story is the same channel
   (fix the canon, the next nightly re-heals). The discipline: a change here is written as

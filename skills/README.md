@@ -1,10 +1,14 @@
 # Skills — the catalog
 
-> Each skill is a harness-managed **trigger** (`skills/<name>/SKILL.md`, symlinked into a
-> consumer's `.claude/skills/` by bootstrap Part 7) for an **activity-scoped** procedure —
-> surfaced on demand when the work in front of you matches. Its content lives in the SKILL.md
-> itself (no cross-tree redirect). Rules that are always-relevant to a project are pack prose,
-> not skills; enforceable rules are checks. See [checks/DESIGN.md](../checks/DESIGN.md).
+> Each skill is a harness-managed **trigger** (`skills/<name>/SKILL.md`) for an **activity-scoped**
+> procedure — surfaced on demand when the work in front of you matches. Its content lives in the
+> SKILL.md itself (no cross-tree redirect). **Packs own the deployment:** each pack declares the
+> skills it requires (`skills` in its `pack.mjs`), and a consumer mounts the union over its active
+> packs as session-generated `.claude/skills/` symlinks ([mount-skills.mjs](mount-skills.mjs),
+> registered by bootstrap Part 7 — never committed). The `skill-ownership` check keeps every skill
+> here required by at least one pack, both directions. Rules that are always-relevant to a project
+> are pack prose, not skills; enforceable rules are checks. See
+> [checks/DESIGN.md](../checks/DESIGN.md).
 
 **Command skills** (owner phrase or bootstrap step):
 
@@ -28,6 +32,7 @@
 | `authoring-agent-docs` | writing a Claude instruction doc |
 | `unattended-agents` | building or running an unattended agent / recurring routine |
 | `git-github-advanced` | git/GitHub work beyond the baseline lifecycle |
+| `prose-to-checks` | auditing the corpus for never-converted testable prose (the nightly growth sweep) |
 
 Technology guidance (Chrome extension, Node/jsdom, AWS SAM, HTML) is **not** a skill — it's the
 prose of its `packs/<tech>/` pack, loaded eagerly whenever the project declares that pack.

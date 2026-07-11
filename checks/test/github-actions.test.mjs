@@ -208,7 +208,9 @@ jobs:
 });
 
 test('pages-artifact-symlinks: Pages upload of the repo root with mounted skill symlinks and no prune', () => {
-  const SKILL = { '.claude/skills/merge-to-main': 'symlink-placeholder\n' };
+  // A legacy consumer that still TRACKS its skill symlinks (the pre-migration
+  // layout the rule guards; migrated repos generate them untracked instead).
+  const SKILL = { '.claude/skills/some-skill': 'symlink-placeholder\n' };
   const uploadRoot =
 `name: Deploy to GitHub Pages
 on:
