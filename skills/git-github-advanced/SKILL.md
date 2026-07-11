@@ -63,6 +63,14 @@ A squash-merge creates a new commit on `main` that the branch's own commits are 
 
 GitHub suppresses workflow runs triggered by the built-in `GITHUB_TOKEN` to prevent recursion, so a workflow's own `git push` or `gh pr create` won't fire another workflow (e.g. a `test` or cache-refresh workflow). The one exception is `workflow_dispatch` / `repository_dispatch` — which is why an automation pipeline that needs the downstream checks to run must dispatch them explicitly. A run dispatched against a branch executes on its head commit, so its checks still attach to the PR.
 
+## A workflow definition only takes effect once it's on the default branch
+
+A `workflow_dispatch` or scheduled workflow runs from the copy on the **default branch**, and a `pull_request` run uses the workflow files from the PR's **base** branch — so a workflow you only added on a feature branch isn't dispatchable, and a build/CI change doesn't apply, until it's merged. Merge workflow and build-script changes *before* the release or run that depends on them, or that run executes the *old* definition (shipping a stale build, or silently skipping a check you thought you'd added). This is distinct from the `GITHUB_TOKEN` recursion rule above: even a human-triggered run reads the definition from the default/base branch, not your feature branch.
+
+## A CI OIDC `sub` claim is matched case-sensitively by the cloud trust policy
+
+GitHub's OIDC `sub` uses the repository's **canonical casing** (`repo:Owner/Repo:ref:…`), and a cloud trust policy compares it exactly — AWS IAM `StringEquals` is case-sensitive — so a trust policy written with the wrong case fails with a bare `Not authorized to perform sts:AssumeRoleWithWebIdentity` and **no** hint that casing is the cause. Match the exact canonical `owner/repo` (or list both casings in the condition). The same exact-match caution applies to any OIDC-federated cloud, not just AWS.
+
 ## Gate an optional CI job on a repo variable, not a secret
 
 `secrets.*` are not available in a job-level `if:`, so a job gated on a secret can't evaluate its condition and **fails (red)** instead of skipping. Put a non-sensitive flag (a deploy-role ARN, a feature toggle) in a repository **variable** and gate with `if: ${{ vars.X != '' }}` so the job is **skipped (neutral)** until it's configured — keeping the default branch green for anyone who hasn't set the integration up. Reserve secrets for the values consumed *inside* the job's steps.
@@ -132,4 +140,3 @@ When your branch establishes a cross-cutting invariant — a renamed term, a "me
 ### Porting old work forward across a changed invariant
 
 The converse direction: when you re-implement or cherry-pick an *older* change onto current `main`, check each part against the invariants `main` has added since — not just whether it still applies. A part that violates a now-enforced guarantee becomes a **silent no-op** if taken verbatim (e.g. a guard that reverts any write outside an allowed set leaves the patch landed but doing nothing), so drop or redesign it rather than copy it.
-
