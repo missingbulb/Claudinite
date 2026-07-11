@@ -9,8 +9,9 @@ const rule = {
 
   run(ctx) {
     const out = [];
-    // ctx.knownPacks is attached by the runner from the pack registry.
-    const declarable = (ctx.knownPacks ?? []).filter((p) => !p.always);
+    // ctx.knownPacks is attached by the runner from the pack registry. Every
+    // pack is declarable — universal included; no pack is active by default.
+    const declarable = ctx.knownPacks ?? [];
     const ids = new Set(declarable.map((p) => p.id));
 
     for (const name of ctx.config.packs) {
@@ -18,7 +19,7 @@ const rule = {
         out.push(finding(rule, {
           file: '.claudinite-checks.json',
           what: `declares unknown pack "${name}"`,
-          fix: `remove it or fix the name — declarable packs: ${[...ids].join(', ')} (universal always runs and is never declared)`,
+          fix: `remove it or fix the name — declarable packs: ${[...ids].join(', ')}`,
         }));
       }
     }

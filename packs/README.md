@@ -1,12 +1,12 @@
 # packs/ — the corpus content, active by declaration
 
-Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session start when the pack is active) and its **checks** (run at every Stop and in CI). `universal` is always on; technology and project-class packs activate when declared in `.claudinite-checks.json` (bootstrap's `--init` seeds the declaration from a fingerprint). Discovery is structural — any `packs/<name>/pack.mjs` is a pack. Each pack's `README.md` lists its rules with a ≤5-word description and whether each is **hardcoded** (a check) or **prose**.
+Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session start when the pack is active) and its **checks** (run at every Stop and in CI). **No pack is active by default** — every pack, the `universal` baseline included, activates only when declared in `.claudinite-checks.json` (bootstrap's `--init` seeds `universal` plus the fingerprinted technology packs; the nightly re-bootstrap backfills the explicit `universal` declaration into existing consumers). Discovery is structural — any `packs/<name>/pack.mjs` is a pack. Each pack's `README.md` lists its rules with a ≤5-word description and whether each is **hardcoded** (a check) or **prose**.
 
 ## Packs
 
 | Pack | Active when | Checks | Prose rules |
 |---|---|---|---|
-| [universal](universal/README.md) | always | 9 | ~8 (working-discipline + task-lifecycle) |
+| [universal](universal/README.md) | declared (seeded by `--init`) | 9 | ~8 (working-discipline + task-lifecycle) |
 | [github-actions](github-actions/README.md) | `.github/workflows/` | 6 | 0 |
 | [chrome-extension](chrome-extension/README.md) | manifest_version manifest | 0 | 8 |
 | [chrome-extension-release](chrome-extension-release/README.md) | `Release: *` workflow stubs (opt-in) | 7 | 0 (+ RELEASE contract) |

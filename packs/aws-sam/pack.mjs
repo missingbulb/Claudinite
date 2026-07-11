@@ -6,7 +6,6 @@ import cloudfrontAuthorization from './cloudfront-authorization.mjs';
 // parser); the jsdom-style runtime ones stay prose in RULES.md.
 export default {
   id: 'aws-sam',
-  always: false,
   marker: 'a SAM template (template.yaml/.yml)',
   detect: (ctx) => ctx.tracked.includes('template.yaml') || ctx.tracked.includes('template.yml'),
   prose: 'RULES.md',

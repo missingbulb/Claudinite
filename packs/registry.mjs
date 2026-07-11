@@ -19,4 +19,6 @@ export async function loadPacks() {
   return packs;
 }
 
-export const isActive = (pack, config) => pack.always || config.packs.includes(pack.id);
+// No pack is active by default — universal included. Activation is exactly the
+// project's declaration in .claudinite-checks.json (bootstrap seeds `universal`).
+export const isActive = (pack, config) => config.packs.includes(pack.id);

@@ -10,7 +10,7 @@ Portable Claude instructions/rules shared across projects — the **project-agno
 
 ## For the reading agent: how to traverse this corpus
 
-**The agent-facing index lives in [CLAUDE.md](CLAUDE.md), not here.** It is the map of the corpus — two homes selected by *when* a rule is active: **`packs/<name>/`** (prose + checks, active once per session by the project's `.claudinite-checks.json` declaration; `universal` always on; the active packs' prose is injected by a SessionStart hook) and **`skills/<name>/`** (activity-scoped procedures the harness surfaces on demand). Consumers mount it as `@.claudinite/CLAUDE.md`; an agent working in this repo loads it as the repo's own `CLAUDE.md`. Start there.
+**The agent-facing index lives in [CLAUDE.md](CLAUDE.md), not here.** It is the map of the corpus — two homes selected by *when* a rule is active: **`packs/<name>/`** (prose + checks, active once per session by the project's `.claudinite-checks.json` declaration — no pack is active undeclared, `universal` included; the active packs' prose is injected by a SessionStart hook) and **`skills/<name>/`** (activity-scoped procedures the harness surfaces on demand). Consumers mount it as `@.claudinite/CLAUDE.md`; an agent working in this repo loads it as the repo's own `CLAUDE.md`. Start there.
 
 ---
 

@@ -9,11 +9,13 @@ import claudeMdLength from './claude-md-length.mjs';
 import generatedMergeDriver from './generated-merge-driver.mjs';
 import sharedConstants from './shared-constants.mjs';
 
-// The always-on pack: its prose is the baseline every session loads, its checks
-// run for every project. Never declared (always active), never fingerprinted.
+// The baseline pack: working discipline, the task lifecycle, and the universal
+// checks. Declared explicitly like every other pack — no pack is active by
+// default. Bootstrap's --init seeds the declaration and the nightly re-bootstrap
+// backfills it into existing consumers; never fingerprinted (the declaration is
+// authoritative — dropping it is a deliberate choice).
 export default {
   id: 'universal',
-  always: true,
   detect: null,
   marker: null,
   prose: 'RULES.md',

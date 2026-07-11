@@ -1,5 +1,5 @@
 {
-  "packs": ["github-actions"],
+  "packs": ["universal", "github-actions"],
   "rules": {},
   "accept": [
     {

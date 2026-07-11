@@ -4,7 +4,6 @@
 // (session-continuity, reading-source-articles) are noted in RULES.md.
 export default {
   id: 'research-project',
-  always: false,
   marker: null,
   detect: null,
   prose: 'RULES.md',

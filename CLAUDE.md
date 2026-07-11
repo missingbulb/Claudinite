@@ -6,9 +6,10 @@
 **Routing map, not a payload.** Two homes hold the corpus, selected by *when* a rule is active:
 
 - **`packs/<name>/`** — a bundle of prose (a pack's `RULES.md`) **and** checks, selected **once per
-  session** by the project's declaration in `.claudinite-checks.json` (`universal` is always on). The
-  active packs' prose loads at session start via `packs/load-active-prose.mjs`; the checks run at every
-  Stop and in CI. This is the "decided once, seldom changes" set.
+  session** by the project's declaration in `.claudinite-checks.json`. No pack is active by default —
+  `universal` too is declared explicitly (bootstrap seeds it). The active packs' prose loads at session
+  start via `packs/load-active-prose.mjs`; the checks run at every Stop and in CI. This is the "decided
+  once, seldom changes" set.
 - **`skills/<name>/`** — activity-scoped procedures, surfaced **on demand** by the harness when the work
   in front of you matches the skill. Catalog: [skills/README.md](skills/README.md).
 
@@ -17,10 +18,11 @@ everything activity-scoped is a skill. Before adding *any* rule as prose, run th
 [checks/DESIGN.md](checks/DESIGN.md): a platform setting, a hook, a check, or a skill that can carry it
 beats prose.
 
-## packs/ — prose + checks, active when declared (`universal` always)
+## packs/ — prose + checks, active only when declared (`universal` too)
 
-- **[packs/universal/](packs/universal/RULES.md)** — the always-on baseline: working discipline, the
-  task lifecycle, and the universal checks. Loaded every session.
+- **[packs/universal/](packs/universal/RULES.md)** — the baseline: working discipline, the task
+  lifecycle, and the universal checks. Declared explicitly like every other pack — bootstrap seeds
+  the declaration, the nightly re-bootstrap backfills it into existing consumers.
 - **Technology packs**, active when the project declares them (bootstrap's `--init` seeds the
   declaration from a fingerprint): `chrome-extension` (MV3 coding gotchas, fingerprinted by the
   manifest), `chrome-extension-release` (the *opt-in* release/store standard in its

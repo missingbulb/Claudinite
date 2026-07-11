@@ -7,7 +7,6 @@ import { findExtensionManifest } from '../../checks/lib/manifest.mjs';
 // ship. This pack carries prose only; it has no checks of its own.
 export default {
   id: 'chrome-extension',
-  always: false,
   marker: 'a manifest.json declaring manifest_version',
   detect: (ctx) => findExtensionManifest(ctx) !== null,
   prose: 'RULES.md',

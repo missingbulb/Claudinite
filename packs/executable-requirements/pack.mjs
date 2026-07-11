@@ -6,7 +6,6 @@
 // framework's one structural constant: the spec file itself.
 export default {
   id: 'executable-requirements',
-  always: false,
   marker: 'dev/requirements/requirements.md',
   detect: (ctx) => ctx.tracked.includes('dev/requirements/requirements.md'),
   prose: 'RULES.md',

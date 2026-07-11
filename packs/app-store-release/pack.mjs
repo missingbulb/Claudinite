@@ -2,7 +2,6 @@
 // there — no fingerprint until the first exercised release wires one.
 export default {
   id: 'app-store-release',
-  always: false,
   marker: null,
   detect: null,
   prose: 'RULES.md',

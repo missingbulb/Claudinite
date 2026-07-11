@@ -5,7 +5,6 @@
 // its workflow stubs.
 export default {
   id: 'firebase-release',
-  always: false,
   marker: null,
   detect: null,
   prose: 'RULES.md',

@@ -5,7 +5,6 @@
 // stay in the platform's release pack (e.g. chrome-extension-release).
 export default {
   id: 'spec-driven-product',
-  always: false,
   marker: null,
   detect: null,
   prose: 'RULES.md',

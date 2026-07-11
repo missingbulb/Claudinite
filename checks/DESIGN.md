@@ -68,7 +68,7 @@ Two classes deliberately **stay as instructions**:
 packs/                        # the mounted corpus: prose + checks, active by declaration
   registry.mjs                #   structural discovery — any packs/<name>/pack.mjs is a pack
   load-active-prose.mjs       #   SessionStart hook: emits active packs' RULES.md
-  universal/                  #   always on: RULES.md (baseline) + the universal checks
+  universal/                  #   the baseline: RULES.md + the universal checks (declared like any pack)
   chrome-extension/           #   MV3 coding gotchas (RULES.md, prose only)
   chrome-extension-release/   #   RELEASE.md (standard) + stubs + conformance checks (opt-in)
   github-actions/             #   the workflow lints (no prose)
@@ -92,7 +92,7 @@ in a pack that owns none of the context. So a skill may carry its own checks —
 prose it enforces, with its test co-located too. Discovery mirrors the packs: any
 `skills/<name>/checks.mjs` (default export = an array of rules) is picked up structurally by
 `skills/registry.mjs` and run by the same engine. Skill checks are **never declared and always
-run** (like the universal pack) — a skill isn't a technology a project opts into. That is the
+run** — a skill isn't something a project opts into the way it declares a pack. That is the
 one hazard to design around: a technology-pack check only runs where the project *declared* that
 pack, but a skill check runs on **every** repo and every sweep, including ones where the skill's
 action never happened. The declaration gate a pack check gets for free, a skill check's `run`
@@ -133,8 +133,9 @@ merge-base in either scope.)
 
 **Pack selection: declared for deterministic execution, fingerprinted against drift.** The
 packs a project runs are **pinned in `.claudinite-checks.json`**
-(`"packs": ["github-actions", "chrome-extension-release"]`; universal packs run unconditionally
-and are never declared). Execution is a closed, declared set: every rule in a declared pack
+(`"packs": ["universal", "github-actions", "chrome-extension-release"]`; no pack runs
+undeclared — the `universal` baseline too is declared explicitly, seeded by bootstrap).
+Execution is a closed, declared set: every rule in a declared pack
 runs on every run — Stop hook and CI alike — with no inference at execution time, so "the
 project uses technology X" deterministically implies "every X check ran." What keeps the
 declaration honest is the corpus's own drift-guard pattern (a duplicate of executable truth

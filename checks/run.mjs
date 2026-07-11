@@ -5,7 +5,7 @@
 //               (adopting a repo with a backlog only — not the enforcement default)
 //   --base REF  override the base ref
 //   --list      machine-readable rule catalog (id, severity, description, doc)
-//   --init      write .claudinite-checks.json from the pack fingerprints
+//   --init      write .claudinite-checks.json — universal plus the fingerprinted packs
 import { writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildContext } from './lib/context.mjs';
@@ -38,11 +38,13 @@ if (has('--init')) {
     process.exit(0);
   }
   const ctx = buildContext({ root, mode: 'all' });
-  const detected = packs.filter((p) => !p.always && p.detect && p.detect(ctx)).map((p) => p.id);
+  // No pack is active by default — universal included — so the baseline is
+  // seeded as an explicit declaration alongside the fingerprinted packs.
+  const detected = ['universal', ...packs.filter((p) => p.detect && p.detect(ctx)).map((p) => p.id)];
   // maintenance.delivery is deliberately materialized, not defaulted — the selection
   // must be visible in the file where a project would change it (see checks/README.md).
   writeFileSync(path, `${JSON.stringify({ packs: detected, rules: {}, accept: [], maintenance: { delivery: 'push' } }, null, 2)}\n`);
-  console.log(`Wrote ${path} (packs: ${detected.length ? detected.join(', ') : 'none detected'}).`);
+  console.log(`Wrote ${path} (packs: ${detected.join(', ')}).`);
   process.exit(0);
 }
 

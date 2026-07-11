@@ -8,7 +8,6 @@ import pagesArtifactSymlinks from './pages-artifact-symlinks.mjs';
 
 export default {
   id: 'github-actions',
-  always: false,
   marker: '.github/workflows/*.ya?ml',
   detect: (ctx) => ctx.tracked.some((f) => /^\.github\/workflows\/.+\.ya?ml$/.test(f)),
   prose: null,

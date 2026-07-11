@@ -38,7 +38,6 @@ function shipsReleasePipeline(ctx) {
 
 export default {
   id: 'chrome-extension-release',
-  always: false,
   marker: 'the single "Release to Chrome Store" workflow stub (calls the canon reusable workflows)',
   detect: shipsReleasePipeline,
   // RELEASE.md is the on-demand reference (linked from the coding pack's RULES
