@@ -138,6 +138,8 @@ test('--init writes the pack declaration once and is idempotent', () => {
     assert.ok(existsSync(join(root, '.claudinite-checks.json')));
     const first = readFileSync(join(root, '.claudinite-checks.json'), 'utf8');
     assert.deepEqual(JSON.parse(first).packs, []);
+    // The delivery selection is materialized, never an implicit default.
+    assert.equal(JSON.parse(first).maintenance.delivery, 'push');
     assert.equal(runCli(root, '--init').status, 0);
     assert.equal(readFileSync(join(root, '.claudinite-checks.json'), 'utf8'), first);
   } finally { cleanup(root); }

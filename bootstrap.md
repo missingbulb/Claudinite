@@ -109,7 +109,7 @@ Only if your project genuinely diverges (a non-squash method, a twice-green or e
 
 **A consuming project schedules nothing and wires up no plumbing.** The [growth lifecycle](growth/README.md) (extract → promote → dedup) and the nightly repo tidy-up all run **centrally**, from the owner's home repo, by the fleet routine [`routines/auto-all-repos-maintenance.md`](routines/auto-all-repos-maintenance.md) — which finds this repo by the tracked `.claudinite/` marker you committed above. No per-repo schedule, up-path, or plumbing to install; mounting the corpus is nearly the whole opt-in.
 
-The catch: the routine only maintains repos on its access list — a per-repo allowlist the owner keeps in the routine's UI — so the marker alone doesn't enroll a repo until the owner adds it there. So **as part of bootstrap, open a GitHub issue in this repo's tracker assigned to `missingbulb`**, titled exactly **`Enroll <PROJECT_NAME> in Claudinite fleet maintenance`** (the canonical title both the idempotent search below and the fleet routine's close-on-maintenance step match on), asking to add the project to that list. Idempotent: search first, skip if one (open or closed) already exists. This is a **first-adoption** step: when the fleet routine re-bootstraps a repo it already maintains, it skips opening this outright — reaching that repo already proves it's on the access list, so there's nothing to request — and, since the ask is now fulfilled, it **closes** any still-open enrollment issue it finds (see the fleet routine's re-bootstrap step).
+The catch: the routine only maintains repos on its access list — a per-repo allowlist the owner keeps in the routine's UI — so the marker alone doesn't enroll a repo until the owner adds it there. So **as part of bootstrap, open a GitHub issue in this repo's tracker assigned to `missingbulb`**, titled exactly **`Enroll <PROJECT_NAME> in Claudinite fleet maintenance`** (the canonical title both the idempotent search below and the fleet bootstrap sweep's close-on-maintenance step match on), asking to add the project to that list. Idempotent: search first, skip if one (open or closed) already exists. This is a **first-adoption** step: when the fleet's bootstrap sweep re-bootstraps a repo it already maintains, it skips opening this outright — reaching that repo already proves it's on the access list, so there's nothing to request — and, since the ask is now fulfilled, it **closes** any still-open enrollment issue it finds (see the sweep's member re-bootstrap, [routines/auto-fleet-bootstrap.md](routines/auto-fleet-bootstrap.md)).
 
 ## Part 5 — categorize the project (declare its class pack)
 
@@ -150,6 +150,12 @@ node .claudinite/checks/run.mjs --init
 ```
 
 From then on the declared packs run deterministically every session and in CI; the `pack-declaration` check keeps the declaration matched to the technologies actually in the repo — including telling the session that introduces a new technology to declare its pack.
+
+**4.** Make the maintenance-delivery selection explicit (idempotent — a no-op when the key already exists). Every consumer's `.claudinite-checks.json` carries `"maintenance": { "delivery": "push" | "pr" }` — there is deliberately no implicit default, so the knob is always visible in the file where you'd change it (`pr` = the nightly fleet sweep delivers its re-bootstrap/alignment changes as a never-merged PR instead of a direct push). `--init` above already seeds `push` into a fresh file; this backfills a pre-existing one:
+
+```sh
+node -e 'const fs=require("fs"),f=".claudinite-checks.json";const j=JSON.parse(fs.readFileSync(f,"utf8"));if(!(j.maintenance&&j.maintenance.delivery)){j.maintenance=Object.assign({},j.maintenance,{delivery:"push"});fs.writeFileSync(f,JSON.stringify(j,null,2)+"\n")}'
+```
 
 ## Part 7 — mount the skills
 

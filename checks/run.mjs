@@ -39,7 +39,9 @@ if (has('--init')) {
   }
   const ctx = buildContext({ root, mode: 'all' });
   const detected = packs.filter((p) => !p.always && p.detect && p.detect(ctx)).map((p) => p.id);
-  writeFileSync(path, `${JSON.stringify({ packs: detected, rules: {}, accept: [] }, null, 2)}\n`);
+  // maintenance.delivery is deliberately materialized, not defaulted — the selection
+  // must be visible in the file where a project would change it (see checks/README.md).
+  writeFileSync(path, `${JSON.stringify({ packs: detected, rules: {}, accept: [], maintenance: { delivery: 'push' } }, null, 2)}\n`);
   console.log(`Wrote ${path} (packs: ${detected.length ? detected.join(', ') : 'none detected'}).`);
   process.exit(0);
 }
