@@ -49,7 +49,10 @@ of these hold:
 2. **It carries no opt-in signal** — neither mount signal the fleet routine's Step 1 detects (the
    tracked `.claudinite/sync-claudinite.sh` hook / legacy `.gitkeep`, or a `.claudinite` submodule
    in `.gitmodules`). Confirm with the per-repo file checks on the repo's default branch, exactly as
-   Step 1 does — a repo the search index merely lags on is covered, not uncovered.
+   Step 1 does — a repo the search index merely lags on is covered, not uncovered. A **denied** file
+   check means **unknown, not uncovered** — the repo isn't on the run's access list and can't be
+   classified at all: log it as unreachable-pending-grant (see Tracking) and never attempt adoption
+   on it.
 3. **It is not archived and not a fork** — an archived repo can't take a commit; a fork's added
    wiring would ride along in PRs to its upstream. Both are standing skips, not actions: they show
    in the tracker's snapshot, never in the run log.
@@ -63,9 +66,12 @@ classification (Part 5) and cloud environment setup (Part 8) — are skipped una
 and any step the API genuinely can't perform, in the enrollment issue rather than silently dropping
 them (the bespoke merge policy, Part 3, needs nothing by default).
 
-A repo the sweep **can't write to** (not on the maintenance access list yet, token scope) is a
-failure to surface, not to retry blindly: log it on the tracker below so the owner acts once, and
-let the next day's run re-attempt idempotently.
+Discovery and access are **separate gates**: account-wide enumeration (the GitHub App's reach) can
+surface a repo whose *contents* the run still can't touch — per-repo read/write access comes from
+the environment's access list, and an unattended run can never grant itself a repo. A repo the
+sweep can see but not read or write is a failure to surface, not to retry blindly: log it on the
+tracker below as unreachable-pending-grant so the owner acts once, and let the next day's run
+re-attempt idempotently — the tracker doubles as the owner's to-grant queue.
 
 ## The opt-out list (gates adoption only)
 
@@ -93,8 +99,8 @@ never a bare number that can dangle.
   the standing skips (forks, archived), and any repo pending owner action. Rewrite it only when the
   picture changed.
 - **Comments** — a dated comment for each run **that did something**: every repo adopted, and every
-  adoption-side failure (a bootstrap that couldn't complete, a repo the token couldn't write to, an
-  unreadable opt-out list) — name the repo and the symptom.
+  adoption-side failure (a bootstrap that couldn't complete, a repo visible but unreachable —
+  pending the owner's grant, an unreadable opt-out list) — name the repo and the symptom.
 - **A clean day writes nothing** — no adoptions, an unchanged picture, no writes anywhere.
 
 The member re-bootstrap logs nothing here: a drift refresh is recorded by its own commit, and a
@@ -113,6 +119,8 @@ there. Run the sweep's subagents on a capable model.
   enumeration returns.
 - **Never adopt a repo on the opt-out list — and never treat an unreadable list as an empty one**;
   abort adoption and log instead.
+- **Never treat a denied marker check as "no marker"** — unreachable means unknown: log the repo as
+  pending-grant and move on; adoption waits for access.
 - **Never uninstall.** The list gates *adoption*, not removal: a covered repo later added to the
   opt-out list is simply left alone, and unmounting it is the owner's manual call.
 - **Never open a PR, and never register a separate schedule** — both halves commit directly, and the
