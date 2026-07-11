@@ -47,7 +47,8 @@ which reasons *about* generated files and so still inspects them.
   "rules": { "file-placement": "off" },
   "accept": [
     { "rule": "file-placement", "path": "src/shared/", "reason": "named cross-cutting concern" }
-  ]
+  ],
+  "maintenance": { "delivery": "push" }
 }
 ```
 
@@ -58,11 +59,13 @@ which reasons *about* generated files and so still inspects them.
 - **accept** — reviewed, reasoned exemptions. `path` matches exactly, or a whole subtree when it
   ends with `/`; omit it to accept the rule everywhere. The `reason` is mandatory — a reasonless
   acceptance is itself a blocking finding.
-- **maintenance** — fleet-maintenance delivery for this repo: `{ "delivery": "pr" }` makes the
-  nightly fleet bootstrap sweep deliver its re-bootstrap/alignment changes as a never-merged PR
-  instead of a direct push to the default branch (`"push"`, the default when the key is absent).
-  Read by [routines/auto-fleet-bootstrap.md](../routines/auto-fleet-bootstrap.md); the checks
-  engine itself ignores it.
+- **maintenance** — fleet-maintenance delivery for this repo, **always explicit**: `"delivery":
+  "push"` (the sweep commits its re-bootstrap/alignment changes directly to the default branch) or
+  `"pr"` (a never-merged PR the owner gates). There is deliberately no implicit default — `--init`
+  seeds `push` and the nightly sweep backfills a missing key, so the selection is visible in this
+  file rather than implied by absence. Read by
+  [routines/auto-fleet-bootstrap.md](../routines/auto-fleet-bootstrap.md); the checks engine
+  itself ignores it.
 
 ## Enforcement wiring
 

@@ -59,25 +59,32 @@ The write surface stays hard-bounded (this is an unattended agent editing consum
 - **Deliver like every member-side change** — per the member's delivery flag (below).
 - Most days there are no new violations: no edits, no issues, nothing to log.
 
-## Delivery: push or pull request (the per-member flag)
+## Delivery: push or pull request (the per-member flag, always explicit)
 
-Member-side changes — the wiring refresh and the alignment fixes — default to a **direct commit to
-the member's default branch**. A project that wants to gate them declares it in its own
-`.claudinite-checks.json`:
+Every member's `.claudinite-checks.json` carries the flag **explicitly**:
 
 ```json
-{ "maintenance": { "delivery": "pr" } }
+{ "maintenance": { "delivery": "push" } }
 ```
 
-- **`push`** (the default — also when the key, the file, or a recognizable value is absent): commit
-  directly.
+- **`push`**: commit member-side changes (the wiring refresh, the alignment fixes) directly to the
+  member's default branch.
 - **`pr`**: put the change on the stable automation branch `claudinite/maintenance`, open a PR to
   the member's default branch, and **never merge it** — the owner gates. Idempotent across nights:
   while that PR is open, amend the same branch and PR; never stack a second one.
 
-Read the flag fresh from the member's default branch each run. **Adoption necessarily ignores it** —
-the file doesn't exist until the bootstrap creates it, so a first adoption lands as a direct commit
-(the account-wide default the owner chose); from the next night on, the member's own flag governs.
+There is deliberately **no implicit default** — the value is materialized into every settings file,
+so the selection sits visibly in the file where anyone would go to change it, and a missing key is
+**drift the re-bootstrap repairs**, not a case to interpret (the engineering-practices lesson on
+avoiding default values). Concretely: `--init` seeds `"push"` into a fresh file, so an adoption
+carries the flag from its first commit; the re-bootstrap **adds `"maintenance": { "delivery":
+"push" }` to any member file missing it** — that write necessarily lands as a direct commit (a
+member without the flag never chose gating, and this is the one-time write that removes the
+ambiguity). A flag whose value is **unrecognized** gets the unreadable-opt-out-list treatment:
+make **no** member-side commits to that repo, open an issue there naming the bad value, and let the
+owner fix it — never guess a gate preference.
+
+Read the flag fresh from the member's default branch each run.
 
 ## Uncovered repos: the adoption
 
