@@ -1,5 +1,9 @@
-# Thin launcher only — the census logic lives in routines/check-fleet-coverage.mjs,
-# specced by routines/auto-fleet-bootstrap.md ("The coverage census").
+# Dispatch-only executor — deliberately NO schedule. The fleet bootstrap sweep
+# (routines/auto-fleet-bootstrap.md, Step 1), orchestrated nightly from Claude
+# Code, triggers this via workflow_dispatch as its fleet-credentialed census
+# arm; the owner can also run it manually. Giving this a cron would make it a
+# second orchestrator competing with the one scheduled routine.
+# The census logic lives in routines/check-fleet-coverage.mjs.
 #
 # Needs the FLEET_GITHUB_TOKEN repo secret: a fine-grained PAT for this account
 # covering ALL repositories with Contents + Metadata (read) and Issues
@@ -7,8 +11,6 @@
 # fleet-wide census — the run fails with a pointed message until the secret exists.
 name: Fleet Coverage
 on:
-  schedule:
-    - cron: '17 3 * * *'
   workflow_dispatch:
 defaults:
   run:

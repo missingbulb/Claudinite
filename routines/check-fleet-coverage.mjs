@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-// Deterministic fleet-coverage census — the GitHub Actions half of
-// routines/auto-fleet-bootstrap.md (see "The coverage census" there; launcher:
-// .github/workflows/fleet-coverage.yml).
+// Deterministic fleet-coverage census — the dispatch-only executor of
+// routines/auto-fleet-bootstrap.md Step 1 (launcher:
+// .github/workflows/fleet-coverage.yml — workflow_dispatch only, no schedule;
+// the nightly sweep, orchestrated from Claude Code, triggers it).
 //
 // Enumerates every repo under the home repo's owner with an account-spanning
 // token (FLEET_GITHUB_TOKEN), classifies each by the same signals the sweep
