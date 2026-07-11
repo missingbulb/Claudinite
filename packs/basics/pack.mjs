@@ -8,6 +8,7 @@ import squashMergeHistory from './squash-merge-history.mjs';
 import claudeMdLength from './claude-md-length.mjs';
 import generatedMergeDriver from './generated-merge-driver.mjs';
 import sharedConstants from './shared-constants.mjs';
+import skillOwnership from './skill-ownership.mjs';
 
 // The baseline pack: working discipline, the task lifecycle, and the core
 // checks. Declared explicitly like every other pack — no pack is active by
@@ -30,5 +31,27 @@ export default {
     claudeMdLength,
     generatedMergeDriver,
     sharedConstants,
+    skillOwnership,
+  ],
+  // The skills every project's work can call for, whatever its technology —
+  // mounted wherever basics is declared (which --init seeds everywhere) by
+  // skills/mount-skills.mjs. When one of these stops being a baseline
+  // activity, move it to the pack whose projects need it; the skill-ownership
+  // check keeps the whole catalog required by some pack.
+  skills: [
+    'adopt-claudinite',
+    'authoring-agent-docs',
+    'bug-investigation',
+    'bump-version',
+    'engineering-practices',
+    'file-placement',
+    'generate-project-instructions',
+    'git-github-advanced',
+    'lessons-learned',
+    'merge-to-main',
+    'prose-to-checks',
+    'repo-text-sweeps',
+    'unattended-agents',
+    'writing-tests',
   ],
 };

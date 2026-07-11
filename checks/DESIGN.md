@@ -283,10 +283,13 @@ index. The routing index largely dissolves: routing *is what skill descriptions 
 
 ### Delivery — incremental now, plugin end-state
 
-- **Now (works with both mount methods):** skills live in `.claudinite/skills/<name>/`;
-  bootstrap symlinks `.claude/skills/<name>` → there. Symlinked skill directories are
-  documented, supported behavior, and skill changes are picked up live within a session — so
-  the tarball sync populating the target after session start still lands.
+- **Now (works with both mount methods):** skills live in `.claudinite/skills/<name>/`; each
+  pack declares the skills it requires, and the SessionStart hook `skills/mount-skills.mjs`
+  regenerates `.claude/skills/<name>` symlinks for the active packs' union each session —
+  nothing committed (a committed link dangles on every plain checkout). Symlinked skill
+  directories are documented, supported behavior, and skill changes are picked up live within
+  a session — so mounts generated at session start still land, the same property the tarball
+  sync populating their targets already relies on.
 - **Later, maybe — Claudinite as a plugin (contingent on a spike).** A plugin is nothing
   exotic: a directory layout inside an ordinary git repo (`skills/`, `commands/`,
   `hooks/hooks.json`, a `plugin.json` manifest) plus a `.claude-plugin/marketplace.json` that

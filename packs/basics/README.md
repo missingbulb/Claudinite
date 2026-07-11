@@ -11,6 +11,8 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | `task-lifecycle` | branch commits reference an issue | blocking |
 | `warning-suppression` | no new suppression markers | blocking |
 | `pack-declaration` | declaration matches repo fingerprint | blocking |
+| `skill-ownership` | every skill required by some pack | blocking |
+| `shared-constants` | declared copies match their count | blocking |
 | `squash-merge-history` | change introduces no merge commits | blocking |
 | `file-placement` | code references stay near | advisory |
 | `claude-md-length` | root CLAUDE.md under ~200 lines | advisory |

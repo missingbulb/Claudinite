@@ -11,7 +11,10 @@
   start via `packs/load-active-prose.mjs`; the checks run at every Stop and in CI. This is the "decided
   once, seldom changes" set.
 - **`skills/<name>/`** — activity-scoped procedures, surfaced **on demand** by the harness when the work
-  in front of you matches the skill. Catalog: [skills/README.md](skills/README.md).
+  in front of you matches the skill. Deployment is pack-driven: each pack declares the skills it
+  requires, and a repo mounts the union over its active packs at session start
+  (`skills/mount-skills.mjs`); the `skill-ownership` check keeps every skill required by some pack.
+  Catalog: [skills/README.md](skills/README.md).
 
 Everything enforceable is a check or a hook; everything always-relevant-to-a-project is pack prose;
 everything activity-scoped is a skill. Before adding *any* rule as prose, run the promotion ladder in
