@@ -43,6 +43,10 @@ Conflict size scales with how long a branch lives and how far it drifts from the
 
 A GitHub API/UI (or any remote-side) merge does **not** advance your local `origin/main` — it stays at the pre-merge commit until you `git fetch`. Branching off `origin/main` immediately after a remote merge forks the pre-merge state, silently missing the just-merged work; symptoms surface later as a missing file or a failed `git mv` on the new branch. Fix: `git fetch origin main` before creating the branch.
 
+## `git pull` failing "refusing to merge unrelated histories" usually means upstream re-rooted
+
+When syncing a long-lived local clone's default branch fails with `refusing to merge unrelated histories` (often alongside `ahead N, behind M`), the usual cause is that upstream **re-rooted** the branch — a history rewrite replaced the root commit — not repository corruption. Do **not** reach for `--allow-unrelated-histories`: that "fix" welds the two histories together into a merge nobody wants. Instead inspect what the local side uniquely holds (`git log origin/<branch>..<branch>` — typically just the old root), keep anything real by rebasing it onto the new history, then `git reset --hard origin/<branch>`. A work branch created from *fetched* refs is unaffected; only stale local refs from before the rewrite hit this.
+
 ## A conformance finding on history you didn't write may be a stale diff base — refresh before fixing
 
 A Stop-hook or CI conformance check diffs your branch against `origin/main`. In a fresh cloud sandbox that ref can be **stale** — behind real `main` by whole merged PRs — so the check reads the wrong base and can flag findings on commits or code you never touched. Before acting on a finding you don't recognize, `git fetch origin <default-branch>` and re-run: a stale-base phantom disappears, and whatever survives against the current base is real — fix that. (The same stale ref bases new work on outdated product code, so fetch before building against `main`, too.)
