@@ -18,4 +18,4 @@ below**, fresh from this file on the home repo's default branch at the start of 
 
 ## Opted out
 
-*(empty — every repo under the account gets covered)*
+- `missingbulb/empty` — empty placeholder repo, nothing to maintain (owner decision, #228)
