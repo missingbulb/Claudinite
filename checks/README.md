@@ -11,7 +11,7 @@ Dependency-free Node ≥ 18 — no install step.
 node checks/run.mjs             # whole-repo sweep (the default — Stop hook and CI both run this)
 node checks/run.mjs --changed   # transitional: only files changed vs the merge-base with main
 node checks/run.mjs --list      # machine-readable rule catalog (id, severity, description, doc)
-node checks/run.mjs --init      # write .claudinite-checks.json — universal plus the fingerprinted packs
+node checks/run.mjs --init      # write .claudinite-checks.json — basics plus the fingerprinted packs
 
 node --test checks/test/*.test.mjs skills/*/*.test.mjs   # the test suite, exactly as CI runs it
 ```
@@ -43,7 +43,7 @@ which reasons *about* generated files and so still inspects them.
 
 ```json
 {
-  "packs": ["universal", "github-actions"],
+  "packs": ["basics", "github-actions"],
   "rules": { "file-placement": "off" },
   "accept": [
     { "rule": "file-placement", "path": "src/shared/", "reason": "named cross-cutting concern" }
@@ -53,7 +53,7 @@ which reasons *about* generated files and so still inspects them.
 ```
 
 - **packs** — the declared packs; the closed set that executes. **No pack runs undeclared** —
-  the `universal` baseline too is declared explicitly (`--init` seeds it; the nightly
+  the `basics` baseline too is declared explicitly (`--init` seeds it; the nightly
   re-bootstrap backfills a missing declaration). The `pack-declaration` rule drift-guards this
   against the repo's actual technology fingerprint, both directions.
 - **rules** — per-rule severity override: `"off"` / `"advisory"` / `"blocking"`.

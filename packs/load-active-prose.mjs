@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// SessionStart hook: emit the prose of every active pack (universal + declared)
+// SessionStart hook: emit the prose of every declared pack (basics included)
 // so the baseline and the project's technology guidance load once per session —
 // the eager, reliable replacement for hoping a soft-pointer read fires. Its
 // stdout becomes session context. Fails soft (emits nothing) on any error.

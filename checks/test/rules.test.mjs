@@ -2,14 +2,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, deletePath, cleanup, git, writeFiles } from './helpers.mjs';
 import { buildContext } from '../lib/context.mjs';
-import referenceIntegrity from '../../packs/universal/reference-integrity.mjs';
-import linkLabels from '../../packs/universal/markdown-link-labels.mjs';
-import taskLifecycle from '../../packs/universal/task-lifecycle.mjs';
-import warningSuppression from '../../packs/universal/warning-suppression.mjs';
-import filePlacement from '../../packs/universal/file-placement.mjs';
-import packDeclaration from '../../packs/universal/pack-declaration.mjs';
-import squashMergeHistory from '../../packs/universal/squash-merge-history.mjs';
-import sharedConstants from '../../packs/universal/shared-constants.mjs';
+import referenceIntegrity from '../../packs/basics/reference-integrity.mjs';
+import linkLabels from '../../packs/basics/markdown-link-labels.mjs';
+import taskLifecycle from '../../packs/basics/task-lifecycle.mjs';
+import warningSuppression from '../../packs/basics/warning-suppression.mjs';
+import filePlacement from '../../packs/basics/file-placement.mjs';
+import packDeclaration from '../../packs/basics/pack-declaration.mjs';
+import squashMergeHistory from '../../packs/basics/squash-merge-history.mjs';
+import sharedConstants from '../../packs/basics/shared-constants.mjs';
 
 function run(rule, root, mode = 'changed') {
   const ctx = buildContext({ root, mode });

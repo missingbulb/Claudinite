@@ -2,8 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from './helpers.mjs';
 import { buildContext } from '../lib/context.mjs';
-import claudeMdLength from '../../packs/universal/claude-md-length.mjs';
-import generatedMergeDriver from '../../packs/universal/generated-merge-driver.mjs';
+import claudeMdLength from '../../packs/basics/claude-md-length.mjs';
+import generatedMergeDriver from '../../packs/basics/generated-merge-driver.mjs';
 import esbuildDependency from '../../packs/aws-sam/esbuild-dependency.mjs';
 
 const run = (rule, root) => rule.run(buildContext({ root, mode: 'all' }));

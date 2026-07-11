@@ -19,6 +19,6 @@ export async function loadPacks() {
   return packs;
 }
 
-// No pack is active by default — universal included. Activation is exactly the
-// project's declaration in .claudinite-checks.json (bootstrap seeds `universal`).
+// No pack is active by default — basics included. Activation is exactly the
+// project's declaration in .claudinite-checks.json (bootstrap seeds `basics`).
 export const isActive = (pack, config) => config.packs.includes(pack.id);

@@ -9,13 +9,13 @@ import claudeMdLength from './claude-md-length.mjs';
 import generatedMergeDriver from './generated-merge-driver.mjs';
 import sharedConstants from './shared-constants.mjs';
 
-// The baseline pack: working discipline, the task lifecycle, and the universal
+// The baseline pack: working discipline, the task lifecycle, and the core
 // checks. Declared explicitly like every other pack — no pack is active by
 // default. Bootstrap's --init seeds the declaration and the nightly re-bootstrap
 // backfills it into existing consumers; never fingerprinted (the declaration is
 // authoritative — dropping it is a deliberate choice).
 export default {
-  id: 'universal',
+  id: 'basics',
   detect: null,
   marker: null,
   prose: 'RULES.md',

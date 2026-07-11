@@ -10,7 +10,7 @@ const rule = {
   run(ctx) {
     const out = [];
     // ctx.knownPacks is attached by the runner from the pack registry. Every
-    // pack is declarable — universal included; no pack is active by default.
+    // pack is declarable — basics included; no pack is active by default.
     const declarable = ctx.knownPacks ?? [];
     const ids = new Set(declarable.map((p) => p.id));
 
