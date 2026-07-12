@@ -24,11 +24,11 @@
 
 import { writeFileSync, appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { loadMigrations, retirableMigrations } from '../migrations/registry.mjs';
-import { loadPacks } from '../packs/registry.mjs';
-import { packTasks, assembleForRepo } from './fleet/registry.mjs';
-import { buildSignals, computeCanonChanged } from './fleet/signals.mjs';
-import { planRepo } from './fleet/gates.mjs';
+import { loadMigrations, retirableMigrations } from '../../migrations/registry.mjs';
+import { loadPacks } from '../registry.mjs';
+import { packTasks, assembleForRepo } from '../../routines/fleet/registry.mjs';
+import { buildSignals, computeCanonChanged } from '../../routines/fleet/signals.mjs';
+import { planRepo } from '../../routines/fleet/gates.mjs';
 
 const API = 'https://api.github.com';
 const LABEL = 'fleet-adoption';

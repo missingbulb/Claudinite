@@ -27,7 +27,7 @@ test('pathAffectsMembers: member paths yes, orchestration/artifacts no', () => {
   for (const p of ['packs/tidy-repo/pack.mjs', 'checks/run.mjs', 'skills/x/SKILL.md', 'migrations/m.mjs', 'bootstrap.md']) {
     assert.equal(pathAffectsMembers(p), true, p);
   }
-  for (const p of ['routines/fleet/gates.mjs', 'routines/auto-repo-tidy.md', 'routines/fleet/plan.json', 'README.md', 'CLAUDE.md']) {
+  for (const p of ['routines/fleet/gates.mjs', 'routines/auto-all-repos-maintenance.md', 'routines/fleet/plan.json', 'README.md', 'CLAUDE.md']) {
     assert.equal(pathAffectsMembers(p), false, p);
   }
 });

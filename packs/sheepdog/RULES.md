@@ -20,8 +20,8 @@ replaces the old opt-out list — a repo is kept out by adding it here.
 **How it runs** — baselining materializes the [coverage workflow](stubs/fleet-coverage.yml) into this
 repo and prompts for the `FLEET_GITHUB_TOKEN` secret (a fine-grained PAT spanning the owner's repos:
 Metadata + Contents read, Issues read/write, and Contents write on this repo for baseline-migration
-retirement). That `workflow_dispatch`-only Action checks out Claudinite and runs the **core** census
-([routines/check-fleet-coverage.mjs](../../routines/check-fleet-coverage.mjs)) with the token; it never
+retirement). That `workflow_dispatch`-only Action checks out Claudinite and runs this pack's census
+([check-fleet-coverage.mjs](check-fleet-coverage.mjs)) with the token; it never
 carries a `schedule:` of its own. This repo's single scheduled routine — the core orchestrator that
 runs the daily-run ([routines/auto-all-repos-maintenance.md](../../routines/auto-all-repos-maintenance.md))
 — is the one schedule ([routines/fleet/scheduling.md](../../routines/fleet/scheduling.md)).

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildWorkPlan, parseSheepdogConfig } from '../check-fleet-coverage.mjs';
+import { buildWorkPlan, parseSheepdogConfig } from '../../packs/sheepdog/check-fleet-coverage.mjs';
 
 test('parseSheepdogConfig: reads owner + exclude; defaults owner to the home owner; throws when absent', () => {
   const cfg = { packConfig: { sheepdog: { owner: 'MissingBulb', exclude: ['Owner/Repo-A', 'owner/repo-b'] } } };

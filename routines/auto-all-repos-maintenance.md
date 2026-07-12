@@ -12,7 +12,7 @@ This routine **replaces** scheduling anything individually **and** any per-repo 
 
 ## What the planner decides, what this routine dispatches
 
-The **planner** ([fleet/DESIGN.md](fleet/DESIGN.md)) runs in code inside the census ([check-fleet-coverage.mjs](check-fleet-coverage.mjs), dispatched via the sheepdog repo's [coverage workflow](../packs/sheepdog/stubs/fleet-coverage.yml)): **one fleet walk** emits the coverage census, baseline-migration retirement, **and** the **work plan** — a flat list of `(repo, task, worker, targets, reason, order, smarts)` **units**, one per `(repo, task)` a gate marked live. A repo with nothing to do yields no units, at an API-read's cost. This routine reads `plan.json` and dispatches those units; it decides *nothing* itself.
+The **planner** ([fleet/DESIGN.md](fleet/DESIGN.md)) runs in code inside the census ([check-fleet-coverage.mjs](../packs/sheepdog/check-fleet-coverage.mjs), dispatched via the sheepdog repo's [coverage workflow](../packs/sheepdog/stubs/fleet-coverage.yml)): **one fleet walk** emits the coverage census, baseline-migration retirement, **and** the **work plan** — a flat list of `(repo, task, worker, targets, reason, order, smarts)` **units**, one per `(repo, task)` a gate marked live. A repo with nothing to do yields no units, at an API-read's cost. This routine reads `plan.json` and dispatches those units; it decides *nothing* itself.
 
 The units span every kind of maintenance, each deferring wholly to its own doc:
 

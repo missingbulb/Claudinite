@@ -415,14 +415,14 @@ whole tidy bundle, and consumers get it by declaring `tidy-repo`.
 ```
 packs/tidy-repo/
   pack.mjs                        ← + skills: [single-branch-status, single-pr-status, single-issue-triage]
-  maintenance/
+  run_daily/
     tidy-report.mjs               ← per-repo report unit (gate + worker); runs after the repo's tidy units
 skills/
   single-branch-status/SKILL.md   ← one-branch landed-status verdict (assess-only)
   single-pr-status/SKILL.md       ← one-PR verdict (assess-only)
   single-issue-triage/SKILL.md    ← one-issue action (the only acting skill)
-routines/auto-repo-tidy.md        ← retired; its content lives in the tidy-repo pack (RULES + skills + tidy-report)
 ```
+The standalone `auto-repo-tidy.md` routine doc is retired — the pack now carries the whole tidy bundle.
 
 Pack tasks decompose the same way **if** they have per-object structure; `chrome-store-release` is
 already single-object (one repo, one release), so it needs no Stage-2 decomposition.
