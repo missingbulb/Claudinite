@@ -50,6 +50,7 @@ A task descriptor is a plain object:
   worker: 'packs/tidy-repo/maintenance/branch-cleanup.worker.md',  // the "what to do" doc, canon-relative
   order:  null,                                          // null = independent/concurrent | 'growth:N' = phase N barrier
   full_sweep_supported: true,                            // has a distinct weekly/full mode? (see below)
+  smarts: 'medium',                                      // judgment the WORKER needs: 'high'|'medium'|'low'|'none' (see below)
   gate:   async (repo, signals, gh) => ({ run, targets, reason }),  // the "should I run" predicate
 }
 ```
@@ -63,6 +64,24 @@ repo's `fullSweep` night the engine runs the full pass **only** of the tasks tha
 `full_sweep_supported: true` (it invokes their gate in full mode — the exhaustive candidate set); a
 task with it omitted/false just runs its normal incremental gate, and `fullSweep` is a no-op for it.
 This keeps the weekly sweep from *attempting* a full action a task doesn't have.
+
+**The `smarts` level — declare the judgment the worker needs, and drive it down.** The gate is *always*
+code (deciding "should I run" costs no model); `smarts` governs only the **worker** ("what to do"):
+
+- `high` / `medium` / `low` → the worker subagent runs on a **descending capability tier**. The
+  descriptor names the *need*, not a model — the engine resolves level → tier at dispatch, so the
+  model mapping lives in **one** place and can change without touching a single task. (The current
+  mapping is three tiers, most-capable → least; the tier names stay out of the descriptors on purpose.)
+- `none` → **no agent at all.** The engine runs the worker as a direct **code / tool execution**, no
+  subagent spawned. A `none` task is code end-to-end — gate *and* worker.
+
+**Lowering a task's `smarts` is the standing goal** — push mechanical judgment out of the worker and
+into code, tier by tier, exactly as the planner already did for the "should I run" half
+(`unattended-agents`: "match the agent model to the judgment it must make," and "hard-code the
+deterministic parts … push that boundary continually"). **`none` — code only — is the best version of
+any task**; every tier down is a win, in cost and in reliability (a cheaper deterministic path can't
+hallucinate the judgment a model tier might fumble). So `smarts` is not a fixed property but a *current
+high-water mark* each task is meant to descend.
 
 - **Fleet-core tasks** — the small always-on set, in `tasks/`, discovered structurally:
   `growth-extract-new-instructions`, `growth-dedup-local-instructions`, `baselining`. These are the
@@ -144,26 +163,29 @@ nothing for `canonChanged` to trip over) and mirrored to the step summary for hu
   "canonChanged": true,
   "units": [
     { "repo": "owner/foo", "task": "branch-cleanup", "worker": "packs/tidy-repo/maintenance/branch-cleanup.worker.md",
-      "targets": { "branches": ["feat-x"] }, "reason": "mainMoved", "order": null },
+      "targets": { "branches": ["feat-x"] }, "reason": "mainMoved", "order": null, "smarts": "medium" },
     { "repo": "owner/foo", "task": "growth-extract-new-instructions", "worker": "growth/extract.md",
-      "targets": {}, "reason": "projectChanged", "order": "growth:1" },
+      "targets": {}, "reason": "projectChanged", "order": "growth:1", "smarts": "high" },
     { "repo": "owner/foo", "task": "growth-dedup-local-instructions", "worker": "growth/dedup.md",
-      "targets": {}, "reason": "canonChanged", "order": "growth:3" },
+      "targets": {}, "reason": "canonChanged", "order": "growth:3", "smarts": "high" },
     { "repo": "owner/bar", "task": "chrome-store-release",
       "worker": "packs/chrome-extension-release/maintenance/store-release.worker.md",
-      "targets": { "unreleasedVersion": "1.4.0" }, "reason": "unreleased manifest bump", "order": null }
+      "targets": { "unreleasedVersion": "1.4.0" }, "reason": "unreleased manifest bump", "order": null, "smarts": "none" }
   ]
 }
 ```
 
-Each unit fully specifies one subagent dispatch: repo, worker doc, targets. `order` carries the only
-ordering the orchestrator must honor.
+Each unit fully specifies one dispatch: repo, worker doc, targets, `order` (the only ordering the
+orchestrator must honor), and `smarts` (copied from the task descriptor so the orchestrator picks the
+tier — or runs code — without re-loading descriptors). The `chrome-store-release` unit above is
+`smarts: "none"`: the version comparison is already code, so the whole task runs without an agent.
 
 ## Orchestration — dispatch from the plan, honor the barriers
 
-The routine session downloads `plan.json` and dispatches one subagent per unit. It adds **no
-behavior** to any worker — each runs exactly per its own doc, just handed a pre-filtered target set.
-Ordering:
+The routine session downloads `plan.json` and runs one worker per unit — **at the tier the unit's
+`smarts` names**: a subagent on the matching capability tier for `high`/`medium`/`low`, or, for
+`none`, a **direct code / tool execution** with no subagent at all. It adds **no behavior** to any
+worker — each runs exactly per its own doc, just handed a pre-filtered target set. Ordering:
 
 - **Independent units** (`order: null` — branch-cleanup, pr-assess, issue-triage, baselining, pack tasks)
   run concurrently, capped to a sane batch.
