@@ -1,18 +1,18 @@
-// The check-the-work gate for the growth PROMOTE phase (growth/promote.md).
+// The write-surface gate for the growth PROMOTE phase (growth/promote.md).
 //
 // Promote's write surface is bounded to the shared canon's two homes — packs/
-// and skills/. promote.md STATES that boundary; this module is the GUARANTEE:
-// the routine runs it over its own branch before opening the PR, and any changed
-// path outside packs/ or skills/ fails the gate. Per the unattended-agents skill,
-// "Prose is a request; the post-hoc diff check is the guarantee."
+// and skills/. This module is the GUARANTEE: any changed path outside packs/ or
+// skills/ fails the gate. The promote AGENT never runs it and needn't know it
+// exists — CI runs it automatically on the promote PR (checks-ci.yml, gated on
+// the growth-promote branch prefix). Per the unattended-agents skill, "Prose is
+// a request; the post-hoc diff check is the guarantee."
 //
-// Why this is invoked BY the routine and not registered as a pack/skill check:
-// a pack/skill rule runs on every session's Stop and in CI on every PR, but the
-// "packs/skills only" boundary is true for PROMOTE alone — an ordinary engine
-// change (this file included) legitimately edits growth/, checks/, routines/, …
-// There is no artifact in the tree that says "this diff is a promote run", so no
-// always-on check could self-gate to promote. The routine, which knows it is a
-// promote run because it is the one running, supplies that gate itself.
+// Why CI branch-gates it instead of registering it as a pack/skill check that
+// runs on every PR: the "packs/skills only" boundary is true for PROMOTE alone —
+// an ordinary engine change (this file included) legitimately edits growth/,
+// checks/, routines/, … Nothing in the tree marks a diff as a promote run, so no
+// always-on check could self-gate to promote; the promote PR's branch prefix is
+// the signal CI keys on.
 import { buildContext } from '../checks/lib/context.mjs';
 import { finding } from '../checks/lib/findings.mjs';
 
@@ -47,10 +47,9 @@ const rule = {
 
 export default rule;
 
-// CLI — the promote routine's gate. Run over the promote branch's working tree
-// before opening the PR: `node growth/promote-scope.mjs [root]`.
+// CLI — CI runs this on the promote PR: `node growth/promote-scope.mjs [root]`.
 //   exit 0 — every changed path is under packs/ or skills/ (certified)
-//   exit 1 — one or more stray paths (the boundary was breached; do not open the PR)
+//   exit 1 — one or more stray paths (the boundary was breached; fail the PR)
 //   exit 2 — no merge-base with the base branch, so the diff can't be scoped
 if (process.argv[1] && (await import('node:fs')).realpathSync(process.argv[1]) === (await import('node:url')).fileURLToPath(import.meta.url)) {
   const root = process.argv[2] || process.cwd();

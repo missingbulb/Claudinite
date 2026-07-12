@@ -28,3 +28,10 @@ jobs:
         run: node --test checks/test/*.test.mjs packs/*.test.mjs packs/*/*.test.mjs skills/*.test.mjs skills/*/*.test.mjs routines/*/*.test.mjs growth/*.test.mjs
       - name: Conformance sweep
         run: node checks/run.mjs
+      - name: Promote write-surface gate
+        # The growth promote phase (growth/promote.md) is the one change bounded to
+        # packs/ + skills/ — an ordinary engine PR legitimately edits growth/, checks/,
+        # routines/, so this cannot run on every PR. It keys on the promote branch prefix
+        # (growth/promote.md pins it) and fails the promote PR if a changed path strays.
+        if: contains(github.head_ref, 'growth-promote')
+        run: node growth/promote-scope.mjs
