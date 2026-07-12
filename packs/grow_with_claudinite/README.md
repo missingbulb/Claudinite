@@ -21,5 +21,9 @@ The **stack-manifest scan** is the odd one out — independent of the extract �
 and **stage 1 of pack discovery**. It asks an agent a leading question — this repo's technologies, the
 APIs it integrates, and its deployment/distribution targets — and converges a manifest into a tracking
 issue. It **decides nothing about packs**: whether a surfaced technology warrants a pack is stage 2's
-separate, central call, which reads these manifests across the fleet. Worker:
-[../../growth/stack-manifest.md](../../growth/stack-manifest.md).
+separate, central call. Worker: [../../growth/stack-manifest.md](../../growth/stack-manifest.md).
+
+**Stage 2 of pack discovery** ([../../growth/discover-packs.md](../../growth/discover-packs.md)) is
+central, like `promote`: it reads the fleet's "Stack manifest" issues and, for a technology no pack yet
+owns, **authors a populated pack** — rules and checks distilled from the repos that actually use it —
+in its own PR. Orchestrator-dispatched, not a per-repo `run_daily` task.
