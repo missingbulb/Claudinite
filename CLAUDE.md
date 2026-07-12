@@ -19,7 +19,9 @@
 Everything enforceable is a check or a hook; everything always-relevant-to-a-project is pack prose;
 everything activity-scoped is a skill. Before adding *any* rule as prose, run the promotion ladder in
 [checks/DESIGN.md](checks/DESIGN.md): a platform setting, a hook, a check, or a skill that can carry it
-beats prose.
+beats prose. And before adding *any* feature — a rule, a technology's conventions, a nightly task —
+decide the core/pack boundary first: [extending.md](extending.md) is the map of what's engine and what's
+pack-contributed content, and where each kind of feature goes (almost never core).
 
 ## packs/ — prose + checks, active only when declared (`basics` too)
 

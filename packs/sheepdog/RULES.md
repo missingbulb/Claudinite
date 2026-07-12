@@ -4,8 +4,12 @@ Declaring this pack marks a repo as the **fleet enforcer**: the one repo that co
 every repo under an owner. It's opt-in — a dedicated `sheepdog` repo declares it (it is **not** seeded
 by `--init`) — and it turns what used to be bespoke Claudinite fleet infrastructure into a declaration.
 
-The pack is thin. The actual machinery — the census, running the daily-run, the run_daily engine,
-scheduling — is Claudinite **core** (`routines/`); declaring `sheepdog` only adds the cross-repo reach.
+The pack is thin. It contributes the one piece that only a fleet enforcer needs — the **census**
+([check-fleet-coverage.mjs](check-fleet-coverage.mjs), the cross-repo walk) — plus its config schema
+and the coverage-workflow stub. The rest of the machinery — running the daily-run (the orchestrator),
+the run_daily engine, scheduling — is Claudinite **core** (`routines/`), because baselining and the
+daily-run are Claudinite's own responsibility, not the pack's. Declaring `sheepdog` adds only the
+cross-repo reach: the census, the owner/exclude config, and the token that spans the fleet.
 
 **Config** — this repo's `.claudinite-checks.json` carries:
 

@@ -27,7 +27,7 @@ Either way, the corpus is imported with `@.claudinite/CLAUDE.md` in the consumer
 
 Beyond the portable corpus above, two folders hold the machinery that keeps it fed and tidy — Claudinite-internal orchestration, **not** part of the mounted corpus.
 
-Before changing the canon itself, read **[consumer-safe-changes.md](consumer-safe-changes.md)** (provisional) — which propagation channel a change travels, how to migrate copied artifacts like stubs through the conformance checks, and the other practices we currently believe keep a canon change from hurting consuming repos.
+Before changing the canon itself, read **[consumer-safe-changes.md](consumer-safe-changes.md)** (provisional) — which propagation channel a change travels, how to migrate copied artifacts like stubs through the conformance checks, and the other practices we currently believe keep a canon change from hurting consuming repos. And before *adding* a feature, read **[extending.md](extending.md)** — the core/pack boundary (what's engine vs. pack-contributed content) and where each kind of new feature goes.
 
 `growth/` holds the **growth lifecycle**: how a lesson is learned in a consuming project, lifted into the canon when it's portable, and pruned back out once the canon owns it — three phases with a barrier between each, sequenced daily by the fleet orchestrator. See **[growth/README.md](growth/README.md)** for the full map; the pieces are:
 
