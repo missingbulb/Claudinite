@@ -45,8 +45,18 @@ pack-contributed content, and where each kind of feature goes (almost never core
   storyboard `saga` kind, gallery, determinism; fingerprinted by `dev/requirements/requirements.md`
   — [packs/executable-requirements/RULES.md](packs/executable-requirements/RULES.md)).
 
-The `pack-declaration` check keeps the declaration honest against the repo's real fingerprint — including
-telling the session that introduces a new technology to declare its pack.
+**Settings validity** — an unknown pack name, an unknown property, or malformed JSON in
+`.claudinite-checks.json` — is checked when the file loads and surfaced by the runner as a blocking
+`config` error (a wrong pack name is as much a settings error as bad JSON), not a conformance check among
+the packs. A pack's `marker` only *suspects* the pack is wanted; whether to declare it is the project's
+call, so neither a marker without its declaration nor a declaration without its marker is flagged.
+
+A pack that only makes sense alongside another names it in its `requires` list (e.g.
+`chrome-extension-release` requires `chrome-extension`, `firebase-release` requires `firebase`,
+`spec-driven-product` requires `executable-requirements`). This isn't a check: a pack can't be imported
+without its dependencies, so `resolveDeclaredPacks` ([packs/registry.mjs](packs/registry.mjs)) pulls each
+declared pack's `requires` closure into the declaration when it's written — at `--init` and the baselining
+backfill — materializing the prerequisite in the file, visible like every other entry.
 
 ## skills/ — activity-scoped procedures, surfaced on demand
 

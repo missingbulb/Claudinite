@@ -7,6 +7,8 @@ export default {
   id: 'firebase-release',
   marker: null,
   detect: null,
+  // The release standard builds on the Firebase coding/deploy pack.
+  requires: ['firebase'],
   prose: 'RULES.md',
   rules: [],
 };

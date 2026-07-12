@@ -52,8 +52,9 @@ A pack is a directory `packs/<name>/pack.mjs` exporting up to four contribution 
 | **Daily tasks** | `run_daily: [...]` | `(gate, worker)` maintenance units the planner picks up — each declares `full_sweep_supported` and its `smarts` tier |
 
 Activation is the project's declaration in `.claudinite-checks.json` — **no pack runs undeclared,
-`basics` included.** A technology pack carries a `detect` fingerprint so the drift-guard tells a
-repo to declare it once the technology appears; a declared-by-policy pack (`basics`,
+`basics` included.** A technology pack carries a `detect` fingerprint so `--init` seeds it into a
+fresh declaration when the technology is present; the marker only *suspects* a pack is wanted,
+never forcing or forbidding its declaration afterward. A declared-by-policy pack (`basics`,
 `grow_with_claudinite`, `tidy-repo`, `sheepdog`) sets `detect: null` and is seeded by `--init`
 and/or a one-time migration.
 
@@ -65,8 +66,8 @@ Ask what *kind* of thing you're adding; each kind has exactly one home, and none
    PreToolUse hook → post-hoc check → skill → prose) picks the mechanism; it lands in a pack (or
    a skill that pack requires). The ladder owns *which* mechanism — this doc only says the answer
    is never "hardcode it into the engine."
-2. **A new technology's conventions** → a new technology pack, with a `detect` fingerprint so it
-   self-declares when the technology shows up.
+2. **A new technology's conventions** → a new technology pack, with a `detect` fingerprint so
+   `--init` seeds it when the technology is present (declaring it stays the project's call).
 3. **A new scheduled maintenance behavior** → a `run_daily` task (a `(gate, worker)` pair) on the
    owning pack. The planner assembles it automatically — **no edit to the orchestrator or the
    planner.** This is the load-bearing case: "add a nightly job" must never become "add a routine

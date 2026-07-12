@@ -47,10 +47,11 @@ checks, in one Claudinite-only change:
    then raises a blocking finding and performs the migration in that repo — no per-repo PR from
    here.
 3. Keep the pack's `detect` fingerprint **tolerant of the legacy shape** while copies migrate
-   (e.g. a `LEGACY_*` list beside the current constant). Otherwise `pack-declaration` tells a
-   not-yet-migrated repo to *drop* the pack while the conformance check tells it to *fix* the
-   stub — and we've seen that contradictory findings are exactly what stalls an unattended
-   session.
+   (e.g. a `LEGACY_*` list beside the current constant), so a fresh `--init` still recognizes a
+   not-yet-migrated repo and seeds the pack. (The fingerprint only *suspects* a pack — it no
+   longer drives any drop/keep finding — so a stale shape can't contradict the conformance
+   check's *fix-the-stub* remedy; the tolerance is just to keep detection working during the
+   migration window.)
 
 Fleet-wide "everyone has migrated" telemetry now exists — declare the rename as a
 [baseline migration](migrations/README.md). The fleet-coverage census probes every repo for the legacy

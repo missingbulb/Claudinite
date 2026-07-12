@@ -302,8 +302,8 @@ like any other and a repo can drop it. `packs/tidy-repo/` bundles:
   per-object judgment lives in the skills.
 
 **Declared pack, seeded once, durably opt-out-able.** `tidy-repo` carries **no `detect` fingerprint**
-(it's a declared pack, like `html` / `research-project`), so the `pack-declaration` check never
-auto-adds or auto-removes it. Seeding:
+(it's a declared pack, like `html` / `research-project`), so nothing ever auto-adds or auto-removes it
+from the declaration. Seeding:
 
 - `bootstrap --init` seeds it into every **new** repo's declaration —
   `["basics", "tidy-repo", …fingerprinted]`.

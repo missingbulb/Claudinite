@@ -3,7 +3,6 @@ import markdownLinkLabels from './markdown-link-labels.mjs';
 import taskLifecycle from './task-lifecycle.mjs';
 import warningSuppression from './warning-suppression.mjs';
 import filePlacement from './file-placement.mjs';
-import packDeclaration from './pack-declaration.mjs';
 import squashMergeHistory from './squash-merge-history.mjs';
 import claudeMdLength from './claude-md-length.mjs';
 import generatedMergeDriver from './generated-merge-driver.mjs';
@@ -28,7 +27,6 @@ export default {
     taskLifecycle,
     warningSuppression,
     filePlacement,
-    packDeclaration,
     squashMergeHistory,
     claudeMdLength,
     generatedMergeDriver,

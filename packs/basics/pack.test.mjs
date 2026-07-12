@@ -7,7 +7,6 @@ import linkLabels from './markdown-link-labels.mjs';
 import taskLifecycle from './task-lifecycle.mjs';
 import warningSuppression from './warning-suppression.mjs';
 import filePlacement from './file-placement.mjs';
-import packDeclaration from './pack-declaration.mjs';
 import squashMergeHistory from './squash-merge-history.mjs';
 import sharedConstants from './shared-constants.mjs';
 import skillOwnership from './skill-ownership.mjs';
@@ -31,6 +30,7 @@ function runSkillOwnership(root, knownPacks) {
   ctx.knownPacks = knownPacks; // attached by the runner in real sweeps
   return skillOwnership.run(ctx);
 }
+
 
 test('reference-integrity: flags a dangling relative link, passes a resolving one', () => {
   const bad = makeRepo({ changed: { 'doc.md': '[gone](missing/file.md)\n' } });
@@ -200,24 +200,6 @@ test('file-placement: does not flag markdown prose links (code metric only)', ()
   });
   try {
     assert.equal(run(filePlacement, root).length, 0);
-  } finally { cleanup(root); }
-});
-
-test('pack-declaration: flags an unknown declared pack', () => {
-  const root = makeRepo({
-    changed: { '.claudinite-checks.json': '{ "packs": ["no-such-pack"] }\n' },
-  });
-  try {
-    const findings = run(packDeclaration, root);
-    assert.equal(findings.length, 1);
-    assert.match(findings[0].what, /no-such-pack/);
-  } finally { cleanup(root); }
-});
-
-test('pack-declaration: silent when declaration matches reality', () => {
-  const root = makeRepo({ changed: { '.claudinite-checks.json': '{ "packs": [] }\n' } });
-  try {
-    assert.equal(run(packDeclaration, root).length, 0);
   } finally { cleanup(root); }
 });
 

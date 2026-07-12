@@ -153,7 +153,7 @@ No ordering constraint: Stop fires at end of turn, long after the SessionStart s
 node .claudinite/checks/run.mjs --init
 ```
 
-From then on the declared packs run deterministically every session and in CI; the `pack-declaration` check keeps the declaration matched to the technologies actually in the repo — including telling the session that introduces a new technology to declare its pack.
+From then on the declared packs run deterministically every session and in CI. The `--init` fingerprint is a starting suggestion, not a standing rule: a `marker` only *suspects* a pack is wanted, so whether to add or drop a pack later is the project's call. What *is* enforced is settings validity — an unknown pack name, an unknown property, or malformed JSON in `.claudinite-checks.json` is caught when the file loads and surfaced as a blocking `config` error.
 
 **4.** Make the `basics` declaration explicit (idempotent — a no-op when it's already declared). **No pack is active by default, `basics` included**: a repo gets the baseline prose and checks only by declaring the pack, so the declaration is visible — and droppable — in the one file where every pack selection lives. `--init` above already seeds it into a fresh file; this backfills a pre-existing one:
 
@@ -165,6 +165,12 @@ node -e 'const fs=require("fs"),f=".claudinite-checks.json";const j=JSON.parse(f
 
 ```sh
 node -e 'const fs=require("fs"),f=".claudinite-checks.json",seeds=[["tidy-repo","2026-07-12-tidy-repo-seed.mjs"],["grow_with_claudinite","2026-07-12-grow-with-claudinite-seed.mjs"]];const j=JSON.parse(fs.readFileSync(f,"utf8"));j.packs=Array.isArray(j.packs)?j.packs:[];let ch=false;for(const[p,m]of seeds){if(fs.existsSync(".claudinite/migrations/"+m)&&!j.packs.includes(p)){j.packs.push(p);ch=true}}if(ch)fs.writeFileSync(f,JSON.stringify(j,null,2)+"\n")'
+```
+
+**4c.** Import each declared pack's **dependencies** (idempotent). A pack can't be imported without the packs it requires — a release pack builds on its coding pack (`chrome-extension-release` → `chrome-extension`), a class pack on its framework (`spec-driven-product` → `executable-requirements`). A pack names those in its `requires` list; this pulls their transitive closure into the declaration so a prerequisite is materialized and visible in the file, like every other entry. `--init` above already resolves this for a fresh file; this backfills a pre-existing one:
+
+```sh
+node --input-type=module -e 'import{readFileSync,writeFileSync}from"node:fs";import{loadPacks,resolveDeclaredPacks}from"./.claudinite/packs/registry.mjs";const f=".claudinite-checks.json";const j=JSON.parse(readFileSync(f,"utf8"));j.packs=Array.isArray(j.packs)?j.packs:[];const r=resolveDeclaredPacks(j.packs,await loadPacks());if(r.length!==j.packs.length){j.packs=r;writeFileSync(f,JSON.stringify(j,null,2)+"\n")}'
 ```
 
 **5.** Make the maintenance-delivery selection explicit (idempotent — a no-op when the key already exists). Every consumer's `.claudinite-checks.json` carries `"maintenance": { "delivery": "push" | "pr" }` — there is deliberately no implicit default, so the knob is always visible in the file where you'd change it (`pr` = the nightly fleet sweep delivers its baselining/alignment changes as a never-merged PR instead of a direct push). `--init` above already seeds `push` into a fresh file; this backfills a pre-existing one:

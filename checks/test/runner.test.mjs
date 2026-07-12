@@ -55,6 +55,34 @@ test('a new suppression marker blocks the run (fail fast)', () => {
   } finally { cleanup(root); }
 });
 
+test('settings validity: an unknown pack name is a blocking config error', () => {
+  const root = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({ packs: ['no-such-pack'] }) } });
+  try {
+    const r = runCli(root);
+    assert.equal(r.status, 1);
+    assert.match(r.stdout, /config/);
+    assert.match(r.stdout, /unknown pack "no-such-pack"/);
+  } finally { cleanup(root); }
+});
+
+test('settings validity: an unknown top-level property is a blocking config error', () => {
+  const root = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({ packs: ['basics'], nonsense: 1 }) } });
+  try {
+    const r = runCli(root);
+    assert.equal(r.status, 1);
+    assert.match(r.stdout, /unknown setting "nonsense"/);
+  } finally { cleanup(root); }
+});
+
+test('settings validity: malformed JSON is a blocking config error', () => {
+  const root = makeRepo({ changed: { '.claudinite-checks.json': '{ "packs": [ ' } });
+  try {
+    const r = runCli(root);
+    assert.equal(r.status, 1);
+    assert.match(r.stdout, /not valid JSON/);
+  } finally { cleanup(root); }
+});
+
 test('an acceptance with a reason silences its finding; without a reason it is itself a finding', () => {
   const accepted = makeRepo({
     changed: {
@@ -116,14 +144,17 @@ test('--list emits the machine-readable rule catalog', () => {
     const r = runCli(root, '--list');
     assert.equal(r.status, 0);
     for (const id of ['reference-integrity', 'markdown-link-labels', 'task-lifecycle',
-                      'warning-suppression', 'file-placement', 'pack-declaration',
+                      'warning-suppression', 'file-placement', 'skill-ownership',
                       'squash-merge-history']) {
       assert.match(r.stdout, new RegExp(`^${id}\t`, 'm'));
     }
   } finally { cleanup(root); }
 });
 
-test('a declared pack runs; an undeclared fingerprinted pack demands declaration', () => {
+test("a pack's rules run only when it is declared", () => {
+  // A marker (here a workflow) only suspects a pack is wanted — it never forces
+  // one. So an undeclared github-actions pack stays silent (its rules don't run),
+  // and declaring it turns them on. Whether to declare is the project's call.
   const wf = { '.github/workflows/x.yml': 'name: x\non: push\njobs:\n  t:\n    runs-on: ubuntu-latest\n    if: ${{ secrets.T }}\n    steps:\n      - run: echo hi\n' };
   const undeclared = makeRepo({
     changed: { ...wf, '.claudinite-checks.json': JSON.stringify({ packs: ['basics'] }) },
@@ -133,13 +164,11 @@ test('a declared pack runs; an undeclared fingerprinted pack demands declaration
   });
   try {
     const u = runCli(undeclared);
-    assert.equal(u.status, 1);
-    assert.match(u.stdout, /pack-declaration/);
-    assert.doesNotMatch(u.stdout, /gha\//); // pack rules don't run until declared
+    assert.equal(u.status, 0);              // gha rules don't run undeclared → clean
+    assert.doesNotMatch(u.stdout, /gha\//);
     const d = runCli(declared);
     assert.equal(d.status, 1);
     assert.match(d.stdout, /gha\/secrets-in-job-if/);
-    assert.doesNotMatch(d.stdout, /pack-declaration/);
   } finally { cleanup(undeclared); cleanup(declared); }
 });
 

@@ -41,6 +41,9 @@ export default {
   id: 'chrome-extension-release',
   marker: 'the single "Release to Chrome Store" workflow stub (calls the canon reusable workflows)',
   detect: shipsReleasePipeline,
+  // The release standard builds on the coding pack — shipping presumes the MV3
+  // rules that produced the extension.
+  requires: ['chrome-extension'],
   // RELEASE.md is the on-demand reference (linked from the coding pack's RULES
   // and from findings), not always-on prose: it is long, and only the checks
   // need to be eager.

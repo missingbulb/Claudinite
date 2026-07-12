@@ -10,7 +10,6 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | `markdown-link-labels` | link label matches its target | blocking |
 | `task-lifecycle` | branch commits reference an issue | blocking |
 | `warning-suppression` | suppressions carry a reason on-site | blocking |
-| `pack-declaration` | declaration matches repo fingerprint | blocking |
 | `skill-ownership` | every skill required by some pack | blocking |
 | `shared-constants` | declared copies match their count | blocking |
 | `squash-merge-history` | change introduces no merge commits | blocking |
