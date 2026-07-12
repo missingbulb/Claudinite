@@ -38,7 +38,7 @@ Before changing the canon itself, read **[consumer-safe-changes.md](consumer-saf
 
 The mounted corpus itself is **`packs/`** (each `packs/<name>/` bundling a pack's prose `RULES.md` and its check modules, discovered structurally by [packs/registry.mjs](packs/registry.mjs) and activated by declaration) and **`skills/`** (activity-scoped procedures — catalog: [skills/README.md](skills/README.md)). `checks/` holds only the **engine** that runs the packs' checks — the dependency-free runner, its lib, the Stop hook and PreToolUse guard, and their tests. Usage and configuration → [checks/README.md](checks/README.md); design → [checks/DESIGN.md](checks/DESIGN.md); the per-rule audit → [checks/conversion-inventory.md](checks/conversion-inventory.md).
 
-`migrations/` holds **declared, self-retiring path migrations** — one record per in-flight canon rename (a renamed or relocated artifact consumers hold their own copy of) that supplies the read-side resolver, the write-side rename, and the fleet telemetry that auto-retires it once every consumer has moved. See [migrations/README.md](migrations/README.md).
+`migrations/` holds the **baseline migrations** mechanism — declared, self-retiring path relocations, one record per in-flight canon rename (a renamed or relocated artifact consumers hold their own copy of) that supplies the read-side resolver, the write-side rename, and the fleet telemetry that auto-retires it once every consumer has moved. Named for when it runs: baselining applies and retires each. See [migrations/README.md](migrations/README.md).
 
 `routines/` holds the scheduled jobs:
 

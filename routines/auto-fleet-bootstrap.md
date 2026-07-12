@@ -34,7 +34,7 @@ Per member repo (never the home repo — the canon doesn't mount itself):
   refresh the mount and the wiring it owns. Most days nothing drifted → commit nothing. A pack
   declaration missing `basics` is drift — no pack is active by default, so the bootstrap's
   backfill step materializes the explicit `"basics"` entry.
-- **Declared migrations** — in-flight path relocations are declared once in
+- **Declared baseline migrations** — in-flight path relocations are declared once in
   [migrations/](../migrations/README.md); baselining's own idempotent steps land each
   consumer-side legacy→canonical rename over the API (as they already do for the artifacts they
   own), converging the member to the canonical shape. This step only lands the rename — Step 1's

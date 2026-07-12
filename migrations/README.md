@@ -1,4 +1,8 @@
-# migrations/ — declared, self-retiring path migrations
+# Baseline migrations (`migrations/`) — declared, self-retiring path relocations
+
+> The **baseline migrations** mechanism: named for *when* it runs — baselining applies and retires
+> each one. The directory and code identifiers stay `migrations/` / `*Migrations`; "baseline
+> migration" is what to call the mechanism.
 
 When the canon renames or relocates an artifact that consumers hold their own copy of — a tracked
 file, a `settings.json` registration, a stub, a path a check or script references — the consumer's
@@ -8,11 +12,12 @@ Part-3b step in bootstrap) with **no single home and no signal for when it was s
 [consumer-safe-changes.md](../consumer-safe-changes.md) named the gap: *"We don't yet have fleet-wide
 telemetry for 'everyone has migrated', so dropping a legacy tolerance later is a judgment call."*
 
-A **migration** closes that gap: one declarative record per in-flight rename, discovered structurally
-(any `migrations/<file>.mjs`, like packs and skills), that supplies the read-side resolver, the
-write-side rename, and the fleet telemetry that **retires it automatically once every repo has moved**.
+A **baseline migration** closes that gap: one declarative record per in-flight rename, discovered
+structurally (any `migrations/<file>.mjs`, like packs and skills), that supplies the read-side
+resolver, the write-side rename, and the fleet telemetry that **retires it automatically once every
+repo has moved**.
 
-## A migration
+## A baseline migration
 
 ```js
 // migrations/2026-07-12-sync-hook-relocation.mjs
