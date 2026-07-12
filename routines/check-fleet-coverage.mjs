@@ -21,10 +21,14 @@
 // the home repo, where it writes the adoption issues + label and deletes
 // fully-applied migration files (auto-retirement — see migrations/README.md).
 
-import { readFileSync, appendFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, appendFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { loadMigrations, retirableMigrations } from '../migrations/registry.mjs';
+import { loadPacks } from '../packs/registry.mjs';
+import { loadFleetTasks, packTasks, assembleForRepo } from './fleet/registry.mjs';
+import { buildSignals, computeCanonChanged } from './fleet/signals.mjs';
+import { planRepo } from './fleet/gates.mjs';
 
 const API = 'https://api.github.com';
 const LABEL = 'fleet-adoption';
@@ -235,6 +239,36 @@ async function runMigrationTelemetry(gh, home, covered, unknownCount, today) {
   return [...lines, ...notes];
 }
 
+// --- work plan (the third thing this one fleet walk emits) -------------------
+
+const PLAN_PATH = 'plan.json'; // cwd-relative in the Action; ephemeral, uploaded as an artifact, never committed
+
+// For each covered member: build its signal bundle, resolve its applicable tasks
+// (fleet-core ∪ its active packs' maintenance), and run each gate. Every run:true
+// verdict becomes a unit the orchestrator dispatches — the whole worklist decided in
+// code here, before any worker agent runs. A member whose probe throws is isolated:
+// it contributes no units and an error note, never sinking the plan.
+export async function buildWorkPlan(gh, home, coveredRepos) {
+  const sinceIso = new Date(Date.now() - 25 * 3600 * 1000).toISOString();
+  const weekdayUtc = new Date().getUTCDay();
+  const canonChanged = await computeCanonChanged(gh, home, sinceIso);
+  const fleetTasks = await loadFleetTasks();
+  const allPackTasks = packTasks(await loadPacks());
+
+  const units = []; const errors = [];
+  for (const r of coveredRepos) {
+    try {
+      const signals = await buildSignals(gh, r, { sinceIso, weekdayUtc, canonChanged });
+      const applicable = assembleForRepo(signals.activePacks, fleetTasks, allPackTasks);
+      const res = await planRepo({ fullName: r.full_name, defaultBranch: r.default_branch }, signals, applicable, gh);
+      units.push(...res.units); errors.push(...res.errors);
+    } catch (e) {
+      errors.push({ repo: r.full_name, error: e.message });
+    }
+  }
+  return { generatedAt: new Date().toISOString(), windowStartUtc: sinceIso, weekdayUtc, canonChanged, units, errors };
+}
+
 // --- main --------------------------------------------------------------------
 
 async function main() {
@@ -262,6 +296,7 @@ async function main() {
   }
 
   const covered = []; const uncovered = []; const optedOut = []; const skipped = []; const unknown = [];
+  const coveredRepos = []; // the repo objects behind `covered`, for the work plan
   for (const r of mine.sort((a, b) => a.name.localeCompare(b.name))) {
     const fullName = r.full_name.toLowerCase();
     if (fullName === home.toLowerCase()) continue; // the canon doesn't mount itself
@@ -273,7 +308,7 @@ async function main() {
       unknown.push(`${r.full_name} — ${e.message}`);
       continue;
     }
-    if (isCov) covered.push(fullName);
+    if (isCov) { covered.push(fullName); coveredRepos.push(r); }
     else if (optOut.has(fullName)) optedOut.push(fullName);
     else uncovered.push(fullName);
   }
@@ -285,6 +320,20 @@ async function main() {
 
   const today = new Date().toISOString().slice(0, 10);
   const migrationLines = await runMigrationTelemetry(gh, home, covered, unknown.length, today);
+
+  // Emit the work plan. A plan failure is logged but must not sink the census's
+  // coverage + migration duties, so it's wrapped and never throws.
+  let planLine;
+  try {
+    const plan = await buildWorkPlan(gh, home, coveredRepos);
+    writeFileSync(PLAN_PATH, `${JSON.stringify(plan, null, 2)}\n`);
+    planLine = `**Plan:** ${plan.units.length} unit(s)`
+      + (plan.canonChanged ? ', canon changed' : '')
+      + (plan.errors.length ? `, ${plan.errors.length} probe error(s)` : '');
+  } catch (e) {
+    writeFileSync(PLAN_PATH, `${JSON.stringify({ units: [], planError: e.message }, null, 2)}\n`);
+    planLine = `**Plan:** FAILED — ${e.message}`;
+  }
 
   const summary = [
     `# Fleet coverage census — ${owner}`,
@@ -299,6 +348,7 @@ async function main() {
     unknown.length ? `**UNKNOWN (marker check errored — fix the token/scope):** ${unknown.join('; ')}` : '',
     actions.length ? `**Issue actions:** ${actions.join('; ')}` : '**Issue actions:** none (converged)',
     migrationLines.length ? `**Migrations:** ${migrationLines.join('; ')}` : '',
+    planLine,
   ].filter(Boolean).join('\n');
 
   console.log(summary);

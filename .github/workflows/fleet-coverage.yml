@@ -25,10 +25,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Enumerate the fleet and converge adoption issues
+      - name: Enumerate the fleet, converge adoption issues, and emit the work plan
         env:
           FLEET_GITHUB_TOKEN: ${{ secrets.FLEET_GITHUB_TOKEN }}
         run: node routines/check-fleet-coverage.mjs
+      - name: Upload the work plan
+        if: always() # the plan is written even on a partial run; the orchestrator reads it
+        uses: actions/upload-artifact@v4
+        with:
+          name: fleet-plan
+          path: plan.json
+          if-no-files-found: warn
   report-failure:
     needs: census
     if: failure()
