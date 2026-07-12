@@ -7,8 +7,9 @@
 # Canonical source: sync-claudinite.sh at the Claudinite repo root. Never edit a
 # consumer's copy — the nightly re-bootstrap refreshes it from the canon.
 #
-# Syncs Claudinite into .claudinite/ over plain HTTPS (codeload is allowlisted;
-# a submodule clone 403s on cloud). Pulls latest main. On a failed sync it keeps
+# Syncs Claudinite into .claudinite/ over plain HTTPS from codeload (which the
+# environment's network policy must allowlist; a submodule clone 403s on cloud).
+# Pulls latest main. On a failed sync it keeps
 # any prior copy silently; only when there is NO copy at all (the harness would be
 # absent) does it inject a directive telling the assistant to halt and ask.
 # Set CLAUDINITE_REF to a branch/tag/SHA to pin instead of tracking main.
@@ -36,5 +37,5 @@ fi
 # context; the message is plain text (no double quotes or backslashes) so it embeds in
 # the JSON string directly.
 printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' \
-  "CLAUDINITE NOT LOADED: the sync failed and no local .claudinite/ copy exists, so @.claudinite/CLAUDE.md is unresolved and none of the Claudinite harness (packs, skills, preferences) is active this session. STOP: before running any other tool, answering, or starting the requested task, use the AskUserQuestion tool to ask the user whether to proceed without the harness or pause and retry the sync; do not proceed until they answer."
+  "CLAUDINITE NOT LOADED: the sync failed and no local .claudinite/ copy exists, so @.claudinite/CLAUDE.md is unresolved and none of the Claudinite harness (packs, skills, preferences) is active this session. A common cause is the environment blocking the corpus fetch: codeload.github.com must be reachable and allowlisted in the environment network policy, or the sync 403s. STOP: before running any other tool, answering, or starting the requested task, use the AskUserQuestion tool to ask the user whether to proceed without the harness or pause and fix the sync (e.g. allowlist codeload.github.com, then retry); do not proceed until they answer."
 exit 0
