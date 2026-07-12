@@ -35,7 +35,7 @@ export default {
 - **Write — "and rename X → Y".** [`applyFileAliases`](registry.mjs) moves each legacy file to its
   canonical path when the legacy exists and the canonical doesn't. [`apply.mjs`](apply.mjs) runs it
   over a checkout (`node migrations/apply.mjs`); idempotent, a no-op once done. In the fleet, the
-  **re-bootstrap** performs the equivalent rename over the GitHub API through its own idempotent
+  **baselining** performs the equivalent rename over the GitHub API through its own idempotent
   [bootstrap.md](../bootstrap.md) steps.
 - **Retire — the telemetry.** The [fleet-coverage census](../routines/check-fleet-coverage.mjs), which
   already visits every repo with an account-spanning token, evaluates each migration's `legacyPresent`
@@ -48,7 +48,7 @@ export default {
 
 1. the census classified **every** repo (`unknown === 0`) — an API error must never hide a holdout;
 2. **zero** repos still carry the legacy shape;
-3. it landed **strictly before today** (≥ one nightly cycle, so a re-bootstrap sweep has had a chance
+3. it landed **strictly before today** (≥ one nightly cycle, so a baselining pass has had a chance
    to migrate everyone — a migration is never retired the night it lands); and
 4. `retire !== 'manual'`.
 
@@ -63,6 +63,6 @@ resolver), the delete removes the record and the tolerance in one step.
 1. Drop a `migrations/<landed-date>-<slug>.mjs` exporting the spec above. Structural discovery picks it
    up — no list to edit.
 2. Point every reader of the old path at `resolvePath(...)`; perform the consumer-side rename through
-   the re-bootstrap's own steps (and `apply.mjs` for local checkouts).
+   baselining's own steps (and `apply.mjs` for local checkouts).
 3. Leave `retire: 'auto'` if the tolerance is fully expressed here; else `'manual'` with a comment
    naming the inline holdouts. The census does the rest.

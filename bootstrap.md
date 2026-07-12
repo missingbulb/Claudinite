@@ -1,6 +1,6 @@
 # Adopting Claudinite
 
-How a consuming repo bootstraps these shared guidelines. Bootstrapping is **idempotent** — safe to re-run on a fresh repo or one that already adopted Claudinite (re-running is also how an existing repo picks up changes to these steps). Two kinds of step: a **generated artifact** that Claudinite owns (the tracked `.claudinite/sync-claudinite.sh` hook) is re-written to match its canonical source every run, so re-bootstrapping refreshes a stale copy — and corrects its `settings.json` registration when it still points at the legacy `.claude/hooks/` path; **your own config** (the `@.claudinite/CLAUDE.md` import line, other `settings.json` entries) is only added to what's missing, never clobbered. Re-running never duplicates work.
+How a consuming repo bootstraps these shared guidelines. Bootstrapping is **idempotent** — safe to re-run on a fresh repo or one that already adopted Claudinite (re-running is also how an existing repo picks up changes to these steps). Two kinds of step: a **generated artifact** that Claudinite owns (the tracked `.claudinite/sync-claudinite.sh` hook) is re-written to match its canonical source every run, so baselining refreshes a stale copy — and corrects its `settings.json` registration when it still points at the legacy `.claude/hooks/` path; **your own config** (the `@.claudinite/CLAUDE.md` import line, other `settings.json` entries) is only added to what's missing, never clobbered. Re-running never duplicates work.
 
 Two parts: **(1)** mount the corpus — pick Method A or B by where your sessions run; **(2)** register the preferences SessionStart hook (same for both methods). Do both.
 
@@ -23,7 +23,7 @@ Submodules aren't pulled automatically, so the consumer's setup or SessionStart 
 
 Auto-updating, no git credential needed. A SessionStart hook fetches the repo as a tarball over plain HTTPS into a gitignored `.claudinite/`, pulling latest `main` each session. The hook lives *inside* that folder: `.claudinite/sync-claudinite.sh` is the folder's one **tracked** file, doubling as the committed signal that the repo mounts Claudinite — there is no separate marker file.
 
-**1.** Populate `.claudinite/` — one tarball pull delivers the corpus *and* places the hook. The hook's canonical source is [`sync-claudinite.sh`](sync-claudinite.sh) at the Claudinite repo root — never write an inline copy of its body. It is a generated artifact Claudinite owns: on a re-bootstrap, **overwrite** the tracked copy with the canon's current one rather than skipping it, so a stale hook gets refreshed:
+**1.** Populate `.claudinite/` — one tarball pull delivers the corpus *and* places the hook. The hook's canonical source is [`sync-claudinite.sh`](sync-claudinite.sh) at the Claudinite repo root — never write an inline copy of its body. It is a generated artifact Claudinite owns: when baselining, **overwrite** the tracked copy with the canon's current one rather than skipping it, so a stale hook gets refreshed:
 
 ```sh
 mkdir -p .claudinite
@@ -32,7 +32,7 @@ curl -fsSL https://codeload.github.com/missingbulb/Claudinite/tar.gz/main \
 chmod +x .claudinite/sync-claudinite.sh
 ```
 
-**2.** Register it in `.claude/settings.json`. If an entry still points at the legacy `.claude/hooks/sync-claudinite.sh` path, **fix that entry in place** — this is the one settings entry a re-bootstrap corrects rather than leaves alone:
+**2.** Register it in `.claude/settings.json`. If an entry still points at the legacy `.claude/hooks/sync-claudinite.sh` path, **fix that entry in place** — this is the one settings entry baselining corrects rather than leaves alone:
 
 ```json
 { "hooks": { "SessionStart": [ { "hooks": [
@@ -55,9 +55,9 @@ done
 git add .claudinite/sync-claudinite.sh
 ```
 
-The hook preserves its own tracked copy across its `rm -rf`/swap — the tracked copy wins over the tarball's — so the working tree stays clean after each session sync even while the canon's copy has moved ahead; the nightly re-bootstrap is the tracked copy's update path.
+The hook preserves its own tracked copy across its `rm -rf`/swap — the tracked copy wins over the tarball's — so the working tree stays clean after each session sync even while the canon's copy has moved ahead; the nightly baselining is the tracked copy's update path.
 
-**3b — migrate the legacy layout** (hook at `.claude/hooks/sync-claudinite.sh`, marker `.claudinite/.gitkeep`). Steps 1–3 already placed the relocated hook, corrected its registration, and rewrote the gitignore rules; what remains is deleting the two legacy files — idempotent, a no-op on a current repo. The fleet's nightly re-bootstrap applies this to every member transparently: a direct commit to the member's default branch, no PR, no prompt:
+**3b — migrate the legacy layout** (hook at `.claude/hooks/sync-claudinite.sh`, marker `.claudinite/.gitkeep`). Steps 1–3 already placed the relocated hook, corrected its registration, and rewrote the gitignore rules; what remains is deleting the two legacy files — idempotent, a no-op on a current repo. The fleet's nightly baselining applies this to every member transparently: a direct commit to the member's default branch, no PR, no prompt:
 
 ```sh
 [ -f .claude/hooks/sync-claudinite.sh ] && git rm -q .claude/hooks/sync-claudinite.sh || true
@@ -76,7 +76,7 @@ grep -qxF '@.claudinite/CLAUDE.md' CLAUDE.md 2>/dev/null \
 
 Step 1 already populated `.claudinite/`, so the corpus is usable immediately — no extra priming run needed.
 
-**Pinning a branch/tag/SHA:** set `CLAUDINITE_REF` in the environment — the hook fetches `.../tar.gz/$CLAUDINITE_REF`, and codeload accepts any ref there. Never hand-edit the hook to pin: it's canon-owned, and a re-bootstrap overwrites it.
+**Pinning a branch/tag/SHA:** set `CLAUDINITE_REF` in the environment — the hook fetches `.../tar.gz/$CLAUDINITE_REF`, and codeload accepts any ref there. Never hand-edit the hook to pin: it's canon-owned, and baselining overwrites it.
 
 ## Part 2 — SessionStart context hooks (both methods)
 
@@ -109,7 +109,7 @@ Only if your project genuinely diverges (a non-squash method, a twice-green or e
 
 **A consuming project schedules nothing and wires up no plumbing.** The [growth lifecycle](growth/README.md) (extract → promote → dedup) and the nightly repo tidy-up all run **centrally**, from the owner's home repo, by the fleet routine [`routines/auto-all-repos-maintenance.md`](routines/auto-all-repos-maintenance.md) — which finds this repo by the tracked `.claudinite/` marker you committed above. No per-repo schedule, up-path, or plumbing to install; mounting the corpus is nearly the whole opt-in.
 
-The catch: the routine only maintains repos on its access list — a per-repo allowlist the owner keeps in the routine's UI — so the marker alone doesn't enroll a repo until the owner adds it there. So **as part of bootstrap, open a GitHub issue in this repo's tracker assigned to `missingbulb`**, titled exactly **`Enroll <PROJECT_NAME> in Claudinite fleet maintenance`** (the canonical title both the idempotent search below and the fleet bootstrap sweep's close-on-maintenance step match on), asking to add the project to that list. Idempotent: search first, skip if one (open or closed) already exists. This is a **first-adoption** step: when the fleet's bootstrap sweep re-bootstraps a repo it already maintains, it skips opening this outright — reaching that repo already proves it's on the access list, so there's nothing to request — and, since the ask is now fulfilled, it **closes** any still-open enrollment issue it finds (see the sweep's member re-bootstrap, [routines/auto-fleet-bootstrap.md](routines/auto-fleet-bootstrap.md)).
+The catch: the routine only maintains repos on its access list — a per-repo allowlist the owner keeps in the routine's UI — so the marker alone doesn't enroll a repo until the owner adds it there. So **as part of bootstrap, open a GitHub issue in this repo's tracker assigned to `missingbulb`**, titled exactly **`Enroll <PROJECT_NAME> in Claudinite fleet maintenance`** (the canonical title both the idempotent search below and the fleet bootstrap sweep's close-on-maintenance step match on), asking to add the project to that list. Idempotent: search first, skip if one (open or closed) already exists. This is a **first-adoption** step: when the fleet's bootstrap sweep baselines a repo it already maintains, it skips opening this outright — reaching that repo already proves it's on the access list, so there's nothing to request — and, since the ask is now fulfilled, it **closes** any still-open enrollment issue it finds (see the sweep's member baselining, [routines/auto-fleet-bootstrap.md](routines/auto-fleet-bootstrap.md)).
 
 ## Part 5 — categorize the project (declare its class pack)
 
@@ -157,7 +157,7 @@ From then on the declared packs run deterministically every session and in CI; t
 node -e 'const fs=require("fs"),f=".claudinite-checks.json";const j=JSON.parse(fs.readFileSync(f,"utf8"));j.packs=Array.isArray(j.packs)?j.packs:[];if(!j.packs.includes("basics")){j.packs.unshift("basics");fs.writeFileSync(f,JSON.stringify(j,null,2)+"\n")}'
 ```
 
-**5.** Make the maintenance-delivery selection explicit (idempotent — a no-op when the key already exists). Every consumer's `.claudinite-checks.json` carries `"maintenance": { "delivery": "push" | "pr" }` — there is deliberately no implicit default, so the knob is always visible in the file where you'd change it (`pr` = the nightly fleet sweep delivers its re-bootstrap/alignment changes as a never-merged PR instead of a direct push). `--init` above already seeds `push` into a fresh file; this backfills a pre-existing one:
+**5.** Make the maintenance-delivery selection explicit (idempotent — a no-op when the key already exists). Every consumer's `.claudinite-checks.json` carries `"maintenance": { "delivery": "push" | "pr" }` — there is deliberately no implicit default, so the knob is always visible in the file where you'd change it (`pr` = the nightly fleet sweep delivers its baselining/alignment changes as a never-merged PR instead of a direct push). `--init` above already seeds `push` into a fresh file; this backfills a pre-existing one:
 
 ```sh
 node -e 'const fs=require("fs"),f=".claudinite-checks.json";const j=JSON.parse(fs.readFileSync(f,"utf8"));if(!(j.maintenance&&j.maintenance.delivery)){j.maintenance=Object.assign({},j.maintenance,{delivery:"push"});fs.writeFileSync(f,JSON.stringify(j,null,2)+"\n")}'

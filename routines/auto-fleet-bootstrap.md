@@ -1,4 +1,4 @@
-# Fleet bootstrap sweep (adopt the uncovered, re-bootstrap the members)
+# Fleet bootstrap sweep (adopt the uncovered, baseline the members)
 
 Daily, fleet-level step owning all bootstrap work: after it runs, every repo under the owner's
 account mounts Claudinite with current wiring and current rules — or is opted out, or sits in the
@@ -24,18 +24,18 @@ rename's tolerance be dropped without a manual judgment call.
 
 The census is an executor, not an orchestrator: **no schedule of its own** — it runs when this
 sweep (or the owner, manually) dispatches it. If its run fails: skip adoption tonight, log on the
-tracker; members still get re-bootstrapped.
+tracker; members still get baselined.
 
-## Step 2 — members: re-bootstrap + align
+## Step 2 — members: baselining + align
 
 Per member repo (never the home repo — the canon doesn't mount itself):
 
-- **Re-bootstrap** — re-run the idempotent bootstrap ([../bootstrap.md](../bootstrap.md)) to
+- **Baselining** — re-run the idempotent bootstrap ([../bootstrap.md](../bootstrap.md)) to
   refresh the mount and the wiring it owns. Most days nothing drifted → commit nothing. A pack
   declaration missing `basics` is drift — no pack is active by default, so the bootstrap's
   backfill step materializes the explicit `"basics"` entry.
 - **Declared migrations** — in-flight path relocations are declared once in
-  [migrations/](../migrations/README.md); the re-bootstrap's own idempotent steps land each
+  [migrations/](../migrations/README.md); baselining's own idempotent steps land each
   consumer-side legacy→canonical rename over the API (as they already do for the artifacts they
   own), converging the member to the canonical shape. This step only lands the rename — Step 1's
   census is what confirms fleet-wide completion and retires the migration.
@@ -59,7 +59,7 @@ issue is the owner's cue to grant access; log it on the tracker and move on.
 
 ## Delivery — the explicit per-member flag
 
-Member-side changes (re-bootstrap + alignment) are delivered per `maintenance.delivery` in the
+Member-side changes (baselining + alignment) are delivered per `maintenance.delivery` in the
 member's `.claudinite-checks.json` — always explicit, never an implicit default (the
 engineering-practices lesson): `--init` seeds `"push"`, and a missing key is drift — materialize
 `{ "maintenance": { "delivery": "push" } }` as a direct commit.
@@ -75,7 +75,7 @@ Adoption necessarily precedes the flag: a first bootstrap lands as a direct comm
 One standing home-repo issue, found by title `Claudinite fleet coverage` (open if absent; reopen if
 closed while something needs logging). Body: the current picture, dated, rewritten when it changed.
 Comments: a dated entry per run that did something — adoptions, queued-but-unreachable repos,
-failures. Clean day: write nothing. Re-bootstrap refreshes log nothing (the commit is the record);
+failures. Clean day: write nothing. Baselining refreshes log nothing (the commit is the record);
 a failed member run lands on the fleet routine's failure log.
 
 ## Run on a capable model

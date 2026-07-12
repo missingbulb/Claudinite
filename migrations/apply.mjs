@@ -5,7 +5,7 @@
 // Idempotent: a no-op once every rename has been applied. Dependency-free.
 //
 // Runs against a local checkout (a session, CI, or a future SessionStart
-// self-heal hook wired via bootstrap). The fleet re-bootstrap performs the same
+// self-heal hook wired via bootstrap). The fleet baselining performs the same
 // renames over the GitHub API through bootstrap.md's own steps; the census then
 // confirms completion (0 repos on the legacy shape) and retires the migration.
 import { existsSync, renameSync, mkdirSync } from 'node:fs';
