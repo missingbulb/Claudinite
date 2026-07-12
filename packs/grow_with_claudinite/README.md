@@ -12,12 +12,14 @@ the orchestrator runs once (see [../../growth/README.md](../../growth/README.md)
 |---|---|---|
 | `growth-extract-new-instructions` (`growth:1`) | the project changed in the window | the project's own `main` (directly) |
 | `growth-dedup-local-instructions` (`growth:3`) | canon changed, or the project's docs changed (or weekly) | a PR against the project's `main` |
-| `growth-pack-gap-scan` (independent) | the weekly full sweep | a converged "Pack gaps" issue in the project's own repo |
+| `growth-stack-manifest` (independent) | the weekly full sweep | a converged "Stack manifest" issue in the project's own repo |
 
 `promote` (`growth:2`, central, once) reads every participating repo's local docs, generalizes the
 portable lessons, and opens a PR against Claudinite's canon.
 
-The **pack-gap scan** is the odd one out — independent of the extract → promote → dedup barrier. It asks
-an agent a leading question (which technologies this repo uses that no pack, stub included, covers) and
-converges a tracking issue, so a technology with no pack home stops being invisible. It edits nothing;
-minting a pack for a surfaced gap is promote's job. Worker: [../../growth/pack-gap-scan.md](../../growth/pack-gap-scan.md).
+The **stack-manifest scan** is the odd one out — independent of the extract → promote → dedup barrier,
+and **stage 1 of pack discovery**. It asks an agent a leading question — this repo's technologies, the
+APIs it integrates, and its deployment/distribution targets — and converges a manifest into a tracking
+issue. It **decides nothing about packs**: whether a surfaced technology warrants a pack is stage 2's
+separate, central call, which reads these manifests across the fleet. Worker:
+[../../growth/stack-manifest.md](../../growth/stack-manifest.md).
