@@ -212,6 +212,9 @@ packs/chrome-extension-release/
   maintenance/
     store-release.mjs         ← the (gate, worker) descriptor
     store-release.worker.md   ← the "what to do" doc (defers to RELEASE.md)
+migrations/
+  <date>-tidy-repo-seed.mjs   ← one-time seed of tidy-repo into the existing fleet; census auto-retires it
+  registry.mjs                ← EXTENDED: legacyPresent also receives a content `read` (path-only migrations ignore it)
 ```
 
 **One walk, three outputs.** `check-fleet-coverage.mjs` already visits every repo once and emits the
@@ -267,11 +270,24 @@ auto-adds or auto-removes it. Seeding:
 orchestrator applies `tidy-repo`'s tasks to the home repo **unconditionally**, exactly as the parent
 routine runs the tidy-up against home today — pack membership gates the *members*, not the canon.
 
-> **Existing fleet (open decision).** Repos bootstrapped *before* `tidy-repo` exists won't carry it,
-> and the re-bootstrap won't add it — so today's **universal** tidy would silently regress to **none**
-> on the current fleet. Recommendation: a **one-time** seed of `tidy-repo` into the current members'
-> declarations at rollout (after which removal sticks), so the fleet keeps its tidy without making the
-> pack un-removable. The alternative is to leave existing repos untidied until each re-declares it.
+**Existing fleet — a one-time seed via the migrations mechanism.** Repos bootstrapped *before*
+`tidy-repo` exists carry it nowhere, and the re-bootstrap won't backfill it — so without action the
+current fleet's universal tidy would regress to none. A **migration**
+(`migrations/<landed-date>-tidy-repo-seed.mjs`) closes this using the existing self-retiring telemetry:
+
+- **While the migration is live**, the re-bootstrap seeds `tidy-repo` into any member whose declaration
+  lacks it (its idempotent bootstrap step, the way the framework already has the re-bootstrap perform a
+  migration's write).
+- The **fleet-coverage census** already runs each migration's `legacyPresent` across the fleet; here
+  `legacyPresent` = "this member's declaration lacks `tidy-repo`." Once every member has converged it
+  **auto-retires** the migration (deletes the record), and with the migration gone the re-bootstrap
+  stops seeding — so a **later removal is durable**.
+- The only framework extension: this migration's `legacyPresent` must **read** the declaration file
+  rather than probe a path, so the census passes `legacyPresent` a content `read` alongside `exists`
+  (backward-compatible — the existing path-only migrations ignore the extra arg).
+
+Convergence takes ~1–2 nightlies; a deliberate opt-out is meaningful once the seed migration has
+retired. `--init` seeds new repos independently of this migration.
 
 ## Proving the pack seam: `chrome-store-release`
 
@@ -369,7 +385,8 @@ already single-object (one repo, one release), so it needs no Stage-2 decomposit
 
 - **Stage 1 (this spec):** the planner + signal bundle + gate registry emitting `plan.json`; the
   fleet-core growth gates; the **`tidy-repo` pack** (its three tasks reusing a whole-repo worker for
-  now) seeded by `--init`; the `chrome-store-release` pack task; the `scheduling.md` contract + its
-  enforcing check; the orchestrator rewritten to dispatch from the plan.
+  now) seeded by `--init` + the one-time `tidy-repo-seed` migration for the existing fleet; the
+  `chrome-store-release` pack task; the `scheduling.md` contract + its enforcing check; the
+  orchestrator rewritten to dispatch from the plan.
 - **Stage 2:** the three single-object skills, the per-repo `tidy-report` unit, and retiring
   `auto-repo-tidy.md` into the `tidy-repo` pack — a pure worker-granularity change, no engine change.
