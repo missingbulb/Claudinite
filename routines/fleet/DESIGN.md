@@ -45,26 +45,29 @@ A task descriptor is a plain object:
 
 ```js
 {
-  id:     'branch-cleanup',                 // stable task name
-  scope:  'fleet',                          // 'fleet' (all members) | 'pack:<name>' (implicit for pack tasks)
-  worker: '../auto-repo-tidy.md#branches',  // the "what to do" doc, canon-relative
-  order:  null,                             // null = independent/concurrent | 'growth:N' = phase N barrier
-  gate:   async (repo, signals, gh) => ({ run, targets, reason }),   // the "should I run" predicate
+  id:     'branch-cleanup',                              // stable task name
+  scope:  'pack:tidy-repo',                              // 'fleet' | 'pack:<name>' (implicit for pack tasks)
+  worker: 'packs/tidy-repo/maintenance/branch-cleanup.worker.md',  // the "what to do" doc, canon-relative
+  order:  null,                                          // null = independent/concurrent | 'growth:N' = phase N barrier
+  gate:   async (repo, signals, gh) => ({ run, targets, reason }),  // the "should I run" predicate
 }
 ```
 
-- **Fleet-core tasks** live in `tasks/`, discovered structurally: `branch-cleanup`, `pr-assess`,
-  `issue-triage`, `growth-extract-new-instructions`, `growth-dedup-local-instructions`, `align`.
-  Always applicable to every member. (The three growth **task ids** name the maintenance units in the
-  plan; their `worker` docs keep their existing filenames — `growth/extract.md`, `growth/dedup.md`,
-  `growth/promote.md` — so the rename doesn't ripple into the growth lifecycle or consumer-vendored
-  copies. The central `growth-promote-to-claudinite` step is orchestrator-run post-barrier, not a
-  planned unit — see Orchestration.)
+- **Fleet-core tasks** — the small always-on set, in `tasks/`, discovered structurally:
+  `growth-extract-new-instructions`, `growth-dedup-local-instructions`, `align`. These are the fleet's
+  own lifecycle (growth) and infrastructure (re-bootstrap/align), so they run on every member without a
+  pack. (The two growth **task ids** name the maintenance units in the plan; their `worker` docs keep
+  their existing filenames — `growth/extract.md`, `growth/dedup.md`, `growth/promote.md` — so the
+  rename doesn't ripple into the growth lifecycle or consumer-vendored copies. The central
+  `growth-promote-to-claudinite` step is orchestrator-run post-barrier, not a planned unit — see
+  Orchestration.)
 - **Pack tasks** register exactly like a pack's checks and skills — a new **`maintenance: [...]`**
   field on `pack.mjs`, listing descriptor modules (parallel to `rules`, `skills`, `env`). A task
   declared by a pack is `scope: "pack:<that pack>"` automatically, and applies to a repo **iff** the
   repo declares that pack in `.claudinite-checks.json`. Adding a task is dropping a `(gate, worker)`
-  pair — the engine discovers it, no orchestrator edit.
+  pair — the engine discovers it, no orchestrator edit. The two exemplars: the **`tidy-repo` pack**
+  (the PR/branch/issue sweep — see [The `tidy-repo` pack](#the-tidy-repo-pack)) and the
+  `chrome-extension-release` pack's `chrome-store-release`.
 
 `gates.mjs` assembles, per covered repo, `applicable = fleet-core ∪ (active packs' maintenance)`,
 runs each gate, and collects the units that returned `run: true`.
@@ -118,7 +121,7 @@ nothing for `canonChanged` to trip over) and mirrored to the step summary for hu
   "weekdayUtc": 6,
   "canonChanged": true,
   "units": [
-    { "repo": "owner/foo", "task": "branch-cleanup", "worker": "routines/auto-repo-tidy.md#branches",
+    { "repo": "owner/foo", "task": "branch-cleanup", "worker": "packs/tidy-repo/maintenance/branch-cleanup.worker.md",
       "targets": { "branches": ["feat-x"] }, "reason": "mainMoved", "order": null },
     { "repo": "owner/foo", "task": "growth-extract-new-instructions", "worker": "growth/extract.md",
       "targets": {}, "reason": "projectChanged", "order": "growth:1" },
@@ -192,11 +195,18 @@ routines/
     signals.mjs               ← per-repo signal bundle + global canonChanged
     gates.mjs                 ← registry assembly + per-repo gate evaluation → plan units
     tasks/                    ← fleet-core task descriptors (gate + worker pointer)
-      branch-cleanup.mjs  pr-assess.mjs  issue-triage.mjs  align.mjs
-      growth-extract-new-instructions.mjs  growth-dedup-local-instructions.mjs
-  scheduling.md               ← the single-scheduler contract (see Scheduling, below)
+      align.mjs  growth-extract-new-instructions.mjs  growth-dedup-local-instructions.mjs
+  scheduling.md               ← the single-scheduler contract (see Scheduling, above)
   check-fleet-coverage.mjs    ← EXTENDED: the same single fleet walk now also builds + emits plan.json
 .github/workflows/fleet-coverage.yml  ← uploads plan.json as an artifact
+packs/tidy-repo/              ← NEW pack: the PR/branch/issue sweep, seeded by --init, opt-out by removal
+  pack.mjs                    ← declared pack (no detect); maintenance: [...], skills: [...]
+  README.md                   ← catalog entry (catalog-completeness requires it)
+  RULES.md                    ← assess-only-vs-act policy
+  maintenance/
+    branch-cleanup.mjs  pr-assess.mjs  issue-triage.mjs   ← (gate, worker) descriptors
+    tidy-report.mjs                                        ← per-repo report unit (Stage 2)
+    *.worker.md                                            ← the "what to do" docs
 packs/chrome-extension-release/
   pack.mjs                    ← + maintenance: [storeRelease]
   maintenance/
@@ -223,6 +233,45 @@ code. A member contributes only its existing `.claudinite-checks.json` (read for
 written). Pack **worker docs** are canon docs the dispatched subagent reads over the API — the same
 propagation as the growth phase docs today. The only new home-repo write is the ephemeral
 `plan.json` artifact.
+
+The **`tidy-repo` pack** rides the ordinary pack channels (`consumer-safe-changes.md`): its `RULES.md`
+loads at session start where declared and its skills mount — low blast radius, same as any pack prose.
+Its *maintenance tasks* still execute centrally like every pack task. The one bootstrap-wiring change
+— seed `tidy-repo` at `--init`, and the deliberate carve-out that the re-bootstrap does **not**
+backfill it — travels the bootstrap channel and must converge from every layout in the wild.
+
+## The `tidy-repo` pack
+
+The PR/branch/issue sweep is **not** fleet-core — it's a pack, so it composes into the standard sweep
+like any other and a repo can drop it. `packs/tidy-repo/` bundles:
+
+- `maintenance: [branch-cleanup, pr-assess, issue-triage, tidy-report]` — the Stage 1 gates + the
+  Stage 2 per-repo report unit.
+- `skills: [single-branch-status, single-pr-status, single-issue-triage]` — the Stage 2 single-object
+  workers (mounted when the pack is active).
+- `RULES.md` — the assess-only-vs-act policy (PRs/branches assessed read-only, issues acted on); the
+  per-object judgment lives in the skills.
+
+**Declared pack, seeded once, durably opt-out-able.** `tidy-repo` carries **no `detect` fingerprint**
+(it's a declared pack, like `html` / `research-project`), so the `pack-declaration` check never
+auto-adds or auto-removes it. Seeding:
+
+- `bootstrap --init` seeds it into every **new** repo's declaration —
+  `["basics", "tidy-repo", …fingerprinted]`.
+- **Unlike `basics`, the nightly re-bootstrap never (re)adds `tidy-repo`.** So a repo that removes the
+  pack stays without it — default-on for new repos, a durable opt-out for any repo. (This is the one
+  place a seeded pack is deliberately *not* backfilled; the bootstrap's backfill step must special-case
+  it.)
+
+**The home repo** declares no packs (the canon doesn't mount itself), yet still needs tidying. The
+orchestrator applies `tidy-repo`'s tasks to the home repo **unconditionally**, exactly as the parent
+routine runs the tidy-up against home today — pack membership gates the *members*, not the canon.
+
+> **Existing fleet (open decision).** Repos bootstrapped *before* `tidy-repo` exists won't carry it,
+> and the re-bootstrap won't add it — so today's **universal** tidy would silently regress to **none**
+> on the current fleet. Recommendation: a **one-time** seed of `tidy-repo` into the current members'
+> declarations at rollout (after which removal sticks), so the fleet keeps its tidy without making the
+> pack un-removable. The alternative is to leave existing repos untidied until each re-declares it.
 
 ## Proving the pack seam: `chrome-store-release`
 
@@ -251,13 +300,14 @@ Per `consumer-safe-changes.md` ("verify against a real consumer before the night
 
 ## Stage 2 — narrow per-object worker skills
 
-Stage 1 dispatches today's **whole-repo** tidy-up worker, just fed a target list. Stage 2 replaces
-that worker with **single-object skills**, so a repo with one stale branch spins a one-branch check
-instead of a whole-repo pass — maximal context isolation and the last of the frugality. It changes
-**only the worker side**; the engine, plan schema, and per-object `targets` are unchanged, which is
-why it's cleanly separable.
+In Stage 1 the `tidy-repo` pack's three tasks point at a **whole-repo** worker, just fed a target
+list. Stage 2 replaces that worker with **single-object skills** (the pack's `skills`), so a repo with
+one stale branch spins a one-branch check instead of a whole-repo pass — maximal context isolation and
+the last of the frugality. It changes **only the worker side**; the engine, plan schema, and
+per-object `targets` are unchanged, which is why it's cleanly separable.
 
-**The skills** (the "what to do" at single-object granularity, in `skills/`):
+**The skills** (the "what to do" at single-object granularity, declared by the `tidy-repo` pack and
+living in `skills/`):
 
 - `single-branch-status` — given **one** branch, run the landed-status test
   (merged / already-in-main / superseded / orphaned / genuine) and return a verdict. **Assess-only** —
@@ -293,21 +343,23 @@ settle and rewrites the tracker from their collected verdicts:
   tracker's last dated snapshot stands, and the weekly full sweep refreshes it — so it never goes
   silently stale.
 
-**`auto-repo-tidy.md` refactor.** The per-object *judgment* (the landed-status test, the issue-action
-ladder) moves **into** the skills — one home for that logic (the promotion ladder: reusable judgment
-becomes a skill). `auto-repo-tidy.md` keeps only the policy the skills don't own: assess-only-vs-act,
-and the tracker/report contract — pointing at the skills for the mechanics. It shrinks to a policy +
-report spec.
+**`auto-repo-tidy.md` is absorbed into the `tidy-repo` pack.** The per-object *judgment* (the
+landed-status test, the issue-action ladder) moves **into** the pack's skills — one home for that
+logic (the promotion ladder: reusable judgment becomes a skill). The assess-only-vs-act policy becomes
+the pack's `RULES.md`; the tracker/report contract becomes `tidy-report`. The standalone
+`auto-repo-tidy.md` routine doc (today vendored per-consumer) is retired — the pack now carries the
+whole tidy bundle, and consumers get it by declaring `tidy-repo`.
 
 ```
+packs/tidy-repo/
+  pack.mjs                        ← + skills: [single-branch-status, single-pr-status, single-issue-triage]
+  maintenance/
+    tidy-report.mjs               ← per-repo report unit (gate + worker); runs after the repo's tidy units
 skills/
   single-branch-status/SKILL.md   ← one-branch landed-status verdict (assess-only)
   single-pr-status/SKILL.md       ← one-PR verdict (assess-only)
   single-issue-triage/SKILL.md    ← one-issue action (the only acting skill)
-routines/fleet/tasks/
-  tidy-report.mjs                 ← per-repo report unit (gate + worker); runs after the repo's tidy units
-routines/auto-repo-tidy.md        ← shrinks to policy + tracker/report contract; mechanics move to the skills
-packs/basics/pack.mjs             ← declares the three skills (baseline tidy activity)
+routines/auto-repo-tidy.md        ← retired; its content lives in the tidy-repo pack (RULES + skills + tidy-report)
 ```
 
 Pack tasks decompose the same way **if** they have per-object structure; `chrome-store-release` is
@@ -316,7 +368,8 @@ already single-object (one repo, one release), so it needs no Stage-2 decomposit
 ## Stage boundaries — summary
 
 - **Stage 1 (this spec):** the planner + signal bundle + gate registry emitting `plan.json`; the
-  fleet-core gates reusing today's whole-repo workers; the `chrome-store-release` pack task; the
-  `scheduling.md` contract + its enforcing check; the orchestrator rewritten to dispatch from the plan.
-- **Stage 2:** the three single-object skills, the per-repo `tidy-report` unit, and the
-  `auto-repo-tidy.md` refactor — a pure worker-granularity change, no engine change.
+  fleet-core growth gates; the **`tidy-repo` pack** (its three tasks reusing a whole-repo worker for
+  now) seeded by `--init`; the `chrome-store-release` pack task; the `scheduling.md` contract + its
+  enforcing check; the orchestrator rewritten to dispatch from the plan.
+- **Stage 2:** the three single-object skills, the per-repo `tidy-report` unit, and retiring
+  `auto-repo-tidy.md` into the `tidy-repo` pack — a pure worker-granularity change, no engine change.
