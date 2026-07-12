@@ -1,6 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildWorkPlan } from '../check-fleet-coverage.mjs';
+import { buildWorkPlan, parseSheepdogConfig } from '../check-fleet-coverage.mjs';
+
+test('parseSheepdogConfig: reads owner + exclude; defaults owner to the home owner; throws when absent', () => {
+  const cfg = { packConfig: { sheepdog: { owner: 'MissingBulb', exclude: ['Owner/Repo-A', 'owner/repo-b'] } } };
+  const { owner, exclude } = parseSheepdogConfig(cfg, 'missingbulb/sheepdog');
+  assert.equal(owner, 'missingbulb');
+  assert.ok(exclude.has('owner/repo-a') && exclude.has('owner/repo-b'));
+  // owner defaults to the home repo's owner
+  assert.equal(parseSheepdogConfig({ packConfig: { sheepdog: {} } }, 'acme/fleet').owner, 'acme');
+  // absent packConfig.sheepdog aborts (absence is not "cover everything")
+  assert.throws(() => parseSheepdogConfig({}, 'acme/fleet'), /no packConfig\.sheepdog/);
+});
 
 // Integration test for the plan-building wiring in the census walk: a fake gh + a
 // covered member, exercising the real fleet-core tasks (loaded from disk). We drive

@@ -39,8 +39,8 @@ is spawned.** That boundary is the frugality lever.
 The planner is the **only** out-of-process piece, and only because it needs the account-spanning
 token and must stay pure code. Trigger and orchestrator are two phases of one session, so the plan
 stays in-context and one supervisor owns the run (and the failure log). This is continuous with how
-the sweep already "triggers the `Fleet Coverage` workflow and awaits the run" today
-([../auto-fleet-bootstrap.md](../auto-fleet-bootstrap.md) Step 1).
+the orchestrator already "triggers the `Fleet Coverage` workflow and awaits the run"
+([../auto-all-repos-maintenance.md](../auto-all-repos-maintenance.md)).
 
 ## The task registry
 
@@ -90,8 +90,8 @@ high-water mark* each task is meant to descend.
   `growth-extract-new-instructions`, `growth-dedup-local-instructions`, `baselining`. These are the
   fleet's own lifecycle (growth) and infrastructure (baselining), so they run on every member without a
   pack.
-  - **`baselining`** is the per-member half of the fleet bootstrap sweep
-    ([../auto-fleet-bootstrap.md](../auto-fleet-bootstrap.md) Step 2): restore the member to the current
+  - **`baselining`** is the `basics` pack's per-member task
+    ([../../packs/basics/run_daily/baselining.worker.md](../../packs/basics/run_daily/baselining.worker.md)): restore the member to the current
     canonical baseline — re-run the idempotent bootstrap to refresh the mount + wiring, and evaluate the
     member against its declared packs' *current* checks (the same engine its Stop hook and CI run),
     applying each failing check's own `fix` and opening a member-side issue for any finding needing
@@ -244,7 +244,7 @@ routines/
       baselining.mjs  growth-extract-new-instructions.mjs  growth-dedup-local-instructions.mjs
   scheduling.md               ← the single-scheduler contract (see Scheduling, above)
   check-fleet-coverage.mjs    ← EXTENDED: the same single fleet walk now also builds + emits plan.json
-.github/workflows/fleet-coverage.yml  ← uploads plan.json as an artifact
+packs/sheepdog/stubs/fleet-coverage.yml  ← uploads plan.json as an artifact
 packs/tidy-repo/              ← NEW pack: the PR/branch/issue sweep, seeded by --init, opt-out by removal
   pack.mjs                    ← declared pack (no detect); maintenance: [...], skills: [...]
   README.md                   ← catalog entry (catalog-completeness requires it)

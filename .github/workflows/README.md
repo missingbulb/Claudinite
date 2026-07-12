@@ -19,7 +19,6 @@ every consumer stub has moved) — never a one-shot.
 
 | File | Purpose |
 |---|---|
-| [`fleet-coverage.yml`](fleet-coverage.yml) | Dispatch-only census executor for the nightly fleet bootstrap sweep (`workflow_dispatch`; no schedule of its own). |
 
 ## Frozen `@main` API — consumers depend on these; do NOT rename or remove
 

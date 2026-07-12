@@ -1,0 +1,27 @@
+# sheepdog — the fleet enforcer marker
+
+Declaring this pack marks a repo as the **fleet enforcer**: the one repo that covers and maintains
+every repo under an owner. It's opt-in — a dedicated `sheepdog` repo declares it (it is **not** seeded
+by `--init`) — and it turns what used to be bespoke Claudinite fleet infrastructure into a declaration.
+
+The pack is thin. The actual machinery — the census, running the daily-run, the run_daily engine,
+scheduling — is Claudinite **core** (`routines/`); declaring `sheepdog` only adds the cross-repo reach.
+
+**Config** — this repo's `.claudinite-checks.json` carries:
+
+```json
+"packConfig": { "sheepdog": { "owner": "missingbulb", "kind": "user", "exclude": ["owner/repo-a"] } }
+```
+
+`owner` (default: this repo's owner) is who to cover; `exclude` is the repos deliberately kept out of
+the fleet (a full `owner/name` each). `kind: "user"` today; org support is a later addition. This
+replaces the old opt-out list — a repo is kept out by adding it here.
+
+**How it runs** — baselining materializes the [coverage workflow](stubs/fleet-coverage.yml) into this
+repo and prompts for the `FLEET_GITHUB_TOKEN` secret (a fine-grained PAT spanning the owner's repos:
+Metadata + Contents read, Issues read/write, and Contents write on this repo for baseline-migration
+retirement). That `workflow_dispatch`-only Action checks out Claudinite and runs the **core** census
+([routines/check-fleet-coverage.mjs](../../routines/check-fleet-coverage.mjs)) with the token; it never
+carries a `schedule:` of its own. This repo's single scheduled routine — the core orchestrator that
+runs the daily-run ([routines/auto-all-repos-maintenance.md](../../routines/auto-all-repos-maintenance.md))
+— is the one schedule ([routines/fleet/scheduling.md](../../routines/fleet/scheduling.md)).

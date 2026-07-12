@@ -1,0 +1,51 @@
+# Materialized into the sheepdog repo by baselining. workflow_dispatch ONLY — no
+# schedule of its own (the sheepdog repo's one scheduled routine is the single schedule;
+# a cron here would be a competing orchestrator — see routines/fleet/scheduling.md).
+# It checks out Claudinite and runs the core census engine with the fleet PAT; the
+# census reads THIS repo's packConfig.sheepdog (owner + exclude) over the API.
+#
+# Needs the FLEET_GITHUB_TOKEN repo secret: a fine-grained PAT spanning the owner's
+# repositories with Metadata + Contents (read) and Issues (read/write), plus Contents
+# (write) on this repo for baseline-migration retirement.
+name: Fleet Coverage
+on:
+  workflow_dispatch:
+defaults:
+  run:
+    shell: bash
+permissions:
+  contents: read
+jobs:
+  census:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check out Claudinite (the census engine + pack definitions)
+        uses: actions/checkout@v4
+        with:
+          repository: missingbulb/Claudinite
+          path: .claudinite-canon
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Enumerate the fleet, converge adoption, and emit the work plan
+        env:
+          FLEET_GITHUB_TOKEN: ${{ secrets.FLEET_GITHUB_TOKEN }}
+        run: node .claudinite-canon/routines/check-fleet-coverage.mjs
+      - name: Upload the work plan
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fleet-plan
+          path: plan.json
+          if-no-files-found: warn
+  report-failure:
+    needs: census
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: missingbulb/Claudinite/.github/actions/report-failure@main
+        with:
+          workflow: "Fleet Coverage"

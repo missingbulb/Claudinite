@@ -65,7 +65,7 @@ which reasons *about* generated files and so still inspects them.
   `"pr"` (a never-merged PR the owner gates). There is deliberately no implicit default — `--init`
   seeds `push` and the nightly sweep backfills a missing key, so the selection is visible in this
   file rather than implied by absence. Read by
-  [routines/auto-fleet-bootstrap.md](../routines/auto-fleet-bootstrap.md); the checks engine
+  [the baselining worker](../packs/basics/run_daily/baselining.worker.md); the checks engine
   itself ignores it.
 
 ## Enforcement wiring

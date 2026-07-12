@@ -1,29 +1,29 @@
 #!/usr/bin/env node
-// Deterministic fleet-coverage census — the dispatch-only executor of
-// routines/auto-fleet-bootstrap.md Step 1 (launcher:
-// .github/workflows/fleet-coverage.yml — workflow_dispatch only, no schedule;
-// the nightly sweep, orchestrated from Claude Code, triggers it).
+// Deterministic fleet-coverage census — Claudinite core, run by the sheepdog
+// repo's Fleet Coverage workflow (materialized from the sheepdog pack's stub by
+// baselining — workflow_dispatch only, no schedule of its own), which checks out
+// Claudinite and runs this with the FLEET_GITHUB_TOKEN.
 //
-// Enumerates every repo under the home repo's owner with an account-spanning
-// token (FLEET_GITHUB_TOKEN), classifies each by the same signals the sweep
-// uses (covered / uncovered / opted-out / skipped fork-or-archived), publishes
-// the picture to the run summary, and converges one adoption issue per
-// actionable uncovered repo in the home repo: open while uncovered, closed
-// (completed / not_planned) once covered or opted out.
+// Reads the fleet config from the sheepdog (home) repo's packConfig.sheepdog
+// (owner to cover + exclude list), enumerates every repo under that owner,
+// classifies each (covered / uncovered / excluded / skipped fork-or-archived),
+// publishes the picture to the run summary, and converges one adoption issue per
+// actionable uncovered repo in the home repo: open while uncovered, closed once
+// covered or excluded. It also emits the day's work plan (plan.json) and runs
+// baseline-migration retirement telemetry.
 //
-// Two rules mirrored from the sweep's spec, deliberately:
+// Two rules kept deliberately:
 //   - a marker check that ERRORS makes the repo UNKNOWN, never uncovered — no
 //     issue is opened for it and the run fails so the error escalates;
-//   - an unreadable opt-out list aborts the census — absence of the list is
-//     not consent to adopt everything.
+//   - an unreadable/absent packConfig.sheepdog aborts the census — absence is
+//     not consent to cover everything with no exclusions.
 //
 // Dependency-free (global fetch, Node 20+); read-only toward every repo except
 // the home repo, where it writes the adoption issues + label and deletes
 // fully-applied migration files (auto-retirement — see migrations/README.md).
 
-import { readFileSync, writeFileSync, appendFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { writeFileSync, appendFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 import { loadMigrations, retirableMigrations } from '../migrations/registry.mjs';
 import { loadPacks } from '../packs/registry.mjs';
 import { packTasks, assembleForRepo } from './fleet/registry.mjs';
@@ -32,22 +32,20 @@ import { planRepo } from './fleet/gates.mjs';
 
 const API = 'https://api.github.com';
 const LABEL = 'fleet-adoption';
-const OPT_OUT_FILE = 'fleet-bootstrap-opt-out.md';
-
 const adoptionTitle = (fullName) => `Adopt ${fullName} into the Claudinite fleet`;
 const TITLE_RE = /^Adopt (\S+\/\S+) into the Claudinite fleet$/;
 
 function adoptionBody(fullName) {
   return [
     `\`${fullName}\` exists under this account but does not mount Claudinite (no tracked`,
-    '`.claudinite/` signal on its default branch) and is not on the opt-out list.',
+    '`.claudinite/` signal on its default branch) and is not on the exclude list.',
     '',
     'Pick one:',
     '',
-    '- **Adopt it** — grant the repo to the fleet maintenance routine\'s environment (its',
-    '  per-repo access list); the next nightly fleet bootstrap sweep then bootstraps it',
-    '  automatically (`routines/auto-fleet-bootstrap.md`).',
-    `- **Keep it out** — add \`${fullName}\` to \`routines/${OPT_OUT_FILE}\` with a reason.`,
+    '- **Adopt it** — grant the repo to the sheepdog environment\'s per-repo access list;',
+    '  the next daily run then baselines (bootstraps) it automatically.',
+    `- **Keep it out** — add \`${fullName}\` to \`packConfig.sheepdog.exclude\` in this`,
+    '  (sheepdog) repo\'s `.claudinite-checks.json`, with a reason.',
     '',
     'This issue is converged by the daily Fleet Coverage census: it closes itself once the',
     'repo is covered (`completed`) or opted out (`not planned`), and a close without either',
@@ -109,21 +107,21 @@ async function isCovered(gh, fullName) {
   return /path\s*=\s*\.claudinite\b/.test(text) && /url\s*=\s*.*claudinite/i.test(text); // Method A
 }
 
-// --- opt-out list -----------------------------------------------------------
+// --- fleet config (from the sheepdog repo's packConfig.sheepdog) --------------
 
-// Only entries under the "## Opted out" heading count (the file's own contract).
-// A missing heading is an unreadable list: throw — never treat it as empty.
-export function parseOptOut(text) {
-  const lines = text.split('\n');
-  const start = lines.findIndex((l) => /^##\s+Opted out\s*$/.test(l));
-  if (start === -1) throw new Error(`opt-out list has no "## Opted out" heading — unreadable, aborting`);
-  const out = new Set();
-  for (const line of lines.slice(start + 1)) {
-    if (/^##\s/.test(line)) break;
-    const m = /^-\s+`?([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)`?/.exec(line);
-    if (m) out.add(m[1].toLowerCase());
+// The sheepdog repo's .claudinite-checks.json carries:
+//   packConfig.sheepdog = { owner: "missingbulb", kind: "user", exclude: ["owner/repo", ...] }
+// owner is who to cover (default: the sheepdog repo's own owner); exclude is the repos
+// deliberately kept out (a full owner/name each, lowercased). Missing packConfig.sheepdog
+// is an unreadable config: throw — absence is not consent to cover everything.
+export function parseSheepdogConfig(cfg, home) {
+  const sd = cfg?.packConfig?.sheepdog;
+  if (!sd || typeof sd !== 'object') {
+    throw new Error(`the sheepdog repo ${home} declares no packConfig.sheepdog { owner, exclude } — nothing to cover`);
   }
-  return out;
+  const owner = String(sd.owner ?? home.split('/')[0]).toLowerCase();
+  const exclude = new Set((Array.isArray(sd.exclude) ? sd.exclude : []).map((s) => String(s).toLowerCase()));
+  return { owner, exclude };
 }
 
 // --- adoption-issue convergence ----------------------------------------------
@@ -173,7 +171,7 @@ async function convergeIssues(gh, home, { uncovered, coveredSet, optedOutSet }) 
     if (coveredSet.has(fullName)) {
       reason = 'completed'; note = 'now mounts Claudinite — covered';
     } else if (optedOutSet.has(fullName)) {
-      reason = 'not_planned'; note = `on the opt-out list (routines/${OPT_OUT_FILE})`;
+      reason = 'not_planned'; note = 'on the exclude list (packConfig.sheepdog.exclude)';
     } else if (!uncovered.includes(fullName)) {
       reason = 'not_planned'; note = 'no longer an adoption candidate (deleted, archived, transferred, or now a fork)';
     }
@@ -290,12 +288,18 @@ async function main() {
       + 'GITHUB_TOKEN sees only this repo and cannot take a fleet census.');
   }
   if (!home || !home.includes('/')) throw new Error('GITHUB_REPOSITORY is not set (owner/repo)');
-  const owner = home.split('/')[0].toLowerCase();
   const gh = makeGh(token);
 
-  const optOut = parseOptOut(
-    readFileSync(join(dirname(fileURLToPath(import.meta.url)), OPT_OUT_FILE), 'utf8'),
-  );
+  // Read the fleet config from this (sheepdog) repo's packConfig.sheepdog.
+  const cfgRes = await gh(`/repos/${home}/contents/.claudinite-checks.json`);
+  if (cfgRes.status !== 200 || !cfgRes.json?.content) {
+    throw new Error(`the sheepdog repo ${home} has no readable .claudinite-checks.json (status ${cfgRes.status})`);
+  }
+  let cfg;
+  try { cfg = JSON.parse(Buffer.from(cfgRes.json.content, 'base64').toString('utf8')); } catch (e) {
+    throw new Error(`unparsable .claudinite-checks.json on ${home}: ${e.message}`);
+  }
+  const { owner, exclude: optOut } = parseSheepdogConfig(cfg, home);
 
   const mine = (await paged(gh, '/user/repos?affiliation=owner'))
     .filter((r) => r.owner.login.toLowerCase() === owner);

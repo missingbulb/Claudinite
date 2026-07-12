@@ -12,13 +12,13 @@ This routine **replaces** scheduling anything individually **and** any per-repo 
 
 ## What the planner decides, what this routine dispatches
 
-The **planner** ([fleet/DESIGN.md](fleet/DESIGN.md)) runs in code inside the census ([auto-fleet-bootstrap.md](auto-fleet-bootstrap.md) Step 1 → [../.github/workflows/fleet-coverage.yml](../.github/workflows/fleet-coverage.yml)): **one fleet walk** emits the coverage census, baseline-migration retirement, **and** the **work plan** — a flat list of `(repo, task, worker, targets, reason, order, smarts)` **units**, one per `(repo, task)` a gate marked live. A repo with nothing to do yields no units, at an API-read's cost. This routine reads `plan.json` and dispatches those units; it decides *nothing* itself.
+The **planner** ([fleet/DESIGN.md](fleet/DESIGN.md)) runs in code inside the census ([check-fleet-coverage.mjs](check-fleet-coverage.mjs), dispatched via the sheepdog repo's [coverage workflow](../packs/sheepdog/stubs/fleet-coverage.yml)): **one fleet walk** emits the coverage census, baseline-migration retirement, **and** the **work plan** — a flat list of `(repo, task, worker, targets, reason, order, smarts)` **units**, one per `(repo, task)` a gate marked live. A repo with nothing to do yields no units, at an API-read's cost. This routine reads `plan.json` and dispatches those units; it decides *nothing* itself.
 
 The units span every kind of maintenance, each deferring wholly to its own doc:
 
 - **Growth** ([../growth/README.md](../growth/README.md)) — `growth-extract-new-instructions` (`order: growth:1`), `growth-dedup-local-instructions` (`growth:3`); `growth-promote-to-claudinite` runs once, central, **post-barrier** — not a planned unit, since its input is *this night's* extractions.
 - **The `tidy-repo` pack** — `branch-cleanup` / `pr-assess` / `issue-triage` on every repo declaring the pack, and against the home repo.
-- **`baselining`** (fleet-core — the member re-run of the idempotent bootstrap + check-alignment) plus the sweep's **adoption** of census-queued repos ([auto-fleet-bootstrap.md](auto-fleet-bootstrap.md)).
+- **`baselining`** (the `basics` task — the member re-run of the idempotent bootstrap + check-alignment) plus the **adoption** of census-queued repos (a first baseline — same [worker](../packs/basics/run_daily/baselining.worker.md)).
 - **Any pack task** — e.g. `chrome-store-release`. New maintenance is a new pack `(gate, worker)` pair; the plan picks it up automatically — **no edit here**.
 
 ## Step 1 — dispatch the planner, read the plan
