@@ -9,7 +9,6 @@
 
 export default {
   id: 'baselining',
-  scope: 'fleet',
   worker: 'routines/auto-fleet-bootstrap.md',
   order: null, // independent of the growth barrier
   full_sweep_supported: true,

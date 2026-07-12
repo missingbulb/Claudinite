@@ -7,7 +7,7 @@
 
 export default {
   id: 'tidy-report',
-  worker: 'packs/tidy-repo/maintenance/tidy-report.worker.md',
+  worker: 'packs/tidy-repo/run_daily/tidy-report.worker.md',
   order: 'tidy:report',
   full_sweep_supported: true,
   smarts: 'low', // aggregate the run's verdicts and rewrite the tracker — mechanical

@@ -10,6 +10,7 @@ import generatedMergeDriver from './generated-merge-driver.mjs';
 import sharedConstants from './shared-constants.mjs';
 import skillOwnership from './skill-ownership.mjs';
 import catalogCompleteness from './catalog-completeness.mjs';
+import baselining from './run_daily/baselining.mjs';
 
 // The baseline pack: working discipline, the task lifecycle, and the core
 // checks. Declared explicitly like every other pack — no pack is active by
@@ -56,4 +57,8 @@ export default {
     'unattended-agents',
     'writing-tests',
   ],
+  // The baseline daily task every member runs: baselining (re-run the idempotent
+  // bootstrap + check-alignment). Being in basics — declared everywhere — makes it
+  // fleet-universal without a fleet-core category.
+  run_daily: [baselining],
 };

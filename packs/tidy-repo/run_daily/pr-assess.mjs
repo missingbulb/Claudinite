@@ -7,7 +7,7 @@
 
 export default {
   id: 'pr-assess',
-  worker: 'packs/tidy-repo/maintenance/pr-assess.worker.md',
+  worker: 'packs/tidy-repo/run_daily/pr-assess.worker.md',
   order: null,
   full_sweep_supported: true,
   smarts: 'medium', // judging superseded-by-other-path is a content call, not a status flag

@@ -1,21 +1,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fullSweepBucket, isFullSweepDay } from './schedule.mjs';
-import { packTasks, assembleForRepo, loadFleetTasks } from './registry.mjs';
+import { packTasks, assembleForRepo } from './registry.mjs';
 import { planRepo } from './gates.mjs';
-import baselining from './tasks/baselining.mjs';
-import extract from './tasks/growth-extract-new-instructions.mjs';
-import dedup from './tasks/growth-dedup-local-instructions.mjs';
+import baselining from '../../packs/basics/run_daily/baselining.mjs';
+import extract from '../../packs/grow_with_claudinite/run_daily/growth-extract-new-instructions.mjs';
+import dedup from '../../packs/grow_with_claudinite/run_daily/growth-dedup-local-instructions.mjs';
 
 const REPO = { fullName: 'owner/foo', defaultBranch: 'main' };
-// A signal bundle with everything off; override per test.
 const S = (over = {}) => ({
   fullSweep: false, mainMoved: false, projectChanged: false, canonChanged: false,
   prsTouched: [], issuesTouched: [], branchesTouched: [], activePacks: [], ...over,
 });
-// A minimal task descriptor for the engine tests.
 const T = (over = {}) => ({
-  id: 't', scope: 'fleet', worker: 'w.md', order: null, full_sweep_supported: false,
+  id: 't', worker: 'w.md', order: null, full_sweep_supported: false,
   smarts: 'low', gate: async () => ({ run: true }), ...over,
 });
 
@@ -41,31 +39,24 @@ test('isFullSweepDay fires on exactly one weekday per repo', () => {
 
 // --- registry ---------------------------------------------------------------
 
-test('packTasks scopes each task to its pack and carries pack id', () => {
+test('packTasks collects each pack\'s run_daily tasks, tagged with the pack id', () => {
   const packs = [
-    { id: 'tidy-repo', maintenance: [{ id: 'branch-cleanup' }, { id: 'pr-assess' }] },
-    { id: 'node' }, // no maintenance field
+    { id: 'tidy-repo', run_daily: [{ id: 'branch-cleanup' }, { id: 'pr-assess' }] },
+    { id: 'node' }, // no run_daily field
   ];
   const tasks = packTasks(packs);
   assert.equal(tasks.length, 2);
-  assert.deepEqual(tasks.map((t) => t.scope), ['pack:tidy-repo', 'pack:tidy-repo']);
-  assert.equal(tasks[0].pack, 'tidy-repo');
+  assert.deepEqual(tasks.map((t) => t.pack), ['tidy-repo', 'tidy-repo']);
+  assert.equal(tasks[0].id, 'branch-cleanup');
 });
 
-test('assembleForRepo = fleet-core always + pack tasks only when the pack is declared', () => {
-  const fleet = [T({ id: 'baselining' })];
-  const packAll = packTasks([{ id: 'tidy-repo', maintenance: [{ id: 'branch-cleanup' }] }]);
-  const withPack = assembleForRepo(['basics', 'tidy-repo'], fleet, packAll).map((t) => t.id);
-  const withoutPack = assembleForRepo(['basics'], fleet, packAll).map((t) => t.id);
-  assert.deepEqual(withPack, ['baselining', 'branch-cleanup']);
-  assert.deepEqual(withoutPack, ['baselining']); // pack task absent when undeclared
-});
-
-test('loadFleetTasks discovers the fleet-core descriptors structurally', async () => {
-  const ids = (await loadFleetTasks()).map((t) => t.id).sort();
-  assert.deepEqual(ids, [
-    'baselining', 'growth-dedup-local-instructions', 'growth-extract-new-instructions',
+test('assembleForRepo = the run_daily tasks of only the packs a repo declares', () => {
+  const all = packTasks([
+    { id: 'basics', run_daily: [{ id: 'baselining' }] },
+    { id: 'tidy-repo', run_daily: [{ id: 'branch-cleanup' }] },
   ]);
+  assert.deepEqual(assembleForRepo(['basics', 'tidy-repo'], all).map((t) => t.id), ['baselining', 'branch-cleanup']);
+  assert.deepEqual(assembleForRepo(['basics'], all).map((t) => t.id), ['baselining']); // tidy task absent when undeclared
 });
 
 // --- gate evaluation --------------------------------------------------------
@@ -111,9 +102,9 @@ test('planRepo isolates a throwing gate: it drops the task, keeps the rest', asy
   assert.match(errors[0].error, /kaboom/);
 });
 
-// --- fleet-core descriptor gates -------------------------------------------
+// --- pack-contributed descriptor gates -------------------------------------
 
-test('baselining: runs on canonChanged (incremental) and on its full sweep', async () => {
+test('baselining (basics): runs on canonChanged (incremental) and on its full sweep', async () => {
   assert.equal((await baselining.gate(REPO, S())).run, false);
   assert.equal((await baselining.gate(REPO, S({ canonChanged: true }))).run, true);
   const full = await baselining.gate(REPO, S({ fullSweep: true }));
@@ -122,13 +113,13 @@ test('baselining: runs on canonChanged (incremental) and on its full sweep', asy
   assert.equal(baselining.full_sweep_supported, true);
 });
 
-test('growth-extract: runs only when the project changed; no full mode', async () => {
+test('growth-extract (grow_with_claudinite): runs only when the project changed; no full mode', async () => {
   assert.equal(extract.full_sweep_supported, false);
   assert.equal((await extract.gate(REPO, S())).run, false);
   assert.equal((await extract.gate(REPO, S({ projectChanged: true }))).run, true);
 });
 
-test('growth-dedup: runs on canonChanged, projectChanged, or its full sweep', async () => {
+test('growth-dedup (grow_with_claudinite): runs on canonChanged, projectChanged, or its full sweep', async () => {
   assert.equal(dedup.full_sweep_supported, true);
   assert.equal((await dedup.gate(REPO, S())).run, false);
   assert.equal((await dedup.gate(REPO, S({ canonChanged: true }))).run, true);

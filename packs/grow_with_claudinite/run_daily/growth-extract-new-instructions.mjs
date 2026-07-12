@@ -8,7 +8,6 @@
 
 export default {
   id: 'growth-extract-new-instructions',
-  scope: 'fleet',
   worker: 'growth/extract.md',
   order: 'growth:1',
   full_sweep_supported: false,

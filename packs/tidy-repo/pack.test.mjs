@@ -7,19 +7,19 @@ const S = (over = {}) => ({
   fullSweep: false, mainMoved: false, projectChanged: false, canonChanged: false,
   prsTouched: [], issuesTouched: [], branchesTouched: [], activePacks: ['tidy-repo'], ...over,
 });
-const task = (id) => pack.maintenance.find((t) => t.id === id);
+const task = (id) => pack.run_daily.find((t) => t.id === id);
 
-test('tidy-repo is a declared pack (no fingerprint) with its maintenance tasks and skills', () => {
+test('tidy-repo is a declared pack (no fingerprint) with its run_daily tasks and skills', () => {
   assert.equal(pack.id, 'tidy-repo');
   assert.equal(pack.detect, null);
-  assert.deepEqual(pack.maintenance.map((t) => t.id), ['branch-cleanup', 'pr-assess', 'issue-triage', 'tidy-report']);
+  assert.deepEqual(pack.run_daily.map((t) => t.id), ['branch-cleanup', 'pr-assess', 'issue-triage', 'tidy-report']);
   assert.deepEqual(pack.skills, ['single-branch-status', 'single-pr-status', 'single-issue-triage']);
-  for (const t of pack.maintenance) {
+  for (const t of pack.run_daily) {
     assert.equal(t.full_sweep_supported, true);
-    assert.match(t.worker, /^packs\/tidy-repo\/maintenance\/.*\.worker\.md$/);
+    assert.match(t.worker, /^packs\/tidy-repo\/run_daily\/.*\.worker\.md$/);
   }
   // Dimension tasks need judgment (medium); the report is mechanical aggregation (low).
-  assert.deepEqual(pack.maintenance.map((t) => t.smarts), ['medium', 'medium', 'medium', 'low']);
+  assert.deepEqual(pack.run_daily.map((t) => t.smarts), ['medium', 'medium', 'medium', 'low']);
 });
 
 test('tidy-report: runs after any tidy activity or on the weekly sweep, ordered as a per-repo barrier', async () => {

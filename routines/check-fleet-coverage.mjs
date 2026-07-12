@@ -26,7 +26,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { loadMigrations, retirableMigrations } from '../migrations/registry.mjs';
 import { loadPacks } from '../packs/registry.mjs';
-import { loadFleetTasks, packTasks, assembleForRepo } from './fleet/registry.mjs';
+import { packTasks, assembleForRepo } from './fleet/registry.mjs';
 import { buildSignals, computeCanonChanged } from './fleet/signals.mjs';
 import { planRepo } from './fleet/gates.mjs';
 
@@ -262,14 +262,13 @@ export async function buildWorkPlan(gh, home, coveredRepos) {
   const sinceIso = new Date(Date.now() - 25 * 3600 * 1000).toISOString();
   const weekdayUtc = new Date().getUTCDay();
   const canonChanged = await computeCanonChanged(gh, home, sinceIso);
-  const fleetTasks = await loadFleetTasks();
   const allPackTasks = packTasks(await loadPacks());
 
   const units = []; const errors = [];
   for (const r of coveredRepos) {
     try {
       const signals = await buildSignals(gh, r, { sinceIso, weekdayUtc, canonChanged });
-      const applicable = assembleForRepo(signals.activePacks, fleetTasks, allPackTasks);
+      const applicable = assembleForRepo(signals.activePacks, allPackTasks);
       const res = await planRepo({ fullName: r.full_name, defaultBranch: r.default_branch }, signals, applicable, gh);
       units.push(...res.units); errors.push(...res.errors);
     } catch (e) {

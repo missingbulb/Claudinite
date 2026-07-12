@@ -8,7 +8,7 @@
 
 export default {
   id: 'branch-cleanup',
-  worker: 'packs/tidy-repo/maintenance/branch-cleanup.worker.md',
+  worker: 'packs/tidy-repo/run_daily/branch-cleanup.worker.md',
   order: null,
   full_sweep_supported: true,
   smarts: 'medium', // the landed-status test (superseded/orphaned) is a judgment call

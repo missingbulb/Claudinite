@@ -8,7 +8,6 @@
 
 export default {
   id: 'growth-dedup-local-instructions',
-  scope: 'fleet',
   worker: 'growth/dedup.md',
   order: 'growth:3',
   full_sweep_supported: true,

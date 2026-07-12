@@ -10,7 +10,7 @@
 
 export default {
   id: 'issue-triage',
-  worker: 'packs/tidy-repo/maintenance/issue-triage.worker.md',
+  worker: 'packs/tidy-repo/run_daily/issue-triage.worker.md',
   order: null,
   full_sweep_supported: true,
   smarts: 'medium', // deciding an issue's ask is true of main now is a verification call

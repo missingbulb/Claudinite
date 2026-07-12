@@ -17,7 +17,7 @@ async function readJson(gh, fullName, path) {
 
 export default {
   id: 'chrome-store-release',
-  worker: 'packs/chrome-extension-release/maintenance/store-release.worker.md',
+  worker: 'packs/chrome-extension-release/run_daily/store-release.worker.md',
   order: null,
   full_sweep_supported: true,
   smarts: 'none', // the whole decision is code — no agent judgment

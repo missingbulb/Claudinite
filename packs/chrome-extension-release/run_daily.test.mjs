@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import pack from './pack.mjs';
-import storeRelease from './maintenance/store-release.mjs';
+import storeRelease from './run_daily/store-release.mjs';
 
 const REPO = { fullName: 'owner/ext', defaultBranch: 'main' };
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64');
@@ -13,7 +13,7 @@ function fakeGh(routes) {
 }
 
 test('chrome-extension-release declares chrome-store-release as a pack task (smarts none)', () => {
-  assert.deepEqual((pack.maintenance ?? []).map((t) => t.id), ['chrome-store-release']);
+  assert.deepEqual((pack.run_daily ?? []).map((t) => t.id), ['chrome-store-release']);
   assert.equal(storeRelease.smarts, 'none');
 });
 

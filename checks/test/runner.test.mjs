@@ -150,8 +150,8 @@ test('--init writes the pack declaration once and is idempotent', () => {
     assert.ok(existsSync(join(root, '.claudinite-checks.json')));
     const first = readFileSync(join(root, '.claudinite-checks.json'), 'utf8');
     // No pack is active by default, so --init materializes the seeded-by-default
-    // declared packs: the basics baseline plus tidy-repo (opt-out by removal).
-    assert.deepEqual(JSON.parse(first).packs, ['basics', 'tidy-repo']);
+    // declared packs: basics plus grow_with_claudinite and tidy-repo (opt-out by removal).
+    assert.deepEqual(JSON.parse(first).packs, ['basics', 'grow_with_claudinite', 'tidy-repo']);
     // The delivery selection is materialized, never an implicit default.
     assert.equal(JSON.parse(first).maintenance.delivery, 'push');
     assert.equal(runCli(root, '--init').status, 0);

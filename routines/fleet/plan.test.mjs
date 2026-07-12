@@ -19,7 +19,7 @@ test('buildWorkPlan: emits units from the real fleet-core tasks with plan metada
     [/o\/home\/commits\?since=/, { status: 200, json: [{ sha: 'c1' }] }],
     [/o\/home\/commits\/c1$/, { status: 200, json: { files: [{ filename: 'packs/basics/RULES.md' }] } }],
     // member probes — idle repo (no push in window), so no mainMoved probe fires
-    [/\.claudinite-checks\.json/, { status: 200, json: { content: b64({ packs: ['basics'] }) } }],
+    [/\.claudinite-checks\.json/, { status: 200, json: { content: b64({ packs: ['basics', 'grow_with_claudinite'] }) } }],
     [/\/pulls\?/, { status: 200, json: [] }],
     [/\/issues\?/, { status: 200, json: [] }],
   ]);
