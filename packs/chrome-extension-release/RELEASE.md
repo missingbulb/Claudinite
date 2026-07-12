@@ -228,6 +228,13 @@ in the repo's first-publication issue).*
    - Do the "First publication" steps below, then close the issue. From then on the daily pipeline
      owns routine shipping.
 
+> A repo's **own** first-publication runbook — a go-live checklist, an account/credentials setup
+> guide — is the same do-then-close artifact by another name: first-publication *guidance*, not
+> standing reference. Once the extension is live it's spent; fold anything durable into the
+> standing architecture/README docs it already defers to, then remove the file. (That a cleanup
+> makes you fix references *into* such a doc is the cue to ask whether the doc itself is in scope
+> for removal — not to polish it.)
+
 ## Manual actions — publishing to the Chrome Web Store
 
 The steps the automation cannot do, distilled from the path actually run for the reference
