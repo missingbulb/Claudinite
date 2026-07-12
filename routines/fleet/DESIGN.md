@@ -1,8 +1,11 @@
 # routines/fleet/ — the code planner for the daily maintenance routine
 
-> **Status: Stage 1 spec — not yet implemented.** This doc is the agreed design (issue #241); the
-> `signals.mjs`, `gates.mjs`, and `tasks/` modules it describes are the work it authorizes. Reviewed
-> before implementation code, so the shape settles here first.
+> **Status: Stage 1 implemented** (issue #241). The engine (`registry.mjs`, `gates.mjs`, `signals.mjs`,
+> `schedule.mjs`, `tasks/`), the plan wired into the census walk, the `tidy-repo` pack + its
+> `tidy-repo-seed` baseline migration, the `chrome-store-release` pack task, `scheduling.md` + its
+> enforcing check, and the plan-driven orchestrator are all built and tested. **Stage 2** (the
+> single-object skills, the per-repo `tidy-report` unit, retiring `auto-repo-tidy.md` into the pack)
+> remains — see the Stage 2 section.
 
 The fleet daily maintenance routine ([../auto-all-repos-maintenance.md](../auto-all-repos-maintenance.md))
 today fans an agent out to **every task × every member repo** every night, and decides *what to do*
