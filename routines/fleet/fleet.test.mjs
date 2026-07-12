@@ -6,7 +6,6 @@ import { planRepo } from './gates.mjs';
 import baselining from '../../packs/basics/run_daily/baselining.mjs';
 import extract from '../../packs/grow_with_claudinite/run_daily/growth-extract-new-instructions.mjs';
 import dedup from '../../packs/grow_with_claudinite/run_daily/growth-dedup-local-instructions.mjs';
-import stackManifest from '../../packs/grow_with_claudinite/run_daily/growth-stack-manifest.mjs';
 
 const REPO = { fullName: 'owner/foo', defaultBranch: 'main' };
 const S = (over = {}) => ({
@@ -126,14 +125,4 @@ test('growth-dedup (grow_with_claudinite): runs on canonChanged, projectChanged,
   assert.equal((await dedup.gate(REPO, S({ canonChanged: true }))).run, true);
   assert.equal((await dedup.gate(REPO, S({ projectChanged: true }))).run, true);
   assert.equal((await dedup.gate(REPO, S({ fullSweep: true }))).run, true);
-});
-
-test('growth-stack-manifest (grow_with_claudinite): weekly-only, independent of the growth barrier', async () => {
-  assert.equal(stackManifest.full_sweep_supported, true);
-  assert.equal(stackManifest.order, null); // outside the growth:1 → promote → growth:3 barrier
-  // Slow-moving signal: fires only on the weekly full sweep, not on day-to-day change.
-  assert.equal((await stackManifest.gate(REPO, S())).run, false);
-  assert.equal((await stackManifest.gate(REPO, S({ projectChanged: true }))).run, false);
-  assert.equal((await stackManifest.gate(REPO, S({ canonChanged: true }))).run, false);
-  assert.equal((await stackManifest.gate(REPO, S({ fullSweep: true }))).run, true);
 });

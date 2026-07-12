@@ -1,129 +1,149 @@
-# Growth — discover packs (stage 2 of pack discovery, central)
+# Growth — discover packs (central, weekly)
 
-**Stage 2 of pack discovery**, run **once, centrally, from the Claudinite home repo** — not per project.
-Where [stage 1](stack-manifest.md) makes each repo's stack *visible* (a converged "Stack manifest"
-issue) and decides nothing, this stage reads those manifests across the fleet and, for a technology no
-pack yet owns, **authors a populated pack** — real rules and checks distilled from the fleet's actual
-usage. It is Claudinite-internal; consuming repos don't vendor or `@import` it.
+A single weekly process that grows the pack library, run **once, centrally, from the Claudinite home
+repo**. It runs the whole pipeline end to end — **manifest → suggest → populate → open PR** — as one
+routine, not a per-repo scan that files an issue for a separate stage to read later. It is
+Claudinite-internal; consuming repos don't vendor or `@import` it.
 
-The owner's directive is the shape of this stage: **don't just open a stub and wait for good news.**
-When an unhomed technology first appears, go and extract its portable rules — the pack arrives with
-content, not a placeholder.
+**Why central.** The last step opens PRs against the **canon**, which needs the fleet-wide token — so,
+like [promote](promote.md), this runs centrally and reads every repo over the API. A per-repo worker is
+scoped to its own repo and can't write the canon, which is why the manifest isn't a per-repo side-task:
+it's step 1 of *this* process.
+
+**The four steps are distinct, not conflated.** Cataloguing a repo's stack (step 1) and judging whether
+the canon needs a pack (step 2) are different levels of analysis — step 1 decides nothing about packs.
+They are sequential steps of one process, not one merged judgment and not two separate routines.
 
 ## The governing principle — distilled from worked examples, never from imagination
 
-The corpus rule that a pack is *distilled from worked examples, not written from imagination* is not in
-tension with authoring a pack here — it's the constraint that makes it safe. **The repos actually using
-the technology are the worked examples.** This stage reads how they really configure, build, sign, and
-ship it, and the gotchas already captured in their docs, and distills rules from *that*. So:
-
-- **Ground every rule in observed usage, and cite it.** A rule must trace to how the fleet actually uses
-  the technology — the real build config, the real packaging/signing step, a gotcha a project already
-  hit. This is distillation, not invention.
-- **Never pad.** Do not fill the pack with speculative best-practice rules the fleet doesn't demonstrate.
-  A rule you can't ground in the evidence, you don't write. A smaller honest pack beats a padded one —
-  the same bar [promote](promote.md) holds for a single lesson, applied to a whole pack.
-- **An empty seed is the rare fallback, not the goal.** A technology genuinely exercised almost always
-  yields *something* distillable — at minimum its fingerprint plus its build/deploy mechanics. Fall back
-  to a near-empty `RULES.md` only when it truly doesn't yet, and say so in the pack's README.
-
-## The authoring method is generate-project-instructions'
-
-Do **not** re-derive how to write a pack. [The generate-project-instructions skill](../skills/generate-project-instructions/SKILL.md)
-owns the method — facet decomposition, the portability strip, the promotion-ladder gate, and the
-four-file pack shape with its acid tests — and this stage applies it to **one technology facet, with the
-fleet as the evidence pool**. This stage owns only what that skill doesn't: finding the unhomed
-technologies across the manifests, the first-sight trigger, and central delivery. Everything about
-*how the pack reads* defers to that skill (including its acid test: a reader must not be able to tell
-which project it was extracted from).
+A pack this routine authors is *distilled from worked examples, not written from imagination* — the
+constraint that makes automated authoring safe. **The repos actually using a technology are the worked
+examples.** Every rule must trace to how the fleet really uses the technology — a real build config, a
+real packaging/signing step, a gotcha a project already hit — and be cited. **Never pad** with
+speculative best-practice rules the fleet doesn't demonstrate; a rule you can't ground, you don't write.
+A smaller honest pack beats a padded one. And **never open an empty stub to fill later** — the point is
+to populate it now (step 3); the owner's directive is that there's no value in a placeholder that waits.
 
 ## Run on a capable model
 
-Every step is heavy judgment — is the technology genuinely unhomed, which usage is a portable rule vs.
-a project's one-off, does a rule mechanize into a check, what fingerprint reliably detects the
-technology. Per [the unattended-agents skill](../skills/unattended-agents/SKILL.md) ("match the agent
-model to the judgment it must make"), run this routine on a capable model. A downgraded model authors a
-plausible-but-wrong pack into a PR — the failure review is least likely to catch.
+Every step past the first is heavy judgment — is a technology genuinely unhomed, which usage is a
+portable rule vs. a project's one-off, does a rule mechanize into a check, what fingerprint reliably
+detects the technology. Per [the unattended-agents skill](../skills/unattended-agents/SKILL.md) ("match
+the agent model to the judgment it must make"), run this routine on a capable model.
 
-## What each run does
+## The pipeline
 
-### 1. Read the fleet's manifests, find the unhomed technologies
+### Step 1 — manifest each repo
 
 Enumerate every opted-in repo the token can access (the same discovery the fleet orchestrator uses; see
-[routines/auto-all-repos-maintenance.md](../routines/auto-all-repos-maintenance.md)). Read each repo's
-standing **"Stack manifest"** issue (stage 1's output) over the API — find it by title, never a
-hard-coded number. Union the manifest items across the fleet.
+[routines/auto-all-repos-maintenance.md](../routines/auto-all-repos-maintenance.md)). For each, produce
+a **manifest** of what it is built on and how it ships, by reading its files over the API. This step
+**only catalogues** — it does not look at the pack shelf or judge whether anything deserves a pack. Run
+it with this instruction:
 
-Then subtract what the canon already covers: for each technology / API / deployment target, check the
-pack shelf (`packs/`). A technology is **homed** — skip it — when any pack owns it, **a stub pack
-included**. Also skip anything with an **open mint PR** from a prior run (don't re-author), and skip an
-item **every** repo marked `vestigial` (declared-but-unused is not a real sighting). What remains is the
-unhomed set — mint each on first sight.
+> Produce a **manifest** of what this project is built on and how it ships — a comprehensive,
+> evidence-grounded inventory. You are **only** observing and cataloguing. You are **not** deciding
+> anything about tooling, packs, standards, or what should change; you make no recommendations, and you
+> do not compare this repo against anything outside it.
+>
+> **Ground every entry in the repo's files** — dependency and build manifests, lockfiles, toolchain and
+> config files, CI and release workflows, packaging and signing scripts, the source structure, and the
+> docs. For each entry, cite the concrete evidence — the file (and the line/section or step) that proves
+> it. Never infer from "projects like this usually…"; if the repo doesn't show it, it is not in the
+> manifest. If something is present but appears vestigial or aspirational (declared but unused), include
+> it and say so.
+>
+> Catalogue across **three axes**. Put each item under the single axis that fits best; when it genuinely
+> spans two, place it under the primary and cross-note the other.
+>
+> 1. **Technologies** — languages and their versions, runtimes, frameworks, build systems, and the major
+>    libraries that shape how you write and build here (the load-bearing ones, not every transitive
+>    dependency). Evidence: manifests, lockfiles, toolchain/config.
+> 2. **APIs & external services** — every third-party service, cloud API, SDK, auth provider, datastore,
+>    message bus, or external integration the code actually talks to. Evidence: client SDK dependencies,
+>    config/env keys, call sites.
+> 3. **Deployments & distribution** — how and where this ships: packaging format(s), distribution
+>    channel(s), the runtime/host it targets, signing/notarization, and the release mechanism. Evidence:
+>    release workflows, packaging and signing scripts, deploy config.
+>
+> For **each** item report: **name**; **axis**; **evidence** (the file(s), and what they show); **what
+> it is in this repo** (one line); **prominence** — one of `core` (the project is built on it),
+> `supporting` (used but peripheral), `vestigial` (present but apparently unused); and a **`?` flag** if
+> you are uncertain the item is real or correctly characterised. Prominence is a factual read of how
+> central the item is *in this repo* — **not** a judgment about whether it deserves any downstream
+> treatment.
+>
+> Be **comprehensive over concise**: a later step filters and decides, so a true item you omit is lost,
+> while an over-included one is cheaply dropped. When unsure whether something rises to an entry, include
+> it with the `?` flag. Do **not** deduplicate against, reference, or even consider any pack, tool, or
+> catalogue outside this repository.
+>
+> Output the manifest as Markdown grouped under the three axis headings, one bullet per item with the
+> fields labelled.
 
-### 2. Gather the evidence for each unhomed technology
+Log each repo's manifest to this routine's tracker (below) so the raw read stays auditable.
 
-For each, identify the repo(s) whose manifest lists it, and read **how they actually use it** — the
-build and toolchain config, CI and release workflows, packaging and signing scripts, the relevant
-source, and any gotchas already written into those repos' local docs. This is the worked-example pool
-the rules distill from. Read over the API (get-file-contents); cross-repo checkouts aren't available in
-the sandboxed environment.
+### Step 2 — suggest new packs
 
-### 3. Author the pack — rules and checks, gated on the promotion ladder
+Now hold every repo's manifest at once. **Union the items across the fleet**, then subtract what the
+canon already covers: for each technology / API / deployment target, check the pack shelf (`packs/`). A
+technology is **homed** — drop it — when any pack owns it, **a stub pack included**. Also drop anything
+with an **open pack-authoring PR** from a prior run, and anything **every** repo marked `vestigial`
+(declared-but-unused is not a real sighting). What remains is the candidate set — **suggest a pack for
+each, on first sight** (the owner's posture: don't wait for a technology to recur). Because this step
+holds the whole fleet, a candidate carries *every* repo that uses it — the evidence pool step 3 draws on.
 
-Apply [generate-project-instructions](../skills/generate-project-instructions/SKILL.md)' method to the
-gathered evidence:
+### Step 3 — populate the pack
 
-- **Distill portable rules** — strip the origin project, keep what's true for the technology. Ground and
-  cite each per the principle above.
-- **Descend the promotion ladder** ([item-routing.md](item-routing.md) / [checks/DESIGN.md](../checks/DESIGN.md)):
-  a rule a deterministic check can carry is **authored as the check** — the rule module in the new pack,
-  its registration, and **a fixture test proving it fires** on a violating input and stays quiet on a
-  clean one — not settled as prose. A procedure with a nameable trigger becomes a skill the pack
-  requires. Only judgment/knowledge with no signature lands as `RULES.md` prose.
-- **Write the four-file pack** — `RULES.md` (the grounded rules, addressed to the next project on this
-  stack), `pack.mjs` (add the `marker`/`detect` fingerprint when the technology carries a reliable one,
-  so it self-declares on future repos; `detect: null` otherwise), `README.md` (the rule table plus a
-  **provenance line** naming the repo(s) it was distilled from), and the index rows
-  ([packs/README.md](../packs/README.md), plus [CLAUDE.md](../CLAUDE.md) for a new pack *kind*).
+For each candidate, **author a populated pack** by distilling from the repos that use the technology.
+Read how they actually configure, build, sign, and ship it (over the API), plus any gotchas already in
+their docs — the worked-example pool — and apply [generate-project-instructions](../skills/generate-project-instructions/SKILL.md)'
+method (don't re-derive it): strip the origin project, keep what's true for the technology, and descend
+the promotion ladder ([item-routing.md](item-routing.md) / [checks/DESIGN.md](../checks/DESIGN.md)) —
+a rule a deterministic check can carry becomes the **check plus a fixture test** (it fires on a
+violating input, stays quiet on a clean one), a procedure with a nameable trigger becomes a skill the
+pack requires, and only signature-less judgment lands as `RULES.md` prose. Ground and cite every rule;
+never pad. Write the four-file pack — `RULES.md`, `pack.mjs` (add the `marker`/`detect` fingerprint when
+the technology carries a reliable one, so it self-declares on future repos; `detect: null` otherwise),
+`README.md` (rule table + a **provenance line** naming the repo(s) it was distilled from), and the index
+rows ([packs/README.md](../packs/README.md), plus [CLAUDE.md](../CLAUDE.md) for a new pack *kind*).
 
-### 4. Open one PR per pack
+### Step 4 — open one PR per pack
 
 Push each authored pack to a per-run-unique branch (see [the git-github-advanced skill](../skills/git-github-advanced/SKILL.md))
-and open **its own PR** against the canon's default branch — never a direct push, and never several
-packs in one PR. A new pack is reviewed differently from a rule addition, so each gets its own review
-surface. The write surface is bounded to the new `packs/<tech>/` directory plus its index rows. Keep the
-commit and PR terse; reference this routine's tracking issue (below).
-
-### 5. Log the run to the tracker
-
-Append a dated comment to the standing tracking issue for every run that authored at least one pack, and
-for any notable skip (an unhomed technology you found nothing groundable for). See [Tracking issue](#tracking-issue).
+and open **its own PR** against the canon's default branch — never a direct push, and never several packs
+in one PR. A new pack is reviewed differently from a rule addition, so each earns its own review surface.
+The write surface is bounded to the new `packs/<tech>/` directory (with any check's registration and
+fixture) plus its index rows. Keep the commit and PR terse; reference this routine's tracking issue.
 
 ## Tracking issue
 
 The routine's standing log is the issue titled exactly:
 
-> **Auto-Improvements Tracker - Pack Discovery: Author Packs**
+> **Auto-Improvements Tracker - Pack Discovery**
 
 Find it **by title, never a hard-coded number**; open it if missing, reopen if closed while runs still
-need logging. Log each run as a **dated comment**: per pack, the technology, the repo(s) it was distilled
-from, and the rungs its rules landed on (check ids / skills / prose); for a notable skip, the technology
-and why nothing was groundable.
+need logging. Log each run as a **dated comment**: the manifests read (step 1, for audit), and per
+authored pack the technology, the repo(s) it was distilled from, and the rungs its rules landed on
+(check ids / skills / prose); for a candidate you found nothing groundable for, name it and why.
 
-## Gate: weekly, after stage 1
+## Gate: weekly, central, post-barrier
 
-This stage runs centrally on the **weekly full sweep**, the same cadence stage 1 refreshes the manifests.
-It reads the **standing** "Stack manifest" issues — the freshest available — so it needs no hard barrier
-with stage 1: exactly as [promote](promote.md) reads already-merged canon and dedup reads the previously
-merged canon, this reads whatever manifests stand.
+Runs centrally on the **weekly full sweep** — a repo's stack is slow-moving, so a weekly cadence is
+right and adds no daily cost. Like promote, it's a central step the orchestrator dispatches once, not a
+per-repo planned unit.
 
 ## What this routine must never do
 
-- **Never author from imagination or pad** — every rule traces to the fleet's real usage; an ungroundable
-  rule is not written. The pack may be small; it may not be invented.
-- **Never re-author an existing pack** — a stub counts as a home, and an open mint PR counts as in
-  progress. Dedup against both. A pack that exists is [promote](promote.md)'s to fill, not this stage's to
-  replace.
+- **Never conflate steps 1 and 2** — the manifest step catalogues and never consults the pack shelf; the
+  suggest step is where the shelf and the pack decision come in.
+- **Never author from imagination or pad** — every rule traces to the fleet's real usage; an
+  ungroundable rule is not written. The pack may be small; it may not be invented.
+- **Never open an empty stub to fill later** — populate it now (step 3); a placeholder that waits has no
+  value.
+- **Never re-author an existing pack** — a stub counts as a home, and an open pack-authoring PR counts as
+  in progress. Dedup against both; a pack that exists is [promote](promote.md)'s to fill, not this
+  routine's to replace.
 - **Never mint for a vestigial-only technology** — declared-but-unused across the whole fleet is not a
   real sighting.
 - **Never exceed the bounded write surface** — per pack, only its new `packs/<tech>/` directory (and any
