@@ -17,7 +17,10 @@ allowlist can. Its contract: it classifies every repo (covered / uncovered / opt
 forks, archived, home; honoring [the opt-out list](fleet-bootstrap-opt-out.md); an erroring marker
 check is unknown, never uncovered) and converges the **adoption queue** — one open home-repo issue
 per actionable uncovered repo, title `Adopt <owner>/<repo> into the Claudinite fleet`, label
-`fleet-adoption`, auto-closed once covered or opted out.
+`fleet-adoption`, auto-closed once covered or opted out. It also probes each declared
+[migration](../migrations/README.md)'s legacy shape across the fleet and **auto-retires** any that
+every repo has left behind (deleting its record from the home repo) — the telemetry that lets a
+rename's tolerance be dropped without a manual judgment call.
 
 The census is an executor, not an orchestrator: **no schedule of its own** — it runs when this
 sweep (or the owner, manually) dispatches it. If its run fails: skip adoption tonight, log on the
@@ -31,6 +34,11 @@ Per member repo (never the home repo — the canon doesn't mount itself):
   refresh the mount and the wiring it owns. Most days nothing drifted → commit nothing. A pack
   declaration missing `basics` is drift — no pack is active by default, so the bootstrap's
   backfill step materializes the explicit `"basics"` entry.
+- **Declared migrations** — in-flight path relocations are declared once in
+  [migrations/](../migrations/README.md); the re-bootstrap's own idempotent steps land each
+  consumer-side legacy→canonical rename over the API (as they already do for the artifacts they
+  own), converging the member to the canonical shape. This step only lands the rename — Step 1's
+  census is what confirms fleet-wide completion and retires the migration.
 - **Align** — evaluate the repo against its declared packs' current checks (the same engine its
   Stop hook and CI run). Apply a failing check's own `fix` remedy, never more; a finding needing
   judgment becomes an issue in the member repo, not an edit.
