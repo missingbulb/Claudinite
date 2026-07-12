@@ -7,6 +7,7 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 | Pack | Active when | Checks | Prose rules |
 |---|---|---|---|
 | [basics](basics/README.md) | declared (seeded by `--init`) | 12 | ~8 (working-discipline + task-lifecycle) |
+| [tidy-repo](tidy-repo/README.md) | declared (seeded by `--init`, opt-out by removal) | 0 | policy (assess-only-vs-act) + 3 maintenance tasks |
 | [github-actions](github-actions/README.md) | `.github/workflows/` | 7 | 0 |
 | [chrome-extension](chrome-extension/README.md) | manifest_version manifest | 0 | 8 |
 | [chrome-extension-release](chrome-extension-release/README.md) | single `Release to Chrome Store` stub (opt-in) | 8 | 0 (+ RELEASE contract) |

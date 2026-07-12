@@ -92,8 +92,7 @@ high-water mark* each task is meant to descend.
     canonical baseline — re-run the idempotent bootstrap to refresh the mount + wiring, and evaluate the
     member against its declared packs' *current* checks (the same engine its Stop hook and CI run),
     applying each failing check's own `fix` and opening a member-side issue for any finding needing
-    judgment. (This pass is what the older bootstrap docs call "re-bootstrap"; `baselining` is the term
-    going forward.) Incrementally gated by `canonChanged` (the canon shipped new checks/wiring →
+    judgment. Incrementally gated by `canonChanged` (the canon shipped new checks/wiring →
     propagate them). Its **full** mode baselines regardless, catching member-side drift the canon diff
     can't see. (The census/adoption half of the sweep stays in the census executor, not this task.)
   - The two growth **task ids** name the maintenance units in the plan; their `worker` docs keep their
