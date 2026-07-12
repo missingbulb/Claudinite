@@ -18,11 +18,13 @@
 //     not consent to adopt everything.
 //
 // Dependency-free (global fetch, Node 20+); read-only toward every repo except
-// the home repo, where it only writes the adoption issues and their label.
+// the home repo, where it writes the adoption issues + label and deletes
+// fully-applied migration files (auto-retirement — see migrations/README.md).
 
 import { readFileSync, appendFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { loadMigrations, retirableMigrations } from '../migrations/registry.mjs';
 
 const API = 'https://api.github.com';
 const LABEL = 'fleet-adoption';
@@ -183,6 +185,56 @@ async function convergeIssues(gh, home, { uncovered, coveredSet, optedOutSet }) 
   return actions;
 }
 
+// --- migration telemetry + auto-retirement -----------------------------------
+
+async function deleteFile(gh, home, path, message) {
+  const head = await gh(`/repos/${home}/contents/${path}`);
+  if (head.status !== 200 || !head.json?.sha) {
+    throw new Error(`cannot resolve ${path} to delete (status ${head.status})`);
+  }
+  const res = await gh(`/repos/${home}/contents/${path}`, {
+    method: 'DELETE',
+    body: { message, sha: head.json.sha },
+  });
+  if (res.status !== 200) throw new Error(`deleting ${path} returned ${res.status}`);
+}
+
+// Probe every covered repo for each migration's legacy shape, report the pending
+// counts, and auto-retire (delete from home) any migration the whole fleet has
+// left behind — the guard lives in retirableMigrations (migrations/registry.mjs).
+// A probe error counts as pending (never as "clean"), so an API hiccup can only
+// delay a retirement, never trigger a premature one.
+async function runMigrationTelemetry(gh, home, covered, unknownCount, today) {
+  const migrations = await loadMigrations();
+  if (migrations.length === 0) return [];
+  const pending = new Map(migrations.map((m) => [m.id, 0]));
+  const notes = [];
+  for (const fullName of covered) {
+    const exists = (path) => fileExists(gh, fullName, path);
+    for (const m of migrations) {
+      let stillLegacy;
+      try {
+        stillLegacy = await m.legacyPresent(exists);
+      } catch (e) {
+        stillLegacy = true;
+        notes.push(`${m.id}: probe on ${fullName} errored (${e.message}) — counted pending`);
+      }
+      if (stillLegacy) pending.set(m.id, pending.get(m.id) + 1);
+    }
+  }
+  const lines = migrations.map((m) => `${m.id} — ${pending.get(m.id)} repo(s) still on the legacy shape`);
+  for (const m of retirableMigrations(migrations, { pending, unknownCount, today })) {
+    try {
+      await deleteFile(gh, home, `migrations/${m.file}`,
+        `Retire migration ${m.id}: fully applied across the fleet (0 repos on the legacy shape)`);
+      lines.push(`retired ${m.id} — deleted migrations/${m.file}`);
+    } catch (e) {
+      lines.push(`could not auto-retire ${m.id}: ${e.message} — grant FLEET_GITHUB_TOKEN Contents write on ${home}`);
+    }
+  }
+  return [...lines, ...notes];
+}
+
 // --- main --------------------------------------------------------------------
 
 async function main() {
@@ -190,8 +242,9 @@ async function main() {
   const home = process.env.GITHUB_REPOSITORY;
   if (!token) {
     throw new Error('FLEET_GITHUB_TOKEN is not set. Add a repo secret with a fine-grained PAT '
-      + '(this account, ALL repositories, Contents+Metadata read, Issues read/write) — the '
-      + 'default GITHUB_TOKEN sees only this repo and cannot take a fleet census.');
+      + '(this account, ALL repositories, Metadata read, Contents read + Issues read/write; '
+      + 'Contents WRITE on the home repo for migration auto-retirement) — the default '
+      + 'GITHUB_TOKEN sees only this repo and cannot take a fleet census.');
   }
   if (!home || !home.includes('/')) throw new Error('GITHUB_REPOSITORY is not set (owner/repo)');
   const owner = home.split('/')[0].toLowerCase();
@@ -230,6 +283,9 @@ async function main() {
     uncovered, coveredSet: new Set(covered), optedOutSet: new Set(optedOut),
   });
 
+  const today = new Date().toISOString().slice(0, 10);
+  const migrationLines = await runMigrationTelemetry(gh, home, covered, unknown.length, today);
+
   const summary = [
     `# Fleet coverage census — ${owner}`,
     '',
@@ -242,6 +298,7 @@ async function main() {
     skipped.length ? `**Skipped:** ${skipped.join(', ')}` : '',
     unknown.length ? `**UNKNOWN (marker check errored — fix the token/scope):** ${unknown.join('; ')}` : '',
     actions.length ? `**Issue actions:** ${actions.join('; ')}` : '**Issue actions:** none (converged)',
+    migrationLines.length ? `**Migrations:** ${migrationLines.join('; ')}` : '',
   ].filter(Boolean).join('\n');
 
   console.log(summary);

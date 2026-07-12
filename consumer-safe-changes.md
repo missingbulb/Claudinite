@@ -52,9 +52,13 @@ checks, in one Claudinite-only change:
    stub — and we've seen that contradictory findings are exactly what stalls an unattended
    session.
 
-We don't yet have fleet-wide telemetry for "everyone has migrated", so dropping a legacy
-tolerance later is a judgment call for now — a separate, deliberate change, not part of the
-migration itself.
+Fleet-wide "everyone has migrated" telemetry now exists — declare the rename as a
+[migration](migrations/README.md). The fleet-coverage census probes every repo for the legacy shape
+and **auto-retires** the migration (deletes its record) once none remain, so dropping a fully-applied
+tolerance is no longer a manual judgment call. While a migration's tolerance still lives inline
+(readers not yet consulting its `resolvePath`), keep it `retire:'manual'` and drop it deliberately;
+once every reader is resolver-driven, `retire:'auto'` lets the census drop the record — and with it the
+tolerance — automatically.
 
 ## Relocating wiring that consumers reference by path
 
