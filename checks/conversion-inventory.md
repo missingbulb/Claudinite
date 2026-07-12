@@ -44,7 +44,7 @@ engineeringPractices judgment core.
 | working-discipline: misread ≠ wrong artifact; size writing to its idea | stays |
 | working-discipline: clean-room rebuild from the authoritative source | stays |
 | working-discipline: fix warnings, don't tolerate | per-project CI config (fail on warnings); rule text leaves baseline |
-| working-discipline: never suppress a warning as the quick path | **check** `basics/warning-suppression`: diff adds `eslint-disable`, `@ts-ignore`, `--disable-warning`-style markers → finding demands the dedicated-issue path |
+| working-discipline: never suppress a warning as the quick path | **check** `basics/warning-suppression`: a `eslint-disable`/`@ts-ignore`/`noqa`-style marker with no reason at the site (inline or in the comment immediately above) → finding; a self-documented suppression passes |
 | working-discipline: approval applies only backward | stays |
 | task-lifecycle: issue before work; commits reference it | **check** `basics/task-lifecycle`: commits since merge-base carry `#N`; the issue exists |
 | task-lifecycle: update issue status as work progresses | **check** *(adv)*, partial — full flow lives in the merge skill |
