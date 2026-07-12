@@ -64,3 +64,14 @@ test('loadMigrations: discovers the seed migration with its source file and prob
   assert.equal(await seed.legacyPresent((p) => p === '.claude/hooks/sync-claudinite.sh'), true);
   assert.equal(await seed.legacyPresent(() => false), false);
 });
+
+test('tidy-repo-seed migration: legacyPresent reads the declaration (true iff tidy-repo absent)', async () => {
+  const seed = (await loadMigrations()).find((m) => m.id === 'tidy-repo-seed');
+  assert.ok(seed, 'tidy-repo-seed migration is discovered');
+  assert.equal(seed.retire, 'auto');
+  const read = (packs) => async () => JSON.stringify({ packs });
+  assert.equal(await seed.legacyPresent(() => false, read(['basics'])), true, 'lacks tidy-repo -> legacy');
+  assert.equal(await seed.legacyPresent(() => false, read(['basics', 'tidy-repo'])), false, 'has it -> done');
+  assert.equal(await seed.legacyPresent(() => false, async () => null), false, 'no declaration -> not held');
+  assert.equal(await seed.legacyPresent(() => false, async () => 'nope'), false, 'unparsable -> not held');
+});

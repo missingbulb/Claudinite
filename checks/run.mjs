@@ -40,7 +40,10 @@ if (has('--init')) {
   const ctx = buildContext({ root, mode: 'all' });
   // No pack is active by default — basics included — so the baseline is
   // seeded as an explicit declaration alongside the fingerprinted packs.
-  const detected = ['basics', ...packs.filter((p) => p.detect && p.detect(ctx)).map((p) => p.id)];
+  // basics + tidy-repo are the seeded-by-default declared packs; the rest come from
+  // fingerprint. tidy-repo is default-on but opt-out-able: baselining never re-adds it
+  // (unlike basics), so removing it from the declaration sticks.
+  const detected = ['basics', 'tidy-repo', ...packs.filter((p) => p.detect && p.detect(ctx)).map((p) => p.id)];
   // maintenance.delivery is deliberately materialized, not defaulted — the selection
   // must be visible in the file where a project would change it (see checks/README.md).
   writeFileSync(path, `${JSON.stringify({ packs: detected, rules: {}, accept: [], maintenance: { delivery: 'push' } }, null, 2)}\n`);

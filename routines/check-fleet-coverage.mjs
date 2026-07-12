@@ -208,6 +208,15 @@ async function deleteFile(gh, home, path, message) {
 // left behind — the guard lives in retirableMigrations (migrations/registry.mjs).
 // A probe error counts as pending (never as "clean"), so an API hiccup can only
 // delay a retirement, never trigger a premature one.
+// Read a repo file's decoded content, or null if absent/unreadable. Migrations whose
+// legacy shape lives inside a file (e.g. a pack seed in .claudinite-checks.json), not
+// at a path, read content via this — passed to legacyPresent alongside `exists`.
+async function readFile(gh, fullName, path) {
+  const { status, json } = await gh(`/repos/${fullName}/contents/${path}`);
+  if (status !== 200 || !json?.content) return null;
+  return Buffer.from(json.content, 'base64').toString('utf8');
+}
+
 async function runMigrationTelemetry(gh, home, covered, unknownCount, today) {
   const migrations = await loadMigrations();
   if (migrations.length === 0) return [];
@@ -215,10 +224,11 @@ async function runMigrationTelemetry(gh, home, covered, unknownCount, today) {
   const notes = [];
   for (const fullName of covered) {
     const exists = (path) => fileExists(gh, fullName, path);
+    const read = (path) => readFile(gh, fullName, path);
     for (const m of migrations) {
       let stillLegacy;
       try {
-        stillLegacy = await m.legacyPresent(exists);
+        stillLegacy = await m.legacyPresent(exists, read);
       } catch (e) {
         stillLegacy = true;
         notes.push(`${m.id}: probe on ${fullName} errored (${e.message}) — counted pending`);

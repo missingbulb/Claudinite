@@ -157,6 +157,12 @@ From then on the declared packs run deterministically every session and in CI; t
 node -e 'const fs=require("fs"),f=".claudinite-checks.json";const j=JSON.parse(fs.readFileSync(f,"utf8"));j.packs=Array.isArray(j.packs)?j.packs:[];if(!j.packs.includes("basics")){j.packs.unshift("basics");fs.writeFileSync(f,JSON.stringify(j,null,2)+"\n")}'
 ```
 
+**4b.** Seed the `tidy-repo` pack into a pre-existing declaration that lacks it — but **only while the one-time `tidy-repo-seed` baseline migration is live** (its file still present in the mounted canon). New repos get `tidy-repo` from `--init`; this seeds the *existing* fleet once, so today's universal tidy doesn't regress. Unlike `basics`, `tidy-repo` is **never re-added after removal**: once the census retires the migration (deletes its file after the fleet converges), this step no-ops, so a later opt-out (removing `tidy-repo`) sticks. Idempotent:
+
+```sh
+node -e 'const fs=require("fs"),f=".claudinite-checks.json",seed=".claudinite/migrations/2026-07-12-tidy-repo-seed.mjs";if(fs.existsSync(seed)){const j=JSON.parse(fs.readFileSync(f,"utf8"));j.packs=Array.isArray(j.packs)?j.packs:[];if(!j.packs.includes("tidy-repo")){j.packs.push("tidy-repo");fs.writeFileSync(f,JSON.stringify(j,null,2)+"\n")}}'
+```
+
 **5.** Make the maintenance-delivery selection explicit (idempotent — a no-op when the key already exists). Every consumer's `.claudinite-checks.json` carries `"maintenance": { "delivery": "push" | "pr" }` — there is deliberately no implicit default, so the knob is always visible in the file where you'd change it (`pr` = the nightly fleet sweep delivers its baselining/alignment changes as a never-merged PR instead of a direct push). `--init` above already seeds `push` into a fresh file; this backfills a pre-existing one:
 
 ```sh
