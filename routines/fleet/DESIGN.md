@@ -49,18 +49,37 @@ A task descriptor is a plain object:
   scope:  'pack:tidy-repo',                              // 'fleet' | 'pack:<name>' (implicit for pack tasks)
   worker: 'packs/tidy-repo/maintenance/branch-cleanup.worker.md',  // the "what to do" doc, canon-relative
   order:  null,                                          // null = independent/concurrent | 'growth:N' = phase N barrier
+  full:   true,                                          // has a distinct weekly/full mode? (see below)
   gate:   async (repo, signals, gh) => ({ run, targets, reason }),  // the "should I run" predicate
 }
 ```
 
+**The `full` capability — declared, so the engine knows whether a weekly pass is even meaningful.**
+Only some tasks have a *distinct* full mode: `branch-cleanup` in full re-examines **all** open branches
+(not just the touched ones), `align` in full re-bootstraps + runs the whole check suite to catch
+member-side drift the canon diff can't see. Others have none — a task that either fires or doesn't has
+nothing "fuller" to do. So each descriptor **declares `full`**: on a repo's `fullSweep` night the
+engine runs the full pass **only** of the tasks that declare `full: true` (it invokes their gate in
+full mode — the exhaustive candidate set); a task with `full` omitted/false just runs its normal
+incremental gate, and `fullSweep` is a no-op for it. This keeps the weekly sweep from *attempting* a
+full action a task doesn't have.
+
 - **Fleet-core tasks** — the small always-on set, in `tasks/`, discovered structurally:
   `growth-extract-new-instructions`, `growth-dedup-local-instructions`, `align`. These are the fleet's
-  own lifecycle (growth) and infrastructure (re-bootstrap/align), so they run on every member without a
-  pack. (The two growth **task ids** name the maintenance units in the plan; their `worker` docs keep
-  their existing filenames — `growth/extract.md`, `growth/dedup.md`, `growth/promote.md` — so the
-  rename doesn't ripple into the growth lifecycle or consumer-vendored copies. The central
-  `growth-promote-to-claudinite` step is orchestrator-run post-barrier, not a planned unit — see
-  Orchestration.)
+  own lifecycle (growth) and infrastructure (align), so they run on every member without a pack.
+  - **`align`** is the per-member half of the fleet bootstrap sweep
+    ([../auto-fleet-bootstrap.md](../auto-fleet-bootstrap.md) Step 2): **re-bootstrap** (re-run the
+    idempotent bootstrap to refresh the mount + wiring) plus **check-alignment** (evaluate the member
+    against its declared packs' *current* checks — the same engine its Stop hook and CI run — applying
+    each failing check's own `fix`, and opening a member-side issue for any finding needing judgment).
+    Incrementally gated by `canonChanged` (the canon shipped new checks/wiring → propagate them). Its
+    **full** mode re-aligns regardless, catching member-side drift the canon diff can't see. (The
+    census/adoption half of the sweep stays in the census executor, not this task.)
+  - The two growth **task ids** name the maintenance units in the plan; their `worker` docs keep their
+    existing filenames — `growth/extract.md`, `growth/dedup.md`, `growth/promote.md` — so the rename
+    doesn't ripple into the growth lifecycle or consumer-vendored copies. The central
+    `growth-promote-to-claudinite` step is orchestrator-run post-barrier, not a planned unit — see
+    Orchestration.
 - **Pack tasks** register exactly like a pack's checks and skills — a new **`maintenance: [...]`**
   field on `pack.mjs`, listing descriptor modules (parallel to `rules`, `skills`, `env`). A task
   declared by a pack is `scope: "pack:<that pack>"` automatically, and applies to a repo **iff** the
@@ -79,7 +98,7 @@ of cheap reads. Gates lean on it and/or do a targeted probe of their own via `gh
 
 | Signal | Source | Feeds |
 |---|---|---|
-| `fullSweep` | `hash(full_name) % 7 === weekdayUtc` | forces **every** task for that repo tonight |
+| `fullSweep` | `hash(full_name) % 7 === weekdayUtc` | the full pass of every task that declares `full: true` (others just run their normal gate) |
 | `pushedAt` | repo object (already in hand from enumeration) | short-circuits the code-side probes when idle |
 | `mainMoved` | commits on the default branch `since` the window | the **landed/implemented** tests (branch-cleanup, issue-triage) |
 | `projectChanged` | commits / merged PRs in the window | **growth-extract-new-instructions** |
@@ -104,10 +123,11 @@ Two rules the table encodes, because getting them wrong defeats the purpose:
 The daily loop is **stateless** — a fixed ~25h lookback window (UTC; the Action runs UTC, and
 `consumer-safe-changes.md` says normalize schedules to UTC at the door). No watermark to persist or
 corrupt. The **weekly full sweep** (`fullSweep`) is the self-healing safety net: each repo does one
-guaranteed full re-examination per week, staggered so ~1/7 of the fleet full-sweeps each night.
-Anything the daily window misses (a skipped/failed night, a subtle supersession) is caught within
-≤7 days; anything inside the window, immediately. `fullSweep` and `canonChanged` override
-`pushedAt`'s idle short-circuit.
+guaranteed full re-examination per week — of the `full`-capable tasks — staggered so ~1/7 of the fleet
+full-sweeps each night. Anything the daily window misses (a skipped/failed night, a subtle
+supersession, member-side drift) is caught within ≤7 days by the full pass of the task that owns it;
+anything inside the window, immediately. `fullSweep` and `canonChanged` override `pushedAt`'s idle
+short-circuit.
 
 ## The plan
 
