@@ -24,7 +24,7 @@ jobs:
         with:
           node-version: 20
       - name: Unit tests
-        # checks/test/ for the engine; skills/*/ for the checks a skill co-locates with its action.
-        run: node --test checks/test/*.test.mjs skills/*/*.test.mjs
+        # checks/test/ = engine + the cross-pack detect test; each pack/skill carries its own pack.test.mjs / *.test.mjs.
+        run: node --test checks/test/*.test.mjs packs/*.test.mjs packs/*/*.test.mjs skills/*.test.mjs skills/*/*.test.mjs
       - name: Conformance sweep
         run: node checks/run.mjs

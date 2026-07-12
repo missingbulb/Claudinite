@@ -8,9 +8,9 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { makeRepo, cleanup, git } from './helpers.mjs';
+import { makeRepo, cleanup, git } from '../checks/test/helpers.mjs';
 
-const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 // A fake corpus with the REAL registry and the REAL mount script copied in
 // verbatim — the script self-locates via import.meta.url, so running the copy

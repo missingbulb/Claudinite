@@ -1,6 +1,6 @@
 import { finding } from '../../checks/lib/findings.mjs';
 import { findExtensionManifest } from '../../checks/lib/manifest.mjs';
-import { requestedPermissions } from './manifest-permissions.mjs';
+import { requestedPermissions } from './lib/manifest-permissions.mjs';
 
 const PRIVACY = 'dev/build/release/store_artifacts/PRIVACY.md';
 

@@ -19,7 +19,7 @@ Write each lesson at whatever level reads naturally for this project — refer t
 1. **Activity gate, first.** Count commits + updated issues/PRs in the window. None → stop; a quiet day has nothing to learn from.
 2. **Read the window.** The last-24h **commits** (`git log --since`, full bodies, diffs where a fix is non-obvious) and **issue/PR activity** (`updated:>=<since>`, then the changed comments).
 3. **Extract only durable, reusable lessons** — gotchas, engineering practices, test discipline, architecture rules, project mechanics — and **dedupe** each against what the project already documents. When in doubt, leave it out.
-4. **Put each lesson where it will be read.** A lesson can land in the local doc that owns its kind, or — for a gotcha tied to one call site — as a comment right at that site. Which fits is a placement call [extracting-lessons.md](extracting-lessons.md) owns (usage-site comment vs. central doc); follow it rather than defaulting everything to a doc. Keep each addition terse and in the project's own voice.
+4. **Put each lesson where it will be read.** A lesson can land in the local doc that owns its kind, or — for a gotcha tied to one call site — as a comment right at that site. Which fits is a placement call [extracting-lessons.md](../skills/lessons-learned/extracting-lessons.md) owns (usage-site comment vs. central doc); follow it rather than defaulting everything to a doc. Keep each addition terse and in the project's own voice.
 
 If an edit touches something a test reads (a doc constant, a code path), run the project's offline test suite and keep it green before committing.
 
