@@ -56,8 +56,8 @@ A task descriptor is a plain object:
 
 **The `full_sweep_supported` capability — declared, so the engine knows whether a weekly pass is even
 meaningful.** Only some tasks have a *distinct* full mode: `branch-cleanup` in full re-examines **all**
-open branches (not just the touched ones), `align` in full re-bootstraps + runs the whole check suite
-to catch member-side drift the canon diff can't see. Others have none — a task that either fires or
+open branches (not just the touched ones), `baselining` in full re-runs the bootstrap + the whole check
+suite to catch member-side drift the canon diff can't see. Others have none — a task that either fires or
 doesn't has nothing "fuller" to do. So each descriptor **declares `full_sweep_supported`**: on a
 repo's `fullSweep` night the engine runs the full pass **only** of the tasks that declare
 `full_sweep_supported: true` (it invokes their gate in full mode — the exhaustive candidate set); a
@@ -65,16 +65,18 @@ task with it omitted/false just runs its normal incremental gate, and `fullSweep
 This keeps the weekly sweep from *attempting* a full action a task doesn't have.
 
 - **Fleet-core tasks** — the small always-on set, in `tasks/`, discovered structurally:
-  `growth-extract-new-instructions`, `growth-dedup-local-instructions`, `align`. These are the fleet's
-  own lifecycle (growth) and infrastructure (align), so they run on every member without a pack.
-  - **`align`** is the per-member half of the fleet bootstrap sweep
-    ([../auto-fleet-bootstrap.md](../auto-fleet-bootstrap.md) Step 2): **re-bootstrap** (re-run the
-    idempotent bootstrap to refresh the mount + wiring) plus **check-alignment** (evaluate the member
-    against its declared packs' *current* checks — the same engine its Stop hook and CI run — applying
-    each failing check's own `fix`, and opening a member-side issue for any finding needing judgment).
-    Incrementally gated by `canonChanged` (the canon shipped new checks/wiring → propagate them). Its
-    **full** mode re-aligns regardless, catching member-side drift the canon diff can't see. (The
-    census/adoption half of the sweep stays in the census executor, not this task.)
+  `growth-extract-new-instructions`, `growth-dedup-local-instructions`, `baselining`. These are the
+  fleet's own lifecycle (growth) and infrastructure (baselining), so they run on every member without a
+  pack.
+  - **`baselining`** is the per-member half of the fleet bootstrap sweep
+    ([../auto-fleet-bootstrap.md](../auto-fleet-bootstrap.md) Step 2): restore the member to the current
+    canonical baseline — re-run the idempotent bootstrap to refresh the mount + wiring, and evaluate the
+    member against its declared packs' *current* checks (the same engine its Stop hook and CI run),
+    applying each failing check's own `fix` and opening a member-side issue for any finding needing
+    judgment. (This pass is what the older bootstrap docs call "re-bootstrap"; `baselining` is the term
+    going forward.) Incrementally gated by `canonChanged` (the canon shipped new checks/wiring →
+    propagate them). Its **full** mode baselines regardless, catching member-side drift the canon diff
+    can't see. (The census/adoption half of the sweep stays in the census executor, not this task.)
   - The two growth **task ids** name the maintenance units in the plan; their `worker` docs keep their
     existing filenames — `growth/extract.md`, `growth/dedup.md`, `growth/promote.md` — so the rename
     doesn't ripple into the growth lifecycle or consumer-vendored copies. The central
@@ -106,7 +108,7 @@ of cheap reads. Gates lean on it and/or do a targeted probe of their own via `gh
 | `issuesTouched[]` | open issues `updated_at` in window (∪ all if `mainMoved`/`fullSweep`) | **issue-triage** |
 | `branchesTouched[]` | branch tips moved in window (∪ all if `mainMoved`/`fullSweep`) | **branch-cleanup** |
 | `activePacks[]` | member's `.claudinite-checks.json` | which pack tasks apply |
-| `canonChanged` *(global)* | home-repo commits in window touching member-affecting paths (`packs/`, `checks/`, `skills/`, `migrations/`, bootstrap wiring) — **excluding** `plan.json`, trackers, and orchestration docs | **growth-dedup-local-instructions** (all repos) + **align** |
+| `canonChanged` *(global)* | home-repo commits in window touching member-affecting paths (`packs/`, `checks/`, `skills/`, `migrations/`, bootstrap wiring) — **excluding** `plan.json`, trackers, and orchestration docs | **growth-dedup-local-instructions** (all repos) + **baselining** |
 
 Two rules the table encodes, because getting them wrong defeats the purpose:
 
@@ -163,7 +165,7 @@ The routine session downloads `plan.json` and dispatches one subagent per unit. 
 behavior** to any worker — each runs exactly per its own doc, just handed a pre-filtered target set.
 Ordering:
 
-- **Independent units** (`order: null` — branch-cleanup, pr-assess, issue-triage, align, pack tasks)
+- **Independent units** (`order: null` — branch-cleanup, pr-assess, issue-triage, baselining, pack tasks)
   run concurrently, capped to a sane batch.
 - **Growth units** run in the lifecycle's phased order with a barrier between each
   ([../../growth/README.md](../../growth/README.md)): all `growth:1`
@@ -215,7 +217,7 @@ routines/
     signals.mjs               ← per-repo signal bundle + global canonChanged
     gates.mjs                 ← registry assembly + per-repo gate evaluation → plan units
     tasks/                    ← fleet-core task descriptors (gate + worker pointer)
-      align.mjs  growth-extract-new-instructions.mjs  growth-dedup-local-instructions.mjs
+      baselining.mjs  growth-extract-new-instructions.mjs  growth-dedup-local-instructions.mjs
   scheduling.md               ← the single-scheduler contract (see Scheduling, above)
   check-fleet-coverage.mjs    ← EXTENDED: the same single fleet walk now also builds + emits plan.json
 .github/workflows/fleet-coverage.yml  ← uploads plan.json as an artifact
@@ -260,7 +262,7 @@ propagation as the growth phase docs today. The only new home-repo write is the 
 The **`tidy-repo` pack** rides the ordinary pack channels (`consumer-safe-changes.md`): its `RULES.md`
 loads at session start where declared and its skills mount — low blast radius, same as any pack prose.
 Its *maintenance tasks* still execute centrally like every pack task. The one bootstrap-wiring change
-— seed `tidy-repo` at `--init`, and the deliberate carve-out that the re-bootstrap does **not**
+— seed `tidy-repo` at `--init`, and the deliberate carve-out that baselining does **not**
 backfill it — travels the bootstrap channel and must converge from every layout in the wild.
 
 ## The `tidy-repo` pack
@@ -281,7 +283,7 @@ auto-adds or auto-removes it. Seeding:
 
 - `bootstrap --init` seeds it into every **new** repo's declaration —
   `["basics", "tidy-repo", …fingerprinted]`.
-- **Unlike `basics`, the nightly re-bootstrap never (re)adds `tidy-repo`.** So a repo that removes the
+- **Unlike `basics`, nightly baselining never (re)adds `tidy-repo`.** So a repo that removes the
   pack stays without it — default-on for new repos, a durable opt-out for any repo. (This is the one
   place a seeded pack is deliberately *not* backfilled; the bootstrap's backfill step must special-case
   it.)
@@ -291,16 +293,16 @@ orchestrator applies `tidy-repo`'s tasks to the home repo **unconditionally**, e
 routine runs the tidy-up against home today — pack membership gates the *members*, not the canon.
 
 **Existing fleet — a one-time seed via the migrations mechanism.** Repos bootstrapped *before*
-`tidy-repo` exists carry it nowhere, and the re-bootstrap won't backfill it — so without action the
+`tidy-repo` exists carry it nowhere, and baselining won't backfill it — so without action the
 current fleet's universal tidy would regress to none. A **migration**
 (`migrations/<landed-date>-tidy-repo-seed.mjs`) closes this using the existing self-retiring telemetry:
 
-- **While the migration is live**, the re-bootstrap seeds `tidy-repo` into any member whose declaration
-  lacks it (its idempotent bootstrap step, the way the framework already has the re-bootstrap perform a
+- **While the migration is live**, baselining seeds `tidy-repo` into any member whose declaration
+  lacks it (its idempotent bootstrap step, the way the framework already has baselining perform a
   migration's write).
 - The **fleet-coverage census** already runs each migration's `legacyPresent` across the fleet; here
   `legacyPresent` = "this member's declaration lacks `tidy-repo`." Once every member has converged it
-  **auto-retires** the migration (deletes the record), and with the migration gone the re-bootstrap
+  **auto-retires** the migration (deletes the record), and with the migration gone baselining
   stops seeding — so a **later removal is durable**.
 - The only framework extension: this migration's `legacyPresent` must **read** the declaration file
   rather than probe a path, so the census passes `legacyPresent` a content `read` alongside `exists`
