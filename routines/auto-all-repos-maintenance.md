@@ -16,7 +16,7 @@ The **planner** ([fleet/DESIGN.md](fleet/DESIGN.md)) runs in code inside the cen
 
 The units span every kind of maintenance, each deferring wholly to its own doc:
 
-- **Growth** ([../growth/README.md](../growth/README.md)) — `growth-extract-new-instructions` (`order: growth:1`), `growth-dedup-local-instructions` (`growth:3`); `growth-promote-to-claudinite` runs once, central, **post-barrier** — not a planned unit, since its input is *this night's* extractions.
+- **Growth** ([../growth/README.md](../growth/README.md)) — `growth-extract-new-instructions` (`order: growth:1`), `growth-dedup-local-instructions` (`growth:3`); `growth-promote-to-claudinite` runs once, central, **post-barrier** — not a planned unit, since its input is *this night's* extractions. `growth-pack-gap-scan` (`order: null`, weekly) is an **independent** growth unit — outside the phased barrier — that converges a project's "Pack gaps" issue.
 - **The `tidy-repo` pack** — `branch-cleanup` / `pr-assess` / `issue-triage` on every repo declaring the pack, and against the home repo.
 - **`baselining`** (the `basics` task — the member re-run of the idempotent bootstrap + check-alignment) plus the **adoption** of census-queued repos (a first baseline — same [worker](../packs/basics/run_daily/baselining.worker.md)).
 - **Any pack task** — e.g. `chrome-store-release`. New maintenance is a new pack `(gate, worker)` pair; the plan picks it up automatically — **no edit here**.
