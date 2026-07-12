@@ -49,5 +49,9 @@ export function deletePath(root, path, commitMsg = 'delete Refs #1') {
 }
 
 export function cleanup(root) {
-  rmSync(root, { recursive: true, force: true });
+  // maxRetries: under parallel `node --test`, git leaves transient files in the temp
+  // repo's .git/* while this recursive rmdir walks it, so the delete intermittently
+  // throws ENOTEMPTY. rmSync retries that error class with linear backoff — without it
+  // a healthy run reddens CI (seen on PR #255).
+  rmSync(root, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
 }
