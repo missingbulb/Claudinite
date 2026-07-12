@@ -32,11 +32,13 @@ curl -fsSL https://codeload.github.com/missingbulb/Claudinite/tar.gz/main \
 chmod +x .claudinite/sync-claudinite.sh
 ```
 
-**2.** Register it in `.claude/settings.json`. If an entry still points at the legacy `.claude/hooks/sync-claudinite.sh` path, **fix that entry in place** — this is the one settings entry baselining corrects rather than leaves alone:
+**Prerequisite — `codeload.github.com` must be reachable.** The sync fetches over plain HTTPS from `codeload.github.com` (and, for a private Claudinite, needs auth). In a managed/remote environment behind an egress proxy this can 403 when the host isn't allowlisted, so the environment's **network policy must allowlist `codeload.github.com` / `github.com`** — otherwise every session's sync fails and the repo silently runs vanilla until a prior local copy or the not-loaded directive catches it.
+
+**2.** Register it in `.claude/settings.json`. Invoke it **through `bash`**, not as a bare path — a bare path requires the file's exec bit, so a checkout that drops it (or a committed-mode drift to `100644`) makes the hook fail at launch with `Permission denied` *before line 1*, which swallows its own "not loaded" directive. The `bash` prefix is mode-independent and lets that directive surface. If an entry still points at the legacy `.claude/hooks/sync-claudinite.sh` path, **or invokes the hook as a bare path** (`$CLAUDE_PROJECT_DIR/.claudinite/sync-claudinite.sh` with no interpreter), **fix that entry in place** — this is the one settings entry baselining corrects rather than leaves alone:
 
 ```json
 { "hooks": { "SessionStart": [ { "hooks": [
-  { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claudinite/sync-claudinite.sh" }
+  { "type": "command", "command": "bash $CLAUDE_PROJECT_DIR/.claudinite/sync-claudinite.sh" }
 ] } ] } }
 ```
 
@@ -67,14 +69,16 @@ rmdir .claude/hooks 2>/dev/null || true
 
 Because those synced contents are gitignored — absent on any plain checkout, notably a CI runner, which runs no session hook — committed code that CI executes (a test, a tool, a check) must never `import`/`require` a canon helper from `.claudinite/`: it resolves in a local session but fails module-not-found in CI. Inline the helper's logic instead, and point a comment back at the canonical source.
 
-**4.** Import the corpus — append `@.claudinite/CLAUDE.md` to `CLAUDE.md`:
+**4.** Import the corpus — append `@.claudinite/CLAUDE.md` to `CLAUDE.md`, and a one-line self-check right after it:
 
 ```sh
 grep -qxF '@.claudinite/CLAUDE.md' CLAUDE.md 2>/dev/null \
   || printf '\n@.claudinite/CLAUDE.md\n' >> CLAUDE.md
+grep -qF 'Claudinite self-check' CLAUDE.md 2>/dev/null \
+  || printf '\n> Claudinite self-check: if the `@.claudinite/CLAUDE.md` import above did not resolve (the `.claudinite/` payload is absent — e.g. no `.claudinite/README.md`), the Claudinite harness is **not active** this session. Treat it as not loaded and confirm with the user before substantive work, since a launch-layer hook failure can eat the sync hook'"'"'s own not-loaded directive.\n' >> CLAUDE.md
 ```
 
-Step 1 already populated `.claudinite/`, so the corpus is usable immediately — no extra priming run needed.
+This self-check lives in the consumer's own tracked `CLAUDE.md` — the one file always in context even when the sync fails — so it gives the assistant a tell independent of the sync hook, which cannot signal its own launch failure. Step 1 already populated `.claudinite/`, so the corpus is usable immediately — no extra priming run needed.
 
 **Pinning a branch/tag/SHA:** set `CLAUDINITE_REF` in the environment — the hook fetches `.../tar.gz/$CLAUDINITE_REF`, and codeload accepts any ref there. Never hand-edit the hook to pin: it's canon-owned, and baselining overwrites it.
 
@@ -91,7 +95,7 @@ Register both — and, for Method B, the `sync-claudinite.sh` entry first — in
 
 ```json
 { "hooks": { "SessionStart": [ { "hooks": [
-  { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claudinite/sync-claudinite.sh" },
+  { "type": "command", "command": "bash $CLAUDE_PROJECT_DIR/.claudinite/sync-claudinite.sh" },
   { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claudinite/preferences/inject-preferences.sh" },
   { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/packs/load-active-prose.mjs" }
 ] } ] } }
