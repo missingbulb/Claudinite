@@ -13,3 +13,4 @@ Active when the repo has `.github/workflows/`. Workflow lints only — no prose.
 | `gha/label-create-before-add` | create a label before adding | advisory |
 | `gha/unique-automation-branch` | automated branch names are unique | advisory |
 | `gha/pages-artifact-symlinks` | Pages upload prunes tooling symlinks | blocking |
+| `gha/no-scheduled-fleet-executor` | Claudinite executor stays dispatch-only | blocking |
