@@ -24,7 +24,7 @@ jobs:
         with:
           node-version: 20
       - name: Unit tests
-        # checks/test/ = engine + the cross-pack detect test; each pack/skill carries its own pack.test.mjs / *.test.mjs; routines/fleet/ carries the planner engine tests.
-        run: node --test checks/test/*.test.mjs packs/*.test.mjs packs/*/*.test.mjs skills/*.test.mjs skills/*/*.test.mjs routines/*/*.test.mjs
+        # checks/test/ = engine + the cross-pack detect test; each pack/skill carries its own pack.test.mjs / *.test.mjs; routines/fleet/ carries the planner engine tests; growth/ carries the promote-scope gate test.
+        run: node --test checks/test/*.test.mjs packs/*.test.mjs packs/*/*.test.mjs skills/*.test.mjs skills/*/*.test.mjs routines/*/*.test.mjs growth/*.test.mjs
       - name: Conformance sweep
         run: node checks/run.mjs

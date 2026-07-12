@@ -11,6 +11,11 @@
       "rule": "file-placement",
       "path": "skills/unattended-agents/routine-structure.mjs",
       "reason": "a skill's test-the-world check module deliberately shares the checks/ engine lib (findings.mjs) — the same cross-cutting concern as the packs/ acceptance; the check is co-located with the skill whose action it validates, not organized by dependency"
+    },
+    {
+      "rule": "file-placement",
+      "path": "growth/promote-scope.mjs",
+      "reason": "the promote phase's diff-scope gate deliberately reuses the checks/ engine lib (context.mjs diff-scoping, findings.mjs) — the same cross-cutting concern as the packs/ and skills/ acceptances; it is co-located with growth/promote.md whose write surface it certifies, and reusing the engine's merge-base logic beats duplicating it"
     }
   ]
 }
