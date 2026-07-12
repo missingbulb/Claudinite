@@ -25,7 +25,7 @@ beats prose.
 
 - **[packs/basics/](packs/basics/RULES.md)** — the baseline: working discipline, the task
   lifecycle, and the core checks. Declared explicitly like every other pack — bootstrap seeds
-  the declaration, the nightly re-bootstrap backfills it into existing consumers.
+  the declaration, the nightly baselining backfills it into existing consumers.
 - **Technology packs**, active when the project declares them (bootstrap's `--init` seeds the
   declaration from a fingerprint): `chrome-extension` (MV3 coding gotchas, fingerprinted by the
   manifest), `chrome-extension-release` (the *opt-in* release/store standard in its

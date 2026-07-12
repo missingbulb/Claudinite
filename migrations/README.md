@@ -1,4 +1,8 @@
-# migrations/ — declared, self-retiring path migrations
+# Baseline migrations (`migrations/`) — declared, self-retiring path relocations
+
+> The **baseline migrations** mechanism: named for *when* it runs — baselining applies and retires
+> each one. The directory and code identifiers stay `migrations/` / `*Migrations`; "baseline
+> migration" is what to call the mechanism.
 
 When the canon renames or relocates an artifact that consumers hold their own copy of — a tracked
 file, a `settings.json` registration, a stub, a path a check or script references — the consumer's
@@ -8,11 +12,12 @@ Part-3b step in bootstrap) with **no single home and no signal for when it was s
 [consumer-safe-changes.md](../consumer-safe-changes.md) named the gap: *"We don't yet have fleet-wide
 telemetry for 'everyone has migrated', so dropping a legacy tolerance later is a judgment call."*
 
-A **migration** closes that gap: one declarative record per in-flight rename, discovered structurally
-(any `migrations/<file>.mjs`, like packs and skills), that supplies the read-side resolver, the
-write-side rename, and the fleet telemetry that **retires it automatically once every repo has moved**.
+A **baseline migration** closes that gap: one declarative record per in-flight rename, discovered
+structurally (any `migrations/<file>.mjs`, like packs and skills), that supplies the read-side
+resolver, the write-side rename, and the fleet telemetry that **retires it automatically once every
+repo has moved**.
 
-## A migration
+## A baseline migration
 
 ```js
 // migrations/2026-07-12-sync-hook-relocation.mjs
@@ -35,7 +40,7 @@ export default {
 - **Write — "and rename X → Y".** [`applyFileAliases`](registry.mjs) moves each legacy file to its
   canonical path when the legacy exists and the canonical doesn't. [`apply.mjs`](apply.mjs) runs it
   over a checkout (`node migrations/apply.mjs`); idempotent, a no-op once done. In the fleet, the
-  **re-bootstrap** performs the equivalent rename over the GitHub API through its own idempotent
+  **baselining** performs the equivalent rename over the GitHub API through its own idempotent
   [bootstrap.md](../bootstrap.md) steps.
 - **Retire — the telemetry.** The [fleet-coverage census](../routines/check-fleet-coverage.mjs), which
   already visits every repo with an account-spanning token, evaluates each migration's `legacyPresent`
@@ -48,7 +53,7 @@ export default {
 
 1. the census classified **every** repo (`unknown === 0`) — an API error must never hide a holdout;
 2. **zero** repos still carry the legacy shape;
-3. it landed **strictly before today** (≥ one nightly cycle, so a re-bootstrap sweep has had a chance
+3. it landed **strictly before today** (≥ one nightly cycle, so a baselining pass has had a chance
    to migrate everyone — a migration is never retired the night it lands); and
 4. `retire !== 'manual'`.
 
@@ -63,6 +68,6 @@ resolver), the delete removes the record and the tolerance in one step.
 1. Drop a `migrations/<landed-date>-<slug>.mjs` exporting the spec above. Structural discovery picks it
    up — no list to edit.
 2. Point every reader of the old path at `resolvePath(...)`; perform the consumer-side rename through
-   the re-bootstrap's own steps (and `apply.mjs` for local checkouts).
+   baselining's own steps (and `apply.mjs` for local checkouts).
 3. Leave `retire: 'auto'` if the tolerance is fully expressed here; else `'manual'` with a comment
    naming the inline holdouts. The census does the rest.

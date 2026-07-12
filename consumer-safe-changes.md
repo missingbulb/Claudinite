@@ -27,7 +27,7 @@ channel has a different blast radius and a different rollback story:
   the source file alone only affects repos bootstrapped *after* the change.
 - **Bootstrap wiring** (the committed artifacts [bootstrap.md](bootstrap.md) seeds into each
   consumer: the tracked sync hook, `settings.json` hook registrations, gitignore rules, the
-  pack declaration) — propagates through the **nightly re-bootstrap**, which
+  pack declaration) — propagates through the **nightly baselining**, which
   re-runs the idempotent bootstrap on every member and commits drift **directly to its default
   branch**, no PR. Fleet-wide but lagging one nightly; the rollback story is the same channel
   (fix the canon, the next nightly re-heals). The discipline: a change here is written as
@@ -53,8 +53,8 @@ checks, in one Claudinite-only change:
    session.
 
 Fleet-wide "everyone has migrated" telemetry now exists — declare the rename as a
-[migration](migrations/README.md). The fleet-coverage census probes every repo for the legacy shape
-and **auto-retires** the migration (deletes its record) once none remain, so dropping a fully-applied
+[baseline migration](migrations/README.md). The fleet-coverage census probes every repo for the legacy
+shape and **auto-retires** the migration (deletes its record) once none remain, so dropping a fully-applied
 tolerance is no longer a manual judgment call. While a migration's tolerance still lives inline
 (readers not yet consulting its `resolvePath`), keep it `retire:'manual'` and drop it deliberately;
 once every reader is resolver-driven, `retire:'auto'` lets the census drop the record — and with it the
@@ -70,14 +70,14 @@ consumer-held copy that won't move on its own, and each needs a channel.
   other canon scripts, the fleet routine's discovery probe, docs — then grep for the old path
   afterward (the `repo-text-sweeps` skill owns the mechanics). Include state that lives
   **outside the repo entirely**: a web environment's pasted Setup script is snapshotted at
-  environment build, where no check, sync, or re-bootstrap can ever reach it.
+  environment build, where no check, sync, or baselining can ever reach it.
 - **Never break the channel the migration itself travels through.** Fleet discovery finds
   members by the tracked `.claudinite/` signal; when the signal file itself relocated, the
   discovery probe had to accept both shapes. A probe that recognizes only the new shape doesn't
   make noise like a wrong check — it **silently and permanently orphans** every unmigrated repo,
   since discovery is what reaches them to migrate them. Same for the settings registration: a
   session between canon merge and nightly migration still runs the old wiring, so the old layout
-  must keep working until the re-bootstrap lands.
+  must keep working until the baselining lands.
 - **References nothing can reach get tolerance in the artifact instead** — the relocated script
   tries the new layout first and falls back to the legacy path, and the existing SessionStart
   probe/halt-gate asks for the one human action (re-paste) when a stale out-of-repo copy finally
@@ -85,7 +85,7 @@ consumer-held copy that won't move on its own, and each needs a channel.
 - **A canon-owned file tracked in consumer git updates on the commit channel, not the sync
   channel.** The session sync preserves the consumer's tracked copy over the tarball's newer
   one — otherwise every canon edit dirties every consumer's working tree until the nightly
-  commits it. Clean trees each session; the re-bootstrap's direct commit is the update path.
+  commits it. Clean trees each session; baselining's direct commit is the update path.
 - **Verify by replaying the migration on a simulated legacy consumer** before merging: build the
   old layout in a scratch git repo, run the documented steps verbatim, and assert the tree is
   clean both right after the migration and after a subsequent real session sync. This is the

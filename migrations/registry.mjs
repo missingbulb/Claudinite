@@ -57,7 +57,7 @@ export async function applyFileAliases(migration, { exists, move }) {
 //     not hide a repo still on the legacy shape;
 //   - ZERO repos still carry its legacy shape (pending.get(id) === 0);
 //   - it landed strictly before today (>= one nightly cycle, so at least one
-//     re-bootstrap sweep has had a chance to migrate everyone); and
+//     baselining pass has had a chance to migrate everyone); and
 //   - it opts into auto-retirement (retire !== 'manual'). A migration whose
 //     tolerance still lives inline elsewhere sets retire:'manual' so deleting
 //     this record alone can't strand that tolerance.

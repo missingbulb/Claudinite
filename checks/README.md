@@ -54,14 +54,14 @@ which reasons *about* generated files and so still inspects them.
 
 - **packs** — the declared packs; the closed set that executes. **No pack runs undeclared** —
   the `basics` baseline too is declared explicitly (`--init` seeds it; the nightly
-  re-bootstrap backfills a missing declaration). The `pack-declaration` rule drift-guards this
+  baselining backfills a missing declaration). The `pack-declaration` rule drift-guards this
   against the repo's actual technology fingerprint, both directions.
 - **rules** — per-rule severity override: `"off"` / `"advisory"` / `"blocking"`.
 - **accept** — reviewed, reasoned exemptions. `path` matches exactly, or a whole subtree when it
   ends with `/`; omit it to accept the rule everywhere. The `reason` is mandatory — a reasonless
   acceptance is itself a blocking finding.
 - **maintenance** — fleet-maintenance delivery for this repo, **always explicit**: `"delivery":
-  "push"` (the sweep commits its re-bootstrap/alignment changes directly to the default branch) or
+  "push"` (the sweep commits its baselining/alignment changes directly to the default branch) or
   `"pr"` (a never-merged PR the owner gates). There is deliberately no implicit default — `--init`
   seeds `push` and the nightly sweep backfills a missing key, so the selection is visible in this
   file rather than implied by absence. Read by

@@ -13,7 +13,7 @@ import catalogCompleteness from './catalog-completeness.mjs';
 
 // The baseline pack: working discipline, the task lifecycle, and the core
 // checks. Declared explicitly like every other pack — no pack is active by
-// default. Bootstrap's --init seeds the declaration and the nightly re-bootstrap
+// default. Bootstrap's --init seeds the declaration and the nightly baselining
 // backfills it into existing consumers; never fingerprinted (the declaration is
 // authoritative — dropping it is a deliberate choice).
 export default {

@@ -1,6 +1,6 @@
 ---
 name: adopt-claudinite
-description: Bootstrap Claudinite into a consuming repo — mount, hooks, checks, skills. Use when asked to bootstrap, adopt, or set up Claudinite, or to re-bootstrap a repo to pick up updates.
+description: Bootstrap Claudinite into a consuming repo — mount, hooks, checks, skills. Use when asked to bootstrap, adopt, or set up Claudinite, or to baseline a repo to pick up updates.
 ---
 
 Follow [bootstrap.md](../../bootstrap.md) — canonical there, and idempotent by design: mount
