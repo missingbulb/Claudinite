@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, cleanup } from './helpers.mjs';
-import { buildContext } from '../lib/context.mjs';
-import handlerPath from '../../packs/aws-sam/handler-path.mjs';
-import cloudfrontAuth from '../../packs/aws-sam/cloudfront-authorization.mjs';
+import { makeRepo, cleanup } from '../../checks/test/helpers.mjs';
+import { buildContext } from '../../checks/lib/context.mjs';
+import handlerPath from './handler-path.mjs';
+import cloudfrontAuth from './cloudfront-authorization.mjs';
+import esbuildDependency from './esbuild-dependency.mjs';
 
 const run = (rule, root) => rule.run(buildContext({ root, mode: 'all' }));
 
@@ -118,5 +119,40 @@ test('cloudfront-authorization: NOT flagged when Authorization is elsewhere (FP 
   const root = makeRepo({ changed: { 'template.yaml': t } });
   try {
     assert.equal(run(cloudfrontAuth, root).length, 0);
+  } finally { cleanup(root); }
+});
+
+test('esbuild-dependency: flags devDependency esbuild under SAM esbuild build, passes as a regular dependency', () => {
+  const tmpl = 'Resources:\n  Fn:\n    Metadata:\n      BuildMethod: esbuild\n';
+  const bad = makeRepo({
+    changed: { 'template.yaml': tmpl, 'package.json': JSON.stringify({ devDependencies: { esbuild: '^0.20' } }) },
+  });
+  const good = makeRepo({
+    changed: { 'template.yaml': tmpl, 'package.json': JSON.stringify({ dependencies: { esbuild: '^0.20' } }) },
+  });
+  const noSam = makeRepo({
+    changed: { 'package.json': JSON.stringify({ devDependencies: { esbuild: '^0.20' } }) },
+  });
+  try {
+    const findings = run(esbuildDependency, bad);
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].severity, 'blocking');
+    assert.equal(run(esbuildDependency, good).length, 0);
+    assert.equal(run(esbuildDependency, noSam).length, 0);
+  } finally { cleanup(bad); cleanup(good); cleanup(noSam); }
+});
+
+test('esbuild-dependency: a multi-package repo is not flagged (FP fix)', () => {
+  // root esbuild devDep is legitimate tooling when the SAM function builds from
+  // its own manifest — more than one package.json means skip
+  const root = makeRepo({
+    changed: {
+      'template.yaml': 'Resources:\n  Fn:\n    Metadata:\n      BuildMethod: esbuild\n',
+      'package.json': JSON.stringify({ devDependencies: { esbuild: '^0.20' } }),
+      'fn/package.json': JSON.stringify({ dependencies: { esbuild: '^0.20' } }),
+    },
+  });
+  try {
+    assert.equal(run(esbuildDependency, root).length, 0);
   } finally { cleanup(root); }
 });

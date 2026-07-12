@@ -48,10 +48,11 @@ telling the session that introduces a new technology to declare its pack.
 
 ## skills/ — activity-scoped procedures, surfaced on demand
 
-The catalog and each skill's trigger live in [skills/README.md](skills/README.md): the command skills
-(`merge-to-main`, `lessons-learned`, `bump-version`, `adopt-claudinite`, `generate-project-instructions`)
-and the practice skills (`bug-investigation`, `writing-tests`, `repo-text-sweeps`, `authoring-agent-docs`,
-`unattended-agents`, `git-github-advanced`).
+The full catalog and each skill's trigger live in [skills/README.md](skills/README.md) — the source of
+truth, kept complete against the tree by the `catalog-completeness` check. Two kinds: **command skills**
+(owner-phrase or bootstrap triggers — e.g. `merge-to-main`, `lessons-learned`, `bump-version`) and
+**practice skills** (surfaced by the activity in front of you — e.g. `bug-investigation`,
+`writing-tests`, `engineering-practices`, `file-placement`). See the catalog for the complete list.
 
 ## preferences/ — auto-injected by the SessionStart hook
 

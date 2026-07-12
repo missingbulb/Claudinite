@@ -9,6 +9,7 @@ import claudeMdLength from './claude-md-length.mjs';
 import generatedMergeDriver from './generated-merge-driver.mjs';
 import sharedConstants from './shared-constants.mjs';
 import skillOwnership from './skill-ownership.mjs';
+import catalogCompleteness from './catalog-completeness.mjs';
 
 // The baseline pack: working discipline, the task lifecycle, and the core
 // checks. Declared explicitly like every other pack — no pack is active by
@@ -32,6 +33,7 @@ export default {
     generatedMergeDriver,
     sharedConstants,
     skillOwnership,
+    catalogCompleteness,
   ],
   // The skills every project's work can call for, whatever its technology —
   // mounted wherever basics is declared (which --init seeds everywhere) by

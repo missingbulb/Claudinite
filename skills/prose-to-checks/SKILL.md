@@ -35,7 +35,8 @@ Follow the promote phase's check-authoring discipline
 1. **Author the check** in the owning pack (`packs/<pack>/<rule>.mjs`, listed in `pack.mjs`) —
    the failure message *is* the rule (what / why / fix / `doc:` pointer back to the prose).
 2. **Write the fixture first and see it fail** — a violating fixture must find, a clean one must
-   not (`checks/test/`). A conversion with no proving fixture doesn't ship.
+   not (the test lives in the owning pack's `packs/<pack>/pack.test.mjs`). A conversion with
+   no proving fixture doesn't ship.
 3. **Ship at real severity, fail-fast** — blocking for a defect, advisory only when the rule is
    directional by kind.
 4. **Trim the prose** to rationale — the check owns enforcement now; leaving both pays twice and

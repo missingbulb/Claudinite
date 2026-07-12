@@ -1,8 +1,10 @@
 # Skills — the catalog
 
 > Each skill is a harness-managed **trigger** (`skills/<name>/SKILL.md`) for an **activity-scoped**
-> procedure — surfaced on demand when the work in front of you matches. Its content lives in the
-> SKILL.md itself (no cross-tree redirect). **Packs own the deployment:** each pack declares the
+> procedure — surfaced on demand when the work in front of you matches. Its content lives within the
+> skill's **own directory** — the `SKILL.md` plus any companion files it needs (e.g.
+> `lessons-learned/extracting-lessons.md`, `unattended-agents/*.mjs`) — never redirecting into
+> another tree. **Packs own the deployment:** each pack declares the
 > skills it requires (`skills` in its `pack.mjs`), and a consumer mounts the union over its active
 > packs as session-generated `.claude/skills/` symlinks ([mount-skills.mjs](mount-skills.mjs),
 > registered by bootstrap Part 7 — never committed). The `skill-ownership` check keeps every skill
@@ -15,7 +17,7 @@
 | Skill | Trigger |
 |---|---|
 | `merge-to-main` | owner's "LGTM" (+ `/merge-to-main`) — the merge recipe (inlined); ends with the lessons pass |
-| `lessons-learned` | owner's "learned lessons"; invoked by `merge-to-main` ([growth/extracting-lessons.md](../growth/extracting-lessons.md)) |
+| `lessons-learned` | owner's "learned lessons"; invoked by `merge-to-main` ([extracting-lessons.md](lessons-learned/extracting-lessons.md)) |
 | `bump-version` | owner's "bump version" — delegates to the project's release pack/doc |
 | `adopt-claudinite` | bootstrap request — runs [bootstrap.md](../bootstrap.md) |
 | `generate-project-instructions` | fresh/empty project, or a facet no pack covers — extracts reusable `packs/<facet>/` seeds (class / technology / aspect / domain) + a thin project overlay |

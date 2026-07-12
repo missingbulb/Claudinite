@@ -6,10 +6,11 @@ import flutter from '../../packs/flutter/pack.mjs';
 import node from '../../packs/node/pack.mjs';
 import firebase from '../../packs/firebase/pack.mjs';
 
-// The flutter, node, and firebase packs fingerprint a marker file at the repo
-// root OR one directory down, so a monorepo (Flutter in app/, Node in
-// functions/, Firebase project root in firebase/) is detected — but a marker
-// nested deeper (a fixture/example tree) is not.
+// Deliberately stays in checks/test/, not co-located into any one pack: each
+// test asserts the *shared* marker-depth detect convention (marker at the repo
+// root OR one directory down, but not deeper, and only the exact basename)
+// across several packs at once. It proves a cross-pack behaviour, so it belongs
+// with the engine tests rather than duplicated three times under packs/.
 function detect(pack, files) {
   const root = makeRepo({ base: files });
   try {

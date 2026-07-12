@@ -1,19 +1,35 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, deletePath, cleanup, git, writeFiles } from './helpers.mjs';
-import { buildContext } from '../lib/context.mjs';
-import referenceIntegrity from '../../packs/basics/reference-integrity.mjs';
-import linkLabels from '../../packs/basics/markdown-link-labels.mjs';
-import taskLifecycle from '../../packs/basics/task-lifecycle.mjs';
-import warningSuppression from '../../packs/basics/warning-suppression.mjs';
-import filePlacement from '../../packs/basics/file-placement.mjs';
-import packDeclaration from '../../packs/basics/pack-declaration.mjs';
-import squashMergeHistory from '../../packs/basics/squash-merge-history.mjs';
-import sharedConstants from '../../packs/basics/shared-constants.mjs';
+import { makeRepo, deletePath, cleanup, git, writeFiles } from '../../checks/test/helpers.mjs';
+import { buildContext } from '../../checks/lib/context.mjs';
+import referenceIntegrity from './reference-integrity.mjs';
+import linkLabels from './markdown-link-labels.mjs';
+import taskLifecycle from './task-lifecycle.mjs';
+import warningSuppression from './warning-suppression.mjs';
+import filePlacement from './file-placement.mjs';
+import packDeclaration from './pack-declaration.mjs';
+import squashMergeHistory from './squash-merge-history.mjs';
+import sharedConstants from './shared-constants.mjs';
+import skillOwnership from './skill-ownership.mjs';
+import claudeMdLength from './claude-md-length.mjs';
+import generatedMergeDriver from './generated-merge-driver.mjs';
+import catalogCompleteness from './catalog-completeness.mjs';
 
 function run(rule, root, mode = 'changed') {
   const ctx = buildContext({ root, mode });
   return rule.run(ctx);
+}
+
+// The relevance gate for skill-ownership: both registries tracked = the repo IS the corpus.
+const CORPUS_MARKERS = {
+  'packs/registry.mjs': '// corpus marker\n',
+  'skills/registry.mjs': '// corpus marker\n',
+};
+
+function runSkillOwnership(root, knownPacks) {
+  const ctx = buildContext({ root, mode: 'all' });
+  ctx.knownPacks = knownPacks; // attached by the runner in real sweeps
+  return skillOwnership.run(ctx);
 }
 
 test('reference-integrity: flags a dangling relative link, passes a resolving one', () => {
@@ -340,5 +356,152 @@ test('changed-mode scoping: pre-existing violations elsewhere are not reported',
     const findings = run(referenceIntegrity, root);
     assert.equal(findings.length, 1);
     assert.equal(findings[0].file, 'fresh2.md');
+  } finally { cleanup(root); }
+});
+
+test('skill-ownership: flags a skill no pack requires', () => {
+  const root = makeRepo({
+    changed: { ...CORPUS_MARKERS, 'skills/orphan/SKILL.md': '---\nname: orphan\n---\nbody\n' },
+  });
+  try {
+    const findings = runSkillOwnership(root, [{ id: 'basics', skills: [] }]);
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].file, 'skills/orphan/SKILL.md');
+    assert.match(findings[0].what, /no pack requires/);
+  } finally { cleanup(root); }
+});
+
+test('skill-ownership: passes when at least one pack requires the skill', () => {
+  const root = makeRepo({
+    changed: { ...CORPUS_MARKERS, 'skills/orphan/SKILL.md': '---\nname: orphan\n---\nbody\n' },
+  });
+  try {
+    assert.equal(runSkillOwnership(root, [{ id: 'basics', skills: ['orphan'] }]).length, 0);
+    // Required by several packs is fine too.
+    assert.equal(runSkillOwnership(root, [
+      { id: 'basics', skills: ['orphan'] },
+      { id: 'node', skills: ['orphan'] },
+    ]).length, 0);
+  } finally { cleanup(root); }
+});
+
+test('skill-ownership: flags a pack requiring a skill that does not exist', () => {
+  const root = makeRepo({ changed: { ...CORPUS_MARKERS } });
+  try {
+    const findings = runSkillOwnership(root, [{ id: 'node', skills: ['ghost'] }]);
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].file, 'packs/node/pack.mjs');
+    assert.match(findings[0].what, /"ghost"/);
+  } finally { cleanup(root); }
+});
+
+test('skill-ownership: silent outside the corpus repo', () => {
+  // A consumer never tracks the registries (the corpus lives under its
+  // gitignored mount) — the rule must not fire there.
+  const root = makeRepo({
+    changed: { 'skills/orphan/SKILL.md': '---\nname: orphan\n---\nbody\n' },
+  });
+  try {
+    assert.equal(runSkillOwnership(root, [{ id: 'basics', skills: [] }]).length, 0);
+  } finally { cleanup(root); }
+});
+
+test('claude-md-length: flags a CLAUDE.md over 200 lines, passes a short one', () => {
+  const long = makeRepo({ changed: { 'CLAUDE.md': `${'x\n'.repeat(250)}` } });
+  const short = makeRepo({ changed: { 'CLAUDE.md': '# short\n\nfacts only\n' } });
+  try {
+    const findings = run(claudeMdLength, long, 'all');
+    assert.equal(findings.length, 1);
+    assert.match(findings[0].what, /25[0-9]|251 lines/);
+    assert.equal(findings[0].severity, 'advisory');
+    assert.equal(run(claudeMdLength, short, 'all').length, 0);
+  } finally { cleanup(long); cleanup(short); }
+});
+
+test('claude-md-length: a long NON-root CLAUDE.md is not flagged (FP fix)', () => {
+  // a fixture/example CLAUDE.md that never loads must not be flagged
+  const root = makeRepo({ changed: { 'test/fixtures/CLAUDE.md': `${'x\n'.repeat(250)}` } });
+  try {
+    assert.equal(run(claudeMdLength, root, 'all').length, 0);
+  } finally { cleanup(root); }
+});
+
+test('generated-merge-driver: flags a GENERATED file lacking a merge=ours entry, passes when present', () => {
+  const bad = makeRepo({ changed: { 'foo.GENERATED.json': '{}\n', 'src/a.mjs': 'export const x=1;\n' } });
+  const good = makeRepo({
+    changed: { 'foo.GENERATED.json': '{}\n', '.gitattributes': 'foo.GENERATED.json merge=ours\n' },
+  });
+  const noGenerated = makeRepo({ changed: { 'plain.json': '{}\n' } });
+  try {
+    const findings = run(generatedMergeDriver, bad, 'all');
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].file, 'foo.GENERATED.json');
+    assert.equal(run(generatedMergeDriver, good, 'all').length, 0);
+    assert.equal(run(generatedMergeDriver, noGenerated, 'all').length, 0);
+  } finally { cleanup(bad); cleanup(good); cleanup(noGenerated); }
+});
+
+test('generated-merge-driver: a glob merge=ours pattern covers matching files', () => {
+  const root = makeRepo({
+    changed: { 'a.GENERATED.md': 'x\n', '.gitattributes': '*.GENERATED.md merge=ours\n' },
+  });
+  try {
+    assert.equal(run(generatedMergeDriver, root, 'all').length, 0);
+  } finally { cleanup(root); }
+});
+
+test('generated-merge-driver: still inspects a GENERATED file that is also linguist-generated', () => {
+  // The engine drops linguist-generated files from ctx.files, but this check reads
+  // ctx.allFiles — so a GENERATED file carrying the attr (and lacking merge=ours) is
+  // still caught rather than silently disappearing from the sweep.
+  const root = makeRepo({ changed: {
+    'foo.GENERATED.json': '{}\n',
+    '.gitattributes': 'foo.GENERATED.json linguist-generated\n', // no merge=ours entry
+  } });
+  try {
+    const findings = run(generatedMergeDriver, root, 'all');
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].file, 'foo.GENERATED.json');
+  } finally { cleanup(root); }
+});
+
+test('catalog-completeness: flags a pack/skill dir missing from its catalog README', () => {
+  const root = makeRepo({ changed: {
+    ...CORPUS_MARKERS,
+    'packs/README.md': '# packs\n\n[basics](basics/README.md)\n',
+    'skills/README.md': '# skills\n\n`merge-to-main`\n',
+    'packs/newpack/pack.mjs': 'export default { id: "newpack" };\n',
+    'skills/newskill/SKILL.md': '---\nname: newskill\n---\nbody\n',
+  } });
+  try {
+    const findings = run(catalogCompleteness, root, 'all');
+    assert.equal(findings.length, 2);
+    assert.ok(findings.some((f) => f.file === 'packs/README.md' && /newpack/.test(f.what)));
+    assert.ok(findings.some((f) => f.file === 'skills/README.md' && /newskill/.test(f.what)));
+  } finally { cleanup(root); }
+});
+
+test('catalog-completeness: silent when both catalogs list every member', () => {
+  const root = makeRepo({ changed: {
+    ...CORPUS_MARKERS,
+    'packs/README.md': '# packs\n\n[basics](basics/README.md) [node](node/README.md)\n',
+    'skills/README.md': '# skills\n\n`merge-to-main` `writing-tests`\n',
+    'packs/basics/pack.mjs': 'export default { id: "basics" };\n',
+    'packs/node/pack.mjs': 'export default { id: "node" };\n',
+    'skills/merge-to-main/SKILL.md': '---\nname: merge-to-main\n---\nbody\n',
+    'skills/writing-tests/SKILL.md': '---\nname: writing-tests\n---\nbody\n',
+  } });
+  try {
+    assert.equal(run(catalogCompleteness, root, 'all').length, 0);
+  } finally { cleanup(root); }
+});
+
+test('catalog-completeness: silent outside the corpus repo (no registries tracked)', () => {
+  const root = makeRepo({ changed: {
+    'packs/README.md': '# packs\n',
+    'packs/newpack/pack.mjs': 'export default { id: "newpack" };\n',
+  } });
+  try {
+    assert.equal(run(catalogCompleteness, root, 'all').length, 0);
   } finally { cleanup(root); }
 });

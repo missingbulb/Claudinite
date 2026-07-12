@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, cleanup } from './helpers.mjs';
-import { activeEnvs, evaluate } from '../../packs/env.mjs';
+import { makeRepo, cleanup } from '../checks/test/helpers.mjs';
+import { activeEnvs, evaluate } from './env.mjs';
 
 const env = (over = {}) => ({ id: 'x', label: 'X', setup: 'sx', probe: 'true', ...over });
 

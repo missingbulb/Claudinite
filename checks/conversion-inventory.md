@@ -54,7 +54,7 @@ engineeringPractices judgment core.
 | merge-to-main: lessons pass on every merge | folds into the skill (deterministic step, not a remembered trigger) |
 | merge-to-main: don't re-read the issue; don't fight branch deletion | folds into the skill |
 | temporary-workarounds: never delete a remote branch | **hook** — PreToolUse blocks `git push` delete refspecs; doc deleted when its list empties |
-| growth/extracting-lessons.md (entire method doc, force-loaded) | **skill** — invoked by the merge skill and the "learned lessons" phrase; content unchanged, just no longer always-loaded |
+| skills/lessons-learned/extracting-lessons.md (entire method doc, force-loaded) | **skill** — invoked by the merge skill and the "learned lessons" phrase; content unchanged, just no longer always-loaded |
 
 **Baseline outcome: five force-loaded docs → working-discipline (trimmed) plus a slimmer index.**
 
