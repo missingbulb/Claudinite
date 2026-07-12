@@ -42,7 +42,7 @@ export default {
   over a checkout (`node migrations/apply.mjs`); idempotent, a no-op once done. In the fleet, the
   **baselining** performs the equivalent rename over the GitHub API through its own idempotent
   [bootstrap.md](../bootstrap.md) steps.
-- **Retire — the telemetry.** The [fleet-coverage census](../routines/check-fleet-coverage.mjs), which
+- **Retire — the telemetry.** The [fleet-coverage census](../packs/sheepdog/check-fleet-coverage.mjs), which
   already visits every repo with an account-spanning token, evaluates each migration's `legacyPresent`
   across the fleet and reports how many repos still carry the legacy shape. When one is fully applied
   it **deletes the migration file automatically** (see the guard below).

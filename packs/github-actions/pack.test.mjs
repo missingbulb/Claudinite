@@ -9,6 +9,7 @@ import scheduledEscalation from './scheduled-failure-escalation.mjs';
 import labelCreate from './label-create-before-add.mjs';
 import uniqueBranch from './unique-automation-branch.mjs';
 import pagesArtifactSymlinks from './pages-artifact-symlinks.mjs';
+import noScheduledFleetExecutor from './no-scheduled-fleet-executor.mjs';
 
 const run = (rule, root) => rule.run(buildContext({ root, mode: 'all' }));
 const WF = '.github/workflows/x.yml';
@@ -271,4 +272,40 @@ jobs:
     assert.equal(run(pagesArtifactSymlinks, buildDir).length, 0);
     assert.equal(run(pagesArtifactSymlinks, noSkills).length, 0);
   } finally { cleanup(bad); cleanup(pruned); cleanup(buildDir); cleanup(noSkills); }
+});
+
+test('no-scheduled-fleet-executor: flags a scheduled workflow that calls a canon reusable, spares a plain cron', () => {
+  const scheduledExecutor = makeRepo({ changed: { [WF]:
+`name: Release to Chrome Store
+on:
+  schedule:
+    - cron: '0 3 * * *'
+jobs:
+  release:
+    uses: missingbulb/Claudinite/.github/workflows/chrome-extension-release.yml@main
+` } });
+  const dispatchExecutor = makeRepo({ changed: { [WF]:
+`name: Release to Chrome Store
+on:
+  workflow_dispatch:
+jobs:
+  release:
+    uses: missingbulb/Claudinite/.github/workflows/chrome-extension-release.yml@main
+` } });
+  const ownCron = makeRepo({ changed: { [WF]:
+`name: nightly
+on:
+  schedule:
+    - cron: '0 3 * * *'
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi
+` } });
+  try {
+    assert.equal(run(noScheduledFleetExecutor, scheduledExecutor).length, 1); // scheduled + canon reusable
+    assert.equal(run(noScheduledFleetExecutor, dispatchExecutor).length, 0);  // dispatch-only executor
+    assert.equal(run(noScheduledFleetExecutor, ownCron).length, 0);           // consumer's own cron, no reusable
+  } finally { cleanup(scheduledExecutor); cleanup(dispatchExecutor); cleanup(ownCron); }
 });

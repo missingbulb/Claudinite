@@ -40,7 +40,13 @@ if (has('--init')) {
   const ctx = buildContext({ root, mode: 'all' });
   // No pack is active by default — basics included — so the baseline is
   // seeded as an explicit declaration alongside the fingerprinted packs.
-  const detected = ['basics', ...packs.filter((p) => p.detect && p.detect(ctx)).map((p) => p.id)];
+  // basics, grow_with_claudinite, and tidy-repo are the seeded-by-default declared
+  // packs; the rest come from fingerprint. grow_with_claudinite and tidy-repo are
+  // default-on but opt-out-able: baselining never re-adds them (unlike basics), so
+  // removing one from the declaration sticks (each has a one-time seed migration for
+  // the existing fleet).
+  const seeded = ['basics', 'grow_with_claudinite', 'tidy-repo'];
+  const detected = [...seeded, ...packs.filter((p) => p.detect && p.detect(ctx)).map((p) => p.id)];
   // maintenance.delivery is deliberately materialized, not defaulted — the selection
   // must be visible in the file where a project would change it (see checks/README.md).
   writeFileSync(path, `${JSON.stringify({ packs: detected, rules: {}, accept: [], maintenance: { delivery: 'push' } }, null, 2)}\n`);

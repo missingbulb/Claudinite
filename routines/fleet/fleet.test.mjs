@@ -1,0 +1,128 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { fullSweepBucket, isFullSweepDay } from './schedule.mjs';
+import { packTasks, assembleForRepo } from './registry.mjs';
+import { planRepo } from './gates.mjs';
+import baselining from '../../packs/basics/run_daily/baselining.mjs';
+import extract from '../../packs/grow_with_claudinite/run_daily/growth-extract-new-instructions.mjs';
+import dedup from '../../packs/grow_with_claudinite/run_daily/growth-dedup-local-instructions.mjs';
+
+const REPO = { fullName: 'owner/foo', defaultBranch: 'main' };
+const S = (over = {}) => ({
+  fullSweep: false, mainMoved: false, projectChanged: false, canonChanged: false,
+  prsTouched: [], issuesTouched: [], branchesTouched: [], activePacks: [], ...over,
+});
+const T = (over = {}) => ({
+  id: 't', worker: 'w.md', order: null, full_sweep_supported: false,
+  smarts: 'low', gate: async () => ({ run: true }), ...over,
+});
+
+// --- schedule ---------------------------------------------------------------
+
+test('fullSweepBucket is deterministic and in [0,6]', () => {
+  for (const n of ['owner/a', 'owner/b', 'Owner/A', 'x/y/z']) {
+    const b = fullSweepBucket(n);
+    assert.ok(Number.isInteger(b) && b >= 0 && b < 7, `${n} -> ${b}`);
+    assert.equal(b, fullSweepBucket(n), 'stable across calls');
+  }
+});
+
+test('fullSweepBucket is case-insensitive', () => {
+  assert.equal(fullSweepBucket('Owner/Repo'), fullSweepBucket('owner/repo'));
+});
+
+test('isFullSweepDay fires on exactly one weekday per repo', () => {
+  const days = [0, 1, 2, 3, 4, 5, 6].filter((d) => isFullSweepDay('owner/foo', d));
+  assert.equal(days.length, 1);
+  assert.equal(days[0], fullSweepBucket('owner/foo'));
+});
+
+// --- registry ---------------------------------------------------------------
+
+test('packTasks collects each pack\'s run_daily tasks, tagged with the pack id', () => {
+  const packs = [
+    { id: 'tidy-repo', run_daily: [{ id: 'branch-cleanup' }, { id: 'pr-assess' }] },
+    { id: 'node' }, // no run_daily field
+  ];
+  const tasks = packTasks(packs);
+  assert.equal(tasks.length, 2);
+  assert.deepEqual(tasks.map((t) => t.pack), ['tidy-repo', 'tidy-repo']);
+  assert.equal(tasks[0].id, 'branch-cleanup');
+});
+
+test('assembleForRepo = the run_daily tasks of only the packs a repo declares', () => {
+  const all = packTasks([
+    { id: 'basics', run_daily: [{ id: 'baselining' }] },
+    { id: 'tidy-repo', run_daily: [{ id: 'branch-cleanup' }] },
+  ]);
+  assert.deepEqual(assembleForRepo(['basics', 'tidy-repo'], all).map((t) => t.id), ['baselining', 'branch-cleanup']);
+  assert.deepEqual(assembleForRepo(['basics'], all).map((t) => t.id), ['baselining']); // tidy task absent when undeclared
+});
+
+// --- gate evaluation --------------------------------------------------------
+
+test('planRepo emits a unit per run:true gate, carrying worker/targets/order/smarts', async () => {
+  const tasks = [
+    T({ id: 'a', worker: 'a.md', order: 'growth:1', smarts: 'high',
+      gate: async () => ({ run: true, targets: { x: 1 }, reason: 'because' }) }),
+    T({ id: 'b', gate: async () => ({ run: false }) }),
+  ];
+  const { units } = await planRepo(REPO, S(), tasks, null);
+  assert.equal(units.length, 1);
+  assert.deepEqual(units[0], {
+    repo: 'owner/foo', task: 'a', worker: 'a.md', targets: { x: 1 },
+    reason: 'because', order: 'growth:1', smarts: 'high',
+  });
+});
+
+test('planRepo masks fullSweep for tasks that do not support it', async () => {
+  let sawFull = null;
+  const tasks = [T({ id: 'nofull', full_sweep_supported: false,
+    gate: async (_r, sig) => { sawFull = sig.fullSweep; return { run: false }; } })];
+  await planRepo(REPO, S({ fullSweep: true }), tasks, null);
+  assert.equal(sawFull, false, 'a non-full task never sees fullSweep true');
+});
+
+test('planRepo passes fullSweep through to tasks that support it', async () => {
+  let sawFull = null;
+  const tasks = [T({ id: 'full', full_sweep_supported: true,
+    gate: async (_r, sig) => { sawFull = sig.fullSweep; return { run: false }; } })];
+  await planRepo(REPO, S({ fullSweep: true }), tasks, null);
+  assert.equal(sawFull, true);
+});
+
+test('planRepo isolates a throwing gate: it drops the task, keeps the rest', async () => {
+  const tasks = [
+    T({ id: 'boom', gate: async () => { throw new Error('kaboom'); } }),
+    T({ id: 'ok', gate: async () => ({ run: true }) }),
+  ];
+  const { units, errors } = await planRepo(REPO, S(), tasks, null);
+  assert.deepEqual(units.map((u) => u.task), ['ok']);
+  assert.equal(errors.length, 1);
+  assert.match(errors[0].error, /kaboom/);
+});
+
+// --- pack-contributed descriptor gates -------------------------------------
+
+test('baselining (basics): runs on canonChanged (incremental) and on its full sweep', async () => {
+  assert.equal((await baselining.gate(REPO, S())).run, false);
+  assert.equal((await baselining.gate(REPO, S({ canonChanged: true }))).run, true);
+  const full = await baselining.gate(REPO, S({ fullSweep: true }));
+  assert.equal(full.run, true);
+  assert.equal(full.targets.mode, 'full');
+  assert.equal(baselining.full_sweep_supported, true);
+});
+
+test('growth-extract (grow_with_claudinite): runs only when the project changed; no full mode', async () => {
+  assert.equal(extract.full_sweep_supported, false);
+  assert.equal((await extract.gate(REPO, S())).run, false);
+  assert.equal((await extract.gate(REPO, S({ projectChanged: true }))).run, true);
+});
+
+test('growth-dedup (grow_with_claudinite): runs on canonChanged, projectChanged, or its full sweep', async () => {
+  assert.equal(dedup.full_sweep_supported, true);
+  assert.equal((await dedup.gate(REPO, S())).run, false);
+  assert.equal((await dedup.gate(REPO, S({ canonChanged: true }))).run, true);
+  assert.equal((await dedup.gate(REPO, S({ projectChanged: true }))).run, true);
+  assert.equal((await dedup.gate(REPO, S({ fullSweep: true }))).run, true);
+});

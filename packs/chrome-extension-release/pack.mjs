@@ -7,6 +7,7 @@ import releaseLayout from './release-layout.mjs';
 import privacyPermissionAlignment from './privacy-permission-alignment.mjs';
 import permissionAddedStoreIssue from './permission-added-store-issue.mjs';
 import readmeSections from './readme-sections.mjs';
+import storeRelease from './run_daily/store-release.mjs';
 
 // A repo "ships the release pipeline" once it carries the consumer stub — a
 // workflow named "Release to Chrome Store" that calls the canon create-package
@@ -54,4 +55,7 @@ export default {
     permissionAddedStoreIssue,
     readmeSections,
   ],
+  // Pack-contributed run_daily task: the fleet plan picks this up only on repos that
+  // declare chrome-extension-release. See run_daily/store-release.mjs.
+  run_daily: [storeRelease],
 };
