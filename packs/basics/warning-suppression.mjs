@@ -1,27 +1,44 @@
 import { finding } from '../../checks/lib/findings.mjs';
 
+// Each marker pairs a `probe` (does this line suppress a warning at all?) with a
+// `bare` pattern that matches the directive *and its rule code(s)* running to
+// end-of-line with nothing after them. A line whose marker matches `bare` carries
+// no same-line reason; anything trailing the codes (an ESLint `-- reason`, an
+// appended `# why`, a `// safe: …`) breaks `bare` and counts as self-documenting.
 const MARKERS = [
-  /eslint-disable/,
-  /@ts-ignore/,
-  /@ts-nocheck/,
-  /\bnoqa\b/,
-  /pylint:\s*disable/,
-  /@SuppressWarnings/,
-  /#\s*type:\s*ignore/,
+  { probe: /eslint-disable/, bare: /eslint-disable(-next-line|-line)?(\s+[\w@/-]+(\s*,\s*[\w@/-]+)*)?\s*(\*\/)?\s*$/ },
+  { probe: /@ts-ignore/, bare: /@ts-ignore\s*(\*\/)?\s*$/ },
+  { probe: /@ts-nocheck/, bare: /@ts-nocheck\s*(\*\/)?\s*$/ },
+  { probe: /\bnoqa\b/, bare: /noqa(:\s*[A-Z0-9]+(\s*,\s*[A-Z0-9]+)*)?\s*$/ },
+  { probe: /pylint:\s*disable/, bare: /pylint:\s*disable(-next)?=[\w-]+(\s*,\s*[\w-]+)*\s*(\*\/)?\s*$/ },
+  { probe: /@SuppressWarnings/, bare: /@SuppressWarnings\s*\(\s*(\{[^}]*\}|"[^"]*"|'[^']*')\s*\)\s*$/ },
+  { probe: /#\s*type:\s*ignore/, bare: /#\s*type:\s*ignore(\[[\w,\s-]+\])?\s*$/ },
 ];
+
+// The line immediately above documents the suppression when it's a real comment
+// carrying prose — not blank, not decoration (`*/`), and not itself a suppression
+// marker (stacked bare mutes don't justify each other).
+function explainedByLineAbove(prevLine) {
+  const t = prevLine.trim();
+  if (!/^(\/\/|#|\*|\/\*|<!--)/.test(t)) return false;
+  if (!/[a-z]/i.test(t)) return false;
+  return !MARKERS.some((m) => m.probe.test(t));
+}
 
 const rule = {
   id: 'warning-suppression',
   severity: 'blocking',
-  description: 'Warning-suppression markers need the dedicated-issue path, not the quick path',
+  description: 'A warning suppression must carry its reason at the site — inline or in the comment above, not a bare mute',
   doc: 'packs/basics/RULES.md',
-  why: 'suppression hides the signal instead of resolving it',
+  why: 'an unexplained suppression hides the signal instead of recording why the fix was rejected',
 
   // Check-the-world, not check-the-work: a suppression marker is a repo-state
   // property, so scan every line of every in-scope file (the whole repo under the
-  // engine's default `all` sweep), not just lines this change added. A legacy or
-  // deliberately-kept suppression is handled by the project's `accept` entry in
-  // .claudinite-checks.json (reason required), not by only ever looking at the diff.
+  // engine's default `all` sweep), not just lines this change added. A suppression
+  // that documents *why* it exists — inline or in the comment immediately above —
+  // is the deliberate, reviewed decision the rule asks for, so it passes. A bare
+  // marker still fires; a project deliberately keeping one it can't annotate uses an
+  // `accept` entry in .claudinite-checks.json (reason required).
   run(ctx) {
     const out = [];
     // ctx.files already excludes vendored/generated files (recorded fixtures,
@@ -37,14 +54,18 @@ const rule = {
       if (/^packs\//.test(file) || /(^|\/)checks\/test\//.test(file)) continue;
       const text = ctx.read(file);
       if (text === null) continue;
-      text.split('\n').forEach((lineText, i) => {
-        if (MARKERS.some((m) => m.test(lineText))) {
-          out.push(finding(rule, {
-            file, line: i + 1,
-            what: `carries a warning-suppression marker: ${lineText.trim()}`,
-            fix: 'fix the underlying cause instead; if that genuinely can\'t happen now, open a dedicated issue and make the suppression a reviewed decision there — or, for one you\'re deliberately keeping, accept it in .claudinite-checks.json with a reason',
-          }));
-        }
+      const lines = text.split('\n');
+      lines.forEach((lineText, i) => {
+        const entry = MARKERS.find((m) => m.probe.test(lineText));
+        if (!entry) return;
+        const explainedInline = !entry.bare.test(lineText);
+        const explainedAbove = i > 0 && explainedByLineAbove(lines[i - 1]);
+        if (explainedInline || explainedAbove) return;
+        out.push(finding(rule, {
+          file, line: i + 1,
+          what: `carries a warning-suppression marker with no reason at the site: ${lineText.trim()}`,
+          fix: 'explain it where it lives — add the reason on the suppression line or in the comment immediately above it, so the suppression documents why the fix was rejected; better still, fix the underlying cause so no suppression is needed. If it genuinely can\'t be annotated, accept it in .claudinite-checks.json with a reason',
+        }));
       });
     }
     return out;

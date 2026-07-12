@@ -136,6 +136,43 @@ test('warning-suppression: skips linguist-vendored and linguist-generated files'
   } finally { cleanup(root); }
 });
 
+test('warning-suppression: passes a suppression that carries an inline reason', () => {
+  const root = makeRepo({ changed: {
+    'a.js': '// eslint-disable-next-line no-undef -- injected by the loader, not in scope here\ny();\n',
+    'b.py': 'except Exception:  # noqa: BLE001 a bad frame must never crash the listen loop\n    pass\n',
+    'c.py': 'value = untyped()  # type: ignore[assignment]  # third-party stub is wrong\n',
+  } });
+  try {
+    // Every marker documents *why* on its own line — the reviewed decision the rule wants.
+    assert.equal(run(warningSuppression, root, 'all').length, 0);
+  } finally { cleanup(root); }
+});
+
+test('warning-suppression: passes a suppression explained by the comment immediately above', () => {
+  const root = makeRepo({ changed: {
+    'a.js': '// the loader injects this symbol at runtime; the linter can\'t see it\n// eslint-disable-next-line no-undef\ny();\n',
+  } });
+  try {
+    assert.equal(run(warningSuppression, root, 'all').length, 0);
+  } finally { cleanup(root); }
+});
+
+test('warning-suppression: still flags a bare marker with only a rule code (no reason)', () => {
+  const root = makeRepo({ changed: {
+    // A rule code names *which* warning, not *why* — still unexplained.
+    'a.py': 'except Exception:  # noqa: BLE001\n    pass\n',
+    // A blank line above is not a documenting comment.
+    'b.js': '\n// eslint-disable-next-line no-undef\ny();\n',
+    // The line above is another bare marker, not an explanation.
+    'c.js': '// eslint-disable-next-line no-shadow\n// eslint-disable-next-line no-undef\ny();\n',
+  } });
+  try {
+    const findings = run(warningSuppression, root, 'all');
+    assert.equal(findings.length, 4); // one for a.py, one for b.js, two markers in c.js
+    assert.ok(findings.every((f) => /no reason at the site/.test(f.what)));
+  } finally { cleanup(root); }
+});
+
 test('file-placement: flags a distance-3+ reference, exempts tests and mandated locations', () => {
   const bad = makeRepo({
     base: { 'deep/far/util.mjs': 'export const x = 1;\n' },
