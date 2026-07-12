@@ -6,6 +6,7 @@ import { planRepo } from './gates.mjs';
 import baselining from '../../packs/basics/run_daily/baselining.mjs';
 import extract from '../../packs/grow_with_claudinite/run_daily/growth-extract-new-instructions.mjs';
 import dedup from '../../packs/grow_with_claudinite/run_daily/growth-dedup-local-instructions.mjs';
+import discoverPacks from '../../packs/grow_with_claudinite/run_daily/growth-discover-packs.mjs';
 
 const REPO = { fullName: 'owner/foo', defaultBranch: 'main' };
 const S = (over = {}) => ({
@@ -125,4 +126,14 @@ test('growth-dedup (grow_with_claudinite): runs on canonChanged, projectChanged,
   assert.equal((await dedup.gate(REPO, S({ canonChanged: true }))).run, true);
   assert.equal((await dedup.gate(REPO, S({ projectChanged: true }))).run, true);
   assert.equal((await dedup.gate(REPO, S({ fullSweep: true }))).run, true);
+});
+
+test('growth-discover-packs (grow_with_claudinite): a regular run_daily task, weekly-only, independent', async () => {
+  assert.equal(discoverPacks.full_sweep_supported, true);
+  assert.equal(discoverPacks.order, null); // independent of the growth phased barrier
+  // Slow-moving signal: fires only on the member's weekly full sweep, not on day-to-day change.
+  assert.equal((await discoverPacks.gate(REPO, S())).run, false);
+  assert.equal((await discoverPacks.gate(REPO, S({ projectChanged: true }))).run, false);
+  assert.equal((await discoverPacks.gate(REPO, S({ canonChanged: true }))).run, false);
+  assert.equal((await discoverPacks.gate(REPO, S({ fullSweep: true }))).run, true);
 });
