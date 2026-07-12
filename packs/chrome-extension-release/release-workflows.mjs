@@ -7,9 +7,9 @@ import { finding } from '../../checks/lib/findings.mjs';
 // canon workflows, so collapsing the caller to one file loses no triage.
 // Exported so the pack's detect fingerprint can recognize a repo that already
 // ships the pipeline; LEGACY_STUB_NAMES keeps the fingerprint matching repos
-// that still carry a pre-rename stub (this rule flags them to re-copy it —
-// without the legacy match, pack-declaration would contradict that finding by
-// telling the repo to drop the pack). The daily schedule is part of the
+// that still carry a pre-rename stub (this rule flags them to re-copy it, and a
+// tolerant fingerprint keeps a fresh --init still seeding the pack on such a
+// repo). The daily schedule is part of the
 // contract too: STUB_CRON pins every repo's nightly release to the same slot.
 // The privacy page has no stub of its own: it redeploys as part of every publish
 // (via the publish workflow's deploy-privacy-page leg).

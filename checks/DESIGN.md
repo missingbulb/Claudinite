@@ -120,6 +120,16 @@ in basics, because git history exists in every repo and is disturbed by any merg
 skill's action; `claude-md-length`, `file-placement`, and `generated-merge-driver` likewise
 inspect artifacts every repo has, so they stay in basics despite naming a skill in `doc`.
 
+**Not every pack-machinery concern is a check.** The `.claudinite-checks.json` *settings* are
+validated when the file loads, not by a conformance rule: malformed JSON, an unknown property,
+and an unknown pack name are equally settings errors, surfaced by the runner as blocking `config`
+findings. A pack's `marker` only *suspects* the pack is wanted — whether to declare it is the
+project's call — so nothing checks that a declared pack carries its marker, or that a marker's
+pack is declared. Pack **dependencies** (`requires`) are likewise resolved when the declaration is
+*written* — bootstrap `--init` and the baselining backfill run `resolveDeclaredPacks` to pull each
+declared pack's transitive `requires` into the file, materializing the prerequisite (like
+`basics`) rather than nagging at every Stop.
+
 **Runner contract.** `node .claudinite/checks/run.js`. Dependency-free Node — no `npm install`
 step exists on the tarball mount, and the corpus's own "earn each dependency" rule applies to
 us first. Exit 0 = clean, exit 1 = blocking findings. The default scope is the **whole repo**:
@@ -137,19 +147,17 @@ packs a project runs are **pinned in `.claudinite-checks.json`**
 undeclared — the `basics` baseline too is declared explicitly, seeded by bootstrap).
 Execution is a closed, declared set: every rule in a declared pack
 runs on every run — Stop hook and CI alike — with no inference at execution time, so "the
-project uses technology X" deterministically implies "every X check ran." What keeps the
-declaration honest is the corpus's own drift-guard pattern (a duplicate of executable truth
-gets a test that fails on divergence): a basics meta-check **fingerprints** the repo —
-`.github/workflows/` → github-actions; a `manifest.json` with `manifest_version` → the
-extension packs; the five release-workflow `name:`s → the conformance suite — and fails when
-fingerprint and declaration disagree in *either* direction: technology markers found with the
-pack undeclared ("add the pack"), or a declared pack whose technology has left the repo
-("drop it"). Bootstrap writes the initial declaration from the fingerprint; from then on the
-declaration is the truth that executes and the fingerprint is the guard that keeps it true.
-This meta-check also *is* the "declare a newly adopted technology" instruction — no standing
-rule needed: the session that introduces the technology gets the finding telling it to add the
-pack, and from then on that pack runs everywhere.
-`.claudinite-checks.json` additionally holds per-rule **overrides** and **acceptances**.
+project uses technology X" deterministically implies "every X check ran." Bootstrap writes the
+initial declaration from the repo's fingerprint — a pack's `detect` marker (`.github/workflows/`
+→ github-actions; a `manifest.json` with `manifest_version` → the extension packs; the
+release-workflow `name:`s → the conformance suite) seeds it at `--init`. But a marker only
+*suspects* a pack is wanted: from then on the declaration is authoritative, and whether to add a
+newly adopted technology's pack, or drop one whose technology has left, is the **project's** call
+— the checker never second-guesses it. What *is* enforced is settings **validity**: an unknown
+pack name, an unknown property, or malformed JSON is caught when the file loads
+(`loadConfig` + the runner) and surfaced as a blocking `config` error — a wrong pack name is as
+much a settings error as bad JSON. `.claudinite-checks.json` additionally holds per-rule
+**overrides** and **acceptances**.
 
 **Acceptances are the escape hatch — deterministic and reviewable.** Rules with judgment
 exemptions (filePlacement's "deliberate cross-cutting concern") need a way to say "yes, on

@@ -117,8 +117,9 @@ stray (a single rule joins the nearest existing pack, or waits as a handoff note
   rent — cover the facet, not everything you noticed.
 - **`pack.mjs`** — the manifest. Class/domain/aspect packs: `always: false`, `marker: null`,
   `detect: null` (declaration is authoritative). Technology packs: add the `marker`/`detect`
-  fingerprint when the repo carries a reliable one, so the `pack-declaration` check keeps declarations
-  honest. Discovery is structural — the directory is the registration.
+  fingerprint when the repo carries a reliable one, so `--init` seeds the pack into a fresh
+  declaration; the marker only *suspects* a pack is wanted, it never forces its declaration.
+  Discovery is structural — the directory is the registration.
 - **`README.md`** — the pack's rule table (section ≤5 words | how enforced), plus one provenance line
   naming the project it was distilled from.
 - **Index entries** — a row in [packs/README.md](../../packs/README.md) and, for a new pack kind, the
@@ -146,8 +147,8 @@ code (omit it).
   issue pointing at it so the central promote phase lifts it.
 - **The overlay → the project's normal branch/PR.**
 - **Declare a new pack** in the project's `.claudinite-checks.json` only after it has merged and the
-  mount re-synced — declaring an id the mounted registry doesn't know fails the blocking
-  `pack-declaration` check. Until then, note the pending declaration as a follow-up in the project PR.
+  mount re-synced — declaring an id the mounted registry doesn't know is an unknown-pack settings
+  error (a blocking `config` finding). Until then, note the pending declaration as a follow-up in the project PR.
 - **Existing projects sharing a facet keep their local docs for now.** Once the pack lands, the growth
   dedup phase prunes what the canon newly owns; don't pre-trim a project against an unmerged pack.
 

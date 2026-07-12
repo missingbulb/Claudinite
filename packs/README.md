@@ -6,7 +6,7 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 
 | Pack | Active when | Checks | Prose rules |
 |---|---|---|---|
-| [basics](basics/README.md) | declared (seeded by `--init`) | 12 | ~8 (working-discipline + task-lifecycle) |
+| [basics](basics/README.md) | declared (seeded by `--init`) | 11 | ~8 (working-discipline + task-lifecycle) |
 | [grow_with_claudinite](grow_with_claudinite/README.md) | declared (seeded by `--init`, opt-out by removal) | 0 | growth lifecycle daily tasks |
 | [tidy-repo](tidy-repo/README.md) | declared (seeded by `--init`, opt-out by removal) | 0 | policy (assess-only-vs-act) + tidy daily tasks |
 | [sheepdog](sheepdog/README.md) | declared (opt-in; the fleet-enforcer repo only) | 0 | fleet-enforcer marker + config + coverage workflow stub |
@@ -28,6 +28,16 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 | [executable-requirements](executable-requirements/README.md) | `dev/requirements/requirements.md` | 0 | framework standard (layout / gates / kinds) |
 
 Activity-scoped practice prose lives in [../skills/](../skills/README.md), not in a pack.
+
+## Settings validity
+
+The `"packs"` list and the rest of `.claudinite-checks.json` are validated **when the file loads**, not by a conformance check: [`loadConfig`](../checks/lib/context.mjs) reports malformed JSON and an unknown top-level property, and the runner adds an unknown *pack name* (it holds the registry). Each becomes a blocking `config` error — a wrong pack name is as much a settings error as invalid JSON. A pack's `detect`/`marker` only **suspects** a pack is wanted; declaring it is the project's call, so a declared pack without its marker (or a marker without its declaration) is **not** flagged.
+
+## Pack dependencies (`requires`)
+
+A pack states the packs it depends on in an optional `requires` field on its `pack.mjs` — a plain array of pack ids: a release pack builds on its coding pack (`chrome-extension-release` requires `chrome-extension`, `firebase-release` requires `firebase`) and a project-class pack leans on the framework that implements it (`spec-driven-product` requires `executable-requirements`).
+
+This is **not a check** — a pack can't be imported without its dependencies, so the resolution happens **when the declaration is written**, at bootstrap `--init` and the baselining backfill ([bootstrap.md](../bootstrap.md) Part 6): [`resolveDeclaredPacks`](registry.mjs) pulls each declared pack's transitive `requires` closure into `.claudinite-checks.json`. The prerequisite is materialized and visible in the file — droppable like every other entry, the same reason `basics` is written explicitly rather than defaulted — rather than resolved implicitly at run time. Declared ids keep their order; each pack's pulled-in dependencies land right after it.
 
 ## Skill requirements (`skills`)
 
@@ -71,7 +81,7 @@ Wiring a consumer up — the check hook + `packConfig`, with the script pasted f
 
 | | Count |
 |---|---|
-| **Hardcoded conformance checks** | **31** (12 basics + 8 github-actions + 8 chrome-extension-release + 3 aws-sam) |
+| **Hardcoded conformance checks** | **30** (11 basics + 8 github-actions + 8 chrome-extension-release + 3 aws-sam) |
 | PreToolUse guard | 1 (remote-branch-delete) |
 | Platform setting | 1 (squash-only) |
 | **Prose rules** — packs + practice skills + baseline | **~150** |

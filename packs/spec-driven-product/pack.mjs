@@ -7,6 +7,9 @@ export default {
   id: 'spec-driven-product',
   marker: null,
   detect: null,
+  // The product playbook runs its spec as tests — it leans on the framework
+  // mechanics the executable-requirements pack carries.
+  requires: ['executable-requirements'],
   prose: 'RULES.md',
   rules: [],
 };

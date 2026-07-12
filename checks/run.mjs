@@ -10,7 +10,7 @@ import { writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildContext } from './lib/context.mjs';
 import { applyConfig, render } from './lib/findings.mjs';
-import { loadPacks, isActive } from '../packs/registry.mjs';
+import { loadPacks, isActive, resolveDeclaredPacks } from '../packs/registry.mjs';
 import { loadSkillRules } from '../skills/registry.mjs';
 
 const args = process.argv.slice(2);
@@ -47,24 +47,35 @@ if (has('--init')) {
   // the existing fleet).
   const seeded = ['basics', 'grow_with_claudinite', 'tidy-repo'];
   const detected = [...seeded, ...packs.filter((p) => p.detect && p.detect(ctx)).map((p) => p.id)];
+  // A pack can't be imported without its dependencies — pull each declared pack's
+  // `requires` closure into the declaration so it's complete and visible.
+  const declared = resolveDeclaredPacks(detected, packs);
   // maintenance.delivery is deliberately materialized, not defaulted — the selection
   // must be visible in the file where a project would change it (see checks/README.md).
-  writeFileSync(path, `${JSON.stringify({ packs: detected, rules: {}, accept: [], maintenance: { delivery: 'push' } }, null, 2)}\n`);
-  console.log(`Wrote ${path} (packs: ${detected.join(', ')}).`);
+  writeFileSync(path, `${JSON.stringify({ packs: declared, rules: {}, accept: [], maintenance: { delivery: 'push' } }, null, 2)}\n`);
+  console.log(`Wrote ${path} (packs: ${declared.join(', ')}).`);
   process.exit(0);
 }
 
 const mode = has('--changed') ? 'changed' : 'all';
 const ctx = buildContext({ root, mode, baseOverride: value('--base') });
-ctx.knownPacks = packs; // for pack-declaration's fingerprint drift check
+ctx.knownPacks = packs; // for skill-ownership's corpus-integrity check
+
+const configError = (what, fix) => ({
+  rule: 'config', severity: 'blocking', file: '.claudinite-checks.json', line: null,
+  what, why: 'the settings file is what executes — a bad key, value, or pack name silently changes what runs', fix, doc: 'checks/README.md',
+});
 
 let findings = [];
-if (ctx.config.error) {
-  findings.push({
-    rule: 'config', severity: 'blocking', file: '.claudinite-checks.json', line: null,
-    what: `unparsable: ${ctx.config.error}`, why: null,
-    fix: 'fix the JSON — until then only default rule behavior applies', doc: 'checks/README.md',
-  });
+// Settings validity, checked at load: malformed JSON, an unknown property, and a
+// wrong pack name are all equally settings errors. loadConfig reports the first
+// two; the runner adds unknown pack names here because only it holds the registry.
+for (const e of ctx.config.errors) findings.push(configError(e.what, e.fix));
+const knownIds = new Set(packs.map((p) => p.id));
+for (const name of ctx.config.packs) {
+  if (typeof name === 'string' && !knownIds.has(name)) {
+    findings.push(configError(`declares unknown pack "${name}"`, `remove it or fix the name — declarable packs: ${[...knownIds].sort().join(', ')}`));
+  }
 }
 for (const pack of packs) {
   if (!isActive(pack, ctx.config)) continue;
@@ -73,6 +84,7 @@ for (const pack of packs) {
     findings.push(...rule.run(ctx));
   }
 }
+// Skill checks always run — never gated on a pack being active.
 for (const rule of skillRules) {
   if (ctx.config.rules[rule.id] === 'off') continue;
   findings.push(...rule.run(ctx));

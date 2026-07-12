@@ -45,27 +45,50 @@ function vendoredSet(root, files) {
   return set;
 }
 
+// The complete set of top-level settings .claudinite-checks.json may carry. A key
+// outside this set is a typo or a stale name — a settings error as real as invalid
+// JSON, caught at load so it can't silently change nothing.
+export const CONFIG_KEYS = ['packs', 'rules', 'accept', 'sharedConstants', 'packConfig', 'maintenance'];
+
+// Load and validate the project's settings. Validity is checked at load — the
+// moment Claudinite reads the file — and every problem is collected into `errors`
+// (each `{ what, fix }`), the runner's single settings-validity gate. A wrong
+// property name, malformed JSON, and a wrong pack name are all equally settings
+// errors; unknown *pack* names need the registry, so the runner adds those (it
+// holds the known-pack list). On unparsable/misshaped JSON the usable fields fall
+// back to empty so the rest of a sweep still runs, with the error reported.
 export function loadConfig(root) {
   const path = join(root, '.claudinite-checks.json');
-  if (!existsSync(path)) {
-    return { packs: [], rules: {}, accept: [], sharedConstants: [], packConfig: {}, error: null };
-  }
+  const empty = { packs: [], rules: {}, accept: [], sharedConstants: [], packConfig: {}, errors: [] };
+  if (!existsSync(path)) return empty;
+
+  let raw;
   try {
-    const raw = JSON.parse(readFileSync(path, 'utf8'));
-    return {
-      packs: Array.isArray(raw.packs) ? raw.packs : [],
-      rules: raw.rules && typeof raw.rules === 'object' ? raw.rules : {},
-      accept: Array.isArray(raw.accept) ? raw.accept : [],
-      sharedConstants: Array.isArray(raw.sharedConstants) ? raw.sharedConstants : [],
-      // Per-pack parameters a project supplies about its own usage — e.g. the
-      // dirs a repo's package.json lives in for the node pack's env install.
-      // Consumed by whatever pack machinery reads it (currently env.mjs).
-      packConfig: raw.packConfig && typeof raw.packConfig === 'object' ? raw.packConfig : {},
-      error: null,
-    };
+    raw = JSON.parse(readFileSync(path, 'utf8'));
   } catch (e) {
-    return { packs: [], rules: {}, accept: [], sharedConstants: [], packConfig: {}, error: e.message };
+    return { ...empty, errors: [{ what: `.claudinite-checks.json is not valid JSON: ${e.message}`, fix: 'fix the JSON syntax' }] };
   }
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { ...empty, errors: [{ what: '.claudinite-checks.json must be a JSON object', fix: 'wrap the settings in an object: { "packs": [ ... ] }' }] };
+  }
+
+  const errors = [];
+  for (const key of Object.keys(raw)) {
+    if (!CONFIG_KEYS.includes(key)) {
+      errors.push({ what: `unknown setting "${key}"`, fix: `remove it or fix the name — valid settings: ${CONFIG_KEYS.join(', ')}` });
+    }
+  }
+  return {
+    packs: Array.isArray(raw.packs) ? raw.packs : [],
+    rules: raw.rules && typeof raw.rules === 'object' ? raw.rules : {},
+    accept: Array.isArray(raw.accept) ? raw.accept : [],
+    sharedConstants: Array.isArray(raw.sharedConstants) ? raw.sharedConstants : [],
+    // Per-pack parameters a project supplies about its own usage — e.g. the
+    // dirs a repo's package.json lives in for the node pack's env install.
+    // Consumed by whatever pack machinery reads it (currently env.mjs).
+    packConfig: raw.packConfig && typeof raw.packConfig === 'object' ? raw.packConfig : {},
+    errors,
+  };
 }
 
 export function buildContext({ root, mode = 'changed', baseOverride = null }) {

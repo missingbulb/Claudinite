@@ -54,8 +54,9 @@ which reasons *about* generated files and so still inspects them.
 
 - **packs** — the declared packs; the closed set that executes. **No pack runs undeclared** —
   the `basics` baseline too is declared explicitly (`--init` seeds it; the nightly
-  baselining backfills a missing declaration). The `pack-declaration` rule drift-guards this
-  against the repo's actual technology fingerprint, both directions.
+  baselining backfills a missing declaration). An **unknown** pack name here is a settings
+  error, caught at load (see below); a pack's fingerprint only *suspects* it is wanted and never
+  forces or forbids its declaration.
 - **rules** — per-rule severity override: `"off"` / `"advisory"` / `"blocking"`.
 - **accept** — reviewed, reasoned exemptions. `path` matches exactly, or a whole subtree when it
   ends with `/`; omit it to accept the rule everywhere. The `reason` is mandatory — a reasonless
@@ -103,3 +104,16 @@ return `[]` when the artifact is absent** (`routine-structure` keys off a `routi
 before it asserts anything). Getting this wrong doesn't cost a little — it fires false findings
 on every unrelated repo the corpus is mounted in, so make the relevance signal narrow and put it
 at the top of `run`.
+
+**Settings validity is not a conformance check — it's validated when the file loads.**
+[`loadConfig`](lib/context.mjs) reports malformed JSON and an unknown top-level property; the runner adds
+an unknown *pack name* (only it holds the registry). Each surfaces as a blocking `config` error, because a
+wrong pack name is as much a settings error as invalid JSON. This deliberately replaced a `pack-declaration`
+conformance check: whether a repo declares a pack its fingerprint suggests, or drops one whose marker is
+gone, is the **project's** call — a `marker` is a way to *suspect* a pack is needed, never proof it must (or
+must not) be declared — so the checker no longer second-guesses it.
+
+Pack **dependencies** are likewise *not* a check: a pack can't be imported without the packs it requires, so
+[`resolveDeclaredPacks`](../packs/registry.mjs) pulls each declared pack's `requires` closure into the
+declaration when it is written (bootstrap `--init` and the baselining backfill), materializing the
+prerequisite in `.claudinite-checks.json` rather than flagging its absence after the fact.
