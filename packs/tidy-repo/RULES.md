@@ -1,9 +1,11 @@
 # tidy-repo — the repo tidy-up policy
 
 The nightly PR/branch/issue sweep, active wherever this pack is declared. The fleet routine runs its
-three maintenance tasks against a repo; this is the policy they share. The **method** each task
-applies lives in [the repo tidy-up spec](../../routines/auto-repo-tidy.md) — Stage 2 moves that method
-into this pack's worker docs and skills and retires the standalone spec.
+maintenance tasks against a repo; this is the policy they share. The per-object **method** lives in the
+pack's skills ([single-branch-status](../../skills/single-branch-status/SKILL.md),
+[single-pr-status](../../skills/single-pr-status/SKILL.md),
+[single-issue-triage](../../skills/single-issue-triage/SKILL.md)); the standing tracker is owned by the
+`tidy-report` unit.
 
 The one rule that shapes everything: **assess PRs and branches read-only; act only on issues.**
 
@@ -15,5 +17,6 @@ The one rule that shapes everything: **assess PRs and branches read-only; act on
   content **now** — confirm it there and cite it; when you can't, comment, don't close. Every action
   defaults to the reversible option (comment / leave) when the check is inconclusive.
 
-The standing tracker (one issue per repo, body rewritten to today's state, a dated comment per run) is
-owned by the Stage 2 `tidy-report` unit; until then each worker reports its own dimension.
+Each dimension task applies its single-object skill across the targets the plan hands it, and its
+recommendations feed `tidy-report`, which rewrites the repo's standing tracker (one issue per repo,
+body rewritten to today's state, a dated comment per run).

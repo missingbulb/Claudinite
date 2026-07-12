@@ -1,6 +1,7 @@
 import branchCleanup from './maintenance/branch-cleanup.mjs';
 import prAssess from './maintenance/pr-assess.mjs';
 import issueTriage from './maintenance/issue-triage.mjs';
+import tidyReport from './maintenance/tidy-report.mjs';
 
 // The repo tidy-up, as a composable pack: the PR/branch/issue sweep the fleet routine
 // runs, contributed the same way any pack contributes checks and skills. Declaring
@@ -11,14 +12,17 @@ import issueTriage from './maintenance/issue-triage.mjs';
 // declaration, and the one-time tidy-repo-seed migration seeds the existing fleet.
 // It carries no conformance checks — its work is the maintenance tasks, not checks.
 //
-// Stage 1 (here): the three dimension tasks, each pointing at a whole-repo worker doc.
-// Stage 2 will add the per-repo tidy-report reconciliation unit and swap the workers
-// for single-object skills (single-branch-status / single-pr-status / single-issue-triage).
+// The three dimension tasks (branch/PR/issue) plus the per-repo tidy-report
+// reconciliation unit. Each dimension worker applies its single-object skill across the
+// targets the plan hands it; tidy-report rewrites the standing tracker from their verdicts.
 export default {
   id: 'tidy-repo',
   detect: null,
   marker: null,
   prose: 'RULES.md',
   rules: [],
-  maintenance: [branchCleanup, prAssess, issueTriage],
+  maintenance: [branchCleanup, prAssess, issueTriage, tidyReport],
+  // The single-object worker skills the dimension tasks apply, mounted wherever
+  // tidy-repo is declared (skills/mount-skills.mjs).
+  skills: ['single-branch-status', 'single-pr-status', 'single-issue-triage'],
 };

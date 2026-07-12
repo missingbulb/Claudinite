@@ -9,15 +9,28 @@ const S = (over = {}) => ({
 });
 const task = (id) => pack.maintenance.find((t) => t.id === id);
 
-test('tidy-repo is a declared pack (no fingerprint) with three maintenance tasks', () => {
+test('tidy-repo is a declared pack (no fingerprint) with its maintenance tasks and skills', () => {
   assert.equal(pack.id, 'tidy-repo');
   assert.equal(pack.detect, null);
-  assert.deepEqual(pack.maintenance.map((t) => t.id), ['branch-cleanup', 'pr-assess', 'issue-triage']);
+  assert.deepEqual(pack.maintenance.map((t) => t.id), ['branch-cleanup', 'pr-assess', 'issue-triage', 'tidy-report']);
+  assert.deepEqual(pack.skills, ['single-branch-status', 'single-pr-status', 'single-issue-triage']);
   for (const t of pack.maintenance) {
     assert.equal(t.full_sweep_supported, true);
-    assert.equal(t.smarts, 'medium');
     assert.match(t.worker, /^packs\/tidy-repo\/maintenance\/.*\.worker\.md$/);
   }
+  // Dimension tasks need judgment (medium); the report is mechanical aggregation (low).
+  assert.deepEqual(pack.maintenance.map((t) => t.smarts), ['medium', 'medium', 'medium', 'low']);
+});
+
+test('tidy-report: runs after any tidy activity or on the weekly sweep, ordered as a per-repo barrier', async () => {
+  const g = task('tidy-report').gate;
+  assert.equal(task('tidy-report').order, 'tidy:report');
+  assert.equal((await g(REPO, S())).run, false); // nothing happened
+  assert.equal((await g(REPO, S({ branchesTouched: ['main'] }))).run, false); // only default branch
+  assert.equal((await g(REPO, S({ prsTouched: [1] }))).run, true);
+  assert.equal((await g(REPO, S({ issuesTouched: [2] }))).run, true);
+  assert.equal((await g(REPO, S({ branchesTouched: ['main', 'feat'] }))).run, true);
+  assert.equal((await g(REPO, S({ fullSweep: true }))).run, true);
 });
 
 test('branch-cleanup: excludes the default branch, runs only when other branches are present', async () => {

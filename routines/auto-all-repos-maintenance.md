@@ -33,7 +33,8 @@ Run each unit's **worker** at the tier its `smarts` names: a subagent on the mat
 
 Ordering — the only thing this routine must honor:
 
-- **Independent units** (`order: null` — tidy, baselining, pack tasks) run **concurrently**, capped to a sane batch.
+- **Independent units** (`order: null` — the tidy dimensions, baselining, pack tasks) run **concurrently**, capped to a sane batch.
+- **`tidy-report`** (`order: tidy:report`) runs **after** its own repo's other `tidy-repo` units settle — a **per-repo mini-barrier**, so it reconciles their verdicts into the standing tracker; narrower than the fleet-wide growth barrier, and independent across repos.
 - **Growth units** run **phased, with a barrier between each** ([../growth/README.md](../growth/README.md) owns the order): all `growth:1` → barrier → `growth-promote-to-claudinite` **once** (iff ≥1 extract produced new local-doc content) → barrier → all `growth:3`.
 - **Await async downstream** — a unit that triggers a dispatch-only Action (a pack task's) is done only when that Action **completes**, not at the trigger; poll it (report at completion, not the trigger).
 

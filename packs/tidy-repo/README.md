@@ -16,6 +16,8 @@ only on issues.
 | `branch-cleanup` | non-default branches + branch/main activity (or weekly) | assess-only | medium |
 | `pr-assess` | open PRs updated, or main moved (or weekly) | assess-only | medium |
 | `issue-triage` | open issues updated, or main moved (or weekly) | **acts** (close/label/comment) | medium |
+| `tidy-report` | after the repo's tidy units ran (or weekly) | records the run in the standing tracker | low |
 
-Stage 2 adds a per-repo `tidy-report` reconciliation unit and swaps the whole-repo workers for
-single-object skills (`single-branch-status` / `single-pr-status` / `single-issue-triage`).
+Each dimension task applies its single-object skill (`single-branch-status` / `single-pr-status` /
+`single-issue-triage`) across the targets the plan hands it; `tidy-report` rewrites the repo's standing
+tracker from their verdicts (a per-repo mini-barrier — it runs after the dimension units).

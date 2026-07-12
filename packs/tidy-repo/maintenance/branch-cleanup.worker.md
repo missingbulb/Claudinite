@@ -1,15 +1,12 @@
 # branch-cleanup worker
 
-Assess the branches in `targets.branches` (the orchestrator hands you the list — you don't enumerate).
+For each branch in `targets.branches` (the plan hands you the list — you don't enumerate), run the
+[single-branch-status](../../../skills/single-branch-status/SKILL.md) skill to get its verdict.
 **Assess-only: never delete, push, or merge.**
 
-For each branch, apply the landed-status test from [the repo tidy-up spec](../../../routines/auto-repo-tidy.md)
-(judge by content, never the ref's auto-generated name): merged ⇒ in `main`; empty diff vs `main` ⇒
-stale; intent present in `main` under another path/form ⇒ superseded (grep the concept); no
-merge-base ⇒ orphaned, needs a human; else ⇒ genuine unmerged work.
+Collect the verdicts and report: one line each for the branches with **genuine unmerged work**
+(`` `branch` — what it carries``); collapse the rest into one `Safe to delete: N — a, b, c` line;
+flag any **orphaned** branch for a human. Recommend deletions; never perform them. These
+recommendations feed the repo's `tidy-report`, which records them in the standing tracker.
 
-Report, one line each, only the branches with **genuine unmerged work** (`` `branch` — what it
-carries``); collapse the rest into one `Safe to delete: N — a, b, c` line. Recommend deletions;
-never perform them.
-
-Run on the `smarts: medium` tier — the superseded/orphaned calls are judgment.
+`smarts: medium` — the superseded/orphaned calls are judgment.
