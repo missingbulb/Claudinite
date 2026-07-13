@@ -53,14 +53,15 @@ test('retirableMigrations: blocked by unknowns, pending repos, same-day landing,
   assert.deepEqual(retirableMigrations([manual], { pending: clean, unknownCount: 0, today: '2026-07-13' }), []);
 });
 
-test('loadMigrations: discovers the seed migration with its source file and probe', async () => {
+test('loadMigrations: discovers the mount-folder relocation with its source file and probe', async () => {
   const migs = await loadMigrations();
-  const seed = migs.find((m) => m.id === 'sync-hook-relocation');
-  assert.ok(seed, 'seed migration is discovered');
-  assert.equal(seed.file, '2026-07-12-sync-hook-relocation.mjs');
+  const seed = migs.find((m) => m.id === 'mount-folder-relocation');
+  assert.ok(seed, 'mount-folder-relocation migration is discovered');
+  assert.equal(seed.file, '2026-07-13-mount-folder-relocation.mjs');
   assert.equal(typeof seed.legacyPresent, 'function');
   assert.equal(seed.retire, 'manual');
-  // Its probe reports still-legacy when the old hook path is present, clean otherwise.
+  // Its probe reports still-legacy when ANY pre-mount sync-hook shape is present, clean otherwise.
+  assert.equal(await seed.legacyPresent((p) => p === '.claudinite/sync-claudinite.sh'), true);
   assert.equal(await seed.legacyPresent((p) => p === '.claude/hooks/sync-claudinite.sh'), true);
   assert.equal(await seed.legacyPresent(() => false), false);
 });

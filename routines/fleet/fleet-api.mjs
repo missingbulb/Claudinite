@@ -50,7 +50,8 @@ export async function fileExists(gh, fullName, path) {
 // submodule.) The structural "is this a covered member" test, shared by the planner
 // (which repos to plan over) and the census (which repos are uncovered).
 export async function isCovered(gh, fullName) {
-  if (await fileExists(gh, fullName, '.claudinite/sync-claudinite.sh')) return true; // Method B
+  if (await fileExists(gh, fullName, '.claudinite/mount/sync-claudinite.sh')) return true; // Method B (mount/)
+  if (await fileExists(gh, fullName, '.claudinite/sync-claudinite.sh')) return true; // Method B (pre-mount)
   if (await fileExists(gh, fullName, '.claudinite/.gitkeep')) return true; // legacy Method B
   const { status, json } = await gh(`/repos/${fullName}/contents/.gitmodules`);
   if (status === 404) return false;

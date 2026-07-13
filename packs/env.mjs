@@ -80,7 +80,7 @@ async function install(projectRoot) {
 function emitAlert(problems) {
   const msg =
     `Environment setup incomplete: ${problems.join('; ')}. Alert the user: re-paste the full body of ` +
-    '.claudinite/environment-setup.sh into the Claude Code Web environment Setup script field (environment ' +
+    '.claudinite/mount/environment-setup.sh into the Claude Code Web environment Setup script field (environment ' +
     'settings), then start a fresh session so the snapshot rebuilds with the prerequisites installed.';
   // SessionStart adds stdout to the session context. Emit plain text (not a JSON
   // additionalContext envelope) so this step's output merges cleanly with the

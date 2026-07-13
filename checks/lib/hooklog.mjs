@@ -4,8 +4,8 @@
 // work" into something inspectable: no lines at all ⇒ the hook never triggered;
 // a `start` with no matching `done` ⇒ it triggered but failed mid-execution.
 //
-// The line format is mirrored by the bash loggers inlined in sync-claudinite.sh
-// and session-start.sh — keep the three in step:
+// The line format is mirrored by the bash loggers inlined in
+// mount/sync-claudinite.sh and mount/session-start.sh — keep the three in step:
 //   <iso-utc> run=<id> <hook>: <message>
 //
 // Best effort: logging must never throw or block a hook, so every failure is
