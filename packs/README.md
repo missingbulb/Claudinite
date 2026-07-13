@@ -72,7 +72,7 @@ setup: (p) => (p.dirs?.length ? p.dirs : ['.']).map((d) => `( cd "${d}" && npm c
 
 [`env.mjs`](env.mjs) drives everything from the repo's **active** packs (same activation as prose/checks):
 
-- `node .claudinite/packs/env.mjs install` runs every active pack's `setup` in the checkout. The corpus's one generic [`environment-setup.sh`](../environment-setup.sh) (synced into every consumer's `.claudinite/`) calls this after syncing the corpus.
+- `node .claudinite/packs/env.mjs install` runs every active pack's `setup` in the checkout. The corpus's one generic [`environment-setup.sh`](../mount/environment-setup.sh) (synced into every consumer's `.claudinite/mount/`) calls this after syncing the corpus.
 - `node .claudinite/packs/env.mjs check` is a SessionStart hook (web only) that **asserts** — it runs each `probe` directly against the running environment and injects the halt-gate context if a requirement is missing. No version flag: the probes are the source of truth, and a genuinely new requirement fails its probe and prompts a re-run. Never installs.
 - `node .claudinite/packs/env.mjs plan` prints what `install` would run (review / debug).
 

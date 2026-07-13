@@ -1,6 +1,6 @@
 # Adopting Claudinite
 
-How a consuming repo bootstraps these shared guidelines. Bootstrapping is **idempotent** — safe to re-run on a fresh repo or one that already adopted Claudinite (re-running is also how an existing repo picks up changes to these steps). Two kinds of step: a **generated artifact** that Claudinite owns (the tracked `.claudinite/sync-claudinite.sh` hook) is re-written to match its canonical source every run, so baselining refreshes a stale copy — and corrects its `settings.json` registration when it still points at the legacy `.claude/hooks/` path, and consolidates the `SessionStart` array to the single orchestrator entry ([Part 2](#part-2--sessionstart-context-via-one-orchestrator-both-methods)); **your own config** (the `@.claudinite/CLAUDE.md` import line, other `settings.json` entries) is only added to what's missing, never clobbered. Re-running never duplicates work.
+How a consuming repo bootstraps these shared guidelines. Bootstrapping is **idempotent** — safe to re-run on a fresh repo or one that already adopted Claudinite (re-running is also how an existing repo picks up changes to these steps). Two kinds of step: a **generated artifact** that Claudinite owns (the tracked `.claudinite/mount/sync-claudinite.sh` hook) is re-written to match its canonical source every run, so baselining refreshes a stale copy — and corrects its `settings.json` registration when it still points at a legacy path (`.claude/hooks/…` or the pre-mount `.claudinite/sync-claudinite.sh`), and consolidates the `SessionStart` array to the single orchestrator entry ([Part 2](#part-2--sessionstart-context-via-one-orchestrator-both-methods)); **your own config** (the `@.claudinite/CLAUDE.md` import line, other `settings.json` entries) is only added to what's missing, never clobbered. Re-running never duplicates work.
 
 Two parts: **(1)** mount the corpus — pick Method A or B by where your sessions run; **(2)** register the single `SessionStart` orchestrator entry that runs the context steps (same for both methods). Do both.
 
@@ -21,41 +21,50 @@ Submodules aren't pulled automatically, so the consumer's setup or SessionStart 
 
 ## Method B — session-start tarball sync
 
-Auto-updating, no git credential needed. A SessionStart hook fetches the repo as a tarball over plain HTTPS into a gitignored `.claudinite/`, pulling latest `main` each session. The hook lives *inside* that folder: `.claudinite/sync-claudinite.sh` is the folder's one **tracked** file, doubling as the committed signal that the repo mounts Claudinite — there is no separate marker file.
+Auto-updating, no git credential needed. A SessionStart hook fetches the repo as a tarball over plain HTTPS into a gitignored `.claudinite/`, pulling latest `main` each session. The hook lives *inside* that folder, under `mount/`: `.claudinite/mount/sync-claudinite.sh` is the corpus's one **tracked** file, doubling as the committed signal that the repo mounts Claudinite — there is no separate marker file.
 
-**1.** Populate `.claudinite/` — one tarball pull delivers the corpus *and* places the hook. The hook's canonical source is [`sync-claudinite.sh`](sync-claudinite.sh) at the Claudinite repo root — never write an inline copy of its body. It is a generated artifact Claudinite owns: when baselining, **overwrite** the tracked copy with the canon's current one rather than skipping it, so a stale hook gets refreshed:
+**1.** Populate `.claudinite/` — one tarball pull delivers the corpus *and* places the hook. The hook's canonical source is [`mount/sync-claudinite.sh`](mount/sync-claudinite.sh) at the Claudinite repo — never write an inline copy of its body. It is a generated artifact Claudinite owns: when baselining, **overwrite** the tracked copy with the canon's current one rather than skipping it, so a stale hook gets refreshed:
 
 ```sh
 mkdir -p .claudinite
 curl -fsSL https://codeload.github.com/missingbulb/Claudinite/tar.gz/main \
   | tar -xz --strip-components=1 -C .claudinite
-chmod +x .claudinite/sync-claudinite.sh
+chmod +x .claudinite/mount/sync-claudinite.sh
 ```
 
 **Prerequisite — `codeload.github.com` must be reachable.** The sync fetches over plain HTTPS from `codeload.github.com` (and, for a private Claudinite, needs auth). In a managed/remote environment behind an egress proxy this can 403 when the host isn't allowlisted, so the environment's **network policy must allowlist `codeload.github.com` / `github.com`** — otherwise every session's sync fails and the repo silently runs vanilla until a prior local copy or the not-loaded directive catches it.
 
-**2.** Register it in `.claude/settings.json` as the **single** `SessionStart` entry: it syncs the corpus and then fans out to the session-start steps (preferences, prose, skills, env check) by calling `.claudinite/session-start.sh` — see [Part 2](#part-2--sessionstart-context-via-one-orchestrator-both-methods) for why that fan-out lives in one process and not in sibling hook entries. Invoke it **through `bash`**, not as a bare path — a bare path requires the file's exec bit, so a checkout that drops it (or a committed-mode drift to `100644`) makes the hook fail at launch with `Permission denied` *before line 1*, which swallows its own "not loaded" directive. The `bash` prefix is mode-independent and lets that directive surface. If an entry still points at the legacy `.claude/hooks/sync-claudinite.sh` path, **or invokes the hook as a bare path** (`$CLAUDE_PROJECT_DIR/.claudinite/sync-claudinite.sh` with no interpreter), **fix that entry in place**; and remove the now-redundant separate context entries per Part 2 — these are the `SessionStart` edits baselining makes in place rather than leaving alone (scoped to Claudinite-owned commands only):
+**2.** Register it in `.claude/settings.json` as the **single** `SessionStart` entry: it syncs the corpus and then fans out to the session-start steps (preferences, prose, skills, env check) by calling `.claudinite/mount/session-start.sh` — see [Part 2](#part-2--sessionstart-context-via-one-orchestrator-both-methods) for why that fan-out lives in one process and not in sibling hook entries. Invoke it **through `bash`**, not as a bare path — a bare path requires the file's exec bit, so a checkout that drops it (or a committed-mode drift to `100644`) makes the hook fail at launch with `Permission denied` *before line 1*, which swallows its own "not loaded" directive. The `bash` prefix is mode-independent and lets that directive surface. If an entry still points at a legacy hook path (`.claude/hooks/sync-claudinite.sh`, or the pre-mount `.claudinite/sync-claudinite.sh`), **or invokes the hook as a bare path** (`$CLAUDE_PROJECT_DIR/.claudinite/mount/sync-claudinite.sh` with no interpreter), **fix that entry in place**; and remove the now-redundant separate context entries per Part 2 — these are the `SessionStart` edits baselining makes in place rather than leaving alone (scoped to Claudinite-owned commands only):
 
 ```json
 { "hooks": { "SessionStart": [ { "hooks": [
-  { "type": "command", "command": "bash $CLAUDE_PROJECT_DIR/.claudinite/sync-claudinite.sh" }
+  { "type": "command", "command": "bash $CLAUDE_PROJECT_DIR/.claudinite/mount/sync-claudinite.sh" }
 ] } ] } }
 ```
 
-**3.** Track the hook while gitignoring everything else it syncs (idempotent). The `/.claudinite/*` + `!/.claudinite/sync-claudinite.sh` pair keeps just the hook under version control, so the repo carries a one-glance signal that it mounts Claudinite while the synced corpus underneath stays out of git; the root `.claudinite-hooks.log` the hooks write (kept outside `.claudinite/` so the sync's dir swap can't wipe it) is ignored alongside it:
+**3.** Track the hook while gitignoring everything else it syncs (idempotent). The rules ignore all of `.claudinite/` except the one tracked hook at `.claudinite/mount/sync-claudinite.sh` — tracking a file inside an ignored dir needs the dir re-included first, so `mount/` gets a re-include/ignore pair before the file negation — so the repo carries a one-glance signal that it mounts Claudinite while the synced corpus underneath stays out of git; the root `.claudinite-hooks.log` the hooks write (kept outside `.claudinite/` so the sync's dir swap can't wipe it) is ignored alongside it:
 
 ```sh
 # Drop rules from earlier bootstraps: a bare `.claudinite/` wholesale-ignore blocks
-# the `!` negation below (git won't descend into a fully-ignored dir), and the
-# `!/.claudinite/.gitkeep` negation belongs to the retired legacy marker.
+# the `!` negations below (git won't descend into a fully-ignored dir), the
+# `!/.claudinite/.gitkeep` negation belongs to the retired legacy marker, and
+# `!/.claudinite/sync-claudinite.sh` is the pre-mount hook location.
 if [ -f .gitignore ]; then
-  grep -vxE '\.claudinite/|\.claudinite\.new/|!/\.claudinite/\.gitkeep' .gitignore > .gitignore.tmp || true
+  grep -vxE '\.claudinite/|\.claudinite\.new/|!/\.claudinite/\.gitkeep|!/\.claudinite/sync-claudinite\.sh' .gitignore > .gitignore.tmp || true
   mv .gitignore.tmp .gitignore
 fi
-for rule in '/.claudinite/*' '!/.claudinite/sync-claudinite.sh' '/.claudinite.new/' '/.claudinite-hooks.log' '/.claudinite-hooks.log.tmp'; do
+# Track only the hook, now at .claudinite/mount/sync-claudinite.sh. A file inside an
+# otherwise-ignored dir needs the dir re-included first, hence the mount/ pair
+# (re-include the dir, ignore its contents) before the file negation.
+for rule in '/.claudinite/*' '!/.claudinite/mount/' '/.claudinite/mount/*' '!/.claudinite/mount/sync-claudinite.sh' '/.claudinite.new/' '/.claudinite-hooks.log' '/.claudinite-hooks.log.tmp'; do
   grep -qxF "$rule" .gitignore 2>/dev/null || echo "$rule" >> .gitignore
 done
-git add .claudinite/sync-claudinite.sh
+# Converge a pre-mount tracked hook into mount/ (idempotent; no-op once moved).
+if git ls-files --error-unmatch .claudinite/sync-claudinite.sh >/dev/null 2>&1; then
+  mkdir -p .claudinite/mount
+  git mv -f .claudinite/sync-claudinite.sh .claudinite/mount/sync-claudinite.sh
+fi
+git add .claudinite/mount/sync-claudinite.sh
 ```
 
 The hook preserves its own tracked copy across its `rm -rf`/swap — the tracked copy wins over the tarball's — so the working tree stays clean after each session sync even while the canon's copy has moved ahead; the nightly baselining is the tracked copy's update path.
@@ -89,13 +98,13 @@ Several things happen at session start: whatever **populates** `.claudinite/`, t
 
 > **Claude Code runs the entries in a `SessionStart` array IN PARALLEL, with non-deterministic order** — "all matching hooks run in parallel… the order is non-deterministic" (the Claude Code hooks docs). **Array position is not execution order.** So a populate-then-read chain spread across sibling hook entries is a *race*, not a sequence: the readers fire before — or during — the sync's directory swap, hit an absent `.claudinite/`, and fail soft to nothing.
 
-The fix is structural, not a matter of ordering the array: **every corpus-dependent step runs inside one script, `.claudinite/session-start.sh`, in sequence, in a single process.** Ordering lives in that process, never across hook entries. Each step's stdout is forwarded through the one hook (SessionStart adds it to the session context), and each logs a timestamp + what it is doing to `.claudinite-hooks.log` (see below). So a consumer registers exactly **one** `SessionStart` entry — the one that populates the corpus and then calls the orchestrator:
+The fix is structural, not a matter of ordering the array: **every corpus-dependent step runs inside one script, `.claudinite/mount/session-start.sh`, in sequence, in a single process.** Ordering lives in that process, never across hook entries. Each step's stdout is forwarded through the one hook (SessionStart adds it to the session context), and each logs a timestamp + what it is doing to `.claudinite-hooks.log` (see below). So a consumer registers exactly **one** `SessionStart` entry — the one that populates the corpus and then calls the orchestrator:
 
 - **Method B:** the single entry is the sync hook from Part 1. It syncs, then calls `session-start.sh`. Nothing else goes in the `SessionStart` array.
 
 ```json
 { "hooks": { "SessionStart": [ { "hooks": [
-  { "type": "command", "command": "bash $CLAUDE_PROJECT_DIR/.claudinite/sync-claudinite.sh" }
+  { "type": "command", "command": "bash $CLAUDE_PROJECT_DIR/.claudinite/mount/sync-claudinite.sh" }
 ] } ] } }
 ```
 
@@ -103,7 +112,7 @@ The fix is structural, not a matter of ordering the array: **every corpus-depend
 
 ```json
 { "hooks": { "SessionStart": [ { "hooks": [
-  { "type": "command", "command": "git -C $CLAUDE_PROJECT_DIR submodule update --init --recursive .claudinite && bash $CLAUDE_PROJECT_DIR/.claudinite/session-start.sh" }
+  { "type": "command", "command": "git -C $CLAUDE_PROJECT_DIR submodule update --init --recursive .claudinite && bash $CLAUDE_PROJECT_DIR/.claudinite/mount/session-start.sh" }
 ] } ] } }
 ```
 
@@ -222,7 +231,7 @@ Skill entries in `.claude/skills/` may be symlinks, and skill content is picked 
 
 The web base image is minimal — it ships no Flutter SDK, a repo's `npm` modules aren't cloned, etc. Install belongs in the environment **image** (built once, then Anthropic snapshots the filesystem and reuses it), NOT a per-session hook that would reinstall every start. The division of labour:
 
-- **The corpus holds the one generic script** — [`environment-setup.sh`](environment-setup.sh), synced into every consumer's `.claudinite/`. It's identical for every project, so a project commits **no** copy of its own; it just wires the check hook (below) and pastes the corpus script into its environment.
+- **The corpus holds the one generic script** — [`mount/environment-setup.sh`](mount/environment-setup.sh), synced into every consumer's `.claudinite/mount/`. It's identical for every project, so a project commits **no** copy of its own; it just wires the check hook (below) and pastes the corpus script into its environment.
 - **The packs hold the requirements.** A pack declares what it needs in an `env` field ([packs/README.md](packs/README.md#environment-requirements-env)); the generic script asks `packs/env.mjs install` to run whatever THIS repo's *active* packs declare. Per-toolchain logic lives in Claudinite, not the project.
 - **A session-start step only asserts.** `env.mjs check` *probes* each requirement directly (Flutter on PATH, `node_modules` present) and, if one is missing, prints the halt-gate directive telling the assistant to have you re-paste. It never installs, and there is no version flag — the probes are the source of truth.
 
@@ -234,6 +243,6 @@ The web base image is minimal — it ships no Flutter SDK, a repo's `npm` module
 { "packConfig": { "node": { "dirs": ["firebase/functions"] } } }
 ```
 
-**3.** Apply the setup to the environment: copy the full body of **`.claudinite/environment-setup.sh`** (present after a corpus sync; or copy it from the Claudinite repo) into the web environment's **Setup script** field (web UI → environment selector → edit environment → Setup script), then start a fresh session so the snapshot rebuilds. The network policy must reach whatever the active packs' setup fetches (for `flutter`: `github.com`, `storage.googleapis.com`, `pub.dev`; for `node`: the npm registry).
+**3.** Apply the setup to the environment: copy the full body of **`.claudinite/mount/environment-setup.sh`** (present after a corpus sync; or copy it from the Claudinite repo) into the web environment's **Setup script** field (web UI → environment selector → edit environment → Setup script), then start a fresh session so the snapshot rebuilds. The network policy must reach whatever the active packs' setup fetches (for `flutter`: `github.com`, `storage.googleapis.com`, `pub.dev`; for `node`: the npm registry).
 
 When a pack adds or changes a requirement, nothing in the project changes — the generic script is stable. A genuinely new requirement fails its `probe`, so the SessionStart check flags existing environments to re-paste + rebuild; that re-run installs the new requirement and becomes the new truth. A repo with no env-declaring active pack still benefits from the generic script (the corpus sync + git hygiene); `env.mjs install` simply installs nothing and the check stays silent.

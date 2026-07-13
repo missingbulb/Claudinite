@@ -3,14 +3,15 @@
 # hook and the committed signal that the project mounts Claudinite
 # (https://github.com/missingbulb/Claudinite) — fleet maintenance discovers
 # opted-in repos by its presence on the default branch. Everything else under
-# .claudinite/ is synced by this hook and gitignored; only this file is tracked.
-# Canonical source: sync-claudinite.sh at the Claudinite repo root. Never edit a
-# consumer's copy — the nightly re-bootstrap refreshes it from the canon.
+# .claudinite/ is synced by this hook and gitignored; only this file — at
+# .claudinite/mount/sync-claudinite.sh — is tracked. Canonical source:
+# mount/sync-claudinite.sh at the Claudinite repo. Never edit a consumer's copy —
+# the nightly re-bootstrap refreshes it from the canon.
 #
 # Syncs Claudinite into .claudinite/ over plain HTTPS from codeload (which the
 # environment's network policy must allowlist; a submodule clone 403s on cloud).
 # Pulls latest main, THEN fans out to the corpus-dependent session-start steps by
-# calling .claudinite/session-start.sh (preferences, active-pack prose, skill
+# calling .claudinite/mount/session-start.sh (preferences, active-pack prose, skill
 # mounts, env check). This is the SINGLE SessionStart entry a Method B consumer
 # registers: Claude Code runs hook entries in parallel with non-deterministic
 # order, so populate-then-read must happen in ONE process — not across sibling
@@ -46,17 +47,28 @@ hooklog() {
 # `|| true`: an absent or failing orchestrator (e.g. a pre-relocation prior copy)
 # must never turn this hook non-zero — a non-zero SessionStart exit makes Claude
 # Code discard the stdout the steps just emitted into the session context.
-fan_out() { [ -f "$dest/session-start.sh" ] && bash "$dest/session-start.sh" || true; }
+fan_out() {
+  local s
+  for s in "$dest/mount/session-start.sh" "$dest/session-start.sh"; do
+    if [ -f "$s" ]; then bash "$s" || true; return 0; fi
+  done
+  return 0
+}
 
 hooklog sync "start ref=$REF"
 if curl -fsSL --retry 2 --max-time 30 "$URL" -o "$tmp/c.tgz" 2>/dev/null \
    && tar -tzf "$tmp/c.tgz" >/dev/null 2>&1; then
   rm -rf "$dest.new"; mkdir -p "$dest.new"
   tar -xzf "$tmp/c.tgz" -C "$dest.new" --strip-components=1
-  # The tracked copy of this hook wins over the tarball's, so a canon update never
-  # dirties the consumer's working tree mid-cycle — the nightly re-bootstrap is
-  # this file's update path. (.gitkeep: legacy pre-relocation marker, preserved
-  # until the re-bootstrap migration removes it.)
+  # The consumer's tracked copy of this hook wins over the tarball's, so a canon
+  # update never dirties their working tree mid-cycle — the nightly re-bootstrap is
+  # this file's update path. The tracked copy now lives at mount/; the pre-mount
+  # root path and the legacy .gitkeep marker are preserved too, so a not-yet-
+  # migrated tree also stays clean until baselining relocates it.
+  if [ -f "$dest/mount/sync-claudinite.sh" ]; then
+    mkdir -p "$dest.new/mount"
+    cp "$dest/mount/sync-claudinite.sh" "$dest.new/mount/sync-claudinite.sh"
+  fi
   [ -f "$dest/sync-claudinite.sh" ] && cp "$dest/sync-claudinite.sh" "$dest.new/sync-claudinite.sh"
   [ -f "$dest/.gitkeep" ] && cp "$dest/.gitkeep" "$dest.new/.gitkeep"
   rm -rf "$dest"; mv "$dest.new" "$dest"

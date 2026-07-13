@@ -20,14 +20,14 @@ repo has moved**.
 ## A baseline migration
 
 ```js
-// migrations/2026-07-12-sync-hook-relocation.mjs
+// migrations/2026-07-13-mount-folder-relocation.mjs
 export default {
-  id: 'sync-hook-relocation',
-  landed: '2026-07-12',                 // date it merged to canon (YYYY-MM-DD)
-  summary: 'sync hook moved from .claude/hooks/ into .claudinite/',
-  aliases: [{ canonical: '.claudinite/sync-claudinite.sh',
-              legacy: ['.claude/hooks/sync-claudinite.sh'] }],
-  legacyPresent: async (exists) => exists('.claude/hooks/sync-claudinite.sh'),
+  id: 'mount-folder-relocation',
+  landed: '2026-07-13',                 // date it merged to canon (YYYY-MM-DD)
+  summary: 'sync hook + orchestrator + env-setup bundled into .claudinite/mount/',
+  aliases: [{ canonical: '.claudinite/mount/sync-claudinite.sh',
+              legacy: ['.claudinite/sync-claudinite.sh', '.claude/hooks/sync-claudinite.sh'] }],
+  legacyPresent: async (exists) => exists('.claudinite/sync-claudinite.sh'),
   retire: 'auto',                       // default; 'manual' when tolerance is still inline
 };
 ```

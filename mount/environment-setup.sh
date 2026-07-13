@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # GENERIC Claudinite cloud environment setup — identical across projects and
-# owned by the corpus. It lives here (synced into every consumer's .claudinite/),
-# so a project commits NO copy of its own; it only wires the SessionStart check
+# owned by the corpus. It lives here (synced into every consumer's
+# .claudinite/mount/), so a project commits NO copy of its own; it only wires the
+# SessionStart check
 # hook and pastes this body into its environment.
 #
 # HOW TO USE: copy this full body into the Claude Code Web environment's "Setup
@@ -19,12 +20,10 @@ cd "$root"
 
 # 1. Prime the Claudinite corpus so the pack env declarations + env.mjs exist
 #    before the first session (the SessionStart sync keeps it current after).
-#    Current layout first; fall back to the legacy pre-relocation hook path.
-if [ -f .claudinite/sync-claudinite.sh ]; then
-  bash .claudinite/sync-claudinite.sh || true
-else
-  bash .claude/hooks/sync-claudinite.sh || true
-fi
+#    Current layout first; fall back through the legacy pre-relocation paths.
+for h in .claudinite/mount/sync-claudinite.sh .claudinite/sync-claudinite.sh .claude/hooks/sync-claudinite.sh; do
+  [ -f "$h" ] && { bash "$h" || true; break; }
+done
 
 # 2. Generated-file merge hygiene — universal, cheap, harmless where unused: the
 #    `ours` driver .gitattributes maps GENERATED files to, plus conflict-replay.

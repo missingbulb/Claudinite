@@ -25,6 +25,9 @@
 # the injected directives, never the exit code.
 set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# This script lives in <corpus>/mount/; the step scripts stay in their domains one
+# level up (<corpus>/preferences, <corpus>/packs, <corpus>/skills).
+corpus="$(dirname "$here")"
 
 # --- durable hook log (format mirrored in sync-claudinite.sh and
 # --- checks/lib/hooklog.mjs — keep the three in step). Lives at the project
@@ -59,10 +62,10 @@ run_step() {
 }
 
 hooklog orchestrator "start"
-run_step inject-preferences bash "$here/preferences/inject-preferences.sh"
-run_step load-active-prose  node "$here/packs/load-active-prose.mjs"
-run_step mount-skills       node "$here/skills/mount-skills.mjs"
-run_step env-check          node "$here/packs/env.mjs" check
+run_step inject-preferences bash "$corpus/preferences/inject-preferences.sh"
+run_step load-active-prose  node "$corpus/packs/load-active-prose.mjs"
+run_step mount-skills       node "$corpus/skills/mount-skills.mjs"
+run_step env-check          node "$corpus/packs/env.mjs" check
 hooklog orchestrator "done"
 
 # One terse, visible confirmation into the session context that the harness ran

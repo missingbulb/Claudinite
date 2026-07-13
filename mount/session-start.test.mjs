@@ -6,15 +6,19 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
-const REPO_ROOT = dirname(fileURLToPath(import.meta.url));
+// This test lives at <repo>/mount/session-start.test.mjs.
+const MOUNT_DIR = dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = dirname(MOUNT_DIR);
 
-// A hermetic corpus: the REAL session-start.sh (it self-locates via BASH_SOURCE)
-// plus tiny STUB steps at the exact paths it invokes, so the test exercises the
+// A hermetic corpus mirroring the real layout: the REAL mount/session-start.sh
+// (it self-locates via BASH_SOURCE and resolves its steps one level up, at the
+// corpus root) plus tiny STUB steps in their domains, so the test exercises the
 // ORCHESTRATOR's own contract — sequence, stdout forwarding, lifecycle logging,
 // exit 0 — without dragging in the real children and their dependencies.
 function makeCorpus({ prefs = '#!/bin/bash\n', prose = '', skills = '', env = '' } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-sessionstart-'));
-  copyFileSync(join(REPO_ROOT, 'session-start.sh'), join(root, 'session-start.sh'));
+  mkdirSync(join(root, 'mount'), { recursive: true });
+  copyFileSync(join(MOUNT_DIR, 'session-start.sh'), join(root, 'mount', 'session-start.sh'));
   mkdirSync(join(root, 'preferences'), { recursive: true });
   mkdirSync(join(root, 'packs'), { recursive: true });
   mkdirSync(join(root, 'skills'), { recursive: true });
@@ -26,7 +30,7 @@ function makeCorpus({ prefs = '#!/bin/bash\n', prose = '', skills = '', env = ''
 }
 
 function run(corpus, projectDir, env = {}) {
-  return spawnSync('bash', [join(corpus, 'session-start.sh')], {
+  return spawnSync('bash', [join(corpus, 'mount', 'session-start.sh')], {
     encoding: 'utf8',
     env: { ...process.env, CLAUDE_PROJECT_DIR: projectDir, CLAUDINITE_HOOK_RUN: 'testrun', ...env },
   });
