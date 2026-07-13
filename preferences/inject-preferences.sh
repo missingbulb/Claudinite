@@ -13,10 +13,12 @@
 set -euo pipefail
 
 emit_halt() {
-  # SessionStart stdout is added to the session context; the assistant acts on it. The
-  # message is plain text (no double quotes or backslashes) so it embeds in the JSON
-  # string directly.
-  printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$1"
+  # SessionStart stdout is added to the session context; the assistant acts on it.
+  # Emit plain text (not a JSON additionalContext envelope) so this step's output
+  # merges cleanly with the other steps' prose when the session-start orchestrator
+  # forwards every step's stdout through one hook — a single hook's stdout must not
+  # be a mix of JSON and prose, or none of it parses as structured output.
+  printf '%s\n' "$1"
 }
 halt_directive="STOP: before running any other tool, answering, or starting the requested task, use the AskUserQuestion tool to ask the user whether to proceed without their preferences or pause and fix it first; do not proceed until they answer."
 
@@ -29,8 +31,8 @@ fi
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 prefs="$here/$email.md"
 if [ ! -f "$prefs" ]; then
-  # Strip any double quotes/backslashes from the email before embedding it in the JSON
-  # message, so an unusual address can't break the payload.
+  # Strip any double quotes/backslashes from the email before embedding it in the
+  # message, so an unusual address stays tidy in the injected text.
   safe_email="$(printf '%s' "$email" | tr -d '"\\')"
   emit_halt "PREFERENCES NOT LOADED: no preferences file for ${safe_email} was found beside this hook, so this user's interaction preferences were not injected this session. ${halt_directive}"
   exit 0

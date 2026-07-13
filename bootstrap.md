@@ -1,8 +1,8 @@
 # Adopting Claudinite
 
-How a consuming repo bootstraps these shared guidelines. Bootstrapping is **idempotent** — safe to re-run on a fresh repo or one that already adopted Claudinite (re-running is also how an existing repo picks up changes to these steps). Two kinds of step: a **generated artifact** that Claudinite owns (the tracked `.claudinite/sync-claudinite.sh` hook) is re-written to match its canonical source every run, so baselining refreshes a stale copy — and corrects its `settings.json` registration when it still points at the legacy `.claude/hooks/` path; **your own config** (the `@.claudinite/CLAUDE.md` import line, other `settings.json` entries) is only added to what's missing, never clobbered. Re-running never duplicates work.
+How a consuming repo bootstraps these shared guidelines. Bootstrapping is **idempotent** — safe to re-run on a fresh repo or one that already adopted Claudinite (re-running is also how an existing repo picks up changes to these steps). Two kinds of step: a **generated artifact** that Claudinite owns (the tracked `.claudinite/sync-claudinite.sh` hook) is re-written to match its canonical source every run, so baselining refreshes a stale copy — and corrects its `settings.json` registration when it still points at the legacy `.claude/hooks/` path, and consolidates the `SessionStart` array to the single orchestrator entry ([Part 2](#part-2--sessionstart-context-via-one-orchestrator-both-methods)); **your own config** (the `@.claudinite/CLAUDE.md` import line, other `settings.json` entries) is only added to what's missing, never clobbered. Re-running never duplicates work.
 
-Two parts: **(1)** mount the corpus — pick Method A or B by where your sessions run; **(2)** register the preferences SessionStart hook (same for both methods). Do both.
+Two parts: **(1)** mount the corpus — pick Method A or B by where your sessions run; **(2)** register the single `SessionStart` orchestrator entry that runs the context steps (same for both methods). Do both.
 
 Pick the method for where your sessions run. **Claude Code on the web → Method B** (the submodule clone 403s on cloud, where the git credential is scoped to the session's own repo).
 
@@ -34,7 +34,7 @@ chmod +x .claudinite/sync-claudinite.sh
 
 **Prerequisite — `codeload.github.com` must be reachable.** The sync fetches over plain HTTPS from `codeload.github.com` (and, for a private Claudinite, needs auth). In a managed/remote environment behind an egress proxy this can 403 when the host isn't allowlisted, so the environment's **network policy must allowlist `codeload.github.com` / `github.com`** — otherwise every session's sync fails and the repo silently runs vanilla until a prior local copy or the not-loaded directive catches it.
 
-**2.** Register it in `.claude/settings.json`. Invoke it **through `bash`**, not as a bare path — a bare path requires the file's exec bit, so a checkout that drops it (or a committed-mode drift to `100644`) makes the hook fail at launch with `Permission denied` *before line 1*, which swallows its own "not loaded" directive. The `bash` prefix is mode-independent and lets that directive surface. If an entry still points at the legacy `.claude/hooks/sync-claudinite.sh` path, **or invokes the hook as a bare path** (`$CLAUDE_PROJECT_DIR/.claudinite/sync-claudinite.sh` with no interpreter), **fix that entry in place** — this is the one settings entry baselining corrects rather than leaves alone:
+**2.** Register it in `.claude/settings.json` as the **single** `SessionStart` entry: it syncs the corpus and then fans out to the session-start steps (preferences, prose, skills, env check) by calling `.claudinite/session-start.sh` — see [Part 2](#part-2--sessionstart-context-via-one-orchestrator-both-methods) for why that fan-out lives in one process and not in sibling hook entries. Invoke it **through `bash`**, not as a bare path — a bare path requires the file's exec bit, so a checkout that drops it (or a committed-mode drift to `100644`) makes the hook fail at launch with `Permission denied` *before line 1*, which swallows its own "not loaded" directive. The `bash` prefix is mode-independent and lets that directive surface. If an entry still points at the legacy `.claude/hooks/sync-claudinite.sh` path, **or invokes the hook as a bare path** (`$CLAUDE_PROJECT_DIR/.claudinite/sync-claudinite.sh` with no interpreter), **fix that entry in place**; and remove the now-redundant separate context entries per Part 2 — these are the `SessionStart` edits baselining makes in place rather than leaving alone (scoped to Claudinite-owned commands only):
 
 ```json
 { "hooks": { "SessionStart": [ { "hooks": [
@@ -42,7 +42,7 @@ chmod +x .claudinite/sync-claudinite.sh
 ] } ] } }
 ```
 
-**3.** Track the hook while gitignoring everything else it syncs (idempotent). The `/.claudinite/*` + `!/.claudinite/sync-claudinite.sh` pair keeps just the hook under version control, so the repo carries a one-glance signal that it mounts Claudinite while the synced corpus underneath stays out of git:
+**3.** Track the hook while gitignoring everything else it syncs (idempotent). The `/.claudinite/*` + `!/.claudinite/sync-claudinite.sh` pair keeps just the hook under version control, so the repo carries a one-glance signal that it mounts Claudinite while the synced corpus underneath stays out of git; the root `.claudinite-hooks.log` the hooks write (kept outside `.claudinite/` so the sync's dir swap can't wipe it) is ignored alongside it:
 
 ```sh
 # Drop rules from earlier bootstraps: a bare `.claudinite/` wholesale-ignore blocks
@@ -52,7 +52,7 @@ if [ -f .gitignore ]; then
   grep -vxE '\.claudinite/|\.claudinite\.new/|!/\.claudinite/\.gitkeep' .gitignore > .gitignore.tmp || true
   mv .gitignore.tmp .gitignore
 fi
-for rule in '/.claudinite/*' '!/.claudinite/sync-claudinite.sh' '/.claudinite.new/'; do
+for rule in '/.claudinite/*' '!/.claudinite/sync-claudinite.sh' '/.claudinite.new/' '/.claudinite-hooks.log' '/.claudinite-hooks.log.tmp'; do
   grep -qxF "$rule" .gitignore 2>/dev/null || echo "$rule" >> .gitignore
 done
 git add .claudinite/sync-claudinite.sh
@@ -83,26 +83,40 @@ This self-check lives in the consumer's own tracked `CLAUDE.md` — the one file
 
 **Pinning a branch/tag/SHA:** set `CLAUDINITE_REF` in the environment — the hook fetches `.../tar.gz/$CLAUDINITE_REF`, and codeload accepts any ref there. Never hand-edit the hook to pin: it's canon-owned, and baselining overwrites it.
 
-## Part 2 — SessionStart context hooks (both methods)
+## Part 2 — SessionStart context, via one orchestrator (both methods)
 
-Two SessionStart hooks inject context automatically each session, so no behavior rides on the agent remembering to read a file. Both ship **inside Claudinite** and self-locate, so there is nothing to copy — you only register them in your repo's own `.claude/settings.json`, and both must run **after** `.claudinite/` is populated (see ordering below).
+Several things happen at session start: whatever **populates** `.claudinite/`, then the steps that **read** it — preferences, active-pack prose (Part 5), skill mounts (Part 7), the env check (Part 8). The readers must run *after* the corpus is present. Here is the trap that made "the harness randomly didn't load this session" a recurring bug:
 
-- **Preferences** — the owner's per-user interaction preferences live in `.claudinite/preferences/<email>.md`. The hook `.claudinite/preferences/inject-preferences.sh` expands `CLAUDE_CODE_USER_EMAIL`, reads the matching file, and prints it to stdout (which Claude Code adds to the session context). When it **can't** inject them — no `CLAUDE_CODE_USER_EMAIL`, or no matching `<email>.md` — it doesn't silently skip; it fires the halt-gate below so the session doesn't proceed unaware.
-- **Active-pack prose** — every pack the project declares in `.claudinite-checks.json` carries its guidance as `RULES.md` prose, and that includes the `basics` baseline (working discipline, the task lifecycle): **no pack is active by default** — Part 6's `--init` seeds the `basics` declaration and its backfill step adds it to a pre-existing file. The hook `.claudinite/packs/load-active-prose.mjs` emits the active packs' prose each session. **Without this hook, declaring a pack has no effect** — the `@.claudinite/CLAUDE.md` import pulls only the corpus *index*, never a pack's prose, not even the basics baseline. This is the hook Part 5's "its prose then loads every session" relies on.
+> **Claude Code runs the entries in a `SessionStart` array IN PARALLEL, with non-deterministic order** — "all matching hooks run in parallel… the order is non-deterministic" (the Claude Code hooks docs). **Array position is not execution order.** So a populate-then-read chain spread across sibling hook entries is a *race*, not a sequence: the readers fire before — or during — the sync's directory swap, hit an absent `.claudinite/`, and fail soft to nothing.
 
-> **The halt-gate capability.** A SessionStart hook **cannot** block the session or prompt interactively — no exit code halts session start (exit 2 only prints stderr to the *user*, which never reaches the assistant's context). But a hook's **stdout is injected into the session context**. So when a hook can't do its job, instead of failing silently it emits JSON — `{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"…"}}` — whose message directs the assistant to **STOP and use `AskUserQuestion`** before doing any work. The assistant carries out the confirmation the hook itself can't, turning an un-blockable hook into an effective, in-your-face gate. Both `sync-claudinite.sh` (Method B, when the sync fails and no local copy exists) and `inject-preferences.sh` (when preferences can't be injected) use exactly this. Keep the message plain text — no double quotes or backslashes — so it embeds in the JSON string without escaping.
+The fix is structural, not a matter of ordering the array: **every corpus-dependent step runs inside one script, `.claudinite/session-start.sh`, in sequence, in a single process.** Ordering lives in that process, never across hook entries. Each step's stdout is forwarded through the one hook (SessionStart adds it to the session context), and each logs a timestamp + what it is doing to `.claudinite-hooks.log` (see below). So a consumer registers exactly **one** `SessionStart` entry — the one that populates the corpus and then calls the orchestrator:
 
-Register both — and, for Method B, the `sync-claudinite.sh` entry first — in one `SessionStart` array. Hooks run in array order, and both context hooks must come **after** whatever populates `.claudinite/`:
+- **Method B:** the single entry is the sync hook from Part 1. It syncs, then calls `session-start.sh`. Nothing else goes in the `SessionStart` array.
 
 ```json
 { "hooks": { "SessionStart": [ { "hooks": [
-  { "type": "command", "command": "bash $CLAUDE_PROJECT_DIR/.claudinite/sync-claudinite.sh" },
-  { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claudinite/preferences/inject-preferences.sh" },
-  { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/packs/load-active-prose.mjs" }
+  { "type": "command", "command": "bash $CLAUDE_PROJECT_DIR/.claudinite/sync-claudinite.sh" }
 ] } ] } }
 ```
 
-**Method A:** drop the `sync-claudinite.sh` entry and make sure `git submodule update --init --recursive` (your setup/SessionStart step that populates `.claudinite/`) runs before the two context hooks.
+- **Method A:** the single entry populates the submodule and then orchestrates, sequenced with `&&` **inside one command** (one process, not two racing entries):
+
+```json
+{ "hooks": { "SessionStart": [ { "hooks": [
+  { "type": "command", "command": "git -C $CLAUDE_PROJECT_DIR submodule update --init --recursive .claudinite && bash $CLAUDE_PROJECT_DIR/.claudinite/session-start.sh" }
+] } ] } }
+```
+
+**Remove the redundant entries — the one `SessionStart` cleanup baselining applies in place.** Earlier bootstraps registered `inject-preferences.sh`, `load-active-prose.mjs`, `mount-skills.mjs`, and `env.mjs check` as their *own* `SessionStart` entries. `session-start.sh` now runs all four, so those separate entries are redundant — and, being parallel, they re-introduce the very race. Delete any `SessionStart` entry whose command invokes one of those four Claudinite-owned scripts, leaving only the single populate-then-orchestrate entry above. **Scope the deletion to those exact Claudinite-owned commands — never touch a project's own hooks.**
+
+What the orchestrated steps do:
+
+- **Preferences** — the owner's per-user interaction preferences live in `.claudinite/preferences/<email>.md`. `.claudinite/preferences/inject-preferences.sh` expands `CLAUDE_CODE_USER_EMAIL`, reads the matching file, and prints it (which the orchestrator forwards to the session context). When it **can't** inject them — no `CLAUDE_CODE_USER_EMAIL`, or no matching `<email>.md` — it doesn't silently skip; it fires the halt-gate below so the session doesn't proceed unaware.
+- **Active-pack prose** — every pack the project declares in `.claudinite-checks.json` carries its guidance as `RULES.md` prose, including the `basics` baseline (working discipline, the task lifecycle): **no pack is active by default** — Part 6's `--init` seeds the `basics` declaration and its backfill step adds it to a pre-existing file. `.claudinite/packs/load-active-prose.mjs` emits the active packs' prose each session. **Without it, declaring a pack has no effect** — the `@.claudinite/CLAUDE.md` import pulls only the corpus *index*, never a pack's prose, not even the basics baseline. This is what Part 5's "its prose then loads every session" relies on.
+
+> **The halt-gate capability.** A SessionStart hook **cannot** block the session or prompt interactively — no exit code halts session start (exit 2 doesn't block, and worse, it makes Claude Code **discard the hook's stdout**, the very channel a step would use to speak up). But on a normal (exit 0) hook, **stdout is injected into the session context**. So when a step can't do its job, instead of failing silently it prints a **plain-text** directive telling the assistant to **STOP and use `AskUserQuestion`** before doing any work. The assistant carries out the confirmation the hook itself can't, turning an un-blockable hook into an effective, in-your-face gate. `sync-claudinite.sh` (sync failed, no local copy), `inject-preferences.sh` (preferences can't be injected), and `env.mjs check` (a prerequisite is missing) all use exactly this. The message is **plain text, not a JSON envelope**: the orchestrator forwards every step's stdout through one hook, and one hook's stdout that mixes JSON and prose parses as neither — so each step emits plain text that simply concatenates.
+
+**The durable hook log.** Every hook (the sync + orchestrator + its steps, and the `Stop`/`PreToolUse` guards) appends a timestamped line — `start`, `done exit=N`, an outcome note — to `.claudinite-hooks.log` at the project root (kept **outside** `.claudinite/` so the sync's dir swap never wipes it; gitignored in Part 1). It turns an intermittent failure into something inspectable: **no lines at all** for a session ⇒ the hook never *triggered*; a `start` with no matching `done` ⇒ it triggered but failed *executing*. That distinction is why the log exists — reach for it first when a session reports the harness didn't load.
 
 ## Part 3 — bespoke merge policy (optional, only if you diverge)
 
@@ -184,7 +198,7 @@ node -e 'const fs=require("fs"),f=".claudinite-checks.json";const j=JSON.parse(f
 
 ## Part 7 — mount the skills
 
-The corpus's procedures and knowledge surface as Agent Skills (the catalog lives in [skills/README.md](skills/README.md)), and the set a repo mounts is **derived from its active packs**: each pack declares the skills it requires (`skills` in its `pack.mjs` — the baseline skills ride `basics`), and the SessionStart hook [`skills/mount-skills.mjs`](skills/mount-skills.mjs) (re)generates `.claude/skills/<name>` symlinks for the union over the declared packs — created, retargeted, and removed as the declaration changes. The mounts are **session-generated, never committed**: a committed link dangles on every plain checkout (CI, a Pages deploy — the hazard `gha/pages-artifact-symlinks` guards), and a catalog or declaration change would need a commit in every consumer. The hook also maintains a self-ignoring `.claude/skills/.gitignore`, so the generated links never dirty the tree; entries it doesn't own — a project's own skills — are never touched.
+The corpus's procedures and knowledge surface as Agent Skills (the catalog lives in [skills/README.md](skills/README.md)), and the set a repo mounts is **derived from its active packs**: each pack declares the skills it requires (`skills` in its `pack.mjs` — the baseline skills ride `basics`), and the session-start step [`skills/mount-skills.mjs`](skills/mount-skills.mjs) (run by the Part 2 orchestrator) (re)generates `.claude/skills/<name>` symlinks for the union over the declared packs — created, retargeted, and removed as the declaration changes. The mounts are **session-generated, never committed**: a committed link dangles on every plain checkout (CI, a Pages deploy — the hazard `gha/pages-artifact-symlinks` guards), and a catalog or declaration change would need a commit in every consumer. The step also maintains a self-ignoring `.claude/skills/.gitignore`, so the generated links never dirty the tree; entries it doesn't own — a project's own skills — are never touched.
 
 **1.** Migrate the legacy committed symlinks (earlier bootstraps committed one per skill). Idempotent — a no-op on a current repo — and scoped so a project's own tracked skills are untouched:
 
@@ -194,11 +208,7 @@ for f in $(git ls-files .claude/skills); do
 done
 ```
 
-**2.** Register the hook in the `SessionStart` array of `.claude/settings.json` (skip if present). It must come **after** whatever populates `.claudinite/` — the sync entry for Method B, the submodule update for Method A — like the two context hooks of Part 2:
-
-```json
-{ "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/skills/mount-skills.mjs" }
-```
+**2.** No separate `SessionStart` entry — `mount-skills.mjs` runs as a step of `session-start.sh` (Part 2), so ordering after the corpus populates is already guaranteed. If a legacy standalone `SessionStart` entry for `mount-skills.mjs` survives, remove it per Part 2 (it re-introduces the parallel race).
 
 **3.** Run it once now, so the current session already has the mounts:
 
@@ -214,15 +224,9 @@ The web base image is minimal — it ships no Flutter SDK, a repo's `npm` module
 
 - **The corpus holds the one generic script** — [`environment-setup.sh`](environment-setup.sh), synced into every consumer's `.claudinite/`. It's identical for every project, so a project commits **no** copy of its own; it just wires the check hook (below) and pastes the corpus script into its environment.
 - **The packs hold the requirements.** A pack declares what it needs in an `env` field ([packs/README.md](packs/README.md#environment-requirements-env)); the generic script asks `packs/env.mjs install` to run whatever THIS repo's *active* packs declare. Per-toolchain logic lives in Claudinite, not the project.
-- **A SessionStart hook only asserts.** `env.mjs check` *probes* each requirement directly (Flutter on PATH, `node_modules` present) and, if one is missing, injects the halt-gate directive telling the assistant to have you re-paste. It never installs, and there is no version flag — the probes are the source of truth.
+- **A session-start step only asserts.** `env.mjs check` *probes* each requirement directly (Flutter on PATH, `node_modules` present) and, if one is missing, prints the halt-gate directive telling the assistant to have you re-paste. It never installs, and there is no version flag — the probes are the source of truth.
 
-**1.** Register the SessionStart assertion in `.claude/settings.json` (after `sync-claudinite.sh` populates `.claudinite/`, since it imports `env.mjs`):
-
-```json
-{ "hooks": { "SessionStart": [ { "hooks": [
-  { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/packs/env.mjs check" }
-] } ] } }
-```
+**1.** No separate `SessionStart` entry — `env.mjs check` runs as a step of `session-start.sh` (Part 2), which the sync entry calls after populating `.claudinite/` (env.mjs must load from the corpus). If a legacy standalone `SessionStart` entry for `env.mjs check` survives, remove it per Part 2.
 
 **2.** Give the packs any per-repo parameters they need in `.claudinite-checks.json` under `packConfig` — e.g. where the `node` pack should run `npm ci` (default: repo root):
 
