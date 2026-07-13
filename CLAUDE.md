@@ -28,6 +28,11 @@ pack-contributed content, and where each kind of feature goes (almost never core
 - **[packs/basics/](packs/basics/RULES.md)** — the baseline: working discipline, the task
   lifecycle, and the core checks. Declared explicitly like every other pack — bootstrap seeds
   the declaration, the nightly baselining backfills it into existing consumers.
+- **[packs/barriers/](packs/barriers/README.md)** — a mechanism pack: enforce a directed
+  folder-access graph (folder A may not reference folder B — imports, path/filename references, in
+  any language, comments and docs included), declared per-project in `packConfig.barriers`. Its
+  detection engine is exported so other packs compose their own separation rules on it (the way
+  `spec-driven-product` builds on `executable-requirements`).
 - **Technology packs**, active when the project declares them (bootstrap's `--init` seeds the
   declaration from a fingerprint): `chrome-extension` (MV3 coding gotchas, fingerprinted by the
   manifest), `chrome-extension-release` (the *opt-in* release/store standard in its

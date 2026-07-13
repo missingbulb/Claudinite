@@ -7,6 +7,7 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 | Pack | Active when | Checks | Prose rules |
 |---|---|---|---|
 | [basics](basics/README.md) | declared (seeded by `--init`) | 11 | ~8 (working-discipline + task-lifecycle) |
+| [barriers](barriers/README.md) | declared (or pulled in via `requires`) | 1 | 0 (config-driven segregation) |
 | [grow_with_claudinite](grow_with_claudinite/README.md) | declared (seeded by `--init`, opt-out by removal) | 0 | growth lifecycle daily tasks |
 | [tidy-repo](tidy-repo/README.md) | declared (seeded by `--init`, opt-out by removal) | 0 | policy (assess-only-vs-act) + tidy daily tasks |
 | [sheepdog](sheepdog/README.md) | declared (opt-in; the fleet-enforcer repo only) | 0 | fleet-enforcer marker + config + coverage workflow stub |
@@ -81,7 +82,7 @@ Wiring a consumer up — the check hook + `packConfig`, with the script pasted f
 
 | | Count |
 |---|---|
-| **Hardcoded conformance checks** | **30** (11 basics + 8 github-actions + 8 chrome-extension-release + 3 aws-sam) |
+| **Hardcoded conformance checks** | **31** (11 basics + 1 barriers + 8 github-actions + 8 chrome-extension-release + 3 aws-sam) |
 | PreToolUse guard | 1 (remote-branch-delete) |
 | Platform setting | 1 (squash-only) |
 | **Prose rules** — packs + practice skills + baseline | **~150** |
