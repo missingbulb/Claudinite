@@ -54,7 +54,11 @@ checks, in one Claudinite-only change:
    migration window.)
 
 Fleet-wide "everyone has migrated" telemetry now exists — declare the rename as a
-[baseline migration](migrations/README.md). The fleet-coverage census probes every repo for the legacy
+[baseline migration](migrations/README.md), **in the same change that introduces the tolerance**: a
+tolerance that lands without its record has no signal that will ever retire it, and the gap only
+resurfaces as a review question later. And not only for renames — any legacy shape a tolerance keeps
+readable (an old path, a stub's old form, a legacy key *inside* a consumer's config file) is trackable
+the same way, `legacyPresent` reading whatever expresses the old shape. The fleet-coverage census probes every repo for the legacy
 shape and **auto-retires** the migration (deletes its record) once none remain, so dropping a fully-applied
 tolerance is no longer a manual judgment call. While a migration's tolerance still lives inline
 (readers not yet consulting its `resolvePath`), keep it `retire:'manual'` and drop it deliberately;
