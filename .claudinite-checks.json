@@ -16,6 +16,11 @@
       "rule": "file-placement",
       "path": "growth/promote-scope.mjs",
       "reason": "the promote phase's diff-scope gate deliberately reuses the checks/ engine lib (context.mjs diff-scoping, findings.mjs) — the same cross-cutting concern as the packs/ and skills/ acceptances; it is co-located with growth/promote.md whose write surface it certifies, and reusing the engine's merge-base logic beats duplicating it"
+    },
+    {
+      "rule": "file-placement",
+      "path": "routines/fleet/plan.mjs",
+      "reason": "the core planner deliberately imports the pack-discovery registry (packs/registry.mjs — core machinery per extending.md, not a specific pack) to enumerate each repo's run_daily tasks; discovery lives under packs/ and the planner under routines/, so the cross-tree reach is inherent and correct, not a misplacement"
     }
   ]
 }

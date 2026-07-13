@@ -12,9 +12,10 @@ This is the `unattended-agents` rule, stated once here as the fleet's home for i
 
 So a **future daily / pack-based routine does not self-schedule.** In particular:
 
-- The **coverage census** ([fleet-coverage.yml](../../packs/sheepdog/stubs/fleet-coverage.yml)) —
-  `workflow_dispatch` only. It's the sheepdog repo's census arm (dispatched by
-  [the orchestrator](../auto-all-repos-maintenance.md)), and it also emits the work plan.
+- An **enforcer pack's coverage census** ([sheepdog's fleet-coverage.yml](../../packs/sheepdog/stubs/fleet-coverage.yml)) —
+  `workflow_dispatch` only, dispatched by [the orchestrator](../auto-all-repos-maintenance.md) as an
+  isolated concern. It audits fleet coverage; it does **not** build the work plan — that is the core
+  planner's job ([plan.mjs](plan.mjs)), which runs independently of any pack.
 - The **fleet bootstrap sweep** — sequenced by the routine, never scheduled.
 - **Every pack task's supporting GitHub Action** — e.g. `chrome-store-release`'s `Release to Chrome
   Store` workflow. A pack task that needs an Action declares it `workflow_dispatch`-only; the task's

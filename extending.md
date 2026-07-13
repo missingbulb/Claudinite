@@ -29,8 +29,8 @@ only to extend the *mechanism*, never to add one project's rule or task:
 | Pack discovery + prose injection | `packs/registry.mjs`, `packs/load-active-prose.mjs` | structural scan of `packs/*/pack.mjs`; SessionStart injection of active packs' prose |
 | Skill discovery + mounting | `skills/registry.mjs`, `skills/mount-skills.mjs` | structural scan; per-session symlink of the active packs' skill union |
 | Baseline-migration mechanism | [`migrations/`](migrations/README.md) | the read-side resolver, write-side rename, and fleet telemetry that auto-retires a relocation once every consumer has moved |
-| The run_daily planner | [`routines/fleet/`](routines/fleet/DESIGN.md) | assembles each repo's due tasks from its active packs, masks full-sweep, isolates a throwing gate, emits `plan.json`; owns no task |
-| The orchestrator | [`routines/auto-all-repos-maintenance.md`](routines/auto-all-repos-maintenance.md) | the single scheduled entry point — dispatches the census, reads the plan, fans out the units |
+| The run_daily planner | [`routines/fleet/`](routines/fleet/DESIGN.md) | goes over the reachable repos, assembles each one's due tasks from its active packs, masks full-sweep, isolates a throwing gate, emits the plan; pack-agnostic, owns no task, depends on no pack |
+| The orchestrator | [`routines/auto-all-repos-maintenance.md`](routines/auto-all-repos-maintenance.md) | the single scheduled entry point — runs the planner over the accessible fleet, reads the plan, fans out the units |
 | Bootstrap / baselining | [`bootstrap.md`](bootstrap.md), `checks/run.mjs --init` | adoption and the idempotent per-repo re-run |
 
 **The test for "is this core?"** — would *every* pack's content stop working without it? The
