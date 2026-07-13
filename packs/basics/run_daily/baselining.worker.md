@@ -15,9 +15,14 @@ API tooling (never a clone). Two shapes, same operation (the idempotent bootstra
 
 Then, for a covered member:
 
-- **Baseline migrations** — land each declared migration's consumer-side legacy→canonical rename over
-  the API (see [migrations/README.md](../../../migrations/README.md)); the census confirms fleet-wide
-  completion and retires the record.
+- **Baseline migrations** — land each declared migration's consumer-side write over the API (see
+  [migrations/README.md](../../../migrations/README.md)): legacy→canonical file renames, **materialize**
+  (vendor a pack's templates into the repo's own tree — copy each `template` from the mounted
+  `.claudinite/` to its `dest`, overwriting on drift), and **rewrite** (apply a migration's in-place
+  `from`→`to` replacements, preserving the rest of the file). Skip a migration whose `appliesTo`
+  gate is false for this repo. `migrations/apply.mjs` performs the identical writes in a local
+  checkout. The census confirms fleet-wide completion and retires the record (and any home files it
+  relocated).
 - **Align** — evaluate the repo against its declared packs' *current* checks (the same engine its Stop
   hook and CI run). Apply a failing check's own `fix` remedy, **never more**; a finding needing
   judgment becomes an issue in the member repo, not an edit.

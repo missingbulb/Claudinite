@@ -1,15 +1,18 @@
 name: Release to Chrome Store
 
-# The ONE thin stub of the chrome-extension-release standard. All the logic —
-# create-package, daily auto-release, and Chrome Web Store publish — lives in the
-# Claudinite canon as reusable workflows (referenced @main, so canon changes
-# apply here automatically). This file owns only the triggers; it passes NO repo
-# values. Every repo-specific value is declared explicitly in the REQUIRED
-# `.github/release.config` (six keys, no defaults) — copy this stub verbatim and
-# write that config. The zip asset name is derived from the config's `zip_path`,
-# and the build is always `npm run build`, so neither is a config key.
+# The ONE orchestrator of the chrome-extension-release standard. It owns only the
+# triggers; the logic — create-package, daily auto-release, and Chrome Web Store
+# publish — lives in the reusable workflows this repo carries alongside it in
+# `.github/workflows/` (all vendored from the chrome-extension-release pack, so
+# they run entirely inside this repo — no cross-repo `@main` dependency). This
+# file passes NO repo values. Every repo-specific value is declared explicitly in
+# the REQUIRED `.github/release.config` (five keys, no defaults) — the pack keeps
+# this whole set (`.github/workflows/` + `.github/actions/`) in sync, so treat it
+# as generated: edit the pack, not the copy. The zip asset name is derived from
+# the config's `zip_path`, and the build is always `npm run build`, so neither is
+# a config key.
 #
-# Three operations, one file:
+# Three operations, one entry point:
 #   * push to main            → create-package (a clean no-op unless the manifest
 #                               version was bumped, so ordinary pushes don't cut a
 #                               release — no per-repo manifest path in the trigger)
@@ -19,10 +22,10 @@ name: Release to Chrome Store
 #
 # The Actions-tab entry is named "Release to Chrome Store"; the failure reporter keys its
 # tracking issues on the per-operation names ("Release: Create Package", etc.)
-# baked into the canon reusable workflows, so collapsing to one file loses no
+# baked into the reusable workflows, so collapsing to one entry point loses no
 # per-operation triage.
 #
-# secrets: inherit passes the four CHROME_* store secrets through to the canon
+# secrets: inherit passes the four CHROME_* store secrets through to the reusable
 # workflows.
 #
 # A repo whose build bakes in per-environment config (e.g. an API base URL)
@@ -70,7 +73,7 @@ jobs:
     if: >-
       github.event_name == 'push' ||
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'package')
-    uses: missingbulb/Claudinite/.github/workflows/chrome-extension-release.yml@main
+    uses: ./.github/workflows/chrome-extension-create-package.yml
     # build_env: uncomment on this job and `daily` if the build needs repo config
     #   with:
     #     build_env: |
@@ -78,7 +81,7 @@ jobs:
 
   publish:
     if: github.event_name == 'workflow_dispatch' && inputs.mode == 'publish'
-    uses: missingbulb/Claudinite/.github/workflows/chrome-extension-publish-store.yml@main
+    uses: ./.github/workflows/chrome-extension-publish-store.yml
     with:
       tag: ${{ inputs.tag }}
       auto_publish: ${{ inputs.auto_publish }}
@@ -88,5 +91,5 @@ jobs:
     if: >-
       github.event_name == 'schedule' ||
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'daily')
-    uses: missingbulb/Claudinite/.github/workflows/chrome-extension-daily-release.yml@main
+    uses: ./.github/workflows/chrome-extension-daily-release.yml
     secrets: inherit

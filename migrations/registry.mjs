@@ -20,6 +20,24 @@ export async function loadMigrations() {
   return out;
 }
 
+// Sync counterpart to loadMigrations for the CHECK layer: checks run
+// synchronously (checks/run.mjs spreads `rule.run(ctx)`, never awaits it) and so
+// cannot await the dynamic import loadMigrations uses. `migrationActive(slug)` is
+// true while a migration whose file name carries `slug` is still present in this
+// directory — a check consults it to know whether an in-flight transition's
+// legacy shape is still tolerated. When the census auto-retires the migration
+// (deletes the file), this flips to false and the tolerance vanishes with it:
+// the resolver pattern, expressed synchronously.
+export function migrationActive(slug) {
+  try {
+    return readdirSync(dir).some(
+      (f) => f.endsWith('.mjs') && f !== 'registry.mjs' && !f.endsWith('.test.mjs') && f.includes(slug),
+    );
+  } catch {
+    return false;
+  }
+}
+
 // Read side — "prefer Y, fall back to X": the ordered list of acceptable paths
 // for a canonical target (canonical first, then its legacy aliases). A tolerance
 // point consults this instead of hardcoding its own LEGACY_* constant, so a
@@ -49,6 +67,47 @@ export async function applyFileAliases(migration, { exists, move }) {
     }
   }
   return moved;
+}
+
+// Write side — "vendor these pack templates into the repo": for each declared
+// materialization {template, dest}, copy the canon template to its destination
+// when the dest is missing or has drifted from the template (idempotent; a
+// hand-edited copy self-heals on the next pass). `readTemplate` reads from the
+// canon (the pack tree / mounted .claudinite), `read`/`write` act on the consumer
+// repo — the source and destination roots differ in a consumer, so they are
+// distinct injected readers. Gated by the migration's `appliesTo` so it only
+// touches repos that ship the pipeline (never the canon repo itself).
+export async function applyMaterializations(migration, { readTemplate, read, write }) {
+  if (!migration.materialize?.length) return [];
+  if (migration.appliesTo && !(await migration.appliesTo(read))) return [];
+  const done = [];
+  for (const { template, dest } of migration.materialize) {
+    const content = await readTemplate(template);
+    if (content == null) continue; // template missing (partial mount) — skip, never clobber with nothing
+    if ((await read(dest)) === content) continue; // already vendored, unchanged
+    await write(dest, content);
+    done.push(`${dest} <- ${template}`);
+  }
+  return done;
+}
+
+// Write side — "rewrite these refs in place": for each declared file, apply its
+// literal from->to replacements (only those whose `from` is still present),
+// writing back when anything changed. Idempotent — a no-op once every `from` is
+// gone. Preserves the rest of the file, so per-repo tweaks the template can't
+// carry (e.g. an uncommented build_env block) survive. Same `appliesTo` gate.
+export async function applyRewrites(migration, { read, write }) {
+  if (!migration.rewrite?.length) return [];
+  if (migration.appliesTo && !(await migration.appliesTo(read))) return [];
+  const done = [];
+  for (const { file, replace } of migration.rewrite) {
+    const text = await read(file);
+    if (text == null) continue;
+    let next = text;
+    for (const { from, to } of replace ?? []) next = next.split(from).join(to);
+    if (next !== text) { await write(file, next); done.push(file); }
+  }
+  return done;
 }
 
 // Retirement — the "smart, not overzealous" guard. A migration is retirable only

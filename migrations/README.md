@@ -37,15 +37,24 @@ export default {
 - **Read — "prefer Y, fall back to X".** [`resolvePath(migrations, canonical)`](registry.mjs) returns
   `[canonical, ...legacy]`. A tolerance point (a check, a script) consults this instead of hardcoding
   its own `LEGACY_*` constant, so the accepted shapes for a path are declared **once, here**.
-- **Write — "and rename X → Y".** [`applyFileAliases`](registry.mjs) moves each legacy file to its
-  canonical path when the legacy exists and the canonical doesn't. [`apply.mjs`](apply.mjs) runs it
-  over a checkout (`node migrations/apply.mjs`); idempotent, a no-op once done. In the fleet, the
-  **baselining** performs the equivalent rename over the GitHub API through its own idempotent
-  [bootstrap.md](../bootstrap.md) steps.
+- **Write — "and rename X → Y" (plus vendor and rewrite).** [`applyFileAliases`](registry.mjs) moves
+  each legacy file to its canonical path when the legacy exists and the canonical doesn't. Two more
+  write ops cover relocations a rename can't express:
+  [`applyMaterializations`](registry.mjs) **vendors** a pack's templates into the repo's own tree
+  (copies each `{ template, dest }` from the canon/mount to the consumer, overwriting on drift), and
+  [`applyRewrites`](registry.mjs) applies in-place `{ file, replace: [{ from, to }] }` edits
+  (repointing refs while preserving the rest of the file). Both honor an optional `appliesTo(read)`
+  gate so a migration only touches the repos it's meant for (never the canon itself).
+  [`apply.mjs`](apply.mjs) runs all three over a checkout (`node migrations/apply.mjs`); idempotent, a
+  no-op once done. In the fleet, the **baselining** performs the equivalent writes over the GitHub API
+  through its own idempotent [bootstrap.md](../bootstrap.md) / worker steps.
 - **Retire — the telemetry.** The [fleet-coverage census](../packs/sheepdog/check-fleet-coverage.mjs), which
   already visits every repo with an account-spanning token, evaluates each migration's `legacyPresent`
   across the fleet and reports how many repos still carry the legacy shape. When one is fully applied
-  it **deletes the migration file automatically** (see the guard below).
+  it **deletes the migration file automatically** — and, for a migration that relocated canon
+  plumbing into the consumers, first deletes the home-repo files it names in `retireDeletesFromHome`
+  (the automatic phase-2 cut: the canon ends with no leftovers once the fleet has vendored the copy).
+  See the guard below.
 
 ## The retirement guard (smart, not overzealous)
 
