@@ -72,7 +72,9 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
   - **config** — the pack's parameters (e.g. the dirs the `node` pack's `npm ci` runs in, the
     `barriers` pack's edge list). This is the home of what a legacy top-level `packConfig` key
     used to hold — the engine still reads that key, but baselining folds it into the entries
-    and nothing should keep authoring it.
+    and nothing should keep authoring it. The `pack-entry-config` baseline migration
+    ([migrations/](../migrations/README.md)) tracks the fleet's convergence; when it retires,
+    the key stops being a valid setting.
   - **rules** / **accept** — severity overrides and acceptances **motivated by declaring this
     pack**; they may name *any* rule (declaring pack A can require an exemption to pack B's
     check), and the entry is their provenance — the file says which declaration required which

@@ -58,7 +58,8 @@ function adoptionBody(fullName) {
 // owner is who to cover (default: the sheepdog repo's own owner); exclude is the repos
 // deliberately kept out (a full owner/name each, lowercased). This reads the home
 // repo's file raw (fetched over the API, no engine on hand), so it resolves the
-// entry itself — legacy top-level packConfig.sheepdog stays readable underneath.
+// entry itself — legacy top-level packConfig.sheepdog stays readable underneath
+// until the `pack-entry-config` baseline migration retires (drop the fallback then).
 // A missing config is an unreadable config: throw — absence is not consent to
 // cover everything.
 export function parseSheepdogConfig(cfg, home) {
