@@ -4,8 +4,8 @@
 // and skills/. This module is the GUARANTEE: any changed path outside packs/ or
 // skills/ fails the gate. The promote AGENT never runs it and needn't know it
 // exists — CI runs it automatically on the promote PR (checks-ci.yml, gated on
-// the growth-promote branch prefix). Per the unattended-agents skill, "Prose is
-// a request; the post-hoc diff check is the guarantee."
+// the growth-promote branch prefix). The corpus principle it enforces: prose is
+// a request; the post-hoc diff check is the guarantee.
 //
 // Why CI branch-gates it instead of registering it as a pack/skill check that
 // runs on every PR: the "packs/skills only" boundary is true for PROMOTE alone —
