@@ -45,12 +45,17 @@ hooklog() {
 
 # Run one step, forwarding its stdout to ours (→ session context) and logging
 # its lifecycle. A step failing (they fail soft) never aborts the rest — hence
-# no `set -e`.
+# no `set -e`. Tallies feed the one-line confirmation footer below.
+ran=0; labels=""; warns=""
 run_step() {
   local label="$1"; shift
   hooklog "$label" "start"
   "$@"
-  hooklog "$label" "done exit=$?"
+  local rc=$?
+  hooklog "$label" "done exit=$rc"
+  ran=$((ran + 1))
+  labels="${labels:+$labels, }$label"
+  [ "$rc" -ne 0 ] && warns="${warns:+$warns; }$label exited $rc"
 }
 
 hooklog orchestrator "start"
@@ -59,4 +64,13 @@ run_step load-active-prose  node "$here/packs/load-active-prose.mjs"
 run_step mount-skills       node "$here/skills/mount-skills.mjs"
 run_step env-check          node "$here/packs/env.mjs" check
 hooklog orchestrator "done"
+
+# One terse, visible confirmation into the session context that the harness ran
+# this session — the healthy-case counterpart to the loud halt directives. It
+# reports that the machinery ran (not that every step succeeded semantically — a
+# soft halt still exits 0), and flags any step that actually crashed.
+end_ts="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo '?')"
+summary="Claudinite session-start: ran $ran steps ($labels) at $end_ts."
+[ -n "$warns" ] && summary="$summary WARNING: $warns."
+printf '%s\n' "$summary"
 exit 0

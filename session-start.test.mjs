@@ -40,9 +40,12 @@ test('orchestrator runs steps in order, forwards only step stdout, logs the life
   const projectDir = mkdtempSync(join(tmpdir(), 'claudinite-proj-'));
   const r = run(corpus, projectDir);
   assert.equal(r.status, 0);
-  // Only the steps' stdout reaches the hook's stdout (→ session context); the
-  // timestamped log goes to stderr + the file, never stdout. Order preserved.
-  assert.equal(r.stdout, 'PREFS\nPROSE\n');
+  // Only the steps' stdout reaches the hook's stdout (→ session context), in
+  // order, followed by the one-line confirmation footer; the timestamped log
+  // goes to stderr + the file, never stdout.
+  assert.ok(r.stdout.startsWith('PREFS\nPROSE\n'), r.stdout);
+  assert.match(r.stdout, /^Claudinite session-start: ran 4 steps \(inject-preferences, load-active-prose, mount-skills, env-check\) at .+\.$/m);
+  assert.doesNotMatch(r.stdout, /WARNING/); // all steps exited 0
   const log = readFileSync(join(projectDir, '.claudinite-hooks.log'), 'utf8');
   for (const s of [
     'run=testrun orchestrator: start',
@@ -60,8 +63,10 @@ test('a failing step never aborts the orchestrator nor turns the hook non-zero',
   });
   const projectDir = mkdtempSync(join(tmpdir(), 'claudinite-proj-'));
   const r = run(corpus, projectDir);
-  assert.equal(r.status, 0);        // a non-zero SessionStart exit would discard the context
-  assert.equal(r.stdout, 'A\nB\n'); // later steps still ran and forwarded
+  assert.equal(r.status, 0);            // a non-zero SessionStart exit would discard the context
+  assert.ok(r.stdout.startsWith('A\nB\n'), r.stdout); // later steps still ran and forwarded
+  // The footer flags the crashed step so a semantic failure is visible in-context.
+  assert.match(r.stdout, /WARNING: inject-preferences exited 1/);
   const log = readFileSync(join(projectDir, '.claudinite-hooks.log'), 'utf8');
   assert.ok(log.includes('inject-preferences: done exit=1'), log);
 });
