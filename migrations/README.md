@@ -1,8 +1,11 @@
 # Baseline migrations (`migrations/`) — declared, self-retiring path relocations
 
-> The **baseline migrations** mechanism: named for *when* it runs — baselining applies and retires
-> each one. The directory and code identifiers stay `migrations/` / `*Migrations`; "baseline
-> migration" is what to call the mechanism.
+> The **baseline migrations** mechanism. The daily maintenance routine's own migration passes
+> ([`fleet-apply.mjs`](fleet-apply.mjs) + [`fleet-retire.mjs`](fleet-retire.mjs)) apply and retire each
+> one — no longer baselining or the coverage census. The records live in
+> [`active_migrations/`](active_migrations/); the machinery (this README, `registry.mjs`, `apply.mjs`,
+> the two fleet passes) reads cleanly beside them. The directory and code identifiers stay `migrations/`
+> / `*Migrations`; "baseline migration" is what to call the mechanism.
 
 When the canon renames or relocates an artifact that consumers hold their own copy of — a tracked
 file, a `settings.json` registration, a stub, a path a check or script references — the consumer's
@@ -13,14 +16,14 @@ Part-3b step in bootstrap) with **no single home and no signal for when it was s
 telemetry for 'everyone has migrated', so dropping a legacy tolerance later is a judgment call."*
 
 A **baseline migration** closes that gap: one declarative record per in-flight rename, discovered
-structurally (any `migrations/<file>.mjs`, like packs and skills), that supplies the read-side
-resolver, the write-side rename, and the fleet telemetry that **retires it automatically once every
-repo has moved**.
+structurally (any `migrations/active_migrations/<file>.mjs`, like packs and skills), that supplies the
+read-side resolver, the write-side rename, and the fleet telemetry that **retires it automatically once
+every repo has moved — and has stayed quiet for a cycle**.
 
 ## A baseline migration
 
 ```js
-// migrations/2026-07-13-mount-folder-relocation.mjs
+// migrations/active_migrations/2026-07-13-mount-folder-relocation.mjs
 export default {
   id: 'mount-folder-relocation',
   landed: '2026-07-13',                 // date it merged to canon (YYYY-MM-DD)
@@ -46,37 +49,42 @@ export default {
   (repointing refs while preserving the rest of the file). Both honor an optional `appliesTo(read)`
   gate so a migration only touches the repos it's meant for (never the canon itself).
   [`apply.mjs`](apply.mjs) runs all three over a checkout (`node migrations/apply.mjs`); idempotent, a
-  no-op once done. In the fleet, the **baselining** performs the equivalent writes over the GitHub API
-  through its own idempotent [bootstrap.md](../bootstrap.md) / worker steps.
-- **Retire — the telemetry.** The [fleet-coverage census](../packs/sheepdog/check-fleet-coverage.mjs), which
-  already visits every repo with an account-spanning token, evaluates each migration's `legacyPresent`
-  across the fleet and reports how many repos still carry the legacy shape. When one is fully applied
-  it **deletes the migration file automatically** — and, for a migration that relocated canon
-  plumbing into the consumers, first deletes the home-repo files it names in `retireDeletesFromHome`
-  (the automatic phase-2 cut: the canon ends with no leftovers once the fleet has vendored the copy).
-  See the guard below.
+  no-op once done. In the fleet, the **apply pass** ([`fleet-apply.mjs`](fleet-apply.mjs)) performs the
+  equivalent writes over the GitHub API — **phase 1** of the daily maintenance routine, before the pack
+  tasks — landing each member's whole set as **one commit** and honoring its `push`/`pr` delivery.
+- **Retire — the telemetry.** The **retire pass** ([`fleet-retire.mjs`](fleet-retire.mjs)) — **phase 3**
+  of the routine, after the pack tasks settle — evaluates each migration's `legacyPresent` across the
+  covered fleet and reports how many repos still carry the legacy shape. When one is fully applied **and
+  the apply pass touched it on no repo this cycle**, it **deletes the migration record automatically** —
+  and, for a migration that relocated canon plumbing into the consumers, first deletes the home-repo
+  files it names in `retireDeletesFromHome` (the automatic phase-2 cut: the canon ends with no leftovers
+  once the fleet has vendored the copy). See the guard below.
 
 ## The retirement guard (smart, not overzealous)
 
 `retirableMigrations` retires a migration only when **all** hold:
 
-1. the census classified **every** repo (`unknown === 0`) — an API error must never hide a holdout;
+1. the retire pass classified **every** repo (`unknown === 0`) — an API error must never hide a holdout;
 2. **zero** repos still carry the legacy shape;
-3. it landed **strictly before today** (≥ one nightly cycle, so a baselining pass has had a chance
-   to migrate everyone — a migration is never retired the night it lands); and
-4. `retire !== 'manual'`.
+3. the apply pass touched it on **no** repo this cycle (`appliedThisCycle` lacks its id) — so the cycle
+   that converges the last member (or crashes mid-apply) can never also retire it; one guaranteed-quiet
+   apply cycle always separates "last application" from the irreversible delete, and a transient
+   false-zero from a mid-run crash/delay can't trigger it;
+4. it landed **strictly before today** (≥ one nightly cycle, so an apply pass has had a chance to
+   migrate everyone — a migration is never retired the night it lands); and
+5. `retire !== 'manual'`.
 
 Set **`retire: 'manual'`** when the migration's tolerance still lives inline somewhere the resolver
 doesn't yet drive — deleting the record alone would strand that inline tolerance. Flip it to `'auto'`
 in the same change that wires the last reader to `resolvePath`. Auto-retirement deletes **only the
-migration file**; because a fully-wired migration's tolerance lives entirely in that file (via the
+migration record**; because a fully-wired migration's tolerance lives entirely in that file (via the
 resolver), the delete removes the record and the tolerance in one step.
 
 ## Adding one
 
-1. Drop a `migrations/<landed-date>-<slug>.mjs` exporting the spec above. Structural discovery picks it
-   up — no list to edit.
-2. Point every reader of the old path at `resolvePath(...)`; perform the consumer-side rename through
-   baselining's own steps (and `apply.mjs` for local checkouts).
+1. Drop a `migrations/active_migrations/<landed-date>-<slug>.mjs` exporting the spec above. Structural
+   discovery picks it up — no list to edit.
+2. Point every reader of the old path at `resolvePath(...)`; the apply pass performs the consumer-side
+   write (and `apply.mjs` does the same in a local checkout).
 3. Leave `retire: 'auto'` if the tolerance is fully expressed here; else `'manual'` with a comment
-   naming the inline holdouts. The census does the rest.
+   naming the inline holdouts. The retire pass does the rest.

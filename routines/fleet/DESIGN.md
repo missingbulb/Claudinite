@@ -262,19 +262,24 @@ packs/chrome-extension-release/
     store-release.mjs         ← the (gate, worker) descriptor
     store-release.worker.md   ← the "what to do" doc (defers to RELEASE.md)
 migrations/
-  <date>-tidy-repo-seed.mjs   ← one-time seed of tidy-repo into the existing fleet; census auto-retires it
-  registry.mjs                ← EXTENDED: legacyPresent also receives a content `read` (path-only migrations ignore it)
+  active_migrations/           ← the migration records (specs); the mechanism reads beside them
+    <date>-tidy-repo-seed.mjs  ← one-time seed of tidy-repo into the existing fleet; the retire pass auto-retires it
+  registry.mjs                 ← discovery + write ops + the retirement guard (quiescence-gated)
+  fleet-apply.mjs              ← phase-1 APPLY pass (fleet-wide, migrations-owned)
+  fleet-retire.mjs             ← phase-3 RETIRE pass (fleet-wide, migrations-owned)
 ```
 
-**Two separate walks — planning ≠ coverage.** The core **planner** (`plan.mjs`) walks the repos it can
-reach and plans over the covered ones; that is all it needs to decide the day's work. The enforcer
-pack's **census** (`check-fleet-coverage.mjs`) is a *different* walk with a *different* scope — the
-whole account, via the fleet PAT — to audit coverage, converge adoption issues, and run
-migration-retirement telemetry. They share the cross-repo primitives (`fleet-api.mjs`) but neither
-gates the other: the plan is built even when the census can't run, and vice-versa. (Earlier this was
-**one folded walk** that emitted the plan *inside* the census; that coupling is exactly what let a
-missing census workflow sink the whole plan, so the planner was split back out into core — held there
-now by the core⟂pack guard, `checks/test/core-independence.test.mjs`.)
+**Separate walks — planning ≠ coverage ≠ migrations.** The core **planner** (`plan.mjs`) walks the repos
+it can reach and plans over the covered ones; that is all it needs to decide the day's work. The enforcer
+pack's **census** (`check-fleet-coverage.mjs`) is a *different* walk with a *different* scope — the whole
+account, via the fleet PAT — to audit coverage and converge adoption issues (it does **one** thing —
+coverage; it carries no migration logic). The migration **apply** and **retire** passes
+(`../../migrations/fleet-apply.mjs`, `../../migrations/fleet-retire.mjs`) are two further standalone walks —
+phases 1 and 3 of the daily routine, migrations-owned. All share the cross-repo primitives
+(`fleet-api.mjs`) but none gates another: the plan is built even when the census can't run, and
+vice-versa. (Earlier this was **one folded walk** that emitted the plan *inside* the census; that coupling
+is exactly what let a missing census workflow sink the whole plan, so the planner was split back out into
+core — held there now by the core⟂pack guard, `checks/test/core-independence.test.mjs`.)
 
 ## Blast radius (it's small)
 
@@ -325,7 +330,7 @@ current fleet's universal tidy would regress to none. A **migration**
 - **While the migration is live**, baselining seeds `tidy-repo` into any member whose declaration
   lacks it (its idempotent bootstrap step, the way the framework already has baselining perform a
   migration's write).
-- The **fleet-coverage census** already runs each migration's `legacyPresent` across the fleet; here
+- The migration **retire pass** already runs each migration's `legacyPresent` across the fleet; here
   `legacyPresent` = "this member's declaration lacks `tidy-repo`." Once every member has converged it
   **auto-retires** the migration (deletes the record), and with the migration gone baselining
   stops seeding — so a **later removal is durable**.

@@ -4,17 +4,25 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const dir = dirname(fileURLToPath(import.meta.url));
 
-// Structural discovery, like packs/ and skills/: every migrations/<file>.mjs
-// (except this registry and any *.test.mjs) is a migration spec. Each returned
-// object carries its source `file` alongside the spec fields, so the census can
-// name the file to delete when it retires.
+// The migration specs live in a subfolder, so the mechanism (this registry,
+// apply.mjs, the fleet passes, the README) reads cleanly beside them and the
+// records are a self-contained set. Its name is exported so the retire pass can
+// build a record's repo-relative path (migrations/active_migrations/<file>).
+export const MIGRATIONS_SUBDIR = 'active_migrations';
+const specsDir = join(dir, MIGRATIONS_SUBDIR);
+const isSpec = (f) => f.endsWith('.mjs') && !f.endsWith('.test.mjs');
+// Tolerant of an absent/empty folder — once the fleet converges and every record
+// has retired, the (now-empty) folder may not be present in a checkout.
+const specFiles = () => { try { return readdirSync(specsDir).filter(isSpec).sort(); } catch { return []; } };
+
+// Structural discovery, like packs/ and skills/: every
+// migrations/active_migrations/<file>.mjs is a migration spec. Each returned object
+// carries its source `file` (basename) alongside the spec fields, so the retire
+// pass can name the record to delete.
 export async function loadMigrations() {
-  const files = readdirSync(dir)
-    .filter((f) => f.endsWith('.mjs') && f !== 'registry.mjs' && !f.endsWith('.test.mjs'))
-    .sort();
   const out = [];
-  for (const f of files) {
-    const spec = (await import(pathToFileURL(join(dir, f)).href)).default;
+  for (const f of specFiles()) {
+    const spec = (await import(pathToFileURL(join(specsDir, f)).href)).default;
     out.push({ file: f, ...spec });
   }
   return out;
@@ -29,13 +37,7 @@ export async function loadMigrations() {
 // (deletes the file), this flips to false and the tolerance vanishes with it:
 // the resolver pattern, expressed synchronously.
 export function migrationActive(slug) {
-  try {
-    return readdirSync(dir).some(
-      (f) => f.endsWith('.mjs') && f !== 'registry.mjs' && !f.endsWith('.test.mjs') && f.includes(slug),
-    );
-  } catch {
-    return false;
-  }
+  return specFiles().some((f) => f.includes(slug));
 }
 
 // Read side — "prefer Y, fall back to X": the ordered list of acceptable paths
@@ -111,21 +113,28 @@ export async function applyRewrites(migration, { read, write }) {
 }
 
 // Retirement — the "smart, not overzealous" guard. A migration is retirable only
-// when the whole fleet is proven done:
-//   - the census classified EVERY repo (unknownCount === 0) — an API error must
-//     not hide a repo still on the legacy shape;
+// when the whole fleet is proven done AND has been quiet for a full cycle:
+//   - the retire pass classified EVERY repo (unknownCount === 0) — an API error
+//     must not hide a repo still on the legacy shape;
 //   - ZERO repos still carry its legacy shape (pending.get(id) === 0);
-//   - it landed strictly before today (>= one nightly cycle, so at least one
-//     baselining pass has had a chance to migrate everyone); and
+//   - the apply pass touched it on NO repo this cycle (appliedThisCycle lacks its
+//     id) — so the cycle that converges the last member (or crashes mid-apply)
+//     can never also retire; one guaranteed-quiet apply cycle always separates
+//     "last application" from "retirement", and a transient false-zero from a
+//     mid-run crash/delay can't trigger an irreversible delete;
+//   - it landed strictly before today (>= one nightly cycle old); and
 //   - it opts into auto-retirement (retire !== 'manual'). A migration whose
 //     tolerance still lives inline elsewhere sets retire:'manual' so deleting
 //     this record alone can't strand that tolerance.
-// YYYY-MM-DD dates compare lexicographically == chronologically.
-export function retirableMigrations(migrations, { pending, unknownCount, today }) {
+// YYYY-MM-DD dates compare lexicographically == chronologically. `appliedThisCycle`
+// is a Set of migration ids the apply pass wrote to >=1 repo this run (empty when
+// the caller has no apply signal — then only the 0-pending/aged/auto guards apply).
+export function retirableMigrations(migrations, { pending, unknownCount, today, appliedThisCycle = new Set() }) {
   if (unknownCount > 0) return [];
   return migrations.filter((m) => {
     if ((m.retire ?? 'auto') !== 'auto') return false;
     if ((pending.get(m.id) ?? 0) > 0) return false;
+    if (appliedThisCycle.has(m.id)) return false;
     return String(today) > String(m.landed);
   });
 }

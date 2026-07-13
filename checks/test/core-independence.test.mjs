@@ -108,7 +108,6 @@ const ACCEPT = {
     ],
   },
   'routines/fleet/scheduling.md': { why: CENSUS_OK, names: ['pack:sheepdog', 'pack:github-actions', 'skill:unattended-agents'] },
-  'migrations/README.md': { why: CENSUS_OK, names: ['pack:sheepdog'] },
   'README.md': { why: CENSUS_OK, names: ['pack:sheepdog', 'pack:tidy-repo', 'pack:grow_with_claudinite', 'pack:basics'] },
   'extending.md': {
     why: DOC_CITES,
@@ -134,11 +133,12 @@ const ACCEPT = {
   '.github/workflows/chrome-extension-release.yml': { why: RELEASE, names: ['pack:chrome-extension', 'pack:chrome-extension-release'] },
   '.github/actions/read-release-config/read-config.mjs': { why: RELEASE, names: ['pack:chrome-extension-release'] },
 
-  // One-time seed migrations that name the pack they seed.
-  'migrations/2026-07-12-grow-with-claudinite-seed.mjs': { why: SEED_MIGRATION, names: ['pack:grow_with_claudinite'] },
-  'migrations/2026-07-12-tidy-repo-seed.mjs': { why: SEED_MIGRATION, names: ['pack:tidy-repo'] },
+  // One-time seed migrations that name the pack they seed (specs live in the
+  // active_migrations/ subfolder; the mechanism reads cleanly beside them).
+  'migrations/active_migrations/2026-07-12-grow-with-claudinite-seed.mjs': { why: SEED_MIGRATION, names: ['pack:grow_with_claudinite'] },
+  'migrations/active_migrations/2026-07-12-tidy-repo-seed.mjs': { why: SEED_MIGRATION, names: ['pack:tidy-repo'] },
   // The migration that vendors the release infra out of core (#276) — the RELEASE fix itself.
-  'migrations/2026-07-13-chrome-release-vendoring.mjs': { why: VENDOR_MIGRATION, names: ['pack:chrome-extension', 'pack:chrome-extension-release'] },
+  'migrations/active_migrations/2026-07-13-chrome-release-vendoring.mjs': { why: VENDOR_MIGRATION, names: ['pack:chrome-extension', 'pack:chrome-extension-release'] },
 
   // Engine/design docs citing packs/skills as examples — the "discuss later" set.
   'checks/DESIGN.md': {

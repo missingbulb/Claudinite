@@ -13,10 +13,10 @@
 // in the consumer's own .github/). The two coincide in the canon repo.
 //
 // Runs against a local checkout (a session, CI, or a future SessionStart
-// self-heal hook wired via bootstrap). The fleet baselining performs the same
-// writes over the GitHub API through the baselining worker's own steps; the
-// census then confirms completion (0 repos on the legacy shape) and retires the
-// migration.
+// self-heal hook wired via bootstrap). In the fleet the identical writes are
+// performed over the GitHub API by migrations/fleet-apply.mjs (phase 1 of the
+// daily routine); migrations/fleet-retire.mjs then confirms fleet-wide completion
+// (0 repos on the legacy shape, quiet for a cycle) and retires the record (phase 3).
 import { existsSync, renameSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';

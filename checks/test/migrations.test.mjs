@@ -52,6 +52,17 @@ test('retirableMigrations: blocked by unknowns, pending repos, same-day landing,
   // retire:'manual' opts out entirely.
   const manual = M({ id: 'x', landed: '2026-07-12', retire: 'manual' });
   assert.deepEqual(retirableMigrations([manual], { pending: clean, unknownCount: 0, today: '2026-07-13' }), []);
+  // Applied to >=1 repo THIS cycle blocks (the quiescence guard): the cycle that
+  // converges the last member can never also retire it.
+  assert.deepEqual(
+    retirableMigrations([base], { pending: clean, unknownCount: 0, today: '2026-07-13', appliedThisCycle: new Set(['x']) }),
+    [],
+  );
+  // ...but a clean cycle where it was applied to no one retires it.
+  assert.deepEqual(
+    retirableMigrations([base], { pending: clean, unknownCount: 0, today: '2026-07-13', appliedThisCycle: new Set() }).map((m) => m.id),
+    ['x'],
+  );
 });
 
 test('applyMaterializations: creates a dest from its template when missing or drifted; skips when equal; gated by appliesTo', async () => {
