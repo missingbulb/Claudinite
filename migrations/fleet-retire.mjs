@@ -21,16 +21,17 @@
 // unproven, so this pass retires nothing — retirement is irreversible, and a
 // missing apply signal must never be read as "the fleet is quiet".
 //
-// Dependency-free (global fetch, Node 20+); read-only toward every repo except the
-// home repo, where it deletes retired records + their retireDeletesFromHome files.
-// Needs FLEET_GITHUB_TOKEN with Contents write on the home repo (#239); until
-// granted it logs the grant hint and the core copies stay in place (harmless —
-// every consumer already runs off its own vendored copy by then).
+// It probes only the repos the maintenance routine hands it (as CLI args) — this
+// environment's repos, which the routine knows. It does NOT enumerate repos or reach
+// account-wide (that is the coverage census's separate job). Auth is the run's own
+// token; read-only toward every repo except the home repo (its own), where it deletes
+// retired records + their retireDeletesFromHome files.
+// Dependency-free (global fetch, Node 20+).
 
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { loadMigrations, retirableMigrations, MIGRATIONS_SUBDIR } from './registry.mjs';
-import { makeGh, paged, fileExists, isCovered } from '../routines/fleet/fleet-api.mjs';
+import { makeGh, fileExists } from '../routines/fleet/fleet-api.mjs';
 
 const APPLIED_PATH = 'migrations-applied.json'; // written by fleet-apply.mjs this cycle
 
@@ -133,45 +134,29 @@ export async function runRetirement(gh, home, migrations, covered, unknownCount,
     try {
       lines.push(await retireMigration(gh, home, m));
     } catch (e) {
-      lines.push(`could not auto-retire ${m.id}: ${e.message} — grant FLEET_GITHUB_TOKEN Contents write on ${home}`);
+      lines.push(`could not auto-retire ${m.id}: ${e.message} — the maintenance token needs Contents write on ${home}`);
     }
   }
   return [...lines, ...notes];
 }
 
-// Enumerate the covered fleet (skipping the home repo, forks, and archived repos),
-// classifying an unreachable repo as UNKNOWN — which blocks every retirement, so an
-// enumeration error can never hide a repo still on the legacy shape.
-async function coveredFleet(gh, home, owner) {
-  const mine = (await paged(gh, '/user/repos?affiliation=owner'))
-    .filter((r) => r.owner.login.toLowerCase() === owner);
-  const covered = []; const unknown = [];
-  for (const r of mine) {
-    const fullName = r.full_name.toLowerCase();
-    if (fullName === home.toLowerCase()) continue; // the canon doesn't mount itself
-    if (r.archived || r.fork) continue;
-    try {
-      if (await isCovered(gh, r.full_name)) covered.push(fullName);
-    } catch {
-      unknown.push(fullName);
-    }
-  }
-  return { covered, unknownCount: unknown.length };
-}
-
 async function main() {
-  const token = process.env.FLEET_GITHUB_TOKEN;
+  // The routine hands us the repos to probe (this environment's repos) as CLI args;
+  // we don't enumerate. Auth is the run's own token; the home repo (its own) is where
+  // retired records + relocated files are deleted. The routine must pass the COMPLETE
+  // managed set — retirement fires only when the whole set is clean, so a missing repo
+  // could hide drift; a partial list means the routine skips the retire pass.
+  const token = process.env.GITHUB_TOKEN;
   const home = process.env.GITHUB_REPOSITORY;
-  if (!token) throw new Error('FLEET_GITHUB_TOKEN is not set — the retire pass walks the whole account.');
+  const repos = process.argv.slice(2);
+  if (!token) throw new Error('GITHUB_TOKEN is not set');
   if (!home || !home.includes('/')) throw new Error('GITHUB_REPOSITORY is not set (owner/repo)');
   const gh = makeGh(token);
-  const owner = home.split('/')[0].toLowerCase();
   const today = new Date().toISOString().slice(0, 10);
 
-  const { covered, unknownCount } = await coveredFleet(gh, home, owner);
   const appliedThisCycle = readAppliedThisCycle();
   const migrations = await loadMigrations();
-  const lines = await runRetirement(gh, home, migrations, covered, unknownCount, today, appliedThisCycle);
+  const lines = await runRetirement(gh, home, migrations, repos, 0, today, appliedThisCycle);
 
   const summary = ['# Migration finalization', '', ...(lines.length ? lines.map((l) => `- ${l}`) : ['- nothing to retire'])].join('\n');
   console.log(summary);

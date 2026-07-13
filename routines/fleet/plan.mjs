@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 // The core run_daily PLANNER — Claudinite CORE, pack-agnostic.
 //
-// It does exactly one thing: go over the repos it can reach, and for each covered
-// member collect the maintenance actions its declared packs contribute, run each
-// action's "should I run" gate (pure code), and emit the day's work plan — a flat
-// list of units the orchestrator dispatches. That is the whole planner: enumerate
-// accessible repos → assemble each one's packs' run_daily tasks → run the gates →
-// emit units.
+// It does exactly one thing: over the repos the maintenance routine hands it (this
+// environment's repos), for each one collect the maintenance actions its declared
+// packs contribute, run each action's "should I run" gate (pure code), and emit the
+// day's work plan — a flat list of units the orchestrator dispatches. That is the
+// whole planner: for each given repo → assemble its packs' run_daily tasks → run the
+// gates → emit units. It does not enumerate repos or reach account-wide (that is the
+// coverage census's separate job).
 //
 // It is INDEPENDENT of any single pack. In particular it does not run, dispatch,
 // or depend on an enforcer pack's fleet-coverage census: that census is just one
@@ -20,7 +21,7 @@
 
 import { writeFileSync, appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { makeGh, paged, isCovered } from './fleet-api.mjs';
+import { makeGh } from './fleet-api.mjs';
 import { loadPacks } from '../../packs/registry.mjs';
 import { packTasks, assembleForRepo } from './registry.mjs';
 import { buildSignals, computeCanonChanged } from './signals.mjs';
@@ -76,51 +77,40 @@ export async function buildWorkPlan(gh, home, coveredRepos, homeRepo = null) {
   return { generatedAt: new Date().toISOString(), windowStartUtc: sinceIso, weekdayUtc, canonChanged, units, errors };
 }
 
-// Enumerate the repos this token can reach, keep the covered members (skipping
-// forks and archived repos), and plan over them. The home repo is planned too —
-// not via the coverage marker (the canon doesn't mount itself) but by virtue of
-// being home: its own .claudinite-checks.json declares its packs, and home-only
-// packs (declared nowhere else) are how fleet-facing central work rides the
-// ordinary planner instead of bespoke orchestrator steps. An unclassifiable repo
-// is skipped with a note — never fatal: one repo's probe error must not stop the
-// plan for the rest (unlike the census, the planner has no coverage verdict to
-// protect, so it stays resilient and always emits whatever plan it can).
-export async function planAccessibleFleet(gh, home) {
-  const mine = await paged(gh, '/user/repos?affiliation=owner');
-  const coveredRepos = []; const skipped = []; const unknown = [];
-  let homeRepo = null;
-  for (const r of mine.sort((a, b) => a.full_name.localeCompare(b.full_name))) {
-    if (home && r.full_name.toLowerCase() === home.toLowerCase()) { homeRepo = r; continue; } // planned last, with the fleet aggregate
-    if (r.archived || r.fork) { skipped.push(`${r.full_name} (${r.archived ? 'archived' : 'fork'})`); continue; }
-    try {
-      if (await isCovered(gh, r.full_name)) coveredRepos.push(r);
-    } catch (e) {
-      unknown.push(`${r.full_name} — ${e.message}`);
-    }
+// Fetch the details buildSignals needs (full_name, default_branch, pushed_at) for
+// each repo the routine handed us, then plan over them. The home repo, if present in
+// the list, is planned LAST (as homeRepo) so home-only packs' gates see the complete
+// fleet aggregate — by virtue of being home, not via the coverage marker (the canon
+// doesn't mount itself). A repo that can't be read is skipped with a note — never
+// fatal: one repo's error must not stop the plan for the rest.
+export async function planGivenRepos(gh, home, fullNames) {
+  const repos = []; const unknown = []; let homeRepo = null;
+  for (const full of fullNames) {
+    const { status, json } = await gh(`/repos/${full}`);
+    if (status !== 200 || !json?.full_name) { unknown.push(`${full} (status ${status})`); continue; }
+    if (home && full.toLowerCase() === home.toLowerCase()) { homeRepo = json; continue; } // planned last, with the fleet aggregate
+    repos.push(json);
   }
-  const plan = await buildWorkPlan(gh, home, coveredRepos, homeRepo);
-  return { plan, coveredCount: coveredRepos.length, skipped, unknown };
+  const plan = await buildWorkPlan(gh, home, repos, homeRepo);
+  return { plan, coveredCount: repos.length, unknown };
 }
 
 async function main() {
-  const token = process.env.FLEET_GITHUB_TOKEN || process.env.GITHUB_TOKEN;
+  // The routine (which knows this environment's repos) hands us the repos to plan
+  // over as CLI args; we don't enumerate. Auth is the run's own token.
+  const token = process.env.GITHUB_TOKEN;
   const home = process.env.GITHUB_REPOSITORY || '';
-  if (!token) {
-    throw new Error('No token set (FLEET_GITHUB_TOKEN or GITHUB_TOKEN). The planner enumerates the '
-      + 'repos the token can reach; give it one that spans the accessible fleet with Metadata + '
-      + 'Contents (read).');
-  }
+  if (!token) throw new Error('GITHUB_TOKEN is not set');
   const gh = makeGh(token);
-  const { plan, coveredCount, skipped, unknown } = await planAccessibleFleet(gh, home);
+  const { plan, coveredCount, unknown } = await planGivenRepos(gh, home, process.argv.slice(2));
   writeFileSync(PLAN_PATH, `${JSON.stringify(plan, null, 2)}\n`);
 
   const summary = [
-    `# Work plan — ${coveredCount} covered repo(s)`,
+    `# Work plan — ${coveredCount} repo(s)`,
     '',
     `**Units:** ${plan.units.length}${plan.canonChanged ? ' · canon changed' : ''}`
       + `${plan.errors.length ? ` · ${plan.errors.length} probe error(s)` : ''}`,
-    skipped.length ? `**Skipped (fork/archived):** ${skipped.join(', ')}` : '',
-    unknown.length ? `**Unclassified (probe errored — isolated, not planned):** ${unknown.join('; ')}` : '',
+    unknown.length ? `**Unreadable (skipped):** ${unknown.join('; ')}` : '',
   ].filter(Boolean).join('\n');
   console.log(summary);
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${summary}\n`);

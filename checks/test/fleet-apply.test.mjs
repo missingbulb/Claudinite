@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { applyToMember } from '../../migrations/fleet-apply.mjs';
+import { applyToRepo } from '../../migrations/fleet-apply.mjs';
 
 // The migration APPLY pass — phase 1 of the daily routine, migrations-owned (no
 // longer baselining's step). These cover the per-member logic: staging a whole
@@ -21,6 +21,7 @@ function memberMock({ files = {}, delivery = 'push', defaultBranch = 'main', mai
   const gh = async (path, opts = {}) => {
     const method = opts.method || 'GET';
     const p = path.split('?')[0];
+    if (/^\/repos\/[^/]+\/[^/]+$/.test(p) && method === 'GET') return { status: 200, json: { default_branch: defaultBranch } };
     if (p.includes('/contents/')) {
       const rel = p.split('/contents/')[1];
       if (rel === '.claudinite-checks.json') {
@@ -45,11 +46,9 @@ function memberMock({ files = {}, delivery = 'push', defaultBranch = 'main', mai
   return { gh, state };
 }
 
-const repo = { full_name: 'o/r', default_branch: 'main' };
-
-test('applyToMember (push): one commit on the default branch, the migration id returned', async () => {
+test('applyToRepo (push): one commit on the default branch, the migration id returned', async () => {
   const { gh, state } = memberMock({ files: { '.github/w.yml': 'uses: X@main\n' } });
-  const { ids } = await applyToMember(gh, repo, [rwMig]);
+  const { ids } = await applyToRepo(gh, 'o/r', [rwMig]);
   assert.deepEqual(ids, ['rw']);
   assert.equal(state.commits.length, 1, 'exactly one commit for the whole set');
   assert.match(state.refUpdated.path, /\/git\/refs\/heads\/main$/);
@@ -59,26 +58,26 @@ test('applyToMember (push): one commit on the default branch, the migration id r
   assert.equal(Buffer.from(state.blobs[0].content, 'base64').toString('utf8'), 'uses: ./x\n');
 });
 
-test('applyToMember (pr): creates the maintenance branch + PR, commits there', async () => {
+test('applyToRepo (pr): creates the maintenance branch + PR, commits there', async () => {
   const { gh, state } = memberMock({ files: { '.github/w.yml': 'uses: X@main\n' }, delivery: 'pr' });
-  const { ids } = await applyToMember(gh, repo, [rwMig]);
+  const { ids } = await applyToRepo(gh, 'o/r', [rwMig]);
   assert.deepEqual(ids, ['rw']);
   assert.equal(state.branchCreated, true);
   assert.match(state.refUpdated.path, /\/git\/refs\/heads\/claudinite\/maintenance$/);
   assert.equal(state.prCreated, true);
 });
 
-test('applyToMember: a member already on the canonical shape is a no-op (no commit)', async () => {
+test('applyToRepo: a member already on the canonical shape is a no-op (no commit)', async () => {
   const { gh, state } = memberMock({ files: { '.github/w.yml': 'uses: ./x\n' } });
-  const { ids } = await applyToMember(gh, repo, [rwMig]);
+  const { ids } = await applyToRepo(gh, 'o/r', [rwMig]);
   assert.deepEqual(ids, []);
   assert.equal(state.commits.length, 0);
   assert.equal(state.refUpdated, null);
 });
 
-test('applyToMember: an unrecognized delivery opens an issue and applies nothing', async () => {
+test('applyToRepo: an unrecognized delivery opens an issue and applies nothing', async () => {
   const { gh, state } = memberMock({ files: { '.github/w.yml': 'uses: X@main\n' }, delivery: 'weird' });
-  const { ids, note } = await applyToMember(gh, repo, [rwMig]);
+  const { ids, note } = await applyToRepo(gh, 'o/r', [rwMig]);
   assert.deepEqual(ids, []);
   assert.equal(state.issueCreated, true);
   assert.equal(state.commits.length, 0);
