@@ -17,7 +17,7 @@ model turn — is entered to discover "nothing to do." This engine moves that di
 
 Every maintenance task is split into two halves that never mix:
 
-- **"should I run" — the gate.** Code. Runs in the planner (the fleet-coverage Action, fleet PAT).
+- **"should I run" — the gate.** Code. Runs in the planner, over the run's own token.
   Given a repo + the signal bundle, returns `{ run, targets, reason }`. Costs an API read, never a
   token.
 - **"what to do" — the worker.** A doc/skill a subagent runs, handed the gate's `targets`. Costs a
@@ -31,13 +31,13 @@ is spawned.** That boundary is the frugality lever.
 
 ```
 [Routine session]  (agent, capable model, home repo)          ← orchestrator, one run
-   ├─ run the core planner over the reachable repos ─► units   (plan.mjs — pure gate code, no pack)
+   ├─ run the core planner over the environment's repos ─► units  (plan.mjs — pure gate code, no pack)
    └─ per unit, honoring ordering ─►  [worker subagent] × N    ← children of the session
 ```
 
-The planner is **pack-agnostic core code** (`plan.mjs`): the orchestrator runs it over the repos it
-can reach — enumerate accessible repos, assemble each covered member's packs' `run_daily` gates, run
-them, emit units. It depends on **no** pack. An enforcer pack's coverage census (the account-spanning
+The planner is **pack-agnostic core code** (`plan.mjs`): the orchestrator hands it the environment's
+repos — for each, assemble its declared packs' `run_daily` gates, run them, emit units. It never
+enumerates GitHub, and it depends on **no** pack. An enforcer pack's coverage census (the account-spanning
 audit that needs the fleet PAT) is a **separate, isolated** concern with its own dispatch — it never
 gates the plan, so a missing or broken enforcer pack can't stop the day's work from being planned over
 the repos already reachable. One supervisor owns the run (and the failure log).
@@ -237,7 +237,7 @@ gap the in-flight `chrome-store-release-schedule-*` branch would otherwise open.
 routines/
   fleet/
     DESIGN.md                 ← this spec
-    plan.mjs                  ← the core PLANNER: walk reachable repos → assemble each one's packs'
+    plan.mjs                  ← the core PLANNER: over the repos the routine hands it → assemble packs'
                                  run_daily gates → emit units. Pack-agnostic; no census dependency.
     fleet-api.mjs             ← shared cross-repo GitHub primitives (used by the planner + the census)
     signals.mjs               ← per-repo signal bundle + global canonChanged
@@ -267,17 +267,16 @@ migrations/
   fleet-retire.mjs             ← phase-3 RETIRE pass (fleet-wide, migrations-owned)
 ```
 
-**Separate walks — planning ≠ coverage ≠ migrations.** The core **planner** (`plan.mjs`) walks the repos
-it can reach and plans over the covered ones; that is all it needs to decide the day's work. The enforcer
-pack's **census** (`check-fleet-coverage.mjs`) is a *different* walk with a *different* scope — the whole
-account, via the fleet PAT — to audit coverage and converge adoption issues (it does **one** thing —
-coverage; it carries no migration logic). The migration **apply** and **retire** passes
-(`../../migrations/fleet-apply.mjs`, `../../migrations/fleet-retire.mjs`) are two further standalone walks —
-phases 1 and 3 of the daily routine, migrations-owned. All share the cross-repo primitives
+**Coverage discovers; everything else operates on the repos it's given.** The core **planner** (`plan.mjs`)
+and the migration **apply** / **retire** passes (`../../migrations/fleet-apply.mjs`,
+`../../migrations/fleet-retire.mjs`) all operate over the repos the routine hands them (this environment's
+repos) — they never enumerate GitHub. Only the enforcer pack's **census** (`check-fleet-coverage.mjs`) is
+an *account-wide* walk (via the fleet PAT), to discover coverage and converge adoption issues (it does
+**one** thing — coverage; it carries no migration logic). All share the cross-repo primitives
 (`fleet-api.mjs`) but none gates another: the plan is built even when the census can't run, and
-vice-versa. (Earlier this was **one folded walk** that emitted the plan *inside* the census; that coupling
-is exactly what let a missing census workflow sink the whole plan, so the planner was split back out into
-core — held there now by the core⟂pack guard, `checks/test/core-independence.test.mjs`.)
+vice-versa. (Earlier the plan was emitted *inside* the census; that coupling is exactly what let a missing
+census workflow sink the whole plan, so the planner was split back out into core — held there now by the
+core⟂pack guard, `checks/test/core-independence.test.mjs`.)
 
 ## Blast radius (it's small)
 

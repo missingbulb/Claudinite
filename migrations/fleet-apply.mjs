@@ -22,14 +22,17 @@
 // which the retire pass (phase 3) reads to enforce the quiescence guard: a
 // migration touched this cycle is never retired this cycle.
 //
-// Dependency-free (global fetch, Node 20+). Needs FLEET_GITHUB_TOKEN with Contents
-// write across the fleet.
+// It acts only on the repos the maintenance routine hands it (as CLI args) — the
+// repos this environment manages, which the routine knows and the environment
+// grants. It does NOT enumerate repos or reach account-wide (that is the coverage
+// census's separate job). Auth is the run's own token.
+// Dependency-free (global fetch, Node 20+).
 
 import { appendFileSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { loadMigrations, applyFileAliases, applyMaterializations, applyRewrites } from './registry.mjs';
-import { makeGh, paged, isCovered } from '../routines/fleet/fleet-api.mjs';
+import { makeGh } from '../routines/fleet/fleet-api.mjs';
 
 const APPLIED_PATH = 'migrations-applied.json';
 const MAINT_BRANCH = 'claudinite/maintenance';
@@ -139,11 +142,12 @@ async function commitStaged(gh, fullName, branch, baseSha, staged, message) {
   if (refRes.status !== 200) throw new Error(`update ref ${branch} -> ${refRes.status}`);
 }
 
-// Apply pending migrations to one member; returns the migration ids applied (empty
-// when nothing was pending). Honors the member's delivery preference.
-export async function applyToMember(gh, repo, migrations) {
-  const fullName = repo.full_name;
-  const defaultBranch = repo.default_branch;
+// Apply pending migrations to one repo the routine handed us; returns the migration
+// ids applied (empty when nothing was pending). Honors the repo's delivery preference.
+export async function applyToRepo(gh, fullName, migrations) {
+  const info = await gh(`/repos/${fullName}`);
+  const defaultBranch = info.json?.default_branch;
+  if (info.status !== 200 || !defaultBranch) return { ids: [], note: `${fullName}: unreadable (status ${info.status})` };
   const cfg = await getContent(gh, fullName, '.claudinite-checks.json', null);
   let delivery = 'push';
   try { delivery = JSON.parse(cfg ?? '{}')?.maintenance?.delivery ?? 'push'; } catch { delivery = 'push'; }
@@ -163,43 +167,37 @@ export async function applyToMember(gh, repo, migrations) {
   return { ids: [...staged.ids], note: `${fullName}: applied ${[...staged.ids].join(', ')} (${delivery})` };
 }
 
-// Walk the covered fleet and apply pending migrations to each; return the union of
-// applied ids (this cycle's apply evidence) plus per-repo notes. A member that
-// throws is isolated — its error is noted and the rest still run.
-export async function applyAcrossFleet(gh, home, owner, migrations) {
-  const mine = (await paged(gh, '/user/repos?affiliation=owner'))
-    .filter((r) => r.owner.login.toLowerCase() === owner);
+// Apply pending migrations to every repo the routine handed us (the repos this
+// environment manages). A repo that throws is isolated — its error is noted and the
+// rest still run. Returns the union of applied ids (this cycle's evidence) + notes.
+export async function applyToRepos(gh, fullNames, migrations) {
   const appliedIds = new Set(); const notes = [];
-  for (const r of mine.sort((a, b) => a.full_name.localeCompare(b.full_name))) {
-    if (r.full_name.toLowerCase() === home.toLowerCase() || r.archived || r.fork) continue;
+  for (const fullName of fullNames) {
     try {
-      if (!(await isCovered(gh, r.full_name))) continue;
-    } catch (e) { notes.push(`${r.full_name}: coverage probe errored (${e.message}) — skipped`); continue; }
-    try {
-      const { ids, note } = await applyToMember(gh, r, migrations);
+      const { ids, note } = await applyToRepo(gh, fullName, migrations);
       ids.forEach((id) => appliedIds.add(id));
       if (note) notes.push(note);
-    } catch (e) { notes.push(`${r.full_name}: apply failed (${e.message})`); }
+    } catch (e) { notes.push(`${fullName}: apply failed (${e.message})`); }
   }
   return { appliedIds: [...appliedIds], notes };
 }
 
 async function main() {
-  const token = process.env.FLEET_GITHUB_TOKEN;
-  const home = process.env.GITHUB_REPOSITORY;
-  if (!token) throw new Error('FLEET_GITHUB_TOKEN is not set — the apply pass walks the whole account.');
-  if (!home || !home.includes('/')) throw new Error('GITHUB_REPOSITORY is not set (owner/repo)');
+  // The routine (which knows this environment's repos) hands us the repos to act on
+  // as CLI args; we don't enumerate. Auth is the run's own token.
+  const token = process.env.GITHUB_TOKEN;
+  const repos = process.argv.slice(2);
+  if (!token) throw new Error('GITHUB_TOKEN is not set');
   const gh = makeGh(token);
-  const owner = home.split('/')[0].toLowerCase();
   const migrations = await loadMigrations();
 
-  const { appliedIds, notes } = await applyAcrossFleet(gh, home, owner, migrations);
+  const { appliedIds, notes } = await applyToRepos(gh, repos, migrations);
   // The apply evidence the retire pass reads for its quiescence guard — always
   // written (even empty), so its presence proves the apply pass ran this cycle.
   writeFileSync(APPLIED_PATH, `${JSON.stringify(appliedIds, null, 2)}\n`);
 
   const summary = ['# Migration application', '',
-    `**Applied this cycle:** ${appliedIds.length ? appliedIds.join(', ') : 'none (fleet already converged)'}`,
+    `**Applied this cycle:** ${appliedIds.length ? appliedIds.join(', ') : 'none (already converged)'}`,
     ...notes.map((n) => `- ${n}`)].join('\n');
   console.log(summary);
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${summary}\n`);

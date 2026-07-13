@@ -23,10 +23,9 @@
 //                    (registry.mjs), so it vanishes in the same step this file is
 //                    deleted — nothing inline is stranded, so 'auto' is honest.
 //
-// The automatic home deletion needs FLEET_GITHUB_TOKEN granted Contents-write on
-// the home repo (#239); until then the census logs the grant hint and keeps the
-// core copies in place (harmless — every consumer already runs off its vendored
-// copy by then).
+// The automatic home deletion is done by the migration retire pass over daily
+// maintenance's own access to its home repo (no special grant) — once the fleet has
+// vendored the copy, so the canon ends with no leftovers.
 const STUB = '.github/workflows/chrome-extension-release.yml';
 const S = 'packs/chrome-extension-release/stubs';
 
