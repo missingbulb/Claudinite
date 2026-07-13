@@ -322,7 +322,7 @@ index. The routing index largely dissolves: routing *is what skill descriptions 
 ## Growth pipeline: checks-first promotion
 
 New lessons enter the canon through the growth lifecycle (extract → promote → dedup). Today
-[../growth/promote.md](../growth/promote.md) generalizes a lesson and routes it to a prose doc.
+[promote](../packs/canon-curation/promote.md) generalizes a lesson and routes it to a prose doc.
 Under this design, **prose becomes the fallback, not the default** — the point of promotion is
 to relieve every project's context, and a check relieves it completely while prose only
 relocates it.
@@ -341,16 +341,16 @@ mechanism order as the conversion table above — the *first* rung that can carr
 
 Concretely, three growth docs change:
 
-- **[../growth/item-routing.md](../growth/item-routing.md)** gains a step 0: *mechanism triage*
+- **[item-routing.md](../packs/canon-curation/item-routing.md)** gains a step 0: *mechanism triage*
   before file routing. "Which doc owns this" is only asked for lessons that fall through to
   rung 5.
-- **[../growth/promote.md](../growth/promote.md)**: for a rung-3 lesson, the routine authors
+- **[promote.md](../packs/canon-curation/promote.md)**: for a rung-3 lesson, the routine authors
   the check in the same PR — rule id, detection, the failure message (which *is* the
   generalized lesson text), **plus a fixture proving it fires** on a violating input and stays
   quiet on a clean one (see-it-fail applies to checks too). When it can't produce a confident
   detection + fixture, it lands the lesson as prose **and** opens a tagged conversion-backlog
   issue — a visible miss to sweep later, never a silently-shipped broken check.
-- **[../growth/dedup.md](../growth/dedup.md)**: a canon **check** covers a local prose item the
+- **[dedup.md](../packs/grow_with_claudinite/dedup.md)**: a canon **check** covers a local prose item the
   same way a canon line does — better, since the coverage is enforced rather than stated. The
   runner exposes the rule catalog machine-readably (`run.js --list`: rule id, description,
   failure message, doc pointer); dedup quotes a **rule id** where it today quotes a canon line.
@@ -360,7 +360,7 @@ Concretely, three growth docs change:
   stable where prose wording drifts. The keep-test is unchanged: a local item that says *more*
   than the check detects (a stronger point about a narrower case) stays.
 
-Phase 1 (extract) is untouched: project-local capture stays prose at the project's own level —
+Extract is untouched: project-local capture stays prose at the project's own level —
 conversion is a promotion-time judgment, made once, centrally.
 
 ## Phasing
@@ -375,9 +375,9 @@ conversion is a promotion-time judgment, made once, centrally.
    the index.
 4. **Skills layer + growth pivot** — the rest of the catalog (practice + technology skills,
    symlink delivery in bootstrap), and the promotion ladder lands in
-   [../growth/promote.md](../growth/promote.md),
-   [../growth/item-routing.md](../growth/item-routing.md), and
-   [../growth/dedup.md](../growth/dedup.md).
+   [promote.md](../packs/canon-curation/promote.md),
+   [item-routing.md](../packs/canon-curation/item-routing.md), and
+   [dedup.md](../packs/grow_with_claudinite/dedup.md).
 5. **(Contingent) plugin packaging** — only after a spike proves same-day update propagation,
    web-session support, and hook parity; until then the mount + symlink delivery is the plan of
    record and nothing depends on this phase.

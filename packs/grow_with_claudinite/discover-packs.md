@@ -2,7 +2,7 @@
 
 The pack-discovery pipeline, run as an ordinary **`run_daily` task** — the planner picks it up per
 member on that member's **weekly full sweep**, and the orchestrator dispatches it like any other unit
-(it is **not** a bespoke central step the way `growth-promote-to-claudinite` is). For the member it's
+(member-scoped, where `growth-promote-to-claudinite` is home-scoped via [canon-curation](../canon-curation/README.md)). For the member it's
 handed, it runs the whole pipeline end to end — **manifest → suggest → populate → open PR** — as one
 process. It is Claudinite-internal; consuming repos don't vendor or `@import` it.
 
@@ -31,7 +31,7 @@ point is to populate it now (step 3).
 
 The task's `smarts` is `high`: past step 1 every step is heavy judgment — is a technology genuinely
 unhomed, which usage is a portable rule vs. this member's one-off, does a rule mechanize into a check,
-what fingerprint reliably detects the technology. Per [the unattended-agents skill](../skills/unattended-agents/SKILL.md)
+what fingerprint reliably detects the technology. Per [the unattended-agents skill](../../skills/unattended-agents/SKILL.md)
 ("match the agent model to the judgment it must make"), the worker runs on a capable tier.
 
 ## Conventions used in this doc
@@ -105,20 +105,20 @@ for the technology to recur).
 
 For each candidate, **author a populated pack** by distilling from how the member actually uses the
 technology — its build/toolchain config, CI and release workflows, packaging/signing scripts, relevant
-source, and any gotchas already in its docs. Apply [generate-project-instructions](../skills/generate-project-instructions/SKILL.md)'
+source, and any gotchas already in its docs. Apply [generate-project-instructions](../../skills/generate-project-instructions/SKILL.md)'
 method (don't re-derive it): strip the origin project, keep what's true for the technology, and descend
-the promotion ladder ([item-routing.md](item-routing.md) / [checks/DESIGN.md](../checks/DESIGN.md)) —
+the promotion ladder ([item-routing.md](../canon-curation/item-routing.md) / [checks/DESIGN.md](../../checks/DESIGN.md)) —
 a rule a deterministic check can carry becomes the **check plus a fixture test** (it fires on a
 violating input, stays quiet on a clean one), a procedure with a nameable trigger becomes a skill the
 pack requires, and only signature-less judgment lands as `RULES.md` prose. Ground and cite every rule;
 never pad. Write the four-file pack — `RULES.md`, `pack.mjs` (add the `marker`/`detect` fingerprint when
 the technology carries a reliable one, so it self-declares on future repos; `detect: null` otherwise),
 `README.md` (rule table + a **provenance line** naming the member it was distilled from), and the index
-rows ([packs/README.md](../packs/README.md), plus [CLAUDE.md](../CLAUDE.md) for a new pack *kind*).
+rows ([packs/README.md](../README.md), plus [CLAUDE.md](../../CLAUDE.md) for a new pack *kind*).
 
 ### Step 4 — open one PR per pack
 
-Push each authored pack to a per-run-unique branch (see [the git-github-advanced skill](../skills/git-github-advanced/SKILL.md))
+Push each authored pack to a per-run-unique branch (see [the git-github-advanced skill](../../skills/git-github-advanced/SKILL.md))
 and open **its own PR** against the canon's default branch — never a direct push, and never several packs
 in one PR. A new pack is reviewed differently from a rule addition, so each earns its own review surface.
 The write surface is bounded to the new `packs/<tech>/` directory (with any check's registration and
@@ -143,7 +143,7 @@ nothing groundable for, name it and why.
   ungroundable rule is not written. The pack may be small; it may not be invented.
 - **Never open an empty stub to fill later** — populate it now (step 3).
 - **Never re-author an existing pack** — a stub counts as a home, and an open pack-authoring PR counts as
-  in progress. Dedup against both; a pack that exists is [promote](promote.md)'s to fill, not this task's
+  in progress. Dedup against both; a pack that exists is [promote](../canon-curation/promote.md)'s to fill, not this task's
   to replace.
 - **Never author for a `vestigial` technology** — declared-but-unused is not a real sighting.
 - **Never exceed the bounded write surface** — per pack, only its new `packs/<tech>/` directory (and any

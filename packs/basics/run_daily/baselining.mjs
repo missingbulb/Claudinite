@@ -12,11 +12,15 @@
 export default {
   id: 'baselining',
   worker: 'packs/basics/run_daily/baselining.worker.md',
-  order: null, // independent of the growth barrier
+  order: null, // independent/concurrent
   full_sweep_supported: true,
   smarts: 'medium', // merges into CLAUDE.md/settings.json without clobbering — judgment
 
   async gate(repo, signals) {
+    // The canon doesn't mount itself: baselining restores a MEMBER to the canonical
+    // baseline, which is meaningless for the canon's own repo (planned since the
+    // planner covers home for home-declared packs' sake).
+    if (signals.isHome) return { run: false };
     if (signals.fullSweep) {
       return { run: true, targets: { mode: 'full' }, reason: 'weekly full baselining (catch member-side drift)' };
     }

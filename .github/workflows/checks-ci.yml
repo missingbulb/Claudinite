@@ -24,14 +24,14 @@ jobs:
         with:
           node-version: 20
       - name: Unit tests
-        # checks/test/ = engine + the cross-pack detect test; each pack/skill carries its own pack.test.mjs / *.test.mjs; routines/fleet/ carries the planner engine tests; growth/ carries the promote-scope gate test; mount/ carries the SessionStart orchestrator test.
-        run: node --test checks/test/*.test.mjs packs/*.test.mjs packs/*/*.test.mjs skills/*.test.mjs skills/*/*.test.mjs routines/*/*.test.mjs growth/*.test.mjs mount/*.test.mjs
+        # checks/test/ = engine + the cross-pack detect test; each pack/skill carries its own pack.test.mjs / *.test.mjs (the promote-scope gate test rides packs/canon-curation/); routines/fleet/ carries the planner engine tests; mount/ carries the SessionStart orchestrator test.
+        run: node --test checks/test/*.test.mjs packs/*.test.mjs packs/*/*.test.mjs skills/*.test.mjs skills/*/*.test.mjs routines/*/*.test.mjs mount/*.test.mjs
       - name: Conformance sweep
         run: node checks/run.mjs
       - name: Promote write-surface gate
-        # The growth promote phase (growth/promote.md) is the one change bounded to
-        # packs/ + skills/ — an ordinary engine PR legitimately edits growth/, checks/,
+        # The growth promote stage (packs/canon-curation/promote.md) is the one change
+        # bounded to packs/ + skills/ — an ordinary engine PR legitimately edits checks/,
         # routines/, so this cannot run on every PR. It keys on the promote branch prefix
-        # (growth/promote.md pins it) and fails the promote PR if a changed path strays.
+        # (promote.md pins it) and fails the promote PR if a changed path strays.
         if: contains(github.head_ref, 'growth-promote')
-        run: node growth/promote-scope.mjs
+        run: node packs/canon-curation/promote-scope.mjs

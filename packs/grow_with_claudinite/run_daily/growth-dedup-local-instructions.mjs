@@ -1,6 +1,8 @@
-// Fleet-core task: growth-dedup-local-instructions (growth phase 3). Prunes local
-// items the canon now covers, keeping items the canon states too generally. Worker:
-// growth/dedup.md.
+// grow_with_claudinite run_daily task: growth-dedup-local-instructions (the growth
+// lifecycle's pruning stage). Prunes local items the canon now covers, keeping items
+// the canon states too generally. Worker: the co-located dedup.md. An ordinary
+// independent unit — no barrier; it prunes against whatever canon the member
+// currently mounts (merged main), so a just-opened promote PR never counts.
 //
 // Triggers: the canon changed (new canon may now cover local items) or the project's
 // own docs changed. Full mode (weekly): re-check every local item against the canon
@@ -8,8 +10,8 @@
 
 export default {
   id: 'growth-dedup-local-instructions',
-  worker: 'growth/dedup.md',
-  order: 'growth:3',
+  worker: 'packs/grow_with_claudinite/dedup.md',
+  order: null,
   full_sweep_supported: true,
   smarts: 'high', // deciding a local item is truly redundant is a judgment call
 

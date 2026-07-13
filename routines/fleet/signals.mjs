@@ -75,6 +75,11 @@ async function readActivePacks(gh, fullName) {
 // code-side probes when nothing was pushed and it isn't a full sweep; PR/issue probes
 // always run (a comment/label moves `updated_at` without a push). canonChanged is the
 // global signal, computed once by the caller and threaded in.
+//
+// Two signals exist only on the HOME repo's bundle and are stamped by the planner,
+// not built here: `isHome: true`, and `fleetMembers` — every successfully-probed
+// member's { repo, activePacks, projectChanged }, complete because home is planned
+// last. They're what home-only packs' gates decide fleet-facing work from.
 export async function buildSignals(gh, repo, { sinceIso, weekdayUtc, canonChanged }) {
   const fullName = repo.full_name;
   const defaultBranch = repo.default_branch;

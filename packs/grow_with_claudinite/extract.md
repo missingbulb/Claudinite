@@ -1,25 +1,25 @@
-# Growth phase 1 — extract lessons (per project)
+# Growth — extract lessons (per member)
 
-Phase 1 of the [growth lifecycle](README.md): review a project's recent activity and fold any durable, reusable lesson into the project's own docs — at the project's own level, without straining to generalize it. It **commits directly to the project's default branch** (no per-run PR); finding nothing to add on a given run is a perfectly good outcome.
+The [growth lifecycle](../canon-curation/README.md)'s capture stage, this pack's daily task: review a project's recent activity and fold any durable, reusable lesson into the project's own docs — at the project's own level, without straining to generalize it. It **commits directly to the project's default branch** (no per-run PR); finding nothing to add on a given run is a perfectly good outcome.
 
-> This is the **unattended daily** routine. **Unlike** the owner's on-demand, in-session "learned lessons" command (which delivers a PR for review), this phase commits straight to `main`: it writes only the project's *own* local docs, and the owner has opted out of a per-run review gate here to keep the fleet's daily lesson-capture from piling up PRs. The shared canon stays gated — lifting anything up into it is [promote](promote.md)'s job, and promote *does* open a PR.
+> This is the **unattended daily** routine. **Unlike** the owner's on-demand, in-session "learned lessons" command (which delivers a PR for review), this routine commits straight to `main`: it writes only the project's *own* local docs, and the owner has opted out of a per-run review gate here to keep the fleet's daily lesson-capture from piling up PRs. The shared canon stays gated — lifting anything up into it is [promote](../canon-curation/promote.md)'s job, and promote *does* open a PR.
 
 ## Capture at the project's own level
 
-Write each lesson at whatever level reads naturally for this project — refer to its files, services, or mechanics wherever that's what makes the lesson clear, but don't force either extreme: don't contort a lesson to be hyper-specific, and don't polish it into a general, portable rule. Making a lesson portable is [promote](promote.md)'s job, done centrally later; here, just capture it usefully and let promote lift whatever turns out to travel.
+Write each lesson at whatever level reads naturally for this project — refer to its files, services, or mechanics wherever that's what makes the lesson clear, but don't force either extreme: don't contort a lesson to be hyper-specific, and don't polish it into a general, portable rule. Making a lesson portable is [promote](../canon-curation/promote.md)'s job, done centrally later (it picks up whatever is merged here by its next run); here, just capture it usefully and let promote lift whatever turns out to travel.
 
 ## Conventions used in this doc
 
 - **Default branch.** `main` stands for **your repository's default branch** — substitute whatever your repo uses.
 - **GitHub API access.** Reading issue/PR activity and updating the tracking issue go through your environment's GitHub API tooling — the **GitHub MCP tools** or the `gh` CLI. In sandboxed/automation environments the shell often reaches only a **git-over-HTTPS proxy with no GitHub API**; there, use the MCP tools, never `gh` / `curl`. Use whichever your runtime exposes.
-- **The project's local docs.** The set identified in [growth/README.md](README.md) — the project's own guidance, never the mounted canon.
+- **The project's local docs.** The set identified in [this pack's README](README.md#identifying-a-projects-local-docs) — the project's own guidance, never the mounted canon.
 
 ## How it finds lessons (scoped to the last 24h)
 
 1. **Activity gate, first.** Count commits + updated issues/PRs in the window. None → stop; a quiet day has nothing to learn from.
 2. **Read the window.** The last-24h **commits** (`git log --since`, full bodies, diffs where a fix is non-obvious) and **issue/PR activity** (`updated:>=<since>`, then the changed comments).
 3. **Extract only durable, reusable lessons** — gotchas, engineering practices, test discipline, architecture rules, project mechanics — and **dedupe** each against what the project already documents. When in doubt, leave it out.
-4. **Put each lesson where it will be read.** A lesson can land in the local doc that owns its kind, or — for a gotcha tied to one call site — as a comment right at that site. Which fits is a placement call [extracting-lessons.md](../skills/lessons-learned/extracting-lessons.md) owns (usage-site comment vs. central doc); follow it rather than defaulting everything to a doc. Keep each addition terse and in the project's own voice.
+4. **Put each lesson where it will be read.** A lesson can land in the local doc that owns its kind, or — for a gotcha tied to one call site — as a comment right at that site. Which fits is a placement call [extracting-lessons.md](../../skills/lessons-learned/extracting-lessons.md) owns (usage-site comment vs. central doc); follow it rather than defaulting everything to a doc. Keep each addition terse and in the project's own voice.
 
 If an edit touches something a test reads (a doc constant, a code path), run the project's offline test suite and keep it green before committing.
 
@@ -37,5 +37,5 @@ Deciding whether a lesson is genuinely new and durable — and deduping it again
 
 ## What this routine must never do
 
-- **Never touch the shared canon** — this phase writes only the project's *own* docs; lifting a lesson up into the canon is [promote](promote.md)'s job.
+- **Never touch the shared canon** — this routine writes only the project's *own* docs; lifting a lesson up into the canon is [promote](../canon-curation/promote.md)'s job.
 - **Don't add noise** — a duplicate or hallucinated "lesson" is worse than adding nothing, the more so when it lands directly in the project's docs with no review gate.

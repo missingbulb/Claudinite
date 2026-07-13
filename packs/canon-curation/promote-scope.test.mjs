@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, deletePath, cleanup } from '../checks/test/helpers.mjs';
-import { buildContext } from '../checks/lib/context.mjs';
+import { makeRepo, deletePath, cleanup } from '../../checks/test/helpers.mjs';
+import { buildContext } from '../../checks/lib/context.mjs';
 import promoteScope from './promote-scope.mjs';
 
 function run(root) {
@@ -27,14 +27,14 @@ test('promote-scope: fires on a path outside packs/ and skills/', () => {
   const root = makeRepo({
     changed: {
       'packs/node/RULES.md': '- new rule\n',
-      'growth/promote.md': 'edited\n', // stray: engine/orchestration, off-limits to promote
+      'routines/auto-all-repos-maintenance.md': 'edited\n', // stray: engine/orchestration, off-limits to promote
     },
     commitMsg: 'promote Refs #1',
   });
   try {
     const findings = run(root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].file, 'growth/promote.md');
+    assert.equal(findings[0].file, 'routines/auto-all-repos-maintenance.md');
     assert.equal(findings[0].rule, 'promote-scope');
   } finally {
     cleanup(root);

@@ -141,16 +141,16 @@ code (omit it).
 
 - **Every pack seed or refinement → a PR against Claudinite.** Minting or changing a pack is the
   owner's call, and the PR is that gate — no corpus change lands unattended
-  ([growth/README.md](../../growth/README.md)). From a consuming repo, never edit the read-only
+  ([the canon-curation README](../../packs/canon-curation/README.md)). From a consuming repo, never edit the read-only
   `.claudinite/` mount: open the Claudinite PR when the session can reach that repo; otherwise commit
   the seed under the project's own docs, clearly marked as a proposed pack, and open a Claudinite
-  issue pointing at it so the central promote phase lifts it.
+  issue pointing at it so the central promote stage lifts it.
 - **The overlay → the project's normal branch/PR.**
 - **Declare a new pack** in the project's `.claudinite-checks.json` only after it has merged and the
   mount re-synced — declaring an id the mounted registry doesn't know is an unknown-pack settings
   error (a blocking `config` finding). Until then, note the pending declaration as a follow-up in the project PR.
 - **Existing projects sharing a facet keep their local docs for now.** Once the pack lands, the growth
-  dedup phase prunes what the canon newly owns; don't pre-trim a project against an unmerged pack.
+  dedup stage prunes what the canon newly owns; don't pre-trim a project against an unmerged pack.
 
 Close with a short report: each facet and its one-line definition, with its shelf verdict (declared /
 refined / minted / left alone); the sort tally (rules sent to each pack / the overlay /
