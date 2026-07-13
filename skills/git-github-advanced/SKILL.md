@@ -39,7 +39,9 @@ The default is to hold a PR until asked. Reverse that when a change's only revie
 
 ## Sync early to keep merge conflicts small
 
-Conflict size scales with how long a branch lives and how far it drifts from the default branch. Sync early rather than at the end: when starting work on a branch — and periodically while it's open — merge or rebase the latest default branch in first, so the branch carries current sources instead of discovering the gap at merge time. A one-commit-per-PR squash history already keeps each branch a single reviewable unit, so shorter-lived, freshly-synced branches are the norm.
+Conflict size scales with how long a branch lives and how far it drifts from the default branch. Sync early rather than at the end: when starting work on a branch — and periodically while it's open — bring the latest default branch in first, so the branch carries current sources instead of discovering the gap at merge time. A one-commit-per-PR squash history already keeps each branch a single reviewable unit, so shorter-lived, freshly-synced branches are the norm.
+
+**In a repo that forbids merge commits on the branch — the `squash-merge-history` check, or squash-only merging generally — sync by *rebasing*, never `git merge` the base in.** A `git merge origin/main` (even just to resolve conflicts) leaves a **merge commit** the check blocks, forcing a redo; `git pull --rebase` / `git rebase origin/main` replays your work with no merge commit. The merge-conflict-resolution gotchas below apply to a rebase's conflicts exactly the same way.
 
 ## After a remote-side merge, fetch before branching off origin/main
 
