@@ -21,8 +21,11 @@
 //     not consent to cover everything with no exclusions.
 //
 // Dependency-free (global fetch, Node 20+); read-only toward every repo except
-// the home repo, where it writes the adoption issues + label and deletes
-// fully-applied migration files (auto-retirement — see migrations/README.md).
+// the home repo, where it writes the adoption issues + label and, on
+// auto-retirement, deletes a fully-applied migration's record — plus any home
+// files that migration relocated into the consumers (its retireDeletesFromHome),
+// so plumbing moved behind a pack leaves the canon with no leftovers. See
+// migrations/README.md.
 // The shared cross-repo primitives live in routines/fleet/fleet-api.mjs (core).
 
 import { appendFileSync } from 'node:fs';
@@ -146,6 +149,40 @@ async function deleteFile(gh, home, path, message) {
   if (res.status !== 200) throw new Error(`deleting ${path} returned ${res.status}`);
 }
 
+// Like deleteFile but a 404 (already gone) is success, not an error — so a
+// migration whose retirement removes several home files can be retried after a
+// partial run without tripping on the ones already deleted.
+async function deleteFileIfPresent(gh, home, path, message) {
+  const head = await gh(`/repos/${home}/contents/${path}`);
+  if (head.status === 404) return;
+  if (head.status !== 200 || !head.json?.sha) {
+    throw new Error(`cannot resolve ${path} to delete (status ${head.status})`);
+  }
+  const res = await gh(`/repos/${home}/contents/${path}`, {
+    method: 'DELETE',
+    body: { message, sha: head.json.sha },
+  });
+  if (res.status !== 200) throw new Error(`deleting ${path} returned ${res.status}`);
+}
+
+// Retire one fully-applied migration: delete any home files it relocated into
+// the consumers (retireDeletesFromHome) FIRST, then the record itself — so a
+// partial failure leaves the record to retry the rest next night (each home
+// delete tolerates an already-gone 404). This is the automatic phase-2 cut: a
+// migration that moved plumbing behind a pack leaves the canon with no leftovers
+// once the fleet has vendored it. Needs FLEET_GITHUB_TOKEN with Contents write on
+// the home repo (#239); until granted, the caller logs the grant hint and the
+// core copies stay in place (harmless — every consumer already runs off its own).
+export async function retireMigration(gh, home, m) {
+  const homeFiles = m.retireDeletesFromHome ?? [];
+  for (const p of homeFiles) {
+    await deleteFileIfPresent(gh, home, p, `Retire migration ${m.id}: remove ${p} — vendored into every consumer, unused in the canon`);
+  }
+  await deleteFile(gh, home, `migrations/${m.file}`,
+    `Retire migration ${m.id}: fully applied across the fleet (0 repos on the legacy shape)`);
+  return `retired ${m.id} — deleted migrations/${m.file}${homeFiles.length ? ` + ${homeFiles.length} home file(s)` : ''}`;
+}
+
 // Probe every covered repo for each migration's legacy shape, report the pending
 // counts, and auto-retire (delete from home) any migration the whole fleet has
 // left behind — the guard lives in retirableMigrations (migrations/registry.mjs).
@@ -182,9 +219,7 @@ async function runMigrationTelemetry(gh, home, covered, unknownCount, today) {
   const lines = migrations.map((m) => `${m.id} — ${pending.get(m.id)} repo(s) still on the legacy shape`);
   for (const m of retirableMigrations(migrations, { pending, unknownCount, today })) {
     try {
-      await deleteFile(gh, home, `migrations/${m.file}`,
-        `Retire migration ${m.id}: fully applied across the fleet (0 repos on the legacy shape)`);
-      lines.push(`retired ${m.id} — deleted migrations/${m.file}`);
+      lines.push(await retireMigration(gh, home, m));
     } catch (e) {
       lines.push(`could not auto-retire ${m.id}: ${e.message} — grant FLEET_GITHUB_TOKEN Contents write on ${home}`);
     }

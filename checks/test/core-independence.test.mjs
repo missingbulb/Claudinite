@@ -89,6 +89,8 @@ const DOC_CITES =
   'DISCUSS(doc cites content): an engine/design doc names packs/skills as illustrative examples. Owner to decide whether such docs may cite content by name or must speak generically (this is the "skills — discuss later" set).';
 const SEED_MIGRATION =
   'INHERENT: a one-time seed migration necessarily names the single pack it seeds; it self-retires once the fleet converges.';
+const VENDOR_MIGRATION =
+  'INHERENT: the chrome-release-vendoring migration necessarily names the pack whose templates it vendors into consumers (and the home files it retires) — the very act of moving RELEASE off the core .github/ tree. It self-retires once the fleet converges, deleting itself AND the core copies; when it does, prune this entry and the RELEASE ones together (that IS the accept-map shrink #270 asks for).';
 
 // ── The current coupling surface. Each entry: { why, names:[...] }. ───────────
 const ACCEPT = {
@@ -135,6 +137,8 @@ const ACCEPT = {
   // One-time seed migrations that name the pack they seed.
   'migrations/2026-07-12-grow-with-claudinite-seed.mjs': { why: SEED_MIGRATION, names: ['pack:grow_with_claudinite'] },
   'migrations/2026-07-12-tidy-repo-seed.mjs': { why: SEED_MIGRATION, names: ['pack:tidy-repo'] },
+  // The migration that vendors the release infra out of core (#276) — the RELEASE fix itself.
+  'migrations/2026-07-13-chrome-release-vendoring.mjs': { why: VENDOR_MIGRATION, names: ['pack:chrome-extension', 'pack:chrome-extension-release'] },
 
   // Engine/design docs citing packs/skills as examples — the "discuss later" set.
   'checks/DESIGN.md': {
