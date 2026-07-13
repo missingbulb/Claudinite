@@ -1,6 +1,7 @@
 // basics run_daily task: baselining — restore a member to the current canonical
-// baseline (re-run the idempotent bootstrap to refresh mount + wiring, land declared
-// migrations, then evaluate the member against its declared packs' current checks).
+// baseline (re-run the idempotent bootstrap to refresh mount + wiring, then evaluate
+// the member against its declared packs' current checks). Migration application is a
+// separate standalone pass (migrations/fleet-apply.mjs), not baselining's job.
 // Riding basics — declared everywhere — makes it fleet-universal. Method: the
 // co-located worker doc.
 //
