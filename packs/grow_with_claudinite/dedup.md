@@ -1,19 +1,19 @@
-# Growth phase 3 — dedup local docs against the canon (per project)
+# Growth — dedup local docs against the canon (per member)
 
-Phase 3 of the [growth lifecycle](README.md): reconcile a project's local docs against the shared **canon** it consumes (Claudinite, vendored read-only), pruning local items the canon now covers. It runs after promotion, and opens a PR against the project's default branch for the owner to approve. Often there's nothing to prune, and that's fine.
+The [growth lifecycle](../canon-curation/README.md)'s pruning stage, this pack's daily task: reconcile a project's local docs against the shared **canon** it consumes (Claudinite, vendored read-only), pruning local items the canon now covers. It opens a PR against the project's default branch for the owner to approve. Often there's nothing to prune, and that's fine.
 
-> This phase only prunes local docs against the canon; lifting local items up into the canon is [promote](promote.md)'s job.
+> This routine only prunes local docs against the canon; lifting local items up into the canon is [promote](../canon-curation/promote.md)'s job.
 
 ## Conventions used in this doc
 
 - **Default branch.** `main` stands for **your repository's default branch** — substitute whatever your repo uses.
 - **GitHub API access.** Updating the tracking issue goes through your environment's GitHub API tooling — the **GitHub MCP tools** or the `gh` CLI. In sandboxed/automation environments the shell often reaches only a **git-over-HTTPS proxy with no GitHub API**; there, use the MCP tools, never `gh` / `curl`. Use whichever your runtime exposes.
-- **The mounted canon.** The exact canon revision your project currently consumes — compare against *that*, not a live fetch. Under session-start sync it's the latest `main` (so a promotion is visible only once its PR is merged, not the moment phase 2 opens it); under a pinned submodule it's the pin (so the item lands here only once the pointer is bumped). Either way you prune only against what the project actually mounts.
-- **The project's local docs.** The set identified in [growth/README.md](README.md). That's the corpus this phase prunes within; the mounted canon is never a prune target, only the yardstick you prune *against*.
+- **The mounted canon.** The exact canon revision your project currently consumes — compare against *that*, not a live fetch. Under session-start sync it's the latest `main` (so a promotion is visible only once its PR is merged, not the moment promote opens it); under a pinned submodule it's the pin (so the item lands here only once the pointer is bumped). Either way you prune only against what the project actually mounts.
+- **The project's local docs.** The set identified in [this pack's README](README.md#identifying-a-projects-local-docs). That's the corpus this routine prunes within; the mounted canon is never a prune target, only the yardstick you prune *against*.
 
 ## What it does: prune / rephrase local docs the canon now covers
 
-When the canon has **absorbed** a practice a local doc still carries — most often an item [promote](promote.md) lifted up and the canon now owns — the local copy is redundant. This phase:
+When the canon has **absorbed** a practice a local doc still carries — most often an item [promote](../canon-curation/promote.md) lifted up and the canon now owns — the local copy is redundant. This routine:
 
 - **Removes** the now-duplicated local item, since the canon is the single source of truth for portable rules.
 - **Rephrases** a local procedure when the canon's wording of the same idea has changed, so the local docs stay consistent with the canon they point at.
@@ -32,7 +32,7 @@ The canon carries rules as **conformance checks**, not only prose. A local item 
 ## Discipline
 
 - **Only remove a local item you can show the mounted canon genuinely covers — quote the canon line (or the covering check's rule id).** When unsure, leave it; a wrongful prune deletes a real local lesson.
-- **Open a single PR against `main`** from a per-run-unique branch (see [the git-github-advanced skill](../skills/git-github-advanced/SKILL.md)) — one PR for the whole run's prunes, not one per item — never a direct push. This is an unattended routine, on a capable model, and a **wrongful prune deletes a real local lesson**, so — unlike extract, which commits its additive edits straight to `main` — this phase keeps a human approval gate.
+- **Open a single PR against `main`** from a per-run-unique branch (see [the git-github-advanced skill](../../skills/git-github-advanced/SKILL.md)) — one PR for the whole run's prunes, not one per item — never a direct push. This is an unattended routine, on a capable model, and a **wrongful prune deletes a real local lesson**, so — unlike [extract](extract.md), which commits its additive edits straight to `main` — this routine keeps a human approval gate.
 - If an edit touches something a test reads, run the project's offline test suite and keep it green before pushing.
 
 ## Tracking

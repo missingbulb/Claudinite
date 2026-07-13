@@ -35,7 +35,7 @@ test('buildWorkPlan: emits units from the real fleet-core tasks with plan metada
   assert.ok(byTask.baselining, 'baselining unit present');
   assert.equal(byTask.baselining.smarts, 'medium');
   assert.ok(byTask['growth-dedup-local-instructions'], 'dedup unit present');
-  assert.equal(byTask['growth-dedup-local-instructions'].order, 'growth:3');
+  assert.equal(byTask['growth-dedup-local-instructions'].order, null); // independent — no barriers
   assert.ok(!byTask['growth-extract-new-instructions'], 'extract absent (project did not change)');
   for (const u of plan.units) assert.equal(u.repo, 'owner/foo');
 });
@@ -49,4 +49,49 @@ test('buildWorkPlan: a member whose probe throws is isolated, not fatal', async 
   assert.equal(plan.units.length, 0);
   assert.equal(plan.errors.length, 1);
   assert.equal(plan.errors[0].repo, 'owner/bad');
+});
+
+test('buildWorkPlan: plans the home repo last — home-only pack gates see the fleet aggregate', async () => {
+  const gh = fakeGh([
+    // canonChanged false (no home commits in window)
+    [/o\/home\/commits\?since=/, { status: 200, json: [] }],
+    // home fullSweep may or may not be tonight (hash-staggered): give its probes empty answers either way
+    [/o\/home\/commits\?sha=/, { status: 200, json: [] }],
+    [/o\/home\/contents\/\.claudinite-checks\.json/, { status: 200, json: { content: b64({ packs: ['basics', 'canon-curation'] }) } }],
+    [/o\/home\/pulls\?/, { status: 200, json: [] }],
+    [/o\/home\/issues\?/, { status: 200, json: [] }],
+    [/o\/home\/branches\?/, { status: 200, json: [] }],
+    // the member changed: pushed in window and main moved → projectChanged
+    [/owner\/foo\/commits\?sha=/, { status: 200, json: [{ sha: 'm1' }] }],
+    [/owner\/foo\/contents\/\.claudinite-checks\.json/, { status: 200, json: { content: b64({ packs: ['basics', 'grow_with_claudinite'] }) } }],
+    [/owner\/foo\/pulls\?/, { status: 200, json: [] }],
+    [/owner\/foo\/issues\?/, { status: 200, json: [] }],
+    [/owner\/foo\/branches\?/, { status: 200, json: [] }],
+  ]);
+  const member = { full_name: 'owner/foo', default_branch: 'main', pushed_at: new Date().toISOString() };
+  const homeRepo = { full_name: 'o/home', default_branch: 'main', pushed_at: '2000-01-01T00:00:00Z' };
+
+  const plan = await buildWorkPlan(gh, 'o/home', [member], homeRepo);
+
+  assert.equal(plan.errors.length, 0, JSON.stringify(plan.errors));
+  const promote = plan.units.find((u) => u.task === 'growth-promote-to-claudinite');
+  assert.ok(promote, 'promote planned as an ordinary unit on the home repo');
+  assert.equal(promote.repo, 'o/home');
+  assert.equal(promote.order, null);
+  assert.equal(promote.worker, 'packs/canon-curation/promote.md');
+  // whether tonight is home's full-sweep night or not, the one enrolled+changed member is the target set
+  assert.deepEqual(promote.targets.repos, ['owner/foo']);
+  // baselining self-skips the home repo (isHome), so home contributes no baselining unit
+  assert.ok(!plan.units.some((u) => u.repo === 'o/home' && u.task === 'baselining'), 'no home baselining');
+  // the member still planned normally (extract fires on projectChanged)
+  assert.ok(plan.units.some((u) => u.repo === 'owner/foo' && u.task === 'growth-extract-new-instructions'));
+});
+
+test('buildWorkPlan: without a homeRepo the home is not planned (back-compat callers)', async () => {
+  const gh = fakeGh([
+    [/o\/home\/commits\?since=/, { status: 200, json: [] }],
+  ]);
+  const plan = await buildWorkPlan(gh, 'o/home', []);
+  assert.deepEqual(plan.units, []);
+  assert.deepEqual(plan.errors, []);
 });

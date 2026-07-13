@@ -5,10 +5,11 @@ description: Mine the corpus's existing prose (pack RULES.md, skill SKILL.md) fo
 
 # Convert existing prose to checks
 
-A completeness-critic over Claudinite itself. The growth *promote* phase converts each **new**
+A completeness-critic over Claudinite itself. The growth *promote* stage converts each **new**
 lesson down the promotion ladder; this pass sweeps the **existing** prose backlog for rules that
 are always-testable but still live only as prose — and converts them, so the corpus keeps
-shedding context over time instead of only at the moment a rule is first learned.
+shedding context over time instead of only at the moment a rule is first learned. It runs as the
+`canon-curation` pack's weekly `prose-to-checks-sweep` task, and on demand.
 
 ## What to look for — the check-the-world test
 
@@ -28,9 +29,9 @@ part of the on-demand skill — it belongs in a pack as a check.
 
 ## How to convert one
 
-Follow the promote phase's check-authoring discipline
-([growth/promote.md](../../growth/promote.md) and
-[growth/item-routing.md](../../growth/item-routing.md) own the ladder). For each candidate:
+Follow the promote stage's check-authoring discipline
+([promote.md](../../packs/canon-curation/promote.md) and
+[item-routing.md](../../packs/canon-curation/item-routing.md) own the ladder). For each candidate:
 
 1. **Author the check** in the owning pack (`packs/<pack>/<rule>.mjs`, listed in `pack.mjs`) —
    the failure message *is* the rule (what / why / fix / `doc:` pointer back to the prose).

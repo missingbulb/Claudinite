@@ -33,16 +33,25 @@ const PLAN_PATH = 'plan.json'; // cwd-relative; ephemeral, never committed
 // becomes a unit the orchestrator dispatches — the whole worklist decided in code
 // here, before any worker agent runs. A member whose probe throws is isolated: it
 // contributes no units and an error note, never sinking the plan.
-export async function buildWorkPlan(gh, home, coveredRepos) {
+//
+// The HOME repo is planned too — last, as an ordinary member of its own declared
+// packs, with two extra signals no member gets: `isHome: true`, and `fleetMembers`,
+// the aggregate of every successfully-probed member's { repo, activePacks,
+// projectChanged }. That aggregate is what lets a home-declared pack's gate decide
+// fleet-facing work (e.g. "did any enrolled member change tonight?") in code,
+// without the planner knowing any pack by name. Planning home last is what makes
+// the aggregate complete when its gates run.
+export async function buildWorkPlan(gh, home, coveredRepos, homeRepo = null) {
   const sinceIso = new Date(Date.now() - 25 * 3600 * 1000).toISOString();
   const weekdayUtc = new Date().getUTCDay();
   const canonChanged = await computeCanonChanged(gh, home, sinceIso);
   const allPackTasks = packTasks(await loadPacks());
 
-  const units = []; const errors = [];
+  const units = []; const errors = []; const fleetMembers = [];
   for (const r of coveredRepos) {
     try {
       const signals = await buildSignals(gh, r, { sinceIso, weekdayUtc, canonChanged });
+      fleetMembers.push({ repo: r.full_name, activePacks: signals.activePacks, projectChanged: signals.projectChanged });
       const applicable = assembleForRepo(signals.activePacks, allPackTasks);
       const res = await planRepo({ fullName: r.full_name, defaultBranch: r.default_branch }, signals, applicable, gh);
       units.push(...res.units); errors.push(...res.errors);
@@ -50,19 +59,38 @@ export async function buildWorkPlan(gh, home, coveredRepos) {
       errors.push({ repo: r.full_name, error: e.message });
     }
   }
+  if (homeRepo) {
+    try {
+      const signals = {
+        ...(await buildSignals(gh, homeRepo, { sinceIso, weekdayUtc, canonChanged })),
+        isHome: true,
+        fleetMembers,
+      };
+      const applicable = assembleForRepo(signals.activePacks, allPackTasks);
+      const res = await planRepo({ fullName: homeRepo.full_name, defaultBranch: homeRepo.default_branch }, signals, applicable, gh);
+      units.push(...res.units); errors.push(...res.errors);
+    } catch (e) {
+      errors.push({ repo: homeRepo.full_name, error: e.message });
+    }
+  }
   return { generatedAt: new Date().toISOString(), windowStartUtc: sinceIso, weekdayUtc, canonChanged, units, errors };
 }
 
-// Enumerate the repos this token can reach, keep the covered members (skipping the
-// home repo, forks, and archived repos), and plan over them. An unclassifiable repo
+// Enumerate the repos this token can reach, keep the covered members (skipping
+// forks and archived repos), and plan over them. The home repo is planned too —
+// not via the coverage marker (the canon doesn't mount itself) but by virtue of
+// being home: its own .claudinite-checks.json declares its packs, and home-only
+// packs (declared nowhere else) are how fleet-facing central work rides the
+// ordinary planner instead of bespoke orchestrator steps. An unclassifiable repo
 // is skipped with a note — never fatal: one repo's probe error must not stop the
 // plan for the rest (unlike the census, the planner has no coverage verdict to
 // protect, so it stays resilient and always emits whatever plan it can).
 export async function planAccessibleFleet(gh, home) {
   const mine = await paged(gh, '/user/repos?affiliation=owner');
   const coveredRepos = []; const skipped = []; const unknown = [];
+  let homeRepo = null;
   for (const r of mine.sort((a, b) => a.full_name.localeCompare(b.full_name))) {
-    if (home && r.full_name.toLowerCase() === home.toLowerCase()) continue; // the canon doesn't plan over itself
+    if (home && r.full_name.toLowerCase() === home.toLowerCase()) { homeRepo = r; continue; } // planned last, with the fleet aggregate
     if (r.archived || r.fork) { skipped.push(`${r.full_name} (${r.archived ? 'archived' : 'fork'})`); continue; }
     try {
       if (await isCovered(gh, r.full_name)) coveredRepos.push(r);
@@ -70,7 +98,7 @@ export async function planAccessibleFleet(gh, home) {
       unknown.push(`${r.full_name} — ${e.message}`);
     }
   }
-  const plan = await buildWorkPlan(gh, home, coveredRepos);
+  const plan = await buildWorkPlan(gh, home, coveredRepos, homeRepo);
   return { plan, coveredCount: coveredRepos.length, skipped, unknown };
 }
 

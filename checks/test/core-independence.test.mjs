@@ -98,17 +98,18 @@ const ACCEPT = {
   // core & pack-agnostic, so auto-all-repos-maintenance.md no longer names sheepdog at all.
   // The files below still name the enforcer pack's census, but CORRECTLY — as a separate,
   // isolated concern — plus incidental example-cites, left per "fix the planner, leave the rest".
-  'routines/auto-all-repos-maintenance.md': { why: DOC_CITES, names: ['pack:tidy-repo', 'pack:basics'] },
+  'routines/auto-all-repos-maintenance.md': { why: DOC_CITES, names: ['pack:tidy-repo', 'pack:basics', 'pack:grow_with_claudinite', 'pack:canon-curation'] },
   'routines/fleet/DESIGN.md': {
     why: CENSUS_OK,
     names: [
       'pack:sheepdog', 'pack:tidy-repo', 'pack:basics', 'pack:research-project',
       'pack:chrome-extension', 'pack:chrome-extension-release', 'pack:github-actions',
+      'pack:grow_with_claudinite', 'pack:canon-curation',
       'skill:single-branch-status', 'skill:single-issue-triage', 'skill:single-pr-status', 'skill:unattended-agents',
     ],
   },
   'routines/fleet/scheduling.md': { why: CENSUS_OK, names: ['pack:sheepdog', 'pack:github-actions', 'skill:unattended-agents'] },
-  'README.md': { why: CENSUS_OK, names: ['pack:sheepdog', 'pack:tidy-repo', 'pack:grow_with_claudinite', 'pack:basics'] },
+  'README.md': { why: CENSUS_OK, names: ['pack:sheepdog', 'pack:tidy-repo', 'pack:grow_with_claudinite', 'pack:canon-curation', 'pack:basics'] },
   'extending.md': {
     why: DOC_CITES,
     names: ['pack:sheepdog', 'pack:tidy-repo', 'pack:grow_with_claudinite', 'pack:research-project', 'pack:spec-driven-product', 'skill:repo-text-sweeps'],
@@ -119,7 +120,7 @@ const ACCEPT = {
   'bootstrap.md': {
     why: SEEDING,
     names: [
-      'pack:basics', 'pack:grow_with_claudinite', 'pack:tidy-repo',
+      'pack:basics', 'pack:grow_with_claudinite', 'pack:tidy-repo', 'pack:canon-curation',
       'pack:chrome-extension', 'pack:chrome-extension-release', 'pack:executable-requirements',
       'pack:research-project', 'pack:spec-driven-product',
       'skill:generate-project-instructions', 'skill:merge-to-main',
@@ -145,19 +146,19 @@ const ACCEPT = {
     why: DOC_CITES,
     names: [
       'pack:basics', 'pack:chrome-extension-release', 'pack:github-actions',
+      'pack:grow_with_claudinite', 'pack:canon-curation',
       'skill:bug-investigation', 'skill:engineering-practices', 'skill:file-placement',
       'skill:lessons-learned', 'skill:merge-to-main', 'skill:unattended-agents',
     ],
   },
   'checks/README.md': { why: DOC_CITES, names: ['pack:basics', 'pack:github-actions', 'skill:file-placement'] },
   'consumer-safe-changes.md': { why: DOC_CITES, names: ['skill:repo-text-sweeps'] },
-  'growth/README.md': { why: DOC_CITES, names: ['skill:lessons-learned', 'skill:merge-to-main', 'skill:prose-to-checks'] },
-  'growth/dedup.md': { why: DOC_CITES, names: ['skill:git-github-advanced'] },
-  'growth/discover-packs.md': { why: DOC_CITES, names: ['skill:generate-project-instructions', 'skill:git-github-advanced', 'skill:unattended-agents'] },
-  'growth/extract.md': { why: DOC_CITES, names: ['skill:lessons-learned'] },
-  'growth/item-routing.md': { why: DOC_CITES, names: ['skill:generate-project-instructions'] },
-  'growth/promote.md': { why: DOC_CITES, names: ['pack:app-store-release', 'skill:generate-project-instructions', 'skill:git-github-advanced', 'skill:unattended-agents'] },
   '.github/actions/report-failure/action.yml': { why: DOC_CITES, names: ['skill:git-github-advanced'] },
+
+  // The canon-curation pack's promote write-surface gate is dispatched from core CI,
+  // keyed on the promote branch prefix — a pack-task trigger hosted in the core
+  // .github/ tree, the same shape as the release infra above.
+  '.github/workflows/checks-ci.yml': { why: RELEASE, names: ['pack:canon-curation'] },
 };
 
 test('canon enumeration is non-empty (guards a broken glob)', () => {

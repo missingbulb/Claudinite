@@ -50,7 +50,6 @@ export default {
     'git-github-advanced',
     'lessons-learned',
     'merge-to-main',
-    'prose-to-checks',
     'repo-text-sweeps',
     'unattended-agents',
     'writing-tests',

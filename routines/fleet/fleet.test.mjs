@@ -7,6 +7,8 @@ import baselining from '../../packs/basics/run_daily/baselining.mjs';
 import extract from '../../packs/grow_with_claudinite/run_daily/growth-extract-new-instructions.mjs';
 import dedup from '../../packs/grow_with_claudinite/run_daily/growth-dedup-local-instructions.mjs';
 import discoverPacks from '../../packs/grow_with_claudinite/run_daily/growth-discover-packs.mjs';
+import promote from '../../packs/canon-curation/run_daily/growth-promote-to-claudinite.mjs';
+import proseSweep from '../../packs/canon-curation/run_daily/prose-to-checks-sweep.mjs';
 
 const REPO = { fullName: 'owner/foo', defaultBranch: 'main' };
 const S = (over = {}) => ({
@@ -64,7 +66,7 @@ test('assembleForRepo = the run_daily tasks of only the packs a repo declares', 
 
 test('planRepo emits a unit per run:true gate, carrying worker/targets/order/smarts', async () => {
   const tasks = [
-    T({ id: 'a', worker: 'a.md', order: 'growth:1', smarts: 'high',
+    T({ id: 'a', worker: 'a.md', order: 'tidy:report', smarts: 'high',
       gate: async () => ({ run: true, targets: { x: 1 }, reason: 'because' }) }),
     T({ id: 'b', gate: async () => ({ run: false }) }),
   ];
@@ -72,7 +74,7 @@ test('planRepo emits a unit per run:true gate, carrying worker/targets/order/sma
   assert.equal(units.length, 1);
   assert.deepEqual(units[0], {
     repo: 'owner/foo', task: 'a', worker: 'a.md', targets: { x: 1 },
-    reason: 'because', order: 'growth:1', smarts: 'high',
+    reason: 'because', order: 'tidy:report', smarts: 'high',
   });
 });
 
@@ -114,6 +116,11 @@ test('baselining (basics): runs on canonChanged (incremental) and on its full sw
   assert.equal(baselining.full_sweep_supported, true);
 });
 
+test('baselining (basics): self-skips the home repo — the canon doesn\'t mount itself', async () => {
+  assert.equal((await baselining.gate(REPO, S({ isHome: true, canonChanged: true }))).run, false);
+  assert.equal((await baselining.gate(REPO, S({ isHome: true, fullSweep: true }))).run, false);
+});
+
 test('growth-extract (grow_with_claudinite): runs only when the project changed; no full mode', async () => {
   assert.equal(extract.full_sweep_supported, false);
   assert.equal((await extract.gate(REPO, S())).run, false);
@@ -130,10 +137,50 @@ test('growth-dedup (grow_with_claudinite): runs on canonChanged, projectChanged,
 
 test('growth-discover-packs (grow_with_claudinite): a regular run_daily task, weekly-only, independent', async () => {
   assert.equal(discoverPacks.full_sweep_supported, true);
-  assert.equal(discoverPacks.order, null); // independent of the growth phased barrier
+  assert.equal(discoverPacks.order, null); // independent — no barriers in the plan
   // Slow-moving signal: fires only on the member's weekly full sweep, not on day-to-day change.
   assert.equal((await discoverPacks.gate(REPO, S())).run, false);
   assert.equal((await discoverPacks.gate(REPO, S({ projectChanged: true }))).run, false);
   assert.equal((await discoverPacks.gate(REPO, S({ canonChanged: true }))).run, false);
   assert.equal((await discoverPacks.gate(REPO, S({ fullSweep: true }))).run, true);
+});
+
+test('growth extract/dedup (grow_with_claudinite): ordinary independent units — no order token', () => {
+  assert.equal(extract.order, null);
+  assert.equal(dedup.order, null);
+});
+
+// --- canon-curation (home-only pack) gates ----------------------------------
+
+const HOME = { fullName: 'o/home', defaultBranch: 'main' };
+const MEMBERS = [
+  { repo: 'owner/foo', activePacks: ['basics', 'grow_with_claudinite'], projectChanged: true },
+  { repo: 'owner/bar', activePacks: ['basics', 'grow_with_claudinite'], projectChanged: false },
+  { repo: 'owner/baz', activePacks: ['basics'], projectChanged: true }, // not enrolled
+];
+
+test('growth-promote-to-claudinite (canon-curation): targets the changed participating members', async () => {
+  const v = await promote.gate(HOME, S({ isHome: true, fleetMembers: MEMBERS }));
+  assert.equal(v.run, true);
+  assert.deepEqual(v.targets.repos, ['owner/foo']); // changed AND enrolled; baz changed but isn't enrolled
+});
+
+test('growth-promote-to-claudinite: full sweep promotes over all participants regardless of change', async () => {
+  const v = await promote.gate(HOME, S({ isHome: true, fullSweep: true, fleetMembers: MEMBERS }));
+  assert.equal(v.run, true);
+  assert.deepEqual(v.targets.repos, ['owner/foo', 'owner/bar']);
+});
+
+test('growth-promote-to-claudinite: quiet when nothing changed, and never runs off the home repo', async () => {
+  assert.equal((await promote.gate(HOME, S({ isHome: true, fleetMembers: MEMBERS.map((m) => ({ ...m, projectChanged: false })) }))).run, false);
+  assert.equal((await promote.gate(HOME, S({ isHome: true }))).run, false); // no aggregate at all
+  // A stray declaration on a member can't double-run promote: the gate requires isHome.
+  assert.equal((await promote.gate(REPO, S({ fleetMembers: MEMBERS }))).run, false);
+});
+
+test('prose-to-checks-sweep (canon-curation): weekly, home-only', async () => {
+  assert.equal(proseSweep.full_sweep_supported, true);
+  assert.equal((await proseSweep.gate(HOME, S({ isHome: true }))).run, false);
+  assert.equal((await proseSweep.gate(HOME, S({ isHome: true, fullSweep: true }))).run, true);
+  assert.equal((await proseSweep.gate(REPO, S({ fullSweep: true }))).run, false); // never off-home
 });

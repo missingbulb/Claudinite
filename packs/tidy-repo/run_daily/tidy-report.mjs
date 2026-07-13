@@ -3,7 +3,7 @@
 // standing tidy tracker to today's snapshot from their verdicts. Because the single-
 // object workers only see their own object, this is where the repo-level picture is
 // owned. order: 'tidy:report' — the orchestrator runs it after the repo's other tidy
-// units (a per-repo mini-barrier, narrower than the fleet-wide growth barrier).
+// units (a per-repo mini-barrier — the only ordering in the plan).
 
 export default {
   id: 'tidy-report',
