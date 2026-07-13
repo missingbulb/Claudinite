@@ -267,3 +267,82 @@ test('resolveRef: relative escape returns null, dotted module resolves', () => {
   assert.equal(resolveRef('../../../etc/passwd', 'extension', index), null);
   assert.equal(resolveRef('nonexistent/path.js', 'extension', index), null);
 });
+
+// --- regressions for the adversarial-review fixes ---------------------------
+
+test('does NOT misread a JS member call as a dotted module path (db.query → db/query.js)', () => {
+  const f = runCheck({ rules: [{ from: 'client', to: 'db' }] }, {
+    'client/orders.js': 'export function load(db) {\n  return db.query(1);\n}\n',
+    'db/query.js': 'export const q = 1;\n',
+    'db/connect.js': 'export const c = 1;\n',
+  });
+  assert.equal(f.length, 0);
+  // The dotted layer stays Python-only, so a real Python module still resolves.
+  const py = buildIndex({ tracked: ['db/query.py', 'client/a.py'] });
+  assert.equal(resolveRef('db.query', 'client', py), 'db/query.py');
+});
+
+test('prefers the file-relative resolution over repo-root (no false crossing)', () => {
+  const f = runCheck({ rules: [{ from: 'extension', to: 'server' }] }, {
+    'extension/a.js': "const p = 'server/db.js';\n", // means extension/server/db.js, not root server/
+    'extension/server/db.js': 'export const d = 1;\n',
+    'server/db.js': 'export const d = 1;\n',
+  });
+  assert.equal(f.length, 0);
+});
+
+test('normPrefix strips a leading slash so an absolute-style from/to still enforces', () => {
+  assert.equal(normPrefix('/src'), 'src');
+  assert.equal(normPrefix('.'), '');
+  assert.equal(normPrefix('/'), '');
+  const f = runCheck({ rules: [{ from: '/extension', to: '/server' }] }, {
+    'extension/a.js': "import x from '../server/db.js';\n",
+    'server/db.js': 'export default 1;\n',
+  });
+  assert.equal(f.length, 1);
+});
+
+test('rejects an edge whose folder collapses to the repo root', () => {
+  for (const bad of [{ from: '.', to: 'server' }, { from: 'extension', to: '/' }, { from: '/', to: '*' }]) {
+    const f = runCheck({ rules: [bad] }, { 'extension/a.js': '1\n', 'server/b.js': '1\n' });
+    assert.equal(f.length, 1, JSON.stringify(bad));
+    assert.equal(f[0].file, '.claudinite-checks.json');
+  }
+});
+
+test('between runs overlap validation (does not bypass it)', () => {
+  const f = runCheck({ rules: [{ between: ['a', 'a/b'] }] }, { 'a/b/x.js': '1\n' });
+  assert.equal(f.length, 1);
+  assert.match(f[0].what, /overlap/);
+});
+
+test('allow accepts a string shorthand and rejects a non-string/array', () => {
+  const ok = runCheck({ rules: [{ between: ['client', 'server'], allow: 'shared' }] }, {
+    'client/a.js': "import { T } from '../shared/t.js';\n",
+    'server/s.js': 'export default 1;\n',
+    'shared/t.js': 'export const T = 1;\n',
+  });
+  assert.equal(ok.length, 0); // the only cross is client→shared, which allow permits
+  const bad = runCheck({ rules: [{ from: 'client', to: 'server', allow: 7 }] }, { 'client/a.js': '1\n', 'server/s.js': '1\n' });
+  assert.equal(bad.length, 1);
+  assert.match(bad[0].what, /"allow" must be/);
+});
+
+test('an allow entry that would disable the barrier is a config error', () => {
+  const f = runCheck({ rules: [{ from: 'client', to: 'server', allow: [''] }] }, { 'client/a.js': '1\n', 'server/s.js': '1\n' });
+  assert.equal(f.length, 1);
+  assert.match(f[0].what, /every "allow" entry/);
+});
+
+test('resolves a Sass underscore partial and a long-extension bare filename', () => {
+  const scss = runCheck({ rules: [{ from: 'extension', to: 'server' }] }, {
+    'extension/a.scss': "@use '../server/theme';\n",
+    'server/_theme.scss': '$c: red;\n',
+  });
+  assert.equal(scss.length, 1);
+  const long = runCheck({ rules: [{ from: 'extension', to: 'server' }] }, {
+    'extension/a.js': '// mirrors server settings in config.properties\n',
+    'server/config.properties': 'a=1\n',
+  });
+  assert.equal(long.length, 1);
+});

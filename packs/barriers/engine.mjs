@@ -9,7 +9,8 @@ import { finding } from '../../checks/lib/findings.mjs';
 // bare filename) only counts when it *resolves to a real tracked path* inside the
 // barred folder. An English word that merely happens to be a folder's name never
 // resolves, so it never fires — no per-language parser, no allowlist of file
-// types, and near-zero false positives. See packs/barriers/README.md.
+// types, and near-zero false positives. See packs/barriers/README.md, including
+// its "Known limitations" section for the reference forms this does not resolve.
 //
 // Exported for composition: another pack imports `defineBarrier` (or the lower
 // `normalizeEdges` + `barrierFindings`) and contributes a fixed barrier as one of
@@ -20,11 +21,14 @@ export const DEFAULT_DOC = 'packs/barriers/README.md';
 // --- path helpers (posix; both separators accepted on input) ----------------
 
 // A folder/target prefix as the config author wrote it → a bare posix prefix:
-// backslashes folded, a leading "./" and any trailing "/" stripped. '*' is the
-// isolation wildcard and passes through untouched.
+// backslashes folded, a leading "./" or "/" and any trailing "/" stripped, and a
+// lone "." (repo root) collapsed to "". '*' is the isolation wildcard and passes
+// through untouched. A prefix that collapses to "" is rejected by normalizeEdges
+// (an empty prefix would match every path), never silently enforced.
 export function normPrefix(p) {
   if (p === '*') return '*';
-  return String(p).replace(/\\/g, '/').replace(/^\.\//, '').replace(/\/+$/, '');
+  const s = String(p).replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '').replace(/\/+$/, '');
+  return s === '.' ? '' : s;
 }
 
 // Join `rel` onto `base` and resolve "." / ".." segments, posix-style. Returns
@@ -46,15 +50,19 @@ function normJoin(base, rel) {
 // `path` is inside folder `prefix` (or is it). '' matches everything; '*' never
 // matches here (it is handled as the isolation wildcard, not a real prefix).
 export function under(path, prefix) {
-  if (prefix === '' ) return true;
+  if (prefix === '') return true;
   if (prefix === '*') return false;
   return path === prefix || path.startsWith(`${prefix}/`);
 }
 
-const hasExt = (base) => /\.[A-Za-z][A-Za-z0-9]{0,7}$/.test(base);
+// A bare filename carries an extension. The cap tolerates long real suffixes
+// (`.properties`, `.stylesheet`) while still requiring a letter-led extension.
+const hasExt = (base) => /\.[A-Za-z][A-Za-z0-9]{0,19}$/.test(base);
 
 // Extension/index completion, for extension-less import specifiers (`../server/db`
-// → server/db.ts) and directory imports (`../server` → server/index.ts).
+// → server/db.ts) and directory imports (`../server` → server/index.ts). Applied
+// only to slash-based path attempts — NOT to the dotted-module conversion, which
+// completes with Python extensions alone (see resolveRef).
 const TRY_EXT = ['.js', '.mjs', '.cjs', '.jsx', '.ts', '.tsx', '.json', '.css', '.scss', '.less', '.py', '.go', '.rb', '.java', '.rs', '.php', '.html', '.vue', '.svelte'];
 const TRY_INDEX = ['/index.js', '/index.mjs', '/index.ts', '/index.tsx', '/index.jsx'];
 
@@ -79,14 +87,18 @@ export function buildIndex(ctx) {
   return { files, dirs, byBase };
 }
 
-// Does `p` name a real tracked file or directory (allowing extension/index
-// completion)? Returns the concrete resolved path, or null.
+// Does `p` name a real tracked file or directory (allowing extension/index and
+// Sass-partial completion)? Returns the concrete resolved path, or null.
 function matchTree(p, index) {
-  if (p === null || p === '') return null;
+  if (!p) return null;
   if (index.files.has(p)) return p;
   if (index.dirs.has(p)) return p;
   for (const ext of TRY_EXT) if (index.files.has(p + ext)) return p + ext;
   for (const idx of TRY_INDEX) if (index.files.has(p + idx)) return p + idx;
+  // Sass/SCSS underscore partials: dir/name → dir/_name.scss (imported without the _).
+  const slash = p.lastIndexOf('/');
+  const partial = `${p.slice(0, slash + 1)}_${p.slice(slash + 1)}`;
+  for (const ext of ['.scss', '.sass']) if (index.files.has(partial + ext)) return partial + ext;
   return null;
 }
 
@@ -96,7 +108,7 @@ function matchTree(p, index) {
 const QUOTED = /'([^'\n]+)'|"([^"\n]+)"|`([^`\n]+)`/g;
 // Unquoted path-ish tokens (comments, Markdown, plain prose): a relative path, a
 // multi-segment slash path, or a bare filename that carries an extension.
-const PATHISH = /(?:\.{1,2}[\\/])[\w.@+\-\\/]+|[\w@+\-][\w.@+\-]*(?:[\\/][\w.@+\-]+)+|[\w@+\-][\w.@+\-]*\.[A-Za-z][A-Za-z0-9]{0,7}/g;
+const PATHISH = /(?:\.{1,2}[\\/])[\w.@+\-\\/]+|[\w@+\-][\w.@+\-]*(?:[\\/][\w.@+\-]+)+|[\w@+\-][\w.@+\-]*\.[A-Za-z][A-Za-z0-9]{0,19}/g;
 const URLISH = /^(?:[a-z][a-z0-9+.\-]*:)?\/\//i; // http://, https://, //cdn, mailto: handled below
 
 // Every reference candidate on one line, de-duplicated, cleaned of wrapping
@@ -122,7 +134,7 @@ export function candidatesOn(line) {
 
 // Resolve one candidate string, seen in a file whose directory is `fromDir`, to a
 // concrete tracked path — or null when it names nothing in the repo. Tries, in
-// order: relative-to-file, repo-root-relative, Python-style dotted module, and the
+// order: file-relative, repo-root-relative, Python-style dotted module, and the
 // unique-basename layer (a bare `name.ext` that exactly one tracked file carries).
 export function resolveRef(candidate, fromDir, index) {
   const c = candidate.replace(/\\/g, '/');
@@ -133,20 +145,30 @@ export function resolveRef(candidate, fromDir, index) {
   } else if (c.startsWith('/')) {
     attempts.push(normJoin('', c.slice(1)));
   } else {
+    // File-relative first: a local reference that stays within `from` resolves
+    // here and is (correctly) not a crossing — preferring it over the repo-root
+    // interpretation avoids a false crossing when both paths happen to exist.
+    attempts.push(normJoin(fromDir, c));
     if (c.includes('/')) attempts.push(normJoin('', c)); // repo-root relative
-    attempts.push(normJoin(fromDir, c)); // implicitly-relative to the file
-    // Python-style dotted module: a.b.c → a/b/c. Attempted for any no-slash
-    // dotted token — `mod.py` vs `pkg.mod` is undecidable from the text, so the
-    // tree arbitrates: whichever interpretation names a real path wins (a bare
-    // filename.ext that names nothing here falls through to the unique-basename
-    // layer below).
-    if (!c.includes('/') && c.includes('.') && /^[A-Za-z_][\w.]*[A-Za-z0-9_]$/.test(c)) {
-      attempts.push(normJoin('', c.replace(/\./g, '/')));
-    }
   }
   for (const p of attempts) {
     const hit = matchTree(p, index);
     if (hit) return hit;
+  }
+
+  // Python-style dotted module: a.b.c → a/b/c, completed with PYTHON extensions
+  // ONLY. JS/TS/… never address modules with dots — there a `receiver.method()`
+  // call is member access, not a module path — so restricting completion to
+  // `.py`/`__init__.py` keeps the tree from fabricating a `db/query.js` match for
+  // a `db.query(...)` call. The genuinely-ambiguous Python case still resolves.
+  if (!c.includes('/') && c.includes('.') && /^[A-Za-z_][\w.]*[A-Za-z0-9_]$/.test(c)) {
+    const d = normJoin('', c.replace(/\./g, '/'));
+    if (d) {
+      if (index.files.has(d)) return d;
+      if (index.dirs.has(d)) return d;
+      if (index.files.has(`${d}.py`)) return `${d}.py`;
+      if (index.files.has(`${d}/__init__.py`)) return `${d}/__init__.py`;
+    }
   }
 
   // Unique filename-with-extension: a bare `tokenStore.ts` mentioned anywhere
@@ -161,11 +183,30 @@ export function resolveRef(candidate, fromDir, index) {
 
 // --- edge normalization -----------------------------------------------------
 
+// A single normalized edge's shape problem, or null if it is well-formed. Shared
+// by the direct and `between` forms so neither can slip past validation.
+function edgeProblem(edge, at) {
+  if (edge.from === '') {
+    return { what: `${at}: "from" must name a real subfolder`, fix: 'name the folder to guard, e.g. "client" (not "", ".", or "/")' };
+  }
+  if (edge.to === '') {
+    return { what: `${at}: "to" must name a real subfolder, or "*"`, fix: 'name the barred folder, or use "*" for isolation' };
+  }
+  if (edge.allow.some((a) => a === '' || a === '*')) {
+    return { what: `${at}: every "allow" entry must name a real folder`, fix: 'remove the empty/"*" allow entry (it would disable the barrier), or name a shared folder' };
+  }
+  if (edge.to !== '*' && (edge.from === edge.to || under(edge.to, edge.from) || under(edge.from, edge.to))) {
+    return { what: `${at}: "from" (${edge.from}) and "to" (${edge.to}) overlap`, fix: 'a folder cannot be barred from itself or an ancestor/descendant — pick disjoint folders' };
+  }
+  return null;
+}
+
 // Turn author-written barrier specs into normalized edges, collecting shape
 // errors as { what, fix } for the caller to surface as blocking findings.
 //   { from, to, allow?, reason? }        one directed ban
 //   { between: [a, b], allow?, reason? } sugar → both directions
 //   to may be '*' — isolation: `from` may reference nothing outside itself/allow
+//   allow may be a string (one folder) or an array of them
 export function normalizeEdges(specs) {
   const edges = [];
   const errors = [];
@@ -178,7 +219,21 @@ export function normalizeEdges(specs) {
       errors.push({ what: `${at} must be an object`, fix: 'use { "from": "...", "to": "..." } or { "between": ["a","b"] }' });
       return;
     }
-    const allow = Array.isArray(spec.allow) ? spec.allow.map(normPrefix) : [];
+
+    // allow: a string is single-folder shorthand; anything else non-array is an error.
+    let allowRaw;
+    if (spec.allow === undefined) allowRaw = [];
+    else if (typeof spec.allow === 'string') allowRaw = [spec.allow];
+    else if (Array.isArray(spec.allow)) allowRaw = spec.allow;
+    else {
+      errors.push({ what: `${at}: "allow" must be a folder path or an array of them`, fix: 'use "allow": "shared" or "allow": ["shared", "contracts"]' });
+      return;
+    }
+    if (allowRaw.some((a) => typeof a !== 'string')) {
+      errors.push({ what: `${at}: every "allow" entry must be a string`, fix: 'each allow entry names a folder path' });
+      return;
+    }
+    const allow = allowRaw.map(normPrefix);
     const reason = typeof spec.reason === 'string' ? spec.reason : null;
     const mk = (from, to) => ({ from: normPrefix(from), to: to === '*' ? '*' : normPrefix(to), allow, reason });
 
@@ -188,7 +243,11 @@ export function normalizeEdges(specs) {
         return;
       }
       const [a, b] = spec.between;
-      edges.push(mk(a, b), mk(b, a));
+      const e1 = mk(a, b);
+      const e2 = mk(b, a);
+      const prob = edgeProblem(e1, at) || edgeProblem(e2, at);
+      if (prob) { errors.push(prob); return; }
+      edges.push(e1, e2);
       return;
     }
     if (typeof spec.from !== 'string' || !spec.from.trim() || typeof spec.to !== 'string' || !spec.to.trim()) {
@@ -196,10 +255,8 @@ export function normalizeEdges(specs) {
       return;
     }
     const edge = mk(spec.from, spec.to);
-    if (edge.to !== '*' && (edge.from === edge.to || under(edge.to, edge.from) || under(edge.from, edge.to))) {
-      errors.push({ what: `${at}: "from" (${edge.from}) and "to" (${edge.to}) overlap`, fix: 'a folder cannot be barred from itself or an ancestor/descendant — pick disjoint folders' });
-      return;
-    }
+    const prob = edgeProblem(edge, at);
+    if (prob) { errors.push(prob); return; }
     edges.push(edge);
   });
   return { edges, errors };
