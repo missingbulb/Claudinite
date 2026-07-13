@@ -67,7 +67,12 @@ async function readActivePacks(gh, fullName) {
   if (status !== 200 || !json?.content) return [];
   try {
     const parsed = JSON.parse(Buffer.from(json.content, 'base64').toString('utf8'));
-    return Array.isArray(parsed.packs) ? parsed.packs : [];
+    // A packs entry is an id string or an entry object { id, ... } — this reads
+    // the member's file raw (over the API, no engine on hand), so it normalizes
+    // to ids itself, same as packEntryId in packs/registry.mjs.
+    return (Array.isArray(parsed.packs) ? parsed.packs : [])
+      .map((e) => (typeof e === 'string' ? e : e?.id))
+      .filter((id) => typeof id === 'string');
   } catch { return []; }
 }
 

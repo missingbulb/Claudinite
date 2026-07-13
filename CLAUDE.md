@@ -30,7 +30,7 @@ pack-contributed content, and where each kind of feature goes (almost never core
   the declaration, the nightly baselining backfills it into existing consumers.
 - **[packs/barriers/](packs/barriers/README.md)** — a mechanism pack: enforce a directed
   folder-access graph (folder A may not reference folder B — imports, path/filename references, in
-  any language, comments and docs included), declared per-project in `packConfig.barriers`. Its
+  any language, comments and docs included), declared per-project as `config` on the repo's barriers pack entry. Its
   detection engine is exported so other packs compose their own separation rules on it (the way
   `spec-driven-product` builds on `executable-requirements`).
 - **Technology packs**, active when the project declares them (bootstrap's `--init` seeds the
@@ -50,18 +50,24 @@ pack-contributed content, and where each kind of feature goes (almost never core
   storyboard `saga` kind, gallery, determinism; fingerprinted by `dev/requirements/requirements.md`
   — [packs/executable-requirements/RULES.md](packs/executable-requirements/RULES.md)).
 
-**Settings validity** — an unknown pack name, an unknown property, or malformed JSON in
-`.claudinite-checks.json` — is checked when the file loads and surfaced by the runner as a blocking
-`config` error (a wrong pack name is as much a settings error as bad JSON), not a conformance check among
-the packs. A pack's `marker` only *suspects* the pack is wanted; whether to declare it is the project's
-call, so neither a marker without its declaration nor a declaration without its marker is flagged.
+The declaration is **pack-oriented**: a `packs` entry is a pack id, or an entry object carrying that
+pack's own settings — its parameters (`config`), and the rule overrides/acceptances its declaration
+motivates (`rules`/`accept`, the entry being their provenance). Top-level `rules`/`accept` stay for
+project-wide decisions and skill-owned checks. Full schema: [checks/README.md](checks/README.md).
+
+**Settings validity** — an unknown pack name, an unknown property (top-level or on a pack entry), or
+malformed JSON in `.claudinite-checks.json` — is checked when the file loads and surfaced by the runner as
+a blocking `config` error (a wrong pack name is as much a settings error as bad JSON), not a conformance
+check among the packs. A pack's `marker` only *suspects* the pack is wanted; whether to declare it is the
+project's call, so neither a marker without its declaration nor a declaration without its marker is flagged.
 
 A pack that only makes sense alongside another names it in its `requires` list (e.g.
 `chrome-extension-release` requires `chrome-extension`, `firebase-release` requires `firebase`,
 `spec-driven-product` requires `executable-requirements`). This isn't a check: a pack can't be imported
 without its dependencies, so `resolveDeclaredPacks` ([packs/registry.mjs](packs/registry.mjs)) pulls each
 declared pack's `requires` closure into the declaration when it's written — at `--init` and the baselining
-backfill — materializing the prerequisite in the file, visible like every other entry.
+backfill — materializing the prerequisite in the file, visible like every other entry, as
+`{ "id": ..., "via": [...] }` with `via` naming the packs that require it.
 
 ## skills/ — activity-scoped procedures, surfaced on demand
 

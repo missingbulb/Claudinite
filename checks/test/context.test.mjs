@@ -23,6 +23,79 @@ test('loadConfig: an unknown top-level property is reported, valid keys still pa
   } finally { cleanup(root); }
 });
 
+test('loadConfig: a pack entry object normalizes — id into packs, config into the packConfig view, accept with provenance', () => {
+  const root = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({
+    packs: [
+      'basics',
+      { id: 'barriers',
+        config: { rules: [{ from: 'a', to: 'b' }] },
+        rules: { 'file-placement': 'advisory' },
+        accept: [{ rule: 'reference-integrity', path: 'x.md', reason: 'why' }] },
+      { id: 'chrome-extension', via: ['chrome-extension-release'] },
+    ],
+  }) } });
+  try {
+    const cfg = loadConfig(root);
+    assert.deepEqual(cfg.errors, []);
+    assert.deepEqual(cfg.packs, ['basics', 'barriers', 'chrome-extension']);
+    assert.deepEqual(cfg.packConfig, { barriers: { rules: [{ from: 'a', to: 'b' }] } });
+    assert.deepEqual(cfg.rules, { 'file-placement': 'advisory' });
+    // The entry-sourced acceptance carries its provenance: the pack that motivated it.
+    assert.deepEqual(cfg.accept, [{ rule: 'reference-integrity', path: 'x.md', reason: 'why', pack: 'barriers' }]);
+  } finally { cleanup(root); }
+});
+
+test('loadConfig: entry config overlays the legacy top-level packConfig, which stays readable', () => {
+  const root = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({
+    packs: ['node', { id: 'barriers', config: { rules: [] } }],
+    packConfig: { node: { dirs: ['fn'] }, barriers: { rules: [{ from: 'x', to: 'y' }] } },
+  }) } });
+  try {
+    const cfg = loadConfig(root);
+    assert.deepEqual(cfg.errors, []);
+    assert.deepEqual(cfg.packConfig.node, { dirs: ['fn'] }); // legacy still read
+    assert.deepEqual(cfg.packConfig.barriers, { rules: [] }); // the entry wins
+  } finally { cleanup(root); }
+});
+
+test('loadConfig: a malformed pack entry is a settings error — no id, unknown property, wrong shapes', () => {
+  const root = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({
+    packs: [
+      { config: {} },
+      { id: 'basics', nonsense: 1 },
+      { id: 'node', config: [] },
+      42,
+    ],
+  }) } });
+  try {
+    const cfg = loadConfig(root);
+    assert.equal(cfg.errors.length, 4);
+    assert.match(cfg.errors[0].what, /has no "id"/);
+    assert.match(cfg.errors[1].what, /unknown property "nonsense" on the "basics" pack entry/);
+    assert.match(cfg.errors[2].what, /"config" on the "node" pack entry must be/);
+    assert.match(cfg.errors[3].what, /neither a pack id nor an entry object/);
+    assert.deepEqual(cfg.packs, ['basics', 'node']); // the interpretable entries still load
+  } finally { cleanup(root); }
+});
+
+test('loadConfig: conflicting severity overrides are a settings error, agreeing ones are not', () => {
+  const conflicted = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({
+    packs: [{ id: 'basics', rules: { 'file-placement': 'advisory' } }],
+    rules: { 'file-placement': 'off' },
+  }) } });
+  const agreeing = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({
+    packs: [{ id: 'basics', rules: { 'file-placement': 'off' } }],
+    rules: { 'file-placement': 'off' },
+  }) } });
+  try {
+    const bad = loadConfig(conflicted);
+    assert.equal(bad.errors.length, 1);
+    assert.match(bad.errors[0].what, /rule "file-placement" is set to "off" by the top-level "rules" and "advisory" by the "basics" pack entry/);
+    assert.deepEqual(loadConfig(agreeing).errors, []);
+    assert.deepEqual(loadConfig(agreeing).rules, { 'file-placement': 'off' });
+  } finally { cleanup(conflicted); cleanup(agreeing); }
+});
+
 test('loadConfig: malformed JSON and a non-object root each report one error', () => {
   const bad = makeRepo({ changed: { '.claudinite-checks.json': '{ "packs": [ ' } });
   const arr = makeRepo({ changed: { '.claudinite-checks.json': '["basics"]' } });

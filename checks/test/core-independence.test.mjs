@@ -151,7 +151,7 @@ const ACCEPT = {
       'skill:lessons-learned', 'skill:merge-to-main', 'skill:unattended-agents',
     ],
   },
-  'checks/README.md': { why: DOC_CITES, names: ['pack:basics', 'pack:github-actions', 'skill:file-placement'] },
+  'checks/README.md': { why: DOC_CITES, names: ['pack:basics', 'skill:file-placement'] },
   'consumer-safe-changes.md': { why: DOC_CITES, names: ['skill:repo-text-sweeps'] },
   '.github/actions/report-failure/action.yml': { why: DOC_CITES, names: ['skill:git-github-advanced'] },
 

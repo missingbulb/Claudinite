@@ -12,13 +12,13 @@ Declared like any pack (no fingerprint — wanting structural segregation is the
 
 ## Declaring barriers
 
-A repo states its graph in `.claudinite-checks.json` under `packConfig.barriers.rules` — an array of edges:
+A repo states its graph as `config.rules` on its barriers pack entry in `.claudinite-checks.json` — an array of edges:
 
 ```json
 {
-  "packs": ["basics", "barriers"],
-  "packConfig": {
-    "barriers": {
+  "packs": [
+    "basics",
+    { "id": "barriers", "config": {
       "rules": [
         { "from": "src", "to": "tests", "reason": "source must not know about its tests" },
         { "between": ["client", "server"], "allow": ["shared", "contracts"],
@@ -26,8 +26,8 @@ A repo states its graph in `.claudinite-checks.json` under `packConfig.barriers.
         { "from": "dev/requirements", "to": "*", "allow": ["README.md"],
           "reason": "requirements is a pure sink — it references nothing outside itself" }
       ]
-    }
-  }
+    } }
+  ]
 }
 ```
 

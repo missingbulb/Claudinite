@@ -24,7 +24,23 @@ test('activeEnvs resolves the flutter (string) env when declared', async () => {
   } finally { cleanup(root); }
 });
 
-test('activeEnvs resolves the node env from per-repo packConfig.dirs (function form)', async () => {
+test("activeEnvs resolves the node env from the pack entry's config.dirs (function form)", async () => {
+  const root = makeRepo({
+    base: {
+      '.claudinite-checks.json': JSON.stringify({
+        packs: [{ id: 'node', config: { dirs: ['firebase/functions'] } }],
+      }),
+    },
+  });
+  try {
+    const n = (await activeEnvs(root)).find((e) => e.id === 'node');
+    assert.ok(n);
+    assert.match(n.setup, /cd "firebase\/functions" && npm ci/);
+    assert.match(n.probe, /firebase\/functions\/node_modules/);
+  } finally { cleanup(root); }
+});
+
+test('activeEnvs still resolves per-repo params from the legacy top-level packConfig', async () => {
   const root = makeRepo({
     base: {
       '.claudinite-checks.json': JSON.stringify({
@@ -37,11 +53,10 @@ test('activeEnvs resolves the node env from per-repo packConfig.dirs (function f
     const n = (await activeEnvs(root)).find((e) => e.id === 'node');
     assert.ok(n);
     assert.match(n.setup, /cd "firebase\/functions" && npm ci/);
-    assert.match(n.probe, /firebase\/functions\/node_modules/);
   } finally { cleanup(root); }
 });
 
-test('node env defaults to the repo root when no packConfig is given', async () => {
+test('node env defaults to the repo root when no config is given', async () => {
   const root = makeRepo({ base: { '.claudinite-checks.json': JSON.stringify({ packs: ['node'] }) } });
   try {
     const n = (await activeEnvs(root)).find((e) => e.id === 'node');

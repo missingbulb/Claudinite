@@ -7,7 +7,7 @@ import {
   normalizeEdges, resolveRef, candidatesOn, buildIndex, under, normPrefix, defineBarrier,
 } from './engine.mjs';
 
-// Run the config-driven check with the given packConfig.barriers and repo files.
+// Run the config-driven check with the given barriers config and repo files.
 function runCheck(barriersConfig, files) {
   const root = makeRepo({ changed: files });
   try {
@@ -16,6 +16,23 @@ function runCheck(barriersConfig, files) {
     return barrier.run(ctx);
   } finally { cleanup(root); }
 }
+
+test("the check reads the graph from the barriers pack entry's config in the real file", () => {
+  // End-to-end through loadConfig: the entry's `config` feeds the normalized
+  // packConfig view the check reads — no manual ctx injection.
+  const root = makeRepo({ changed: {
+    '.claudinite-checks.json': JSON.stringify({
+      packs: [{ id: 'barriers', config: { rules: [{ from: 'extension', to: 'server' }] } }],
+    }),
+    'extension/popup.js': "import { db } from '../server/db.js';\n",
+    'server/db.js': 'export const db = 1;\n',
+  } });
+  try {
+    const f = barrier.run(buildContext({ root, mode: 'all' }));
+    assert.equal(f.length, 1);
+    assert.equal(f[0].file, 'extension/popup.js');
+  } finally { cleanup(root); }
+});
 
 // --- import / relative-path detection ---------------------------------------
 

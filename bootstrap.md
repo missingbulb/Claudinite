@@ -182,19 +182,25 @@ From then on the declared packs run deterministically every session and in CI. T
 **4.** Make the `basics` declaration explicit (idempotent — a no-op when it's already declared). **No pack is active by default, `basics` included**: a repo gets the baseline prose and checks only by declaring the pack, so the declaration is visible — and droppable — in the one file where every pack selection lives. `--init` above already seeds it into a fresh file; this backfills a pre-existing one:
 
 ```sh
-node -e 'const fs=require("fs"),f=".claudinite-checks.json";const j=JSON.parse(fs.readFileSync(f,"utf8"));j.packs=Array.isArray(j.packs)?j.packs:[];if(!j.packs.includes("basics")){j.packs.unshift("basics");fs.writeFileSync(f,JSON.stringify(j,null,2)+"\n")}'
+node -e 'const fs=require("fs"),f=".claudinite-checks.json";const j=JSON.parse(fs.readFileSync(f,"utf8"));j.packs=Array.isArray(j.packs)?j.packs:[];const has=(n)=>j.packs.some((e)=>(typeof e==="string"?e:e&&e.id)===n);if(!has("basics")){j.packs.unshift("basics");fs.writeFileSync(f,JSON.stringify(j,null,2)+"\n")}'
 ```
 
 **4b.** Seed the **default-on declared packs** (`tidy-repo`, `grow_with_claudinite`) into a pre-existing declaration that lacks them — but each **only while its one-time seed baseline migration is live** (its file still present in the mounted canon). New repos get these from `--init`; this seeds the *existing* fleet once, so their universal coverage doesn't regress. Unlike `basics`, they are **never re-added after removal**: once the migration retire pass retires a pack's seed migration (deletes its file after the fleet converges), that pack's seeding no-ops, so a later opt-out (removing the pack) sticks. Idempotent:
 
 ```sh
-node -e 'const fs=require("fs"),f=".claudinite-checks.json",seeds=[["tidy-repo","2026-07-12-tidy-repo-seed.mjs"],["grow_with_claudinite","2026-07-12-grow-with-claudinite-seed.mjs"]];const j=JSON.parse(fs.readFileSync(f,"utf8"));j.packs=Array.isArray(j.packs)?j.packs:[];let ch=false;for(const[p,m]of seeds){if(fs.existsSync(".claudinite/migrations/active_migrations/"+m)&&!j.packs.includes(p)){j.packs.push(p);ch=true}}if(ch)fs.writeFileSync(f,JSON.stringify(j,null,2)+"\n")'
+node -e 'const fs=require("fs"),f=".claudinite-checks.json",seeds=[["tidy-repo","2026-07-12-tidy-repo-seed.mjs"],["grow_with_claudinite","2026-07-12-grow-with-claudinite-seed.mjs"]];const j=JSON.parse(fs.readFileSync(f,"utf8"));j.packs=Array.isArray(j.packs)?j.packs:[];const has=(n)=>j.packs.some((e)=>(typeof e==="string"?e:e&&e.id)===n);let ch=false;for(const[p,m]of seeds){if(fs.existsSync(".claudinite/migrations/active_migrations/"+m)&&!has(p)){j.packs.push(p);ch=true}}if(ch)fs.writeFileSync(f,JSON.stringify(j,null,2)+"\n")'
 ```
 
-**4c.** Import each declared pack's **dependencies** (idempotent). A pack can't be imported without the packs it requires — a release pack builds on its coding pack (`chrome-extension-release` → `chrome-extension`), a class pack on its framework (`spec-driven-product` → `executable-requirements`). A pack names those in its `requires` list; this pulls their transitive closure into the declaration so a prerequisite is materialized and visible in the file, like every other entry. `--init` above already resolves this for a fresh file; this backfills a pre-existing one:
+**4c.** Import each declared pack's **dependencies** (idempotent). A pack can't be imported without the packs it requires — a release pack builds on its coding pack (`chrome-extension-release` → `chrome-extension`), a class pack on its framework (`spec-driven-product` → `executable-requirements`). A pack names those in its `requires` list; this pulls their transitive closure into the declaration so a prerequisite is materialized and visible in the file, like every other entry — written as `{ "id": "...", "via": [...] }`, `via` naming the declared packs that require it, so the file itself records why the dependency is there. `--init` above already resolves this for a fresh file; this backfills a pre-existing one (and keeps every entry's `via` accurate as dependents come and go):
 
 ```sh
-node --input-type=module -e 'import{readFileSync,writeFileSync}from"node:fs";import{loadPacks,resolveDeclaredPacks}from"./.claudinite/packs/registry.mjs";const f=".claudinite-checks.json";const j=JSON.parse(readFileSync(f,"utf8"));j.packs=Array.isArray(j.packs)?j.packs:[];const r=resolveDeclaredPacks(j.packs,await loadPacks());if(r.length!==j.packs.length){j.packs=r;writeFileSync(f,JSON.stringify(j,null,2)+"\n")}'
+node --input-type=module -e 'import{readFileSync,writeFileSync}from"node:fs";import{loadPacks,resolveDeclaredPacks}from"./.claudinite/packs/registry.mjs";const f=".claudinite-checks.json";const j=JSON.parse(readFileSync(f,"utf8"));j.packs=Array.isArray(j.packs)?j.packs:[];const r=resolveDeclaredPacks(j.packs,await loadPacks());if(JSON.stringify(r)!==JSON.stringify(j.packs)){j.packs=r;writeFileSync(f,JSON.stringify(j,null,2)+"\n")}'
+```
+
+**4d.** Fold a legacy top-level `packConfig` into the pack entries (idempotent — a no-op once nothing is left to fold). A pack's parameters live on its `packs` entry as `config` (`{ "id": "node", "config": { "dirs": [...] } }`); earlier bootstraps wrote them under a top-level `packConfig` key, which the engine still reads but nothing should keep authoring. This moves each declared pack's legacy parameters onto its entry (an entry that already has `config` wins) and drops the legacy key once empty:
+
+```sh
+node -e 'const fs=require("fs"),f=".claudinite-checks.json";const j=JSON.parse(fs.readFileSync(f,"utf8"));if(j.packConfig&&typeof j.packConfig==="object"){j.packs=Array.isArray(j.packs)?j.packs:[];let ch=false;for(const[id,cfg]of Object.entries(j.packConfig)){const i=j.packs.findIndex((e)=>(typeof e==="string"?e:e&&e.id)===id);if(i<0)continue;const e=j.packs[i];j.packs[i]=typeof e==="string"?{id,config:cfg}:Object.assign({},e,{config:e.config??cfg});delete j.packConfig[id];ch=true}if(Object.keys(j.packConfig).length===0){delete j.packConfig;ch=true}if(ch)fs.writeFileSync(f,JSON.stringify(j,null,2)+"\n")}'
 ```
 
 **5.** Make the maintenance-delivery selection explicit (idempotent — a no-op when the key already exists). Every consumer's `.claudinite-checks.json` carries `"maintenance": { "delivery": "push" | "pr" }` — there is deliberately no implicit default, so the knob is always visible in the file where you'd change it (`pr` = the nightly fleet sweep delivers its baselining/alignment changes as a never-merged PR instead of a direct push). `--init` above already seeds `push` into a fresh file; this backfills a pre-existing one:
@@ -237,10 +243,10 @@ The web base image is minimal — it ships no Flutter SDK, a repo's `npm` module
 
 **1.** No separate `SessionStart` entry — `env.mjs check` runs as a step of `session-start.sh` (Part 2), which the sync entry calls after populating `.claudinite/` (env.mjs must load from the corpus). If a legacy standalone `SessionStart` entry for `env.mjs check` survives, remove it per Part 2.
 
-**2.** Give the packs any per-repo parameters they need in `.claudinite-checks.json` under `packConfig` — e.g. where the `node` pack should run `npm ci` (default: repo root):
+**2.** Give the packs any per-repo parameters they need as `config` on the pack's entry in `.claudinite-checks.json` — e.g. where the `node` pack should run `npm ci` (default: repo root):
 
 ```json
-{ "packConfig": { "node": { "dirs": ["firebase/functions"] } } }
+{ "packs": [ { "id": "node", "config": { "dirs": ["firebase/functions"] } } ] }
 ```
 
 **3.** Apply the setup to the environment: copy the full body of **`.claudinite/mount/environment-setup.sh`** (present after a corpus sync; or copy it from the Claudinite repo) into the web environment's **Setup script** field (web UI → environment selector → edit environment → Setup script), then start a fresh session so the snapshot rebuilds. The network policy must reach whatever the active packs' setup fetches (for `flutter`: `github.com`, `storage.googleapis.com`, `pub.dev`; for `node`: the npm registry).

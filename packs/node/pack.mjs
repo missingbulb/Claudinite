@@ -18,7 +18,8 @@ export default {
   // devDependency) modules don't — so `npm test`/build would trigger a
   // confusing mid-session install. Install them at environment-image build. The
   // package.json location varies per repo, so it's a per-project param: set
-  // `packConfig.node.dirs` in .claudinite-checks.json (default: repo root). A
+  // `dirs` in the node pack entry's `config` in .claudinite-checks.json
+  // (default: repo root). A
   // cloud setup script starts in the checkout's PARENT, so env.mjs runs this
   // from the checkout — the `cd "$d"` is relative to it.
   env: {

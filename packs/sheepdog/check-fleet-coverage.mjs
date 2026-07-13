@@ -5,7 +5,7 @@
 // out Claudinite and runs this with the FLEET_GITHUB_TOKEN.
 //
 // Its concern is COVERAGE ALONE — one thing: reads the fleet config from the
-// sheepdog (home) repo's packConfig.sheepdog (owner to cover + exclude list),
+// sheepdog (home) repo's sheepdog pack-entry config (owner to cover + exclude list),
 // enumerates every repo under that owner, classifies each (covered / uncovered /
 // excluded / skipped fork-or-archived), publishes the picture to the run summary,
 // and converges one adoption issue per actionable uncovered repo in the home repo
@@ -18,7 +18,7 @@
 // Two rules kept deliberately:
 //   - a marker check that ERRORS makes the repo UNKNOWN, never uncovered — no
 //     issue is opened for it and the run fails so the error escalates;
-//   - an unreadable/absent packConfig.sheepdog aborts the census — absence is
+//   - an unreadable/absent sheepdog config aborts the census — absence is
 //     not consent to cover everything with no exclusions.
 //
 // Dependency-free (global fetch, Node 20+); read-only toward every repo except the
@@ -42,7 +42,7 @@ function adoptionBody(fullName) {
     '',
     '- **Adopt it** — grant the repo to the sheepdog environment\'s per-repo access list;',
     '  the next daily run then baselines (bootstraps) it automatically.',
-    `- **Keep it out** — add \`${fullName}\` to \`packConfig.sheepdog.exclude\` in this`,
+    `- **Keep it out** — add \`${fullName}\` to the sheepdog pack entry's \`config.exclude\` in this`,
     '  (sheepdog) repo\'s `.claudinite-checks.json`, with a reason.',
     '',
     'This issue is converged by the daily Fleet Coverage census: it closes itself once the',
@@ -51,17 +51,21 @@ function adoptionBody(fullName) {
   ].join('\n');
 }
 
-// --- fleet config (from the sheepdog repo's packConfig.sheepdog) --------------
+// --- fleet config (from the sheepdog repo's sheepdog pack entry) --------------
 
-// The sheepdog repo's .claudinite-checks.json carries:
-//   packConfig.sheepdog = { owner: "missingbulb", kind: "user", exclude: ["owner/repo", ...] }
+// The sheepdog repo's .claudinite-checks.json carries, on its sheepdog pack entry:
+//   { "id": "sheepdog", "config": { owner: "missingbulb", kind: "user", exclude: ["owner/repo", ...] } }
 // owner is who to cover (default: the sheepdog repo's own owner); exclude is the repos
-// deliberately kept out (a full owner/name each, lowercased). Missing packConfig.sheepdog
-// is an unreadable config: throw — absence is not consent to cover everything.
+// deliberately kept out (a full owner/name each, lowercased). This reads the home
+// repo's file raw (fetched over the API, no engine on hand), so it resolves the
+// entry itself — legacy top-level packConfig.sheepdog stays readable underneath.
+// A missing config is an unreadable config: throw — absence is not consent to
+// cover everything.
 export function parseSheepdogConfig(cfg, home) {
-  const sd = cfg?.packConfig?.sheepdog;
+  const entry = (Array.isArray(cfg?.packs) ? cfg.packs : []).find((e) => e?.id === 'sheepdog');
+  const sd = entry?.config ?? cfg?.packConfig?.sheepdog;
   if (!sd || typeof sd !== 'object') {
-    throw new Error(`the sheepdog repo ${home} declares no packConfig.sheepdog { owner, exclude } — nothing to cover`);
+    throw new Error(`the sheepdog repo ${home} declares no sheepdog config { owner, exclude } (on the pack entry or legacy packConfig.sheepdog) — nothing to cover`);
   }
   const owner = String(sd.owner ?? home.split('/')[0]).toLowerCase();
   const exclude = new Set((Array.isArray(sd.exclude) ? sd.exclude : []).map((s) => String(s).toLowerCase()));
@@ -115,7 +119,7 @@ async function convergeIssues(gh, home, { uncovered, coveredSet, optedOutSet }) 
     if (coveredSet.has(fullName)) {
       reason = 'completed'; note = 'now mounts Claudinite — covered';
     } else if (optedOutSet.has(fullName)) {
-      reason = 'not_planned'; note = 'on the exclude list (packConfig.sheepdog.exclude)';
+      reason = 'not_planned'; note = "on the exclude list (the sheepdog pack entry's config.exclude)";
     } else if (!uncovered.includes(fullName)) {
       reason = 'not_planned'; note = 'no longer an adoption candidate (deleted, archived, transferred, or now a fork)';
     }
@@ -144,7 +148,7 @@ async function main() {
   if (!home || !home.includes('/')) throw new Error('GITHUB_REPOSITORY is not set (owner/repo)');
   const gh = makeGh(token);
 
-  // Read the fleet config from this (sheepdog) repo's packConfig.sheepdog.
+  // Read the fleet config from this (sheepdog) repo's sheepdog pack entry.
   const cfgRes = await gh(`/repos/${home}/contents/.claudinite-checks.json`);
   if (cfgRes.status !== 200 || !cfgRes.json?.content) {
     throw new Error(`the sheepdog repo ${home} has no readable .claudinite-checks.json (status ${cfgRes.status})`);

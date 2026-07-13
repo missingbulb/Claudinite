@@ -126,6 +126,63 @@ test('an acceptance path ending in "/" covers the whole subtree', () => {
   } finally { cleanup(root); }
 });
 
+test('a pack entry object declares the pack and carries its own accept/rules', () => {
+  // Declaring via an entry object activates the pack like a bare id, and the
+  // entry's accept/rules apply — with the reasonless-acceptance finding naming
+  // the entry as the exception's provenance.
+  const accepted = makeRepo({
+    changed: {
+      'doc.md': '[gone](missing.md)\n',
+      '.claudinite-checks.json': JSON.stringify({
+        packs: [{ id: 'basics', accept: [{ rule: 'reference-integrity', path: 'doc.md', reason: 'target lands in the next PR' }] }],
+      }),
+    },
+  });
+  const reasonless = makeRepo({
+    changed: {
+      'doc.md': '[gone](missing.md)\n',
+      '.claudinite-checks.json': JSON.stringify({
+        packs: [{ id: 'basics', accept: [{ rule: 'reference-integrity', path: 'doc.md' }] }],
+      }),
+    },
+  });
+  const overridden = makeRepo({
+    changed: {
+      'doc.md': '[gone](missing.md)\n',
+      '.claudinite-checks.json': JSON.stringify({
+        packs: [{ id: 'basics', rules: { 'reference-integrity': 'advisory' } }],
+      }),
+    },
+  });
+  try {
+    assert.equal(runCli(accepted).status, 0);
+    const r = runCli(reasonless);
+    assert.equal(r.status, 1);
+    assert.match(r.stdout, /on the "basics" pack entry.*has no reason/);
+    assert.equal(runCli(overridden).status, 0);
+  } finally { cleanup(accepted); cleanup(reasonless); cleanup(overridden); }
+});
+
+test('settings validity: an unknown pack name in an entry object, and conflicting overrides, are blocking config errors', () => {
+  const unknown = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({ packs: [{ id: 'no-such-pack' }] }) } });
+  const conflicted = makeRepo({
+    changed: {
+      '.claudinite-checks.json': JSON.stringify({
+        packs: [{ id: 'basics', rules: { 'reference-integrity': 'advisory' } }],
+        rules: { 'reference-integrity': 'off' },
+      }),
+    },
+  });
+  try {
+    const u = runCli(unknown);
+    assert.equal(u.status, 1);
+    assert.match(u.stdout, /unknown pack "no-such-pack"/);
+    const c = runCli(conflicted);
+    assert.equal(c.status, 1);
+    assert.match(c.stdout, /rule "reference-integrity" is set to "off" by the top-level "rules" and "advisory" by the "basics" pack entry/);
+  } finally { cleanup(unknown); cleanup(conflicted); }
+});
+
 test('severity override in config demotes a blocking rule to advisory', () => {
   const root = makeRepo({
     changed: {
