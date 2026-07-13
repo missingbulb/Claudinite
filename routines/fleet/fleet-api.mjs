@@ -1,7 +1,7 @@
 // Shared cross-repo GitHub primitives — Claudinite CORE. Dependency-free (global
 // fetch, Node 20+). Used by BOTH the core planner (plan.mjs) and any pack that
-// needs fleet reach (the sheepdog census). It knows nothing about any specific
-// pack: it is the generic "talk to many repos" layer, no more.
+// needs fleet reach (e.g. an enforcer pack's coverage census). It knows nothing
+// about any specific pack: it is the generic "talk to many repos" layer, no more.
 
 const API = 'https://api.github.com';
 

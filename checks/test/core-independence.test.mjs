@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Core ⟂ pack/skill independence — a CANON SELF-TEST (issue #261).
+// Core ⟂ pack/skill independence — a CANON SELF-TEST (issue #269).
 //
 // The engine must not know about the CONTENT it runs. `extending.md` states the
 // principle ("Core is the engine that runs pack-contributed content … discovered

@@ -9,12 +9,12 @@
 // emit units.
 //
 // It is INDEPENDENT of any single pack. In particular it does not run, dispatch,
-// or depend on the sheepdog pack's fleet-coverage census: the census is just one
-// more run_daily task (the sheepdog pack's) that shows up in the plan like any
-// other, and a broken/undeployed sheepdog repo is one isolated unit (a baselining
-// fix), never a reason the plan can't be built. Owning "which repos run tonight"
-// is the planner's job; auditing "are all the owner's repos covered" is the
-// sheepdog census's — two separate concerns that must not gate each other.
+// or depend on an enforcer pack's fleet-coverage census: that census is just one
+// more run_daily task that shows up in the plan like any other, and a broken or
+// undeployed enforcer repo is one isolated unit (a baselining fix), never a reason
+// the plan can't be built. Owning "which repos run tonight" is the planner's job;
+// auditing "are all the owner's repos covered" is the enforcer pack's census —
+// two separate concerns that must not gate each other.
 //
 // Dependency-free (global fetch, Node 20+); read-only toward every repo.
 
