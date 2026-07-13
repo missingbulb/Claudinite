@@ -49,7 +49,8 @@ chmod +x .claudinite/sync-claudinite.sh
 # the `!` negation below (git won't descend into a fully-ignored dir), and the
 # `!/.claudinite/.gitkeep` negation belongs to the retired legacy marker.
 if [ -f .gitignore ]; then
-  grep -vxE '\.claudinite/|\.claudinite\.new/|!/\.claudinite/\.gitkeep' .gitignore > .gitignore.tmp && mv .gitignore.tmp .gitignore
+  grep -vxE '\.claudinite/|\.claudinite\.new/|!/\.claudinite/\.gitkeep' .gitignore > .gitignore.tmp || true
+  mv .gitignore.tmp .gitignore
 fi
 for rule in '/.claudinite/*' '!/.claudinite/sync-claudinite.sh' '/.claudinite.new/'; do
   grep -qxF "$rule" .gitignore 2>/dev/null || echo "$rule" >> .gitignore
