@@ -47,8 +47,20 @@ function vendoredSet(root, files) {
 
 // The complete set of top-level settings .claudinite-checks.json may carry. A key
 // outside this set is a typo or a stale name — a settings error as real as invalid
-// JSON, caught at load so it can't silently change nothing.
+// JSON, caught at load so it can't silently change nothing. `packConfig` is the
+// legacy home of per-pack parameters — still honored while the fleet migrates to
+// pack-entry `config` (the baselining folds it in), no longer documented. The
+// `pack-entry-config` baseline migration (migrations/active_migrations/) tracks
+// the fleet's convergence; when it retires, drop the key here (and the overlay
+// below) so a straggler gets the unknown-setting error.
 export const CONFIG_KEYS = ['packs', 'rules', 'accept', 'sharedConstants', 'packConfig', 'maintenance'];
+
+// The properties a `packs` entry object may carry: the pack's parameters
+// (`config`), and the rule overrides / acceptances that exist BECAUSE this pack
+// is declared (`rules`, `accept` — they may name any rule; the entry is their
+// provenance). `via` is written by resolveDeclaredPacks on materialized
+// dependencies (packs/registry.mjs).
+export const PACK_ENTRY_KEYS = ['id', 'config', 'rules', 'accept', 'via'];
 
 // Load and validate the project's settings. Validity is checked at load — the
 // moment Claudinite reads the file — and every problem is collected into `errors`
@@ -57,9 +69,16 @@ export const CONFIG_KEYS = ['packs', 'rules', 'accept', 'sharedConstants', 'pack
 // errors; unknown *pack* names need the registry, so the runner adds those (it
 // holds the known-pack list). On unparsable/misshaped JSON the usable fields fall
 // back to empty so the rest of a sweep still runs, with the error reported.
+//
+// The returned shape is NORMALIZED: `packs` is plain ids, `rules` and `accept`
+// are the top-level and per-entry settings merged (an entry-sourced acceptance
+// carries `pack: <id>` as provenance; conflicting severity overrides are a
+// settings error), and `packConfig` is the per-pack parameter view — each
+// entry's `config`, overlaid on the legacy top-level key. Checks and env
+// machinery read this one shape regardless of which form the file used.
 export function loadConfig(root) {
   const path = join(root, '.claudinite-checks.json');
-  const empty = { packs: [], rules: {}, accept: [], sharedConstants: [], packConfig: {}, errors: [] };
+  const empty = { packs: [], packEntries: [], rules: {}, accept: [], sharedConstants: [], packConfig: {}, errors: [] };
   if (!existsSync(path)) return empty;
 
   let raw;
@@ -78,15 +97,93 @@ export function loadConfig(root) {
       errors.push({ what: `unknown setting "${key}"`, fix: `remove it or fix the name — valid settings: ${CONFIG_KEYS.join(', ')}` });
     }
   }
+
+  // --- packs: each entry a pack id or { id, config?, rules?, accept?, via? } ---
+  const packs = [];
+  const packEntries = [];
+  for (const entry of Array.isArray(raw.packs) ? raw.packs : []) {
+    if (typeof entry === 'string') {
+      packs.push(entry);
+      packEntries.push({ id: entry });
+      continue;
+    }
+    if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) {
+      errors.push({ what: `packs entry ${JSON.stringify(entry)} is neither a pack id nor an entry object`, fix: 'declare a pack as "name" or { "id": "name", ... }' });
+      continue;
+    }
+    if (typeof entry.id !== 'string') {
+      errors.push({ what: `packs entry ${JSON.stringify(entry)} has no "id"`, fix: 'give the entry an "id": the pack name' });
+      continue;
+    }
+    for (const key of Object.keys(entry)) {
+      if (!PACK_ENTRY_KEYS.includes(key)) {
+        errors.push({ what: `unknown property "${key}" on the "${entry.id}" pack entry`, fix: `remove it or fix the name — valid entry properties: ${PACK_ENTRY_KEYS.join(', ')}` });
+      }
+    }
+    const badShape = (prop, expected) =>
+      errors.push({ what: `"${prop}" on the "${entry.id}" pack entry must be ${expected}`, fix: `fix or remove the entry's "${prop}"` });
+    const normalized = { id: entry.id };
+    if (entry.config !== undefined) {
+      if (entry.config !== null && typeof entry.config === 'object' && !Array.isArray(entry.config)) normalized.config = entry.config;
+      else badShape('config', 'an object of the pack\'s parameters');
+    }
+    if (entry.rules !== undefined) {
+      if (entry.rules !== null && typeof entry.rules === 'object' && !Array.isArray(entry.rules)) normalized.rules = entry.rules;
+      else badShape('rules', 'an object of per-rule severity overrides');
+    }
+    if (entry.accept !== undefined) {
+      if (Array.isArray(entry.accept)) normalized.accept = entry.accept;
+      else badShape('accept', 'an array of acceptance entries');
+    }
+    packs.push(entry.id);
+    packEntries.push(normalized);
+  }
+
+  // --- rules: top-level and per-entry merged; a conflict is a settings error,
+  // never a silent last-writer-wins — two packs (or a pack and the top level)
+  // disagreeing about a rule's severity is a decision the project must make.
+  const rules = {};
+  const ruleSource = {};
+  const mergeRules = (overrides, source) => {
+    for (const [ruleId, severity] of Object.entries(overrides)) {
+      if (ruleId in rules && rules[ruleId] !== severity) {
+        errors.push({
+          what: `rule "${ruleId}" is set to "${rules[ruleId]}" by ${ruleSource[ruleId]} and "${severity}" by ${source}`,
+          fix: 'make the overrides agree, or keep the rule on one of them',
+        });
+        continue;
+      }
+      rules[ruleId] = severity;
+      ruleSource[ruleId] = source;
+    }
+  };
+  if (raw.rules && typeof raw.rules === 'object') mergeRules(raw.rules, 'the top-level "rules"');
+  for (const entry of packEntries) {
+    if (entry.rules) mergeRules(entry.rules, `the "${entry.id}" pack entry`);
+  }
+
+  // --- accept: top-level entries, then each pack entry's stamped with its
+  // provenance (`pack: <id>` — which declaration motivated the exemption).
+  const accept = Array.isArray(raw.accept) ? [...raw.accept] : [];
+  for (const entry of packEntries) {
+    for (const a of entry.accept ?? []) accept.push({ ...a, pack: entry.id });
+  }
+
+  // --- packConfig view: per-pack parameters — e.g. the dirs a repo's
+  // package.json lives in for the node pack's env install. Entry `config` is
+  // the home; the legacy top-level key stays readable underneath it.
+  const packConfig = raw.packConfig && typeof raw.packConfig === 'object' && !Array.isArray(raw.packConfig) ? { ...raw.packConfig } : {};
+  for (const entry of packEntries) {
+    if (entry.config !== undefined) packConfig[entry.id] = entry.config;
+  }
+
   return {
-    packs: Array.isArray(raw.packs) ? raw.packs : [],
-    rules: raw.rules && typeof raw.rules === 'object' ? raw.rules : {},
-    accept: Array.isArray(raw.accept) ? raw.accept : [],
+    packs,
+    packEntries,
+    rules,
+    accept,
     sharedConstants: Array.isArray(raw.sharedConstants) ? raw.sharedConstants : [],
-    // Per-pack parameters a project supplies about its own usage — e.g. the
-    // dirs a repo's package.json lives in for the node pack's env install.
-    // Consumed by whatever pack machinery reads it (currently env.mjs).
-    packConfig: raw.packConfig && typeof raw.packConfig === 'object' ? raw.packConfig : {},
+    packConfig,
     errors,
   };
 }

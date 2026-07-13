@@ -2,7 +2,7 @@
 # schedule of its own (the sheepdog repo's one scheduled routine is the single schedule;
 # a cron here would be a competing orchestrator — see routines/fleet/scheduling.md).
 # It checks out Claudinite and runs the sheepdog pack's fleet-coverage census with
-# the fleet PAT; the census reads THIS repo's packConfig.sheepdog (owner + exclude)
+# the fleet PAT; the census reads THIS repo's sheepdog pack-entry config (owner + exclude)
 # over the API. It audits coverage only — the work plan is the core planner's job
 # (routines/fleet/plan.mjs), independent of this census.
 #

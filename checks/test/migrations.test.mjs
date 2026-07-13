@@ -167,6 +167,18 @@ test('loadMigrations: discovers the mount-folder relocation with its source file
   assert.equal(await seed.legacyPresent(() => false), false);
 });
 
+test('pack-entry-config migration: legacyPresent reads the declaration (true iff a top-level packConfig remains)', async () => {
+  const m = (await loadMigrations()).find((x) => x.id === 'pack-entry-config');
+  assert.ok(m, 'pack-entry-config migration is discovered');
+  assert.equal(m.retire, 'manual'); // the tolerance is inline in loadConfig — dropped deliberately with the record
+  const read = (json) => async () => JSON.stringify(json);
+  assert.equal(await m.legacyPresent(() => false, read({ packs: ['node'], packConfig: { node: {} } })), true, 'top-level packConfig -> legacy');
+  assert.equal(await m.legacyPresent(() => false, read({ packs: [{ id: 'node', config: {} }] })), false, 'entry config -> done');
+  assert.equal(await m.legacyPresent(() => false, read({ packs: ['basics'] })), false, 'no params at all -> done');
+  assert.equal(await m.legacyPresent(() => false, async () => null), false, 'no declaration -> not held');
+  assert.equal(await m.legacyPresent(() => false, async () => 'nope'), false, 'unparsable -> not held');
+});
+
 test('tidy-repo-seed migration: legacyPresent reads the declaration (true iff tidy-repo absent)', async () => {
   const seed = (await loadMigrations()).find((m) => m.id === 'tidy-repo-seed');
   assert.ok(seed, 'tidy-repo-seed migration is discovered');

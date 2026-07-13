@@ -21,7 +21,8 @@ export default {
     if (raw == null) return false; // no declaration to read — don't hold retirement on it
     try {
       const { packs } = JSON.parse(raw);
-      return Array.isArray(packs) && !packs.includes('tidy-repo');
+      // Entries are id strings or { id, ... } objects — compare by id.
+      return Array.isArray(packs) && !packs.some((e) => (typeof e === 'string' ? e : e?.id) === 'tidy-repo');
     } catch {
       return false; // unparsable — don't block retirement
     }

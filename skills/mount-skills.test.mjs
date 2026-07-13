@@ -77,6 +77,18 @@ test('mount-skills: mounts the union of the declared packs, nothing more', () =>
   } finally { rmSync(corpus, { recursive: true, force: true }); cleanup(project); }
 });
 
+test('mount-skills: a pack declared as an entry object mounts like a bare id', () => {
+  const corpus = makeCorpus(CORPUS);
+  const project = makeRepo({
+    changed: { '.claudinite-checks.json': '{ "packs": ["basics", { "id": "tech", "config": { "x": 1 } }] }\n' },
+  });
+  try {
+    mount(corpus, project);
+    assert.ok(lstatSync(join(project, '.claude', 'skills', 'tech-skill')).isSymbolicLink());
+    assert.ok(!existsSync(join(project, '.claude', 'skills', 'other-skill')));
+  } finally { rmSync(corpus, { recursive: true, force: true }); cleanup(project); }
+});
+
 test('mount-skills: re-run syncs the mounts to a changed declaration', () => {
   const corpus = makeCorpus(CORPUS);
   const project = makeRepo({

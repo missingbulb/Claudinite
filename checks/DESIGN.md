@@ -128,7 +128,9 @@ project's call — so nothing checks that a declared pack carries its marker, or
 pack is declared. Pack **dependencies** (`requires`) are likewise resolved when the declaration is
 *written* — bootstrap `--init` and the baselining backfill run `resolveDeclaredPacks` to pull each
 declared pack's transitive `requires` into the file, materializing the prerequisite (like
-`basics`) rather than nagging at every Stop.
+`basics`) rather than nagging at every Stop. A materialized dependency is written as
+`{ "id": ..., "via": [...] }` — `via` naming the declared packs that require it — so the file
+itself records why the dependency is there.
 
 **Runner contract.** `node .claudinite/checks/run.js`. Dependency-free Node — no `npm install`
 step exists on the tarball mount, and the corpus's own "earn each dependency" rule applies to
@@ -157,13 +159,16 @@ newly adopted technology's pack, or drop one whose technology has left, is the *
 pack name, an unknown property, or malformed JSON is caught when the file loads
 (`loadConfig` + the runner) and surfaced as a blocking `config` error — a wrong pack name is as
 much a settings error as bad JSON. `.claudinite-checks.json` additionally holds per-rule
-**overrides** and **acceptances**.
+**overrides** and **acceptances** — at the top level for project-wide decisions, or on a pack's
+own entry for the ones that pack's declaration motivates (see checks/README.md).
 
 **Acceptances are the escape hatch — deterministic and reviewable.** Rules with judgment
 exemptions (filePlacement's "deliberate cross-cutting concern") need a way to say "yes, on
 purpose" that isn't a fight with the hook: a per-finding `accept` entry with a mandatory reason
 string, keyed by rule id + path. It lands in the diff like any code, so the *decision* gets
-reviewed once instead of re-litigated every session.
+reviewed once instead of re-litigated every session. An acceptance a pack's adoption forces
+lives on that pack's `packs` entry, so its provenance — which declaration required which
+exception — is the file's own structure.
 
 **The finding is the instruction.** This is the context economy of the whole design: the rule's
 teaching text moves out of always-loaded context and into the failure message, paying its token

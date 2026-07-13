@@ -14,7 +14,8 @@ export default {
     if (raw == null) return false;
     try {
       const { packs } = JSON.parse(raw);
-      return Array.isArray(packs) && !packs.includes('grow_with_claudinite');
+      // Entries are id strings or { id, ... } objects — compare by id.
+      return Array.isArray(packs) && !packs.some((e) => (typeof e === 'string' ? e : e?.id) === 'grow_with_claudinite');
     } catch {
       return false;
     }

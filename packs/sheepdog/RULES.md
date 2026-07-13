@@ -11,10 +11,10 @@ the run_daily engine, scheduling — is Claudinite **core** (`routines/`), becau
 daily-run are Claudinite's own responsibility, not the pack's. Declaring `sheepdog` adds only the
 cross-repo reach: the census, the owner/exclude config, and the token that spans the fleet.
 
-**Config** — this repo's `.claudinite-checks.json` carries:
+**Config** — this repo's `.claudinite-checks.json` carries, as its `packs` entry for this pack:
 
 ```json
-"packConfig": { "sheepdog": { "owner": "missingbulb", "kind": "user", "exclude": ["owner/repo-a"] } }
+{ "id": "sheepdog", "config": { "owner": "missingbulb", "kind": "user", "exclude": ["owner/repo-a"] } }
 ```
 
 `owner` (default: this repo's owner) is who to cover; `exclude` is the repos deliberately kept out of

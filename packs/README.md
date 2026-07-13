@@ -63,12 +63,12 @@ env: {
 }
 ```
 
-`setup` and `probe` may be a **string**, or a **function of the project's per-pack params** — a project supplies parameters about its own usage in `.claudinite-checks.json` under `packConfig`, so one pack fragment fits every repo. The `node` pack uses this for where `npm ci` runs:
+`setup` and `probe` may be a **string**, or a **function of the project's per-pack params** — a project supplies parameters about its own usage as `config` on the pack's entry in `.claudinite-checks.json`, so one pack fragment fits every repo. The `node` pack uses this for where `npm ci` runs:
 
 ```js
 // packs/node/pack.mjs
 setup: (p) => (p.dirs?.length ? p.dirs : ['.']).map((d) => `( cd "${d}" && npm ci ) || true`).join('\n'),
-// a repo's .claudinite-checks.json: { "packConfig": { "node": { "dirs": ["firebase/functions"] } } }
+// a repo's .claudinite-checks.json: { "packs": [ { "id": "node", "config": { "dirs": ["firebase/functions"] } } ] }
 ```
 
 [`env.mjs`](env.mjs) drives everything from the repo's **active** packs (same activation as prose/checks):
@@ -77,7 +77,7 @@ setup: (p) => (p.dirs?.length ? p.dirs : ['.']).map((d) => `( cd "${d}" && npm c
 - `node .claudinite/packs/env.mjs check` is a SessionStart hook (web only) that **asserts** — it runs each `probe` directly against the running environment and injects the halt-gate context if a requirement is missing. No version flag: the probes are the source of truth, and a genuinely new requirement fails its probe and prompts a re-run. Never installs.
 - `node .claudinite/packs/env.mjs plan` prints what `install` would run (review / debug).
 
-Wiring a consumer up — the check hook + `packConfig`, with the script pasted from the corpus copy — is [bootstrap.md](../bootstrap.md) Part 8. A pack with no `env` field adds nothing; universal git hygiene lives in the generic script, not a pack.
+Wiring a consumer up — the check hook + the pack entries' `config`, with the script pasted from the corpus copy — is [bootstrap.md](../bootstrap.md) Part 8. A pack with no `env` field adds nothing; universal git hygiene lives in the generic script, not a pack.
 
 ## Corpus tally — checks vs prose
 

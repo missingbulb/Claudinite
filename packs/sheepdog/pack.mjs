@@ -2,7 +2,7 @@
 // fleet ENFORCER — the one that covers and maintains every repo under an owner. It's
 // opt-in (a dedicated sheepdog repo declares it; NOT seeded by --init).
 //
-// The pack is thin: prose (RULES.md), the config schema (packConfig.sheepdog =
+// The pack is thin: prose (RULES.md), the config schema (the pack entry's config =
 // { owner, kind, exclude }), the coverage-workflow stub (stubs/fleet-coverage.yml)
 // that baselining materializes into the sheepdog repo and that prompts for the
 // FLEET_GITHUB_TOKEN secret, and the CENSUS it runs (check-fleet-coverage.mjs, in

@@ -41,9 +41,20 @@ which reasons *about* generated files and so still inspects them.
 
 ## Configuration — `.claudinite-checks.json` (repo root)
 
+The declaration is **pack-oriented**: a `packs` entry is a pack id string, or an entry object
+carrying that pack's own settings — its parameters, and the overrides/exemptions that exist
+*because* the pack is declared:
+
 ```json
 {
-  "packs": ["basics", "github-actions"],
+  "packs": [
+    "basics",
+    { "id": "barriers",
+      "config": { "rules": [ { "from": "src", "to": "tests" } ] },
+      "rules": { "some-rule": "advisory" },
+      "accept": [ { "rule": "file-placement", "path": "src/shared/", "reason": "..." } ] },
+    { "id": "a-framework-pack", "via": ["the-class-pack-requiring-it"] }
+  ],
   "rules": { "file-placement": "off" },
   "accept": [
     { "rule": "file-placement", "path": "src/shared/", "reason": "named cross-cutting concern" }
@@ -56,11 +67,31 @@ which reasons *about* generated files and so still inspects them.
   the `basics` baseline too is declared explicitly (`--init` seeds it; the nightly
   baselining backfills a missing declaration). An **unknown** pack name here is a settings
   error, caught at load (see below); a pack's fingerprint only *suspects* it is wanted and never
-  forces or forbids its declaration.
-- **rules** — per-rule severity override: `"off"` / `"advisory"` / `"blocking"`.
+  forces or forbids its declaration. An entry object carries:
+  - **id** — the pack name (required; a bare string entry is shorthand for `{ "id": ... }`).
+  - **config** — the pack's parameters (e.g. the dirs the `node` pack's `npm ci` runs in, the
+    `barriers` pack's edge list). This is the home of what a legacy top-level `packConfig` key
+    used to hold — the engine still reads that key, but baselining folds it into the entries
+    and nothing should keep authoring it. The `pack-entry-config` baseline migration
+    ([migrations/](../migrations/README.md)) tracks the fleet's convergence; when it retires,
+    the key stops being a valid setting.
+  - **rules** / **accept** — severity overrides and acceptances **motivated by declaring this
+    pack**; they may name *any* rule (declaring pack A can require an exemption to pack B's
+    check), and the entry is their provenance — the file says which declaration required which
+    exception. Same shapes as the top-level keys; entry-sourced acceptances surface with the
+    pack named. Two sources disagreeing on a rule's severity is a settings error, never a
+    silent last-writer-wins.
+  - **via** — written by the engine (never by hand) when a dependency is materialized:
+    the declared packs that directly require this one, kept accurate by the baselining
+    backfill (an empty recomputed `via` marks an orphan the project can drop).
+- **rules** — per-rule severity override: `"off"` / `"advisory"` / `"blocking"`. The top-level
+  key holds project-wide overrides and those for skill-owned checks (which run
+  pack-independently, so no pack entry can carry them).
 - **accept** — reviewed, reasoned exemptions. `path` matches exactly, or a whole subtree when it
   ends with `/`; omit it to accept the rule everywhere. The `reason` is mandatory — a reasonless
-  acceptance is itself a blocking finding.
+  acceptance is itself a blocking finding. The top-level key holds project-origin exemptions (the
+  project's own layout is the reason) — an exemption a *pack's adoption* forces belongs on that
+  pack's entry.
 - **maintenance** — fleet-maintenance delivery for this repo, **always explicit**: `"delivery":
   "push"` (the sweep commits its baselining/alignment changes directly to the default branch) or
   `"pr"` (a never-merged PR the owner gates). There is deliberately no implicit default — `--init`
