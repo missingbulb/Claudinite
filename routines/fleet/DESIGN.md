@@ -30,17 +30,17 @@ is spawned.** That boundary is the frugality lever.
 ## Process map — the orchestrator IS the routine session
 
 ```
-[Routine session]  (agent, capable model, home repo)          ← trigger + orchestrator, one run
-   ├─ dispatch + await ─►  [Planner]  (code, GitHub Actions, FLEET_GITHUB_TOKEN)  ─► plan.json (artifact)
-   ◄─ download plan.json ──┘
+[Routine session]  (agent, capable model, home repo)          ← orchestrator, one run
+   ├─ run the core planner over the reachable repos ─► units   (plan.mjs — pure gate code, no pack)
    └─ per unit, honoring barriers ─►  [worker subagent] × N    ← children of the session
 ```
 
-The planner is the **only** out-of-process piece, and only because it needs the account-spanning
-token and must stay pure code. Trigger and orchestrator are two phases of one session, so the plan
-stays in-context and one supervisor owns the run (and the failure log). This is continuous with how
-the orchestrator already "triggers the `Fleet Coverage` workflow and awaits the run"
-([../auto-all-repos-maintenance.md](../auto-all-repos-maintenance.md)).
+The planner is **pack-agnostic core code** (`plan.mjs`): the orchestrator runs it over the repos it
+can reach — enumerate accessible repos, assemble each covered member's packs' `run_daily` gates, run
+them, emit units. It depends on **no** pack. An enforcer pack's coverage census (the account-spanning
+audit that needs the fleet PAT) is a **separate, isolated** concern with its own dispatch — it never
+gates the plan, so a missing or broken enforcer pack can't stop the day's work from being planned over
+the repos already reachable. One supervisor owns the run (and the failure log).
 
 ## The task registry
 
@@ -184,8 +184,9 @@ tier — or runs code — without re-loading descriptors). The `chrome-store-rel
 
 ## Orchestration — dispatch from the plan, honor the barriers
 
-The routine session downloads `plan.json` and runs one worker per unit — **at the tier the unit's
-`smarts` names**: a subagent on the matching capability tier for `high`/`medium`/`low`, or, for
+The routine session runs the core planner over the reachable fleet, reads its units, and runs one
+worker per unit — **at the tier the unit's `smarts` names**: a subagent on the matching capability
+tier for `high`/`medium`/`low`, or, for
 `none`, a **direct code / tool execution** with no subagent at all. It adds **no behavior** to any
 worker — each runs exactly per its own doc, just handed a pre-filtered target set. Ordering:
 
@@ -232,19 +233,21 @@ gap the in-flight `chrome-store-release-schedule-*` branch would otherwise open.
   fleet-executor workflow (everything except the one sanctioned fleet-routine schedule). A
   self-scheduling pack task then fails a member's own CI, not just review here.
 
-## Where it lives, and the census fold-in
+## Where it lives — the planner is core, the census is the enforcer pack's
 
 ```
 routines/
   fleet/
     DESIGN.md                 ← this spec
+    plan.mjs                  ← the core PLANNER: walk reachable repos → assemble each one's packs'
+                                 run_daily gates → emit units. Pack-agnostic; no census dependency.
+    fleet-api.mjs             ← shared cross-repo GitHub primitives (used by the planner + the census)
     signals.mjs               ← per-repo signal bundle + global canonChanged
-    gates.mjs                 ← registry assembly + per-repo gate evaluation → plan units
-    tasks/                    ← fleet-core task descriptors (gate + worker pointer)
-      baselining.mjs  growth-extract-new-instructions.mjs  growth-dedup-local-instructions.mjs
+    gates.mjs                 ← per-repo gate evaluation → plan units
+    registry.mjs              ← per-repo assembly of its active packs' run_daily tasks
   scheduling.md               ← the single-scheduler contract (see Scheduling, above)
-  check-fleet-coverage.mjs    ← EXTENDED: the same single fleet walk now also builds + emits plan.json
-packs/sheepdog/stubs/fleet-coverage.yml  ← uploads plan.json as an artifact
+packs/sheepdog/check-fleet-coverage.mjs  ← the enforcer pack's coverage/adoption CENSUS (separate concern)
+packs/sheepdog/stubs/fleet-coverage.yml  ← the census workflow (coverage/adoption only — no plan)
 packs/tidy-repo/              ← NEW pack: the PR/branch/issue sweep, seeded by --init, opt-out by removal
   pack.mjs                    ← declared pack (no detect); maintenance: [...], skills: [...]
   README.md                   ← catalog entry (catalog-completeness requires it)
@@ -263,17 +266,15 @@ migrations/
   registry.mjs                ← EXTENDED: legacyPresent also receives a content `read` (path-only migrations ignore it)
 ```
 
-**One walk, three outputs.** `check-fleet-coverage.mjs` already visits every repo once and emits the
-coverage census + migration-retirement telemetry. The planner is the third thing that walk emits —
-it reuses the same per-repo pass (which already separates `covered`), gathering signals and running
-gates for each covered repo. No second enumeration.
-
-> **Open structural decision (recommend: extend in place for Stage 1).** The file's name will
-> undersell its role once it also plans work. But it is central-only (no consumer holds a copy), and
-> renaming it forces a canon-wide reference sweep — `fleet-coverage.yml`, `migrations/README.md`,
-> `auto-fleet-bootstrap.md`, and the migration framework all name it. So Stage 1 keeps the name and
-> factors the new logic into `routines/fleet/` modules; a rename to `routines/fleet/scan.mjs` is a
-> clean, contained follow-up (a grep sweep, not a fleet migration).
+**Two separate walks — planning ≠ coverage.** The core **planner** (`plan.mjs`) walks the repos it can
+reach and plans over the covered ones; that is all it needs to decide the day's work. The enforcer
+pack's **census** (`check-fleet-coverage.mjs`) is a *different* walk with a *different* scope — the
+whole account, via the fleet PAT — to audit coverage, converge adoption issues, and run
+migration-retirement telemetry. They share the cross-repo primitives (`fleet-api.mjs`) but neither
+gates the other: the plan is built even when the census can't run, and vice-versa. (Earlier this was
+**one folded walk** that emitted the plan *inside* the census; that coupling is exactly what let a
+missing census workflow sink the whole plan, so the planner was split back out into core — held there
+now by the core⟂pack guard, `checks/test/core-independence.test.mjs`.)
 
 ## Blast radius (it's small)
 
@@ -356,9 +357,9 @@ Per `consumer-safe-changes.md` ("verify against a real consumer before the night
 
 - `signals.mjs` and `gates.mjs` are unit-tested against a fake `gh` (the census already tests its
   pure helpers this way).
-- The planner runs **dry**: a `workflow_dispatch` emits `plan.json` without the orchestrator
-  consuming it, so the plan can be inspected against the real fleet before the session is wired to
-  dispatch from it.
+- The planner runs **standalone**: `node routines/fleet/plan.mjs` emits `plan.json` over the
+  reachable fleet without the orchestrator consuming it, so the plan can be inspected against the
+  real fleet before the session is wired to dispatch from it.
 
 ## Stage 2 — narrow per-object worker skills
 

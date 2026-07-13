@@ -1,6 +1,5 @@
-// The run_daily task registry. Every daily task is contributed by a pack (basics
-// carries baselining, grow_with_claudinite the growth tasks, tidy-repo the tidy sweep,
-// etc.) — there is no fleet-core category, so a task is active exactly where its pack is
+// The run_daily task registry. Every daily task is contributed by a pack — there
+// is no fleet-core category, so a task is active exactly where its pack is
 // declared, and there is no `scope` to carry.
 
 // Each pack's optional `run_daily` array (parallel to rules/skills/env on pack.mjs).

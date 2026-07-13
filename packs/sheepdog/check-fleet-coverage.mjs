@@ -1,16 +1,18 @@
 #!/usr/bin/env node
-// Deterministic fleet-coverage census — Claudinite core, run by the sheepdog
-// repo's Fleet Coverage workflow (materialized from the sheepdog pack's stub by
-// baselining — workflow_dispatch only, no schedule of its own), which checks out
-// Claudinite and runs this with the FLEET_GITHUB_TOKEN.
+// The sheepdog pack's fleet-coverage CENSUS — the cross-repo reach the pack adds.
+// Run by the sheepdog repo's coverage workflow (materialized from the pack's stub
+// by baselining — workflow_dispatch only, no schedule of its own), which checks
+// out Claudinite and runs this with the FLEET_GITHUB_TOKEN.
 //
-// Reads the fleet config from the sheepdog (home) repo's packConfig.sheepdog
-// (owner to cover + exclude list), enumerates every repo under that owner,
-// classifies each (covered / uncovered / excluded / skipped fork-or-archived),
-// publishes the picture to the run summary, and converges one adoption issue per
-// actionable uncovered repo in the home repo: open while uncovered, closed once
-// covered or excluded. It also emits the day's work plan (plan.json) and runs
-// baseline-migration retirement telemetry.
+// Its concern is COVERAGE, not planning: reads the fleet config from the sheepdog
+// (home) repo's packConfig.sheepdog (owner to cover + exclude list), enumerates
+// every repo under that owner, classifies each (covered / uncovered / excluded /
+// skipped fork-or-archived), publishes the picture to the run summary, converges
+// one adoption issue per actionable uncovered repo in the home repo (open while
+// uncovered, closed once covered or excluded), and runs baseline-migration
+// retirement telemetry. It does NOT build the work plan — that is the core
+// planner's job (routines/fleet/plan.mjs), pack-agnostic and independent of this
+// census; the census is just one run_daily task among the plan's units.
 //
 // Two rules kept deliberately:
 //   - a marker check that ERRORS makes the repo UNKNOWN, never uncovered — no
@@ -21,16 +23,13 @@
 // Dependency-free (global fetch, Node 20+); read-only toward every repo except
 // the home repo, where it writes the adoption issues + label and deletes
 // fully-applied migration files (auto-retirement — see migrations/README.md).
+// The shared cross-repo primitives live in routines/fleet/fleet-api.mjs (core).
 
-import { writeFileSync, appendFileSync } from 'node:fs';
+import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { loadMigrations, retirableMigrations } from '../../migrations/registry.mjs';
-import { loadPacks } from '../registry.mjs';
-import { packTasks, assembleForRepo } from '../../routines/fleet/registry.mjs';
-import { buildSignals, computeCanonChanged } from '../../routines/fleet/signals.mjs';
-import { planRepo } from '../../routines/fleet/gates.mjs';
+import { makeGh, paged, fileExists, isCovered } from '../../routines/fleet/fleet-api.mjs';
 
-const API = 'https://api.github.com';
 const LABEL = 'fleet-adoption';
 const adoptionTitle = (fullName) => `Adopt ${fullName} into the Claudinite fleet`;
 const TITLE_RE = /^Adopt (\S+\/\S+) into the Claudinite fleet$/;
@@ -51,60 +50,6 @@ function adoptionBody(fullName) {
     'repo is covered (`completed`) or opted out (`not planned`), and a close without either',
     'gets reopened while the repo stays uncovered.',
   ].join('\n');
-}
-
-// --- GitHub API -------------------------------------------------------------
-
-function makeGh(token) {
-  return async function gh(path, { method = 'GET', body } = {}) {
-    const res = await fetch(`${API}${path}`, {
-      method,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-        ...(body ? { 'Content-Type': 'application/json' } : {}),
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    const text = await res.text();
-    let json = null;
-    try { json = text ? JSON.parse(text) : null; } catch { /* non-JSON body */ }
-    return { status: res.status, json };
-  };
-}
-
-async function paged(gh, path) {
-  const sep = path.includes('?') ? '&' : '?';
-  const all = [];
-  for (let page = 1; ; page += 1) {
-    const { status, json } = await gh(`${path}${sep}per_page=100&page=${page}`);
-    if (status !== 200 || !Array.isArray(json)) {
-      throw new Error(`GET ${path} page ${page} failed with status ${status}`);
-    }
-    all.push(...json);
-    if (json.length < 100) return all;
-  }
-}
-
-// --- classification ---------------------------------------------------------
-
-// 200 → true, 404 → false, anything else → error (the caller marks UNKNOWN).
-async function fileExists(gh, fullName, path) {
-  const { status } = await gh(`/repos/${fullName}/contents/${path}`);
-  if (status === 200) return true;
-  if (status === 404) return false;
-  throw new Error(`marker check ${fullName}:${path} returned ${status}`);
-}
-
-async function isCovered(gh, fullName) {
-  if (await fileExists(gh, fullName, '.claudinite/sync-claudinite.sh')) return true; // Method B
-  if (await fileExists(gh, fullName, '.claudinite/.gitkeep')) return true; // legacy Method B
-  const { status, json } = await gh(`/repos/${fullName}/contents/.gitmodules`);
-  if (status === 404) return false;
-  if (status !== 200) throw new Error(`marker check ${fullName}:.gitmodules returned ${status}`);
-  const text = Buffer.from(json.content ?? '', 'base64').toString('utf8');
-  return /path\s*=\s*\.claudinite\b/.test(text) && /url\s*=\s*.*claudinite/i.test(text); // Method A
 }
 
 // --- fleet config (from the sheepdog repo's packConfig.sheepdog) --------------
@@ -247,35 +192,6 @@ async function runMigrationTelemetry(gh, home, covered, unknownCount, today) {
   return [...lines, ...notes];
 }
 
-// --- work plan (the third thing this one fleet walk emits) -------------------
-
-const PLAN_PATH = 'plan.json'; // cwd-relative in the Action; ephemeral, uploaded as an artifact, never committed
-
-// For each covered member: build its signal bundle, resolve its applicable tasks
-// (fleet-core ∪ its active packs' maintenance), and run each gate. Every run:true
-// verdict becomes a unit the orchestrator dispatches — the whole worklist decided in
-// code here, before any worker agent runs. A member whose probe throws is isolated:
-// it contributes no units and an error note, never sinking the plan.
-export async function buildWorkPlan(gh, home, coveredRepos) {
-  const sinceIso = new Date(Date.now() - 25 * 3600 * 1000).toISOString();
-  const weekdayUtc = new Date().getUTCDay();
-  const canonChanged = await computeCanonChanged(gh, home, sinceIso);
-  const allPackTasks = packTasks(await loadPacks());
-
-  const units = []; const errors = [];
-  for (const r of coveredRepos) {
-    try {
-      const signals = await buildSignals(gh, r, { sinceIso, weekdayUtc, canonChanged });
-      const applicable = assembleForRepo(signals.activePacks, allPackTasks);
-      const res = await planRepo({ fullName: r.full_name, defaultBranch: r.default_branch }, signals, applicable, gh);
-      units.push(...res.units); errors.push(...res.errors);
-    } catch (e) {
-      errors.push({ repo: r.full_name, error: e.message });
-    }
-  }
-  return { generatedAt: new Date().toISOString(), windowStartUtc: sinceIso, weekdayUtc, canonChanged, units, errors };
-}
-
 // --- main --------------------------------------------------------------------
 
 async function main() {
@@ -309,7 +225,6 @@ async function main() {
   }
 
   const covered = []; const uncovered = []; const optedOut = []; const skipped = []; const unknown = [];
-  const coveredRepos = []; // the repo objects behind `covered`, for the work plan
   for (const r of mine.sort((a, b) => a.name.localeCompare(b.name))) {
     const fullName = r.full_name.toLowerCase();
     if (fullName === home.toLowerCase()) continue; // the canon doesn't mount itself
@@ -321,7 +236,7 @@ async function main() {
       unknown.push(`${r.full_name} — ${e.message}`);
       continue;
     }
-    if (isCov) { covered.push(fullName); coveredRepos.push(r); }
+    if (isCov) covered.push(fullName);
     else if (optOut.has(fullName)) optedOut.push(fullName);
     else uncovered.push(fullName);
   }
@@ -333,20 +248,6 @@ async function main() {
 
   const today = new Date().toISOString().slice(0, 10);
   const migrationLines = await runMigrationTelemetry(gh, home, covered, unknown.length, today);
-
-  // Emit the work plan. A plan failure is logged but must not sink the census's
-  // coverage + migration duties, so it's wrapped and never throws.
-  let planLine;
-  try {
-    const plan = await buildWorkPlan(gh, home, coveredRepos);
-    writeFileSync(PLAN_PATH, `${JSON.stringify(plan, null, 2)}\n`);
-    planLine = `**Plan:** ${plan.units.length} unit(s)`
-      + (plan.canonChanged ? ', canon changed' : '')
-      + (plan.errors.length ? `, ${plan.errors.length} probe error(s)` : '');
-  } catch (e) {
-    writeFileSync(PLAN_PATH, `${JSON.stringify({ units: [], planError: e.message }, null, 2)}\n`);
-    planLine = `**Plan:** FAILED — ${e.message}`;
-  }
 
   const summary = [
     `# Fleet coverage census — ${owner}`,
@@ -361,7 +262,6 @@ async function main() {
     unknown.length ? `**UNKNOWN (marker check errored — fix the token/scope):** ${unknown.join('; ')}` : '',
     actions.length ? `**Issue actions:** ${actions.join('; ')}` : '**Issue actions:** none (converged)',
     migrationLines.length ? `**Migrations:** ${migrationLines.join('; ')}` : '',
-    planLine,
   ].filter(Boolean).join('\n');
 
   console.log(summary);

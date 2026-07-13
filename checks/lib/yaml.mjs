@@ -5,7 +5,8 @@
 //   - CloudFormation short tags (!Ref, !Sub, !GetAtt …) keep their scalar value,
 //     the tag is dropped
 //   - it never throws: on anything it can't parse it returns what it has (or null)
-// Good enough for the aws-sam checks; do not use it for arbitrary YAML.
+// Good enough for the SAM/CloudFormation template checks; do not use it for
+// arbitrary YAML.
 
 function stripComment(line) {
   let q = null;

@@ -24,9 +24,8 @@ export async function loadPacks() {
 export const isActive = (pack, config) => config.packs.includes(pack.id);
 
 // Import closure. A pack can't be imported without the packs it requires: a
-// release pack builds on its coding pack (chrome-extension-release → chrome-
-// extension), a class pack on the framework that implements it (spec-driven-
-// product → executable-requirements). A pack names those in its `requires` list.
+// release pack builds on its coding pack, a project-class pack on the framework
+// pack that implements it. A pack names those in its `requires` list.
 // Given the ids a project declares, return that set plus every pack reachable
 // through `requires` (transitively). Declared ids keep their order; each pack's
 // pulled-in dependencies land right after it, deterministically. This runs when
