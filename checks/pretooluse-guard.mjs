@@ -3,6 +3,8 @@
 // (the delete-push fails in this environment, so it can never succeed).
 // Exit 2 blocks the tool call and feeds stderr back to the agent. Registered
 // per-repo — see bootstrap.md.
+import { hooklog } from './lib/hooklog.mjs';
+
 let input = '';
 process.stdin.on('data', (d) => { input += d; });
 process.stdin.on('end', () => {
@@ -14,6 +16,9 @@ process.stdin.on('end', () => {
     /\bgit\s+push\b[^\n;&]*\s(--delete|-d)\s/.test(cmd) ||
     /\bgit\s+push\b[^\n;&]*\s\S+\s+:\S/.test(cmd);
   if (deletesRemoteBranch) {
+    // Log only the block — the interesting event. An allowed command every Bash
+    // call would flood the log and drown the SessionStart signal it exists for.
+    hooklog('PreToolUse', 'done exit=2 blocked-remote-branch-delete');
     process.stderr.write(
       'Blocked: never delete a remote branch — a current environment bug makes the delete-push fail, so it cannot succeed. Leave the branch; it can be deleted from the GitHub UI if needed.'
     );

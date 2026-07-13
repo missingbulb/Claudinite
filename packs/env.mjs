@@ -82,9 +82,12 @@ function emitAlert(problems) {
     `Environment setup incomplete: ${problems.join('; ')}. Alert the user: re-paste the full body of ` +
     '.claudinite/environment-setup.sh into the Claude Code Web environment Setup script field (environment ' +
     'settings), then start a fresh session so the snapshot rebuilds with the prerequisites installed.';
-  process.stdout.write(
-    `${JSON.stringify({ hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: msg } })}\n`
-  );
+  // SessionStart adds stdout to the session context. Emit plain text (not a JSON
+  // additionalContext envelope) so this step's output merges cleanly with the
+  // other steps' prose when the session-start orchestrator forwards every step's
+  // stdout through one hook — a hook's stdout that mixes JSON and prose parses as
+  // neither.
+  process.stdout.write(`${msg}\n`);
 }
 
 async function check(projectRoot) {

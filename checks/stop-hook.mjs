@@ -8,6 +8,7 @@ import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { hooklog } from './lib/hooklog.mjs';
 
 const projectRoot = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 const runner = join(dirname(fileURLToPath(import.meta.url)), 'run.mjs');
@@ -25,15 +26,23 @@ if (!dirty) {
     break;
   }
 }
-if (!dirty) process.exit(0);
+if (!dirty) process.exit(0); // clean fast path — nothing ran, nothing to log
 
+hooklog('Stop', 'start checks');
 const run = spawnSync(process.execPath, [runner], {
   cwd: projectRoot, encoding: 'utf8',
 });
 if (run.status === 0) {
   if (run.stdout.trim()) console.log(run.stdout.trim()); // advisory findings, for the transcript
+  hooklog('Stop', 'done exit=0 checks-passed');
   process.exit(0);
 }
+
+// The runner itself failing to launch is not a real finding — but don't pass
+// silently: surface it and still block, so a broken enforcement setup can't wave
+// sessions through unnoticed. The loop guard below keeps a persistent failure
+// from wedging the session.
+const runnerFailed = Boolean(run.error) || typeof run.status !== 'number';
 
 // Self-limiting loop guard: after blocking twice on the *same* findings, let the
 // stop through rather than trapping a session that can't converge.
@@ -50,10 +59,14 @@ const count = state.hash === hash ? state.count + 1 : 1;
 writeFileSync(stateFile, JSON.stringify({ hash, count }));
 if (count > 2) {
   console.log('claudinite checks: the same blocking findings survived 2 fix attempts — letting the stop through. Run `node ' + runner + '` to see them.');
+  hooklog('Stop', 'done exit=0 loop-guard-relent');
   process.exit(0);
 }
 
 process.stderr.write(
-  'Claudinite conformance checks failed — fix these findings now, in this session:\n\n' + run.stdout
+  runnerFailed
+    ? `Claudinite checks could not run — the check runner failed to launch: ${run.error?.message || 'abnormal exit'}. Fix the runner before relying on Stop-hook enforcement.`
+    : 'Claudinite conformance checks failed — fix these findings now, in this session:\n\n' + run.stdout
 );
+hooklog('Stop', `done exit=2 ${runnerFailed ? 'runner-error' : 'blocking-findings'}`);
 process.exit(2);
