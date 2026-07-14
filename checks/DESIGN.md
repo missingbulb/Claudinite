@@ -1,10 +1,10 @@
 # Checks — deterministic enforcement of the corpus (design)
 
-> **Status: implemented** (issue #127, #131). The runner, basics + technology packs, Stop
+> **Status: implemented** (issue #127, #131). The runner, the baseline + technology packs, Stop
 > hook, PreToolUse guard, and the pack-prose loader are live; the corpus is reorganized into
 > `packs/` (prose + checks, active by declaration) and `skills/` (activity-scoped procedures).
 > This doc is the rationale and the ongoing design record. The per-rule audit lives in
-> [conversion-inventory.md](conversion-inventory.md).
+> [../docs/conversion-inventory.md](../docs/conversion-inventory.md).
 
 ## The problem
 
@@ -29,7 +29,7 @@ Anthropic's published guidance says this directly: hooks exist to provide "deter
 (hooks guide); CLAUDE.md is "context, not enforced" (memory doc); and the core best-practice is
 "give Claude a check it can run … Claude does the work, runs the check, reads the result, and
 iterates until the check passes" (best practices). The corpus already states the principle in
-[the unattended-agents skill](../skills/unattended-agents/SKILL.md): *"Prose is a request; the
+an agent-practices skill: *"Prose is a request; the
 post-hoc diff check is the guarantee."* This design scales that sentence up.
 
 ## What converts — and what doesn't
@@ -41,12 +41,12 @@ picked per rule:
 |---|---|---|
 | **Post-hoc check** (this system) | The rule constrains the *state of the repo* after work | file placement, dangling references, workflow lint, lifecycle compliance |
 | **PreToolUse hook** | The action must be blocked *before* it runs | never delete a remote branch; don't `issue_write`-overwrite an issue body |
-| **Skill / script** | A *procedure* or *knowledge* with a nameable (or path-scoped) trigger | the merge-to-main recipe; the lessons pass; the technology gotcha files |
+| **Skill / script** | A *procedure* or *knowledge* with a nameable (or path-scoped) trigger | the merge recipe; the lessons pass; the technology gotcha files |
 | **Platform setting** | The platform enforces it outright, for free | squash-only merges; branch protection |
 
 Two classes deliberately **stay as instructions**:
 
-- **Process/judgment rules** — problem-first consensus, bug-investigation method, naming
+- **Process/judgment rules** — problem-first consensus, bug investigation method, naming
   quality. They shape work *in flight* and leave no artifact a check can inspect. Converting
   them post-hoc would also catch violations only after the expensive rework they exist to
   prevent.
@@ -59,7 +59,7 @@ Two classes deliberately **stay as instructions**:
   from runtime (often the first deploy or invoke) to write-time, with the gotcha's teaching in
   the failure message. Only the signature-less residue stays as skill knowledge: runtime
   divergence invisible in the artifact (jsdom *behaving* unlike Chrome, CORS being decided
-  server-side) and diagnostic know-how. The chrome-extension-release **contract** is the
+  server-side) and diagnostic know-how. The release pack's **contract** is the
   largest signature-rich case — a conformance suite waiting to be written.
 
 ## Architecture
@@ -68,12 +68,12 @@ Two classes deliberately **stay as instructions**:
 packs/                        # the mounted corpus: prose + checks, active by declaration
   registry.mjs                #   structural discovery — any packs/<name>/pack.mjs is a pack
   load-active-prose.mjs       #   SessionStart hook: emits active packs' RULES.md
-  basics/                     #   the baseline: RULES.md + the core checks (declared like any pack)
-  chrome-extension/           #   MV3 coding gotchas (RULES.md, prose only)
-  chrome-extension-release/   #   RELEASE.md (standard) + stubs + conformance checks (opt-in)
-  github-actions/             #   the workflow lints (no prose)
-  node/  aws-sam/  html/  flutter/     # prose-only tech packs
-  research-project/           #   a project-class pack (prose-only, declared)
+  <baseline>/                 #   the baseline: RULES.md + the core checks (declared like any pack)
+  <technology>/               #   coding gotchas (RULES.md, prose only)
+  <technology>-release/       #   RELEASE.md (standard) + stubs + conformance checks (opt-in)
+  <technology>/               #   the workflow lints (no prose)
+  <technology>/  <technology>/  …      # more prose-only tech packs
+  <project-class>/            #   a project-class pack (prose-only, declared)
 checks/                       # the ENGINE only (runs the packs' checks)
   run.mjs                     #   dependency-free Node CLI
   lib/                        #   git diff scoping, findings format, markdown + manifest helpers
@@ -88,7 +88,7 @@ skills/                       # activity-scoped procedures, surfaced on demand
 **Skill-owned checks.** A skill defines the performance of an *action*; the test-the-world
 check that validates that action's result belongs **beside the SKILL.md that defines it**, not
 in a pack that owns none of the context. So a skill may carry its own checks — the
-`routine-structure` check lives in `skills/unattended-agents/`, next to the routine-authoring
+`routine-structure` check lives in its owning skill's folder, next to the routine-authoring
 prose it enforces, with its test co-located too. Discovery mirrors the packs: any
 `skills/<name>/checks.mjs` (default export = an array of rules) is picked up structurally by
 `skills/registry.mjs` and run by the same engine. Skill checks are **never declared and always
@@ -100,14 +100,14 @@ must supply itself — **detect relevance first, cheaply and specifically, and r
 the artifact is absent** (`routine-structure` keys off a `routine.md` existing before it asserts
 anything). Get that wrong and the check fires false findings on every unrelated repo the corpus
 is mounted in. Reserve skill checks for the world-state a skill's action leaves behind; a rule
-with no skill to anchor it stays a basics check.
+with no skill to anchor it stays a baseline check.
 
 **Where a check goes — the litmus test.** Classify by what the checked *artifact* is, not by
-which doc teaches the fix (the `doc` pointer is where you *learn* the remedy — most basics
+which doc teaches the fix (the `doc` pointer is where you *learn* the remedy — most baseline
 checks point at a skill, so it is **not** the classifier):
 
 - present in ~every repo (markdown links, file layout, the root `CLAUDE.md`, git history, a
-  branch's issue reference) → a **basics** check;
+  branch's issue reference) → a **baseline** check;
 - present only when a declared **technology** is (a workflow, a SAM template, the release
   stubs) → a **technology-pack** check, whose relevance is gated by declaration;
 - present **only because one skill's discrete action created it** (a routine folder, from
@@ -115,10 +115,10 @@ checks point at a skill, so it is **not** the classifier):
 
 Only the third — *the artifact would not exist had the action never run* — earns a home in the
 skill. `routine-structure` is the sole current case: a routine folder exists only because
-someone authored a routine. `squash-merge-history` points at the merge-to-main skill but stays
-in basics, because git history exists in every repo and is disturbed by any merge, not only that
-skill's action; `claude-md-length`, `file-placement`, and `generated-merge-driver` likewise
-inspect artifacts every repo has, so they stay in basics despite naming a skill in `doc`.
+someone authored a routine. `squash-merge-history` points at the merge skill but stays
+in the baseline, because git history exists in every repo and is disturbed by any merge, not only that
+skill's action; `claude-md-length`, `generated-merge-driver`, and the placement check likewise
+inspect artifacts every repo has, so they stay in the baseline despite naming a skill in `doc`.
 
 **Not every pack-machinery concern is a check.** The `.claudinite-checks.json` *settings* are
 validated when the file loads, not by a conformance rule: malformed JSON, an unknown property,
@@ -128,7 +128,7 @@ project's call — so nothing checks that a declared pack carries its marker, or
 pack is declared. Pack **dependencies** (`requires`) are likewise resolved when the declaration is
 *written* — bootstrap `--init` and the baselining backfill run `resolveDeclaredPacks` to pull each
 declared pack's transitive `requires` into the file, materializing the prerequisite (like
-`basics`) rather than nagging at every Stop. A materialized dependency is written as
+the baseline) rather than nagging at every Stop. A materialized dependency is written as
 `{ "id": ..., "via": [...] }` — `via` naming the declared packs that require it — so the file
 itself records why the dependency is there.
 
@@ -145,13 +145,13 @@ merge-base in either scope.)
 
 **Pack selection: declared for deterministic execution, fingerprinted against drift.** The
 packs a project runs are **pinned in `.claudinite-checks.json`**
-(`"packs": ["basics", "github-actions", "chrome-extension-release"]`; no pack runs
-undeclared — the `basics` baseline too is declared explicitly, seeded by bootstrap).
+(`"packs": ["baseline", "a-technology-pack", "a-release-pack"]`; no pack runs
+undeclared — the baseline too is declared explicitly, seeded by bootstrap).
 Execution is a closed, declared set: every rule in a declared pack
 runs on every run — Stop hook and CI alike — with no inference at execution time, so "the
 project uses technology X" deterministically implies "every X check ran." Bootstrap writes the
 initial declaration from the repo's fingerprint — a pack's `detect` marker (`.github/workflows/`
-→ github-actions; a `manifest.json` with `manifest_version` → the extension packs; the
+→ a workflow-lint pack; a `manifest.json` with `manifest_version` → the extension packs; the
 release-workflow `name:`s → the conformance suite) seeds it at `--init`. But a marker only
 *suspects* a pack is wanted: from then on the declaration is authoritative, and whether to add a
 newly adopted technology's pack, or drop one whose technology has left, is the **project's** call
@@ -163,7 +163,7 @@ much a settings error as bad JSON. `.claudinite-checks.json` additionally holds 
 own entry for the ones that pack's declaration motivates (see checks/README.md).
 
 **Acceptances are the escape hatch — deterministic and reviewable.** Rules with judgment
-exemptions (filePlacement's "deliberate cross-cutting concern") need a way to say "yes, on
+exemptions (a placement rule's "deliberate cross-cutting concern") need a way to say "yes, on
 purpose" that isn't a fight with the hook: a per-finding `accept` entry with a mandatory reason
 string, keyed by rule id + path. It lands in the diff like any code, so the *decision* gets
 reviewed once instead of re-litigated every session. An acceptance a pack's adoption forces
@@ -179,12 +179,12 @@ from motivation), the fix, and a doc pointer for depth.
 <example>
 
 ```
-file-placement/reference-distance  src/report/render.js:12
+reference-distance  src/report/render.js:12
   imports ../../util/dates.js at distance 4.
   Why: the folder tree should encode the dependency graph; far reaches make it lie.
   Fix: move dates.js next to its users, lift it to a common ancestor, or accept it
        in .claudinite-checks.json with a reason if it's a deliberate cross-cutting util.
-  More: .claudinite/skills/file-placement/SKILL.md
+  More: .claudinite/skills/<name>/SKILL.md
 ```
 
 </example>
@@ -218,7 +218,7 @@ order of strength:
 
 - **Effect check (preferred)** — offline and deterministic, it verifies the *outcome* the
   setting guarantees rather than the setting itself: squash-only ⇒ the change lands squashed,
-  so its own commits carry no merge commit (`squash-merge-history` in the basics pack). It
+  so its own commits carry no merge commit (`squash-merge-history` in the baseline pack). It
   is scoped to the work — the merge commits the current change introduces on HEAD's first-parent
   chain since the merge-base — not the repo's whole history: it catches the setting being off or
   bypassed *for this change* without re-auditing (and demanding acceptances for) legacy merges
@@ -240,7 +240,7 @@ order of strength:
   positive is noise nobody reads, so a burn-in stage never actually observes the precision it
   waits for. The escape hatches bound a bad check's blast radius: a reasoned acceptance, a
   severity override, and the Stop hook's own two-block release. `advisory` remains a per-rule
-  **kind**, not a stage — for rules whose own semantics are directional (file-placement's
+  **kind**, not a stage — for rules whose own semantics are directional (a placement rule's
   metric is "a direction, not a hard gate"), where a finding is a smell to judge, not a defect
   to fix. Revisit delayed adoption only if the fleet grows people who can be hurt by a wrong
   block.
@@ -289,8 +289,8 @@ The skill-by-skill catalog — each skill, its trigger, and the doc it replaces 
 (`skills/<name>/SKILL.md`), the same way this design seeded `checks/`.
 
 What stays always-loaded after this: a trimmed
-[../packs/basics/RULES.md](../packs/basics/RULES.md), the judgment core of
-[the engineering-practices skill](../skills/engineering-practices/SKILL.md) (its trigger — "writing
+baseline `RULES.md`, the judgment core of
+the agent-practices skill (its trigger — "writing
 code" — is near-universal, so a skill gains little; revisit with telemetry), and a much smaller
 index. The routing index largely dissolves: routing *is what skill descriptions do natively*.
 
@@ -327,7 +327,7 @@ index. The routing index largely dissolves: routing *is what skill descriptions 
 ## Growth pipeline: checks-first promotion
 
 New lessons enter the canon through the growth lifecycle (extract → promote → dedup). Today
-[promote](../packs/canon-curation/promote.md) generalizes a lesson and routes it to a prose doc.
+the promote step generalizes a lesson and routes it to a prose doc.
 Under this design, **prose becomes the fallback, not the default** — the point of promotion is
 to relieve every project's context, and a check relieves it completely while prose only
 relocates it.
@@ -346,16 +346,16 @@ mechanism order as the conversion table above — the *first* rung that can carr
 
 Concretely, three growth docs change:
 
-- **[item-routing.md](../packs/canon-curation/item-routing.md)** gains a step 0: *mechanism triage*
+- **`item-routing.md`** gains a step 0: *mechanism triage*
   before file routing. "Which doc owns this" is only asked for lessons that fall through to
   rung 5.
-- **[promote.md](../packs/canon-curation/promote.md)**: for a rung-3 lesson, the routine authors
+- **`promote.md`**: for a rung-3 lesson, the routine authors
   the check in the same PR — rule id, detection, the failure message (which *is* the
   generalized lesson text), **plus a fixture proving it fires** on a violating input and stays
   quiet on a clean one (see-it-fail applies to checks too). When it can't produce a confident
   detection + fixture, it lands the lesson as prose **and** opens a tagged conversion-backlog
   issue — a visible miss to sweep later, never a silently-shipped broken check.
-- **[dedup.md](../packs/grow_with_claudinite/dedup.md)**: a canon **check** covers a local prose item the
+- **`dedup.md`**: a canon **check** covers a local prose item the
   same way a canon line does — better, since the coverage is enforced rather than stated. The
   runner exposes the rule catalog machine-readably (`run.js --list`: rule id, description,
   failure message, doc pointer); dedup quotes a **rule id** where it today quotes a canon line.
@@ -370,19 +370,19 @@ conversion is a promotion-time judgment, made once, centrally.
 
 ## Phasing
 
-1. **Runner + Stop hook + first basics checks** — reference-integrity, task-lifecycle,
-   warning-suppression (blocking); file-placement (advisory by kind). Bootstrap gains the
+1. **Runner + Stop hook + first baseline checks** — reference-integrity, task-lifecycle,
+   warning-suppression (blocking); the placement check (advisory by kind). Bootstrap gains the
    hook-registration step.
-2. **github-actions lint pack + chrome-extension-release conformance pack**, piloted on one
+2. **a workflow-lint pack + a release-conformance pack**, piloted on one
    extension repo.
-3. **Baseline restructure** — the first skills (`merge-to-main`, `lessons-learned`) + the
+3. **Baseline restructure** — the first skills (a merge recipe, a lessons pass) + the
    squash-only setting; temporary-workarounds → PreToolUse hook; slim the converted docs and
    the index.
 4. **Skills layer + growth pivot** — the rest of the catalog (practice + technology skills,
    symlink delivery in bootstrap), and the promotion ladder lands in
-   [promote.md](../packs/canon-curation/promote.md),
-   [item-routing.md](../packs/canon-curation/item-routing.md), and
-   [dedup.md](../packs/grow_with_claudinite/dedup.md).
+   `promote.md`,
+   `item-routing.md`, and
+   `dedup.md`.
 5. **(Contingent) plugin packaging** — only after a spike proves same-day update propagation,
    web-session support, and hook parity; until then the mount + symlink delivery is the plan of
    record and nothing depends on this phase.

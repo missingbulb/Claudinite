@@ -19,6 +19,7 @@ export default {
   id: 'tidy-repo',
   detect: null,
   marker: null,
+  seededByDefault: true,
   prose: 'RULES.md',
   rules: [],
   run_daily: [branchCleanup, prAssess, issueTriage, tidyReport],

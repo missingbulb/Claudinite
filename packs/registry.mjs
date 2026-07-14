@@ -31,8 +31,8 @@ export const packEntryId = (entry) =>
       ? entry.id
       : undefined;
 
-// No pack is active by default — basics included. Activation is exactly the
-// project's declaration in .claudinite-checks.json (bootstrap seeds `basics`).
+// No pack is active by default. Activation is exactly the project's declaration
+// in .claudinite-checks.json (bootstrap's --init seeds the default-on packs).
 export const isActive = (pack, config) =>
   (config.packs ?? []).some((entry) => packEntryId(entry) === pack.id);
 
@@ -45,7 +45,7 @@ export const isActive = (pack, config) =>
 // right after it, deterministically. This runs when the declaration is
 // WRITTEN — bootstrap's `--init` and the baselining backfill — so a pack's
 // prerequisites are materialized into .claudinite-checks.json, visible and
-// droppable like every other entry (the same reason `basics` is written
+// droppable like every other entry (the same reason a seeded pack is written
 // explicitly rather than defaulted), never resolved implicitly at run time.
 //
 // Provenance: a materialized dependency is written as `{ id, via: [...] }`,

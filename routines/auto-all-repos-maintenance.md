@@ -20,9 +20,9 @@ The **planner** ([fleet/DESIGN.md](fleet/DESIGN.md), [fleet/plan.mjs](fleet/plan
 
 The units span every kind of maintenance, each deferring wholly to its own doc:
 
-- **Growth** ([../packs/canon-curation/README.md](../packs/canon-curation/README.md) owns the lifecycle narrative) — the member-side tasks (`growth-extract-new-instructions`, `growth-dedup-local-instructions`, `growth-discover-packs`) on every repo declaring `grow_with_claudinite`, and the central `growth-promote-to-claudinite` on the canon repo via its home-only `canon-curation` pack. **All ordinary, independent planned units** — no phases, no barriers, no bespoke central step: each stage reads only what's already merged, so extract→promote→dedup propagates across successive nightly runs (and promote's PR approval was always the dominant latency).
-- **The `tidy-repo` pack** — `branch-cleanup` / `pr-assess` / `issue-triage` on every repo declaring the pack, and against the canon repo.
-- **`baselining`** (the `basics` task — the member re-run of the idempotent bootstrap + check-alignment); a handed repo that isn't covered yet gets its **first baseline** (adoption) from the same [worker](../packs/basics/run_daily/baselining.worker.md).
+- **Growth** (the growth pack owns the lifecycle narrative) — the member-side tasks (`growth-extract-new-instructions`, `growth-dedup-local-instructions`, `growth-discover-packs`) on every repo declaring the growth pack, and the central `growth-promote-to-claudinite` on the canon repo via its home-only curation pack. **All ordinary, independent planned units** — no phases, no barriers, no bespoke central step: each stage reads only what's already merged, so extract→promote→dedup propagates across successive nightly runs (and promote's PR approval was always the dominant latency).
+- **The repo-tidying pack** — `branch-cleanup` / `pr-assess` / `issue-triage` on every repo declaring the pack, and against the canon repo.
+- **`baselining`** (the baseline pack's task — the member re-run of the idempotent bootstrap + check-alignment); a handed repo that isn't covered yet gets its **first baseline** (adoption) from the same worker.
 - **Any pack task** — e.g. `chrome-store-release`. New maintenance is a new pack `(gate, worker)` pair; the plan picks it up automatically — **no edit here**.
 
 ## Step 0 — apply migrations across the fleet (before any pack work)
@@ -42,10 +42,10 @@ Run each unit's **worker** at the tier its `smarts` names: a subagent on the mat
 Ordering — the only thing this routine must honor:
 
 - **Independent units** (`order: null` — the tidy dimensions, baselining, the growth tasks, pack tasks) run **concurrently**, capped to a sane batch.
-- **`tidy-report`** (`order: tidy:report`) runs **after** its own repo's other `tidy-repo` units settle — a **per-repo mini-barrier**, so it reconciles their verdicts into the standing tracker; independent across repos. This is the only ordering left: there is no fleet-wide barrier of any kind.
+- **`tidy-report`** (`order: tidy:report`) runs **after** its own repo's other tidy units settle — a **per-repo mini-barrier**, so it reconciles their verdicts into the standing tracker; independent across repos. This is the only ordering left: there is no fleet-wide barrier of any kind.
 - **Await async downstream** — a unit that triggers a dispatch-only Action (a pack task's) is done only when that Action **completes**, not at the trigger; poll it (report at completion, not the trigger).
 
-The subagent boundary delivers the guarantees the owner cares about: **failure isolation** (a unit that errors, stalls, or exits early fails *its own* subagent only), **context isolation**, and **behavior unchanged**. Also run the `tidy-repo` tasks against the **canon repo** (it doesn't declare `tidy-repo` — its declaration carries only its home-only packs and the checks it runs on itself — but its PRs/branches/issues still need tending). Cap concurrency if the fleet is large, but **every** unit must be launched **and** waited on — a launched-but-unwaited unit is not a guaranteed unit. Wait for **everything** to settle before finishing.
+The subagent boundary delivers the guarantees the owner cares about: **failure isolation** (a unit that errors, stalls, or exits early fails *its own* subagent only), **context isolation**, and **behavior unchanged**. Also run the tidy tasks against the **canon repo** (it doesn't declare the tidy pack — its declaration carries only its home-only packs and the checks it runs on itself — but its PRs/branches/issues still need tending). Cap concurrency if the fleet is large, but **every** unit must be launched **and** waited on — a launched-but-unwaited unit is not a guaranteed unit. Wait for **everything** to settle before finishing.
 
 ## Step 3 — finalize migrations (retire)
 

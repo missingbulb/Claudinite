@@ -2,10 +2,10 @@
 
 > **Status: Stages 1 and 2 implemented** (issue #241). Stage 1 — the engine (`registry.mjs`,
 > `gates.mjs`, `signals.mjs`, `schedule.mjs`, `tasks/`), the plan wired into the census walk, the
-> `tidy-repo` pack + its `tidy-repo-seed` baseline migration, the `chrome-store-release` pack task,
-> `scheduling.md` + its enforcing check, and the plan-driven orchestrator. Stage 2 — the single-object
-> skills (`single-branch-status` / `single-pr-status` / `single-issue-triage`), the per-repo
-> `tidy-report` reconciliation unit, and `auto-repo-tidy.md` retired into the pack. All built and tested.
+> seed-migration mechanism that backfills a default-on pack into the existing fleet, an example pack task,
+> `scheduling.md` + its enforcing check, and the plan-driven orchestrator. Stage 2 — single-object
+> worker skills and the per-repo report-reconciliation unit, with the standalone tidy routine retired
+> into the pack that owns it. All built and tested.
 
 The fleet daily maintenance routine ([../auto-all-repos-maintenance.md](../auto-all-repos-maintenance.md))
 today fans an agent out to **every task × every member repo** every night, and decides *what to do*
@@ -49,8 +49,8 @@ A task descriptor is a plain object:
 ```js
 {
   id:     'branch-cleanup',                              // stable task name
-  scope:  'pack:tidy-repo',                              // 'fleet' | 'pack:<name>' (implicit for pack tasks)
-  worker: 'packs/tidy-repo/maintenance/branch-cleanup.worker.md',  // the "what to do" doc, canon-relative
+  scope:  'pack:<name>',                                 // 'fleet' | 'pack:<name>' (implicit for pack tasks)
+  worker: 'packs/<name>/maintenance/<task>.worker.md',   // the "what to do" doc, canon-relative
   order:  null,                                          // null = independent/concurrent | a pack-defined token (e.g. 'tidy:report') for per-repo ordering
   full_sweep_supported: true,                            // has a distinct weekly/full mode? (see below)
   smarts: 'medium',                                      // judgment the WORKER needs: 'high'|'medium'|'low'|'none' (see below)
@@ -80,7 +80,7 @@ code (deciding "should I run" costs no model); `smarts` governs only the **worke
 
 **Lowering a task's `smarts` is the standing goal** — push mechanical judgment out of the worker and
 into code, tier by tier, exactly as the planner already did for the "should I run" half
-(`unattended-agents`: "match the agent model to the judgment it must make," and "hard-code the
+(the agent-practices rule: "match the agent model to the judgment it must make," and "hard-code the
 deterministic parts … push that boundary continually"). **`none` — code only — is the best version of
 any task**; every tier down is a win, in cost and in reliability (a cheaper deterministic path can't
 hallucinate the judgment a model tier might fumble). So `smarts` is not a fixed property but a *current
@@ -88,8 +88,7 @@ high-water mark* each task is meant to descend.
 
 - **Every task is a pack task** — there is no fleet-core category (`registry.mjs`): a task is active
   exactly where its pack is declared. "Fleet-universal" is achieved by riding a universally-declared
-  pack: **`baselining`** rides `basics`
-  ([../../packs/basics/run_daily/baselining.worker.md](../../packs/basics/run_daily/baselining.worker.md)) — restore the member to the current
+  pack: **`baselining`** rides the baseline pack — restore the member to the current
     canonical baseline — re-run the idempotent bootstrap to refresh the mount + wiring, and evaluate the
     member against its declared packs' *current* checks (the same engine its Stop hook and CI run),
     applying each failing check's own `fix` and opening a member-side issue for any finding needing
@@ -97,17 +96,15 @@ high-water mark* each task is meant to descend.
     propagate them). Its **full** mode baselines regardless, catching member-side drift the canon diff
     can't see. (The census/adoption half of the sweep stays in the census executor, not this task.)
     Its gate self-skips the home repo — the canon doesn't mount itself.
-  The growth lifecycle's member-side tasks ride `grow_with_claudinite`; its central promote stage
-  rides the home-only `canon-curation` pack (see the home-repo paragraph under
+  The growth lifecycle's member-side tasks ride the growth pack; its central promote stage
+  rides a home-only curation pack (see the home-repo paragraph under
   [Where it lives](#where-it-lives--the-planner-is-core-the-census-is-the-enforcer-packs)) — an
   ordinary planned unit, **not** a bespoke orchestrator step.
 - **Pack tasks** register exactly like a pack's checks and skills — the **`run_daily: [...]`**
   field on `pack.mjs`, listing descriptor modules (parallel to `rules`, `skills`, `env`). A task
   declared by a pack applies to a repo **iff** the
   repo declares that pack in `.claudinite-checks.json`. Adding a task is dropping a `(gate, worker)`
-  pair — the engine discovers it, no orchestrator edit. The two exemplars: the **`tidy-repo` pack**
-  (the PR/branch/issue sweep — see [The `tidy-repo` pack](#the-tidy-repo-pack)) and the
-  `chrome-extension-release` pack's `chrome-store-release`.
+  pair — the engine discovers it, no orchestrator edit.
 
 `gates.mjs` assembles, per covered repo, `applicable = fleet-core ∪ (active packs' maintenance)`,
 runs each gate, and collects the units that returned `run: true`.
@@ -128,7 +125,7 @@ of cheap reads. Gates lean on it and/or do a targeted probe of their own via `gh
 | `branchesTouched[]` | branch tips moved in window (∪ all if `mainMoved`/`fullSweep`) | **branch-cleanup** |
 | `activePacks[]` | member's `.claudinite-checks.json` | which pack tasks apply |
 | `canonChanged` *(global)* | home-repo commits in window touching member-affecting paths (`packs/`, `checks/`, `skills/`, `migrations/`, bootstrap wiring) — **excluding** `plan.json`, trackers, and orchestration docs | **growth-dedup-local-instructions** (all repos) + **baselining** |
-| `isHome`, `fleetMembers[]` *(home bundle only)* | stamped by the planner, which plans the home repo **last**: every successfully-probed member's `{ repo, activePacks, projectChanged }` | home-only packs' gates (e.g. **growth-promote-to-claudinite** targets the changed members that declare `grow_with_claudinite`) |
+| `isHome`, `fleetMembers[]` *(home bundle only)* | stamped by the planner, which plans the home repo **last**: every successfully-probed member's `{ repo, activePacks, projectChanged }` | home-only packs' gates (e.g. the central promote gate targets the changed members that declare the growth pack) |
 
 Two rules the table encodes, because getting them wrong defeats the purpose:
 
@@ -163,14 +160,14 @@ nothing for `canonChanged` to trip over) and mirrored to the step summary for hu
   "weekdayUtc": 6,
   "canonChanged": true,
   "units": [
-    { "repo": "owner/foo", "task": "branch-cleanup", "worker": "packs/tidy-repo/maintenance/branch-cleanup.worker.md",
+    { "repo": "owner/foo", "task": "<pack-task>", "worker": "packs/<pack>/maintenance/<task>.worker.md",
       "targets": { "branches": ["feat-x"] }, "reason": "mainMoved", "order": null, "smarts": "medium" },
-    { "repo": "owner/foo", "task": "growth-extract-new-instructions", "worker": "packs/grow_with_claudinite/extract.md",
+    { "repo": "owner/foo", "task": "growth-extract-new-instructions", "worker": "packs/<growth-pack>/extract.md",
       "targets": {}, "reason": "projectChanged", "order": null, "smarts": "high" },
-    { "repo": "owner/foo", "task": "growth-dedup-local-instructions", "worker": "packs/grow_with_claudinite/dedup.md",
+    { "repo": "owner/foo", "task": "growth-dedup-local-instructions", "worker": "packs/<growth-pack>/dedup.md",
       "targets": {}, "reason": "canonChanged", "order": null, "smarts": "high" },
-    { "repo": "owner/bar", "task": "chrome-store-release",
-      "worker": "packs/chrome-extension-release/maintenance/store-release.worker.md",
+    { "repo": "owner/bar", "task": "<pack-release-task>",
+      "worker": "packs/<pack>/maintenance/<task>.worker.md",
       "targets": { "unreleasedVersion": "1.4.0" }, "reason": "unreleased manifest bump", "order": null, "smarts": "none" }
   ]
 }
@@ -178,7 +175,7 @@ nothing for `canonChanged` to trip over) and mirrored to the step summary for hu
 
 Each unit fully specifies one dispatch: repo, worker doc, targets, `order` (the only ordering the
 orchestrator must honor), and `smarts` (copied from the task descriptor so the orchestrator picks the
-tier — or runs code — without re-loading descriptors). The `chrome-store-release` unit above is
+tier — or runs code — without re-loading descriptors). The release unit above is
 `smarts: "none"`: the version comparison is already code, so the whole task runs without an agent.
 
 ## Orchestration — dispatch from the plan, honor each unit's ordering
@@ -189,19 +186,19 @@ tier for `high`/`medium`/`low`, or, for
 `none`, a **direct code / tool execution** with no subagent at all. It adds **no behavior** to any
 worker — each runs exactly per its own doc, just handed a pre-filtered target set. Ordering:
 
-- **Independent units** (`order: null` — branch-cleanup, pr-assess, issue-triage, baselining, the
-  growth tasks, pack tasks) run concurrently, capped to a sane batch. The growth stages need no
+- **Independent units** (`order: null` — baselining, the growth tasks, and the independent pack tasks)
+  run concurrently, capped to a sane batch. The growth stages need no
   barrier: each reads only what's already **merged** (promote picks up tonight's extracts on its
   *next* run, and its input list is decided at plan time from the `fleetMembers` aggregate), so
-  `growth-promote-to-claudinite` is an ordinary planned unit on the home repo — the old
+  the central promote stage is an ordinary planned unit on the home repo — the old
   orchestrator-decided post-barrier exception is gone.
-- **`tidy-report`** (`order: tidy:report`) waits for its own repo's other `tidy-repo` units — the
-  per-repo mini-barrier described under Stage 2; the only ordering the orchestrator honors.
+- **A per-repo report unit** (`order: <pack>:report`) waits for its own repo's other units from the
+  same pack — the per-repo mini-barrier; the only ordering the orchestrator honors.
 
-**Await async completion, don't report at the trigger** (`unattended-agents` SKILL.md; #140). A unit
+**Await async completion, don't report at the trigger** (the async-completion rule; #140). A unit
 that kicks off an async downstream process whose output matters is done only when that output exists,
 not when it was triggered — the session **dispatches-and-awaits** the planner Action up front, and
-any worker that triggers a dispatch-only Action (e.g. `chrome-store-release` → the release Action)
+any worker that triggers a dispatch-only Action (e.g. a release task → its release Action)
 polls it to completion on a rolling backoff before the unit counts as finished. Reporting at the
 trigger point would race a follow-on unit onto stale output.
 
@@ -212,21 +209,20 @@ parent routine.
 
 The fleet daily routine is the **only** schedule. Every other recurring piece — the coverage census,
 the bootstrap sweep, and **every pack task's supporting GitHub Action** — is a `workflow_dispatch`-only
-**executor** that the routine triggers and awaits. This is the `unattended-agents` rule verbatim:
+**executor** that the routine triggers and awaits. This is the one-scheduler rule verbatim:
 *"give [an executor] a cron and it silently becomes a second orchestrator with a competing trigger;
 one schedule, owned by the orchestrating routine; executors run only when dispatched."* A second cron
 would double-run the work and race the fleet routine's dispatch.
 
-`chrome-store-release` makes this concrete: because the nightly task triggers the release flow, the
+A release task makes this concrete: because the nightly task triggers the release flow, the
 release Action **must not carry a `schedule:` trigger** — it is dispatch-only, fired by the pack
-task's worker (which then awaits its completion, per the async-completion rule above). This closes the
-gap the in-flight `chrome-store-release-schedule-*` branch would otherwise open.
+task's worker (which then awaits its completion, per the async-completion rule above).
 
 - **The home of the principle** is `scheduling.md` (a Stage 1 deliverable) — a thin doc stating "the fleet
   routine is the only schedule; every census/sweep/pack-task Action is `workflow_dispatch`-only,
-  triggered by it," pointing to `skills/unattended-agents/SKILL.md` for the *why*. So a future
+  triggered by it," pointing to the agent-practices skill for the *why*. So a future
   pack-based routine has one place that tells it not to self-schedule.
-- **Enforced, not just stated** (the promotion ladder — a check beats prose): a `github-actions`-pack
+- **Enforced, not just stated** (the promotion ladder — a check beats prose): a workflow-lint-pack
   check flags any workflow that both carries a `schedule:` trigger **and** is a pack-task /
   fleet-executor workflow (everything except the one sanctioned fleet-routine schedule). A
   self-scheduling pack task then fails a member's own CI, not just review here.
@@ -243,28 +239,17 @@ routines/
     gates.mjs                 ← per-repo gate evaluation → plan units
     registry.mjs              ← per-repo assembly of its active packs' run_daily tasks
   scheduling.md               ← the single-scheduler contract (see Scheduling, above)
-packs/sheepdog/check-fleet-coverage.mjs  ← the enforcer pack's coverage/adoption CENSUS (separate concern)
-packs/sheepdog/fleet-api.mjs             ← the census's cross-repo REST client (its own; the daily process has none)
-packs/sheepdog/stubs/fleet-coverage.yml  ← the census workflow (coverage/adoption only — no plan)
-packs/tidy-repo/              ← NEW pack: the PR/branch/issue sweep, seeded by --init, opt-out by removal
-  pack.mjs                    ← declared pack (no detect); maintenance: [...], skills: [...]
-  README.md                   ← catalog entry (catalog-completeness requires it)
-  RULES.md                    ← assess-only-vs-act policy
-  maintenance/
-    branch-cleanup.mjs  pr-assess.mjs  issue-triage.mjs   ← (gate, worker) descriptors
-    tidy-report.mjs                                        ← per-repo report unit (Stage 2)
-    *.worker.md                                            ← the "what to do" docs
-packs/chrome-extension-release/
-  pack.mjs                    ← + maintenance: [storeRelease]
-  maintenance/
-    store-release.mjs         ← the (gate, worker) descriptor
-    store-release.worker.md   ← the "what to do" doc (defers to RELEASE.md)
+packs/
+  <enforcer-pack>/            ← contributes the coverage/adoption CENSUS (a separate concern: its own
+                                dispatch, its own account-wide REST client)
+  <maintenance-pack>/         ← contributes run_daily: [(gate, worker), …] tasks (+ any single-object
+                                worker skills); the engine discovers them from the active packs, naming none
 migrations/
-  active_migrations/           ← the migration records (specs); the mechanism reads beside them
-    <date>-tidy-repo-seed.mjs  ← one-time seed of tidy-repo into the existing fleet; the retire pass auto-retires it
-  registry.mjs                 ← discovery + write ops + the retirement guard (quiescence-gated)
-  fleet-apply.mjs              ← phase-1 APPLY pass (fleet-wide, migrations-owned)
-  fleet-retire.mjs             ← phase-3 RETIRE pass (fleet-wide, migrations-owned)
+  active_migrations/          ← the migration records (specs); the mechanism reads beside them
+    <date>-<pack>-seed.mjs    ← one-time seed of a default-on pack into the existing fleet; the retire pass auto-retires it
+  registry.mjs                ← discovery + write ops + the retirement guard (quiescence-gated)
+  fleet-apply.mjs             ← phase-1 APPLY pass (fleet-wide, migrations-owned)
+  fleet-retire.mjs            ← phase-3 RETIRE pass (fleet-wide, migrations-owned)
 ```
 
 **Everything here operates on the repos it's given, over MCP.** The **planner** (`plan.mjs`) and the
@@ -272,11 +257,11 @@ migration **apply** / **retire** passes (`../../migrations/fleet-apply.mjs`, `..
 all operate over the repos the routine hands them (this session's scoped repos) through a single injected
 `gh` reader/writer the orchestrator backs with its GitHub MCP tools — they never enumerate GitHub and carry
 **no REST client or token**. The one Claudinite process that *does* need account-wide REST — enumerating
-every owned repo to discover coverage gaps — is the enforcer pack's **census** (`check-fleet-coverage.mjs`,
-with its own `fleet-api.mjs` REST client), a wholly separate concern in a separate repo's Action: it is not
-scheduled, dispatched, or depended on here. (Earlier the plan was emitted *inside* the census; that coupling
-is exactly what let a missing census workflow sink the whole plan, so the planner was split back out —
-held apart now by the core⟂pack guard, `checks/test/core-independence.test.mjs`.)
+every owned repo to discover coverage gaps — is the enforcer pack's **census** (its own account-wide REST
+client), a wholly separate concern in a separate repo's Action: it is not scheduled, dispatched, or
+depended on here. (Earlier the plan was emitted *inside* the census; that coupling is exactly what let a
+missing census workflow sink the whole plan, so the planner was split back out — held apart now by the
+core⟂pack barrier declared in `.claudinite-checks.json`.)
 
 ## Blast radius (it's small)
 
@@ -286,79 +271,11 @@ written). Pack **worker docs** are canon docs the dispatched subagent reads over
 propagation as the growth stage docs today. The only new home-repo write is the ephemeral
 `plan.json` artifact.
 
-The **`tidy-repo` pack** rides the ordinary pack channels (`consumer-safe-changes.md`): its `RULES.md`
+A **maintenance pack** rides the ordinary pack channels (`consumer-safe-changes.md`): its `RULES.md`
 loads at session start where declared and its skills mount — low blast radius, same as any pack prose.
-Its *maintenance tasks* still execute centrally like every pack task. The one bootstrap-wiring change
-— seed `tidy-repo` at `--init`, and the deliberate carve-out that baselining does **not**
-backfill it — travels the bootstrap channel and must converge from every layout in the wild.
-
-## The `tidy-repo` pack
-
-The PR/branch/issue sweep is **not** fleet-core — it's a pack, so it composes into the standard sweep
-like any other and a repo can drop it. `packs/tidy-repo/` bundles:
-
-- `maintenance: [branch-cleanup, pr-assess, issue-triage, tidy-report]` — the Stage 1 gates + the
-  Stage 2 per-repo report unit.
-- `skills: [single-branch-status, single-pr-status, single-issue-triage]` — the Stage 2 single-object
-  workers (mounted when the pack is active).
-- `RULES.md` — the assess-only-vs-act policy (PRs/branches assessed read-only, issues acted on); the
-  per-object judgment lives in the skills.
-
-**Declared pack, seeded once, durably opt-out-able.** `tidy-repo` carries **no `detect` fingerprint**
-(it's a declared pack, like `html` / `research-project`), so nothing ever auto-adds or auto-removes it
-from the declaration. Seeding:
-
-- `bootstrap --init` seeds it into every **new** repo's declaration —
-  `["basics", "tidy-repo", …fingerprinted]`.
-- **Unlike `basics`, nightly baselining never (re)adds `tidy-repo`.** So a repo that removes the
-  pack stays without it — default-on for new repos, a durable opt-out for any repo. (This is the one
-  place a seeded pack is deliberately *not* backfilled; the bootstrap's backfill step must special-case
-  it.)
-
-**The home repo is planned too — last.** It isn't a covered member (the canon doesn't mount
-itself), but it declares packs of its own in its `.claudinite-checks.json` — including **home-only
-packs** like `canon-curation`, declared nowhere else, which is how fleet-facing central work (the
-growth promote stage, the `prose-to-checks-sweep` task) rides the ordinary planner instead of a
-bespoke orchestrator step. The planner plans home **after** every member, stamping its signal bundle with
-`isHome: true` and the `fleetMembers` aggregate so home-only gates can decide fleet-facing work in
-code; a task that makes no sense against the canon self-skips via `isHome` (baselining does).
-Home doesn't declare `tidy-repo`, yet still needs tidying: the orchestrator applies `tidy-repo`'s
-tasks to the home repo **unconditionally**, exactly as the parent routine runs the tidy-up against
-home today.
-
-**Existing fleet — a one-time seed via the migrations mechanism.** Repos bootstrapped *before*
-`tidy-repo` exists carry it nowhere, and baselining won't backfill it — so without action the
-current fleet's universal tidy would regress to none. A **migration**
-(`migrations/<landed-date>-tidy-repo-seed.mjs`) closes this using the existing self-retiring telemetry:
-
-- **While the migration is live**, baselining seeds `tidy-repo` into any member whose declaration
-  lacks it (its idempotent bootstrap step, the way the framework already has baselining perform a
-  migration's write).
-- The migration **retire pass** already runs each migration's `legacyPresent` across the fleet; here
-  `legacyPresent` = "this member's declaration lacks `tidy-repo`." Once every member has converged it
-  **auto-retires** the migration (deletes the record), and with the migration gone baselining
-  stops seeding — so a **later removal is durable**.
-- The only framework extension: this migration's `legacyPresent` must **read** the declaration file
-  rather than probe a path, so the census passes `legacyPresent` a content `read` alongside `exists`
-  (backward-compatible — the existing path-only migrations ignore the extra arg).
-
-Convergence takes ~1–2 nightlies; a deliberate opt-out is meaningful once the seed migration has
-retired. `--init` seeds new repos independently of this migration.
-
-## Proving the pack seam: `chrome-store-release`
-
-`chrome-extension-release` is an opt-in pack, so its task rides `scope: "pack:chrome-extension-release"`
-and is evaluated only on repos that declare the pack:
-
-- **gate** (`maintenance/store-release.mjs`): compares the shipped manifest/package version to the
-  last released/tagged version (via `gh`); returns `run: true` + `targets.unreleasedVersion` when a
-  bump has landed but not shipped, or when the store listing is stale. Silent on nights with nothing
-  to ship.
-- **worker** (`maintenance/store-release.worker.md`): runs the pack's existing release / store-
-  conformance flow (defers to [../../packs/chrome-extension-release/RELEASE.md](../../packs/chrome-extension-release/RELEASE.md)).
-
-No new schedule, no orchestrator change — declaring the pack on a repo is what enrolls it in the
-nightly, and its release Action stays `workflow_dispatch`-only (see [Scheduling](#scheduling--one-scheduler-for-the-whole-fleet)).
+Its *maintenance tasks* still execute centrally like every pack task. A default-on pack adds one
+bootstrap-wiring change — seeded at `--init`, with the deliberate carve-out that baselining does
+**not** backfill an opt-out — travelling the bootstrap channel to converge from every layout in the wild.
 
 ## Verifying before the nightly does
 
@@ -370,80 +287,3 @@ Per `consumer-safe-changes.md` ("verify against a real consumer before the night
   reachable fleet without the orchestrator consuming it, so the plan can be inspected against the
   real fleet before the session is wired to dispatch from it.
 
-## Stage 2 — narrow per-object worker skills
-
-In Stage 1 the `tidy-repo` pack's three tasks point at a **whole-repo** worker, just fed a target
-list. Stage 2 replaces that worker with **single-object skills** (the pack's `skills`), so a repo with
-one stale branch spins a one-branch check instead of a whole-repo pass — maximal context isolation and
-the last of the frugality. It changes **only the worker side**; the engine, plan schema, and
-per-object `targets` are unchanged, which is why it's cleanly separable.
-
-**The skills** (the "what to do" at single-object granularity, declared by the `tidy-repo` pack and
-living in `skills/`):
-
-- `single-branch-status` — given **one** branch, run the landed-status test
-  (merged / already-in-main / superseded / orphaned / genuine) and return a verdict. **Assess-only** —
-  never deletes or pushes.
-- `single-pr-status` — given **one** PR, classify (keep-open, or closeable: merged / superseded /
-  stale) and return a verdict. **Assess-only** — never closes.
-- `single-issue-triage` — given **one** issue, apply the first-matching action (close-if-implemented /
-  needs-decision / blocked / quick-win / leave) and act. The **only acting** skill; its trigger is
-  concrete and its default safe (`unattended-agents`: define the trigger, default to comment/leave
-  when inconclusive; "implemented in main" must be verified against `main`'s current content, never
-  inferred).
-
-**Dispatch granularity — per-object logic, per-(repo, task) dispatch.** The plan still emits one unit
-per `(repo, task)` carrying the ID list; the worker applies the single-object skill across that list.
-One subagent *per branch* would explode the agent count; the skill is the unit of **logic**, the
-`(repo, task)` is the unit of **dispatch** (a repo with many targets can be batched). So Stage 2 does
-not change the plan schema — it changes what the `branch-cleanup` / `pr-assess` / `issue-triage`
-workers point at.
-
-**The report-reconciliation problem (the real work of Stage 2).** The standing tidy tracker is
-inherently **repo-level** — a snapshot of *all* the repo's PRs, branches, and issues — but a
-single-object skill only sees its own object. So decomposing the whole-repo pass strands the report.
-Stage 2 adds a per-repo **`tidy-report`** unit that runs **after** that repo's assess/triage units
-settle and rewrites the tracker from their collected verdicts:
-
-- Rewrites the tracker **body** to today's dated snapshot (newest-first) and adds a **dated comment**
-  as the per-run trail — exactly the standing-tracking-issue convention (`unattended-agents`;
-  `auto-repo-tidy.md`).
-- **Ordering:** a per-repo mini-barrier — `tidy-report` waits on that repo's `branch-cleanup` /
-  `pr-assess` / `issue-triage` units (a repo-scoped dependency the orchestrator honors — the only
-  ordering in the plan).
-- **Gate:** runs if any of the repo's tidy units ran tonight (or on `fullSweep`). If none ran, the
-  tracker's last dated snapshot stands, and the weekly full sweep refreshes it — so it never goes
-  silently stale.
-
-**`auto-repo-tidy.md` is absorbed into the `tidy-repo` pack.** The per-object *judgment* (the
-landed-status test, the issue-action ladder) moves **into** the pack's skills — one home for that
-logic (the promotion ladder: reusable judgment becomes a skill). The assess-only-vs-act policy becomes
-the pack's `RULES.md`; the tracker/report contract becomes `tidy-report`. The standalone
-`auto-repo-tidy.md` routine doc (today vendored per-consumer) is retired — the pack now carries the
-whole tidy bundle, and consumers get it by declaring `tidy-repo`.
-
-```
-packs/tidy-repo/
-  pack.mjs                        ← + skills: [single-branch-status, single-pr-status, single-issue-triage]
-  run_daily/
-    tidy-report.mjs               ← per-repo report unit (gate + worker); runs after the repo's tidy units
-skills/
-  single-branch-status/SKILL.md   ← one-branch landed-status verdict (assess-only)
-  single-pr-status/SKILL.md       ← one-PR verdict (assess-only)
-  single-issue-triage/SKILL.md    ← one-issue action (the only acting skill)
-```
-The standalone `auto-repo-tidy.md` routine doc is retired — the pack now carries the whole tidy bundle.
-
-Pack tasks decompose the same way **if** they have per-object structure; `chrome-store-release` is
-already single-object (one repo, one release), so it needs no Stage-2 decomposition.
-
-## Stage boundaries — summary
-
-- **Stage 1 (this spec):** the planner + signal bundle + gate registry emitting `plan.json`; the
-  growth gates (now pack-contributed: `grow_with_claudinite` member-side, `canon-curation` home-side);
-  the **`tidy-repo` pack** (its three tasks reusing a whole-repo worker for
-  now) seeded by `--init` + the one-time `tidy-repo-seed` migration for the existing fleet; the
-  `chrome-store-release` pack task; the `scheduling.md` contract + its enforcing check; the
-  orchestrator rewritten to dispatch from the plan.
-- **Stage 2:** the three single-object skills, the per-repo `tidy-report` unit, and retiring
-  `auto-repo-tidy.md` into the `tidy-repo` pack — a pure worker-granularity change, no engine change.

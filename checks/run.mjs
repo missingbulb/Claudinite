@@ -38,14 +38,14 @@ if (has('--init')) {
     process.exit(0);
   }
   const ctx = buildContext({ root, mode: 'all' });
-  // No pack is active by default — basics included — so the baseline is
-  // seeded as an explicit declaration alongside the fingerprinted packs.
-  // basics, grow_with_claudinite, and tidy-repo are the seeded-by-default declared
-  // packs; the rest come from fingerprint. grow_with_claudinite and tidy-repo are
-  // default-on but opt-out-able: baselining never re-adds them (unlike basics), so
-  // removing one from the declaration sticks (each has a one-time seed migration for
-  // the existing fleet).
-  const seeded = ['basics', 'grow_with_claudinite', 'tidy-repo'];
+  // No pack is active by default, so the baseline is seeded as an explicit
+  // declaration alongside the fingerprinted packs: every pack that flags
+  // `seededByDefault` is written in (discovered structurally — the engine names
+  // no pack), plus the ones a fingerprint detects. A seeded pack is still
+  // opt-out-able where its own policy allows (baselining re-adds only the packs
+  // whose absence it treats as drift), so removing a seeded declaration can
+  // stick; each seeded pack ships its own one-time seed migration for the fleet.
+  const seeded = packs.filter((p) => p.seededByDefault).map((p) => p.id);
   const detected = [...seeded, ...packs.filter((p) => p.detect && p.detect(ctx)).map((p) => p.id)];
   // A pack can't be imported without its dependencies — pull each declared pack's
   // `requires` closure into the declaration so it's complete and visible.

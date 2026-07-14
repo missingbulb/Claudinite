@@ -4,11 +4,11 @@ The **fleet daily maintenance routine** ([../auto-all-repos-maintenance.md](../a
 is the **only** schedule. Everything else that runs on a cadence is a **`workflow_dispatch`-only
 executor** the routine triggers and awaits — never a thing with a cron of its own.
 
-This is the `unattended-agents` rule, stated once here as the fleet's home for it:
+This is an agent-practices rule, stated once here as the fleet's home for it:
 
 > Give an executor a cron and it silently becomes a **second orchestrator with a competing trigger**.
 > One schedule, owned by the orchestrating routine; executors run only when dispatched.
-> — [skills/unattended-agents/SKILL.md](../../skills/unattended-agents/SKILL.md)
+> — the agent-practices skill
 
 So a **future daily / pack-based routine does not self-schedule.** In particular:
 
@@ -21,4 +21,4 @@ So a **future daily / pack-based routine does not self-schedule.** In particular
 The fleet routine itself is scheduled **externally** (the Claude Code Routines UI or a cron on a home
 repo), so no workflow *in* a repo — canon or consumer — carries a `schedule:` trigger for Claudinite
 executor work. A pack-task or fleet-executor workflow that grows a `schedule:` trigger is a
-conformance violation (enforced by a `github-actions`-pack check), not just a review note.
+conformance violation (enforced by a workflow-lint pack check), not just a review note.
