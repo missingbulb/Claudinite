@@ -2,8 +2,8 @@
 // declarations. New repos get it from `bootstrap --init`; this catches repos
 // bootstrapped before the pack existed, so the growth lifecycle keeps covering them.
 // Same shape as tidy-repo-seed: legacyPresent READS the declaration (a member declares
-// no grow_with_claudinite), the census passes it a content `read`; while live,
-// baselining seeds it; the census auto-retires it once the fleet has converged, after
+// no grow_with_claudinite), the retire pass passes it a content `read`; while live,
+// baselining seeds it; the retire pass auto-retires it once the fleet has converged, after
 // which a removal is durable (baselining never re-adds it).
 export default {
   id: 'grow-with-claudinite-seed',

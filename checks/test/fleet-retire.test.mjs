@@ -39,7 +39,7 @@ test('retireMigration: deletes each present home file (tolerating already-gone),
     `DELETE /repos/${home}/contents/${record}`,
   ]);
   assert.equal(calls[calls.length - 1], `DELETE /repos/${home}/contents/${record}`);
-  assert.match(line, /retired demo .*\+ 2 home file\(s\)/);
+  assert.match(line, /retired demo .*\+ 2 canon file\(s\)/);
 });
 
 test('retireMigration: a failed home delete propagates and leaves the record undeleted (retried next cycle)', async () => {

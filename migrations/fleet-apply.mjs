@@ -1,40 +1,32 @@
-#!/usr/bin/env node
 // Migration application — the fleet-wide APPLY pass (phase 1 of the daily
-// maintenance routine, run BEFORE the pack tasks). Its own fleet walk,
-// migrations-owned: basics baselining no longer carries the "apply migrations"
-// step. See migrations/README.md and routines/auto-all-repos-maintenance.md.
+// maintenance routine, run BEFORE the pack tasks). Migrations-owned: basics
+// baselining no longer carries the "apply migrations" step. See migrations/README.md
+// and routines/auto-all-repos-maintenance.md.
 //
-// What it does: for every covered member, compute its pending migration writes —
-// the same three write ops the local applier runs (file aliases, materialize,
-// rewrite; registry.mjs) — against the member's target branch, and land the whole
-// set as ONE commit via the Git Data API. Templates are read from the canon
-// checkout this runs in (the parent of migrations/); dest reads/writes hit the
-// member over the API. Idempotent: a member already on the canonical shape stages
-// nothing and gets no commit.
+// What it does: for every member the routine hands it, compute the member's pending
+// migration writes — the same three write ops the local applier runs (file aliases,
+// materialize, rewrite; registry.mjs) — against the member's target branch, and land
+// the whole set as ONE commit. Templates are read from the canon checkout this runs
+// in (the parent of migrations/); member reads/writes go through the injected `gh`.
+// Idempotent: a member already on the canonical shape stages nothing and gets no
+// commit.
 //
 // Delivery honors the member's `.claudinite-checks.json` `maintenance.delivery`
-// (default `push`): `push` commits to the default branch; `pr` commits to the
-// stable `claudinite/maintenance` branch and ensures its one open PR; anything
-// else commits nothing and opens an issue naming it (the baselining delivery
-// contract, unchanged).
+// (default `push`): `push` commits to the default branch; `pr` commits to the stable
+// `claudinite/maintenance` branch and ensures its one open PR; anything else commits
+// nothing and opens an issue naming it.
 //
-// It writes `migrations-applied.json` — the ids it wrote to >=1 repo this cycle —
-// which the retire pass (phase 3) reads to enforce the quiescence guard: a
-// migration touched this cycle is never retired this cycle.
-//
-// It acts only on the repos the maintenance routine hands it (as CLI args) — the
-// repos this environment manages, which the routine knows and the environment
-// grants. It does NOT enumerate repos or reach account-wide (that is the coverage
-// census's separate job). Auth is the run's own token.
-// Dependency-free (global fetch, Node 20+).
+// GitHub I/O is a single injected `gh(path, { method, body }) -> { status, json }`,
+// supplied by the orchestrator over its GitHub MCP tools — there is NO REST client
+// here and no token. `applyToRepos` returns the migration ids it applied this cycle;
+// the orchestrator hands that set to the retire pass as its quiescence evidence (a
+// migration touched this cycle is never retired this cycle).
 
-import { appendFileSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
-import { loadMigrations, applyFileAliases, applyMaterializations, applyRewrites } from './registry.mjs';
-import { makeGh } from '../routines/fleet/fleet-api.mjs';
+import { fileURLToPath } from 'node:url';
+import { applyFileAliases, applyMaterializations, applyRewrites } from './registry.mjs';
 
-const APPLIED_PATH = 'migrations-applied.json';
 const MAINT_BRANCH = 'claudinite/maintenance';
 const canonRoot = dirname(dirname(fileURLToPath(import.meta.url))); // the checkout ships the templates
 const readTemplate = (p) => (existsSync(join(canonRoot, p)) ? readFileSync(join(canonRoot, p), 'utf8') : null);
@@ -167,9 +159,11 @@ export async function applyToRepo(gh, fullName, migrations) {
   return { ids: [...staged.ids], note: `${fullName}: applied ${[...staged.ids].join(', ')} (${delivery})` };
 }
 
-// Apply pending migrations to every repo the routine handed us (the repos this
-// environment manages). A repo that throws is isolated — its error is noted and the
-// rest still run. Returns the union of applied ids (this cycle's evidence) + notes.
+// Apply pending migrations to every repo the routine handed us. A repo that throws is
+// isolated — its error is noted and the rest still run. Returns the union of applied
+// ids (this cycle's quiescence evidence) + notes. The orchestrator (which loads the
+// migration set via registry.mjs and supplies the MCP-backed `gh`) calls this, then
+// passes `appliedIds` straight to the retire pass — no intermediate file needed.
 export async function applyToRepos(gh, fullNames, migrations) {
   const appliedIds = new Set(); const notes = [];
   for (const fullName of fullNames) {
@@ -180,30 +174,4 @@ export async function applyToRepos(gh, fullNames, migrations) {
     } catch (e) { notes.push(`${fullName}: apply failed (${e.message})`); }
   }
   return { appliedIds: [...appliedIds], notes };
-}
-
-async function main() {
-  // The routine (which knows this environment's repos) hands us the repos to act on
-  // as CLI args; we don't enumerate. Auth is the run's own token.
-  const token = process.env.GITHUB_TOKEN;
-  const repos = process.argv.slice(2);
-  if (!token) throw new Error('GITHUB_TOKEN is not set');
-  const gh = makeGh(token);
-  const migrations = await loadMigrations();
-
-  const { appliedIds, notes } = await applyToRepos(gh, repos, migrations);
-  // The apply evidence the retire pass reads for its quiescence guard — always
-  // written (even empty), so its presence proves the apply pass ran this cycle.
-  writeFileSync(APPLIED_PATH, `${JSON.stringify(appliedIds, null, 2)}\n`);
-
-  const summary = ['# Migration application', '',
-    `**Applied this cycle:** ${appliedIds.length ? appliedIds.join(', ') : 'none (already converged)'}`,
-    ...notes.map((n) => `- ${n}`)].join('\n');
-  console.log(summary);
-  if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${summary}\n`);
-}
-
-const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
-if (isMain) {
-  main().catch((e) => { console.error(`migration application failed: ${e.message}`); process.exit(1); });
 }

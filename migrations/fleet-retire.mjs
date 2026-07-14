@@ -1,46 +1,52 @@
-#!/usr/bin/env node
 // Migration finalization — the fleet-wide RETIRE pass (phase 3 of the daily
-// maintenance routine, run after the pack tasks settle). Its own fleet walk,
-// migrations-owned: neither the fleet-coverage census nor baselining carries any
-// migration logic. See migrations/README.md and routines/auto-all-repos-maintenance.md.
+// maintenance routine, run after the pack tasks settle). Migrations-owned:
+// baselining carries no migration logic. See migrations/README.md and
+// routines/auto-all-repos-maintenance.md.
 //
-// What it does: enumerate the covered fleet, probe every migration's
-// `legacyPresent` across it, and auto-retire any migration the whole fleet has
-// left behind — deleting the home files it relocated into the consumers
-// (retireDeletesFromHome) FIRST, then the record itself. That is the automatic
-// phase-2 cut: plumbing moved behind a pack leaves the canon with no leftovers
-// once every consumer has vendored the copy.
+// What it does: over the repos the routine hands it, probe every migration's
+// `legacyPresent`, and auto-retire any migration the whole fleet has left behind —
+// deleting the files it relocated into the consumers (retireDeletesFromHome) FIRST,
+// then the record itself. Retirement acts on the CANON repo — the SAME repo the
+// migrations are loaded from (migrations/active_migrations/): there is no separate
+// "home repo" to discover. The orchestrator names that repo (a known constant) when
+// it loads the migrations and again here; loading and retiring a migration are one
+// place, not two processes of discovery.
 //
-// The QUIESCENCE guard (why this runs AFTER, and separate from, apply): a
-// migration is retired only after a full nightly cycle in which the apply pass
-// touched it on NO repo. The apply pass (phase 1, migrations/fleet-apply.mjs)
-// writes `migrations-applied.json` — the ids it wrote to >=1 repo this cycle.
-// This pass reads it and refuses to retire anything in that set (retirableMigrations
-// enforces it), so the cycle that converges the last member can never also retire.
-// If that file is ABSENT (the apply pass didn't run this cycle) quiescence is
-// unproven, so this pass retires nothing — retirement is irreversible, and a
-// missing apply signal must never be read as "the fleet is quiet".
+// The QUIESCENCE guard (why this runs AFTER, and separate from, apply): a migration
+// is retired only after a full nightly cycle in which the apply pass touched it on NO
+// repo. The apply pass returns the ids it applied this cycle; the orchestrator hands
+// that set here as `appliedThisCycle`, and retirableMigrations refuses to retire
+// anything in it — so the cycle that converges the last member can never also retire.
+// If that evidence is ABSENT (the apply pass didn't run this cycle) quiescence is
+// unproven, so this pass retires nothing — retirement is irreversible, and a missing
+// apply signal must never be read as "the fleet is quiet".
 //
-// It probes only the repos the maintenance routine hands it (as CLI args) — this
-// environment's repos, which the routine knows. It does NOT enumerate repos or reach
-// account-wide (that is the coverage census's separate job). Auth is the run's own
-// token; read-only toward every repo except the home repo (its own), where it deletes
-// retired records + their retireDeletesFromHome files.
-// Dependency-free (global fetch, Node 20+).
+// GitHub I/O is a single injected `gh(path, { method, body }) -> { status, json }`,
+// supplied by the orchestrator over its GitHub MCP tools — there is NO REST client
+// here and no token. Read-only toward every repo except the canon repo (its own),
+// where it deletes retired records + their retireDeletesFromHome files.
 
-import { appendFileSync, existsSync, readFileSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
-import { loadMigrations, retirableMigrations, MIGRATIONS_SUBDIR } from './registry.mjs';
-import { makeGh, fileExists } from '../routines/fleet/fleet-api.mjs';
+import { existsSync, readFileSync } from 'node:fs';
+import { retirableMigrations, MIGRATIONS_SUBDIR } from './registry.mjs';
 
-const APPLIED_PATH = 'migrations-applied.json'; // written by fleet-apply.mjs this cycle
+const APPLIED_PATH = 'migrations-applied.json'; // legacy CI hand-off file; the orchestrator passes evidence in memory
 
-async function deleteFile(gh, home, path, message) {
-  const head = await gh(`/repos/${home}/contents/${path}`);
+// 200 -> present, 404 -> absent, anything else -> error (an indeterminate probe must
+// count as pending, never "clean"). Inlined so the retire pass carries no dependency
+// on the census's REST client.
+async function fileExists(gh, fullName, path) {
+  const { status } = await gh(`/repos/${fullName}/contents/${path}`);
+  if (status === 200) return true;
+  if (status === 404) return false;
+  throw new Error(`marker check ${fullName}:${path} returned ${status}`);
+}
+
+async function deleteFile(gh, canonRepo, path, message) {
+  const head = await gh(`/repos/${canonRepo}/contents/${path}`);
   if (head.status !== 200 || !head.json?.sha) {
     throw new Error(`cannot resolve ${path} to delete (status ${head.status})`);
   }
-  const res = await gh(`/repos/${home}/contents/${path}`, {
+  const res = await gh(`/repos/${canonRepo}/contents/${path}`, {
     method: 'DELETE',
     body: { message, sha: head.json.sha },
   });
@@ -48,34 +54,34 @@ async function deleteFile(gh, home, path, message) {
 }
 
 // Like deleteFile but a 404 (already gone) is success, not an error — so a
-// migration whose retirement removes several home files can be retried after a
+// migration whose retirement removes several canon-repo files can be retried after a
 // partial run without tripping on the ones already deleted.
-async function deleteFileIfPresent(gh, home, path, message) {
-  const head = await gh(`/repos/${home}/contents/${path}`);
+async function deleteFileIfPresent(gh, canonRepo, path, message) {
+  const head = await gh(`/repos/${canonRepo}/contents/${path}`);
   if (head.status === 404) return;
   if (head.status !== 200 || !head.json?.sha) {
     throw new Error(`cannot resolve ${path} to delete (status ${head.status})`);
   }
-  const res = await gh(`/repos/${home}/contents/${path}`, {
+  const res = await gh(`/repos/${canonRepo}/contents/${path}`, {
     method: 'DELETE',
     body: { message, sha: head.json.sha },
   });
   if (res.status !== 200) throw new Error(`deleting ${path} returned ${res.status}`);
 }
 
-// Retire one fully-applied migration: delete any home files it relocated into the
+// Retire one fully-applied migration: delete any files it relocated into the
 // consumers (retireDeletesFromHome) FIRST, then the record itself — so a partial
-// failure leaves the record to retry the rest next cycle (each home delete
-// tolerates an already-gone 404).
-export async function retireMigration(gh, home, m) {
-  const homeFiles = m.retireDeletesFromHome ?? [];
-  for (const p of homeFiles) {
-    await deleteFileIfPresent(gh, home, p, `Retire migration ${m.id}: remove ${p} — vendored into every consumer, unused in the canon`);
+// failure leaves the record to retry the rest next cycle (each delete tolerates an
+// already-gone 404). Both live in the canon repo the migrations were loaded from.
+export async function retireMigration(gh, canonRepo, m) {
+  const relocatedFiles = m.retireDeletesFromHome ?? [];
+  for (const p of relocatedFiles) {
+    await deleteFileIfPresent(gh, canonRepo, p, `Retire migration ${m.id}: remove ${p} — vendored into every consumer, unused in the canon`);
   }
   const record = `migrations/${MIGRATIONS_SUBDIR}/${m.file}`;
-  await deleteFile(gh, home, record,
+  await deleteFile(gh, canonRepo, record,
     `Retire migration ${m.id}: fully applied and quiet across the fleet (0 repos on the legacy shape, 0 applications this cycle)`);
-  return `retired ${m.id} — deleted ${record}${homeFiles.length ? ` + ${homeFiles.length} home file(s)` : ''}`;
+  return `retired ${m.id} — deleted ${record}${relocatedFiles.length ? ` + ${relocatedFiles.length} canon file(s)` : ''}`;
 }
 
 // Read a repo file's decoded content, or null if absent/unreadable — passed to
@@ -104,11 +110,11 @@ export function readAppliedThisCycle(path = APPLIED_PATH) {
 // the fleet has left behind AND the apply pass left untouched this cycle. A probe
 // error counts as pending (never "clean"), so an API hiccup only ever delays a
 // retirement, never triggers a premature one.
-export async function runRetirement(gh, home, migrations, covered, unknownCount, today, appliedThisCycle) {
+export async function runRetirement(gh, canonRepo, migrations, covered, unknownCount, today, appliedThisCycle) {
   if (migrations.length === 0) return [];
   const lines = [];
   if (appliedThisCycle === null) {
-    return [`no ${APPLIED_PATH} from the apply pass — retiring nothing (quiescence unproven)`];
+    return ['no apply evidence from the apply pass this cycle — retiring nothing (quiescence unproven)'];
   }
   const pending = new Map(migrations.map((m) => [m.id, 0]));
   const notes = [];
@@ -132,38 +138,10 @@ export async function runRetirement(gh, home, migrations, covered, unknownCount,
   }
   for (const m of retirableMigrations(migrations, { pending, unknownCount, today, appliedThisCycle })) {
     try {
-      lines.push(await retireMigration(gh, home, m));
+      lines.push(await retireMigration(gh, canonRepo, m));
     } catch (e) {
-      lines.push(`could not auto-retire ${m.id}: ${e.message} — the maintenance token needs Contents write on ${home}`);
+      lines.push(`could not auto-retire ${m.id}: ${e.message} — the maintenance session needs Contents write on ${canonRepo}`);
     }
   }
   return [...lines, ...notes];
-}
-
-async function main() {
-  // The routine hands us the repos to probe (this environment's repos) as CLI args;
-  // we don't enumerate. Auth is the run's own token; the home repo (its own) is where
-  // retired records + relocated files are deleted. The routine must pass the COMPLETE
-  // managed set — retirement fires only when the whole set is clean, so a missing repo
-  // could hide drift; a partial list means the routine skips the retire pass.
-  const token = process.env.GITHUB_TOKEN;
-  const home = process.env.GITHUB_REPOSITORY;
-  const repos = process.argv.slice(2);
-  if (!token) throw new Error('GITHUB_TOKEN is not set');
-  if (!home || !home.includes('/')) throw new Error('GITHUB_REPOSITORY is not set (owner/repo)');
-  const gh = makeGh(token);
-  const today = new Date().toISOString().slice(0, 10);
-
-  const appliedThisCycle = readAppliedThisCycle();
-  const migrations = await loadMigrations();
-  const lines = await runRetirement(gh, home, migrations, repos, 0, today, appliedThisCycle);
-
-  const summary = ['# Migration finalization', '', ...(lines.length ? lines.map((l) => `- ${l}`) : ['- nothing to retire'])].join('\n');
-  console.log(summary);
-  if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${summary}\n`);
-}
-
-const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
-if (isMain) {
-  main().catch((e) => { console.error(`migration finalization failed: ${e.message}`); process.exit(1); });
 }
