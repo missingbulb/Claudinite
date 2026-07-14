@@ -31,6 +31,24 @@ function referencesSurvivingPath(hit, gone, ctx) {
   return true;
 }
 
+// A deleted path already governed by an active baseline migration (migrations/) isn't
+// a stale reference — it's the declared legacy shape a migration record deliberately
+// keeps naming (in its own aliases, and in every reader/doc that resolves or documents
+// them) until the fleet converges and it retires. Read the spec files synchronously
+// (checks run sync — see checks/lib/hooklog.mjs), matching on basename since a legacy
+// alias is usually written with a different (e.g. consumer-side) path prefix than the
+// bare deleted path this branch reports.
+const MIGRATIONS_DIR_RE = /^migrations\/active_migrations\/.*\.mjs$/;
+
+function migrationGoverns(gone, ctx) {
+  const base = gone.split('/').pop();
+  for (const file of ctx.files.filter((f) => MIGRATIONS_DIR_RE.test(f) && !f.endsWith('.test.mjs'))) {
+    const text = ctx.read(file);
+    if (text && text.includes(base)) return true;
+  }
+  return false;
+}
+
 const rule = {
   id: 'reference-integrity',
   severity: 'blocking',
@@ -58,6 +76,7 @@ const rule = {
     }
 
     for (const gone of ctx.deleted) {
+      if (migrationGoverns(gone, ctx)) continue;
       for (const hit of ctx.grepTracked(gone)) {
         if (hit.file === gone) continue;
         if (referencesSurvivingPath(hit, gone, ctx)) continue;

@@ -67,6 +67,27 @@ test('reference-integrity: does not flag a renamed file whose new path shares th
   } finally { cleanup(root); }
 });
 
+test('reference-integrity: does not flag a deleted path already governed by an active baseline migration', () => {
+  const root = makeRepo({
+    base: {
+      'old.sh': 'x\n',
+      'consumer-docs.md': 'see `.vendored/old.sh` (or the legacy `.hooks/old.sh`)\n',
+      'migrations/active_migrations/2026-01-01-old-relocation.mjs': `export default {
+  id: 'old-relocation',
+  landed: '2026-01-01',
+  aliases: [{ canonical: '.vendored/old.sh', legacy: ['.hooks/old.sh'] }],
+};
+`,
+    },
+    changed: {},
+  });
+  try {
+    deletePath(root, 'old.sh');
+    const findings = run(referenceIntegrity, root, 'all');
+    assert.equal(findings.some(f => f.file === 'consumer-docs.md'), false);
+  } finally { cleanup(root); }
+});
+
 test('markdown-link-labels: flags a path-like label that contradicts the target', () => {
   const bad = makeRepo({
     base: { 'a/new.md': 'x\n' },
