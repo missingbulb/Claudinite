@@ -128,12 +128,19 @@ fixture) plus its index rows. Keep the commit and PR terse; reference this task'
 
 The task's standing log is the issue titled exactly, on the **canon**:
 
-> **Auto-Improvements Tracker - Pack Discovery**
+> **Claudinite tracker: Pack Discovery**
 
-Find it **by title, never a hard-coded number**; open it if missing, reopen if closed while runs still
-need logging. Log each run as a **dated comment**: the member processed, and per authored pack the
-technology, the rungs its rules landed on (check ids / skills / prose); for a candidate you found
-nothing groundable for, name it and why.
+Find it **by that exact title, never a fuzzy match or a hard-coded number**.
+
+**One-time rename (drop once the fleet has converged):** if no issue carries this title yet, look for
+one titled exactly `Auto-Improvements Tracker - Pack Discovery` (the old name). If found, rename it to
+`Claudinite tracker: Pack Discovery` and close it if it's open — do this once, then use the new title
+on every later run. If neither title is found, create the new one (closed).
+
+**Never open, close, or reopen it** afterward — its state carries no meaning, only the log does. Log
+each run as a **dated comment**: the member processed, and per authored pack the technology, the rungs
+its rules landed on (check ids / skills / prose); for a candidate you found nothing groundable for, name
+it and why.
 
 ## What this task must never do
 
