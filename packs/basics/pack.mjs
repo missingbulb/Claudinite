@@ -20,6 +20,7 @@ export default {
   id: 'basics',
   detect: null,
   marker: null,
+  seededByDefault: true,
   prose: 'RULES.md',
   rules: [
     referenceIntegrity,

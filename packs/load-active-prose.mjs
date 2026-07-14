@@ -32,7 +32,7 @@ try {
 
   if (sections.length) {
     process.stdout.write(
-      `# Claudinite — active-pack guidance\n\nThe baseline plus the packs this project declares. Deeper per-pack reference (e.g. a pack's RELEASE.md) is linked from its prose and read on demand.\n\n${sections.join('\n\n---\n\n')}\n`
+      `# Claudinite — active-pack guidance\n\nThe baseline plus the packs this project declares. Deeper per-pack reference (e.g. a pack's release doc) is linked from its prose and read on demand.\n\n${sections.join('\n\n---\n\n')}\n`
     );
   }
 } catch {

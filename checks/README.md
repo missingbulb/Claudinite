@@ -2,7 +2,7 @@
 
 The deterministic-enforcement layer: corpus rules converted into machine-run checks, executed
 when a session finishes (Stop hook) and in CI. Design and rationale → [DESIGN.md](DESIGN.md);
-which rule came from which instruction → [conversion-inventory.md](conversion-inventory.md).
+which rule came from which instruction → [../docs/conversion-inventory.md](../docs/conversion-inventory.md).
 Dependency-free Node ≥ 18 — no install step.
 
 ## Running
@@ -11,7 +11,7 @@ Dependency-free Node ≥ 18 — no install step.
 node checks/run.mjs             # whole-repo sweep (the default — Stop hook and CI both run this)
 node checks/run.mjs --changed   # transitional: only files changed vs the merge-base with main
 node checks/run.mjs --list      # machine-readable rule catalog (id, severity, description, doc)
-node checks/run.mjs --init      # write .claudinite-checks.json — basics plus the fingerprinted packs
+node checks/run.mjs --init      # write .claudinite-checks.json — the baseline plus the fingerprinted packs
 
 node --test checks/test/*.test.mjs packs/*.test.mjs packs/*/*.test.mjs skills/*.test.mjs skills/*/*.test.mjs   # the test suite, exactly as CI runs it
 ```
@@ -48,29 +48,29 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
 ```json
 {
   "packs": [
-    "basics",
-    { "id": "barriers",
+    "baseline",
+    { "id": "an-edge-graph-pack",
       "config": { "rules": [ { "from": "src", "to": "tests" } ] },
       "rules": { "some-rule": "advisory" },
-      "accept": [ { "rule": "file-placement", "path": "src/shared/", "reason": "..." } ] },
+      "accept": [ { "rule": "a-rule", "path": "src/shared/", "reason": "..." } ] },
     { "id": "a-framework-pack", "via": ["the-class-pack-requiring-it"] }
   ],
-  "rules": { "file-placement": "off" },
+  "rules": { "a-rule": "off" },
   "accept": [
-    { "rule": "file-placement", "path": "src/shared/", "reason": "named cross-cutting concern" }
+    { "rule": "a-rule", "path": "src/shared/", "reason": "named cross-cutting concern" }
   ],
   "maintenance": { "delivery": "push" }
 }
 ```
 
 - **packs** — the declared packs; the closed set that executes. **No pack runs undeclared** —
-  the `basics` baseline too is declared explicitly (`--init` seeds it; the nightly
+  the baseline too is declared explicitly (`--init` seeds it; the nightly
   baselining backfills a missing declaration). An **unknown** pack name here is a settings
   error, caught at load (see below); a pack's fingerprint only *suspects* it is wanted and never
   forces or forbids its declaration. An entry object carries:
   - **id** — the pack name (required; a bare string entry is shorthand for `{ "id": ... }`).
-  - **config** — the pack's parameters (e.g. the dirs the `node` pack's `npm ci` runs in, the
-    `barriers` pack's edge list). This is the home of what a legacy top-level `packConfig` key
+  - **config** — the pack's parameters (e.g. the dirs a technology pack's `npm ci` runs in, an
+    edge-graph pack's edge list). This is the home of what a legacy top-level `packConfig` key
     used to hold — the engine still reads that key, but baselining folds it into the entries
     and nothing should keep authoring it. The `pack-entry-config` baseline migration
     ([migrations/](../migrations/README.md)) tracks the fleet's convergence; when it retires,
@@ -97,7 +97,7 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
   `"pr"` (a never-merged PR the owner gates). There is deliberately no implicit default — `--init`
   seeds `push` and the nightly sweep backfills a missing key, so the selection is visible in this
   file rather than implied by absence. Read by
-  [the baselining worker](../packs/basics/run_daily/baselining.worker.md); the checks engine
+  the baselining worker; the checks engine
   itself ignores it.
 
 ## Enforcement wiring

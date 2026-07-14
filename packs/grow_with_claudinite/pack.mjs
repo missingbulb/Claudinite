@@ -21,6 +21,7 @@ export default {
   id: 'grow_with_claudinite',
   detect: null,
   marker: null,
+  seededByDefault: true,
   prose: null,
   rules: [],
   run_daily: [growthExtract, growthDedup, growthDiscoverPacks],

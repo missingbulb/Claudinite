@@ -36,7 +36,7 @@ only to extend the *mechanism*, never to add one project's rule or task:
 **The test for "is this core?"** — would *every* pack's content stop working without it? The
 planner, the runner, the migration mechanism, the orchestrator loop all pass; a lint for one
 technology, a nightly release task, a naming rule all fail. Two responsibilities are core *by
-ownership* even though they run as pack tasks: **baselining** (the `basics` daily task) and the
+ownership* even though they run as pack tasks: **baselining** (the baseline pack's daily task) and the
 **daily-run** itself are Claudinite's job, not a pack's — the pack is only the delivery slot.
 
 ## What a pack contributes
@@ -52,10 +52,10 @@ A pack is a directory `packs/<name>/pack.mjs` exporting up to four contribution 
 | **Daily tasks** | `run_daily: [...]` | `(gate, worker)` maintenance units the planner picks up — each declares `full_sweep_supported` and its `smarts` tier |
 
 Activation is the project's declaration in `.claudinite-checks.json` — **no pack runs undeclared,
-`basics` included.** A technology pack carries a `detect` fingerprint so `--init` seeds it into a
+the baseline included.** A technology pack carries a `detect` fingerprint so `--init` seeds it into a
 fresh declaration when the technology is present; the marker only *suspects* a pack is wanted,
-never forcing or forbidding its declaration afterward. A declared-by-policy pack (`basics`,
-`grow_with_claudinite`, `tidy-repo`, `sheepdog`) sets `detect: null` and is seeded by `--init`
+never forcing or forbidding its declaration afterward. A declared-by-policy pack (the baseline and
+the default-on maintenance packs) sets `detect: null` and is seeded by `--init`
 and/or a one-time migration.
 
 ## Where a new feature goes — the routing
@@ -72,8 +72,7 @@ Ask what *kind* of thing you're adding; each kind has exactly one home, and none
    owning pack. The planner assembles it automatically — **no edit to the orchestrator or the
    planner.** This is the load-bearing case: "add a nightly job" must never become "add a routine
    to `routines/`."
-4. **A new project-class playbook** → a project-class pack (e.g. `research-project`,
-   `spec-driven-product`).
+4. **A new project-class playbook** → a project-class pack.
 5. **Extending the engine itself** — a new signal the planner computes, a new discovery rule, a
    new migration capability, a change to the orchestrator loop — *is* the rare core change. Do it
    deliberately, and expect it to serve every pack, not one.
@@ -89,7 +88,7 @@ home works; it's finished when the **old home is gone**. Leaving the original as
 (`# retired — see the pack`) creates two homes for one thing, which drifts and misleads. Delete
 the emptied source in the same change, fix every inbound reference, and let the conformance checks
 (`reference-integrity`, `catalog-completeness`) confirm nothing dangles. The mechanics live in the
-[repo-text-sweeps skill](skills/repo-text-sweeps/SKILL.md); the discipline is: a relocation that
+text-sweep skill; the discipline is: a relocation that
 leaves the source behind isn't done.
 
 ---

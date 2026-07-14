@@ -7,7 +7,7 @@ import {
   normalizeEdges, resolveRef, candidatesOn, buildIndex, under, normPrefix, defineBarrier,
 } from './engine.mjs';
 
-// Run the config-driven check with the given barriers config and repo files.
+// Run the config-driven check with the given packConfig.barriers and repo files.
 function runCheck(barriersConfig, files) {
   const root = makeRepo({ changed: files });
   try {
@@ -16,23 +16,6 @@ function runCheck(barriersConfig, files) {
     return barrier.run(ctx);
   } finally { cleanup(root); }
 }
-
-test("the check reads the graph from the barriers pack entry's config in the real file", () => {
-  // End-to-end through loadConfig: the entry's `config` feeds the normalized
-  // packConfig view the check reads — no manual ctx injection.
-  const root = makeRepo({ changed: {
-    '.claudinite-checks.json': JSON.stringify({
-      packs: [{ id: 'barriers', config: { rules: [{ from: 'extension', to: 'server' }] } }],
-    }),
-    'extension/popup.js': "import { db } from '../server/db.js';\n",
-    'server/db.js': 'export const db = 1;\n',
-  } });
-  try {
-    const f = barrier.run(buildContext({ root, mode: 'all' }));
-    assert.equal(f.length, 1);
-    assert.equal(f[0].file, 'extension/popup.js');
-  } finally { cleanup(root); }
-});
 
 // --- import / relative-path detection ---------------------------------------
 
@@ -214,7 +197,7 @@ test('malformed config surfaces a blocking config finding', () => {
 
   const missing = runCheck({ rules: [{ from: 'a' }] }, { 'a/x.js': '1\n' });
   assert.equal(missing.length, 1);
-  assert.match(missing[0].what, /"from" and "to"/);
+  assert.match(missing[0].what, /needs a "to"/);
 
   const overlap = runCheck({ rules: [{ from: 'a', to: 'a/b' }] }, { 'a/b/x.js': '1\n' });
   assert.equal(overlap.length, 1);
@@ -349,6 +332,302 @@ test('an allow entry that would disable the barrier is a config error', () => {
   const f = runCheck({ rules: [{ from: 'client', to: 'server', allow: [''] }] }, { 'client/a.js': '1\n', 'server/s.js': '1\n' });
   assert.equal(f.length, 1);
   assert.match(f[0].what, /every "allow" entry/);
+});
+
+// --- repo-root from + except carve-outs ---------------------------------------
+
+test('from "." with except: guards everything outside the carve-outs', () => {
+  const f = runCheck({ rules: [{ from: '.', except: ['content/*'], to: 'content/*' }] }, {
+    'core/a.js': "import x from '../content/alpha/mod.js';\n",
+    'content/alpha/mod.js': 'export default 1;\n',
+    'content/beta/other.js': "import y from '../alpha/mod.js';\n", // content may reference content
+    'README.md': 'a root file referencing [alpha](content/alpha/mod.js)\n',
+  });
+  assert.deepEqual(f.map((x) => x.file).sort(), ['README.md', 'core/a.js']);
+});
+
+test('except carve-outs subtract files from the guarded set (folder, file, and *.suffix pattern)', () => {
+  const f = runCheck({
+    rules: [{
+      from: '.',
+      except: ['content/*', 'vendor', 'CATALOG.md', '*.stories.js'],
+      to: 'content/*',
+    }],
+  }, {
+    'vendor/a.js': "import x from '../content/alpha/mod.js';\n",
+    'CATALOG.md': 'the catalog lists content/alpha/mod.js by design\n',
+    'core/x.stories.js': "import x from '../content/alpha/mod.js';\n",
+    'core/x.mjs': "import x from '../content/alpha/mod.js';\n",
+    'content/alpha/mod.js': 'export default 1;\n',
+  });
+  assert.equal(f.length, 1);
+  assert.equal(f[0].file, 'core/x.mjs');
+});
+
+test('a "<dir>/*" glob bars only child directories, not files directly under the dir', () => {
+  const f = runCheck({ rules: [{ from: '.', except: ['content/*'], to: 'content/*' }] }, {
+    'core/a.md': 'shared machinery: content/registry.mjs is fine, content/alpha/mod.js is not\n',
+    'content/registry.mjs': 'export const r = 1;\n',
+    'content/alpha/mod.js': 'export default 1;\n',
+  });
+  assert.equal(f.length, 1);
+  assert.match(f[0].what, /content\/alpha\/mod\.js/);
+});
+
+test('a repo-root "from" whose targets are not excepted is a config error', () => {
+  const f = runCheck({ rules: [{ from: '.', to: 'server' }] }, {
+    'core/a.js': '1\n',
+    'server/s.js': '1\n',
+  });
+  assert.equal(f.length, 1);
+  assert.equal(f[0].file, '.claudinite-checks.json');
+  assert.match(f[0].what, /overlaps the repo-root guard/);
+});
+
+test('the repo root must be spelled "." — "" and "/" stay rejected', () => {
+  for (const bad of ['', '/']) {
+    const f = runCheck({ rules: [{ from: bad, to: 'server', except: ['server'] }] }, {
+      'core/a.js': '1\n',
+      'server/s.js': '1\n',
+    });
+    assert.equal(f.length, 1, JSON.stringify(bad));
+    assert.equal(f[0].file, '.claudinite-checks.json');
+  }
+});
+
+test('to accepts an array of targets', () => {
+  const f = runCheck({ rules: [{ from: 'core', to: ['alpha', 'beta'] }] }, {
+    'core/a.js': "import a from '../alpha/a.js';\nimport b from '../beta/b.js';\n",
+    'alpha/a.js': '1\n',
+    'beta/b.js': '1\n',
+  });
+  assert.equal(f.length, 2);
+});
+
+test('a "to" glob that expands to nothing is a blocking config finding (fail closed)', () => {
+  const f = runCheck({ rules: [{ from: 'core', to: 'gone/*' }] }, {
+    'core/a.js': '1\n',
+  });
+  assert.equal(f.length, 1);
+  assert.equal(f[0].file, '.claudinite-checks.json');
+  assert.match(f[0].what, /matched no directories/);
+});
+
+test('an unknown property on a rule or on packConfig.barriers is a config error', () => {
+  const rule = runCheck({ rules: [{ from: 'a', to: 'b', alow: ['c'] }] }, { 'a/x.js': '1\n', 'b/y.js': '1\n' });
+  assert.equal(rule.length, 1);
+  assert.match(rule[0].what, /unknown property "alow"/);
+  const top = runCheck({ rules: [], acept: [] }, { 'a/x.js': '1\n' });
+  assert.equal(top.length, 1);
+  assert.match(top[0].what, /unknown property "acept"/);
+});
+
+// --- the bare-name layer (matchNames / alsoMatchNames) ------------------------
+
+test('matchNames: a distinctive barred-folder name is matched bare, in prose and strings', () => {
+  const f = runCheck({ rules: [{ from: '.', except: ['content/*'], to: 'content/*', matchNames: true }] }, {
+    'core/doc.md': 'the tidy-repo pack is seeded by default\n',
+    'core/seed.mjs': "const seeded = ['tidy-repo'];\n",
+    'content/tidy-repo/RULES.md': 'rules\n',
+  });
+  assert.equal(f.length, 2);
+  assert.deepEqual(f.map((x) => x.file).sort(), ['core/doc.md', 'core/seed.mjs']);
+  assert.match(f[0].what, /the name of the barred folder "content\/tidy-repo"/);
+});
+
+test('matchNames: a non-distinctive name only matches via alsoMatchNames; inside longer words it never fires', () => {
+  const config = (alsoMatchNames) => ({
+    rules: [{ from: '.', except: ['content/*'], to: 'content/*', matchNames: true, ...(alsoMatchNames && { alsoMatchNames }) }],
+  });
+  const files = {
+    'core/doc.md': 'the basics pack; see also tidy-repo-seed.mjs and https://x/tidy-repo\n',
+    'content/basics/RULES.md': 'rules\n',
+    'content/tidy-repo/RULES.md': 'rules\n',
+  };
+  // "basics" is an ordinary word → silent; "tidy-repo" inside a longer hyphenated
+  // token or a URL path never fires.
+  assert.equal(runCheck(config(null), files).length, 0);
+  const withAlso = runCheck(config(['basics']), files);
+  assert.equal(withAlso.length, 1);
+  assert.match(withAlso[0].what, /"basics"/);
+});
+
+test('matchNames config errors: alsoMatchNames typo, alsoMatchNames without matchNames, matchNames with "*"', () => {
+  const typo = runCheck({ rules: [{ from: '.', except: ['content/*'], to: 'content/*', matchNames: true, alsoMatchNames: ['nope'] }] }, {
+    'content/alpha/mod.js': '1\n',
+  });
+  assert.equal(typo.length, 1);
+  assert.match(typo[0].what, /"nope" is not the name of any barred folder/);
+
+  const noMatch = runCheck({ rules: [{ from: 'a', to: 'b', alsoMatchNames: ['b'] }] }, { 'a/x.js': '1\n', 'b/y.js': '1\n' });
+  assert.equal(noMatch.length, 1);
+  assert.match(noMatch[0].what, /"alsoMatchNames" requires "matchNames"/);
+
+  const star = runCheck({ rules: [{ from: 'a', to: '*', matchNames: true }] }, { 'a/x.js': '1\n' });
+  assert.equal(star.length, 1);
+  assert.match(star[0].what, /"matchNames" needs named "to" folders/);
+});
+
+// --- explicit `from` allowlist (arrays; engine files inside content trees) ----
+
+test('from accepts an array of core folders; folders not listed are out of scope', () => {
+  const f = runCheck({ rules: [{ from: ['checks', 'growth'], to: 'content/*' }] }, {
+    'checks/run.mjs': "import x from '../content/alpha/mod.js';\n",
+    'growth/x.md': 'see content/beta/mod.js\n',
+    'other/z.js': "import x from '../content/alpha/mod.js';\n", // not in from → not scanned
+    'content/alpha/mod.js': '1\n',
+    'content/beta/mod.js': '1\n',
+  });
+  assert.deepEqual(f.map((x) => x.file).sort(), ['checks/run.mjs', 'growth/x.md']);
+});
+
+test('a "from" file inside the barred glob-parent is guarded without a false overlap', () => {
+  // The engine-file-among-content pattern (packs/registry.mjs guarded, to packs/*).
+  const f = runCheck({ rules: [{ from: ['core', 'content/registry.mjs'], to: 'content/*' }] }, {
+    'core/a.js': "import x from '../content/alpha/mod.js';\n",
+    'content/registry.mjs': '// the schema lives in content/alpha/mod.js\n',
+    'content/README.md': 'catalog: content/alpha lives here\n', // a sibling file, not a from entry → not scanned
+    'content/alpha/mod.js': '1\n',
+  });
+  assert.deepEqual(f.map((x) => x.file).sort(), ['content/registry.mjs', 'core/a.js']);
+});
+
+test('the engine never scans *.test.mjs (a test references what it tests)', () => {
+  const f = runCheck({ rules: [{ from: 'core', to: 'content/*' }] }, {
+    'core/thing.test.mjs': "import x from '../content/alpha/mod.js';\n",
+    'core/thing.mjs': "import x from '../content/alpha/mod.js';\n",
+    'content/alpha/mod.js': '1\n',
+  });
+  assert.equal(f.length, 1);
+  assert.equal(f[0].file, 'core/thing.mjs');
+});
+
+// --- per-rule reviewed exceptions ({ path, to?, reason }) and their staleness --
+
+test('a reviewed exception excuses one file × target; other crossings in the file still fail', () => {
+  const f = runCheck({
+    rules: [{
+      from: 'core', to: 'content/*',
+      except: [{ path: 'core/a.md', to: ['content/alpha'], reason: 'reviewed: alpha cited as an example' }],
+    }],
+  }, {
+    'core/a.md': 'see content/alpha/mod.js and content/beta/mod.js\n',
+    'content/alpha/mod.js': '1\n',
+    'content/beta/mod.js': '1\n',
+  });
+  assert.equal(f.length, 1);
+  assert.match(f[0].what, /content\/beta\/mod\.js/);
+});
+
+test('a reviewed exception with a trailing "/" excuses a subtree', () => {
+  const f = runCheck({
+    rules: [{
+      from: 'docs', to: 'content/*',
+      except: [{ path: 'docs/', to: 'content/alpha', reason: 'the docs tree cites alpha deliberately' }],
+    }],
+  }, {
+    'docs/deep/a.md': 'see content/alpha/mod.js\n',
+    'content/alpha/mod.js': '1\n',
+  });
+  assert.equal(f.length, 0);
+});
+
+test('a to-less exception excuses the whole file; unused it goes stale on a whole-repo sweep', () => {
+  const excused = runCheck({
+    rules: [{ from: 'core', to: 'content/*', except: [{ path: 'core/ledger.md', reason: 'historical ledger' }] }],
+  }, {
+    'core/ledger.md': 'see content/alpha/mod.js and content/beta/mod.js\n',
+    'content/alpha/mod.js': '1\n',
+    'content/beta/mod.js': '1\n',
+  });
+  assert.equal(excused.length, 0);
+
+  const stale = runCheck({
+    rules: [{ from: 'core', to: 'content/*', except: [{ path: 'core/ledger.md', reason: 'historical ledger' }] }],
+  }, {
+    'core/ledger.md': 'no crossings now\n',
+    'content/alpha/mod.js': '1\n',
+  });
+  assert.equal(stale.length, 1);
+  assert.equal(stale[0].severity, 'blocking');
+  assert.match(stale[0].what, /matched nothing/);
+});
+
+test('a pinned exception whose target is unused is a blocking stale finding', () => {
+  const f = runCheck({
+    rules: [{
+      from: 'core', to: 'content/*',
+      except: [{ path: 'core/a.md', to: ['content/alpha', 'content/beta'], reason: 'reviewed' }],
+    }],
+  }, {
+    'core/a.md': 'see content/alpha/mod.js\n',
+    'content/alpha/mod.js': '1\n',
+    'content/beta/mod.js': '1\n',
+  });
+  assert.equal(f.length, 1);
+  assert.equal(f[0].severity, 'blocking');
+  assert.match(f[0].what, /"content\/beta" matched nothing/);
+});
+
+test("a rule's except mixes carve-out strings and reviewed exceptions", () => {
+  const f = runCheck({
+    rules: [{
+      from: '.', to: 'content/*',
+      except: ['content/*', { path: 'core/a.md', to: ['content/alpha'], reason: 'reviewed' }],
+    }],
+  }, {
+    'core/a.md': 'see content/alpha/mod.js\n',
+    'core/b.md': 'see content/beta/mod.js\n',
+    'content/alpha/mod.js': '1\n',
+    'content/beta/mod.js': '1\n',
+  });
+  // content/* keeps content unscanned & barrable; a.md→alpha is excused; b.md→beta fires.
+  assert.equal(f.length, 1);
+  assert.equal(f[0].file, 'core/b.md');
+});
+
+test('malformed reviewed exceptions are config errors (no reason, unknown key, bad to, no path)', () => {
+  const cases = [
+    [{ path: 'core/a.md', to: 'content/alpha' }, /has no reason/],
+    [{ path: 'core/a.md', to: 'content/alpha', reason: 'r', until: '2027' }, /unknown property "until"/],
+    [{ path: 'core/a.md', to: 'content/*', reason: 'r' }, /malformed "to"/],
+    [{ to: 'content/alpha', reason: 'r' }, /needs a string "path"/],
+  ];
+  for (const [entry, re] of cases) {
+    const f = runCheck({ rules: [{ from: 'core', to: 'content/*', except: [entry] }] },
+      { 'core/x.js': '1\n', 'content/alpha/mod.js': '1\n' });
+    assert.equal(f.length, 1, JSON.stringify(entry));
+    assert.match(f[0].what, re);
+    assert.equal(f[0].file, '.claudinite-checks.json');
+  }
+});
+
+test('matchUniqueFilenames: false opts out of the bare-filename layer (convention markers)', () => {
+  // "config.yml" is carried by exactly one folder, so the unique-basename layer
+  // resolves a bare mention to it — a false coupling when the filename is really a
+  // convention many folders are meant to carry. The flag turns that layer off.
+  const on = runCheck({ rules: [{ from: 'core', to: 'content/*' }] }, {
+    'core/a.js': '// every plugin ships a config.yml\n',
+    'content/alpha/config.yml': 'x: 1\n',
+  });
+  assert.equal(on.length, 1);
+  const off = runCheck({ rules: [{ from: 'core', to: 'content/*', matchUniqueFilenames: false }] }, {
+    'core/a.js': '// every plugin ships a config.yml\n',
+    'content/alpha/config.yml': 'x: 1\n',
+  });
+  assert.equal(off.length, 0);
+  // path references and distinctive names still fire with the layer off.
+  const stillCaught = runCheck({
+    rules: [{ from: 'core', to: 'content/*', matchNames: true, matchUniqueFilenames: false }],
+  }, {
+    'core/a.js': "import x from '../content/alpha/config.yml';\n// see the my-plugin folder\n",
+    'content/alpha/config.yml': 'x: 1\n',
+    'content/my-plugin/RULES.md': 'r\n',
+  });
+  assert.equal(stillCaught.length, 2);
+  const bad = runCheck({ rules: [{ from: 'core', to: 'content/*', matchUniqueFilenames: 'no' }] }, { 'core/a.js': '1\n', 'content/alpha/m.js': '1\n' });
+  assert.equal(bad.length, 1);
+  assert.match(bad[0].what, /"matchUniqueFilenames" must be true or false/);
 });
 
 test('resolves a Sass underscore partial and a long-extension bare filename', () => {

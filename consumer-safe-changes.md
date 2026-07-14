@@ -73,7 +73,7 @@ consumer-held copy that won't move on its own, and each needs a channel.
 
 - **Enumerate the reference holders before touching the file** — `settings.json` hook commands,
   other canon scripts, the fleet routine's discovery probe, docs — then grep for the old path
-  afterward (the `repo-text-sweeps` skill owns the mechanics). Include state that lives
+  afterward (the text-sweep skill owns the mechanics). Include state that lives
   **outside the repo entirely**: a web environment's pasted Setup script is snapshotted at
   environment build, where no check, sync, or baselining can ever reach it.
 - **Never break the channel the migration itself travels through.** Fleet discovery finds
