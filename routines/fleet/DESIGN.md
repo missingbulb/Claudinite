@@ -237,14 +237,14 @@ gap the in-flight `chrome-store-release-schedule-*` branch would otherwise open.
 routines/
   fleet/
     DESIGN.md                 ← this spec
-    plan.mjs                  ← the core PLANNER: over the repos the routine hands it → assemble packs'
-                                 run_daily gates → emit units. Pack-agnostic; no census dependency.
-    fleet-api.mjs             ← shared cross-repo GitHub primitives (used by the planner + the census)
+    plan.mjs                  ← the PLANNER: over the repos the routine hands it → assemble packs'
+                                 run_daily gates → emit units. Pack-agnostic; MCP-native (injected gh).
     signals.mjs               ← per-repo signal bundle + global canonChanged
     gates.mjs                 ← per-repo gate evaluation → plan units
     registry.mjs              ← per-repo assembly of its active packs' run_daily tasks
   scheduling.md               ← the single-scheduler contract (see Scheduling, above)
 packs/sheepdog/check-fleet-coverage.mjs  ← the enforcer pack's coverage/adoption CENSUS (separate concern)
+packs/sheepdog/fleet-api.mjs             ← the census's cross-repo REST client (its own; the daily process has none)
 packs/sheepdog/stubs/fleet-coverage.yml  ← the census workflow (coverage/adoption only — no plan)
 packs/tidy-repo/              ← NEW pack: the PR/branch/issue sweep, seeded by --init, opt-out by removal
   pack.mjs                    ← declared pack (no detect); maintenance: [...], skills: [...]
@@ -267,16 +267,16 @@ migrations/
   fleet-retire.mjs             ← phase-3 RETIRE pass (fleet-wide, migrations-owned)
 ```
 
-**Coverage discovers; everything else operates on the repos it's given.** The core **planner** (`plan.mjs`)
-and the migration **apply** / **retire** passes (`../../migrations/fleet-apply.mjs`,
-`../../migrations/fleet-retire.mjs`) all operate over the repos the routine hands them (this environment's
-repos) — they never enumerate GitHub. Only the enforcer pack's **census** (`check-fleet-coverage.mjs`) is
-an *account-wide* walk (via the fleet PAT), to discover coverage and converge adoption issues (it does
-**one** thing — coverage; it carries no migration logic). All share the cross-repo primitives
-(`fleet-api.mjs`) but none gates another: the plan is built even when the census can't run, and
-vice-versa. (Earlier the plan was emitted *inside* the census; that coupling is exactly what let a missing
-census workflow sink the whole plan, so the planner was split back out into core — held there now by the
-core⟂pack guard, `checks/test/core-independence.test.mjs`.)
+**Everything here operates on the repos it's given, over MCP.** The **planner** (`plan.mjs`) and the
+migration **apply** / **retire** passes (`../../migrations/fleet-apply.mjs`, `../../migrations/fleet-retire.mjs`)
+all operate over the repos the routine hands them (this session's scoped repos) through a single injected
+`gh` reader/writer the orchestrator backs with its GitHub MCP tools — they never enumerate GitHub and carry
+**no REST client or token**. The one Claudinite process that *does* need account-wide REST — enumerating
+every owned repo to discover coverage gaps — is the enforcer pack's **census** (`check-fleet-coverage.mjs`,
+with its own `fleet-api.mjs` REST client), a wholly separate concern in a separate repo's Action: it is not
+scheduled, dispatched, or depended on here. (Earlier the plan was emitted *inside* the census; that coupling
+is exactly what let a missing census workflow sink the whole plan, so the planner was split back out —
+held apart now by the core⟂pack guard, `checks/test/core-independence.test.mjs`.)
 
 ## Blast radius (it's small)
 

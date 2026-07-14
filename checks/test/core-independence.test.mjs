@@ -108,7 +108,7 @@ const ACCEPT = {
       'skill:single-branch-status', 'skill:single-issue-triage', 'skill:single-pr-status', 'skill:unattended-agents',
     ],
   },
-  'routines/fleet/scheduling.md': { why: CENSUS_OK, names: ['pack:sheepdog', 'pack:github-actions', 'skill:unattended-agents'] },
+  'routines/fleet/scheduling.md': { why: DOC_CITES, names: ['pack:github-actions', 'skill:unattended-agents'] },
   'README.md': { why: CENSUS_OK, names: ['pack:sheepdog', 'pack:tidy-repo', 'pack:grow_with_claudinite', 'pack:canon-curation', 'pack:basics'] },
   'extending.md': {
     why: DOC_CITES,

@@ -4,11 +4,11 @@
 //
 // Unlike a path-relocation migration, the "legacy shape" here lives inside a file —
 // a member whose .claudinite-checks.json declares no tidy-repo — so legacyPresent
-// READS the declaration (the census passes it a content `read` alongside `exists`;
+// READS the declaration (the retire pass passes it a content `read` alongside `exists`;
 // path-only migrations ignore the extra arg).
 //
 // While this migration is live, baselining seeds tidy-repo into any member that lacks
-// it (bootstrap.md). The census auto-retires it once every member has converged (zero
+// it (bootstrap.md). The retire pass auto-retires it once every member has converged (zero
 // on the legacy shape); with the record gone, baselining stops seeding and a later
 // removal is durable. retire:'auto' — the tolerance lives entirely here (the bootstrap
 // seed step keys off this migration's presence), so deleting the record disables it.

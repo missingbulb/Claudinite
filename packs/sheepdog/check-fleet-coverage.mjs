@@ -23,11 +23,11 @@
 //
 // Dependency-free (global fetch, Node 20+); read-only toward every repo except the
 // home repo, where it writes the adoption issues + label.
-// The shared cross-repo primitives live in routines/fleet/fleet-api.mjs (core).
+// The cross-repo REST primitives are the census's own (fleet-api.mjs, co-located).
 
 import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { makeGh, paged, isCovered } from '../../routines/fleet/fleet-api.mjs';
+import { makeGh, paged, isCovered } from './fleet-api.mjs';
 
 const LABEL = 'fleet-adoption';
 const adoptionTitle = (fullName) => `Adopt ${fullName} into the Claudinite fleet`;

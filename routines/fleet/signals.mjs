@@ -1,8 +1,9 @@
 import { isFullSweepDay } from './schedule.mjs';
 
 // The signal bundle each gate reads. Built per covered member from a small, bounded
-// set of cheap GitHub reads; `gh(path) -> { status, json }` is the same client the
-// census uses. See routines/fleet/DESIGN.md ("The signal bundle").
+// set of cheap GitHub reads; `gh(path) -> { status, json }` is the orchestrator's
+// injected MCP-backed reader (no REST client here). See routines/fleet/DESIGN.md
+// ("The signal bundle").
 
 // --- canonChanged (global, computed once) -----------------------------------
 

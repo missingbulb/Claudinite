@@ -16,15 +16,15 @@
 //   - legacyPresent — fleet telemetry: still on the old shape while anything under
 //                    .github/workflows/ references Claudinite's core release
 //                    workflows @main.
-//   - retire:'auto' + retireDeletesFromHome — once the census sees 0 repos on the
-//                    old shape, it deletes Claudinite's now-unused core release
-//                    plumbing from the home repo, then this record. The check-layer
+//   - retire:'auto' + retireDeletesFromHome — once the retire pass sees 0 repos on
+//                    the old shape, it deletes Claudinite's now-unused core release
+//                    plumbing from the canon repo, then this record. The check-layer
 //                    tolerance is driven by migrationActive('chrome-release-vendoring')
 //                    (registry.mjs), so it vanishes in the same step this file is
 //                    deleted — nothing inline is stranded, so 'auto' is honest.
 //
-// The automatic home deletion is done by the migration retire pass over daily
-// maintenance's own access to its home repo (no special grant) — once the fleet has
+// The automatic deletion is done by the migration retire pass over daily
+// maintenance's own access to the canon repo (no special grant) — once the fleet has
 // vendored the copy, so the canon ends with no leftovers.
 const STUB = '.github/workflows/chrome-extension-release.yml';
 const S = 'packs/chrome-extension-release/stubs';
