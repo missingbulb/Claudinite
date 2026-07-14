@@ -1,7 +1,8 @@
 # baselining worker
 
-Restore the repo the plan hands you to the current canonical baseline. Works entirely over the GitHub
-API tooling (never a clone). Two shapes, same operation (the idempotent bootstrap):
+Restore the repo the plan hands you to the current canonical baseline. Works entirely over the session's
+**GitHub MCP tools** (`mcp__github__*`) — never a clone, and no shell GitHub access in the fleet run. Two
+shapes, same operation (the idempotent bootstrap):
 
 - **Baseline a covered member** — re-run the idempotent bootstrap ([../../../bootstrap.md](../../../bootstrap.md))
   to refresh the mount and the wiring it owns. Most days nothing drifted → commit nothing. A pack

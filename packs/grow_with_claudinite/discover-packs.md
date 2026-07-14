@@ -40,9 +40,9 @@ what fingerprint reliably detects the technology. Per [the unattended-agents ski
   the API — you run centrally, not inside it.
 - **The canon.** The Claudinite home repo, where authored packs land. You open PRs here, with the fleet
   token.
-- **GitHub API access.** Reading the member and opening the canon PR go through the GitHub API tooling
-  (the GitHub MCP tools, or `gh`); in the sandboxed fleet run there is no cross-repo checkout, so work
-  over the API.
+- **GitHub access is MCP-native.** Reading the member and opening the canon PR go through the session's
+  **GitHub MCP tools** (`mcp__github__*`); the fleet run has no shell GitHub access and no cross-repo
+  checkout, so never reach for `gh`/`curl`.
 
 ## The pipeline
 

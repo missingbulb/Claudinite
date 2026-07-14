@@ -7,7 +7,7 @@ The [growth lifecycle](../canon-curation/README.md)'s pruning stage, this pack's
 ## Conventions used in this doc
 
 - **Default branch.** `main` stands for **your repository's default branch** — substitute whatever your repo uses.
-- **GitHub API access.** Updating the tracking issue goes through your environment's GitHub API tooling — the **GitHub MCP tools** or the `gh` CLI. In sandboxed/automation environments the shell often reaches only a **git-over-HTTPS proxy with no GitHub API**; there, use the MCP tools, never `gh` / `curl`. Use whichever your runtime exposes.
+- **GitHub access is MCP-native.** Updating the tracking issue goes through the session's **GitHub MCP tools** (`mcp__github__*`). The fleet run has no shell GitHub access — the shell reaches only a git-over-HTTPS proxy scoped to one repo, with no REST credential — so never reach for `gh`/`curl` or a cross-repo clone.
 - **The mounted canon.** The exact canon revision your project currently consumes — compare against *that*, not a live fetch. Under session-start sync it's the latest `main` (so a promotion is visible only once its PR is merged, not the moment promote opens it); under a pinned submodule it's the pin (so the item lands here only once the pointer is bumped). Either way you prune only against what the project actually mounts.
 - **The project's local docs.** The set identified in [this pack's README](README.md#identifying-a-projects-local-docs). That's the corpus this routine prunes within; the mounted canon is never a prune target, only the yardstick you prune *against*.
 

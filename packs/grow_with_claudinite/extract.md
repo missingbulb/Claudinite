@@ -11,7 +11,7 @@ Write each lesson at whatever level reads naturally for this project — refer t
 ## Conventions used in this doc
 
 - **Default branch.** `main` stands for **your repository's default branch** — substitute whatever your repo uses.
-- **GitHub API access.** Reading issue/PR activity and updating the tracking issue go through your environment's GitHub API tooling — the **GitHub MCP tools** or the `gh` CLI. In sandboxed/automation environments the shell often reaches only a **git-over-HTTPS proxy with no GitHub API**; there, use the MCP tools, never `gh` / `curl`. Use whichever your runtime exposes.
+- **GitHub access is MCP-native.** Reading issue/PR activity and updating the tracking issue go through the session's **GitHub MCP tools** (`mcp__github__*`). The fleet run has no shell GitHub access — the shell reaches only a git-over-HTTPS proxy scoped to one repo, with no REST credential — so never reach for `gh`/`curl` or a cross-repo clone.
 - **The project's local docs.** The set identified in [this pack's README](README.md#identifying-a-projects-local-docs) — the project's own guidance, never the mounted canon.
 
 ## How it finds lessons (scoped to the last 24h)
