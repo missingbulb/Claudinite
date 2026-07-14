@@ -37,7 +37,11 @@ The canon carries rules as **conformance checks**, not only prose. A local item 
 
 ## Tracking
 
-Log each run that changed a doc as a **dated comment** on this routine's standing tracking issue (found **by title**, never a hard-coded number; open it if missing, reopen it if it was closed while runs still need logging) — naming what was pruned and the canon line that now covers it. A run that prunes nothing logs nothing.
+The routine's standing log is the issue titled exactly, in this member repo:
+
+> **Claudinite tracker: Growth Dedup**
+
+Find it **by that exact title, never a fuzzy match or a hard-coded number**. This tracker never had a fixed title before now, so there is no reliable prior title to migrate from — a run that finds no issue under the exact new title just creates one (closed); it does not need to search for an old name. **Never open, close, or reopen it** afterward — its state carries no meaning, only the log does. Log each run that changed a doc as a **dated comment** — naming what was pruned and the canon line that now covers it. A run that prunes nothing logs nothing.
 
 ## Run on a capable model
 

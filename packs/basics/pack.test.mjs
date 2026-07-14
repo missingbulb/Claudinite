@@ -55,6 +55,18 @@ test('reference-integrity: flags surviving references to a deleted file', () => 
   } finally { cleanup(root); }
 });
 
+test('reference-integrity: does not flag a renamed file whose new path shares the old basename', () => {
+  const root = makeRepo({
+    base: { 'old.sh': 'x\n', 'mount/old.sh': 'y\n', 'doc.md': 'see mount/old.sh\n' },
+    changed: {},
+  });
+  try {
+    deletePath(root, 'old.sh');
+    const findings = run(referenceIntegrity, root);
+    assert.equal(findings.some(f => f.file === 'doc.md'), false);
+  } finally { cleanup(root); }
+});
+
 test('markdown-link-labels: flags a path-like label that contradicts the target', () => {
   const bad = makeRepo({
     base: { 'a/new.md': 'x\n' },

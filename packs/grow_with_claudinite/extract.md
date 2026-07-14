@@ -29,7 +29,11 @@ If it found at least one genuinely new lesson, it **commits the edits directly t
 
 ## Tracking: log each run under the routine's own issue
 
-When a run adds a lesson, log it on this routine's standing tracking issue — found **by title**, never a hard-coded number (a bare number can dangle, and it differs per repo); open it if it doesn't exist, reopen it if it was closed while runs still need logging. Log the run as a **dated comment** — not a sub-issue — so the issue accumulates a scrollable history, each entry naming **what was added and where**.
+The routine's standing log is the issue titled exactly, in this member repo:
+
+> **Claudinite tracker: Growth Extract**
+
+Find it **by that exact title, never a fuzzy match or a hard-coded number** (a bare number can dangle, and it differs per repo). This tracker never had a fixed title before now, so there is no reliable prior title to migrate from — a run that finds no issue under the exact new title just creates one (closed); it does not need to search for an old name. **Never open, close, or reopen it** afterward — its state carries no meaning, only the log does. When a run adds a lesson, log it as a **dated comment** — not a sub-issue — so the issue accumulates a scrollable history, each entry naming **what was added and where**.
 
 ## Run on a capable model
 

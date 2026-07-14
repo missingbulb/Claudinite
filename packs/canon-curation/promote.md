@@ -46,10 +46,15 @@ Append a dated comment to the standing tracking issue for every run that promote
 
 The routine's standing self-improvement log is the issue titled exactly:
 
-> **Auto-Improvements Tracker - Growth: Promote to Canon**
+> **Claudinite tracker: Promote to Canon**
 
-- **Find it by title, never by a hard-coded number** (a bare number can dangle).
-- **Open it if missing; reopen it if it was closed** while runs still need logging.
+- **Find it by that exact title, never a fuzzy match or a hard-coded number** (a bare number can dangle).
+- **One-time rename (drop once the fleet has converged):** if no issue carries this title yet, look for
+  one titled exactly `Auto-Improvements Tracker - Growth: Promote to Canon` (the old name). If found,
+  rename it to `Claudinite tracker: Promote to Canon` and close it if it's open — do this once, then
+  use the new title on every later run. If neither title is found, create the new one (closed).
+- **Create it already closed if missing. Never open, close, or reopen it** — its state carries no
+  meaning here; only the log does.
 - Log each run as a **dated comment** — not a sub-issue — so history accumulates in one scrollable feed: the date, and per lesson the origin repo, the **ladder rung it landed on** (check id / skill / owning doc — with the named reason when prose was the fallback), and the generalized rule (or, for a notable rejection, the reason and the existing rule that already covers it).
 
 ## What this routine must never do
