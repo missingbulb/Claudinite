@@ -21,18 +21,30 @@ export const localPacksDir = (root) => join(resolve(root), LOCAL_PACKS_SUBDIR);
 async function scanPackDir(dir, { local }, errors) {
   const out = [];
   if (!existsSync(dir)) return out;
-  for (const name of readdirSync(dir, { withFileTypes: true })
-    .filter((d) => d.isDirectory())
-    .map((d) => d.name)
-    .sort()) {
+  // A non-directory (or unreadable path) at a scan root is a fault to REPORT, not
+  // a crash — the whole point of discovery being fail-soft is a diagnostic instead
+  // of a dead runner (the SessionStart hooks fail soft; the runner surfaces it).
+  let names;
+  try {
+    names = readdirSync(dir, { withFileTypes: true })
+      .filter((d) => d.isDirectory()).map((d) => d.name).sort();
+  } catch (e) {
+    errors.push({
+      what: `${local ? LOCAL_PACKS_SUBDIR : 'packs/'} is not a readable directory: ${e.message}`,
+      fix: `make ${local ? LOCAL_PACKS_SUBDIR : 'packs/'} a directory (or remove it)`,
+      dir,
+    });
+    return out;
+  }
+  for (const name of names) {
     const packDir = join(dir, name);
+    const rel = local ? `${LOCAL_PACKS_SUBDIR}/${name}` : `packs/${name}`;
     const manifest = join(packDir, 'pack.mjs');
     if (!existsSync(manifest)) continue;
     let mod;
     try {
       mod = (await import(pathToFileURL(manifest).href)).default;
     } catch (e) {
-      const rel = local ? `${LOCAL_PACKS_SUBDIR}/${name}` : `packs/${name}`;
       errors.push({
         what: `the pack in ${rel} failed to load: ${e.message}`,
         fix: `fix pack.mjs in ${rel}, or remove the pack`,
@@ -42,8 +54,22 @@ async function scanPackDir(dir, { local }, errors) {
     }
     if (!mod || typeof mod.id !== 'string') {
       errors.push({
-        what: `the pack in ${local ? `${LOCAL_PACKS_SUBDIR}/${name}` : `packs/${name}`} has no string "id" default export`,
+        what: `the pack in ${rel} has no string "id" default export`,
         fix: 'export default { id: "<name>", ... } from its pack.mjs',
+        dir: packDir,
+      });
+      continue;
+    }
+    // A local pack's id must equal its directory name. The engine activates a pack
+    // by its exported id, but the fleet planner reads a local pack's daily tasks by
+    // directory name (it never imports pack.mjs), so a mismatch would silently
+    // diverge — the engine runs the pack while the fleet skips its task. Require
+    // dir == id so the two can never disagree (the canon convention, enforced here
+    // for local packs).
+    if (local && mod.id !== name) {
+      errors.push({
+        what: `the local pack in ${rel} exports id "${mod.id}" but its directory is "${name}"`,
+        fix: `rename the directory to "${mod.id}", or set the pack's id to "${name}" — a local pack's id must match its directory name`,
         dir: packDir,
       });
       continue;
@@ -63,10 +89,15 @@ async function scanLocalSkillChecks(packDir, errors) {
   const rules = [];
   const skillsRoot = join(packDir, 'skills');
   if (!existsSync(skillsRoot)) return rules;
-  for (const name of readdirSync(skillsRoot, { withFileTypes: true })
-    .filter((d) => d.isDirectory())
-    .map((d) => d.name)
-    .sort()) {
+  let names;
+  try {
+    names = readdirSync(skillsRoot, { withFileTypes: true })
+      .filter((d) => d.isDirectory()).map((d) => d.name).sort();
+  } catch (e) {
+    errors.push({ what: `${LOCAL_PACKS_SUBDIR} skills path is not a readable directory: ${e.message}`, fix: 'make the pack\'s skills/ a directory (or remove it)', dir: skillsRoot });
+    return rules;
+  }
+  for (const name of names) {
     const manifest = join(skillsRoot, name, 'checks.mjs');
     if (!existsSync(manifest)) continue;
     try {

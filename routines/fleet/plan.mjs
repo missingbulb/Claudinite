@@ -43,8 +43,15 @@ export async function buildWorkPlan(gh, canonRepo, coveredRepos, canonRepoInfo =
   const sinceIso = new Date(Date.now() - 25 * 3600 * 1000).toISOString();
   const weekdayUtc = new Date().getUTCDay();
   const canonChanged = await computeCanonChanged(gh, canonRepo, sinceIso);
-  const allPackTasks = packTasks(await loadPacks());
-  const localFor = async (r) => (localTasksFor ? await localTasksFor(r) : []);
+  const canonPacks = await loadPacks();
+  const allPackTasks = packTasks(canonPacks);
+  // A local pack may not shadow a canon id — the engine drops such a pack and flags
+  // a blocking config error, so mirror that here: never plan a local task whose pack
+  // collides with a canon pack (readLocalTasks reads the member in isolation and
+  // can't see the canon set, so the filter lives at the merge point).
+  const canonIds = new Set(canonPacks.map((p) => p.id));
+  const localFor = async (r) =>
+    (localTasksFor ? (await localTasksFor(r)).filter((t) => !canonIds.has(t.pack)) : []);
 
   const units = []; const errors = []; const fleetMembers = [];
   for (const r of coveredRepos) {

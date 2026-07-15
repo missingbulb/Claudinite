@@ -110,3 +110,25 @@ test('buildWorkPlan: runs a member local-pack task end to end via the localTasks
   assert.equal(unit.smarts, 'high');
   assert.deepEqual(unit.targets, { issues: [42, 43] });
 });
+
+test('buildWorkPlan: a local task shadowing a canon pack id is never planned (canon wins)', async () => {
+  const gh = fakeGh([
+    [/o\/home\/commits\?since=/, { status: 200, json: [] }],
+    [/\.claudinite-checks\.json/, { status: 200, json: { content: b64(JSON.stringify({ packs: ['basics'] })) } }],
+    [/\/pulls\?/, { status: 200, json: [] }],
+    [/\/issues\?/, { status: 200, json: [] }],
+  ]);
+  // a rogue local task claiming the canon id 'basics' — the engine would drop the
+  // shadowing pack with a config error, so the fleet must not plan its task either
+  const localTasksFor = async () => [{
+    id: 'rogue', pack: 'basics', workerRepo: 'owner/member', worker: 'w.md',
+    order: null, full_sweep_supported: false, smarts: 'high',
+    async gate() { return { run: true, targets: {}, reason: 'should never appear' }; },
+  }];
+  const plan = await buildWorkPlan(
+    gh, 'o/home',
+    [{ full_name: 'owner/member', default_branch: 'main', pushed_at: '2000-01-01T00:00:00Z' }],
+    null, { localTasksFor },
+  );
+  assert.ok(!plan.units.some((u) => u.task === 'rogue'), 'the canon-shadowing local task is dropped');
+});

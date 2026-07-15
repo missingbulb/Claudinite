@@ -145,6 +145,33 @@ test('discoverPacks: a broken local pack.mjs is isolated — an error, not a thr
   }
 });
 
+test('discoverPacks: a non-directory at the local_packs path is a reported fault, not a throw', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'claudinite-nondir-'));
+  mkdirSync(join(root, '.claudinite'), { recursive: true });
+  // a FILE where local_packs/ should be a directory
+  writeFileSync(join(root, '.claudinite', 'local_packs'), 'not a directory\n');
+  try {
+    const { packs, errors } = await discoverPacks({ localRoot: root });
+    assert.ok(packs.some((p) => p.id === 'basics'), 'canon packs still load');
+    assert.ok(errors.some((e) => /not a readable directory/.test(e.what)), 'the fault is reported');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('discoverPacks: a local pack whose id differs from its directory name is reported', async () => {
+  const root = makeLocalRoot({
+    myproj: `export default { id: 'other-id', rules: [] };`,
+  });
+  try {
+    const { packs, errors } = await discoverPacks({ localRoot: root });
+    assert.ok(!packs.some((p) => p.id === 'other-id'), 'the mismatched pack is dropped');
+    assert.ok(errors.some((e) => /exports id "other-id" but its directory is "myproj"/.test(e.what)));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('discoverPacks: a local pack may not shadow a canon id — collision reported, local dropped', async () => {
   const root = makeLocalRoot({
     basics: `export default { id: 'basics', rules: [] };`,
