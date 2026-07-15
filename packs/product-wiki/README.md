@@ -21,8 +21,8 @@ standard.
   reserved subtrees. The folder is the classifier; there is no wikis manifest
   to drift, and a renamed wiki folder is still a wiki folder — still checked,
   still barred.
-- Every wiki page carries `## Sources` (markdown-linked citations),
-  `## Growth log` (dated bullets, newest change appended per pass), and
+- Every wiki page carries `## Sources` (every source bullet carrying its real
+  URL), `## Growth log` (dated bullets, newest change appended per pass), and
   `## Open questions` (the research backlog the growth passes work from).
 - Growth is scheduled research: the pack's weekly `run_daily` task
   ([run_daily/wiki-growth.worker.md](run_daily/wiki-growth.worker.md)) reads
@@ -36,7 +36,7 @@ standard.
 | `product-wiki-layout` | skeleton exists (index + sink) | check, blocking |
 | `product-wiki-page-sections` | pages carry the three sections | check, blocking |
 | `product-wiki-growth-log` | log bullets dated, real dates | check, blocking |
-| `product-wiki-sources` | source bullets carry URLs | check, blocking |
+| `product-wiki-sources` | source bullets carry their URL | check, blocking |
 | `product-wiki-freshness` | stale wiki gets a nag | check, **advisory** |
 | `product-wiki-isolation` | repo can't reference wiki space | check, blocking (fixed barrier) |
 | sink is human-reviewed only | — | prose + worker must-never-do |
@@ -83,9 +83,9 @@ What this wiki tracks, in a sentence or two.
 ## Excusing a deliberate crossing (accept, not except)
 
 `product-wiki-isolation` is a **fixed** barrier — its edges are pack code, so a
-consumer cannot add the barriers pack's per-rule `except` entries to it (and
-the engine's generic crossing fix-text, which suggests exactly that, does not
-apply here). The lever is a top-level (or pack-entry) **accept**:
+consumer cannot add the barriers pack's per-rule `except` entries to it. Each
+crossing finding's own fix text says so and names the lever that works: a
+top-level (or pack-entry) **accept**:
 
 ```json
 "accept": [

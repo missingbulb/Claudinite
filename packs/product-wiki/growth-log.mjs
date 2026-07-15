@@ -1,14 +1,15 @@
 import { finding } from '../../checks/lib/findings.mjs';
-import { wikiPages, sectionBody } from './lib.mjs';
+import { wikiPages, sectionBody, BULLET, DATED, realDateUTC } from './lib.mjs';
 
 // Growth-log discipline: every top-level bullet in the section leads with its
 // run date (bold or plain — the invariant is dating, not typography), the date
 // is a real calendar date, and a seeded page has at least one entry (a page
 // with content and an empty log never recorded its seed). Indented
-// continuation lines and prose paragraphs are ignored. Deliberately absent:
-// ordering (a backdated correction is legitimate) and any wall-clock rule
-// (staleness is the freshness advisory's job).
-const DATED = /^[-*]\s+(?:\*\*)?(\d{4})-(\d{2})-(\d{2})(?:\*\*)?\b/;
+// continuation lines and prose paragraphs are ignored; the bullet/date grammar
+// is lib.mjs's, shared with the freshness advisory so the two checks can never
+// disagree about what an entry date is. Deliberately absent: ordering (a
+// backdated correction is legitimate) and any wall-clock rule (staleness is
+// the freshness advisory's job).
 const FIX = 'lead every growth-log bullet with the run date, e.g. "- **2026-07-15** — what changed"; append the seed entry when the page is first committed';
 
 const rule = {
@@ -26,8 +27,8 @@ const rule = {
       const section = sectionBody(text, 'growth log');
       if (section === null) continue; // page-sections owns the missing heading
       let bullets = 0;
-      for (const { line, text: t } of section.lines) {
-        if (!/^[-*]\s/.test(t)) continue; // top-level bullets only
+      for (const { line, text: t } of section) {
+        if (!BULLET.test(t)) continue; // top-level bullets only
         bullets += 1;
         const m = DATED.exec(t);
         if (!m) {
@@ -38,9 +39,7 @@ const rule = {
           }));
           continue;
         }
-        const [, y, mo, d] = m.map(Number);
-        const dt = new Date(Date.UTC(y, mo - 1, d));
-        if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) {
+        if (realDateUTC(+m[1], +m[2], +m[3]) === null) {
           out.push(finding(rule, {
             file: page, line,
             what: `growth-log entry "${m[1]}-${m[2]}-${m[3]}" is not a real calendar date`,

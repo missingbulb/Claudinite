@@ -29,14 +29,16 @@ const SCAFFOLD = {
   'product/MarketWiki/README.md': wikiPage(),
 };
 
-// Run one rule over a scratch repo in mode 'all' (optionally overlay packConfig).
-function run(rule, files, { mode = 'all', packConfig } = {}) {
-  const root = makeRepo({ changed: files });
+// Run one rule over a scratch repo in mode 'all' (optionally overlay
+// packConfig, inject a fixed clock, or leave files uncommitted/untracked).
+function run(rule, files, { mode = 'all', packConfig, now, uncommitted } = {}) {
+  const root = makeRepo(uncommitted ? { uncommitted: files } : { changed: files });
   try {
     const ctx = buildContext({ root, mode });
     if (packConfig !== undefined) {
       ctx.config = { ...ctx.config, packConfig: { 'product-wiki': packConfig } };
     }
+    if (now !== undefined) ctx.now = now;
     return rule.run(ctx);
   } finally { cleanup(root); }
 }
@@ -86,6 +88,10 @@ test('layout: any config object on the pack entry is a blocking settings finding
   assert.match(f[0].what, /takes no config/);
 });
 
+test('layout: a freshly written, not-yet-staged scaffold satisfies the check', () => {
+  assert.deepEqual(run(layout, SCAFFOLD, { uncommitted: true }), []);
+});
+
 // --- product-wiki-page-sections ------------------------------------------------
 
 test('page-sections: suffixed and case-varied headings pass; nested wikis are checked; reserved trees are not', () => {
@@ -111,6 +117,18 @@ test('page-sections: one finding naming exactly the missing section', () => {
   assert.match(f[0].what, /"## Growth log"/);
 });
 
+test('page-sections: headings inside a code fence do not satisfy the requirement', () => {
+  const page = '# Wiki\n\nA template example:\n\n```markdown\n## Sources\n\n## Open questions\n\n## Growth log\n\n- **YYYY-MM-DD** — initial seed.\n```\n';
+  const f = run(pageSections, { ...SCAFFOLD, 'product/MarketWiki/README.md': page });
+  assert.equal(f.length, 3);
+});
+
+test('growth-log and sources: a fenced template inside a real page is not scanned', () => {
+  const page = `${wikiPage()}\n## Template\n\n\`\`\`markdown\n## Growth log\n\n- **YYYY-MM-DD** — initial seed.\n\n## Sources\n\n- An uncited example source\n\`\`\`\n`;
+  assert.deepEqual(run(growthLog, { ...SCAFFOLD, 'product/MarketWiki/README.md': page }), []);
+  assert.deepEqual(run(sources, { ...SCAFFOLD, 'product/MarketWiki/README.md': page }), []);
+});
+
 // --- product-wiki-growth-log ----------------------------------------------------
 
 test('growth-log: bold and plain dated bullets, continuations, and prose pass', () => {
@@ -127,6 +145,13 @@ test('growth-log: an undated bullet is flagged at its line', () => {
   assert.equal(f.length, 1);
   assert.match(f[0].what, /does not lead with its date/);
   assert.equal(typeof f[0].line, 'number');
+});
+
+test('growth-log: a "+"-marked undated bullet cannot bypass the dating rule', () => {
+  const page = wikiPage().replace(/## Growth log\n/, '## Growth log\n\n+ added competitor pricing, undated\n');
+  const f = run(growthLog, { ...SCAFFOLD, 'product/MarketWiki/README.md': page });
+  assert.equal(f.length, 1);
+  assert.match(f[0].what, /does not lead with its date/);
 });
 
 test('growth-log: an impossible calendar date is flagged', () => {
@@ -166,6 +191,16 @@ test('sources: a bullet naming a source with no URL is flagged, quoting it', () 
   assert.match(f[0].what, /Calendar Market Report/);
 });
 
+test('sources: a bare URL verifies, a hard-wrapped bullet is judged over its block, "+" bullets are checked', () => {
+  const ok = wikiPage({
+    sources: '- <https://example.com/report>\n- The 2026 Calendar Market Report,\n  [full text](https://example.com/full)',
+  });
+  assert.deepEqual(run(sources, { ...SCAFFOLD, 'product/MarketWiki/README.md': ok }), []);
+  const plus = wikiPage({ sources: '+ An unlinked source' });
+  const f = run(sources, { ...SCAFFOLD, 'product/MarketWiki/README.md': plus });
+  assert.equal(f.length, 1);
+});
+
 // --- product-wiki-freshness -------------------------------------------------------
 
 test('freshness: a recent entry is fresh; changed mode never fires; undated logs are skipped', () => {
@@ -199,6 +234,24 @@ test('freshness: a far-future date cannot mark a stale page fresh', () => {
   assert.equal(f.length, 1);
 });
 
+test('freshness: only entry-leading dates count — a recent date inside an old entry does not reset the clock', () => {
+  const page = wikiPage().replace(
+    /## Growth log\n\n[^\n]*\n/,
+    `## Growth log\n\n- **${daysAgo(80)}** — noted; revisit the ${daysAgo(1)} report before next pass.\n`
+  );
+  const f = run(freshness, { ...SCAFFOLD, 'product/MarketWiki/README.md': page });
+  assert.equal(f.length, 1);
+  assert.match(f[0].what, /80 days old/);
+});
+
+test('freshness: the 45-day window boundary, pinned with an injected clock', () => {
+  const NOW = Date.UTC(2030, 5, 20, 12, 0, 0);
+  const at = (n) => new Date(NOW - n * 86_400_000).toISOString().slice(0, 10);
+  const page = (n) => ({ ...SCAFFOLD, 'product/MarketWiki/README.md': wikiPage({ seedDate: at(n) }) });
+  assert.deepEqual(run(freshness, page(45), { now: NOW }), []);
+  assert.equal(run(freshness, page(46), { now: NOW }).length, 1);
+});
+
 // --- product-wiki-isolation --------------------------------------------------------
 
 test('isolation: the crossing point, the product/ subtree, the index file, and the settings file are all open', () => {
@@ -229,6 +282,10 @@ test('isolation: an outside doc referencing a wiki page is a blocking crossing; 
   assert.equal(f[0].rule, 'product-wiki-isolation');
   assert.equal(f[0].file, 'dev/notes.md');
   assert.equal(f[0].severity, 'blocking');
+  // The finding's own instruction must name the lever that actually works for
+  // a pack-shipped barrier (an accept), not the engine's per-rule except.
+  assert.match(f[0].fix, /accept/);
+  assert.doesNotMatch(f[0].fix, /add a reviewed exception in \.claudinite-checks\.json if/);
 
   const inTest = run(isolation, {
     ...SCAFFOLD,
@@ -236,6 +293,20 @@ test('isolation: an outside doc referencing a wiki page is a blocking crossing; 
     'dev/foo.test.mjs': "import x from '../product/UsersWiki/README.md';\n",
   });
   assert.deepEqual(inTest, []);
+});
+
+test('isolation: agent-written wiki filenames never become repo-wide barred bare names', () => {
+  const files = {
+    ...SCAFFOLD,
+    'product/sample-data/example-event.json': '{}\n',
+    // A bare unique basename in prose must NOT fire (matchUniqueFilenames off)…
+    'docs/note.md': 'the shape mirrors example-event.json\n',
+  };
+  assert.deepEqual(run(isolation, files), []);
+  // …while an explicit path reference into wiki space still does.
+  const withPath = run(isolation, { ...files, 'docs/deep.md': 'see product/sample-data/example-event.json\n' });
+  assert.equal(withPath.length, 1);
+  assert.equal(withPath[0].file, 'docs/deep.md');
 });
 
 test('isolation: an empty product/ expansion fails closed instead of disarming', () => {
@@ -248,25 +319,22 @@ test('isolation: an empty product/ expansion fails closed instead of disarming',
 
 // --- accept plumbing (CLI integration) ----------------------------------------------
 
-test('runner integration: a reasoned accept excuses an isolation crossing; a reasonless one blocks', () => {
-  const crossing = {
-    ...SCAFFOLD,
-    'dev/notes.md': 'see product/MarketWiki/README.md\n',
-  };
-  const runCli = (acceptEntry) => {
-    const root = makeRepo({ changed: crossing });
-    try {
-      writeFiles(root, {
-        '.claudinite-checks.json': `${JSON.stringify({ packs: ['product-wiki'], accept: [acceptEntry] }, null, 2)}\n`,
-      });
-      return spawnSync(process.execPath, [join(canonRoot, 'checks', 'run.mjs'), '--root', root], { encoding: 'utf8' });
-    } finally { cleanup(root); }
-  };
-  const ok = runCli({ rule: 'product-wiki-isolation', path: 'dev/notes.md', reason: 'deliberate ledger reference' });
-  assert.equal(ok.status, 0, ok.stdout + ok.stderr);
-  const bad = runCli({ rule: 'product-wiki-isolation', path: 'dev/notes.md' });
-  assert.equal(bad.status, 1, bad.stdout + bad.stderr);
-  assert.match(bad.stdout, /no reason/);
+// (The reasonless-accept-is-itself-a-finding half lives in checks/test/
+// runner.test.mjs — a rule-agnostic applyConfig invariant this pack doesn't
+// own. What's pack-specific here is that an ACCEPT, not a rule-owned except,
+// is the lever that excuses a fixed barrier's crossing.)
+test('runner integration: a reasoned accept excuses an isolation crossing', () => {
+  const root = makeRepo({ changed: { ...SCAFFOLD, 'dev/notes.md': 'see product/MarketWiki/README.md\n' } });
+  try {
+    writeFiles(root, {
+      '.claudinite-checks.json': `${JSON.stringify({
+        packs: ['product-wiki'],
+        accept: [{ rule: 'product-wiki-isolation', path: 'dev/notes.md', reason: 'deliberate ledger reference' }],
+      }, null, 2)}\n`,
+    });
+    const r = spawnSync(process.execPath, [join(canonRoot, 'checks', 'run.mjs'), '--root', root], { encoding: 'utf8' });
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+  } finally { cleanup(root); }
 });
 
 // --- run_daily descriptor -------------------------------------------------------------

@@ -5,8 +5,7 @@ under `product/` (Karpathy's LLM-wiki pattern: compile findings once, refine in
 place). Layout, required page sections, growth-log dating, source links,
 staleness, and the isolation wall are **check-enforced** — the finding is the
 instruction, so this prose never restates them. The full growth procedure is
-the pack's worker doc (`packs/product-wiki/run_daily/wiki-growth.worker.md`);
-GoogleCalendarEventCreator is the worked implementation.
+the pack's worker doc (`packs/product-wiki/run_daily/wiki-growth.worker.md`).
 
 - **The sink is human-reviewed only.** `product/product-requirements/` never
   changes as a side effect of wiki work or any unattended pass — a wiki finding
@@ -19,15 +18,15 @@ GoogleCalendarEventCreator is the worked implementation.
   Never re-derive a claim that's already cited and current.
 - **Cited, never silently rewritten.** An uncited claim doesn't get written. A
   wrong or superseded claim is corrected with a note of why (and its source),
-  never deleted without trace. Every real change appends one dated growth-log
-  entry and updates the open questions in both directions.
+  never deleted without trace. Every real change records itself in the page's
+  growth log and updates the open questions in both directions.
 - **No fabricated growth.** Most passes find little or nothing; no new citable
   material → no edit, no log entry, no PR. A padded update is worse than none.
 - **sample-data and new wikis.** `product/sample-data/` gains a file only when
   a wiki claim needs one to point to — never test fixtures (anything a test
   asserts against belongs in engineering's tree). Any folder under `product/`
   outside the two reserved names *is* a wiki (the structural classifier), so
-  create one only deliberately, seeded with the three sections; automation
+  create one only deliberately, seeded with its required sections; automation
   refines existing pages, it never invents new ones.
 - **Review discipline.** Unattended growth always lands as an unmerged PR —
   researched claims entering a committed knowledge base need the review gate.

@@ -600,6 +600,12 @@ export function barrierFindings(ctx, edges, rule) {
     const allowHint = edge.allow.length
       ? `route shared code through an allowed folder (${edge.allow.join(', ')})`
       : 'route shared code through a shared/contracts folder both sides may use';
+    // A pack-shipped fixed barrier's edges are code, so "add a reviewed
+    // exception" (per-rule except entries in the project's own config) cannot
+    // resolve its findings — such a rule overrides the excusal clause via
+    // `crossingExcuse` to point at the lever that actually works (an accept).
+    const excuse = rule.crossingExcuse
+      || 'add a reviewed exception in .claudinite-checks.json if the crossing is deliberate';
     const raw = [];
     const seen = new Set();
     const emit = (file, line, what, r) => {
@@ -612,7 +618,7 @@ export function barrierFindings(ctx, edges, rule) {
           line,
           what,
           why: edge.reason || rule.why,
-          fix: `${allowHint}, remove the reference, or add a reviewed exception in .claudinite-checks.json if the crossing is deliberate`,
+          fix: `${allowHint}, remove the reference, or ${excuse}`,
         }),
         resolved: r,
       });
@@ -681,7 +687,7 @@ export function staleFindings(stale, rule) {
 
 // Compose a barrier as a standalone rule — for a pack that contributes a fixed
 // graph (import this, add the result to its `rules`).
-export function defineBarrier({ id, edges, severity = 'blocking', doc = DEFAULT_DOC, description, why }) {
+export function defineBarrier({ id, edges, severity = 'blocking', doc = DEFAULT_DOC, description, why, crossingExcuse }) {
   const norm = normalizeEdges(edges);
   const rule = {
     id,
@@ -689,6 +695,9 @@ export function defineBarrier({ id, edges, severity = 'blocking', doc = DEFAULT_
     doc,
     description: description || 'Files under a guarded folder must not reference a barred folder',
     why: why || 'a folder barrier encodes an architectural boundary; a crossing reference erodes it silently',
+    // Pack-shipped edges can't take project-side except entries, so a fixed
+    // barrier names its real excusal lever here (see barrierFindings).
+    crossingExcuse,
     run(ctx) {
       const out = norm.errors.map((e) => specFinding(rule, e));
       const { findings, stale } = barrierFindings(ctx, norm.edges, rule);
