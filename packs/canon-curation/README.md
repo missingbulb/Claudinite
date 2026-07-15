@@ -17,7 +17,7 @@ freezes canon absorption without touching the members' side ([grow_with_claudini
 | `prose-to-checks-sweep` | the home repo's weekly full sweep | a PR against Claudinite's `main` |
 
 - **[promote.md](promote.md)** — the growth lifecycle's central stage: read the changed members'
-  local docs, **generalize** the portable lessons, route each to the right canon home, and open a
+  local packs, **generalize** the portable lessons, route each to the right canon home, and open a
   PR for the owner to approve. When a portable lesson's technology has no pack home, it mints a
   fingerprinted **stub pack** (in its own dedicated PR). This is the sole judgment gate before
   shared canon.
@@ -56,7 +56,7 @@ nightly) without any design change.
 **Review gates by blast radius, not uniformly.** Promote opens a PR — it's the sole judgment gate
 before the shared canon every repo reads, so it always needs a human eye. Dedup opens a PR too — a
 wrongful prune deletes a real local lesson. Extract commits directly to the member's `main` — it
-writes only that project's own local docs, and the owner has opted out of a per-run PR to keep the
+writes only that project's own local packs, and the owner has opted out of a per-run PR to keep the
 fleet's daily lesson-capture from flooding review requests. (The owner's on-demand, in-session
 "learned lessons" command still delivers a PR — see
 [extracting-lessons.md](../../skills/lessons-learned/extracting-lessons.md).)
@@ -69,5 +69,5 @@ worker the changed participants as `targets`.
 
 The session-scoped sibling of this nightly lifecycle — mining a single working session for lessons
 — lives with the [lessons-learned skill](../../skills/lessons-learned/extracting-lessons.md), and
-the member-side method docs (extract, dedup, pack discovery, and how a project's local docs are
+the member-side method docs (extract, dedup, pack discovery, and how a project's local packs are
 identified) live with [grow_with_claudinite](../grow_with_claudinite/README.md).

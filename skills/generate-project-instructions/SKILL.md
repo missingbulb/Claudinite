@@ -1,30 +1,35 @@
 ---
 name: generate-project-instructions
-description: Decompose a project into its pack facets (working-style class, technology, aspect, domain) and extract its working instructions into reusable packs plus a thin project-specific overlay. Use when a project has no established working style yet, or it exhibits a facet no pack covers — during bootstrap of a fresh/empty repo, or on an uplevel request.
+description: Decompose a project into its pack facets (working-style class, technology, aspect, domain) and extract its working instructions into reusable canon packs plus the project's own local packs (.claudinite/local_packs/). Use when a project has no established working style yet, or it exhibits a facet no pack covers — during bootstrap of a fresh/empty repo, or on an uplevel request.
 ---
 
 # Generate project instructions — extract packs, not a project doc
 
-This skill grows the corpus's pack library using the project in front of you as the evidence. The
-owner's projects recur — not as wholes, but **along axes**: the same working style returns with a
-different product, the same technology returns with a different working style, the same audience
-returns on a different stack. The first project to exhibit a facet pays the cost of working out how
-that facet is handled; a pack is how every later project sharing it starts from the answer instead of
-re-deriving it.
+This skill grows the corpus's pack library using the project in front of you as the evidence, and
+lands the project's own working rules where every project's do now: its **local packs**. The owner's
+projects recur — not as wholes, but **along axes**: the same working style returns with a different
+product, the same technology returns with a different working style, the same audience returns on a
+different stack. The first project to exhibit a facet pays the cost of working out how that facet is
+handled; a **canon** pack is how every later project sharing it starts from the answer instead of
+re-deriving it — and what stays specific to *this* project lands in **its own local pack**, the same
+pack machinery run from the project's tree.
 
-The deliverable is therefore **a set of portable packs plus one thin local doc**, never a single
-document:
+The deliverable is therefore **two kinds of pack**, never a single "how to work on this repo" document:
 
-- **Pack seeds and refinements** — one `packs/<facet>/` per facet where this project has real portable
-  insight, each written as if this project didn't exist. **These are the primary deliverable.**
-- **The project overlay** — a thin doc in the project's own tree: only the concrete values this
-  project plugs into its packs' slots (its real commands, paths, names, metrics).
+- **Canon pack seeds and refinements** — one `packs/<facet>/` per facet where this project has real
+  portable insight, each written as if this project didn't exist, proposed to Claudinite.
+- **The project's own local pack(s)** — under `.claudinite/local_packs/<pack>/` in the project's tree:
+  the project-specific working style, concrete values (real commands, paths, names, metrics), and the
+  project-specific rules that *don't* generalize — carried the same way any pack carries them (a check
+  in the pack's `rules`, an activity skill, prose in `RULES.md`, a `run_daily` task), not a thin doc.
+  This is the project's normalized capture surface; its `CLAUDE.md` is a thin routing map to it, loaded
+  through the pack system rather than `@import`.
 
 The failure mode this skill exists to prevent: investigating the repo and producing one competent "how
 to work on this repo" document — real commands, real paths, this product's concepts — with the
-reusable core never separated out. That document helps exactly one project and teaches the corpus
-nothing. If portable guidance ends up in the project's docs, or the project's file names end up in any
-pack, the split is wrong.
+reusable core never separated out and the project-specific core dumped as always-loaded prose. If
+portable guidance ends up in a local pack (it should be a canon pack), or the project's file names end
+up in a canon pack (they belong in the local pack), the split is wrong.
 
 ## 1. Gather the evidence
 
@@ -61,15 +66,16 @@ A project is a bundle of **facets**, each a candidate pack on its own axis:
   isn't a facet worth a pack.
 
 **The product itself is never a facet** — "this specific product" doesn't recur, by definition; its
-rules are the overlay.
+rules land in the project's own local pack.
 
 <example>
 One extension project can exhibit four facets at once: `spec-driven-product` (class),
 `chrome-extension` + `node` (technologies), `chrome-extension-release` (aspect, once it ships) — and
-its overlay holds only what none of them own.
+its local pack holds only what none of them own.
 </example>
 
-Then check the shelf **per facet** (`packs/` here; `.claudinite/packs/` in a consuming repo):
+Then check the canon shelf **per facet** (`packs/` here; the mounted `.claudinite/packs/` in a
+consuming repo — a facet already owned by a *canon* pack is declared, not re-authored locally):
 
 - **Covered** → declare it (technology facets are usually already declared from the fingerprint) and
   move on — unless this project's evidence **sharpens or contradicts** the pack, which becomes a
@@ -88,22 +94,24 @@ sorting decision in step 3 tests against them.
 For each rule from step 1, apply the **portability strip per facet**: delete from the rule everything
 the facet doesn't keep, and see whether something meaningful survives.
 
-- Delete the product and the stack, keep the loop — survives? → the **class** pack.
+- Delete the product and the stack, keep the loop — survives? → the **class** pack (canon).
 - Delete the product and the working style, keep the platform — survives? → the **technology** (or
-  **aspect**) pack.
-- Delete the stack, keep the audience/setting — survives? → the **domain** pack.
-- Survives nothing → project-specific: the **overlay**.
+  **aspect**) pack (canon).
+- Delete the stack, keep the audience/setting — survives? → the **domain** pack (canon).
+- Survives nothing → project-specific: the project's **own local pack**.
 
 Route each rule to **exactly one owner** — the facet whose whole population the rule serves. "True for
-any Node service" belongs to `node`, not to this project's class pack, even if every project of the
-class happens to use Node. Rewrite what lands in a pack project-agnostically and parameterized, the
-way research-project does ("read *input* as whatever it means for your project").
+any Node service" belongs to the canon `node` pack, not to this project's class pack, even if every
+project of the class happens to use Node. Rewrite what lands in a canon pack project-agnostically and
+parameterized, the way research-project does ("read *input* as whatever it means for your project").
 
-Then gate the pack-bound rules on the promotion ladder ([checks/DESIGN.md](../../checks/DESIGN.md)): a
-rule a deterministic check could enforce, or a procedure with a nameable trigger a skill could carry,
-gets flagged as a check/skill candidate in the seed rather than settling permanently as prose. What
-remains in a `RULES.md` is the always-relevant judgment core of its facet. Dedupe it against the
-corpus — a rule the basics baseline or an existing skill already owns is not pack material.
+Then gate **every** pack-bound rule — canon or local — on the promotion ladder
+([checks/DESIGN.md](../../checks/DESIGN.md)): a rule a deterministic **check** could enforce, or a
+procedure with a nameable trigger a **skill** could carry, becomes that (in a canon seed it's flagged
+as a check/skill candidate; in a local pack you author the check outright in the pack's `rules`, with
+a red-first fixture) rather than settling as prose. What remains in a `RULES.md` is the always-relevant
+judgment core of its facet — write more checks and less prose. Dedupe against the corpus: a rule the
+basics baseline, an existing canon pack, or a skill already owns is not pack material at all.
 
 ## 4. Write each pack
 
@@ -129,29 +137,51 @@ The acid test before proposing any pack: **a reader must not be able to tell whi
 extracted from.** Any surviving repo path, command line, or product noun marks a rule that belonged in
 the overlay.
 
-## 5. Write the project overlay
+## 5. Write the project's own local pack(s)
 
-In the project's own tree (its `CLAUDE.md`, or the local-guidance doc its `CLAUDE.md` imports): the
-project's concrete values for its packs' slots — real setup/run/verify commands, real paths, its
-actual inputs, metrics, and invariants — plus which packs it declares. Keep it thin and specific;
-anything you're tempted to explain at length is either facet material (a pack) or inferable from the
-code (omit it).
+The project-specific residue lands in a **local pack** under `.claudinite/local_packs/<pack>/` in the
+project's tree — the same pack machinery, run from the project instead of the canon. Most projects
+need **one** general pack (name it for the project); segregate a **second** only when a distinct domain
+earns its own bundle (the way the reference project split a general working pack from an
+extractor-automation pack). Each local pack is a real pack:
+
+- **`pack.mjs`** — `{ id, detect: null, marker: null, prose: 'RULES.md', rules: [...], skills: [...], run_daily: [...] }`.
+  A local pack is declared by hand, never fingerprinted or seeded (`detect`/`marker` stay null); its id
+  must be unique and may not shadow a canon pack.
+- **`RULES.md`** — the always-loaded judgment core and the project's concrete values (real
+  setup/run/verify commands, real paths, inputs, metrics, invariants). Keep it terse; anything a check
+  or skill can carry doesn't belong here, and anything inferable from the code is omitted.
+- **Checks** (`rules`) — the project-specific deterministic rules as `.mjs` modules listed on
+  `pack.mjs`, each with a red-first fixture (`pack.test.mjs`) runnable by the project's own test suite.
+  Local check modules stay dependency-free (they must load without the gitignored mount): return plain
+  finding objects rather than importing the engine's helpers.
+- **Skills** (`skills/<name>/SKILL.md`) — the project's activity-scoped procedures, bundled in the pack;
+  a local pack may also *require* a canon skill by name.
+- **`run_daily`** — any project-specific scheduled task the fleet should run (a self-contained gate
+  descriptor + its worker doc).
+
+The project's `CLAUDE.md` becomes a thin **routing map** to its local packs (and its genuine design
+docs) — it does **not** `@import` the pack prose; the pack system injects the active local packs'
+`RULES.md` at session start, the same as the canon packs'.
 
 ## 6. Deliver through the owner's approval gates
 
-- **Every pack seed or refinement → a PR against Claudinite.** Minting or changing a pack is the
-  owner's call, and the PR is that gate — no corpus change lands unattended
+- **Every canon pack seed or refinement → a PR against Claudinite.** Minting or changing a *canon* pack
+  is the owner's call, and the PR is that gate — no corpus change lands unattended
   ([the canon-curation README](../../packs/canon-curation/README.md)). From a consuming repo, never edit the read-only
-  `.claudinite/` mount: open the Claudinite PR when the session can reach that repo; otherwise commit
-  the seed under the project's own docs, clearly marked as a proposed pack, and open a Claudinite
-  issue pointing at it so the central promote stage lifts it.
-- **The overlay → the project's normal branch/PR.**
-- **Declare a new pack** in the project's `.claudinite-checks.json` only after it has merged and the
-  mount re-synced — declaring an id the mounted registry doesn't know is an unknown-pack settings
-  error (a blocking `config` finding). Until then, note the pending declaration as a follow-up in the project PR.
-- **Existing projects sharing a facet keep their local docs for now.** Once the pack lands, the growth
-  dedup stage prunes what the canon newly owns; don't pre-trim a project against an unmerged pack.
+  `.claudinite/` mount: open the Claudinite PR when the session can reach that repo; otherwise stage the
+  seed as a **local pack** clearly marked as a proposed-canon facet and open a Claudinite issue pointing
+  at it, so the promote stage lifts it centrally.
+- **The project's local pack(s) → the project's normal branch/PR**, committed under
+  `.claudinite/local_packs/` (tracked project content — the sync hook preserves it, the gitignore
+  re-includes it). Declaring a **local** pack id is valid immediately (the engine discovers local packs
+  from the repo), so the declaration lands in the same PR.
+- **Declare a new *canon* pack** in `.claudinite-checks.json` only after it has merged and the mount
+  re-synced — declaring a canon id the mounted registry doesn't know is an unknown-pack settings error;
+  a *local* id is never that error. Note a pending canon declaration as a follow-up in the project PR.
+- **Existing projects sharing a facet keep their local packs for now.** Once the canon pack lands, the
+  growth dedup stage prunes what the canon newly owns; don't pre-trim against an unmerged pack.
 
 Close with a short report: each facet and its one-line definition, with its shelf verdict (declared /
-refined / minted / left alone); the sort tally (rules sent to each pack / the overlay /
-check-or-skill candidates); and links to the PRs.
+refined / minted-to-canon / kept-local / left alone); the sort tally (rules sent to each canon pack /
+the local pack / as a check vs. a skill vs. prose); and links to the PRs.

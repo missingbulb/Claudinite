@@ -10,8 +10,8 @@
 // The canon commit that ships those touches mount/ and bootstrap.md, so
 // canonChanged fires fleet-wide and baselining converges every member the first
 // night after — no per-repo content is materialized here (a project AUTHORS its
-// own local packs; the move of existing capture is a judgment task, the
-// generate-project-instructions / grow extract skills, never a mechanical alias).
+// own local packs; the move of existing capture is a judgment task carried by the
+// project-instructions and growth-extract skills, never a mechanical alias).
 //
 // This record is therefore TELEMETRY ONLY: the retire pass reports how many
 // members still carry the pre-enablement hook, so the owner can see when the whole

@@ -1,22 +1,22 @@
-# Growth — dedup local docs against the canon (per member)
+# Growth — dedup local packs against the canon (per member)
 
-The [growth lifecycle](../canon-curation/README.md)'s pruning stage, this pack's daily task: reconcile a project's local docs against the shared **canon** it consumes (Claudinite, vendored read-only), pruning local items the canon now covers. It opens a PR against the project's default branch for the owner to approve. Often there's nothing to prune, and that's fine.
+The [growth lifecycle](../canon-curation/README.md)'s pruning stage, this pack's daily task: reconcile a project's **local packs** against the shared **canon** it consumes (Claudinite, vendored read-only), pruning local items — a pack's prose line, or a whole local check — the canon now covers. It opens a PR against the project's default branch for the owner to approve. Often there's nothing to prune, and that's fine.
 
-> This routine only prunes local docs against the canon; lifting local items up into the canon is [promote](../canon-curation/promote.md)'s job.
+> This routine only prunes local packs against the canon; lifting local items up into the canon is [promote](../canon-curation/promote.md)'s job.
 
 ## Conventions used in this doc
 
 - **Default branch.** `main` stands for **your repository's default branch** — substitute whatever your repo uses.
 - **GitHub access is MCP-native.** Updating the tracking issue goes through the session's **GitHub MCP tools** (`mcp__github__*`). The fleet run has no shell GitHub access — the shell reaches only a git-over-HTTPS proxy scoped to one repo, with no REST credential — so never reach for `gh`/`curl` or a cross-repo clone.
 - **The mounted canon.** The exact canon revision your project currently consumes — compare against *that*, not a live fetch. Under session-start sync it's the latest `main` (so a promotion is visible only once its PR is merged, not the moment promote opens it); under a pinned submodule it's the pin (so the item lands here only once the pointer is bumped). Either way you prune only against what the project actually mounts.
-- **The project's local docs.** The set identified in [this pack's README](README.md#identifying-a-projects-local-docs). That's the corpus this routine prunes within; the mounted canon is never a prune target, only the yardstick you prune *against*.
+- **The project's local packs.** The set identified in [this pack's README](README.md#identifying-a-projects-capture-surface-its-local-packs) — everything under `.claudinite/local_packs/`. That's the corpus this routine prunes within; the read-only mounted canon elsewhere under `.claudinite/` is never a prune target, only the yardstick you prune *against*.
 
-## What it does: prune / rephrase local docs the canon now covers
+## What it does: prune / rephrase local packs the canon now covers
 
 When the canon has **absorbed** a practice a local doc still carries — most often an item [promote](../canon-curation/promote.md) lifted up and the canon now owns — the local copy is redundant. This routine:
 
 - **Removes** the now-duplicated local item, since the canon is the single source of truth for portable rules.
-- **Rephrases** a local procedure when the canon's wording of the same idea has changed, so the local docs stay consistent with the canon they point at.
+- **Rephrases** a local procedure when the canon's wording of the same idea has changed, so the local packs stay consistent with the canon they point at.
 
 **Keep a local item only if it says *more* than the canon — not merely says it more specifically.** Every local item is more specific than the canon, so specificity alone is never the test. Distinguish two cases:
 
@@ -27,7 +27,7 @@ So ask not "is it specific" (it always is) but "does it only lean on specific na
 
 ## A canon check covers an item too — and more strongly than prose
 
-The canon carries rules as **conformance checks**, not only prose. A local item is covered when a canon check *enforces* it — stronger coverage than a stated line, since the rule runs on every session and CI pass. Consult the machine-readable rule catalog (`node .claudinite/checks/run.mjs --list`: id, severity, description, doc pointer) alongside the prose corpus, and when a check covers the item, **quote the rule id** where you'd otherwise quote a canon line. The keep-test below is unchanged: a local item that says *more* than the check detects (a stronger point about a narrower case) stays.
+The canon carries rules as **conformance checks**, not only prose. A local item is covered when a canon check *enforces* it — stronger coverage than a stated line, since the rule runs on every session and CI pass. Consult the machine-readable rule catalog (`node .claudinite/checks/run.mjs --list`: id, severity, description, doc pointer — it lists the active local packs' own checks too) alongside the prose corpus, and when a check covers the item, **quote the rule id** where you'd otherwise quote a canon line. This cuts both ways: a **local pack's own check** is redundant once a canon check enforces the same rule — prune the local `.mjs` (and drop it from `pack.mjs` + its fixture) exactly as you'd prune a duplicated prose line. The keep-test below is unchanged: a local item that says *more* than the check detects (a stronger point about a narrower case) stays.
 
 ## Discipline
 
@@ -49,6 +49,6 @@ Proving the mounted canon genuinely covers a local item before pruning it — an
 
 ## What this routine must never do
 
-- **Never edit the read-only canon** — it only prunes *local* docs against it.
-- **Never prune a local item without quoting the mounted-canon line that covers it** — when unsure, leave it.
+- **Never edit the read-only canon** — it only prunes the project's *local packs* against it.
+- **Never prune a local item without quoting the mounted-canon line (or covering check rule id) that covers it** — when unsure, leave it.
 - **Never prune a local item that makes a stronger point about a narrower case** than the canon — that isn't redundancy. (A local item that only restates the canon in project-specific names *is* prunable once the canon covers the point.)

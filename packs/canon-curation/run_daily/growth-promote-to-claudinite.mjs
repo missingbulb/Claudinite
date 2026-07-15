@@ -1,5 +1,5 @@
 // canon-curation run_daily task: growth-promote-to-claudinite — the growth
-// lifecycle's central stage. Reads the changed participating members' local docs,
+// lifecycle's central stage. Reads the changed participating members' local packs,
 // generalizes the portable lessons, and opens a PR against the canon's main.
 // Worker: the co-located promote.md.
 //
