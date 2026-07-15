@@ -9,7 +9,9 @@
   session** by the project's declaration in `.claudinite-checks.json`. No pack is active by default —
   `basics` too is declared explicitly (bootstrap seeds it). The active packs' prose loads at session
   start via `packs/load-active-prose.mjs`; the checks run at every Stop and in CI. This is the "decided
-  once, seldom changes" set.
+  once, seldom changes" set. A pack can live here (the shared, portable canon) **or** in a consumer's
+  own `.claudinite/local_packs/<name>/` (tracked project content — its project-specific packs, the same
+  four slots); the engine discovers and runs both the same way ([extending.md](extending.md)).
 - **`skills/<name>/`** — activity-scoped procedures, surfaced **on demand** by the harness when the work
   in front of you matches the skill. Deployment is pack-driven: each pack declares the skills it
   requires, and a repo mounts the union over its active packs at session start
