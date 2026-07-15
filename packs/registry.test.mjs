@@ -1,6 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveDeclaredPacks, packEntryId, isActive } from './registry.mjs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { resolveDeclaredPacks, packEntryId, isActive, discoverPacks, loadPacks } from './registry.mjs';
 
 // The import closure the declaration is written through (bootstrap `--init` and
 // the baselining backfill): declaring a pack materializes its `requires`.
@@ -84,4 +87,98 @@ test('resolveDeclaredPacks: preserves an entry it cannot interpret rather than d
     resolveDeclaredPacks(['basics', { config: {} }], PACKS),
     ['basics', { config: {} }],
   );
+});
+
+// --- local-pack discovery ---------------------------------------------------
+
+// Build a throwaway consumer checkout with local packs at
+// <root>/.claudinite/local_packs/<name>/pack.mjs and return its root.
+function makeLocalRoot(packs) {
+  const root = mkdtempSync(join(tmpdir(), 'claudinite-localpacks-'));
+  for (const [name, source] of Object.entries(packs)) {
+    const dir = join(root, '.claudinite', 'local_packs', name);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'pack.mjs'), source);
+  }
+  return root;
+}
+
+test('discoverPacks: with no localRoot, finds only the canon packs (all non-local)', async () => {
+  const { packs, errors } = await discoverPacks();
+  assert.equal(errors.length, 0);
+  assert.ok(packs.some((p) => p.id === 'basics'));
+  assert.ok(packs.every((p) => p.local === false));
+  // every canon pack is stamped with its own directory
+  assert.ok(packs.every((p) => typeof p.dir === 'string' && p.dir.includes('/packs/')));
+});
+
+test('discoverPacks: finds a consumer local pack, stamped local with its own dir', async () => {
+  const root = makeLocalRoot({
+    proj: `export default { id: 'proj', prose: 'RULES.md', rules: [], skills: [] };`,
+  });
+  try {
+    const { packs, errors } = await discoverPacks({ localRoot: root });
+    assert.equal(errors.length, 0);
+    const local = packs.find((p) => p.id === 'proj');
+    assert.ok(local, 'the local pack is discovered');
+    assert.equal(local.local, true);
+    assert.equal(local.dir, join(root, '.claudinite', 'local_packs', 'proj'));
+    // canon packs are still present and marked non-local
+    assert.ok(packs.some((p) => p.id === 'basics' && p.local === false));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('discoverPacks: a broken local pack.mjs is isolated — an error, not a thrown loop', async () => {
+  const root = makeLocalRoot({
+    ok: `export default { id: 'ok', rules: [] };`,
+    broken: `export default { id: 'broken', rules: [] } ; this is not valid javascript(`,
+  });
+  try {
+    const { packs, errors } = await discoverPacks({ localRoot: root });
+    assert.ok(packs.some((p) => p.id === 'ok'), 'the good local pack still loads');
+    assert.ok(packs.some((p) => p.id === 'basics'), 'canon packs still load');
+    assert.ok(errors.some((e) => /local_packs\/broken/.test(e.fix) || /broken/.test(e.what)));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('discoverPacks: a local pack may not shadow a canon id — collision reported, local dropped', async () => {
+  const root = makeLocalRoot({
+    basics: `export default { id: 'basics', rules: [] };`,
+  });
+  try {
+    const { packs, errors } = await discoverPacks({ localRoot: root });
+    const basicsPacks = packs.filter((p) => p.id === 'basics');
+    assert.equal(basicsPacks.length, 1, 'only one pack keeps the id');
+    assert.equal(basicsPacks[0].local, false, 'the canon pack wins');
+    assert.ok(errors.some((e) => /declared twice/.test(e.what)));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('discoverPacks: gathers a local pack\'s bundled skill-owned checks', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'claudinite-localskill-'));
+  const packDir = join(root, '.claudinite', 'local_packs', 'proj');
+  mkdirSync(join(packDir, 'skills', 'thing'), { recursive: true });
+  writeFileSync(join(packDir, 'pack.mjs'), `export default { id: 'proj', rules: [], skills: ['thing'] };`);
+  writeFileSync(join(packDir, 'skills', 'thing', 'checks.mjs'),
+    `export default [{ id: 'proj-thing', severity: 'advisory', description: 'x', doc: 'd', why: 'w', run: () => [] }];`);
+  try {
+    const { packs } = await discoverPacks({ localRoot: root });
+    const local = packs.find((p) => p.id === 'proj');
+    assert.equal(local.skillChecks.length, 1);
+    assert.equal(local.skillChecks[0].id, 'proj-thing');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('loadPacks: thin array wrapper over discoverPacks', async () => {
+  const packs = await loadPacks();
+  assert.ok(Array.isArray(packs));
+  assert.ok(packs.some((p) => p.id === 'basics'));
 });

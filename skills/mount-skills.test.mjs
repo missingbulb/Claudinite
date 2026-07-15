@@ -151,6 +151,61 @@ test('mount-skills: removes a stale owned link, is idempotent, fails soft on a b
   } finally { rmSync(corpus, { recursive: true, force: true }); cleanup(project); }
 });
 
+test('mount-skills: mounts a local pack\'s bundled skill from the tracked pack dir', () => {
+  const corpus = makeCorpus(CORPUS);
+  const project = makeRepo({
+    changed: {
+      '.claudinite-checks.json': '{ "packs": ["basics", "proj"] }\n',
+    },
+  });
+  try {
+    // The project's own local pack requires a canon skill AND bundles its own.
+    const packDir = join(project, '.claudinite', 'local_packs', 'proj');
+    mkdirSync(join(packDir, 'skills', 'proj-skill'), { recursive: true });
+    writeFileSync(join(packDir, 'pack.mjs'),
+      `export default { id: 'proj', rules: [], skills: ['base-skill', 'proj-skill'] };\n`);
+    writeFileSync(join(packDir, 'skills', 'proj-skill', 'SKILL.md'), '---\nname: proj-skill\n---\nlocal\n');
+
+    mount(corpus, project);
+
+    // the canon skill required by the local pack still mounts from the corpus
+    const baseLink = join(project, '.claude', 'skills', 'base-skill');
+    assert.ok(lstatSync(baseLink).isSymbolicLink());
+    assert.equal(realpathSync(baseLink), realpathSync(join(corpus, 'skills', 'base-skill')));
+
+    // the bundled skill mounts from the tracked local pack dir
+    const projLink = join(project, '.claude', 'skills', 'proj-skill');
+    assert.ok(lstatSync(projLink).isSymbolicLink(), 'proj-skill should be a symlink');
+    assert.equal(realpathSync(projLink), realpathSync(join(packDir, 'skills', 'proj-skill')));
+    assert.ok(existsSync(join(projLink, 'SKILL.md')), 'the bundled link resolves to a real SKILL.md');
+
+    // the generated .gitignore lists it; the local pack files stay in git status
+    // (the mounts themselves must not dirty the tree)
+    const ignore = readFileSync(join(project, '.claude', 'skills', '.gitignore'), 'utf8');
+    assert.match(ignore, /^proj-skill$/m);
+  } finally { rmSync(corpus, { recursive: true, force: true }); cleanup(project); }
+});
+
+test('mount-skills: unmounts a local pack\'s skill when the pack is undeclared', () => {
+  const corpus = makeCorpus(CORPUS);
+  const project = makeRepo({
+    changed: { '.claudinite-checks.json': '{ "packs": ["basics", "proj"] }\n' },
+  });
+  try {
+    const packDir = join(project, '.claudinite', 'local_packs', 'proj');
+    mkdirSync(join(packDir, 'skills', 'proj-skill'), { recursive: true });
+    writeFileSync(join(packDir, 'pack.mjs'), `export default { id: 'proj', rules: [], skills: ['proj-skill'] };\n`);
+    writeFileSync(join(packDir, 'skills', 'proj-skill', 'SKILL.md'), '---\nname: proj-skill\n---\nlocal\n');
+    mount(corpus, project);
+    assert.ok(existsSync(join(project, '.claude', 'skills', 'proj-skill')));
+    // drop the local pack from the declaration — its mounted skill must go
+    writeFileSync(join(project, '.claudinite-checks.json'), '{ "packs": ["basics"] }\n');
+    mount(corpus, project);
+    assert.ok(!existsSync(join(project, '.claude', 'skills', 'proj-skill')),
+      'a local pack\'s skill unmounts once the pack is undeclared');
+  } finally { rmSync(corpus, { recursive: true, force: true }); cleanup(project); }
+});
+
 test('mount-skills: the real corpus mounts every basics skill into a consumer', () => {
   const project = makeRepo({ changed: { '.claudinite-checks.json': '{ "packs": ["basics"] }\n' } });
   try {

@@ -20,12 +20,17 @@ try {
   }
 
   const { loadPacks, isActive } = await import(join(packsDir, 'registry.mjs'));
-  const packs = await loadPacks();
+  // Include the project's own local packs (.claudinite/local_packs/) alongside
+  // the canon: their prose loads the same way, so a project's rules ride the pack
+  // system rather than an explicit @import.
+  const packs = await loadPacks({ localRoot: projectRoot });
 
   const sections = [];
   for (const pack of packs) {
     if (!pack.prose || !isActive(pack, { packs: declared })) continue;
-    const prosePath = join(packsDir, pack.id, pack.prose);
+    // Resolve prose off the pack's OWN directory (canon or local_packs), not a
+    // single shared root — so a local pack's RULES.md is found where it lives.
+    const prosePath = join(pack.dir, pack.prose);
     if (!existsSync(prosePath)) continue;
     sections.push(`<!-- pack:${pack.id} -->\n${readFileSync(prosePath, 'utf8').trim()}`);
   }

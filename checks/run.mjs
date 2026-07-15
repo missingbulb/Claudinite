@@ -10,7 +10,7 @@ import { writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildContext } from './lib/context.mjs';
 import { applyConfig, render } from './lib/findings.mjs';
-import { loadPacks, isActive, resolveDeclaredPacks } from '../packs/registry.mjs';
+import { discoverPacks, isActive, resolveDeclaredPacks } from '../packs/registry.mjs';
 import { loadSkillRules } from '../skills/registry.mjs';
 
 const args = process.argv.slice(2);
@@ -18,13 +18,23 @@ const has = (flag) => args.includes(flag);
 const value = (flag) => (args.includes(flag) ? args[args.indexOf(flag) + 1] : null);
 const root = value('--root') || process.cwd();
 
-const packs = await loadPacks();
+// Canon packs plus the repo's own local packs (.claudinite/local_packs/). A
+// broken/duplicate manifest doesn't sink the run — it comes back in `packErrors`
+// and is surfaced as a blocking config finding, so the Stop hook shows a
+// diagnostic instead of silently dropping the pack's checks.
+const { packs, errors: packErrors } = await discoverPacks({ localRoot: root });
 // Skills own the test-the-world checks that validate their action (co-located
-// with the SKILL.md), discovered alongside the packs and always run.
+// with the SKILL.md), discovered alongside the packs and always run. A local
+// pack's bundled skill checks ride its `skillChecks`, run only when the pack is
+// active (below).
 const skillRules = await loadSkillRules();
 
 if (has('--list')) {
-  const rules = [...packs.flatMap((p) => p.rules), ...skillRules];
+  const rules = [
+    ...packs.flatMap((p) => p.rules ?? []),
+    ...packs.flatMap((p) => p.skillChecks ?? []),
+    ...skillRules,
+  ];
   for (const r of rules.sort((a, b) => a.id.localeCompare(b.id))) {
     console.log(`${r.id}\t${r.severity}\t${r.description}\t${r.doc}`);
   }
@@ -45,8 +55,11 @@ if (has('--init')) {
   // opt-out-able where its own policy allows (baselining re-adds only the packs
   // whose absence it treats as drift), so removing a seeded declaration can
   // stick; each seeded pack ships its own one-time seed migration for the fleet.
-  const seeded = packs.filter((p) => p.seededByDefault).map((p) => p.id);
-  const detected = [...seeded, ...packs.filter((p) => p.detect && p.detect(ctx)).map((p) => p.id)];
+  // Local packs are declared by hand, never fingerprinted or seeded — exclude
+  // them from --init's seeding so a repo that already carries local packs (but
+  // no config yet) doesn't auto-declare them.
+  const seeded = packs.filter((p) => p.seededByDefault && !p.local).map((p) => p.id);
+  const detected = [...seeded, ...packs.filter((p) => p.detect && !p.local && p.detect(ctx)).map((p) => p.id)];
   // A pack can't be imported without its dependencies — pull each declared pack's
   // `requires` closure into the declaration so it's complete and visible.
   const declared = resolveDeclaredPacks(detected, packs);
@@ -71,6 +84,11 @@ let findings = [];
 // wrong pack name are all equally settings errors. loadConfig reports the first
 // two; the runner adds unknown pack names here because only it holds the registry.
 for (const e of ctx.config.errors) findings.push(configError(e.what, e.fix));
+// A broken/duplicate local pack.mjs is a config-level fault too — surface it with
+// a diagnostic instead of silently omitting the pack (and its checks).
+for (const e of packErrors) findings.push(configError(e.what, e.fix));
+// knownIds spans canon AND local packs, so a declared local pack id is valid and
+// the unknown-pack message lists it among the declarable packs.
 const knownIds = new Set(packs.map((p) => p.id));
 for (const name of ctx.config.packs) {
   if (typeof name === 'string' && !knownIds.has(name)) {
@@ -79,7 +97,9 @@ for (const name of ctx.config.packs) {
 }
 for (const pack of packs) {
   if (!isActive(pack, ctx.config)) continue;
-  for (const rule of pack.rules) {
+  // A pack's conformance checks, plus a local pack's bundled skill-owned checks
+  // (canon skill checks run ungated below; a local pack's ride its own activation).
+  for (const rule of [...(pack.rules ?? []), ...(pack.skillChecks ?? [])]) {
     if (ctx.config.rules[rule.id] === 'off') continue;
     findings.push(...rule.run(ctx));
   }

@@ -1,22 +1,121 @@
 import { readdirSync, existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const packsDir = dirname(fileURLToPath(import.meta.url));
 
-// Discover packs structurally: any packs/<name>/pack.mjs is a pack. No registry
-// list to maintain — dropping a directory in adds it (the corpus's own
-// "structural over hand-maintained list" rule, applied to the runner).
-export async function loadPacks() {
-  const packs = [];
-  for (const name of readdirSync(packsDir, { withFileTypes: true })
+// A repo's own packs live at <root>/.claudinite/local_packs/<name>/ — tracked
+// project content, discovered and run by the same engine as the mounted canon
+// packs. This is where the subdir sits relative to a consumer's checkout root.
+export const LOCAL_PACKS_SUBDIR = join('.claudinite', 'local_packs');
+export const localPacksDir = (root) => join(resolve(root), LOCAL_PACKS_SUBDIR);
+
+// Load a directory of `<name>/pack.mjs` manifests, isolating each import so one
+// broken manifest can't sink the rest (a consumer-authored local pack.mjs must
+// never disable every other pack's prose/checks/skills). Each loaded pack is
+// stamped with `dir` (its own directory — prose and bundled skills resolve off
+// this, so a pack's files never have to sit under a single shared root) and
+// `local` (whether it came from a consumer's local_packs). A local pack may
+// bundle skill-owned checks at `<pack>/skills/<skill>/checks.mjs`, gathered onto
+// `skillChecks` and run by the runner only when the pack is active.
+async function scanPackDir(dir, { local }, errors) {
+  const out = [];
+  if (!existsSync(dir)) return out;
+  for (const name of readdirSync(dir, { withFileTypes: true })
     .filter((d) => d.isDirectory())
     .map((d) => d.name)
     .sort()) {
-    const manifest = join(packsDir, name, 'pack.mjs');
-    if (existsSync(manifest)) packs.push((await import(pathToFileURL(manifest).href)).default);
+    const packDir = join(dir, name);
+    const manifest = join(packDir, 'pack.mjs');
+    if (!existsSync(manifest)) continue;
+    let mod;
+    try {
+      mod = (await import(pathToFileURL(manifest).href)).default;
+    } catch (e) {
+      const rel = local ? `${LOCAL_PACKS_SUBDIR}/${name}` : `packs/${name}`;
+      errors.push({
+        what: `the pack in ${rel} failed to load: ${e.message}`,
+        fix: `fix pack.mjs in ${rel}, or remove the pack`,
+        dir: packDir,
+      });
+      continue;
+    }
+    if (!mod || typeof mod.id !== 'string') {
+      errors.push({
+        what: `the pack in ${local ? `${LOCAL_PACKS_SUBDIR}/${name}` : `packs/${name}`} has no string "id" default export`,
+        fix: 'export default { id: "<name>", ... } from its pack.mjs',
+        dir: packDir,
+      });
+      continue;
+    }
+    const pack = { ...mod, dir: packDir, local };
+    if (local) pack.skillChecks = await scanLocalSkillChecks(packDir, errors);
+    out.push(pack);
   }
-  return packs;
+  return out;
+}
+
+// A local pack's skill-owned checks: any <pack>/skills/<skill>/checks.mjs
+// (default export = an array of rules), the local mirror of a canon skill's
+// checks.mjs. Isolated per import; run gated by the owning pack being active
+// (unlike canon skill checks, which are ungated and always run).
+async function scanLocalSkillChecks(packDir, errors) {
+  const rules = [];
+  const skillsRoot = join(packDir, 'skills');
+  if (!existsSync(skillsRoot)) return rules;
+  for (const name of readdirSync(skillsRoot, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name)
+    .sort()) {
+    const manifest = join(skillsRoot, name, 'checks.mjs');
+    if (!existsSync(manifest)) continue;
+    try {
+      rules.push(...(await import(pathToFileURL(manifest).href)).default);
+    } catch (e) {
+      errors.push({ what: `local skill check ${name}/checks.mjs failed to load: ${e.message}`, fix: 'fix or remove the skill\'s checks.mjs', dir: join(skillsRoot, name) });
+    }
+  }
+  return rules;
+}
+
+// Discover every pack structurally — canon `packs/<name>/pack.mjs` always, plus a
+// consumer's own `<localRoot>/.claudinite/local_packs/<name>/pack.mjs` when a
+// localRoot is given (the repo under test / the session's project root). No
+// registry list to maintain — dropping a directory in adds it. Returns the packs
+// plus any load-time `errors` (a broken manifest, a missing id, an id collision);
+// the runner surfaces those as blocking `config` findings, the fail-soft
+// SessionStart hooks just skip the offending pack. Canon is scanned first, so a
+// local pack may not shadow a canon id — the collision is reported and the local
+// one dropped (a consumer extends the canon, never silently overrides it).
+export async function discoverPacks({ localRoot } = {}) {
+  const errors = [];
+  const canon = await scanPackDir(packsDir, { local: false }, errors);
+  const local = localRoot ? await scanPackDir(localPacksDir(localRoot), { local: true }, errors) : [];
+  const byId = new Map();
+  const packs = [];
+  for (const pack of [...canon, ...local]) {
+    if (byId.has(pack.id)) {
+      const first = byId.get(pack.id);
+      errors.push({
+        what: `pack id "${pack.id}" is declared twice — by ${first.local ? 'a local pack' : 'the canon'} and ${pack.local ? 'a local pack' : 'the canon'}`,
+        fix: `rename the local pack in ${LOCAL_PACKS_SUBDIR}/ — a local pack id must be unique and may not shadow a canon pack`,
+        dir: pack.dir,
+      });
+      continue;
+    }
+    byId.set(pack.id, pack);
+    packs.push(pack);
+  }
+  return { packs, errors };
+}
+
+// The pack list alone — the shape every non-runner caller wants. Canon-only when
+// no localRoot is given (the fleet planner and the declaration-writing backfill
+// run in the canon checkout and read member declarations over the API, not from
+// local disk). A broken/duplicate pack is simply absent here; the runner's
+// discoverPacks surfaces the diagnostic.
+export async function loadPacks(opts) {
+  return (await discoverPacks(opts)).packs;
 }
 
 // A `packs` declaration entry is either a plain id string or an entry object

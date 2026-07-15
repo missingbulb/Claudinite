@@ -32,26 +32,49 @@ try {
   }
 
   const { loadPacks, isActive } = await import(join(corpusRoot, 'packs', 'registry.mjs'));
-  const packs = await loadPacks();
+  // Include the project's own local packs — a local pack can require a canon
+  // skill AND bundle its own under <pack>/skills/, mounted from the tracked pack
+  // dir rather than the corpus mount.
+  const packs = await loadPacks({ localRoot: projectRoot });
+  const localPacksRoot = join(projectRoot, '.claudinite', 'local_packs');
 
-  // The union over the active packs, kept to skills that actually exist — a
-  // required-but-missing skill is the skill-ownership check's finding to
-  // report, not this hook's reason to break.
-  const wanted = [...new Set(
-    packs.filter((p) => isActive(p, { packs: declared })).flatMap((p) => p.skills ?? [])
-  )].filter((name) => existsSync(join(skillsDir, name, 'SKILL.md'))).sort();
+  // The union over the active packs, each skill resolved to its SOURCE directory:
+  // a local pack's own bundled skill (<pack>/skills/<name>) if it has one, else
+  // the canon skills tree. A required-but-missing skill is the skill-ownership
+  // check's finding to report, not this hook's reason to break. Canon packs sort
+  // before local ones, so a name shared with a canon skill resolves to canon.
+  const active = packs.filter((p) => isActive(p, { packs: declared }));
+  const sourceByName = new Map();
+  for (const pack of active) {
+    for (const name of pack.skills ?? []) {
+      if (sourceByName.has(name)) continue;
+      let source = null;
+      if (pack.local) {
+        const bundled = join(pack.dir, 'skills', name);
+        if (existsSync(join(bundled, 'SKILL.md'))) source = bundled;
+      }
+      if (!source) {
+        const canon = join(skillsDir, name);
+        if (existsSync(join(canon, 'SKILL.md'))) source = canon;
+      }
+      if (source) sourceByName.set(name, source);
+    }
+  }
+  const wanted = [...sourceByName.keys()].sort();
 
   const mountDir = join(projectRoot, '.claude', 'skills');
   if (!wanted.length && !existsSync(mountDir)) process.exit(0);
   mkdirSync(mountDir, { recursive: true });
 
   const lstatOrNull = (p) => { try { return lstatSync(p); } catch { return null; } };
-  // A mount is ours iff it is a symlink into the corpus's skills/ tree
-  // (lexical resolve, so a dangling leftover still matches and gets cleaned).
+  // A mount is ours iff it is a symlink into the corpus's skills/ tree OR into
+  // the project's own local_packs (a local pack's bundled skill) — lexical
+  // resolve, so a dangling leftover still matches and gets cleaned.
   const owned = (entry) => {
     const st = lstatOrNull(join(mountDir, entry));
-    return !!st && st.isSymbolicLink()
-      && resolve(mountDir, readlinkSync(join(mountDir, entry))).startsWith(skillsDir + sep);
+    if (!st || !st.isSymbolicLink()) return false;
+    const target = resolve(mountDir, readlinkSync(join(mountDir, entry)));
+    return target.startsWith(skillsDir + sep) || target.startsWith(localPacksRoot + sep);
   };
 
   for (const entry of readdirSync(mountDir)) {
@@ -63,11 +86,11 @@ try {
   const mounted = [];
   for (const name of wanted) {
     const link = join(mountDir, name);
-    const target = relative(mountDir, join(skillsDir, name));
+    const target = relative(mountDir, sourceByName.get(name));
     if (lstatOrNull(link)) {
       if (!owned(name)) continue; // the project's own entry wins — never overwrite
       if (readlinkSync(link) === target) { mounted.push(name); continue; }
-      unlinkSync(link); // ours, but stale target (corpus moved) — retarget
+      unlinkSync(link); // ours, but stale target (corpus/pack moved) — retarget
     }
     symlinkSync(target, link);
     mounted.push(name);
