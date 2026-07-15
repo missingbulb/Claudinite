@@ -73,7 +73,7 @@ test('planRepo emits a unit per run:true gate, carrying worker/targets/order/sma
   const { units } = await planRepo(REPO, S(), tasks, null);
   assert.equal(units.length, 1);
   assert.deepEqual(units[0], {
-    repo: 'owner/foo', task: 'a', worker: 'a.md', targets: { x: 1 },
+    repo: 'owner/foo', task: 'a', worker: 'a.md', workerRepo: null, targets: { x: 1 },
     reason: 'because', order: 'tidy:report', smarts: 'high',
   });
 });

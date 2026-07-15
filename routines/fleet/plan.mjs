@@ -32,18 +32,26 @@ import { planRepo } from './gates.mjs';
 // fleet-facing work (e.g. "did any enrolled member change tonight?") in code,
 // without the planner knowing any pack by name. Planning the canon repo last is what
 // makes the aggregate complete when its gates run.
-export async function buildWorkPlan(gh, canonRepo, coveredRepos, canonRepoInfo = null) {
+// `localTasksFor(repoInfo) -> Promise<task[]>` (optional) supplies each member's
+// OWN local-pack run_daily tasks — the descriptors the canon checkout can't see,
+// read from the member repo over `gh` and tagged with `pack`/`workerRepo`
+// (routines/fleet/local-tasks.mjs). Kept an injected seam so the planner core
+// stays pure: default is no local tasks, so a caller that doesn't supply it (or
+// tests) behaves exactly as before. A member whose local-task read throws is
+// isolated by the same per-repo try/catch as any other probe.
+export async function buildWorkPlan(gh, canonRepo, coveredRepos, canonRepoInfo = null, { localTasksFor } = {}) {
   const sinceIso = new Date(Date.now() - 25 * 3600 * 1000).toISOString();
   const weekdayUtc = new Date().getUTCDay();
   const canonChanged = await computeCanonChanged(gh, canonRepo, sinceIso);
   const allPackTasks = packTasks(await loadPacks());
+  const localFor = async (r) => (localTasksFor ? await localTasksFor(r) : []);
 
   const units = []; const errors = []; const fleetMembers = [];
   for (const r of coveredRepos) {
     try {
       const signals = await buildSignals(gh, r, { sinceIso, weekdayUtc, canonChanged });
       fleetMembers.push({ repo: r.full_name, activePacks: signals.activePacks, projectChanged: signals.projectChanged, substantiveChange: signals.substantiveChange });
-      const applicable = assembleForRepo(signals.activePacks, allPackTasks);
+      const applicable = assembleForRepo(signals.activePacks, allPackTasks, await localFor(r));
       const res = await planRepo({ fullName: r.full_name, defaultBranch: r.default_branch }, signals, applicable, gh);
       units.push(...res.units); errors.push(...res.errors);
     } catch (e) {
@@ -57,7 +65,7 @@ export async function buildWorkPlan(gh, canonRepo, coveredRepos, canonRepoInfo =
         isHome: true,
         fleetMembers,
       };
-      const applicable = assembleForRepo(signals.activePacks, allPackTasks);
+      const applicable = assembleForRepo(signals.activePacks, allPackTasks, await localFor(canonRepoInfo));
       const res = await planRepo({ fullName: canonRepoInfo.full_name, defaultBranch: canonRepoInfo.default_branch }, signals, applicable, gh);
       units.push(...res.units); errors.push(...res.errors);
     } catch (e) {
@@ -75,7 +83,7 @@ export async function buildWorkPlan(gh, canonRepo, coveredRepos, canonRepoInfo =
 // orchestrator's MCP-backed reader; the orchestrator names the canon repo (a known
 // constant — the repo this canon ships from), so nothing here is discovered from a
 // CI env var.
-export async function planGivenRepos(gh, canonRepo, fullNames) {
+export async function planGivenRepos(gh, canonRepo, fullNames, opts = {}) {
   const repos = []; const unknown = []; let canonRepoInfo = null;
   for (const full of fullNames) {
     const { status, json } = await gh(`/repos/${full}`);
@@ -83,6 +91,6 @@ export async function planGivenRepos(gh, canonRepo, fullNames) {
     if (canonRepo && full.toLowerCase() === canonRepo.toLowerCase()) { canonRepoInfo = json; continue; } // planned last, with the fleet aggregate
     repos.push(json);
   }
-  const plan = await buildWorkPlan(gh, canonRepo, repos, canonRepoInfo);
+  const plan = await buildWorkPlan(gh, canonRepo, repos, canonRepoInfo, opts);
   return { plan, coveredCount: repos.length, unknown };
 }
