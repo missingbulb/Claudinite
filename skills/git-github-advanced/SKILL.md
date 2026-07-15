@@ -75,6 +75,15 @@ GitHub suppresses workflow runs triggered by the built-in `GITHUB_TOKEN` to prev
 
 A `workflow_dispatch` or scheduled workflow runs from the copy on the **default branch**, and a `pull_request` run uses the workflow files from the PR's **base** branch — so a workflow you only added on a feature branch isn't dispatchable, and a build/CI change doesn't apply, until it's merged. Merge workflow and build-script changes *before* the release or run that depends on them, or that run executes the *old* definition (shipping a stale build, or silently skipping a check you thought you'd added). This is distinct from the `GITHUB_TOKEN` recursion rule above: even a human-triggered run reads the definition from the default/base branch, not your feature branch.
 
+## Don't key a release workflow solely on a `v*` tag push
+
+A release workflow triggered only by `push: tags: [v*]` silently fails to build in two common cases — leaving the Releases area empty and a `releases/latest/download/<asset>` link 404ing:
+
+- **The environment can't push the tag.** An agent/CI session that pushes through a restricted git proxy (e.g. Claude Code on the web, scoped to one repo) can't push tags at all, so the event never fires. Key the workflow on **push to the default branch** instead (scope it to the release paths), derive the version from a committed manifest (`package.json`, an `Info.plist`), and create the tag + Release *inside* the job with `GITHUB_TOKEN` — which can tag and release even when the session can't.
+- **A UI-published Release emits no tag push.** Publishing a Release from the GitHub UI creates the tag but does **not** fire `push: tags`, so a tag-only workflow won't build for it. Add a `release: types: [published]` trigger alongside the push-to-main one so a hand-published Release still builds and attaches its asset.
+
+These two triggers neither loop nor double-build: the Release the push-to-main job creates with `GITHUB_TOKEN` doesn't re-fire the `release` event (the `GITHUB_TOKEN`-doesn't-start-another-workflow rule above), and scoping the push trigger to the release paths keeps a single push from also matching a separate feature-branch builder.
+
 ## A CI OIDC `sub` claim is matched case-sensitively by the cloud trust policy
 
 GitHub's OIDC `sub` uses the repository's **canonical casing** (`repo:Owner/Repo:ref:…`), and a cloud trust policy compares it exactly — AWS IAM `StringEquals` is case-sensitive — so a trust policy written with the wrong case fails with a bare `Not authorized to perform sts:AssumeRoleWithWebIdentity` and **no** hint that casing is the cause. Match the exact canonical `owner/repo` (or list both casings in the condition). The same exact-match caution applies to any OIDC-federated cloud, not just AWS.
