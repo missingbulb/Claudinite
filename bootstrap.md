@@ -53,10 +53,15 @@ if [ -f .gitignore ]; then
   grep -vxE '\.claudinite/|\.claudinite\.new/|!/\.claudinite/\.gitkeep|!/\.claudinite/sync-claudinite\.sh' .gitignore > .gitignore.tmp || true
   mv .gitignore.tmp .gitignore
 fi
-# Track only the hook, now at .claudinite/mount/sync-claudinite.sh. A file inside an
+# Track only the hook (now at .claudinite/mount/sync-claudinite.sh) and the repo's
+# own local packs (.claudinite/local_packs/ — project prose/checks/skills/run_daily,
+# tracked project content the engine runs alongside the canon). A file inside an
 # otherwise-ignored dir needs the dir re-included first, hence the mount/ pair
-# (re-include the dir, ignore its contents) before the file negation.
-for rule in '/.claudinite/*' '!/.claudinite/mount/' '/.claudinite/mount/*' '!/.claudinite/mount/sync-claudinite.sh' '/.claudinite.new/' '/.claudinite-hooks.log' '/.claudinite-hooks.log.tmp'; do
+# (re-include the dir, ignore its contents) before the file negation; local_packs/
+# is re-included as a whole subtree (the project owns all of it). The sync hook
+# preserves both across its dir swap; baselining re-runs this step, so an existing
+# member picks up the local_packs negation the first night after the canon ships it.
+for rule in '/.claudinite/*' '!/.claudinite/mount/' '/.claudinite/mount/*' '!/.claudinite/mount/sync-claudinite.sh' '!/.claudinite/local_packs/' '/.claudinite.new/' '/.claudinite-hooks.log' '/.claudinite-hooks.log.tmp'; do
   grep -qxF "$rule" .gitignore 2>/dev/null || echo "$rule" >> .gitignore
 done
 # Converge a pre-mount tracked hook into mount/ (idempotent; no-op once moved).
