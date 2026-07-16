@@ -4,8 +4,9 @@
 > `gates.mjs`, `signals.mjs`, `schedule.mjs`, `tasks/`), the plan wired into the census walk, the
 > seed-migration mechanism that backfills a default-on pack into the existing fleet, an example pack task,
 > `scheduling.md` + its enforcing check, and the plan-driven orchestrator. Stage 2 — single-object
-> worker skills and the per-repo report-reconciliation unit, with the standalone tidy routine retired
-> into the pack that owns it. All built and tested.
+> worker skills and the single per-repo `repo-tidy` unit (assess branches/PRs, act on issues, reconcile
+> the tracker in one pass), with the standalone tidy routine retired into the pack that owns it. All
+> built and tested.
 
 The fleet daily maintenance routine ([../auto-all-repos-maintenance.md](../auto-all-repos-maintenance.md))
 today fans an agent out to **every task × every member repo** every night, and decides *what to do*
@@ -32,7 +33,7 @@ is spawned.** That boundary is the frugality lever.
 ```
 [Routine session]  (agent, capable model, home repo)          ← orchestrator, one run
    ├─ run the core planner over the environment's repos ─► units  (plan.mjs — pure gate code, no pack)
-   └─ per unit, honoring ordering ─►  [worker subagent] × N    ← children of the session
+   └─ per unit (all independent) ─►  [worker subagent] × N    ← children of the session
 ```
 
 The planner is **pack-agnostic core code** (`plan.mjs`): the orchestrator hands it the environment's
@@ -48,10 +49,9 @@ A task descriptor is a plain object:
 
 ```js
 {
-  id:     'branch-cleanup',                              // stable task name
+  id:     'repo-tidy',                                   // stable task name
   scope:  'pack:<name>',                                 // 'fleet' | 'pack:<name>' (implicit for pack tasks)
   worker: 'packs/<name>/maintenance/<task>.worker.md',   // the "what to do" doc, canon-relative
-  order:  null,                                          // null = independent/concurrent | a pack-defined token (e.g. 'tidy:report') for per-repo ordering
   full_sweep_supported: true,                            // has a distinct weekly/full mode? (see below)
   smarts: 'medium',                                      // judgment the WORKER needs: 'high'|'medium'|'low'|'none' (see below)
   gate:   async (repo, signals, gh) => ({ run, targets, reason }),  // the "should I run" predicate
@@ -59,9 +59,9 @@ A task descriptor is a plain object:
 ```
 
 **The `full_sweep_supported` capability — declared, so the engine knows whether a weekly pass is even
-meaningful.** Only some tasks have a *distinct* full mode: `branch-cleanup` in full re-examines **all**
-open branches (not just the touched ones), `baselining` in full re-runs the bootstrap + the whole check
-suite to catch member-side drift the canon diff can't see. Others have none — a task that either fires or
+meaningful.** Only some tasks have a *distinct* full mode: `repo-tidy` in full re-examines **all** open
+branches / PRs / issues (not just the touched ones), `baselining` in full re-runs the bootstrap + the
+whole check suite to catch member-side drift the canon diff can't see. Others have none — a task that either fires or
 doesn't has nothing "fuller" to do. So each descriptor **declares `full_sweep_supported`**: on a
 repo's `fullSweep` night the engine runs the full pass **only** of the tasks that declare
 `full_sweep_supported: true` (it invokes their gate in full mode — the exhaustive candidate set); a
@@ -129,11 +129,11 @@ of cheap reads. Gates lean on it and/or do a targeted probe of their own via `gh
 |---|---|---|
 | `fullSweep` | `hash(full_name) % 7 === weekdayUtc` | the full pass of every task that declares `full_sweep_supported: true` (others just run their normal gate) |
 | `pushedAt` | repo object (already in hand from enumeration) | short-circuits the code-side probes when idle |
-| `mainMoved` | commits on the default branch `since` the window | the **landed/implemented** tests (branch-cleanup, issue-triage) |
+| `mainMoved` | commits on the default branch `since` the window | the **landed/implemented** tests (**repo-tidy**) |
 | `projectChanged` | commits / merged PRs in the window | **growth-extract-new-instructions** |
-| `prsTouched[]` | open PRs `updated_at` in window (∪ all if `mainMoved`/`fullSweep`) | **pr-assess** |
-| `issuesTouched[]` | open issues `updated_at` in window (∪ all if `mainMoved`/`fullSweep`) | **issue-triage** |
-| `branchesTouched[]` | branch tips moved in window (∪ all if `mainMoved`/`fullSweep`) | **branch-cleanup** |
+| `prsTouched[]` | open PRs `updated_at` in window (∪ all if `mainMoved`/`fullSweep`) | **repo-tidy** |
+| `issuesTouched[]` | open issues `updated_at` in window (∪ all if `mainMoved`/`fullSweep`) | **repo-tidy** |
+| `branchesTouched[]` | branch tips moved in window (∪ all if `mainMoved`/`fullSweep`) | **repo-tidy** |
 | `activePacks[]` | member's `.claudinite-checks.json` | which pack tasks apply |
 | `canonChanged` *(global)* | home-repo commits in window touching member-affecting paths (`packs/`, `checks/`, `skills/`, `migrations/`, bootstrap wiring) — **excluding** `plan.json`, trackers, and orchestration docs | **growth-dedup-local-instructions** (all repos) + **baselining** |
 | `isHome`, `fleetMembers[]` *(home bundle only)* | stamped by the planner, which plans the home repo **last**: every successfully-probed member's `{ repo, activePacks, projectChanged }` | home-only packs' gates (e.g. the central promote gate targets the changed members that declare the growth pack) |
@@ -171,40 +171,39 @@ nothing for `canonChanged` to trip over) and mirrored to the step summary for hu
   "weekdayUtc": 6,
   "canonChanged": true,
   "units": [
-    { "repo": "owner/foo", "task": "<pack-task>", "worker": "packs/<pack>/maintenance/<task>.worker.md",
-      "targets": { "branches": ["feat-x"] }, "reason": "mainMoved", "order": null, "smarts": "medium" },
+    { "repo": "owner/foo", "task": "repo-tidy", "worker": "packs/<tidy-pack>/run_daily/repo-tidy.worker.md",
+      "targets": { "branches": ["feat-x"], "prs": [7], "issues": [3] }, "reason": "mainMoved", "smarts": "medium" },
     { "repo": "owner/foo", "task": "growth-extract-new-instructions", "worker": "packs/<growth-pack>/extract.md",
-      "targets": {}, "reason": "projectChanged", "order": null, "smarts": "high" },
+      "targets": {}, "reason": "projectChanged", "smarts": "high" },
     { "repo": "owner/foo", "task": "growth-dedup-local-instructions", "worker": "packs/<growth-pack>/dedup.md",
-      "targets": {}, "reason": "canonChanged", "order": null, "smarts": "high" },
+      "targets": {}, "reason": "canonChanged", "smarts": "high" },
     { "repo": "owner/bar", "task": "<pack-release-task>",
       "worker": "packs/<pack>/maintenance/<task>.worker.md",
-      "targets": { "unreleasedVersion": "1.4.0" }, "reason": "unreleased manifest bump", "order": null, "smarts": "none" }
+      "targets": { "unreleasedVersion": "1.4.0" }, "reason": "unreleased manifest bump", "smarts": "none" }
   ]
 }
 ```
 
-Each unit fully specifies one dispatch: repo, worker doc, targets, `order` (the only ordering the
-orchestrator must honor), and `smarts` (copied from the task descriptor so the orchestrator picks the
-tier — or runs code — without re-loading descriptors). The release unit above is
-`smarts: "none"`: the version comparison is already code, so the whole task runs without an agent.
+Each unit fully specifies one dispatch: repo, worker doc, targets, and `smarts` (copied from the task
+descriptor so the orchestrator picks the tier — or runs code — without re-loading descriptors). The
+release unit above is `smarts: "none"`: the version comparison is already code, so the whole task runs
+without an agent.
 
-## Orchestration — dispatch from the plan, honor each unit's ordering
+## Orchestration — dispatch from the plan
 
 The routine session runs the core planner over the reachable fleet, reads its units, and runs one
 worker per unit — **at the tier the unit's `smarts` names**: a subagent on the matching capability
 tier for `high`/`medium`/`low`, or, for
 `none`, a **direct code / tool execution** with no subagent at all. It adds **no behavior** to any
-worker — each runs exactly per its own doc, just handed a pre-filtered target set. Ordering:
+worker — each runs exactly per its own doc, just handed a pre-filtered target set.
 
-- **Independent units** (`order: null` — baselining, the growth tasks, and the independent pack tasks)
-  run concurrently, capped to a sane batch. The growth stages need no
-  barrier: each reads only what's already **merged** (promote picks up tonight's extracts on its
-  *next* run, and its input list is decided at plan time from the `fleetMembers` aggregate), so
-  the central promote stage is an ordinary planned unit on the home repo — the old
-  orchestrator-decided post-barrier exception is gone.
-- **A per-repo report unit** (`order: <pack>:report`) waits for its own repo's other units from the
-  same pack — the per-repo mini-barrier; the only ordering the orchestrator honors.
+**Every unit is independent — no ordering, no barriers of any kind.** Units run concurrently, capped to
+a sane batch. Nothing waits on anything else: the growth stages each read only what's already **merged**
+(promote picks up tonight's extracts on its *next* run, its input list decided at plan time from the
+`fleetMembers` aggregate), and the repo tidy-up is a single `repo-tidy` unit that assesses branches/PRs,
+acts on issues, and reconciles the tracker in one pass — so its own dimensions-then-reconcile sequencing
+lives inside the one worker, not in the plan. (The old per-repo `tidy-report` mini-barrier — the last
+ordering the orchestrator honored — is gone with the merge.)
 
 **Await async completion, don't report at the trigger** (the async-completion rule; #140). A unit
 that kicks off an async downstream process whose output matters is done only when that output exists,

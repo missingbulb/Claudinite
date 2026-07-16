@@ -13,7 +13,6 @@
 export default {
   id: 'growth-discover-packs',
   worker: 'packs/grow_with_claudinite/discover-packs.md',
-  order: null,
   full_sweep_supported: true,
   smarts: 'high', // authoring a pack — distilling rules, writing checks + fixtures — is heavy judgment
 

@@ -12,7 +12,6 @@
 export default {
   id: 'baselining',
   worker: 'packs/basics/run_daily/baselining.worker.md',
-  order: null, // independent/concurrent
   full_sweep_supported: true,
   smarts: 'medium', // merges into CLAUDE.md/settings.json without clobbering — judgment
 

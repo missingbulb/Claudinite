@@ -1,11 +1,11 @@
 # tidy-repo — the repo tidy-up policy
 
-The nightly PR/branch/issue sweep, active wherever this pack is declared. The fleet routine runs its
-maintenance tasks against a repo; this is the policy they share. The per-object **method** lives in the
-pack's skills ([single-branch-status](../../skills/single-branch-status/SKILL.md),
+The nightly PR/branch/issue sweep, active wherever this pack is declared. The fleet routine runs the
+pack's one maintenance task (`repo-tidy`) against a repo; this is the policy it follows. The per-object
+**method** lives in the pack's skills ([single-branch-status](../../skills/single-branch-status/SKILL.md),
 [single-pr-status](../../skills/single-pr-status/SKILL.md),
-[single-issue-triage](../../skills/single-issue-triage/SKILL.md)); the standing tracker is owned by the
-`tidy-report` unit.
+[single-issue-triage](../../skills/single-issue-triage/SKILL.md)); the same task also reconciles the
+standing tracker at the end of its pass.
 
 The one rule that shapes everything: **assess PRs and branches read-only; act only on issues.**
 
@@ -17,6 +17,6 @@ The one rule that shapes everything: **assess PRs and branches read-only; act on
   content **now** — confirm it there and cite it; when you can't, comment, don't close. Every action
   defaults to the reversible option (comment / leave) when the check is inconclusive.
 
-Each dimension task applies its single-object skill across the targets the plan hands it, and its
-recommendations feed `tidy-report`, which rewrites the repo's standing tracker (one issue per repo,
-body rewritten to today's state, a dated comment per run).
+The `repo-tidy` pass applies each single-object skill across the targets the plan hands it, then
+rewrites the repo's standing tracker from the verdicts it gathered (one issue per repo, body rewritten
+to today's state, a dated comment per run).

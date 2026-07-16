@@ -16,7 +16,7 @@ const S = (over = {}) => ({
   prsTouched: [], issuesTouched: [], branchesTouched: [], activePacks: [], ...over,
 });
 const T = (over = {}) => ({
-  id: 't', worker: 'w.md', order: null, full_sweep_supported: false,
+  id: 't', worker: 'w.md', full_sweep_supported: false,
   smarts: 'low', gate: async () => ({ run: true }), ...over,
 });
 
@@ -44,29 +44,30 @@ test('isFullSweepDay fires on exactly one weekday per repo', () => {
 
 test('packTasks collects each pack\'s run_daily tasks, tagged with the pack id', () => {
   const packs = [
-    { id: 'tidy-repo', run_daily: [{ id: 'branch-cleanup' }, { id: 'pr-assess' }] },
+    { id: 'tidy-repo', run_daily: [{ id: 'repo-tidy' }] },
+    { id: 'grow_with_claudinite', run_daily: [{ id: 'growth-extract' }] },
     { id: 'node' }, // no run_daily field
   ];
   const tasks = packTasks(packs);
   assert.equal(tasks.length, 2);
-  assert.deepEqual(tasks.map((t) => t.pack), ['tidy-repo', 'tidy-repo']);
-  assert.equal(tasks[0].id, 'branch-cleanup');
+  assert.deepEqual(tasks.map((t) => t.pack), ['tidy-repo', 'grow_with_claudinite']);
+  assert.equal(tasks[0].id, 'repo-tidy');
 });
 
 test('assembleForRepo = the run_daily tasks of only the packs a repo declares', () => {
   const all = packTasks([
     { id: 'basics', run_daily: [{ id: 'baselining' }] },
-    { id: 'tidy-repo', run_daily: [{ id: 'branch-cleanup' }] },
+    { id: 'tidy-repo', run_daily: [{ id: 'repo-tidy' }] },
   ]);
-  assert.deepEqual(assembleForRepo(['basics', 'tidy-repo'], all).map((t) => t.id), ['baselining', 'branch-cleanup']);
+  assert.deepEqual(assembleForRepo(['basics', 'tidy-repo'], all).map((t) => t.id), ['baselining', 'repo-tidy']);
   assert.deepEqual(assembleForRepo(['basics'], all).map((t) => t.id), ['baselining']); // tidy task absent when undeclared
 });
 
 // --- gate evaluation --------------------------------------------------------
 
-test('planRepo emits a unit per run:true gate, carrying worker/targets/order/smarts', async () => {
+test('planRepo emits a unit per run:true gate, carrying worker/targets/smarts', async () => {
   const tasks = [
-    T({ id: 'a', worker: 'a.md', order: 'tidy:report', smarts: 'high',
+    T({ id: 'a', worker: 'a.md', smarts: 'high',
       gate: async () => ({ run: true, targets: { x: 1 }, reason: 'because' }) }),
     T({ id: 'b', gate: async () => ({ run: false }) }),
   ];
@@ -74,7 +75,7 @@ test('planRepo emits a unit per run:true gate, carrying worker/targets/order/sma
   assert.equal(units.length, 1);
   assert.deepEqual(units[0], {
     repo: 'owner/foo', task: 'a', worker: 'a.md', workerRepo: null, targets: { x: 1 },
-    reason: 'because', order: 'tidy:report', smarts: 'high',
+    reason: 'because', smarts: 'high',
   });
 });
 
@@ -141,17 +142,11 @@ test('growth-dedup (grow_with_claudinite): runs on canonChanged, a substantive c
 
 test('growth-discover-packs (grow_with_claudinite): a regular run_daily task, weekly-only, independent', async () => {
   assert.equal(discoverPacks.full_sweep_supported, true);
-  assert.equal(discoverPacks.order, null); // independent — no barriers in the plan
   // Slow-moving signal: fires only on the member's weekly full sweep, not on day-to-day change.
   assert.equal((await discoverPacks.gate(REPO, S())).run, false);
   assert.equal((await discoverPacks.gate(REPO, S({ projectChanged: true }))).run, false);
   assert.equal((await discoverPacks.gate(REPO, S({ canonChanged: true }))).run, false);
   assert.equal((await discoverPacks.gate(REPO, S({ fullSweep: true }))).run, true);
-});
-
-test('growth extract/dedup (grow_with_claudinite): ordinary independent units — no order token', () => {
-  assert.equal(extract.order, null);
-  assert.equal(dedup.order, null);
 });
 
 // --- canon-curation (home-only pack) gates ----------------------------------

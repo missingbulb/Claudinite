@@ -35,7 +35,6 @@ test('buildWorkPlan: emits units from the real fleet-core tasks with plan metada
   assert.ok(byTask.baselining, 'baselining unit present');
   assert.equal(byTask.baselining.smarts, 'medium');
   assert.ok(byTask['growth-dedup-local-instructions'], 'dedup unit present');
-  assert.equal(byTask['growth-dedup-local-instructions'].order, null); // independent — no barriers
   assert.ok(!byTask['growth-extract-new-instructions'], 'extract absent (project did not change)');
   for (const u of plan.units) assert.equal(u.repo, 'owner/foo');
 });
@@ -77,7 +76,6 @@ test('buildWorkPlan: plans the home repo last — home-only pack gates see the f
   const promote = plan.units.find((u) => u.task === 'growth-promote-to-claudinite');
   assert.ok(promote, 'promote planned as an ordinary unit on the home repo');
   assert.equal(promote.repo, 'o/home');
-  assert.equal(promote.order, null);
   assert.equal(promote.worker, 'packs/canon-curation/promote.md');
   // whether tonight is home's full-sweep night or not, the one enrolled+changed member is the target set
   assert.deepEqual(promote.targets.repos, ['owner/foo']);

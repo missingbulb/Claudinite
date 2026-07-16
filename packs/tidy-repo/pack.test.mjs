@@ -9,51 +9,34 @@ const S = (over = {}) => ({
 });
 const task = (id) => pack.run_daily.find((t) => t.id === id);
 
-test('tidy-repo is a declared pack (no fingerprint) with its run_daily tasks and skills', () => {
+test('tidy-repo is a declared pack (no fingerprint) with its one run_daily task and skills', () => {
   assert.equal(pack.id, 'tidy-repo');
   assert.equal(pack.detect, null);
-  assert.deepEqual(pack.run_daily.map((t) => t.id), ['branch-cleanup', 'pr-assess', 'issue-triage', 'tidy-report']);
+  assert.deepEqual(pack.run_daily.map((t) => t.id), ['repo-tidy']);
   assert.deepEqual(pack.skills, ['single-branch-status', 'single-pr-status', 'single-issue-triage']);
-  for (const t of pack.run_daily) {
-    assert.equal(t.full_sweep_supported, true);
-    assert.match(t.worker, /^packs\/tidy-repo\/run_daily\/.*\.worker\.md$/);
-  }
-  // Dimension tasks need judgment (medium); the report is mechanical aggregation (low).
-  assert.deepEqual(pack.run_daily.map((t) => t.smarts), ['medium', 'medium', 'medium', 'low']);
+  const t = task('repo-tidy');
+  assert.equal(t.full_sweep_supported, true);
+  assert.match(t.worker, /^packs\/tidy-repo\/run_daily\/repo-tidy\.worker\.md$/);
+  // A single pass doing dimensions-then-reconcile needs no ordering barrier.
+  assert.equal(t.order, undefined);
+  // The pass makes landed-status and implemented-in-main judgment calls.
+  assert.equal(t.smarts, 'medium');
 });
 
-test('tidy-report: runs after any tidy activity or on the weekly sweep, ordered as a per-repo barrier', async () => {
-  const g = task('tidy-report').gate;
-  assert.equal(task('tidy-report').order, 'tidy:report');
+test('repo-tidy: runs on any tidy activity or the weekly sweep, carrying all three target lists', async () => {
+  const g = task('repo-tidy').gate;
   assert.equal((await g(REPO, S())).run, false); // nothing happened
-  assert.equal((await g(REPO, S({ branchesTouched: ['main'] }))).run, false); // only default branch
+  assert.equal((await g(REPO, S({ branchesTouched: ['main'] }))).run, false); // only the default branch
   assert.equal((await g(REPO, S({ prsTouched: [1] }))).run, true);
   assert.equal((await g(REPO, S({ issuesTouched: [2] }))).run, true);
   assert.equal((await g(REPO, S({ branchesTouched: ['main', 'feat'] }))).run, true);
   assert.equal((await g(REPO, S({ fullSweep: true }))).run, true);
 });
 
-test('branch-cleanup: excludes the default branch, runs only when other branches are present', async () => {
-  const g = task('branch-cleanup').gate;
-  assert.equal((await g(REPO, S())).run, false); // no branches touched
-  assert.equal((await g(REPO, S({ branchesTouched: ['main'] }))).run, false); // only default
-  const v = await g(REPO, S({ branchesTouched: ['main', 'feat-x'], mainMoved: true }));
+test('repo-tidy: excludes the default branch from the branch targets, carries the rest', async () => {
+  const g = task('repo-tidy').gate;
+  const v = await g(REPO, S({ branchesTouched: ['main', 'feat-x'], prsTouched: [7, 9], issuesTouched: [3], mainMoved: true }));
   assert.equal(v.run, true);
-  assert.deepEqual(v.targets.branches, ['feat-x']);
-});
-
-test('pr-assess: runs on the surfaced PRs, carries them as targets', async () => {
-  const g = task('pr-assess').gate;
-  assert.equal((await g(REPO, S())).run, false);
-  const v = await g(REPO, S({ prsTouched: [7, 9] }));
-  assert.equal(v.run, true);
-  assert.deepEqual(v.targets.prs, [7, 9]);
-});
-
-test('issue-triage: runs on the surfaced issues, carries them as targets', async () => {
-  const g = task('issue-triage').gate;
-  assert.equal((await g(REPO, S())).run, false);
-  const v = await g(REPO, S({ issuesTouched: [3], mainMoved: true }));
-  assert.equal(v.run, true);
-  assert.deepEqual(v.targets.issues, [3]);
+  assert.deepEqual(v.targets, { branches: ['feat-x'], prs: [7, 9], issues: [3] });
+  assert.match(v.reason, /main moved/);
 });
