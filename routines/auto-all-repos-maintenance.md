@@ -39,6 +39,8 @@ If the planner logic itself **fails** (the gate code errors across the board), o
 
 Run each unit's **worker** at the tier its `smarts` names: a subagent on the matching capability tier for `high` / `medium` / `low`, or, for **`none`**, a **direct code / tool execution** with no subagent. Dispatch subagents with the **Agent/Task tool, never the multi-agent-orchestration Workflow tool** — its mandatory interactive opt-in stalls an unattended run on step one, waiting for an "Allow" no one is there to click. Each worker runs **exactly per its own doc**, handed the unit's `targets`; this routine adds **no** behavior.
 
+**Pass the plan's gathered enumeration through — don't make the worker re-fetch it.** The planner already enumerated each repo's touched branches / PRs / issues to build the unit (they're in the unit's `targets`, and the worker docs already say "the plan hands you the list — you don't enumerate"). So hand the worker that enumeration and let it start from there; **do not re-run `list_branches` / `list_pull_requests` / `list_issues` in the dispatch, and do not instruct the worker to re-enumerate** what the plan already holds — a worker fetches only the per-item detail it needs to verify (e.g. a branch's landed status against the default branch). Re-gathering the same lists the planner just fetched is pure duplicated cost and adds nothing; the plan is the single source of the worklist.
+
 Ordering — the only thing this routine must honor:
 
 - **Independent units** (`order: null` — the tidy dimensions, baselining, the growth tasks, pack tasks) run **concurrently**, capped to a sane batch.

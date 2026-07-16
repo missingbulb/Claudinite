@@ -122,9 +122,11 @@ test('chrome-release-vendoring migration: gate, telemetry, and the home-file ret
   const m = (await loadMigrations()).find((x) => x.id === 'chrome-release-vendoring');
   assert.ok(m, 'discovered');
   assert.equal(m.retire, 'auto');
-  assert.equal(m.retireDeletesFromHome.length, 9);
+  assert.equal(m.retireDeletesFromHome.length, 8);
   assert.ok(m.retireDeletesFromHome.includes('.github/workflows/chrome-extension-release.yml'));
-  assert.ok(m.retireDeletesFromHome.includes('.github/actions/report-failure/action.yml'));
+  // report-failure is shared canon infra (a non-chrome pack's coverage stub + the
+  // general failure reporter reference it @main), so it must NOT be in the deletion set.
+  assert.ok(!m.retireDeletesFromHome.includes('.github/actions/report-failure/action.yml'));
 
   const orchestrator = (uses) => `name: Release to Chrome Store\njobs:\n  cp:\n    uses: ${uses}\n`;
   const legacy = orchestrator('missingbulb/Claudinite/.github/workflows/chrome-extension-release.yml@main');

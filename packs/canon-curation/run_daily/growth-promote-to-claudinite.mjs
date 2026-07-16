@@ -31,12 +31,15 @@ export default {
         reason: 'weekly full promote over all participating members',
       };
     }
-    const changed = participants.filter((m) => m.projectChanged);
+    // substantiveChange, not projectChanged: don't target a member whose only
+    // in-window main move was housekeeping (bot bump / baselining) — there's no new
+    // merged lesson to promote from it (see routines/fleet/signals.mjs).
+    const changed = participants.filter((m) => m.substantiveChange);
     if (changed.length) {
       return {
         run: true,
         targets: { repos: changed.map((m) => m.repo) },
-        reason: `${changed.length} participating member(s) changed in the window`,
+        reason: `${changed.length} participating member(s) changed substantively in the window`,
       };
     }
     return { run: false };

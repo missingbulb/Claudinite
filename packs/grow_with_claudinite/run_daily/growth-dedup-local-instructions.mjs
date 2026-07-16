@@ -22,8 +22,10 @@ export default {
     if (signals.canonChanged) {
       return { run: true, targets: {}, reason: 'canon changed — local items may now be covered' };
     }
-    if (signals.projectChanged) {
-      return { run: true, targets: {}, reason: 'project docs changed' };
+    // substantiveChange, not projectChanged: a housekeeping main move (bot bump /
+    // baselining commit) changes no local lesson worth re-deduping (see signals.mjs).
+    if (signals.substantiveChange) {
+      return { run: true, targets: {}, reason: 'project docs changed substantively' };
     }
     return { run: false };
   },

@@ -77,6 +77,23 @@ async function readActivePacks(gh, fullName) {
   } catch { return []; }
 }
 
+// Commits that are fleet/CI housekeeping rather than genuine project work: a
+// bot-authored commit (a `[bot]` login — CI/automation data refreshes or
+// auto-release version bumps), an explicit `[skip ci]` marker, or a baselining/seed
+// commit
+// (the nightly maintenance's own writes). Excluding these from `substantiveChange`
+// stops the growth tasks from self-triggering on the fleet's own maintenance commits
+// — the feedback loop where last night's baselining seed-commit fires tonight's
+// growth-extract/dedup on a repo that has no new lesson to find.
+const HOUSEKEEPING_MESSAGE = /\[skip ci\]|baselining|claudinite baseline|seed default-on/i;
+function isSubstantiveCommit(c) {
+  const login = c.author && c.author.login ? c.author.login : '';
+  if (login.endsWith('[bot]')) return false;
+  const message = (c.commit && c.commit.message) || '';
+  if (HOUSEKEEPING_MESSAGE.test(message)) return false;
+  return true;
+}
+
 // Build the bundle. `pushed_at` (already in hand from enumeration) short-circuits the
 // code-side probes when nothing was pushed and it isn't a full sweep; PR/issue probes
 // always run (a comment/label moves `updated_at` without a push). canonChanged is the
@@ -93,11 +110,18 @@ export async function buildSignals(gh, repo, { sinceIso, weekdayUtc, canonChange
   const pushedInWindow = repo.pushed_at ? new Date(repo.pushed_at) >= new Date(sinceIso) : false;
 
   let mainMoved = false;
+  let substantiveChange = false;
   if (pushedInWindow || fullSweep) {
     const { status, json } = await gh(
-      `/repos/${fullName}/commits?sha=${encodeURIComponent(defaultBranch)}&since=${sinceIso}&per_page=1`,
+      `/repos/${fullName}/commits?sha=${encodeURIComponent(defaultBranch)}&since=${sinceIso}&per_page=100`,
     );
-    mainMoved = status === 200 && Array.isArray(json) && json.length > 0;
+    const commits = status === 200 && Array.isArray(json) ? json : [];
+    mainMoved = commits.length > 0;
+    // Real project work in the window (not fleet/CI housekeeping) — the trigger the
+    // growth tasks key on, so a bot bump or a nightly baselining commit doesn't spawn
+    // a heavy growth agent that finds nothing. tidy stays on `mainMoved`: even a
+    // housekeeping commit can land a PR whose branch/PR state is worth re-checking.
+    substantiveChange = commits.some(isSubstantiveCommit);
   }
   // The default branch advancing (merges land there too) is "the project changed".
   const projectChanged = mainMoved;
@@ -113,6 +137,7 @@ export async function buildSignals(gh, repo, { sinceIso, weekdayUtc, canonChange
     pushedAt: repo.pushed_at ?? null,
     mainMoved,
     projectChanged,
+    substantiveChange,
     prsTouched,
     issuesTouched,
     branchesTouched,
