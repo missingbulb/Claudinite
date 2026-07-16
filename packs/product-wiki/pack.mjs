@@ -2,7 +2,7 @@
 // (compile-once/refine-in-place, cited, dated, isolated behind the reviewed
 // product-requirements crossing point). The folder is the classifier: the two
 // reserved names (product-requirements/, sample-data/) have fixed meaning;
-// everything else under product/ is wiki space. Fingerprinted by the
+// everything else under product-wiki/ is wiki space. Fingerprinted by the
 // standard's one structural constant — the sink.
 import { SINK_README } from './lib.mjs';
 import layout from './layout.mjs';

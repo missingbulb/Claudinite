@@ -6,7 +6,7 @@ import { wikiPages, hasSection } from './lib.mjs';
 // case variation and suffix words ("## Open questions (for the next growth
 // pass)") and ignores headings inside code fences — an embedded template must
 // not satisfy the requirement. A non-wiki README inside wiki space (an assets
-// folder) firing here is by design — assets belong under product/sample-data/;
+// folder) firing here is by design — assets belong under product-wiki/sample-data/;
 // a genuine exception uses a reasoned accept.
 const SECTIONS = ['Sources', 'Growth log', 'Open questions'];
 

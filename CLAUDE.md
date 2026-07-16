@@ -51,7 +51,7 @@ pack-contributed content, and where each kind of feature goes (almost never core
   — [packs/executable-requirements/RULES.md](packs/executable-requirements/RULES.md)); and
   `product-wiki` (the self-growing product research wiki standard — layout, section/citation/log
   checks, a fixed isolation barrier, a weekly growth daily task; fingerprinted by
-  `product/product-requirements/README.md` — [packs/product-wiki/README.md](packs/product-wiki/README.md)).
+  `product-wiki/product-requirements/README.md` — [packs/product-wiki/README.md](packs/product-wiki/README.md)).
 
 The declaration is **pack-oriented**: a `packs` entry is a pack id, or an entry object carrying that
 pack's own settings — its parameters (`config`), and the rule overrides/acceptances its declaration

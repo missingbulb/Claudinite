@@ -26,7 +26,7 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 | [play-store-release](play-store-release/README.md) | declared (opt-in) | 0 | stub |
 | [app-store-release](app-store-release/README.md) | declared (opt-in) | 0 | stub |
 | [research-project](research-project/README.md) | declared (class) | 0 | 54 (14 sections) |
-| [product-wiki](product-wiki/README.md) | declared (marker: `product/product-requirements/README.md`) | 6 | wiki growth discipline + weekly growth daily task |
+| [product-wiki](product-wiki/README.md) | declared (marker: `product-wiki/product-requirements/README.md`) | 6 | wiki growth discipline + weekly growth daily task |
 | [spec-driven-product](spec-driven-product/README.md) | declared (class) | 0 | 25 (8 sections) |
 | [executable-requirements](executable-requirements/README.md) | `dev/requirements/requirements.md` | 0 | framework standard (layout / gates / kinds) |
 

@@ -4,19 +4,19 @@ import { under } from '../barriers/engine.mjs';
 // Shared helpers and the standard's path constants — spelled ONCE here so the
 // checks, the manifest, and the barrier can't drift apart. The wiki set is
 // STRUCTURAL, not configured: a wiki page is a README.md at depth >= 2 under
-// product/, outside the two reserved subtrees (product-requirements/ — the
+// product-wiki/, outside the two reserved subtrees (product-requirements/ — the
 // human-reviewed sink — and sample-data/ — illustrative assets). No wikis
 // manifest exists anywhere, so a renamed or newly added wiki folder is
 // classified correctly with nothing to drift (folder-is-the-classifier).
-export const PRODUCT_ROOT = 'product';
-export const SINK_DIR = 'product/product-requirements';
-export const SAMPLE_DATA_DIR = 'product/sample-data';
-export const INDEX_README = 'product/README.md';
-export const SINK_README = 'product/product-requirements/README.md';
+export const PRODUCT_ROOT = 'product-wiki';
+export const SINK_DIR = 'product-wiki/product-requirements';
+export const SAMPLE_DATA_DIR = 'product-wiki/sample-data';
+export const INDEX_README = 'product-wiki/README.md';
+export const SINK_README = 'product-wiki/product-requirements/README.md';
 
 export function wikiPages(files) {
   return files.filter(
-    (f) => /^product\/.+\/README\.md$/.test(f) && !under(f, SINK_DIR) && !under(f, SAMPLE_DATA_DIR)
+    (f) => /^product-wiki\/.+\/README\.md$/.test(f) && !under(f, SINK_DIR) && !under(f, SAMPLE_DATA_DIR)
   );
 }
 
@@ -72,7 +72,7 @@ export function sectionBody(text, name) {
   return lines.slice(start + 1, end).map((t, i) => ({ line: start + 2 + i, text: t }));
 }
 
-// The pack takes no config — the product/ layout IS the standard. A config
+// The pack takes no config — the product-wiki/ layout IS the standard. A config
 // object on the pack entry is a settings mistake (probably a misremembered
 // knob), surfaced once, by the layout check only (no cascade). Deliberately
 // pack-local rather than a runner-level manifest flag: no other pack rejects
@@ -84,7 +84,7 @@ export function configGuard(ctx, rule) {
   if (cfg === undefined || cfg === null) return [];
   return [finding(rule, {
     file: '.claudinite-checks.json',
-    what: 'product-wiki config: the pack takes no config — the product/ layout is the standard',
+    what: 'product-wiki config: the pack takes no config — the product-wiki/ layout is the standard',
     fix: 'remove the "config" object from the product-wiki pack entry (to silence the freshness advisory use rules: {"product-wiki-freshness": "off"})',
   })];
 }

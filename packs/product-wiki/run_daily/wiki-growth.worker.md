@@ -9,8 +9,8 @@ outcome.** A padded or fabricated update is worse than none.
 Works entirely over the session's **GitHub MCP tools** (`mcp__github__*`) — never
 `gh`/`curl`/a clone; the fleet run has no consumer shell or npm. "Default branch"
 below means the repo's actual default branch. The wiki set is derived
-**structurally**: every `README.md` at depth ≥ 2 under `product/`, excluding the
-`product/product-requirements/` and `product/sample-data/` subtrees.
+**structurally**: every `README.md` at depth ≥ 2 under `product-wiki/`, excluding the
+`product-wiki/product-requirements/` and `product-wiki/sample-data/` subtrees.
 
 ## Preflight
 
@@ -33,9 +33,9 @@ add one dated nudge comment on that PR and stop.
    its own GitHub URL.
 4. **Write into the relevant wiki page(s) only**, per the pack's RULES.md: cite
    every claim in that page's `## Sources`; correct a wrong or superseded claim
-   with a note of why, never a silent deletion; touch `product/sample-data/`
+   with a note of why, never a silent deletion; touch `product-wiki/sample-data/`
    only when a new claim needs an illustrative example; **never write
-   `product/product-requirements/`** — a finding that should move a requirement
+   `product-wiki/product-requirements/`** — a finding that should move a requirement
    gets a growth-log note (and a repo issue) and waits for a human.
 5. **One dated `## Growth log` entry per touched page** (`- **YYYY-MM-DD** —
    what changed`).
@@ -51,7 +51,7 @@ Neither mode yields citable material → stop. No commit, no log entry, no PR.
 This worker's own delivery policy (deliberately stricter than the member's
 `maintenance.delivery`, and documented here as that sanctioned deviation):
 branch `claude/product-wiki-growth/<date>` (unique branch per run), commits
-touching only `product/**` minus `product-requirements/`, one **PR — never
+touching only `product-wiki/**` minus `product-requirements/`, one **PR — never
 merged, never pushed to the default branch directly**. Web-researched claims
 entering a committed knowledge base need the review gate; mechanical
 drift-correction doesn't, but this isn't that. PR body: the question(s)
@@ -72,7 +72,7 @@ judgment-heavy, and the PR review gate is the last catch for fabrication.
 
 ## What this worker must never do
 
-Edit `product/product-requirements/`; edit anything outside `product/`; create
+Edit `product-wiki/product-requirements/`; edit anything outside `product-wiki/`; create
 new wiki folders (automation refines existing pages — a human creates a wiki
 deliberately); write an uncited claim; delete a claim without a superseded
 note; pad a growth log or a wiki page to look productive; merge or approve its

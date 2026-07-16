@@ -1,23 +1,23 @@
 # product-wiki pack
 
 The self-growing product research wiki standard: a repo keeps its
-market/user/competitor research as agent-maintained wikis under `product/`
+market/user/competitor research as agent-maintained wikis under `product-wiki/`
 (Karpathy's LLM-wiki pattern — compile findings once, refine in place, cite
 everything), walled off from the code so nothing can silently depend on
 unreviewed research, with one human-reviewed crossing point. Declared by the
-project (fingerprint: `product/product-requirements/README.md` — the sink is
+project (fingerprint: `product-wiki/product-requirements/README.md` — the sink is
 the standard's one structural constant). Takes **no config**: the layout is the
 standard.
 
 ## The standard
 
-- `product/` at the repo root. Two reserved children with fixed meaning:
-  **`product/product-requirements/`** — the human-reviewed distillation of the
-  wikis into product requirements, the **only** `product/` content the rest of
-  the repo may reference, never auto-grown — and **`product/sample-data/`** —
+- `product-wiki/` at the repo root. Two reserved children with fixed meaning:
+  **`product-wiki/product-requirements/`** — the human-reviewed distillation of the
+  wikis into product requirements, the **only** `product-wiki/` content the rest of
+  the repo may reference, never auto-grown — and **`product-wiki/sample-data/`** —
   small illustrative assets a wiki claim points to (never test fixtures).
-- **Everything else under `product/` is wiki space** — any names, any nesting.
-  A wiki page is a `README.md` at depth ≥ 2 under `product/` outside the two
+- **Everything else under `product-wiki/` is wiki space** — any names, any nesting.
+  A wiki page is a `README.md` at depth ≥ 2 under `product-wiki/` outside the two
   reserved subtrees. The folder is the classifier; there is no wikis manifest
   to drift, and a renamed wiki folder is still a wiki folder — still checked,
   still barred.
@@ -54,7 +54,7 @@ unattended growth channel silently stopped firing". Silence it with
 ## Scaffold template
 
 ```
-product/
+product-wiki/
   README.md                        # index: what lives here, why it's walled off
   product-requirements/README.md   # the human-reviewed sink (required)
   <YourWiki>/README.md             # one folder per wiki — seeded like this:
@@ -100,7 +100,7 @@ staleness-audited — prune one by hand when the crossing it excused is gone.
 
 ## Bootstrap ordering
 
-Declaring the pack before scaffolding `product/` yields two `layout` findings
+Declaring the pack before scaffolding `product-wiki/` yields two `layout` findings
 plus the barrier's fail-closed empty-glob finding — three blocking arrows all
 pointing at the same two-file scaffold. That is deliberate: a declaration is a
 statement of intent, unlike the barriers pack's unconfigured no-op (where
@@ -110,7 +110,7 @@ config absence means "nothing declared").
 
 - The barrier engine never scans `*.test.mjs`/test files as sources, so a test
   importing from wiki space is invisible to `product-wiki-isolation` — covered
-  by prose (nothing a test asserts against belongs under `product/`), not
+  by prose (nothing a test asserts against belongs under `product-wiki/`), not
   fought in code.
 - Accepts against `product-wiki-isolation` are pruned by hand (no staleness
   audit — see above).

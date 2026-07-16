@@ -14,7 +14,7 @@ const rule = {
   id: 'product-wiki-layout',
   severity: 'blocking',
   doc: 'packs/product-wiki/README.md',
-  description: 'A product-wiki repo carries the product/ skeleton: the index README and the reviewed product-requirements sink',
+  description: 'A product-wiki repo carries the product-wiki/ skeleton: the index README and the reviewed product-requirements sink',
   why: 'a declared standard with no scaffold silently enforces nothing — the isolation wall and the wiki discipline both hang off these fixed paths',
 
   run(ctx) {
