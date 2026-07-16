@@ -12,7 +12,7 @@ import proseSweep from '../../packs/canon-curation/run_daily/prose-to-checks-swe
 
 const REPO = { fullName: 'owner/foo', defaultBranch: 'main' };
 const S = (over = {}) => ({
-  fullSweep: false, mainMoved: false, projectChanged: false, canonChanged: false,
+  fullSweep: false, mainMoved: false, projectChanged: false, substantiveChange: false, canonChanged: false,
   prsTouched: [], issuesTouched: [], branchesTouched: [], activePacks: [], ...over,
 });
 const T = (over = {}) => ({
@@ -121,18 +121,22 @@ test('baselining (basics): self-skips the home repo â€” the canon doesn\'t mount
   assert.equal((await baselining.gate(REPO, S({ isHome: true, fullSweep: true }))).run, false);
 });
 
-test('growth-extract (grow_with_claudinite): runs only when the project changed; no full mode', async () => {
+test('growth-extract (grow_with_claudinite): runs only on a substantive project change; no full mode', async () => {
   assert.equal(extract.full_sweep_supported, false);
   assert.equal((await extract.gate(REPO, S())).run, false);
-  assert.equal((await extract.gate(REPO, S({ projectChanged: true }))).run, true);
+  assert.equal((await extract.gate(REPO, S({ substantiveChange: true }))).run, true);
+  // a housekeeping-only main move (bot bump / baselining) must NOT trigger extract
+  assert.equal((await extract.gate(REPO, S({ mainMoved: true, projectChanged: true }))).run, false);
 });
 
-test('growth-dedup (grow_with_claudinite): runs on canonChanged, projectChanged, or its full sweep', async () => {
+test('growth-dedup (grow_with_claudinite): runs on canonChanged, a substantive change, or its full sweep', async () => {
   assert.equal(dedup.full_sweep_supported, true);
   assert.equal((await dedup.gate(REPO, S())).run, false);
   assert.equal((await dedup.gate(REPO, S({ canonChanged: true }))).run, true);
-  assert.equal((await dedup.gate(REPO, S({ projectChanged: true }))).run, true);
+  assert.equal((await dedup.gate(REPO, S({ substantiveChange: true }))).run, true);
   assert.equal((await dedup.gate(REPO, S({ fullSweep: true }))).run, true);
+  // a housekeeping-only main move must NOT by itself trigger dedup
+  assert.equal((await dedup.gate(REPO, S({ mainMoved: true, projectChanged: true }))).run, false);
 });
 
 test('growth-discover-packs (grow_with_claudinite): a regular run_daily task, weekly-only, independent', async () => {
@@ -154,15 +158,21 @@ test('growth extract/dedup (grow_with_claudinite): ordinary independent units â€
 
 const HOME = { fullName: 'o/home', defaultBranch: 'main' };
 const MEMBERS = [
-  { repo: 'owner/foo', activePacks: ['basics', 'grow_with_claudinite'], projectChanged: true },
-  { repo: 'owner/bar', activePacks: ['basics', 'grow_with_claudinite'], projectChanged: false },
-  { repo: 'owner/baz', activePacks: ['basics'], projectChanged: true }, // not enrolled
+  { repo: 'owner/foo', activePacks: ['basics', 'grow_with_claudinite'], projectChanged: true, substantiveChange: true },
+  { repo: 'owner/bar', activePacks: ['basics', 'grow_with_claudinite'], projectChanged: false, substantiveChange: false },
+  { repo: 'owner/baz', activePacks: ['basics'], projectChanged: true, substantiveChange: true }, // not enrolled
 ];
 
 test('growth-promote-to-claudinite (canon-curation): targets the changed participating members', async () => {
   const v = await promote.gate(HOME, S({ isHome: true, fleetMembers: MEMBERS }));
   assert.equal(v.run, true);
   assert.deepEqual(v.targets.repos, ['owner/foo']); // changed AND enrolled; baz changed but isn't enrolled
+});
+
+test('growth-promote-to-claudinite: a member whose only change was housekeeping is not targeted', async () => {
+  // enrolled + main moved, but the move was bot/baselining (substantiveChange false)
+  const members = [{ repo: 'owner/foo', activePacks: ['basics', 'grow_with_claudinite'], projectChanged: true, substantiveChange: false }];
+  assert.equal((await promote.gate(HOME, S({ isHome: true, fleetMembers: members }))).run, false);
 });
 
 test('growth-promote-to-claudinite: full sweep promotes over all participants regardless of change', async () => {
@@ -172,7 +182,7 @@ test('growth-promote-to-claudinite: full sweep promotes over all participants re
 });
 
 test('growth-promote-to-claudinite: quiet when nothing changed, and never runs off the home repo', async () => {
-  assert.equal((await promote.gate(HOME, S({ isHome: true, fleetMembers: MEMBERS.map((m) => ({ ...m, projectChanged: false })) }))).run, false);
+  assert.equal((await promote.gate(HOME, S({ isHome: true, fleetMembers: MEMBERS.map((m) => ({ ...m, projectChanged: false, substantiveChange: false })) }))).run, false);
   assert.equal((await promote.gate(HOME, S({ isHome: true }))).run, false); // no aggregate at all
   // A stray declaration on a member can't double-run promote: the gate requires isHome.
   assert.equal((await promote.gate(REPO, S({ fleetMembers: MEMBERS }))).run, false);

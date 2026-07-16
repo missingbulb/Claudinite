@@ -72,6 +72,7 @@ test('buildSignals: idle repo (old push, not full sweep) skips the main-moved pr
   const s = await buildSignals(gh, REPO({ pushed_at: '2026-07-01T00:00:00Z' }), { sinceIso: SINCE, weekdayUtc: (fullSweepBucket('owner/foo') + 1) % 7, canonChanged: false });
   assert.equal(s.mainMoved, false);
   assert.equal(s.projectChanged, false);
+  assert.equal(s.substantiveChange, false);
   assert.equal(s.branchesTouched.length, 0, 'no branch probe when idle');
   assert.ok(!gh.calls.some((p) => /\/commits\?sha=/.test(p)), 'main-moved probe skipped');
   assert.deepEqual(s.activePacks, ['basics', 'tidy-repo']);
@@ -88,8 +89,35 @@ test('buildSignals: pushed-in-window with commits → mainMoved/projectChanged t
   const s = await buildSignals(gh, REPO(), { sinceIso: SINCE, weekdayUtc: (fullSweepBucket('owner/foo') + 1) % 7, canonChanged: true });
   assert.equal(s.mainMoved, true);
   assert.equal(s.projectChanged, true);
+  assert.equal(s.substantiveChange, true, 'a plain (non-bot, non-housekeeping) commit is substantive');
   assert.deepEqual(s.branchesTouched, ['main', 'feat']);
   assert.equal(s.canonChanged, true);
+});
+
+test('buildSignals: substantiveChange excludes bot / [skip ci] / baselining commits', async () => {
+  const housekeeping = [
+    { sha: 'a', author: { login: 'github-actions[bot]' }, commit: { message: 'Refresh data (daily top-up)' } },
+    { sha: 'b', author: { login: 'missingbulb' }, commit: { message: 'Bump version to 1.2.3 [skip ci]' } },
+    { sha: 'c', author: { login: 'missingbulb' }, commit: { message: 'Claudinite baselining: seed default-on packs' } },
+  ];
+  const routes = (commits) => [
+    okPacks,
+    [/\/commits\?sha=/, { status: 200, json: commits }],
+    [/\/pulls\?/, { status: 200, json: [] }],
+    [/\/issues\?/, { status: 200, json: [] }],
+    [/\/branches\?/, { status: 200, json: [] }],
+  ];
+  const opts = { sinceIso: SINCE, weekdayUtc: (fullSweepBucket('owner/foo') + 1) % 7, canonChanged: false };
+
+  const s1 = await buildSignals(fakeGh(routes(housekeeping)), REPO(), opts);
+  assert.equal(s1.mainMoved, true, 'main still moved');
+  assert.equal(s1.projectChanged, true, 'projectChanged tracks any move (tidy keys on it)');
+  assert.equal(s1.substantiveChange, false, 'all-housekeeping window is not substantive');
+
+  // one genuine human, non-housekeeping commit among the housekeeping → substantive
+  const mixed = [...housekeeping, { sha: 'd', author: { login: 'missingbulb' }, commit: { message: 'fix: correct the reach-radius math' } }];
+  const s2 = await buildSignals(fakeGh(routes(mixed)), REPO(), opts);
+  assert.equal(s2.substantiveChange, true, 'a real commit among housekeeping → substantive');
 });
 
 test('buildSignals: without widening, only in-window PRs are collected (sorted, early stop)', async () => {

@@ -17,8 +17,10 @@ export default {
   smarts: 'high', // generalizing/curating lessons is the heaviest judgment
 
   async gate(repo, signals) {
-    if (signals.projectChanged) {
-      return { run: true, targets: {}, reason: 'project changed in the window' };
+    // substantiveChange, not projectChanged: a bot bump / [skip ci] / nightly
+    // baselining commit advancing main is not a lesson to extract (see signals.mjs).
+    if (signals.substantiveChange) {
+      return { run: true, targets: {}, reason: 'project changed substantively in the window' };
     }
     return { run: false };
   },
