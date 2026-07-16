@@ -157,8 +157,11 @@ extractor-automation pack). Each local pack is a real pack:
   finding objects rather than importing the engine's helpers.
 - **Skills** (`skills/<name>/SKILL.md`) — the project's activity-scoped procedures, bundled in the pack;
   a local pack may also *require* a canon skill by name.
-- **`run_daily`** — any project-specific scheduled task the fleet should run (a self-contained gate
-  descriptor + its worker doc).
+
+Local packs' prose, checks, and skills are the proven path. A local pack *can* also declare
+**`run_daily`** tasks, but the fleet's local-pack daily-run path is **experimental and not enabled by
+default** — so keep a project's scheduled work as a canon-pack `run_daily` or an out-of-repo routine
+for now, not a local `run_daily`.
 
 The project's `CLAUDE.md` becomes a thin **routing map** to its local packs (and its genuine design
 docs) — it does **not** `@import` the pack prose; the pack system injects the active local packs'

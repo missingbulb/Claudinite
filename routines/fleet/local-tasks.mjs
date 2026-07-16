@@ -7,6 +7,16 @@
 // that, kept out of the pure planner (which just receives the resulting task list
 // through its `localTasksFor` seam).
 //
+// ⚠️ EXPERIMENTAL — NOT ENABLED BY DEFAULT. Local packs' prose, checks, and skills
+// are the proven, shipped path; running a member's own local-pack DAILY jobs on the
+// fleet is not yet. The daily-run mechanism hasn't been exercised at the load and
+// variety of arbitrary member-authored jobs, so the orchestrator does NOT wire this
+// reader by default (buildWorkPlan's localTasksFor seam is left unset, so no local
+// task is planned — see routines/auto-all-repos-maintenance.md). The code and its
+// tests live here so the path is ready to enable deliberately once it's proven; a
+// project's scheduled work stays a canon-pack run_daily or an out-of-repo routine
+// until then.
+//
 // TRUST. A descriptor's `gate` is member-authored code that runs in the fleet
 // session, exactly like a canon pack's gate — the difference is provenance only.
 // That is safe under the fleet's single-owner model: every repo the routine

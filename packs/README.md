@@ -47,9 +47,14 @@ bundled skills resolve off it) and a `local` flag. A local pack:
   (mounted from the tracked pack dir); a bundled skill may carry `checks.mjs`, run when the pack is
   active;
 - rides the deployment plumbing every consumer already vendors: the sync hook preserves
-  `.claudinite/local_packs/` across its dir swap, the `.gitignore` re-includes it, and the fleet
-  daily planner reads a local pack's `run_daily` tasks from the member repo
-  ([../routines/fleet/local-tasks.mjs](../routines/fleet/local-tasks.mjs)).
+  `.claudinite/local_packs/` across its dir swap and the `.gitignore` re-includes it.
+
+A local pack's **prose, checks, and skills** are the proven, shipped path. A local pack may also
+declare `run_daily` tasks, and the fleet planner has a tested seam to read them from the member repo
+([../routines/fleet/local-tasks.mjs](../routines/fleet/local-tasks.mjs)) — but that daily-run path is
+**experimental and not enabled by default** (not yet proven for the load and variety of arbitrary
+member-authored jobs), so a project's scheduled work stays a canon-pack `run_daily` or an out-of-repo
+routine until it's deliberately enabled.
 
 The canon-vs-local line is the portable-vs-project-specific split ([../extending.md](../extending.md));
 a project adopts the structure via the `generate-project-instructions` skill, and the growth lifecycle

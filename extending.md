@@ -67,11 +67,14 @@ same way:
   *portable*: written as if no one project existed, shared by every project that declares it.
 - **A local pack** — `.claudinite/local_packs/<name>/` in a **consumer's own tree**, tracked
   project content the consumer authors and commits. It is *project-specific*: the working style,
-  values, checks, skills, and daily tasks that don't generalize past this one repo — the project's
+  values, checks, and skills that don't generalize past this one repo — the project's
   **normalized capture surface** (what used to sprawl as always-loaded `CLAUDE.md`/`dev/procedures`
   prose). `discoverPacks` scans both roots; a local pack carries its own `dir`, is `local: true`,
-  and may not shadow a canon id. Everything downstream — prose injection, the Stop/CI checks, skill
-  mounting, the fleet daily planner — treats a declared local pack exactly like a canon one.
+  and may not shadow a canon id. Prose injection, the Stop/CI checks, and skill mounting treat a
+  declared local pack exactly like a canon one. (A local pack may also declare `run_daily` tasks, and
+  the fleet planner has a tested seam for them, but that daily-run path is **experimental and not
+  enabled by default** — see [packs/README.md](packs/README.md); scheduled work stays a canon-pack
+  task or an out-of-repo routine for now.)
 
 The split is the same **portable-vs-specific** line the growth lifecycle already draws: a rule true
 beyond this project belongs in a canon pack (proposed by PR, or promoted up by the growth routine);
