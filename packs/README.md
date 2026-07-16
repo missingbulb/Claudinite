@@ -31,6 +31,35 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 
 Activity-scoped practice prose lives in [../skills/](../skills/README.md), not in a pack.
 
+## Local packs — a project's own packs
+
+A consumer keeps its **project-specific** packs in its own tree at
+`.claudinite/local_packs/<name>/` — the same four slots (prose `RULES.md`, `rules` checks, `skills`,
+`run_daily` tasks), authored and committed by the project, discovered and run by the same engine as
+these canon packs. `discoverPacks({ localRoot })` ([registry.mjs](registry.mjs)) scans this repo's
+`packs/` **and** the consumer's `local_packs/`; each pack is stamped with its own `dir` (prose and
+bundled skills resolve off it) and a `local` flag. A local pack:
+
+- is **declared by hand** in `.claudinite-checks.json` like any pack — never fingerprinted or seeded
+  (`detect`/`marker` null), and its id must be unique (it may not shadow a canon id — the collision
+  is a blocking `config` finding);
+- may **require a canon skill** by name and/or **bundle its own** at `<pack>/skills/<skill>/`
+  (mounted from the tracked pack dir); a bundled skill may carry `checks.mjs`, run when the pack is
+  active;
+- rides the deployment plumbing every consumer already vendors: the sync hook preserves
+  `.claudinite/local_packs/` across its dir swap and the `.gitignore` re-includes it.
+
+A local pack's **prose, checks, and skills** are the proven, shipped path. A local pack may also
+declare `run_daily` tasks, and the fleet planner has a tested seam to read them from the member repo
+([../routines/fleet/local-tasks.mjs](../routines/fleet/local-tasks.mjs)) — but that daily-run path is
+**experimental and not enabled by default** (not yet proven for the load and variety of arbitrary
+member-authored jobs), so a project's scheduled work stays a canon-pack `run_daily` or an out-of-repo
+routine until it's deliberately enabled.
+
+The canon-vs-local line is the portable-vs-project-specific split ([../extending.md](../extending.md));
+a project adopts the structure via the `generate-project-instructions` skill, and the growth lifecycle
+treats `.claudinite/local_packs/` as the project's capture surface.
+
 ## Settings validity
 
 The `"packs"` list and the rest of `.claudinite-checks.json` are validated **when the file loads**, not by a conformance check: [`loadConfig`](../checks/lib/context.mjs) reports malformed JSON and an unknown top-level property, and the runner adds an unknown *pack name* (it holds the registry). Each becomes a blocking `config` error — a wrong pack name is as much a settings error as invalid JSON. A pack's `detect`/`marker` only **suspects** a pack is wanted; declaring it is the project's call, so a declared pack without its marker (or a marker without its declaration) is **not** flagged.

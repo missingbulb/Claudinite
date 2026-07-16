@@ -29,6 +29,10 @@ export async function planRepo(repo, signals, tasks, gh) {
         repo: repo.fullName,
         task: task.id,
         worker: task.worker,
+        // A canon task's worker doc is read from the canon checkout (workerRepo
+        // null); a local task carries its member repo here, so the orchestrator
+        // reads its worker from the member (its worker path is member-relative).
+        workerRepo: task.workerRepo ?? null,
         targets: verdict.targets ?? {},
         reason: verdict.reason ?? '',
         order: task.order ?? null,

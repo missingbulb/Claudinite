@@ -154,6 +154,24 @@ test('warning-suppression: a doc discussing markers is not a suppression', () =>
   } finally { cleanup(root); }
 });
 
+test('warning-suppression: a local pack\'s check layer spells markers as patterns, not live mutes', () => {
+  const root = makeRepo({
+    changed: {
+      // a local rule module and a bundled skill's checks.mjs spell the marker as
+      // a detection pattern — exempt like the canon packs/ tree
+      '.claudinite/local_packs/proj/no-mute.mjs': '// detect: /eslint-disable/\nexport default {};\n',
+      '.claudinite/local_packs/proj/skills/x/checks.mjs': 'const p = /@ts-ignore/;\nexport default [];\n',
+      // but a run_daily script is ordinary code — a bare mute there still fires
+      '.claudinite/local_packs/proj/run_daily/job.js': '// eslint-disable-next-line no-undef\ny();\n',
+    },
+  });
+  try {
+    const findings = run(warningSuppression, root, 'all');
+    assert.equal(findings.length, 1);
+    assert.match(findings[0].file, /run_daily\/job\.js/);
+  } finally { cleanup(root); }
+});
+
 test('warning-suppression: skips linguist-vendored and linguist-generated files', () => {
   const root = makeRepo({ changed: {
     '.gitattributes': 'vendor/** linguist-vendored\ngen/** linguist-generated\n',

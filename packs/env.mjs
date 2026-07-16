@@ -41,7 +41,9 @@ const resolveField = (field, params) =>
  */
 export async function activeEnvs(projectRoot, { packs, config } = {}) {
   config ??= loadConfig(projectRoot);
-  packs ??= await loadPacks();
+  // Include the project's own local packs — a local pack may declare an `env`
+  // toolchain requirement just like a canon pack.
+  packs ??= await loadPacks({ localRoot: projectRoot });
   return packs
     .filter((p) => p.env && isActive(p, config))
     .map((p) => {

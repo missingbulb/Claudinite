@@ -1,7 +1,7 @@
 # grow_with_claudinite
 
 Opt into the **growth lifecycle** — declaring this pack enrolls a repo in contributing its hard-won
-lessons up to the shared Claudinite canon, and in pruning its local docs once the canon owns them.
+lessons up to the shared Claudinite canon, and in pruning its local packs once the canon owns them.
 Seeded by default (`--init` + the one-time `grow-with-claudinite-seed` baseline migration for the
 existing fleet), and **opt-out by removal**: baselining never re-adds it.
 
@@ -14,11 +14,11 @@ planner units:
 
 | Task | Runs when | Where it lands |
 |---|---|---|
-| `growth-extract-new-instructions` ([extract.md](extract.md)) | the project changed in the window | the project's own `main` (directly) |
-| `growth-dedup-local-instructions` ([dedup.md](dedup.md)) | canon changed, or the project's docs changed (or weekly) | a PR against the project's `main` |
+| `growth-extract-new-instructions` ([extract.md](extract.md)) | the project changed in the window | the project's own local packs, on `main` (directly) |
+| `growth-dedup-local-instructions` ([dedup.md](dedup.md)) | canon changed, or the project's local packs changed (or weekly) | a PR against the project's `main` |
 | `growth-discover-packs` ([discover-packs.md](discover-packs.md)) | the member's weekly full sweep | one PR per authored pack, against Claudinite's canon |
 
-The central stage — `growth-promote-to-claudinite`, which reads the enrolled members' local docs,
+The central stage — `growth-promote-to-claudinite`, which reads the enrolled members' local packs,
 generalizes the portable lessons, and opens a PR against Claudinite's canon — is **not** this
 pack's: it rides [canon-curation](../canon-curation/README.md), declared only by the canon home
 repo, and its gate targets exactly the members that declare *this* pack.
@@ -31,18 +31,26 @@ canon PR per pack. Like every worker it **executes centrally** (home session, fl
 how it writes the canon — but it's scheduled the regular way; over a week the staggered full sweep
 covers the fleet, and the shelf + open-PR check keeps first sight from double-authoring.
 
-## Identifying a project's local docs (the same way in every stage)
+## Identifying a project's capture surface: its local packs (the same way in every stage)
 
-Every growth stage operates on a project's **local instruction docs**, and all of them identify
-that set the **same way**: by following the import/pointer graph out from the repo's **root
-`CLAUDE.md`** — the very graph the agent itself loads — and treating everything under the mounted
-canon at `.claudinite/` as **read-only canon, not local docs**. So "a project's local docs" means
-precisely *the project's own docs reachable from its `CLAUDE.md`, minus the canon it mounts*. Don't
-scan the whole tree for stray Markdown; the `CLAUDE.md` graph is the authoritative set, and a doc
-no `CLAUDE.md` path reaches isn't part of the project's instructions.
+Every growth stage operates on a project's **local packs** — the tracked packs a repo keeps under
+`.claudinite/local_packs/<pack>/` (prose in `RULES.md`, checks in the pack's `rules`, activity
+procedures as the pack's skills, `run_daily` tasks). That subtree **is** the project's own content;
+the rest of `.claudinite/` is the **read-only mounted canon** and is never a capture, prune, or
+promote target. So "a project's local packs" means precisely *everything under
+`.claudinite/local_packs/`, and nothing else under `.claudinite/`*. This is the normalized capture
+surface — a structural set the stages read the same way, not a `CLAUDE.md`-graph walk over stray
+Markdown (a repo with no local packs yet simply has nothing to extract, dedup, or promote here; a
+project adopts the structure via the `generate-project-instructions` skill).
 
-The stages only differ in *how they read that set*, never in *which set it is*: extract and dedup
-run against the member repo and read it from the working tree; promote runs centrally and walks the
-same graph over the GitHub API (get-file-contents from `CLAUDE.md` outward). Extract writes into
-it, promote reads from it, dedup prunes within it — all against the identical,
-`CLAUDE.md`-anchored corpus.
+Prefer the strongest mechanism the lesson allows — the **local promotion ladder**, applied at the
+project's own level: a deterministic rule becomes a **check** in the owning pack's `rules` (its
+failure message carries the lesson), an activity-scoped procedure becomes a **pack skill**, and only
+what neither can carry lands as **prose** in a pack's `RULES.md`. A check relieves every session's
+context completely where prose only relocates it, so capture writes *more checks and less prose*.
+
+The stages differ only in *how they read that set*, never in *which set it is*: extract and dedup
+run against the member repo and read the local packs from the working tree; promote runs centrally
+and reads the same subtree over the GitHub API (get-file-contents under `.claudinite/local_packs/`).
+Extract writes into it, promote reads from it, dedup prunes within it — all against the identical,
+`.claudinite/local_packs/`-rooted set.

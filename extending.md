@@ -58,14 +58,40 @@ never forcing or forbidding its declaration afterward. A declared-by-policy pack
 the default-on maintenance packs) sets `detect: null` and is seeded by `--init`
 and/or a one-time migration.
 
+### Two homes for a pack: the canon, and a project's own `local_packs/`
+
+A pack contributes the same four slots from either of two homes, and the engine runs both the
+same way:
+
+- **A canon pack** — `packs/<name>/` in this repo, mounted read-only into every consumer. It is
+  *portable*: written as if no one project existed, shared by every project that declares it.
+- **A local pack** — `.claudinite/local_packs/<name>/` in a **consumer's own tree**, tracked
+  project content the consumer authors and commits. It is *project-specific*: the working style,
+  values, checks, and skills that don't generalize past this one repo — the project's
+  **normalized capture surface** (what used to sprawl as always-loaded `CLAUDE.md`/`dev/procedures`
+  prose). `discoverPacks` scans both roots; a local pack carries its own `dir`, is `local: true`,
+  and may not shadow a canon id. Prose injection, the Stop/CI checks, and skill mounting treat a
+  declared local pack exactly like a canon one. (A local pack may also declare `run_daily` tasks, and
+  the fleet planner has a tested seam for them, but that daily-run path is **experimental and not
+  enabled by default** — see [packs/README.md](packs/README.md); scheduled work stays a canon-pack
+  task or an out-of-repo routine for now.)
+
+The split is the same **portable-vs-specific** line the growth lifecycle already draws: a rule true
+beyond this project belongs in a canon pack (proposed by PR, or promoted up by the growth routine);
+a rule specific to this project belongs in its local pack. Neither is ever "hardcode it into the
+engine."
+
 ## Where a new feature goes — the routing
 
 Ask what *kind* of thing you're adding; each kind has exactly one home, and none of them is core:
 
 1. **A new rule or practice** → the [promotion ladder](checks/DESIGN.md) (platform setting →
    PreToolUse hook → post-hoc check → skill → prose) picks the mechanism; it lands in a pack (or
-   a skill that pack requires). The ladder owns *which* mechanism — this doc only says the answer
-   is never "hardcode it into the engine."
+   a skill that pack requires). *Which* pack follows the portable-vs-specific split: a portable rule
+   → a canon pack; a rule specific to one project → that project's own `local_packs/` pack. The
+   ladder owns *which* mechanism — this doc only says the answer is never "hardcode it into the
+   engine," and (for a project-specific rule) never "always-loaded `CLAUDE.md` prose" when a local
+   pack's check or skill can carry it.
 2. **A new technology's conventions** → a new technology pack, with a `detect` fingerprint so
    `--init` seeds it when the technology is present (declaring it stays the project's call).
 3. **A new scheduled maintenance behavior** → a `run_daily` task (a `(gate, worker)` pair) on the

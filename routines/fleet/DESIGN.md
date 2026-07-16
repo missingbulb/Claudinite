@@ -105,9 +105,20 @@ high-water mark* each task is meant to descend.
   declared by a pack applies to a repo **iff** the
   repo declares that pack in `.claudinite-checks.json`. Adding a task is dropping a `(gate, worker)`
   pair — the engine discovers it, no orchestrator edit.
+- **A member's own local packs could contribute tasks too — EXPERIMENTAL, not enabled by default.** A
+  repo's `.claudinite/local_packs/` packs can carry `run_daily` descriptors exactly like a canon pack,
+  but they live in the *member* tree, not the canon checkout the planner reads. The planner takes an
+  injected `localTasksFor(repo)` seam ([local-tasks.mjs](local-tasks.mjs)) that fetches each member's
+  local-pack descriptors over the same MCP `gh`, imports each self-contained descriptor, and tags it
+  with its pack and `workerRepo` so the unit's worker is read from the member. This path is built and
+  tested but **not yet proven for arbitrary member-authored daily jobs**, so the orchestrator does
+  **not** wire `localTasksFor` (the seam defaults to none → no local task planned). Enable it
+  deliberately once proven; running the member's own gate code centrally is safe under the single-owner
+  fleet model — the same trust the routine already extends to every member-authored worker — but the
+  load/variety of local daily jobs is the unproven part.
 
-`gates.mjs` assembles, per covered repo, `applicable = fleet-core ∪ (active packs' maintenance)`,
-runs each gate, and collects the units that returned `run: true`.
+`gates.mjs` assembles, per covered repo, `applicable = (active canon packs' tasks) ∪ (the member's
+active local packs' tasks)`, runs each gate, and collects the units that returned `run: true`.
 
 ## The signal bundle
 
