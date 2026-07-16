@@ -35,9 +35,9 @@
 | `unattended-agents` | building or running an unattended agent / recurring routine |
 | `git-github-advanced` | git/GitHub work beyond the baseline lifecycle |
 | `prose-to-checks` | auditing the corpus for never-converted testable prose (the nightly growth sweep) |
-| `single-branch-status` | assessing one branch's landed status (the tidy-repo branch-cleanup task) |
-| `single-pr-status` | assessing one PR's landed status (the tidy-repo pr-assess task) |
-| `single-issue-triage` | triaging one issue (the tidy-repo issue-triage task) |
+| `single-branch-status` | assessing one branch's landed status (the tidy-repo repo-tidy task) |
+| `single-pr-status` | assessing one PR's landed status (the tidy-repo repo-tidy task) |
+| `single-issue-triage` | triaging one issue (the tidy-repo repo-tidy task) |
 
 Technology guidance (Chrome extension, Node/jsdom, AWS SAM, HTML) is **not** a skill — it's the
 prose of its `packs/<tech>/` pack, loaded eagerly whenever the project declares that pack.

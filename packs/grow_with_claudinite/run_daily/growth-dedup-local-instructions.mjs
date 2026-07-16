@@ -11,7 +11,6 @@
 export default {
   id: 'growth-dedup-local-instructions',
   worker: 'packs/grow_with_claudinite/dedup.md',
-  order: null,
   full_sweep_supported: true,
   smarts: 'high', // deciding a local item is truly redundant is a judgment call
 

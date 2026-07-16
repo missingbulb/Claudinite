@@ -35,7 +35,6 @@ export async function planRepo(repo, signals, tasks, gh) {
         workerRepo: task.workerRepo ?? null,
         targets: verdict.targets ?? {},
         reason: verdict.reason ?? '',
-        order: task.order ?? null,
         smarts: task.smarts ?? 'medium',
       });
     }

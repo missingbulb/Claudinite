@@ -11,7 +11,6 @@
 export default {
   id: 'prose-to-checks-sweep',
   worker: 'skills/prose-to-checks/SKILL.md',
-  order: null,
   full_sweep_supported: true,
   smarts: 'high', // judging convertibility and authoring checks + fixtures is heavy judgment
 

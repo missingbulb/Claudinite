@@ -12,7 +12,6 @@
 export default {
   id: 'growth-extract-new-instructions',
   worker: 'packs/grow_with_claudinite/extract.md',
-  order: null,
   full_sweep_supported: false,
   smarts: 'high', // generalizing/curating lessons is the heaviest judgment
 

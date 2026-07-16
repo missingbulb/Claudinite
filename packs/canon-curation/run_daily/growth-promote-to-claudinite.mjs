@@ -16,7 +16,6 @@
 export default {
   id: 'growth-promote-to-claudinite',
   worker: 'packs/canon-curation/promote.md',
-  order: null,
   full_sweep_supported: true,
   smarts: 'high', // portability, dedup-vs-corpus, and routing are the heaviest judgment
 
