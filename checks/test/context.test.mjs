@@ -58,6 +58,23 @@ test('loadConfig: entry config overlays the legacy top-level packConfig, which s
   } finally { cleanup(root); }
 });
 
+test('loadConfig: pack-entry answers — verbatim strings kept, wrong shapes a settings error', () => {
+  const root = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({
+    packs: [
+      { id: 'barriers', answers: { goals: 'keep core off pack names' } },
+      { id: 'node', answers: ['nope'] },
+      { id: 'html', answers: { q: 7 } },
+    ],
+  }) } });
+  try {
+    const cfg = loadConfig(root);
+    assert.deepEqual(cfg.packEntries.find((e) => e.id === 'barriers').answers, { goals: 'keep core off pack names' });
+    assert.equal(cfg.errors.length, 2);
+    assert.match(cfg.errors[0].what, /"answers" on the "node" pack entry must be/);
+    assert.match(cfg.errors[1].what, /"answers" on the "html" pack entry must be/);
+  } finally { cleanup(root); }
+});
+
 test('loadConfig: a malformed pack entry is a settings error — no id, unknown property, wrong shapes', () => {
   const root = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({
     packs: [

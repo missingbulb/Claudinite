@@ -80,6 +80,12 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
     and nothing should keep authoring it. The `pack-entry-config` baseline migration
     ([migrations/](../migrations/README.md)) tracks the fleet's convergence; when it retires,
     the key stops being a valid setting.
+  - **answers** — the pack's adoption-interview answers, **verbatim**, keyed by question id
+    (`{ "<question-id>": "<answer>" }`). A pack declares its questions on its `pack.mjs`; the
+    unanswered gap surfaces only as a mild SessionStart note (strict solely inside the bootstrap
+    adoption flow), never a conformance finding —
+    [packs/README.md](../packs/README.md#adoption-interview-questions). A stored answer whose
+    question the pack no longer declares is an *advisory* `config` finding.
   - **rules** / **accept** — severity overrides and acceptances **motivated by declaring this
     pack**; they may name *any* rule (declaring pack A can require an exemption to pack B's
     check), and the entry is their provenance — the file says which declaration required which

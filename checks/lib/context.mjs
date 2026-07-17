@@ -56,11 +56,13 @@ function vendoredSet(root, files) {
 export const CONFIG_KEYS = ['packs', 'rules', 'accept', 'sharedConstants', 'packConfig', 'maintenance'];
 
 // The properties a `packs` entry object may carry: the pack's parameters
-// (`config`), and the rule overrides / acceptances that exist BECAUSE this pack
-// is declared (`rules`, `accept` — they may name any rule; the entry is their
-// provenance). `via` is written by resolveDeclaredPacks on materialized
-// dependencies (packs/registry.mjs).
-export const PACK_ENTRY_KEYS = ['id', 'config', 'rules', 'accept', 'via'];
+// (`config`), its adoption-interview answers (`answers` — the owner's verbatim
+// responses to the questions the pack declares on its pack.mjs, keyed by
+// question id; packs/interview.mjs), and the rule overrides / acceptances that
+// exist BECAUSE this pack is declared (`rules`, `accept` — they may name any
+// rule; the entry is their provenance). `via` is written by
+// resolveDeclaredPacks on materialized dependencies (packs/registry.mjs).
+export const PACK_ENTRY_KEYS = ['id', 'config', 'answers', 'rules', 'accept', 'via'];
 
 // Load and validate the project's settings. Validity is checked at load — the
 // moment Claudinite reads the file — and every problem is collected into `errors`
@@ -126,6 +128,11 @@ export function loadConfig(root) {
     if (entry.config !== undefined) {
       if (entry.config !== null && typeof entry.config === 'object' && !Array.isArray(entry.config)) normalized.config = entry.config;
       else badShape('config', 'an object of the pack\'s parameters');
+    }
+    if (entry.answers !== undefined) {
+      if (entry.answers !== null && typeof entry.answers === 'object' && !Array.isArray(entry.answers)
+        && Object.values(entry.answers).every((v) => typeof v === 'string')) normalized.answers = entry.answers;
+      else badShape('answers', 'an object mapping the pack\'s question ids to string answers');
     }
     if (entry.rules !== undefined) {
       if (entry.rules !== null && typeof entry.rules === 'object' && !Array.isArray(entry.rules)) normalized.rules = entry.rules;

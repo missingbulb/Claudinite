@@ -11,7 +11,7 @@
   start via `packs/load-active-prose.mjs`; the checks run at every Stop and in CI. This is the "decided
   once, seldom changes" set. A pack can live here (the shared, portable canon) **or** in a consumer's
   own `.claudinite/local_packs/<name>/` (tracked project content — its project-specific packs, the same
-  four slots); the engine discovers and runs both the same way ([extending.md](extending.md)).
+  slots); the engine discovers and runs both the same way ([extending.md](extending.md)).
 - **`skills/<name>/`** — activity-scoped procedures, surfaced **on demand** by the harness when the work
   in front of you matches the skill. Deployment is pack-driven: each pack declares the skills it
   requires, and a repo mounts the union over its active packs at session start
@@ -53,7 +53,9 @@ pack-contributed content, and where each kind of feature goes (almost never core
   — [packs/executable-requirements/RULES.md](packs/executable-requirements/RULES.md)).
 
 The declaration is **pack-oriented**: a `packs` entry is a pack id, or an entry object carrying that
-pack's own settings — its parameters (`config`), and the rule overrides/acceptances its declaration
+pack's own settings — its parameters (`config`), its adoption-interview answers (`answers` — a pack
+may declare the questions its adoption must ask; the unanswered gap surfaces as a mild SessionStart
+note, strict only inside bootstrap), and the rule overrides/acceptances its declaration
 motivates (`rules`/`accept`, the entry being their provenance). Top-level `rules`/`accept` stay for
 project-wide decisions and skill-owned checks. Full schema: [checks/README.md](checks/README.md).
 

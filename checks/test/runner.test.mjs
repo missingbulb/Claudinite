@@ -55,6 +55,33 @@ test('a new suppression marker blocks the run (fail fast)', () => {
   } finally { cleanup(root); }
 });
 
+test('interview: a stale answer is advisory (never run-failing); pending questions are no finding at all', () => {
+  const root = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({
+    // barriers declares the `goals` question: `old-id` is stale, and `goals`
+    // itself stays unanswered — which must NOT surface in the sweep (an
+    // unattended nightly run can't answer it; only SessionStart may nudge).
+    packs: [{ id: 'barriers', answers: { 'old-id': 'kept intent' } }],
+  }) } });
+  try {
+    const r = runCli(root);
+    assert.equal(r.status, 0);
+    assert.match(r.stdout, /stores an answer for "old-id"/);
+    assert.doesNotMatch(r.stdout, /goals/);
+  } finally { cleanup(root); }
+});
+
+test('interview: a local pack with a malformed questions declaration is a blocking config finding', () => {
+  const root = makeRepo({ changed: {
+    '.claudinite/local_packs/badq/pack.mjs': 'export default { id: "badq", questions: "nope" };\n',
+    '.claudinite-checks.json': JSON.stringify({ packs: ['badq'] }),
+  } });
+  try {
+    const r = runCli(root);
+    assert.equal(r.status, 1);
+    assert.match(r.stdout, /non-array "questions"/);
+  } finally { cleanup(root); }
+});
+
 test('settings validity: an unknown pack name is a blocking config error', () => {
   const root = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({ packs: ['no-such-pack'] }) } });
   try {

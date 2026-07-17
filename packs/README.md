@@ -34,9 +34,9 @@ Activity-scoped practice prose lives in [../skills/](../skills/README.md), not i
 ## Local packs — a project's own packs
 
 A consumer keeps its **project-specific** packs in its own tree at
-`.claudinite/local_packs/<name>/` — the same four slots (prose `RULES.md`, `rules` checks, `skills`,
-`run_daily` tasks), authored and committed by the project, discovered and run by the same engine as
-these canon packs. `discoverPacks({ localRoot })` ([registry.mjs](registry.mjs)) scans this repo's
+`.claudinite/local_packs/<name>/` — the same slots (prose `RULES.md`, `rules` checks, `skills`,
+`run_daily` tasks, `questions`), authored and committed by the project, discovered and run by the
+same engine as these canon packs. `discoverPacks({ localRoot })` ([registry.mjs](registry.mjs)) scans this repo's
 `packs/` **and** the consumer's `local_packs/`; each pack is stamped with its own `dir` (prose and
 bundled skills resolve off it) and a `local` flag. A local pack:
 
@@ -107,6 +107,38 @@ setup: (p) => (p.dirs?.length ? p.dirs : ['.']).map((d) => `( cd "${d}" && npm c
 - `node .claudinite/packs/env.mjs plan` prints what `install` would run (review / debug).
 
 Wiring a consumer up — the check hook + the pack entries' `config`, with the script pasted from the corpus copy — is [bootstrap.md](../bootstrap.md) Part 8. A pack with no `env` field adds nothing; universal git hygiene lives in the generic script, not a pack.
+
+## Adoption interview (`questions`)
+
+A pack that needs to know the project's **intent** before it can provide value (barriers with no
+graph is a silent no-op; a visual-testing pack can't assert anything before learning how this repo
+should be tested) declares the mandatory questions its adoption must ask, in an optional
+`questions` field on its `pack.mjs` — stable-id'd entries, `distill` saying how the answer becomes
+the entry's `config`:
+
+```js
+questions: [{ id: 'goals', prompt: 'What should these barriers accomplish — …?', distill: 'derive the edge list into config.rules …' }],
+```
+
+The answers live **verbatim** on the pack's entry in `.claudinite-checks.json` (`answers:
+{ "<question-id>": "<answer>" }` — [checks/README.md](../checks/README.md)): the settings file
+records the project's intent beside the `config` distilled from it — provenance for the
+configuration, versioned and diffable, and re-derivable if the pack's config shape later changes.
+The **gap** — declared question ids minus answered ids — drives the asking
+([interview.mjs](interview.mjs)): at adoption every question is pending; when the canon later adds
+a question to a pack, just that one surfaces in every consumer; a pack with no questions adds
+nothing. An answered question stays answered — "n/a, none wanted" is an answer, distinct from
+never-asked.
+
+The posture is **strict at bootstrap, mild everywhere else**. The adoption flow
+([bootstrap.md](../bootstrap.md) Part 6) interviews the owner as part of `--init` — a human is
+present by construction. Outside it, pending questions surface only as a mild SessionStart note
+(the `interview-check` step) telling an interactive session to ask at a natural moment and an
+unattended one to ignore it entirely — **never a conformance finding**, so a nightly baselining or
+a new canon question can never block the fleet. The one sweep-side finding is hygiene: a stored
+answer whose question the pack no longer declares (renamed or removed upstream) is an *advisory*
+`config` finding, and a malformed `questions` declaration is a blocking one like any broken
+manifest.
 
 ## Corpus tally — checks vs prose
 
