@@ -26,6 +26,7 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 | [play-store-release](play-store-release/README.md) | declared (opt-in) | 0 | stub |
 | [app-store-release](app-store-release/README.md) | declared (opt-in) | 0 | stub |
 | [research-project](research-project/README.md) | declared (class) | 0 | 54 (14 sections) |
+| [product-wiki](product-wiki/README.md) | declared (marker: `product-wiki/product-requirements/README.md`) | 6 | wiki growth discipline + weekly growth daily task |
 | [spec-driven-product](spec-driven-product/README.md) | declared (class) | 0 | 25 (8 sections) |
 | [executable-requirements](executable-requirements/README.md) | `dev/requirements/requirements.md` | 0 | framework standard (layout / gates / kinds) |
 
@@ -112,11 +113,11 @@ Wiring a consumer up — the check hook + the pack entries' `config`, with the s
 
 | | Count |
 |---|---|
-| **Hardcoded conformance checks** | **31** (11 basics + 1 barriers + 8 github-actions + 8 chrome-extension-release + 3 aws-sam) |
+| **Hardcoded conformance checks** | **37** (11 basics + 1 barriers + 8 github-actions + 8 chrome-extension-release + 3 aws-sam + 6 product-wiki) |
 | PreToolUse guard | 1 (remote-branch-delete) |
 | Platform setting | 1 (squash-only) |
 | **Prose rules** — packs + practice skills + baseline | **~150** |
 | Prose — research-project playbook (class pack) | 54 |
 | Prose — spec-driven-product playbook (class pack) | 25 |
 
-**Ratio ≈ 30 hardcoded : ~150 prose ≈ 1 : 5** (~16% of rules mechanized). Read against the *convertible* subset instead of all rules, it's higher: the audit ([../docs/conversion-inventory.md](../docs/conversion-inventory.md)) found only ~45 rules have any static signature — the other ~105 are judgment, in-flight process, or runtime knowledge that *should* stay prose — and ~25 of that ~45 are now checks. The `prose-to-checks` sweep keeps working the remainder; its adversarial pass rejects candidates whose detection would false-positive (the two SAM YAML checks needed a structural parser to stay FP-free), so the yield is deliberately small and high-precision.
+**Ratio ≈ 37 hardcoded : ~150 prose ≈ 1 : 4** (~20% of rules mechanized). Read against the *convertible* subset instead of all rules, it's higher: the audit ([../docs/conversion-inventory.md](../docs/conversion-inventory.md)) found only ~45 rules have any static signature — the other ~105 are judgment, in-flight process, or runtime knowledge that *should* stay prose — and ~25 of that ~45 are now checks. The `prose-to-checks` sweep keeps working the remainder; its adversarial pass rejects candidates whose detection would false-positive (the two SAM YAML checks needed a structural parser to stay FP-free), so the yield is deliberately small and high-precision.
