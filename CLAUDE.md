@@ -87,7 +87,7 @@ truth, kept complete against the tree by the `catalog-completeness` check. Two k
 ## preferences/ — auto-injected by the SessionStart hook
 
 `preferences/<email>.md` holds the owner's per-user interaction preferences. The
-`preferences/inject-preferences.sh` SessionStart hook loads the current user's file into context — you
+`mount/inject-preferences.sh` SessionStart step loads the current user's file into context — you
 don't read it yourself.
 
 ---

@@ -25,8 +25,10 @@
 # the injected directives, never the exit code.
 set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# This script lives in <corpus>/mount/; the step scripts stay in their domains one
-# level up (<corpus>/preferences, <corpus>/packs, <corpus>/skills).
+# This script lives in <corpus>/mount/. The preferences step lives beside it
+# (per-user content is never vendored, so its step is mount machinery — see
+# DESIGN.md); the remaining step scripts stay in their domains one level up
+# (<corpus>/packs, <corpus>/skills).
 corpus="$(dirname "$here")"
 
 # --- durable hook log (format mirrored in sync-claudinite.sh and
@@ -62,7 +64,7 @@ run_step() {
 }
 
 hooklog orchestrator "start"
-run_step inject-preferences bash "$corpus/preferences/inject-preferences.sh"
+run_step inject-preferences bash "$here/inject-preferences.sh"
 run_step load-active-prose  node "$corpus/packs/load-active-prose.mjs"
 run_step mount-skills       node "$corpus/skills/mount-skills.mjs"
 run_step env-check          node "$corpus/packs/env.mjs" check

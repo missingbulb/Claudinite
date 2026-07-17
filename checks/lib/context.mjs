@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
 import { parseEntries } from './transcript.mjs';
+import { SHARED_SUBDIR } from '../../packs/registry.mjs';
 
 function sh(root, cmd, args, { allowFail = false, input = undefined } = {}) {
   const r = spawnSync(cmd, args, { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, input });
@@ -54,7 +55,10 @@ function vendoredSet(root, files) {
 // `pack-entry-config` baseline migration (migrations/active_migrations/) tracks
 // the fleet's convergence; when it retires, drop the key here (and the overlay
 // below) so a straggler gets the unknown-setting error.
-export const CONFIG_KEYS = ['packs', 'rules', 'accept', 'sharedConstants', 'packConfig', 'maintenance'];
+// `claudinite` is the vendored-mount stamp — { updated: "YYYY-MM-DD", ref: "<sha>" },
+// written by the nightly update pass, selecting which migration notes still apply
+// (mount/DESIGN.md owns the model); the checks engine itself only tolerates it.
+export const CONFIG_KEYS = ['packs', 'rules', 'accept', 'sharedConstants', 'packConfig', 'maintenance', 'claudinite'];
 
 // The properties a `packs` entry object may carry: the pack's parameters
 // (`config`), its adoption-interview answers (`answers` — the owner's verbatim
@@ -213,6 +217,15 @@ export function buildContext({ root, mode = 'changed', baseOverride = null, tran
     const vsBase = lines(gitTry(root, 'diff', '--name-only', '--diff-filter=d', diffBase));
     scanned = [...new Set([...vsBase, ...untracked])];
   }
+  // The vendored corpus under the shared mount is canon-owned, never the
+  // project's own code — structurally out of scope for every check, on any git
+  // host and any checkout (deliberately not attribute-driven). The consumer's
+  // own .claudinite/local_packs/ sits BESIDE the shared mount and stays fully
+  // in scope.
+  // git emits '/'-separated paths on every platform; SHARED_SUBDIR is joined
+  // with the platform separator, so normalize before prefix-matching.
+  const sharedPrefix = `${SHARED_SUBDIR.split(sep).join('/')}/`;
+  scanned = scanned.filter((f) => !f.startsWith(sharedPrefix));
   // Every in-scope regular file, vendored/generated included.
   const allFiles = scanned.filter((f) => existsSync(join(root, f)) && statSync(join(root, f)).isFile());
   // The default sweep excludes vendored/generated files, so `ctx.files` is the

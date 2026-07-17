@@ -1,82 +1,85 @@
 import { readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadPacks, resolveDeclaredPacks, packEntryId } from '../packs/registry.mjs';
+import { loadPacks, resolveDeclaredPacks, packEntryId, SHARED_SUBDIR } from '../packs/registry.mjs';
 
 // The vendor-set computation for the vendored mount (DESIGN.md): given a repo's
-// pack declaration, the minimal file set that repo persists from the corpus.
-// Always computed against the canon tree THIS module ships in — the nightly runs
-// it from the home checkout, an on-demand refresh runs it from the tree it just
-// fetched — so the set and the content can never come from different snapshots.
+// pack declaration, the minimal corpus file set that repo persists under
+// SHARED_SUBDIR — canon-relative paths, mirroring exactly what a future
+// submodule mounted at that same root would place there. Always computed
+// against the canon tree THIS module ships in — the nightly runs it from the
+// home checkout, an on-demand refresh from the tree it just fetched — so the
+// set and the content can never come from different snapshots.
 const canonRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
-// Everything a consumer session exercises regardless of which packs it declares:
-// the corpus index, the checks engine and its hooks, the pack/skill machinery,
-// and the mount itself. Canon-internal trees (routines/, docs/, .github/, the
-// maintainer docs) stay out — they run centrally, never in a consumer.
-export const ENGINE_FILES = [
-  'CLAUDE.md',
-  'checks/README.md',
-  'checks/run.mjs',
-  'checks/stop-hook.mjs',
-  'checks/pretooluse-guard.mjs',
-  'packs/README.md',
-  'packs/registry.mjs',
-  'packs/load-active-prose.mjs',
-  'packs/env.mjs',
-  'skills/README.md',
-  'skills/registry.mjs',
-  'skills/mount-skills.mjs',
-  'mount/README.md',
-  'mount/session-start.sh',
-  'mount/environment-setup.sh',
-  'mount/vendor.mjs',
-];
+// Re-exported for the writers (the nightly update pass, an on-demand refresh):
+// the consumer-side root the set materializes under.
+export { SHARED_SUBDIR };
 
-// Directories vendored wholesale: the engine's lib, and the owner preferences
-// (per-user files plus their injector — tiny, and the current user is only
-// known at session time).
-export const ENGINE_DIRS = ['checks/lib', 'preferences'];
+// The corpus index a consumer imports from its own CLAUDE.md.
+export const INDEX_FILE = 'CLAUDE.md';
 
-// Tests never ship to consumers — the canon's CI is where they run.
+// The engine is discovered structurally, never listed file-by-file: these
+// roots vendor wholesale, so a new engine file ships with no edit here.
+// Excluded within them: tests (*.test.mjs and test/ directories) and *.md —
+// docs at the engine roots are canon-maintainer reference, read upstream when
+// needed, while a pack's or skill's .md files are the payload and ride their
+// own directories below.
+export const ENGINE_DIR_ROOTS = ['checks', 'mount'];
+
+// The pack/skill machinery: the non-test .mjs files sitting directly at these
+// roots (registry, prose loader, env, skill mounter — whatever lives there).
+export const MACHINERY_ROOTS = ['packs', 'skills'];
+
 const isTest = (name) => name.endsWith('.test.mjs');
 
-function walk(relDir, files, errors) {
+function walk(relDir, files, errors, { engine = false } = {}) {
   let entries;
   try {
     entries = readdirSync(join(canonRoot, relDir), { withFileTypes: true });
   } catch (e) {
     errors.push({
       what: `${relDir} is not a readable directory in the canon tree: ${e.message}`,
-      fix: `restore ${relDir}, or fix what names it (ENGINE_DIRS, a pack.mjs skills list)`,
+      fix: `restore ${relDir}, or fix what names it (an engine root, a pack.mjs skills list)`,
     });
     return;
   }
   for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
-    const rel = `${relDir}/${entry.name}`;
-    if (entry.isDirectory()) walk(rel, files, errors);
-    else if (!isTest(entry.name)) files.add(rel);
+    if (entry.isDirectory()) {
+      if (engine && entry.name === 'test') continue;
+      walk(`${relDir}/${entry.name}`, files, errors, { engine });
+    } else if (!isTest(entry.name) && !(engine && entry.name.endsWith('.md'))) {
+      files.add(`${relDir}/${entry.name}`);
+    }
   }
 }
 
 // declaredEntries: the raw `packs` array from .claudinite-checks.json (id
 // strings and/or entry objects). extraSkills: skills the canon can't derive —
 // e.g. ones a member's own local packs require. Returns { files, errors }:
-// sorted repo-relative paths, and { what, fix } diagnostics. Ids naming no
-// canon pack are skipped silently — a local pack has nothing to vendor, and a
-// typo is the runner's settings-validity error, not this module's.
+// sorted canon-relative paths, and { what, fix } diagnostics. Ids naming no
+// canon pack (a consumer's local packs, or a typo the runner's settings
+// validation already flags) are skipped without error; per-user preferences
+// are deliberately absent — they are never vendored (DESIGN.md).
 export async function computeVendorSet(declaredEntries, { extraSkills = [] } = {}) {
   const files = new Set();
   const errors = [];
 
-  for (const file of ENGINE_FILES) {
-    if (existsSync(join(canonRoot, file))) files.add(file);
-    else errors.push({
-      what: `engine file ${file} is missing from the canon tree`,
-      fix: 'restore the file, or update ENGINE_FILES in mount/vendor.mjs',
-    });
+  if (existsSync(join(canonRoot, INDEX_FILE))) files.add(INDEX_FILE);
+  else errors.push({ what: `${INDEX_FILE} is missing from the canon tree`, fix: 'restore the corpus index' });
+  for (const root of ENGINE_DIR_ROOTS) walk(root, files, errors, { engine: true });
+  for (const root of MACHINERY_ROOTS) {
+    let entries;
+    try {
+      entries = readdirSync(join(canonRoot, root), { withFileTypes: true });
+    } catch (e) {
+      errors.push({ what: `${root} is not a readable directory in the canon tree: ${e.message}`, fix: `restore ${root}` });
+      continue;
+    }
+    for (const entry of entries) {
+      if (entry.isFile() && entry.name.endsWith('.mjs') && !isTest(entry.name)) files.add(`${root}/${entry.name}`);
+    }
   }
-  for (const dir of ENGINE_DIRS) walk(dir, files, errors);
 
   const packs = await loadPacks();
   const byId = new Map(packs.map((p) => [p.id, p]));

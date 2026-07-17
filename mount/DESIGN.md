@@ -1,9 +1,9 @@
 # The vendored mount — persist Claudinite in each consumer, update nightly (design)
 
-> **Status: agreed direction (issue #315), phase 0 implemented.** This doc is the decision record
-> for replacing the session-start fetch with a tracked, nightly-updated vendor of the corpus. The
-> live mount ([README.md](README.md)) keeps working unchanged until the transition phases land;
-> what ships today is this record plus the vendor-set computation ([vendor.mjs](vendor.mjs)).
+> **Status: agreed direction (issue #315); phase 0 implemented, phase 1 in progress.** This doc is
+> the decision record for replacing the session-start fetch with a tracked, nightly-updated
+> vendor of the corpus. The live mount ([README.md](README.md)) keeps working unchanged until the
+> transition phases land.
 
 ## The problem
 
@@ -17,109 +17,130 @@ cost every session for a latency guarantee nothing uses.
 
 ## The model
 
-**A consumer holds a vendored, tracked `.claudinite/`** — ordinary committed files, the same move
-issue #276 already made for the release workflows, applied to the whole corpus. The **nightly
-maintenance is the only regular writer**. Consequences, each a deliberate decision:
+**A consumer holds a vendored, tracked corpus at `.claudinite/shared/`** — ordinary committed
+files at canon-relative paths, the same move issue #276 already made for the release workflows,
+applied to the whole corpus. The **nightly maintenance is the only regular writer**.
 
-1. **Minimal set, derived from the declaration.** The vendor set is a function of
-   `.claudinite-checks.json`: the engine (`checks/` runner + lib + hooks), the mount machinery,
-   the packs/skills machinery, the **declared packs** with their `requires` closure, the **union
-   of those packs' skills**, `preferences/`, and the corpus index (`CLAUDE.md`). Tests
-   (`*.test.mjs`) and canon-internal trees (`routines/`, `docs/`, `.github/`, maintainer docs)
-   are not vendored. A basics-only repo carries ~240 KB. The computation is
-   [vendor.mjs](vendor.mjs); `.claudinite/local_packs/` is consumer-owned content the vendor set
-   never touches. Two accepted edges: a newly declared pack has no local content until the next
-   refresh (the engine's unknown-pack `config` error surfaces a declared-but-absent pack loudly,
-   nothing fails silently), and links from vendored docs to non-vendored canon files may dangle
-   locally by design (the sweep never inspects vendored files — see the marking below).
-2. **Transactional nightly update.** Per repo and per night: apply the pending migration notes,
+1. **The `shared/` root is a submodule emulation.** The set materializes under
+   `.claudinite/shared/` mirroring the canon layout exactly, so the planned future — mounting
+   Claudinite as a **git submodule** at that same path, once sessions run where a cross-repo git
+   credential exists — is a drop-in upgrade: the submodule lands a superset at the same root and
+   **no wiring path changes** (`@.claudinite/shared/CLAUDE.md`,
+   `node .claudinite/shared/checks/stop-hook.mjs`, …). This is also why nothing consumer-owned
+   lives inside it: `.claudinite/local_packs/` sits *beside* `shared/`, which the submodule
+   future outright requires — a submodule directory cannot carry the consumer's files.
+2. **Minimal set, derived structurally from the declaration.** The vendor set is a function of
+   `.claudinite-checks.json`, computed by [vendor.mjs](vendor.mjs) with **no hand-maintained
+   file list**: the engine roots (`checks/`, `mount/`) vendored wholesale, the machinery `.mjs`
+   files at the `packs/`/`skills/` roots, the **declared packs** with their `requires` closure,
+   the **union of those packs' skills**, and the corpus index (`CLAUDE.md`). Excluded
+   everywhere: tests; excluded at the engine roots: `*.md` (canon-maintainer docs are read
+   upstream when needed — a pack's or skill's `.md` files are the payload and ride their
+   directories). Canon-internal trees (`routines/`, `docs/`, `.github/`, root maintainer docs)
+   are never vendored. Two accepted edges: a newly declared pack has no local content until the
+   next refresh (the engine's unknown-pack `config` error surfaces a declared-but-absent pack
+   loudly), and links from vendored docs to non-vendored canon files may dangle locally by
+   design (the sweep never inspects the shared mount — see 6).
+3. **Preferences are never vendored** — per-user settings, not project content. The
+   session-start step ([inject-preferences.sh](inject-preferences.sh), mount machinery now)
+   reads the local `preferences/<email>.md` when its tree carries one (the canon repo; a future
+   submodule mount; the interim full-tarball sync) and otherwise **fetches just that file** over
+   HTTPS, fresh each session. Every miss — no email, no file, fetch failure — is **fail-soft**:
+   a one-line note and the session proceeds on defaults. The halt-gate is reserved for the
+   load-bearing corpus, which after the flip is always local and can't miss.
+4. **Transactional nightly update.** Per repo and per night: apply the pending migration notes,
    converge the vendored tree to the canon snapshot, advance the stamp — **one commit**. If the
    migration fails, nothing is written: the repo keeps running its old snapshot exactly as
    before, is retried the next night, and the failure lands in the fleet routine's failure log.
    The commit honors the repo's `maintenance.delivery` (`push` or `pr`). The refresh is
    **unconditional convergence** (copy-if-different, not copy-if-canon-moved), so an accidental
-   local edit to a vendored file reverts within a day, visibly in the nightly's diff — that, plus
-   a one-line "canon-owned; propose changes upstream" note, is the whole anti-drift story; there
-   is deliberately no manifest/integrity framework.
-3. **The stamp.** `"claudinite": { "updated": "YYYY-MM-DD", "ref": "<sha>" }` in
+   local edit to a vendored file reverts within a day, visibly in the nightly's diff — that,
+   plus a one-line "canon-owned; propose changes upstream" note, is the whole anti-drift story;
+   there is deliberately no manifest/integrity framework.
+5. **The stamp.** `"claudinite": { "updated": "YYYY-MM-DD", "ref": "<sha>" }` in
    `.claudinite-checks.json` — `updated` selects which migration notes still apply, `ref` is
    provenance for debugging. **One stamp for the whole set, never per pack**: updates are
    whole-set atomic, because mixed per-pack versions inside one repo would recreate exactly the
    engine↔pack skew this design eliminates (declaring a new pack therefore triggers a whole-set
-   refresh, not a lone pack copy). `loadConfig` learns the key when the stamp ships (phase 1) —
-   until then it would be rejected as an unknown setting.
-4. **Pinning semantics.** Each branch runs the snapshot committed on it: a session, its Stop
+   refresh, not a lone pack copy). The engine already tolerates the key
+   (`CONFIG_KEYS` in checks/lib).
+6. **The shared mount is structurally out of the sweep.** The engine's file-set builder drops
+   everything under `.claudinite/shared/` (`buildContext` in checks/lib) — the corpus is
+   canon-owned, never the project's own code — while `.claudinite/local_packs/` stays fully in
+   scope. Deliberately a structural rule in the engine, **not** a `.gitattributes` /
+   `linguist-vendored` convention: the exclusion must hold on any git host and any checkout.
+   This is also what keeps the corpus-shape checks (catalog-completeness, skill-ownership)
+   naturally inert in consumers with a pruned tree.
+7. **Pinning semantics.** Each branch runs the snapshot committed on it: a session, its Stop
    hook, and CI all judge by the same law, and a canon change affects no consumer until that
    consumer's own nightly commit. Consumer CI becomes a three-line workflow running
-   `node .claudinite/checks/run.mjs` from the checkout — the backstop
+   `node .claudinite/shared/checks/run.mjs` from the checkout — the backstop
    [checks/README.md](../checks/README.md) names finally has standard wiring. Rollback is
    per-repo and atomic: revert the nightly's commit.
-5. **`linguist-vendored` marking.** Consumer `.gitattributes` marks `.claudinite/**`
-   `linguist-vendored` and unsets it for `.claudinite/local_packs/**`. This is load-bearing
-   twice: the engine drops vendored files from the sweep's file set, keeping every consumer
-   check off the canon's own files, and it makes the corpus-shape checks (catalog-completeness,
-   skill-ownership) naturally inert outside the canon repo. Phase-1 verification item: those
-   checks must read the engine's `ctx.files`, never the filesystem directly, for the exclusion
-   to hold against a pruned tree.
-6. **Isolation, on the barriers engine.** Consumer files must not reference `.claudinite/`
-   except the wiring set: the root `CLAUDE.md` (the `@`-import and self-check), `.claude/`
-   (settings hook registrations), `.gitignore`, `.gitattributes`, `.github/workflows/` (the CI
-   stub), and anything under `.claudinite/` itself (`local_packs/` included). Product code that
-   wants a canon helper inlines it — depending on canon internals would turn every canon
-   refactor into a breaking migration for code the canon doesn't own. Enforced as a **basics
-   check composed on the barriers pack's exported detection engine** — the composition pattern
-   packs already use with each other — so it is universal via basics, with no per-project
-   barriers declaration or config to maintain; it self-gates on `.claudinite/` existing, so it
-   is inert in the canon repo.
-7. **Migration notes v2.** A canon change that consumers must be amended for ships as a dated
+8. **Isolation.** Consumer files must not reference `.claudinite/` except the wiring set: the
+   root `CLAUDE.md` (the `@`-import and self-check), `.claude/` (settings hook registrations),
+   `.gitignore`, `.gitattributes`, `.github/workflows/` (the CI stub), and anything under
+   `.claudinite/` itself (`local_packs/` included). Product code that wants a canon helper
+   inlines it — depending on canon internals would turn every canon refactor into a breaking
+   migration for code the canon doesn't own. Enforced as a **basics check composed on the
+   barriers pack's exported detection engine** — the composition pattern packs already use with
+   each other — so it is universal via basics, with no per-project barriers declaration or
+   config to maintain; it self-gates on `.claudinite/` existing, so it is inert in the canon
+   repo.
+9. **Migration notes v2.** A canon change that consumers must be amended for ships as a dated
    record (the existing `migrations/active_migrations/` shape): mechanical ops where code can
    express them, plus a **brief agentic note** for what it can't (chiefly adapting
    consumer-authored `local_packs/` content to a changed engine contract). The nightly applies
-   the notes dated after the repo's stamp, oldest first, inside the one transactional commit. No
-   read-side tolerances in live code, no `LEGACY_*` constants, and **no per-consumer state held
-   in the canon** — the stamp in each consumer is the only bookkeeping. **Retirement is a
+   the notes dated after the repo's stamp, oldest first, inside the one transactional commit.
+   No read-side tolerances in live code, no `LEGACY_*` constants, and **no per-consumer state
+   held in the canon** — the stamp in each consumer is the only bookkeeping. **Retirement is a
    retention window**: a note is deleted ~5 weeks after landing; a repo lagging longer has been
    failing loudly in the nightly log (or was off the access list), and its catch-up path is
    re-running adoption, which vendors head idempotently. The one surviving two-phase case is
-   **out-of-repo state** no commit can reach — the pasted web-environment Setup script keeps the
-   probe + halt-gate pattern ([consumer-safe-changes.md](../consumer-safe-changes.md)).
-8. **Accepted trade-off.** A bad canon change (typically an overzealous blocking check) reaches
-   consumers on one nightly and its fix on a later one — up to ~two days' exposure. Dampers: the
-   Stop hook's own two-block self-release, per-repo `rules`/`accept` overrides, and an on-demand
-   refresh (the nightly's update step run in-session) as the pull-forward/emergency lane.
+   **out-of-repo state** no commit can reach — the pasted web-environment Setup script keeps
+   the probe + halt-gate pattern ([consumer-safe-changes.md](../consumer-safe-changes.md)).
+10. **Accepted trade-off.** A bad canon change (typically an overzealous blocking check)
+    reaches consumers on one nightly and its fix on a later one — up to ~two days' exposure.
+    Dampers: the Stop hook's own two-block self-release, per-repo `rules`/`accept` overrides,
+    and an on-demand refresh (the nightly's update step run in-session) as the
+    pull-forward/emergency lane.
 
 **What this retires:** the per-session fetch and its halt-gate, the `codeload.github.com`
 allowlist prerequisite, `CLAUDINITE_REF` pinning (the commit *is* the pin), the
 `.claudinite.new` swap and tracked-copy preservation, the Method A/B split with the submodule
 caveats, and the stale-mount caveat in [checks/README.md](../checks/README.md). Session start
 becomes a single offline SessionStart entry invoking [session-start.sh](session-start.sh)
-directly (its four steps and the preferences/env halt-gates are unchanged); the `CLAUDE.md`
-self-check line remains the absent-corpus tell. The plugin-packaging rationale in
-[checks/DESIGN.md](../checks/DESIGN.md) also loses its update-latency premise — recorded there
-when the transition completes. The canon repo itself is untouched: it runs its own live tree
-and mounts nothing.
+directly (its four steps are unchanged; the preferences step is fail-soft per 3, the env-check
+halt-gate stays); the `CLAUDE.md` self-check line remains the absent-corpus tell. The
+plugin-packaging rationale in [checks/DESIGN.md](../checks/DESIGN.md) also loses its
+update-latency premise — recorded there when the transition completes. The canon repo itself is
+untouched: it runs its own live tree and mounts nothing.
 
 ## Applying it to the fleet — the transition
 
 Per [consumer-safe-changes.md](../consumer-safe-changes.md): pilot on one real consumer before
 the nightly touches everyone, and never break the channel the migration itself travels through.
 
-- **Phase 0 (this change):** this record + [vendor.mjs](vendor.mjs), the vendor-set computation
+- **Phase 0 (done):** this record + [vendor.mjs](vendor.mjs), the vendor-set computation
   everything else builds on.
 - **Phase 1 — canon capabilities:** the baselining task absorbs the vendor refresh (converge
   set + apply notes + stamp, one commit); the adoption flow and [bootstrap.md](../bootstrap.md)
   are rewritten **fresh-path-only** around the vendored mount (today's legacy-convergence steps
-  collapse into dated notes); `loadConfig` gains the `claudinite` key; the gitignore flip rules
-  (drop every `.claudinite/*` ignore/negation, keep the hooks-log ignores), the
-  `.gitattributes` marking, the consumer CI stub, and the isolation check land.
+  collapse into dated notes); the fail-soft preferences step (done); the `claudinite` stamp key
+  in `loadConfig` (done); the engine's shared-mount sweep exclusion (done); the gitignore flip
+  rules (drop every `.claudinite/*` ignore/negation, keep the hooks-log ignores); the consumer
+  CI stub; and the isolation check.
 - **Phase 2 — the flip:** a dated note converts each member in one commit — write its vendor
-  set, flip `.gitignore`, add `.gitattributes`, rewrite the `SessionStart` entry to invoke the
-  orchestrator directly, stamp the declaration, delete the tracked sync hook. Fleet discovery
-  accepts **both** membership shapes (the tracked sync hook *or* the stamped declaration file)
-  for the whole transition — the sync hook is today's discovery signal, and a probe that only
-  recognizes the new shape would silently orphan every unmigrated repo. A session already
-  running when the flip lands keeps its old wiring against its old snapshot — coherent — and
-  picks the new world up next session.
+  set under `.claudinite/shared/`, flip `.gitignore`, rewrite the `SessionStart` entry to
+  invoke the orchestrator directly, repoint the Stop/PreToolUse hook paths and the `CLAUDE.md`
+  import at `shared/`, stamp the declaration, delete the tracked sync hook and the old flat
+  mount. **Gated pilot first: the note applies only to `GoogleCalendarEventCreator`** until a
+  clean night proves it, then widens to the fleet. Fleet discovery accepts **both** membership
+  shapes (the tracked sync hook *or* the stamped declaration file) for the whole transition —
+  the sync hook is today's discovery signal, and a probe that only recognizes the new shape
+  would silently orphan every unmigrated repo. A session already running when the flip lands
+  keeps its old wiring against its old snapshot — coherent — and picks the new world up next
+  session.
 - **Phase 3 — converge and retire:** once every member is flipped, discovery goes
   single-shape, `sync-claudinite.sh` is deleted from the canon, bootstrap's remaining legacy
   steps are pruned, and [consumer-safe-changes.md](../consumer-safe-changes.md) is rewritten to
@@ -129,9 +150,11 @@ the nightly touches everyone, and never break the channel the migration itself t
 ## The vendor-set contract ([vendor.mjs](vendor.mjs))
 
 `computeVendorSet(declaredEntries, { extraSkills })` → `{ files, errors }`, computed against the
-canon tree the module ships in. `files` is the sorted, repo-relative set: `ENGINE_FILES` +
-`ENGINE_DIRS` walks + each resolved canon pack's directory + the skills union — always excluding
-`*.test.mjs`. Declared ids that name no canon pack (a consumer's local packs, or a typo the
-runner's settings validation already flags) are skipped without error; a pack-required skill
-missing from the tree is reported in `errors`. `extraSkills` lets a caller add skills the canon
-can't see — e.g. ones required by a member's own local packs.
+canon tree the module ships in; the writer materializes `files` under `SHARED_SUBDIR`
+(exported; defined beside `LOCAL_PACKS_SUBDIR` in the packs registry). Structural throughout:
+`ENGINE_DIR_ROOTS` walks (tests and root-docs excluded), `MACHINERY_ROOTS` top-level `.mjs`,
+resolved canon packs' directories, the skills union — never a per-file list. Declared ids that
+name no canon pack (a consumer's local packs, or a typo the runner's settings validation
+already flags) are skipped without error; a pack-required skill missing from the tree is
+reported in `errors`. `extraSkills` lets a caller add skills the canon can't see — e.g. ones
+required by a member's own local packs.
