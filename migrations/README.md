@@ -55,10 +55,13 @@ export default {
 - **Retire — the telemetry.** The **retire pass** ([`fleet-retire.mjs`](fleet-retire.mjs)) — **phase 3**
   of the routine, after the pack tasks settle — evaluates each migration's `legacyPresent` across the
   covered fleet and reports how many repos still carry the legacy shape. When one is fully applied **and
-  the apply pass touched it on no repo this cycle**, it **deletes the migration record automatically** —
-  and, for a migration that relocated canon plumbing into the consumers, first deletes the home-repo
-  files it names in `retireDeletesFromHome` (the automatic phase-2 cut: the canon ends with no leftovers
-  once the fleet has vendored the copy). See the guard below.
+  the apply pass touched it on no repo this cycle**, it **stages the migration record's deletion** — and,
+  for a migration that relocated canon plumbing into the consumers, first the home-repo files it names in
+  `retireDeletesFromHome` — onto a stable retire branch and opens **one PR** for it (never pushed to the
+  canon's default branch, never auto-merged). The canon's own CI then **validates the retirement**: a
+  clean one is a green, mergeable PR; one that would strand an inline reference is a red PR held for
+  cleanup, so `main` never breaks. (A past version pushed the deletes straight to `main` and took it red
+  when a record's inline tolerances were stranded.) See the guard below.
 
 ## The retirement guard (smart, not overzealous)
 

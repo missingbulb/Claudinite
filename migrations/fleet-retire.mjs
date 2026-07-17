@@ -25,16 +25,44 @@
 // a GitHub MCP tool) — there is NO REST client here and no token:
 //   io.read(repo, path)          -> string | null   (get_file_contents; 404 -> null)
 //   io.getDefaultBranch(repo)    -> string | null   (get repo)
+//   io.ensureBranch(repo, branch, fromBranch)        (create_branch; idempotent)
 //   io.remove(repo, branch, path, message) -> boolean (delete_file; tolerates absent)
-// Read-only toward every repo except the canon repo (its own), where it deletes
-// retired records + their retireDeletesFromHome files (on its default branch).
+//   io.hasOpenPr(repo, headBranch) -> boolean        (list_pull_requests)
+//   io.openPr(repo, head, base, title, body)         (create_pull_request)
+// Read-only toward every repo except the canon repo (its own). Retirement is NEVER
+// pushed straight to the canon's default branch: an irreversible delete that strands
+// an inline reference — a barriers `except` entry, a doc link, a test assertion — would
+// break the canon's own CI, which is exactly how a past auto-retirement took `main` red
+// (a 'sweep' can't fix it either: part of the footprint is test-file assertions no
+// deterministic pass should rewrite). Instead the pass stages every delete on a stable
+// retire branch and opens ONE PR (never auto-merged), so the canon's own checks — the
+// same `barrier`, `reference-integrity`, and test suite — VALIDATE the retirement before
+// it can land: a clean retirement is a green, mergeable PR; a stranding one is a red PR
+// held for a human to clean the references it exposed. `main` never goes red from a
+// retirement.
 
 import { retirableMigrations, MIGRATIONS_SUBDIR } from './registry.mjs';
 
-// Retire one fully-applied migration: delete any files it relocated into the
-// consumers (retireDeletesFromHome) FIRST, then the record itself — so a partial
+// Retirement is delivered like the apply pass's own writes — a stable branch + one open
+// PR, never auto-merged — so the canon's CI gates the irreversible deletes.
+const RETIRE_BRANCH = 'claudinite/retire-migrations';
+const RETIRE_PR_BODY = [
+  'Automated migration retirement, proposed by the fleet daily maintenance retire pass.',
+  '',
+  'Each retired migration deletes its record and the now-unused canon files it had',
+  'vendored into the consumers. This is **irreversible**, so it is delivered as a PR',
+  'rather than pushed to the default branch: the canon\'s own CI (barriers,',
+  'reference-integrity, tests) validates that the deletion strands no inline reference',
+  'before it can land. A green run is safe to merge; a red run means the retirement',
+  'would break the canon — clean up the references it flags first. Never auto-merged;',
+  'amended in place each run.',
+].join('\n');
+
+// Retire one fully-applied migration: stage the deletion of any files it relocated into
+// the consumers (retireDeletesFromHome) FIRST, then the record itself — so a partial
 // failure leaves the record to retry the rest next cycle (each delete tolerates an
-// already-gone file). Both live in the canon repo (`branch` = its default branch).
+// already-gone file). Staged onto `branch` (the retire branch, NOT the default branch),
+// so the whole deletion rides one CI-gated PR rather than landing on the canon directly.
 export async function retireMigration(io, canonRepo, branch, m) {
   const relocatedFiles = m.retireDeletesFromHome ?? [];
   for (const p of relocatedFiles) {
@@ -43,7 +71,7 @@ export async function retireMigration(io, canonRepo, branch, m) {
   const record = `migrations/${MIGRATIONS_SUBDIR}/${m.file}`;
   await io.remove(canonRepo, branch, record,
     `Retire migration ${m.id}: fully applied and quiet across the fleet (0 repos on the legacy shape, 0 applications this cycle)`);
-  return `retired ${m.id} — deleted ${record}${relocatedFiles.length ? ` + ${relocatedFiles.length} canon file(s)` : ''}`;
+  return `staged retirement of ${m.id} on the retire PR — ${record}${relocatedFiles.length ? ` + ${relocatedFiles.length} canon file(s)` : ''}`;
 }
 
 // Probe every covered repo for each migration's legacy shape, then retire the ones
@@ -79,12 +107,24 @@ export async function runRetirement(io, canonRepo, migrations, covered, unknownC
   }
   const retirable = retirableMigrations(migrations, { pending, unknownCount, today, appliedThisCycle });
   if (retirable.length) {
-    const branch = await io.getDefaultBranch(canonRepo);
+    const defaultBranch = await io.getDefaultBranch(canonRepo);
+    await io.ensureBranch(canonRepo, RETIRE_BRANCH, defaultBranch);
+    let staged = false;
     for (const m of retirable) {
       try {
-        lines.push(await retireMigration(io, canonRepo, branch, m));
+        lines.push(await retireMigration(io, canonRepo, RETIRE_BRANCH, m));
+        staged = true;
       } catch (e) {
-        lines.push(`could not auto-retire ${m.id}: ${e.message} — the maintenance session needs Contents write on ${canonRepo}`);
+        lines.push(`could not stage retirement of ${m.id}: ${e.message} — the maintenance session needs Contents write on ${canonRepo}`);
+      }
+    }
+    // One persistent PR, amended in place across runs and never auto-merged: the canon's
+    // own CI decides whether the retirement is reference-safe to land.
+    if (staged && !(await io.hasOpenPr(canonRepo, RETIRE_BRANCH))) {
+      try {
+        await io.openPr(canonRepo, RETIRE_BRANCH, defaultBranch, 'Claudinite: retire converged migrations', RETIRE_PR_BODY);
+      } catch (e) {
+        lines.push(`staged retirement on ${RETIRE_BRANCH} but could not open its PR: ${e.message}`);
       }
     }
   }
