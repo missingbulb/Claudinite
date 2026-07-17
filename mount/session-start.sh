@@ -66,6 +66,7 @@ run_step inject-preferences bash "$corpus/preferences/inject-preferences.sh"
 run_step load-active-prose  node "$corpus/packs/load-active-prose.mjs"
 run_step mount-skills       node "$corpus/skills/mount-skills.mjs"
 run_step env-check          node "$corpus/packs/env.mjs" check
+run_step interview-check    node "$corpus/packs/interview.mjs" check
 hooklog orchestrator "done"
 
 # One terse, visible confirmation into the session context that the harness ran

@@ -184,6 +184,8 @@ node .claudinite/checks/run.mjs --init
 
 From then on the declared packs run deterministically every session and in CI. The `--init` fingerprint is a starting suggestion, not a standing rule: a `marker` only *suspects* a pack is wanted, so whether to add or drop a pack later is the project's call. What *is* enforced is settings validity — an unknown pack name, an unknown property, or malformed JSON in `.claudinite-checks.json` is caught when the file loads and surfaced as a blocking `config` error.
 
+If `--init` prints **pending adoption questions**, run the adoption interview now, as part of this bootstrap — this is the one strict point (the owner is present by construction; outside bootstrap the same gap only ever surfaces as a mild SessionStart note that unattended sessions ignore — [packs/README.md](packs/README.md#adoption-interview-questions)): ask the owner each question via `AskUserQuestion`, record each answer **verbatim** on that pack's entry as `answers: { "<question-id>": "<answer>" }` ("n/a — none wanted" is a valid answer), and derive the entry's `config` where the question's distill note says how.
+
 **4.** Make the baseline declaration explicit (idempotent — a no-op when it's already declared). **No pack is active by default, the baseline included**: a repo gets the baseline prose and checks only by declaring the pack, so the declaration is visible — and droppable — in the one file where every pack selection lives. `--init` above already seeds it into a fresh file; this backfills a pre-existing one:
 
 ```sh

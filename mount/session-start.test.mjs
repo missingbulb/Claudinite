@@ -15,7 +15,7 @@ const REPO_ROOT = dirname(MOUNT_DIR);
 // corpus root) plus tiny STUB steps in their domains, so the test exercises the
 // ORCHESTRATOR's own contract — sequence, stdout forwarding, lifecycle logging,
 // exit 0 — without dragging in the real children and their dependencies.
-function makeCorpus({ prefs = '#!/bin/bash\n', prose = '', skills = '', env = '' } = {}) {
+function makeCorpus({ prefs = '#!/bin/bash\n', prose = '', skills = '', env = '', interview = '' } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-sessionstart-'));
   mkdirSync(join(root, 'mount'), { recursive: true });
   copyFileSync(join(MOUNT_DIR, 'session-start.sh'), join(root, 'mount', 'session-start.sh'));
@@ -26,6 +26,7 @@ function makeCorpus({ prefs = '#!/bin/bash\n', prose = '', skills = '', env = ''
   writeFileSync(join(root, 'packs', 'load-active-prose.mjs'), prose);
   writeFileSync(join(root, 'skills', 'mount-skills.mjs'), skills);
   writeFileSync(join(root, 'packs', 'env.mjs'), env);
+  writeFileSync(join(root, 'packs', 'interview.mjs'), interview);
   return root;
 }
 
@@ -48,14 +49,14 @@ test('orchestrator runs steps in order, forwards only step stdout, logs the life
   // order, followed by the one-line confirmation footer; the timestamped log
   // goes to stderr + the file, never stdout.
   assert.ok(r.stdout.startsWith('PREFS\nPROSE\n'), r.stdout);
-  assert.match(r.stdout, /^Claudinite session-start: ran 4 steps \(inject-preferences, load-active-prose, mount-skills, env-check\) at .+\.$/m);
+  assert.match(r.stdout, /^Claudinite session-start: ran 5 steps \(inject-preferences, load-active-prose, mount-skills, env-check, interview-check\) at .+\.$/m);
   assert.doesNotMatch(r.stdout, /WARNING/); // all steps exited 0
   const log = readFileSync(join(projectDir, '.claudinite-hooks.log'), 'utf8');
   for (const s of [
     'run=testrun orchestrator: start',
     'inject-preferences: start', 'inject-preferences: done exit=0',
     'load-active-prose: start', 'load-active-prose: done exit=0',
-    'mount-skills: start', 'env-check: start',
+    'mount-skills: start', 'env-check: start', 'interview-check: start',
     'run=testrun orchestrator: done',
   ]) assert.ok(log.includes(s), `log missing line: ${s}\n--- log ---\n${log}`);
 });

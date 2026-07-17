@@ -8,9 +8,10 @@
 //   --init      write .claudinite-checks.json — basics plus the fingerprinted packs
 import { writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { buildContext } from './lib/context.mjs';
+import { buildContext, loadConfig } from './lib/context.mjs';
 import { applyConfig, render } from './lib/findings.mjs';
 import { discoverPacks, isActive, resolveDeclaredPacks } from '../packs/registry.mjs';
+import { interviewState } from '../packs/interview.mjs';
 import { loadSkillRules } from '../skills/registry.mjs';
 
 const args = process.argv.slice(2);
@@ -67,6 +68,17 @@ if (has('--init')) {
   // must be visible in the file where a project would change it (see checks/README.md).
   writeFileSync(path, `${JSON.stringify({ packs: declared, rules: {}, accept: [], maintenance: { delivery: 'push' } }, null, 2)}\n`);
   console.log(`Wrote ${path} (packs: ${declared.join(', ')}).`);
+  // Adoption interviews, strict at bootstrap: the flow that runs --init has the
+  // owner present, so surface every declared pack's questions for the adoption
+  // interview NOW (bootstrap.md Part 6). Outside bootstrap the same gap only
+  // ever surfaces as a mild SessionStart note (packs/interview.mjs).
+  const { pending } = interviewState(packs, loadConfig(root));
+  if (pending.length) {
+    console.log('\nAdoption questions pending — interview the owner as part of this adoption: ask each'
+      + ' question, record the answer verbatim on the pack\'s entry as answers.<question-id>, and'
+      + ' derive the entry\'s config where the question\'s distill note says how.');
+    for (const p of pending) for (const q of p.questions) console.log(`  ${p.packId} / ${q.id}: ${q.prompt}`);
+  }
   process.exit(0);
 }
 
@@ -96,6 +108,24 @@ for (const name of ctx.config.packs) {
   if (typeof name === 'string' && !knownIds.has(name)) {
     findings.push(configError(`declares unknown pack "${name}"`, `remove it or fix the name — declarable packs: ${[...knownIds].sort().join(', ')}`));
   }
+}
+// Adoption-interview hygiene (packs/interview.mjs). PENDING questions are
+// deliberately not findings at all — they surface only as a mild SessionStart
+// note, so an unattended nightly run is never blocked on a question nobody is
+// present to answer. A STALE answer (its question no longer declared — renamed
+// or removed upstream) is ADVISORY: visible, never run-failing, so a canon-side
+// question change can't fail the fleet's CI overnight. A malformed `questions`
+// declaration is a real manifest fault, blocking like any other.
+const { stale, errors: questionErrors } = interviewState(packs, ctx.config);
+for (const e of questionErrors) findings.push(configError(e.what, e.fix));
+for (const s of stale) {
+  findings.push({
+    rule: 'config', severity: 'advisory', file: '.claudinite-checks.json', line: null,
+    what: `the "${s.packId}" pack entry stores an answer for "${s.answerId}", a question the pack no longer declares`,
+    why: 'a stale answer silently stops matching its question, so the stored intent goes unread and the interview re-asks',
+    fix: 'remove the stale answer, or re-key it to the renamed question id',
+    doc: 'packs/README.md',
+  });
 }
 for (const pack of packs) {
   if (!isActive(pack, ctx.config)) continue;

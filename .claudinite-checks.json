@@ -5,6 +5,9 @@
     "canon-curation",
     {
       "id": "barriers",
+      "answers": {
+        "goals": "Keep extending.md's engine/content boundary structural: core (checks/, migrations/, mount/, routines/, .github/, the top-level docs, and the shared engine modules under packs/ and skills/) must never name a specific pack or skill — packs and skills are discovered content, and a core file citing one couples the engine to its content. One rule per namespace (packs/*, skills/*); reviewed inherent couplings live in each rule's except."
+      },
       "config": {
         "rules": [
           {
@@ -21,6 +24,7 @@
               "packs/registry.mjs",
               "packs/load-active-prose.mjs",
               "packs/env.mjs",
+              "packs/interview.mjs",
               "skills/registry.mjs",
               "skills/mount-skills.mjs"
             ],
@@ -121,6 +125,7 @@
               "packs/registry.mjs",
               "packs/load-active-prose.mjs",
               "packs/env.mjs",
+              "packs/interview.mjs",
               "skills/registry.mjs",
               "skills/mount-skills.mjs"
             ],
