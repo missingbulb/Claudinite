@@ -48,6 +48,17 @@ export function deletePath(root, path, commitMsg = 'delete Refs #1') {
   git(root, 'commit', '-q', '-m', commitMsg);
 }
 
+/**
+ * Scratch session transcript (Claude Code JSONL) for conversation-surface
+ * rules. Lives outside any scratch repo so it never appears in ctx.files.
+ */
+export function makeTranscript(entries) {
+  const dir = mkdtempSync(join(tmpdir(), 'claudinite-transcript-'));
+  const path = join(dir, 'session.jsonl');
+  writeFileSync(path, entries.map((e) => JSON.stringify(e)).join('\n') + '\n');
+  return { path, cleanup: () => rmSync(dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 }) };
+}
+
 export function cleanup(root) {
   // maxRetries: under parallel `node --test`, git leaves transient files in the temp
   // repo's .git/* while this recursive rmdir walks it, so the delete intermittently

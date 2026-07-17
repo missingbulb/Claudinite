@@ -71,7 +71,9 @@ if (has('--init')) {
 }
 
 const mode = has('--changed') ? 'changed' : 'all';
-const ctx = buildContext({ root, mode, baseOverride: value('--base') });
+// --transcript: the session transcript the Stop hook forwards, enabling the
+// conversation-surface rules; absent everywhere else (CI), where they self-skip.
+const ctx = buildContext({ root, mode, baseOverride: value('--base'), transcriptPath: value('--transcript') });
 ctx.knownPacks = packs; // for skill-ownership's corpus-integrity check
 
 const configError = (what, fix) => ({

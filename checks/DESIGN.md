@@ -219,6 +219,21 @@ protection (it overrides a Stop hook after ~8 consecutive blocks).
 editing on GitHub web, or any other tool, bypasses them. A CI job running the same full sweep
 catches those — same rules, same messages, one source of truth.
 
+**The conversation surface (Stop hook only).** Some process rules leave their artifact not in
+the repo but in the *session itself* — e.g. `comment-classification` (the reply to the owner's
+latest comment must declare an explicit `Comment class:` line: the assessment stays judgment,
+but that an assessment was made is checkable) and `feature-requirements-first` (a
+feature-classified comment's doc-first ordering on the branch). The Stop hook is the one surface
+that can carry these: Claude Code passes the hook `transcript_path` on stdin, the hook forwards
+it as `--transcript`, and `ctx.conversation()` exposes the parsed session
+([lib/transcript.mjs](lib/transcript.mjs)). Everywhere else — CI, a manual run — the transcript
+is absent and these rules self-gate to `[]`, the same self-supplied relevance gate skill checks
+use. Two scoping choices keep them convergent rather than nagging: only the *latest* owner
+comment is judged (a transcript is append-only, so an old omission could never be fixed), and
+the ordering rule scopes to commits after the comment's timestamp (earlier work on the branch is
+never re-litigated). The Stop hook's clean fast path also means a purely conversational turn —
+no tracked change vs the base — runs no checks at all, conversation rules included.
+
 **Prefer a platform setting when one exists — but never trust it.** Squash-only merging is a
 GitHub repo setting; force-push protection is branch protection. The setting does the
 *enforcing*, but it's configuration like any other: it can be off, get switched off, or be
