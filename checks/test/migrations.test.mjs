@@ -121,7 +121,11 @@ test('migrationActive: true while a migration file carrying the slug is present,
 test('chrome-release-vendoring migration: gate, telemetry, and the home-file retirement list', async () => {
   const m = (await loadMigrations()).find((x) => x.id === 'chrome-release-vendoring');
   assert.ok(m, 'discovered');
-  assert.equal(m.retire, 'auto');
+  // 'manual', not 'auto': the fleet has vendored, but the record's references live
+  // inline across the canon (barriers `except` entries, .github/workflows/README.md
+  // links, this test) that the retire pass does not sweep — so auto-retiring it
+  // strands them and breaks CI. Retire by hand alongside those references.
+  assert.equal(m.retire, 'manual');
   assert.equal(m.retireDeletesFromHome.length, 8);
   assert.ok(m.retireDeletesFromHome.includes('.github/workflows/chrome-extension-release.yml'));
   // report-failure is shared canon infra (a non-chrome pack's coverage stub + the
