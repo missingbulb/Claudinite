@@ -37,6 +37,13 @@ image found in a coded kind's folder (a screenshot cannot verify a gesture or a 
 stray golden no case or step accounts for. Every rule iterates the registry — adding a kind never
 edits the gate.
 
+The gate checks repo state; the *ordering* of an interactive feature run is enforced by the
+pack's `feature-requirements-first` check: after the owner's feature-classified comment, an
+independent commit updating `requirements.md` (no code alongside) must precede the first code
+commit on the branch. It runs on the conversation surface (the Stop hook, where the session
+transcript is available) and self-skips everywhere else — a session that implemented before it
+specified is blocked in the session that did it.
+
 ## 3. The kind vocabulary
 
 Recurring kinds, by what they can honestly observe — route each leaf to the kind that can actually

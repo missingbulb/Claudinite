@@ -1,3 +1,4 @@
+import commentClassification from './comment-classification.mjs';
 import referenceIntegrity from './reference-integrity.mjs';
 import markdownLinkLabels from './markdown-link-labels.mjs';
 import taskLifecycle from './task-lifecycle.mjs';
@@ -23,6 +24,7 @@ export default {
   seededByDefault: true,
   prose: 'RULES.md',
   rules: [
+    commentClassification,
     referenceIntegrity,
     markdownLinkLabels,
     taskLifecycle,

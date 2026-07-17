@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, deletePath, cleanup, git, writeFiles } from '../../checks/test/helpers.mjs';
+import { makeRepo, deletePath, cleanup, git, writeFiles, makeTranscript } from '../../checks/test/helpers.mjs';
 import { buildContext } from '../../checks/lib/context.mjs';
+import commentClassification from './comment-classification.mjs';
 import referenceIntegrity from './reference-integrity.mjs';
 import linkLabels from './markdown-link-labels.mjs';
 import taskLifecycle from './task-lifecycle.mjs';
@@ -573,5 +574,88 @@ test('catalog-completeness: silent outside the corpus repo (no registries tracke
   } });
   try {
     assert.equal(run(catalogCompleteness, root, 'all').length, 0);
+  } finally { cleanup(root); }
+});
+
+// --- comment-classification: the reply to the owner's latest comment must carry
+// an explicit `Comment class:` line (conversation surface — Stop hook only).
+
+function runWithTranscript(rule, root, entries) {
+  const { path, cleanup: rmTranscript } = makeTranscript(entries);
+  try {
+    const ctx = buildContext({ root, mode: 'changed', transcriptPath: path });
+    return rule.run(ctx);
+  } finally { rmTranscript(); }
+}
+
+const owner = (text, timestamp = '2026-01-01T10:00:00Z') =>
+  ({ type: 'user', timestamp, message: { role: 'user', content: text } });
+const reply = (text, timestamp = '2026-01-01T10:01:00Z') =>
+  ({ type: 'assistant', timestamp, message: { role: 'assistant', content: [{ type: 'text', text }] } });
+const toolResult = () =>
+  ({ type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'x', content: 'ok' }] } });
+
+test('comment-classification: flags a reply with no classification line, passes an explicit one', () => {
+  const root = makeRepo({ changed: { 'a.md': 'x\n' } });
+  try {
+    const bad = runWithTranscript(commentClassification, root, [
+      owner('please add the widget'),
+      reply('On it — adding the widget now.'),
+    ]);
+    assert.equal(bad.length, 1);
+    assert.match(bad[0].what, /Comment class/);
+    const good = runWithTranscript(commentClassification, root, [
+      owner('please add the widget'),
+      reply('**Comment class: feature** — routing this as a feature run.'),
+    ]);
+    assert.equal(good.length, 0);
+  } finally { cleanup(root); }
+});
+
+test('comment-classification: judges the latest owner comment, not an earlier classified one', () => {
+  const root = makeRepo({ changed: { 'a.md': 'x\n' } });
+  try {
+    const findings = runWithTranscript(commentClassification, root, [
+      owner('please add the widget', '2026-01-01T10:00:00Z'),
+      reply('Comment class: feature — starting the run.', '2026-01-01T10:01:00Z'),
+      owner('also rename the button', '2026-01-01T10:05:00Z'),
+      reply('Renaming it.', '2026-01-01T10:06:00Z'),
+    ]);
+    assert.equal(findings.length, 1);
+  } finally { cleanup(root); }
+});
+
+test('comment-classification: a late marker in the same turn converges the finding', () => {
+  const root = makeRepo({ changed: { 'a.md': 'x\n' } });
+  try {
+    const findings = runWithTranscript(commentClassification, root, [
+      owner('also rename the button'),
+      reply('Renaming it.'),
+      reply('Comment class: feature — and the requirement is recorded.'),
+    ]);
+    assert.equal(findings.length, 0);
+  } finally { cleanup(root); }
+});
+
+test('comment-classification: tool results, meta, and tag-wrapped turns are not owner comments', () => {
+  const root = makeRepo({ changed: { 'a.md': 'x\n' } });
+  try {
+    const findings = runWithTranscript(commentClassification, root, [
+      owner('please add the widget'),
+      reply('Comment class: feature — on it.'),
+      toolResult(),
+      { type: 'user', isMeta: true, message: { role: 'user', content: [{ type: 'text', text: 'meta note' }] } },
+      owner('<system-reminder>synthetic</system-reminder>'),
+      reply('Continuing the run.'),
+    ]);
+    assert.equal(findings.length, 0);
+  } finally { cleanup(root); }
+});
+
+test('comment-classification: silent without a transcript (CI) and on an empty conversation', () => {
+  const root = makeRepo({ changed: { 'a.md': 'x\n' } });
+  try {
+    assert.equal(commentClassification.run(buildContext({ root, mode: 'changed' })).length, 0);
+    assert.equal(runWithTranscript(commentClassification, root, [toolResult()]).length, 0);
   } finally { cleanup(root); }
 });

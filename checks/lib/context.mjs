@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
+import { parseEntries } from './transcript.mjs';
 
 function sh(root, cmd, args, { allowFail = false, input = undefined } = {}) {
   const r = spawnSync(cmd, args, { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, input });
@@ -188,7 +189,7 @@ export function loadConfig(root) {
   };
 }
 
-export function buildContext({ root, mode = 'changed', baseOverride = null }) {
+export function buildContext({ root, mode = 'changed', baseOverride = null, transcriptPath = null }) {
   root = resolve(root);
   const baseRef = baseOverride || resolveBaseRef(root);
   const mergeBase = baseRef ? (gitTry(root, 'merge-base', 'HEAD', baseRef) || '').trim() || null : null;
@@ -221,6 +222,11 @@ export function buildContext({ root, mode = 'changed', baseOverride = null }) {
   }
 
   const branch = (gitTry(root, 'rev-parse', '--abbrev-ref', 'HEAD') || '').trim();
+
+  // Conversation surface: the Stop hook forwards the session's transcript_path;
+  // every other surface (CI, a manual run) has none, and conversation rules must
+  // return [] when this is null. Parsed lazily and cached — most sweeps never ask.
+  let conversationCache;
 
   return {
     root,
@@ -266,6 +272,34 @@ export function buildContext({ root, mode = 'changed', baseOverride = null }) {
         else if (!l.startsWith('-')) lineNo += l ? 1 : 0;
       }
       return added;
+    },
+
+    // Parsed transcript entries of the session driving this run, or null when no
+    // transcript is available (see conversationCache above).
+    conversation() {
+      if (conversationCache !== undefined) return conversationCache;
+      if (!transcriptPath || !existsSync(transcriptPath)) return (conversationCache = null);
+      try { conversationCache = parseEntries(readFileSync(transcriptPath, 'utf8')); }
+      catch { conversationCache = null; }
+      return conversationCache;
+    },
+
+    // The branch's own commits since the merge-base, oldest first, each with its
+    // changed files and committer date — for rules about the ORDER work landed in
+    // (ctx.commits keeps only messages). Merges excluded: their file list is
+    // empty under --name-only and their content arrives via their parents.
+    commitsWithFiles() {
+      if (!mergeBase) return [];
+      const out = gitTry(root, 'log', '--reverse', '--no-merges', '--name-only',
+        '--format=%x00%H%x1f%cI%x1f%s', `${mergeBase}..HEAD`);
+      const commits = [];
+      for (const block of (out || '').split('\0')) {
+        if (!block.trim()) continue;
+        const [head, ...rest] = block.trim().split('\n');
+        const [sha, date, subject] = head.split('\x1f');
+        commits.push({ sha, date, subject, files: rest.map((f) => f.trim()).filter(Boolean) });
+      }
+      return commits;
     },
 
     // Merge commits the current change introduces — those on HEAD's first-parent

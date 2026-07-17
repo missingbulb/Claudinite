@@ -28,8 +28,19 @@ if (!dirty) {
 }
 if (!dirty) process.exit(0); // clean fast path — nothing ran, nothing to log
 
+// Claude Code passes the hook's input JSON on stdin; its transcript_path is what
+// lets the conversation-surface rules see the session. A manual run (TTY, or no
+// parseable input) simply runs without them — they self-skip on a null transcript.
+let transcriptPath = null;
+try {
+  if (!process.stdin.isTTY) {
+    const input = readFileSync(0, 'utf8');
+    if (input.trim()) transcriptPath = JSON.parse(input).transcript_path ?? null;
+  }
+} catch { /* no usable hook input — conversation rules self-skip */ }
+
 hooklog('Stop', 'start checks');
-const run = spawnSync(process.execPath, [runner], {
+const run = spawnSync(process.execPath, [runner, ...(transcriptPath ? ['--transcript', transcriptPath] : [])], {
   cwd: projectRoot, encoding: 'utf8',
 });
 if (run.status === 0) {
