@@ -5,11 +5,16 @@ consuming repo runs at session start (and once at cloud-environment build) to mo
 and inject its guidance. The full adoption procedure is [bootstrap.md](../bootstrap.md); this
 folder is the code that procedure wires in.
 
+> **Direction:** the session-start *fetch* is being replaced by a tracked, nightly-updated
+> vendor of the corpus — the decision record is [DESIGN.md](DESIGN.md). Until that transition
+> lands, the files below describe the live (fetching) mount unchanged.
+
 | File | Role |
 |---|---|
 | [`sync-claudinite.sh`](sync-claudinite.sh) | The Method B **SessionStart** hook. The **one tracked file** a consumer commits (at `.claudinite/mount/sync-claudinite.sh`), doubling as the committed signal that the repo mounts Claudinite — fleet discovery keys on it. Fetches the corpus tarball into `.claudinite/`, then fans out to `session-start.sh`. |
 | [`session-start.sh`](session-start.sh) | The **orchestrator**. Runs the corpus-dependent session-start steps **in sequence, in one process** (Claude Code runs hook entries in parallel, so ordering can't live across sibling entries). Forwards each step's stdout to the session context and logs a timeline to `.claudinite-hooks.log`. Method A / the canon repo invoke it directly; Method B reaches it through `sync-claudinite.sh`. |
 | [`environment-setup.sh`](environment-setup.sh) | The generic **cloud-environment setup** — pasted once into a web environment's Setup script field. Primes the corpus and runs each active pack's `env.mjs install`. Identical for every project, so a consumer commits no copy of its own. |
+| [`vendor.mjs`](vendor.mjs) | The **vendor-set computation** for the incoming tracked mount ([DESIGN.md](DESIGN.md)): a repo's pack declaration → the minimal corpus file set that repo persists. Not yet wired into the live mount. |
 
 ## What deliberately stays *out* of `mount/`
 
