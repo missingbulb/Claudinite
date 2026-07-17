@@ -113,6 +113,10 @@ On `pull_request`, `actions/checkout` checks out the synthetic `refs/pull/N/merg
 
 GitHub **Actions** reports results as **check runs**, not the legacy **commit statuses**, so `pull_request_read` `method: get_status` returns `state: pending`, `total_count: 0` for a PR whose Actions CI has already **passed** — reading falsely as "no CI / not started," which can skip a real gate or trigger an endless wait. Gate on CI by reading the **check runs for the PR head SHA** (`get_check_run`, or the workflow run for that SHA) instead. Target the head SHA directly rather than `actions_list`-ing the repo's runs — that returns every run, its output is huge, and a specific check-run/SHA query is both correct and cheap.
 
+## To confirm a non-PR run (push / dispatch), read its job logs — it has no PR check runs
+
+A `push` or `workflow_dispatch` run isn't attached to a PR, so the PR-scoped check-run query above doesn't apply to it. Confirm such a run through the GitHub API/MCP tools: `get_job_logs(run_id, failed_only: true)` — "0 failed jobs" means green — or, for a release build, `get_release_by_tag`. Don't `curl` the run's status instead: in a sandboxed session `api.github.com` is proxy-blocked and returns an error body that never matches a success pattern, so a `curl`/`Monitor` poll silently reports "still running" until it times out.
+
 ## Mark large committed fixtures `linguist-vendored` to fix language stats
 
 Large committed fixture files (full-page HTML, generated data dumps) can dwarf actual source by byte count and cause GitHub to mislabel the repo's primary language. Add a `.gitattributes` entry for each such path (e.g. `test/fixtures/*.html linguist-vendored`) to tell Linguist to ignore it; apply the same annotation whenever you add another large generated or fixture file.
