@@ -195,3 +195,19 @@ test('tidy-repo-seed migration: legacyPresent reads the declaration (true iff ti
   assert.equal(await seed.legacyPresent(() => false, async () => null), false, 'no declaration -> not held');
   assert.equal(await seed.legacyPresent(() => false, async () => 'nope'), false, 'unparsable -> not held');
 });
+
+test('loadMigrations: the vendored-mount flip record carries its worker gate and stays out of the mechanical passes', async () => {
+  const m = (await loadMigrations()).find((x) => x.id === 'vendored-mount-flip');
+  assert.ok(m, 'flip record must be discovered');
+  assert.equal(m.retire, 'manual');
+  // Pilot gate: the worker converts only the repos this names (until 'fleet').
+  assert.deepEqual(m.flip.repos, ['missingbulb/GoogleCalendarEventCreator']);
+  assert.match(m.flip.steps, /ONE commit/);
+  // No mechanical ops on purpose — fleet-apply must see a no-op.
+  assert.equal(m.aliases, undefined);
+  assert.equal(m.materialize, undefined);
+  assert.equal(m.rewrite, undefined);
+  // Telemetry: unflipped = still carrying the tracked sync hook.
+  assert.equal(await m.legacyPresent(async (p) => p === '.claudinite/mount/sync-claudinite.sh'), true);
+  assert.equal(await m.legacyPresent(async () => false), false);
+});

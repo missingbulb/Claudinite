@@ -24,12 +24,15 @@ stamp is the discriminator ([mount/DESIGN.md](../../../mount/DESIGN.md)):
   stamp. Also keep the fresh-path wiring converged per [bootstrap.md](../../../bootstrap.md)
   (hook registrations, the `@.claudinite/shared/CLAUDE.md` import, the CI stub copy) — additive
   and in-place fixes only, never clobbering the member's own entries.
-- **Pre-flip member** (no stamp) — apply **only** the legacy maintenance in bootstrap.md's
+- **Pre-flip member** (no stamp) — first consult the live **flip note**
+  (`migrations/active_migrations/*vendored-mount-flip*`): if its `flip.repos` names this member
+  (or is `'fleet'`), perform the **conversion** by following the note's `steps` verbatim — one
+  delivery-aware commit, transactional (any failure writes nothing). Otherwise apply **only**
+  the legacy maintenance in bootstrap.md's
   [transition appendix](../../../bootstrap.md#appendix--pre-flip-members-transition-window-retiring):
   refresh the tracked sync hook from the canon, keep the legacy wiring/gitignore/declaration
-  backfills converged. **Never convert a member to the vendored mount here** — conversion is the
-  gated flip note (phase 2), piloted before it widens; an ungated flip from this worker would
-  bypass that gate.
+  backfills converged. **Never convert a member the note doesn't name** — the pilot gate is the
+  point; widening it is a reviewed one-line canon change, not this worker's call.
 - **Adopt a queued repo** (a repo with an open `Adopt <owner>/<repo>` issue — the census applied
   every eligibility rule) — run the fresh-path bootstrap (which vendors the mount); it's a
   **first** adoption, so **do open** its enrollment issue, noting the owner-in-the-loop parts
