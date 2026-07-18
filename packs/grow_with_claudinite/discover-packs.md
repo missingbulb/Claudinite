@@ -122,7 +122,7 @@ Push each authored pack to a per-run-unique branch (see [the git-github-advanced
 and open **its own PR** against the canon's default branch — never a direct push, and never several packs
 in one PR. A new pack is reviewed differently from a rule addition, so each earns its own review surface.
 The write surface is bounded to the new `packs/<tech>/` directory (with any check's registration and
-fixture) plus its index rows. Keep the commit and PR terse; reference this task's tracking issue.
+fixture) plus its index rows. Keep the commit and PR terse, and **put the issue reference in the commit message** — `Refs #<n>` for this task's tracking issue (below), in the commit itself, not only the PR body. The canon's `basics` `task-lifecycle` check gates a PR on its commits referencing an issue, so a commit that cites none reds CI and blocks the merge.
 
 ## Tracking issue
 
