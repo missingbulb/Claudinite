@@ -55,12 +55,12 @@ export async function fileExists(gh, fullName, path) {
 // submodule.) The structural "is this a covered member" test, shared by the planner
 // (which repos to plan over) and the census (which repos are uncovered).
 export async function isCovered(gh, fullName) {
-  if (await fileExists(gh, fullName, '.claudinite/mount/sync-claudinite.sh')) return true; // Method B (mount/)
-  if (await fileExists(gh, fullName, '.claudinite/sync-claudinite.sh')) return true; // Method B (pre-mount)
-  if (await fileExists(gh, fullName, '.claudinite/.gitkeep')) return true; // legacy Method B
-  const { status, json } = await gh(`/repos/${fullName}/contents/.gitmodules`);
-  if (status === 404) return false;
-  if (status !== 200) throw new Error(`marker check ${fullName}:.gitmodules returned ${status}`);
-  const text = Buffer.from(json.content ?? '', 'base64').toString('utf8');
-  return /path\s*=\s*\.claudinite\b/.test(text) && /url\s*=\s*.*claudinite/i.test(text); // Method A
+  // The tracked declaration file is THE membership signal — the one file every
+  // member carries whatever its mount shape (the engine can't run without it,
+  // and baselining backfills it nightly), and the only shape the planner can
+  // plan for at all (activePacks is read from it). A mount marker WITHOUT a
+  // declaration is a half-adoption that must classify as uncovered — the census
+  // then opens an adoption issue and it heals loudly, instead of rotting as a
+  // "covered" repo no task ever runs on. (mount/DESIGN.md)
+  return fileExists(gh, fullName, '.claudinite-checks.json');
 }
