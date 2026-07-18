@@ -15,6 +15,14 @@
 // `claudinite/maintenance` branch and ensures its one open PR; anything else commits
 // nothing and opens an issue naming it.
 //
+// The pr lane regenerates, never reconciles (#332): the desired end-state is
+// always computed against the DEFAULT branch (the truth being migrated), never
+// the maintenance branch's own stale copy; writes the branch already carries are
+// dropped so quiet nights add no commits; and each run first refreshes the
+// branch from base (io.updateBranchFromBase, optional — a conflict is noted for
+// the owner, never resolved here) so a weeks-open PR doesn't merge stale-based
+// content.
+//
 // GitHub I/O is a small injected `io` object whose methods map 1:1 to the GitHub MCP
 // tools the orchestrator drives — there is NO REST client here and no token:
 //   io.getDefaultBranch(repo)                 -> string | null   (get repo)
@@ -25,6 +33,8 @@
 //   io.hasOpenPr(repo, headBranch)            -> boolean         (list_pull_requests)
 //   io.openPr(repo, head, base, title, body)                     (create_pull_request)
 //   io.openIssue(repo, title, body)                              (issue_write create)
+//   io.updateBranchFromBase(repo, headBranch)  [optional]        (update_pull_request_branch
+//                                                on its open PR; throws on conflict)
 // The writes land as one `commit` (push_files); a rare file-move's delete follows via
 // `remove` (a separate commit — MCP has no atomic multi-file+delete, and no active
 // migration produces a delete). `applyToRepos` returns the migration ids it applied
@@ -86,14 +96,45 @@ export async function applyToRepo(io, fullName, migrations) {
   }
 
   const branch = delivery === 'pr' ? MAINT_BRANCH : defaultBranch;
-  if (delivery === 'pr') await io.ensureBranch(fullName, MAINT_BRANCH, defaultBranch);
+  const notes = [];
+  if (delivery === 'pr') {
+    await io.ensureBranch(fullName, MAINT_BRANCH, defaultBranch);
+    // Refresh the branch from base BEFORE staging, so the diff below sees the
+    // branch's true tip and the eventual merge isn't stale-based (#332). A
+    // conflict is the owner's to see, never resolved here.
+    if (io.updateBranchFromBase && (await io.hasOpenPr(fullName, MAINT_BRANCH))) {
+      try { await io.updateBranchFromBase(fullName, MAINT_BRANCH); }
+      catch (e) { notes.push(`maintenance branch could not update from base: ${e.message}`); }
+    }
+  }
 
-  const staged = await stageMemberWrites(io, fullName, branch, migrations);
-  if (!staged) return { ids: [] };
+  // Desired end-state is ALWAYS computed against the default branch — the truth
+  // being migrated — never the maintenance branch's own copy (#332).
+  const staged = await stageMemberWrites(io, fullName, defaultBranch, migrations);
+  if (!staged) return { ids: [], note: notes.length ? `${fullName}: ${notes.join('; ')}` : undefined };
 
-  const files = [...staged.files].map(([path, content]) => ({ path, content }));
+  let files = [...staged.files].map(([path, content]) => ({ path, content }));
+  let deletes = [...staged.deletes];
+  if (delivery === 'pr') {
+    // Drop writes the branch already carries, so an unmerged PR doesn't collect
+    // an identical commit every night.
+    const pending = [];
+    for (const f of files) {
+      if ((await io.read(fullName, f.path, MAINT_BRANCH)) !== f.content) pending.push(f);
+    }
+    files = pending;
+    const pendingDeletes = [];
+    for (const path of deletes) {
+      if ((await io.read(fullName, path, MAINT_BRANCH)) !== null) pendingDeletes.push(path);
+    }
+    deletes = pendingDeletes;
+    if (!files.length && !deletes.length) {
+      return { ids: [], note: notes.length ? `${fullName}: ${notes.join('; ')}` : undefined };
+    }
+  }
+
   if (files.length) await io.commit(fullName, branch, files, 'Apply Claudinite migrations');
-  for (const path of staged.deletes) {
+  for (const path of deletes) {
     await io.remove(fullName, branch, path, `Apply Claudinite migrations: remove ${path}`);
   }
   if (delivery === 'pr' && !(await io.hasOpenPr(fullName, MAINT_BRANCH))) {
@@ -102,7 +143,8 @@ export async function applyToRepo(io, fullName, migrations) {
       'Automated Claudinite maintenance (migrations + baselining). Amended in place each run; never auto-merged.',
     );
   }
-  return { ids: [...staged.ids], note: `${fullName}: applied ${[...staged.ids].join(', ')} (${delivery})` };
+  notes.unshift(`applied ${[...staged.ids].join(', ')} (${delivery})`);
+  return { ids: [...staged.ids], note: `${fullName}: ${notes.join('; ')}` };
 }
 
 // Apply pending migrations to every repo the routine handed us. A repo that throws is

@@ -49,17 +49,30 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    a one-line note and the session proceeds on defaults. The halt-gate is reserved for the
    load-bearing corpus, which after the flip is always local and can't miss.
 4. **Transactional nightly update.** Per repo and per night: apply the pending migration notes,
-   converge the vendored tree to the canon snapshot, advance the stamp — **one commit**. If the
+   converge the vendored tree to the canon snapshot, advance the stamp — **one commit**. (One
+   MCP reality: file *deletions* can't ride a `push_files` commit, so convergence's prunes
+   follow as their own `delete_file` commits **after** the stamped content commit — safe to
+   interrupt, since the next night's convergence re-deletes stragglers; note ops are
+   stamp-gated and always land with the stamp — #329.) If the
    migration fails, nothing is written: the repo keeps running its old snapshot exactly as
    before, is retried the next night, and the failure lands in the fleet routine's failure log.
-   The commit honors the repo's `maintenance.delivery` (`push` or `pr`). The refresh is
+   The commit honors the repo's `maintenance.delivery` (`push` or `pr`; the pr lane computes its
+   writes against the *default* branch, drops what the maintenance branch already carries, and
+   refreshes that branch from base each night — regenerate, never reconcile — #332). The refresh is
    **unconditional convergence** (copy-if-different, not copy-if-canon-moved), so an accidental
    local edit to a vendored file reverts within a day, visibly in the nightly's diff — that,
    plus a one-line "canon-owned; propose changes upstream" note, is the whole anti-drift story;
-   there is deliberately no manifest/integrity framework.
-5. **The stamp.** `"claudinite": { "updated": "YYYY-MM-DD", "ref": "<sha>" }` in
-   `.claudinite-checks.json` — `updated` selects which migration notes still apply, `ref` is
-   provenance for debugging. **One stamp for the whole set, never per pack**: updates are
+   there is deliberately no manifest/integrity framework. Direction-blindness cuts both ways,
+   so the writer carries the one **anti-rewind guard** the no-framework stance leaves room for:
+   converging is refused when the checkout's HEAD mismatches the passed ref or the member's
+   stamped ref is not its ancestor, and the worker verifies the checkout is at the **remote**
+   head before converging — a stale maintenance checkout must fail its unit, never silently
+   downgrade the fleet (#328).
+5. **The stamp.** `"claudinite": { "updated": "<full ISO datetime>", "ref": "<sha>" }` in
+   `.claudinite-checks.json` — `updated` selects which migration notes still apply (notes are
+   day-dated, so selection is by the stamp's **day, same-day inclusive** — a note landing later
+   on the stamp's day must still apply, and note idempotency absorbs the re-application this
+   admits — #330), `ref` is provenance for debugging **and** the anti-rewind guard's anchor (4). **One stamp for the whole set, never per pack**: updates are
    whole-set atomic, because mixed per-pack versions inside one repo would recreate exactly the
    engine↔pack skew this design eliminates (declaring a new pack therefore triggers a whole-set
    refresh, not a lone pack copy). The engine already tolerates the key
@@ -91,7 +104,8 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    record (the existing `migrations/active_migrations/` shape): mechanical ops where code can
    express them, plus a **brief agentic note** for what it can't (chiefly adapting
    consumer-authored `local_packs/` content to a changed engine contract). The nightly applies
-   the notes dated after the repo's stamp, oldest first, inside the one transactional commit.
+   the notes dated on or after the day of the repo's stamp (same-day inclusive, note
+   idempotency absorbing the overlap — #330), oldest first, inside the one transactional commit.
    No read-side tolerances in live code, no `LEGACY_*` constants, and **no per-consumer state
    held in the canon** — the stamp in each consumer is the only bookkeeping. **Retirement is a
    retention window**: a note is deleted ~5 weeks after landing; a repo lagging longer has been

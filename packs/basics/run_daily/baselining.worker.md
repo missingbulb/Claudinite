@@ -7,10 +7,17 @@ First read the member's `.claudinite-checks.json` and branch on its mount shape 
 stamp is the discriminator ([mount/DESIGN.md](../../../mount/DESIGN.md)):
 
 - **Vendored member** (`"claudinite": { "updated": … }` present) — perform the **transactional
-  refresh**, all of it as **one commit**:
+  refresh**. First **verify the checkout**: the canon checkout this session runs in must be at
+  the canon's **remote** default-branch head (one MCP read of the head sha vs `git rev-parse
+  HEAD`) — a lagging checkout would silently rewind the member's whole corpus, so it is this
+  unit's failure, never a tree to converge from (#328). Then:
   1. **Apply the pending migration notes** — every `migrations/active_migrations/` record in the
-     canon dated **after** the member's `updated` stamp, oldest first (mechanical ops, plus
-     following a note's agentic instructions where it carries them).
+     canon dated **on or after the day** of the member's `updated` stamp, oldest first
+     (mechanical ops, plus following a note's agentic instructions where it carries them).
+     Same-day **inclusive**, because the stamp's day can't order against a day-dated note — a
+     note landing later on the stamp's day must still apply (#330); notes are idempotent
+     (mechanical ops by construction, agentic instructions preconditions-first), so the
+     re-application this admits is safe.
   2. **Converge `.claudinite/shared/`** to the canon head snapshot — the member's vendor set per
      [mount/vendor.mjs](../../../mount/vendor.mjs) (engine roots minus tests and root docs, the
      packs/skills machinery, the declared packs with their `requires` closure, their skills
@@ -18,10 +25,12 @@ stamp is the discriminator ([mount/DESIGN.md](../../../mount/DESIGN.md)):
      set no longer contains. Unconditional: a member-side edit to a vendored file reverts here,
      visibly in the diff. Never touch `.claudinite/local_packs/` or anything outside `shared/`
      except what a note names.
-  3. **Advance the stamp** — `{ "updated": "<today>", "ref": "<canon head sha>" }`.
-  If any part fails, **write nothing** — the member keeps running its old snapshot coherently,
-  tonight's failure goes to the routine's failure log, and the next night retries from the same
-  stamp. Also keep the fresh-path wiring converged per [bootstrap.md](../../../bootstrap.md)
+  3. **Advance the stamp** — `{ "updated": "<full ISO datetime>", "ref": "<verified canon head sha>" }`
+     — **in the same commit as steps 1–2's writes**: the stamp gates which notes apply, so it
+     must never advance in a commit that lacks any pending note's ops (#329).
+  If any part fails **before that commit, write nothing** — the member keeps running its old
+  snapshot coherently, tonight's failure goes to the routine's failure log, and the next night
+  retries from the same stamp. Also keep the fresh-path wiring converged per [bootstrap.md](../../../bootstrap.md)
   (hook registrations, the `@.claudinite/shared/CLAUDE.md` import, the CI stub copy) — additive
   and in-place fixes only, never clobbering the member's own entries.
 - **Pre-flip member** (no stamp) — first consult the live **flip note**
@@ -53,7 +62,12 @@ Then, for a covered member (either shape):
 `push` commits to the default branch; `pr` amends the stable `claudinite/maintenance` branch and its
 one open PR (never merged); an unrecognized value commits nothing and opens an issue there naming it.
 Adoption necessarily precedes the flag — a first bootstrap lands as a direct commit. A vendored
-member's refresh is **one commit** regardless of delivery mode — notes + converge + stamp never split.
+member's refresh lands as **one `push_files` commit** regardless of delivery mode — notes + converge
+writes + stamp never split. The one thing that can't ride it: file **deletions** (convergence pruning
+a file the set dropped, or a note's delete) — MCP has no multi-file+delete, so they follow immediately
+as their own `delete_file` commits, **after** the stamped content commit (#329). Trailing deletes are
+safe to interrupt: the next night's unconditional convergence re-deletes any straggler, whereas note
+ops are stamp-gated and so must always land with the stamp.
 
 Never touch the home (sheepdog) repo; never adopt without an open adoption issue; never flip a
 pre-flip member; never let alignment edit beyond a failing check's own remedy; never merge a
