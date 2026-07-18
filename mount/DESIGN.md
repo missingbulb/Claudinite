@@ -138,13 +138,17 @@ the nightly touches everyone, and never break the channel the migration itself t
   **single** probe every member carries whatever its mount shape — the tracked
   `.claudinite-checks.json`, the only shape the planner can plan for at all; a mount marker
   without a declaration classifies uncovered and heals through an adoption issue (done).
-- **Phase 2 — the flip:** a dated note converts each member in one commit — write its vendor
-  set under `.claudinite/shared/`, flip `.gitignore` (keep ignoring `.claudinite/*` with
-  `shared/` and `local_packs/` re-included, so legacy flat leftovers and a stale environment's
-  stray sync stay invisible), rewrite the `SessionStart` entry to invoke the orchestrator
-  directly, repoint the Stop/PreToolUse hook paths and the `CLAUDE.md` import at `shared/`,
-  stamp the declaration, delete the tracked sync hook and the old flat mount. **Gated pilot first: the note applies only to `GoogleCalendarEventCreator`** until a
-  clean night proves it, then widens to the fleet. Fleet discovery is untouched by the flip —
+- **Phase 2 — the flip (shipped, pilot-gated):** the dated note
+  (`migrations/active_migrations/`, `vendored-mount-flip`) converts a member in one commit —
+  vendor set under `.claudinite/shared/`, the `.gitignore` flip (keep ignoring `.claudinite/*`
+  with `shared/` and `local_packs/` re-included, so legacy flat leftovers and a stale
+  environment's stray sync stay invisible), the `SessionStart`/Stop/PreToolUse rewrite to
+  `shared/` paths, the `CLAUDE.md` import + self-check swap, the CI stub, the stamp, and the
+  sync-hook deletion — executed by the **baselining worker** (the mechanical passes see the
+  record as a no-op; its `legacyPresent` feeds the unflipped-count telemetry), plus one
+  member issue asking to re-paste the environment Setup script (the surviving out-of-repo
+  action). **Gated pilot: the note names only `GoogleCalendarEventCreator`**; after a clean
+  night, widening to the fleet is a one-line edit (`flip.repos: 'fleet'`). Fleet discovery is untouched by the flip —
   it keys on the tracked `.claudinite-checks.json`, which both mount shapes carry (phase 1) —
   so no member can be orphaned by its migration state. A session already running when the flip lands
   keeps its old wiring against its old snapshot — coherent — and picks the new world up next
