@@ -123,18 +123,21 @@ the nightly touches everyone, and never break the channel the migration itself t
 
 - **Phase 0 (done):** this record + [vendor.mjs](vendor.mjs), the vendor-set computation
   everything else builds on.
-- **Phase 1 — canon capabilities:** the baselining task absorbs the vendor refresh (converge
-  set + apply notes + stamp, one commit); the adoption flow and [bootstrap.md](../bootstrap.md)
-  are rewritten **fresh-path-only** around the vendored mount (today's legacy-convergence steps
-  collapse into dated notes); the fail-soft preferences step (done); the `claudinite` stamp key
-  in `loadConfig` (done); the engine's shared-mount sweep exclusion (done); the gitignore flip
-  rules (drop every `.claudinite/*` ignore/negation, keep the hooks-log ignores); the consumer
-  CI stub; and the isolation check.
+- **Phase 1 — canon capabilities:** the fail-soft preferences step (done); the `claudinite`
+  stamp key in `loadConfig` (done); the engine's shared-mount sweep exclusion (done); the local
+  vendor writer [apply-vendor.mjs](apply-vendor.mjs) — whole-set convergence + stamp, erroring
+  before any write (done); the consumer CI stub, shipped in the baseline pack's `stubs/` (done);
+  the isolation check (done — the reference index builds from `ctx.tracked`, so vendored files
+  stay resolvable as reference *targets* while excluded from scanning). Still open here: the
+  baselining task absorbs the vendor refresh (fleet-side writes, one commit per repo), and the
+  adoption flow and [bootstrap.md](../bootstrap.md) are rewritten **fresh-path-only** around the
+  vendored mount (today's legacy-convergence steps collapse into dated notes).
 - **Phase 2 — the flip:** a dated note converts each member in one commit — write its vendor
-  set under `.claudinite/shared/`, flip `.gitignore`, rewrite the `SessionStart` entry to
-  invoke the orchestrator directly, repoint the Stop/PreToolUse hook paths and the `CLAUDE.md`
-  import at `shared/`, stamp the declaration, delete the tracked sync hook and the old flat
-  mount. **Gated pilot first: the note applies only to `GoogleCalendarEventCreator`** until a
+  set under `.claudinite/shared/`, flip `.gitignore` (keep ignoring `.claudinite/*` with
+  `shared/` and `local_packs/` re-included, so legacy flat leftovers and a stale environment's
+  stray sync stay invisible), rewrite the `SessionStart` entry to invoke the orchestrator
+  directly, repoint the Stop/PreToolUse hook paths and the `CLAUDE.md` import at `shared/`,
+  stamp the declaration, delete the tracked sync hook and the old flat mount. **Gated pilot first: the note applies only to `GoogleCalendarEventCreator`** until a
   clean night proves it, then widens to the fleet. Fleet discovery accepts **both** membership
   shapes (the tracked sync hook *or* the stamped declaration file) for the whole transition —
   the sync hook is today's discovery signal, and a probe that only recognizes the new shape
