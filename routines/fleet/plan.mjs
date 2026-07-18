@@ -16,7 +16,7 @@
 
 import { loadPacks } from '../../packs/registry.mjs';
 import { packTasks, assembleForRepo } from './registry.mjs';
-import { buildSignals, computeCanonChanged } from './signals.mjs';
+import { buildSignals, computeCanonChange } from './signals.mjs';
 import { planRepo } from './gates.mjs';
 
 // For each covered member: build its signal bundle, resolve its applicable tasks
@@ -42,7 +42,7 @@ import { planRepo } from './gates.mjs';
 export async function buildWorkPlan(gh, canonRepo, coveredRepos, canonRepoInfo = null, { localTasksFor } = {}) {
   const sinceIso = new Date(Date.now() - 25 * 3600 * 1000).toISOString();
   const weekdayUtc = new Date().getUTCDay();
-  const canonChanged = await computeCanonChanged(gh, canonRepo, sinceIso);
+  const canonChange = await computeCanonChange(gh, canonRepo, sinceIso);
   const canonPacks = await loadPacks();
   const allPackTasks = packTasks(canonPacks);
   // A local pack may not shadow a canon id — the engine drops such a pack and flags
@@ -56,8 +56,8 @@ export async function buildWorkPlan(gh, canonRepo, coveredRepos, canonRepoInfo =
   const units = []; const errors = []; const fleetMembers = [];
   for (const r of coveredRepos) {
     try {
-      const signals = await buildSignals(gh, r, { sinceIso, weekdayUtc, canonChanged });
-      fleetMembers.push({ repo: r.full_name, activePacks: signals.activePacks, projectChanged: signals.projectChanged, substantiveChange: signals.substantiveChange });
+      const signals = await buildSignals(gh, r, { sinceIso, weekdayUtc, canonChange });
+      fleetMembers.push({ repo: r.full_name, activePacks: signals.activePacks, projectChanged: signals.projectChanged, substantiveChange: signals.substantiveChange, hasLocalPacks: signals.hasLocalPacks });
       const applicable = assembleForRepo(signals.activePacks, allPackTasks, await localFor(r));
       const res = await planRepo({ fullName: r.full_name, defaultBranch: r.default_branch }, signals, applicable, gh);
       units.push(...res.units); errors.push(...res.errors);
@@ -68,7 +68,7 @@ export async function buildWorkPlan(gh, canonRepo, coveredRepos, canonRepoInfo =
   if (canonRepoInfo) {
     try {
       const signals = {
-        ...(await buildSignals(gh, canonRepoInfo, { sinceIso, weekdayUtc, canonChanged })),
+        ...(await buildSignals(gh, canonRepoInfo, { sinceIso, weekdayUtc, canonChange })),
         isHome: true,
         fleetMembers,
       };
@@ -79,7 +79,7 @@ export async function buildWorkPlan(gh, canonRepo, coveredRepos, canonRepoInfo =
       errors.push({ repo: canonRepoInfo.full_name, error: e.message });
     }
   }
-  return { generatedAt: new Date().toISOString(), windowStartUtc: sinceIso, weekdayUtc, canonChanged, units, errors };
+  return { generatedAt: new Date().toISOString(), windowStartUtc: sinceIso, weekdayUtc, canonChanged: canonChange.changed, units, errors };
 }
 
 // Fetch the details buildSignals needs (full_name, default_branch, pushed_at) for

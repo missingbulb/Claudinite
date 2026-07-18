@@ -21,13 +21,17 @@ export default {
 
   async gate(repo, signals) {
     if (!signals.isHome) return { run: false }; // promote runs only from the canon home
+    // A participant must declare the growth pack AND actually track local packs — the
+    // only source promote reads. A grown-but-local-pack-less member has nothing to lift
+    // up, so it never becomes a target (and if none of tonight's members qualify,
+    // promote doesn't run at all — no subagent booted to read empty capture surfaces).
     const participants = (signals.fleetMembers ?? [])
-      .filter((m) => m.activePacks.includes('grow_with_claudinite'));
-    if (signals.fullSweep) {
+      .filter((m) => m.activePacks.includes('grow_with_claudinite') && m.hasLocalPacks);
+    if (signals.fullSweep && participants.length) {
       return {
         run: true,
         targets: { repos: participants.map((m) => m.repo) },
-        reason: 'weekly full promote over all participating members',
+        reason: 'weekly full promote over all participating members with local packs',
       };
     }
     // substantiveChange, not projectChanged: don't target a member whose only
@@ -38,7 +42,7 @@ export default {
       return {
         run: true,
         targets: { repos: changed.map((m) => m.repo) },
-        reason: `${changed.length} participating member(s) changed substantively in the window`,
+        reason: `${changed.length} participating member(s) with local packs changed substantively in the window`,
       };
     }
     return { run: false };

@@ -20,6 +20,7 @@ test('buildWorkPlan: emits units from the real fleet-core tasks with plan metada
     [/o\/home\/commits\/c1$/, { status: 200, json: { files: [{ filename: 'packs/basics/RULES.md' }] } }],
     // member probes — idle repo (no push in window), so no mainMoved probe fires
     [/\.claudinite-checks\.json/, { status: 200, json: { content: b64({ packs: ['basics', 'grow_with_claudinite'] }) } }],
+    [/\/local_packs$/, { status: 200, json: [{ name: 'foo-pack', type: 'dir' }] }], // has local packs → dedup can fire
     [/\/pulls\?/, { status: 200, json: [] }],
     [/\/issues\?/, { status: 200, json: [] }],
   ]);
@@ -31,12 +32,28 @@ test('buildWorkPlan: emits units from the real fleet-core tasks with plan metada
   assert.ok(typeof plan.generatedAt === 'string' && typeof plan.windowStartUtc === 'string');
   assert.equal(plan.errors.length, 0);
   const byTask = Object.fromEntries(plan.units.map((u) => [u.task, u]));
-  // canonChanged → baselining (incremental) and growth-dedup fire; extract does not (no projectChanged)
+  // canonChanged (basics, which the repo declares) → baselining (incremental) and,
+  // since the repo has local packs, growth-dedup fire; extract does not (no projectChanged)
   assert.ok(byTask.baselining, 'baselining unit present');
   assert.equal(byTask.baselining.smarts, 'medium');
   assert.ok(byTask['growth-dedup-local-instructions'], 'dedup unit present');
   assert.ok(!byTask['growth-extract-new-instructions'], 'extract absent (project did not change)');
   for (const u of plan.units) assert.equal(u.repo, 'owner/foo');
+});
+
+test('buildWorkPlan: a member with no local packs gets baselining but not growth-dedup', async () => {
+  const gh = fakeGh([
+    [/o\/home\/commits\?since=/, { status: 200, json: [{ sha: 'c1' }] }],
+    [/o\/home\/commits\/c1$/, { status: 200, json: { files: [{ filename: 'packs/basics/RULES.md' }] } }],
+    [/\.claudinite-checks\.json/, { status: 200, json: { content: b64({ packs: ['basics', 'grow_with_claudinite'] }) } }],
+    [/\/local_packs$/, { status: 404, json: null }], // no local packs → nothing for dedup to prune
+    [/\/pulls\?/, { status: 200, json: [] }],
+    [/\/issues\?/, { status: 200, json: [] }],
+  ]);
+  const plan = await buildWorkPlan(gh, 'o/home', [{ full_name: 'owner/foo', default_branch: 'main', pushed_at: '2000-01-01T00:00:00Z' }]);
+  const tasks = plan.units.map((u) => u.task);
+  assert.ok(tasks.includes('baselining'), 'baselining still fires on canonChanged');
+  assert.ok(!tasks.includes('growth-dedup-local-instructions'), 'dedup skipped — no local packs');
 });
 
 test('buildWorkPlan: a member whose probe throws is isolated, not fatal', async () => {
@@ -63,6 +80,7 @@ test('buildWorkPlan: plans the home repo last — home-only pack gates see the f
     // the member changed: pushed in window and main moved → projectChanged
     [/owner\/foo\/commits\?sha=/, { status: 200, json: [{ sha: 'm1' }] }],
     [/owner\/foo\/contents\/\.claudinite-checks\.json/, { status: 200, json: { content: b64({ packs: ['basics', 'grow_with_claudinite'] }) } }],
+    [/owner\/foo\/contents\/\.claudinite\/local_packs/, { status: 200, json: [{ name: 'foo-pack', type: 'dir' }] }], // has local packs → a valid promote participant
     [/owner\/foo\/pulls\?/, { status: 200, json: [] }],
     [/owner\/foo\/issues\?/, { status: 200, json: [] }],
     [/owner\/foo\/branches\?/, { status: 200, json: [] }],

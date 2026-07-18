@@ -4,7 +4,7 @@ import pack from './pack.mjs';
 
 const REPO = { fullName: 'owner/foo', defaultBranch: 'main' };
 const S = (over = {}) => ({
-  fullSweep: false, mainMoved: false, projectChanged: false, canonChanged: false,
+  fullSweep: false, mainMoved: false, projectChanged: false, substantiveChange: false, canonChanged: false,
   prsTouched: [], issuesTouched: [], branchesTouched: [], activePacks: ['tidy-repo'], ...over,
 });
 const task = (id) => pack.run_daily.find((t) => t.id === id);
@@ -35,8 +35,8 @@ test('repo-tidy: runs on any tidy activity or the weekly sweep, carrying all thr
 
 test('repo-tidy: excludes the default branch from the branch targets, carries the rest', async () => {
   const g = task('repo-tidy').gate;
-  const v = await g(REPO, S({ branchesTouched: ['main', 'feat-x'], prsTouched: [7, 9], issuesTouched: [3], mainMoved: true }));
+  const v = await g(REPO, S({ branchesTouched: ['main', 'feat-x'], prsTouched: [7, 9], issuesTouched: [3], substantiveChange: true }));
   assert.equal(v.run, true);
   assert.deepEqual(v.targets, { branches: ['feat-x'], prs: [7, 9], issues: [3] });
-  assert.match(v.reason, /main moved/);
+  assert.match(v.reason, /substantively/);
 });
