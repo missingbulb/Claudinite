@@ -21,10 +21,12 @@ export default {
 
   async gate(repo, signals) {
     if (!signals.isHome) return { run: false }; // promote runs only from the canon home
-    // A participant must declare the growth pack AND actually track local packs — the
-    // only source promote reads. A grown-but-local-pack-less member has nothing to lift
-    // up, so it never becomes a target (and if none of tonight's members qualify,
-    // promote doesn't run at all — no subagent booted to read empty capture surfaces).
+    // A participant declares the growth pack and tracks local packs — the only source
+    // promote reads. The weekly full sweep re-promotes over ALL of them (the safety net
+    // for a missed night); the daily trigger targets only those whose LOCAL PACKS
+    // actually changed in the window (an extract commit landed) — not merely a member
+    // that has local packs, and not one that only changed its product code. A member
+    // with nothing new in its local packs has nothing to lift up.
     const participants = (signals.fleetMembers ?? [])
       .filter((m) => m.activePacks.includes('grow_with_claudinite') && m.hasLocalPacks);
     if (signals.fullSweep && participants.length) {
@@ -34,15 +36,12 @@ export default {
         reason: 'weekly full promote over all participating members with local packs',
       };
     }
-    // substantiveChange, not projectChanged: don't target a member whose only
-    // in-window main move was housekeeping (bot bump / baselining) — there's no new
-    // merged lesson to promote from it (see routines/fleet/signals.mjs).
-    const changed = participants.filter((m) => m.substantiveChange);
+    const changed = participants.filter((m) => m.localPacksChanged);
     if (changed.length) {
       return {
         run: true,
         targets: { repos: changed.map((m) => m.repo) },
-        reason: `${changed.length} participating member(s) with local packs changed substantively in the window`,
+        reason: `${changed.length} participating member(s) changed their local packs in the window`,
       };
     }
     return { run: false };

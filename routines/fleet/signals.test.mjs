@@ -192,6 +192,38 @@ test('buildSignals: hasLocalPacks reflects a tracked .claudinite/local_packs/ su
   assert.equal((await buildSignals(without, REPO(), opts)).hasLocalPacks, false);
 });
 
+test('buildSignals: localPacksChanged is true iff a window commit touched .claudinite/local_packs/', async () => {
+  const base = (files) => fakeGh([
+    okPacks,
+    [/\/local_packs$/, { status: 200, json: [{ name: 'gcec', type: 'dir' }] }],
+    [/\/commits\?sha=/, { status: 200, json: [{ sha: 'x' }] }],
+    [/\/commits\/x$/, { status: 200, json: { files } }],
+    [/\/pulls\?/, { status: 200, json: [] }],
+    [/\/issues\?/, { status: 200, json: [] }],
+    [/\/branches\?/, { status: 200, json: [] }],
+  ]);
+  const opts = { sinceIso: SINCE, weekdayUtc: (fullSweepBucket('owner/foo') + 1) % 7, canonChange: NO_CANON };
+  const changed = await buildSignals(base([{ filename: '.claudinite/local_packs/gcec/RULES.md' }, { filename: 'src/app.js' }]), REPO(), opts);
+  assert.equal(changed.localPacksChanged, true);
+  const codeOnly = await buildSignals(base([{ filename: 'src/app.js' }]), REPO(), opts);
+  assert.equal(codeOnly.localPacksChanged, false, 'a code-only change does not count');
+});
+
+test('buildSignals: localPacksChanged stays false and skips the per-commit reads when there are no local packs', async () => {
+  const gh = fakeGh([
+    okPacks,
+    [/\/local_packs$/, { status: 404, json: null }],
+    [/\/commits\?sha=/, { status: 200, json: [{ sha: 'x' }] }],
+    [/\/pulls\?/, { status: 200, json: [] }],
+    [/\/issues\?/, { status: 200, json: [] }],
+    [/\/branches\?/, { status: 200, json: [] }],
+  ]);
+  const s = await buildSignals(gh, REPO(), { sinceIso: SINCE, weekdayUtc: (fullSweepBucket('owner/foo') + 1) % 7, canonChange: NO_CANON });
+  assert.equal(s.hasLocalPacks, false);
+  assert.equal(s.localPacksChanged, false);
+  assert.ok(!gh.calls.some((p) => /\/commits\/x$/.test(p)), 'no per-commit file read when the repo has no local packs');
+});
+
 test('buildSignals: relevantCanonChanged fires only for a declared pack or a cross-cutting change', async () => {
   const opts = (canonChange) => ({ sinceIso: SINCE, weekdayUtc: (fullSweepBucket('owner/foo') + 1) % 7, canonChange });
   const gh = fakeGh([okPacks, [/./, { status: 200, json: [] }]]); // repo declares basics + tidy-repo

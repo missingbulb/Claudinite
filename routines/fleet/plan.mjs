@@ -57,7 +57,7 @@ export async function buildWorkPlan(gh, canonRepo, coveredRepos, canonRepoInfo =
   for (const r of coveredRepos) {
     try {
       const signals = await buildSignals(gh, r, { sinceIso, weekdayUtc, canonChange });
-      fleetMembers.push({ repo: r.full_name, activePacks: signals.activePacks, projectChanged: signals.projectChanged, substantiveChange: signals.substantiveChange, hasLocalPacks: signals.hasLocalPacks });
+      fleetMembers.push({ repo: r.full_name, activePacks: signals.activePacks, projectChanged: signals.projectChanged, substantiveChange: signals.substantiveChange, hasLocalPacks: signals.hasLocalPacks, localPacksChanged: signals.localPacksChanged });
       const applicable = assembleForRepo(signals.activePacks, allPackTasks, await localFor(r));
       const res = await planRepo({ fullName: r.full_name, defaultBranch: r.default_branch }, signals, applicable, gh);
       units.push(...res.units); errors.push(...res.errors);

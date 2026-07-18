@@ -79,6 +79,7 @@ test('buildWorkPlan: plans the home repo last — home-only pack gates see the f
     [/o\/home\/branches\?/, { status: 200, json: [] }],
     // the member changed: pushed in window and main moved → projectChanged
     [/owner\/foo\/commits\?sha=/, { status: 200, json: [{ sha: 'm1' }] }],
+    [/owner\/foo\/commits\/m1$/, { status: 200, json: { files: [{ filename: '.claudinite/local_packs/foo-pack/RULES.md' }] } }], // the commit touched local packs → promote target
     [/owner\/foo\/contents\/\.claudinite-checks\.json/, { status: 200, json: { content: b64({ packs: ['basics', 'grow_with_claudinite'] }) } }],
     [/owner\/foo\/contents\/\.claudinite\/local_packs/, { status: 200, json: [{ name: 'foo-pack', type: 'dir' }] }], // has local packs → a valid promote participant
     [/owner\/foo\/pulls\?/, { status: 200, json: [] }],

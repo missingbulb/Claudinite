@@ -136,10 +136,11 @@ of cheap reads. Gates lean on it and/or do a targeted probe of their own via `gh
 | `issuesTouched[]` | open issues `updated_at` in window (∪ all if `substantiveChange`/`fullSweep`), **excluding the routine's own standing trackers** (whose nightly self-update would otherwise re-fire tidy forever) | **repo-tidy** |
 | `branchesTouched[]` | all open branches, only when `substantiveChange`/`fullSweep` (else empty) | **repo-tidy** |
 | `activePacks[]` | member's `.claudinite-checks.json` | which pack tasks apply |
-| `hasLocalPacks` | member tracks ≥1 `.claudinite/local_packs/<pack>/` subdir | gates **growth-dedup-local-instructions**, and (via the aggregate) the central **promote** — nothing to prune/promote without one |
+| `hasLocalPacks` | member tracks ≥1 `.claudinite/local_packs/<pack>/` subdir | gates **growth-dedup-local-instructions**; and the central **promote**'s weekly full sweep (re-promote over all with local packs) |
+| `localPacksChanged` | a default-branch commit in the window touched `.claudinite/local_packs/` (per-commit scan, only run when `hasLocalPacks`) | the central **promote**'s daily trigger — target only members whose local packs *actually changed*, not merely have them |
 | `canonChanged` *(global, coarse)* | home-repo commits in window touching member-affecting paths (`packs/`, `checks/`, `skills/`, `migrations/`, bootstrap wiring) — **excluding** `plan.json`, trackers, and orchestration docs | **baselining** |
 | `relevantCanonChanged` *(per repo)* | a canon **pack this repo declares** moved, or a cross-cutting area (checks/skills/migrations/mount/bootstrap) moved | **growth-dedup-local-instructions** |
-| `isHome`, `fleetMembers[]` *(home bundle only)* | stamped by the planner, which plans the home repo **last**: every successfully-probed member's `{ repo, activePacks, projectChanged, substantiveChange, hasLocalPacks }` | home-only packs' gates (e.g. the central promote gate targets the changed members that declare the growth pack **and** carry local packs) |
+| `isHome`, `fleetMembers[]` *(home bundle only)* | stamped by the planner, which plans the home repo **last**: every successfully-probed member's `{ repo, activePacks, projectChanged, substantiveChange, hasLocalPacks, localPacksChanged }` | home-only packs' gates (e.g. the central promote gate targets members that declare the growth pack and whose **local packs changed** in the window) |
 
 Three rules the table encodes, because getting them wrong defeats the purpose:
 

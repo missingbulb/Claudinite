@@ -149,6 +149,22 @@ async function readHasLocalPacks(gh, fullName) {
   return json.some((e) => e && e.type === 'dir');
 }
 
+// Did the member's local packs actually change in the window — i.e. did a default-branch
+// commit touch `.claudinite/local_packs/`? This is promote's real trigger: promote lifts
+// *new* local lessons up, so a member that changed its product code but not its local
+// packs has nothing to promote. Cheaper than the whole-tree diff — scan only the window's
+// commits (a handful) and stop at the first hit — and run only for a repo that has local
+// packs at all (a non-local-packs repo is already excluded upstream).
+async function readLocalPacksChanged(gh, fullName, commits) {
+  for (const c of commits) {
+    if (!c?.sha) continue;
+    const detail = await gh(`/repos/${fullName}/commits/${c.sha}`);
+    const files = detail.status === 200 ? (detail.json?.files ?? []) : [];
+    if (files.some((f) => typeof f.filename === 'string' && f.filename.startsWith('.claudinite/local_packs/'))) return true;
+  }
+  return false;
+}
+
 // Build the bundle. `pushed_at` (already in hand from enumeration) short-circuits the
 // code-side probes when nothing was pushed and it isn't a full sweep; PR/issue probes
 // always run (a comment/label moves `updated_at` without a push). `canonChange` is the
@@ -158,9 +174,9 @@ async function readHasLocalPacks(gh, fullName) {
 //
 // Two signals exist only on the HOME repo's bundle and are stamped by the planner,
 // not built here: `isHome: true`, and `fleetMembers` — every successfully-probed
-// member's { repo, activePacks, projectChanged, substantiveChange, hasLocalPacks },
-// complete because home is planned last. They're what home-only packs' gates decide
-// fleet-facing work from.
+// member's { repo, activePacks, projectChanged, substantiveChange, hasLocalPacks,
+// localPacksChanged }, complete because home is planned last. They're what home-only
+// packs' gates decide fleet-facing work from.
 export async function buildSignals(gh, repo, { sinceIso, weekdayUtc, canonChange }) {
   const fullName = repo.full_name;
   const defaultBranch = repo.default_branch;
@@ -169,11 +185,12 @@ export async function buildSignals(gh, repo, { sinceIso, weekdayUtc, canonChange
 
   let mainMoved = false;
   let substantiveChange = false;
+  let commits = [];
   if (pushedInWindow || fullSweep) {
     const { status, json } = await gh(
       `/repos/${fullName}/commits?sha=${encodeURIComponent(defaultBranch)}&since=${sinceIso}&per_page=100`,
     );
-    const commits = status === 200 && Array.isArray(json) ? json : [];
+    commits = status === 200 && Array.isArray(json) ? json : [];
     mainMoved = commits.length > 0;
     // Real project work in the window (not fleet/CI housekeeping) — the trigger the
     // growth tasks AND repo-tidy key on, so a bot bump or a nightly baselining commit
@@ -194,6 +211,8 @@ export async function buildSignals(gh, repo, { sinceIso, weekdayUtc, canonChange
   const branchesTouched = widen ? await allBranchNames(gh, fullName) : [];
   const activePacks = await readActivePacks(gh, fullName);
   const hasLocalPacks = await readHasLocalPacks(gh, fullName);
+  // Only meaningful (and only worth the per-commit reads) when the repo has local packs.
+  const localPacksChanged = hasLocalPacks && commits.length ? await readLocalPacksChanged(gh, fullName, commits) : false;
 
   const canon = canonChange ?? { changed: false, packs: new Set(), crossCutting: false };
   // This member cares about a canon change iff a pack it declares moved, or a
@@ -211,6 +230,7 @@ export async function buildSignals(gh, repo, { sinceIso, weekdayUtc, canonChange
     branchesTouched,
     activePacks,
     hasLocalPacks,
+    localPacksChanged,
     canonChanged: !!canon.changed,
     relevantCanonChanged,
   };
