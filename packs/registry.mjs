@@ -10,6 +10,12 @@ const packsDir = dirname(fileURLToPath(import.meta.url));
 export const LOCAL_PACKS_SUBDIR = join('.claudinite', 'local_packs');
 export const localPacksDir = (root) => join(resolve(root), LOCAL_PACKS_SUBDIR);
 
+// Where a consumer materializes the vendored canon (mount/DESIGN.md): the
+// corpus mirrored at canon-relative paths under this subdir. Tracked files in
+// the interim; the planned future is a git submodule mounted at this same path
+// — which is why nothing consumer-owned (local_packs/ above) lives inside it.
+export const SHARED_SUBDIR = join('.claudinite', 'shared');
+
 // Load a directory of `<name>/pack.mjs` manifests, isolating each import so one
 // broken manifest can't sink the rest (a consumer-authored local pack.mjs must
 // never disable every other pack's prose/checks/skills). Each loaded pack is

@@ -141,3 +141,29 @@ test('engine: ctx.files excludes vendored/generated files; ctx.allFiles keeps th
     assert.ok(ctx.allFiles.includes('gen/out.js'));
   } finally { cleanup(root); }
 });
+
+test('loadConfig: the claudinite vendored-mount stamp is a known setting', () => {
+  const root = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({
+    packs: ['basics'], claudinite: { updated: '2026-07-17', ref: 'abc123' },
+  }) } });
+  try {
+    assert.deepEqual(loadConfig(root).errors, []);
+  } finally { cleanup(root); }
+});
+
+test('buildContext: the shared mount is structurally out of scope; local_packs stays in', () => {
+  const root = makeRepo({ changed: {
+    'src/app.js': 'x\n',
+    '.claudinite/shared/packs/basics/RULES.md': 'canon\n',
+    '.claudinite/shared/checks/run.mjs': 'canon\n',
+    '.claudinite/local_packs/mine/pack.mjs': 'export default { id: "mine" };\n',
+  } });
+  try {
+    const ctx = buildContext({ root, mode: 'all' });
+    assert.ok(ctx.files.includes('src/app.js'));
+    assert.ok(ctx.files.includes('.claudinite/local_packs/mine/pack.mjs'));
+    assert.ok(!ctx.files.some((f) => f.startsWith('.claudinite/shared/')));
+    // allFiles honors the same boundary: the corpus is not the project's code.
+    assert.ok(!ctx.allFiles.some((f) => f.startsWith('.claudinite/shared/')));
+  } finally { cleanup(root); }
+});

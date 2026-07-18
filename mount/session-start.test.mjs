@@ -8,21 +8,20 @@ import { spawnSync } from 'node:child_process';
 
 // This test lives at <repo>/mount/session-start.test.mjs.
 const MOUNT_DIR = dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = dirname(MOUNT_DIR);
 
 // A hermetic corpus mirroring the real layout: the REAL mount/session-start.sh
-// (it self-locates via BASH_SOURCE and resolves its steps one level up, at the
-// corpus root) plus tiny STUB steps in their domains, so the test exercises the
-// ORCHESTRATOR's own contract — sequence, stdout forwarding, lifecycle logging,
-// exit 0 — without dragging in the real children and their dependencies.
+// (it self-locates via BASH_SOURCE and resolves the mount-local prefs step
+// beside itself, the rest one level up at the corpus root) plus tiny STUB
+// steps, so the test exercises the ORCHESTRATOR's own contract — sequence,
+// stdout forwarding, lifecycle logging, exit 0 — without dragging in the real
+// children and their dependencies.
 function makeCorpus({ prefs = '#!/bin/bash\n', prose = '', skills = '', env = '', interview = '' } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-sessionstart-'));
   mkdirSync(join(root, 'mount'), { recursive: true });
   copyFileSync(join(MOUNT_DIR, 'session-start.sh'), join(root, 'mount', 'session-start.sh'));
-  mkdirSync(join(root, 'preferences'), { recursive: true });
   mkdirSync(join(root, 'packs'), { recursive: true });
   mkdirSync(join(root, 'skills'), { recursive: true });
-  writeFileSync(join(root, 'preferences', 'inject-preferences.sh'), prefs);
+  writeFileSync(join(root, 'mount', 'inject-preferences.sh'), prefs);
   writeFileSync(join(root, 'packs', 'load-active-prose.mjs'), prose);
   writeFileSync(join(root, 'skills', 'mount-skills.mjs'), skills);
   writeFileSync(join(root, 'packs', 'env.mjs'), env);
@@ -76,16 +75,29 @@ test('a failing step never aborts the orchestrator nor turns the hook non-zero',
   assert.ok(log.includes('inject-preferences: done exit=1'), log);
 });
 
-test('inject-preferences emits a plain-text halt (never a JSON envelope) when prefs are missing', () => {
-  const projectDir = mkdtempSync(join(tmpdir(), 'claudinite-proj-'));
-  const r = spawnSync('bash', [join(REPO_ROOT, 'preferences', 'inject-preferences.sh')], {
+// The REAL prefs step, standalone: local copy wins; a miss is fail-soft — a
+// one-line plain-text note (never a halt directive, never a JSON envelope),
+// because preferences are per-user nice-to-have, unlike the corpus itself.
+test('inject-preferences: local copy wins; a miss injects a soft note, not a halt', () => {
+  const corpus = mkdtempSync(join(tmpdir(), 'claudinite-prefs-'));
+  mkdirSync(join(corpus, 'mount'), { recursive: true });
+  mkdirSync(join(corpus, 'preferences'), { recursive: true });
+  copyFileSync(join(MOUNT_DIR, 'inject-preferences.sh'), join(corpus, 'mount', 'inject-preferences.sh'));
+  writeFileSync(join(corpus, 'preferences', 'me@example.com.md'), 'MY PREFS\n');
+  const runPrefs = (email) => spawnSync('bash', [join(corpus, 'mount', 'inject-preferences.sh')], {
     encoding: 'utf8',
-    env: { ...process.env, CLAUDE_CODE_USER_EMAIL: 'nobody@example.com', CLAUDE_PROJECT_DIR: projectDir },
+    // An unreachable base forces the fetch path to fail fast and prove fail-soft.
+    env: { ...process.env, CLAUDE_CODE_USER_EMAIL: email, CLAUDINITE_PREFS_URL: 'https://127.0.0.1:1/preferences' },
   });
-  assert.equal(r.status, 0);
-  assert.match(r.stdout, /PREFERENCES NOT LOADED/);
-  assert.match(r.stdout, /AskUserQuestion/);
-  // The merged orchestrator stdout must stay plain text — a JSON envelope here
-  // would poison the whole hook's stdout (JSON + prose parses as neither).
-  assert.doesNotMatch(r.stdout, /hookSpecificOutput|additionalContext/);
+
+  const local = runPrefs('me@example.com');
+  assert.equal(local.status, 0);
+  assert.match(local.stdout, /MY PREFS/);
+
+  const miss = runPrefs('nobody@example.com');
+  assert.equal(miss.status, 0);
+  assert.match(miss.stdout, /PREFERENCES: no local copy and the fetch for nobody@example\.com failed/);
+  assert.match(miss.stdout, /default interaction behavior/);
+  assert.doesNotMatch(miss.stdout, /STOP|AskUserQuestion/);           // fail-soft, no halt-gate
+  assert.doesNotMatch(miss.stdout, /hookSpecificOutput|additionalContext/); // plain text, no JSON envelope
 });
