@@ -659,3 +659,36 @@ test('comment-classification: silent without a transcript (CI) and on an empty c
     assert.equal(runWithTranscript(commentClassification, root, [toolResult()]).length, 0);
   } finally { cleanup(root); }
 });
+
+// --- claudinite-isolation ----------------------------------------------------
+import claudiniteIsolation from './claudinite-isolation.mjs';
+
+test('claudinite-isolation: inert without the vendored mount; a consumer file referencing the canon fires; wiring files and local_packs stay open', () => {
+  const violating = {
+    'src/tool.mjs': 'const p = ".claudinite/shared/checks/run.mjs";\n',
+  };
+  const wiring = {
+    '.claude/settings.json': '{ "hooks": { "Stop": [ { "hooks": [ { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/shared/checks/stop-hook.mjs" } ] } ] } }\n',
+    'CLAUDE.md': '@.claudinite/shared/CLAUDE.md\n',
+    '.gitignore': '/.claudinite/*\n!/.claudinite/shared/\n',
+    '.github/workflows/claudinite-checks-ci.yml': 'run: node .claudinite/shared/checks/run.mjs\n',
+    '.claudinite/local_packs/mine/check.mjs': 'import { run } from "../../shared/checks/run.mjs";\n',
+  };
+  const shared = {
+    '.claudinite/shared/checks/run.mjs': 'engine\n',
+    '.claudinite/shared/checks/stop-hook.mjs': 'engine\n',
+    '.claudinite/shared/CLAUDE.md': 'index\n',
+  };
+  // No vendored mount → the gate keeps the rule inert even with a violating file.
+  const off = makeRepo({ changed: { ...violating } });
+  // Vendored mount present → the violating file fires; the wiring files do not.
+  const on = makeRepo({ changed: { ...violating, ...wiring, ...shared } });
+  try {
+    assert.deepEqual(run(claudiniteIsolation, off, 'all'), []);
+    const f = run(claudiniteIsolation, on, 'all');
+    assert.equal(f.length, 1, JSON.stringify(f, null, 2));
+    assert.equal(f[0].file, 'src/tool.mjs');
+    assert.match(f[0].what, /\.claudinite\/shared\/checks\/run\.mjs/);
+    assert.equal(f[0].severity, 'blocking');
+  } finally { cleanup(off); cleanup(on); }
+});
