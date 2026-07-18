@@ -4,9 +4,17 @@
 // independent unit — no barrier; it prunes against whatever canon the member
 // currently mounts (merged main), so a just-opened promote PR never counts.
 //
-// Triggers: the canon changed (new canon may now cover local items) or the project's
-// own docs changed. Full mode (weekly): re-check every local item against the canon
-// regardless — so full_sweep_supported is true.
+// Precondition: the member must actually track local packs. A repo with no
+// `.claudinite/local_packs/` has nothing to prune, so the gate self-skips it entirely
+// (`hasLocalPacks` — one cheap planner read) rather than booting a subagent to discover
+// the empty surface.
+//
+// Triggers (given local packs): a canon change the member CARES about — a pack it
+// declares moved, or a cross-cutting canon area (checks/skills/mount/…) moved
+// (`relevantCanonChanged`, not the coarse global `canonChanged`: a change to a pack the
+// repo doesn't mount can't newly cover its local items) — or the project's own docs
+// changed. Full mode (weekly): re-check every local item against the canon regardless —
+// so full_sweep_supported is true.
 
 export default {
   id: 'growth-dedup-local-instructions',
@@ -15,11 +23,12 @@ export default {
   smarts: 'high', // deciding a local item is truly redundant is a judgment call
 
   async gate(repo, signals) {
+    if (!signals.hasLocalPacks) return { run: false }; // nothing to prune
     if (signals.fullSweep) {
       return { run: true, targets: {}, reason: 'weekly full dedup vs canon' };
     }
-    if (signals.canonChanged) {
-      return { run: true, targets: {}, reason: 'canon changed — local items may now be covered' };
+    if (signals.relevantCanonChanged) {
+      return { run: true, targets: {}, reason: 'a declared pack changed in canon — local items may now be covered' };
     }
     // substantiveChange, not projectChanged: a housekeeping main move (bot bump /
     // baselining commit) changes no local lesson worth re-deduping (see signals.mjs).

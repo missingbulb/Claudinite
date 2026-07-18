@@ -12,7 +12,8 @@ import proseSweep from '../../packs/canon-curation/run_daily/prose-to-checks-swe
 
 const REPO = { fullName: 'owner/foo', defaultBranch: 'main' };
 const S = (over = {}) => ({
-  fullSweep: false, mainMoved: false, projectChanged: false, substantiveChange: false, canonChanged: false,
+  fullSweep: false, mainMoved: false, projectChanged: false, substantiveChange: false,
+  canonChanged: false, relevantCanonChanged: false, hasLocalPacks: false,
   prsTouched: [], issuesTouched: [], branchesTouched: [], activePacks: [], ...over,
 });
 const T = (over = {}) => ({
@@ -130,14 +131,20 @@ test('growth-extract (grow_with_claudinite): runs only on a substantive project 
   assert.equal((await extract.gate(REPO, S({ mainMoved: true, projectChanged: true }))).run, false);
 });
 
-test('growth-dedup (grow_with_claudinite): runs on canonChanged, a substantive change, or its full sweep', async () => {
+test('growth-dedup (grow_with_claudinite): only with local packs, on a relevant canon / substantive change / full sweep', async () => {
   assert.equal(dedup.full_sweep_supported, true);
+  // No local packs → never runs, whatever else is true (nothing to prune)
   assert.equal((await dedup.gate(REPO, S())).run, false);
-  assert.equal((await dedup.gate(REPO, S({ canonChanged: true }))).run, true);
-  assert.equal((await dedup.gate(REPO, S({ substantiveChange: true }))).run, true);
-  assert.equal((await dedup.gate(REPO, S({ fullSweep: true }))).run, true);
+  assert.equal((await dedup.gate(REPO, S({ relevantCanonChanged: true, substantiveChange: true, fullSweep: true }))).run, false);
+  // With local packs, any of the three triggers fires it
+  assert.equal((await dedup.gate(REPO, S({ hasLocalPacks: true, relevantCanonChanged: true }))).run, true);
+  assert.equal((await dedup.gate(REPO, S({ hasLocalPacks: true, substantiveChange: true }))).run, true);
+  assert.equal((await dedup.gate(REPO, S({ hasLocalPacks: true, fullSweep: true }))).run, true);
+  // A canon change to a pack this repo does NOT declare (relevantCanonChanged false) does not fire —
+  // the coarse global canonChanged is no longer the trigger.
+  assert.equal((await dedup.gate(REPO, S({ hasLocalPacks: true, canonChanged: true, relevantCanonChanged: false }))).run, false);
   // a housekeeping-only main move must NOT by itself trigger dedup
-  assert.equal((await dedup.gate(REPO, S({ mainMoved: true, projectChanged: true }))).run, false);
+  assert.equal((await dedup.gate(REPO, S({ hasLocalPacks: true, mainMoved: true, projectChanged: true }))).run, false);
 });
 
 test('growth-discover-packs (grow_with_claudinite): a regular run_daily task, weekly-only, independent', async () => {
@@ -153,21 +160,36 @@ test('growth-discover-packs (grow_with_claudinite): a regular run_daily task, we
 
 const HOME = { fullName: 'o/home', defaultBranch: 'main' };
 const MEMBERS = [
-  { repo: 'owner/foo', activePacks: ['basics', 'grow_with_claudinite'], projectChanged: true, substantiveChange: true },
-  { repo: 'owner/bar', activePacks: ['basics', 'grow_with_claudinite'], projectChanged: false, substantiveChange: false },
-  { repo: 'owner/baz', activePacks: ['basics'], projectChanged: true, substantiveChange: true }, // not enrolled
+  { repo: 'owner/foo', activePacks: ['basics', 'grow_with_claudinite'], projectChanged: true, substantiveChange: true, hasLocalPacks: true, localPacksChanged: true },
+  { repo: 'owner/bar', activePacks: ['basics', 'grow_with_claudinite'], projectChanged: false, substantiveChange: false, hasLocalPacks: true, localPacksChanged: false },
+  { repo: 'owner/baz', activePacks: ['basics'], projectChanged: true, substantiveChange: true, hasLocalPacks: true, localPacksChanged: true }, // not enrolled
 ];
 
-test('growth-promote-to-claudinite (canon-curation): targets the changed participating members', async () => {
+test('growth-promote-to-claudinite (canon-curation): targets the members whose local packs changed', async () => {
   const v = await promote.gate(HOME, S({ isHome: true, fleetMembers: MEMBERS }));
   assert.equal(v.run, true);
-  assert.deepEqual(v.targets.repos, ['owner/foo']); // changed AND enrolled; baz changed but isn't enrolled
+  assert.deepEqual(v.targets.repos, ['owner/foo']); // local packs changed AND enrolled; baz changed but isn't enrolled
+});
+
+test('growth-promote-to-claudinite: a participant that changed code but not its local packs is not targeted daily', async () => {
+  const members = [{ repo: 'owner/foo', activePacks: ['basics', 'grow_with_claudinite'], projectChanged: true, substantiveChange: true, hasLocalPacks: true, localPacksChanged: false }];
+  assert.equal((await promote.gate(HOME, S({ isHome: true, fleetMembers: members }))).run, false);
+  // but the weekly full sweep still re-promotes over it (the safety net, regardless of change)
+  assert.equal((await promote.gate(HOME, S({ isHome: true, fullSweep: true, fleetMembers: members }))).run, true);
 });
 
 test('growth-promote-to-claudinite: a member whose only change was housekeeping is not targeted', async () => {
-  // enrolled + main moved, but the move was bot/baselining (substantiveChange false)
-  const members = [{ repo: 'owner/foo', activePacks: ['basics', 'grow_with_claudinite'], projectChanged: true, substantiveChange: false }];
+  // enrolled + main moved, but the move was bot/baselining — no local-pack change
+  const members = [{ repo: 'owner/foo', activePacks: ['basics', 'grow_with_claudinite'], projectChanged: true, substantiveChange: false, hasLocalPacks: true, localPacksChanged: false }];
   assert.equal((await promote.gate(HOME, S({ isHome: true, fleetMembers: members }))).run, false);
+});
+
+test('growth-promote-to-claudinite: a participant with no local packs is not a target', async () => {
+  // enrolled + changed, but tracks no local packs → nothing to promote from
+  const members = [{ repo: 'owner/foo', activePacks: ['basics', 'grow_with_claudinite'], projectChanged: true, substantiveChange: true, hasLocalPacks: false, localPacksChanged: false }];
+  assert.equal((await promote.gate(HOME, S({ isHome: true, fleetMembers: members }))).run, false);
+  // even the weekly full sweep skips it — no participant with local packs to promote over
+  assert.equal((await promote.gate(HOME, S({ isHome: true, fullSweep: true, fleetMembers: members }))).run, false);
 });
 
 test('growth-promote-to-claudinite: full sweep promotes over all participants regardless of change', async () => {
@@ -177,7 +199,7 @@ test('growth-promote-to-claudinite: full sweep promotes over all participants re
 });
 
 test('growth-promote-to-claudinite: quiet when nothing changed, and never runs off the home repo', async () => {
-  assert.equal((await promote.gate(HOME, S({ isHome: true, fleetMembers: MEMBERS.map((m) => ({ ...m, projectChanged: false, substantiveChange: false })) }))).run, false);
+  assert.equal((await promote.gate(HOME, S({ isHome: true, fleetMembers: MEMBERS.map((m) => ({ ...m, projectChanged: false, substantiveChange: false, localPacksChanged: false })) }))).run, false);
   assert.equal((await promote.gate(HOME, S({ isHome: true }))).run, false); // no aggregate at all
   // A stray declaration on a member can't double-run promote: the gate requires isHome.
   assert.equal((await promote.gate(REPO, S({ fleetMembers: MEMBERS }))).run, false);

@@ -129,21 +129,31 @@ of cheap reads. Gates lean on it and/or do a targeted probe of their own via `gh
 |---|---|---|
 | `fullSweep` | `hash(full_name) % 7 === weekdayUtc` | the full pass of every task that declares `full_sweep_supported: true` (others just run their normal gate) |
 | `pushedAt` | repo object (already in hand from enumeration) | short-circuits the code-side probes when idle |
-| `mainMoved` | commits on the default branch `since` the window | the **landed/implemented** tests (**repo-tidy**) |
-| `projectChanged` | commits / merged PRs in the window | **growth-extract-new-instructions** |
-| `prsTouched[]` | open PRs `updated_at` in window (∪ all if `mainMoved`/`fullSweep`) | **repo-tidy** |
-| `issuesTouched[]` | open issues `updated_at` in window (∪ all if `mainMoved`/`fullSweep`) | **repo-tidy** |
-| `branchesTouched[]` | branch tips moved in window (∪ all if `mainMoved`/`fullSweep`) | **repo-tidy** |
+| `mainMoved` | commits on the default branch `since` the window | `projectChanged` |
+| `projectChanged` | the default branch advanced (any commit, merges included) | the fleet aggregate |
+| `substantiveChange` | a **non-housekeeping** default-branch commit in the window — excludes bot bumps, `[skip ci]`, and the nightly baselining/seed commits | **growth-extract-new-instructions**; widens the **repo-tidy** landed/implemented candidate set |
+| `prsTouched[]` | open PRs `updated_at` in window (∪ all if `substantiveChange`/`fullSweep`) | **repo-tidy** |
+| `issuesTouched[]` | open issues `updated_at` in window (∪ all if `substantiveChange`/`fullSweep`), **excluding the routine's own standing trackers** (whose nightly self-update would otherwise re-fire tidy forever) | **repo-tidy** |
+| `branchesTouched[]` | all open branches, only when `substantiveChange`/`fullSweep` (else empty) | **repo-tidy** |
 | `activePacks[]` | member's `.claudinite-checks.json` | which pack tasks apply |
-| `canonChanged` *(global)* | home-repo commits in window touching member-affecting paths (`packs/`, `checks/`, `skills/`, `migrations/`, bootstrap wiring) — **excluding** `plan.json`, trackers, and orchestration docs | **growth-dedup-local-instructions** (all repos) + **baselining** |
-| `isHome`, `fleetMembers[]` *(home bundle only)* | stamped by the planner, which plans the home repo **last**: every successfully-probed member's `{ repo, activePacks, projectChanged }` | home-only packs' gates (e.g. the central promote gate targets the changed members that declare the growth pack) |
+| `hasLocalPacks` | member tracks ≥1 `.claudinite/local_packs/<pack>/` subdir | gates **growth-dedup-local-instructions**; and the central **promote**'s weekly full sweep (re-promote over all with local packs) |
+| `localPacksChanged` | a default-branch commit in the window touched `.claudinite/local_packs/` (per-commit scan, only run when `hasLocalPacks`) | the central **promote**'s daily trigger — target only members whose local packs *actually changed*, not merely have them |
+| `canonChanged` *(global, coarse)* | home-repo commits in window touching member-affecting paths (`packs/`, `checks/`, `skills/`, `migrations/`, bootstrap wiring) — **excluding** `plan.json`, trackers, and orchestration docs | **baselining** |
+| `relevantCanonChanged` *(per repo)* | a canon **pack this repo declares** moved, or a cross-cutting area (checks/skills/migrations/mount/bootstrap) moved | **growth-dedup-local-instructions** |
+| `isHome`, `fleetMembers[]` *(home bundle only)* | stamped by the planner, which plans the home repo **last**: every successfully-probed member's `{ repo, activePacks, projectChanged, substantiveChange, hasLocalPacks, localPacksChanged }` | home-only packs' gates (e.g. the central promote gate targets members that declare the growth pack and whose **local packs changed** in the window) |
 
-Two rules the table encodes, because getting them wrong defeats the purpose:
+Three rules the table encodes, because getting them wrong defeats the purpose:
 
-- **The landed/implemented tests key off `mainMoved`, not per-object recency.** A branch that hasn't
+- **The landed/implemented tests key off `substantiveChange`, not `mainMoved`.** A branch that hasn't
   moved in weeks becomes *superseded* the moment `main` advances past its idea; an untouched issue
-  becomes *closeable* when a new commit implements it. So when `mainMoved`, the candidate set widens
-  to **all** open branches/issues, not just recently-touched ones.
+  becomes *closeable* when a new commit implements it — so when the project genuinely moves, the
+  candidate set widens to **all** open branches/issues. But a *housekeeping-only* move (a nightly
+  baseline commit, a bot version bump) lands nothing and implements nothing, so it must **not** widen —
+  otherwise every maintained-but-quiet repo is re-tidied every night against its whole backlog.
+- **A member only re-dedups when a pack it actually mounts changed (`relevantCanonChanged`), not on any
+  canon movement.** A change to a pack the repo doesn't declare can't newly cover its local items; and a
+  repo with **no** local packs (`!hasLocalPacks`) has nothing to prune at all, so the unit is skipped
+  before a subagent is ever booted.
 - **`canonChanged` excludes the plan/tracker/orchestration artifacts.** The planner's own artifact
   and the routines docs must not count as canon movement, or the engine self-triggers dedup every
   night.
@@ -172,11 +182,11 @@ nothing for `canonChanged` to trip over) and mirrored to the step summary for hu
   "canonChanged": true,
   "units": [
     { "repo": "owner/foo", "task": "repo-tidy", "worker": "packs/<tidy-pack>/run_daily/repo-tidy.worker.md",
-      "targets": { "branches": ["feat-x"], "prs": [7], "issues": [3] }, "reason": "mainMoved", "smarts": "medium" },
+      "targets": { "branches": ["feat-x"], "prs": [7], "issues": [3] }, "reason": "project changed substantively — re-check landed status", "smarts": "medium" },
     { "repo": "owner/foo", "task": "growth-extract-new-instructions", "worker": "packs/<growth-pack>/extract.md",
-      "targets": {}, "reason": "projectChanged", "smarts": "high" },
+      "targets": {}, "reason": "project changed substantively in the window", "smarts": "high" },
     { "repo": "owner/foo", "task": "growth-dedup-local-instructions", "worker": "packs/<growth-pack>/dedup.md",
-      "targets": {}, "reason": "canonChanged", "smarts": "high" },
+      "targets": {}, "reason": "a declared pack changed in canon — local items may now be covered", "smarts": "high" },
     { "repo": "owner/bar", "task": "<pack-release-task>",
       "worker": "packs/<pack>/maintenance/<task>.worker.md",
       "targets": { "unreleasedVersion": "1.4.0" }, "reason": "unreleased manifest bump", "smarts": "none" }

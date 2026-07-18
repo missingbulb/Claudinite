@@ -4,11 +4,15 @@
 // the pack's skills (single-branch-status / single-pr-status / single-issue-triage);
 // this task just carries the targets and sequences the pass. See RULES.md + the worker.
 //
-// Runs when the window surfaced any tidy work — a non-default branch touched, a PR or
-// issue touched — or on the weekly full sweep (which re-examines all of them; a main
-// move can implement an old issue or land an open PR without the object being touched).
-// Because one worker does dimensions-then-reconcile in sequence, there is no ordering
-// barrier: the unit is independent/concurrent like every other.
+// Runs when the window surfaced genuine tidy work — a PR or issue actually updated in
+// the window — or on a substantive default-branch move (which widens the candidate set
+// to ALL open branches/PRs/issues, since a real commit can implement an old issue or
+// land an open PR without the object itself being touched), or on the weekly full
+// sweep. A housekeeping-only main move (a nightly baseline commit, a bot version bump)
+// no longer widens: it lands nothing and implements nothing, so a quiet-but-maintained
+// repo isn't re-tidied every night (see routines/fleet/signals.mjs `widen`). Because one
+// worker does dimensions-then-reconcile in sequence, there is no ordering barrier: the
+// unit is independent/concurrent like every other.
 
 export default {
   id: 'repo-tidy',
@@ -21,7 +25,7 @@ export default {
     const active = signals.fullSweep || branches.length || signals.prsTouched.length || signals.issuesTouched.length;
     if (!active) return { run: false };
     const reason = signals.fullSweep ? 'weekly full repo tidy'
-      : signals.mainMoved ? 'main moved — re-check landed status'
+      : signals.substantiveChange ? 'project changed substantively — re-check landed status'
         : 'repo activity in window';
     return { run: true, targets: { branches, prs: signals.prsTouched, issues: signals.issuesTouched }, reason };
   },

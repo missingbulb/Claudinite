@@ -20,6 +20,8 @@ function fakeGh(routes) {
 
 const b64 = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64');
 const SINCE = '2026-07-11T00:00:00Z';
+// The canonChange object buildSignals now takes ({ changed, packs, crossCutting }).
+const NO_CANON = { changed: false, packs: new Set(), crossCutting: false };
 
 // --- pathAffectsMembers -----------------------------------------------------
 
@@ -61,15 +63,15 @@ const okPacks = [/\.claudinite-checks\.json/, { status: 200, json: { content: b6
 test('buildSignals: fullSweep is set by the repo weekday bucket', async () => {
   const bucket = fullSweepBucket('owner/foo');
   const gh = fakeGh([okPacks, [/./, { status: 200, json: [] }]]);
-  const on = await buildSignals(gh, REPO(), { sinceIso: SINCE, weekdayUtc: bucket, canonChanged: false });
-  const off = await buildSignals(gh, REPO(), { sinceIso: SINCE, weekdayUtc: (bucket + 1) % 7, canonChanged: false });
+  const on = await buildSignals(gh, REPO(), { sinceIso: SINCE, weekdayUtc: bucket, canonChange: NO_CANON });
+  const off = await buildSignals(gh, REPO(), { sinceIso: SINCE, weekdayUtc: (bucket + 1) % 7, canonChange: NO_CANON });
   assert.equal(on.fullSweep, true);
   assert.equal(off.fullSweep, false);
 });
 
 test('buildSignals: idle repo (old push, not full sweep) skips the main-moved probe', async () => {
   const gh = fakeGh([okPacks, [/\/pulls\?/, { status: 200, json: [] }], [/\/issues\?/, { status: 200, json: [] }]]);
-  const s = await buildSignals(gh, REPO({ pushed_at: '2026-07-01T00:00:00Z' }), { sinceIso: SINCE, weekdayUtc: (fullSweepBucket('owner/foo') + 1) % 7, canonChanged: false });
+  const s = await buildSignals(gh, REPO({ pushed_at: '2026-07-01T00:00:00Z' }), { sinceIso: SINCE, weekdayUtc: (fullSweepBucket('owner/foo') + 1) % 7, canonChange: NO_CANON });
   assert.equal(s.mainMoved, false);
   assert.equal(s.projectChanged, false);
   assert.equal(s.substantiveChange, false);
@@ -86,12 +88,14 @@ test('buildSignals: pushed-in-window with commits → mainMoved/projectChanged t
     [/\/issues\?/, { status: 200, json: [] }],
     [/\/branches\?/, { status: 200, json: [{ name: 'main' }, { name: 'feat' }] }],
   ]);
-  const s = await buildSignals(gh, REPO(), { sinceIso: SINCE, weekdayUtc: (fullSweepBucket('owner/foo') + 1) % 7, canonChanged: true });
+  const canonChange = { changed: true, packs: new Set(['basics']), crossCutting: false };
+  const s = await buildSignals(gh, REPO(), { sinceIso: SINCE, weekdayUtc: (fullSweepBucket('owner/foo') + 1) % 7, canonChange });
   assert.equal(s.mainMoved, true);
   assert.equal(s.projectChanged, true);
   assert.equal(s.substantiveChange, true, 'a plain (non-bot, non-housekeeping) commit is substantive');
   assert.deepEqual(s.branchesTouched, ['main', 'feat']);
   assert.equal(s.canonChanged, true);
+  assert.equal(s.relevantCanonChanged, true, 'the repo declares basics, whose files moved');
 });
 
 test('buildSignals: substantiveChange excludes bot / [skip ci] / baselining commits', async () => {
@@ -99,6 +103,7 @@ test('buildSignals: substantiveChange excludes bot / [skip ci] / baselining comm
     { sha: 'a', author: { login: 'github-actions[bot]' }, commit: { message: 'Refresh data (daily top-up)' } },
     { sha: 'b', author: { login: 'missingbulb' }, commit: { message: 'Bump version to 1.2.3 [skip ci]' } },
     { sha: 'c', author: { login: 'missingbulb' }, commit: { message: 'Claudinite baselining: seed default-on packs' } },
+    { sha: 'e', author: { login: 'missingbulb' }, commit: { message: 'Baseline: refresh Claudinite mount + gitignore + CLAUDE.md self-check' } },
   ];
   const routes = (commits) => [
     okPacks,
@@ -107,7 +112,7 @@ test('buildSignals: substantiveChange excludes bot / [skip ci] / baselining comm
     [/\/issues\?/, { status: 200, json: [] }],
     [/\/branches\?/, { status: 200, json: [] }],
   ];
-  const opts = { sinceIso: SINCE, weekdayUtc: (fullSweepBucket('owner/foo') + 1) % 7, canonChanged: false };
+  const opts = { sinceIso: SINCE, weekdayUtc: (fullSweepBucket('owner/foo') + 1) % 7, canonChange: NO_CANON };
 
   const s1 = await buildSignals(fakeGh(routes(housekeeping)), REPO(), opts);
   assert.equal(s1.mainMoved, true, 'main still moved');
@@ -128,30 +133,32 @@ test('buildSignals: without widening, only in-window PRs are collected (sorted, 
   ];
   // old push + not full sweep => no widening
   const gh = fakeGh([okPacks, [/\/pulls\?/, { status: 200, json: prs }], [/\/issues\?/, { status: 200, json: [] }]]);
-  const s = await buildSignals(gh, REPO({ pushed_at: '2026-07-01T00:00:00Z' }), { sinceIso: SINCE, weekdayUtc: (fullSweepBucket('owner/foo') + 1) % 7, canonChanged: false });
+  const s = await buildSignals(gh, REPO({ pushed_at: '2026-07-01T00:00:00Z' }), { sinceIso: SINCE, weekdayUtc: (fullSweepBucket('owner/foo') + 1) % 7, canonChange: NO_CANON });
   assert.deepEqual(s.prsTouched, [3, 2]);
 });
 
-test('buildSignals: widening (mainMoved) collects all open PRs regardless of updated_at', async () => {
+test('buildSignals: widening (substantive change) collects all open PRs regardless of updated_at', async () => {
   const prs = [
     { number: 3, updated_at: '2026-07-11T10:00:00Z' },
     { number: 1, updated_at: '2026-01-01T00:00:00Z' }, // stale but included when widening
   ];
   const gh = fakeGh([
     okPacks,
-    [/\/commits\?sha=/, { status: 200, json: [{ sha: 'x' }] }], // mainMoved -> widen
+    [/\/commits\?sha=/, { status: 200, json: [{ sha: 'x' }] }], // substantive commit -> widen
     [/\/pulls\?/, { status: 200, json: prs }],
     [/\/issues\?/, { status: 200, json: [] }],
     [/\/branches\?/, { status: 200, json: [] }],
   ]);
-  const s = await buildSignals(gh, REPO(), { sinceIso: SINCE, weekdayUtc: (fullSweepBucket('owner/foo') + 1) % 7, canonChanged: false });
+  const s = await buildSignals(gh, REPO(), { sinceIso: SINCE, weekdayUtc: (fullSweepBucket('owner/foo') + 1) % 7, canonChange: NO_CANON });
   assert.deepEqual(s.prsTouched, [3, 1]);
 });
 
-test('buildSignals: the issues probe filters out PRs', async () => {
+test('buildSignals: the issues probe filters out PRs and the routine\'s own trackers', async () => {
   const items = [
-    { number: 9, updated_at: '2026-07-11T10:00:00Z' },
-    { number: 8, updated_at: '2026-07-11T09:00:00Z', pull_request: {} }, // a PR in the issues feed
+    { number: 9, updated_at: '2026-07-11T10:00:00Z', title: 'a real bug' },
+    { number: 8, updated_at: '2026-07-11T09:30:00Z', pull_request: {}, title: 'a PR' }, // a PR in the issues feed
+    { number: 7, updated_at: '2026-07-11T09:00:00Z', title: 'Claudinite tracker: Repo Tidy' }, // the routine's own tracker
+    { number: 6, updated_at: '2026-07-11T08:00:00Z', title: 'Auto-Improvements Tracker - Growth: Extract' }, // legacy tracker name
   ];
   const gh = fakeGh([
     okPacks,
@@ -160,6 +167,94 @@ test('buildSignals: the issues probe filters out PRs', async () => {
     [/\/issues\?/, { status: 200, json: items }],
     [/\/branches\?/, { status: 200, json: [] }],
   ]);
-  const s = await buildSignals(gh, REPO(), { sinceIso: SINCE, weekdayUtc: (fullSweepBucket('owner/foo') + 1) % 7, canonChanged: false });
-  assert.deepEqual(s.issuesTouched, [9]);
+  const s = await buildSignals(gh, REPO(), { sinceIso: SINCE, weekdayUtc: (fullSweepBucket('owner/foo') + 1) % 7, canonChange: NO_CANON });
+  assert.deepEqual(s.issuesTouched, [9], 'only the genuine issue — PR and both trackers excluded');
+});
+
+test('buildSignals: a repo whose only in-window issue is its tidy tracker reports no issue activity', async () => {
+  // Non-widened (old push, not full sweep): the sorted feed has the tracker in window,
+  // then older issues. The tracker is dropped, so repo-tidy sees no issue activity and
+  // won't re-fire on this otherwise-quiet repo.
+  const items = [
+    { number: 3, updated_at: '2026-07-11T10:00:00Z', title: 'Claudinite tracker: Repo Tidy' }, // in window, but a tracker
+    { number: 2, updated_at: '2026-07-01T00:00:00Z', title: 'old issue' }, // older → stop
+  ];
+  const gh = fakeGh([okPacks, [/\/pulls\?/, { status: 200, json: [] }], [/\/issues\?/, { status: 200, json: items }]]);
+  const s = await buildSignals(gh, REPO({ pushed_at: '2026-07-01T00:00:00Z' }), { sinceIso: SINCE, weekdayUtc: (fullSweepBucket('owner/foo') + 1) % 7, canonChange: NO_CANON });
+  assert.deepEqual(s.issuesTouched, []);
+});
+
+test('buildSignals: hasLocalPacks reflects a tracked .claudinite/local_packs/ subdir', async () => {
+  const withPacks = fakeGh([okPacks, [/\/local_packs$/, { status: 200, json: [{ name: 'gcec', type: 'dir' }] }], [/./, { status: 200, json: [] }]]);
+  const without = fakeGh([okPacks, [/\/local_packs$/, { status: 404, json: null }], [/./, { status: 200, json: [] }]]);
+  const opts = { sinceIso: SINCE, weekdayUtc: (fullSweepBucket('owner/foo') + 1) % 7, canonChange: NO_CANON };
+  assert.equal((await buildSignals(withPacks, REPO(), opts)).hasLocalPacks, true);
+  assert.equal((await buildSignals(without, REPO(), opts)).hasLocalPacks, false);
+});
+
+test('buildSignals: localPacksChanged is true iff a window commit touched .claudinite/local_packs/', async () => {
+  const base = (files) => fakeGh([
+    okPacks,
+    [/\/local_packs$/, { status: 200, json: [{ name: 'gcec', type: 'dir' }] }],
+    [/\/commits\?sha=/, { status: 200, json: [{ sha: 'x' }] }],
+    [/\/commits\/x$/, { status: 200, json: { files } }],
+    [/\/pulls\?/, { status: 200, json: [] }],
+    [/\/issues\?/, { status: 200, json: [] }],
+    [/\/branches\?/, { status: 200, json: [] }],
+  ]);
+  const opts = { sinceIso: SINCE, weekdayUtc: (fullSweepBucket('owner/foo') + 1) % 7, canonChange: NO_CANON };
+  const changed = await buildSignals(base([{ filename: '.claudinite/local_packs/gcec/RULES.md' }, { filename: 'src/app.js' }]), REPO(), opts);
+  assert.equal(changed.localPacksChanged, true);
+  const codeOnly = await buildSignals(base([{ filename: 'src/app.js' }]), REPO(), opts);
+  assert.equal(codeOnly.localPacksChanged, false, 'a code-only change does not count');
+});
+
+test('buildSignals: localPacksChanged stays false and skips the per-commit reads when there are no local packs', async () => {
+  const gh = fakeGh([
+    okPacks,
+    [/\/local_packs$/, { status: 404, json: null }],
+    [/\/commits\?sha=/, { status: 200, json: [{ sha: 'x' }] }],
+    [/\/pulls\?/, { status: 200, json: [] }],
+    [/\/issues\?/, { status: 200, json: [] }],
+    [/\/branches\?/, { status: 200, json: [] }],
+  ]);
+  const s = await buildSignals(gh, REPO(), { sinceIso: SINCE, weekdayUtc: (fullSweepBucket('owner/foo') + 1) % 7, canonChange: NO_CANON });
+  assert.equal(s.hasLocalPacks, false);
+  assert.equal(s.localPacksChanged, false);
+  assert.ok(!gh.calls.some((p) => /\/commits\/x$/.test(p)), 'no per-commit file read when the repo has no local packs');
+});
+
+test('buildSignals: relevantCanonChanged fires only for a declared pack or a cross-cutting change', async () => {
+  const opts = (canonChange) => ({ sinceIso: SINCE, weekdayUtc: (fullSweepBucket('owner/foo') + 1) % 7, canonChange });
+  const gh = fakeGh([okPacks, [/./, { status: 200, json: [] }]]); // repo declares basics + tidy-repo
+  // a pack the repo declares moved → relevant
+  assert.equal((await buildSignals(gh, REPO(), opts({ changed: true, packs: new Set(['tidy-repo']), crossCutting: false }))).relevantCanonChanged, true);
+  // a pack the repo does NOT declare moved → not relevant (coarse canonChanged still true)
+  const s = await buildSignals(gh, REPO(), opts({ changed: true, packs: new Set(['flutter']), crossCutting: false }));
+  assert.equal(s.canonChanged, true);
+  assert.equal(s.relevantCanonChanged, false);
+  // a cross-cutting change (checks/skills/mount) is relevant to every member
+  assert.equal((await buildSignals(gh, REPO(), opts({ changed: true, packs: new Set(), crossCutting: true }))).relevantCanonChanged, true);
+});
+
+test('buildSignals: a housekeeping-only main move does not widen (repo-tidy stays quiet)', async () => {
+  // main moved, but only a baseline commit — substantiveChange false, so no widening:
+  // branches are not fetched and only in-window PRs/issues are collected.
+  const prs = [
+    { number: 5, updated_at: '2026-07-11T10:00:00Z' }, // in window
+    { number: 4, updated_at: '2026-01-01T00:00:00Z' }, // stale → excluded (no widen)
+  ];
+  const gh = fakeGh([
+    okPacks,
+    [/\/commits\?sha=/, { status: 200, json: [{ sha: 'b', author: { login: 'missingbulb' }, commit: { message: 'Baseline: refresh Claudinite mount' } }] }],
+    [/\/pulls\?/, { status: 200, json: prs }],
+    [/\/issues\?/, { status: 200, json: [] }],
+    [/\/branches\?/, { status: 200, json: [{ name: 'main' }, { name: 'feat' }] }],
+  ]);
+  const s = await buildSignals(gh, REPO(), { sinceIso: SINCE, weekdayUtc: (fullSweepBucket('owner/foo') + 1) % 7, canonChange: NO_CANON });
+  assert.equal(s.mainMoved, true, 'main did move');
+  assert.equal(s.substantiveChange, false, 'but only housekeeping');
+  assert.deepEqual(s.branchesTouched, [], 'no branch probe without a substantive move');
+  assert.deepEqual(s.prsTouched, [5], 'only the in-window PR, not the stale one');
+  assert.ok(!gh.calls.some((p) => /\/branches\?/.test(p)), 'branch probe skipped entirely');
 });
