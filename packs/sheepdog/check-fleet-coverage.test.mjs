@@ -21,17 +21,18 @@ test('parseSheepdogConfig: reads owner + exclude; defaults owner to the home own
   assert.throws(() => parseSheepdogConfig({}, 'acme/fleet'), /declares no sheepdog config/);
 });
 
-// isCovered (fleet-api): the structural membership probe, dual-shape during the
-// vendored-mount transition (mount/DESIGN.md) — the tracked declaration file is
-// the one probe both shapes share; the legacy mount markers stay recognized
-// until phase 3 so a half-adopted repo is never silently orphaned.
+// isCovered (fleet-api): membership is the tracked declaration file, the ONE
+// probe every member carries whatever its mount shape (mount/DESIGN.md) — and
+// the only shape the planner can plan for (activePacks is read from it). A
+// mount marker WITHOUT a declaration is a half-adoption that must classify
+// uncovered, so the census opens an adoption issue and it heals loudly.
 import { isCovered } from './fleet-api.mjs';
 
 const ghWith = (paths200) => async (path) =>
   ({ status: paths200.some((p) => path.endsWith(`/contents/${p}`)) ? 200 : 404, json: {} });
 
-test('isCovered: the tracked declaration file alone covers (vendored member); legacy mount markers still recognized; neither → not covered', async () => {
-  assert.equal(await isCovered(ghWith(['.claudinite-checks.json']), 'o/vendored'), true);
-  assert.equal(await isCovered(ghWith(['.claudinite/mount/sync-claudinite.sh']), 'o/legacy'), true);
+test('isCovered: the tracked declaration file is the single membership probe; a bare mount marker no longer covers', async () => {
+  assert.equal(await isCovered(ghWith(['.claudinite-checks.json']), 'o/vendored-or-legacy-member'), true);
+  assert.equal(await isCovered(ghWith(['.claudinite/mount/sync-claudinite.sh']), 'o/half-adopted'), false);
   assert.equal(await isCovered(ghWith([]), 'o/vanilla'), false);
 });

@@ -134,23 +134,24 @@ the nightly touches everyone, and never break the channel the migration itself t
   ungated flip (done); [bootstrap.md](../bootstrap.md) rewritten around the vendored fresh path,
   with the legacy shapes quarantined in a **retiring transition appendix** the worker uses on
   unflipped members (done — the appendix, not dated notes, carries the transition-window
-  maintenance; the flip note carries the conversion); fleet membership discovery accepts the
-  dual shape via the one probe both shapes share, the tracked declaration file (done).
+  maintenance; the flip note carries the conversion); fleet membership discovery reduces to the
+  **single** probe every member carries whatever its mount shape — the tracked
+  `.claudinite-checks.json`, the only shape the planner can plan for at all; a mount marker
+  without a declaration classifies uncovered and heals through an adoption issue (done).
 - **Phase 2 — the flip:** a dated note converts each member in one commit — write its vendor
   set under `.claudinite/shared/`, flip `.gitignore` (keep ignoring `.claudinite/*` with
   `shared/` and `local_packs/` re-included, so legacy flat leftovers and a stale environment's
   stray sync stay invisible), rewrite the `SessionStart` entry to invoke the orchestrator
   directly, repoint the Stop/PreToolUse hook paths and the `CLAUDE.md` import at `shared/`,
   stamp the declaration, delete the tracked sync hook and the old flat mount. **Gated pilot first: the note applies only to `GoogleCalendarEventCreator`** until a
-  clean night proves it, then widens to the fleet. Fleet discovery accepts **both** membership
-  shapes (the tracked sync hook *or* the stamped declaration file) for the whole transition —
-  the sync hook is today's discovery signal, and a probe that only recognizes the new shape
-  would silently orphan every unmigrated repo. A session already running when the flip lands
+  clean night proves it, then widens to the fleet. Fleet discovery is untouched by the flip —
+  it keys on the tracked `.claudinite-checks.json`, which both mount shapes carry (phase 1) —
+  so no member can be orphaned by its migration state. A session already running when the flip lands
   keeps its old wiring against its old snapshot — coherent — and picks the new world up next
   session.
-- **Phase 3 — converge and retire:** once every member is flipped, discovery goes
-  single-shape, `sync-claudinite.sh` is deleted from the canon, bootstrap's remaining legacy
-  steps are pruned, and [consumer-safe-changes.md](../consumer-safe-changes.md) is rewritten to
+- **Phase 3 — converge and retire:** once every member is flipped,
+  `sync-claudinite.sh` is deleted from the canon, bootstrap's transition appendix
+  is pruned, and [consumer-safe-changes.md](../consumer-safe-changes.md) is rewritten to
   the new, much smaller channel model (tracked-vendor commit + notes; the instant `@main` and
   session-sync channels are gone).
 
