@@ -128,10 +128,14 @@ the nightly touches everyone, and never break the channel the migration itself t
   vendor writer [apply-vendor.mjs](apply-vendor.mjs) — whole-set convergence + stamp, erroring
   before any write (done); the consumer CI stub, shipped in the baseline pack's `stubs/` (done);
   the isolation check (done — the reference index builds from `ctx.tracked`, so vendored files
-  stay resolvable as reference *targets* while excluded from scanning). Still open here: the
-  baselining task absorbs the vendor refresh (fleet-side writes, one commit per repo), and the
-  adoption flow and [bootstrap.md](../bootstrap.md) are rewritten **fresh-path-only** around the
-  vendored mount (today's legacy-convergence steps collapse into dated notes).
+  stay resolvable as reference *targets* while excluded from scanning); the baselining worker
+  branches on the `claudinite` stamp — vendored members get the transactional refresh
+  (notes → converge → stamp, one commit), pre-flip members get legacy maintenance only, never an
+  ungated flip (done); [bootstrap.md](../bootstrap.md) rewritten around the vendored fresh path,
+  with the legacy shapes quarantined in a **retiring transition appendix** the worker uses on
+  unflipped members (done — the appendix, not dated notes, carries the transition-window
+  maintenance; the flip note carries the conversion); fleet membership discovery accepts the
+  dual shape via the one probe both shapes share, the tracked declaration file (done).
 - **Phase 2 — the flip:** a dated note converts each member in one commit — write its vendor
   set under `.claudinite/shared/`, flip `.gitignore` (keep ignoring `.claudinite/*` with
   `shared/` and `local_packs/` re-included, so legacy flat leftovers and a stale environment's

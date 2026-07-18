@@ -19,11 +19,14 @@ root="$(dirname "$(find "$PWD" -maxdepth 2 -name .claudinite-checks.json 2>/dev/
 cd "$root"
 
 # 1. Prime the Claudinite corpus so the pack env declarations + env.mjs exist
-#    before the first session (the SessionStart sync keeps it current after).
-#    Current layout first; fall back through the legacy pre-relocation paths.
-for h in .claudinite/mount/sync-claudinite.sh .claudinite/sync-claudinite.sh .claude/hooks/sync-claudinite.sh; do
-  [ -f "$h" ] && { bash "$h" || true; break; }
-done
+#    before the first session. Under the vendored mount (mount/DESIGN.md) the
+#    corpus is TRACKED — already in the checkout, nothing to fetch. Only the
+#    legacy fetch-at-session-start layout still primes via its sync hook.
+if [ ! -f .claudinite/shared/CLAUDE.md ]; then
+  for h in .claudinite/mount/sync-claudinite.sh .claudinite/sync-claudinite.sh .claude/hooks/sync-claudinite.sh; do
+    [ -f "$h" ] && { bash "$h" || true; break; }
+  done
+fi
 
 # 2. Generated-file merge hygiene — universal, cheap, harmless where unused: the
 #    `ours` driver .gitattributes maps GENERATED files to, plus conflict-replay.
@@ -32,4 +35,9 @@ git config rerere.enabled true
 
 # 3. Install every active pack's declared environment requirement (Flutter SDK,
 #    node deps, …). The SessionStart `env.mjs check` then probes each directly.
-node .claudinite/packs/env.mjs install
+#    Vendored layout first; legacy flat layout as the transition fallback.
+if [ -f .claudinite/shared/packs/env.mjs ]; then
+  node .claudinite/shared/packs/env.mjs install
+else
+  node .claudinite/packs/env.mjs install
+fi

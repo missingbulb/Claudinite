@@ -55,6 +55,12 @@ export async function fileExists(gh, fullName, path) {
 // submodule.) The structural "is this a covered member" test, shared by the planner
 // (which repos to plan over) and the census (which repos are uncovered).
 export async function isCovered(gh, fullName) {
+  // Vendored mount AND the transition's dual-shape guarantee: every member —
+  // flipped or not — carries a tracked .claudinite-checks.json, so this one
+  // probe covers both shapes (mount/DESIGN.md). The legacy probes below stay
+  // until phase 3 for any half-adopted repo that mounted before the checks era;
+  // a probe recognizing only the new shape would silently orphan them.
+  if (await fileExists(gh, fullName, '.claudinite-checks.json')) return true;
   if (await fileExists(gh, fullName, '.claudinite/mount/sync-claudinite.sh')) return true; // Method B (mount/)
   if (await fileExists(gh, fullName, '.claudinite/sync-claudinite.sh')) return true; // Method B (pre-mount)
   if (await fileExists(gh, fullName, '.claudinite/.gitkeep')) return true; // legacy Method B

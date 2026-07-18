@@ -16,12 +16,14 @@ Portable Claude instructions/rules shared across projects — the **project-agno
 
 ## How consuming repos join
 
-Two ways to mount Claudinite (at `.claudinite/`) — pick by where your sessions run:
-
-- **Submodule** — pinned and reproducible. Use for local checkouts, CI, or any git client whose credential spans more than one repo.
-- **Session-start tarball sync** — auto-updating, no git credential needed. Use for **Claude Code on the web**, where the credential is scoped to the session's own repo and a submodule clone of this repo 403s at the proxy.
-
-Either way, the corpus is imported with `@.claudinite/CLAUDE.md` in the consumer's `CLAUDE.md` — that single `@`-import pulls in the index map, and SessionStart hooks inject the active packs' prose (the baseline plus whatever the project declares) so nothing else has to be force-loaded. **Setup steps for both → [bootstrap.md](bootstrap.md).**
+Consumers hold a **vendored, tracked** snapshot of the corpus at `.claudinite/shared/` — their
+declaration-derived subset, committed as ordinary files, refreshed by the nightly maintenance as
+one transactional commit, and imported with `@.claudinite/shared/CLAUDE.md` from the consumer's
+`CLAUDE.md` (SessionStart hooks inject the active packs' prose on top, all offline). Adoption is
+the one network moment. The model, its trade-offs, and the fleet transition from the earlier
+fetch-at-session-start mount → [mount/DESIGN.md](mount/DESIGN.md); **setup steps →
+[bootstrap.md](bootstrap.md)** (members on the legacy mount are converted by the gated flip
+note, not by hand — bootstrap's transition appendix maintains them meanwhile).
 
 ## Repository operations
 
@@ -47,10 +49,9 @@ The mounted corpus itself is **`packs/`** (each `packs/<name>/` bundling a pack'
 
 **Where things land:** **extract** commits directly to each project's `main` (it writes only local docs), while **promote** (the canon gate) and **dedup** each open a PR for the owner to approve. Every stage reads only what's already merged: a lesson extracted tonight is promoted the next night (the extract commit trips the next night's signals), and promote's PR means promote → dedup waits an approval cycle — the dominant latency either way. The owner's *on-demand, in-session* "learned lessons" command still delivers a PR.
 
-## Submodule caveats (for consumers)
+## The submodule future (for consumers)
 
-These apply only if you mount via the **submodule** method; the tarball sync sidesteps them (at the cost of pinning):
-
-- Submodules aren't pulled automatically: clone with `git clone --recurse-submodules`, or run `git submodule update --init --recursive` after cloning.
-- A consumer pins a specific commit SHA, so updating these rules does **not** auto-update consumers — each bumps its own pointer.
-- Editing a rule's *content* is a commit/PR **here**; the consumer PR only records the new pointer SHA. Push/merge the content commit here **first**, then bump the consumer's pointer, or the pointer dangles.
+The vendored `shared/` root deliberately mirrors this repo's layout so that mounting Claudinite
+as a **git submodule at `.claudinite/shared/`** — once sessions run where a cross-repo git
+credential exists — is a drop-in upgrade that changes no wiring. Details in
+[mount/DESIGN.md](mount/DESIGN.md).

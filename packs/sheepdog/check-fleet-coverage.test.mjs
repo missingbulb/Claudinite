@@ -20,3 +20,18 @@ test('parseSheepdogConfig: reads owner + exclude; defaults owner to the home own
   // absent config aborts (absence is not "cover everything")
   assert.throws(() => parseSheepdogConfig({}, 'acme/fleet'), /declares no sheepdog config/);
 });
+
+// isCovered (fleet-api): the structural membership probe, dual-shape during the
+// vendored-mount transition (mount/DESIGN.md) — the tracked declaration file is
+// the one probe both shapes share; the legacy mount markers stay recognized
+// until phase 3 so a half-adopted repo is never silently orphaned.
+import { isCovered } from './fleet-api.mjs';
+
+const ghWith = (paths200) => async (path) =>
+  ({ status: paths200.some((p) => path.endsWith(`/contents/${p}`)) ? 200 : 404, json: {} });
+
+test('isCovered: the tracked declaration file alone covers (vendored member); legacy mount markers still recognized; neither → not covered', async () => {
+  assert.equal(await isCovered(ghWith(['.claudinite-checks.json']), 'o/vendored'), true);
+  assert.equal(await isCovered(ghWith(['.claudinite/mount/sync-claudinite.sh']), 'o/legacy'), true);
+  assert.equal(await isCovered(ghWith([]), 'o/vanilla'), false);
+});
