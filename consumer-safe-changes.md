@@ -96,6 +96,19 @@ consumer-held copy that won't move on its own, and each needs a channel.
   clean both right after the migration and after a subsequent real session sync. This is the
   wiring-channel analog of "verify against a real consumer before the nightly does".
 
+## A vendored file executes in the consumer's context
+
+Canon files that ship into consumers — the whole vendor set (`mount/`, `checks/`, pack machinery
+and stubs) — run at their *landed* path inside the consumer's repo, not in the canon checkout they
+were written and tested in. Before changing one, audit every environment assumption against each
+context it ships to: **git discovers `.git` by walking upward**, so introspection from a vendored
+copy answers with the *consumer's* repo unless constrained to the expected toplevel (the
+`--show-toplevel` guard in `mount/apply-vendor.mjs` — an unconstrained `rev-parse HEAD` nearly
+stamped a consumer sha as canon provenance, #340); relative paths resolve against the vendored
+location; network access and credentials present where the file was written may be absent where it
+lands. The co-located header comment at the usage site carries each specific trap; this entry is
+the class.
+
 ## Normalize requirements to canonical form at the door
 
 When a requirement arrives expressed in someone's local context — a schedule in a local
