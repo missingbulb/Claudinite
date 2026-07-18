@@ -1,4 +1,4 @@
-import { copyFileSync, mkdirSync, rmSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { copyFileSync, mkdirSync, rmSync, readFileSync, writeFileSync, existsSync, realpathSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -24,8 +24,20 @@ import { computeVendorSet, SHARED_SUBDIR } from './vendor.mjs';
 // construction and carries no history to check ancestry against.
 const canonRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
+// All git use is LOCAL introspection of the canon checkout (rev-parse,
+// merge-base read the object db — no network, no credential); the remote-head
+// comparison the guards can't make locally is the worker's, over MCP. Git
+// discovers .git by walking UP, and a VENDORED copy of this file runs inside
+// the consumer's own repo (.claudinite/shared/mount/) — where git would answer
+// with the CONSUMER's HEAD — so only a checkout whose toplevel is the canon
+// root itself speaks for the canon; anything else is treated as rootless.
 const git = (...args) => execFileSync('git', args, { cwd: canonRoot, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
-const gitHead = () => { try { return git('rev-parse', 'HEAD'); } catch { return null; } };
+const gitHead = () => {
+  try {
+    if (realpathSync(git('rev-parse', '--show-toplevel')) !== realpathSync(canonRoot)) return null;
+    return git('rev-parse', 'HEAD');
+  } catch { return null; }
+};
 const isAncestorOfHead = (sha) => { try { git('merge-base', '--is-ancestor', sha, 'HEAD'); return true; } catch { return false; } };
 
 export async function applyVendor(targetRoot, { ref = null } = {}) {

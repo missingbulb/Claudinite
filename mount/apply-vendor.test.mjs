@@ -134,6 +134,32 @@ test('#328: an ancestor stamp converges normally, and the stamp ref defaults to 
   assert.equal(settings.claudinite.ref, c2);
 });
 
+test('#328: a canon tree nested in a FOREIGN git repo is rootless — upward .git discovery must not speak for the canon', async () => {
+  // The vendored copy of apply-vendor.mjs runs at <consumer>/.claudinite/shared/mount/,
+  // inside the CONSUMER's repo: git found by upward walk would answer with the
+  // consumer's HEAD. The guards must treat that as no-checkout, not as canon truth.
+  const outer = mkdtempSync(join(tmpdir(), 'claudinite-outer-'));
+  const g = (...args) => execFileSync('git', args, { cwd: outer, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+  g('init', '-q');
+  g('config', 'user.email', 'test@test');
+  g('config', 'user.name', 'test');
+  const canon = join(outer, 'nested-canon');
+  mkdirSync(join(canon, 'mount'), { recursive: true });
+  mkdirSync(join(canon, 'packs'), { recursive: true });
+  for (const f of ['apply-vendor.mjs', 'vendor.mjs']) copyFileSync(join(MOUNT_DIR, f), join(canon, 'mount', f));
+  copyFileSync(join(REPO_ROOT, 'packs', 'registry.mjs'), join(canon, 'packs', 'registry.mjs'));
+  writeAt(canon, 'CLAUDE.md', 'index\n');
+  writeAt(canon, 'checks/run.mjs', 'engine v2\n');
+  writeAt(canon, 'skills/s1/SKILL.md', 'skill\n');
+  g('add', '-A');
+  g('commit', '-q', '-m', 'consumer commit');
+  const target = makeTarget({ packs: [] });
+  const r = await applyAt(canon, target); // no --ref
+  assert.deepEqual(r.errors, []);
+  const settings = JSON.parse(readFileSync(join(target, '.claudinite-checks.json'), 'utf8'));
+  assert.equal(settings.claudinite.ref, undefined, 'the outer repo’s HEAD must never be stamped as canon provenance');
+});
+
 test('transactional: errors abort before any write', async () => {
   const canon = makeCanon();
   const noDecl = mkdtempSync(join(tmpdir(), 'claudinite-target-'));
