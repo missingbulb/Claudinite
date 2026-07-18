@@ -39,10 +39,17 @@ edits the gate.
 
 The gate checks repo state; the *ordering* of an interactive feature run is enforced by the
 pack's `feature-requirements-first` check: after the owner's feature-classified comment, an
-independent commit updating `requirements.md` (no code alongside) must precede the first code
-commit on the branch. It runs on the conversation surface (the Stop hook, where the session
-transcript is available) and self-skips everywhere else — a session that implemented before it
-specified is blocked in the session that did it.
+independent commit updating the spec (no code alongside) must precede the first code commit on
+the branch. It runs on the conversation surface (the Stop hook, where the session transcript is
+available) and self-skips everywhere else — a session that implemented before it specified is
+blocked in the session that did it. The spec's path defaults to the canonical
+`dev/requirements/requirements.md`; a project whose spec lives elsewhere (a non-canonical layout,
+or the pack pulled in via a `requires` from `spec-driven-product`) names it on the pack entry as
+`config.spec`, so the check enforces ordering against the real spec. Because this is a
+**check-the-work** rule it must always be satisfiable by doing the work right: when the resolved
+spec isn't in the repo at all, it self-skips rather than emit a finding no commit could clear —
+never forcing the wrong remedy (an `accept`, which is a check-the-**world** instrument a
+successive run wouldn't re-find, or a post-hoc rebase).
 
 ## 3. The kind vocabulary
 

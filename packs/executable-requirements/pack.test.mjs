@@ -99,3 +99,43 @@ test('feature-requirements-first: silent without a transcript (CI surface)', () 
     assert.equal(runRule(root, null).length, 0);
   } finally { cleanup(root); }
 });
+
+// A check-the-work rule must be satisfiable by doing the work right. When the spec
+// it would enforce ordering against isn't in the repo at all — a project whose spec
+// lives elsewhere without declaring the path, or the pack pulled in via `requires`
+// without the canonical file — no commit could satisfy it, so firing forces the
+// wrong remedy (an `accept`, a check-the-WORLD instrument, or a post-hoc rebase).
+// It must self-skip instead of emitting an unsatisfiable finding.
+test('feature-requirements-first: self-skips when the spec file is absent from the repo', () => {
+  const root = makeRepo({ base: {} }); // no dev/requirements/requirements.md
+  try {
+    commitAt(root, '2026-01-01T10:30:00Z', { 'src/widget.js': 'code\n' });
+    assert.equal(runRule(root, featureTurns).length, 0);
+  } finally { cleanup(root); }
+});
+
+// A project whose executable spec lives at a non-canonical path declares it on the
+// executable-requirements pack entry (config.spec). The check enforces ordering
+// against the REAL spec, so a doc-first commit at that path passes.
+const CUSTOM_SPEC = 'dev/docs/REQUIREMENTS.md';
+const specConfig = (specPath) =>
+  JSON.stringify({ packs: [{ id: 'executable-requirements', config: { spec: specPath } }] });
+
+test('feature-requirements-first: honors a configured non-canonical spec path (passes doc-first)', () => {
+  const root = makeRepo({ base: { [CUSTOM_SPEC]: '`1.1` seed\n', '.claudinite-checks.json': specConfig(CUSTOM_SPEC) } });
+  try {
+    commitAt(root, '2026-01-01T10:20:00Z', { [CUSTOM_SPEC]: '`1.1` seed\n`1.2` widget\n' });
+    commitAt(root, '2026-01-01T10:30:00Z', { 'src/widget.js': 'code\n' });
+    assert.equal(runRule(root, featureTurns).length, 0);
+  } finally { cleanup(root); }
+});
+
+test('feature-requirements-first: with a configured spec path, code before it still fires', () => {
+  const root = makeRepo({ base: { [CUSTOM_SPEC]: '`1.1` seed\n', '.claudinite-checks.json': specConfig(CUSTOM_SPEC) } });
+  try {
+    commitAt(root, '2026-01-01T10:30:00Z', { 'src/widget.js': 'code\n' });
+    const findings = runRule(root, featureTurns);
+    assert.equal(findings.length, 1);
+    assert.match(findings[0].what, /dev\/docs\/REQUIREMENTS\.md/);
+  } finally { cleanup(root); }
+});
