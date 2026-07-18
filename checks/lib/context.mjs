@@ -55,7 +55,7 @@ function vendoredSet(root, files) {
 // `pack-entry-config` baseline migration (migrations/active_migrations/) tracks
 // the fleet's convergence; when it retires, drop the key here (and the overlay
 // below) so a straggler gets the unknown-setting error.
-// `claudinite` is the vendored-mount stamp — { updated: "YYYY-MM-DD", ref: "<sha>" },
+// `claudinite` is the vendored-mount stamp — { updated: "<ISO datetime>", ref: "<sha>" },
 // written by the nightly update pass, selecting which migration notes still apply
 // (mount/DESIGN.md owns the model); the checks engine itself only tolerates it.
 export const CONFIG_KEYS = ['packs', 'rules', 'accept', 'sharedConstants', 'packConfig', 'maintenance', 'claudinite'];
