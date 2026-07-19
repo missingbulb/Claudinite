@@ -8,8 +8,10 @@ import growthConfig from './config-check.mjs';
 // hard-won lessons up to the Claudinite canon and prunes them back out once the canon
 // owns them. This pack carries the MEMBER-side stages — extract, dedup, and the weekly
 // pack-discovery pipeline — as ordinary independent run_daily tasks (no barriers). The
-// central stage, promote, rides the canon-curation pack (declared only by the canon
-// home repo); its gate targets exactly the members that declare THIS pack — minus any
+// central stage, promote, rides the canon home's own canon-curation LOCAL pack
+// (.claudinite/local_packs/, declared only by the home repo, planned through the
+// fleet's default local-pack scheduling); its gate targets exactly the members
+// that declare THIS pack — minus any
 // member whose entry sets config.promote: false (the promotion opt-out; extraction and
 // dedup stay local either way).
 //

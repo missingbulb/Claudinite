@@ -1,8 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, cleanup } from '../../checks/test/helpers.mjs';
-import { buildContext } from '../../checks/lib/context.mjs';
+import { makeRepo, cleanup } from '../../../checks/test/helpers.mjs';
+import { buildContext } from '../../../checks/lib/context.mjs';
 import noEnforcementNarration from './no-enforcement-narration.mjs';
+import canonCuration from './pack.mjs';
+import { contributedBarrierRules } from '../../../packs/barriers/contributed.mjs';
 
 const run = (root) => noEnforcementNarration.run(buildContext({ root, mode: 'all' }));
 
@@ -67,4 +69,46 @@ test('pack-no-enforcement-narration: a prose-less pack contributes nothing', () 
   try {
     assert.equal(run(root).length, 0);
   } finally { cleanup(root); }
+});
+
+// --- pack-independence (contributed barrier) ---------------------------------
+// Built through the real path: this pack's manifest contributes it as DATA and
+// the barriers pack builds the rule — packs-tree segregation is barriers
+// configuration only, no code here checks anything.
+const packIndependence = contributedBarrierRules([{ ...canonCuration, local: true }])
+  .find((r) => r.id === 'pack-independence');
+
+test('pack-independence: a cross-pack import fires; own files, the engine surface, and prose stay open', () => {
+  const root = makeRepo({ changed: {
+    'packs/a/pack.mjs': "import other from '../b/rule.mjs';\nimport own from './own.mjs';\nimport { finding } from '../../checks/lib/findings.mjs';\nimport { loadPacks } from '../registry.mjs';\n",
+    'packs/a/own.mjs': 'export default 1;\n',
+    'packs/a/README.md': 'Composes with [the b pack](../b/rule.mjs) by declaration.\n',
+    'packs/b/rule.mjs': 'export default 1;\n',
+    'checks/lib/findings.mjs': 'export const finding = 1;\n',
+    'packs/registry.mjs': 'export const loadPacks = 1;\n',
+  } });
+  try {
+    const findings = packIndependence.run(buildContext({ root, mode: 'all' }));
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].file, 'packs/a/pack.mjs');
+    assert.equal(findings[0].line, 1);
+    assert.match(findings[0].what, /packs\/b/);
+  } finally { cleanup(root); }
+});
+
+test('pack-independence: an import outside the engine surface fires; inert without a packs/ tree', () => {
+  const crossing = makeRepo({ changed: {
+    'packs/a/mod.mjs': "import reg from '../../migrations/registry.mjs';\n",
+    'migrations/registry.mjs': 'export default 1;\n',
+  } });
+  const consumer = makeRepo({ changed: {
+    'src/app.mjs': "import x from './lib.mjs';\n",
+    'src/lib.mjs': 'export default 1;\n',
+  } });
+  try {
+    const f = packIndependence.run(buildContext({ root: crossing, mode: 'all' }));
+    assert.equal(f.length, 1);
+    assert.match(f[0].what, /migrations\/registry\.mjs/);
+    assert.equal(packIndependence.run(buildContext({ root: consumer, mode: 'all' })).length, 0);
+  } finally { cleanup(crossing); cleanup(consumer); }
 });

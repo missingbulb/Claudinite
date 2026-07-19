@@ -684,3 +684,123 @@ test('resolves a Sass underscore partial and a long-extension bare filename', ()
   });
   assert.equal(long.length, 1);
 });
+
+// --- siblings + scope: 'imports' --------------------------------------------
+
+test('siblings: each direct child of the folder is guarded against the rest; own files stay open', () => {
+  const files = {
+    'content/a/mod.mjs': "import x from '../b/util.mjs';\nimport y from './own.mjs';\n",
+    'content/a/own.mjs': 'export default 1;\n',
+    'content/b/util.mjs': 'export default 1;\n',
+    'content/b/clean.mjs': "import z from './util.mjs';\n",
+  };
+  const f = runCheck({ rules: [{ siblings: 'content', to: 'content/*' }] }, files);
+  assert.equal(f.length, 1);
+  assert.equal(f[0].file, 'content/a/mod.mjs');
+  assert.match(f[0].what, /content\/b/);
+});
+
+test('siblings with "*" isolation and allow: allowed reaches pass, everything else outside fires', () => {
+  const files = {
+    'content/a/mod.mjs': "import { f } from '../../engine/lib/f.mjs';\nimport m from '../../internal/reg.mjs';\n",
+    'engine/lib/f.mjs': 'export const f = 1;\n',
+    'internal/reg.mjs': 'export default 1;\n',
+  };
+  const f = runCheck({ rules: [{ siblings: 'content', to: '*', allow: ['engine'] }] }, files);
+  assert.equal(f.length, 1);
+  assert.match(f[0].what, /internal\/reg\.mjs/);
+});
+
+test('siblings: a folder with no tracked child directories fails closed', () => {
+  const f = runCheck({ rules: [{ siblings: 'nope', to: '*' }] }, { 'a.md': 'x\n' });
+  assert.equal(f.length, 1);
+  assert.match(f[0].what, /no tracked child directories/);
+});
+
+test("scope 'imports': an import specifier fires; a doc link or comment path does not", () => {
+  const files = {
+    'content/a/mod.mjs': "import x from '../b/util.mjs';\n",
+    'content/a/README.md': 'See [the helper](../b/util.mjs) for details.\n',
+    'content/a/notes.mjs': '// background: ../b/util.mjs holds the helper\n',
+    'content/b/util.mjs': 'export default 1;\n',
+  };
+  const f = runCheck({ rules: [{ siblings: 'content', to: 'content/*', scope: 'imports' }] }, files);
+  assert.equal(f.length, 1);
+  assert.equal(f[0].file, 'content/a/mod.mjs');
+  assert.equal(f[0].line, 1);
+});
+
+test("scope 'imports' also catches require() and dynamic import()", () => {
+  const files = {
+    'content/a/x.js': "const u = require('../b/util.js');\n",
+    'content/a/y.mjs': "const m = await import('../b/util.js');\n",
+    'content/b/util.js': 'module.exports = 1;\n',
+  };
+  const f = runCheck({ rules: [{ siblings: 'content', to: 'content/*', scope: 'imports' }] }, files);
+  assert.equal(f.length, 2);
+});
+
+test('siblings/scope validation: bad shapes and forbidden combinations are config errors', () => {
+  const badSiblings = runCheck({ rules: [{ siblings: 42, to: '*' }] }, { 'a.md': 'x\n' });
+  assert.equal(badSiblings.length, 1);
+  assert.match(badSiblings[0].what, /"siblings"/);
+  const withFrom = runCheck({ rules: [{ siblings: 'content', from: 'core', to: '*' }] }, { 'a.md': 'x\n' });
+  assert.equal(withFrom.length, 1);
+  assert.match(withFrom[0].what, /"siblings".*"from"|"from".*"siblings"/);
+  const badScope = runCheck({ rules: [{ from: 'a', to: 'b', scope: 'everything' }] }, { 'a/x.js': '1\n', 'b/y.js': '1\n' });
+  assert.equal(badScope.length, 1);
+  assert.match(badScope[0].what, /"scope"/);
+  const namesWithImports = runCheck({ rules: [{ from: 'a', to: 'b', scope: 'imports', matchNames: true }] }, { 'a/x.js': '1\n', 'b/y.js': '1\n' });
+  assert.equal(namesWithImports.length, 1);
+  assert.match(namesWithImports[0].what, /matchNames.*imports|imports.*matchNames/);
+});
+
+// --- scope 'imports': faithfulness to real module edges ----------------------
+
+test('the index sees in-scope untracked files: untracked import targets and untracked sibling dirs are guarded', () => {
+  const root = makeRepo({
+    changed: { 'content/b/util.mjs': 'export default 1;\n' },
+    uncommitted: {
+      'content/a/mod.mjs': "import x from '../b/newthing.mjs';\n",
+      'content/b/newthing.mjs': 'export default 1;\n',
+      'content/c/rogue.mjs': "import y from '../b/util.mjs';\n",
+    },
+  });
+  try {
+    const ctx = buildContext({ root, mode: 'all' });
+    ctx.config = { ...ctx.config, packConfig: { barriers: { rules: [{ siblings: 'content', to: 'content/*', scope: 'imports' }] } } };
+    const f = barrier.run(ctx);
+    const files = f.map((x) => x.file).sort();
+    assert.deepEqual(files, ['content/a/mod.mjs', 'content/c/rogue.mjs'], JSON.stringify(f, null, 1));
+  } finally { cleanup(root); }
+});
+
+test("scope 'imports' matches only relative specifiers: root-relative paths and bare filenames in comments never fire", () => {
+  const f = runCheck({ rules: [{ siblings: 'content', to: 'content/*', scope: 'imports' }] }, {
+    'content/a/mod.mjs': '// data taken from "content/b/util.mjs" originally\n// never import \'util.mjs\' directly from a pack\n',
+    'content/b/util.mjs': 'export default 1;\n',
+  });
+  assert.deepEqual(f, []);
+});
+
+test("scope 'imports' catches an import whose specifier sits on the next line", () => {
+  const f = runCheck({ rules: [{ siblings: 'content', to: 'content/*', scope: 'imports' }] }, {
+    'content/a/mod.mjs': "import x from\n  '../b/util.mjs';\n",
+    'content/b/util.mjs': 'export default 1;\n',
+  });
+  assert.equal(f.length, 1);
+  assert.equal(f[0].line, 2);
+});
+
+test("scope 'imports': a directory import resolves through its index file; an index-less one is breakage, not a crossing", () => {
+  const withIndex = runCheck({ rules: [{ siblings: 'content', to: 'content/*', scope: 'imports' }] }, {
+    'content/a/mod.mjs': "import x from '../b';\n",
+    'content/b/index.mjs': 'export default 1;\n',
+  });
+  assert.equal(withIndex.length, 1);
+  const dangling = runCheck({ rules: [{ siblings: 'content', to: 'content/*', scope: 'imports' }] }, {
+    'content/a/mod.mjs': "import x from '../b/docs';\n",
+    'content/b/docs/README.md': 'no module here\n',
+  });
+  assert.deepEqual(dangling, []);
+});

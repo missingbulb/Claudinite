@@ -47,6 +47,21 @@ Rule fields:
 - **`from`** — the folder(s) guarded: a folder, a file, `"."` for the whole repo, or an **array** of them. Naming the core folders positively (`["engine", "cli", "loader.js"]`) keeps content, catalogs, and config naturally out of scope — no carve-outs needed for them. A `from` entry may be a single engine file living *inside* a content tree (`loader.js` next to the plugins it loads); that file is guarded without the tree around it being scanned.
 - **`to`** — what must not be referenced: a folder, `"<folder>/*"` (a glob barring **every direct child directory**, enumerated from the tree — files directly under `<folder>` stay reachable), `"*"` (isolation/sink: `from` may reference nothing outside itself), or an **array** of the folder/glob forms. An empty glob expansion is a blocking `config` finding, never a silent no-op: a renamed folder must not disarm the barrier.
 - **`{ between: [a, b] }`** — sugar for a mutual ban (both `a → b` and `b → a`).
+- **`{ siblings: "<folder>", to, ... }`** — guard **each direct child directory** of `<folder>` in
+  turn (instead of `from`; the children are enumerated from the tree at scan time, and an empty
+  expansion is a blocking `config` finding). `to: "<folder>/*"` gives **mutual sibling
+  separation** — every child may reference its own files but no sibling's; `to: "*"` gives
+  **per-child isolation**, each child confined to itself plus the `allow` list. The form for
+  "these subfolders are independent units" without enumerating (and maintaining) one edge per
+  unit.
+- **`scope: "imports"`** — restrict the edge to **relative import/require specifiers in code
+  files** (`import x from '…'`, `import('…')`, `require('…')` in `.js`/`.mjs`/`.ts`-family
+  sources, matched across line breaks), resolved as **module edges**: file-relative only with
+  extension/index completion, no bare or root-relative strings, no name/unique-filename layers,
+  and an index-less directory import is breakage rather than a crossing. Prose, docs, and
+  comments stay free to mention — or quote paths into — the barred folders; the coupling class
+  this scope polices is the one that crashes at runtime. Default is every resolvable reference;
+  incompatible with `matchNames` (a text layer an imports-only edge excludes by definition).
 - **`allow: [...]`** (or a single `"allow": "shared"`) — folders reachable despite the ban (a `shared`/`contracts` folder both sides may use). Always implicitly allowed: references *within* the guarded region itself.
 - **`matchNames: true`** — opt into the **bare-name layer**: the barred folders' own names are matched as bare words too (see below). `alsoMatchNames: [...]` force-includes non-distinctive names.
 - **`matchUniqueFilenames: false`** — opt *out* of the unique-basename layer (on by default). A bare `filename.ext` then resolves only through the path attempts, so a **convention marker** (a filename many folders are meant to carry but only one does yet — `checks.mjs`, `RELEASE.md`) no longer reads as a coupling to that lone folder. Path references and distinctive names still fire.

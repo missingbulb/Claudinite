@@ -30,8 +30,8 @@ part of the on-demand skill — it belongs in a pack as a check.
 ## How to convert one
 
 Follow the promote stage's check-authoring discipline
-([promote.md](../../packs/canon-curation/promote.md) and
-[item-routing.md](../../packs/canon-curation/item-routing.md) own the ladder). For each candidate:
+([promote.md](../../.claudinite/local_packs/canon-curation/promote.md) and
+[item-routing.md](../../.claudinite/local_packs/canon-curation/item-routing.md) own the ladder). For each candidate:
 
 1. **Author the check** in the owning pack (`packs/<pack>/<rule>.mjs`, listed in `pack.mjs`) —
    the failure message *is* the rule (what / why / fix / `doc:` pointer back to the prose).

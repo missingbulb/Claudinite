@@ -99,14 +99,17 @@ const TRY_INDEX = ['/index.js', '/index.mjs', '/index.ts', '/index.tsx', '/index
 
 // --- repo index (built once per run) ----------------------------------------
 
-// Every tracked path, every directory prefix, and a basename→paths map (for the
-// unique-filename layer). Built from ctx.tracked so a reference resolves against
-// the whole repo, not just the changed set.
+// Every known path, every directory prefix, and a basename→paths map (for the
+// unique-filename layer). Built from ctx.tracked PLUS the in-scope untracked
+// set (ctx.allFiles), so a reference resolves against everything the repo
+// knows — a Stop-hook run routinely sees fresh files before their first
+// `git add`, and an import of (or a sibling directory made of) untracked
+// files must guard exactly like a tracked one.
 export function buildIndex(ctx) {
   const files = new Set();
   const dirs = new Set();
   const byBase = new Map();
-  for (const raw of ctx.tracked) {
+  for (const raw of new Set([...ctx.tracked, ...(ctx.allFiles ?? [])])) {
     const f = raw.replace(/\\/g, '/');
     files.add(f);
     const parts = f.split('/');
@@ -141,6 +144,41 @@ const QUOTED = /'([^'\n]+)'|"([^"\n]+)"|`([^`\n]+)`/g;
 // multi-segment slash path, or a bare filename that carries an extension.
 const PATHISH = /(?:\.{1,2}[\\/])[\w.@+\-\\/]+|[\w@+\-][\w.@+\-]*(?:[\\/][\w.@+\-]+)+|[\w@+\-][\w.@+\-]*\.[A-Za-z][A-Za-z0-9]{0,19}/g;
 const URLISH = /^(?:[a-z][a-z0-9+.\-]*:)?\/\//i; // http://, https://, //cdn, mailto: handled below
+
+// Code files an imports-scoped edge scans — the module formats whose
+// import/require specifiers are runtime edges.
+const CODE_FILE = /\.(?:mjs|cjs|jsx?|mts|cts|tsx?)$/;
+
+// RELATIVE import/require specifiers across the WHOLE source — `from '<spec>'`,
+// side-effect `import '<spec>'`, dynamic `import('<spec>')`, `require('<spec>')`
+// — the `scope: "imports"` extractor. Whole-source (not per-line), so an import
+// broken across lines still counts; only '.'-led specifiers, because bare and
+// root-relative strings are never module edges (mirroring the old
+// pack-independence extractor, checks/lib/imports.mjs RELATIVE_SPEC) — which is
+// also what keeps prose quoting a repo path after the word "from" from firing.
+// Each hit carries the 1-indexed line of the specifier itself.
+const IMPORT_SPEC = /(?:\bfrom|\bimport|\brequire)\s*\(?\s*['"`](\.[^'"`\n]+)['"`]/g;
+export function importSpecifiers(source) {
+  const out = [];
+  for (const m of source.matchAll(IMPORT_SPEC)) {
+    out.push({ spec: m[1], line: source.slice(0, m.index + m[0].indexOf(m[1])).split('\n').length });
+  }
+  return out;
+}
+
+// Resolve one relative import specifier file-relatively, completing extensions
+// and index files but never matching a bare directory: a directory with no
+// index module is unloadable — breakage, not a boundary crossing — and the
+// fuzzy layers (repo-root retry, dotted modules, unique basenames) have no
+// place in module resolution. Mirrors the old pack-independence resolution.
+export function resolveImport(spec, fromDir, index) {
+  const p = normJoin(fromDir, spec.replace(/\\/g, '/'));
+  if (!p) return null;
+  if (index.files.has(p)) return p;
+  for (const ext of TRY_EXT) if (index.files.has(p + ext)) return p + ext;
+  for (const idx of TRY_INDEX) if (index.files.has(p + idx)) return p + idx;
+  return null;
+}
 
 // Every reference candidate on one line, de-duplicated, cleaned of wrapping
 // punctuation, URLs and query/hash tails dropped.
@@ -219,7 +257,7 @@ export function resolveRef(candidate, fromDir, index, matchUniqueFilenames = tru
 
 // --- field parsing ----------------------------------------------------------
 
-const EDGE_KEYS = ['from', 'to', 'between', 'allow', 'except', 'matchNames', 'alsoMatchNames', 'matchUniqueFilenames', 'reason'];
+const EDGE_KEYS = ['from', 'to', 'between', 'siblings', 'scope', 'allow', 'except', 'matchNames', 'alsoMatchNames', 'matchUniqueFilenames', 'reason'];
 const EXCEPTION_KEYS = ['path', 'to', 'reason'];
 
 // `from`: a string or an array of them → a list of normalized prefixes. "." is
@@ -361,10 +399,21 @@ function edgeProblem(edge, at) {
 // errors as { what, fix } for the caller to surface as blocking findings.
 //   { from, to, allow?, except?, matchNames?, alsoMatchNames?, reason? }  one directed ban
 //   { between: [a, b], ... }             sugar → both directions
+//   { siblings: "<folder>", to, ... }    each direct child directory of <folder>
+//       guarded in turn (expanded structurally at scan time, fail-closed when
+//       the folder has no tracked child directories) — `to: "<folder>/*"` gives
+//       mutual sibling separation (a child's own files stay open via the
+//       self-reference rule), `to: "*"` per-child isolation with an allow list
 //   from: a folder/file, "." (the repo root), or an array of folders/files
 //   to: a folder, "<folder>/*" (every direct child directory), "*" (isolation:
 //       `from` may reference nothing outside itself/allow), or an array of the
 //       folder/glob forms
+//   scope: "imports" restricts the edge to RELATIVE import/require specifiers
+//       in code files, resolved as module edges — no bare/root-relative
+//       strings, no fuzzy layers, an index-less directory import is breakage
+//       not a crossing — so prose, docs, and comments stay free to mention (or
+//       quote paths into) the barred folders; default is every resolvable
+//       reference. Incompatible with matchNames (a text layer).
 //   allow: a shared folder (or array) reachable despite the ban
 //   except: carve-out strings (folders/globs/patterns — the `from: "."` helper)
 //       and/or reviewed exceptions { path, to?, reason } (a file's deliberate
@@ -425,6 +474,33 @@ export function normalizeEdges(specs) {
     }
     const matchUniqueFilenames = spec.matchUniqueFilenames !== false;
 
+    if (spec.scope !== undefined && spec.scope !== 'imports' && spec.scope !== 'all') {
+      errors.push({ what: `${at}: "scope" must be "imports" or "all"`, fix: 'set "scope": "imports" to match only import/require specifiers in code files, or drop it for every resolvable reference' });
+      return;
+    }
+    const scope = spec.scope === 'imports' ? 'imports' : 'all';
+    if (scope === 'imports' && matchNames) {
+      errors.push({ what: `${at}: "matchNames" cannot combine with "scope": "imports"`, fix: 'the names layer matches arbitrary text, which an imports-scoped edge excludes by definition — drop one of the two' });
+      return;
+    }
+
+    let siblings = null;
+    if (spec.siblings !== undefined) {
+      if (typeof spec.siblings !== 'string' || !spec.siblings.trim() || spec.siblings.includes('*')) {
+        errors.push({ what: `${at}: "siblings" must name a real folder`, fix: 'use "siblings": "<folder>" — each of its direct child directories is guarded in turn; no wildcards' });
+        return;
+      }
+      if (spec.from !== undefined || spec.between !== undefined) {
+        errors.push({ what: `${at}: "siblings" cannot combine with "from" or "between"`, fix: 'a siblings edge derives its guarded folders from the named folder\'s children — drop "from"/"between", or drop "siblings"' });
+        return;
+      }
+      siblings = normPrefix(spec.siblings);
+      if (siblings === '') {
+        errors.push({ what: `${at}: "siblings" must name a real subfolder, not the repo root`, fix: 'name the folder whose child directories should be mutually guarded' });
+        return;
+      }
+    }
+
     const reason = typeof spec.reason === 'string' ? spec.reason : null;
 
     // Normalize one to-entry: '*', '<folder>/*', or a folder prefix. Null = error.
@@ -440,7 +516,7 @@ export function normalizeEdges(specs) {
       return glob ? `${p}/*` : p;
     };
 
-    const mk = (froms, targets) => ({ froms, targets, allow, carve, exceptions, matchNames, alsoMatchNames, matchUniqueFilenames, reason });
+    const mk = (froms, targets) => ({ froms, targets, siblings, scope, allow, carve, exceptions, matchNames, alsoMatchNames, matchUniqueFilenames, reason });
 
     if (Array.isArray(spec.between)) {
       if (spec.between.length !== 2 || spec.between.some((s) => typeof s !== 'string' || !s.trim() || s.includes('*'))) {
@@ -460,7 +536,10 @@ export function normalizeEdges(specs) {
       return;
     }
 
-    const froms = parseFrom(spec.from, at, errors);
+    // A siblings edge derives its guarded folders structurally at scan time
+    // (each direct child of the named folder in turn), so it carries no froms
+    // here — barrierFindings expands it against the real tree, fail-closed.
+    const froms = siblings ? [] : parseFrom(spec.from, at, errors);
     if (froms === null) return;
     const toRaw = typeof spec.to === 'string' && spec.to.trim() ? [spec.to]
       : Array.isArray(spec.to) && spec.to.length && spec.to.every((t) => typeof t === 'string' && t.trim()) ? spec.to
@@ -533,7 +612,7 @@ export function barrierFindings(ctx, edges, rule) {
   };
   const childDirs = (p) => [...index.dirs].filter((d) => d.startsWith(`${p}/`) && !d.slice(p.length + 1).includes('/'));
 
-  edges.forEach((edge, ei) => {
+  const scanEdge = (edge) => {
     const carve = edge.carve.flatMap((e) => (isGlob(e) ? childDirs(globPrefix(e)) : [e]));
     const star = edge.targets.includes('*');
     const barred = [];
@@ -615,11 +694,29 @@ export function barrierFindings(ctx, edges, rule) {
       });
     };
 
-    const guarded = scannable.filter((f) => inGuard(f));
+    // An imports-scoped edge scans only code files, and only their relative
+    // import/require specifiers, resolved as module edges (resolveImport) —
+    // matchNames is validated away for it, so the names layer below never arms.
+    const importsOnly = edge.scope === 'imports';
+    const guarded = scannable.filter((f) => inGuard(f) && (!importsOnly || CODE_FILE.test(f)));
     for (const file of guarded) {
       const text = read(file);
       if (text === null) continue;
       const fromDir = file.includes('/') ? file.slice(0, file.lastIndexOf('/')) : '';
+      if (importsOnly) {
+        for (const { spec, line } of importSpecifiers(text)) {
+          const r = resolveImport(spec, fromDir, index);
+          if (r === null || inGuard(r)) continue;
+          if (edge.allow.some((a) => under(r, a))) continue;
+          const t = barred.find((b) => under(r, b));
+          if (star) {
+            emit(file, line, `imports "${spec}" → resolves to "${r}", outside the guarded region`, r);
+          } else if (t) {
+            emit(file, line, `imports "${spec}" → resolves to "${r}", inside the barred folder "${t}"`, r);
+          }
+        }
+        continue;
+      }
       const lines = text.split('\n');
       for (let i = 0; i < lines.length; i++) {
         for (const rawRef of candidatesOn(lines[i])) {
@@ -649,7 +746,28 @@ export function barrierFindings(ctx, edges, rule) {
     const { kept, stale } = applyExceptions(raw, edge.exceptions);
     out.push(...kept);
     staleAll.push(...stale);
-  });
+  };
+
+  for (const edge of edges) {
+    // A siblings edge expands against the real tree: each direct child
+    // directory of the named folder becomes the guarded `from` of its own
+    // sub-edge (so a child's own files pass via the self-reference rule while
+    // every sibling stays barred). Fail closed on an empty expansion — a
+    // renamed folder must not silently disarm the barrier.
+    if (edge.siblings) {
+      const kids = childDirs(edge.siblings);
+      if (!kids.length) {
+        out.push(specFinding(rule, {
+          what: `"siblings" folder "${edge.siblings}" has no tracked child directories`,
+          fix: 'check the folder exists and has tracked subdirectories — an empty expansion would enforce nothing',
+        }));
+        continue;
+      }
+      for (const kid of kids) scanEdge({ ...edge, froms: [kid] });
+      continue;
+    }
+    scanEdge(edge);
+  }
   return { findings: out, stale: staleAll };
 }
 

@@ -1,12 +1,12 @@
 # Growth — extract lessons (per member)
 
-The [growth lifecycle](../canon-curation/README.md)'s capture stage, this pack's daily task: review a project's recent activity and fold any durable, reusable lesson into the project's own **local packs** (`.claudinite/local_packs/` — the normalized capture surface) — at the project's own level, without straining to generalize it. It **commits directly to the project's default branch** (no per-run PR); finding nothing to add on a given run is a perfectly good outcome.
+The [growth lifecycle](../../.claudinite/local_packs/canon-curation/README.md)'s capture stage, this pack's daily task: review a project's recent activity and fold any durable, reusable lesson into the project's own **local packs** (`.claudinite/local_packs/` — the normalized capture surface) — at the project's own level, without straining to generalize it. It **commits directly to the project's default branch** (no per-run PR); finding nothing to add on a given run is a perfectly good outcome.
 
-> This is the **unattended daily** routine. **Unlike** an owner-requested, in-session retrospective (which delivers a PR for review), this routine commits straight to `main`: it writes only the project's *own* local packs, and the owner has opted out of a per-run review gate here to keep the fleet's daily lesson-capture from piling up PRs. The shared canon stays gated — lifting anything up into it is [promote](../canon-curation/promote.md)'s job, and promote *does* open a PR.
+> This is the **unattended daily** routine. **Unlike** an owner-requested, in-session retrospective (which delivers a PR for review), this routine commits straight to `main`: it writes only the project's *own* local packs, and the owner has opted out of a per-run review gate here to keep the fleet's daily lesson-capture from piling up PRs. The shared canon stays gated — lifting anything up into it is [promote](../../.claudinite/local_packs/canon-curation/promote.md)'s job, and promote *does* open a PR.
 
 ## Capture at the project's own level
 
-Write each lesson at whatever level reads naturally for this project — refer to its files, services, or mechanics wherever that's what makes the lesson clear, but don't force either extreme: don't contort a lesson to be hyper-specific, and don't polish it into a general, portable rule. Making a lesson portable is [promote](../canon-curation/promote.md)'s job, done centrally later (it picks up whatever is merged here by its next run); here, just capture it usefully and let promote lift whatever turns out to travel.
+Write each lesson at whatever level reads naturally for this project — refer to its files, services, or mechanics wherever that's what makes the lesson clear, but don't force either extreme: don't contort a lesson to be hyper-specific, and don't polish it into a general, portable rule. Making a lesson portable is [promote](../../.claudinite/local_packs/canon-curation/promote.md)'s job, done centrally later (it picks up whatever is merged here by its next run); here, just capture it usefully and let promote lift whatever turns out to travel.
 
 ## Conventions used in this doc
 
@@ -41,5 +41,5 @@ Deciding whether a lesson is genuinely new and durable — and deduping it again
 
 ## What this routine must never do
 
-- **Never touch the shared canon** — this routine writes only the project's *own* local packs under `.claudinite/local_packs/`; everything else under `.claudinite/` is the read-only mount, and lifting a lesson up into the canon is [promote](../canon-curation/promote.md)'s job.
+- **Never touch the shared canon** — this routine writes only the project's *own* local packs under `.claudinite/local_packs/`; everything else under `.claudinite/` is the read-only mount, and lifting a lesson up into the canon is [promote](../../.claudinite/local_packs/canon-curation/promote.md)'s job.
 - **Don't add noise** — a duplicate or hallucinated "lesson" is worse than adding nothing, the more so when it lands directly in the project's packs with no review gate.

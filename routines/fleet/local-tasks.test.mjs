@@ -132,3 +132,46 @@ test('buildWorkPlan: a local task shadowing a canon pack id is never planned (ca
   );
   assert.ok(!plan.units.some((u) => u.task === 'rogue'), 'the canon-shadowing local task is dropped');
 });
+
+test('readLocalTasks: a leading-"/" worker path is member-repo-root-relative, not pack-relative', async () => {
+  // A local pack whose task's worker doc lives elsewhere in its own repo (e.g.
+  // the canon home's curation tasks pointing at a corpus skill doc).
+  const gh = fakeGh([
+    [/local_packs$/, { status: 200, json: [{ name: 'curation', type: 'dir', path: '.claudinite/local_packs/curation' }] }],
+    [/curation\/run_daily$/, { status: 200, json: [
+      { name: 'sweep.mjs', type: 'file', path: '.claudinite/local_packs/curation/run_daily/sweep.mjs' },
+    ] }],
+    [/sweep\.mjs$/, { status: 200, json: { content: b64(`export default { id: 'sweep', worker: '/skills/prose-to-checks/SKILL.md', gate: async () => ({ run: false }) };`) } }],
+  ]);
+  const tasks = await readLocalTasks(gh, 'owner/member');
+  assert.equal(tasks.length, 1);
+  assert.equal(tasks[0].worker, 'skills/prose-to-checks/SKILL.md');
+  assert.equal(tasks[0].workerRepo, 'owner/member');
+});
+
+test('buildWorkPlan: local-pack tasks are planned BY DEFAULT — no seam wiring needed', async () => {
+  // The default localTasksFor is the real reader over gh: a member declaring a
+  // local pack (namespaced form) with a run_daily descriptor gets its unit with
+  // no opts passed — local daily scheduling is on, not opt-in.
+  const gh = fakeGh([
+    [/o\/home\/commits\?since=/, { status: 200, json: [] }],
+    [/\.claudinite-checks\.json/, { status: 200, json: { content: b64(JSON.stringify({ packs: ['local_packs/extractor-pipeline'] })) } }],
+    [/\/pulls\?/, { status: 200, json: [] }],
+    [/contents\/\.claudinite\/local_packs$/, { status: 200, json: [{ name: 'extractor-pipeline', type: 'dir', path: '.claudinite/local_packs/extractor-pipeline' }] }],
+    [/extractor-pipeline\/run_daily$/, { status: 200, json: [
+      { name: 'create-extractor.mjs', type: 'file', path: '.claudinite/local_packs/extractor-pipeline/run_daily/create-extractor.mjs' },
+    ] }],
+    [/create-extractor\.mjs$/, { status: 200, json: { content: b64(EXTRACTOR_SRC) } }],
+    [/\/issues\?labels=extractor-request/, { status: 200, json: [{ number: 7 }] }],
+    [/\/issues\?/, { status: 200, json: [] }],
+  ]);
+  const plan = await buildWorkPlan(
+    gh, 'o/home',
+    [{ full_name: 'owner/member', default_branch: 'main', pushed_at: '2000-01-01T00:00:00Z' }],
+    null,
+  );
+  const unit = plan.units.find((u) => u.task === 'create-extractor');
+  assert.ok(unit, 'the local-pack task produced a unit with no localTasksFor passed');
+  assert.equal(unit.workerRepo, 'owner/member');
+  assert.deepEqual(unit.targets, { issues: [7] });
+});

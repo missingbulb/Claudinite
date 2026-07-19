@@ -1,6 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { buildWorkPlan } from './plan.mjs';
+
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 // Integration test for the core planner's plan-building: a fake gh + a covered
 // member, exercising the real pack run_daily tasks (loaded from disk). We drive
@@ -68,15 +73,29 @@ test('buildWorkPlan: a member whose probe throws is isolated, not fatal', async 
 });
 
 test('buildWorkPlan: plans the home repo last — home-only pack gates see the fleet aggregate', async () => {
+  // The home's curation tasks live in ITS OWN local pack (.claudinite/
+  // local_packs/canon-curation) and arrive through the DEFAULT local-task read
+  // — the fake gh serves the REAL descriptor files from this repo's tree, so
+  // the test also proves each descriptor is self-contained (data:-URL
+  // importable) and its worker path rewrites correctly.
+  const curation = '.claudinite/local_packs/canon-curation';
+  const rawB64 = (p) => Buffer.from(readFileSync(join(repoRoot, p), 'utf8'), 'utf8').toString('base64');
   const gh = fakeGh([
     // canonChanged false (no home commits in window)
     [/o\/home\/commits\?since=/, { status: 200, json: [] }],
     // home fullSweep may or may not be tonight (hash-staggered): give its probes empty answers either way
     [/o\/home\/commits\?sha=/, { status: 200, json: [] }],
-    [/o\/home\/contents\/\.claudinite-checks\.json/, { status: 200, json: { content: b64({ packs: ['basics', 'canon-curation'] }) } }],
+    [/o\/home\/contents\/\.claudinite-checks\.json/, { status: 200, json: { content: b64({ packs: ['basics', 'local_packs/canon-curation'] }) } }],
     [/o\/home\/pulls\?/, { status: 200, json: [] }],
     [/o\/home\/issues\?/, { status: 200, json: [] }],
     [/o\/home\/branches\?/, { status: 200, json: [] }],
+    [/o\/home\/contents\/\.claudinite\/local_packs$/, { status: 200, json: [{ name: 'canon-curation', type: 'dir', path: curation }] }],
+    [/o\/home\/contents\/\.claudinite\/local_packs\/canon-curation\/run_daily$/, { status: 200, json: [
+      { name: 'growth-promote-to-claudinite.mjs', type: 'file', path: `${curation}/run_daily/growth-promote-to-claudinite.mjs` },
+      { name: 'prose-to-checks-sweep.mjs', type: 'file', path: `${curation}/run_daily/prose-to-checks-sweep.mjs` },
+    ] }],
+    [/growth-promote-to-claudinite\.mjs$/, { status: 200, json: { content: rawB64(`${curation}/run_daily/growth-promote-to-claudinite.mjs`) } }],
+    [/prose-to-checks-sweep\.mjs$/, { status: 200, json: { content: rawB64(`${curation}/run_daily/prose-to-checks-sweep.mjs`) } }],
     // the member changed: pushed in window and main moved → projectChanged
     [/owner\/foo\/commits\?sha=/, { status: 200, json: [{ sha: 'm1' }] }],
     [/owner\/foo\/commits\/m1$/, { status: 200, json: { files: [{ filename: '.claudinite/local_packs/foo-pack/RULES.md' }] } }], // the commit touched local packs → promote target
@@ -93,9 +112,10 @@ test('buildWorkPlan: plans the home repo last — home-only pack gates see the f
 
   assert.equal(plan.errors.length, 0, JSON.stringify(plan.errors));
   const promote = plan.units.find((u) => u.task === 'growth-promote-to-claudinite');
-  assert.ok(promote, 'promote planned as an ordinary unit on the home repo');
+  assert.ok(promote, 'promote planned as an ordinary unit on the home repo, via the default local-task read');
   assert.equal(promote.repo, 'o/home');
-  assert.equal(promote.worker, 'packs/canon-curation/promote.md');
+  assert.equal(promote.worker, '.claudinite/local_packs/canon-curation/promote.md');
+  assert.equal(promote.workerRepo, 'o/home'); // the dispatch reads the worker from the home repo
   // whether tonight is home's full-sweep night or not, the one enrolled+changed member is the target set
   assert.deepEqual(promote.targets.repos, ['owner/foo']);
   // baselining self-skips the home repo (isHome), so home contributes no baselining unit

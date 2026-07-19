@@ -1,4 +1,4 @@
-// Pack independence (extending.md; the canon-side `pack-independence` check):
+// Pack independence (extending.md; the canon-side `pack-independence` barrier):
 // packs no longer import each other's code — a fixed folder-barrier is now
 // CONTRIBUTED as manifest data (`requires` the mechanism pack +
 // `contributes` on pack.mjs; the engine builds the rule) and the shared

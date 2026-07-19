@@ -99,7 +99,7 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    contributes to the barriers mechanism pack** (manifest data under `contributes`; the baseline
    `requires` barriers, so the mechanism rides everywhere the baseline is declared) — the
    declaration-and-configuration composition pattern packs use with each other, never a
-   cross-pack code import (the canon-side `pack-independence` check) — universal via the
+   cross-pack code import (the canon-side `pack-independence` barrier) — universal via the
    baseline, with no per-project barriers config to maintain; its `gateDir` keeps it inert
    until the vendored mount exists, so it fires neither in the canon repo nor in pre-flip
    consumers.
@@ -191,5 +191,5 @@ required by a member's own local packs. The computed set is verified
 import resolves outside the set (or to nothing) is reported in `errors`, so
 convergence aborts before any write instead of a flipped member crashing on a
 missing module — the guard is judged against the same engine-surface
-definitions the `pack-independence` check enforces (one home,
+definitions the `pack-independence` barrier confines pack imports to (one home,
 `checks/lib/imports.mjs`).
