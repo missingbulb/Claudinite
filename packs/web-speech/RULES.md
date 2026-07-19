@@ -69,17 +69,6 @@ the repo.
   if the first constrained call is rejected — a browser balking at the constraint
   *shape* must not be misread as a permission denial; only a second failure is a
   real "denied".
-- **Release the capture explicitly on teardown — page unload is not a reliable
-  backstop.** The recognizer holds the mic until `abort()`/`stop()`, and a preflight
-  `getUserMedia` track holds it until `track.stop()`; closing an `AudioContext` or
-  dropping the reference frees neither. Don't lean on the browser's implicit page
-  teardown either — a page frozen into the **bfcache** is *suspended, not destroyed*,
-  so a live capture keeps the mic (and the recording indicator) on. Stop the preflight
-  capture in a `finally` so no throw between acquiring and stopping it can leak the
-  device, and in whichever page owns the recognizer register a **`pagehide`** handler
-  (fires on real unload **and** bfcache freeze — prefer it over `beforeunload`) that
-  aborts the in-flight cycle. "The session dies with the page" is not automatic for a
-  content script: make it explicit by ending on the host page's `pagehide`.
 
 ## Text-to-speech (`chrome.tts` / `speechSynthesis`)
 
