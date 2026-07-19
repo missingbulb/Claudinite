@@ -140,7 +140,7 @@ of cheap reads. Gates lean on it and/or do a targeted probe of their own via `gh
 | `localPacksChanged` | a default-branch commit in the window touched `.claudinite/local_packs/` (per-commit scan, only run when `hasLocalPacks`) | the central **promote**'s daily trigger — target only members whose local packs *actually changed*, not merely have them |
 | `canonChanged` *(global, coarse)* | home-repo commits in window touching member-affecting paths (`packs/`, `checks/`, `skills/`, `migrations/`, bootstrap wiring) — **excluding** `plan.json`, trackers, and orchestration docs | **baselining** |
 | `relevantCanonChanged` *(per repo)* | a canon **pack this repo declares** moved, or a cross-cutting area (checks/skills/migrations/mount/bootstrap) moved | **growth-dedup-local-instructions** |
-| `isHome`, `fleetMembers[]` *(home bundle only)* | stamped by the planner, which plans the home repo **last**: every successfully-probed member's `{ repo, activePacks, projectChanged, substantiveChange, hasLocalPacks, localPacksChanged }` | home-only packs' gates (e.g. the central promote gate targets members that declare the growth pack and whose **local packs changed** in the window) |
+| `isHome`, `fleetMembers[]` *(home bundle only)* | stamped by the planner, which plans the home repo **last**: every successfully-probed member's `{ repo, activePacks, packConfigs, projectChanged, substantiveChange, hasLocalPacks, localPacksChanged }` | home-only packs' gates (e.g. the central promote gate targets members that declare the growth pack, whose **local packs changed** in the window, and whose growth entry doesn't set `config.promote: false`) |
 
 Three rules the table encodes, because getting them wrong defeats the purpose:
 

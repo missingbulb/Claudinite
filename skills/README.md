@@ -3,7 +3,7 @@
 > Each skill is a harness-managed **trigger** (`skills/<name>/SKILL.md`) for an **activity-scoped**
 > procedure — surfaced on demand when the work in front of you matches. Its content lives within the
 > skill's **own directory** — the `SKILL.md` plus any companion files it needs (e.g.
-> `lessons-learned/extracting-lessons.md`, `unattended-agents/*.mjs`) — never redirecting into
+> `unattended-agents/*.mjs`) — never redirecting into
 > another tree. **Packs own the deployment:** each pack declares the
 > skills it requires (`skills` in its `pack.mjs`), and a consumer mounts the union over its active
 > packs as session-generated `.claude/skills/` symlinks ([mount-skills.mjs](mount-skills.mjs),
@@ -16,8 +16,7 @@
 
 | Skill | Trigger |
 |---|---|
-| `merge-to-main` | owner's "LGTM" (+ `/merge-to-main`) — the merge recipe (inlined); ends with the lessons pass |
-| `lessons-learned` | owner's "learned lessons"; invoked by `merge-to-main` ([extracting-lessons.md](lessons-learned/extracting-lessons.md)) |
+| `merge-to-main` | owner's "LGTM" (+ `/merge-to-main`) — the merge recipe (inlined); ends with the conversation capture ([the growth pack](../packs/grow_with_claudinite/README.md) owns extraction) |
 | `bump-version` | owner's "bump version" — delegates to the project's release pack/doc |
 | `adopt-claudinite` | bootstrap request — runs [bootstrap.md](../bootstrap.md) |
 | `generate-project-instructions` | fresh/empty project, or a facet no pack covers — extracts reusable `packs/<facet>/` seeds (class / technology / aspect / domain) + a thin project overlay |

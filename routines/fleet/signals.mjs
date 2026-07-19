@@ -104,18 +104,30 @@ export function isRoutineTracker(title) {
   return typeof title === 'string' && ROUTINE_TRACKER_TITLE.test(title.trim());
 }
 
-async function readActivePacks(gh, fullName) {
+async function readPacksDeclaration(gh, fullName) {
+  const none = { activePacks: [], packConfigs: {} };
   const { status, json } = await gh(`/repos/${fullName}/contents/.claudinite-checks.json`);
-  if (status !== 200 || !json?.content) return [];
+  if (status !== 200 || !json?.content) return none;
   try {
     const parsed = JSON.parse(Buffer.from(json.content, 'base64').toString('utf8'));
-    // A packs entry is an id string or an entry object { id, ... } — this reads
-    // the member's file raw (over the API, no engine on hand), so it normalizes
-    // to ids itself, same as packEntryId in packs/registry.mjs.
-    return (Array.isArray(parsed.packs) ? parsed.packs : [])
+    // A packs entry is an id string or an entry object { id, config?, ... } — this
+    // reads the member's file raw (over the API, no engine on hand), so it
+    // normalizes to ids itself, same as packEntryId in packs/registry.mjs. Entry
+    // configs ride along (id → config) so home-only gates can honor a member's
+    // per-pack settings — e.g. the growth entry's promote opt-out — without a
+    // second read.
+    const entries = Array.isArray(parsed.packs) ? parsed.packs : [];
+    const activePacks = entries
       .map((e) => (typeof e === 'string' ? e : e?.id))
       .filter((id) => typeof id === 'string');
-  } catch { return []; }
+    const packConfigs = {};
+    for (const e of entries) {
+      if (e && typeof e === 'object' && typeof e.id === 'string' && e.config !== undefined) {
+        packConfigs[e.id] = e.config;
+      }
+    }
+    return { activePacks, packConfigs };
+  } catch { return none; }
 }
 
 // Commits that are fleet/CI housekeeping rather than genuine project work: a
@@ -174,9 +186,9 @@ async function readLocalPacksChanged(gh, fullName, commits) {
 //
 // Two signals exist only on the HOME repo's bundle and are stamped by the planner,
 // not built here: `isHome: true`, and `fleetMembers` — every successfully-probed
-// member's { repo, activePacks, projectChanged, substantiveChange, hasLocalPacks,
-// localPacksChanged }, complete because home is planned last. They're what home-only
-// packs' gates decide fleet-facing work from.
+// member's { repo, activePacks, packConfigs, projectChanged, substantiveChange,
+// hasLocalPacks, localPacksChanged }, complete because home is planned last.
+// They're what home-only packs' gates decide fleet-facing work from.
 export async function buildSignals(gh, repo, { sinceIso, weekdayUtc, canonChange }) {
   const fullName = repo.full_name;
   const defaultBranch = repo.default_branch;
@@ -209,7 +221,7 @@ export async function buildSignals(gh, repo, { sinceIso, weekdayUtc, canonChange
   const prsTouched = await touchedNumbers(gh, `/repos/${fullName}/pulls?state=open&sort=updated&direction=desc`, sinceIso, widen);
   const issuesTouched = await touchedNumbers(gh, `/repos/${fullName}/issues?state=open&sort=updated&direction=desc`, sinceIso, widen, (i) => !i.pull_request && !isRoutineTracker(i.title));
   const branchesTouched = widen ? await allBranchNames(gh, fullName) : [];
-  const activePacks = await readActivePacks(gh, fullName);
+  const { activePacks, packConfigs } = await readPacksDeclaration(gh, fullName);
   const hasLocalPacks = await readHasLocalPacks(gh, fullName);
   // Only meaningful (and only worth the per-commit reads) when the repo has local packs.
   const localPacksChanged = hasLocalPacks && commits.length ? await readLocalPacksChanged(gh, fullName, commits) : false;
@@ -229,6 +241,7 @@ export async function buildSignals(gh, repo, { sinceIso, weekdayUtc, canonChange
     issuesTouched,
     branchesTouched,
     activePacks,
+    packConfigs,
     hasLocalPacks,
     localPacksChanged,
     canonChanged: !!canon.changed,

@@ -1,6 +1,6 @@
 # Evaluating and routing a new item
 
-The shared method for three decisions every proposed addition to this corpus must pass through: **is it worthy** of inclusion at all, **which mechanism** should carry it, and — only for prose — **where does it go**. Any routine or person that adds an item — the [growth promote stage](promote.md), an on-demand "learned lessons" pass, a hand edit — applies this same protocol, so the decision-making lives here once instead of being re-derived per caller.
+The shared method for three decisions every proposed addition to this corpus must pass through: **is it worthy** of inclusion at all, **which mechanism** should carry it, and — only for prose — **where does it go**. Any routine or person that adds an item — the [growth promote stage](promote.md), an owner-requested retrospective pass, a hand edit — applies this same protocol, so the decision-making lives here once instead of being re-derived per caller.
 
 This is a Claudinite-internal doc used by the growth lifecycle (see [the canon-curation README](README.md)): it is **not** part of the mounted corpus and consuming repos do not `@import` it.
 

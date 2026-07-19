@@ -35,6 +35,14 @@ pack-contributed content, and where each kind of feature goes (almost never core
   any language, comments and docs included), declared per-project as `config` on the repo's barriers pack entry. Its
   detection engine is exported so other packs compose their own separation rules on it (the way
   `spec-driven-product` builds on `executable-requirements`).
+- **[packs/grow_with_claudinite/](packs/grow_with_claudinite/README.md)** — the growth
+  lifecycle's member side (extract/dedup/pack-discovery daily tasks; `config.promote: false`
+  opts a repo out of the central promote stage) **and the conversation lifecycle**: each merge
+  to main captures the session's conversation onto an orphan `conversation-logs` branch
+  (delta-aware when one session merges repeatedly); a **per-repo nightly** (not a fleet task)
+  extracts lessons from the logs with a rethink window, posts the dialogue behind each
+  extracted rule on the issue it was worked under, and deletes logs past the declared
+  `retention_days` — the successor of the retired in-session post-merge lessons pass.
 - **Technology packs**, active when the project declares them (bootstrap's `--init` seeds the
   declaration from a fingerprint): `chrome-extension` (MV3 coding gotchas, fingerprinted by the
   manifest), `chrome-extension-release` (the *opt-in* release/store standard in its
@@ -80,7 +88,7 @@ backfill — materializing the prerequisite in the file, visible like every othe
 
 The full catalog and each skill's trigger live in [skills/README.md](skills/README.md) — the source of
 truth, kept complete against the tree by the `catalog-completeness` check. Two kinds: **command skills**
-(owner-phrase or bootstrap triggers — e.g. `merge-to-main`, `lessons-learned`, `bump-version`) and
+(owner-phrase or bootstrap triggers — e.g. `merge-to-main`, `bump-version`) and
 **practice skills** (surfaced by the activity in front of you — e.g. `bug-investigation`,
 `writing-tests`, `engineering-practices`, `file-placement`). See the catalog for the complete list.
 

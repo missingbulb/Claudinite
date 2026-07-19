@@ -171,6 +171,13 @@ test('growth-promote-to-claudinite (canon-curation): targets the members whose l
   assert.deepEqual(v.targets.repos, ['owner/foo']); // local packs changed AND enrolled; baz changed but isn't enrolled
 });
 
+test('growth-promote-to-claudinite: a growth entry with promote:false is never a promote target', async () => {
+  const optedOut = [{ repo: 'owner/foo', activePacks: ['basics', 'grow_with_claudinite'], packConfigs: { grow_with_claudinite: { promote: false } }, projectChanged: true, substantiveChange: true, hasLocalPacks: true, localPacksChanged: true }];
+  assert.equal((await promote.gate(HOME, S({ isHome: true, fleetMembers: optedOut }))).run, false);
+  // the weekly full sweep honors the opt-out too — it is a standing setting, not a missed night
+  assert.equal((await promote.gate(HOME, S({ isHome: true, fullSweep: true, fleetMembers: optedOut }))).run, false);
+});
+
 test('growth-promote-to-claudinite: a participant that changed code but not its local packs is not targeted daily', async () => {
   const members = [{ repo: 'owner/foo', activePacks: ['basics', 'grow_with_claudinite'], projectChanged: true, substantiveChange: true, hasLocalPacks: true, localPacksChanged: false }];
   assert.equal((await promote.gate(HOME, S({ isHome: true, fleetMembers: members }))).run, false);

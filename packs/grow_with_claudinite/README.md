@@ -9,8 +9,7 @@ The lifecycle's full narrative — the three stages, why there are no barriers b
 cadence, and the review gates — lives with its central stage, in the
 [canon-curation pack](../canon-curation/README.md). This pack carries the **member-side** stages.
 
-Carries **no conformance checks** — its work is three `run_daily` tasks, all ordinary, independent
-planner units:
+Its scheduled work is three `run_daily` tasks, all ordinary, independent planner units:
 
 | Task | Runs when | Where it lands |
 |---|---|---|
@@ -21,7 +20,57 @@ planner units:
 The central stage — `growth-promote-to-claudinite`, which reads the enrolled members' local packs,
 generalizes the portable lessons, and opens a PR against Claudinite's canon — is **not** this
 pack's: it rides [canon-curation](../canon-curation/README.md), declared only by the canon home
-repo, and its gate targets exactly the members that declare *this* pack.
+repo, and its gate targets exactly the members that declare *this* pack. A member that wants the
+local stages without contributing upstream **opts out of promotion** on its own entry —
+`{ "id": "grow_with_claudinite", "config": { "promote": false } }` — and the promote gate skips
+it (absent or `true` = participate).
+
+## The conversation lifecycle — capture at merge, extract nightly, retention
+
+The pack also owns **extraction from working sessions** — the conversation-side sibling of the
+issues/PRs/commits extract above, replacing the old in-session post-merge lessons pass:
+
+1. **Capture — a step in the merge-to-main skill.** Right after a merge lands:
+   `node .claudinite/shared/packs/grow_with_claudinite/capture-log.mjs --issue <n>`
+   (in the canon repo itself: `node packs/grow_with_claudinite/capture-log.mjs --issue <n>`).
+   Deterministic, seconds; it bundles the session transcript (sidechains inline, timestamp
+   order), **scrubs enumeration-first** (every value the environment holds — `process.env`
+   minus a short named allowlist of structural values, plus known credential stores — is
+   redacted wherever it appears, with credential-shape patterns as the backstop; a secret the
+   session itself transformed is beyond any static scrub, and push protection is the last
+   net), and pushes one file per merge onto the orphan **`conversation-logs`** branch:
+   `<stamp>--issue-<n>--<session>.jsonl`, commits marked `[skip ci]`. **Delta-aware:** a
+   session that merges twice pushes a second, disjoint file for the second merge's issue.
+   The branch is a **work queue, not an archive** — never merged; tips are cheap in shallow
+   session clones and retention keeps them bounded.
+2. **Fresh pass — the [conversation-extract nightly](conversation-extract.md)**, within a day:
+   apply [extracting-lessons.md](extracting-lessons.md) (the method — friction signals and the
+   measured efficiency analysis, computable from the log's timestamps and token usage), route
+   keepers into the local packs, and post the rendered dialogue
+   ([render-dialogue.mjs](render-dialogue.mjs)) on the worked issue for each rule that landed —
+   **extraction is the only path to permanence**: a log that yields no rule gets no comment,
+   and its conversation is gone once retention deletes it (a deliberate owner call).
+3. **Final pass and deletion** — once a log ages past `config.retention_days`, the same nightly
+   re-reads it with ~a week of hindsight (the rethink window), then deletes it. Every log gets
+   exactly two judgment passes. **Unset retention = the sweep deletes nothing** (capture-only,
+   fail-safe).
+
+### Adopting the conversation lifecycle
+
+The adoption interview asks for the two settings: an explicit `retention_days` (10
+recommended), and where the nightly is scheduled — it is deliberately **not** a fleet
+`run_daily` task (it needs local git in the repo's own context), so each repo schedules its own
+thin launcher:
+
+> Run the conversation extract exactly as specified in
+> `.claudinite/shared/packs/grow_with_claudinite/conversation-extract.md`, from this repo's
+> checkout.
+
+## Rules
+
+| Rule | Kind | What |
+|---|---|---|
+| `growth-config` | hardcoded ([config-check.mjs](config-check.mjs)) | entry config shape valid |
 
 **Pack discovery** ([discover-packs.md](discover-packs.md)) is an ordinary `run_daily` task — the
 planner picks it up per member on its weekly full sweep. For the member it's handed it runs the
