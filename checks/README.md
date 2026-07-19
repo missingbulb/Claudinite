@@ -135,6 +135,13 @@ new pack is just a `../packs/<name>/` directory with a `pack.mjs` (its `id`, fin
 `detect`, `rules`, and optional `prose`) — [packs/registry.mjs](../packs/registry.mjs)
 discovers it structurally, no list to edit.
 
+**Shared helpers carry mechanism, not policy.** A `checks/lib/` helper owns only the walking —
+resolve a file set, find the lines a pattern matches, list the change's added lines
+([lib/lines.mjs](lib/lines.mjs)) — never one rule's forbidden tokens, file filters, or failure
+text; those stay in the rule module, which composes the helpers in a few lines. A lib that knows
+a rule's words is that rule's policy wearing an engine filename: unreusable by the next rule and
+a second place for the first one to drift from.
+
 **A check that validates one skill's action lives with that skill**, not in a pack: drop the
 rule module and a `checks.mjs` (default export = an array of rules) in `../skills/<name>/`, keep
 its test beside it, and [skills/registry.mjs](../skills/registry.mjs) discovers it. **But a
