@@ -168,6 +168,16 @@
       "rule": "file-placement",
       "path": "checks/lib/context.mjs",
       "reason": "the engine's file-set builder deliberately imports the consumer-layout constant SHARED_SUBDIR (beside LOCAL_PACKS_SUBDIR in packs/registry.mjs — core machinery per extending.md, not a specific pack) so the shared-mount sweep exclusion and the vendor writer share one definition; the cross-tree reach is inherent, not a misplacement"
+    },
+    {
+      "rule": "file-placement",
+      "path": "migrations/registry.mjs",
+      "reason": "the canon-side migration registry deliberately builds on the vendored sync surface in the engine lib (checks/lib/migrations.mjs — the home pack-independence mandates, since pack checks consult migrationActive and packs import only the engine surface); one definition, re-exported for canon callers, so the cross-tree reach is inherent, not a misplacement"
+    },
+    {
+      "rule": "file-placement",
+      "path": "mount/vendor.mjs",
+      "reason": "the vendor-set computation deliberately imports the import-surface facts from the engine lib (checks/lib/imports.mjs — the one home the pack-independence check judges against), so \"what a pack may import\" and \"what a vendor set must carry\" share one definition; the cross-tree reach is inherent, not a misplacement"
     }
   ]
 }

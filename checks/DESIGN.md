@@ -188,6 +188,13 @@ self-skip** when its precondition isn't met (the spec it enforces against isn't 
 a finding no correct work can clear forces the wrong remedy — an accept, or a post-hoc rebase —
 so it's a bug in the rule, not a candidate for an acceptance.
 
+And when a rule mandates an **ordering** — X must happen before Y — it ships with a
+check-the-work verification of that order, judged on the surface where the order is visible:
+the conversation transcript (`feature-requirements-first`'s comment-scoped doc-first ordering)
+or the branch commit log (a rule-before-fix test asserting the outlawing commit is an ancestor
+of the fixing one, `pack-independence`'s pattern). A stated ordering with no check-the-work
+verifier is prose-only enforcement — exactly what this system exists to replace.
+
 **The finding is the instruction.** This is the context economy of the whole design: the rule's
 teaching text moves out of always-loaded context and into the failure message, paying its token
 cost only on violation, in the session that violated it, pointed at the exact spot. Every

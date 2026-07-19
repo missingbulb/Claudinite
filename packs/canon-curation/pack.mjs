@@ -1,6 +1,7 @@
 import promote from './run_daily/growth-promote-to-claudinite.mjs';
 import proseToChecksSweep from './run_daily/prose-to-checks-sweep.mjs';
 import noEnforcementNarration from './no-enforcement-narration.mjs';
+import packIndependence from './pack-independence.mjs';
 
 // The canon's own curation duties — the fleet-facing work only the Claudinite
 // home repo runs: promoting members' lessons into the shared canon (the growth
@@ -17,7 +18,11 @@ export default {
   detect: null,
   marker: null,
   prose: null,
-  rules: [noEnforcementNarration],
+  // Pack independence polices the corpus's own packs/ tree — an artifact only
+  // the canon home has, so the constraint rides the home-only pack: consumers
+  // never run it (their trees carry vendored packs the sweep never scans; the
+  // vendor writer's coherence guard holds the invariant on their behalf).
+  rules: [noEnforcementNarration, packIndependence],
   // prose-to-checks and writing-claudinite-skills are canon-home activity (they
   // mine and edit the corpus), so this pack owns them — members have no canon
   // prose to convert and no corpus skills to author.

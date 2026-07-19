@@ -95,11 +95,14 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    `.gitignore`, `.gitattributes`, `.github/workflows/` (the CI stub), and anything under
    `.claudinite/` itself (`local_packs/` included). Product code that wants a canon helper
    inlines it — depending on canon internals would turn every canon refactor into a breaking
-   migration for code the canon doesn't own. Enforced as a **basics check composed on the
-   barriers pack's exported detection engine** — the composition pattern packs already use with
-   each other — so it is universal via basics, with no per-project barriers declaration or
-   config to maintain; it self-gates on `.claudinite/` existing, so it is inert in the canon
-   repo.
+   migration for code the canon doesn't own. Enforced as a **fixed barrier the baseline pack
+   contributes to the barriers mechanism pack** (manifest data under `contributes`; the baseline
+   `requires` barriers, so the mechanism rides everywhere the baseline is declared) — the
+   declaration-and-configuration composition pattern packs use with each other, never a
+   cross-pack code import (the canon-side `pack-independence` check) — universal via the
+   baseline, with no per-project barriers config to maintain; its `gateDir` keeps it inert
+   until the vendored mount exists, so it fires neither in the canon repo nor in pre-flip
+   consumers.
 9. **Migration notes v2.** A canon change that consumers must be amended for ships as a dated
    record (the existing `migrations/active_migrations/` shape): mechanical ops where code can
    express them, plus a **brief agentic note** for what it can't (chiefly adapting
@@ -183,4 +186,10 @@ resolved canon packs' directories, the skills union — never a per-file list. D
 name no canon pack (a consumer's local packs, or a typo the runner's settings validation
 already flags) are skipped without error; a pack-required skill missing from the tree is
 reported in `errors`. `extraSkills` lets a caller add skills the canon can't see — e.g. ones
-required by a member's own local packs.
+required by a member's own local packs. The computed set is verified
+**import-closed** before it is returned: a vendored module whose relative
+import resolves outside the set (or to nothing) is reported in `errors`, so
+convergence aborts before any write instead of a flipped member crashing on a
+missing module — the guard is judged against the same engine-surface
+definitions the `pack-independence` check enforces (one home,
+`checks/lib/imports.mjs`).

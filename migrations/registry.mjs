@@ -1,19 +1,20 @@
-import { readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { MIGRATIONS_SUBDIR, specFiles, migrationActive } from '../checks/lib/migrations.mjs';
 
 const dir = dirname(fileURLToPath(import.meta.url));
 
 // The migration specs live in a subfolder, so the mechanism (this registry,
 // apply.mjs, the fleet passes, the README) reads cleanly beside them and the
-// records are a self-contained set. Its name is exported so the retire pass can
-// build a record's repo-relative path (migrations/active_migrations/<file>).
-export const MIGRATIONS_SUBDIR = 'active_migrations';
+// records are a self-contained set. The sync surface — the subfolder name
+// (exported so the retire pass can build a record's repo-relative path
+// migrations/active_migrations/<file>), the spec listing, and
+// `migrationActive` — lives in the vendored engine lib
+// (checks/lib/migrations.mjs) because pack CHECKS consult it and packs import
+// only the engine surface (pack-independence); this registry re-exports it so
+// canon-side callers keep one import home.
+export { MIGRATIONS_SUBDIR, migrationActive };
 const specsDir = join(dir, MIGRATIONS_SUBDIR);
-const isSpec = (f) => f.endsWith('.mjs') && !f.endsWith('.test.mjs');
-// Tolerant of an absent/empty folder — once the fleet converges and every record
-// has retired, the (now-empty) folder may not be present in a checkout.
-const specFiles = () => { try { return readdirSync(specsDir).filter(isSpec).sort(); } catch { return []; } };
 
 // Structural discovery, like packs/ and skills/: every
 // migrations/active_migrations/<file>.mjs is a migration spec. Each returned object
@@ -26,18 +27,6 @@ export async function loadMigrations() {
     out.push({ file: f, ...spec });
   }
   return out;
-}
-
-// Sync counterpart to loadMigrations for the CHECK layer: checks run
-// synchronously (checks/run.mjs spreads `rule.run(ctx)`, never awaits it) and so
-// cannot await the dynamic import loadMigrations uses. `migrationActive(slug)` is
-// true while a migration whose file name carries `slug` is still present in this
-// directory — a check consults it to know whether an in-flight transition's
-// legacy shape is still tolerated. When the census auto-retires the migration
-// (deletes the file), this flips to false and the tolerance vanishes with it:
-// the resolver pattern, expressed synchronously.
-export function migrationActive(slug) {
-  return specFiles().some((f) => f.includes(slug));
 }
 
 // Read side — "prefer Y, fall back to X": the ordered list of acceptable paths

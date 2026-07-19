@@ -27,6 +27,8 @@ function makeCanon() {
     copyFileSync(join(MOUNT_DIR, f), join(root, 'mount', f));
   }
   copyFileSync(join(REPO_ROOT, 'packs', 'registry.mjs'), join(root, 'packs', 'registry.mjs'));
+  mkdirSync(join(root, 'checks', 'lib'), { recursive: true });
+  copyFileSync(join(REPO_ROOT, 'checks', 'lib', 'imports.mjs'), join(root, 'checks', 'lib', 'imports.mjs'));
   writeAt(root, 'CLAUDE.md', 'index\n');
   writeAt(root, 'checks/run.mjs', 'engine v2\n');
   writeAt(root, 'skills/s1/SKILL.md', 'skill\n');
@@ -148,6 +150,8 @@ test('#328: a canon tree nested in a FOREIGN git repo is rootless — upward .gi
   mkdirSync(join(canon, 'packs'), { recursive: true });
   for (const f of ['apply-vendor.mjs', 'vendor.mjs']) copyFileSync(join(MOUNT_DIR, f), join(canon, 'mount', f));
   copyFileSync(join(REPO_ROOT, 'packs', 'registry.mjs'), join(canon, 'packs', 'registry.mjs'));
+  mkdirSync(join(canon, 'checks', 'lib'), { recursive: true });
+  copyFileSync(join(REPO_ROOT, 'checks', 'lib', 'imports.mjs'), join(canon, 'checks', 'lib', 'imports.mjs'));
   writeAt(canon, 'CLAUDE.md', 'index\n');
   writeAt(canon, 'checks/run.mjs', 'engine v2\n');
   writeAt(canon, 'skills/s1/SKILL.md', 'skill\n');

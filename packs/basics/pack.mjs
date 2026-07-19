@@ -24,6 +24,13 @@ export default {
   marker: null,
   seededByDefault: true,
   prose: 'RULES.md',
+  // The consumer-isolation wall rides the barriers mechanism: basics requires
+  // the barriers pack and CONTRIBUTES the fixed barrier as manifest data
+  // (claudinite-isolation.mjs — pure data, no cross-pack import;
+  // pack-independence). Universal because basics is declared everywhere; the
+  // requires closure materializes the barriers declaration alongside it.
+  requires: ['barriers'],
+  contributes: { barriers: [claudiniteIsolation] },
   rules: [
     commentClassification,
     referenceIntegrity,
@@ -37,7 +44,6 @@ export default {
     sharedConstants,
     skillOwnership,
     catalogCompleteness,
-    claudiniteIsolation,
   ],
   // The skills every project's work can call for, whatever its technology —
   // mounted wherever basics is declared (which --init seeds everywhere) by

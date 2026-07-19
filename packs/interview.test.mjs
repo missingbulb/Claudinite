@@ -28,6 +28,19 @@ test('a new question surfaces alone; an answered one stays answered (empty answe
   assert.deepEqual(all.pending, []);
 });
 
+test('a via-materialized dependency asks nothing until the project engages with it', () => {
+  // Pulled in by another pack's requires (the resolver stamps `via`): not a
+  // chosen adoption, so its questions stay quiet...
+  const materialized = interviewState([pack()], cfg([{ id: 'p', via: ['other'] }]));
+  assert.deepEqual(materialized.pending, []);
+  // ...until the project engages — its own config or answers on the entry
+  // makes the interview apply again (unanswered questions resurface).
+  const engaged = interviewState([pack()], cfg([{ id: 'p', via: ['other'], config: { k: 1 } }]));
+  assert.equal(engaged.pending.length, 1);
+  const answering = interviewState([pack()], cfg([{ id: 'p', via: ['other'], answers: { q1: 'done' } }]));
+  assert.deepEqual(answering.pending, [{ packId: 'p', questions: [{ id: 'q2', prompt: 'P2?', distill: 'D2' }] }]);
+});
+
 test('no questions or inactive pack → complete no-op', () => {
   const none = interviewState([pack({ questions: undefined })], cfg([{ id: 'p' }]));
   assert.deepEqual(none, { pending: [], stale: [], errors: [] });
