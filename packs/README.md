@@ -17,7 +17,7 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 | [chrome-extension-release](chrome-extension-release/README.md) | single `Release to Chrome Store` stub (opt-in) | 8 | 0 (+ RELEASE contract) |
 | [node](node/README.md) | root package.json | 0 | 2 |
 | [aws-sam](aws-sam/README.md) | SAM template | 3 | 3 |
-| [google-identity](google-identity/README.md) | declared | 0 | 3 |
+| [google-identity](google-identity/README.md) | declared | 0 (3 in its skill) | 0 |
 | [html](html/README.md) | declared | 0 | 1 |
 | [flutter](flutter/README.md) | pubspec.yaml | 0 | 0 (stub) |
 | [firebase](firebase/README.md) | `firebase.json` | 0 | rules / functions / deploy discipline |

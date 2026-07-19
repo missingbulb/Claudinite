@@ -166,6 +166,11 @@
     },
     {
       "rule": "file-placement",
+      "path": "skills/google-id-token-validation/",
+      "reason": "a skill's check-the-work modules deliberately share the checks/ engine lib (findings.mjs) — the same cross-cutting concern as the unattended-agents acceptances; the checks are co-located with the skill whose action they validate, not organized by dependency"
+    },
+    {
+      "rule": "file-placement",
       "path": "routines/fleet/plan.mjs",
       "reason": "the core planner deliberately imports the pack-discovery registry (packs/registry.mjs — core machinery per extending.md, not a specific pack) to enumerate each repo's run_daily tasks; discovery lives under packs/ and the planner under routines/, so the cross-tree reach is inherent and correct, not a misplacement"
     },
