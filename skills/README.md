@@ -35,6 +35,7 @@
 | `unattended-agents` | building or running an unattended agent / recurring routine |
 | `git-github-advanced` | git/GitHub work beyond the baseline lifecycle |
 | `prose-to-checks` | auditing the corpus for never-converted testable prose (the nightly growth sweep) |
+| `writing-claudinite-skills` | authoring or changing a skill in the Claudinite corpus (canon home) |
 | `single-branch-status` | assessing one branch's landed status (the tidy-repo repo-tidy task) |
 | `single-pr-status` | assessing one PR's landed status (the tidy-repo repo-tidy task) |
 | `single-issue-triage` | triaging one issue (the tidy-repo repo-tidy task) |

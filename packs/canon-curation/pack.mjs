@@ -17,8 +17,9 @@ export default {
   marker: null,
   prose: null,
   rules: [],
-  // prose-to-checks is canon-home activity (it mines and edits the corpus), so
-  // this pack owns it — members have no canon prose to convert.
-  skills: ['prose-to-checks'],
+  // prose-to-checks and writing-claudinite-skills are canon-home activity (they
+  // mine and edit the corpus), so this pack owns them — members have no canon
+  // prose to convert and no corpus skills to author.
+  skills: ['prose-to-checks', 'writing-claudinite-skills'],
   run_daily: [promote, proseToChecksSweep],
 };
