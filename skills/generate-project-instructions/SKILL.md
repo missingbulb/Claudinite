@@ -146,7 +146,8 @@ earns its own bundle (the way the reference project split a general working pack
 extractor-automation pack). Each local pack is a real pack:
 
 - **`pack.mjs`** — `{ id, detect: null, marker: null, prose: 'RULES.md', rules: [...], skills: [...], run_daily: [...] }`.
-  A local pack is declared by hand, never fingerprinted or seeded (`detect`/`marker` stay null); its id
+  A local pack is declared by hand, never fingerprinted or seeded (`detect`/`marker` stay null), as its
+  namespaced token `local_packs/<name>` in `.claudinite-checks.json`; its id
   must be unique and may not shadow a canon pack.
 - **`RULES.md`** — the always-loaded judgment core and the project's concrete values (real
   setup/run/verify commands, real paths, inputs, metrics, invariants). Keep it terse; anything a check
@@ -177,8 +178,8 @@ docs) — it does **not** `@import` the pack prose; the pack system injects the 
   at it, so the promote stage lifts it centrally.
 - **The project's local pack(s) → the project's normal branch/PR**, committed under
   `.claudinite/local_packs/` (tracked project content — the sync hook preserves it, the gitignore
-  re-includes it). Declaring a **local** pack id is valid immediately (the engine discovers local packs
-  from the repo), so the declaration lands in the same PR.
+  re-includes it). Declaring a **local** pack — as `local_packs/<name>` — is valid immediately (the
+  engine discovers local packs from the repo), so the declaration lands in the same PR.
 - **Declare a new *canon* pack** in `.claudinite-checks.json` only after it has merged and the mount
   re-synced — declaring a canon id the mounted registry doesn't know is an unknown-pack settings error;
   a *local* id is never that error. Note a pending canon declaration as a follow-up in the project PR.

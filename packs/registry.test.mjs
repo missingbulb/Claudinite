@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { resolveDeclaredPacks, packEntryId, isActive, discoverPacks, loadPacks } from './registry.mjs';
+import {
+  resolveDeclaredPacks, packEntryId, isActive, discoverPacks, loadPacks,
+  LOCAL_DECL_PREFIX, declTokenFor,
+} from './registry.mjs';
 
 // The import closure the declaration is written through (bootstrap `--init` and
 // the baselining backfill): declaring a pack materializes its `requires`.
@@ -29,6 +32,24 @@ test('isActive: activation matches both entry forms', () => {
   assert.ok(isActive({ id: 'barriers' }, { packs: ['basics', { id: 'barriers', config: {} }] }));
   assert.ok(!isActive({ id: 'node' }, { packs: ['basics'] }));
   assert.ok(!isActive({ id: 'node' }, {}));
+});
+
+test('packEntryId/isActive: a local-pack declaration may be namespaced local_packs/<name>', () => {
+  // The namespaced form is the canonical way to declare a local pack; the bare
+  // id stays accepted while the fleet migrates (both resolve to the bare id).
+  assert.equal(packEntryId('local_packs/proj'), 'proj');
+  assert.equal(packEntryId({ id: 'local_packs/proj', config: {} }), 'proj');
+  assert.ok(isActive({ id: 'proj', local: true }, { packs: ['local_packs/proj'] }));
+  assert.ok(isActive({ id: 'proj', local: true }, { packs: [{ id: 'local_packs/proj', config: {} }] }));
+  assert.ok(isActive({ id: 'proj', local: true }, { packs: ['proj'] })); // migration window
+  assert.ok(!isActive({ id: 'other' }, { packs: ['local_packs/proj'] }));
+});
+
+test('declTokenFor: the writer-side token — namespaced for a local pack, bare for a canon one', () => {
+  assert.equal(LOCAL_DECL_PREFIX, 'local_packs/');
+  assert.equal(declTokenFor({ id: 'proj', local: true }), 'local_packs/proj');
+  assert.equal(declTokenFor({ id: 'basics', local: false }), 'basics');
+  assert.equal(packEntryId(declTokenFor({ id: 'proj', local: true })), 'proj'); // round-trips
 });
 
 test('resolveDeclaredPacks: materializes a required pack right after its dependent, with via provenance', () => {
@@ -79,6 +100,13 @@ test('resolveDeclaredPacks: keeps an unknown declared id verbatim, never materia
   assert.deepEqual(resolveDeclaredPacks(['ghost'], PACKS), ['ghost']);
   const withPhantom = [{ id: 'x', requires: ['nope'] }];
   assert.deepEqual(resolveDeclaredPacks(['x'], withPhantom), ['x']);
+});
+
+test('resolveDeclaredPacks: keeps a namespaced local-pack entry verbatim — the backfill never rewrites the token', () => {
+  // A local pack is never a canon `requires` target, so the entry just rides
+  // through — in its declared (namespaced) form, not re-derived.
+  const declared = ['basics', 'local_packs/proj'];
+  assert.deepEqual(resolveDeclaredPacks(declared, PACKS), declared);
 });
 
 test('resolveDeclaredPacks: preserves an entry it cannot interpret rather than dropping it', () => {

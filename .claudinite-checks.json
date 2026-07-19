@@ -9,7 +9,7 @@
         "retention": "10 days — the recommended rethink window before a captured conversation log is pruned."
       }
     },
-    "claudinite",
+    "local_packs/claudinite",
     "canon-curation",
     {
       "id": "barriers",
@@ -171,6 +171,11 @@
       "rule": "file-placement",
       "path": "routines/fleet/plan.mjs",
       "reason": "the core planner deliberately imports the pack-discovery registry (packs/registry.mjs — core machinery per extending.md, not a specific pack) to enumerate each repo's run_daily tasks; discovery lives under packs/ and the planner under routines/, so the cross-tree reach is inherent and correct, not a misplacement"
+    },
+    {
+      "rule": "file-placement",
+      "path": "routines/fleet/signals.mjs",
+      "reason": "the member-declaration read deliberately imports the one shared id-extractor (packEntryId in packs/registry.mjs — core machinery per extending.md, not a specific pack) so the fleet's activePacks normalization and the engine can never drift on the declaration forms; the cross-tree reach is inherent, the same as the planner's registry import"
     },
     {
       "rule": "file-placement",

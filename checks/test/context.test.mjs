@@ -45,6 +45,26 @@ test('loadConfig: a pack entry object normalizes — id into packs, config into 
   } finally { cleanup(root); }
 });
 
+test('loadConfig: a namespaced local-pack declaration normalizes to the bare id everywhere', () => {
+  // local_packs/proj is the canonical declaration form for a local pack; the
+  // normalized view is bare ids, so packEntries lookups (interview answers) and
+  // the packConfig view key by the pack's own id whichever form the file used.
+  const root = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({
+    packs: [
+      'basics',
+      { id: 'local_packs/proj', config: { knob: 1 }, answers: { q: 'a' } },
+      'local_packs/other',
+    ],
+  }) } });
+  try {
+    const cfg = loadConfig(root);
+    assert.deepEqual(cfg.errors, []);
+    assert.deepEqual(cfg.packs, ['basics', 'proj', 'other']);
+    assert.deepEqual(cfg.packEntries.find((e) => e.id === 'proj').answers, { q: 'a' });
+    assert.deepEqual(cfg.packConfig, { proj: { knob: 1 } });
+  } finally { cleanup(root); }
+});
+
 test('loadConfig: entry config overlays the legacy top-level packConfig, which stays readable', () => {
   const root = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({
     packs: ['node', { id: 'barriers', config: { rules: [] } }],

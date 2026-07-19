@@ -67,7 +67,12 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
   the baseline too is declared explicitly (`--init` seeds it; the nightly
   baselining backfills a missing declaration). A declared id may name a **canon** pack (mounted from
   `.claudinite/packs/`) or one of the repo's **own local packs** (`.claudinite/local_packs/<id>/` —
-  discovered from the repo's own tree, `local: true`); both are declared and gated identically. An
+  discovered from the repo's own tree, `local: true`); both are declared and gated identically. A
+  local pack's canonical declaration token is **namespaced**: `"local_packs/<id>"` (string entry, or
+  an entry object's `id`) — self-documenting, and a canon id can never be claimed by accident. The
+  engine resolves both forms to the bare id ([`packEntryId`](../packs/registry.mjs)), so a bare local
+  id still activates while the fleet migrates (baselining rewrites it; the `local-pack-namespace`
+  baseline migration tracks convergence). An
   **unknown** pack name — one that matches neither a canon nor a local pack — is a settings error,
   caught at load (see below); a broken or id-colliding local pack.mjs is likewise surfaced as a
   blocking `config` finding, never a silent drop. A pack's fingerprint only *suspects* it is wanted

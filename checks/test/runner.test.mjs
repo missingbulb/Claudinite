@@ -363,6 +363,28 @@ test('a declared local pack is valid and its check runs when active', () => {
   } finally { cleanup(clean); cleanup(dirty); }
 });
 
+test('a local pack declared by its namespaced token local_packs/<name> validates and runs', () => {
+  const clean = makeRepo({ changed: {
+    '.claudinite/local_packs/proj/pack.mjs': LOCAL_PACK,
+    '.claudinite-checks.json': JSON.stringify({ packs: ['local_packs/proj'] }),
+  } });
+  const dirty = makeRepo({ changed: {
+    '.claudinite/local_packs/proj/pack.mjs': LOCAL_PACK,
+    '.claudinite-checks.json': JSON.stringify({ packs: ['local_packs/proj'] }),
+    'src/TODO_MARKER': 'x\n',
+  } });
+  try {
+    // the namespaced token resolves to the known bare id — no unknown-pack error
+    const c = runCli(clean);
+    assert.doesNotMatch(c.stdout, /unknown pack/);
+    assert.equal(c.status, 0, c.stdout);
+    // and it activates the pack exactly like the bare form
+    const d = runCli(dirty);
+    assert.equal(d.status, 1);
+    assert.match(d.stdout, /no-todo-marker/);
+  } finally { cleanup(clean); cleanup(dirty); }
+});
+
 test('an undeclared local pack does not run, but is not an unknown-pack error either', () => {
   const root = makeRepo({ changed: {
     '.claudinite/local_packs/proj/pack.mjs': LOCAL_PACK,

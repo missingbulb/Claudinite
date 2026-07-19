@@ -83,7 +83,8 @@ same way:
   values, checks, and skills that don't generalize past this one repo — the project's
   **normalized capture surface** (what used to sprawl as always-loaded `CLAUDE.md`/`dev/procedures`
   prose). `discoverPacks` scans both roots; a local pack carries its own `dir`, is `local: true`,
-  and may not shadow a canon id. Prose injection, the Stop/CI checks, and skill mounting treat a
+  may not shadow a canon id, and is declared by its namespaced token `local_packs/<name>`
+  ([packs/README.md](packs/README.md#local-packs--a-projects-own-packs)). Prose injection, the Stop/CI checks, and skill mounting treat a
   declared local pack exactly like a canon one. (A local pack may also declare `run_daily` tasks, and
   the fleet planner has a tested seam for them, but that daily-run path is **experimental and not
   enabled by default** — see [packs/README.md](packs/README.md); scheduled work stays a canon-pack

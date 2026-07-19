@@ -1,4 +1,5 @@
 import { isFullSweepDay } from './schedule.mjs';
+import { packEntryId } from '../../packs/registry.mjs';
 
 // The signal bundle each gate reads. Built per covered member from a small, bounded
 // set of cheap GitHub reads; `gh(path) -> { status, json }` is the orchestrator's
@@ -110,20 +111,22 @@ async function readPacksDeclaration(gh, fullName) {
   if (status !== 200 || !json?.content) return none;
   try {
     const parsed = JSON.parse(Buffer.from(json.content, 'base64').toString('utf8'));
-    // A packs entry is an id string or an entry object { id, config?, ... } — this
-    // reads the member's file raw (over the API, no engine on hand), so it
-    // normalizes to ids itself, same as packEntryId in packs/registry.mjs. Entry
+    // A packs entry is an id string or an entry object { id, config?, ... },
+    // in either declaration form (bare id, or a local pack's namespaced
+    // local_packs/<name> token) — packEntryId is the one shared extractor, so
+    // `activePacks` stays BARE ids and the gates that compare against canon
+    // pack ids (the promote gate, relevantCanonChanged) keep matching. Entry
     // configs ride along (id → config) so home-only gates can honor a member's
     // per-pack settings — e.g. the growth entry's promote opt-out — without a
     // second read.
     const entries = Array.isArray(parsed.packs) ? parsed.packs : [];
     const activePacks = entries
-      .map((e) => (typeof e === 'string' ? e : e?.id))
+      .map((e) => packEntryId(e))
       .filter((id) => typeof id === 'string');
     const packConfigs = {};
     for (const e of entries) {
       if (e && typeof e === 'object' && typeof e.id === 'string' && e.config !== undefined) {
-        packConfigs[e.id] = e.config;
+        packConfigs[packEntryId(e)] = e.config;
       }
     }
     return { activePacks, packConfigs };

@@ -196,6 +196,22 @@ test('tidy-repo-seed migration: legacyPresent reads the declaration (true iff ti
   assert.equal(await seed.legacyPresent(() => false, async () => 'nope'), false, 'unparsable -> not held');
 });
 
+test('local-pack-namespace migration: legacyPresent = a bare declared id whose pack lives in the member\'s local_packs', async () => {
+  const m = (await loadMigrations()).find((x) => x.id === 'local-pack-namespace');
+  assert.ok(m, 'local-pack-namespace migration is discovered');
+  assert.equal(m.retire, 'auto'); // baselining does the write; this record only tracks convergence
+  const read = (packs) => async () => JSON.stringify({ packs });
+  const hasLocal = async (p) => p === '.claudinite/local_packs/proj/pack.mjs';
+  // A bare string or entry-object id naming the member's own local pack → still legacy.
+  assert.equal(await m.legacyPresent(hasLocal, read(['basics', 'proj'])), true, 'bare string -> legacy');
+  assert.equal(await m.legacyPresent(hasLocal, read(['basics', { id: 'proj', config: {} }])), true, 'bare entry object -> legacy');
+  // The namespaced form is converged, and a bare id that is no local pack is a canon declaration.
+  assert.equal(await m.legacyPresent(hasLocal, read(['basics', 'local_packs/proj'])), false, 'namespaced -> done');
+  assert.equal(await m.legacyPresent(async () => false, read(['basics', 'node'])), false, 'canon-only declaration -> done');
+  assert.equal(await m.legacyPresent(hasLocal, async () => null), false, 'no declaration -> not held');
+  assert.equal(await m.legacyPresent(hasLocal, async () => 'nope'), false, 'unparsable -> not held');
+});
+
 test('loadMigrations: the vendored-mount flip record carries its worker gate and stays out of the mechanical passes', async () => {
   const m = (await loadMigrations()).find((x) => x.id === 'vendored-mount-flip');
   assert.ok(m, 'flip record must be discovered');

@@ -80,6 +80,18 @@ test('buildSignals: idle repo (old push, not full sweep) skips the main-moved pr
   assert.deepEqual(s.activePacks, ['basics', 'tidy-repo']);
 });
 
+test('buildSignals: a namespaced local-pack declaration normalizes to the bare id in activePacks', async () => {
+  // local_packs/proj (string or entry-object form) must land bare, so the gates
+  // that compare against canon pack ids — and packConfigs lookups — keep matching.
+  const namespacedPacks = [/\.claudinite-checks\.json/, { status: 200, json: { content: b64({
+    packs: ['basics', 'local_packs/proj', { id: 'local_packs/other', config: { knob: 1 } }],
+  }) } }];
+  const gh = fakeGh([namespacedPacks, [/\/pulls\?/, { status: 200, json: [] }], [/\/issues\?/, { status: 200, json: [] }]]);
+  const s = await buildSignals(gh, REPO({ pushed_at: '2026-07-01T00:00:00Z' }), { sinceIso: SINCE, weekdayUtc: (fullSweepBucket('owner/foo') + 1) % 7, canonChange: NO_CANON });
+  assert.deepEqual(s.activePacks, ['basics', 'proj', 'other']);
+  assert.deepEqual(s.packConfigs, { other: { knob: 1 } });
+});
+
 test('buildSignals: pushed-in-window with commits → mainMoved/projectChanged true', async () => {
   const gh = fakeGh([
     okPacks,

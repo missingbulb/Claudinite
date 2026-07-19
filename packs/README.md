@@ -45,8 +45,10 @@ same engine as these canon packs. `discoverPacks({ localRoot })` ([registry.mjs]
 bundled skills resolve off it) and a `local` flag. A local pack:
 
 - is **declared by hand** in `.claudinite-checks.json` like any pack — never fingerprinted or seeded
-  (`detect`/`marker` null), and its id must be unique (it may not shadow a canon id — the collision
-  is a blocking `config` finding);
+  (`detect`/`marker` null) — by its **namespaced token `local_packs/<name>`** (the canonical form;
+  the engine's [`packEntryId`](registry.mjs) resolves it and the legacy bare id alike to the bare
+  pack id, so the bare form keeps working while the fleet's baselining rewrites it), and its id must
+  be unique (it may not shadow a canon id — the collision is a blocking `config` finding);
 - may **require a canon skill** by name and/or **bundle its own** at `<pack>/skills/<skill>/`
   (mounted from the tracked pack dir); a bundled skill may carry `checks.mjs`, run when the pack is
   active;
