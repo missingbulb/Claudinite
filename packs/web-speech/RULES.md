@@ -4,7 +4,8 @@ Portable, project-agnostic practices for browser voice I/O — speech-to-text
 (`webkitSpeechRecognition` / the Web Speech `SpeechRecognition` API) and
 text-to-speech (`chrome.tts` / `speechSynthesis`) — true for any app that reads
 or listens through the browser, read cold. These are runtime browser-behaviour
-gotchas, so the pack is prose only.
+gotchas, knowledge you carry into the code rather than state a tool can read off
+the repo.
 
 > Some of these APIs (`chrome.tts`) are extension-only; where a rule touches
 > MV3 service-worker / content-script mechanics, the general extension gotchas
@@ -12,16 +13,6 @@ gotchas, so the pack is prose only.
 
 ## Speech-to-text (`webkitSpeechRecognition` / Web Speech API)
 
-- **Feature-detect both the unprefixed and the `webkit`-prefixed constructor** —
-  `globalThis.SpeechRecognition ?? globalThis.webkitSpeechRecognition`. Chrome
-  still ships only the prefixed name; gate an `available` flag on the constructor
-  existing so headless/test contexts (and non-Chromium browsers) degrade to a
-  no-op instead of throwing.
-- **Recognition is unavailable in an MV3 service worker — it needs a *document*
-  context.** `webkitSpeechRecognition` runs only where there's a document (content
-  script, side panel, popup, offscreen document), never the background worker. Put
-  the listening half of a conversation in the page and keep the worker for things
-  that *don't* need a document (see the TTS relay below).
 - **The recognizer owns its own microphone capture — you cannot hand it
   `getUserMedia` audio constraints.** `echoCancellation` / `noiseSuppression` /
   `autoGainControl` are `getUserMedia` *microphone* constraints, and the recognizer

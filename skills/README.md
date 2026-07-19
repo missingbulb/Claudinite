@@ -41,6 +41,7 @@
 | `single-issue-triage` | triaging one issue (the tidy-repo repo-tidy task) |
 | `google-id-token-validation` | wiring server-side validation of Google Sign-In ID tokens — its checks carry the rules |
 | `python-optional-deps` | wiring a Python package's optional heavy/native dependency — its checks carry the rules |
+| `web-speech-io` | wiring browser speech recognition or synthesis — its checks carry the two signature-bearing rules, the runtime gotchas stay `web-speech` prose |
 
 Technology guidance (Chrome extension, Node/jsdom, AWS SAM, HTML) is **not** a skill — it's the
 prose of its `packs/<tech>/` pack, loaded eagerly whenever the project declares that pack.
