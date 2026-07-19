@@ -1,6 +1,7 @@
 import growthExtract from './run_daily/growth-extract-new-instructions.mjs';
 import growthDedup from './run_daily/growth-dedup-local-instructions.mjs';
 import growthDiscoverPacks from './run_daily/growth-discover-packs.mjs';
+import conversationExtract from './run_daily/conversation-extract.mjs';
 import growthConfig from './config-check.mjs';
 
 // Opt into the growth lifecycle: a repo declaring grow_with_claudinite contributes its
@@ -14,10 +15,12 @@ import growthConfig from './config-check.mjs';
 //
 // The pack also owns the CONVERSATION lifecycle: merge-to-main's capture step pushes
 // each merged session's conversation onto the orphan conversation-logs branch
-// (capture-log.mjs), and the per-repo conversation-extract nightly — NOT a run_daily
-// task; it needs local git in the repo's own context, so each repo schedules it
-// itself (conversation-extract.md) — mines the logs, posts the dialogue behind each
-// extracted rule on its issue, and deletes logs past config.retention_days.
+// (capture-log.mjs, in-session — it needs the live transcript), and the
+// conversation-extract run_daily task (conversation-extract.md) mines those pushed
+// logs with growth-extract's access model — the logs branch is in the repo, so reading
+// it, committing lessons to local packs, and pruning aged logs are plain local git;
+// only posting the dialogue behind each extracted rule on its issue uses the GitHub
+// MCP tools — pruning logs past config.retention_days.
 //
 // growth-discover-packs is the weekly pack-discovery pipeline: for the member it's
 // handed it manifests the stack, suggests a pack for each unhomed technology, populates
@@ -36,12 +39,8 @@ export default {
   rules: [growthConfig],
   questions: [{
     id: 'retention',
-    prompt: 'How many days should a captured conversation log stay on the conversation-logs branch before the nightly retention sweep deletes it? The floor is the rethink window — extraction wants ~a week of hindsight; 10 is the recommended value.',
-    distill: 'set config.retention_days on this entry to the agreed positive integer; until it is set, the sweep deletes nothing (capture-only adoption)',
-  }, {
-    id: 'nightly',
-    prompt: 'Where is the per-repo conversation-extract nightly scheduled for this repo (a thin launcher pointing at the mounted packs/grow_with_claudinite/conversation-extract.md)? It is not a fleet task — without its own schedule, logs are captured but never extracted.',
-    distill: 'record where the routine is scheduled (e.g. the CC routine name); if not yet scheduled, record that adoption is capture-only for now',
+    prompt: 'How many days should a captured conversation log stay on the conversation-logs branch before the conversation-extract retention prune deletes it? The floor is the rethink window — extraction wants ~a week of hindsight; 10 is the recommended value.',
+    distill: 'set config.retention_days on this entry to the agreed positive integer; until it is set, the prune deletes nothing (capture-only adoption)',
   }],
-  run_daily: [growthExtract, growthDedup, growthDiscoverPacks],
+  run_daily: [growthExtract, growthDedup, growthDiscoverPacks, conversationExtract],
 };

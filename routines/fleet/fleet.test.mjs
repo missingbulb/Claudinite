@@ -7,6 +7,7 @@ import baselining from '../../packs/basics/run_daily/baselining.mjs';
 import extract from '../../packs/grow_with_claudinite/run_daily/growth-extract-new-instructions.mjs';
 import dedup from '../../packs/grow_with_claudinite/run_daily/growth-dedup-local-instructions.mjs';
 import discoverPacks from '../../packs/grow_with_claudinite/run_daily/growth-discover-packs.mjs';
+import conversationExtract from '../../packs/grow_with_claudinite/run_daily/conversation-extract.mjs';
 import promote from '../../packs/canon-curation/run_daily/growth-promote-to-claudinite.mjs';
 import proseSweep from '../../packs/canon-curation/run_daily/prose-to-checks-sweep.mjs';
 
@@ -154,6 +155,19 @@ test('growth-discover-packs (grow_with_claudinite): a regular run_daily task, we
   assert.equal((await discoverPacks.gate(REPO, S({ projectChanged: true }))).run, false);
   assert.equal((await discoverPacks.gate(REPO, S({ canonChanged: true }))).run, false);
   assert.equal((await discoverPacks.gate(REPO, S({ fullSweep: true }))).run, true);
+});
+
+test('conversation-extract (grow_with_claudinite): fires the day after a real merge, and on the weekly full sweep', async () => {
+  assert.equal(conversationExtract.full_sweep_supported, true);
+  // Quiet repo → nothing to extract or prune.
+  assert.equal((await conversationExtract.gate(REPO, S())).run, false);
+  // A real merge (substantiveChange) is when a fresh capture lands on conversation-logs.
+  assert.equal((await conversationExtract.gate(REPO, S({ substantiveChange: true }))).run, true);
+  // The weekly full sweep runs the retention prune even on a repo gone quiet.
+  assert.equal((await conversationExtract.gate(REPO, S({ fullSweep: true }))).run, true);
+  // A housekeeping-only main move (bot bump / [skip ci] capture commit) must NOT trigger it —
+  // substantiveChange, not mainMoved, is the trigger, so the capture commit itself can't self-fire.
+  assert.equal((await conversationExtract.gate(REPO, S({ mainMoved: true, projectChanged: true }))).run, false);
 });
 
 // --- canon-curation (home-only pack) gates ----------------------------------

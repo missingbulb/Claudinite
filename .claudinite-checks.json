@@ -2,6 +2,14 @@
   "packs": [
     "basics",
     "github-actions",
+    {
+      "id": "grow_with_claudinite",
+      "config": { "retention_days": 10 },
+      "answers": {
+        "retention": "10 days — the recommended rethink window before a captured conversation log is pruned."
+      }
+    },
+    "claudinite",
     "canon-curation",
     {
       "id": "barriers",

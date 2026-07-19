@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Render a captured conversation log as owner ↔ assistant dialogue markdown —
-// what the conversation-extract nightly posts on the worked issue when a rule is
+// what the conversation-extract daily task posts on the worked issue when a rule is
 // extracted (README.md owns the standard; conversation-extract.md owns when to post).
 // Just the dialogue: tool traffic, injected/meta turns, and sidechain noise are
 // filtered by the same transcript helpers the conversation checks use.

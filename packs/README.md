@@ -8,7 +8,7 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 |---|---|---|---|
 | [basics](basics/README.md) | declared (seeded by `--init`) | 11 | ~8 (working-discipline + task-lifecycle) |
 | [barriers](barriers/README.md) | declared (or pulled in via `requires`) | 1 | 0 (config-driven segregation) |
-| [grow_with_claudinite](grow_with_claudinite/README.md) | declared (seeded by `--init`, opt-out by removal) | 1 | growth member-side daily tasks (extract / dedup / pack discovery) + conversation capture & per-repo nightly extract |
+| [grow_with_claudinite](grow_with_claudinite/README.md) | declared (seeded by `--init`, opt-out by removal) | 1 | growth member-side daily tasks (extract / dedup / pack discovery / conversation-extract) + in-session merge capture |
 | [canon-curation](canon-curation/README.md) | declared (home-only: the canon home repo, never seeded) | 1 | growth promote + prose-to-checks sweep daily tasks |
 | [tidy-repo](tidy-repo/README.md) | declared (seeded by `--init`, opt-out by removal) | 0 | policy (assess-only-vs-act) + tidy daily tasks |
 | [sheepdog](sheepdog/README.md) | declared (opt-in; the fleet-enforcer repo only) | 0 | fleet-enforcer marker + config + coverage workflow stub |
