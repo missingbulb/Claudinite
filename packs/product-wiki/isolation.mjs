@@ -1,13 +1,15 @@
-import { defineBarrier } from '../barriers/engine.mjs';
 import { PRODUCT_ROOT, SINK_DIR } from './lib.mjs';
 
 // The wall: nothing outside product-wiki/ may reference the self-growing wiki
 // folders; product-wiki/product-requirements is the one reviewed crossing point.
-// This edge and product-wiki-layout are a designed pair — the glob target
-// fails closed ("matched no directories", blocking) on an empty product-wiki/
-// expansion, and layout owns the missing-skeleton complaint. Under the
-// structural standard a renamed wiki folder is still a wiki folder, still
-// barred — no per-folder disarm hole.
+// A CONTRIBUTED barrier: this module is pure data the barriers pack builds into
+// the rule (product-wiki `requires` barriers and carries this under
+// `contributes` on its manifest — the declaration-and-configuration composition
+// pack-independence mandates). This edge and product-wiki-layout are a designed
+// pair — the glob target fails closed ("matched no directories", blocking) on an
+// empty product-wiki/ expansion, and layout owns the missing-skeleton complaint.
+// Under the structural standard a renamed wiki folder is still a wiki folder,
+// still barred — no per-folder disarm hole.
 //
 // Edge notes (each empirically verified against a real consumer tree):
 // - to 'product-wiki/*' bars every direct CHILD DIRECTORY of product-wiki/; files
@@ -28,7 +30,7 @@ import { PRODUCT_ROOT, SINK_DIR } from './lib.mjs';
 //   pack-shipped edge — crossingExcuse points each finding at the lever that
 //   works (an accept; see packs/product-wiki/README.md). Unlike a rule-owned
 //   except, accepts are not staleness-audited — prune them by hand.
-export default defineBarrier({
+export default {
   id: 'product-wiki-isolation',
   description: 'Nothing outside product-wiki/ may reference the self-growing wiki folders — product-wiki/product-requirements is the only crossing point',
   why: 'the wikis are agent-rewritten, loosely-sourced research — code, tests, and docs that silently depend on them inherit unreviewed churn',
@@ -42,4 +44,4 @@ export default defineBarrier({
     except: [PRODUCT_ROOT, '.claudinite-checks.json'],
     reason: 'the self-growing product wikis and their sample data are autonomous research the repo must not depend on; product-wiki/product-requirements is the one reviewed crossing point',
   }],
-});
+};

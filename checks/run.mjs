@@ -30,10 +30,22 @@ const { packs, errors: packErrors } = await discoverPacks({ localRoot: root });
 // active (below).
 const skillRules = await loadSkillRules();
 
+// A pack's contributedRules seam: the pack interprets the contributions other
+// packs address to it on their manifests (`contributes`), returning
+// first-class rules — how packs compose through declaration + configuration
+// instead of importing each other's code. Isolated per pack, like manifest
+// loading: one broken seam (a consumer-authored local pack's, say) must not
+// sink the run.
+const contributedRules = (pack, fromPacks, onError) => {
+  try { return pack.contributedRules?.(fromPacks) ?? []; }
+  catch (e) { onError?.(e); return []; }
+};
+
 if (has('--list')) {
   const rules = [
     ...packs.flatMap((p) => p.rules ?? []),
     ...packs.flatMap((p) => p.skillChecks ?? []),
+    ...packs.flatMap((p) => contributedRules(p, packs)),
     ...skillRules,
   ];
   for (const r of rules.sort((a, b) => a.id.localeCompare(b.id))) {
@@ -127,11 +139,16 @@ for (const s of stale) {
     doc: 'packs/README.md',
   });
 }
-for (const pack of packs) {
-  if (!isActive(pack, ctx.config)) continue;
-  // A pack's conformance checks, plus a local pack's bundled skill-owned checks
-  // (canon skill checks run ungated below; a local pack's ride its own activation).
-  for (const rule of [...(pack.rules ?? []), ...(pack.skillChecks ?? [])]) {
+const activePacks = packs.filter((p) => isActive(p, ctx.config));
+for (const pack of activePacks) {
+  // A pack's conformance checks, a local pack's bundled skill-owned checks
+  // (canon skill checks run ungated below; a local pack's ride its own
+  // activation), and the rules this pack builds from other ACTIVE packs'
+  // contributions (its contributedRules seam) — an undeclared pack neither
+  // runs nor contributes.
+  const contributed = contributedRules(pack, activePacks, (e) =>
+    findings.push(configError(`the "${pack.id}" pack's contributedRules failed: ${e.message}`, 'fix the pack manifest, or the contribution it interprets')));
+  for (const rule of [...(pack.rules ?? []), ...(pack.skillChecks ?? []), ...contributed]) {
     if (ctx.config.rules[rule.id] === 'off') continue;
     findings.push(...rule.run(ctx));
   }

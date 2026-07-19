@@ -84,9 +84,17 @@ export function interviewState(packs, config) {
   const entryById = new Map((config.packEntries ?? []).map((e) => [e.id, e]));
   for (const pack of packs) {
     if (!isActive(pack, config)) continue;
+    const entry = entryById.get(pack.id);
+    // A dependency the declaration resolver materialized (`via`) wasn't chosen
+    // by the project — it's there because another pack's ability rides it.
+    // Until the project engages with it (its own config or answers on the
+    // entry), its adoption questions don't apply: the interview guides a
+    // CHOSEN adoption, and nagging every consumer whose baseline pulls a
+    // mechanism pack in would train owners to ignore the note.
+    if (entry?.via?.length && entry.config === undefined && !Object.keys(entry.answers ?? {}).length) continue;
     const { questions, errors: qErrors } = packQuestions(pack);
     errors.push(...qErrors);
-    const answers = entryById.get(pack.id)?.answers ?? {};
+    const answers = entry?.answers ?? {};
     const unanswered = questions.filter((q) => !(q.id in answers));
     if (unanswered.length) pending.push({ packId: pack.id, questions: unanswered });
     // With a malformed declaration the declared-id set is unreliable, so skip

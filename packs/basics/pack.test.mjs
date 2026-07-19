@@ -661,7 +661,11 @@ test('comment-classification: silent without a transcript (CI) and on an empty c
 });
 
 // --- claudinite-isolation ----------------------------------------------------
-import claudiniteIsolation from './claudinite-isolation.mjs';
+// Built through the real path: the basics manifest contributes it as data and
+// the barriers pack's factory turns it into the rule.
+import basicsPack from './pack.mjs';
+import { contributedBarrierRules } from '../barriers/contributed.mjs';
+const claudiniteIsolation = contributedBarrierRules([basicsPack]).find((r) => r.id === 'claudinite-isolation');
 
 test('claudinite-isolation: inert without the vendored mount; a consumer file referencing the canon fires; wiring files and local_packs stay open', () => {
   const violating = {

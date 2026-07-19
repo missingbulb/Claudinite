@@ -12,7 +12,11 @@ import pageSections from './page-sections.mjs';
 import growthLog from './growth-log.mjs';
 import sources from './sources.mjs';
 import freshness from './freshness.mjs';
-import isolation from './isolation.mjs';
+// Built through the real path: the product-wiki manifest contributes it as
+// data and the barriers pack's factory turns it into the rule.
+import productWikiPack from './pack.mjs';
+import { contributedBarrierRules } from '../barriers/contributed.mjs';
+const isolation = contributedBarrierRules([productWikiPack]).find((r) => r.id === 'product-wiki-isolation');
 
 const here = dirname(fileURLToPath(import.meta.url));
 const canonRoot = join(here, '..', '..');
@@ -45,14 +49,19 @@ function run(rule, files, { mode = 'all', packConfig, now, uncommitted } = {}) {
 
 // --- pack manifest -----------------------------------------------------------
 
-test('pack manifest: id, marker, six uniquely-named rules, one run_daily task', () => {
+test('pack manifest: id, marker, five uniquely-named rules, the contributed isolation barrier, one run_daily task', () => {
   assert.equal(pack.id, 'product-wiki');
   assert.equal(pack.marker, 'product-wiki/product-requirements/README.md');
   assert.equal(pack.prose, 'RULES.md');
-  assert.equal(pack.rules.length, 6);
+  assert.equal(pack.rules.length, 5);
   const ids = pack.rules.map((r) => r.id);
-  assert.equal(new Set(ids).size, 6);
+  assert.equal(new Set(ids).size, 5);
   assert.ok(ids.every((id) => id.startsWith('product-wiki-')));
+  // The isolation wall rides the barriers mechanism: declared (requires) and
+  // contributed as manifest data, never a cross-pack import (pack-independence).
+  assert.deepEqual(pack.requires, ['barriers']);
+  assert.equal(pack.contributes.barriers.length, 1);
+  assert.equal(pack.contributes.barriers[0].id, 'product-wiki-isolation');
   assert.equal(pack.run_daily.length, 1);
 });
 

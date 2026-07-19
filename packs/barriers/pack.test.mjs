@@ -4,8 +4,9 @@ import { makeRepo, cleanup } from '../../checks/test/helpers.mjs';
 import { buildContext } from '../../checks/lib/context.mjs';
 import barrier from './check.mjs';
 import {
-  normalizeEdges, resolveRef, candidatesOn, buildIndex, under, normPrefix, defineBarrier,
+  normalizeEdges, resolveRef, candidatesOn, buildIndex, under, normPrefix,
 } from './engine.mjs';
+import { contributedBarrierRules } from './contributed.mjs';
 
 // Run the config-driven check with the given packConfig.barriers and repo files.
 function runCheck(barriersConfig, files) {
@@ -216,13 +217,18 @@ test('a reasoned acceptance clears a real crossing (integration through the runn
   assert.equal(f[0].file, 'extension/a.js');
 });
 
-// --- composition: defineBarrier for other packs -----------------------------
+// --- composition: barriers contributed by other packs' manifests ------------
 
-test('defineBarrier yields a rule another pack can own', () => {
-  const rule = defineBarrier({
-    id: 'requirements-isolation',
-    edges: [{ from: 'requirements', to: '*', reason: 'requirements is a pure sink' }],
-  });
+test('a contributed barrier becomes a first-class rule under its own id', () => {
+  const [rule] = contributedBarrierRules([{
+    id: 'somepack',
+    contributes: {
+      barriers: [{
+        id: 'requirements-isolation',
+        edges: [{ from: 'requirements', to: '*', reason: 'requirements is a pure sink' }],
+      }],
+    },
+  }]);
   assert.equal(rule.id, 'requirements-isolation');
   const root = makeRepo({ changed: {
     'requirements/spec.md': 'see ../src/a.js\n',
@@ -234,6 +240,42 @@ test('defineBarrier yields a rule another pack can own', () => {
     assert.equal(out[0].rule, 'requirements-isolation');
     assert.equal(out[0].why, 'requirements is a pure sink');
   } finally { cleanup(root); }
+});
+
+test('gateDir keeps a contributed barrier inert until the gate directory exists', () => {
+  const [rule] = contributedBarrierRules([{
+    id: 'p',
+    contributes: {
+      barriers: [{
+        id: 'gated-isolation',
+        gateDir: 'the-gate',
+        edges: [{ from: 'requirements', to: '*', reason: 'sink' }],
+      }],
+    },
+  }]);
+  const files = { 'requirements/spec.md': 'see ../src/a.js\n', 'src/a.js': 'export default 1;\n' };
+  const closed = makeRepo({ changed: files });
+  const open = makeRepo({ changed: { ...files, 'the-gate/marker.txt': 'x\n' } });
+  try {
+    assert.deepEqual(rule.run(buildContext({ root: closed, mode: 'all' })), []);
+    assert.equal(rule.run(buildContext({ root: open, mode: 'all' })).length, 1);
+  } finally { cleanup(closed); cleanup(open); }
+});
+
+test('packs without contributions add nothing; a malformed contribution is a blocking finding at the manifest', () => {
+  assert.deepEqual(contributedBarrierRules([{ id: 'plain' }, { id: 'other', contributes: {} }]), []);
+  const rules = contributedBarrierRules([
+    { id: 'bad-shape', contributes: { barriers: { id: 'not-an-array' } } },
+    { id: 'no-id', local: true, contributes: { barriers: [{ edges: [] }] } },
+  ]);
+  assert.equal(rules.length, 2);
+  const findings = rules.flatMap((r) => r.run());
+  assert.equal(findings.length, 2);
+  assert.ok(findings.every((f) => f.severity === 'blocking'));
+  assert.equal(findings[0].file, 'packs/bad-shape/pack.mjs');
+  assert.match(findings[0].what, /not an array/);
+  assert.match(findings[1].file, /local_packs\/no-id\/pack\.mjs$/);
+  assert.match(findings[1].what, /no string "id"/);
 });
 
 // --- unit tests for the engine primitives -----------------------------------

@@ -263,12 +263,31 @@ test('--init writes the pack declaration once and is idempotent', () => {
     assert.ok(existsSync(join(root, '.claudinite-checks.json')));
     const first = readFileSync(join(root, '.claudinite-checks.json'), 'utf8');
     // No pack is active by default, so --init materializes the seeded-by-default
-    // declared packs: basics plus grow_with_claudinite and tidy-repo (opt-out by removal).
-    assert.deepEqual(JSON.parse(first).packs, ['basics', 'grow_with_claudinite', 'tidy-repo']);
+    // declared packs: basics plus grow_with_claudinite and tidy-repo (opt-out by
+    // removal) — and the requires closure: basics pulls the barriers mechanism
+    // pack in, materialized with its provenance (`via`).
+    assert.deepEqual(JSON.parse(first).packs,
+      ['basics', { id: 'barriers', via: ['basics'] }, 'grow_with_claudinite', 'tidy-repo']);
     // The delivery selection is materialized, never an implicit default.
     assert.equal(JSON.parse(first).maintenance.delivery, 'push');
     assert.equal(runCli(root, '--init').status, 0);
     assert.equal(readFileSync(join(root, '.claudinite-checks.json'), 'utf8'), first);
+  } finally { cleanup(root); }
+});
+
+test('the contributedRules seam: a pack\'s contributed barrier runs via the runner, under its own id', () => {
+  // product-wiki contributes its isolation wall to the barriers pack as
+  // manifest data; the runner hands barriers the active-pack list and the
+  // contribution runs as a first-class rule — no cross-pack import anywhere.
+  const root = makeRepo({ changed: {
+    'product-wiki/Users/README.md': '# Users\n',
+    'dev/notes.md': 'see product-wiki/Users/README.md\n',
+    '.claudinite-checks.json': JSON.stringify({ packs: ['product-wiki', 'barriers'] }),
+  } });
+  try {
+    const r = runCli(root);
+    assert.equal(r.status, 1);
+    assert.match(r.stdout, /product-wiki-isolation\s+dev\/notes\.md/);
   } finally { cleanup(root); }
 });
 

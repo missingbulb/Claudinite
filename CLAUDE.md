@@ -32,9 +32,11 @@ pack-contributed content, and where each kind of feature goes (almost never core
   the declaration, the nightly baselining backfills it into existing consumers.
 - **[packs/barriers/](packs/barriers/README.md)** — a mechanism pack: enforce a directed
   folder-access graph (folder A may not reference folder B — imports, path/filename references, in
-  any language, comments and docs included), declared per-project as `config` on the repo's barriers pack entry. Its
-  detection engine is exported so other packs compose their own separation rules on it (the way
-  `spec-driven-product` builds on `executable-requirements`).
+  any language, comments and docs included), declared per-project as `config` on the repo's barriers pack entry.
+  Other packs compose their own separation rules on it by *declaring* it (`requires`) and
+  *contributing* a fixed barrier as manifest data (`contributes` — the way `basics` and
+  `product-wiki` ship their isolation walls); no pack imports another's code (the baseline
+  `pack-independence` check).
 - **[packs/grow_with_claudinite/](packs/grow_with_claudinite/README.md)** — the growth
   lifecycle's member side (extract/dedup/pack-discovery daily tasks; `config.promote: false`
   opts a repo out of the central promote stage) **and the conversation lifecycle**: each merge

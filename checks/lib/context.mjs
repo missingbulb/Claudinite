@@ -147,6 +147,13 @@ export function loadConfig(root) {
       if (Array.isArray(entry.accept)) normalized.accept = entry.accept;
       else badShape('accept', 'an array of acceptance entries');
     }
+    if (entry.via !== undefined) {
+      // Written by the declaration resolver on materialized dependencies
+      // (packs/registry.mjs) — normalized through so readers (the adoption
+      // interview) can tell a chosen pack from a pulled-in one.
+      if (Array.isArray(entry.via) && entry.via.every((v) => typeof v === 'string')) normalized.via = entry.via;
+      else badShape('via', 'an array of pack ids (the declaration resolver writes it)');
+    }
     packs.push(entry.id);
     packEntries.push(normalized);
   }

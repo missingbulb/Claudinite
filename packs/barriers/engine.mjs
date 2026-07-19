@@ -1,4 +1,5 @@
 import { finding } from '../../checks/lib/findings.mjs';
+import { normPrefix, under } from '../../checks/lib/paths.mjs';
 
 // The barriers detection engine — language-agnostic enforcement of a directed
 // folder-access graph. A *barrier edge* forbids the files under one set of
@@ -21,9 +22,13 @@ import { finding } from '../../checks/lib/findings.mjs';
 // region — the `from: "."` helper) or a reviewed exception ({ path, to?, reason }
 // — a specific file's deliberate crossing, staleness-audited when `to` is pinned).
 //
-// Exported for composition: another pack imports `defineBarrier` (or the lower
-// `normalizeEdges` + `barrierFindings`) and contributes a fixed barrier as one of
-// its own `rules`, the same way packs already share the checks/ engine lib.
+// Composition happens through DECLARATION, never through importing this module
+// from another pack (pack-independence): a pack that wants a fixed barrier
+// `requires` this pack and carries the barrier as data on its manifest
+// (`contributes` — see contributed.mjs, which builds the rule from that data).
+// The exports here serve this pack's own modules; the path-prefix primitives
+// (`normPrefix`, `under`) live in the engine lib (checks/lib/paths.mjs) and are
+// re-exported for them.
 
 export const DEFAULT_DOC = 'packs/barriers/README.md';
 
@@ -34,16 +39,10 @@ const isTestFile = (f) => /\.test\.[cm]?js$/.test(f);
 
 // --- path helpers (posix; both separators accepted on input) ----------------
 
-// A folder/target prefix as the config author wrote it → a bare posix prefix:
-// backslashes folded, a leading "./" or "/" and any trailing "/" stripped, and a
-// lone "." (repo root) collapsed to "". '*' is the isolation wildcard and passes
-// through untouched. A prefix that collapses to "" means the repo root; callers
-// that can't accept it (targets, allow) reject it.
-export function normPrefix(p) {
-  if (p === '*') return '*';
-  const s = String(p).replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '').replace(/\/+$/, '');
-  return s === '.' ? '' : s;
-}
+// The prefix primitives (`normPrefix` — a folder/target prefix as the config
+// author wrote it → a bare posix prefix; `under` — containment) come from the
+// engine lib, re-exported for this pack's own modules and tests.
+export { normPrefix, under };
 
 // Join `rel` onto `base` and resolve "." / ".." segments, posix-style. Returns
 // null when the path escapes the repo root (a leading "..") — such a reference
@@ -59,14 +58,6 @@ function normJoin(base, rel) {
     } else out.push(seg);
   }
   return out.join('/');
-}
-
-// `path` is inside folder `prefix` (or is it). '' matches everything (repo root);
-// '*' never matches here (it is handled as the isolation wildcard).
-export function under(path, prefix) {
-  if (prefix === '') return true;
-  if (prefix === '*') return false;
-  return path === prefix || path.startsWith(`${prefix}/`);
 }
 
 const isGlob = (t) => t.endsWith('/*') && !t.startsWith('*.');
@@ -685,27 +676,3 @@ export function staleFindings(stale, rule) {
   }));
 }
 
-// Compose a barrier as a standalone rule — for a pack that contributes a fixed
-// graph (import this, add the result to its `rules`).
-export function defineBarrier({ id, edges, severity = 'blocking', doc = DEFAULT_DOC, description, why, crossingExcuse }) {
-  const norm = normalizeEdges(edges);
-  const rule = {
-    id,
-    severity,
-    doc,
-    description: description || 'Files under a guarded folder must not reference a barred folder',
-    why: why || 'a folder barrier encodes an architectural boundary; a crossing reference erodes it silently',
-    // Pack-shipped edges can't take project-side except entries, so a fixed
-    // barrier names its real excusal lever here (see barrierFindings).
-    crossingExcuse,
-    run(ctx) {
-      const out = norm.errors.map((e) => specFinding(rule, e));
-      const { findings, stale } = barrierFindings(ctx, norm.edges, rule);
-      out.push(...findings);
-      const scanErrors = findings.some((f) => f.resolved === undefined);
-      if (ctx.mode === 'all' && !norm.errors.length && !scanErrors) out.push(...staleFindings(stale, rule));
-      return out;
-    },
-  };
-  return rule;
-}

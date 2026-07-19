@@ -18,6 +18,11 @@ export default {
   marker: SINK_README,
   detect: (ctx) => ctx.tracked.includes(SINK_README),
   prose: 'RULES.md',
-  rules: [layout, pageSections, growthLog, sources, freshness, isolation],
+  // The isolation wall rides the barriers mechanism: this pack requires
+  // barriers and CONTRIBUTES the fixed barrier as manifest data
+  // (isolation.mjs — pure data, no cross-pack import; pack-independence).
+  requires: ['barriers'],
+  contributes: { barriers: [isolation] },
+  rules: [layout, pageSections, growthLog, sources, freshness],
   run_daily: [wikiGrowth],
 };

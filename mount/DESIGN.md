@@ -95,11 +95,14 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    `.gitignore`, `.gitattributes`, `.github/workflows/` (the CI stub), and anything under
    `.claudinite/` itself (`local_packs/` included). Product code that wants a canon helper
    inlines it — depending on canon internals would turn every canon refactor into a breaking
-   migration for code the canon doesn't own. Enforced as a **basics check composed on the
-   barriers pack's exported detection engine** — the composition pattern packs already use with
-   each other — so it is universal via basics, with no per-project barriers declaration or
-   config to maintain; it self-gates on `.claudinite/` existing, so it is inert in the canon
-   repo.
+   migration for code the canon doesn't own. Enforced as a **fixed barrier the baseline pack
+   contributes to the barriers mechanism pack** (manifest data under `contributes`; the baseline
+   `requires` barriers, so the mechanism rides everywhere the baseline is declared) — the
+   declaration-and-configuration composition pattern packs use with each other, never a
+   cross-pack code import (the baseline `pack-independence` check) — universal via the
+   baseline, with no per-project barriers config to maintain; its `gateDir` keeps it inert
+   until the vendored mount exists, so it fires neither in the canon repo nor in pre-flip
+   consumers.
 9. **Migration notes v2.** A canon change that consumers must be amended for ships as a dated
    record (the existing `migrations/active_migrations/` shape): mechanical ops where code can
    express them, plus a **brief agentic note** for what it can't (chiefly adapting

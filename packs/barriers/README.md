@@ -123,22 +123,20 @@ On a whole-repo sweep with a clean config, an exception that matched **nothing**
 
 ## Composing a barrier from another pack
 
-The engine is exported so a pack can ship a *fixed* barrier as one of its own rules — no project config needed. Import `defineBarrier` and add the result to the pack's `rules`:
+A pack ships a *fixed* barrier — no project config needed — by **declaring** this pack and **contributing** the barrier as data on its manifest, never by importing this pack's code (`pack-independence`): name `barriers` in the pack's `requires` and carry the barrier under `contributes`:
 
 ```js
 // packs/<somepack>/pack.mjs
-import { defineBarrier } from '../barriers/engine.mjs';
-
 export default {
   id: 'somepack',
   requires: ['barriers'],
-  rules: [
-    defineBarrier({
+  contributes: {
+    barriers: [{
       id: 'requirements-isolation',
       edges: [{ from: 'dev/requirements', to: '*', reason: 'requirements is a pure sink' }],
-    }),
-  ],
+    }],
+  },
 };
 ```
 
-`engine.mjs` also exports the lower-level `normalizeEdges` and `barrierFindings` (which returns `{ findings, stale }`; every crossing finding carries its resolved path as `resolved`), plus `staleFindings` for a pack that needs finer control. This is the same "packs share the engine lib" pattern the `packs/` file-placement acceptance already covers.
+Each contribution becomes a **first-class rule under its own id** — per-rule overrides (`rules: { "requirements-isolation": "off" }`) and acceptances address it directly, and `description`/`why`/`doc`/`severity`/`crossingExcuse` ride the contribution. `gateDir` is the one declarative gate: the rule stays inert until that directory exists in the repo under test (how the baseline's consumer-isolation wall stays quiet pre-flip). The runner hands this pack the active-pack list (`contributedRules` on its manifest, the generic core seam), and [contributed.mjs](contributed.mjs) builds the rules — an undeclared pack contributes nothing, exactly as its own rules would not run. A consumer's local pack contributes the same way. A helper a pack needs beside a barrier (path containment, say) lives in the engine lib (`checks/lib/paths.mjs`), never in this pack's modules.
