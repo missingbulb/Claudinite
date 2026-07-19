@@ -35,9 +35,11 @@
 | `unattended-agents` | building or running an unattended agent / recurring routine |
 | `git-github-advanced` | git/GitHub work beyond the baseline lifecycle |
 | `prose-to-checks` | auditing the corpus for never-converted testable prose (the nightly growth sweep) |
+| `writing-claudinite-skills` | authoring or changing a skill in the Claudinite corpus (canon home) |
 | `single-branch-status` | assessing one branch's landed status (the tidy-repo repo-tidy task) |
 | `single-pr-status` | assessing one PR's landed status (the tidy-repo repo-tidy task) |
 | `single-issue-triage` | triaging one issue (the tidy-repo repo-tidy task) |
+| `google-id-token-validation` | wiring server-side validation of Google Sign-In ID tokens — its checks carry the rules |
 
 Technology guidance (Chrome extension, Node/jsdom, AWS SAM, HTML) is **not** a skill — it's the
 prose of its `packs/<tech>/` pack, loaded eagerly whenever the project declares that pack.

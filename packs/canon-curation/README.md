@@ -16,6 +16,10 @@ freezes canon absorption without touching the members' side ([grow_with_claudini
 | `growth-promote-to-claudinite` | a participating member changed in the window (weekly full: all participants) | a PR against Claudinite's `main` |
 | `prose-to-checks-sweep` | the home repo's weekly full sweep | a PR against Claudinite's `main` |
 
+| Rule (≤5 words) | How enforced |
+|---|---|
+| Pack prose: no enforcement narration | check `pack-no-enforcement-narration` |
+
 - **[promote.md](promote.md)** — the growth lifecycle's central stage: read the changed members'
   local packs, **generalize** the portable lessons, route each to the right canon home, and open a
   PR for the owner to approve. When a portable lesson's technology has no pack home, it mints a

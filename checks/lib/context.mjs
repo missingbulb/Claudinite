@@ -210,11 +210,11 @@ export function buildContext({ root, mode = 'changed', baseOverride = null, tran
   const tracked = lines(gitTry(root, 'ls-files'));
   const untracked = lines(gitTry(root, 'ls-files', '--others', '--exclude-standard'));
 
+  const vsBase = lines(gitTry(root, 'diff', '--name-only', '--diff-filter=d', diffBase));
   let scanned;
   if (mode === 'all') {
     scanned = [...tracked, ...untracked];
   } else {
-    const vsBase = lines(gitTry(root, 'diff', '--name-only', '--diff-filter=d', diffBase));
     scanned = [...new Set([...vsBase, ...untracked])];
   }
   // The vendored corpus under the shared mount is canon-owned, never the
@@ -232,6 +232,11 @@ export function buildContext({ root, mode = 'changed', baseOverride = null, tran
   // project's OWN authored code and every check skips them for free (see vendoredSet).
   const vendored = vendoredSet(root, allFiles);
   const files = allFiles.filter((f) => !vendored.has(f));
+  // The in-scope files the current change touched (vs the scoping base),
+  // untracked included — the file set behind lines.mjs addedLines, for
+  // check-the-work rules that judge the work rather than re-audit the world.
+  const changedSet = new Set([...vsBase, ...untracked]);
+  const changedFiles = files.filter((f) => changedSet.has(f));
 
   const deleted = mergeBase ? lines(gitTry(root, 'diff', '--name-only', '--diff-filter=D', mergeBase)) : [];
 
@@ -255,6 +260,7 @@ export function buildContext({ root, mode = 'changed', baseOverride = null, tran
     mergeBase,
     files,
     allFiles,
+    changedFiles,
     tracked,
     deleted,
     commits,

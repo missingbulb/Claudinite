@@ -4,7 +4,7 @@ The working discipline that isn't itself a GitHub operation — general habits f
 
 Start every requested change from the *problem*, not the solution. When the owner asks for a change, don't begin implementing it until the two of you share an explicit understanding of the problem it's meant to solve **and** have agreed that the requested change is the best way to solve it — a different fix, or no change at all, may serve the underlying problem better. Treat the request as a description of a desired outcome, not a specification to execute on sight; surface your read of the problem, raise a better approach if you see one, and reach consensus first. This applies to any repository, not just this one.
 
-An interactive comment from the owner carries one of three build-relevant intents — or none of them — and the classification decides where the change lands and what must exist before any fix. Open your reply to an owner comment with an explicit classification line — `Comment class: correction | feature | process-change | other` (`other` covers questions, approvals, and command phrases; a mixed comment names each part) — the `comment-classification` check enforces that the line was emitted; the assessment itself stays judgment.
+An interactive comment from the owner carries one of three build-relevant intents — or none of them — and the classification decides where the change lands and what must exist before any fix. Open your reply to an owner comment with an explicit classification line — `Comment class: correction | feature | process-change | other` (`other` covers questions, approvals, and command phrases; a mixed comment names each part) — the assessment itself stays judgment.
 
 1. **A correction** — you misunderstood something. Repair the shared understanding, then rework what the misread already touched — the artifact changes as much as the correction demands; what doesn't appear is a new requirement or rule.
 2. **A feature** — a feature run: agree on the requirement, record it in the project's requirements document (its executable spec, where it keeps one), write the test that proves it and watch it fail, then implement until it passes.
@@ -28,7 +28,7 @@ An approval — to merge, to ship, to proceed — applies only *backward*, to th
 
 # The task lifecycle
 
-The issue → branch → PR lifecycle every new task follows, independent of any one project. Its enforcement is the `task-lifecycle` conformance check (it blocks a session from ending with branch commits that reference no issue); this section keeps the method. The rest of the git/GitHub procedures live in the `git-github-advanced` skill.
+The issue → branch → PR lifecycle every new task follows, independent of any one project; this section keeps the method. The rest of the git/GitHub procedures live in the `git-github-advanced` skill.
 
 For every new task:
 
