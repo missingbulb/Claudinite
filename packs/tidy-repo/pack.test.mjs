@@ -40,3 +40,15 @@ test('repo-tidy: excludes the default branch from the branch targets, carries th
   assert.deepEqual(v.targets, { branches: ['feat-x'], prs: [7, 9], issues: [3] });
   assert.match(v.reason, /substantively/);
 });
+
+test('repo-tidy: ignores the orphan conversation-logs branch altogether', async () => {
+  const g = task('repo-tidy').gate;
+  // conversation-logs is a grow_with_claudinite log stream, never project work —
+  // it must never reach the branch review, even on a widening substantive move.
+  const v = await g(REPO, S({ branchesTouched: ['main', 'conversation-logs', 'feat-x'], substantiveChange: true }));
+  assert.equal(v.run, true);
+  assert.deepEqual(v.targets.branches, ['feat-x']);
+  // A window where the ONLY non-default branch is conversation-logs carries no branch work.
+  const only = await g(REPO, S({ branchesTouched: ['main', 'conversation-logs'], fullSweep: true }));
+  assert.deepEqual(only.targets.branches, []);
+});
