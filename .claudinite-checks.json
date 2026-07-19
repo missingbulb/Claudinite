@@ -2,6 +2,14 @@
   "packs": [
     "basics",
     "github-actions",
+    {
+      "id": "grow_with_claudinite",
+      "config": { "retention_days": 10 },
+      "answers": {
+        "retention": "10 days — the recommended rethink window before a captured conversation log is deleted.",
+        "nightly": "Capture-only for now: capture runs at merge (merge-to-main); the per-repo conversation-extract nightly is not yet scheduled for the canon repo."
+      }
+    },
     "canon-curation",
     {
       "id": "barriers",
