@@ -38,11 +38,12 @@ pack-contributed content, and where each kind of feature goes (almost never core
 - **[packs/grow_with_claudinite/](packs/grow_with_claudinite/README.md)** — the growth
   lifecycle's member side (extract/dedup/pack-discovery daily tasks; `config.promote: false`
   opts a repo out of the central promote stage) **and the conversation lifecycle**: each merge
-  to main captures the session's conversation onto an orphan `conversation-logs` branch
-  (delta-aware when one session merges repeatedly); a **per-repo nightly** (not a fleet task)
-  extracts lessons from the logs with a rethink window, posts the dialogue behind each
-  extracted rule on the issue it was worked under, and deletes logs past the declared
-  `retention_days` — the successor of the retired in-session post-merge lessons pass.
+  to main captures the session's conversation in-session (it needs the live transcript) onto an
+  orphan `conversation-logs` branch (delta-aware when one session merges repeatedly); the
+  `conversation-extract` daily task then mines those pushed logs centrally/MCP-native like every
+  fleet worker, with a rethink window — posting the dialogue behind each extracted rule on the
+  issue it was worked under and pruning logs past the declared `retention_days` — the successor
+  of the retired in-session post-merge lessons pass.
 - **Technology packs**, active when the project declares them (bootstrap's `--init` seeds the
   declaration from a fingerprint): `chrome-extension` (MV3 coding gotchas, fingerprinted by the
   manifest), `chrome-extension-release` (the *opt-in* release/store standard in its

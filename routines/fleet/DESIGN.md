@@ -131,7 +131,7 @@ of cheap reads. Gates lean on it and/or do a targeted probe of their own via `gh
 | `pushedAt` | repo object (already in hand from enumeration) | short-circuits the code-side probes when idle |
 | `mainMoved` | commits on the default branch `since` the window | `projectChanged` |
 | `projectChanged` | the default branch advanced (any commit, merges included) | the fleet aggregate |
-| `substantiveChange` | a **non-housekeeping** default-branch commit in the window — excludes bot bumps, `[skip ci]`, and the nightly baselining/seed commits | **growth-extract-new-instructions**; widens the **repo-tidy** landed/implemented candidate set |
+| `substantiveChange` | a **non-housekeeping** default-branch commit in the window — excludes bot bumps, `[skip ci]`, and the nightly baselining/seed commits | **growth-extract-new-instructions** and **conversation-extract** (a real merge is when a fresh conversation log lands; the `[skip ci]` capture commit is excluded, so this tracks the merge not the capture); widens the **repo-tidy** landed/implemented candidate set |
 | `prsTouched[]` | open PRs `updated_at` in window (∪ all if `substantiveChange`/`fullSweep`) | **repo-tidy** |
 | `issuesTouched[]` | open issues `updated_at` in window (∪ all if `substantiveChange`/`fullSweep`), **excluding the routine's own standing trackers** (whose nightly self-update would otherwise re-fire tidy forever) | **repo-tidy** |
 | `branchesTouched[]` | all open branches, only when `substantiveChange`/`fullSweep` (else empty) | **repo-tidy** |

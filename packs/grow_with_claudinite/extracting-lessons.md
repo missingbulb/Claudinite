@@ -4,7 +4,7 @@
 > working session's *dialogue and the actions taken in it* for improvements. It is **not** the
 > growth extract ([extract.md](extract.md)) that mines **issues, PRs, and commits** over repo
 > history — that routine never sees a conversation. Its two callers: the
-> [conversation-extract nightly](conversation-extract.md), which applies it to **captured**
+> [conversation-extract daily task](conversation-extract.md), which applies it to **captured**
 > conversation logs — where the friction signals below (a clarifying round-trip, a backtrack, a
 > wait you sat through) survive with their timestamps — and an owner's occasional plain-words
 > ask for a retrospective over the live session.
@@ -31,7 +31,7 @@ fine (see [No new lessons](#no-new-lessons-is-a-valid--and-common--result)).
 
 ## When it runs
 
-Routinely, in the [conversation-extract nightly](conversation-extract.md) over each captured
+Routinely, in the [conversation-extract daily task](conversation-extract.md) over each captured
 log (a fresh pass within a day of capture, a final hindsight pass before retention deletes the
 log) — the standard path. If an owner asks in plain words for a retrospective over the live
 session, apply the same method and deliver the capture as a branch + PR for review, never

@@ -25,12 +25,16 @@ local stages without contributing upstream **opts out of promotion** on its own 
 `{ "id": "grow_with_claudinite", "config": { "promote": false } }` — and the promote gate skips
 it (absent or `true` = participate).
 
-## The conversation lifecycle — capture at merge, extract nightly, retention
+## The conversation lifecycle — capture at merge, extract in a daily task, retention
 
 The pack also owns **extraction from working sessions** — the conversation-side sibling of the
-issues/PRs/commits extract above, replacing the old in-session post-merge lessons pass:
+issues/PRs/commits extract above, replacing the old in-session post-merge lessons pass. The two
+halves split by what each needs: **capture** needs the live session transcript, so it runs
+in-session at merge; **extraction** only reads the already-pushed logs, so it is an ordinary
+fleet `run_daily` task, central and MCP-native like `growth-extract`.
 
-1. **Capture — a step in the merge-to-main skill.** Right after a merge lands:
+1. **Capture — a step in the merge-to-main skill** (in-session, where the transcript lives).
+   Right after a merge lands:
    `node .claudinite/shared/packs/grow_with_claudinite/capture-log.mjs --issue <n>`
    (in the canon repo itself: `node packs/grow_with_claudinite/capture-log.mjs --issue <n>`).
    Deterministic, seconds; it bundles the session transcript (sidechains inline, timestamp
@@ -43,28 +47,22 @@ issues/PRs/commits extract above, replacing the old in-session post-merge lesson
    session that merges twice pushes a second, disjoint file for the second merge's issue.
    The branch is a **work queue, not an archive** — never merged; tips are cheap in shallow
    session clones and retention keeps them bounded.
-2. **Fresh pass — the [conversation-extract nightly](conversation-extract.md)**, within a day:
-   apply [extracting-lessons.md](extracting-lessons.md) (the method — friction signals and the
-   measured efficiency analysis, computable from the log's timestamps and token usage), route
-   keepers into the local packs, and post the rendered dialogue
+2. **Fresh pass — the [conversation-extract](conversation-extract.md) run_daily task**, run
+   centrally over MCP like every fleet worker (gate: the day after a real merge —
+   `substantiveChange` — plus the weekly full sweep). It applies
+   [extracting-lessons.md](extracting-lessons.md) (the method — friction signals and the
+   measured efficiency analysis, computable from the log's timestamps and token usage), routes
+   keepers into the member's local packs, and posts the rendered dialogue
    ([render-dialogue.mjs](render-dialogue.mjs)) on the worked issue for each rule that landed —
    **extraction is the only path to permanence**: a log that yields no rule gets no comment,
    and its conversation is gone once retention deletes it (a deliberate owner call).
-3. **Final pass and deletion** — once a log ages past `config.retention_days`, the same nightly
-   re-reads it with ~a week of hindsight (the rethink window), then deletes it. Every log gets
-   exactly two judgment passes. **Unset retention = the sweep deletes nothing** (capture-only,
-   fail-safe).
+3. **Final pass and deletion** — once a log ages past `config.retention_days`, the same task
+   re-reads it with ~a week of hindsight (the rethink window), then deletes it (the weekly full
+   sweep guarantees the prune runs even on a repo gone quiet). Every log gets exactly two
+   judgment passes. **Unset retention = the prune deletes nothing** (capture-only, fail-safe).
 
-### Adopting the conversation lifecycle
-
-The adoption interview asks for the two settings: an explicit `retention_days` (10
-recommended), and where the nightly is scheduled — it is deliberately **not** a fleet
-`run_daily` task (it needs local git in the repo's own context), so each repo schedules its own
-thin launcher:
-
-> Run the conversation extract exactly as specified in
-> `.claudinite/shared/packs/grow_with_claudinite/conversation-extract.md`, from this repo's
-> checkout.
+Adoption asks only for the `retention_days` value (10 recommended) — nothing to schedule, since
+extraction rides the fleet's one daily run like the other growth tasks.
 
 ## Rules
 

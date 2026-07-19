@@ -54,7 +54,7 @@ engineeringPractices judgment core.
 | merge-to-main: lessons pass on every merge | folds into the skill (deterministic step, not a remembered trigger); later became the conversation capture step — extraction moved to the growth pack's nightly |
 | merge-to-main: don't re-read the issue; don't fight branch deletion | folds into the skill |
 | temporary-workarounds: never delete a remote branch | **hook** — PreToolUse blocks `git push` delete refspecs; doc deleted when its list empties |
-| extracting-lessons.md (entire method doc, force-loaded; now `packs/grow_with_claudinite/extracting-lessons.md`) | **skill** at conversion, later a growth-pack method doc — applied by the conversation-extract nightly (and any owner-requested retrospective); never always-loaded again |
+| extracting-lessons.md (entire method doc, force-loaded; now `packs/grow_with_claudinite/extracting-lessons.md`) | **skill** at conversion, later a growth-pack method doc — applied by the conversation-extract daily task (and any owner-requested retrospective); never always-loaded again |
 
 **Baseline outcome: five force-loaded docs → working-discipline (trimmed) plus a slimmer index.**
 

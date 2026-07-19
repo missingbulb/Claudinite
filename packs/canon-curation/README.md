@@ -73,6 +73,6 @@ worker the changed participants as `targets`.
 
 The session-scoped sibling of this nightly lifecycle — mining a single working session for lessons
 — lives with [the growth pack's extracting-lessons method](../grow_with_claudinite/extracting-lessons.md)
-(applied by its conversation-extract nightly over captured logs), and the member-side method docs
+(applied by its conversation-extract daily task over captured logs), and the member-side method docs
 (extract, dedup, pack discovery, and how a project's local packs are identified) live with
 [grow_with_claudinite](../grow_with_claudinite/README.md).
