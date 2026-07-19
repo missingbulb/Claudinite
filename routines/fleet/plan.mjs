@@ -28,7 +28,7 @@ import { planRepo } from './gates.mjs';
 // The canon repo is planned too — last, as an ordinary member of its own declared
 // packs, with two extra signals no member gets: `isHome: true`, and `fleetMembers`,
 // the aggregate of every successfully-probed member's { repo, activePacks,
-// projectChanged }. That aggregate is what lets a home-only pack's gate decide
+// packConfigs, projectChanged, … }. That aggregate is what lets a home-only pack's gate decide
 // fleet-facing work (e.g. "did any enrolled member change tonight?") in code,
 // without the planner knowing any pack by name. Planning the canon repo last is what
 // makes the aggregate complete when its gates run.
@@ -57,7 +57,7 @@ export async function buildWorkPlan(gh, canonRepo, coveredRepos, canonRepoInfo =
   for (const r of coveredRepos) {
     try {
       const signals = await buildSignals(gh, r, { sinceIso, weekdayUtc, canonChange });
-      fleetMembers.push({ repo: r.full_name, activePacks: signals.activePacks, projectChanged: signals.projectChanged, substantiveChange: signals.substantiveChange, hasLocalPacks: signals.hasLocalPacks, localPacksChanged: signals.localPacksChanged });
+      fleetMembers.push({ repo: r.full_name, activePacks: signals.activePacks, packConfigs: signals.packConfigs, projectChanged: signals.projectChanged, substantiveChange: signals.substantiveChange, hasLocalPacks: signals.hasLocalPacks, localPacksChanged: signals.localPacksChanged });
       const applicable = assembleForRepo(signals.activePacks, allPackTasks, await localFor(r));
       const res = await planRepo({ fullName: r.full_name, defaultBranch: r.default_branch }, signals, applicable, gh);
       units.push(...res.units); errors.push(...res.errors);

@@ -28,7 +28,11 @@ export default {
     // that has local packs, and not one that only changed its product code. A member
     // with nothing new in its local packs has nothing to lift up.
     const participants = (signals.fleetMembers ?? [])
-      .filter((m) => m.activePacks.includes('grow_with_claudinite') && m.hasLocalPacks);
+      .filter((m) => m.activePacks.includes('grow_with_claudinite') && m.hasLocalPacks)
+      // The growth entry's own settings can opt a member out of promotion —
+      // { "id": "grow_with_claudinite", "config": { "promote": false } } — while
+      // it keeps extracting/deduping locally; absent or true means participate.
+      .filter((m) => m.packConfigs?.grow_with_claudinite?.promote !== false);
     if (signals.fullSweep && participants.length) {
       return {
         run: true,

@@ -18,11 +18,10 @@ The portable recipe for landing the change in front of the owner on `main` — t
 
 The two divergent points — **`squash`** as the method and **CI gating** — are exactly what a bespoke policy file changes.
 
-## After the merge: reflect (every session, every user)
+## After the merge: capture the conversation (every session, every user)
 
-Once the merge has landed and local `main` is synced, run a **lessons-learned pass** over the session that just closed, per [extracting-lessons.md](../lessons-learned/extracting-lessons.md) (which owns the method). The point here is only the **trigger**: it fires on **every** merge to `main`, for **every** user — not only when someone asks.
-
-**Skip it only when the merge you just landed *is itself* a lessons-pass PR** — reflecting on a reflection has nothing new to mine, and skipping keeps the trigger from looping on its own output.
+Once the merge has landed and local `main` is synced, run the growth pack's capture step:
+`node .claudinite/shared/packs/grow_with_claudinite/capture-log.mjs --issue <n>` (from the canon repo itself: `node packs/grow_with_claudinite/capture-log.mjs --issue <n>`), `<n>` being the issue your `Closes #<issue>` named. Deterministic, seconds-long; it pushes the conversation to the orphan `conversation-logs` branch, and the pack's **per-repo conversation-extract nightly** does the lessons extraction with a rethink window ([the pack README](../../packs/grow_with_claudinite/README.md) owns the standard). A later merge in the same session just runs it again — the step captures the delta. There is no in-session lessons pass anymore — extraction lives with the captured logs; in the rare repo that removed the `grow_with_claudinite` pack from `.claudinite-checks.json`, skip this step.
 
 ## Don't
 

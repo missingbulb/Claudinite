@@ -53,7 +53,6 @@ export default {
     'file-placement',
     'generate-project-instructions',
     'git-github-advanced',
-    'lessons-learned',
     'merge-to-main',
     'repo-text-sweeps',
     'unattended-agents',

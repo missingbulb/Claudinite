@@ -51,10 +51,10 @@ engineeringPractices judgment core.
 | merge-to-main: the recipe (~4 calls) | **skill** (trigger stays the owner's "LGTM" preference) |
 | merge-to-main: squash as the method | **setting** — GitHub "allow squash merging" only — verified by **check** `basics/squash-merge-history`: the change introduces no merge commits (scoped to the work — its own commits since the merge-base — not the repo's whole history), plus a CI-surface config check later |
 | merge-to-main: gate on CI only if the repo has it | folds into the skill |
-| merge-to-main: lessons pass on every merge | folds into the skill (deterministic step, not a remembered trigger) |
+| merge-to-main: lessons pass on every merge | folds into the skill (deterministic step, not a remembered trigger); later became the conversation capture step — extraction moved to the growth pack's nightly |
 | merge-to-main: don't re-read the issue; don't fight branch deletion | folds into the skill |
 | temporary-workarounds: never delete a remote branch | **hook** — PreToolUse blocks `git push` delete refspecs; doc deleted when its list empties |
-| skills/lessons-learned/extracting-lessons.md (entire method doc, force-loaded) | **skill** — invoked by the merge skill and the "learned lessons" phrase; content unchanged, just no longer always-loaded |
+| extracting-lessons.md (entire method doc, force-loaded; now `packs/grow_with_claudinite/extracting-lessons.md`) | **skill** at conversion, later a growth-pack method doc — applied by the conversation-extract nightly (and any owner-requested retrospective); never always-loaded again |
 
 **Baseline outcome: five force-loaded docs → working-discipline (trimmed) plus a slimmer index.**
 

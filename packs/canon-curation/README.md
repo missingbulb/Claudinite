@@ -26,7 +26,7 @@ freezes canon absorption without touching the members' side ([grow_with_claudini
   fingerprinted **stub pack** (in its own dedicated PR). This is the sole judgment gate before
   shared canon.
 - **[item-routing.md](item-routing.md)** — the shared worthiness + routing method promote (and any
-  other caller — the prose-to-checks sweep, an on-demand "learned lessons" pass) defers to, so
+  other caller — the prose-to-checks sweep, an owner-requested retrospective pass) defers to, so
   every decision about admitting and placing an item is made the same way.
 - **[promote-scope.mjs](promote-scope.mjs)** — the CI write-surface gate on promote's PRs: promote
   may write only under `packs/` and `skills/` (keyed on the `growth-promote` branch prefix).
@@ -61,9 +61,9 @@ nightly) without any design change.
 before the shared canon every repo reads, so it always needs a human eye. Dedup opens a PR too — a
 wrongful prune deletes a real local lesson. Extract commits directly to the member's `main` — it
 writes only that project's own local packs, and the owner has opted out of a per-run PR to keep the
-fleet's daily lesson-capture from flooding review requests. (The owner's on-demand, in-session
-"learned lessons" command still delivers a PR — see
-[extracting-lessons.md](../../skills/lessons-learned/extracting-lessons.md).)
+fleet's daily lesson-capture from flooding review requests. (An owner-requested, in-session
+retrospective still delivers a PR — see
+[extracting-lessons.md](../grow_with_claudinite/extracting-lessons.md).)
 
 **Central execution, no plumbing.** Promote runs from the Claudinite home repo with a fleet-wide
 token, so it reads every participating member and opens its canon PR directly here — no
@@ -72,6 +72,7 @@ consumer-side Action, no cross-repo PAT, no labelled-issue up-path. The planner 
 worker the changed participants as `targets`.
 
 The session-scoped sibling of this nightly lifecycle — mining a single working session for lessons
-— lives with the [lessons-learned skill](../../skills/lessons-learned/extracting-lessons.md), and
-the member-side method docs (extract, dedup, pack discovery, and how a project's local packs are
-identified) live with [grow_with_claudinite](../grow_with_claudinite/README.md).
+— lives with [the growth pack's extracting-lessons method](../grow_with_claudinite/extracting-lessons.md)
+(applied by its conversation-extract nightly over captured logs), and the member-side method docs
+(extract, dedup, pack discovery, and how a project's local packs are identified) live with
+[grow_with_claudinite](../grow_with_claudinite/README.md).

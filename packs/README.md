@@ -8,7 +8,7 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 |---|---|---|---|
 | [basics](basics/README.md) | declared (seeded by `--init`) | 11 | ~8 (working-discipline + task-lifecycle) |
 | [barriers](barriers/README.md) | declared (or pulled in via `requires`) | 1 | 0 (config-driven segregation) |
-| [grow_with_claudinite](grow_with_claudinite/README.md) | declared (seeded by `--init`, opt-out by removal) | 0 | growth member-side daily tasks (extract / dedup / pack discovery) |
+| [grow_with_claudinite](grow_with_claudinite/README.md) | declared (seeded by `--init`, opt-out by removal) | 1 | growth member-side daily tasks (extract / dedup / pack discovery) + conversation capture & per-repo nightly extract |
 | [canon-curation](canon-curation/README.md) | declared (home-only: the canon home repo, never seeded) | 1 | growth promote + prose-to-checks sweep daily tasks |
 | [tidy-repo](tidy-repo/README.md) | declared (seeded by `--init`, opt-out by removal) | 0 | policy (assess-only-vs-act) + tidy daily tasks |
 | [sheepdog](sheepdog/README.md) | declared (opt-in; the fleet-enforcer repo only) | 0 | fleet-enforcer marker + config + coverage workflow stub |
@@ -148,11 +148,11 @@ manifest.
 
 | | Count |
 |---|---|
-| **Hardcoded conformance checks** | **37** (11 basics + 1 barriers + 8 github-actions + 8 chrome-extension-release + 3 aws-sam + 6 product-wiki) |
+| **Hardcoded conformance checks** | **39** (11 basics + 1 barriers + 1 grow_with_claudinite + 1 canon-curation + 8 github-actions + 8 chrome-extension-release + 3 aws-sam + 6 product-wiki) |
 | PreToolUse guard | 1 (remote-branch-delete) |
 | Platform setting | 1 (squash-only) |
 | **Prose rules** — packs + practice skills + baseline | **~150** |
 | Prose — research-project playbook (class pack) | 54 |
 | Prose — spec-driven-product playbook (class pack) | 25 |
 
-**Ratio ≈ 37 hardcoded : ~150 prose ≈ 1 : 4** (~20% of rules mechanized). Read against the *convertible* subset instead of all rules, it's higher: the audit ([../docs/conversion-inventory.md](../docs/conversion-inventory.md)) found only ~45 rules have any static signature — the other ~105 are judgment, in-flight process, or runtime knowledge that *should* stay prose — and ~25 of that ~45 are now checks. The `prose-to-checks` sweep keeps working the remainder; its adversarial pass rejects candidates whose detection would false-positive (the two SAM YAML checks needed a structural parser to stay FP-free), so the yield is deliberately small and high-precision.
+**Ratio ≈ 39 hardcoded : ~150 prose ≈ 1 : 4** (~20% of rules mechanized). Read against the *convertible* subset instead of all rules, it's higher: the audit ([../docs/conversion-inventory.md](../docs/conversion-inventory.md)) found only ~45 rules have any static signature — the other ~105 are judgment, in-flight process, or runtime knowledge that *should* stay prose — and ~25 of that ~45 are now checks. The `prose-to-checks` sweep keeps working the remainder; its adversarial pass rejects candidates whose detection would false-positive (the two SAM YAML checks needed a structural parser to stay FP-free), so the yield is deliberately small and high-precision.
