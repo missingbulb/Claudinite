@@ -17,10 +17,10 @@ import growthConfig from './config-check.mjs';
 // each merged session's conversation onto the orphan conversation-logs branch
 // (capture-log.mjs, in-session — it needs the live transcript), and the
 // conversation-extract run_daily task (conversation-extract.md) mines those pushed
-// logs MCP-native and central like every fleet worker — extraction reads only the
-// already-pushed logs, so unlike capture it needs no local checkout — writing lessons
-// to the member's local packs, posting the dialogue behind each extracted rule on its
-// issue, and pruning logs past config.retention_days.
+// logs with growth-extract's access model — the logs branch is in the repo, so reading
+// it, committing lessons to local packs, and pruning aged logs are plain local git;
+// only posting the dialogue behind each extracted rule on its issue uses the GitHub
+// MCP tools — pruning logs past config.retention_days.
 //
 // growth-discover-packs is the weekly pack-discovery pipeline: for the member it's
 // handed it manifests the stack, suggests a pack for each unhomed technology, populates

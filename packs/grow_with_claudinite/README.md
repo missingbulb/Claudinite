@@ -31,7 +31,9 @@ The pack also owns **extraction from working sessions** — the conversation-sid
 issues/PRs/commits extract above, replacing the old in-session post-merge lessons pass. The two
 halves split by what each needs: **capture** needs the live session transcript, so it runs
 in-session at merge; **extraction** only reads the already-pushed logs, so it is an ordinary
-fleet `run_daily` task, central and MCP-native like `growth-extract`.
+fleet `run_daily` task with `growth-extract`'s access model — the logs branch is *in the repo*,
+so reading it, committing lessons to local packs, and pruning are plain local git on the working
+tree; only posting the dialogue on the issue uses the GitHub MCP tools.
 
 1. **Capture — a step in the merge-to-main skill** (in-session, where the transcript lives).
    Right after a merge lands:
@@ -47,9 +49,9 @@ fleet `run_daily` task, central and MCP-native like `growth-extract`.
    session that merges twice pushes a second, disjoint file for the second merge's issue.
    The branch is a **work queue, not an archive** — never merged; tips are cheap in shallow
    session clones and retention keeps them bounded.
-2. **Fresh pass — the [conversation-extract](conversation-extract.md) run_daily task**, run
-   centrally over MCP like every fleet worker (gate: the day after a real merge —
-   `substantiveChange` — plus the weekly full sweep). It applies
+2. **Fresh pass — the [conversation-extract](conversation-extract.md) run_daily task** (gate: the
+   day after a real merge — `substantiveChange` — plus the weekly full sweep; local git on the
+   repo's working tree, MCP only for the issue comment). It applies
    [extracting-lessons.md](extracting-lessons.md) (the method — friction signals and the
    measured efficiency analysis, computable from the log's timestamps and token usage), routes
    keepers into the member's local packs, and posts the rendered dialogue
