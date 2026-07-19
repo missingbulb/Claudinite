@@ -1,7 +1,8 @@
-import { readdirSync, existsSync } from 'node:fs';
+import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadPacks, resolveDeclaredPacks, packEntryId, SHARED_SUBDIR } from '../packs/registry.mjs';
+import { relativeImports, resolveRelative, ENGINE_DIR_ROOTS, MACHINERY_ROOTS } from '../checks/lib/imports.mjs';
 
 // The vendor-set computation for the vendored mount (DESIGN.md): given a repo's
 // pack declaration, the minimal corpus file set that repo persists under
@@ -19,17 +20,18 @@ export { SHARED_SUBDIR };
 // The corpus index a consumer imports from its own CLAUDE.md.
 export const INDEX_FILE = 'CLAUDE.md';
 
-// The engine is discovered structurally, never listed file-by-file: these
-// roots vendor wholesale, so a new engine file ships with no edit here.
-// Excluded within them: tests (*.test.mjs and test/ directories) and *.md —
-// docs at the engine roots are canon-maintainer reference, read upstream when
-// needed, while a pack's or skill's .md files are the payload and ride their
-// own directories below.
-export const ENGINE_DIR_ROOTS = ['checks', 'mount'];
-
-// The pack/skill machinery: the non-test .mjs files sitting directly at these
-// roots (registry, prose loader, env, skill mounter — whatever lives there).
-export const MACHINERY_ROOTS = ['packs', 'skills'];
+// The engine is discovered structurally, never listed file-by-file: the engine
+// roots vendor wholesale (a new engine file ships with no edit here) and the
+// machinery roots contribute their top-level non-test .mjs. Both lists live in
+// the engine lib (checks/lib/imports.mjs) — the same definitions the
+// pack-independence check judges imports against, so "what a pack may import"
+// and "what every consumer carries" can never drift apart — re-exported here
+// as the vendor-set contract (DESIGN.md). Excluded within the engine roots:
+// tests (*.test.mjs and test/ directories) and *.md — docs at the engine
+// roots are canon-maintainer reference, read upstream when needed, while a
+// pack's or skill's .md files are the payload and ride their own directories
+// below.
+export { ENGINE_DIR_ROOTS, MACHINERY_ROOTS };
 
 const isTest = (name) => name.endsWith('.test.mjs');
 
@@ -102,6 +104,35 @@ export async function computeVendorSet(declaredEntries, { extraSkills = [] } = {
       what: `skill "${skill}" (required by ${requirers.join(', ')}) is missing from skills/`,
       fix: 'restore the skill, or drop it from the requirer\'s skills list',
     });
+  }
+
+  // Coherence guard: the set must be import-closed — every relative import in
+  // every .mjs it carries resolves to a file it also carries. Structural
+  // discovery plus the requires closure make that true by construction while
+  // the corpus honors pack-independence (a pack imports only its own files and
+  // the engine surface, both always in the set); a violation is canon-side
+  // breakage, reported here so convergence aborts BEFORE any write (the
+  // transactional contract) instead of the flipped member crashing on a
+  // missing module — the failure the gated flip's pilot abort surfaced.
+  const inSet = new Set(files);
+  for (const file of inSet) {
+    if (!file.endsWith('.mjs')) continue;
+    let src;
+    try { src = readFileSync(join(canonRoot, file), 'utf8'); } catch { continue; }
+    for (const { spec } of relativeImports(src)) {
+      const resolved = resolveRelative(file, spec, (p) => existsSync(join(canonRoot, p)));
+      if (!resolved) {
+        errors.push({
+          what: `${file} imports "${spec}", which resolves to no file in the canon tree`,
+          fix: 'fix the import specifier, or restore the file it names',
+        });
+      } else if (!inSet.has(resolved)) {
+        errors.push({
+          what: `${file} imports "${spec}" → ${resolved}, which the vendor set does not carry — a pack imports only its own files and the engine surface (pack-independence)`,
+          fix: 'fix the import to honor pack-independence (declare the dependency and contribute configuration, or move the helper into checks/lib)',
+        });
+      }
+    }
   }
 
   return { files: [...files].sort(), errors };

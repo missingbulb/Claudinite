@@ -14,17 +14,20 @@ function writeAt(root, rel, content) {
   writeFileSync(join(root, rel), content);
 }
 
-// A hermetic canon mirroring the real layout: the REAL vendor.mjs and the REAL
-// packs/registry.mjs it imports (both self-locate relative to their own file),
-// a small engine tree with the things that must be EXCLUDED present (tests,
-// engine-root docs, preferences), and fixture packs/skills — so the tests
-// exercise the structural-discovery contract, not the live corpus's contents.
+// A hermetic canon mirroring the real layout: the REAL vendor.mjs with the
+// REAL modules it imports (packs/registry.mjs, checks/lib/imports.mjs — all
+// self-locate relative to their own file), a small engine tree with the things
+// that must be EXCLUDED present (tests, engine-root docs, preferences), and
+// fixture packs/skills — so the tests exercise the structural-discovery
+// contract, not the live corpus's contents.
 function makeCanon({ packs = [], skills = [] } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-vendor-'));
   mkdirSync(join(root, 'mount'), { recursive: true });
   mkdirSync(join(root, 'packs'), { recursive: true });
+  mkdirSync(join(root, 'checks', 'lib'), { recursive: true });
   copyFileSync(join(MOUNT_DIR, 'vendor.mjs'), join(root, 'mount', 'vendor.mjs'));
   copyFileSync(join(REPO_ROOT, 'packs', 'registry.mjs'), join(root, 'packs', 'registry.mjs'));
+  copyFileSync(join(REPO_ROOT, 'checks', 'lib', 'imports.mjs'), join(root, 'checks', 'lib', 'imports.mjs'));
   writeAt(root, 'CLAUDE.md', 'index\n');
   // engine roots: real-shaped content plus everything that must stay out
   writeAt(root, 'checks/run.mjs', 'stub\n');
@@ -46,7 +49,10 @@ function makeCanon({ packs = [], skills = [] } = {}) {
   for (const { id, requires = [], skills: skl = [], extraFiles = [] } of packs) {
     writeAt(root, `packs/${id}/pack.mjs`,
       `export default { id: ${JSON.stringify(id)}, requires: ${JSON.stringify(requires)}, skills: ${JSON.stringify(skl)} };\n`);
-    for (const file of extraFiles) writeAt(root, `packs/${id}/${file}`, `stub ${file}\n`);
+    for (const file of extraFiles) {
+      const [name, content] = typeof file === 'string' ? [file, `stub ${file}\n`] : [file.file, file.content];
+      writeAt(root, `packs/${id}/${name}`, content);
+    }
   }
   for (const { name, files = ['SKILL.md'] } of skills) {
     for (const file of files) writeAt(root, `skills/${name}/${file}`, 'stub\n');
@@ -78,6 +84,7 @@ test('structural set: engine roots + machinery + declared pack + its skills, exa
   const expected = [
     'CLAUDE.md',
     'checks/lib/context.mjs',
+    'checks/lib/imports.mjs',
     'checks/run.mjs',
     'mount/session-start.sh',
     'mount/vendor.mjs',
@@ -138,4 +145,58 @@ test('extraSkills adds skills the canon cannot derive (a local pack\'s requireme
   assert.deepEqual(errors, []);
   assert.ok(files.includes('skills/s1/SKILL.md'));
   assert.ok(!files.includes('skills/s1/helper.test.mjs'));
+});
+
+// --- the coherence guard: the set must be import-closed ----------------------
+
+test('a vendored module importing a pack the set does not carry is an error, before any write', async () => {
+  const root = makeCanon({
+    packs: [
+      { id: 'consumer', extraFiles: [{ file: 'check.mjs', content: "import { x } from '../undeclared/engine.mjs';\nexport default x;\n" }] },
+      { id: 'undeclared', extraFiles: [{ file: 'engine.mjs', content: 'export const x = 1;\n' }] },
+    ],
+  });
+  const { errors } = await vendorAt(root, ['consumer']);
+  assert.equal(errors.length, 1);
+  assert.match(errors[0].what, /packs\/undeclared\/engine\.mjs/);
+  assert.match(errors[0].what, /pack-independence/);
+  // Declaring the target pack closes the set and clears the error.
+  const declared = await vendorAt(root, ['consumer', 'undeclared']);
+  assert.deepEqual(declared.errors, []);
+});
+
+test('requires closure keeps a dependency\'s composed set coherent without the consumer naming it', async () => {
+  const root = makeCanon({
+    packs: [
+      { id: 'consumer', requires: ['mechanism'], extraFiles: [{ file: 'check.mjs', content: "import { x } from './data.mjs';\nexport default x;\n" }, { file: 'data.mjs', content: 'export const x = 1;\n' }] },
+      { id: 'mechanism', extraFiles: [{ file: 'engine.mjs', content: "import { own } from './support.mjs';\nexport const x = own;\n" }, { file: 'support.mjs', content: 'export const own = 1;\n' }] },
+    ],
+  });
+  const { files, errors } = await vendorAt(root, ['consumer']);
+  assert.deepEqual(errors, []);
+  assert.ok(files.includes('packs/mechanism/engine.mjs'));
+  assert.ok(files.includes('packs/mechanism/support.mjs'));
+});
+
+test('an import resolving to no canon file at all is an error (the tree itself is broken)', async () => {
+  const root = makeCanon({
+    packs: [{ id: 'consumer', extraFiles: [{ file: 'check.mjs', content: "import x from '../ghost/missing.mjs';\nexport default x;\n" }] }],
+  });
+  const { errors } = await vendorAt(root, ['consumer']);
+  assert.equal(errors.length, 1);
+  assert.match(errors[0].what, /resolves to no file/);
+});
+
+// Regression for the nightly failure that motivated the guard (#349): the
+// baseline and product-wiki compose the barriers mechanism, and their vendor
+// sets must carry it — now via the requires closure — and be import-closed.
+test('real corpus: the composing packs\' vendor sets carry the barriers pack and are import-closed', async () => {
+  const { computeVendorSet } = await import('./vendor.mjs');
+  for (const pack of ['basics', 'product-wiki']) {
+    const { files, errors } = await computeVendorSet([pack]);
+    assert.deepEqual(errors, [], `${pack}: the vendor set must be coherent`);
+    for (const carried of ['packs/barriers/pack.mjs', 'packs/barriers/engine.mjs', 'packs/barriers/contributed.mjs']) {
+      assert.ok(files.includes(carried), `${pack} must vendor ${carried}`);
+    }
+  }
 });
