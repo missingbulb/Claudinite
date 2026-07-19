@@ -53,6 +53,14 @@ A pack is a directory `packs/<name>/pack.mjs` exporting contribution slots (any 
 | **Daily tasks** | `run_daily: [...]` | `(gate, worker)` maintenance units the planner picks up — each declares `full_sweep_supported` and its `smarts` tier |
 | **Questions** | `questions: [...]` | mandatory adoption-interview questions; the owner's answers live verbatim on the project's pack entry ([packs/README.md](packs/README.md#adoption-interview-questions)) |
 
+**Packs are independent.** A pack's code imports only its **own** files and the engine surface
+(`checks/`, `mount/`, the machinery `.mjs` at the `packs/`/`skills/` roots) — never another
+pack's code, and never a canon-internal tree (`migrations/`, `routines/`): the vendor set ships
+a pack only when declared and ships no canon-internal tree at all, so such an import crashes
+every consumer that vendors the importer without its target. A pack that wants another pack's
+*abilities* declares the dependency (`requires`) and passes **configuration**; a helper both
+sides need moves into `checks/lib`. Enforced by the baseline `pack-independence` check.
+
 Activation is the project's declaration in `.claudinite-checks.json` — **no pack runs undeclared,
 the baseline included.** A technology pack carries a `detect` fingerprint so `--init` seeds it into a
 fresh declaration when the technology is present; the marker only *suspects* a pack is wanted,

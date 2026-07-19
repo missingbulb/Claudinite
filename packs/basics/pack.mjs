@@ -11,6 +11,7 @@ import sharedConstants from './shared-constants.mjs';
 import skillOwnership from './skill-ownership.mjs';
 import catalogCompleteness from './catalog-completeness.mjs';
 import claudiniteIsolation from './claudinite-isolation.mjs';
+import packIndependence from './pack-independence.mjs';
 import baselining from './run_daily/baselining.mjs';
 
 // The baseline pack: working discipline, the task lifecycle, and the core
@@ -38,6 +39,7 @@ export default {
     skillOwnership,
     catalogCompleteness,
     claudiniteIsolation,
+    packIndependence,
   ],
   // The skills every project's work can call for, whatever its technology —
   // mounted wherever basics is declared (which --init seeds everywhere) by
