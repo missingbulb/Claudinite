@@ -25,6 +25,8 @@ Before admitting anything, read across the corpus, not only the file you expect 
 
 A worthy item next descends the **promotion ladder** ([../../checks/DESIGN.md](../../checks/DESIGN.md) owns it): platform setting (always paired with its verifying check) → PreToolUse hook → conformance check → skill → prose. The *first* rung that can carry the item wins — a rule about repo state becomes a check whose failure message *is* the lesson; a bad action to prevent becomes a guard; a procedure or knowledge with a nameable trigger becomes (or joins) a skill. Only an item none of those can carry — judgment, in-flight behavior, signature-less knowledge — proceeds to the file routing below, and its landing **names that reason** in the promote log so conversion rates stay auditable.
 
+**"No universal signature" alone never routes an item to prose.** A rule converts to a check when a *narrow, file-scoped* signature covers the **grounded cases** — the concrete shapes the rule was distilled from — even though no signature covers every conceivable violation. Gate it relevance-first so it stays inert off-target, and document the genuinely signature-less residue in the rule's own comments as out of scope. The prose rung is only for an item whose grounded cases *themselves* have no reliable signature (pure judgment, runtime/in-flight behavior).
+
 ## Routing — picking the right file (rung-5 items only)
 
 Routing is robust when it keys on **stable file groups**, not on the current roster of individual files (which grows over time). The corpus is organized into a few groups, each with its own selection rule:
