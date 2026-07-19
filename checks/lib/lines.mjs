@@ -19,6 +19,16 @@ export function matchingLines(ctx, files, re) {
   return out;
 }
 
+// Every line the current change ADDED (vs the scoping base) across `files` —
+// defaults to every in-scope file the change touched. The "changed lines of
+// the current pull request": a check-the-work rule scans these to judge the
+// work itself instead of re-auditing the world, so legacy state the change
+// never touched stays quiet (the same scoping the squash-merge effect check
+// uses).
+export function addedLines(ctx, files = ctx.changedFiles) {
+  return files.flatMap((f) => ctx.addedLines(f).map((l) => ({ file: f, ...l })));
+}
+
 // Rule ids (`id: '...'`) declared by the rule modules directly in `dir` —
 // introspection of the engine's own rule-module format, not content knowledge.
 // Pack manifests are skipped (their id is the pack's name, not a rule's), as

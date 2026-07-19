@@ -1,11 +1,12 @@
 import { finding } from '../../checks/lib/findings.mjs';
+import { matchingLines } from '../../checks/lib/lines.mjs';
 
 // A Google ID token is accepted on three things: signature, issuer, audience.
 // Every Google-issued token shares the one issuer, so a validator whose
 // expected audience is unset accepts tokens minted for ANY Google OAuth client
-// — an authentication bypass that looks completely valid. The static signature:
-// a JWT-authorizer/verifier config declaring the Google accounts issuer with no
-// audience beside it.
+// — an authentication bypass that looks completely valid. Repo-state on
+// purpose: a pre-existing unset audience is a live bypass and must keep firing
+// until fixed, however long ago it merged.
 //
 // RELEVANCE FIRST (see checks/README.md "Adding a rule"): a skill check runs on
 // EVERY repo, so the gate is narrow — only config-format files (yaml/json/toml/
@@ -29,21 +30,17 @@ const rule = {
   why: 'every Google-issued ID token shares that issuer, so signature + issuer alone accept a token minted for any Google OAuth client — the audience claim is the only thing that scopes a token to this app, and an unset audience is a full authentication bypass',
 
   run(ctx) {
-    const out = [];
-    for (const f of ctx.files) {
-      if (f.startsWith(SELF) || !CONFIG_EXT.test(f)) continue;
-      const text = ctx.read(f);
-      if (text === null || !ISSUER_WORD.test(text)) continue;
-      const issuerLine = text.split('\n').findIndex((ln) => BARE_ISSUER.test(ln));
-      if (issuerLine === -1) continue;
-      if (AUD_MENTION.test(text) && !EMPTY_AUD.test(text)) continue;
-      out.push(finding(rule, {
-        file: f, line: issuerLine + 1,
+    const configs = ctx.files.filter((f) => !f.startsWith(SELF) && CONFIG_EXT.test(f));
+    return matchingLines(ctx, configs, BARE_ISSUER)
+      .filter(({ file }) => {
+        const text = ctx.read(file) ?? '';
+        return ISSUER_WORD.test(text) && !(AUD_MENTION.test(text) && !EMPTY_AUD.test(text));
+      })
+      .map(({ file, line }) => finding(rule, {
+        file, line,
         what: 'declares the Google accounts issuer with no (or an explicitly empty) expected audience',
         fix: 'configure the validator\'s audience to your exact OAuth web-application client id, next to the issuer; never leave it unset',
       }));
-    }
-    return out;
   },
 };
 
