@@ -9,7 +9,6 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 | [basics](basics/README.md) | declared (seeded by `--init`) | 11 | ~8 (working-discipline + task-lifecycle) |
 | [barriers](barriers/README.md) | declared (or pulled in via `requires`) | 1 | 0 (config-driven segregation) |
 | [grow_with_claudinite](grow_with_claudinite/README.md) | declared (seeded by `--init`, opt-out by removal) | 1 | growth member-side daily tasks (extract / dedup / pack discovery / conversation-extract) + in-session merge capture |
-| [canon-curation](canon-curation/README.md) | declared (home-only: the canon home repo, never seeded) | 1 | growth promote + prose-to-checks sweep daily tasks |
 | [tidy-repo](tidy-repo/README.md) | declared (seeded by `--init`, opt-out by removal) | 0 | policy (assess-only-vs-act) + tidy daily tasks |
 | [sheepdog](sheepdog/README.md) | declared (opt-in; the fleet-enforcer repo only) | 0 | fleet-enforcer marker + config + coverage workflow stub |
 | [github-actions](github-actions/README.md) | `.github/workflows/` | 8 | 0 |
@@ -45,20 +44,21 @@ same engine as these canon packs. `discoverPacks({ localRoot })` ([registry.mjs]
 bundled skills resolve off it) and a `local` flag. A local pack:
 
 - is **declared by hand** in `.claudinite-checks.json` like any pack — never fingerprinted or seeded
-  (`detect`/`marker` null), and its id must be unique (it may not shadow a canon id — the collision
-  is a blocking `config` finding);
+  (`detect`/`marker` null) — by its **namespaced token `local_packs/<name>`** (the canonical form;
+  the engine's [`packEntryId`](registry.mjs) resolves it and the legacy bare id alike to the bare
+  pack id, so the bare form keeps working while the fleet's baselining rewrites it), and its id must
+  be unique (it may not shadow a canon id — the collision is a blocking `config` finding);
 - may **require a canon skill** by name and/or **bundle its own** at `<pack>/skills/<skill>/`
   (mounted from the tracked pack dir); a bundled skill may carry `checks.mjs`, run when the pack is
   active;
 - rides the deployment plumbing every consumer already vendors: the sync hook preserves
   `.claudinite/local_packs/` across its dir swap and the `.gitignore` re-includes it.
 
-A local pack's **prose, checks, and skills** are the proven, shipped path. A local pack may also
-declare `run_daily` tasks, and the fleet planner has a tested seam to read them from the member repo
-([../routines/fleet/local-tasks.mjs](../routines/fleet/local-tasks.mjs)) — but that daily-run path is
-**experimental and not enabled by default** (not yet proven for the load and variety of arbitrary
-member-authored jobs), so a project's scheduled work stays a canon-pack `run_daily` or an out-of-repo
-routine until it's deliberately enabled.
+A local pack contributes **every** slot first-class: prose, checks, skills, **and `run_daily`
+tasks** — the fleet planner reads a member's local-pack daily descriptors from the member repo by
+default ([../routines/fleet/local-tasks.mjs](../routines/fleet/local-tasks.mjs)), gated by the
+member's declaration exactly like a canon pack's tasks. The canon home's own curation tasks ride
+this path nightly.
 
 The canon-vs-local line is the portable-vs-project-specific split ([../extending.md](../extending.md));
 a project adopts the structure via the `generate-project-instructions` skill, and the growth lifecycle
@@ -148,7 +148,7 @@ manifest.
 
 | | Count |
 |---|---|
-| **Hardcoded conformance checks** | **39** (11 basics + 1 barriers + 1 grow_with_claudinite + 1 canon-curation + 8 github-actions + 8 chrome-extension-release + 3 aws-sam + 6 product-wiki) |
+| **Hardcoded conformance checks** | **38 canon** (11 basics + 1 barriers + 1 grow_with_claudinite + 8 github-actions + 8 chrome-extension-release + 3 aws-sam + 6 product-wiki) + the canon home's own [canon-curation local pack](../.claudinite/local_packs/canon-curation/README.md) (1 code check + the contributed `pack-independence` barrier) |
 | PreToolUse guard | 1 (remote-branch-delete) |
 | Platform setting | 1 (squash-only) |
 | **Prose rules** — packs + practice skills + baseline | **~150** |

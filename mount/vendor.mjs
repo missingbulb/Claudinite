@@ -23,8 +23,8 @@ export const INDEX_FILE = 'CLAUDE.md';
 // The engine is discovered structurally, never listed file-by-file: the engine
 // roots vendor wholesale (a new engine file ships with no edit here) and the
 // machinery roots contribute their top-level non-test .mjs. Both lists live in
-// the engine lib (checks/lib/imports.mjs) — the same definitions the
-// pack-independence check judges imports against, so "what a pack may import"
+// the engine lib (checks/lib/imports.mjs) — the same surface the
+// pack-independence barrier confines pack imports to, so "what a pack may import"
 // and "what every consumer carries" can never drift apart — re-exported here
 // as the vendor-set contract (DESIGN.md). Excluded within the engine roots:
 // tests (*.test.mjs and test/ directories) and *.md — docs at the engine

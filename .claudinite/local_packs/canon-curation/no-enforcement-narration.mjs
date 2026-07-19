@@ -1,6 +1,6 @@
 import { join, dirname } from 'node:path';
-import { finding } from '../../checks/lib/findings.mjs';
-import { matchingLines, ruleIdsIn } from '../../checks/lib/lines.mjs';
+import { finding } from '../../../checks/lib/findings.mjs';
+import { matchingLines, ruleIdsIn } from '../../../checks/lib/lines.mjs';
 
 // A pack's injected prose must not narrate its own enforcement: checks run on
 // their own at every Stop and in CI, and each failure message carries its

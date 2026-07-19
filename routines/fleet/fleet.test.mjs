@@ -8,8 +8,8 @@ import extract from '../../packs/grow_with_claudinite/run_daily/growth-extract-n
 import dedup from '../../packs/grow_with_claudinite/run_daily/growth-dedup-local-instructions.mjs';
 import discoverPacks from '../../packs/grow_with_claudinite/run_daily/growth-discover-packs.mjs';
 import conversationExtract from '../../packs/grow_with_claudinite/run_daily/conversation-extract.mjs';
-import promote from '../../packs/canon-curation/run_daily/growth-promote-to-claudinite.mjs';
-import proseSweep from '../../packs/canon-curation/run_daily/prose-to-checks-sweep.mjs';
+import promote from '../../.claudinite/local_packs/canon-curation/run_daily/growth-promote-to-claudinite.mjs';
+import proseSweep from '../../.claudinite/local_packs/canon-curation/run_daily/prose-to-checks-sweep.mjs';
 
 const REPO = { fullName: 'owner/foo', defaultBranch: 'main' };
 const S = (over = {}) => ({

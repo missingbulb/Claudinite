@@ -36,7 +36,8 @@ pack-contributed content, and where each kind of feature goes (almost never core
   Other packs compose their own separation rules on it by *declaring* it (`requires`) and
   *contributing* a fixed barrier as manifest data (`contributes` — the way `basics` and
   `product-wiki` ship their isolation walls); no pack imports another's code (the
-  `pack-independence` check, a canon-home curation duty).
+  `pack-independence` barrier, contributed the same way by the canon home's own curation local
+  pack — packs-tree segregation is barriers configuration, never bespoke checking code).
 - **[packs/grow_with_claudinite/](packs/grow_with_claudinite/README.md)** — the growth
   lifecycle's member side (extract/dedup/pack-discovery daily tasks; `config.promote: false`
   opts a repo out of the central promote stage) **and the conversation lifecycle**: each merge
@@ -66,7 +67,8 @@ pack-contributed content, and where each kind of feature goes (almost never core
   checks, a fixed isolation barrier, a weekly growth daily task; fingerprinted by
   `product-wiki/product-requirements/README.md` — [packs/product-wiki/README.md](packs/product-wiki/README.md)).
 
-The declaration is **pack-oriented**: a `packs` entry is a pack id, or an entry object carrying that
+The declaration is **pack-oriented**: a `packs` entry is a pack id (a local pack's canonical token
+is namespaced: `local_packs/<name>`), or an entry object carrying that
 pack's own settings — its parameters (`config`), its adoption-interview answers (`answers` — a pack
 may declare the questions its adoption must ask; the unanswered gap surfaces as a mild SessionStart
 note, strict only inside bootstrap), and the rule overrides/acceptances its declaration

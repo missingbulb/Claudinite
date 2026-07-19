@@ -9,8 +9,17 @@
         "retention": "10 days — the recommended rethink window before a captured conversation log is pruned."
       }
     },
-    "claudinite",
-    "canon-curation",
+    "local_packs/claudinite",
+    {
+      "id": "local_packs/canon-curation",
+      "accept": [
+        {
+          "rule": "file-placement",
+          "path": ".claudinite/local_packs/canon-curation/",
+          "reason": "the canon home's curation local pack deliberately shares the checks/ engine lib (findings, lines, context) — the same named cross-cutting concern as the packs/ acceptance; in the home checkout the engine is the repo's own tracked tree, not a consumer mount, so the reach is inherent"
+        }
+      ]
+    },
     {
       "id": "barriers",
       "answers": {
@@ -41,13 +50,6 @@
             "matchUniqueFilenames": false,
             "reason": "core is the engine that runs pack content — it must not name the specific packs it runs (extending.md)",
             "except": [
-              {
-                "path": ".github/workflows/checks-ci.yml",
-                "to": [
-                  "packs/canon-curation"
-                ],
-                "reason": "core CI invokes the promote write-surface gate that #279 relocated into the canon-curation pack (node packs/canon-curation/promote-scope.mjs) — a structural cross-reference like the pack-test globs, pending CI discovering it structurally"
-              },
               {
                 "path": ".github/workflows/README.md",
                 "to": [
@@ -171,6 +173,11 @@
       "rule": "file-placement",
       "path": "routines/fleet/plan.mjs",
       "reason": "the core planner deliberately imports the pack-discovery registry (packs/registry.mjs — core machinery per extending.md, not a specific pack) to enumerate each repo's run_daily tasks; discovery lives under packs/ and the planner under routines/, so the cross-tree reach is inherent and correct, not a misplacement"
+    },
+    {
+      "rule": "file-placement",
+      "path": "routines/fleet/signals.mjs",
+      "reason": "the member-declaration read deliberately imports the one shared id-extractor (packEntryId in packs/registry.mjs — core machinery per extending.md, not a specific pack) so the fleet's activePacks normalization and the engine can never drift on the declaration forms; the cross-tree reach is inherent, the same as the planner's registry import"
     },
     {
       "rule": "file-placement",

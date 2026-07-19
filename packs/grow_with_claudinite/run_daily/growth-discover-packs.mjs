@@ -1,6 +1,6 @@
 // grow_with_claudinite run_daily task: growth-discover-packs — the pack-discovery
-// pipeline, a regular member-scoped unit (promote is the home-scoped one, on
-// canon-curation). The planner picks it up per member on that member's weekly full
+// pipeline, a regular member-scoped unit (the central promote stage is the
+// home-only one). The planner picks it up per member on that member's weekly full
 // sweep; the orchestrator dispatches it like any unit. The worker runs centrally
 // (home session, fleet token): for the member it's handed it manifests the stack,
 // suggests a pack for each unhomed technology, populates it from real usage, and

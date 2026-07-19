@@ -75,4 +75,4 @@ call — is the judgment this task exists for, and its commits land without a re
 - **Never delete a log younger than retention, and never delete anything while `retention_days` is
   unset** — deletion is the ack that both passes happened.
 - **Never touch the shared canon** — writes go to the repo's `.claudinite/local_packs/`, its
-  `main`, its issues, and its logs branch; lifting portable lessons is [promote](../canon-curation/promote.md)'s job.
+  `main`, its issues, and its logs branch; lifting portable lessons is the central promote stage's job.

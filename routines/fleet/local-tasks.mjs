@@ -4,18 +4,11 @@
 // planner assembles a repo's daily work from its declared packs' tasks; for a
 // canon pack the descriptor is on disk in the canon checkout, for a LOCAL pack it
 // must be fetched from the member and imported. This is the one adapter that does
-// that, kept out of the pure planner (which just receives the resulting task list
-// through its `localTasksFor` seam).
-//
-// ⚠️ EXPERIMENTAL — NOT ENABLED BY DEFAULT. Local packs' prose, checks, and skills
-// are the proven, shipped path; running a member's own local-pack DAILY jobs on the
-// fleet is not yet. The daily-run mechanism hasn't been exercised at the load and
-// variety of arbitrary member-authored jobs, so the orchestrator does NOT wire this
-// reader by default (buildWorkPlan's localTasksFor seam is left unset, so no local
-// task is planned — see routines/auto-all-repos-maintenance.md). The code and its
-// tests live here so the path is ready to enable deliberately once it's proven; a
-// project's scheduled work stays a canon-pack run_daily or an out-of-repo routine
-// until then.
+// that, kept out of the pure planner core — which wires it as the DEFAULT
+// `localTasksFor` (plan.mjs), so a declared local pack's daily tasks plan exactly
+// like a canon pack's, no seam wiring needed. Local-pack scheduling is a
+// first-class path (the canon home's own curation tasks ride it nightly); a test
+// injects a fake through the seam, and passing `localTasksFor: null` disables it.
 //
 // TRUST. A descriptor's `gate` is member-authored code that runs in the fleet
 // session, exactly like a canon pack's gate — the difference is provenance only.
@@ -31,8 +24,10 @@
 // imports each descriptor directly, never the pack.mjs that also lists it. The
 // pack id is the pack's directory name (the canon convention, so the member's
 // declaration — which names the id — gates it without a second fetch). The
-// descriptor's `worker` is pack-relative and is rewritten to a member-repo-relative
-// path here, with `workerRepo` set so the orchestrator reads it from the member.
+// descriptor's `worker` is pack-relative — or repo-root-relative with a leading
+// "/" (a worker doc living elsewhere in the member's own tree, e.g. a corpus
+// skill doc in the canon home) — rewritten to a member-repo-relative path here,
+// with `workerRepo` set so the orchestrator reads it from the member.
 
 // Import a self-contained ES-module source string and return its default export.
 // A data: URL needs no temp file or cleanup; a self-contained descriptor (no
@@ -81,8 +76,11 @@ export async function readLocalTasks(gh, fullName, { importModule = importSource
           ...descriptor,
           pack,
           workerRepo: fullName,
-          // pack-relative worker doc -> member-repo-relative path
-          worker: descriptor.worker ? `.claudinite/local_packs/${pack}/${descriptor.worker}` : null,
+          // pack-relative worker doc -> member-repo-relative path; a leading
+          // "/" opts out (repo-root-relative already, just stripped)
+          worker: !descriptor.worker ? null
+            : descriptor.worker.startsWith('/') ? descriptor.worker.slice(1)
+              : `.claudinite/local_packs/${pack}/${descriptor.worker}`,
         });
       } catch {
         // a broken descriptor is skipped — the member's other tasks still plan

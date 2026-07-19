@@ -51,6 +51,13 @@ stamp is the discriminator ([mount/DESIGN.md](../../../mount/DESIGN.md)):
 
 Then, for a covered member (either shape):
 
+- **Declaration normalization** — a local pack's canonical declaration token is namespaced:
+  `local_packs/<name>` ([packs/registry.mjs](../../registry.mjs) `declTokenFor`). Rewrite any **bare**
+  local-pack declaration in the member's `.claudinite-checks.json` to that form: a declared id (string
+  entry, or an entry object's `id`) without the `local_packs/` prefix whose pack lives in the member's
+  own `.claudinite/local_packs/<id>/` gets the prefix; everything else on the entry stays verbatim, and
+  a bare id with no such local pack is a canon declaration — leave it alone. Idempotent, and tracked by
+  the `local-pack-namespace` baseline migration until the fleet converges.
 - **Align** — evaluate the repo against its declared packs' *current* checks (the same engine its Stop
   hook and CI run). Apply a failing check's own `fix` remedy, **never more**; a finding needing
   judgment becomes an issue in the member repo, not an edit.

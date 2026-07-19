@@ -155,16 +155,34 @@ export async function loadPacks(opts) {
   return (await discoverPacks(opts)).packs;
 }
 
+// A local pack's canonical declaration token is namespaced: `local_packs/<id>`
+// — self-documenting in .claudinite-checks.json (a reader sees at a glance the
+// pack lives in the repo's own tree, and a canon id can never be claimed by
+// accident; the discoverPacks shadow guard stays as the backstop). The bare id
+// remains accepted while the fleet migrates (the baselining rewrite + the
+// local-pack-namespace migration track convergence), so packEntryId strips the
+// prefix and every id comparison happens on the bare id.
+export const LOCAL_DECL_PREFIX = 'local_packs/';
+const stripLocalPrefix = (id) =>
+  id.startsWith(LOCAL_DECL_PREFIX) ? id.slice(LOCAL_DECL_PREFIX.length) : id;
+
+// The writer-side inverse: the token a declaration writer records for a pack —
+// namespaced for a local pack, the bare id for a canon one.
+export const declTokenFor = (pack) =>
+  pack.local ? LOCAL_DECL_PREFIX + pack.id : pack.id;
+
 // A `packs` declaration entry is either a plain id string or an entry object
 // `{ id, config?, rules?, accept?, via? }` carrying that pack's own settings
 // (see checks/README.md). This is the one id-extractor every reader shares, so
 // raw-JSON consumers (the SessionStart hooks, the fleet routines) and the
-// engine agree on both shapes. Returns undefined for a malformed entry.
+// engine agree on both shapes — and on both declaration forms: it returns the
+// BARE pack id, stripping a `local_packs/` namespace where one is declared.
+// Returns undefined for a malformed entry.
 export const packEntryId = (entry) =>
   typeof entry === 'string'
-    ? entry
+    ? stripLocalPrefix(entry)
     : entry !== null && typeof entry === 'object' && typeof entry.id === 'string'
-      ? entry.id
+      ? stripLocalPrefix(entry.id)
       : undefined;
 
 // No pack is active by default. Activation is exactly the project's declaration

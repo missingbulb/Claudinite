@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
 import { parseEntries } from './transcript.mjs';
-import { SHARED_SUBDIR } from '../../packs/registry.mjs';
+import { SHARED_SUBDIR, packEntryId } from '../../packs/registry.mjs';
 
 function sh(root, cmd, args, { allowFail = false, input = undefined } = {}) {
   const r = spawnSync(cmd, args, { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, input });
@@ -77,12 +77,15 @@ export const PACK_ENTRY_KEYS = ['id', 'config', 'answers', 'rules', 'accept', 'v
 // holds the known-pack list). On unparsable/misshaped JSON the usable fields fall
 // back to empty so the rest of a sweep still runs, with the error reported.
 //
-// The returned shape is NORMALIZED: `packs` is plain ids, `rules` and `accept`
-// are the top-level and per-entry settings merged (an entry-sourced acceptance
-// carries `pack: <id>` as provenance; conflicting severity overrides are a
-// settings error), and `packConfig` is the per-pack parameter view — each
-// entry's `config`, overlaid on the legacy top-level key. Checks and env
-// machinery read this one shape regardless of which form the file used.
+// The returned shape is NORMALIZED: `packs` is plain BARE ids (a local pack's
+// namespaced `local_packs/<id>` token resolves through packEntryId, so every
+// downstream lookup — packEntries, the packConfig view — keys by the pack's
+// own id whichever form the file used), `rules` and `accept` are the top-level
+// and per-entry settings merged (an entry-sourced acceptance carries
+// `pack: <id>` as provenance; conflicting severity overrides are a settings
+// error), and `packConfig` is the per-pack parameter view — each entry's
+// `config`, overlaid on the legacy top-level key. Checks and env machinery
+// read this one shape regardless of which form the file used.
 export function loadConfig(root) {
   const path = join(root, '.claudinite-checks.json');
   const empty = { packs: [], packEntries: [], rules: {}, accept: [], sharedConstants: [], packConfig: {}, errors: [] };
@@ -110,8 +113,8 @@ export function loadConfig(root) {
   const packEntries = [];
   for (const entry of Array.isArray(raw.packs) ? raw.packs : []) {
     if (typeof entry === 'string') {
-      packs.push(entry);
-      packEntries.push({ id: entry });
+      packs.push(packEntryId(entry));
+      packEntries.push({ id: packEntryId(entry) });
       continue;
     }
     if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) {
@@ -129,7 +132,7 @@ export function loadConfig(root) {
     }
     const badShape = (prop, expected) =>
       errors.push({ what: `"${prop}" on the "${entry.id}" pack entry must be ${expected}`, fix: `fix or remove the entry's "${prop}"` });
-    const normalized = { id: entry.id };
+    const normalized = { id: packEntryId(entry) };
     if (entry.config !== undefined) {
       if (entry.config !== null && typeof entry.config === 'object' && !Array.isArray(entry.config)) normalized.config = entry.config;
       else badShape('config', 'an object of the pack\'s parameters');
@@ -154,7 +157,7 @@ export function loadConfig(root) {
       if (Array.isArray(entry.via) && entry.via.every((v) => typeof v === 'string')) normalized.via = entry.via;
       else badShape('via', 'an array of pack ids (the declaration resolver writes it)');
     }
-    packs.push(entry.id);
+    packs.push(normalized.id);
     packEntries.push(normalized);
   }
 

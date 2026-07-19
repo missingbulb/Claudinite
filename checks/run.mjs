@@ -114,7 +114,10 @@ for (const e of ctx.config.errors) findings.push(configError(e.what, e.fix));
 // a diagnostic instead of silently omitting the pack (and its checks).
 for (const e of packErrors) findings.push(configError(e.what, e.fix));
 // knownIds spans canon AND local packs, so a declared local pack id is valid and
-// the unknown-pack message lists it among the declarable packs.
+// the unknown-pack message lists it among the declarable packs. ctx.config.packs
+// is loadConfig's normalized view — bare ids, a namespaced local_packs/<name>
+// declaration already resolved through packEntryId — so the membership test here
+// compares bare id to bare id whichever form the file used.
 const knownIds = new Set(packs.map((p) => p.id));
 for (const name of ctx.config.packs) {
   if (typeof name === 'string' && !knownIds.has(name)) {

@@ -8,10 +8,10 @@ import growthConfig from './config-check.mjs';
 // hard-won lessons up to the Claudinite canon and prunes them back out once the canon
 // owns them. This pack carries the MEMBER-side stages — extract, dedup, and the weekly
 // pack-discovery pipeline — as ordinary independent run_daily tasks (no barriers). The
-// central stage, promote, rides the canon-curation pack (declared only by the canon
-// home repo); its gate targets exactly the members that declare THIS pack — minus any
-// member whose entry sets config.promote: false (the promotion opt-out; extraction and
-// dedup stay local either way).
+// central promote stage — lifting portable lessons up into the shared canon — is a
+// home-only duty that runs centrally, outside this pack; its gate targets exactly the
+// members that declare THIS pack, minus any member whose entry sets config.promote:
+// false (the promotion opt-out; extraction and dedup stay local either way).
 //
 // The pack also owns the CONVERSATION lifecycle: merge-to-main's capture step pushes
 // each merged session's conversation onto the orphan conversation-logs branch

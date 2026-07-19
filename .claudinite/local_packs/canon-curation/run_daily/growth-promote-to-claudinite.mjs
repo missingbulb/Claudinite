@@ -1,7 +1,9 @@
 // canon-curation run_daily task: growth-promote-to-claudinite — the growth
 // lifecycle's central stage. Reads the changed participating members' local packs,
 // generalizes the portable lessons, and opens a PR against the canon's main.
-// Worker: the co-located promote.md.
+// Worker: the co-located promote.md (pack-relative — this is a LOCAL pack's
+// task, planned by the fleet's default local-pack scheduling and read from this
+// repo, so the descriptor stays self-contained: no imports).
 //
 // "Central, once" is enforced by declaration cardinality, not orchestrator wiring:
 // only the canon home repo declares canon-curation, so the planner emits at most
@@ -15,7 +17,7 @@
 
 export default {
   id: 'growth-promote-to-claudinite',
-  worker: 'packs/canon-curation/promote.md',
+  worker: 'promote.md',
   full_sweep_supported: true,
   smarts: 'high', // portability, dedup-vs-corpus, and routing are the heaviest judgment
 

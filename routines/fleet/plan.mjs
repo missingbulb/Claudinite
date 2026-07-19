@@ -18,6 +18,7 @@ import { loadPacks } from '../../packs/registry.mjs';
 import { packTasks, assembleForRepo } from './registry.mjs';
 import { buildSignals, computeCanonChange } from './signals.mjs';
 import { planRepo } from './gates.mjs';
+import { readLocalTasks } from './local-tasks.mjs';
 
 // For each covered member: build its signal bundle, resolve its applicable tasks
 // (its active packs' run_daily units), and run each gate. Every run:true verdict
@@ -32,14 +33,16 @@ import { planRepo } from './gates.mjs';
 // fleet-facing work (e.g. "did any enrolled member change tonight?") in code,
 // without the planner knowing any pack by name. Planning the canon repo last is what
 // makes the aggregate complete when its gates run.
-// `localTasksFor(repoInfo) -> Promise<task[]>` (optional) supplies each member's
-// OWN local-pack run_daily tasks — the descriptors the canon checkout can't see,
-// read from the member repo over `gh` and tagged with `pack`/`workerRepo`
-// (routines/fleet/local-tasks.mjs). Kept an injected seam so the planner core
-// stays pure: default is no local tasks, so a caller that doesn't supply it (or
-// tests) behaves exactly as before. A member whose local-task read throws is
-// isolated by the same per-repo try/catch as any other probe.
-export async function buildWorkPlan(gh, canonRepo, coveredRepos, canonRepoInfo = null, { localTasksFor } = {}) {
+// `localTasksFor(repoInfo) -> Promise<task[]>` supplies each member's OWN
+// local-pack run_daily tasks — the descriptors the canon checkout can't see,
+// read from the member repo over `gh` and tagged with `pack`/`workerRepo`.
+// The DEFAULT is the real reader (routines/fleet/local-tasks.mjs), so a
+// declared local pack's daily tasks plan exactly like a canon pack's with no
+// wiring — local-pack scheduling is on. The seam stays injectable: tests pass
+// a fake, and an explicit `localTasksFor: null` disables local tasks. A member
+// whose local-task read throws is isolated by the same per-repo try/catch as
+// any other probe.
+export async function buildWorkPlan(gh, canonRepo, coveredRepos, canonRepoInfo = null, { localTasksFor = (r) => readLocalTasks(gh, r.full_name) } = {}) {
   const sinceIso = new Date(Date.now() - 25 * 3600 * 1000).toISOString();
   const weekdayUtc = new Date().getUTCDay();
   const canonChange = await computeCanonChange(gh, canonRepo, sinceIso);

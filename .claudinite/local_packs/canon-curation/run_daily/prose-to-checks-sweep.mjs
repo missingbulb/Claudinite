@@ -2,7 +2,8 @@
 // EXISTING prose for always-testable rules the conversion missed and convert the
 // strongest ones (promote descends the ladder for each new lesson; this works the
 // backlog, so the corpus keeps shedding context over time). Worker: the
-// prose-to-checks skill doc, which owns the method.
+// prose-to-checks skill doc, which owns the method — a repo-root-relative path
+// (leading "/"), since the doc lives in this repo's corpus tree, not this pack.
 //
 // Weekly only — the backlog moves slowly, and each pass reads the whole corpus —
 // so it fires solely on the home repo's full-sweep night. Opens a PR like every
@@ -10,7 +11,7 @@
 
 export default {
   id: 'prose-to-checks-sweep',
-  worker: 'skills/prose-to-checks/SKILL.md',
+  worker: '/skills/prose-to-checks/SKILL.md',
   full_sweep_supported: true,
   smarts: 'high', // judging convertibility and authoring checks + fixtures is heavy judgment
 

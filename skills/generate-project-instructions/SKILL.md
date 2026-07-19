@@ -146,7 +146,8 @@ earns its own bundle (the way the reference project split a general working pack
 extractor-automation pack). Each local pack is a real pack:
 
 - **`pack.mjs`** — `{ id, detect: null, marker: null, prose: 'RULES.md', rules: [...], skills: [...], run_daily: [...] }`.
-  A local pack is declared by hand, never fingerprinted or seeded (`detect`/`marker` stay null); its id
+  A local pack is declared by hand, never fingerprinted or seeded (`detect`/`marker` stay null), as its
+  namespaced token `local_packs/<name>` in `.claudinite-checks.json`; its id
   must be unique and may not shadow a canon pack.
 - **`RULES.md`** — the always-loaded judgment core and the project's concrete values (real
   setup/run/verify commands, real paths, inputs, metrics, invariants). Keep it terse; anything a check
@@ -158,10 +159,10 @@ extractor-automation pack). Each local pack is a real pack:
 - **Skills** (`skills/<name>/SKILL.md`) — the project's activity-scoped procedures, bundled in the pack;
   a local pack may also *require* a canon skill by name.
 
-Local packs' prose, checks, and skills are the proven path. A local pack *can* also declare
-**`run_daily`** tasks, but the fleet's local-pack daily-run path is **experimental and not enabled by
-default** — so keep a project's scheduled work as a canon-pack `run_daily` or an out-of-repo routine
-for now, not a local `run_daily`.
+Every slot is first-class, **`run_daily`** included: the fleet plans a local pack's daily tasks by
+default, gated by the project's declaration exactly like a canon pack's — so project-specific
+scheduled work belongs in a local `run_daily` descriptor (self-contained module, pack-relative
+worker doc), not an out-of-repo routine.
 
 The project's `CLAUDE.md` becomes a thin **routing map** to its local packs (and its genuine design
 docs) — it does **not** `@import` the pack prose; the pack system injects the active local packs'
@@ -171,14 +172,14 @@ docs) — it does **not** `@import` the pack prose; the pack system injects the 
 
 - **Every canon pack seed or refinement → a PR against Claudinite.** Minting or changing a *canon* pack
   is the owner's call, and the PR is that gate — no corpus change lands unattended
-  ([the canon-curation README](../../packs/canon-curation/README.md)). From a consuming repo, never edit the read-only
+  ([the canon-curation README](../../.claudinite/local_packs/canon-curation/README.md)). From a consuming repo, never edit the read-only
   `.claudinite/` mount: open the Claudinite PR when the session can reach that repo; otherwise stage the
   seed as a **local pack** clearly marked as a proposed-canon facet and open a Claudinite issue pointing
   at it, so the promote stage lifts it centrally.
 - **The project's local pack(s) → the project's normal branch/PR**, committed under
   `.claudinite/local_packs/` (tracked project content — the sync hook preserves it, the gitignore
-  re-includes it). Declaring a **local** pack id is valid immediately (the engine discovers local packs
-  from the repo), so the declaration lands in the same PR.
+  re-includes it). Declaring a **local** pack — as `local_packs/<name>` — is valid immediately (the
+  engine discovers local packs from the repo), so the declaration lands in the same PR.
 - **Declare a new *canon* pack** in `.claudinite-checks.json` only after it has merged and the mount
   re-synced — declaring a canon id the mounted registry doesn't know is an unknown-pack settings error;
   a *local* id is never that error. Note a pending canon declaration as a follow-up in the project PR.
