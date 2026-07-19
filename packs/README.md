@@ -17,6 +17,7 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 | [chrome-extension-release](chrome-extension-release/README.md) | single `Release to Chrome Store` stub (opt-in) | 8 | 0 (+ RELEASE contract) |
 | [node](node/README.md) | root package.json | 0 | 2 |
 | [python](python/README.md) | pyproject.toml near root | 0 (2 in its skill) | 3 |
+| [web-speech](web-speech/README.md) | speech API in JS/TS source | 0 (2 in its skill) | 15 |
 | [aws-sam](aws-sam/README.md) | SAM template | 3 | 3 |
 | [google-identity](google-identity/README.md) | declared | 0 (3 in its skill) | 0 |
 | [html](html/README.md) | declared | 0 | 1 |
