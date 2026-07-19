@@ -13,6 +13,10 @@
 //
 // Usage (from the repo root, right after the merge lands):
 //   node capture-log.mjs --issue <n> [--transcript <path>] [--branch <name>] [--session <id>]
+//
+// The session id (CLAUDE_CODE_SESSION_ID, or --session) names the transcript file
+// exactly, so discovery searches every project directory for it — a remote/web
+// session's transcript can land under a slug the git-root path never reproduces.
 
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
@@ -245,10 +249,18 @@ export async function capture({ root, branch, sessionId, bundled, issue, now, re
 
 // --- transcript discovery -----------------------------------------------------
 
-// Claude Code writes session transcripts under ~/.claude/projects/<slug>/, the
-// slug being the project path with every non-alphanumeric character dashed.
-function transcriptDirFor(root) {
-  return join(homedir(), '.claude', 'projects', root.replace(/[^A-Za-z0-9]/g, '-'));
+// Claude Code keeps session transcripts under <config>/projects/, one directory
+// per project. CLAUDE_CONFIG_DIR relocates that config root when set (honor it so
+// discovery follows the harness); otherwise it is ~/.claude.
+function projectsRoot() {
+  return join(process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude'), 'projects');
+}
+
+// The per-project directory slug: the launch cwd path with every non-alphanumeric
+// character dashed. USUALLY equal to the git root path — but not guaranteed, which
+// is why discovery below never trusts it alone.
+function slugFor(root) {
+  return root.replace(/[^A-Za-z0-9]/g, '-');
 }
 
 function newestTranscript(dir) {
@@ -259,6 +271,32 @@ function newestTranscript(dir) {
     const path = join(dir, f);
     const mtime = statSync(path).mtimeMs;
     if (!best || mtime > best.mtime) best = { path, mtime };
+  }
+  return best?.path ?? null;
+}
+
+// Locate this session's transcript. The session id names the file exactly
+// (<sessionId>.jsonl), so search every project directory for it first — that
+// survives the case the slug cannot: a remote/web session whose launch cwd (and
+// thus transcript slug) differs from the git-root path this script derives, which
+// otherwise points at a directory that never existed. Fall back to the slug
+// directory's newest transcript, then to the newest transcript anywhere.
+export function findTranscript({ root, sessionId, projects = projectsRoot() }) {
+  const dirs = existsSync(projects)
+    ? readdirSync(projects, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => join(projects, d.name))
+    : [];
+  if (sessionId) {
+    for (const dir of dirs) {
+      const hit = join(dir, `${sessionId}.jsonl`);
+      if (existsSync(hit)) return hit;
+    }
+  }
+  const bySlug = newestTranscript(join(projects, slugFor(root)));
+  if (bySlug) return bySlug;
+  let best = null;
+  for (const dir of dirs) {
+    const path = newestTranscript(dir);
+    if (path) { const mtime = statSync(path).mtimeMs; if (!best || mtime > best.mtime) best = { path, mtime }; }
   }
   return best?.path ?? null;
 }
@@ -300,15 +338,23 @@ async function main() {
     process.exit(2);
   }
   const root = git(process.cwd(), ['rev-parse', '--show-toplevel']).stdout.trim();
-  const transcript = args.transcript ?? newestTranscript(transcriptDirFor(root));
+  // The discovery key: the session id names the transcript file. Explicit
+  // --session wins; otherwise the harness-set CLAUDE_CODE_SESSION_ID.
+  const sessionId = args.session ?? process.env.CLAUDE_CODE_SESSION_ID;
+  const transcript = args.transcript ?? findTranscript({ root, sessionId });
   if (!transcript || !existsSync(transcript)) {
-    console.error(`no session transcript found${args.transcript ? ` at ${args.transcript}` : ` under ${transcriptDirFor(root)}`}`);
+    console.error(args.transcript
+      ? `no session transcript found at ${args.transcript}`
+      : `no session transcript found for session ${sessionId ?? '(unknown)'} under ${projectsRoot()}`);
     process.exit(1);
   }
-  const sessionId = args.session ?? basename(transcript, '.jsonl');
+  // The identity for delta-keying and naming comes from the file we actually
+  // read (its basename IS its session id), so an explicit --transcript keeps its
+  // own identity rather than inheriting the ambient env session.
+  const resolvedSession = args.session ?? basename(transcript, '.jsonl');
   const streams = [
     parseLines(readFileSync(transcript, 'utf8')),
-    ...sidechainFiles(transcript, sessionId).map((f) => parseLines(readFileSync(f, 'utf8'))),
+    ...sidechainFiles(transcript, resolvedSession).map((f) => parseLines(readFileSync(f, 'utf8'))),
   ];
   const bundled = bundleStreams(streams);
   if (bundled.length === 0) {
@@ -319,14 +365,14 @@ async function main() {
   const result = await capture({
     root,
     branch: args.branch ?? DEFAULT_BRANCH,
-    sessionId,
+    sessionId: resolvedSession,
     bundled,
     issue: Number(args.issue),
     now: new Date().toISOString(),
     redactions: buildRedactionValues(process.env, credentialStoreValues()),
   });
   if (result.name === null) {
-    console.log(`nothing new to capture — session ${sessionId} already captured through ${result.lastTs}`);
+    console.log(`nothing new to capture — session ${resolvedSession} already captured through ${result.lastTs}`);
   } else {
     const delta = result.lastTs ? ` (delta since ${result.lastTs})` : '';
     console.log(`captured ${result.entries} entries${delta} → ${result.name} on ${args.branch ?? DEFAULT_BRANCH}`);

@@ -10,7 +10,7 @@ import { buildContext } from '../../checks/lib/context.mjs';
 import configCheck from './config-check.mjs';
 import {
   parseLines, bundleStreams, sliceAfter, maxTimestamp, scrub, buildRedactionValues,
-  logFilename, parseLogFilename,
+  logFilename, parseLogFilename, findTranscript,
 } from './capture-log.mjs';
 import { renderDialogue, chunkText } from './render-dialogue.mjs';
 
@@ -113,6 +113,38 @@ test('logFilename and parseLogFilename round-trip', () => {
   const parsed = parseLogFilename(name);
   assert.deepEqual(parsed, { capturedAt: '2026-07-19T09:40:00Z', issue: 123, sessionId: 'abc-def' });
   assert.equal(parseLogFilename('README.md'), null);
+});
+
+// --- transcript discovery -----------------------------------------------------
+
+test('findTranscript locates by session id even when the slug directory mismatches', () => {
+  const projects = mkdtempSync(join(tmpdir(), 'claudinite-projects-'));
+  try {
+    // The transcript lives under some slug — NOT the one derived from the repo
+    // root (mimicking a remote session whose launch cwd differs from git root).
+    const wrongSlug = join(projects, '-some-other-launch-path');
+    mkdirSync(wrongSlug);
+    const transcript = join(wrongSlug, 'sess-xyz.jsonl');
+    writeFileSync(transcript, userLine(1, 'hi') + '\n');
+
+    const found = findTranscript({ root: '/home/user/EdFringeNow', sessionId: 'sess-xyz', projects });
+    assert.equal(found, transcript, 'the session id names the file regardless of slug');
+
+    // With no session id and no matching slug dir, it still finds the newest one.
+    const anyFound = findTranscript({ root: '/home/user/EdFringeNow', sessionId: undefined, projects });
+    assert.equal(anyFound, transcript);
+
+    // A wrong session id and no slug match falls back to newest-anywhere, never throws.
+    assert.equal(findTranscript({ root: '/nope', sessionId: 'not-here', projects }), transcript);
+  } finally { rmSync(projects, { recursive: true, force: true }); }
+});
+
+test('findTranscript returns null when there is nothing to find', () => {
+  const projects = mkdtempSync(join(tmpdir(), 'claudinite-projects-'));
+  try {
+    assert.equal(findTranscript({ root: '/x', sessionId: 'whatever', projects }), null);
+    assert.equal(findTranscript({ root: '/x', sessionId: 'whatever', projects: join(projects, 'absent') }), null);
+  } finally { rmSync(projects, { recursive: true, force: true }); }
 });
 
 // --- dialogue rendering -------------------------------------------------------
@@ -244,6 +276,27 @@ test('capture pushes an orphan branch, then a disjoint delta on a second merge',
     const out = sh(work, 'node', [CAPTURE, '--issue', '9', '--transcript', transcript]);
     assert.match(out, /nothing new/i);
     assert.equal(originFiles(origin, 'conversation-logs').filter((f) => f.endsWith('.jsonl')).length, 2);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('capture discovers the transcript by session id when no --transcript is given', () => {
+  const { dir, origin, work } = makeCaptureFixture();
+  try {
+    // Lay the transcript under <config>/projects/<slug>/<session>.jsonl, with a
+    // slug that does NOT match the work-repo path — the remote/web failure mode.
+    const configDir = join(dir, 'config');
+    const projectDir = join(configDir, 'projects', '-launched-somewhere-else');
+    mkdirSync(projectDir, { recursive: true });
+    writeFileSync(join(projectDir, 'sess-env.jsonl'),
+      [userLine(1, 'discovered by session id'), assistantLine(2, 'ok')].join('\n') + '\n');
+
+    sh(work, 'node', [CAPTURE, '--issue', '11'],
+      { env: { ...process.env, CLAUDE_CONFIG_DIR: configDir, CLAUDE_CODE_SESSION_ID: 'sess-env' } });
+
+    const files = originFiles(origin, 'conversation-logs');
+    const log = files.find((f) => f.endsWith('--sess-env.jsonl'));
+    assert.ok(log && log.includes('--issue-11--'), `expected an issue-11 log for sess-env, got: ${files}`);
+    assert.match(sh(origin, 'git', ['show', `conversation-logs:${log}`]), /discovered by session id/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
