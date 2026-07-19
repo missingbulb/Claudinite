@@ -2,7 +2,7 @@
 
 The pack-discovery pipeline, run as an ordinary **`run_daily` task** — the planner picks it up per
 member on that member's **weekly full sweep**, and the orchestrator dispatches it like any other unit
-(member-scoped, where `growth-promote-to-claudinite` is home-scoped via [canon-curation](../../.claudinite/local_packs/canon-curation/README.md)). For the member it's
+(member-scoped, where the central promote stage is home-only). For the member it's
 handed, it runs the whole pipeline end to end — **manifest → suggest → populate → open PR** — as one
 process. It is Claudinite-internal; consuming repos don't vendor or `@import` it.
 
@@ -107,7 +107,7 @@ For each candidate, **author a populated pack** by distilling from how the membe
 technology — its build/toolchain config, CI and release workflows, packaging/signing scripts, relevant
 source, and any gotchas already in its docs. Apply [generate-project-instructions](../../skills/generate-project-instructions/SKILL.md)'
 method (don't re-derive it): strip the origin project, keep what's true for the technology, and descend
-the promotion ladder ([item-routing.md](../../.claudinite/local_packs/canon-curation/item-routing.md) / [checks/DESIGN.md](../../checks/DESIGN.md)) —
+the promotion ladder ([checks/DESIGN.md](../../checks/DESIGN.md)) —
 a rule a deterministic check can carry becomes the **check plus a fixture test** (it fires on a
 violating input, stays quiet on a clean one), a procedure with a nameable trigger becomes a skill the
 pack requires, and only signature-less judgment lands as `RULES.md` prose. Ground and cite every rule;
@@ -150,8 +150,8 @@ it and why.
   ungroundable rule is not written. The pack may be small; it may not be invented.
 - **Never open an empty stub to fill later** — populate it now (step 3).
 - **Never re-author an existing pack** — a stub counts as a home, and an open pack-authoring PR counts as
-  in progress. Dedup against both; a pack that exists is [promote](../../.claudinite/local_packs/canon-curation/promote.md)'s to fill, not this task's
-  to replace.
+  in progress. Dedup against both; a pack that exists is the central promote stage's to fill, not this
+  task's to replace.
 - **Never author for a `vestigial` technology** — declared-but-unused is not a real sighting.
 - **Never exceed the bounded write surface** — per pack, only its new `packs/<tech>/` directory (and any
   check's registration + fixture) plus the index rows, in its own PR. Never alter the member or an

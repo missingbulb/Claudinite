@@ -5,9 +5,10 @@ lessons up to the shared Claudinite canon, and in pruning its local packs once t
 Seeded by default (`--init` + the one-time `grow-with-claudinite-seed` baseline migration for the
 existing fleet), and **opt-out by removal**: baselining never re-adds it.
 
-The lifecycle's full narrative — the three stages, why there are no barriers between them, the
-cadence, and the review gates — lives with its central stage, in the
-[canon-curation pack](../../.claudinite/local_packs/canon-curation/README.md). This pack carries the **member-side** stages.
+This pack carries the **member-side** stages of the growth lifecycle: capturing a repo's own
+lessons into its local packs, and pruning them once the shared canon covers them. The central
+**promote** stage — which lifts portable lessons up into the shared canon — is a home-only duty
+that runs centrally, not a member-side task, so it lives outside this pack.
 
 Its scheduled work is three `run_daily` tasks, all ordinary, independent planner units:
 
@@ -17,13 +18,9 @@ Its scheduled work is three `run_daily` tasks, all ordinary, independent planner
 | `growth-dedup-local-instructions` ([dedup.md](dedup.md)) | canon changed, or the project's local packs changed (or weekly) | a PR against the project's `main` |
 | `growth-discover-packs` ([discover-packs.md](discover-packs.md)) | the member's weekly full sweep | one PR per authored pack, against Claudinite's canon |
 
-The central stage — `growth-promote-to-claudinite`, which reads the enrolled members' local packs,
-generalizes the portable lessons, and opens a PR against Claudinite's canon — is **not** this
-pack's: it rides [canon-curation](../../.claudinite/local_packs/canon-curation/README.md) — the canon home's own local
-pack, declared only by the home repo — and its gate targets exactly the members that declare *this* pack. A member that wants the
-local stages without contributing upstream **opts out of promotion** on its own entry —
-`{ "id": "grow_with_claudinite", "config": { "promote": false } }` — and the promote gate skips
-it (absent or `true` = participate).
+A member that wants the local stages without contributing lessons upstream **opts out of
+promotion** on its own entry — `{ "id": "grow_with_claudinite", "config": { "promote": false } }`
+— and the central promote stage skips it (absent or `true` = participate).
 
 ## The conversation lifecycle — capture at merge, extract in a daily task, retention
 

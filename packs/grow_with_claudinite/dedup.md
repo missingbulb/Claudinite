@@ -1,8 +1,8 @@
 # Growth — dedup local packs against the canon (per member)
 
-The [growth lifecycle](../../.claudinite/local_packs/canon-curation/README.md)'s pruning stage, this pack's daily task: reconcile a project's **local packs** against the shared **canon** it consumes (Claudinite, vendored read-only), pruning local items — a pack's prose line, or a whole local check — the canon now covers. It opens a PR against the project's default branch for the owner to approve. Often there's nothing to prune, and that's fine.
+The growth lifecycle's pruning stage, this pack's daily task: reconcile a project's **local packs** against the shared **canon** it consumes (Claudinite, vendored read-only), pruning local items — a pack's prose line, or a whole local check — the canon now covers. It opens a PR against the project's default branch for the owner to approve. Often there's nothing to prune, and that's fine.
 
-> This routine only prunes local packs against the canon; lifting local items up into the canon is [promote](../../.claudinite/local_packs/canon-curation/promote.md)'s job.
+> This routine only prunes local packs against the canon; lifting local items up into the canon is the central promote stage's job.
 
 ## Conventions used in this doc
 
@@ -13,7 +13,7 @@ The [growth lifecycle](../../.claudinite/local_packs/canon-curation/README.md)'s
 
 ## What it does: prune / rephrase local packs the canon now covers
 
-When the canon has **absorbed** a practice a local doc still carries — most often an item [promote](../../.claudinite/local_packs/canon-curation/promote.md) lifted up and the canon now owns — the local copy is redundant. This routine:
+When the canon has **absorbed** a practice a local doc still carries — most often an item the central promote stage lifted up and the canon now owns — the local copy is redundant. This routine:
 
 - **Removes** the now-duplicated local item, since the canon is the single source of truth for portable rules.
 - **Rephrases** a local procedure when the canon's wording of the same idea has changed, so the local packs stay consistent with the canon they point at.
