@@ -8,14 +8,14 @@ import captureReleasedOnPagehide from './capture-pagehide-teardown.mjs';
 // source is the scope, so the fixtures run in mode 'all'.
 const run = (root) => captureReleasedOnPagehide.run(buildContext({ root, mode: 'all' }));
 
-test('web-speech-capture-released-on-pagehide: getUserMedia with no pagehide anywhere is advisory', () => {
+test('web-speech-capture-released-on-pagehide: getUserMedia with no pagehide anywhere is blocking', () => {
   const root = makeRepo({ changed: {
     'src/mic.js': `const s = await navigator.mediaDevices.getUserMedia({ audio: true });\ns.getTracks().forEach((t) => t.stop());\n`,
   } });
   try {
     const findings = run(root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].severity, 'advisory');
+    assert.equal(findings[0].severity, 'blocking');
     assert.equal(findings[0].file, 'src/mic.js');
     assert.equal(findings[0].line, 1);
     assert.match(findings[0].fix, /pagehide/);
