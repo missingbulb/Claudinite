@@ -179,6 +179,15 @@ reviewed once instead of re-litigated every session. An acceptance a pack's adop
 lives on that pack's `packs` entry, so its provenance — which declaration required which
 exception — is the file's own structure.
 
+An acceptance is a **check-the-world** instrument: a persistent, committed exemption a future
+sweep keeps re-finding and must be told to ignore. It is the wrong tool for a **check-the-work**
+finding — a conversation- or branch-scoped rule (e.g. `feature-requirements-first`) whose finding
+a fresh session wouldn't even re-raise; accepting one leaves a permanent suppression for a
+one-session artifact. Author a check-the-work rule to be **satisfiable by fixing the work, or to
+self-skip** when its precondition isn't met (the spec it enforces against isn't in the repo, say):
+a finding no correct work can clear forces the wrong remedy — an accept, or a post-hoc rebase —
+so it's a bug in the rule, not a candidate for an acceptance.
+
 **The finding is the instruction.** This is the context economy of the whole design: the rule's
 teaching text moves out of always-loaded context and into the failure message, paying its token
 cost only on violation, in the session that violated it, pointed at the exact spot. Every
