@@ -52,8 +52,14 @@ general names so other standards reuse them as-is. When in doubt, prefix.
 - The zip's contents come from a single shipping-set source of truth in `dev/build/release/`,
   drift-guarded by a test — nothing dev/test-only ships, and a renamed runtime file fails the
   build rather than silently dropping out of the package.
-- A release is GitHub Release **`vX.Y.Z`**, tagged at the released commit, with the zip as its
-  only asset and auto-generated notes.
+- A release is GitHub Release **`vX.Y.Z`**, tagged at the released commit, with auto-generated notes
+  and **two** assets built from the one tested tree, differing only in the injected `API_BASE_URL`:
+  the headline **`<zip>`** (the permanent `…/releases/latest/download/<zip>` URL) is built with
+  `API_BASE_URL` **cleared**, so it keeps the committed **dev** default — the downloadable build is
+  dev, never prod; **`<zip>-prod.zip`** carries the injected prod `API_BASE_URL` and is the store's
+  source of truth (the publish job downloads it). So **only the store submission is prod-pointed**;
+  the signing key + client id are injected into both. (A repo with no `API_BASE_URL` — no backend —
+  produces two byte-identical zips; the split is a no-op there.)
 
 **Workflow** — **one** orchestrator per repo, [`chrome-extension-release.yml`](stubs/workflows/chrome-extension-release.yml), named exactly
 `Release to Chrome Store`. It owns only the triggers; its three `if:`-guarded jobs each call a **local**
@@ -64,8 +70,8 @@ orchestrator's `name:` — so collapsing to one entry point loses no per-operati
 
 | job (trigger) | reusable workflow it calls — what it does |
 |---|---|
-| `create-package` (push to `main`; dispatch `mode: package`) | `chrome-extension-create-package.yml` — version guard (a clean no-op unless the manifest version was bumped, so ordinary pushes don't cut a release) → full test gate → build → GitHub Release |
-| `publish` (dispatch `mode: publish` — the default — with `tag`, `auto_publish`) | `chrome-extension-publish-store.yml` — download the release zip → upload via the store API (publish to users unless `auto_publish: false` → dashboard draft) → refresh the `/privacy/` page (via the `deploy-privacy-page.yml` reusable) |
+| `create-package` (push to `main`; dispatch `mode: package`) | `chrome-extension-create-package.yml` — version guard (a clean no-op unless the manifest version was bumped, so ordinary pushes don't cut a release) → full test gate → build the dev headline `<zip>` + the prod `<zip>-prod.zip` → GitHub Release |
+| `publish` (dispatch `mode: publish` — the default — with `tag`, `auto_publish`) | `chrome-extension-publish-store.yml` — download the prod `<zip>-prod.zip` (falls back to `<zip>` for pre-split releases) → upload via the store API (publish to users unless `auto_publish: false` → dashboard draft) → refresh the `/privacy/` page (via the `deploy-privacy-page.yml` reusable) |
 | `daily` (schedule `30 0 * * *`; dispatch `mode: daily`) | `chrome-extension-daily-release.yml` — shipped-file diff vs the latest release tag → patch bump pushed to `main` → calls the two reusable workflows above |
 
 The `create-package` job triggers on **every** push to `main` (no per-repo manifest path in the
