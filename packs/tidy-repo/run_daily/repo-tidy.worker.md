@@ -8,7 +8,9 @@ pack's single-object skill; this worker runs them across the targets and records
 ## 1. Branches — assess only
 
 For each branch in `targets.branches`, run the
-[single-branch-status](../../../skills/single-branch-status/SKILL.md) skill for its verdict. **Never
+[single-branch-status](../../../skills/single-branch-status/SKILL.md) skill for its verdict. (The
+plan already drops the default branch and the orphan `conversation-logs` log stream, so
+`targets.branches` never carries them — don't assess them.) **Never
 delete, push, or merge.** Collect: one line each for the branches with **genuine unmerged work**
 (`` `branch` — what it carries``); collapse the rest into one `Safe to delete: N — a, b, c` line; flag
 any **orphaned** branch for a human. Recommend deletions; never perform them.
