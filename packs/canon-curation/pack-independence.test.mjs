@@ -72,28 +72,17 @@ test('a dangling specifier and a test file are both out of scope', () => {
   cleanup(root);
 });
 
-test('local packs: sibling local packs and vendored pack internals are barred; the vendored engine surface and project code are not', () => {
+test('a canon-home constraint: files outside packs/ (a consumer\'s tree, machinery roots) are out of scope', () => {
   const root = makeRepo({
     base: {
-      '.claudinite/local_packs/mine/check.mjs': [
-        "import { ok } from '../../shared/checks/lib/findings.mjs';", // engine surface — allowed
-        "import { own } from './lib.mjs';", // own pack — allowed
-        "import { app } from '../../../src/util.mjs';", // the project's own code — not this rule's business
-        "import { sib } from '../other/check.mjs';", // sibling local pack — barred
-        "import { eng } from '../../shared/packs/provider/engine.mjs';", // vendored pack internals — barred
-        '',
-      ].join('\n'),
-      '.claudinite/local_packs/mine/lib.mjs': 'export const own = 1;\n',
-      '.claudinite/local_packs/other/check.mjs': 'export const sib = 1;\n',
-      '.claudinite/shared/checks/lib/findings.mjs': 'export const ok = 1;\n',
-      '.claudinite/shared/packs/provider/engine.mjs': 'export const eng = 1;\n',
-      'src/util.mjs': 'export const app = 1;\n',
+      // Not pack code: nothing here is scanned, whatever it imports.
+      'packs/registry.mjs': "import { x } from '../migrations/registry.mjs';\n",
+      'src/util.mjs': "import { y } from '../packs/provider/engine.mjs';\n",
+      'packs/provider/engine.mjs': 'export const y = 1;\n',
+      'migrations/registry.mjs': 'export const x = 1;\n',
     },
   });
-  const findings = run(root);
-  assert.equal(findings.length, 2);
-  assert.ok(findings.some((f) => /local_packs\/other/.test(f.what)));
-  assert.ok(findings.some((f) => /packs\/provider/.test(f.what)));
+  assert.deepEqual(run(root), []);
   cleanup(root);
 });
 
@@ -127,7 +116,9 @@ const OUTLAWED = [
 ];
 
 test('check-the-work: the rule commit precedes each misuse-fix commit on the log', (t) => {
-  const ruleLog = git('log', '--follow', '--diff-filter=A', '--format=%H', '--', 'packs/basics/pack-independence.mjs');
+  // --follow tracks the file across its relocation into the canon-curation
+  // pack, so the oldest A commit is the rule's original landing.
+  const ruleLog = git('log', '--follow', '--diff-filter=A', '--format=%H', '--', 'packs/canon-curation/pack-independence.mjs');
   const ruleCommit = ruleLog?.trim().split('\n').filter(Boolean).at(-1);
   if (!ruleCommit) return t.skip('history unavailable (shallow clone or detached tree)');
   for (const { file, needle } of OUTLAWED) {

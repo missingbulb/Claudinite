@@ -60,7 +60,9 @@ pack's code, and never a canon-internal tree (`migrations/`, `routines/`): the v
 a pack only when declared and ships no canon-internal tree at all, so such an import crashes
 every consumer that vendors the importer without its target. A pack that wants another pack's
 *abilities* declares the dependency (`requires`) and passes **configuration**; a helper both
-sides need moves into `checks/lib`. Enforced by the baseline `pack-independence` check.
+sides need moves into `checks/lib`. Enforced canon-side by the `pack-independence` check — a
+home-repo curation duty, since the `packs/` tree it polices exists only here — with the vendor
+writer's coherence guard holding the same invariant at vendoring time on consumers' behalf.
 
 Activation is the project's declaration in `.claudinite-checks.json` — **no pack runs undeclared,
 the baseline included.** A technology pack carries a `detect` fingerprint so `--init` seeds it into a

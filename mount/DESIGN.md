@@ -99,7 +99,7 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    contributes to the barriers mechanism pack** (manifest data under `contributes`; the baseline
    `requires` barriers, so the mechanism rides everywhere the baseline is declared) — the
    declaration-and-configuration composition pattern packs use with each other, never a
-   cross-pack code import (the baseline `pack-independence` check) — universal via the
+   cross-pack code import (the canon-side `pack-independence` check) — universal via the
    baseline, with no per-project barriers config to maintain; its `gateDir` keeps it inert
    until the vendored mount exists, so it fires neither in the canon repo nor in pre-flip
    consumers.

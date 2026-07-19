@@ -1,4 +1,4 @@
-// Pack independence (extending.md; the baseline `pack-independence` check):
+// Pack independence (extending.md; the canon-side `pack-independence` check):
 // packs no longer import each other's code — a fixed folder-barrier is now
 // CONTRIBUTED as manifest data (`requires` the mechanism pack +
 // `contributes` on pack.mjs; the engine builds the rule) and the shared
@@ -12,9 +12,11 @@
 // barrier by importing the shared engine, convert each to the contribution
 // shape — move the barrier object (id, edges, description, why, doc,
 // crossingExcuse, gateDir) onto the local pack's manifest under
-// `contributes` and add the mechanism pack to its `requires`; the
-// pack-independence check names every remaining crossing import. Consumers
-// with no such local packs need nothing.
+// `contributes` and add the mechanism pack to its `requires`. A local pack
+// still importing the removed export fails loudly at pack discovery (the
+// runner's fail-soft config finding names the broken manifest) — that
+// diagnostic is the member-side signal. Consumers with no such local packs
+// need nothing.
 //
 // retire: 'auto' — the durable enforcement is the check, which every member
 // runs from its own snapshot; this record only carries the one-time

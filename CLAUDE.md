@@ -35,8 +35,8 @@ pack-contributed content, and where each kind of feature goes (almost never core
   any language, comments and docs included), declared per-project as `config` on the repo's barriers pack entry.
   Other packs compose their own separation rules on it by *declaring* it (`requires`) and
   *contributing* a fixed barrier as manifest data (`contributes` — the way `basics` and
-  `product-wiki` ship their isolation walls); no pack imports another's code (the baseline
-  `pack-independence` check).
+  `product-wiki` ship their isolation walls); no pack imports another's code (the
+  `pack-independence` check, a canon-home curation duty).
 - **[packs/grow_with_claudinite/](packs/grow_with_claudinite/README.md)** — the growth
   lifecycle's member side (extract/dedup/pack-discovery daily tasks; `config.promote: false`
   opts a repo out of the central promote stage) **and the conversation lifecycle**: each merge
