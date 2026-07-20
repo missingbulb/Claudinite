@@ -46,8 +46,10 @@ lists feed the set); run
 \`node mount/apply-vendor.mjs --target <scratch> --ref <verified remote head sha>\`.
 The scratch now holds \`.claudinite/shared/**\` and the stamped declaration.
 
-**2. Land ONE commit** on the member (delivery-aware: \`push\` -> default
-branch; \`pr\` -> the maintenance branch/PR), containing exactly:
+**2. Land ONE commit** on the member (delivery-aware — both \`push\` and \`pr\`
+land on the \`claudinite/maintenance\` branch and its PR: \`push\` arms
+auto-merge, \`pr\` leaves it for review; never a direct commit to the default
+branch), containing exactly:
 - every \`scratch/.claudinite/shared/**\` file, same paths;
 - the stamped \`.claudinite-checks.json\` from the scratch;
 - \`.claude/settings.json\` edited in place (never touching the member's own

@@ -11,11 +11,13 @@
 // a member already on the canonical shape stages nothing and gets no commit.
 //
 // Delivery honors the member's `.claudinite-checks.json` `maintenance.delivery`
-// (default `push`): `push` commits to the default branch; `pr` commits to the stable
-// `claudinite/maintenance` branch and ensures its one open PR; anything else commits
-// nothing and opens an issue naming it.
+// (default `push`). BOTH modes land on the stable `claudinite/maintenance` branch and
+// its one open PR — never a direct commit to the default branch: `pr` leaves that PR
+// for the owner to review; `push` arms GitHub auto-merge on it, so it lands
+// automatically once the repo's checks pass (no run ever blocks on CI). Anything else
+// commits nothing and opens an issue naming it.
 //
-// The pr lane regenerates, never reconciles (#332): the desired end-state is
+// Both lanes regenerate, never reconcile (#332): the desired end-state is
 // always computed against the DEFAULT branch (the truth being migrated), never
 // the maintenance branch's own stale copy; writes the branch already carries are
 // dropped so quiet nights add no commits; and each run first refreshes the
@@ -31,7 +33,10 @@
 //   io.commit(repo, branch, files, message)                      (push_files — files:[{path,content}])
 //   io.remove(repo, branch, path, message)    -> boolean         (delete_file; tolerates absent)
 //   io.hasOpenPr(repo, headBranch)            -> boolean         (list_pull_requests)
-//   io.openPr(repo, head, base, title, body)                     (create_pull_request)
+//   io.openPr(repo, head, base, title, body)  -> prNumber        (create_pull_request)
+//   io.enableAutoMerge(repo, prNumber)                           (enable_pr_auto_merge —
+//                                                arms native auto-merge; the `push` lane's
+//                                                land-once-checks-pass, never blocking)
 //   io.openIssue(repo, title, body)                              (issue_write create)
 //   io.updateBranchFromBase(repo, headBranch)  [optional]        (update_pull_request_branch
 //                                                on its open PR; throws on conflict)
@@ -95,53 +100,63 @@ export async function applyToRepo(io, fullName, migrations) {
     return { ids: [], note: `${fullName}: unrecognized delivery "${delivery}" — opened an issue, applied nothing` };
   }
 
-  const branch = delivery === 'pr' ? MAINT_BRANCH : defaultBranch;
+  // Both deliveries land on the stable `claudinite/maintenance` branch and its one
+  // PR — never a direct commit to the default branch. `pr` leaves that PR for the
+  // owner to review; `push` arms GitHub auto-merge on it, so it lands automatically
+  // once the repo's checks pass (the run never blocks on CI). How strictly "once
+  // checks pass" holds depends on the repo requiring its checks (branch protection);
+  // with none required, GitHub lands the PR as soon as it's mergeable.
   const notes = [];
-  if (delivery === 'pr') {
-    await io.ensureBranch(fullName, MAINT_BRANCH, defaultBranch);
-    // Refresh the branch from base BEFORE staging, so the diff below sees the
-    // branch's true tip and the eventual merge isn't stale-based (#332). A
-    // conflict is the owner's to see, never resolved here.
-    if (io.updateBranchFromBase && (await io.hasOpenPr(fullName, MAINT_BRANCH))) {
-      try { await io.updateBranchFromBase(fullName, MAINT_BRANCH); }
-      catch (e) { notes.push(`maintenance branch could not update from base: ${e.message}`); }
-    }
-  }
 
   // Desired end-state is ALWAYS computed against the default branch — the truth
   // being migrated — never the maintenance branch's own copy (#332).
   const staged = await stageMemberWrites(io, fullName, defaultBranch, migrations);
-  if (!staged) return { ids: [], note: notes.length ? `${fullName}: ${notes.join('; ')}` : undefined };
+  if (!staged) return { ids: [], note: undefined };
 
+  await io.ensureBranch(fullName, MAINT_BRANCH, defaultBranch);
+  // Refresh the branch from base before the diff below and the eventual merge, so a
+  // long-open PR isn't merged stale-based (#332). A conflict is the owner's to see,
+  // never resolved here.
+  if (io.updateBranchFromBase && (await io.hasOpenPr(fullName, MAINT_BRANCH))) {
+    try { await io.updateBranchFromBase(fullName, MAINT_BRANCH); }
+    catch (e) { notes.push(`maintenance branch could not update from base: ${e.message}`); }
+  }
+
+  // Drop writes the branch already carries, so an unmerged PR doesn't collect an
+  // identical commit every night.
   let files = [...staged.files].map(([path, content]) => ({ path, content }));
   let deletes = [...staged.deletes];
-  if (delivery === 'pr') {
-    // Drop writes the branch already carries, so an unmerged PR doesn't collect
-    // an identical commit every night.
-    const pending = [];
-    for (const f of files) {
-      if ((await io.read(fullName, f.path, MAINT_BRANCH)) !== f.content) pending.push(f);
-    }
-    files = pending;
-    const pendingDeletes = [];
-    for (const path of deletes) {
-      if ((await io.read(fullName, path, MAINT_BRANCH)) !== null) pendingDeletes.push(path);
-    }
-    deletes = pendingDeletes;
-    if (!files.length && !deletes.length) {
-      return { ids: [], note: notes.length ? `${fullName}: ${notes.join('; ')}` : undefined };
-    }
+  const pending = [];
+  for (const f of files) {
+    if ((await io.read(fullName, f.path, MAINT_BRANCH)) !== f.content) pending.push(f);
+  }
+  files = pending;
+  const pendingDeletes = [];
+  for (const path of deletes) {
+    if ((await io.read(fullName, path, MAINT_BRANCH)) !== null) pendingDeletes.push(path);
+  }
+  deletes = pendingDeletes;
+  if (!files.length && !deletes.length) {
+    return { ids: [], note: notes.length ? `${fullName}: ${notes.join('; ')}` : undefined };
   }
 
-  if (files.length) await io.commit(fullName, branch, files, 'Apply Claudinite migrations');
+  if (files.length) await io.commit(fullName, MAINT_BRANCH, files, 'Apply Claudinite migrations');
   for (const path of deletes) {
-    await io.remove(fullName, branch, path, `Apply Claudinite migrations: remove ${path}`);
+    await io.remove(fullName, MAINT_BRANCH, path, `Apply Claudinite migrations: remove ${path}`);
   }
-  if (delivery === 'pr' && !(await io.hasOpenPr(fullName, MAINT_BRANCH))) {
-    await io.openPr(
+  if (!(await io.hasOpenPr(fullName, MAINT_BRANCH))) {
+    const prNumber = await io.openPr(
       fullName, MAINT_BRANCH, defaultBranch, 'Claudinite maintenance',
-      'Automated Claudinite maintenance (migrations + baselining). Amended in place each run; never auto-merged.',
+      delivery === 'push'
+        ? 'Automated Claudinite maintenance (migrations + baselining). Amended in place each run; auto-merges once this repo\'s checks pass.'
+        : 'Automated Claudinite maintenance (migrations + baselining). Amended in place each run; left for your review.',
     );
+    if (delivery === 'push') {
+      // Arm GitHub's native auto-merge (non-blocking): the run never waits for CI.
+      // If the repo hasn't enabled auto-merge, the PR simply stays open for review.
+      try { await io.enableAutoMerge(fullName, prNumber); }
+      catch (e) { notes.push(`auto-merge could not be armed (PR left for review): ${e.message}`); }
+    }
   }
   notes.unshift(`applied ${[...staged.ids].join(', ')} (${delivery})`);
   return { ids: [...staged.ids], note: `${fullName}: ${notes.join('; ')}` };

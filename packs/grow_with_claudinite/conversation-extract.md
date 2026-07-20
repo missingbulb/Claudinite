@@ -15,12 +15,13 @@ tool_use/tool_result pairs behind wall-time numbers.
 ## Conventions used in this doc
 
 - **Default branch.** `main` stands for the repo's default branch — substitute whatever it uses.
-- **Access split — local git for the repo, MCP for the issue API.** The `conversation-logs` branch
-  and its files, the `.claudinite/local_packs/` commit, and the retention prune are all **plain git
-  in this repo's checkout** (`git fetch`/`show`/`rm`/`push`) — the branch is *in this repo*, so no
-  MCP and no cross-repo access is involved, exactly as `growth-extract` reads `git log` and commits
-  to `main`. Only posting the dialogue and the tracking-issue log go through the session's GitHub
-  MCP tools (`mcp__github__add_issue_comment`) — the issue API isn't a git operation.
+- **Access split — local git for repo content, MCP for PRs and the issue API.** Reading the
+  `conversation-logs` branch and its files, staging the `.claudinite/local_packs/` lesson onto a
+  branch, and the retention prune are all **plain git in this repo's checkout**
+  (`git fetch`/`show`/`rm`/`push`) — the branch is *in this repo*, so no cross-repo access is
+  involved, exactly as `growth-extract` reads `git log` and stages its lessons. Opening the lesson
+  PR and arming its auto-merge, posting the dialogue, and the tracking-issue log go through the
+  session's GitHub MCP tools (`mcp__github__*`) — none of those is a plain-git operation.
 - **The project's local packs.** Everything under `.claudinite/local_packs/` — the project's own
   packs (the canon home repo's own is `.claudinite/local_packs/claudinite/`); never the read-only
   mounted canon elsewhere under `.claudinite/`.
@@ -37,10 +38,13 @@ tool_use/tool_result pairs behind wall-time numbers.
    several days): read it (`git show origin/conversation-logs:<file>`) and run the
    extracting-lessons method over it — including the wall-time/efficiency analysis, measured from
    the log's own timestamps, never hand-waved.
-4. **Route, commit, and post.** Fold each keeper into the repo's **own local packs**
+4. **Route, land, and post.** Fold each keeper into the repo's **own local packs**
    (`.claudinite/local_packs/`) at the local promotion ladder's strongest mechanism, exactly as
-   extracting-lessons.md prescribes — one commit to `main` for the whole run, direct (no per-run
-   PR, same rationale as [extract.md](extract.md)). For each rule that actually landed, render its
+   extracting-lessons.md prescribes — landing the whole run through **one auto-merging PR** (title
+   `Claudinite growth: conversation extract`, its commit referencing the worked issue so the
+   `task-lifecycle` gate passes), armed for auto-merge the same way [extract.md](extract.md)
+   delivers: GitHub squash-merges it once the repo's checks pass, with no human review. For each
+   rule that actually landed, render its
    source log's dialogue — `node packs/grow_with_claudinite/render-dialogue.mjs
    <(git show origin/conversation-logs:<file>) --max-chars 60000` — and post it via
    `add_issue_comment` on the issue named in the log's filename (`--issue-<n>--`), one comment per
@@ -63,7 +67,7 @@ comment (via `add_issue_comment`) naming what changed; a run that changed nothin
 ## Run on a capable model
 
 Whether a lesson clears the bar — and whether the hindsight pass should overturn a fresh-pass
-call — is the judgment this task exists for, and its commits land without a review gate. Its
+call — is the judgment this task exists for, and its PR auto-merges without a human review gate. Its
 `smarts: high` names the tier; run it there.
 
 ## What this task must never do
@@ -74,5 +78,5 @@ call — is the judgment this task exists for, and its commits land without a re
   size cap.
 - **Never delete a log younger than retention, and never delete anything while `retention_days` is
   unset** — deletion is the ack that both passes happened.
-- **Never touch the shared canon** — writes go to the repo's `.claudinite/local_packs/`, its
-  `main`, its issues, and its logs branch; lifting portable lessons is the central promote stage's job.
+- **Never touch the shared canon** — writes go to the repo's own `.claudinite/local_packs/` (via an
+  auto-merging PR), its issues, and its logs branch; lifting portable lessons is the central promote stage's job.

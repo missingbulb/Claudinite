@@ -135,16 +135,19 @@ async function readPacksDeclaration(gh, fullName) {
 
 // Commits that are fleet/CI housekeeping rather than genuine project work: a
 // bot-authored commit (a `[bot]` login — CI/automation data refreshes or
-// auto-release version bumps), an explicit `[skip ci]` marker, or a baselining/seed
-// commit
-// (the nightly maintenance's own writes). Excluding these from `substantiveChange`
-// stops the growth tasks (and repo-tidy) from self-triggering on the fleet's own
-// maintenance commits — the feedback loop where last night's baselining commit fires
-// tonight's growth-extract/dedup/tidy on a repo that has no new lesson or landed work.
-// The baselining worker writes a subject-initial `Baseline:` / `Baselining:` (mount +
-// wiring refresh), `Claudinite baseline…`, or a `seed default-on` commit — match them
-// all, subject-anchored so a real "baseline benchmark" feature commit still counts.
-const HOUSEKEEPING_MESSAGE = /\[skip ci\]|(^|\n)\s*baselin(e|ing)\b|claudinite baselin|seed default-on/i;
+// auto-release version bumps), an explicit `[skip ci]` marker, or one of the fleet's
+// own automated writes (baselining/seed, plus the maintenance and growth PRs the fleet
+// now auto-merges — their squash subjects land on the default branch too). Excluding
+// these from `substantiveChange` stops the growth tasks (and repo-tidy) from
+// self-triggering on the fleet's own writes — the feedback loop where last night's
+// maintenance/growth merge fires tonight's growth-extract/dedup/tidy on a repo that has
+// no new lesson or landed work. The subjects to match: a subject-initial `Baseline:` /
+// `Baselining:` (mount + wiring refresh), `Claudinite baseline…`, a `seed default-on`
+// commit, and the auto-merged `Claudinite maintenance` / `Claudinite growth: …` PR
+// titles (their squash-merge subjects) — subject-anchored so a real "baseline
+// benchmark" feature commit still counts. Keep these in sync with the PR titles the
+// fleet-apply pass and the growth workers open.
+const HOUSEKEEPING_MESSAGE = /\[skip ci\]|(^|\n)\s*baselin(e|ing)\b|claudinite (baselin|maintenance|growth)|seed default-on/i;
 function isSubstantiveCommit(c) {
   const login = c.author && c.author.login ? c.author.login : '';
   if (login.endsWith('[bot]')) return false;
@@ -208,10 +211,11 @@ export async function buildSignals(gh, repo, { sinceIso, weekdayUtc, canonChange
     commits = status === 200 && Array.isArray(json) ? json : [];
     mainMoved = commits.length > 0;
     // Real project work in the window (not fleet/CI housekeeping) — the trigger the
-    // growth tasks AND repo-tidy key on, so a bot bump or a nightly baselining commit
-    // doesn't spawn a subagent that finds nothing. (A housekeeping commit that also
-    // merged a PR would land the PR — but a PR merge is itself a substantive commit, so
-    // it already trips substantiveChange; the pure-baselining case has no such merge.)
+    // growth tasks AND repo-tidy key on, so a bot bump or the fleet's own auto-merged
+    // maintenance/growth PR doesn't spawn a subagent that finds nothing. Those PRs land
+    // on the default branch as squash commits, so the exclusion is subject-based
+    // (HOUSEKEEPING_MESSAGE), not merge-shape-based — a genuine project PR merge still
+    // trips substantiveChange because its subject isn't one of the fleet's.
     substantiveChange = commits.some(isSubstantiveCommit);
   }
   // The default branch advancing (merges land there too) is "the project changed".

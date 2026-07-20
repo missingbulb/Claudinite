@@ -116,6 +116,11 @@ test('buildSignals: substantiveChange excludes bot / [skip ci] / baselining comm
     { sha: 'b', author: { login: 'missingbulb' }, commit: { message: 'Bump version to 1.2.3 [skip ci]' } },
     { sha: 'c', author: { login: 'missingbulb' }, commit: { message: 'Claudinite baselining: seed default-on packs' } },
     { sha: 'e', author: { login: 'missingbulb' }, commit: { message: 'Baseline: refresh Claudinite mount + gitignore + CLAUDE.md self-check' } },
+    // The fleet now lands its own maintenance and growth via auto-merged PRs — their
+    // squash-merge subjects must read as housekeeping too, else last night's merge
+    // fires tonight's growth-extract/dedup/tidy on a repo with no new work.
+    { sha: 'f', author: { login: 'missingbulb' }, commit: { message: 'Claudinite maintenance (#12)' } },
+    { sha: 'g', author: { login: 'missingbulb' }, commit: { message: 'Claudinite growth: extract lessons (#34)' } },
   ];
   const routes = (commits) => [
     okPacks,
