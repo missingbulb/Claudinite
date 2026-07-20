@@ -1,7 +1,9 @@
-// Prose-only pack (no checks yet — the jsdom gotchas are knowledge, not
-// signatures). Fingerprint: a package.json at the repo root OR one directory
-// down (a monorepo's functions/ or server/ dir) — but never deeper, so a
-// package.json in a nested fixture/example tree can't trip detection.
+import earnEachDependency from './earn-each-dependency.mjs';
+
+// Fingerprint: a package.json at the repo root OR one directory down (a
+// monorepo's functions/ or server/ dir) — but never deeper, so a package.json
+// in a nested fixture/example tree can't trip detection. (The jsdom gotchas in
+// RULES.md stay prose — runtime divergence with no artifact signature.)
 const hasMarkerNearRoot = (ctx, marker) =>
   ctx.tracked.some((f) => {
     const parts = f.split('/');
@@ -13,7 +15,7 @@ export default {
   marker: 'package.json (at the repo root or one directory down)',
   detect: (ctx) => hasMarkerNearRoot(ctx, 'package.json'),
   prose: 'RULES.md',
-  rules: [],
+  rules: [earnEachDependency],
   // The Node runtime ships in the base image, but a repo's (often uncommitted,
   // devDependency) modules don't — so `npm test`/build would trigger a
   // confusing mid-session install. Install them at environment-image build. The
