@@ -109,10 +109,11 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
   project's own layout is the reason) — an exemption a *pack's adoption* forces belongs on that
   pack's entry.
 - **maintenance** — fleet-maintenance delivery for this repo, **always explicit**: `"delivery":
-  "push"` (the sweep commits its baselining/alignment changes directly to the default branch) or
-  `"pr"` (a never-merged PR the owner gates). There is deliberately no implicit default — `--init`
-  seeds `push` and the nightly sweep backfills a missing key, so the selection is visible in this
-  file rather than implied by absence. Read by
+  "push"` (the sweep lands its baselining/alignment changes through the `claudinite/maintenance` PR,
+  armed to **auto-merge** once this repo's checks pass — no human review) or `"pr"` (that same PR,
+  left for the owner to review — never auto-merged). Neither is a direct commit to the default
+  branch. There is deliberately no implicit default — `--init` seeds `push` and the nightly sweep
+  backfills a missing key, so the selection is visible in this file rather than implied by absence. Read by
   the baselining worker; the checks engine
   itself ignores it.
 

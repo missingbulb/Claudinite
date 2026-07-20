@@ -14,7 +14,7 @@ Its scheduled work is three `run_daily` tasks, all ordinary, independent planner
 
 | Task | Runs when | Where it lands |
 |---|---|---|
-| `growth-extract-new-instructions` ([extract.md](extract.md)) | the project changed in the window | the project's own local packs, on `main` (directly) |
+| `growth-extract-new-instructions` ([extract.md](extract.md)) | the project changed in the window | the project's own local packs, via a PR that auto-merges after CI |
 | `growth-dedup-local-instructions` ([dedup.md](dedup.md)) | canon changed, or the project's local packs changed (or weekly) | a PR against the project's `main` |
 | `growth-discover-packs` ([discover-packs.md](discover-packs.md)) | the member's weekly full sweep | one PR per authored pack, against Claudinite's canon |
 

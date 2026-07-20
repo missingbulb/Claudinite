@@ -28,8 +28,10 @@ channel has a different blast radius and a different rollback story:
 - **Bootstrap wiring** (the committed artifacts [bootstrap.md](bootstrap.md) seeds into each
   consumer: the tracked sync hook, `settings.json` hook registrations, gitignore rules, the
   pack declaration) — propagates through the **nightly baselining**, which
-  re-runs the idempotent bootstrap on every member and commits drift **directly to its default
-  branch**, no PR. Fleet-wide but lagging one nightly; the rollback story is the same channel
+  re-runs the idempotent bootstrap on every member and lands drift through the member's
+  `claudinite/maintenance` **PR** — auto-merged once the repo's checks pass on `push` delivery (the
+  default), or left for the owner to review on `pr` — never a direct commit to the default branch.
+  Fleet-wide but lagging one nightly; the rollback story is the same channel
   (fix the canon, the next nightly re-heals). The discipline: a change here is written as
   bootstrap steps that **converge from every layout in the wild** — fresh, current, legacy,
   half-migrated — not just from the latest.
@@ -90,7 +92,7 @@ consumer-held copy that won't move on its own, and each needs a channel.
 - **A canon-owned file tracked in consumer git updates on the commit channel, not the sync
   channel.** The session sync preserves the consumer's tracked copy over the tarball's newer
   one — otherwise every canon edit dirties every consumer's working tree until the nightly
-  commits it. Clean trees each session; baselining's direct commit is the update path.
+  lands it. Clean trees each session; baselining's auto-merging maintenance PR is the update path.
 - **Verify by replaying the migration on a simulated legacy consumer** before merging: build the
   old layout in a scratch git repo, run the documented steps verbatim, and assert the tree is
   clean both right after the migration and after a subsequent real session sync. This is the

@@ -21,8 +21,9 @@ export default {
 
   async gate(repo, signals) {
     // Fire the day after a real merge — that's when a fresh capture sits on the
-    // conversation-logs branch (a merge is a substantiveChange; a [skip ci] capture
-    // commit is not, so substantiveChange tracks the merge, not the capture). The
+    // conversation-logs branch (a real project merge is a substantiveChange; the fleet's
+    // own auto-merged maintenance/growth PRs and the [skip ci] capture commit are not, so
+    // substantiveChange tracks the project merge, not the fleet's own writes). The
     // worker no-ops when the branch holds nothing fresh, exactly like growth-extract
     // when the window yields no lesson.
     if (signals.substantiveChange) {

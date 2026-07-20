@@ -34,8 +34,9 @@ fine (see [No new lessons](#no-new-lessons-is-a-valid--and-common--result)).
 Routinely, in the [conversation-extract daily task](conversation-extract.md) over each captured
 log (a fresh pass within a day of capture, a final hindsight pass before retention deletes the
 log) — the standard path. If an owner asks in plain words for a retrospective over the live
-session, apply the same method and deliver the capture as a branch + PR for review, never
-straight to `main` (the nightly commits direct per its own doc; a live pass doesn't). **Never
+session, apply the same method and deliver the capture as a branch + PR **for a human to review**,
+never one that self-merges (the nightly auto-merges its own PR per its own doc; a live retrospective
+wants human eyes). **Never
 reflect-and-edit unprompted in the middle of a task** — it interrupts the work; the owner
 decides when a session is done enough to mine.
 

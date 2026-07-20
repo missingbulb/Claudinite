@@ -21,7 +21,7 @@ const rwMig = {
 // `maintPrOpen` whether an open maintenance PR already exists. Records the
 // writes so a test can assert the commit/branch/PR/issue shape.
 function memberMock({ files = {}, maintFiles = {}, delivery = 'push', defaultBranch = 'main', maintPrOpen = false, withUpdateFromBase = false, updateFails = false } = {}) {
-  const state = { commits: [], deletes: [], branchCreated: null, prCreated: null, issueCreated: null, updatedFromBase: 0 };
+  const state = { commits: [], deletes: [], branchCreated: null, prCreated: null, issueCreated: null, updatedFromBase: 0, autoMergeArmed: null };
   const io = {
     getDefaultBranch: async () => defaultBranch,
     read: async (_repo, path, ref) => {
@@ -33,7 +33,8 @@ function memberMock({ files = {}, maintFiles = {}, delivery = 'push', defaultBra
     commit: async (_repo, branch, fileList, message) => { state.commits.push({ branch, files: fileList, message }); },
     remove: async (_repo, branch, path) => { state.deletes.push({ branch, path }); return true; },
     hasOpenPr: async () => maintPrOpen,
-    openPr: async (_repo, head, base) => { state.prCreated = { head, base }; },
+    openPr: async (_repo, head, base) => { state.prCreated = { head, base }; return 101; },
+    enableAutoMerge: async (_repo, prNumber) => { state.autoMergeArmed = prNumber; },
     openIssue: async (_repo, title, body) => { state.issueCreated = { title, body }; },
   };
   if (withUpdateFromBase) {
@@ -45,25 +46,27 @@ function memberMock({ files = {}, maintFiles = {}, delivery = 'push', defaultBra
   return { io, state };
 }
 
-test('applyToRepo (push): one commit on the default branch, the migration id returned', async () => {
+test('applyToRepo (push): lands via the maintenance PR with auto-merge armed — never a direct commit to main', async () => {
   const { io, state } = memberMock({ files: { '.github/w.yml': 'uses: X@main\n' } });
   const { ids } = await applyToRepo(io, 'o/r', [rwMig]);
   assert.deepEqual(ids, ['rw']);
   assert.equal(state.commits.length, 1, 'exactly one commit for the whole set');
-  assert.equal(state.commits[0].branch, 'main');
-  assert.equal(state.branchCreated, null);
-  assert.equal(state.prCreated, null);
+  assert.equal(state.commits[0].branch, 'claudinite/maintenance', 'writes go to the maintenance branch, not the default branch');
+  assert.deepEqual(state.branchCreated, { branch: 'claudinite/maintenance', from: 'main' });
+  assert.deepEqual(state.prCreated, { head: 'claudinite/maintenance', base: 'main' });
+  assert.equal(state.autoMergeArmed, 101, 'push arms auto-merge so GitHub lands the PR once the repo\'s checks pass');
   // the commit carries the rewritten content, as a push_files-shaped file object
   assert.deepEqual(state.commits[0].files, [{ path: '.github/w.yml', content: 'uses: ./x\n' }]);
 });
 
-test('applyToRepo (pr): creates the maintenance branch + PR, commits there', async () => {
+test('applyToRepo (pr): creates the maintenance branch + PR, commits there, never arms auto-merge', async () => {
   const { io, state } = memberMock({ files: { '.github/w.yml': 'uses: X@main\n' }, delivery: 'pr' });
   const { ids } = await applyToRepo(io, 'o/r', [rwMig]);
   assert.deepEqual(ids, ['rw']);
   assert.deepEqual(state.branchCreated, { branch: 'claudinite/maintenance', from: 'main' });
   assert.equal(state.commits[0].branch, 'claudinite/maintenance');
   assert.deepEqual(state.prCreated, { head: 'claudinite/maintenance', base: 'main' });
+  assert.equal(state.autoMergeArmed, null, 'pr leaves the PR for the owner to review — never auto-merged');
 });
 
 test('applyToRepo (pr): an already-open maintenance PR is not re-created', async () => {

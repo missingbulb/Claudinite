@@ -49,25 +49,25 @@ and pruned back out of the project once the canon owns it. Two packs split it by
 discovery, seeded, opt-out by removal) and **canon-curation** (this pack, the central stage).
 
 ```
-EXTRACT   per member    → commits directly to the member's main       (grow_with_claudinite)
+EXTRACT   per member    → auto-merging PR against the member's main   (grow_with_claudinite)
 PROMOTE   central, once → PR against Claudinite's main                (canon-curation)
 DEDUP     per member    → PR against the member's main                (grow_with_claudinite)
 ```
 
 All three are ordinary, **independent** planner units — there is no barrier and no phase ordering.
 Each stage reads only what is already **merged**: promote processes whatever sits on members' mains
-when it runs, so a lesson extracted tonight is promoted **tomorrow** night (the extract commit
-trips the next night's signals), and reaches other members' dedup once the promote PR is approved
-and merged. That approval was always the dominant latency, so the barrier machinery bought little;
+when it runs, so a lesson extracted tonight is promoted **tomorrow** night (the extract PR's merge
+shows up in the next night's local-pack signal), and reaches other members' dedup once the promote PR
+is approved and merged. That approval was always the dominant latency, so the barrier machinery bought little;
 if the cadence ever matters, promote can run more often (twice daily, or before and after the
 nightly) without any design change.
 
 **Review gates by blast radius, not uniformly.** Promote opens a PR — it's the sole judgment gate
 before the shared canon every repo reads, so it always needs a human eye. Dedup opens a PR too — a
-wrongful prune deletes a real local lesson. Extract commits directly to the member's `main` — it
-writes only that project's own local packs, and the owner has opted out of a per-run PR to keep the
-fleet's daily lesson-capture from flooding review requests. (An owner-requested, in-session
-retrospective still delivers a PR — see
+wrongful prune deletes a real local lesson. Extract lands through an **auto-merging PR** against the
+member's `main` — it writes only that project's own local packs, so it earns a CI gate and a PR trail
+but not a human reviewer; auto-merge keeps the fleet's daily lesson-capture from flooding review
+requests. (An owner-requested, in-session retrospective delivers a PR for a human to review — see
 [extracting-lessons.md](../../../packs/grow_with_claudinite/extracting-lessons.md).)
 
 **Central execution, no plumbing.** Promote runs from the Claudinite home repo with a fleet-wide
