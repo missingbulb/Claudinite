@@ -23,3 +23,16 @@ prose below). Entries accrete as sessions on the canon surface durable, canon-sp
   tree may reference is expressed by declaring/configuring the `barriers` pack (contributed
   edges, `siblings`/`scope` capabilities — extend barriers generically if a capability is
   missing). Never write standalone code that checks packs-tree segregation.
+
+## Canon-specific gotchas
+
+- **Baselining backfill skips the home — hand-declare fleet-seeded packs here.** The nightly
+  baselining that lands a `seededByDefault` pack (and canon-delivered declaration changes) on
+  every member is gated `!isHome`, so the canon home is the one repo it never reaches: a newly
+  seeded pack does *not* arrive here automatically — the home's own `.claudinite-checks.json`
+  must be updated by hand in the same change that flips the seed. This has already bitten silently
+  once — `grow_with_claudinite` was `seededByDefault` but predated the home's hand-curated
+  declaration, so the canon's own sessions sat outside the conversation lifecycle until #356
+  declared it. The natural drift-guard (a future check, once the home is clean) is: the home
+  declares every `seededByDefault` non-local pack. (At the time of writing `tidy-repo` is
+  `seededByDefault` yet absent from the home's declaration — the same gap, unverified.)
