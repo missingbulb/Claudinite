@@ -33,7 +33,7 @@ node "$scratch/checks/run.mjs" --init
 
 `--init` seeds `.claudinite-checks.json`: the baseline, the technology packs the repo's
 fingerprint suspects, the default-on maintenance packs, each declared pack's `requires` closure,
-and `"maintenance": { "delivery": "push" }`. A fingerprint only *suspects* a pack — from here on
+and `"maintenance": { "delivery": "auto" }`. A fingerprint only *suspects* a pack — from here on
 the declaration is authoritative and adding/dropping packs is the project's call. Settings
 **validity** is enforced at load: an unknown pack name, an unknown property, or malformed JSON is
 a blocking `config` error.
@@ -234,6 +234,6 @@ deleted in phase 3, once the fleet has flipped.
   **only while each one's seed migration file is still present** in the canon (never re-add
   after the seed retires); re-run `resolveDeclaredPacks` so `requires` closures and `via` stay
   accurate; fold a legacy top-level `packConfig` into pack-entry `config`; materialize a missing
-  `"maintenance": { "delivery": "push" }`.
+  `"maintenance": { "delivery": "auto" }`.
 - **Environment prerequisite** — the legacy mount fetches at every session start, so these
   members still need `codeload.github.com` allowlisted in their environment's network policy.

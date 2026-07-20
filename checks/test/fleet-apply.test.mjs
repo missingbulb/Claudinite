@@ -4,8 +4,8 @@ import { applyToRepo } from '../../migrations/fleet-apply.mjs';
 
 // The migration APPLY pass — phase 1 of the daily routine, migrations-owned (no
 // longer baselining's step). These cover the per-member logic: staging a whole
-// migration set, honoring push/pr delivery, the no-op path, and the
-// unrecognized-delivery contract. GitHub I/O is the injected semantic `io` object
+// migration set, honoring auto/review delivery (with push/pr as legacy aliases),
+// the no-op path, and the unrecognized-delivery contract. GitHub I/O is the injected semantic `io` object
 // (each method a GitHub MCP tool); the mock below records the write calls. A
 // `rewrite` migration is used so no on-disk template is needed (the member file
 // supplies the content).
@@ -20,7 +20,7 @@ const rwMig = {
 // contents (absent → an empty branch), `delivery` its maintenance preference,
 // `maintPrOpen` whether an open maintenance PR already exists. Records the
 // writes so a test can assert the commit/branch/PR/issue shape.
-function memberMock({ files = {}, maintFiles = {}, delivery = 'push', defaultBranch = 'main', maintPrOpen = false, withUpdateFromBase = false, updateFails = false } = {}) {
+function memberMock({ files = {}, maintFiles = {}, delivery = 'auto', defaultBranch = 'main', maintPrOpen = false, withUpdateFromBase = false, updateFails = false } = {}) {
   const state = { commits: [], deletes: [], branchCreated: null, prCreated: null, issueCreated: null, updatedFromBase: 0, autoMergeArmed: null };
   const io = {
     getDefaultBranch: async () => defaultBranch,
@@ -46,7 +46,7 @@ function memberMock({ files = {}, maintFiles = {}, delivery = 'push', defaultBra
   return { io, state };
 }
 
-test('applyToRepo (push): lands via the maintenance PR with auto-merge armed — never a direct commit to main', async () => {
+test('applyToRepo (auto): lands via the maintenance PR with auto-merge armed — never a direct commit to main', async () => {
   const { io, state } = memberMock({ files: { '.github/w.yml': 'uses: X@main\n' } });
   const { ids } = await applyToRepo(io, 'o/r', [rwMig]);
   assert.deepEqual(ids, ['rw']);
@@ -54,33 +54,45 @@ test('applyToRepo (push): lands via the maintenance PR with auto-merge armed —
   assert.equal(state.commits[0].branch, 'claudinite/maintenance', 'writes go to the maintenance branch, not the default branch');
   assert.deepEqual(state.branchCreated, { branch: 'claudinite/maintenance', from: 'main' });
   assert.deepEqual(state.prCreated, { head: 'claudinite/maintenance', base: 'main' });
-  assert.equal(state.autoMergeArmed, 101, 'push arms auto-merge so GitHub lands the PR once the repo\'s checks pass');
+  assert.equal(state.autoMergeArmed, 101, 'auto arms auto-merge so GitHub lands the PR once the repo\'s checks pass');
   // the commit carries the rewritten content, as a push_files-shaped file object
   assert.deepEqual(state.commits[0].files, [{ path: '.github/w.yml', content: 'uses: ./x\n' }]);
 });
 
-test('applyToRepo (pr): creates the maintenance branch + PR, commits there, never arms auto-merge', async () => {
-  const { io, state } = memberMock({ files: { '.github/w.yml': 'uses: X@main\n' }, delivery: 'pr' });
+test('applyToRepo: the legacy push/pr delivery values are accepted as aliases for auto/review', async () => {
+  const legacyAuto = memberMock({ files: { '.github/w.yml': 'uses: X@main\n' }, delivery: 'push' });
+  await applyToRepo(legacyAuto.io, 'o/r', [rwMig]);
+  assert.equal(legacyAuto.state.autoMergeArmed, 101, 'legacy `push` behaves as `auto` — arms auto-merge');
+  assert.equal(legacyAuto.state.commits[0].branch, 'claudinite/maintenance', 'never a direct commit to the default branch');
+
+  const legacyReview = memberMock({ files: { '.github/w.yml': 'uses: X@main\n' }, delivery: 'pr' });
+  await applyToRepo(legacyReview.io, 'o/r', [rwMig]);
+  assert.equal(legacyReview.state.autoMergeArmed, null, 'legacy `pr` behaves as `review` — never auto-merged');
+  assert.equal(legacyReview.state.prCreated.head, 'claudinite/maintenance');
+});
+
+test('applyToRepo (review): creates the maintenance branch + PR, commits there, never arms auto-merge', async () => {
+  const { io, state } = memberMock({ files: { '.github/w.yml': 'uses: X@main\n' }, delivery: 'review' });
   const { ids } = await applyToRepo(io, 'o/r', [rwMig]);
   assert.deepEqual(ids, ['rw']);
   assert.deepEqual(state.branchCreated, { branch: 'claudinite/maintenance', from: 'main' });
   assert.equal(state.commits[0].branch, 'claudinite/maintenance');
   assert.deepEqual(state.prCreated, { head: 'claudinite/maintenance', base: 'main' });
-  assert.equal(state.autoMergeArmed, null, 'pr leaves the PR for the owner to review — never auto-merged');
+  assert.equal(state.autoMergeArmed, null, 'review leaves the PR for the owner — never auto-merged');
 });
 
-test('applyToRepo (pr): an already-open maintenance PR is not re-created', async () => {
-  const { io, state } = memberMock({ files: { '.github/w.yml': 'uses: X@main\n' }, delivery: 'pr', maintPrOpen: true });
+test('applyToRepo (review): an already-open maintenance PR is not re-created', async () => {
+  const { io, state } = memberMock({ files: { '.github/w.yml': 'uses: X@main\n' }, delivery: 'review', maintPrOpen: true });
   await applyToRepo(io, 'o/r', [rwMig]);
   assert.equal(state.commits[0].branch, 'claudinite/maintenance');
   assert.equal(state.prCreated, null, 'no second PR when one is already open');
 });
 
-test('applyToRepo (pr, #332): the end-state is computed against the DEFAULT branch, not the maintenance branch’s stale copy', async () => {
+test('applyToRepo (review, #332): the end-state is computed against the DEFAULT branch, not the maintenance branch’s stale copy', async () => {
   const { io, state } = memberMock({
     files: { '.github/w.yml': 'uses: X@main\n' },
     maintFiles: { '.github/w.yml': 'some stale nightly output\n' },
-    delivery: 'pr', maintPrOpen: true,
+    delivery: 'review', maintPrOpen: true,
   });
   const { ids } = await applyToRepo(io, 'o/r', [rwMig]);
   assert.deepEqual(ids, ['rw']);
@@ -88,24 +100,24 @@ test('applyToRepo (pr, #332): the end-state is computed against the DEFAULT bran
     'content derives from the default branch, regenerated over whatever the branch held');
 });
 
-test('applyToRepo (pr, #332): a branch already carrying the writes gets no nightly commit (quiet), ids stay empty', async () => {
+test('applyToRepo (review, #332): a branch already carrying the writes gets no nightly commit (quiet), ids stay empty', async () => {
   const { io, state } = memberMock({
     files: { '.github/w.yml': 'uses: X@main\n' }, // default branch still legacy (PR unmerged)
     maintFiles: { '.github/w.yml': 'uses: ./x\n' }, // branch already migrated
-    delivery: 'pr', maintPrOpen: true,
+    delivery: 'review', maintPrOpen: true,
   });
   const { ids } = await applyToRepo(io, 'o/r', [rwMig]);
   assert.deepEqual(ids, [], 'nothing written tonight, so nothing feeds appliedThisCycle');
   assert.equal(state.commits.length, 0, 'an unmerged PR must not collect identical nightly commits');
 });
 
-test('applyToRepo (pr, #332): the branch is refreshed from base before staging; a conflict is noted, never fatal', async () => {
-  const ok = memberMock({ files: { '.github/w.yml': 'uses: X@main\n' }, delivery: 'pr', maintPrOpen: true, withUpdateFromBase: true });
+test('applyToRepo (review, #332): the branch is refreshed from base before staging; a conflict is noted, never fatal', async () => {
+  const ok = memberMock({ files: { '.github/w.yml': 'uses: X@main\n' }, delivery: 'review', maintPrOpen: true, withUpdateFromBase: true });
   await applyToRepo(ok.io, 'o/r', [rwMig]);
   assert.equal(ok.state.updatedFromBase, 1);
   assert.equal(ok.state.commits.length, 1);
 
-  const conflicted = memberMock({ files: { '.github/w.yml': 'uses: X@main\n' }, delivery: 'pr', maintPrOpen: true, withUpdateFromBase: true, updateFails: true });
+  const conflicted = memberMock({ files: { '.github/w.yml': 'uses: X@main\n' }, delivery: 'review', maintPrOpen: true, withUpdateFromBase: true, updateFails: true });
   const { note } = await applyToRepo(conflicted.io, 'o/r', [rwMig]);
   assert.match(note, /could not update from base: merge conflict/);
   assert.equal(conflicted.state.commits.length, 1, 'the regenerated writes still land');

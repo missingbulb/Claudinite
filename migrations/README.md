@@ -52,8 +52,8 @@ export default {
   no-op once done. In the fleet, the **apply pass** ([`fleet-apply.mjs`](fleet-apply.mjs)) performs the
   equivalent writes over the GitHub API — **phase 1** of the daily maintenance routine, before the pack
   tasks — landing each member's whole set as **one commit** on the `claudinite/maintenance` branch and
-  honoring its `push`/`pr` delivery (`push` arms auto-merge on the PR; `pr` leaves it for the owner) —
-  never a direct commit to the default branch.
+  honoring its `auto`/`review` delivery (`auto` arms auto-merge on the PR; `review` leaves it for the
+  owner; `push`/`pr` are accepted as legacy aliases) — never a direct commit to the default branch.
 - **Retire — the telemetry.** The **retire pass** ([`fleet-retire.mjs`](fleet-retire.mjs)) — **phase 3**
   of the routine, after the pack tasks settle — evaluates each migration's `legacyPresent` across the
   covered fleet and reports how many repos still carry the legacy shape. When one is fully applied **and

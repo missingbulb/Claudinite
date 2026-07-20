@@ -65,11 +65,12 @@ Then, for a covered member (either shape):
   `Enroll <PROJECT_NAME> in Claudinite fleet maintenance`, found by title) as `completed`.
 
 **Delivery** — member-side changes go per `maintenance.delivery` in the member's `.claudinite-checks.json`
-(always explicit; a missing key is drift — materialize `{ "maintenance": { "delivery": "push" } }`).
+(always explicit; a missing key is drift — materialize `{ "maintenance": { "delivery": "auto" } }`;
+`push`/`pr` are accepted as legacy aliases for `auto`/`review`).
 **Both modes land on the stable `claudinite/maintenance` branch and its one PR — never a direct commit
-to the default branch** (the same PR the migration apply pass amends): `push` **arms auto-merge** on that
+to the default branch** (the same PR the migration apply pass amends): `auto` **arms auto-merge** on that
 PR, so GitHub lands it once the member's checks pass, with no human review — that's what keeps the
-fleet's nightly maintenance from piling up as review requests; `pr` leaves the PR for the owner to
+fleet's nightly maintenance from piling up as review requests; `review` leaves the PR for the owner to
 review (never auto-merged); an unrecognized value commits nothing and opens an issue there naming it.
 Adoption precedes the flag — a first bootstrap lands via the same PR, auto-merged where the new repo
 allows it, else left for the owner. A vendored member's refresh lands as **one `push_files` commit** on
@@ -82,6 +83,6 @@ land with the stamp.
 
 Never touch the home (sheepdog) repo; never adopt without an open adoption issue; never flip a
 pre-flip member; never let alignment edit beyond a failing check's own remedy; never merge a delivery
-PR by hand (the `push` lane arms GitHub's auto-merge, which lands it once checks pass — the worker never
+PR by hand (the `auto` lane arms GitHub's auto-merge, which lands it once checks pass — the worker never
 clicks merge) or guess a delivery preference. `smarts: medium` — the bootstrap and alignment merge
 into existing `CLAUDE.md` / `settings.json` without clobbering, which is judgment.

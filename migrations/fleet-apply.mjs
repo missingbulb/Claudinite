@@ -11,11 +11,11 @@
 // a member already on the canonical shape stages nothing and gets no commit.
 //
 // Delivery honors the member's `.claudinite-checks.json` `maintenance.delivery`
-// (default `push`). BOTH modes land on the stable `claudinite/maintenance` branch and
-// its one open PR — never a direct commit to the default branch: `pr` leaves that PR
-// for the owner to review; `push` arms GitHub auto-merge on it, so it lands
-// automatically once the repo's checks pass (no run ever blocks on CI). Anything else
-// commits nothing and opens an issue naming it.
+// (default `auto`; `push`/`pr` are permanent aliases for `auto`/`review`). BOTH modes
+// land on the stable `claudinite/maintenance` branch and its one open PR — never a
+// direct commit to the default branch: `review` leaves that PR for the owner; `auto`
+// arms GitHub auto-merge on it, so it lands automatically once the repo's checks pass
+// (no run ever blocks on CI). Anything else commits nothing and opens an issue naming it.
 //
 // Both lanes regenerate, never reconcile (#332): the desired end-state is
 // always computed against the DEFAULT branch (the truth being migrated), never
@@ -35,7 +35,7 @@
 //   io.hasOpenPr(repo, headBranch)            -> boolean         (list_pull_requests)
 //   io.openPr(repo, head, base, title, body)  -> prNumber        (create_pull_request)
 //   io.enableAutoMerge(repo, prNumber)                           (enable_pr_auto_merge —
-//                                                arms native auto-merge; the `push` lane's
+//                                                arms native auto-merge; the `auto` lane's
 //                                                land-once-checks-pass, never blocking)
 //   io.openIssue(repo, title, body)                              (issue_write create)
 //   io.updateBranchFromBase(repo, headBranch)  [optional]        (update_pull_request_branch
@@ -87,22 +87,26 @@ export async function applyToRepo(io, fullName, migrations) {
   const defaultBranch = await io.getDefaultBranch(fullName);
   if (!defaultBranch) return { ids: [], note: `${fullName}: unreadable` };
   const cfg = await io.read(fullName, '.claudinite-checks.json');
-  let delivery = 'push';
-  try { delivery = JSON.parse(cfg ?? '{}')?.maintenance?.delivery ?? 'push'; } catch { delivery = 'push'; }
+  let rawDelivery = 'auto';
+  try { rawDelivery = JSON.parse(cfg ?? '{}')?.maintenance?.delivery ?? 'auto'; } catch { rawDelivery = 'auto'; }
+  // `push`/`pr` are the pre-rename aliases for `auto`/`review` — accepted permanently
+  // (the maintenance-delivery-rename migration rewrites the stored value, but the
+  // tolerance outlives the record, so retiring it strands nothing).
+  const delivery = rawDelivery === 'push' ? 'auto' : rawDelivery === 'pr' ? 'review' : rawDelivery;
 
-  if (delivery !== 'push' && delivery !== 'pr') {
+  if (delivery !== 'auto' && delivery !== 'review') {
     await io.openIssue(
       fullName,
       'Claudinite maintenance: unrecognized delivery preference',
-      `\`.claudinite-checks.json\` sets \`maintenance.delivery: "${delivery}"\`, which is neither \`push\` nor \`pr\`. `
-        + 'Migrations were not applied this run. Set it to `push` or `pr`.',
+      `\`.claudinite-checks.json\` sets \`maintenance.delivery: "${rawDelivery}"\`, which is neither \`auto\` nor \`review\`. `
+        + 'Migrations were not applied this run. Set it to `auto` or `review`.',
     );
-    return { ids: [], note: `${fullName}: unrecognized delivery "${delivery}" — opened an issue, applied nothing` };
+    return { ids: [], note: `${fullName}: unrecognized delivery "${rawDelivery}" — opened an issue, applied nothing` };
   }
 
   // Both deliveries land on the stable `claudinite/maintenance` branch and its one
-  // PR — never a direct commit to the default branch. `pr` leaves that PR for the
-  // owner to review; `push` arms GitHub auto-merge on it, so it lands automatically
+  // PR — never a direct commit to the default branch. `review` leaves that PR for the
+  // owner; `auto` arms GitHub auto-merge on it, so it lands automatically
   // once the repo's checks pass (the run never blocks on CI). How strictly "once
   // checks pass" holds depends on the repo requiring its checks (branch protection);
   // with none required, GitHub lands the PR as soon as it's mergeable.
@@ -147,11 +151,11 @@ export async function applyToRepo(io, fullName, migrations) {
   if (!(await io.hasOpenPr(fullName, MAINT_BRANCH))) {
     const prNumber = await io.openPr(
       fullName, MAINT_BRANCH, defaultBranch, 'Claudinite maintenance',
-      delivery === 'push'
+      delivery === 'auto'
         ? 'Automated Claudinite maintenance (migrations + baselining). Amended in place each run; auto-merges once this repo\'s checks pass.'
         : 'Automated Claudinite maintenance (migrations + baselining). Amended in place each run; left for your review.',
     );
-    if (delivery === 'push') {
+    if (delivery === 'auto') {
       // Arm GitHub's native auto-merge (non-blocking): the run never waits for CI.
       // If the repo hasn't enabled auto-merge, the PR simply stays open for review.
       try { await io.enableAutoMerge(fullName, prNumber); }
