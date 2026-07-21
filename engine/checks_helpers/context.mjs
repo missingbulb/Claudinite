@@ -352,8 +352,12 @@ export function buildContext({ root, mode = 'changed', baseOverride = null, tran
     },
 
     // Fixed-string search across tracked files; git grep exits 1 on no match.
+    // The vendored shared mount is structurally out of the sweep (canon-owned,
+    // never the project's own code — engine/mount/DESIGN.md item 6), so it is
+    // excluded here exactly as it is from the scanned file set above: a hit
+    // inside it must never become a finding.
     grepTracked(needle) {
-      const out = gitTry(root, 'grep', '-n', '-F', needle, '--', '.');
+      const out = gitTry(root, 'grep', '-n', '-F', needle, '--', '.', `:(exclude)${sharedPrefix}`);
       return lines(out).map((l) => {
         const m = /^([^:]+):(\d+):(.*)$/.exec(l);
         return m ? { file: m[1], line: Number(m[2]), text: m[3] } : null;

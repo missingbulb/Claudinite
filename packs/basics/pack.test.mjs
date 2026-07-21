@@ -49,6 +49,27 @@ test('reference-integrity: flags surviving references to a deleted file', () => 
   } finally { cleanup(root); }
 });
 
+test('reference-integrity: the vendored shared mount is never a finding source for a deleted path', () => {
+  // The corpus is canon-owned and structurally out of the sweep (engine/mount/DESIGN.md item 6);
+  // a canon doc mentioning a name the consumer's branch deletes (e.g. its own root file)
+  // must not fire — only the consumer's own files may.
+  const root = makeRepo({
+    base: {
+      'old.md': 'x\n',
+      'index.md': 'see [old](old.md)\n',
+      '.claudinite/shared/packs/basics/README.md': 'canon doc mentioning old.md generically\n',
+    },
+    changed: {},
+  });
+  try {
+    deletePath(root, 'old.md');
+    const findings = run(referenceIntegrity, root);
+    assert.ok(findings.some(f => f.file === 'index.md'), 'the consumer file still fires');
+    assert.ok(!findings.some(f => f.file.startsWith('.claudinite/shared/')),
+      'a shared-mount file must never be a finding source');
+  } finally { cleanup(root); }
+});
+
 test('reference-integrity: does not flag a renamed file whose new path shares the old basename', () => {
   const root = makeRepo({
     base: { 'old.sh': 'x\n', 'mount/old.sh': 'y\n', 'doc.md': 'see mount/old.sh\n' },
