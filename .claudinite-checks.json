@@ -31,19 +31,14 @@
         "rules": [
           {
             "from": [
-              "checks",
+              "engine",
               "migrations",
-              "mount",
               "routines",
               ".github",
               "README.md",
               "bootstrap.md",
               "consumer-safe-changes.md",
-              "extending.md",
-              "packs/registry.mjs",
-              "packs/load-active-prose.mjs",
-              "packs/env.mjs",
-              "skills/mount-skills.mjs"
+              "extending.md"
             ],
             "to": "packs/*",
             "matchNames": true,
@@ -120,7 +115,7 @@
                 "reason": "inherent(operational seed): the one-time seed one-liner (bootstrap step 4b) backfills these default-on packs into an existing declaration while their self-retiring seed migrations are live; retires with those migrations"
               },
               {
-                "path": "checks/run.mjs",
+                "path": "engine/check_the_world.mjs",
                 "to": [
                   "packs/basics"
                 ],
@@ -154,27 +149,27 @@
     {
       "rule": "file-placement",
       "path": "routines/fleet/plan.mjs",
-      "reason": "the core planner deliberately imports the pack-discovery registry (packs/registry.mjs — core machinery per extending.md, not a specific pack) to enumerate each repo's run_daily tasks; discovery lives under packs/ and the planner under routines/, so the cross-tree reach is inherent and correct, not a misplacement"
+      "reason": "the core planner deliberately imports the pack-discovery registry (engine/pack_loader/registry.mjs — core machinery per extending.md, not a specific pack) to enumerate each repo's run_daily tasks; discovery lives under packs/ and the planner under routines/, so the cross-tree reach is inherent and correct, not a misplacement"
     },
     {
       "rule": "file-placement",
       "path": "routines/fleet/signals.mjs",
-      "reason": "the member-declaration read deliberately imports the one shared id-extractor (packEntryId in packs/registry.mjs — core machinery per extending.md, not a specific pack) so the fleet's activePacks normalization and the engine can never drift on the declaration forms; the cross-tree reach is inherent, the same as the planner's registry import"
+      "reason": "the member-declaration read deliberately imports the one shared id-extractor (packEntryId in engine/pack_loader/registry.mjs — core machinery per extending.md, not a specific pack) so the fleet's activePacks normalization and the engine can never drift on the declaration forms; the cross-tree reach is inherent, the same as the planner's registry import"
     },
     {
       "rule": "file-placement",
-      "path": "checks/lib/context.mjs",
-      "reason": "the engine's file-set builder deliberately imports the consumer-layout constant SHARED_SUBDIR (beside LOCAL_PACKS_SUBDIR in packs/registry.mjs — core machinery per extending.md, not a specific pack) so the shared-mount sweep exclusion and the vendor writer share one definition; the cross-tree reach is inherent, not a misplacement"
+      "path": "engine/checks_helpers/context.mjs",
+      "reason": "the engine's file-set builder deliberately imports the consumer-layout constant SHARED_SUBDIR (beside LOCAL_PACKS_SUBDIR in engine/pack_loader/registry.mjs — core machinery per extending.md, not a specific pack) so the shared-mount sweep exclusion and the vendor writer share one definition; the cross-tree reach is inherent, not a misplacement"
     },
     {
       "rule": "file-placement",
       "path": "migrations/registry.mjs",
-      "reason": "the canon-side migration registry deliberately builds on the vendored sync surface in the engine lib (checks/lib/migrations.mjs — the home pack-independence mandates, since pack checks consult migrationActive and packs import only the engine surface); one definition, re-exported for canon callers, so the cross-tree reach is inherent, not a misplacement"
+      "reason": "the canon-side migration registry deliberately builds on the vendored sync surface in the engine lib (engine/checks_helpers/migrations.mjs — the home pack-independence mandates, since pack checks consult migrationActive and packs import only the engine surface); one definition, re-exported for canon callers, so the cross-tree reach is inherent, not a misplacement"
     },
     {
       "rule": "file-placement",
-      "path": "mount/vendor.mjs",
-      "reason": "the vendor-set computation deliberately imports the import-surface facts from the engine lib (checks/lib/imports.mjs — the one home the pack-independence check judges against), so \"what a pack may import\" and \"what a vendor set must carry\" share one definition; the cross-tree reach is inherent, not a misplacement"
+      "path": "engine/mount/vendor.mjs",
+      "reason": "the vendor-set computation deliberately imports the import-surface facts from the engine lib (engine/checks_helpers/imports.mjs — the one home the pack-independence check judges against), so \"what a pack may import\" and \"what a vendor set must carry\" share one definition; the cross-tree reach is inherent, not a misplacement"
     }
   ]
 }

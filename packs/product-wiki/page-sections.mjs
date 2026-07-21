@@ -1,4 +1,4 @@
-import { finding } from '../../checks/lib/findings.mjs';
+import { finding } from '../../engine/checks_helpers/findings.mjs';
 import { wikiPages, hasSection } from './lib.mjs';
 
 // Every wiki page carries the growth machinery as top-level sections. `##` is

@@ -106,7 +106,7 @@ project of the class happens to use Node. Rewrite what lands in a canon pack pro
 parameterized, the way research-project does ("read *input* as whatever it means for your project").
 
 Then gate **every** pack-bound rule — canon or local — on the promotion ladder
-([checks/DESIGN.md](../../../../checks/DESIGN.md)): a rule a deterministic **check** could enforce, or a
+([engine/DESIGN.md](../../../../engine/DESIGN.md)): a rule a deterministic **check** could enforce, or a
 procedure with a nameable trigger a **skill** could carry, becomes that (in a canon seed it's flagged
 as a check/skill candidate; in a local pack you author the check outright in the pack's `rules`, with
 a red-first fixture) rather than settling as prose. What remains in a `RULES.md` is the always-relevant

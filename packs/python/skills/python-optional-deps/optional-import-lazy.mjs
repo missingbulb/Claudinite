@@ -1,4 +1,4 @@
-import { finding } from '../../../../checks/lib/findings.mjs';
+import { finding } from '../../../../engine/checks_helpers/findings.mjs';
 import { optionalDistNames, importNamesFor, topPackagesOf } from './pyproject.mjs';
 
 // A declared-optional dependency imported at module top level runs at
@@ -9,7 +9,7 @@ import { optionalDistNames, importNamesFor, topPackagesOf } from './pyproject.mj
 // stays cheap. Repo-state on purpose: a leaked top-level import is a live
 // core-breakage however long ago it merged.
 //
-// RELEVANCE FIRST (see checks/README.md "Adding a rule"): a skill check runs on
+// RELEVANCE FIRST (see engine/README.md "Adding a rule"): a skill check runs on
 // EVERY repo, so the gate is what makes the signal false-positive-free — the
 // repo must declare optional dependencies in a pyproject.toml
 // ([project.optional-dependencies] is the ONLY place a package is DECLARED

@@ -1,5 +1,5 @@
-import { finding } from '../../../../checks/lib/findings.mjs';
-import { matchingLines } from '../../../../checks/lib/lines.mjs';
+import { finding } from '../../../../engine/checks_helpers/findings.mjs';
+import { matchingLines } from '../../../../engine/checks_helpers/lines.mjs';
 
 // A Google ID token is accepted on three things: signature, issuer, audience.
 // Every Google-issued token shares the one issuer, so a validator whose
@@ -8,7 +8,7 @@ import { matchingLines } from '../../../../checks/lib/lines.mjs';
 // purpose: a pre-existing unset audience is a live bypass and must keep firing
 // until fixed, however long ago it merged.
 //
-// RELEVANCE FIRST (see checks/README.md "Adding a rule"): a skill check runs on
+// RELEVANCE FIRST (see engine/README.md "Adding a rule"): a skill check runs on
 // EVERY repo, so the gate is narrow — only config-format files (yaml/json/toml/
 // tf) that use the word "issuer" and carry the bare Google issuer origin
 // (scheme + host with no path; a path form is a client-side OAuth URL, not an

@@ -6,10 +6,10 @@
 > needs — never redirecting into another tree. **Packs own their skills outright:** a skill is
 > bundled in exactly one owning pack's tree (#385 — the directory listing is the manifest; there
 > is no separate skills collection), and a consumer mounts the union over its active packs'
-> bundles as session-generated `.claude/skills/` symlinks ([mount-skills.mjs](mount-skills.mjs),
+> bundles as session-generated `.claude/skills/` symlinks ([mount-skills.mjs](../engine/skill_loader/mount-skills.mjs),
 > registered by bootstrap Part 5 — never committed). Rules that are always-relevant to a project
 > are pack prose, not skills; enforceable rules are checks. See
-> [checks/DESIGN.md](../checks/DESIGN.md). This catalog spans every pack's bundle, kept complete
+> [engine/DESIGN.md](../engine/DESIGN.md). This catalog spans every pack's bundle, kept complete
 > by the `catalog-completeness` check.
 
 **Command skills** (owner phrase or bootstrap step):

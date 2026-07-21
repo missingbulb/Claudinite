@@ -4,7 +4,7 @@ Restore the repo the plan hands you to the current canonical baseline. Works ent
 **GitHub MCP tools** (`mcp__github__*`) — never a clone, and no shell GitHub access in the fleet run.
 
 First read the member's `.claudinite-checks.json` and branch on its mount shape — the `claudinite`
-stamp is the discriminator ([mount/DESIGN.md](../../../mount/DESIGN.md)):
+stamp is the discriminator ([engine/mount/DESIGN.md](../../../engine/mount/DESIGN.md)):
 
 - **Vendored member** (`"claudinite": { "updated": … }` present) — perform the **transactional
   refresh**. First **verify the checkout**: the canon checkout this session runs in must be at
@@ -19,7 +19,7 @@ stamp is the discriminator ([mount/DESIGN.md](../../../mount/DESIGN.md)):
      (mechanical ops by construction, agentic instructions preconditions-first), so the
      re-application this admits is safe.
   2. **Converge `.claudinite/shared/`** to the canon head snapshot — the member's vendor set per
-     [mount/vendor.mjs](../../../mount/vendor.mjs) (engine roots minus tests and root docs, the
+     [engine/mount/vendor.mjs](../../../engine/mount/vendor.mjs) (engine roots minus tests and root docs, the
      packs/skills machinery, the declared packs with their `requires` closure, their skills
      union, the corpus index), written copy-if-different **and** deleting files in `shared/` the
      set no longer contains. Unconditional: a member-side edit to a vendored file reverts here,
@@ -52,7 +52,7 @@ stamp is the discriminator ([mount/DESIGN.md](../../../mount/DESIGN.md)):
 Then, for a covered member (either shape):
 
 - **Declaration normalization** — a local pack's canonical declaration token is namespaced:
-  `local_packs/<name>` ([packs/registry.mjs](../../registry.mjs) `declTokenFor`). Rewrite any **bare**
+  `local_packs/<name>` ([engine/pack_loader/registry.mjs](../../../engine/pack_loader/registry.mjs) `declTokenFor`). Rewrite any **bare**
   local-pack declaration in the member's `.claudinite-checks.json` to that form: a declared id (string
   entry, or an entry object's `id`) without the `local_packs/` prefix whose pack lives in the member's
   own `.claudinite/local_packs/<id>/` gets the prefix; everything else on the entry stays verbatim, and

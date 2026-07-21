@@ -1,4 +1,4 @@
-// The vendored-mount FLIP (mount/DESIGN.md, phase 2): convert a member from the
+// The vendored-mount FLIP (engine/mount/DESIGN.md, phase 2): convert a member from the
 // legacy fetch-at-session-start mount to the tracked vendored mount — one commit
 // per member, applied by the nightly BASELINING WORKER, never by the mechanical
 // fleet-apply pass. Deliberately no aliases/materialize/rewrite ops: the
@@ -12,7 +12,7 @@
 export default {
   id: 'vendored-mount-flip',
   landed: '2026-07-18',
-  summary: 'legacy fetch-at-session-start mount -> tracked vendored mount at .claudinite/shared/ (one commit per member; mount/DESIGN.md phase 2)',
+  summary: 'legacy fetch-at-session-start mount -> tracked vendored mount at .claudinite/shared/ (one commit per member; engine/mount/DESIGN.md phase 2)',
   // Telemetry: a member still carrying the tracked sync hook is unflipped.
   legacyPresent: async (exists) => exists('.claudinite/mount/sync-claudinite.sh'),
   // Phase 3 is a deliberate change beyond deleting this record — the canon's
@@ -40,10 +40,8 @@ canon checkout with a shell): first verify the checkout is at the canon's
 HEAD\`) — a lagging checkout is this unit's failure, never a tree to converge
 from (#328; apply-vendor refuses a mismatched or rewinding ref on its own).
 Then make a scratch dir; write the member's fetched
-\`.claudinite-checks.json\` into it; replicate any member
-\`.claudinite/local_packs/*/pack.mjs\` files at the same paths (their skills
-lists feed the set); run
-\`node mount/apply-vendor.mjs --target <scratch> --ref <verified remote head sha>\`.
+\`.claudinite-checks.json\` into it; run
+\`node engine/mount/apply-vendor.mjs --target <scratch> --ref <verified remote head sha>\`.
 The scratch now holds \`.claudinite/shared/**\` and the stamped declaration.
 
 **2. Land ONE commit** on the member (delivery-aware — both \`auto\` and
@@ -55,9 +53,10 @@ branch), containing exactly:
 - the stamped \`.claudinite-checks.json\` from the scratch;
 - \`.claude/settings.json\` edited in place (never touching the member's own
   entries): the SessionStart sync-hook command becomes
-  \`bash $CLAUDE_PROJECT_DIR/.claudinite/shared/mount/session-start.sh\`; the
-  Stop/PreToolUse commands repoint \`.claudinite/checks/\` ->
-  \`.claudinite/shared/checks/\`;
+  \`bash $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/session-start.sh\`; the
+  Stop command becomes \`node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/check_the_work.mjs\`
+  and the PreToolUse command
+  \`node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/pretooluse-guard.mjs\`;
 - \`CLAUDE.md\`: \`@.claudinite/CLAUDE.md\` -> \`@.claudinite/shared/CLAUDE.md\`,
   and the legacy self-check paragraph replaced with the current one (exact
   texts: bootstrap.md, "Import the corpus index");
@@ -78,7 +77,7 @@ settings rewrite).
 \`Re-paste the Claudinite environment Setup script\` (idempotent — search
 first, open or closed counts): the previously pasted script keeps working until
 the environment is next rebuilt, at which point it fails fast; the new body to
-paste is the member's own \`.claudinite/shared/mount/environment-setup.sh\`.
+paste is the member's own \`.claudinite/shared/engine/mount/environment-setup.sh\`.
 
 **Failure before the content commit -> write nothing.** The member keeps
 running the legacy mount coherently, the failure goes to the routine's failure

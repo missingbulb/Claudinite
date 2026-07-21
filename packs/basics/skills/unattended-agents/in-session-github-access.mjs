@@ -1,4 +1,4 @@
-import { finding } from '../../../../checks/lib/findings.mjs';
+import { finding } from '../../../../engine/checks_helpers/findings.mjs';
 
 // In-session routine/worker code reaches GitHub through the session's MCP tools —
 // never a REST client + GITHUB_TOKEN. This is the corollary of the dispatch-only
@@ -15,7 +15,7 @@ import { finding } from '../../../../checks/lib/findings.mjs';
 // planner + migration passes were (re)written as token-authed REST node scripts:
 // every step 401'd because the scheduled session has no shell GitHub REST credential.
 //
-// RELEVANCE (see checks/README.md "Adding a rule" / routine-structure.mjs): a skill
+// RELEVANCE (see engine/README.md "Adding a rule" / routine-structure.mjs): a skill
 // check runs on every repo, so it must detect relevance before asserting. Here the
 // scope IS the relevance gate — only .mjs under routines/, migrations/, or a
 // run_daily/ dir (the in-session code surface). A dispatch-only executor's own code

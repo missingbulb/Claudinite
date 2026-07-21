@@ -17,7 +17,7 @@ export default {
   // The Flutter SDK isn't in the Claude Code Web base image, so a cloud session
   // can't run `flutter test` / analyze / golden regen without it. This declares
   // how the environment installs it (aggregated into environment-setup.sh) and
-  // how the SessionStart check asserts it — see packs/env.mjs.
+  // how the SessionStart check asserts it — see engine/pack_loader/env.mjs.
   env: {
     label: 'Flutter SDK',
     setup: [

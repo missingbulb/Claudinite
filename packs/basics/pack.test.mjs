@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, deletePath, cleanup, git, writeFiles, makeTranscript } from '../../checks/test/helpers.mjs';
-import { buildContext } from '../../checks/lib/context.mjs';
+import { makeRepo, deletePath, cleanup, git, writeFiles, makeTranscript } from '../../engine/test/helpers.mjs';
+import { buildContext } from '../../engine/checks_helpers/context.mjs';
 import commentClassification from './comment-classification.mjs';
 import referenceIntegrity from './reference-integrity.mjs';
 import linkLabels from './markdown-link-labels.mjs';
@@ -22,7 +22,7 @@ function run(rule, root, mode = 'changed') {
 // The relevance gate for the corpus-integrity checks: the pack registry tracked
 // = the repo IS the corpus.
 const CORPUS_MARKERS = {
-  'packs/registry.mjs': '// corpus marker\n',
+  'engine/pack_loader/registry.mjs': '// corpus marker\n',
 };
 
 
@@ -620,18 +620,18 @@ const claudiniteIsolation = contributedBarrierRules([basicsPack]).find((r) => r.
 
 test('claudinite-isolation: inert without the vendored mount; a consumer file referencing the canon fires; wiring files and local_packs stay open', () => {
   const violating = {
-    'src/tool.mjs': 'const p = ".claudinite/shared/checks/run.mjs";\n',
+    'src/tool.mjs': 'const p = ".claudinite/shared/engine/check_the_world.mjs";\n',
   };
   const wiring = {
-    '.claude/settings.json': '{ "hooks": { "Stop": [ { "hooks": [ { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/shared/checks/stop-hook.mjs" } ] } ] } }\n',
+    '.claude/settings.json': '{ "hooks": { "Stop": [ { "hooks": [ { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/check_the_work.mjs" } ] } ] } }\n',
     'CLAUDE.md': '@.claudinite/shared/CLAUDE.md\n',
     '.gitignore': '/.claudinite/*\n!/.claudinite/shared/\n',
-    '.github/workflows/claudinite-checks-ci.yml': 'run: node .claudinite/shared/checks/run.mjs\n',
-    '.claudinite/local_packs/mine/check.mjs': 'import { run } from "../../shared/checks/run.mjs";\n',
+    '.github/workflows/claudinite-checks-ci.yml': 'run: node .claudinite/shared/engine/check_the_world.mjs\n',
+    '.claudinite/local_packs/mine/check.mjs': 'import { run } from "../../shared/engine/check_the_world.mjs";\n',
   };
   const shared = {
-    '.claudinite/shared/checks/run.mjs': 'engine\n',
-    '.claudinite/shared/checks/stop-hook.mjs': 'engine\n',
+    '.claudinite/shared/engine/check_the_world.mjs': 'engine\n',
+    '.claudinite/shared/engine/check_the_work.mjs': 'engine\n',
     '.claudinite/shared/CLAUDE.md': 'index\n',
   };
   // No vendored mount → the gate keeps the rule inert even with a violating file.
@@ -643,7 +643,7 @@ test('claudinite-isolation: inert without the vendored mount; a consumer file re
     const f = run(claudiniteIsolation, on, 'all');
     assert.equal(f.length, 1, JSON.stringify(f, null, 2));
     assert.equal(f[0].file, 'src/tool.mjs');
-    assert.match(f[0].what, /\.claudinite\/shared\/checks\/run\.mjs/);
+    assert.match(f[0].what, /\.claudinite\/shared\/engine\/check_the_world\.mjs/);
     assert.equal(f[0].severity, 'blocking');
   } finally { cleanup(off); cleanup(on); }
 });

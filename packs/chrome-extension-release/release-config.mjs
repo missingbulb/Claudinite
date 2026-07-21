@@ -1,4 +1,4 @@
-import { finding } from '../../checks/lib/findings.mjs';
+import { finding } from '../../engine/checks_helpers/findings.mjs';
 
 // `.github/release.config` is REQUIRED and fully explicit — every extension repo
 // declares its release values, there are no silent defaults (a default that

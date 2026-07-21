@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, cleanup } from '../../checks/test/helpers.mjs';
-import { buildContext } from '../../checks/lib/context.mjs';
+import { makeRepo, cleanup } from '../../engine/test/helpers.mjs';
+import { buildContext } from '../../engine/checks_helpers/context.mjs';
 import secretsInJobIf from './secrets-in-job-if.mjs';
 import runPipefail from './run-pipefail.mjs';
 import checkoutSubmodules from './checkout-submodules.mjs';

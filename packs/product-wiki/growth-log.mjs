@@ -1,4 +1,4 @@
-import { finding } from '../../checks/lib/findings.mjs';
+import { finding } from '../../engine/checks_helpers/findings.mjs';
 import { wikiPages, sectionBody, BULLET, DATED, realDateUTC } from './lib.mjs';
 
 // Growth-log discipline: every top-level bullet in the section leads with its

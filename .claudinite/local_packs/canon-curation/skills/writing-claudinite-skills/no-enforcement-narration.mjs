@@ -1,12 +1,12 @@
 import { dirname } from 'node:path';
-import { finding } from '../../../../../checks/lib/findings.mjs';
-import { matchingLines, ruleIdsIn } from '../../../../../checks/lib/lines.mjs';
+import { finding } from '../../../../../engine/checks_helpers/findings.mjs';
+import { matchingLines, ruleIdsIn } from '../../../../../engine/checks_helpers/lines.mjs';
 
 // A corpus SKILL.md must not narrate its own enforcement: checks run on their
 // own at every Stop and in CI, and each failure message carries its rule — a
 // skill that says so anyway duplicates the mechanism and drifts from it.
 //
-// RELEVANCE FIRST (see checks/README.md "Adding a rule"): a skill check runs on
+// RELEVANCE FIRST (see engine/README.md "Adding a rule"): a skill check runs on
 // EVERY repo, but corpus skills exist only in the canon home — gate on the
 // skills registry being tracked, the same gate skill-ownership uses.
 const RUNNER = /checks\/run\.mjs/;
@@ -20,7 +20,7 @@ const rule = {
   why: 'checks run automatically at every Stop and in CI, and each failure message carries its rule — a skill narrating its own enforcement duplicates the mechanism and drifts from it',
 
   run(ctx) {
-    if (!ctx.tracked.includes('skills/registry.mjs')) return [];
+    if (!ctx.tracked.includes('engine/pack_loader/registry.mjs')) return [];
     const docs = ctx.files.filter((f) => /^skills\/[^/]+\/SKILL\.md$/.test(f));
     return [
       ...matchingLines(ctx, docs, RUNNER).map(({ file, line }) => finding(rule, {

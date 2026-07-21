@@ -1,6 +1,6 @@
 import { join, dirname } from 'node:path';
-import { finding } from '../../../checks/lib/findings.mjs';
-import { matchingLines, ruleIdsIn } from '../../../checks/lib/lines.mjs';
+import { finding } from '../../../engine/checks_helpers/findings.mjs';
+import { matchingLines, ruleIdsIn } from '../../../engine/checks_helpers/lines.mjs';
 
 // A pack's injected prose must not narrate its own enforcement: checks run on
 // their own at every Stop and in CI, and each failure message carries its
@@ -16,7 +16,7 @@ const rule = {
   id: 'pack-no-enforcement-narration',
   severity: 'blocking',
   description: "A pack's injected prose neither tells the reader to run the checks runner nor names the rules the pack's own checks enforce",
-  doc: 'checks/DESIGN.md',
+  doc: 'engine/DESIGN.md',
   why: 'checks run automatically at every Stop and in CI, and each failure message carries its rule — prose narrating its own enforcement duplicates the mechanism and drifts from it',
 
   run(ctx) {

@@ -1,5 +1,5 @@
-import { finding } from '../../checks/lib/findings.mjs';
-import { samResources } from '../../checks/lib/cfn.mjs';
+import { finding } from '../../engine/checks_helpers/findings.mjs';
+import { samResources } from '../../engine/checks_helpers/cfn.mjs';
 
 // Converted from the aws-sam prose (issue #136): under BuildMethod: esbuild with a
 // single subdirectory entry point and no OutBase, esbuild's default outbase is the

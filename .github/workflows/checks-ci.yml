@@ -1,4 +1,4 @@
-# Thin launcher only — the logic lives in checks/ (see checks/README.md).
+# Thin launcher only — the logic lives in checks/ (see engine/README.md).
 name: Checks CI
 on:
   pull_request:
@@ -24,10 +24,10 @@ jobs:
         with:
           node-version: 20
       - name: Unit tests
-        # checks/test/ = engine + the cross-pack detect test; each pack carries its own pack.test.mjs / *.test.mjs with its bundled skills' tests inside its tree, the home's own local packs included (.claudinite/local_packs/ — the promote-scope gate test rides the canon-curation local pack); routines/fleet/ carries the planner engine tests; mount/ carries the SessionStart orchestrator test.
-        run: node --test checks/test/*.test.mjs packs/*.test.mjs packs/*/*.test.mjs packs/*/skills/*/*.test.mjs skills/*.test.mjs routines/*/*.test.mjs mount/*.test.mjs .claudinite/local_packs/*/*.test.mjs .claudinite/local_packs/*/skills/*/*.test.mjs
+        # engine/test/ = engine + the cross-pack detect test; each pack carries its own pack.test.mjs / *.test.mjs with its bundled skills' tests inside its tree, the home's own local packs included (.claudinite/local_packs/ — the promote-scope gate test rides the canon-curation local pack); routines/fleet/ carries the planner engine tests; mount/ carries the SessionStart orchestrator test.
+        run: node --test engine/test/*.test.mjs packs/*.test.mjs packs/*/*.test.mjs packs/*/skills/*/*.test.mjs skills/*.test.mjs routines/*/*.test.mjs mount/*.test.mjs .claudinite/local_packs/*/*.test.mjs .claudinite/local_packs/*/skills/*/*.test.mjs
       - name: Conformance sweep
-        run: node checks/run.mjs
+        run: node engine/check_the_world.mjs
       - name: Promote write-surface gate
         # The growth promote stage (.claudinite/local_packs/canon-curation/promote.md) is the one change
         # bounded to packs/ + skills/ — an ordinary engine PR legitimately edits checks/,

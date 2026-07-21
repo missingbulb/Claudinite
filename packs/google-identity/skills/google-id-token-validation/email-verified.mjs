@@ -1,5 +1,5 @@
-import { finding } from '../../../../checks/lib/findings.mjs';
-import { matchingLines } from '../../../../checks/lib/lines.mjs';
+import { finding } from '../../../../engine/checks_helpers/findings.mjs';
+import { matchingLines } from '../../../../engine/checks_helpers/lines.mjs';
 
 // A Google ID token carries an email claim regardless of verification; it is
 // trustworthy only together with email_verified. Two static signatures in
@@ -10,7 +10,7 @@ import { matchingLines } from '../../../../checks/lib/lines.mjs';
 // rejects every genuinely-verified user. Repo-state on purpose: both are live
 // auth defects however long ago they merged.
 //
-// RELEVANCE FIRST (see checks/README.md "Adding a rule"): a skill check runs on
+// RELEVANCE FIRST (see engine/README.md "Adding a rule"): a skill check runs on
 // EVERY repo, and email_verified is standard OIDC, so two gates keep this
 // Google-scoped: per file, only non-test code files handling verified-token
 // claims (an authorizer context or a verify call); per repo, only when some

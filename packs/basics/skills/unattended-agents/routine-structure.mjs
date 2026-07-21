@@ -1,11 +1,11 @@
 import { dirname, join, basename } from 'node:path';
-import { finding } from '../../../../checks/lib/findings.mjs';
+import { finding } from '../../../../engine/checks_helpers/findings.mjs';
 
 // A routine is a folder whose entry point is `routine.md` (the standard name),
 // alongside the deterministic scripts it invokes. This check asserts the
 // prose↔script wiring that the unattended-agents skill mandates.
 //
-// RELEVANCE FIRST (see checks/README.md "Adding a rule"): a skill check has no
+// RELEVANCE FIRST (see engine/README.md "Adding a rule"): a skill check has no
 // declaration gate — the engine runs it on EVERY repo, including ones with no
 // routines — so `run` must detect relevance before asserting anything. Here the
 // signal is a `routine.md` existing: `routineDirs` is empty on any repo without

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, cleanup } from '../../../checks/test/helpers.mjs';
-import { buildContext } from '../../../checks/lib/context.mjs';
+import { makeRepo, cleanup } from '../../../engine/test/helpers.mjs';
+import { buildContext } from '../../../engine/checks_helpers/context.mjs';
 import noEnforcementNarration from './no-enforcement-narration.mjs';
 import canonCuration from './pack.mjs';
 import { contributedBarrierRules } from '../../../packs/barriers/contributed.mjs';
@@ -80,12 +80,12 @@ const packIndependence = contributedBarrierRules([{ ...canonCuration, local: tru
 
 test('pack-independence: a cross-pack import fires; own files, the engine surface, and prose stay open', () => {
   const root = makeRepo({ changed: {
-    'packs/a/pack.mjs': "import other from '../b/rule.mjs';\nimport own from './own.mjs';\nimport { finding } from '../../checks/lib/findings.mjs';\nimport { loadPacks } from '../registry.mjs';\n",
+    'packs/a/pack.mjs': "import other from '../b/rule.mjs';\nimport own from './own.mjs';\nimport { finding } from '../../engine/checks_helpers/findings.mjs';\nimport { loadPacks } from '../registry.mjs';\n",
     'packs/a/own.mjs': 'export default 1;\n',
     'packs/a/README.md': 'Composes with [the b pack](../b/rule.mjs) by declaration.\n',
     'packs/b/rule.mjs': 'export default 1;\n',
-    'checks/lib/findings.mjs': 'export const finding = 1;\n',
-    'packs/registry.mjs': 'export const loadPacks = 1;\n',
+    'engine/checks_helpers/findings.mjs': 'export const finding = 1;\n',
+    'engine/pack_loader/registry.mjs': 'export const loadPacks = 1;\n',
   } });
   try {
     const findings = packIndependence.run(buildContext({ root, mode: 'all' }));

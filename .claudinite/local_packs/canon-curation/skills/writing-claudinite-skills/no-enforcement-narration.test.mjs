@@ -1,14 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, cleanup } from '../../../../../checks/test/helpers.mjs';
-import { buildContext } from '../../../../../checks/lib/context.mjs';
+import { makeRepo, cleanup } from '../../../../../engine/test/helpers.mjs';
+import { buildContext } from '../../../../../engine/checks_helpers/context.mjs';
 import noEnforcementNarration from './no-enforcement-narration.mjs';
 
 // Co-located with the check it exercises (skills own their check-the-work rules).
 const run = (root) => noEnforcementNarration.run(buildContext({ root, mode: 'all' }));
 
 // The canon-home gate: corpus skills exist only where the registry is tracked.
-const CORPUS = { 'skills/registry.mjs': '// registry\n' };
+const CORPUS = { 'engine/pack_loader/registry.mjs': '// registry\n' };
 
 test('skill-no-enforcement-narration: a silent SKILL.md beside its check module passes', () => {
   const root = makeRepo({ changed: {
@@ -61,7 +61,7 @@ test('skill-no-enforcement-narration: another skill\'s rule id is not "its own"'
 
 test('skill-no-enforcement-narration: inert outside the canon home repo', () => {
   const root = makeRepo({ changed: {
-    'skills/demo/SKILL.md': '---\nname: demo\n---\n\nRun `node checks/run.mjs`.\n',
+    'skills/demo/SKILL.md': '---\nname: demo\n---\n\nRun `node engine/check_the_world.mjs`.\n',
   } });
   try {
     assert.equal(run(root).length, 0);

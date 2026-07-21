@@ -1,5 +1,5 @@
-import { finding } from '../../../../checks/lib/findings.mjs';
-import { matchingLines } from '../../../../checks/lib/lines.mjs';
+import { finding } from '../../../../engine/checks_helpers/findings.mjs';
+import { matchingLines } from '../../../../engine/checks_helpers/lines.mjs';
 
 // Chrome ships speech recognition only under the webkit-prefixed constructor;
 // other Chromium contexts (headless, non-Chromium browsers, the test binding)
@@ -10,7 +10,7 @@ import { matchingLines } from '../../../../checks/lib/lines.mjs';
 // constructor once (`globalThis.SpeechRecognition ?? globalThis.webkitSpeechRecognition`)
 // and gates an `available` flag on it existing.
 //
-// RELEVANCE FIRST (see checks/README.md "Adding a rule"): a skill check runs on
+// RELEVANCE FIRST (see engine/README.md "Adding a rule"): a skill check runs on
 // EVERY repo, so the gate is the anti-pattern itself — a source file that
 // directly constructs the prefixed recognizer AND never mentions the unprefixed
 // `SpeechRecognition` name (its presence anywhere, in a `??`/`||` fallback or a

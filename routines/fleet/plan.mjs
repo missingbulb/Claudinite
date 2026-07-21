@@ -14,7 +14,7 @@
 // reads over MCP and runs this logic to obtain the plan — the "should I run" verdict
 // is always code, never the orchestrator's judgment.
 
-import { loadPacks } from '../../packs/registry.mjs';
+import { loadPacks } from '../../engine/pack_loader/registry.mjs';
 import { packTasks, assembleForRepo } from './registry.mjs';
 import { buildSignals, computeCanonChange } from './signals.mjs';
 import { planRepo } from './gates.mjs';

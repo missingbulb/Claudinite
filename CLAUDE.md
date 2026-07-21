@@ -8,19 +8,19 @@
 - **`packs/<name>/`** — a bundle of prose (a pack's `RULES.md`) **and** checks, selected **once per
   session** by the project's declaration in `.claudinite-checks.json`. No pack is active by default —
   `basics` too is declared explicitly (bootstrap seeds it). The active packs' prose loads at session
-  start via `packs/load-active-prose.mjs`; the checks run at every Stop and in CI. This is the "decided
+  start via `engine/pack_loader/load-active-prose.mjs`; the checks run at every Stop and in CI. This is the "decided
   once, seldom changes" set. A pack can live here (the shared, portable canon) **or** in a consumer's
   own `.claudinite/local_packs/<name>/` (tracked project content — its project-specific packs, the same
   slots); the engine discovers and runs both the same way ([extending.md](extending.md)).
 - **`skills/<name>/`** — activity-scoped procedures, surfaced **on demand** by the harness when the work
   in front of you matches the skill. Deployment is pack-driven: each pack declares the skills it
   requires, and a repo mounts the union over its active packs at session start
-  (`skills/mount-skills.mjs`); the `skill-ownership` check keeps every skill required by some pack.
+  (`engine/skill_loader/mount-skills.mjs`); the `skill-ownership` check keeps every skill required by some pack.
   Catalog: [skills/README.md](skills/README.md).
 
 Everything enforceable is a check or a hook; everything always-relevant-to-a-project is pack prose;
 everything activity-scoped is a skill. Before adding *any* rule as prose, run the promotion ladder in
-[checks/DESIGN.md](checks/DESIGN.md): a platform setting, a hook, a check, or a skill that can carry it
+[engine/DESIGN.md](engine/DESIGN.md): a platform setting, a hook, a check, or a skill that can carry it
 beats prose. And before adding *any* feature — a rule, a technology's conventions, a nightly task —
 decide the core/pack boundary first: [extending.md](extending.md) is the map of what's engine and what's
 pack-contributed content, and where each kind of feature goes (almost never core).
@@ -73,7 +73,7 @@ pack's own settings — its parameters (`config`), its adoption-interview answer
 may declare the questions its adoption must ask; the unanswered gap surfaces as a mild SessionStart
 note, strict only inside bootstrap), and the rule overrides/acceptances its declaration
 motivates (`rules`/`accept`, the entry being their provenance). Top-level `rules`/`accept` stay for
-project-wide decisions and skill-owned checks. Full schema: [checks/README.md](checks/README.md).
+project-wide decisions and skill-owned checks. Full schema: [engine/README.md](engine/README.md).
 
 **Settings validity** — an unknown pack name, an unknown property (top-level or on a pack entry), or
 malformed JSON in `.claudinite-checks.json` — is checked when the file loads and surfaced by the runner as
@@ -84,7 +84,7 @@ project's call, so neither a marker without its declaration nor a declaration wi
 A pack that only makes sense alongside another names it in its `requires` list (e.g.
 `chrome-extension-release` requires `chrome-extension`, `firebase-release` requires `firebase`,
 `spec-driven-product` requires `executable-requirements`). This isn't a check: a pack can't be imported
-without its dependencies, so `resolveDeclaredPacks` ([packs/registry.mjs](packs/registry.mjs)) pulls each
+without its dependencies, so `resolveDeclaredPacks` ([engine/pack_loader/registry.mjs](engine/pack_loader/registry.mjs)) pulls each
 declared pack's `requires` closure into the declaration when it's written — at `--init` and the baselining
 backfill — materializing the prerequisite in the file, visible like every other entry, as
 `{ "id": ..., "via": [...] }` with `via` naming the packs that require it.
@@ -100,7 +100,7 @@ truth, kept complete against the tree by the `catalog-completeness` check. Two k
 ## preferences/ — auto-injected by the SessionStart hook
 
 `preferences/<email>.md` holds the owner's per-user interaction preferences. The
-`mount/inject-preferences.sh` SessionStart step loads the current user's file into context — you
+`engine/hooks/inject-preferences.sh` SessionStart step loads the current user's file into context — you
 don't read it yourself.
 
 ---

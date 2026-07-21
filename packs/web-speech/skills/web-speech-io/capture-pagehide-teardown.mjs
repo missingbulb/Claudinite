@@ -1,4 +1,4 @@
-import { finding } from '../../../../checks/lib/findings.mjs';
+import { finding } from '../../../../engine/checks_helpers/findings.mjs';
 
 // A live microphone capture — a speech recognizer, or a `getUserMedia` stream —
 // is NOT freed by the browser's implicit page teardown. A page frozen into the
@@ -11,7 +11,7 @@ import { finding } from '../../../../checks/lib/findings.mjs';
 // releases it nowhere on `pagehide` is a standing leak however long ago it
 // merged, so the whole tracked source is the scope — not just the diff.
 //
-// RELEVANCE FIRST (see checks/README.md "Adding a rule"): the check runs on
+// RELEVANCE FIRST (see engine/README.md "Adding a rule"): the check runs on
 // EVERY repo, so the gate is narrow and conservative — it fires only when the
 // repo actually opens the mic (a `getUserMedia` call, or a file that both
 // references the recognizer API and `.start()`s it) AND no source file anywhere

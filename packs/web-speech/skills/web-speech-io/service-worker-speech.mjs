@@ -1,4 +1,4 @@
-import { finding } from '../../../../checks/lib/findings.mjs';
+import { finding } from '../../../../engine/checks_helpers/findings.mjs';
 
 // The Web Speech recognition API and speechSynthesis are Window-scoped: they
 // live on `window`/a document, which an MV3 background service worker does not
@@ -9,7 +9,7 @@ import { finding } from '../../../../checks/lib/findings.mjs';
 // move to a document context. Repo-state on purpose: a worker that references
 // one of these is a live break however long ago it merged.
 //
-// RELEVANCE FIRST (see checks/README.md "Adding a rule"): a skill check runs on
+// RELEVANCE FIRST (see engine/README.md "Adding a rule"): a skill check runs on
 // EVERY repo, so the gate is narrow — only the file an MV3 manifest.json names
 // as `background.service_worker`, resolved relative to the manifest, and only
 // when that file is the project's OWN authored source (ctx.files, so a built /

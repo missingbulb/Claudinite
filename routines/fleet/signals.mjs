@@ -1,5 +1,5 @@
 import { isFullSweepDay } from './schedule.mjs';
-import { packEntryId } from '../../packs/registry.mjs';
+import { packEntryId } from '../../engine/pack_loader/registry.mjs';
 
 // The signal bundle each gate reads. Built per covered member from a small, bounded
 // set of cheap GitHub reads; `gh(path) -> { status, json }` is the orchestrator's
@@ -14,7 +14,9 @@ import { packEntryId } from '../../packs/registry.mjs';
 // tracked sync hook, session-start, env-setup; `sync-claudinite.sh` is the retired
 // pre-mount path, kept tolerant). Exclude the orchestration layer and the planner's
 // own artifacts, or canonChanged self-triggers every night.
-const CANON_MEMBER_PATHS = [/^packs\//, /^checks\//, /^skills\//, /^migrations\//, /^bootstrap\.md$/, /^mount\//, /^sync-claudinite\.sh$/];
+// engine/ is the consolidated home (#385); checks/, skills/, mount/ linger as
+// transition shims and legacy shapes until the engine-restructure note retires.
+const CANON_MEMBER_PATHS = [/^packs\//, /^engine\//, /^checks\//, /^skills\//, /^migrations\//, /^bootstrap\.md$/, /^mount\//, /^sync-claudinite\.sh$/];
 const CANON_EXCLUDE = [/^routines\//, /(^|\/)plan\.json$/];
 
 export function pathAffectsMembers(path) {

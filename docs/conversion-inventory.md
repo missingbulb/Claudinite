@@ -1,6 +1,6 @@
 # Conversion inventory — every corpus rule, audited
 
-> Companion to [../checks/DESIGN.md](../checks/DESIGN.md) (issue #127). Each discrete instruction in the mounted
+> Companion to [../engine/DESIGN.md](../engine/DESIGN.md) (issue #127). Each discrete instruction in the mounted
 > corpus, classified by the mechanism that should carry it. This is the audit that answers
 > "is enough of the corpus convertible?" — and the worklist Phases 1–3 execute against.
 

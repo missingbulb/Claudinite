@@ -39,13 +39,13 @@ Activity-scoped practice prose lives in [../skills/](../skills/README.md), not i
 A consumer keeps its **project-specific** packs in its own tree at
 `.claudinite/local_packs/<name>/` — the same slots (prose `RULES.md`, `rules` checks, `skills`,
 `run_daily` tasks, `questions`), authored and committed by the project, discovered and run by the
-same engine as these canon packs. `discoverPacks({ localRoot })` ([registry.mjs](registry.mjs)) scans this repo's
+same engine as these canon packs. `discoverPacks({ localRoot })` ([registry.mjs](../engine/pack_loader/registry.mjs)) scans this repo's
 `packs/` **and** the consumer's `local_packs/`; each pack is stamped with its own `dir` (prose and
 bundled skills resolve off it) and a `local` flag. A local pack:
 
 - is **declared by hand** in `.claudinite-checks.json` like any pack — never fingerprinted or seeded
   (`detect`/`marker` null) — by its **namespaced token `local_packs/<name>`** (the canonical form;
-  the engine's [`packEntryId`](registry.mjs) resolves it and the legacy bare id alike to the bare
+  the engine's [`packEntryId`](../engine/pack_loader/registry.mjs) resolves it and the legacy bare id alike to the bare
   pack id, so the bare form keeps working while the fleet's baselining rewrites it), and its id must
   be unique (it may not shadow a canon id — the collision is a blocking `config` finding);
 - **bundles its skills** at `<pack>/skills/<skill>/` (mounted from the tracked pack dir — the
@@ -66,19 +66,19 @@ treats `.claudinite/local_packs/` as the project's capture surface.
 
 ## Settings validity
 
-The `"packs"` list and the rest of `.claudinite-checks.json` are validated **when the file loads**, not by a conformance check: [`loadConfig`](../checks/lib/context.mjs) reports malformed JSON and an unknown top-level property, and the runner adds an unknown *pack name* (it holds the registry). Each becomes a blocking `config` error — a wrong pack name is as much a settings error as invalid JSON. A pack's `detect`/`marker` only **suspects** a pack is wanted; declaring it is the project's call, so a declared pack without its marker (or a marker without its declaration) is **not** flagged.
+The `"packs"` list and the rest of `.claudinite-checks.json` are validated **when the file loads**, not by a conformance check: [`loadConfig`](../engine/checks_helpers/context.mjs) reports malformed JSON and an unknown top-level property, and the runner adds an unknown *pack name* (it holds the registry). Each becomes a blocking `config` error — a wrong pack name is as much a settings error as invalid JSON. A pack's `detect`/`marker` only **suspects** a pack is wanted; declaring it is the project's call, so a declared pack without its marker (or a marker without its declaration) is **not** flagged.
 
 ## Pack dependencies (`requires`)
 
 A pack states the packs it depends on in an optional `requires` field on its `pack.mjs` — a plain array of pack ids: a release pack builds on its coding pack (`chrome-extension-release` requires `chrome-extension`, `firebase-release` requires `firebase`) and a project-class pack leans on the framework that implements it (`spec-driven-product` requires `executable-requirements`).
 
-This is **not a check** — a pack can't be imported without its dependencies, so the resolution happens **when the declaration is written**, at bootstrap `--init` and the baselining backfill ([bootstrap.md](../bootstrap.md) Part 6): [`resolveDeclaredPacks`](registry.mjs) pulls each declared pack's transitive `requires` closure into `.claudinite-checks.json`. The prerequisite is materialized and visible in the file — droppable like every other entry, the same reason `basics` is written explicitly rather than defaulted — rather than resolved implicitly at run time. Declared ids keep their order; each pack's pulled-in dependencies land right after it.
+This is **not a check** — a pack can't be imported without its dependencies, so the resolution happens **when the declaration is written**, at bootstrap `--init` and the baselining backfill ([bootstrap.md](../bootstrap.md) Part 6): [`resolveDeclaredPacks`](../engine/pack_loader/registry.mjs) pulls each declared pack's transitive `requires` closure into `.claudinite-checks.json`. The prerequisite is materialized and visible in the file — droppable like every other entry, the same reason `basics` is written explicitly rather than defaulted — rather than resolved implicitly at run time. Declared ids keep their order; each pack's pulled-in dependencies land right after it.
 
 ## Bundled skills (`<pack>/skills/`)
 
 A pack's skills live in its own tree — `<pack>/skills/<skill>/SKILL.md`, one owning pack per skill (#385). The directory listing IS the manifest: there is no `skills` field on `pack.mjs` and no separate skills collection to own or cross-declare.
 
-The SessionStart hook [`../skills/mount-skills.mjs`](../skills/mount-skills.mjs) mounts the **union over the active packs' bundles** (same activation as prose/checks/env) as session-generated `.claude/skills/<name>` symlinks — nothing committed, and a self-ignoring `.claude/skills/.gitignore` keeps them out of git status. A skill rides its pack everywhere the pack goes: the vendor set, the mounts, the sweep (its `checks.mjs` runs when the pack is active). The baseline activities every project has (`merge-to-main`, `writing-tests`, `bug-investigation`, …) ride the `basics` pack's bundle; move a skill's directory to a narrower pack when it stops being a baseline activity.
+The SessionStart hook [`../engine/skill_loader/mount-skills.mjs`](../engine/skill_loader/mount-skills.mjs) mounts the **union over the active packs' bundles** (same activation as prose/checks/env) as session-generated `.claude/skills/<name>` symlinks — nothing committed, and a self-ignoring `.claude/skills/.gitignore` keeps them out of git status. A skill rides its pack everywhere the pack goes: the vendor set, the mounts, the sweep (its `checks.mjs` runs when the pack is active). The baseline activities every project has (`merge-to-main`, `writing-tests`, `bug-investigation`, …) ride the `basics` pack's bundle; move a skill's directory to a narrower pack when it stops being a baseline activity.
 
 ## Environment requirements (`env`)
 
@@ -102,7 +102,7 @@ setup: (p) => (p.dirs?.length ? p.dirs : ['.']).map((d) => `( cd "${d}" && npm c
 
 [`env.mjs`](env.mjs) drives everything from the repo's **active** packs (same activation as prose/checks):
 
-- `node .claudinite/packs/env.mjs install` runs every active pack's `setup` in the checkout. The corpus's one generic [`environment-setup.sh`](../mount/environment-setup.sh) (synced into every consumer's `.claudinite/mount/`) calls this after syncing the corpus.
+- `node .claudinite/packs/env.mjs install` runs every active pack's `setup` in the checkout. The corpus's one generic [`environment-setup.sh`](../engine/mount/environment-setup.sh) (synced into every consumer's `.claudinite/mount/`) calls this after syncing the corpus.
 - `node .claudinite/packs/env.mjs check` is a SessionStart hook (web only) that **asserts** — it runs each `probe` directly against the running environment and injects the halt-gate context if a requirement is missing. No version flag: the probes are the source of truth, and a genuinely new requirement fails its probe and prompts a re-run. Never installs.
 - `node .claudinite/packs/env.mjs plan` prints what `install` would run (review / debug).
 
@@ -121,7 +121,7 @@ questions: [{ id: 'goals', prompt: 'What should these barriers accomplish — �
 ```
 
 The answers live **verbatim** on the pack's entry in `.claudinite-checks.json` (`answers:
-{ "<question-id>": "<answer>" }` — [checks/README.md](../checks/README.md)): the settings file
+{ "<question-id>": "<answer>" }` — [engine/README.md](../engine/README.md)): the settings file
 records the project's intent beside the `config` distilled from it — provenance for the
 configuration, versioned and diffable, and re-derivable if the pack's config shape later changes.
 The **gap** — declared question ids minus answered ids — drives the asking
