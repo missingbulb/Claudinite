@@ -69,4 +69,4 @@ executable-requirements UI suite); keep anything project-specific in the consumi
   every start. This pack declares that need in its `env` block ([pack.mjs](pack.mjs)); a project pastes
   one generic `environment-setup.sh` that runs every active pack's requirement via
   [packs/env.mjs](../env.mjs) and asserts it at session start (see [bootstrap.md](../../bootstrap.md)
-  Part 8).
+  Part 10).

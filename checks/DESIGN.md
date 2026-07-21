@@ -233,9 +233,12 @@ as the existing SessionStart hooks):
 Loop safety comes from convergence (fixed findings stop firing) plus Claude Code's own runaway
 protection (it overrides a Stop hook after ~8 consecutive blocks).
 
-**CI is the backstop, not the mechanism.** Hooks fire only in Claude Code sessions; a human
-editing on GitHub web, or any other tool, bypasses them. A CI job running the same full sweep
-catches those — same rules, same messages, one source of truth.
+**The Stop hook is the whole enforcement surface — consumers ship no CI job.** Hooks fire only
+in Claude Code sessions; a human editing on GitHub web, or any other tool, bypasses them, and
+those edits are caught at the **next session's** Stop sweep instead (the sweep judges the tree,
+not the turn). A standing consumer workflow running the sweep was tried and retired by owner
+decision (#385) — no GitHub Action rides the standard wiring; a repo that wants one can wire
+`node .claudinite/shared/engine/checks/run.mjs` itself.
 
 **The conversation surface (Stop hook only).** Some process rules leave their artifact not in
 the repo but in the *session itself* — e.g. `comment-classification` (the reply to the owner's

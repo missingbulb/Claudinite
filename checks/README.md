@@ -124,8 +124,9 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
   `.claude/settings.json` (see [bootstrap.md](../bootstrap.md)). Fast-exits when nothing changed
   vs the base; on blocking findings exits 2 so the session fixes them before stopping.
   Self-limiting: after blocking twice on identical findings it lets the stop through.
-- **CI** — run `node checks/run.mjs` as the backstop for edits made outside Claude sessions;
-  same sweep, same messages.
+- **No CI job in the standard wiring** — edits made outside Claude sessions surface at the next
+  session's Stop sweep (owner decision, #385). A repo that wants a CI backstop can run
+  `node checks/run.mjs` itself; same sweep, same messages.
 
 ## Adding a rule
 

@@ -31,7 +31,7 @@ stamp is the discriminator ([mount/DESIGN.md](../../../mount/DESIGN.md)):
   If any part fails **before that commit, write nothing** — the member keeps running its old
   snapshot coherently, tonight's failure goes to the routine's failure log, and the next night
   retries from the same stamp. Also keep the fresh-path wiring converged per [bootstrap.md](../../../bootstrap.md)
-  (hook registrations, the `@.claudinite/shared/CLAUDE.md` import, the CI stub copy) — additive
+  (hook registrations, the `@.claudinite/shared/CLAUDE.md` import) — additive
   and in-place fixes only, never clobbering the member's own entries.
 - **Pre-flip member** (no stamp) — first consult the live **flip note**
   (`migrations/active_migrations/*vendored-mount-flip*`): if its `flip.repos` names this member

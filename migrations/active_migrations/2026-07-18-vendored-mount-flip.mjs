@@ -61,13 +61,10 @@ branch), containing exactly:
 - \`CLAUDE.md\`: \`@.claudinite/CLAUDE.md\` -> \`@.claudinite/shared/CLAUDE.md\`,
   and the legacy self-check paragraph replaced with the current one (exact
   texts: bootstrap.md, "Import the corpus index");
-- \`.gitignore\`: drop \`!/.claudinite/mount/\`, \`/.claudinite/mount/*\`,
-  \`!/.claudinite/mount/sync-claudinite.sh\`, \`/.claudinite.new/\`; ensure
-  \`/.claudinite/*\`, \`!/.claudinite/shared/\`, \`!/.claudinite/local_packs/\`,
-  and the two hooks-log ignores;
-- \`.github/workflows/claudinite-checks-ci.yml\` added from the vendor tree's
-  own copy at \`.claudinite/shared/packs/basics/stubs/claudinite-checks-ci.yml\`
-  (skip if the member already tracks a file at that workflow path).
+- \`.gitignore\`: drop the whole legacy Claudinite block (\`/.claudinite/*\`, the
+  \`mount/\` re-include dance, \`/.claudinite.new/\`); keep only the two hooks-log
+  ignores (\`/.claudinite-hooks.log\`, \`/.claudinite-hooks.log.tmp\`) — the
+  vendored world writes nothing untracked into \`.claudinite/\` (#385).
 
 **2b. Delete the tracked \`.claudinite/mount/sync-claudinite.sh\`** — its own
 \`delete_file\` commit, immediately after: MCP's \`push_files\` cannot combine

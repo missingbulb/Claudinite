@@ -7,7 +7,7 @@
 > another tree. **Packs own the deployment:** each pack declares the
 > skills it requires (`skills` in its `pack.mjs`), and a consumer mounts the union over its active
 > packs as session-generated `.claude/skills/` symlinks ([mount-skills.mjs](mount-skills.mjs),
-> registered by bootstrap Part 7 — never committed). The `skill-ownership` check keeps every skill
+> registered by bootstrap Part 5 — never committed). The `skill-ownership` check keeps every skill
 > here required by at least one pack, both directions. Rules that are always-relevant to a project
 > are pack prose, not skills; enforceable rules are checks. See
 > [checks/DESIGN.md](../checks/DESIGN.md).

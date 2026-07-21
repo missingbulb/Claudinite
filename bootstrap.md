@@ -133,18 +133,7 @@ One standing rule the vendored tree does **not** change: committed consumer code
 refactored upstream, so code reaching into it inherits every rename as a breaking change. Inline
 what you need. The `claudinite-isolation` check enforces this outside the wiring files.
 
-## Part 7 — the CI backstop
-
-Hooks fire only in Claude Code sessions; CI catches edits made anywhere else — same sweep, same
-messages, from the **same committed snapshot** the sessions judge by:
-
-```sh
-mkdir -p .github/workflows
-cp .claudinite/shared/packs/basics/stubs/claudinite-checks-ci.yml .github/workflows/claudinite-checks-ci.yml
-git add .github/workflows/claudinite-checks-ci.yml
-```
-
-## Part 8 — request fleet enrollment (open one tracking issue)
+## Part 7 — request fleet enrollment (open one tracking issue)
 
 A consuming project schedules nothing: the growth lifecycle and nightly maintenance run
 centrally, from the owner's home repo — but only over repos on the routine's access list. So, as
@@ -155,7 +144,7 @@ matters more, not less: an unenrolled repo's snapshot simply freezes until someo
 When the fleet's sweep baselines a repo it already maintains, it closes any still-open enrollment
 issue — being reached proves enrollment.
 
-## Part 9 — categorize the project (declare its class pack)
+## Part 8 — categorize the project (declare its class pack)
 
 **Only for a fresh / empty project** — one without its own established working style. The owner
 runs recurring **classes** of project, each carried by a project-class pack:
@@ -168,7 +157,7 @@ runs recurring **classes** of project, each carried by a project-class pack:
    facets and extracts its working instructions into new/refined canon packs (the primary
    deliverable) plus a thin project-specific overlay.
 
-## Part 10 — land the adoption green
+## Part 9 — land the adoption green
 
 Run the sweep once and clear what it surfaces:
 
@@ -183,7 +172,7 @@ keeps. Don't reach for `--changed` to hide the backlog — it is a transitional 
 enforcement default. Commit the adoption as one change (the vendored tree, the declaration, the
 wiring) and push it through the normal PR flow.
 
-## Part 11 — cloud environment setup (Claude Code on the web)
+## Part 10 — cloud environment setup (Claude Code on the web)
 
 The web base image ships no toolchains; installs belong in the environment **image** (built
 once, snapshotted), not a per-session hook. The corpus holds the one generic script —

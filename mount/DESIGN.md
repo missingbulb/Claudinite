@@ -86,15 +86,16 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    `linguist-vendored` convention: the exclusion must hold on any git host and any checkout.
    This is also what keeps the corpus-shape checks (catalog-completeness, skill-ownership)
    naturally inert in consumers with a pruned tree.
-7. **Pinning semantics.** Each branch runs the snapshot committed on it: a session, its Stop
-   hook, and CI all judge by the same law, and a canon change affects no consumer until that
-   consumer's own nightly commit. Consumer CI becomes a three-line workflow running
-   `node .claudinite/shared/checks/run.mjs` from the checkout — the backstop
-   [checks/README.md](../checks/README.md) names finally has standard wiring. Rollback is
-   per-repo and atomic: revert the nightly's commit.
+7. **Pinning semantics.** Each branch runs the snapshot committed on it: a session and its Stop
+   hook judge by the same law, and a canon change affects no consumer until that
+   consumer's own nightly commit. There is deliberately **no consumer CI workflow** (owner
+   decision, #385): the Stop hook — which blocks the session from finishing until the sweep is
+   green — is the enforcement surface, and an edit made outside Claude sessions surfaces at the
+   next session's Stop sweep. Rollback is per-repo and atomic: revert the nightly's commit.
 8. **Isolation.** Consumer files must not reference `.claudinite/` except the wiring set: the
    root `CLAUDE.md` (the `@`-import and self-check), `.claude/` (settings hook registrations),
-   `.gitignore`, `.gitattributes`, `.github/workflows/` (the CI stub), and anything under
+   `.gitignore`, `.gitattributes`, `.github/workflows/` (a repo's own workflows may run the
+   vendored engine), and anything under
    `.claudinite/` itself (`local_packs/` included). Product code that wants a canon helper
    inlines it — depending on canon internals would turn every canon refactor into a breaking
    migration for code the canon doesn't own. Enforced as a **fixed barrier the baseline pack
@@ -145,7 +146,8 @@ the nightly touches everyone, and never break the channel the migration itself t
 - **Phase 1 — canon capabilities:** the fail-soft preferences step (done); the `claudinite`
   stamp key in `loadConfig` (done); the engine's shared-mount sweep exclusion (done); the local
   vendor writer [apply-vendor.mjs](apply-vendor.mjs) — whole-set convergence + stamp, erroring
-  before any write (done); the consumer CI stub, shipped in the baseline pack's `stubs/` (done);
+  before any write (done); the consumer CI stub, shipped in the baseline pack's `stubs/` (done; later retired by owner
+  decision #385 — the Stop hook is the whole enforcement surface, see 7);
   the isolation check (done — the reference index builds from `ctx.tracked`, so vendored files
   stay resolvable as reference *targets* while excluded from scanning); the baselining worker
   branches on the `claudinite` stamp — vendored members get the transactional refresh
@@ -162,7 +164,7 @@ the nightly touches everyone, and never break the channel the migration itself t
   vendor set under `.claudinite/shared/`, the `.gitignore` flip (keep ignoring `.claudinite/*`
   with `shared/` and `local_packs/` re-included, so legacy flat leftovers and a stale
   environment's stray sync stay invisible), the `SessionStart`/Stop/PreToolUse rewrite to
-  `shared/` paths, the `CLAUDE.md` import + self-check swap, the CI stub, the stamp, and the
+  `shared/` paths, the `CLAUDE.md` import + self-check swap, the stamp, and the
   sync-hook deletion — executed by the **baselining worker** (the mechanical passes see the
   record as a no-op; its `legacyPresent` feeds the unflipped-count telemetry), plus one
   member issue asking to re-paste the environment Setup script (the surviving out-of-repo

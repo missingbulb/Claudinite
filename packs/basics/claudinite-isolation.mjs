@@ -17,7 +17,7 @@ import { SHARED_SUBDIR } from '../registry.mjs';
 // - '.claudinite': the mount subtree itself (local_packs/ referencing the canon;
 //   the vendored files are already outside the scanned set).
 // - '.claude': settings.json registers the hooks by path.
-// - '.github/workflows': the CI stub runs the vendored engine.
+// - '.github/workflows': a repo's own workflow may run the vendored engine.
 // - 'CLAUDE.md': the @-import and the self-check line.
 // - '.gitignore', '.gitattributes': the mount's housekeeping rules.
 // - '.claudinite-checks.json': settings legitimately spell paths.
