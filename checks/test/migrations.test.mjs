@@ -243,8 +243,9 @@ test('loadMigrations: the vendored-mount flip record carries its worker gate and
   const m = (await loadMigrations()).find((x) => x.id === 'vendored-mount-flip');
   assert.ok(m, 'flip record must be discovered');
   assert.equal(m.retire, 'manual');
-  // Pilot gate: the worker converts only the repos this names (until 'fleet').
-  assert.deepEqual(m.flip.repos, ['missingbulb/GoogleCalendarEventCreator']);
+  // Fleet-wide since the 2026-07-21 bespoke conversion: the worker's job is
+  // finishing half-flipped stragglers and converting future pre-flip adoptees.
+  assert.equal(m.flip.repos, 'fleet');
   assert.match(m.flip.steps, /ONE commit/);
   // No mechanical ops on purpose — fleet-apply must see a no-op.
   assert.equal(m.aliases, undefined);
