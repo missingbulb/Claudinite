@@ -8,7 +8,7 @@
         "retention_days": 10
       },
       "answers": {
-        "retention": "10 days — the recommended rethink window before a captured conversation log is pruned."
+        "retention": "10 days \u2014 the recommended rethink window before a captured conversation log is pruned."
       }
     },
     "local_packs/claudinite",
@@ -18,14 +18,14 @@
         {
           "rule": "file-placement",
           "path": ".claudinite/local_packs/canon-curation/",
-          "reason": "the canon home's curation local pack deliberately shares the checks/ engine lib (findings, lines, context) — the same named cross-cutting concern as the packs/ acceptance; in the home checkout the engine is the repo's own tracked tree, not a consumer mount, so the reach is inherent"
+          "reason": "the canon home's curation local pack deliberately shares the checks/ engine lib (findings, lines, context) \u2014 the same named cross-cutting concern as the packs/ acceptance; in the home checkout the engine is the repo's own tracked tree, not a consumer mount, so the reach is inherent"
         }
       ]
     },
     {
       "id": "barriers",
       "answers": {
-        "goals": "Keep extending.md's engine/content boundary structural: core (checks/, migrations/, mount/, routines/, .github/, the top-level docs, and the shared engine modules under packs/ and skills/) must never name a specific pack or skill — packs and skills are discovered content, and a core file citing one couples the engine to its content. One rule per namespace (packs/*, skills/*); reviewed inherent couplings live in each rule's except."
+        "goals": "Keep extending.md's engine/content boundary structural: core (checks/, migrations/, mount/, routines/, .github/, the top-level docs, and the shared engine modules under packs/ and skills/) must never name a specific pack or skill \u2014 packs and skills are discovered content, and a core file citing one couples the engine to its content. One rule per namespace (packs/*, skills/*); reviewed inherent couplings live in each rule's except."
       },
       "config": {
         "rules": [
@@ -43,7 +43,7 @@
             "to": "packs/*",
             "matchNames": true,
             "matchUniqueFilenames": false,
-            "reason": "core is the engine that runs pack content — it must not name the specific packs it runs (extending.md)",
+            "reason": "core is the engine that runs pack content \u2014 it must not name the specific packs it runs (extending.md)",
             "except": [
               {
                 "path": ".github/workflows/README.md",
@@ -107,14 +107,6 @@
                 "reason": "inherent: a one-time vendoring migration necessarily names the pack whose plumbing it relocates into consumers; it self-retires once the fleet converges"
               },
               {
-                "path": "bootstrap.md",
-                "to": [
-                  "packs/grow_with_claudinite",
-                  "packs/tidy-repo"
-                ],
-                "reason": "inherent(operational seed): the one-time seed one-liner (bootstrap step 4b) backfills these default-on packs into an existing declaration while their self-retiring seed migrations are live; retires with those migrations"
-              },
-              {
                 "path": "engine/checks/check_the_world.mjs",
                 "to": [
                   "packs/grow_with_claudinite"
@@ -138,37 +130,37 @@
     {
       "rule": "file-placement",
       "path": "packs/",
-      "reason": "pack check modules deliberately share the checks/ engine lib — a named cross-cutting concern per skills/file-placement/SKILL.md; packs are organized by pack, not by dependency"
+      "reason": "pack check modules deliberately share the checks/ engine lib \u2014 a named cross-cutting concern per skills/file-placement/SKILL.md; packs are organized by pack, not by dependency"
     },
     {
       "rule": "file-placement",
       "path": "skills/",
-      "reason": "a skill's check-the-work modules deliberately share the checks/ engine lib (findings.mjs) — the same named cross-cutting concern as the packs/ acceptance; checks are co-located with the skill whose action they validate, not organized by dependency"
+      "reason": "a skill's check-the-work modules deliberately share the checks/ engine lib (findings.mjs) \u2014 the same named cross-cutting concern as the packs/ acceptance; checks are co-located with the skill whose action they validate, not organized by dependency"
     },
     {
       "rule": "file-placement",
       "path": "routines/fleet/plan.mjs",
-      "reason": "the core planner deliberately imports the pack-discovery registry (engine/pack_loader/pack-registry.mjs — core machinery per extending.md, not a specific pack) to enumerate each repo's run_daily tasks; discovery lives under packs/ and the planner under routines/, so the cross-tree reach is inherent and correct, not a misplacement"
+      "reason": "the core planner deliberately imports the pack-discovery registry (engine/pack_loader/pack-registry.mjs \u2014 core machinery per extending.md, not a specific pack) to enumerate each repo's run_daily tasks; discovery lives under packs/ and the planner under routines/, so the cross-tree reach is inherent and correct, not a misplacement"
     },
     {
       "rule": "file-placement",
       "path": "routines/fleet/signals.mjs",
-      "reason": "the member-declaration read deliberately imports the one shared id-extractor (packEntryId in engine/pack_loader/pack-registry.mjs — core machinery per extending.md, not a specific pack) so the fleet's activePacks normalization and the engine can never drift on the declaration forms; the cross-tree reach is inherent, the same as the planner's registry import"
+      "reason": "the member-declaration read deliberately imports the one shared id-extractor (packEntryId in engine/pack_loader/pack-registry.mjs \u2014 core machinery per extending.md, not a specific pack) so the fleet's activePacks normalization and the engine can never drift on the declaration forms; the cross-tree reach is inherent, the same as the planner's registry import"
     },
     {
       "rule": "file-placement",
       "path": "engine/checks/helpers/repo-context.mjs",
-      "reason": "the engine's file-set builder deliberately imports the consumer-layout constant SHARED_SUBDIR (beside LOCAL_PACKS_SUBDIR in engine/pack_loader/pack-registry.mjs — core machinery per extending.md, not a specific pack) so the shared-mount sweep exclusion and the vendor writer share one definition; the cross-tree reach is inherent, not a misplacement"
+      "reason": "the engine's file-set builder deliberately imports the consumer-layout constant SHARED_SUBDIR (beside LOCAL_PACKS_SUBDIR in engine/pack_loader/pack-registry.mjs \u2014 core machinery per extending.md, not a specific pack) so the shared-mount sweep exclusion and the vendor writer share one definition; the cross-tree reach is inherent, not a misplacement"
     },
     {
       "rule": "file-placement",
       "path": "migrations/registry.mjs",
-      "reason": "the canon-side migration registry deliberately builds on the vendored sync surface in the engine lib (engine/checks/helpers/active-migrations.mjs — the home pack-independence mandates, since pack checks consult migrationActive and packs import only the engine surface); one definition, re-exported for canon callers, so the cross-tree reach is inherent, not a misplacement"
+      "reason": "the canon-side migration registry deliberately builds on the vendored sync surface in the engine lib (engine/checks/helpers/active-migrations.mjs \u2014 the home pack-independence mandates, since pack checks consult migrationActive and packs import only the engine surface); one definition, re-exported for canon callers, so the cross-tree reach is inherent, not a misplacement"
     },
     {
       "rule": "file-placement",
       "path": "vendoring/compute-vendor-set.mjs",
-      "reason": "the vendor-set computation deliberately imports the import-surface facts from the engine lib (engine/checks/helpers/module-imports.mjs — the one home the pack-independence check judges against), so \"what a pack may import\" and \"what a vendor set must carry\" share one definition; the cross-tree reach is inherent, not a misplacement"
+      "reason": "the vendor-set computation deliberately imports the import-surface facts from the engine lib (engine/checks/helpers/module-imports.mjs \u2014 the one home the pack-independence check judges against), so \"what a pack may import\" and \"what a vendor set must carry\" share one definition; the cross-tree reach is inherent, not a misplacement"
     }
   ]
 }

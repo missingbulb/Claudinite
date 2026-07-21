@@ -9,14 +9,11 @@ import { packEntryId } from '../../engine/pack_loader/pack-registry.mjs';
 // --- canonChanged (global, computed once) -----------------------------------
 
 // A canon change should re-baseline / dedup members only when it touches what a
-// member actually mounts or is checked against — the packs/checks/skills/migrations
-// it runs, the bootstrap it re-applies, and the mount/ plumbing it vendors (the
-// tracked sync hook, session-start, env-setup; `sync-claudinite.sh` is the retired
-// pre-mount path, kept tolerant). Exclude the orchestration layer and the planner's
+// member actually mounts or is checked against — the packs, the engine (checks,
+// hooks, loaders — the consolidated home, #385), the migration notes, and the
+// bootstrap it re-applies. Exclude the orchestration layer and the planner's
 // own artifacts, or canonChanged self-triggers every night.
-// engine/ is the consolidated home (#385); checks/, skills/, mount/ linger as
-// transition shims and legacy shapes until the engine-restructure note retires.
-const CANON_MEMBER_PATHS = [/^packs\//, /^engine\//, /^checks\//, /^skills\//, /^migrations\//, /^bootstrap\.md$/, /^mount\//, /^sync-claudinite\.sh$/];
+const CANON_MEMBER_PATHS = [/^packs\//, /^engine\//, /^migrations\//, /^bootstrap\.md$/];
 const CANON_EXCLUDE = [/^routines\//, /(^|\/)plan\.json$/];
 
 export function pathAffectsMembers(path) {
@@ -25,7 +22,7 @@ export function pathAffectsMembers(path) {
 }
 
 // Classify a changed canon path: the pack it belongs to (`packs/<id>/…`), or a
-// cross-cutting area every member mounts regardless of its pack set (checks/, skills/,
+// cross-cutting area every member mounts regardless of its pack set (engine/,
 // migrations/, bootstrap wiring). Returns null for a path that doesn't affect members
 // (the planner's own artifacts, orchestration docs).
 const PACK_FILE = /^packs\/([^/]+)\//;

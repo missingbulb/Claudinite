@@ -26,10 +26,12 @@ const NO_CANON = { changed: false, packs: new Set(), crossCutting: false };
 // --- pathAffectsMembers -----------------------------------------------------
 
 test('pathAffectsMembers: member paths yes, orchestration/artifacts no', () => {
-  for (const p of ['packs/tidy-repo/pack.mjs', 'engine/checks/check_the_world.mjs', 'skills/x/SKILL.md', 'migrations/m.mjs', 'bootstrap.md', 'mount/sync-claudinite.sh', 'engine/hooks/session-start-command.sh']) {
+  for (const p of ['packs/tidy-repo/pack.mjs', 'engine/checks/check_the_world.mjs', 'migrations/m.mjs', 'bootstrap.md', 'engine/hooks/session-start-command.sh']) {
     assert.equal(pathAffectsMembers(p), true, p);
   }
-  for (const p of ['routines/fleet/gates.mjs', 'routines/auto-all-repos-maintenance.md', 'routines/fleet/plan.json', 'README.md', 'CLAUDE.md']) {
+  // The pre-#385 legacy roots (checks/, skills/, mount/, the root sync hook)
+  // retired with phase 3 — they no longer classify as member-affecting.
+  for (const p of ['routines/fleet/gates.mjs', 'routines/auto-all-repos-maintenance.md', 'routines/fleet/plan.json', 'README.md', 'CLAUDE.md', 'skills/x/SKILL.md', 'mount/x.sh', 'checks/x.mjs', 'sync-claudinite.sh']) {
     assert.equal(pathAffectsMembers(p), false, p);
   }
 });

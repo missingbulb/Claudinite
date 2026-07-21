@@ -61,18 +61,13 @@ try {
 
   const lstatOrNull = (p) => { try { return lstatSync(p); } catch { return null; } };
   // A mount is ours iff it is a symlink into a pack's bundled skills — the
-  // corpus's packs/ tree or the project's own local_packs — or into a legacy
-  // corpus skills root: the pre-flip flat tree (<project>/.claudinite/skills)
-  // and the retired standalone vendored tree (<project>/.claudinite/shared/skills)
-  // are canon-owned space in every mount shape, so a stale leftover retargets
-  // to the pack-bundled home instead of shadowing it (#383) — lexical resolve,
-  // so a dangling leftover still matches and gets cleaned.
+  // corpus's packs/ tree or the project's own local_packs (#383) — lexical
+  // resolve, so a dangling leftover still matches and gets cleaned. (The
+  // pre-#385 legacy skills roots retired with phase 3 — every member mounts
+  // from pack trees.)
   const ownedRoots = [
     join(corpusRoot, 'packs'),
     localPacksRoot,
-    join(corpusRoot, 'skills'), // the retired standalone skills tree (pre-#385 mounts)
-    join(projectRoot, '.claudinite', 'skills'),
-    join(projectRoot, '.claudinite', 'shared', 'skills'),
   ];
   const owned = (entry) => {
     const st = lstatOrNull(join(mountDir, entry));
