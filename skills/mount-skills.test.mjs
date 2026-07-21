@@ -15,8 +15,7 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // A fake corpus with the REAL registry and the REAL mount script copied in
 // verbatim — the script self-locates via import.meta.url, so running the copy
 // derives everything from the fake packs, no test-only knobs in the script.
-function makeCorpus({ packs, skills }) {
-  const root = mkdtempSync(join(tmpdir(), 'claudinite-corpus-'));
+function makeCorpus({ packs, skills }, root = mkdtempSync(join(tmpdir(), 'claudinite-corpus-'))) {
   mkdirSync(join(root, 'packs'), { recursive: true });
   mkdirSync(join(root, 'skills'), { recursive: true });
   copyFileSync(join(REPO_ROOT, 'packs', 'registry.mjs'), join(root, 'packs', 'registry.mjs'));
@@ -149,6 +148,40 @@ test('mount-skills: removes a stale owned link, is idempotent, fails soft on a b
     writeFileSync(join(project, '.claudinite-checks.json'), 'not json');
     mount(corpus, project);
   } finally { rmSync(corpus, { recursive: true, force: true }); cleanup(project); }
+});
+
+test('mount-skills: retargets a legacy flat-tree mount to the vendored corpus', () => {
+  // The vendored-mount flip (mount/DESIGN.md phase 2): the corpus now runs from
+  // <project>/.claudinite/shared/, but a pre-flip session left symlinks into the
+  // legacy flat tree (<project>/.claudinite/skills/). Those are canon-owned in
+  // every mount shape — the mounter must retarget them, not treat them as the
+  // project's own entries (issue #383).
+  const project = makeRepo({
+    changed: { '.claudinite-checks.json': '{ "packs": ["basics"] }\n' },
+  });
+  const corpus = makeCorpus(CORPUS, join(project, '.claudinite', 'shared'));
+  try {
+    // A legacy mount whose flat-tree target still exists, and one already
+    // dangling (the environment lost the gitignored flat tree).
+    mkdirSync(join(project, '.claudinite', 'skills', 'base-skill'), { recursive: true });
+    writeFileSync(join(project, '.claudinite', 'skills', 'base-skill', 'SKILL.md'), 'legacy copy\n');
+    mkdirSync(join(project, '.claude', 'skills'), { recursive: true });
+    symlinkSync(join('..', '..', '.claudinite', 'skills', 'base-skill'),
+      join(project, '.claude', 'skills', 'base-skill'));
+    symlinkSync(join('..', '..', '.claudinite', 'skills', 'gone-skill'),
+      join(project, '.claude', 'skills', 'gone-skill'));
+
+    mount(corpus, project);
+
+    const link = join(project, '.claude', 'skills', 'base-skill');
+    assert.ok(lstatSync(link).isSymbolicLink());
+    assert.equal(realpathSync(link), realpathSync(join(corpus, 'skills', 'base-skill')),
+      'a legacy flat-tree mount must retarget to the vendored corpus');
+    assert.ok(!existsSync(join(project, '.claude', 'skills', 'gone-skill')),
+      'a dangling legacy mount for an unwanted skill must be cleaned');
+    assert.match(readFileSync(join(project, '.claude', 'skills', '.gitignore'), 'utf8'),
+      /^base-skill$/m, 'the retargeted mount is self-ignored again');
+  } finally { cleanup(project); }
 });
 
 test('mount-skills: mounts a local pack\'s bundled skill from the tracked pack dir', () => {

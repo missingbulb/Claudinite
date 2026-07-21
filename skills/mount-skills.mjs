@@ -67,14 +67,19 @@ try {
   mkdirSync(mountDir, { recursive: true });
 
   const lstatOrNull = (p) => { try { return lstatSync(p); } catch { return null; } };
-  // A mount is ours iff it is a symlink into the corpus's skills/ tree OR into
-  // the project's own local_packs (a local pack's bundled skill) — lexical
-  // resolve, so a dangling leftover still matches and gets cleaned.
+  // A mount is ours iff it is a symlink into the corpus's skills/ tree, the
+  // project's own local_packs (a local pack's bundled skill), or the legacy
+  // flat skills tree (<project>/.claudinite/skills — canon-owned space in every
+  // mount shape, so a pre-flip leftover retargets to the vendored corpus
+  // instead of shadowing it, #383) — lexical resolve, so a dangling leftover
+  // still matches and gets cleaned.
+  const legacySkillsRoot = join(projectRoot, '.claudinite', 'skills');
   const owned = (entry) => {
     const st = lstatOrNull(join(mountDir, entry));
     if (!st || !st.isSymbolicLink()) return false;
     const target = resolve(mountDir, readlinkSync(join(mountDir, entry)));
-    return target.startsWith(skillsDir + sep) || target.startsWith(localPacksRoot + sep);
+    return target.startsWith(skillsDir + sep) || target.startsWith(localPacksRoot + sep)
+      || target.startsWith(legacySkillsRoot + sep);
   };
 
   for (const entry of readdirSync(mountDir)) {
