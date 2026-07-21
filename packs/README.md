@@ -33,8 +33,6 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 | [spec-driven-product](spec-driven-product/README.md) | declared (class) | 0 | 25 (8 sections) |
 | [executable-requirements](executable-requirements/README.md) | `dev/requirements/requirements.md` | 0 | framework standard (layout / gates / kinds) |
 
-Activity-scoped practice prose lives in [../skills/](../skills/README.md), not in a pack.
-
 ## Local packs — a project's own packs
 
 A consumer keeps its **project-specific** packs in its own tree at

@@ -1,6 +1,6 @@
 # The CANON repo's own CI — Claudinite's test suite + its own conformance sweep
 # on every PR. Not consumer wiring (consumers ship no workflow, #385).
-name: Checks CI
+name: CI
 on:
   pull_request:
   push:

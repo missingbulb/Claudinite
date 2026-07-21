@@ -503,35 +503,28 @@ test('generated-merge-driver: still inspects a GENERATED file that is also lingu
   } finally { cleanup(root); }
 });
 
-test('catalog-completeness: flags a pack/skill dir missing from its catalog README', () => {
-  // Skills live inside their owning pack — canon packs and the canon home's own
-  // local packs alike; a bundled skill missing from the catalog is flagged
-  // wherever its pack lives.
+test('catalog-completeness: flags a pack dir missing from the catalog README', () => {
+  // Skills have no catalog of their own (#385) — a bundled skill is its
+  // pack's content, so only a pack missing from packs/README.md fires.
   const root = makeRepo({ changed: {
     ...CORPUS_MARKERS,
     'packs/README.md': '# packs\n\n[basics](basics/README.md)\n',
-    'skills/README.md': '# skills\n\n`merge-to-main`\n',
     'packs/newpack/pack.mjs': 'export default { id: "newpack" };\n',
     'packs/basics/skills/newskill/SKILL.md': '---\nname: newskill\n---\nbody\n',
-    '.claudinite/local_packs/curate/skills/homeskill/SKILL.md': '---\nname: homeskill\n---\nbody\n',
   } });
   try {
     const findings = run(catalogCompleteness, root, 'all');
-    assert.equal(findings.length, 3);
+    assert.equal(findings.length, 1);
     assert.ok(findings.some((f) => f.file === 'packs/README.md' && /newpack/.test(f.what)));
-    assert.ok(findings.some((f) => f.file === 'skills/README.md' && /newskill/.test(f.what)));
-    assert.ok(findings.some((f) => f.file === 'skills/README.md' && /homeskill/.test(f.what)));
   } finally { cleanup(root); }
 });
 
-test('catalog-completeness: silent when both catalogs list every member', () => {
+test('catalog-completeness: silent when the catalog lists every pack', () => {
   const root = makeRepo({ changed: {
     ...CORPUS_MARKERS,
     'packs/README.md': '# packs\n\n[basics](basics/README.md) [node](node/README.md)\n',
-    'skills/README.md': '# skills\n\n`merge-to-main` `writing-tests`\n',
     'packs/basics/pack.mjs': 'export default { id: "basics" };\n',
     'packs/node/pack.mjs': 'export default { id: "node" };\n',
-    'packs/basics/skills/writing-tests/SKILL.md': '---\nname: writing-tests\n---\nbody\n',
     'packs/basics/skills/writing-tests/SKILL.md': '---\nname: writing-tests\n---\nbody\n',
   } });
   try {

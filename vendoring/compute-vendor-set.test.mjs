@@ -42,7 +42,6 @@ function makeCanon({ packs = [], skills = [] } = {}) {
   writeAt(root, 'packs/env.test.mjs', 'stub\n');
   writeAt(root, 'packs/README.md', 'canon doc\n');
   writeAt(root, 'engine/pack_loader/mount-skills.mjs', 'stub\n');
-  writeAt(root, 'skills/README.md', 'canon doc\n');
   // per-user content: must never appear in any vendor set
   writeAt(root, 'preferences/owner@example.com.md', 'prefs\n');
   for (const { id, requires = [], skills: skl = [], extraFiles = [] } of packs) {

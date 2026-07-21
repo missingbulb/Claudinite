@@ -326,9 +326,9 @@ scales with the context window — many verbose skills degrade matching), and ke
 
 ### The catalog
 
-The skill-by-skill catalog — each skill, its trigger, and the doc it replaces — lives in
-[skills/README.md](../../skills/README.md); the skills themselves are bundled in their owning
-packs (`<pack>/skills/<name>/SKILL.md`), the same way this design seeded `checks/`.
+There is no skill catalog (#385): a skill is its owning pack's content
+(`<pack>/skills/<name>/SKILL.md`) — the pack's own README names what it bundles, and the
+harness surfaces skills by their frontmatter descriptions, which is the routing.
 
 What stays always-loaded after this: a trimmed
 baseline `RULES.md`, the judgment core of
@@ -420,7 +420,7 @@ conversion is a promotion-time judgment, made once, centrally.
 3. **Baseline restructure** — the first skills (a merge recipe, a lessons pass) + the
    squash-only setting; temporary-workarounds → PreToolUse hook; slim the converted docs and
    the index.
-4. **Skills layer + growth pivot** — the rest of the catalog (practice + technology skills,
+4. **Skills layer + growth pivot** — the rest of the corpus (practice + technology skills,
    symlink delivery in bootstrap), and the promotion ladder lands in
    `promote.md`,
    `item-routing.md`, and
