@@ -80,23 +80,20 @@ checks/                       # the ENGINE only (runs the packs' checks)
   stop-hook.mjs               #   blocks the agent's stop on blocking findings
   pretooluse-guard.mjs        #   blocks forbidden actions before they run
   test/                       #   fixtures (scratch git repos), red-first
-skills/                       # activity-scoped procedures, surfaced on demand
-  registry.mjs                #   structural discovery — any skills/<name>/checks.mjs owns checks
-  <name>/checks.mjs           #   the test-the-world checks that validate this skill's action
+packs/<pack>/skills/<name>/   # activity-scoped procedures, bundled in their owning pack
+  checks.mjs                  #   the test-the-world checks that validate this skill's action
 ```
 
 **Skill-owned checks.** A skill defines the performance of an *action*; the test-the-world
 check that validates that action's result belongs **beside the SKILL.md that defines it**, not
 in a pack that owns none of the context. So a skill may carry its own checks — the
 `routine-structure` check lives in its owning skill's folder, next to the routine-authoring
-prose it enforces, with its test co-located too. Discovery mirrors the packs: any
-`skills/<name>/checks.mjs` (default export = an array of rules) is picked up structurally by
-`skills/registry.mjs` and run by the same engine. Skill checks are **never declared and always
-run** — a skill isn't something a project opts into the way it declares a pack. That is the
-one hazard to design around: a technology-pack check only runs where the project *declared* that
-pack, but a skill check runs on **every** repo and every sweep, including ones where the skill's
-action never happened. The declaration gate a pack check gets for free, a skill check's `run`
-must supply itself — **detect relevance first, cheaply and specifically, and return `[]` when
+prose it enforces, with its test co-located too. A skill lives inside its owning pack
+(`<pack>/skills/<name>/` — #385), so discovery IS the pack registry: any bundled skill's
+`checks.mjs` (default export = an array of rules) is gathered onto the pack (`skillChecks`) and
+runs when the pack is active. The pack gate only says the project opted into the pack — not
+that this skill's action ever happened in this repo — so a skill check's `run` must still
+**detect relevance first, cheaply and specifically, and return `[]` when
 the artifact is absent** (`routine-structure` keys off a `routine.md` existing before it asserts
 anything). Get that wrong and the check fires false findings on every unrelated repo the corpus
 is mounted in. Reserve skill checks for the world-state a skill's action leaves behind; a rule
@@ -211,7 +208,7 @@ reference-distance  src/report/render.js:12
   Why: the folder tree should encode the dependency graph; far reaches make it lie.
   Fix: move dates.js next to its users, lift it to a common ancestor, or accept it
        in .claudinite-checks.json with a reason if it's a deliberate cross-cutting util.
-  More: .claudinite/skills/<name>/SKILL.md
+  More: .claudinite/shared/packs/<pack>/skills/<name>/SKILL.md
 ```
 
 </example>
@@ -330,8 +327,8 @@ scales with the context window — many verbose skills degrade matching), and ke
 ### The catalog
 
 The skill-by-skill catalog — each skill, its trigger, and the doc it replaces — lives in
-[../skills/README.md](../skills/README.md), next to where the skills themselves will land
-(`skills/<name>/SKILL.md`), the same way this design seeded `checks/`.
+[../skills/README.md](../skills/README.md); the skills themselves are bundled in their owning
+packs (`<pack>/skills/<name>/SKILL.md`), the same way this design seeded `checks/`.
 
 What stays always-loaded after this: a trimmed
 baseline `RULES.md`, the judgment core of
@@ -341,8 +338,8 @@ index. The routing index largely dissolves: routing *is what skill descriptions 
 
 ### Delivery — incremental now, plugin end-state
 
-- **Now (works with both mount methods):** skills live in `.claudinite/skills/<name>/`; each
-  pack declares the skills it requires, and the SessionStart hook `skills/mount-skills.mjs`
+- **Now (works with both mount methods):** each skill is bundled in its owning pack
+  (`<pack>/skills/<name>/`), and the SessionStart hook `skills/mount-skills.mjs`
   regenerates `.claude/skills/<name>` symlinks for the active packs' union each session —
   nothing committed (a committed link dangles on every plain checkout). Symlinked skill
   directories are documented, supported behavior, and skill changes are picked up live within

@@ -35,8 +35,8 @@ channel has a different blast radius and a different rollback story:
   (fix the canon, the next nightly re-heals). The discipline: a change here is written as
   bootstrap steps that **converge from every layout in the wild** — fresh, current, legacy,
   half-migrated — not just from the latest.
-- **Skills** (`skills/`) — surfaced on demand from the mount; same propagation as prose, but
-  only sessions doing the matching activity ever read them.
+- **Skills** (`<pack>/skills/`) — bundled in their owning pack and surfaced on demand from the
+  mount; same propagation as prose, but only sessions doing the matching activity ever read them.
 
 ## Migrating a copied artifact (stubs and the like)
 

@@ -25,7 +25,9 @@ function makeCorpus({ prefs = '#!/bin/bash\n', prose = '', skills = '', env = ''
   writeFileSync(join(root, 'packs', 'load-active-prose.mjs'), prose);
   writeFileSync(join(root, 'skills', 'mount-skills.mjs'), skills);
   writeFileSync(join(root, 'packs', 'env.mjs'), env);
-  writeFileSync(join(root, 'packs', 'interview.mjs'), interview);
+  // The interview machinery is the adoption skill's, bundled in basics.
+  mkdirSync(join(root, 'packs', 'basics', 'skills', 'adopt-claudinite'), { recursive: true });
+  writeFileSync(join(root, 'packs', 'basics', 'skills', 'adopt-claudinite', 'interview.mjs'), interview);
   return root;
 }
 

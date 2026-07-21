@@ -33,8 +33,7 @@ export default {
   // it stays a code check, bundled here.
   rules: [noEnforcementNarration],
   // prose-to-checks and writing-claudinite-skills are canon-home activity (they
-  // mine and edit the corpus), so this pack owns them — members have no canon
-  // prose to convert and no corpus skills to author.
-  skills: ['prose-to-checks', 'writing-claudinite-skills'],
+  // mine and edit the corpus), so this pack bundles them under its own skills/
+  // — members have no canon prose to convert and no corpus skills to author.
   run_daily: [promote, proseToChecksSweep],
 };

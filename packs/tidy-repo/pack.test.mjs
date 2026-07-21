@@ -1,5 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readdirSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import pack from './pack.mjs';
 
 const REPO = { fullName: 'owner/foo', defaultBranch: 'main' };
@@ -13,7 +16,11 @@ test('tidy-repo is a declared pack (no fingerprint) with its one run_daily task 
   assert.equal(pack.id, 'tidy-repo');
   assert.equal(pack.detect, null);
   assert.deepEqual(pack.run_daily.map((t) => t.id), ['repo-tidy']);
-  assert.deepEqual(pack.skills, ['single-branch-status', 'single-pr-status', 'single-issue-triage']);
+  assert.deepEqual(
+    readdirSync(join(dirname(fileURLToPath(import.meta.url)), 'skills')).sort(),
+    ['single-branch-status', 'single-issue-triage', 'single-pr-status'],
+    'the worker skills are bundled in this pack\'s own skills/'
+  );
   const t = task('repo-tidy');
   assert.equal(t.full_sweep_supported, true);
   assert.match(t.worker, /^packs\/tidy-repo\/run_daily\/repo-tidy\.worker\.md$/);

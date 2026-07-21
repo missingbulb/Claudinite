@@ -31,8 +31,8 @@ description: >-
 
   PR CI deliberately does NOT use this: its failures are loud already — a red
   required check on the PR, blocking merge, with the author watching. The rule
-  is the unattended-workflow escalation practice in the Claudinite canon
-  (skills/git-github-advanced/SKILL.md).
+  is the unattended-workflow escalation practice in the Claudinite canon's
+  git/GitHub skill.
 
 inputs:
   workflow:

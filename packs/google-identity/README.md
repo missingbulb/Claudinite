@@ -3,7 +3,7 @@
 Declared for a backend that **validates Google Sign-In (Google Identity) ID tokens** — an API
 Gateway JWT authorizer, or any OIDC verifier whose issuer is the Google accounts origin. No
 reliable structural fingerprint, so it is declared by hand. **Prose-free:** the pack mounts the
-[`google-id-token-validation`](../../skills/google-id-token-validation/SKILL.md) skill, whose
+[`google-id-token-validation`](skills/google-id-token-validation/SKILL.md) skill, whose
 check-the-work rules run at every Stop and in CI — each failure message is the rule.
 
 | Rule (≤5 words) | How enforced |

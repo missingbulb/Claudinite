@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-// SessionStart hook: mount the skills the ACTIVE packs require. Each pack
-// declares the skills it needs (`skills` in its pack.mjs); this hook derives
-// the union over the packs declared in .claudinite-checks.json (no pack is
-// active by default — bootstrap seeds `basics`, which carries the baseline
-// skills) and (re)generates the `.claude/skills/<name>` symlinks to match —
+// SessionStart hook: mount the ACTIVE packs' bundled skills. A skill lives in
+// exactly one pack's own tree (`<pack>/skills/<skill>/`, canon and local alike
+// — #385); this hook takes the union over the packs declared in
+// .claudinite-checks.json (no pack is active by default — bootstrap seeds
+// `basics`, which bundles the baseline skills)
+// and (re)generates the `.claude/skills/<name>` symlinks to match —
 // created, retargeted, and removed as the declarations change, so the mounted
 // set always tracks the packs and nothing is ever committed (a committed link
 // dangles on any plain checkout, where the gitignored corpus is absent — see
@@ -38,26 +39,18 @@ try {
   const packs = await loadPacks({ localRoot: projectRoot });
   const localPacksRoot = join(projectRoot, '.claudinite', 'local_packs');
 
-  // The union over the active packs, each skill resolved to its SOURCE directory:
-  // a local pack's own bundled skill (<pack>/skills/<name>) if it has one, else
-  // the canon skills tree. A required-but-missing skill is the skill-ownership
-  // check's finding to report, not this hook's reason to break. Canon packs sort
-  // before local ones, so a name shared with a canon skill resolves to canon.
+  // The union over the active packs' bundled skills — every <pack>/skills/<name>
+  // carrying a SKILL.md, resolved to that directory. Canon packs sort before
+  // local ones, so a name shared with a canon pack's skill resolves to canon.
   const active = packs.filter((p) => isActive(p, { packs: declared }));
   const sourceByName = new Map();
   for (const pack of active) {
-    for (const name of pack.skills ?? []) {
-      if (sourceByName.has(name)) continue;
-      let source = null;
-      if (pack.local) {
-        const bundled = join(pack.dir, 'skills', name);
-        if (existsSync(join(bundled, 'SKILL.md'))) source = bundled;
-      }
-      if (!source) {
-        const canon = join(skillsDir, name);
-        if (existsSync(join(canon, 'SKILL.md'))) source = canon;
-      }
-      if (source) sourceByName.set(name, source);
+    const bundleRoot = join(pack.dir, 'skills');
+    if (!existsSync(bundleRoot)) continue;
+    for (const entry of readdirSync(bundleRoot, { withFileTypes: true })) {
+      if (!entry.isDirectory() || sourceByName.has(entry.name)) continue;
+      const dir = join(bundleRoot, entry.name);
+      if (existsSync(join(dir, 'SKILL.md'))) sourceByName.set(entry.name, dir);
     }
   }
   const wanted = [...sourceByName.keys()].sort();
@@ -67,19 +60,25 @@ try {
   mkdirSync(mountDir, { recursive: true });
 
   const lstatOrNull = (p) => { try { return lstatSync(p); } catch { return null; } };
-  // A mount is ours iff it is a symlink into the corpus's skills/ tree, the
-  // project's own local_packs (a local pack's bundled skill), or the legacy
-  // flat skills tree (<project>/.claudinite/skills — canon-owned space in every
-  // mount shape, so a pre-flip leftover retargets to the vendored corpus
-  // instead of shadowing it, #383) — lexical resolve, so a dangling leftover
-  // still matches and gets cleaned.
-  const legacySkillsRoot = join(projectRoot, '.claudinite', 'skills');
+  // A mount is ours iff it is a symlink into a pack's bundled skills — the
+  // corpus's packs/ tree or the project's own local_packs — or into a legacy
+  // corpus skills root: the pre-flip flat tree (<project>/.claudinite/skills)
+  // and the retired standalone vendored tree (<project>/.claudinite/shared/skills)
+  // are canon-owned space in every mount shape, so a stale leftover retargets
+  // to the pack-bundled home instead of shadowing it (#383) — lexical resolve,
+  // so a dangling leftover still matches and gets cleaned.
+  const ownedRoots = [
+    join(corpusRoot, 'packs'),
+    localPacksRoot,
+    join(corpusRoot, 'skills'), // the retired standalone skills tree (pre-#385 mounts)
+    join(projectRoot, '.claudinite', 'skills'),
+    join(projectRoot, '.claudinite', 'shared', 'skills'),
+  ];
   const owned = (entry) => {
     const st = lstatOrNull(join(mountDir, entry));
     if (!st || !st.isSymbolicLink()) return false;
     const target = resolve(mountDir, readlinkSync(join(mountDir, entry)));
-    return target.startsWith(skillsDir + sep) || target.startsWith(localPacksRoot + sep)
-      || target.startsWith(legacySkillsRoot + sep);
+    return ownedRoots.some((r) => target.startsWith(r + sep));
   };
 
   for (const entry of readdirSync(mountDir)) {

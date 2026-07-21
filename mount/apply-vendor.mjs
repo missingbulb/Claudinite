@@ -2,7 +2,6 @@ import { copyFileSync, mkdirSync, rmSync, readFileSync, writeFileSync, existsSyn
 import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { discoverPacks } from '../packs/registry.mjs';
 import { computeVendorSet, SHARED_SUBDIR } from './vendor.mjs';
 
 // The vendor WRITER (mount/DESIGN.md): converge a consumer's .claudinite/shared/
@@ -65,14 +64,7 @@ export async function applyVendor(targetRoot, { ref = null } = {}) {
     }
   }
 
-  // Skills the canon can't derive: ones the consumer's own local packs require.
-  // Only canon-resident names count — a local pack's bundled skills live in the
-  // consumer's tree and are never vendored.
-  const local = (await discoverPacks({ localRoot: targetRoot })).packs.filter((p) => p.local);
-  const extraSkills = [...new Set(local.flatMap((p) => p.skills ?? []))]
-    .filter((name) => existsSync(join(canonRoot, 'skills', name)));
-
-  const { files, errors } = await computeVendorSet(declared, { extraSkills });
+  const { files, errors } = await computeVendorSet(declared);
   if (errors.length) return { errors };
 
   const sharedDir = join(targetRoot, SHARED_SUBDIR);

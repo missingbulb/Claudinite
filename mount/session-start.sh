@@ -68,7 +68,10 @@ run_step inject-preferences bash "$here/inject-preferences.sh"
 run_step load-active-prose  node "$corpus/packs/load-active-prose.mjs"
 run_step mount-skills       node "$corpus/skills/mount-skills.mjs"
 run_step env-check          node "$corpus/packs/env.mjs" check
-run_step interview-check    node "$corpus/packs/interview.mjs" check
+# The interview machinery is the adoption skill's, bundled in the baseline pack
+# — absent when the tree doesn't carry basics, and then there is no interview.
+interview="$corpus/packs/basics/skills/adopt-claudinite/interview.mjs"
+[ -f "$interview" ] && run_step interview-check node "$interview" check
 hooklog orchestrator "done"
 
 # One terse, visible confirmation into the session context that the harness ran

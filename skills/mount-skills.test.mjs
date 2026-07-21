@@ -15,21 +15,24 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // A fake corpus with the REAL registry and the REAL mount script copied in
 // verbatim — the script self-locates via import.meta.url, so running the copy
 // derives everything from the fake packs, no test-only knobs in the script.
-function makeCorpus({ packs, skills }, root = mkdtempSync(join(tmpdir(), 'claudinite-corpus-'))) {
+// Each pack bundles its skills in its own tree (<pack>/skills/<name>/ — the
+// one shape, #385).
+function makeCorpus({ packs }, root = mkdtempSync(join(tmpdir(), 'claudinite-corpus-'))) {
   mkdirSync(join(root, 'packs'), { recursive: true });
   mkdirSync(join(root, 'skills'), { recursive: true });
   copyFileSync(join(REPO_ROOT, 'packs', 'registry.mjs'), join(root, 'packs', 'registry.mjs'));
   copyFileSync(join(REPO_ROOT, 'skills', 'mount-skills.mjs'), join(root, 'skills', 'mount-skills.mjs'));
   for (const [id, def] of Object.entries(packs)) {
-    mkdirSync(join(root, 'packs', id));
+    const { skills = [], ...manifest } = def;
+    mkdirSync(join(root, 'packs', id), { recursive: true });
     writeFileSync(
       join(root, 'packs', id, 'pack.mjs'),
-      `export default ${JSON.stringify({ id, detect: null, rules: [], ...def })};\n`
+      `export default ${JSON.stringify({ id, detect: null, rules: [], ...manifest })};\n`
     );
-  }
-  for (const name of skills) {
-    mkdirSync(join(root, 'skills', name));
-    writeFileSync(join(root, 'skills', name, 'SKILL.md'), `---\nname: ${name}\n---\nbody\n`);
+    for (const name of skills) {
+      mkdirSync(join(root, 'packs', id, 'skills', name), { recursive: true });
+      writeFileSync(join(root, 'packs', id, 'skills', name, 'SKILL.md'), `---\nname: ${name}\n---\nbody\n`);
+    }
   }
   return root;
 }
@@ -47,10 +50,9 @@ function mount(corpus, project) {
 const CORPUS = {
   packs: {
     basics: { skills: ['base-skill'] },
-    tech: { skills: ['tech-skill', 'shared-skill'] },
-    other: { skills: ['other-skill', 'shared-skill'] },
+    tech: { skills: ['tech-skill'] },
+    other: { skills: ['other-skill'] },
   },
-  skills: ['base-skill', 'tech-skill', 'other-skill', 'shared-skill'],
 };
 
 test('mount-skills: mounts the union of the declared packs, nothing more', () => {
@@ -60,15 +62,15 @@ test('mount-skills: mounts the union of the declared packs, nothing more', () =>
   });
   try {
     mount(corpus, project);
-    for (const name of ['base-skill', 'tech-skill', 'shared-skill']) {
+    for (const [name, owner] of [['base-skill', 'basics'], ['tech-skill', 'tech']]) {
       const link = join(project, '.claude', 'skills', name);
       assert.ok(lstatSync(link).isSymbolicLink(), `${name} should be a symlink`);
-      assert.equal(realpathSync(link), realpathSync(join(corpus, 'skills', name)));
+      assert.equal(realpathSync(link), realpathSync(join(corpus, 'packs', owner, 'skills', name)));
     }
     assert.ok(!existsSync(join(project, '.claude', 'skills', 'other-skill')),
       'an undeclared pack\'s skill must not mount');
     const ignore = readFileSync(join(project, '.claude', 'skills', '.gitignore'), 'utf8');
-    for (const name of ['.gitignore', 'base-skill', 'tech-skill', 'shared-skill']) {
+    for (const name of ['.gitignore', 'base-skill', 'tech-skill']) {
       assert.match(ignore, new RegExp(`^${name}$`, 'm'));
     }
     // The generated mounts must never dirty the tree.
@@ -100,7 +102,6 @@ test('mount-skills: re-run syncs the mounts to a changed declaration', () => {
     assert.ok(existsSync(join(project, '.claude', 'skills', 'base-skill')));
     assert.ok(!existsSync(join(project, '.claude', 'skills', 'tech-skill')),
       'an undeclared pack\'s skill must be unmounted');
-    assert.ok(!existsSync(join(project, '.claude', 'skills', 'shared-skill')));
     assert.doesNotMatch(
       readFileSync(join(project, '.claude', 'skills', '.gitignore'), 'utf8'),
       /tech-skill/
@@ -138,7 +139,7 @@ test('mount-skills: removes a stale owned link, is idempotent, fails soft on a b
   try {
     // A leftover link into the corpus for a skill that no longer exists there.
     mkdirSync(join(project, '.claude', 'skills'), { recursive: true });
-    symlinkSync(join(corpus, 'skills', 'retired-skill'), join(project, '.claude', 'skills', 'retired-skill'));
+    symlinkSync(join(corpus, 'packs', 'basics', 'skills', 'retired-skill'), join(project, '.claude', 'skills', 'retired-skill'));
     mount(corpus, project);
     assert.ok(!existsSync(join(project, '.claude', 'skills', 'retired-skill')));
     const first = readFileSync(join(project, '.claude', 'skills', '.gitignore'), 'utf8');
@@ -175,7 +176,7 @@ test('mount-skills: retargets a legacy flat-tree mount to the vendored corpus', 
 
     const link = join(project, '.claude', 'skills', 'base-skill');
     assert.ok(lstatSync(link).isSymbolicLink());
-    assert.equal(realpathSync(link), realpathSync(join(corpus, 'skills', 'base-skill')),
+    assert.equal(realpathSync(link), realpathSync(join(corpus, 'packs', 'basics', 'skills', 'base-skill')),
       'a legacy flat-tree mount must retarget to the vendored corpus');
     assert.ok(!existsSync(join(project, '.claude', 'skills', 'gone-skill')),
       'a dangling legacy mount for an unwanted skill must be cleaned');
@@ -192,19 +193,19 @@ test('mount-skills: mounts a local pack\'s bundled skill from the tracked pack d
     },
   });
   try {
-    // The project's own local pack requires a canon skill AND bundles its own.
+    // The project's own local pack bundles its own skill; the canon skill
+    // mounts from its owning pack's bundle (basics).
     const packDir = join(project, '.claudinite', 'local_packs', 'proj');
     mkdirSync(join(packDir, 'skills', 'proj-skill'), { recursive: true });
     writeFileSync(join(packDir, 'pack.mjs'),
-      `export default { id: 'proj', rules: [], skills: ['base-skill', 'proj-skill'] };\n`);
+      `export default { id: 'proj', rules: [] };\n`);
     writeFileSync(join(packDir, 'skills', 'proj-skill', 'SKILL.md'), '---\nname: proj-skill\n---\nlocal\n');
 
     mount(corpus, project);
 
-    // the canon skill required by the local pack still mounts from the corpus
     const baseLink = join(project, '.claude', 'skills', 'base-skill');
     assert.ok(lstatSync(baseLink).isSymbolicLink());
-    assert.equal(realpathSync(baseLink), realpathSync(join(corpus, 'skills', 'base-skill')));
+    assert.equal(realpathSync(baseLink), realpathSync(join(corpus, 'packs', 'basics', 'skills', 'base-skill')));
 
     // the bundled skill mounts from the tracked local pack dir
     const projLink = join(project, '.claude', 'skills', 'proj-skill');
@@ -227,7 +228,7 @@ test('mount-skills: unmounts a local pack\'s skill when the pack is undeclared',
   try {
     const packDir = join(project, '.claudinite', 'local_packs', 'proj');
     mkdirSync(join(packDir, 'skills', 'proj-skill'), { recursive: true });
-    writeFileSync(join(packDir, 'pack.mjs'), `export default { id: 'proj', rules: [], skills: ['proj-skill'] };\n`);
+    writeFileSync(join(packDir, 'pack.mjs'), `export default { id: 'proj', rules: [] };\n`);
     writeFileSync(join(packDir, 'skills', 'proj-skill', 'SKILL.md'), '---\nname: proj-skill\n---\nlocal\n');
     mount(corpus, project);
     assert.ok(existsSync(join(project, '.claude', 'skills', 'proj-skill')));

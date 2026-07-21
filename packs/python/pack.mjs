@@ -23,6 +23,5 @@ export default {
   marker: 'pyproject.toml (at the repo root or one directory down)',
   detect: (ctx) => hasMarkerNearRoot(ctx, 'pyproject.toml'),
   prose: 'RULES.md',
-  skills: ['python-optional-deps'],
   rules: [],
 };

@@ -228,7 +228,7 @@ test('--list emits the machine-readable rule catalog', () => {
     const r = runCli(root, '--list');
     assert.equal(r.status, 0);
     for (const id of ['reference-integrity', 'markdown-link-labels', 'task-lifecycle',
-                      'warning-suppression', 'file-placement', 'skill-ownership',
+                      'warning-suppression', 'file-placement',
                       'squash-merge-history']) {
       assert.match(r.stdout, new RegExp(`^${id}\t`, 'm'));
     }
@@ -308,16 +308,19 @@ test('no pack runs undeclared — basics included', () => {
   } finally { cleanup(bare); cleanup(empty); }
 });
 
-test('a skill-owned check is discovered and run through the CLI, and listed', () => {
-  const root = makeRepo({ changed: {
-    'dev/routines/demo/routine.md': 'Run `bash dev/routines/demo/preconditions.sh`.\n',
-  } });
+test('a skill-owned check rides its owning pack\'s activation, and is listed', () => {
+  // routine-structure is bundled in basics (packs/basics/skills/unattended-agents/):
+  // it runs when basics is declared and stays silent when no pack is.
+  const artifact = { 'dev/routines/demo/routine.md': 'Run `bash dev/routines/demo/preconditions.sh`.\n' };
+  const declared = makeRepo({ changed: { ...artifact, '.claudinite-checks.json': JSON.stringify({ packs: ['basics'] }) } });
+  const undeclared = makeRepo({ changed: { ...artifact } });
   try {
-    const r = runCli(root);
-    assert.equal(r.status, 1); // routine-structure lives in skills/, not a pack, yet still runs
+    const r = runCli(declared);
+    assert.equal(r.status, 1);
     assert.match(r.stdout, /routine-structure/);
-    assert.match(runCli(root, '--list').stdout, /^routine-structure\t/m);
-  } finally { cleanup(root); }
+    assert.doesNotMatch(runCli(undeclared).stdout, /routine-structure/);
+    assert.match(runCli(declared, '--list').stdout, /^routine-structure\t/m);
+  } finally { cleanup(declared); cleanup(undeclared); }
 });
 
 // --- local packs (.claudinite/local_packs/) -------------------------------

@@ -21,9 +21,12 @@ export const SHARED_SUBDIR = join('.claudinite', 'shared');
 // never disable every other pack's prose/checks/skills). Each loaded pack is
 // stamped with `dir` (its own directory — prose and bundled skills resolve off
 // this, so a pack's files never have to sit under a single shared root) and
-// `local` (whether it came from a consumer's local_packs). A local pack may
-// bundle skill-owned checks at `<pack>/skills/<skill>/checks.mjs`, gathered onto
-// `skillChecks` and run by the runner only when the pack is active.
+// `local` (whether it came from a consumer's local_packs). A pack's skills live
+// in its own tree — `<pack>/skills/<skill>/` is the one bundled-skill shape,
+// canon and local alike (#385: a skill rides exactly one pack; there is no
+// separate skills collection to own or cross-declare). A bundled skill's
+// checks.mjs is gathered onto `skillChecks` and run by the runner only when the
+// pack is active.
 async function scanPackDir(dir, { local }, errors) {
   const out = [];
   if (!existsSync(dir)) return out;
@@ -81,17 +84,17 @@ async function scanPackDir(dir, { local }, errors) {
       continue;
     }
     const pack = { ...mod, dir: packDir, local };
-    if (local) pack.skillChecks = await scanLocalSkillChecks(packDir, errors);
+    pack.skillChecks = await scanSkillChecks(packDir, errors);
     out.push(pack);
   }
   return out;
 }
 
-// A local pack's skill-owned checks: any <pack>/skills/<skill>/checks.mjs
-// (default export = an array of rules), the local mirror of a canon skill's
-// checks.mjs. Isolated per import; run gated by the owning pack being active
-// (unlike canon skill checks, which are ungated and always run).
-async function scanLocalSkillChecks(packDir, errors) {
+// A pack's skill-owned checks: any <pack>/skills/<skill>/checks.mjs (default
+// export = an array of rules). Isolated per import; run gated by the owning
+// pack being active, exactly like the pack's own rules — a skill is pack
+// content, so its checks ride the pack's activation.
+async function scanSkillChecks(packDir, errors) {
   const rules = [];
   const skillsRoot = join(packDir, 'skills');
   if (!existsSync(skillsRoot)) return rules;

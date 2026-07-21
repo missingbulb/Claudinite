@@ -1,16 +1,16 @@
 # Skills — the catalog
 
-> Each skill is a harness-managed **trigger** (`skills/<name>/SKILL.md`) for an **activity-scoped**
-> procedure — surfaced on demand when the work in front of you matches. Its content lives within the
-> skill's **own directory** — the `SKILL.md` plus any companion files it needs (e.g.
-> `unattended-agents/*.mjs`) — never redirecting into
-> another tree. **Packs own the deployment:** each pack declares the
-> skills it requires (`skills` in its `pack.mjs`), and a consumer mounts the union over its active
-> packs as session-generated `.claude/skills/` symlinks ([mount-skills.mjs](mount-skills.mjs),
-> registered by bootstrap Part 5 — never committed). The `skill-ownership` check keeps every skill
-> here required by at least one pack, both directions. Rules that are always-relevant to a project
+> Each skill is a harness-managed **trigger** (`<pack>/skills/<name>/SKILL.md`) for an
+> **activity-scoped** procedure — surfaced on demand when the work in front of you matches. Its
+> content lives within the skill's **own directory** — the `SKILL.md` plus any companion files it
+> needs — never redirecting into another tree. **Packs own their skills outright:** a skill is
+> bundled in exactly one owning pack's tree (#385 — the directory listing is the manifest; there
+> is no separate skills collection), and a consumer mounts the union over its active packs'
+> bundles as session-generated `.claude/skills/` symlinks ([mount-skills.mjs](mount-skills.mjs),
+> registered by bootstrap Part 5 — never committed). Rules that are always-relevant to a project
 > are pack prose, not skills; enforceable rules are checks. See
-> [checks/DESIGN.md](../checks/DESIGN.md).
+> [checks/DESIGN.md](../checks/DESIGN.md). This catalog spans every pack's bundle, kept complete
+> by the `catalog-completeness` check.
 
 **Command skills** (owner phrase or bootstrap step):
 

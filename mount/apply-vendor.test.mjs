@@ -31,9 +31,10 @@ function makeCanon() {
   copyFileSync(join(REPO_ROOT, 'checks', 'lib', 'imports.mjs'), join(root, 'checks', 'lib', 'imports.mjs'));
   writeAt(root, 'CLAUDE.md', 'index\n');
   writeAt(root, 'checks/run.mjs', 'engine v2\n');
-  writeAt(root, 'skills/s1/SKILL.md', 'skill\n');
-  writeAt(root, 'packs/alpha/pack.mjs', 'export default { id: "alpha", skills: ["s1"] };\n');
+  writeAt(root, 'skills/mount-skills.mjs', 'machinery\n');
+  writeAt(root, 'packs/alpha/pack.mjs', 'export default { id: "alpha" };\n');
   writeAt(root, 'packs/alpha/RULES.md', 'rules\n');
+  writeAt(root, 'packs/alpha/skills/s1/SKILL.md', 'skill\n');
   return root;
 }
 
@@ -54,7 +55,7 @@ test('fresh target: the set lands under .claudinite/shared/ at canon-relative pa
   const target = makeTarget();
   const r = await applyAt(canon, target, { ref: 'abc123' });
   assert.deepEqual(r.errors, []);
-  for (const f of ['CLAUDE.md', 'checks/run.mjs', 'packs/alpha/RULES.md', 'skills/s1/SKILL.md', 'mount/vendor.mjs']) {
+  for (const f of ['CLAUDE.md', 'checks/run.mjs', 'packs/alpha/RULES.md', 'packs/alpha/skills/s1/SKILL.md', 'mount/vendor.mjs']) {
     assert.ok(existsSync(join(target, '.claudinite', 'shared', f)), `missing vendored ${f}`);
   }
   const settings = JSON.parse(readFileSync(join(target, '.claudinite-checks.json'), 'utf8'));
@@ -74,16 +75,6 @@ test('convergence is whole-set: stale files vanish, drift reverts, everything ou
   assert.equal(readFileSync(join(target, '.claudinite', 'shared', 'checks', 'run.mjs'), 'utf8'), 'engine v2\n');
   assert.ok(existsSync(join(target, '.claudinite', 'local_packs', 'mine', 'pack.mjs')), 'local_packs untouched');
   assert.equal(readFileSync(join(target, 'src', 'app.js'), 'utf8'), 'project code\n');
-});
-
-test('a local pack pulling a canon skill vendors it via extraSkills; local-only skill names are ignored', async () => {
-  const canon = makeCanon();
-  const target = makeTarget({ packs: [] }); // no canon pack declared at all
-  writeAt(target, '.claudinite/local_packs/mine/pack.mjs',
-    'export default { id: "mine", skills: ["s1", "only-local-skill"] };\n');
-  const r = await applyAt(canon, target);
-  assert.deepEqual(r.errors, []);
-  assert.ok(existsSync(join(target, '.claudinite', 'shared', 'skills', 's1', 'SKILL.md')));
 });
 
 // Turn a canon fixture into a git checkout with two commits; returns their shas

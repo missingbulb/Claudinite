@@ -185,15 +185,14 @@ the nightly touches everyone, and never break the channel the migration itself t
 
 ## The vendor-set contract ([vendor.mjs](vendor.mjs))
 
-`computeVendorSet(declaredEntries, { extraSkills })` → `{ files, errors }`, computed against the
+`computeVendorSet(declaredEntries)` → `{ files, errors }`, computed against the
 canon tree the module ships in; the writer materializes `files` under `SHARED_SUBDIR`
 (exported; defined beside `LOCAL_PACKS_SUBDIR` in the packs registry). Structural throughout:
 `ENGINE_DIR_ROOTS` walks (tests and root-docs excluded), `MACHINERY_ROOTS` top-level `.mjs`,
-resolved canon packs' directories, the skills union — never a per-file list. Declared ids that
+resolved canon packs' directories (each pack's bundled skills riding its own tree — #385) —
+never a per-file list. Declared ids that
 name no canon pack (a consumer's local packs, or a typo the runner's settings validation
-already flags) are skipped without error; a pack-required skill missing from the tree is
-reported in `errors`. `extraSkills` lets a caller add skills the canon can't see — e.g. ones
-required by a member's own local packs. The computed set is verified
+already flags) are skipped without error. The computed set is verified
 **import-closed** before it is returned: a vendored module whose relative
 import resolves outside the set (or to nothing) is reported in `errors`, so
 convergence aborts before any write instead of a flipped member crashing on a

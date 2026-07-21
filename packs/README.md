@@ -48,8 +48,8 @@ bundled skills resolve off it) and a `local` flag. A local pack:
   the engine's [`packEntryId`](registry.mjs) resolves it and the legacy bare id alike to the bare
   pack id, so the bare form keeps working while the fleet's baselining rewrites it), and its id must
   be unique (it may not shadow a canon id — the collision is a blocking `config` finding);
-- may **require a canon skill** by name and/or **bundle its own** at `<pack>/skills/<skill>/`
-  (mounted from the tracked pack dir); a bundled skill may carry `checks.mjs`, run when the pack is
+- **bundles its skills** at `<pack>/skills/<skill>/` (mounted from the tracked pack dir — the
+  same one shape canon packs use); a bundled skill may carry `checks.mjs`, run when the pack is
   active;
 - rides the deployment plumbing every consumer already vendors: the sync hook preserves
   `.claudinite/local_packs/` across its dir swap and the `.gitignore` re-includes it.
@@ -74,15 +74,11 @@ A pack states the packs it depends on in an optional `requires` field on its `pa
 
 This is **not a check** — a pack can't be imported without its dependencies, so the resolution happens **when the declaration is written**, at bootstrap `--init` and the baselining backfill ([bootstrap.md](../bootstrap.md) Part 6): [`resolveDeclaredPacks`](registry.mjs) pulls each declared pack's transitive `requires` closure into `.claudinite-checks.json`. The prerequisite is materialized and visible in the file — droppable like every other entry, the same reason `basics` is written explicitly rather than defaulted — rather than resolved implicitly at run time. Declared ids keep their order; each pack's pulled-in dependencies land right after it.
 
-## Skill requirements (`skills`)
+## Bundled skills (`<pack>/skills/`)
 
-A pack declares the skills its projects need in an optional `skills` field on its `pack.mjs` — a plain array of `skills/<name>/` names:
+A pack's skills live in its own tree — `<pack>/skills/<skill>/SKILL.md`, one owning pack per skill (#385). The directory listing IS the manifest: there is no `skills` field on `pack.mjs` and no separate skills collection to own or cross-declare.
 
-```js
-skills: ['merge-to-main', 'writing-tests'],
-```
-
-The SessionStart hook [`../skills/mount-skills.mjs`](../skills/mount-skills.mjs) mounts the **union over the active packs** (same activation as prose/checks/env) as session-generated `.claude/skills/<name>` symlinks — nothing committed, and a self-ignoring `.claude/skills/.gitignore` keeps them out of git status. Several packs requiring the same skill is normal; a skill required by **no** pack never reaches any consumer, which is why the `skill-ownership` check (corpus CI) blocks both an unowned skill and a declaration naming a skill that doesn't exist. The baseline activities every project has (`merge-to-main`, `writing-tests`, `bug-investigation`, …) ride the `basics` pack's list; move a skill to a narrower pack when it stops being a baseline activity.
+The SessionStart hook [`../skills/mount-skills.mjs`](../skills/mount-skills.mjs) mounts the **union over the active packs' bundles** (same activation as prose/checks/env) as session-generated `.claude/skills/<name>` symlinks — nothing committed, and a self-ignoring `.claude/skills/.gitignore` keeps them out of git status. A skill rides its pack everywhere the pack goes: the vendor set, the mounts, the sweep (its `checks.mjs` runs when the pack is active). The baseline activities every project has (`merge-to-main`, `writing-tests`, `bug-investigation`, …) ride the `basics` pack's bundle; move a skill's directory to a narrower pack when it stops being a baseline activity.
 
 ## Environment requirements (`env`)
 
@@ -129,7 +125,8 @@ The answers live **verbatim** on the pack's entry in `.claudinite-checks.json` (
 records the project's intent beside the `config` distilled from it — provenance for the
 configuration, versioned and diffable, and re-derivable if the pack's config shape later changes.
 The **gap** — declared question ids minus answered ids — drives the asking
-([interview.mjs](interview.mjs)): at adoption every question is pending; when the canon later adds
+([interview.mjs](basics/skills/adopt-claudinite/interview.mjs) — the adoption skill's bundled
+machinery): at adoption every question is pending; when the canon later adds
 a question to a pack, just that one surfaces in every consumer; a pack with no questions adds
 nothing. An answered question stays answered — "n/a, none wanted" is an answer, distinct from
 never-asked.

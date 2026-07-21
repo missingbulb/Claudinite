@@ -13,7 +13,7 @@ node checks/run.mjs --changed   # transitional: only files changed vs the merge-
 node checks/run.mjs --list      # machine-readable rule catalog (id, severity, description, doc)
 node checks/run.mjs --init      # write .claudinite-checks.json — the baseline plus the fingerprinted packs
 
-node --test checks/test/*.test.mjs packs/*.test.mjs packs/*/*.test.mjs skills/*.test.mjs skills/*/*.test.mjs   # the test suite, exactly as CI runs it
+node --test checks/test/*.test.mjs packs/*.test.mjs packs/*/*.test.mjs packs/*/skills/*/*.test.mjs skills/*.test.mjs routines/*/*.test.mjs mount/*.test.mjs   # the test suite, as CI runs it
 ```
 
 Exit 1 when blocking findings exist; advisory findings never fail a run. In a consuming repo
@@ -150,13 +150,12 @@ text; those stay in the rule module, which composes the helpers in a few lines. 
 a rule's words is that rule's policy wearing an engine filename: unreusable by the next rule and
 a second place for the first one to drift from.
 
-**A check that validates one skill's action lives with that skill**, not in a pack: drop the
-rule module and a `checks.mjs` (default export = an array of rules) in `../skills/<name>/`, keep
-its test beside it, and [skills/registry.mjs](../skills/registry.mjs) discovers it. **But a
-skill check runs everywhere.** A technology-pack check only runs where the project *declared*
-that pack; a skill check is never declared, so the engine runs it on every repo and every
-sweep — including repos where the skill's action never happened. That declaration gate you don't
-get, `run(ctx)` must supply itself: **detect relevance first, cheaply and specifically, and
+**A check that validates one skill's action lives with that skill**, inside its owning pack:
+drop the rule module and a `checks.mjs` (default export = an array of rules) in the skill's own
+`<pack>/skills/<name>/`, keep its test beside it, and the pack registry gathers it onto the pack
+(`skillChecks`), run when the pack is active. **But relevance still isn't free.** The pack gate
+only says the project opted into the pack — not that this skill's action ever happened in this
+repo — so `run(ctx)` must still **detect relevance first, cheaply and specifically, and
 return `[]` when the artifact is absent** (`routine-structure` keys off a `routine.md` existing
 before it asserts anything). Getting this wrong doesn't cost a little — it fires false findings
 on every unrelated repo the corpus is mounted in, so make the relevance signal narrow and put it

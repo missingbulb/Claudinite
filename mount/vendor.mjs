@@ -57,13 +57,14 @@ function walk(relDir, files, errors, { engine = false } = {}) {
 }
 
 // declaredEntries: the raw `packs` array from .claudinite-checks.json (id
-// strings and/or entry objects). extraSkills: skills the canon can't derive —
-// e.g. ones a member's own local packs require. Returns { files, errors }:
+// strings and/or entry objects). Returns { files, errors }:
 // sorted canon-relative paths, and { what, fix } diagnostics. Ids naming no
 // canon pack (a consumer's local packs, or a typo the runner's settings
 // validation already flags) are skipped without error; per-user preferences
-// are deliberately absent — they are never vendored (DESIGN.md).
-export async function computeVendorSet(declaredEntries, { extraSkills = [] } = {}) {
+// are deliberately absent — they are never vendored (DESIGN.md). A pack's
+// bundled skills (<pack>/skills/) ride its directory walk — there is no
+// separate skills collection to union (#385).
+export async function computeVendorSet(declaredEntries) {
   const files = new Set();
   const errors = [];
 
@@ -91,20 +92,6 @@ export async function computeVendorSet(declaredEntries, { extraSkills = [] } = {
     if (id !== undefined && byId.has(id) && !ids.includes(id)) ids.push(id);
   }
   for (const id of ids) walk(`packs/${id}`, files, errors);
-
-  const requiredBy = new Map(extraSkills.map((s) => [s, ['extraSkills']]));
-  for (const id of ids) {
-    for (const skill of byId.get(id).skills ?? []) {
-      requiredBy.set(skill, [...(requiredBy.get(skill) ?? []), id]);
-    }
-  }
-  for (const [skill, requirers] of [...requiredBy].sort(([a], [b]) => a.localeCompare(b))) {
-    if (existsSync(join(canonRoot, 'skills', skill))) walk(`skills/${skill}`, files, errors);
-    else errors.push({
-      what: `skill "${skill}" (required by ${requirers.join(', ')}) is missing from skills/`,
-      fix: 'restore the skill, or drop it from the requirer\'s skills list',
-    });
-  }
 
   // Coherence guard: the set must be import-closed — every relative import in
   // every .mjs it carries resolves to a file it also carries. Structural

@@ -14,6 +14,5 @@ export default {
   id: 'google-identity',
   marker: 'a backend that validates Google Sign-In ID tokens (a JWT authorizer / OIDC verifier with the Google accounts issuer)',
   detect: null,
-  skills: ['google-id-token-validation'],
   rules: [],
 };

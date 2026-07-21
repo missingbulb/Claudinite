@@ -8,11 +8,19 @@
 //   --init      write .claudinite-checks.json — basics plus the fingerprinted packs
 import { writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { buildContext, loadConfig } from './lib/context.mjs';
 import { applyConfig, render } from './lib/findings.mjs';
 import { discoverPacks, isActive, resolveDeclaredPacks } from '../packs/registry.mjs';
-import { interviewState } from '../packs/interview.mjs';
-import { loadSkillRules } from '../skills/registry.mjs';
+
+// The adoption-interview machinery is the adopt-claudinite skill's, bundled in
+// the baseline pack (packs/basics/skills/adopt-claudinite/). A consumer that
+// doesn't declare basics doesn't vendor it — no adoption skill, no interview —
+// so resolve it fail-soft: absent file, inert interview.
+const interviewUrl = new URL('../packs/basics/skills/adopt-claudinite/interview.mjs', import.meta.url);
+const { interviewState } = existsSync(fileURLToPath(interviewUrl))
+  ? await import(interviewUrl.href)
+  : { interviewState: () => ({ pending: [], stale: [], errors: [] }) };
 
 const args = process.argv.slice(2);
 const has = (flag) => args.includes(flag);
@@ -24,11 +32,6 @@ const root = value('--root') || process.cwd();
 // and is surfaced as a blocking config finding, so the Stop hook shows a
 // diagnostic instead of silently dropping the pack's checks.
 const { packs, errors: packErrors } = await discoverPacks({ localRoot: root });
-// Skills own the test-the-world checks that validate their action (co-located
-// with the SKILL.md), discovered alongside the packs and always run. A local
-// pack's bundled skill checks ride its `skillChecks`, run only when the pack is
-// active (below).
-const skillRules = await loadSkillRules();
 
 // A pack's contributedRules seam: the pack interprets the contributions other
 // packs address to it on their manifests (`contributes`), returning
@@ -46,7 +49,6 @@ if (has('--list')) {
     ...packs.flatMap((p) => p.rules ?? []),
     ...packs.flatMap((p) => p.skillChecks ?? []),
     ...packs.flatMap((p) => contributedRules(p, packs)),
-    ...skillRules,
   ];
   for (const r of rules.sort((a, b) => a.id.localeCompare(b.id))) {
     console.log(`${r.id}\t${r.severity}\t${r.description}\t${r.doc}`);
@@ -98,7 +100,6 @@ const mode = has('--changed') ? 'changed' : 'all';
 // --transcript: the session transcript the Stop hook forwards, enabling the
 // conversation-surface rules; absent everywhere else (CI), where they self-skip.
 const ctx = buildContext({ root, mode, baseOverride: value('--base'), transcriptPath: value('--transcript') });
-ctx.knownPacks = packs; // for skill-ownership's corpus-integrity check
 
 const configError = (what, fix) => ({
   rule: 'config', severity: 'blocking', file: '.claudinite-checks.json', line: null,
@@ -144,22 +145,16 @@ for (const s of stale) {
 }
 const activePacks = packs.filter((p) => isActive(p, ctx.config));
 for (const pack of activePacks) {
-  // A pack's conformance checks, a local pack's bundled skill-owned checks
-  // (canon skill checks run ungated below; a local pack's ride its own
-  // activation), and the rules this pack builds from other ACTIVE packs'
-  // contributions (its contributedRules seam) — an undeclared pack neither
-  // runs nor contributes.
+  // A pack's conformance checks, its bundled skills' skill-owned checks
+  // (a skill is pack content — its checks ride the pack's activation), and
+  // the rules this pack builds from other ACTIVE packs' contributions (its
+  // contributedRules seam) — an undeclared pack neither runs nor contributes.
   const contributed = contributedRules(pack, activePacks, (e) =>
     findings.push(configError(`the "${pack.id}" pack's contributedRules failed: ${e.message}`, 'fix the pack manifest, or the contribution it interprets')));
   for (const rule of [...(pack.rules ?? []), ...(pack.skillChecks ?? []), ...contributed]) {
     if (ctx.config.rules[rule.id] === 'off') continue;
     findings.push(...rule.run(ctx));
   }
-}
-// Skill checks always run — never gated on a pack being active.
-for (const rule of skillRules) {
-  if (ctx.config.rules[rule.id] === 'off') continue;
-  findings.push(...rule.run(ctx));
 }
 findings = applyConfig(findings, ctx.config);
 findings.sort((a, b) => (a.severity === b.severity ? 0 : a.severity === 'blocking' ? -1 : 1));

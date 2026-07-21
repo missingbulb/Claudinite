@@ -4,7 +4,9 @@
     "github-actions",
     {
       "id": "grow_with_claudinite",
-      "config": { "retention_days": 10 },
+      "config": {
+        "retention_days": 10
+      },
       "answers": {
         "retention": "10 days — the recommended rethink window before a captured conversation log is pruned."
       }
@@ -41,8 +43,6 @@
               "packs/registry.mjs",
               "packs/load-active-prose.mjs",
               "packs/env.mjs",
-              "packs/interview.mjs",
-              "skills/registry.mjs",
               "skills/mount-skills.mjs"
             ],
             "to": "packs/*",
@@ -118,38 +118,20 @@
                   "packs/tidy-repo"
                 ],
                 "reason": "inherent(operational seed): the one-time seed one-liner (bootstrap step 4b) backfills these default-on packs into an existing declaration while their self-retiring seed migrations are live; retires with those migrations"
-              }
-            ]
-          },
-          {
-            "from": [
-              "checks",
-              "migrations",
-              "mount",
-              "routines",
-              ".github",
-              "README.md",
-              "bootstrap.md",
-              "consumer-safe-changes.md",
-              "extending.md",
-              "packs/registry.mjs",
-              "packs/load-active-prose.mjs",
-              "packs/env.mjs",
-              "packs/interview.mjs",
-              "skills/registry.mjs",
-              "skills/mount-skills.mjs"
-            ],
-            "to": "skills/*",
-            "matchNames": true,
-            "matchUniqueFilenames": false,
-            "reason": "core is the engine that surfaces skill content — it must not name the specific skills it runs (extending.md)",
-            "except": [
+              },
               {
-                "path": ".github/actions/report-failure/action.yml",
+                "path": "checks/run.mjs",
                 "to": [
-                  "skills/git-github-advanced"
+                  "packs/basics"
                 ],
-                "reason": "decouple(release-infra): a chrome-release composite action in the core .github/ tree cites the git/GitHub skill; being vendored out (#276)"
+                "reason": "inherent(#385): the adoption-interview machinery is bundled in the adoption skill (packs/basics/skills/adopt-claudinite/) by owner decision; the runner resolves it fail-soft and stays inert when the pack is absent"
+              },
+              {
+                "path": "extending.md",
+                "to": [
+                  "packs/basics"
+                ],
+                "reason": "inherent(#385): the engine map documents where the adoption-interview machinery lives now that it is bundled in the adoption skill"
               }
             ]
           }

@@ -41,21 +41,19 @@ function makeCanon({ packs = [], skills = [] } = {}) {
   writeAt(root, 'packs/env.mjs', 'stub\n');
   writeAt(root, 'packs/env.test.mjs', 'stub\n');
   writeAt(root, 'packs/README.md', 'canon doc\n');
-  writeAt(root, 'skills/registry.mjs', 'stub\n');
   writeAt(root, 'skills/mount-skills.mjs', 'stub\n');
   writeAt(root, 'skills/README.md', 'canon doc\n');
   // per-user content: must never appear in any vendor set
   writeAt(root, 'preferences/owner@example.com.md', 'prefs\n');
   for (const { id, requires = [], skills: skl = [], extraFiles = [] } of packs) {
     writeAt(root, `packs/${id}/pack.mjs`,
-      `export default { id: ${JSON.stringify(id)}, requires: ${JSON.stringify(requires)}, skills: ${JSON.stringify(skl)} };\n`);
+      `export default { id: ${JSON.stringify(id)}, requires: ${JSON.stringify(requires)} };\n`);
+    // A pack's skills are bundled in its own tree — the one shape (#385).
+    for (const name of skl) writeAt(root, `packs/${id}/skills/${name}/SKILL.md`, 'stub\n');
     for (const file of extraFiles) {
       const [name, content] = typeof file === 'string' ? [file, `stub ${file}\n`] : [file.file, file.content];
       writeAt(root, `packs/${id}/${name}`, content);
     }
-  }
-  for (const { name, files = ['SKILL.md'] } of skills) {
-    for (const file of files) writeAt(root, `skills/${name}/${file}`, 'stub\n');
   }
   return root;
 }
@@ -66,13 +64,9 @@ const vendorAt = async (root, declared, opts) =>
 
 const FIXTURE = {
   packs: [
-    { id: 'alpha', skills: ['s1'], extraFiles: ['RULES.md', 'check.mjs', 'pack.test.mjs', 'stubs/wf.yml'] },
+    { id: 'alpha', skills: ['s1'], extraFiles: ['RULES.md', 'check.mjs', 'pack.test.mjs', 'stubs/wf.yml', 'skills/s1/helper.test.mjs'] },
     { id: 'beta', requires: ['gamma'] },
     { id: 'gamma', skills: ['s2'] },
-  ],
-  skills: [
-    { name: 's1', files: ['SKILL.md', 'helper.test.mjs'] },
-    { name: 's2' },
   ],
 };
 
@@ -92,12 +86,11 @@ test('structural set: engine roots + machinery + declared pack + its skills, exa
     'packs/load-active-prose.mjs',
     'packs/registry.mjs',
     'skills/mount-skills.mjs',
-    'skills/registry.mjs',
     'packs/alpha/RULES.md',
     'packs/alpha/check.mjs',
     'packs/alpha/pack.mjs',
     'packs/alpha/stubs/wf.yml',
-    'skills/s1/SKILL.md',
+    'packs/alpha/skills/s1/SKILL.md',
   ].sort();
   assert.deepEqual(files, expected);
   // The owner-decided exclusions, asserted by name so a regression reads clearly:
@@ -113,13 +106,13 @@ test('a pack .md is payload and vendors even though engine-root .md does not', a
   assert.ok(!files.includes('packs/README.md'));
 });
 
-test('requires closure pulls the dependency pack and its skills in', async () => {
+test('requires closure pulls the dependency pack (bundled skills included) in', async () => {
   const root = makeCanon(FIXTURE);
   const { files, errors } = await vendorAt(root, ['beta']);
   assert.deepEqual(errors, []);
   assert.ok(files.includes('packs/beta/pack.mjs'));
   assert.ok(files.includes('packs/gamma/pack.mjs'));
-  assert.ok(files.includes('skills/s2/SKILL.md'));
+  assert.ok(files.includes('packs/gamma/skills/s2/SKILL.md'));
   assert.ok(!files.some((f) => f.startsWith('packs/alpha/')));
 });
 
@@ -130,21 +123,12 @@ test('ids naming no canon pack (local packs, typos) are skipped without error', 
   assert.ok(!files.some((f) => f.includes('my-local-pack')));
 });
 
-test('a pack-required skill missing from the tree is an error; the set still computes', async () => {
-  const root = makeCanon({ packs: [{ id: 'delta', skills: ['ghost'] }] });
-  const { files, errors } = await vendorAt(root, ['delta']);
-  assert.equal(errors.length, 1);
-  assert.match(errors[0].what, /"ghost"/);
-  assert.match(errors[0].what, /delta/);
-  assert.ok(files.includes('packs/delta/pack.mjs'));
-});
-
-test('extraSkills adds skills the canon cannot derive (a local pack\'s requirements)', async () => {
+test('a bundled skill\'s tests stay canon-side like any other test', async () => {
   const root = makeCanon(FIXTURE);
-  const { files, errors } = await vendorAt(root, ['beta'], { extraSkills: ['s1'] });
+  const { files, errors } = await vendorAt(root, ['alpha']);
   assert.deepEqual(errors, []);
-  assert.ok(files.includes('skills/s1/SKILL.md'));
-  assert.ok(!files.includes('skills/s1/helper.test.mjs'));
+  assert.ok(files.includes('packs/alpha/skills/s1/SKILL.md'));
+  assert.ok(!files.includes('packs/alpha/skills/s1/helper.test.mjs'));
 });
 
 // --- the coherence guard: the set must be import-closed ----------------------
