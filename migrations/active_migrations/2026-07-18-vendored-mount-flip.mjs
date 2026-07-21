@@ -7,8 +7,15 @@
 // mechanical passes see this record as a no-op, and the retire pass reads its
 // telemetry.
 //
-// GATED PILOT: `flip.repos` names the only members the worker may convert.
-// Widening after a clean pilot night is a one-line change: set it to 'fleet'.
+// FLEET-WIDE (2026-07-21): the pilot gate is retired. The initial vendor set
+// proved too large for the worker's push_files lane (its split-batch attempts
+// stranded on the pilot's maintenance branch), so the conversion was executed
+// bespoke in-session over real git — one true commit per member, all covered
+// members at canon ref 9a68093, delivered as claudinite/maintenance PRs.
+// `flip.repos: 'fleet'` stays so the worker's preconditions finish any
+// half-flipped straggler; flipped members (stamp present, hook gone) are
+// no-ops. A future member adopted pre-flip would also convert through this —
+// but its conversion must land over a real git push, never push_files.
 export default {
   id: 'vendored-mount-flip',
   landed: '2026-07-18',
@@ -20,7 +27,7 @@ export default {
   // all retire together, by hand — so never auto-retire.
   retire: 'manual',
   flip: {
-    repos: ['missingbulb/GoogleCalendarEventCreator'], // 'fleet' = every covered member
+    repos: 'fleet', // every covered member
     steps: `
 ## Converting one member (the baselining worker follows this verbatim)
 
