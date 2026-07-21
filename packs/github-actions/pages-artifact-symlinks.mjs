@@ -1,5 +1,5 @@
-import { finding } from '../../engine/checks_helpers/findings.mjs';
-import { workflowFiles } from '../../engine/checks_helpers/workflows.mjs';
+import { finding } from '../../engine/checks/helpers/findings.mjs';
+import { workflowFiles } from '../../engine/checks/helpers/github-workflows.mjs';
 
 // A GitHub Pages deploy that uploads the repo root fails in CI because
 // Claudinite mounts its skills as symlinks (.claude/skills/* -> the gitignored

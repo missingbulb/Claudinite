@@ -8,7 +8,7 @@
 //
 // Stable-id'd, because the answers live VERBATIM on the pack's entry in
 // .claudinite-checks.json (`answers: { "<question-id>": "<answer>" }` — see
-// engine/README.md): the settings file records the project's intent beside the
+// engine/checks/README.md): the settings file records the project's intent beside the
 // `config` distilled from it. The GAP — declared question ids minus answered
 // ids — drives the asking: at adoption every question is pending; when the
 // canon later adds a question to a pack, just that one surfaces in every
@@ -26,8 +26,8 @@
 //                              bootstrap adoption flow (bootstrap.md Part 6),
 //                              where the owner is present by construction.
 import { pathToFileURL } from 'node:url';
-import { loadPacks, isActive } from '../../../../engine/pack_loader/registry.mjs';
-import { loadConfig } from '../../../../engine/checks_helpers/context.mjs';
+import { loadPacks, isActive } from '../../../../engine/pack_loader/pack-registry.mjs';
+import { loadConfig } from '../../../../engine/checks/helpers/repo-context.mjs';
 
 // A pack's declared questions, validated: `questions` must be an array of
 // { id, prompt, distill? } with non-empty string ids and prompts, ids unique

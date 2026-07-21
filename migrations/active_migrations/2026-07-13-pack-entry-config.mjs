@@ -7,7 +7,7 @@
 //
 // retire:'manual' — the read-side tolerance lives INLINE, not resolver-driven:
 // loadConfig still accepts the key (CONFIG_KEYS) and overlays it under the entry
-// view (engine/checks_helpers/context.mjs), and the fleet census's config reader falls back
+// view (engine/checks/helpers/repo-context.mjs), and the fleet census's config reader falls back
 // to it. Deleting this record alone would strand those. When the retire pass
 // reports zero repos on the legacy shape, drop it all in one deliberate change:
 // this record, bootstrap step 4d, 'packConfig' from CONFIG_KEYS + the overlay

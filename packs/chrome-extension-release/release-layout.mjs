@@ -1,4 +1,4 @@
-import { finding } from '../../engine/checks_helpers/findings.mjs';
+import { finding } from '../../engine/checks/helpers/findings.mjs';
 
 // The privacy policy is the one release artifact that must live in the repo: it
 // is deployed verbatim as the public /privacy/ page the store listing points

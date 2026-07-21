@@ -1,4 +1,4 @@
-import { findExtensionManifest } from '../../engine/checks_helpers/manifest.mjs';
+import { findExtensionManifest } from '../../engine/checks/helpers/chrome-manifest.mjs';
 
 // The coding pack: MV3 build/runtime gotchas that apply whenever you are writing
 // an extension, fingerprinted by the manifest. Release and Chrome-Web-Store

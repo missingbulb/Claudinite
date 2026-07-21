@@ -1,5 +1,5 @@
-import { finding } from '../../../../engine/checks_helpers/findings.mjs';
-import { addedLines } from '../../../../engine/checks_helpers/lines.mjs';
+import { finding } from '../../../../engine/checks/helpers/findings.mjs';
+import { addedLines } from '../../../../engine/checks/helpers/line-scanning.mjs';
 
 // The OAuth client id is one value in two roles: the client requests the ID
 // token FOR it (it becomes the token's audience claim) and the validator is
@@ -10,7 +10,7 @@ import { addedLines } from '../../../../engine/checks_helpers/lines.mjs';
 // another file — legacy duplicates on the base are the world, not this change,
 // so a repo converges without acceptances for history the work never touched.
 //
-// RELEVANCE FIRST (see engine/README.md "Adding a rule"): the client-id
+// RELEVANCE FIRST (see engine/checks/README.md "Adding a rule"): the client-id
 // literal (…apps.googleusercontent.com, escaped dots below) is itself the
 // narrow gate. The skill's own directory is excluded so its fixtures never
 // self-flag on the corpus repo.

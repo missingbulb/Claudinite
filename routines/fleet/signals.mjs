@@ -1,5 +1,5 @@
 import { isFullSweepDay } from './schedule.mjs';
-import { packEntryId } from '../../engine/pack_loader/registry.mjs';
+import { packEntryId } from '../../engine/pack_loader/pack-registry.mjs';
 
 // The signal bundle each gate reads. Built per covered member from a small, bounded
 // set of cheap GitHub reads; `gh(path) -> { status, json }` is the orchestrator's

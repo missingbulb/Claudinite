@@ -32,7 +32,7 @@ try {
     if (Array.isArray(raw.packs)) declared = raw.packs;
   }
 
-  const { loadPacks, isActive } = await import(join(corpusRoot, 'engine', 'pack_loader', 'registry.mjs'));
+  const { loadPacks, isActive } = await import(join(corpusRoot, 'engine', 'pack_loader', 'pack-registry.mjs'));
   // Include the project's own local packs — a local pack can require a canon
   // skill AND bundle its own under <pack>/skills/, mounted from the tracked pack
   // dir rather than the corpus mount.

@@ -9,7 +9,7 @@
 > bundles as session-generated `.claude/skills/` symlinks ([mount-skills.mjs](../engine/skill_loader/mount-skills.mjs),
 > registered by bootstrap Part 5 — never committed). Rules that are always-relevant to a project
 > are pack prose, not skills; enforceable rules are checks. See
-> [engine/DESIGN.md](../engine/DESIGN.md). This catalog spans every pack's bundle, kept complete
+> [engine/checks/DESIGN.md](../engine/checks/DESIGN.md). This catalog spans every pack's bundle, kept complete
 > by the `catalog-completeness` check.
 
 **Command skills** (owner phrase or bootstrap step):

@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, cleanup } from '../../../../engine/test/helpers.mjs';
-import { loadConfig } from '../../../../engine/checks_helpers/context.mjs';
-import { loadPacks } from '../../../../engine/pack_loader/registry.mjs';
+import { makeRepo, cleanup } from '../../../../engine-tests/helpers.mjs';
+import { loadConfig } from '../../../../engine/checks/helpers/repo-context.mjs';
+import { loadPacks } from '../../../../engine/pack_loader/pack-registry.mjs';
 import { packQuestions, interviewState, renderPending } from './interview.mjs';
 
 const pack = (over = {}) => ({

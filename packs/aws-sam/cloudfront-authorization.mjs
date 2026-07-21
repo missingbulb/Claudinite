@@ -1,5 +1,5 @@
-import { finding } from '../../engine/checks_helpers/findings.mjs';
-import { samResources } from '../../engine/checks_helpers/cfn.mjs';
+import { finding } from '../../engine/checks/helpers/findings.mjs';
+import { samResources } from '../../engine/checks/helpers/sam-templates.mjs';
 
 // Converted from the aws-sam prose (issue #136): a custom
 // AWS::CloudFront::OriginRequestPolicy listing Authorization is rejected at deploy

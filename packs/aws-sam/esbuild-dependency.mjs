@@ -1,4 +1,4 @@
-import { finding } from '../../engine/checks_helpers/findings.mjs';
+import { finding } from '../../engine/checks/helpers/findings.mjs';
 
 // Converted from the aws-sam pack prose: SAM's esbuild builder runs a
 // production-only npm install, so a devDependency esbuild is skipped and the

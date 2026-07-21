@@ -26,6 +26,6 @@ export default {
   }],
   rules: [barrier],
   // The runner's generic seam: this pack interprets the barrier contributions
-  // of every ACTIVE pack (engine/check_the_world.mjs hands the list over).
+  // of every ACTIVE pack (engine/checks/check_the_world.mjs hands the list over).
   contributedRules: (activePacks) => contributedBarrierRules(activePacks),
 };

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, deletePath, cleanup, git, writeFiles, makeTranscript } from '../../engine/test/helpers.mjs';
-import { buildContext } from '../../engine/checks_helpers/context.mjs';
+import { makeRepo, deletePath, cleanup, git, writeFiles, makeTranscript } from '../../engine-tests/helpers.mjs';
+import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import commentClassification from './comment-classification.mjs';
 import referenceIntegrity from './reference-integrity.mjs';
 import linkLabels from './markdown-link-labels.mjs';
@@ -22,7 +22,7 @@ function run(rule, root, mode = 'changed') {
 // The relevance gate for the corpus-integrity checks: the pack registry tracked
 // = the repo IS the corpus.
 const CORPUS_MARKERS = {
-  'engine/pack_loader/registry.mjs': '// corpus marker\n',
+  'engine/pack_loader/pack-registry.mjs': '// corpus marker\n',
 };
 
 
@@ -50,7 +50,7 @@ test('reference-integrity: flags surviving references to a deleted file', () => 
 });
 
 test('reference-integrity: the vendored shared mount is never a finding source for a deleted path', () => {
-  // The corpus is canon-owned and structurally out of the sweep (engine/mount/DESIGN.md item 6);
+  // The corpus is canon-owned and structurally out of the sweep (engine/vendoring/DESIGN.md item 6);
   // a canon doc mentioning a name the consumer's branch deletes (e.g. its own root file)
   // must not fire — only the consumer's own files may.
   const root = makeRepo({
@@ -641,16 +641,16 @@ const claudiniteIsolation = contributedBarrierRules([basicsPack]).find((r) => r.
 
 test('claudinite-isolation: inert without the vendored mount; a consumer file referencing the canon fires; wiring files and local_packs stay open', () => {
   const violating = {
-    'src/tool.mjs': 'const p = ".claudinite/shared/engine/check_the_world.mjs";\n',
+    'src/tool.mjs': 'const p = ".claudinite/shared/engine/checks/check_the_world.mjs";\n',
   };
   const wiring = {
     '.claude/settings.json': '{ "hooks": { "Stop": [ { "hooks": [ { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/stop-command.mjs" } ] } ] } }\n',
     '.gitignore': '/.claudinite/*\n!/.claudinite/shared/\n',
-    '.github/workflows/claudinite-checks-ci.yml': 'run: node .claudinite/shared/engine/check_the_world.mjs\n',
+    '.github/workflows/claudinite-checks-ci.yml': 'run: node .claudinite/shared/engine/checks/check_the_world.mjs\n',
     '.claudinite/local_packs/mine/check.mjs': 'import { run } from "../../shared/engine/check_the_world.mjs";\n',
   };
   const shared = {
-    '.claudinite/shared/engine/check_the_world.mjs': 'engine\n',
+    '.claudinite/shared/engine/checks/check_the_world.mjs': 'engine\n',
     '.claudinite/shared/engine/hooks/stop-command.mjs': 'engine\n',
     '.claudinite/shared/CLAUDE.md': 'index\n',
   };
@@ -663,7 +663,7 @@ test('claudinite-isolation: inert without the vendored mount; a consumer file re
     const f = run(claudiniteIsolation, on, 'all');
     assert.equal(f.length, 1, JSON.stringify(f, null, 2));
     assert.equal(f[0].file, 'src/tool.mjs');
-    assert.match(f[0].what, /\.claudinite\/shared\/engine\/check_the_world\.mjs/);
+    assert.match(f[0].what, /\.claudinite\/shared\/engine\/checks\/check_the_world\.mjs/);
     assert.equal(f[0].severity, 'blocking');
   } finally { cleanup(off); cleanup(on); }
 });

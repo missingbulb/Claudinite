@@ -1,5 +1,5 @@
-import { finding } from '../../engine/checks_helpers/findings.mjs';
-import { workflowFiles } from '../../engine/checks_helpers/workflows.mjs';
+import { finding } from '../../engine/checks/helpers/findings.mjs';
+import { workflowFiles } from '../../engine/checks/helpers/github-workflows.mjs';
 
 const UNIQUE = /\$RANDOM|github\.run_id|github\.run_number|\$\{\{\s*github\.sha/;
 

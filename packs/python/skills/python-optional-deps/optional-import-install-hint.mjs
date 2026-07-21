@@ -1,4 +1,4 @@
-import { finding } from '../../../../engine/checks_helpers/findings.mjs';
+import { finding } from '../../../../engine/checks/helpers/findings.mjs';
 import { optionalDistNames, importNamesFor, topPackagesOf } from './pyproject.mjs';
 
 // When a lazy import of an optional dependency is guarded with
@@ -11,7 +11,7 @@ import { optionalDistNames, importNamesFor, topPackagesOf } from './pyproject.mj
 // it merged. Advisory: whether a message names the *exact* extra is a wording
 // judgment, so this nudges rather than blocks.
 //
-// RELEVANCE FIRST (see engine/README.md "Adding a rule"): same gate as the
+// RELEVANCE FIRST (see engine/checks/README.md "Adding a rule"): same gate as the
 // sibling top-level rule — the repo must declare optional dependencies in a
 // pyproject.toml, and a block is only in scope when ITS OWN try-body imports one
 // of those exact packages (so an unrelated `except ImportError` — a fallback

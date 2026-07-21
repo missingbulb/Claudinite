@@ -8,6 +8,6 @@
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-const real = fileURLToPath(new URL('../check_the_work.mjs', import.meta.url));
+const real = fileURLToPath(new URL('../checks/check_the_work.mjs', import.meta.url));
 const r = spawnSync(process.execPath, [real, ...process.argv.slice(2)], { stdio: 'inherit' });
 process.exit(r.status ?? 1);

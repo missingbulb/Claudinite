@@ -1,4 +1,4 @@
-import { finding } from '../../engine/checks_helpers/findings.mjs';
+import { finding } from '../../engine/checks/helpers/findings.mjs';
 
 const rule = {
   id: 'task-lifecycle',

@@ -1,5 +1,5 @@
-import { finding } from '../../engine/checks_helpers/findings.mjs';
-import { findExtensionManifest } from '../../engine/checks_helpers/manifest.mjs';
+import { finding } from '../../engine/checks/helpers/findings.mjs';
+import { findExtensionManifest } from '../../engine/checks/helpers/chrome-manifest.mjs';
 
 const rule = {
   id: 'cer/version-sync',

@@ -1,4 +1,4 @@
-import { finding } from '../../engine/checks_helpers/findings.mjs';
+import { finding } from '../../engine/checks/helpers/findings.mjs';
 import { wikiPages, sectionBody, DATED, realDateUTC } from './lib.mjs';
 
 // The staleness nag — ADVISORY by design, never blocking: it is time-driven

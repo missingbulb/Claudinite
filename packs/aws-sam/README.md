@@ -18,4 +18,4 @@ Active when the repo has a SAM `template.yaml`/`.yml`.
 | esbuild must be a dependency | prose + check (`aws-sam/esbuild-dependency`) |
 | CloudFront won't forward Authorization custom-policy | prose + check (`aws-sam/cloudfront-authorization`) |
 
-All three SAM gotchas are now enforced (the last two via the minimal YAML parser in `engine/checks_helpers/`); the pack's runtime-only gotchas would stay prose.
+All three SAM gotchas are now enforced (the last two via the minimal YAML parser in `engine/checks/helpers/`); the pack's runtime-only gotchas would stay prose.

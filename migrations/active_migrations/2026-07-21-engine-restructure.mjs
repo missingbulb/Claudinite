@@ -1,9 +1,9 @@
 // The engine restructure (#385): everything engine-owned consolidates under
-// engine/ — engine/hooks/ (session-start.sh, inject-preferences.sh,
-// pretooluse-guard.mjs), engine/check_the_world.mjs (was checks/run.mjs),
-// engine/check_the_work.mjs (was checks/stop-hook.mjs), engine/checks_helpers/
-// (was checks/lib/), engine/pack_loader/ and engine/skill_loader/ (the packs/
-// and skills/ root machinery), engine/mount/. A member's vendored tree picks
+// engine/ — engine/hooks/ (the wired *-command entry points + steps/),
+// engine/checks/ (check_the_world.mjs — was checks/run.mjs — and
+// check_the_work.mjs — was checks/stop-hook.mjs — with helpers/, was
+// checks/lib/), engine/pack_loader/ and engine/skill_loader/ (the packs/ and
+// skills/ root machinery), engine/vendoring/ (was mount/). A member's vendored tree picks
 // the new layout up whole-set on its nightly convergence; this note carries the
 // one thing convergence can't reach — the member's own wiring files naming the
 // old paths.
@@ -30,7 +30,7 @@ export default {
       replace: [
         {
           from: '.claudinite/shared/mount/session-start.sh',
-          to: '.claudinite/shared/engine/hooks/session-start.sh',
+          to: '.claudinite/shared/engine/hooks/session-start-command.sh',
         },
         {
           from: '.claudinite/shared/checks/stop-hook.mjs',
@@ -38,7 +38,7 @@ export default {
         },
         {
           from: '.claudinite/shared/checks/pretooluse-guard.mjs',
-          to: '.claudinite/shared/engine/hooks/pretooluse-guard.mjs',
+          to: '.claudinite/shared/engine/hooks/pretooluse-command.mjs',
         },
       ],
     },

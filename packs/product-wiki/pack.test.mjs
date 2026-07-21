@@ -4,8 +4,8 @@ import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { makeRepo, cleanup, writeFiles } from '../../engine/test/helpers.mjs';
-import { buildContext } from '../../engine/checks_helpers/context.mjs';
+import { makeRepo, cleanup, writeFiles } from '../../engine-tests/helpers.mjs';
+import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import pack from './pack.mjs';
 import layout from './layout.mjs';
 import pageSections from './page-sections.mjs';
@@ -341,7 +341,7 @@ test('runner integration: a reasoned accept excuses an isolation crossing', () =
         accept: [{ rule: 'product-wiki-isolation', path: 'dev/notes.md', reason: 'deliberate ledger reference' }],
       }, null, 2)}\n`,
     });
-    const r = spawnSync(process.execPath, [join(canonRoot, 'engine', 'check_the_world.mjs'), '--root', root], { encoding: 'utf8' });
+    const r = spawnSync(process.execPath, [join(canonRoot, 'engine', 'checks', 'check_the_world.mjs'), '--root', root], { encoding: 'utf8' });
     assert.equal(r.status, 0, r.stdout + r.stderr);
   } finally { cleanup(root); }
 });

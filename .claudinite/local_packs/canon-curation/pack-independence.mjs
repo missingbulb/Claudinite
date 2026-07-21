@@ -17,7 +17,7 @@
 // packs. The `allow` list IS the engine surface — the one always-vendored
 // engine/ root (#385); a new surface root would join it here, loudly — the
 // barrier fails closed, never silently widens. The vendor
-// writer's coherence guard (engine/mount/vendor.mjs) backstops the same invariant at
+// writer's coherence guard (engine/vendoring/compute-vendor-set.mjs) backstops the same invariant at
 // vendoring time.
 //
 // Home-only twice over: declared solely by the canon home (a contributed rule

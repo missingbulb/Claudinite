@@ -68,5 +68,5 @@ executable-requirements UI suite); keep anything project-specific in the consumi
   environment **image** (built once, snapshotted, reused) — never a per-session hook that reinstalls
   every start. This pack declares that need in its `env` block ([pack.mjs](pack.mjs)); a project pastes
   one generic `environment-setup.sh` that runs every active pack's requirement via
-  [engine/pack_loader/env.mjs](../../engine/pack_loader/env.mjs) and asserts it at session start (see [bootstrap.md](../../bootstrap.md)
+  [engine/pack_loader/env-requirements.mjs](../../engine/pack_loader/env-requirements.mjs) and asserts it at session start (see [bootstrap.md](../../bootstrap.md)
   Part 9).

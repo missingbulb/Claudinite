@@ -1,5 +1,5 @@
-import { finding } from '../../engine/checks_helpers/findings.mjs';
-import { classifiedTurns } from '../../engine/checks_helpers/transcript.mjs';
+import { finding } from '../../engine/checks/helpers/findings.mjs';
+import { classifiedTurns } from '../../engine/checks/helpers/session-transcript.mjs';
 
 // The canonical home of the executable spec. A project whose spec lives elsewhere
 // declares the path on its executable-requirements pack entry (`config.spec`), so

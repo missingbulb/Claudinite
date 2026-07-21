@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { makeRepo, cleanup, git, writeFiles, makeTranscript } from '../../engine/test/helpers.mjs';
-import { buildContext } from '../../engine/checks_helpers/context.mjs';
+import { makeRepo, cleanup, git, writeFiles, makeTranscript } from '../../engine-tests/helpers.mjs';
+import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import featureRequirementsFirst from './feature-requirements-first.mjs';
 
 const SPEC = 'dev/requirements/requirements.md';

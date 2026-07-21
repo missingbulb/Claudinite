@@ -1,4 +1,4 @@
-import { finding } from '../../engine/checks_helpers/findings.mjs';
+import { finding } from '../../engine/checks/helpers/findings.mjs';
 import { configGuard, INDEX_README, SINK_README } from './lib.mjs';
 
 // The two fixed paths the whole standard hangs off: the index README and the
