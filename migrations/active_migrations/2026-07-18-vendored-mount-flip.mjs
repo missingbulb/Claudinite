@@ -7,8 +7,10 @@
 // mechanical passes see this record as a no-op, and the retire pass reads its
 // telemetry.
 //
-// GATED PILOT: `flip.repos` names the only members the worker may convert.
-// Widening after a clean pilot night is a one-line change: set it to 'fleet'.
+// GATED PILOT (concluded): `flip.repos` names the members the worker may
+// convert; after the clean pilot it is widened to 'fleet' — every covered
+// member converts (idempotent preconditions make this safe for the already
+// flipped).
 export default {
   id: 'vendored-mount-flip',
   landed: '2026-07-18',
@@ -20,7 +22,7 @@ export default {
   // all retire together, by hand — so never auto-retire.
   retire: 'manual',
   flip: {
-    repos: ['missingbulb/GoogleCalendarEventCreator'], // 'fleet' = every covered member
+    repos: 'fleet', // every covered member
     steps: `
 ## Converting one member (the baselining worker follows this verbatim)
 
