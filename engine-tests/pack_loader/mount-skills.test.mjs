@@ -20,9 +20,9 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 function makeCorpus({ packs }, root = mkdtempSync(join(tmpdir(), 'claudinite-corpus-'))) {
   mkdirSync(join(root, 'packs'), { recursive: true });
   mkdirSync(join(root, 'engine', 'pack_loader'), { recursive: true });
-  mkdirSync(join(root, 'engine', 'skill_loader'), { recursive: true });
+  mkdirSync(join(root, 'engine', 'pack_loader'), { recursive: true });
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-registry.mjs'), join(root, 'engine', 'pack_loader', 'pack-registry.mjs'));
-  copyFileSync(join(REPO_ROOT, 'engine', 'skill_loader', 'mount-skills.mjs'), join(root, 'engine', 'skill_loader', 'mount-skills.mjs'));
+  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'mount-skills.mjs'), join(root, 'engine', 'pack_loader', 'mount-skills.mjs'));
   for (const [id, def] of Object.entries(packs)) {
     const { skills = [], ...manifest } = def;
     mkdirSync(join(root, 'packs', id), { recursive: true });
@@ -39,7 +39,7 @@ function makeCorpus({ packs }, root = mkdtempSync(join(tmpdir(), 'claudinite-cor
 }
 
 function mount(corpus, project) {
-  const r = spawnSync('node', [join(corpus, 'engine', 'skill_loader', 'mount-skills.mjs')], {
+  const r = spawnSync('node', [join(corpus, 'engine', 'pack_loader', 'mount-skills.mjs')], {
     encoding: 'utf8',
     env: { ...process.env, CLAUDE_PROJECT_DIR: project },
   });
@@ -153,7 +153,7 @@ test('mount-skills: removes a stale owned link, is idempotent, fails soft on a b
 });
 
 test('mount-skills: retargets a legacy flat-tree mount to the vendored corpus', () => {
-  // The vendored-mount flip (engine/vendoring/DESIGN.md phase 2): the corpus now runs from
+  // The vendored-mount flip (vendoring/DESIGN.md phase 2): the corpus now runs from
   // <project>/.claudinite/shared/, but a pre-flip session left symlinks into the
   // legacy flat tree (<project>/.claudinite/skills/). Those are canon-owned in
   // every mount shape — the mounter must retarget them, not treat them as the
@@ -244,7 +244,7 @@ test('mount-skills: unmounts a local pack\'s skill when the pack is undeclared',
 test('mount-skills: the real corpus mounts every basics skill into a consumer', () => {
   const project = makeRepo({ changed: { '.claudinite-checks.json': '{ "packs": ["basics"] }\n' } });
   try {
-    const r = spawnSync('node', [join(REPO_ROOT, 'engine', 'skill_loader', 'mount-skills.mjs')], {
+    const r = spawnSync('node', [join(REPO_ROOT, 'engine', 'pack_loader', 'mount-skills.mjs')], {
       encoding: 'utf8',
       env: { ...process.env, CLAUDE_PROJECT_DIR: project },
     });

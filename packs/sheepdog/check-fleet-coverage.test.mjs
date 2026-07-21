@@ -22,7 +22,7 @@ test('parseSheepdogConfig: reads owner + exclude; defaults owner to the home own
 });
 
 // isCovered (fleet-api): membership is the tracked declaration file, the ONE
-// probe every member carries whatever its mount shape (engine/vendoring/DESIGN.md) — and
+// probe every member carries whatever its mount shape (vendoring/DESIGN.md) — and
 // the only shape the planner can plan for (activePacks is read from it). A
 // mount marker WITHOUT a declaration is a half-adoption that must classify
 // uncovered, so the census opens an adoption issue and it heals loudly.

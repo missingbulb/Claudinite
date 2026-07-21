@@ -339,7 +339,7 @@ index. The routing index largely dissolves: routing *is what skill descriptions 
 ### Delivery — incremental now, plugin end-state
 
 - **Now (works with both mount methods):** each skill is bundled in its owning pack
-  (`<pack>/skills/<name>/`), and the SessionStart hook `engine/skill_loader/mount-skills.mjs`
+  (`<pack>/skills/<name>/`), and the SessionStart hook `engine/pack_loader/mount-skills.mjs`
   regenerates `.claude/skills/<name>` symlinks for the active packs' union each session —
   nothing committed (a committed link dangles on every plain checkout). Symlinked skill
   directories are documented, supported behavior, and skill changes are picked up live within

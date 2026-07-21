@@ -43,7 +43,7 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    loudly), and links from vendored docs to non-vendored canon files may dangle locally by
    design (the sweep never inspects the shared mount — see 6).
 3. **Preferences are never vendored** — per-user settings, not project content. The
-   session-start step ([inject-preferences.sh](../hooks/steps/inject-preferences.sh), mount machinery now)
+   session-start step ([inject-preferences.sh](../engine/hooks/steps/inject-preferences.sh), mount machinery now)
    reads the local `preferences/<email>.md` when its tree carries one (the canon repo; a future
    submodule mount; the interim full-tarball sync) and otherwise **fetches just that file** over
    HTTPS, fresh each session. Every miss — no email, no file, fetch failure — is **fail-soft**:
@@ -119,7 +119,7 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    failing loudly in the nightly log (or was off the access list), and its catch-up path is
    re-running adoption, which vendors head idempotently. The one surviving two-phase case is
    **out-of-repo state** no commit can reach — the pasted web-environment Setup script keeps
-   the probe + halt-gate pattern ([consumer-safe-changes.md](../../consumer-safe-changes.md)).
+   the probe + halt-gate pattern ([consumer-safe-changes.md](../consumer-safe-changes.md)).
 10. **Accepted trade-off.** A bad canon change (typically an overzealous blocking check)
     reaches consumers on one nightly and its fix on a later one — up to ~two days' exposure.
     Dampers: the Stop hook's own two-block self-release, per-repo `rules`/`accept` overrides,
@@ -129,18 +129,18 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
 **What this retires:** the per-session fetch and its halt-gate, the `codeload.github.com`
 allowlist prerequisite, `CLAUDINITE_REF` pinning (the commit *is* the pin), the
 `.claudinite.new` swap and tracked-copy preservation, the Method A/B split with the submodule
-caveats, and the stale-mount caveat in [engine/checks/README.md](../checks/README.md). Session start
-becomes a single offline SessionStart entry invoking [session-start.sh](../hooks/session-start-command.sh)
+caveats, and the stale-mount caveat in [engine/checks/README.md](../engine/checks/README.md). Session start
+becomes a single offline SessionStart entry invoking [session-start.sh](../engine/hooks/session-start-command.sh)
 directly (its four steps are unchanged; the preferences step is fail-soft per 3, the env-check
 halt-gate stays). The consumer `CLAUDE.md` carries nothing of Claudinite's — the corpus
 index, its `@`-import, and the self-check paragraph are all retired by owner decision (#385). The
-plugin-packaging rationale in [engine/checks/DESIGN.md](../checks/DESIGN.md) also loses its
+plugin-packaging rationale in [engine/checks/DESIGN.md](../engine/checks/DESIGN.md) also loses its
 update-latency premise — recorded there when the transition completes. The canon repo itself is
 untouched: it runs its own live tree and mounts nothing.
 
 ## Applying it to the fleet — the transition
 
-Per [consumer-safe-changes.md](../../consumer-safe-changes.md): pilot on one real consumer before
+Per [consumer-safe-changes.md](../consumer-safe-changes.md): pilot on one real consumer before
 the nightly touches everyone, and never break the channel the migration itself travels through.
 
 - **Phase 0 (done):** this record + [vendor.mjs](compute-vendor-set.mjs), the vendor-set computation
@@ -154,7 +154,7 @@ the nightly touches everyone, and never break the channel the migration itself t
   stay resolvable as reference *targets* while excluded from scanning); the baselining worker
   branches on the `claudinite` stamp — vendored members get the transactional refresh
   (notes → converge → stamp, one commit), pre-flip members get legacy maintenance only, never an
-  ungated flip (done); [bootstrap.md](../../bootstrap.md) rewritten around the vendored fresh path,
+  ungated flip (done); [bootstrap.md](../bootstrap.md) rewritten around the vendored fresh path,
   with the legacy shapes quarantined in a **retiring transition appendix** the worker uses on
   unflipped members (done — the appendix, not dated notes, carries the transition-window
   maintenance; the flip note carries the conversion); fleet membership discovery reduces to the
@@ -183,7 +183,7 @@ the nightly touches everyone, and never break the channel the migration itself t
   environment's Setup script re-pasted), the transition surface retires as one deliberate
   change. **The retirement ledger — everything phase 3 deletes, kept complete here** (each item
   also marked at its site; the `retire: 'manual'` notes below never auto-retire):
-  1. [engine/vendoring/sync-claudinite.sh](sync-claudinite.sh) — the legacy per-session sync,
+  1. [vendoring/sync-claudinite.sh](sync-claudinite.sh) — the legacy per-session sync,
      deleted from the canon (members' tracked copies are deleted by the flip itself).
   2. Bootstrap's **transition appendix** (pre-flip maintenance shapes) and the baselining
      worker's pre-flip branch.
@@ -193,12 +193,12 @@ the nightly touches everyone, and never break the channel the migration itself t
      `checks/stop-hook.mjs`, `checks/pretooluse-guard.mjs`, `mount/session-start.sh`,
      `packs/env.mjs` — together with the **`engine-restructure` note** that heals flipped
      members' settings (#385).
-  6. The **legacy owned-roots** in `engine/skill_loader/mount-skills.mjs` (the pre-#385 mount
+  6. The **legacy owned-roots** in `engine/pack_loader/mount-skills.mjs` (the pre-#385 mount
      shapes: the flat `.claudinite/skills/`, the standalone `.claudinite/shared/skills/`, and
      the corpus `skills/` root — #383).
   7. The **legacy path regexes** in `routines/fleet/signals.mjs` (`checks/`, `skills/`,
      `mount/`, root `sync-claudinite.sh` — superseded by `engine/`).
-  8. [consumer-safe-changes.md](../../consumer-safe-changes.md) rewritten to the new, much
+  8. [consumer-safe-changes.md](../consumer-safe-changes.md) rewritten to the new, much
      smaller channel model (tracked-vendor commit + notes; the instant `@main` and session-sync
      channels are gone).
   Deliberately **not** phase-3 items: the `maintenance-delivery` value aliases

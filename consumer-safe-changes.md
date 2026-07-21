@@ -105,7 +105,7 @@ and stubs) — run at their *landed* path inside the consumer's repo, not in the
 were written and tested in. Before changing one, audit every environment assumption against each
 context it ships to: **git discovers `.git` by walking upward**, so introspection from a vendored
 copy answers with the *consumer's* repo unless constrained to the expected toplevel (the
-`--show-toplevel` guard in `engine/vendoring/apply-vendor-set.mjs` — an unconstrained `rev-parse HEAD` nearly
+`--show-toplevel` guard in `vendoring/apply-vendor-set.mjs` — an unconstrained `rev-parse HEAD` nearly
 stamped a consumer sha as canon provenance, #340); relative paths resolve against the vendored
 location; network access and credentials present where the file was written may be absent where it
 lands. The co-located header comment at the usage site carries each specific trap; this entry is

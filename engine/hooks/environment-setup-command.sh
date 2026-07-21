@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # GENERIC Claudinite cloud environment setup — identical across projects and
-# owned by the corpus (vendored into every consumer's .claudinite/shared/engine/vendoring/),
+# owned by the corpus (vendored into every consumer's .claudinite/shared/engine/hooks/),
 # so a project commits NO copy of its own.
 #
 # HOW TO USE: copy this full body into the Claude Code Web environment's "Setup
@@ -10,7 +10,7 @@
 # (engine/pack_loader/env-requirements.mjs, driven by the repo's .claudinite-checks.json), NOT here — so
 # this script never changes as requirements evolve.
 #
-# Vendored-mount only (engine/vendoring/DESIGN.md): the corpus is tracked, already in the
+# Vendored-mount only (vendoring/DESIGN.md): the corpus is tracked, already in the
 # checkout — nothing is fetched here, ever. A repo still on the legacy
 # fetch-at-session-start mount keeps its previously pasted script (pasted
 # scripts are snapshots); pasting THIS body there fails fast at step 2 below,

@@ -4,7 +4,7 @@ Restore the repo the plan hands you to the current canonical baseline. Works ent
 **GitHub MCP tools** (`mcp__github__*`) — never a clone, and no shell GitHub access in the fleet run.
 
 First read the member's `.claudinite-checks.json` and branch on its mount shape — the `claudinite`
-stamp is the discriminator ([engine/vendoring/DESIGN.md](../../../engine/vendoring/DESIGN.md)):
+stamp is the discriminator ([vendoring/DESIGN.md](../../../vendoring/DESIGN.md)):
 
 - **Vendored member** (`"claudinite": { "updated": … }` present) — perform the **transactional
   refresh**. First **verify the checkout**: the canon checkout this session runs in must be at
@@ -19,7 +19,7 @@ stamp is the discriminator ([engine/vendoring/DESIGN.md](../../../engine/vendori
      (mechanical ops by construction, agentic instructions preconditions-first), so the
      re-application this admits is safe.
   2. **Converge `.claudinite/shared/`** to the canon head snapshot — the member's vendor set per
-     [engine/vendoring/compute-vendor-set.mjs](../../../engine/vendoring/compute-vendor-set.mjs) (the engine/ root minus tests and
+     [vendoring/compute-vendor-set.mjs](../../../vendoring/compute-vendor-set.mjs) (the engine/ root minus tests and
      docs, plus the declared packs with their `requires` closure — bundled skills riding each
      pack's own tree), written copy-if-different **and** deleting files in `shared/` the
      set no longer contains. Unconditional: a member-side edit to a vendored file reverts here,

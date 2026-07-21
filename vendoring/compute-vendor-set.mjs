@@ -1,8 +1,8 @@
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadPacks, resolveDeclaredPacks, packEntryId, SHARED_SUBDIR } from '../pack_loader/pack-registry.mjs';
-import { relativeImports, resolveRelative, ENGINE_DIR_ROOTS } from '../checks/helpers/module-imports.mjs';
+import { loadPacks, resolveDeclaredPacks, packEntryId, SHARED_SUBDIR } from '../engine/pack_loader/pack-registry.mjs';
+import { relativeImports, resolveRelative, ENGINE_DIR_ROOTS } from '../engine/checks/helpers/module-imports.mjs';
 
 // The vendor-set computation for the vendored mount (DESIGN.md): given a repo's
 // pack declaration, the minimal corpus file set that repo persists under
@@ -11,7 +11,7 @@ import { relativeImports, resolveRelative, ENGINE_DIR_ROOTS } from '../checks/he
 // against the canon tree THIS module ships in — the nightly runs it from the
 // home checkout, an on-demand refresh from the tree it just fetched — so the
 // set and the content can never come from different snapshots.
-const canonRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url)))); // <canon>/engine/vendoring/
+const canonRoot = dirname(dirname(fileURLToPath(import.meta.url))); // <canon>/vendoring/ — canon-internal, never vendored (#385)
 
 // Re-exported for the writers (the nightly update pass, an on-demand refresh):
 // the consumer-side root the set materializes under.

@@ -5,9 +5,9 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-// This test lives at <repo>/engine/vendoring/compute-vendor-set.test.mjs.
-const MOUNT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'engine', 'vendoring');
-const REPO_ROOT = dirname(dirname(MOUNT_DIR));
+// This test lives at <repo>/vendoring/compute-vendor-set.test.mjs.
+const MOUNT_DIR = dirname(fileURLToPath(import.meta.url)); // <canon>/vendoring/
+const REPO_ROOT = dirname(MOUNT_DIR);
 
 function writeAt(root, rel, content) {
   mkdirSync(dirname(join(root, rel)), { recursive: true });
@@ -22,11 +22,11 @@ function writeAt(root, rel, content) {
 // contract, not the live corpus's contents.
 function makeCanon({ packs = [], skills = [] } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-vendor-'));
-  mkdirSync(join(root, 'engine', 'vendoring'), { recursive: true });
+  mkdirSync(join(root, 'vendoring'), { recursive: true });
   mkdirSync(join(root, 'engine', 'pack_loader'), { recursive: true });
   mkdirSync(join(root, 'engine', 'checks', 'helpers'), { recursive: true });
   mkdirSync(join(root, 'packs'), { recursive: true });
-  copyFileSync(join(MOUNT_DIR, 'compute-vendor-set.mjs'), join(root, 'engine', 'vendoring', 'compute-vendor-set.mjs'));
+  copyFileSync(join(MOUNT_DIR, 'compute-vendor-set.mjs'), join(root, 'vendoring', 'compute-vendor-set.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-registry.mjs'), join(root, 'engine', 'pack_loader', 'pack-registry.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'module-imports.mjs'), join(root, 'engine', 'checks', 'helpers', 'module-imports.mjs'));
   // engine roots: real-shaped content plus everything that must stay out
@@ -35,13 +35,13 @@ function makeCanon({ packs = [], skills = [] } = {}) {
   writeAt(root, 'engine/checks/README.md', 'canon doc\n');
   writeAt(root, 'engine/test/runner.test.mjs', 'stub\n');
   writeAt(root, 'engine/hooks/session-start-command.sh', 'stub\n');
-  writeAt(root, 'engine/vendoring/DESIGN.md', 'canon doc\n');
+  writeAt(root, 'vendoring/DESIGN.md', 'canon doc\n');
   // machinery roots: top-level .mjs picked up, tests and dirs' docs not
   writeAt(root, 'engine/pack_loader/inject-pack-prose.mjs', 'stub\n');
   writeAt(root, 'engine/pack_loader/env-requirements.mjs', 'stub\n');
   writeAt(root, 'packs/env.test.mjs', 'stub\n');
   writeAt(root, 'packs/README.md', 'canon doc\n');
-  writeAt(root, 'engine/skill_loader/mount-skills.mjs', 'stub\n');
+  writeAt(root, 'engine/pack_loader/mount-skills.mjs', 'stub\n');
   writeAt(root, 'skills/README.md', 'canon doc\n');
   // per-user content: must never appear in any vendor set
   writeAt(root, 'preferences/owner@example.com.md', 'prefs\n');
@@ -59,7 +59,7 @@ function makeCanon({ packs = [], skills = [] } = {}) {
 }
 
 const vendorAt = async (root, declared, opts) =>
-  (await import(pathToFileURL(join(root, 'engine', 'vendoring', 'compute-vendor-set.mjs')).href))
+  (await import(pathToFileURL(join(root, 'vendoring', 'compute-vendor-set.mjs')).href))
     .computeVendorSet(declared, opts);
 
 const FIXTURE = {
@@ -80,11 +80,10 @@ test('structural set: engine roots + machinery + declared pack + its skills, exa
     'engine/checks/helpers/module-imports.mjs',
     'engine/checks/check_the_world.mjs',
     'engine/hooks/session-start-command.sh',
-    'engine/vendoring/compute-vendor-set.mjs',
     'engine/pack_loader/env-requirements.mjs',
     'engine/pack_loader/inject-pack-prose.mjs',
     'engine/pack_loader/pack-registry.mjs',
-    'engine/skill_loader/mount-skills.mjs',
+    'engine/pack_loader/mount-skills.mjs',
     'packs/alpha/RULES.md',
     'packs/alpha/check.mjs',
     'packs/alpha/pack.mjs',
@@ -174,7 +173,7 @@ test('an import resolving to no canon file at all is an error (the tree itself i
 // baseline and product-wiki compose the barriers mechanism, and their vendor
 // sets must carry it — now via the requires closure — and be import-closed.
 test('real corpus: the composing packs\' vendor sets carry the barriers pack and are import-closed', async () => {
-  const { computeVendorSet } = await import('../../engine/vendoring/compute-vendor-set.mjs');
+  const { computeVendorSet } = await import('./compute-vendor-set.mjs');
   for (const pack of ['basics', 'product-wiki']) {
     const { files, errors } = await computeVendorSet([pack]);
     assert.deepEqual(errors, [], `${pack}: the vendor set must be coherent`);

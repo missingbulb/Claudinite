@@ -23,9 +23,9 @@ session needs no architecture lesson, its rules arrive injected):
 - **`engine/`** — the machinery that runs pack content, and the one always-vendored root:
   `engine/hooks/` (the wired SessionStart/PreToolUse entry points),
   `engine/checks/check_the_world.mjs` (the conformance sweep CLI), `engine/checks/check_the_work.mjs` (the
-  Stop gate, wired via the stable `engine/hooks/stop-command.mjs`), `engine/checks/helpers/`, `engine/pack_loader/`, `engine/skill_loader/`,
-  `engine/vendoring/` (vendoring). Design records: [engine/checks/DESIGN.md](engine/checks/DESIGN.md),
-  [engine/vendoring/DESIGN.md](engine/vendoring/DESIGN.md); the core/pack boundary:
+  Stop gate, wired via the stable `engine/hooks/stop-command.mjs`), `engine/checks/helpers/`, `engine/pack_loader/`, `engine/pack_loader/`,
+  `vendoring/` (vendoring). Design records: [engine/checks/DESIGN.md](engine/checks/DESIGN.md),
+  [vendoring/DESIGN.md](vendoring/DESIGN.md); the core/pack boundary:
   [extending.md](extending.md).
 - Before adding *any* rule as prose, run the promotion ladder in
   [engine/checks/DESIGN.md](engine/checks/DESIGN.md): a platform setting, a hook, a check, or a skill that can
@@ -40,7 +40,7 @@ declaration-derived subset, committed as ordinary files, refreshed by the nightl
 one transactional commit (SessionStart hooks inject the active packs' prose; there is no corpus
 index and no `@`-import — #385 — everything a session needs arrives injected, all offline). Adoption is
 the one network moment. The model, its trade-offs, and the fleet transition from the earlier
-fetch-at-session-start mount → [engine/vendoring/DESIGN.md](engine/vendoring/DESIGN.md); **setup steps →
+fetch-at-session-start mount → [vendoring/DESIGN.md](vendoring/DESIGN.md); **setup steps →
 [bootstrap.md](bootstrap.md)** (members on the legacy mount are converted by the gated flip
 note, not by hand — bootstrap's transition appendix maintains them meanwhile).
 
@@ -73,4 +73,4 @@ The mounted corpus itself is **`packs/`** (each `packs/<name>/` bundling a pack'
 The vendored `shared/` root deliberately mirrors this repo's layout so that mounting Claudinite
 as a **git submodule at `.claudinite/shared/`** — once sessions run where a cross-repo git
 credential exists — is a drop-in upgrade that changes no wiring. Details in
-[engine/vendoring/DESIGN.md](engine/vendoring/DESIGN.md).
+[vendoring/DESIGN.md](vendoring/DESIGN.md).

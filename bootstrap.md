@@ -1,7 +1,7 @@
 # Adopting Claudinite
 
 How a consuming repo adopts these shared guidelines, under the **vendored mount**
-([engine/vendoring/DESIGN.md](engine/vendoring/DESIGN.md)): adoption is the **one network moment** — fetch the canon
+([vendoring/DESIGN.md](vendoring/DESIGN.md)): adoption is the **one network moment** — fetch the canon
 once, vendor what this repo needs into **tracked files** under `.claudinite/shared/`, wire the
 hooks — and every session after runs **offline** from the committed snapshot. The nightly
 maintenance is the only regular updater. Idempotent: re-running refreshes the snapshot exactly
@@ -48,7 +48,7 @@ derive the entry's `config` where the question's distill note says how.
 ## Part 3 — vendor the snapshot
 
 ```sh
-node "$scratch/engine/vendoring/apply-vendor-set.mjs" --target . ${ref:+--ref "$ref"}
+node "$scratch/vendoring/apply-vendor-set.mjs" --target . ${ref:+--ref "$ref"}
 ```
 
 This materializes the repo's vendor set — the engine, the mount, the declared packs with their
@@ -164,7 +164,7 @@ wiring) and push it through the normal PR flow.
 
 The web base image ships no toolchains; installs belong in the environment **image** (built
 once, snapshotted), not a per-session hook. The corpus holds the one generic script —
-[`engine/vendoring/environment-setup.sh`](engine/vendoring/environment-setup.sh), vendored into
+[`engine/hooks/environment-setup-command.sh`](engine/hooks/environment-setup-command.sh), vendored into
 `.claudinite/shared/engine/vendoring/` — identical for every project: paste its full body into the
 environment's **Setup script** field and rebuild. It runs each active pack's declared installs
 (`env.mjs install`, driven by the declaration); the SessionStart `env.mjs check` then only
@@ -186,11 +186,11 @@ Maintenance shapes for members still on the **legacy fetch-at-session-start moun
 sync hook at `.claudinite/mount/sync-claudinite.sh`, gitignored synced corpus, flat
 `.claudinite/` paths, `@.claudinite/CLAUDE.md` import). The nightly baselining applies **only
 this appendix** to them — never the fresh path above; conversion to the vendored mount is the
-gated flip note's job ([engine/vendoring/DESIGN.md](engine/vendoring/DESIGN.md), phase 2). The whole appendix is
+gated flip note's job ([vendoring/DESIGN.md](vendoring/DESIGN.md), phase 2). The whole appendix is
 deleted in phase 3, once the fleet has flipped.
 
 - **Sync hook refresh** — the tracked hook is a generated artifact the canon owns: overwrite the
-  member's copy with the canon's current [`engine/vendoring/sync-claudinite.sh`](engine/vendoring/sync-claudinite.sh);
+  member's copy with the canon's current [`vendoring/sync-claudinite.sh`](vendoring/sync-claudinite.sh);
   never hand-edit or inline a copy. Its `settings.json` registration stays the single
   `SessionStart` entry, invoked through `bash`
   (`bash $CLAUDE_PROJECT_DIR/.claudinite/mount/sync-claudinite.sh`); fix in place an entry

@@ -6,9 +6,9 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-// This test lives at <repo>/engine/vendoring/apply-vendor.test.mjs.
-const MOUNT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'engine', 'vendoring');
-const REPO_ROOT = dirname(dirname(MOUNT_DIR));
+// This test lives at <repo>/vendoring/apply-vendor.test.mjs.
+const MOUNT_DIR = dirname(fileURLToPath(import.meta.url)); // <canon>/vendoring/
+const REPO_ROOT = dirname(MOUNT_DIR);
 
 function writeAt(root, rel, content) {
   mkdirSync(dirname(join(root, rel)), { recursive: true });
@@ -21,17 +21,17 @@ function writeAt(root, rel, content) {
 // .claudinite/shared/, the stamp, and the touch-nothing-else guarantee.
 function makeCanon() {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-canon-'));
-  mkdirSync(join(root, 'engine', 'vendoring'), { recursive: true });
+  mkdirSync(join(root, 'vendoring'), { recursive: true });
   mkdirSync(join(root, 'engine', 'pack_loader'), { recursive: true });
   mkdirSync(join(root, 'engine', 'checks', 'helpers'), { recursive: true });
   mkdirSync(join(root, 'packs'), { recursive: true });
   for (const f of ['apply-vendor-set.mjs', 'compute-vendor-set.mjs']) {
-    copyFileSync(join(MOUNT_DIR, f), join(root, 'engine', 'vendoring', f));
+    copyFileSync(join(MOUNT_DIR, f), join(root, 'vendoring', f));
   }
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-registry.mjs'), join(root, 'engine', 'pack_loader', 'pack-registry.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'module-imports.mjs'), join(root, 'engine', 'checks', 'helpers', 'module-imports.mjs'));
   writeAt(root, 'engine/checks/check_the_world.mjs', 'engine v2\n');
-  writeAt(root, 'engine/skill_loader/mount-skills.mjs', 'machinery\n');
+  writeAt(root, 'engine/pack_loader/mount-skills.mjs', 'machinery\n');
   writeAt(root, 'packs/alpha/pack.mjs', 'export default { id: "alpha" };\n');
   writeAt(root, 'packs/alpha/RULES.md', 'rules\n');
   writeAt(root, 'packs/alpha/skills/s1/SKILL.md', 'skill\n');
@@ -47,7 +47,7 @@ function makeTarget(declaration = { packs: ['alpha'] }) {
 }
 
 const applyAt = async (canon, target, opts) =>
-  (await import(pathToFileURL(join(canon, 'engine', 'vendoring', 'apply-vendor-set.mjs')).href))
+  (await import(pathToFileURL(join(canon, 'vendoring', 'apply-vendor-set.mjs')).href))
     .applyVendor(target, opts);
 
 test('fresh target: the set lands under .claudinite/shared/ at canon-relative paths; the stamp is written', async () => {
@@ -55,7 +55,7 @@ test('fresh target: the set lands under .claudinite/shared/ at canon-relative pa
   const target = makeTarget();
   const r = await applyAt(canon, target, { ref: 'abc123' });
   assert.deepEqual(r.errors, []);
-  for (const f of ['engine/checks/check_the_world.mjs', 'packs/alpha/RULES.md', 'packs/alpha/skills/s1/SKILL.md', 'engine/vendoring/compute-vendor-set.mjs']) {
+  for (const f of ['engine/checks/check_the_world.mjs', 'packs/alpha/RULES.md', 'packs/alpha/skills/s1/SKILL.md']) {
     assert.ok(existsSync(join(target, '.claudinite', 'shared', f)), `missing vendored ${f}`);
   }
   const settings = JSON.parse(readFileSync(join(target, '.claudinite-checks.json'), 'utf8'));
@@ -128,7 +128,7 @@ test('#328: an ancestor stamp converges normally, and the stamp ref defaults to 
 });
 
 test('#328: a canon tree nested in a FOREIGN git repo is rootless — upward .git discovery must not speak for the canon', async () => {
-  // The vendored copy of apply-vendor.mjs runs at <consumer>/.claudinite/shared/engine/vendoring/,
+  // A stray copy of apply-vendor-set.mjs running inside a consumer's repo,
   // inside the CONSUMER's repo: git found by upward walk would answer with the
   // consumer's HEAD. The guards must treat that as no-checkout, not as canon truth.
   const outer = mkdtempSync(join(tmpdir(), 'claudinite-outer-'));
@@ -137,11 +137,11 @@ test('#328: a canon tree nested in a FOREIGN git repo is rootless — upward .gi
   g('config', 'user.email', 'test@test');
   g('config', 'user.name', 'test');
   const canon = join(outer, 'nested-canon');
-  mkdirSync(join(canon, 'engine', 'vendoring'), { recursive: true });
+  mkdirSync(join(canon, 'vendoring'), { recursive: true });
   mkdirSync(join(canon, 'engine', 'pack_loader'), { recursive: true });
   mkdirSync(join(canon, 'engine', 'checks', 'helpers'), { recursive: true });
   mkdirSync(join(canon, 'packs'), { recursive: true });
-  for (const f of ['apply-vendor-set.mjs', 'compute-vendor-set.mjs']) copyFileSync(join(MOUNT_DIR, f), join(canon, 'engine', 'vendoring', f));
+  for (const f of ['apply-vendor-set.mjs', 'compute-vendor-set.mjs']) copyFileSync(join(MOUNT_DIR, f), join(canon, 'vendoring', f));
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-registry.mjs'), join(canon, 'engine', 'pack_loader', 'pack-registry.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'module-imports.mjs'), join(canon, 'engine', 'checks', 'helpers', 'module-imports.mjs'));
   writeAt(canon, 'engine/checks/check_the_world.mjs', 'engine v2\n');

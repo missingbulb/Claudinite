@@ -50,7 +50,7 @@ test('reference-integrity: flags surviving references to a deleted file', () => 
 });
 
 test('reference-integrity: the vendored shared mount is never a finding source for a deleted path', () => {
-  // The corpus is canon-owned and structurally out of the sweep (engine/vendoring/DESIGN.md item 6);
+  // The corpus is canon-owned and structurally out of the sweep (vendoring/DESIGN.md item 6);
   // a canon doc mentioning a name the consumer's branch deletes (e.g. its own root file)
   // must not fire — only the consumer's own files may.
   const root = makeRepo({

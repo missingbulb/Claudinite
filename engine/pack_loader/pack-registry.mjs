@@ -12,7 +12,7 @@ const packsDir = join(canonRoot, 'packs');
 export const LOCAL_PACKS_SUBDIR = join('.claudinite', 'local_packs');
 export const localPacksDir = (root) => join(resolve(root), LOCAL_PACKS_SUBDIR);
 
-// Where a consumer materializes the vendored canon (engine/vendoring/DESIGN.md): the
+// Where a consumer materializes the vendored canon (vendoring/DESIGN.md): the
 // corpus mirrored at canon-relative paths under this subdir. Tracked files in
 // the interim; the planned future is a git submodule mounted at this same path
 // — which is why nothing consumer-owned (local_packs/ above) lives inside it.

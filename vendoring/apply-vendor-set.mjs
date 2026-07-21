@@ -4,7 +4,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { computeVendorSet, SHARED_SUBDIR } from './compute-vendor-set.mjs';
 
-// The vendor WRITER (engine/vendoring/DESIGN.md): converge a consumer's .claudinite/shared/
+// The vendor WRITER (vendoring/DESIGN.md): converge a consumer's .claudinite/shared/
 // to this canon tree's vendor set and advance the stamp — the local half of the
 // transactional update. Callers: the adoption flow and an on-demand refresh run
 // it from a freshly fetched canon tree against the consumer checkout; the
@@ -21,7 +21,7 @@ import { computeVendorSet, SHARED_SUBDIR } from './compute-vendor-set.mjs';
 // previously stamped ref must be an ancestor of it. A rootless canon tree
 // (bootstrap's fetched snapshot — no .git) skips both: it is head by
 // construction and carries no history to check ancestry against.
-const canonRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url)))); // <canon>/engine/vendoring/
+const canonRoot = dirname(dirname(fileURLToPath(import.meta.url))); // <canon>/vendoring/ — canon-internal, never vendored (#385)
 
 // All git use is LOCAL introspection of the canon checkout (rev-parse,
 // merge-base read the object db — no network, no credential); the remote-head
@@ -83,7 +83,7 @@ export async function applyVendor(targetRoot, { ref = null } = {}) {
   return { files: files.length, stamp: raw.claudinite, errors: [] };
 }
 
-// CLI: node <canon>/engine/vendoring/apply-vendor-set.mjs [--target <consumer-root>] [--ref <sha>]
+// CLI: node <canon>/vendoring/apply-vendor-set.mjs [--target <consumer-root>] [--ref <sha>]
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const args = process.argv.slice(2);
   const opt = (name) => {

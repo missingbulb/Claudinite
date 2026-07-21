@@ -79,7 +79,7 @@ This is **not a check** — a pack can't be imported without its dependencies, s
 
 A pack's skills live in its own tree — `<pack>/skills/<skill>/SKILL.md`, one owning pack per skill (#385). The directory listing IS the manifest: there is no `skills` field on `pack.mjs` and no separate skills collection to own or cross-declare.
 
-The SessionStart hook [`../engine/skill_loader/mount-skills.mjs`](../engine/skill_loader/mount-skills.mjs) mounts the **union over the active packs' bundles** (same activation as prose/checks/env) as session-generated `.claude/skills/<name>` symlinks — nothing committed, and a self-ignoring `.claude/skills/.gitignore` keeps them out of git status. A skill rides its pack everywhere the pack goes: the vendor set, the mounts, the sweep (its `checks.mjs` runs when the pack is active). The baseline activities every project has (`merge-to-main`, `writing-tests`, `bug-investigation`, …) ride the `basics` pack's bundle; move a skill's directory to a narrower pack when it stops being a baseline activity.
+The SessionStart hook [`../engine/pack_loader/mount-skills.mjs`](../engine/pack_loader/mount-skills.mjs) mounts the **union over the active packs' bundles** (same activation as prose/checks/env) as session-generated `.claude/skills/<name>` symlinks — nothing committed, and a self-ignoring `.claude/skills/.gitignore` keeps them out of git status. A skill rides its pack everywhere the pack goes: the vendor set, the mounts, the sweep (its `checks.mjs` runs when the pack is active). The baseline activities every project has (`merge-to-main`, `writing-tests`, `bug-investigation`, …) ride the `basics` pack's bundle; move a skill's directory to a narrower pack when it stops being a baseline activity.
 
 ## Environment requirements (`env`)
 
@@ -103,7 +103,7 @@ setup: (p) => (p.dirs?.length ? p.dirs : ['.']).map((d) => `( cd "${d}" && npm c
 
 [`env.mjs`](env.mjs) drives everything from the repo's **active** packs (same activation as prose/checks):
 
-- `node .claudinite/packs/env.mjs install` runs every active pack's `setup` in the checkout. The corpus's one generic [`environment-setup.sh`](../engine/vendoring/environment-setup.sh) (synced into every consumer's `.claudinite/mount/`) calls this after syncing the corpus.
+- `node .claudinite/packs/env.mjs install` runs every active pack's `setup` in the checkout. The corpus's one generic [`environment-setup.sh`](../engine/hooks/environment-setup-command.sh) (synced into every consumer's `.claudinite/mount/`) calls this after syncing the corpus.
 - `node .claudinite/packs/env.mjs check` is a SessionStart hook (web only) that **asserts** — it runs each `probe` directly against the running environment and injects the halt-gate context if a requirement is missing. No version flag: the probes are the source of truth, and a genuinely new requirement fails its probe and prompts a re-run. Never installs.
 - `node .claudinite/packs/env.mjs plan` prints what `install` would run (review / debug).
 

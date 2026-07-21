@@ -11,7 +11,7 @@ import { posix } from 'node:path';
 // as its allow list, so "what a pack may import" and "what a vendor set must
 // carry" stay one idea with the barrier failing closed on any drift.
 
-// The one root that vendors wholesale into every consumer (engine/vendoring/DESIGN.md):
+// The one root that vendors wholesale into every consumer (vendoring/DESIGN.md):
 // the whole engine — hooks, loaders, checks helpers, the mount machinery — lives
 // under engine/, so "engine surface" and "always vendored" are the same test.
 export const ENGINE_DIR_ROOTS = ['engine'];

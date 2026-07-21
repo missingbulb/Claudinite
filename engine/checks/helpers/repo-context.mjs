@@ -57,7 +57,7 @@ function vendoredSet(root, files) {
 // below) so a straggler gets the unknown-setting error.
 // `claudinite` is the vendored-mount stamp — { updated: "<ISO datetime>", ref: "<sha>" },
 // written by the nightly update pass, selecting which migration notes still apply
-// (engine/vendoring/DESIGN.md owns the model); the checks engine itself only tolerates it.
+// (vendoring/DESIGN.md owns the model); the checks engine itself only tolerates it.
 export const CONFIG_KEYS = ['packs', 'rules', 'accept', 'sharedConstants', 'packConfig', 'maintenance', 'claudinite'];
 
 // The properties a `packs` entry object may carry: the pack's parameters
@@ -353,7 +353,7 @@ export function buildContext({ root, mode = 'changed', baseOverride = null, tran
 
     // Fixed-string search across tracked files; git grep exits 1 on no match.
     // The vendored shared mount is structurally out of the sweep (canon-owned,
-    // never the project's own code — engine/vendoring/DESIGN.md item 6), so it is
+    // never the project's own code — vendoring/DESIGN.md item 6), so it is
     // excluded here exactly as it is from the scanned file set above: a hit
     // inside it must never become a finding.
     grepTracked(needle) {

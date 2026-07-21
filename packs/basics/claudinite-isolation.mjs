@@ -1,6 +1,6 @@
 import { SHARED_SUBDIR } from '../../engine/pack_loader/pack-registry.mjs';
 
-// Consumers must not couple to the vendored canon (engine/vendoring/DESIGN.md): outside
+// Consumers must not couple to the vendored canon (vendoring/DESIGN.md): outside
 // the wiring set, no file may reference .claudinite/ — product code that wants
 // a canon helper inlines it, because depending on canon internals turns every
 // canon refactor into a breaking migration for code the canon doesn't own.
@@ -28,7 +28,7 @@ export default {
   id: 'claudinite-isolation',
   description: 'Outside the wiring files (CLAUDE.md, .claude/, .gitignore, .gitattributes, .github/workflows/, the settings file), nothing may reference .claudinite/ — inline what you need instead of importing the canon',
   why: 'the vendored canon is refreshed nightly and refactored upstream; code that reaches into it inherits every canon rename as a breaking change',
-  doc: 'engine/vendoring/DESIGN.md',
+  doc: 'vendoring/DESIGN.md',
   crossingExcuse: 'if the crossing is deliberate, excuse it with accept: [{ "rule": "claudinite-isolation", "path": "<file>", "reason": "..." }] in .claudinite-checks.json (a pack-shipped barrier takes no per-rule except entries)',
   gateDir: SHARED_SUBDIR,
   edges: [{
@@ -36,6 +36,6 @@ export default {
     to: '.claudinite',
     matchUniqueFilenames: false,
     except: ['.claudinite', '.claude', '.github/workflows', '.gitignore', '.gitattributes', '.claudinite-checks.json'],
-    reason: 'consumer files must not couple to the vendored canon — the wiring files are the reviewed exceptions (engine/vendoring/DESIGN.md)',
+    reason: 'consumer files must not couple to the vendored canon — the wiring files are the reviewed exceptions (vendoring/DESIGN.md)',
   }],
 };

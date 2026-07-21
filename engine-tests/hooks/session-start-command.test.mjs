@@ -19,12 +19,11 @@ function makeCorpus({ prefs = '#!/bin/bash\n', prose = '', skills = '', env = ''
   const root = mkdtempSync(join(tmpdir(), 'claudinite-sessionstart-'));
   mkdirSync(join(root, 'engine', 'hooks'), { recursive: true });
   mkdirSync(join(root, 'engine', 'pack_loader'), { recursive: true });
-  mkdirSync(join(root, 'engine', 'skill_loader'), { recursive: true });
   copyFileSync(join(HOOKS_DIR, 'session-start-command.sh'), join(root, 'engine', 'hooks', 'session-start-command.sh'));
   mkdirSync(join(root, 'engine', 'hooks', 'steps'), { recursive: true });
   writeFileSync(join(root, 'engine', 'hooks', 'steps', 'inject-preferences.sh'), prefs);
   writeFileSync(join(root, 'engine', 'pack_loader', 'inject-pack-prose.mjs'), prose);
-  writeFileSync(join(root, 'engine', 'skill_loader', 'mount-skills.mjs'), skills);
+  writeFileSync(join(root, 'engine', 'pack_loader', 'mount-skills.mjs'), skills);
   writeFileSync(join(root, 'engine', 'pack_loader', 'env-requirements.mjs'), env);
   // The interview machinery is the adoption skill's, bundled in the lifecycle pack.
   mkdirSync(join(root, 'packs', 'grow_with_claudinite', 'skills', 'adopt-claudinite'), { recursive: true });
