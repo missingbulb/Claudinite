@@ -161,8 +161,8 @@ the nightly touches everyone, and never break the channel the migration itself t
   **single** probe every member carries whatever its mount shape — the tracked
   `.claudinite-checks.json`, the only shape the planner can plan for at all; a mount marker
   without a declaration classifies uncovered and heals through an adoption issue (done).
-- **Phase 2 — the flip (shipped, pilot-gated):** the dated note
-  (`migrations/active_migrations/`, `vendored-mount-flip`) converts a member in one commit —
+- **Phase 2 — the flip (complete, 2026-07-21):** the dated note
+  (`vendored-mount-flip`, retired with phase 3) converted a member in one commit —
   vendor set under `.claudinite/shared/`, the `.gitignore` flip (the legacy Claudinite ignore
   block collapses to just the two hook-log lines — the vendored world writes nothing untracked
   into `.claudinite/`; accepted trade-off per #385: during the transition window a stale
@@ -170,29 +170,30 @@ the nightly touches everyone, and never break the channel the migration itself t
   Setup script is re-pasted, rather than hidden by a wholesale ignore), the
   `SessionStart`/Stop/PreToolUse rewrite to
   `shared/` paths, the legacy `CLAUDE.md` import/self-check deletion (#385), the stamp, and the
-  sync-hook deletion — executed by the **baselining worker** (the mechanical passes see the
-  record as a no-op; its `legacyPresent` feeds the unflipped-count telemetry), plus one
-  member issue asking to re-paste the environment Setup script (the surviving out-of-repo
-  action). **Gated pilot: the note names only `GoogleCalendarEventCreator`**; after a clean
-  night, widening to the fleet is a one-line edit (`flip.repos: 'fleet'`). Fleet discovery is untouched by the flip —
-  it keys on the tracked `.claudinite-checks.json`, which both mount shapes carry (phase 1) —
-  so no member can be orphaned by its migration state. A session already running when the flip lands
-  keeps its old wiring against its old snapshot — coherent — and picks the new world up next
-  session.
-- **Phase 3 — converge and retire:** once every member is flipped (and every cloud
-  environment's Setup script re-pasted), the transition surface retires as one deliberate
-  change. **The retirement ledger — everything phase 3 deletes, kept complete here** (each item
-  also marked at its site; the `retire: 'manual'` notes below never auto-retire):
-  1. [vendoring/sync-claudinite.sh](sync-claudinite.sh) — the legacy per-session sync,
-     deleted from the canon (members' tracked copies are deleted by the flip itself).
+  sync-hook deletion — plus one member issue asking to re-paste the environment Setup script
+  (the surviving out-of-repo action). Rolled out as a gated pilot
+  (`GoogleCalendarEventCreator`, then `EdFringeNow` in-session), widened to `flip.repos:
+  'fleet'` after a clean pilot, and completed across all twelve members on 2026-07-21 (the
+  bulk of the fleet converted in-session over real git — one commit per member on its
+  `claudinite/maintenance` PR). Fleet discovery was untouched throughout — it keys on the
+  tracked `.claudinite-checks.json`, which both mount shapes carried (phase 1) — so no member
+  could be orphaned by its migration state.
+- **Phase 3 — converge and retire (executed 2026-07-21):** with every member flipped, the
+  transition surface retired as one deliberate change. **The retirement ledger — everything
+  phase 3 deleted, kept here as the record** (the environments' pasted Setup scripts are
+  re-pasted by the owner per repo, cued by each member's re-paste issue; the stale pasted
+  script fails fast at the next environment rebuild, so retiring ahead of the re-paste
+  strands nothing silently):
+  1. `vendoring/sync-claudinite.sh` — the legacy per-session sync,
+     deleted from the canon (members' tracked copies were deleted by the flip itself).
   2. Bootstrap's **transition appendix** (pre-flip maintenance shapes) and the baselining
      worker's pre-flip branch.
   3. The **`vendored-mount-flip` note** (its job is done when no pre-flip member exists).
   4. The **`mount-folder-relocation` note** and the sync-hook path chain it governs.
-  5. The four **engine-restructure transition shims** at the old fetched-tree paths —
-     `checks/stop-hook.mjs`, `checks/pretooluse-guard.mjs`, `mount/session-start.sh`,
-     `packs/env.mjs` — together with the **`engine-restructure` note** that heals flipped
-     members' settings (#385).
+  5. The four **engine-restructure transition shims** at the old fetched-tree paths (the
+     stop-hook and pretooluse forwarders in the old checks folder, the old mount folder's
+     session-start forwarder, and the packs root's env forwarder) — together with the
+     **`engine-restructure` note** that healed flipped members' settings (#385).
   6. The **legacy owned-roots** in `engine/pack_loader/mount-skills.mjs` (the pre-#385 mount
      shapes: the flat `.claudinite/skills/`, the standalone `.claudinite/shared/skills/`, and
      the corpus `skills/` root — #383).

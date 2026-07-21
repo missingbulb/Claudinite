@@ -8,11 +8,6 @@ maintenance is the only regular updater. Idempotent: re-running refreshes the sn
 like a nightly would (fetch → converge → stamp) and never clobbers your own config — your own
 `settings.json` entries are only ever added to, never overwritten.
 
-> **Members adopted before the vendored mount** (the tracked sync hook, gitignored corpus,
-> per-session fetch): do **not** re-run this document to convert — conversion is the gated flip
-> note the nightly applies. Until a member is flipped, the nightly maintains its legacy shape
-> per the [transition appendix](#appendix--pre-flip-members-transition-window-retiring).
-
 ## Part 1 — fetch the canon (the network moment)
 
 ```sh
@@ -177,40 +172,3 @@ checkout.
 The portable merge recipe ships as the merge skill and needs nothing from you (squash via PR,
 gate on CI only when the repo has it). Only if your project genuinely diverges: put the policy in
 its own file and **name it explicitly in your `CLAUDE.md`** — the recipe reads it only then.
-
----
-
-## Appendix — pre-flip members (transition window, retiring)
-
-Maintenance shapes for members still on the **legacy fetch-at-session-start mount** (tracked
-sync hook at `.claudinite/mount/sync-claudinite.sh`, gitignored synced corpus, flat
-`.claudinite/` paths, `@.claudinite/CLAUDE.md` import). The nightly baselining applies **only
-this appendix** to them — never the fresh path above; conversion to the vendored mount is the
-gated flip note's job ([vendoring/DESIGN.md](vendoring/DESIGN.md), phase 2). The whole appendix is
-deleted in phase 3, once the fleet has flipped.
-
-- **Sync hook refresh** — the tracked hook is a generated artifact the canon owns: overwrite the
-  member's copy with the canon's current [`vendoring/sync-claudinite.sh`](vendoring/sync-claudinite.sh);
-  never hand-edit or inline a copy. Its `settings.json` registration stays the single
-  `SessionStart` entry, invoked through `bash`
-  (`bash $CLAUDE_PROJECT_DIR/.claudinite/mount/sync-claudinite.sh`); fix in place an entry
-  pointing at a legacy path (`.claude/hooks/…`, pre-mount `.claudinite/sync-claudinite.sh`) or
-  invoking a bare path, and delete redundant standalone entries for the orchestrator's steps.
-- **Legacy hook paths** — Stop `node …/.claudinite/checks/stop-hook.mjs`, PreToolUse
-  `node …/.claudinite/checks/pretooluse-guard.mjs`, import `@.claudinite/CLAUDE.md` (flat, no
-  `shared/`).
-- **Legacy gitignore set** — `/.claudinite/*`, `!/.claudinite/mount/`, `/.claudinite/mount/*`,
-  `!/.claudinite/mount/sync-claudinite.sh`, `!/.claudinite/local_packs/`, `/.claudinite.new/`,
-  plus the hooks-log ignores; drop a bare `.claudinite/` wholesale-ignore (it blocks the
-  negations) and the retired `.gitkeep` / pre-mount-hook negations.
-- **Legacy file cleanup** (idempotent): `git rm` a hook at `.claude/hooks/sync-claudinite.sh`,
-  a `.claudinite/.gitkeep` marker, and any committed `.claude/skills/*` symlink pointing into
-  `.claudinite/skills/`.
-- **Declaration backfills** (idempotent; `--init` covers fresh files): materialize a missing
-  explicit `"basics"` entry; seed the default-on packs (`tidy-repo`, `grow_with_claudinite`)
-  **only while each one's seed migration file is still present** in the canon (never re-add
-  after the seed retires); re-run `resolveDeclaredPacks` so `requires` closures and `via` stay
-  accurate; fold a legacy top-level `packConfig` into pack-entry `config`; materialize a missing
-  `"maintenance": { "delivery": "auto-merge" }`.
-- **Environment prerequisite** — the legacy mount fetches at every session start, so these
-  members still need `codeload.github.com` allowlisted in their environment's network policy.

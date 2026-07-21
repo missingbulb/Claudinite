@@ -99,11 +99,11 @@ setup: (p) => (p.dirs?.length ? p.dirs : ['.']).map((d) => `( cd "${d}" && npm c
 // a repo's .claudinite-checks.json: { "packs": [ { "id": "node", "config": { "dirs": ["firebase/functions"] } } ] }
 ```
 
-[`env.mjs`](env.mjs) drives everything from the repo's **active** packs (same activation as prose/checks):
+[`env-requirements.mjs`](../engine/pack_loader/env-requirements.mjs) drives everything from the repo's **active** packs (same activation as prose/checks):
 
-- `node .claudinite/packs/env.mjs install` runs every active pack's `setup` in the checkout. The corpus's one generic [`environment-setup.sh`](../engine/hooks/environment-setup-command.sh) (synced into every consumer's `.claudinite/mount/`) calls this after syncing the corpus.
-- `node .claudinite/packs/env.mjs check` is a SessionStart hook (web only) that **asserts** — it runs each `probe` directly against the running environment and injects the halt-gate context if a requirement is missing. No version flag: the probes are the source of truth, and a genuinely new requirement fails its probe and prompts a re-run. Never installs.
-- `node .claudinite/packs/env.mjs plan` prints what `install` would run (review / debug).
+- `node .claudinite/shared/engine/pack_loader/env-requirements.mjs install` runs every active pack's `setup` in the checkout. The corpus's one generic [`environment-setup-command.sh`](../engine/hooks/environment-setup-command.sh) (vendored into every consumer) calls this.
+- `node .claudinite/shared/engine/pack_loader/env-requirements.mjs check` runs at session start (web only) and **asserts** — it runs each `probe` directly against the running environment and injects the halt-gate context if a requirement is missing. No version flag: the probes are the source of truth, and a genuinely new requirement fails its probe and prompts a re-run. Never installs.
+- `node .claudinite/shared/engine/pack_loader/env-requirements.mjs plan` prints what `install` would run (review / debug).
 
 Wiring a consumer up — the check hook + the pack entries' `config`, with the script pasted from the corpus copy — is [bootstrap.md](../bootstrap.md) Part 8. A pack with no `env` field adds nothing; universal git hygiene lives in the generic script, not a pack.
 

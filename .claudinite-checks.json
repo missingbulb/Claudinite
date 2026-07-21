@@ -107,14 +107,6 @@
                 "reason": "inherent: a one-time vendoring migration necessarily names the pack whose plumbing it relocates into consumers; it self-retires once the fleet converges"
               },
               {
-                "path": "bootstrap.md",
-                "to": [
-                  "packs/grow_with_claudinite",
-                  "packs/tidy-repo"
-                ],
-                "reason": "inherent(operational seed): the one-time seed one-liner (bootstrap step 4b) backfills these default-on packs into an existing declaration while their self-retiring seed migrations are live; retires with those migrations"
-              },
-              {
                 "path": "engine/checks/check_the_world.mjs",
                 "to": [
                   "packs/grow_with_claudinite"

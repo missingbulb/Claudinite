@@ -160,19 +160,6 @@ test('chrome-release-vendoring migration: gate, telemetry, and the home-file ret
   assert.ok(!repo.get('.github/workflows/chrome-extension-release.yml').includes('missingbulb/Claudinite'));
 });
 
-test('loadMigrations: discovers the mount-folder relocation with its source file and probe', async () => {
-  const migs = await loadMigrations();
-  const seed = migs.find((m) => m.id === 'mount-folder-relocation');
-  assert.ok(seed, 'mount-folder-relocation migration is discovered');
-  assert.equal(seed.file, '2026-07-13-mount-folder-relocation.mjs');
-  assert.equal(typeof seed.legacyPresent, 'function');
-  assert.equal(seed.retire, 'manual');
-  // Its probe reports still-legacy when ANY pre-mount sync-hook shape is present, clean otherwise.
-  assert.equal(await seed.legacyPresent((p) => p === '.claudinite/sync-claudinite.sh'), true);
-  assert.equal(await seed.legacyPresent((p) => p === '.claude/hooks/sync-claudinite.sh'), true);
-  assert.equal(await seed.legacyPresent(() => false), false);
-});
-
 test('pack-entry-config migration: legacyPresent reads the declaration (true iff a top-level packConfig remains)', async () => {
   const m = (await loadMigrations()).find((x) => x.id === 'pack-entry-config');
   assert.ok(m, 'pack-entry-config migration is discovered');
@@ -240,18 +227,12 @@ test('local-pack-namespace migration: legacyPresent = a bare declared id whose p
   assert.equal(await m.legacyPresent(hasLocal, async () => 'nope'), false, 'unparsable -> not held');
 });
 
-test('loadMigrations: the vendored-mount flip record carries its worker gate and stays out of the mechanical passes', async () => {
-  const m = (await loadMigrations()).find((x) => x.id === 'vendored-mount-flip');
-  assert.ok(m, 'flip record must be discovered');
-  assert.equal(m.retire, 'manual');
-  // Pilot concluded: the gate is wide open — every covered member converts.
-  assert.equal(m.flip.repos, 'fleet');
-  assert.match(m.flip.steps, /ONE commit/);
-  // No mechanical ops on purpose — fleet-apply must see a no-op.
-  assert.equal(m.aliases, undefined);
-  assert.equal(m.materialize, undefined);
-  assert.equal(m.rewrite, undefined);
-  // Telemetry: unflipped = still carrying the tracked sync hook.
-  assert.equal(await m.legacyPresent(async (p) => p === '.claudinite/mount/sync-claudinite.sh'), true);
-  assert.equal(await m.legacyPresent(async () => false), false);
+test('loadMigrations: the phase-3 retirements are really gone from the active set', async () => {
+  // vendoring/DESIGN.md phase 3: the flip note, the mount-folder-relocation
+  // chain, and the engine-restructure healer retired together once the fleet
+  // converged — none may linger as a discoverable record.
+  const ids = new Set((await loadMigrations()).map((m) => m.id));
+  for (const retired of ['vendored-mount-flip', 'mount-folder-relocation', 'engine-restructure']) {
+    assert.ok(!ids.has(retired), `${retired} must stay retired`);
+  }
 });

@@ -23,11 +23,12 @@ every repo has moved — and has stayed quiet for a cycle**.
 ## A baseline migration
 
 ```js
-// migrations/active_migrations/2026-07-13-mount-folder-relocation.mjs
+// An illustrative record (the shape, not a live migration): the historical
+// mount-folder relocation, which moved the tracked sync hook into mount/.
 export default {
   id: 'mount-folder-relocation',
   landed: '2026-07-13',                 // date it merged to canon (YYYY-MM-DD)
-  summary: 'sync hook + orchestrator + env-setup bundled into .claudinite/mount/',
+  summary: 'sync hook + orchestrator + env-setup bundled into a mount folder',
   aliases: [{ canonical: '.claudinite/mount/sync-claudinite.sh',
               legacy: ['.claudinite/sync-claudinite.sh', '.claude/hooks/sync-claudinite.sh'] }],
   legacyPresent: async (exists) => exists('.claudinite/sync-claudinite.sh'),

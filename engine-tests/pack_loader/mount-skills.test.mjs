@@ -152,37 +152,29 @@ test('mount-skills: removes a stale owned link, is idempotent, fails soft on a b
   } finally { rmSync(corpus, { recursive: true, force: true }); cleanup(project); }
 });
 
-test('mount-skills: retargets a legacy flat-tree mount to the vendored corpus', () => {
-  // The vendored-mount flip (vendoring/DESIGN.md phase 2): the corpus now runs from
-  // <project>/.claudinite/shared/, but a pre-flip session left symlinks into the
-  // legacy flat tree (<project>/.claudinite/skills/). Those are canon-owned in
-  // every mount shape — the mounter must retarget them, not treat them as the
-  // project's own entries (issue #383).
+test('mount-skills: a symlink outside the pack trees is the project\'s own — never overwritten', () => {
+  // Phase 3 retired the pre-#385 legacy skills roots (the flat
+  // .claudinite/skills/ tree and friends): the mounter owns only symlinks into
+  // pack trees (canon packs/ and local_packs/). Anything else — including a
+  // leftover pointing into a retired tree — is the project's own entry: never
+  // retargeted, never cleaned.
   const project = makeRepo({
     changed: { '.claudinite-checks.json': '{ "packs": ["basics"] }\n' },
   });
   const corpus = makeCorpus(CORPUS, join(project, '.claudinite', 'shared'));
   try {
-    // A legacy mount whose flat-tree target still exists, and one already
-    // dangling (the environment lost the gitignored flat tree).
-    mkdirSync(join(project, '.claudinite', 'skills', 'base-skill'), { recursive: true });
-    writeFileSync(join(project, '.claudinite', 'skills', 'base-skill', 'SKILL.md'), 'legacy copy\n');
     mkdirSync(join(project, '.claude', 'skills'), { recursive: true });
     symlinkSync(join('..', '..', '.claudinite', 'skills', 'base-skill'),
       join(project, '.claude', 'skills', 'base-skill'));
-    symlinkSync(join('..', '..', '.claudinite', 'skills', 'gone-skill'),
-      join(project, '.claude', 'skills', 'gone-skill'));
 
     mount(corpus, project);
 
     const link = join(project, '.claude', 'skills', 'base-skill');
     assert.ok(lstatSync(link).isSymbolicLink());
-    assert.equal(realpathSync(link), realpathSync(join(corpus, 'packs', 'basics', 'skills', 'base-skill')),
-      'a legacy flat-tree mount must retarget to the vendored corpus');
-    assert.ok(!existsSync(join(project, '.claude', 'skills', 'gone-skill')),
-      'a dangling legacy mount for an unwanted skill must be cleaned');
-    assert.match(readFileSync(join(project, '.claude', 'skills', '.gitignore'), 'utf8'),
-      /^base-skill$/m, 'the retargeted mount is self-ignored again');
+    assert.equal(readlinkSync(link), join('..', '..', '.claudinite', 'skills', 'base-skill'),
+      'a foreign symlink keeps its target — the project\'s own entry wins');
+    assert.ok(!readFileSync(join(project, '.claude', 'skills', '.gitignore'), 'utf8').split('\n').includes('base-skill'),
+      'a foreign entry is not claimed by the generated gitignore');
   } finally { cleanup(project); }
 });
 
