@@ -268,8 +268,11 @@ test('--init writes the pack declaration once and is idempotent', () => {
     // pack in, materialized with its provenance (`via`).
     assert.deepEqual(JSON.parse(first).packs,
       ['basics', { id: 'barriers', via: ['basics'] }, 'grow_with_claudinite', 'tidy-repo']);
-    // The delivery selection is materialized, never an implicit default.
+    // The delivery selection is materialized, never an implicit default —
+    // and it is the ONLY key beside the declaration: empty rules/accept
+    // boilerplate is noise, not settings (#385).
     assert.equal(JSON.parse(first).maintenance.delivery, 'auto');
+    assert.deepEqual(Object.keys(JSON.parse(first)).sort(), ['maintenance', 'packs']);
     assert.equal(runCli(root, '--init').status, 0);
     assert.equal(readFileSync(join(root, '.claudinite-checks.json'), 'utf8'), first);
   } finally { cleanup(root); }

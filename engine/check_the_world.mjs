@@ -80,7 +80,10 @@ if (has('--init')) {
   const declared = resolveDeclaredPacks(detected, packs);
   // maintenance.delivery is deliberately materialized, not defaulted — the selection
   // must be visible in the file where a project would change it (see engine/README.md).
-  writeFileSync(path, `${JSON.stringify({ packs: declared, rules: {}, accept: [], maintenance: { delivery: 'auto' } }, null, 2)}\n`);
+  // Only what carries a decision: the declaration and the always-explicit
+  // delivery. Empty rules/accept boilerplate is noise, not settings (#385);
+  // loadConfig defaults absent keys.
+  writeFileSync(path, `${JSON.stringify({ packs: declared, maintenance: { delivery: 'auto' } }, null, 2)}\n`);
   console.log(`Wrote ${path} (packs: ${declared.join(', ')}).`);
   // Adoption interviews, strict at bootstrap: the flow that runs --init has the
   // owner present, so surface every declared pack's questions for the adoption

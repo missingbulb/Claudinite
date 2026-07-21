@@ -134,7 +134,6 @@
       }
     }
   ],
-  "rules": {},
   "accept": [
     {
       "rule": "file-placement",
