@@ -87,18 +87,18 @@ export async function applyToRepo(io, fullName, migrations) {
   const defaultBranch = await io.getDefaultBranch(fullName);
   if (!defaultBranch) return { ids: [], note: `${fullName}: unreadable` };
   const cfg = await io.read(fullName, '.claudinite-checks.json');
-  let rawDelivery = 'auto';
-  try { rawDelivery = JSON.parse(cfg ?? '{}')?.maintenance?.delivery ?? 'auto'; } catch { rawDelivery = 'auto'; }
+  let rawDelivery = 'auto-merge';
+  try { rawDelivery = JSON.parse(cfg ?? '{}')?.maintenance?.delivery ?? 'auto-merge'; } catch { rawDelivery = 'auto-merge'; }
   // `push`/`pr` are the pre-rename aliases for `auto`/`review` — accepted permanently
   // (the maintenance-delivery-rename migration rewrites the stored value, but the
   // tolerance outlives the record, so retiring it strands nothing).
-  const delivery = rawDelivery === 'push' ? 'auto' : rawDelivery === 'pr' ? 'review' : rawDelivery;
+  const delivery = rawDelivery === 'push' || rawDelivery === 'auto' ? 'auto-merge' : rawDelivery === 'pr' ? 'review' : rawDelivery;
 
-  if (delivery !== 'auto' && delivery !== 'review') {
+  if (delivery !== 'auto-merge' && delivery !== 'review') {
     await io.openIssue(
       fullName,
       'Claudinite maintenance: unrecognized delivery preference',
-      `\`.claudinite-checks.json\` sets \`maintenance.delivery: "${rawDelivery}"\`, which is neither \`auto\` nor \`review\`. `
+      `\`.claudinite-checks.json\` sets \`maintenance.delivery: "${rawDelivery}"\`, which is neither \`auto-merge\` nor \`review\`. `
         + 'Migrations were not applied this run. Set it to `auto` or `review`.',
     );
     return { ids: [], note: `${fullName}: unrecognized delivery "${rawDelivery}" — opened an issue, applied nothing` };
@@ -151,11 +151,11 @@ export async function applyToRepo(io, fullName, migrations) {
   if (!(await io.hasOpenPr(fullName, MAINT_BRANCH))) {
     const prNumber = await io.openPr(
       fullName, MAINT_BRANCH, defaultBranch, 'Claudinite maintenance',
-      delivery === 'auto'
+      delivery === 'auto-merge'
         ? 'Automated Claudinite maintenance (migrations + baselining). Amended in place each run; auto-merges once this repo\'s checks pass.'
         : 'Automated Claudinite maintenance (migrations + baselining). Amended in place each run; left for your review.',
     );
-    if (delivery === 'auto') {
+    if (delivery === 'auto-merge') {
       // Arm GitHub's native auto-merge (non-blocking): the run never waits for CI.
       // If the repo hasn't enabled auto-merge, the PR simply stays open for review.
       try { await io.enableAutoMerge(fullName, prNumber); }

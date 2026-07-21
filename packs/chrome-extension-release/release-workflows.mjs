@@ -1,5 +1,5 @@
-import { finding } from '../../checks/lib/findings.mjs';
-import { migrationActive } from '../../checks/lib/migrations.mjs';
+import { finding } from '../../engine/checks/helpers/findings.mjs';
+import { migrationActive } from '../../engine/checks/helpers/active-migrations.mjs';
 
 // The chrome-extension-release pipeline is VENDORED into each consumer's own
 // .github/: the orchestrator (this STUB_FILE, named "Release to Chrome Store")

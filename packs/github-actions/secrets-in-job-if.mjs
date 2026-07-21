@@ -1,5 +1,5 @@
-import { finding } from '../../checks/lib/findings.mjs';
-import { workflowFiles } from '../../checks/lib/workflows.mjs';
+import { finding } from '../../engine/checks/helpers/findings.mjs';
+import { workflowFiles } from '../../engine/checks/helpers/github-workflows.mjs';
 
 const rule = {
   id: 'gha/secrets-in-job-if',

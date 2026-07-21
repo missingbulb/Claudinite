@@ -1,5 +1,5 @@
-import { finding } from '../../checks/lib/findings.mjs';
-import { workflowFiles } from '../../checks/lib/workflows.mjs';
+import { finding } from '../../engine/checks/helpers/findings.mjs';
+import { workflowFiles } from '../../engine/checks/helpers/github-workflows.mjs';
 
 // A single | between non-| characters is a shell pipe; || is the or-operator.
 const PIPE = /(^|[^|])\|([^|]|$)/;

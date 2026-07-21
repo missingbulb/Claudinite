@@ -67,6 +67,6 @@ executable-requirements UI suite); keep anything project-specific in the consumi
   `flutter analyze`, and golden regen can't run until it's installed. Install belongs in the
   environment **image** (built once, snapshotted, reused) — never a per-session hook that reinstalls
   every start. This pack declares that need in its `env` block ([pack.mjs](pack.mjs)); a project pastes
-  one generic `environment-setup.sh` that runs every active pack's requirement via
-  [packs/env.mjs](../env.mjs) and asserts it at session start (see [bootstrap.md](../../bootstrap.md)
-  Part 8).
+  one generic `environment-setup-command.sh` that runs every active pack's requirement via
+  [engine/pack_loader/env-requirements.mjs](../../engine/pack_loader/env-requirements.mjs) and asserts it at session start (see [bootstrap.md](../../bootstrap.md)
+  Part 9).

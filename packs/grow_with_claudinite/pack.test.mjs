@@ -5,8 +5,8 @@ import { mkdtempSync, rmSync, writeFileSync, appendFileSync, mkdirSync } from 'n
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { makeRepo, cleanup } from '../../checks/test/helpers.mjs';
-import { buildContext } from '../../checks/lib/context.mjs';
+import { makeRepo, cleanup } from '../../engine-tests/helpers.mjs';
+import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import configCheck from './config-check.mjs';
 import {
   parseLines, bundleStreams, sliceAfter, maxTimestamp, scrub, buildRedactionValues,

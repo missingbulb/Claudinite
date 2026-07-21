@@ -13,9 +13,9 @@ pays for it whether or not they need it.
 > activated by declaration. If you can't say "this is machinery every pack relies on," it isn't
 > core.
 
-This is the same instinct the corpus already applies to itself: packs and skills are discovered
-by *scanning the tree*, not by a hand-maintained list ([packs/registry.mjs](packs/registry.mjs),
-[skills/registry.mjs](skills/registry.mjs)); the mechanism is fixed, the content is open. New
+This is the same instinct the corpus already applies to itself: packs — and the skills bundled
+inside them — are discovered by *scanning the tree*, not by a hand-maintained list
+([engine/pack_loader/pack-registry.mjs](engine/pack_loader/pack-registry.mjs)); the mechanism is fixed, the content is open. New
 content drops in a directory; new mechanism is a deliberate change to the engine.
 
 ## What is core (the engine)
@@ -25,14 +25,14 @@ only to extend the *mechanism*, never to add one project's rule or task:
 
 | Engine piece | Home | What it is |
 |---|---|---|
-| Checks runner + hooks | [`checks/`](checks/README.md) | the dependency-free runner, its lib, the Stop hook, the PreToolUse guard — runs the packs' checks; owns no rule itself |
-| Pack discovery + prose injection | `packs/registry.mjs`, `packs/load-active-prose.mjs` | structural scan of `packs/*/pack.mjs`; SessionStart injection of active packs' prose |
-| Skill discovery + mounting | `skills/registry.mjs`, `skills/mount-skills.mjs` | structural scan; per-session symlink of the active packs' skill union |
-| Adoption interviews | `packs/interview.mjs` | the gap computation (a pack's declared questions minus the entry's stored answers) and the SessionStart nudge; owns no question itself |
+| Checks runner + hooks | [`checks/`](engine/checks/README.md) | the dependency-free runner, its lib, the Stop hook, the PreToolUse guard — runs the packs' checks; owns no rule itself |
+| Pack discovery + prose injection | `engine/pack_loader/pack-registry.mjs`, `engine/pack_loader/inject-pack-prose.mjs` | structural scan of `packs/*/pack.mjs`; SessionStart injection of active packs' prose |
+| Skill mounting | `engine/pack_loader/mount-skills.mjs` | per-session symlink of the active packs' bundled-skill union (`<pack>/skills/<name>/`) |
+| Adoption interviews | `packs/grow_with_claudinite/skills/adopt-claudinite/interview.mjs` | the gap computation (a pack's declared questions minus the entry's stored answers) and the SessionStart nudge; owns no question itself — bundled in the adoption skill, resolved fail-soft by the engine |
 | Baseline-migration mechanism | [`migrations/`](migrations/README.md) | the read-side resolver, write-side rename, and fleet telemetry that auto-retires a relocation once every consumer has moved |
 | The run_daily planner | [`routines/fleet/`](routines/fleet/DESIGN.md) | goes over the reachable repos, assembles each one's due tasks from its active packs, masks full-sweep, isolates a throwing gate, emits the plan; pack-agnostic, owns no task, depends on no pack |
 | The orchestrator | [`routines/auto-all-repos-maintenance.md`](routines/auto-all-repos-maintenance.md) | the single scheduled entry point — runs the planner over the accessible fleet, reads the plan, fans out the units |
-| Bootstrap / baselining | [`bootstrap.md`](bootstrap.md), `checks/run.mjs --init` | adoption and the idempotent per-repo re-run |
+| Bootstrap / baselining | [`bootstrap.md`](bootstrap.md), `engine/checks/check_the_world.mjs --init` | adoption and the idempotent per-repo re-run |
 
 **The test for "is this core?"** — would *every* pack's content stop working without it? The
 planner, the runner, the migration mechanism, the orchestrator loop all pass; a lint for one
@@ -49,7 +49,7 @@ A pack is a directory `packs/<name>/pack.mjs` exporting contribution slots (any 
 |---|---|---|
 | **Prose** | `prose: 'RULES.md'` | always-relevant-to-a-project guidance, injected into context when the pack is active |
 | **Checks** | `rules: [...]` | deterministic conformance rules run at every Stop and in CI |
-| **Skills** | `skills: [...]` | activity-scoped procedures mounted wherever the pack is declared |
+| **Skills** | `<pack>/skills/<name>/` | activity-scoped procedures bundled in the pack's own tree, mounted wherever the pack is declared |
 | **Daily tasks** | `run_daily: [...]` | `(gate, worker)` maintenance units the planner picks up — each declares `full_sweep_supported` and its `smarts` tier |
 | **Questions** | `questions: [...]` | mandatory adoption-interview questions; the owner's answers live verbatim on the project's pack entry ([packs/README.md](packs/README.md#adoption-interview-questions)) |
 | **Contributed config** | `contributes: { <pack>: ... }` | configuration addressed to another (required) pack — a fixed folder-barrier is the canonical case. The target pack interprets its active contributors' data via its own `contributedRules(activePacks)` seam, returning first-class rules; the runner wires the two together, so composition is declaration + data, never a cross-pack import |
@@ -100,7 +100,7 @@ engine."
 
 Ask what *kind* of thing you're adding; each kind has exactly one home, and none of them is core:
 
-1. **A new rule or practice** → the [promotion ladder](checks/DESIGN.md) (platform setting →
+1. **A new rule or practice** → the [promotion ladder](engine/checks/DESIGN.md) (platform setting →
    PreToolUse hook → post-hoc check → skill → prose) picks the mechanism; it lands in a pack (or
    a skill that pack requires). *Which* pack follows the portable-vs-specific split: a portable rule
    → a canon pack; a rule specific to one project → that project's own `local_packs/` pack. The
@@ -134,6 +134,6 @@ leaves the source behind isn't done.
 
 ---
 
-Related: the corpus map and the two content homes are in [CLAUDE.md](CLAUDE.md); the mechanism
-promotion ladder is in [checks/DESIGN.md](checks/DESIGN.md); keeping a canon change from hurting
+Related: the corpus map lives in [README.md](README.md) (there is no agent-facing corpus index — #385); the mechanism
+promotion ladder is in [engine/checks/DESIGN.md](engine/checks/DESIGN.md); keeping a canon change from hurting
 consumers is [consumer-safe-changes.md](consumer-safe-changes.md).

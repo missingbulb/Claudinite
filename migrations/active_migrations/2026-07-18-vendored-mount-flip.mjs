@@ -1,4 +1,4 @@
-// The vendored-mount FLIP (mount/DESIGN.md, phase 2): convert a member from the
+// The vendored-mount FLIP (vendoring/DESIGN.md, phase 2): convert a member from the
 // legacy fetch-at-session-start mount to the tracked vendored mount — one commit
 // per member, applied by the nightly BASELINING WORKER, never by the mechanical
 // fleet-apply pass. Deliberately no aliases/materialize/rewrite ops: the
@@ -12,7 +12,7 @@
 export default {
   id: 'vendored-mount-flip',
   landed: '2026-07-18',
-  summary: 'legacy fetch-at-session-start mount -> tracked vendored mount at .claudinite/shared/ (one commit per member; mount/DESIGN.md phase 2)',
+  summary: 'legacy fetch-at-session-start mount -> tracked vendored mount at .claudinite/shared/ (one commit per member; vendoring/DESIGN.md phase 2)',
   // Telemetry: a member still carrying the tracked sync hook is unflipped.
   legacyPresent: async (exists) => exists('.claudinite/mount/sync-claudinite.sh'),
   // Phase 3 is a deliberate change beyond deleting this record — the canon's
@@ -40,34 +40,32 @@ canon checkout with a shell): first verify the checkout is at the canon's
 HEAD\`) — a lagging checkout is this unit's failure, never a tree to converge
 from (#328; apply-vendor refuses a mismatched or rewinding ref on its own).
 Then make a scratch dir; write the member's fetched
-\`.claudinite-checks.json\` into it; replicate any member
-\`.claudinite/local_packs/*/pack.mjs\` files at the same paths (their skills
-lists feed the set); run
-\`node mount/apply-vendor.mjs --target <scratch> --ref <verified remote head sha>\`.
+\`.claudinite-checks.json\` into it; run
+\`node vendoring/apply-vendor-set.mjs --target <scratch> --ref <verified remote head sha>\`.
 The scratch now holds \`.claudinite/shared/**\` and the stamped declaration.
 
-**2. Land ONE commit** on the member (delivery-aware — both \`auto\` and
-\`review\` (and their legacy \`push\`/\`pr\` aliases) land on the
-\`claudinite/maintenance\` branch and its PR: \`auto\` arms auto-merge,
+**2. Land ONE commit** on the member (delivery-aware — both \`auto-merge\` and
+\`review\` (and their legacy \`push\`/\`auto\`/\`pr\` aliases) land on the
+\`claudinite/maintenance\` branch and its PR: \`auto-merge\` arms auto-merge,
 \`review\` leaves it for the owner; never a direct commit to the default
 branch), containing exactly:
 - every \`scratch/.claudinite/shared/**\` file, same paths;
 - the stamped \`.claudinite-checks.json\` from the scratch;
 - \`.claude/settings.json\` edited in place (never touching the member's own
   entries): the SessionStart sync-hook command becomes
-  \`bash $CLAUDE_PROJECT_DIR/.claudinite/shared/mount/session-start.sh\`; the
-  Stop/PreToolUse commands repoint \`.claudinite/checks/\` ->
-  \`.claudinite/shared/checks/\`;
-- \`CLAUDE.md\`: \`@.claudinite/CLAUDE.md\` -> \`@.claudinite/shared/CLAUDE.md\`,
-  and the legacy self-check paragraph replaced with the current one (exact
-  texts: bootstrap.md, "Import the corpus index");
-- \`.gitignore\`: drop \`!/.claudinite/mount/\`, \`/.claudinite/mount/*\`,
-  \`!/.claudinite/mount/sync-claudinite.sh\`, \`/.claudinite.new/\`; ensure
-  \`/.claudinite/*\`, \`!/.claudinite/shared/\`, \`!/.claudinite/local_packs/\`,
-  and the two hooks-log ignores;
-- \`.github/workflows/claudinite-checks-ci.yml\` added from the vendor tree's
-  own copy at \`.claudinite/shared/packs/basics/stubs/claudinite-checks-ci.yml\`
-  (skip if the member already tracks a file at that workflow path).
+  \`bash $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/session-start-command.sh\`; the
+  Stop command becomes \`node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/stop-command.mjs\`
+  and the PreToolUse command
+  \`node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/pretooluse-command.mjs\`;
+- \`CLAUDE.md\`: DELETE the legacy \`@.claudinite/CLAUDE.md\` (or
+  \`@.claudinite/shared/CLAUDE.md\`) import line and any "Claudinite
+  self-check" paragraph — the corpus index is retired (#385); a consumer
+  \`CLAUDE.md\` carries only the project's own content, and the file is
+  deleted outright if that empties it;
+- \`.gitignore\`: drop the whole legacy Claudinite block (\`/.claudinite/*\`, the
+  \`mount/\` re-include dance, \`/.claudinite.new/\`); keep only the two hooks-log
+  ignores (\`/.claudinite-hooks.log\`, \`/.claudinite-hooks.log.tmp\`) — the
+  vendored world writes nothing untracked into \`.claudinite/\` (#385).
 
 **2b. Delete the tracked \`.claudinite/mount/sync-claudinite.sh\`** — its own
 \`delete_file\` commit, immediately after: MCP's \`push_files\` cannot combine
@@ -81,7 +79,7 @@ settings rewrite).
 \`Re-paste the Claudinite environment Setup script\` (idempotent — search
 first, open or closed counts): the previously pasted script keeps working until
 the environment is next rebuilt, at which point it fails fast; the new body to
-paste is the member's own \`.claudinite/shared/mount/environment-setup.sh\`.
+paste is the member's own \`.claudinite/shared/engine/hooks/environment-setup-command.sh\`.
 
 **Failure before the content commit -> write nothing.** The member keeps
 running the legacy mount coherently, the failure goes to the routine's failure

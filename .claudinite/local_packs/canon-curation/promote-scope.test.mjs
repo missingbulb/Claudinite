@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, deletePath, cleanup } from '../../../checks/test/helpers.mjs';
-import { buildContext } from '../../../checks/lib/context.mjs';
+import { makeRepo, deletePath, cleanup } from '../../../engine-tests/helpers.mjs';
+import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import promoteScope from './promote-scope.mjs';
 
 function run(root) {

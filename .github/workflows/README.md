@@ -22,7 +22,7 @@ retire them. Any *other* rename here is the two-phase migration in
 
 | File | Purpose |
 |---|---|
-| [`checks-ci.yml`](checks-ci.yml) | This repo's own unit tests + conformance sweep (`pull_request`, `push` to `main`). |
+| [`ci.yml`](ci.yml) | This repo's own unit tests + conformance sweep (`pull_request`, `push` to `main`). |
 
 ## Fleet orchestration — runs only here
 

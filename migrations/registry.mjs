@@ -1,6 +1,6 @@
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { MIGRATIONS_SUBDIR, specFiles, migrationActive } from '../checks/lib/migrations.mjs';
+import { MIGRATIONS_SUBDIR, specFiles, migrationActive } from '../engine/checks/helpers/active-migrations.mjs';
 
 const dir = dirname(fileURLToPath(import.meta.url));
 
@@ -10,7 +10,7 @@ const dir = dirname(fileURLToPath(import.meta.url));
 // (exported so the retire pass can build a record's repo-relative path
 // migrations/active_migrations/<file>), the spec listing, and
 // `migrationActive` — lives in the vendored engine lib
-// (checks/lib/migrations.mjs) because pack CHECKS consult it and packs import
+// (engine/checks/helpers/active-migrations.mjs) because pack CHECKS consult it and packs import
 // only the engine surface (pack-independence); this registry re-exports it so
 // canon-side callers keep one import home.
 export { MIGRATIONS_SUBDIR, migrationActive };

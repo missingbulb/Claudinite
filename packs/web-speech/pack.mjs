@@ -23,6 +23,5 @@ export default {
       return text !== null && SPEECH_API.test(text);
     }),
   prose: 'RULES.md',
-  skills: ['web-speech-io'],
   rules: [],
 };

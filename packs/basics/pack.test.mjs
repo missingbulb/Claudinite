@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, deletePath, cleanup, git, writeFiles, makeTranscript } from '../../checks/test/helpers.mjs';
-import { buildContext } from '../../checks/lib/context.mjs';
+import { makeRepo, deletePath, cleanup, git, writeFiles, makeTranscript } from '../../engine-tests/helpers.mjs';
+import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import commentClassification from './comment-classification.mjs';
 import referenceIntegrity from './reference-integrity.mjs';
 import linkLabels from './markdown-link-labels.mjs';
@@ -10,7 +10,6 @@ import warningSuppression from './warning-suppression.mjs';
 import filePlacement from './file-placement.mjs';
 import squashMergeHistory from './squash-merge-history.mjs';
 import sharedConstants from './shared-constants.mjs';
-import skillOwnership from './skill-ownership.mjs';
 import claudeMdLength from './claude-md-length.mjs';
 import generatedMergeDriver from './generated-merge-driver.mjs';
 import catalogCompleteness from './catalog-completeness.mjs';
@@ -20,17 +19,11 @@ function run(rule, root, mode = 'changed') {
   return rule.run(ctx);
 }
 
-// The relevance gate for skill-ownership: both registries tracked = the repo IS the corpus.
+// The relevance gate for the corpus-integrity checks: the pack registry tracked
+// = the repo IS the corpus.
 const CORPUS_MARKERS = {
-  'packs/registry.mjs': '// corpus marker\n',
-  'skills/registry.mjs': '// corpus marker\n',
+  'engine/pack_loader/pack-registry.mjs': '// corpus marker\n',
 };
-
-function runSkillOwnership(root, knownPacks) {
-  const ctx = buildContext({ root, mode: 'all' });
-  ctx.knownPacks = knownPacks; // attached by the runner in real sweeps
-  return skillOwnership.run(ctx);
-}
 
 
 test('reference-integrity: flags a dangling relative link, passes a resolving one', () => {
@@ -53,6 +46,27 @@ test('reference-integrity: flags surviving references to a deleted file', () => 
     deletePath(root, 'old.md');
     const findings = run(referenceIntegrity, root);
     assert.ok(findings.some(f => f.file === 'index.md' && /old\.md/.test(f.what)));
+  } finally { cleanup(root); }
+});
+
+test('reference-integrity: the vendored shared mount is never a finding source for a deleted path', () => {
+  // The corpus is canon-owned and structurally out of the sweep (vendoring/DESIGN.md item 6);
+  // a canon doc mentioning a name the consumer's branch deletes (e.g. its own root file)
+  // must not fire — only the consumer's own files may.
+  const root = makeRepo({
+    base: {
+      'old.md': 'x\n',
+      'index.md': 'see [old](old.md)\n',
+      '.claudinite/shared/packs/basics/README.md': 'canon doc mentioning old.md generically\n',
+    },
+    changed: {},
+  });
+  try {
+    deletePath(root, 'old.md');
+    const findings = run(referenceIntegrity, root);
+    assert.ok(findings.some(f => f.file === 'index.md'), 'the consumer file still fires');
+    assert.ok(!findings.some(f => f.file.startsWith('.claudinite/shared/')),
+      'a shared-mount file must never be a finding source');
   } finally { cleanup(root); }
 });
 
@@ -430,53 +444,6 @@ test('changed-mode scoping: pre-existing violations elsewhere are not reported',
   } finally { cleanup(root); }
 });
 
-test('skill-ownership: flags a skill no pack requires', () => {
-  const root = makeRepo({
-    changed: { ...CORPUS_MARKERS, 'skills/orphan/SKILL.md': '---\nname: orphan\n---\nbody\n' },
-  });
-  try {
-    const findings = runSkillOwnership(root, [{ id: 'basics', skills: [] }]);
-    assert.equal(findings.length, 1);
-    assert.equal(findings[0].file, 'skills/orphan/SKILL.md');
-    assert.match(findings[0].what, /no pack requires/);
-  } finally { cleanup(root); }
-});
-
-test('skill-ownership: passes when at least one pack requires the skill', () => {
-  const root = makeRepo({
-    changed: { ...CORPUS_MARKERS, 'skills/orphan/SKILL.md': '---\nname: orphan\n---\nbody\n' },
-  });
-  try {
-    assert.equal(runSkillOwnership(root, [{ id: 'basics', skills: ['orphan'] }]).length, 0);
-    // Required by several packs is fine too.
-    assert.equal(runSkillOwnership(root, [
-      { id: 'basics', skills: ['orphan'] },
-      { id: 'node', skills: ['orphan'] },
-    ]).length, 0);
-  } finally { cleanup(root); }
-});
-
-test('skill-ownership: flags a pack requiring a skill that does not exist', () => {
-  const root = makeRepo({ changed: { ...CORPUS_MARKERS } });
-  try {
-    const findings = runSkillOwnership(root, [{ id: 'node', skills: ['ghost'] }]);
-    assert.equal(findings.length, 1);
-    assert.equal(findings[0].file, 'packs/node/pack.mjs');
-    assert.match(findings[0].what, /"ghost"/);
-  } finally { cleanup(root); }
-});
-
-test('skill-ownership: silent outside the corpus repo', () => {
-  // A consumer never tracks the registries (the corpus lives under its
-  // gitignored mount) — the rule must not fire there.
-  const root = makeRepo({
-    changed: { 'skills/orphan/SKILL.md': '---\nname: orphan\n---\nbody\n' },
-  });
-  try {
-    assert.equal(runSkillOwnership(root, [{ id: 'basics', skills: [] }]).length, 0);
-  } finally { cleanup(root); }
-});
-
 test('claude-md-length: flags a CLAUDE.md over 200 lines, passes a short one', () => {
   const long = makeRepo({ changed: { 'CLAUDE.md': `${'x\n'.repeat(250)}` } });
   const short = makeRepo({ changed: { 'CLAUDE.md': '# short\n\nfacts only\n' } });
@@ -536,31 +503,29 @@ test('generated-merge-driver: still inspects a GENERATED file that is also lingu
   } finally { cleanup(root); }
 });
 
-test('catalog-completeness: flags a pack/skill dir missing from its catalog README', () => {
+test('catalog-completeness: flags a pack dir missing from the catalog README', () => {
+  // Skills have no catalog of their own (#385) — a bundled skill is its
+  // pack's content, so only a pack missing from packs/README.md fires.
   const root = makeRepo({ changed: {
     ...CORPUS_MARKERS,
     'packs/README.md': '# packs\n\n[basics](basics/README.md)\n',
-    'skills/README.md': '# skills\n\n`merge-to-main`\n',
     'packs/newpack/pack.mjs': 'export default { id: "newpack" };\n',
-    'skills/newskill/SKILL.md': '---\nname: newskill\n---\nbody\n',
+    'packs/basics/skills/newskill/SKILL.md': '---\nname: newskill\n---\nbody\n',
   } });
   try {
     const findings = run(catalogCompleteness, root, 'all');
-    assert.equal(findings.length, 2);
+    assert.equal(findings.length, 1);
     assert.ok(findings.some((f) => f.file === 'packs/README.md' && /newpack/.test(f.what)));
-    assert.ok(findings.some((f) => f.file === 'skills/README.md' && /newskill/.test(f.what)));
   } finally { cleanup(root); }
 });
 
-test('catalog-completeness: silent when both catalogs list every member', () => {
+test('catalog-completeness: silent when the catalog lists every pack', () => {
   const root = makeRepo({ changed: {
     ...CORPUS_MARKERS,
     'packs/README.md': '# packs\n\n[basics](basics/README.md) [node](node/README.md)\n',
-    'skills/README.md': '# skills\n\n`merge-to-main` `writing-tests`\n',
     'packs/basics/pack.mjs': 'export default { id: "basics" };\n',
     'packs/node/pack.mjs': 'export default { id: "node" };\n',
-    'skills/merge-to-main/SKILL.md': '---\nname: merge-to-main\n---\nbody\n',
-    'skills/writing-tests/SKILL.md': '---\nname: writing-tests\n---\nbody\n',
+    'packs/basics/skills/writing-tests/SKILL.md': '---\nname: writing-tests\n---\nbody\n',
   } });
   try {
     assert.equal(run(catalogCompleteness, root, 'all').length, 0);
@@ -669,18 +634,17 @@ const claudiniteIsolation = contributedBarrierRules([basicsPack]).find((r) => r.
 
 test('claudinite-isolation: inert without the vendored mount; a consumer file referencing the canon fires; wiring files and local_packs stay open', () => {
   const violating = {
-    'src/tool.mjs': 'const p = ".claudinite/shared/checks/run.mjs";\n',
+    'src/tool.mjs': 'const p = ".claudinite/shared/engine/checks/check_the_world.mjs";\n',
   };
   const wiring = {
-    '.claude/settings.json': '{ "hooks": { "Stop": [ { "hooks": [ { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/shared/checks/stop-hook.mjs" } ] } ] } }\n',
-    'CLAUDE.md': '@.claudinite/shared/CLAUDE.md\n',
+    '.claude/settings.json': '{ "hooks": { "Stop": [ { "hooks": [ { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/stop-command.mjs" } ] } ] } }\n',
     '.gitignore': '/.claudinite/*\n!/.claudinite/shared/\n',
-    '.github/workflows/claudinite-checks-ci.yml': 'run: node .claudinite/shared/checks/run.mjs\n',
-    '.claudinite/local_packs/mine/check.mjs': 'import { run } from "../../shared/checks/run.mjs";\n',
+    '.github/workflows/claudinite-checks-ci.yml': 'run: node .claudinite/shared/engine/checks/check_the_world.mjs\n',
+    '.claudinite/local_packs/mine/check.mjs': 'import { run } from "../../shared/engine/check_the_world.mjs";\n',
   };
   const shared = {
-    '.claudinite/shared/checks/run.mjs': 'engine\n',
-    '.claudinite/shared/checks/stop-hook.mjs': 'engine\n',
+    '.claudinite/shared/engine/checks/check_the_world.mjs': 'engine\n',
+    '.claudinite/shared/engine/hooks/stop-command.mjs': 'engine\n',
     '.claudinite/shared/CLAUDE.md': 'index\n',
   };
   // No vendored mount → the gate keeps the rule inert even with a violating file.
@@ -692,7 +656,7 @@ test('claudinite-isolation: inert without the vendored mount; a consumer file re
     const f = run(claudiniteIsolation, on, 'all');
     assert.equal(f.length, 1, JSON.stringify(f, null, 2));
     assert.equal(f[0].file, 'src/tool.mjs');
-    assert.match(f[0].what, /\.claudinite\/shared\/checks\/run\.mjs/);
+    assert.match(f[0].what, /\.claudinite\/shared\/engine\/checks\/check_the_world\.mjs/);
     assert.equal(f[0].severity, 'blocking');
   } finally { cleanup(off); cleanup(on); }
 });

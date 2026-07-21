@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, cleanup } from '../../checks/test/helpers.mjs';
-import { buildContext } from '../../checks/lib/context.mjs';
+import { makeRepo, cleanup } from '../../engine-tests/helpers.mjs';
+import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import barrier from './check.mjs';
 import {
   normalizeEdges, resolveRef, candidatesOn, buildIndex, under, normPrefix,
@@ -524,7 +524,7 @@ test('from accepts an array of core folders; folders not listed are out of scope
 });
 
 test('a "from" file inside the barred glob-parent is guarded without a false overlap', () => {
-  // The engine-file-among-content pattern (packs/registry.mjs guarded, to packs/*).
+  // The engine-file-among-content pattern (engine/pack_loader/pack-registry.mjs guarded, to packs/*).
   const f = runCheck({ rules: [{ from: ['core', 'content/registry.mjs'], to: 'content/*' }] }, {
     'core/a.js': "import x from '../content/alpha/mod.js';\n",
     'content/registry.mjs': '// the schema lives in content/alpha/mod.js\n',

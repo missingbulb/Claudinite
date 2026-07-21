@@ -1,4 +1,4 @@
-import { workflowFiles } from '../../checks/lib/workflows.mjs';
+import { workflowFiles } from '../../engine/checks/helpers/github-workflows.mjs';
 import releaseWorkflows, { STUB_NAME, LEGACY_STUB_NAMES, LEGACY_CREATE_PACKAGE, VENDORED_CREATE_PACKAGE } from './release-workflows.mjs';
 import templateTokens from './template-tokens.mjs';
 import releaseConfig from './release-config.mjs';

@@ -1,5 +1,5 @@
-import { finding } from '../../checks/lib/findings.mjs';
-import { findExtensionManifest } from '../../checks/lib/manifest.mjs';
+import { finding } from '../../engine/checks/helpers/findings.mjs';
+import { findExtensionManifest } from '../../engine/checks/helpers/chrome-manifest.mjs';
 import { requestedPermissions } from './lib/manifest-permissions.mjs';
 
 // Test the work: when *this change* adds a permission to the manifest, the store

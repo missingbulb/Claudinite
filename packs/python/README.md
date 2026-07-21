@@ -2,7 +2,7 @@
 
 Active when the repo has a `pyproject.toml` at the root (or one directory down). The
 package built around an optional heavy/native dependency. Two of the rules mechanize
-into check-the-work rules (mounted via the [`python-optional-deps`](../../skills/python-optional-deps/SKILL.md)
+into check-the-work rules (mounted via the [`python-optional-deps`](skills/python-optional-deps/SKILL.md)
 skill, run at every Stop and in CI — each failure message is the rule); the rest is
 architecture judgment with no false-positive-free signature, kept as prose.
 

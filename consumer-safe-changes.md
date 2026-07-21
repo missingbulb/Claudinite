@@ -29,14 +29,14 @@ channel has a different blast radius and a different rollback story:
   consumer: the tracked sync hook, `settings.json` hook registrations, gitignore rules, the
   pack declaration) — propagates through the **nightly baselining**, which
   re-runs the idempotent bootstrap on every member and lands drift through the member's
-  `claudinite/maintenance` **PR** — auto-merged once the repo's checks pass on `auto` delivery (the
+  `claudinite/maintenance` **PR** — auto-merged once the repo's checks pass on `auto-merge` delivery (the
   default), or left for the owner to review on `review` — never a direct commit to the default branch.
   Fleet-wide but lagging one nightly; the rollback story is the same channel
   (fix the canon, the next nightly re-heals). The discipline: a change here is written as
   bootstrap steps that **converge from every layout in the wild** — fresh, current, legacy,
   half-migrated — not just from the latest.
-- **Skills** (`skills/`) — surfaced on demand from the mount; same propagation as prose, but
-  only sessions doing the matching activity ever read them.
+- **Skills** (`<pack>/skills/`) — bundled in their owning pack and surfaced on demand from the
+  mount; same propagation as prose, but only sessions doing the matching activity ever read them.
 
 ## Migrating a copied artifact (stubs and the like)
 
@@ -105,7 +105,7 @@ and stubs) — run at their *landed* path inside the consumer's repo, not in the
 were written and tested in. Before changing one, audit every environment assumption against each
 context it ships to: **git discovers `.git` by walking upward**, so introspection from a vendored
 copy answers with the *consumer's* repo unless constrained to the expected toplevel (the
-`--show-toplevel` guard in `mount/apply-vendor.mjs` — an unconstrained `rev-parse HEAD` nearly
+`--show-toplevel` guard in `vendoring/apply-vendor-set.mjs` — an unconstrained `rev-parse HEAD` nearly
 stamped a consumer sha as canon provenance, #340); relative paths resolve against the vendored
 location; network access and credentials present where the file was written may be absent where it
 lands. The co-located header comment at the usage site carries each specific trap; this entry is

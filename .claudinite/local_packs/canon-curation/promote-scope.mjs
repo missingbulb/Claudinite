@@ -12,8 +12,8 @@
 // an ordinary engine change legitimately edits checks/, routines/, … Nothing in
 // the tree marks a diff as a promote run, so no always-on check could self-gate
 // to promote; the promote PR's branch prefix is the signal CI keys on.
-import { buildContext } from '../../../checks/lib/context.mjs';
-import { finding } from '../../../checks/lib/findings.mjs';
+import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
+import { finding } from '../../../engine/checks/helpers/findings.mjs';
 
 const inBounds = (p) => p.startsWith('packs/') || p.startsWith('skills/');
 

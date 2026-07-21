@@ -1,5 +1,5 @@
-import { finding } from '../../checks/lib/findings.mjs';
-import { under } from '../../checks/lib/paths.mjs';
+import { finding } from '../../engine/checks/helpers/findings.mjs';
+import { under } from '../../engine/checks/helpers/path-containment.mjs';
 
 // Shared helpers and the standard's path constants — spelled ONCE here so the
 // checks, the manifest, and the barrier can't drift apart. The wiki set is

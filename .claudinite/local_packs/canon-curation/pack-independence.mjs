@@ -14,10 +14,10 @@
 // each pack under packs/ in turn; `to: "*"` confines it to itself plus the
 // engine surface in `allow`; `scope: "imports"` keeps the ban on the coupling
 // class that crashes — code imports — while prose stays free to talk about
-// packs. The `allow` list IS the engine surface (the always-vendored roots
-// plus the packs/skills machinery modules); a new machinery module joins it
-// here, loudly — the barrier fails closed, never silently widens. The vendor
-// writer's coherence guard (mount/vendor.mjs) backstops the same invariant at
+// packs. The `allow` list IS the engine surface — the one always-vendored
+// engine/ root (#385); a new surface root would join it here, loudly — the
+// barrier fails closed, never silently widens. The vendor
+// writer's coherence guard (vendoring/compute-vendor-set.mjs) backstops the same invariant at
 // vendoring time.
 //
 // Home-only twice over: declared solely by the canon home (a contributed rule
@@ -35,15 +35,8 @@ export default {
     to: '*',
     scope: 'imports',
     allow: [
-      'checks',
-      'mount',
-      'packs/registry.mjs',
-      'packs/env.mjs',
-      'packs/interview.mjs',
-      'packs/load-active-prose.mjs',
-      'skills/registry.mjs',
-      'skills/mount-skills.mjs',
+      'engine',
     ],
-    reason: 'a pack imports only its own files and the engine surface — declare the dependency and pass configuration (a contributed rule), or move the shared helper into checks/lib',
+    reason: 'a pack imports only its own files and the engine surface — declare the dependency and pass configuration (a contributed rule), or move the shared helper into engine/checks_helpers',
   }],
 };

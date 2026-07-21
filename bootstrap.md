@@ -1,12 +1,12 @@
 # Adopting Claudinite
 
 How a consuming repo adopts these shared guidelines, under the **vendored mount**
-([mount/DESIGN.md](mount/DESIGN.md)): adoption is the **one network moment** — fetch the canon
+([vendoring/DESIGN.md](vendoring/DESIGN.md)): adoption is the **one network moment** — fetch the canon
 once, vendor what this repo needs into **tracked files** under `.claudinite/shared/`, wire the
 hooks — and every session after runs **offline** from the committed snapshot. The nightly
 maintenance is the only regular updater. Idempotent: re-running refreshes the snapshot exactly
-like a nightly would (fetch → converge → stamp) and never clobbers your own config — the
-`@`-import line and your other `settings.json` entries are only added where missing.
+like a nightly would (fetch → converge → stamp) and never clobbers your own config — your own
+`settings.json` entries are only ever added to, never overwritten.
 
 > **Members adopted before the vendored mount** (the tracked sync hook, gitignored corpus,
 > per-session fetch): do **not** re-run this document to convert — conversion is the gated flip
@@ -28,12 +28,12 @@ the environment's network policy no longer needs `codeload.github.com` for day-t
 ## Part 2 — write the pack declaration (and run the adoption interview)
 
 ```sh
-node "$scratch/checks/run.mjs" --init
+node "$scratch/engine/checks/check_the_world.mjs" --init
 ```
 
 `--init` seeds `.claudinite-checks.json`: the baseline, the technology packs the repo's
 fingerprint suspects, the default-on maintenance packs, each declared pack's `requires` closure,
-and `"maintenance": { "delivery": "auto" }`. A fingerprint only *suspects* a pack — from here on
+and `"maintenance": { "delivery": "auto-merge" }`. A fingerprint only *suspects* a pack — from here on
 the declaration is authoritative and adding/dropping packs is the project's call. Settings
 **validity** is enforced at load: an unknown pack name, an unknown property, or malformed JSON is
 a blocking `config` error.
@@ -48,7 +48,7 @@ derive the entry's `config` where the question's distill note says how.
 ## Part 3 — vendor the snapshot
 
 ```sh
-node "$scratch/mount/apply-vendor.mjs" --target . ${ref:+--ref "$ref"}
+node "$scratch/vendoring/apply-vendor-set.mjs" --target . ${ref:+--ref "$ref"}
 ```
 
 This materializes the repo's vendor set — the engine, the mount, the declared packs with their
@@ -61,15 +61,15 @@ lands a superset at the same path with no wiring change (see the design doc).
 ## Part 4 — track it
 
 ```sh
-for rule in '/.claudinite/*' '!/.claudinite/shared/' '!/.claudinite/local_packs/' '/.claudinite-hooks.log' '/.claudinite-hooks.log.tmp'; do
+for rule in '/.claudinite-hooks.log' '/.claudinite-hooks.log.tmp'; do
   grep -qxF "$rule" .gitignore 2>/dev/null || echo "$rule" >> .gitignore
 done
 git add .gitignore .claudinite-checks.json .claudinite/shared
 ```
 
-`.claudinite/*` stays ignored **wholesale with re-includes** — only `shared/` (the vendored
-canon) and `local_packs/` (the repo's own packs) are tracked — so legacy flat leftovers or a
-stale environment's stray sync stay invisible instead of appearing as untracked noise.
+That is the **whole** ignore contract: the two hook-log lines. The vendored world writes
+nothing untracked into `.claudinite/` — `shared/` and `local_packs/` are ordinary tracked
+trees — so nothing there needs ignoring (#385).
 
 ## Part 5 — wire the hooks
 
@@ -80,7 +80,7 @@ mounts → env check → interview check) and forwards their stdout into the ses
 
 ```json
 { "hooks": { "SessionStart": [ { "hooks": [
-  { "type": "command", "command": "bash $CLAUDE_PROJECT_DIR/.claudinite/shared/mount/session-start.sh" }
+  { "type": "command", "command": "bash $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/session-start-command.sh" }
 ] } ] } }
 ```
 
@@ -90,10 +90,10 @@ forbidden commands) alongside it:
 
 ```json
 { "hooks": { "Stop": [ { "hooks": [
-  { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/shared/checks/stop-hook.mjs" }
+  { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/stop-command.mjs" }
 ] } ],
   "PreToolUse": [ { "matcher": "Bash", "hooks": [
-  { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/shared/checks/pretooluse-guard.mjs" }
+  { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/pretooluse-command.mjs" }
 ] } ] } }
 ```
 
@@ -101,7 +101,7 @@ Invoke scripts **through `bash`/`node`**, never as bare paths — a dropped exec
 hook before line 1 and swallow its own message. Notes on how the steps behave:
 
 - **Preferences are fail-soft** — per-user content is never vendored;
-  `shared/mount/inject-preferences.sh` reads a local copy where the tree has one and otherwise
+  `shared/engine/hooks/inject-preferences.sh` reads a local copy where the tree has one and otherwise
   fetches the single `preferences/<email>.md`; any miss is a one-line note, and the session
   proceeds on defaults.
 - **The halt-gate** — a SessionStart hook cannot block, but its stdout is injected into context,
@@ -111,40 +111,17 @@ hook before line 1 and swallow its own message. Notes on how the steps behave:
 - **The durable hook log** — every hook appends `start` / `done exit=N` lines to
   `.claudinite-hooks.log` at the repo root. No lines ⇒ the hook never triggered; `start` without
   `done` ⇒ it died executing. Reach for it first when a session says the harness didn't load.
-- **Skill mounts are session-generated, never committed** — `shared/skills/mount-skills.mjs`
+- **Skill mounts are session-generated, never committed** — `shared/engine/skill_loader/mount-skills.mjs`
   (an orchestrator step) regenerates `.claude/skills/<name>` symlinks for the declared packs'
   union each session and maintains a self-ignoring `.gitignore` there; a committed link would
   dangle on every plain checkout.
-
-## Part 6 — import the corpus index
-
-```sh
-grep -qxF '@.claudinite/shared/CLAUDE.md' CLAUDE.md 2>/dev/null \
-  || printf '\n@.claudinite/shared/CLAUDE.md\n' >> CLAUDE.md
-grep -qF 'Claudinite self-check' CLAUDE.md 2>/dev/null \
-  || printf '\n> Claudinite self-check: if the `@.claudinite/shared/CLAUDE.md` import above did not resolve (no `.claudinite/shared/CLAUDE.md` in this checkout), the Claudinite harness is **not active** this session — a broken or partial checkout. Treat it as not loaded and confirm with the user before substantive work.\n' >> CLAUDE.md
-```
-
-The self-check lives in the consumer's own tracked `CLAUDE.md` — the one file always in context —
-so the assistant has a tell that is independent of every hook.
 
 One standing rule the vendored tree does **not** change: committed consumer code must not
 `import`/`require` canon helpers from `.claudinite/` — the canon is refreshed nightly and
 refactored upstream, so code reaching into it inherits every rename as a breaking change. Inline
 what you need. The `claudinite-isolation` check enforces this outside the wiring files.
 
-## Part 7 — the CI backstop
-
-Hooks fire only in Claude Code sessions; CI catches edits made anywhere else — same sweep, same
-messages, from the **same committed snapshot** the sessions judge by:
-
-```sh
-mkdir -p .github/workflows
-cp .claudinite/shared/packs/basics/stubs/claudinite-checks-ci.yml .github/workflows/claudinite-checks-ci.yml
-git add .github/workflows/claudinite-checks-ci.yml
-```
-
-## Part 8 — request fleet enrollment (open one tracking issue)
+## Part 6 — request fleet enrollment (open one tracking issue)
 
 A consuming project schedules nothing: the growth lifecycle and nightly maintenance run
 centrally, from the owner's home repo — but only over repos on the routine's access list. So, as
@@ -155,7 +132,7 @@ matters more, not less: an unenrolled repo's snapshot simply freezes until someo
 When the fleet's sweep baselines a repo it already maintains, it closes any still-open enrollment
 issue — being reached proves enrollment.
 
-## Part 9 — categorize the project (declare its class pack)
+## Part 7 — categorize the project (declare its class pack)
 
 **Only for a fresh / empty project** — one without its own established working style. The owner
 runs recurring **classes** of project, each carried by a project-class pack:
@@ -168,12 +145,12 @@ runs recurring **classes** of project, each carried by a project-class pack:
    facets and extracts its working instructions into new/refined canon packs (the primary
    deliverable) plus a thin project-specific overlay.
 
-## Part 10 — land the adoption green
+## Part 8 — land the adoption green
 
 Run the sweep once and clear what it surfaces:
 
 ```sh
-node .claudinite/shared/checks/run.mjs
+node .claudinite/shared/engine/checks/check_the_world.mjs
 ```
 
 On a repo with existing code, **expect a backlog** — enforcement scope is whole-repo, and
@@ -183,12 +160,12 @@ keeps. Don't reach for `--changed` to hide the backlog — it is a transitional 
 enforcement default. Commit the adoption as one change (the vendored tree, the declaration, the
 wiring) and push it through the normal PR flow.
 
-## Part 11 — cloud environment setup (Claude Code on the web)
+## Part 9 — cloud environment setup (Claude Code on the web)
 
 The web base image ships no toolchains; installs belong in the environment **image** (built
 once, snapshotted), not a per-session hook. The corpus holds the one generic script —
-[`mount/environment-setup.sh`](mount/environment-setup.sh), vendored into
-`.claudinite/shared/mount/` — identical for every project: paste its full body into the
+[`engine/hooks/environment-setup-command.sh`](engine/hooks/environment-setup-command.sh), vendored into
+`.claudinite/shared/engine/vendoring/` — identical for every project: paste its full body into the
 environment's **Setup script** field and rebuild. It runs each active pack's declared installs
 (`env.mjs install`, driven by the declaration); the SessionStart `env.mjs check` then only
 *probes* and halt-gates on a genuinely missing prerequisite. The network policy must reach what
@@ -209,11 +186,11 @@ Maintenance shapes for members still on the **legacy fetch-at-session-start moun
 sync hook at `.claudinite/mount/sync-claudinite.sh`, gitignored synced corpus, flat
 `.claudinite/` paths, `@.claudinite/CLAUDE.md` import). The nightly baselining applies **only
 this appendix** to them — never the fresh path above; conversion to the vendored mount is the
-gated flip note's job ([mount/DESIGN.md](mount/DESIGN.md), phase 2). The whole appendix is
+gated flip note's job ([vendoring/DESIGN.md](vendoring/DESIGN.md), phase 2). The whole appendix is
 deleted in phase 3, once the fleet has flipped.
 
 - **Sync hook refresh** — the tracked hook is a generated artifact the canon owns: overwrite the
-  member's copy with the canon's current [`mount/sync-claudinite.sh`](mount/sync-claudinite.sh);
+  member's copy with the canon's current [`vendoring/sync-claudinite.sh`](vendoring/sync-claudinite.sh);
   never hand-edit or inline a copy. Its `settings.json` registration stays the single
   `SessionStart` entry, invoked through `bash`
   (`bash $CLAUDE_PROJECT_DIR/.claudinite/mount/sync-claudinite.sh`); fix in place an entry
@@ -234,6 +211,6 @@ deleted in phase 3, once the fleet has flipped.
   **only while each one's seed migration file is still present** in the canon (never re-add
   after the seed retires); re-run `resolveDeclaredPacks` so `requires` closures and `via` stay
   accurate; fold a legacy top-level `packConfig` into pack-entry `config`; materialize a missing
-  `"maintenance": { "delivery": "auto" }`.
+  `"maintenance": { "delivery": "auto-merge" }`.
 - **Environment prerequisite** — the legacy mount fetches at every session start, so these
   members still need `codeload.github.com` allowlisted in their environment's network policy.
