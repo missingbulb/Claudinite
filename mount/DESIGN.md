@@ -161,9 +161,12 @@ the nightly touches everyone, and never break the channel the migration itself t
   without a declaration classifies uncovered and heals through an adoption issue (done).
 - **Phase 2 — the flip (shipped, pilot-gated):** the dated note
   (`migrations/active_migrations/`, `vendored-mount-flip`) converts a member in one commit —
-  vendor set under `.claudinite/shared/`, the `.gitignore` flip (keep ignoring `.claudinite/*`
-  with `shared/` and `local_packs/` re-included, so legacy flat leftovers and a stale
-  environment's stray sync stay invisible), the `SessionStart`/Stop/PreToolUse rewrite to
+  vendor set under `.claudinite/shared/`, the `.gitignore` flip (the legacy Claudinite ignore
+  block collapses to just the two hook-log lines — the vendored world writes nothing untracked
+  into `.claudinite/`; accepted trade-off per #385: during the transition window a stale
+  environment's stray sync shows up as *visible* untracked noise, healed when the environment's
+  Setup script is re-pasted, rather than hidden by a wholesale ignore), the
+  `SessionStart`/Stop/PreToolUse rewrite to
   `shared/` paths, the `CLAUDE.md` import + self-check swap, the stamp, and the
   sync-hook deletion — executed by the **baselining worker** (the mechanical passes see the
   record as a no-op; its `legacyPresent` feeds the unflipped-count telemetry), plus one

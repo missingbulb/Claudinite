@@ -61,15 +61,15 @@ lands a superset at the same path with no wiring change (see the design doc).
 ## Part 4 — track it
 
 ```sh
-for rule in '/.claudinite/*' '!/.claudinite/shared/' '!/.claudinite/local_packs/' '/.claudinite-hooks.log' '/.claudinite-hooks.log.tmp'; do
+for rule in '/.claudinite-hooks.log' '/.claudinite-hooks.log.tmp'; do
   grep -qxF "$rule" .gitignore 2>/dev/null || echo "$rule" >> .gitignore
 done
 git add .gitignore .claudinite-checks.json .claudinite/shared
 ```
 
-`.claudinite/*` stays ignored **wholesale with re-includes** — only `shared/` (the vendored
-canon) and `local_packs/` (the repo's own packs) are tracked — so legacy flat leftovers or a
-stale environment's stray sync stay invisible instead of appearing as untracked noise.
+That is the **whole** ignore contract: the two hook-log lines. The vendored world writes
+nothing untracked into `.claudinite/` — `shared/` and `local_packs/` are ordinary tracked
+trees — so nothing there needs ignoring (#385).
 
 ## Part 5 — wire the hooks
 
