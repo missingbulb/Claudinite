@@ -1,6 +1,6 @@
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { MIGRATIONS_SUBDIR, specFiles, migrationActive } from '../checks/lib/migrations.mjs';
+import { MIGRATIONS_SUBDIR, specFiles, migrationActive } from '../engine/checks/lib/migrations.mjs';
 
 const dir = dirname(fileURLToPath(import.meta.url));
 

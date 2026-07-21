@@ -1,5 +1,5 @@
-import { finding } from '../../checks/lib/findings.mjs';
-import { humanTurns, assistantTextAfter, classificationLine } from '../../checks/lib/transcript.mjs';
+import { finding } from '../../engine/checks/lib/findings.mjs';
+import { humanTurns, assistantTextAfter, classificationLine } from '../../engine/checks/lib/transcript.mjs';
 
 // Conversation-surface rule: the assessment itself is judgment no check can
 // verify, but that an assessment was explicitly MADE is checkable — the reply

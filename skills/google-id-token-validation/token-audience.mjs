@@ -1,5 +1,5 @@
-import { finding } from '../../checks/lib/findings.mjs';
-import { matchingLines } from '../../checks/lib/lines.mjs';
+import { finding } from '../../engine/checks/lib/findings.mjs';
+import { matchingLines } from '../../engine/checks/lib/lines.mjs';
 
 // A Google ID token is accepted on three things: signature, issuer, audience.
 // Every Google-issued token shares the one issuer, so a validator whose
@@ -15,7 +15,7 @@ import { matchingLines } from '../../checks/lib/lines.mjs';
 // issuer). Code-form verifiers (jose, jsonwebtoken) have no reliable
 // file-scoped signature and are not scanned. The skill's own directory is
 // excluded so its fixtures never self-flag on the corpus repo.
-const SELF = 'skills/google-id-token-validation/';
+const SELF = ['skills/google-id-token-validation/', 'skills-tests/google-id-token-validation/'];
 const CONFIG_EXT = /\.(ya?ml|json|toml|tf)$/;
 const BARE_ISSUER = /https:\/\/accounts\.google\.com(?![\w/.-])/;
 const ISSUER_WORD = /issuer/i;
@@ -30,7 +30,7 @@ const rule = {
   why: 'every Google-issued ID token shares that issuer, so signature + issuer alone accept a token minted for any Google OAuth client — the audience claim is the only thing that scopes a token to this app, and an unset audience is a full authentication bypass',
 
   run(ctx) {
-    const configs = ctx.files.filter((f) => !f.startsWith(SELF) && CONFIG_EXT.test(f));
+    const configs = ctx.files.filter((f) => !SELF.some((d) => f.startsWith(d)) && CONFIG_EXT.test(f));
     return matchingLines(ctx, configs, BARE_ISSUER)
       .filter(({ file }) => {
         const text = ctx.read(file) ?? '';

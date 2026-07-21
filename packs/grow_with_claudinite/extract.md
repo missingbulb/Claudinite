@@ -12,7 +12,7 @@ Write each lesson at whatever level reads naturally for this project — refer t
 
 - **Default branch.** `main` stands for **your repository's default branch** — substitute whatever your repo uses.
 - **GitHub access is MCP-native.** Reading issue/PR activity and updating the tracking issue go through the session's **GitHub MCP tools** (`mcp__github__*`). The fleet run has no shell GitHub access — the shell reaches only a git-over-HTTPS proxy scoped to one repo, with no REST credential — so never reach for `gh`/`curl` or a cross-repo clone.
-- **The project's local packs.** The set identified in [this pack's README](README.md#identifying-a-projects-capture-surface-its-local-packs) — everything under `.claudinite/local_packs/`, the project's own packs; never the read-only mounted canon elsewhere under `.claudinite/`.
+- **The project's local packs.** The set identified in [this pack's README](../../packs-tests/grow_with_claudinite/README.md#identifying-a-projects-capture-surface-its-local-packs) — everything under `.claudinite/local_packs/`, the project's own packs; never the read-only mounted canon elsewhere under `.claudinite/`.
 
 ## How it finds lessons (scoped to the last 24h)
 

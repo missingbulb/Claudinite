@@ -1,4 +1,4 @@
-import { finding } from '../../checks/lib/findings.mjs';
+import { finding } from '../../engine/checks/lib/findings.mjs';
 
 // Corpus-integrity rule: the two catalog READMEs must list every collection
 // member on disk, so a hand-maintained index can't silently drift behind a
@@ -22,7 +22,7 @@ const rule = {
   why: 'a hand-maintained catalog that omits a real pack or skill misroutes readers and hides capability; the check keeps the index honest against the tree',
 
   run(ctx) {
-    if (!ctx.tracked.includes('packs/registry.mjs') || !ctx.tracked.includes('skills/registry.mjs')) {
+    if (!ctx.tracked.includes('engine/packs/registry.mjs') || !ctx.tracked.includes('engine/skills/registry.mjs')) {
       return [];
     }
     const out = [];

@@ -14,8 +14,8 @@ pays for it whether or not they need it.
 > core.
 
 This is the same instinct the corpus already applies to itself: packs and skills are discovered
-by *scanning the tree*, not by a hand-maintained list ([packs/registry.mjs](packs/registry.mjs),
-[skills/registry.mjs](skills/registry.mjs)); the mechanism is fixed, the content is open. New
+by *scanning the tree*, not by a hand-maintained list ([engine/packs/registry.mjs](engine/packs/registry.mjs),
+[engine/skills/registry.mjs](engine/skills/registry.mjs)); the mechanism is fixed, the content is open. New
 content drops in a directory; new mechanism is a deliberate change to the engine.
 
 ## What is core (the engine)
@@ -25,14 +25,14 @@ only to extend the *mechanism*, never to add one project's rule or task:
 
 | Engine piece | Home | What it is |
 |---|---|---|
-| Checks runner + hooks | [`checks/`](checks/README.md) | the dependency-free runner, its lib, the Stop hook, the PreToolUse guard — runs the packs' checks; owns no rule itself |
-| Pack discovery + prose injection | `packs/registry.mjs`, `packs/load-active-prose.mjs` | structural scan of `packs/*/pack.mjs`; SessionStart injection of active packs' prose |
-| Skill discovery + mounting | `skills/registry.mjs`, `skills/mount-skills.mjs` | structural scan; per-session symlink of the active packs' skill union |
-| Adoption interviews | `packs/interview.mjs` | the gap computation (a pack's declared questions minus the entry's stored answers) and the SessionStart nudge; owns no question itself |
+| Checks runner + hooks | [`engine/checks/`](engine/checks/README.md) | the dependency-free runner, its lib, the Stop hook, the PreToolUse guard — runs the packs' checks; owns no rule itself |
+| Pack discovery + prose injection | `engine/packs/registry.mjs`, `engine/packs/load-active-prose.mjs` | structural scan of `packs/*/pack.mjs`; SessionStart injection of active packs' prose |
+| Skill discovery + mounting | `engine/skills/registry.mjs`, `engine/skills/mount-skills.mjs` | structural scan; per-session symlink of the active packs' skill union |
+| Adoption interviews | `engine/packs/interview.mjs` | the gap computation (a pack's declared questions minus the entry's stored answers) and the SessionStart nudge; owns no question itself |
 | Baseline-migration mechanism | [`migrations/`](migrations/README.md) | the read-side resolver, write-side rename, and fleet telemetry that auto-retires a relocation once every consumer has moved |
 | The run_daily planner | [`routines/fleet/`](routines/fleet/DESIGN.md) | goes over the reachable repos, assembles each one's due tasks from its active packs, masks full-sweep, isolates a throwing gate, emits the plan; pack-agnostic, owns no task, depends on no pack |
 | The orchestrator | [`routines/auto-all-repos-maintenance.md`](routines/auto-all-repos-maintenance.md) | the single scheduled entry point — runs the planner over the accessible fleet, reads the plan, fans out the units |
-| Bootstrap / baselining | [`bootstrap.md`](bootstrap.md), `checks/run.mjs --init` | adoption and the idempotent per-repo re-run |
+| Bootstrap / baselining | [`bootstrap.md`](bootstrap.md), `engine/checks/run.mjs --init` | adoption and the idempotent per-repo re-run |
 
 **The test for "is this core?"** — would *every* pack's content stop working without it? The
 planner, the runner, the migration mechanism, the orchestrator loop all pass; a lint for one
@@ -55,12 +55,12 @@ A pack is a directory `packs/<name>/pack.mjs` exporting contribution slots (any 
 | **Contributed config** | `contributes: { <pack>: ... }` | configuration addressed to another (required) pack — a fixed folder-barrier is the canonical case. The target pack interprets its active contributors' data via its own `contributedRules(activePacks)` seam, returning first-class rules; the runner wires the two together, so composition is declaration + data, never a cross-pack import |
 
 **Packs are independent.** A pack's code imports only its **own** files and the engine surface
-(`checks/`, `mount/`, the machinery `.mjs` at the `packs/`/`skills/` roots) — never another
+(the `engine/` root — checks runner, mount machinery, pack/skill machinery) — never another
 pack's code, and never a canon-internal tree (`migrations/`, `routines/`): the vendor set ships
 a pack only when declared and ships no canon-internal tree at all, so such an import crashes
 every consumer that vendors the importer without its target. A pack that wants another pack's
 *abilities* declares the dependency (`requires`) and passes **configuration**; a helper both
-sides need moves into `checks/lib`. Enforced canon-side as **barriers configuration, never
+sides need moves into `engine/checks/lib`. Enforced canon-side as **barriers configuration, never
 bespoke checking code**: the `pack-independence` barrier is contributed as manifest data by the
 canon home's own curation local pack (`.claudinite/local_packs/canon-curation/` — a home-repo
 duty, since the `packs/` tree it polices exists only here), with the vendor writer's coherence
@@ -100,7 +100,7 @@ engine."
 
 Ask what *kind* of thing you're adding; each kind has exactly one home, and none of them is core:
 
-1. **A new rule or practice** → the [promotion ladder](checks/DESIGN.md) (platform setting →
+1. **A new rule or practice** → the [promotion ladder](engine/checks/DESIGN.md) (platform setting →
    PreToolUse hook → post-hoc check → skill → prose) picks the mechanism; it lands in a pack (or
    a skill that pack requires). *Which* pack follows the portable-vs-specific split: a portable rule
    → a canon pack; a rule specific to one project → that project's own `local_packs/` pack. The
@@ -118,8 +118,9 @@ Ask what *kind* of thing you're adding; each kind has exactly one home, and none
    new migration capability, a change to the orchestrator loop — *is* the rare core change. Do it
    deliberately, and expect it to serve every pack, not one.
 
-If a proposed change is a new file under `routines/`, `checks/` (beyond the runner/lib), or a new
-branch in the planner *for one task's sake*, stop: it almost certainly belongs in a pack.
+If a proposed change is a new file under `routines/`, `engine/` (beyond the runner/lib and the
+machinery), or a new branch in the planner *for one task's sake*, stop: it almost certainly
+belongs in a pack.
 
 ## Relocating into a pack: retire the old home
 
@@ -135,5 +136,5 @@ leaves the source behind isn't done.
 ---
 
 Related: the corpus map and the two content homes are in [CLAUDE.md](CLAUDE.md); the mechanism
-promotion ladder is in [checks/DESIGN.md](checks/DESIGN.md); keeping a canon change from hurting
+promotion ladder is in [engine/checks/DESIGN.md](engine/checks/DESIGN.md); keeping a canon change from hurting
 consumers is [consumer-safe-changes.md](consumer-safe-changes.md).

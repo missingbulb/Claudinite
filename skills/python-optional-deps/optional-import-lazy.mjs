@@ -1,4 +1,4 @@
-import { finding } from '../../checks/lib/findings.mjs';
+import { finding } from '../../engine/checks/lib/findings.mjs';
 import { optionalDistNames, importNamesFor, topPackagesOf } from './pyproject.mjs';
 
 // A declared-optional dependency imported at module top level runs at
@@ -25,7 +25,7 @@ import { optionalDistNames, importNamesFor, topPackagesOf } from './pyproject.mj
 // shape belongs to the sibling install-hint rule; and a dist whose import name
 // is unrelated to its dist name is not mapped (see pyproject.mjs), so it is not
 // flagged either.
-const SELF = 'skills/python-optional-deps/';
+const SELF = ['skills/python-optional-deps/', 'skills-tests/python-optional-deps/'];
 const PY_EXT = /\.py$/;
 const TESTISH = /(^|\/)(tests?|__tests__)\/|(^|\/)(test_[^/]*|conftest)\.py$|_test\.py$/;
 const PYPROJECT = /(^|\/)pyproject\.toml$/;
@@ -33,7 +33,7 @@ const TOP_LEVEL_IMPORT = /^(import|from)\s/; // column 0 — no leading whitespa
 
 function optionalImportNames(ctx) {
   const optional = new Set();
-  for (const f of ctx.files.filter((f) => !f.startsWith(SELF) && PYPROJECT.test(f))) {
+  for (const f of ctx.files.filter((f) => !SELF.some((d) => f.startsWith(d)) && PYPROJECT.test(f))) {
     for (const n of optionalDistNames(ctx.read(f) ?? '')) optional.add(n);
   }
   return optional.size ? importNamesFor(optional) : null;
@@ -50,7 +50,7 @@ const rule = {
     const importNames = optionalImportNames(ctx);
     if (!importNames) return [];
     const out = [];
-    const pyFiles = ctx.files.filter((f) => !f.startsWith(SELF) && PY_EXT.test(f) && !TESTISH.test(f));
+    const pyFiles = ctx.files.filter((f) => !SELF.some((d) => f.startsWith(d)) && PY_EXT.test(f) && !TESTISH.test(f));
     for (const file of pyFiles) {
       const text = ctx.read(file);
       if (text === null) continue;

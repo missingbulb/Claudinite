@@ -15,7 +15,7 @@ shedding context over time instead of only at the moment a rule is first learned
 
 Read the prose of the packs and skills (`packs/<name>/RULES.md`, `packs/<name>/RELEASE.md`,
 `skills/<name>/SKILL.md`). For each rule, ask the one question from
-[checks/DESIGN.md](../../checks/DESIGN.md): **does it constrain a *static signature in the repo
+[engine/checks/DESIGN.md](../../engine/checks/DESIGN.md): **does it constrain a *static signature in the repo
 artifact* — something a post-hoc scan could observe?**
 
 - **Yes → a conversion candidate.** A dangling-reference rule, a filename convention, a workflow

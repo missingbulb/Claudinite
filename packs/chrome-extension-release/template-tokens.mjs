@@ -1,5 +1,5 @@
-import { finding } from '../../checks/lib/findings.mjs';
-import { workflowFiles } from '../../checks/lib/workflows.mjs';
+import { finding } from '../../engine/checks/lib/findings.mjs';
+import { workflowFiles } from '../../engine/checks/lib/workflows.mjs';
 
 const rule = {
   id: 'cer/template-tokens',

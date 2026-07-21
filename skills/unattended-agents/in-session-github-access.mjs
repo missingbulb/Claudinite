@@ -1,4 +1,4 @@
-import { finding } from '../../checks/lib/findings.mjs';
+import { finding } from '../../engine/checks/lib/findings.mjs';
 
 // In-session routine/worker code reaches GitHub through the session's MCP tools —
 // never a REST client + GITHUB_TOKEN. This is the corollary of the dispatch-only

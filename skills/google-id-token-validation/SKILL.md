@@ -5,4 +5,4 @@ description: Wiring server-side validation of Google Sign-In ID tokens — a JWT
 
 # Google ID-token validation
 
-Wire the validator however the project dictates (an API Gateway JWT authorizer, a `jose`/`jsonwebtoken` verifier, a Cloud Function). Client-side token acquisition is the [`chrome-extension`](../../packs/chrome-extension/README.md) pack's turf.
+Wire the validator however the project dictates (an API Gateway JWT authorizer, a `jose`/`jsonwebtoken` verifier, a Cloud Function). Client-side token acquisition is the [`chrome-extension`](../../packs-tests/chrome-extension/README.md) pack's turf.

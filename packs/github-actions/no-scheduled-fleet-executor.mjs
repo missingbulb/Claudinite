@@ -1,5 +1,5 @@
-import { finding } from '../../checks/lib/findings.mjs';
-import { workflowFiles } from '../../checks/lib/workflows.mjs';
+import { finding } from '../../engine/checks/lib/findings.mjs';
+import { workflowFiles } from '../../engine/checks/lib/workflows.mjs';
 
 // The fleet daily routine is the only schedule (routines/fleet/scheduling.md): the
 // census, the sweep, and every pack task's Action are workflow_dispatch-only executors

@@ -22,6 +22,6 @@ export default {
   rules: [],
   run_daily: [repoTidy],
   // The single-object worker skills the repo-tidy worker applies, mounted wherever
-  // tidy-repo is declared (skills/mount-skills.mjs).
+  // tidy-repo is declared (engine/skills/mount-skills.mjs).
   skills: ['single-branch-status', 'single-pr-status', 'single-issue-triage'],
 };

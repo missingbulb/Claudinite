@@ -1,5 +1,5 @@
-import { finding } from '../../checks/lib/findings.mjs';
-import { matchingLines } from '../../checks/lib/lines.mjs';
+import { finding } from '../../engine/checks/lib/findings.mjs';
+import { matchingLines } from '../../engine/checks/lib/lines.mjs';
 
 // Chrome ships speech recognition only under the webkit-prefixed constructor;
 // other Chromium contexts (headless, non-Chromium browsers, the test binding)
@@ -17,8 +17,9 @@ import { matchingLines } from '../../checks/lib/lines.mjs';
 // feature test, means the file is aware of both and is not scanned — a
 // conservative gate that would rather miss than false-flag). Advisory: a lone
 // direct construction is a smell to judge, not proof of a break. The skill's own
-// directory is excluded so its fixtures never self-flag on the corpus repo.
-const SELF = 'skills/web-speech-io/';
+// directory — and its test tree, where the fixtures live — is excluded so the
+// fixtures never self-flag on the corpus repo.
+const SELF = ['skills/web-speech-io/', 'skills-tests/web-speech-io/'];
 const SOURCE = /\.(mjs|cjs|jsx?|tsx?)$/;
 const DIRECT_PREFIXED = /new\s+webkitSpeechRecognition\s*\(/;
 
@@ -37,7 +38,7 @@ const rule = {
 
   run(ctx) {
     const files = ctx.files.filter((f) =>
-      !f.startsWith(SELF) && SOURCE.test(f) && !featureDetects(ctx.read(f) ?? ''));
+      !SELF.some((d) => f.startsWith(d)) && SOURCE.test(f) && !featureDetects(ctx.read(f) ?? ''));
     return matchingLines(ctx, files, DIRECT_PREFIXED).map(({ file, line }) => finding(rule, {
       file, line,
       what: 'constructs the webkit-prefixed recognizer directly with no unprefixed SpeechRecognition fallback',

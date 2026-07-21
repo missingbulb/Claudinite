@@ -1,4 +1,4 @@
-import { finding } from '../../checks/lib/findings.mjs';
+import { finding } from '../../engine/checks/lib/findings.mjs';
 
 // Converted (the testable slice) from the engineering-practices skill's "Earn
 // each dependency" rule. Only the *event* — a package.json gains a dependency it

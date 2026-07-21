@@ -1,4 +1,4 @@
-# Thin launcher only — the logic lives in checks/ (see checks/README.md).
+# Thin launcher only — the logic lives in engine/checks/ (see engine/checks/README.md).
 name: Checks CI
 on:
   pull_request:
@@ -24,14 +24,14 @@ jobs:
         with:
           node-version: 20
       - name: Unit tests
-        # checks/test/ = engine + the cross-pack detect test; each pack/skill carries its own pack.test.mjs / *.test.mjs, the home's own local packs included (.claudinite/local_packs/ — the promote-scope gate test rides the canon-curation local pack); routines/fleet/ carries the planner engine tests; mount/ carries the SessionStart orchestrator test.
-        run: node --test checks/test/*.test.mjs packs/*.test.mjs packs/*/*.test.mjs skills/*.test.mjs skills/*/*.test.mjs routines/*/*.test.mjs mount/*.test.mjs .claudinite/local_packs/*/*.test.mjs
+        # engine-tests/ mirrors engine/ (checks runner + cross-pack detect test, mount, pack/skill machinery); packs-tests/ and skills-tests/ mirror each pack's / skill's own tests; the home's own local packs keep theirs in-tree (.claudinite/local_packs/ — the promote-scope gate test rides the canon-curation local pack); routines/fleet/ carries the planner engine tests.
+        run: node --test engine-tests/*/*.test.mjs packs-tests/*/*.test.mjs skills-tests/*/*.test.mjs routines/*/*.test.mjs .claudinite/local_packs/*/*.test.mjs
       - name: Conformance sweep
-        run: node checks/run.mjs
+        run: node engine/checks/run.mjs
       - name: Promote write-surface gate
         # The growth promote stage (.claudinite/local_packs/canon-curation/promote.md) is the one change
-        # bounded to packs/ + skills/ — an ordinary engine PR legitimately edits checks/,
-        # routines/, so this cannot run on every PR. It keys on the promote branch prefix
+        # bounded to packs/ + skills/ (and their -tests trees) — an ordinary engine PR legitimately
+        # edits engine/, routines/, so this cannot run on every PR. It keys on the promote branch prefix
         # (promote.md pins it) and fails the promote PR if a changed path strays.
         if: contains(github.head_ref, 'growth-promote')
         run: node .claudinite/local_packs/canon-curation/promote-scope.mjs

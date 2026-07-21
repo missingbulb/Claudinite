@@ -1,5 +1,5 @@
 import { dirname, join, basename } from 'node:path';
-import { finding } from '../../checks/lib/findings.mjs';
+import { finding } from '../../engine/checks/lib/findings.mjs';
 
 // A routine is a folder whose entry point is `routine.md` (the standard name),
 // alongside the deterministic scripts it invokes. This check asserts the

@@ -1,5 +1,5 @@
-import { finding } from '../../checks/lib/findings.mjs';
-import { addedLines } from '../../checks/lib/lines.mjs';
+import { finding } from '../../engine/checks/lib/findings.mjs';
+import { addedLines } from '../../engine/checks/lib/lines.mjs';
 
 // The OAuth client id is one value in two roles: the client requests the ID
 // token FOR it (it becomes the token's audience claim) and the validator is
@@ -14,7 +14,7 @@ import { addedLines } from '../../checks/lib/lines.mjs';
 // literal (…apps.googleusercontent.com, escaped dots below) is itself the
 // narrow gate. The skill's own directory is excluded so its fixtures never
 // self-flag on the corpus repo.
-const SELF = 'skills/google-id-token-validation/';
+const SELF = ['skills/google-id-token-validation/', 'skills-tests/google-id-token-validation/'];
 const CLIENT_ID = /[A-Za-z0-9][\w-]*\.apps\.googleusercontent\.com/g;
 
 const rule = {
@@ -27,10 +27,10 @@ const rule = {
   run(ctx) {
     const out = [];
     for (const { file, line, text } of addedLines(ctx)) {
-      if (file.startsWith(SELF)) continue;
+      if (SELF.some((d) => file.startsWith(d))) continue;
       for (const literal of new Set([...text.matchAll(CLIENT_ID)].map((m) => m[0]))) {
         const elsewhere = ctx.files.filter((f) =>
-          f !== file && !f.startsWith(SELF) && (ctx.read(f) ?? '').includes(literal));
+          f !== file && !SELF.some((d) => f.startsWith(d)) && (ctx.read(f) ?? '').includes(literal));
         if (elsewhere.length === 0) continue;
         out.push(finding(rule, {
           file, line,

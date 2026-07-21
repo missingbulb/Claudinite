@@ -1,5 +1,5 @@
-import { finding } from '../../checks/lib/findings.mjs';
-import { normPrefix, under } from '../../checks/lib/paths.mjs';
+import { finding } from '../../engine/checks/lib/findings.mjs';
+import { normPrefix, under } from '../../engine/checks/lib/paths.mjs';
 
 // The barriers detection engine — language-agnostic enforcement of a directed
 // folder-access graph. A *barrier edge* forbids the files under one set of

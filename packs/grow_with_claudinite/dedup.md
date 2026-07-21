@@ -9,7 +9,7 @@ The growth lifecycle's pruning stage, this pack's daily task: reconcile a projec
 - **Default branch.** `main` stands for **your repository's default branch** — substitute whatever your repo uses.
 - **GitHub access is MCP-native.** Updating the tracking issue goes through the session's **GitHub MCP tools** (`mcp__github__*`). The fleet run has no shell GitHub access — the shell reaches only a git-over-HTTPS proxy scoped to one repo, with no REST credential — so never reach for `gh`/`curl` or a cross-repo clone.
 - **The mounted canon.** The exact canon revision your project currently consumes — compare against *that*, not a live fetch. Under session-start sync it's the latest `main` (so a promotion is visible only once its PR is merged, not the moment promote opens it); under a pinned submodule it's the pin (so the item lands here only once the pointer is bumped). Either way you prune only against what the project actually mounts.
-- **The project's local packs.** The set identified in [this pack's README](README.md#identifying-a-projects-capture-surface-its-local-packs) — everything under `.claudinite/local_packs/`. That's the corpus this routine prunes within; the read-only mounted canon elsewhere under `.claudinite/` is never a prune target, only the yardstick you prune *against*.
+- **The project's local packs.** The set identified in [this pack's README](../../packs-tests/grow_with_claudinite/README.md#identifying-a-projects-capture-surface-its-local-packs) — everything under `.claudinite/local_packs/`. That's the corpus this routine prunes within; the read-only mounted canon elsewhere under `.claudinite/` is never a prune target, only the yardstick you prune *against*.
 
 ## What it does: prune / rephrase local packs the canon now covers
 

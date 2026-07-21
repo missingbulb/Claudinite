@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash $CLAUDE_PROJECT_DIR/mount/session-start.sh"
+            "command": "bash $CLAUDE_PROJECT_DIR/engine/mount/session-start.sh"
           }
         ]
       }
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node $CLAUDE_PROJECT_DIR/checks/pretooluse-guard.mjs"
+            "command": "node $CLAUDE_PROJECT_DIR/engine/checks/pretooluse-guard.mjs"
           }
         ]
       }
@@ -26,7 +26,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node $CLAUDE_PROJECT_DIR/checks/stop-hook.mjs"
+            "command": "node $CLAUDE_PROJECT_DIR/engine/checks/stop-hook.mjs"
           }
         ]
       }

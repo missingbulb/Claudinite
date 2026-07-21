@@ -1,4 +1,4 @@
-import { finding } from '../../checks/lib/findings.mjs';
+import { finding } from '../../engine/checks/lib/findings.mjs';
 
 // The Web Speech recognition API and speechSynthesis are Window-scoped: they
 // live on `window`/a document, which an MV3 background service worker does not
@@ -18,7 +18,7 @@ import { finding } from '../../checks/lib/findings.mjs';
 // documents for code-form verifiers). No MV3 manifest, or a manifest that
 // bundles its worker, means the check stays silent. The skill's own directory is
 // excluded so its fixtures never self-flag on the corpus repo.
-const SELF = 'skills/web-speech-io/';
+const SELF = ['skills/web-speech-io/', 'skills-tests/web-speech-io/'];
 const RECOGNITION = /\b(webkitSpeechRecognition|SpeechRecognitionPhrase|SpeechRecognition)\b/;
 const SYNTHESIS = /\b(speechSynthesis|SpeechSynthesisUtterance)\b/;
 
@@ -40,7 +40,7 @@ function resolveFrom(manifestPath, rel) {
 function serviceWorkers(ctx) {
   const out = [];
   for (const f of ctx.files) {
-    if (f.startsWith(SELF) || !/(^|\/)manifest\.json$/.test(f)) continue;
+    if (SELF.some((d) => f.startsWith(d)) || !/(^|\/)manifest\.json$/.test(f)) continue;
     let manifest;
     try { manifest = JSON.parse(ctx.read(f) ?? ''); } catch { continue; }
     if (!manifest || manifest.manifest_version !== 3) continue;
