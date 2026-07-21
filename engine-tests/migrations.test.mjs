@@ -244,8 +244,8 @@ test('loadMigrations: the vendored-mount flip record carries its worker gate and
   const m = (await loadMigrations()).find((x) => x.id === 'vendored-mount-flip');
   assert.ok(m, 'flip record must be discovered');
   assert.equal(m.retire, 'manual');
-  // Pilot gate: the worker converts only the repos this names (until 'fleet').
-  assert.deepEqual(m.flip.repos, ['missingbulb/GoogleCalendarEventCreator']);
+  // Pilot concluded: the gate is wide open — every covered member converts.
+  assert.equal(m.flip.repos, 'fleet');
   assert.match(m.flip.steps, /ONE commit/);
   // No mechanical ops on purpose — fleet-apply must see a no-op.
   assert.equal(m.aliases, undefined);
