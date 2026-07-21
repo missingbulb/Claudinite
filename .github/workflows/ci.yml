@@ -26,7 +26,11 @@ jobs:
           node-version: 20
       - name: Unit tests
         # engine-tests/ mirrors engine/'s inner structure (#385 — engine/ ships to consumers exactly as-is, tests stay canon-side); each pack carries its own tests inside its tree, the home's local packs included; routines/fleet/ carries the planner tests.
-        run: node --test engine-tests/*.test.mjs engine-tests/*/*.test.mjs packs/*.test.mjs packs/*/*.test.mjs packs/*/skills/*/*.test.mjs routines/*/*.test.mjs .claudinite/local_packs/*/*.test.mjs .claudinite/local_packs/*/skills/*/*.test.mjs
+        # nullglob: a location with no tests drops out instead of reaching node as a literal pattern.
+        run: |
+          shopt -s nullglob
+          tests=(engine-tests/*.test.mjs engine-tests/*/*.test.mjs packs/*.test.mjs packs/*/*.test.mjs packs/*/skills/*/*.test.mjs routines/*/*.test.mjs .claudinite/local_packs/*/*.test.mjs .claudinite/local_packs/*/skills/*/*.test.mjs)
+          node --test "${tests[@]}"
       - name: Conformance sweep
         run: node engine/checks/check_the_world.mjs
       - name: Promote write-surface gate
