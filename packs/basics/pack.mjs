@@ -26,9 +26,10 @@ export default {
   // The consumer-isolation wall rides the barriers mechanism: basics requires
   // the barriers pack and CONTRIBUTES the fixed barrier as manifest data
   // (claudinite-isolation.mjs — pure data, no cross-pack import;
-  // pack-independence). Universal because basics is declared everywhere; the
-  // requires closure materializes the barriers declaration alongside it.
-  requires: ['barriers'],
+  // pack-independence). git-github carries the git/GitHub side of the task
+  // lifecycle (#385). Universal because basics is declared everywhere; the
+  // requires closure materializes both declarations alongside it.
+  requires: ['barriers', 'git-github'],
   contributes: { barriers: [claudiniteIsolation] },
   rules: [
     commentClassification,
@@ -43,11 +44,12 @@ export default {
     sharedConstants,
     catalogCompleteness,
   ],
-  // The baseline skills — the activities every project's work can call for,
-  // whatever its technology — are bundled under skills/ in this pack's own
-  // tree and mounted wherever basics is declared (which --init seeds
-  // everywhere). The directory listing IS the manifest; when one stops being a
-  // baseline activity, move its directory to the pack whose projects need it.
+  // The baseline skills — general engineering practice every project's work
+  // can call for, whatever its technology — are bundled under skills/ in this
+  // pack's own tree and mounted wherever basics is declared (which --init
+  // seeds everywhere). The directory listing IS the manifest; when one stops
+  // being a baseline activity, move its directory to the pack whose projects
+  // need it (#385 moved the git/GitHub and Claudinite-lifecycle skills out).
   // The baseline daily task every member runs: baselining (re-run the idempotent
   // bootstrap + check-alignment). Being in basics — declared everywhere — makes it
   // fleet-universal without a fleet-core category.

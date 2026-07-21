@@ -28,7 +28,7 @@ only to extend the *mechanism*, never to add one project's rule or task:
 | Checks runner + hooks | [`checks/`](engine/README.md) | the dependency-free runner, its lib, the Stop hook, the PreToolUse guard — runs the packs' checks; owns no rule itself |
 | Pack discovery + prose injection | `engine/pack_loader/registry.mjs`, `engine/pack_loader/load-active-prose.mjs` | structural scan of `packs/*/pack.mjs`; SessionStart injection of active packs' prose |
 | Skill mounting | `engine/skill_loader/mount-skills.mjs` | per-session symlink of the active packs' bundled-skill union (`<pack>/skills/<name>/`) |
-| Adoption interviews | `packs/basics/skills/adopt-claudinite/interview.mjs` | the gap computation (a pack's declared questions minus the entry's stored answers) and the SessionStart nudge; owns no question itself — bundled in the adoption skill, resolved fail-soft by the engine |
+| Adoption interviews | `packs/grow_with_claudinite/skills/adopt-claudinite/interview.mjs` | the gap computation (a pack's declared questions minus the entry's stored answers) and the SessionStart nudge; owns no question itself — bundled in the adoption skill, resolved fail-soft by the engine |
 | Baseline-migration mechanism | [`migrations/`](migrations/README.md) | the read-side resolver, write-side rename, and fleet telemetry that auto-retires a relocation once every consumer has moved |
 | The run_daily planner | [`routines/fleet/`](routines/fleet/DESIGN.md) | goes over the reachable repos, assembles each one's due tasks from its active packs, masks full-sweep, isolates a throwing gate, emits the plan; pack-agnostic, owns no task, depends on no pack |
 | The orchestrator | [`routines/auto-all-repos-maintenance.md`](routines/auto-all-repos-maintenance.md) | the single scheduled entry point — runs the planner over the accessible fleet, reads the plan, fans out the units |
@@ -134,6 +134,6 @@ leaves the source behind isn't done.
 
 ---
 
-Related: the corpus map and the two content homes are in [CLAUDE.md](CLAUDE.md); the mechanism
+Related: the corpus map lives in [README.md](README.md) (there is no agent-facing corpus index — #385); the mechanism
 promotion ladder is in [engine/DESIGN.md](engine/DESIGN.md); keeping a canon change from hurting
 consumers is [consumer-safe-changes.md](consumer-safe-changes.md).

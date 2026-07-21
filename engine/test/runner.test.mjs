@@ -267,11 +267,11 @@ test('--init writes the pack declaration once and is idempotent', () => {
     // removal) — and the requires closure: basics pulls the barriers mechanism
     // pack in, materialized with its provenance (`via`).
     assert.deepEqual(JSON.parse(first).packs,
-      ['basics', { id: 'barriers', via: ['basics'] }, 'grow_with_claudinite', 'tidy-repo']);
+      ['basics', { id: 'barriers', via: ['basics'] }, { id: 'git-github', via: ['basics'] }, 'grow_with_claudinite', 'tidy-repo']);
     // The delivery selection is materialized, never an implicit default —
     // and it is the ONLY key beside the declaration: empty rules/accept
     // boilerplate is noise, not settings (#385).
-    assert.equal(JSON.parse(first).maintenance.delivery, 'auto');
+    assert.equal(JSON.parse(first).maintenance.delivery, 'auto-merge');
     assert.deepEqual(Object.keys(JSON.parse(first)).sort(), ['maintenance', 'packs']);
     assert.equal(runCli(root, '--init').status, 0);
     assert.equal(readFileSync(join(root, '.claudinite-checks.json'), 'utf8'), first);
@@ -312,10 +312,11 @@ test('no pack runs undeclared — basics included', () => {
 });
 
 test('a skill-owned check rides its owning pack\'s activation, and is listed', () => {
-  // routine-structure is bundled in basics (packs/basics/skills/unattended-agents/):
-  // it runs when basics is declared and stays silent when no pack is.
+  // routine-structure is bundled in grow_with_claudinite
+  // (packs/grow_with_claudinite/skills/unattended-agents/): it runs when that
+  // pack is declared and stays silent when no pack is.
   const artifact = { 'dev/routines/demo/routine.md': 'Run `bash dev/routines/demo/preconditions.sh`.\n' };
-  const declared = makeRepo({ changed: { ...artifact, '.claudinite-checks.json': JSON.stringify({ packs: ['basics'] }) } });
+  const declared = makeRepo({ changed: { ...artifact, '.claudinite-checks.json': JSON.stringify({ packs: ['grow_with_claudinite'] }) } });
   const undeclared = makeRepo({ changed: { ...artifact } });
   try {
     const r = runCli(declared);

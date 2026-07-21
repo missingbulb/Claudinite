@@ -12,7 +12,7 @@ import { contributedBarrierRules } from './contributed.mjs';
 // prose: the finding is the instruction, and the full guide is the README.
 //
 // Adopting barriers without a graph is a silent no-op, so adoption asks what
-// the barriers are FOR (packs/basics/skills/adopt-claudinite/interview.mjs) — the guided on-ramp beats both
+// the barriers are FOR (the adoption skill's interview machinery) — the guided on-ramp beats both
 // running empty and guessing separations from existing state.
 export default {
   id: 'barriers',

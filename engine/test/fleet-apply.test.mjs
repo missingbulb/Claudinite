@@ -20,7 +20,7 @@ const rwMig = {
 // contents (absent → an empty branch), `delivery` its maintenance preference,
 // `maintPrOpen` whether an open maintenance PR already exists. Records the
 // writes so a test can assert the commit/branch/PR/issue shape.
-function memberMock({ files = {}, maintFiles = {}, delivery = 'auto', defaultBranch = 'main', maintPrOpen = false, withUpdateFromBase = false, updateFails = false } = {}) {
+function memberMock({ files = {}, maintFiles = {}, delivery = 'auto-merge', defaultBranch = 'main', maintPrOpen = false, withUpdateFromBase = false, updateFails = false } = {}) {
   const state = { commits: [], deletes: [], branchCreated: null, prCreated: null, issueCreated: null, updatedFromBase: 0, autoMergeArmed: null };
   const io = {
     getDefaultBranch: async () => defaultBranch,

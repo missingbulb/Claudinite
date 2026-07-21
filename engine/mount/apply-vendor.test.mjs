@@ -30,7 +30,6 @@ function makeCanon() {
   }
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'registry.mjs'), join(root, 'engine', 'pack_loader', 'registry.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks_helpers', 'imports.mjs'), join(root, 'engine', 'checks_helpers', 'imports.mjs'));
-  writeAt(root, 'CLAUDE.md', 'index\n');
   writeAt(root, 'engine/check_the_world.mjs', 'engine v2\n');
   writeAt(root, 'engine/skill_loader/mount-skills.mjs', 'machinery\n');
   writeAt(root, 'packs/alpha/pack.mjs', 'export default { id: "alpha" };\n');
@@ -56,7 +55,7 @@ test('fresh target: the set lands under .claudinite/shared/ at canon-relative pa
   const target = makeTarget();
   const r = await applyAt(canon, target, { ref: 'abc123' });
   assert.deepEqual(r.errors, []);
-  for (const f of ['CLAUDE.md', 'engine/check_the_world.mjs', 'packs/alpha/RULES.md', 'packs/alpha/skills/s1/SKILL.md', 'engine/mount/vendor.mjs']) {
+  for (const f of ['engine/check_the_world.mjs', 'packs/alpha/RULES.md', 'packs/alpha/skills/s1/SKILL.md', 'engine/mount/vendor.mjs']) {
     assert.ok(existsSync(join(target, '.claudinite', 'shared', f)), `missing vendored ${f}`);
   }
   const settings = JSON.parse(readFileSync(join(target, '.claudinite-checks.json'), 'utf8'));
@@ -145,7 +144,6 @@ test('#328: a canon tree nested in a FOREIGN git repo is rootless — upward .gi
   for (const f of ['apply-vendor.mjs', 'vendor.mjs']) copyFileSync(join(MOUNT_DIR, f), join(canon, 'engine', 'mount', f));
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'registry.mjs'), join(canon, 'engine', 'pack_loader', 'registry.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks_helpers', 'imports.mjs'), join(canon, 'engine', 'checks_helpers', 'imports.mjs'));
-  writeAt(canon, 'CLAUDE.md', 'index\n');
   writeAt(canon, 'engine/check_the_world.mjs', 'engine v2\n');
   g('add', '-A');
   g('commit', '-q', '-m', 'consumer commit');

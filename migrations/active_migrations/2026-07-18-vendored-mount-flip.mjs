@@ -44,9 +44,9 @@ Then make a scratch dir; write the member's fetched
 \`node engine/mount/apply-vendor.mjs --target <scratch> --ref <verified remote head sha>\`.
 The scratch now holds \`.claudinite/shared/**\` and the stamped declaration.
 
-**2. Land ONE commit** on the member (delivery-aware — both \`auto\` and
-\`review\` (and their legacy \`push\`/\`pr\` aliases) land on the
-\`claudinite/maintenance\` branch and its PR: \`auto\` arms auto-merge,
+**2. Land ONE commit** on the member (delivery-aware — both \`auto-merge\` and
+\`review\` (and their legacy \`push\`/\`auto\`/\`pr\` aliases) land on the
+\`claudinite/maintenance\` branch and its PR: \`auto-merge\` arms auto-merge,
 \`review\` leaves it for the owner; never a direct commit to the default
 branch), containing exactly:
 - every \`scratch/.claudinite/shared/**\` file, same paths;
@@ -54,12 +54,14 @@ branch), containing exactly:
 - \`.claude/settings.json\` edited in place (never touching the member's own
   entries): the SessionStart sync-hook command becomes
   \`bash $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/session-start.sh\`; the
-  Stop command becomes \`node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/check_the_work.mjs\`
+  Stop command becomes \`node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/stop-command.mjs\`
   and the PreToolUse command
   \`node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/pretooluse-guard.mjs\`;
-- \`CLAUDE.md\`: \`@.claudinite/CLAUDE.md\` -> \`@.claudinite/shared/CLAUDE.md\`,
-  and any legacy "Claudinite self-check" paragraph DELETED (the self-check is
-  retired — #385; only the import line remains);
+- \`CLAUDE.md\`: DELETE the legacy \`@.claudinite/CLAUDE.md\` (or
+  \`@.claudinite/shared/CLAUDE.md\`) import line and any "Claudinite
+  self-check" paragraph — the corpus index is retired (#385); a consumer
+  \`CLAUDE.md\` carries only the project's own content, and the file is
+  deleted outright if that empties it;
 - \`.gitignore\`: drop the whole legacy Claudinite block (\`/.claudinite/*\`, the
   \`mount/\` re-include dance, \`/.claudinite.new/\`); keep only the two hooks-log
   ignores (\`/.claudinite-hooks.log\`, \`/.claudinite-hooks.log.tmp\`) — the

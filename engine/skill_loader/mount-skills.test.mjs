@@ -249,7 +249,7 @@ test('mount-skills: the real corpus mounts every basics skill into a consumer', 
       env: { ...process.env, CLAUDE_PROJECT_DIR: project },
     });
     assert.equal(r.status, 0, r.stderr);
-    const link = join(project, '.claude', 'skills', 'merge-to-main');
+    const link = join(project, '.claude', 'skills', 'writing-tests');
     assert.ok(lstatSync(link).isSymbolicLink());
     assert.ok(existsSync(join(link, 'SKILL.md')), 'the mounted link must resolve to a real SKILL.md');
     assert.equal(git(project, 'status', '--porcelain').trim(), '');

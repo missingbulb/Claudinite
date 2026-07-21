@@ -34,7 +34,7 @@ export default {
         },
         {
           from: '.claudinite/shared/checks/stop-hook.mjs',
-          to: '.claudinite/shared/engine/check_the_work.mjs',
+          to: '.claudinite/shared/engine/hooks/stop-command.mjs',
         },
         {
           from: '.claudinite/shared/checks/pretooluse-guard.mjs',

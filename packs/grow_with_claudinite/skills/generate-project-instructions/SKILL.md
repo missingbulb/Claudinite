@@ -131,7 +131,7 @@ stray (a single rule joins the nearest existing pack, or waits as a handoff note
 - **`README.md`** — the pack's rule table (section ≤5 words | how enforced), plus one provenance line
   naming the project it was distilled from.
 - **Index entries** — a row in [packs/README.md](../../../../packs/README.md) and, for a new pack kind, the
-  matching line in the corpus index [CLAUDE.md](../../../../CLAUDE.md).
+  matching line in the corpus map ([README.md](../../../../README.md) — there is no agent-facing corpus index, #385).
 
 The acid test before proposing any pack: **a reader must not be able to tell which project it was
 extracted from.** Any surviving repo path, command line, or product noun marks a rule that belonged in

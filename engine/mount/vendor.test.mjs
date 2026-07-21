@@ -29,7 +29,6 @@ function makeCanon({ packs = [], skills = [] } = {}) {
   copyFileSync(join(MOUNT_DIR, 'vendor.mjs'), join(root, 'engine', 'mount', 'vendor.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'registry.mjs'), join(root, 'engine', 'pack_loader', 'registry.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks_helpers', 'imports.mjs'), join(root, 'engine', 'checks_helpers', 'imports.mjs'));
-  writeAt(root, 'CLAUDE.md', 'index\n');
   // engine roots: real-shaped content plus everything that must stay out
   writeAt(root, 'engine/check_the_world.mjs', 'stub\n');
   writeAt(root, 'engine/checks_helpers/context.mjs', 'stub\n');
@@ -77,7 +76,6 @@ test('structural set: engine roots + machinery + declared pack + its skills, exa
   const { files, errors } = await vendorAt(root, [{ id: 'alpha', config: { k: 1 } }]);
   assert.deepEqual(errors, []);
   const expected = [
-    'CLAUDE.md',
     'engine/checks_helpers/context.mjs',
     'engine/checks_helpers/imports.mjs',
     'engine/check_the_world.mjs',

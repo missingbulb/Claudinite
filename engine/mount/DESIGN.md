@@ -25,17 +25,18 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    `.claudinite/shared/` mirroring the canon layout exactly, so the planned future — mounting
    Claudinite as a **git submodule** at that same path, once sessions run where a cross-repo git
    credential exists — is a drop-in upgrade: the submodule lands a superset at the same root and
-   **no wiring path changes** (`@.claudinite/shared/CLAUDE.md`,
-   `node .claudinite/shared/engine/check_the_work.mjs`, …). This is also why nothing consumer-owned
+   **no wiring path changes**
+   (`node .claudinite/shared/engine/hooks/stop-command.mjs`, …). This is also why nothing consumer-owned
    lives inside it: `.claudinite/local_packs/` sits *beside* `shared/`, which the submodule
    future outright requires — a submodule directory cannot carry the consumer's files.
 2. **Minimal set, derived structurally from the declaration.** The vendor set is a function of
    `.claudinite-checks.json`, computed by [vendor.mjs](vendor.mjs) with **no hand-maintained
-   file list**: the engine roots (`checks/`, `mount/`) vendored wholesale, the machinery `.mjs`
-   files at the `packs/`/`skills/` roots, the **declared packs** with their `requires` closure,
-   the **union of those packs' skills**, and the corpus index (`CLAUDE.md`). Excluded
-   everywhere: tests; excluded at the engine roots: `*.md` (canon-maintainer docs are read
-   upstream when needed — a pack's or skill's `.md` files are the payload and ride their
+   file list**: the one engine root (`engine/`) vendored wholesale, plus the **declared packs**
+   with their `requires` closure — each pack's bundled skills riding its own directory (#385).
+   There is no corpus-index `CLAUDE.md` and no consumer `@`-import: a session's rules arrive
+   injected (#385). Excluded
+   everywhere: tests; excluded at the engine root: `*.md` (canon-maintainer docs are read
+   upstream when needed — a pack's `.md` files are the payload and ride their
    directories). Canon-internal trees (`routines/`, `docs/`, `.github/`, root maintainer docs)
    are never vendored. Two accepted edges: a newly declared pack has no local content until the
    next refresh (the engine's unknown-pack `config` error surfaces a declared-but-absent pack
@@ -57,7 +58,7 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    migration fails, nothing is written: the repo keeps running its old snapshot exactly as
    before, is retried the next night, and the failure lands in the fleet routine's failure log.
    The commit honors the repo's `maintenance.delivery` — both lanes land on the
-   `claudinite/maintenance` branch and its PR (`auto` arms auto-merge; `review` leaves it for the owner),
+   `claudinite/maintenance` branch and its PR (`auto-merge` arms auto-merge; `review` leaves it for the owner),
    never a direct commit to the default branch; each computes its writes against the *default*
    branch, drops what the maintenance branch already carries, and refreshes that branch from base
    each night — regenerate, never reconcile — #332. The refresh is
@@ -92,8 +93,8 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    decision, #385): the Stop hook — which blocks the session from finishing until the sweep is
    green — is the enforcement surface, and an edit made outside Claude sessions surfaces at the
    next session's Stop sweep. Rollback is per-repo and atomic: revert the nightly's commit.
-8. **Isolation.** Consumer files must not reference `.claudinite/` except the wiring set: the
-   root `CLAUDE.md` (the `@`-import line), `.claude/` (settings hook registrations),
+8. **Isolation.** Consumer files must not reference `.claudinite/` except the wiring set:
+   `.claude/` (settings hook registrations),
    `.gitignore`, `.gitattributes`, `.github/workflows/` (a repo's own workflows may run the
    vendored engine), and anything under
    `.claudinite/` itself (`local_packs/` included). Product code that wants a canon helper
@@ -131,8 +132,8 @@ allowlist prerequisite, `CLAUDINITE_REF` pinning (the commit *is* the pin), the
 caveats, and the stale-mount caveat in [engine/README.md](../README.md). Session start
 becomes a single offline SessionStart entry invoking [session-start.sh](../hooks/session-start.sh)
 directly (its four steps are unchanged; the preferences step is fail-soft per 3, the env-check
-halt-gate stays). The consumer `CLAUDE.md` carries only the `@`-import line — the
-self-check paragraph is retired by owner decision (#385). The
+halt-gate stays). The consumer `CLAUDE.md` carries nothing of Claudinite's — the corpus
+index, its `@`-import, and the self-check paragraph are all retired by owner decision (#385). The
 plugin-packaging rationale in [engine/DESIGN.md](../DESIGN.md) also loses its
 update-latency premise — recorded there when the transition completes. The canon repo itself is
 untouched: it runs its own live tree and mounts nothing.
@@ -168,7 +169,7 @@ the nightly touches everyone, and never break the channel the migration itself t
   environment's stray sync shows up as *visible* untracked noise, healed when the environment's
   Setup script is re-pasted, rather than hidden by a wholesale ignore), the
   `SessionStart`/Stop/PreToolUse rewrite to
-  `shared/` paths, the `CLAUDE.md` import swap (any legacy self-check paragraph deleted — #385), the stamp, and the
+  `shared/` paths, the legacy `CLAUDE.md` import/self-check deletion (#385), the stamp, and the
   sync-hook deletion — executed by the **baselining worker** (the mechanical passes see the
   record as a no-op; its `legacyPresent` feeds the unflipped-count telemetry), plus one
   member issue asking to re-paste the environment Setup script (the surviving out-of-repo
@@ -178,11 +179,31 @@ the nightly touches everyone, and never break the channel the migration itself t
   so no member can be orphaned by its migration state. A session already running when the flip lands
   keeps its old wiring against its old snapshot — coherent — and picks the new world up next
   session.
-- **Phase 3 — converge and retire:** once every member is flipped,
-  `sync-claudinite.sh` is deleted from the canon, bootstrap's transition appendix
-  is pruned, and [consumer-safe-changes.md](../../consumer-safe-changes.md) is rewritten to
-  the new, much smaller channel model (tracked-vendor commit + notes; the instant `@main` and
-  session-sync channels are gone).
+- **Phase 3 — converge and retire:** once every member is flipped (and every cloud
+  environment's Setup script re-pasted), the transition surface retires as one deliberate
+  change. **The retirement ledger — everything phase 3 deletes, kept complete here** (each item
+  also marked at its site; the `retire: 'manual'` notes below never auto-retire):
+  1. [engine/mount/sync-claudinite.sh](sync-claudinite.sh) — the legacy per-session sync,
+     deleted from the canon (members' tracked copies are deleted by the flip itself).
+  2. Bootstrap's **transition appendix** (pre-flip maintenance shapes) and the baselining
+     worker's pre-flip branch.
+  3. The **`vendored-mount-flip` note** (its job is done when no pre-flip member exists).
+  4. The **`mount-folder-relocation` note** and the sync-hook path chain it governs.
+  5. The four **engine-restructure transition shims** at the old fetched-tree paths —
+     `checks/stop-hook.mjs`, `checks/pretooluse-guard.mjs`, `mount/session-start.sh`,
+     `packs/env.mjs` — together with the **`engine-restructure` note** that heals flipped
+     members' settings (#385).
+  6. The **legacy owned-roots** in `engine/skill_loader/mount-skills.mjs` (the pre-#385 mount
+     shapes: the flat `.claudinite/skills/`, the standalone `.claudinite/shared/skills/`, and
+     the corpus `skills/` root — #383).
+  7. The **legacy path regexes** in `routines/fleet/signals.mjs` (`checks/`, `skills/`,
+     `mount/`, root `sync-claudinite.sh` — superseded by `engine/`).
+  8. [consumer-safe-changes.md](../../consumer-safe-changes.md) rewritten to the new, much
+     smaller channel model (tracked-vendor commit + notes; the instant `@main` and session-sync
+     channels are gone).
+  Deliberately **not** phase-3 items: the `maintenance-delivery` value aliases
+  (`push`/`auto`/`pr` — permanent, their note self-retires) and the `local_packs/` bare-id
+  tolerance (same pattern).
 
 ## The vendor-set contract ([vendor.mjs](vendor.mjs))
 

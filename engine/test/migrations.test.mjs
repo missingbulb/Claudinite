@@ -196,14 +196,15 @@ test('tidy-repo-seed migration: legacyPresent reads the declaration (true iff ti
   assert.equal(await seed.legacyPresent(() => false, async () => 'nope'), false, 'unparsable -> not held');
 });
 
-test('maintenance-delivery-rename migration: legacyPresent on push/pr, and rewrites the stored value to auto/review', async () => {
+test('maintenance-delivery-rename migration: legacyPresent on push/auto/pr, and rewrites the stored value to auto-merge/review', async () => {
   const m = (await loadMigrations()).find((x) => x.id === 'maintenance-delivery-rename');
   assert.ok(m, 'maintenance-delivery-rename migration is discovered');
-  assert.equal(m.retire, 'auto'); // the push/pr alias is permanent, so retiring the record strands nothing
+  assert.equal(m.retire, 'auto'); // the push/auto/pr aliases are permanent, so retiring the record strands nothing
   const cfg = (delivery) => async () => JSON.stringify({ packs: ['basics'], maintenance: { delivery } });
   assert.equal(await m.legacyPresent(() => false, cfg('push')), true, 'legacy push -> held');
   assert.equal(await m.legacyPresent(() => false, cfg('pr')), true, 'legacy pr -> held');
-  assert.equal(await m.legacyPresent(() => false, cfg('auto')), false, 'auto -> done');
+  assert.equal(await m.legacyPresent(() => false, cfg('auto')), true, 'legacy auto -> held');
+  assert.equal(await m.legacyPresent(() => false, cfg('auto-merge')), false, 'auto-merge -> done');
   assert.equal(await m.legacyPresent(() => false, cfg('review')), false, 'review -> done');
   assert.equal(await m.legacyPresent(() => false, async () => null), false, 'no declaration -> not held');
   assert.equal(await m.legacyPresent(() => false, async () => 'nope'), false, 'unparsable -> not held');
@@ -214,7 +215,7 @@ test('maintenance-delivery-rename migration: legacyPresent on push/pr, and rewri
   const read = (p) => repo.get(p) ?? null;
   const write = (p, c) => repo.set(p, c);
   assert.deepEqual(await applyRewrites(m, { read, write }), ['.claudinite-checks.json']);
-  assert.equal(JSON.parse(repo.get('.claudinite-checks.json')).maintenance.delivery, 'auto');
+  assert.equal(JSON.parse(repo.get('.claudinite-checks.json')).maintenance.delivery, 'auto-merge');
   assert.deepEqual(await applyRewrites(m, { read, write }), [], 'idempotent once renamed');
 
   const reviewRepo = new Map([['.claudinite-checks.json',

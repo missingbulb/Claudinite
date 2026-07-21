@@ -5,8 +5,8 @@ How a consuming repo adopts these shared guidelines, under the **vendored mount*
 once, vendor what this repo needs into **tracked files** under `.claudinite/shared/`, wire the
 hooks — and every session after runs **offline** from the committed snapshot. The nightly
 maintenance is the only regular updater. Idempotent: re-running refreshes the snapshot exactly
-like a nightly would (fetch → converge → stamp) and never clobbers your own config — the
-`@`-import line and your other `settings.json` entries are only added where missing.
+like a nightly would (fetch → converge → stamp) and never clobbers your own config — your own
+`settings.json` entries are only ever added to, never overwritten.
 
 > **Members adopted before the vendored mount** (the tracked sync hook, gitignored corpus,
 > per-session fetch): do **not** re-run this document to convert — conversion is the gated flip
@@ -33,7 +33,7 @@ node "$scratch/engine/check_the_world.mjs" --init
 
 `--init` seeds `.claudinite-checks.json`: the baseline, the technology packs the repo's
 fingerprint suspects, the default-on maintenance packs, each declared pack's `requires` closure,
-and `"maintenance": { "delivery": "auto" }`. A fingerprint only *suspects* a pack — from here on
+and `"maintenance": { "delivery": "auto-merge" }`. A fingerprint only *suspects* a pack — from here on
 the declaration is authoritative and adding/dropping packs is the project's call. Settings
 **validity** is enforced at load: an unknown pack name, an unknown property, or malformed JSON is
 a blocking `config` error.
@@ -90,7 +90,7 @@ forbidden commands) alongside it:
 
 ```json
 { "hooks": { "Stop": [ { "hooks": [
-  { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/check_the_work.mjs" }
+  { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/stop-command.mjs" }
 ] } ],
   "PreToolUse": [ { "matcher": "Bash", "hooks": [
   { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/pretooluse-guard.mjs" }
@@ -116,22 +116,12 @@ hook before line 1 and swallow its own message. Notes on how the steps behave:
   union each session and maintains a self-ignoring `.gitignore` there; a committed link would
   dangle on every plain checkout.
 
-## Part 6 — import the corpus index
-
-```sh
-grep -qxF '@.claudinite/shared/CLAUDE.md' CLAUDE.md 2>/dev/null \
-  || printf '\n@.claudinite/shared/CLAUDE.md\n' >> CLAUDE.md
-```
-
-Just the import line — no self-check paragraph rides the consumer's `CLAUDE.md` (retired by
-owner decision, #385; a stale copy is deleted by the flip/baselining).
-
 One standing rule the vendored tree does **not** change: committed consumer code must not
 `import`/`require` canon helpers from `.claudinite/` — the canon is refreshed nightly and
 refactored upstream, so code reaching into it inherits every rename as a breaking change. Inline
 what you need. The `claudinite-isolation` check enforces this outside the wiring files.
 
-## Part 7 — request fleet enrollment (open one tracking issue)
+## Part 6 — request fleet enrollment (open one tracking issue)
 
 A consuming project schedules nothing: the growth lifecycle and nightly maintenance run
 centrally, from the owner's home repo — but only over repos on the routine's access list. So, as
@@ -142,7 +132,7 @@ matters more, not less: an unenrolled repo's snapshot simply freezes until someo
 When the fleet's sweep baselines a repo it already maintains, it closes any still-open enrollment
 issue — being reached proves enrollment.
 
-## Part 8 — categorize the project (declare its class pack)
+## Part 7 — categorize the project (declare its class pack)
 
 **Only for a fresh / empty project** — one without its own established working style. The owner
 runs recurring **classes** of project, each carried by a project-class pack:
@@ -155,7 +145,7 @@ runs recurring **classes** of project, each carried by a project-class pack:
    facets and extracts its working instructions into new/refined canon packs (the primary
    deliverable) plus a thin project-specific overlay.
 
-## Part 9 — land the adoption green
+## Part 8 — land the adoption green
 
 Run the sweep once and clear what it surfaces:
 
@@ -170,7 +160,7 @@ keeps. Don't reach for `--changed` to hide the backlog — it is a transitional 
 enforcement default. Commit the adoption as one change (the vendored tree, the declaration, the
 wiring) and push it through the normal PR flow.
 
-## Part 10 — cloud environment setup (Claude Code on the web)
+## Part 9 — cloud environment setup (Claude Code on the web)
 
 The web base image ships no toolchains; installs belong in the environment **image** (built
 once, snapshotted), not a per-session hook. The corpus holds the one generic script —
@@ -221,6 +211,6 @@ deleted in phase 3, once the fleet has flipped.
   **only while each one's seed migration file is still present** in the canon (never re-add
   after the seed retires); re-run `resolveDeclaredPacks` so `requires` closures and `via` stay
   accurate; fold a legacy top-level `packConfig` into pack-entry `config`; materialize a missing
-  `"maintenance": { "delivery": "auto" }`.
+  `"maintenance": { "delivery": "auto-merge" }`.
 - **Environment prerequisite** — the legacy mount fetches at every session start, so these
   members still need `codeload.github.com` allowlisted in their environment's network policy.

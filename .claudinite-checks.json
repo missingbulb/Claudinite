@@ -117,14 +117,14 @@
               {
                 "path": "engine/check_the_world.mjs",
                 "to": [
-                  "packs/basics"
+                  "packs/grow_with_claudinite"
                 ],
-                "reason": "inherent(#385): the adoption-interview machinery is bundled in the adoption skill (packs/basics/skills/adopt-claudinite/) by owner decision; the runner resolves it fail-soft and stays inert when the pack is absent"
+                "reason": "inherent(#385): the adoption-interview machinery is bundled in the adoption skill (packs/grow_with_claudinite/skills/adopt-claudinite/) by owner decision; the runner resolves it fail-soft and stays inert when the pack is absent"
               },
               {
                 "path": "extending.md",
                 "to": [
-                  "packs/basics"
+                  "packs/grow_with_claudinite"
                 ],
                 "reason": "inherent(#385): the engine map documents where the adoption-interview machinery lives now that it is bundled in the adoption skill"
               }

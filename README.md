@@ -10,7 +10,7 @@ Portable Claude instructions/rules shared across projects — the **project-agno
 
 ## For the reading agent: how to traverse this corpus
 
-The corpus map (maintainer-facing — [CLAUDE.md](CLAUDE.md) is deliberately near-empty, #385: a
+The corpus map (maintainer-facing — there is deliberately no agent-facing corpus index, #385: a
 session needs no architecture lesson, its rules arrive injected):
 
 - **`packs/<name>/`** — a pack bundles everything it contributes: prose (`RULES.md`, injected at
@@ -23,7 +23,7 @@ session needs no architecture lesson, its rules arrive injected):
 - **`engine/`** — the machinery that runs pack content, and the one always-vendored root:
   `engine/hooks/` (the wired SessionStart/PreToolUse entry points),
   `engine/check_the_world.mjs` (the conformance sweep CLI), `engine/check_the_work.mjs` (the
-  Stop hook), `engine/checks_helpers/`, `engine/pack_loader/`, `engine/skill_loader/`,
+  Stop gate, wired via the stable `engine/hooks/stop-command.mjs`), `engine/checks_helpers/`, `engine/pack_loader/`, `engine/skill_loader/`,
   `engine/mount/` (vendoring). Design records: [engine/DESIGN.md](engine/DESIGN.md),
   [engine/mount/DESIGN.md](engine/mount/DESIGN.md); the core/pack boundary:
   [extending.md](extending.md).
@@ -37,8 +37,8 @@ session needs no architecture lesson, its rules arrive injected):
 
 Consumers hold a **vendored, tracked** snapshot of the corpus at `.claudinite/shared/` — their
 declaration-derived subset, committed as ordinary files, refreshed by the nightly maintenance as
-one transactional commit, and imported with `@.claudinite/shared/CLAUDE.md` from the consumer's
-`CLAUDE.md` (SessionStart hooks inject the active packs' prose on top, all offline). Adoption is
+one transactional commit (SessionStart hooks inject the active packs' prose; there is no corpus
+index and no `@`-import — #385 — everything a session needs arrives injected, all offline). Adoption is
 the one network moment. The model, its trade-offs, and the fleet transition from the earlier
 fetch-at-session-start mount → [engine/mount/DESIGN.md](engine/mount/DESIGN.md); **setup steps →
 [bootstrap.md](bootstrap.md)** (members on the legacy mount are converted by the gated flip

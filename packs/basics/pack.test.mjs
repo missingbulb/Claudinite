@@ -510,7 +510,7 @@ test('catalog-completeness: silent when both catalogs list every member', () => 
     'skills/README.md': '# skills\n\n`merge-to-main` `writing-tests`\n',
     'packs/basics/pack.mjs': 'export default { id: "basics" };\n',
     'packs/node/pack.mjs': 'export default { id: "node" };\n',
-    'packs/basics/skills/merge-to-main/SKILL.md': '---\nname: merge-to-main\n---\nbody\n',
+    'packs/basics/skills/writing-tests/SKILL.md': '---\nname: writing-tests\n---\nbody\n',
     'packs/basics/skills/writing-tests/SKILL.md': '---\nname: writing-tests\n---\nbody\n',
   } });
   try {
@@ -623,15 +623,14 @@ test('claudinite-isolation: inert without the vendored mount; a consumer file re
     'src/tool.mjs': 'const p = ".claudinite/shared/engine/check_the_world.mjs";\n',
   };
   const wiring = {
-    '.claude/settings.json': '{ "hooks": { "Stop": [ { "hooks": [ { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/check_the_work.mjs" } ] } ] } }\n',
-    'CLAUDE.md': '@.claudinite/shared/CLAUDE.md\n',
+    '.claude/settings.json': '{ "hooks": { "Stop": [ { "hooks": [ { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/stop-command.mjs" } ] } ] } }\n',
     '.gitignore': '/.claudinite/*\n!/.claudinite/shared/\n',
     '.github/workflows/claudinite-checks-ci.yml': 'run: node .claudinite/shared/engine/check_the_world.mjs\n',
     '.claudinite/local_packs/mine/check.mjs': 'import { run } from "../../shared/engine/check_the_world.mjs";\n',
   };
   const shared = {
     '.claudinite/shared/engine/check_the_world.mjs': 'engine\n',
-    '.claudinite/shared/engine/check_the_work.mjs': 'engine\n',
+    '.claudinite/shared/engine/hooks/stop-command.mjs': 'engine\n',
     '.claudinite/shared/CLAUDE.md': 'index\n',
   };
   // No vendored mount → the gate keeps the rule inert even with a violating file.

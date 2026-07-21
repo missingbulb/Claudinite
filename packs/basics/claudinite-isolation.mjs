@@ -18,7 +18,6 @@ import { SHARED_SUBDIR } from '../../engine/pack_loader/registry.mjs';
 //   the vendored files are already outside the scanned set).
 // - '.claude': settings.json registers the hooks by path.
 // - '.github/workflows': a repo's own workflow may run the vendored engine.
-// - 'CLAUDE.md': the @-import line.
 // - '.gitignore', '.gitattributes': the mount's housekeeping rules.
 // - '.claudinite-checks.json': settings legitimately spell paths.
 // Coverage note: quoted references (imports, requires, config values) and
@@ -36,7 +35,7 @@ export default {
     from: '.',
     to: '.claudinite',
     matchUniqueFilenames: false,
-    except: ['.claudinite', '.claude', '.github/workflows', 'CLAUDE.md', '.gitignore', '.gitattributes', '.claudinite-checks.json'],
+    except: ['.claudinite', '.claude', '.github/workflows', '.gitignore', '.gitattributes', '.claudinite-checks.json'],
     reason: 'consumer files must not couple to the vendored canon — the wiring files are the reviewed exceptions (engine/mount/DESIGN.md)',
   }],
 };

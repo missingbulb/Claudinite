@@ -14,10 +14,10 @@ import { applyConfig, render } from './checks_helpers/findings.mjs';
 import { discoverPacks, isActive, resolveDeclaredPacks } from './pack_loader/registry.mjs';
 
 // The adoption-interview machinery is the adopt-claudinite skill's, bundled in
-// the baseline pack (packs/basics/skills/adopt-claudinite/). A consumer that
-// doesn't declare basics doesn't vendor it — no adoption skill, no interview —
-// so resolve it fail-soft: absent file, inert interview.
-const interviewUrl = new URL('../packs/basics/skills/adopt-claudinite/interview.mjs', import.meta.url);
+// the Claudinite-lifecycle pack (packs/grow_with_claudinite/skills/adopt-claudinite/).
+// A consumer that doesn't declare that pack doesn't vendor it — no lifecycle
+// pack, no interview — so resolve it fail-soft: absent file, inert interview.
+const interviewUrl = new URL('../packs/grow_with_claudinite/skills/adopt-claudinite/interview.mjs', import.meta.url);
 const { interviewState } = existsSync(fileURLToPath(interviewUrl))
   ? await import(interviewUrl.href)
   : { interviewState: () => ({ pending: [], stale: [], errors: [] }) };
@@ -83,12 +83,12 @@ if (has('--init')) {
   // Only what carries a decision: the declaration and the always-explicit
   // delivery. Empty rules/accept boilerplate is noise, not settings (#385);
   // loadConfig defaults absent keys.
-  writeFileSync(path, `${JSON.stringify({ packs: declared, maintenance: { delivery: 'auto' } }, null, 2)}\n`);
+  writeFileSync(path, `${JSON.stringify({ packs: declared, maintenance: { delivery: 'auto-merge' } }, null, 2)}\n`);
   console.log(`Wrote ${path} (packs: ${declared.join(', ')}).`);
   // Adoption interviews, strict at bootstrap: the flow that runs --init has the
   // owner present, so surface every declared pack's questions for the adoption
-  // interview NOW (bootstrap.md Part 6). Outside bootstrap the same gap only
-  // ever surfaces as a mild SessionStart note (packs/basics/skills/adopt-claudinite/interview.mjs).
+  // interview NOW (bootstrap.md Part 2). Outside bootstrap the same gap only
+  // ever surfaces as a mild SessionStart note (the adoption skill's interview machinery).
   const { pending } = interviewState(packs, loadConfig(root));
   if (pending.length) {
     console.log('\nAdoption questions pending — interview the owner as part of this adoption: ask each'
@@ -128,7 +128,7 @@ for (const name of ctx.config.packs) {
     findings.push(configError(`declares unknown pack "${name}"`, `remove it or fix the name — declarable packs: ${[...knownIds].sort().join(', ')}`));
   }
 }
-// Adoption-interview hygiene (packs/basics/skills/adopt-claudinite/interview.mjs). PENDING questions are
+// Adoption-interview hygiene (the adoption skill's interview machinery). PENDING questions are
 // deliberately not findings at all — they surface only as a mild SessionStart
 // note, so an unattended nightly run is never blocked on a question nobody is
 // present to answer. A STALE answer (its question no longer declared — renamed

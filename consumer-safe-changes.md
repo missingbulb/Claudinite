@@ -29,7 +29,7 @@ channel has a different blast radius and a different rollback story:
   consumer: the tracked sync hook, `settings.json` hook registrations, gitignore rules, the
   pack declaration) — propagates through the **nightly baselining**, which
   re-runs the idempotent bootstrap on every member and lands drift through the member's
-  `claudinite/maintenance` **PR** — auto-merged once the repo's checks pass on `auto` delivery (the
+  `claudinite/maintenance` **PR** — auto-merged once the repo's checks pass on `auto-merge` delivery (the
   default), or left for the owner to review on `review` — never a direct commit to the default branch.
   Fleet-wide but lagging one nightly; the rollback story is the same channel
   (fix the canon, the next nightly re-heals). The discipline: a change here is written as

@@ -98,6 +98,6 @@ fi
 # a single hook's stdout is never a mix of JSON and prose).
 hooklog sync "done exit=0 NOT-LOADED no-copy (fetch failed, no local corpus)"
 cat <<'EOF'
-CLAUDINITE NOT LOADED: the sync failed and no local .claudinite/ copy exists, so @.claudinite/CLAUDE.md is unresolved and none of the Claudinite harness (packs, skills, preferences) is active this session. A common cause is the environment blocking the corpus fetch: codeload.github.com must be reachable and allowlisted in the environment network policy, or the sync 403s. STOP: before running any other tool, answering, or starting the requested task, use the AskUserQuestion tool to ask the user whether to proceed without the harness or pause and fix the sync (e.g. allowlist codeload.github.com, then retry); do not proceed until they answer.
+CLAUDINITE NOT LOADED: the sync failed and no local .claudinite/ copy exists, so none of the Claudinite harness (packs, skills, preferences) is active this session. A common cause is the environment blocking the corpus fetch: codeload.github.com must be reachable and allowlisted in the environment network policy, or the sync 403s. STOP: before running any other tool, answering, or starting the requested task, use the AskUserQuestion tool to ask the user whether to proceed without the harness or pause and fix the sync (e.g. allowlist codeload.github.com, then retry); do not proceed until they answer.
 EOF
 exit 0

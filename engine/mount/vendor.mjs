@@ -17,9 +17,6 @@ const canonRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url)))); // 
 // the consumer-side root the set materializes under.
 export { SHARED_SUBDIR };
 
-// The corpus index a consumer imports from its own CLAUDE.md.
-export const INDEX_FILE = 'CLAUDE.md';
-
 // The engine is discovered structurally, never listed file-by-file: the engine
 // root vendors wholesale (a new engine file ships with no edit here). The list
 // lives in the engine lib (engine/checks_helpers/imports.mjs) — the same
@@ -66,8 +63,6 @@ export async function computeVendorSet(declaredEntries) {
   const files = new Set();
   const errors = [];
 
-  if (existsSync(join(canonRoot, INDEX_FILE))) files.add(INDEX_FILE);
-  else errors.push({ what: `${INDEX_FILE} is missing from the canon tree`, fix: 'restore the corpus index' });
   for (const root of ENGINE_DIR_ROOTS) walk(root, files, errors, { engine: true });
 
   const packs = await loadPacks();

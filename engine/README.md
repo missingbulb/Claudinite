@@ -59,7 +59,7 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
   "accept": [
     { "rule": "a-rule", "path": "src/shared/", "reason": "named cross-cutting concern" }
   ],
-  "maintenance": { "delivery": "auto" }
+  "maintenance": { "delivery": "auto-merge" }
 }
 ```
 
@@ -109,18 +109,22 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
   project's own layout is the reason) — an exemption a *pack's adoption* forces belongs on that
   pack's entry.
 - **maintenance** — fleet-maintenance delivery for this repo, **always explicit**: `"delivery":
-  "auto"` (the sweep lands its baselining/alignment changes through the `claudinite/maintenance` PR,
-  armed to **auto-merge** once this repo's checks pass — no human review) or `"review"` (that same
+  "auto-merge"` (the sweep lands its baselining/alignment changes through the `claudinite/maintenance`
+  PR, armed to **auto-merge** once this repo's checks pass — no human review, named for exactly what
+  it does) or `"review"` (that same
   PR, left for the owner to review — never auto-merged). Neither is a direct commit to the default
-  branch. (`push`/`pr` are accepted as legacy aliases for `auto`/`review`.) There is deliberately no
-  implicit default — `--init` seeds `auto` and the nightly sweep backfills a missing key, so the
+  branch. (`push`/`auto`/`pr` are accepted as legacy aliases for `auto-merge`/`review`.) There is
+  deliberately no
+  implicit default — `--init` seeds `auto-merge` and the nightly sweep backfills a missing key, so the
   selection is visible in this file rather than implied by absence. Read by
   the baselining worker; the checks engine
   itself ignores it.
 
 ## Enforcement wiring
 
-- **Stop hook** ([stop-hook.mjs](check_the_work.mjs)) — registered in a repo's
+- **Stop hook** — a repo's `.claude/settings.json` wires the stable
+  [hooks/stop-command.mjs](hooks/stop-command.mjs), which routes to
+  [check_the_work.mjs](check_the_work.mjs) — registered in a repo's
   `.claude/settings.json` (see [bootstrap.md](../bootstrap.md)). Fast-exits when nothing changed
   vs the base; on blocking findings exits 2 so the session fixes them before stopping.
   Self-limiting: after blocking twice on identical findings it lets the stop through.
