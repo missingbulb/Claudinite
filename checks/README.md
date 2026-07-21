@@ -59,7 +59,7 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
   "accept": [
     { "rule": "a-rule", "path": "src/shared/", "reason": "named cross-cutting concern" }
   ],
-  "maintenance": { "delivery": "push" }
+  "maintenance": { "delivery": "auto" }
 }
 ```
 
@@ -109,11 +109,12 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
   project's own layout is the reason) — an exemption a *pack's adoption* forces belongs on that
   pack's entry.
 - **maintenance** — fleet-maintenance delivery for this repo, **always explicit**: `"delivery":
-  "push"` (the sweep lands its baselining/alignment changes through the `claudinite/maintenance` PR,
-  armed to **auto-merge** once this repo's checks pass — no human review) or `"pr"` (that same PR,
-  left for the owner to review — never auto-merged). Neither is a direct commit to the default
-  branch. There is deliberately no implicit default — `--init` seeds `push` and the nightly sweep
-  backfills a missing key, so the selection is visible in this file rather than implied by absence. Read by
+  "auto"` (the sweep lands its baselining/alignment changes through the `claudinite/maintenance` PR,
+  armed to **auto-merge** once this repo's checks pass — no human review) or `"review"` (that same
+  PR, left for the owner to review — never auto-merged). Neither is a direct commit to the default
+  branch. (`push`/`pr` are accepted as legacy aliases for `auto`/`review`.) There is deliberately no
+  implicit default — `--init` seeds `auto` and the nightly sweep backfills a missing key, so the
+  selection is visible in this file rather than implied by absence. Read by
   the baselining worker; the checks engine
   itself ignores it.
 

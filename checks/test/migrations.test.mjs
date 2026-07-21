@@ -196,6 +196,33 @@ test('tidy-repo-seed migration: legacyPresent reads the declaration (true iff ti
   assert.equal(await seed.legacyPresent(() => false, async () => 'nope'), false, 'unparsable -> not held');
 });
 
+test('maintenance-delivery-rename migration: legacyPresent on push/pr, and rewrites the stored value to auto/review', async () => {
+  const m = (await loadMigrations()).find((x) => x.id === 'maintenance-delivery-rename');
+  assert.ok(m, 'maintenance-delivery-rename migration is discovered');
+  assert.equal(m.retire, 'auto'); // the push/pr alias is permanent, so retiring the record strands nothing
+  const cfg = (delivery) => async () => JSON.stringify({ packs: ['basics'], maintenance: { delivery } });
+  assert.equal(await m.legacyPresent(() => false, cfg('push')), true, 'legacy push -> held');
+  assert.equal(await m.legacyPresent(() => false, cfg('pr')), true, 'legacy pr -> held');
+  assert.equal(await m.legacyPresent(() => false, cfg('auto')), false, 'auto -> done');
+  assert.equal(await m.legacyPresent(() => false, cfg('review')), false, 'review -> done');
+  assert.equal(await m.legacyPresent(() => false, async () => null), false, 'no declaration -> not held');
+  assert.equal(await m.legacyPresent(() => false, async () => 'nope'), false, 'unparsable -> not held');
+
+  // The declared rewrite renames both values in place (matching the JSON.stringify shape), idempotently.
+  const repo = new Map([['.claudinite-checks.json',
+    JSON.stringify({ packs: ['basics'], rules: {}, accept: [], maintenance: { delivery: 'push' } }, null, 2)]]);
+  const read = (p) => repo.get(p) ?? null;
+  const write = (p, c) => repo.set(p, c);
+  assert.deepEqual(await applyRewrites(m, { read, write }), ['.claudinite-checks.json']);
+  assert.equal(JSON.parse(repo.get('.claudinite-checks.json')).maintenance.delivery, 'auto');
+  assert.deepEqual(await applyRewrites(m, { read, write }), [], 'idempotent once renamed');
+
+  const reviewRepo = new Map([['.claudinite-checks.json',
+    JSON.stringify({ maintenance: { delivery: 'pr' } }, null, 2)]]);
+  await applyRewrites(m, { read: (p) => reviewRepo.get(p) ?? null, write: (p, c) => reviewRepo.set(p, c) });
+  assert.equal(JSON.parse(reviewRepo.get('.claudinite-checks.json')).maintenance.delivery, 'review');
+});
+
 test('local-pack-namespace migration: legacyPresent = a bare declared id whose pack lives in the member\'s local_packs', async () => {
   const m = (await loadMigrations()).find((x) => x.id === 'local-pack-namespace');
   assert.ok(m, 'local-pack-namespace migration is discovered');

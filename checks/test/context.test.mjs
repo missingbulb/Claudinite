@@ -4,7 +4,7 @@ import { makeRepo, cleanup } from './helpers.mjs';
 import { buildContext, loadConfig } from '../lib/context.mjs';
 
 test('loadConfig: clean settings validate with no errors; a missing file is empty and error-free', () => {
-  const ok = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({ packs: ['basics'], rules: {}, maintenance: { delivery: 'push' } }) } });
+  const ok = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({ packs: ['basics'], rules: {}, maintenance: { delivery: 'auto' } }) } });
   const none = makeRepo({ changed: {} });
   try {
     assert.deepEqual(loadConfig(ok).errors, []);

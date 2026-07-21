@@ -57,7 +57,7 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    migration fails, nothing is written: the repo keeps running its old snapshot exactly as
    before, is retried the next night, and the failure lands in the fleet routine's failure log.
    The commit honors the repo's `maintenance.delivery` — both lanes land on the
-   `claudinite/maintenance` branch and its PR (`push` arms auto-merge; `pr` leaves it for review),
+   `claudinite/maintenance` branch and its PR (`auto` arms auto-merge; `review` leaves it for the owner),
    never a direct commit to the default branch; each computes its writes against the *default*
    branch, drops what the maintenance branch already carries, and refreshes that branch from base
    each night — regenerate, never reconcile — #332. The refresh is
