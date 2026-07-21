@@ -18,7 +18,7 @@ import { SHARED_SUBDIR } from '../../engine/pack_loader/registry.mjs';
 //   the vendored files are already outside the scanned set).
 // - '.claude': settings.json registers the hooks by path.
 // - '.github/workflows': a repo's own workflow may run the vendored engine.
-// - 'CLAUDE.md': the @-import and the self-check line.
+// - 'CLAUDE.md': the @-import line.
 // - '.gitignore', '.gitattributes': the mount's housekeeping rules.
 // - '.claudinite-checks.json': settings legitimately spell paths.
 // Coverage note: quoted references (imports, requires, config values) and

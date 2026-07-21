@@ -121,12 +121,10 @@ hook before line 1 and swallow its own message. Notes on how the steps behave:
 ```sh
 grep -qxF '@.claudinite/shared/CLAUDE.md' CLAUDE.md 2>/dev/null \
   || printf '\n@.claudinite/shared/CLAUDE.md\n' >> CLAUDE.md
-grep -qF 'Claudinite self-check' CLAUDE.md 2>/dev/null \
-  || printf '\n> Claudinite self-check: if the `@.claudinite/shared/CLAUDE.md` import above did not resolve (no `.claudinite/shared/CLAUDE.md` in this checkout), the Claudinite harness is **not active** this session — a broken or partial checkout. Treat it as not loaded and confirm with the user before substantive work.\n' >> CLAUDE.md
 ```
 
-The self-check lives in the consumer's own tracked `CLAUDE.md` — the one file always in context —
-so the assistant has a tell that is independent of every hook.
+Just the import line — no self-check paragraph rides the consumer's `CLAUDE.md` (retired by
+owner decision, #385; a stale copy is deleted by the flip/baselining).
 
 One standing rule the vendored tree does **not** change: committed consumer code must not
 `import`/`require` canon helpers from `.claudinite/` — the canon is refreshed nightly and

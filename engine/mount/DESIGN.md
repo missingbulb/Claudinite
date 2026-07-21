@@ -93,7 +93,7 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    green — is the enforcement surface, and an edit made outside Claude sessions surfaces at the
    next session's Stop sweep. Rollback is per-repo and atomic: revert the nightly's commit.
 8. **Isolation.** Consumer files must not reference `.claudinite/` except the wiring set: the
-   root `CLAUDE.md` (the `@`-import and self-check), `.claude/` (settings hook registrations),
+   root `CLAUDE.md` (the `@`-import line), `.claude/` (settings hook registrations),
    `.gitignore`, `.gitattributes`, `.github/workflows/` (a repo's own workflows may run the
    vendored engine), and anything under
    `.claudinite/` itself (`local_packs/` included). Product code that wants a canon helper
@@ -131,7 +131,8 @@ allowlist prerequisite, `CLAUDINITE_REF` pinning (the commit *is* the pin), the
 caveats, and the stale-mount caveat in [engine/README.md](../README.md). Session start
 becomes a single offline SessionStart entry invoking [session-start.sh](../hooks/session-start.sh)
 directly (its four steps are unchanged; the preferences step is fail-soft per 3, the env-check
-halt-gate stays); the `CLAUDE.md` self-check line remains the absent-corpus tell. The
+halt-gate stays). The consumer `CLAUDE.md` carries only the `@`-import line — the
+self-check paragraph is retired by owner decision (#385). The
 plugin-packaging rationale in [engine/DESIGN.md](../DESIGN.md) also loses its
 update-latency premise — recorded there when the transition completes. The canon repo itself is
 untouched: it runs its own live tree and mounts nothing.
@@ -167,7 +168,7 @@ the nightly touches everyone, and never break the channel the migration itself t
   environment's stray sync shows up as *visible* untracked noise, healed when the environment's
   Setup script is re-pasted, rather than hidden by a wholesale ignore), the
   `SessionStart`/Stop/PreToolUse rewrite to
-  `shared/` paths, the `CLAUDE.md` import + self-check swap, the stamp, and the
+  `shared/` paths, the `CLAUDE.md` import swap (any legacy self-check paragraph deleted — #385), the stamp, and the
   sync-hook deletion — executed by the **baselining worker** (the mechanical passes see the
   record as a no-op; its `legacyPresent` feeds the unflipped-count telemetry), plus one
   member issue asking to re-paste the environment Setup script (the surviving out-of-repo

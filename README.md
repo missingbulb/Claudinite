@@ -10,7 +10,26 @@ Portable Claude instructions/rules shared across projects — the **project-agno
 
 ## For the reading agent: how to traverse this corpus
 
-**The agent-facing index lives in [CLAUDE.md](CLAUDE.md), not here.** It is the map of the corpus — two homes selected by *when* a rule is active: **`packs/<name>/`** (prose + checks, active once per session by the project's `.claudinite-checks.json` declaration — no pack is active undeclared, the baseline included; the active packs' prose is injected by a SessionStart hook) and **`skills/<name>/`** (activity-scoped procedures the harness surfaces on demand). Consumers mount it as `@.claudinite/CLAUDE.md`; an agent working in this repo loads it as the repo's own `CLAUDE.md`. Start there.
+The corpus map (maintainer-facing — [CLAUDE.md](CLAUDE.md) is deliberately near-empty, #385: a
+session needs no architecture lesson, its rules arrive injected):
+
+- **`packs/<name>/`** — a pack bundles everything it contributes: prose (`RULES.md`, injected at
+  session start when the pack is declared), checks (run at every Stop), **and its skills**
+  (`<pack>/skills/<skill>/` — activity-scoped procedures the harness surfaces on demand, one
+  owning pack per skill). No pack is active undeclared — the baseline included; activation is
+  the project's `.claudinite-checks.json` declaration ([packs/README.md](packs/README.md);
+  skill catalog: [skills/README.md](skills/README.md)). A consumer's own packs sit in its
+  `.claudinite/local_packs/<name>/`, same slots, same engine.
+- **`engine/`** — the machinery that runs pack content, and the one always-vendored root:
+  `engine/hooks/` (the wired SessionStart/PreToolUse entry points),
+  `engine/check_the_world.mjs` (the conformance sweep CLI), `engine/check_the_work.mjs` (the
+  Stop hook), `engine/checks_helpers/`, `engine/pack_loader/`, `engine/skill_loader/`,
+  `engine/mount/` (vendoring). Design records: [engine/DESIGN.md](engine/DESIGN.md),
+  [engine/mount/DESIGN.md](engine/mount/DESIGN.md); the core/pack boundary:
+  [extending.md](extending.md).
+- Before adding *any* rule as prose, run the promotion ladder in
+  [engine/DESIGN.md](engine/DESIGN.md): a platform setting, a hook, a check, or a skill that can
+  carry it beats prose.
 
 ---
 

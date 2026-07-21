@@ -8,7 +8,7 @@ vendored mount it is: fetch the canon once (the one network moment), `--init` th
 declaration + run the adoption interview, vendor the snapshot into tracked
 `.claudinite/shared/` (`engine/mount/apply-vendor.mjs` — whole-set + stamp), track it, register the
 single SessionStart orchestrator plus the Stop/PreToolUse hooks at their `shared/` paths, add
-the `@.claudinite/shared/CLAUDE.md` import + self-check, open the
+the `@.claudinite/shared/CLAUDE.md` import line, open the
 maintenance-enrollment issue, categorize the project, and land the sweep green.
 
 **Refreshing** an already-vendored repo on demand is the same flow minus the wiring: fetch a

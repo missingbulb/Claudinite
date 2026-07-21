@@ -58,8 +58,8 @@ branch), containing exactly:
   and the PreToolUse command
   \`node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/pretooluse-guard.mjs\`;
 - \`CLAUDE.md\`: \`@.claudinite/CLAUDE.md\` -> \`@.claudinite/shared/CLAUDE.md\`,
-  and the legacy self-check paragraph replaced with the current one (exact
-  texts: bootstrap.md, "Import the corpus index");
+  and any legacy "Claudinite self-check" paragraph DELETED (the self-check is
+  retired — #385; only the import line remains);
 - \`.gitignore\`: drop the whole legacy Claudinite block (\`/.claudinite/*\`, the
   \`mount/\` re-include dance, \`/.claudinite.new/\`); keep only the two hooks-log
   ignores (\`/.claudinite-hooks.log\`, \`/.claudinite-hooks.log.tmp\`) — the
