@@ -1,5 +1,5 @@
-import { finding } from '../../checks/lib/findings.mjs';
-import { matchingLines } from '../../checks/lib/lines.mjs';
+import { finding } from '../../engine/checks/lib/findings.mjs';
+import { matchingLines } from '../../engine/checks/lib/lines.mjs';
 
 // A Google ID token carries an email claim regardless of verification; it is
 // trustworthy only together with email_verified. Two static signatures in
@@ -18,7 +18,7 @@ import { matchingLines } from '../../checks/lib/lines.mjs';
 // googleusercontent client id) — evaluated lazily, once a candidate finding
 // exists. The skill's own directory is excluded so its fixtures never
 // self-flag on the corpus repo.
-const SELF = 'skills/google-id-token-validation/';
+const SELF = ['skills/google-id-token-validation/', 'skills-tests/google-id-token-validation/'];
 const CODE_EXT = /\.(mjs|cjs|jsx?|tsx?|py)$/;
 const TESTISH = /(^|\/)(tests?|__tests__|spec)\/|\.(test|spec)\./;
 const CLAIMS_CONTEXT = /requestContext\s*\.\s*authorizer|jwt\.claims|verifyIdToken|jwtVerify/;
@@ -35,7 +35,7 @@ const rule = {
 
   run(ctx) {
     const handlers = ctx.files.filter((f) =>
-      !f.startsWith(SELF) && CODE_EXT.test(f) && !TESTISH.test(f) && CLAIMS_CONTEXT.test(ctx.read(f) ?? ''));
+      !SELF.some((d) => f.startsWith(d)) && CODE_EXT.test(f) && !TESTISH.test(f) && CLAIMS_CONTEXT.test(ctx.read(f) ?? ''));
     const candidates = [
       ...matchingLines(ctx, handlers.filter((f) => !/email_verified/.test(ctx.read(f) ?? '')), EMAIL_ACCESS)
         .map(({ file, line }) => finding(rule, {
@@ -51,7 +51,7 @@ const rule = {
         })),
     ];
     if (candidates.length === 0) return [];
-    const googleRepo = ctx.files.some((f) => !f.startsWith(SELF) && GOOGLE_MARKER.test(ctx.read(f) ?? ''));
+    const googleRepo = ctx.files.some((f) => !SELF.some((d) => f.startsWith(d)) && GOOGLE_MARKER.test(ctx.read(f) ?? ''));
     return googleRepo ? candidates : [];
   },
 };

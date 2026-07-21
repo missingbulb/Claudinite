@@ -43,7 +43,7 @@ Then make a scratch dir; write the member's fetched
 \`.claudinite-checks.json\` into it; replicate any member
 \`.claudinite/local_packs/*/pack.mjs\` files at the same paths (their skills
 lists feed the set); run
-\`node mount/apply-vendor.mjs --target <scratch> --ref <verified remote head sha>\`.
+\`node engine/mount/apply-vendor.mjs --target <scratch> --ref <verified remote head sha>\`.
 The scratch now holds \`.claudinite/shared/**\` and the stamped declaration.
 
 **2. Land ONE commit** on the member (delivery-aware — both \`auto\` and
@@ -55,9 +55,9 @@ branch), containing exactly:
 - the stamped \`.claudinite-checks.json\` from the scratch;
 - \`.claude/settings.json\` edited in place (never touching the member's own
   entries): the SessionStart sync-hook command becomes
-  \`bash $CLAUDE_PROJECT_DIR/.claudinite/shared/mount/session-start.sh\`; the
-  Stop/PreToolUse commands repoint \`.claudinite/checks/\` ->
-  \`.claudinite/shared/checks/\`;
+  \`bash $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/mount/session-start.sh\`; the
+  Stop/PreToolUse commands repoint \`.claudinite/checks/\` (or the current
+  \`.claudinite/engine/checks/\`) -> \`.claudinite/shared/engine/checks/\`;
 - \`CLAUDE.md\`: \`@.claudinite/CLAUDE.md\` -> \`@.claudinite/shared/CLAUDE.md\`,
   and the legacy self-check paragraph replaced with the current one (exact
   texts: bootstrap.md, "Import the corpus index");
@@ -81,7 +81,7 @@ settings rewrite).
 \`Re-paste the Claudinite environment Setup script\` (idempotent — search
 first, open or closed counts): the previously pasted script keeps working until
 the environment is next rebuilt, at which point it fails fast; the new body to
-paste is the member's own \`.claudinite/shared/mount/environment-setup.sh\`.
+paste is the member's own \`.claudinite/shared/engine/mount/environment-setup.sh\`.
 
 **Failure before the content commit -> write nothing.** The member keeps
 running the legacy mount coherently, the failure goes to the routine's failure

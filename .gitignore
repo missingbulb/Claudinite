@@ -1,4 +1,4 @@
 .claude/settings.local.json
-# Durable session-hook log (mount/session-start.sh / checks/*.mjs). Diagnostic only.
+# Durable session-hook log (engine/mount/session-start.sh / engine/checks/*.mjs). Diagnostic only.
 .claudinite-hooks.log
 .claudinite-hooks.log.tmp

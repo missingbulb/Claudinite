@@ -1,8 +1,8 @@
-import { finding } from '../../checks/lib/findings.mjs';
+import { finding } from '../../engine/checks/lib/findings.mjs';
 
 // Corpus-integrity rule for the pack-driven skill mounts: each pack declares
 // the skills it requires (`skills` in its pack.mjs), and consumers mount the
-// union over their active packs (skills/mount-skills.mjs) — so a skill no pack
+// union over their active packs (engine/skills/mount-skills.mjs) — so a skill no pack
 // requires never reaches any repo, and a declaration naming a missing skill
 // mounts nothing. Only meaningful in the Claudinite repo itself; a consumer
 // tracks neither registry (the corpus lives under its gitignored mount), which
@@ -15,7 +15,7 @@ const rule = {
   why: 'skill mounts are derived from pack declarations — an unowned skill is dead weight no consumer ever mounts, and a dangling declaration mounts nothing',
 
   run(ctx) {
-    if (!ctx.tracked.includes('packs/registry.mjs') || !ctx.tracked.includes('skills/registry.mjs')) {
+    if (!ctx.tracked.includes('engine/packs/registry.mjs') || !ctx.tracked.includes('engine/skills/registry.mjs')) {
       return [];
     }
 

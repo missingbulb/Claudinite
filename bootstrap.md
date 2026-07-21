@@ -1,7 +1,7 @@
 # Adopting Claudinite
 
 How a consuming repo adopts these shared guidelines, under the **vendored mount**
-([mount/DESIGN.md](mount/DESIGN.md)): adoption is the **one network moment** — fetch the canon
+([engine/mount/DESIGN.md](engine/mount/DESIGN.md)): adoption is the **one network moment** — fetch the canon
 once, vendor what this repo needs into **tracked files** under `.claudinite/shared/`, wire the
 hooks — and every session after runs **offline** from the committed snapshot. The nightly
 maintenance is the only regular updater. Idempotent: re-running refreshes the snapshot exactly
@@ -28,7 +28,7 @@ the environment's network policy no longer needs `codeload.github.com` for day-t
 ## Part 2 — write the pack declaration (and run the adoption interview)
 
 ```sh
-node "$scratch/checks/run.mjs" --init
+node "$scratch/engine/checks/run.mjs" --init
 ```
 
 `--init` seeds `.claudinite-checks.json`: the baseline, the technology packs the repo's
@@ -48,7 +48,7 @@ derive the entry's `config` where the question's distill note says how.
 ## Part 3 — vendor the snapshot
 
 ```sh
-node "$scratch/mount/apply-vendor.mjs" --target . ${ref:+--ref "$ref"}
+node "$scratch/engine/mount/apply-vendor.mjs" --target . ${ref:+--ref "$ref"}
 ```
 
 This materializes the repo's vendor set — the engine, the mount, the declared packs with their
@@ -80,7 +80,7 @@ mounts → env check → interview check) and forwards their stdout into the ses
 
 ```json
 { "hooks": { "SessionStart": [ { "hooks": [
-  { "type": "command", "command": "bash $CLAUDE_PROJECT_DIR/.claudinite/shared/mount/session-start.sh" }
+  { "type": "command", "command": "bash $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/mount/session-start.sh" }
 ] } ] } }
 ```
 
@@ -90,10 +90,10 @@ forbidden commands) alongside it:
 
 ```json
 { "hooks": { "Stop": [ { "hooks": [
-  { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/shared/checks/stop-hook.mjs" }
+  { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/checks/stop-hook.mjs" }
 ] } ],
   "PreToolUse": [ { "matcher": "Bash", "hooks": [
-  { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/shared/checks/pretooluse-guard.mjs" }
+  { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/checks/pretooluse-guard.mjs" }
 ] } ] } }
 ```
 
@@ -101,7 +101,7 @@ Invoke scripts **through `bash`/`node`**, never as bare paths — a dropped exec
 hook before line 1 and swallow its own message. Notes on how the steps behave:
 
 - **Preferences are fail-soft** — per-user content is never vendored;
-  `shared/mount/inject-preferences.sh` reads a local copy where the tree has one and otherwise
+  `shared/engine/mount/inject-preferences.sh` reads a local copy where the tree has one and otherwise
   fetches the single `preferences/<email>.md`; any miss is a one-line note, and the session
   proceeds on defaults.
 - **The halt-gate** — a SessionStart hook cannot block, but its stdout is injected into context,
@@ -111,7 +111,7 @@ hook before line 1 and swallow its own message. Notes on how the steps behave:
 - **The durable hook log** — every hook appends `start` / `done exit=N` lines to
   `.claudinite-hooks.log` at the repo root. No lines ⇒ the hook never triggered; `start` without
   `done` ⇒ it died executing. Reach for it first when a session says the harness didn't load.
-- **Skill mounts are session-generated, never committed** — `shared/skills/mount-skills.mjs`
+- **Skill mounts are session-generated, never committed** — `shared/engine/skills/mount-skills.mjs`
   (an orchestrator step) regenerates `.claude/skills/<name>` symlinks for the declared packs'
   union each session and maintains a self-ignoring `.gitignore` there; a committed link would
   dangle on every plain checkout.
@@ -173,7 +173,7 @@ runs recurring **classes** of project, each carried by a project-class pack:
 Run the sweep once and clear what it surfaces:
 
 ```sh
-node .claudinite/shared/checks/run.mjs
+node .claudinite/shared/engine/checks/run.mjs
 ```
 
 On a repo with existing code, **expect a backlog** — enforcement scope is whole-repo, and
@@ -187,8 +187,8 @@ wiring) and push it through the normal PR flow.
 
 The web base image ships no toolchains; installs belong in the environment **image** (built
 once, snapshotted), not a per-session hook. The corpus holds the one generic script —
-[`mount/environment-setup.sh`](mount/environment-setup.sh), vendored into
-`.claudinite/shared/mount/` — identical for every project: paste its full body into the
+[`engine/mount/environment-setup.sh`](engine/mount/environment-setup.sh), vendored into
+`.claudinite/shared/engine/mount/` — identical for every project: paste its full body into the
 environment's **Setup script** field and rebuild. It runs each active pack's declared installs
 (`env.mjs install`, driven by the declaration); the SessionStart `env.mjs check` then only
 *probes* and halt-gates on a genuinely missing prerequisite. The network policy must reach what
@@ -209,19 +209,21 @@ Maintenance shapes for members still on the **legacy fetch-at-session-start moun
 sync hook at `.claudinite/mount/sync-claudinite.sh`, gitignored synced corpus, flat
 `.claudinite/` paths, `@.claudinite/CLAUDE.md` import). The nightly baselining applies **only
 this appendix** to them — never the fresh path above; conversion to the vendored mount is the
-gated flip note's job ([mount/DESIGN.md](mount/DESIGN.md), phase 2). The whole appendix is
+gated flip note's job ([engine/mount/DESIGN.md](engine/mount/DESIGN.md), phase 2). The whole appendix is
 deleted in phase 3, once the fleet has flipped.
 
 - **Sync hook refresh** — the tracked hook is a generated artifact the canon owns: overwrite the
-  member's copy with the canon's current [`mount/sync-claudinite.sh`](mount/sync-claudinite.sh);
+  member's copy with the canon's current [`engine/mount/sync-claudinite.sh`](engine/mount/sync-claudinite.sh);
   never hand-edit or inline a copy. Its `settings.json` registration stays the single
   `SessionStart` entry, invoked through `bash`
   (`bash $CLAUDE_PROJECT_DIR/.claudinite/mount/sync-claudinite.sh`); fix in place an entry
   pointing at a legacy path (`.claude/hooks/…`, pre-mount `.claudinite/sync-claudinite.sh`) or
   invoking a bare path, and delete redundant standalone entries for the orchestrator's steps.
-- **Legacy hook paths** — Stop `node …/.claudinite/checks/stop-hook.mjs`, PreToolUse
-  `node …/.claudinite/checks/pretooluse-guard.mjs`, import `@.claudinite/CLAUDE.md` (flat, no
-  `shared/`).
+- **Legacy hook paths** — Stop `node …/.claudinite/engine/checks/stop-hook.mjs`, PreToolUse
+  `node …/.claudinite/engine/checks/pretooluse-guard.mjs`, import `@.claudinite/CLAUDE.md` (flat, no
+  `shared/`). Pre-restructure entries still naming `.claudinite/checks/…` keep working through the
+  transitional shims at the old paths and are rewritten in place by the `engine-tree-restructure`
+  baseline migration.
 - **Legacy gitignore set** — `/.claudinite/*`, `!/.claudinite/mount/`, `/.claudinite/mount/*`,
   `!/.claudinite/mount/sync-claudinite.sh`, `!/.claudinite/local_packs/`, `/.claudinite.new/`,
   plus the hooks-log ignores; drop a bare `.claudinite/` wholesale-ignore (it blocks the

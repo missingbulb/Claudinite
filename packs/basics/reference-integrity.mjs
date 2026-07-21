@@ -1,6 +1,6 @@
 import { dirname, join, normalize } from 'node:path';
-import { extractLinks } from '../../checks/lib/markdown.mjs';
-import { finding } from '../../checks/lib/findings.mjs';
+import { extractLinks } from '../../engine/checks/lib/markdown.mjs';
+import { finding } from '../../engine/checks/lib/findings.mjs';
 
 // A fixed-string hit on a deleted path can still be innocent: a rename that keeps the
 // same basename (e.g. old.sh moving to some/old.sh) makes every mention of the new,

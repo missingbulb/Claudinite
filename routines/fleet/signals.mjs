@@ -1,5 +1,5 @@
 import { isFullSweepDay } from './schedule.mjs';
-import { packEntryId } from '../../packs/registry.mjs';
+import { packEntryId } from '../../engine/packs/registry.mjs';
 
 // The signal bundle each gate reads. Built per covered member from a small, bounded
 // set of cheap GitHub reads; `gh(path) -> { status, json }` is the orchestrator's
@@ -9,12 +9,13 @@ import { packEntryId } from '../../packs/registry.mjs';
 // --- canonChanged (global, computed once) -----------------------------------
 
 // A canon change should re-baseline / dedup members only when it touches what a
-// member actually mounts or is checked against — the packs/checks/skills/migrations
-// it runs, the bootstrap it re-applies, and the mount/ plumbing it vendors (the
-// tracked sync hook, session-start, env-setup; `sync-claudinite.sh` is the retired
-// pre-mount path, kept tolerant). Exclude the orchestration layer and the planner's
-// own artifacts, or canonChanged self-triggers every night.
-const CANON_MEMBER_PATHS = [/^packs\//, /^checks\//, /^skills\//, /^migrations\//, /^bootstrap\.md$/, /^mount\//, /^sync-claudinite\.sh$/];
+// member actually mounts or is checked against — the packs/engine/skills/migrations
+// it runs, the bootstrap it re-applies, and the mount plumbing it vendors (the
+// tracked sync hook, session-start, env-setup; `checks/` and `mount/` are the
+// pre-engine-tree paths — now transitional shims — and `sync-claudinite.sh` the
+// retired pre-mount path, all kept tolerant). Exclude the orchestration layer and
+// the planner's own artifacts, or canonChanged self-triggers every night.
+const CANON_MEMBER_PATHS = [/^packs\//, /^engine\//, /^checks\//, /^skills\//, /^migrations\//, /^bootstrap\.md$/, /^mount\//, /^sync-claudinite\.sh$/];
 const CANON_EXCLUDE = [/^routines\//, /(^|\/)plan\.json$/];
 
 export function pathAffectsMembers(path) {

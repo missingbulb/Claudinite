@@ -13,7 +13,7 @@ fleet's default local-pack scheduling like any member's local tasks.
 repo, so a pack only the home repo declares yields exactly one unit per task per night — "central,
 once" with no bespoke orchestrator step. Each gate double-locks that with the planner's `isHome`
 signal, so a stray declaration elsewhere can't double-run the canon's work. Un-declaring the pack
-freezes canon absorption without touching the members' side ([grow_with_claudinite](../../../packs/grow_with_claudinite/README.md)).
+freezes canon absorption without touching the members' side ([grow_with_claudinite](../../../packs-tests/grow_with_claudinite/README.md)).
 
 | Task | Runs when | Where it lands |
 |---|---|---|
@@ -23,7 +23,7 @@ freezes canon absorption without touching the members' side ([grow_with_claudini
 | Rule (≤5 words) | How enforced |
 |---|---|
 | Pack prose: no enforcement narration | check `pack-no-enforcement-narration` |
-| Packs import only own + engine | contributed barrier `pack-independence` ([pack-independence.mjs](pack-independence.mjs) — pure data; the [barriers pack](../../../packs/barriers/README.md) builds the rule) |
+| Packs import only own + engine | contributed barrier `pack-independence` ([pack-independence.mjs](pack-independence.mjs) — pure data; the [barriers pack](../../../packs-tests/barriers/README.md) builds the rule) |
 
 - **[promote.md](promote.md)** — the growth lifecycle's central stage: read the changed members'
   local packs, **generalize** the portable lessons, route each to the right canon home, and open a
@@ -45,7 +45,7 @@ freezes canon absorption without touching the members' side ([grow_with_claudini
 
 How a lesson is learned in a consuming project, lifted into the shared canon when it's portable,
 and pruned back out of the project once the canon owns it. Two packs split it by who declares them:
-**[grow_with_claudinite](../../../packs/grow_with_claudinite/README.md)** (member-side: extract + dedup + pack
+**[grow_with_claudinite](../../../packs-tests/grow_with_claudinite/README.md)** (member-side: extract + dedup + pack
 discovery, seeded, opt-out by removal) and **canon-curation** (this pack, the central stage).
 
 ```
@@ -80,4 +80,4 @@ The session-scoped sibling of this nightly lifecycle — mining a single working
 — lives with [the growth pack's extracting-lessons method](../../../packs/grow_with_claudinite/extracting-lessons.md)
 (applied by its conversation-extract daily task over captured logs), and the member-side method docs
 (extract, dedup, pack discovery, and how a project's local packs are identified) live with
-[grow_with_claudinite](../../../packs/grow_with_claudinite/README.md).
+[grow_with_claudinite](../../../packs-tests/grow_with_claudinite/README.md).

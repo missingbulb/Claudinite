@@ -1,4 +1,4 @@
-import { finding } from '../../checks/lib/findings.mjs';
+import { finding } from '../../engine/checks/lib/findings.mjs';
 import { wikiPages, sectionBody, BULLET } from './lib.mjs';
 
 // Citation discipline: every top-level bullet in a Sources section carries

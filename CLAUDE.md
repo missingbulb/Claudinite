@@ -8,19 +8,19 @@
 - **`packs/<name>/`** — a bundle of prose (a pack's `RULES.md`) **and** checks, selected **once per
   session** by the project's declaration in `.claudinite-checks.json`. No pack is active by default —
   `basics` too is declared explicitly (bootstrap seeds it). The active packs' prose loads at session
-  start via `packs/load-active-prose.mjs`; the checks run at every Stop and in CI. This is the "decided
+  start via `engine/packs/load-active-prose.mjs`; the checks run at every Stop and in CI. This is the "decided
   once, seldom changes" set. A pack can live here (the shared, portable canon) **or** in a consumer's
   own `.claudinite/local_packs/<name>/` (tracked project content — its project-specific packs, the same
   slots); the engine discovers and runs both the same way ([extending.md](extending.md)).
 - **`skills/<name>/`** — activity-scoped procedures, surfaced **on demand** by the harness when the work
   in front of you matches the skill. Deployment is pack-driven: each pack declares the skills it
   requires, and a repo mounts the union over its active packs at session start
-  (`skills/mount-skills.mjs`); the `skill-ownership` check keeps every skill required by some pack.
+  (`engine/skills/mount-skills.mjs`); the `skill-ownership` check keeps every skill required by some pack.
   Catalog: [skills/README.md](skills/README.md).
 
 Everything enforceable is a check or a hook; everything always-relevant-to-a-project is pack prose;
 everything activity-scoped is a skill. Before adding *any* rule as prose, run the promotion ladder in
-[checks/DESIGN.md](checks/DESIGN.md): a platform setting, a hook, a check, or a skill that can carry it
+[engine/checks/DESIGN.md](engine/checks/DESIGN.md): a platform setting, a hook, a check, or a skill that can carry it
 beats prose. And before adding *any* feature — a rule, a technology's conventions, a nightly task —
 decide the core/pack boundary first: [extending.md](extending.md) is the map of what's engine and what's
 pack-contributed content, and where each kind of feature goes (almost never core).
@@ -30,7 +30,7 @@ pack-contributed content, and where each kind of feature goes (almost never core
 - **[packs/basics/](packs/basics/RULES.md)** — the baseline: working discipline, the task
   lifecycle, and the core checks. Declared explicitly like every other pack — bootstrap seeds
   the declaration, the nightly baselining backfills it into existing consumers.
-- **[packs/barriers/](packs/barriers/README.md)** — a mechanism pack: enforce a directed
+- **[packs/barriers/](packs-tests/barriers/README.md)** — a mechanism pack: enforce a directed
   folder-access graph (folder A may not reference folder B — imports, path/filename references, in
   any language, comments and docs included), declared per-project as `config` on the repo's barriers pack entry.
   Other packs compose their own separation rules on it by *declaring* it (`requires`) and
@@ -38,7 +38,7 @@ pack-contributed content, and where each kind of feature goes (almost never core
   `product-wiki` ship their isolation walls); no pack imports another's code (the
   `pack-independence` barrier, contributed the same way by the canon home's own curation local
   pack — packs-tree segregation is barriers configuration, never bespoke checking code).
-- **[packs/grow_with_claudinite/](packs/grow_with_claudinite/README.md)** — the growth
+- **[packs/grow_with_claudinite/](packs-tests/grow_with_claudinite/README.md)** — the growth
   lifecycle's member side (extract/dedup/pack-discovery daily tasks; `config.promote: false`
   opts a repo out of the central promote stage) **and the conversation lifecycle**: each merge
   to main captures the session's conversation in-session (it needs the live transcript) onto an
@@ -65,7 +65,7 @@ pack-contributed content, and where each kind of feature goes (almost never core
   — [packs/executable-requirements/RULES.md](packs/executable-requirements/RULES.md)); and
   `product-wiki` (the self-growing product research wiki standard — layout, section/citation/log
   checks, a fixed isolation barrier, a weekly growth daily task; fingerprinted by
-  `product-wiki/product-requirements/README.md` — [packs/product-wiki/README.md](packs/product-wiki/README.md)).
+  `product-wiki/product-requirements/README.md` — [packs-tests/product-wiki/README.md](packs-tests/product-wiki/README.md)).
 
 The declaration is **pack-oriented**: a `packs` entry is a pack id (a local pack's canonical token
 is namespaced: `local_packs/<name>`), or an entry object carrying that
@@ -73,7 +73,7 @@ pack's own settings — its parameters (`config`), its adoption-interview answer
 may declare the questions its adoption must ask; the unanswered gap surfaces as a mild SessionStart
 note, strict only inside bootstrap), and the rule overrides/acceptances its declaration
 motivates (`rules`/`accept`, the entry being their provenance). Top-level `rules`/`accept` stay for
-project-wide decisions and skill-owned checks. Full schema: [checks/README.md](checks/README.md).
+project-wide decisions and skill-owned checks. Full schema: [engine/checks/README.md](engine/checks/README.md).
 
 **Settings validity** — an unknown pack name, an unknown property (top-level or on a pack entry), or
 malformed JSON in `.claudinite-checks.json` — is checked when the file loads and surfaced by the runner as
@@ -84,7 +84,7 @@ project's call, so neither a marker without its declaration nor a declaration wi
 A pack that only makes sense alongside another names it in its `requires` list (e.g.
 `chrome-extension-release` requires `chrome-extension`, `firebase-release` requires `firebase`,
 `spec-driven-product` requires `executable-requirements`). This isn't a check: a pack can't be imported
-without its dependencies, so `resolveDeclaredPacks` ([packs/registry.mjs](packs/registry.mjs)) pulls each
+without its dependencies, so `resolveDeclaredPacks` ([engine/packs/registry.mjs](engine/packs/registry.mjs)) pulls each
 declared pack's `requires` closure into the declaration when it's written — at `--init` and the baselining
 backfill — materializing the prerequisite in the file, visible like every other entry, as
 `{ "id": ..., "via": [...] }` with `via` naming the packs that require it.
@@ -100,7 +100,7 @@ truth, kept complete against the tree by the `catalog-completeness` check. Two k
 ## preferences/ — auto-injected by the SessionStart hook
 
 `preferences/<email>.md` holds the owner's per-user interaction preferences. The
-`mount/inject-preferences.sh` SessionStart step loads the current user's file into context — you
+`engine/mount/inject-preferences.sh` SessionStart step loads the current user's file into context — you
 don't read it yourself.
 
 ---

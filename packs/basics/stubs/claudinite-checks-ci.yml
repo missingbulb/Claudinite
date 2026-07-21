@@ -26,4 +26,4 @@ jobs:
         with:
           node-version: 20
       - name: Conformance sweep
-        run: node .claudinite/shared/checks/run.mjs
+        run: node .claudinite/shared/engine/checks/run.mjs

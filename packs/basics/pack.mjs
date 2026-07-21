@@ -47,7 +47,7 @@ export default {
   ],
   // The skills every project's work can call for, whatever its technology —
   // mounted wherever basics is declared (which --init seeds everywhere) by
-  // skills/mount-skills.mjs. When one of these stops being a baseline
+  // engine/skills/mount-skills.mjs. When one of these stops being a baseline
   // activity, move it to the pack whose projects need it; the skill-ownership
   // check keeps the whole catalog required by some pack.
   skills: [

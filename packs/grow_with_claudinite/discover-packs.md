@@ -107,7 +107,7 @@ For each candidate, **author a populated pack** by distilling from how the membe
 technology — its build/toolchain config, CI and release workflows, packaging/signing scripts, relevant
 source, and any gotchas already in its docs. Apply [generate-project-instructions](../../skills/generate-project-instructions/SKILL.md)'
 method (don't re-derive it): strip the origin project, keep what's true for the technology, and descend
-the promotion ladder ([checks/DESIGN.md](../../checks/DESIGN.md)) —
+the promotion ladder ([engine/checks/DESIGN.md](../../engine/checks/DESIGN.md)) —
 a rule a deterministic check can carry becomes the **check plus a fixture test** (it fires on a
 violating input, stays quiet on a clean one), a procedure with a nameable trigger becomes a skill the
 pack requires, and only signature-less judgment lands as `RULES.md` prose. Ground and cite every rule;

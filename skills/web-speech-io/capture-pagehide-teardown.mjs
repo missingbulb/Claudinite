@@ -1,4 +1,4 @@
-import { finding } from '../../checks/lib/findings.mjs';
+import { finding } from '../../engine/checks/lib/findings.mjs';
 
 // A live microphone capture — a speech recognizer, or a `getUserMedia` stream —
 // is NOT freed by the browser's implicit page teardown. A page frozen into the
@@ -26,7 +26,7 @@ import { finding } from '../../checks/lib/findings.mjs';
 // check-the-world exemption path. The skill's own directory is excluded so its
 // fixtures never self-flag on the corpus repo; test/fixture files are excluded
 // from the acquisition scan, where a mocked `getUserMedia` opens no real device.
-const SELF = 'skills/web-speech-io/';
+const SELF = ['skills/web-speech-io/', 'skills-tests/web-speech-io/'];
 const SOURCE = /\.(mjs|cjs|jsx?|tsx?)$/;
 const TEST = /\.(test|spec)\.[cm]?jsx?$|(^|\/)(__tests__|__mocks__|fixtures?)\//;
 
@@ -59,7 +59,7 @@ const rule = {
   why: 'the browser does not reliably free the mic on implicit page teardown — a page frozen into the bfcache is suspended, not destroyed, so a live recognizer or getUserMedia stream keeps the device (and the recording indicator) on until a pagehide handler stops it',
 
   run(ctx) {
-    const source = ctx.files.filter((f) => !f.startsWith(SELF) && SOURCE.test(f));
+    const source = ctx.files.filter((f) => !SELF.some((d) => f.startsWith(d)) && SOURCE.test(f));
     // Conformance is repo-wide: a pagehide teardown in ANY owning context clears it.
     if (source.some((f) => PAGEHIDE.test(ctx.read(f) ?? ''))) return [];
     const out = [];

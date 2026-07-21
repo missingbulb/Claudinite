@@ -6,17 +6,17 @@
 > `unattended-agents/*.mjs`) — never redirecting into
 > another tree. **Packs own the deployment:** each pack declares the
 > skills it requires (`skills` in its `pack.mjs`), and a consumer mounts the union over its active
-> packs as session-generated `.claude/skills/` symlinks ([mount-skills.mjs](mount-skills.mjs),
+> packs as session-generated `.claude/skills/` symlinks ([engine/skills/mount-skills.mjs](../engine/skills/mount-skills.mjs),
 > registered by bootstrap Part 7 — never committed). The `skill-ownership` check keeps every skill
 > here required by at least one pack, both directions. Rules that are always-relevant to a project
 > are pack prose, not skills; enforceable rules are checks. See
-> [checks/DESIGN.md](../checks/DESIGN.md).
+> [engine/checks/DESIGN.md](../engine/checks/DESIGN.md).
 
 **Command skills** (owner phrase or bootstrap step):
 
 | Skill | Trigger |
 |---|---|
-| `merge-to-main` | owner's "LGTM" (+ `/merge-to-main`) — the merge recipe (inlined); ends with the conversation capture ([the growth pack](../packs/grow_with_claudinite/README.md) owns extraction) |
+| `merge-to-main` | owner's "LGTM" (+ `/merge-to-main`) — the merge recipe (inlined); ends with the conversation capture ([the growth pack](../packs-tests/grow_with_claudinite/README.md) owns extraction) |
 | `bump-version` | owner's "bump version" — delegates to the project's release pack/doc |
 | `adopt-claudinite` | bootstrap request — runs [bootstrap.md](../bootstrap.md) |
 | `generate-project-instructions` | fresh/empty project, or a facet no pack covers — extracts reusable `packs/<facet>/` seeds (class / technology / aspect / domain) + a thin project overlay |
