@@ -1,7 +1,7 @@
-import { finding } from '../../../../engine/checks/helpers/findings.mjs';
-import { FREQUENCIES } from '../../../../engine/scheduler/slots.mjs';
-import { MODEL_FAMILIES } from '../../../../engine/scheduler/model-map.mjs';
-import { OUTCOMES, SIGNAL_NAMES } from '../../../../engine/scheduler/task-contract.mjs';
+import { finding } from '../../engine/checks/helpers/findings.mjs';
+import { FREQUENCIES } from '../../engine/scheduler/slots.mjs';
+import { MODEL_FAMILIES } from '../../engine/scheduler/model-map.mjs';
+import { OUTCOMES, SIGNAL_NAMES } from '../../engine/scheduler/task-contract.mjs';
 
 // Every scheduler task is a `tasks/<name>/task.mjs` whose default export carries
 // the full declaration contract (per-project-scheduling DESIGN §1) with legal
@@ -25,7 +25,7 @@ const rule = {
   id: 'task-declaration-shape',
   severity: 'blocking',
   description: 'A tasks/<name>/task.mjs default-exports the full task contract (id, frequency, signals, model, outcome, worker, precondition) with legal enum values',
-  doc: 'skills/unattended-agents/SKILL.md',
+  doc: 'packs/scheduled-tasks/RULES.md',
   why: 'the scheduler and executor read model/outcome/frequency from this file, not the dispatch issue — an illegal or missing value means a task never fires, fires wrong, or writes past its ceiling',
 
   run(ctx) {

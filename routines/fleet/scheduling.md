@@ -1,42 +1,22 @@
-# How scheduled work runs — one scheduler per repo
+# Scheduling — legacy central model (being retired)
 
-**Every repo schedules itself.** A vendored hourly **scheduler Action**
-(`.github/workflows/claudinite-scheduler.yml`) is the repo's **only cron**; it
-evaluates each task's precondition in code and dispatches agent work as
-`ready-for-agent` `[claudinite-task]` issues, which a per-repo **executor
-routine** (fired by that label event) runs. Everything else that runs on a
-cadence is a **`workflow_dispatch`-only executor** that a scheduler task triggers
-and awaits — never a thing with a cron of its own.
+This folder is the **legacy** central-planner mechanism: one fleet routine
+([../auto-all-repos-maintenance.md](../auto-all-repos-maintenance.md)) fanned an
+agent out over every member repo on a single external schedule, and everything
+else that ran on a cadence was a `workflow_dispatch`-only executor it triggered.
 
-The design and phased rollout live in
-[../../docs/per-project-scheduling/DESIGN.md](../../docs/per-project-scheduling/DESIGN.md)
-and [MIGRATION.md](../../docs/per-project-scheduling/MIGRATION.md). Work that is
-genuinely fleet-scoped (promote, discover-packs, migrations-retire, census)
-becomes ordinary tasks *of the canon/sheepdog repos* on the same machinery — no
-separate central mechanism survives once the rollout completes.
+**That model is being replaced** by per-project scheduling (issue #394): every
+repo schedules **itself** through a vendored hourly scheduler Action + a
+label-fired executor — see the
+[design](../../docs/per-project-scheduling/DESIGN.md) and the
+[rollout](../../docs/per-project-scheduling/MIGRATION.md). During the transition
+this central routine stays live as the rollback (it skips any repo that declares
+the `schedule` key, so exactly one mechanism owns a repo at a time); the whole
+`routines/fleet/` tree is removed at Phase 4.
 
-This is an agent-practices rule, stated once here as the home for it:
-
-> Give an executor a cron and it silently becomes a **second orchestrator with a
-> competing trigger**. One scheduler per repo — the vendored hourly Action;
-> agent work is dispatched only through `ready-for-agent` issues; every other
-> recurring workflow is `workflow_dispatch`-only, triggered and awaited by a
-> scheduler task. — the agent-practices skill
-
-So a pack task that needs an Action declares it `workflow_dispatch`-only; the
-task's worker (or the scheduler's inline `model: none` worker) triggers it and
-awaits its completion (report at completion, not at the trigger — the
-async-completion rule). E.g. `store-release`'s `Release to Chrome Store`
-workflow.
-
-No workflow *in* a repo — canon or consumer — carries a `schedule:` trigger for
-Claudinite work **except** the one vendored `claudinite-scheduler.yml`. A
-second scheduled executor is a conformance violation
-(`gha/no-scheduled-fleet-executor`), and the scheduler workflow's own shape is
-enforced by `scheduler-workflow-shape`, not just a review note.
-
-**During the rollout** (until Phase 4) the legacy central routine
-([../auto-all-repos-maintenance.md](../auto-all-repos-maintenance.md)) still
-runs for repos that have not cut over — it skips any repo whose
-`.claudinite-checks.json` declares the `schedule` key, so exactly one mechanism
-owns a repo at any time.
+The one rule that outlives the transition: a repo's recurring work has exactly
+**one scheduler**, and every other workflow is `workflow_dispatch`-only —
+triggered and awaited, never given a cron of its own. Give an executor a cron and
+it silently becomes a second orchestrator with a competing trigger. This is
+enforced by `gha/no-scheduled-fleet-executor` and stated for agents in the
+unattended-agents skill.
