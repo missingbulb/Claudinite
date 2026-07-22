@@ -86,13 +86,6 @@
                 "reason": "decouple(release-infra): a chrome-release composite action in the core .github/ tree; being vendored out (#276)"
               },
               {
-                "path": "migrations/active_migrations/2026-07-12-grow-with-claudinite-seed.mjs",
-                "to": [
-                  "packs/grow_with_claudinite"
-                ],
-                "reason": "inherent: a one-time seed migration necessarily names the single pack it seeds; it self-retires once the fleet converges"
-              },
-              {
                 "path": "migrations/active_migrations/2026-07-12-tidy-repo-seed.mjs",
                 "to": [
                   "packs/tidy-repo"
