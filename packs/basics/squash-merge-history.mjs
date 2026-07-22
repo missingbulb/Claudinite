@@ -1,11 +1,8 @@
 import { finding } from '../../engine/checks/helpers/findings.mjs';
+import { work } from '../../engine/checks/helpers/work.mjs';
 
 // The effect check behind the squash-only platform setting, scoped to the work:
-// a merge commit the current change introduces (on HEAD's first-parent chain
-// since the merge-base) is a merge that would land non-squash and proves the
-// setting was off or bypassed. It tests the work, not the repo's whole history —
-// pre-existing merges already on the base are out of scope. One finding per
-// introduced merge, keyed by sha.
+// pre-existing merges already on the base are out of range.
 const rule = {
   id: 'squash-merge-history',
   severity: 'blocking',
@@ -14,7 +11,7 @@ const rule = {
   why: 'the squash-only repo setting can be off or bypassed; a merge commit in the work is the effect that proves it',
 
   run(ctx) {
-    return ctx.introducedMergeCommits().map(({ sha, subject }) =>
+    return work(ctx).introducedMerges().map(({ sha, subject }) =>
       finding(rule, {
         file: `${ctx.branch || 'HEAD'}@${sha}`,
         what: `merge commit introduced by this change: ${subject}`,
