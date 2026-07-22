@@ -309,3 +309,47 @@ jobs:
     assert.equal(run(noScheduledFleetExecutor, ownCron).length, 0);           // consumer's own cron, no reusable
   } finally { cleanup(scheduledExecutor); cleanup(dispatchExecutor); cleanup(ownCron); }
 });
+
+test('no-scheduled-fleet-executor: once the scheduler is present, it is the ONLY permitted cron', () => {
+  const SCHEDULER = '.github/workflows/claudinite-scheduler.yml';
+  const schedulerYml =
+`name: Claudinite scheduler
+on:
+  schedule:
+    - cron: '24 * * * *'
+  workflow_dispatch:
+jobs:
+  schedule:
+    runs-on: ubuntu-latest
+    steps:
+      - run: node .claudinite/shared/engine/scheduler/run.mjs
+`;
+  // Cut over + a plain scheduled workflow (no canon reusable): now flagged, where
+  // pre-cutover it was the consumer's own business.
+  const cutOverStrayCron = makeRepo({ changed: { [SCHEDULER]: schedulerYml, [WF]:
+`name: nightly
+on:
+  schedule:
+    - cron: '0 3 * * *'
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi
+` } });
+  // Cut over, but only the scheduler crons: clean (the scheduler itself is exempt).
+  const cutOverClean = makeRepo({ changed: { [SCHEDULER]: schedulerYml, [WF]:
+`name: publish
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi
+` } });
+  try {
+    assert.equal(run(noScheduledFleetExecutor, cutOverStrayCron).length, 1); // stray cron flagged post-cutover
+    assert.equal(run(noScheduledFleetExecutor, cutOverClean).length, 0);     // scheduler-only cron is fine
+  } finally { cleanup(cutOverStrayCron); cleanup(cutOverClean); }
+});

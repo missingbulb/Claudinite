@@ -161,6 +161,39 @@ test('release-workflows: flags a stale schedule cron (the pre-rename 03:00 UTC)'
   } finally { cleanup(root); }
 });
 
+test('release-workflows: once the scheduler is present, the orchestrator cron flips from required to forbidden', () => {
+  const SCHEDULER = '.github/workflows/claudinite-scheduler.yml';
+  const schedulerYml =
+`name: Claudinite scheduler
+on:
+  schedule:
+    - cron: '24 * * * *'
+  workflow_dispatch:
+jobs:
+  schedule:
+    runs-on: ubuntu-latest
+    steps:
+      - run: node .claudinite/shared/engine/scheduler/run.mjs
+`;
+  // De-cron'd orchestrator: keeps push + workflow_dispatch, drops the schedule block.
+  const deCronOrchestrator = ORCHESTRATOR.replace('  schedule:\n    - cron: "30 0 * * *"\n', '');
+
+  // Cut over but the orchestrator still carries the contract cron → flagged.
+  const cutOverStillCron = makeRepo({ changed: { ...CONFORMANT, [SCHEDULER]: schedulerYml } });
+  // Cut over and de-cron'd → clean.
+  const cutOverDeCron = makeRepo({ changed: {
+    ...CONFORMANT,
+    [SCHEDULER]: schedulerYml,
+    '.github/workflows/chrome-extension-release.yml': deCronOrchestrator,
+  } });
+  try {
+    const stillCron = run(releaseWorkflows, cutOverStillCron);
+    assert.equal(stillCron.length, 1);
+    assert.match(stillCron[0].what, /has a schedule cron "30 0 \* \* \*".*must be dispatch-only/);
+    assert.deepEqual(run(releaseWorkflows, cutOverDeCron), []);
+  } finally { cleanup(cutOverStillCron); cleanup(cutOverDeCron); }
+});
+
 test('release-workflows: the pre-vendoring @main shape is tolerated while the migration is live, flagged once it retires', () => {
   const files = { ...CONFORMANT, '.github/workflows/chrome-extension-release.yml': LEGACY_ORCHESTRATOR };
   // A legacy repo need not carry the vendored reusables yet.
