@@ -1,0 +1,97 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { computeDueTaskSlots, signalsUnion, runPrecondition, renderSummary, planRun } from '../../engine/scheduler/run.mjs';
+import { DEFAULT_SCHEDULE } from '../../engine/scheduler/slots.mjs';
+
+const D = DEFAULT_SCHEDULE;
+const mkTask = (id, over = {}) => ({
+  pack: 'p', id,
+  decl: {
+    id, frequency: 'daily', signals: ['commits'], model: 'sonnet', outcome: 'open-pr', worker: 'task.md',
+    precondition: () => ({ run: true, reason: 'ok' }),
+    ...over,
+  },
+});
+
+test('computeDueTaskSlots pairs only due-frequency tasks with their slot', () => {
+  const tasks = [mkTask('a', { frequency: 'daily' }), mkTask('b', { frequency: 'weekly' })];
+  // A morning run after yesterday's success: daily is due, weekly (Sun) is not (mid-week).
+  const due = computeDueTaskSlots(tasks, D, '2026-07-22T06:00:00Z', '2026-07-21T06:00:00Z');
+  assert.deepEqual(due.map((d) => d.task.id), ['a']);
+  assert.equal(due[0].slotId, 'd2026-07-22');
+});
+
+test('signalsUnion collects only the union of the due tasks\' declared signals', () => {
+  const due = [
+    { task: mkTask('a', { signals: ['commits', 'prs'] }) },
+    { task: mkTask('b', { signals: ['prs', 'issues'] }) },
+  ];
+  assert.deepEqual(signalsUnion(due).sort(), ['commits', 'issues', 'prs']);
+});
+
+test('runPrecondition isolates a throwing precondition into a skip with the error', () => {
+  const good = runPrecondition(mkTask('a'), {}, {});
+  assert.deepEqual(good, { run: true, reason: 'ok', context: [] });
+  const bad = runPrecondition(mkTask('b', { precondition: () => { throw new Error('boom'); } }), {}, {});
+  assert.equal(bad.run, false);
+  assert.match(bad.reason, /precondition threw: boom/);
+  assert.equal(bad.error, 'boom');
+});
+
+test('planRun dispatches a running agent task and skips a non-running one', async () => {
+  const tasks = [
+    mkTask('runs', { precondition: () => ({ run: true, reason: 'work found', context: ['scope line'] }) }),
+    mkTask('quiet', { precondition: () => ({ run: false, reason: 'nothing to do' }) }),
+  ];
+  const { evaluations } = await planRun({
+    tasks, schedule: D, now: '2026-07-22T06:00:00Z', lastSuccess: '2026-07-21T06:00:00Z',
+    collectSignals: async () => ({}),
+    existingIssuesFor: async () => [],
+  });
+  const byTask = Object.fromEntries(evaluations.map((e) => [e.task, e]));
+  assert.equal(byTask.runs.run, true);
+  assert.equal(byTask.runs.dispatch.action, 'create');
+  assert.deepEqual(byTask.runs.context, ['scope line']);
+  assert.equal(byTask.quiet.run, false);
+  assert.equal(byTask.quiet.dispatch, undefined);
+});
+
+test('planRun marks a model:none task inline instead of dispatching an issue', async () => {
+  const tasks = [mkTask('code', { model: 'none', outcome: 'none', precondition: () => ({ run: true, reason: 'deployable change' }) })];
+  let askedIssues = false;
+  const { evaluations } = await planRun({
+    tasks, schedule: D, now: '2026-07-22T06:00:00Z', lastSuccess: '2026-07-21T06:00:00Z',
+    collectSignals: async () => ({}),
+    existingIssuesFor: async () => { askedIssues = true; return []; },
+  });
+  assert.equal(evaluations[0].inline, true);
+  assert.equal(evaluations[0].dispatch, undefined);
+  assert.equal(askedIssues, false, 'an inline task never searches for a dispatch issue');
+});
+
+test('planRun collects the declared signal union exactly once and passes it to preconditions', async () => {
+  let collectedWith = null;
+  const seen = [];
+  const tasks = [
+    mkTask('a', { signals: ['commits'], precondition: (s) => { seen.push(s); return { run: false, reason: '' }; } }),
+    mkTask('b', { signals: ['prs'], precondition: (s) => { seen.push(s); return { run: false, reason: '' }; } }),
+  ];
+  await planRun({
+    tasks, schedule: D, now: '2026-07-22T06:00:00Z', lastSuccess: '2026-07-21T06:00:00Z',
+    collectSignals: async (names) => { collectedWith = names; return { collected: names }; },
+  });
+  assert.deepEqual(collectedWith.sort(), ['commits', 'prs']);
+  assert.equal(seen.length, 2);
+  assert.deepEqual(seen[0], { collected: collectedWith }); // same bundle to every precondition
+});
+
+test('renderSummary lists each evaluated task with its verb and reason', () => {
+  const summary = renderSummary([
+    { pack: 'p', task: 'a', slotId: 'd2026-07-22', run: true, dispatch: { action: 'create', reason: 'new' } },
+    { pack: 'p', task: 'b', slotId: 'd2026-07-22', run: false, reason: 'quiet' },
+    { pack: 'p', task: 'c', slotId: 'd2026-07-22', run: true, inline: true, reason: 'inline work' },
+  ]);
+  assert.match(summary, /- p\/a \[d2026-07-22\] create — new/);
+  assert.match(summary, /- p\/b \[d2026-07-22\] skip — quiet/);
+  assert.match(summary, /- p\/c \[d2026-07-22\] run-inline — inline work/);
+});
