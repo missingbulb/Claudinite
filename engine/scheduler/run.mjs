@@ -10,8 +10,10 @@
 // `planRun`. The "should this run" verdict is always code here — never the
 // shell's judgment (the same split the fleet planner uses).
 
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { dueSlots } from './slots.mjs';
-import { planDispatch } from './dispatch.mjs';
+import { planDispatch, dispatchTitle, dispatchBody, DISPATCH_PREFIX, READY_LABEL } from './dispatch.mjs';
 import { isAgentless } from './model-map.mjs';
 
 // The due tasks, each paired with the slot it runs under. Union the discovered
@@ -34,6 +36,17 @@ export function signalsUnion(dueTaskSlots) {
   const names = new Set();
   for (const { task } of dueTaskSlots) for (const name of task.decl.signals) names.add(name);
   return [...names];
+}
+
+// The signal-collection lookback: the widest due task's period plus 1h slack
+// (DESIGN §3.3). Stateless fixed lookback — overlap is absorbed by dedupe.
+const FREQUENCY_MS = {
+  hourly: 3600e3, 'daily-2h': 86400e3, 'daily-1h': 86400e3, daily: 86400e3,
+  'daily+1h': 86400e3, weekly: 7 * 86400e3, monthly: 31 * 86400e3,
+};
+export function windowStart(dueTaskSlots, now) {
+  const widest = Math.max(0, ...dueTaskSlots.map(({ task }) => FREQUENCY_MS[task.decl.frequency] ?? 86400e3));
+  return new Date(new Date(now).getTime() - widest - 3600e3).toISOString();
 }
 
 // Run one task's precondition in isolation (DESIGN §3.4). A throwing
@@ -98,4 +111,85 @@ export async function planRun({
     evaluations.push(rec);
   }
   return { evaluations };
+}
+
+// --- CLI: the thin I/O shell the vendored workflow invokes -------------------
+// Wires the run-ledger read, signal collectors, and issue I/O around planRun,
+// then acts on each decision (file a labeled dispatch issue, or run an inline
+// worker) and prints the job summary. All GitHub access here is the Action's
+// GITHUB_TOKEN — the one sanctioned non-MCP surface (DESIGN §10).
+
+// The task family's issues (state=all) via the search API, filtered to exact
+// prefix — the input planDispatch's exactly-once / at-most-one-open guards read.
+async function existingIssuesViaSearch(gh, repo, pack, task) {
+  const q = encodeURIComponent(`repo:${repo} in:title "${DISPATCH_PREFIX} ${pack}/${task}"`);
+  const { status, json } = await gh(`/search/issues?q=${q}&per_page=100`);
+  if (status !== 200 || !Array.isArray(json?.items)) return [];
+  const prefix = `${DISPATCH_PREFIX} ${pack}/${task} `;
+  return json.items
+    .filter((i) => `${(i.title ?? '').trim()} `.startsWith(prefix))
+    .map((i) => ({ number: i.number, title: i.title, state: i.state }));
+}
+
+async function main() {
+  const { makeGh, lastSuccessTime, actionRepoContext } = await import('./signals/gh.mjs');
+  const { collectSignals } = await import('./signals/index.mjs');
+  const { discoverTasks } = await import('./discover.mjs');
+  const { loadConfig } = await import('../checks/helpers/repo-context.mjs');
+
+  const root = process.cwd();
+  const { repo, defaultBranch } = actionRepoContext();
+  if (!repo) { console.error('GITHUB_REPOSITORY not set — not in an Actions context'); process.exit(1); }
+  const gh = makeGh();
+  const config = loadConfig(root);
+
+  const { tasks, errors } = await discoverTasks(root, config);
+  for (const e of errors) console.log(`! ${e.what}`);
+
+  const now = new Date();
+  const lastSuccess = await lastSuccessTime(gh, repo);
+  const schedule = config.schedule;
+
+  const due = computeDueTaskSlots(tasks, schedule, now, lastSuccess);
+  const sinceIso = windowStart(due, now);
+  const ctx = {
+    repo, defaultBranch, now: now.toISOString(), sinceIso, config,
+    activePacks: config.packs,
+  };
+  const packConfigFor = (packId) => config.packConfig?.[packId] ?? {};
+
+  const { evaluations } = await planRun({
+    tasks, schedule, now, lastSuccess,
+    collectSignals: (names) => collectSignals(gh, ctx, names),
+    packConfigFor,
+    existingIssuesFor: (pack, task) => existingIssuesViaSearch(gh, repo, pack, task),
+  });
+
+  for (const rec of evaluations) {
+    if (!rec.run) continue;
+    const taskObj = tasks.find((t) => t.pack === rec.pack && t.id === rec.task);
+    if (rec.inline) {
+      // model: none — run the worker module inline (it may itself dispatch a workflow).
+      try {
+        const workerUrl = pathToFileURL(join(taskObj.taskDir, taskObj.decl.worker)).href;
+        const worker = (await import(workerUrl)).default;
+        if (typeof worker === 'function') await worker({ gh, repo, ctx, slotId: rec.slotId });
+      } catch (e) { console.log(`! inline worker ${rec.pack}/${rec.task} failed: ${e.message}`); }
+      continue;
+    }
+    if (rec.dispatch?.action === 'create') {
+      const title = dispatchTitle({ pack: rec.pack, task: rec.task, slotId: rec.slotId });
+      const body = dispatchBody({ taskPath: taskObj.taskPath, pack: rec.pack, task: rec.task, slotId: rec.slotId, context: rec.context });
+      const res = await gh(`/repos/${repo}/issues`, { method: 'POST', body: { title, body, labels: [READY_LABEL] } });
+      if (res.status >= 300) console.log(`! failed to file dispatch issue for ${rec.pack}/${rec.task}: ${res.status}`);
+    }
+  }
+
+  console.log('## Claudinite scheduler\n');
+  console.log(renderSummary(evaluations) || '- no tasks due');
+}
+
+// Run only when invoked directly (the workflow's `node run.mjs`), never on import.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((e) => { console.error(e); process.exit(1); });
 }
