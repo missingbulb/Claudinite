@@ -12,8 +12,8 @@
 // an ordinary engine change legitimately edits checks/, routines/, … Nothing in
 // the tree marks a diff as a promote run, so no always-on check could self-gate
 // to promote; the promote PR's branch prefix is the signal CI keys on.
-import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
-import { finding } from '../../../engine/checks/helpers/findings.mjs';
+import { buildContext } from '../../../../engine/checks/helpers/repo-context.mjs';
+import { finding } from '../../../../engine/checks/helpers/findings.mjs';
 
 const inBounds = (p) => p.startsWith('packs/') || p.startsWith('skills/');
 
@@ -21,7 +21,7 @@ const rule = {
   id: 'promote-scope',
   severity: 'blocking',
   description: 'The growth promote stage writes only under packs/ or skills/',
-  doc: '.claudinite/local_packs/canon-curation/promote.md',
+  doc: '.claudinite/local/packs/canon-curation/promote.md',
   why: 'promote runs unattended with a fleet-wide token; a write outside the canon homes escapes the review-by-blast-radius boundary the growth lifecycle is built on',
 
   // Every path the branch touches vs the merge-base — added/modified/untracked
@@ -46,7 +46,7 @@ const rule = {
 
 export default rule;
 
-// CLI — CI runs this on the promote PR: `node .claudinite/local_packs/canon-curation/promote-scope.mjs [root]`.
+// CLI — CI runs this on the promote PR: `node .claudinite/local/packs/canon-curation/promote-scope.mjs [root]`.
 //   exit 0 — every changed path is under packs/ or skills/ (certified)
 //   exit 1 — one or more stray paths (the boundary was breached; fail the PR)
 //   exit 2 — no merge-base with the base branch, so the diff can't be scoped

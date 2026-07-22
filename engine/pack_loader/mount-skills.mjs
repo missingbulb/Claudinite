@@ -37,7 +37,13 @@ try {
   // skill AND bundle its own under <pack>/skills/, mounted from the tracked pack
   // dir rather than the corpus mount.
   const packs = await loadPacks({ localRoot: projectRoot });
-  const localPacksRoot = join(projectRoot, '.claudinite', 'local_packs');
+  // Both local roots: the canonical .claudinite/local/packs and the pre-rename
+  // .claudinite/local_packs, so a mount from either is recognized as ours during
+  // the migration window (skills themselves resolve off each pack's own dir).
+  const localPacksRoots = [
+    join(projectRoot, '.claudinite', 'local', 'packs'),
+    join(projectRoot, '.claudinite', 'local_packs'),
+  ];
 
   // The union over the active packs' bundled skills — every <pack>/skills/<name>
   // carrying a SKILL.md, resolved to that directory. Canon packs sort before
@@ -67,7 +73,7 @@ try {
   // from pack trees.)
   const ownedRoots = [
     join(corpusRoot, 'packs'),
-    localPacksRoot,
+    ...localPacksRoots,
   ];
   const owned = (entry) => {
     const st = lstatOrNull(join(mountDir, entry));

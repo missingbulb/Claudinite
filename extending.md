@@ -62,7 +62,7 @@ every consumer that vendors the importer without its target. A pack that wants a
 *abilities* declares the dependency (`requires`) and passes **configuration**; a helper both
 sides need moves into `checks/lib`. Enforced canon-side as **barriers configuration, never
 bespoke checking code**: the `pack-independence` barrier is contributed as manifest data by the
-canon home's own curation local pack (`.claudinite/local_packs/canon-curation/` — a home-repo
+canon home's own curation local pack (`.claudinite/local/packs/canon-curation/` — a home-repo
 duty, since the `packs/` tree it polices exists only here), with the vendor writer's coherence
 guard holding the same invariant at vendoring time on consumers' behalf.
 

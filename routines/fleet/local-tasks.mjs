@@ -61,29 +61,40 @@ async function readFile(gh, fullName, path) {
  */
 export async function readLocalTasks(gh, fullName, { importModule = importSource } = {}) {
   const out = [];
-  const packDirs = (await listDir(gh, fullName, '.claudinite/local_packs')).filter((e) => e.type === 'dir');
-  for (const packEntry of packDirs) {
-    const pack = packEntry.name;
-    const runDaily = (await listDir(gh, fullName, `.claudinite/local_packs/${pack}/run_daily`))
-      .filter((e) => e.type === 'file' && e.name.endsWith('.mjs'));
-    for (const fileEntry of runDaily) {
-      try {
-        const source = await readFile(gh, fullName, fileEntry.path);
-        if (source == null) continue;
-        const descriptor = await importModule(source);
-        if (!descriptor || typeof descriptor.gate !== 'function' || typeof descriptor.id !== 'string') continue;
-        out.push({
-          ...descriptor,
-          pack,
-          workerRepo: fullName,
-          // pack-relative worker doc -> member-repo-relative path; a leading
-          // "/" opts out (repo-root-relative already, just stripped)
-          worker: !descriptor.worker ? null
-            : descriptor.worker.startsWith('/') ? descriptor.worker.slice(1)
-              : `.claudinite/local_packs/${pack}/${descriptor.worker}`,
-        });
-      } catch {
-        // a broken descriptor is skipped — the member's other tasks still plan
+  // Read BOTH local roots over the API — the canonical .claudinite/local/packs
+  // and the pre-rename .claudinite/local_packs — so a member (the canon home
+  // included) is found whichever layout it is on during the migration window. A
+  // pack seen under the canonical root wins; the legacy root only contributes
+  // packs not already found (first-seen by pack name).
+  const seenPacks = new Set();
+  for (const localRoot of ['.claudinite/local/packs', '.claudinite/local_packs']) {
+    const packDirs = (await listDir(gh, fullName, localRoot)).filter((e) => e.type === 'dir');
+    for (const packEntry of packDirs) {
+      const pack = packEntry.name;
+      if (seenPacks.has(pack)) continue;
+      seenPacks.add(pack);
+      const runDaily = (await listDir(gh, fullName, `${localRoot}/${pack}/run_daily`))
+        .filter((e) => e.type === 'file' && e.name.endsWith('.mjs'));
+      for (const fileEntry of runDaily) {
+        try {
+          const source = await readFile(gh, fullName, fileEntry.path);
+          if (source == null) continue;
+          const descriptor = await importModule(source);
+          if (!descriptor || typeof descriptor.gate !== 'function' || typeof descriptor.id !== 'string') continue;
+          out.push({
+            ...descriptor,
+            pack,
+            workerRepo: fullName,
+            // pack-relative worker doc -> member-repo-relative path (under the root
+            // the pack was found in); a leading "/" opts out (repo-root-relative
+            // already, just stripped)
+            worker: !descriptor.worker ? null
+              : descriptor.worker.startsWith('/') ? descriptor.worker.slice(1)
+                : `${localRoot}/${pack}/${descriptor.worker}`,
+          });
+        } catch {
+          // a broken descriptor is skipped — the member's other tasks still plan
+        }
       }
     }
   }

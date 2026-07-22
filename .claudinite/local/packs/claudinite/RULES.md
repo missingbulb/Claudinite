@@ -12,7 +12,7 @@ prose below). Entries accrete as sessions on the canon surface durable, canon-sp
 
 ## Standing owner decisions — settled, do not re-litigate
 
-- **`canon-curation` lives in `.claudinite/local_packs/`, not `packs/`** (owner decision,
+- **`canon-curation` lives in `.claudinite/local/packs/`, not `packs/`** (owner decision,
   2026-07-19). The canon home's curation duties are Claudinite-maintaining-Claudinite —
   project-specific content on the home's own capture surface. Do not propose moving it back, and
   do not describe the move as open or provisional.

@@ -15,7 +15,7 @@ shedding context over time instead of only at the moment a rule is first learned
 
 Read the prose of the packs and skills (`packs/<name>/RULES.md`, `packs/<name>/RELEASE.md`,
 `skills/<name>/SKILL.md`). For each rule, ask the one question from
-[engine/checks/DESIGN.md](../../../../../engine/checks/DESIGN.md): **does it constrain a *static signature in the repo
+[engine/checks/DESIGN.md](../../../../../../engine/checks/DESIGN.md): **does it constrain a *static signature in the repo
 artifact* — something a post-hoc scan could observe?**
 
 - **Yes → a conversion candidate.** A dangling-reference rule, a filename convention, a workflow
@@ -30,8 +30,8 @@ part of the on-demand skill — it belongs in a pack as a check.
 ## How to convert one
 
 Follow the promote stage's check-authoring discipline
-([promote.md](../../../../../.claudinite/local_packs/canon-curation/promote.md) and
-[item-routing.md](../../../../../.claudinite/local_packs/canon-curation/item-routing.md) own the ladder). For each candidate:
+([promote.md](../../promote.md) and
+[item-routing.md](../../item-routing.md) own the ladder). For each candidate:
 
 1. **Author the check** in the owning pack (`packs/<pack>/<rule>.mjs`, listed in `pack.mjs`) —
    the failure message *is* the rule (what / why / fix / `doc:` pointer back to the prose).

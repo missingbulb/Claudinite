@@ -34,20 +34,23 @@ test('isActive: activation matches both entry forms', () => {
   assert.ok(!isActive({ id: 'node' }, {}));
 });
 
-test('packEntryId/isActive: a local-pack declaration may be namespaced local_packs/<name>', () => {
-  // The namespaced form is the canonical way to declare a local pack; the bare
-  // id stays accepted while the fleet migrates (both resolve to the bare id).
-  assert.equal(packEntryId('local_packs/proj'), 'proj');
-  assert.equal(packEntryId({ id: 'local_packs/proj', config: {} }), 'proj');
-  assert.ok(isActive({ id: 'proj', local: true }, { packs: ['local_packs/proj'] }));
-  assert.ok(isActive({ id: 'proj', local: true }, { packs: [{ id: 'local_packs/proj', config: {} }] }));
+test('packEntryId/isActive: a local-pack declaration may be namespaced local/<name>', () => {
+  // The namespaced `local/` form is the canonical way to declare a local pack;
+  // the pre-rename `local_packs/` form and the bare id both stay accepted while
+  // the fleet migrates (all three resolve to the bare id).
+  assert.equal(packEntryId('local/proj'), 'proj');
+  assert.equal(packEntryId({ id: 'local/proj', config: {} }), 'proj');
+  assert.equal(packEntryId('local_packs/proj'), 'proj'); // legacy form still resolves
+  assert.ok(isActive({ id: 'proj', local: true }, { packs: ['local/proj'] }));
+  assert.ok(isActive({ id: 'proj', local: true }, { packs: [{ id: 'local/proj', config: {} }] }));
+  assert.ok(isActive({ id: 'proj', local: true }, { packs: ['local_packs/proj'] })); // legacy window
   assert.ok(isActive({ id: 'proj', local: true }, { packs: ['proj'] })); // migration window
-  assert.ok(!isActive({ id: 'other' }, { packs: ['local_packs/proj'] }));
+  assert.ok(!isActive({ id: 'other' }, { packs: ['local/proj'] }));
 });
 
-test('declTokenFor: the writer-side token — namespaced for a local pack, bare for a canon one', () => {
-  assert.equal(LOCAL_DECL_PREFIX, 'local_packs/');
-  assert.equal(declTokenFor({ id: 'proj', local: true }), 'local_packs/proj');
+test('declTokenFor: the writer-side token — canonical namespaced for a local pack, bare for a canon one', () => {
+  assert.equal(LOCAL_DECL_PREFIX, 'local/');
+  assert.equal(declTokenFor({ id: 'proj', local: true }), 'local/proj');
   assert.equal(declTokenFor({ id: 'basics', local: false }), 'basics');
   assert.equal(packEntryId(declTokenFor({ id: 'proj', local: true })), 'proj'); // round-trips
 });

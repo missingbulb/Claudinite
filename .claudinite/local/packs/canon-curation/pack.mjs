@@ -8,12 +8,12 @@ import packIndependence from './pack-independence.mjs';
 // growth lifecycle's central stage), sweeping the corpus's prose backlog into
 // checks, and policing the corpus's packs/ tree.
 //
-// A LOCAL pack (.claudinite/local_packs/), by owner decision (2026-07-19): the
+// A LOCAL pack (.claudinite/local/packs/), by owner decision (2026-07-19): the
 // canon home's curation duties are project-specific content — Claudinite
 // maintaining Claudinite — so they live on the home's own capture surface, not
 // in the portable packs/ canon. Its run_daily tasks ride the fleet's default
 // local-pack scheduling like any member's local tasks. Declared by hand in
-// exactly one repo (this one, as "local_packs/canon-curation"); that
+// exactly one repo (this one, as "local/canon-curation"); that
 // declaration cardinality is what makes its tasks central-once: a pack task
 // runs per DECLARING repo, so one declaring repo means one unit per night, with
 // no bespoke orchestrator step. Un-declaring it freezes canon absorption

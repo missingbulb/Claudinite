@@ -1,6 +1,6 @@
 import { dirname } from 'node:path';
-import { finding } from '../../../../../engine/checks/helpers/findings.mjs';
-import { matchingLines, ruleIdsIn } from '../../../../../engine/checks/helpers/line-scanning.mjs';
+import { finding } from '../../../../../../engine/checks/helpers/findings.mjs';
+import { matchingLines, ruleIdsIn } from '../../../../../../engine/checks/helpers/line-scanning.mjs';
 
 // A corpus SKILL.md must not narrate its own enforcement: checks run on their
 // own at every Stop and in CI, and each failure message carries its rule — a
@@ -16,7 +16,7 @@ const rule = {
   id: 'skill-no-enforcement-narration',
   severity: 'blocking',
   description: 'A corpus SKILL.md neither tells the reader to run the checks runner nor names the rules its own checks enforce',
-  doc: '.claudinite/local_packs/canon-curation/skills/writing-claudinite-skills/SKILL.md',
+  doc: '.claudinite/local/packs/canon-curation/skills/writing-claudinite-skills/SKILL.md',
   why: 'checks run automatically at every Stop and in CI, and each failure message carries its rule — a skill narrating its own enforcement duplicates the mechanism and drifts from it',
 
   run(ctx) {
