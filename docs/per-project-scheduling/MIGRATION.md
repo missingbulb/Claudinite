@@ -22,6 +22,51 @@ Ground rules for every phase:
 
 ## Phase 0 — canon groundwork (Claudinite PRs; no behavior change anywhere)
 
+> **Landed** (#396, on `main`). All seven sub-items below are implemented, with
+> the full engine, the rename, the checks, the additive task conversions, the
+> cutover guard, and the docs — CI green, no behavior change until a repo
+> declares `schedule`. A few things landed **differently from the wording below**,
+> and a few are deliberately **carried forward** — a Phase 1 session should read
+> these before starting the GCEC pilot:
+>
+> **Deviations from this plan (as-built):**
+> - **No `scheduled-tasks` pack.** The two new checks (`scheduler-workflow-shape`,
+>   `task-declaration-shape`) live in the **basics** pack, with the doctrine in
+>   [`packs/basics/scheduled-tasks.md`](../../packs/basics/scheduled-tasks.md).
+>   Scheduling is baseline discipline, active wherever basics is declared
+>   (everywhere) — so a consumer needs no separate declaration to get the guards.
+> - **Task conversions are ADDITIVE, not a rename.** Each canon pack now carries
+>   `tasks/<name>/` **alongside** an untouched `run_daily/`; `pack.mjs` is
+>   unchanged (the scheduler discovers `tasks/` from disk). The legacy planner
+>   keeps reading `run_daily/`; it is deleted only at Phase 4. This is what makes
+>   Phase 0 truly behavior-preserving, and it means the `run_daily`/`tasks` alias
+>   (0.6) needed no code — both trees simply coexist.
+> - **`in-session-github-access` needed no change** — it already scopes to
+>   `routines/`, `migrations/`, `run_daily/`, so `engine/scheduler/`'s
+>   `GITHUB_TOKEN` use is out of scope for free.
+> - **Two 0.4 rescopes are deferred to the Phase 1 cutover** (per this doc's own
+>   check/stub ordering rule): the `gha/no-scheduled-fleet-executor` rescope and
+>   the `chrome-extension-release` cron flip travel with the de-cron'd stub in a
+>   consumer's mount — never before it, or they flag a live workflow. **Not yet
+>   done.**
+>
+> **Carry-forward gaps a Phase 1 session must close:**
+> - **The repo-hashed :10–:50 cron minute is not computed anywhere.** The stub
+>   ships a placeholder (`cron: '10 * * * *'`) with a "bootstrap rewrites this"
+>   comment, but no minute-hasher exists (`routines/fleet/schedule.mjs` has a 0–6
+>   weekday bucket, not a minute). **GCEC cutover must implement the hasher**, or
+>   every repo lands on minute 10 and the anti-stampede design fails.
+> - **`store-release`'s inline `worker.mjs` is trigger-only** — it fires the daily
+>   release workflow but does not yet await it (documented stub in the file).
+> - **The `fleet` signal collector is a stub** (returns null for consumers); its
+>   `FLEET_GITHUB_TOKEN` wiring on canon/sheepdog is Phase 2.
+> - **`run.mjs` + the collectors are unit-tested only, never run against live
+>   GitHub.** GCEC (Phase 1) is the first live exercise — expect first-run
+>   surprises in the ledger read, the issue search/create, and inline execution.
+> - **Baselining's remit now explicitly covers scheduler wiring** (its `task.md`
+>   re-converges a drifted `claudinite-scheduler.yml`, preserving the repo-hashed
+>   minute, and re-creates missing dispatch labels) — a refinement, not a gap.
+
 1. **Build `engine/scheduler/`** (vendored to consumers with the engine):
    `run.mjs` (entry), `slots.mjs` (due-slot math over the workflow-run ledger),
    `discover.mjs` (uniform `.claudinite/{shared,local}/packs/*/tasks/*` scan,
