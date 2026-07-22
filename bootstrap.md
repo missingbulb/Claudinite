@@ -118,7 +118,7 @@ One standing rule the vendored tree does **not** change: committed consumer code
 refactored upstream, so code reaching into it inherits every rename as a breaking change. Inline
 what you need. The `claudinite-isolation` check enforces this outside the wiring files.
 
-## Part 6 — schedule the repo (it maintains itself)
+## Part 6 — schedule the repo (it schedules itself)
 
 A consuming project schedules **itself** (per-project-scheduling DESIGN §9). As part of
 adoption:
@@ -137,7 +137,7 @@ adoption:
    `Execute the Claudinite executor: .claudinite/shared/engine/scheduler/executor.md`,
    sources = this repo + the Claudinite canon. If the trigger API isn't reachable, file
    an owner issue carrying that exact routine config in one enclosed block — the only
-   human action left in wiring a repo into maintenance.
+   human action left in wiring a repo into scheduling.
 
 During the rollout the owner drives each repo's cutover in a session (MIGRATION.md); the
 old enrollment issue and the central routine are retired at Phase 4.
