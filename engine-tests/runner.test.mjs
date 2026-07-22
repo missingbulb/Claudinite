@@ -6,10 +6,16 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeRepo, cleanup } from './helpers.mjs';
 
-const RUN = join(dirname(fileURLToPath(import.meta.url)), '..', 'engine', 'checks', 'check_the_world.mjs');
+const WORLD = join(dirname(fileURLToPath(import.meta.url)), '..', 'engine', 'checks', 'check_the_world.mjs');
+const WORK = join(dirname(fileURLToPath(import.meta.url)), '..', 'engine', 'checks', 'check_the_work.mjs');
 
 function runCli(root, ...args) {
-  return spawnSync(process.execPath, [RUN, ...args], { cwd: root, encoding: 'utf8' });
+  return spawnSync(process.execPath, [WORLD, ...args], { cwd: root, encoding: 'utf8' });
+}
+
+// The work-scope entry — rules judging the change (reference-integrity below).
+function runWorkCli(root, ...args) {
+  return spawnSync(process.execPath, [WORK, ...args], { cwd: root, encoding: 'utf8' });
 }
 
 test('exit 1 with a rendered finding on a blocking violation; exit 0 when clean', () => {
@@ -17,12 +23,12 @@ test('exit 1 with a rendered finding on a blocking violation; exit 0 when clean'
   const bad = makeRepo({ changed: { 'doc.md': '[gone](missing.md)\n', ...basics } });
   const good = makeRepo({ changed: { 'doc.md': '[ok](README.md)\n', ...basics } });
   try {
-    const r = runCli(bad);
+    const r = runWorkCli(bad);
     assert.equal(r.status, 1);
     assert.match(r.stdout, /reference-integrity/);
     assert.match(r.stdout, /missing\.md/);
     assert.match(r.stdout, /Fix:/);
-    assert.equal(runCli(good).status, 0);
+    assert.equal(runWorkCli(good).status, 0);
   } finally { cleanup(bad); cleanup(good); }
 });
 
@@ -130,8 +136,8 @@ test('an acceptance with a reason silences its finding; without a reason it is i
     },
   });
   try {
-    assert.equal(runCli(accepted).status, 0);
-    const r = runCli(reasonless);
+    assert.equal(runWorkCli(accepted).status, 0);
+    const r = runWorkCli(reasonless);
     assert.equal(r.status, 1);
     assert.match(r.stdout, /reason/);
   } finally { cleanup(accepted); cleanup(reasonless); }
@@ -182,8 +188,8 @@ test('a pack entry object declares the pack and carries its own accept/rules', (
     },
   });
   try {
-    assert.equal(runCli(accepted).status, 0);
-    const r = runCli(reasonless);
+    assert.equal(runWorkCli(accepted).status, 0);
+    const r = runWorkCli(reasonless);
     assert.equal(r.status, 1);
     assert.match(r.stdout, /on the "basics" pack entry.*has no reason/);
     assert.equal(runCli(overridden).status, 0);
@@ -218,7 +224,7 @@ test('severity override in config demotes a blocking rule to advisory', () => {
     },
   });
   try {
-    assert.equal(runCli(root).status, 0);
+    assert.equal(runWorkCli(root).status, 0);
   } finally { cleanup(root); }
 });
 
@@ -304,7 +310,7 @@ test('no pack runs undeclared — basics included', () => {
   } });
   try {
     for (const root of [bare, empty]) {
-      const r = runCli(root);
+      const r = runWorkCli(root);
       assert.equal(r.status, 0);
       assert.doesNotMatch(r.stdout, /reference-integrity/);
     }

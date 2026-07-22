@@ -16,10 +16,10 @@ const rule = {
   scope: 'work',
   why: 'the store requires a written justification per permission and blocks publishing the new version until the dashboard carries it; that step is manual, so a proactive issue beats the reactive publish failure',
 
-  run(w) {
-    const manifestPath = findExtensionManifest(w);
+  run(work) {
+    const manifestPath = findExtensionManifest(work);
     if (!manifestPath) return [];
-    const { head, base } = w.jsonPair(manifestPath);
+    const { head, base } = work.jsonPair(manifestPath);
     if (!head) return [];
     const baseSet = new Set(base ? requestedPermissions(base) : []);
     return requestedPermissions(head)

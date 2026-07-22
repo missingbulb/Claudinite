@@ -22,8 +22,8 @@ session needs no architecture lesson, its rules arrive injected):
   packs sit in its `.claudinite/local_packs/<name>/`, same slots, same engine.
 - **`engine/`** — the machinery that runs pack content, and the one always-vendored root:
   `engine/hooks/` (the wired SessionStart/PreToolUse entry points),
-  `engine/checks/check_the_world.mjs` (the conformance sweep CLI), `engine/checks/check_the_work.mjs` (the
-  Stop gate, wired via the stable `engine/hooks/stop-command.mjs`), `engine/checks/helpers/`, `engine/pack_loader/`, `engine/pack_loader/`,
+  `engine/checks/check_the_world.mjs` / `engine/checks/check_the_work.mjs` (the world- and
+  work-scope conformance runners; the stable `engine/hooks/stop-command.mjs` Stop gate runs both), `engine/checks/helpers/`, `engine/pack_loader/`, `engine/pack_loader/`,
   `vendoring/` (vendoring). Design records: [engine/checks/DESIGN.md](engine/checks/DESIGN.md),
   [vendoring/DESIGN.md](vendoring/DESIGN.md); the core/pack boundary:
   [extending.md](extending.md).

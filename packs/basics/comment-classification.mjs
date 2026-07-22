@@ -10,12 +10,12 @@ const rule = {
   scope: 'work',
   why: 'the class decides the flow (correction / feature / process-change); an unclassified comment tends to become an unrouted one-off patch',
 
-  run(w) {
-    const last = w.conversation().ownerTurns().last();
-    if (!last.exists || last.classified()) return [];
+  run(work) {
+    const lastOwnerTurn = work.conversation().ownerTurns().last();
+    if (!lastOwnerTurn.exists || lastOwnerTurn.classified()) return [];
     return [finding(rule, {
       file: '(conversation)',
-      what: `the reply to the owner's latest comment ("${last.excerpt(70)}…") declares no \`Comment class:\` line`,
+      what: `the reply to the owner's latest comment ("${lastOwnerTurn.excerpt(70)}…") declares no \`Comment class:\` line`,
       fix: 'state the classification explicitly — emit a line `Comment class: correction | feature | process-change | other` (a mixed comment names each part) in your reply text',
     })];
   },

@@ -31,10 +31,10 @@ const rule = {
   scope: 'work',
   why: 'every dependency is standing surface area and supply-chain weight; a built-in or a few lines often covers a narrow job with none of it',
 
-  run(w) {
+  run(work) {
     const out = [];
-    for (const file of w.changedFiles.filter(nearRoot)) {
-      const { head, base } = w.jsonPair(file);
+    for (const file of work.changedFiles.filter(nearRoot)) {
+      const { head, base } = work.jsonPair(file);
       if (!head) continue;
       const carried = depNames(base);
       for (const key of DEP_KEYS) {

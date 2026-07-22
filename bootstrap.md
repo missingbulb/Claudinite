@@ -146,6 +146,7 @@ Run the sweep once and clear what it surfaces:
 
 ```sh
 node .claudinite/shared/engine/checks/check_the_world.mjs
+node .claudinite/shared/engine/checks/check_the_work.mjs
 ```
 
 On a repo with existing code, **expect a backlog** — enforcement scope is whole-repo, and

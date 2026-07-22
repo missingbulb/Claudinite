@@ -8,9 +8,11 @@ Dependency-free Node ≥ 18 — no install step.
 ## Running
 
 ```sh
-node engine/checks/check_the_world.mjs             # whole-repo sweep (the default — Stop hook and CI both run this)
-node engine/checks/check_the_world.mjs --changed   # transitional: only files changed vs the merge-base with main
-node engine/checks/check_the_world.mjs --list      # machine-readable rule catalog (id, severity, description, doc)
+node engine/checks/check_the_world.mjs             # world scope: repo-state rules + settings diagnostics
+node engine/checks/check_the_work.mjs              # work scope: rules judging the current change (--transcript enables the conversation rules)
+                                                   # the Stop hook and CI run both; each accepts --changed (transitional
+                                                   # adoption-backlog scoping) and --base REF
+node engine/checks/check_the_world.mjs --list      # machine-readable catalog of every rule, both scopes
 node engine/checks/check_the_world.mjs --init      # write .claudinite-checks.json — the baseline plus the fingerprinted packs
 
 node --test engine/test/*.test.mjs packs/*.test.mjs packs/*/*.test.mjs packs/*/skills/*/*.test.mjs skills/*.test.mjs routines/*/*.test.mjs mount/*.test.mjs   # the test suite, as CI runs it
@@ -123,14 +125,16 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
 ## Enforcement wiring
 
 - **Stop hook** — a repo's `.claude/settings.json` wires the stable
-  [../hooks/stop-command.mjs](../hooks/stop-command.mjs), which routes to
-  [check_the_work.mjs](check_the_work.mjs) — registered in a repo's
-  `.claude/settings.json` (see [bootstrap.md](../../bootstrap.md)). Fast-exits when nothing changed
-  vs the base; on blocking findings exits 2 so the session fixes them before stopping.
-  Self-limiting: after blocking twice on identical findings it lets the stop through.
+  [../hooks/stop-command.mjs](../hooks/stop-command.mjs) (see [bootstrap.md](../../bootstrap.md)),
+  which fast-exits when nothing changed vs the base and otherwise runs both scope
+  runners — [check_the_world.mjs](check_the_world.mjs) and [check_the_work.mjs](check_the_work.mjs),
+  the latter with the session transcript. On blocking findings it exits 2 so the
+  session fixes them before stopping. Self-limiting: after blocking twice on
+  identical findings it lets the stop through.
 - **No CI job in the standard wiring** — edits made outside Claude sessions surface at the next
   session's Stop sweep (owner decision, #385). A repo that wants a CI backstop can run
-  `node engine/checks/check_the_world.mjs` itself; same sweep, same messages.
+  `node engine/checks/check_the_world.mjs` and `node engine/checks/check_the_work.mjs`
+  itself; same sweeps, same messages.
 
 ## Adding a rule
 

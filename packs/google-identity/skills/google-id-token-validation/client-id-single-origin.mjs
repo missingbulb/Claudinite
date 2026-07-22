@@ -17,12 +17,12 @@ const rule = {
   scope: 'work',
   why: 'the client requests the token for this id and the validator expects it as audience — one value; independently-edited copies drift, and a drifted pair rejects every well-formed token with an opaque 401',
 
-  run(w) {
+  run(work) {
     const out = [];
-    for (const { file, line, text } of w.addedLines()) {
+    for (const { file, line, text } of work.addedLines()) {
       if (file.startsWith(SELF)) continue;
       for (const literal of new Set([...text.matchAll(CLIENT_ID)].map((m) => m[0]))) {
-        const elsewhere = w.filesContaining(literal).filter((f) => f !== file && !f.startsWith(SELF));
+        const elsewhere = work.filesContaining(literal).filter((f) => f !== file && !f.startsWith(SELF));
         if (elsewhere.length === 0) continue;
         out.push(finding(rule, {
           file, line,

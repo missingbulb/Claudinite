@@ -10,10 +10,10 @@ const rule = {
   scope: 'work',
   why: 'the squash-only repo setting can be off or bypassed; a merge commit in the work is the effect that proves it',
 
-  run(w) {
-    return w.introducedMerges().map(({ sha, subject }) =>
+  run(work) {
+    return work.introducedMerges().map(({ sha, subject }) =>
       finding(rule, {
-        file: `${w.branch || 'HEAD'}@${sha}`,
+        file: `${work.branch || 'HEAD'}@${sha}`,
         what: `merge commit introduced by this change: ${subject}`,
         fix: 'rebase to drop the merge commit (git pull --rebase, or git rebase onto the base) so the branch lands squashed; keep squash-only enabled in the repo settings, or turn the rule off if the project deliberately runs a non-squash policy named in its CLAUDE.md',
       })

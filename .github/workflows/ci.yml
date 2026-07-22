@@ -32,7 +32,11 @@ jobs:
           tests=(engine-tests/*.test.mjs engine-tests/*/*.test.mjs packs/*.test.mjs packs/*/*.test.mjs packs/*/skills/*/*.test.mjs routines/*/*.test.mjs .claudinite/local_packs/*/*.test.mjs .claudinite/local_packs/*/skills/*/*.test.mjs)
           node --test "${tests[@]}"
       - name: Conformance sweep
-        run: node engine/checks/check_the_world.mjs
+        # Both scope runners: world (repo-state rules) and work (rules judging
+        # this branch's change) — the same pair the Stop hook runs.
+        run: |
+          node engine/checks/check_the_world.mjs
+          node engine/checks/check_the_work.mjs
       - name: Promote write-surface gate
         # The growth promote stage (.claudinite/local_packs/canon-curation/promote.md) is the one change
         # bounded to packs/ + skills/ — an ordinary engine PR legitimately edits checks/,
