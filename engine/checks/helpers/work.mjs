@@ -7,7 +7,18 @@ import { extractLinks } from './markdown.mjs';
 // transcript, no merge-base, an empty branch all yield empty results — so a rule
 // reads as one chain with no guard ladders. Mechanism only: a rule still owns
 // its patterns, file filters, and failure text.
+//
+// A rule declaring `scope: 'work'` receives this object as its `run` argument
+// (runRule dispatches); check-the-world rules keep the raw ctx until a fluent
+// world object exists. The raw surface a work rule still needs (files, read,
+// exists, …) is delegated here, so a work rule — and the structural helpers it
+// calls, e.g. findExtensionManifest — never touches ctx itself.
 export const work = (ctx) => new Work(ctx);
+
+// The single dispatch seam: the runner and every rule test invoke rules through
+// this, so a rule's scope decides its context in exactly one place. Extra args
+// pass through (some rules take test-only options after the context).
+export const runRule = (rule, ctx, ...args) => rule.run(rule.scope === 'work' ? work(ctx) : ctx, ...args);
 
 // Null-object for "no such turn": every accessor answers emptily, so a chain
 // ending in .last() never needs an existence guard before its predicates.
@@ -50,6 +61,16 @@ class Conversation {
 
 class Work {
   constructor(ctx) { this.ctx = ctx; }
+
+  get branch() { return this.ctx.branch; }
+  get baseRef() { return this.ctx.baseRef; }
+  get commits() { return this.ctx.commits; }
+  get files() { return this.ctx.files; }
+  get changedFiles() { return this.ctx.changedFiles; }
+  get tracked() { return this.ctx.tracked; }
+  read(path) { return this.ctx.read(path); }
+  exists(path) { return this.ctx.exists(path); }
+  packConfig(id) { return this.ctx.config?.packConfig?.[id]; }
 
   conversation() { return new Conversation(this.ctx.conversation()); }
 

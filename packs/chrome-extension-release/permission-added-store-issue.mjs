@@ -1,6 +1,5 @@
 import { finding } from '../../engine/checks/helpers/findings.mjs';
 import { findExtensionManifest } from '../../engine/checks/helpers/chrome-manifest.mjs';
-import { work } from '../../engine/checks/helpers/work.mjs';
 import { requestedPermissions } from './lib/manifest-permissions.mjs';
 
 // Fires only on a permission THIS change adds: the store's per-permission
@@ -14,12 +13,13 @@ const rule = {
   severity: 'advisory',
   description: 'A permission added to the manifest needs a manual store-dashboard justification — open a tracking issue',
   doc: 'packs/chrome-extension-release/RELEASE.md',
+  scope: 'work',
   why: 'the store requires a written justification per permission and blocks publishing the new version until the dashboard carries it; that step is manual, so a proactive issue beats the reactive publish failure',
 
-  run(ctx) {
-    const manifestPath = findExtensionManifest(ctx);
+  run(w) {
+    const manifestPath = findExtensionManifest(w);
     if (!manifestPath) return [];
-    const { head, base } = work(ctx).jsonPair(manifestPath);
+    const { head, base } = w.jsonPair(manifestPath);
     if (!head) return [];
     const baseSet = new Set(base ? requestedPermissions(base) : []);
     return requestedPermissions(head)

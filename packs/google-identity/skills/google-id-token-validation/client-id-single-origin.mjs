@@ -1,5 +1,4 @@
 import { finding } from '../../../../engine/checks/helpers/findings.mjs';
-import { work } from '../../../../engine/checks/helpers/work.mjs';
 
 // One value in two roles: the client requests the ID token FOR the client id
 // (the token's audience) and the validator EXPECTS it — independently-edited
@@ -15,10 +14,10 @@ const rule = {
   severity: 'advisory',
   description: 'A change does not add a copy of a Google OAuth client-id literal that already lives in another file',
   doc: 'skills/google-id-token-validation/SKILL.md',
+  scope: 'work',
   why: 'the client requests the token for this id and the validator expects it as audience — one value; independently-edited copies drift, and a drifted pair rejects every well-formed token with an opaque 401',
 
-  run(ctx) {
-    const w = work(ctx);
+  run(w) {
     const out = [];
     for (const { file, line, text } of w.addedLines()) {
       if (file.startsWith(SELF)) continue;

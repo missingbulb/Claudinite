@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { makeRepo, cleanup, git, writeFiles, makeTranscript } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
+import { runRule as dispatch } from '../../engine/checks/helpers/work.mjs';
 import featureRequirementsFirst from './feature-requirements-first.mjs';
 
 const SPEC = 'dev/requirements/requirements.md';
@@ -34,10 +35,10 @@ const featureTurns = [
 ];
 
 function runRule(root, entries) {
-  if (!entries) return featureRequirementsFirst.run(buildContext({ root, mode: 'changed' }));
+  if (!entries) return dispatch(featureRequirementsFirst, buildContext({ root, mode: 'changed' }));
   const { path, cleanup: rmTranscript } = makeTranscript(entries);
   try {
-    return featureRequirementsFirst.run(buildContext({ root, mode: 'changed', transcriptPath: path }));
+    return dispatch(featureRequirementsFirst, buildContext({ root, mode: 'changed', transcriptPath: path }));
   } finally { rmTranscript(); }
 }
 

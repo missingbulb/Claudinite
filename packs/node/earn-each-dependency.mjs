@@ -1,5 +1,4 @@
 import { finding } from '../../engine/checks/helpers/findings.mjs';
-import { work } from '../../engine/checks/helpers/work.mjs';
 
 // The testable slice of the engineering-practices "earn each dependency" rule:
 // only the event — a package.json gains a dependency it did not carry at the
@@ -29,12 +28,12 @@ const rule = {
   severity: 'advisory',
   description: 'A newly added package.json dependency should be earned — prefer a built-in or a few lines for a narrow job',
   doc: 'skills/engineering-practices/SKILL.md',
+  scope: 'work',
   why: 'every dependency is standing surface area and supply-chain weight; a built-in or a few lines often covers a narrow job with none of it',
 
-  run(ctx) {
-    const w = work(ctx);
+  run(w) {
     const out = [];
-    for (const file of ctx.changedFiles.filter(nearRoot)) {
+    for (const file of w.changedFiles.filter(nearRoot)) {
       const { head, base } = w.jsonPair(file);
       if (!head) continue;
       const carried = depNames(base);

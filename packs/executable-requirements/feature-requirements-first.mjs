@@ -1,5 +1,4 @@
 import { finding } from '../../engine/checks/helpers/findings.mjs';
-import { work } from '../../engine/checks/helpers/work.mjs';
 
 // The canonical home of the executable spec; a project whose spec lives
 // elsewhere declares the path on its pack entry (`config.spec`).
@@ -9,8 +8,8 @@ const DEFAULT_SPEC = 'dev/requirements/requirements.md';
 // requirements tree (goldens and harness code there are the spec's own machinery).
 const isCode = (f) => !f.endsWith('.md') && !f.startsWith('dev/requirements/');
 
-function specPath(ctx) {
-  const configured = ctx.config?.packConfig?.['executable-requirements']?.spec;
+function specPath(w) {
+  const configured = w.packConfig('executable-requirements')?.spec;
   return typeof configured === 'string' && configured ? configured : DEFAULT_SPEC;
 }
 
@@ -23,17 +22,17 @@ const rule = {
   severity: 'blocking',
   description: 'A feature run must land an independent requirements-doc commit before its first code commit',
   doc: 'packs/executable-requirements/RULES.md',
+  scope: 'work',
   why: 'the feature run is doc-first: the spec change is the requirement\'s durable home and must precede the code that satisfies it',
 
-  run(ctx) {
-    const w = work(ctx);
+  run(w) {
     const feature = w.conversation().ownerTurns().filter((t) => t.classes().has('feature')).last();
     if (!feature.exists) return [];
 
     // No spec in the repo ⇒ no commit could ever satisfy the ordering, and firing
     // would force the wrong remedy (an accept, a post-hoc rebase). Self-skip.
-    const spec = specPath(ctx);
-    if (!ctx.exists(spec)) return [];
+    const spec = specPath(w);
+    if (!w.exists(spec)) return [];
 
     let specSeen = false;
     for (const commit of w.branchCommits().filter((c) => c.time >= feature.time())) {

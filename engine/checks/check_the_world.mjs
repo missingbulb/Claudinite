@@ -10,6 +10,7 @@ import { writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildContext, loadConfig } from './helpers/repo-context.mjs';
+import { runRule } from './helpers/work.mjs';
 import { applyConfig, render } from './helpers/findings.mjs';
 import { discoverPacks, isActive, resolveDeclaredPacks } from '../pack_loader/pack-registry.mjs';
 
@@ -156,7 +157,7 @@ for (const pack of activePacks) {
     findings.push(configError(`the "${pack.id}" pack's contributedRules failed: ${e.message}`, 'fix the pack manifest, or the contribution it interprets')));
   for (const rule of [...(pack.rules ?? []), ...(pack.skillChecks ?? []), ...contributed]) {
     if (ctx.config.rules[rule.id] === 'off') continue;
-    findings.push(...rule.run(ctx));
+    findings.push(...runRule(rule, ctx));
   }
 }
 findings = applyConfig(findings, ctx.config);
