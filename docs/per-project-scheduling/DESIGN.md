@@ -16,8 +16,8 @@ machinery — no separate central mechanism survives.
 
 ## 1. Task anatomy — the pack folder
 
-`run_daily/` is renamed to `tasks/`, one directory per task, in canon packs and
-local packs alike:
+`run_daily/` is superseded by `tasks/`, one directory per task, in canon packs
+and local packs alike:
 
 ```
 packs/<pack>/tasks/<task-name>/
@@ -25,6 +25,15 @@ packs/<pack>/tasks/<task-name>/
   task.md         # the worker spec the agent executes; the dispatch issue's first line points here
   *.sh, *.js      # optional deterministic helper scripts (the routine-folder convention, absorbed)
 ```
+
+> **As-built (Phase 0, #396):** `tasks/` lands **additively** — a canon pack
+> carries both `tasks/` and its untouched `run_daily/` through the rollout, so
+> the legacy central planner keeps working while the scheduler discovers `tasks/`
+> from disk (`pack.mjs` is not touched). `run_daily/` is removed only at Phase 4.
+> The two conformance guards for this shape (`task-declaration-shape`,
+> `scheduler-workflow-shape`) live in the **basics** pack, not a separate one —
+> scheduling is baseline discipline (see
+> [`packs/basics/scheduled-tasks.md`](../../packs/basics/scheduled-tasks.md)).
 
 Alongside this migration, `.claudinite/local_packs/` is renamed to
 `.claudinite/local/packs/` (owner decision, §11): packs then sit at one uniform
