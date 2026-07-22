@@ -24,6 +24,10 @@ export function contributedRules(pack, fromPacks, onError = null) {
 // becomes a finding).
 export function runActivePackRules(ctx, packs, { includeRule, onContributeError = null }) {
   const findings = [];
+  // Expose the discovered packs to any rule that reasons about pack metadata
+  // (e.g. the adoption-interview hygiene check reads each active pack's declared
+  // questions) — checks run synchronously and can't re-discover packs themselves.
+  ctx.packs = packs;
   const activePacks = packs.filter((p) => isActive(p, ctx.config));
   for (const pack of activePacks) {
     const contributed = contributedRules(pack, activePacks,

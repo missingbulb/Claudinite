@@ -62,11 +62,13 @@ test('a new suppression marker blocks the run (fail fast)', () => {
 });
 
 test('interview: a stale answer is advisory (never run-failing); pending questions are no finding at all', () => {
+  // The hygiene check is grow_with_claudinite's (skill-owned), so that pack must
+  // be active for it to run; it inspects every active pack's answers. barriers
+  // declares the `goals` question: `old-id` is stale, and `goals` itself stays
+  // unanswered — which must NOT surface in the sweep (an unattended nightly run
+  // can't answer it; only SessionStart may nudge).
   const root = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({
-    // barriers declares the `goals` question: `old-id` is stale, and `goals`
-    // itself stays unanswered — which must NOT surface in the sweep (an
-    // unattended nightly run can't answer it; only SessionStart may nudge).
-    packs: [{ id: 'barriers', answers: { 'old-id': 'kept intent' } }],
+    packs: ['grow_with_claudinite', { id: 'barriers', answers: { 'old-id': 'kept intent' } }],
   }) } });
   try {
     const r = runCli(root);

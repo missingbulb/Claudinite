@@ -107,13 +107,6 @@
                 "reason": "inherent: a one-time vendoring migration necessarily names the pack whose plumbing it relocates into consumers; it self-retires once the fleet converges"
               },
               {
-                "path": "engine/checks/check_the_world.mjs",
-                "to": [
-                  "packs/grow_with_claudinite"
-                ],
-                "reason": "inherent(#385): the world runner emits the adoption-interview diagnostics, but that machinery lives inside the adopt-claudinite skill (packs/grow_with_claudinite/) by owner decision #385, not in the engine — so this one core file must import from that one pack. Resolved fail-soft (absent skill => inert interview), so a consumer without the pack is unaffected. Retires only if #385 relocates the machinery."
-              },
-              {
                 "path": "extending.md",
                 "to": [
                   "packs/grow_with_claudinite"
