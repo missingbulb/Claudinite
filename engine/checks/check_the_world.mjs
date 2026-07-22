@@ -1,8 +1,13 @@
 #!/usr/bin/env node
 // World-scope conformance runner (see DESIGN.md): the rules that audit repo
-// state as it exists now, plus the settings/interview diagnostics. Rules that
-// judge the current change (`scope: 'work'`) run in check_the_work.mjs; the
-// Stop hook and CI run both. Dependency-free Node ≥18.
+// state as it exists now, plus the settings/interview diagnostics (themselves
+// repo state). Rules that judge the current change (`scope: 'work'`) run in
+// check_the_work.mjs, which this file shares no code with — only the scope-blind
+// mechanism helpers (run-active-pack-rules.mjs, report-findings.mjs). This runner
+// is the one that carries the adoption-interview machinery, so it is the one core
+// file that names the adopt-claudinite skill's pack (see the barriers exception
+// in .claudinite-checks.json). Wired into the project's test/CI flow, not the
+// Stop hook. Dependency-free Node ≥18.
 //   (default)   whole-repo sweep — milliseconds on a text corpus, sees cross-file breakage
 //   --changed   transitional: scope to files changed vs the merge-base with main
 //               (adopting a repo with a backlog only — not the enforcement default)
@@ -11,9 +16,25 @@
 //   --init      write .claudinite-checks.json — basics plus the fingerprinted packs
 import { writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { buildContext, loadConfig } from './helpers/repo-context.mjs';
 import { discoverPacks, resolveDeclaredPacks } from '../pack_loader/pack-registry.mjs';
-import { runSweep, contributedRules, interviewState } from './sweep.mjs';
+import { runActivePackRules, contributedRules } from './run-active-pack-rules.mjs';
+import { reportFindings } from './report-findings.mjs';
+
+// The adoption-interview machinery is the adopt-claudinite skill's, bundled in
+// the Claudinite-lifecycle pack (packs/grow_with_claudinite/skills/adopt-claudinite/).
+// A consumer that doesn't declare that pack doesn't vendor it — no lifecycle
+// pack, no interview — so resolve it fail-soft: absent file, inert interview.
+const interviewUrl = new URL('../../packs/grow_with_claudinite/skills/adopt-claudinite/interview.mjs', import.meta.url);
+const { interviewState } = existsSync(fileURLToPath(interviewUrl))
+  ? await import(interviewUrl.href)
+  : { interviewState: () => ({ pending: [], stale: [], errors: [] }) };
+
+const configError = (what, fix) => ({
+  rule: 'config', severity: 'blocking', file: '.claudinite-checks.json', line: null,
+  what, why: 'the settings file is what executes — a bad key, value, or pack name silently changes what runs', fix, doc: 'engine/checks/README.md',
+});
 
 const args = process.argv.slice(2);
 const has = (flag) => args.includes(flag);
@@ -77,10 +98,51 @@ if (has('--init')) {
   process.exit(0);
 }
 
-const blocking = await runSweep({
-  scope: 'world',
-  root,
-  mode: has('--changed') ? 'changed' : 'all',
-  baseOverride: value('--base'),
-});
+const { packs, errors: packErrors } = await discoverPacks({ localRoot: root });
+const ctx = buildContext({ root, mode: has('--changed') ? 'changed' : 'all', baseOverride: value('--base') });
+
+// Settings/interview diagnostics — themselves repo state, so the world runner
+// owns them. Settings validity is checked at load: malformed JSON, an unknown
+// property, and a wrong pack name are all equally settings errors. loadConfig
+// reports the first two; the runner adds unknown pack names (only it holds the
+// registry) and broken/duplicate local pack.mjs faults.
+const findings = [];
+for (const e of ctx.config.errors) findings.push(configError(e.what, e.fix));
+for (const e of packErrors) findings.push(configError(e.what, e.fix));
+// knownIds spans canon AND local packs, so a declared local pack id is valid and
+// the unknown-pack message lists it among the declarable packs. ctx.config.packs
+// is loadConfig's normalized view — bare ids, a namespaced local_packs/<name>
+// declaration already resolved through packEntryId.
+const knownIds = new Set(packs.map((p) => p.id));
+for (const name of ctx.config.packs) {
+  if (typeof name === 'string' && !knownIds.has(name)) {
+    findings.push(configError(`declares unknown pack "${name}"`, `remove it or fix the name — declarable packs: ${[...knownIds].sort().join(', ')}`));
+  }
+}
+// Adoption-interview hygiene. PENDING questions are deliberately not findings —
+// they surface only as a mild SessionStart note, so an unattended run is never
+// blocked on a question nobody is present to answer. A STALE answer (its question
+// no longer declared) is ADVISORY: visible, never run-failing. A malformed
+// `questions` declaration is a real manifest fault, blocking like any other.
+const { stale, errors: questionErrors } = interviewState(packs, ctx.config);
+for (const e of questionErrors) findings.push(configError(e.what, e.fix));
+for (const s of stale) {
+  findings.push({
+    rule: 'config', severity: 'advisory', file: '.claudinite-checks.json', line: null,
+    what: `the "${s.packId}" pack entry stores an answer for "${s.answerId}", a question the pack no longer declares`,
+    why: 'a stale answer silently stops matching its question, so the stored intent goes unread and the interview re-asks',
+    fix: 'remove the stale answer, or re-key it to the renamed question id',
+    doc: 'packs/README.md',
+  });
+}
+
+// The world rules: everything not scoped to the work. A broken contributedRules
+// seam is a config-level fault surfaced here (the world runner owns diagnostics).
+findings.push(...runActivePackRules(ctx, packs, {
+  includeRule: (rule) => rule.scope !== 'work',
+  onContributeError: (pack, e) => findings.push(configError(
+    `the "${pack.id}" pack's contributedRules failed: ${e.message}`, 'fix the pack manifest, or the contribution it interprets')),
+}));
+
+const blocking = reportFindings(findings, ctx.config, { scopeLabel: 'world', mode: ctx.mode, baseRef: ctx.baseRef });
 process.exit(blocking ? 1 : 0);

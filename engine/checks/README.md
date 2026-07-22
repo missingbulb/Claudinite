@@ -8,9 +8,9 @@ Dependency-free Node ≥ 18 — no install step.
 ## Running
 
 ```sh
-node engine/checks/check_the_world.mjs             # world scope: repo-state rules + settings diagnostics
-node engine/checks/check_the_work.mjs              # work scope: rules judging the current change (--transcript enables the conversation rules)
-                                                   # the Stop hook and CI run both; each accepts --changed (transitional
+node engine/checks/check_the_world.mjs             # world scope: repo-state rules + settings diagnostics — runs in the test/CI flow
+node engine/checks/check_the_work.mjs              # work scope: rules judging the current change — runs at the Stop hook (--transcript enables the conversation rules)
+                                                   # the two are independent runners; each accepts --changed (transitional
                                                    # adoption-backlog scoping) and --base REF
 node engine/checks/check_the_world.mjs --list      # machine-readable catalog of every rule, both scopes
 node engine/checks/check_the_world.mjs --init      # write .claudinite-checks.json — the baseline plus the fingerprinted packs

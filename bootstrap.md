@@ -156,14 +156,10 @@ node .claudinite/shared/engine/checks/check_the_world.mjs
 
 - **The project already has a test/CI flow** (a CI job, a `make test` target, an npm/pnpm
   `test` script, a `justfile`, …): add the command above as one more step, so a red world sweep
-  fails that flow exactly like a failing test. Alongside it, run the **work** sweep too — in CI
-  the git-based work rules (`reference-integrity`, `squash-merge-history`, `task-lifecycle`) still
-  apply against the branch diff; the conversation rules self-skip with no transcript:
-  ```sh
-  node .claudinite/shared/engine/checks/check_the_work.mjs
-  ```
+  fails that flow exactly like a failing test. Only the world sweep goes here — the **work** scope
+  judges a session's own change and runs at that session's Stop hook, not in the test/CI flow.
 - **The project has none:** add a **minimal** flow — a single CI job (or a `make`/script target)
-  whose steps run the project's own tests, if any, then the two commands above. The point is a
+  whose steps run the project's own tests, if any, then the world command above. The point is a
   deterministic place the whole-repo sweep runs at each change; keep it as small as the repo needs.
 
 Then run the world sweep once locally and clear what it surfaces. On a repo with existing code,
