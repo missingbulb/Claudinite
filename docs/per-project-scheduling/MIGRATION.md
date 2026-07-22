@@ -129,7 +129,7 @@ Ground rules for every phase:
 ## Phase 2 — canon repo cutover
 
 1. Add the canon-side tasks (DESIGN.md §6 table 2) to
-   `canon-curation/tasks/`: `growth-promote` (daily-1h, `fleet`),
+   `canon-curation/tasks/`: `growth-promote` (daily, `fleet`),
    `growth-discover-packs` (weekly, `fleet` — moves from member-scheduled to one
    central weekly sweep), `migrations-retire` (daily+1h, `none`, `fleet` —
    stamp + `legacyPresent` probe evidence; no artifact plumbing), and
@@ -142,9 +142,10 @@ Ground rules for every phase:
    executor routine, labels — same as any member. The central routine keeps
    running for **unmigrated consumers only** (the Phase 0.6 guard also skips the
    canon's own pack tasks, which the canon scheduler now owns).
-4. **Verify**: one full night where extract (pilot repos, 03:00) → promote
-   (canon, 03:00, picking up previously-merged extracts) → dedup (05:00) ran
-   via the new path; migrations-retire evaluates the guard from stamps + probes
+4. **Verify**: one full night where baselining (02:00) → extract (pilot repos,
+   03:00) → promote (canon, 04:00, picking up the night's merged extracts) →
+   dedup (05:00) ran in order via the new path; migrations-retire evaluates the
+   guard from stamps + probes
    and correctly retires nothing (or stages a real retirement PR); promote's
    `fleet` signal lists exactly the members whose local packs changed;
    prose-to-checks fires daily and no-ops cheaply on a quiet corpus.

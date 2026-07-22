@@ -103,11 +103,21 @@ New top-level key in `.claudinite-checks.json` (added to the engine's closed
 All values **UTC** (requirements normalize to UTC at the door). Defaults when
 absent: `dailyHour: 4`, `weeklyDay: "Sun"`, `monthlyDay: 1`. `monthlyDay` clamps
 to the month's last day; `daily-2h` with `dailyHour < 2` wraps into the previous
-calendar day (the slot keeps the anchor's date). With the default anchor:
-extract (`daily-1h`) fires 03:00, dedup (`daily+1h`) 05:00, and the canon's
-promote (`daily-1h`, on the canon repo) 03:00 — the growth stages couple through
-*merged* upstream state, so the offsets are freshness staging, not a correctness
-barrier.
+calendar day (the slot keeps the anchor's date). With the default anchor the four
+daily slots stage the whole growth chain in order:
+
+```
+02:00  daily-2h   baselining (+ migrations-apply)   ─ own mount converged before anything reads it
+03:00  daily-1h   extract, conversation-extract     ─ lessons captured from a converged repo
+04:00  daily      promote (canon repo)              ─ lifts the night's merged extracts to canon
+05:00  daily+1h   dedup                             ─ prunes against the mounted (merged) canon
+```
+
+The stages couple through *merged* upstream state, not a barrier: extract's
+auto-merge PR usually lands well within the hour before promote reads it, and
+dedup reads only the merged/mounted canon (never an in-flight promote PR), so the
+ordering is freshness staging that mostly holds and self-heals to next-day
+propagation when a merge lags.
 
 ## 3. The scheduler — one vendored hourly Action per repo
 
@@ -285,7 +295,7 @@ rest of what the old central routine did has moved above:
 
 | Task | frequency | model | outcome | Fleet-scoped? | Notes |
 |---|---|---|---|---|---|
-| growth-promote (canon-curation) | daily-1h | opus | open-pr | yes | Reads members' local packs (`fleet` signal: which members' local packs changed); writes the canon; owner-gated PR. |
+| growth-promote (canon-curation) | daily | opus | open-pr | yes | Reads members' local packs (`fleet` signal: which members' local packs changed); writes the canon; owner-gated PR. 04:00, after the fleet's 03:00 extracts. |
 | growth-discover-packs (canon-curation) | weekly | opus | open-pr | yes | Moves from member-scheduled/centrally-executed to plainly central: one weekly sweep over members; first-sight dedup is trivial with a single run. |
 | migrations-retire (canon-curation) | daily+1h | none | open-pr | yes | Apply evidence is now per-repo (each member's stamp advances when its own baselining applies notes), so the retire guard reads member stamps + `legacyPresent` probes over the `fleet` signal — the same five-condition guard with per-repo stamps replacing the in-memory same-cycle handoff. No artifact plumbing. |
 | prose-to-checks-sweep (canon-curation) | **daily** | opus | open-pr | no | Not a fleet thing — a canon task going over the canon's own prose. Daily per owner decision. |
@@ -380,5 +390,7 @@ classification note — landed with this PR), and GCEC's `CLAUDE.md` / gcec
 8. **Census and prose-to-checks are not fleet tasks** (review): the census is an
    ordinary sheepdog pack task whose implementation happens to scan the fleet;
    prose-to-checks is a canon-local task, **daily**.
-9. **Growth offsets** (review): extract `daily-1h`, dedup `daily+1h`.
+9. **Growth chain ordered across the four daily slots** (review): baselining +
+   migrations-apply `daily-2h` (02:00) → extract `daily-1h` (03:00) → promote
+   `daily` (04:00) → dedup `daily+1h` (05:00).
 10. **Scheduler cron minute constrained to :10–:50** (review).
