@@ -66,6 +66,9 @@ test('pack manifest: id, marker, five uniquely-named rules, the contributed isol
   // The pack's scheduled task is NOT a pack.mjs slot any more — the repo's
   // scheduler finds tasks/<name>/task.mjs structurally (#394).
   assert.equal(pack.run_daily, undefined);
+  // Adoption interview scopes the research: product, users, market.
+  assert.deepEqual(pack.questions.map((q) => q.id), ['product', 'users', 'market']);
+  assert.ok(pack.questions.every((q) => q.prompt && q.distill));
 });
 
 test('detect fires exactly on the sink marker', () => {
