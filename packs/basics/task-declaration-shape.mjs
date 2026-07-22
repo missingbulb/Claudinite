@@ -25,7 +25,7 @@ const rule = {
   id: 'task-declaration-shape',
   severity: 'blocking',
   description: 'A tasks/<name>/task.mjs default-exports the full task contract (id, frequency, signals, model, outcome, worker, precondition) with legal enum values',
-  doc: 'packs/scheduled-tasks/RULES.md',
+  doc: 'packs/basics/scheduled-tasks.md',
   why: 'the scheduler and executor read model/outcome/frequency from this file, not the dispatch issue — an illegal or missing value means a task never fires, fires wrong, or writes past its ceiling',
 
   run(ctx) {

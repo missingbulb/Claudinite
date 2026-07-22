@@ -42,7 +42,12 @@ at ([vendoring/DESIGN.md](../../../../vendoring/DESIGN.md)):
   from the same stamp. Also keep the fresh-path wiring converged per
   [bootstrap.md](../../../../bootstrap.md) (hook registrations; delete any legacy
   `@.claudinite/shared/CLAUDE.md` import line — the corpus index is retired, #385) — additive, in-place fixes
-  only, never clobbering this repo's own entries.
+  only, never clobbering this repo's own entries. The **scheduler wiring is part of that surface**
+  (bootstrap Part 6): re-converge a drifted `.github/workflows/claudinite-scheduler.yml` to the vendored
+  stub — preserving this repo's hashed cron minute, the one repo-specific value in it — and re-create any
+  missing `ready-for-agent` / `agent-running` / `needs-human` / `workflow-failure` label idempotently.
+  Baselining is the repair loop for every Claudinite moving part the repo carries; the conformance checks
+  are the in-session guard that flags the same drift the moment it's authored.
 - **Repo without a stamp** — post-migration this is drift, not a supported shape: converge it through the
   fresh-path bootstrap exactly like an adoption's mechanical part, which vendors the mount and stamps it —
   transactional, any failure writes nothing. (The precondition already self-skips a repo that has *no* mount

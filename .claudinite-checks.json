@@ -2,7 +2,6 @@
   "packs": [
     "basics",
     "github-actions",
-    "scheduled-tasks",
     {
       "id": "grow_with_claudinite",
       "config": {

@@ -1,19 +1,21 @@
-# scheduled-tasks
+# Scheduled tasks — the per-project scheduling mechanism
 
-The per-project scheduling mechanism (per-project-scheduling
+How a repo's recurring Claudinite work runs (per-project-scheduling
 [DESIGN](../../docs/per-project-scheduling/DESIGN.md), issue #394). A repo
 schedules **itself**: a vendored hourly **scheduler Action**
 (`.github/workflows/claudinite-scheduler.yml`) evaluates each task's precondition
 in code and dispatches agent work as `ready-for-agent` `[claudinite-task]`
 issues, which a per-repo **executor routine** (fired by that label event) runs.
-The engine is vendored under `.claudinite/shared/engine/scheduler/`; this pack
-owns the conformance guards for the surfaces a repo authors around it.
+The engine is vendored under `.claudinite/shared/engine/scheduler/`; the basics
+pack owns the conformance guards for the surfaces a repo authors around it —
+scheduling is baseline Claudinite discipline, present wherever basics is
+declared (everywhere), not an opt-in feature.
 
-This pack's checks are the doctrine's enforcement; the phased rollout (and the
+The checks below are the doctrine's enforcement; the phased rollout (and the
 retirement of the legacy central planner it replaces) lives in
 [MIGRATION.md](../../docs/per-project-scheduling/MIGRATION.md).
 
-## What the pack guards
+## What the checks guard
 
 - **The scheduler workflow is a thin shim.** The vendored
   `claudinite-scheduler.yml` carries a single **hourly** cron on a repo-hashed
@@ -36,7 +38,7 @@ retirement of the legacy central planner it replaces) lives in
   static and runtime views can't drift.
 
 Both guards are **relevance-first**: inert until their artifact exists, so
-declaring this pack on a repo that has neither is a no-op.
+on a repo with neither artifact they are a no-op.
 
 ## The task folder
 
