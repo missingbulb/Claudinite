@@ -5,6 +5,12 @@ import { makeRepo, cleanup, git, writeFiles, makeTranscript } from '../../engine
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import { runRule as dispatch } from '../../engine/checks/helpers/work.mjs';
 import featureRequirementsFirst from './feature-requirements-first.mjs';
+import pack from './pack.mjs';
+
+test('pack manifest: asks the UI-testing and requirements-source adoption questions', () => {
+  assert.deepEqual(pack.questions.map((q) => q.id), ['ui_testing', 'requirements_source']);
+  assert.ok(pack.questions.every((q) => q.prompt && q.distill));
+});
 
 const SPEC = 'dev/requirements/requirements.md';
 
