@@ -187,10 +187,6 @@ Per-repo checklist (self-contained; one session each):
 
 ## Independent fixes (not gated on any phase)
 
-- `engine/pack_loader/inject-pack-prose.mjs` imports nonexistent `registry.mjs`
-  (file is `pack-registry.mjs`) — pack-prose injection is silently broken
-  fleet-wide; fix + regression test + vendor refresh. Ship immediately as its
-  own PR.
 - The auto-fallback-coverage weekly-cron/daily-spec mismatch is *fixed by*
   Phase 1; until then it stands — no interim change.
 
