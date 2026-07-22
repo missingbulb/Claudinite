@@ -263,6 +263,12 @@ export function buildContext({ root, mode = 'changed', baseOverride = null, tran
   // return [] when this is null. Parsed lazily and cached — most sweeps never ask.
   let conversationCache;
 
+  // Checks are read-only over an immutable snapshot of the tree, so file and
+  // base-blob reads are cached for the sweep: many rules re-read the same files,
+  // and each readBase is otherwise a git subprocess.
+  const readCache = new Map();
+  const readBaseCache = new Map();
+
   return {
     root,
     mode,
@@ -279,7 +285,12 @@ export function buildContext({ root, mode = 'changed', baseOverride = null, tran
 
     exists: (path) => existsSync(join(root, path)),
     read(path) {
-      try { return readFileSync(join(root, path), 'utf8'); } catch { return null; }
+      if (!readCache.has(path)) {
+        let text;
+        try { text = readFileSync(join(root, path), 'utf8'); } catch { text = null; }
+        readCache.set(path, text);
+      }
+      return readCache.get(path);
     },
 
     // File content at the scoping base (the merge-base with the base branch), or
@@ -289,7 +300,8 @@ export function buildContext({ root, mode = 'changed', baseOverride = null, tran
     // commas make appending an array element re-touch the previous line).
     readBase(path) {
       if (!mergeBase) return null;
-      return gitTry(root, 'show', `${mergeBase}:${path}`);
+      if (!readBaseCache.has(path)) readBaseCache.set(path, gitTry(root, 'show', `${mergeBase}:${path}`));
+      return readBaseCache.get(path);
     },
 
     // Added lines of one file relative to the scoping base (untracked file = every line).

@@ -29,6 +29,48 @@ export const SHARED_SUBDIR = join('.claudinite', 'shared');
 // separate skills collection to own or cross-declare). A bundled skill's
 // checks.mjs is gathered onto `skillChecks` and run by the runner only when the
 // pack is active.
+// A pack's declared adoption questions, validated: `questions` (an optional
+// manifest field any pack may carry) must be an array of { id, prompt, distill? }
+// with non-empty string ids and prompts, ids unique within the pack. A malformed
+// entry is reported and skipped — one bad question must not mute the pack's valid
+// ones (the registry's fail-soft posture). This is generic manifest-shape
+// validation, so it lives with pack loading (scanPackDir reports the errors as
+// load faults); the interview machinery imports it to read the valid questions.
+export function packQuestions(pack) {
+  const questions = [];
+  const errors = [];
+  const src = pack.questions;
+  if (src === undefined || src === null) return { questions, errors };
+  if (!Array.isArray(src)) {
+    errors.push({
+      what: `the "${pack.id}" pack declares a non-array "questions"`,
+      fix: 'make questions an array of { id, prompt } entries',
+    });
+    return { questions, errors };
+  }
+  const seen = new Set();
+  for (const q of src) {
+    if (q === null || typeof q !== 'object' || typeof q.id !== 'string' || !q.id
+      || typeof q.prompt !== 'string' || !q.prompt) {
+      errors.push({
+        what: `the "${pack.id}" pack declares a malformed question ${JSON.stringify(q)}`,
+        fix: 'give each question a non-empty string "id" and "prompt"',
+      });
+      continue;
+    }
+    if (seen.has(q.id)) {
+      errors.push({
+        what: `the "${pack.id}" pack declares question id "${q.id}" twice`,
+        fix: 'question ids must be unique within the pack — rename one',
+      });
+      continue;
+    }
+    seen.add(q.id);
+    questions.push(q);
+  }
+  return { questions, errors };
+}
+
 async function scanPackDir(dir, { local }, errors) {
   const out = [];
   if (!existsSync(dir)) return out;
@@ -85,6 +127,11 @@ async function scanPackDir(dir, { local }, errors) {
       });
       continue;
     }
+    // A malformed `questions` manifest field is a load fault like any other —
+    // reported here so the runner surfaces it pack-agnostically, no interview
+    // import needed (the pack owns the interview HYGIENE check; the engine owns
+    // the manifest-shape validation).
+    for (const e of packQuestions(mod).errors) errors.push({ ...e, dir: packDir });
     const pack = { ...mod, dir: packDir, local };
     pack.skillChecks = await scanSkillChecks(packDir, errors);
     out.push(pack);

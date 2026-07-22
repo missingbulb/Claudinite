@@ -2,10 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
+import { runRule } from '../../engine/checks/helpers/work.mjs';
 import earnEachDependency from './earn-each-dependency.mjs';
 
 function run(rule, root, mode = 'changed') {
-  return rule.run(buildContext({ root, mode }));
+  return runRule(rule, buildContext({ root, mode }));
 }
 
 const pkg = (obj) => `${JSON.stringify(obj, null, 2)}\n`;

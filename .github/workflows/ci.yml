@@ -32,6 +32,10 @@ jobs:
           tests=(engine-tests/*.test.mjs engine-tests/*/*.test.mjs packs/*.test.mjs packs/*/*.test.mjs packs/*/skills/*/*.test.mjs routines/*/*.test.mjs .claudinite/local_packs/*/*.test.mjs .claudinite/local_packs/*/skills/*/*.test.mjs)
           node --test "${tests[@]}"
       - name: Conformance sweep
+        # The world sweep's home is the test/CI flow (not the Stop hook, which
+        # carries only the work scope) — this canon repo models the pattern
+        # bootstrap wires into consumers. World only: the work scope judges a
+        # session's change and runs at that session's Stop hook, not here.
         run: node engine/checks/check_the_world.mjs
       - name: Promote write-surface gate
         # The growth promote stage (.claudinite/local_packs/canon-curation/promote.md) is the one change

@@ -8,9 +8,11 @@ Dependency-free Node ≥ 18 — no install step.
 ## Running
 
 ```sh
-node engine/checks/check_the_world.mjs             # whole-repo sweep (the default — Stop hook and CI both run this)
-node engine/checks/check_the_world.mjs --changed   # transitional: only files changed vs the merge-base with main
-node engine/checks/check_the_world.mjs --list      # machine-readable rule catalog (id, severity, description, doc)
+node engine/checks/check_the_world.mjs             # world scope: repo-state rules + settings diagnostics — runs in the test/CI flow
+node engine/checks/check_the_work.mjs              # work scope: rules judging the current change — runs at the Stop hook (--transcript enables the conversation rules)
+                                                   # the two are independent runners; each accepts --changed (transitional
+                                                   # adoption-backlog scoping) and --base REF
+node engine/checks/check_the_world.mjs --list      # machine-readable catalog of every rule, both scopes
 node engine/checks/check_the_world.mjs --init      # write .claudinite-checks.json — the baseline plus the fingerprinted packs
 
 node --test engine/test/*.test.mjs packs/*.test.mjs packs/*/*.test.mjs packs/*/skills/*/*.test.mjs skills/*.test.mjs routines/*/*.test.mjs mount/*.test.mjs   # the test suite, as CI runs it
@@ -122,15 +124,26 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
 
 ## Enforcement wiring
 
-- **Stop hook** — a repo's `.claude/settings.json` wires the stable
-  [../hooks/stop-command.mjs](../hooks/stop-command.mjs), which routes to
-  [check_the_work.mjs](check_the_work.mjs) — registered in a repo's
-  `.claude/settings.json` (see [bootstrap.md](../../bootstrap.md)). Fast-exits when nothing changed
-  vs the base; on blocking findings exits 2 so the session fixes them before stopping.
+The two scopes fire at **different times**, because they answer different questions — one about
+the change in front of the session, one about the repo as a whole:
+
+- **Work scope → the Stop hook.** A repo's `.claude/settings.json` wires the stable
+  [../hooks/stop-command.mjs](../hooks/stop-command.mjs) (see [bootstrap.md](../../bootstrap.md)),
+  which fast-exits when nothing changed vs the base and otherwise runs
+  [check_the_work.mjs](check_the_work.mjs) with the session transcript — the per-turn feedback
+  loop, judging what the session just did (and the conversation-surface rules, which only exist
+  at Stop). On blocking findings it exits 2 so the session fixes them before stopping.
   Self-limiting: after blocking twice on identical findings it lets the stop through.
-- **No CI job in the standard wiring** — edits made outside Claude sessions surface at the next
-  session's Stop sweep (owner decision, #385). A repo that wants a CI backstop can run
-  `node engine/checks/check_the_world.mjs` itself; same sweep, same messages.
+- **World scope → the project's test/CI flow.** The whole-repo sweep is a repo-wide invariant
+  assertion — the same kind of thing a test suite is — and is only *meaningful* at a
+  commit/verify boundary, not every turn. So [check_the_world.mjs](check_the_world.mjs) is wired
+  in as its own step wherever the project runs its tests (a CI job, a `make test` target, an npm
+  script), invoked as the standalone `node …/check_the_world.mjs` command — **not** a
+  language-specific test file, since a non-Node consumer's runner can't load one. Bootstrap wires
+  this step during adoption, adding a minimal flow where the repo has none
+  ([bootstrap.md](../../bootstrap.md)). This **supersedes** the earlier #385 stance ("no CI job;
+  edits outside sessions surface at the next Stop sweep") — the world sweep now has a deterministic
+  home in the test/CI flow rather than riding every Stop.
 
 ## Adding a rule
 

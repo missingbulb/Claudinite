@@ -145,7 +145,8 @@ packs a project runs are **pinned in `.claudinite-checks.json`**
 (`"packs": ["baseline", "a-technology-pack", "a-release-pack"]`; no pack runs
 undeclared — the baseline too is declared explicitly, seeded by bootstrap).
 Execution is a closed, declared set: every rule in a declared pack
-runs on every run — Stop hook and CI alike — with no inference at execution time, so "the
+runs when its scope's surface runs — the work rules at the Stop hook, the world rules in the
+test/CI flow — with no inference at execution time, so "the
 project uses technology X" deterministically implies "every X check ran." Bootstrap writes the
 initial declaration from the repo's fingerprint — a pack's `detect` marker (`.github/workflows/`
 → a workflow-lint pack; a `manifest.json` with `manifest_version` → the extension packs; the
@@ -215,27 +216,36 @@ reference-distance  src/report/render.js:12
 
 ## Enforcement wiring
 
-**A Stop hook is the guarantee; instructions are not.** Wiring the checks into `npm test` and
-hoping the agent runs it is exactly the instruction-following this design escapes. Instead,
-bootstrap registers one more hook in the consumer's `.claude/settings.json` (the same mechanism
-as the existing SessionStart hooks):
+The two scopes fire at **different times**, because they answer different questions. The *work*
+scope judges the change in front of the session and belongs on a per-turn hook; the *world* scope
+is a whole-repo invariant assertion — the same shape as a test suite — and belongs wherever the
+project runs its tests, not on every turn.
+
+**Work scope: a Stop hook is the guarantee; instructions are not.** Bootstrap registers one hook
+in the consumer's `.claude/settings.json` (the same mechanism as the existing SessionStart hooks):
 
 1. The Stop hook fires when the agent finishes a turn.
 2. It **fast-exits in milliseconds** when no tracked file differs from `main` — conversational
    turns cost nothing.
-3. Otherwise it runs the full sweep; on findings it exits 2 with the findings on stderr.
-   Claude Code blocks the stop and feeds that text back to the agent, which fixes the
-   violations **in the same session**. A clean run stops silently.
+3. Otherwise it runs the **work** sweep (`check_the_work.mjs`, with the session transcript); on
+   findings it exits 2 with them on stderr. Claude Code blocks the stop and feeds that text back
+   to the agent, which fixes the violations **in the same session**. A clean run stops silently.
 
 Loop safety comes from convergence (fixed findings stop firing) plus Claude Code's own runaway
 protection (it overrides a Stop hook after ~8 consecutive blocks).
 
-**The Stop hook is the whole enforcement surface — consumers ship no CI job.** Hooks fire only
-in Claude Code sessions; a human editing on GitHub web, or any other tool, bypasses them, and
-those edits are caught at the **next session's** Stop sweep instead (the sweep judges the tree,
-not the turn). A standing consumer workflow running the sweep was tried and retired by owner
-decision (#385) — no GitHub Action rides the standard wiring; a repo that wants one can wire
-`node .claudinite/shared/engine/checks/run.mjs` itself.
+**World scope: wired into the project's test/CI flow (revises #385).** The whole-repo sweep runs
+as its own step wherever the project runs its tests — a CI job, a `make test` target, an npm
+script — invoked as the standalone `node .claudinite/shared/engine/checks/check_the_world.mjs`
+command. It is deliberately **not** a language-specific test file (a `*.test.mjs` a Node runner
+discovers): a Python/Rust/Go consumer's suite could not load one, and the sweep is the engine's
+own always-vendored Node CLI, so it runs as a step in any flow regardless of the project's
+language. Bootstrap wires this step during adoption, adding a minimal flow where the repo has
+none. This **supersedes the original #385 decision** ("the Stop hook is the whole enforcement
+surface; consumers ship no CI job"): the earlier design kept the world sweep on Stop to spare
+consumers a CI setup, but running a whole-repo sweep every turn is work misplaced in time, and a
+human editing on GitHub web (or any non-session tool) is now caught by the test/CI flow the
+change lands through rather than by the next session's Stop.
 
 **The conversation surface (Stop hook only).** Some process rules leave their artifact not in
 the repo but in the *session itself* — e.g. `comment-classification` (the reply to the owner's

@@ -100,13 +100,6 @@
                 "reason": "inherent: a one-time vendoring migration necessarily names the pack whose plumbing it relocates into consumers; it self-retires once the fleet converges"
               },
               {
-                "path": "engine/checks/check_the_world.mjs",
-                "to": [
-                  "packs/grow_with_claudinite"
-                ],
-                "reason": "inherent(#385): the adoption-interview machinery is bundled in the adoption skill (packs/grow_with_claudinite/skills/adopt-claudinite/) by owner decision; the runner resolves it fail-soft and stays inert when the pack is absent"
-              },
-              {
                 "path": "extending.md",
                 "to": [
                   "packs/grow_with_claudinite"

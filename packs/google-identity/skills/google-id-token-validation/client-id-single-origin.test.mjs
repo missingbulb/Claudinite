@@ -2,10 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../../engine/checks/helpers/repo-context.mjs';
+import { runRule } from '../../../../engine/checks/helpers/work.mjs';
 import clientIdSingleOrigin from './client-id-single-origin.mjs';
 
 // Co-located with the check it exercises (skills own their check-the-work rules).
-const run = (root) => clientIdSingleOrigin.run(buildContext({ root, mode: 'all' }));
+const run = (root) => runRule(clientIdSingleOrigin, buildContext({ root, mode: 'all' }));
 
 const WEB_ID = '111-web.apps.googleusercontent.com';
 const EXT_ID = '222-ext.apps.googleusercontent.com';

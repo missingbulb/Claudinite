@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
+import { runRule } from '../../engine/checks/helpers/work.mjs';
 import releasePack from './pack.mjs';
 import releaseWorkflows from './release-workflows.mjs';
 import templateTokens from './template-tokens.mjs';
@@ -12,7 +13,7 @@ import privacyPermissionAlignment from './privacy-permission-alignment.mjs';
 import permissionAddedStoreIssue from './permission-added-store-issue.mjs';
 import readmeSections from './readme-sections.mjs';
 
-const run = (rule, root, opts) => rule.run(buildContext({ root, mode: 'all' }), opts);
+const run = (rule, root, opts) => runRule(rule, buildContext({ root, mode: 'all' }), opts);
 
 const MANIFEST = JSON.stringify({
   manifest_version: 3, name: 'x', version: '1.2.3',

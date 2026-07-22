@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, deletePath, cleanup, git, writeFiles, makeTranscript } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
+import { runRule } from '../../engine/checks/helpers/work.mjs';
 import commentClassification from './comment-classification.mjs';
 import referenceIntegrity from './reference-integrity.mjs';
 import linkLabels from './markdown-link-labels.mjs';
@@ -16,7 +17,7 @@ import catalogCompleteness from './catalog-completeness.mjs';
 
 function run(rule, root, mode = 'changed') {
   const ctx = buildContext({ root, mode });
-  return rule.run(ctx);
+  return runRule(rule, ctx);
 }
 
 // The relevance gate for the corpus-integrity checks: the pack registry tracked
@@ -549,7 +550,7 @@ function runWithTranscript(rule, root, entries) {
   const { path, cleanup: rmTranscript } = makeTranscript(entries);
   try {
     const ctx = buildContext({ root, mode: 'changed', transcriptPath: path });
-    return rule.run(ctx);
+    return runRule(rule, ctx);
   } finally { rmTranscript(); }
 }
 
@@ -620,7 +621,7 @@ test('comment-classification: tool results, meta, and tag-wrapped turns are not 
 test('comment-classification: silent without a transcript (CI) and on an empty conversation', () => {
   const root = makeRepo({ changed: { 'a.md': 'x\n' } });
   try {
-    assert.equal(commentClassification.run(buildContext({ root, mode: 'changed' })).length, 0);
+    assert.equal(runRule(commentClassification, buildContext({ root, mode: 'changed' })).length, 0);
     assert.equal(runWithTranscript(commentClassification, root, [toolResult()]).length, 0);
   } finally { cleanup(root); }
 });
