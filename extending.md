@@ -62,7 +62,7 @@ every consumer that vendors the importer without its target. A pack that wants a
 *abilities* declares the dependency (`requires`) and passes **configuration**; a helper both
 sides need moves into `checks/lib`. Enforced canon-side as **barriers configuration, never
 bespoke checking code**: the `pack-independence` barrier is contributed as manifest data by the
-canon home's own curation local pack (`.claudinite/local_packs/canon-curation/` — a home-repo
+canon home's own curation local pack (`.claudinite/local/packs/canon-curation/` — a home-repo
 duty, since the `packs/` tree it polices exists only here), with the vendor writer's coherence
 guard holding the same invariant at vendoring time on consumers' behalf.
 
@@ -73,21 +73,22 @@ never forcing or forbidding its declaration afterward. A declared-by-policy pack
 the default-on maintenance packs) sets `detect: null` and is seeded by `--init`
 and/or a one-time migration.
 
-### Two homes for a pack: the canon, and a project's own `local_packs/`
+### Two homes for a pack: the canon, and a project's own `local/packs/`
 
 A pack contributes the same slots from either of two homes, and the engine runs both the
 same way:
 
 - **A canon pack** — `packs/<name>/` in this repo, mounted read-only into every consumer. It is
   *portable*: written as if no one project existed, shared by every project that declares it.
-- **A local pack** — `.claudinite/local_packs/<name>/` in a **consumer's own tree**, tracked
+- **A local pack** — `.claudinite/local/packs/<name>/` in a **consumer's own tree**, tracked
   project content the consumer authors and commits. It is *project-specific*: the working style,
   values, checks, and skills that don't generalize past this one repo — the project's
   **normalized capture surface** (what used to sprawl as always-loaded `CLAUDE.md`/`dev/procedures`
   prose). `discoverPacks` scans both roots; a local pack carries its own `dir`, is `local: true`,
-  may not shadow a canon id, and is declared by its namespaced token `local_packs/<name>`
-  ([packs/README.md](packs/README.md#local-packs--a-projects-own-packs)). Prose injection, the Stop/CI checks, skill mounting, and the fleet's
-  nightly `run_daily` scheduling treat a declared local pack exactly like a canon one — the planner
+  may not shadow a canon id, and is declared by its namespaced token `local/<name>`
+  (the pre-rename `.claudinite/local_packs/` root and its `local_packs/<name>` token stay accepted
+  during the migration; [packs/README.md](packs/README.md#local-packs--a-projects-own-packs)). Prose injection, the Stop/CI checks, skill mounting, and
+  scheduling treat a declared local pack exactly like a canon one — the planner
   reads a member's local-pack daily descriptors by default
   ([packs/README.md](packs/README.md)).
 
@@ -103,7 +104,7 @@ Ask what *kind* of thing you're adding; each kind has exactly one home, and none
 1. **A new rule or practice** → the [promotion ladder](engine/checks/DESIGN.md) (platform setting →
    PreToolUse hook → post-hoc check → skill → prose) picks the mechanism; it lands in a pack (or
    a skill that pack requires). *Which* pack follows the portable-vs-specific split: a portable rule
-   → a canon pack; a rule specific to one project → that project's own `local_packs/` pack. The
+   → a canon pack; a rule specific to one project → that project's own `local/packs/` pack. The
    ladder owns *which* mechanism — this doc only says the answer is never "hardcode it into the
    engine," and (for a project-specific rule) never "always-loaded `CLAUDE.md` prose" when a local
    pack's check or skill can carry it.

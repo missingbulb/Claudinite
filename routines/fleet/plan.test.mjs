@@ -46,6 +46,21 @@ test('buildWorkPlan: emits units from the real fleet-core tasks with plan metada
   for (const u of plan.units) assert.equal(u.repo, 'owner/foo');
 });
 
+test('buildWorkPlan: a member that declares `schedule` is skipped entirely (cutover marker)', async () => {
+  const gh = fakeGh([
+    [/o\/home\/commits\?since=/, { status: 200, json: [{ sha: 'c1' }] }],
+    [/o\/home\/commits\/c1$/, { status: 200, json: { files: [{ filename: 'packs/basics/RULES.md' }] } }],
+    // the member self-schedules — declares the `schedule` key
+    [/\.claudinite-checks\.json/, { status: 200, json: { content: b64({ packs: ['basics', 'grow_with_claudinite'], schedule: { dailyHour: 4 } }) } }],
+    [/\/local_packs$/, { status: 200, json: [{ name: 'foo-pack', type: 'dir' }] }],
+    [/\/pulls\?/, { status: 200, json: [] }],
+    [/\/issues\?/, { status: 200, json: [] }],
+  ]);
+  const plan = await buildWorkPlan(gh, 'o/home', [{ full_name: 'owner/foo', default_branch: 'main', pushed_at: new Date().toISOString() }]);
+  assert.deepEqual(plan.units, [], 'no units for a self-scheduling member');
+  assert.deepEqual(plan.skipped, ['owner/foo'], 'the member is recorded as skipped');
+});
+
 test('buildWorkPlan: a member with no local packs gets baselining but not growth-dedup', async () => {
   const gh = fakeGh([
     [/o\/home\/commits\?since=/, { status: 200, json: [{ sha: 'c1' }] }],
@@ -78,19 +93,20 @@ test('buildWorkPlan: plans the home repo last — home-only pack gates see the f
   // — the fake gh serves the REAL descriptor files from this repo's tree, so
   // the test also proves each descriptor is self-contained (data:-URL
   // importable) and its worker path rewrites correctly.
-  const curation = '.claudinite/local_packs/canon-curation';
+  const curation = '.claudinite/local/packs/canon-curation';
   const rawB64 = (p) => Buffer.from(readFileSync(join(repoRoot, p), 'utf8'), 'utf8').toString('base64');
   const gh = fakeGh([
     // canonChanged false (no home commits in window)
     [/o\/home\/commits\?since=/, { status: 200, json: [] }],
     // home fullSweep may or may not be tonight (hash-staggered): give its probes empty answers either way
     [/o\/home\/commits\?sha=/, { status: 200, json: [] }],
-    [/o\/home\/contents\/\.claudinite-checks\.json/, { status: 200, json: { content: b64({ packs: ['basics', 'local_packs/canon-curation'] }) } }],
+    [/o\/home\/contents\/\.claudinite-checks\.json/, { status: 200, json: { content: b64({ packs: ['basics', 'local/canon-curation'] }) } }],
     [/o\/home\/pulls\?/, { status: 200, json: [] }],
     [/o\/home\/issues\?/, { status: 200, json: [] }],
     [/o\/home\/branches\?/, { status: 200, json: [] }],
-    [/o\/home\/contents\/\.claudinite\/local_packs$/, { status: 200, json: [{ name: 'canon-curation', type: 'dir', path: curation }] }],
-    [/o\/home\/contents\/\.claudinite\/local_packs\/canon-curation\/run_daily$/, { status: 200, json: [
+    // the home is on the new local-pack layout; the dual-root reader finds it here
+    [/o\/home\/contents\/\.claudinite\/local\/packs$/, { status: 200, json: [{ name: 'canon-curation', type: 'dir', path: curation }] }],
+    [/o\/home\/contents\/\.claudinite\/local\/packs\/canon-curation\/run_daily$/, { status: 200, json: [
       { name: 'growth-promote-to-claudinite.mjs', type: 'file', path: `${curation}/run_daily/growth-promote-to-claudinite.mjs` },
       { name: 'prose-to-checks-sweep.mjs', type: 'file', path: `${curation}/run_daily/prose-to-checks-sweep.mjs` },
     ] }],
@@ -114,7 +130,7 @@ test('buildWorkPlan: plans the home repo last — home-only pack gates see the f
   const promote = plan.units.find((u) => u.task === 'growth-promote-to-claudinite');
   assert.ok(promote, 'promote planned as an ordinary unit on the home repo, via the default local-task read');
   assert.equal(promote.repo, 'o/home');
-  assert.equal(promote.worker, '.claudinite/local_packs/canon-curation/promote.md');
+  assert.equal(promote.worker, '.claudinite/local/packs/canon-curation/promote.md');
   assert.equal(promote.workerRepo, 'o/home'); // the dispatch reads the worker from the home repo
   // whether tonight is home's full-sweep night or not, the one enrolled+changed member is the target set
   assert.deepEqual(promote.targets.repos, ['owner/foo']);

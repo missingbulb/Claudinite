@@ -56,10 +56,15 @@ export async function buildWorkPlan(gh, canonRepo, coveredRepos, canonRepoInfo =
   const localFor = async (r) =>
     (localTasksFor ? (await localTasksFor(r)).filter((t) => !canonIds.has(t.pack)) : []);
 
-  const units = []; const errors = []; const fleetMembers = [];
+  const units = []; const errors = []; const fleetMembers = []; const skipped = [];
   for (const r of coveredRepos) {
     try {
       const signals = await buildSignals(gh, r, { sinceIso, weekdayUtc, canonChange });
+      // Cutover marker (per-project-scheduling MIGRATION Phase 0.6): a member that
+      // declares `schedule` runs its own vendored scheduler, so the central
+      // planner leaves it entirely alone — no units, and out of the fleet
+      // aggregate — so exactly one mechanism owns a repo during the rollout.
+      if (signals.schedulesItself) { skipped.push(r.full_name); continue; }
       fleetMembers.push({ repo: r.full_name, activePacks: signals.activePacks, packConfigs: signals.packConfigs, projectChanged: signals.projectChanged, substantiveChange: signals.substantiveChange, hasLocalPacks: signals.hasLocalPacks, localPacksChanged: signals.localPacksChanged });
       const applicable = assembleForRepo(signals.activePacks, allPackTasks, await localFor(r));
       const res = await planRepo({ fullName: r.full_name, defaultBranch: r.default_branch }, signals, applicable, gh);
@@ -70,19 +75,23 @@ export async function buildWorkPlan(gh, canonRepo, coveredRepos, canonRepoInfo =
   }
   if (canonRepoInfo) {
     try {
-      const signals = {
-        ...(await buildSignals(gh, canonRepoInfo, { sinceIso, weekdayUtc, canonChange })),
-        isHome: true,
-        fleetMembers,
-      };
-      const applicable = assembleForRepo(signals.activePacks, allPackTasks, await localFor(canonRepoInfo));
-      const res = await planRepo({ fullName: canonRepoInfo.full_name, defaultBranch: canonRepoInfo.default_branch }, signals, applicable, gh);
-      units.push(...res.units); errors.push(...res.errors);
+      const base = await buildSignals(gh, canonRepoInfo, { sinceIso, weekdayUtc, canonChange });
+      // The canon repo cuts over like any member (Phase 2): once it declares
+      // `schedule`, its own scheduler owns its pack tasks and the central planner
+      // skips it too.
+      if (base.schedulesItself) {
+        skipped.push(canonRepoInfo.full_name);
+      } else {
+        const signals = { ...base, isHome: true, fleetMembers };
+        const applicable = assembleForRepo(signals.activePacks, allPackTasks, await localFor(canonRepoInfo));
+        const res = await planRepo({ fullName: canonRepoInfo.full_name, defaultBranch: canonRepoInfo.default_branch }, signals, applicable, gh);
+        units.push(...res.units); errors.push(...res.errors);
+      }
     } catch (e) {
       errors.push({ repo: canonRepoInfo.full_name, error: e.message });
     }
   }
-  return { generatedAt: new Date().toISOString(), windowStartUtc: sinceIso, weekdayUtc, canonChanged: canonChange.changed, units, errors };
+  return { generatedAt: new Date().toISOString(), windowStartUtc: sinceIso, weekdayUtc, canonChanged: canonChange.changed, units, errors, skipped };
 }
 
 // Fetch the details buildSignals needs (full_name, default_branch, pushed_at) for

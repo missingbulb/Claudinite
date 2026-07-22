@@ -118,16 +118,29 @@ One standing rule the vendored tree does **not** change: committed consumer code
 refactored upstream, so code reaching into it inherits every rename as a breaking change. Inline
 what you need. The `claudinite-isolation` check enforces this outside the wiring files.
 
-## Part 6 — request fleet enrollment (open one tracking issue)
+## Part 6 — schedule the repo (it schedules itself)
 
-A consuming project schedules nothing: the growth lifecycle and nightly maintenance run
-centrally, from the owner's home repo — but only over repos on the routine's access list. So, as
-part of a **first** adoption, open a GitHub issue in this repo's tracker assigned to
-`missingbulb`, titled exactly **`Enroll <PROJECT_NAME> in Claudinite fleet maintenance`**
-(idempotent: search first, skip if one exists, open or closed). Under the vendored mount this
-matters more, not less: an unenrolled repo's snapshot simply freezes until someone refreshes it.
-When the fleet's sweep baselines a repo it already maintains, it closes any still-open enrollment
-issue — being reached proves enrollment.
+A consuming project schedules **itself** (per-project-scheduling DESIGN §9). As part of
+adoption:
+
+1. **Vendor the scheduler workflow** — copy `claudinite-scheduler.yml` into
+   `.github/workflows/` and set its cron minute to this repo's stable hashed minute in
+   :10–:50 (the repo's only cron).
+2. **Create the labels** idempotently: `ready-for-agent`, `agent-running`,
+   `needs-human`, `workflow-failure`.
+3. **Write the `schedule` key** into `.claudinite-checks.json` (defaults:
+   `{ "dailyHour": 4, "weeklyDay": "Sun", "monthlyDay": 1 }`, all UTC) — this is the
+   cutover marker: the central routine stops planning the repo the same night, and its
+   own scheduler + self-baselining take over the refresh.
+4. **Create the label-wired executor routine** via the trigger API — fires on the
+   `ready-for-agent` label event, model `sonnet`, launcher prompt
+   `Execute the Claudinite executor: .claudinite/shared/engine/scheduler/executor.md`,
+   sources = this repo + the Claudinite canon. If the trigger API isn't reachable, file
+   an owner issue carrying that exact routine config in one enclosed block — the only
+   human action left in wiring a repo into scheduling.
+
+During the rollout the owner drives each repo's cutover in a session (MIGRATION.md); the
+old enrollment issue and the central routine are retired at Phase 4.
 
 ## Part 7 — categorize the project (declare its class pack)
 

@@ -29,7 +29,7 @@ jobs:
         # nullglob: a location with no tests drops out instead of reaching node as a literal pattern.
         run: |
           shopt -s nullglob
-          tests=(engine-tests/*.test.mjs engine-tests/*/*.test.mjs packs/*.test.mjs packs/*/*.test.mjs packs/*/skills/*/*.test.mjs routines/*/*.test.mjs .claudinite/local_packs/*/*.test.mjs .claudinite/local_packs/*/skills/*/*.test.mjs)
+          tests=(engine-tests/*.test.mjs engine-tests/*/*.test.mjs packs/*.test.mjs packs/*/*.test.mjs packs/*/skills/*/*.test.mjs routines/*/*.test.mjs .claudinite/local/packs/*/*.test.mjs .claudinite/local/packs/*/skills/*/*.test.mjs .claudinite/local_packs/*/*.test.mjs .claudinite/local_packs/*/skills/*/*.test.mjs)
           node --test "${tests[@]}"
       - name: Conformance sweep
         # The world sweep's home is the test/CI flow (not the Stop hook, which
@@ -38,9 +38,9 @@ jobs:
         # session's change and runs at that session's Stop hook, not here.
         run: node engine/checks/check_the_world.mjs
       - name: Promote write-surface gate
-        # The growth promote stage (.claudinite/local_packs/canon-curation/promote.md) is the one change
+        # The growth promote stage (.claudinite/local/packs/canon-curation/promote.md) is the one change
         # bounded to packs/ + skills/ — an ordinary engine PR legitimately edits checks/,
         # routines/, so this cannot run on every PR. It keys on the promote branch prefix
         # (promote.md pins it) and fails the promote PR if a changed path strays.
         if: contains(github.head_ref, 'growth-promote')
-        run: node .claudinite/local_packs/canon-curation/promote-scope.mjs
+        run: node .claudinite/local/packs/canon-curation/promote-scope.mjs

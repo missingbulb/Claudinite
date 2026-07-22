@@ -274,7 +274,7 @@ test('packs without contributions add nothing; a malformed contribution is a blo
   assert.ok(findings.every((f) => f.severity === 'blocking'));
   assert.equal(findings[0].file, 'packs/bad-shape/pack.mjs');
   assert.match(findings[0].what, /not an array/);
-  assert.match(findings[1].file, /local_packs\/no-id\/pack\.mjs$/);
+  assert.match(findings[1].file, /local\/packs\/no-id\/pack\.mjs$/);
   assert.match(findings[1].what, /no string "id"/);
 });
 

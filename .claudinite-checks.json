@@ -11,13 +11,13 @@
         "retention": "10 days — the recommended rethink window before a captured conversation log is pruned."
       }
     },
-    "local_packs/claudinite",
+    "local/claudinite",
     {
-      "id": "local_packs/canon-curation",
+      "id": "local/canon-curation",
       "accept": [
         {
           "rule": "file-placement",
-          "path": ".claudinite/local_packs/canon-curation/",
+          "path": ".claudinite/local/packs/canon-curation/",
           "reason": "the canon home's curation local pack deliberately shares the checks/ engine lib (findings, lines, context) — the same named cross-cutting concern as the packs/ acceptance; in the home checkout the engine is the repo's own tracked tree, not a consumer mount, so the reach is inherent"
         }
       ]

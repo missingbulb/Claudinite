@@ -144,7 +144,7 @@ manifest.
 
 | | Count |
 |---|---|
-| **Hardcoded conformance checks** | **38 canon** (11 basics + 1 barriers + 1 grow_with_claudinite + 8 github-actions + 8 chrome-extension-release + 3 aws-sam + 6 product-wiki) + the canon home's own [canon-curation local pack](../.claudinite/local_packs/canon-curation/README.md) (1 code check + the contributed `pack-independence` barrier) |
+| **Hardcoded conformance checks** | **40 canon** (13 basics + 1 barriers + 1 grow_with_claudinite + 8 github-actions + 8 chrome-extension-release + 3 aws-sam + 6 product-wiki) + the canon home's own [canon-curation local pack](../.claudinite/local/packs/canon-curation/README.md) (1 code check + the contributed `pack-independence` barrier); plus skill-owned checks (e.g. the `unattended-agents` skill's `routine-structure`, `in-session-github-access`) that ride their pack's activation |
 | PreToolUse guard | 1 (remote-branch-delete) |
 | Platform setting | 1 (squash-only) |
 | **Prose rules** — packs + practice skills + baseline | **~150** |

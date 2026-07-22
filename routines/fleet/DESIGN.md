@@ -1,5 +1,12 @@
 # routines/fleet/ — the code planner for the daily maintenance routine
 
+> **Being superseded** (issue #394): the per-project scheduling migration
+> replaces this central planner with a per-repo vendored scheduler + label-fired
+> executor — see
+> [../../docs/per-project-scheduling/DESIGN.md](../../docs/per-project-scheduling/DESIGN.md).
+> This machinery stays live (and is the rollback) until Phase 4; the central
+> planner already skips any repo that declares the `schedule` key.
+
 > **Status: Stages 1 and 2 implemented** (issue #241). Stage 1 — the engine (`registry.mjs`,
 > `gates.mjs`, `signals.mjs`, `schedule.mjs`, `tasks/`), the plan wired into the census walk, the
 > seed-migration mechanism that backfills a default-on pack into the existing fleet, an example pack task,

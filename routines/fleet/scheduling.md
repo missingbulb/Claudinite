@@ -1,24 +1,22 @@
-# How scheduled work runs in the fleet — one scheduler
+# Scheduling — legacy central model (being retired)
 
-The **fleet daily maintenance routine** ([../auto-all-repos-maintenance.md](../auto-all-repos-maintenance.md))
-is the **only** schedule. Everything else that runs on a cadence is a **`workflow_dispatch`-only
-executor** the routine triggers and awaits — never a thing with a cron of its own.
+This folder is the **legacy** central-planner mechanism: one fleet routine
+([../auto-all-repos-maintenance.md](../auto-all-repos-maintenance.md)) fanned an
+agent out over every member repo on a single external schedule, and everything
+else that ran on a cadence was a `workflow_dispatch`-only executor it triggered.
 
-This is an agent-practices rule, stated once here as the fleet's home for it:
+**That model is being replaced** by per-project scheduling (issue #394): every
+repo schedules **itself** through a vendored hourly scheduler Action + a
+label-fired executor — see the
+[design](../../docs/per-project-scheduling/DESIGN.md) and the
+[rollout](../../docs/per-project-scheduling/MIGRATION.md). During the transition
+this central routine stays live as the rollback (it skips any repo that declares
+the `schedule` key, so exactly one mechanism owns a repo at a time); the whole
+`routines/fleet/` tree is removed at Phase 4.
 
-> Give an executor a cron and it silently becomes a **second orchestrator with a competing trigger**.
-> One schedule, owned by the orchestrating routine; executors run only when dispatched.
-> — the agent-practices skill
-
-So a **future daily / pack-based routine does not self-schedule.** In particular:
-
-- The **fleet bootstrap sweep** — sequenced by the routine, never scheduled.
-- **Every pack task's supporting GitHub Action** — e.g. `chrome-store-release`'s `Release to Chrome
-  Store` workflow. A pack task that needs an Action declares it `workflow_dispatch`-only; the task's
-  worker triggers it and awaits its completion (report at completion, not at the trigger — the
-  async-completion rule).
-
-The fleet routine itself is scheduled **externally** (the Claude Code Routines UI or a cron on a home
-repo), so no workflow *in* a repo — canon or consumer — carries a `schedule:` trigger for Claudinite
-executor work. A pack-task or fleet-executor workflow that grows a `schedule:` trigger is a
-conformance violation (enforced by a workflow-lint pack check), not just a review note.
+The one rule that outlives the transition: a repo's recurring work has exactly
+**one scheduler**, and every other workflow is `workflow_dispatch`-only —
+triggered and awaited, never given a cron of its own. Give an executor a cron and
+it silently becomes a second orchestrator with a competing trigger. This is
+enforced by `gha/no-scheduled-fleet-executor` and stated for agents in the
+unattended-agents skill.

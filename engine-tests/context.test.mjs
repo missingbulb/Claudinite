@@ -171,6 +171,43 @@ test('loadConfig: the claudinite vendored-mount stamp is a known setting', () =>
   } finally { cleanup(root); }
 });
 
+test('loadConfig: a valid schedule anchor is a known setting and passes through unchanged', () => {
+  const full = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({
+    packs: ['basics'], schedule: { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 },
+  }) } });
+  const partial = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({
+    packs: ['basics'], schedule: { dailyHour: 9 },
+  }) } });
+  const none = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({ packs: ['basics'] }) } });
+  try {
+    assert.deepEqual(loadConfig(full).errors, []);
+    assert.deepEqual(loadConfig(full).schedule, { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 });
+    assert.deepEqual(loadConfig(partial).errors, []); // absent keys are legal — the scheduler fills defaults
+    assert.equal(loadConfig(none).schedule, null); // an omitted schedule is not an error
+  } finally { cleanup(full); cleanup(partial); cleanup(none); }
+});
+
+test('loadConfig: out-of-range and misshaped schedule values are settings errors', () => {
+  const ranges = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({
+    packs: ['basics'], schedule: { dailyHour: 24, weeklyDay: 'Sunday', monthlyDay: 0, nonsense: 1 },
+  }) } });
+  const notObject = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({
+    packs: ['basics'], schedule: [4],
+  }) } });
+  try {
+    const cfg = loadConfig(ranges);
+    assert.equal(cfg.errors.length, 4);
+    assert.match(cfg.errors[0].what, /unknown "schedule" setting "nonsense"/);
+    assert.match(cfg.errors[1].what, /"schedule\.dailyHour" must be an integer 0–23/);
+    assert.match(cfg.errors[2].what, /"schedule\.weeklyDay" must be one of/);
+    assert.match(cfg.errors[3].what, /"schedule\.monthlyDay" must be an integer 1–31/);
+    assert.deepEqual(cfg.packs, ['basics']); // the good keys still load
+    const arr = loadConfig(notObject);
+    assert.equal(arr.errors.length, 1);
+    assert.match(arr.errors[0].what, /"schedule" must be an object/);
+  } finally { cleanup(ranges); cleanup(notObject); }
+});
+
 test('buildContext: the shared mount is structurally out of scope; local_packs stays in', () => {
   const root = makeRepo({ changed: {
     'src/app.js': 'x\n',
