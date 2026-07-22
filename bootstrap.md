@@ -79,9 +79,11 @@ mounts → env check → interview check) and forwards their stdout into the ses
 ] } ] } }
 ```
 
-Register the Stop hook (runs the conformance sweep when the session changed something; blocks
-the stop while blocking findings remain) and the PreToolUse guard (deterministically blocks
-forbidden commands) alongside it:
+Register the Stop hook (runs the **work-scope** checks when the session changed something —
+judging the change in front of the session, with the transcript — and blocks the stop while
+blocking findings remain) and the PreToolUse guard (deterministically blocks forbidden commands)
+alongside it. The **world-scope** sweep is not wired here — it goes into the project's test/CI
+flow in Part 8:
 
 ```json
 { "hooks": { "Stop": [ { "hooks": [
@@ -140,21 +142,37 @@ runs recurring **classes** of project, each carried by a project-class pack:
    facets and extracts its working instructions into new/refined canon packs (the primary
    deliverable) plus a thin project-specific overlay.
 
-## Part 8 — land the adoption green
+## Part 8 — wire the world sweep into the test/CI flow, and land green
 
-Run the sweep once and clear what it surfaces:
+The **world-scope** sweep is a whole-repo invariant assertion — the same shape as a test suite —
+so it runs wherever the project runs its tests, not on the Stop hook. Wire it in as its own step,
+invoked as the standalone command (it is the engine's always-vendored Node CLI, so it runs in any
+flow regardless of the project's own language — **never** add it as a language-specific test file
+a runner discovers):
 
 ```sh
 node .claudinite/shared/engine/checks/check_the_world.mjs
-node .claudinite/shared/engine/checks/check_the_work.mjs
 ```
 
-On a repo with existing code, **expect a backlog** — enforcement scope is whole-repo, and
-findings in code you never touched would otherwise block every future session's Stop hook and
-CI. Fix causes, or record a reasoned `accept` in `.claudinite-checks.json` for the deliberate
-keeps. Don't reach for `--changed` to hide the backlog — it is a transitional aid, never the
-enforcement default. Commit the adoption as one change (the vendored tree, the declaration, the
-wiring) and push it through the normal PR flow.
+- **The project already has a test/CI flow** (a CI job, a `make test` target, an npm/pnpm
+  `test` script, a `justfile`, …): add the command above as one more step, so a red world sweep
+  fails that flow exactly like a failing test. Alongside it, run the **work** sweep too — in CI
+  the git-based work rules (`reference-integrity`, `squash-merge-history`, `task-lifecycle`) still
+  apply against the branch diff; the conversation rules self-skip with no transcript:
+  ```sh
+  node .claudinite/shared/engine/checks/check_the_work.mjs
+  ```
+- **The project has none:** add a **minimal** flow — a single CI job (or a `make`/script target)
+  whose steps run the project's own tests, if any, then the two commands above. The point is a
+  deterministic place the whole-repo sweep runs at each change; keep it as small as the repo needs.
+
+Then run the world sweep once locally and clear what it surfaces. On a repo with existing code,
+**expect a backlog** — enforcement scope is whole-repo, and findings in code you never touched
+would otherwise fail every future run. Fix causes, or record a reasoned `accept` in
+`.claudinite-checks.json` for the deliberate keeps. Don't reach for `--changed` to hide the
+backlog — it is a transitional aid, never the enforcement default. Commit the adoption as one
+change (the vendored tree, the declaration, the hook wiring, the test/CI step) and push it
+through the normal PR flow.
 
 ## Part 9 — cloud environment setup (Claude Code on the web)
 

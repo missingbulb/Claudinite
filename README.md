@@ -23,7 +23,8 @@ session needs no architecture lesson, its rules arrive injected):
 - **`engine/`** — the machinery that runs pack content, and the one always-vendored root:
   `engine/hooks/` (the wired SessionStart/PreToolUse entry points),
   `engine/checks/check_the_world.mjs` / `engine/checks/check_the_work.mjs` (the world- and
-  work-scope conformance runners; the stable `engine/hooks/stop-command.mjs` Stop gate runs both), `engine/checks/helpers/`, `engine/pack_loader/`, `engine/pack_loader/`,
+  work-scope conformance runners — world runs in the project's test/CI flow, work in the stable
+  `engine/hooks/stop-command.mjs` Stop gate), `engine/checks/helpers/`, `engine/pack_loader/`,
   `vendoring/` (vendoring). Design records: [engine/checks/DESIGN.md](engine/checks/DESIGN.md),
   [vendoring/DESIGN.md](vendoring/DESIGN.md); the core/pack boundary:
   [extending.md](extending.md).

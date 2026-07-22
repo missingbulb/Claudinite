@@ -32,8 +32,10 @@ jobs:
           tests=(engine-tests/*.test.mjs engine-tests/*/*.test.mjs packs/*.test.mjs packs/*/*.test.mjs packs/*/skills/*/*.test.mjs routines/*/*.test.mjs .claudinite/local_packs/*/*.test.mjs .claudinite/local_packs/*/skills/*/*.test.mjs)
           node --test "${tests[@]}"
       - name: Conformance sweep
-        # Both scope runners: world (repo-state rules) and work (rules judging
-        # this branch's change) — the same pair the Stop hook runs.
+        # The world sweep's home is the test/CI flow (not the Stop hook, which
+        # carries only the work scope) — this canon repo models the pattern
+        # bootstrap wires into consumers. Work runs here too: in CI the git-based
+        # work rules apply against the branch diff; the conversation rules self-skip.
         run: |
           node engine/checks/check_the_world.mjs
           node engine/checks/check_the_work.mjs
