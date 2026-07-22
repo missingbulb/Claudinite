@@ -105,7 +105,7 @@ export function isRoutineTracker(title) {
 }
 
 async function readPacksDeclaration(gh, fullName) {
-  const none = { activePacks: [], packConfigs: {} };
+  const none = { activePacks: [], packConfigs: {}, schedulesItself: false };
   const { status, json } = await gh(`/repos/${fullName}/contents/.claudinite-checks.json`);
   if (status !== 200 || !json?.content) return none;
   try {
@@ -128,7 +128,12 @@ async function readPacksDeclaration(gh, fullName) {
         packConfigs[packEntryId(e)] = e.config;
       }
     }
-    return { activePacks, packConfigs };
+    // The per-repo scheduling cutover marker (per-project-scheduling MIGRATION
+    // Phase 0.6): a member that declares `schedule` runs its own vendored
+    // scheduler, so the central planner must leave it alone — exactly one
+    // mechanism owns a repo at any time.
+    const schedulesItself = parsed.schedule !== undefined && parsed.schedule !== null;
+    return { activePacks, packConfigs, schedulesItself };
   } catch { return none; }
 }
 
@@ -227,7 +232,7 @@ export async function buildSignals(gh, repo, { sinceIso, weekdayUtc, canonChange
   const prsTouched = await touchedNumbers(gh, `/repos/${fullName}/pulls?state=open&sort=updated&direction=desc`, sinceIso, widen);
   const issuesTouched = await touchedNumbers(gh, `/repos/${fullName}/issues?state=open&sort=updated&direction=desc`, sinceIso, widen, (i) => !i.pull_request && !isRoutineTracker(i.title));
   const branchesTouched = widen ? await allBranchNames(gh, fullName) : [];
-  const { activePacks, packConfigs } = await readPacksDeclaration(gh, fullName);
+  const { activePacks, packConfigs, schedulesItself } = await readPacksDeclaration(gh, fullName);
   const hasLocalPacks = await readHasLocalPacks(gh, fullName);
   // Only meaningful (and only worth the per-commit reads) when the repo has local packs.
   const localPacksChanged = hasLocalPacks && commits.length ? await readLocalPacksChanged(gh, fullName, commits) : false;
@@ -252,5 +257,6 @@ export async function buildSignals(gh, repo, { sinceIso, weekdayUtc, canonChange
     localPacksChanged,
     canonChanged: !!canon.changed,
     relevantCanonChanged,
+    schedulesItself,
   };
 }
