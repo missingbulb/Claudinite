@@ -6,8 +6,10 @@
 # and staying clear of the hour boundary the slot math anchors on.
 #
 # The minute below is a placeholder; bootstrap/vendoring rewrites it to this
-# repo's stable hashed minute in :10–:50 (scheduler-workflow-shape enforces the
-# range). `workflow_dispatch` allows a manual run; the concurrency group
+# repo's stable hashed minute in :10–:50, computed by
+# `node .claudinite/shared/engine/scheduler/hash-minute.mjs <owner/repo>`
+# (scheduler-workflow-shape enforces the range; baselining re-derives the value to
+# catch drift). `workflow_dispatch` allows a manual run; the concurrency group
 # serializes runs so a slow run and its successor never overlap.
 name: Claudinite scheduler
 

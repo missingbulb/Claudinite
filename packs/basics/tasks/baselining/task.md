@@ -44,7 +44,9 @@ at ([vendoring/DESIGN.md](../../../../vendoring/DESIGN.md)):
   `@.claudinite/shared/CLAUDE.md` import line — the corpus index is retired, #385) — additive, in-place fixes
   only, never clobbering this repo's own entries. The **scheduler wiring is part of that surface**
   (bootstrap Part 6): re-converge a drifted `.github/workflows/claudinite-scheduler.yml` to the vendored
-  stub — preserving this repo's hashed cron minute, the one repo-specific value in it — and re-create any
+  stub — restoring this repo's hashed cron minute (the one repo-specific value in it) to the canonical
+  `node .claudinite/shared/engine/scheduler/hash-minute.mjs <owner/repo>` value, a pure function of the
+  repo full name, so any other minute is drift — and re-create any
   missing `ready-for-agent` / `agent-running` / `needs-human` / `workflow-failure` label idempotently.
   Baselining is the repair loop for every Claudinite moving part the repo carries; the conformance checks
   are the in-session guard that flags the same drift the moment it's authored.

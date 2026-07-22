@@ -19,8 +19,10 @@ retirement of the legacy central planner it replaces) lives in
 
 - **The scheduler workflow is a thin shim.** The vendored
   `claudinite-scheduler.yml` carries a single **hourly** cron on a repo-hashed
-  minute constrained to **:10–:50**, a `concurrency` group, a `workflow_dispatch`
-  trigger, and a call into the vendored engine entry — no logic of its own
+  minute constrained to **:10–:50** (the one repo-specific value in the stub —
+  `engine/scheduler/hash-minute.mjs`, a pure function of the repo full name that
+  bootstrap stamps in and baselining re-derives), a `concurrency` group, a
+  `workflow_dispatch` trigger, and a call into the vendored engine entry — no logic of its own
   (schema and behaviour changes ride the vendor refresh, not workflow edits). It
   is the repo's **only** cron; every other recurring workflow stays
   `workflow_dispatch`-only. Off-band or multiple crons, or a missing
