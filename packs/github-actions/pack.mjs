@@ -6,6 +6,7 @@ import labelCreateBeforeAdd from './label-create-before-add.mjs';
 import uniqueAutomationBranch from './unique-automation-branch.mjs';
 import pagesArtifactSymlinks from './pages-artifact-symlinks.mjs';
 import noScheduledFleetExecutor from './no-scheduled-fleet-executor.mjs';
+import schedulerWorkflowShape from './scheduler-workflow-shape.mjs';
 
 export default {
   id: 'github-actions',
@@ -21,5 +22,6 @@ export default {
     uniqueAutomationBranch,
     pagesArtifactSymlinks,
     noScheduledFleetExecutor,
+    schedulerWorkflowShape,
   ],
 };
