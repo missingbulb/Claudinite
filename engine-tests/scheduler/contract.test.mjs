@@ -128,6 +128,7 @@ test('validateDispatchBody accepts a well-formed dispatch and resolves model + o
   assert.equal(v.model, 'opus');
   assert.equal(v.resolvedModel, 'opus');
   assert.equal(v.outcome, 'merged-pr');
+  assert.equal(v.executionTimeout, 1800); // surfaced for the executor's best-effort bound (§6)
 });
 
 test('validateDispatchBody rejects a bad first line, a missing file, an undeclared pack, and a bad declaration', () => {

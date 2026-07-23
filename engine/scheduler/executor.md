@@ -29,7 +29,8 @@ member repo and the Claudinite canon are both in the session's sources.
    It checks in code that the first line is a legal task path
    (`^.claudinite/(shared|local)/packs/<pack>/tasks/<task>/task.md$`), the file
    exists at HEAD, its pack is declared, and its `task.mjs` sibling parses to a
-   valid declaration; it prints the resolved **model** and **outcome** ceiling.
+   valid declaration; it prints the resolved **model**, **outcome** ceiling, and
+   the task's **executionTimeout** (seconds).
    - Invalid → comment naming what failed, remove `ready-for-agent`, add
      `needs-human`, and skip the issue. A forged or mangled dispatch never runs.
 
@@ -40,7 +41,12 @@ member repo and the Claudinite canon are both in the session's sources.
 4. **Dispatch a subagent at the declared model.** The subagent reads the
    task file (`task.md`) and follows it exactly. The issue's **Context** section
    is **binding scope** — never re-decide or widen it: if the precondition ruled
-   something out, it stays out.
+   something out, it stays out. **Give the subagent its run bound**: tell it
+   plainly *"you have N minutes (this task's `executionTimeout`); if you exceed
+   it, stop, comment what's done, and converge this issue to `needs-human` rather
+   than pressing on."* This is best-effort — there is no platform wall-clock kill
+   for this session (agent-preprocessing DESIGN §6) — so the value comes from the
+   **task declaration** printed by validate-dispatch, never from the issue body.
 
 5. **Verify the outcome in code, then converge.** Determine what the run did to
    pull requests and check it against the ceiling with
