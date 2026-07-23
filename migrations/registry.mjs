@@ -1,6 +1,7 @@
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { MIGRATIONS_SUBDIR, specFiles, migrationActive } from '../engine/checks/helpers/active-migrations.mjs';
+import { MODEL_FAMILIES } from '../engine/scheduler/model-map.mjs';
 
 const dir = dirname(fileURLToPath(import.meta.url));
 
@@ -99,6 +100,37 @@ export async function applyRewrites(migration, { read, write }) {
     if (next !== text) { await write(file, next); done.push(file); }
   }
   return done;
+}
+
+// A migration record MAY carry a machine-readable AGENTIC note (agent-preprocessing
+// DESIGN §7, the primitive absorbed from #405): member-side adaptation that no
+// script can do — adapting consumer-authored `local/packs/` content to a changed
+// engine contract. Shape: `agentic: { model, instructions }`, model a non-`none`
+// family. baselining's preprocessing reads this to decide whether a pending note
+// needs the agent STAGE (and must therefore hold the stamp) rather than converging
+// in code. Returns the validated note, or null when the record carries none;
+// throws on a malformed note so a typo fails loudly instead of silently skipping
+// agentic work (the #405 correctness risk).
+export function migrationAgentic(m) {
+  const a = m.agentic;
+  if (a === undefined || a === null) return null;
+  if (typeof a !== 'object' || Array.isArray(a)) {
+    throw new Error(`migration ${m.id}: "agentic" must be an object { model, instructions }`);
+  }
+  if (!MODEL_FAMILIES.includes(a.model) || a.model === 'none') {
+    throw new Error(`migration ${m.id}: agentic.model must be a non-"none" model family (${MODEL_FAMILIES.filter((f) => f !== 'none').join(', ')})`);
+  }
+  if (typeof a.instructions !== 'string' || a.instructions.trim() === '') {
+    throw new Error(`migration ${m.id}: agentic.instructions must be a non-empty string`);
+  }
+  return { model: a.model, instructions: a.instructions };
+}
+
+// The records that carry a valid agentic note — the pending set baselining must
+// escalate to an agent rather than apply in code. Stamp-date filtering (which
+// notes still apply) is the caller's; this is the agentic gate over that set.
+export function agenticMigrations(migrations) {
+  return migrations.filter((m) => migrationAgentic(m) !== null);
 }
 
 // Retirement — the "smart, not overzealous" guard. A migration is retirable only

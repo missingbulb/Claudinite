@@ -3,9 +3,35 @@ import assert from 'node:assert/strict';
 import {
   loadMigrations, resolvePath, applyFileAliases, retirableMigrations,
   applyMaterializations, applyRewrites, migrationActive,
+  migrationAgentic, agenticMigrations,
 } from '../migrations/registry.mjs';
 
 const M = (over = {}) => ({ id: 'm', landed: '2026-01-01', aliases: [], ...over });
+
+test('migrationAgentic: null when absent, the validated note when well-formed', () => {
+  assert.equal(migrationAgentic(M()), null);
+  const note = { model: 'sonnet', instructions: 'adapt the local pack' };
+  assert.deepEqual(migrationAgentic(M({ agentic: note })), note);
+});
+
+test('migrationAgentic: throws on a malformed note (a typo fails loudly, never silent-skips)', () => {
+  assert.throws(() => migrationAgentic(M({ agentic: { instructions: 'x' } })), /model must be a non-"none"/);
+  assert.throws(() => migrationAgentic(M({ agentic: { model: 'none', instructions: 'x' } })), /non-"none"/);
+  assert.throws(() => migrationAgentic(M({ agentic: { model: 'sonnet', instructions: '  ' } })), /instructions must be a non-empty string/);
+  assert.throws(() => migrationAgentic(M({ agentic: 'sonnet' })), /must be an object/);
+});
+
+test('agenticMigrations: selects exactly the records carrying a valid agentic note', () => {
+  const migs = [M({ id: 'a' }), M({ id: 'b', agentic: { model: 'opus', instructions: 'do the thing' } })];
+  assert.deepEqual(agenticMigrations(migs).map((m) => m.id), ['b']);
+});
+
+test('the real pack-independence record carries a valid agentic note', async () => {
+  const migs = await loadMigrations();
+  const pi = migs.find((m) => m.id === 'pack-independence');
+  assert.ok(pi, 'pack-independence record present');
+  assert.equal(migrationAgentic(pi).model, 'sonnet');
+});
 
 test('resolvePath: prefers canonical then legacy; an unknown target resolves to itself', () => {
   const migs = [M({ aliases: [{ canonical: 'a/new.sh', legacy: ['a/old.sh', 'a/older.sh'] }] })];
