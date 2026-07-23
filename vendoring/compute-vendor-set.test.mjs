@@ -33,6 +33,10 @@ function makeCanon({ packs = [], skills = [] } = {}) {
   writeAt(root, 'engine/checks/check_the_world.mjs', 'stub\n');
   writeAt(root, 'engine/checks/helpers/repo-context.mjs', 'stub\n');
   writeAt(root, 'engine/checks/README.md', 'canon doc\n');
+  // engine/scheduler: an OPERATIONAL doc the consumer reads at runtime (vendored,
+  // despite .md) beside a maintainer doc (excluded like every other engine .md).
+  writeAt(root, 'engine/scheduler/executor.md', 'executor instructions\n');
+  writeAt(root, 'engine/scheduler/DESIGN.md', 'canon doc\n');
   writeAt(root, 'engine/test/runner.test.mjs', 'stub\n');
   writeAt(root, 'engine/hooks/session-start-command.sh', 'stub\n');
   writeAt(root, 'vendoring/DESIGN.md', 'canon doc\n');
@@ -87,6 +91,7 @@ test('structural set: engine roots + machinery + declared pack + its skills, exa
     'engine/checks/helpers/module-imports.mjs',
     'engine/checks/check_the_world.mjs',
     'engine/hooks/session-start-command.sh',
+    'engine/scheduler/executor.md',
     'engine/pack_loader/env-requirements.mjs',
     'engine/pack_loader/inject-pack-prose.mjs',
     'engine/pack_loader/pack-registry.mjs',
@@ -105,6 +110,20 @@ test('structural set: engine roots + machinery + declared pack + its skills, exa
   assert.ok(!files.some((f) => f.startsWith('preferences/')), 'per-user preferences must never vendor');
   assert.ok(!files.some((f) => f.endsWith('README.md') || f.endsWith('DESIGN.md')), 'engine-root docs stay canon-side');
   assert.ok(!files.some((f) => f.includes('.test.mjs') || f.startsWith('engine/test/')), 'tests stay canon-side');
+});
+
+test('executor.md is the one engine .md that vendors — the executor reads it from the mount', async () => {
+  const root = makeCanon(FIXTURE);
+  const { files } = await vendorAt(root, ['alpha']);
+  assert.ok(files.includes('engine/scheduler/executor.md'), 'executor.md must ship — the label-wired routine points at it in the mount');
+  assert.ok(!files.includes('engine/scheduler/DESIGN.md'), 'other engine .md (maintainer docs) stay canon-side');
+});
+
+test('regression (fleet executor-broken): the REAL canon tree vendors engine/scheduler/executor.md', async () => {
+  const { computeVendorSet } = await import('./compute-vendor-set.mjs');
+  const { files, errors } = await computeVendorSet(['basics']);
+  assert.deepEqual(errors, []);
+  assert.ok(files.includes('engine/scheduler/executor.md'), 'the live executor.md must be in the vendor set');
 });
 
 test('migrations: the applier + registry + records vendor; fleet drivers, README, tests do not', async () => {
