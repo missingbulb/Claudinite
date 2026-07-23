@@ -1,5 +1,5 @@
 import { dirname, join, normalize } from 'node:path';
-import { humanTurns, assistantTextAfter, classificationLine, classesIn } from './session-transcript.mjs';
+import { humanTurns, assistantTextAfter, classificationLine, classesIn, toolUses, toolResults } from './session-transcript.mjs';
 import { addedLines } from './line-scanning.mjs';
 import { extractLinks } from './markdown.mjs';
 
@@ -49,6 +49,10 @@ class Turns extends Array {
   last() { return this.length ? this[this.length - 1] : NO_TURN; }
 }
 
+const GH_PREFIX = 'mcp__github__';
+const PLAN_LABEL = 'plan-tracking';
+const CHECKED_BOX = /-\s*\[x\]/i; // a maintained checklist has at least one checked item
+
 class Conversation {
   constructor(entries) { this.entries = entries ?? []; }
 
@@ -56,6 +60,55 @@ class Conversation {
     const turns = new Turns();
     for (const t of humanTurns(this.entries)) turns.push(new Turn(this.entries, t));
     return turns;
+  }
+
+  // GitHub MCP tool calls, base-named (mcp__github__X → X), each with a parsed
+  // .time (ms) — the offline record of what this session did on GitHub.
+  githubCalls() {
+    return toolUses(this.entries)
+      .filter((u) => u.name.startsWith(GH_PREFIX))
+      .map((u) => ({ ...u, tool: u.name.slice(GH_PREFIX.length), time: Date.parse(u.timestamp ?? '') || 0 }));
+  }
+
+  // PR merges this session accepted: [{ pr, time }], oldest first.
+  merges() {
+    return this.githubCalls()
+      .filter((c) => c.tool === 'merge_pull_request')
+      .map((c) => ({ pr: c.input?.pullNumber ?? null, time: c.time }))
+      .sort((a, b) => a.time - b.time);
+  }
+
+  // Issue numbers this session observed to carry the `plan-tracking` label —
+  // read from a list_issues/search_issues call FILTERED by the label (the numbers
+  // its result returns are all plan-tracking), plus any issue the session itself
+  // labeled plan-tracking. Transcript-only label evidence, per the design's
+  // no-credential-in-session constraint: a session that never consulted the
+  // tracker leaves none, and the rule self-skips (a documented offline blind spot).
+  planTrackingIssues() {
+    const nums = new Set();
+    const resultById = new Map();
+    for (const r of toolResults(this.entries)) if (r.toolUseId) resultById.set(r.toolUseId, r.text);
+    for (const c of this.githubCalls()) {
+      const labels = Array.isArray(c.input?.labels) ? c.input.labels : [];
+      const query = typeof c.input?.query === 'string' ? c.input.query : '';
+      const filtersLabel = labels.includes(PLAN_LABEL) || /label:\s*"?plan-tracking"?/i.test(query);
+      if (filtersLabel && (c.tool === 'list_issues' || c.tool === 'search_issues')) {
+        for (const m of (resultById.get(c.id) ?? '').matchAll(/"number"\s*:\s*(\d+)/g)) nums.add(Number(m[1]));
+      }
+      if (c.tool === 'issue_write' && labels.includes(PLAN_LABEL) && Number.isInteger(c.input?.issue_number)) {
+        nums.add(Number(c.input.issue_number));
+      }
+    }
+    return nums;
+  }
+
+  // issue_write UPDATE calls after `since` whose body carries a checked box, by
+  // issue number: [{ issue, time }] — the "checklist was brought in sync" signal.
+  checklistUpdatesAfter(since) {
+    return this.githubCalls()
+      .filter((c) => c.tool === 'issue_write' && c.input?.method === 'update' && c.time > since)
+      .filter((c) => CHECKED_BOX.test(String(c.input?.body ?? '')))
+      .map((c) => ({ issue: Number(c.input?.issue_number), time: c.time }));
   }
 }
 
@@ -73,6 +126,12 @@ class Work {
   packConfig(id) { return this.ctx.config?.packConfig?.[id]; }
 
   conversation() { return new Conversation(this.ctx.conversation()); }
+
+  // The PRs this session accepted, from the transcript's merge_pull_request calls:
+  // [{ pr, time }], oldest first. The offline "accepted PRs from the current
+  // session" primitive — empty without a transcript (CI, manual run) or when no
+  // merge happened, so a post-merge rule self-skips by reading it.
+  mergedThisSession() { return this.conversation().merges(); }
 
   addedLines(files) { return addedLines(this.ctx, files ?? this.ctx.changedFiles); }
 
