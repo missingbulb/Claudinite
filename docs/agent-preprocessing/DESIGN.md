@@ -398,15 +398,30 @@ session 2026-07-23). What's left is **E5**, gated behind E4's live pilot proving
   `agent_preprocessing` — its baseline must be *seen* by the agent and preprocessing has no
   code→agent channel; the fetch/scaffold pre-step belongs to the still-legacy create-extractor
   routine (outside `tasks/`).
-- **E5 — drop canon from the executor CCR session (NEXT, gated on E4's pilot).** `executor.md`
-  sources become the project alone (not project + canon); update bootstrap Part 6 and the
-  executor-routine creation to provision a project-only environment. Baselining no longer
-  reads canon in-session (E4 fetches it Action-side), so this is now safe once E4 is piloted.
+- **FLEET-FIX — `executor.md` was never vendored (LANDED in this branch/#413).** Root cause of
+  GCEC's broken executor (`GoogleCalendarEventCreator#710`): `compute-vendor-set` stripped ALL
+  engine `*.md`, including `engine/scheduler/executor.md` — the executor routine's operating
+  instructions. So **every cut-over consumer's executor booted with no instructions and could
+  drain nothing.** Fixed with a `VENDORED_ENGINE_DOCS` whitelist + regression tests. Baselining
+  can't self-heal this (a refresh re-excludes the file), so the fix must **merge**, then each
+  cut-over consumer's mount needs a one-time out-of-band refresh to pull it (below).
+- **GCEC mount bootstrap (NEXT, deadlock-breaker).** GCEC is stuck: broken executor → can't run
+  baselining → can't refresh its mount to *get* the fix. After #413 merges, converge GCEC's
+  `.claudinite/shared/` to the fixed canon head out-of-band (push a GCEC maintenance PR the same
+  way, NOT through the executor) — that single refresh lands `executor.md` **and** the new E4
+  baselining `worker.mjs`. Then the executor works (the 6 stuck dispatches drain) and baselining
+  becomes the Action-side worker. This refresh **is** the start of the real E4 pilot.
+- **E5 — drop canon from the executor CCR session (gated on E4's pilot + the GCEC bootstrap).**
+  `executor.md` sources become the project alone; update bootstrap Part 6 and the executor-routine
+  creation to provision a project-only environment. Keep canon in GCEC's executor sources until it
+  baselines onto the new worker, THEN re-create project-only.
 
 **Live-pilot checklist for E4 (owner, before E5):** run baselining's `worker.mjs` against a
 real GCEC scheduler run — confirm the public canon clone, the converge writes, the per-cycle
 maintenance branch/PR, auto-merge arming, the stamp-hold on the pending `pack-independence`
 agentic note, and that a clean night is truly agentless (no `ready-for-agent` filed).
+**Partial pilot already done** (converge path validated locally against a real older-stamped
+target; only the native-git `deliver()` needs a real Action-token run) — see the E4 bullet above.
 
 **Working notes.** Prefer git-free fs-fixture tests (see
 `engine-tests/scheduler/converge-wiring.test.mjs`) over `makeRepo` where possible —
