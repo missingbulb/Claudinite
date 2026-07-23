@@ -144,9 +144,11 @@ adoption:
 4. **Create the label-wired executor routine** via the trigger API — fires on the
    `ready-for-agent` label event, model `sonnet`, launcher prompt
    `Execute the Claudinite executor: .claudinite/shared/engine/scheduler/executor.md`,
-   sources = this repo + the Claudinite canon. If the trigger API isn't reachable, file
-   an owner issue carrying that exact routine config in one enclosed block — the only
-   human action left in wiring a repo into scheduling.
+   sources = **this repo alone** (not the Claudinite canon — agent-preprocessing DESIGN
+   §7/E5: baselining fetches canon Action-side, so no executor task needs it in session).
+   If the trigger API isn't reachable, file an owner issue carrying that exact routine
+   config in one enclosed block — the only human action left in wiring a repo into
+   scheduling.
 
 During the rollout the owner drives each repo's cutover in a session (MIGRATION.md); the
 old enrollment issue and the central routine are retired at Phase 4.
