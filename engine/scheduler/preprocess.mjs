@@ -12,6 +12,9 @@
 // preprocessing communicates only through the repository (DESIGN §3).
 
 import { spawn } from 'node:child_process';
+import { existsSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 // Run `command` as a subprocess bounded by `timeoutSeconds`. Resolves (never
 // rejects) with { ok, timedOut, code, signal, stdout, stderr }: `ok` is a clean
@@ -41,6 +44,20 @@ export function runPreprocessing(command, { taskDir, env, timeoutSeconds }) {
     });
   });
 }
+
+// The conditional-handoff signal (agent-preprocessing DESIGN §3, E4). A task with
+// BOTH agent_preprocessing AND a non-`none` agent_model hands off to the agent
+// ONLY when its worker requests it — so a task can absorb its work into
+// preprocessing and be AGENTLESS on the quiet nights. The scheduler hands the
+// worker this path via CLAUDINITE_REQUEST_AGENT and files `ready-for-agent` iff
+// the worker created it. It is a pure control signal: the worker communicates
+// DATA to the agent only through the repository, never through this file (DESIGN
+// §3, "no code→agent data channel").
+export function agentRequestPath({ pack, task, slotId }) {
+  return join(tmpdir(), `claudinite-request-agent-${pack}-${task}-${slotId}`);
+}
+export function clearAgentRequest(path) { try { rmSync(path, { force: true }); } catch { /* nothing to clear */ } }
+export function agentRequested(path) { return existsSync(path); }
 
 // A one-line reason for the job summary / an issue comment when preprocessing
 // fails — distinguishing a timeout kill from a non-zero exit.
