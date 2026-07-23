@@ -372,7 +372,11 @@ Tracked here now that #405 is closed (§8):
 ### Remaining work — start here (a fresh session picks up from this section)
 
 **E4 and the GCEC conversion have LANDED** (branch `claude/agent-preprocessing-remaining-kymhh9`,
-session 2026-07-23). What's left is **E5**, gated behind E4's live pilot proving out.
+session 2026-07-23). The **GCEC mount bootstrap is DELIVERED** as a maintenance PR
+(`GoogleCalendarEventCreator#712`, session 2026-07-23) — the out-of-band vendor refresh that
+lands `executor.md` + the E4 `worker.mjs` into GCEC's mount. On merge it drains the 6 stuck
+dispatches (#703–#708) and starts the real E4 live pilot. What's left is **E5**, gated behind
+that merge + the pilot proving out.
 
 - **E4 — baselining converge-as-preprocessing (LANDED).** `packs/basics/tasks/baselining/`
   now carries `worker.mjs` (native-git `agent_preprocessing`) + a rewritten `task.mjs`
@@ -405,13 +409,18 @@ session 2026-07-23). What's left is **E5**, gated behind E4's live pilot proving
   drain nothing.** Fixed with a `VENDORED_ENGINE_DOCS` whitelist + regression tests. Baselining
   can't self-heal this (a refresh re-excludes the file), so the fix must **merge**, then each
   cut-over consumer's mount needs a one-time out-of-band refresh to pull it (below).
-- **GCEC mount bootstrap (NEXT, deadlock-breaker).** GCEC is stuck: broken executor → can't run
-  baselining → can't refresh its mount to *get* the fix. After #413 merges, converge GCEC's
-  `.claudinite/shared/` to the fixed canon head out-of-band (push a GCEC maintenance PR the same
-  way, NOT through the executor) — that single refresh lands `executor.md` **and** the new E4
-  baselining `worker.mjs`. Then the executor works (the 6 stuck dispatches drain) and baselining
-  becomes the Action-side worker. This refresh **is** the start of the real E4 pilot.
-- **E5 — drop canon from the executor CCR session (gated on E4's pilot + the GCEC bootstrap).**
+- **GCEC mount bootstrap (DELIVERED — `GoogleCalendarEventCreator#712`, deadlock-breaker).** GCEC
+  was stuck: broken executor → can't run baselining → can't refresh its mount to *get* the fix.
+  With #413 merged (canon head `61b90ee`), GCEC's `.claudinite/shared/` was converged to that
+  fixed head **out-of-band** via `vendoring/apply-vendor-set.mjs` — a GCEC maintenance PR, **NOT**
+  through the executor (the anti-rewind guards passed: stamped `b5103ea` is an ancestor of
+  `61b90ee`). That single refresh (28 files, 192-file set, 0 deletions, stamp `b5103ea → 61b90ee`)
+  lands `executor.md` **and** the new E4 baselining `worker.mjs` + its primitives (vendored
+  `migrations/`, `converge-wiring.mjs`, `preprocess.mjs`, the `run.mjs`/`task-contract.mjs`/
+  `validate-dispatch.mjs` updates). **On merge:** the executor has instructions and drains the 6
+  stuck dispatches (#703–#708); baselining becomes the Action-side worker. This refresh **is** the
+  start of the real E4 pilot.
+- **E5 — drop canon from the executor CCR session (NEXT after #712 merges + the pilot proves out).**
   `executor.md` sources become the project alone; update bootstrap Part 6 and the executor-routine
   creation to provision a project-only environment. Keep canon in GCEC's executor sources until it
   baselines onto the new worker, THEN re-create project-only.
