@@ -322,10 +322,15 @@ Tracked here now that #405 is closed (§8):
 - **`converge-wiring.mjs`** (from #405): the fresh-path wiring convergence as an
   idempotent script that bootstrap Part 6 *calls* (one source of truth, the drift
   guard) — a mechanical step baselining preprocessing runs.
-- **The check-fix subsumption audit** (from #405, load-bearing): enumerate every
-  check baselining auto-fixes in the wild and confirm each is subsumed by
-  converge / converge-wiring / declaration-normalization before flipping baselining
-  to a `null`-model common night.
+- **The check-fix subsumption audit** (from #405, load-bearing): **DONE** —
+  [`check-fix-subsumption-audit.md`](check-fix-subsumption-audit.md). Conclusion:
+  it **is** safe to drive the common-night model toward `null`. Every check that
+  judges standing repo state is world-scoped and so is caught by the
+  `check_the_world` escalation gate; the 8 work-scoped checks the gate omits judge a
+  *session's change* a mechanical converge never makes (no silent regression); only
+  2 checks are deterministically subsumed today, and 3 world-scoped needs-judgment
+  checks (`catalog-completeness`, `generated-merge-driver`, `cer/version-sync`) have
+  rote fixes worth mechanizing later to reduce needless escalation.
 - **Rollout sequencing** of the contract change vs. #407 vs. Phase 2 (§8) —
   ordering agreed in principle (#407 → contract → Phase 2), dates open.
 
@@ -376,11 +381,17 @@ session 2026-07-23). What's left is **E5**, gated behind E4's live pilot proving
   nights** via the run.mjs **conditional hand-off** (worker writes `CLAUDINITE_REQUEST_AGENT`
   only when a pending agentic note exists OR the converge left `check_the_world` non-green).
   **Supersedes #407** (native-git delivery carries its own maintenance-branch prefix / find-
-  by-prefix). Pure decision helpers unit-tested; **the native-git/clone/REST I/O and the
-  full nightly flow still need a live GCEC pilot** — the E5 gate. The check-fix subsumption
-  audit (below, from #405) is *still owed* before the common-night model can be trusted
-  fully; the escalation gate (`check_the_world` must be green for an agentless night) is
-  the safety net until that audit lands.
+  by-prefix). Pure decision helpers unit-tested. **Partial pilot done (2026-07-23):** against a
+  real target stamped at an older ref, the public-canon clone (through the proxy, no token) →
+  rootless tree → `apply-vendor-set` converged to HEAD **without tripping the anti-rewind
+  guard**, `converge-wiring` rewrote the workflow + hooks, mechanical migrations were idempotent,
+  and the agentic-note detection + stamp-hold + escalation decision were verified both ways
+  (pending note → hold + escalate; no pending note → advance). **Residual:** the native-git
+  `deliver()` (per-cycle branch push, PR create, auto-merge arm) needs one real Action-token
+  run — the E5 gate. The check-fix subsumption
+  audit ([`check-fix-subsumption-audit.md`](check-fix-subsumption-audit.md)) is **done** and
+  clears the common-night model to go toward `null`; the escalation gate (`check_the_world`
+  green + no pending agentic note) is the operative safety net now and after the flip.
 - **GCEC task conversion (LANDED, its own repo/PR).** `missingbulb/GoogleCalendarEventCreator`,
   branch `claude/agent-preprocessing-remaining-kymhh9`: `fallback-extractor-improvements`
   gained `agent_execution_timeout`. No deterministic pre-step was split into
