@@ -124,11 +124,16 @@ A consuming project schedules **itself** (per-project-scheduling DESIGN §9). As
 adoption:
 
 1. **Vendor the scheduler workflow** — copy `claudinite-scheduler.yml` into
-   `.github/workflows/` and set its cron minute to this repo's stable hashed minute in
-   :10–:50 (the repo's only cron).
-2. **Create the labels** idempotently: `ready-for-agent`, `agent-running`,
-   `needs-human`, `workflow-failure`.
-3. **Write the `schedule` key** into `.claudinite-checks.json` (defaults:
+   `.github/workflows/` and rewrite its placeholder cron minute to this repo's stable
+   hashed minute in :10–:50 (the repo's only cron). Compute the minute — never guess it —
+   with the vendored hasher: `node .claudinite/shared/engine/scheduler/hash-minute.mjs
+   <owner/repo>`. It is a pure function of the repo full name, so it is the same value on
+   every re-vendor and baselining re-derives it to catch drift.
+2. **Labels need no step** — the scheduler ensures `ready-for-agent`,
+   `agent-running`, `needs-human`, and `workflow-failure` exist (create-if-missing,
+   idempotent) before it dispatches, so they materialize on the first run and
+   self-heal if deleted. No one-off creation, nothing to forget.
+3. **Write the `taskScheduler` key** into `.claudinite-checks.json` (defaults:
    `{ "dailyHour": 4, "weeklyDay": "Sun", "monthlyDay": 1 }`, all UTC) — this is the
    cutover marker: the central routine stops planning the repo the same night, and its
    own scheduler + self-baselining take over the refresh.

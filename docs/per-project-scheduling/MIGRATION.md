@@ -8,14 +8,17 @@ rollback at every step.
 
 Ground rules for every phase:
 
-- Pilot before fleet: nothing reaches a second repo until GCEC has soaked (the
-  standing "pilot on one real consumer" rule).
+- GCEC first, then the fleet — **same day, no soak**. GCEC is still cut over first
+  and verified in-session (the "prove it on one real consumer" rule), but the rest of
+  the fleet follows the same day rather than after a ~1-week soak: the mechanism is
+  code, exercised end-to-end on GCEC, so there's nothing a week of waiting would add
+  that the in-session verification doesn't.
 - Never break the channel the migration travels through: the central routine and
   the vendor-refresh path stay functional until Phase 4 decommission.
-- Cutover per repo is marked by the `schedule` key in `.claudinite-checks.json`:
+- Cutover per repo is marked by the `taskScheduler` key in `.claudinite-checks.json`:
   the central planner skips any member that declares it (guard added in
   Phase 0.6), so a repo is covered by exactly one mechanism at all times —
-  no double runs during the staggered rollout.
+  no double runs even as the whole fleet cuts over the same day.
 - Each phase ends with its verification step green before the next starts.
 
 ---
@@ -25,7 +28,7 @@ Ground rules for every phase:
 > **Landed** (#396, on `main`). All seven sub-items below are implemented, with
 > the full engine, the rename, the checks, the additive task conversions, the
 > cutover guard, and the docs — CI green, no behavior change until a repo
-> declares `schedule`. A few things landed **differently from the wording below**,
+> declares `taskScheduler`. A few things landed **differently from the wording below**,
 > and a few are deliberately **carried forward** — a Phase 1 session should read
 > these before starting the GCEC pilot:
 >
@@ -78,7 +81,7 @@ Ground rules for every phase:
    `executor.md` (including the drain-other-ready-issues sweep), and the
    workflow stub `stubs/claudinite-scheduler.yml` (hashed cron minute in
    **:10–:50**, `concurrency`, thin shim calling the vendored engine).
-2. **Engine schema & layout**: add `schedule` to `CONFIG_KEYS` with load-time
+2. **Engine schema & layout**: add `taskScheduler` to `CONFIG_KEYS` with load-time
    validation (`dailyHour` 0–23, `weeklyDay` Sun–Sat, `monthlyDay` 1–31) and the
    documented defaults. Implement the `local_packs` → `local/packs` rename
    engine-side: `LOCAL_PACKS_SUBDIR` moves to `.claudinite/local/packs`,
@@ -120,7 +123,7 @@ Ground rules for every phase:
    local-pack path. (The sheepdog census classification note landed with the
    design PR.)
 6. **Transition guard** (small, ships first): the central planner skips members
-   whose `.claudinite-checks.json` declares `schedule`, and treats `tasks/` /
+   whose `.claudinite-checks.json` declares `taskScheduler`, and treats `tasks/` /
    `run_daily/` and both local-pack roots as aliases until Phase 4.
 7. **Verify**: canon CI green; engine tests cover slot math (miss → catch-up,
    double-run → dedupe, first-run, month-clamp, hour-wrap), dispatch
@@ -149,7 +152,7 @@ Ground rules for every phase:
    `dev/procedures/fileDescriptions.md`, the extension popup comment. Fold in
    the drift fixes: gcec README's missing add-live-case row; CLAUDE.md's stale
    "checks run in CI" claim.
-4. Write `"schedule": { "dailyHour": 4, "weeklyDay": "Sun", "monthlyDay": 1 }`
+4. Write `"taskScheduler": { "dailyHour": 4, "weeklyDay": "Sun", "monthlyDay": 1 }`
    into GCEC's `.claudinite-checks.json` — the cutover marker: the central
    routine stops planning GCEC the same night (self-baselining takes over the
    refresh).
@@ -158,7 +161,7 @@ Ground rules for every phase:
    `Execute the Claudinite executor: .claudinite/shared/engine/scheduler/executor.md`,
    sources = GCEC + Claudinite (as the old triggers had). **Disable — do not
    delete** — the two old GCEC CCR triggers.
-6. **Soak ≈1 week, verify**: hourly summaries list evaluations with sane
+6. **Verify in-session (no soak)**: hourly summaries list evaluations with sane
    skip-reasons; one real `extractor-request` flows end-to-end (precondition
    context → dispatch issue → label event → executor → review PR, in minutes);
    one auto-fallback-coverage daily run fires on a meaningful-commit day and
@@ -168,7 +171,7 @@ Ground rules for every phase:
    scheduler does not self-trigger on its own issues/commits; a deliberately
    mangled dispatch issue (bad first line) is rejected by `validate-dispatch`
    and converged to `needs-human`.
-7. Rollback: disable the scheduler workflow, remove the `schedule` key, restore
+7. Rollback: disable the scheduler workflow, remove the `taskScheduler` key, restore
    the release cron, re-enable the old triggers.
 
 ## Phase 2 — canon repo cutover
@@ -183,7 +186,7 @@ Ground rules for every phase:
    classification note in the task file.
 2. Build the `fleet` signal collector over the fleet PAT (`FLEET_GITHUB_TOKEN`
    Actions secret — the census's existing credential).
-3. Canon repo: `schedule` key (dailyHour 4), scheduler workflow, label-wired
+3. Canon repo: `taskScheduler` key (dailyHour 4), scheduler workflow, label-wired
    executor routine, labels — same as any member. The central routine keeps
    running for **unmigrated consumers only** (the Phase 0.6 guard also skips the
    canon's own pack tasks, which the canon scheduler now owns).
@@ -195,7 +198,7 @@ Ground rules for every phase:
    `fleet` signal lists exactly the members whose local packs changed;
    prose-to-checks fires daily and no-ops cheaply on a quiet corpus.
 
-## Phase 3 — remaining consumers (owner-orchestrated, batched ~3 at a time)
+## Phase 3 — remaining consumers (owner-orchestrated, all the same day)
 
 Repos: EdFringeNow, gRatio, TLDR, HelloWorldFlutterApp, EdFringeAllocator,
 CrosswordChat, Sheepdog, LaughCounter, ShoutsAndWhispers.
@@ -207,7 +210,7 @@ Per-repo checklist (self-contained; one session each):
 2. `git mv .claudinite/local_packs .claudinite/local/packs` (where present) +
    token rewrite + reference sweep; convert any local `run_daily/` → `tasks/`
    (most repos: none).
-3. Write the `schedule` key (cutover marker).
+3. Write the `taskScheduler` key (cutover marker).
 4. Create the label-wired executor routine (sonnet, thin-pointer prompt,
    sources = repo + Claudinite).
 5. Verify: first scheduler summary sane; central routine's next night skips the
@@ -246,6 +249,6 @@ Per-repo checklist (self-contained; one session each):
 | Fleet reads of private members from Actions | The existing `FLEET_GITHUB_TOKEN` PAT, only on the canon/sheepdog repos; consumers never need it. |
 | Model family drift | Single vendored `model-map.mjs`. |
 | Check/stub ordering (release cron flip) | The forbidding check and the de-cron'd stub travel in the same per-repo cutover commit. |
-| Stranded repos mid-rollout | The `schedule`-key guard gives every repo exactly one owner at all times; central machinery deleted only in Phase 4. |
+| Stranded repos mid-rollout | The `taskScheduler`-key guard gives every repo exactly one owner at all times; central machinery deleted only in Phase 4. |
 
 Out of scope: Yestersummary (untouched).

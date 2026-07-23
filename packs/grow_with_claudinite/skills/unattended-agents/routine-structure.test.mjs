@@ -59,6 +59,30 @@ test('routine-structure: flags phase scripts in a folder with no routine.md entr
   } finally { cleanup(root); }
 });
 
+test('routine-structure: a converted task folder (task.md entry + invoked phase script) passes', () => {
+  const root = makeRepo({ changed: {
+    '.claudinite/local/packs/gcec/tasks/demo/task.mjs': 'export default { id: "demo" }\n',
+    '.claudinite/local/packs/gcec/tasks/demo/task.md':
+      '# Demo task\n\n## Postcondition\n\n```sh\nbash .claudinite/local/packs/gcec/tasks/demo/postconditions.sh\n```\n',
+    '.claudinite/local/packs/gcec/tasks/demo/postconditions.sh': '#!/usr/bin/env bash\nexit 0\n',
+  } });
+  try {
+    assert.equal(run(root).length, 0);
+  } finally { cleanup(root); }
+});
+
+test('routine-structure: a task folder with a phase script but no task.md entry is flagged', () => {
+  const root = makeRepo({ changed: {
+    '.claudinite/local/packs/gcec/tasks/demo/postconditions.sh': '#!/usr/bin/env bash\nexit 0\n',
+  } });
+  try {
+    const findings = run(root);
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].severity, 'blocking');
+    assert.match(findings[0].what, /routine.md \/ task.md entry point/);
+  } finally { cleanup(root); }
+});
+
 test('routine-structure: flags a script with no shebang', () => {
   const root = makeRepo({ changed: {
     'dev/routines/demo/routine.md': 'Run `bash dev/routines/demo/preconditions.sh`.\n',

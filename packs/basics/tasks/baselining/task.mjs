@@ -13,10 +13,10 @@
 export default {
   id: 'baselining',
   frequency: 'daily-2h',           // the 02:00 slot — a repo's mount is converged before anything reads it (DESIGN §2)
-  signals: ['stamp', 'sharedMount'],
-  model: 'sonnet',                 // the bootstrap/alignment merges into settings.json without clobbering — judgment
-  outcome: 'merged-pr',            // lands on the maintenance PR; arms auto-merge where member config allows
-  worker: 'task.md',
+  precondition_signals: ['stamp', 'sharedMount'],
+  agent_model: 'sonnet',                 // the bootstrap/alignment merges into settings.json without clobbering — judgment
+  expected_outcome: 'merged-pr',            // lands on the maintenance PR; arms auto-merge where member config allows
+  agent_instructions: 'task.md',
 
   // Run when this repo's vendored mount is behind the canon, or a declared pack's
   // vendored files moved. PURE over the collected signals — no probes here; the

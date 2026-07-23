@@ -1,13 +1,43 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeDueTaskSlots, signalsUnion, runPrecondition, renderSummary, planRun } from '../../engine/scheduler/run.mjs';
+import { computeDueTaskSlots, signalsUnion, runPrecondition, renderSummary, planRun, ensureLabels } from '../../engine/scheduler/run.mjs';
 import { DEFAULT_SCHEDULE } from '../../engine/scheduler/slots.mjs';
+import { SCHEDULER_LABELS, READY_LABEL } from '../../engine/scheduler/dispatch.mjs';
 
 const D = DEFAULT_SCHEDULE;
+
+test('ensureLabels creates every dispatch label, tolerating already-exists (422)', async () => {
+  const posted = [];
+  const gh = async (path, opts) => {
+    posted.push({ path, method: opts?.method, name: opts?.body?.name });
+    // Simulate ready-for-agent already existing (422), the rest newly created (201).
+    return { status: opts?.body?.name === READY_LABEL ? 422 : 201, json: null };
+  };
+  const logs = [];
+  const orig = console.log; console.log = (m) => logs.push(m);
+  try {
+    await ensureLabels(gh, 'o/r', SCHEDULER_LABELS);
+  } finally { console.log = orig; }
+  // One POST /labels per label, and no error logged for a 201 or a 422.
+  assert.equal(posted.length, SCHEDULER_LABELS.length);
+  assert.ok(posted.every((p) => p.path === '/repos/o/r/labels' && p.method === 'POST'));
+  assert.deepEqual(posted.map((p) => p.name).sort(), SCHEDULER_LABELS.map((l) => l.name).sort());
+  assert.equal(logs.filter((m) => /could not ensure label/.test(m)).length, 0);
+});
+
+test('ensureLabels surfaces a genuine failure (not 201/422) without throwing', async () => {
+  const gh = async () => ({ status: 500, json: null });
+  const logs = [];
+  const orig = console.log; console.log = (m) => logs.push(m);
+  try {
+    await ensureLabels(gh, 'o/r', [SCHEDULER_LABELS[0]]);
+  } finally { console.log = orig; }
+  assert.equal(logs.filter((m) => /could not ensure label/.test(m)).length, 1);
+});
 const mkTask = (id, over = {}) => ({
   pack: 'p', id,
   decl: {
-    id, frequency: 'daily', signals: ['commits'], model: 'sonnet', outcome: 'open-pr', worker: 'task.md',
+    id, frequency: 'daily', precondition_signals: ['commits'], agent_model: 'sonnet', expected_outcome: 'open-pr', agent_instructions: 'task.md',
     precondition: () => ({ run: true, reason: 'ok' }),
     ...over,
   },
@@ -23,8 +53,8 @@ test('computeDueTaskSlots pairs only due-frequency tasks with their slot', () =>
 
 test('signalsUnion collects only the union of the due tasks\' declared signals', () => {
   const due = [
-    { task: mkTask('a', { signals: ['commits', 'prs'] }) },
-    { task: mkTask('b', { signals: ['prs', 'issues'] }) },
+    { task: mkTask('a', { precondition_signals: ['commits', 'prs'] }) },
+    { task: mkTask('b', { precondition_signals: ['prs', 'issues'] }) },
   ];
   assert.deepEqual(signalsUnion(due).sort(), ['commits', 'issues', 'prs']);
 });
@@ -56,8 +86,8 @@ test('planRun dispatches a running agent task and skips a non-running one', asyn
   assert.equal(byTask.quiet.dispatch, undefined);
 });
 
-test('planRun marks a model:none task inline instead of dispatching an issue', async () => {
-  const tasks = [mkTask('code', { model: 'none', outcome: 'none', precondition: () => ({ run: true, reason: 'deployable change' }) })];
+test('planRun marks a agent_model:none task inline instead of dispatching an issue', async () => {
+  const tasks = [mkTask('code', { agent_model: 'none', expected_outcome: 'none', precondition: () => ({ run: true, reason: 'deployable change' }) })];
   let askedIssues = false;
   const { evaluations } = await planRun({
     tasks, schedule: D, now: '2026-07-22T06:00:00Z', lastSuccess: '2026-07-21T06:00:00Z',
@@ -73,8 +103,8 @@ test('planRun collects the declared signal union exactly once and passes it to p
   let collectedWith = null;
   const seen = [];
   const tasks = [
-    mkTask('a', { signals: ['commits'], precondition: (s) => { seen.push(s); return { run: false, reason: '' }; } }),
-    mkTask('b', { signals: ['prs'], precondition: (s) => { seen.push(s); return { run: false, reason: '' }; } }),
+    mkTask('a', { precondition_signals: ['commits'], precondition: (s) => { seen.push(s); return { run: false, reason: '' }; } }),
+    mkTask('b', { precondition_signals: ['prs'], precondition: (s) => { seen.push(s); return { run: false, reason: '' }; } }),
   ];
   await planRun({
     tasks, schedule: D, now: '2026-07-22T06:00:00Z', lastSuccess: '2026-07-21T06:00:00Z',

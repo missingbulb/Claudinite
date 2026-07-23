@@ -44,8 +44,18 @@ at ([vendoring/DESIGN.md](../../../../vendoring/DESIGN.md)):
   `@.claudinite/shared/CLAUDE.md` import line — the corpus index is retired, #385) — additive, in-place fixes
   only, never clobbering this repo's own entries. The **scheduler wiring is part of that surface**
   (bootstrap Part 6): re-converge a drifted `.github/workflows/claudinite-scheduler.yml` to the vendored
-  stub — preserving this repo's hashed cron minute, the one repo-specific value in it — and re-create any
-  missing `ready-for-agent` / `agent-running` / `needs-human` / `workflow-failure` label idempotently.
+  stub — restoring this repo's hashed cron minute (the one repo-specific value in it) to the canonical
+  `node .claudinite/shared/engine/scheduler/hash-minute.mjs <owner/repo>` value, a pure function of the
+  repo full name, so any other minute is drift. (The `ready-for-agent` /
+  `agent-running` / `needs-human` / `workflow-failure` labels need no repair here — the
+  scheduler ensures each exists before it dispatches, so they self-heal on the next run.)
+  The **label-wired executor routine** is part of this same surface (bootstrap Part 6): verify it still
+  exists — the CCR routine that fires on the `ready-for-agent` label event, model `sonnet`, thin-pointer
+  prompt `Execute the Claudinite executor: .claudinite/shared/engine/scheduler/executor.md`, sources =
+  this repo + the canon — and if it is gone, re-create it via the trigger API, or (when that API can't
+  wire a label event) file the enclosed-config owner issue exactly as bootstrap does (DESIGN §5/§9). A
+  repo whose executor routine was deleted keeps filing `ready-for-agent` dispatch issues that nothing
+  ever runs, so this existence check is as load-bearing as the mount converge.
   Baselining is the repair loop for every Claudinite moving part the repo carries; the conformance checks
   are the in-session guard that flags the same drift the moment it's authored.
 - **Repo without a stamp** — post-migration this is drift, not a supported shape: converge it through the
@@ -62,6 +72,13 @@ Then, for a covered repo:
   `.claudinite/local/packs/<id>/` (or the legacy `.claudinite/local_packs/<id>/`) gets the `local/` prefix;
   everything else on the entry stays verbatim, and a bare id with no such local pack is a canon declaration —
   leave it alone. Idempotent, tracked by the namespace baseline migration until the fleet converges.
+- **Interview status** — bootstrap runs the pack-adoption interview once (bootstrap Part 2); realignment
+  re-checks it, because the declared `packs` set drifts. When a pack has been added since the last run, its
+  interview questions may be unanswered — re-evaluate every declared pack's questions against the answers in
+  `.claudinite-checks.json` (the same status the lifecycle pack's adopt-claudinite interview check reads) and
+  surface any unanswered ones as an issue in this repo (never invent answers). A newly-declared pack whose
+  questions were never answered runs without the per-project config it asked for, silently — this is the
+  post-adoption half of "still set up correctly", not just the files.
 - **Align** — evaluate this repo against its declared packs' *current* checks (the same engine its Stop hook
   and CI run). Apply a failing check's own `fix` remedy, **never more**; a finding needing judgment becomes an
   issue in this repo, not an edit.

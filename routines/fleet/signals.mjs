@@ -132,7 +132,7 @@ async function readPacksDeclaration(gh, fullName) {
     // Phase 0.6): a member that declares `schedule` runs its own vendored
     // scheduler, so the central planner must leave it alone — exactly one
     // mechanism owns a repo at any time.
-    const schedulesItself = parsed.schedule !== undefined && parsed.schedule !== null;
+    const schedulesItself = parsed.taskScheduler !== undefined && parsed.taskScheduler !== null;
     return { activePacks, packConfigs, schedulesItself };
   } catch { return none; }
 }

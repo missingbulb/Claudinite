@@ -26,7 +26,7 @@ export const SIGNAL_NAMES = [
 // task itself; the caller supplies the already-loaded default export.
 export function validateTaskDeclaration(decl) {
   if (decl === null || typeof decl !== 'object' || Array.isArray(decl)) {
-    return [{ what: 'task.mjs does not default-export a declaration object', fix: 'export default { id, frequency, signals, model, outcome, worker, precondition }' }];
+    return [{ what: 'task.mjs does not default-export a declaration object', fix: 'export default { id, frequency, precondition_signals, agent_model, expected_outcome, agent_instructions, precondition }' }];
   }
   const problems = [];
   const bad = (what, fix) => problems.push({ what, fix });
@@ -37,17 +37,17 @@ export function validateTaskDeclaration(decl) {
   if (!FREQUENCIES.includes(decl.frequency)) {
     bad(`"frequency" ${JSON.stringify(decl.frequency)} is not a legal frequency`, `set one of: ${FREQUENCIES.join(', ')}`);
   }
-  if (!Array.isArray(decl.signals) || !decl.signals.every((s) => SIGNAL_NAMES.includes(s))) {
-    bad(`"signals" must be an array of known signal names`, `use only: ${SIGNAL_NAMES.join(', ')}`);
+  if (!Array.isArray(decl.precondition_signals) || !decl.precondition_signals.every((s) => SIGNAL_NAMES.includes(s))) {
+    bad(`"precondition_signals" must be an array of known signal names`, `use only: ${SIGNAL_NAMES.join(', ')}`);
   }
-  if (!MODEL_FAMILIES.includes(decl.model)) {
-    bad(`"model" ${JSON.stringify(decl.model)} is not a legal model family`, `set one of: ${MODEL_FAMILIES.join(', ')}`);
+  if (!MODEL_FAMILIES.includes(decl.agent_model)) {
+    bad(`"agent_model" ${JSON.stringify(decl.agent_model)} is not a legal model family`, `set one of: ${MODEL_FAMILIES.join(', ')}`);
   }
-  if (!OUTCOMES.includes(decl.outcome)) {
-    bad(`"outcome" ${JSON.stringify(decl.outcome)} is not a legal outcome ceiling`, `set one of: ${OUTCOMES.join(', ')}`);
+  if (!OUTCOMES.includes(decl.expected_outcome)) {
+    bad(`"expected_outcome" ${JSON.stringify(decl.expected_outcome)} is not a legal outcome ceiling`, `set one of: ${OUTCOMES.join(', ')}`);
   }
-  if (typeof decl.worker !== 'string' || decl.worker.trim() === '') {
-    bad('the task has no string "worker"', 'point "worker" at the worker file beside task.mjs (e.g. "task.md")');
+  if (typeof decl.agent_instructions !== 'string' || decl.agent_instructions.trim() === '') {
+    bad('the task has no string "agent_instructions"', 'point "agent_instructions" at the worker file beside task.mjs (e.g. "task.md")');
   }
   if (typeof decl.precondition !== 'function') {
     bad('"precondition" is not a function', 'export a precondition(signals, config) that returns { run, reason, context? }');

@@ -9,10 +9,10 @@
 export default {
   id: 'conversation-extract',
   frequency: 'daily-1h',           // the 03:00 slot, alongside growth-extract (DESIGN §2)
-  signals: ['commits', 'conversationLogs'],
-  model: 'opus',                   // deciding what clears the lesson bar is the heaviest judgment, and its PR auto-merges without a human gate
-  outcome: 'merged-pr',            // lessons ride an auto-merging PR; the retention prune is a push to the non-default logs branch (outside the taxonomy)
-  worker: 'task.md',
+  precondition_signals: ['commits', 'conversationLogs'],
+  agent_model: 'opus',                   // deciding what clears the lesson bar is the heaviest judgment, and its PR auto-merges without a human gate
+  expected_outcome: 'merged-pr',            // lessons ride an auto-merging PR; the retention prune is a push to the non-default logs branch (outside the taxonomy)
+  agent_instructions: 'task.md',
 
   // Two independent reasons to run, so the age-based prune fires on quiet repos
   // too (the old weekly-full crutch retires — a log ages out on wall time, not on

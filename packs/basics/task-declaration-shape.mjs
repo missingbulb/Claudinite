@@ -24,9 +24,9 @@ const strField = (text, key) => {
 const rule = {
   id: 'task-declaration-shape',
   severity: 'blocking',
-  description: 'A tasks/<name>/task.mjs default-exports the full task contract (id, frequency, signals, model, outcome, worker, precondition) with legal enum values',
+  description: 'A tasks/<name>/task.mjs default-exports the full task contract (id, frequency, precondition_signals, agent_model, expected_outcome, agent_instructions, precondition) with legal enum values',
   doc: 'packs/basics/scheduled-tasks.md',
-  why: 'the scheduler and executor read model/outcome/frequency from this file, not the dispatch issue — an illegal or missing value means a task never fires, fires wrong, or writes past its ceiling',
+  why: 'the scheduler and executor read agent_model/expected_outcome/frequency from this file, not the dispatch issue — an illegal or missing value means a task never fires, fires wrong, or writes past its ceiling',
 
   run(ctx) {
     const out = [];
@@ -36,7 +36,7 @@ const rule = {
       const flag = (what, fix) => out.push(finding(rule, { file, what, fix }));
 
       if (!/export\s+default\s*\{/.test(text)) {
-        flag('does not default-export a declaration object', 'export default { id, frequency, signals, model, outcome, worker, precondition }');
+        flag('does not default-export a declaration object', 'export default { id, frequency, precondition_signals, agent_model, expected_outcome, agent_instructions, precondition }');
         continue;
       }
       const enumField = (key, legal) => {
@@ -45,13 +45,13 @@ const rule = {
         else if (!legal.includes(v)) flag(`"${key}" is "${v}", not a legal value`, `use one of: ${legal.join(', ')}`);
       };
       enumField('frequency', FREQUENCIES);
-      enumField('model', MODEL_FAMILIES);
-      enumField('outcome', OUTCOMES);
+      enumField('agent_model', MODEL_FAMILIES);
+      enumField('expected_outcome', OUTCOMES);
 
       if (!/\bid:\s*['"]/.test(text)) flag('declares no string "id"', 'add "id": the task name (matching its directory)');
-      if (!/\bworker:\s*['"]/.test(text)) flag('declares no string "worker"', 'add "worker": the worker file beside task.mjs (e.g. "task.md")');
-      if (!/\bsignals:\s*\[/.test(text)) {
-        flag('declares no "signals" array', `add "signals": an array of ${SIGNAL_NAMES.join(', ')}`);
+      if (!/\bagent_instructions:\s*['"]/.test(text)) flag('declares no string "agent_instructions"', 'add "agent_instructions": the worker file beside task.mjs (e.g. "task.md")');
+      if (!/\bprecondition_signals:\s*\[/.test(text)) {
+        flag('declares no "precondition_signals" array', `add "precondition_signals": an array of ${SIGNAL_NAMES.join(', ')}`);
       }
       if (!/\bprecondition\s*[:(]/.test(text)) {
         flag('declares no "precondition" function', 'add a precondition(signals, config) that returns { run, reason, context? }');

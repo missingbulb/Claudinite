@@ -5,7 +5,7 @@ import { discoverTasks } from '../../engine/scheduler/discover.mjs';
 
 const packMjs = (id) => `export default { id: '${id}' };\n`;
 const taskMjs = (id, over = {}) => {
-  const d = { id, frequency: 'daily', signals: ['commits'], model: 'sonnet', outcome: 'none', worker: 'task.md', ...over };
+  const d = { id, frequency: 'daily', precondition_signals: ['commits'], agent_model: 'sonnet', expected_outcome: 'none', agent_instructions: 'task.md', ...over };
   const fields = Object.entries(d).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(', ');
   return `export default { ${fields}, precondition() { return { run: false }; } };\n`;
 };
@@ -13,7 +13,7 @@ const taskMjs = (id, over = {}) => {
 test('discoverTasks finds a declared local pack\'s tasks with the repo-relative task path', async () => {
   const root = makeRepo({ changed: {
     '.claudinite/local/packs/mypack/pack.mjs': packMjs('mypack'),
-    '.claudinite/local/packs/mypack/tasks/alpha/task.mjs': taskMjs('alpha', { frequency: 'daily-1h', model: 'opus', outcome: 'merged-pr' }),
+    '.claudinite/local/packs/mypack/tasks/alpha/task.mjs': taskMjs('alpha', { frequency: 'daily-1h', agent_model: 'opus', expected_outcome: 'merged-pr' }),
     '.claudinite/local/packs/mypack/tasks/alpha/task.md': '# alpha worker\n',
     '.claudinite/local/packs/mypack/tasks/beta/task.mjs': taskMjs('beta', { frequency: 'weekly' }),
     '.claudinite/local/packs/mypack/tasks/beta/task.md': '# beta worker\n',

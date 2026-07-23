@@ -57,8 +57,8 @@ export function validateDispatchBody(body, { exists, isPackDeclared, loadTask })
     pack,
     task,
     taskPath,
-    model: decl.model,
-    resolvedModel: resolveModel(decl.model),
-    outcome: decl.outcome,
+    model: decl.agent_model,
+    resolvedModel: resolveModel(decl.agent_model),
+    outcome: decl.expected_outcome,
   };
 }
