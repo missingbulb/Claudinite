@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync, writeFileSync, appendFileSync, mkdirSync } from 'n
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { makeRepo, cleanup } from '../../engine-tests/helpers.mjs';
+import { makeRepo, cleanup, git } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import configCheck from '../../packs/grow_with_claudinite/config-check.mjs';
 import {
@@ -13,6 +13,8 @@ import {
   logFilename, parseLogFilename, findTranscript,
 } from '../../packs/grow_with_claudinite/capture-log.mjs';
 import { renderDialogue, chunkText } from '../../packs/grow_with_claudinite/render-dialogue.mjs';
+import { runRule } from '../../engine/checks/helpers/work.mjs';
+import dedupIntegrity from '../../packs/grow_with_claudinite/dedup-integrity.mjs';
 
 const packDir = join(dirname(dirname(dirname(fileURLToPath(import.meta.url)))), 'packs/grow_with_claudinite');
 
@@ -308,4 +310,105 @@ test('capture fails fast on a missing or malformed --issue', () => {
     assert.notEqual(r.status, 0);
     assert.match(r.stderr, /--issue/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+// --- dedup-prune-integrity ---------------------------------------------------
+
+const PROSE = '.claudinite/local/packs/gcec/RULES.md';
+const runWork = (root) => runRule(dedupIntegrity, buildContext({ root }));
+
+const ORIGINAL = `## Codebase gotchas
+
+- **A bare \`hostSuffix\` matcher also matches \`evilexample.com\`** — pair
+  \`hostEquals\` with \`hostSuffix: ".example.com"\`. The real match runs in
+  Chrome, verified only by the CI-only real-Chrome test.
+`;
+
+test('dedup-prune-integrity: flags a dedup run that restates the canon and grows the pack', () => {
+  const corrupt = `## Codebase gotchas
+
+- **The declarativeContent host-matching trap is portable (canon)** — a bare
+  \`hostSuffix\` also matches a lookalike host (\`chrome-extension\` pack owns the
+  trap and the \`hostEquals\` fix). Here the real match runs in Chrome, verified
+  only by the CI-only real-Chrome test, the sole verifier of the URL→icon match.
+`;
+  const root = makeRepo({
+    base: { [PROSE]: ORIGINAL },
+    changed: { [PROSE]: corrupt },
+    commitMsg: 'gcec: dedup three gotchas the canon now covers Refs #1',
+  });
+  try {
+    const findings = runWork(root);
+    // Two restatement fingerprints ("is portable (canon)", "pack owns") + the growth signal.
+    assert.ok(findings.some((f) => /re-imports a canon rule/.test(f.what)), 'restatement flagged');
+    assert.ok(findings.some((f) => /grew .* lines/.test(f.what)), 'growth flagged');
+    assert.ok(findings.every((f) => f.severity === 'blocking'));
+  } finally { cleanup(root); }
+});
+
+test('dedup-prune-integrity: passes a real strip (shrinks, delegates without restating)', () => {
+  const stripped = `## Codebase gotchas
+
+- **The bare-\`hostSuffix\` lookalike trap gates the action icon here** (canon):
+  the real match runs in Chrome, verified only by the CI-only real-Chrome test.
+`;
+  const root = makeRepo({
+    base: { [PROSE]: ORIGINAL },
+    changed: { [PROSE]: stripped },
+    commitMsg: 'gcec: dedup the hostSuffix gotcha the canon now covers Refs #1',
+  });
+  try {
+    assert.equal(runWork(root).length, 0);
+  } finally { cleanup(root); }
+});
+
+test('dedup-prune-integrity: a non-dedup edit may grow the pack (extract adds a lesson)', () => {
+  const grown = `## Codebase gotchas
+
+- **A bare \`hostSuffix\` matcher also matches \`evilexample.com\`** — pair
+  \`hostEquals\` with \`hostSuffix: ".example.com"\`. The real match runs in
+  Chrome, verified only by the CI-only real-Chrome test.
+- **A newly captured lesson** — do the thing the right way (#9).
+`;
+  const root = makeRepo({
+    base: { [PROSE]: ORIGINAL },
+    changed: { [PROSE]: grown },
+    commitMsg: 'gcec: capture a new lesson Refs #9',
+  });
+  try {
+    assert.equal(runWork(root).length, 0);
+  } finally { cleanup(root); }
+});
+
+test('dedup-prune-integrity: the restatement fingerprint fires even without a dedup label', () => {
+  const restated = `${ORIGINAL}
+- **This footgun is portable (canon)** — see the canon.
+`;
+  const root = makeRepo({
+    base: { [PROSE]: ORIGINAL },
+    changed: { [PROSE]: restated },
+    commitMsg: 'gcec: tidy the gotchas Refs #2',
+  });
+  try {
+    const findings = runWork(root);
+    assert.equal(findings.length, 1);
+    assert.match(findings[0].what, /re-imports a canon rule/);
+  } finally { cleanup(root); }
+});
+
+test('dedup-prune-integrity: silent on main and on non-local-pack files', () => {
+  const onMain = makeRepo({
+    base: { [PROSE]: ORIGINAL },
+    changed: { [PROSE]: `${ORIGINAL}- **is portable (canon)**\n` },
+    commitMsg: 'gcec: dedup Refs #1',
+  });
+  const elsewhere = makeRepo({
+    changed: { 'docs/notes.md': '- **This is portable (canon)** and a pack owns it\n' },
+    commitMsg: 'notes: dedup Refs #1',
+  });
+  try {
+    git(onMain, 'checkout', '-q', 'main');
+    assert.equal(runWork(onMain).length, 0);
+    assert.equal(runWork(elsewhere).length, 0); // docs/ is not a local pack
+  } finally { cleanup(onMain); cleanup(elsewhere); }
 });
