@@ -29,7 +29,7 @@ jobs:
         # nullglob: a location with no tests drops out instead of reaching node as a literal pattern.
         run: |
           shopt -s nullglob
-          tests=(engine-tests/*.test.mjs engine-tests/*/*.test.mjs packs/*.test.mjs packs/*/*.test.mjs packs/*/skills/*/*.test.mjs routines/*/*.test.mjs .claudinite/local/packs/*/*.test.mjs .claudinite/local/packs/*/skills/*/*.test.mjs .claudinite/local_packs/*/*.test.mjs .claudinite/local_packs/*/skills/*/*.test.mjs)
+          tests=(engine-tests/*.test.mjs engine-tests/*/*.test.mjs packs-tests/*.test.mjs packs-tests/*/*.test.mjs packs-tests/*/skills/*/*.test.mjs routines/*/*.test.mjs .claudinite/local/packs/*/*.test.mjs .claudinite/local/packs/*/skills/*/*.test.mjs .claudinite/local_packs/*/*.test.mjs .claudinite/local_packs/*/skills/*/*.test.mjs)
           node --test "${tests[@]}"
       - name: Conformance sweep
         # The world sweep's home is the test/CI flow (not the Stop hook, which
