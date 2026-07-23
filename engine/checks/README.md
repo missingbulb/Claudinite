@@ -111,7 +111,8 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
   project's own layout is the reason) — an exemption a *pack's adoption* forces belongs on that
   pack's entry.
 - **maintenance** — fleet-maintenance delivery for this repo, **always explicit**: `"delivery":
-  "auto-merge"` (the sweep lands its baselining/alignment changes through the `claudinite/maintenance`
+  "auto-merge"` (the sweep lands its baselining/alignment changes through the run's dated
+  `claudinite/maintenance-<date>-<seed>`
   PR, armed to **auto-merge** once this repo's checks pass — no human review, named for exactly what
   it does) or `"review"` (that same
   PR, left for the owner to review — never auto-merged). Neither is a direct commit to the default

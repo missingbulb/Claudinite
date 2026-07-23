@@ -20,8 +20,12 @@
 // main, so single-branch-status would flag it "orphaned" for a human on every
 // widen. It is infrastructure the tidy sweep ignores altogether. Kept as a bare
 // literal, not an import: the pack-independence barrier forbids tidy-repo from
-// reaching into grow_with_claudinite, and the name is a fixed, well-known one.
-const IGNORED_BRANCHES = new Set(['conversation-logs']);
+// reaching into grow_with_claudinite, and the name is a fixed, well-known one. The
+// maintenance delivery branches are likewise never tidy targets — Claudinite's own
+// per-cycle delivery branches (`claudinite/maintenance-<date>-<seed>`), matched by
+// the whole prefix (they carry a per-cycle random seed, so no single fixed name).
+const MAINT_PREFIX = 'claudinite/maintenance';
+const isIgnoredBranch = (b) => b === 'conversation-logs' || b.startsWith(MAINT_PREFIX);
 
 export default {
   id: 'repo-tidy',
@@ -31,7 +35,7 @@ export default {
 
   async gate(repo, signals) {
     const branches = signals.branchesTouched
-      .filter((b) => b !== repo.defaultBranch && !IGNORED_BRANCHES.has(b));
+      .filter((b) => b !== repo.defaultBranch && !isIgnoredBranch(b));
     const active = signals.fullSweep || branches.length || signals.prsTouched.length || signals.issuesTouched.length;
     if (!active) return { run: false };
     const reason = signals.fullSweep ? 'weekly full repo tidy'

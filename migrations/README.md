@@ -52,7 +52,8 @@ export default {
   [`apply.mjs`](apply.mjs) runs all three over a checkout (`node migrations/apply.mjs`); idempotent, a
   no-op once done. In the fleet, the **apply pass** ([`fleet-apply.mjs`](fleet-apply.mjs)) performs the
   equivalent writes over the GitHub API — **phase 1** of the daily maintenance routine, before the pack
-  tasks — landing each member's whole set as **one commit** on the `claudinite/maintenance` branch and
+  tasks — landing each member's whole set as **one commit** on the run's dated
+  `claudinite/maintenance-<date>-<seed>` branch (one per cycle, reused by prefix while its PR stays open) and
   honoring its `auto`/`review` delivery (`auto` arms auto-merge on the PR; `review` leaves it for the
   owner; `push`/`pr` are accepted as legacy aliases) — never a direct commit to the default branch.
 - **Retire — the telemetry.** The **retire pass** ([`fleet-retire.mjs`](fleet-retire.mjs)) — **phase 3**

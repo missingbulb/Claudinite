@@ -12,10 +12,12 @@
 // so single-branch-status would flag it "orphaned" for a human on every widen. It
 // is infrastructure the tidy sweep ignores altogether. Kept as a bare literal, not
 // an import: the pack-independence barrier forbids tidy-repo from reaching into
-// grow_with_claudinite, and the name is a fixed, well-known one. The stable
-// maintenance branch is likewise never a tidy target — it is Claudinite's own
-// standing delivery branch, not project work.
-const IGNORED_BRANCHES = new Set(['conversation-logs', 'claudinite/maintenance']);
+// grow_with_claudinite, and the name is a fixed, well-known one. The maintenance
+// delivery branches are likewise never tidy targets — they are Claudinite's own
+// per-cycle delivery branches (`claudinite/maintenance-<date>-<seed>`), not project
+// work, so the whole `claudinite/maintenance` prefix is matched, not one fixed name.
+const MAINT_PREFIX = 'claudinite/maintenance';
+const isIgnoredBranch = (b) => b === 'conversation-logs' || b.startsWith(MAINT_PREFIX);
 
 // A precondition has no repo handle, so it cannot look up the actual default
 // branch name to drop it from the tidy candidate set — and the `branches` signal
@@ -55,7 +57,7 @@ export default {
     // collapses into the safe-to-delete line — so branches never gate on
     // substantiveChange, only PR/issue widening does.
     const branches = (signals.branches?.names ?? [])
-      .filter((b) => !IGNORED_BRANCHES.has(b) && !PRESUMED_DEFAULT.has(b));
+      .filter((b) => !isIgnoredBranch(b) && !PRESUMED_DEFAULT.has(b));
 
     // PRs/issues: widen to ALL open on a substantive move (a real commit can land
     // an open PR or implement an old issue without the object being touched);

@@ -59,3 +59,15 @@ test('repo-tidy: ignores the orphan conversation-logs branch altogether', async 
   const only = await g(REPO, S({ branchesTouched: ['main', 'conversation-logs'], fullSweep: true }));
   assert.deepEqual(only.targets.branches, []);
 });
+
+test('repo-tidy: ignores the per-cycle maintenance delivery branches by prefix', async () => {
+  const g = task('repo-tidy').gate;
+  // Claudinite's own delivery branches are named claudinite/maintenance-<date>-<seed>
+  // (a random seed per cycle), so the whole prefix is ignored — never one fixed name.
+  const v = await g(REPO, S({
+    branchesTouched: ['main', 'claudinite/maintenance-2026-01-02-abc123', 'feat-x'],
+    substantiveChange: true,
+  }));
+  assert.equal(v.run, true);
+  assert.deepEqual(v.targets.branches, ['feat-x'], 'the maintenance branch is never a tidy target');
+});

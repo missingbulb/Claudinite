@@ -57,8 +57,9 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    stamp-gated and always land with the stamp — #329.) If the
    migration fails, nothing is written: the repo keeps running its old snapshot exactly as
    before, is retried the next night, and the failure lands in the fleet routine's failure log.
-   The commit honors the repo's `maintenance.delivery` — both lanes land on the
-   `claudinite/maintenance` branch and its PR (`auto-merge` arms auto-merge; `review` leaves it for the owner),
+   The commit honors the repo's `maintenance.delivery` — both lanes land on the run's dated
+   `claudinite/maintenance-<date>-<seed>` branch and its PR (one per cycle, reused by prefix while open;
+   `auto-merge` arms auto-merge; `review` leaves it for the owner),
    never a direct commit to the default branch; each computes its writes against the *default*
    branch, drops what the maintenance branch already carries, and refreshes that branch from base
    each night — regenerate, never reconcile — #332. The refresh is

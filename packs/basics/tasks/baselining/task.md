@@ -1,8 +1,10 @@
 # baselining worker
 
 The per-repo **self-refresh**: converge THIS repo's vendored mount to the current canon head, apply the
-migration notes that landed since its stamp, and advance the stamp — one transactional commit on the
-`claudinite/maintenance` PR. You run under the executor (dispatched by a `ready-for-agent` issue), not the
+migration notes that landed since its stamp, and advance the stamp — one transactional commit on this run's
+dated maintenance PR (`claudinite/maintenance-<date>-<seed>` — the current cycle's open maintenance PR,
+reused by the `claudinite/maintenance` head prefix, or the run branch the orchestrator hands you when none
+is open; the single stable branch is retired). You run under the executor (dispatched by a `ready-for-agent` issue), not the
 old fleet planner, and your session sources include a **read-only canon checkout** alongside this repo —
 that checkout is where the canon head snapshot and the migration notes come from. GitHub writes go through
 the session's **GitHub MCP tools** (`mcp__github__*`); reads of the canon tree are plain filesystem reads of
@@ -70,7 +72,8 @@ Then, for a covered repo:
 
 Changes go per `maintenance.delivery` in this repo's `.claudinite-checks.json` (always explicit; a missing key
 is drift — materialize `{ "maintenance": { "delivery": "auto-merge" } }`; `push`/`auto`/`pr` are accepted as
-legacy aliases for `auto-merge`/`review`). **Both modes land on the stable `claudinite/maintenance` branch and
+legacy aliases for `auto-merge`/`review`). **Both modes land on this run's dated maintenance branch
+(`claudinite/maintenance-<date>-<seed>`, shared with the migration apply pass) and
 its one PR — never a direct commit to the default branch**: `auto-merge` **arms auto-merge** on that PR so
 GitHub lands it once checks pass with no human review (what keeps nightly maintenance from piling up as review
 requests); `review` leaves the PR for the owner (never auto-merged); an unrecognized value commits nothing and

@@ -63,8 +63,13 @@ Then, for a covered member:
 **Delivery** — member-side changes go per `maintenance.delivery` in the member's `.claudinite-checks.json`
 (always explicit; a missing key is drift — materialize `{ "maintenance": { "delivery": "auto-merge" } }`;
 `push`/`auto`/`pr` are accepted as legacy aliases for `auto-merge`/`review`).
-**Both modes land on the stable `claudinite/maintenance` branch and its one PR — never a direct commit
-to the default branch** (the same PR the migration apply pass amends): `auto-merge` **arms auto-merge** on
+**Both modes land on this run's dated maintenance branch (`claudinite/maintenance-<date>-<seed>`) and its
+one PR — never a direct commit to the default branch** (the same branch/PR the migration apply pass used
+this run): the orchestrator generates the run's branch name once and hands it to you, and you land on the
+current cycle's open maintenance PR when one exists (found by the `claudinite/maintenance` head prefix —
+the per-cycle seed rules out a fixed name), falling back to the handed name only when none is open. The
+single stable `claudinite/maintenance` branch is retired: each cycle gets a fresh dated branch, so
+migrations and baselining still share ONE branch per run. `auto-merge` **arms auto-merge** on
 that PR, so GitHub lands it once the member's checks pass, with no human review — that's what keeps the
 fleet's nightly maintenance from piling up as review requests; `review` leaves the PR for the owner to
 review (never auto-merged); an unrecognized value commits nothing and opens an issue there naming it.

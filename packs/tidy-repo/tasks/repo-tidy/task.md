@@ -15,7 +15,7 @@ comments on, merges, or pushes a PR — branch and PR handling is read-only reco
 
 For each branch in the Context's branch list, run the
 [single-branch-status](../../skills/single-branch-status/SKILL.md) skill for its verdict. (Never assess the
-default branch, the orphan `conversation-logs` log stream, or the `claudinite/maintenance` delivery branch.)
+default branch, the orphan `conversation-logs` log stream, or any `claudinite/maintenance-*` delivery branch.)
 **Never delete, push, or merge.** Collect: one line each for the branches with **genuine unmerged work**
 (`` `branch` — what it carries``); collapse the rest into one `Safe to delete: N — a, b, c` line; flag any
 **orphaned** branch for a human. Recommend deletions; never perform them.

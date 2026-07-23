@@ -19,7 +19,7 @@ its git history:
 - **The vendored corpus** (`engine/`, `packs/` — checks, prose, bundled skills) — each member
   holds a tracked snapshot under `.claudinite/shared/`, converged **whole-set** to the canon
   head by the nightly refresh and stamped with its provenance. Propagation lags one nightly,
-  lands as a reviewable commit on the member's `claudinite/maintenance` PR (auto-merged on
+  lands as a reviewable commit on the member's dated `claudinite/maintenance-<date>-<seed>` PR (auto-merged on
   `auto-merge` delivery once the repo's checks pass, held for the owner on `review`), and the
   rollback story is the same channel: fix the canon, the next nightly re-heals. A wrong
   *blocking* check still fails every member's Stop hook — visible and recoverable, but

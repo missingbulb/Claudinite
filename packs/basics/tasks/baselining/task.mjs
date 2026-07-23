@@ -3,7 +3,8 @@
 // central pass over every member; here every repo baselines ITSELF from its own
 // scheduler, converging its own `.claudinite/shared/` mount to the current canon
 // head, applying the migration notes that landed since its stamp, and advancing
-// the stamp — one transactional commit on the `claudinite/maintenance` PR
+// the stamp — one transactional commit on the run's dated maintenance PR
+// (`claudinite/maintenance-<date>-<seed>`, shared with the migration apply pass)
 // (worker: task.md). No cross-repo reach: the read-only canon checkout the
 // worker vendors from already rides in the executor session's sources (DESIGN §5).
 //
