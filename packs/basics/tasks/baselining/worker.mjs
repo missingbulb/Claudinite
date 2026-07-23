@@ -174,13 +174,28 @@ async function deliver(root, repo, base, token, delivery, seed) {
     const { json: pr } = await gh(token, `/repos/${repo}/pulls`, {
       method: 'POST', body: { head: branch, base, title: 'Claudinite maintenance', body },
     });
-    if (delivery === 'auto-merge' && pr?.number) {
-      // Best-effort: if the repo hasn't enabled auto-merge, the PR just stays open.
-      await gh(token, `/repos/${repo}/pulls/${pr.number}/merge`, { method: 'PUT', body: { merge_method: 'squash' } })
-        .catch(() => {});
+    if (delivery === 'auto-merge' && pr?.node_id) {
+      // ARM GitHub's native auto-merge (not an immediate merge): the PR lands
+      // automatically once this repo's required checks pass, and the run never
+      // blocks on CI. Auto-merge is a GraphQL-only mutation. Best-effort — if the
+      // repo hasn't enabled auto-merge, the PR simply stays open for review.
+      await enableAutoMerge(token, pr.node_id).catch(() => {});
     }
   }
   return branch;
+}
+
+// Arm native auto-merge on a PR (by node id) via the GraphQL mutation — the REST
+// `PUT /merge` would merge NOW, ignoring pending checks; this waits for them.
+async function enableAutoMerge(token, pullRequestId) {
+  const query = 'mutation($id:ID!){enablePullRequestAutoMerge(input:{pullRequestId:$id,mergeMethod:SQUASH}){pullRequest{id}}}';
+  const res = await fetch(`${API}/graphql`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ query, variables: { id: pullRequestId } }),
+  });
+  const json = await res.json().catch(() => null);
+  if (json?.errors?.length) throw new Error(json.errors[0].message);
 }
 
 export async function main() {
