@@ -44,9 +44,21 @@ run this repo's checks (`node .claudinite/shared/engine/checks/check_the_world.m
 and resolve the blocking findings that need judgment: apply a failing check's own
 `fix` remedy, **never more**. A finding that needs a real decision (not a mechanical
 remedy) becomes an **issue in this repo**, not an edit — the same "surface it, don't
-guess" stance the align step always had. Interview status and declaration
-normalization are already handled deterministically by preprocessing; you only touch
-what a check still flags.
+guess" stance the align step always had. The mount, the wiring (scheduler workflow
+`.github/workflows/claudinite-scheduler.yml` + its hashed cron, the settings hooks),
+interview status, and declaration normalization are already handled deterministically
+by preprocessing (converge-wiring); you only touch what a check still flags.
+
+**One thing preprocessing cannot repair — the executor routine.** The label-wired
+CCR routine that fires on `ready-for-agent` (model `sonnet`, launcher prompt
+`Execute the Claudinite executor: .claudinite/shared/engine/scheduler/executor.md`,
+sources = **this repo alone**, agent-preprocessing DESIGN §7/E5) is not a GitHub
+artifact the Action can see. While you're here, verify it still exists — if it is
+gone, re-create it via the trigger API, or (when that API can't wire a label event)
+file the enclosed-config owner issue exactly as bootstrap Part 6 does. A repo whose
+executor routine was deleted keeps filing dispatch issues nothing runs (the
+scheduler's stale-dispatch backstop is the only other net), so this check is
+load-bearing.
 
 ## 4. Advance the stamp and deliver
 
