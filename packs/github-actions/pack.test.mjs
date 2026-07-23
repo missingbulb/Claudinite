@@ -10,6 +10,7 @@ import labelCreate from './label-create-before-add.mjs';
 import uniqueBranch from './unique-automation-branch.mjs';
 import pagesArtifactSymlinks from './pages-artifact-symlinks.mjs';
 import noScheduledFleetExecutor from './no-scheduled-fleet-executor.mjs';
+import jobTimeoutDeclared from './job-timeout-declared.mjs';
 
 const run = (rule, root) => rule.run(buildContext({ root, mode: 'all' }));
 const WF = '.github/workflows/x.yml';
@@ -308,4 +309,73 @@ jobs:
     assert.equal(run(noScheduledFleetExecutor, dispatchExecutor).length, 0);  // dispatch-only executor
     assert.equal(run(noScheduledFleetExecutor, ownCron).length, 0);           // consumer's own cron, no reusable
   } finally { cleanup(scheduledExecutor); cleanup(dispatchExecutor); cleanup(ownCron); }
+});
+
+test('job-timeout-declared: flags a steps job with no job-level timeout-minutes; spares one that sets it and a reusable caller', () => {
+  const bad = makeRepo({ changed: { [WF]:
+`name: x
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi
+` } });
+  const good = makeRepo({ changed: { [WF]:
+`name: x
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - run: echo hi
+` } });
+  const reusableCaller = makeRepo({ changed: { [WF]:
+`name: x
+on: push
+jobs:
+  call:
+    uses: owner/repo/.github/workflows/x.yml@main
+    with:
+      arg: v
+` } });
+  const stepTimeoutOnly = makeRepo({ changed: { [WF]:
+`name: x
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi
+        timeout-minutes: 5
+` } });
+  // Per-job: only the job missing its own ceiling is flagged.
+  const mixed = makeRepo({ changed: { [WF]:
+`name: x
+on: push
+jobs:
+  fast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo hi
+  slow:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi
+` } });
+  try {
+    const f = run(jobTimeoutDeclared, bad);
+    assert.equal(f.length, 1);
+    assert.equal(f[0].line, 4); // the `build:` job header
+    assert.equal(run(jobTimeoutDeclared, good).length, 0);
+    assert.equal(run(jobTimeoutDeclared, reusableCaller).length, 0); // GitHub forbids timeout-minutes here
+    assert.equal(run(jobTimeoutDeclared, stepTimeoutOnly).length, 1); // step-level bound doesn't cap the job
+    const m = run(jobTimeoutDeclared, mixed);
+    assert.equal(m.length, 1);
+    assert.equal(m[0].what.includes('"slow"'), true);
+  } finally {
+    cleanup(bad); cleanup(good); cleanup(reusableCaller); cleanup(stepTimeoutOnly); cleanup(mixed);
+  }
 });

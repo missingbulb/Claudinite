@@ -114,6 +114,26 @@
   ],
   "accept": [
     {
+      "rule": "gha/job-timeout-declared",
+      "path": ".github/workflows/chrome-extension-release.yml",
+      "reason": "chrome-extension-release reusable being vendored out of core (#276); it self-retires via the chrome-release-vendoring migration and is a frozen @main API, so its job timeouts belong in the vendored stub, not this canon copy"
+    },
+    {
+      "rule": "gha/job-timeout-declared",
+      "path": ".github/workflows/chrome-extension-publish-store.yml",
+      "reason": "chrome-extension-release reusable being vendored out of core (#276); it self-retires via the chrome-release-vendoring migration and is a frozen @main API, so its job timeouts belong in the vendored stub, not this canon copy"
+    },
+    {
+      "rule": "gha/job-timeout-declared",
+      "path": ".github/workflows/chrome-extension-daily-release.yml",
+      "reason": "chrome-extension-release reusable being vendored out of core (#276); it self-retires via the chrome-release-vendoring migration and is a frozen @main API, so its job timeouts belong in the vendored stub, not this canon copy"
+    },
+    {
+      "rule": "gha/job-timeout-declared",
+      "path": ".github/workflows/deploy-privacy-page.yml",
+      "reason": "chrome-extension-release privacy-page reusable being vendored out of core (#276); it self-retires via the chrome-release-vendoring migration and is a frozen @main API, so its job timeouts belong in the vendored stub, not this canon copy"
+    },
+    {
       "rule": "file-placement",
       "path": "packs/",
       "reason": "pack check modules deliberately share the checks/ engine lib — a named cross-cutting concern per skills/file-placement/SKILL.md; packs are organized by pack, not by dependency"

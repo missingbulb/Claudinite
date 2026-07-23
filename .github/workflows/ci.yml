@@ -11,6 +11,10 @@ defaults:
 jobs:
   test-and-conformance:
     runs-on: ubuntu-latest
+    # A text-corpus test suite + conformance sweep is a few minutes at most; cap
+    # it well above that so a wedged step trips instead of pinning a runner for
+    # the 360-minute default (gha/job-timeout-declared).
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
