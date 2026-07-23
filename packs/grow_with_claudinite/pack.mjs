@@ -1,5 +1,6 @@
 import growthConfig from './config-check.mjs';
 import dedupIntegrity from './dedup-integrity.mjs';
+import planTrackingFreshness from './plan-tracking-freshness.mjs';
 
 // Opt into the growth lifecycle: a repo declaring grow_with_claudinite contributes its
 // hard-won lessons up to the Claudinite canon and prunes them back out once the canon
@@ -65,7 +66,7 @@ export default {
   seededByDefault: true,
   prose: null,
   worldRules: [growthConfig],
-  workRules: [dedupIntegrity],
+  workRules: [dedupIntegrity, planTrackingFreshness],
   skills: [
     'adopt-claudinite',
     'adopt-pack',

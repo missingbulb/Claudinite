@@ -70,6 +70,50 @@ export function classesIn(line) {
   return classes;
 }
 
+// Assistant tool-use calls, in order: [{ index, timestamp, id, name, input }].
+// MCP tool calls are the only record a transcript holds that a session touched
+// GitHub (a merge, an issue update) — in-session code carries no REST credential
+// (the blocking in-session-github-access rule), so the transcript is the sole
+// offline evidence a post-merge rule can read. Sidechain (subagent) traffic is
+// excluded: only the main agent's own actions count.
+export function toolUses(entries) {
+  const uses = [];
+  entries.forEach((entry, index) => {
+    if (entry.type !== 'assistant' || entry.isSidechain) return;
+    const content = entry.message?.content;
+    if (!Array.isArray(content)) return;
+    for (const block of content) {
+      if (block?.type === 'tool_use' && typeof block.name === 'string') {
+        uses.push({ index, timestamp: entry.timestamp ?? null, id: block.id ?? null, name: block.name, input: block.input ?? {} });
+      }
+    }
+  });
+  return uses;
+}
+
+// Tool results, in order: [{ index, timestamp, toolUseId, text }]. A result is a
+// `user` entry carrying a tool_result block; its payload is a plain string or an
+// array of text parts (the Anthropic tool_result shapes), so `text` is their
+// concatenation and a rule scans it without knowing which form arrived. Defensive:
+// an unrecognized shape yields '' rather than throwing. Sidechain/meta excluded.
+export function toolResults(entries) {
+  const out = [];
+  entries.forEach((entry, index) => {
+    if (entry.type !== 'user' || entry.isSidechain || entry.isMeta) return;
+    const content = entry.message?.content;
+    if (!Array.isArray(content)) return;
+    for (const block of content) {
+      if (block?.type !== 'tool_result') continue;
+      const c = block.content;
+      const text = typeof c === 'string'
+        ? c
+        : Array.isArray(c) ? c.map((p) => (typeof p === 'string' ? p : p?.text ?? '')).join('') : '';
+      out.push({ index, timestamp: entry.timestamp ?? null, toolUseId: block.tool_use_id ?? null, text });
+    }
+  });
+  return out;
+}
+
 // Each owner turn with the classes its reply declared (empty set = unclassified).
 export function classifiedTurns(entries) {
   return humanTurns(entries).map((turn) => ({

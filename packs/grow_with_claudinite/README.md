@@ -135,11 +135,26 @@ Fleet-wide aggregation is deliberately **not** here — the canon knows mechanis
 the sheepdog pack's [`fleet-usage`](../sheepdog/tasks/fleet-usage/task.md) task, in the fleet-enforcer
 repo, which is the only place that knows who the members are.
 
+## The plan-tracking issue — kept fresh after every merge
+
+A major task carries two artifacts: a source-controlled design/migration plan, and a GitHub
+tracking issue labeled **`plan-tracking`** whose description is a `- [ ]`/`- [x]` checklist — the
+next agent's "read status and pick up the work" entry point. The committed plan is drift-guarded by
+code review; the issue checklist is a separate surface no diff touches, so it silently falls behind.
+The **`plan-tracking-freshness`** check closes that gap: it is a post-merge check-the-work rule that,
+when the session merged and consulted a `plan-tracking` issue, requires a checklist box to have been
+flipped on that issue **after** the merge. It is transcript-only (in-session code holds no GitHub
+credential — `in-session-github-access`), so its evidence is the session's own MCP tool calls, and
+the Stop hook grows a post-merge trigger so it fires on the clean tree the merge recipe leaves. The
+`merge-to-main` skill asks for the sync as an explicit step; this check is the guarantee. Full
+rationale: [docs/tracking-issue-freshness/DESIGN.md](../../docs/tracking-issue-freshness/DESIGN.md).
+
 ## Rules
 
 | Rule | Kind | What |
 |---|---|---|
 | `growth-config` | hardcoded ([config-check.mjs](config-check.mjs)) | entry config shape valid |
+| `plan-tracking-freshness` | check-the-work ([plan-tracking-freshness.mjs](plan-tracking-freshness.mjs)) | after a merge, a consulted `plan-tracking` issue got a checklist box flipped |
 
 **Pack discovery** ([tasks/growth-discover-packs/task.md](tasks/growth-discover-packs/task.md)) is
 an ordinary weekly task on the repo's own scheduler. The repo runs the whole pipeline over
