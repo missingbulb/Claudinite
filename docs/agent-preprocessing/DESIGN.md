@@ -443,15 +443,16 @@ independent facts block a real Action-side pilot run of baselining's `deliver()`
    to a separate write-perm workflow to keep the scheduler read-only, whereas E4's baselining
    pushes **directly** and the stub was never provisioned for it.
 
-   **Fix is a design fork (owner):** (a) grant the scheduler stub `contents: write` +
-   `pull-requests: write` (simplest, matches E4's direct-push design, but widens the repo's only
-   cron token fleet-wide + needs the repo setting *Allow GitHub Actions to create and approve
-   pull requests* and auto-merge enabled); or (b) make baselining delegate delivery to a
-   dedicated write-perm workflow like `store-release` (keeps the scheduler read-only, more
-   moving parts). Either way, because the scheduler workflow file lives in `.github/workflows/`
-   (converged by `converge-wiring`, delivered *by* baselining), the first GCEC run needs the fix
-   applied **out-of-band** to GCEC's own workflow — the same deadlock-break as the executor.md
-   bootstrap — before it can self-deliver.
+   **Resolved (owner, 2026-07-23): widen the scheduler stub.** The stub now grants
+   `contents: write` + `pull-requests: write` (matches E4's direct-push design; the read-only
+   invariant `store-release` preserves by delegating is dropped for the scheduler, which runs
+   only trusted committed code — untrusted issue bodies go to the tokenless executor). A
+   `scheduler-workflow-shape` drift-guard asserts both writes so a repo can't silently regress to
+   read-only. Two owner-only steps remain per repo: the setting *Allow GitHub Actions to create
+   and approve pull requests* and *Allow auto-merge*. And because the scheduler workflow file
+   lives in `.github/workflows/` (converged by `converge-wiring`, delivered *by* baselining), the
+   first GCEC run needs the write-perms bump applied **out-of-band** to GCEC's own workflow — the
+   same deadlock-break as the executor.md bootstrap — before it can self-deliver.
 
 **Live-pilot checklist for E4 (owner, before E5):** once the gate above is resolved, run
 baselining's `worker.mjs` against a real GCEC scheduler run — confirm the public canon clone, the
