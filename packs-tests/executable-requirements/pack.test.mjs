@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { makeRepo, cleanup, git, writeFiles, makeTranscript } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import { runRule as dispatch } from '../../engine/checks/helpers/work.mjs';
-import featureRequirementsFirst from './feature-requirements-first.mjs';
+import featureRequirementsFirst from '../../packs/executable-requirements/feature-requirements-first.mjs';
 
 const SPEC = 'dev/requirements/requirements.md';
 

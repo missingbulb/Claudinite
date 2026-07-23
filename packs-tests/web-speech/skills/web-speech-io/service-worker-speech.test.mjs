@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../../engine/checks/helpers/repo-context.mjs';
-import serviceWorkerSpeech from './service-worker-speech.mjs';
+import serviceWorkerSpeech from '../../../../packs/web-speech/skills/web-speech-io/service-worker-speech.mjs';
 
 // Co-located with the check it exercises (skills own their check-the-work rules).
 const run = (root) => serviceWorkerSpeech.run(buildContext({ root, mode: 'all' }));
@@ -54,7 +54,7 @@ test('web-speech-no-window-api-in-service-worker: a bundled worker artifact (not
   // authored source file at that path, so the check has nothing in scope to scan.
   const root = makeRepo({ changed: {
     'extension/manifest.json': MV3('background.js'),
-    'extension/src/service-worker.js': `import { speak } from './tts.js';\n`,
+    'extension/src/service-worker.js': `import { speak } from '../../../../packs/web-speech/skills/web-speech-io/tts.js';\n`,
     'extension/src/tts.js': `export const speak = (t) => speechSynthesis.speak(new SpeechSynthesisUtterance(t));\n`,
   } });
   try {

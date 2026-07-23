@@ -7,14 +7,14 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeRepo, cleanup } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
-import configCheck from './config-check.mjs';
+import configCheck from '../../packs/grow_with_claudinite/config-check.mjs';
 import {
   parseLines, bundleStreams, sliceAfter, maxTimestamp, scrub, buildRedactionValues,
   logFilename, parseLogFilename, findTranscript,
-} from './capture-log.mjs';
-import { renderDialogue, chunkText } from './render-dialogue.mjs';
+} from '../../packs/grow_with_claudinite/capture-log.mjs';
+import { renderDialogue, chunkText } from '../../packs/grow_with_claudinite/render-dialogue.mjs';
 
-const packDir = dirname(fileURLToPath(import.meta.url));
+const packDir = join(dirname(dirname(dirname(fileURLToPath(import.meta.url)))), 'packs/grow_with_claudinite');
 
 // --- fixture transcript lines -----------------------------------------------
 

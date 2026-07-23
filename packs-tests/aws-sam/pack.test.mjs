@@ -2,9 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
-import handlerPath from './handler-path.mjs';
-import cloudfrontAuth from './cloudfront-authorization.mjs';
-import esbuildDependency from './esbuild-dependency.mjs';
+import handlerPath from '../../packs/aws-sam/handler-path.mjs';
+import cloudfrontAuth from '../../packs/aws-sam/cloudfront-authorization.mjs';
+import esbuildDependency from '../../packs/aws-sam/esbuild-dependency.mjs';
 
 const run = (rule, root) => rule.run(buildContext({ root, mode: 'all' }));
 

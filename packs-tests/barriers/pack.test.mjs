@@ -2,11 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
-import barrier from './check.mjs';
+import barrier from '../../packs/barriers/check.mjs';
 import {
   normalizeEdges, resolveRef, candidatesOn, buildIndex, under, normPrefix,
-} from './engine.mjs';
-import { contributedBarrierRules } from './contributed.mjs';
+} from '../../packs/barriers/engine.mjs';
+import { contributedBarrierRules } from '../../packs/barriers/contributed.mjs';
 
 // Run the config-driven check with the given packConfig.barriers and repo files.
 function runCheck(barriersConfig, files) {
@@ -127,7 +127,7 @@ test('does NOT flag a URL containing the folder name', () => {
 
 test('does NOT flag a reference within the guarded folder itself', () => {
   const f = runCheck({ rules: [{ from: 'extension', to: 'server' }] }, {
-    'extension/a.js': "import b from './b.js';\nimport c from '../extension/c.js';\n",
+    'extension/a.js': "import b from '../../packs/barriers/b.js';\nimport c from '../extension/c.js';\n",
     'extension/b.js': 'export default 1;\n',
     'extension/c.js': 'export default 1;\n',
     'server/x.js': 'export default 1;\n',
@@ -689,10 +689,10 @@ test('resolves a Sass underscore partial and a long-extension bare filename', ()
 
 test('siblings: each direct child of the folder is guarded against the rest; own files stay open', () => {
   const files = {
-    'content/a/mod.mjs': "import x from '../b/util.mjs';\nimport y from './own.mjs';\n",
+    'content/a/mod.mjs': "import x from '../b/util.mjs';\nimport y from '../../packs/barriers/own.mjs';\n",
     'content/a/own.mjs': 'export default 1;\n',
     'content/b/util.mjs': 'export default 1;\n',
-    'content/b/clean.mjs': "import z from './util.mjs';\n",
+    'content/b/clean.mjs': "import z from '../../packs/barriers/util.mjs';\n",
   };
   const f = runCheck({ rules: [{ siblings: 'content', to: 'content/*' }] }, files);
   assert.equal(f.length, 1);

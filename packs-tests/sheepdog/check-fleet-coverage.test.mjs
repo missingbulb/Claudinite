@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseSheepdogConfig } from './check-fleet-coverage.mjs';
+import { parseSheepdogConfig } from '../../packs/sheepdog/check-fleet-coverage.mjs';
 
 // The sheepdog census reads its fleet scope from the enforcer repo's sheepdog
 // pack entry (legacy top-level packConfig.sheepdog still readable), and does ONE
@@ -26,7 +26,7 @@ test('parseSheepdogConfig: reads owner + exclude; defaults owner to the home own
 // the only shape the planner can plan for (activePacks is read from it). A
 // mount marker WITHOUT a declaration is a half-adoption that must classify
 // uncovered, so the census opens an adoption issue and it heals loudly.
-import { isCovered } from './fleet-api.mjs';
+import { isCovered } from '../../packs/sheepdog/fleet-api.mjs';
 
 const ghWith = (paths200) => async (path) =>
   ({ status: paths200.some((p) => path.endsWith(`/contents/${p}`)) ? 200 : 404, json: {} });

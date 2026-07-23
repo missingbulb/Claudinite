@@ -3,17 +3,17 @@ import assert from 'node:assert/strict';
 import { makeRepo, deletePath, cleanup, git, writeFiles, makeTranscript } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import { runRule } from '../../engine/checks/helpers/work.mjs';
-import commentClassification from './comment-classification.mjs';
-import referenceIntegrity from './reference-integrity.mjs';
-import linkLabels from './markdown-link-labels.mjs';
-import taskLifecycle from './task-lifecycle.mjs';
-import warningSuppression from './warning-suppression.mjs';
-import filePlacement from './file-placement.mjs';
-import squashMergeHistory from './squash-merge-history.mjs';
-import sharedConstants from './shared-constants.mjs';
-import claudeMdLength from './claude-md-length.mjs';
-import generatedMergeDriver from './generated-merge-driver.mjs';
-import catalogCompleteness from './catalog-completeness.mjs';
+import commentClassification from '../../packs/basics/comment-classification.mjs';
+import referenceIntegrity from '../../packs/basics/reference-integrity.mjs';
+import linkLabels from '../../packs/basics/markdown-link-labels.mjs';
+import taskLifecycle from '../../packs/basics/task-lifecycle.mjs';
+import warningSuppression from '../../packs/basics/warning-suppression.mjs';
+import filePlacement from '../../packs/basics/file-placement.mjs';
+import squashMergeHistory from '../../packs/basics/squash-merge-history.mjs';
+import sharedConstants from '../../packs/basics/shared-constants.mjs';
+import claudeMdLength from '../../packs/basics/claude-md-length.mjs';
+import generatedMergeDriver from '../../packs/basics/generated-merge-driver.mjs';
+import catalogCompleteness from '../../packs/basics/catalog-completeness.mjs';
 
 function run(rule, root, mode = 'changed') {
   const ctx = buildContext({ root, mode });
@@ -629,8 +629,8 @@ test('comment-classification: silent without a transcript (CI) and on an empty c
 // --- claudinite-isolation ----------------------------------------------------
 // Built through the real path: the basics manifest contributes it as data and
 // the barriers pack's factory turns it into the rule.
-import basicsPack from './pack.mjs';
-import { contributedBarrierRules } from '../barriers/contributed.mjs';
+import basicsPack from '../../packs/basics/pack.mjs';
+import { contributedBarrierRules } from '../../packs/barriers/contributed.mjs';
 const claudiniteIsolation = contributedBarrierRules([basicsPack]).find((r) => r.id === 'claudinite-isolation');
 
 test('claudinite-isolation: inert without the vendored mount; a consumer file referencing the canon fires; wiring files and local_packs stay open', () => {

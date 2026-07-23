@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import { runRule } from '../../engine/checks/helpers/work.mjs';
-import earnEachDependency from './earn-each-dependency.mjs';
+import earnEachDependency from '../../packs/node/earn-each-dependency.mjs';
 
 function run(rule, root, mode = 'changed') {
   return runRule(rule, buildContext({ root, mode }));

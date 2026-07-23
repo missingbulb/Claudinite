@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../../engine-tests/helpers.mjs';
 import { loadConfig } from '../../../../engine/checks/helpers/repo-context.mjs';
 import { loadPacks } from '../../../../engine/pack_loader/pack-registry.mjs';
-import { packQuestions, interviewState, renderPending } from './interview.mjs';
+import { packQuestions, interviewState, renderPending } from '../../../../packs/grow_with_claudinite/skills/adopt-claudinite/interview.mjs';
 
 const pack = (over = {}) => ({
   id: 'p',

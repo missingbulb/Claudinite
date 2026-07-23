@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../../engine/checks/helpers/repo-context.mjs';
-import tokenAudience from './token-audience.mjs';
+import tokenAudience from '../../../../packs/google-identity/skills/google-id-token-validation/token-audience.mjs';
 
 // Co-located with the check it exercises (skills own their check-the-work rules).
 const run = (root) => tokenAudience.run(buildContext({ root, mode: 'all' }));

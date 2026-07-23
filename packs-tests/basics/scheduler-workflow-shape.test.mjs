@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
-import rule from './scheduler-workflow-shape.mjs';
+import rule from '../../packs/basics/scheduler-workflow-shape.mjs';
 
 const WF = '.github/workflows/claudinite-scheduler.yml';
 const goodWorkflow = `name: Claudinite scheduler

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../../engine/checks/helpers/repo-context.mjs';
 import { runRule } from '../../../../engine/checks/helpers/work.mjs';
-import clientIdSingleOrigin from './client-id-single-origin.mjs';
+import clientIdSingleOrigin from '../../../../packs/google-identity/skills/google-id-token-validation/client-id-single-origin.mjs';
 
 // Co-located with the check it exercises (skills own their check-the-work rules).
 const run = (root) => runRule(clientIdSingleOrigin, buildContext({ root, mode: 'all' }));

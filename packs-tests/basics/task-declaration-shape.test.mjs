@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
-import rule from './task-declaration-shape.mjs';
+import rule from '../../packs/basics/task-declaration-shape.mjs';
 
 const goodTask = `export default {
   id: 'growth-extract',

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../../engine/checks/helpers/repo-context.mjs';
-import topLevel from './optional-import-lazy.mjs';
+import topLevel from '../../../../packs/python/skills/python-optional-deps/optional-import-lazy.mjs';
 
 // Co-located with the check it exercises (skills own their check-the-work rules).
 const run = (root) => topLevel.run(buildContext({ root, mode: 'all' }));

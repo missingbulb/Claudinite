@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import pack from './pack.mjs';
-import storeRelease from './run_daily/store-release.mjs';
+import pack from '../../packs/chrome-extension-release/pack.mjs';
+import storeRelease from '../../packs/chrome-extension-release/run_daily/store-release.mjs';
 
 const REPO = { fullName: 'owner/ext', defaultBranch: 'main' };
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64');

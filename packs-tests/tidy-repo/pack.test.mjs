@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import pack from './pack.mjs';
+import pack from '../../packs/tidy-repo/pack.mjs';
 
 const REPO = { fullName: 'owner/foo', defaultBranch: 'main' };
 const S = (over = {}) => ({
@@ -17,7 +17,7 @@ test('tidy-repo is a declared pack (no fingerprint) with its one run_daily task 
   assert.equal(pack.detect, null);
   assert.deepEqual(pack.run_daily.map((t) => t.id), ['repo-tidy']);
   assert.deepEqual(
-    readdirSync(join(dirname(fileURLToPath(import.meta.url)), 'skills')).sort(),
+    readdirSync(join(dirname(fileURLToPath(import.meta.url)), '../../packs/tidy-repo/skills')).sort(),
     ['single-branch-status', 'single-issue-triage', 'single-pr-status'],
     'the worker skills are bundled in this pack\'s own skills/'
   );

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   normalizeDelivery, pendingAgentic, heldStamp, maintenanceBranchName,
   openMaintenanceBranch, shouldRequestAgent,
-} from './tasks/baselining/worker.mjs';
+} from '../../packs/basics/tasks/baselining/worker.mjs';
 
 // The worker's PURE decision helpers (agent-preprocessing DESIGN §7, E4). The
 // native-git / clone / REST I/O in main() is validated by the live pilot; these
