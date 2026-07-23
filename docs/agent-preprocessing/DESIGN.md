@@ -329,7 +329,18 @@ Tracked here now that #405 is closed (§8):
   task now REQUIRES `agent_preprocessing` (contract + static check), the in-process
   inline worker path is removed, and `store-release` converts to a standalone
   subprocess worker (§4).
-- **Next — the executor + baselining:** the executor surfacing
-  `agent_execution_timeout` into the subagent brief (§6), then vendoring
-  `migrations/` into the mount and the baselining rework + dropping canon from CCR
-  (§7) — gated on #407 and the absorbed #405 primitives above.
+- **§7-1 — the migration-record `agentic` flag (landed):** `migrationAgentic` /
+  `agenticMigrations` in `migrations/registry.mjs` + the pack-independence record
+  structured.
+- **§7-2 — vendor `migrations/` into the mount (landed):** `compute-vendor-set.mjs`
+  carries the applier + registry + records, so baselining reads notes locally.
+- **§7-3 — `converge-wiring.mjs` (landed):** the deterministic fresh-path wiring
+  convergence (scheduler workflow + hashed cron, settings hooks, retired-import
+  removal), which bootstrap Part 6 and baselining both call — the single wiring
+  source of truth.
+- **Next (E4/E5, best done in a fresh session — fleet-critical, live-piloted):**
+  the baselining converge-as-preprocessing rework (public-canon fetch + native git
+  + the `agenticMigrations` escalation with the stamp-coupling rule) and dropping
+  canon from the executor's CCR sources (§7), plus converting the GCEC repo's tasks
+  to the new contract. The check-fix subsumption audit precedes flipping baselining
+  to a `null`-model common night.
