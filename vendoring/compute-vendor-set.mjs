@@ -26,7 +26,7 @@ export { SHARED_SUBDIR };
 // tests (they live in engine-tests/, mirroring its structure — #385), so the
 // engine walk is a plain copy minus *.md — engine docs are canon-maintainer
 // reference, read upstream when needed, while a pack's .md files are the
-// payload and ride its directory below (pack tests are still filtered here).
+// payload and ride its directory below (pack tests live in packs-tests/, not in packs/).
 export { ENGINE_DIR_ROOTS };
 
 const isTest = (name) => name.endsWith('.test.mjs');
