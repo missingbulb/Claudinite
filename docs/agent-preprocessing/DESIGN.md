@@ -1,0 +1,277 @@
+# Task pre-agent preprocessing — design
+
+Status: **proposed** (owner-driven; the three gating decisions were taken in
+session 2026-07-23 and are recorded in §10). A capability added to the
+per-project scheduler ([`../per-project-scheduling/DESIGN.md`](../per-project-scheduling/DESIGN.md));
+this record extends that one and does not restate it. Refs #394.
+
+The shape: a task may declare a **preprocessing** stage — a command the scheduler
+runs as a subprocess, Action-side, **after** it files the tracking issue and
+**before** any agent starts. Deterministic code work moves out of the agentic
+run and into that stage; the agent (when there is one) starts against a repo the
+code has already prepared. A task with no agentic work (`agent_model: none`) is
+*only* its preprocessing. Two declared timeouts bound each stage.
+
+The load-bearing consequence: once baselining's mount-refresh is deterministic
+preprocessing and the `migrations/` folder rides in the vendored mount, **no
+consumer-side task needs the Claudinite canon repo in its session** — so the
+executor's CCR environment can be built from the project alone.
+
+---
+
+## 1. Why
+
+Two problems in the current staging (`engine/scheduler/run.mjs`):
+
+1. **Agents do mechanical code work.** Baselining's core is *"delete
+   `.claudinite/shared/**`, write the new engine + declared packs, advance the
+   stamp, apply the mechanical migration ops"* — dependency-free file and git
+   operations — yet it ships as `agent_model: sonnet` and runs that transfer in
+   prose every night, through the MCP `push_files` lane (whose size ceiling
+   stranded the mount-flip in #380). The agent is only irreducibly needed when a
+   migration note must *adapt consumer-authored `local/packs/` content* to a
+   changed contract. (This is exactly the finding of the open design PR #405 —
+   see §8.)
+
+2. **The canon repo is a session source it mostly needn't be.** A review of every
+   task (2026-07-23) found that of the seven consumer-side tasks, **only
+   `baselining`** reads the canon repo — for two things: the vendor-set head
+   snapshot it converges the mount against, and the `migrations/active_migrations/`
+   notes. Every other consumer task is confined to its own repo. Carrying a full
+   canon checkout in every executor session to serve one task's two reads is
+   more ambient authority than the work needs.
+
+Preprocessing addresses both: the mechanical work becomes code that runs before
+(and often instead of) the agent, and — because that code can fetch what it needs
+directly — the agent no longer needs canon in context.
+
+## 2. Contract additions
+
+Three fields join the task declaration (`engine/scheduler/task-contract.mjs`),
+all optional with safe defaults so every existing task is valid unchanged:
+
+```js
+export default {
+  // …existing: id, frequency, precondition_signals, agent_model,
+  //   expected_outcome, agent_instructions, precondition…
+
+  agent_preprocessing: 'node prepare.mjs',   // OPTIONAL. A command run as a subprocess before the agent.
+                                             //   Its executable MUST be a script beside task.mjs (same
+                                             //   self-contained, auditable rule as agent_instructions).
+                                             //   Omitted → no preprocessing stage (today's behaviour).
+  agent_preprocessing_timeout: 300,          // seconds. Hard kill of the subprocess; exceeding it FAILS the
+                                             //   task. Required whenever agent_preprocessing is set.
+  agent_execution_timeout: 900,              // seconds. Bounds the agentic run (see §6 for what "bounds"
+                                             //   means — it is a lifecycle bound, not a compute kill).
+                                             //   Required whenever agent_model !== 'none'.
+};
+```
+
+Rules the `task-declaration-shape` check (basics pack) and `validate-dispatch`
+enforce against this one contract:
+
+- `agent_preprocessing`, if present, is a non-empty string whose first token
+  resolves to a file in the task directory (no absolute paths, no reaching
+  outside the task dir) — the same containment the worker-file rule already gives
+  `agent_instructions`.
+- `agent_preprocessing_timeout` is a positive integer and is **required** when
+  `agent_preprocessing` is set.
+- `agent_execution_timeout` is a positive integer and is **required** when
+  `agent_model !== 'none'`. There is **always** a bound on an agentic run.
+- `agent_model: none` with **no** `agent_preprocessing` is now an error: an
+  agentless task with no preprocessing does nothing. (`none` used to imply the
+  inline `worker.mjs` — that path is folded into preprocessing; see §4.)
+
+## 3. Staging — the new run flow and label lifecycle
+
+Today the scheduler either runs an inline worker **in-process** (`agent_model:
+none`, dynamic `import`) or files an issue **already labeled `ready-for-agent`**.
+Preprocessing splits a run into up to two stages with a later label:
+
+```
+precondition passes
+  └─ file the tracking issue, UNLABELLED (or labelled `agent-preprocessing`)
+  └─ if agent_preprocessing is set:
+        spawn it as a subprocess (cwd = repo root, Action GITHUB_TOKEN in env),
+        bounded by agent_preprocessing_timeout
+        ├─ non-zero exit / timeout  → comment the failure, label `needs-human`; STOP (task failed)
+        └─ success
+             ├─ agent_model === none → comment the result, CLOSE the issue (no agent)
+             └─ agent_model !== none → apply `ready-for-agent`  → executor fires (see §5 handoff)
+  └─ if agent_preprocessing is NOT set (agent task, no prep):
+        apply `ready-for-agent` immediately (exactly today's behaviour)
+```
+
+The subprocess is the natural home for both timeout enforcement (a clean kill
+boundary) and a language-agnostic command. It runs Action-side, so it has the
+one sanctioned non-MCP GitHub surface (the Action `GITHUB_TOKEN`) and can do
+optimized native-git operations — the same surface the `store-release` inline
+worker already uses, now generalized.
+
+**No code→agent data channel.** Preprocessing communicates with the agent
+*only* through the repository — commits it pushes, files it writes. Nothing it
+prints is threaded into the dispatch issue; the issue stays "data, not
+instructions" with a first-line task path and the precondition's binding Context,
+exactly as `dispatch.mjs` builds it today. This keeps the executor's
+label-as-authorization / first-line-path-validation security model intact.
+
+## 4. The `agent_model: none` path is now preprocessing
+
+The in-process inline-worker path (`run.mjs` lines ~191–198) is retired. A
+pure-code task declares `agent_preprocessing` + `agent_model: none`, and the
+scheduler runs it as a subprocess like any other preprocessing — it simply has no
+agent stage after. `store-release` converts directly:
+
+```js
+// before: agent_model:'none', agent_instructions:'worker.mjs' (run in-process)
+// after:  agent_model:'none', agent_preprocessing:'node worker.mjs',
+//         agent_preprocessing_timeout: 120
+```
+
+Gain: subprocess isolation and a real timeout for what is today an unbounded
+in-process `await`. `store-release`'s deferred Stage-2 "await the dispatched
+release run" (the #398 carry-forward) becomes safe to add — the await is now
+bounded by `agent_preprocessing_timeout` instead of running unbounded inside the
+scheduler process.
+
+## 5. The preprocessing→agent handoff (agent tasks with prep)
+
+When a task has both stages, preprocessing has already pushed a branch and opened
+its PR by the time `ready-for-agent` is applied. The agent must continue on that
+same branch **without** the issue carrying a branch name (which would be
+instructions in the issue). The executor discovers it the same way #407's
+maintenance flow does: **find the task family's open PR by head-branch prefix**
+and continue on it. So:
+
+- Preprocessing opens (or reuses) the PR for this `(pack, task)` family on a
+  deterministic branch prefix.
+- The executor, on a `model !== none` continuation, resolves the open PR by that
+  prefix, checks out its head, and does the agentic remainder there.
+
+This reuses the exact `findOpenPrByPrefix` idea #407 introduces (see §8 for the
+reconciliation) rather than inventing a second branch-discovery mechanism.
+
+## 6. Timeouts — what each one actually enforces
+
+The two timeouts are **not** symmetric, because the scheduler owns the
+preprocessing process but not the agent's session.
+
+- **`agent_preprocessing_timeout` — a hard kill.** The subprocess is the
+  scheduler's child; it is killed on the deadline and the overrun fails the task
+  (comment + `needs-human`). Fully enforced, second-precise.
+
+- **`agent_execution_timeout` — a lifecycle bound, not a compute kill.** A CCR
+  Routine-launched session has **no** platform wall-clock cap (confirmed
+  2026-07-23: no per-routine timeout, no SDK wall-clock deadline; sessions end
+  only on inactivity-reclaim). So the declared value is enforced in two
+  cooperating layers, neither of which instantly reclaims the running compute:
+
+  1. **Executor self-budget (cooperative, primary).** The executor reads the
+     task's `agent_execution_timeout` and self-monitors a deadline; on overrun it
+     stops, comments, and converges the issue to `needs-human` instead of pressing
+     on. Optionally sets `maxTurns` / `maxBudgetUsd` as coarse guardrails.
+  2. **Scheduler watchdog (external, backstop).** The hourly scheduler already
+     sweeps stale `agent-running` issues to `needs-human` (`executor.md` step 6,
+     today a fixed ~3h). That fixed constant becomes the **per-task declared
+     `agent_execution_timeout`**: any `agent-running` issue older than its task's
+     bound converges to `needs-human`. This holds even if the session died or
+     stopped cooperating — the actual compute is left to CCR's inactivity reclaim.
+
+  Net: an over-running agent can never strand a task *state* longer than its
+  declared bound, but the guarantee is over the **task lifecycle**, not the
+  process. Set generous values (predictable tasks ~15 min; open-ended ones very
+  generous) — the bound is extreme protection, not a scheduling knob.
+
+## 7. Dropping the canon repo from the executor environment
+
+With preprocessing able to fetch what baselining needs, both of baselining's
+canon reads (§1.2) are closed **without** a canon session source:
+
+- **The migration notes** → vendor `migrations/active_migrations/*` (and the
+  `apply.mjs` applier; `fleet-apply.mjs` / `registry.mjs` stay canon-internal)
+  into `.claudinite/shared/migrations/` via `vendoring/compute-vendor-set.mjs`.
+  The agent's note-application read then resolves from the mount, locally.
+- **The head snapshot** → baselining's preprocessing does a **direct public
+  `git` fetch of the canon repo at the target head sha** (canon is public — owner
+  confirmed 2026-07-23 — so the consumer's Action needs no token and no
+  tarball-publish channel), runs the existing
+  `vendoring/{compute,apply}-vendor-set.mjs` against that checkout, and pushes the
+  converged mount over native git. #405's "the scheduler Action can't read the
+  canon" constraint held only under a *private* canon; a public canon dissolves
+  it.
+
+Consequences to wire:
+
+- **`executor.md`** line ~18 ("The member repo and the Claudinite canon are both
+  in the session's sources") → the member repo alone.
+- **Bootstrap / routine creation** (per-project-scheduling DESIGN §9): the
+  executor routine is created with `sources = [project]` only, not
+  `[project, claudinite]`. **This changes the CCR environment-creation flow** to
+  provision a project-only environment for every consumer — a concrete reduction
+  in each session's ambient scope.
+- The canon-**home** tasks (growth-promote, prose-to-checks, discover-packs,
+  fleet-census) are unaffected: they run *on* the canon repo, where canon-in-
+  context is the point, not an extra source.
+
+## 8. Interaction with in-flight work
+
+- **PR #405 (open, design-only) — this record revises and largely subsumes it.**
+  #405 proposes the same deterministic baselining core but places it *in the
+  executor session*, because it assumed the Action could not read canon. A public
+  canon + preprocessing moves that core Action-side, which is strictly better
+  (native git, no MCP trailing-delete hack). #405's genuinely-agentic case (a
+  migration note flagged `agentic`) survives here as: preprocessing does the
+  mechanical converge; the agent stage runs **only** when a pending note is
+  flagged agentic. #405 should be closed or re-scoped to just the
+  machine-readable `agentic` flag on migration records.
+- **PR #407 (open) — reconcile, do not collide.** #407 renames the maintenance
+  delivery branch per-cycle (date + random seed) and finds the open PR by prefix.
+  §5's handoff and §7's baselining preprocessing must adopt #407's
+  `findOpenPrByPrefix` and per-cycle branch, not a parallel scheme. Sequence:
+  land #407 first, build on it.
+- **Per-project-scheduling Phase 2 (next in #394).** Phase 2 authors four new
+  canon tasks. The contract change (§2) should land **before or with** Phase 2 so
+  those tasks are written against the final contract, not retrofitted.
+
+## 9. Checks & docs to update
+
+- `engine/scheduler/task-contract.mjs` — the three fields + validation (§2).
+- `packs/basics/task-declaration-shape.mjs` (+ test) — enforce the §2 rules,
+  including "agentless-with-no-preprocessing is an error" and the containment of
+  the preprocessing command.
+- `engine/scheduler/run.mjs` — the two-stage flow, subprocess spawn + kill,
+  deferred labeling (§3); retire the in-process inline path (§4).
+- `engine/scheduler/validate-dispatch.mjs` — accept the new fields.
+- `engine/scheduler/executor.md` — self-budget (§6.1), per-task stale bound
+  (§6.2), sources = project only (§7).
+- `vendoring/compute-vendor-set.mjs` (+ test) — include `migrations/` (§7).
+- `packs/basics/tasks/baselining/{task.mjs,task.md}` — converge-as-preprocessing;
+  agent stage gated on a flagged-agentic note.
+- `packs/chrome-extension-release/tasks/store-release/task.mjs` — convert to the
+  preprocessing form (§4).
+- `packs/basics/scheduled-tasks.md`, per-project-scheduling `DESIGN.md`/
+  `MIGRATION.md` cross-refs, bootstrap Part 6 (project-only sources).
+
+## 10. Decisions on record (owner, 2026-07-23)
+
+1. **Canon delivery = direct public `git` fetch** by baselining preprocessing
+   (canon is public; no tarball-publish channel, no consumer-side token).
+2. **Canon repo is public** — release-asset / clone reads need no auth on
+   consumer runners.
+3. **`agent_execution_timeout` enforcement** — investigated first (owner
+   request): no CCR/SDK hard wall-clock cap exists, so it is a lifecycle bound
+   (executor self-budget + scheduler watchdog generalizing the stale sweep), §6.
+4. Preprocessing runs **Action-side as a subprocess**, after issue creation,
+   before the agent; communicates with the agent through the repo only.
+
+## 11. Open questions
+
+- **`agentic`-flag mechanics on migration records** (inherited from #405): what
+  marks a note as needing the agent stage, and how baselining's preprocessing
+  reads it to decide whether to apply `ready-for-agent`.
+- **Baselining's stamp/agentic coupling** (from #405, #329/#330): preprocessing
+  advances the stamp only when every pending note is fully mechanical; the agent
+  stage handles a flagged note and advances the stamp itself. Exact transaction
+  boundary to be specified in the baselining rework, not here.
+- **Rollout sequencing** of the contract change vs. #407 vs. Phase 2 (§8) —
+  ordering agreed in principle (#407 → contract → Phase 2), dates open.
