@@ -322,10 +322,15 @@ Tracked here now that #405 is closed (§8):
 - **`converge-wiring.mjs`** (from #405): the fresh-path wiring convergence as an
   idempotent script that bootstrap Part 6 *calls* (one source of truth, the drift
   guard) — a mechanical step baselining preprocessing runs.
-- **The check-fix subsumption audit** (from #405, load-bearing): enumerate every
-  check baselining auto-fixes in the wild and confirm each is subsumed by
-  converge / converge-wiring / declaration-normalization before flipping baselining
-  to a `null`-model common night.
+- **The check-fix subsumption audit** (from #405, load-bearing): **DONE** —
+  [`check-fix-subsumption-audit.md`](check-fix-subsumption-audit.md). Conclusion:
+  it **is** safe to drive the common-night model toward `null`. Every check that
+  judges standing repo state is world-scoped and so is caught by the
+  `check_the_world` escalation gate; the 8 work-scoped checks the gate omits judge a
+  *session's change* a mechanical converge never makes (no silent regression); only
+  2 checks are deterministically subsumed today, and 3 world-scoped needs-judgment
+  checks (`catalog-completeness`, `generated-merge-driver`, `cer/version-sync`) have
+  rote fixes worth mechanizing later to reduce needless escalation.
 - **Rollout sequencing** of the contract change vs. #407 vs. Phase 2 (§8) —
   ordering agreed in principle (#407 → contract → Phase 2), dates open.
 
@@ -367,7 +372,11 @@ Tracked here now that #405 is closed (§8):
 ### Remaining work — start here (a fresh session picks up from this section)
 
 **E4 and the GCEC conversion have LANDED** (branch `claude/agent-preprocessing-remaining-kymhh9`,
-session 2026-07-23). What's left is **E5**, gated behind E4's live pilot proving out.
+session 2026-07-23). The **GCEC mount bootstrap is DELIVERED** as a maintenance PR
+(`GoogleCalendarEventCreator#712`, session 2026-07-23) — the out-of-band vendor refresh that
+lands `executor.md` + the E4 `worker.mjs` into GCEC's mount. On merge it drains the 6 stuck
+dispatches (#703–#708) and starts the real E4 live pilot. What's left is **E5**, gated behind
+that merge + the pilot proving out.
 
 - **E4 — baselining converge-as-preprocessing (LANDED).** `packs/basics/tasks/baselining/`
   now carries `worker.mjs` (native-git `agent_preprocessing`) + a rewritten `task.mjs`
@@ -376,26 +385,82 @@ session 2026-07-23). What's left is **E5**, gated behind E4's live pilot proving
   nights** via the run.mjs **conditional hand-off** (worker writes `CLAUDINITE_REQUEST_AGENT`
   only when a pending agentic note exists OR the converge left `check_the_world` non-green).
   **Supersedes #407** (native-git delivery carries its own maintenance-branch prefix / find-
-  by-prefix). Pure decision helpers unit-tested; **the native-git/clone/REST I/O and the
-  full nightly flow still need a live GCEC pilot** — the E5 gate. The check-fix subsumption
-  audit (below, from #405) is *still owed* before the common-night model can be trusted
-  fully; the escalation gate (`check_the_world` must be green for an agentless night) is
-  the safety net until that audit lands.
+  by-prefix). Pure decision helpers unit-tested. **Partial pilot done (2026-07-23):** against a
+  real target stamped at an older ref, the public-canon clone (through the proxy, no token) →
+  rootless tree → `apply-vendor-set` converged to HEAD **without tripping the anti-rewind
+  guard**, `converge-wiring` rewrote the workflow + hooks, mechanical migrations were idempotent,
+  and the agentic-note detection + stamp-hold + escalation decision were verified both ways
+  (pending note → hold + escalate; no pending note → advance). **Residual:** the native-git
+  `deliver()` (per-cycle branch push, PR create, auto-merge arm) needs one real Action-token
+  run — the E5 gate. The check-fix subsumption
+  audit ([`check-fix-subsumption-audit.md`](check-fix-subsumption-audit.md)) is **done** and
+  clears the common-night model to go toward `null`; the escalation gate (`check_the_world`
+  green + no pending agentic note) is the operative safety net now and after the flip.
 - **GCEC task conversion (LANDED, its own repo/PR).** `missingbulb/GoogleCalendarEventCreator`,
   branch `claude/agent-preprocessing-remaining-kymhh9`: `fallback-extractor-improvements`
   gained `agent_execution_timeout`. No deterministic pre-step was split into
   `agent_preprocessing` — its baseline must be *seen* by the agent and preprocessing has no
   code→agent channel; the fetch/scaffold pre-step belongs to the still-legacy create-extractor
   routine (outside `tasks/`).
-- **E5 — drop canon from the executor CCR session (NEXT, gated on E4's pilot).** `executor.md`
-  sources become the project alone (not project + canon); update bootstrap Part 6 and the
-  executor-routine creation to provision a project-only environment. Baselining no longer
-  reads canon in-session (E4 fetches it Action-side), so this is now safe once E4 is piloted.
+- **FLEET-FIX — `executor.md` was never vendored (LANDED in this branch/#413).** Root cause of
+  GCEC's broken executor (`GoogleCalendarEventCreator#710`): `compute-vendor-set` stripped ALL
+  engine `*.md`, including `engine/scheduler/executor.md` — the executor routine's operating
+  instructions. So **every cut-over consumer's executor booted with no instructions and could
+  drain nothing.** Fixed with a `VENDORED_ENGINE_DOCS` whitelist + regression tests. Baselining
+  can't self-heal this (a refresh re-excludes the file), so the fix must **merge**, then each
+  cut-over consumer's mount needs a one-time out-of-band refresh to pull it (below).
+- **GCEC mount bootstrap (DELIVERED — `GoogleCalendarEventCreator#712`, deadlock-breaker).** GCEC
+  was stuck: broken executor → can't run baselining → can't refresh its mount to *get* the fix.
+  With #413 merged (canon head `61b90ee`), GCEC's `.claudinite/shared/` was converged to that
+  fixed head **out-of-band** via `vendoring/apply-vendor-set.mjs` — a GCEC maintenance PR, **NOT**
+  through the executor (the anti-rewind guards passed: stamped `b5103ea` is an ancestor of
+  `61b90ee`). That single refresh (28 files, 192-file set, 0 deletions, stamp `b5103ea → 61b90ee`)
+  lands `executor.md` **and** the new E4 baselining `worker.mjs` + its primitives (vendored
+  `migrations/`, `converge-wiring.mjs`, `preprocess.mjs`, the `run.mjs`/`task-contract.mjs`/
+  `validate-dispatch.mjs` updates). **On merge:** the executor has instructions and drains the 6
+  stuck dispatches (#703–#708); baselining becomes the Action-side worker. This refresh **is** the
+  start of the real E4 pilot.
+- **E5 — drop canon from the executor CCR session (NEXT after #712 merges + the pilot proves out).**
+  `executor.md` sources become the project alone; update bootstrap Part 6 and the executor-routine
+  creation to provision a project-only environment. Keep canon in GCEC's executor sources until it
+  baselines onto the new worker, THEN re-create project-only.
 
-**Live-pilot checklist for E4 (owner, before E5):** run baselining's `worker.mjs` against a
-real GCEC scheduler run — confirm the public canon clone, the converge writes, the per-cycle
-maintenance branch/PR, auto-merge arming, the stamp-hold on the pending `pack-independence`
-agentic note, and that a clean night is truly agentless (no `ready-for-agent` filed).
+**⚠️ PILOT GATE — the scheduler workflow can't `deliver()` yet (found 2026-07-23).** Two
+independent facts block a real Action-side pilot run of baselining's `deliver()`:
+
+1. **Can't force it via `workflow_dispatch`.** Baselining is `daily-2h` (the 02:00 slot); the
+   run-ledger due-slot math (`slots.mjs`) makes a slot due only when it falls in
+   `(lastSuccess, now]`, and the hourly scheduler already consumes it. A manual dispatch prints
+   `- no tasks due` (empirically confirmed, GCEC run 30019987993). So the pilot fires **only in
+   the natural 02:xx run**, and only when the stamp is `> 1d` old — after the out-of-band
+   bootstrap re-stamped GCEC to head (2026-07-23), the first eligible fire is ~2026-07-25 02:xx.
+2. **`deliver()` would 403 on permissions.** `worker.mjs` `deliver()` `git push`es the
+   maintenance branch and opens/auto-merges a PR using the Action `GITHUB_TOKEN`, but the
+   vendored `stubs/claudinite-scheduler.yml` grants only `contents: read` (+ `issues: write`,
+   `actions: read`). With an explicit `permissions:` block, `contents` is read and
+   `pull-requests` defaults to `none` — the push and the PR both fail. This is a gap in the E4
+   landing: `store-release` (the other scheduler-run worker) deliberately **delegates** delivery
+   to a separate write-perm workflow to keep the scheduler read-only, whereas E4's baselining
+   pushes **directly** and the stub was never provisioned for it.
+
+   **Resolved (owner, 2026-07-23): widen the scheduler stub.** The stub now grants
+   `contents: write` + `pull-requests: write` (matches E4's direct-push design; the read-only
+   invariant `store-release` preserves by delegating is dropped for the scheduler, which runs
+   only trusted committed code — untrusted issue bodies go to the tokenless executor). A
+   `scheduler-workflow-shape` drift-guard asserts both writes so a repo can't silently regress to
+   read-only. Two owner-only steps remain per repo: the setting *Allow GitHub Actions to create
+   and approve pull requests* and *Allow auto-merge*. And because the scheduler workflow file
+   lives in `.github/workflows/` (converged by `converge-wiring`, delivered *by* baselining), the
+   first GCEC run needs the write-perms bump applied **out-of-band** to GCEC's own workflow — the
+   same deadlock-break as the executor.md bootstrap — before it can self-deliver.
+
+**Live-pilot checklist for E4 (owner, before E5):** once the gate above is resolved, run
+baselining's `worker.mjs` against a real GCEC scheduler run — confirm the public canon clone, the
+converge writes, the per-cycle maintenance branch/PR, auto-merge arming, the stamp-hold on the
+pending `pack-independence` agentic note, and that a clean night is truly agentless (no
+`ready-for-agent` filed).
+**Partial pilot already done** (converge path validated locally against a real older-stamped
+target; only the native-git `deliver()` needs a real Action-token run) — see the E4 bullet above.
 
 **Working notes.** Prefer git-free fs-fixture tests (see
 `engine-tests/scheduler/converge-wiring.test.mjs`) over `makeRepo` where possible —

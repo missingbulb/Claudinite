@@ -31,6 +31,16 @@ export { ENGINE_DIR_ROOTS };
 
 const isTest = (name) => name.endsWith('.test.mjs');
 
+// The exception to "engine .md is maintainer-reference, not vendored": a few engine
+// .md files are OPERATIONAL — a consumer session reads them from its OWN mount at
+// runtime, so they MUST ship. `executor.md` is the executor routine's operating
+// instructions; the label-wired routine's thin-pointer prompt points at
+// `.claudinite/shared/engine/scheduler/executor.md`, so if it is stripped, every
+// consumer's executor session boots with no instructions and can drain nothing
+// (the fleet-wide executor-broken finding). Whitelisted by canon-relative path so
+// the blanket .md exclusion still drops the maintainer docs beside it.
+const VENDORED_ENGINE_DOCS = new Set(['engine/scheduler/executor.md']);
+
 // The migration machinery a consumer applies from its OWN mount (agent-preprocessing
 // DESIGN §7): the applier + registry + the note records, so baselining reads the
 // notes locally and needs no canon checkout in session. NOT the fleet-only drivers
@@ -74,8 +84,12 @@ function walk(relDir, files, errors, { engine = false } = {}) {
     if (entry.isDirectory()) {
       if (engine && entry.name === 'test') continue;
       walk(`${relDir}/${entry.name}`, files, errors, { engine });
-    } else if (!isTest(entry.name) && !(engine && entry.name.endsWith('.md'))) {
-      files.add(`${relDir}/${entry.name}`);
+    } else if (!isTest(entry.name)) {
+      const rel = `${relDir}/${entry.name}`;
+      // engine .md is canon-maintainer reference and dropped — except the
+      // operational whitelist (executor.md) a consumer reads from its own mount.
+      if (engine && entry.name.endsWith('.md') && !VENDORED_ENGINE_DOCS.has(rel)) continue;
+      files.add(rel);
     }
   }
 }

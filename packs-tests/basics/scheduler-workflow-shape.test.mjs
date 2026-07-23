@@ -12,6 +12,11 @@ on:
   workflow_dispatch:
 concurrency:
   group: claudinite-scheduler
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  actions: read
 jobs:
   schedule:
     runs-on: ubuntu-latest
@@ -41,6 +46,15 @@ test('scheduler-workflow-shape: flags an off-band cron minute', () => {
 test('scheduler-workflow-shape: flags a non-hourly cron', () => {
   const f = run({ [WF]: goodWorkflow.replace("'25 * * * *'", "'25 4 * * *'") });
   assert.ok(f.some((x) => /not an hourly schedule/.test(x.what)));
+});
+
+test('scheduler-workflow-shape: flags a read-only scheduler (baselining deliver() needs write)', () => {
+  const readOnly = goodWorkflow
+    .replace('contents: write', 'contents: read')
+    .replace('  pull-requests: write\n', '');
+  const whats = run({ [WF]: readOnly }).map((x) => x.what).join(' | ');
+  assert.match(whats, /does not grant contents: write/);
+  assert.match(whats, /does not grant pull-requests: write/);
 });
 
 test('scheduler-workflow-shape: flags missing concurrency, dispatch, and engine entry', () => {
