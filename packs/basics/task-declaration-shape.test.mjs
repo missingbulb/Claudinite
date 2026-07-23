@@ -11,6 +11,7 @@ const goodTask = `export default {
   agent_model: 'opus',
   expected_outcome: 'merged-pr',
   agent_instructions: 'task.md',
+  agent_execution_timeout: 1800,
   precondition(signals, config) { return { run: false }; },
 };
 `;
@@ -58,4 +59,59 @@ test('task-declaration-shape: flags a non-object export', () => {
   const f = run({ [TASK]: 'export default 42;\n' });
   assert.equal(f.length, 1);
   assert.match(f[0].what, /does not default-export a declaration object/);
+});
+
+test('task-declaration-shape: flags an agentic task with no agent_execution_timeout', () => {
+  const bad = goodTask.replace('  agent_execution_timeout: 1800,\n', '');
+  const whats = run({ [TASK]: bad }).map((f) => f.what).join(' | ');
+  assert.match(whats, /no numeric "agent_execution_timeout"/);
+});
+
+test('task-declaration-shape: a none task needs no execution bound but flags preprocessing without a timeout', () => {
+  const noneTask = `export default {
+  id: 'store-release',
+  frequency: 'daily',
+  precondition_signals: ['release'],
+  agent_model: 'none',
+  expected_outcome: 'none',
+  agent_instructions: 'worker.mjs',
+  agent_preprocessing: 'node worker.mjs',
+  precondition() { return { run: false }; },
+};
+`;
+  const whats = run({ [TASK]: noneTask }).map((f) => f.what).join(' | ');
+  assert.doesNotMatch(whats, /agent_execution_timeout/);        // none = no agent, no bound needed
+  assert.match(whats, /no numeric "agent_preprocessing_timeout"/);
+});
+
+test('task-declaration-shape: flags an agentless (none) task that declares no preprocessing', () => {
+  const bareNone = `export default {
+  id: 'x',
+  frequency: 'daily',
+  precondition_signals: ['release'],
+  agent_model: 'none',
+  expected_outcome: 'none',
+  agent_instructions: 'worker.mjs',
+  precondition() { return { run: false }; },
+};
+`;
+  const whats = run({ [TASK]: bareNone }).map((f) => f.what).join(' | ');
+  assert.match(whats, /declares no "agent_preprocessing"/);
+});
+
+test('task-declaration-shape: flags a preprocessing command that escapes the task directory', () => {
+  const bad = goodTask.replace(
+    '  agent_execution_timeout: 1800,\n',
+    "  agent_execution_timeout: 1800,\n  agent_preprocessing: 'node ../evil.mjs',\n  agent_preprocessing_timeout: 120,\n",
+  );
+  const whats = run({ [TASK]: bad }).map((f) => f.what).join(' | ');
+  assert.match(whats, /reaches outside the task directory/);
+});
+
+test('task-declaration-shape: a well-formed task with preprocessing + both timeouts is clean', () => {
+  const withPrep = goodTask.replace(
+    '  agent_execution_timeout: 1800,\n',
+    "  agent_execution_timeout: 1800,\n  agent_preprocessing: 'node prepare.mjs',\n  agent_preprocessing_timeout: 300,\n",
+  );
+  assert.deepEqual(run({ [TASK]: withPrep }), []);
 });

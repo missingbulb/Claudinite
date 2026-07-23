@@ -22,11 +22,56 @@ const validTask = {
   agent_model: 'opus',
   expected_outcome: 'merged-pr',
   agent_instructions: 'task.md',
+  agent_execution_timeout: 1800,
   precondition() { return { run: true, reason: 'x' }; },
 };
 
 test('validateTaskDeclaration accepts a well-formed declaration', () => {
   assert.deepEqual(validateTaskDeclaration(validTask), []);
+});
+
+test('validateTaskDeclaration requires agent_execution_timeout on an agentic task', () => {
+  const { agent_execution_timeout, ...noBound } = validTask;
+  assert.match(validateTaskDeclaration(noBound)[0].what, /no positive-integer "agent_execution_timeout"/);
+  // a non-integer or non-positive bound is equally rejected
+  assert.ok(validateTaskDeclaration({ ...validTask, agent_execution_timeout: 0 }).length);
+  assert.ok(validateTaskDeclaration({ ...validTask, agent_execution_timeout: 12.5 }).length);
+});
+
+test('validateTaskDeclaration: an agentless (none) task needs preprocessing but no execution bound', () => {
+  const none = { ...validTask, agent_model: 'none', expected_outcome: 'none' };
+  delete none.agent_execution_timeout;
+  // a bare none task with no preprocessing does nothing → flagged
+  assert.match(validateTaskDeclaration(none)[0].what, /declares no "agent_preprocessing"/);
+  // with preprocessing + its timeout it is clean, and needs no execution bound
+  assert.deepEqual(
+    validateTaskDeclaration({ ...none, agent_preprocessing: 'node worker.mjs', agent_preprocessing_timeout: 120 }),
+    [],
+  );
+});
+
+test('validateTaskDeclaration validates agent_preprocessing + its required timeout and containment', () => {
+  const none = { ...validTask, agent_model: 'none', expected_outcome: 'none' };
+  delete none.agent_execution_timeout;
+  // preprocessing without a timeout is rejected
+  assert.match(
+    validateTaskDeclaration({ ...none, agent_preprocessing: 'node prepare.mjs' })[0].what,
+    /"agent_preprocessing_timeout" is not a positive integer/,
+  );
+  // a task-local command with a timeout is accepted
+  assert.deepEqual(
+    validateTaskDeclaration({ ...none, agent_preprocessing: 'node prepare.mjs', agent_preprocessing_timeout: 120 }),
+    [],
+  );
+  // an absolute path or a `..` traversal is rejected
+  assert.match(
+    validateTaskDeclaration({ ...none, agent_preprocessing: 'node /usr/bin/x.mjs', agent_preprocessing_timeout: 120 })[0].what,
+    /reaches outside the task directory/,
+  );
+  assert.match(
+    validateTaskDeclaration({ ...none, agent_preprocessing: 'node ../evil.mjs', agent_preprocessing_timeout: 120 })[0].what,
+    /reaches outside the task directory/,
+  );
 });
 
 test('validateTaskDeclaration flags every malformed field', () => {
@@ -83,6 +128,7 @@ test('validateDispatchBody accepts a well-formed dispatch and resolves model + o
   assert.equal(v.model, 'opus');
   assert.equal(v.resolvedModel, 'opus');
   assert.equal(v.outcome, 'merged-pr');
+  assert.equal(v.executionTimeout, 1800); // surfaced for the executor's best-effort bound (§6)
 });
 
 test('validateDispatchBody rejects a bad first line, a missing file, an undeclared pack, and a bad declaration', () => {

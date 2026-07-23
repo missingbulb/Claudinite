@@ -17,6 +17,7 @@ export default {
   agent_model: 'sonnet',                 // the bootstrap/alignment merges into settings.json without clobbering — judgment
   expected_outcome: 'merged-pr',            // lands on the maintenance PR; arms auto-merge where member config allows
   agent_instructions: 'task.md',
+  agent_execution_timeout: 1800,            // generous: a migration-note night can be substantial; the common night is mechanical
 
   // Run when this repo's vendored mount is behind the canon, or a declared pack's
   // vendored files moved. PURE over the collected signals — no probes here; the

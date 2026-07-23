@@ -99,6 +99,25 @@ test('planRun marks a agent_model:none task inline instead of dispatching an iss
   assert.equal(askedIssues, false, 'an inline task never searches for a dispatch issue');
 });
 
+test('planRun flags a task that declares agent_preprocessing (agentless and agentful)', async () => {
+  const tasks = [
+    mkTask('code', { agent_model: 'none', expected_outcome: 'none', agent_preprocessing: 'node worker.mjs', agent_preprocessing_timeout: 120, precondition: () => ({ run: true, reason: 'x' }) }),
+    mkTask('prep-then-agent', { agent_preprocessing: 'node prepare.mjs', agent_preprocessing_timeout: 120, precondition: () => ({ run: true, reason: 'x' }) }),
+  ];
+  const { evaluations } = await planRun({
+    tasks, schedule: D, now: '2026-07-22T06:00:00Z', lastSuccess: '2026-07-21T06:00:00Z',
+    collectSignals: async () => ({}),
+    existingIssuesFor: async () => [],
+  });
+  const byTask = Object.fromEntries(evaluations.map((e) => [e.task, e]));
+  // agentless + preprocessing: both flags set; the CLI runs the subprocess, not the in-process worker.
+  assert.equal(byTask.code.preprocessing, true);
+  assert.equal(byTask.code.inline, true);
+  // agentful + preprocessing: preprocessing flagged, and a dispatch is still planned for the hand-off.
+  assert.equal(byTask['prep-then-agent'].preprocessing, true);
+  assert.equal(byTask['prep-then-agent'].dispatch.action, 'create');
+});
+
 test('planRun collects the declared signal union exactly once and passes it to preconditions', async () => {
   let collectedWith = null;
   const seen = [];

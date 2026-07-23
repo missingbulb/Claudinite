@@ -18,6 +18,7 @@ export default {
   agent_model: 'opus',                   // open-web research + curation is the heaviest judgment, and the PR review gate is the last catch for fabrication
   expected_outcome: 'open-pr',              // web-researched claims entering a knowledge base need the human review gate — never merged, never pushed to default
   agent_instructions: 'task.md',
+  agent_execution_timeout: 2700,            // open-web research is the least predictable of the tasks — very generous
 
   // The weekly slot IS the trigger — there is no cheaper gate to apply, because a
   // wiki grows on research availability, not repo activity. Always run when due;

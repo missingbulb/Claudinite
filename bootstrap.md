@@ -128,7 +128,11 @@ adoption:
    hashed minute in :10–:50 (the repo's only cron). Compute the minute — never guess it —
    with the vendored hasher: `node .claudinite/shared/engine/scheduler/hash-minute.mjs
    <owner/repo>`. It is a pure function of the repo full name, so it is the same value on
-   every re-vendor and baselining re-derives it to catch drift.
+   every re-vendor and baselining re-derives it to catch drift. This step, the Part 5
+   hook registrations, and dropping the retired `@.claudinite/shared/CLAUDE.md` import
+   are all mechanized by `node .claudinite/shared/engine/scheduler/converge-wiring.mjs
+   <owner/repo>` — the single wiring surface bootstrap and baselining both call, so the
+   set is defined once in code, not re-enacted from this prose each night.
 2. **Labels need no step** — the scheduler ensures `ready-for-agent`,
    `agent-running`, `needs-human`, and `workflow-failure` exist (create-if-missing,
    idempotent) before it dispatches, so they materialize on the first run and
