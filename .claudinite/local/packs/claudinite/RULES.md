@@ -36,3 +36,16 @@ prose below). Entries accrete as sessions on the canon surface durable, canon-sp
   declared it. The natural drift-guard (a future check, once the home is clean) is: the home
   declares every `seededByDefault` non-local pack. (At the time of writing `tidy-repo` is
   `seededByDefault` yet absent from the home's declaration — the same gap, unverified.)
+- **Fail-soft SessionStart steps hide their own breakage fleet-wide — test the emitted
+  output, not the exit code.** Every `engine/pack_loader/` SessionStart step
+  (`inject-pack-prose.mjs`, `mount-skills.mjs`, `env-requirements.mjs`) wraps its body in
+  `try { ... } catch {}` so a broken loader never blocks a session. That fail-soft is deliberate,
+  but it means a runtime fault — a wrong dynamic-import target, a renamed module — exits 0 and
+  simply emits nothing: no error, no signal. And because the engine is vendored verbatim into
+  every member, one canon regression silently disables that step across the whole fleet at once.
+  This already bit once (#395): `inject-pack-prose.mjs` imported `registry.mjs` instead of
+  `pack-registry.mjs`, so no active pack's RULES.md was injected into *any* session until a test
+  caught it. So a step like this must be guarded by a regression test that runs the real script
+  against a real corpus and asserts the **positive** effect — prose IS emitted — never merely
+  that `status === 0` (which fail-soft makes meaningless); see
+  `engine-tests/pack_loader/inject-pack-prose.test.mjs`.
