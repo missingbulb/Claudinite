@@ -1,8 +1,8 @@
 # Tracking-issue freshness — keep the plan issue in sync after every merge (design)
 
-> **Status: proposed.** Tracked by the GitHub issue this doc names on landing (the
-> "read status and pick up the work" entry point). This doc is the rationale and the
-> design record; the phased plan lives as a checklist in that issue.
+> **Status: proposed.** Tracked by [#409](https://github.com/missingbulb/Claudinite/issues/409)
+> (the `plan-tracking` issue — the "read status and pick up the work" entry point). This
+> doc is the rationale and the design record; the phased plan lives as a checklist there.
 
 ## The problem
 
