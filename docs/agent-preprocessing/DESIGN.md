@@ -112,6 +112,19 @@ precondition passes
 > as issue noise. The subprocess cwd is the **task dir** (so `node worker.mjs`
 > resolves to the sibling script); the repo root + slot ride in via `CLAUDINITE_*`.
 
+> **As-built (E4) — CONDITIONAL hand-off.** The `agent_model !== none → always
+> file` rule above is now *conditional* for a task that ALSO declares
+> `agent_preprocessing`: such a task hands off to the agent **only when its worker
+> requests it**. The scheduler passes the worker a signal path in
+> `CLAUDINITE_REQUEST_AGENT`; after a successful preprocessing it files
+> `ready-for-agent` **iff** the worker created that file, and otherwise the night is
+> agentless and quiet — so a task can absorb its work into preprocessing and boot an
+> agent only on the nights judgment is genuinely left (owner, 2026-07-23). This is a
+> pure control signal: the worker still communicates *data* to the agent only
+> through the repository (§3, no code→agent data channel). A `model !== none`
+> preprocessing task whose worker never requests behaves as agentless; a `model !==
+> none` task with **no** preprocessing keeps the unconditional immediate hand-off.
+
 The subprocess is the natural home for both timeout enforcement (a clean kill
 boundary) and a language-agnostic command. It runs Action-side, so it has the
 one sanctioned non-MCP GitHub surface (the Action `GITHUB_TOKEN`) and can do
@@ -249,11 +262,12 @@ Consequences to wire:
     stage, Action-side host, timeouts, dropping canon); re-scoped #405 owns the
     *baselining pipeline content* and the migration-note `agentic` primitive. They
     reference each other.
-- **PR #407 (open) — reconcile, do not collide.** #407 renames the maintenance
-  delivery branch per-cycle (date + random seed) and finds the open PR by prefix.
-  §5's handoff and §7's baselining preprocessing must adopt #407's
-  `findOpenPrByPrefix` and per-cycle branch, not a parallel scheme. Sequence:
-  land #407 first, build on it.
+- **PR #407 — SUPERSEDED (owner, 2026-07-23).** #407 renamed the maintenance
+  delivery branch per-cycle (date + random seed) and found the open PR by prefix,
+  but on the OLD fleet-apply **MCP** path. E4's baselining delivery is native-git
+  Action-side, so it carries its own equivalent (the `claudinite/maintenance-<date>-<seed>`
+  prefix + `openMaintenanceBranch` find-by-prefix in `worker.mjs`) rather than depending
+  on #407's unmerged branch. #407 can be closed.
 - **Per-project-scheduling Phase 2 (next in #394).** Phase 2 authors four new
   canon tasks. The contract change (§2) should land **before or with** Phase 2 so
   those tasks are written against the final contract, not retrofitted.
@@ -341,41 +355,47 @@ Tracked here now that #405 is closed (§8):
   convergence (scheduler workflow + hashed cron, settings hooks, retired-import
   removal), which bootstrap Part 6 and baselining both call — the single wiring
   source of truth.
+- **E4 — baselining converge-as-preprocessing (landed):** `packs/basics/tasks/baselining/`
+  gains a native-git `worker.mjs` (`agent_preprocessing`) that fetches PUBLIC canon
+  directly, runs `apply-vendor-set` + `converge-wiring` + mechanical `migrations/apply`,
+  holds the stamp for a pending `agenticMigrations()` note, and delivers the converge on
+  a per-cycle maintenance branch (find-by-prefix; **supersedes #407**). The AGENT stage
+  (`task.md`, now the residual only) is requested via the run.mjs **conditional hand-off**
+  above — only on a pending agentic note or a converge left non-green by `check_the_world`
+  (owner, 2026-07-23); every other night is agentless. Pure decision helpers are unit-tested;
+  the native-git/clone/REST I/O is **live-pilot-gated (GCEC)** — not yet exercised in CI.
 ### Remaining work — start here (a fresh session picks up from this section)
 
-Branch `claude/issue-394-next-steps-wtdv6a`, PR #411. Everything above is landed and
-pushed. First confirm commit-signing works (a trivial signed commit); if the
-environment's signing MCP is down, say so before starting. The primitives you compose
-already exist and are tested: `migrations/registry.mjs`
-(`agenticMigrations`/`migrationAgentic`), `vendoring/{compute,apply}-vendor-set.mjs`
-(migrations now vendor into the mount), `engine/scheduler/converge-wiring.mjs`
-(`convergeWiring(root, fullName, stubText)` + CLI), `engine/scheduler/preprocess.mjs`,
-and the `agent_preprocessing` contract. Each item below is its own commit — test and
-push before the next.
+**E4 and the GCEC conversion have LANDED** (branch `claude/agent-preprocessing-remaining-kymhh9`,
+session 2026-07-23). What's left is **E5**, gated behind E4's live pilot proving out.
 
-- **E4 — baselining converge-as-preprocessing** (`packs/basics/tasks/baselining/{task.mjs,task.md}`).
-  The deterministic converge becomes `agent_preprocessing` (a subprocess worker beside
-  `task.mjs`) that: shallow-clones **public** canon at the target head sha (owner §10:
-  canon is public — no token, no tarball), runs `vendoring/{compute,apply}-vendor-set.mjs`
-  to converge `.claudinite/shared/`, runs `converge-wiring.mjs`, applies the
-  **mechanical** migration notes via `migrations/apply.mjs`, advances the stamp, and
-  **native-git** pushes the maintenance PR. The **agent stage** (`agent_model` non-null)
-  runs ONLY when `agenticMigrations()` finds a pending note dated ≥ stamp — then HOLD
-  the stamp at the day before the earliest pending agentic note until the agent lands it
-  (the stamp/agentic coupling rule above). Reuse #407's `findOpenPrByPrefix` for the
-  delivery branch (reconcile with #407 if still open). Run the check-fix subsumption
-  audit (above) before driving the common-night model toward `null`. **Fleet-critical:
-  verify with a live GCEC pilot, not just unit tests.**
-- **E5 — drop canon from the executor CCR session.** `executor.md` sources become the
-  project alone (not project + canon); update bootstrap Part 6 and the executor-routine
-  creation to provision a project-only environment. Gated behind E4 proving out.
-- **GCEC task conversion** (owner asked, 2026-07-23). Add
-  `missingbulb/GoogleCalendarEventCreator` (add_repo → clone inline to
-  `/workspace/googlecalendareventcreator`, ~10-min timeout → `register_repo_root`).
-  Convert its `.claudinite/local/packs/gcec/tasks/*` to the new contract: add
-  `agent_execution_timeout` to the agentic tasks; where a task has a deterministic
-  pre-step (the fallback-extractor fetch/scaffold, create-extractor's fetch), move it
-  into `agent_preprocessing` per the owner's intent. Commit + push on GCEC's own branch.
+- **E4 — baselining converge-as-preprocessing (LANDED).** `packs/basics/tasks/baselining/`
+  now carries `worker.mjs` (native-git `agent_preprocessing`) + a rewritten `task.mjs`
+  (agentic residual model + preprocessing/execution timeouts) + a rewritten `task.md`
+  (the residual agent stage only). Owner decision (2026-07-23): **agentless common
+  nights** via the run.mjs **conditional hand-off** (worker writes `CLAUDINITE_REQUEST_AGENT`
+  only when a pending agentic note exists OR the converge left `check_the_world` non-green).
+  **Supersedes #407** (native-git delivery carries its own maintenance-branch prefix / find-
+  by-prefix). Pure decision helpers unit-tested; **the native-git/clone/REST I/O and the
+  full nightly flow still need a live GCEC pilot** — the E5 gate. The check-fix subsumption
+  audit (below, from #405) is *still owed* before the common-night model can be trusted
+  fully; the escalation gate (`check_the_world` must be green for an agentless night) is
+  the safety net until that audit lands.
+- **GCEC task conversion (LANDED, its own repo/PR).** `missingbulb/GoogleCalendarEventCreator`,
+  branch `claude/agent-preprocessing-remaining-kymhh9`: `fallback-extractor-improvements`
+  gained `agent_execution_timeout`. No deterministic pre-step was split into
+  `agent_preprocessing` — its baseline must be *seen* by the agent and preprocessing has no
+  code→agent channel; the fetch/scaffold pre-step belongs to the still-legacy create-extractor
+  routine (outside `tasks/`).
+- **E5 — drop canon from the executor CCR session (NEXT, gated on E4's pilot).** `executor.md`
+  sources become the project alone (not project + canon); update bootstrap Part 6 and the
+  executor-routine creation to provision a project-only environment. Baselining no longer
+  reads canon in-session (E4 fetches it Action-side), so this is now safe once E4 is piloted.
+
+**Live-pilot checklist for E4 (owner, before E5):** run baselining's `worker.mjs` against a
+real GCEC scheduler run — confirm the public canon clone, the converge writes, the per-cycle
+maintenance branch/PR, auto-merge arming, the stamp-hold on the pending `pack-independence`
+agentic note, and that a clean night is truly agentless (no `ready-for-agent` filed).
 
 **Working notes.** Prefer git-free fs-fixture tests (see
 `engine-tests/scheduler/converge-wiring.test.mjs`) over `makeRepo` where possible —

@@ -14,7 +14,7 @@ import { pathToFileURL } from 'node:url';
 import { dueSlots } from './slots.mjs';
 import { planDispatch, dispatchTitle, dispatchBody, DISPATCH_PREFIX, READY_LABEL, NEEDS_HUMAN_LABEL, SCHEDULER_LABELS } from './dispatch.mjs';
 import { isAgentless } from './model-map.mjs';
-import { runPreprocessing, preprocessingFailure } from './preprocess.mjs';
+import { runPreprocessing, preprocessingFailure, agentRequestPath, clearAgentRequest, agentRequested } from './preprocess.mjs';
 
 // The due tasks, each paired with the slot it runs under. Union the discovered
 // tasks' frequencies, ask slots which are due (run-ledger math), then map due
@@ -228,6 +228,11 @@ async function main() {
     // bounded by its timeout, before any agent. Its cwd is the task dir; the repo
     // root + slot context ride in via CLAUDINITE_* env.
     if (rec.preprocessing) {
+      // A per-run signal path the worker writes to REQUEST the agent stage
+      // (conditional handoff, §3). Clear any stale one first so a prior run can't
+      // spuriously escalate this one.
+      const requestPath = agentRequestPath(rec);
+      clearAgentRequest(requestPath);
       const result = await runPreprocessing(decl.agent_preprocessing, {
         taskDir: taskObj.taskDir,
         env: {
@@ -238,6 +243,7 @@ async function main() {
           CLAUDINITE_SLOT_ID: rec.slotId,
           CLAUDINITE_PACK: rec.pack,
           CLAUDINITE_TASK: rec.task,
+          CLAUDINITE_REQUEST_AGENT: requestPath,
         },
         timeoutSeconds: decl.agent_preprocessing_timeout,
       });
@@ -247,13 +253,19 @@ async function main() {
         console.log(`! preprocessing ${rec.pack}/${rec.task} [${rec.slotId}]: ${why}`);
         const extra = result.stderr?.trim() ? [`stderr tail: ${result.stderr.trim().split('\n').slice(-3).join(' / ')}`] : [];
         await fileNeedsHuman(rec, why, extra);
+        clearAgentRequest(requestPath);
         continue; // never hand off to an agent after a failed preprocessing
       }
       // Success. An agentless task is done (no issue on success, as the old inline
-      // was quiet); an agentful one hands off to the agent now.
-      console.log(`preprocessing ${rec.pack}/${rec.task} [${rec.slotId}]: ok`);
+      // was quiet). An agentful one hands off ONLY when the worker requested the
+      // agent (conditional escalation, §3): a task that absorbs its work into
+      // preprocessing stays quiet on the nights nothing needs judgment.
+      const requested = agentRequested(requestPath);
+      clearAgentRequest(requestPath);
+      rec.agentRequested = requested;
+      console.log(`preprocessing ${rec.pack}/${rec.task} [${rec.slotId}]: ok${rec.inline ? '' : requested ? ' (agent requested)' : ' (no agent needed)'}`);
       if (rec.inline) continue;
-      if (rec.dispatch?.action === 'create') await fileHandoff(rec, taskObj);
+      if (requested && rec.dispatch?.action === 'create') await fileHandoff(rec, taskObj);
       continue;
     }
 

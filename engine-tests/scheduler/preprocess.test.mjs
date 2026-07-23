@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { runPreprocessing, preprocessingFailure } from '../../engine/scheduler/preprocess.mjs';
+import { existsSync, writeFileSync, rmSync } from 'node:fs';
+import { runPreprocessing, preprocessingFailure, agentRequestPath, clearAgentRequest, agentRequested } from '../../engine/scheduler/preprocess.mjs';
 
 const NODE = process.execPath; // the running node, so the tests don't assume PATH
 
@@ -40,4 +41,22 @@ test('preprocessingFailure: distinguishes a timeout from a non-zero exit', () =>
   assert.match(preprocessingFailure({ timedOut: true, code: null, stderr: '' }), /exceeded its agent_preprocessing_timeout/);
   assert.match(preprocessingFailure({ timedOut: false, code: 2, stderr: '' }), /exited 2/);
   assert.match(preprocessingFailure({ timedOut: false, code: null, stderr: 'boom\n' }), /could not run: boom/);
+});
+
+test('agentRequestPath is deterministic per (pack, task, slot)', () => {
+  const rec = { pack: 'basics', task: 'baselining', slotId: 'd2026-07-23' };
+  assert.equal(agentRequestPath(rec), agentRequestPath({ ...rec }));
+  assert.notEqual(agentRequestPath(rec), agentRequestPath({ ...rec, slotId: 'd2026-07-24' }));
+  assert.match(agentRequestPath(rec), /claudinite-request-agent-basics-baselining-d2026-07-23$/);
+});
+
+test('the request signal round-trips: written → requested, cleared → not (clearing an absent path is a no-op)', () => {
+  const path = agentRequestPath({ pack: 'p', task: 't', slotId: 's-signal-test' });
+  clearAgentRequest(path);                       // clean slate (no throw when absent)
+  assert.equal(agentRequested(path), false);     // absent → not requested
+  writeFileSync(path, 'agent-requested\n');
+  assert.equal(agentRequested(path), true);      // present → requested
+  clearAgentRequest(path);
+  assert.equal(agentRequested(path), false);     // cleared
+  assert.equal(existsSync(path), false);
 });
