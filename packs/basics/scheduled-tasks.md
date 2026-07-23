@@ -39,6 +39,20 @@ retirement of the legacy central planner it replaces) lives in
   (`engine/scheduler/task-contract.mjs`) is re-validated at run time, so the
   static and runtime views can't drift.
 
+- **Every run is bounded.** An agentic task (`agent_model !== none`) declares
+  `agent_execution_timeout` — seconds bounding the agentic run
+  (agent-preprocessing [DESIGN](../../docs/agent-preprocessing/DESIGN.md) §2, §6).
+  There is no platform wall-clock kill for a launched executor session, so the
+  bound is best-effort: the executor surfaces it into the subagent's brief ("fail
+  after N minutes") and the stale-`agent-running` backstop catches a dead session.
+  Set it generously — extreme protection against a runaway, not a scheduling knob.
+
+- **Preprocessing is optional, bounded, and task-local.** A task may declare
+  `agent_preprocessing` — a command the scheduler runs as a subprocess before the
+  agent (its executable a script beside `task.mjs`, no absolute path or `..`) —
+  which then **requires** `agent_preprocessing_timeout`, the hard subprocess kill
+  that fails the task on overrun.
+
 Both guards are **relevance-first**: inert until their artifact exists, so
 on a repo with neither artifact they are a no-op.
 

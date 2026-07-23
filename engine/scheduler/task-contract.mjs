@@ -7,6 +7,14 @@
 import { FREQUENCIES } from './slots.mjs';
 import { MODEL_FAMILIES } from './model-map.mjs';
 
+// A declared timeout is always a whole number of seconds, > 0.
+const isPositiveInt = (n) => Number.isInteger(n) && n > 0;
+
+// A preprocessing command must stay inside its own task directory — no absolute
+// path and no `..` traversal in the command string — the same containment the
+// worker-file rule gives agent_instructions (agent-preprocessing DESIGN §2).
+const escapesTaskDir = (cmd) => /(^|\s)\//.test(cmd) || cmd.includes('..');
+
 // The write ceiling a task declares (DESIGN §1, §4). A declared MAXIMUM, not a
 // promise: `none` may never open a PR, `open-pr` may open but never merge,
 // `merged-pr` may arm auto-merge. "No change" is always legal.
@@ -52,5 +60,29 @@ export function validateTaskDeclaration(decl) {
   if (typeof decl.precondition !== 'function') {
     bad('"precondition" is not a function', 'export a precondition(signals, config) that returns { run, reason, context? }');
   }
+
+  // Preprocessing (agent-preprocessing DESIGN §2) — OPTIONAL. A command the
+  // scheduler runs as a subprocess before the agent. When present it must be a
+  // non-empty, task-local command AND carry a positive-integer
+  // agent_preprocessing_timeout — the hard kill that bounds the subprocess.
+  if (decl.agent_preprocessing !== undefined) {
+    if (typeof decl.agent_preprocessing !== 'string' || decl.agent_preprocessing.trim() === '') {
+      bad('"agent_preprocessing" is present but not a non-empty string', 'set it to a command whose executable is a script beside task.mjs, e.g. "node prepare.mjs"');
+    } else if (escapesTaskDir(decl.agent_preprocessing)) {
+      bad('"agent_preprocessing" reaches outside the task directory (absolute path or "..")', 'reference a sibling script only, e.g. "node prepare.mjs"');
+    }
+    if (!isPositiveInt(decl.agent_preprocessing_timeout)) {
+      bad('"agent_preprocessing" is set but "agent_preprocessing_timeout" is not a positive integer', 'add "agent_preprocessing_timeout": the seconds after which the subprocess is killed and the task fails');
+    }
+  }
+
+  // Execution bound (agent-preprocessing DESIGN §2, §6) — an agentic task MUST
+  // declare a positive-integer agent_execution_timeout. There is always a bound
+  // on an agentic run; enforcement is best-effort (the executor surfaces the
+  // value to the subagent). A `none` task runs no agent, so it needs none.
+  if (MODEL_FAMILIES.includes(decl.agent_model) && decl.agent_model !== 'none' && !isPositiveInt(decl.agent_execution_timeout)) {
+    bad('an agentic task (agent_model !== "none") declares no positive-integer "agent_execution_timeout"', 'add "agent_execution_timeout": the seconds bounding the agentic run — generous; extreme protection, not a scheduling knob');
+  }
+
   return problems;
 }

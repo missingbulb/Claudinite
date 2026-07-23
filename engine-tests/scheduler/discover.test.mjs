@@ -5,7 +5,7 @@ import { discoverTasks } from '../../engine/scheduler/discover.mjs';
 
 const packMjs = (id) => `export default { id: '${id}' };\n`;
 const taskMjs = (id, over = {}) => {
-  const d = { id, frequency: 'daily', precondition_signals: ['commits'], agent_model: 'sonnet', expected_outcome: 'none', agent_instructions: 'task.md', ...over };
+  const d = { id, frequency: 'daily', precondition_signals: ['commits'], agent_model: 'sonnet', expected_outcome: 'none', agent_instructions: 'task.md', agent_execution_timeout: 900, ...over };
   const fields = Object.entries(d).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(', ');
   return `export default { ${fields}, precondition() { return { run: false }; } };\n`;
 };

@@ -35,6 +35,7 @@ export default {
   agent_model: 'sonnet',                 // the landed-status and implemented-in-main calls are judgment; the reconcile is mechanical
   expected_outcome: 'none',                 // assesses branches/PRs read-only and acts only on ISSUES — it never opens or merges a PR
   agent_instructions: 'task.md',
+  agent_execution_timeout: 900,             // read-only assessment + issue triage — predictable, a tighter bound
 
   // Run when the window surfaced genuine tidy work — a PR or issue actually
   // updated in the window — or on a SUBSTANTIVE default-branch move, which widens

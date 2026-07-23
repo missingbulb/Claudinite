@@ -13,6 +13,7 @@ export default {
   agent_model: 'opus',                   // deciding what clears the lesson bar is the heaviest judgment, and its PR auto-merges without a human gate
   expected_outcome: 'merged-pr',            // lessons ride an auto-merging PR; the retention prune is a push to the non-default logs branch (outside the taxonomy)
   agent_instructions: 'task.md',
+  agent_execution_timeout: 1800,            // mining logs + a retention prune — generous bound, extreme protection
 
   // Two independent reasons to run, so the age-based prune fires on quiet repos
   // too (the old weekly-full crutch retires — a log ages out on wall time, not on

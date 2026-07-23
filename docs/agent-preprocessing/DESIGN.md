@@ -227,8 +227,8 @@ Consequences to wire:
     #405 explicitly ruled out only because it assumed the Action can't reach canon
     ("vendor enough to self-refresh offline… impossible" rejected the *stale
     offline copy*, not a *live public fetch*).
-  - **Survives — and this record does not restate it, so #405 should be
-    re-scoped, not closed:** the 7-step mechanical/agentic **classification**; the
+  - **Survives — absorbed here as tracked work (§11), since #405 is now closed
+    (owner, 2026-07-23):** the 7-step mechanical/agentic **classification**; the
     machine-readable **`agentic` flag** on migration records + its conformance
     check (with `pack-independence` as first user); the **stamp/agentic-note
     coupling rule**; **`converge-wiring.mjs`** (+ bootstrap Part 6 calling it, the
@@ -282,14 +282,39 @@ Consequences to wire:
 4. Preprocessing runs **Action-side as a subprocess**, after issue creation,
    before the agent; communicates with the agent through the repo only.
 
-## 11. Open questions
+## 11. Open questions & absorbed work
 
-- **`agentic`-flag mechanics on migration records** (inherited from #405): what
-  marks a note as needing the agent stage, and how baselining's preprocessing
-  reads it to decide whether to apply `ready-for-agent`.
+Tracked here now that #405 is closed (§8):
+
+- **`agentic`-flag mechanics on migration records** (from #405): a machine-readable
+  flag (e.g. `agentic: { model, instructions }`) marking a note as needing the
+  agent stage, plus a conformance check that a record describing member-side
+  adaptation must carry it. How baselining's preprocessing reads it to decide
+  whether to apply `ready-for-agent`.
 - **Baselining's stamp/agentic coupling** (from #405, #329/#330): preprocessing
   advances the stamp only when every pending note is fully mechanical; the agent
   stage handles a flagged note and advances the stamp itself. Exact transaction
-  boundary to be specified in the baselining rework, not here.
+  boundary to be specified in the baselining rework.
+- **`converge-wiring.mjs`** (from #405): the fresh-path wiring convergence as an
+  idempotent script that bootstrap Part 6 *calls* (one source of truth, the drift
+  guard) — a mechanical step baselining preprocessing runs.
+- **The check-fix subsumption audit** (from #405, load-bearing): enumerate every
+  check baselining auto-fixes in the wild and confirm each is subsumed by
+  converge / converge-wiring / declaration-normalization before flipping baselining
+  to a `null`-model common night.
 - **Rollout sequencing** of the contract change vs. #407 vs. Phase 2 (§8) —
   ordering agreed in principle (#407 → contract → Phase 2), dates open.
+
+### Implementation status
+
+- **Increment 1 — the declaration contract (landed on this branch):** the three
+  fields + runtime validation (`task-contract.mjs`), the static
+  `task-declaration-shape` guard, the doc, and every agentic canon task carrying
+  an `agent_execution_timeout`. Behaviour-preserving — no task yet declares
+  `agent_preprocessing`, and the scheduler does not act on the new fields.
+- **Increment 2 (next) — the staging mechanism:** `run.mjs` two-stage flow
+  (subprocess spawn + hard timeout + deferred labeling, §3), retiring the
+  in-process inline path into preprocessing (§4), and converting `store-release`
+  as the first proof (§4). Then the executor surfacing `agent_execution_timeout`
+  (§6) and the baselining rework + dropping canon from CCR (§7), gated on #407 and
+  the absorbed #405 primitives above.
