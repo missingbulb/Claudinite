@@ -425,10 +425,39 @@ that merge + the pilot proving out.
   creation to provision a project-only environment. Keep canon in GCEC's executor sources until it
   baselines onto the new worker, THEN re-create project-only.
 
-**Live-pilot checklist for E4 (owner, before E5):** run baselining's `worker.mjs` against a
-real GCEC scheduler run — confirm the public canon clone, the converge writes, the per-cycle
-maintenance branch/PR, auto-merge arming, the stamp-hold on the pending `pack-independence`
-agentic note, and that a clean night is truly agentless (no `ready-for-agent` filed).
+**⚠️ PILOT GATE — the scheduler workflow can't `deliver()` yet (found 2026-07-23).** Two
+independent facts block a real Action-side pilot run of baselining's `deliver()`:
+
+1. **Can't force it via `workflow_dispatch`.** Baselining is `daily-2h` (the 02:00 slot); the
+   run-ledger due-slot math (`slots.mjs`) makes a slot due only when it falls in
+   `(lastSuccess, now]`, and the hourly scheduler already consumes it. A manual dispatch prints
+   `- no tasks due` (empirically confirmed, GCEC run 30019987993). So the pilot fires **only in
+   the natural 02:xx run**, and only when the stamp is `> 1d` old — after the out-of-band
+   bootstrap re-stamped GCEC to head (2026-07-23), the first eligible fire is ~2026-07-25 02:xx.
+2. **`deliver()` would 403 on permissions.** `worker.mjs` `deliver()` `git push`es the
+   maintenance branch and opens/auto-merges a PR using the Action `GITHUB_TOKEN`, but the
+   vendored `stubs/claudinite-scheduler.yml` grants only `contents: read` (+ `issues: write`,
+   `actions: read`). With an explicit `permissions:` block, `contents` is read and
+   `pull-requests` defaults to `none` — the push and the PR both fail. This is a gap in the E4
+   landing: `store-release` (the other scheduler-run worker) deliberately **delegates** delivery
+   to a separate write-perm workflow to keep the scheduler read-only, whereas E4's baselining
+   pushes **directly** and the stub was never provisioned for it.
+
+   **Fix is a design fork (owner):** (a) grant the scheduler stub `contents: write` +
+   `pull-requests: write` (simplest, matches E4's direct-push design, but widens the repo's only
+   cron token fleet-wide + needs the repo setting *Allow GitHub Actions to create and approve
+   pull requests* and auto-merge enabled); or (b) make baselining delegate delivery to a
+   dedicated write-perm workflow like `store-release` (keeps the scheduler read-only, more
+   moving parts). Either way, because the scheduler workflow file lives in `.github/workflows/`
+   (converged by `converge-wiring`, delivered *by* baselining), the first GCEC run needs the fix
+   applied **out-of-band** to GCEC's own workflow — the same deadlock-break as the executor.md
+   bootstrap — before it can self-deliver.
+
+**Live-pilot checklist for E4 (owner, before E5):** once the gate above is resolved, run
+baselining's `worker.mjs` against a real GCEC scheduler run — confirm the public canon clone, the
+converge writes, the per-cycle maintenance branch/PR, auto-merge arming, the stamp-hold on the
+pending `pack-independence` agentic note, and that a clean night is truly agentless (no
+`ready-for-agent` filed).
 **Partial pilot already done** (converge path validated locally against a real older-stamped
 target; only the native-git `deliver()` needs a real Action-token run) — see the E4 bullet above.
 
