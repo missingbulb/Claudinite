@@ -31,6 +31,34 @@ export { ENGINE_DIR_ROOTS };
 
 const isTest = (name) => name.endsWith('.test.mjs');
 
+// The migration machinery a consumer applies from its OWN mount (agent-preprocessing
+// DESIGN §7): the applier + registry + the note records, so baselining reads the
+// notes locally and needs no canon checkout in session. NOT the fleet-only drivers
+// (fleet-apply/fleet-retire, which read the fleet) or the README. Vendoring these
+// also activates `migrationActive()` legacy-tolerance in consumer checks — inert
+// until now because no mount migrations existed — which is the intended fleet-wide
+// behaviour of that gate (a check tolerates a legacy shape while its migration is
+// live), not a regression.
+const MIGRATIONS_ROOT = 'migrations';
+const VENDORED_MIGRATION_MODULES = ['apply.mjs', 'registry.mjs'];
+function walkMigrations(files, errors) {
+  for (const name of VENDORED_MIGRATION_MODULES) {
+    if (existsSync(join(canonRoot, MIGRATIONS_ROOT, name))) files.add(`${MIGRATIONS_ROOT}/${name}`);
+    else errors.push({ what: `${MIGRATIONS_ROOT}/${name} is missing from the canon tree`, fix: `restore ${MIGRATIONS_ROOT}/${name}` });
+  }
+  const recordsDir = `${MIGRATIONS_ROOT}/active_migrations`;
+  let entries;
+  try {
+    entries = readdirSync(join(canonRoot, recordsDir), { withFileTypes: true });
+  } catch (e) {
+    errors.push({ what: `${recordsDir} is not a readable directory in the canon tree: ${e.message}`, fix: `restore ${recordsDir}` });
+    return;
+  }
+  for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+    if (entry.isFile() && entry.name.endsWith('.mjs') && !isTest(entry.name)) files.add(`${recordsDir}/${entry.name}`);
+  }
+}
+
 function walk(relDir, files, errors, { engine = false } = {}) {
   let entries;
   try {
@@ -65,6 +93,7 @@ export async function computeVendorSet(declaredEntries) {
   const errors = [];
 
   for (const root of ENGINE_DIR_ROOTS) walk(root, files, errors, { engine: true });
+  walkMigrations(files, errors);
 
   const packs = await loadPacks();
   const byId = new Map(packs.map((p) => [p.id, p]));

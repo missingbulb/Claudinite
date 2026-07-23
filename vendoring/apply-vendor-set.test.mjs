@@ -35,6 +35,11 @@ function makeCanon() {
   writeAt(root, 'packs/alpha/pack.mjs', 'export default { id: "alpha" };\n');
   writeAt(root, 'packs/alpha/RULES.md', 'rules\n');
   writeAt(root, 'packs/alpha/skills/s1/SKILL.md', 'skill\n');
+  // migrations vendor into the mount (agent-preprocessing §7): applier + registry
+  // + records. Stubs — this suite exercises the apply/converge, not the content.
+  writeAt(root, 'migrations/apply.mjs', 'export const apply = 1;\n');
+  writeAt(root, 'migrations/registry.mjs', 'export const registry = 1;\n');
+  writeAt(root, 'migrations/active_migrations/2026-01-01-seed.mjs', 'export default { id: "seed" };\n');
   return root;
 }
 
@@ -145,6 +150,9 @@ test('#328: a canon tree nested in a FOREIGN git repo is rootless — upward .gi
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-registry.mjs'), join(canon, 'engine', 'pack_loader', 'pack-registry.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'module-imports.mjs'), join(canon, 'engine', 'checks', 'helpers', 'module-imports.mjs'));
   writeAt(canon, 'engine/checks/check_the_world.mjs', 'engine v2\n');
+  writeAt(canon, 'migrations/apply.mjs', 'export const apply = 1;\n');
+  writeAt(canon, 'migrations/registry.mjs', 'export const registry = 1;\n');
+  writeAt(canon, 'migrations/active_migrations/2026-01-01-seed.mjs', 'export default { id: "seed" };\n');
   g('add', '-A');
   g('commit', '-q', '-m', 'consumer commit');
   const target = makeTarget({ packs: [] });

@@ -44,6 +44,14 @@ function makeCanon({ packs = [], skills = [] } = {}) {
   writeAt(root, 'engine/pack_loader/mount-skills.mjs', 'stub\n');
   // per-user content: must never appear in any vendor set
   writeAt(root, 'preferences/owner@example.com.md', 'prefs\n');
+  // migrations: the applier + registry + records vendor (agent-preprocessing §7),
+  // the fleet-only drivers / README / tests do not. Stubs — structural inclusion.
+  writeAt(root, 'migrations/apply.mjs', 'export const apply = 1;\n');
+  writeAt(root, 'migrations/registry.mjs', 'export const registry = 1;\n');
+  writeAt(root, 'migrations/active_migrations/2026-01-01-seed.mjs', 'export default { id: "seed" };\n');
+  writeAt(root, 'migrations/active_migrations/note.test.mjs', 'stub\n'); // a test — excluded
+  writeAt(root, 'migrations/fleet-apply.mjs', 'export const fleet = 1;\n'); // fleet-only — excluded
+  writeAt(root, 'migrations/README.md', 'canon doc\n'); // doc — excluded
   for (const { id, requires = [], skills: skl = [], extraFiles = [] } of packs) {
     writeAt(root, `packs/${id}/pack.mjs`,
       `export default { id: ${JSON.stringify(id)}, requires: ${JSON.stringify(requires)} };\n`);
@@ -88,12 +96,27 @@ test('structural set: engine roots + machinery + declared pack + its skills, exa
     'packs/alpha/pack.mjs',
     'packs/alpha/stubs/wf.yml',
     'packs/alpha/skills/s1/SKILL.md',
+    'migrations/apply.mjs',
+    'migrations/registry.mjs',
+    'migrations/active_migrations/2026-01-01-seed.mjs',
   ].sort();
   assert.deepEqual(files, expected);
   // The owner-decided exclusions, asserted by name so a regression reads clearly:
   assert.ok(!files.some((f) => f.startsWith('preferences/')), 'per-user preferences must never vendor');
   assert.ok(!files.some((f) => f.endsWith('README.md') || f.endsWith('DESIGN.md')), 'engine-root docs stay canon-side');
   assert.ok(!files.some((f) => f.includes('.test.mjs') || f.startsWith('engine/test/')), 'tests stay canon-side');
+});
+
+test('migrations: the applier + registry + records vendor; fleet drivers, README, tests do not', async () => {
+  const root = makeCanon(FIXTURE);
+  const { files, errors } = await vendorAt(root, ['alpha']);
+  assert.deepEqual(errors, []);
+  assert.ok(files.includes('migrations/apply.mjs'));
+  assert.ok(files.includes('migrations/registry.mjs'));
+  assert.ok(files.includes('migrations/active_migrations/2026-01-01-seed.mjs'));
+  assert.ok(!files.includes('migrations/fleet-apply.mjs'), 'fleet-only drivers stay canon-side');
+  assert.ok(!files.includes('migrations/README.md'), 'the migrations README stays canon-side');
+  assert.ok(!files.some((f) => f.startsWith('migrations/') && f.includes('.test.mjs')), 'migration tests stay canon-side');
 });
 
 test('a pack .md is payload and vendors even though engine-root .md does not', async () => {
