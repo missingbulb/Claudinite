@@ -375,8 +375,14 @@ Tracked here now that #405 is closed (§8):
 session 2026-07-23). The **GCEC mount bootstrap is DELIVERED** as a maintenance PR
 (`GoogleCalendarEventCreator#712`, session 2026-07-23) — the out-of-band vendor refresh that
 lands `executor.md` + the E4 `worker.mjs` into GCEC's mount. On merge it drains the 6 stuck
-dispatches (#703–#708) and starts the real E4 live pilot. What's left is **E5**, gated behind
-that merge + the pilot proving out.
+dispatches (#703–#708) and starts the real E4 live pilot.
+
+**STATUS (2026-07-23): agent-preprocessing is code-complete; the GCEC rollout is done bar one
+owner CCR action.** All code/docs landed and merged; the two owner-only GCEC repo settings are
+done; the owner chose to proceed to **E5 without gating on the pilot proving out** (see the E5
+bullet). The sole remaining step is owner-only — re-provisioning GCEC's executor routine
+project-only (a CCR environment change, no code). The next code track is **per-project-scheduling
+Phase 2** (canon cutover; #394).
 
 - **E4 — baselining converge-as-preprocessing (LANDED).** `packs/basics/tasks/baselining/`
   now carries `worker.mjs` (native-git `agent_preprocessing`) + a rewritten `task.mjs`
@@ -420,10 +426,17 @@ that merge + the pilot proving out.
   `validate-dispatch.mjs` updates). **On merge:** the executor has instructions and drains the 6
   stuck dispatches (#703–#708); baselining becomes the Action-side worker. This refresh **is** the
   start of the real E4 pilot.
-- **E5 — drop canon from the executor CCR session (NEXT after #712 merges + the pilot proves out).**
-  `executor.md` sources become the project alone; update bootstrap Part 6 and the executor-routine
-  creation to provision a project-only environment. Keep canon in GCEC's executor sources until it
-  baselines onto the new worker, THEN re-create project-only.
+- **E5 — drop canon from the executor CCR session (UNBLOCKED — owner-actioned, 2026-07-23).**
+  `executor.md` sources become the project alone; bootstrap Part 6 and the executor-routine creation
+  provision a project-only environment (prose landed in #412). **Owner decision (2026-07-23):
+  proceed WITHOUT gating on the pilot proving out** (the "keep canon until it baselines onto the new
+  worker" hold is dropped). Rationale: the GCEC mount was bootstrapped to canon head out-of-band
+  (#712), so `.claudinite/shared/` is already complete and the executor is self-sufficient from it —
+  it never needed the canon *repo* in-session to run. **Accepted tradeoff:** canon-in-sources was
+  also the freshness fallback; once dropped, mount freshness rides solely on baselining's Action-side
+  `deliver()` (not yet proven Action-side). Failure mode is *stale, not broken*, and is cheaply
+  recoverable via another out-of-band bootstrap like #712. Remaining step is **owner-only**: re-create
+  GCEC's executor routine with GCEC as its sole source (a CCR environment change, no code left).
 
 **⚠️ PILOT GATE — the scheduler workflow can't `deliver()` yet (found 2026-07-23).** Two
 independent facts block a real Action-side pilot run of baselining's `deliver()`:
@@ -449,7 +462,8 @@ independent facts block a real Action-side pilot run of baselining's `deliver()`
    only trusted committed code — untrusted issue bodies go to the tokenless executor). A
    `scheduler-workflow-shape` drift-guard asserts both writes so a repo can't silently regress to
    read-only. Two owner-only steps remain per repo: the setting *Allow GitHub Actions to create
-   and approve pull requests* and *Allow auto-merge*. And because the scheduler workflow file
+   and approve pull requests* and *Allow auto-merge* — **both DONE on GCEC (owner, 2026-07-23).**
+   And because the scheduler workflow file
    lives in `.github/workflows/` (converged by `converge-wiring`, delivered *by* baselining), the
    first GCEC run needs the write-perms bump applied **out-of-band** to GCEC's own workflow — the
    same deadlock-break as the executor.md bootstrap — before it can self-deliver.
