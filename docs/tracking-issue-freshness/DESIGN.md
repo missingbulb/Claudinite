@@ -28,127 +28,119 @@ nobody. This design adds that guard.
 
 For a task under a plan:
 
-1. there is **exactly one open tracking issue** ("there should always be one");
-2. its description carries a **todo checklist** (`- [ ]` / `- [x]` items); and
-3. **after each merge that advances a plan item, the checklist is brought in sync** —
-   the checkbox flipped and/or a status comment added, in the same session as the merge.
-
-Point 3 is the one this design enforces mechanically. Points 1–2 are conventions the
-same mechanism can *observe* (and self-skip on when absent), not manufacture.
+1. one or more open tracking issues carry the **`plan-tracking`** label (we do **not**
+   enforce a count — but any issue that wears the label is subject to points 2–3);
+2. such an issue's description carries a **todo checklist** (`- [ ]` / `- [x]` items); and
+3. **after each merge that advances a plan item, the checklist is brought in sync** — the
+   checkbox **flipped** (preferred and, where detectable, required — a bare status comment
+   is not sufficient), in the same session as the merge.
 
 The update happens **after the merge, not before**: a plan item isn't "done" until it's
 on `main`, so flipping its box pre-merge would record a claim the branch hasn't earned.
-That timing is the whole reason the existing check surfaces can't carry this — see next.
+That post-merge timing is the whole design problem — see next.
 
-## Why the existing check-the-work surface can't carry it
+## The hard constraint: no GitHub credential in-session
 
-The natural instinct is a check-the-work rule on the Stop hook. It doesn't fit, for two
-independent reasons:
+The decisive fact (it rules out two tempting designs). The corpus enforces a **blocking**
+rule, [`in-session-github-access`](../../packs/grow_with_claudinite/skills/unattended-agents/in-session-github-access.mjs):
+in-session code (routines, migrations, the merge/capture step) has **no shell GitHub REST
+credential** — it reaches GitHub only through the session's MCP tools; a `GITHUB_TOKEN` or
+`api.github.com` read in in-session code is a hard finding (it caused a real fleet no-op
+day). Only two actors can touch GitHub: the **agent** (MCP, in-session) and a **CI
+executor** (token, off-session).
 
-1. **The Stop hook fast-exits on a clean tree.** [`engine/hooks/stop-command.mjs`](../../engine/hooks/stop-command.mjs)
-   runs the work sweep only when a tracked file differs from the merge-base (or the tree
-   is dirty). The merge-to-main recipe ends with `git checkout main && git pull` — so the
-   moment right after a merge is a **clean tree at `main`**, and the Stop hook runs
-   nothing. The post-merge instant is structurally invisible to the work sweep.
-2. **The verification needs the network; the Stop hook is offline.** Confirming "the
-   tracking issue's checklist was updated" means reading the issue's body and timeline
-   over the GitHub API. Per [`engine/checks/DESIGN.md`](../../engine/checks/DESIGN.md)
-   ("Enforcement wiring"), the Stop hook runs only offline rules; config/network checks
-   need a network-capable surface.
+Consequence: **no deterministic in-session check can read the issue over the API** — not
+at the Stop hook, and not bolted onto the post-merge capture step (an earlier draft of
+this doc proposed the capture step; that's wrong for exactly this reason — a check there
+would be as offline as the Stop hook, or it would violate `in-session-github-access`). An
+in-session check is **transcript-only**.
 
-So a Stop-hook rule can see neither the *right moment* nor the *right data*.
+That is not a limitation — it's the key that unlocks the clean design.
 
-## The surface: the post-merge capture step
+## The design: a post-merge check-the-work rule, offline, transcript-scoped
 
-There already is a deterministic thing that runs at exactly the right moment: the
-**conversation-capture step** the merge-to-main recipe invokes right after the merge
-lands (`grow_with_claudinite`'s [`capture-log.mjs`](../../packs/grow_with_claudinite/capture-log.mjs) —
-the owner's "save the current conversation"). It is:
+The session transcript already records the MCP tool calls — including
+`merge_pull_request` (with its PR number and title) **and** any subsequent `issue_write` /
+`add_issue_comment` (with the target issue number and the full new body text). So a
+transcript-scoped rule can assert, with **zero network and no credential**:
 
-- **anchored to the post-merge instant** — the recipe calls it immediately after
-  `merge_pull_request`, in-session, before the turn ends;
-- **network-capable** — it runs in the session, where the GitHub MCP tools and a token
-  are available; and
-- **already issue-aware** — it takes `--issue <n>`.
+> "This session merged PR #X and then did **not** update a tracking issue's checklist
+> afterward → sync the `plan-tracking` issue and flip the item(s) this merge completed."
 
-That is the surface. We add a **tracking-issue freshness verifier** that runs at capture
-time and, when the invariant is violated, emits a check-the-work–style reminder the
-agent must satisfy before ending the turn — the same "the finding is the instruction"
-economy as every other check, just fired from the capture surface instead of the Stop
-hook.
+It reads both the merge and the checklist edit straight from the tool-call arguments. This
+keeps the whole thing inside the offline check-the-work framework — no new scope, no
+capture-step coupling.
 
-This is a **check-the-work** in spirit, not a check-the-world acceptance: it is
-conversation/merge-scoped, satisfiable by *doing the work* (update the issue), and
-**self-skips** when its precondition is absent — never a permanent suppression for a
-one-session artifact (`engine/checks/DESIGN.md`, "Acceptances are the escape hatch").
+**Two pieces make it work:**
 
-## Detection
+1. **`work.mergedThisSession()`** — a new accessor on the fluent work view
+   ([`engine/checks/helpers/work.mjs`](../../engine/checks/helpers/work.mjs)) returning the
+   PRs this session accepted (`[{ pr, title, issue, time }]`), parsed from the transcript's
+   `merge_pull_request` tool-use entries. A reusable primitive: "the accepted PRs from the
+   current session," offline, available to any future post-merge rule.
+2. **A post-merge Stop trigger.** Today [`engine/hooks/stop-command.mjs`](../../engine/hooks/stop-command.mjs)
+   fast-exits when the tree matches the merge-base — and the merge recipe ends with
+   `git checkout main && git pull`, leaving a **clean tree on `main`**, so the runner never
+   fires post-merge. The fix is small and general: the hook peeks the transcript for a
+   merge and treats **"merged this session"** as a second reason not to fast-exit, alongside
+   "tree differs from base." One cheap transcript scan makes **post-merge a first-class
+   check-the-work timing** — reusable beyond this one rule.
 
-Run at capture time, after the merge:
+## Detection (the rule)
 
-1. **Find the active tracking issue.** Convention: the single **open** issue carrying a
-   `plan-tracking` label. Zero open → self-skip (no plan in flight). More than one open →
-   surface it as its own finding (the "exactly one" invariant), naming them, rather than
-   guessing which to check.
-2. **Require a checklist.** The issue body must contain a Markdown task list
-   (`- [ ]` / `- [x]`). None → skip the freshness check (but this is worth an *advisory*:
-   a `plan-tracking` issue with no checklist can't be the pick-up-the-work point it
-   claims to be).
-3. **Decide freshness.** The issue counts as brought-in-sync this session when **either**
-   - the session transcript shows an `issue_write` (update) / `add_issue_comment` /
-     `sub_issue_write` targeting that issue number *after* the merge tool call, **or**
-   - the issue's `updated_at` postdates the session's start (a body edit made this
-     session, even one the transcript slicing missed).
+Runs at Stop, once the post-merge trigger lets the runner through:
 
-   Neither → **finding**: *"You merged #\<work\> but left tracking issue #\<plan\>'s
-   checklist untouched. Bring it in sync now — flip the item(s) this merge completed;
-   editing the checklist is preferred, a status comment is the floor."*
+1. **Gate on a merge.** `work.mergedThisSession()` empty → self-skip (no merge, nothing to
+   sync). No transcript (manual/CI run) → self-skip.
+2. **Look for the sync.** Scan the transcript for an `issue_write` (update) /
+   `add_issue_comment` / `sub_issue_write` call **after** the latest merge whose body
+   contains a task-list edit (`- [x]` / `- [ ]`).
+   - Found → pass (the agent brought a checklist in sync post-merge).
+   - Not found → **finding**: *"You merged PR #X but didn't flip a checklist item on a
+     tracking issue afterward. Update the `plan-tracking` issue — flip the box(es) this
+     merge completed; a bare status comment isn't enough."*
+3. **Convergence.** The transcript is append-only; once the agent does the `issue_write`,
+   the next Stop sees it and passes. The Stop hook's existing 2-block loop guard bounds it.
 
-The transcript signal is the primary one (offline-derivable, precise about *this*
-session); `updated_at` is the backstop so a legitimate edit is never nagged.
+**Precision ceiling (honest).** Offline, the rule confirms the agent updated *a* checklist
+issue post-merge; it cannot confirm that issue carried the `plan-tracking` label (a GitHub
+read). Two ways to close the gap, either acceptable:
+
+- **Accept the transcript evidence** — an agent flipping a checklist box right after a
+  merge is precisely the behavior we want; the label check adds little.
+- **World-scope backstop** — a **network** check ([DESIGN.md](../../engine/checks/DESIGN.md)
+  "config check" tier: CI/fleet, off-session, where the token legitimately lives) asserting
+  the standing invariant "no open `plan-tracking` issue is behind its merged phases." Precise
+  (it reads the box) but not in-session-timely — a slower net under the timely nudge.
+
+## Belt and suspenders: the recipe asks, the check guarantees
+
+Mirroring the corpus principle *"prose is a request; the post-hoc check is the guarantee"*:
+the `merge-to-main` skill gains an explicit step — *after the merge, update the
+`plan-tracking` issue's checklist* — so the update usually happens before the first
+post-merge Stop even fires (the rule then passes on the first try). The rule is the
+backstop for when it doesn't.
 
 ## Shape rules that keep it convergent
 
-Copying the discipline the conversation-surface rules already follow
+The discipline the conversation-surface rules already follow
 (`feature-requirements-first`, `comment-classification`):
 
-- **Self-skip without a transcript** and without an active tracking issue — a manual run,
-  a conversational turn, or a repo with no plan in flight costs nothing and fires nothing.
-- **Scope to the merge that just happened.** Only a session that actually merged is
-  judged; earlier merges are never re-litigated (the capture step already runs per-merge
-  and is delta-aware).
-- **Satisfiable by the work.** The only way to clear the finding is to update the issue —
-  never an accept, never a rebase. A finding no correct work can clear is a bug in the
-  rule.
-- **Gate on the pack.** The verifier ships in `grow_with_claudinite` (it already owns the
-  capture surface); a repo that removed that pack — or has no `plan-tracking` issue —
-  gets nothing, exactly as capture already skips there.
+- **Self-skip** without a transcript and without a merge this session — a manual run, a
+  conversational turn, or a no-merge turn costs nothing and fires nothing.
+- **Scope to the latest merge.** Earlier merges are never re-litigated.
+- **Satisfiable by the work.** The only way to clear it is to update the issue — never an
+  accept, never a rebase.
+- **Gate on the pack.** The rule ships in `grow_with_claudinite` (which owns the
+  merge/growth surface); a repo without that pack gets nothing.
 
-## Enforcement strength
+## Decisions (resolved with the owner)
 
-Start as a **hard in-session reminder, not a Stop-block.** The capture step already runs
-inside the merge-to-main skill; the cheapest wiring is: capture emits the finding on a
-non-zero exit / stderr, and the merge-to-main recipe gains a step — *"if the freshness
-verifier reports a stale tracking issue, update it before ending the turn."* That keeps
-the enforcement where the action already is and needs no new hook.
-
-Escalate to a true Stop-block only if telemetry shows the in-session reminder gets
-ignored — the same "fail fast, then measure" governance the checks system uses. (A
-Stop-block is buildable — a conversation-scoped work rule gated on the transcript showing
-a merge *and* no post-merge issue update, fired before the local `main` sync while the
-branch still differs from base — but it's strictly more fragile than the capture-anchored
-reminder and shouldn't be the first cut.)
-
-## Open decisions for the owner
-
-- **Label name.** `plan-tracking` is the proposal; #394 currently carries none, so the
-  convention needs seeding (this issue is the first to wear it).
-- **"Exactly one open" — enforce or observe?** Treat >1 open `plan-tracking` issue as a
-  blocking finding, or merely report it? (Proposed: report, don't block — merging two
-  plans is a judgment call.)
-- **Checklist edit vs. comment as the floor.** The design accepts a status comment as the
-  minimum and prefers a checkbox flip. Confirm the floor is acceptable, or require the
-  box flip.
+- **Label name:** `plan-tracking`. ✅
+- **"Exactly one open" — enforce?** No. We don't police the count; any issue wearing the
+  `plan-tracking` label is subject to the freshness invariant. ✅
+- **Checkbox flip vs. comment floor:** require a **checkbox flip** where detectable; a bare
+  status comment is not sufficient. ✅
 
 ## Phased plan
 
@@ -158,12 +150,16 @@ reproduced here only as the design's summary of scope.
 1. **Convention + seed** — define the `plan-tracking` label and its meaning in the
    `grow_with_claudinite` / merge docs; apply it to the existing in-flight tracker(s)
    (#394).
-2. **Verifier** — add the freshness check beside the capture step (`grow_with_claudinite`),
-   with a red-first fixture (fires on a stale checklist, quiet on a fresh one and on a
-   no-plan repo).
-3. **Recipe wiring** — the merge-to-main skill runs the verifier at the capture moment
-   and requires the agent to satisfy a stale finding before ending the turn.
-4. **Docs** — record the convention in the pack README and this doc's status box; point
+2. **Primitive + trigger** — add `work.mergedThisSession()` (transcript-derived) and the
+   Stop hook's post-merge trigger (don't fast-exit when the transcript shows a merge), each
+   with red-first tests.
+3. **Verifier** — the freshness rule in `grow_with_claudinite`, red-first fixture: fires
+   when a merge happened with no post-merge checklist edit, quiet when the agent flipped a
+   box, quiet on a no-merge / no-plan session.
+4. **Recipe wiring** — `merge-to-main` gains the "update the `plan-tracking` issue after the
+   merge" step.
+5. **Docs** — record the convention in the pack README; flip this doc's status box; point
    the tracking issue at this doc.
-5. **(Contingent) Stop-block escalation** — only if telemetry shows the in-session
-   reminder is ignored.
+6. **(Contingent) world-scope backstop** — a network check (CI/fleet) for the label-precise
+   "no open `plan-tracking` issue is behind its merged phases," only if the transcript
+   evidence proves insufficient.
