@@ -101,6 +101,10 @@ A workflow with no human watching the run — scheduled, triggered by a push/mer
 
 When the escalation is itself a separate reusable workflow invoked via `workflow_call`, permissions don't propagate implicitly through the chain: the job that calls it needs the permission explicitly granted (e.g. `issues: write`), and if that reusable workflow in turn calls another one, the middle workflow must forward the same grant to its own call — a caller two levels up granting it once is not enough.
 
+## A job with no `timeout-minutes` inherits the six-hour default
+
+A GitHub Actions job that omits `timeout-minutes` inherits the platform default of **360 minutes** — so a step that hangs (a wedged test runner, a network call with no timeout, an interactive prompt no one answers) keeps a runner pinned for six hours before GitHub kills it, burning runner minutes and holding a concurrency slot the rest of the queue waits on. Every job that runs steps should declare its own maximum run time: `timeout-minutes: <n>` at the job level, sized a little above the job's real worst-case runtime so a genuine hang trips it but a normal slow run doesn't. Set it per job rather than trusting the default — a job that legitimately takes twenty minutes and one that should never exceed two want very different ceilings. A **step-level** `timeout-minutes` bounds only that one step, not the job, so it isn't a substitute for the job-level ceiling. The exception is a job that only *calls a reusable workflow* (a job-level `uses:`): GitHub rejects `timeout-minutes` there, and the ceiling lives inside the called workflow's own jobs instead.
+
 ## A CI job that reads submodule files must fetch submodules in its checkout
 
 `actions/checkout` does **not** fetch submodules by default — the submodule directory is an empty folder in CI unless you pass `submodules: true` (or `recurse-submodules: true`). Without it, any gate that reads submodule content passes vacuously: the check is a no-op, not a signal. Add the flag to every CI job whose tests read submodule content.
