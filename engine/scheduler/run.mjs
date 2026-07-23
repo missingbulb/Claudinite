@@ -2,7 +2,7 @@
 // §3). The vendored hourly Action runs this: decide due slots from the run
 // ledger, discover active tasks, collect only the signals the due tasks declare,
 // run each precondition, and either dispatch agent work as a `ready-for-agent`
-// issue or (for `model: none`) run the worker inline.
+// issue or (for `agent_model: none`) run the worker inline.
 //
 // This module is the DECISION core, kept injectable so it tests with fakes: the
 // GitHub I/O (the Actions run-ledger read for `lastSuccess`, the signal
@@ -34,7 +34,7 @@ export function computeDueTaskSlots(tasks, schedule, now, lastSuccess) {
 // these, so a non-daily slot never pays for daily tasks' signals (DESIGN §3.3).
 export function signalsUnion(dueTaskSlots) {
   const names = new Set();
-  for (const { task } of dueTaskSlots) for (const name of task.decl.signals) names.add(name);
+  for (const { task } of dueTaskSlots) for (const name of task.decl.precondition_signals) names.add(name);
   return [...names];
 }
 
@@ -81,7 +81,7 @@ export function renderSummary(evaluations) {
 //   packConfigFor(packId) -> that pack's entry config from .claudinite-checks.json
 //   existingIssuesFor(pack, task) -> the task family's issues [{number,title,state}]
 // Returns `{ evaluations }`: one record per due task with its precondition
-// verdict and, when it runs, either an inline marker (model: none) or a
+// verdict and, when it runs, either an inline marker (agent_model: none) or a
 // dispatch decision (planDispatch).
 export async function planRun({
   tasks, schedule, now, lastSuccess,
@@ -95,13 +95,13 @@ export async function planRun({
     const pre = runPrecondition(task, signals, packConfigFor(task.pack));
     const rec = {
       pack: task.pack, task: task.id, slotId,
-      model: task.decl.model, outcome: task.decl.outcome,
+      model: task.decl.agent_model, outcome: task.decl.expected_outcome,
       run: pre.run, reason: pre.reason, context: pre.context,
     };
     if (pre.error) rec.error = pre.error;
     if (pre.run) {
-      if (isAgentless(task.decl.model)) {
-        // model: none — the worker is code the scheduler runs inline; no issue.
+      if (isAgentless(task.decl.agent_model)) {
+        // agent_model: none — the worker is code the scheduler runs inline; no issue.
         rec.inline = true;
       } else {
         const existing = await existingIssuesFor(task.pack, task.id);
@@ -162,7 +162,7 @@ async function main() {
 
   const now = new Date();
   const lastSuccess = await lastSuccessTime(gh, repo);
-  const schedule = config.schedule;
+  const schedule = config.taskScheduler;
 
   const due = computeDueTaskSlots(tasks, schedule, now, lastSuccess);
   const sinceIso = windowStart(due, now);
@@ -189,9 +189,9 @@ async function main() {
     if (!rec.run) continue;
     const taskObj = tasks.find((t) => t.pack === rec.pack && t.id === rec.task);
     if (rec.inline) {
-      // model: none — run the worker module inline (it may itself dispatch a workflow).
+      // agent_model: none — run the worker module inline (it may itself dispatch a workflow).
       try {
-        const workerUrl = pathToFileURL(join(taskObj.taskDir, taskObj.decl.worker)).href;
+        const workerUrl = pathToFileURL(join(taskObj.taskDir, taskObj.decl.agent_instructions)).href;
         const worker = (await import(workerUrl)).default;
         if (typeof worker === 'function') await worker({ gh, repo, ctx, slotId: rec.slotId });
       } catch (e) { console.log(`! inline worker ${rec.pack}/${rec.task} failed: ${e.message}`); }

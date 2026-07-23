@@ -46,12 +46,12 @@ test('buildWorkPlan: emits units from the real fleet-core tasks with plan metada
   for (const u of plan.units) assert.equal(u.repo, 'owner/foo');
 });
 
-test('buildWorkPlan: a member that declares `schedule` is skipped entirely (cutover marker)', async () => {
+test('buildWorkPlan: a member that declares `taskScheduler` is skipped entirely (cutover marker)', async () => {
   const gh = fakeGh([
     [/o\/home\/commits\?since=/, { status: 200, json: [{ sha: 'c1' }] }],
     [/o\/home\/commits\/c1$/, { status: 200, json: { files: [{ filename: 'packs/basics/RULES.md' }] } }],
-    // the member self-schedules — declares the `schedule` key
-    [/\.claudinite-checks\.json/, { status: 200, json: { content: b64({ packs: ['basics', 'grow_with_claudinite'], schedule: { dailyHour: 4 } }) } }],
+    // the member self-schedules — declares the `taskScheduler` key
+    [/\.claudinite-checks\.json/, { status: 200, json: { content: b64({ packs: ['basics', 'grow_with_claudinite'], taskScheduler: { dailyHour: 4 } }) } }],
     [/\/local_packs$/, { status: 200, json: [{ name: 'foo-pack', type: 'dir' }] }],
     [/\/pulls\?/, { status: 200, json: [] }],
     [/\/issues\?/, { status: 200, json: [] }],

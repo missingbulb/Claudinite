@@ -37,7 +37,7 @@ test('ensureLabels surfaces a genuine failure (not 201/422) without throwing', a
 const mkTask = (id, over = {}) => ({
   pack: 'p', id,
   decl: {
-    id, frequency: 'daily', signals: ['commits'], model: 'sonnet', outcome: 'open-pr', worker: 'task.md',
+    id, frequency: 'daily', precondition_signals: ['commits'], agent_model: 'sonnet', expected_outcome: 'open-pr', agent_instructions: 'task.md',
     precondition: () => ({ run: true, reason: 'ok' }),
     ...over,
   },
@@ -53,8 +53,8 @@ test('computeDueTaskSlots pairs only due-frequency tasks with their slot', () =>
 
 test('signalsUnion collects only the union of the due tasks\' declared signals', () => {
   const due = [
-    { task: mkTask('a', { signals: ['commits', 'prs'] }) },
-    { task: mkTask('b', { signals: ['prs', 'issues'] }) },
+    { task: mkTask('a', { precondition_signals: ['commits', 'prs'] }) },
+    { task: mkTask('b', { precondition_signals: ['prs', 'issues'] }) },
   ];
   assert.deepEqual(signalsUnion(due).sort(), ['commits', 'issues', 'prs']);
 });
@@ -86,8 +86,8 @@ test('planRun dispatches a running agent task and skips a non-running one', asyn
   assert.equal(byTask.quiet.dispatch, undefined);
 });
 
-test('planRun marks a model:none task inline instead of dispatching an issue', async () => {
-  const tasks = [mkTask('code', { model: 'none', outcome: 'none', precondition: () => ({ run: true, reason: 'deployable change' }) })];
+test('planRun marks a agent_model:none task inline instead of dispatching an issue', async () => {
+  const tasks = [mkTask('code', { agent_model: 'none', expected_outcome: 'none', precondition: () => ({ run: true, reason: 'deployable change' }) })];
   let askedIssues = false;
   const { evaluations } = await planRun({
     tasks, schedule: D, now: '2026-07-22T06:00:00Z', lastSuccess: '2026-07-21T06:00:00Z',
@@ -103,8 +103,8 @@ test('planRun collects the declared signal union exactly once and passes it to p
   let collectedWith = null;
   const seen = [];
   const tasks = [
-    mkTask('a', { signals: ['commits'], precondition: (s) => { seen.push(s); return { run: false, reason: '' }; } }),
-    mkTask('b', { signals: ['prs'], precondition: (s) => { seen.push(s); return { run: false, reason: '' }; } }),
+    mkTask('a', { precondition_signals: ['commits'], precondition: (s) => { seen.push(s); return { run: false, reason: '' }; } }),
+    mkTask('b', { precondition_signals: ['prs'], precondition: (s) => { seen.push(s); return { run: false, reason: '' }; } }),
   ];
   await planRun({
     tasks, schedule: D, now: '2026-07-22T06:00:00Z', lastSuccess: '2026-07-21T06:00:00Z',

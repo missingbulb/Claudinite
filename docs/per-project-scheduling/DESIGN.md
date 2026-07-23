@@ -56,10 +56,10 @@ migration).
 export default {
   id: 'growth-extract',
   frequency: 'daily-1h',   // hourly | daily-2h | daily-1h | daily | daily+1h | weekly | monthly — nothing else
-  signals: ['commits', 'prs', 'issues'],   // which parts of the signals object to collect
-  model: 'opus',           // opus | sonnet | haiku | none — 'none' = pure code, no agent, no issue
-  outcome: 'merged-pr',    // none | open-pr | merged-pr — the task's write ceiling (§4)
-  worker: 'task.md',
+  precondition_signals: ['commits', 'prs', 'issues'],   // which parts of the signals object to collect
+  agent_model: 'opus',     // opus | sonnet | haiku | none — 'none' = pure code, no agent, no issue
+  expected_outcome: 'merged-pr', // none | open-pr | merged-pr — the task's write ceiling (§4)
+  agent_instructions: 'task.md',
   precondition(signals, config) {
     // Pure code over the collected signals + this pack's entry config from .claudinite-checks.json.
     // Decides "needs to run" AND emits binding context for the dispatch issue.
@@ -74,13 +74,13 @@ export default {
 
 - **`frequency`** — exactly the seven values above. `daily±Nh` offsets the repo's
   daily anchor hour (§2); weekly/monthly fire at the anchor hour on the configured day.
-- **`signals`** — the scheduler collects only the union of what the *due* tasks
+- **`precondition_signals`** — the scheduler collects only the union of what the *due* tasks
   declare; a non-daily slot never pays for daily tasks' signals.
-- **`model`** — family names, resolved to a concrete model id in **one** vendored
+- **`agent_model`** — family names, resolved to a concrete model id in **one** vendored
   module (`engine/scheduler/model-map.mjs`), so a model-generation bump is one
   edit. `none` replaces `smarts: 'none'`: the worker is an `.mjs` the scheduler
   runs inline — no issue, no agent.
-- **`outcome`** — a declared **ceiling**, not a promise: `none` may never open a
+- **`expected_outcome`** — a declared **ceiling**, not a promise: `none` may never open a
   PR, `open-pr` may open but never merge, `merged-pr` may arm auto-merge. "No
   change" is always a legal result. Enforced post-hoc by the executor in code,
   not just requested in prose. A repo whose `maintenance.delivery` is `review`
@@ -106,7 +106,7 @@ New top-level key in `.claudinite-checks.json` (added to the engine's closed
 `CONFIG_KEYS` set):
 
 ```json
-"schedule": { "dailyHour": 4, "weeklyDay": "Sun", "monthlyDay": 1 }
+"taskScheduler": { "dailyHour": 4, "weeklyDay": "Sun", "monthlyDay": 1 }
 ```
 
 All values **UTC** (requirements normalize to UTC at the door). Defaults when
@@ -142,7 +142,7 @@ refresh, not workflow edits). It runs
 
 1. **Decides due slots statelessly from the run ledger GitHub already keeps.**
    For each frequency, compute the most recent scheduled slot time ≤ now from
-   `schedule`. Fetch the timestamp `T` of this workflow's last **successful** run
+   `taskScheduler`. Fetch the timestamp `T` of this workflow's last **successful** run
    (Actions API). A slot is due iff its time ∈ `(T, now]`.
    - Miss/outage → the next successful run catches up daily/weekly/monthly slots;
      no watermark file, nothing to corrupt.
@@ -285,7 +285,7 @@ maintenance.
 
 Per-project tasks — run by every declaring repo's own scheduler:
 
-| Task (pack) | frequency | signals | model | outcome | Notes |
+| Task (pack) | frequency | precondition_signals | agent_model | expected_outcome | Notes |
 |---|---|---|---|---|---|
 | baselining (basics) | daily-2h | stamp, sharedMount | sonnet | merged-pr | **Now a per-repo self-refresh, not a fleet pass**: converge own `.claudinite/shared/` to canon head, apply pending migration notes (the old fleet apply pass folds in here), advance the stamp — one transactional commit on the `claudinite/maintenance` PR, delivery per member config. Cross-repo needs: a read-only canon checkout, which the executor session already has in sources. Precondition: stamp behind canon head (stamp-age fallback when the canon isn't readable from the Action). The canon repo skips naturally (no shared mount). |
 | growth-extract (grow_with_claudinite) | daily-1h | commits, prs, issues | opus | merged-pr | Precondition = substantiveChange; context = the commit/PR/issue lists. |
@@ -302,7 +302,7 @@ Canon-repo tasks — the canon's own packs on the same machinery. Only three are
 genuinely fleet-scoped (they need the `fleet` signal / cross-repo reach); the
 rest of what the old central routine did has moved above:
 
-| Task | frequency | model | outcome | Fleet-scoped? | Notes |
+| Task | frequency | agent_model | expected_outcome | Fleet-scoped? | Notes |
 |---|---|---|---|---|---|
 | growth-promote (canon-curation) | daily | opus | open-pr | yes | Reads members' local packs (`fleet` signal: which members' local packs changed); writes the canon; owner-gated PR. 04:00, after the fleet's 03:00 extracts. |
 | growth-discover-packs (canon-curation) | weekly | opus | open-pr | yes | Moves from member-scheduled/centrally-executed to plainly central: one weekly sweep over members; first-sight dedup is trivial with a single run. |
@@ -349,7 +349,7 @@ scheduler task."
 ## 9. Bootstrap changes
 
 Part 6 of `bootstrap.md` (the "Enroll <PROJECT> …" owner issue) is **replaced**.
-Bootstrap now: (a) vendors the scheduler workflow, (b) writes `schedule` defaults
+Bootstrap now: (a) vendors the scheduler workflow, (b) writes `taskScheduler` defaults
 into `.claudinite-checks.json`, (c) creates the label-wired executor routine via the
 trigger API — or files the enclosed-config owner issue when the API isn't reachable.
 The `ready-for-agent` / `agent-running` / `needs-human` / `workflow-failure` labels

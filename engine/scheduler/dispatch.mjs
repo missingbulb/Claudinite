@@ -6,7 +6,7 @@
 // — the "should I file this" decision is always code here, never the shell's
 // judgment (the same split the fleet planner uses).
 //
-// All behavior-defining content (model, outcome, worker) is read from the
+// All behavior-defining content (agent_model, expected_outcome, agent_instructions) is read from the
 // tracked task files, never from the issue — the body only points at the task
 // file and carries the precondition's binding Context (DESIGN §4).
 

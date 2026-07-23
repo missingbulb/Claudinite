@@ -11,7 +11,7 @@ label-fired executor — see the
 [design](../../docs/per-project-scheduling/DESIGN.md) and the
 [rollout](../../docs/per-project-scheduling/MIGRATION.md). During the transition
 this central routine stays live as the rollback (it skips any repo that declares
-the `schedule` key, so exactly one mechanism owns a repo at a time); the whole
+the `taskScheduler` key, so exactly one mechanism owns a repo at a time); the whole
 `routines/fleet/` tree is removed at Phase 4.
 
 The one rule that outlives the transition: a repo's recurring work has exactly

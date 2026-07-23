@@ -14,10 +14,10 @@
 export default {
   id: 'wiki-growth',
   frequency: 'weekly',             // fires at the weekly anchor (DESIGN §2) — the world's clock, not the repo's
-  signals: ['commits'],
-  model: 'opus',                   // open-web research + curation is the heaviest judgment, and the PR review gate is the last catch for fabrication
-  outcome: 'open-pr',              // web-researched claims entering a knowledge base need the human review gate — never merged, never pushed to default
-  worker: 'task.md',
+  precondition_signals: ['commits'],
+  agent_model: 'opus',                   // open-web research + curation is the heaviest judgment, and the PR review gate is the last catch for fabrication
+  expected_outcome: 'open-pr',              // web-researched claims entering a knowledge base need the human review gate — never merged, never pushed to default
+  agent_instructions: 'task.md',
 
   // The weekly slot IS the trigger — there is no cheaper gate to apply, because a
   // wiki grows on research availability, not repo activity. Always run when due;

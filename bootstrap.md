@@ -133,7 +133,7 @@ adoption:
    `agent-running`, `needs-human`, and `workflow-failure` exist (create-if-missing,
    idempotent) before it dispatches, so they materialize on the first run and
    self-heal if deleted. No one-off creation, nothing to forget.
-3. **Write the `schedule` key** into `.claudinite-checks.json` (defaults:
+3. **Write the `taskScheduler` key** into `.claudinite-checks.json` (defaults:
    `{ "dailyHour": 4, "weeklyDay": "Sun", "monthlyDay": 1 }`, all UTC) — this is the
    cutover marker: the central routine stops planning the repo the same night, and its
    own scheduler + self-baselining take over the refresh.

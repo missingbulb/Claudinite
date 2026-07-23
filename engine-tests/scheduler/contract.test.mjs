@@ -18,10 +18,10 @@ test('resolveModel maps every family and rejects unknowns; none is agentless', (
 const validTask = {
   id: 'growth-extract',
   frequency: 'daily-1h',
-  signals: ['commits', 'prs', 'issues'],
-  model: 'opus',
-  outcome: 'merged-pr',
-  worker: 'task.md',
+  precondition_signals: ['commits', 'prs', 'issues'],
+  agent_model: 'opus',
+  expected_outcome: 'merged-pr',
+  agent_instructions: 'task.md',
   precondition() { return { run: true, reason: 'x' }; },
 };
 
@@ -33,10 +33,10 @@ test('validateTaskDeclaration flags every malformed field', () => {
   const problems = validateTaskDeclaration({
     id: '',
     frequency: 'fortnightly',
-    signals: ['commits', 'bogus'],
-    model: 'gpt',
-    outcome: 'push',
-    worker: 42,
+    precondition_signals: ['commits', 'bogus'],
+    agent_model: 'gpt',
+    expected_outcome: 'push',
+    agent_instructions: 42,
     precondition: 'nope',
   });
   const whats = problems.map((p) => p.what).join(' | ');
@@ -45,7 +45,7 @@ test('validateTaskDeclaration flags every malformed field', () => {
   assert.match(whats, /known signal names/);
   assert.match(whats, /not a legal model family/);
   assert.match(whats, /not a legal outcome ceiling/);
-  assert.match(whats, /no string "worker"/);
+  assert.match(whats, /no string "agent_instructions"/);
   assert.match(whats, /"precondition" is not a function/);
 });
 
