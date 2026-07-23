@@ -237,9 +237,13 @@ sessions burn on empty hours.
   survives a single-model routine).
 - **Launcher prompt** (thin pointer, per the unattended-agents rule):
   `Execute the Claudinite executor: .claudinite/shared/engine/scheduler/executor.md`.
-- **Session sources** include the canon repo checkout alongside the member repo
-  (exactly as the GCEC routines' triggers are configured today) — which is what
-  lets the per-repo baselining task run the canon's vendoring script directly.
+- **Session sources** are the **member repo alone** (agent-preprocessing DESIGN
+  §7/E5). The executor no longer needs the canon checkout: baselining fetches
+  PUBLIC canon **Action-side** in its `agent_preprocessing` worker and reads
+  migration notes from the member's own vendored mount, so a project-only session
+  is all the ambient scope executor work requires. (Superseded the earlier model,
+  where the canon rode in the session sources so the baselining task could run the
+  canon's vendoring script directly.)
 - **`executor.md`** (vendored, hyper-specific, MCP-only GitHub access):
   1. The triggering issue is the primary work item. Also list any *other* open
      `ready-for-agent` issues and process them after it — the self-healing sweep
