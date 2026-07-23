@@ -15,7 +15,24 @@
 // converges to (DESIGN §4 lifecycle). Kept here as the shared source for the
 // scheduler side; the executor reuses these plus `agent-running`.
 export const READY_LABEL = 'ready-for-agent';
+export const AGENT_RUNNING_LABEL = 'agent-running';
 export const NEEDS_HUMAN_LABEL = 'needs-human';
+export const WORKFLOW_FAILURE_LABEL = 'workflow-failure';
+
+// The full label set the scheduler + executor drive, each with the colour and
+// description a bootstrap one-off would have given it. The scheduler ENSURES every
+// one exists (create-if-missing, idempotent) right before it dispatches — so there
+// is no separate label-creation step to run or forget, and a deleted label
+// self-heals on the next run. This is load-bearing, not cosmetic: GitHub does not
+// create a label when you apply it (the issues API 422s on an unknown label), so
+// the thing that assigns a label must guarantee it first — the
+// gha/label-create-before-add principle, enforced in code here.
+export const SCHEDULER_LABELS = [
+  { name: READY_LABEL, color: '0e8a16', description: 'Claudinite scheduler: dispatch issue ready for the executor to run' },
+  { name: AGENT_RUNNING_LABEL, color: 'fbca04', description: 'Claudinite scheduler: the executor has claimed this issue and is running it' },
+  { name: NEEDS_HUMAN_LABEL, color: 'd93f0b', description: 'Claudinite scheduler: an anomaly that converged here for human triage' },
+  { name: WORKFLOW_FAILURE_LABEL, color: 'b60205', description: 'Claudinite scheduler: a scheduler run or task failed' },
+];
 
 // Title: `[claudinite-task] <pack>/<task> <slot-id>` (DESIGN §4). The prefix is
 // what keeps these issues invisible to the scheduler's own signals (self-trigger

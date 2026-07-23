@@ -8,14 +8,17 @@ rollback at every step.
 
 Ground rules for every phase:
 
-- Pilot before fleet: nothing reaches a second repo until GCEC has soaked (the
-  standing "pilot on one real consumer" rule).
+- GCEC first, then the fleet — **same day, no soak**. GCEC is still cut over first
+  and verified in-session (the "prove it on one real consumer" rule), but the rest of
+  the fleet follows the same day rather than after a ~1-week soak: the mechanism is
+  code, exercised end-to-end on GCEC, so there's nothing a week of waiting would add
+  that the in-session verification doesn't.
 - Never break the channel the migration travels through: the central routine and
   the vendor-refresh path stay functional until Phase 4 decommission.
 - Cutover per repo is marked by the `schedule` key in `.claudinite-checks.json`:
   the central planner skips any member that declares it (guard added in
   Phase 0.6), so a repo is covered by exactly one mechanism at all times —
-  no double runs during the staggered rollout.
+  no double runs even as the whole fleet cuts over the same day.
 - Each phase ends with its verification step green before the next starts.
 
 ---
@@ -158,7 +161,7 @@ Ground rules for every phase:
    `Execute the Claudinite executor: .claudinite/shared/engine/scheduler/executor.md`,
    sources = GCEC + Claudinite (as the old triggers had). **Disable — do not
    delete** — the two old GCEC CCR triggers.
-6. **Soak ≈1 week, verify**: hourly summaries list evaluations with sane
+6. **Verify in-session (no soak)**: hourly summaries list evaluations with sane
    skip-reasons; one real `extractor-request` flows end-to-end (precondition
    context → dispatch issue → label event → executor → review PR, in minutes);
    one auto-fallback-coverage daily run fires on a meaningful-commit day and
@@ -195,7 +198,7 @@ Ground rules for every phase:
    `fleet` signal lists exactly the members whose local packs changed;
    prose-to-checks fires daily and no-ops cheaply on a quiet corpus.
 
-## Phase 3 — remaining consumers (owner-orchestrated, batched ~3 at a time)
+## Phase 3 — remaining consumers (owner-orchestrated, all the same day)
 
 Repos: EdFringeNow, gRatio, TLDR, HelloWorldFlutterApp, EdFringeAllocator,
 CrosswordChat, Sheepdog, LaughCounter, ShoutsAndWhispers.

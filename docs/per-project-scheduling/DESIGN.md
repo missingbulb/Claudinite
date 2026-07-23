@@ -349,11 +349,15 @@ scheduler task."
 ## 9. Bootstrap changes
 
 Part 6 of `bootstrap.md` (the "Enroll <PROJECT> …" owner issue) is **replaced**.
-Bootstrap now: (a) vendors the scheduler workflow, (b) creates the
-`ready-for-agent` / `agent-running` / `needs-human` / `workflow-failure` labels
-idempotently, (c) writes `schedule` defaults into `.claudinite-checks.json`,
-(d) creates the label-wired executor routine via the trigger API — or files the
-enclosed-config owner issue when the API isn't reachable. "A consuming project
+Bootstrap now: (a) vendors the scheduler workflow, (b) writes `schedule` defaults
+into `.claudinite-checks.json`, (c) creates the label-wired executor routine via the
+trigger API — or files the enclosed-config owner issue when the API isn't reachable.
+The `ready-for-agent` / `agent-running` / `needs-human` / `workflow-failure` labels
+need **no** bootstrap step: the scheduler ensures each exists (create-if-missing,
+idempotent) before it dispatches, so they materialize on the first run and self-heal
+if deleted — GitHub never creates a label on demand when it is applied, so the
+assigner guaranteeing it is the correct home for that (the label-create-before-add
+principle, in code). "A consuming project
 schedules nothing" flips to "a consuming project schedules **itself**";
 baselining's close-the-enrollment-issue step retires; open Enroll issues are
 closed during migration.

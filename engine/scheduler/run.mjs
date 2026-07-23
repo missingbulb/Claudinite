@@ -13,7 +13,7 @@
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { dueSlots } from './slots.mjs';
-import { planDispatch, dispatchTitle, dispatchBody, DISPATCH_PREFIX, READY_LABEL } from './dispatch.mjs';
+import { planDispatch, dispatchTitle, dispatchBody, DISPATCH_PREFIX, READY_LABEL, SCHEDULER_LABELS } from './dispatch.mjs';
 import { isAgentless } from './model-map.mjs';
 
 // The due tasks, each paired with the slot it runs under. Union the discovered
@@ -131,6 +131,20 @@ async function existingIssuesViaSearch(gh, repo, pack, task) {
     .map((i) => ({ number: i.number, title: i.title, state: i.state }));
 }
 
+// Ensure the dispatch labels exist before any is applied — GitHub 422s when you
+// apply an unknown label (it never creates one on demand), so the scheduler, as the
+// thing that assigns them, guarantees them here. Idempotent (201 created / 422 already
+// exists are both success) and self-healing (a deleted label reappears next run), which
+// is why no separate one-off label-creation step is needed. Exported for the run tests.
+export async function ensureLabels(gh, repo, labels) {
+  for (const { name, color, description } of labels) {
+    const res = await gh(`/repos/${repo}/labels`, { method: 'POST', body: { name, color, description } });
+    if (res.status !== 201 && res.status !== 422) {
+      console.log(`! could not ensure label "${name}": ${res.status}`);
+    }
+  }
+}
+
 async function main() {
   const { makeGh, lastSuccessTime, actionRepoContext } = await import('./signals/gh.mjs');
   const { collectSignals } = await import('./signals/index.mjs');
@@ -164,6 +178,12 @@ async function main() {
     packConfigFor,
     existingIssuesFor: (pack, task) => existingIssuesViaSearch(gh, repo, pack, task),
   });
+
+  // Guarantee the dispatch labels exist before we file any labeled issue (only when
+  // we're actually about to dispatch — an idle run pays nothing).
+  if (evaluations.some((r) => r.run && !r.inline && r.dispatch?.action === 'create')) {
+    await ensureLabels(gh, repo, SCHEDULER_LABELS);
+  }
 
   for (const rec of evaluations) {
     if (!rec.run) continue;

@@ -1,9 +1,39 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeDueTaskSlots, signalsUnion, runPrecondition, renderSummary, planRun } from '../../engine/scheduler/run.mjs';
+import { computeDueTaskSlots, signalsUnion, runPrecondition, renderSummary, planRun, ensureLabels } from '../../engine/scheduler/run.mjs';
 import { DEFAULT_SCHEDULE } from '../../engine/scheduler/slots.mjs';
+import { SCHEDULER_LABELS, READY_LABEL } from '../../engine/scheduler/dispatch.mjs';
 
 const D = DEFAULT_SCHEDULE;
+
+test('ensureLabels creates every dispatch label, tolerating already-exists (422)', async () => {
+  const posted = [];
+  const gh = async (path, opts) => {
+    posted.push({ path, method: opts?.method, name: opts?.body?.name });
+    // Simulate ready-for-agent already existing (422), the rest newly created (201).
+    return { status: opts?.body?.name === READY_LABEL ? 422 : 201, json: null };
+  };
+  const logs = [];
+  const orig = console.log; console.log = (m) => logs.push(m);
+  try {
+    await ensureLabels(gh, 'o/r', SCHEDULER_LABELS);
+  } finally { console.log = orig; }
+  // One POST /labels per label, and no error logged for a 201 or a 422.
+  assert.equal(posted.length, SCHEDULER_LABELS.length);
+  assert.ok(posted.every((p) => p.path === '/repos/o/r/labels' && p.method === 'POST'));
+  assert.deepEqual(posted.map((p) => p.name).sort(), SCHEDULER_LABELS.map((l) => l.name).sort());
+  assert.equal(logs.filter((m) => /could not ensure label/.test(m)).length, 0);
+});
+
+test('ensureLabels surfaces a genuine failure (not 201/422) without throwing', async () => {
+  const gh = async () => ({ status: 500, json: null });
+  const logs = [];
+  const orig = console.log; console.log = (m) => logs.push(m);
+  try {
+    await ensureLabels(gh, 'o/r', [SCHEDULER_LABELS[0]]);
+  } finally { console.log = orig; }
+  assert.equal(logs.filter((m) => /could not ensure label/.test(m)).length, 1);
+});
 const mkTask = (id, over = {}) => ({
   pack: 'p', id,
   decl: {

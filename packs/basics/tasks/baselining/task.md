@@ -46,8 +46,9 @@ at ([vendoring/DESIGN.md](../../../../vendoring/DESIGN.md)):
   (bootstrap Part 6): re-converge a drifted `.github/workflows/claudinite-scheduler.yml` to the vendored
   stub — restoring this repo's hashed cron minute (the one repo-specific value in it) to the canonical
   `node .claudinite/shared/engine/scheduler/hash-minute.mjs <owner/repo>` value, a pure function of the
-  repo full name, so any other minute is drift — and re-create any
-  missing `ready-for-agent` / `agent-running` / `needs-human` / `workflow-failure` label idempotently.
+  repo full name, so any other minute is drift. (The `ready-for-agent` /
+  `agent-running` / `needs-human` / `workflow-failure` labels need no repair here — the
+  scheduler ensures each exists before it dispatches, so they self-heal on the next run.)
   Baselining is the repair loop for every Claudinite moving part the repo carries; the conformance checks
   are the in-session guard that flags the same drift the moment it's authored.
 - **Repo without a stamp** — post-migration this is drift, not a supported shape: converge it through the
