@@ -329,6 +329,9 @@ Tracked here now that #405 is closed (§8):
   task now REQUIRES `agent_preprocessing` (contract + static check), the in-process
   inline worker path is removed, and `store-release` converts to a standalone
   subprocess worker (§4).
+- **Increment 2c — executor best-effort bound (landed):** `validate-dispatch`
+  returns `executionTimeout`; `executor.md` gives the subagent its "fail after N
+  minutes" bound from the trusted task decl, never the issue body (§6).
 - **§7-1 — the migration-record `agentic` flag (landed):** `migrationAgentic` /
   `agenticMigrations` in `migrations/registry.mjs` + the pack-independence record
   structured.
@@ -338,9 +341,45 @@ Tracked here now that #405 is closed (§8):
   convergence (scheduler workflow + hashed cron, settings hooks, retired-import
   removal), which bootstrap Part 6 and baselining both call — the single wiring
   source of truth.
-- **Next (E4/E5, best done in a fresh session — fleet-critical, live-piloted):**
-  the baselining converge-as-preprocessing rework (public-canon fetch + native git
-  + the `agenticMigrations` escalation with the stamp-coupling rule) and dropping
-  canon from the executor's CCR sources (§7), plus converting the GCEC repo's tasks
-  to the new contract. The check-fix subsumption audit precedes flipping baselining
-  to a `null`-model common night.
+### Remaining work — start here (a fresh session picks up from this section)
+
+Branch `claude/issue-394-next-steps-wtdv6a`, PR #411. Everything above is landed and
+pushed. First confirm commit-signing works (a trivial signed commit); if the
+environment's signing MCP is down, say so before starting. The primitives you compose
+already exist and are tested: `migrations/registry.mjs`
+(`agenticMigrations`/`migrationAgentic`), `vendoring/{compute,apply}-vendor-set.mjs`
+(migrations now vendor into the mount), `engine/scheduler/converge-wiring.mjs`
+(`convergeWiring(root, fullName, stubText)` + CLI), `engine/scheduler/preprocess.mjs`,
+and the `agent_preprocessing` contract. Each item below is its own commit — test and
+push before the next.
+
+- **E4 — baselining converge-as-preprocessing** (`packs/basics/tasks/baselining/{task.mjs,task.md}`).
+  The deterministic converge becomes `agent_preprocessing` (a subprocess worker beside
+  `task.mjs`) that: shallow-clones **public** canon at the target head sha (owner §10:
+  canon is public — no token, no tarball), runs `vendoring/{compute,apply}-vendor-set.mjs`
+  to converge `.claudinite/shared/`, runs `converge-wiring.mjs`, applies the
+  **mechanical** migration notes via `migrations/apply.mjs`, advances the stamp, and
+  **native-git** pushes the maintenance PR. The **agent stage** (`agent_model` non-null)
+  runs ONLY when `agenticMigrations()` finds a pending note dated ≥ stamp — then HOLD
+  the stamp at the day before the earliest pending agentic note until the agent lands it
+  (the stamp/agentic coupling rule above). Reuse #407's `findOpenPrByPrefix` for the
+  delivery branch (reconcile with #407 if still open). Run the check-fix subsumption
+  audit (above) before driving the common-night model toward `null`. **Fleet-critical:
+  verify with a live GCEC pilot, not just unit tests.**
+- **E5 — drop canon from the executor CCR session.** `executor.md` sources become the
+  project alone (not project + canon); update bootstrap Part 6 and the executor-routine
+  creation to provision a project-only environment. Gated behind E4 proving out.
+- **GCEC task conversion** (owner asked, 2026-07-23). Add
+  `missingbulb/GoogleCalendarEventCreator` (add_repo → clone inline to
+  `/workspace/googlecalendareventcreator`, ~10-min timeout → `register_repo_root`).
+  Convert its `.claudinite/local/packs/gcec/tasks/*` to the new contract: add
+  `agent_execution_timeout` to the agentic tasks; where a task has a deterministic
+  pre-step (the fallback-extractor fetch/scaffold, create-extractor's fetch), move it
+  into `agent_preprocessing` per the owner's intent. Commit + push on GCEC's own branch.
+
+**Working notes.** Prefer git-free fs-fixture tests (see
+`engine-tests/scheduler/converge-wiring.test.mjs`) over `makeRepo` where possible —
+`makeRepo` does real git commits that hang and leak file descriptors if the signing MCP
+degrades. Watch `ls /proc/542/fd | wc -l` (the env-manager) and pace full-suite runs
+(~800 FDs each, cap 4096) to avoid re-triggering the outage the prior session hit.
+Baseline sweeps: 0 blocking, 4 pre-existing file-placement advisories.
