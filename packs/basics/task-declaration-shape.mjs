@@ -61,10 +61,14 @@ const rule = {
       // The preprocessing/timeout guards (agent-preprocessing DESIGN §2). Numeric
       // presence is a cheap `<key>: <digit>` regex, matching the runtime contract.
       const hasNum = (key) => new RegExp(`\\b${key}:\\s*\\d`).test(text);
+      const hasPreprocessing = /\bagent_preprocessing:\s*['"]/.test(text);
       if (model && MODEL_FAMILIES.includes(model) && model !== 'none' && !hasNum('agent_execution_timeout')) {
         flag('an agentic task (agent_model !== "none") declares no numeric "agent_execution_timeout"', 'add "agent_execution_timeout": seconds bounding the agentic run');
       }
-      if (/\bagent_preprocessing:\s*['"]/.test(text)) {
+      if (model === 'none' && !hasPreprocessing) {
+        flag('an agentless task (agent_model: "none") declares no "agent_preprocessing"', 'add "agent_preprocessing" (a none task does its work in that subprocess) — or give the task an agent_model');
+      }
+      if (hasPreprocessing) {
         const prep = strField(text, 'agent_preprocessing');
         if (prep && (/(^|\s)\//.test(prep) || prep.includes('..'))) {
           flag('"agent_preprocessing" reaches outside the task directory (absolute path or "..")', 'reference a sibling script only, e.g. "node prepare.mjs"');

@@ -90,17 +90,27 @@ Preprocessing splits a run into up to two stages with a later label:
 
 ```
 precondition passes
-  └─ file the tracking issue, UNLABELLED (or labelled `agent-preprocessing`)
   └─ if agent_preprocessing is set:
-        spawn it as a subprocess (cwd = repo root, Action GITHUB_TOKEN in env),
-        bounded by agent_preprocessing_timeout
-        ├─ non-zero exit / timeout  → comment the failure, label `needs-human`; STOP (task failed)
+        spawn it as a subprocess (cwd = the task dir, Action GITHUB_TOKEN + CLAUDINITE_* in env),
+        bounded by agent_preprocessing_timeout (hard SIGKILL on overrun)
+        ├─ non-zero exit / timeout  → converge to ONE open `needs-human` issue for the
+        │                             family (at-most-one-open, no spam); STOP (task failed)
         └─ success
-             ├─ agent_model === none → comment the result, CLOSE the issue (no agent)
-             └─ agent_model !== none → apply `ready-for-agent`  → executor fires (see §5 handoff)
+             ├─ agent_model === none → done, NO issue on success (quiet, as the retired
+             │                         in-process inline path was)
+             └─ agent_model !== none → file the `ready-for-agent` hand-off issue → executor fires (§5)
   └─ if agent_preprocessing is NOT set (agent task, no prep):
-        apply `ready-for-agent` immediately (exactly today's behaviour)
+        file `ready-for-agent` immediately (exactly today's behaviour)
 ```
+
+> **As-built (increment 2a):** no tracking issue is created *before* preprocessing —
+> a success that needs an agent files the labelled hand-off issue, an agentless
+> success files nothing, and only a failure files an issue (`needs-human`, one open
+> per family). This keeps a frequently-running agentless task (e.g. `store-release`)
+> quiet on the happy path while still surfacing failures, and preserves the
+> issue-is-data model. The alternative — create-then-close every run — was rejected
+> as issue noise. The subprocess cwd is the **task dir** (so `node worker.mjs`
+> resolves to the sibling script); the repo root + slot ride in via `CLAUDINITE_*`.
 
 The subprocess is the natural home for both timeout enforcement (a clean kill
 boundary) and a language-agnostic command. It runs Action-side, so it has the
@@ -312,9 +322,14 @@ Tracked here now that #405 is closed (§8):
   `task-declaration-shape` guard, the doc, and every agentic canon task carrying
   an `agent_execution_timeout`. Behaviour-preserving — no task yet declares
   `agent_preprocessing`, and the scheduler does not act on the new fields.
-- **Increment 2 (next) — the staging mechanism:** `run.mjs` two-stage flow
-  (subprocess spawn + hard timeout + deferred labeling, §3), retiring the
-  in-process inline path into preprocessing (§4), and converting `store-release`
-  as the first proof (§4). Then the executor surfacing `agent_execution_timeout`
-  (§6) and the baselining rework + dropping canon from CCR (§7), gated on #407 and
-  the absorbed #405 primitives above.
+- **Increment 2a — the staging mechanism (landed):** `run.mjs` two-stage flow
+  (`preprocess.mjs` subprocess spawn + hard SIGKILL timeout, failure → one open
+  needs-human issue, agentful success → hand-off, §3).
+- **Increment 2b — inline-path retirement + first proof (landed):** an agentless
+  task now REQUIRES `agent_preprocessing` (contract + static check), the in-process
+  inline worker path is removed, and `store-release` converts to a standalone
+  subprocess worker (§4).
+- **Next — the executor + baselining:** the executor surfacing
+  `agent_execution_timeout` into the subagent brief (§6), then vendoring
+  `migrations/` into the mount and the baselining rework + dropping canon from CCR
+  (§7) — gated on #407 and the absorbed #405 primitives above.

@@ -10,7 +10,6 @@
 // `planRun`. The "should this run" verdict is always code here — never the
 // shell's judgment (the same split the fleet planner uses).
 
-import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { dueSlots } from './slots.mjs';
 import { planDispatch, dispatchTitle, dispatchBody, DISPATCH_PREFIX, READY_LABEL, NEEDS_HUMAN_LABEL, SCHEDULER_LABELS } from './dispatch.mjs';
@@ -258,13 +257,12 @@ async function main() {
       continue;
     }
 
-    // No preprocessing. agent_model:none → the legacy in-process inline worker.
+    // No preprocessing. An agentless task with no preprocessing does nothing — the
+    // contract now forbids it (agent_model:none REQUIRES agent_preprocessing, so
+    // the in-process inline worker path is retired, DESIGN §4). Defensive no-op
+    // should one slip past validation.
     if (rec.inline) {
-      try {
-        const workerUrl = pathToFileURL(join(taskObj.taskDir, decl.agent_instructions)).href;
-        const worker = (await import(workerUrl)).default;
-        if (typeof worker === 'function') await worker({ gh, repo, ctx, slotId: rec.slotId });
-      } catch (e) { console.log(`! inline worker ${rec.pack}/${rec.task} failed: ${e.message}`); }
+      console.log(`- ${rec.pack}/${rec.task}: agentless with no preprocessing — nothing to run (contract-forbidden)`);
       continue;
     }
     // Agent task with no preprocessing → today's immediate labeled dispatch.

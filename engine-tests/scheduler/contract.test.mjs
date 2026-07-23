@@ -38,10 +38,16 @@ test('validateTaskDeclaration requires agent_execution_timeout on an agentic tas
   assert.ok(validateTaskDeclaration({ ...validTask, agent_execution_timeout: 12.5 }).length);
 });
 
-test('validateTaskDeclaration needs no execution bound for an agentless (none) task', () => {
+test('validateTaskDeclaration: an agentless (none) task needs preprocessing but no execution bound', () => {
   const none = { ...validTask, agent_model: 'none', expected_outcome: 'none' };
   delete none.agent_execution_timeout;
-  assert.deepEqual(validateTaskDeclaration(none), []);
+  // a bare none task with no preprocessing does nothing → flagged
+  assert.match(validateTaskDeclaration(none)[0].what, /declares no "agent_preprocessing"/);
+  // with preprocessing + its timeout it is clean, and needs no execution bound
+  assert.deepEqual(
+    validateTaskDeclaration({ ...none, agent_preprocessing: 'node worker.mjs', agent_preprocessing_timeout: 120 }),
+    [],
+  );
 });
 
 test('validateTaskDeclaration validates agent_preprocessing + its required timeout and containment', () => {

@@ -84,5 +84,12 @@ export function validateTaskDeclaration(decl) {
     bad('an agentic task (agent_model !== "none") declares no positive-integer "agent_execution_timeout"', 'add "agent_execution_timeout": the seconds bounding the agentic run — generous; extreme protection, not a scheduling knob');
   }
 
+  // An agentless task (agent_model: none) runs no agent, so its ONLY work is
+  // preprocessing — a `none` task with no agent_preprocessing does nothing
+  // (DESIGN §4, retiring the in-process inline path). Require the command.
+  if (decl.agent_model === 'none' && decl.agent_preprocessing === undefined) {
+    bad('an agentless task (agent_model: "none") declares no "agent_preprocessing"', 'add "agent_preprocessing" (a none task does its work in that subprocess) — or give the task an agent_model');
+  }
+
   return problems;
 }

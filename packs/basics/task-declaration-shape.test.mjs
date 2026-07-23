@@ -84,6 +84,21 @@ test('task-declaration-shape: a none task needs no execution bound but flags pre
   assert.match(whats, /no numeric "agent_preprocessing_timeout"/);
 });
 
+test('task-declaration-shape: flags an agentless (none) task that declares no preprocessing', () => {
+  const bareNone = `export default {
+  id: 'x',
+  frequency: 'daily',
+  precondition_signals: ['release'],
+  agent_model: 'none',
+  expected_outcome: 'none',
+  agent_instructions: 'worker.mjs',
+  precondition() { return { run: false }; },
+};
+`;
+  const whats = run({ [TASK]: bareNone }).map((f) => f.what).join(' | ');
+  assert.match(whats, /declares no "agent_preprocessing"/);
+});
+
 test('task-declaration-shape: flags a preprocessing command that escapes the task directory', () => {
   const bad = goodTask.replace(
     '  agent_execution_timeout: 1800,\n',
