@@ -18,6 +18,7 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 | [node](node/README.md) | root package.json | 0 | 2 |
 | [python](python/README.md) | pyproject.toml near root | 0 (2 in its skill) | 3 |
 | [web-speech](web-speech/README.md) | speech API in JS/TS source | 0 (2 in its skill) | 15 |
+| [leaflet](leaflet/README.md) | Leaflet reference in HTML/JS source | 0 | 5 |
 | [aws-sam](aws-sam/README.md) | SAM template | 3 | 3 |
 | [google-identity](google-identity/README.md) | declared | 0 (3 in its skill) | 0 |
 | [html](html/README.md) | declared | 0 | 1 |
