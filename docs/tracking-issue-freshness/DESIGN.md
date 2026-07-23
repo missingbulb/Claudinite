@@ -1,8 +1,12 @@
 # Tracking-issue freshness — keep the plan issue in sync after every merge (design)
 
-> **Status: proposed.** Tracked by [#409](https://github.com/missingbulb/Claudinite/issues/409)
+> **Status: implemented** (Phases 1–5). Tracked by [#409](https://github.com/missingbulb/Claudinite/issues/409)
 > (the `plan-tracking` issue — the "read status and pick up the work" entry point). This
 > doc is the rationale and the design record; the phased plan lives as a checklist there.
+> The rule is [`plan-tracking-freshness`](../../packs/grow_with_claudinite/plan-tracking-freshness.mjs)
+> (grow_with_claudinite); the primitives are `work.mergedThisSession()`
+> ([work.mjs](../../engine/checks/helpers/work.mjs)) and the Stop hook's post-merge trigger
+> ([stop-command.mjs](../../engine/hooks/stop-command.mjs)).
 
 ## The problem
 
@@ -147,19 +151,18 @@ The discipline the conversation-surface rules already follow
 The checklist that follows lives in the tracking issue (this doc's counterpart); it is
 reproduced here only as the design's summary of scope.
 
-1. **Convention + seed** — define the `plan-tracking` label and its meaning in the
-   `grow_with_claudinite` / merge docs; apply it to the existing in-flight tracker(s)
-   (#394).
-2. **Primitive + trigger** — add `work.mergedThisSession()` (transcript-derived) and the
-   Stop hook's post-merge trigger (don't fast-exit when the transcript shows a merge), each
-   with red-first tests.
-3. **Verifier** — the freshness rule in `grow_with_claudinite`, red-first fixture: fires
-   when a merge happened with no post-merge checklist edit, quiet when the agent flipped a
-   box, quiet on a no-merge / no-plan session.
-4. **Recipe wiring** — `merge-to-main` gains the "update the `plan-tracking` issue after the
+1. **Convention + seed** ✅ — the `plan-tracking` label and its meaning documented in the pack
+   README and the `merge-to-main` skill; applied to the in-flight trackers (#394, #409).
+2. **Primitive + trigger** ✅ — `work.mergedThisSession()` (transcript-derived) and the Stop
+   hook's post-merge trigger (don't fast-exit when the transcript shows a merge), each with
+   red-first tests.
+3. **Verifier** ✅ — `plan-tracking-freshness` in `grow_with_claudinite`, with fixtures: fires
+   when a merge happened with no post-merge checklist flip, quiet when a box was flipped, quiet
+   on a no-merge / no-plan session.
+4. **Recipe wiring** ✅ — `merge-to-main` gained the "sync the `plan-tracking` issue after the
    merge" step.
-5. **Docs** — record the convention in the pack README; flip this doc's status box; point
-   the tracking issue at this doc.
-6. **(Contingent) world-scope backstop** — a network check (CI/fleet) for the label-precise
-   "no open `plan-tracking` issue is behind its merged phases," only if the transcript
-   evidence proves insufficient.
+5. **Docs** ✅ — the convention recorded in the pack README; this status box flipped; the
+   tracking issue points at this doc.
+6. **(Contingent, not built) world-scope backstop** — a network check (CI/fleet) for the
+   label-precise "no open `plan-tracking` issue is behind its merged phases." Resolved with the
+   owner to rely on transcript evidence instead; build only if that proves insufficient.
