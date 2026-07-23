@@ -20,6 +20,17 @@ const workRunner = join(dirname(fileURLToPath(import.meta.url)), '..', 'checks',
 
 const git = (...a) => spawnSync('git', a, { cwd: projectRoot, encoding: 'utf8' });
 
+// Claude Code passes the hook's input JSON on stdin; its transcript_path is what
+// lets the conversation-surface rules see the session. A manual run (TTY, or no
+// parseable input) simply runs without them — they self-skip on a null transcript.
+let transcriptPath = null;
+try {
+  if (!process.stdin.isTTY) {
+    const input = readFileSync(0, 'utf8');
+    if (input.trim()) transcriptPath = JSON.parse(input).transcript_path ?? null;
+  }
+} catch { /* no usable hook input — conversation rules self-skip */ }
+
 // Fast path: nothing changed vs the base and the tree is clean → stay silent.
 const status = git('status', '--porcelain');
 let dirty = status.status === 0 && status.stdout.trim() !== '';
@@ -31,18 +42,19 @@ if (!dirty) {
     break;
   }
 }
-if (!dirty) process.exit(0); // clean fast path — nothing ran, nothing to log
 
-// Claude Code passes the hook's input JSON on stdin; its transcript_path is what
-// lets the conversation-surface rules see the session. A manual run (TTY, or no
-// parseable input) simply runs without them — they self-skip on a null transcript.
-let transcriptPath = null;
-try {
-  if (!process.stdin.isTTY) {
-    const input = readFileSync(0, 'utf8');
-    if (input.trim()) transcriptPath = JSON.parse(input).transcript_path ?? null;
-  }
-} catch { /* no usable hook input — conversation rules self-skip */ }
+// Post-merge trigger: the merge-to-main recipe ends with `git checkout main &&
+// git pull`, leaving a CLEAN tree at `main` — so the diff-vs-base gate above sees
+// "nothing changed" and would fast-exit, and the post-merge check-the-work rules
+// (a session that merged still owes e.g. its plan-tracking-issue sync) never run.
+// When the tree is clean, peek the transcript for a merge tool call and run the
+// sweep anyway. The scan happens only on an otherwise-quiet turn, so a purely
+// conversational Stop keeps its millisecond fast path.
+if (!dirty && transcriptPath && existsSync(transcriptPath)) {
+  try { dirty = readFileSync(transcriptPath, 'utf8').includes('mcp__github__merge_pull_request'); }
+  catch { /* unreadable transcript — treat as no merge, keep the fast path */ }
+}
+if (!dirty) process.exit(0); // clean fast path — nothing ran, nothing to log
 
 hooklog('Stop', 'start checks');
 const run = spawnSync(process.execPath, [workRunner, ...(transcriptPath ? ['--transcript', transcriptPath] : [])], {

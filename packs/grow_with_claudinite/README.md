@@ -63,11 +63,26 @@ tree; only posting the dialogue on the issue uses the GitHub MCP tools.
 Adoption asks only for the `retention_days` value (10 recommended) — nothing to schedule, since
 extraction rides the fleet's one daily run like the other growth tasks.
 
+## The plan-tracking issue — kept fresh after every merge
+
+A major task carries two artifacts: a source-controlled design/migration plan, and a GitHub
+tracking issue labeled **`plan-tracking`** whose description is a `- [ ]`/`- [x]` checklist — the
+next agent's "read status and pick up the work" entry point. The committed plan is drift-guarded by
+code review; the issue checklist is a separate surface no diff touches, so it silently falls behind.
+The **`plan-tracking-freshness`** check closes that gap: it is a post-merge check-the-work rule that,
+when the session merged and consulted a `plan-tracking` issue, requires a checklist box to have been
+flipped on that issue **after** the merge. It is transcript-only (in-session code holds no GitHub
+credential — `in-session-github-access`), so its evidence is the session's own MCP tool calls, and
+the Stop hook grows a post-merge trigger so it fires on the clean tree the merge recipe leaves. The
+`merge-to-main` skill asks for the sync as an explicit step; this check is the guarantee. Full
+rationale: [docs/tracking-issue-freshness/DESIGN.md](../../docs/tracking-issue-freshness/DESIGN.md).
+
 ## Rules
 
 | Rule | Kind | What |
 |---|---|---|
 | `growth-config` | hardcoded ([config-check.mjs](config-check.mjs)) | entry config shape valid |
+| `plan-tracking-freshness` | check-the-work ([plan-tracking-freshness.mjs](plan-tracking-freshness.mjs)) | after a merge, a consulted `plan-tracking` issue got a checklist box flipped |
 
 **Pack discovery** ([discover-packs.md](discover-packs.md)) is an ordinary `run_daily` task — the
 planner picks it up per member on its weekly full sweep. For the member it's handed it runs the

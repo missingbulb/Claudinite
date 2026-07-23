@@ -23,6 +23,10 @@ The two divergent points — **`squash`** as the method and **CI gating** — ar
 Once the merge has landed and local `main` is synced, run the growth pack's capture step:
 `node .claudinite/shared/packs/grow_with_claudinite/capture-log.mjs --issue <n>` (from the canon repo itself: `node packs/grow_with_claudinite/capture-log.mjs --issue <n>`), `<n>` being the issue your `Closes #<issue>` named. Deterministic, seconds-long; it pushes the conversation to the orphan `conversation-logs` branch. It runs **here, in-session, because it needs the live transcript** — the lessons extraction then happens later in the fleet's `conversation-extract` run_daily task (central, MCP-native, with a rethink window), so there is nothing to schedule and no in-session lessons pass ([the pack README](../../../../packs/grow_with_claudinite/README.md) owns the standard). A later merge in the same session just runs capture again — it captures the delta. In the rare repo that removed the `grow_with_claudinite` pack from `.claudinite-checks.json`, skip this step.
 
+## After the merge: sync the plan-tracking issue
+
+If the work was under a plan (a design doc + a **`plan-tracking`** tracking issue — the next agent's "read status and pick up the work" point), bring that issue's checklist in sync now, **after** the merge (an item isn't done until it's on `main`): `list_issues` with `labels: ["plan-tracking"]`, and for each open tracker this merge advanced, `issue_write` (method `update`) with the completed item(s) flipped to `- [x]`. A checkbox flip is the deliverable; a bare status comment isn't enough. No `plan-tracking` issue open ⇒ nothing to do. The committed plan is drift-guarded by review; this keeps the issue — which no diff touches — from silently falling behind (the `plan-tracking-freshness` check backstops it: prose asks, the check guarantees; see [docs/tracking-issue-freshness/DESIGN.md](../../../../docs/tracking-issue-freshness/DESIGN.md)).
+
 ## Don't
 
 - **Don't** re-read the issue to confirm it closed — `Closes #<issue>` does that on merge; trust it.

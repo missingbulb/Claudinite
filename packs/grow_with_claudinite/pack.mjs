@@ -3,6 +3,7 @@ import growthDedup from './run_daily/growth-dedup-local-instructions.mjs';
 import growthDiscoverPacks from './run_daily/growth-discover-packs.mjs';
 import conversationExtract from './run_daily/conversation-extract.mjs';
 import growthConfig from './config-check.mjs';
+import planTrackingFreshness from './plan-tracking-freshness.mjs';
 
 // Opt into the growth lifecycle: a repo declaring grow_with_claudinite contributes its
 // hard-won lessons up to the Claudinite canon and prunes them back out once the canon
@@ -36,7 +37,7 @@ export default {
   marker: null,
   seededByDefault: true,
   prose: null,
-  rules: [growthConfig],
+  rules: [growthConfig, planTrackingFreshness],
   questions: [{
     id: 'retention',
     prompt: 'How many days should a captured conversation log stay on the conversation-logs branch before the conversation-extract retention prune deletes it? The floor is the rethink window — extraction wants ~a week of hindsight; 10 is the recommended value.',
