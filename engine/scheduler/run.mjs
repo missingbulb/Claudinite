@@ -13,8 +13,9 @@
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { dueSlots } from './slots.mjs';
-import { planDispatch, dispatchTitle, dispatchBody, DISPATCH_PREFIX, READY_LABEL, SCHEDULER_LABELS } from './dispatch.mjs';
+import { planDispatch, dispatchTitle, dispatchBody, DISPATCH_PREFIX, READY_LABEL, NEEDS_HUMAN_LABEL, SCHEDULER_LABELS } from './dispatch.mjs';
 import { isAgentless } from './model-map.mjs';
+import { runPreprocessing, preprocessingFailure } from './preprocess.mjs';
 
 // The due tasks, each paired with the slot it runs under. Union the discovered
 // tasks' frequencies, ask slots which are due (run-ledger math), then map due
@@ -100,8 +101,15 @@ export async function planRun({
     };
     if (pre.error) rec.error = pre.error;
     if (pre.run) {
+      // A declared agent_preprocessing runs as a subprocess BEFORE any agent
+      // (DESIGN §3) — flagged here (pure) for the summary; the CLI shell executes
+      // it. An agentless task is preprocessing-only; an agentful one hands off to
+      // the agent after preprocessing succeeds.
+      if (task.decl.agent_preprocessing) rec.preprocessing = true;
       if (isAgentless(task.decl.agent_model)) {
-        // agent_model: none — the worker is code the scheduler runs inline; no issue.
+        // agent_model: none — no agent and no dispatch issue on success. A task with
+        // no preprocessing runs the legacy inline worker; with preprocessing it is
+        // the subprocess above.
         rec.inline = true;
       } else {
         const existing = await existingIssuesFor(task.pack, task.id);
@@ -179,30 +187,88 @@ async function main() {
     existingIssuesFor: (pack, task) => existingIssuesViaSearch(gh, repo, pack, task),
   });
 
-  // Guarantee the dispatch labels exist before we file any labeled issue (only when
-  // we're actually about to dispatch — an idle run pays nothing).
-  if (evaluations.some((r) => r.run && !r.inline && r.dispatch?.action === 'create')) {
+  // Guarantee the dispatch labels exist before we file any labeled issue — when a
+  // task will dispatch OR will run preprocessing (which may converge to
+  // needs-human). An idle run pays nothing.
+  if (evaluations.some((r) => r.run && (r.preprocessing || (!r.inline && r.dispatch?.action === 'create')))) {
     await ensureLabels(gh, repo, SCHEDULER_LABELS);
   }
+
+  // File the labeled hand-off issue the executor runs (READY_LABEL): first line is
+  // the task path, body carries the precondition's binding Context (dispatch.mjs).
+  const fileHandoff = async (rec, taskObj) => {
+    const title = dispatchTitle({ pack: rec.pack, task: rec.task, slotId: rec.slotId });
+    const body = dispatchBody({ taskPath: taskObj.taskPath, pack: rec.pack, task: rec.task, slotId: rec.slotId, context: rec.context });
+    const res = await gh(`/repos/${repo}/issues`, { method: 'POST', body: { title, body, labels: [READY_LABEL] } });
+    if (res.status >= 300) console.log(`! failed to file dispatch issue for ${rec.pack}/${rec.task}: ${res.status}`);
+  };
+
+  // Converge a failed preprocessing run to a single open needs-human issue for the
+  // family — at-most-one-open, so a repeatedly-failing task never spams issues.
+  const fileNeedsHuman = async (rec, why, extra) => {
+    const existing = await existingIssuesViaSearch(gh, repo, rec.pack, rec.task);
+    if (existing.some((i) => i.state === 'open')) {
+      console.log(`  (an open dispatch issue already covers ${rec.pack}/${rec.task} — not filing another)`);
+      return;
+    }
+    const title = dispatchTitle({ pack: rec.pack, task: rec.task, slotId: rec.slotId });
+    const body = [
+      `Preprocessing for \`${rec.pack}/${rec.task}\` (slot \`${rec.slotId}\`) failed and needs human triage.`,
+      '', `- ${why}`, ...extra.map((e) => `- ${e}`),
+    ].join('\n') + '\n';
+    const res = await gh(`/repos/${repo}/issues`, { method: 'POST', body: { title, body, labels: [NEEDS_HUMAN_LABEL] } });
+    if (res.status >= 300) console.log(`! failed to file needs-human issue for ${rec.pack}/${rec.task}: ${res.status}`);
+  };
 
   for (const rec of evaluations) {
     if (!rec.run) continue;
     const taskObj = tasks.find((t) => t.pack === rec.pack && t.id === rec.task);
+    const decl = taskObj.decl;
+
+    // Stage 1 — preprocessing (DESIGN §3): run the declared command as a subprocess
+    // bounded by its timeout, before any agent. Its cwd is the task dir; the repo
+    // root + slot context ride in via CLAUDINITE_* env.
+    if (rec.preprocessing) {
+      const result = await runPreprocessing(decl.agent_preprocessing, {
+        taskDir: taskObj.taskDir,
+        env: {
+          ...process.env,
+          CLAUDINITE_REPO_ROOT: root,
+          CLAUDINITE_REPO: repo,
+          CLAUDINITE_DEFAULT_BRANCH: defaultBranch ?? '',
+          CLAUDINITE_SLOT_ID: rec.slotId,
+          CLAUDINITE_PACK: rec.pack,
+          CLAUDINITE_TASK: rec.task,
+        },
+        timeoutSeconds: decl.agent_preprocessing_timeout,
+      });
+      rec.preprocessResult = { ok: result.ok, timedOut: result.timedOut, code: result.code };
+      if (!result.ok) {
+        const why = preprocessingFailure(result);
+        console.log(`! preprocessing ${rec.pack}/${rec.task} [${rec.slotId}]: ${why}`);
+        const extra = result.stderr?.trim() ? [`stderr tail: ${result.stderr.trim().split('\n').slice(-3).join(' / ')}`] : [];
+        await fileNeedsHuman(rec, why, extra);
+        continue; // never hand off to an agent after a failed preprocessing
+      }
+      // Success. An agentless task is done (no issue on success, as the old inline
+      // was quiet); an agentful one hands off to the agent now.
+      console.log(`preprocessing ${rec.pack}/${rec.task} [${rec.slotId}]: ok`);
+      if (rec.inline) continue;
+      if (rec.dispatch?.action === 'create') await fileHandoff(rec, taskObj);
+      continue;
+    }
+
+    // No preprocessing. agent_model:none → the legacy in-process inline worker.
     if (rec.inline) {
-      // agent_model: none — run the worker module inline (it may itself dispatch a workflow).
       try {
-        const workerUrl = pathToFileURL(join(taskObj.taskDir, taskObj.decl.agent_instructions)).href;
+        const workerUrl = pathToFileURL(join(taskObj.taskDir, decl.agent_instructions)).href;
         const worker = (await import(workerUrl)).default;
         if (typeof worker === 'function') await worker({ gh, repo, ctx, slotId: rec.slotId });
       } catch (e) { console.log(`! inline worker ${rec.pack}/${rec.task} failed: ${e.message}`); }
       continue;
     }
-    if (rec.dispatch?.action === 'create') {
-      const title = dispatchTitle({ pack: rec.pack, task: rec.task, slotId: rec.slotId });
-      const body = dispatchBody({ taskPath: taskObj.taskPath, pack: rec.pack, task: rec.task, slotId: rec.slotId, context: rec.context });
-      const res = await gh(`/repos/${repo}/issues`, { method: 'POST', body: { title, body, labels: [READY_LABEL] } });
-      if (res.status >= 300) console.log(`! failed to file dispatch issue for ${rec.pack}/${rec.task}: ${res.status}`);
-    }
+    // Agent task with no preprocessing → today's immediate labeled dispatch.
+    if (rec.dispatch?.action === 'create') await fileHandoff(rec, taskObj);
   }
 
   console.log('## Claudinite scheduler\n');
