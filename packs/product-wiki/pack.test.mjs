@@ -63,6 +63,9 @@ test('pack manifest: id, marker, five uniquely-named rules, the contributed isol
   assert.equal(pack.contributes.barriers.length, 1);
   assert.equal(pack.contributes.barriers[0].id, 'product-wiki-isolation');
   assert.equal(pack.run_daily.length, 1);
+  // Adoption interview scopes the research: product, users, market.
+  assert.deepEqual(pack.questions.map((q) => q.id), ['product', 'users', 'market']);
+  assert.ok(pack.questions.every((q) => q.prompt && q.distill));
 });
 
 test('detect fires exactly on the sink marker', () => {
