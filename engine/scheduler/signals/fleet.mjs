@@ -119,38 +119,30 @@ async function buildMember(gh, repo, sinceIso) {
 
 // Read the fleet aggregate: every COVERED member the owner owns (excluding the
 // canon repo itself, forks, and archived repos), each with its declaration +
-// local-pack window probe. Pure over `fleetGh`. Returns
-// `{ owner, members, unreadable, error }`:
-//   - `error` is set (and `members` empty) when enumeration itself failed or
-//     returned nothing — a fleet task treats an errored/empty fleet as "no work I
-//     can prove", never as "the fleet is empty" (the census's refuse-on-empty
-//     rule: an empty enumeration is a wrong-token/scope symptom, not consent).
-//   - `unreadable` lists members that ARE covered candidates (not a clean 404)
-//     but whose declaration couldn't be read/parsed this run — a completeness gap
-//     the retire guard treats as a hard block (an unreadable member could still be
-//     on a legacy shape; "couldn't check" is never "clean"). A 404 is a definite
-//     "uncovered", NOT unreadable — it's simply not a member.
+// local-pack window probe. Pure over `fleetGh`. Returns `{ owner, members, error }`;
+// `error` is set (and `members` empty) when enumeration itself failed or returned
+// nothing — a fleet task's precondition treats an errored/empty fleet as "no work
+// I can prove", never as "the fleet is empty" (the census's own refuse-on-empty
+// rule: an empty enumeration is a wrong-token/scope symptom, not consent).
 export async function readFleet(fleetGh, { owner, canonRepo, sinceIso }) {
   const ownerLc = String(owner).toLowerCase();
   const mine = await paged(fleetGh, '/user/repos?affiliation=owner');
   const owned = mine.filter((r) => r?.owner?.login?.toLowerCase() === ownerLc);
   if (owned.length === 0) {
-    return { owner: ownerLc, members: [], unreadable: [], error: `enumeration returned no repos owned by ${ownerLc} — wrong token user or scope` };
+    return { owner: ownerLc, members: [], error: `enumeration returned no repos owned by ${ownerLc} — wrong token user or scope` };
   }
   const members = [];
-  const unreadable = [];
   for (const r of owned.sort((a, b) => a.name.localeCompare(b.name))) {
     const fullName = r.full_name;
     if (fullName.toLowerCase() === String(canonRepo).toLowerCase()) continue; // the canon doesn't mount itself
     if (r.archived || r.fork) continue;
     const res = await fleetGh(`/repos/${fullName}/contents/.claudinite-checks.json`);
-    if (res.status === 404) continue;                       // definitely uncovered — not a member
-    if (res.status !== 200 || !res.json?.content) { unreadable.push(fullName); continue; } // covered candidate we couldn't read
+    if (res.status !== 200 || !res.json?.content) continue; // uncovered — no tracked declaration
     const checks = parseChecks(res.json.content);
-    if (!checks) { unreadable.push(fullName); continue; }    // unparsable declaration — can't get its stamp
+    if (!checks) continue; // unparsable declaration → not a member we can plan for
     members.push(await buildMember(fleetGh, { full_name: fullName, default_branch: r.default_branch, checks }, sinceIso));
   }
-  return { owner: ownerLc, members, unreadable };
+  return { owner: ownerLc, members };
 }
 
 // The I/O edge: build a fleet `gh` from FLEET_GITHUB_TOKEN, or null when the

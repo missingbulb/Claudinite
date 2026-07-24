@@ -1,6 +1,6 @@
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { MIGRATIONS_SUBDIR, specFiles, migrationActive } from '../engine/checks/helpers/active-migrations.mjs';
+import { MIGRATIONS_SUBDIR, MIGRATIONS_OLD_SUBDIR, specFiles, oldSpecFiles, migrationActive } from '../engine/checks/helpers/active-migrations.mjs';
 import { MODEL_FAMILIES } from '../engine/scheduler/model-map.mjs';
 
 const dir = dirname(fileURLToPath(import.meta.url));
@@ -14,18 +14,29 @@ const dir = dirname(fileURLToPath(import.meta.url));
 // (engine/checks/helpers/active-migrations.mjs) because pack CHECKS consult it and packs import
 // only the engine surface (pack-independence); this registry re-exports it so
 // canon-side callers keep one import home.
-export { MIGRATIONS_SUBDIR, migrationActive };
+export { MIGRATIONS_SUBDIR, MIGRATIONS_OLD_SUBDIR, migrationActive };
 const specsDir = join(dir, MIGRATIONS_SUBDIR);
+const oldSpecsDir = join(dir, MIGRATIONS_OLD_SUBDIR);
 
-// Structural discovery, like packs/ and skills/: every
-// migrations/active_migrations/<file>.mjs is a migration spec. Each returned object
-// carries its source `file` (basename) alongside the spec fields, so the retire
-// pass can name the record to delete.
+// Structural discovery, like packs/ and skills/: every migration record `.mjs` is a
+// spec. The APPLY/backfill path loads from BOTH the recent `active_migrations/` AND
+// the aged `migrations-old/` archive (per-project-scheduling redesign), so a dormant
+// project baselining out of a fresh canon clone still applies a migration that aged
+// past its TTL before it converged — recency governs check-tolerance + what ships in
+// the mount, never whether a record still applies. `migrations-old` is canon-only, so
+// in a vendored consumer mount it is simply absent (empty) and only the recent records
+// load. Each object carries its `file` basename and the `subdir` it lives in, so the
+// TTL mover can name records and callers can build a record's repo-relative path.
 export async function loadMigrations() {
   const out = [];
-  for (const f of specFiles()) {
-    const spec = (await import(pathToFileURL(join(specsDir, f)).href)).default;
-    out.push({ file: f, ...spec });
+  for (const [subdir, dirPath, files] of [
+    [MIGRATIONS_SUBDIR, specsDir, specFiles()],
+    [MIGRATIONS_OLD_SUBDIR, oldSpecsDir, oldSpecFiles()],
+  ]) {
+    for (const f of files) {
+      const spec = (await import(pathToFileURL(join(dirPath, f)).href)).default;
+      out.push({ file: f, subdir, ...spec });
+    }
   }
   return out;
 }
@@ -150,9 +161,18 @@ export function agenticMigrations(migrations) {
 // YYYY-MM-DD dates compare lexicographically == chronologically. `appliedThisCycle`
 // is a Set of migration ids the apply pass wrote to >=1 repo this run (empty when
 // the caller has no apply signal — then only the 0-pending/aged/auto guards apply).
+// NOTE (per-project-scheduling redesign): fleet-driven RETIREMENT (delete when the
+// whole fleet has converged) is superseded by the TTL ARCHIVER — the
+// migrations-retire scheduler task moves a record from active_migrations/ to the
+// canon-only migrations-old/ after its TTL, and it is kept there for a dormant
+// project's backfill, never deleted. This guard stays for the legacy central
+// routine (the rollback until Phase 4), but it now REFUSES to touch a record
+// already archived in migrations-old (subdir), so the archiver and the legacy
+// deleter can never fight over the same record.
 export function retirableMigrations(migrations, { pending, unknownCount, today, appliedThisCycle = new Set() }) {
   if (unknownCount > 0) return [];
   return migrations.filter((m) => {
+    if (m.subdir === MIGRATIONS_OLD_SUBDIR) return false; // archived for backfill — never fleet-deleted
     if ((m.retire ?? 'auto') !== 'auto') return false;
     if ((pending.get(m.id) ?? 0) > 0) return false;
     if (appliedThisCycle.has(m.id)) return false;
@@ -160,41 +180,18 @@ export function retirableMigrations(migrations, { pending, unknownCount, today, 
   });
 }
 
-// The per-project-scheduling variant of the guard (DESIGN §6, table 2). The old
-// central retire pass proved quiescence with `appliedThisCycle` — an in-memory
-// handoff from the same run's apply pass. In the per-repo model there is no
-// central apply pass: each member's own baselining applies notes and advances its
-// own provenance stamp, so quiescence evidence is PER-REPO — every member has
-// demonstrably converged its mount to a canon state PAST the day the migration
-// landed, so no member is still mid-application.
-//
-// A migration is retirable only when ALL of these hold — every one strictly
-// conservative, because retirement is an irreversible delete:
-//   - it opts into auto-retirement (retire !== 'manual');
-//   - the fleet picture is COMPLETE (unknownCount === 0) — a member whose
-//     membership/stamp couldn't be read, or whose legacyPresent probe errored,
-//     makes unknownCount > 0 and blocks ALL retirement (an unreadable member could
-//     still be on the legacy shape — never read "couldn't check" as "clean");
-//   - ZERO members still carry its legacy shape (pending.get(id) === 0);
-//   - it landed strictly before today (>= one cycle old); and
-//   - EVERY member's provenance stamp is dated strictly after it landed
-//     (min(memberStampDates) > m.landed) — the per-repo quiescence: a member that
-//     baselined on a later day than the migration landed has already seen it
-//     (applied it or found it inapplicable) and is not mid-application. A single
-//     member that hasn't converged past the migration's landing day blocks its
-//     retirement until the whole fleet catches up.
-// `memberStampDates` are YYYY-MM-DD (or ISO — lexicographic == chronological for
-// both, and an ISO datetime compares correctly against a YYYY-MM-DD landed date
-// because it shares the date prefix). `unknownCount === 0` guarantees every member
-// contributed a readable stamp, so the array covers the whole fleet.
-export function retirableMigrationsByStamp(migrations, { pending, unknownCount, today, memberStampDates }) {
-  if (unknownCount > 0) return [];
-  if (!Array.isArray(memberStampDates) || memberStampDates.length === 0) return []; // no proven-converged fleet → prove nothing
-  const minStamp = memberStampDates.reduce((a, b) => (String(a) < String(b) ? a : b));
+// The TTL archiver's selection (per-project-scheduling redesign): the migrations
+// whose age has passed the TTL and should move from active_migrations/ to the
+// canon-only migrations-old/ archive. Pure over the loaded ACTIVE records +
+// `today`; `ttlDays` is the age (in days) after which a record ages out. A record
+// still applies from the archive, so this is housekeeping, not deletion — no fleet
+// evidence and no quiescence proof is needed. Only records currently in
+// active_migrations are candidates (an already-archived record is skipped).
+export function migrationsPastTtl(migrations, { today, ttlDays }) {
+  const cutoff = new Date(`${today}T00:00:00Z`).getTime() - ttlDays * 86400000;
   return migrations.filter((m) => {
-    if ((m.retire ?? 'auto') !== 'auto') return false;
-    if ((pending.get(m.id) ?? 0) > 0) return false;
-    if (!(String(today) > String(m.landed))) return false;
-    return String(minStamp) > String(m.landed);
+    if (m.subdir === MIGRATIONS_OLD_SUBDIR) return false; // already archived
+    const landedMs = new Date(`${m.landed}T00:00:00Z`).getTime();
+    return Number.isFinite(landedMs) && landedMs <= cutoff;
   });
 }

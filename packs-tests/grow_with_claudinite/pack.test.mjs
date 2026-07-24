@@ -204,6 +204,15 @@ test('growth-config: valid retention and promote pass, malformed shapes fail', (
   assert.ok(runConfigCheck([]).length === 1);
 });
 
+test('growth-config: pack_paths must be a non-empty array of path strings', () => {
+  assert.deepEqual(runConfigCheck({ pack_paths: ['.claudinite/local/packs'] }), []);
+  assert.deepEqual(runConfigCheck({ pack_paths: ['.claudinite/local/packs', 'packs'] }), []); // Claudinite's own
+  assert.ok(runConfigCheck({ pack_paths: [] }).length === 1);      // empty is a mis-scope
+  assert.ok(runConfigCheck({ pack_paths: '.claudinite/local/packs' }).length === 1); // not an array
+  assert.ok(runConfigCheck({ pack_paths: ['ok', ''] }).length === 1); // an empty string member
+  assert.ok(runConfigCheck({ pack_paths: ['ok', 3] }).length === 1);  // a non-string member
+});
+
 // --- capture end-to-end against a local origin --------------------------------
 
 const CAPTURE = join(packDir, 'capture-log.mjs');

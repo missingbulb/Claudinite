@@ -112,24 +112,6 @@ test('an empty enumeration is an error, never consent to an empty fleet', async 
   assert.match(fleet.error, /no repos owned by acme/);
 });
 
-test('a 404 is uncovered (not a member); a non-404 read failure is unreadable (a completeness gap)', async () => {
-  const gh = fakeGh([
-    [/\/user\/repos\?affiliation=owner/, { status: 200, json: [
-      { name: 'app', full_name: 'acme/app', owner: { login: 'acme' }, default_branch: 'main' },
-      { name: 'gone', full_name: 'acme/gone', owner: { login: 'acme' }, default_branch: 'main' },
-      { name: 'flaky', full_name: 'acme/flaky', owner: { login: 'acme' }, default_branch: 'main' },
-    ] }],
-    [/\/repos\/acme\/app\/contents\/\.claudinite-checks\.json/, checksFile({ packs: ['basics'] })],
-    [/\/repos\/acme\/app\/contents\/\.claudinite\/local/, { status: 404, json: null }],
-    [/\/repos\/acme\/app\/commits/, { status: 200, json: [] }],
-    [/\/repos\/acme\/gone\/contents\/\.claudinite-checks\.json/, { status: 404, json: null }],  // uncovered
-    [/\/repos\/acme\/flaky\/contents\/\.claudinite-checks\.json/, { status: 503, json: null }], // transient read failure
-  ]);
-  const fleet = await readFleet(gh, opts());
-  assert.deepEqual(fleet.members.map((m) => m.repo), ['acme/app']);
-  assert.deepEqual(fleet.unreadable, ['acme/flaky']); // gone (404) is NOT unreadable; flaky (503) is
-});
-
 test('makeFleetGh returns null without the token, a reader with it', () => {
   assert.equal(makeFleetGh({}), null);
   assert.equal(typeof makeFleetGh({ FLEET_GITHUB_TOKEN: 't' }), 'function');

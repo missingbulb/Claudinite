@@ -5,7 +5,8 @@
     {
       "id": "grow_with_claudinite",
       "config": {
-        "retention_days": 10
+        "retention_days": 10,
+        "pack_paths": [".claudinite/local/packs", "packs"]
       },
       "answers": {
         "retention": "10 days — the recommended rethink window before a captured conversation log is pruned."
