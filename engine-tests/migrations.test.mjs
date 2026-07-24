@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   loadMigrations, resolvePath, applyFileAliases, retirableMigrations,
+  retirableMigrationsByStamp,
   applyMaterializations, applyRewrites, migrationActive,
   migrationAgentic, agenticMigrations,
 } from '../migrations/registry.mjs';
@@ -89,6 +90,53 @@ test('retirableMigrations: blocked by unknowns, pending repos, same-day landing,
     retirableMigrations([base], { pending: clean, unknownCount: 0, today: '2026-07-13', appliedThisCycle: new Set() }).map((m) => m.id),
     ['x'],
   );
+});
+
+// --- retirableMigrationsByStamp (the per-project-scheduling per-repo quiescence) ---
+
+test('retirableMigrationsByStamp: retires when every member converged PAST the landing day', () => {
+  const migs = [M({ id: 'done', landed: '2026-07-12' })];
+  const out = retirableMigrationsByStamp(migs, {
+    pending: new Map([['done', 0]]), unknownCount: 0, today: '2026-07-14',
+    memberStampDates: ['2026-07-13', '2026-07-14T02:00:00Z'], // all strictly after 2026-07-12
+  });
+  assert.deepEqual(out.map((m) => m.id), ['done']);
+});
+
+test('retirableMigrationsByStamp: a single member not past the landing day blocks retirement', () => {
+  const migs = [M({ id: 'x', landed: '2026-07-12' })];
+  // one member's stamp is ON the landing day (not strictly after) — quiescence unproven
+  assert.deepEqual(retirableMigrationsByStamp(migs, {
+    pending: new Map([['x', 0]]), unknownCount: 0, today: '2026-07-14',
+    memberStampDates: ['2026-07-13', '2026-07-12'],
+  }), []);
+  // one member's stamp predates the migration entirely — hasn't converged past it
+  assert.deepEqual(retirableMigrationsByStamp(migs, {
+    pending: new Map([['x', 0]]), unknownCount: 0, today: '2026-07-14',
+    memberStampDates: ['2026-07-13', '2026-07-01'],
+  }), []);
+});
+
+test('retirableMigrationsByStamp: unknowns, pending, un-aged, and manual all block (as before)', () => {
+  const base = M({ id: 'x', landed: '2026-07-12' });
+  const clean = new Map([['x', 0]]);
+  const stamps = ['2026-07-13', '2026-07-13'];
+  // an unreadable member (unknownCount) blocks ALL retirement — couldn't-check is never clean
+  assert.deepEqual(retirableMigrationsByStamp([base], { pending: clean, unknownCount: 1, today: '2026-07-14', memberStampDates: stamps }), []);
+  // a member still on the legacy shape blocks
+  assert.deepEqual(retirableMigrationsByStamp([base], { pending: new Map([['x', 1]]), unknownCount: 0, today: '2026-07-14', memberStampDates: stamps }), []);
+  // landed today (< one cycle old) blocks even if stamps are newer
+  assert.deepEqual(retirableMigrationsByStamp([base], { pending: clean, unknownCount: 0, today: '2026-07-12', memberStampDates: stamps }), []);
+  // retire:'manual' opts out
+  const manual = M({ id: 'x', landed: '2026-07-12', retire: 'manual' });
+  assert.deepEqual(retirableMigrationsByStamp([manual], { pending: clean, unknownCount: 0, today: '2026-07-14', memberStampDates: stamps }), []);
+});
+
+test('retirableMigrationsByStamp: an empty fleet proves nothing (never retires)', () => {
+  const migs = [M({ id: 'x', landed: '2026-07-12' })];
+  const clean = new Map([['x', 0]]);
+  assert.deepEqual(retirableMigrationsByStamp(migs, { pending: clean, unknownCount: 0, today: '2026-07-14', memberStampDates: [] }), []);
+  assert.deepEqual(retirableMigrationsByStamp(migs, { pending: clean, unknownCount: 0, today: '2026-07-14', memberStampDates: undefined }), []);
 });
 
 test('applyMaterializations: creates a dest from its template when missing or drifted; skips when equal; gated by appliesTo', async () => {

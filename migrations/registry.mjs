@@ -159,3 +159,42 @@ export function retirableMigrations(migrations, { pending, unknownCount, today, 
     return String(today) > String(m.landed);
   });
 }
+
+// The per-project-scheduling variant of the guard (DESIGN §6, table 2). The old
+// central retire pass proved quiescence with `appliedThisCycle` — an in-memory
+// handoff from the same run's apply pass. In the per-repo model there is no
+// central apply pass: each member's own baselining applies notes and advances its
+// own provenance stamp, so quiescence evidence is PER-REPO — every member has
+// demonstrably converged its mount to a canon state PAST the day the migration
+// landed, so no member is still mid-application.
+//
+// A migration is retirable only when ALL of these hold — every one strictly
+// conservative, because retirement is an irreversible delete:
+//   - it opts into auto-retirement (retire !== 'manual');
+//   - the fleet picture is COMPLETE (unknownCount === 0) — a member whose
+//     membership/stamp couldn't be read, or whose legacyPresent probe errored,
+//     makes unknownCount > 0 and blocks ALL retirement (an unreadable member could
+//     still be on the legacy shape — never read "couldn't check" as "clean");
+//   - ZERO members still carry its legacy shape (pending.get(id) === 0);
+//   - it landed strictly before today (>= one cycle old); and
+//   - EVERY member's provenance stamp is dated strictly after it landed
+//     (min(memberStampDates) > m.landed) — the per-repo quiescence: a member that
+//     baselined on a later day than the migration landed has already seen it
+//     (applied it or found it inapplicable) and is not mid-application. A single
+//     member that hasn't converged past the migration's landing day blocks its
+//     retirement until the whole fleet catches up.
+// `memberStampDates` are YYYY-MM-DD (or ISO — lexicographic == chronological for
+// both, and an ISO datetime compares correctly against a YYYY-MM-DD landed date
+// because it shares the date prefix). `unknownCount === 0` guarantees every member
+// contributed a readable stamp, so the array covers the whole fleet.
+export function retirableMigrationsByStamp(migrations, { pending, unknownCount, today, memberStampDates }) {
+  if (unknownCount > 0) return [];
+  if (!Array.isArray(memberStampDates) || memberStampDates.length === 0) return []; // no proven-converged fleet → prove nothing
+  const minStamp = memberStampDates.reduce((a, b) => (String(a) < String(b) ? a : b));
+  return migrations.filter((m) => {
+    if ((m.retire ?? 'auto') !== 'auto') return false;
+    if ((pending.get(m.id) ?? 0) > 0) return false;
+    if (!(String(today) > String(m.landed))) return false;
+    return String(minStamp) > String(m.landed);
+  });
+}
