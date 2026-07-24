@@ -173,9 +173,30 @@ async function main() {
 
   const due = computeDueTaskSlots(tasks, schedule, now, lastSuccess);
   const sinceIso = windowStart(due, now);
+
+  // The fleet aggregate (canon-only, DESIGN §3.3) is expensive — a full
+  // enumeration over the fleet PAT — so build it ONLY when a due task actually
+  // declares the `fleet` signal, and only when FLEET_GITHUB_TOKEN is set (the
+  // canon repo with the census credential). Otherwise ctx.fleet stays null and
+  // the collector returns null, so a fleet task's precondition skips rather than
+  // crashes. Enumeration failures are surfaced by readFleet as `{ error }`, not
+  // thrown — a fleet task treats that as "no work I can prove".
+  let fleet = null;
+  if (signalsUnion(due).includes('fleet')) {
+    const { readFleet, makeFleetGh } = await import('./signals/fleet.mjs');
+    const fleetGh = makeFleetGh();
+    if (fleetGh) {
+      const owner = repo.split('/')[0];
+      fleet = await readFleet(fleetGh, { owner, canonRepo: repo, sinceIso });
+      if (fleet.error) console.log(`! fleet enumeration: ${fleet.error}`);
+    } else {
+      console.log('- a due task declares the `fleet` signal but FLEET_GITHUB_TOKEN is not set — skipping fleet-scoped tasks');
+    }
+  }
+
   const ctx = {
     repo, defaultBranch, now: now.toISOString(), sinceIso, config,
-    activePacks: config.packs,
+    activePacks: config.packs, fleet,
   };
   const packConfigFor = (packId) => config.packConfig?.[packId] ?? {};
 

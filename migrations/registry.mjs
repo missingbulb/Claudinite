@@ -1,6 +1,6 @@
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { MIGRATIONS_SUBDIR, specFiles, migrationActive } from '../engine/checks/helpers/active-migrations.mjs';
+import { MIGRATIONS_SUBDIR, MIGRATIONS_OLD_SUBDIR, specFiles, oldSpecFiles, migrationActive } from '../engine/checks/helpers/active-migrations.mjs';
 import { MODEL_FAMILIES } from '../engine/scheduler/model-map.mjs';
 
 const dir = dirname(fileURLToPath(import.meta.url));
@@ -14,18 +14,29 @@ const dir = dirname(fileURLToPath(import.meta.url));
 // (engine/checks/helpers/active-migrations.mjs) because pack CHECKS consult it and packs import
 // only the engine surface (pack-independence); this registry re-exports it so
 // canon-side callers keep one import home.
-export { MIGRATIONS_SUBDIR, migrationActive };
+export { MIGRATIONS_SUBDIR, MIGRATIONS_OLD_SUBDIR, migrationActive };
 const specsDir = join(dir, MIGRATIONS_SUBDIR);
+const oldSpecsDir = join(dir, MIGRATIONS_OLD_SUBDIR);
 
-// Structural discovery, like packs/ and skills/: every
-// migrations/active_migrations/<file>.mjs is a migration spec. Each returned object
-// carries its source `file` (basename) alongside the spec fields, so the retire
-// pass can name the record to delete.
+// Structural discovery, like packs/ and skills/: every migration record `.mjs` is a
+// spec. The APPLY/backfill path loads from BOTH the recent `active_migrations/` AND
+// the aged `migrations-old/` archive (per-project-scheduling redesign), so a dormant
+// project baselining out of a fresh canon clone still applies a migration that aged
+// past its TTL before it converged — recency governs check-tolerance + what ships in
+// the mount, never whether a record still applies. `migrations-old` is canon-only, so
+// in a vendored consumer mount it is simply absent (empty) and only the recent records
+// load. Each object carries its `file` basename and the `subdir` it lives in, so the
+// TTL mover can name records and callers can build a record's repo-relative path.
 export async function loadMigrations() {
   const out = [];
-  for (const f of specFiles()) {
-    const spec = (await import(pathToFileURL(join(specsDir, f)).href)).default;
-    out.push({ file: f, ...spec });
+  for (const [subdir, dirPath, files] of [
+    [MIGRATIONS_SUBDIR, specsDir, specFiles()],
+    [MIGRATIONS_OLD_SUBDIR, oldSpecsDir, oldSpecFiles()],
+  ]) {
+    for (const f of files) {
+      const spec = (await import(pathToFileURL(join(dirPath, f)).href)).default;
+      out.push({ file: f, subdir, ...spec });
+    }
   }
   return out;
 }
@@ -150,12 +161,37 @@ export function agenticMigrations(migrations) {
 // YYYY-MM-DD dates compare lexicographically == chronologically. `appliedThisCycle`
 // is a Set of migration ids the apply pass wrote to >=1 repo this run (empty when
 // the caller has no apply signal — then only the 0-pending/aged/auto guards apply).
+// NOTE (per-project-scheduling redesign): fleet-driven RETIREMENT (delete when the
+// whole fleet has converged) is superseded by the TTL ARCHIVER — the
+// migrations-retire scheduler task moves a record from active_migrations/ to the
+// canon-only migrations-old/ after its TTL, and it is kept there for a dormant
+// project's backfill, never deleted. This guard stays for the legacy central
+// routine (the rollback until Phase 4), but it now REFUSES to touch a record
+// already archived in migrations-old (subdir), so the archiver and the legacy
+// deleter can never fight over the same record.
 export function retirableMigrations(migrations, { pending, unknownCount, today, appliedThisCycle = new Set() }) {
   if (unknownCount > 0) return [];
   return migrations.filter((m) => {
+    if (m.subdir === MIGRATIONS_OLD_SUBDIR) return false; // archived for backfill — never fleet-deleted
     if ((m.retire ?? 'auto') !== 'auto') return false;
     if ((pending.get(m.id) ?? 0) > 0) return false;
     if (appliedThisCycle.has(m.id)) return false;
     return String(today) > String(m.landed);
+  });
+}
+
+// The TTL archiver's selection (per-project-scheduling redesign): the migrations
+// whose age has passed the TTL and should move from active_migrations/ to the
+// canon-only migrations-old/ archive. Pure over the loaded ACTIVE records +
+// `today`; `ttlDays` is the age (in days) after which a record ages out. A record
+// still applies from the archive, so this is housekeeping, not deletion — no fleet
+// evidence and no quiescence proof is needed. Only records currently in
+// active_migrations are candidates (an already-archived record is skipped).
+export function migrationsPastTtl(migrations, { today, ttlDays }) {
+  const cutoff = new Date(`${today}T00:00:00Z`).getTime() - ttlDays * 86400000;
+  return migrations.filter((m) => {
+    if (m.subdir === MIGRATIONS_OLD_SUBDIR) return false; // already archived
+    const landedMs = new Date(`${m.landed}T00:00:00Z`).getTime();
+    return Number.isFinite(landedMs) && landedMs <= cutoff;
   });
 }

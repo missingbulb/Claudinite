@@ -1,22 +1,29 @@
 ---
 name: prose-to-checks
-description: Mine the corpus's existing prose (pack RULES.md, skill SKILL.md) for always-testable rules that were never converted to checks, and convert the strongest ones. Use when auditing the corpus for convertible rules, or when the nightly growth routine runs its prose-to-checks sweep.
+description: Mine a repo's existing pack prose (RULES.md, SKILL.md) for always-testable rules that were never converted to checks, and convert the strongest ones. Use when auditing packs for convertible rules, or when the growth prose-to-checks sweep runs.
 ---
 
 # Convert existing prose to checks
 
-A completeness-critic over Claudinite itself. The growth *promote* stage converts each **new**
+A completeness-critic over a repo's own packs. The growth *extract* stage converts each **new**
 lesson down the promotion ladder; this pass sweeps the **existing** prose backlog for rules that
-are always-testable but still live only as prose — and converts them, so the corpus keeps
-shedding context over time instead of only at the moment a rule is first learned. It runs as the
-`canon-curation` pack's weekly `prose-to-checks-sweep` task, and on demand.
+are always-testable but still live only as prose — and converts them, so the packs keep shedding
+context over time instead of only at the moment a rule is first learned. It runs as
+grow_with_claudinite's daily `prose-to-checks-sweep` task, and on demand.
+
+## Scope — the pack paths you were given
+
+Work only the **pack paths configured for this repo** (the task passes them in its Context): a
+consuming repo's own **local packs** (`.claudinite/local/packs/`) by default — projects don't
+improve core canon packs — while **Claudinite itself** also sweeps its core `packs/`. Read the
+prose under those paths (each pack's `RULES.md`, and any `SKILL.md` beside them). Never edit a
+read-only mounted canon pack under `.claudinite/shared/`.
 
 ## What to look for — the check-the-world test
 
-Read the prose of the packs and skills (`packs/<name>/RULES.md`, `packs/<name>/RELEASE.md`,
-`skills/<name>/SKILL.md`). For each rule, ask the one question from
-[engine/checks/DESIGN.md](../../../../../../engine/checks/DESIGN.md): **does it constrain a *static signature in the repo
-artifact* — something a post-hoc scan could observe?**
+For each rule, ask the one question from
+[engine/checks/DESIGN.md](../../../../engine/checks/DESIGN.md): **does it constrain a *static
+signature in the repo artifact* — something a post-hoc scan could observe?**
 
 - **Yes → a conversion candidate.** A dangling-reference rule, a filename convention, a workflow
   or manifest shape, a "these two files must agree" invariant, a forbidden pattern in code.
@@ -29,15 +36,14 @@ part of the on-demand skill — it belongs in a pack as a check.
 
 ## How to convert one
 
-Follow the promote stage's check-authoring discipline
-([promote.md](../../promote.md) and
-[item-routing.md](../../item-routing.md) own the ladder). For each candidate:
+Follow the extract stage's check-authoring discipline (the local promotion ladder in
+[extracting-lessons.md](../../extracting-lessons.md)). For each candidate:
 
-1. **Author the check** in the owning pack (`packs/<pack>/<rule>.mjs`, listed in `pack.mjs`) —
-   the failure message *is* the rule (what / why / fix / `doc:` pointer back to the prose).
+1. **Author the check** in the owning pack (`<pack>/<rule>.mjs`, listed in its `pack.mjs`) — the
+   failure message *is* the rule (what / why / fix / `doc:` pointer back to the prose).
 2. **Write the fixture first and see it fail** — a violating fixture must find, a clean one must
-   not (the test lives in the owning pack's `packs-tests/<pack>/pack.test.mjs`). A conversion with
-   no proving fixture doesn't ship.
+   not (the test lives beside the pack's other tests). A conversion with no proving fixture
+   doesn't ship.
 3. **Ship at real severity, fail-fast** — blocking for a defect, advisory only when the rule is
    directional by kind.
 4. **Trim the prose** to rationale — the check owns enforcement now; leaving both pays twice and
