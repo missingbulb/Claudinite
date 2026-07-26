@@ -5,14 +5,13 @@ pack's three maintenance tasks — `tidy-issues`, `tidy-prs`, `tidy-branches`, o
 the policy they follow. The per-object **method** lives in the pack's skills
 ([single-branch-status](skills/single-branch-status/SKILL.md),
 [single-pr-status](skills/single-pr-status/SKILL.md),
-[single-issue-triage](skills/single-issue-triage/SKILL.md)); each task also reconciles its own standing
-tracker at the end of its pass.
+[single-issue-triage](skills/single-issue-triage/SKILL.md)).
 
 The one rule that shapes everything: **assess PRs and branches read-only; act only on issues.**
 
-- **Branches, PRs — assess only.** They may be work in progress. Report which should stay and which
-  are safe to close/delete; **never** delete, push, merge, or close them. Judge by *content* (the
-  landed-status test), never a ref's auto-generated name.
+- **Branches, PRs — assess only.** Report which should stay and which are safe to close/delete;
+  **never** delete, push, merge, or close them. Judge by *content* (the landed-status test), never a
+  ref's auto-generated name.
 - **Issues — act.** Take the first applicable action: close-if-implemented / needs-decision / blocked
   / quick-win / leave. "Implemented in `main`" means the issue's actual ask is true of `main`'s
   content **now** — confirm it there and cite it; when you can't, comment, don't close. Every action
