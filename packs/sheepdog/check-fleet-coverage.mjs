@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 // The sheepdog pack's fleet-coverage CENSUS — the cross-repo reach the pack adds.
-// Run by the sheepdog repo's coverage workflow (materialized from the pack's stub
-// by baselining — workflow_dispatch only, no schedule of its own), which checks
-// out Claudinite and runs this with the FLEET_GITHUB_TOKEN.
+// Run by this pack's `fleet-census` scheduled task (tasks/fleet-census/), whose
+// worker calls `main()` below as the task's `agent_preprocessing` — Action-side
+// inside the repo's scheduler workflow, where the FLEET_GITHUB_TOKEN the task
+// declares in `required_secrets` is reachable as ordinary environment. Still
+// runnable by hand (`node check-fleet-coverage.mjs`) via the CLI guard at the foot.
 //
 // Its concern is COVERAGE ALONE — one thing: reads the fleet config from the
 // sheepdog (home) repo's sheepdog pack-entry config (owner to cover + exclude list),
@@ -45,7 +47,7 @@ function adoptionBody(fullName) {
     `- **Keep it out** — add \`${fullName}\` to the sheepdog pack entry's \`config.exclude\` in this`,
     '  (sheepdog) repo\'s `.claudinite-checks.json`, with a reason.',
     '',
-    'This issue is converged by the daily Fleet Coverage census: it closes itself once the',
+    'This issue is converged by the daily fleet-census task: it closes itself once the',
     'repo is covered (`completed`) or opted out (`not planned`), and a close without either',
     'gets reopened while the repo stays uncovered.',
   ].join('\n');
@@ -138,7 +140,9 @@ async function convergeIssues(gh, home, { uncovered, coveredSet, optedOutSet }) 
 
 // --- main --------------------------------------------------------------------
 
-async function main() {
+// Exported so the fleet-census task's worker can invoke the census in-process
+// rather than reimplementing it; the CLI guard below keeps the standalone run.
+export async function main() {
   const token = process.env.FLEET_GITHUB_TOKEN;
   const home = process.env.GITHUB_REPOSITORY;
   if (!token) {

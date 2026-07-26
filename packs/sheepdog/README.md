@@ -5,6 +5,8 @@ under an owner. Opt-in (a dedicated sheepdog repo declares it; **not** seeded by
 standardizes the fleet coverage that used to be bespoke Claudinite infrastructure into a declaration.
 
 Thin by design: prose + the config schema (the sheepdog pack entry's `config` = `{ owner, kind, exclude }`) + the
-coverage workflow stub baselining materializes. The machinery it drives — the census, running the
+**census** ([check-fleet-coverage.mjs](check-fleet-coverage.mjs)) and the one agentless scheduled task
+that runs it ([tasks/fleet-census/](tasks/fleet-census/task.md) — the census is its
+`agent_preprocessing`; no workflow of its own). The rest of the machinery — running the
 daily-run, the run_daily engine, scheduling — is Claudinite **core** (`routines/`). Carries no
-conformance checks and no `run_daily` task of its own. Policy + config: [RULES.md](RULES.md).
+conformance checks. Policy + config: [RULES.md](RULES.md).
