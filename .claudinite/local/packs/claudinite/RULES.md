@@ -23,6 +23,11 @@ prose below). Entries accrete as sessions on the canon surface durable, canon-sp
   tree may reference is expressed by declaring/configuring the `barriers` pack (contributed
   edges, `siblings`/`scope` capabilities — extend barriers generically if a capability is
   missing). Never write standalone code that checks packs-tree segregation.
+- **A `docs/<initiative>/DESIGN.md` records the mechanism only** (owner decision, 2026-07-23,
+  #420). Implementation status, phase/task tracking, in-flight-PR reconciliation, and remaining
+  work live in that initiative's tracking issue (agent-preprocessing → #394); the design doc keeps
+  the mechanism and its decisions-on-record, and a phased plan lives in the sibling `MIGRATION.md`.
+  Don't reintroduce a status / open-questions / remaining-work section there.
 
 ## Canon-specific gotchas
 
@@ -49,3 +54,14 @@ prose below). Entries accrete as sessions on the canon surface durable, canon-sp
   against a real corpus and asserts the **positive** effect — prose IS emitted — never merely
   that `status === 0` (which fail-soft makes meaningless); see
   `engine-tests/pack_loader/inject-pack-prose.test.mjs`.
+- **The home has no `.claudinite/shared/` mount — machinery paths must accept both roots.** A
+  consumer runs the vendored engine under `.claudinite/shared/engine/…` with its packs under
+  `.claudinite/(shared|local)/packs/…`; the canon home *is* the corpus and runs the same code from
+  the repo root (`engine/…`, `packs/…`). So a path, regex, or workflow command written to the
+  consumer mount shape works everywhere except the one repo it was authored in — and the home is
+  the last place anyone exercises it, so the break surfaces late. This bit three surfaces in a
+  single cutover (#421): `validate-dispatch`'s `DISPATCH_PATH_RE` rejected the canon's own root
+  task path, `executor.md`'s engine commands named only the mount, and `scheduler-workflow-shape`
+  asserted the mount-form runner command. Write the two-root form up front — make the
+  `.claudinite/(shared|local)/` prefix optional in a pattern, and in a command probe for
+  `.claudinite/shared/` first and fall back to the repo root.
