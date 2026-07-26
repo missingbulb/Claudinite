@@ -2,3 +2,5 @@
 # Durable session-hook log (the engine's hook entry points). Diagnostic only.
 .claudinite-hooks.log
 .claudinite-hooks.log.tmp
+# Isolated agent worktrees the harness creates/removes for parallel subagent runs.
+.claude/worktrees/
