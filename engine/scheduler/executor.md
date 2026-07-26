@@ -89,15 +89,25 @@ so use `engine/scheduler/`.
    - Failure (task failed, or ceiling violated) → comment naming what failed,
      remove `agent-running`, add `needs-human`. Do not close.
 
-6. **Backstop stale claims.** Any `agent-running` issue older than ~3h with no
-   activity → converge to `needs-human` (comment + remove `agent-running`): a
-   session that died mid-run never strands an issue silently.
+6. **Backstop stale claims.** Any `agent-running` **`[claudinite-task]` dispatch
+   issue** older than ~3h with no activity → converge to `needs-human` (comment +
+   remove `agent-running`): a session that died mid-run never strands an issue
+   silently. Scoped to dispatch issues deliberately — a task may put
+   `agent-running` on an issue **it** owns (a request its pipeline has claimed,
+   which stays claimed while its PR is in review, far longer than 3h), and only
+   that task knows when the claim is stale. Never sweep another issue's claim.
 
 ## Invariants
 
 - Every exit converges to exactly one visible state: **closed** (done),
   `needs-human` (triage), or still under its **ready label** (untouched, for the
-  next sweep). An issue must never be left `agent-running` without a live session.
+  next sweep). A **dispatch** issue must never be left `agent-running` without a
+  live session.
+- **Both ready labels are triggers**, so they belong on dispatch issues alone —
+  never put `ready-for-agent` or `ready-for-agent-fleet` on an ordinary issue.
+  `agent-running` and `needs-human` carry no trigger and are the right vocabulary
+  for any task that needs to mark an issue as claimed or handed to a human; a task
+  reusing them owns their whole lifecycle on its own issues.
 - Model and outcome come from the **repo**, not the issue. The worst a forged
   dispatch can do is run a legitimate task early, inside its declared ceiling.
 - The executor orchestrates only; each task runs as a subagent at the task's
