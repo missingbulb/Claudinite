@@ -49,3 +49,24 @@ prose below). Entries accrete as sessions on the canon surface durable, canon-sp
   against a real corpus and asserts the **positive** effect — prose IS emitted — never merely
   that `status === 0` (which fail-soft makes meaningless); see
   `engine-tests/pack_loader/inject-pack-prose.test.mjs`.
+- **The nightly self-refresh cannot repair the vendor-set computation — pin operational
+  files against the REAL canon tree.** Baselining's converge re-runs
+  `vendoring/compute-vendor-set.mjs` from canon HEAD, so a bug *in that computation* is
+  the one class of canon regression that is not self-healing: every refresh faithfully
+  reproduces it, and recovery is an out-of-band vendor refresh applied to each member by
+  hand. This bit once (#413): the blanket "engine `*.md` is canon-maintainer reference"
+  exclusion swept up `engine/scheduler/executor.md` — the executor routine's operating
+  instructions, which a consumer's executor reads from its own mount — so every cut-over
+  member's executor booted with no instructions and drained nothing (GCEC filed six
+  `ready-for-agent` dispatches and ran none), and baselining could not fix it. So when the
+  vendor set excludes by *pattern*, an operational file that matches needs a by-path
+  whitelist (`VENDORED_ENGINE_DOCS`) **and** a regression test asserting against the real
+  canon tree, not only a synthetic fixture: a fixture keeps proving the whitelist mechanism
+  works while the live path silently drops out from under it (see the paired tests in
+  `vendoring/compute-vendor-set.test.mjs`).
+- **You cannot force a due slot by running the scheduler workflow by hand.** Dueness is
+  stateless — a slot is due iff its time falls in `(last successful run, now]` — so a
+  `workflow_dispatch` run outside the slot's window succeeds, prints `- no tasks due`, and
+  does nothing. It looks like a healthy run, which is why it costs a debugging session
+  every time (it stalled the GCEC E4 pilot). To exercise a task Action-side, invoke its
+  worker directly, or move the slot hour in `taskScheduler` and wait for the cron.
