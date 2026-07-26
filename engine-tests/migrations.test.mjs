@@ -116,6 +116,20 @@ test('migrationsPastTtl: an empty set when nothing has aged out', () => {
   assert.deepEqual(migrationsPastTtl(migs, { today: '2026-07-15', ttlDays: 7 }), []);
 });
 
+test('migrationsPastTtl: age alone never archives a retire:manual record', () => {
+  // `manual` means "a human retires this alongside the inline references the
+  // retire pass cannot sweep". Archiving ends check tolerance just as retiring
+  // does (migrationActive is active-only), so the TTL must honour the same gate
+  // — otherwise the calendar strands those references and reds CI.
+  const migs = [
+    M({ id: 'auto-old', landed: '2026-07-01', retire: 'auto' }),
+    M({ id: 'manual-old', landed: '2026-07-01', retire: 'manual' }),
+    M({ id: 'unset-old', landed: '2026-07-01' }),
+  ];
+  const out = migrationsPastTtl(migs, { today: '2026-07-15', ttlDays: 7 });
+  assert.deepEqual(out.map((m) => m.id).sort(), ['auto-old', 'unset-old']);
+});
+
 test('applyMaterializations: creates a dest from its template when missing or drifted; skips when equal; gated by appliesTo', async () => {
   const store = new Map([['tpl/a.yml', 'AAA'], ['tpl/b.yml', 'BBB']]);
   const repo = new Map();

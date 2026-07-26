@@ -191,6 +191,12 @@ export function migrationsPastTtl(migrations, { today, ttlDays }) {
   const cutoff = new Date(`${today}T00:00:00Z`).getTime() - ttlDays * 86400000;
   return migrations.filter((m) => {
     if (m.subdir === MIGRATIONS_OLD_SUBDIR) return false; // already archived
+    // `retire: 'manual'` means the record's references live inline across the
+    // canon where the retire pass cannot sweep them, so a human retires it
+    // alongside those references. Archiving ends check tolerance exactly as
+    // retiring does (migrationActive reads active-only), so the calendar must
+    // not do by TTL what the record forbids by policy.
+    if (m.retire === 'manual') return false;
     const landedMs = new Date(`${m.landed}T00:00:00Z`).getTime();
     return Number.isFinite(landedMs) && landedMs <= cutoff;
   });
