@@ -206,7 +206,8 @@ CrosswordChat, Sheepdog, LaughCounter, ShoutsAndWhispers.
 Per-repo checklist (self-contained; one session each):
 
 1. In-session vendor refresh; copy the scheduler workflow; create the labels;
-   strip any release cron (chrome-extension repos).
+   convert **every** competing cron, not only a release one — see the cron rule
+   below.
 2. `git mv .claudinite/local_packs .claudinite/local/packs` (where present) +
    token rewrite + reference sweep; convert any local `run_daily/` → `tasks/`
    (most repos: none).
@@ -215,6 +216,35 @@ Per-repo checklist (self-contained; one session each):
    sources = repo + Claudinite).
 5. Verify: first scheduler summary sane; central routine's next night skips the
    repo; a hand-labeled test dispatch issue executes and closes.
+
+### The cron rule bites wider than "release cron"
+
+`gha/no-scheduled-fleet-executor` is **blocking**, and once
+`claudinite-scheduler.yml` exists in a repo it flags *every other* `schedule:`
+trigger — a product cron just as much as a release one. The rule travels with
+the scheduler into the mount, so it goes live in the same commit that lands the
+workflow: a repo cut over without converting its product crons goes red
+immediately. Step 1 is therefore "convert every cron", and the conversion is
+`schedule:` → `workflow_dispatch:` plus a scheduler task that dispatches it.
+
+A cron whose shape has no frequency token puts the irregularity in the task's
+**precondition**, not its declaration — the seven tokens say *when to evaluate*,
+and the precondition says *whether to act*. So an "hourly, but only in August,
+only 08:00–23:00 local" workflow declares `hourly` and returns
+`{ run: false }` outside the window. Hand-rolled minute jitter is dropped
+outright: the repo's hashed scheduler minute already staggers the fleet.
+
+### Pre-cutover survey (first batch, read 2026-07-26)
+
+| Repo | Stamp | Local packs | Crons to convert | Notes |
+|---|---|---|---|---|
+| gRatio | `80783eb` | none | none — no `.github/workflows/` at all | simplest; steps 2 and the cron half of 1 are no-ops |
+| TLDR | `80783eb` | none | none — its `chrome-extension-*` files are called reusables, no scheduled orchestrator | step 1's release-cron clause already satisfied |
+| EdFringeNow | `1df7250` | `local_packs/edfringe` — **legacy token**, needs step 2 in full | **two**: `refresh.yml` (`20 5 * * *`) and `refresh-tickets.yml` (~16 hand-spelled hourly lines, August-only, 08:00–23:00 Edinburgh, jittered minutes) | the only one of the three needing real conversion work; `refresh-tickets` is the precondition case above |
+
+All three still lack a `taskScheduler` key, so all three remain owned by the
+central routine. Stamps are 3–5 days behind canon head — step 1's vendor refresh
+carries each forward.
 
 ## Phase 4 — decommission & cleanup
 
