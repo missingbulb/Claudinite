@@ -36,6 +36,21 @@ prose below). Entries accrete as sessions on the canon surface durable, canon-sp
   declared it. The natural drift-guard (a future check, once the home is clean) is: the home
   declares every `seededByDefault` non-local pack. (At the time of writing `tidy-repo` is
   `seededByDefault` yet absent from the home's declaration — the same gap, unverified.)
+- **A canon session with a consumer repo also in its sources will reach for the *consumer's*
+  merge skill — merge by the skill of the repo you are merging into.** Canon work is routinely
+  dual-repo (the canon plus the fleet member being piloted; #394's rollout ran that way for days),
+  and both repos ship a merge skill under different names — the canon's
+  `packs/git-github/skills/merge-to-main/` and, say, GCEC's local `merge-and-ci`. The consumer's
+  skill wins the match on name/description and is followed to the letter, so the canon-only steps
+  in *its* recipe are silently skipped. Concretely and repeatedly: the **post-merge conversation
+  capture** (`node packs/grow_with_claudinite/capture-log.mjs --issue <n>`, the "After the merge"
+  section of `merge-to-main`) was missed after a merge to canon `main` in **three consecutive
+  sessions** (2026-07-23 ×2, 2026-07-24), each time costing the owner two prompts to recover
+  ("did you record this conversation to log?" → "there's a skill for that"), and each miss is a
+  conversation the growth lifecycle would have lost outright had the owner not caught it. So:
+  before merging in a dual-repo session, resolve the merge skill **by target repo**, not by which
+  skill matched first — and treat capture as part of the merge, not as an optional epilogue.
+
 - **Fail-soft SessionStart steps hide their own breakage fleet-wide — test the emitted
   output, not the exit code.** Every `engine/pack_loader/` SessionStart step
   (`inject-pack-prose.mjs`, `mount-skills.mjs`, `env-requirements.mjs`) wraps its body in
