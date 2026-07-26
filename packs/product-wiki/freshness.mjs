@@ -48,7 +48,7 @@ const rule = {
         out.push(finding(rule, {
           file: page,
           what: `newest Growth log entry is ${age} days old (${new Date(newest).toISOString().slice(0, 10)}) — past the ${WINDOW_DAYS}-day freshness window`,
-          fix: "run a product-wiki growth pass (in-session: \"grow the product wiki\"; method: the canon's packs/product-wiki/run_daily/wiki-growth.worker.md, mounted under .claudinite/ in consumers), or confirm the fleet daily routine is scheduled with this repo in scope; silence via rules: {\"product-wiki-freshness\": \"off\"}",
+          fix: "run a product-wiki growth pass (in-session: \"grow the product wiki\"; method: the canon's packs/product-wiki/tasks/wiki-growth/task.md, mounted under .claudinite/ in consumers), or confirm this repo's scheduler workflow is wired and the wiki-growth task is on its schedule; silence via rules: {\"product-wiki-freshness\": \"off\"}",
         }));
       }
     }

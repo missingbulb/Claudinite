@@ -12,7 +12,7 @@
 // excluded / skipped fork-or-archived), publishes the picture to the run summary,
 // and converges one adoption issue per actionable uncovered repo in the home repo
 // (open while uncovered, closed once covered or excluded). It does NOT build the
-// work plan (that is the core planner's job, routines/fleet/plan.mjs) and it does
+// work plan (that is each repo's own scheduler's job, engine/scheduler/run.mjs) and it does
 // NOT touch migrations: application and retirement are the migrations flow's own
 // standalone passes (migrations/fleet-apply.mjs + migrations/fleet-retire.mjs, run
 // by the daily routine) — the census is a coverage audit, not a migrations helper.

@@ -30,12 +30,12 @@ only to extend the *mechanism*, never to add one project's rule or task:
 | Skill mounting | `engine/pack_loader/mount-skills.mjs` | per-session symlink of the active packs' bundled-skill union (`<pack>/skills/<name>/`) |
 | Adoption interviews | `packs/grow_with_claudinite/skills/adopt-claudinite/interview.mjs` | the gap computation (a pack's declared questions minus the entry's stored answers) and the SessionStart nudge; owns no question itself — bundled in the adoption skill, resolved fail-soft by the engine |
 | Baseline-migration mechanism | [`migrations/`](migrations/README.md) | the read-side resolver, write-side rename, and fleet telemetry that auto-retires a relocation once every consumer has moved |
-| The run_daily planner | [`routines/fleet/`](routines/fleet/DESIGN.md) | goes over the reachable repos, assembles each one's due tasks from its active packs, masks full-sweep, isolates a throwing gate, emits the plan; pack-agnostic, owns no task, depends on no pack |
-| The orchestrator | [`routines/auto-all-repos-maintenance.md`](routines/auto-all-repos-maintenance.md) | the single scheduled entry point — runs the planner over the accessible fleet, reads the plan, fans out the units |
+| The task scheduler | [`engine/scheduler/`](docs/per-project-scheduling/DESIGN.md) | in each repo's own workflow: discovers its active packs' `tasks/<name>/task.mjs`, intersects them with the due slots, collects signals, runs each precondition, dispatches; pack-agnostic, owns no task, depends on no pack |
+| The executor | [`engine/scheduler/executor.md`](engine/scheduler/executor.md) | the label-fired agent side of the scheduler — claims one dispatch issue, runs its task's worker against its own repo, delivers at the task's outcome ceiling |
 | Bootstrap / baselining | [`bootstrap.md`](bootstrap.md), `engine/checks/check_the_world.mjs --init` | adoption and the idempotent per-repo re-run |
 
 **The test for "is this core?"** — would *every* pack's content stop working without it? The
-planner, the runner, the migration mechanism, the orchestrator loop all pass; a lint for one
+scheduler, the runner, the migration mechanism, the executor loop all pass; a lint for one
 technology, a nightly release task, a naming rule all fail. Two responsibilities are core *by
 ownership* even though they run as pack tasks: **baselining** (the baseline pack's daily task) and the
 **daily-run** itself are Claudinite's job, not a pack's — the pack is only the delivery slot.
@@ -50,13 +50,13 @@ A pack is a directory `packs/<name>/pack.mjs` exporting contribution slots (any 
 | **Prose** | `prose: 'RULES.md'` | always-relevant-to-a-project guidance, injected into context when the pack is active |
 | **Checks** | `rules: [...]` | deterministic conformance rules run at every Stop and in CI |
 | **Skills** | `<pack>/skills/<name>/` | activity-scoped procedures bundled in the pack's own tree, mounted wherever the pack is declared |
-| **Daily tasks** | `run_daily: [...]` | `(gate, worker)` maintenance units the planner picks up — each declares `full_sweep_supported` and its `smarts` tier |
+| **Scheduled tasks** | `<pack>/tasks/<name>/` | a `task.mjs` declaration (frequency, precondition, model, expected outcome) plus its worker — `task.md` for an agent stage, `worker.mjs` for deterministic preprocessing — found structurally by the repo's scheduler, not listed on `pack.mjs` |
 | **Questions** | `questions: [...]` | mandatory adoption-interview questions; the owner's answers live verbatim on the project's pack entry ([packs/README.md](packs/README.md#adoption-interview-questions)) |
 | **Contributed config** | `contributes: { <pack>: ... }` | configuration addressed to another (required) pack — a fixed folder-barrier is the canonical case. The target pack interprets its active contributors' data via its own `contributedRules(activePacks)` seam, returning first-class rules; the runner wires the two together, so composition is declaration + data, never a cross-pack import |
 
 **Packs are independent.** A pack's code imports only its **own** files and the engine surface
 (`checks/`, `mount/`, the machinery `.mjs` at the `packs/`/`skills/` roots) — never another
-pack's code, and never a canon-internal tree (`migrations/`, `routines/`): the vendor set ships
+pack's code, and never a canon-internal tree (`migrations/`, `vendoring/`): the vendor set ships
 a pack only when declared and ships no canon-internal tree at all, so such an import crashes
 every consumer that vendors the importer without its target. A pack that wants another pack's
 *abilities* declares the dependency (`requires`) and passes **configuration**; a helper both
@@ -88,9 +88,9 @@ same way:
   may not shadow a canon id, and is declared by its namespaced token `local/<name>`
   (the pre-rename `.claudinite/local_packs/` root and its `local_packs/<name>` token stay accepted
   during the migration; [packs/README.md](packs/README.md#local-packs--a-projects-own-packs)). Prose injection, the Stop/CI checks, skill mounting, and
-  scheduling treat a declared local pack exactly like a canon one — the planner
-  reads a member's local-pack daily descriptors by default
-  ([packs/README.md](packs/README.md)).
+  scheduling treat a declared local pack exactly like a canon one — the repo's own
+  scheduler discovers a local pack's `tasks/<name>/` folders exactly as it does a canon
+  pack's ([packs/README.md](packs/README.md)).
 
 The split is the same **portable-vs-specific** line the growth lifecycle already draws: a rule true
 beyond this project belongs in a canon pack (proposed by PR, or promoted up by the growth routine);
@@ -110,22 +110,23 @@ Ask what *kind* of thing you're adding; each kind has exactly one home, and none
    pack's check or skill can carry it.
 2. **A new technology's conventions** → a new technology pack, with a `detect` fingerprint so
    `--init` seeds it when the technology is present (declaring it stays the project's call).
-3. **A new scheduled maintenance behavior** → a `run_daily` task (a `(gate, worker)` pair) on the
-   owning pack. The planner assembles it automatically — **no edit to the orchestrator or the
-   planner.** This is the load-bearing case: "add a nightly job" must never become "add a routine
-   to `routines/`."
+3. **A new scheduled maintenance behavior** → a `tasks/<name>/` directory on the owning pack (a
+   `task.mjs` declaration plus its worker). Every declaring repo's scheduler discovers it
+   automatically — **no edit to the scheduler, and no cron of its own.** This is the load-bearing
+   case: "add a nightly job" must never become "add a stage to `engine/scheduler/`" or "add a
+   `schedule:` workflow."
 4. **A new project-class playbook** → a project-class pack.
-5. **Extending the engine itself** — a new signal the planner computes, a new discovery rule, a
-   new migration capability, a change to the orchestrator loop — *is* the rare core change. Do it
+5. **Extending the engine itself** — a new signal the scheduler collects, a new discovery rule, a
+   new migration capability, a change to the executor loop — *is* the rare core change. Do it
    deliberately, and expect it to serve every pack, not one.
 
-If a proposed change is a new file under `routines/`, `checks/` (beyond the runner/lib), or a new
-branch in the planner *for one task's sake*, stop: it almost certainly belongs in a pack.
+If a proposed change is a new file under `engine/scheduler/`, `checks/` (beyond the runner/lib), or a
+new branch in the scheduler *for one task's sake*, stop: it almost certainly belongs in a pack.
 
 ## Relocating into a pack: retire the old home
 
 Most "make this a pack feature" work is a **move** — a rule out of always-loaded prose and into a
-check, a routine into a pack's `run_daily`, a doc into a skill. A move isn't finished when the new
+check, a routine into a pack's `tasks/`, a doc into a skill. A move isn't finished when the new
 home works; it's finished when the **old home is gone**. Leaving the original as a tombstone stub
 (`# retired — see the pack`) creates two homes for one thing, which drifts and misleads. Delete
 the emptied source in the same change, fix every inbound reference, and let the conformance checks

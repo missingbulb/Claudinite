@@ -37,7 +37,7 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    injected (#385). Excluded
    everywhere: tests; excluded at the engine root: `*.md` (canon-maintainer docs are read
    upstream when needed — a pack's `.md` files are the payload and ride their
-   directories). Canon-internal trees (`routines/`, `docs/`, `.github/`, root maintainer docs)
+   directories). Canon-internal trees (`docs/`, `.github/`, root maintainer docs)
    are never vendored. Two accepted edges: a newly declared pack has no local content until the
    next refresh (the engine's unknown-pack `config` error surfaces a declared-but-absent pack
    loudly), and links from vendored docs to non-vendored canon files may dangle locally by
@@ -197,8 +197,9 @@ the nightly touches everyone, and never break the channel the migration itself t
   6. The **legacy owned-roots** in `engine/pack_loader/mount-skills.mjs` (the pre-#385 mount
      shapes: the flat `.claudinite/skills/`, the standalone `.claudinite/shared/skills/`, and
      the corpus `skills/` root — #383).
-  7. The **legacy path regexes** in `routines/fleet/signals.mjs` (`checks/`, `skills/`,
-     `mount/`, root `sync-claudinite.sh` — superseded by `engine/`).
+  7. The **legacy path regexes** in the fleet signal probe (`checks/`, `skills/`,
+     `mount/`, root `sync-claudinite.sh` — superseded by `engine/`); they now live in
+     `engine/scheduler/signals/fleet.mjs`.
   8. [consumer-safe-changes.md](../consumer-safe-changes.md) rewritten to the new, much
      smaller channel model (tracked-vendor commit + notes; the instant `@main` and session-sync
      channels are gone).

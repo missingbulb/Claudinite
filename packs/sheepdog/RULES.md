@@ -7,7 +7,7 @@ by `--init`) — and it turns what used to be bespoke Claudinite fleet infrastru
 The pack is thin. It contributes the one piece that only a fleet enforcer needs — the **census**
 ([check-fleet-coverage.mjs](check-fleet-coverage.mjs), the cross-repo walk) — plus its config schema
 and the scheduled task that runs it. The rest of the machinery — running the daily-run (the orchestrator),
-the run_daily engine, scheduling — is Claudinite **core** (`routines/`), because baselining and the
+the task engine (`engine/scheduler/`), scheduling — is Claudinite **core**, because baselining and the
 daily-run are Claudinite's own responsibility, not the pack's. Declaring `sheepdog` adds only the
 cross-repo reach: the census, the owner/exclude config, and the token that spans the fleet.
 

@@ -9,25 +9,25 @@ prose-to-checks backlog sweep is no longer canon-only — it moved to
 (`.claudinite/local/packs/`, by owner decision 2026-07-19: Claudinite-maintaining-Claudinite is
 project-specific content, so it lives on the home's own capture surface, not in the portable
 canon): `detect: null`, never seeded by `--init` or any migration, declared by hand in exactly one
-repo — the canon home itself, as `local/canon-curation`. Its `run_daily` tasks ride the
-fleet's default local-pack scheduling like any member's local tasks.
+repo — the canon home itself, as `local/canon-curation`. Its `tasks/<name>/` folders are found by
+the home repo's own scheduler exactly like a canon pack's.
 
-**Declaration cardinality is the mechanism.** A pack's `run_daily` tasks run once per *declaring*
-repo, so a pack only the home repo declares yields exactly one unit per task per night — "central,
-once" with no bespoke orchestrator step. Each gate double-locks that with the planner's `isHome`
-signal, so a stray declaration elsewhere can't double-run the canon's work. Un-declaring the pack
-freezes canon absorption without touching the members' side ([grow_with_claudinite](../../../../packs/grow_with_claudinite/README.md)).
+**Declaration cardinality is the mechanism.** A pack's tasks run once per *declaring* repo, so a
+pack only the home repo declares yields exactly one dispatch per task per slot — "central, once"
+with no bespoke orchestrator step. Un-declaring the pack freezes canon absorption without touching
+the members' side ([grow_with_claudinite](../../../../packs/grow_with_claudinite/README.md)).
 
 | Task | Runs when | Where it lands |
 |---|---|---|
-| `growth-promote-to-claudinite` | a participating member changed in the window (weekly full: all participants) | a PR against Claudinite's `main` |
+| `growth-promote` | a participating member changed its local packs in the window | a PR against Claudinite's `main` |
+| `migrations-retire` | a fully-applied migration record has passed its TTL | a PR against Claudinite's `main` |
 
 | Rule (≤5 words) | How enforced |
 |---|---|
 | Pack prose: no enforcement narration | check `pack-no-enforcement-narration` |
 | Packs import only own + engine | contributed barrier `pack-independence` ([pack-independence.mjs](pack-independence.mjs) — pure data; the [barriers pack](../../../../packs/barriers/README.md) builds the rule) |
 
-- **[promote.md](promote.md)** — the growth lifecycle's central stage: read the changed members'
+- **[tasks/growth-promote/](tasks/growth-promote/task.md)** — the growth lifecycle's central stage: read the changed members'
   local packs, **generalize** the portable lessons, route each to the right canon home, and open a
   PR for the owner to approve. When a portable lesson's technology has no pack home, it mints a
   fingerprinted **stub pack** (in its own dedicated PR). This is the sole judgment gate before

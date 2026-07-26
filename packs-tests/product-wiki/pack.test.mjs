@@ -12,6 +12,7 @@ import pageSections from '../../packs/product-wiki/page-sections.mjs';
 import growthLog from '../../packs/product-wiki/growth-log.mjs';
 import sources from '../../packs/product-wiki/sources.mjs';
 import freshness from '../../packs/product-wiki/freshness.mjs';
+import wikiGrowth from '../../packs/product-wiki/tasks/wiki-growth/task.mjs';
 // Built through the real path: the product-wiki manifest contributes it as
 // data and the barriers pack's factory turns it into the rule.
 import productWikiPack from '../../packs/product-wiki/pack.mjs';
@@ -49,7 +50,7 @@ function run(rule, files, { mode = 'all', packConfig, now, uncommitted } = {}) {
 
 // --- pack manifest -----------------------------------------------------------
 
-test('pack manifest: id, marker, five uniquely-named rules, the contributed isolation barrier, one run_daily task', () => {
+test('pack manifest: id, marker, five uniquely-named rules, the contributed isolation barrier', () => {
   assert.equal(pack.id, 'product-wiki');
   assert.equal(pack.marker, 'product-wiki/product-requirements/README.md');
   assert.equal(pack.prose, 'RULES.md');
@@ -62,7 +63,9 @@ test('pack manifest: id, marker, five uniquely-named rules, the contributed isol
   assert.deepEqual(pack.requires, ['barriers']);
   assert.equal(pack.contributes.barriers.length, 1);
   assert.equal(pack.contributes.barriers[0].id, 'product-wiki-isolation');
-  assert.equal(pack.run_daily.length, 1);
+  // The pack's scheduled task is NOT a pack.mjs slot any more — the repo's
+  // scheduler finds tasks/<name>/task.mjs structurally (#394).
+  assert.equal(pack.run_daily, undefined);
 });
 
 test('detect fires exactly on the sink marker', () => {
@@ -346,14 +349,28 @@ test('runner integration: a reasoned accept excuses an isolation crossing', () =
   } finally { cleanup(root); }
 });
 
-// --- run_daily descriptor -------------------------------------------------------------
+// --- the scheduled task declaration ----------------------------------------------------
 
-test('wiki-growth gate: weekly full sweep only, never the canon home, never incremental signals', async () => {
-  const task = pack.run_daily[0];
-  assert.equal(task.id, 'wiki-growth');
-  assert.equal(task.full_sweep_supported, true); // the gate keys on fullSweep — masked otherwise
-  assert.ok(existsSync(join(canonRoot, task.worker)), `worker doc missing: ${task.worker}`);
-  assert.deepEqual(await task.gate({}, { fullSweep: true }), { run: true, targets: {}, reason: 'weekly product-wiki growth pass' });
-  assert.equal((await task.gate({}, { fullSweep: false, projectChanged: true, canonChanged: true })).run, false);
-  assert.equal((await task.gate({}, { isHome: true, fullSweep: true })).run, false);
+test('wiki-growth task: weekly/opus/open-pr, worker doc present', () => {
+  assert.equal(wikiGrowth.id, 'wiki-growth');
+  assert.equal(wikiGrowth.frequency, 'weekly'); // research arrives on the world's clock, not the repo's
+  assert.equal(wikiGrowth.agent_model, 'opus');
+  assert.equal(wikiGrowth.expected_outcome, 'open-pr'); // researched claims need the human review gate
+  assert.deepEqual(wikiGrowth.precondition_signals, ['commits']);
+  assert.ok(existsSync(join(canonRoot, 'packs/product-wiki/tasks/wiki-growth', wikiGrowth.agent_instructions)),
+    `worker doc missing: ${wikiGrowth.agent_instructions}`);
+});
+
+test('wiki-growth precondition: the weekly slot IS the trigger; a wiki move only adds context', () => {
+  const quiet = wikiGrowth.precondition({});
+  assert.equal(quiet.run, true);
+  assert.equal(quiet.reason, 'weekly product-wiki growth pass');
+  assert.deepEqual(quiet.context, []);
+
+  const moved = wikiGrowth.precondition({ commits: { touchedPaths: ['product-wiki/Market/README.md'] } });
+  assert.equal(moved.run, true);
+  assert.match(moved.context.join(' '), /spot-check/);
+
+  // a change elsewhere still runs (weekly), but adds no wiki context
+  assert.deepEqual(wikiGrowth.precondition({ commits: { touchedPaths: ['src/app.js'] } }).context, []);
 });

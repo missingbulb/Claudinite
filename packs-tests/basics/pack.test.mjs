@@ -177,14 +177,14 @@ test('warning-suppression: a local pack\'s check layer spells markers as pattern
       // a detection pattern — exempt like the canon packs/ tree
       '.claudinite/local_packs/proj/no-mute.mjs': '// detect: /eslint-disable/\nexport default {};\n',
       '.claudinite/local_packs/proj/skills/x/checks.mjs': 'const p = /@ts-ignore/;\nexport default [];\n',
-      // but a run_daily script is ordinary code — a bare mute there still fires
-      '.claudinite/local_packs/proj/run_daily/job.js': '// eslint-disable-next-line no-undef\ny();\n',
+      // but a scheduled task's script is ordinary code — a bare mute there still fires
+      '.claudinite/local_packs/proj/tasks/job/worker.js': '// eslint-disable-next-line no-undef\ny();\n',
     },
   });
   try {
     const findings = run(warningSuppression, root, 'all');
     assert.equal(findings.length, 1);
-    assert.match(findings[0].file, /run_daily\/job\.js/);
+    assert.match(findings[0].file, /tasks\/job\/worker\.js/);
   } finally { cleanup(root); }
 });
 

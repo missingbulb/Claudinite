@@ -13,9 +13,9 @@ only on issues.
 
 One task, `repo-tidy`, does the whole tidy-up in a single pass:
 
-| Runs when | The pass | smarts |
+| Runs when | The pass | model |
 |---|---|---|
-| a non-default branch, a PR, or an issue was touched (or weekly) | assess branches → assess PRs → triage issues → reconcile the tracker | medium |
+| a non-default branch, a PR, or an issue was touched (or weekly) | assess branches → assess PRs → triage issues → reconcile the tracker | `sonnet` |
 
 The pass applies each per-object skill (`single-branch-status` / `single-pr-status` /
 `single-issue-triage`) across the targets the plan hands it, then rewrites the repo's standing tracker

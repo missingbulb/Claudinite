@@ -1,7 +1,7 @@
 // Migration finalization — the fleet-wide RETIRE pass (phase 3 of the daily
 // maintenance routine, run after the pack tasks settle). Migrations-owned:
 // baselining carries no migration logic. See migrations/README.md and
-// routines/auto-all-repos-maintenance.md.
+// the canon-curation migrations-retire task.
 //
 // What it does: over the repos the routine hands it, probe every migration's
 // `legacyPresent`, and auto-retire any migration the whole fleet has left behind —

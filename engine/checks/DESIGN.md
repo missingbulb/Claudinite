@@ -413,13 +413,13 @@ Concretely, three growth docs change:
 - **`item-routing.md`** gains a step 0: *mechanism triage*
   before file routing. "Which doc owns this" is only asked for lessons that fall through to
   rung 5.
-- **`promote.md`**: for a rung-3 lesson, the routine authors
+- **the promote task doc**: for a rung-3 lesson, the routine authors
   the check in the same PR — rule id, detection, the failure message (which *is* the
   generalized lesson text), **plus a fixture proving it fires** on a violating input and stays
   quiet on a clean one (see-it-fail applies to checks too). When it can't produce a confident
   detection + fixture, it lands the lesson as prose **and** opens a tagged conversion-backlog
   issue — a visible miss to sweep later, never a silently-shipped broken check.
-- **`dedup.md`**: a canon **check** covers a local prose item the
+- **the dedup task doc**: a canon **check** covers a local prose item the
   same way a canon line does — better, since the coverage is enforced rather than stated. The
   runner exposes the rule catalog machine-readably (`run.js --list`: rule id, description,
   failure message, doc pointer); dedup quotes a **rule id** where it today quotes a canon line.
@@ -444,9 +444,9 @@ conversion is a promotion-time judgment, made once, centrally.
    the index.
 4. **Skills layer + growth pivot** — the rest of the corpus (practice + technology skills,
    symlink delivery in bootstrap), and the promotion ladder lands in
-   `promote.md`,
+   the promote task doc,
    `item-routing.md`, and
-   `dedup.md`.
+   the dedup task doc.
 5. **(Contingent) plugin packaging** — only after a spike proves same-day update propagation,
    web-session support, and hook parity; until then the mount + symlink delivery is the plan of
    record and nothing depends on this phase.

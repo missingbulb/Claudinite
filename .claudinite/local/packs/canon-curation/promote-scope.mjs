@@ -1,4 +1,4 @@
-// The write-surface gate for the growth PROMOTE stage (promote.md, this pack).
+// The write-surface gate for the growth PROMOTE stage (tasks/growth-promote/, this pack).
 //
 // Promote's write surface is bounded to the shared canon's two homes — packs/
 // and skills/. This module is the GUARANTEE: any changed path outside packs/ or
@@ -9,7 +9,7 @@
 //
 // Why CI branch-gates it instead of registering it as a pack/skill check that
 // runs on every PR: the "packs/skills only" boundary is true for PROMOTE alone —
-// an ordinary engine change legitimately edits checks/, routines/, … Nothing in
+// an ordinary engine change legitimately edits checks/, engine/, … Nothing in
 // the tree marks a diff as a promote run, so no always-on check could self-gate
 // to promote; the promote PR's branch prefix is the signal CI keys on.
 import { buildContext } from '../../../../engine/checks/helpers/repo-context.mjs';
@@ -21,7 +21,7 @@ const rule = {
   id: 'promote-scope',
   severity: 'blocking',
   description: 'The growth promote stage writes only under packs/ or skills/',
-  doc: '.claudinite/local/packs/canon-curation/promote.md',
+  doc: '.claudinite/local/packs/canon-curation/tasks/growth-promote/task.md',
   why: 'promote runs unattended with a fleet-wide token; a write outside the canon homes escapes the review-by-blast-radius boundary the growth lifecycle is built on',
 
   // Every path the branch touches vs the merge-base — added/modified/untracked

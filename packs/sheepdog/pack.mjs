@@ -9,8 +9,8 @@
 // agentless: the census IS its agent_preprocessing, and its required_secrets is
 // what asks the repo for FLEET_GITHUB_TOKEN). No workflow of its own: preprocessing
 // runs Action-side inside the repo's one scheduler workflow, where that secret is
-// already reachable. Everything else — the PLANNER (routines/fleet/plan.mjs), the
-// orchestrator/daily-run, the run_daily engine, scheduling — is Claudinite CORE and
+// already reachable. Everything else — the SCHEDULER (engine/scheduler/run.mjs), the
+// orchestrator/daily-run, the task engine (engine/scheduler/), scheduling — is CORE and
 // pack-agnostic; the planner never runs, dispatches, or depends on this census.
 export default {
   id: 'sheepdog',

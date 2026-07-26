@@ -24,8 +24,8 @@ standard.
 - Every wiki page carries `## Sources` (every source bullet carrying its real
   URL), `## Growth log` (dated bullets, newest change appended per pass), and
   `## Open questions` (the research backlog the growth passes work from).
-- Growth is scheduled research: the pack's weekly `run_daily` task
-  ([run_daily/wiki-growth.worker.md](run_daily/wiki-growth.worker.md)) reads
+- Growth is scheduled research: the pack's weekly scheduled task
+  ([tasks/wiki-growth/task.md](tasks/wiki-growth/task.md)) reads
   the wikis, researches what their own open questions flag, writes back cited,
   and delivers an unmerged PR. Most passes correctly change nothing.
 
@@ -114,8 +114,8 @@ config absence means "nothing declared").
   fought in code.
 - Accepts against `product-wiki-isolation` are pruned by hand (no staleness
   audit — see above).
-- The weekly growth task rides the fleet daily routine
-  ([../../routines/auto-all-repos-maintenance.md](../../routines/auto-all-repos-maintenance.md));
-  a repo outside the fleet's scope gets no unattended growth — the freshness
+- The weekly growth task rides the repo's own scheduler
+  ([../../docs/per-project-scheduling/DESIGN.md](../../docs/per-project-scheduling/DESIGN.md));
+  a repo without a `taskScheduler` anchor gets no unattended growth — the freshness
   advisory is the backstop that surfaces that, and the owner phrase "grow the
   product wiki" runs the same worker method in-session.

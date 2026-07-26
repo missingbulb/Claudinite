@@ -8,5 +8,5 @@ Thin by design: prose + the config schema (the sheepdog pack entry's `config` = 
 **census** ([check-fleet-coverage.mjs](check-fleet-coverage.mjs)) and the one agentless scheduled task
 that runs it ([tasks/fleet-census/](tasks/fleet-census/task.md) — the census is its
 `agent_preprocessing`; no workflow of its own). The rest of the machinery — running the
-daily-run, the run_daily engine, scheduling — is Claudinite **core** (`routines/`). Carries no
+daily-run, the task engine (`engine/scheduler/`), scheduling — is Claudinite **core**. Carries no
 conformance checks. Policy + config: [RULES.md](RULES.md).

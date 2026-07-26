@@ -38,7 +38,7 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 
 A consumer keeps its **project-specific** packs in its own tree at
 `.claudinite/local_packs/<name>/` — the same slots (prose `RULES.md`, `rules` checks, `skills`,
-`run_daily` tasks, `questions`), authored and committed by the project, discovered and run by the
+scheduled `tasks/`, `questions`), authored and committed by the project, discovered and run by the
 same engine as these canon packs. `discoverPacks({ localRoot })` ([registry.mjs](../engine/pack_loader/pack-registry.mjs)) scans this repo's
 `packs/` **and** the consumer's `local_packs/`; each pack is stamped with its own `dir` (prose and
 bundled skills resolve off it) and a `local` flag. A local pack:
@@ -54,11 +54,11 @@ bundled skills resolve off it) and a `local` flag. A local pack:
 - rides the deployment plumbing every consumer already vendors: the sync hook preserves
   `.claudinite/local_packs/` across its dir swap and the `.gitignore` re-includes it.
 
-A local pack contributes **every** slot first-class: prose, checks, skills, **and `run_daily`
-tasks** — the fleet planner reads a member's local-pack daily descriptors from the member repo by
-default ([../routines/fleet/local-tasks.mjs](../routines/fleet/local-tasks.mjs)), gated by the
-member's declaration exactly like a canon pack's tasks. The canon home's own curation tasks ride
-this path nightly.
+A local pack contributes **every** slot first-class: prose, checks, skills, **and scheduled
+tasks** — `tasks/<name>/task.mjs`, found by the repo's own scheduler in the same uniform scan that
+finds a canon pack's tasks ([../engine/scheduler/discover.mjs](../engine/scheduler/discover.mjs)),
+gated by the repo's declaration exactly like a canon pack's tasks. The canon home's own curation
+tasks ride this path.
 
 The canon-vs-local line is the portable-vs-project-specific split ([../extending.md](../extending.md));
 a project adopts the structure via the `generate-project-instructions` skill, and the growth lifecycle

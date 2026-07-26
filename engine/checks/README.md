@@ -15,7 +15,7 @@ node engine/checks/check_the_work.mjs              # work scope: rules judging t
 node engine/checks/check_the_world.mjs --list      # machine-readable catalog of every rule, both scopes
 node engine/checks/check_the_world.mjs --init      # write .claudinite-checks.json — the baseline plus the fingerprinted packs
 
-node --test engine/test/*.test.mjs packs-tests/*.test.mjs packs-tests/*/*.test.mjs packs-tests/*/skills/*/*.test.mjs skills/*.test.mjs routines/*/*.test.mjs mount/*.test.mjs   # the test suite, as CI runs it
+node --test engine/test/*.test.mjs packs-tests/*.test.mjs packs-tests/*/*.test.mjs packs-tests/*/skills/*/*.test.mjs skills/*.test.mjs mount/*.test.mjs   # the test suite, as CI runs it
 ```
 
 Exit 1 when blocking findings exist; advisory findings never fail a run. In a consuming repo
