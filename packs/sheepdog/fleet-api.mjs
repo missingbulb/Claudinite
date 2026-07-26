@@ -3,10 +3,10 @@
 // raw REST with a token, and it is deliberately confined to the census — the
 // account-spanning coverage audit that must enumerate EVERY repo the owner owns
 // (`/user/repos`), which a session-scoped connection structurally cannot see. The
-// census runs as its own workflow_dispatch Action with a fine-grained PAT; nothing
-// in the daily-maintenance process imports this (that process is MCP-native and
-// carries no REST client). It knows nothing about any specific pack: it is the
-// generic "talk to many repos" layer, no more.
+// census runs Action-side as the fleet-census task's preprocessing, with a
+// fine-grained PAT; nothing in the daily-maintenance process imports this (that
+// process is MCP-native and carries no REST client). It knows nothing about any
+// specific pack: it is the generic "talk to many repos" layer, no more.
 
 const API = 'https://api.github.com';
 
