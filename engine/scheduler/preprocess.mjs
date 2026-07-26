@@ -1,8 +1,7 @@
 // The pre-agent preprocessing stage (agent-preprocessing DESIGN §3). The
 // scheduler runs a task's declared `agent_preprocessing` command as a SUBPROCESS
 // before any agent starts — deterministic code work, Action-side, over the one
-// sanctioned non-MCP surface (the Action GITHUB_TOKEN, inherited in `env`) and
-// the repo's Actions secrets, unpacked into its env (§9, `preprocessingEnv` below).
+// sanctioned non-MCP surface (the Action GITHUB_TOKEN, inherited in `env`).
 //
 // The subprocess is the scheduler's child, so its `agent_preprocessing_timeout`
 // is a HARD kill: a manual timer SIGKILLs an overrun and the run is reported
@@ -59,41 +58,6 @@ export function agentRequestPath({ pack, task, slotId }) {
 }
 export function clearAgentRequest(path) { try { rmSync(path, { force: true }); } catch { /* nothing to clear */ } }
 export function agentRequested(path) { return existsSync(path); }
-
-// --- repo secrets for a worker (agent-preprocessing DESIGN §9) ---------------
-// The scheduler workflow hands the engine the repo's secrets as one JSON blob
-// (`CLAUDINITE_SECRETS: ${{ toJSON(secrets) }}` — Actions has no way to name
-// secrets dynamically). Unpacking it into the worker's env is all there is to
-// delivery: a task's `required_secrets` says which ones it NEEDS CONFIGURED (the
-// declaration that drives the adoption/scheduler ask), not which ones it is
-// permitted to read. Workers are tracked, reviewed code holding the Action
-// GITHUB_TOKEN already, so a permission boundary between them would be
-// ceremony — the honest boundary is the repo's own secret list.
-export const SECRETS_BUNDLE_VAR = 'CLAUDINITE_SECRETS';
-
-// Parse the bundle. Missing/blank/malformed reads as empty — a repo with no
-// secrets is the ordinary case, not an error.
-export function parseSecretsBundle(raw) {
-  if (typeof raw !== 'string' || raw.trim() === '') return {};
-  try {
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
-  } catch { return {}; }
-}
-
-// The environment a preprocessing subprocess gets: the scheduler's own env with
-// the raw bundle REPLACED by the secrets it carried, plus the CLAUDINITE_*
-// context. (Replaced, not added alongside — a worker has no use for the blob,
-// and leaving it in invites a worker to parse it instead of reading a name.)
-// An unset secret renders as "" in `toJSON(secrets)`; those are dropped so a
-// worker's `if (!process.env.X)` guard behaves.
-export function preprocessingEnv(parentEnv, context) {
-  const { [SECRETS_BUNDLE_VAR]: bundleRaw, ...rest } = parentEnv;
-  const secrets = Object.fromEntries(
-    Object.entries(parseSecretsBundle(bundleRaw)).filter(([, v]) => typeof v === 'string' && v !== ''),
-  );
-  return { ...rest, ...secrets, ...context };
-}
 
 // A one-line reason for the job summary / an issue comment when preprocessing
 // fails — distinguishing a timeout kill from a non-zero exit.

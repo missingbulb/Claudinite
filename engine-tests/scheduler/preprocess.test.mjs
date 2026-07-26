@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, writeFileSync, rmSync } from 'node:fs';
-import { runPreprocessing, preprocessingFailure, agentRequestPath, clearAgentRequest, agentRequested, parseSecretsBundle, preprocessingEnv, SECRETS_BUNDLE_VAR } from '../../engine/scheduler/preprocess.mjs';
+import { runPreprocessing, preprocessingFailure, agentRequestPath, clearAgentRequest, agentRequested } from '../../engine/scheduler/preprocess.mjs';
 
 const NODE = process.execPath; // the running node, so the tests don't assume PATH
 
@@ -59,48 +59,4 @@ test('the request signal round-trips: written → requested, cleared → not (cl
   clearAgentRequest(path);
   assert.equal(agentRequested(path), false);     // cleared
   assert.equal(existsSync(path), false);
-});
-
-// --- repo secrets for a worker (agent-preprocessing DESIGN §9) --------------
-
-test('parseSecretsBundle: real JSON parses; absent/blank/malformed/non-object read as empty', () => {
-  assert.deepEqual(parseSecretsBundle('{"A":"1"}'), { A: '1' });
-  assert.deepEqual(parseSecretsBundle(undefined), {});
-  assert.deepEqual(parseSecretsBundle('  '), {});
-  assert.deepEqual(parseSecretsBundle('not json'), {});
-  assert.deepEqual(parseSecretsBundle('["A"]'), {});
-});
-
-test('preprocessingEnv: unpacks the bundle into the env and drops the raw blob', () => {
-  const parent = { PATH: '/bin', GITHUB_TOKEN: 't', [SECRETS_BUNDLE_VAR]: '{"SCRAPER_API_KEY":"k","OTHER":"o"}' };
-  const env = preprocessingEnv(parent, { CLAUDINITE_TASK: 'create-extractor' });
-  assert.equal(env.SCRAPER_API_KEY, 'k');
-  assert.equal(env.OTHER, 'o');
-  assert.equal(env[SECRETS_BUNDLE_VAR], undefined);   // replaced by its contents, not carried alongside
-  assert.equal(env.GITHUB_TOKEN, 't');
-  assert.equal(env.CLAUDINITE_TASK, 'create-extractor');
-});
-
-test('preprocessingEnv: an unset secret ("" from toJSON(secrets)) is dropped, so a worker guard behaves', () => {
-  const env = preprocessingEnv({ [SECRETS_BUNDLE_VAR]: '{"SET":"v","UNSET":""}' }, {});
-  assert.equal(env.SET, 'v');
-  assert.equal('UNSET' in env, false);
-});
-
-test('preprocessingEnv: no bundle is the ordinary case, not an error', () => {
-  const env = preprocessingEnv({ PATH: '/bin' }, { CLAUDINITE_PACK: 'basics' });
-  assert.equal(env.PATH, '/bin');
-  assert.equal(env.CLAUDINITE_PACK, 'basics');
-});
-
-test('preprocessingEnv: the context wins over a same-named secret (CLAUDINITE_* is the engine\'s channel)', () => {
-  const env = preprocessingEnv({ [SECRETS_BUNDLE_VAR]: '{"CLAUDINITE_TASK":"spoofed"}' }, { CLAUDINITE_TASK: 'real' });
-  assert.equal(env.CLAUDINITE_TASK, 'real');
-});
-
-test('preprocessingEnv: what it builds survives into a real child process', async () => {
-  const cmd = `"${NODE}" -e "process.exit(process.env.SCRAPER_API_KEY === 'k' && process.env.${SECRETS_BUNDLE_VAR} === undefined ? 0 : 1)"`;
-  const env = preprocessingEnv({ ...process.env, [SECRETS_BUNDLE_VAR]: '{"SCRAPER_API_KEY":"k"}' }, {});
-  const r = await runPreprocessing(cmd, { taskDir: process.cwd(), env, timeoutSeconds: 10 });
-  assert.equal(r.ok, true);
 });

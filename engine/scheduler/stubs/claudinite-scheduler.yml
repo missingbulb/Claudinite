@@ -39,11 +39,6 @@ jobs:
       - name: Evaluate schedule and dispatch due tasks
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          # The repo's Actions secrets (agent-preprocessing DESIGN §9). Actions
-          # cannot name secrets dynamically, so they arrive as one blob and the
-          # engine unpacks them into each preprocessing worker's env. A repo with no
-          # secrets passes `{}`; there is nothing to configure here either way.
-          CLAUDINITE_SECRETS: ${{ toJSON(secrets) }}
         run: node .claudinite/shared/engine/scheduler/run.mjs
 
   # A scheduled run reaches no one when it goes red, so escalate a whole-run

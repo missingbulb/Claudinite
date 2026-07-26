@@ -40,18 +40,6 @@ ask the owner each question via `AskUserQuestion`, record each answer **verbatim
 entry as `answers: { "<question-id>": "<answer>" }` ("n/a — none wanted" is a valid answer), and
 derive the entry's `config` where the question's distill note says how.
 
-Same moment, same reason — **required secrets.** List what the declared packs' tasks need:
-
-```sh
-node "$scratch/engine/scheduler/required-secrets.mjs" list
-```
-
-Any name it prints is a repo **Actions secret** a scheduled task needs to work. The owner is here
-now, so ask them to add each one (Settings → Secrets and variables → Actions) rather than leaving
-it for the scheduler to file an issue about on its first run. A secret they don't want to configure
-is a fine answer — that task simply won't do its work, exactly as an unanswered question leaves a
-pack under-configured.
-
 ## Part 3 — vendor the snapshot
 
 ```sh

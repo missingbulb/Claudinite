@@ -35,13 +35,36 @@ export const CLAUDE_MD = 'CLAUDE.md';
 // The whole line (and its trailing newline) is removed wherever it appears.
 const CORPUS_IMPORT_RE = /^.*@\.claudinite\/shared\/CLAUDE\.md.*\n?/m;
 
+// The repo Actions secrets its scheduled tasks declare via `required_secrets`,
+// deduped and sorted. Async because task discovery is; pure otherwise.
+export async function declaredSecrets(root, config) {
+  const { discoverTasks } = await import('./discover.mjs');
+  const { tasks } = await discoverTasks(root, config);
+  return [...new Set(tasks.flatMap((t) => t.decl?.required_secrets ?? []))].sort();
+}
+
+// Stamp the declared secrets into the scheduler workflow's engine step, beside
+// GITHUB_TOKEN. This is the whole delivery mechanism: GitHub Actions requires each
+// secret to be named statically in the workflow, and a task's `required_secrets` is
+// exactly that list — so the wiring converge writes it, and a worker then reads
+// `process.env.<NAME>` like any other environment variable. No bundle, no parsing,
+// no engine-side selection. Regenerated from the stub each converge, so the list
+// tracks the declarations rather than accumulating.
+export function withDeclaredSecrets(stubText, names = []) {
+  if (!names.length) return stubText;
+  const lines = names.map((n) => `          ${n}: \${{ secrets.${n} }}`).join('\n');
+  return stubText.replace(/^(\s*GITHUB_TOKEN: \$\{\{ github\.token \}\})$/m, `$1\n${lines}`);
+}
+
 // Re-converge the scheduler workflow to the vendored stub, with the cron minute set
 // to this repo's stable hashed value (never guessed — hash-minute.mjs, a pure
-// function of the full name, so re-vendors and this convergence agree). `stubText`
-// is the vendored stub's content (the caller reads it from the mount). Returns true
-// when the file was written (absent, or drifted from the target).
-export function convergeSchedulerWorkflow(root, fullName, stubText) {
-  const target = stubText.replace(/cron:\s*'[^']*'/, `cron: '${hashedCron(fullName)}'`);
+// function of the full name, so re-vendors and this convergence agree) and the
+// declared `required_secrets` stamped into the engine step's env. `stubText` is the
+// vendored stub's content (the caller reads it from the mount). Returns true when
+// the file was written (absent, or drifted from the target).
+export function convergeSchedulerWorkflow(root, fullName, stubText, secretNames = []) {
+  const target = withDeclaredSecrets(stubText, secretNames)
+    .replace(/cron:\s*'[^']*'/, `cron: '${hashedCron(fullName)}'`);
   const path = join(root, SCHEDULER_WORKFLOW);
   const current = existsSync(path) ? readFileSync(path, 'utf8') : null;
   if (current === target) return false;
@@ -92,9 +115,9 @@ export function removeRetiredCorpusImport(root) {
 
 // Converge every wiring surface, returning a flat summary of what changed (empty
 // when the repo was already converged). `stubText` is the vendored scheduler stub.
-export function convergeWiring(root, fullName, stubText) {
+export function convergeWiring(root, fullName, stubText, secretNames = []) {
   const changed = [];
-  if (convergeSchedulerWorkflow(root, fullName, stubText)) changed.push(SCHEDULER_WORKFLOW);
+  if (convergeSchedulerWorkflow(root, fullName, stubText, secretNames)) changed.push(SCHEDULER_WORKFLOW);
   const hooks = ensureHooks(root);
   for (const h of hooks.added) changed.push(`hook:${h}`);
   if (removeRetiredCorpusImport(root)) changed.push(`removed retired ${CLAUDE_MD} corpus import`);
@@ -111,7 +134,9 @@ async function main() {
   const root = process.env.CLAUDINITE_REPO_ROOT || process.cwd();
   const stubPath = join(root, '.claudinite/shared/engine/scheduler/stubs/claudinite-scheduler.yml');
   if (!existsSync(stubPath)) { console.error(`converge-wiring: vendored stub not found at ${stubPath}`); process.exit(1); }
-  const { changed, error } = convergeWiring(root, fullName, readFileSync(stubPath, 'utf8'));
+  const { loadConfig } = await import('../checks/helpers/repo-context.mjs');
+  const secretNames = await declaredSecrets(root, loadConfig(root));
+  const { changed, error } = convergeWiring(root, fullName, readFileSync(stubPath, 'utf8'), secretNames);
   if (error) console.log(`! ${error}`);
   console.log(changed.length ? `converge-wiring: ${changed.join(', ')}` : 'converge-wiring: already converged');
 }

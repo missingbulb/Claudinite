@@ -57,19 +57,16 @@ retirement of the legacy central planner it replaces) lives in
   which then **requires** `agent_preprocessing_timeout`, the hard subprocess kill
   that fails the task on overrun.
 
-- **A task says which repo secrets it needs; someone is asked to add them.**
-  Preprocessing runs Action-side, so repo Actions secrets are reachable there and
-  nowhere else in a task's life (an executor session carries none). A task lists
-  what it needs in `required_secrets` — a **declaration, not a permission**: the
-  scheduler unpacks the workflow's secrets bundle into every worker's env, and the
-  list exists to drive the *ask*. This is the adoption interview's shape applied to
-  configuration: declared, minus what the repo has, equals a gap that produces a
-  question — asked interactively at adoption (bootstrap Part 2), and as one
-  standing owner issue from the scheduler when a run finds a secret missing. It is
-  never a gate: a repo can sit with one unconfigured, and the task that needs it
-  simply doesn't work yet. The consequence worth designing around: **a workflow
-  that exists only to hold a secret is redundant** — fold its work into the task's
-  preprocessing rather than dispatching and polling a second workflow from an agent.
+- **A task says which repo secrets it needs.** Preprocessing runs Action-side, so
+  repo Actions secrets are reachable there and nowhere else in a task's life (an
+  executor session carries none). A task lists what it needs in `required_secrets`;
+  the wiring converge stamps each name into the scheduler workflow, so a worker
+  reads it as ordinary environment, and baselining asks the owner (one standing
+  issue) for any the repo hasn't configured. The adoption interview's posture, not
+  a gate — nothing fails; the task that needs the secret just doesn't work yet. The
+  consequence worth designing around: **a workflow that exists only to hold a
+  secret is redundant** — fold its work into the task's preprocessing rather than
+  dispatching and polling a second workflow from an agent.
 
 Both guards are **relevance-first**: inert until their artifact exists, so
 on a repo with neither artifact they are a no-op.
