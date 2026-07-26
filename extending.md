@@ -31,12 +31,11 @@ only to extend the *mechanism*, never to add one project's rule or task:
 | Adoption interviews | `packs/grow_with_claudinite/skills/adopt-claudinite/interview.mjs` | the gap computation (a pack's declared questions minus the entry's stored answers) and the SessionStart nudge; owns no question itself — bundled in the adoption skill, resolved fail-soft by the engine |
 | Baseline-migration mechanism | [`migrations/`](migrations/README.md) | the read-side resolver, write-side rename, and fleet telemetry that auto-retires a relocation once every consumer has moved |
 | The task scheduler | [`engine/scheduler/`](docs/per-project-scheduling/DESIGN.md) | in each repo's own workflow: discovers its active packs' `tasks/<name>/task.mjs`, intersects them with the due slots, collects signals, runs each precondition, dispatches; pack-agnostic, owns no task, depends on no pack |
-| The legacy central planner | [`routines/fleet/`](routines/fleet/DESIGN.md) | the pre-#394 path, retained as the migration's rollback for repos not yet on their own scheduler: goes over the reachable repos, assembles each one's due legacy `run_daily` tasks, emits the plan |
-| The orchestrator | [`routines/auto-all-repos-maintenance.md`](routines/auto-all-repos-maintenance.md) | the single scheduled entry point — runs the planner over the accessible fleet, reads the plan, fans out the units |
+| The executor | [`engine/scheduler/executor.md`](engine/scheduler/executor.md) | the label-fired agent side of the scheduler — claims one dispatch issue, runs its task's worker against its own repo, delivers at the task's outcome ceiling |
 | Bootstrap / baselining | [`bootstrap.md`](bootstrap.md), `engine/checks/check_the_world.mjs --init` | adoption and the idempotent per-repo re-run |
 
 **The test for "is this core?"** — would *every* pack's content stop working without it? The
-planner, the runner, the migration mechanism, the orchestrator loop all pass; a lint for one
+scheduler, the runner, the migration mechanism, the executor loop all pass; a lint for one
 technology, a nightly release task, a naming rule all fail. Two responsibilities are core *by
 ownership* even though they run as pack tasks: **baselining** (the baseline pack's daily task) and the
 **daily-run** itself are Claudinite's job, not a pack's — the pack is only the delivery slot.
@@ -57,7 +56,7 @@ A pack is a directory `packs/<name>/pack.mjs` exporting contribution slots (any 
 
 **Packs are independent.** A pack's code imports only its **own** files and the engine surface
 (`checks/`, `mount/`, the machinery `.mjs` at the `packs/`/`skills/` roots) — never another
-pack's code, and never a canon-internal tree (`migrations/`, `routines/`): the vendor set ships
+pack's code, and never a canon-internal tree (`migrations/`, `vendoring/`): the vendor set ships
 a pack only when declared and ships no canon-internal tree at all, so such an import crashes
 every consumer that vendors the importer without its target. A pack that wants another pack's
 *abilities* declares the dependency (`requires`) and passes **configuration**; a helper both
@@ -89,9 +88,9 @@ same way:
   may not shadow a canon id, and is declared by its namespaced token `local/<name>`
   (the pre-rename `.claudinite/local_packs/` root and its `local_packs/<name>` token stay accepted
   during the migration; [packs/README.md](packs/README.md#local-packs--a-projects-own-packs)). Prose injection, the Stop/CI checks, skill mounting, and
-  scheduling treat a declared local pack exactly like a canon one — the planner
-  reads a member's local-pack daily descriptors by default
-  ([packs/README.md](packs/README.md)).
+  scheduling treat a declared local pack exactly like a canon one — the repo's own
+  scheduler discovers a local pack's `tasks/<name>/` folders exactly as it does a canon
+  pack's ([packs/README.md](packs/README.md)).
 
 The split is the same **portable-vs-specific** line the growth lifecycle already draws: a rule true
 beyond this project belongs in a canon pack (proposed by PR, or promoted up by the growth routine);
@@ -114,15 +113,15 @@ Ask what *kind* of thing you're adding; each kind has exactly one home, and none
 3. **A new scheduled maintenance behavior** → a `tasks/<name>/` directory on the owning pack (a
    `task.mjs` declaration plus its worker). Every declaring repo's scheduler discovers it
    automatically — **no edit to the scheduler, and no cron of its own.** This is the load-bearing
-   case: "add a nightly job" must never become "add a routine to `routines/`" or "add a
+   case: "add a nightly job" must never become "add a stage to `engine/scheduler/`" or "add a
    `schedule:` workflow."
 4. **A new project-class playbook** → a project-class pack.
-5. **Extending the engine itself** — a new signal the planner computes, a new discovery rule, a
-   new migration capability, a change to the orchestrator loop — *is* the rare core change. Do it
+5. **Extending the engine itself** — a new signal the scheduler collects, a new discovery rule, a
+   new migration capability, a change to the executor loop — *is* the rare core change. Do it
    deliberately, and expect it to serve every pack, not one.
 
-If a proposed change is a new file under `routines/`, `checks/` (beyond the runner/lib), or a new
-branch in the planner *for one task's sake*, stop: it almost certainly belongs in a pack.
+If a proposed change is a new file under `engine/scheduler/`, `checks/` (beyond the runner/lib), or a
+new branch in the scheduler *for one task's sake*, stop: it almost certainly belongs in a pack.
 
 ## Relocating into a pack: retire the old home
 

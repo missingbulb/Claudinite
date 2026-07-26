@@ -1,7 +1,7 @@
 // Migration application — the fleet-wide APPLY pass (phase 1 of the daily
 // maintenance routine, run BEFORE the pack tasks). Migrations-owned: basics
 // baselining no longer carries the "apply migrations" step. See migrations/README.md
-// and routines/auto-all-repos-maintenance.md.
+// and the canon-curation migrations-retire task.
 //
 // What it does: for every member the routine hands it, compute the member's pending
 // migration writes — the same three write ops the local applier runs (file aliases,

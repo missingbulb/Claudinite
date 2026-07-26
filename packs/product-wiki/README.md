@@ -114,8 +114,8 @@ config absence means "nothing declared").
   fought in code.
 - Accepts against `product-wiki-isolation` are pruned by hand (no staleness
   audit — see above).
-- The weekly growth task rides the fleet daily routine
-  ([../../routines/auto-all-repos-maintenance.md](../../routines/auto-all-repos-maintenance.md));
-  a repo outside the fleet's scope gets no unattended growth — the freshness
+- The weekly growth task rides the repo's own scheduler
+  ([../../docs/per-project-scheduling/DESIGN.md](../../docs/per-project-scheduling/DESIGN.md));
+  a repo without a `taskScheduler` anchor gets no unattended growth — the freshness
   advisory is the backstop that surfaces that, and the owner phrase "grow the
   product wiki" runs the same worker method in-session.

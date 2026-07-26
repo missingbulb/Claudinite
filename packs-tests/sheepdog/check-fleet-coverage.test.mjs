@@ -5,7 +5,7 @@ import { parseSheepdogConfig } from '../../packs/sheepdog/check-fleet-coverage.m
 // The sheepdog census reads its fleet scope from the enforcer repo's sheepdog
 // pack entry (legacy top-level packConfig.sheepdog still readable), and does ONE
 // thing — coverage/adoption. (The work plan is the CORE planner's job —
-// routines/fleet/plan.test.mjs. Migration application and retirement are the
+// the scheduler's own tests. Migration application and retirement are the
 // migrations flow's own passes — engine/test/fleet-retire.test.mjs and
 // engine/test/fleet-apply.test.mjs — and no longer live here.)
 test('parseSheepdogConfig: reads owner + exclude; defaults owner to the home owner; throws when absent', () => {

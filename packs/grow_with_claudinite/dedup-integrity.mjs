@@ -2,7 +2,7 @@ import { sep } from 'node:path';
 import { finding } from '../../engine/checks/helpers/findings.mjs';
 import { LOCAL_PACKS_SUBDIR, LEGACY_LOCAL_PACKS_SUBDIR } from '../../engine/pack_loader/pack-registry.mjs';
 
-// The machine backstop for dedup.md's rule: a dedup edit only ever REMOVES
+// The machine backstop for the growth-dedup task doc's rule: a dedup edit only ever REMOVES
 // portable text. The routine has instead reworded partially-covered items —
 // leading with a "this rule is portable (canon)" meta-line and re-stating the
 // now-canon rule (and which pack owns it) inside the local pack — which grows
@@ -36,7 +36,7 @@ const rule = {
   id: 'dedup-prune-integrity',
   severity: 'blocking',
   scope: 'work',
-  doc: 'packs/grow_with_claudinite/dedup.md',
+  doc: 'packs/grow_with_claudinite/tasks/growth-dedup/task.md',
   description: 'A dedup edit only removes portable text — it never grows a local pack or re-imports a canon rule into it',
   why: 'the growth-dedup routine has reworded partially-covered items instead of stripping them — restating the canon rule inside the local pack, the inverse of dedup — and every dedup edit must shrink the pack, not grow it',
 

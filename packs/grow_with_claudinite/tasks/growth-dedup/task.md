@@ -30,8 +30,16 @@ When the canon has **absorbed** a practice a local doc still carries — most of
 task lifted up and the canon now owns — the local copy is redundant. This task:
 
 - **Removes** the now-duplicated local item, since the canon is the single source of truth for portable rules.
-- **Rephrases** a local procedure when the canon's wording of the same idea has changed, so the local packs
-  stay consistent with the canon they point at.
+- **Strips** a *partially* covered item down to its residue — when an item's general half is now canon-owned
+  but it still carries a stronger point about a narrower case, **delete the portable half in place and keep
+  only the residue**. A strip is a **deletion that shrinks the entry**: lead with the residual point (using the
+  file's own `(canon)` tag convention if it has one), never with a meta-line like "this rule is portable
+  (canon)", and **never re-state the now-canon rule, its fix, or which pack owns it** — carrying it is exactly
+  what you are removing. If your "strip" adds words or restates the canon, you have *un*-deduped the item: keep
+  the pre-edit text instead.
+- **Rephrases** a local procedure *only* when the canon's wording of the same idea has changed, so the local
+  packs stay consistent with the canon they point at — a rephrase tracks a wording drift; it never grows the
+  entry and never re-imports canon prose.
 
 **Keep a local item only if it says *more* than the canon — not merely says it more specifically.** Every
 local item is more specific than the canon, so specificity alone is never the test. Distinguish two cases:
@@ -60,8 +68,9 @@ narrower case) stays.
 
 - **Only remove a local item you can show the mounted canon genuinely covers — quote the canon line (or the
   covering check's rule id).** When unsure, leave it; a wrongful prune deletes a real local lesson.
-- **Open a single PR against `main`** from a per-run-unique branch — one PR for the whole run's prunes, not one
-  per item — never a direct push. This is an unattended task, on a capable model, and a **wrongful prune
+- **Open a single PR against `main`** from a per-run-unique branch (see
+  [the git-github-advanced skill](../../../git-github/skills/git-github-advanced/SKILL.md)) — one PR for the
+  whole run's prunes, not one per item — never a direct push. This is an unattended task, on a capable model, and a **wrongful prune
   deletes a real local lesson**, so — unlike [growth-extract](../growth-extract/task.md), whose additive edits
   ride a PR that auto-merges after CI — this task keeps a **human** approval gate (its declared outcome ceiling
   is `open-pr`: it may open a PR but never merge it). **Put the issue reference in the commit message** —
@@ -97,3 +106,11 @@ review, so don't lean on it. This task declares `model: opus`; the executor disp
 - **Never prune a local item that makes a stronger point about a narrower case** than the canon — that isn't
   redundancy. (A local item that only restates the canon in repo-specific names *is* prunable once the canon
   covers the point.)
+- **Never let a dedup edit grow an entry or re-import canon prose.** Every action this task takes *removes*
+  portable text: a Remove deletes the item, a Strip deletes its portable half, a Rephrase tracks a wording
+  drift without adding. An edit that leaves an entry the same size or larger, re-quotes the now-canon rule, or
+  names the owning pack's fix is a **corruption, not a dedup** — the exact inverse of the job. When in doubt
+  about a kept item, leave it byte-for-byte unchanged rather than "reconcile" its wording. The
+  `dedup-prune-integrity` check (`basics`-style work-scope rule, this pack) is the backstop: it reds the
+  session when a dedup-labeled commit grows a local-pack prose file, or when any change adds a line that
+  restates a canon rule ("… is portable (canon)", "… pack owns …").

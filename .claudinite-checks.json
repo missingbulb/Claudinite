@@ -26,14 +26,13 @@
     {
       "id": "barriers",
       "answers": {
-        "goals": "Keep extending.md's engine/content boundary structural: core (checks/, mount/, routines/, .github/, the top-level docs, and the shared engine modules under packs/ and skills/) must never name a specific pack or skill — packs and skills are discovered content, and a core file citing one couples the engine to its content. One rule per namespace (packs/*, skills/*); reviewed inherent couplings live in each rule's except. migrations/ is deliberately NOT core here: a migration record is a dated one-off that exists to move the fleet off a specific pack's old shape, so naming that pack is its purpose, not a coupling — and the record moves between active_migrations/ and migrations-old/ over its life, which no path-keyed exception can track."
+        "goals": "Keep extending.md's engine/content boundary structural: core (checks/, mount/, engine/, .github/, the top-level docs, and the shared engine modules under packs/ and skills/) must never name a specific pack or skill — packs and skills are discovered content, and a core file citing one couples the engine to its content. One rule per namespace (packs/*, skills/*); reviewed inherent couplings live in each rule's except. migrations/ is deliberately NOT core here: a migration record is a dated one-off that exists to move the fleet off a specific pack's old shape, so naming that pack is its purpose, not a coupling — and the record moves between active_migrations/ and migrations-old/ over its life, which no path-keyed exception can track."
       },
       "config": {
         "rules": [
           {
             "from": [
               "engine",
-              "routines",
               ".github",
               "README.md",
               "bootstrap.md",
@@ -110,14 +109,9 @@
       "reason": "a skill's check-the-work modules deliberately share the checks/ engine lib (findings.mjs) — the same named cross-cutting concern as the packs/ acceptance; checks are co-located with the skill whose action they validate, not organized by dependency"
     },
     {
-      "rule": "file-placement",
-      "path": "routines/fleet/plan.mjs",
-      "reason": "the core planner deliberately imports the pack-discovery registry (engine/pack_loader/pack-registry.mjs — core machinery per extending.md, not a specific pack) to enumerate each repo's run_daily tasks; discovery lives under packs/ and the planner under routines/, so the cross-tree reach is inherent and correct, not a misplacement"
-    },
-    {
-      "rule": "file-placement",
-      "path": "routines/fleet/signals.mjs",
-      "reason": "the member-declaration read deliberately imports the one shared id-extractor (packEntryId in engine/pack_loader/pack-registry.mjs — core machinery per extending.md, not a specific pack) so the fleet's activePacks normalization and the engine can never drift on the declaration forms; the cross-tree reach is inherent, the same as the planner's registry import"
+      "rule": "reference-integrity",
+      "path": "docs/per-project-scheduling/",
+      "reason": "the per-project-scheduling DESIGN/MIGRATION pair is the historical record of migration #394 — it names the central routine and planner files this migration deleted precisely because deleting them is what it records; rewriting those names would falsify the record, so its inbound-reference dangling is deliberate and permanent"
     },
     {
       "rule": "file-placement",

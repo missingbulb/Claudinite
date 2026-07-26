@@ -58,9 +58,7 @@ A local pack contributes **every** slot first-class: prose, checks, skills, **an
 tasks** — `tasks/<name>/task.mjs`, found by the repo's own scheduler in the same uniform scan that
 finds a canon pack's tasks ([../engine/scheduler/discover.mjs](../engine/scheduler/discover.mjs)),
 gated by the repo's declaration exactly like a canon pack's tasks. The canon home's own curation
-tasks ride this path. (A repo not yet cut over to its own scheduler still has its local-pack
-`run_daily/` descriptors read by the central routine —
-[../routines/fleet/local-tasks.mjs](../routines/fleet/local-tasks.mjs) — until it converges.)
+tasks ride this path.
 
 The canon-vs-local line is the portable-vs-project-specific split ([../extending.md](../extending.md));
 a project adopts the structure via the `generate-project-instructions` skill, and the growth lifecycle
