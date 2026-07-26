@@ -29,8 +29,8 @@ kind).
 
 ## 2. What the coverage gate checks
 
-The bijection gate is one committed test. It must fail on every one of: a leaf no case claims (doc-first red-by-default); a case claiming a non-existent leaf; two
-cases claiming one leaf; a misnamed case file; a kind directory absent from the registry (or a
+The bijection gate is one committed test. It must fail on every one of: a leaf no case claims
+(doc-first red-by-default); a case claiming a non-existent leaf; two cases claiming one leaf; a misnamed case file; a kind directory absent from the registry (or a
 registered kind with no directory); a manifest out of sync with disk (where manifests exist); an
 image found in a coded kind's folder (a screenshot cannot verify a gesture or a pure rule); a
 stray golden no case or step accounts for. Every rule iterates the registry — adding a kind never
