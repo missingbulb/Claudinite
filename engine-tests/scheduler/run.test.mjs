@@ -7,10 +7,12 @@ import { SCHEDULER_LABELS, READY_LABEL, READY_FLEET_LABEL, AGENT_RUNNING_LABEL, 
 const D = DEFAULT_SCHEDULE;
 
 test('ensureLabels creates every dispatch label, tolerating already-exists (422)', async () => {
-  const posted = [];
+  const calls = [];
   const gh = async (path, opts) => {
-    posted.push({ path, method: opts?.method, name: opts?.body?.name });
+    calls.push({ path, method: opts?.method, name: opts?.body?.name });
     // Simulate ready-for-agent already existing (422), the rest newly created (201).
+    // A PATCH (the reconcile of an existing label) carries no name and answers 200.
+    if (opts?.method === 'PATCH') return { status: 200, json: null };
     return { status: opts?.body?.name === READY_LABEL ? 422 : 201, json: null };
   };
   const logs = [];
@@ -18,11 +20,55 @@ test('ensureLabels creates every dispatch label, tolerating already-exists (422)
   try {
     await ensureLabels(gh, 'o/r', SCHEDULER_LABELS);
   } finally { console.log = orig; }
-  // One POST /labels per label, and no error logged for a 201 or a 422.
+  // One POST /labels per label...
+  const posted = calls.filter((c) => c.method === 'POST');
   assert.equal(posted.length, SCHEDULER_LABELS.length);
-  assert.ok(posted.every((p) => p.path === '/repos/o/r/labels' && p.method === 'POST'));
+  assert.ok(posted.every((p) => p.path === '/repos/o/r/labels'));
   assert.deepEqual(posted.map((p) => p.name).sort(), SCHEDULER_LABELS.map((l) => l.name).sort());
+  // ...plus exactly one reconcile, for the label that already existed.
+  const patched = calls.filter((c) => c.method === 'PATCH');
+  assert.deepEqual(patched.map((p) => p.path), [`/repos/o/r/labels/${encodeURIComponent(READY_LABEL)}`]);
+  // Neither a 201 nor a 422 is an error.
+  assert.equal(logs.filter((m) => /could not (ensure|reconcile) label/.test(m)).length, 0);
+});
+
+test('ensureLabels reconciles an existing label back to spec, not just its existence', async () => {
+  // 422 means the NAME is taken — it says nothing about the colour or description.
+  // A label GitHub auto-created (applying an unknown name to an issue creates it
+  // grey, `ededed`, with no description) would otherwise keep those defaults for
+  // good: POST always 422s, so the spec never lands. That happened across seven
+  // members whose `ready-for-agent` was seeded by an issue rather than the
+  // scheduler. Existence is not conformance — reconcile the shape too.
+  const calls = [];
+  const gh = async (path, opts) => {
+    calls.push({ path, method: opts?.method, body: opts?.body });
+    return { status: opts?.method === 'POST' ? 422 : 200, json: null };
+  };
+  const logs = [];
+  const orig = console.log; console.log = (m) => logs.push(m);
+  try {
+    await ensureLabels(gh, 'o/r', [SCHEDULER_LABELS[0]]);
+  } finally { console.log = orig; }
+
+  const spec = SCHEDULER_LABELS[0];
+  const patch = calls.find((c) => c.method === 'PATCH');
+  assert.ok(patch, 'a label that already exists is PATCHed back to its spec');
+  assert.equal(patch.path, `/repos/o/r/labels/${encodeURIComponent(spec.name)}`);
+  assert.equal(patch.body.color, spec.color);
+  assert.equal(patch.body.description, spec.description);
   assert.equal(logs.filter((m) => /could not ensure label/.test(m)).length, 0);
+});
+
+test('ensureLabels does not PATCH a label it just created', async () => {
+  // A 201 already carries the spec — a follow-up PATCH would be a wasted call on
+  // every first run of every repo.
+  const calls = [];
+  const gh = async (path, opts) => {
+    calls.push({ method: opts?.method });
+    return { status: 201, json: null };
+  };
+  await ensureLabels(gh, 'o/r', [SCHEDULER_LABELS[0]]);
+  assert.deepEqual(calls.map((c) => c.method), ['POST']);
 });
 
 test('ensureLabels surfaces a genuine failure (not 201/422) without throwing', async () => {
