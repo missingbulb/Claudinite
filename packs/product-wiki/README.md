@@ -24,8 +24,8 @@ standard.
 - Every wiki page carries `## Sources` (every source bullet carrying its real
   URL), `## Growth log` (dated bullets, newest change appended per pass), and
   `## Open questions` (the research backlog the growth passes work from).
-- Growth is scheduled research: the pack's weekly `run_daily` task
-  ([run_daily/wiki-growth.worker.md](run_daily/wiki-growth.worker.md)) reads
+- Growth is scheduled research: the pack's weekly scheduled task
+  ([tasks/wiki-growth/task.md](tasks/wiki-growth/task.md)) reads
   the wikis, researches what their own open questions flag, writes back cited,
   and delivers an unmerged PR. Most passes correctly change nothing.
 

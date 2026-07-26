@@ -1,9 +1,14 @@
-# Growth — discover packs (a run_daily task, executed centrally)
+# Growth — discover packs (the legacy central pipeline)
 
-The pack-discovery pipeline, run as an ordinary **`run_daily` task** — the planner picks it up per
-member on that member's **weekly full sweep**, and the orchestrator dispatches it like any other unit
-(member-scoped, where the central promote stage is home-only). For the member it's
-handed, it runs the whole pipeline end to end — **manifest → suggest → populate → open PR** — as one
+> **Superseded, kept for its method.** The scheduled task is now
+> [tasks/growth-discover-packs/task.md](tasks/growth-discover-packs/task.md) — a **per-repo, weekly**
+> reflection in which a repo authors a **local** pack for its own unhomed knowledge. This doc
+> describes the retired **central** variant, in which the fleet planner handed a member to a home
+> session that authored a **canon** pack for it. Its manifest → suggest → populate method still reads
+> true; its scheduling and its canon-writing delivery do not.
+
+The pack-discovery pipeline, run centrally against a member handed to it: end to end —
+**manifest → suggest → populate → open PR** — as one
 process. It is Claudinite-internal; consuming repos don't vendor or `@import` it.
 
 **Per member, executed centrally.** Like every worker, it runs in the home-repo routine session with

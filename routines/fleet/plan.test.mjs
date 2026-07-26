@@ -8,8 +8,14 @@ import { buildWorkPlan } from './plan.mjs';
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 // Integration test for the core planner's plan-building: a fake gh + a covered
-// member, exercising the real pack run_daily tasks (loaded from disk). We drive
-// canonChanged true (a home commit touching packs/) so baselining + growth-dedup fire.
+// member.
+//
+// Since #394 the CANON packs contribute no `run_daily` descriptors at all —
+// every canon pack's scheduled work is a `tasks/<name>/task.mjs` its own repo's
+// scheduler runs — so the only tasks this planner can still assemble are a
+// repo's OWN local-pack ones. That is the reality these tests now encode: a
+// covered member with no local tasks yields an empty (but well-formed) plan, and
+// the home's curation task still plans through the local-task read.
 function fakeGh(routes) {
   return async (path) => {
     for (const [re, resp] of routes) if (re.test(path)) return typeof resp === 'function' ? resp(path) : resp;
@@ -18,7 +24,7 @@ function fakeGh(routes) {
 }
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64');
 
-test('buildWorkPlan: emits units from the real fleet-core tasks with plan metadata', async () => {
+test('buildWorkPlan: builds a well-formed plan; the canon packs now contribute no units', async () => {
   const gh = fakeGh([
     // canonChanged: one home commit touching a member path
     [/o\/home\/commits\?since=/, { status: 200, json: [{ sha: 'c1' }] }],
@@ -36,14 +42,13 @@ test('buildWorkPlan: emits units from the real fleet-core tasks with plan metada
   assert.equal(plan.canonChanged, true);
   assert.ok(typeof plan.generatedAt === 'string' && typeof plan.windowStartUtc === 'string');
   assert.equal(plan.errors.length, 0);
-  const byTask = Object.fromEntries(plan.units.map((u) => [u.task, u]));
-  // canonChanged (basics, which the repo declares) → baselining (incremental) and,
-  // since the repo has local packs, growth-dedup fire; extract does not (no projectChanged)
-  assert.ok(byTask.baselining, 'baselining unit present');
-  assert.equal(byTask.baselining.smarts, 'medium');
-  assert.ok(byTask['growth-dedup-local-instructions'], 'dedup unit present');
-  assert.ok(!byTask['growth-extract-new-instructions'], 'extract absent (project did not change)');
-  for (const u of plan.units) assert.equal(u.repo, 'owner/foo');
+  // The signals are still computed and the member is still planned — but the
+  // packs it declares (basics, grow_with_claudinite) carry no `run_daily`
+  // descriptors any more (#394), and this member has no local-pack tasks of its
+  // own, so the plan is legitimately empty. The planner's own machinery (window,
+  // canonChanged, per-repo isolation) is what this asserts.
+  assert.deepEqual(plan.units, [], 'no canon-pack units left for the central planner to emit');
+  assert.deepEqual(plan.skipped, [], 'the member is planned, not skipped — it just has nothing to do');
 });
 
 test('buildWorkPlan: a member that declares `taskScheduler` is skipped entirely (cutover marker)', async () => {
@@ -61,19 +66,19 @@ test('buildWorkPlan: a member that declares `taskScheduler` is skipped entirely 
   assert.deepEqual(plan.skipped, ['owner/foo'], 'the member is recorded as skipped');
 });
 
-test('buildWorkPlan: a member with no local packs gets baselining but not growth-dedup', async () => {
+test('buildWorkPlan: a member with no local packs at all plans cleanly and emits nothing', async () => {
   const gh = fakeGh([
     [/o\/home\/commits\?since=/, { status: 200, json: [{ sha: 'c1' }] }],
     [/o\/home\/commits\/c1$/, { status: 200, json: { files: [{ filename: 'packs/basics/RULES.md' }] } }],
     [/\.claudinite-checks\.json/, { status: 200, json: { content: b64({ packs: ['basics', 'grow_with_claudinite'] }) } }],
-    [/\/local_packs$/, { status: 404, json: null }], // no local packs → nothing for dedup to prune
+    [/\/local_packs$/, { status: 404, json: null }], // no local packs → no local tasks to read either
     [/\/pulls\?/, { status: 200, json: [] }],
     [/\/issues\?/, { status: 200, json: [] }],
   ]);
   const plan = await buildWorkPlan(gh, 'o/home', [{ full_name: 'owner/foo', default_branch: 'main', pushed_at: '2000-01-01T00:00:00Z' }]);
-  const tasks = plan.units.map((u) => u.task);
-  assert.ok(tasks.includes('baselining'), 'baselining still fires on canonChanged');
-  assert.ok(!tasks.includes('growth-dedup-local-instructions'), 'dedup skipped — no local packs');
+  // A missing local-packs dir is fail-soft, not an error: no tasks, no findings.
+  assert.deepEqual(plan.units, []);
+  assert.deepEqual(plan.errors, []);
 });
 
 test('buildWorkPlan: a member whose probe throws is isolated, not fatal', async () => {
@@ -132,10 +137,9 @@ test('buildWorkPlan: plans the home repo last — home-only pack gates see the f
   assert.equal(promote.workerRepo, 'o/home'); // the dispatch reads the worker from the home repo
   // whether tonight is home's full-sweep night or not, the one enrolled+changed member is the target set
   assert.deepEqual(promote.targets.repos, ['owner/foo']);
-  // baselining self-skips the home repo (isHome), so home contributes no baselining unit
-  assert.ok(!plan.units.some((u) => u.repo === 'o/home' && u.task === 'baselining'), 'no home baselining');
-  // the member still planned normally (extract fires on projectChanged)
-  assert.ok(plan.units.some((u) => u.repo === 'owner/foo' && u.task === 'growth-extract-new-instructions'));
+  // The canon packs contribute nothing any more (#394), so the ONLY unit in the
+  // whole plan is the home's own local-pack promote task.
+  assert.deepEqual(plan.units.map((u) => u.task), ['growth-promote-to-claudinite']);
 });
 
 test('buildWorkPlan: without a homeRepo the home is not planned (back-compat callers)', async () => {

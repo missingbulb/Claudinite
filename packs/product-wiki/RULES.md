@@ -5,7 +5,7 @@ under `product-wiki/` (Karpathy's LLM-wiki pattern: compile findings once, refin
 place). Layout, required page sections, growth-log dating, source links,
 staleness, and the isolation wall are **check-enforced** — the finding is the
 instruction, so this prose never restates them. The full growth procedure is
-the pack's worker doc (`packs/product-wiki/run_daily/wiki-growth.worker.md`).
+the pack's task doc (`packs/product-wiki/tasks/wiki-growth/task.md`).
 
 - **The sink is human-reviewed only.** `product-wiki/product-requirements/` never
   changes as a side effect of wiki work or any unattended pass — a wiki finding

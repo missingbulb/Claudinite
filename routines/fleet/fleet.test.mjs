@@ -3,11 +3,6 @@ import assert from 'node:assert/strict';
 import { fullSweepBucket, isFullSweepDay } from './schedule.mjs';
 import { packTasks, assembleForRepo } from './registry.mjs';
 import { planRepo } from './gates.mjs';
-import baselining from '../../packs/basics/run_daily/baselining.mjs';
-import extract from '../../packs/grow_with_claudinite/run_daily/growth-extract-new-instructions.mjs';
-import dedup from '../../packs/grow_with_claudinite/run_daily/growth-dedup-local-instructions.mjs';
-import discoverPacks from '../../packs/grow_with_claudinite/run_daily/growth-discover-packs.mjs';
-import conversationExtract from '../../packs/grow_with_claudinite/run_daily/conversation-extract.mjs';
 import promote from '../../.claudinite/local/packs/canon-curation/run_daily/growth-promote-to-claudinite.mjs';
 
 const REPO = { fullName: 'owner/foo', defaultBranch: 'main' };
@@ -108,66 +103,16 @@ test('planRepo isolates a throwing gate: it drops the task, keeps the rest', asy
 });
 
 // --- pack-contributed descriptor gates -------------------------------------
-
-test('baselining (basics): runs on canonChanged (incremental) and on its full sweep', async () => {
-  assert.equal((await baselining.gate(REPO, S())).run, false);
-  assert.equal((await baselining.gate(REPO, S({ canonChanged: true }))).run, true);
-  const full = await baselining.gate(REPO, S({ fullSweep: true }));
-  assert.equal(full.run, true);
-  assert.equal(full.targets.mode, 'full');
-  assert.equal(baselining.full_sweep_supported, true);
-});
-
-test('baselining (basics): self-skips the home repo — the canon doesn\'t mount itself', async () => {
-  assert.equal((await baselining.gate(REPO, S({ isHome: true, canonChanged: true }))).run, false);
-  assert.equal((await baselining.gate(REPO, S({ isHome: true, fullSweep: true }))).run, false);
-});
-
-test('growth-extract (grow_with_claudinite): runs only on a substantive project change; no full mode', async () => {
-  assert.equal(extract.full_sweep_supported, false);
-  assert.equal((await extract.gate(REPO, S())).run, false);
-  assert.equal((await extract.gate(REPO, S({ substantiveChange: true }))).run, true);
-  // a housekeeping-only main move (bot bump / baselining) must NOT trigger extract
-  assert.equal((await extract.gate(REPO, S({ mainMoved: true, projectChanged: true }))).run, false);
-});
-
-test('growth-dedup (grow_with_claudinite): only with local packs, on a relevant canon / substantive change / full sweep', async () => {
-  assert.equal(dedup.full_sweep_supported, true);
-  // No local packs → never runs, whatever else is true (nothing to prune)
-  assert.equal((await dedup.gate(REPO, S())).run, false);
-  assert.equal((await dedup.gate(REPO, S({ relevantCanonChanged: true, substantiveChange: true, fullSweep: true }))).run, false);
-  // With local packs, any of the three triggers fires it
-  assert.equal((await dedup.gate(REPO, S({ hasLocalPacks: true, relevantCanonChanged: true }))).run, true);
-  assert.equal((await dedup.gate(REPO, S({ hasLocalPacks: true, substantiveChange: true }))).run, true);
-  assert.equal((await dedup.gate(REPO, S({ hasLocalPacks: true, fullSweep: true }))).run, true);
-  // A canon change to a pack this repo does NOT declare (relevantCanonChanged false) does not fire —
-  // the coarse global canonChanged is no longer the trigger.
-  assert.equal((await dedup.gate(REPO, S({ hasLocalPacks: true, canonChanged: true, relevantCanonChanged: false }))).run, false);
-  // a housekeeping-only main move must NOT by itself trigger dedup
-  assert.equal((await dedup.gate(REPO, S({ hasLocalPacks: true, mainMoved: true, projectChanged: true }))).run, false);
-});
-
-test('growth-discover-packs (grow_with_claudinite): a regular run_daily task, weekly-only, independent', async () => {
-  assert.equal(discoverPacks.full_sweep_supported, true);
-  // Slow-moving signal: fires only on the member's weekly full sweep, not on day-to-day change.
-  assert.equal((await discoverPacks.gate(REPO, S())).run, false);
-  assert.equal((await discoverPacks.gate(REPO, S({ projectChanged: true }))).run, false);
-  assert.equal((await discoverPacks.gate(REPO, S({ canonChanged: true }))).run, false);
-  assert.equal((await discoverPacks.gate(REPO, S({ fullSweep: true }))).run, true);
-});
-
-test('conversation-extract (grow_with_claudinite): fires the day after a real merge, and on the weekly full sweep', async () => {
-  assert.equal(conversationExtract.full_sweep_supported, true);
-  // Quiet repo → nothing to extract or prune.
-  assert.equal((await conversationExtract.gate(REPO, S())).run, false);
-  // A real merge (substantiveChange) is when a fresh capture lands on conversation-logs.
-  assert.equal((await conversationExtract.gate(REPO, S({ substantiveChange: true }))).run, true);
-  // The weekly full sweep runs the retention prune even on a repo gone quiet.
-  assert.equal((await conversationExtract.gate(REPO, S({ fullSweep: true }))).run, true);
-  // A housekeeping-only main move (bot bump / [skip ci] capture commit) must NOT trigger it —
-  // substantiveChange, not mainMoved, is the trigger, so the capture commit itself can't self-fire.
-  assert.equal((await conversationExtract.gate(REPO, S({ mainMoved: true, projectChanged: true }))).run, false);
-});
+//
+// The canon packs' `run_daily/` descriptors retired with the per-project
+// scheduler (#394), so there are no canon-pack gates left for this file to
+// exercise: every canon pack's scheduled work is now a `tasks/<name>/task.mjs`
+// declaration whose PRECONDITION is tested beside its pack —
+// packs-tests/basics/tasks.test.mjs, packs-tests/grow_with_claudinite/tasks.test.mjs,
+// packs-tests/product-wiki/pack.test.mjs, packs-tests/tidy-repo/pack.test.mjs,
+// packs-tests/chrome-extension-release/tasks.test.mjs. What survives here is the
+// planner machinery above (pure, pack-agnostic) and the one LOCAL-pack descriptor
+// the central routine still reads, below.
 
 // --- canon-curation (home-only pack) gates ----------------------------------
 

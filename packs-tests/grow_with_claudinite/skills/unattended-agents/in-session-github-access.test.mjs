@@ -30,15 +30,31 @@ test('in-session-github-access: flags a GITHUB_TOKEN read in routine code', () =
   } finally { cleanup(root); }
 });
 
-test('in-session-github-access: flags a REST client (makeGh / fleet-api) in a run_daily task', () => {
+test('in-session-github-access: flags a REST client (makeGh / fleet-api) in a legacy run_daily task', () => {
+  // The canon's own run_daily/ retired with the per-project scheduler (#394), but a
+  // repo not yet cut over still has its LOCAL packs' run_daily descriptors planned
+  // and dispatched into an MCP-only session — exactly what this check guards.
+  const file = '.claudinite/local_packs/x/run_daily/task.mjs';
   const root = makeRepo({ changed: {
-    'packs/x/run_daily/task.mjs': "import { makeGh } from '../../../../routines/fleet/fleet-api.mjs';\nexport const gh = makeGh('t');\n",
+    [file]: "import { makeGh } from '../../../../routines/fleet/fleet-api.mjs';\nexport const gh = makeGh('t');\n",
   } });
   try {
     const f = run(root);
     assert.ok(f.length >= 1);
-    assert.ok(f.every((x) => x.file === 'packs/x/run_daily/task.mjs'));
+    assert.ok(f.every((x) => x.file === file));
     assert.match(f[0].what, /REST client/);
+  } finally { cleanup(root); }
+});
+
+test('in-session-github-access: a scheduled task\'s preprocessing worker keeps its REST client', () => {
+  // agent_preprocessing runs Action-side as a subprocess with an injected
+  // GITHUB_TOKEN — the one sanctioned non-MCP surface — so tasks/ is deliberately
+  // outside the in-session scope.
+  const root = makeRepo({ changed: {
+    'packs/basics/tasks/baselining/worker.mjs': "const t = process.env.GITHUB_TOKEN;\nconst r = await fetch('https://api.github.com/repos/x');\nexport const y = [t, r];\n",
+  } });
+  try {
+    assert.equal(run(root).length, 0, 'a task worker is Action-side code, not in-session code');
   } finally { cleanup(root); }
 });
 

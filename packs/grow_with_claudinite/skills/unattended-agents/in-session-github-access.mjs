@@ -21,6 +21,16 @@ import { finding } from '../../../../engine/checks/helpers/findings.mjs';
 // run_daily/ dir (the in-session code surface). A dispatch-only executor's own code
 // (e.g. a census invoked by a workflow) lives outside those trees and keeps its REST
 // client legitimately, so it is never scanned.
+//
+// `run_daily/` OUTLIVES the canon's own run_daily tasks (retired with the
+// per-project scheduler, #394): a consumer's LOCAL packs may still carry
+// `run_daily/` descriptors, and those are still planned and dispatched into an
+// MCP-only session by the central routine until every repo has cut over — so they
+// are exactly the code this check exists for. A scheduled task's `tasks/<name>/`
+// tree is deliberately NOT in scope: a task's `agent_preprocessing` worker.mjs runs
+// as an Action-side subprocess with an injected GITHUB_TOKEN, the one sanctioned
+// non-MCP surface (per-project-scheduling DESIGN §10), so a REST client there is
+// correct, not a smell.
 
 const IN_SESSION = [/^routines\//, /^migrations\//, /(^|\/)run_daily\//];
 const inSession = (f) => f.endsWith('.mjs') && !f.endsWith('.test.mjs') && IN_SESSION.some((re) => re.test(f));

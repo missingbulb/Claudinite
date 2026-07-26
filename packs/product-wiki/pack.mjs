@@ -11,7 +11,6 @@ import growthLog from './growth-log.mjs';
 import sources from './sources.mjs';
 import freshness from './freshness.mjs';
 import isolation from './isolation.mjs';
-import wikiGrowth from './run_daily/wiki-growth.mjs';
 
 export default {
   id: 'product-wiki',
@@ -24,5 +23,7 @@ export default {
   requires: ['barriers'],
   contributes: { barriers: [isolation] },
   rules: [layout, pageSections, growthLog, sources, freshness],
-  run_daily: [wikiGrowth],
+  // The pack's scheduled task — wiki-growth, the weekly research pass — lives in
+  // this pack's `tasks/wiki-growth/`, discovered by the scheduler's filesystem
+  // scan (engine/scheduler/discover.mjs), not declared here.
 };
