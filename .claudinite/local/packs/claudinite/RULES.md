@@ -36,6 +36,29 @@ prose below). Entries accrete as sessions on the canon surface durable, canon-sp
   declared it. The natural drift-guard (a future check, once the home is clean) is: the home
   declares every `seededByDefault` non-local pack. (At the time of writing `tidy-repo` is
   `seededByDefault` yet absent from the home's declaration — the same gap, unverified.)
+- **The home's mounted skill set is short a whole pack — never conclude "no such skill" from
+  `.claude/skills/`; read the pack tree.** Universal packs reached only through another pack's
+  `requires` (today `git-github`, which `basics` requires and which is deliberately never
+  `seededByDefault`) arrive in a consumer's declaration because baselining normalizes the
+  `requires` closure into `.claudinite-checks.json` — and baselining is the one thing that skips
+  the home (see the gotcha above). `mount-skills.mjs` filters on the **literal** declaration
+  (`isActive(p, { packs: declared })`) rather than `resolveDeclaredPacks`, the way
+  `check_the_world.mjs` does, so in this repo `git-github`'s bundled skills — `merge-to-main`,
+  `git-github-advanced` — are simply absent from `.claude/skills/`. This has already cost real
+  round-trips: three consecutive #394 sessions (`2026-07-23T0936Z`, `2026-07-23T1637Z`,
+  `2026-07-24T0508Z`) reached for the merge skill, found nothing mounted ("the `merge-to-main`
+  skill isn't mounted here"), hand-drove the merge from `mcp__github__merge_pull_request` alone —
+  and so silently dropped the skill's post-merge step, the `capture-log.mjs` conversation capture.
+  Every one of those three captures happened only because the owner asked for it, 5 / 58 / 5
+  minutes after the merge, across five owner turns that should not have existed. So: **when a
+  procedure ought to have a skill and `.claude/skills/` doesn't show it, read
+  `packs/<pack>/skills/<name>/SKILL.md` straight out of the tracked tree** — the corpus is this
+  repo, the doc is always there, and an unmounted skill says nothing about whether the procedure
+  applies. The drift-guard the existing gotcha proposes ("the home declares every
+  `seededByDefault` non-local pack") would **not** catch this one — `git-github` is reached by
+  closure, not by seed — so a real guard has to compare `resolveDeclaredPacks` against the literal
+  declaration, or `mount-skills.mjs` has to resolve the closure like the world runner already does.
+
 - **Fail-soft SessionStart steps hide their own breakage fleet-wide — test the emitted
   output, not the exit code.** Every `engine/pack_loader/` SessionStart step
   (`inject-pack-prose.mjs`, `mount-skills.mjs`, `env-requirements.mjs`) wraps its body in
