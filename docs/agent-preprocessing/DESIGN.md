@@ -50,7 +50,7 @@ directly — the agent no longer needs canon in context.
 
 ## 2. Contract additions
 
-Three fields join the task declaration (`engine/scheduler/task-contract.mjs`),
+Four fields join the task declaration (`engine/scheduler/task-contract.mjs`),
 all optional with safe defaults so every existing task is valid unchanged:
 
 ```js
@@ -67,6 +67,11 @@ export default {
   agent_execution_timeout: 900,              // seconds. Bounds the agentic run (see §6 for what "bounds"
                                              //   means — it is a lifecycle bound, not a compute kill).
                                              //   Required whenever agent_model !== 'none'.
+
+  required_secrets: ['SOME_API_KEY'],        // OPTIONAL. The repo Actions secrets this task needs
+                                             //   CONFIGURED (§9). Declarative — the wiring converge
+                                             //   stamps them into the workflow and the owner is
+                                             //   asked for any the repo lacks.
 };
 ```
 
@@ -81,6 +86,9 @@ enforce against this one contract:
   `agent_preprocessing` is set.
 - `agent_execution_timeout` is a positive integer and is **required** when
   `agent_model !== 'none'`. There is **always** a bound on an agentic run.
+- `required_secrets`, if present, is an array of secret names. That is the whole
+  rule: whether the repo has configured them is a fact about the repo, answered by
+  the wiring converge and baselining, never at author time (§9).
 - `agent_model: none` with **no** `agent_preprocessing` is now an error: an
   agentless task with no preprocessing does nothing. (`none` used to imply the
   inline `worker.mjs` — that path is folded into preprocessing; see §4.)
@@ -257,3 +265,46 @@ Consequences to wire:
 4. Preprocessing runs **Action-side as a subprocess**, after issue creation,
    before the agent; communicates with the agent through the repo only.
 
+
+## 9. Required secrets
+
+Preprocessing runs Action-side, so a repo's **Actions secrets** are reachable
+there. They are reachable *nowhere else* in a task's life: the executor session is
+MCP-only and carries no repo token or secret, by design (§7). The consequence
+worth designing around is that **a workflow whose only job is to hold a secret on
+an agent's behalf is redundant** — an agent that had to dispatch such a workflow,
+poll it, and pull its result can instead do the work in its task's preprocessing.
+
+A task states what it needs:
+
+```js
+required_secrets: ['SOME_API_KEY'],
+```
+
+That is the entire mechanism at the task level. Two things read it, and nothing
+else does:
+
+1. **The wiring converge** (`converge-wiring.mjs`, which baselining runs nightly
+   and bootstrap runs at adoption) stamps each declared name into the scheduler
+   workflow's engine step as `NAME: ${{ secrets.NAME }}`. Actions requires secrets
+   to be named statically in the workflow, and this list *is* that list — so
+   delivery is ordinary environment: a worker reads `process.env.NAME`. No bundle,
+   no parsing, no engine-side selection, and the workflow is regenerated from the
+   stub each converge so the list tracks the declarations.
+
+2. **Baselining** asks the owner for any declared name the repo has not configured
+   — one open issue per repo, matched by exact title, so an unconfigured secret
+   costs one issue rather than one per night. It skips the cycle that first stamps
+   a name, when the value cannot be in the environment yet regardless.
+
+This is the **adoption interview's posture**, deliberately: a declared requirement,
+minus what the project has, drives an *ask*. It is never a gate, never a
+conformance finding, and never fails a run. A repo may sit with a secret
+unconfigured; the task that needs it does not work until someone adds it, and says
+so in its own words when it runs.
+
+### What this does not change
+
+Secrets are a *worker* capability, not a channel to the agent: preprocessing still
+communicates with the agent only through the repository (§3), so a secret's product
+is a committed artifact, never a value threaded into the dispatch issue.

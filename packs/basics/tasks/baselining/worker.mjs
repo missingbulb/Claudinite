@@ -18,8 +18,9 @@
 //      satisfy — it is head by construction);
 //   2. run the CLONED canon's vendoring/apply-vendor-set.mjs to converge
 //      .claudinite/shared/ and stamp it (compute+apply, one snapshot);
-//   3. run the cloned converge-wiring.mjs (scheduler workflow + hashed cron,
-//      settings hooks, retired-import removal);
+//   3. run the cloned converge-wiring.mjs (scheduler workflow + hashed cron + the
+//      tasks' declared required_secrets, settings hooks, retired-import removal),
+//      and ask the owner for any declared secret the repo hasn't configured;
 //   4. apply the MECHANICAL migration notes (aliases/materialize/rewrite) via the
 //      cloned migrations/apply.mjs — idempotent;
 //   5. detect pending AGENTIC notes (registry.mjs `agenticMigrations`, gated on
@@ -185,6 +186,37 @@ async function deliver(root, repo, base, token, delivery, seed) {
   return branch;
 }
 
+// Ask the owner to add a repo Actions secret a task declares in `required_secrets`
+// but the repo has not configured. The wiring converge stamps every declared name
+// into the scheduler workflow, so by the time this runs the value is either in the
+// environment or genuinely unset — no separate probe needed.
+//
+// This is the adoption interview's posture, not a gate: nothing fails, no check
+// fires, and the task that needs the secret simply doesn't work until someone adds
+// it. One open issue per repo (matched by exact title) so an unconfigured secret
+// costs one issue, not one per night. Exported for the tests.
+export const SECRETS_ISSUE_TITLE = 'Claudinite: configure required Actions secrets';
+
+export function unconfiguredSecrets(declared, env) {
+  return (declared ?? []).filter((name) => !env[name]);
+}
+
+async function askForSecrets(token, repo, names) {
+  const q = encodeURIComponent(`repo:${repo} in:title "${SECRETS_ISSUE_TITLE}" state:open`);
+  const { json } = await gh(token, `/search/issues?q=${q}&per_page=10`);
+  if ((json?.items ?? []).some((i) => (i.title ?? '').trim() === SECRETS_ISSUE_TITLE)) return false;
+  const body = [
+    'A scheduled task in this repo declares a repo **Actions secret** that is not configured yet.',
+    'Until it is, that task cannot do its work — everything else keeps running normally.',
+    '',
+    ...names.map((n) => `- \`${n}\``),
+    '',
+    `Add each one at https://github.com/${repo}/settings/secrets/actions, then close this issue.`,
+  ].join('\n');
+  await gh(token, `/repos/${repo}/issues`, { method: 'POST', body: { title: SECRETS_ISSUE_TITLE, body } });
+  return true;
+}
+
 // Arm native auto-merge on a PR (by node id) via the GraphQL mutation — the REST
 // `PUT /merge` would merge NOW, ignoring pending checks; this waits for them.
 async function enableAutoMerge(token, pullRequestId) {
@@ -231,8 +263,20 @@ export async function main() {
 
   // 2-4. Deterministic converge: mount + stamp, then wiring, then mechanical notes.
   node([join(tmp, 'vendoring/apply-vendor-set.mjs'), '--target', root, '--ref', headSha]);
-  node([join(tmp, 'engine/scheduler/converge-wiring.mjs'), repo], { CLAUDINITE_REPO_ROOT: root });
+  const wiringOut = node([join(tmp, 'engine/scheduler/converge-wiring.mjs'), repo], { CLAUDINITE_REPO_ROOT: root });
   node([join(tmp, 'migrations/apply.mjs')], { CLAUDE_PROJECT_DIR: root });
+
+  // Ask about any declared secret the repo hasn't configured — but only once the
+  // wiring is settled. On the cycle that FIRST stamps a name into the workflow the
+  // value cannot be in this process's env yet, so asking then would nag about a
+  // secret the owner may well have already added; next cycle tells the truth.
+  const { declaredSecrets } = await import(pathToFileURL(join(tmp, 'engine/scheduler/converge-wiring.mjs')).href);
+  const missingSecrets = wiringOut.includes('.github/workflows/claudinite-scheduler.yml')
+    ? []
+    : unconfiguredSecrets(await declaredSecrets(root, JSON.parse(readFileSync(checksPath, 'utf8'))), process.env);
+  if (missingSecrets.length && await askForSecrets(token, repo, missingSecrets)) {
+    console.log(`baselining: asked the owner to configure ${missingSecrets.join(', ')}`);
+  }
 
   // 5. Pending agentic notes (from the fresh canon clone) + stamp hold.
   const { loadMigrations, agenticMigrations } = await import(pathToFileURL(join(tmp, 'migrations/registry.mjs')).href);

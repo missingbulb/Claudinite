@@ -81,6 +81,17 @@ test('validateTaskDeclaration validates agent_preprocessing + its required timeo
   );
 });
 
+test('validateTaskDeclaration accepts required_secrets as a plain list of names (DESIGN §9)', () => {
+  // Declarative, not a permission list: the only rule is "a list of names". Where
+  // it is declared, and whether the repo has them, are deliberately NOT its business.
+  assert.deepEqual(validateTaskDeclaration({ ...validTask, required_secrets: ['SOME_API_KEY'] }), []);
+  assert.deepEqual(validateTaskDeclaration({ ...validTask, required_secrets: [] }), []);
+  assert.deepEqual(validateTaskDeclaration(validTask), []);              // absent is fine
+  // Only a shape that could not be read at all is rejected.
+  assert.match(validateTaskDeclaration({ ...validTask, required_secrets: 'SOME_API_KEY' })[0].what, /not an array of secret names/);
+  assert.match(validateTaskDeclaration({ ...validTask, required_secrets: [''] })[0].what, /not an array of secret names/);
+});
+
 test('validateTaskDeclaration flags every malformed field', () => {
   const problems = validateTaskDeclaration({
     id: '',

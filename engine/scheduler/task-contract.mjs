@@ -95,6 +95,17 @@ export function validateTaskDeclaration(decl) {
     }
   }
 
+  // The repo Actions secrets this task needs configured (DESIGN §9). Purely
+  // DECLARATIVE — like a pack's adoption `questions`, its job is to drive the ask
+  // (adoption interactively, the scheduler by owner issue), not to gate anything
+  // here. So the only shape asserted is "a list of names"; whether the repo has
+  // actually configured them is a fact about the repo, answered where the secrets
+  // bundle is readable, never at author time.
+  if (decl.required_secrets !== undefined
+      && !(Array.isArray(decl.required_secrets) && decl.required_secrets.every((s) => typeof s === 'string' && s.trim() !== ''))) {
+    bad('"required_secrets" is not an array of secret names', 'list the repo Actions secret names this task needs, e.g. ["SOME_API_KEY"]');
+  }
+
   // Execution bound (agent-preprocessing DESIGN §2, §6) — an agentic task MUST
   // declare a positive-integer agent_execution_timeout. There is always a bound
   // on an agentic run; enforcement is best-effort (the executor surfaces the

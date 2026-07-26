@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   convergeSchedulerWorkflow, ensureHooks, removeRetiredCorpusImport, convergeWiring,
-  SCHEDULER_WORKFLOW, SETTINGS_PATH,
+  withDeclaredSecrets, SCHEDULER_WORKFLOW, SETTINGS_PATH,
 } from '../../engine/scheduler/converge-wiring.mjs';
 import { hashedCron } from '../../engine/scheduler/hash-minute.mjs';
 
@@ -21,6 +21,47 @@ test('convergeSchedulerWorkflow: writes the stub with the repo-hashed cron, and 
   assert.ok(!written.includes("cron: '10 * * * *'"), 'the placeholder minute is replaced');
   // second run: already converged → no write
   assert.equal(convergeSchedulerWorkflow(root, REPO, STUB), false);
+});
+
+// --- required_secrets delivery (agent-preprocessing DESIGN §9) --------------
+// Actions needs every secret named statically in the workflow, so a task's
+// `required_secrets` IS that list and the wiring converge writes it. These cover
+// the whole delivery mechanism — there is no other secrets code.
+
+const ENV_STUB = "jobs:\n  schedule:\n    steps:\n      - name: Evaluate\n        env:\n          GITHUB_TOKEN: ${{ github.token }}\n        run: node run.mjs\n";
+
+test('withDeclaredSecrets: stamps each declared name beside GITHUB_TOKEN', () => {
+  const out = withDeclaredSecrets(ENV_STUB, ['SOME_API_KEY', 'OTHER_KEY']);
+  assert.match(out, /GITHUB_TOKEN: \$\{\{ github\.token \}\}\n {10}SOME_API_KEY: \$\{\{ secrets\.SOME_API_KEY \}\}\n {10}OTHER_KEY: \$\{\{ secrets\.OTHER_KEY \}\}\n/);
+  assert.match(out, /^ {8}run: node run\.mjs$/m);   // the step is otherwise untouched
+});
+
+test('withDeclaredSecrets: no declarations leaves the stub byte-identical', () => {
+  assert.equal(withDeclaredSecrets(ENV_STUB, []), ENV_STUB);
+  assert.equal(withDeclaredSecrets(ENV_STUB), ENV_STUB);
+});
+
+test('withDeclaredSecrets: regenerating from the stub tracks the declarations rather than accumulating', () => {
+  // The converge always starts from the stub, so dropping a task's declaration
+  // drops its line — the workflow can never grow stale secret names.
+  const first = withDeclaredSecrets(ENV_STUB, ['A_KEY', 'B_KEY']);
+  const second = withDeclaredSecrets(ENV_STUB, ['A_KEY']);
+  assert.match(first, /B_KEY/);
+  assert.ok(!second.includes('B_KEY'));
+  assert.match(second, /A_KEY: \$\{\{ secrets\.A_KEY \}\}/);
+});
+
+test('convergeSchedulerWorkflow: the declared secrets land in the written workflow, and re-converge is idempotent', () => {
+  const root = mkRepo();
+  const stub = `${STUB}${ENV_STUB}`;
+  assert.equal(convergeSchedulerWorkflow(root, REPO, stub, ['SOME_API_KEY']), true);
+  const written = readFileSync(join(root, SCHEDULER_WORKFLOW), 'utf8');
+  assert.match(written, /SOME_API_KEY: \$\{\{ secrets\.SOME_API_KEY \}\}/);
+  assert.match(written, new RegExp(`cron: '${hashedCron(REPO).replace(/[*]/g, '\\*')}'`));
+  assert.equal(convergeSchedulerWorkflow(root, REPO, stub, ['SOME_API_KEY']), false);
+  // and a changed declaration set rewrites it
+  assert.equal(convergeSchedulerWorkflow(root, REPO, stub, []), true);
+  assert.ok(!readFileSync(join(root, SCHEDULER_WORKFLOW), 'utf8').includes('SOME_API_KEY'));
 });
 
 test('ensureHooks: adds the three required hooks to a fresh repo, idempotently', () => {

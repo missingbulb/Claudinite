@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   normalizeDelivery, pendingAgentic, heldStamp, maintenanceBranchName,
-  openMaintenanceBranch, shouldRequestAgent,
+  openMaintenanceBranch, shouldRequestAgent, unconfiguredSecrets, SECRETS_ISSUE_TITLE,
 } from '../../packs/basics/tasks/baselining/worker.mjs';
 
 // The worker's PURE decision helpers (agent-preprocessing DESIGN §7, E4). The
@@ -60,4 +60,28 @@ test('shouldRequestAgent: agent iff a pending note, or a change left non-green',
   assert.equal(shouldRequestAgent({ pendingCount: 0, meaningfulChange: true, checksPass: false }), true);  // change, not green
   assert.equal(shouldRequestAgent({ pendingCount: 0, meaningfulChange: true, checksPass: true }), false);  // change, green → agentless
   assert.equal(shouldRequestAgent({ pendingCount: 0, meaningfulChange: false, checksPass: false }), false); // no change → agentless
+});
+
+// --- required_secrets ask (agent-preprocessing DESIGN §9) --------------------
+// The wiring converge stamps every declared name into the workflow, so by the time
+// the worker runs the value is either in the environment or genuinely unset. That
+// makes the ask a plain env read — no probe, no bundle, no engine-side machinery.
+
+test('unconfiguredSecrets: a stamped-and-set secret is not asked about', () => {
+  assert.deepEqual(unconfiguredSecrets(['SOME_API_KEY'], { SOME_API_KEY: 'v' }), []);
+});
+
+test('unconfiguredSecrets: an unset name is asked about — and so is the empty string Actions renders for one', () => {
+  assert.deepEqual(unconfiguredSecrets(['SOME_API_KEY'], {}), ['SOME_API_KEY']);
+  assert.deepEqual(unconfiguredSecrets(['SOME_API_KEY'], { SOME_API_KEY: '' }), ['SOME_API_KEY']);
+});
+
+test('unconfiguredSecrets: reports only the missing ones, and nothing when none are declared', () => {
+  assert.deepEqual(unconfiguredSecrets(['A', 'B'], { A: 'set' }), ['B']);
+  assert.deepEqual(unconfiguredSecrets([], { A: 'set' }), []);
+  assert.deepEqual(unconfiguredSecrets(undefined, {}), []);
+});
+
+test('the ask issue title is a stable exact-match key (the at-most-one-open guard depends on it)', () => {
+  assert.equal(SECRETS_ISSUE_TITLE, 'Claudinite: configure required Actions secrets');
 });
