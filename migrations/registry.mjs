@@ -191,6 +191,10 @@ export function migrationsPastTtl(migrations, { today, ttlDays }) {
   const cutoff = new Date(`${today}T00:00:00Z`).getTime() - ttlDays * 86400000;
   return migrations.filter((m) => {
     if (m.subdir === MIGRATIONS_OLD_SUBDIR) return false; // already archived
+    // `retire` is deliberately NOT consulted: it gates DELETION (retirableMigrations),
+    // and archiving is not deletion — the record moves to migrations-old/, still
+    // loads, and still applies for a dormant project's backfill. What it stops
+    // doing is tolerating the legacy shape, which is exactly what aging out means.
     const landedMs = new Date(`${m.landed}T00:00:00Z`).getTime();
     return Number.isFinite(landedMs) && landedMs <= cutoff;
   });

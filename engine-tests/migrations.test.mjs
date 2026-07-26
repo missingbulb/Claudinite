@@ -6,6 +6,7 @@ import {
   applyMaterializations, applyRewrites, migrationActive,
   migrationAgentic, agenticMigrations,
 } from '../migrations/registry.mjs';
+import { specFiles, oldSpecFiles } from '../engine/checks/helpers/active-migrations.mjs';
 
 const M = (over = {}) => ({ id: 'm', landed: '2026-01-01', aliases: [], ...over });
 
@@ -116,6 +117,25 @@ test('migrationsPastTtl: an empty set when nothing has aged out', () => {
   assert.deepEqual(migrationsPastTtl(migs, { today: '2026-07-15', ttlDays: 7 }), []);
 });
 
+test('retire gates deletion, not archival: the TTL sweep takes a manual record, retirableMigrations does not', () => {
+  // The two passes are deliberately split. Archiving moves a record to
+  // migrations-old/, where it still loads and still applies for a dormant
+  // project's backfill — only its legacy tolerance ends. Deleting drops it for
+  // good, which is what `retire: 'manual'` exists to stop until a human sweeps
+  // the references the pass cannot reach.
+  const migs = [
+    M({ id: 'auto-old', landed: '2026-07-01', retire: 'auto' }),
+    M({ id: 'manual-old', landed: '2026-07-01', retire: 'manual' }),
+    M({ id: 'unset-old', landed: '2026-07-01' }),
+  ];
+  const archived = migrationsPastTtl(migs, { today: '2026-07-15', ttlDays: 7 });
+  assert.deepEqual(archived.map((m) => m.id).sort(), ['auto-old', 'manual-old', 'unset-old']);
+  const deletable = retirableMigrations(migs, {
+    pending: new Map(), unknownCount: 0, today: '2026-07-15',
+  });
+  assert.deepEqual(deletable.map((m) => m.id).sort(), ['auto-old', 'unset-old']);
+});
+
 test('applyMaterializations: creates a dest from its template when missing or drifted; skips when equal; gated by appliesTo', async () => {
   const store = new Map([['tpl/a.yml', 'AAA'], ['tpl/b.yml', 'BBB']]);
   const repo = new Map();
@@ -164,8 +184,22 @@ test('applyRewrites: applies literal from->to replacements in place, idempotentl
   assert.match(repo.get('.github/w.yml'), /keep me/);
 });
 
-test('migrationActive: true while a migration file carrying the slug is present, false otherwise', () => {
-  assert.equal(migrationActive('chrome-release-vendoring'), true);
+// Stated against the live corpus rather than a named record: the old form
+// asserted migrationActive('chrome-release-vendoring'), which pinned the test to
+// one migration happening to be un-retired. Archiving it — the TTL sweep's whole
+// job — reds the suite for no defect. The contract is what matters, and it holds
+// whichever records are live: a record in active_migrations is tolerated, one in
+// migrations-old is not (its apply logic persists for backfill; its tolerance is
+// what aging out ends).
+const slugOf = (f) => f.replace(/^\d{4}-\d{2}-\d{2}-/, '').replace(/\.mjs$/, '');
+
+test('migrationActive: true for every live record, false once archived', () => {
+  for (const f of specFiles()) {
+    assert.equal(migrationActive(slugOf(f)), true, `active: ${f}`);
+  }
+  for (const f of oldSpecFiles()) {
+    assert.equal(migrationActive(slugOf(f)), false, `archived: ${f}`);
+  }
   assert.equal(migrationActive('no-such-migration-slug'), false);
 });
 

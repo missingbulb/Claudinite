@@ -26,14 +26,13 @@
     {
       "id": "barriers",
       "answers": {
-        "goals": "Keep extending.md's engine/content boundary structural: core (checks/, migrations/, mount/, routines/, .github/, the top-level docs, and the shared engine modules under packs/ and skills/) must never name a specific pack or skill — packs and skills are discovered content, and a core file citing one couples the engine to its content. One rule per namespace (packs/*, skills/*); reviewed inherent couplings live in each rule's except."
+        "goals": "Keep extending.md's engine/content boundary structural: core (checks/, mount/, routines/, .github/, the top-level docs, and the shared engine modules under packs/ and skills/) must never name a specific pack or skill — packs and skills are discovered content, and a core file citing one couples the engine to its content. One rule per namespace (packs/*, skills/*); reviewed inherent couplings live in each rule's except. migrations/ is deliberately NOT core here: a migration record is a dated one-off that exists to move the fleet off a specific pack's old shape, so naming that pack is its purpose, not a coupling — and the record moves between active_migrations/ and migrations-old/ over its life, which no path-keyed exception can track."
       },
       "config": {
         "rules": [
           {
             "from": [
               "engine",
-              "migrations",
               "routines",
               ".github",
               "README.md",
@@ -85,20 +84,6 @@
                   "packs/chrome-extension-release"
                 ],
                 "reason": "decouple(release-infra): a chrome-release composite action in the core .github/ tree; being vendored out (#276)"
-              },
-              {
-                "path": "migrations/active_migrations/2026-07-12-tidy-repo-seed.mjs",
-                "to": [
-                  "packs/tidy-repo"
-                ],
-                "reason": "inherent: a one-time seed migration necessarily names the single pack it seeds; it self-retires once the fleet converges"
-              },
-              {
-                "path": "migrations/active_migrations/2026-07-13-chrome-release-vendoring.mjs",
-                "to": [
-                  "packs/chrome-extension-release"
-                ],
-                "reason": "inherent: a one-time vendoring migration necessarily names the pack whose plumbing it relocates into consumers; it self-retires once the fleet converges"
               },
               {
                 "path": "extending.md",
