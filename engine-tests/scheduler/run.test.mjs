@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeDueTaskSlots, signalsUnion, runPrecondition, renderSummary, planRun, ensureLabels } from '../../engine/scheduler/run.mjs';
+import { computeDueTaskSlots, signalsUnion, runPrecondition, renderSummary, planRun, ensureLabels, maintainDispatchIssues } from '../../engine/scheduler/run.mjs';
 import { DEFAULT_SCHEDULE } from '../../engine/scheduler/slots.mjs';
-import { SCHEDULER_LABELS, READY_LABEL } from '../../engine/scheduler/dispatch.mjs';
+import { SCHEDULER_LABELS, READY_LABEL, READY_FLEET_LABEL, AGENT_RUNNING_LABEL, NEEDS_HUMAN_LABEL } from '../../engine/scheduler/dispatch.mjs';
 
 const D = DEFAULT_SCHEDULE;
 
@@ -143,4 +143,96 @@ test('renderSummary lists each evaluated task with its verb and reason', () => {
   assert.match(summary, /- p\/a \[d2026-07-22\] create — new/);
   assert.match(summary, /- p\/b \[d2026-07-22\] skip — quiet/);
   assert.match(summary, /- p\/c \[d2026-07-22\] run-inline — inline work/);
+});
+
+// --- maintainDispatchIssues: the recovery the executor's sweep used to do -----
+// The sweep is gone (one executor session runs exactly its own triggering issue),
+// so these backstops run here, once per scheduler run, over the GitHub calls the
+// shell actually makes.
+
+// A fake gh that serves one search result set and records every write.
+const maintenanceGh = (items) => {
+  const calls = [];
+  const gh = async (path, opts = {}) => {
+    calls.push({ path, method: opts.method ?? 'GET', body: opts.body });
+    if (path.startsWith('/search/issues')) return { status: 200, json: { items } };
+    return { status: opts.method === 'POST' && path.endsWith('/labels') ? 201 : 200, json: null };
+  };
+  return { gh, calls };
+};
+const quiet = async (fn) => {
+  const orig = console.log; console.log = () => {};
+  try { return await fn(); } finally { console.log = orig; }
+};
+
+test('maintainDispatchIssues re-arms a lost trigger by removing and re-adding its own ready label', async () => {
+  const { gh, calls } = maintenanceGh([
+    { number: 11, title: '[claudinite-task] basics/baselining d2026-07-22', labels: [{ name: READY_FLEET_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T01:00:00Z', comments: 0 },
+  ]);
+  const out = await quiet(() => maintainDispatchIssues(gh, 'o/r', '2026-07-22T02:00:00Z', { labelsEnsured: true }));
+  assert.deepEqual(out.rearmed, [11]);
+
+  // Remove then re-add — a bare re-apply emits no `labeled` event, so both halves
+  // are load-bearing, and the label must be the fleet one the issue already had.
+  const del = calls.find((c) => c.method === 'DELETE');
+  assert.equal(del.path, `/repos/o/r/issues/11/labels/${encodeURIComponent(READY_FLEET_LABEL)}`);
+  const add = calls.find((c) => c.method === 'POST' && c.path === '/repos/o/r/issues/11/labels');
+  assert.deepEqual(add.body.labels, [READY_FLEET_LABEL]);
+  assert.ok(calls.indexOf(del) < calls.indexOf(add));
+});
+
+test('maintainDispatchIssues leaves a fresh, claimed, or commented issue completely alone', async () => {
+  const { gh, calls } = maintenanceGh([
+    { number: 1, title: '[claudinite-task] basics/baselining d2026-07-22', labels: [{ name: READY_LABEL }], created_at: '2026-07-22T01:55:00Z', updated_at: '2026-07-22T01:55:00Z', comments: 0 }, // 5m old
+    { number: 2, title: '[claudinite-task] p/b d2026-07-22', labels: [{ name: AGENT_RUNNING_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T01:58:00Z', comments: 1 }, // live claim
+    { number: 3, title: '[claudinite-task] p/c d2026-07-22', labels: [{ name: READY_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T01:30:00Z', comments: 2 }, // engaged
+  ]);
+  const out = await quiet(() => maintainDispatchIssues(gh, 'o/r', '2026-07-22T02:00:00Z', { labelsEnsured: true }));
+  assert.deepEqual(out, { stale: [], deadClaims: [], rearmed: [] });
+  assert.equal(calls.filter((c) => c.method !== 'GET').length, 0); // read-only run
+});
+
+test('maintainDispatchIssues escalates a stale issue and does NOT also re-arm it', async () => {
+  const { gh, calls } = maintenanceGh([
+    { number: 21, title: '[claudinite-task] basics/baselining d2026-07-22', labels: [{ name: READY_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T01:00:00Z', comments: 0 },
+  ]);
+  const out = await quiet(() => maintainDispatchIssues(gh, 'o/r', '2026-07-25T05:00:00Z', { labelsEnsured: true })); // ~3d → past 2 daily periods
+  assert.deepEqual(out.stale, [21]);
+  assert.deepEqual(out.rearmed, []); // the two rules overlap here; stale has to win
+
+  assert.ok(calls.some((c) => c.path === '/repos/o/r/issues/21/comments' && c.method === 'POST'));
+  // The ready label comes off, so an escalated issue stops being armed.
+  assert.ok(calls.some((c) => c.method === 'DELETE' && c.path.endsWith(encodeURIComponent(READY_LABEL))));
+  const add = calls.find((c) => c.method === 'POST' && c.path === '/repos/o/r/issues/21/labels');
+  assert.deepEqual(add.body.labels, [NEEDS_HUMAN_LABEL]);
+});
+
+test('maintainDispatchIssues reclaims a dead agent-running claim', async () => {
+  const { gh, calls } = maintenanceGh([
+    { number: 31, title: '[claudinite-task] p/a d2026-07-22', labels: [{ name: AGENT_RUNNING_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T02:00:00Z', comments: 1 },
+  ]);
+  const out = await quiet(() => maintainDispatchIssues(gh, 'o/r', '2026-07-22T12:00:00Z', { labelsEnsured: true })); // 10h idle
+  assert.deepEqual(out.deadClaims, [31]);
+  assert.ok(calls.some((c) => c.method === 'DELETE' && c.path.endsWith(AGENT_RUNNING_LABEL)));
+  const add = calls.find((c) => c.method === 'POST' && c.path === '/repos/o/r/issues/31/labels');
+  assert.deepEqual(add.body.labels, [NEEDS_HUMAN_LABEL]);
+});
+
+test('maintainDispatchIssues ensures the labels before applying needs-human when the run has not', async () => {
+  const { gh, calls } = maintenanceGh([
+    { number: 41, title: '[claudinite-task] p/a d2026-07-22', labels: [{ name: READY_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T01:00:00Z', comments: 0 },
+  ]);
+  await quiet(() => maintainDispatchIssues(gh, 'o/r', '2026-07-25T05:00:00Z', { labelsEnsured: false }));
+  // GitHub 422s on applying an unknown label, so the ensure has to precede the write.
+  const ensured = calls.filter((c) => c.path === '/repos/o/r/labels');
+  assert.equal(ensured.length, SCHEDULER_LABELS.length);
+  const firstWrite = calls.findIndex((c) => c.path.startsWith('/repos/o/r/issues/41'));
+  assert.ok(calls.indexOf(ensured.at(-1)) < firstWrite);
+});
+
+test('an idle repo with no open dispatch issues writes nothing', async () => {
+  const { gh, calls } = maintenanceGh([]);
+  const out = await quiet(() => maintainDispatchIssues(gh, 'o/r', '2026-07-22T02:00:00Z'));
+  assert.deepEqual(out, { stale: [], deadClaims: [], rearmed: [] });
+  assert.equal(calls.filter((c) => c.method !== 'GET').length, 0);
 });

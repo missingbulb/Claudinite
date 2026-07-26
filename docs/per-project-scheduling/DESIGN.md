@@ -245,19 +245,37 @@ sessions burn on empty hours.
   where the canon rode in the session sources so the baselining task could run the
   canon's vendoring script directly.)
 - **`executor.md`** (vendored, hyper-specific, MCP-only GitHub access):
-  1. The triggering issue is the primary work item. Also list any *other* open
-     `ready-for-agent` issues and process them after it — the self-healing sweep
-     that drains anything left over from label events fired while the routine
-     was down or paused.
-  2. Per issue, run `node .claudinite/shared/engine/scheduler/validate-dispatch.mjs <n>`
+  1. **The triggering issue is the session's *only* work item.** It never lists or
+     processes another open `ready-for-agent` issue.
+
+     This is the fix for the duplicate-execution bug. One scheduler run files every
+     due task's dispatch issue seconds apart, each already labeled, so **one run
+     emits one label event per issue and starts one session per event**. The
+     original design paired that fan-out with a self-healing sweep in which every
+     session also drained its siblings — so N dispatches produced N sessions each
+     building the same N-issue work list. The step-3 claim could not save it: every
+     session read the list before any of them claimed. Observed on 2026-07-26 —
+     dispatch #427 run twice (#452), #425 run three times, leaving four duplicate
+     tracker issues, three duplicate filings of one finding, and duplicate PRs
+     making the same changes.
+
+     One session, one issue: concurrency between sessions stays normal and becomes
+     safe by construction. The recovery the sweep provided moves into deterministic
+     scheduler code (below).
+  2. Run `node .claudinite/shared/engine/scheduler/validate-dispatch.mjs <n>`
      — deterministic validation in code, before any model judgment: first line
      matches `^\.claudinite\/(shared|local)\/packs\/[^/]+\/tasks\/[^/]+\/task\.md$`,
      the file exists at HEAD, its pack is declared, its `task.mjs` sibling
      parses; prints the resolved model and outcome ceiling. Invalid → comment +
      de-label + `needs-human`, skip.
-  3. **Claim** the issue: swap `ready-for-agent` → `agent-running` (a duplicate
-     label event, or an overlapping session, sees nothing ready — no double
-     execution).
+  3. **Claim** the issue as a *verified lease*, since GitHub offers no
+     compare-and-swap on labels: **read** the current labels and abandon if the
+     ready label is gone or `agent-running`/`needs-human` is present; **swap**
+     `ready-for-agent` → `agent-running` and post a claim comment; **re-read** and,
+     if a second claim comment is present, let the earliest claim win and end the
+     session without dispatching. The read-swap-*confirm* shape is what makes the
+     claim meaningful — the original blind swap could not detect a lost race, and
+     the missing third step is what let a duplicate through.
   4. Dispatch a subagent at the declared model: read `task.md`, follow it
      exactly; the issue's Context section is binding scope — never re-decide or
      widen it.
@@ -265,10 +283,33 @@ sessions burn on empty hours.
      `none` task that opened a PR, or an `open-pr` task that merged one, fails
      the run); then close the issue with a result comment, or converge the
      failure (comment + `needs-human`, remove `agent-running`).
-  6. An `agent-running` issue older than ~3h with no activity → converge to
-     `needs-human` (a died-mid-run session never strands an issue silently; the
-     scheduler's stale-issue escalation is the backstop when no session runs at
-     all).
+  6. **No backstop sweeps.** Converging a dead `agent-running` claim, and
+     re-arming a dispatch whose label event never landed, are the **scheduler's**,
+     in code, once per hourly run — not the executor's. Sweeping them here meant
+     every session triggered by the same run swept the same issues in parallel:
+     the duplicate-work bug again, in miniature.
+
+**The scheduler's maintenance pass** (`run.mjs` `maintainDispatchIssues`, over the
+pure rules in `dispatch.mjs`) is now the single home for executor recovery. Each
+hourly run, after filing the cycle's dispatches:
+
+  1. **Stale** — a dispatch open past ~2 of its own scheduling periods →
+     escalation comment, drop the ready label, add `needs-human`
+     (`staleDispatchIssues`; specified since the original design, but never
+     actually wired into `main()` until now).
+  2. **Dead claim** — `agent-running` with no activity for ~3h → comment, drop
+     `agent-running`, add `needs-human` (`staleClaimedDispatchIssues`). Scoped to
+     `[claudinite-task]` titles, so a task's claim on an issue *it* owns is never
+     swept.
+  3. **Re-arm** — armed, unclaimed, uncommented and past a 20-minute grace window
+     → the trigger event was lost, so remove and re-add its own ready label to
+     emit a fresh one (`rearmDispatchIssues`). Remove-then-add is load-bearing:
+     re-applying a label already present emits no `labeled` event. A fleet
+     dispatch re-arms under the fleet label, never the self one.
+
+Stale wins over re-arm, so an issue converging to triage is never put back into
+circulation; and stale is what bounds the re-arm loop when the executor is down
+for good.
 
 **Security** — this raises the bar; it is not a hard boundary. Applying a label
 requires triage/write permission, so a drive-by issue filing can't summon the
@@ -320,11 +361,16 @@ rest of what the old central routine did has moved above:
   workflow `concurrency` + exactly-once issue per (task, slot) via state=all
   title search.
 - **Missed label event / executor down** → the issue stays labeled and open; the
-  next executor session's sweep drains it, and the scheduler escalates any
-  dispatch issue open longer than ~2 periods to `needs-human`. **Duplicate label
-  events / overlapping sessions** → the `ready-for-agent` → `agent-running`
-  claim swap. **Executor died mid-run** → stale `agent-running` converges to
-  `needs-human`.
+  scheduler's next run re-arms it, and escalates it to `needs-human` if it is
+  still unrun past ~2 periods. **Duplicate label events on one issue** → the
+  read-swap-confirm claim lease. **Several issues dispatched at once** → not a
+  race at all: each session runs only its own issue. **Executor died mid-run** →
+  the scheduler converges the stale `agent-running` claim to `needs-human`.
+- Recovery lives in **one place, in code**. The rule it cost a duplicate-execution
+  incident to learn: when a trigger fans out to N concurrent sessions, never also
+  give each session a sweep over the shared work — every session will do every
+  other session's work, and a claim taken after the work list is read cannot
+  prevent it.
 - **Precondition/signal crash** → per-task isolation + `workflow-failure` issue;
   the rest of the run proceeds.
 - Not idempotence — recoverability: every anomaly lands in a visible, bounded,
