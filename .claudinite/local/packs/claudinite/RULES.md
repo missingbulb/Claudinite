@@ -23,6 +23,14 @@ prose below). Entries accrete as sessions on the canon surface durable, canon-sp
   tree may reference is expressed by declaring/configuring the `barriers` pack (contributed
   edges, `siblings`/`scope` capabilities — extend barriers generically if a capability is
   missing). Never write standalone code that checks packs-tree segregation.
+- **A `docs/<initiative>/DESIGN.md` records the mechanism only** (owner decision, 2026-07-23,
+  #420). Status, phase tracking, in-flight-PR reconciliation and remaining work live in that
+  initiative's tracking issue (agent-preprocessing → #394); a phased plan lives in the sibling
+  `MIGRATION.md`. Don't reintroduce a status / open-questions / remaining-work section there.
+- **Multi-session work hands off through the tracking issue, never a prepared prompt** (owner
+  correction, 2026-07-23). The owner's opener is `continue work on #<n>`, so state not written
+  into the issue is lost. Before ending a session on unfinished work, update the issue and let
+  the session summary be a pointer to it — never compose a bespoke "pick up from here" prompt.
 
 ## Canon-specific gotchas
 
@@ -36,6 +44,33 @@ prose below). Entries accrete as sessions on the canon surface durable, canon-sp
   declared it. The natural drift-guard (a future check, once the home is clean) is: the home
   declares every `seededByDefault` non-local pack. (At the time of writing `tidy-repo` is
   `seededByDefault` yet absent from the home's declaration — the same gap, unverified.)
+- **The home doesn't declare `git-github`, so its skills never mount — never conclude "no such
+  skill" from `.claude/skills/`.** `mount-skills.mjs` filters on the *literal* declaration
+  (`isActive(p, { packs: declared })`), not the `requires` closure `check_the_world.mjs` resolves,
+  and the baselining that would normalize that closure into `.claudinite-checks.json` is the one
+  thing gated `!isHome` — so `merge-to-main` and `git-github-advanced` are simply absent here.
+  Three consecutive #394 sessions found nothing mounted, hand-drove the merge, and dropped its
+  post-merge `capture-log.mjs` capture, costing five owner turns. Read
+  `packs/<pack>/skills/<name>/SKILL.md` out of the tracked tree — the corpus *is* this repo, and an
+  unmounted skill says nothing about whether its procedure applies. The seed-based drift-guard
+  above would not catch this (`git-github` arrives by closure, never `seededByDefault`); a real one
+  compares `resolveDeclaredPacks` against the literal declaration.
+- **Never re-serialize a repo's JSON config to apply an edit — patch the text.** A round-trip
+  rewrites what it wasn't asked to: Python's `json.dump` defaults to `ensure_ascii=True` (every
+  non-ASCII character becomes a `\uXXXX` escape), and indent, key order and the trailing newline
+  become the serializer's opinion. Nothing fails and tests stay green, so it rides onward — this
+  landed in four members' merged mains during the phase-2 fleet flip (#385) and was caught only
+  because the owner read one line of a diff. Edit JSON as anchored text; if you must round-trip,
+  pin every lossy default and read the resulting diff before committing. (Portable — a promote
+  candidate for `repo-text-sweeps`, where a `\uXXXX`-in-tracked-JSON check would carry it.)
+- **Test git fixtures must commit with signing off.** `engine-tests/helpers.mjs`'s `makeRepo`
+  overrides identity but not signing, so all 31 call sites route fixture commits through the
+  signing service; when it degrades, each commit blocks on it and the suite leaks descriptors
+  (~800 per full run against a 4096 cap) until `git commit` and `git push` fail process-wide. Cost
+  a 31-minute outage and left the next session rationing its own verification (#394) — a leak that
+  caps how often the suite is run is worse than a slow suite. Commit with
+  `git -c commit.gpgsign=false commit --no-gpg-sign`: signing a tmpdir throwaway buys nothing.
+  (Portable — a promote candidate for `writing-tests`.)
 - **A canon session with a consumer repo also in its sources will reach for the *consumer's*
   merge skill — merge by the skill of the repo you are merging into.** Canon work is routinely
   dual-repo (the canon plus the fleet member being piloted; #394's rollout ran that way for days),
@@ -85,3 +120,12 @@ prose below). Entries accrete as sessions on the canon surface durable, canon-sp
   does nothing. It looks like a healthy run, which is why it costs a debugging session
   every time (it stalled the GCEC E4 pilot). To exercise a task Action-side, invoke its
   worker directly, or move the slot hour in `taskScheduler` and wait for the cron.
+- **The home has no `.claudinite/shared/` mount — machinery paths must accept both roots.** A
+  consumer runs the vendored engine under `.claudinite/shared/engine/…` with packs under
+  `.claudinite/(shared|local)/packs/…`; the home *is* the corpus and runs the same code from the
+  repo root. So a path, regex, or workflow command written to the consumer mount shape works
+  fleet-wide and fails on exactly this repo — the last place anyone exercises it, so the break
+  surfaces late (it bit `validate-dispatch`'s `DISPATCH_PATH_RE`, `executor.md`'s engine commands
+  and `scheduler-workflow-shape` in one cutover, #421). Write the two-root form up front: make the
+  `.claudinite/(shared|local)/` prefix optional in a pattern, and in a command probe for
+  `.claudinite/shared/` first, falling back to the repo root.
