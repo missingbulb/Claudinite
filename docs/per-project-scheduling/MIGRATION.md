@@ -206,8 +206,8 @@ CrosswordChat, Sheepdog, LaughCounter, ShoutsAndWhispers.
 Per-repo checklist (self-contained; one session each):
 
 1. In-session vendor refresh; copy the scheduler workflow; create the labels;
-   convert **every** competing cron, not only a release one — see the cron rule
-   below.
+   replace **every** competing cron, not only a release one — port its steps
+   into a scheduler task and delete the workflow. See the cron rule below.
 2. `git mv .claudinite/local_packs .claudinite/local/packs` (where present) +
    token rewrite + reference sweep; convert any local `run_daily/` → `tasks/`
    (most repos: none).
@@ -223,9 +223,13 @@ Per-repo checklist (self-contained; one session each):
 `claudinite-scheduler.yml` exists in a repo it flags *every other* `schedule:`
 trigger — a product cron just as much as a release one. The rule travels with
 the scheduler into the mount, so it goes live in the same commit that lands the
-workflow: a repo cut over without converting its product crons goes red
-immediately. Step 1 is therefore "convert every cron", and the conversion is
-`schedule:` → `workflow_dispatch:` plus a scheduler task that dispatches it.
+workflow: a repo cut over with a cron still standing goes red immediately.
+
+A scheduled workflow is **replaced** by its scheduler task, so step 1 deletes
+it. Port its steps into the task's worker and `git rm` the workflow file in the
+same commit. Do not leave a `workflow_dispatch:` shell behind for the task to
+call — that keeps two files, two places to edit, and a workflow whose only
+caller is the thing that replaced it.
 
 A cron whose shape has no frequency token puts the irregularity in the task's
 **precondition**, not its declaration — the seven tokens say *when to evaluate*,
@@ -236,11 +240,11 @@ outright: the repo's hashed scheduler minute already staggers the fleet.
 
 ### Pre-cutover survey (first batch, read 2026-07-26)
 
-| Repo | Stamp | Local packs | Crons to convert | Notes |
+| Repo | Stamp | Local packs | Crons to replace | Notes |
 |---|---|---|---|---|
 | gRatio | `80783eb` | none | none — no `.github/workflows/` at all | simplest; steps 2 and the cron half of 1 are no-ops |
 | TLDR | `80783eb` | none | none — its `chrome-extension-*` files are called reusables, no scheduled orchestrator | step 1's release-cron clause already satisfied |
-| EdFringeNow | `1df7250` | `local_packs/edfringe` — **legacy token**, needs step 2 in full | **two**: `refresh.yml` (`20 5 * * *`) and `refresh-tickets.yml` (~16 hand-spelled hourly lines, August-only, 08:00–23:00 Edinburgh, jittered minutes) | the only one of the three needing real conversion work; `refresh-tickets` is the precondition case above |
+| EdFringeNow | `1df7250` | `local_packs/edfringe` — **legacy token**, needs step 2 in full | **two**: `refresh.yml` (`20 5 * * *`) and `refresh-tickets.yml` (~16 hand-spelled hourly lines, August-only, 08:00–23:00 Edinburgh, jittered minutes) | the only one of the three with real porting work — two workers to write, then both workflow files deleted; `refresh-tickets` is the precondition case above |
 
 All three still lack a `taskScheduler` key, so all three remain owned by the
 central routine. Stamps are 3–5 days behind canon head — step 1's vendor refresh
