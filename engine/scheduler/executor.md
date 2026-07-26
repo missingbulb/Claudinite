@@ -1,7 +1,9 @@
 # Claudinite executor
 
 > **Before anything else — name your one issue.** This session runs exactly one
-> dispatch. Identify it (step 1) and state its number before you touch anything.
+> dispatch, and the event that started it is on disk at `$GITHUB_EVENT_PATH`.
+> Read that file, take `issue.number` from it, and state the number before you
+> touch anything (step 1).
 > If you cannot name exactly one, **run nothing and end the session** — the
 > scheduler re-arms an unrun dispatch on its next hourly pass, so stopping costs a
 > delay while sweeping costs duplicated work. Never process a second issue in one
@@ -58,13 +60,24 @@ so use `engine/scheduler/`.
    session.** Run it and nothing else. Do **not** list, claim, or process any
    other open issue — not under your ready label, and not under the other one.
 
-   **Identify it first, and state its number.** The label event that started this
-   session names the issue it fired on; find that reference in the context you
-   were started with — the triggering event's payload, or an issue number or URL
-   in your launch prompt. Say which issue you are running before you act, so
-   everything after this has one unambiguous subject. Knowing *that* a label
-   event triggered you is not the same as knowing *which* issue it named: if you
-   have only the former, you are in the fallback below, not in this paragraph.
+   **Identify it from the event payload — this is not a guess.** The label event
+   that started this session is written to the file at `$GITHUB_EVENT_PATH`. Read
+   that file and take the issue from it:
+
+   ```bash
+   node -e 'const e=JSON.parse(require("fs").readFileSync(process.env.GITHUB_EVENT_PATH,"utf8"));
+     console.log(e.action, e.label && e.label.name, e.issue && e.issue.number)'
+   ```
+
+   `issue.number` is the one issue you run. `label.name` is the label whose
+   application fired you — check it matches your ready label (`ready-for-agent`
+   for a self session, `ready-for-agent-fleet` for a fleet one); if it names the
+   other label, this is the other executor's dispatch and you must not run it.
+
+   **State the number before you act**, so everything after this has one
+   unambiguous subject. Knowing *that* a label event triggered you is not knowing
+   *which* issue it named — and now you have no excuse for the latter, because the
+   payload is on disk. Read it rather than inferring from the issue list.
 
    This is load-bearing, not a style preference. One scheduler run files every due
    task's dispatch issue within a couple of seconds, each already carrying its
@@ -82,10 +95,13 @@ so use `engine/scheduler/`.
    `rearmDispatchIssues`) and escalates it to `needs-human` if it stays unrun past
    ~2 of its scheduling periods. Leave it alone.
 
-   *If, and only if, you genuinely cannot determine which issue triggered this
-   session*, list the open issues under your ready label — `ready-for-agent` for
-   a self session, `ready-for-agent-fleet` for a fleet session — **solely to pick
-   the single oldest**, and run that one alone.
+   *If, and only if, `$GITHUB_EVENT_PATH` is unset or its file is unreadable* —
+   not merely inconvenient to parse — list the open issues under your ready label
+   (`ready-for-agent` for a self session, `ready-for-agent-fleet` for a fleet
+   session) **solely to pick the single oldest**, and run that one alone. Say in
+   your claim comment that you fell back and why, because a session reaching this
+   paragraph means the event payload did not arrive, and that is worth a human
+   noticing rather than silently degrading to "oldest first" forever.
 
    **That listing is a selection step, never a work list.** This is the exact
    point where the one-issue rule has been lost in practice: a session that
