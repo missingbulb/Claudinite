@@ -243,12 +243,23 @@ outright: the repo's hashed scheduler minute already staggers the fleet.
 | Repo | Stamp | Local packs | Crons to replace | Notes |
 |---|---|---|---|---|
 | gRatio | `80783eb` | none | none — no `.github/workflows/` at all | simplest; steps 2 and the cron half of 1 are no-ops |
-| TLDR | `80783eb` | none | none — its `chrome-extension-*` files are called reusables, no scheduled orchestrator | step 1's release-cron clause already satisfied |
+| TLDR | `80783eb` | none | **one**: `chrome-extension-release.yml` carries `schedule: cron "0 3 * * *"` | the store-release case — strip the `schedule:` and let the task own it (GCEC's converted file is the worked example) |
 | EdFringeNow | `1df7250` | `local_packs/edfringe` — **legacy token**, needs step 2 in full | **two**: `refresh.yml` (`20 5 * * *`) and `refresh-tickets.yml` (~16 hand-spelled hourly lines, August-only, 08:00–23:00 Edinburgh, jittered minutes) | the only one of the three with real porting work — two workers to write, then both workflow files deleted; `refresh-tickets` is the precondition case above |
 
 All three still lack a `taskScheduler` key, so all three remain owned by the
 central routine. Stamps are 3–5 days behind canon head — step 1's vendor refresh
 carries each forward.
+
+> **The TLDR row was wrong until 2026-07-26**, and the correction is the lesson:
+> it recorded "none — its `chrome-extension-*` files are called reusables, no
+> scheduled orchestrator." The *reusables* carry no cron; the **orchestrator**
+> does. Cutting the repo over on that reading would have landed the scheduler
+> beside a live `0 3 * * *` and gone red in the same commit — exactly what the
+> row existed to prevent. **Survey by reading each workflow's `on:` block in the
+> repo, never by trusting this table or a code search.** GitHub code search is
+> not a substitute: a `cron user:missingbulb path:.github/workflows` query
+> returned zero hits for EdFringeNow, which carries seventeen. A search hit is
+> evidence; a search miss is not.
 
 ## Phase 4 — decommission & cleanup
 
