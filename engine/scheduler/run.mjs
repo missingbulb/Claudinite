@@ -14,7 +14,7 @@ import { pathToFileURL } from 'node:url';
 import { dueSlots } from './slots.mjs';
 import { planDispatch, dispatchTitle, dispatchBody, DISPATCH_PREFIX, READY_LABEL, NEEDS_HUMAN_LABEL, SCHEDULER_LABELS, readyLabelForScope } from './dispatch.mjs';
 import { isAgentless } from './model-map.mjs';
-import { runPreprocessing, preprocessingFailure, agentRequestPath, clearAgentRequest, agentRequested } from './preprocess.mjs';
+import { runPreprocessing, preprocessingFailure, agentRequestPath, clearAgentRequest, agentRequested, resolveTaskSecrets, preprocessingEnv, SECRETS_BUNDLE_VAR } from './preprocess.mjs';
 
 // The due tasks, each paired with the slot it runs under. Union the discovered
 // tasks' frequencies, ask slots which are due (run-ledger math), then map due
@@ -261,10 +261,26 @@ async function main() {
       // spuriously escalate this one.
       const requestPath = agentRequestPath(rec);
       clearAgentRequest(requestPath);
+
+      // The task's DECLARED repo secrets, resolved out of the workflow's secrets
+      // bundle (DESIGN §9). A declared secret this repo never configured fails the
+      // task HERE, before spawning: the worker would fail on it anyway, and
+      // "secret X is not configured" is the actionable message, not whatever the
+      // worker prints when its API call 401s.
+      const { env: secretEnv, missing } = resolveTaskSecrets(decl.agent_preprocessing_secrets, process.env[SECRETS_BUNDLE_VAR]);
+      if (missing.length) {
+        const why = `declared Actions secret(s) not configured on this repo: ${missing.join(', ')}`;
+        console.log(`! preprocessing ${rec.pack}/${rec.task} [${rec.slotId}]: ${why}`);
+        rec.preprocessResult = { ok: false, timedOut: false, code: null };
+        await fileNeedsHuman(rec, why, [`add them under Settings → Secrets and variables → Actions, or drop them from ${rec.task}'s agent_preprocessing_secrets`]);
+        continue;
+      }
+
       const result = await runPreprocessing(decl.agent_preprocessing, {
         taskDir: taskObj.taskDir,
-        env: {
-          ...process.env,
+        // The worker never sees the secrets bundle — only the names it declared
+        // (preprocessingEnv strips it).
+        env: preprocessingEnv(process.env, {
           CLAUDINITE_REPO_ROOT: root,
           CLAUDINITE_REPO: repo,
           CLAUDINITE_DEFAULT_BRANCH: defaultBranch ?? '',
@@ -272,7 +288,7 @@ async function main() {
           CLAUDINITE_PACK: rec.pack,
           CLAUDINITE_TASK: rec.task,
           CLAUDINITE_REQUEST_AGENT: requestPath,
-        },
+        }, secretEnv),
         timeoutSeconds: decl.agent_preprocessing_timeout,
       });
       rec.preprocessResult = { ok: result.ok, timedOut: result.timedOut, code: result.code };

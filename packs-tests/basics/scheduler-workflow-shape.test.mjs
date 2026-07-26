@@ -21,7 +21,11 @@ jobs:
   schedule:
     runs-on: ubuntu-latest
     steps:
-      - run: node .claudinite/shared/engine/scheduler/run.mjs
+      - name: Evaluate schedule and dispatch due tasks
+        env:
+          GITHUB_TOKEN: \${{ github.token }}
+          CLAUDINITE_SECRETS: \${{ toJSON(secrets) }}
+        run: node .claudinite/shared/engine/scheduler/run.mjs
 `;
 
 const run = (files) => {
@@ -55,6 +59,12 @@ test('scheduler-workflow-shape: flags a read-only scheduler (baselining deliver(
   const whats = run({ [WF]: readOnly }).map((x) => x.what).join(' | ');
   assert.match(whats, /does not grant contents: write/);
   assert.match(whats, /does not grant pull-requests: write/);
+});
+
+test('scheduler-workflow-shape: flags a workflow that does not pass the secrets bundle', () => {
+  const f = run({ [WF]: goodWorkflow.replace(/\s*CLAUDINITE_SECRETS:.*\n/, '\n') });
+  assert.equal(f.length, 1);
+  assert.match(f[0].what, /does not pass the repo secrets bundle/);
 });
 
 test('scheduler-workflow-shape: flags missing concurrency, dispatch, and engine entry', () => {

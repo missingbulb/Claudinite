@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, writeFileSync, rmSync } from 'node:fs';
-import { runPreprocessing, preprocessingFailure, agentRequestPath, clearAgentRequest, agentRequested } from '../../engine/scheduler/preprocess.mjs';
+import { runPreprocessing, preprocessingFailure, agentRequestPath, clearAgentRequest, agentRequested, parseSecretsBundle, resolveTaskSecrets, preprocessingEnv, SECRETS_BUNDLE_VAR } from '../../engine/scheduler/preprocess.mjs';
 
 const NODE = process.execPath; // the running node, so the tests don't assume PATH
 
@@ -59,4 +59,52 @@ test('the request signal round-trips: written → requested, cleared → not (cl
   clearAgentRequest(path);
   assert.equal(agentRequested(path), false);     // cleared
   assert.equal(existsSync(path), false);
+});
+
+// --- task-declared repo secrets (agent-preprocessing DESIGN §9) --------------
+
+test('parseSecretsBundle: real JSON parses; absent/blank/malformed/non-object read as empty', () => {
+  assert.deepEqual(parseSecretsBundle('{"A":"1"}'), { A: '1' });
+  assert.deepEqual(parseSecretsBundle(undefined), {});
+  assert.deepEqual(parseSecretsBundle('  '), {});
+  assert.deepEqual(parseSecretsBundle('not json'), {});
+  assert.deepEqual(parseSecretsBundle('["A"]'), {});
+});
+
+test('resolveTaskSecrets: hands back ONLY the declared names, and reports the unconfigured ones', () => {
+  const bundle = JSON.stringify({ SCRAPER_API_KEY: 'k', OTHER_SECRET: 'nope', github_token: 'x' });
+  const { env, missing } = resolveTaskSecrets(['SCRAPER_API_KEY'], bundle);
+  assert.deepEqual(env, { SCRAPER_API_KEY: 'k' });   // an undeclared secret never reaches the worker
+  assert.deepEqual(missing, []);
+
+  const r2 = resolveTaskSecrets(['SCRAPER_API_KEY', 'ABSENT_KEY'], bundle);
+  assert.deepEqual(r2.env, { SCRAPER_API_KEY: 'k' });
+  assert.deepEqual(r2.missing, ['ABSENT_KEY']);
+});
+
+test('resolveTaskSecrets: an unset secret renders as "" in toJSON(secrets) and counts as missing', () => {
+  const { env, missing } = resolveTaskSecrets(['EMPTY_KEY'], JSON.stringify({ EMPTY_KEY: '' }));
+  assert.deepEqual(env, {});
+  assert.deepEqual(missing, ['EMPTY_KEY']);
+});
+
+test('resolveTaskSecrets: no declaration needs no bundle', () => {
+  assert.deepEqual(resolveTaskSecrets(undefined, undefined), { env: {}, missing: [] });
+});
+
+test('preprocessingEnv: STRIPS the secrets bundle and adds context + resolved secrets', () => {
+  const parent = { PATH: '/bin', [SECRETS_BUNDLE_VAR]: '{"SCRAPER_API_KEY":"k","OTHER":"o"}', GITHUB_TOKEN: 't' };
+  const env = preprocessingEnv(parent, { CLAUDINITE_TASK: 'create-extractor' }, { SCRAPER_API_KEY: 'k' });
+  assert.equal(env[SECRETS_BUNDLE_VAR], undefined);  // the bundle never reaches a worker
+  assert.equal(env.SCRAPER_API_KEY, 'k');            // its own declared secret does
+  assert.equal(env.OTHER, undefined);                // another task's secret does not
+  assert.equal(env.GITHUB_TOKEN, 't');               // the Action token still rides in
+  assert.equal(env.CLAUDINITE_TASK, 'create-extractor');
+});
+
+test('preprocessingEnv: the strip survives into a real child process', async () => {
+  const cmd = `"${NODE}" -e "process.exit(process.env.${SECRETS_BUNDLE_VAR} === undefined && process.env.SCRAPER_API_KEY === 'k' ? 0 : 1)"`;
+  const env = preprocessingEnv({ ...process.env, [SECRETS_BUNDLE_VAR]: '{"SCRAPER_API_KEY":"k"}' }, {}, { SCRAPER_API_KEY: 'k' });
+  const r = await runPreprocessing(cmd, { taskDir: process.cwd(), env, timeoutSeconds: 10 });
+  assert.equal(r.ok, true);
 });

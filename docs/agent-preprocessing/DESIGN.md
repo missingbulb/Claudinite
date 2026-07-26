@@ -67,6 +67,9 @@ export default {
   agent_execution_timeout: 900,              // seconds. Bounds the agentic run (see §6 for what "bounds"
                                              //   means — it is a lifecycle bound, not a compute kill).
                                              //   Required whenever agent_model !== 'none'.
+
+  agent_preprocessing_secrets: ['SCRAPER_API_KEY'],  // OPTIONAL. The repo Actions secrets this worker reads
+                                             //   (§9). Only meaningful with agent_preprocessing.
 };
 ```
 
@@ -81,6 +84,9 @@ enforce against this one contract:
   `agent_preprocessing` is set.
 - `agent_execution_timeout` is a positive integer and is **required** when
   `agent_model !== 'none'`. There is **always** a bound on an agentic run.
+- `agent_preprocessing_secrets`, if present, is a non-empty array of legal repo
+  secret names (upper snake, never `GITHUB_`-prefixed) and requires
+  `agent_preprocessing` — secrets reach the worker and nothing else (§9).
 - `agent_model: none` with **no** `agent_preprocessing` is now an error: an
   agentless task with no preprocessing does nothing. (`none` used to imply the
   inline `worker.mjs` — that path is folded into preprocessing; see §4.)
@@ -257,3 +263,54 @@ Consequences to wire:
 4. Preprocessing runs **Action-side as a subprocess**, after issue creation,
    before the agent; communicates with the agent through the repo only.
 
+
+## 9. Task-declared repo secrets — and the workflows they retire
+
+Preprocessing runs Action-side, so a repo's **Actions secrets** are reachable
+there. They are reachable *nowhere else* in a task's life: the executor session
+is MCP-only and carries no repo token or secret, by design (§7). That asymmetry
+is the mechanism's second load-bearing consequence, after dropping canon from the
+session — **a workflow whose only job was to hold a secret on an agent's behalf
+is now redundant.**
+
+The pattern it retires is a real one, and GCEC had the canonical instance: the
+create-extractor routine needed one page fetched through ScraperAPI, the agent
+session could not hold `SCRAPER_API_KEY`, so the fetch was exiled into a
+`workflow_dispatch`-only workflow that the agent dispatched, polled to
+completion, and then `git pull`ed the result of. Three round-trips, a second
+failure surface, and a whole workflow file — all to put one `curl` on the other
+side of a credential boundary that preprocessing no longer has.
+
+**The contract.** A task lists the secrets its worker reads:
+
+```js
+agent_preprocessing_secrets: ['SCRAPER_API_KEY'],
+```
+
+**The delivery path.** GitHub Actions cannot select secrets dynamically — an
+expression must name each one — so the vendored scheduler stub passes the whole
+bundle to the engine once:
+
+```yaml
+CLAUDINITE_SECRETS: ${{ toJSON(secrets) }}
+```
+
+and the engine does the selection: it resolves the declared names, hands the
+worker **only those**, and **strips the bundle** from the subprocess env
+(`preprocessingEnv`). So the least-privilege boundary is the task declaration —
+a worker's ambient authority is exactly the list in its own `task.mjs`, which is
+tracked, reviewed code. The scheduler process holds more than any one worker
+does; that is unavoidable (it is the thing Actions handed the secrets to) and is
+the same trust level the run already has via `GITHUB_TOKEN`.
+
+**Failure is named, not diagnosed.** A declared secret this repo has not
+configured fails the task **before the subprocess spawns**, converging to the
+family's one `needs-human` issue with the secret's name — rather than letting the
+worker run and fail on a 401 whose cause a human then has to work backwards from.
+An empty-string value counts as unconfigured (`toJSON(secrets)` renders an unset
+name that way).
+
+**What this does not change.** Secrets are a *worker* capability, not a channel
+to the agent: preprocessing still communicates with the agent only through the
+repository (§3), so a secret's product is a committed artifact (a recorded page,
+a fetched dataset), never a value threaded into the dispatch issue.

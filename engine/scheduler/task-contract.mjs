@@ -15,6 +15,12 @@ const isPositiveInt = (n) => Number.isInteger(n) && n > 0;
 // worker-file rule gives agent_instructions (agent-preprocessing DESIGN §2).
 const escapesTaskDir = (cmd) => /(^|\s)\//.test(cmd) || cmd.includes('..');
 
+// A repo Actions secret a preprocessing worker may read (agent-preprocessing
+// DESIGN §9). GitHub's own naming rules: upper snake, not starting with a digit,
+// and never the reserved `GITHUB_` prefix (the Action token already rides in as
+// GITHUB_TOKEN, so declaring one would be both illegal and redundant).
+const isSecretName = (s) => typeof s === 'string' && /^[A-Z_][A-Z0-9_]*$/.test(s) && !s.startsWith('GITHUB_');
+
 // The write ceiling a task declares (DESIGN §1, §4). A declared MAXIMUM, not a
 // promise: `none` may never open a PR, `open-pr` may open but never merge,
 // `merged-pr` may arm auto-merge. "No change" is always legal.
@@ -92,6 +98,22 @@ export function validateTaskDeclaration(decl) {
     }
     if (!isPositiveInt(decl.agent_preprocessing_timeout)) {
       bad('"agent_preprocessing" is set but "agent_preprocessing_timeout" is not a positive integer', 'add "agent_preprocessing_timeout": the seconds after which the subprocess is killed and the task fails');
+    }
+  }
+
+  // The repo Actions secrets the preprocessing worker reads (DESIGN §9) — an
+  // explicit, least-privilege allowlist: the scheduler holds the whole secrets
+  // bundle but hands each worker ONLY the names its task declares. Meaningless
+  // without a preprocessing stage (an agent session carries no repo secrets), so
+  // declaring one there is an error, not a silent no-op.
+  if (decl.agent_preprocessing_secrets !== undefined) {
+    if (!Array.isArray(decl.agent_preprocessing_secrets) || decl.agent_preprocessing_secrets.length === 0) {
+      bad('"agent_preprocessing_secrets" is present but not a non-empty array', 'list the repo Actions secret names the worker reads, e.g. ["SCRAPER_API_KEY"] — or drop the field');
+    } else if (!decl.agent_preprocessing_secrets.every(isSecretName)) {
+      bad('"agent_preprocessing_secrets" contains a name that is not a legal repo secret', 'use UPPER_SNAKE names; GITHUB_-prefixed names are reserved (the Action token already rides in as GITHUB_TOKEN)');
+    }
+    if (decl.agent_preprocessing === undefined) {
+      bad('"agent_preprocessing_secrets" is declared without "agent_preprocessing"', 'secrets are handed to the preprocessing subprocess only — an agent session carries no repo secrets; add the preprocessing command or drop the field');
     }
   }
 

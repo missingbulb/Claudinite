@@ -1,7 +1,8 @@
 // The pre-agent preprocessing stage (agent-preprocessing DESIGN §3). The
 // scheduler runs a task's declared `agent_preprocessing` command as a SUBPROCESS
 // before any agent starts — deterministic code work, Action-side, over the one
-// sanctioned non-MCP surface (the Action GITHUB_TOKEN, inherited in `env`).
+// sanctioned non-MCP surface (the Action GITHUB_TOKEN, inherited in `env`) and
+// the repo Actions secrets the task declared (§9, `resolveTaskSecrets` below).
 //
 // The subprocess is the scheduler's child, so its `agent_preprocessing_timeout`
 // is a HARD kill: a manual timer SIGKILLs an overrun and the run is reported
@@ -58,6 +59,49 @@ export function agentRequestPath({ pack, task, slotId }) {
 }
 export function clearAgentRequest(path) { try { rmSync(path, { force: true }); } catch { /* nothing to clear */ } }
 export function agentRequested(path) { return existsSync(path); }
+
+// --- task-declared repo secrets (agent-preprocessing DESIGN §9) --------------
+// The scheduler workflow hands the engine the WHOLE repo secrets bundle as JSON
+// (`CLAUDINITE_SECRETS: ${{ toJSON(secrets) }}` — Actions has no way to select
+// secrets dynamically). The engine never passes that bundle on: it resolves the
+// names a task DECLARED and hands the worker only those, so a worker's ambient
+// authority is exactly its `agent_preprocessing_secrets` list.
+export const SECRETS_BUNDLE_VAR = 'CLAUDINITE_SECRETS';
+
+// Parse the bundle. A missing/blank/malformed value is an empty bundle — the
+// caller reports the resulting `missing` names, which is the actionable failure
+// ("secret X is not configured"), not a parse error nobody can act on.
+export function parseSecretsBundle(raw) {
+  if (typeof raw !== 'string' || raw.trim() === '') return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch { return {}; }
+}
+
+// Resolve a task's declared secret names against the bundle.
+// Returns { env, missing }: `env` maps each PRESENT name to its value, `missing`
+// lists the declared names this repo has not configured (an empty-string secret
+// counts as missing — GitHub returns "" for an unset name in `toJSON(secrets)`).
+export function resolveTaskSecrets(declared, bundleRaw) {
+  const bundle = parseSecretsBundle(bundleRaw);
+  const env = {};
+  const missing = [];
+  for (const name of declared ?? []) {
+    const value = bundle[name];
+    if (typeof value === 'string' && value !== '') env[name] = value;
+    else missing.push(name);
+  }
+  return { env, missing };
+}
+
+// The environment a preprocessing subprocess actually gets: the scheduler's own
+// env MINUS the secrets bundle (a worker must never see secrets it did not
+// declare), plus the CLAUDINITE_* context and the task's resolved secrets.
+export function preprocessingEnv(parentEnv, context, secretEnv = {}) {
+  const { [SECRETS_BUNDLE_VAR]: _bundle, ...rest } = parentEnv;
+  return { ...rest, ...context, ...secretEnv };
+}
 
 // A one-line reason for the job summary / an issue comment when preprocessing
 // fails — distinguishing a timeout kill from a non-zero exit.

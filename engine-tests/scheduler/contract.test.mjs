@@ -81,6 +81,21 @@ test('validateTaskDeclaration validates agent_preprocessing + its required timeo
   );
 });
 
+test('validateTaskDeclaration validates agent_preprocessing_secrets (DESIGN §9)', () => {
+  const prep = { ...validTask, agent_preprocessing: 'node prepare.mjs', agent_preprocessing_timeout: 120 };
+  // a well-formed declaration alongside preprocessing is accepted
+  assert.deepEqual(validateTaskDeclaration({ ...prep, agent_preprocessing_secrets: ['SCRAPER_API_KEY'] }), []);
+  // an empty list, or a non-array, says nothing — reject rather than silently ignore
+  assert.match(validateTaskDeclaration({ ...prep, agent_preprocessing_secrets: [] })[0].what, /not a non-empty array/);
+  assert.match(validateTaskDeclaration({ ...prep, agent_preprocessing_secrets: 'SCRAPER_API_KEY' })[0].what, /not a non-empty array/);
+  // illegal names: lowercase, and the reserved GITHUB_ prefix (the Action token already rides in)
+  assert.match(validateTaskDeclaration({ ...prep, agent_preprocessing_secrets: ['scraper_api_key'] })[0].what, /not a legal repo secret/);
+  assert.match(validateTaskDeclaration({ ...prep, agent_preprocessing_secrets: ['GITHUB_TOKEN'] })[0].what, /not a legal repo secret/);
+  // secrets reach the preprocessing subprocess ONLY — declaring them without one is an error
+  const orphan = { ...validTask, agent_preprocessing_secrets: ['SCRAPER_API_KEY'] };
+  assert.match(validateTaskDeclaration(orphan)[0].what, /declared without "agent_preprocessing"/);
+});
+
 test('validateTaskDeclaration flags every malformed field', () => {
   const problems = validateTaskDeclaration({
     id: '',
