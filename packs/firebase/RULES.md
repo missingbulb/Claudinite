@@ -66,13 +66,12 @@ Environment separation (dev/prod projects, App Check, store gating) lives in the
   `.firebaserc`, rules/indexes, and `functions/`. That root may be the repo root or a dedicated
   subfolder (e.g. `firebase/`); the CLI walks up to find `firebase.json` and resolves every path
   inside it *relative to that file*, so a subfolder needs no path edits — just run deploys from it
-  (or pass `--config <dir>/firebase.json`). Wire a `predeploy` build hook for functions
-  (`npm --prefix functions run build`) so a deploy can never ship stale JS; keep compiled output
-  (`functions/lib/`) and `.firebase/` gitignored.
+  (or pass `--config <dir>/firebase.json`). Keep compiled output (`functions/lib/`) and
+  `.firebase/` gitignored.
 - **Commit `.firebaserc` with named aliases and make the default the safe target** (see
   firebase-release for the full environment discipline). Deploy commands in docs always name
   what they deploy (`--only functions,firestore`) — an unqualified `firebase deploy` in a README
   eventually ships someone's half-finished hosting directory.
-- **Functions engines pin the Node major** (`engines.node`) matching CI and local dev; a version
-  skew between build and runtime surfaces as deploy-time module crashes, so smoke-load the built
-  entrypoint (`node -e "require('./lib/index.js')"`) in the test lane.
+- **Smoke-load the built entrypoint in the test lane** (`node -e "require('./lib/index.js')"`).
+  A Node-major skew between build and runtime, or a bad build, surfaces as a module crash the
+  first time the deployed function is invoked — the cheapest place to see it is the suite.
