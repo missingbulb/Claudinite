@@ -103,7 +103,7 @@ export function validateTaskDeclaration(decl) {
   // bundle is readable, never at author time.
   if (decl.required_secrets !== undefined
       && !(Array.isArray(decl.required_secrets) && decl.required_secrets.every((s) => typeof s === 'string' && s.trim() !== ''))) {
-    bad('"required_secrets" is not an array of secret names', 'list the repo Actions secret names this task needs, e.g. ["SCRAPER_API_KEY"]');
+    bad('"required_secrets" is not an array of secret names', 'list the repo Actions secret names this task needs, e.g. ["SOME_API_KEY"]');
   }
 
   // Execution bound (agent-preprocessing DESIGN §2, §6) — an agentic task MUST
