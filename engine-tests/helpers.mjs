@@ -15,6 +15,22 @@ export function git(root, ...args) {
   return r.stdout;
 }
 
+/**
+ * `git` with the commit's author/committer date pinned to `epochSeconds`. History whose
+ * commits all share one timestamp is ambiguous to git where dates break ties — most
+ * visibly `merge-base`, which returns one of several equally-good answers — so a test
+ * that depends on the shape of the graph pins the dates instead of racing the clock.
+ */
+export function gitDated(root, epochSeconds, ...args) {
+  const stamp = `${epochSeconds} +0000`;
+  const r = spawnSync('git', args, {
+    cwd: root, encoding: 'utf8',
+    env: { ...GIT_ENV, GIT_AUTHOR_DATE: stamp, GIT_COMMITTER_DATE: stamp },
+  });
+  if (r.status !== 0) throw new Error(`git ${args.join(' ')} failed: ${r.stderr}`);
+  return r.stdout;
+}
+
 export function writeFiles(root, files) {
   for (const [path, content] of Object.entries(files)) {
     mkdirSync(join(root, dirname(path)), { recursive: true });
