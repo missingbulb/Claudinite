@@ -276,6 +276,18 @@ order of strength:
   bypassed *for this change* without re-auditing (and demanding acceptances for) legacy merges
   already on `main` that the work never touched. Testing the work, not the world, is what keeps
   the check from firing on every unrelated session.
+
+  **A work-scoped rule is only as honest as the ref it scopes against.** "Since the merge-base"
+  is a correct definition that silently becomes a wrong verdict when the base ref is stale —
+  a cloud session's clone freezes `origin/main` at container-creation time, so everything the
+  base branch gained since then reads as introduced by the work, and a *blocking* rule starts
+  reporting other people's merges on a branch that has none of its own. Two mechanisms keep the
+  scope honest, both in `buildContext` rather than in any one rule: the base ref is refreshed
+  before the merge-base is computed (best-effort, bounded, opt-out — [README](README.md)), and
+  candidates are confirmed against the base ref itself, because `git merge-base` returns one of
+  several equally-good answers on a criss-cross history and the one it picks can leave a merge
+  that is already on the base branch inside the range. Scoping a delta rule is two jobs: pick
+  the range, and make sure the range's endpoint is telling the truth.
 - **Config check** — reads the setting via the platform API and fails when it's off. Needs a
   network-capable surface: rules carry a surface tag, the Stop hook runs only offline rules,
   CI runs what its repo token can read (e.g. the allow-merge-commit flags), and the fleet

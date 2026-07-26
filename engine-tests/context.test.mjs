@@ -1,6 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, cleanup } from './helpers.mjs';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { makeRepo, cleanup, git, gitDated, writeFiles } from './helpers.mjs';
 import { buildContext, loadConfig } from '../engine/checks/helpers/repo-context.mjs';
 
 test('loadConfig: clean settings validate with no errors; a missing file is empty and error-free', () => {
@@ -222,5 +225,109 @@ test('buildContext: the shared mount is structurally out of scope; local_packs s
     assert.ok(!ctx.files.some((f) => f.startsWith('.claudinite/shared/')));
     // allFiles honors the same boundary: the corpus is not the project's code.
     assert.ok(!ctx.allFiles.some((f) => f.startsWith('.claudinite/shared/')));
+  } finally { cleanup(root); }
+});
+
+// A remote-tracking base ref goes stale the moment the base branch moves, and a cloud
+// session's clone freezes it at container-creation time. Everything the base gained since
+// then sits in `mergeBase..HEAD` and gets billed to the work — squash-merge-history (a
+// blocking rule) reporting other people's merge commits as introduced by this change.
+test('buildContext: a stale remote base ref is refreshed, so the base branch\'s own merges are not the work\'s', () => {
+  const origin = mkdtempSync(join(tmpdir(), 'claudinite-origin-'));
+  git(origin, 'init', '-q', '-b', 'main');
+  writeFiles(origin, { 'README.md': 'seed\n' });
+  git(origin, 'add', '-A');
+  git(origin, 'commit', '-q', '-m', 'seed');
+
+  const root = mkdtempSync(join(tmpdir(), 'claudinite-clone-'));
+  rmSync(root, { recursive: true, force: true });
+  git(process.cwd(), 'clone', '-q', origin, root); // origin/main pinned at seed
+
+  // The base branch advances — including a merge commit — after the clone.
+  git(origin, 'checkout', '-q', '-b', 'side');
+  writeFiles(origin, { 's.txt': 'x\n' });
+  git(origin, 'add', '-A');
+  git(origin, 'commit', '-q', '-m', 'side work');
+  git(origin, 'checkout', '-q', 'main');
+  git(origin, 'merge', '-q', '--no-ff', '-m', 'merge side', 'side');
+
+  // The session's branch is cut from the *current* base tip, while the clone's
+  // origin/main still points at the seed: fetched under its own ref name so the
+  // explicit refspec leaves origin/main untouched, exactly as the real clone was.
+  git(root, 'fetch', '-q', origin, '+refs/heads/main:refs/remotes/snapshot/main');
+  git(root, 'checkout', '-q', '-B', 'feature', 'snapshot/main');
+  writeFiles(root, { 'w.txt': 'x\n' });
+  git(root, 'add', '-A');
+  git(root, 'commit', '-q', '-m', 'my work Refs #1');
+
+  try {
+    // Opted out of the refresh: the stale ref is believed, and the base branch's
+    // merge is misread as introduced here — the bug, pinned.
+    process.env.CLAUDINITE_CHECKS_NO_FETCH = '1';
+    const stale = buildContext({ root, mode: 'changed' });
+    assert.deepEqual(stale.introducedMergeCommits().map((m) => m.subject), ['merge side']);
+
+    // Default: the ref is refreshed first, so the merge is where it belongs — on the
+    // base branch, out of the work's range.
+    delete process.env.CLAUDINITE_CHECKS_NO_FETCH;
+    const fresh = buildContext({ root, mode: 'changed' });
+    assert.deepEqual(fresh.introducedMergeCommits(), []);
+  } finally {
+    delete process.env.CLAUDINITE_CHECKS_NO_FETCH;
+    cleanup(root);
+    cleanup(origin);
+  }
+});
+
+// The range alone trusts `git merge-base`, which returns ONE of several equally-good
+// answers when the history criss-crosses — and the one it picks can leave a merge that
+// already sits on the base branch inside `mergeBase..HEAD`. No fetch can fix that, so the
+// candidates are confirmed against the base ref itself.
+test('buildContext: a merge already on the base branch is never the work\'s, even when the merge-base says it is in range', () => {
+  const root = mkdtempSync(join(tmpdir(), 'claudinite-crisscross-'));
+  // `feature` and `basebr` have two equally-good merge-bases — z1 and the shared merge —
+  // and git returns the newer-dated one. Dating z1 last is what makes it the answer, which
+  // is what leaves the shared merge inside the range: the situation being pinned. Every
+  // date is explicit because with the helper's "now" on every commit the pick is a
+  // coin-flip and the test flips run to run.
+  const T = 1700000000;
+  const at = (seconds, ...args) => gitDated(root, T + seconds, ...args);
+  const commit = (name, seconds) => {
+    writeFiles(root, { [name]: 'x\n' });
+    at(seconds, 'add', '-A');
+    at(seconds, 'commit', '-q', '-m', name);
+  };
+  at(0, 'init', '-q', '-b', 'main');
+  commit('a', 60);
+  at(0, 'checkout', '-q', '-b', 'zed'); commit('z1', 600); // dated last, deliberately
+  at(0, 'checkout', '-q', 'main');
+  at(0, 'checkout', '-q', '-b', 'pea'); commit('p1', 180);
+  at(0, 'checkout', '-q', 'main');
+  at(0, 'checkout', '-q', '-b', 'queue'); commit('q1', 240);
+  at(0, 'checkout', '-q', 'pea');
+  at(300, 'merge', '-q', '--no-ff', '-m', 'shared merge', 'queue');
+  const shared = at(0, 'rev-parse', 'HEAD').trim();
+  at(0, 'checkout', '-q', '-b', 'feature');
+  at(360, 'merge', '-q', '--no-ff', '-m', 'merge zed into feature', 'zed');
+  commit('h1', 420);
+  at(0, 'checkout', '-q', 'zed');
+  at(480, 'merge', '-q', '--no-ff', '-m', 'base takes the shared merge', 'pea');
+  at(0, 'branch', '-f', 'basebr', 'zed');
+  at(0, 'checkout', '-q', 'feature');
+
+  try {
+    // Setup sanity: the shared merge is on the base branch, yet git's chosen merge-base
+    // leaves it inside the raw range. If a future git picks the other merge-base this
+    // fails loudly rather than passing vacuously.
+    git(root, 'merge-base', '--is-ancestor', shared, 'basebr');
+    const mergeBase = git(root, 'merge-base', 'HEAD', 'basebr').trim();
+    const raw = git(root, 'log', '--merges', '--first-parent', '--format=%H', `${mergeBase}..HEAD`);
+    assert.ok(raw.includes(shared), 'setup no longer reproduces the criss-cross merge-base');
+
+    const ctx = buildContext({ root, mode: 'changed', baseOverride: 'basebr' });
+    const subjects = ctx.introducedMergeCommits().map((m) => m.subject);
+    assert.ok(!subjects.includes('shared merge'));
+    // The merge this branch really did introduce still reports.
+    assert.deepEqual(subjects, ['merge zed into feature']);
   } finally { cleanup(root); }
 });
