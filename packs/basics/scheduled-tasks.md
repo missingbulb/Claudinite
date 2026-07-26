@@ -24,9 +24,15 @@ retirement of the legacy central planner it replaces) lives in
   bootstrap stamps in and baselining re-derives), a `concurrency` group, a
   `workflow_dispatch` trigger, and a call into the vendored engine entry — no logic of its own
   (schema and behaviour changes ride the vendor refresh, not workflow edits). It
-  is the repo's **only** cron; every other recurring workflow stays
-  `workflow_dispatch`-only. Off-band or multiple crons, or a missing
-  concurrency/dispatch guard, break staggering, double-run safety, or manual runs.
+  is the repo's **only** cron. Recurring work that had its own cron'd workflow
+  becomes a **task**, and that workflow is deleted — its steps move into the
+  task's worker. Don't keep it as a dispatch-only workflow for the task to fire:
+  that is two files and two edit sites for one job, and a workflow whose only
+  caller is the thing that replaced it. (A workflow that must run *as an Action*
+  for something a task cannot reach — an Actions-only secret, say — is the
+  exception, and even then the task owns the schedule.) Off-band or multiple
+  crons, or a missing concurrency/dispatch guard, break staggering, double-run
+  safety, or manual runs.
 
 - **Every task declaration carries the full contract.** A `tasks/<name>/task.mjs`
   default-exports `id` (matching its directory), `frequency` (`hourly | daily-2h

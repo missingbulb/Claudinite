@@ -392,9 +392,17 @@ rest of what the old central routine did has moved above:
 
 Doctrine rewrite: `scheduling.md`'s "one fleet schedule" becomes "one
 **scheduler per repo** — the vendored hourly Action is the repo's only cron;
-agent work is dispatched only through `ready-for-agent` issues; every other
-recurring workflow is `workflow_dispatch`-only, triggered and awaited by a
-scheduler task."
+agent work is dispatched only through `ready-for-agent` issues; recurring work
+that used to be its own cron'd workflow becomes a scheduler task, and that
+workflow is deleted."
+
+A competing cron is **not** retained as a dispatch-only workflow for a task to
+fire. That shape keeps two files and two edit sites for one job, and leaves a
+workflow whose only caller is the thing that replaced it — the task's worker is
+where the steps belong. The one shape that legitimately survives is a workflow
+that must run *as an Action* for something a task cannot reach (see
+`store-release`, §7) — and even then the task owns the schedule, not the
+workflow.
 
 ## 9. Bootstrap changes
 
@@ -416,7 +424,8 @@ closed during migration.
 
 `routines/fleet/scheduling.md` + `DESIGN.md` (new doctrine),
 `gha/no-scheduled-fleet-executor` (rescope: the vendored scheduler workflow is
-the repo's only permitted cron; everything else stays dispatch-only),
+the repo's only permitted cron; a competing cron's work moves into a scheduler
+task and the workflow is deleted),
 `chrome-extension-release/release-workflows.mjs` (require **no** cron instead of
 the contract cron), `in-session-github-access` (unchanged for session-side code
 — executor + workers stay MCP-only; exempt `engine/scheduler/` Action-side
