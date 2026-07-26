@@ -95,7 +95,7 @@ the canon line that now covers it. A run that prunes nothing logs nothing.
 Proving the mounted canon genuinely covers a local item before pruning it — and telling "the canon now owns
 this" from "the canon states this too generally, keep the local cut" — is a **judgment call**. A downgraded
 model prunes a real lesson; the review PR is a backstop, but a wrongful prune is easy to wave through in
-review, so don't lean on it. This task declares `model: opus`; the executor dispatches its subagent there.
+review, so don't lean on it. This task declares `agent_model: opus`; the executor dispatches its subagent there.
 
 ## What this task must never do
 

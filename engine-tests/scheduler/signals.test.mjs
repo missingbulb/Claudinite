@@ -60,6 +60,12 @@ test('issues: dispatch issues and trackers are invisible; touched respects the w
   assert.deepEqual(out.issues.touched, [1]); // #4 is outside the window
 });
 
+// NOTE — every test in this file hand-builds `ctx`, which proves the COLLECTOR
+// and says nothing about whether the real run populates the key it reads. That
+// gap is how `manifestVersion`, `hasLocalPacks` and `retentionDays` stayed dead
+// while green here. Reachability is asserted in signal-context.test.mjs, which
+// drives a checkout on disk through the real buildSignalContext; keep any new
+// `ctx({ ... })` key covered there too.
 test('release: a 404 latest release means no release yet', async () => {
   const gh = fakeGh([[/\/releases\/latest/, { status: 404, json: null }]]);
   const out = await collectSignals(gh, ctx({ manifestVersion: '1.2.0' }), ['release']);

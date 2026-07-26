@@ -19,6 +19,7 @@ import {
   AGENT_RUNNING_LABEL,
 } from './dispatch.mjs';
 import { isAgentless } from './model-map.mjs';
+import { localSignalContext } from './signals/local.mjs';
 import { runPreprocessing, preprocessingFailure, agentRequestPath, clearAgentRequest, agentRequested } from './preprocess.mjs';
 
 // The due tasks, each paired with the slot it runs under. Union the discovered
@@ -127,6 +128,27 @@ export async function planRun({
     evaluations.push(rec);
   }
   return { evaluations };
+}
+
+// The `ctx` every signal collector reads (DESIGN §3.3) — the already-resolved
+// facts a collector may not go and fetch for itself, built once per run and
+// handed to `collectSignals`. Exported so the construction itself is testable:
+// the collectors' `ctx.X ?? null` seam makes them unit-testable with a hand-built
+// ctx, which is exactly why a key nothing here populates can read as "collector
+// works" forever. Assert against THIS, not a hand-built shape.
+// `root` is the Action-side checkout: the manifest version, the local-pack
+// presence and the configured retention are all read from it (signals/local.mjs),
+// because a scheduled run already has the tree on disk and an API round-trip
+// would buy nothing.
+export function buildSignalContext({ root, repo, defaultBranch, now, sinceIso, config, fleet = null, packConfigFor = () => ({}) }) {
+  const local = localSignalContext(root, { packIds: config.packs ?? [], packConfigFor });
+  return {
+    repo, defaultBranch, now, sinceIso, config,
+    activePacks: config.packs, fleet,
+    manifestVersion: local.manifestVersion,
+    hasLocalPacks: local.hasLocalPacks,
+    retentionDays: local.retentionDays,
+  };
 }
 
 // --- CLI: the thin I/O shell the vendored workflow invokes -------------------
@@ -291,11 +313,10 @@ async function main() {
     }
   }
 
-  const ctx = {
-    repo, defaultBranch, now: now.toISOString(), sinceIso, config,
-    activePacks: config.packs, fleet,
-  };
   const packConfigFor = (packId) => config.packConfig?.[packId] ?? {};
+  const ctx = buildSignalContext({
+    root, repo, defaultBranch, now: now.toISOString(), sinceIso, config, fleet, packConfigFor,
+  });
 
   const { evaluations } = await planRun({
     tasks, schedule, now, lastSuccess,

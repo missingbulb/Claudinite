@@ -10,6 +10,14 @@ import conversationExtract from '../../packs/grow_with_claudinite/tasks/conversa
 // grow_with_claudinite per-repo task declarations + preconditions
 // (per-project-scheduling redesign: discover-packs and prose-to-checks are local,
 // per-repo operations, not fleet-scoped).
+//
+// These are UNIT tests over pure preconditions: they hand-build the signals
+// object, so they assert the DECISION and never that the scheduler can produce
+// the input. `localPacks.present` and `conversationLogs.retentionDays` were both
+// unreachable in a real run while the tests below stayed green — the shapes they
+// construct were ones the collector could not emit. The reachability half is
+// engine-tests/scheduler/signal-context.test.mjs (real checkout → real ctx →
+// these same preconditions). A new signal field needs both.
 
 test('the pack contributes its tasks structurally, not as a pack.mjs slot', () => {
   // The descriptors moved out of the manifest: the repo's scheduler finds

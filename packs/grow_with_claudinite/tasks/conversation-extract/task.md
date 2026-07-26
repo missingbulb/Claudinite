@@ -69,7 +69,7 @@ When a run lands a lesson, posts a summary, or prunes logs, log it as one dated 
 
 Whether a lesson clears the bar — and whether the hindsight pass should overturn a fresh-pass call — is the
 judgment this task exists for, and its PR auto-merges without a human review gate. This task declares
-`model: opus`; the executor dispatches its subagent there.
+`agent_model: opus`; the executor dispatches its subagent there.
 
 ## What this task must never do
 

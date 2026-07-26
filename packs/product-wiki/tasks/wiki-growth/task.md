@@ -58,7 +58,7 @@ title, never by number, never opened/closed as state (open it if missing). One d
 a failed unattended run). Clean no-ops stay silent — the pack's freshness advisory is the prolonged-silence
 observer.
 
-`model: opus` — open-web research plus curation is judgment-heavy, and the PR review gate is the last catch for
+`agent_model: opus` — open-web research plus curation is judgment-heavy, and the PR review gate is the last catch for
 fabrication.
 
 ## What this worker must never do
