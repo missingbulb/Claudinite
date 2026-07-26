@@ -191,12 +191,10 @@ export function migrationsPastTtl(migrations, { today, ttlDays }) {
   const cutoff = new Date(`${today}T00:00:00Z`).getTime() - ttlDays * 86400000;
   return migrations.filter((m) => {
     if (m.subdir === MIGRATIONS_OLD_SUBDIR) return false; // already archived
-    // `retire: 'manual'` means the record's references live inline across the
-    // canon where the retire pass cannot sweep them, so a human retires it
-    // alongside those references. Archiving ends check tolerance exactly as
-    // retiring does (migrationActive reads active-only), so the calendar must
-    // not do by TTL what the record forbids by policy.
-    if (m.retire === 'manual') return false;
+    // `retire` is deliberately NOT consulted: it gates DELETION (retirableMigrations),
+    // and archiving is not deletion — the record moves to migrations-old/, still
+    // loads, and still applies for a dormant project's backfill. What it stops
+    // doing is tolerating the legacy shape, which is exactly what aging out means.
     const landedMs = new Date(`${m.landed}T00:00:00Z`).getTime();
     return Number.isFinite(landedMs) && landedMs <= cutoff;
   });
