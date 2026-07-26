@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import {
   dispatchTitle, dispatchTaskKey, parseDispatchTitle, isDispatchTitle,
   dispatchBody, planDispatch, staleDispatchIssues, staleEscalationComment,
-  READY_LABEL, READY_FLEET_LABEL, NEEDS_HUMAN_LABEL, readyLabelForScope, SCHEDULER_LABELS,
+  rearmDispatchIssues, readyLabelOn, staleClaimedDispatchIssues, staleClaimComment,
+  READY_LABEL, READY_FLEET_LABEL, NEEDS_HUMAN_LABEL, AGENT_RUNNING_LABEL,
+  readyLabelForScope, SCHEDULER_LABELS,
 } from '../../engine/scheduler/dispatch.mjs';
 
 // --- identity: title / key / parse round-trip ---
@@ -113,4 +115,87 @@ test('staleEscalationComment names the task and the needs-human label', () => {
   const c = staleEscalationComment({ number: 1, title: '[claudinite-task] gcec/create-extractor h2026-07-22T09Z' });
   assert.match(c, /gcec\/create-extractor \(slot h2026-07-22T09Z\)/);
   assert.match(c, new RegExp(NEEDS_HUMAN_LABEL));
+});
+
+// --- re-arming a lost trigger -----------------------------------------------
+// The recovery that used to be the executor's drain sweep. The sweep is what
+// turned one scheduler run's N dispatches into N sessions each racing over the
+// same N issues, so it moved here, into code that runs once per run.
+
+const armed = (over = {}) => ({
+  number: 1, title: '[claudinite-task] basics/baselining d2026-07-22',
+  labels: [{ name: READY_LABEL }], created_at: '2026-07-22T01:00:00Z',
+  updated_at: '2026-07-22T01:00:00Z', comments: 0, ...over,
+});
+
+test('readyLabelOn finds whichever ready label an issue carries, and nothing else', () => {
+  assert.equal(readyLabelOn(armed()), READY_LABEL);
+  assert.equal(readyLabelOn(armed({ labels: [{ name: READY_FLEET_LABEL }] })), READY_FLEET_LABEL);
+  assert.equal(readyLabelOn(armed({ labels: ['ready-for-agent'] })), READY_LABEL); // bare strings too
+  assert.equal(readyLabelOn(armed({ labels: [{ name: AGENT_RUNNING_LABEL }] })), null);
+  assert.equal(readyLabelOn({ labels: [] }), null);
+});
+
+test('rearmDispatchIssues re-arms an armed, unclaimed, uncommented issue past the grace window', () => {
+  const now = '2026-07-22T02:00:00Z'; // 1h after filing, well past the 20m grace
+  assert.deepEqual(rearmDispatchIssues([armed()], now).map((i) => i.number), [1]);
+});
+
+test('rearmDispatchIssues spares an issue a live session may still be reaching for', () => {
+  const now = '2026-07-22T01:10:00Z'; // only 10m old — inside the grace window
+  assert.deepEqual(rearmDispatchIssues([armed()], now), []);
+});
+
+test('rearmDispatchIssues never re-arms an issue some session has already engaged', () => {
+  const now = '2026-07-22T02:00:00Z';
+  const cases = [
+    armed({ number: 2, labels: [{ name: AGENT_RUNNING_LABEL }] }),           // claimed
+    armed({ number: 3, labels: [{ name: READY_LABEL }, { name: NEEDS_HUMAN_LABEL }] }), // converged to triage
+    armed({ number: 4, comments: 1 }),                                       // a session commented
+    armed({ number: 5, labels: [] }),                                        // not armed at all
+    armed({ number: 6, title: 'an ordinary issue someone labelled by hand' }), // not a dispatch issue
+  ];
+  assert.deepEqual(rearmDispatchIssues(cases, now), []);
+});
+
+test('rearmDispatchIssues re-arms a fleet dispatch under its OWN label, never the self one', () => {
+  const now = '2026-07-22T02:00:00Z';
+  const fleet = armed({ number: 9, labels: [{ name: READY_FLEET_LABEL }] });
+  const [got] = rearmDispatchIssues([fleet], now);
+  assert.equal(readyLabelOn(got), READY_FLEET_LABEL);
+});
+
+test('a stale issue is never re-armed — it is converging to triage, and re-arming would loop it', () => {
+  // Daily slot filed ~3d ago: past the 2-period stale threshold AND past the grace
+  // window, so the two rules overlap and stale has to win.
+  const now = '2026-07-25T05:00:00Z';
+  const old = armed({ created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T01:00:00Z' });
+  assert.deepEqual(staleDispatchIssues([old], now).map((i) => i.number), [1]);
+  assert.deepEqual(rearmDispatchIssues([old], now), []);
+});
+
+// --- dead claims: the executor's old step-6 sweep, now code ------------------
+test('staleClaimedDispatchIssues converges a claim left by a session that died mid-run', () => {
+  const now = '2026-07-22T12:00:00Z';
+  const open = [
+    { number: 1, title: '[claudinite-task] basics/baselining d2026-07-22', labels: [{ name: AGENT_RUNNING_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T02:00:00Z' }, // 10h idle
+    { number: 2, title: '[claudinite-task] basics/baselining d2026-07-22', labels: [{ name: AGENT_RUNNING_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T11:00:00Z' }, // 1h idle → live
+    { number: 3, title: '[claudinite-task] basics/baselining d2026-07-22', labels: [{ name: AGENT_RUNNING_LABEL }, { name: NEEDS_HUMAN_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T02:00:00Z' }, // already triaged
+  ];
+  assert.deepEqual(staleClaimedDispatchIssues(open, now).map((i) => i.number), [1]);
+});
+
+test('staleClaimedDispatchIssues never touches a claim on an issue a TASK owns', () => {
+  // A task may hold `agent-running` on its own request issue for days while its PR
+  // is in review. Only a `[claudinite-task]` title is the scheduler's to reclaim.
+  const now = '2026-07-30T12:00:00Z';
+  const open = [{ number: 5, title: 'Extractor request: some site', labels: [{ name: AGENT_RUNNING_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T01:00:00Z' }];
+  assert.deepEqual(staleClaimedDispatchIssues(open, now), []);
+});
+
+test('staleClaimComment names the task and the needs-human label', () => {
+  const c = staleClaimComment({ number: 1, title: '[claudinite-task] basics/baselining d2026-07-22' });
+  assert.match(c, /basics\/baselining \(slot d2026-07-22\)/);
+  assert.match(c, new RegExp(NEEDS_HUMAN_LABEL));
+  assert.match(c, new RegExp(AGENT_RUNNING_LABEL));
 });

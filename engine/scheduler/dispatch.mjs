@@ -148,5 +148,89 @@ export function staleEscalationComment(issue) {
   const parsed = parseDispatchTitle(issue.title);
   const which = parsed ? `${parsed.pack}/${parsed.task} (slot ${parsed.slotId})` : 'this task';
   return `This dispatch issue for ${which} has stayed open past ~2 of its scheduling periods without being executed — `
-    + `no executor session drained it. Labeling \`${NEEDS_HUMAN_LABEL}\` for triage.`;
+    + `no executor session ran it. Labeling \`${NEEDS_HUMAN_LABEL}\` for triage.`;
+}
+
+// --- re-arming a lost trigger ------------------------------------------------
+// The label event is the executor's ONLY trigger, and a delivery can be lost: the
+// routine was down or paused, or a session died before it claimed. The issue then
+// sits armed forever, because the label is already applied and GitHub emits
+// `labeled` only on a fresh add. So the scheduler re-arms it — remove the ready
+// label, add it back — which emits a new event.
+//
+// This is the recovery that used to live in the executor's drain sweep, moved into
+// deterministic code. The sweep had EVERY triggered session also process every
+// OTHER armed issue, so one scheduler run filing N dispatches produced N sessions
+// each racing over the same N issues, and the claim swap could not stop it (every
+// session read the work list before any claim landed). That is the
+// duplicate-execution bug: the same dispatch run two or three times over,
+// duplicate tracker issues, duplicate PRs making the same changes. Recovery
+// belongs here, where it is a decision in code that runs once per scheduler run.
+
+const READY_LABELS = new Set([READY_LABEL, READY_FLEET_LABEL]);
+
+// GitHub hands labels back as objects on the issues/search APIs and as bare
+// strings in some fixtures; accept either.
+const labelNames = (issue) =>
+  (issue?.labels ?? []).map((l) => (typeof l === 'string' ? l : l?.name)).filter(Boolean);
+
+// The ready label an issue currently carries, or null. Re-arming reapplies THIS
+// one, so a fleet dispatch is never re-armed as a self dispatch (which would hand
+// it to an executor whose session lacks the cross-repo reach it needs).
+export function readyLabelOn(issue) {
+  return labelNames(issue).find((n) => READY_LABELS.has(n)) ?? null;
+}
+
+// The open dispatch issues whose trigger evidently never landed. Re-arm only an
+// issue that is:
+//   - a dispatch issue (parseable title) still carrying a ready label;
+//   - unclaimed — no `agent-running` (a live session claims before it dispatches)
+//     and not already converged to `needs-human`;
+//   - uncommented — the executor comments on every exit path, so a comment means
+//     some session engaged and this is not a lost event; and
+//   - past `graceMs` (default 20m), comfortably beyond session spin-up, so a
+//     session already on its way is never handed a rival.
+// A stale issue is never re-armed: it is on its way to `needs-human`, and re-arming
+// one would loop forever. That backstop is also what bounds this — an executor that
+// stays down is re-armed each run until ~2 periods, then converges to triage.
+// Dispatch issues left claimed by a session that died mid-run: `agent-running`
+// with no activity for `idleMs` (~3h). Converging these used to be the executor's
+// own step 6, which meant every concurrently-triggered session swept them and
+// commented on the same issue — the duplicate-work bug in miniature. It is code
+// here for the same reason the re-arm is.
+//
+// Scoped to `[claudinite-task]` dispatch issues deliberately (the title parse is
+// what enforces it): a task may put `agent-running` on an issue IT owns — a
+// request its pipeline has claimed, which stays claimed while its PR is in review,
+// far longer than 3h — and only that task knows when its own claim is stale.
+export function staleClaimedDispatchIssues(openIssues = [], now, { idleMs = 3 * 3600e3 } = {}) {
+  const nowMs = new Date(now).getTime();
+  return openIssues.filter((issue) => {
+    if (!parseDispatchTitle(issue.title)) return false;
+    const names = labelNames(issue);
+    if (!names.includes(AGENT_RUNNING_LABEL) || names.includes(NEEDS_HUMAN_LABEL)) return false;
+    return nowMs - new Date(issue.updated_at ?? issue.created_at).getTime() > idleMs;
+  });
+}
+
+// The comment the shell posts when it reclaims a dead session's claim.
+export function staleClaimComment(issue) {
+  const parsed = parseDispatchTitle(issue.title);
+  const which = parsed ? `${parsed.pack}/${parsed.task} (slot ${parsed.slotId})` : 'this task';
+  return `This dispatch issue for ${which} has carried \`${AGENT_RUNNING_LABEL}\` for over 3h with no activity — `
+    + `the executor session that claimed it never converged it. Labeling \`${NEEDS_HUMAN_LABEL}\` for triage.`;
+}
+
+export function rearmDispatchIssues(openIssues = [], now, { graceMs = 20 * 60e3 } = {}) {
+  const nowMs = new Date(now).getTime();
+  const stale = new Set(staleDispatchIssues(openIssues, now).map((i) => i.number));
+  return openIssues.filter((issue) => {
+    if (!parseDispatchTitle(issue.title)) return false;
+    if (stale.has(issue.number)) return false;
+    if (!readyLabelOn(issue)) return false;
+    const names = labelNames(issue);
+    if (names.includes(AGENT_RUNNING_LABEL) || names.includes(NEEDS_HUMAN_LABEL)) return false;
+    if ((issue.comments ?? 0) > 0) return false;
+    return nowMs - new Date(issue.created_at).getTime() > graceMs;
+  });
 }

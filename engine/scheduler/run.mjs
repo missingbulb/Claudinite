@@ -12,7 +12,12 @@
 
 import { pathToFileURL } from 'node:url';
 import { dueSlots } from './slots.mjs';
-import { planDispatch, dispatchTitle, dispatchBody, DISPATCH_PREFIX, READY_LABEL, NEEDS_HUMAN_LABEL, SCHEDULER_LABELS, readyLabelForScope } from './dispatch.mjs';
+import {
+  planDispatch, dispatchTitle, dispatchBody, DISPATCH_PREFIX, READY_LABEL, NEEDS_HUMAN_LABEL,
+  SCHEDULER_LABELS, readyLabelForScope, staleDispatchIssues, staleEscalationComment,
+  rearmDispatchIssues, readyLabelOn, staleClaimedDispatchIssues, staleClaimComment,
+  AGENT_RUNNING_LABEL,
+} from './dispatch.mjs';
 import { isAgentless } from './model-map.mjs';
 import { runPreprocessing, preprocessingFailure, agentRequestPath, clearAgentRequest, agentRequested } from './preprocess.mjs';
 
@@ -142,6 +147,82 @@ async function existingIssuesViaSearch(gh, repo, pack, task) {
     .map((i) => ({ number: i.number, title: i.title, state: i.state }));
 }
 
+// Every OPEN dispatch issue in the repo, with the labels / age / comment count the
+// maintenance pass reads. Separate from existingIssuesViaSearch, which is per task
+// family and state=all for the filing guards; this one is repo-wide and open-only.
+export async function openDispatchIssuesViaSearch(gh, repo) {
+  const q = encodeURIComponent(`repo:${repo} is:issue is:open in:title "${DISPATCH_PREFIX}"`);
+  const { status, json } = await gh(`/search/issues?q=${q}&per_page=100`);
+  if (status !== 200 || !Array.isArray(json?.items)) return [];
+  return json.items.map((i) => ({
+    number: i.number, title: i.title, labels: i.labels ?? [],
+    created_at: i.created_at, updated_at: i.updated_at, comments: i.comments ?? 0,
+  }));
+}
+
+// The per-run maintenance pass over open dispatch issues (DESIGN §4 lifecycle,
+// §5 recovery). Three backstops, in this order:
+//   1. STALE — open past ~2 of its own scheduling periods → escalation comment,
+//      drop the ready label (so it stops being armed), add `needs-human`.
+//   2. DEAD CLAIM — `agent-running` with no activity for ~3h → the session that
+//      claimed it died; comment, drop `agent-running`, add `needs-human`.
+//   3. RE-ARM — armed but untouched past the grace window → the trigger event was
+//      lost, so remove and re-add its ready label to emit a fresh one.
+// Stale wins over re-arm: rearmDispatchIssues already excludes the stale set, so an
+// issue converging to triage is never re-armed back into circulation.
+//
+// This is the ONLY recovery path for a missed label event or a dead session. The
+// executor no longer sweeps other issues — one session runs exactly the one issue
+// that triggered it — so recovery had to become a decision in code here, running
+// once per scheduler run, rather than agent judgment replicated across every
+// concurrently-triggered session.
+export async function maintainDispatchIssues(gh, repo, now, { labelsEnsured = false } = {}) {
+  const open = await openDispatchIssuesViaSearch(gh, repo);
+  const none = { stale: [], deadClaims: [], rearmed: [] };
+  if (!open.length) return none;
+
+  const stale = staleDispatchIssues(open, now);
+  const staleNumbers = new Set(stale.map((i) => i.number));
+  const deadClaims = staleClaimedDispatchIssues(open, now).filter((i) => !staleNumbers.has(i.number));
+  const rearm = rearmDispatchIssues(open, now);
+  if (!stale.length && !deadClaims.length && !rearm.length) return none;
+
+  // Applying a label 422s when it does not exist, so guarantee them first — an
+  // idle run never gets here, so this costs nothing on the common path.
+  if (!labelsEnsured) await ensureLabels(gh, repo, SCHEDULER_LABELS);
+
+  const escalate = async (issue, body, dropLabel) => {
+    await gh(`/repos/${repo}/issues/${issue.number}/comments`, { method: 'POST', body: { body } });
+    if (dropLabel) await gh(`/repos/${repo}/issues/${issue.number}/labels/${encodeURIComponent(dropLabel)}`, { method: 'DELETE' });
+    await gh(`/repos/${repo}/issues/${issue.number}/labels`, { method: 'POST', body: { labels: [NEEDS_HUMAN_LABEL] } });
+  };
+
+  for (const issue of stale) {
+    await escalate(issue, staleEscalationComment(issue), readyLabelOn(issue));
+    console.log(`- escalated stale dispatch #${issue.number} to ${NEEDS_HUMAN_LABEL}`);
+  }
+
+  for (const issue of deadClaims) {
+    await escalate(issue, staleClaimComment(issue), AGENT_RUNNING_LABEL);
+    console.log(`- reclaimed dead ${AGENT_RUNNING_LABEL} claim on #${issue.number} → ${NEEDS_HUMAN_LABEL}`);
+  }
+
+  for (const issue of rearm) {
+    const ready = readyLabelOn(issue);
+    const del = await gh(`/repos/${repo}/issues/${issue.number}/labels/${encodeURIComponent(ready)}`, { method: 'DELETE' });
+    if (del.status >= 300) { console.log(`! could not un-label #${issue.number} to re-arm it: ${del.status}`); continue; }
+    const add = await gh(`/repos/${repo}/issues/${issue.number}/labels`, { method: 'POST', body: { labels: [ready] } });
+    if (add.status >= 300) console.log(`! re-arm of #${issue.number} dropped its ${ready} label: ${add.status}`);
+    else console.log(`- re-armed #${issue.number} (${ready}) — its trigger event never landed`);
+  }
+
+  return {
+    stale: stale.map((i) => i.number),
+    deadClaims: deadClaims.map((i) => i.number),
+    rearmed: rearm.map((i) => i.number),
+  };
+}
+
 // Ensure the dispatch labels exist before any is applied — GitHub 422s when you
 // apply an unknown label (it never creates one on demand), so the scheduler, as the
 // thing that assigns them, guarantees them here. Idempotent (201 created / 422 already
@@ -214,9 +295,8 @@ async function main() {
   // Guarantee the dispatch labels exist before we file any labeled issue — when a
   // task will dispatch OR will run preprocessing (which may converge to
   // needs-human). An idle run pays nothing.
-  if (evaluations.some((r) => r.run && (r.preprocessing || (!r.inline && r.dispatch?.action === 'create')))) {
-    await ensureLabels(gh, repo, SCHEDULER_LABELS);
-  }
+  const labelsEnsured = evaluations.some((r) => r.run && (r.preprocessing || (!r.inline && r.dispatch?.action === 'create')));
+  if (labelsEnsured) await ensureLabels(gh, repo, SCHEDULER_LABELS);
 
   // File the labeled hand-off issue the executor runs (READY_LABEL): first line is
   // the task path, body carries the precondition's binding Context (dispatch.mjs).
@@ -308,6 +388,11 @@ async function main() {
     // Agent task with no preprocessing → today's immediate labeled dispatch.
     if (rec.dispatch?.action === 'create') await fileHandoff(rec, taskObj);
   }
+
+  // Maintenance over the open dispatch issues, AFTER this run's filings: the
+  // issues just filed are seconds old, so the grace window keeps them out of the
+  // re-arm set and only the previous cycles' leftovers are considered.
+  await maintainDispatchIssues(gh, repo, now, { labelsEnsured });
 
   console.log('## Claudinite scheduler\n');
   console.log(renderSummary(evaluations) || '- no tasks due');
