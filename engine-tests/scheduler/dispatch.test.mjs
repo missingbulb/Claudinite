@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   dispatchTitle, dispatchTaskKey, parseDispatchTitle, isDispatchTitle,
   dispatchBody, planDispatch, staleDispatchIssues, staleEscalationComment,
-  READY_LABEL, NEEDS_HUMAN_LABEL,
+  READY_LABEL, READY_FLEET_LABEL, NEEDS_HUMAN_LABEL, readyLabelForScope, SCHEDULER_LABELS,
 } from '../../engine/scheduler/dispatch.mjs';
 
 // --- identity: title / key / parse round-trip ---
@@ -47,6 +47,19 @@ test('planDispatch creates when no issue exists for the task family', () => {
   assert.equal(v.action, 'create');
   assert.equal(v.title, '[claudinite-task] gcec/create-extractor h2026-07-22T14Z');
   assert.equal(v.label, READY_LABEL);
+});
+
+test('the self/fleet split: readyLabelForScope maps scope → label, and planDispatch files under it', () => {
+  assert.equal(readyLabelForScope(undefined), READY_LABEL);   // default (no scope) → self
+  assert.equal(readyLabelForScope('self'), READY_LABEL);
+  assert.equal(readyLabelForScope('fleet'), READY_FLEET_LABEL);
+  // a fleet task's dispatch carries the fleet label so the fleet executor runs it
+  const v = planDispatch({ existing: [], pack: 'canon-curation', task: 'growth-promote', slotId: 'd2026-07-24', readyLabel: READY_FLEET_LABEL });
+  assert.equal(v.action, 'create');
+  assert.equal(v.label, READY_FLEET_LABEL);
+  // both ready labels are in the ensure-set the scheduler creates
+  const names = SCHEDULER_LABELS.map((l) => l.name);
+  assert.ok(names.includes(READY_LABEL) && names.includes(READY_FLEET_LABEL));
 });
 
 test('planDispatch skips when this exact slot already exists in any state (exactly-once)', () => {

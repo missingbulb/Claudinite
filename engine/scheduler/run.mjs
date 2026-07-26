@@ -12,7 +12,7 @@
 
 import { pathToFileURL } from 'node:url';
 import { dueSlots } from './slots.mjs';
-import { planDispatch, dispatchTitle, dispatchBody, DISPATCH_PREFIX, READY_LABEL, NEEDS_HUMAN_LABEL, SCHEDULER_LABELS } from './dispatch.mjs';
+import { planDispatch, dispatchTitle, dispatchBody, DISPATCH_PREFIX, READY_LABEL, NEEDS_HUMAN_LABEL, SCHEDULER_LABELS, readyLabelForScope } from './dispatch.mjs';
 import { isAgentless } from './model-map.mjs';
 import { runPreprocessing, preprocessingFailure, agentRequestPath, clearAgentRequest, agentRequested } from './preprocess.mjs';
 
@@ -112,7 +112,11 @@ export async function planRun({
         rec.inline = true;
       } else {
         const existing = await existingIssuesFor(task.pack, task.id);
-        rec.dispatch = planDispatch({ existing, pack: task.pack, task: task.id, slotId });
+        // Route the dispatch to the self or fleet ready label by the task's scope
+        // (the fleet/self executor split) — the executor routine wired to that
+        // label runs it.
+        const readyLabel = readyLabelForScope(task.decl.session_scope);
+        rec.dispatch = planDispatch({ existing, pack: task.pack, task: task.id, slotId, readyLabel });
       }
     }
     evaluations.push(rec);
@@ -173,9 +177,30 @@ async function main() {
 
   const due = computeDueTaskSlots(tasks, schedule, now, lastSuccess);
   const sinceIso = windowStart(due, now);
+
+  // The fleet aggregate (canon-only, DESIGN §3.3) is expensive — a full
+  // enumeration over the fleet PAT — so build it ONLY when a due task actually
+  // declares the `fleet` signal, and only when FLEET_GITHUB_TOKEN is set (the
+  // canon repo with the census credential). Otherwise ctx.fleet stays null and
+  // the collector returns null, so a fleet task's precondition skips rather than
+  // crashes. Enumeration failures are surfaced by readFleet as `{ error }`, not
+  // thrown — a fleet task treats that as "no work I can prove".
+  let fleet = null;
+  if (signalsUnion(due).includes('fleet')) {
+    const { readFleet, makeFleetGh } = await import('./signals/fleet.mjs');
+    const fleetGh = makeFleetGh();
+    if (fleetGh) {
+      const owner = repo.split('/')[0];
+      fleet = await readFleet(fleetGh, { owner, canonRepo: repo, sinceIso });
+      if (fleet.error) console.log(`! fleet enumeration: ${fleet.error}`);
+    } else {
+      console.log('- a due task declares the `fleet` signal but FLEET_GITHUB_TOKEN is not set — skipping fleet-scoped tasks');
+    }
+  }
+
   const ctx = {
     repo, defaultBranch, now: now.toISOString(), sinceIso, config,
-    activePacks: config.packs,
+    activePacks: config.packs, fleet,
   };
   const packConfigFor = (packId) => config.packConfig?.[packId] ?? {};
 
@@ -198,7 +223,10 @@ async function main() {
   const fileHandoff = async (rec, taskObj) => {
     const title = dispatchTitle({ pack: rec.pack, task: rec.task, slotId: rec.slotId });
     const body = dispatchBody({ taskPath: taskObj.taskPath, pack: rec.pack, task: rec.task, slotId: rec.slotId, context: rec.context });
-    const res = await gh(`/repos/${repo}/issues`, { method: 'POST', body: { title, body, labels: [READY_LABEL] } });
+    // The scope-resolved ready label (self vs fleet) from planDispatch — the
+    // executor routine wired to it runs the task.
+    const readyLabel = rec.dispatch?.label ?? READY_LABEL;
+    const res = await gh(`/repos/${repo}/issues`, { method: 'POST', body: { title, body, labels: [readyLabel] } });
     if (res.status >= 300) console.log(`! failed to file dispatch issue for ${rec.pack}/${rec.task}: ${res.status}`);
   };
 

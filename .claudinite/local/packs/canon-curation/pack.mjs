@@ -1,12 +1,13 @@
 import promote from './run_daily/growth-promote-to-claudinite.mjs';
-import proseToChecksSweep from './run_daily/prose-to-checks-sweep.mjs';
 import noEnforcementNarration from './no-enforcement-narration.mjs';
 import packIndependence from './pack-independence.mjs';
 
 // The canon home repo's own curation pack — the fleet-facing work only the
 // Claudinite home runs: promoting members' lessons into the shared canon (the
-// growth lifecycle's central stage), sweeping the corpus's prose backlog into
-// checks, and policing the corpus's packs/ tree.
+// growth lifecycle's central stage) and policing the corpus's packs/ tree.
+// (Prose-to-checks is no longer canon-only: it moved to grow_with_claudinite as a
+// per-repo task with a `pack_paths` config — the canon runs it over its own packs/
+// + local packs like any repo, per the per-project-scheduling redesign.)
 //
 // A LOCAL pack (.claudinite/local/packs/), by owner decision (2026-07-19): the
 // canon home's curation duties are project-specific content — Claudinite
@@ -32,8 +33,7 @@ export default {
   // The prose-narration rule polices pack prose CONTENT (not segregation), so
   // it stays a code check, bundled here.
   rules: [noEnforcementNarration],
-  // prose-to-checks and writing-claudinite-skills are canon-home activity (they
-  // mine and edit the corpus), so this pack bundles them under its own skills/
-  // — members have no canon prose to convert and no corpus skills to author.
-  run_daily: [promote, proseToChecksSweep],
+  // writing-claudinite-skills is canon-home activity (authoring corpus skills), so
+  // this pack bundles it under its own skills/ — members author no corpus skills.
+  run_daily: [promote],
 };

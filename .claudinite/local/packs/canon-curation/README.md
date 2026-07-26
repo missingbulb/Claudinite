@@ -1,8 +1,11 @@
 # canon-curation
 
 The canon's own curation duties — the fleet-facing work only the **Claudinite home repo** runs:
-promoting members' lessons into the shared canon, sweeping the corpus's prose backlog into
-checks, and policing the corpus's `packs/` tree. A **local pack** of the canon home
+promoting members' lessons into the shared canon and policing the corpus's `packs/` tree. (The
+prose-to-checks backlog sweep is no longer canon-only — it moved to
+[grow_with_claudinite](../../../../packs/grow_with_claudinite/README.md) as a per-repo task with a
+`pack_paths` config, so every repo sweeps its own packs and Claudinite also its core `packs/`.) A
+**local pack** of the canon home
 (`.claudinite/local/packs/`, by owner decision 2026-07-19: Claudinite-maintaining-Claudinite is
 project-specific content, so it lives on the home's own capture surface, not in the portable
 canon): `detect: null`, never seeded by `--init` or any migration, declared by hand in exactly one
@@ -18,7 +21,6 @@ freezes canon absorption without touching the members' side ([grow_with_claudini
 | Task | Runs when | Where it lands |
 |---|---|---|
 | `growth-promote-to-claudinite` | a participating member changed in the window (weekly full: all participants) | a PR against Claudinite's `main` |
-| `prose-to-checks-sweep` | the home repo's weekly full sweep | a PR against Claudinite's `main` |
 
 | Rule (≤5 words) | How enforced |
 |---|---|
@@ -30,16 +32,11 @@ freezes canon absorption without touching the members' side ([grow_with_claudini
   PR for the owner to approve. When a portable lesson's technology has no pack home, it mints a
   fingerprinted **stub pack** (in its own dedicated PR). This is the sole judgment gate before
   shared canon.
-- **[item-routing.md](item-routing.md)** — the shared worthiness + routing method promote (and any
-  other caller — the prose-to-checks sweep, an owner-requested retrospective pass) defers to, so
-  every decision about admitting and placing an item is made the same way.
+- **[item-routing.md](item-routing.md)** — the shared worthiness + routing method promote (and an
+  owner-requested retrospective pass) defers to, so every decision about admitting and placing an
+  item is made the same way.
 - **[promote-scope.mjs](promote-scope.mjs)** — the CI write-surface gate on promote's PRs: promote
   may write only under `packs/` and `skills/` (keyed on the `growth-promote` branch prefix).
-- **prose-to-checks sweep** — the weekly backlog pass (worker: [the prose-to-checks
-  skill](../../../skills/prose-to-checks/SKILL.md), which this pack owns and mounts at home): mine the
-  corpus's **existing** prose for always-testable rules the conversion missed and convert the
-  strongest ones. Promote descends the ladder for each *new* lesson; this works the *backlog*, so
-  the corpus keeps shedding context over time.
 
 ## The growth lifecycle — three independent stages, no barriers
 

@@ -9,7 +9,6 @@ import dedup from '../../packs/grow_with_claudinite/run_daily/growth-dedup-local
 import discoverPacks from '../../packs/grow_with_claudinite/run_daily/growth-discover-packs.mjs';
 import conversationExtract from '../../packs/grow_with_claudinite/run_daily/conversation-extract.mjs';
 import promote from '../../.claudinite/local/packs/canon-curation/run_daily/growth-promote-to-claudinite.mjs';
-import proseSweep from '../../.claudinite/local/packs/canon-curation/run_daily/prose-to-checks-sweep.mjs';
 
 const REPO = { fullName: 'owner/foo', defaultBranch: 'main' };
 const S = (over = {}) => ({
@@ -224,11 +223,4 @@ test('growth-promote-to-claudinite: quiet when nothing changed, and never runs o
   assert.equal((await promote.gate(HOME, S({ isHome: true }))).run, false); // no aggregate at all
   // A stray declaration on a member can't double-run promote: the gate requires isHome.
   assert.equal((await promote.gate(REPO, S({ fleetMembers: MEMBERS }))).run, false);
-});
-
-test('prose-to-checks-sweep (canon-curation): weekly, home-only', async () => {
-  assert.equal(proseSweep.full_sweep_supported, true);
-  assert.equal((await proseSweep.gate(HOME, S({ isHome: true }))).run, false);
-  assert.equal((await proseSweep.gate(HOME, S({ isHome: true, fullSweep: true }))).run, true);
-  assert.equal((await proseSweep.gate(REPO, S({ fullSweep: true }))).run, false); // never off-home
 });

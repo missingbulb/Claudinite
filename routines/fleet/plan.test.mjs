@@ -108,10 +108,8 @@ test('buildWorkPlan: plans the home repo last — home-only pack gates see the f
     [/o\/home\/contents\/\.claudinite\/local\/packs$/, { status: 200, json: [{ name: 'canon-curation', type: 'dir', path: curation }] }],
     [/o\/home\/contents\/\.claudinite\/local\/packs\/canon-curation\/run_daily$/, { status: 200, json: [
       { name: 'growth-promote-to-claudinite.mjs', type: 'file', path: `${curation}/run_daily/growth-promote-to-claudinite.mjs` },
-      { name: 'prose-to-checks-sweep.mjs', type: 'file', path: `${curation}/run_daily/prose-to-checks-sweep.mjs` },
     ] }],
     [/growth-promote-to-claudinite\.mjs$/, { status: 200, json: { content: rawB64(`${curation}/run_daily/growth-promote-to-claudinite.mjs`) } }],
-    [/prose-to-checks-sweep\.mjs$/, { status: 200, json: { content: rawB64(`${curation}/run_daily/prose-to-checks-sweep.mjs`) } }],
     // the member changed: pushed in window and main moved → projectChanged
     [/owner\/foo\/commits\?sha=/, { status: 200, json: [{ sha: 'm1' }] }],
     [/owner\/foo\/commits\/m1$/, { status: 200, json: { files: [{ filename: '.claudinite/local_packs/foo-pack/RULES.md' }] } }], // the commit touched local packs → promote target

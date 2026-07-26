@@ -30,6 +30,13 @@ test('validateTaskDeclaration accepts a well-formed declaration', () => {
   assert.deepEqual(validateTaskDeclaration(validTask), []);
 });
 
+test('validateTaskDeclaration: session_scope is optional, defaults valid, and rejects a bad value', () => {
+  assert.deepEqual(validateTaskDeclaration(validTask), []);                                  // omitted → fine (defaults to self)
+  assert.deepEqual(validateTaskDeclaration({ ...validTask, session_scope: 'self' }), []);
+  assert.deepEqual(validateTaskDeclaration({ ...validTask, session_scope: 'fleet' }), []);
+  assert.match(validateTaskDeclaration({ ...validTask, session_scope: 'global' })[0].what, /not a legal session scope/);
+});
+
 test('validateTaskDeclaration requires agent_execution_timeout on an agentic task', () => {
   const { agent_execution_timeout, ...noBound } = validTask;
   assert.match(validateTaskDeclaration(noBound)[0].what, /no positive-integer "agent_execution_timeout"/);
@@ -111,12 +118,22 @@ const caps = ({ existsPaths, declared = ['gcec'], task = validTask }) => ({
   loadTask: () => task,
 });
 
-test('DISPATCH_PATH_RE accepts shared/ and local/ task paths and nothing else', () => {
-  assert.ok(DISPATCH_PATH_RE.test('.claudinite/shared/packs/basics/tasks/baselining/task.md'));
-  assert.ok(DISPATCH_PATH_RE.test(goodPath));
-  assert.ok(!DISPATCH_PATH_RE.test('.claudinite/local/packs/gcec/tasks/create-extractor/task.mjs'));
-  assert.ok(!DISPATCH_PATH_RE.test('packs/gcec/tasks/create-extractor/task.md'));
-  assert.ok(!DISPATCH_PATH_RE.test('.claudinite/local/packs/gcec/tasks/create-extractor/task.md#x'));
+test('DISPATCH_PATH_RE accepts shared/, local/, and the canon root packs/ forms — nothing else', () => {
+  assert.ok(DISPATCH_PATH_RE.test('.claudinite/shared/packs/basics/tasks/baselining/task.md')); // consumer canon pack
+  assert.ok(DISPATCH_PATH_RE.test(goodPath));                                                    // local pack
+  assert.ok(DISPATCH_PATH_RE.test('packs/grow_with_claudinite/tasks/growth-extract/task.md'));   // the CANON's own root pack
+  assert.ok(!DISPATCH_PATH_RE.test('.claudinite/local/packs/gcec/tasks/create-extractor/task.mjs')); // not task.md
+  assert.ok(!DISPATCH_PATH_RE.test('src/packs/gcec/tasks/create-extractor/task.md'));            // prefix must be exactly a mount root or nothing
+  assert.ok(!DISPATCH_PATH_RE.test('.claudinite/local/packs/gcec/tasks/create-extractor/task.md#x')); // trailing junk
+});
+
+test('validateDispatchBody resolves pack/task from the canon root packs/ form', () => {
+  const root = 'packs/grow_with_claudinite/tasks/growth-extract/task.md';
+  const mjs = root.replace('task.md', 'task.mjs');
+  const v = validateDispatchBody(`${root}\n`, caps({ existsPaths: [root, mjs], declared: ['grow_with_claudinite'] }));
+  assert.equal(v.ok, true);
+  assert.equal(v.pack, 'grow_with_claudinite');
+  assert.equal(v.task, 'growth-extract');
 });
 
 test('validateDispatchBody accepts a well-formed dispatch and resolves model + outcome', () => {

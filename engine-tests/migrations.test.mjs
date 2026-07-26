@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   loadMigrations, resolvePath, applyFileAliases, retirableMigrations,
+  migrationsPastTtl, MIGRATIONS_OLD_SUBDIR,
   applyMaterializations, applyRewrites, migrationActive,
   migrationAgentic, agenticMigrations,
 } from '../migrations/registry.mjs';
@@ -89,6 +90,30 @@ test('retirableMigrations: blocked by unknowns, pending repos, same-day landing,
     retirableMigrations([base], { pending: clean, unknownCount: 0, today: '2026-07-13', appliedThisCycle: new Set() }).map((m) => m.id),
     ['x'],
   );
+});
+
+test('retirableMigrations: never fleet-deletes an already-archived (migrations-old) record', () => {
+  const archived = M({ id: 'x', landed: '2026-07-12', subdir: MIGRATIONS_OLD_SUBDIR });
+  const clean = new Map([['x', 0]]);
+  assert.deepEqual(retirableMigrations([archived], { pending: clean, unknownCount: 0, today: '2026-07-20' }), []);
+});
+
+// --- migrationsPastTtl (the TTL archiver's selection) ------------------------
+
+test('migrationsPastTtl: selects records older than the TTL, skips younger and archived', () => {
+  const migs = [
+    M({ id: 'old', landed: '2026-07-01' }),      // 14 days before today → past a 7d TTL
+    M({ id: 'young', landed: '2026-07-13' }),    // 2 days → within TTL
+    M({ id: 'edge', landed: '2026-07-08' }),     // exactly 7 days → at the TTL (aged out)
+    M({ id: 'gone', landed: '2026-07-01', subdir: MIGRATIONS_OLD_SUBDIR }), // already archived
+  ];
+  const out = migrationsPastTtl(migs, { today: '2026-07-15', ttlDays: 7 });
+  assert.deepEqual(out.map((m) => m.id).sort(), ['edge', 'old']);
+});
+
+test('migrationsPastTtl: an empty set when nothing has aged out', () => {
+  const migs = [M({ id: 'a', landed: '2026-07-14' }), M({ id: 'b', landed: '2026-07-15' })];
+  assert.deepEqual(migrationsPastTtl(migs, { today: '2026-07-15', ttlDays: 7 }), []);
 });
 
 test('applyMaterializations: creates a dest from its template when missing or drifted; skips when equal; gated by appliesTo', async () => {

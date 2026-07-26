@@ -1,21 +1,20 @@
 # Claudinite per-repo task scheduler — the repo's ONLY cron
-# (per-project-scheduling DESIGN §3). A thin shim: all logic lives in the
-# vendored engine, so this file changes rarely (schema and behavior changes ride
-# the vendor refresh, not edits here). It runs hourly on a repo-hashed minute
-# constrained to :10–:50 — spreading the fleet, dodging GitHub's :00 stampede,
-# and staying clear of the hour boundary the slot math anchors on.
+# (per-project-scheduling DESIGN §3). A thin shim: all logic lives in the engine,
+# so this file changes rarely. It runs hourly on this repo's stable hashed minute
+# constrained to :10–:50 (spreading the fleet, dodging GitHub's :00 stampede, and
+# staying clear of the hour boundary the slot math anchors on).
 #
-# The minute below is a placeholder; bootstrap/vendoring rewrites it to this
-# repo's stable hashed minute in :10–:50, computed by
-# `node .claudinite/shared/engine/scheduler/hash-minute.mjs <owner/repo>`
-# (scheduler-workflow-shape enforces the range; baselining re-derives the value to
-# catch drift). `workflow_dispatch` allows a manual run; the concurrency group
-# serializes runs so a slow run and its successor never overlap.
+# The canon variant: unlike a vendored consumer — whose shim calls
+# `.claudinite/shared/engine/scheduler/run.mjs` from its mount — the canon runs its
+# OWN engine at the repo root (`engine/scheduler/run.mjs`); it has no `.claudinite/
+# shared/` mount because it IS the source. The minute (44) is
+# `hashedMinute('missingbulb/Claudinite')` and is re-derivable by
+# `node engine/scheduler/hash-minute.mjs missingbulb/Claudinite`.
 name: Claudinite scheduler
 
 on:
   schedule:
-    - cron: '10 * * * *'
+    - cron: '44 * * * *'
   workflow_dispatch:
 
 concurrency:
@@ -23,9 +22,9 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write        # read the repo + vendored engine; baselining's deliver() pushes the maintenance branch (agent-preprocessing §7/E4)
+  contents: write        # read the repo; migrations-retire's TTL archiver moves records + baselining's deliver() (n/a on canon — self-skips)
   issues: write          # file / label / close dispatch issues
-  pull-requests: write   # baselining's deliver() opens the per-cycle maintenance PR and arms auto-merge
+  pull-requests: write   # migrations-retire opens the archive PR; agentful tasks' delivery
   actions: read          # read the run ledger (last successful run) for due-slot math
 
 jobs:
@@ -39,7 +38,8 @@ jobs:
       - name: Evaluate schedule and dispatch due tasks
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: node .claudinite/shared/engine/scheduler/run.mjs
+          FLEET_GITHUB_TOKEN: ${{ secrets.FLEET_GITHUB_TOKEN }}
+        run: node engine/scheduler/run.mjs
 
   # A scheduled run reaches no one when it goes red, so escalate a whole-run
   # failure to a human-visible `workflow-failure` issue (DESIGN §3.6,
