@@ -20,8 +20,8 @@ import dedupIntegrity from './dedup-integrity.mjs';
 // conversation-extract run_daily task (conversation-extract.md) mines those pushed
 // logs with growth-extract's access model — the logs branch is in the repo, so reading
 // it, committing lessons to local packs, and pruning aged logs are plain local git;
-// only posting the dialogue behind each extracted rule on its issue uses the GitHub
-// MCP tools — pruning logs past config.retention_days.
+// only posting the short summary behind each extracted rule on its issue uses the
+// GitHub MCP tools — pruning logs past config.retention_days.
 //
 // growth-discover-packs is the weekly pack-discovery pipeline: for the member it's
 // handed it manifests the stack, suggests a pack for each unhomed technology, populates

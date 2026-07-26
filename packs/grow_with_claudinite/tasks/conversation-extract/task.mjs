@@ -1,7 +1,7 @@
 // grow_with_claudinite task: conversation-extract — the conversation-side sibling
 // of growth-extract (per-project-scheduling DESIGN §6). Mines the repo's captured
 // conversation logs (the orphan `conversation-logs` branch) for durable lessons,
-// posts the dialogue behind each extracted rule on the issue it was worked under,
+// posts a short summary of the exchange behind each extracted rule on its issue,
 // and prunes logs past the entry's retention. Worker: task.md.
 //
 // Self-contained (imports nothing): the whole contract is this default export.

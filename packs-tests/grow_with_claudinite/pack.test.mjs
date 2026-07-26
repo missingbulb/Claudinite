@@ -12,7 +12,6 @@ import {
   parseLines, bundleStreams, sliceAfter, maxTimestamp, scrub, buildRedactionValues,
   logFilename, parseLogFilename, findTranscript,
 } from '../../packs/grow_with_claudinite/capture-log.mjs';
-import { renderDialogue, chunkText } from '../../packs/grow_with_claudinite/render-dialogue.mjs';
 import { runRule } from '../../engine/checks/helpers/work.mjs';
 import dedupIntegrity from '../../packs/grow_with_claudinite/dedup-integrity.mjs';
 
@@ -25,10 +24,6 @@ const userLine = (m, text) => JSON.stringify({ type: 'user', timestamp: ts(m), m
 const assistantLine = (m, text) => JSON.stringify({
   type: 'assistant', timestamp: ts(m), message: { content: [{ type: 'text', text }] },
 });
-const toolResultLine = (m) => JSON.stringify({
-  type: 'user', timestamp: ts(m), message: { content: [{ type: 'tool_result', tool_use_id: 'x', content: 'out' }] },
-});
-
 // --- pure helpers ------------------------------------------------------------
 
 test('parseLines keeps raw lines paired with parsed entries and skips junk', () => {
@@ -147,34 +142,6 @@ test('findTranscript returns null when there is nothing to find', () => {
     assert.equal(findTranscript({ root: '/x', sessionId: 'whatever', projects }), null);
     assert.equal(findTranscript({ root: '/x', sessionId: 'whatever', projects: join(projects, 'absent') }), null);
   } finally { rmSync(projects, { recursive: true, force: true }); }
-});
-
-// --- dialogue rendering -------------------------------------------------------
-
-test('renderDialogue keeps owner and assistant turns, drops tool traffic and meta', () => {
-  const entries = [
-    JSON.parse(userLine(1, 'please fix the bug')),
-    JSON.parse(assistantLine(2, 'looking into it')),
-    JSON.parse(toolResultLine(3)),
-    { type: 'user', timestamp: ts(4), isMeta: true, message: { content: 'injected' } },
-    { type: 'user', timestamp: ts(5), message: { content: '<system-reminder>noise</system-reminder>' } },
-    JSON.parse(userLine(6, 'thanks, LGTM')),
-    JSON.parse(assistantLine(7, 'merged')),
-  ];
-  const md = renderDialogue(entries);
-  assert.match(md, /\*\*Owner:\*\*\n+please fix the bug/);
-  assert.match(md, /\*\*Assistant:\*\*\n+looking into it/);
-  assert.match(md, /thanks, LGTM/);
-  assert.doesNotMatch(md, /tool_result|injected|system-reminder/);
-});
-
-test('chunkText splits at paragraph boundaries under the limit', () => {
-  const para = 'x'.repeat(100);
-  const text = Array.from({ length: 10 }, () => para).join('\n\n');
-  const chunks = chunkText(text, 350);
-  assert.ok(chunks.length > 1);
-  assert.ok(chunks.every((c) => c.length <= 350));
-  assert.equal(chunks.join('\n\n'), text); // nothing lost
 });
 
 // --- the growth-config check --------------------------------------------------
