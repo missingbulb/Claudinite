@@ -36,6 +36,27 @@ prose below). Entries accrete as sessions on the canon surface durable, canon-sp
   declared it. The natural drift-guard (a future check, once the home is clean) is: the home
   declares every `seededByDefault` non-local pack. (At the time of writing `tidy-repo` is
   `seededByDefault` yet absent from the home's declaration — the same gap, unverified.)
+- **A one-word merge approval still means run `merge-to-main` end to end — otherwise the
+  conversation capture never happens.** On "lgtm" / "merge to main" the tempting move is the
+  single `mcp__github__merge_pull_request` call, and the PR does land — but the skill's *last*
+  step, `node packs/grow_with_claudinite/capture-log.mjs --issue <n>`, is then silently skipped,
+  and that step is the only thing that feeds the whole conversation lifecycle. A dropped capture
+  is invisible: no error, no check, and the session ends. This bit two consecutive canon sessions
+  (2026-07-23, 2026-07-24), each needing two owner prompts ("did you record this conversation to
+  log?", then "there's a tool, in the merge to main skill") to recover it — the second session
+  even answered "there was no such step" before finding it. So: a terse approval is an
+  instruction to run the whole skill, not just its merge call. It stays prose rather than a check
+  because the conversation surface a work rule sees (`engine/checks/helpers/work.mjs`) exposes
+  only owner turns — detecting "a merge happened but capture didn't" needs the transcript's tool
+  calls, which only a shared-canon helper change could expose.
+- **Canon sessions usually have a consumer repo mounted too — pick the merge skill by the repo
+  being merged.** Work on the canon is routinely done in a session that also has a consumer
+  checkout (GCEC, most often), and consumers carry their *own* merge skill. Told to consult "the
+  merge to main skill" right after merging a **Claudinite** PR, the 2026-07-24 session loaded
+  GCEC's `merge-and-ci` — the nearest-named merge skill in the session, from the wrong repo — and
+  correctly reported it has no capture step, because that step is canon's. Consumer merge skills
+  are not substitutes for `packs/git-github/skills/merge-to-main/SKILL.md`; resolve a skill
+  against the repo whose PR you just merged.
 - **Fail-soft SessionStart steps hide their own breakage fleet-wide — test the emitted
   output, not the exit code.** Every `engine/pack_loader/` SessionStart step
   (`inject-pack-prose.mjs`, `mount-skills.mjs`, `env-requirements.mjs`) wraps its body in
