@@ -5,9 +5,20 @@ security-rules discipline (merge semantics, server-owned fields, default-deny), 
 Function patterns (verified-token identity, validation, transactional rate limits, batched
 fan-out), testing without live infrastructure (pure-logic extraction, the rules emulator when rules
 themselves are under test), and deploy layout (predeploy build hooks, committed project aliases).
-Prose-only. Earned in missingbulb/ShoutsAndWhispers (Firestore + Functions + FCM + Google
-sign-in). Environment separation and store gating are deliberately NOT here — that is the opt-in
+Mostly prose — the two mechanical halves of the deploy layout are checks. Earned in
+missingbulb/ShoutsAndWhispers (Firestore + Functions + FCM + Google sign-in). Environment
+separation and store gating are deliberately NOT here — that is the opt-in
 [firebase-release](../firebase-release/README.md) pack.
+
+## Checks
+
+Both are relevance-first: they say nothing until `firebase.json` declares a functions codebase
+whose `package.json` is in the checkout, so a rules-only or hosting-only Firebase repo is untouched.
+
+| Rule (≤5 words) | Severity | What |
+|---|---|---|
+| Functions pin their Node major | blocking | a deployed codebase's `package.json` declares `engines.node` |
+| Build script wired as predeploy | blocking | a codebase with a `build` script declares a `predeploy` hook in `firebase.json` |
 
 ## Prose (`RULES.md`) — by section
 
@@ -16,4 +27,4 @@ sign-in). Environment separation and store gating are deliberately NOT here — 
 | Rules are merge-aware, default-deny | prose (+ the project's rules tests) |
 | Functions own identity and limits | prose |
 | Test logic pure, rules empirically | prose (+ the project's suites) |
-| Deploy layout and aliases | prose |
+| Deploy layout and aliases | prose + the two checks above |

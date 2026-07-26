@@ -23,7 +23,7 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 | [google-identity](google-identity/README.md) | declared | 0 (3 in its skill) | 0 |
 | [html](html/README.md) | declared | 0 | 1 |
 | [flutter](flutter/README.md) | pubspec.yaml | 0 | 0 (stub) |
-| [firebase](firebase/README.md) | `firebase.json` | 0 | rules / functions / deploy discipline |
+| [firebase](firebase/README.md) | `firebase.json` | 2 | rules / functions / deploy discipline |
 | [firebase-release](firebase-release/README.md) | declared (opt-in) | 0 | dev/prod split + App Check store gating |
 | [android](android/README.md) | `AndroidManifest.xml` | 0 | stub |
 | [ios](ios/README.md) | `ios/Runner/Info.plist` | 0 | stub |
