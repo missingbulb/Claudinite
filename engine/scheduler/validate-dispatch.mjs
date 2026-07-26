@@ -16,8 +16,13 @@ import { resolveModel } from './model-map.mjs';
 
 // The only shape a dispatch first line may take (DESIGN §5.2). Anchored end to
 // end — no query strings, no trailing junk, exactly one pack and one task
-// segment under a shared/ or local/ root.
-export const DISPATCH_PATH_RE = /^\.claudinite\/(shared|local)\/packs\/([^/]+)\/tasks\/([^/]+)\/task\.md$/;
+// segment under a packs/ root. The `.claudinite/(shared|local)/` prefix is
+// OPTIONAL: a consumer's task path carries it (its canon is mounted at
+// `.claudinite/shared/packs/`, its own packs at `.claudinite/local/packs/`),
+// while the CANON repo runs its own tree and dispatches root-relative paths
+// (`packs/<pack>/…` for its canon packs, `.claudinite/local/packs/<pack>/…` for
+// its local packs). All three forms are legal; nothing else is.
+export const DISPATCH_PATH_RE = /^(?:\.claudinite\/(?:shared|local)\/)?packs\/([^/]+)\/tasks\/([^/]+)\/task\.md$/;
 
 // The task path a dispatch body points at — its first line, trimmed.
 export const dispatchFirstLine = (body) => String(body ?? '').split('\n')[0].trim();
@@ -35,7 +40,7 @@ export function validateDispatchBody(body, { exists, isPackDeclared, loadTask })
   const m = DISPATCH_PATH_RE.exec(firstLine);
   if (!m) return reject(`first line "${firstLine}" is not a valid task path (${DISPATCH_PATH_RE})`);
 
-  const [, , pack, task] = m;
+  const [, pack, task] = m;
   const taskPath = firstLine;
   const mjsPath = taskPath.replace(/task\.md$/, 'task.mjs');
 

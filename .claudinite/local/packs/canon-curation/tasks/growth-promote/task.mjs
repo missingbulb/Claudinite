@@ -17,6 +17,7 @@ export default {
   id: 'growth-promote',
   frequency: 'daily',                    // the 04:00 slot — after the fleet's 03:00 extracts (DESIGN §2)
   precondition_signals: ['fleet'],       // canon-only aggregate: which members changed their local packs
+  session_scope: 'fleet',                // reads every member's local packs → runs in the FLEET executor (ready-for-agent-fleet), not the self one
   agent_model: 'opus',                   // portability, dedup-vs-corpus, and routing are the heaviest judgment
   expected_outcome: 'open-pr',           // the judgment gate before shared canon — owner-approved, never auto-merged
   agent_instructions: 'task.md',

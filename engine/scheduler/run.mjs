@@ -12,7 +12,7 @@
 
 import { pathToFileURL } from 'node:url';
 import { dueSlots } from './slots.mjs';
-import { planDispatch, dispatchTitle, dispatchBody, DISPATCH_PREFIX, READY_LABEL, NEEDS_HUMAN_LABEL, SCHEDULER_LABELS } from './dispatch.mjs';
+import { planDispatch, dispatchTitle, dispatchBody, DISPATCH_PREFIX, READY_LABEL, NEEDS_HUMAN_LABEL, SCHEDULER_LABELS, readyLabelForScope } from './dispatch.mjs';
 import { isAgentless } from './model-map.mjs';
 import { runPreprocessing, preprocessingFailure, agentRequestPath, clearAgentRequest, agentRequested } from './preprocess.mjs';
 
@@ -112,7 +112,11 @@ export async function planRun({
         rec.inline = true;
       } else {
         const existing = await existingIssuesFor(task.pack, task.id);
-        rec.dispatch = planDispatch({ existing, pack: task.pack, task: task.id, slotId });
+        // Route the dispatch to the self or fleet ready label by the task's scope
+        // (the fleet/self executor split) — the executor routine wired to that
+        // label runs it.
+        const readyLabel = readyLabelForScope(task.decl.session_scope);
+        rec.dispatch = planDispatch({ existing, pack: task.pack, task: task.id, slotId, readyLabel });
       }
     }
     evaluations.push(rec);
@@ -219,7 +223,10 @@ async function main() {
   const fileHandoff = async (rec, taskObj) => {
     const title = dispatchTitle({ pack: rec.pack, task: rec.task, slotId: rec.slotId });
     const body = dispatchBody({ taskPath: taskObj.taskPath, pack: rec.pack, task: rec.task, slotId: rec.slotId, context: rec.context });
-    const res = await gh(`/repos/${repo}/issues`, { method: 'POST', body: { title, body, labels: [READY_LABEL] } });
+    // The scope-resolved ready label (self vs fleet) from planDispatch — the
+    // executor routine wired to it runs the task.
+    const readyLabel = rec.dispatch?.label ?? READY_LABEL;
+    const res = await gh(`/repos/${repo}/issues`, { method: 'POST', body: { title, body, labels: [readyLabel] } });
     if (res.status >= 300) console.log(`! failed to file dispatch issue for ${rec.pack}/${rec.task}: ${res.status}`);
   };
 

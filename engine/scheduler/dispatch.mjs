@@ -15,9 +15,21 @@
 // converges to (DESIGN §4 lifecycle). Kept here as the shared source for the
 // scheduler side; the executor reuses these plus `agent-running`.
 export const READY_LABEL = 'ready-for-agent';
+// A fleet-scoped task (session_scope: 'fleet') dispatches to a DISTINCT ready
+// label so a separate, broader-scoped executor routine runs it — keeping the
+// fleet-wide session grant off every ordinary project's self executor (the
+// per-project-scheduling fleet/self split). Only tasks that reach other repos use
+// this; today just growth-promote.
+export const READY_FLEET_LABEL = 'ready-for-agent-fleet';
 export const AGENT_RUNNING_LABEL = 'agent-running';
 export const NEEDS_HUMAN_LABEL = 'needs-human';
 export const WORKFLOW_FAILURE_LABEL = 'workflow-failure';
+
+// The ready label a task's dispatch is filed under, from its declared
+// session_scope ('self' default → READY_LABEL; 'fleet' → READY_FLEET_LABEL). The
+// one place this mapping lives, so the scheduler (which files) and any reader stay
+// in sync.
+export const readyLabelForScope = (scope) => (scope === 'fleet' ? READY_FLEET_LABEL : READY_LABEL);
 
 // The full label set the scheduler + executor drive, each with the colour and
 // description a bootstrap one-off would have given it. The scheduler ENSURES every
@@ -28,7 +40,8 @@ export const WORKFLOW_FAILURE_LABEL = 'workflow-failure';
 // the thing that assigns a label must guarantee it first — the
 // gha/label-create-before-add principle, enforced in code here.
 export const SCHEDULER_LABELS = [
-  { name: READY_LABEL, color: '0e8a16', description: 'Claudinite scheduler: dispatch issue ready for the executor to run' },
+  { name: READY_LABEL, color: '0e8a16', description: 'Claudinite scheduler: dispatch issue ready for the (self-scoped) executor to run' },
+  { name: READY_FLEET_LABEL, color: '1d76db', description: 'Claudinite scheduler: dispatch issue ready for the FLEET-scoped executor (a task that reaches other repos)' },
   { name: AGENT_RUNNING_LABEL, color: 'fbca04', description: 'Claudinite scheduler: the executor has claimed this issue and is running it' },
   { name: NEEDS_HUMAN_LABEL, color: 'd93f0b', description: 'Claudinite scheduler: an anomaly that converged here for human triage' },
   { name: WORKFLOW_FAILURE_LABEL, color: 'b60205', description: 'Claudinite scheduler: a scheduler run or task failed' },
@@ -87,8 +100,9 @@ export function dispatchBody({ taskPath, pack, task, slotId, context = [] }) {
 //     (makes double-runs and crash-retries safe).
 //   - at-most-one-open per task: any OPEN family issue (any slot) suppresses a
 //     new filing → an executor outage accumulates at most one issue per task.
-// Otherwise: create (the shell files it labeled `ready-for-agent`).
-export function planDispatch({ existing = [], pack, task, slotId }) {
+// Otherwise: create (the shell files it labeled with `readyLabel` — the
+// self/fleet ready label the task's scope resolves to, default `ready-for-agent`).
+export function planDispatch({ existing = [], pack, task, slotId, readyLabel = READY_LABEL }) {
   const title = dispatchTitle({ pack, task, slotId });
   const keyPrefix = `${dispatchTaskKey({ pack, task })} `;
   const family = existing.filter((i) => `${(i.title ?? '').trim()} `.startsWith(keyPrefix));
@@ -100,7 +114,7 @@ export function planDispatch({ existing = [], pack, task, slotId }) {
   if (open) {
     return { action: 'suppress', openIssue: open.number, reason: `an open dispatch issue (#${open.number}) already covers ${pack}/${task}` };
   }
-  return { action: 'create', title, label: READY_LABEL, reason: `no dispatch issue yet for ${pack}/${task} slot ${slotId}` };
+  return { action: 'create', title, label: readyLabel, reason: `no dispatch issue yet for ${pack}/${task} slot ${slotId}` };
 }
 
 // The period one slot id represents, from its leading kind char (h/d/w/m). Used

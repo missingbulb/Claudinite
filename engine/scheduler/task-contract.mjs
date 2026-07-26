@@ -20,6 +20,18 @@ const escapesTaskDir = (cmd) => /(^|\s)\//.test(cmd) || cmd.includes('..');
 // `merged-pr` may arm auto-merge. "No change" is always legal.
 export const OUTCOMES = ['none', 'open-pr', 'merged-pr'];
 
+// The executor-session repo scope a task needs (per-project-scheduling split):
+//   'self'  — the task touches only its own repo; a project-only executor session
+//             is all it needs. This is the default, and almost every task's scope.
+//   'fleet' — the task reaches across the owner's other repos (e.g. growth-promote
+//             reads every member's local packs), so its dispatch goes to a
+//             SEPARATE, broader-scoped executor. Isolating this to the few tasks
+//             that truly need it keeps the fleet-wide session grant off every
+//             ordinary project's executor. The scheduler routes a fleet task's
+//             dispatch to the `ready-for-agent-fleet` label so a distinct executor
+//             routine (with the owner's repos in its sources) runs it.
+export const SESSION_SCOPES = ['self', 'fleet'];
+
 // The signal-collector vocabulary (DESIGN §3.3). A task collects only the union
 // of what its due tasks declare. `fleet` is canon-only (consumers cannot declare
 // it) — that restriction is enforced where signals are collected, not here; the
@@ -59,6 +71,13 @@ export function validateTaskDeclaration(decl) {
   }
   if (typeof decl.precondition !== 'function') {
     bad('"precondition" is not a function', 'export a precondition(signals, config) that returns { run, reason, context? }');
+  }
+
+  // session_scope — OPTIONAL, defaults to 'self'. Only a task that reaches other
+  // repos declares 'fleet' (routed to the fleet executor). A bad value would
+  // silently mis-route the dispatch, so it is validated when present.
+  if (decl.session_scope !== undefined && !SESSION_SCOPES.includes(decl.session_scope)) {
+    bad(`"session_scope" ${JSON.stringify(decl.session_scope)} is not a legal session scope`, `omit it (defaults to "self") or set one of: ${SESSION_SCOPES.join(', ')}`);
   }
 
   // Preprocessing (agent-preprocessing DESIGN §2) — OPTIONAL. A command the

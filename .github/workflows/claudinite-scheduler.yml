@@ -40,3 +40,27 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           FLEET_GITHUB_TOKEN: ${{ secrets.FLEET_GITHUB_TOKEN }}
         run: node engine/scheduler/run.mjs
+
+  # A scheduled run reaches no one when it goes red, so escalate a whole-run
+  # failure to a human-visible `workflow-failure` issue (DESIGN §3.6,
+  # gha/scheduled-failure-escalation). Converges to ONE open issue by a fixed
+  # title (create-or-comment), and ensures the label first since a first-run
+  # failure may precede the scheduler's own label-ensure.
+  report-failure:
+    needs: schedule
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const title = 'Claudinite scheduler run failed';
+            await github.rest.issues.createLabel({ owner, repo, name: 'workflow-failure', color: 'b60205', description: 'Claudinite scheduler: a scheduler run or task failed' }).catch(() => {});
+            const run = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            const body = `The Claudinite scheduler run failed: ${run}`;
+            const found = await github.rest.search.issuesAndPullRequests({ q: `repo:${owner}/${repo} is:issue is:open in:title "${title}"` });
+            if (found.data.total_count > 0) await github.rest.issues.createComment({ owner, repo, issue_number: found.data.items[0].number, body });
+            else await github.rest.issues.create({ owner, repo, title, labels: ['workflow-failure'], body });

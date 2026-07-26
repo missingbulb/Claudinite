@@ -37,7 +37,11 @@ retirement of the legacy central planner it replaces) lives in
   issue — so an illegal or missing value means a task never fires, fires wrong,
   or writes past its declared ceiling. The same contract
   (`engine/scheduler/task-contract.mjs`) is re-validated at run time, so the
-  static and runtime views can't drift.
+  static and runtime views can't drift. Optionally, `session_scope` (`self` default
+  | `fleet`) declares whether the task reaches only its own repo or across the
+  owner's repos: a `fleet` task dispatches to the `ready-for-agent-fleet` label so a
+  distinct, broader-scoped executor runs it, keeping the fleet-wide session grant
+  off every ordinary project's `ready-for-agent` (self) executor.
 
 - **Every run is bounded.** An agentic task (`agent_model !== none`) declares
   `agent_execution_timeout` — seconds bounding the agentic run
