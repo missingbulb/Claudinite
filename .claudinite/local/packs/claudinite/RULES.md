@@ -24,6 +24,18 @@ prose below). Entries accrete as sessions on the canon surface durable, canon-sp
   edges, `siblings`/`scope` capabilities — extend barriers generically if a capability is
   missing). Never write standalone code that checks packs-tree segregation.
 
+- **Multi-session work hands off through the tracking issue, never through a prepared prompt**
+  (owner correction, 2026-07-23). When a change spans sessions, the state that the next session
+  needs — what landed, what is open, what comes next — belongs in the tracking issue (and the
+  design doc it points at), kept current as the work moves. Do not compose a bespoke "pick up
+  from here" prompt for the next session: the owner's opener is `continue work on #<n>`, so
+  anything not written into the issue is lost. The correction cost a full round-trip once already
+  — a handover prompt was drafted on request, then replaced 74 minutes later with *"Is everything
+  in the doc/tracking issue? It's better to hand off with a 'look at the issue and continue work'
+  instead of a prompt handover"*; the next session on that issue opened with exactly that phrase.
+  So before ending a session on unfinished work, update the tracking issue first and let the
+  session summary be a pointer to it.
+
 ## Canon-specific gotchas
 
 - **Baselining backfill skips the home — hand-declare fleet-seeded packs here.** The nightly
