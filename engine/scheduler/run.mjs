@@ -231,9 +231,21 @@ export async function maintainDispatchIssues(gh, repo, now, { labelsEnsured = fa
 export async function ensureLabels(gh, repo, labels) {
   for (const { name, color, description } of labels) {
     const res = await gh(`/repos/${repo}/labels`, { method: 'POST', body: { name, color, description } });
-    if (res.status !== 201 && res.status !== 422) {
-      console.log(`! could not ensure label "${name}": ${res.status}`);
+    if (res.status === 201) continue;                       // created to spec — nothing further
+    if (res.status === 422) {
+      // The NAME is taken; that says nothing about the colour or description. A
+      // label GitHub auto-created (applying an unknown name to an issue mints it
+      // grey `ededed`, no description) would keep those defaults for good, because
+      // POST 422s forever. So reconcile the shape, not just the existence — that
+      // is what makes the self-healing claim above true for drift and not only for
+      // deletion. PATCH is idempotent: an already-correct label is a no-op write.
+      const fix = await gh(`/repos/${repo}/labels/${encodeURIComponent(name)}`, {
+        method: 'PATCH', body: { color, description },
+      });
+      if (fix.status !== 200) console.log(`! could not reconcile label "${name}": ${fix.status}`);
+      continue;
     }
+    console.log(`! could not ensure label "${name}": ${res.status}`);
   }
 }
 
