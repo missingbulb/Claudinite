@@ -4,8 +4,11 @@
 // the scheduler runs as a subprocess — no agent, no dispatch issue. It moves any
 // migration record past its 7-day TTL from `active_migrations/` to the canon-only
 // `migrations-old/` archive (still applies for backfill; stops shipping + stops
-// tolerating), delivered as one PR. No fleet status and no fleet PAT — the decision
-// is a pure age comparison over the canon's own records. Canon-only pack, so it
+// tolerating), delivered as one PR. No fleet status — the decision is a pure age
+// comparison over the canon's own records. It does name FLEET_GITHUB_TOKEN, for one
+// narrow reason: a PR opened over the Action's own GITHUB_TOKEN emits no
+// `pull_request` event, so CI never runs and the review gate this delivery leans on
+// doesn't exist (#432). The PAT authors only that one call. Canon-only pack, so it
 // runs only on the canon's scheduler.
 //
 // Self-contained (imports nothing): the whole contract is this default export.
@@ -19,6 +22,7 @@ export default {
   agent_instructions: 'task.md',         // vestigial for a none task; the real work is the preprocessing command
   agent_preprocessing: 'node worker.mjs',
   agent_preprocessing_timeout: 180,      // a handful of REST calls (read/create/delete per aged record) — a tight bound
+  required_secrets: ['FLEET_GITHUB_TOKEN'], // so the archive PR starts CI (#432) — absent, the worker warns and opens it anyway
 
   // Fire daily+1h unconditionally: the worker compares each active record's age to
   // the TTL and no-ops cheaply when nothing has aged out. A code precondition can't

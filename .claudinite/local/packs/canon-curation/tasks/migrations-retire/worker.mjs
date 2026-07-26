@@ -117,9 +117,17 @@ export async function main() {
     const open = await gh(`/repos/${repo}/pulls?state=open&head=${repo.split('/')[0]}:${ARCHIVE_BRANCH}`);
     const hasOpen = open.status === 200 && Array.isArray(open.json) && open.json.length > 0;
     if (!hasOpen) {
-      const pr = await gh(`/repos/${repo}/pulls`, { method: 'POST', body: { title: ARCHIVE_PR_TITLE, head: ARCHIVE_BRANCH, base: defaultBranch, body: ARCHIVE_PR_BODY } });
+      // Open the PR over the PAT when one is present, NOT the Action's GITHUB_TOKEN:
+      // GitHub suppresses workflow runs for events its own token authored, so a
+      // GITHUB_TOKEN-opened PR emits no `pull_request` and ci.yml never runs — the
+      // archive lands presenting as "no checks", and the review gate this task's
+      // whole design leans on silently doesn't exist (#432). The file writes above
+      // stay on GITHUB_TOKEN; only the event that must start CI needs the PAT.
+      const prGh = process.env.FLEET_GITHUB_TOKEN ? makeGh(process.env.FLEET_GITHUB_TOKEN) : gh;
+      if (!process.env.FLEET_GITHUB_TOKEN) log('WARNING: no FLEET_GITHUB_TOKEN — opening the PR over GITHUB_TOKEN, so CI will NOT run on it. Review the branch manually before merging.');
+      const pr = await prGh(`/repos/${repo}/pulls`, { method: 'POST', body: { title: ARCHIVE_PR_TITLE, head: ARCHIVE_BRANCH, base: defaultBranch, body: ARCHIVE_PR_BODY } });
       if (pr.status >= 300) log(`archived on ${ARCHIVE_BRANCH} but could not open its PR (${pr.status})`);
-      else log(`opened archive PR #${pr.json?.number}.`);
+      else log(`opened archive PR #${pr.json?.number}${process.env.FLEET_GITHUB_TOKEN ? '' : ' (no CI — see the warning above)'}.`);
     } else {
       log(`archive PR already open on ${ARCHIVE_BRANCH} — amended in place.`);
     }
