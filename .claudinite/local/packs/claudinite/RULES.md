@@ -41,6 +41,21 @@ prose below). Entries accrete as sessions on the canon surface durable, canon-sp
   declared it. The natural drift-guard (a future check, once the home is clean) is: the home
   declares every `seededByDefault` non-local pack. (At the time of writing `tidy-repo` is
   `seededByDefault` yet absent from the home's declaration — the same gap, unverified.)
+- **A canon session with a consumer repo also in its sources will reach for the *consumer's*
+  merge skill — merge by the skill of the repo you are merging into.** Canon work is routinely
+  dual-repo (the canon plus the fleet member being piloted; #394's rollout ran that way for days),
+  and both repos ship a merge skill under different names — the canon's
+  `packs/git-github/skills/merge-to-main/` and, say, GCEC's local `merge-and-ci`. The consumer's
+  skill wins the match on name/description and is followed to the letter, so the canon-only steps
+  in *its* recipe are silently skipped. Concretely and repeatedly: the **post-merge conversation
+  capture** (`node packs/grow_with_claudinite/capture-log.mjs --issue <n>`, the "After the merge"
+  section of `merge-to-main`) was missed after a merge to canon `main` in **three consecutive
+  sessions** (2026-07-23 ×2, 2026-07-24), each time costing the owner two prompts to recover
+  ("did you record this conversation to log?" → "there's a skill for that"), and each miss is a
+  conversation the growth lifecycle would have lost outright had the owner not caught it. So:
+  before merging in a dual-repo session, resolve the merge skill **by target repo**, not by which
+  skill matched first — and treat capture as part of the merge, not as an optional epilogue.
+
 - **Fail-soft SessionStart steps hide their own breakage fleet-wide — test the emitted
   output, not the exit code.** Every `engine/pack_loader/` SessionStart step
   (`inject-pack-prose.mjs`, `mount-skills.mjs`, `env-requirements.mjs`) wraps its body in
@@ -54,6 +69,27 @@ prose below). Entries accrete as sessions on the canon surface durable, canon-sp
   against a real corpus and asserts the **positive** effect — prose IS emitted — never merely
   that `status === 0` (which fail-soft makes meaningless); see
   `engine-tests/pack_loader/inject-pack-prose.test.mjs`.
+- **The nightly self-refresh cannot repair the vendor-set computation — pin operational
+  files against the REAL canon tree.** Baselining's converge re-runs
+  `vendoring/compute-vendor-set.mjs` from canon HEAD, so a bug *in that computation* is
+  the one class of canon regression that is not self-healing: every refresh faithfully
+  reproduces it, and recovery is an out-of-band vendor refresh applied to each member by
+  hand. This bit once (#413): the blanket "engine `*.md` is canon-maintainer reference"
+  exclusion swept up `engine/scheduler/executor.md` — the executor routine's operating
+  instructions, which a consumer's executor reads from its own mount — so every cut-over
+  member's executor booted with no instructions and drained nothing (GCEC filed six
+  `ready-for-agent` dispatches and ran none), and baselining could not fix it. So when the
+  vendor set excludes by *pattern*, an operational file that matches needs a by-path
+  whitelist (`VENDORED_ENGINE_DOCS`) **and** a regression test asserting against the real
+  canon tree, not only a synthetic fixture: a fixture keeps proving the whitelist mechanism
+  works while the live path silently drops out from under it (see the paired tests in
+  `vendoring/compute-vendor-set.test.mjs`).
+- **You cannot force a due slot by running the scheduler workflow by hand.** Dueness is
+  stateless — a slot is due iff its time falls in `(last successful run, now]` — so a
+  `workflow_dispatch` run outside the slot's window succeeds, prints `- no tasks due`, and
+  does nothing. It looks like a healthy run, which is why it costs a debugging session
+  every time (it stalled the GCEC E4 pilot). To exercise a task Action-side, invoke its
+  worker directly, or move the slot hour in `taskScheduler` and wait for the cron.
 - **The home has no `.claudinite/shared/` mount — machinery paths must accept both roots.** A
   consumer runs the vendored engine under `.claudinite/shared/engine/…` with its packs under
   `.claudinite/(shared|local)/packs/…`; the canon home *is* the corpus and runs the same code from
