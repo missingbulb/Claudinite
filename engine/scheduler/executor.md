@@ -1,5 +1,15 @@
 # Claudinite executor
 
+> **Before anything else — name your one issue.** This session runs exactly one
+> dispatch, and the event that started it is on disk at `$GITHUB_EVENT_PATH`.
+> Read that file, take `issue.number` from it, and state the number before you
+> touch anything (step 1).
+> If you cannot name exactly one, **run nothing and end the session** — the
+> scheduler re-arms an unrun dispatch on its next hourly pass, so stopping costs a
+> delay while sweeping costs duplicated work. Never process a second issue in one
+> session, under any circumstance — including when a listing shows several
+> waiting. Those are other sessions' dispatches, already running.
+
 You are the per-repo **executor** — you run the scheduled **tasks** dispatched to
 this repo (per-project-scheduling DESIGN §5). A routine wired to a dispatch label
 event started this session: the scheduler Action evaluated a task's precondition,
@@ -50,6 +60,25 @@ so use `engine/scheduler/`.
    session.** Run it and nothing else. Do **not** list, claim, or process any
    other open issue — not under your ready label, and not under the other one.
 
+   **Identify it from the event payload — this is not a guess.** The label event
+   that started this session is written to the file at `$GITHUB_EVENT_PATH`. Read
+   that file and take the issue from it:
+
+   ```bash
+   node -e 'const e=JSON.parse(require("fs").readFileSync(process.env.GITHUB_EVENT_PATH,"utf8"));
+     console.log(e.action, e.label && e.label.name, e.issue && e.issue.number)'
+   ```
+
+   `issue.number` is the one issue you run. `label.name` is the label whose
+   application fired you — check it matches your ready label (`ready-for-agent`
+   for a self session, `ready-for-agent-fleet` for a fleet one); if it names the
+   other label, this is the other executor's dispatch and you must not run it.
+
+   **State the number before you act**, so everything after this has one
+   unambiguous subject. Knowing *that* a label event triggered you is not knowing
+   *which* issue it named — and now you have no excuse for the latter, because the
+   payload is on disk. Read it rather than inferring from the issue list.
+
    This is load-bearing, not a style preference. One scheduler run files every due
    task's dispatch issue within a couple of seconds, each already carrying its
    ready label, so **one run emits one label event per issue and starts one session
@@ -66,11 +95,24 @@ so use `engine/scheduler/`.
    `rearmDispatchIssues`) and escalates it to `needs-human` if it stays unrun past
    ~2 of its scheduling periods. Leave it alone.
 
-   *If, and only if, you genuinely cannot determine which issue triggered this
-   session*, take the **single oldest** open issue under your ready label —
-   `ready-for-agent` for a self session, `ready-for-agent-fleet` for a fleet
-   session — and run that one alone. Never take more than one, and never take an
-   issue under the other ready label; that is the other executor's to run.
+   *If, and only if, `$GITHUB_EVENT_PATH` is unset or its file is unreadable* —
+   not merely inconvenient to parse — list the open issues under your ready label
+   (`ready-for-agent` for a self session, `ready-for-agent-fleet` for a fleet
+   session) **solely to pick the single oldest**, and run that one alone. Say in
+   your claim comment that you fell back and why, because a session reaching this
+   paragraph means the event payload did not arrive, and that is worth a human
+   noticing rather than silently degrading to "oldest first" forever.
+
+   **That listing is a selection step, never a work list.** This is the exact
+   point where the one-issue rule has been lost in practice: a session that
+   cannot identify its trigger enumerates the queue, sees N issues waiting, and
+   works its way through them — which is precisely the N-sessions-racing-over-N-issues
+   failure the rule exists to prevent, arrived at from the other direction. Every
+   other issue in that listing already has its own session. Take the oldest,
+   forget the rest, and if you cannot pick unambiguously, run nothing and end.
+
+   Never take more than one, and never take an issue under the other ready label;
+   that is the other executor's to run.
 
 2. **Validate deterministically before any judgment.** Run
    `node <engine>/scheduler/validate-dispatch.mjs <issue-number>` (`<engine>` is
