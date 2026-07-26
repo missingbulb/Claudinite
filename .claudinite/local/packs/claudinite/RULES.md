@@ -50,7 +50,43 @@ prose below). Entries accrete as sessions on the canon surface durable, canon-sp
   conversation the growth lifecycle would have lost outright had the owner not caught it. So:
   before merging in a dual-repo session, resolve the merge skill **by target repo**, not by which
   skill matched first — and treat capture as part of the merge, not as an optional epilogue.
-
+- **Never re-serialize a repo's JSON config to apply an edit — patch the text.** A serializer
+  round-trip silently rewrites everything it wasn't asked to: Python's `json.dump`/`dumps` defaults
+  to `ensure_ascii=True`, so every non-ASCII character becomes a `\uXXXX` escape (an em dash in a
+  config string becomes its six-character `\u2014` escape), and indentation, key order and the
+  trailing newline become the
+  serializer's opinion rather than the file's. Nothing fails and the tests stay green, so the damage
+  rides onward in every commit that copies the file. This already landed in the merged mains of four
+  member repos during the phase-2 fleet flip (2026-07-21, #385) — TLDR, LaughCounter,
+  GoogleCalendarEventCreator, ShoutsAndWhispers — and was caught only because the owner happened to
+  read one line of a diff. Edit the JSON as anchored text; if you must round-trip, pin every lossy
+  default (`ensure_ascii=False`, the file's own indent, restore the trailing newline) and read the
+  resulting diff before committing. The engine's own writers are already lossless
+  (`JSON.stringify(…, null, 2)`) — the hazard is the ad-hoc Python patcher reached for mid-sweep.
+  (Portable — a promote candidate for the `repo-text-sweeps` skill, where a `\uXXXX`-in-tracked-JSON
+  check would carry it deterministically.)
+- **Test git fixtures must commit with signing off.** `engine-tests/helpers.mjs`'s `makeRepo`
+  overrides only author/committer identity, so a fixture commit still goes through the signing
+  service — and every `makeRepo` call site (31 of them) pays for it. When signing degrades, the
+  whole suite degrades with it: each fixture commit blocks on the service, and the suite leaks
+  descriptors until `git commit` and `git push` fail process-wide. This already cost a 31-minute
+  outage in one session (2026-07-23, #394): commits started failing, then `git push` died with
+  `too many open files`, measured at ~800 leaked FDs per full-suite run against a 4096 cap — about
+  four runs to re-trigger. The next session visibly rationed its own verification because of it
+  ("FD is climbing (3303/4096), so I'll avoid more full runs") — a leak that caps how much the
+  suite gets run is worse than a slow suite. Commit fixtures with
+  `git -c commit.gpgsign=false commit --no-gpg-sign`: signing a tmpdir throwaway buys nothing.
+  (Portable beyond the canon — a promote candidate for the `writing-tests` skill.)
+- **The canon home must declare `git-github`.** Skills mount only from *declared* packs
+  (`engine/pack_loader/mount-skills.mjs` unions over the active packs), and `git-github` is absent
+  from the home's `.claudinite-checks.json`. Its `merge-to-main` skill is what owns the post-merge
+  conversation capture (`capture-log.mjs --issue <n>`), so undeclared, the canon's own sessions
+  merge without capturing and the growth lifecycle silently loses its input — the one merge step
+  with no visible artifact when skipped. This bit twice in one day (2026-07-23, #394): the owner
+  had to prompt for the capture both times, and in the second session the agent first answered
+  that no such mechanism existed before rediscovering the skill. Note this is a *different* gap
+  from the baselining-backfill bullet above: that one reaches only `seededByDefault` packs
+  (`basics`, `grow_with_claudinite`, `tidy-repo`), and `git-github` is not among them.
 - **Fail-soft SessionStart steps hide their own breakage fleet-wide — test the emitted
   output, not the exit code.** Every `engine/pack_loader/` SessionStart step
   (`inject-pack-prose.mjs`, `mount-skills.mjs`, `env-requirements.mjs`) wraps its body in
