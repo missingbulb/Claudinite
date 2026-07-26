@@ -68,8 +68,9 @@ export default {
                                              //   means — it is a lifecycle bound, not a compute kill).
                                              //   Required whenever agent_model !== 'none'.
 
-  agent_preprocessing_secrets: ['SCRAPER_API_KEY'],  // OPTIONAL. The repo Actions secrets this worker reads
-                                             //   (§9). Only meaningful with agent_preprocessing.
+  required_secrets: ['SCRAPER_API_KEY'],     // OPTIONAL. The repo Actions secrets this task needs
+                                             //   CONFIGURED (§9). Declarative — it drives the ask,
+                                             //   it is not a permission list.
 };
 ```
 
@@ -84,9 +85,9 @@ enforce against this one contract:
   `agent_preprocessing` is set.
 - `agent_execution_timeout` is a positive integer and is **required** when
   `agent_model !== 'none'`. There is **always** a bound on an agentic run.
-- `agent_preprocessing_secrets`, if present, is a non-empty array of legal repo
-  secret names (upper snake, never `GITHUB_`-prefixed) and requires
-  `agent_preprocessing` — secrets reach the worker and nothing else (§9).
+- `required_secrets`, if present, is an array of secret names. That is the whole
+  rule: whether the repo has configured them is a fact about the repo, checked
+  where the bundle is readable, never at author time (§9).
 - `agent_model: none` with **no** `agent_preprocessing` is now an error: an
   agentless task with no preprocessing does nothing. (`none` used to imply the
   inline `worker.mjs` — that path is folded into preprocessing; see §4.)
@@ -264,53 +265,71 @@ Consequences to wire:
    before the agent; communicates with the agent through the repo only.
 
 
-## 9. Task-declared repo secrets — and the workflows they retire
+## 9. Required secrets — declared, and asked for
 
 Preprocessing runs Action-side, so a repo's **Actions secrets** are reachable
-there. They are reachable *nowhere else* in a task's life: the executor session
-is MCP-only and carries no repo token or secret, by design (§7). That asymmetry
-is the mechanism's second load-bearing consequence, after dropping canon from the
-session — **a workflow whose only job was to hold a secret on an agent's behalf
-is now redundant.**
+there. They are reachable *nowhere else* in a task's life: the executor session is
+MCP-only and carries no repo token or secret, by design (§7). That asymmetry is the
+mechanism's second load-bearing consequence, after dropping canon from the
+session — **a workflow whose only job was to hold a secret on an agent's behalf is
+now redundant.**
 
 The pattern it retires is a real one, and GCEC had the canonical instance: the
 create-extractor routine needed one page fetched through ScraperAPI, the agent
 session could not hold `SCRAPER_API_KEY`, so the fetch was exiled into a
-`workflow_dispatch`-only workflow that the agent dispatched, polled to
-completion, and then `git pull`ed the result of. Three round-trips, a second
-failure surface, and a whole workflow file — all to put one `curl` on the other
-side of a credential boundary that preprocessing no longer has.
+`workflow_dispatch`-only workflow that the agent dispatched, polled to completion,
+and then `git pull`ed the result of. Three round-trips, a second failure surface,
+and a whole workflow file — all to put one `curl` on the other side of a credential
+boundary that preprocessing no longer has.
 
-**The contract.** A task lists the secrets its worker reads:
+### The declaration
+
+A task lists the secrets it needs configured:
 
 ```js
-agent_preprocessing_secrets: ['SCRAPER_API_KEY'],
+required_secrets: ['SCRAPER_API_KEY'],
 ```
 
-**The delivery path.** GitHub Actions cannot select secrets dynamically — an
-expression must name each one — so the vendored scheduler stub passes the whole
-bundle to the engine once:
+This is **the adoption interview's shape applied to configuration** — deliberately,
+because it is the same problem. A pack declares `questions` it needs the project to
+answer; a task declares secrets it needs the repo to hold. In both, the *gap*
+(declared minus held) drives an **ask**, and in neither is the gap a gate:
 
-```yaml
-CLAUDINITE_SECRETS: ${{ toJSON(secrets) }}
-```
+| | adoption interview | required secrets |
+|---|---|---|
+| declared by | a pack's `questions` | a task's `required_secrets` |
+| satisfied by | `answers` on the pack entry | the repo's Actions secrets |
+| the gap drives | a mild SessionStart note | one standing owner issue |
+| asked at adoption by | `AskUserQuestion` (bootstrap Part 2) | the owner, same moment, same part |
+| ever a finding / gate? | **no** | **no** |
 
-and the engine does the selection: it resolves the declared names, hands the
-worker **only those**, and **strips the bundle** from the subprocess env
-(`preprocessingEnv`). So the least-privilege boundary is the task declaration —
-a worker's ambient authority is exactly the list in its own `task.mjs`, which is
-tracked, reviewed code. The scheduler process holds more than any one worker
-does; that is unavoidable (it is the thing Actions handed the secrets to) and is
-the same trust level the run already has via `GITHUB_TOKEN`.
+The one real difference is *who can answer*. A pack question can be answered
+in-session, so the interview surfaces it as a session note. A secret can only be
+added in repo settings by someone with admin rights, and the run that discovers the
+gap is unattended — so the ask is an **issue**, which waits for the owner without
+blocking anything. One open issue per repo (searched by exact title), so a
+permanently unconfigured secret costs one issue, not one per hourly run. Baselining
+confirms and closes it rather than filing a second.
 
-**Failure is named, not diagnosed.** A declared secret this repo has not
-configured fails the task **before the subprocess spawns**, converging to the
-family's one `needs-human` issue with the secret's name — rather than letting the
-worker run and fail on a 401 whose cause a human then has to work backwards from.
-An empty-string value counts as unconfigured (`toJSON(secrets)` renders an unset
-name that way).
+### Delivery is not the interesting part
 
-**What this does not change.** Secrets are a *worker* capability, not a channel
-to the agent: preprocessing still communicates with the agent only through the
-repository (§3), so a secret's product is a committed artifact (a recorded page,
-a fetched dataset), never a value threaded into the dispatch issue.
+Actions cannot name secrets dynamically, so the vendored stub passes the bundle to
+the engine once (`CLAUDINITE_SECRETS: ${{ toJSON(secrets) }}`), and
+`preprocessingEnv` unpacks it into the worker's environment, dropping the empty
+strings Actions renders for unset names. `required_secrets` does **not** filter
+that: it is a statement of need, not a permission list. Workers are tracked,
+reviewed code already holding the Action `GITHUB_TOKEN`, so a permission boundary
+between them would be ceremony — the honest boundary is the repo's own secret list.
+
+A task that runs without a secret it needs fails on its own terms, with its own
+message. That is the correct place for it: the run-time failure and the
+configuration ask are different problems with different audiences, and collapsing
+them into a pre-flight gate makes an ordinary "not set up yet" look like a broken
+pipeline.
+
+### What this does not change
+
+Secrets are a *worker* capability, not a channel to the agent: preprocessing still
+communicates with the agent only through the repository (§3), so a secret's product
+is a committed artifact (a recorded page, a fetched dataset), never a value threaded
+into the dispatch issue.

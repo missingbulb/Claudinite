@@ -49,6 +49,13 @@ guess" stance the align step always had. The mount, the wiring (scheduler workfl
 interview status, and declaration normalization are already handled deterministically
 by preprocessing (converge-wiring); you only touch what a check still flags.
 
+**Required secrets.** Run `node .claudinite/shared/engine/scheduler/required-secrets.mjs list`.
+Anything it prints is a repo Actions secret a scheduled task needs; the scheduler already files
+one standing issue asking the owner for it, so **do not file another** — just confirm that issue
+is open (title `Claudinite: configure required Actions secrets`) and, if the secret has since been
+added, close it. This is an ask, never a gate: a repo may sit with one unconfigured, and the task
+that needs it simply doesn't work yet. Never invent a value, and never move a secret into the repo.
+
 **One thing preprocessing cannot repair — the executor routine.** The label-wired
 CCR routine that fires on `ready-for-agent` (model `sonnet`, launcher prompt
 `Execute the Claudinite executor: .claudinite/shared/engine/scheduler/executor.md`,

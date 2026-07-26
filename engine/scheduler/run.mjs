@@ -14,7 +14,8 @@ import { pathToFileURL } from 'node:url';
 import { dueSlots } from './slots.mjs';
 import { planDispatch, dispatchTitle, dispatchBody, DISPATCH_PREFIX, READY_LABEL, NEEDS_HUMAN_LABEL, SCHEDULER_LABELS, readyLabelForScope } from './dispatch.mjs';
 import { isAgentless } from './model-map.mjs';
-import { runPreprocessing, preprocessingFailure, agentRequestPath, clearAgentRequest, agentRequested, resolveTaskSecrets, preprocessingEnv, SECRETS_BUNDLE_VAR } from './preprocess.mjs';
+import { runPreprocessing, preprocessingFailure, agentRequestPath, clearAgentRequest, agentRequested, preprocessingEnv, parseSecretsBundle, SECRETS_BUNDLE_VAR } from './preprocess.mjs';
+import { missingSecrets, renderSecretsIssue, SECRETS_ISSUE_TITLE } from './required-secrets.mjs';
 
 // The due tasks, each paired with the slot it runs under. Union the discovered
 // tasks' frequencies, ask slots which are due (run-ledger math), then map due
@@ -147,6 +148,32 @@ async function existingIssuesViaSearch(gh, repo, pack, task) {
 // thing that assigns them, guarantees them here. Idempotent (201 created / 422 already
 // exists are both success) and self-healing (a deleted label reappears next run), which
 // is why no separate one-off label-creation step is needed. Exported for the run tests.
+// Ask the owner to configure a declared-but-missing Actions secret (DESIGN §9) —
+// the unattended analogue of the pack adoption interview's mild note. One open
+// issue for the whole repo (searched by exact title, state=open), so a permanently
+// unconfigured secret costs one issue, not one per hourly run. Never a gate: this
+// runs beside the schedule and no task's outcome depends on it.
+export async function askForMissingSecrets(gh, repo, tasks, bundleRaw) {
+  const missing = missingSecrets(tasks, parseSecretsBundle(bundleRaw));
+  if (!missing.length) return null;
+  const q = encodeURIComponent(`repo:${repo} in:title "${SECRETS_ISSUE_TITLE}" state:open`);
+  const { status, json } = await gh(`/search/issues?q=${q}&per_page=10`);
+  const open = status === 200 && Array.isArray(json?.items)
+    ? json.items.find((i) => (i.title ?? '').trim() === SECRETS_ISSUE_TITLE)
+    : null;
+  if (open) {
+    console.log(`- required secrets missing (${missing.map((m) => m.name).join(', ')}) — #${open.number} already asks for them`);
+    return open.number;
+  }
+  const res = await gh(`/repos/${repo}/issues`, {
+    method: 'POST',
+    body: { title: SECRETS_ISSUE_TITLE, body: renderSecretsIssue(missing, repo) },
+  });
+  if (res.status >= 300) { console.log(`! could not file the required-secrets issue: ${res.status}`); return null; }
+  console.log(`- filed #${res.json?.number} asking for missing secret(s): ${missing.map((m) => m.name).join(', ')}`);
+  return res.json?.number ?? null;
+}
+
 export async function ensureLabels(gh, repo, labels) {
   for (const { name, color, description } of labels) {
     const res = await gh(`/repos/${repo}/labels`, { method: 'POST', body: { name, color, description } });
@@ -174,6 +201,12 @@ async function main() {
   const now = new Date();
   const lastSuccess = await lastSuccessTime(gh, repo);
   const schedule = config.taskScheduler;
+
+  // Ask the owner about any declared-but-unconfigured secret, over ALL discovered
+  // tasks rather than only the due ones — the gap is a fact about the repo's
+  // configuration, so a weekly task's missing secret should surface today, not on
+  // the day it next fires and fails.
+  await askForMissingSecrets(gh, repo, tasks, process.env[SECRETS_BUNDLE_VAR]);
 
   const due = computeDueTaskSlots(tasks, schedule, now, lastSuccess);
   const sinceIso = windowStart(due, now);
@@ -261,25 +294,11 @@ async function main() {
       // spuriously escalate this one.
       const requestPath = agentRequestPath(rec);
       clearAgentRequest(requestPath);
-
-      // The task's DECLARED repo secrets, resolved out of the workflow's secrets
-      // bundle (DESIGN §9). A declared secret this repo never configured fails the
-      // task HERE, before spawning: the worker would fail on it anyway, and
-      // "secret X is not configured" is the actionable message, not whatever the
-      // worker prints when its API call 401s.
-      const { env: secretEnv, missing } = resolveTaskSecrets(decl.agent_preprocessing_secrets, process.env[SECRETS_BUNDLE_VAR]);
-      if (missing.length) {
-        const why = `declared Actions secret(s) not configured on this repo: ${missing.join(', ')}`;
-        console.log(`! preprocessing ${rec.pack}/${rec.task} [${rec.slotId}]: ${why}`);
-        rec.preprocessResult = { ok: false, timedOut: false, code: null };
-        await fileNeedsHuman(rec, why, [`add them under Settings → Secrets and variables → Actions, or drop them from ${rec.task}'s agent_preprocessing_secrets`]);
-        continue;
-      }
-
       const result = await runPreprocessing(decl.agent_preprocessing, {
         taskDir: taskObj.taskDir,
-        // The worker never sees the secrets bundle — only the names it declared
-        // (preprocessingEnv strips it).
+        // preprocessingEnv unpacks the workflow's secrets bundle into the child's
+        // env (DESIGN §9). A task that needs one it hasn't got fails on its own
+        // terms; the owner is asked to add it separately (askForMissingSecrets).
         env: preprocessingEnv(process.env, {
           CLAUDINITE_REPO_ROOT: root,
           CLAUDINITE_REPO: repo,
@@ -288,7 +307,7 @@ async function main() {
           CLAUDINITE_PACK: rec.pack,
           CLAUDINITE_TASK: rec.task,
           CLAUDINITE_REQUEST_AGENT: requestPath,
-        }, secretEnv),
+        }),
         timeoutSeconds: decl.agent_preprocessing_timeout,
       });
       rec.preprocessResult = { ok: result.ok, timedOut: result.timedOut, code: result.code };

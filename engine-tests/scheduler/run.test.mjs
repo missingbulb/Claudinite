@@ -1,8 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeDueTaskSlots, signalsUnion, runPrecondition, renderSummary, planRun, ensureLabels } from '../../engine/scheduler/run.mjs';
+import { computeDueTaskSlots, signalsUnion, runPrecondition, renderSummary, planRun, ensureLabels, askForMissingSecrets } from '../../engine/scheduler/run.mjs';
 import { DEFAULT_SCHEDULE } from '../../engine/scheduler/slots.mjs';
 import { SCHEDULER_LABELS, READY_LABEL } from '../../engine/scheduler/dispatch.mjs';
+import { SECRETS_ISSUE_TITLE } from '../../engine/scheduler/required-secrets.mjs';
 
 const D = DEFAULT_SCHEDULE;
 
@@ -34,6 +35,52 @@ test('ensureLabels surfaces a genuine failure (not 201/422) without throwing', a
   } finally { console.log = orig; }
   assert.equal(logs.filter((m) => /could not ensure label/.test(m)).length, 1);
 });
+// --- askForMissingSecrets (agent-preprocessing DESIGN §9) --------------------
+// The ask must be an ask: one standing issue, never re-filed while open, and it
+// must never touch a task's outcome. These three tests are the whole guarantee
+// against an hourly scheduler turning "you haven't set a secret" into issue spam.
+
+const secretTask = (secrets) => ({ pack: 'gcec', id: 'create-extractor', decl: { required_secrets: secrets } });
+const quiet = async (fn) => {
+  const logs = []; const orig = console.log; console.log = (m) => logs.push(m);
+  try { return { result: await fn(), logs }; } finally { console.log = orig; }
+};
+
+test('askForMissingSecrets: files ONE issue when a declared secret is not configured', async () => {
+  const calls = [];
+  const gh = async (path, opts) => {
+    calls.push({ path, method: opts?.method, title: opts?.body?.title });
+    if (path.startsWith('/search/issues')) return { status: 200, json: { items: [] } };
+    return { status: 201, json: { number: 77 } };
+  };
+  const { result } = await quiet(() => askForMissingSecrets(gh, 'o/r', [secretTask(['SCRAPER_API_KEY'])], '{}'));
+  assert.equal(result, 77);
+  const posts = calls.filter((c) => c.method === 'POST');
+  assert.equal(posts.length, 1);
+  assert.equal(posts[0].title, SECRETS_ISSUE_TITLE);
+});
+
+test('askForMissingSecrets: never re-files while the ask is already open', async () => {
+  const calls = [];
+  const gh = async (path, opts) => {
+    calls.push({ path, method: opts?.method });
+    if (path.startsWith('/search/issues')) return { status: 200, json: { items: [{ number: 12, title: SECRETS_ISSUE_TITLE }] } };
+    return { status: 201, json: { number: 99 } };
+  };
+  const { result } = await quiet(() => askForMissingSecrets(gh, 'o/r', [secretTask(['SCRAPER_API_KEY'])], '{}'));
+  assert.equal(result, 12);                                     // the standing issue, not a new one
+  assert.equal(calls.filter((c) => c.method === 'POST').length, 0);
+});
+
+test('askForMissingSecrets: a configured secret asks nothing at all (no search, no issue)', async () => {
+  const calls = [];
+  const gh = async (path) => { calls.push(path); return { status: 200, json: { items: [] } }; };
+  const bundle = JSON.stringify({ SCRAPER_API_KEY: 'k' });
+  const { result } = await quiet(() => askForMissingSecrets(gh, 'o/r', [secretTask(['SCRAPER_API_KEY'])], bundle));
+  assert.equal(result, null);
+  assert.deepEqual(calls, []);                                  // the quiet path costs zero API calls
+});
+
 const mkTask = (id, over = {}) => ({
   pack: 'p', id,
   decl: {

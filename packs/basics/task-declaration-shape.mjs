@@ -77,13 +77,6 @@ const rule = {
           flag('"agent_preprocessing" is set but declares no numeric "agent_preprocessing_timeout"', 'add "agent_preprocessing_timeout": seconds after which the subprocess is killed');
         }
       }
-      // Declared repo secrets (DESIGN §9) are handed to the preprocessing
-      // subprocess only — on an agent-only task the field is silently inert, which
-      // is exactly the kind of "declared but never delivered" gap worth catching at
-      // author time.
-      if (/\bagent_preprocessing_secrets:\s*\[/.test(text) && !hasPreprocessing) {
-        flag('"agent_preprocessing_secrets" is declared without "agent_preprocessing"', 'secrets reach the preprocessing subprocess only (an agent session carries no repo secrets) — add the preprocessing command or drop the field');
-      }
     }
     return out;
   },

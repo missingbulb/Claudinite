@@ -81,19 +81,15 @@ test('validateTaskDeclaration validates agent_preprocessing + its required timeo
   );
 });
 
-test('validateTaskDeclaration validates agent_preprocessing_secrets (DESIGN §9)', () => {
-  const prep = { ...validTask, agent_preprocessing: 'node prepare.mjs', agent_preprocessing_timeout: 120 };
-  // a well-formed declaration alongside preprocessing is accepted
-  assert.deepEqual(validateTaskDeclaration({ ...prep, agent_preprocessing_secrets: ['SCRAPER_API_KEY'] }), []);
-  // an empty list, or a non-array, says nothing — reject rather than silently ignore
-  assert.match(validateTaskDeclaration({ ...prep, agent_preprocessing_secrets: [] })[0].what, /not a non-empty array/);
-  assert.match(validateTaskDeclaration({ ...prep, agent_preprocessing_secrets: 'SCRAPER_API_KEY' })[0].what, /not a non-empty array/);
-  // illegal names: lowercase, and the reserved GITHUB_ prefix (the Action token already rides in)
-  assert.match(validateTaskDeclaration({ ...prep, agent_preprocessing_secrets: ['scraper_api_key'] })[0].what, /not a legal repo secret/);
-  assert.match(validateTaskDeclaration({ ...prep, agent_preprocessing_secrets: ['GITHUB_TOKEN'] })[0].what, /not a legal repo secret/);
-  // secrets reach the preprocessing subprocess ONLY — declaring them without one is an error
-  const orphan = { ...validTask, agent_preprocessing_secrets: ['SCRAPER_API_KEY'] };
-  assert.match(validateTaskDeclaration(orphan)[0].what, /declared without "agent_preprocessing"/);
+test('validateTaskDeclaration accepts required_secrets as a plain list of names (DESIGN §9)', () => {
+  // Declarative, not a permission list: the only rule is "a list of names". Where
+  // it is declared, and whether the repo has them, are deliberately NOT its business.
+  assert.deepEqual(validateTaskDeclaration({ ...validTask, required_secrets: ['SCRAPER_API_KEY'] }), []);
+  assert.deepEqual(validateTaskDeclaration({ ...validTask, required_secrets: [] }), []);
+  assert.deepEqual(validateTaskDeclaration(validTask), []);              // absent is fine
+  // Only a shape that could not be read at all is rejected.
+  assert.match(validateTaskDeclaration({ ...validTask, required_secrets: 'SCRAPER_API_KEY' })[0].what, /not an array of secret names/);
+  assert.match(validateTaskDeclaration({ ...validTask, required_secrets: [''] })[0].what, /not an array of secret names/);
 });
 
 test('validateTaskDeclaration flags every malformed field', () => {
