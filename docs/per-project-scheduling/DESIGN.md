@@ -262,12 +262,19 @@ sessions burn on empty hours.
      One session, one issue: concurrency between sessions stays normal and becomes
      safe by construction. The recovery the sweep provided moves into deterministic
      scheduler code (below).
-  2. Run `node .claudinite/shared/engine/scheduler/validate-dispatch.mjs <n>`
-     — deterministic validation in code, before any model judgment: first line
-     matches `^\.claudinite\/(shared|local)\/packs\/[^/]+\/tasks\/[^/]+\/task\.md$`,
+
+     Steps 1 and 2 are one command: `resolve-dispatch.mjs` does both, so neither
+     the identification nor the validation depends on the session's judgment.
+  2. Deterministic validation in code, before any model judgment
+     (`resolve-dispatch.mjs`, over `validate-dispatch.mjs`'s pure core): the body's
+     first line matches
+     `^(\.claudinite\/(shared|local)\/)?packs\/[^/]+\/tasks\/[^/]+\/task\.md$`,
      the file exists at HEAD, its pack is declared, its `task.mjs` sibling
-     parses; prints the resolved model and outcome ceiling. Invalid → comment +
-     de-label + `needs-human`, skip.
+     parses; prints the resolved model and outcome ceiling. The issue body comes
+     from the event payload, so the whole gate runs with no GitHub call — which is
+     what makes it runnable in the MCP-only, tokenless executor session. Exit codes
+     are the interface: valid / invalid (comment + de-label + `needs-human`) /
+     not-this-scope / no-payload.
   3. **Claim** the issue as a *verified lease*, since GitHub offers no
      compare-and-swap on labels: **read** the current labels and abandon if the
      ready label is gone or `agent-running`/`needs-human` is present; **swap**
