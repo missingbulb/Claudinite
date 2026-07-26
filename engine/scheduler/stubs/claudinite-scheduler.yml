@@ -26,7 +26,10 @@ permissions:
   contents: write        # read the repo + vendored engine; baselining's deliver() pushes the maintenance branch (agent-preprocessing §7/E4)
   issues: write          # file / label / close dispatch issues
   pull-requests: write   # baselining's deliver() opens the per-cycle maintenance PR and arms auto-merge
-  actions: read          # read the run ledger (last successful run) for due-slot math
+  actions: write         # read the run ledger (last successful run) for due-slot math, AND
+                         # dispatch a workflow a task drives (store-release fires the release
+                         # orchestrator's daily leg) — creating a workflow_dispatch event needs
+                         # write, not read, and `read` silently 403s the POST
 
 jobs:
   schedule:
