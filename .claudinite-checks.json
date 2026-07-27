@@ -12,6 +12,7 @@
         "retention": "10 days — the recommended rethink window before a captured conversation log is pruned."
       }
     },
+    "tidy-repo",
     "local/claudinite",
     {
       "id": "local/canon-curation",

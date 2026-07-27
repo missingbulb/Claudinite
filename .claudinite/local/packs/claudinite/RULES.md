@@ -42,8 +42,8 @@ prose below). Entries accrete as sessions on the canon surface durable, canon-sp
   once — `grow_with_claudinite` was `seededByDefault` but predated the home's hand-curated
   declaration, so the canon's own sessions sat outside the conversation lifecycle until #356
   declared it. The natural drift-guard (a future check, once the home is clean) is: the home
-  declares every `seededByDefault` non-local pack. (At the time of writing `tidy-repo` is
-  `seededByDefault` yet absent from the home's declaration — the same gap, unverified.)
+  declares every `seededByDefault` non-local pack. (`tidy-repo` was the standing instance of that
+  gap — `seededByDefault`, yet absent here until #394 hand-declared it.)
 - **The home doesn't declare `git-github`, so its skills never mount — never conclude "no such
   skill" from `.claude/skills/`.** `mount-skills.mjs` filters on the *literal* declaration
   (`isActive(p, { packs: declared })`), not the `requires` closure `check_the_world.mjs` resolves,
