@@ -99,6 +99,7 @@ prose below).
   `workflow_dispatch` run outside the slot's window succeeds, prints `- no tasks due`, and
   does nothing. It looks like a healthy run. To exercise a task Action-side, invoke its
   worker directly, or move the slot hour in `taskScheduler` and wait for the cron.
+- **A code-search hit is evidence; a code-search miss is not — survey by reading each file.**
 - **Derive the test file list from the tree — every hand-written glob here under-runs the suite.**
   There is no `package.json` and no test script, so each session invents its own incantation and
   silently verifies less than it thinks. Measured in this checkout: `node --test <dir>` does not
