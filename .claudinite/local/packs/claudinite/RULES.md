@@ -120,6 +120,18 @@ prose below). Entries accrete as sessions on the canon surface durable, canon-sp
   does nothing. It looks like a healthy run, which is why it costs a debugging session
   every time (it stalled the GCEC E4 pilot). To exercise a task Action-side, invoke its
   worker directly, or move the slot hour in `taskScheduler` and wait for the cron.
+- **Derive the test file list from the tree — every hand-written glob here under-runs the suite.**
+  There is no `package.json` and no test script, so each session invents its own incantation and
+  silently verifies less than it thinks. Measured in this checkout: `node --test <dir>` does not
+  recurse — it resolves the path as a module and dies with `Cannot find module`; bash `**` is not
+  recursive without `globstar`, so `engine-tests/**/*.test.mjs packs-tests/**/*.test.mjs` reaches
+  **37 of 65** tracked test files. Four consecutive sessions (2026-07-26, #459/#452/#435/#468) each
+  wrote a different command and reported 587, 690, 621 and 697 tests — three of them pushed after
+  running a strict subset. Neither published list is authoritative either: `ci.yml`'s `tests=(…)`
+  array omits `vendoring/*.test.mjs`, and `engine/checks/README.md`'s "as CI runs it" one-liner
+  names `engine/test/`, `skills/` and `mount/`, none of which exist. So enumerate from git and let
+  the count speak: `node --test $(git ls-files '*.test.mjs')`. (The drift-guard, once the array is
+  clean: assert every tracked `*.test.mjs` is matched by `ci.yml`'s globs.)
 - **The home has no `.claudinite/shared/` mount — machinery paths must accept both roots.** A
   consumer runs the vendored engine under `.claudinite/shared/engine/…` with packs under
   `.claudinite/(shared|local)/packs/…`; the home *is* the corpus and runs the same code from the
