@@ -5,7 +5,11 @@
 // shared `(gh, ctx)` and returns a plain data object a precondition reads.
 //
 // Pure over the injected `gh` reader and a `ctx` of already-resolved facts, so
-// the whole layer tests against a fake `gh` with no live GitHub.
+// the whole layer tests against a fake `gh` with no live GitHub. The ctx facts a
+// collector cannot fetch for itself (manifest version, local-pack presence,
+// retention) are read off the checkout by run.mjs — see signals/local.mjs.
+
+import { LOCAL_PACK_ROOTS } from './local.mjs';
 
 // A default-branch commit is genuine project work unless it is bot/CI
 // housekeeping or one of Claudinite's own automated writes — the same exclusions
@@ -92,7 +96,7 @@ const COLLECTORS = {
   // one (under either local root during the rename window).
   async localPacks(gh, ctx) {
     const commits = ctx.commits ?? await windowCommits(gh, ctx.repo, ctx.defaultBranch, ctx.sinceIso);
-    const touches = (f) => f.startsWith('.claudinite/local/packs/') || f.startsWith('.claudinite/local_packs/');
+    const touches = (f) => LOCAL_PACK_ROOTS.some((r) => f.startsWith(r));
     const present = ctx.hasLocalPacks ?? null;
     return { present, changedInWindow: commits.some((c) => c.files.some(touches)) };
   },

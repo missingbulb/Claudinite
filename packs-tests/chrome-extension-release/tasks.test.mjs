@@ -8,7 +8,12 @@ import storeRelease from '../../packs/chrome-extension-release/tasks/store-relea
 
 const TASK_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../packs/chrome-extension-release/tasks/store-release');
 
-// The `release` signal's shape (engine/scheduler/signals/index.mjs).
+// The `release` signal's shape (engine/scheduler/signals/index.mjs). This is a
+// UNIT seam over a pure precondition — it asserts the decision, never that the
+// scheduler can actually produce `manifestVersion`. It could not, for a while,
+// and these stayed green throughout. The reachability half lives in
+// engine-tests/scheduler/signal-context.test.mjs (real checkout → real ctx →
+// this precondition); the two are only meaningful together.
 const S = (release = {}, commits = {}) => ({
   release: { latestTag: null, manifestVersion: null, ...release },
   commits: { substantiveChange: false, ...commits },

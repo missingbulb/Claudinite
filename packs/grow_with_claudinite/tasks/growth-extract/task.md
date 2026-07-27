@@ -38,7 +38,7 @@ Find it **by that exact title, never a fuzzy match or a hard-coded number** (a b
 
 ## Run on a capable model
 
-Deciding whether a lesson is genuinely new and durable — and deduping it against what's already documented — is a **judgment call**, not mechanical extraction. A downgraded model adds noise or restates what's there, and **auto-merge means no human reviews the PR before it lands** — CI gates correctness, not whether a "lesson" earns its keep — so the capable-model requirement matters all the more. This task declares `model: opus`; the executor dispatches its subagent there.
+Deciding whether a lesson is genuinely new and durable — and deduping it against what's already documented — is a **judgment call**, not mechanical extraction. A downgraded model adds noise or restates what's there, and **auto-merge means no human reviews the PR before it lands** — CI gates correctness, not whether a "lesson" earns its keep — so the capable-model requirement matters all the more. This task declares `agent_model: opus`; the executor dispatches its subagent there.
 
 ## What this task must never do
 

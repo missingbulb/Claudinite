@@ -20,11 +20,10 @@
 
 import { makeGh } from './gh.mjs';
 import { packEntryId } from '../../pack_loader/pack-registry.mjs';
-
 // Local-pack roots, canonical first — a window commit touching either is a local
 // -pack change (promote's trigger). Both are live until the Phase 4 cleanup drops
-// the legacy dual root.
-const LOCAL_ROOTS = ['.claudinite/local/packs/', '.claudinite/local_packs/'];
+// the legacy dual root. One definition, shared with the per-repo probes.
+import { LOCAL_PACK_ROOTS as LOCAL_ROOTS } from './local.mjs';
 
 async function paged(gh, path) {
   const out = [];
