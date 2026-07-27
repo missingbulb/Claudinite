@@ -1,5 +1,6 @@
 import growthConfig from './config-check.mjs';
 import dedupIntegrity from './dedup-integrity.mjs';
+import growthWriteScope from './growth-write-scope.mjs';
 
 // Opt into the growth lifecycle: a repo declaring grow_with_claudinite contributes its
 // hard-won lessons up to the Claudinite canon and prunes them back out once the canon
@@ -64,13 +65,14 @@ export default {
   seededByDefault: true,
   prose: null,
   worldRules: [growthConfig],
-  workRules: [dedupIntegrity],
+  workRules: [dedupIntegrity, growthWriteScope],
   skills: [
     'adopt-claudinite',
     'adopt-pack',
     'extract-from-activity',
     'extract-from-conversations',
     'generate-project-instructions',
+    'growth-dedup',
     'prose-to-checks',
     'unattended-agents',
   ],
