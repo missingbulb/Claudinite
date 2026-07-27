@@ -2,8 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   normalizeDelivery, resolveDelivery, DEFAULT_DELIVERY, pendingAgentic, heldStamp,
-  maintenanceBranchName, openMaintenanceBranch, shouldRequestAgent, unconfiguredSecrets,
-  SECRETS_ISSUE_TITLE,
+  maintenanceBranchName, openMaintenanceBranch, openMaintenancePull, shouldRequestAgent,
+  unconfiguredSecrets, SECRETS_ISSUE_TITLE,
 } from '../../packs/basics/tasks/baselining/worker.mjs';
 
 // The worker's PURE decision helpers (agent-preprocessing DESIGN §7, E4). The
@@ -84,6 +84,16 @@ test('openMaintenanceBranch finds an open PR head by prefix, else null', () => {
   assert.equal(openMaintenanceBranch([{ head: { ref: 'other' } }]), null);
   assert.equal(openMaintenanceBranch([]), null);
   assert.equal(openMaintenanceBranch(undefined), null);
+});
+
+// deliver() re-asserts the auto-merge arm on EVERY cycle, so the reuse path needs
+// the PR's node_id, not just its head ref — hence the whole object.
+test('openMaintenancePull returns the whole PR, so a reused one can still be armed', () => {
+  const mine = { node_id: 'PR_kw1', head: { ref: 'claudinite/maintenance-2026-07-23-zz' } };
+  assert.equal(openMaintenancePull([{ head: { ref: 'feature/x' } }, mine]), mine);
+  assert.equal(openMaintenancePull([{ head: { ref: 'other' } }]), null);
+  assert.equal(openMaintenancePull([]), null);
+  assert.equal(openMaintenancePull(undefined), null);
 });
 
 test('shouldRequestAgent: agent iff a pending note, or a change left non-green', () => {
