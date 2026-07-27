@@ -135,12 +135,38 @@ test('conversation-extract: a substantive merge (a fresh capture) fires it', () 
 
 test('conversation-extract: the age-based prune fires on a quiet repo — the weekly-sweep crutch retires', () => {
   // A log ages out on wall time, not on the repo changing.
-  const v = conversationExtract.precondition({ commits: { substantiveChange: false }, conversationLogs: { present: true, retentionDays: 10 } });
+  const v = conversationExtract.precondition({
+    commits: { substantiveChange: false },
+    conversationLogs: { present: true, retentionDays: 10, oldestLogAgeDays: 14 },
+  });
   assert.equal(v.run, true);
   assert.match(v.reason, /retention prune/);
 });
 
-test('conversation-extract: quiet with no logs branch, or with retention unset', () => {
+// The regression this gate exists for: "a logs branch exists and retention is
+// configured" is true on every capturing repo every day, so without the age test
+// an opus agent was dispatched daily to find nothing. Nothing is prunable until a
+// log is actually older than retention.
+test('conversation-extract: a quiet repo whose logs are all YOUNGER than retention does NOT fire', () => {
+  const v = conversationExtract.precondition({
+    commits: { substantiveChange: false },
+    conversationLogs: { present: true, retentionDays: 10, oldestLogAgeDays: 3 },
+  });
+  assert.equal(v.run, false);
+  assert.match(v.reason, /nothing to prune/);
+  // The boundary: at exactly retention the log has not yet aged OUT.
+  assert.equal(conversationExtract.precondition({
+    commits: { substantiveChange: false },
+    conversationLogs: { present: true, retentionDays: 10, oldestLogAgeDays: 10 },
+  }).run, false);
+});
+
+test('conversation-extract: quiet with no logs branch, retention unset, or an empty branch', () => {
   assert.equal(conversationExtract.precondition({ commits: {}, conversationLogs: { present: false } }).run, false);
   assert.equal(conversationExtract.precondition({ commits: {}, conversationLogs: { present: true } }).run, false);
+  // A branch with retention set but no logs at all — no age to compare.
+  assert.equal(conversationExtract.precondition({
+    commits: {},
+    conversationLogs: { present: true, retentionDays: 10, oldestLogAgeDays: null },
+  }).run, false);
 });

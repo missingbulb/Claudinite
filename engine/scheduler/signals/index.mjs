@@ -22,6 +22,23 @@ const isSubstantive = (c) => {
   return !HOUSEKEEPING.test(c.commit?.message ?? '');
 };
 
+// The capture stamp a conversation log's filename leads with:
+// `2026-07-19T0940Z--issue-123--<session>.jsonl` — minute precision, optionally
+// `-<k>` suffixed on a same-minute collision. Anything else on the logs branch
+// (its README) is not a log and has no age. The writer of that name is the
+// capture step in the pack that owns the branch, which core deliberately does not
+// import (engine/ depends on no pack, per the barrier); the drift guard in
+// engine-tests/scheduler/signals.test.mjs pins this parse to that writer, so
+// changing one without the other fails loudly rather than silently retiring the
+// prune trigger.
+const LOG_STAMP = /^(\d{4}-\d{2}-\d{2})T(\d{2})(\d{2})Z(?:-\d+)?--issue-\d+--.+\.jsonl$/;
+function logStampMs(name) {
+  const m = LOG_STAMP.exec(name);
+  if (!m) return null;
+  const ms = Date.parse(`${m[1]}T${m[2]}:${m[3]}:00Z`);
+  return Number.isFinite(ms) ? ms : null;
+}
+
 async function paged(gh, path) {
   const out = [];
   for (let page = 1; ; page += 1) {
@@ -118,9 +135,34 @@ const COLLECTORS = {
 
   // The conversation-logs orphan branch: present, and the age of its oldest JSONL
   // vs the configured retention (the age-based prune's trigger on quiet repos).
+  //
+  // Age comes from the FILENAME stamp, not from git/commit metadata. Commit dates
+  // are the authoritative record of when a blob landed, but they are the wrong
+  // authority here and cost more: (a) AGREEMENT — the consuming task's prune rule
+  // is itself stated over the filename stamp ("each log whose filename stamp is
+  // older than retention"), so a commit-date trigger would dispatch an agent over
+  // logs the worker then declines to prune, and stay silent on ones it would
+  // prune; (b) COST — one tree
+  // read covers the whole branch, against one commit-history read per file, and
+  // the branch accumulates one log per merged session. The name is machine-written
+  // by the pack's capture step, never user input, so "trusting the name" is
+  // trusting our own writer — and a drift guard pins the two formats together.
   async conversationLogs(gh, ctx) {
-    const { status } = await gh(`/repos/${ctx.repo}/branches/conversation-logs`);
-    return { present: status === 200, retentionDays: ctx.retentionDays ?? null };
+    const retentionDays = ctx.retentionDays ?? null;
+    const branch = await gh(`/repos/${ctx.repo}/branches/conversation-logs`);
+    if (branch.status !== 200) return { present: false, retentionDays, oldestLogAgeDays: null, logCount: 0 };
+
+    // Logs sit flat at the branch root beside its README; a non-200 tree read (or
+    // anything unparsable on it) is "no age to judge", never a failed collection.
+    const { status, json } = await gh(`/repos/${ctx.repo}/git/trees/conversation-logs`);
+    const stamps = (status === 200 && Array.isArray(json?.tree) ? json.tree : [])
+      .map((e) => logStampMs(e?.path ?? ''))
+      .filter((ms) => ms !== null);
+    const now = new Date(ctx.now).getTime();
+    const oldestLogAgeDays = stamps.length && Number.isFinite(now)
+      ? (now - Math.min(...stamps)) / 86400000
+      : null;
+    return { present: true, retentionDays, oldestLogAgeDays, logCount: stamps.length };
   },
 
   // The vendored-mount provenance stamp and its age; the canon head sha when the

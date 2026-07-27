@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { collectSignals, SIGNAL_COLLECTORS } from '../../engine/scheduler/signals/index.mjs';
 import { lastSuccessTime } from '../../engine/scheduler/signals/gh.mjs';
 import { windowStart } from '../../engine/scheduler/run.mjs';
+import { logFilename } from '../../packs/grow_with_claudinite/capture-log.mjs';
 
 // A fake gh keyed by regex → response (matches the fleet planner's test seam).
 const fakeGh = (routes) => async (path) => {
@@ -58,6 +59,61 @@ test('issues: dispatch issues and trackers are invisible; touched respects the w
   const out = await collectSignals(gh, ctx(), ['issues']);
   assert.deepEqual(out.issues.open.map((i) => i.number), [1, 4]);
   assert.deepEqual(out.issues.touched, [1]); // #4 is outside the window
+});
+
+// --- conversationLogs: the age of the oldest log, not just "a branch exists" ---
+// The collector's whole job on a quiet repo is to say whether anything is ACTUALLY
+// prunable. Returning only `{ present, retentionDays }` made every repo with a
+// logs branch look prunable every day.
+
+const logsTree = (names) => [
+  [/\/branches\/conversation-logs/, { status: 200, json: { name: 'conversation-logs' } }],
+  [/\/git\/trees\/conversation-logs/, { status: 200, json: { tree: names.map((p) => ({ path: p, type: 'blob' })) } }],
+];
+
+test('conversationLogs: the age of the OLDEST jsonl, from its filename stamp', async () => {
+  const gh = fakeGh(logsTree([
+    'README.md',
+    '2026-07-12T0940Z--issue-123--sess-a.jsonl',
+    '2026-07-20T1100Z--issue-124--sess-b.jsonl',
+  ]));
+  const out = await collectSignals(gh, ctx({ retentionDays: 10 }), ['conversationLogs']);
+  assert.equal(out.conversationLogs.present, true);
+  assert.equal(out.conversationLogs.retentionDays, 10);
+  assert.equal(out.conversationLogs.logCount, 2);          // README.md is not a log
+  // now = 2026-07-22T00:00Z; oldest stamp = 2026-07-12T09:40Z
+  assert.ok(Math.abs(out.conversationLogs.oldestLogAgeDays - 9.5972) < 0.001,
+    `oldestLogAgeDays was ${out.conversationLogs.oldestLogAgeDays}`);
+});
+
+test('conversationLogs: no branch, and a branch with no logs, are both "nothing prunable"', async () => {
+  const none = await collectSignals(fakeGh([]), ctx({ retentionDays: 10 }), ['conversationLogs']);
+  assert.equal(none.conversationLogs.present, false);
+  assert.equal(none.conversationLogs.oldestLogAgeDays, null);
+
+  const empty = await collectSignals(fakeGh(logsTree(['README.md'])), ctx({ retentionDays: 10 }), ['conversationLogs']);
+  assert.equal(empty.conversationLogs.present, true);
+  assert.equal(empty.conversationLogs.oldestLogAgeDays, null); // branch, but nothing to age out
+  assert.equal(empty.conversationLogs.logCount, 0);
+});
+
+test('conversationLogs: an unreadable tree degrades to "no age", never an error', async () => {
+  const gh = fakeGh([[/\/branches\/conversation-logs/, { status: 200, json: {} }]]); // tree read 404s
+  const out = await collectSignals(gh, ctx({ retentionDays: 10 }), ['conversationLogs']);
+  assert.equal(out.conversationLogs.present, true);
+  assert.equal(out.conversationLogs.oldestLogAgeDays, null);
+  assert.equal(out.conversationLogs.error, undefined);
+});
+
+// The drift guard for the one format read across the engine/pack seam: the
+// collector re-implements the stamp parse (the engine does not import a pack), so
+// pin it to the writer. Change `logFilename` without changing the collector and
+// this fails, instead of the prune silently never firing again.
+test('conversationLogs: the collector parses exactly what the pack\'s capture step writes', async () => {
+  const name = logFilename('2026-07-12T09:40:00Z', 123, 'sess-a');
+  const gh = fakeGh(logsTree([name]));
+  const out = await collectSignals(gh, ctx({ retentionDays: 10 }), ['conversationLogs']);
+  assert.equal(out.conversationLogs.logCount, 1, `collector did not recognize ${name} as a log`);
 });
 
 // NOTE — every test in this file hand-builds `ctx`, which proves the COLLECTOR

@@ -56,10 +56,19 @@ const fakeGh = (routes) => async (path) => {
   for (const [re, resp] of routes) if (re.test(path)) return typeof resp === 'function' ? resp(path) : resp;
   return { status: 404, json: null };
 };
+// A logs branch carrying one log, at whatever capture stamp the case needs (the
+// collector ages a log by its filename stamp, as the prune itself does).
+const logsBranch = (...stamps) => [
+  [/\/branches\/conversation-logs/, { status: 200, json: { name: 'conversation-logs' } }],
+  [/\/git\/trees\/conversation-logs/, { status: 200, json: {
+    tree: [{ path: 'README.md' }, ...stamps.map((s, i) => ({ path: `${s}--issue-${i + 1}--sess-${i}.jsonl` }))],
+  } }],
+];
+// now is 2026-07-22 and retention is 10d, so this log (21d old) is prunable.
 const QUIET = [
   [/\/commits\?sha=/, { status: 200, json: [] }],
   [/\/releases\/latest/, { status: 404, json: null }],
-  [/\/branches\/conversation-logs/, { status: 200, json: { name: 'conversation-logs' } }],
+  ...logsBranch('2026-07-01T0000Z'),
 ];
 
 // The class-of-bug guard. Three collectors read `ctx` keys nothing ever set, and
@@ -168,10 +177,26 @@ test('conversationLogs.retentionDays reaches conversation-extract, so the age-ba
     const signals = await collectSignals(fakeGh(QUIET), ctxFor(root), ['commits', 'conversationLogs']);
     assert.equal(signals.conversationLogs.present, true);
     assert.equal(signals.conversationLogs.retentionDays, 10);
+    assert.equal(signals.conversationLogs.oldestLogAgeDays, 21); // 2026-07-01 → 2026-07-22
     assert.equal(signals.commits.substantiveChange, false); // quiet repo — the regressed case
     const v = conversationExtract.precondition(signals);
     assert.equal(v.run, true);
     assert.match(v.reason, /retention 10d/);
+  });
+});
+
+// The other half of the same wire: an age the collector can actually emit, which
+// is BELOW retention, must keep the quiet repo silent. Without this the "fires
+// when quiet" test above is satisfied by a collector that always says yes.
+test('conversationLogs.oldestLogAgeDays reaches conversation-extract, so young logs keep it silent', async () => {
+  await withRepo(FULL, async (root) => {
+    const routes = [
+      [/\/commits\?sha=/, { status: 200, json: [] }],
+      ...logsBranch('2026-07-21T0000Z'), // 1 day old, retention is 10
+    ];
+    const signals = await collectSignals(fakeGh(routes), ctxFor(root), ['commits', 'conversationLogs']);
+    assert.equal(signals.conversationLogs.oldestLogAgeDays, 1);
+    assert.equal(conversationExtract.precondition(signals).run, false);
   });
 });
 
