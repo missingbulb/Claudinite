@@ -57,6 +57,16 @@ optional polish. Follow it for every substantive algorithmic change.
   mostly-transparent fills), and give a matched object the **same colour in the
   result and the ground-truth panels** so over-/under-reach is obvious at a
   glance. Tag objects with small ids that key into the metrics table.
+- **Never draw an annotation in a colour the underlying signal itself carries.**
+  A mark in the signal's own colour disappears exactly on the objects it exists
+  to mark, so the figure looks cleanest where the method is least verified. Pick
+  the overlay palette against the data's own colours (and keep the choice
+  guarded, if the render is scripted), not by aesthetic preference.
+- **Show where the method breaks, not only where it works.** The overlay is a QA
+  tool before it is a result: point at the misses, the fragmentation, the cases
+  handled badly, and make each claim explicit and checkable ("this outline is
+  what I'm counting as an object; that one has no outline — it was missed") so
+  the owner can disagree with a specific claim rather than a general impression.
 - Throwaway renders and diagnostics live in the scratchpad; only the **final
   artifact and the code that regenerates it** get committed.
 
