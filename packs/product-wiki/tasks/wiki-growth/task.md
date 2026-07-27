@@ -15,10 +15,15 @@ the default branch.
 
 ## Preflight
 
-The scheduler's at-most-one-open-dispatch-issue guard already keeps a second round from being dispatched while
-the previous one is unresolved, so you will not normally find a stale open growth PR. Still, before researching,
-search the repo for an open PR whose head branch matches `claude/product-wiki-growth/*`. If one is open, do
-**not** stack a second round of unreviewed research on it — add one dated nudge comment on that PR and stop.
+**Before researching**, search the repo for an open PR whose head branch matches `claude/product-wiki-growth/*`.
+If one is open, do **not** stack a second round of unreviewed research on it — add one dated nudge comment on
+that PR and stop.
+
+This is the *only* guard against that stacking — nothing upstream covers it. The scheduler's at-most-one-open
+guard is about **dispatch issues**, not pull requests: a completed run converges and closes its own dispatch
+issue while leaving this task's PR open for the owner to review, so the next weekly slot sees an empty issue
+family and dispatches normally. Expect to find an open growth PR whenever the last one hasn't been reviewed
+yet; that is the ordinary case this preflight exists for, not an anomaly.
 
 ## Method
 
