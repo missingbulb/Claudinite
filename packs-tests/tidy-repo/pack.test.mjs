@@ -101,6 +101,18 @@ test('tidy-prs: no open PRs, no run', () => {
   assert.equal(tidyPrs.precondition(S()).run, false);
 });
 
+// The `prs` signal also carries recently-MERGED PRs (for growth-extract). A merged
+// PR is not something this sweep can recommend closing, so it must stay out of the
+// target set entirely — the reason merged PRs live in their own field rather than
+// being folded into `open`.
+test('tidy-prs: merged PRs on the signal never enter the sweep', () => {
+  const merged = { merged: [{ number: 42, title: 'landed last night' }] };
+  assert.equal(tidyPrs.precondition(S({ prs: { open: [], touched: [], ...merged } })).run, false);
+  const v = tidyPrs.precondition(S({ prs: { open: [{ number: 7 }], touched: [], ...merged } }));
+  assert.match(v.reason, /over 1 open PR/);
+  assert.doesNotMatch(v.context.join(' '), /#42/);
+});
+
 // --- tidy-branches: assess-only, weekly, full every run ---------------------
 
 test('tidy-branches: weekly (the full sweep is the declaration) over the branches signal alone', () => {
