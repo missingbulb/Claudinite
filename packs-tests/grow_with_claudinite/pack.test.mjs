@@ -372,6 +372,39 @@ test('dedup-prune-integrity: the restatement fingerprint fires even without a de
   } finally { cleanup(root); }
 });
 
+test('dedup-prune-integrity: a change that FIXES the dedup routine is not a dedup run', () => {
+  // Says "dedup" and grows a local-pack doc, but also edits the canon — which a
+  // real run is forbidden to do. Only the shrink invariant is scoped away; the
+  // restatement fingerprint still has to fire on such a branch (asserted below).
+  const root = makeRepo({
+    base: { [PROSE]: ORIGINAL },
+    changed: {
+      [PROSE]: `${ORIGINAL}- **A new local gotcha.**\n`,
+      'packs/grow_with_claudinite/tasks/growth-dedup/task.md': '# Dedup\n\nA dedup edit never grows the pack.\n',
+    },
+    commitMsg: 'dedup: forbid the growth failure in the task doc Refs #1',
+  });
+  try {
+    assert.equal(runWork(root).length, 0);
+  } finally { cleanup(root); }
+});
+
+test('dedup-prune-integrity: the restatement fingerprint still fires on a canon-touching branch', () => {
+  const root = makeRepo({
+    base: { [PROSE]: ORIGINAL },
+    changed: {
+      [PROSE]: `${ORIGINAL}- **This footgun is portable (canon)** — see the canon.\n`,
+      'packs/grow_with_claudinite/tasks/growth-dedup/task.md': '# Dedup\n',
+    },
+    commitMsg: 'dedup: touch the canon and a local pack Refs #1',
+  });
+  try {
+    const findings = runWork(root);
+    assert.equal(findings.length, 1);
+    assert.match(findings[0].what, /re-imports a canon rule/);
+  } finally { cleanup(root); }
+});
+
 test('dedup-prune-integrity: silent on main and on non-local-pack files', () => {
   const onMain = makeRepo({
     base: { [PROSE]: ORIGINAL },

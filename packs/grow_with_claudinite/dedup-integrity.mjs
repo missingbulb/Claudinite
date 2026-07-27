@@ -21,6 +21,14 @@ import { LOCAL_PACKS_SUBDIR, LEGACY_LOCAL_PACKS_SUBDIR } from '../../engine/pack
 //      invariant can't be unscoped): a modified local-pack prose file whose head
 //      has more lines than its base grew instead of pruning.
 //
+//      A commit message saying "dedup" is not enough on its own — a change that
+//      FIXES the dedup routine says "dedup" too, and it edits the canon while
+//      touching a local pack, which reads as a corrupt prune. So the shrink
+//      invariant also requires the branch to be CONFINED to the local-pack
+//      surface, which a real run always is: the routine's own first prohibition
+//      is that it never edits the canon it prunes against. A branch reaching
+//      outside local packs is canon work that merely mentions dedup.
+//
 // Local packs live under either root during the rename transition; git emits
 // '/'-separated paths, so the platform-joined constants are normalized.
 const LOCAL_ROOTS = [LOCAL_PACKS_SUBDIR, LEGACY_LOCAL_PACKS_SUBDIR]
@@ -60,7 +68,9 @@ const rule = {
     }
 
     // (2) A dedup run must shrink the pack it prunes, never grow it.
-    if (work.commits.some((m) => DEDUP_RUN.test(m))) {
+    const isDedupRun = work.commits.some((m) => DEDUP_RUN.test(m)) &&
+      work.changedFiles.every((f) => LOCAL_ROOTS.some((root) => f.startsWith(root)));
+    if (isDedupRun) {
       for (const file of prose) {
         const base = work.readBase(file);
         const head = work.read(file);
