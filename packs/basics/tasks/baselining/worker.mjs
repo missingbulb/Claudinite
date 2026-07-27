@@ -69,6 +69,32 @@ export function normalizeDelivery(raw) {
   return null;
 }
 
+// The default a repo gets when it never declared one.
+export const DEFAULT_DELIVERY = 'auto-merge';
+
+// `maintenance.delivery` is always EXPLICIT — but a key that is simply absent is
+// DRIFT, not an error, and drift is what a converge exists to repair. A repo
+// adopted before the key existed, or one whose key was hand-removed, would
+// otherwise fail baselining every night forever with nothing that could ever fix
+// it (the only writer is check_the_world --init, which runs once at adoption).
+// So: materialize the default into .claudinite-checks.json and carry on — it
+// rides the same maintenance commit as the rest of the converge, and the repo
+// self-heals on one cycle.
+//
+// An UNRECOGNIZED value is a different thing entirely: someone wrote an intent
+// the worker cannot honour, and silently substituting a default would deliver
+// the opposite of what they asked for. That still fails the run (delivery: null).
+//
+// Returns { delivery, materialize } — `delivery` null only for the unrecognized
+// case. A content-free value (empty/whitespace) carries no intent, so it is
+// treated as absent rather than as a typo.
+export function resolveDelivery(raw) {
+  if (raw == null || String(raw).trim() === '') {
+    return { delivery: DEFAULT_DELIVERY, materialize: true };
+  }
+  return { delivery: normalizeDelivery(raw), materialize: false };
+}
+
 // The pending AGENTIC notes: those dated on/after the DAY of the prior stamp
 // (same-day inclusive, #330), oldest first. `agenticList` is registry.mjs
 // `agenticMigrations(all)` — already filtered to records carrying a valid
@@ -247,10 +273,17 @@ export async function main() {
     console.log('baselining: no vendored-mount stamp — nothing to self-refresh (canon home or pre-adoption)');
     return; // quiet, no agent (matches the precondition self-skip)
   }
-  const delivery = normalizeDelivery(priorRaw?.maintenance?.delivery);
+  const { delivery, materialize } = resolveDelivery(priorRaw?.maintenance?.delivery);
   if (!delivery) {
     console.error(`baselining: maintenance.delivery "${priorRaw?.maintenance?.delivery}" is neither auto-merge nor review`);
     process.exit(1);
+  }
+  // Materialize the missing key BEFORE the converge, so the repair rides this
+  // cycle's maintenance commit like any other converged surface.
+  if (materialize) {
+    priorRaw.maintenance = { ...priorRaw.maintenance, delivery };
+    writeFileSync(checksPath, JSON.stringify(priorRaw, null, 2) + '\n');
+    console.log(`baselining: maintenance.delivery was missing — materialized "${delivery}"`);
   }
 
   // 1. Fetch canon at head as a ROOTLESS tree (drop .git so apply-vendor-set's
@@ -291,7 +324,10 @@ export async function main() {
   //    revert it and stay quiet (no nightly stamp-only noise).
   const changed = git(['-C', root, 'status', '--porcelain'])
     .split('\n').map((l) => l.slice(3)).filter(Boolean);
-  const onlyStamp = changed.length > 0 && changed.every((p) => p === '.claudinite-checks.json');
+  // `materialize` excluded: a materialized delivery key also touches only
+  // .claudinite-checks.json, and reverting it would re-drift the repo every night
+  // and never land the repair.
+  const onlyStamp = changed.length > 0 && !materialize && changed.every((p) => p === '.claudinite-checks.json');
   if (onlyStamp && priorStamp.ref === headSha && !pending.length) {
     git(['-C', root, 'checkout', '--', '.claudinite-checks.json']);
     console.log('baselining: mount already at canon head, nothing changed — agentless, quiet');

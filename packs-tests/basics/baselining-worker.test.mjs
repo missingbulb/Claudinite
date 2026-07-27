@@ -1,8 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  normalizeDelivery, pendingAgentic, heldStamp, maintenanceBranchName,
-  openMaintenanceBranch, shouldRequestAgent, unconfiguredSecrets, SECRETS_ISSUE_TITLE,
+  normalizeDelivery, resolveDelivery, DEFAULT_DELIVERY, pendingAgentic, heldStamp,
+  maintenanceBranchName, openMaintenanceBranch, shouldRequestAgent, unconfiguredSecrets,
+  SECRETS_ISSUE_TITLE,
 } from '../../packs/basics/tasks/baselining/worker.mjs';
 
 // The worker's PURE decision helpers (agent-preprocessing DESIGN §7, E4). The
@@ -18,6 +19,36 @@ test('normalizeDelivery maps the accepted values and legacy aliases, rejecting t
   assert.equal(normalizeDelivery(' review '), 'review');   // trimmed
   assert.equal(normalizeDelivery('bogus'), null);
   assert.equal(normalizeDelivery(undefined), null);
+});
+
+// A MISSING maintenance.delivery is drift, not an error: the only writer is
+// check_the_world --init (first adoption), so a repo adopted before the key existed
+// — or one whose key was hand-removed — has nothing that could ever put it back,
+// and a hard failure would just fail baselining every night forever. Materialize
+// the default instead. An UNRECOGNIZED value stays a hard failure: substituting a
+// default there would deliver the opposite of a stated intent.
+test('resolveDelivery materializes the default for a missing key rather than failing the run', () => {
+  assert.deepEqual(resolveDelivery(undefined), { delivery: DEFAULT_DELIVERY, materialize: true });
+  assert.deepEqual(resolveDelivery(null), { delivery: DEFAULT_DELIVERY, materialize: true });
+  assert.equal(DEFAULT_DELIVERY, 'auto-merge');
+});
+
+test('resolveDelivery treats a content-free value as absent, not as a typo', () => {
+  assert.deepEqual(resolveDelivery(''), { delivery: DEFAULT_DELIVERY, materialize: true });
+  assert.deepEqual(resolveDelivery('   '), { delivery: DEFAULT_DELIVERY, materialize: true });
+});
+
+test('resolveDelivery passes a stated intent through untouched — legacy aliases included', () => {
+  assert.deepEqual(resolveDelivery('review'), { delivery: 'review', materialize: false });
+  assert.deepEqual(resolveDelivery('auto-merge'), { delivery: 'auto-merge', materialize: false });
+  assert.deepEqual(resolveDelivery('pr'), { delivery: 'review', materialize: false });
+  assert.deepEqual(resolveDelivery('push'), { delivery: 'auto-merge', materialize: false });
+  assert.deepEqual(resolveDelivery('auto'), { delivery: 'auto-merge', materialize: false });
+});
+
+test('resolveDelivery still fails the run on an unrecognized value — never a silent default', () => {
+  assert.deepEqual(resolveDelivery('bogus'), { delivery: null, materialize: false });
+  assert.deepEqual(resolveDelivery('merge'), { delivery: null, materialize: false });
 });
 
 test('pendingAgentic keeps notes dated on/after the stamp DAY (same-day inclusive), oldest first', () => {
