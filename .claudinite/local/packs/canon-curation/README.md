@@ -1,7 +1,8 @@
 # canon-curation
 
-The canon's own curation duties — the fleet-facing work only the **Claudinite home repo** runs:
-promoting members' lessons into the shared canon and policing the corpus's `packs/` tree. (The
+Claudinite's own curation duties — the fleet-facing work only **Claudinite** runs: promoting
+members' lessons into the shared canon, sweeping the fleet's stacks for technologies the canon does
+not yet home, and policing the corpus's `packs/` tree. (The
 prose-to-checks backlog sweep is no longer canon-only — it moved to
 [grow_with_claudinite](../../../../packs/grow_with_claudinite/README.md) as a per-repo task with a
 `pack_paths` config, so every repo sweeps its own packs and Claudinite also its core `packs/`.) A
@@ -20,6 +21,7 @@ the members' side ([grow_with_claudinite](../../../../packs/grow_with_claudinite
 | Task | Runs when | Where it lands |
 |---|---|---|
 | `growth-promote` | a participating member changed its local packs in the window | a PR against Claudinite's `main` |
+| `growth-discover-packs` | weekly, over every covered member | a PR against Claudinite's `main` |
 | `migrations-retire` | a fully-applied migration record has passed its TTL | a PR against Claudinite's `main` |
 
 | Rule (≤5 words) | How enforced |
@@ -32,6 +34,14 @@ the members' side ([grow_with_claudinite](../../../../packs/grow_with_claudinite
   PR for the owner to approve. When a portable lesson's technology has no pack home, it mints a
   fingerprinted **stub pack** (in its own dedicated PR). This is the sole judgment gate before
   shared canon.
+- **[tasks/growth-discover-packs/](tasks/growth-discover-packs/task.md)** — the weekly **fleet sweep** for
+  technologies the canon does not yet home: read every member's stack, fold the members into one view
+  (so first-sight dedup is free — the third member using a technology is the same gap as the first),
+  and open an owner-reviewed PR authoring the missing `packs/<tech>/`. Its per-repo namesake in
+  [grow_with_claudinite](../../../../packs/grow_with_claudinite/tasks/growth-discover-packs/task.md)
+  is the other side of that line — it authors a repo's own **local** packs and may never re-create what
+  a canon pack homes, so only this task can close a canon gap. (Promote's stub-minting is narrower
+  still: one lesson's technology, minted as a seed; this task authors from the whole fleet's usage.)
 - **[item-routing.md](item-routing.md)** — the shared worthiness + routing method promote (and an
   owner-requested retrospective pass) defers to, so every decision about admitting and placing an
   item is made the same way.

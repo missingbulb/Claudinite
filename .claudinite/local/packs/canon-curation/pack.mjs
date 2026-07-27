@@ -1,9 +1,10 @@
 import noEnforcementNarration from './no-enforcement-narration.mjs';
 import packIndependence from './pack-independence.mjs';
 
-// The canon home repo's own curation pack — the fleet-facing work only the
-// Claudinite home runs: promoting members' lessons into the shared canon (the
-// growth lifecycle's central stage) and policing the corpus's packs/ tree.
+// Claudinite's own curation pack — the fleet-facing work only Claudinite runs:
+// promoting members' lessons into the shared canon (the growth lifecycle's
+// central stage), sweeping the fleet's stacks for technologies the canon does
+// not yet home, and policing the corpus's packs/ tree.
 // (Prose-to-checks is no longer canon-only: it moved to grow_with_claudinite as a
 // per-repo task with a `pack_paths` config — the canon runs it over its own packs/
 // + local packs like any repo, per the per-project-scheduling redesign.)

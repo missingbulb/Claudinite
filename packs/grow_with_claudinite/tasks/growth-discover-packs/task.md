@@ -1,10 +1,10 @@
 # Growth — discover local packs (per repo)
 
-A weekly reflection on **this repo's own** captured knowledge: knowing the Claudinite packs already available to it, notice when project-specific knowledge is worth organizing into a **new local pack** — and author it. A local operation: it writes only the repo's **own** `.claudinite/local/packs/`, landing through a PR that **auto-merges once the repo's checks pass** (like [growth-extract](../growth-extract/task.md); the shared canon stays human-gated — lifting a local pack up is the central promote task's job). Finding nothing new worth a pack is a perfectly good, common outcome.
+A weekly reflection on **this repo's own** captured knowledge: knowing the Claudinite packs already available to it, notice when project-specific knowledge is worth organizing into a **new local pack** — and author it. A local operation: it writes only the repo's **own** `.claudinite/local/packs/`, landing through a PR **a human reviews** (unlike [growth-extract](../growth-extract/task.md), which auto-merges; the shared canon stays human-gated too — lifting a local pack up is the central promote task's job). Finding nothing new worth a pack is a perfectly good, common outcome.
 
 You run under the executor, dispatched by a `ready-for-agent` issue. There is no windowed Context to bind — the opportunity is standing (knowledge that was never organized into a pack, not a recent change), so examine the repo as it is.
 
-The task's declared outcome ceiling is **`merged-pr`**: it opens a PR and arms auto-merge (no human review — daily/weekly local capture never piles up as review requests). It writes only the repo's own local packs.
+The task's declared outcome ceiling is **`open-pr`**: it opens a PR and **never arms auto-merge**. Extract auto-merges because it adds prose or a rule to territory a local pack already owns; a **new pack** ships new `.mjs` conformance checks that run at every Stop and in CI the moment it merges — a check can break CI, so it's reviewed, exactly as the sibling [prose-to-checks-sweep](../prose-to-checks-sweep/task.md) is.
 
 ## Conventions used in this doc
 
@@ -42,9 +42,9 @@ What remains is project-specific knowledge that deserves its own local pack: a d
 
 For each candidate, author a populated pack under `.claudinite/local/packs/<name>/`, distilled from **how this project actually works** — never from imagination. Apply the [generate-project-instructions](../../skills/generate-project-instructions/SKILL.md) method (don't re-derive it): descend the promotion ladder ([engine/checks/DESIGN.md](../../../../engine/checks/DESIGN.md)) — a rule a deterministic check can carry becomes the **check plus a see-it-fail fixture** (fires on a violating input, quiet on a clean one), a procedure with a nameable trigger becomes a skill, and only signature-less judgment lands as `RULES.md` prose. Ground and cite every rule in the project's real files. **Never pad** with speculative best-practice rules the evidence doesn't demonstrate; a rule you can't ground, you don't write — a smaller honest pack beats a padded one. And **never open an empty stub to fill later**. Write the pack files (`RULES.md`, `pack.mjs`, `README.md`), register it, and **declare it** in the repo's `.claudinite-checks.json` so it actually activates.
 
-### 4. Open the auto-merging PR
+### 4. Open the PR for review
 
-Land the new pack (and its declaration) through a single PR on a per-run-unique branch (see [the git-github-advanced skill](../../../git-github/skills/git-github-advanced/SKILL.md)) — title `Claudinite growth: discover local pack <name>`, and **put the issue reference in the commit message**: `Refs #<n>` for this task's tracking issue (below), in the commit itself, not only the PR body, so the `task-lifecycle` gate passes — and **arm auto-merge**. A new check must ship green (see it fail on a violating fixture, pass on a clean one) so CI stays green and the PR can merge; a rule that can't be made a confident check lands as prose instead.
+Land the new pack (and its declaration) through a single PR on a per-run-unique branch (see [the git-github-advanced skill](../../../git-github/skills/git-github-advanced/SKILL.md)) — title `Claudinite growth: discover local pack <name>`, and **put the issue reference in the commit message**: `Refs #<n>` for this task's tracking issue (below), in the commit itself, not only the PR body, so the `task-lifecycle` gate passes. **Never arm auto-merge** — the reviewer is the point. A new check must still ship green (see it fail on a violating fixture, pass on a clean one) so CI stays green and the reviewer has something mergeable; a rule that can't be made a confident check lands as prose instead.
 
 ## Tracking
 
@@ -57,4 +57,5 @@ The standing log is the issue titled exactly **`Claudinite tracker: Discover Loc
 - **Never author from imagination or pad, and never open an empty stub** — every rule traces to the project's real usage; a pack may be small, it may not be invented.
 - **Never add a rule to a territory an existing local pack already owns** — that is growth-extract's job; this task is for *new* packs.
 - **Never conflate steps 1 and 2** — the manifest step catalogues and never consults the pack shelf; the gap step is where the shelf and the pack decision come in.
-- **Run on `opus`** — judging pack-worthiness and authoring a pack is heavy judgment, the more so because the PR auto-merges with no human review; this task declares `agent_model: opus`.
+- **Never arm auto-merge** — a new pack's checks reach every session and every CI run in this repo; the reviewer is what stands between a wrong check and a red repo.
+- **Run on `opus`** — judging pack-worthiness and authoring a pack (checks and fixtures included) is heavy judgment; a reviewer is a backstop, not a substitute for getting it right. This task declares `agent_model: opus`.
