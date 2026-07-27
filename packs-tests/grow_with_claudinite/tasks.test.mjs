@@ -27,10 +27,13 @@ test('the pack contributes its tasks structurally, not as a pack.mjs slot', () =
 
 // --- growth-discover-packs (local pack discovery) ----------------------------
 
-test('growth-discover-packs: weekly/opus/merged-pr, no signals (examines the checkout)', () => {
+test('growth-discover-packs: weekly/opus/open-pr, no signals (examines the checkout)', () => {
   assert.equal(discover.frequency, 'weekly');
   assert.equal(discover.agent_model, 'opus');
-  assert.equal(discover.expected_outcome, 'merged-pr'); // writes only own local packs → auto-merge like extract
+  // A new pack may carry new .mjs conformance checks, and a check can break CI —
+  // reviewed, exactly as the sibling prose-to-checks-sweep is, and unlike extract
+  // (which only adds prose/rules to territory a local pack already owns).
+  assert.equal(discover.expected_outcome, 'open-pr');
   assert.deepEqual(discover.precondition_signals, []);
 });
 

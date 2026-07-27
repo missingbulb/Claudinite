@@ -17,7 +17,7 @@ scheduler (`engine/scheduler/discover.mjs`) wherever the pack is declared:
 |---|---|---|
 | `growth-extract` ([tasks/growth-extract/task.md](tasks/growth-extract/task.md)) | the project changed in the window | the repo's own local packs, via a PR that auto-merges after CI |
 | `growth-dedup` ([tasks/growth-dedup/task.md](tasks/growth-dedup/task.md)) | canon changed, or the project's local packs changed (or weekly) | a PR against the repo's `main` |
-| `growth-discover-packs` ([tasks/growth-discover-packs/task.md](tasks/growth-discover-packs/task.md)) | weekly | a new **local** pack in the repo's own `.claudinite/local/packs/`, via an auto-merging PR |
+| `growth-discover-packs` ([tasks/growth-discover-packs/task.md](tasks/growth-discover-packs/task.md)) | weekly | a new **local** pack in the repo's own `.claudinite/local/packs/`, via a reviewed PR |
 | `conversation-extract` ([tasks/conversation-extract/task.md](tasks/conversation-extract/task.md)) | after a substantive merge, or to run the retention prune | the repo's own local packs, plus the prune on the logs branch |
 | `prose-to-checks-sweep` ([tasks/prose-to-checks-sweep/task.md](tasks/prose-to-checks-sweep/task.md)) | daily (no-ops cheaply on a quiet corpus) | a PR converting always-testable pack prose into checks |
 
@@ -78,9 +78,11 @@ extraction rides the fleet's one daily run like the other growth tasks.
 an ordinary weekly task on the repo's own scheduler. The repo runs the whole pipeline over
 **itself**: manifest its stack, hold it against the canon packs already on its shelf and its own
 existing local packs, and — for genuinely project-specific knowledge neither homes — author a new
-**local** pack populated from its real usage, landed through an auto-merging PR. It writes only the
-repo's own `.claudinite/local/packs/`; lifting a local pack up into the shared canon is the central
-promote task's job.
+**local** pack populated from its real usage, landed through a **reviewed** PR (a new pack ships new
+`.mjs` checks, and a check can break CI — the same reason `prose-to-checks-sweep` is reviewed, and
+the one place this stage differs from extract). It writes only the repo's own
+`.claudinite/local/packs/`; lifting a local pack up into the shared canon is the central promote
+task's job.
 
 ## Identifying a project's capture surface: its local packs (the same way in every stage)
 
