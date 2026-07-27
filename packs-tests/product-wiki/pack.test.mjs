@@ -374,3 +374,52 @@ test('wiki-growth precondition: the weekly slot IS the trigger; a wiki move only
   // a change elsewhere still runs (weekly), but adds no wiki context
   assert.deepEqual(wikiGrowth.precondition({ commits: { touchedPaths: ['src/app.js'] } }).context, []);
 });
+
+// This precondition has NO non-firing path, and that is a deliberate design
+// choice, not an omission: a wiki grows on research availability, not repo
+// activity, so there is no cheaper gate to apply and the weekly slot itself is
+// the trigger. The worker's own stop condition (no citable material → no branch,
+// no PR) is the real "nothing to do" outcome. Pin it, so a future edit that
+// quietly adds a self-skip arm — reintroducing the repo-activity gate this task
+// exists to avoid — has to break a test that says why.
+test('wiki-growth precondition: no arm ever declines — the weekly slot is the whole gate', () => {
+  const shapes = [
+    {},                                                   // no signals at all
+    { commits: {} },                                      // signal present, no touchedPaths (the ?? [] fallback)
+    { commits: { touchedPaths: [] } },                    // a genuinely quiet window
+    { commits: { touchedPaths: ['src/app.js'] } },        // busy, but nothing wiki-side
+    { commits: { touchedPaths: ['product-wiki/Market/README.md'] } },
+    { commits: null },                                    // malformed — still must not decline or throw
+  ];
+  for (const signals of shapes) {
+    const v = wikiGrowth.precondition(signals);
+    assert.equal(v.run, true, `declined for ${JSON.stringify(signals)}`);
+    assert.equal(v.reason, 'weekly product-wiki growth pass');
+    assert.ok(Array.isArray(v.context), 'context is always an array, even when empty');
+  }
+});
+
+// The wiki-moved test is a path PREFIX anchored at the repo root, and the
+// dispatch renders each context entry as its own bullet — so both the anchoring
+// and the one-line shape are load-bearing.
+test('wiki-growth precondition: the wiki-moved context is root-anchored and exactly one line', () => {
+  const ctx = (paths) => wikiGrowth.precondition({ commits: { touchedPaths: paths } }).context;
+
+  // Fires anywhere inside the tree, however deep, and on a single wiki path
+  // among many unrelated ones.
+  assert.equal(ctx(['product-wiki/Users/competitors/README.md']).length, 1);
+  assert.equal(ctx(['src/app.js', 'product-wiki/README.md', 'package.json']).length, 1);
+
+  // ...but only one line no matter how many wiki paths moved — the dispatch
+  // renders each entry as a separate bullet, so this is a shape guarantee.
+  assert.deepEqual(
+    ctx(['product-wiki/Market/README.md', 'product-wiki/Users/README.md', 'product-wiki/sample-data/x.json']),
+    ctx(['product-wiki/Market/README.md']),
+  );
+
+  // Root-anchored: a nested directory of the same name, or a sibling whose name
+  // merely starts with it, is a different tree and must not fire.
+  assert.deepEqual(ctx(['docs/product-wiki/notes.md']), []);
+  assert.deepEqual(ctx(['product-wikis/notes.md']), []);
+  assert.deepEqual(ctx(['product-wiki-archive/notes.md']), []);
+});
