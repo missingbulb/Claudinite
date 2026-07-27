@@ -3,8 +3,8 @@
 The growth lifecycle's pruning stage: reconcile this repo's **local packs** against the shared **canon** it
 consumes (Claudinite, vendored read-only), pruning local items — a pack's prose line, or a whole local check —
 the canon now covers. It opens a PR against the repo's default branch for the owner to approve. Often there's
-nothing to prune, and that's fine. You run under the executor, dispatched by a `ready-for-agent` issue; when
-its Context names the newly-changed canon packs, focus the re-check there.
+nothing to prune, and that's fine. You run under the executor, dispatched by a `ready-for-agent` issue, whose
+**Context** is **binding scope — not a hint** (the executor will not let you re-decide or widen it).
 
 > This task only prunes local packs against the canon; lifting local items up into the canon is the central
 > promote task's job (canon-side).
@@ -19,6 +19,14 @@ its Context names the newly-changed canon packs, focus the re-check there.
 - **The mounted canon.** The exact canon revision this repo currently consumes — compare against *that*, not a
   live fetch. It is what `.claudinite/shared/` holds at the mount's stamp (a promotion is visible here only
   once baselining has converged the mount to include it). Prune only against what the repo actually mounts.
+- **The dispatch's Context narrows the *yardstick*, never the local surface.** When the Context names
+  newly-changed canon packs ("Re-check local items against these newly-changed canon packs: …"), **those packs
+  are this run's entire yardstick**: every prune must cite a line or rule id from one of *them*, and you never
+  widen the comparison to the rest of the mounted canon. What is *not* narrowed is the local side — **every**
+  local item is in play against those packs, whatever it is about. (Local pack names are unrelated to canon
+  pack names, so there is nothing to match up.) A dispatch with **no** Context block carries no such bound: the
+  precondition emits the list only when the mounted canon moved, and its other arm — the repo's own local packs
+  changed — deliberately emits none, so that run compares the fresh local items against the whole mounted canon.
 - **The repo's local packs.** The set identified in [this pack's README](../../README.md#identifying-a-projects-capture-surface-its-local-packs) —
   everything under `.claudinite/local/packs/` (the legacy `.claudinite/local_packs/` accepted during the
   rename window). That's the corpus this task prunes within; the read-only mounted canon elsewhere under
@@ -103,6 +111,9 @@ review, so don't lean on it. This task declares `agent_model: opus`; the executo
 - **Never merge its own PR** — the human approval gate is the whole point (`outcome: open-pr`).
 - **Never prune a local item without quoting the mounted-canon line (or covering check rule id) that covers
   it** — when unsure, leave it.
+- **Never widen the dispatch's Context.** If it named the changed canon packs, a prune citing coverage from
+  any *other* canon pack is out of scope for this run — leave the item; the cycle that moves that pack will
+  reach it.
 - **Never prune a local item that makes a stronger point about a narrower case** than the canon — that isn't
   redundancy. (A local item that only restates the canon in repo-specific names *is* prunable once the canon
   covers the point.)
