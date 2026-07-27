@@ -25,11 +25,23 @@ jobs:
         with:
           node-version: 20
       - name: Unit tests
-        # engine-tests/ mirrors engine/'s inner structure (#385 — engine/ ships to consumers exactly as-is, tests stay canon-side); each pack carries its own tests inside its tree, the home's local packs included.
-        # nullglob: a location with no tests drops out instead of reaching node as a literal pattern.
+        # THE test roots — a closed set of FOLDERS, each swept to any depth. Depth is
+        # deliberately not enumerated: the previous form spelled out one glob per level
+        # (`packs-tests/*/skills/*/*.test.mjs` and so on), so a test at an unlisted depth
+        # was silently never run — which is exactly how vendoring/'s two files sat outside
+        # CI. `**` removes depth from the question; what remains is the root list, and
+        # engine-tests/ci-test-roots.test.mjs fails the moment a tracked test lands
+        # outside it. Adding a root is a deliberate CI edit; adding a test is not.
+        #   engine-tests/            engine/ + the other top-level canon code (migrations/, …);
+        #                            mirrors engine/'s inner structure, and stays canon-side
+        #                            because engine/ ships to consumers exactly as-is (#385)
+        #   packs-tests/             every canon pack's tests, mirroring packs/
+        #   vendoring/               co-located with the vendor computer/writer they cover
+        #   .claudinite/local/packs/ this repo's own local packs — tests live inside the tree
+        # nullglob: a root with no tests drops out instead of reaching node as a literal pattern.
         run: |
-          shopt -s nullglob
-          tests=(engine-tests/*.test.mjs engine-tests/*/*.test.mjs packs-tests/*.test.mjs packs-tests/*/*.test.mjs packs-tests/*/skills/*/*.test.mjs .claudinite/local/packs/*/*.test.mjs .claudinite/local/packs/*/skills/*/*.test.mjs .claudinite/local_packs/*/*.test.mjs .claudinite/local_packs/*/skills/*/*.test.mjs)
+          shopt -s globstar nullglob
+          tests=(engine-tests/**/*.test.mjs packs-tests/**/*.test.mjs vendoring/**/*.test.mjs .claudinite/local/packs/**/*.test.mjs)
           node --test "${tests[@]}"
       - name: Conformance sweep
         # The world sweep's home is the test/CI flow (not the Stop hook, which

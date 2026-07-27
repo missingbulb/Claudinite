@@ -1,11 +1,11 @@
 // The fleet-census preprocessing entry point — the script the scheduler runs as
 // `node worker.mjs` (cwd = this task dir, bounded by agent_preprocessing_timeout).
 //
-// It holds NO census logic. The census is this pack's own
-// `check-fleet-coverage.mjs`, one directory up; this worker only invokes it. That
-// relative import is the pack importing its OWN file, which pack-independence
-// permits — and it is why the census stayed a plain module with an exported
-// `main()` and a CLI guard: still runnable by hand, now also callable from here.
+// It holds NO census logic. The census is `check-fleet-coverage.mjs`, its SIBLING
+// in this task folder — nothing outside this task uses it, so that is where it
+// lives; this worker only invokes it. It is why the census stayed a plain module
+// with an exported `main()` and a CLI guard: still runnable by hand, now also
+// callable from here.
 //
 // Failure is the escalation path. The census THROWS when a repo could not be
 // classified ("unknown is not uncovered") or when its config/token is unusable;
@@ -15,7 +15,7 @@
 // any agent. That replaces the deleted coverage workflow's `report-failure` job.
 
 import { pathToFileURL } from 'node:url';
-import { main as census } from '../../check-fleet-coverage.mjs';
+import { main as census } from './check-fleet-coverage.mjs';
 
 const slotId = process.env.CLAUDINITE_SLOT_ID || '';
 const log = (s) => console.log(`fleet-census${slotId ? ` [${slotId}]` : ''}: ${s}`);

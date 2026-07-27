@@ -80,7 +80,7 @@ test('in-session-github-access: flags a raw api.github.com fetch in a migration'
 
 test('in-session-github-access: a dispatch-only executor outside the in-session trees is not scanned', () => {
   const root = makeRepo({ changed: {
-    'packs/sheepdog/check-fleet-coverage.mjs': 'const token = process.env.FLEET_GITHUB_TOKEN;\nexport const t = token;\n',
+    'packs/sheepdog/tasks/fleet-census/check-fleet-coverage.mjs': 'const token = process.env.FLEET_GITHUB_TOKEN;\nexport const t = token;\n',
   } });
   try {
     assert.equal(run(root).length, 0, 'the census (a workflow-invoked executor) keeps its REST client');
