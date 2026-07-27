@@ -13,7 +13,7 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 | [tidy-repo](tidy-repo/README.md) | declared (seeded by `--init`, opt-out by removal) | 0 | policy (assess-only-vs-act) + tidy daily tasks |
 | [sheepdog](sheepdog/README.md) | declared (opt-in; the fleet-enforcer repo only) | 0 | fleet-enforcer marker + config + coverage workflow stub |
 | [github-actions](github-actions/README.md) | `.github/workflows/` | 8 | 0 |
-| [chrome-extension](chrome-extension/README.md) | manifest_version manifest | 0 | 8 |
+| [chrome-extension](chrome-extension/README.md) | manifest_version manifest | 1 | 8 |
 | [chrome-extension-release](chrome-extension-release/README.md) | single `Release to Chrome Store` stub (opt-in) | 8 | 0 (+ RELEASE contract) |
 | [node](node/README.md) | root package.json | 0 | 2 |
 | [python](python/README.md) | pyproject.toml near root | 0 (2 in its skill) | 3 |
@@ -145,7 +145,7 @@ manifest.
 
 | | Count |
 |---|---|
-| **Hardcoded conformance checks** | **40 canon** (13 basics + 1 barriers + 1 grow_with_claudinite + 8 github-actions + 8 chrome-extension-release + 3 aws-sam + 6 product-wiki) + the canon home's own [canon-curation local pack](../.claudinite/local/packs/canon-curation/README.md) (1 code check + the contributed `pack-independence` barrier); plus skill-owned checks (e.g. the `unattended-agents` skill's `routine-structure`, `in-session-github-access`) that ride their pack's activation |
+| **Hardcoded conformance checks** | **41 canon** (13 basics + 1 barriers + 1 grow_with_claudinite + 8 github-actions + 1 chrome-extension + 8 chrome-extension-release + 3 aws-sam + 6 product-wiki) + the canon home's own [canon-curation local pack](../.claudinite/local/packs/canon-curation/README.md) (1 code check + the contributed `pack-independence` barrier); plus skill-owned checks (e.g. the `unattended-agents` skill's `routine-structure`, `in-session-github-access`) that ride their pack's activation |
 | PreToolUse guard | 1 (remote-branch-delete) |
 | Platform setting | 1 (squash-only) |
 | **Prose rules** — packs + practice skills + baseline | **~150** |
