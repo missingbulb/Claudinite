@@ -29,7 +29,7 @@
 
 import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { makeGh, paged, isCovered } from './fleet-api.mjs';
+import { makeGh, paged, isCovered, ensureLabel, labeledIssues } from './fleet-api.mjs';
 
 const LABEL = 'fleet-adoption';
 const adoptionTitle = (fullName) => `Adopt ${fullName} into the Claudinite fleet`;
@@ -56,14 +56,19 @@ function adoptionBody(fullName) {
 // --- fleet config (from the sheepdog repo's sheepdog pack entry) --------------
 
 // The sheepdog repo's .claudinite-checks.json carries, on its sheepdog pack entry:
-//   { "id": "sheepdog", "config": { owner: "missingbulb", kind: "user", exclude: ["owner/repo", ...] } }
+//   { "id": "sheepdog", "config": { owner: "missingbulb", kind: "user", exclude: ["owner/repo", ...],
+//                                   canonRepo: "missingbulb/Claudinite", staleDays: 14 } }
 // owner is who to cover (default: the sheepdog repo's own owner); exclude is the repos
-// deliberately kept out (a full owner/name each, lowercased). This reads the home
-// repo's file raw (fetched over the API, no engine on hand), so it resolves the
-// entry itself — legacy top-level packConfig.sheepdog stays readable underneath
-// until the `pack-entry-config` baseline migration retires (drop the fallback then).
-// A missing config is an unreadable config: throw — absence is not consent to
-// cover everything.
+// deliberately kept out (a full owner/name each, lowercased). canonRepo and staleDays
+// are the freshness sweep's two knobs and both default, so an existing config keeps
+// working untouched. This reads the home repo's file raw (fetched over the API, no
+// engine on hand), so it resolves the entry itself — legacy top-level
+// packConfig.sheepdog stays readable underneath until the `pack-entry-config` baseline
+// migration retires (drop the fallback then). A missing config is an unreadable
+// config: throw — absence is not consent to cover everything.
+//
+// ONE parser for the whole pack: both sweeps read the same entry, so a second reader
+// would be a second place for the owner/exclude semantics to drift.
 export function parseSheepdogConfig(cfg, home) {
   const entry = (Array.isArray(cfg?.packs) ? cfg.packs : []).find((e) => e?.id === 'sheepdog');
   const sd = entry?.config ?? cfg?.packConfig?.sheepdog;
@@ -72,25 +77,23 @@ export function parseSheepdogConfig(cfg, home) {
   }
   const owner = String(sd.owner ?? home.split('/')[0]).toLowerCase();
   const exclude = new Set((Array.isArray(sd.exclude) ? sd.exclude : []).map((s) => String(s).toLowerCase()));
-  return { owner, exclude };
+  // Claudinite's own repo — what a member's stamped ref is measured against. Named
+  // rather than inferred from the ref, because a ref tells you nothing about where
+  // it came from; defaulted so no existing sheepdog config has to change.
+  const canonRepo = String(sd.canonRepo ?? `${owner}/Claudinite`);
+  // How far behind is too far. Not a hard number in code: a fleet whose members
+  // legitimately go quiet for longer raises it rather than living with false alarms.
+  const raw = Number(sd.staleDays);
+  const staleDays = Number.isFinite(raw) && raw > 0 ? raw : 14;
+  return { owner, exclude, canonRepo, staleDays };
 }
 
 // --- adoption-issue convergence ----------------------------------------------
 
-async function ensureLabel(gh, home) {
-  const { status } = await gh(`/repos/${home}/labels`, {
-    method: 'POST',
-    body: { name: LABEL, color: '1D76DB', description: 'Repo awaiting adoption into the Claudinite fleet' },
-  });
-  if (status !== 201 && status !== 422) throw new Error(`creating label ${LABEL} returned ${status}`);
-}
-
 async function convergeIssues(gh, home, { uncovered, coveredSet, optedOutSet }) {
   const actions = [];
-  const all = (await paged(gh, `/repos/${home}/issues?labels=${LABEL}&state=all`))
-    .filter((i) => !i.pull_request);
-  const open = new Map(all.filter((i) => i.state === 'open').map((i) => [i.title, i]));
-  const closed = all.filter((i) => i.state === 'closed');
+  const { open: openIssues, closed } = await labeledIssues(gh, home, LABEL);
+  const open = new Map(openIssues.map((i) => [i.title, i]));
 
   for (const fullName of uncovered) {
     const title = adoptionTitle(fullName);
@@ -188,7 +191,7 @@ export async function main() {
     else uncovered.push(fullName);
   }
 
-  await ensureLabel(gh, home);
+  await ensureLabel(gh, home, LABEL, { color: '1D76DB', description: 'Repo awaiting adoption into the Claudinite fleet' });
   const actions = await convergeIssues(gh, home, {
     uncovered, coveredSet: new Set(covered), optedOutSet: new Set(optedOut),
   });

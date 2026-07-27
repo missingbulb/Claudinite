@@ -42,6 +42,26 @@ export async function paged(gh, path) {
   }
 }
 
+// --- the enforcer repo's own issue surface -----------------------------------
+// Both sweeps this pack runs (coverage and freshness) converge a labelled issue
+// per finding IN THE ENFORCER REPO. The label ensure and the labelled-issue read
+// are identical between them — only the open/close POLICY differs, and that stays
+// in each sweep, where its semantics are legible. These two are the shared floor.
+
+// Idempotent: 422 is "already exists", which is the state we wanted.
+export async function ensureLabel(gh, repo, name, { color, description }) {
+  const { status } = await gh(`/repos/${repo}/labels`, { method: 'POST', body: { name, color, description } });
+  if (status !== 201 && status !== 422) throw new Error(`creating label ${name} returned ${status}`);
+}
+
+// Every issue ever carrying the label, open and closed, PRs filtered out — a
+// sweep needs the closed ones to tell "converged" from "never opened", and to
+// honour a close the owner made deliberately.
+export async function labeledIssues(gh, repo, label) {
+  const all = (await paged(gh, `/repos/${repo}/issues?labels=${label}&state=all`)).filter((i) => !i.pull_request);
+  return { open: all.filter((i) => i.state === 'open'), closed: all.filter((i) => i.state === 'closed') };
+}
+
 // 200 → true, 404 → false, anything else → error (the caller decides what an
 // indeterminate result means).
 export async function fileExists(gh, fullName, path) {
