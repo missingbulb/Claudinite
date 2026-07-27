@@ -46,6 +46,73 @@ test('commits: bot and housekeeping commits are not substantive', async () => {
   assert.equal(out.commits.substantiveChange, false); // all three are housekeeping/bot/self
 });
 
+// --- prs: recently MERGED PRs, in a field of their own -----------------------
+// A PR merged during the window is the richest lesson source there is (review
+// discussion, what changed and why) and was unreachable while this collector
+// queried `state=open` only. It lands in `merged`, NOT folded into `open` or
+// `touched`, because those two are other tasks' target sets.
+
+const OPEN_PRS = [{ number: 7, title: 'still open', updated_at: '2026-07-21T12:00:00Z' }];
+
+test('prs: merged-in-window PRs arrive under `merged`, leaving `open`/`touched` alone', async () => {
+  const gh = fakeGh([
+    [/\/pulls\?state=open/, { status: 200, json: OPEN_PRS }],
+    [/\/pulls\?state=closed/, { status: 200, json: [
+      { number: 11, title: 'fix the parser', updated_at: '2026-07-21T18:00:00Z', merged_at: '2026-07-21T18:00:00Z', user: { login: 'dev' } },
+      { number: 12, title: 'closed, never merged', updated_at: '2026-07-21T17:00:00Z', merged_at: null, user: { login: 'dev' } },
+      { number: 13, title: 'merged before the window', updated_at: '2026-07-21T09:00:00Z', merged_at: '2026-07-01T00:00:00Z', user: { login: 'dev' } },
+    ] }],
+  ]);
+  const out = await collectSignals(gh, ctx(), ['prs']);
+  assert.deepEqual(out.prs.merged.map((p) => p.number), [11]);
+  assert.equal(out.prs.merged[0].title, 'fix the parser');
+  assert.equal(out.prs.merged[0].mergedAt, '2026-07-21T18:00:00Z');
+  // The fields other tasks read are untouched by the widening.
+  assert.deepEqual(out.prs.open.map((p) => p.number), [7]);
+  assert.deepEqual(out.prs.touched, [7]);
+});
+
+test('prs: the growth tasks\' own merged PRs and bot PRs stay out of `merged`', async () => {
+  // Same exclusions `commits` and `issues` apply, so extract cannot mine its own
+  // output back into itself — the self-trigger guard must survive the widening.
+  const gh = fakeGh([
+    [/\/pulls\?state=open/, { status: 200, json: [] }],
+    [/\/pulls\?state=closed/, { status: 200, json: [
+      { number: 21, title: 'Claudinite growth: extract lessons', updated_at: '2026-07-21T12:00:00Z', merged_at: '2026-07-21T12:00:00Z', user: { login: 'dev' } },
+      { number: 22, title: 'Claudinite growth: conversation extract', updated_at: '2026-07-21T12:00:00Z', merged_at: '2026-07-21T12:00:00Z', user: { login: 'dev' } },
+      { number: 23, title: '[claudinite-task] grow/x d2026-07-21', updated_at: '2026-07-21T12:00:00Z', merged_at: '2026-07-21T12:00:00Z', user: { login: 'dev' } },
+      { number: 24, title: 'Baselining: refresh mount', updated_at: '2026-07-21T12:00:00Z', merged_at: '2026-07-21T12:00:00Z', user: { login: 'dev' } },
+      { number: 25, title: 'bump deps', updated_at: '2026-07-21T12:00:00Z', merged_at: '2026-07-21T12:00:00Z', user: { login: 'dependabot[bot]' } },
+      { number: 26, title: 'real work worth a lesson', updated_at: '2026-07-21T12:00:00Z', merged_at: '2026-07-21T12:00:00Z', user: { login: 'dev' } },
+    ] }],
+  ]);
+  const out = await collectSignals(gh, ctx(), ['prs']);
+  assert.deepEqual(out.prs.merged.map((p) => p.number), [26]);
+});
+
+test('prs: the closed listing stops at the window edge instead of paging the repo\'s history', async () => {
+  // `sort=updated&direction=desc` means the first out-of-window item ends it — a
+  // repo with thousands of closed PRs must not cost thousands of reads.
+  const closedPage = (n, updated) => Array.from({ length: n }, (_, i) => ({
+    number: 100 + i, title: `pr ${i}`, updated_at: updated, merged_at: updated, user: { login: 'dev' },
+  }));
+  const seen = [];
+  const gh = async (path) => {
+    seen.push(path);
+    if (/\/pulls\?state=open/.test(path)) return { status: 200, json: [] };
+    if (/\/pulls\?state=closed/.test(path)) {
+      // A full page whose last entry is already outside the window.
+      return { status: 200, json: [...closedPage(99, '2026-07-21T12:00:00Z'), {
+        number: 999, title: 'ancient', updated_at: '2026-01-01T00:00:00Z', merged_at: '2026-01-01T00:00:00Z', user: { login: 'dev' },
+      }] };
+    }
+    return { status: 404, json: null };
+  };
+  const out = await collectSignals(gh, ctx(), ['prs']);
+  assert.equal(out.prs.merged.length, 99);
+  assert.equal(seen.filter((p) => /state=closed/.test(p)).length, 1, `paged past the window edge: ${seen}`);
+});
+
 test('issues: dispatch issues and trackers are invisible; touched respects the window', async () => {
   const gh = fakeGh([
     [/\/issues\?state=open/, { status: 200, json: [

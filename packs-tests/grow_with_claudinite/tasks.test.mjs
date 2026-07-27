@@ -92,6 +92,29 @@ test('growth-extract: carries the substantive shas and touched PR/issue numbers 
   assert.match(ctx, /#5/);
 });
 
+// The Context section is BINDING scope and task.md forbids widening past it, so a
+// PR merged during the window is unreadable to the worker unless the precondition
+// names it. Merged PRs carry the review discussion — usually the richest lesson
+// source in the window — so they have to be in there explicitly.
+test('growth-extract: merged-in-window PRs are named in the binding scope', () => {
+  const v = extract.precondition({
+    commits: { substantiveChange: true, list: [{ sha: 'abcdef1234', substantive: true }] },
+    prs: { touched: [4], merged: [{ number: 9, title: 'fix the parser' }] },
+  });
+  const ctx = v.context.join(' ');
+  assert.match(ctx, /#9/);
+  assert.match(ctx, /merged/i);
+  assert.match(ctx, /#4/); // the open-and-touched set is still there alongside
+});
+
+test('growth-extract: no merged PRs in the window adds no merged line', () => {
+  const v = extract.precondition({
+    commits: { substantiveChange: true, list: [{ sha: 'abcdef1234', substantive: true }] },
+    prs: { touched: [], merged: [] },
+  });
+  assert.doesNotMatch(v.context.join(' '), /merged/i);
+});
+
 // --- growth-dedup (the pruning stage) ----------------------------------------
 
 test('growth-dedup: daily+1h/opus/open-pr — a wrongful prune needs a human gate', () => {

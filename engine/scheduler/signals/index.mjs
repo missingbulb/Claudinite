@@ -51,6 +51,37 @@ async function paged(gh, path) {
   return out;
 }
 
+// Like `paged`, but for a listing sorted `updated` DESCENDING and bounded by the
+// window: it stops at the first item outside it and does not fetch the next page.
+// The closed-PR listing is otherwise the repo's whole history — a window read must
+// not cost proportionally to that.
+async function pagedWindow(gh, path, inWindow) {
+  const out = [];
+  for (let page = 1; ; page += 1) {
+    const sep = path.includes('?') ? '&' : '?';
+    const { status, json } = await gh(`${path}${sep}per_page=100&page=${page}`);
+    if (status !== 200 || !Array.isArray(json) || json.length === 0) break;
+    const kept = [];
+    for (const item of json) {
+      if (!inWindow(item)) break;
+      kept.push(item);
+    }
+    out.push(...kept);
+    if (kept.length < json.length || json.length < 100) break;
+  }
+  return out;
+}
+
+// A merged PR is mineable unless it is bot work or one of Claudinite's own
+// automated writes — the SAME two exclusions `isSubstantive` and the `issues`
+// collector apply, kept together on purpose. The housekeeping regex already covers
+// the growth tasks' own `Claudinite growth: …` PRs and the scheduler's
+// `[claudinite-task]` titles, so the self-trigger guards survive the widening.
+const isMinablePr = (p) => {
+  if ((p.user?.login ?? '').endsWith('[bot]')) return false;
+  return !HOUSEKEEPING.test((p.title ?? '').trim());
+};
+
 // Commit objects in the window, with their changed-file lists resolved (one read
 // per commit — the window is a handful of commits).
 async function windowCommits(gh, repo, branch, sinceIso) {
@@ -78,9 +109,28 @@ const COLLECTORS = {
   async prs(gh, ctx) {
     const open = await paged(gh, `/repos/${ctx.repo}/pulls?state=open&sort=updated&direction=desc`);
     const since = new Date(ctx.sinceIso);
+
+    // PRs MERGED during the window, in a field of their OWN. A merged PR carries
+    // the review discussion and the "what changed and why" — usually the richest
+    // lesson material in a window — and `state=open` alone made it unreachable to
+    // any task bound to this signal. It is deliberately NOT folded into `open` or
+    // `touched`: those two are other tasks' target sets (the PR tidy sweep acts on
+    // `open`), and widening them here would silently widen what those tasks do.
+    // The same exclusions the `commits` and `issues` collectors apply hold here, so
+    // a growth task still cannot see its own merged output and re-trigger on it.
+    const closed = await pagedWindow(
+      gh,
+      `/repos/${ctx.repo}/pulls?state=closed&sort=updated&direction=desc`,
+      (p) => new Date(p.updated_at) >= since,
+    );
+    const merged = closed
+      .filter((p) => p.merged_at && new Date(p.merged_at) >= since && isMinablePr(p))
+      .map((p) => ({ number: p.number, title: p.title, mergedAt: p.merged_at }));
+
     return {
       open: open.map((p) => ({ number: p.number, title: p.title, updatedAt: p.updated_at })),
       touched: open.filter((p) => new Date(p.updated_at) >= since).map((p) => p.number),
+      merged,
     };
   },
 

@@ -162,10 +162,15 @@ refresh, not workflow edits). It runs
    overlap absorbed by dedupe):
    - `commits` — default-branch commits in window, `substantiveChange`
      classification, touched paths.
-   - `prs`, `issues`, `branches` — open + touched-in-window. Self-trigger
-     exclusions carried over **and extended**: the housekeeping-commit regex,
-     tracker titles, and now `[claudinite-task]` issues and `ready-for-agent`
-     label events are invisible to signals.
+   - `prs`, `issues`, `branches` — open + touched-in-window; `prs` additionally
+     carries `merged`, the PRs **merged during the window** (the review
+     discussion behind a change is the richest lesson material there is, and it
+     is closed by the time a window sees it). `merged` is a separate field, not
+     folded into `open`/`touched`, so widening it cannot widen the target set of
+     a task that sweeps the open PRs. Self-trigger exclusions carried over **and
+     extended**: the housekeeping-commit regex, tracker titles, and now
+     `[claudinite-task]` issues and `ready-for-agent` label events are invisible
+     to signals.
    - `release` — latest GitHub release + manifest version.
    - `localPacks` — present / changed-in-window.
    - `sharedMount` — which *declared* packs' vendored files changed in the
