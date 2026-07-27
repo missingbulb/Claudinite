@@ -13,8 +13,7 @@ executable-requirements UI suite); keep anything project-specific in the consumi
   `Position`, a `FirebaseFunctionsException`) is a defect: it silently couples every widget test to
   the plugin's platform channels.
 - **Enforce the boundary with a committed import-scan test** (dart:io over `lib/ui/`, `lib/screens/`
-  looking for forbidden import prefixes). The analyzer won't stop a convenient leak; a five-line
-  test does.
+  looking for forbidden import prefixes). The analyzer won't stop a convenient leak.
 - **Ship the fakes in the package** (`lib/testing/`): scripted fakes for each port that also
   *record* what the UI asked of them, plus a `FakeWorld` bundling them with a pinned clock and the
   real app shell. Both the app's own tests and any sibling test package (e.g. an

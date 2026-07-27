@@ -21,7 +21,7 @@ the pack's task doc (`packs/product-wiki/tasks/wiki-growth/task.md`).
   never deleted without trace. Every real change records itself in the page's
   growth log and updates the open questions in both directions.
 - **No fabricated growth.** Most passes find little or nothing; no new citable
-  material → no edit, no log entry, no PR. A padded update is worse than none.
+  material → no edit, no log entry, no PR.
 - **sample-data and new wikis.** `product-wiki/sample-data/` gains a file only when
   a wiki claim needs one to point to — never test fixtures (anything a test
   asserts against belongs in engineering's tree). Any folder under `product-wiki/`

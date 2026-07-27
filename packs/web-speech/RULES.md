@@ -19,19 +19,18 @@ the repo.
   exposes no hook to set them on its internal stream (Chrome applies its default
   echo cancellation there regardless). To *warm* the device with a known processing
   state — and to read back whether echo cancellation actually engaged — run a
-  separate preflight `getUserMedia({ audio: {…} })` capture and stop its tracks; the
-  recognizer still captures on its own. (`suppressLocalAudioPlayback` /
+  separate preflight `getUserMedia({ audio: {…} })` capture and stop its tracks.
+  (`suppressLocalAudioPlayback` /
   `restrictOwnAudio` are `getDisplayMedia` *screen-capture* constraints and have no
   bearing on a mic — don't reach for them here.)
 - **Read the whole n-best list, not just alternative `[0]`.** Set
   `maxAlternatives` > 1 and iterate `result[0..length]` for `{ transcript,
   confidence }`; the ranked alternatives are exactly where homophone / near-miss
-  recovery lives, and taking only the top hypothesis throws that away.
+  recovery lives.
 - **`onresult`, `onend`, and `onerror` all fire — settle the cycle exactly once.**
   Guard a `settled` flag: interim results arrive before the final one, a cycle can
   end with no result at all (treat `onend`-without-result as `no-speech`), and an
-  error and an end can both arrive. The first terminal signal wins; later ones are
-  ignored.
+  error and an end can both arrive.
 - **With `interimResults` off, engines omit `isFinal` — treat a result as final
   unless `isFinal === false`.** Don't test `if (result.isFinal)` (it's `undefined`
   on those engines and you'll drop every result); test `result.isFinal !== false`.

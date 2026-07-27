@@ -8,7 +8,7 @@ under `packs/`/`skills/` instead (proposed by PR, or lifted by the promote stage
 The growth lifecycle writes here automatically: the `growth-extract` and `conversation-extract`
 daily tasks route the canon's own non-portable lessons into this pack (each at the local
 promotion ladder's strongest mechanism — a check where the rule is deterministic, otherwise terse
-prose below). Entries accrete as sessions on the canon surface durable, canon-specific friction.
+prose below).
 
 ## Standing owner decisions — settled, do not re-litigate
 
@@ -38,54 +38,41 @@ prose below). Entries accrete as sessions on the canon surface durable, canon-sp
   baselining that lands a `seededByDefault` pack (and canon-delivered declaration changes) on
   every member is gated `!isHome`, so the canon home is the one repo it never reaches: a newly
   seeded pack does *not* arrive here automatically — the home's own `.claudinite-checks.json`
-  must be updated by hand in the same change that flips the seed. This has already bitten silently
-  once — `grow_with_claudinite` was `seededByDefault` but predated the home's hand-curated
-  declaration, so the canon's own sessions sat outside the conversation lifecycle until #356
-  declared it. The natural drift-guard (a future check, once the home is clean) is: the home
-  declares every `seededByDefault` non-local pack. (`tidy-repo` was the standing instance of that
-  gap — `seededByDefault`, yet absent here until #394 hand-declared it.)
+  must be updated by hand in the same change that flips the seed. The natural drift-guard (a
+  future check, once the home is clean) is: the home declares every `seededByDefault` non-local
+  pack.
 - **The home doesn't declare `git-github`, so its skills never mount — never conclude "no such
   skill" from `.claude/skills/`.** `mount-skills.mjs` filters on the *literal* declaration
   (`isActive(p, { packs: declared })`), not the `requires` closure `check_the_world.mjs` resolves,
   and the baselining that would normalize that closure into `.claudinite-checks.json` is the one
   thing gated `!isHome` — so `merge-to-main` and `git-github-advanced` are simply absent here.
-  Three consecutive #394 sessions found nothing mounted, hand-drove the merge, and dropped its
-  post-merge `capture-log.mjs` capture, costing five owner turns. Read
-  `packs/<pack>/skills/<name>/SKILL.md` out of the tracked tree — the corpus *is* this repo, and an
-  unmounted skill says nothing about whether its procedure applies. The seed-based drift-guard
-  above would not catch this (`git-github` arrives by closure, never `seededByDefault`); a real one
-  compares `resolveDeclaredPacks` against the literal declaration.
+  Read `packs/<pack>/skills/<name>/SKILL.md` out of the tracked tree — the corpus *is* this repo,
+  and an unmounted skill says nothing about whether its procedure applies. The seed-based
+  drift-guard above would not catch this (`git-github` arrives by closure, never
+  `seededByDefault`); a real one compares `resolveDeclaredPacks` against the literal declaration.
 - **Never re-serialize a repo's JSON config to apply an edit — patch the text.** A round-trip
   rewrites what it wasn't asked to: Python's `json.dump` defaults to `ensure_ascii=True` (every
   non-ASCII character becomes a `\uXXXX` escape), and indent, key order and the trailing newline
-  become the serializer's opinion. Nothing fails and tests stay green, so it rides onward — this
-  landed in four members' merged mains during the phase-2 fleet flip (#385) and was caught only
-  because the owner read one line of a diff. Edit JSON as anchored text; if you must round-trip,
-  pin every lossy default and read the resulting diff before committing. (Portable — a promote
-  candidate for `repo-text-sweeps`, where a `\uXXXX`-in-tracked-JSON check would carry it.)
+  become the serializer's opinion. Nothing fails and tests stay green, so it rides onward. Edit
+  JSON as anchored text; if you must round-trip, pin every lossy default and read the resulting
+  diff before committing. (Portable — a promote candidate for `repo-text-sweeps`, where a
+  `\uXXXX`-in-tracked-JSON check would carry it.)
 - **Test git fixtures must commit with signing off.** `engine-tests/helpers.mjs`'s `makeRepo`
   overrides identity but not signing, so all 31 call sites route fixture commits through the
   signing service; when it degrades, each commit blocks on it and the suite leaks descriptors
-  (~800 per full run against a 4096 cap) until `git commit` and `git push` fail process-wide. Cost
-  a 31-minute outage and left the next session rationing its own verification (#394) — a leak that
-  caps how often the suite is run is worse than a slow suite. Commit with
-  `git -c commit.gpgsign=false commit --no-gpg-sign`: signing a tmpdir throwaway buys nothing.
-  (Portable — a promote candidate for `writing-tests`.)
+  (~800 per full run against a 4096 cap) until `git commit` and `git push` fail process-wide.
+  Commit with `git -c commit.gpgsign=false commit --no-gpg-sign`: signing a tmpdir throwaway
+  buys nothing. (Portable — a promote candidate for `writing-tests`.)
 - **A canon session with a consumer repo also in its sources will reach for the *consumer's*
   merge skill — merge by the skill of the repo you are merging into.** Canon work is routinely
-  dual-repo (the canon plus the fleet member being piloted; #394's rollout ran that way for days),
-  and both repos ship a merge skill under different names — the canon's
-  `packs/git-github/skills/merge-to-main/` and, say, GCEC's local `merge-and-ci`. The consumer's
-  skill wins the match on name/description and is followed to the letter, so the canon-only steps
-  in *its* recipe are silently skipped. Concretely and repeatedly: the **post-merge conversation
-  capture** (`node packs/grow_with_claudinite/capture-log.mjs --issue <n>`, the "After the merge"
-  section of `merge-to-main`) was missed after a merge to canon `main` in **three consecutive
-  sessions** (2026-07-23 ×2, 2026-07-24), each time costing the owner two prompts to recover
-  ("did you record this conversation to log?" → "there's a skill for that"), and each miss is a
-  conversation the growth lifecycle would have lost outright had the owner not caught it. So:
-  before merging in a dual-repo session, resolve the merge skill **by target repo**, not by which
-  skill matched first — and treat capture as part of the merge, not as an optional epilogue.
-
+  dual-repo (the canon plus the fleet member being piloted), and both repos ship a merge skill
+  under different names — the canon's `packs/git-github/skills/merge-to-main/` and, say, GCEC's
+  local `merge-and-ci`. The consumer's skill wins the match on name/description and is followed
+  to the letter, so the canon-only steps in *its* recipe are silently skipped — repeatedly, the
+  **post-merge conversation capture** (`node packs/grow_with_claudinite/capture-log.mjs --issue
+  <n>`, the "After the merge" section of `merge-to-main`). So: before merging in a dual-repo
+  session, resolve the merge skill **by target repo**, not by which skill matched first — and
+  treat capture as part of the merge, not as an optional epilogue.
 - **Fail-soft SessionStart steps hide their own breakage fleet-wide — test the emitted
   output, not the exit code.** Every `engine/pack_loader/` SessionStart step
   (`inject-pack-prose.mjs`, `mount-skills.mjs`, `env-requirements.mjs`) wraps its body in
@@ -93,32 +80,24 @@ prose below). Entries accrete as sessions on the canon surface durable, canon-sp
   but it means a runtime fault — a wrong dynamic-import target, a renamed module — exits 0 and
   simply emits nothing: no error, no signal. And because the engine is vendored verbatim into
   every member, one canon regression silently disables that step across the whole fleet at once.
-  This already bit once (#395): `inject-pack-prose.mjs` imported `registry.mjs` instead of
-  `pack-registry.mjs`, so no active pack's RULES.md was injected into *any* session until a test
-  caught it. So a step like this must be guarded by a regression test that runs the real script
-  against a real corpus and asserts the **positive** effect — prose IS emitted — never merely
-  that `status === 0` (which fail-soft makes meaningless); see
+  So a step like this must be guarded by a regression test that runs the real script against a
+  real corpus and asserts the **positive** effect — prose IS emitted — never merely that
+  `status === 0` (which fail-soft makes meaningless); see
   `engine-tests/pack_loader/inject-pack-prose.test.mjs`.
 - **The nightly self-refresh cannot repair the vendor-set computation — pin operational
   files against the REAL canon tree.** Baselining's converge re-runs
   `vendoring/compute-vendor-set.mjs` from canon HEAD, so a bug *in that computation* is
   the one class of canon regression that is not self-healing: every refresh faithfully
   reproduces it, and recovery is an out-of-band vendor refresh applied to each member by
-  hand. This bit once (#413): the blanket "engine `*.md` is canon-maintainer reference"
-  exclusion swept up `engine/scheduler/executor.md` — the executor routine's operating
-  instructions, which a consumer's executor reads from its own mount — so every cut-over
-  member's executor booted with no instructions and drained nothing (GCEC filed six
-  `ready-for-agent` dispatches and ran none), and baselining could not fix it. So when the
-  vendor set excludes by *pattern*, an operational file that matches needs a by-path
-  whitelist (`VENDORED_ENGINE_DOCS`) **and** a regression test asserting against the real
-  canon tree, not only a synthetic fixture: a fixture keeps proving the whitelist mechanism
-  works while the live path silently drops out from under it (see the paired tests in
-  `vendoring/compute-vendor-set.test.mjs`).
+  hand. So when the vendor set excludes by *pattern*, an operational file that matches
+  needs a by-path whitelist (`VENDORED_ENGINE_DOCS`) **and** a regression test asserting
+  against the real canon tree, not only a synthetic fixture: a fixture keeps proving the
+  whitelist mechanism works while the live path silently drops out from under it (see the
+  paired tests in `vendoring/compute-vendor-set.test.mjs`).
 - **You cannot force a due slot by running the scheduler workflow by hand.** Dueness is
   stateless — a slot is due iff its time falls in `(last successful run, now]` — so a
   `workflow_dispatch` run outside the slot's window succeeds, prints `- no tasks due`, and
-  does nothing. It looks like a healthy run, which is why it costs a debugging session
-  every time (it stalled the GCEC E4 pilot). To exercise a task Action-side, invoke its
+  does nothing. It looks like a healthy run. To exercise a task Action-side, invoke its
   worker directly, or move the slot hour in `taskScheduler` and wait for the cron.
 - **Derive the test file list from the tree — every hand-written glob here under-runs the suite.**
   There is no `package.json` and no test script, so each session invents its own incantation and
@@ -137,7 +116,6 @@ prose below). Entries accrete as sessions on the canon surface durable, canon-sp
   `.claudinite/(shared|local)/packs/…`; the home *is* the corpus and runs the same code from the
   repo root. So a path, regex, or workflow command written to the consumer mount shape works
   fleet-wide and fails on exactly this repo — the last place anyone exercises it, so the break
-  surfaces late (it bit `validate-dispatch`'s `DISPATCH_PATH_RE`, `executor.md`'s engine commands
-  and `scheduler-workflow-shape` in one cutover, #421). Write the two-root form up front: make the
-  `.claudinite/(shared|local)/` prefix optional in a pattern, and in a command probe for
-  `.claudinite/shared/` first, falling back to the repo root.
+  surfaces late. Write the two-root form up front: make the `.claudinite/(shared|local)/` prefix
+  optional in a pattern, and in a command probe for `.claudinite/shared/` first, falling back to
+  the repo root.

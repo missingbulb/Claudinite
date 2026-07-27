@@ -7,7 +7,7 @@ real release rather than treating this as settled canon.
 ## 1. The committed default is dev, always
 
 - **Two fully separate Firebase projects** — dev and prod. Isolation is at the project boundary
-  (data, auth, quotas, keys), the Firebase analog of TLDR's separate AWS accounts.
+  (data, auth, quotas, keys).
 - **Everything committed points at dev**: `.firebaserc`'s `default` alias, the checked-in client
   `firebase_options`, every documented command. Strongest form: **no prod alias committed at
   all** until the release milestone — no command run from the repo can reach prod by accident.
@@ -30,10 +30,9 @@ real release rather than treating this as settled canon.
 ## 3. Attestation beats provenance
 
 - Provenance (only the pipeline holds prod config) is necessary but not sufficient — anyone can
-  extract config from a shipped APK/IPA. TLDR documents exactly this gap; Firebase can close it:
-  **enforce App Check on the prod project** (Firestore, Functions, Storage) with Play Integrity
-  (Android) / App Attest (iOS), so requests without a store-signed attestation are rejected
-  server-side.
+  extract config from a shipped APK/IPA. Close the gap: **enforce App Check on the prod project**
+  (Firestore, Functions, Storage) with Play Integrity (Android) / App Attest (iOS), so requests
+  without a store-signed attestation are rejected server-side.
 - **Dev keeps the App Check debug provider** so emulators, tests, and local builds stay
   friction-free; enforcement is a per-project switch, which is precisely why prod must be a
   separate project.
