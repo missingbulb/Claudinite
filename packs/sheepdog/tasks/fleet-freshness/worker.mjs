@@ -1,12 +1,11 @@
 // The fleet-freshness preprocessing entry point — the script the scheduler runs as
 // `node worker.mjs` (cwd = this task dir, bounded by agent_preprocessing_timeout).
 //
-// It holds NO sweep logic. The sweep is this pack's own
-// `check-fleet-freshness.mjs`, two directories up; this worker only invokes it.
-// That relative import is the pack importing its OWN file, which pack-independence
-// permits — and it is why the sweep stayed a plain module with an exported `main()`
-// and a CLI guard: still runnable by hand, now also callable from here. Same shape
-// as the census's worker, deliberately.
+// It holds NO sweep logic. The sweep is `check-fleet-freshness.mjs`, its SIBLING in
+// this task folder — nothing outside this task uses it, so that is where it lives;
+// this worker only invokes it. It is why the sweep stayed a plain module with an
+// exported `main()` and a CLI guard: still runnable by hand, now also callable from
+// here. Same shape as the census's worker, deliberately.
 //
 // Failure is the escalation path. The sweep THROWS when a member could not be
 // probed ("unknown is not behind") or when its config/token is unusable; this
@@ -16,7 +15,7 @@
 // any agent.
 
 import { pathToFileURL } from 'node:url';
-import { main as sweep } from '../../check-fleet-freshness.mjs';
+import { main as sweep } from './check-fleet-freshness.mjs';
 
 const slotId = process.env.CLAUDINITE_SLOT_ID || '';
 const log = (s) => console.log(`fleet-freshness${slotId ? ` [${slotId}]` : ''}: ${s}`);

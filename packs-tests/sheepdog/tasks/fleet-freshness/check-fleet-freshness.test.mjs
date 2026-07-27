@@ -1,7 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { classifyFreshness, convergeDrift, FRESH } from '../../packs/sheepdog/check-fleet-freshness.mjs';
-import { parseSheepdogConfig } from '../../packs/sheepdog/check-fleet-coverage.mjs';
+import { classifyFreshness, convergeDrift, FRESH } from '../../../../packs/sheepdog/tasks/fleet-freshness/check-fleet-freshness.mjs';
 
 // The freshness sweep's whole judgement is `classifyFreshness` — pure, so every
 // branch is exercised here without a network. The precedence between states is the
@@ -52,21 +51,6 @@ test('classifyFreshness: root cause wins over symptom', () => {
   assert.equal(classify({ stampedRef: null, hasScheduler: false }).state, 'no-stamp');
   // and an unvendored repo is never asked about trunk
   assert.equal(classify({ stampedRef: null, compare: null }).state, 'no-stamp');
-});
-
-// --- config -------------------------------------------------------------------
-
-test('parseSheepdogConfig: canonRepo and staleDays default, so an existing config keeps working', () => {
-  const bare = parseSheepdogConfig({ packs: [{ id: 'sheepdog', config: { owner: 'MissingBulb' } }] }, 'missingbulb/sheepdog');
-  assert.equal(bare.canonRepo, 'missingbulb/Claudinite');
-  assert.equal(bare.staleDays, 14);
-  const set = parseSheepdogConfig({ packs: [{ id: 'sheepdog', config: { owner: 'acme', canonRepo: 'acme/Fork', staleDays: 3 } }] }, 'acme/fleet');
-  assert.equal(set.canonRepo, 'acme/Fork');
-  assert.equal(set.staleDays, 3);
-  // a nonsense window falls back rather than disabling the sweep (0 would flag everything)
-  for (const staleDays of [0, -5, 'soon', null]) {
-    assert.equal(parseSheepdogConfig({ packs: [{ id: 'sheepdog', config: { owner: 'a', staleDays } }] }, 'a/f').staleDays, 14, String(staleDays));
-  }
 });
 
 // --- convergence --------------------------------------------------------------

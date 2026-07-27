@@ -1,7 +1,7 @@
 // sheepdog task: fleet-census — the coverage/adoption audit, as a scheduled task.
 // `agent_model: 'none'` with `agent_preprocessing: 'node worker.mjs'`: the whole
 // pass is deterministic code the scheduler runs as a subprocess — no agent, no
-// dispatch issue. The worker calls this pack's census (check-fleet-coverage.mjs):
+// dispatch issue. The worker calls its sibling, the census (check-fleet-coverage.mjs):
 // enumerate every repo under the configured owner, classify each (covered /
 // uncovered / excluded / skipped), and converge one adoption ISSUE per uncovered
 // repo in this (sheepdog) repo.

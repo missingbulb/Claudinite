@@ -8,8 +8,12 @@
 // scheduled task that runs it (the sweep IS its agent_preprocessing, and its
 // required_secrets is what asks the repo for FLEET_GITHUB_TOKEN):
 //
-//   check-fleet-coverage.mjs   → tasks/fleet-census/     is a repo a MEMBER?
-//   check-fleet-freshness.mjs  → tasks/fleet-freshness/  is a member KEEPING UP?
+//   tasks/fleet-census/check-fleet-coverage.mjs      is a repo a MEMBER?
+//   tasks/fleet-freshness/check-fleet-freshness.mjs  is a member KEEPING UP?
+//
+// Each sweep lives INSIDE its task's folder — nothing outside that task uses it.
+// The pack root holds only what both need: fleet-api.mjs (the cross-repo REST
+// primitives) and fleet-config.mjs (the one reader of this pack entry's config).
 //
 // The second exists because per-project scheduling made every member maintain
 // itself and, in doing so, removed the last thing that looked at a member from the

@@ -4,8 +4,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { validateTaskDeclaration } from '../../engine/scheduler/task-contract.mjs';
-import decl from '../../packs/sheepdog/tasks/fleet-census/task.mjs';
+import { validateTaskDeclaration } from '../../../../engine/scheduler/task-contract.mjs';
+import decl from '../../../../packs/sheepdog/tasks/fleet-census/task.mjs';
 
 // The sheepdog pack's fleet-census task (#394, #422): the coverage census as an
 // ORDINARY agentless pack task, replacing the deleted `workflow_dispatch`-only
@@ -14,7 +14,7 @@ import decl from '../../packs/sheepdog/tasks/fleet-census/task.mjs';
 // executor both read, and the worker INVOKES the census rather than
 // reimplementing it (a copy would rot silently against check-fleet-coverage.mjs).
 
-const packRoot = join(dirname(fileURLToPath(import.meta.url)), '../../packs/sheepdog');
+const packRoot = join(dirname(fileURLToPath(import.meta.url)), '../../../../packs/sheepdog');
 const taskDir = join(packRoot, 'tasks/fleet-census');
 const workerSrc = readFileSync(join(taskDir, 'worker.mjs'), 'utf8');
 
@@ -68,7 +68,7 @@ test('fleet-census: the coverage workflow the task replaces is gone', () => {
 });
 
 test('fleet-census: the worker imports the pack\'s census instead of reimplementing it', () => {
-  assert.match(workerSrc, /from '\.\.\/\.\.\/check-fleet-coverage\.mjs'/);
+  assert.match(workerSrc, /from '\.\/check-fleet-coverage\.mjs'/);
   // None of the census's own vocabulary may appear here — a second copy of the
   // enumeration, classification or issue convergence is exactly the failure mode.
   for (const marker of ['/user/repos', 'fleet-adoption', 'isCovered', 'parseSheepdogConfig']) {

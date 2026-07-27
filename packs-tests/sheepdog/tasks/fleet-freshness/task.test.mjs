@@ -4,9 +4,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { validateTaskDeclaration } from '../../engine/scheduler/task-contract.mjs';
-import decl from '../../packs/sheepdog/tasks/fleet-freshness/task.mjs';
-import census from '../../packs/sheepdog/tasks/fleet-census/task.mjs';
+import { validateTaskDeclaration } from '../../../../engine/scheduler/task-contract.mjs';
+import decl from '../../../../packs/sheepdog/tasks/fleet-freshness/task.mjs';
+import census from '../../../../packs/sheepdog/tasks/fleet-census/task.mjs';
 
 // The sheepdog pack's fleet-freshness task: the OUTSIDE look at each covered member,
 // which per-project scheduling removed when it made every repo maintain itself. Same
@@ -15,7 +15,7 @@ import census from '../../packs/sheepdog/tasks/fleet-census/task.mjs';
 // the sweep rather than reimplementing it (a copy would rot against
 // check-fleet-freshness.mjs).
 
-const packRoot = join(dirname(fileURLToPath(import.meta.url)), '../../packs/sheepdog');
+const packRoot = join(dirname(fileURLToPath(import.meta.url)), '../../../../packs/sheepdog');
 const taskDir = join(packRoot, 'tasks/fleet-freshness');
 const workerSrc = readFileSync(join(taskDir, 'worker.mjs'), 'utf8');
 
@@ -64,7 +64,7 @@ test('fleet-freshness: fires unconditionally, with a reason', () => {
 // --- the worker delegates to the sweep ----------------------------------------
 
 test('fleet-freshness: the worker imports the pack\'s sweep instead of reimplementing it', () => {
-  assert.match(workerSrc, /from '\.\.\/\.\.\/check-fleet-freshness\.mjs'/);
+  assert.match(workerSrc, /from '\.\/check-fleet-freshness\.mjs'/);
   for (const marker of ['/user/repos', 'fleet-drift', 'classifyFreshness', 'parseSheepdogConfig']) {
     assert.ok(!workerSrc.includes(marker), `worker.mjs should not reimplement the sweep (found ${marker})`);
   }
@@ -92,13 +92,17 @@ test('fleet-freshness and fleet-census answer different questions, on different 
   // Coverage asks "is this repo a member"; freshness takes that as given and asks
   // "is that membership still meaning anything". Sharing a label would merge two
   // issue streams whose close conditions are unrelated.
-  const sweep = readFileSync(join(packRoot, 'check-fleet-freshness.mjs'), 'utf8');
-  const coverage = readFileSync(join(packRoot, 'check-fleet-coverage.mjs'), 'utf8');
+  const sweep = readFileSync(join(packRoot, 'tasks/fleet-freshness/check-fleet-freshness.mjs'), 'utf8');
+  const coverage = readFileSync(join(packRoot, 'tasks/fleet-census/check-fleet-coverage.mjs'), 'utf8');
   assert.match(sweep, /const LABEL = 'fleet-drift'/);
   assert.match(coverage, /const LABEL = 'fleet-adoption'/);
-  // Both converge through the pack's shared floor rather than a private copy.
   for (const src of [sweep, coverage]) {
-    assert.match(src, /ensureLabel[\s\S]*from '\.\/fleet-api\.mjs'|from '\.\/fleet-api\.mjs'/);
-    assert.ok(!/async function ensureLabel/.test(src), 'ensureLabel belongs to fleet-api.mjs, not to a sweep');
+    // Each sweep lives IN its own task folder and reaches UP for what is shared —
+    // never sideways into the other task's folder, and never with a private copy.
+    assert.match(src, /from '\.\.\/\.\.\/fleet-api\.mjs'/);
+    assert.match(src, /from '\.\.\/\.\.\/fleet-config\.mjs'/);
+    assert.ok(!/from '\.\.\/[a-z-]+\/check-fleet/.test(src), 'a sweep must not import the other task\'s sweep');
+    assert.ok(!/async function ensureLabel|export function parseSheepdogConfig/.test(src),
+      'ensureLabel and parseSheepdogConfig are pack-root shared modules, not a sweep\'s own');
   }
 });

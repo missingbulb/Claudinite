@@ -1,7 +1,7 @@
 // sheepdog task: fleet-freshness — is each COVERED member actually keeping up?
 // `agent_model: 'none'` with `agent_preprocessing: 'node worker.mjs'`: the whole
 // pass is deterministic code the scheduler runs as a subprocess — no agent, no
-// dispatch issue. The worker calls this pack's sweep (check-fleet-freshness.mjs):
+// dispatch issue. The worker calls its sibling, the sweep (check-fleet-freshness.mjs):
 // probe every covered repo under the configured owner, classify its drift by root
 // cause (no-stamp / no-scheduler / ref-not-on-trunk / behind / fresh), and converge
 // one drift ISSUE per unhealthy repo in this (sheepdog) repo.

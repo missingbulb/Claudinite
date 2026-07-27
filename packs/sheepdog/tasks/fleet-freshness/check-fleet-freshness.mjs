@@ -43,11 +43,16 @@
 //
 // Dependency-free (global fetch, Node 20+); read-only toward every member, and writes
 // only the enforcer repo's own drift issues + label.
+//
+// It lives IN its task's folder (tasks/fleet-freshness/) because nothing else uses it —
+// only this task's worker.mjs imports it. What IS shared with the census sits at the
+// pack root: the cross-repo REST primitives (fleet-api.mjs) and the config reader
+// (fleet-config.mjs).
 
 import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { makeGh, paged, ensureLabel, labeledIssues } from './fleet-api.mjs';
-import { parseSheepdogConfig } from './check-fleet-coverage.mjs';
+import { makeGh, paged, ensureLabel, labeledIssues } from '../../fleet-api.mjs';
+import { parseSheepdogConfig } from '../../fleet-config.mjs';
 
 const LABEL = 'fleet-drift';
 const SCHEDULER = '.github/workflows/claudinite-scheduler.yml';

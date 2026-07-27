@@ -10,12 +10,16 @@ orchestrator), the task engine (`engine/scheduler/`), scheduling — is Claudini
 baselining and the daily-run are Claudinite's own responsibility, not the pack's.
 
 **Two sweeps, two questions** — separate, on separate labels, because they close on unrelated
-conditions. The **census** ([check-fleet-coverage.mjs](check-fleet-coverage.mjs)) asks *is this repo a
+conditions. The **census** ([check-fleet-coverage.mjs](tasks/fleet-census/check-fleet-coverage.mjs)) asks *is this repo a
 member* and converges `fleet-adoption` issues. The **freshness sweep**
-([check-fleet-freshness.mjs](check-fleet-freshness.mjs)) takes coverage as given, asks *is that
+([check-fleet-freshness.mjs](tasks/fleet-freshness/check-fleet-freshness.mjs)) takes coverage as given, asks *is that
 membership still meaning anything*, and converges `fleet-drift` issues. The second exists because
 per-project scheduling made every member maintain itself and removed the last outside look at one:
 self-maintenance cannot detect its own absence.
+
+**Where the code lives** — each sweep sits **inside its task's folder**, because only that task's
+`worker.mjs` uses it. The pack root holds just what both need: [fleet-api.mjs](fleet-api.mjs) (cross-repo
+REST primitives) and [fleet-config.mjs](fleet-config.mjs) (the one reader of the entry `config` below).
 
 **Config** — this repo's `.claudinite-checks.json` carries, as its `packs` entry for this pack:
 
