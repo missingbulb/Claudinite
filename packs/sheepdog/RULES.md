@@ -4,18 +4,23 @@ Declaring this pack marks a repo as the **fleet enforcer**: the one repo that co
 every repo under an owner. It's opt-in — a dedicated `sheepdog` repo declares it (it is **not** seeded
 by `--init`).
 
-It contributes the pieces only a fleet enforcer needs — two **cross-repo sweeps** — plus their config
+It contributes the pieces only a fleet enforcer needs — three **cross-repo sweeps** — plus their config
 schema and the scheduled tasks that run them. The rest of the machinery — running the daily-run (the
 orchestrator), the task engine (`engine/scheduler/`), scheduling — is Claudinite **core**, because
 baselining and the daily-run are Claudinite's own responsibility, not the pack's.
 
-**Two sweeps, two questions** — separate, on separate labels, because they close on unrelated
-conditions. The **census** ([check-fleet-coverage.mjs](tasks/fleet-census/check-fleet-coverage.mjs)) asks *is this repo a
+**Three sweeps, three questions** — separate, because they close on unrelated conditions. The
+**census** ([check-fleet-coverage.mjs](tasks/fleet-census/check-fleet-coverage.mjs)) asks *is this repo a
 member* and converges `fleet-adoption` issues. The **freshness sweep**
 ([check-fleet-freshness.mjs](tasks/fleet-freshness/check-fleet-freshness.mjs)) takes coverage as given, asks *is that
 membership still meaning anything*, and converges `fleet-drift` issues. The second exists because
 per-project scheduling made every member maintain itself and removed the last outside look at one:
-self-maintenance cannot detect its own absence.
+self-maintenance cannot detect its own absence. The **usage sweep**
+([aggregate-fleet-usage.mjs](tasks/fleet-usage/aggregate-fleet-usage.mjs)) asks *what does the fleet
+actually use* and writes `usage-fleet.GENERATED.json` — a file, not issues, because it reports a
+measurement rather than a condition to converge. It exists because a member folds its own skill-usage
+numbers and can therefore only say whether a skill loads *there*; whether a skill earns its place at
+all is fleet-shaped, and nothing inside a member can see it.
 
 **Where the code lives** — each sweep sits **inside its task's folder**, because only that task's
 `worker.mjs` uses it. The pack root holds just what both need: [fleet-api.mjs](fleet-api.mjs) (cross-repo
@@ -35,17 +40,21 @@ is measured against — named rather than inferred, because a ref tells you noth
 from. `staleDays` (default `14`) is how far behind is too far. Both are freshness-only and both
 default, so an existing sheepdog config keeps working untouched.
 
-**Classification** — both sweeps are ordinary **pack tasks**, not fleet mechanisms. Their
+**Classification** — all three sweeps are ordinary **pack tasks**, not fleet mechanisms. Their
 *implementation* — an account-spanning PAT — happens to scan every repo under the owner, but their
-declaration, scheduling, and lifecycle are exactly those of any pack task. Neither declares the
+declaration, scheduling, and lifecycle are exactly those of any pack task. None declares the
 `fleet` signal nor `session_scope: fleet`; the cross-repo reach lives in the implementation, never in
 how a task is wired. (The task files carry the same note.)
 
-**How they run** — as the pack's [`fleet-census`](tasks/fleet-census/task.md) (`daily`) and
-[`fleet-freshness`](tasks/fleet-freshness/task.md) (`weekly`) scheduled tasks, both `agent_model: none`
-and `expected_outcome: none` (they open **issues**, never a PR), each with its sweep as
-`agent_preprocessing`. Freshness is weekly because drift is measured in days — a daily sweep would
-re-ask a question whose answer cannot have changed. There is **no coverage workflow** — preprocessing
+**How they run** — as the pack's [`fleet-census`](tasks/fleet-census/task.md) (`daily`),
+[`fleet-freshness`](tasks/fleet-freshness/task.md) (`weekly`) and
+[`fleet-usage`](tasks/fleet-usage/task.md) (`daily`) scheduled tasks, all `agent_model: none`, each
+with its sweep as `agent_preprocessing`. The first two are `expected_outcome: none` (they open
+**issues**, never a PR); the usage sweep is `merged-pr`, because its output IS a tracked file and an
+auto-merging PR keeps that write inside the outcome taxonomy, lets this repo's CI gate a malformed
+file, and makes the daily PR stream a browsable audit trail. Freshness is weekly because drift is
+measured in days — a daily sweep would re-ask a question whose answer cannot have changed; usage is
+daily because the members fold daily. There is **no coverage workflow** — preprocessing
 runs Action-side inside this repo's one scheduler workflow, so the repo Actions secret is already
 reachable there; each task's `required_secrets: ['FLEET_GITHUB_TOKEN']` stamps the name into that
 workflow's env and is what asks the owner for it (a fine-grained PAT spanning the owner's repos:

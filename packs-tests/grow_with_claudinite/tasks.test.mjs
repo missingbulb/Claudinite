@@ -6,6 +6,7 @@ import proseToChecks from '../../packs/grow_with_claudinite/tasks/prose-to-check
 import extract from '../../packs/grow_with_claudinite/tasks/growth-extract/task.mjs';
 import dedup from '../../packs/grow_with_claudinite/tasks/growth-dedup/task.mjs';
 import conversationExtract from '../../packs/grow_with_claudinite/tasks/conversation-extract/task.mjs';
+import usageFold from '../../packs/grow_with_claudinite/tasks/usage-fold/task.mjs';
 
 // grow_with_claudinite per-repo task declarations + preconditions
 // (per-project-scheduling redesign: discover-packs and prose-to-checks are local,
@@ -195,4 +196,34 @@ test('conversation-extract: quiet with no logs branch, retention unset, or an em
     commits: {},
     conversationLogs: { present: true, retentionDays: 10, oldestLogAgeDays: null },
   }).run, false);
+});
+
+// --- usage-fold (the skill-usage aggregate) ----------------------------------
+
+test('usage-fold: daily/agentless/merged-pr, on the conversationLogs signal alone', () => {
+  assert.equal(usageFold.id, 'usage-fold');
+  assert.equal(usageFold.frequency, 'daily');
+  assert.equal(usageFold.agent_model, 'none');
+  assert.equal(usageFold.expected_outcome, 'merged-pr');
+  assert.deepEqual(usageFold.precondition_signals, ['conversationLogs']);
+  // An agentless task's whole work is its preprocessing — with none it does nothing.
+  assert.equal(usageFold.agent_preprocessing, 'node worker.mjs');
+  assert.ok(usageFold.agent_preprocessing_timeout > 0);
+});
+
+test('usage-fold: a logs branch is the whole precondition — it runs on a quiet repo too', () => {
+  // Deliberately NOT gated on fresh captures: advancing the week watermark past days
+  // that have closed is work a quiet repo still needs done, and a run with nothing
+  // new recomputes to a byte-identical file and opens no PR.
+  const quiet = usageFold.precondition({ conversationLogs: { present: true, logCount: 4 } });
+  assert.equal(quiet.run, true);
+  assert.match(quiet.reason, /fold 4 captured log/);
+});
+
+test('usage-fold: no logs branch means nothing has ever been captured — it self-skips', () => {
+  const v = usageFold.precondition({ conversationLogs: { present: false } });
+  assert.equal(v.run, false);
+  assert.match(v.reason, /nothing to fold/);
+  // and a missing signal is not a reason to run either
+  assert.equal(usageFold.precondition({}).run, false);
 });
