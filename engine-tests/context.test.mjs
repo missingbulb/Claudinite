@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeRepo, cleanup, git, gitDated, writeFiles } from './helpers.mjs';
-import { buildContext, loadConfig } from '../engine/checks/helpers/repo-context.mjs';
+import { buildContext, loadConfig, CONFIG_KEYS } from '../engine/checks/helpers/repo-context.mjs';
 
 test('loadConfig: clean settings validate with no errors; a missing file is empty and error-free', () => {
   const ok = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({ packs: ['basics'], rules: {}, maintenance: { delivery: 'auto' } }) } });
@@ -330,4 +330,60 @@ test('buildContext: a merge already on the base branch is never the work\'s, eve
     // The merge this branch really did introduce still reports.
     assert.deepEqual(subjects, ['merge zed into feature']);
   } finally { cleanup(root); }
+});
+
+// ── Every declarable key must survive the load ──────────────────────────────
+// The class of bug this closes: `claudinite` and `maintenance` were both in
+// CONFIG_KEYS — so declaring them validated clean, with no error — and both were
+// then dropped from loadConfig's returned shape. A key legal to write and
+// impossible to read is silent in both directions, and this one was expensive:
+// the `stamp` signal reads `config.claudinite`, got undefined on every repo, and
+// baselining self-skipped as "no vendored mount (no stamp)" across the whole
+// fleet while its scheduler runs went green. Observed 2026-07-28 on every
+// consumer; nothing had baselined since 07-26.
+test('every key in CONFIG_KEYS survives loadConfig — declarable implies readable', () => {
+  const root = mkdtempSync(join(tmpdir(), 'claudinite-config-keys-'));
+  try {
+    writeFiles(root, {
+      '.claudinite-checks.json': JSON.stringify({
+        packs: ['basics'],
+        rules: { 'some-rule': 'advisory' },
+        accept: [{ rule: 'some-rule', path: 'x.md', reason: 'because' }],
+        sharedConstants: [{ what: 'v', value: '1', counts: { 'a.json': 1 } }],
+        maintenance: { delivery: 'auto-merge' },
+        taskScheduler: { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 },
+        claudinite: { updated: '2026-07-26T20:10:18.694Z', ref: 'deadbeef' },
+      }, null, 2) + '\n',
+    });
+    const cfg = loadConfig(root);
+    assert.deepEqual(cfg.errors, [], 'the fixture must be a legal settings file');
+
+    // `packConfig` is a derived view rather than a declared key, so it is the one
+    // CONFIG_KEYS entry with no verbatim counterpart; everything else must be
+    // present and non-undefined.
+    for (const key of CONFIG_KEYS) {
+      if (key === 'packConfig') continue;
+      assert.notEqual(cfg[key], undefined,
+        `"${key}" is declarable (it is in CONFIG_KEYS and raises no error) but loadConfig drops it — `
+        + 'anything reading config.' + key + ' gets undefined forever');
+    }
+
+    // The two that were actually lost, asserted on their values rather than mere
+    // presence — this is what the scheduler's stamp signal reads.
+    assert.equal(cfg.claudinite.ref, 'deadbeef');
+    assert.equal(cfg.claudinite.updated, '2026-07-26T20:10:18.694Z');
+    assert.equal(cfg.maintenance.delivery, 'auto-merge');
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('an absent claudinite/maintenance loads as null, not undefined', () => {
+  // The honest negative: a pre-adoption repo has no stamp, and the stamp signal
+  // must see a null it can reason about rather than a missing key.
+  const root = mkdtempSync(join(tmpdir(), 'claudinite-config-empty-'));
+  try {
+    writeFiles(root, { '.claudinite-checks.json': JSON.stringify({ packs: ['basics'] }) + '\n' });
+    const cfg = loadConfig(root);
+    assert.equal(cfg.claudinite, null);
+    assert.equal(cfg.maintenance, null);
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });
