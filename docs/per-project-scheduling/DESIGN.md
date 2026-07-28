@@ -182,36 +182,27 @@ refresh, not workflow edits). It runs
      (baselining's precondition falls back to stamp-age when it isn't).
    - `fleet` — canon repo only, over the fleet PAT (the members aggregate for
      the genuinely fleet-scoped tasks). Consumers cannot declare it.
-   - `overrides` — the only collector reading neither GitHub nor disk: the
-     opaque `KEY=value` bag a **manual** `workflow_dispatch` run carried, empty
-     on every scheduled run. GitHub cannot declare arbitrary named inputs, so
-     the workflow takes one free-form `overrides` string, passes it as
-     `CLAUDINITE_OVERRIDES`, and `parseOverrides` splits it. **The engine never
-     interprets a key** — it hands the bag to this signal, and only a task that
-     *declares* the signal reads its own key out of it, so a new override is a
-     one-task change with no engine edit and no schema. Values stay strings
-     with no truthiness coercion, so `FORCE_X=false` cannot read as "present,
-     therefore on".
+   A **manual** `workflow_dispatch` run may additionally carry `overrides` — one
+   free-form `KEY=value` string, since GitHub cannot declare arbitrary named
+   inputs. It reaches the engine as `CLAUDINITE_OVERRIDES`, and the engine
+   understands exactly one key: **`FORCE_TASKS=<comma-separated task ids>`**.
+   A forced task is put in the due list under its most-recent slot **and runs
+   without its precondition being consulted at all** — forcing is a decision the
+   operator already made, so nothing asks the task whether it agrees, and no task
+   declaration mentions forcing anywhere (#515). The engine learns "run these
+   ids", never what any of them do. An id matching no discovered task forces
+   nothing; a task due on its own merit is judged normally, not forced; and a
+   forced dispatch carries a generic Context saying so, since its issue Context
+   is the agent's binding scope and nothing here asserts there is work to do.
 
-     **One key is read by the engine, generically: `FORCE_TASKS=<task ids>`.**
-     A task is gated twice — the SLOT gate (is its most-recent slot unrun?) runs
-     before any precondition, so a task whose slot has passed is never evaluated
-     and an override in its precondition is unreachable. `FORCE_TASKS` puts the
-     named ids back in the due list under their most-recent slot. The engine
-     learns only "evaluate these ids", never what any of them do, and being
-     evaluated is not permission: the task's own precondition still decides, and
-     an id matching no discovered task forces nothing. (#515 — the first cut
-     cleared only the precondition gate and was inert on exactly the mid-day
-     manual run it existed for.)
+   The case it exists for is `FORCE_TASKS=baselining`: the age gate
+   (`ageDays > 1`) means a repo that baselined this morning is not due again for
+   over a day, so a canon fix worth propagating *today* otherwise had no lever
+   short of hand-editing each repo's stamp. The two gates are why forcing has to
+   live in the engine: the SLOT gate runs before any precondition, so an override
+   a task read for itself was unreachable on exactly the mid-day run that needs
+   it.
 
-     The case it exists for: `FORCE_TASKS=baselining`. The age gate
-     (`ageDays > 1`) means a repo that baselined this morning is not due again
-     for over a day, so a canon fix worth propagating *today* otherwise had no
-     lever short of hand-editing each repo's stamp. Forcing changes only
-     *whether the worker runs* — the worker still decides for itself what needs
-     doing, so forcing an already-current mount is a cheap no-op. baselining
-     reads the same key for its own half, checked after the no-vendored-mount
-     guard, so a forced fleet-wide run still skips a repo with no mount.
 4. **Runs preconditions** — pure code, per-task try/catch isolation; a throwing
    precondition converges to the standard failure state (`report-failure`
    composite → `workflow-failure` issue); other tasks proceed.

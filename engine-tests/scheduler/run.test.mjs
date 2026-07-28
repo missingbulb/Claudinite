@@ -324,66 +324,80 @@ test('parseOverrides takes what gh hands it after ITS own first-"=" split', () =
   assert.deepEqual(parseOverrides('FORCE_TASKS=baselining,FORCE_OTHER=x'), { FORCE_TASKS: 'baselining', FORCE_OTHER: 'x' });
 });
 
-// ── FORCE_TASKS and the SLOT gate (#515) ────────────────────────────────────
-// The override's first cut only cleared the precondition gate, and every test
-// drove the precondition directly — so nothing noticed that `planRun` computes
-// the due list FIRST and a task whose slot has passed never reaches its
-// precondition at all. These drive planRun with a deliberately non-due slot,
-// which is the only shape that catches it.
+// ── FORCE_TASKS: the slot gate, and no precondition at all (#515) ───────────
+// Forcing lives entirely in the engine. No task declaration mentions it, no
+// precondition is consulted for a forced task, and the first cut got both wrong:
+// it asked the task's permission, and it asked too late to matter because the
+// due list is computed BEFORE any precondition runs.
 
 // 09:05, hourly scheduler last successful at 08:44 — so today's daily-2h slot
 // (02:00) has already been passed by an earlier run. Exactly the mid-day manual
 // run the override exists for.
 const MIDDAY = { now: '2026-07-28T09:05:00Z', lastSuccess: '2026-07-28T08:44:00Z' };
-const forceable = (id) => mkTask(id, {
-  frequency: 'daily-2h',
-  precondition: (signals) => (String(signals.overrides?.FORCE_TASKS ?? '').split(',').map((s) => s.trim()).includes(id)
-    ? { run: true, reason: 'forced' }
-    : { run: false, reason: 'not due' }),
-});
+const notDue = (id) => mkTask(id, { frequency: 'daily-2h', precondition: () => ({ run: false, reason: 'nothing to do' }) });
 
 test('without an override a passed slot is not evaluated at all — the gate under test', async () => {
   const { evaluations } = await planRun({
-    tasks: [forceable('baselining')], schedule: D, ...MIDDAY,
-    collectSignals: async () => ({ overrides: {} }),
+    tasks: [notDue('baselining')], schedule: D, ...MIDDAY,
+    collectSignals: async () => ({}),
     existingIssuesFor: async () => [],
   });
   assert.deepEqual(evaluations, [], 'a passed slot yields no evaluation, so no precondition runs');
 });
 
-test('FORCE_TASKS puts a passed-slot task back in the due list, and it dispatches', async () => {
+test('FORCE_TASKS runs a passed-slot task whose precondition says no', async () => {
   const { evaluations } = await planRun({
-    tasks: [forceable('baselining')], schedule: D, ...MIDDAY,
+    tasks: [notDue('baselining')], schedule: D, ...MIDDAY,
     overrides: { FORCE_TASKS: 'baselining' },
-    collectSignals: async () => ({ overrides: { FORCE_TASKS: 'baselining' } }),
-    existingIssuesFor: async () => [],
-  });
-  assert.equal(evaluations.length, 1, 'the forced task is evaluated despite its slot having passed');
-  assert.equal(evaluations[0].task, 'baselining');
-  assert.equal(evaluations[0].run, true);
-  assert.equal(evaluations[0].forced, true);
-  assert.equal(evaluations[0].dispatch.action, 'create');
-  assert.match(evaluations[0].slotId, /^d2026-07-28$/, 'it runs under its most-recent slot, not a fabricated one');
-});
-
-test('forcing is not permission — the task\'s own precondition still decides', async () => {
-  const refuses = mkTask('stubborn', { frequency: 'daily-2h', precondition: () => ({ run: false, reason: 'nothing to do' }) });
-  const { evaluations } = await planRun({
-    tasks: [refuses], schedule: D, ...MIDDAY,
-    overrides: { FORCE_TASKS: 'stubborn' },
     collectSignals: async () => ({}),
     existingIssuesFor: async () => [],
   });
-  assert.equal(evaluations.length, 1, 'it is evaluated...');
-  assert.equal(evaluations[0].run, false, '...but it still says no');
-  assert.equal(evaluations[0].dispatch, undefined);
+  assert.equal(evaluations.length, 1);
+  assert.equal(evaluations[0].run, true, 'forced means run — the "nothing to do" verdict is never asked for');
+  assert.equal(evaluations[0].forced, true);
+  assert.equal(evaluations[0].dispatch.action, 'create');
+  assert.match(evaluations[0].reason, /forced by FORCE_TASKS/);
+  assert.match(evaluations[0].slotId, /^d2026-07-28$/, 'it runs under its most-recent slot, not a fabricated one');
+});
+
+test('a forced task\'s precondition is never CALLED — not called-and-ignored', async () => {
+  // The sharpest form of "no task is aware of forcing": a precondition that would
+  // throw if invoked. A forced run must not touch it at all.
+  let called = false;
+  const explodes = mkTask('boom', {
+    frequency: 'daily-2h',
+    precondition: () => { called = true; throw new Error('precondition must not run'); },
+  });
+  const { evaluations } = await planRun({
+    tasks: [explodes], schedule: D, ...MIDDAY,
+    overrides: { FORCE_TASKS: 'boom' },
+    collectSignals: async () => ({}),
+    existingIssuesFor: async () => [],
+  });
+  assert.equal(called, false, 'the precondition was invoked for a forced task');
+  assert.equal(evaluations[0].run, true);
+  assert.equal(evaluations[0].error, undefined);
+});
+
+test('a forced dispatch still carries a binding Context, naming the mechanism', async () => {
+  const { evaluations } = await planRun({
+    tasks: [notDue('baselining')], schedule: D, ...MIDDAY,
+    overrides: { FORCE_TASKS: 'baselining' },
+    collectSignals: async () => ({}),
+    existingIssuesFor: async () => [],
+  });
+  const ctx = evaluations[0].context.join(' ');
+  assert.match(ctx, /forced manually/i);
+  assert.match(ctx, /precondition was not evaluated/i);
+  // Generic: it must not name the task it happens to be forcing.
+  assert.doesNotMatch(ctx, /baselining/i);
 });
 
 test('FORCE_TASKS forces ONLY the named ids — a sibling task is untouched', async () => {
   const { evaluations } = await planRun({
-    tasks: [forceable('baselining'), forceable('growth-extract')], schedule: D, ...MIDDAY,
+    tasks: [notDue('baselining'), notDue('growth-extract')], schedule: D, ...MIDDAY,
     overrides: { FORCE_TASKS: 'baselining' },
-    collectSignals: async () => ({ overrides: { FORCE_TASKS: 'baselining' } }),
+    collectSignals: async () => ({}),
     existingIssuesFor: async () => [],
   });
   assert.deepEqual(evaluations.map((e) => e.task), ['baselining']);
@@ -391,7 +405,7 @@ test('FORCE_TASKS forces ONLY the named ids — a sibling task is untouched', as
 
 test('an id matching no discovered task forces nothing, and never throws', async () => {
   const { evaluations } = await planRun({
-    tasks: [forceable('baselining')], schedule: D, ...MIDDAY,
+    tasks: [notDue('baselining')], schedule: D, ...MIDDAY,
     overrides: { FORCE_TASKS: 'no-such-task' },
     collectSignals: async () => ({}),
     existingIssuesFor: async () => [],
@@ -399,17 +413,19 @@ test('an id matching no discovered task forces nothing, and never throws', async
   assert.deepEqual(evaluations, []);
 });
 
-test('a task whose slot IS due is not double-listed when also forced', async () => {
-  // Same slot, forced and due at once: the due branch wins and yields one entry.
+test('a task due on its own merit is judged normally, not forced', async () => {
+  // Same slot due AND named in FORCE_TASKS: the due branch wins, so the task is
+  // evaluated the ordinary way and its own "no" stands.
   const { evaluations } = await planRun({
-    tasks: [forceable('baselining')], schedule: D,
-    now: '2026-07-28T02:30:00Z', lastSuccess: '2026-07-28T01:44:00Z', // 02:00 slot IS due
+    tasks: [notDue('baselining')], schedule: D,
+    now: '2026-07-28T02:30:00Z', lastSuccess: '2026-07-28T01:44:00Z', // the 02:00 slot IS due
     overrides: { FORCE_TASKS: 'baselining' },
-    collectSignals: async () => ({ overrides: { FORCE_TASKS: 'baselining' } }),
+    collectSignals: async () => ({}),
     existingIssuesFor: async () => [],
   });
   assert.equal(evaluations.length, 1);
-  assert.equal(evaluations[0].forced, undefined, 'due on its own merit, not marked forced');
+  assert.equal(evaluations[0].forced, undefined);
+  assert.equal(evaluations[0].run, false, 'due on its own merit → its precondition decides');
 });
 
 test('forcedTaskIds reads only FORCE_TASKS, trimming and dropping blanks', () => {

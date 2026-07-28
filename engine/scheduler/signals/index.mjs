@@ -233,17 +233,6 @@ const COLLECTORS = {
   async fleet(gh, ctx) {
     return ctx.fleet ?? null;
   },
-
-  // The one signal that reads neither GitHub nor disk: the opaque `KEY=value` bag
-  // a MANUAL `workflow_dispatch` run carried (run.mjs `parseOverrides`), empty on
-  // every scheduled run. It is a signal rather than a planner special case so that
-  // forcing a task stays a PRECONDITION decision — pure, unit-testable, and
-  // reported in the same evaluation line as every other reason. The engine never
-  // reads a key out of it; only the declaring task does, which is what keeps a new
-  // override from ever becoming an engine change.
-  async overrides(gh, ctx) {
-    return { ...(ctx.overrides ?? {}) };
-  },
 };
 
 export const SIGNAL_COLLECTORS = Object.keys(COLLECTORS);

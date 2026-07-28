@@ -32,12 +32,11 @@ export function computeDueTaskSlots(tasks, schedule, now, lastSuccess, forced = 
   for (const task of tasks) {
     const slot = due.get(task.decl.frequency);
     if (slot) { out.push({ task, slotId: slot.slotId, slotTime: slot.slotTime }); continue; }
-    // A FORCED task is evaluated under its most-recent slot even though that slot
-    // has already been run. Without this the override was inert: the due list is
-    // computed BEFORE any precondition, so a task whose slot has passed never has
-    // its precondition consulted at all — and a mid-day forced run is the only
-    // kind that matters. Being in the due list is not permission to run; the
-    // task's own precondition still decides (#515).
+    // A FORCED task runs under its most-recent slot even though that slot has
+    // already been run. This gate is the reason forcing has to live here at all:
+    // the due list is computed BEFORE any precondition, so a task whose slot has
+    // passed is never looked at again — and a mid-day forced run is the only kind
+    // that matters (#515). `planRun` then skips its precondition outright.
     if (forced.includes(task.id)) {
       const s = mostRecentSlot(task.decl.frequency, schedule, now);
       out.push({ task, slotId: s.id, slotTime: s.time, forced: true });
@@ -46,11 +45,22 @@ export function computeDueTaskSlots(tasks, schedule, now, lastSuccess, forced = 
   return out;
 }
 
+// The verdict a forced task gets INSTEAD of its precondition. The context line
+// is generic on purpose — it names the mechanism, not the task — and it is there
+// because a dispatch issue's Context is the agent's binding scope: a forced
+// dispatch that carried none would read as a scope of nothing, and the agent
+// should know it arrived by a hand-started run rather than a met condition.
+const FORCED_VERDICT = Object.freeze({
+  run: true,
+  reason: 'forced by FORCE_TASKS on a manual scheduler run — its precondition was not evaluated',
+  context: Object.freeze(['This run was forced manually (FORCE_TASKS on a workflow_dispatch); the task\'s own precondition was not evaluated, so nothing here asserts there is work to do. Do only what the task file specifies, and converge to a no-op if there is nothing.']),
+});
+
 // The task ids a manual run forced, out of the opaque override bag. This is the
-// ONE thing the engine reads from that bag, and it is deliberately generic: it
-// learns the concept "evaluate these task ids", never what any of them do. A task
-// still owns whether it actually runs — it reads the same key and looks for its
-// own id (see baselining). An id matching no discovered task forces nothing.
+// ONE key the engine reads from that bag, and it is deliberately generic: it
+// learns "run these task ids", never what any of them do. No task declaration
+// mentions forcing, and no precondition is consulted for a forced task — an id
+// matching no discovered task simply forces nothing.
 export function forcedTaskIds(overrides = {}) {
   return String(overrides.FORCE_TASKS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
 }
@@ -121,7 +131,13 @@ export async function planRun({
 
   const evaluations = [];
   for (const { task, slotId, forced } of dueList) {
-    const pre = runPrecondition(task, signals, packConfigFor(task.pack));
+    // A FORCED task does not consult its precondition at all. "Forced" is a
+    // decision the operator already made, so asking the task whether it agrees is
+    // both redundant and a way for the answer to be no — and a task that could
+    // veto a force would need to know forcing exists, which is exactly the
+    // coupling this mechanism avoids. Nothing in a task declaration mentions
+    // forcing; the engine owns it end to end.
+    const pre = forced ? FORCED_VERDICT : runPrecondition(task, signals, packConfigFor(task.pack));
     const rec = {
       pack: task.pack, task: task.id, slotId,
       model: task.decl.agent_model, outcome: task.decl.expected_outcome,
@@ -158,11 +174,12 @@ export async function planRun({
 // `CLAUDINITE_OVERRIDES`). GitHub cannot declare arbitrary named inputs, so the
 // workflow takes ONE free-form string and this splits it into keys.
 //
-// The engine deliberately never interprets a key. It parses the bag, hands it to
-// the `overrides` signal, and only a task that DECLARES that signal reads its own
-// key out of it — so adding an override is a one-task change with no engine edit
-// and no schema. A forced baselining must not teach the scheduler what baselining
-// is; that coupling is exactly what this seam exists to avoid.
+// Exactly one key is understood: `FORCE_TASKS` (see `forcedTaskIds`), and it is
+// understood GENERICALLY — "run these task ids", never what any of them do. No
+// task declaration mentions forcing and no precondition is consulted for a forced
+// task, so the scheduler never learns what baselining is and baselining never
+// learns that forcing exists. Anything else in the bag is parsed and ignored,
+// which is what leaves room for a future override without a schema.
 //
 // `A=1,B=2`, newline-separated, or bare `A` (⇒ `'true'`). Values stay STRINGS with
 // no truthiness coercion: a task compares against the literal it documents, so
@@ -189,11 +206,11 @@ export function parseOverrides(raw) {
 // presence and the configured retention are all read from it (signals/local.mjs),
 // because a scheduled run already has the tree on disk and an API round-trip
 // would buy nothing.
-export function buildSignalContext({ root, repo, defaultBranch, now, sinceIso, config, fleet = null, overrides = {}, packConfigFor = () => ({}) }) {
+export function buildSignalContext({ root, repo, defaultBranch, now, sinceIso, config, fleet = null, packConfigFor = () => ({}) }) {
   const local = localSignalContext(root, { packIds: config.packs ?? [], packConfigFor });
   return {
     repo, defaultBranch, now, sinceIso, config,
-    activePacks: config.packs, fleet, overrides,
+    activePacks: config.packs, fleet,
     manifestVersion: local.manifestVersion,
     hasLocalPacks: local.hasLocalPacks,
     retentionDays: local.retentionDays,
@@ -371,11 +388,11 @@ async function main() {
   const overrides = parseOverrides(process.env.CLAUDINITE_OVERRIDES);
   const overrideKeys = Object.keys(overrides);
   if (overrideKeys.length > 0) {
-    console.log(`- manual run overrides: ${overrideKeys.map((k) => `${k}=${overrides[k]}`).join(', ')} (only a task declaring the \`overrides\` signal reads these)`);
+    console.log(`- manual run overrides: ${overrideKeys.map((k) => `${k}=${overrides[k]}`).join(', ')}`);
   }
 
   const ctx = buildSignalContext({
-    root, repo, defaultBranch, now: now.toISOString(), sinceIso, config, fleet, overrides, packConfigFor,
+    root, repo, defaultBranch, now: now.toISOString(), sinceIso, config, fleet, packConfigFor,
   });
 
   const { evaluations } = await planRun({
