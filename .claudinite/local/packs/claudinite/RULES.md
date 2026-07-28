@@ -100,6 +100,16 @@ prose below).
   does nothing. It looks like a healthy run. To exercise a task Action-side, invoke its
   worker directly, or move the slot hour in `taskScheduler` and wait for the cron.
 - **A code-search hit is evidence; a code-search miss is not — survey by reading each file.**
+- **Enumerate tests by ROOT swept to any depth — a depth-enumerated glob list under-runs in
+  silence.** CI once spelled out one glob per directory level
+  (`packs-tests/*/skills/*/*.test.mjs`, and eight more), so `vendoring/` matched none of them and
+  its two files — 38 tests, including the #328 anti-rewind guards — had never run, while the suite
+  reported green over 719 of 757 tests and said nothing. `ci.yml` now sweeps four roots under
+  `shopt -s globstar nullglob` (`engine-tests/ packs-tests/ vendoring/ .claudinite/local/packs/`):
+  adding a test costs no CI edit, adding a *root* is a deliberate one. A closed set only under-runs
+  silently if nothing checks it, so `engine-tests/ci-test-roots.test.mjs` parses the root list
+  **out of `ci.yml` itself** — never a second copy to drift — and asserts both directions: every
+  tracked `*.test.mjs` falls under a root, and every root still exists in the tree.
 - **Derive the test file list from the tree — every hand-written glob here under-runs the suite.**
   There is no `package.json` and no test script, so each session invents its own incantation and
   silently verifies less than it thinks. Measured in this checkout: `node --test <dir>` does not
@@ -107,11 +117,22 @@ prose below).
   recursive without `globstar`, so `engine-tests/**/*.test.mjs packs-tests/**/*.test.mjs` reaches
   **37 of 65** tracked test files. Four consecutive sessions (2026-07-26, #459/#452/#435/#468) each
   wrote a different command and reported 587, 690, 621 and 697 tests — three of them pushed after
-  running a strict subset. Neither published list is authoritative either: `ci.yml`'s `tests=(…)`
-  array omits `vendoring/*.test.mjs`, and `engine/checks/README.md`'s "as CI runs it" one-liner
-  names `engine/test/`, `skills/` and `mount/`, none of which exist. So enumerate from git and let
-  the count speak: `node --test $(git ls-files '*.test.mjs')`. (The drift-guard, once the array is
-  clean: assert every tracked `*.test.mjs` is matched by `ci.yml`'s globs.)
+  running a strict subset. `engine/checks/README.md`'s "as CI runs it" one-liner is not
+  authoritative either: it names `engine/test/`, `skills/` and `mount/`, none of which exist. So
+  enumerate from git and let the count speak: `node --test $(git ls-files '*.test.mjs')`.
+- **A `ctx.X ?? null` injection seam hides dead wiring — pin the key set against the REAL
+  construction.** `engine/scheduler/signals/` read three keys (`manifestVersion`, `hasLocalPacks`,
+  `retentionDays`) that `run.mjs`'s construction never populated, so each fell through its fallback
+  on every real run and the precondition arm it fed was unreachable code — store-release's
+  manifest-ahead trigger dead, growth-dedup dispatching an opus agent to prune nothing, the
+  conversation-log retention prune never firing. The suite stayed green throughout, because each
+  key had a unit test that hand-built a `ctx` shape the real construction could not emit: a
+  hand-built input proves the function, never the wiring. A producer/consumer split like this needs
+  both halves guarded — one end-to-end test driving a checkout on disk through the actual
+  construction into the actual precondition, and a **class guard** asserting every `ctx.<key>` any
+  collector reads is a key the real construction produces, with each exemption named and justified
+  where it is granted. Then the next unwired read fails a test instead of becoming a permanent
+  `null` (see `engine-tests/scheduler/signal-context.test.mjs`).
 - **The home has no `.claudinite/shared/` mount — machinery paths must accept both roots.** A
   consumer runs the vendored engine under `.claudinite/shared/engine/…` with packs under
   `.claudinite/(shared|local)/packs/…`; the home *is* the corpus and runs the same code from the
