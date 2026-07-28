@@ -81,9 +81,11 @@ mounts → env check → interview check) and forwards their stdout into the ses
 
 Register the Stop hook (runs the **work-scope** checks when the session changed something —
 judging the change in front of the session, with the transcript — and blocks the stop while
-blocking findings remain) and the PreToolUse guard (deterministically blocks forbidden commands)
-alongside it. The **world-scope** sweep is not wired here — it goes into the project's test/CI
-flow in Part 8:
+blocking findings remain), the PreToolUse guard (deterministically blocks forbidden commands),
+and the SessionEnd runner (invokes each active pack's own `session-end.mjs`, once, when the
+session ends — best-effort and fail-soft: it can never block a session from ending, and nothing
+depends on it having run) alongside it. The **world-scope** sweep is not wired here — it goes
+into the project's test/CI flow in Part 8:
 
 ```json
 { "hooks": { "Stop": [ { "hooks": [
@@ -91,6 +93,9 @@ flow in Part 8:
 ] } ],
   "PreToolUse": [ { "matcher": "Bash", "hooks": [
   { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/pretooluse-command.mjs" }
+] } ],
+  "SessionEnd": [ { "hooks": [
+  { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/session-end-command.mjs" }
 ] } ] } }
 ```
 

@@ -285,6 +285,55 @@ test('capture fails fast on a missing or malformed --issue', () => {
     const r = spawnSync('node', [CAPTURE, '--transcript', transcript], { cwd: work, encoding: 'utf8' });
     assert.notEqual(r.status, 0);
     assert.match(r.stderr, /--issue/);
+    // and a non-numeric one is still rejected — `0` is the ONLY new thing accepted
+    const bad = spawnSync('node', [CAPTURE, '--issue', 'none', '--transcript', transcript], { cwd: work, encoding: 'utf8' });
+    assert.notEqual(bad.status, 0);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+// --- the delta contract, pinned ----------------------------------------------
+// The SessionEnd capture (session-end.mjs) is safe to fire after a merge capture
+// ONLY because capture keys its delta on the session id across every prior file for
+// that session. That is a property of capture, not of the hook, so it is pinned here
+// — directly, in the two shapes the hook actually produces.
+
+test('capture is idempotent: a repeat capture of an unchanged transcript writes nothing', () => {
+  const { dir, origin, work, transcript } = makeCaptureFixture();
+  try {
+    writeFileSync(transcript, [userLine(1, 'the whole session'), assistantLine(2, 'done')].join('\n') + '\n');
+    sh(work, 'node', [CAPTURE, '--issue', '5', '--transcript', transcript]);
+    const after = originFiles(origin, 'conversation-logs');
+    const commits = sh(origin, 'git', ['rev-list', '--count', 'conversation-logs']).trim();
+
+    // three more capture events, two of them under a DIFFERENT issue — the delta is
+    // keyed on the session, so none of them can double-write the same entries.
+    for (const issue of ['5', '9', '0']) {
+      const out = sh(work, 'node', [CAPTURE, '--issue', issue, '--transcript', transcript]);
+      assert.match(out, /nothing new/i);
+    }
+    assert.deepEqual(originFiles(origin, 'conversation-logs'), after, 'no file was added');
+    assert.equal(sh(origin, 'git', ['rev-list', '--count', 'conversation-logs']).trim(), commits, 'no commit was made');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('capture with --issue 0 files a no-issue capture holding exactly the post-merge tail', () => {
+  const { dir, origin, work, transcript } = makeCaptureFixture();
+  try {
+    writeFileSync(transcript, [userLine(1, 'merge it'), assistantLine(2, 'merged')].join('\n') + '\n');
+    sh(work, 'node', [CAPTURE, '--issue', '12', '--transcript', transcript]);
+    // the session keeps going after its merge — the tail the merge capture cannot see
+    appendFileSync(transcript, [userLine(3, 'one more thought'), assistantLine(4, 'noted')].join('\n') + '\n');
+    sh(work, 'node', [CAPTURE, '--issue', '0', '--transcript', transcript]);
+
+    const files = originFiles(origin, 'conversation-logs');
+    const tail = files.find((f) => f.includes('--issue-0--'));
+    assert.ok(tail, `expected an issue-0 tail capture, got: ${files}`);
+    // The filename SHAPE is unchanged — that is the whole point: the retention prune
+    // and the conversationLogs signal parse it exactly like any other capture.
+    assert.deepEqual(parseLogFilename(tail)?.issue, 0);
+    const body = sh(origin, 'git', ['show', `conversation-logs:${tail}`]);
+    assert.match(body, /one more thought/);
+    assert.doesNotMatch(body, /merge it/, 'the tail holds only what the merge capture had not seen');
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 

@@ -65,13 +65,14 @@ test('convergeSchedulerWorkflow: the declared secrets land in the written workfl
   assert.ok(!readFileSync(join(root, SCHEDULER_WORKFLOW), 'utf8').includes('SOME_API_KEY'));
 });
 
-test('ensureHooks: adds the three required hooks to a fresh repo, idempotently', () => {
+test('ensureHooks: adds every required hook to a fresh repo, idempotently', () => {
   const root = mkRepo();
   const first = ensureHooks(root);
-  assert.deepEqual(first.added.sort(), ['PreToolUse[Bash]', 'SessionStart', 'Stop']);
+  assert.deepEqual(first.added.sort(), ['PreToolUse[Bash]', 'SessionEnd', 'SessionStart', 'Stop']);
   const settings = JSON.parse(readFileSync(join(root, SETTINGS_PATH), 'utf8'));
   assert.equal(settings.hooks.SessionStart[0].hooks[0].command, 'bash $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/session-start-command.sh');
   assert.equal(settings.hooks.PreToolUse[0].matcher, 'Bash');
+  assert.equal(settings.hooks.SessionEnd[0].hooks[0].command, 'node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/session-end-command.mjs');
   // idempotent — nothing added on a second pass
   assert.deepEqual(ensureHooks(root).added, []);
 });
