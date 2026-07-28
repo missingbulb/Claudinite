@@ -26,7 +26,6 @@
             "from": [
               "engine",
               ".github",
-              "README.md",
               "bootstrap.md",
               "consumer-safe-changes.md",
               "extending.md"
@@ -82,18 +81,6 @@
                   "packs/grow_with_claudinite"
                 ],
                 "reason": "inherent(#385): the engine map documents where the adoption-interview machinery lives now that it is bundled in the adoption skill"
-              },
-              {
-                "path": "README.md",
-                "to": [
-                  "packs/basics",
-                  "packs/barriers",
-                  "packs/git-github",
-                  "packs/github-actions",
-                  "packs/grow_with_claudinite",
-                  "packs/tidy-repo"
-                ],
-                "reason": "inherent(#526): the README's opening row IS the list of packs this repo runs — showing each pack's badge is the row's whole purpose, so naming them is the content, not a coupling to it. The row reaches no pack INTERNALS beyond the badge each pack declares, and dev/tools/tests/badges.test.mjs holds it to the resolved declaration, so it cannot drift out of step the way a hand-written list would"
               }
             ]
           }
@@ -123,6 +110,9 @@
       "reason": "the vendor-set computation deliberately imports the import-surface facts from the engine lib (engine/checks/helpers/module-imports.mjs — the one home the pack-independence check judges against), so \"what a pack may import\" and \"what a vendor set must carry\" share one definition; the cross-tree reach is inherent, not a misplacement"
     }
   ],
+  "badges": {
+    "readme": "auto"
+  },
   "taskScheduler": {
     "dailyHour": 4,
     "weeklyDay": "Sun",

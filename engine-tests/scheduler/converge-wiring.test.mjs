@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url';
 import {
   convergeSchedulerWorkflow, ensureHooks, removeRetiredCorpusImport, convergeWiring,
   withDeclaredSecrets, SCHEDULER_WORKFLOW, SETTINGS_PATH,
+  ensureBadgeSetting, convergeBadgeRow, renderBadgeRow, badgeRowEntries,
+  BADGE_ROW_START, BADGE_ROW_END, CHECKS_PATH, README,
 } from '../../engine/scheduler/converge-wiring.mjs';
 import { hashedCron } from '../../engine/scheduler/hash-minute.mjs';
 
@@ -112,15 +114,17 @@ test('removeRetiredCorpusImport: no CLAUDE.md is a no-op', () => {
   assert.equal(removeRetiredCorpusImport(mkRepo()), false);
 });
 
-test('convergeWiring: reports every surface it changed, and is idempotent', () => {
+test('convergeWiring: reports every surface it changed, and is idempotent', async () => {
   const root = mkRepo();
   writeFileSync(join(root, 'CLAUDE.md'), '@.claudinite/shared/CLAUDE.md\ndocs\n');
-  const first = convergeWiring(root, REPO, STUB);
+  writeFileSync(join(root, '.claudinite-checks.json'), '{\n  "packs": []\n}\n');
+  const first = await convergeWiring(root, REPO, STUB);
   assert.ok(first.changed.includes(SCHEDULER_WORKFLOW));
   assert.ok(first.changed.some((c) => c.startsWith('hook:')));
   assert.ok(first.changed.some((c) => c.includes('corpus import')));
+  assert.ok(first.changed.some((c) => c.includes('badges')));
   // second run: fully converged → nothing changes
-  assert.deepEqual(convergeWiring(root, REPO, STUB).changed, []);
+  assert.deepEqual((await convergeWiring(root, REPO, STUB)).changed, []);
 });
 
 // ── The override input, on the REAL shipped YAML ────────────────────────────
@@ -146,3 +150,85 @@ for (const [label, path] of Object.entries(WORKFLOWS)) {
     assert.ok(schedulerJob.includes('CLAUDINITE_OVERRIDES'), 'the env must sit on the scheduler job, not the failure reporter');
   });
 }
+
+// --- the README pack-badge row ---------------------------------------------
+// Adoption puts the row in a repo's README and the nightly keeps it true. Both
+// halves matter: the row must track the declaration, and a repo that says "off"
+// must never see it come back.
+
+const ROW = [{ id: 'basics', path: 'packs/basics/badge.svg' }, { id: 'tidy-repo', path: 'packs/tidy-repo/badge.svg' }];
+
+test("ensureBadgeSetting: materializes the knob, then leaves the repo's answer alone", () => {
+  const root = mkRepo();
+  assert.equal(ensureBadgeSetting(root), false, 'no settings file — nothing to write into');
+  writeFileSync(join(root, CHECKS_PATH), '{\n  "packs": ["basics"]\n}\n');
+  assert.equal(ensureBadgeSetting(root), true);
+  const raw = JSON.parse(readFileSync(join(root, CHECKS_PATH), 'utf8'));
+  assert.deepEqual(raw.badges, { readme: 'auto' });
+  assert.deepEqual(raw.packs, ['basics'], 'the rest of the settings survive');
+  assert.equal(ensureBadgeSetting(root), false, 'idempotent');
+  // A repo that has answered keeps its answer.
+  writeFileSync(join(root, CHECKS_PATH), '{\n  "badges": { "readme": "off" }\n}\n');
+  assert.equal(ensureBadgeSetting(root), false);
+  assert.equal(JSON.parse(readFileSync(join(root, CHECKS_PATH), 'utf8')).badges.readme, 'off');
+});
+
+test('ensureBadgeSetting: malformed settings are left untouched, never rewritten', () => {
+  const root = mkRepo();
+  writeFileSync(join(root, CHECKS_PATH), '{ not json\n');
+  assert.equal(ensureBadgeSetting(root), false);
+  assert.equal(readFileSync(join(root, CHECKS_PATH), 'utf8'), '{ not json\n');
+});
+
+test('convergeBadgeRow: introduces the row under the title', () => {
+  const root = mkRepo();
+  writeFileSync(join(root, README), '# Project\n\nSome prose.\n');
+  assert.equal(convergeBadgeRow(root, ROW), true);
+  const text = readFileSync(join(root, README), 'utf8');
+  assert.equal(text.split('\n')[0], '# Project');
+  assert.ok(text.includes(renderBadgeRow(ROW)));
+  assert.ok(text.includes('Some prose.'), 'the README it found is not replaced');
+  assert.equal(convergeBadgeRow(root, ROW), false, 'idempotent');
+});
+
+test('convergeBadgeRow: a README with no heading takes the row at the top', () => {
+  const root = mkRepo();
+  writeFileSync(join(root, README), 'Just prose.\n');
+  convergeBadgeRow(root, ROW);
+  assert.equal(readFileSync(join(root, README), 'utf8').split('\n')[0], renderBadgeRow(ROW));
+});
+
+test('convergeBadgeRow: re-converges in place, keeping what the repo wrote beside it', () => {
+  const root = mkRepo();
+  const stale = `# P\n\n${BADGE_ROW_START}![gone](packs/gone/badge.svg "gone")${BADGE_ROW_END} &nbsp;our own tagline\n`;
+  writeFileSync(join(root, README), stale);
+  assert.equal(convergeBadgeRow(root, ROW), true);
+  const text = readFileSync(join(root, README), 'utf8');
+  assert.ok(text.includes(renderBadgeRow(ROW)));
+  assert.ok(!text.includes('gone'), 'the stale row is replaced, not appended to');
+  assert.ok(text.includes('&nbsp;our own tagline'), 'what the repo wrote after the marker is its own');
+});
+
+test('convergeBadgeRow: no README, or nothing to show, writes nothing', () => {
+  const root = mkRepo();
+  assert.equal(convergeBadgeRow(root, ROW), false, 'never creates a README');
+  writeFileSync(join(root, README), '# P\n');
+  assert.equal(convergeBadgeRow(root, []), false);
+  assert.equal(readFileSync(join(root, README), 'utf8'), '# P\n', 'an empty row is not an empty block');
+});
+
+test('convergeWiring: "off" stops the row being maintained AND being re-added', async () => {
+  const root = mkRepo();
+  writeFileSync(join(root, CHECKS_PATH), '{\n  "packs": [],\n  "badges": { "readme": "off" }\n}\n');
+  writeFileSync(join(root, README), '# P\n\nprose\n');
+  const { changed } = await convergeWiring(root, REPO, STUB);
+  assert.ok(!changed.some((c) => c.includes(README)));
+  assert.equal(readFileSync(join(root, README), 'utf8'), '# P\n\nprose\n');
+});
+
+test('badgeRowEntries: skips a declared pack that carries no badge file', async () => {
+  const root = mkRepo();
+  const ids = (await badgeRowEntries(root, { packs: ['basics', 'nonexistent-pack'] })).map((e) => e.id);
+  assert.ok(ids.includes('basics'));
+  assert.ok(!ids.includes('nonexistent-pack'), 'an id naming no pack contributes nothing');
+});

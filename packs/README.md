@@ -107,12 +107,32 @@ node dev/tools/badges/render.mjs restyle
 
 It lives in `dev/tools/`, not in the engine: nothing at session time reads a badge, and the engine is
 what runs pack content and what every consumer vendors. The badge FILES do ship — a pack's badge
-rides its directory into a consumer's vendor set exactly like its prose and skills, so a consuming
-repo points at its own `.claudinite/shared/packs/<id>/badge.svg` with no network dependency on this
-repo. [`../dev/tools/tests/badges.test.mjs`](../dev/tools/tests/badges.test.mjs) is the guard: every
-pack declares a badge that exists and is tracked, every badge is current with the template and
-titled with the pack whose directory holds it, and this repo's own README row matches its pack
-declaration.
+rides its directory into a consumer's vendor set exactly like its prose and skills, so a repo's row
+points at its own `.claudinite/shared/packs/<id>/badge.svg` with no network dependency on this repo.
+
+**Getting the row into a README is not a maintainer's job.** Adoption writes it and the nightly
+keeps it true, both through the one wiring converge
+([`../engine/scheduler/converge-wiring.mjs`](../engine/scheduler/converge-wiring.mjs), bootstrap
+Part 6): a one-line row of the declared packs' badges, under the title, between
+`<!-- claudinite:packs -->` markers — so it re-converges in place wherever the repo moves it, and
+anything the repo writes after the closing marker on that line is its own. Because the row is
+derived from the declaration each night, it can't go stale the day the repo declares its next pack,
+which is the whole reason it isn't hand-written.
+
+The converge also materializes the repo's say into `.claudinite-checks.json`, so the knob sits where
+anyone would look for it rather than being inferred from absence:
+
+```json
+"badges": { "readme": "auto" }
+```
+
+Set `"off"` and the nightly neither updates the row nor re-adds one the repo has deleted.
+
+[`../dev/tools/tests/badges.test.mjs`](../dev/tools/tests/badges.test.mjs) guards the artwork side —
+every pack declares a badge that exists and is tracked, every badge is current with the template and
+titled with the pack whose directory holds it — and holds this repo's own row (the one member no
+nightly maintains, since the canon has no vendored mount to refresh) to what that converge would
+write.
 
 ## Environment requirements (`env`)
 

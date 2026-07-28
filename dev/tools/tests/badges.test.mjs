@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadPacks, resolveDeclaredPacks, packEntryId } from '../../../engine/pack_loader/pack-registry.mjs';
+import { loadPacks } from '../../../engine/pack_loader/pack-registry.mjs';
 import { parseBadge, renderBadge, shade, restyleAll, badgeFiles, idForBadge } from '../badges/render.mjs';
 
 // The badge files are the artwork's source of truth — a manifest names only the
@@ -14,10 +14,10 @@ import { parseBadge, renderBadge, shade, restyleAll, badgeFiles, idForBadge } fr
 // change (or hand-edited into a shape the tool can no longer read) fails here
 // rather than sitting in the set looking subtly wrong.
 //
-// The second half holds this repo's README row to its pack declaration. That row
-// is the one place in the corpus where a core file names the packs it runs — a
-// reviewed barrier exception in .claudinite-checks.json — and the exception is
-// only honest while the row and the declaration say the same thing.
+// The row a README shows is the wiring converge's, not this tool's — adoption
+// writes it and the nightly keeps it true (engine/scheduler/converge-wiring.mjs).
+// What is checked here is that this repo, the one member no nightly maintains,
+// still shows what that converge would write.
 
 const REPO = fileURLToPath(new URL('../../..', import.meta.url));
 
@@ -25,12 +25,6 @@ const tracked = () => new Set(execFileSync('git', ['ls-files'], { cwd: REPO, enc
 
 const packBadgePath = (pack) => `${pack.local ? '.claudinite/local/packs' : 'packs'}/${pack.id}/${pack.badge}`;
 
-async function declaredPacks() {
-  const packs = await loadPacks({ localRoot: REPO });
-  const byId = new Map(packs.map((p) => [p.id, p]));
-  const declared = JSON.parse(readFileSync(join(REPO, '.claudinite-checks.json'), 'utf8')).packs;
-  return resolveDeclaredPacks(declared, packs).map(packEntryId).map((id) => byId.get(id)).filter(Boolean);
-}
 
 test('every pack declares a badge path, and the file it names is there and tracked', async () => {
   const known = tracked();
@@ -62,19 +56,16 @@ test('every badge is titled with the pack whose directory holds it', () => {
   assert.deepEqual(wrong, [], 'a badge titled with another pack shows the wrong name on hover and in a screen reader');
 });
 
-test("the README's opening row is exactly the packs this repo declares, in declaration order", async () => {
-  const row = readFileSync(join(REPO, 'README.md'), 'utf8').split('\n')[0];
-  const shown = [...row.matchAll(/!\[[^\]]*\]\(([^)\s]+\/badge\.svg)/g)].map((m) => m[1]);
-  assert.deepEqual(shown, (await declaredPacks()).map(packBadgePath),
-    'the README row and .claudinite-checks.json disagree — update the row (and the README exception in the barriers config, which pins the canon packs it may name)');
-});
-
-test('the README row names each badge, so the row reads as a legend', async () => {
-  const row = readFileSync(join(REPO, 'README.md'), 'utf8').split('\n')[0];
-  for (const pack of await declaredPacks()) {
-    assert.match(row, new RegExp(`!\\[${pack.id}\\]\\(${packBadgePath(pack).replace(/[.]/g, '\\.')} "${pack.id}"\\)`),
-      `the README row shows ${pack.id}'s badge without naming it in the alt text and title`);
-  }
+test("this repo's README row is what the wiring converge would write", async () => {
+  // The canon home never baselines (no vendored mount, so the task self-skips),
+  // so its row is the one in the fleet that no nightly maintains. Asserting it
+  // against the converger rather than a regex of its own keeps the format in ONE
+  // place and proves the row a consumer gets is the row this repo shows.
+  const { badgeRowEntries, renderBadgeRow } = await import('../../../engine/scheduler/converge-wiring.mjs');
+  const { loadConfig } = await import('../../../engine/checks/helpers/repo-context.mjs');
+  const row = renderBadgeRow(await badgeRowEntries(REPO, loadConfig(REPO)));
+  assert.ok(readFileSync(join(REPO, 'README.md'), 'utf8').includes(row),
+    'the README row and the pack declaration have drifted — run the wiring converge, or update the row to match');
 });
 
 // --- the renderer itself ----------------------------------------------------
