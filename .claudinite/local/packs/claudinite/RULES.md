@@ -112,6 +112,18 @@ prose below).
   names `engine/test/`, `skills/` and `mount/`, none of which exist. So enumerate from git and let
   the count speak: `node --test $(git ls-files '*.test.mjs')`. (The drift-guard, once the array is
   clean: assert every tracked `*.test.mjs` is matched by `ci.yml`'s globs.)
+- **A branch that waited overnight has lost its base *and* possibly its premise — re-verify the
+  problem still exists on current `main`, unasked.** This repo merges its own scheduled-task PRs
+  without a human, on top of multi-phase migrations that retire whole directories: measured on
+  PR #465, `main` moved **14 commits in 13.7 hours** and one of them (#473, "retire `run_daily/`")
+  *deleted the file the PR's diagnosis rested on* and had already landed most of its content. The
+  branch rebased cleanly and the tests stayed green — the change was simply no longer the change to
+  make, and the correct move was `git checkout -B <branch> origin/main` and re-applying only the
+  surviving slice (9 files → 2). So syncing the base is not the check; the check is a **content**
+  one: after `git fetch`, read what the new commits did to the surface you are changing and state
+  whether the problem is still there, what the goal was, and what survives. Do this whenever you
+  return to a paused branch, before presenting it — the owner should never have to ask "is this
+  change still needed" (asked three times on #465 before it was volunteered).
 - **The home has no `.claudinite/shared/` mount — machinery paths must accept both roots.** A
   consumer runs the vendored engine under `.claudinite/shared/engine/…` with packs under
   `.claudinite/(shared|local)/packs/…`; the home *is* the corpus and runs the same code from the
