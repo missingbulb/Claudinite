@@ -60,8 +60,16 @@ export default {
     // stamp by hand. Nothing else about the run changes: the worker still decides
     // for itself what (if anything) needs doing, so forcing an already-current
     // mount is a cheap no-op rather than a forced rewrite.
-    if (signals.overrides?.FORCE_BASELINING === 'true') {
-      return { run: true, reason: 'FORCE_BASELINING=true on a manual scheduler run — running the self-refresh regardless of stamp age', context };
+    //
+    // `FORCE_TASKS` is read in TWO places by design (#515): the scheduler uses it
+    // to put this task in the due list at all — the slot gate runs before any
+    // precondition, so without that the check below is unreachable on exactly the
+    // mid-day run that needs it — and this decides whether being evaluated means
+    // running. The engine's half stays generic ("evaluate these ids"); naming
+    // `baselining` is this task's own business.
+    const forced = String(signals.overrides?.FORCE_TASKS ?? '').split(',').map((s) => s.trim());
+    if (forced.includes('baselining')) {
+      return { run: true, reason: 'forced by FORCE_TASKS on a manual scheduler run — running the self-refresh regardless of stamp age', context };
     }
 
     const staleByAge = stamp.canonHead == null && typeof stamp.ageDays === 'number' && stamp.ageDays > 1;

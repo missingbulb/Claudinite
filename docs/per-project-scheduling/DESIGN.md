@@ -193,14 +193,25 @@ refresh, not workflow edits). It runs
      with no truthiness coercion, so `FORCE_X=false` cannot read as "present,
      therefore on".
 
-     The case it exists for: baselining's `FORCE_BASELINING=true`. The age gate
+     **One key is read by the engine, generically: `FORCE_TASKS=<task ids>`.**
+     A task is gated twice — the SLOT gate (is its most-recent slot unrun?) runs
+     before any precondition, so a task whose slot has passed is never evaluated
+     and an override in its precondition is unreachable. `FORCE_TASKS` puts the
+     named ids back in the due list under their most-recent slot. The engine
+     learns only "evaluate these ids", never what any of them do, and being
+     evaluated is not permission: the task's own precondition still decides, and
+     an id matching no discovered task forces nothing. (#515 — the first cut
+     cleared only the precondition gate and was inert on exactly the mid-day
+     manual run it existed for.)
+
+     The case it exists for: `FORCE_TASKS=baselining`. The age gate
      (`ageDays > 1`) means a repo that baselined this morning is not due again
      for over a day, so a canon fix worth propagating *today* otherwise had no
      lever short of hand-editing each repo's stamp. Forcing changes only
      *whether the worker runs* — the worker still decides for itself what needs
-     doing, so forcing an already-current mount is a cheap no-op. It is checked
-     after the no-vendored-mount guard, so a forced fleet-wide run still skips
-     a repo with no mount.
+     doing, so forcing an already-current mount is a cheap no-op. baselining
+     reads the same key for its own half, checked after the no-vendored-mount
+     guard, so a forced fleet-wide run still skips a repo with no mount.
 4. **Runs preconditions** — pure code, per-task try/catch isolation; a throwing
    precondition converges to the standard failure state (`report-failure`
    composite → `workflow-failure` issue); other tasks proceed.

@@ -57,33 +57,35 @@ test('baselining: runs when a declared pack\'s vendored files moved', () => {
   assert.match(v.reason, /basics, tidy-repo/);
 });
 
-// ── FORCE_BASELINING, the manual override ───────────────────────────────────
+// ── FORCE_TASKS, the manual override ────────────────────────────────────────
 // The age gate means a repo that baselined this morning is not due again for over
 // a day, so a canon fix worth propagating TODAY had no lever short of editing
 // each repo's stamp by hand. These pin the override's exact contract.
 
-test('baselining: FORCE_BASELINING=true runs a mount far too fresh to be due', () => {
+test('baselining: FORCE_TASKS runs a mount far too fresh to be due', () => {
   const quiet = S({ canonHead: 'abc1234', ageDays: 0.1 });
   assert.equal(baselining.precondition(quiet).run, false, 'guard: this is the not-due case');
 
-  const v = baselining.precondition(S({ canonHead: 'abc1234', ageDays: 0.1 }, [], { FORCE_BASELINING: 'true' }));
+  const v = baselining.precondition(S({ canonHead: 'abc1234', ageDays: 0.1 }, [], { FORCE_TASKS: 'baselining' }));
   assert.equal(v.run, true);
-  assert.match(v.reason, /FORCE_BASELINING/);
+  assert.match(v.reason, /FORCE_TASKS/);
   // Forcing must not widen what the agent may do — the binding scope is the same.
   assert.deepEqual(v.context, baselining.precondition(S({ canonHead: 'def5678' })).context);
 });
 
-test('baselining: only the literal "true" forces — a present key is not consent', () => {
+test('baselining: FORCE_TASKS must name THIS task — a forced sibling is not consent', () => {
   const notDue = { canonHead: 'abc1234', ageDays: 0.1 };
-  for (const bag of [{ FORCE_BASELINING: 'false' }, { FORCE_BASELINING: '' }, { FORCE_BASELINING: 'yes' }, { FORCE_BASELINING: '1' }]) {
+  for (const bag of [{ FORCE_TASKS: '' }, { FORCE_TASKS: 'growth-extract' }, { FORCE_TASKS: 'baselining-worker' }, { FORCE_BASELINING: 'true' }]) {
     assert.equal(baselining.precondition(S(notDue, [], bag)).run, false, `${JSON.stringify(bag)} must not force`);
   }
+  // ...but it may sit among others, with whitespace.
+  assert.equal(baselining.precondition(S(notDue, [], { FORCE_TASKS: 'growth-extract, baselining' })).run, true);
 });
 
 test('baselining: forcing never overrides the no-vendored-mount guard', () => {
   // Ordering matters: the canon repo has no mount, and a forced fleet-wide run
   // must not make it try to refresh one it does not have.
-  const v = baselining.precondition(S({ ref: null, ageDays: null }, [], { FORCE_BASELINING: 'true' }));
+  const v = baselining.precondition(S({ ref: null, ageDays: null }, [], { FORCE_TASKS: 'baselining' }));
   assert.equal(v.run, false);
   assert.match(v.reason, /no vendored mount/);
 });

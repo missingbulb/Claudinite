@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeDueTaskSlots, signalsUnion, runPrecondition, renderSummary, planRun, ensureLabels, maintainDispatchIssues, parseOverrides } from '../../engine/scheduler/run.mjs';
+import { computeDueTaskSlots, signalsUnion, runPrecondition, renderSummary, planRun, ensureLabels, maintainDispatchIssues, parseOverrides, forcedTaskIds } from '../../engine/scheduler/run.mjs';
 import { DEFAULT_SCHEDULE } from '../../engine/scheduler/slots.mjs';
 import { SCHEDULER_LABELS, READY_LABEL, READY_FLEET_LABEL, AGENT_RUNNING_LABEL, NEEDS_HUMAN_LABEL } from '../../engine/scheduler/dispatch.mjs';
 
@@ -289,13 +289,13 @@ test('an idle repo with no open dispatch issues writes nothing', async () => {
 // the Actions UI and a task's precondition.
 
 test('parseOverrides splits KEY=value on commas and newlines, trimming both sides', () => {
-  assert.deepEqual(parseOverrides('FORCE_BASELINING=true'), { FORCE_BASELINING: 'true' });
+  assert.deepEqual(parseOverrides('FORCE_TASKS=baselining'), { FORCE_TASKS: 'baselining' });
   assert.deepEqual(parseOverrides(' A=1 , B=2 '), { A: '1', B: '2' });
   assert.deepEqual(parseOverrides('A=1\nB=2'), { A: '1', B: '2' });
 });
 
-test('parseOverrides reads a bare key as "true", so FORCE_BASELINING alone works', () => {
-  assert.deepEqual(parseOverrides('FORCE_BASELINING'), { FORCE_BASELINING: 'true' });
+test('parseOverrides reads a bare key as "true", so a valueless flag still lands', () => {
+  assert.deepEqual(parseOverrides('FORCE_TASKS'), { FORCE_TASKS: 'true' });
 });
 
 test('parseOverrides yields an empty bag for the scheduled-run cases, never a throw', () => {
@@ -313,13 +313,108 @@ test('parseOverrides keeps values as strings — no truthiness coercion', () => 
 });
 
 test('parseOverrides takes what gh hands it after ITS own first-"=" split', () => {
-  // `gh workflow run -f overrides=FORCE_BASELINING=true` has TWO '=' on the
+  // `gh workflow run -f overrides=FORCE_TASKS=baselining` has TWO '=' on the
   // command line, one per parser: gh's parseField splits on the first
-  // (strings.IndexRune) so the workflow input arrives as `FORCE_BASELINING=true`,
+  // (strings.IndexRune) so the workflow input arrives as `FORCE_TASKS=baselining`,
   // and this parser then splits on ITS first. Same rule twice, which is why the
   // form works and why a value may itself contain '='.
-  assert.deepEqual(parseOverrides('FORCE_BASELINING=true'), { FORCE_BASELINING: 'true' });
+  assert.deepEqual(parseOverrides('FORCE_TASKS=baselining'), { FORCE_TASKS: 'baselining' });
   // Several overrides ride ONE input, comma-separated — not repeated -f flags,
   // since the workflow declares exactly one input.
-  assert.deepEqual(parseOverrides('FORCE_BASELINING=true,FORCE_OTHER=x'), { FORCE_BASELINING: 'true', FORCE_OTHER: 'x' });
+  assert.deepEqual(parseOverrides('FORCE_TASKS=baselining,FORCE_OTHER=x'), { FORCE_TASKS: 'baselining', FORCE_OTHER: 'x' });
+});
+
+// ── FORCE_TASKS and the SLOT gate (#515) ────────────────────────────────────
+// The override's first cut only cleared the precondition gate, and every test
+// drove the precondition directly — so nothing noticed that `planRun` computes
+// the due list FIRST and a task whose slot has passed never reaches its
+// precondition at all. These drive planRun with a deliberately non-due slot,
+// which is the only shape that catches it.
+
+// 09:05, hourly scheduler last successful at 08:44 — so today's daily-2h slot
+// (02:00) has already been passed by an earlier run. Exactly the mid-day manual
+// run the override exists for.
+const MIDDAY = { now: '2026-07-28T09:05:00Z', lastSuccess: '2026-07-28T08:44:00Z' };
+const forceable = (id) => mkTask(id, {
+  frequency: 'daily-2h',
+  precondition: (signals) => (String(signals.overrides?.FORCE_TASKS ?? '').split(',').map((s) => s.trim()).includes(id)
+    ? { run: true, reason: 'forced' }
+    : { run: false, reason: 'not due' }),
+});
+
+test('without an override a passed slot is not evaluated at all — the gate under test', async () => {
+  const { evaluations } = await planRun({
+    tasks: [forceable('baselining')], schedule: D, ...MIDDAY,
+    collectSignals: async () => ({ overrides: {} }),
+    existingIssuesFor: async () => [],
+  });
+  assert.deepEqual(evaluations, [], 'a passed slot yields no evaluation, so no precondition runs');
+});
+
+test('FORCE_TASKS puts a passed-slot task back in the due list, and it dispatches', async () => {
+  const { evaluations } = await planRun({
+    tasks: [forceable('baselining')], schedule: D, ...MIDDAY,
+    overrides: { FORCE_TASKS: 'baselining' },
+    collectSignals: async () => ({ overrides: { FORCE_TASKS: 'baselining' } }),
+    existingIssuesFor: async () => [],
+  });
+  assert.equal(evaluations.length, 1, 'the forced task is evaluated despite its slot having passed');
+  assert.equal(evaluations[0].task, 'baselining');
+  assert.equal(evaluations[0].run, true);
+  assert.equal(evaluations[0].forced, true);
+  assert.equal(evaluations[0].dispatch.action, 'create');
+  assert.match(evaluations[0].slotId, /^d2026-07-28$/, 'it runs under its most-recent slot, not a fabricated one');
+});
+
+test('forcing is not permission — the task\'s own precondition still decides', async () => {
+  const refuses = mkTask('stubborn', { frequency: 'daily-2h', precondition: () => ({ run: false, reason: 'nothing to do' }) });
+  const { evaluations } = await planRun({
+    tasks: [refuses], schedule: D, ...MIDDAY,
+    overrides: { FORCE_TASKS: 'stubborn' },
+    collectSignals: async () => ({}),
+    existingIssuesFor: async () => [],
+  });
+  assert.equal(evaluations.length, 1, 'it is evaluated...');
+  assert.equal(evaluations[0].run, false, '...but it still says no');
+  assert.equal(evaluations[0].dispatch, undefined);
+});
+
+test('FORCE_TASKS forces ONLY the named ids — a sibling task is untouched', async () => {
+  const { evaluations } = await planRun({
+    tasks: [forceable('baselining'), forceable('growth-extract')], schedule: D, ...MIDDAY,
+    overrides: { FORCE_TASKS: 'baselining' },
+    collectSignals: async () => ({ overrides: { FORCE_TASKS: 'baselining' } }),
+    existingIssuesFor: async () => [],
+  });
+  assert.deepEqual(evaluations.map((e) => e.task), ['baselining']);
+});
+
+test('an id matching no discovered task forces nothing, and never throws', async () => {
+  const { evaluations } = await planRun({
+    tasks: [forceable('baselining')], schedule: D, ...MIDDAY,
+    overrides: { FORCE_TASKS: 'no-such-task' },
+    collectSignals: async () => ({}),
+    existingIssuesFor: async () => [],
+  });
+  assert.deepEqual(evaluations, []);
+});
+
+test('a task whose slot IS due is not double-listed when also forced', async () => {
+  // Same slot, forced and due at once: the due branch wins and yields one entry.
+  const { evaluations } = await planRun({
+    tasks: [forceable('baselining')], schedule: D,
+    now: '2026-07-28T02:30:00Z', lastSuccess: '2026-07-28T01:44:00Z', // 02:00 slot IS due
+    overrides: { FORCE_TASKS: 'baselining' },
+    collectSignals: async () => ({ overrides: { FORCE_TASKS: 'baselining' } }),
+    existingIssuesFor: async () => [],
+  });
+  assert.equal(evaluations.length, 1);
+  assert.equal(evaluations[0].forced, undefined, 'due on its own merit, not marked forced');
+});
+
+test('forcedTaskIds reads only FORCE_TASKS, trimming and dropping blanks', () => {
+  assert.deepEqual(forcedTaskIds({ FORCE_TASKS: 'a, b ,,c' }), ['a', 'b', 'c']);
+  assert.deepEqual(forcedTaskIds({ FORCE_TASKS: '' }), []);
+  assert.deepEqual(forcedTaskIds({}), []);
+  assert.deepEqual(forcedTaskIds({ FORCE_BASELINING: 'true' }), [], 'the superseded key forces nothing');
 });

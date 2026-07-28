@@ -15,10 +15,11 @@
 # A manual run may carry `overrides` — ONE free-form `KEY=value` string, because
 # GitHub cannot declare arbitrary named inputs. It reaches the engine as
 # `CLAUDINITE_OVERRIDES` and stops there: the engine parses it into the
-# `overrides` signal without interpreting a key, so only a task that DECLARES that
-# signal reads its own (e.g. baselining's `FORCE_BASELINING=true`, which runs the
-# self-refresh on a stamp too fresh to be due). Adding an override is a one-task
-# change — neither this file nor the engine learns a new name.
+# `overrides` signal, and only a task that DECLARES that signal reads its own key.
+# The single exception is `FORCE_TASKS=<comma-separated task ids>`, which the
+# engine reads generically to evaluate those tasks even though their slot has
+# already passed — it learns "evaluate these ids", never what any of them do, and
+# each task's own precondition still decides whether it runs.
 name: Claudinite scheduler
 
 on:
@@ -27,7 +28,7 @@ on:
   workflow_dispatch:
     inputs:
       overrides:
-        description: 'Manual-run overrides: comma-separated KEY=value, e.g. FORCE_BASELINING=true or A=1,B=2. Read only by a task declaring the `overrides` signal.'
+        description: 'Manual-run overrides: comma-separated KEY=value. FORCE_TASKS=<task ids> runs those tasks even when their slot has passed, e.g. FORCE_TASKS=baselining.'
         required: false
         default: ''
 

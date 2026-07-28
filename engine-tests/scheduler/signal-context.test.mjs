@@ -212,7 +212,7 @@ test('conversationLogs: retention unset keeps the prune silent — no default is
 // ── The manual override bag ─────────────────────────────────────────────────
 // `overrides` is the one collector fed by neither GitHub nor disk, so it is
 // exactly the shape this file exists to guard: a ctx key that nothing populates
-// would let a hand-built `{ FORCE_BASELINING: 'true' }` prove the collector while
+// would let a hand-built `{ FORCE_TASKS: 'baselining' }` prove the collector while
 // the real wire stayed dead. Both tests below go through buildSignalContext.
 
 test('overrides ride ctx → collector → the declaring task\'s precondition', async () => {
@@ -224,11 +224,11 @@ test('overrides ride ctx → collector → the declaring task\'s precondition', 
       now: '2026-07-22T00:00:00Z',
       sinceIso: '2026-07-21T00:00:00Z',
       config: loadConfig(root),
-      overrides: { FORCE_BASELINING: 'true' },
+      overrides: { FORCE_TASKS: 'baselining' },
       packConfigFor: (id) => loadConfig(root).packConfig?.[id] ?? {},
     });
     const signals = await collectSignals(fakeGh(QUIET), ctx, baselining.precondition_signals);
-    assert.deepEqual(signals.overrides, { FORCE_BASELINING: 'true' });
+    assert.deepEqual(signals.overrides, { FORCE_TASKS: 'baselining' });
 
     // A repo whose stamp is fresh is NOT due; the override is what runs it.
     const stamped = { ...signals, stamp: { ...signals.stamp, canonHead: null, ageDays: 0.1, ref: 'abc1234' } };

@@ -11,7 +11,7 @@
 // shell's judgment (the same split the fleet planner uses).
 
 import { pathToFileURL } from 'node:url';
-import { dueSlots } from './slots.mjs';
+import { dueSlots, mostRecentSlot } from './slots.mjs';
 import {
   planDispatch, dispatchTitle, dispatchBody, DISPATCH_PREFIX, READY_LABEL, NEEDS_HUMAN_LABEL,
   SCHEDULER_LABELS, readyLabelForScope, staleDispatchIssues, staleEscalationComment,
@@ -25,15 +25,34 @@ import { runPreprocessing, preprocessingFailure, agentRequestPath, clearAgentReq
 // The due tasks, each paired with the slot it runs under. Union the discovered
 // tasks' frequencies, ask slots which are due (run-ledger math), then map due
 // frequencies back to their tasks. A task whose frequency isn't due drops out.
-export function computeDueTaskSlots(tasks, schedule, now, lastSuccess) {
+export function computeDueTaskSlots(tasks, schedule, now, lastSuccess, forced = []) {
   const frequencies = [...new Set(tasks.map((t) => t.decl.frequency))];
   const due = new Map(dueSlots(frequencies, schedule, now, lastSuccess).map((d) => [d.frequency, d]));
   const out = [];
   for (const task of tasks) {
     const slot = due.get(task.decl.frequency);
-    if (slot) out.push({ task, slotId: slot.slotId, slotTime: slot.slotTime });
+    if (slot) { out.push({ task, slotId: slot.slotId, slotTime: slot.slotTime }); continue; }
+    // A FORCED task is evaluated under its most-recent slot even though that slot
+    // has already been run. Without this the override was inert: the due list is
+    // computed BEFORE any precondition, so a task whose slot has passed never has
+    // its precondition consulted at all — and a mid-day forced run is the only
+    // kind that matters. Being in the due list is not permission to run; the
+    // task's own precondition still decides (#515).
+    if (forced.includes(task.id)) {
+      const s = mostRecentSlot(task.decl.frequency, schedule, now);
+      out.push({ task, slotId: s.id, slotTime: s.time, forced: true });
+    }
   }
   return out;
+}
+
+// The task ids a manual run forced, out of the opaque override bag. This is the
+// ONE thing the engine reads from that bag, and it is deliberately generic: it
+// learns the concept "evaluate these task ids", never what any of them do. A task
+// still owns whether it actually runs — it reads the same key and looks for its
+// own id (see baselining). An id matching no discovered task forces nothing.
+export function forcedTaskIds(overrides = {}) {
+  return String(overrides.FORCE_TASKS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
 }
 
 // The union of signal names the due tasks declare — the scheduler collects only
@@ -77,7 +96,8 @@ export function runPrecondition(task, signals, packConfig) {
 export function renderSummary(evaluations) {
   return evaluations.map((e) => {
     const verb = !e.run ? 'skip' : e.inline ? 'run-inline' : e.dispatch?.action ?? 'run';
-    return `- ${e.pack}/${e.task} [${e.slotId}] ${verb} — ${e.reason || e.dispatch?.reason || ''}`.trimEnd();
+    const forced = e.forced ? ' (forced)' : '';
+    return `- ${e.pack}/${e.task} [${e.slotId}]${forced} ${verb} — ${e.reason || e.dispatch?.reason || ''}`.trimEnd();
   }).join('\n');
 }
 
@@ -90,20 +110,24 @@ export function renderSummary(evaluations) {
 // verdict and, when it runs, either an inline marker (agent_model: none) or a
 // dispatch decision (planDispatch).
 export async function planRun({
-  tasks, schedule, now, lastSuccess,
+  tasks, schedule, now, lastSuccess, overrides = {},
   collectSignals, packConfigFor = () => ({}), existingIssuesFor = async () => [],
 }) {
-  const dueList = computeDueTaskSlots(tasks, schedule, now, lastSuccess);
+  // `overrides` arrives as a parameter rather than out of `signals` because the
+  // due list is what decides which signals get collected — the bag has to be
+  // known before the collection it would otherwise be part of.
+  const dueList = computeDueTaskSlots(tasks, schedule, now, lastSuccess, forcedTaskIds(overrides));
   const signals = await collectSignals(signalsUnion(dueList));
 
   const evaluations = [];
-  for (const { task, slotId } of dueList) {
+  for (const { task, slotId, forced } of dueList) {
     const pre = runPrecondition(task, signals, packConfigFor(task.pack));
     const rec = {
       pack: task.pack, task: task.id, slotId,
       model: task.decl.agent_model, outcome: task.decl.expected_outcome,
       run: pre.run, reason: pre.reason, context: pre.context,
     };
+    if (forced) rec.forced = true;
     if (pre.error) rec.error = pre.error;
     if (pre.run) {
       // A declared agent_preprocessing runs as a subprocess BEFORE any agent
@@ -355,7 +379,7 @@ async function main() {
   });
 
   const { evaluations } = await planRun({
-    tasks, schedule, now, lastSuccess,
+    tasks, schedule, now, lastSuccess, overrides,
     collectSignals: (names) => collectSignals(gh, ctx, names),
     packConfigFor,
     existingIssuesFor: (pack, task) => existingIssuesViaSearch(gh, repo, pack, task),
