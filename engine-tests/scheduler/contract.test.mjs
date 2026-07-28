@@ -57,6 +57,19 @@ test('validateTaskDeclaration: an agentless (none) task needs preprocessing but 
   );
 });
 
+test('validateTaskDeclaration: agent_instructions is required for an agentic task but not applicable to none', () => {
+  // a none task with NO agent_instructions at all is clean — the field is not
+  // applicable when there is no agent.
+  const none = { ...validTask, agent_model: 'none', expected_outcome: 'none', agent_preprocessing: 'node worker.mjs', agent_preprocessing_timeout: 120 };
+  delete none.agent_execution_timeout;
+  delete none.agent_instructions;
+  assert.deepEqual(validateTaskDeclaration(none), []);
+
+  // an agentic task (agent_model !== 'none') with no agent_instructions still fails.
+  const { agent_instructions, ...noInstructions } = validTask;
+  assert.match(validateTaskDeclaration(noInstructions)[0].what, /no string "agent_instructions"/);
+});
+
 test('validateTaskDeclaration validates agent_preprocessing + its required timeout and containment', () => {
   const none = { ...validTask, agent_model: 'none', expected_outcome: 'none' };
   delete none.agent_execution_timeout;

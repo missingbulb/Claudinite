@@ -33,7 +33,6 @@ export default {
   precondition_signals: [],              // no signal — the worker reads the fleet itself, over the PAT
   agent_model: 'none',                   // pure code — no agent (agent-preprocessing DESIGN §4)
   expected_outcome: 'none',              // the honest ceiling: the census opens ADOPTION ISSUES, never a PR
-  agent_instructions: 'task.md',         // vestigial for a none task; the real work is the preprocessing command
   agent_preprocessing: 'node worker.mjs',
   // The census walks EVERY repo in the fleet: one paged enumeration plus one
   // marker-check REST call per repo, all serial, then the adoption-issue

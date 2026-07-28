@@ -45,7 +45,7 @@ test('fleet-census: the census is the preprocessing, bounded and task-local', ()
   assert.ok(!decl.agent_preprocessing.includes('..'));   // contract: no traversal out of the task dir
   assert.ok(Number.isInteger(decl.agent_preprocessing_timeout) && decl.agent_preprocessing_timeout > 0);
   assert.ok(existsSync(join(taskDir, 'worker.mjs')));
-  assert.ok(existsSync(join(taskDir, decl.agent_instructions)));
+  assert.equal(decl.agent_instructions, undefined);   // vestigial field dropped: none task, no agent to instruct
 });
 
 test('fleet-census: declares the fleet PAT, which is how the repo is asked for it', () => {
