@@ -40,6 +40,11 @@ function shipsReleasePipeline(ctx) {
 
 export default {
   id: 'chrome-extension-release',
+  badge: {
+    file: 'badge.svg',
+    color: '#0369a1',
+    glyph: 'M9 24.5h14 M16 20.5V8.5 M11.5 13l4.5-4.5 4.5 4.5',
+  },
   marker: 'the "Release to Chrome Store" orchestrator (wires the vendored reusable workflows + composite actions)',
   detect: shipsReleasePipeline,
   // The release standard builds on the coding pack — shipping presumes the MV3

@@ -10,6 +10,11 @@ const hasMarkerNearRoot = (ctx, marker) =>
 
 export default {
   id: 'flutter',
+  badge: {
+    file: 'badge.svg',
+    color: '#1aa9c9',
+    glyph: 'M14 9a2 2 0 1 0 4 0 2 2 0 1 0-4 0 M8.5 22a2 2 0 1 0 4 0 2 2 0 1 0-4 0 M19.5 22a2 2 0 1 0 4 0 2 2 0 1 0-4 0 M16 11v3 M16 14l-5.5 3.5V20 M16 14l5.5 3.5V20',
+  },
   marker: 'pubspec.yaml (at the repo root or one directory down)',
   detect: (ctx) => hasMarkerNearRoot(ctx, 'pubspec.yaml'),
   prose: 'RULES.md',

@@ -14,6 +14,11 @@ import isolation from './isolation.mjs';
 
 export default {
   id: 'product-wiki',
+  badge: {
+    file: 'badge.svg',
+    color: '#be185d',
+    glyph: 'M16 11.5c-1.8-1.9-4.6-2.5-6.6-2.5v12.6c2 0 4.8.6 6.6 2.4 1.8-1.8 4.6-2.4 6.6-2.4V9c-2 0-4.8.6-6.6 2.5z M16 11.5v12.5',
+  },
   marker: SINK_README,
   detect: (ctx) => ctx.tracked.includes(SINK_README),
   prose: 'RULES.md',

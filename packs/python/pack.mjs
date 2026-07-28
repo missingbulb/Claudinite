@@ -20,6 +20,11 @@ const hasMarkerNearRoot = (ctx, marker) =>
 
 export default {
   id: 'python',
+  badge: {
+    file: 'badge.svg',
+    color: '#3b7ab8',
+    glyph: 'M16 8l7 4v8l-7 4-7-4v-8z M9 12l7 4 7-4 M16 16v8',
+  },
   marker: 'pyproject.toml (at the repo root or one directory down)',
   detect: (ctx) => hasMarkerNearRoot(ctx, 'pyproject.toml'),
   prose: 'RULES.md',

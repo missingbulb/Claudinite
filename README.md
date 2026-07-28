@@ -1,5 +1,7 @@
 # Claudinite
 
+[![The Claudinite packs this repo runs](docs/pack-usage.svg "The Claudinite packs this repo runs, in declaration order — the catalog names them")](packs/README.md)
+
 Portable Claude instructions/rules shared across projects — the **project-agnostic** maintainer guidelines, maintained **once** here and mounted into each consuming repo so they don't have to be copy-pasted per project. Project-*specific* rules stay in the consuming repo's own docs.
 
 **Just adding Claudinite?** Tell the agent on the consuming repo:

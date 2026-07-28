@@ -20,6 +20,11 @@ import taskDeclarationShape from './task-declaration-shape.mjs';
 // authoritative — dropping it is a deliberate choice).
 export default {
   id: 'basics',
+  badge: {
+    file: 'badge.svg',
+    color: '#4f46e5',
+    glyph: 'M7.5 24h17 M10.5 18h11 M13.5 12h5',
+  },
   detect: null,
   marker: null,
   seededByDefault: true,
