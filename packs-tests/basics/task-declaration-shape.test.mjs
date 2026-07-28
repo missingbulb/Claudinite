@@ -74,7 +74,6 @@ test('task-declaration-shape: a none task needs no execution bound but flags pre
   precondition_signals: ['release'],
   agent_model: 'none',
   expected_outcome: 'none',
-  agent_instructions: 'worker.mjs',
   agent_preprocessing: 'node worker.mjs',
   precondition() { return { run: false }; },
 };
@@ -91,12 +90,26 @@ test('task-declaration-shape: flags an agentless (none) task that declares no pr
   precondition_signals: ['release'],
   agent_model: 'none',
   expected_outcome: 'none',
-  agent_instructions: 'worker.mjs',
   precondition() { return { run: false }; },
 };
 `;
   const whats = run({ [TASK]: bareNone }).map((f) => f.what).join(' | ');
   assert.match(whats, /declares no "agent_preprocessing"/);
+});
+
+test('task-declaration-shape: a none task with no agent_instructions is clean — the field is not applicable', () => {
+  const noneTask = `export default {
+  id: 'store-release',
+  frequency: 'daily',
+  precondition_signals: ['release'],
+  agent_model: 'none',
+  expected_outcome: 'none',
+  agent_preprocessing: 'node worker.mjs',
+  agent_preprocessing_timeout: 120,
+  precondition() { return { run: false }; },
+};
+`;
+  assert.deepEqual(run({ [TASK]: noneTask }), []);
 });
 
 test('task-declaration-shape: flags a preprocessing command that escapes the task directory', () => {

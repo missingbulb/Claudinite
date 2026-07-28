@@ -19,7 +19,6 @@ export default {
   precondition_signals: [],              // no signal — the worker reads the canon's own migration records
   agent_model: 'none',                   // pure code — no agent (agent-preprocessing DESIGN §4)
   expected_outcome: 'open-pr',           // stages the archival move as one reviewable PR
-  agent_instructions: 'task.md',         // vestigial for a none task; the real work is the preprocessing command
   agent_preprocessing: 'node worker.mjs',
   agent_preprocessing_timeout: 180,      // a handful of REST calls (read/create/delete per aged record) — a tight bound
   required_secrets: ['FLEET_GITHUB_TOKEN'], // so the archive PR starts CI (#432) — absent, the worker warns and opens it anyway

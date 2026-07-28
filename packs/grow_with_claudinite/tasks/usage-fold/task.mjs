@@ -20,7 +20,6 @@ export default {
   precondition_signals: ['conversationLogs'],
   agent_model: 'none',                   // pure code — no agent (agent-preprocessing DESIGN §4)
   expected_outcome: 'merged-pr',         // the regenerated GENERATED aggregate rides an auto-merging PR
-  agent_instructions: 'task.md',         // vestigial for a none task; the real work is the preprocessing command
   agent_preprocessing: 'node worker.mjs',
   // One tree read plus one blob read per capture file in the ~10-day window, all
   // local git, then one PR. A busy repo captures a few files a day, so this is

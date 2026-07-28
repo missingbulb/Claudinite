@@ -28,7 +28,6 @@ export default {
   precondition_signals: [],              // no signal — the sweep reads the fleet itself, over the PAT
   agent_model: 'none',                   // pure code — no agent (agent-preprocessing DESIGN §4)
   expected_outcome: 'merged-pr',         // the regenerated GENERATED aggregate rides an auto-merging PR
-  agent_instructions: 'task.md',         // vestigial for a none task; the real work is the preprocessing command
   agent_preprocessing: 'node worker.mjs',
   // One paged enumeration plus two REST reads per member (the coverage probe and the
   // usage file), all serial, then one PR. Same 900s the census and freshness sweep
