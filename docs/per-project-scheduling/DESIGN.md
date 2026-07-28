@@ -151,8 +151,23 @@ refresh, not workflow edits). It runs
    - **Hourly slots never catch up** (stale polls are worthless).
    - Late fire (15:02 for a ~15:00 slot) is irrelevant — due-ness is schedule
      math, never wall-clock equality.
-   - No prior success (fresh adoption) → all frequencies' most-recent slots are
-     due: an immediate full evaluation as the smoke test.
+   - No prior success (fresh adoption) → the most-recent slots of the **first-run
+     set** are due: `hourly` plus the daily family, never weekly or monthly. The
+     first run is an adoption smoke test, and the wiring it proves — discovery,
+     signals, dispatch issue, label, executor pickup — is the same whatever the
+     frequency, so the daily family exercises all of it. Adding weekly/monthly
+     would only buy an off-anchor run of their unconditional tasks (open-web
+     research, pack discovery, the fleet sweep) on the least-proven repo in the
+     fleet; they wait for their real anchor, which is due normally once this run
+     is in the ledger.
+   - An **unreadable** ledger is not an empty one. `T = null` is a positive claim
+     that the repo has never run, so the read returns it only for a 200 that
+     found no successful run; a non-2xx (or a run record with no timestamp)
+     throws and the run **fails**, evaluating nothing. Failing is free here —
+     a failed run never enters the success ledger, so `T` stays put and the next
+     successful run catches up the missed slots by the same outage rule above.
+     An exit-0 abort would not be free: it would enter the ledger and advance `T`
+     past the slots it declined to evaluate.
 2. **Discovers tasks** with one uniform scan —
    `.claudinite/{shared,local}/packs/<p>/tasks/*/task.mjs` — activation-gated by
    the `packs` declaration exactly like checks and skills; filters to due

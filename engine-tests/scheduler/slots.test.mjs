@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mostRecentSlot, dueSlots, normalizeSchedule, DEFAULT_SCHEDULE } from '../../engine/scheduler/slots.mjs';
+import { mostRecentSlot, dueSlots, normalizeSchedule, DEFAULT_SCHEDULE, FIRST_RUN_FREQUENCIES } from '../../engine/scheduler/slots.mjs';
 
 // Default anchor: dailyHour 4, weeklyDay Sun, monthlyDay 1 (all UTC).
 const D = DEFAULT_SCHEDULE;
@@ -68,9 +68,25 @@ test('monthly clamps monthlyDay 31 to the last day of a short month', () => {
 });
 
 // --- dueSlots: (lastSuccess, now] window semantics ---
-test('first run (no prior success) makes every declared frequency due', () => {
-  const due = dueSlots(['hourly', 'daily', 'weekly', 'monthly'], D, '2026-07-22T14:00:00Z', null);
-  assert.deepEqual(due.map((d) => d.frequency), ['hourly', 'daily', 'weekly', 'monthly']);
+test('first run (no prior success) fires the daily family and hourly, never weekly or monthly', () => {
+  // The adoption smoke test proves ONE wiring — discovery, signals, dispatch,
+  // label, executor pickup — and the daily family exercises all of it. Weekly
+  // and monthly would only add an off-anchor run of their unconditional tasks
+  // on the least-proven repo in the fleet, so they wait for their real anchor.
+  const due = dueSlots(['hourly', 'daily-2h', 'daily-1h', 'daily', 'daily+1h', 'weekly', 'monthly'], D, '2026-07-22T14:00:00Z', null);
+  assert.deepEqual(due.map((d) => d.frequency), ['hourly', 'daily-2h', 'daily-1h', 'daily', 'daily+1h']);
+});
+
+test('FIRST_RUN_FREQUENCIES is exactly hourly plus the daily family', () => {
+  assert.deepEqual(FIRST_RUN_FREQUENCIES, ['hourly', 'daily-2h', 'daily-1h', 'daily', 'daily+1h']);
+});
+
+test('a weekly slot withheld from the first run is due at its next real anchor', () => {
+  // Adopted Wednesday: the first run withholds weekly. The following Sunday's
+  // 04:00 anchor is > the first run's timestamp, so it is due normally — the
+  // narrowing defers the weekly task, it does not strand it.
+  const due = dueSlots(['weekly'], D, '2026-07-26T04:20:00Z', '2026-07-22T14:00:00Z');
+  assert.deepEqual(due.map((d) => [d.frequency, d.slotId]), [['weekly', 'w2026-07-26']]);
 });
 
 test('a slot already covered by the last successful run is not due again (double-run dedupe)', () => {
