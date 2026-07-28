@@ -1,13 +1,14 @@
 # Claudinite executor
 
 > **Before anything else — name your one issue.** This session runs exactly one
-> dispatch. Step 1 resolves it **in code** from the label event on disk and
-> validates it; state the number it prints before you touch anything.
+> dispatch. Step 1 resolves it **in code** from the trigger this session carries
+> and validates it; state the number it prints before you touch anything.
 > If you cannot name exactly one, **run nothing and end the session** — the
 > scheduler re-arms an unrun dispatch on its next hourly pass, so stopping costs a
-> delay while sweeping costs duplicated work. Never process a second issue in one
-> session, under any circumstance — including when a listing shows several
-> waiting. Those are other sessions' dispatches, already running.
+> delay while guessing costs duplicated work. **There is no fallback**: never
+> select a dispatch by listing the queue and taking one. Never process a second
+> issue in one session, under any circumstance — including when a listing shows
+> several waiting. Those are other sessions' dispatches, already running.
 
 You are the per-repo **executor** — you run the scheduled **tasks** dispatched to
 this repo (per-project-scheduling DESIGN §5). A routine wired to a dispatch label
@@ -61,21 +62,34 @@ so use `engine/scheduler/`.
    node <engine>/scheduler/resolve-dispatch.mjs self     # `fleet` if your trigger is ready-for-agent-fleet
    ```
 
-   (`<engine>` per Engine command paths above.) It reads the label event that
-   started this session from `$GITHUB_EVENT_PATH`, takes your issue and its body
-   straight out of that payload, and asserts in code — before any judgment of
-   yours — that the body names a legal task path, the file exists at HEAD, its
-   pack is declared, and its `task.mjs` sibling parses to a valid declaration. It
-   makes no GitHub calls; the payload plus this checkout is everything it needs.
+   (`<engine>` per Engine command paths above.) It finds the `issues.labeled`
+   trigger that started this session — from **either** transport, see below —
+   and asserts in code, before any judgment of yours, that the issue body names a
+   legal task path, the file exists at HEAD, its pack is declared, and its
+   `task.mjs` sibling parses to a valid declaration. It makes no GitHub calls of
+   its own.
+
+   **Your trigger arrives one of two ways, and the shell reads both:**
+
+   - **GitHub Actions** writes the whole webhook payload to `$GITHUB_EVENT_PATH`
+     — issue number, label, and body all in one file, so this resolves in a
+     single command.
+   - **Claude Code on the web (CCR)** writes no payload file. It delivers the
+     same trigger as environment variables — `CCR_TRIGGER_SOURCE`,
+     `CCR_TRIGGER_EVENT`, `CCR_TRIGGER_REPO`, `CCR_TRIGGER_ISSUE_NUMBER` — which
+     **name your issue but carry neither its labels nor its body**. So this
+     resolves in two commands: the shell exits `13` telling you the number, you
+     fetch **that one issue** over MCP, and you re-run with what you fetched.
 
    **Act on its exit code — that is the interface**, not the prose it prints:
 
    | exit | verdict | what you do |
    | --- | --- | --- |
    | `0` | valid dispatch, your scope | Go to step 2. The printed block is your brief: issue, task path, pack, task, model, outcome ceiling, `executionTimeout`. |
+   | `13` | CCR trigger, issue named, body needed | Fetch **the printed issue and only it** over MCP — its body and its current labels — write the body verbatim to a file, and re-run: `node <engine>/scheduler/resolve-dispatch.mjs self --issue-body-file <path> --issue-labels <csv>`. Then act on *that* run's exit code. |
    | `10` | invalid dispatch | It never runs. Comment the printed `reason`, remove the ready label, add `needs-human`, end the session. |
-   | `11` | not yours | The trigger label is the *other* executor's, or no ready label at all. **Stop**: change nothing, comment nothing, end the session. |
-   | `12` | no event payload | Fall back — see below. |
+   | `11` | not yours | The trigger label is the *other* executor's, no ready label at all, or the issue no longer carries a ready label (another session already claimed it). **Stop**: change nothing, comment nothing, end the session. |
+   | `12` | no trigger at all | **Stop the session immediately.** See below. |
    | `2`, `1` | bad invocation, internal fault | Comment what you saw, add `needs-human` if you know the issue, end the session. Do not proceed on a guess. |
 
    **State the issue number before you act**, so everything after this has one
@@ -98,22 +112,25 @@ so use `engine/scheduler/`.
    `rearmDispatchIssues`) and escalates it to `needs-human` if it stays unrun past
    ~2 of its scheduling periods. Leave it alone.
 
-   **Exit 12 — the fallback, and only on exit 12.** The event payload is how you
-   know which issue is yours; without it you must select one. List the open issues
-   under your ready label **solely to pick the single oldest**, run that one alone,
-   and continue at step 2. Say in your claim comment that you fell back and why: a
-   session reaching here means the payload did not arrive, and that is worth a
-   human noticing rather than silently degrading to "oldest first" forever.
+   **Exit 12 — stop the session. There is no fallback.** The trigger is how you
+   know which issue is yours. Without one you do not have a dispatch to run, and
+   **selecting one yourself is forbidden**: do not list the queue, do not take the
+   oldest, do not take *any*. Run nothing, change nothing, comment nothing, end
+   the session.
 
-   **That listing is a selection step, never a work list.** This is the exact
-   point where the one-issue rule has been lost in practice: a session that
-   cannot identify its trigger enumerates the queue, sees N issues waiting, and
-   works its way through them — which is precisely the N-sessions-racing-over-N-issues
-   failure the rule exists to prevent, arrived at from the other direction. Every
-   other issue in that listing already has its own session. Take the oldest,
-   forget the rest, and if you cannot pick unambiguously, run nothing and end.
-   Never take an issue under the other ready label; that is the other executor's
-   to run.
+   This is not caution for its own sake — a session that picks its own issue is
+   the duplicate-execution bug reached from the other direction. One scheduler run
+   files every due dispatch seconds apart, so **every** session that cannot name
+   its trigger builds the *same* list and races the others over it; the step-2
+   claim cannot save them, because they all read the list before any of them
+   claims. That is exactly how #772 was claimed twice, one second apart, on
+   2026-07-28. Stopping is cheap: the scheduler re-arms an unrun dispatch on its
+   next hourly pass and escalates it to `needs-human` if it stays unrun. Guessing
+   is not.
+
+   An exit 12 in a session that *was* triggered by a label event means the trigger
+   did not reach the shell — a real defect worth a human noticing. Say so plainly
+   in your final message rather than working around it.
 
 2. **Claim the issue — read, swap, then re-read to confirm you won.** The same
    issue can still be labeled twice (a re-arm that overlapped a slow session, a

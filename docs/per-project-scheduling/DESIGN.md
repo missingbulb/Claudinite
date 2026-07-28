@@ -270,16 +270,38 @@ sessions burn on empty hours.
 
      Steps 1 and 2 are one command: `resolve-dispatch.mjs` does both, so neither
      the identification nor the validation depends on the session's judgment.
+
+     **The trigger reaches the session by two transports, and both are read.**
+     GitHub Actions writes the webhook payload to `$GITHUB_EVENT_PATH` (number +
+     label + body, one shot). Claude Code on the web writes no payload file and
+     instead sets `CCR_TRIGGER_SOURCE` / `CCR_TRIGGER_EVENT` / `CCR_TRIGGER_REPO`
+     / `CCR_TRIGGER_ISSUE_NUMBER`, which name the issue but carry neither its
+     labels nor its body — so that path resolves in two shots (`needs-issue`,
+     exit 13: the executor fetches that one issue over MCP and re-invokes with
+     `--issue-body-file` / `--issue-labels`). Reading only the Actions transport
+     is what let the duplicate-execution bug back in: every CCR-run executor
+     session missed its own trigger, fell through to the fallback, and selected
+     an issue by listing. Observed 2026-07-28, dispatch #772 claimed twice one
+     second apart.
+
+     **There is no fallback, deliberately.** A session that cannot name its
+     trigger runs *nothing* (exit 12) — it never selects a dispatch by listing the
+     queue. That fallback was the same N-sessions-racing-over-N-issues failure as
+     the sweep it replaced, reached from the other direction: every session that
+     cannot identify its trigger builds the same work list, and the claim cannot
+     save them because they all read the list before any of them claims. The
+     scheduler's hourly re-arm is the recovery, in code, once.
   2. Deterministic validation in code, before any model judgment
      (`resolve-dispatch.mjs`, over `validate-dispatch.mjs`'s pure core): the body's
      first line matches
      `^(\.claudinite\/(shared|local)\/)?packs\/[^/]+\/tasks\/[^/]+\/task\.md$`,
      the file exists at HEAD, its pack is declared, its `task.mjs` sibling
-     parses; prints the resolved model and outcome ceiling. The issue body comes
-     from the event payload, so the whole gate runs with no GitHub call — which is
-     what makes it runnable in the MCP-only, tokenless executor session. Exit codes
-     are the interface: valid / invalid (comment + de-label + `needs-human`) /
-     not-this-scope / no-payload.
+     parses; prints the resolved model and outcome ceiling. The shell itself makes
+     no GitHub call on either transport — the body arrives from the payload or
+     from the executor's own MCP fetch — which is what keeps it runnable in the
+     MCP-only, tokenless executor session. Exit codes are the interface: valid /
+     invalid (comment + de-label + `needs-human`) / not-this-scope / needs-issue /
+     no-trigger (stop).
   3. **Claim** the issue as a *verified lease*, since GitHub offers no
      compare-and-swap on labels: **read** the current labels and abandon if the
      ready label is gone or `agent-running`/`needs-human` is present; **swap**
