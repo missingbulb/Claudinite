@@ -141,14 +141,30 @@ adoption:
    `{ "dailyHour": 4, "weeklyDay": "Sun", "monthlyDay": 1 }`, all UTC) — this is the
    cutover marker: the central routine stops planning the repo the same night, and its
    own scheduler + self-baselining take over the refresh.
-4. **Create the label-wired executor routine** via the trigger API — fires on the
-   `ready-for-agent` label event, model `sonnet`, launcher prompt
-   `Execute the Claudinite executor: .claudinite/shared/engine/scheduler/executor.md`,
-   sources = **this repo alone** (not the Claudinite canon — agent-preprocessing DESIGN
-   §7/E5: baselining fetches canon Action-side, so no executor task needs it in session).
-   If the trigger API isn't reachable, file an owner issue carrying that exact routine
-   config in one enclosed block — the only human action left in wiring a repo into
-   scheduling.
+4. **Create the label-wired executor routine** via the trigger API, named
+   `Claudinite executor - <repo>`, with the launcher prompt
+   `Execute the Claudinite executor: .claudinite/shared/engine/scheduler/executor.md`.
+   The finished routine fires on the `ready-for-agent` label event, runs Sonnet 5, and
+   has sources = **this repo alone** (not the Claudinite canon — agent-preprocessing
+   DESIGN §7/E5: baselining fetches canon Action-side, so no executor task needs it in
+   session).
+
+   The API sets only name, prompt and environment; **the repo binding, the trigger
+   event, the label filter and the model are UI-only**, so every routine an agent
+   creates arrives unfinished. Do not file a separate issue for the remainder — a
+   config that lives away from the thing it configures is a config someone reads once
+   and never reconciles. **Carry the leftover steps in the routine's own prompt**, as a
+   block below the launcher line whose last instruction is to delete itself:
+
+   > `--- SETUP — delete this block once done, leaving only the line above ---`
+   > 1. Model → Sonnet 5.
+   > 2. Repo → `<owner>/<repo>`, and that repo alone (source and outcome).
+   > 3. GitHub trigger → "Issue: Labeled".
+   > 4. Filter → Labels: is one of: `ready-for-agent`.
+
+   The routine then states its own unfinished-ness where the owner is already looking to
+   fix it, and finishing it and clearing the block are the same edit — so a
+   half-configured executor cannot quietly pass for a working one.
 
 During the rollout the owner drives each repo's cutover in a session (MIGRATION.md); the
 old enrollment issue and the central routine are retired at Phase 4.

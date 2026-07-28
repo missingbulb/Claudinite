@@ -11,7 +11,10 @@
 // enumerates every repo under that owner, classifies each (covered / uncovered /
 // excluded / skipped fork-or-archived), publishes the picture to the run summary,
 // and converges one adoption issue per actionable uncovered repo in the home repo
-// (open while uncovered, closed once covered or excluded). It does NOT build the
+// (open while uncovered, closed once covered or excluded). That issue is its ENTIRE
+// effect on an uncovered repo — the census never writes to one, and nothing downstream
+// adopts it either: the owner reads the issue and chooses to adopt Claudinite or to
+// ignore it. It does NOT build the
 // work plan (that is each repo's own scheduler's job, engine/scheduler/run.mjs) and it does
 // NOT touch migrations: application and retirement are the migrations flow's own
 // standalone passes (migrations/fleet-apply.mjs + migrations/fleet-retire.mjs, run
@@ -46,8 +49,10 @@ function adoptionBody(fullName) {
     '',
     'Pick one:',
     '',
-    '- **Adopt it** — grant the repo to the sheepdog environment\'s per-repo access list;',
-    '  the next daily run then baselines (bootstraps) it automatically.',
+    '- **Adopt it** — run the adoption in a session on that repo (ask for "adopt Claudinite";',
+    '  the `adopt-claudinite` skill drives `bootstrap.md`). This is a human-initiated step by',
+    '  design: adoption is the one thing a repo cannot do for itself, because the scheduler',
+    '  that would run it is what adoption installs. Nothing will do it on your behalf.',
     `- **Keep it out** — add \`${fullName}\` to the sheepdog pack entry's \`config.exclude\` in this`,
     '  (sheepdog) repo\'s `.claudinite-checks.json`, with a reason.',
     '',
