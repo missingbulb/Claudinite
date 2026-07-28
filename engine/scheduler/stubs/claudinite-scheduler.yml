@@ -14,11 +14,12 @@
 #
 # A manual run may carry `overrides` — ONE free-form `KEY=value` string, because
 # GitHub cannot declare arbitrary named inputs. It reaches the engine as
-# `CLAUDINITE_OVERRIDES` and stops there: the engine parses it into the
-# `overrides` signal without interpreting a key, so only a task that DECLARES that
-# signal reads its own (e.g. baselining's `FORCE_BASELINING=true`, which runs the
-# self-refresh on a stamp too fresh to be due). Adding an override is a one-task
-# change — neither this file nor the engine learns a new name.
+# `CLAUDINITE_OVERRIDES`, and the engine understands exactly one key:
+# `FORCE_TASKS=<comma-separated task ids>`.
+# It runs those tasks even though their slot has already passed, and
+# WITHOUT consulting their preconditions — forcing is the operator's decision, so
+# nothing asks the task whether it agrees. The engine learns "run these ids",
+# never what any of them do, and no task declaration mentions forcing at all.
 name: Claudinite scheduler
 
 on:
@@ -27,7 +28,7 @@ on:
   workflow_dispatch:
     inputs:
       overrides:
-        description: 'Manual-run overrides: comma-separated KEY=value, e.g. FORCE_BASELINING=true or A=1,B=2. Read only by a task declaring the `overrides` signal.'
+        description: 'Manual-run overrides: comma-separated KEY=value. FORCE_TASKS=<task ids> runs those tasks unconditionally, even when their slot has passed, e.g. FORCE_TASKS=baselining.'
         required: false
         default: ''
 
@@ -56,8 +57,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           # Empty on every scheduled run — `inputs` is only populated by
-          # workflow_dispatch. The engine parses this into the `overrides` signal
-          # and interprets no key itself.
+          # workflow_dispatch. The engine reads only FORCE_TASKS out of it.
           CLAUDINITE_OVERRIDES: ${{ inputs.overrides }}
         run: node .claudinite/shared/engine/scheduler/run.mjs
 
