@@ -223,8 +223,28 @@ test('a collector that throws is isolated under its key', async () => {
 test('lastSuccessTime reads the newest successful run from the ledger', async () => {
   const gh = fakeGh([[/actions\/workflows\/.*\/runs\?status=success/, { status: 200, json: { workflow_runs: [{ run_started_at: '2026-07-21T10:00:00Z' }] } }]]);
   assert.equal(await lastSuccessTime(gh, 'o/r'), '2026-07-21T10:00:00Z');
+});
+
+test('lastSuccessTime returns null ONLY for a ledger read that found no successful run', async () => {
   const none = fakeGh([[/runs\?status=success/, { status: 200, json: { workflow_runs: [] } }]]);
   assert.equal(await lastSuccessTime(none, 'o/r'), null);
+});
+
+test('lastSuccessTime throws when the ledger cannot be read — never null', async () => {
+  // `null` means "fresh adoption, fire the first-run set". A rate limit, a 5xx
+  // or a token blip must never be able to say that on a mature repo, so an
+  // unreadable ledger is an error and the run fails rather than guessing.
+  for (const status of [403, 404, 500, 502]) {
+    const gh = fakeGh([[/runs\?status=success/, { status, json: null }]]);
+    await assert.rejects(() => lastSuccessTime(gh, 'o/r'), /ledger/i, `status ${status} should throw`);
+  }
+});
+
+test('lastSuccessTime throws when the newest run carries no timestamp', async () => {
+  // The same conflation in miniature: a run record exists, so this is NOT a
+  // fresh adoption, and returning null would claim it is.
+  const gh = fakeGh([[/runs\?status=success/, { status: 200, json: { workflow_runs: [{ id: 7 }] } }]]);
+  await assert.rejects(() => lastSuccessTime(gh, 'o/r'), /timestamp/i);
 });
 
 test('windowStart uses the widest due frequency plus an hour of slack', () => {
