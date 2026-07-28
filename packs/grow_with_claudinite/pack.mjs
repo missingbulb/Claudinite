@@ -28,6 +28,11 @@ import dedupIntegrity from './dedup-integrity.mjs';
 // A declared pack (no fingerprint), seeded like tidy-repo: --init seeds it into every
 // new repo, the one-time grow-with-claudinite-seed migration seeds the existing fleet,
 // and baselining never re-adds it — so removing it is a durable opt-out.
+//
+// No adoption question over config.retention_days — the value stays unset (hidden)
+// by default, which is fail-safe (capture-only, the prune deletes nothing) rather
+// than something every adopter must weigh in on. A project that wants the prune
+// active sets retention_days itself.
 export default {
   id: 'grow_with_claudinite',
   detect: null,
@@ -35,9 +40,4 @@ export default {
   seededByDefault: true,
   prose: null,
   rules: [growthConfig, dedupIntegrity],
-  questions: [{
-    id: 'retention',
-    prompt: 'How many days should a captured conversation log stay on the conversation-logs branch before the conversation-extract retention prune deletes it? The floor is the rethink window — extraction wants ~a week of hindsight; 10 is the recommended value.',
-    distill: 'set config.retention_days on this entry to the agreed positive integer; until it is set, the prune deletes nothing (capture-only adoption)',
-  }],
 };

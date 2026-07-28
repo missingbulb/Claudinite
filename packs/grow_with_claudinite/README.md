@@ -65,8 +65,10 @@ tree; only posting the summary on the issue uses the GitHub MCP tools.
    sweep guarantees the prune runs even on a repo gone quiet). Every log gets exactly two
    judgment passes. **Unset retention = the prune deletes nothing** (capture-only, fail-safe).
 
-Adoption asks only for the `retention_days` value (10 recommended) — nothing to schedule, since
-extraction rides the fleet's one daily run like the other growth tasks.
+No adoption question over it — `retention_days` stays unset (hidden) by default, which is
+fail-safe (capture-only). A project that wants the prune active sets `config.retention_days`
+itself (10 is the recommended floor); nothing else to schedule, since extraction rides the
+fleet's one daily run like the other growth tasks.
 
 ## Rules
 
