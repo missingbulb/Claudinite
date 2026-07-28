@@ -2,11 +2,7 @@
 // authoritative (detect: null skips the drift check in both directions).
 export default {
   id: 'html',
-  badge: {
-    file: 'badge.svg',
-    color: '#e4572e',
-    glyph: 'M13 10.5L8 16l5 5.5 M19 10.5l5 5.5-5 5.5',
-  },
+  badge: 'badge.svg',
   marker: null,
   detect: null,
   prose: 'RULES.md',

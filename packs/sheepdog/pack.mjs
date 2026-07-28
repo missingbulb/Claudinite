@@ -26,11 +26,7 @@
 // pack-agnostic; the planner never runs, dispatches, or depends on these sweeps.
 export default {
   id: 'sheepdog',
-  badge: {
-    file: 'badge.svg',
-    color: '#a16207',
-    glyph: 'M21.5 22.5V12.5a5 5 0 0 0-10 0V14 M8 24.4a1.3 1.3 0 1 0 2.6 0 1.3 1.3 0 1 0-2.6 0 M12.1 24.4a1.3 1.3 0 1 0 2.6 0 1.3 1.3 0 1 0-2.6 0 M16.2 24.4a1.3 1.3 0 1 0 2.6 0 1.3 1.3 0 1 0-2.6 0',
-  },
+  badge: 'badge.svg',
   detect: null,
   marker: null,
   prose: 'RULES.md',

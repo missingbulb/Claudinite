@@ -10,11 +10,7 @@
 // id must equal its directory name ("claudinite") and may not shadow a canon pack.
 export default {
   id: 'claudinite',
-  badge: {
-    file: 'badge.svg',
-    color: '#312e81',
-    glyph: 'M16 7.5l8.5 4.5-8.5 4.5-8.5-4.5z M7.5 16.5l8.5 4.5 8.5-4.5 M7.5 21l8.5 4.5 8.5-4.5',
-  },
+  badge: 'badge.svg',
   prose: 'RULES.md',
   rules: [],
 };

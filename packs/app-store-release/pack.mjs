@@ -2,11 +2,7 @@
 // there — no fingerprint until the first exercised release wires one.
 export default {
   id: 'app-store-release',
-  badge: {
-    file: 'badge.svg',
-    color: '#374151',
-    glyph: 'M9 24.5h14 M16 20.5V8.5 M11.5 13l4.5-4.5 4.5 4.5',
-  },
+  badge: 'badge.svg',
   marker: null,
   detect: null,
   prose: 'RULES.md',

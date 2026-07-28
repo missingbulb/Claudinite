@@ -8,11 +8,7 @@ import featureRequirementsFirst from './feature-requirements-first.mjs';
 // structural constant: the spec file itself.
 export default {
   id: 'executable-requirements',
-  badge: {
-    file: 'badge.svg',
-    color: '#5b21b6',
-    glyph: 'M19 7.5h-6.5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2V10.5z M19 7.5v3h2.5 M14.5 15.5l4.5 2.6-4.5 2.6z',
-  },
+  badge: 'badge.svg',
   marker: 'dev/requirements/requirements.md',
   detect: (ctx) => ctx.tracked.includes('dev/requirements/requirements.md'),
   prose: 'RULES.md',

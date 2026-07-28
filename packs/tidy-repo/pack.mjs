@@ -15,11 +15,7 @@
 // there is no ordering barrier and a dimension with nothing to do stays silent.
 export default {
   id: 'tidy-repo',
-  badge: {
-    file: 'badge.svg',
-    color: '#0d9488',
-    glyph: 'M8.5 12h8 M8.5 17.5h6 M8.5 23h10 M23 9.5l.9 2.6 2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9z',
-  },
+  badge: 'badge.svg',
   detect: null,
   marker: null,
   seededByDefault: true,

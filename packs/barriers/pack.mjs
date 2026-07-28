@@ -16,11 +16,7 @@ import { contributedBarrierRules } from './contributed.mjs';
 // running empty and guessing separations from existing state.
 export default {
   id: 'barriers',
-  badge: {
-    file: 'badge.svg',
-    color: '#64748b',
-    glyph: 'M16 7v18 M9.3 16a1.2 1.2 0 1 0 2.4 0 1.2 1.2 0 1 0-2.4 0 M20.3 16a1.2 1.2 0 1 0 2.4 0 1.2 1.2 0 1 0-2.4 0',
-  },
+  badge: 'badge.svg',
   detect: null,
   marker: null,
   prose: null,

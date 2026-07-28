@@ -16,11 +16,7 @@ const hasMarkerNearRoot = (ctx, marker) =>
 
 export default {
   id: 'firebase',
-  badge: {
-    file: 'badge.svg',
-    color: '#f59e0b',
-    glyph: 'M16 25.5c3.4 0 6.2-2.4 6.2-5.6 0-4.6-6.2-11.9-6.2-11.9 0 0-6.2 7.3-6.2 11.9 0 3.2 2.8 5.6 6.2 5.6z M16 25.5c1.6 0 2.9-1.2 2.9-2.7 0-2.2-2.9-5.3-2.9-5.3 0 0-2.9 3.1-2.9 5.3 0 1.5 1.3 2.7 2.9 2.7z',
-  },
+  badge: 'badge.svg',
   marker: 'firebase.json (at the repo root or one directory down)',
   detect: (ctx) => hasMarkerNearRoot(ctx, 'firebase.json'),
   prose: 'RULES.md',

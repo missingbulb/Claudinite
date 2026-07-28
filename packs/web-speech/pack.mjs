@@ -15,11 +15,7 @@ const SOURCE = /\.(mjs|cjs|js|jsx|ts|tsx)$/;
 
 export default {
   id: 'web-speech',
-  badge: {
-    file: 'badge.svg',
-    color: '#db2777',
-    glyph: 'M10.6 16a1.4 1.4 0 1 0 2.8 0 1.4 1.4 0 1 0-2.8 0 M16 12.4a5 5 0 0 1 0 7.2 M20 9.6a9.5 9.5 0 0 1 0 12.8',
-  },
+  badge: 'badge.svg',
   marker: 'a browser speech API (SpeechRecognition / speechSynthesis / chrome.tts) referenced in JS/TS source',
   detect: (ctx) =>
     ctx.tracked.some((f) => {

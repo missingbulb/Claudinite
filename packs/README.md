@@ -82,40 +82,37 @@ The SessionStart hook [`../engine/pack_loader/mount-skills.mjs`](../engine/pack_
 
 ## Pack badge (`badge`)
 
-Every pack carries a mark — the 32×32 tile beside its name in the table above — so a consuming
-repo's README can show which Claudinite packs it runs. The pack owns all of it, on a required
-`badge` field on its `pack.mjs`:
+Every pack carries a mark — the 32×32 tile beside its name in the table above — so a repo's README
+can show which Claudinite packs it runs. The manifest names only where it lives:
 
 ```js
-badge: {
-  file: 'badge.svg',                    // where the rendered tile lives, relative to the pack dir
-  color: '#4f46e5',                     // the tile fill; the shaded stop under it is derived
-  glyph: 'M7.5 24h17 M10.5 18h11 …',    // an SVG path, STROKED in white — not filled
-},
+badge: 'badge.svg',   // relative to the pack directory
 ```
 
-Nothing is optional and nothing defaults: a pack's identity belongs to the pack, and a fallback
-glyph in the engine is one no pack could ever see to change. The glyph is a path on the 32-unit
-grid, drawn with a round-capped 2.2 stroke, so a dot is a zero-length segment (`M16 16h0`) and
-the whole mark stays one field.
+**The badge file is the artwork's source of truth.** Its colour and its glyph live in the SVG, not
+in `pack.mjs`: they are visible to anyone who opens the file, editable without touching a manifest,
+and reviewable as the image they describe. The glyph is an SVG path on the 32-unit grid, stroked in
+white with a round-capped 2.2 line — so a dot is a zero-length segment (`M16 16h0`) and the whole
+mark is one path. No `<text>` anywhere, so a badge renders identically wherever it is loaded.
 
-[`../engine/badges/render.mjs`](../engine/badges/render.mjs) renders the declarations — it names
-no pack, so a new pack ships its mark with no edit anywhere else — writing each pack's own file
-plus **the usage strip**, the declared packs as a single row for a README to show in one line
-(this repo's own sits at [../docs/pack-usage.svg](../docs/pack-usage.svg), reached from
-[../README.md](../README.md)). Regenerate after touching a `badge` with:
+[`../dev/tools/badges/render.mjs`](../dev/tools/badges/render.mjs) mints a new one and restyles the
+set. It invents neither colour nor glyph — it *parses* both out of the file it is about to rewrite —
+so a template change (a new corner radius, a different stroke weight, a stats corner later) is one
+edit there and one run:
 
 ```sh
-node engine/badges/render.mjs docs/pack-usage.svg
+node dev/tools/badges/render.mjs new packs/<pack>/badge.svg '#4f46e5' 'M8 8h16'
+node dev/tools/badges/render.mjs restyle
 ```
 
-The rendered files are committed — GitHub loads a README's artwork over HTTP, and a pack's badge
+It lives in `dev/tools/`, not in the engine: nothing at session time reads a badge, and the engine is
+what runs pack content and what every consumer vendors. The badge FILES do ship — a pack's badge
 rides its directory into a consumer's vendor set exactly like its prose and skills, so a consuming
-repo can point at its own `.claudinite/shared/packs/<id>/badge.svg` with no network dependency on
-this repo. They keep the plain `badge.svg` name rather than the `GENERATED`-in-the-filename
-convention, because that path is a URL a consumer pastes into its README; the drift guard the
-convention would otherwise buy is [`../engine-tests/badges/render.test.mjs`](../engine-tests/badges/render.test.mjs),
-which re-renders every badge and fails when a tracked file and its manifest disagree.
+repo points at its own `.claudinite/shared/packs/<id>/badge.svg` with no network dependency on this
+repo. [`../dev/tools/tests/badges.test.mjs`](../dev/tools/tests/badges.test.mjs) is the guard: every
+pack declares a badge that exists and is tracked, every badge is current with the template and
+titled with the pack whose directory holds it, and this repo's own README row matches its pack
+declaration.
 
 ## Environment requirements (`env`)
 

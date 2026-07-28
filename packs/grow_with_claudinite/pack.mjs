@@ -30,11 +30,7 @@ import dedupIntegrity from './dedup-integrity.mjs';
 // and baselining never re-adds it — so removing it is a durable opt-out.
 export default {
   id: 'grow_with_claudinite',
-  badge: {
-    file: 'badge.svg',
-    color: '#16a34a',
-    glyph: 'M16 25v-8 M16 17c-4.5 0-6.5-2.5-6.5-6.5 4 0 6.5 2.5 6.5 6.5z M16 17c3.5 0 5.5-2.5 5.5-6-3 0-5.5 2.5-5.5 6z',
-  },
+  badge: 'badge.svg',
   detect: null,
   marker: null,
   seededByDefault: true,
