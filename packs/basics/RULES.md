@@ -2,6 +2,8 @@
 
 The working discipline that isn't itself a GitHub operation — general habits for how to approach a change, independent of any one project.
 
+Before acting on owner shorthand, confirm the session's context actually loaded. The tell that the SessionStart hook never fired: the repo's `CLAUDE.md` is the *only* project instruction you were given — no injected pack prose, no owner preferences — and no Stop-hook feedback arrives between turns. A hook that is *declared* is not a hook that *ran*, and the miss is silent, so a shorthand command whose meaning lives in the injected preferences gets read as ordinary prose and answered with a needless round-trip. Recover in one call — `bash .claudinite/shared/engine/hooks/session-start-command.sh` (preferences alone: `steps/inject-preferences.sh`, which needs `CLAUDE_CODE_USER_EMAIL`) — and read what it prints before continuing.
+
 Start every requested change from the *problem*, not the solution — in any repository, not just this one. Before implementing, reach an explicit shared understanding with the owner of the problem the change is meant to solve **and** agreement that the requested change is the best way to solve it; a different fix, or no change at all, may serve the underlying problem better.
 
 Open your reply to an owner comment with an explicit classification line — `Comment class: correction | feature | process-change | other` (`other` covers questions, approvals, and command phrases; a mixed comment names each part). The class decides where the change lands and what must exist before any fix.
