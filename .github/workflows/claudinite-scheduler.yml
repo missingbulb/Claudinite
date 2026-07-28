@@ -18,7 +18,7 @@ on:
   workflow_dispatch:
     inputs:
       overrides:
-        description: 'Manual-run overrides, e.g. FORCE_BASELINING=true (comma-separated KEY=value). Read only by a task declaring the `overrides` signal.'
+        description: 'Manual-run overrides: comma-separated KEY=value, e.g. FORCE_BASELINING=true or A=1,B=2. Read only by a task declaring the `overrides` signal.'
         required: false
         default: ''
 

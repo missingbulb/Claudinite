@@ -311,3 +311,15 @@ test('parseOverrides keeps values as strings — no truthiness coercion', () => 
   assert.deepEqual(parseOverrides('N=0'), { N: '0' });
   assert.equal(parseOverrides('A=b=c').A, 'b=c'); // only the FIRST = separates
 });
+
+test('parseOverrides takes what gh hands it after ITS own first-"=" split', () => {
+  // `gh workflow run -f overrides=FORCE_BASELINING=true` has TWO '=' on the
+  // command line, one per parser: gh's parseField splits on the first
+  // (strings.IndexRune) so the workflow input arrives as `FORCE_BASELINING=true`,
+  // and this parser then splits on ITS first. Same rule twice, which is why the
+  // form works and why a value may itself contain '='.
+  assert.deepEqual(parseOverrides('FORCE_BASELINING=true'), { FORCE_BASELINING: 'true' });
+  // Several overrides ride ONE input, comma-separated — not repeated -f flags,
+  // since the workflow declares exactly one input.
+  assert.deepEqual(parseOverrides('FORCE_BASELINING=true,FORCE_OTHER=x'), { FORCE_BASELINING: 'true', FORCE_OTHER: 'x' });
+});
