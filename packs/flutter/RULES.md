@@ -55,6 +55,11 @@ executable-requirements UI suite); keep anything project-specific in the consumi
   their APIs often (google_sign_in v7's `authenticate()`, flutter_map v7+'s options, geolocator's
   settings objects); resolved versions live in the pub cache
   (`~/.pub-cache/hosted/pub.dev/<pkg>-<ver>/lib/`) — read them before writing against them.
+- **`pubspec.lock` moving without `pubspec.yaml` moving is version skew, not a dependency change.**
+  An app commits its lockfile (only a *library* package gitignores it), so the file is tracked on
+  purpose — the thing to keep out of the diff is the churn a local `flutter pub get` produces when
+  the installed SDK resolves differently from CI's. Unless you deliberately ran an upgrade, revert
+  it: `git checkout -- pubspec.lock`.
 - **`flutter analyze` at zero issues** (infos included) is the bar a suite holds; lints that fight
   a deliberate convention (e.g. `file_names` vs. leaf-id case filenames) get disabled narrowly in
   that package's `analysis_options.yaml` with the reason as a comment.
