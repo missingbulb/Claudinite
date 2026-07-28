@@ -20,7 +20,7 @@
 export default {
   id: 'baselining',
   frequency: 'daily-2h',           // the 02:00 slot — a repo's mount is converged before anything reads it (DESIGN §2)
-  precondition_signals: ['stamp', 'sharedMount'],
+  precondition_signals: ['stamp', 'sharedMount', 'overrides'],
   agent_model: 'sonnet',                 // the RESIDUAL judgment stage — flagged notes / alignment findings; requested only when needed
   expected_outcome: 'merged-pr',            // lands on the maintenance PR; arms auto-merge where member config allows
   agent_instructions: 'task.md',
@@ -51,6 +51,18 @@ export default {
       'Preprocessing has already converged the vendored mount, wiring, and mechanical migration notes and pushed the maintenance PR.',
       'Your job is only the residual that needs judgment: apply any pending FLAGGED-agentic migration note (following its own instructions) and/or resolve any conformance finding the deterministic auto-fix could not — then advance the stamp and push to the open maintenance PR. Do not re-run the mechanical converge.',
     ];
+
+    // The manual escape hatch, checked AFTER the no-mount guard above so forcing
+    // can never make a repo without a vendored mount try to refresh one. A canon
+    // change worth propagating today cannot wait for `ageDays > 1` — the age gate
+    // means a repo that baselined this morning is not due again for over a day, so
+    // without this the only way to push a fix fleet-wide is to edit each repo's
+    // stamp by hand. Nothing else about the run changes: the worker still decides
+    // for itself what (if anything) needs doing, so forcing an already-current
+    // mount is a cheap no-op rather than a forced rewrite.
+    if (signals.overrides?.FORCE_BASELINING === 'true') {
+      return { run: true, reason: 'FORCE_BASELINING=true on a manual scheduler run — running the self-refresh regardless of stamp age', context };
+    }
 
     const staleByAge = stamp.canonHead == null && typeof stamp.ageDays === 'number' && stamp.ageDays > 1;
     const behindCanon = stamp.canonHead != null && stamp.canonHead !== stamp.ref;

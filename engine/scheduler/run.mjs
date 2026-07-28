@@ -130,6 +130,31 @@ export async function planRun({
   return { evaluations };
 }
 
+// The opaque override bag a MANUAL run may carry (`workflow_dispatch` input →
+// `CLAUDINITE_OVERRIDES`). GitHub cannot declare arbitrary named inputs, so the
+// workflow takes ONE free-form string and this splits it into keys.
+//
+// The engine deliberately never interprets a key. It parses the bag, hands it to
+// the `overrides` signal, and only a task that DECLARES that signal reads its own
+// key out of it — so adding an override is a one-task change with no engine edit
+// and no schema. A forced baselining must not teach the scheduler what baselining
+// is; that coupling is exactly what this seam exists to avoid.
+//
+// `A=1,B=2`, newline-separated, or bare `A` (⇒ `'true'`). Values stay STRINGS with
+// no truthiness coercion: a task compares against the literal it documents, so
+// `FORCE_X=false` can never read as "the key is present, therefore on".
+export function parseOverrides(raw) {
+  const out = {};
+  for (const part of String(raw ?? '').split(/[,\n]/)) {
+    const token = part.trim();
+    if (!token) continue;
+    const eq = token.indexOf('=');
+    if (eq === -1) out[token] = 'true';
+    else out[token.slice(0, eq).trim()] = token.slice(eq + 1).trim();
+  }
+  return out;
+}
+
 // The `ctx` every signal collector reads (DESIGN §3.3) — the already-resolved
 // facts a collector may not go and fetch for itself, built once per run and
 // handed to `collectSignals`. Exported so the construction itself is testable:
@@ -140,11 +165,11 @@ export async function planRun({
 // presence and the configured retention are all read from it (signals/local.mjs),
 // because a scheduled run already has the tree on disk and an API round-trip
 // would buy nothing.
-export function buildSignalContext({ root, repo, defaultBranch, now, sinceIso, config, fleet = null, packConfigFor = () => ({}) }) {
+export function buildSignalContext({ root, repo, defaultBranch, now, sinceIso, config, fleet = null, overrides = {}, packConfigFor = () => ({}) }) {
   const local = localSignalContext(root, { packIds: config.packs ?? [], packConfigFor });
   return {
     repo, defaultBranch, now, sinceIso, config,
-    activePacks: config.packs, fleet,
+    activePacks: config.packs, fleet, overrides,
     manifestVersion: local.manifestVersion,
     hasLocalPacks: local.hasLocalPacks,
     retentionDays: local.retentionDays,
@@ -314,8 +339,19 @@ async function main() {
   }
 
   const packConfigFor = (packId) => config.packConfig?.[packId] ?? {};
+
+  // An override only ever arrives on a hand-started run, and it makes a task run
+  // that its own precondition would have skipped — so say so in the log. An
+  // unattended system that can be forced silently is one whose run history stops
+  // explaining itself.
+  const overrides = parseOverrides(process.env.CLAUDINITE_OVERRIDES);
+  const overrideKeys = Object.keys(overrides);
+  if (overrideKeys.length > 0) {
+    console.log(`- manual run overrides: ${overrideKeys.map((k) => `${k}=${overrides[k]}`).join(', ')} (only a task declaring the \`overrides\` signal reads these)`);
+  }
+
   const ctx = buildSignalContext({
-    root, repo, defaultBranch, now: now.toISOString(), sinceIso, config, fleet, packConfigFor,
+    root, repo, defaultBranch, now: now.toISOString(), sinceIso, config, fleet, overrides, packConfigFor,
   });
 
   const { evaluations } = await planRun({

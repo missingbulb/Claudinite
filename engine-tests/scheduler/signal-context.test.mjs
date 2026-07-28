@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { buildSignalContext } from '../../engine/scheduler/run.mjs';
 import { collectSignals } from '../../engine/scheduler/signals/index.mjs';
 import { loadConfig } from '../../engine/checks/helpers/repo-context.mjs';
+import baselining from '../../packs/basics/tasks/baselining/task.mjs';
 import storeRelease from '../../packs/chrome-extension-release/tasks/store-release/task.mjs';
 import dedup from '../../packs/grow_with_claudinite/tasks/growth-dedup/task.mjs';
 import conversationExtract from '../../packs/grow_with_claudinite/tasks/conversation-extract/task.mjs';
@@ -205,5 +206,41 @@ test('conversationLogs: retention unset keeps the prune silent — no default is
     const signals = await collectSignals(fakeGh(QUIET), ctxFor(root), ['commits', 'conversationLogs']);
     assert.equal(signals.conversationLogs.retentionDays, null);
     assert.equal(conversationExtract.precondition(signals).run, false);
+  });
+});
+
+// ── The manual override bag ─────────────────────────────────────────────────
+// `overrides` is the one collector fed by neither GitHub nor disk, so it is
+// exactly the shape this file exists to guard: a ctx key that nothing populates
+// would let a hand-built `{ FORCE_BASELINING: 'true' }` prove the collector while
+// the real wire stayed dead. Both tests below go through buildSignalContext.
+
+test('overrides ride ctx → collector → the declaring task\'s precondition', async () => {
+  await withRepo(FULL, async (root) => {
+    const ctx = buildSignalContext({
+      root,
+      repo: 'o/r',
+      defaultBranch: 'main',
+      now: '2026-07-22T00:00:00Z',
+      sinceIso: '2026-07-21T00:00:00Z',
+      config: loadConfig(root),
+      overrides: { FORCE_BASELINING: 'true' },
+      packConfigFor: (id) => loadConfig(root).packConfig?.[id] ?? {},
+    });
+    const signals = await collectSignals(fakeGh(QUIET), ctx, baselining.precondition_signals);
+    assert.deepEqual(signals.overrides, { FORCE_BASELINING: 'true' });
+
+    // A repo whose stamp is fresh is NOT due; the override is what runs it.
+    const stamped = { ...signals, stamp: { ...signals.stamp, canonHead: null, ageDays: 0.1, ref: 'abc1234' } };
+    assert.equal(baselining.precondition(stamped).run, true);
+    assert.equal(baselining.precondition({ ...stamped, overrides: {} }).run, false);
+  });
+});
+
+test('a scheduled run carries no overrides — the bag is empty, never undefined', async () => {
+  await withRepo(FULL, async (root) => {
+    // ctxFor passes no `overrides` at all, which is the scheduled-run case.
+    const signals = await collectSignals(fakeGh(QUIET), ctxFor(root), ['overrides']);
+    assert.deepEqual(signals.overrides, {});
   });
 });
