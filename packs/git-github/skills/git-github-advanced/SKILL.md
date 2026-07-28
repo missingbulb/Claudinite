@@ -41,10 +41,6 @@ The default is to hold a PR until asked. Reverse that when a change's only revie
 
 It reads those paths out of `<ref>`'s **committed** tree and writes them over the working copy — so the uncommitted edits you were trying to move are destroyed, silently and unrecoverably (no reflog, no stash). Move in-progress work either by branching in place (`git checkout -b <new>`, which carries a dirty tree with it) or by committing/stashing first and then restoring on the new branch. In particular never put the checkout in the same `&&` chain as the branch creation: by the time it runs, the edits are already the only copy.
 
-## Probe a host the sandbox can't reach with a throwaway push-triggered workflow
-
-When a session's egress proxy blocks the host you need a real answer from (a live API's schema, an enum's actual values, whether a payload shape changed), a hosted CI runner can reach it even though the session can't. Commit a small probe script plus a **path-filtered, push-triggered** workflow that runs it, push, and read the answer from the job logs; delete both before opening the PR, so the probe never becomes infrastructure. Keep the probe as polite as the real client (same rate limiting) and never commit its output as data — it's a one-off measurement, not a source.
-
 ## Sync early to keep merge conflicts small
 
 Conflict size scales with how long a branch lives and how far it drifts from the default branch. Sync early rather than at the end: when starting work on a branch — and periodically while it's open — bring the latest default branch in first, so the branch carries current sources instead of discovering the gap at merge time. A one-commit-per-PR squash history already keeps each branch a single reviewable unit, so shorter-lived, freshly-synced branches are the norm.
