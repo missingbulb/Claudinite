@@ -10,13 +10,33 @@
 // agent-driven prose in executor.md. This shell only decides "is there a dispatch
 // here, is it mine, and is it legal".
 //
-// ZERO NETWORK, BY CONSTRUCTION. The executor session is MCP-only and carries no
-// repo credential of its own, so anything reaching the GitHub REST API here would
-// both fail to authenticate and trip the in-session-github-access rule. It needs
-// nothing: a label event's webhook payload is written to disk at
-// `$GITHUB_EVENT_PATH` and carries `action`, `label.name` and the whole `issue`
-// object — `issue.number` and `issue.body` included. Payload plus local checkout
-// is everything the validation needs.
+// TWO TRIGGER SOURCES, because the same `issues.labeled` webhook reaches an
+// executor session by two different transports and only one of them was ever
+// read here:
+//
+//   1. GITHUB ACTIONS writes the whole webhook payload to disk at
+//      `$GITHUB_EVENT_PATH` — `action`, `label.name` and the entire `issue`
+//      object, `issue.number` and `issue.body` included. Payload plus local
+//      checkout is everything the validation needs, in one shot.
+//   2. CLAUDE CODE ON THE WEB (CCR) delivers the same trigger as environment
+//      variables instead — `CCR_TRIGGER_SOURCE`, `CCR_TRIGGER_EVENT`,
+//      `CCR_TRIGGER_REPO`, `CCR_TRIGGER_ISSUE_NUMBER` — and writes no payload
+//      file at all. It NAMES the issue but carries neither the label that was
+//      added nor the body, so it resolves in two shots: this shell reports
+//      `needs-issue` with the number, the executor fetches that one issue's body
+//      and labels over MCP, and re-invokes with them (`--issue-body-file`,
+//      `--issue-labels`) for the identical validation.
+//
+// Reading only source 1 is what made every CCR-run executor session miss its own
+// trigger and select an issue by listing instead — the duplicate-execution bug
+// re-entered through the front door. Observed live 2026-07-28: two sessions each
+// selected dispatch #772 and claimed it one second apart.
+//
+// ZERO NETWORK, BY CONSTRUCTION — still. The executor session is MCP-only and
+// carries no repo credential of its own, so anything reaching the GitHub REST API
+// here would both fail to authenticate and trip the in-session-github-access
+// rule. The CCR path does not change that: this shell never fetches the issue
+// itself, it tells the EXECUTOR to fetch it over MCP and hand the bytes back.
 //
 // EXIT CODES ARE THE INTERFACE (see EXIT below). The executor branches on the
 // number, so each verdict has its own code and its own documented next step:
@@ -25,18 +45,35 @@
 //   10 invalid     — a forged or mangled dispatch. Comment the printed `reason`,
 //                    remove the ready label, add `needs-human`, end the session.
 //                    It never runs.
-//   11 not-mine    — the trigger label is the OTHER executor's ready label (or is
-//                    no ready label at all). Stop. Change nothing, comment nothing.
-//   12 no-payload  — no usable event payload, so the trigger issue cannot be named
-//                    from disk. Use executor.md step 1's documented fallback.
-//   2  usage       — bad invocation (an unknown scope argument).
+//   11 not-mine    — the trigger label is the OTHER executor's ready label, is no
+//                    ready label at all, or the issue no longer carries one (a
+//                    dispatch another session has already claimed). Stop. Change
+//                    nothing, comment nothing.
+//   13 needs-issue — a CCR trigger named the issue but carries no body/labels.
+//                    Fetch THAT issue over MCP and re-invoke with them.
+//   12 no-trigger  — NO source names an issue. STOP THE SESSION. There is no
+//                    fallback: never select a dispatch by listing (see below).
+//   2  usage       — bad invocation (an unknown scope argument, an unreadable
+//                    `--issue-body-file`).
 //   1  internal    — an unexpected fault in this shell.
 //
+// THERE IS NO FALLBACK, BY DESIGN. Exit 12 used to send the executor off to list
+// the open dispatches and take the oldest. That is precisely the
+// N-sessions-racing-over-N-issues failure the one-session-one-issue rule exists to
+// prevent, reached from the other direction: one scheduler run files every due
+// dispatch seconds apart, so every session that cannot name its own trigger builds
+// the SAME work list and races over it. A session that does not know its issue
+// must run nothing — the scheduler re-arms an unrun dispatch on its next hourly
+// pass, so stopping costs a delay while guessing costs duplicated work.
+//
 // Usage: `node <engine>/scheduler/resolve-dispatch.mjs [self|fleet]`
-// The argument is THIS SESSION's scope — which of the two executor routines is
-// running. It defaults to `self`, which is every ordinary project's executor; the
-// FLEET routine must pass `fleet` explicitly, and a fleet payload arriving at a
-// session that did not is reported as not-mine with that stated plainly.
+//                `[--issue-body-file <path>] [--issue-labels <csv>]`
+// The positional argument is THIS SESSION's scope — which of the two executor
+// routines is running. It defaults to `self`, which is every ordinary project's
+// executor; the FLEET routine must pass `fleet` explicitly, and a fleet payload
+// arriving at a session that did not is reported as not-mine with that stated
+// plainly. The two flags carry what a CCR trigger cannot, and are ignored on the
+// Actions path (whose payload already has both).
 
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, sep } from 'node:path';
@@ -52,7 +89,8 @@ export const EXIT = {
   usage: 2,
   invalid: 10,
   notMine: 11,
-  noPayload: 12,
+  noTrigger: 12,
+  needsIssue: 13,
 };
 
 // The executor scope a ready label implies — the exact inverse of the mapping the
@@ -75,7 +113,8 @@ export function repoRootFrom(moduleUrl) {
 
 // Read the webhook payload the label event was started with. Every way of not
 // having one collapses to a single `{ error }` — unset, unreadable, unparsable —
-// because the executor's response to all of them is the same documented fallback.
+// because the caller's response to all of them is the same: try the other
+// trigger source, and stop the session if that names no issue either.
 export function readEventPayload(env = process.env, read = (p) => readFileSync(p, 'utf8')) {
   const path = env.GITHUB_EVENT_PATH;
   if (!path) return { error: 'GITHUB_EVENT_PATH is not set — this session has no event payload on disk' };
@@ -98,9 +137,9 @@ export function readEventPayload(env = process.env, read = (p) => readFileSync(p
 }
 
 // The three facts a dispatch trigger must carry. Anything short of all three
-// means the payload cannot name this session's issue — which is the fallback
-// case, not a rejection: there may well be a legitimate dispatch waiting, we
-// simply were not told which.
+// means the payload cannot name this session's issue — not a rejection of a
+// dispatch, just this source failing to identify one; the caller tries the other
+// source before giving up.
 export function triggerFromEvent(event) {
   const action = event.action;
   const label = event.label?.name;
@@ -108,7 +147,72 @@ export function triggerFromEvent(event) {
   if (action !== 'labeled') return { error: `the event payload is a "${action}" event, not a label event — it names no dispatch` };
   if (typeof label !== 'string' || label === '') return { error: 'the label event carries no label.name' };
   if (!Number.isInteger(number)) return { error: 'the label event carries no issue.number' };
-  return { trigger: { label, number, body: event.issue?.body ?? '' } };
+  return { trigger: { source: 'payload', label, number, body: event.issue?.body ?? '' } };
+}
+
+// The CCR trigger: same webhook, delivered as environment variables by Claude
+// Code on the web, which writes no payload file. It names the issue and nothing
+// else — no `label.name`, no `issue.body` — so the trigger it yields is
+// deliberately PARTIAL, and `main` turns that into the two-shot `needs-issue`
+// handshake rather than guessing either missing field.
+export function triggerFromCcrEnv(env = process.env) {
+  const source = env.CCR_TRIGGER_SOURCE;
+  const event = env.CCR_TRIGGER_EVENT;
+  const raw = env.CCR_TRIGGER_ISSUE_NUMBER;
+  if (!source && !event && !raw) return { error: 'no CCR_TRIGGER_* variables are set either — this session carries no CCR trigger' };
+  if (source !== 'github') return { error: `CCR_TRIGGER_SOURCE is ${JSON.stringify(source ?? null)}, not "github" — this session was not started by a GitHub event` };
+  if (event !== 'issues.labeled') return { error: `CCR_TRIGGER_EVENT is ${JSON.stringify(event ?? null)}, not "issues.labeled" — it names no dispatch` };
+  const number = Number(raw);
+  if (!raw || !Number.isInteger(number) || number <= 0) return { error: `CCR_TRIGGER_ISSUE_NUMBER is ${JSON.stringify(raw ?? null)}, which is not an issue number` };
+  return { trigger: { source: 'ccr', number, repo: env.CCR_TRIGGER_REPO ?? '' } };
+}
+
+// Identify this session's ONE dispatch from whichever transport carried it.
+// Order is preference, not precedence-by-truth: the Actions payload is tried
+// first only because it answers in one shot, and a session that somehow has both
+// gets the same issue from either. Every failure of both sources is collected
+// into one reason, because the executor prints it and then stops.
+export function resolveTrigger(env = process.env, read) {
+  const reasons = [];
+  const { event, error: payloadError } = readEventPayload(env, read);
+  if (payloadError) reasons.push(payloadError);
+  else {
+    const { trigger, error } = triggerFromEvent(event);
+    if (trigger) return { trigger };
+    reasons.push(error);
+  }
+  const { trigger: ccr, error: ccrError } = triggerFromCcrEnv(env);
+  if (ccr) return { trigger: ccr };
+  reasons.push(ccrError);
+  return { error: reasons.join('; ') };
+}
+
+// `[scope] [--flag value|--flag=value]`. Kept deliberately tiny — the shell takes
+// one positional and two flags, and a dependency-free parser is less surface than
+// the alternative.
+export function parseArgs(argv) {
+  const positional = [];
+  const flags = {};
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (!arg.startsWith('--')) { positional.push(arg); continue; }
+    const eq = arg.indexOf('=');
+    if (eq !== -1) flags[arg.slice(2, eq)] = arg.slice(eq + 1);
+    else flags[arg.slice(2)] = argv[++i] ?? '';
+  }
+  return { positional, flags };
+}
+
+// Which of the issue's CURRENT labels is a ready label? On the CCR path this
+// stands in for the `label.name` the trigger never carried — and it is strictly
+// more informative than the event's: a dispatch another session already claimed
+// no longer carries a ready label at all, so this catches the lost race here at
+// step 1 rather than at the claim.
+export function readyLabelAmong(labels) {
+  const ready = labels.filter((l) => scopeForLabel(l) !== null);
+  if (ready.length === 0) return { error: `it carries no ready label (it has: ${labels.join(', ') || 'none'}) — its dispatch has already been claimed or converged by another session` };
+  if (ready.length > 1) return { error: `it carries more than one ready label (${ready.join(', ')}), so which executor owns it is ambiguous` };
+  return { label: ready[0] };
 }
 
 // The block the executor reads. `key: value` lines, one fact per line: an agent
@@ -123,25 +227,46 @@ function done(code, fields, advice) {
 }
 
 async function main() {
-  const scope = process.argv[2] ?? 'self';
+  const { positional, flags } = parseArgs(process.argv.slice(2));
+  const scopeGiven = positional.length > 0;
+  const scope = positional[0] ?? 'self';
   if (!SESSION_SCOPES.includes(scope)) {
-    console.error(`resolve-dispatch: unknown scope "${scope}" — usage: node resolve-dispatch.mjs [${SESSION_SCOPES.join('|')}]`);
+    console.error(`resolve-dispatch: unknown scope "${scope}" — usage: node resolve-dispatch.mjs [${SESSION_SCOPES.join('|')}] [--issue-body-file <path>] [--issue-labels <csv>]`);
     process.exit(EXIT.usage);
   }
 
-  const { event, error: payloadError } = readEventPayload();
-  if (payloadError) {
-    done(EXIT.noPayload, { dispatch: 'no-payload', scope, reason: payloadError },
-      `${payloadError}. Use the documented fallback (executor.md step 1): list the open issues under ${readyLabelForScope(scope)} SOLELY to take the single oldest, run that one alone, and say in your claim comment that you fell back and why.`);
-  }
-
-  const { trigger, error: triggerError } = triggerFromEvent(event);
+  const { trigger, error: triggerError } = resolveTrigger();
   if (triggerError) {
-    done(EXIT.noPayload, { dispatch: 'no-payload', scope, reason: triggerError },
-      `${triggerError}. Use the documented fallback (executor.md step 1): list the open issues under ${readyLabelForScope(scope)} SOLELY to take the single oldest, and say in your claim comment that you fell back.`);
+    done(EXIT.noTrigger, { dispatch: 'no-trigger', scope, reason: triggerError },
+      `${triggerError}. No trigger source names an issue, so this session cannot know which dispatch it was started for. STOP: run nothing, change nothing, comment nothing, end the session. There is NO fallback — never pick an issue by listing ${readyLabelForScope(scope)}; every dispatch in that list already has its own session, and the scheduler re-arms an unrun one on its next hourly pass.`);
   }
 
-  const { label, number, body } = trigger;
+  let { label, number, body } = trigger;
+
+  // The CCR handshake: the trigger named the issue, the executor fetched it over
+  // MCP, and hands back here the two fields the environment could not carry.
+  if (trigger.source === 'ccr') {
+    const bodyFile = flags['issue-body-file'];
+    const labelsCsv = flags['issue-labels'];
+    if (bodyFile === undefined || labelsCsv === undefined) {
+      done(EXIT.needsIssue, { dispatch: 'needs-issue', issue: number, scope, source: 'ccr', repo: trigger.repo || '(unset)' },
+        `the CCR trigger names issue #${number} but carries neither its body nor its labels. Fetch ISSUE #${number} ALONE over MCP (its body and its current labels), write the body verbatim to a file, then re-run: node <engine>/scheduler/resolve-dispatch.mjs ${scope} --issue-body-file <path> --issue-labels <comma-separated current labels>. Do not list, select, or touch any other issue.`);
+    }
+    try {
+      body = readFileSync(bodyFile, 'utf8');
+    } catch (e) {
+      console.error(`resolve-dispatch: --issue-body-file ${bodyFile} is unreadable: ${e.message}`);
+      process.exit(EXIT.usage);
+    }
+    const labels = labelsCsv.split(',').map((l) => l.trim()).filter(Boolean);
+    const { label: ready, error: labelError } = readyLabelAmong(labels);
+    if (labelError) {
+      done(EXIT.notMine, { dispatch: 'not-mine', issue: number, scope, labels: labels.join('|') || '(none)' },
+        `issue #${number}: ${labelError}. Stop: change nothing, comment nothing.`);
+    }
+    label = ready;
+  }
+
   const labelScope = scopeForLabel(label);
   if (labelScope === null) {
     done(EXIT.notMine, { dispatch: 'not-mine', issue: number, scope, label },
@@ -149,7 +274,7 @@ async function main() {
   }
   if (labelScope !== scope) {
     done(EXIT.notMine, { dispatch: 'not-mine', issue: number, scope, label, labelScope },
-      `issue #${number} is labeled "${label}", a ${labelScope}-scoped dispatch, but this session's scope is "${scope}"${process.argv[2] ? '' : ' (the default — pass "fleet" if this IS the fleet executor)'}. It is the other executor's to run and it already has a session. Stop: change nothing, comment nothing.`);
+      `issue #${number} is labeled "${label}", a ${labelScope}-scoped dispatch, but this session's scope is "${scope}"${scopeGiven ? '' : ' (the default — pass "fleet" if this IS the fleet executor)'}. It is the other executor's to run and it already has a session. Stop: change nothing, comment nothing.`);
   }
 
   // The checkout the dispatch's task path must resolve in. `exists` reads the
@@ -191,6 +316,7 @@ async function main() {
     issue: number,
     scope,
     label,
+    source: trigger.source,
     taskPath: verdict.taskPath,
     pack: verdict.pack,
     task: verdict.task,
