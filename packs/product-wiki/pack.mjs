@@ -22,6 +22,23 @@ export default {
   // (isolation.mjs — pure data, no cross-pack import; pack-independence).
   requires: ['barriers'],
   contributes: { barriers: [isolation] },
+  // Growth only ever refines an EXISTING wiki's own "## Open questions"
+  // backlog (RULES.md: "research what it flags as open, thin, or dated") — an
+  // agent adopting this pack with no wikis yet scaffolded has no backlog to
+  // work from and no way to guess one. Adoption asks the owner which wikis to
+  // seed and what each should track, same rationale as barriers asking what
+  // the graph is FOR: the guided on-ramp beats both running empty and
+  // guessing topics from existing state.
+  questions: [{
+    id: 'seed-wikis',
+    prompt: 'Which product-research wikis should this repo start with, and what should each track — e.g. '
+      + '"Market" (competitive landscape, positioning), "Users" (personas, jobs-to-be-done), "Competitors" '
+      + '(named rivals and their moves)? Name at least one wiki and its first "## Open questions" — growth '
+      + 'passes only ever research what an existing wiki\'s own backlog already flags.',
+    distill: 'no entry config — the pack takes none; instead scaffold one product-wiki/<Name>/README.md per '
+      + 'named wiki (the seed template in this pack\'s README.md), each carrying its own initial '
+      + '"## Open questions" drawn from the answer',
+  }],
   rules: [layout, pageSections, growthLog, sources, freshness],
   // The pack's scheduled task — wiki-growth, the weekly research pass — lives in
   // this pack's `tasks/wiki-growth/`, discovered by the scheduler's filesystem

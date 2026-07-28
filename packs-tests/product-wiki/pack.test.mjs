@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { makeRepo, cleanup, writeFiles } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import pack from '../../packs/product-wiki/pack.mjs';
+import { packQuestions } from '../../engine/pack_loader/pack-registry.mjs';
 import layout from '../../packs/product-wiki/layout.mjs';
 import pageSections from '../../packs/product-wiki/page-sections.mjs';
 import growthLog from '../../packs/product-wiki/growth-log.mjs';
@@ -66,6 +67,16 @@ test('pack manifest: id, marker, five uniquely-named rules, the contributed isol
   // The pack's scheduled task is NOT a pack.mjs slot any more — the repo's
   // scheduler finds tasks/<name>/task.mjs structurally (#394).
   assert.equal(pack.run_daily, undefined);
+});
+
+test('adoption question: names which wikis to seed, before any growth pass has a backlog to work from', () => {
+  const { questions, errors } = packQuestions(pack);
+  assert.deepEqual(errors, []);
+  assert.equal(questions.length, 1);
+  const [q] = questions;
+  assert.equal(q.id, 'seed-wikis');
+  assert.match(q.prompt, /Open questions/);
+  assert.match(q.distill, /no entry config/);
 });
 
 test('detect fires exactly on the sink marker', () => {

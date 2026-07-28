@@ -106,6 +106,14 @@ pointing at the same two-file scaffold. That is deliberate: a declaration is a
 statement of intent, unlike the barriers pack's unconfigured no-op (where
 config absence means "nothing declared").
 
+Declaring the pack also surfaces its one adoption question (bootstrap.md Part
+2, the one strict interview point): which wikis to seed and what each should
+track. Growth only ever refines an *existing* wiki's own `## Open questions`
+backlog, so there is nothing for a growth pass — or an agent scaffolding the
+skeleton by hand — to research before that question is answered. Skip the
+interview and the scaffold has no content to seed the pages with beyond the
+bare template.
+
 ## Known gaps
 
 - The barrier engine never scans `*.test.mjs`/test files as sources, so a test
