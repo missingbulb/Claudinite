@@ -16,6 +16,11 @@ on:
   schedule:
     - cron: '44 * * * *'
   workflow_dispatch:
+    inputs:
+      overrides:
+        description: 'Manual-run overrides, e.g. FORCE_BASELINING=true (comma-separated KEY=value). Read only by a task declaring the `overrides` signal.'
+        required: false
+        default: ''
 
 concurrency:
   group: claudinite-scheduler
@@ -39,6 +44,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           FLEET_GITHUB_TOKEN: ${{ secrets.FLEET_GITHUB_TOKEN }}
+          # Empty on every scheduled run — `inputs` is only populated by
+          # workflow_dispatch. The engine parses this into the `overrides` signal
+          # and interprets no key itself.
+          CLAUDINITE_OVERRIDES: ${{ inputs.overrides }}
         run: node engine/scheduler/run.mjs
 
   # A scheduled run reaches no one when it goes red, so escalate a whole-run

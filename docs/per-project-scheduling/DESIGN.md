@@ -182,6 +182,25 @@ refresh, not workflow edits). It runs
      (baselining's precondition falls back to stamp-age when it isn't).
    - `fleet` — canon repo only, over the fleet PAT (the members aggregate for
      the genuinely fleet-scoped tasks). Consumers cannot declare it.
+   - `overrides` — the only collector reading neither GitHub nor disk: the
+     opaque `KEY=value` bag a **manual** `workflow_dispatch` run carried, empty
+     on every scheduled run. GitHub cannot declare arbitrary named inputs, so
+     the workflow takes one free-form `overrides` string, passes it as
+     `CLAUDINITE_OVERRIDES`, and `parseOverrides` splits it. **The engine never
+     interprets a key** — it hands the bag to this signal, and only a task that
+     *declares* the signal reads its own key out of it, so a new override is a
+     one-task change with no engine edit and no schema. Values stay strings
+     with no truthiness coercion, so `FORCE_X=false` cannot read as "present,
+     therefore on".
+
+     The case it exists for: baselining's `FORCE_BASELINING=true`. The age gate
+     (`ageDays > 1`) means a repo that baselined this morning is not due again
+     for over a day, so a canon fix worth propagating *today* otherwise had no
+     lever short of hand-editing each repo's stamp. Forcing changes only
+     *whether the worker runs* — the worker still decides for itself what needs
+     doing, so forcing an already-current mount is a cheap no-op. It is checked
+     after the no-vendored-mount guard, so a forced fleet-wide run still skips
+     a repo with no mount.
 4. **Runs preconditions** — pure code, per-task try/catch isolation; a throwing
    precondition converges to the standard failure state (`report-failure`
    composite → `workflow-failure` issue); other tasks proceed.

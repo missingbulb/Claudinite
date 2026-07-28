@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   convergeSchedulerWorkflow, ensureHooks, removeRetiredCorpusImport, convergeWiring,
   withDeclaredSecrets, SCHEDULER_WORKFLOW, SETTINGS_PATH,
@@ -121,3 +122,27 @@ test('convergeWiring: reports every surface it changed, and is idempotent', () =
   // second run: fully converged → nothing changes
   assert.deepEqual(convergeWiring(root, REPO, STUB).changed, []);
 });
+
+// ── The override input, on the REAL shipped YAML ────────────────────────────
+// Every test above runs against a synthetic STUB, which is right for the
+// converge logic and useless for this: the override reaches a task only if the
+// actual files declare the input AND pass it through as CLAUDINITE_OVERRIDES.
+// Miss either half and forcing silently does nothing — the run goes green, the
+// task just never fires. So assert on the files that ship.
+
+const ENGINE_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const WORKFLOWS = {
+  'the vendored consumer stub': join(ENGINE_ROOT, 'engine/scheduler/stubs/claudinite-scheduler.yml'),
+  "the canon's own workflow": join(ENGINE_ROOT, '.github/workflows/claudinite-scheduler.yml'),
+};
+
+for (const [label, path] of Object.entries(WORKFLOWS)) {
+  test(`${label} declares the overrides input and pipes it to CLAUDINITE_OVERRIDES`, () => {
+    const text = readFileSync(path, 'utf8');
+    assert.match(text, /workflow_dispatch:\s*\n\s+inputs:\s*\n\s+overrides:/, 'must declare the `overrides` workflow_dispatch input');
+    assert.match(text, /CLAUDINITE_OVERRIDES:\s*\$\{\{\s*inputs\.overrides\s*\}\}/, 'must pass the input to the engine as CLAUDINITE_OVERRIDES');
+    // The env var belongs to the step that runs the engine, not the escalation job.
+    const schedulerJob = text.slice(0, text.indexOf('report-failure:'));
+    assert.ok(schedulerJob.includes('CLAUDINITE_OVERRIDES'), 'the env must sit on the scheduler job, not the failure reporter');
+  });
+}

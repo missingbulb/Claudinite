@@ -11,12 +11,25 @@
 # (scheduler-workflow-shape enforces the range; baselining re-derives the value to
 # catch drift). `workflow_dispatch` allows a manual run; the concurrency group
 # serializes runs so a slow run and its successor never overlap.
+#
+# A manual run may carry `overrides` — ONE free-form `KEY=value` string, because
+# GitHub cannot declare arbitrary named inputs. It reaches the engine as
+# `CLAUDINITE_OVERRIDES` and stops there: the engine parses it into the
+# `overrides` signal without interpreting a key, so only a task that DECLARES that
+# signal reads its own (e.g. baselining's `FORCE_BASELINING=true`, which runs the
+# self-refresh on a stamp too fresh to be due). Adding an override is a one-task
+# change — neither this file nor the engine learns a new name.
 name: Claudinite scheduler
 
 on:
   schedule:
     - cron: '10 * * * *'
   workflow_dispatch:
+    inputs:
+      overrides:
+        description: 'Manual-run overrides, e.g. FORCE_BASELINING=true (comma-separated KEY=value). Read only by a task declaring the `overrides` signal.'
+        required: false
+        default: ''
 
 concurrency:
   group: claudinite-scheduler
@@ -42,6 +55,10 @@ jobs:
       - name: Evaluate schedule and dispatch due tasks
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          # Empty on every scheduled run — `inputs` is only populated by
+          # workflow_dispatch. The engine parses this into the `overrides` signal
+          # and interprets no key itself.
+          CLAUDINITE_OVERRIDES: ${{ inputs.overrides }}
         run: node .claudinite/shared/engine/scheduler/run.mjs
 
   # A scheduled run reaches no one when it goes red, so escalate a whole-run

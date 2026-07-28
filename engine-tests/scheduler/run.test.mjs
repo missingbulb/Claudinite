@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeDueTaskSlots, signalsUnion, runPrecondition, renderSummary, planRun, ensureLabels, maintainDispatchIssues } from '../../engine/scheduler/run.mjs';
+import { computeDueTaskSlots, signalsUnion, runPrecondition, renderSummary, planRun, ensureLabels, maintainDispatchIssues, parseOverrides } from '../../engine/scheduler/run.mjs';
 import { DEFAULT_SCHEDULE } from '../../engine/scheduler/slots.mjs';
 import { SCHEDULER_LABELS, READY_LABEL, READY_FLEET_LABEL, AGENT_RUNNING_LABEL, NEEDS_HUMAN_LABEL } from '../../engine/scheduler/dispatch.mjs';
 
@@ -281,4 +281,33 @@ test('an idle repo with no open dispatch issues writes nothing', async () => {
   const out = await quiet(() => maintainDispatchIssues(gh, 'o/r', '2026-07-22T02:00:00Z'));
   assert.deepEqual(out, { stale: [], deadClaims: [], rearmed: [] });
   assert.equal(calls.filter((c) => c.method !== 'GET').length, 0);
+});
+
+// ── parseOverrides ──────────────────────────────────────────────────────────
+// The workflow can only declare ONE free-form input (GitHub has no arbitrary
+// named inputs), so this parser is the whole surface between a human typing in
+// the Actions UI and a task's precondition.
+
+test('parseOverrides splits KEY=value on commas and newlines, trimming both sides', () => {
+  assert.deepEqual(parseOverrides('FORCE_BASELINING=true'), { FORCE_BASELINING: 'true' });
+  assert.deepEqual(parseOverrides(' A=1 , B=2 '), { A: '1', B: '2' });
+  assert.deepEqual(parseOverrides('A=1\nB=2'), { A: '1', B: '2' });
+});
+
+test('parseOverrides reads a bare key as "true", so FORCE_BASELINING alone works', () => {
+  assert.deepEqual(parseOverrides('FORCE_BASELINING'), { FORCE_BASELINING: 'true' });
+});
+
+test('parseOverrides yields an empty bag for the scheduled-run cases, never a throw', () => {
+  for (const raw of [undefined, null, '', '   ', ',,', '\n']) {
+    assert.deepEqual(parseOverrides(raw), {}, `${JSON.stringify(raw)} must parse to an empty bag`);
+  }
+});
+
+test('parseOverrides keeps values as strings — no truthiness coercion', () => {
+  // The whole point: a task compares against the literal it documents, so
+  // `FORCE_X=false` can never read as "the key is present, therefore on".
+  assert.deepEqual(parseOverrides('FORCE_X=false'), { FORCE_X: 'false' });
+  assert.deepEqual(parseOverrides('N=0'), { N: '0' });
+  assert.equal(parseOverrides('A=b=c').A, 'b=c'); // only the FIRST = separates
 });
