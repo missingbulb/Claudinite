@@ -14,6 +14,7 @@ import isolation from './isolation.mjs';
 
 export default {
   id: 'product-wiki',
+  badge: 'badge.svg',
   marker: SINK_README,
   detect: (ctx) => ctx.tracked.includes(SINK_README),
   prose: 'RULES.md',

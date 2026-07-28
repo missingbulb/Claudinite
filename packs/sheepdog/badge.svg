@@ -1,0 +1,12 @@
+<!-- A Claudinite pack badge. The colour and glyph below are this file's own — dev/tools/badges/render.mjs re-renders the template around them. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="Claudinite pack: sheepdog">
+  <title>sheepdog</title>
+  <defs>
+    <linearGradient id="b-sheepdog" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a16207"/>
+      <stop offset="1" stop-color="#7e4c05"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="8" fill="url(#b-sheepdog)"/>
+  <path d="M21.5 22.5V12.5a5 5 0 0 0-10 0V14 M8 24.4a1.3 1.3 0 1 0 2.6 0 1.3 1.3 0 1 0-2.6 0 M12.1 24.4a1.3 1.3 0 1 0 2.6 0 1.3 1.3 0 1 0-2.6 0 M16.2 24.4a1.3 1.3 0 1 0 2.6 0 1.3 1.3 0 1 0-2.6 0" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

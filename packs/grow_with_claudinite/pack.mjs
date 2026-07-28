@@ -45,6 +45,7 @@ import dedupIntegrity from './dedup-integrity.mjs';
 // active sets retention_days itself.
 export default {
   id: 'grow_with_claudinite',
+  badge: 'badge.svg',
   detect: null,
   marker: null,
   seededByDefault: true,

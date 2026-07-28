@@ -6,33 +6,33 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 
 | Pack | Active when | Checks | Prose rules |
 |---|---|---|---|
-| [basics](basics/README.md) | declared (seeded by `--init`) | 11 | ~8 (working-discipline + task-lifecycle) |
-| [barriers](barriers/README.md) | declared (or pulled in via `requires`) | 1 | 0 (config-driven segregation) |
-| [git-github](git-github/README.md) | pulled in via `basics` `requires` | 0 | 0 (2 skills: git-github-advanced, merge-to-main) |
-| [grow_with_claudinite](grow_with_claudinite/README.md) | declared (seeded by `--init`, opt-out by removal) | 1 | growth member-side daily tasks (extract / dedup / pack discovery / conversation-extract) + in-session merge capture |
-| [tidy-repo](tidy-repo/README.md) | declared (seeded by `--init`, opt-out by removal) | 0 | policy (assess-only-vs-act) + 3 per-dimension tidy tasks (issues daily, PRs/branches weekly) |
-| [sheepdog](sheepdog/README.md) | declared (opt-in; the fleet-enforcer repo only) | 0 | fleet-enforcer marker + config + the agentless `fleet-census` daily task (the coverage census) |
-| [github-actions](github-actions/README.md) | `.github/workflows/` | 8 | 0 |
-| [chrome-extension](chrome-extension/README.md) | manifest_version manifest | 0 | 8 |
-| [chrome-extension-release](chrome-extension-release/README.md) | single `Release to Chrome Store` stub (opt-in) | 8 | 0 (+ RELEASE contract) |
-| [node](node/README.md) | root package.json | 0 | 2 |
-| [python](python/README.md) | pyproject.toml near root | 0 (2 in its skill) | 3 |
-| [web-speech](web-speech/README.md) | speech API in JS/TS source | 0 (2 in its skill) | 15 |
-| [leaflet](leaflet/README.md) | Leaflet reference in HTML/JS source | 1 | 4 |
-| [aws-sam](aws-sam/README.md) | SAM template | 3 | 3 |
-| [google-identity](google-identity/README.md) | declared | 0 (3 in its skill) | 0 |
-| [html](html/README.md) | declared | 0 | 1 |
-| [flutter](flutter/README.md) | pubspec.yaml | 0 | 0 (stub) |
-| [firebase](firebase/README.md) | `firebase.json` | 2 | rules / functions / deploy discipline |
-| [firebase-release](firebase-release/README.md) | declared (opt-in) | 0 | dev/prod split + App Check store gating |
-| [android](android/README.md) | `AndroidManifest.xml` | 0 | stub |
-| [ios](ios/README.md) | `ios/Runner/Info.plist` | 0 | stub |
-| [play-store-release](play-store-release/README.md) | declared (opt-in) | 0 | stub |
-| [app-store-release](app-store-release/README.md) | declared (opt-in) | 0 | stub |
-| [research-project](research-project/README.md) | declared (class) | 0 | 54 (14 sections) |
-| [product-wiki](product-wiki/README.md) | declared (marker: `product-wiki/product-requirements/README.md`) | 6 | wiki growth discipline + weekly growth daily task |
-| [spec-driven-product](spec-driven-product/README.md) | declared (class) | 0 | 25 (8 sections) |
-| [executable-requirements](executable-requirements/README.md) | `dev/requirements/requirements.md` | 0 | framework standard (layout / gates / kinds) |
+| <img src="basics/badge.svg" width="18" height="18" alt=""> [basics](basics/README.md) | declared (seeded by `--init`) | 11 | ~8 (working-discipline + task-lifecycle) |
+| <img src="barriers/badge.svg" width="18" height="18" alt=""> [barriers](barriers/README.md) | declared (or pulled in via `requires`) | 1 | 0 (config-driven segregation) |
+| <img src="git-github/badge.svg" width="18" height="18" alt=""> [git-github](git-github/README.md) | pulled in via `basics` `requires` | 0 | 0 (2 skills: git-github-advanced, merge-to-main) |
+| <img src="grow_with_claudinite/badge.svg" width="18" height="18" alt=""> [grow_with_claudinite](grow_with_claudinite/README.md) | declared (seeded by `--init`, opt-out by removal) | 1 | growth member-side daily tasks (extract / dedup / pack discovery / conversation-extract) + in-session merge capture |
+| <img src="tidy-repo/badge.svg" width="18" height="18" alt=""> [tidy-repo](tidy-repo/README.md) | declared (seeded by `--init`, opt-out by removal) | 0 | policy (assess-only-vs-act) + 3 per-dimension tidy tasks (issues daily, PRs/branches weekly) |
+| <img src="sheepdog/badge.svg" width="18" height="18" alt=""> [sheepdog](sheepdog/README.md) | declared (opt-in; the fleet-enforcer repo only) | 0 | fleet-enforcer marker + config + the agentless `fleet-census` daily task (the coverage census) |
+| <img src="github-actions/badge.svg" width="18" height="18" alt=""> [github-actions](github-actions/README.md) | `.github/workflows/` | 8 | 0 |
+| <img src="chrome-extension/badge.svg" width="18" height="18" alt=""> [chrome-extension](chrome-extension/README.md) | manifest_version manifest | 0 | 8 |
+| <img src="chrome-extension-release/badge.svg" width="18" height="18" alt=""> [chrome-extension-release](chrome-extension-release/README.md) | single `Release to Chrome Store` stub (opt-in) | 8 | 0 (+ RELEASE contract) |
+| <img src="node/badge.svg" width="18" height="18" alt=""> [node](node/README.md) | root package.json | 0 | 2 |
+| <img src="python/badge.svg" width="18" height="18" alt=""> [python](python/README.md) | pyproject.toml near root | 0 (2 in its skill) | 3 |
+| <img src="web-speech/badge.svg" width="18" height="18" alt=""> [web-speech](web-speech/README.md) | speech API in JS/TS source | 0 (2 in its skill) | 15 |
+| <img src="leaflet/badge.svg" width="18" height="18" alt=""> [leaflet](leaflet/README.md) | Leaflet reference in HTML/JS source | 1 | 4 |
+| <img src="aws-sam/badge.svg" width="18" height="18" alt=""> [aws-sam](aws-sam/README.md) | SAM template | 3 | 3 |
+| <img src="google-identity/badge.svg" width="18" height="18" alt=""> [google-identity](google-identity/README.md) | declared | 0 (3 in its skill) | 0 |
+| <img src="html/badge.svg" width="18" height="18" alt=""> [html](html/README.md) | declared | 0 | 1 |
+| <img src="flutter/badge.svg" width="18" height="18" alt=""> [flutter](flutter/README.md) | pubspec.yaml | 0 | 0 (stub) |
+| <img src="firebase/badge.svg" width="18" height="18" alt=""> [firebase](firebase/README.md) | `firebase.json` | 2 | rules / functions / deploy discipline |
+| <img src="firebase-release/badge.svg" width="18" height="18" alt=""> [firebase-release](firebase-release/README.md) | declared (opt-in) | 0 | dev/prod split + App Check store gating |
+| <img src="android/badge.svg" width="18" height="18" alt=""> [android](android/README.md) | `AndroidManifest.xml` | 0 | stub |
+| <img src="ios/badge.svg" width="18" height="18" alt=""> [ios](ios/README.md) | `ios/Runner/Info.plist` | 0 | stub |
+| <img src="play-store-release/badge.svg" width="18" height="18" alt=""> [play-store-release](play-store-release/README.md) | declared (opt-in) | 0 | stub |
+| <img src="app-store-release/badge.svg" width="18" height="18" alt=""> [app-store-release](app-store-release/README.md) | declared (opt-in) | 0 | stub |
+| <img src="research-project/badge.svg" width="18" height="18" alt=""> [research-project](research-project/README.md) | declared (class) | 0 | 54 (14 sections) |
+| <img src="product-wiki/badge.svg" width="18" height="18" alt=""> [product-wiki](product-wiki/README.md) | declared (marker: `product-wiki/product-requirements/README.md`) | 6 | wiki growth discipline + weekly growth daily task |
+| <img src="spec-driven-product/badge.svg" width="18" height="18" alt=""> [spec-driven-product](spec-driven-product/README.md) | declared (class) | 0 | 25 (8 sections) |
+| <img src="executable-requirements/badge.svg" width="18" height="18" alt=""> [executable-requirements](executable-requirements/README.md) | `dev/requirements/requirements.md` | 0 | framework standard (layout / gates / kinds) |
 
 ## Local packs — a project's own packs
 
@@ -79,6 +79,60 @@ This is **not a check** — a pack can't be imported without its dependencies, s
 A pack's skills live in its own tree — `<pack>/skills/<skill>/SKILL.md`, one owning pack per skill (#385). The directory listing IS the manifest: there is no `skills` field on `pack.mjs` and no separate skills collection to own or cross-declare.
 
 The SessionStart hook [`../engine/pack_loader/mount-skills.mjs`](../engine/pack_loader/mount-skills.mjs) mounts the **union over the active packs' bundles** (same activation as prose/checks/env) as session-generated `.claude/skills/<name>` symlinks — nothing committed, and a self-ignoring `.claude/skills/.gitignore` keeps them out of git status. A skill rides its pack everywhere the pack goes: the vendor set, the mounts, the sweep (its `checks.mjs` runs when the pack is active). The baseline activities every project has (`merge-to-main`, `writing-tests`, `bug-investigation`, …) ride the `basics` pack's bundle; move a skill's directory to a narrower pack when it stops being a baseline activity.
+
+## Pack badge (`badge`)
+
+Every pack carries a mark — the 32×32 tile beside its name in the table above — so a repo's README
+can show which Claudinite packs it runs. The manifest names only where it lives:
+
+```js
+badge: 'badge.svg',   // relative to the pack directory
+```
+
+**The badge file is the artwork's source of truth.** Its colour and its glyph live in the SVG, not
+in `pack.mjs`: they are visible to anyone who opens the file, editable without touching a manifest,
+and reviewable as the image they describe. The glyph is an SVG path on the 32-unit grid, stroked in
+white with a round-capped 2.2 line — so a dot is a zero-length segment (`M16 16h0`) and the whole
+mark is one path. No `<text>` anywhere, so a badge renders identically wherever it is loaded.
+
+[`../dev/tools/badges/render.mjs`](../dev/tools/badges/render.mjs) mints a new one and restyles the
+set. It invents neither colour nor glyph — it *parses* both out of the file it is about to rewrite —
+so a template change (a new corner radius, a different stroke weight, a stats corner later) is one
+edit there and one run:
+
+```sh
+node dev/tools/badges/render.mjs new packs/<pack>/badge.svg '#4f46e5' 'M8 8h16'
+node dev/tools/badges/render.mjs restyle
+```
+
+It lives in `dev/tools/`, not in the engine: nothing at session time reads a badge, and the engine is
+what runs pack content and what every consumer vendors. The badge FILES do ship — a pack's badge
+rides its directory into a consumer's vendor set exactly like its prose and skills, so a repo's row
+points at its own `.claudinite/shared/packs/<id>/badge.svg` with no network dependency on this repo.
+
+**Getting the row into a README is not a maintainer's job.** Adoption writes it and the nightly
+keeps it true, both through the one wiring converge
+([`../engine/scheduler/converge-wiring.mjs`](../engine/scheduler/converge-wiring.mjs), bootstrap
+Part 6): a one-line row of the declared packs' badges, under the title, between
+`<!-- claudinite:packs -->` markers — so it re-converges in place wherever the repo moves it, and
+anything the repo writes after the closing marker on that line is its own. Because the row is
+derived from the declaration each night, it can't go stale the day the repo declares its next pack,
+which is the whole reason it isn't hand-written.
+
+The converge also materializes the repo's say into `.claudinite-checks.json`, so the knob sits where
+anyone would look for it rather than being inferred from absence:
+
+```json
+"badges": { "readme": "auto" }
+```
+
+Set `"off"` and the nightly neither updates the row nor re-adds one the repo has deleted.
+
+[`../dev/tools/tests/badges.test.mjs`](../dev/tools/tests/badges.test.mjs) guards the artwork side —
+every pack declares a badge that exists and is tracked, every badge is current with the template and
+titled with the pack whose directory holds it — and holds this repo's own row (the one member no
+nightly maintains, since the canon has no vendored mount to refresh) to what that converge would
+write.
 
 ## Environment requirements (`env`)
 

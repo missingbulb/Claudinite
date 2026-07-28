@@ -10,6 +10,7 @@ const hasMarkerNearRoot = (ctx, marker) =>
 
 export default {
   id: 'flutter',
+  badge: 'badge.svg',
   marker: 'pubspec.yaml (at the repo root or one directory down)',
   detect: (ctx) => hasMarkerNearRoot(ctx, 'pubspec.yaml'),
   prose: 'RULES.md',

@@ -30,6 +30,7 @@
 // pack-agnostic; the planner never runs, dispatches, or depends on these sweeps.
 export default {
   id: 'sheepdog',
+  badge: 'badge.svg',
   detect: null,
   marker: null,
   prose: 'RULES.md',

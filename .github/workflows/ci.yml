@@ -37,11 +37,12 @@ jobs:
         #                            because engine/ ships to consumers exactly as-is (#385)
         #   packs-tests/             every canon pack's tests, mirroring packs/
         #   vendoring/               co-located with the vendor computer/writer they cover
+        #   dev/tools/               maintainer-side tooling nothing at session time runs
         #   .claudinite/local/packs/ this repo's own local packs — tests live inside the tree
         # nullglob: a root with no tests drops out instead of reaching node as a literal pattern.
         run: |
           shopt -s globstar nullglob
-          tests=(engine-tests/**/*.test.mjs packs-tests/**/*.test.mjs vendoring/**/*.test.mjs .claudinite/local/packs/**/*.test.mjs)
+          tests=(engine-tests/**/*.test.mjs packs-tests/**/*.test.mjs vendoring/**/*.test.mjs dev/tools/**/*.test.mjs .claudinite/local/packs/**/*.test.mjs)
           node --test "${tests[@]}"
       - name: Conformance sweep
         # The world sweep's home is the test/CI flow (not the Stop hook, which

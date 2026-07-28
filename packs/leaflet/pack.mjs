@@ -15,6 +15,7 @@ const SOURCE = /\.(html?|mjs|cjs|jsx?|tsx?)$/;
 
 export default {
   id: 'leaflet',
+  badge: 'badge.svg',
   marker: 'a Leaflet reference (CDN asset, or an L.map/L.tileLayer/L.markerClusterGroup call) in HTML/JS source',
   detect: (ctx) =>
     ctx.tracked.some((f) => {

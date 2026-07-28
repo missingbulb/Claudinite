@@ -10,6 +10,7 @@
 // id must equal its directory name ("claudinite") and may not shadow a canon pack.
 export default {
   id: 'claudinite',
+  badge: 'badge.svg',
   prose: 'RULES.md',
   rules: [],
 };

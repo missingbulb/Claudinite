@@ -5,6 +5,7 @@
 // its workflow stubs.
 export default {
   id: 'firebase-release',
+  badge: 'badge.svg',
   marker: null,
   detect: null,
   // The release standard builds on the Firebase coding/deploy pack.

@@ -22,6 +22,7 @@ import packIndependence from './pack-independence.mjs';
 // without touching the members' side (grow_with_claudinite).
 export default {
   id: 'canon-curation',
+  badge: 'badge.svg',
   detect: null,
   marker: null,
   prose: null,

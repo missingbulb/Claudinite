@@ -12,6 +12,7 @@
 // chrome-extension pack's turf; this pack owns the *validator* side.
 export default {
   id: 'google-identity',
+  badge: 'badge.svg',
   marker: 'a backend that validates Google Sign-In ID tokens (a JWT authorizer / OIDC verifier with the Google accounts issuer)',
   detect: null,
   rules: [],

@@ -1,0 +1,12 @@
+<!-- A Claudinite pack badge. The colour and glyph below are this file's own — dev/tools/badges/render.mjs re-renders the template around them. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="Claudinite pack: ios">
+  <title>ios</title>
+  <defs>
+    <linearGradient id="b-ios" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6b7280"/>
+      <stop offset="1" stop-color="#535964"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="8" fill="url(#b-ios)"/>
+  <path d="M13 7.5h6a2.5 2.5 0 0 1 2.5 2.5v12a2.5 2.5 0 0 1-2.5 2.5h-6a2.5 2.5 0 0 1-2.5-2.5V10A2.5 2.5 0 0 1 13 7.5z M14 21.8h4" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
