@@ -18,3 +18,8 @@ separation and store gating are deliberately NOT here — that is the opt-in
 | Functions own identity and limits | prose |
 | Test logic pure, rules empirically | prose (+ the project's suites) |
 | Deploy layout and aliases | prose + the pack's two checks |
+
+Both deploy-layout checks are **relevance-first**: inert until the repo carries a
+`firebase.json` declaring a functions codebase whose `package.json` is in this
+checkout. A rules-only or hosting-only Firebase repo therefore never hears from
+them.

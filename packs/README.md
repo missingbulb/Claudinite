@@ -1,6 +1,6 @@
 # packs/ — the corpus content, active by declaration
 
-Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session start when the pack is active), its **checks** (run at every Stop), and its **bundled skills** (`<pack>/skills/`, mounted at session start). **No pack is active by default** — every pack, the `basics` baseline included, activates only when declared in `.claudinite-checks.json` (bootstrap's `--init` seeds `basics` plus the fingerprinted technology packs; the nightly baselining backfills the explicit `basics` declaration into existing consumers). Discovery is structural — any `packs/<name>/pack.mjs` is a pack, and that manifest is the pack's index: what it owns, the checks it runs in each scope, the skills it bundles. A pack's `README.md` is **optional** and carries only what the manifest cannot — provenance, design rationale, an index of its prose. A README that restates the manifest is duplication with a drift risk, and several had already drifted.
+Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session start when the pack is active), its **checks** (run at every Stop), and its **bundled skills** (`<pack>/skills/`, mounted at session start). **No pack is active by default** — every pack, the `basics` baseline included, activates only when declared in `.claudinite-checks.json` (bootstrap's `--init` seeds `basics` plus the fingerprinted technology packs; the nightly baselining backfills the explicit `basics` declaration into existing consumers). Discovery is structural — any `packs/<name>/pack.json` is a pack, and that manifest is the pack's index: what it owns, the checks it runs in each scope, the skills it bundles. A pack's `README.md` is **optional** and carries only what the manifest cannot — provenance, design rationale, an index of its prose. A README that restates the manifest is duplication with a drift risk, and several had already drifted.
 
 ## Packs
 
@@ -37,7 +37,7 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 ## Local packs — a project's own packs
 
 A consumer keeps its **project-specific** packs in its own tree at
-`.claudinite/local_packs/<name>/` — the same slots (prose `RULES.md`, `rules` checks, `skills`,
+`.claudinite/local/packs/<name>/` — the same slots (prose `RULES.md`, the two scoped rule lists, `skills`,
 scheduled `tasks/`, `questions`), authored and committed by the project, discovered and run by the
 same engine as these canon packs. `discoverPacks({ localRoot })` ([registry.mjs](../engine/pack_loader/pack-registry.mjs)) scans this repo's
 `packs/` **and** the consumer's `local_packs/`; each pack is stamped with its own `dir` (prose and
@@ -70,23 +70,51 @@ The `"packs"` list and the rest of `.claudinite-checks.json` are validated **whe
 
 ## Pack dependencies (`requires`)
 
-A pack states the packs it depends on in an optional `requires` field on its `pack.mjs` — a plain array of pack ids: a release pack builds on its coding pack (`chrome-extension-release` requires `chrome-extension`, `firebase-release` requires `firebase`) and a project-class pack leans on the framework that implements it (`spec-driven-product` requires `executable-requirements`).
+A pack states the packs it depends on in an optional `requires` field on its `pack.json` — a plain array of pack ids: a release pack builds on its coding pack (`chrome-extension-release` requires `chrome-extension`, `firebase-release` requires `firebase`) and a project-class pack leans on the framework that implements it (`spec-driven-product` requires `executable-requirements`).
 
 This is **not a check** — a pack can't be imported without its dependencies, so the resolution happens **when the declaration is written**, at bootstrap `--init` and the baselining backfill ([bootstrap.md](../bootstrap.md) Part 2): [`resolveDeclaredPacks`](../engine/pack_loader/pack-registry.mjs) pulls each declared pack's transitive `requires` closure into `.claudinite-checks.json`. The prerequisite is materialized and visible in the file — droppable like every other entry, the same reason `basics` is written explicitly rather than defaulted — rather than resolved implicitly at run time. Declared ids keep their order; each pack's pulled-in dependencies land right after it.
 
-## The manifest spec (`pack.mjs`)
+## The manifest spec (`pack.json`)
 
-What a `pack.mjs` may and must carry is declared once, in [`engine/pack_loader/pack-schema.mjs`](../engine/pack_loader/pack-schema.mjs), and [`validateManifest`](../engine/pack_loader/pack-schema.mjs) is the only thing that judges a manifest against it. The **loader** runs it on every pack it imports, canon and local alike, so an incomplete or malformed declaration surfaces as a blocking `config` error at load — the same class as invalid JSON in `.claudinite-checks.json`, and for the same reason: a required manifest field is part of the pack contract, not a conformance opinion about a repo's content. A conformance *check* would have to be declared by a pack, run only when that pack is active, and re-derive the manifest by reading its source text — enforcing the shape of the system from inside one of its members.
+A manifest is **data**. What a `pack.json` may and must carry is declared once, as a JSON Schema, in [`engine/pack_loader/pack.schema.json`](../engine/pack_loader/pack.schema.json) — so an editor validates and completes the file while you type it, and the loader validates against the same document. Each manifest points at it:
+
+```json
+{
+  "$schema": "../../engine/pack_loader/pack.schema.json",
+  "id": "github-actions",
+  ...
+}
+```
+
+**Code lives in siblings the JSON names by filename.** Rules are filenames (`"worldRules": ["run-pipefail.mjs"]`); a fingerprint that needs real logic is `"detect": "detect.mjs"`; an `env` block whose shell depends on the project's config is `"env": "env.mjs"`. Most packs name no code beyond their rules, and the loader therefore **executes none of their declaration** — which matters because discovery runs at every session start and every check run, in every consumer, over their hand-written local packs too.
+
+Two things the schema cannot state stay in code, in [`engine/pack_loader/pack-schema.mjs`](../engine/pack_loader/pack-schema.mjs) beside it: the semantic guards (the 20-word routing cap, a rule's scope agreeing with the list it sits in, the bundled-skills declaration agreeing with the `skills/` tree), and `PACK_FIELDS` — the same vocabulary as the schema, asserted against the manifest *after* filenames have been resolved to modules. A test holds the two vocabularies to each other, so they cannot drift.
+
+Validation is the **loader's**, on every pack it loads, canon and local alike, so an incomplete or malformed declaration surfaces as a blocking `config` error at load — the same class as invalid JSON in `.claudinite-checks.json`, and for the same reason: a required manifest field is part of the pack contract, not a conformance opinion about a repo's content. A conformance *check* would have to be declared by a pack, run only when that pack is active, and re-derive the manifest itself — enforcing the shape of the system from inside one of its members.
 
 Reporting is not fatal: a pack whose declaration is incomplete still loads and still runs its checks. Silently disabling a repo's own rules is a worse failure than the one being reported. The field vocabulary is **closed** — an undeclared key is an error, so a typo (`rule:`, `skill:`) fails loudly instead of being ignored forever.
 
+> **The pre-2026-07 shape.** A manifest used to be a `pack.mjs` module. The loader still reads one where it finds it, because every member repo holds its own local packs and those are consumer-authored files nothing here can rewrite; the `pack-json-manifest` [baseline migration](../migrations/README.md) converts them and reports when the fleet has finished. A pack carrying both is read as `pack.json`, with the leftover module reported for deletion.
+
+### `detect` — the fingerprint, as data where it can be
+
+`detect` answers "does this repo look like it wants this pack?" Three forms:
+
+```json
+"detect": null
+"detect": { "trackedPath": { "basename": "pyproject.toml", "maxDepth": 2 } }
+"detect": "detect.mjs"
+```
+
+`null` means the declaration alone is authoritative (and the fingerprint-drift check stays quiet in both directions). The object form is a predicate over the repo's tracked paths, with a small closed matcher vocabulary — `is`, `endsWith`, `basename`, `matches`, `maxDepth` — all of which must hold of the **same** path; [`detect-spec.mjs`](../engine/pack_loader/detect-spec.mjs) compiles it. That vocabulary deliberately cannot read file **content**, so the four packs whose fingerprint must (`chrome-extension`, `chrome-extension-release`, `leaflet`, `web-speech`) name a `detect.mjs` and keep their logic honestly as logic. Growing the JSON vocabulary to swallow them would rebuild a predicate language in JSON, which is worse than four functions.
+
 ### `ruleRoutingGuidance` — what belongs here, and what does not
 
-```js
-ruleRoutingGuidance: {
-  belongs: 'workflow YAML and Actions runner platform behaviour: triggers, secrets, permissions, scheduling, artifacts, reusable workflows and their pitfalls',
-  excludes: 'git and GitHub command procedure — git-github; release pipeline content for one product — its release pack',
-},
+```json
+"ruleRoutingGuidance": {
+  "belongs": "workflow YAML and Actions runner platform behaviour: triggers, secrets, permissions, scheduling, artifacts, reusable workflows and their pitfalls",
+  "excludes": "git and GitHub command procedure — git-github; release pipeline content for one product — its release pack"
+}
 ```
 
 Both sides are required and each is capped at **20 words**. The cap is a session-context budget, not a style rule: [`inject-pack-prose`](../engine/pack_loader/inject-pack-prose.mjs) emits the whole set as a **routing table at session start**, one row per pack, so a session deciding where a rule, doc, skill or check goes reads the answer instead of guessing. Guess-by-default lands everything in `basics` — that is the failure this field exists to stop.
@@ -95,15 +123,17 @@ Write `excludes` to **name the pack that owns the other side** wherever one exis
 
 The table is emitted for every pack **discovered**, active or not: a consumer holds only the packs it vendored, so the discovered set is already what it can route into, and in the canon every pack is a legitimate destination. Local packs declare it on the same terms.
 
-### `worldRules` / `workRules` — a rule's scope is its placement
+### `worldRules` / `workRules` / `helpers` — a rule's scope is its placement
 
-A pack declares its checks in two lists, and **which list a rule sits in is what makes it world- or work-scoped**: `worldRules` audit repo state ([`check_the_world`](../engine/checks/check_the_world.mjs)), `workRules` judge the change and session in front of you ([`check_the_work`](../engine/checks/check_the_work.mjs)). The loader flattens both into the single `rules` array the runners walk, stamping each rule's scope from the list it came from — one derivation, nothing downstream re-decides it. A rule module that carries its own `scope` field is a second source for the same fact, free to contradict the manifest a reader trusts, so the spec rejects it.
+A pack declares its checks in two lists of **filenames**, and **which list a rule sits in is what makes it world- or work-scoped**: `worldRules` audit repo state ([`check_the_world`](../engine/checks/check_the_world.mjs)), `workRules` judge the change and session in front of you ([`check_the_work`](../engine/checks/check_the_work.mjs)). The loader flattens both into the single `rules` array the runners walk, stamping each rule's scope from the list it came from — one derivation, nothing downstream re-decides it. A rule module that carries its own `scope` field is a second source for the same fact, free to contradict the manifest a reader trusts, so the spec rejects it.
 
 A skill's own `checks.mjs` sits outside this partition (it is a skill's content, not a manifest list) and still declares `scope` on the rule itself.
 
+Because rules are named by filename, the loader can hold the manifest and the directory to each other: **every `.mjs` at the pack root must be accounted for** — a rule in exactly one scope list, a module some other field names (`detect`, `env`, `contributedRules`, a `contributes` entry), or a declared `helpers` entry for the libraries and hook entry points that are not rules. Nothing in a pack is invisible any more. Before this, a rule module nobody added to the manifest sat in the pack, read as "a check", and ran nowhere.
+
 ### `skills` — the bundle, declared
 
-A pack's skills live in its own tree — `<pack>/skills/<skill>/SKILL.md`, one owning pack per skill (#385) — and the manifest **names them**: `skills: ['merge-to-main', ...]`. The spec holds the declaration and the tree to each other in **both directions**: an undeclared directory is a skill nothing announces, and a declared name with no directory is a manifest that lies. What each skill covers stays in its own `SKILL.md` frontmatter, the description the harness triggers on — the manifest carries the membership, not a second copy of the summary.
+A pack's skills live in its own tree — `<pack>/skills/<skill>/SKILL.md`, one owning pack per skill (#385) — and the manifest **names them**: `"skills": ["merge-to-main", ...]`. The spec holds the declaration and the tree to each other in **both directions**: an undeclared directory is a skill nothing announces, and a declared name with no directory is a manifest that lies. What each skill covers stays in its own `SKILL.md` frontmatter, the description the harness triggers on — the manifest carries the membership, not a second copy of the summary.
 
 The SessionStart hook [`../engine/pack_loader/mount-skills.mjs`](../engine/pack_loader/mount-skills.mjs) mounts the **union over the active packs' bundles** (same activation as prose/checks/env) as session-generated `.claude/skills/<name>` symlinks — nothing committed, and a self-ignoring `.claude/skills/.gitignore` keeps them out of git status. A skill rides its pack everywhere the pack goes: the vendor set, the mounts, the sweep (its `checks.mjs` runs when the pack is active). The baseline activities every project has (`merge-to-main`, `writing-tests`, `bug-investigation`, …) ride the `basics` pack's bundle; move a skill's directory to a narrower pack when it stops being a baseline activity.
 
@@ -112,12 +142,14 @@ The SessionStart hook [`../engine/pack_loader/mount-skills.mjs`](../engine/pack_
 Every pack carries a mark — the 32×32 tile beside its name in the table above — so a repo's README
 can show which Claudinite packs it runs. The manifest names only where it lives:
 
-```js
-badge: 'badge.svg',   // relative to the pack directory
+```json
+"badge": "badge.svg"
 ```
 
+(relative to the pack directory.)
+
 **The badge file is the artwork's source of truth.** Its colour and its glyph live in the SVG, not
-in `pack.mjs`: they are visible to anyone who opens the file, editable without touching a manifest,
+in the manifest: they are visible to anyone who opens the file, editable without touching a manifest,
 and reviewable as the image they describe. The glyph is an SVG path on the 32-unit grid, stroked in
 white with a round-capped 2.2 line — so a dot is a zero-length segment (`M16 16h0`) and the whole
 mark is one path. No `<text>` anywhere, so a badge renders identically wherever it is loaded.
@@ -163,21 +195,23 @@ write.
 
 ## Environment requirements (`env`)
 
-A pack may declare a toolchain (or per-repo deps) a cloud session needs but the Claude Code Web base image doesn't ship — the `flutter` pack needs the Flutter SDK; the `node` pack needs the repo's `npm` modules. Install belongs in the environment **image** (built once, snapshotted, reused), never a per-session hook. A pack declares it in an optional `env` field on its `pack.mjs`:
+A pack may declare a toolchain (or per-repo deps) a cloud session needs but the Claude Code Web base image doesn't ship — the `flutter` pack needs the Flutter SDK; the `node` pack needs the repo's `npm` modules. Install belongs in the environment **image** (built once, snapshotted, reused), never a per-session hook. A pack declares it in an optional `env` field. Where `setup` and `probe` are fixed shell the block is inline in `pack.json` (a list of lines is joined with newlines, so a multi-line install reads as lines); where they are functions of the project's per-pack config, the field names an `env.mjs` instead:
 
-```js
-env: {
-  label: 'Flutter SDK',                         // human name for the check's messages
-  setup: '<bash>',                              // idempotent install fragment for the image
-  probe: 'command -v flutter >/dev/null 2>&1',  // exit 0 iff present in the running env
+```json
+"env": {
+  "label": "Flutter SDK",
+  "setup": ["if [ ! -x /opt/flutter/bin/flutter ]; then", "  ...", "fi"],
+  "probe": "command -v flutter >/dev/null 2>&1"
 }
 ```
 
-`setup` and `probe` may be a **string**, or a **function of the project's per-pack params** — a project supplies parameters about its own usage as `config` on the pack's entry in `.claudinite-checks.json`, so one pack fragment fits every repo. The `node` pack uses this for where `npm ci` runs:
+`label` is the human name the check's messages use, `setup` an **idempotent** install fragment for the image, and `probe` shell that exits 0 exactly when the requirement is present in the running environment.
+
+In an `env.mjs`, `setup` and `probe` are **functions of the project's per-pack params** — a project supplies parameters about its own usage as `config` on the pack's entry in `.claudinite-checks.json`, so one pack fragment fits every repo. The `node` pack uses this for where `npm ci` runs, which is why its `env` is a module and not an inline block:
 
 ```js
-// packs/node/pack.mjs
-setup: (p) => (p.dirs?.length ? p.dirs : ['.']).map((d) => `( cd "${d}" && npm ci ) || true`).join('\n'),
+// packs/node/env.mjs
+setup: (params) => dirs(params).map((d) => `( cd "${d}" && npm ci ) || true`).join('\n'),
 // a repo's .claudinite-checks.json: { "packs": [ { "id": "node", "config": { "dirs": ["firebase/functions"] } } ] }
 ```
 
@@ -194,7 +228,7 @@ Wiring a consumer up — the check hook + the pack entries' `config`, with the s
 A pack that needs to know the project's **intent** before it can provide value (barriers with no
 graph is a silent no-op; a visual-testing pack can't assert anything before learning how this repo
 should be tested) declares the mandatory questions its adoption must ask, in an optional
-`questions` field on its `pack.mjs` — stable-id'd entries, `distill` saying how the answer becomes
+`questions` field on its `pack.json` — stable-id'd entries, `distill` saying how the answer becomes
 the entry's `config`:
 
 ```js

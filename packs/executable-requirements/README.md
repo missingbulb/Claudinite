@@ -18,6 +18,22 @@ pixel-exact snapshots), missingbulb/TLDR (adds the cross-tier `server` kind), an
 missingbulb/ShoutsAndWhispers (`dev/requirements/` — the Flutter port: golden-file rendering, the
 fake-world harness, and the `saga` storyboard kind's first implementation).
 
+## The adoption interview
+
+The spec runs **as tests**, so two decisions have to be made before the first
+requirement is authored, and adoption asks them:
+
+- **`ui_testing`** — how a UI requirement becomes an assertion: a browser/E2E
+  harness, DOM-level golden rendering, a headless harness, or none yet. Most
+  requirements should be verifiable by a short test that drives to a state and
+  makes a *visual* assertion against a committed golden the owner checks by sight,
+  which is the path this answer is meant to fix.
+- **`requirements_source`** — where the requirements come from: an existing
+  spec document, the issue tracker, or authored fresh. Naming the source is what
+  gets the spec seeded from it instead of reinvented. This one sets
+  `config.spec` to the executable spec's home (default
+  `dev/requirements/requirements.md`); the other records as intent on the entry.
+
 ## Prose (`RULES.md`) — by section
 
 | Section (≤5 words) | How enforced |

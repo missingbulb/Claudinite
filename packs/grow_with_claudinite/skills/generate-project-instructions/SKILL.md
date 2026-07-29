@@ -132,11 +132,14 @@ stray (a single rule joins the nearest existing pack, or waits as a handoff note
   with the facet's one-line definition and "a default to adapt, not a contract". Principle-first, each
   rule carrying its why. It loads at session start for every declaring project, so every line pays
   rent — cover the facet, not everything you noticed.
-- **`pack.mjs`** — the manifest. Class/domain/aspect packs: `always: false`, `marker: null`,
-  `detect: null` (declaration is authoritative). Technology packs: add the `marker`/`detect`
-  fingerprint when the repo carries a reliable one, so `--init` seeds the pack into a fresh
-  declaration; the marker only *suspects* a pack is wanted, it never forces its declaration.
-  Discovery is structural — the directory is the registration.
+- **`pack.json`** — the manifest, JSON validated against
+  [pack.schema.json](../../../../engine/pack_loader/pack.schema.json) (point `$schema` at it and the
+  editor completes the file). Class/domain/aspect packs: `"marker": null`, `"detect": null`
+  (declaration is authoritative). Technology packs: add the `marker`/`detect` fingerprint when the
+  repo carries a reliable one, so `--init` seeds the pack into a fresh declaration; the marker only
+  *suspects* a pack is wanted, it never forces its declaration. Prefer the DATA form of `detect`
+  (`{ "trackedPath": { ... } }`) and fall back to a `detect.mjs` sibling only when recognizing the
+  technology needs to read file content. Discovery is structural — the directory is the registration.
 - **`README.md`** — the pack's rule table (section ≤5 words | how enforced), plus one provenance line
   naming the project it was distilled from.
 - **Index entries** — a row in [packs/README.md](../../../../packs/README.md) and, for a new pack kind, the
@@ -154,15 +157,19 @@ need **one** general pack (name it for the project); segregate a **second** only
 earns its own bundle (the way the reference project split a general working pack from an
 extractor-automation pack). Each local pack is a real pack:
 
-- **`pack.mjs`** — `{ id, detect: null, marker: null, prose: 'RULES.md', rules: [...], skills: [...] }`.
+- **`pack.json`** — `{ "id", "ruleRoutingGuidance", "detect": null, "marker": null, "prose": "RULES.md",
+  "worldRules": [...], "workRules": [...], "skills": [...] }`, with `$schema` pointing at the engine's
+  `pack_loader/pack.schema.json` through the project's shared mount.
   A local pack is declared by hand, never fingerprinted or seeded (`detect`/`marker` stay null), as its
-  namespaced token `local_packs/<name>` in `.claudinite-checks.json`; its id
+  namespaced token `local/<name>` in `.claudinite-checks.json`; its id
   must be unique and may not shadow a canon pack.
 - **`RULES.md`** — the always-loaded judgment core and the project's concrete values (real
   setup/run/verify commands, real paths, inputs, metrics, invariants). Keep it terse; anything a check
   or skill can carry doesn't belong here, and anything inferable from the code is omitted.
-- **Checks** (`rules`) — the project-specific deterministic rules as `.mjs` modules listed on
-  `pack.mjs`, each with a red-first fixture (`pack.test.mjs`) runnable by the project's own test suite.
+- **Checks** — the project-specific deterministic rules as `.mjs` modules, each named by filename in
+  the manifest's `worldRules` or `workRules` (the list is the rule's scope, and every `.mjs` at the
+  pack root must be named somewhere — `helpers` for the ones that are not rules), and each with a
+  red-first fixture (`pack.test.mjs`) runnable by the project's own test suite.
   Local check modules stay dependency-free (they must load without the gitignored mount): return plain
   finding objects rather than importing the engine's helpers.
 - **Skills** (`skills/<name>/SKILL.md`) — the project's activity-scoped procedures, bundled in the pack;

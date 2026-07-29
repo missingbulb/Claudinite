@@ -102,10 +102,24 @@ What this wiki tracks, in a sentence or two.
 - **YYYY-MM-DD** — initial seed.
 ```
 
+## The adoption interview
+
+The standard takes **no config** — the layout *is* the config — but a wiki with no
+research scope is a hollow skeleton, so adoption asks three questions instead:
+what the product is, who its users are, and what market and competitors it sits
+among. The answers frame **which** wikis get seeded and what the competitor set is
+measured against. They are recorded as intent (`answers` on the pack entry), never
+as config. Read the repo's own product brief or spec first and confirm what it
+already says, rather than asking cold.
+
 ## Excusing a deliberate crossing (accept, not except)
 
-`product-wiki-isolation` is a **fixed** barrier — its edges are pack code, so a
-consumer cannot add the barriers pack's per-rule `except` entries to it. Each
+`product-wiki-isolation` is a **fixed** barrier: the pack `requires`
+[barriers](../barriers/README.md) and **contributes** the wall as manifest data
+([isolation.mjs](isolation.mjs) — pure data, no cross-pack code import, per
+pack-independence), which the barriers pack builds into the rule. The edges are
+therefore declared by the pack, not by the project, so a
+consumer cannot add the barriers pack's per-rule `except` entries to them. Each
 crossing finding's own fix text says so and names the lever that works: a
 top-level (or pack-entry) **accept**:
 

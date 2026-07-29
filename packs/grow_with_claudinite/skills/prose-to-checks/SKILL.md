@@ -39,7 +39,7 @@ part of the on-demand skill — it belongs in a pack as a check.
 Follow the extract stage's check-authoring discipline (the local promotion ladder in
 [extracting-lessons.md](../../extracting-lessons.md)). For each candidate:
 
-1. **Author the check** in the owning pack (`<pack>/<rule>.mjs`, listed in its `pack.mjs`) — the
+1. **Author the check** in the owning pack (`<pack>/<rule>.mjs`, named in its `pack.json`'s `worldRules` or `workRules`) — the
    failure message *is* the rule (what / why / fix / `doc:` pointer back to the prose).
 2. **Write the fixture first and see it fail** — a violating fixture must find, a clean one must
    not (the test lives beside the pack's other tests). A conversion with no proving fixture
@@ -85,7 +85,7 @@ Whether a check covers a rule is a judgment about meaning, so this test is appli
 
 ## Bounds
 
-- **One PR, bounded surface** — the new rule module, its `pack.mjs` line, its fixture, and the
+- **One PR, bounded surface** — the new rule module, its `pack.json` line, its fixture, and the
   trimmed prose. Don't "improve" unrelated rules while you're in there.
 - **Never delete a rule you didn't convert** — the deletion test is only ever asked of a rule a
   *landed* check now enforces.
