@@ -342,8 +342,8 @@ test('an unknown scope argument is a usage error, distinct from every dispatch v
 
 test('a consumer runs the VENDORED copy and resolves against its own root', () => {
   // The canon runs `engine/scheduler/` at its root; a consumer runs the mounted
-  // copy at `.claudinite/shared/engine/scheduler/` (executor.md, Engine command
-  // paths). The shell derives its repo root from where IT is mounted, so this
+  // copy at `.claudinite/shared/engine/scheduler/`.
+  // The shell derives its repo root from where IT is mounted, so this
   // spawns the vendored copy with no root override and from the canon's cwd —
   // if it resolved by cwd it would validate against the wrong repo entirely.
   const root = mkdtempSync(join(tmpdir(), 'claudinite-consumer-'));
