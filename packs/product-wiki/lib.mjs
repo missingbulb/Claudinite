@@ -46,6 +46,15 @@ function stripFences(text) {
 
 const headingRe = (name) => new RegExp(`^##\\s+${name}\\b`, 'i');
 
+// The heading text of the page's first real (non-fenced) `## ` section, or null
+// when the page has none. The position half of the key-insights contract:
+// "opens with" is checkable only as "no other `##` section precedes it" —
+// the title and a sentence or two of framing prose before it are fine.
+export function firstSection(text) {
+  const line = stripFences(text).find((l) => /^##\s/.test(l));
+  return line === undefined ? null : line.replace(/^##\s+/, '').trim();
+}
+
 // Does the page carry a real (non-fenced) `## <name>` section heading?
 // The single definition of the heading contract — sectionBody anchors on the
 // same regex, so "present" and "readable" can never disagree.

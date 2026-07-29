@@ -50,7 +50,12 @@ export const FLEET_VERSION = 1;
 // and is invisible to every number here.
 export const SAMPLING_NOTE = 'Captured sessions only — sessions that merged, plus sessions that ended '
   + 'cleanly enough for the SessionEnd capture to fire. Reclaimed containers and crashes are invisible '
-  + 'here, so these are SAMPLE counts, not a census of all work.';
+  + 'here, so these are SAMPLE counts, not a census of all work. The check counts are narrower still: '
+  + 'they are what a session SAW. A CI run counts when the session pulled its job log in — which is '
+  + 'what "the agent was in the loop on it" means — and a nightly or post-merge run nobody looked at '
+  + 'does not, because nothing was corrected. CI can only see a run that PRINTED something, so its '
+  + 'share is carried separately as ciRuns/ciFailures. Every check number is a floor on activations, '
+  + 'never an over-count.';
 
 // --- the pure aggregation -----------------------------------------------------
 
@@ -83,6 +88,16 @@ export function aggregate({ members, absent = [], generatedAt }) {
         userMessages: row.userMessages ?? 0,
         userCommands: row.userCommands ?? 0,
         skillLoads: sortKeys(row.skillLoads ?? {}),
+        // The conformance checks, at the same grain and for the same reason as the
+        // skill loads: whether a rule earns its place is a FLEET question. A rule
+        // that never fires in one repo may just not be that repo's subject; a rule
+        // that never fires in ANY of them is mis-described or worthless — and a rule
+        // that keeps firing everywhere is the corpus's best-performing guard, which
+        // only a view across every member can tell apart. Defaulted, not required:
+        // a member still on an older fold carries no `checks` key, and it must land
+        // in the file as an empty row rather than an exception.
+        checks: sortKeys(row.checks ?? {}),
+        checkFindings: sortKeys(row.checkFindings ?? {}),
       });
     }
   }

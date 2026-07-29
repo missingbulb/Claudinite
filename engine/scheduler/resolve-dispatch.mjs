@@ -107,9 +107,9 @@ export const scopeForLabel = (label) =>
 // Which checkout do the task paths in a dispatch body resolve against? Answered
 // from where THIS engine copy is mounted, not from cwd — a consumer runs the
 // vendored engine at `<root>/.claudinite/shared/engine/scheduler/`, the canon
-// repo runs its own at `<root>/engine/scheduler/` (executor.md, "Engine command
-// paths"). Deriving it from the module's own location means whichever copy the
-// executor invoked resolves against that copy's own repo, with nothing to pass.
+// repo runs its own at `<root>/engine/scheduler/`. Deriving it from the module's
+// own location means whichever copy the executor invoked resolves against that
+// copy's own repo, with nothing to pass — and nothing for executor.md to explain.
 const MOUNT_SUFFIX = sep + SHARED_SUBDIR;
 export function repoRootFrom(moduleUrl) {
   const home = dirname(dirname(dirname(fileURLToPath(moduleUrl)))); // <home>/engine/scheduler/<this file>

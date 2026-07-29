@@ -9,6 +9,7 @@ import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import pack from '../../packs/product-wiki/pack.mjs';
 import layout from '../../packs/product-wiki/layout.mjs';
 import pageSections from '../../packs/product-wiki/page-sections.mjs';
+import keyInsights from '../../packs/product-wiki/key-insights.mjs';
 import growthLog from '../../packs/product-wiki/growth-log.mjs';
 import sources from '../../packs/product-wiki/sources.mjs';
 import freshness from '../../packs/product-wiki/freshness.mjs';
@@ -25,8 +26,13 @@ const canonRoot = join(here, '..', '..');
 // All dates are computed relative to Date.now() so the suite never rots.
 const daysAgo = (n) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
 
-const wikiPage = ({ title = 'Market', seedDate = daysAgo(1), sources: src = '- [Example](https://example.com/x)' } = {}) =>
-  `# ${title}\n\nIntro.\n\n## Findings\n\n- a cited claim\n\n## Sources\n\n${src}\n\n## Open questions\n\n- next?\n\n## Growth log\n\n- **${seedDate}** — initial seed.\n`;
+const wikiPage = ({
+  title = 'Market',
+  seedDate = daysAgo(1),
+  sources: src = '- [Example](https://example.com/x)',
+  insights = '- The market is smaller than assumed.\n- Two competitors already ship the core feature.',
+} = {}) =>
+  `# ${title}\n\nIntro.\n\n## Key insights\n\n${insights}\n\n## Findings\n\n- a cited claim\n\n## Sources\n\n${src}\n\n## Open questions\n\n- next?\n\n## Growth log\n\n- **${seedDate}** — initial seed.\n`;
 
 const SCAFFOLD = {
   'product-wiki/README.md': '# product\n\nThe product research root.\n',
@@ -50,13 +56,13 @@ function run(rule, files, { mode = 'all', packConfig, now, uncommitted } = {}) {
 
 // --- pack manifest -----------------------------------------------------------
 
-test('pack manifest: id, marker, five uniquely-named rules, the contributed isolation barrier', () => {
+test('pack manifest: id, marker, six uniquely-named rules, the contributed isolation barrier', () => {
   assert.equal(pack.id, 'product-wiki');
   assert.equal(pack.marker, 'product-wiki/product-requirements/README.md');
   assert.equal(pack.prose, 'RULES.md');
-  assert.equal(pack.rules.length, 5);
+  assert.equal(pack.rules.length, 6);
   const ids = pack.rules.map((r) => r.id);
-  assert.equal(new Set(ids).size, 5);
+  assert.equal(new Set(ids).size, 6);
   assert.ok(ids.every((id) => id.startsWith('product-wiki-')));
   // The isolation wall rides the barriers mechanism: declared (requires) and
   // contributed as manifest data, never a cross-pack import (pack-independence).
@@ -113,7 +119,7 @@ test('page-sections: suffixed and case-varied headings pass; nested wikis are ch
   const clean = run(pageSections, {
     ...SCAFFOLD,
     'product-wiki/Users/README.md':
-      '# Users\n\n## SOURCES\n\n## Growth Log\n\n- **2026-07-01** — seed.\n\n## Open questions (for the next growth pass)\n\n- q\n',
+      '# Users\n\n## KEY INSIGHTS\n\n- Buyers decide before they compare.\n\n## SOURCES\n\n## Growth Log\n\n- **2026-07-01** — seed.\n\n## Open questions (for the next growth pass)\n\n- q\n',
     // Reserved subtrees and the index are exempt even when bare:
     'product-wiki/sample-data/README.md': '# sample data\n',
     'product-wiki/product-requirements/notes/README.md': '# notes\n',
@@ -121,7 +127,7 @@ test('page-sections: suffixed and case-varied headings pass; nested wikis are ch
   assert.deepEqual(clean, []);
 
   const nested = run(pageSections, { ...SCAFFOLD, 'product-wiki/Users/competitors/README.md': '# bare\n' });
-  assert.equal(nested.length, 3); // nested wiki page IS checked — one finding per section
+  assert.equal(nested.length, 4); // nested wiki page IS checked — one finding per section
   assert.ok(nested.every((x) => x.file === 'product-wiki/Users/competitors/README.md'));
 });
 
@@ -133,9 +139,71 @@ test('page-sections: one finding naming exactly the missing section', () => {
 });
 
 test('page-sections: headings inside a code fence do not satisfy the requirement', () => {
-  const page = '# Wiki\n\nA template example:\n\n```markdown\n## Sources\n\n## Open questions\n\n## Growth log\n\n- **YYYY-MM-DD** — initial seed.\n```\n';
+  const page = '# Wiki\n\nA template example:\n\n```markdown\n## Key insights\n\n- an example insight\n\n## Sources\n\n## Open questions\n\n## Growth log\n\n- **YYYY-MM-DD** — initial seed.\n```\n';
   const f = run(pageSections, { ...SCAFFOLD, 'product-wiki/Market/README.md': page });
-  assert.equal(f.length, 3);
+  assert.equal(f.length, 4);
+});
+
+// --- product-wiki-key-insights -----------------------------------------------
+
+test('key-insights: a leading, bulleted, succinct header passes — case-varied heading and hard-wrapped bullets too', () => {
+  assert.deepEqual(run(keyInsights, SCAFFOLD), []);
+  const wrapped = wikiPage({
+    insights: '- **KEY INSIGHTS** works as a heading, and this bullet\n  carries onto a second line.\n\n- so does a blank line between bullets.',
+  }).replace('## Key insights', '## KEY INSIGHTS (the reader header)');
+  assert.deepEqual(run(keyInsights, { ...SCAFFOLD, 'product-wiki/Market/README.md': wrapped }), []);
+});
+
+test('key-insights: a header that does not lead the page is flagged, naming what leads instead', () => {
+  const page = `# Market\n\nIntro.\n\n## Findings\n\n- a cited claim\n\n## Key insights\n\n- the header, buried.\n\n## Sources\n\n- [Example](https://example.com/x)\n\n## Open questions\n\n- next?\n\n## Growth log\n\n- **${daysAgo(1)}** — initial seed.\n`;
+  const f = run(keyInsights, { ...SCAFFOLD, 'product-wiki/Market/README.md': page });
+  assert.equal(f.length, 1);
+  assert.equal(f[0].severity, 'blocking');
+  assert.match(f[0].what, /opens with "## Findings"/);
+});
+
+test('key-insights: a header with no bullets is flagged; prose in it is flagged at its line', () => {
+  const empty = run(keyInsights, { ...SCAFFOLD, 'product-wiki/Market/README.md': wikiPage({ insights: '' }) });
+  assert.equal(empty.length, 1);
+  assert.match(empty[0].what, /no bullets/);
+
+  const prose = run(keyInsights, {
+    ...SCAFFOLD,
+    'product-wiki/Market/README.md': wikiPage({ insights: 'This page summarises the market.\n\n- and one real insight.' }),
+  });
+  assert.equal(prose.length, 1);
+  assert.match(prose[0].what, /prose in the Key insights header/);
+  assert.equal(typeof prose[0].line, 'number');
+});
+
+test('key-insights: a header grown past seven bullets is a second body', () => {
+  const many = Array.from({ length: 8 }, (_, i) => `- insight number ${i + 1}.`).join('\n');
+  const f = run(keyInsights, { ...SCAFFOLD, 'product-wiki/Market/README.md': wikiPage({ insights: many }) });
+  assert.equal(f.length, 1);
+  assert.match(f[0].what, /8 bullets \(max 7\)/);
+
+  const seven = Array.from({ length: 7 }, (_, i) => `- insight number ${i + 1}.`).join('\n');
+  assert.deepEqual(run(keyInsights, { ...SCAFFOLD, 'product-wiki/Market/README.md': wikiPage({ insights: seven }) }), []);
+});
+
+test('key-insights: a bullet that keeps qualifying itself is flagged over its whole block, so wrapping cannot hide it', () => {
+  // The cap is tight on purpose: a terse finding passes, the same finding with
+  // its qualifiers, hedges and citation dragged up out of the body does not.
+  const terse = '- Two thirds of buyers buy one ticket — the Fringe is one decision, not a run of shows.';
+  assert.deepEqual(run(keyInsights, { ...SCAFFOLD, 'product-wiki/Market/README.md': wikiPage({ insights: terse }) }), []);
+
+  const long = `- ${'the market is crowded and this sentence keeps qualifying itself. '.repeat(3)}`;
+  const oneLine = run(keyInsights, { ...SCAFFOLD, 'product-wiki/Market/README.md': wikiPage({ insights: long }) });
+  assert.equal(oneLine.length, 1);
+  assert.match(oneLine[0].what, /max 140/);
+
+  const wrapped = `- ${'the market is crowded and this sentence keeps going. '.repeat(2)}\n  ${'and it continues onto a second line for a while longer. '.repeat(2)}`;
+  assert.equal(run(keyInsights, { ...SCAFFOLD, 'product-wiki/Market/README.md': wikiPage({ insights: wrapped }) }).length, 1);
+});
+
+test('key-insights: a page missing the heading entirely is page-sections territory, not ours', () => {
+  const page = wikiPage().replace(/## Key insights\n\n[^#]*/, '');
+  assert.deepEqual(run(keyInsights, { ...SCAFFOLD, 'product-wiki/Market/README.md': page }), []);
 });
 
 test('growth-log and sources: a fenced template inside a real page is not scanned', () => {

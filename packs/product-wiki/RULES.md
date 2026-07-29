@@ -2,11 +2,32 @@
 
 This project keeps its market/user/competitor research as a self-growing wiki
 under `product-wiki/` (Karpathy's LLM-wiki pattern: compile findings once, refine in
-place). Layout, required page sections, growth-log dating, source links,
-staleness, and the isolation wall are **check-enforced** — the finding is the
-instruction, so this prose never restates them. The full growth procedure is
-the pack's task doc (`packs/product-wiki/tasks/wiki-growth/task.md`).
+place). Layout, required page sections, the Key insights header's shape,
+growth-log dating, source links, staleness, and the isolation wall are
+**check-enforced** — the finding is the instruction, so this prose never restates
+them. The full growth procedure is the pack's task doc
+(`packs/product-wiki/tasks/wiki-growth/task.md`).
 
+- **Every page opens with what it found.** `## Key insights` leads the page: a
+  few bullets carrying the research's actual conclusions — the numbers, the
+  competitor that already does this, the thing that turned out not to be true —
+  enough that a human who reads only the header understands what was researched
+  and what it means. Not a table of contents ("covers pricing and competitors"),
+  not a teaser. The body is where the reader goes for evidence, nuance and
+  citations; the header is where they decide whether they need to.
+- **Terse, plain, and only the non-obvious.** One short line per bullet, in
+  ordinary words — no qualifying clause, no citation, no hedge, no jargon a
+  newcomer would have to decode. Prefer the finding that would *surprise*
+  someone who knows the field: the thing that turned out not to be true, the
+  number nobody expects, the competitor who already shipped it. Whether a point
+  is obvious is genuinely hard to call, so **don't agonise — when in doubt, keep
+  it**. A borderline-obvious line costs the reader two seconds; a long, careful
+  line costs them the header.
+- **The header is a current view, not a log.** A pass that changes what a page's
+  most important findings are rewrites the header to match — a superseded
+  insight leaves it (the correction and its why stay in the body, per below),
+  and an insight the pass didn't touch stays put. If nothing changed the page's
+  top-line understanding, the header doesn't move.
 - **The sink is human-reviewed only.** `product-wiki/product-requirements/` never
   changes as a side effect of wiki work or any unattended pass — a wiki finding
   that should move a requirement gets a growth-log note (and a repo issue) and

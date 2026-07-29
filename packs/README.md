@@ -30,7 +30,7 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 | <img src="play-store-release/badge.svg" width="18" height="18" alt=""> [play-store-release](play-store-release/README.md) | declared (opt-in) | 0 | stub |
 | <img src="app-store-release/badge.svg" width="18" height="18" alt=""> [app-store-release](app-store-release/README.md) | declared (opt-in) | 0 | stub |
 | <img src="research-project/badge.svg" width="18" height="18" alt=""> [research-project](research-project/README.md) | declared (class) | 0 | 54 (14 sections) |
-| <img src="product-wiki/badge.svg" width="18" height="18" alt=""> [product-wiki](product-wiki/README.md) | declared (marker: `product-wiki/product-requirements/README.md`) | 6 | wiki growth discipline + weekly growth daily task |
+| <img src="product-wiki/badge.svg" width="18" height="18" alt=""> [product-wiki](product-wiki/README.md) | declared (marker: `product-wiki/product-requirements/README.md`) | 7 | wiki growth discipline + weekly growth daily task |
 | <img src="spec-driven-product/badge.svg" width="18" height="18" alt=""> [spec-driven-product](spec-driven-product/README.md) | declared (class) | 0 | 25 (8 sections) |
 | <img src="executable-requirements/badge.svg" width="18" height="18" alt=""> [executable-requirements](executable-requirements/README.md) | `dev/requirements/requirements.md` | 0 | framework standard (layout / gates / kinds) |
 
@@ -199,7 +199,7 @@ manifest.
 
 | | Count |
 |---|---|
-| **Hardcoded conformance checks** | **40 canon** (13 basics + 1 barriers + 1 grow_with_claudinite + 8 github-actions + 8 chrome-extension-release + 3 aws-sam + 6 product-wiki) + the canon home's own [canon-curation local pack](../.claudinite/local/packs/canon-curation/README.md) (1 code check + the contributed `pack-independence` barrier); plus skill-owned checks (e.g. the `unattended-agents` skill's `routine-structure`, `in-session-github-access`) that ride their pack's activation |
+| **Hardcoded conformance checks** | **41 canon** (13 basics + 1 barriers + 1 grow_with_claudinite + 8 github-actions + 8 chrome-extension-release + 3 aws-sam + 7 product-wiki) + the canon home's own [canon-curation local pack](../.claudinite/local/packs/canon-curation/README.md) (1 code check + the contributed `pack-independence` barrier); plus skill-owned checks (e.g. the `unattended-agents` skill's `routine-structure`, `in-session-github-access`) that ride their pack's activation |
 | PreToolUse guard | 1 (remote-branch-delete) |
 | Platform setting | 1 (squash-only) |
 | **Prose rules** — packs + practice skills + baseline | **~150** |
