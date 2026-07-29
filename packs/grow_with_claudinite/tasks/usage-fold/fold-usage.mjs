@@ -64,6 +64,183 @@ export function skillToolLoads(entry) {
     .map((b) => b.input.skill);
 }
 
+// --- check activations ---------------------------------------------------------
+// The conformance checks are the other half of the picture, and the more valuable
+// half: a check that FAILS is a win — the finding lands back in the session and the
+// agent corrects before the work leaves. So the questions here are "how often did
+// each scope actually run" and "how often did it catch something", and the second
+// one is the one that matters.
+//
+// Neither runner writes a metrics file, so both are read off the marks they already
+// leave in the transcript. There are exactly three, and each was verified against
+// real captured logs:
+//
+//   1. The Stop hook's `hooklog` line — `<iso> run=<id> Stop: done exit=<n> <reason>`
+//      — reaches the transcript because hooklog mirrors to stderr and the harness
+//      records hook stderr. This is the ONLY mark that survives a PASSING run, which
+//      is what makes work-scope run counts (not just failure counts) possible at all.
+//   2. `report-findings`' summary line — `N blocking, M advisory (<scope> scope: …)`
+//      — names its own scope and survives the `| tail` an agent usually pipes
+//      through. It is printed ONLY when there were findings, so it counts failures
+//      and finding volume, never runs.
+//   3. The runner's own invocation in a Bash command (`node …/check_the_world.mjs`),
+//      which is how the world scope runs — its Stop-hook sibling does not exist,
+//      because the world sweep is wired into the test/CI flow, not the hook.
+//
+// STATED BOUNDARY: this counts what the SESSION saw. A world sweep that ran in CI
+// left no mark in any transcript and is invisible here; so is a hook killed before
+// it logged. Every number below is therefore a floor on activations — never an
+// over-count, which is the direction that keeps "the checks caught N things" honest.
+
+// The Stop hook's completion line. `reason` distinguishes the three outcomes the
+// hook itself declares: `checks-passed`, `blocking-findings`, `loop-guard-relent`
+// (blocking findings that survived two fix attempts — a failure that prints no
+// findings block, so it must be read from here), and `runner-error` (the checks did
+// not run at all, which is an anti-win masquerading as a quiet day).
+const HOOK_DONE_RE = /(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z) run=(\S+) Stop: done exit=(\d+) ?([a-z-]*)/g;
+export function hookCheckRuns(text) {
+  return [...String(text ?? '').matchAll(HOOK_DONE_RE)]
+    .map((m) => ({ stamp: `${m[1]} ${m[2]}`, exit: Number(m[3]), reason: m[4] || null }));
+}
+
+// `report-findings`' summary line, which names the scope it ran. Anchored to the
+// line start so a doc or a fixture quoting the shape mid-sentence never counts.
+const SUMMARY_RE = /^(\d+) blocking, (\d+) advisory \((work|world) scope: /gm;
+export function checkSummaries(text) {
+  return [...String(text ?? '').matchAll(SUMMARY_RE)]
+    .map((m) => ({ scope: m[3], blocking: Number(m[1]), advisory: Number(m[2]) }));
+}
+
+// The rendered header of one finding — `[BLOCKING] <rule>  <file>` — which is where
+// the RULE ID lives. Per-rule counts are the actionable end of this: "which rule
+// catches something, and how often". They are lossier than the summary totals (an
+// agent that pipes the run through `tail -3` keeps the summary and drops the
+// headers), so both are kept and a gap between them is visible truncation.
+const HEADER_RE = /^\[(BLOCKING|ADVISORY)\] ([a-z0-9][a-z0-9-]*) {2}/gm;
+export function findingHeaders(text) {
+  return [...String(text ?? '').matchAll(HEADER_RE)]
+    .map((m) => ({ severity: m[1] === 'BLOCKING' ? 'blocking' : 'advisory', rule: m[2] }));
+}
+
+// Runner invocations inside one Bash command. Requires `node` and the `.mjs` on the
+// same shell word run — so `grep -i check_the_world` never counts — and the
+// separator class stops one match from swallowing a second runner on the same line.
+const INVOKE_RE = /\bnode\b[^\n;|&]*?\bcheck_the_(work|world)\.mjs\b/g;
+export function checkInvocations(command) {
+  const counts = { work: 0, world: 0 };
+  for (const m of String(command ?? '').matchAll(INVOKE_RE)) counts[m[1]] += 1;
+  return counts;
+}
+
+// The transcript entries that can carry check output, reduced to the text to read
+// and the source that produced it. Four shapes, all verified against real captures:
+// the hook's blocking feedback (an `isMeta` user turn), the harness's
+// `stop_hook_summary` (which repeats that same stderr), the passing hook's
+// `hook_success` attachment, and a Bash tool result — paired back to its command so
+// a Read of a file that merely CONTAINS this vocabulary is never mistaken for a run.
+//
+// The first two are the same hook execution recorded twice, so hook texts dedupe on
+// the `hooklog` stamps they carry — the one identity that is stable across both
+// shapes and unique per execution (its own timestamp, to the second).
+export function checkOutputs(entries) {
+  const bashById = new Map();
+  for (const entry of entries) {
+    if (entry?.type !== 'assistant') continue;
+    for (const block of entry?.message?.content ?? []) {
+      if (block?.type === 'tool_use' && block?.name === 'Bash' && typeof block?.input?.command === 'string') {
+        bashById.set(block.id, block.input.command);
+      }
+    }
+  }
+
+  const out = [];
+  const seenHooks = new Set();
+  const hook = (text) => {
+    const key = hookCheckRuns(text).map((r) => r.stamp).join('|');
+    if (key && seenHooks.has(key)) return;      // the same execution, recorded twice
+    if (key) seenHooks.add(key);
+    out.push({ source: 'hook', text, command: null });
+  };
+
+  for (const entry of entries) {
+    if (entry?.type === 'system' && entry?.subtype === 'stop_hook_summary') {
+      hook((entry.hookErrors ?? []).join('\n'));
+    } else if (entry?.type === 'attachment' && entry?.attachment?.hookEvent === 'Stop') {
+      hook(`${entry.attachment.stderr ?? ''}\n${entry.attachment.stdout ?? ''}`);
+    } else if (entry?.type === 'user' && entry?.isMeta === true && typeof entry?.message?.content === 'string') {
+      if (entry.message.content.includes('Stop hook feedback')) hook(entry.message.content);
+    } else if (entry?.type === 'user' && Array.isArray(entry?.message?.content)) {
+      for (const block of entry.message.content) {
+        if (block?.type !== 'tool_result') continue;
+        const command = bashById.get(block.tool_use_id);
+        if (command === undefined) continue;    // not a Bash result — not a runner run
+        const result = entry.toolUseResult;
+        const text = typeof result === 'string' ? result : `${result?.stdout ?? ''}\n${result?.stderr ?? ''}`;
+        out.push({ source: 'bash', text, command });
+      }
+    }
+  }
+  return out;
+}
+
+// An empty per-scope check row. Uniform across scopes so folding is one loop:
+// `runs` is observed activations, `failures` the subset that reported at least one
+// blocking finding, `errors` the runs where the runner itself could not launch, and
+// `blocking`/`advisory` the finding VOLUME summed over those runs (a rule blocking
+// twice across two runs counts twice — the question is how often the checks caught
+// something, not how many distinct problems existed).
+const emptyScope = () => ({ runs: 0, failures: 0, errors: 0, blocking: 0, advisory: 0 });
+
+// Count check activations across one capture file's entries.
+//
+// Runs are counted from the marks that a PASSING run also leaves — hook completion
+// lines, and Bash invocations — never from the summary line, which only a run with
+// findings prints. Where a runner ran without its command naming it (a `make test`
+// step that wraps it), the summary lines in its output are the floor: hence the
+// `max` — the two signals are alternative views of the same runs, not additive ones.
+export function countChecks(entries) {
+  const checks = {};
+  const checkFindings = {};
+  const scope = (name) => (checks[name] ??= emptyScope());
+  const finding = (rule, severity) => {
+    (checkFindings[rule] ??= { blocking: 0, advisory: 0 })[severity] += 1;
+  };
+
+  for (const { source, text, command } of checkOutputs(entries)) {
+    const summaries = checkSummaries(text);
+
+    if (source === 'hook') {
+      // The hook only ever runs the WORK scope, and its completion line is the run.
+      for (const run of hookCheckRuns(text)) {
+        const work = scope('work');
+        work.runs += 1;
+        if (run.reason === 'runner-error') work.errors += 1;
+        // A relent prints the reason instead of the findings, so its failure is
+        // visible here and nowhere else.
+        if (run.reason === 'loop-guard-relent') work.failures += 1;
+      }
+      for (const s of summaries) if (s.blocking > 0) scope(s.scope).failures += 1;
+    } else {
+      const invoked = checkInvocations(command);
+      for (const name of ['work', 'world']) {
+        const reported = summaries.filter((s) => s.scope === name);
+        const runs = Math.max(invoked[name], reported.length);
+        if (runs === 0) continue;
+        scope(name).runs += runs;
+        scope(name).failures += reported.filter((s) => s.blocking > 0).length;
+      }
+    }
+
+    for (const s of summaries) {
+      const row = scope(s.scope);
+      row.blocking += s.blocking;
+      row.advisory += s.advisory;
+    }
+    for (const f of findingHeaders(text)) finding(f.rule, f.severity);
+  }
+  return { checks, checkFindings };
+}
+
 // --- per-file counting ---------------------------------------------------------
 
 // Count one capture file's entries. `mounted` is the set of skill names this repo
@@ -87,7 +264,7 @@ export function countEntries(entries, mounted = new Set()) {
       if (mounted.has(command)) load(command);
     }
   }
-  return { userMessages, userCommands, skillLoads };
+  return { userMessages, userCommands, skillLoads, ...countChecks(entries) };
 }
 
 // --- day buckets ---------------------------------------------------------------
@@ -95,10 +272,20 @@ export function countEntries(entries, mounted = new Set()) {
 // An empty day row — the shape every counter folds through.
 const emptyDay = () => ({
   captures: 0, merges: 0, sessions: 0, userMessages: 0, userCommands: 0, skillLoads: {},
+  checks: {}, checkFindings: {},
 });
 
 function addLoads(into, from) {
   for (const [name, n] of Object.entries(from)) into[name] = (into[name] ?? 0) + n;
+}
+
+// The check maps fold the same way skillLoads do — key-wise, zeros implicit — only
+// with a fixed-shape counter object under each key instead of a bare number.
+function addCounters(into, from) {
+  for (const [key, row] of Object.entries(from ?? {})) {
+    const target = (into[key] ??= Object.fromEntries(Object.keys(row).map((k) => [k, 0])));
+    for (const [field, n] of Object.entries(row)) target[field] = (target[field] ?? 0) + n;
+  }
 }
 
 // Recompute the day rows from scratch, from the live capture files. `files` is
@@ -118,6 +305,8 @@ export function foldDays(files) {
     day.userMessages += file.counts.userMessages;
     day.userCommands += file.counts.userCommands;
     addLoads(day.skillLoads, file.counts.skillLoads);
+    addCounters(day.checks, file.counts.checks);
+    addCounters(day.checkFindings, file.counts.checkFindings);
     (sessionsByDay[file.date] ??= new Set()).add(file.sessionId);
   }
   // Distinct sessions, not capture count: one session can capture more than once
@@ -163,7 +352,10 @@ export function daysToFold(days, foldedThrough, today) {
 // the day-level distinct counts — rather than claiming a precision folding cannot
 // give.
 export function addDayToWeek(week, day) {
-  const w = week ?? { days: 0, captures: 0, merges: 0, sessionDays: 0, userMessages: 0, userCommands: 0, skillLoads: {} };
+  const w = week ?? {
+    days: 0, captures: 0, merges: 0, sessionDays: 0, userMessages: 0, userCommands: 0,
+    skillLoads: {}, checks: {}, checkFindings: {},
+  };
   w.days += 1;
   w.captures += day.captures;
   w.merges += day.merges;
@@ -171,6 +363,11 @@ export function addDayToWeek(week, day) {
   w.userMessages += day.userMessages;
   w.userCommands += day.userCommands;
   addLoads(w.skillLoads, day.skillLoads);
+  // A week folded before the checks were counted has no `checks` key at all —
+  // default rather than crash, so the first fold after this shipped extends the
+  // existing weeks instead of refusing to advance the watermark past them.
+  addCounters((w.checks ??= {}), day.checks);
+  addCounters((w.checkFindings ??= {}), day.checkFindings);
   return w;
 }
 
@@ -185,7 +382,12 @@ function sortKeys(obj) {
 }
 
 function sortRow(row) {
-  return { ...row, skillLoads: sortKeys(row.skillLoads) };
+  return {
+    ...row,
+    skillLoads: sortKeys(row.skillLoads),
+    checks: sortKeys(row.checks ?? {}),
+    checkFindings: sortKeys(row.checkFindings ?? {}),
+  };
 }
 
 // Fold one run: day rows recomputed from `files` (the live raw window), week rows

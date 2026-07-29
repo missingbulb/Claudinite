@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   isUserMessage, commandName, skillToolLoads, countEntries,
+  hookCheckRuns, checkSummaries, findingHeaders, checkInvocations, checkOutputs, countChecks,
   foldDays, isoWeek, daysToFold, addDayToWeek, foldUsage,
 } from '../../../../packs/grow_with_claudinite/tasks/usage-fold/fold-usage.mjs';
 
@@ -107,11 +108,175 @@ test('countEntries: a whole session, every counter at once', () => {
   assert.deepEqual(counts.skillLoads, { 'bug-investigation': 1, 'merge-to-main': 2 });
 });
 
+// --- check activations --------------------------------------------------------
+// Same discipline as above: every string below is copied out of a real capture on a
+// conversation-logs branch. The checks leave no metrics file, so these marks in the
+// transcript ARE the measurement — invent them and the counts measure nothing.
+
+// The Stop hook's stderr, verbatim: hooklog mirrors to stderr and the harness
+// records it, which is the only reason a PASSING check run is countable at all.
+const HOOK_PASS = '2026-07-28T22:14:43Z run=4421 Stop: start checks\n'
+  + '2026-07-28T22:14:43Z run=4421 Stop: done exit=0 checks-passed\n';
+const HOOK_FAIL = 'Stop hook feedback:\n[node $CLAUDE_PROJECT_DIR/engine/hooks/stop-command.mjs]: '
+  + '2026-07-28T22:14:19Z run=3614 Stop: start checks\n'
+  + 'Claudinite conformance checks failed — fix these findings now, in this session:\n\n'
+  + '[BLOCKING] comment-classification  (conversation)\n'
+  + '  the reply to the owner\'s latest comment ("lgtm…") declares no `Comment class:` line\n'
+  + '  Fix: state the classification explicitly\n'
+  + '  More: packs/basics/RULES.md\n\n'
+  + '[BLOCKING] task-lifecycle  (branch)\n'
+  + '  none of the 1 commit(s) since origin/main references an issue (#N)\n'
+  + '  Fix: reference the issue in the commit message\n\n'
+  + '2 blocking, 0 advisory (work scope: all vs origin/main).\n'
+  + '2026-07-28T22:14:19Z run=3614 Stop: done exit=2 blocking-findings\n';
+
+const hookFeedback = (text) => ({ type: 'user', isMeta: true, message: { content: text } });
+const hookSummary = (text) => ({ type: 'system', subtype: 'stop_hook_summary', hookErrors: [text] });
+const hookSuccess = (stderr, stdout = '') => ({
+  type: 'attachment',
+  attachment: { type: 'hook_success', hookName: 'Stop', hookEvent: 'Stop', stderr, stdout, exitCode: 0 },
+});
+const bash = (id, command) => ({ type: 'assistant', message: { content: [{ type: 'tool_use', id, name: 'Bash', input: { command } }] } });
+const bashResult = (id, stdout) => ({
+  type: 'user',
+  message: { content: [{ type: 'tool_result', tool_use_id: id, content: stdout }] },
+  toolUseResult: { stdout, stderr: '', interrupted: false, isImage: false },
+});
+const readResult = (id, content) => ({
+  type: 'user',
+  message: { content: [{ type: 'tool_result', tool_use_id: id, content }] },
+  toolUseResult: { type: 'text', file: { content } },
+});
+
+test('hookCheckRuns reads the hook\'s own completion line, with the outcome it declares', () => {
+  assert.deepEqual(hookCheckRuns(HOOK_PASS), [{ stamp: '2026-07-28T22:14:43Z 4421', exit: 0, reason: 'checks-passed' }]);
+  assert.deepEqual(hookCheckRuns(HOOK_FAIL), [{ stamp: '2026-07-28T22:14:19Z 3614', exit: 2, reason: 'blocking-findings' }]);
+  // The other two outcomes the hook emits — both matter, and neither prints findings.
+  assert.equal(hookCheckRuns('2026-07-28T10:00:00Z run=7 Stop: done exit=0 loop-guard-relent')[0].reason, 'loop-guard-relent');
+  assert.equal(hookCheckRuns('2026-07-28T10:00:00Z run=7 Stop: done exit=2 runner-error')[0].reason, 'runner-error');
+  assert.deepEqual(hookCheckRuns('2026-07-28T10:00:00Z run=7 Stop: start checks'), [], 'a start is not a run — only a completion is');
+});
+
+test('checkSummaries reads the scope and the finding counts off report-findings\' summary line', () => {
+  assert.deepEqual(checkSummaries('2 blocking, 0 advisory (work scope: all vs origin/main).'),
+    [{ scope: 'work', blocking: 2, advisory: 0 }]);
+  assert.deepEqual(checkSummaries('# tests 810\n# pass 810\n0 blocking, 7 advisory (world scope: all vs origin/main).'),
+    [{ scope: 'world', blocking: 0, advisory: 7 }]);
+  // Anchored to the line start, so a doc or a session quoting the shape is not a run.
+  assert.deepEqual(checkSummaries('the runner prints 2 blocking, 0 advisory (work scope: all) at the end'), []);
+});
+
+test('findingHeaders reads the rule id off each rendered finding', () => {
+  assert.deepEqual(findingHeaders(HOOK_FAIL), [
+    { severity: 'blocking', rule: 'comment-classification' },
+    { severity: 'blocking', rule: 'task-lifecycle' },
+  ]);
+  assert.deepEqual(findingHeaders('[ADVISORY] file-placement  packs/x/y.mjs:3'), [{ severity: 'advisory', rule: 'file-placement' }]);
+});
+
+test('checkInvocations counts runner invocations, and only actual invocations', () => {
+  assert.deepEqual(checkInvocations('node engine/checks/check_the_world.mjs 2>&1 | tail -40'), { work: 0, world: 1 });
+  assert.deepEqual(checkInvocations('node .claudinite/shared/engine/checks/check_the_work.mjs >/tmp/out'), { work: 1, world: 0 });
+  // Two runners on one line stay two runs — the separator stops one match swallowing the next.
+  assert.deepEqual(
+    checkInvocations('node engine/checks/check_the_world.mjs | tail -3; node engine/checks/check_the_work.mjs'),
+    { work: 1, world: 1 });
+  // Talking about the runner is not running it.
+  assert.deepEqual(checkInvocations('git ls-files | grep -i "check_the_world" | head'), { work: 0, world: 0 });
+});
+
+test('checkOutputs dedupes ONE hook execution recorded under two entry shapes', () => {
+  // The harness records a blocking hook run twice — as the feedback turn the model
+  // sees, and again in its stop_hook_summary. Counting both would double every
+  // failure, which is precisely the number that must not be inflated.
+  const outputs = checkOutputs([hookFeedback(HOOK_FAIL), hookSummary(HOOK_FAIL)]);
+  assert.equal(outputs.length, 1);
+  assert.equal(outputs[0].source, 'hook');
+});
+
+test('checkOutputs takes Bash results and leaves every other tool result alone', () => {
+  const outputs = checkOutputs([
+    bash('t1', 'node engine/checks/check_the_world.mjs'),
+    bashResult('t1', '0 blocking, 7 advisory (world scope: all vs origin/main).'),
+    // A Read of a file that merely CONTAINS this vocabulary is not a check run — in
+    // the corpus that owns the runners, that is the ordinary case, not a corner one.
+    readResult('t2', '[BLOCKING] file-placement  x.mjs\n0 blocking, 1 advisory (world scope: all).'),
+  ]);
+  assert.equal(outputs.length, 1);
+  assert.equal(outputs[0].command, 'node engine/checks/check_the_world.mjs');
+});
+
+test('countChecks: a passing hook run is an activation, not a failure', () => {
+  const { checks, checkFindings } = countChecks([hookSuccess(HOOK_PASS)]);
+  assert.deepEqual(checks.work, { runs: 1, failures: 0, errors: 0, blocking: 0, advisory: 0 });
+  assert.deepEqual(checkFindings, {}, 'nothing was caught, so no rule has a key');
+});
+
+test('countChecks: a failing hook run is one activation, one failure, and its rules', () => {
+  const { checks, checkFindings } = countChecks([hookFeedback(HOOK_FAIL), hookSummary(HOOK_FAIL)]);
+  assert.deepEqual(checks.work, { runs: 1, failures: 1, errors: 0, blocking: 2, advisory: 0 });
+  assert.deepEqual(checkFindings, {
+    'comment-classification': { blocking: 1, advisory: 0 },
+    'task-lifecycle': { blocking: 1, advisory: 0 },
+  });
+});
+
+test('countChecks: the loop-guard relent is a FAILURE — it prints no findings to give it away', () => {
+  // The hook gives up after the same findings survive two fixes and lets the stop
+  // through with exit 0. Read only the exit code and a real failure reads as a pass.
+  const { checks } = countChecks([hookSuccess(
+    '2026-07-28T10:00:00Z run=7 Stop: done exit=0 loop-guard-relent\n',
+    'claudinite checks: the same blocking findings survived 2 fix attempts — letting the stop through.',
+  )]);
+  assert.deepEqual(checks.work, { runs: 1, failures: 1, errors: 0, blocking: 0, advisory: 0 });
+});
+
+test('countChecks: a runner that could not launch is an ERROR, never a quiet clean day', () => {
+  const { checks } = countChecks([hookFeedback(
+    'Stop hook feedback:\n[node …/stop-command.mjs]: 2026-07-28T10:00:00Z run=7 Stop: done exit=2 runner-error\n')]);
+  assert.deepEqual(checks.work, { runs: 1, failures: 0, errors: 1, blocking: 0, advisory: 0 });
+});
+
+test('countChecks: world-scope runs come off the Bash invocation, so a PASSING sweep still counts', () => {
+  const { checks } = countChecks([
+    bash('t1', 'node engine/checks/check_the_world.mjs'),
+    bashResult('t1', ''),                       // a clean world sweep prints nothing at all
+    bash('t2', 'node engine/checks/check_the_world.mjs 2>&1 | tail -5'),
+    bashResult('t2', '[BLOCKING] task-lifecycle  (branch)\n  …\n1 blocking, 4 advisory (world scope: all vs origin/main).'),
+  ]);
+  assert.deepEqual(checks.world, { runs: 2, failures: 1, errors: 0, blocking: 1, advisory: 4 });
+});
+
+test('countChecks: a runner wrapped in a test command is counted from its OUTPUT, not double-counted', () => {
+  // `make test` / `npm test` invoke the world sweep without naming it, so the summary
+  // line is the only evidence. The two signals are two views of the same runs — the
+  // count is their max, never their sum.
+  const wrapped = countChecks([bash('t1', 'npm test'), bashResult('t1', '0 blocking, 7 advisory (world scope: all vs origin/main).')]);
+  assert.equal(wrapped.checks.world.runs, 1);
+  const named = countChecks([
+    bash('t1', 'node engine/checks/check_the_world.mjs'),
+    bashResult('t1', '0 blocking, 7 advisory (world scope: all vs origin/main).'),
+  ]);
+  assert.equal(named.checks.world.runs, 1, 'named AND reported is still one run');
+});
+
+test('countChecks: a scope that never ran has no key — zeros stay implicit here too', () => {
+  const { checks } = countChecks([hookSuccess(HOOK_PASS)]);
+  assert.deepEqual(Object.keys(checks), ['work']);
+});
+
+test('countEntries carries the check counts alongside the skill counts', () => {
+  const counts = countEntries([human('go'), skillCall('writing-tests'), hookFeedback(HOOK_FAIL)], new Set(['writing-tests']));
+  assert.deepEqual(counts.skillLoads, { 'writing-tests': 1 });
+  assert.equal(counts.checks.work.failures, 1);
+  assert.equal(counts.checkFindings['task-lifecycle'].blocking, 1);
+});
+
 // --- day folding --------------------------------------------------------------
 
 const fileOf = (date, issue, sessionId, counts = {}) => ({
   date, issue, sessionId,
-  counts: { userMessages: 0, userCommands: 0, skillLoads: {}, ...counts },
+  counts: { userMessages: 0, userCommands: 0, skillLoads: {}, checks: {}, checkFindings: {}, ...counts },
 });
 
 test('foldDays: captures, merges and DISTINCT sessions per day', () => {
@@ -128,8 +293,30 @@ test('foldDays: captures, merges and DISTINCT sessions per day', () => {
     userMessages: 11,
     userCommands: 1,
     skillLoads: { a: 2, b: 3 },
+    checks: {},
+    checkFindings: {},
   });
   assert.equal(days['2026-07-27'].merges, 0);
+});
+
+test('foldDays sums the check activations across a day\'s capture files', () => {
+  const work = (over) => ({ runs: 0, failures: 0, errors: 0, blocking: 0, advisory: 0, ...over });
+  const days = foldDays([
+    fileOf('2026-07-28', 12, 's1', {
+      checks: { work: work({ runs: 4, failures: 2, blocking: 3 }), world: work({ runs: 1 }) },
+      checkFindings: { 'task-lifecycle': { blocking: 2, advisory: 0 } },
+    }),
+    fileOf('2026-07-28', 13, 's2', {
+      checks: { work: work({ runs: 2, failures: 1, blocking: 1 }) },
+      checkFindings: { 'task-lifecycle': { blocking: 1, advisory: 0 }, 'file-placement': { blocking: 0, advisory: 5 } },
+    }),
+  ]);
+  assert.deepEqual(days['2026-07-28'].checks.work, work({ runs: 6, failures: 3, blocking: 4 }));
+  assert.deepEqual(days['2026-07-28'].checks.world, work({ runs: 1 }), 'a scope only one file saw still folds');
+  assert.deepEqual(days['2026-07-28'].checkFindings, {
+    'task-lifecycle': { blocking: 3, advisory: 0 },
+    'file-placement': { blocking: 0, advisory: 5 },
+  });
 });
 
 test('foldDays is a pure recompute — folding the same files twice gives the same rows', () => {
@@ -157,11 +344,32 @@ test('daysToFold takes every day that CLOSED since the watermark, in order', () 
 });
 
 test('addDayToWeek sums the counters and declares how many days it absorbed', () => {
-  const day = { captures: 2, merges: 1, sessions: 2, userMessages: 10, userCommands: 1, skillLoads: { a: 1 } };
+  const day = {
+    captures: 2, merges: 1, sessions: 2, userMessages: 10, userCommands: 1, skillLoads: { a: 1 },
+    checks: { work: { runs: 3, failures: 1, errors: 0, blocking: 1, advisory: 0 } },
+    checkFindings: { 'task-lifecycle': { blocking: 1, advisory: 0 } },
+  };
   const week = addDayToWeek(addDayToWeek(undefined, day), day);
   assert.deepEqual(week, {
     days: 2, captures: 4, merges: 2, sessionDays: 4, userMessages: 20, userCommands: 2, skillLoads: { a: 2 },
+    checks: { work: { runs: 6, failures: 2, errors: 0, blocking: 2, advisory: 0 } },
+    checkFindings: { 'task-lifecycle': { blocking: 2, advisory: 0 } },
   });
+});
+
+test('addDayToWeek extends a week folded BEFORE the checks were counted', () => {
+  // Weeks are frozen once folded, so the first fold after this shipped meets week rows
+  // that have no `checks` key at all. It must grow them, not throw — a throw here would
+  // wedge the watermark and stop every counter, not just the new ones.
+  const old = { days: 3, captures: 6, merges: 5, sessionDays: 4, userMessages: 50, userCommands: 2, skillLoads: { a: 1 } };
+  const week = addDayToWeek(old, {
+    captures: 1, merges: 1, sessions: 1, userMessages: 5, userCommands: 0, skillLoads: {},
+    checks: { work: { runs: 2, failures: 1, errors: 0, blocking: 1, advisory: 0 } },
+    checkFindings: { 'task-lifecycle': { blocking: 1, advisory: 0 } },
+  });
+  assert.equal(week.days, 4);
+  assert.deepEqual(week.checks.work, { runs: 2, failures: 1, errors: 0, blocking: 1, advisory: 0 });
+  assert.equal(week.userMessages, 55, 'and the counters it already had keep summing');
 });
 
 // --- the whole fold -------------------------------------------------------------

@@ -17,14 +17,23 @@ skill whose trigger never fires is indistinguishable from one that fires daily,
 and a "skill" that fires in every session (rules wearing a skill's clothes) is
 indistinguishable from a genuinely activity-scoped one.
 
-The shape: session transcripts already record every skill invocation. Capture
-already ships transcripts to each repo's orphan `conversation-logs` branch at
-merge time. This design (a) enriches capture with a best-effort session-end
-event, (b) adds a deterministic daily **fold** in each repo that counts skill
-loads and activity denominators from the live logs into a small tracked
-aggregate, and (c) adds a **fleet sweep** in the sheepdog pack that recomputes
-a fleet-wide aggregate from the members' files into the fleet-enforcer repo.
-Every stage is deterministic code — no agent judgment anywhere in the pipeline.
+The same blind spot covers the **conformance checks**, from the other side. A
+check that fails is a win: the finding reaches the session through the Stop
+hook and the agent corrects before the work leaves the branch. Nothing counts
+those corrections either — so "is this rule earning its place" and "is
+enforcement even running" are as unanswerable as "does this skill ever load".
+The checks ride the same pipeline, and §4.1 is where they are counted.
+
+The shape: session transcripts already record every skill invocation, and the
+check runners leave readable marks in them too. Capture already ships
+transcripts to each repo's orphan `conversation-logs` branch at merge time.
+This design (a) enriches capture with a best-effort session-end event, (b) adds
+a deterministic daily **fold** in each repo that counts skill loads, check
+activations and failures, and activity denominators from the live logs into a
+small tracked aggregate, and (c) adds a **fleet sweep** in the sheepdog pack
+that recomputes a fleet-wide aggregate from the members' files into the
+fleet-enforcer repo. Every stage is deterministic code — no agent judgment
+anywhere in the pipeline.
 
 ```
 transcript ──(merge capture / SessionEnd capture)──▶ conversation-logs branch
@@ -144,6 +153,75 @@ functions. The capture path computes nothing.
 Stated overlap: a typed `/merge-to-main` counts in both `userCommands` and
 `skillLoads` — one event, two axes, both true.
 
+### 4.1 Check activations — and, above all, check *failures*
+
+Skills are half the picture. The conformance checks are the other half, and the
+more valuable half: a check that **fails is a win**. The finding lands back in
+the session through the Stop hook and the agent corrects before the work
+leaves the branch — so "how often did the checks catch something" is a direct
+measure of what the corpus is worth, and "which rule caught it" is the most
+actionable number in the whole pipeline.
+
+Neither runner writes a metrics file, so both are counted off the marks they
+already leave in the transcript. There are exactly three, each verified against
+real captured logs rather than inferred:
+
+1. **The Stop hook's `hooklog` line** — `<iso> run=<id> Stop: done exit=<n>
+   <reason>`. It reaches the transcript because `hooklog` mirrors to stderr and
+   the harness records hook stderr (as an `isMeta` feedback turn, a
+   `stop_hook_summary`, or a `hook_success` attachment). This is the **only**
+   mark a *passing* run leaves, which is what makes work-scope run counts — not
+   merely failure counts — possible at all. Its `reason` distinguishes the four
+   outcomes the hook itself declares: `checks-passed`, `blocking-findings`,
+   `loop-guard-relent` (blocking findings that survived two fix attempts — a
+   failure that prints no findings block, readable *only* here), and
+   `runner-error` (the checks did not run, an anti-win that would otherwise
+   masquerade as a quiet clean day).
+2. **`report-findings`' summary line** — `N blocking, M advisory (<scope>
+   scope: …)`. It names its own scope and survives the `| tail` an agent
+   usually pipes a run through. It is printed *only* when there were findings,
+   so it counts failures and finding volume — never runs.
+3. **The runner's invocation in a Bash command** (`node …/check_the_world.mjs`).
+   This is how the world scope runs at all: its Stop-hook sibling does not
+   exist, because the world sweep is wired into the test/CI flow rather than
+   the hook (`engine/checks/README.md`, "Enforcement wiring").
+
+From those, per bucket:
+
+- **`checks`**, keyed by scope (`work` / `world`): `runs` — observed
+  activations; `failures` — the subset that reported at least one blocking
+  finding; `errors` — runs where the runner could not launch; `blocking` /
+  `advisory` — finding *volume* summed over those runs. A rule blocking in two
+  consecutive runs counts twice: the question is how often the checks caught
+  something, not how many distinct problems existed.
+- **`checkFindings`**, keyed by rule id, `{ blocking, advisory }` — read off
+  each rendered `[BLOCKING] <rule>  <file>` header. Lossier than the summary
+  totals (a run piped through `tail -3` keeps the summary and drops the
+  headers), which is why both are kept: a gap between them *is* the truncation,
+  visible rather than assumed away.
+
+Runs are counted only from the marks a passing run also leaves — hook
+completion lines, and Bash invocations — never from the summary line. Where a
+runner ran without its command naming it (a `make test` step wrapping it), the
+summary lines in its output are the floor: the count is the **max** of the two
+signals, never their sum, because they are two views of the same runs.
+
+Two things keep this honest and must stay stated wherever the numbers are read:
+
+- **Only Bash tool results count**, paired back to their `tool_use` command. In
+  the corpus that owns the runners, reading a file that merely *contains* this
+  vocabulary is the ordinary case, not a corner one.
+- **These are floors, never over-counts.** A world sweep that ran in CI left no
+  mark in any transcript. A hook killed before it logged left none either. The
+  bias is one-directional by construction, which is the direction that keeps
+  "the checks caught N things this week" a claim worth making.
+
+One hook execution is recorded under two entry shapes (the feedback turn the
+model sees, and the harness's `stop_hook_summary` repeating the same stderr).
+They dedupe on the `hooklog` stamps the text carries — the one identity stable
+across both shapes and unique per execution. Counting both would double every
+failure, which is precisely the number that must not be inflated.
+
 Zeros are implicit everywhere: a mounted skill with no loads simply has no
 key. Consumers derive the zero set by diffing against the repo's mounted
 skills (pack registry for a member; for the fleet view, each member's declared
@@ -184,12 +262,19 @@ Two tiers, per the owner's fast-insight requirement:
   "days": {
     "2026-07-28": { "captures": 3, "merges": 2, "sessions": 2,
                     "userMessages": 31, "userCommands": 4,
-                    "skillLoads": { "merge-to-main": 1 } }
+                    "skillLoads": { "merge-to-main": 1 },
+                    "checks": {
+                      "work":  { "runs": 34, "failures": 12, "errors": 0, "blocking": 15, "advisory": 0 },
+                      "world": { "runs": 41, "failures": 2, "errors": 0, "blocking": 4, "advisory": 127 }
+                    },
+                    "checkFindings": { "task-lifecycle": { "blocking": 8, "advisory": 0 } } }
   },
   "weeks": {
     "2026-W30": { "days": 7, "captures": 11, "merges": 9, "sessionDays": 8,
                   "userMessages": 210, "userCommands": 23,
-                  "skillLoads": { "merge-to-main": 6 } }
+                  "skillLoads": { "merge-to-main": 6 },
+                  "checks": { "work": { "runs": 190, "failures": 51, "errors": 0, "blocking": 66, "advisory": 3 } },
+                  "checkFindings": { "task-lifecycle": { "blocking": 40, "advisory": 0 } } }
   }
 }
 ```
@@ -204,7 +289,10 @@ Frozen weeks are a stated trade, not a surprise: a counting bug found later
 heals the day window automatically, but weeks folded under the old counting
 keep it — re-freezing would need raw data the retention TTL deliberately
 destroyed. Git history records which commit folded what, so the boundary is
-auditable.
+auditable. The same trade applies to a *new* counter: weeks folded before the
+check counts existed carry no `checks` key, and the fold extends them from the
+day they close forward rather than refusing to advance the watermark past them
+— a partial series beats a wedged one, and the boundary is visible in the file.
 
 Precondition: the `conversationLogs` signal reports the branch present. Runs
 where nothing changed are no-ops (no PR), and the agentless run costs seconds.
@@ -225,17 +313,27 @@ the inputs. Stateless recompute is idempotent by definition and self-heals any
 past error; at this cardinality (~repos × skills × weeks, all small) there is
 nothing to optimize.
 
-- **Grain**: full (week × repo × skill) for history, plus the members' current
-  day windows verbatim for the fast view — "what happened this week?" at
-  day-grain, trends at week-grain. Nothing pre-summed.
+- **Grain**: full (week × repo × skill, and week × repo × **rule**) for
+  history, plus the members' current day windows verbatim for the fast view —
+  "what happened this week?" at day-grain, trends at week-grain. Nothing
+  pre-summed. The checks are carried at the same grain and for the same reason
+  as the skill loads: whether a rule earns its place is a fleet-shaped
+  question. A rule that never fires in one repo may simply not be that repo's
+  subject; a rule that never fires in **any** of them is mis-described or
+  worthless — and a rule that keeps firing everywhere is the corpus's
+  best-performing guard. Only a view across every member tells those apart.
 - **Coverage is explicit**: a member without the usage file (not yet folding)
   or with an unreadable one is listed in a `coverage` section as absent —
   census-style, never silently skipped — so gaps in the denominators are
-  visible rather than baked in.
+  visible rather than baked in. A member still on an older fold (no `checks`
+  key) lands as an empty check row rather than an exception: the sweep leads
+  the members' upgrades, so that is the normal state for a while.
 - **A `_note` field** states the sampling population: captured sessions only —
   merging sessions plus sessions that ended cleanly enough for the SessionEnd
   hook. Reclaimed containers and crashes are invisible. The file must not read
-  as a census.
+  as a census. The note carries the checks' second, narrower boundary too: the
+  counts are what a *session* saw, so a world sweep that ran in CI is not in
+  them, and every check number is a floor on activations.
 - Outcome `merged-pr` (owner decision): the sweep opens a PR on a run-stamped
   branch in the enforcer repo and arms auto-merge. This keeps the write inside
   the outcome taxonomy `verify-outcome.mjs` enforces, lets the enforcer's CI
@@ -254,6 +352,16 @@ nothing to optimize.
   broken — a version-bump skill loading rarely is fine — which is why the
   denominators exist: the metric is loads against the sessions where the
   skill's own declared trigger plausibly applied.
+- **Canon curation, on the rules** (the same run): the checks' half answers a
+  sharper question than the skills' half, because a check failure is an
+  observed correction rather than an inferred one. A rule with steady failures
+  across the fleet is a guard earning its keep and an argument for converting
+  more prose into checks (`prose-to-checks`); a rule that has never fired
+  anywhere is either unreachable or describing something that does not happen;
+  a rule firing on nearly every run is a *default the corpus should change*
+  rather than a violation worth blocking on. `errors` reads differently from
+  all three: it means enforcement was silently off, and it is the one number
+  here whose right value is zero.
 - **Sheepdog's fleet tasks**, later: freshness-style drift issues citing the
   fleet file ("skill X: 0 loads fleet-wide in 6 weeks"). The learning loop
   stays in the enforcer's domain, not the canon's. Out of scope here; noted so
@@ -282,6 +390,17 @@ nothing to optimize.
 - **A member goes quiet**: its day window empties, its weeks stop growing, and
   the fleet file shows it with zeros-by-absence plus its last folded week —
   distinguishable from "not folding" via the `coverage` section.
+- **A check ran where no session saw it** (world sweep in CI, hook killed
+  before it logged): the run is simply not counted. This is the one under-count
+  the design accepts by construction, and it is one-directional — the numbers
+  are floors, never inflated. Stated in the fleet file's own `_note` so a
+  consumer cannot read them as a census of enforcement.
+- **The harness changes how it records hooks**: the marks in §4.1 are harness
+  output, not a contract Claudinite owns. A shape change makes check counts
+  fall to zero — loudly, since a repo with checks wired cannot plausibly report
+  no activations — rather than drift quietly wrong. Each mark is read by one
+  exported function with a fixture copied from a real capture, so re-pinning is
+  a fixture update, not an investigation.
 
 ## 10. Decisions on record (owner, 2026-07-28)
 
@@ -301,3 +420,15 @@ nothing to optimize.
    naming for issueless captures.
 7. **No migration plan** — the existing convergence machinery carries the
    rollout; ordering is handled by shipping §3 in one PR (§3.4).
+
+### Owner, 2026-07-29
+
+8. **Check activations and check failures are counted too** (§4.1), at both
+   levels — per repo in the fold, and fleet-wide in the sheepdog sweep, exactly
+   as the skill loads are. **Failures are the point**: when a check fails the
+   agent corrects immediately, so a failure is a win, and every one is counted.
+   Executions are counted as far as the transcript allows and the shortfall is
+   stated rather than papered over (§9) — the numbers are floors.
+9. **Per-rule grain is kept**, not just per-scope totals: "which rule catches
+   things" is what the promote run and `prose-to-checks` actually need, and it
+   is what the fleet view exists to answer across members.

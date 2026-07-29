@@ -11,8 +11,10 @@ const member = (repo, weeks, days = {}, foldedThrough = '2026-07-27') => ({
   repo, usage: { version: 1, foldedThrough, days, weeks },
 });
 const week = (over) => ({
-  days: 7, captures: 10, merges: 8, sessionDays: 9, userMessages: 100, userCommands: 5, skillLoads: {}, ...over,
+  days: 7, captures: 10, merges: 8, sessionDays: 9, userMessages: 100, userCommands: 5, skillLoads: {},
+  checks: {}, checkFindings: {}, ...over,
 });
+const scope = (over) => ({ runs: 0, failures: 0, errors: 0, blocking: 0, advisory: 0, ...over });
 
 test('the sweep reads the member file the fold actually writes', () => {
   // Two packs, no shared import: the fold writes this path in a member repo and the
@@ -45,6 +47,42 @@ test('aggregate carries each member\'s current day window verbatim, for the fast
   assert.deepEqual(file.days['owner/alpha'], days);
 });
 
+test('aggregate keeps the check activations at the same week x repo x rule grain', () => {
+  // A rule's worth is a FLEET question, exactly as a skill's is: never firing in one
+  // repo may just mean it is not that repo's subject. Only the full grain lets the
+  // "fires nowhere" and "fires everywhere" readings be told apart afterwards.
+  const file = aggregate({
+    members: [
+      member('owner/alpha', { '2026-W30': week({
+        checks: { work: scope({ runs: 30, failures: 9, blocking: 11 }), world: scope({ runs: 12, failures: 1, blocking: 1, advisory: 40 }) },
+        checkFindings: { 'task-lifecycle': { blocking: 8, advisory: 0 }, 'file-placement': { blocking: 0, advisory: 40 } },
+      }) }),
+      member('owner/beta', { '2026-W30': week({
+        checks: { work: scope({ runs: 5, failures: 1, blocking: 1 }) },
+        checkFindings: { 'task-lifecycle': { blocking: 1, advisory: 0 } },
+      }) }),
+    ],
+    generatedAt: '2026-07-28',
+  });
+  assert.equal(file.weeks['2026-W30']['owner/alpha'].checks.world.failures, 1);
+  assert.equal(file.weeks['2026-W30']['owner/beta'].checks.world, undefined, 'a scope that never ran there has no key');
+  // Fleet-wide "how often did this rule catch something" stays derivable — the point
+  // of not pre-summing.
+  const fleetWide = Object.values(file.weeks['2026-W30'])
+    .reduce((n, row) => n + (row.checkFindings['task-lifecycle']?.blocking ?? 0), 0);
+  assert.equal(fleetWide, 9);
+});
+
+test('a member still on the older fold lands as empty check rows, never as an exception', () => {
+  // Weeks are frozen once folded and the fleet sweep leads the members' upgrades, so
+  // rows without `checks` are the normal case for a while, not a corruption.
+  const older = { days: 7, captures: 10, merges: 8, sessionDays: 9, userMessages: 100, userCommands: 5, skillLoads: { a: 1 } };
+  const file = aggregate({ members: [{ repo: 'owner/alpha', usage: { version: 1, foldedThrough: '2026-07-27', days: {}, weeks: { '2026-W30': older } } }], generatedAt: '2026-07-28' });
+  assert.deepEqual(file.weeks['2026-W30']['owner/alpha'].checks, {});
+  assert.deepEqual(file.weeks['2026-W30']['owner/alpha'].checkFindings, {});
+  assert.equal(file.weeks['2026-W30']['owner/alpha'].captures, 10, 'and everything it DOES carry still lands');
+});
+
 test('a member without a usage file is a reported COVERAGE GAP, never a silent skip', () => {
   const file = aggregate({
     members: [member('owner/alpha', { '2026-W30': week({}) })],
@@ -62,6 +100,9 @@ test('the file states its sampling population — it must not read as a census',
   assert.equal(file._note, SAMPLING_NOTE);
   assert.match(file._note, /Captured sessions only/);
   assert.match(file._note, /Reclaimed containers and crashes are invisible/);
+  // The checks carry a second, narrower boundary — a CI-run world sweep is in no
+  // session's transcript — and the file must say so where it is read.
+  assert.match(file._note, /floor on activations, never an over-count/);
   assert.equal(file.version, FLEET_VERSION);
 });
 
