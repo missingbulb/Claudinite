@@ -32,6 +32,48 @@ test('collectSignals gathers only the requested names', async () => {
   assert.deepEqual(out.branches.names, ['main', 'feature']);
 });
 
+// --- branches: names for the scope, `touched` for the newness gate -----------
+// The branch dimension had no notion of newness at all — the collector returned
+// names — so every precondition over it degenerated to "a branch exists" and swept
+// the same standing pile forever. The tip-commit date is the only newness a branch
+// has, and no REST listing carries it, so it costs one read per distinct tip.
+
+const branchList = (branches, dates) => fakeGh([
+  [/\/branches\?/, { status: 200, json: branches.map(([name, sha]) => ({ name, commit: { sha } })) }],
+  [/\/commits\/(.+)$/, (p) => {
+    const sha = p.split('/commits/')[1];
+    return sha in dates
+      ? { status: 200, json: { commit: { committer: { date: dates[sha] } } } }
+      : { status: 404, json: null };
+  }],
+]);
+
+test('branches: a branch whose tip moved in the window is touched; the standing pile is not', async () => {
+  const gh = branchList(
+    [['main', 'm1'], ['feat-x', 'x1'], ['old-thing', 'o1']],
+    { m1: '2026-07-21T09:00:00Z', x1: '2026-07-21T12:00:00Z', o1: '2026-05-02T09:00:00Z' },
+  );
+  const out = await collectSignals(gh, ctx(), ['branches']); // window opens 2026-07-21T00:00Z
+  assert.deepEqual(out.branches.names, ['main', 'feat-x', 'old-thing']);
+  assert.deepEqual(out.branches.touched, ['main', 'feat-x']);
+  assert.deepEqual(out.branches.list.find((b) => b.name === 'old-thing'), { name: 'old-thing', updatedAt: '2026-05-02T09:00:00Z' });
+});
+
+test('branches: branches sharing a tip cost one read, and an unreadable tip is never touched', async () => {
+  let reads = 0;
+  const inner = branchList(
+    [['a', 's1'], ['b', 's1'], ['gone', 's2']],
+    { s1: '2026-07-21T09:00:00Z' }, // s2 404s
+  );
+  const gh = async (path) => { if (/\/commits\//.test(path)) reads += 1; return inner(path); };
+
+  const out = await collectSignals(gh, ctx(), ['branches']);
+  assert.equal(reads, 2, 'the shared tip sha was read twice');
+  assert.deepEqual(out.branches.touched, ['a', 'b']);
+  // No proof of movement never wakes an agent — it does not degrade to "touched".
+  assert.equal(out.branches.list.find((b) => b.name === 'gone').updatedAt, null);
+});
+
 test('commits: bot and housekeeping commits are not substantive', async () => {
   const gh = fakeGh([
     [/\/commits\?sha=/, { status: 200, json: [
