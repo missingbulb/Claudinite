@@ -40,8 +40,17 @@ yet; that is the ordinary case this preflight exists for, not an anomaly.
    `product-wiki/sample-data/` only when a new claim needs an illustrative example; **never write
    `product-wiki/product-requirements/`** — a finding that should move a requirement gets a growth-log note
    (and a repo issue) and waits for a human.
-5. **One dated `## Growth log` entry per touched page** (`- **YYYY-MM-DD** — what changed`).
-6. **Update `## Open questions` both directions** — remove what this run answered, add what its research
+5. **Reconcile the page's `## Key insights` header** with what the body now says. It leads the page, it is
+   bullets only, and it is capped (seven bullets, 140 characters each — about one line) — so a new insight
+   that belongs at the top usually displaces a weaker one rather than being appended. Each bullet is one
+   finding in plain words: no qualifying clause, no citation, no hedge, and preferably something a reader
+   who knows the field would *not* already assume. Judging obviousness is hard, so when in doubt keep the
+   line rather than agonising — short and slightly obvious beats long and careful. Rewrite a bullet the run
+   superseded (the correction and its *why* live in the body, not in the header); leave the header alone
+   when the run changed nothing about the page's top-line understanding. **Never restate the header as a
+   table of contents** — each bullet is a finding a reader can act on.
+6. **One dated `## Growth log` entry per touched page** (`- **YYYY-MM-DD** — what changed`).
+7. **Update `## Open questions` both directions** — remove what this run answered, add what its research
    surfaced.
 
 ## Stop condition
@@ -70,5 +79,6 @@ fabrication.
 
 Edit `product-wiki/product-requirements/`; edit anything outside `product-wiki/`; create new wiki folders
 (automation refines existing pages — a human creates a wiki deliberately); write an uncited claim; delete a
-claim without a superseded note; pad a growth log or a wiki page to look productive; merge or approve its own
+claim without a superseded note; leave a `## Key insights` header asserting what the body it heads no longer
+says; pad a growth log, a header, or a wiki page to look productive; merge or approve its own
 PR; schedule anything (no cron, no `schedule:` workflow); touch the shared canon.
