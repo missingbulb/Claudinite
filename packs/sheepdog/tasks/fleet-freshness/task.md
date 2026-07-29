@@ -24,6 +24,12 @@ It publishes the picture to the run summary and converges **one drift issue per 
 
 It **reports; it does not repair** — `expected_outcome: none`, and the issue body carries the fix for the specific state it found.
 
+## A dormant member is not measured
+
+A member that declares `"dormant": true` ([the scheduler's gate](../../../basics/scheduled-tasks.md)) is skipped before its stamp is read, and any open drift issue for it is closed *not planned*. Its scheduler is stopped, so its mount falls behind **by design** — reporting that would nag a repo for obeying its own declaration. It is counted in its own column of the summary, never as a failure.
+
+The test is `isDormant`, re-exported from the engine rather than re-implemented here: a sweep with a private notion of dormancy would nag exactly the repos that had already opted out.
+
 ## Freshness, not coverage
 
 The [census](../fleet-census/task.md) asks the prior question — is a repo covered **at all** — and opens adoption issues. This sweep takes coverage as given and asks whether that coverage still **means** anything. An uncovered repo is skipped here, never double-reported.

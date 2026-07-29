@@ -22,6 +22,10 @@ A member still on an older fold carries no `checks` key. It lands as an empty ch
 
 A covered member with no usage file (not folding yet), or one whose file cannot be read, is listed in `coverage.absent` with the reason — census-style. A denominator with an invisible hole in it is worse than no denominator at all.
 
+## A dormant member leaves the denominator
+
+A member that declares `"dormant": true` ([the scheduler's gate](../../../basics/scheduled-tasks.md)) is dropped from every rate and listed under `coverage.dormant` — distinct from `coverage.absent`, because "not in the race" and "should be folding and isn't" are different facts. Averaging a deliberately silent repo in would drag every fleet-wide number toward zero as the fleet accumulates finished projects. The test is `isDormant`, re-exported from the engine, so the sweep and the member's own scheduler cannot disagree.
+
 ## It is a sample, not a census
 
 The file carries a `_note` saying so. Its whole population is *captured* sessions: sessions that merged, plus sessions that ended cleanly enough for the SessionEnd capture to fire. A session whose container was reclaimed, or that crashed, is invisible to every number in it.

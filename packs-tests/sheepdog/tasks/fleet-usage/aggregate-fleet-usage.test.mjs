@@ -95,6 +95,26 @@ test('a member without a usage file is a reported COVERAGE GAP, never a silent s
   assert.match(file.coverage.absent.join(' '), /returned 500/, 'an unreadable file states WHY it is absent');
 });
 
+test('a dormant member is out of the denominator and named as dormant, not as absent', () => {
+  // "Not in the race" and "should be folding and isn't" are different facts, and
+  // only the second is a problem to chase. Folding a dormant repo's silence into
+  // the fleet numbers would drag every skill toward "never used" as the fleet
+  // accumulates finished projects.
+  const file = aggregate({
+    members: [member('owner/alpha', { '2026-W30': week({}) })],
+    absent: [`owner/beta (no ${MEMBER_USAGE_PATH} — not folding yet)`],
+    dormant: ['owner/zeta'],
+    generatedAt: '2026-07-28',
+  });
+  assert.deepEqual(file.coverage.folding, ['owner/alpha']);
+  assert.deepEqual(file.coverage.dormant, ['owner/zeta']);
+  assert.ok(!file.coverage.absent.some((a) => a.includes('owner/zeta')), 'dormant is not an absence');
+  assert.equal(file.repos['owner/zeta'], undefined, 'and contributes no row to any number');
+  // The common case — no dormant member — still reports the key, empty: a reader
+  // must not have to tell "none" from "this file predates the idea".
+  assert.deepEqual(aggregate({ members: [], generatedAt: '2026-07-28' }).coverage.dormant, []);
+});
+
 test('the file states its sampling population — it must not read as a census', () => {
   const file = aggregate({ members: [], generatedAt: '2026-07-28' });
   assert.equal(file._note, SAMPLING_NOTE);

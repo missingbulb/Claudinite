@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { classifyFreshness, convergeDrift, FRESH } from '../../../../packs/sheepdog/tasks/fleet-freshness/check-fleet-freshness.mjs';
+import { classifyFreshness, convergeDrift, probe, FRESH } from '../../../../packs/sheepdog/tasks/fleet-freshness/check-fleet-freshness.mjs';
 
 // The freshness sweep's whole judgement is `classifyFreshness` — pure, so every
 // branch is exercised here without a network. The precedence between states is the
@@ -51,6 +51,47 @@ test('classifyFreshness: root cause wins over symptom', () => {
   assert.equal(classify({ stampedRef: null, hasScheduler: false }).state, 'no-stamp');
   // and an unvendored repo is never asked about trunk
   assert.equal(classify({ stampedRef: null, compare: null }).state, 'no-stamp');
+});
+
+// --- dormancy -----------------------------------------------------------------
+// A dormant member's scheduler stops before it evaluates anything, so its mount
+// falls behind BY DESIGN. Every state above would fire on it, and each would be a
+// report that the repo did what it was told. The probe stops at the declaration.
+
+// A fake contents API over `{ '<owner/repo>:<path>': <object|404> }`.
+function contentsGh(files) {
+  const seen = [];
+  const gh = async (path) => {
+    seen.push(path);
+    const m = /^\/repos\/([^/]+\/[^/]+)\/contents\/(.+)$/.exec(path);
+    const key = m && `${m[1]}:${m[2]}`;
+    if (!m || !(key in files)) return { status: 404, json: null };
+    return { status: 200, json: { content: Buffer.from(JSON.stringify(files[key])).toString('base64') } };
+  };
+  return { gh, seen };
+}
+
+test('probe: a member that declares itself dormant is never classified', async () => {
+  const { gh, seen } = contentsGh({
+    'o/asleep:.claudinite-checks.json': { packs: ['basics'], dormant: true, claudinite: { ref: 'old' } },
+  });
+  assert.deepEqual(await probe(gh, 'o/asleep', { canonRepo: 'o/canon', canonBranch: 'main' }), { dormant: true });
+  // …and the stamp it carries — deliberately stale here — is not even looked up
+  // against canon: no scheduler-workflow read, no compare.
+  assert.deepEqual(seen, ['/repos/o/asleep/contents/.claudinite-checks.json']);
+});
+
+test('probe: an ordinary member is still probed in full', async () => {
+  // The negative that keeps the gate honest — dormancy is opt-in, and absence of
+  // the key must leave the sweep exactly as it was.
+  const { gh, seen } = contentsGh({
+    'o/awake:.claudinite-checks.json': { packs: ['basics'], claudinite: { ref: 'abc' } },
+  });
+  const p = await probe(gh, 'o/awake', { canonRepo: 'o/canon', canonBranch: 'main' });
+  assert.equal(p.dormant, undefined);
+  assert.equal(p.stampedRef, 'abc');
+  assert.equal(p.hasScheduler, false);           // the fake serves no workflow file
+  assert.equal(seen.length, 3, 'declaration + scheduler workflow + canon compare');
 });
 
 // --- convergence --------------------------------------------------------------
@@ -105,6 +146,17 @@ test('convergeDrift: closes on recovery and on leaving the fleet, with distinct 
   const left = fakeGh([issue(7, 'o/a', 'open', 'behind')]);
   await convergeDrift(left.gh, 'o/home', { ...empty, goneSet: new Set(['o/a']) });
   assert.equal(left.calls.at(-1).body.state_reason, 'not_planned');
+});
+
+test('convergeDrift: a member that goes dormant has its open drift issue closed as not planned', async () => {
+  // Not `completed`: nobody repaired the drift, the repo left the race. And not
+  // left open either — an issue nagging a repo for obeying its own declaration is
+  // exactly the ceremony dormancy exists to stop.
+  const { gh, calls } = fakeGh([issue(7, 'o/a', 'open', 'behind')]);
+  const actions = await convergeDrift(gh, 'o/home', { ...empty, dormantSet: new Set(['o/a']) });
+  assert.equal(actions.length, 1);
+  assert.match(actions[0], /^closed #7 \(o\/a: has declared itself dormant/);
+  assert.equal(calls.at(-1).body.state_reason, 'not_planned');
 });
 
 test('convergeDrift: an UNKNOWN member holds its issue open — absence of a verdict is not recovery', async () => {

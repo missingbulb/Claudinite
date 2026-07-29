@@ -101,3 +101,14 @@ Which ready label a task dispatches under follows from its `session_scope`, and 
 session started by that label is the one with the matching reach — a `fleet` task's session
 has the owner's repos in its sources, a `self` task's has this repo alone. The task declares
 the scope; nothing downstream re-decides it.
+
+## A dormant project runs nothing
+
+A project nobody is working on declares itself dormant in `.claudinite-checks.json`:
+
+```json
+"dormant": true
+```
+
+The scheduler stops before evaluating anything; the [fleet sweeps](../sheepdog/README.md)
+skip it; sessions are unaffected. Delete it to wake.

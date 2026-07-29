@@ -19,6 +19,7 @@ import {
   AGENT_RUNNING_LABEL,
 } from './dispatch.mjs';
 import { isAgentless } from './model-map.mjs';
+import { isDormant } from '../checks/helpers/repo-context.mjs';
 import { localSignalContext } from './signals/local.mjs';
 import { runPreprocessing, preprocessingFailure, agentRequestPath, clearAgentRequest, agentRequested } from './preprocess.mjs';
 
@@ -119,10 +120,19 @@ export function renderSummary(evaluations) {
 // Returns `{ evaluations }`: one record per due task with its precondition
 // verdict and, when it runs, either an inline marker (agent_model: none) or a
 // dispatch decision (planDispatch).
+//
+// DORMANCY IS THE FIRST GATE, ahead of the due-slot math and every task's own
+// precondition (`config`, the repo's loaded declaration). A dormant project has
+// said it is out of the recurring work: it is not that each task happens to have
+// nothing to do, it is that no task is asked. Putting the gate here rather than
+// in each precondition is the whole point — every task, canon and local, present
+// and future, is covered by one decision nothing has to opt into, and a task
+// never learns that dormancy exists.
 export async function planRun({
-  tasks, schedule, now, lastSuccess, overrides = {},
+  tasks, schedule, now, lastSuccess, overrides = {}, config = {},
   collectSignals, packConfigFor = () => ({}), existingIssuesFor = async () => [],
 }) {
+  if (isDormant(config)) return { evaluations: [], dormant: true };
   // `overrides` arrives as a parameter rather than out of `signals` because the
   // due list is what decides which signals get collected — the bag has to be
   // known before the collection it would otherwise be part of.
@@ -349,6 +359,23 @@ async function main() {
   const gh = makeGh();
   const config = loadConfig(root);
 
+  // The dormancy gate, before ANY of it: the run-ledger read, the task discovery,
+  // the signal collection, the issue I/O, the dispatch maintenance. planRun holds
+  // the same verdict (one predicate, both call sites) and would return an empty
+  // plan — but a dormant repo should not pay for the reads that produce it, and
+  // the maintenance pass below writes to issues, which is exactly the ceremony
+  // dormancy exists to stop.
+  //
+  // Exit 0, deliberately. The run enters the success ledger and the watermark
+  // advances past these slots, so waking a project up does NOT replay the months
+  // it slept through — it simply starts scheduling again from now. Slots skipped
+  // while dormant are skipped on purpose, not deferred.
+  if (isDormant(config)) {
+    console.log('## Claudinite scheduler\n');
+    console.log('- this project declares itself dormant ("dormant": true in .claudinite-checks.json) — no tasks evaluated, no work dispatched');
+    return;
+  }
+
   const { tasks, errors } = await discoverTasks(root, config);
   for (const e of errors) console.log(`! ${e.what}`);
 
@@ -409,7 +436,7 @@ async function main() {
   });
 
   const { evaluations } = await planRun({
-    tasks, schedule, now, lastSuccess, overrides,
+    tasks, schedule, now, lastSuccess, overrides, config,
     collectSignals: (names) => collectSignals(gh, ctx, names),
     packConfigFor,
     existingIssuesFor: (pack, task) => existingIssuesViaSearch(gh, repo, pack, task),

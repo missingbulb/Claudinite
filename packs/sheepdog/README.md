@@ -19,6 +19,11 @@ removed the last thing that looked at a member from the **outside** — self-mai
 own absence. The third exists for the same shape of reason one rung up: a member can say whether a
 skill loads *there*, and only a view across every member can say whether it earns its place at all.
 
+A member that declares itself **dormant** (`"dormant": true` in its own declaration) is out of the
+freshness sweep and out of the usage denominator — its scheduler is stopped, so its mount falls
+behind by design and its silence says nothing about any skill. It stays a **member**: the census
+is unchanged, because dormancy is about upkeep, not membership.
+
 Each sweep lives **inside its task's folder**, because nothing outside that task uses it. Only what
 both share sits at the pack root: [fleet-api.mjs](fleet-api.mjs) (the cross-repo REST primitives) and
 [fleet-config.mjs](fleet-config.mjs) (the one reader of this pack's entry `config`).

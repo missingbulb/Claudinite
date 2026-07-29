@@ -18,7 +18,9 @@
 // census (check-fleet-coverage.mjs) asks the prior question, whether a repo is covered
 // at all, and opens adoption issues; this one takes coverage as given and asks whether
 // coverage is still MEANING anything. An uncovered repo is skipped here, not
-// double-reported.
+// double-reported — and so is a member that declares itself DORMANT: its scheduler
+// stops before it evaluates anything, so its mount falls behind by design, and every
+// classification below would report a repo for obeying its own declaration.
 //
 // The classification is deliberately about ROOT CAUSE, in precedence order:
 //   no-stamp        declares packs but was never vendored — no engine on disk at all
@@ -51,12 +53,11 @@
 
 import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { makeGh, paged, ensureLabel, labeledIssues } from '../../fleet-api.mjs';
+import { makeGh, paged, ensureLabel, labeledIssues, readDeclaration, isDormant, DECLARATION } from '../../fleet-api.mjs';
 import { parseSheepdogConfig } from '../../fleet-config.mjs';
 
 const LABEL = 'fleet-drift';
 const SCHEDULER = '.github/workflows/claudinite-scheduler.yml';
-const DECLARATION = '.claudinite-checks.json';
 
 export const FRESH = 'fresh';
 const driftTitle = (fullName) => `Claudinite mount has fallen behind on ${fullName}`;
@@ -155,7 +156,7 @@ function driftBody(fullName, { state, detail }, staleDays) {
 // census on the way in: an already-open issue gets a comment ONLY when the state
 // actually changed, because a weekly sweep over a fleet that is slow to heal would
 // otherwise turn every thread into a wall of identical notes.
-export async function convergeDrift(gh, home, { unhealthy, healthySet, goneSet, staleDays }) {
+export async function convergeDrift(gh, home, { unhealthy, healthySet, goneSet, dormantSet = new Set(), staleDays }) {
   const actions = [];
   const { open: openIssues, closed } = await labeledIssues(gh, home, LABEL);
   const open = new Map(openIssues.map((i) => [i.title, i]));
@@ -205,6 +206,11 @@ export async function convergeDrift(gh, home, { unhealthy, healthySet, goneSet, 
     let reason = null; let note = null;
     if (healthySet.has(fullName)) {
       reason = 'completed'; note = 'is up to date with canon again';
+    } else if (dormantSet.has(fullName)) {
+      // `not planned`, not `completed`: the drift was never fixed, the repo was
+      // taken out of the race. Closing it `completed` would claim a repair nobody
+      // made, and leaving it open would be the nagging dormancy exists to stop.
+      reason = 'not_planned'; note = 'has declared itself dormant — it is out of the recurring work, so the sweep no longer measures it';
     } else if (goneSet.has(fullName)) {
       reason = 'not_planned'; note = 'is no longer a covered member of the fleet (excluded, deleted, archived, or uncovered)';
     }
@@ -224,15 +230,18 @@ export async function convergeDrift(gh, home, { unhealthy, healthySet, goneSet, 
 
 // Three reads per member: the declaration (content, not just existence — the stamp is
 // in it), the scheduler workflow's presence, and canon's view of the stamped ref.
-// Throws on anything indeterminate; the caller turns that into UNKNOWN.
-async function probe(gh, fullName, { canonRepo, canonBranch }) {
-  const decl = await gh(`/repos/${fullName}/contents/${DECLARATION}`);
-  if (decl.status === 404) return null; // uncovered — the census's business, not this sweep's
-  if (decl.status !== 200 || !decl.json?.content) throw new Error(`${DECLARATION} returned ${decl.status}`);
-  let cfg;
-  try { cfg = JSON.parse(Buffer.from(decl.json.content, 'base64').toString('utf8')); } catch (e) {
-    throw new Error(`unparsable ${DECLARATION}: ${e.message}`);
-  }
+// Throws on anything indeterminate; the caller turns that into UNKNOWN. Exported so
+// the "a dormant member is never probed further" contract is testable without a
+// network — it is a decision, not plumbing.
+export async function probe(gh, fullName, { canonRepo, canonBranch }) {
+  const cfg = await readDeclaration(gh, fullName);
+  if (cfg === null) return null; // uncovered — the census's business, not this sweep's
+  // A DORMANT member is not measured. Its scheduler stops before it evaluates
+  // anything, so nothing there baselines and the mount falls behind BY DESIGN —
+  // every question below would answer "behind" for a repo that was told to stop
+  // keeping up. Reporting that is not an outside look, it is nagging a repo for
+  // obeying its own declaration. Detected here, before the stamp is even read.
+  if (isDormant(cfg)) return { dormant: true };
   const stampedRef = cfg?.claudinite?.ref ?? null;
 
   const wf = await gh(`/repos/${fullName}/contents/${SCHEDULER}`);
@@ -296,7 +305,7 @@ export async function main() {
       + 'refusing to run a sweep that would close every drift issue as stale');
   }
 
-  const unhealthy = []; const healthy = []; const gone = []; const unknown = [];
+  const unhealthy = []; const healthy = []; const gone = []; const dormant = []; const unknown = [];
   for (const r of mine.sort((a, b) => a.name.localeCompare(b.name))) {
     const fullName = r.full_name.toLowerCase();
     if (fullName === home.toLowerCase()) continue;         // the enforcer is swept by its own scheduler
@@ -310,6 +319,10 @@ export async function main() {
       continue;
     }
     if (p === null) { gone.push(fullName); continue; }     // uncovered: the census owns it
+    // Dormant by its own declaration: out of the sweep, and counted SEPARATELY from
+    // `gone` so the summary says how much of the fleet is asleep rather than hiding
+    // it inside "out of scope". An open drift issue on it closes with its own note.
+    if (p.dormant) { dormant.push(fullName); continue; }
     const verdict = classifyFreshness({ ...p, nowMs: Date.now(), staleDays });
     if (verdict.state === FRESH) healthy.push(fullName);
     else unhealthy.push({ fullName, ...verdict });
@@ -317,22 +330,23 @@ export async function main() {
 
   await ensureLabel(gh, home, LABEL, { color: 'D93F0B', description: 'Covered member whose Claudinite mount has fallen behind canon' });
   const actions = await convergeDrift(gh, home, {
-    unhealthy, healthySet: new Set(healthy), goneSet: new Set(gone), staleDays,
+    unhealthy, healthySet: new Set(healthy), goneSet: new Set(gone), dormantSet: new Set(dormant), staleDays,
   });
 
   const summary = [
     `# Fleet freshness sweep — ${owner} (window: ${staleDays} days, canon: ${canonRepo}@${canonBranch})`,
     '',
-    '| fresh | behind | no scheduler | no stamp | off trunk | out of scope | unknown |',
-    '| --- | --- | --- | --- | --- | --- | --- |',
+    '| fresh | behind | no scheduler | no stamp | off trunk | dormant | out of scope | unknown |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- |',
     `| ${healthy.length} | ${unhealthy.filter((u) => u.state === 'behind').length} | `
       + `${unhealthy.filter((u) => u.state === 'no-scheduler').length} | `
       + `${unhealthy.filter((u) => u.state === 'no-stamp').length} | `
-      + `${unhealthy.filter((u) => u.state === 'ref-not-on-trunk').length} | ${gone.length} | ${unknown.length} |`,
+      + `${unhealthy.filter((u) => u.state === 'ref-not-on-trunk').length} | ${dormant.length} | ${gone.length} | ${unknown.length} |`,
     '',
     unhealthy.length
       ? `**Behind (drift issue open):**\n${unhealthy.map((u) => `- \`${u.fullName}\` — **${u.state}**: ${u.detail}`).join('\n')}`
       : '**Every covered member is up to date 🎉**',
+    dormant.length ? `**Dormant (self-declared, not measured):** ${dormant.join(', ')}` : '',
     unknown.length ? `**UNKNOWN (probe errored — fix the token/scope):** ${unknown.join('; ')}` : '',
     actions.length ? `**Issue actions:** ${actions.join('; ')}` : '**Issue actions:** none (converged)',
   ].filter(Boolean).join('\n');
