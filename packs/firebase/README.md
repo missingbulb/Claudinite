@@ -10,16 +10,6 @@ missingbulb/ShoutsAndWhispers (Firestore + Functions + FCM + Google sign-in). En
 separation and store gating are deliberately NOT here — that is the opt-in
 [firebase-release](../firebase-release/README.md) pack.
 
-## Checks
-
-Both are relevance-first: they say nothing until `firebase.json` declares a functions codebase
-whose `package.json` is in the checkout, so a rules-only or hosting-only Firebase repo is untouched.
-
-| Rule (≤5 words) | Severity | What |
-|---|---|---|
-| Functions pin their Node major | blocking | a deployed codebase's `package.json` declares `engines.node` |
-| Build script wired as predeploy | blocking | a codebase with a `build` script declares a `predeploy` hook in `firebase.json` |
-
 ## Prose (`RULES.md`) — by section
 
 | Section (≤5 words) | How enforced |
@@ -27,4 +17,4 @@ whose `package.json` is in the checkout, so a rules-only or hosting-only Firebas
 | Rules are merge-aware, default-deny | prose (+ the project's rules tests) |
 | Functions own identity and limits | prose |
 | Test logic pure, rules empirically | prose (+ the project's suites) |
-| Deploy layout and aliases | prose + the two checks above |
+| Deploy layout and aliases | prose + the pack's two checks |

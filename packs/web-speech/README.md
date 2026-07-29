@@ -6,13 +6,6 @@ Most gotchas are runtime browser behaviours with no repo-state signature a stati
 
 Where a rule touches MV3 service-worker / content-script mechanics that also bear on non-speech APIs, the general extension gotchas live in the [`chrome-extension`](../chrome-extension/README.md) pack; this pack owns the speech-API facets specifically.
 
-## Checks (`web-speech-io` skill)
-
-| Rule (≤5 words) | Severity | How enforced |
-|---|---|---|
-| No window speech API in worker | blocking | skill check `web-speech-no-window-api-in-service-worker` |
-| Feature-detect the recognizer | advisory | skill check `web-speech-recognition-feature-detected` |
-
 ## Prose gotchas (`RULES.md`)
 
 | Rule (≤5 words) | How enforced |

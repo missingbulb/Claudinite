@@ -1,4 +1,6 @@
 // Technology stub pack: Android app development (Gradle/AGP, manifests, permissions, signing, flavors).
+// Stub — no rules captured yet; add durable, project-agnostic practices to RULES.md
+// as they are earned. Expected first source: missingbulb/ShoutsAndWhispers.
 export default {
   id: 'android',
   ruleRoutingGuidance: {

@@ -1,4 +1,6 @@
 // Technology stub pack: iOS app development (Xcode project, Info.plist usage strings, entitlements, signing).
+// Stub — no rules captured yet; add durable, project-agnostic practices to RULES.md
+// as they are earned. Expected first source: missingbulb/ShoutsAndWhispers.
 export default {
   id: 'ios',
   ruleRoutingGuidance: {
