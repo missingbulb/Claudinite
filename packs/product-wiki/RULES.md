@@ -15,6 +15,14 @@ them. The full growth procedure is the pack's task doc
   and what it means. Not a table of contents ("covers pricing and competitors"),
   not a teaser. The body is where the reader goes for evidence, nuance and
   citations; the header is where they decide whether they need to.
+- **Terse, plain, and only the non-obvious.** One short line per bullet, in
+  ordinary words — no qualifying clause, no citation, no hedge, no jargon a
+  newcomer would have to decode. Prefer the finding that would *surprise*
+  someone who knows the field: the thing that turned out not to be true, the
+  number nobody expects, the competitor who already shipped it. Whether a point
+  is obvious is genuinely hard to call, so **don't agonise — when in doubt, keep
+  it**. A borderline-obvious line costs the reader two seconds; a long, careful
+  line costs them the header.
 - **The header is a current view, not a log.** A pass that changes what a page's
   most important findings are rewrites the header to match — a superseded
   insight leaves it (the correction and its why stay in the body, per below),

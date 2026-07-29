@@ -9,16 +9,21 @@ import { wikiPages, sectionBody, firstSection, BULLET } from './lib.mjs';
 //   * the header sits below another section (it isn't a header then);
 //   * it carries no bullets (an empty promise at the top of the page);
 //   * it has grown into a second body (more than MAX bullets);
-//   * a bullet is an essay rather than an insight (over MAX_CHARS).
+//   * a bullet is a paragraph rather than a line (over MAX_CHARS).
 // Prose lines in the section are flagged for the same reason: the contract is a
 // scannable list, not a summary paragraph. Indented continuation lines belong to
 // the bullet above them (judged as one block, like a Sources citation), so a
 // hard-wrapped insight is never a false positive. Presence of the heading itself
 // is page-sections' finding — never double-reported here.
+//
+// MAX_CHARS is deliberately tight — roughly one line of prose. A header is worth
+// having only if it is faster to read than the page, and the failure mode in
+// practice is a bullet that keeps qualifying itself. The nuance the qualifier
+// wanted belongs in the body; the header states the finding plainly and stops.
 const MAX = 7;
-const MAX_CHARS = 300;
+const MAX_CHARS = 140;
 const NAME = 'Key insights';
-const FIX = `open the page with "## ${NAME}" — up to ${MAX} bullets, each one insight in a sentence or so, together enough for a reader to understand what the research found without reading the body`;
+const FIX = `open the page with "## ${NAME}" — up to ${MAX} bullets, each one finding stated plainly in a line (max ${MAX_CHARS} characters), together enough for a reader to understand what the research found without reading the body`;
 
 const rule = {
   id: 'product-wiki-key-insights',
@@ -68,7 +73,7 @@ const rule = {
           out.push(finding(rule, {
             file: page, line,
             what: `${NAME} bullet runs ${block.trim().length} characters (max ${MAX_CHARS}): "${t.trim().slice(0, 80)}…"`,
-            fix: `compress it to the insight itself — the supporting detail and its citation live in the page body`,
+            fix: 'cut it to the finding in plain words — the qualifiers, the supporting detail and the citation all live in the page body',
           }));
         }
       }

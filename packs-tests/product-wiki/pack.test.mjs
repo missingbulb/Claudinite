@@ -186,13 +186,18 @@ test('key-insights: a header grown past seven bullets is a second body', () => {
   assert.deepEqual(run(keyInsights, { ...SCAFFOLD, 'product-wiki/Market/README.md': wikiPage({ insights: seven }) }), []);
 });
 
-test('key-insights: an essay bullet is flagged over its whole block, so wrapping cannot hide it', () => {
-  const long = `- ${'the market is crowded and this sentence keeps going. '.repeat(8)}`;
+test('key-insights: a bullet that keeps qualifying itself is flagged over its whole block, so wrapping cannot hide it', () => {
+  // The cap is tight on purpose: a terse finding passes, the same finding with
+  // its qualifiers, hedges and citation dragged up out of the body does not.
+  const terse = '- Two thirds of buyers buy one ticket — the Fringe is one decision, not a run of shows.';
+  assert.deepEqual(run(keyInsights, { ...SCAFFOLD, 'product-wiki/Market/README.md': wikiPage({ insights: terse }) }), []);
+
+  const long = `- ${'the market is crowded and this sentence keeps qualifying itself. '.repeat(3)}`;
   const oneLine = run(keyInsights, { ...SCAFFOLD, 'product-wiki/Market/README.md': wikiPage({ insights: long }) });
   assert.equal(oneLine.length, 1);
-  assert.match(oneLine[0].what, /max 300/);
+  assert.match(oneLine[0].what, /max 140/);
 
-  const wrapped = `- ${'the market is crowded and this sentence keeps going. '.repeat(4)}\n  ${'and it continues on a second line for a while longer too. '.repeat(4)}`;
+  const wrapped = `- ${'the market is crowded and this sentence keeps going. '.repeat(2)}\n  ${'and it continues onto a second line for a while longer. '.repeat(2)}`;
   assert.equal(run(keyInsights, { ...SCAFFOLD, 'product-wiki/Market/README.md': wikiPage({ insights: wrapped }) }).length, 1);
 });
 

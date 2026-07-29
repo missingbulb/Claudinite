@@ -41,11 +41,14 @@ yet; that is the ordinary case this preflight exists for, not an anomaly.
    `product-wiki/product-requirements/`** — a finding that should move a requirement gets a growth-log note
    (and a repo issue) and waits for a human.
 5. **Reconcile the page's `## Key insights` header** with what the body now says. It leads the page, it is
-   bullets only, and it is capped (seven bullets, ~300 characters each) — so a new insight that belongs at
-   the top usually displaces a weaker one rather than being appended. Rewrite a bullet the run superseded
-   (the correction and its *why* live in the body, not in the header); leave the header alone when the run
-   changed nothing about the page's top-line understanding. **Never restate the header as a table of
-   contents** — each bullet is a finding a reader can act on.
+   bullets only, and it is capped (seven bullets, 140 characters each — about one line) — so a new insight
+   that belongs at the top usually displaces a weaker one rather than being appended. Each bullet is one
+   finding in plain words: no qualifying clause, no citation, no hedge, and preferably something a reader
+   who knows the field would *not* already assume. Judging obviousness is hard, so when in doubt keep the
+   line rather than agonising — short and slightly obvious beats long and careful. Rewrite a bullet the run
+   superseded (the correction and its *why* live in the body, not in the header); leave the header alone
+   when the run changed nothing about the page's top-line understanding. **Never restate the header as a
+   table of contents** — each bullet is a finding a reader can act on.
 6. **One dated `## Growth log` entry per touched page** (`- **YYYY-MM-DD** — what changed`).
 7. **Update `## Open questions` both directions** — remove what this run answered, add what its research
    surfaced.

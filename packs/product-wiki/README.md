@@ -21,10 +21,11 @@ standard.
   reserved subtrees. The folder is the classifier; there is no wikis manifest
   to drift, and a renamed wiki folder is still a wiki folder — still checked,
   still barred.
-- Every wiki page **opens with `## Key insights`** — up to seven short bullets
-  carrying what the research found, ahead of every other section. The body is
-  the research record; the header is what makes it readable, so a human who
-  reads only the header understands what was researched and what came of it.
+- Every wiki page **opens with `## Key insights`** — up to seven bullets, one
+  terse plain-words line each, carrying what the research found, ahead of every
+  other section. The body is the research record; the header is what makes it
+  readable, so a human who reads only the header understands what was researched
+  and what came of it.
 - Every wiki page also carries `## Sources` (every source bullet carrying its
   real URL), `## Growth log` (dated bullets, newest change appended per pass),
   and `## Open questions` (the research backlog the growth passes work from).
@@ -51,10 +52,13 @@ standard.
 
 `product-wiki-key-insights` enforces the header's **shape** — it leads every other
 section, it is bullets only, it carries at least one and at most seven, and no
-bullet runs past 300 characters (a bullet's indented continuation lines count as
-part of it, so hard-wrapping is free). *Which* insights lead, and keeping them
-true as research moves, is judgment — that lives in RULES.md and the growth
-worker, and no check can score it. The missing heading itself is
+bullet runs past **140 characters**, about one line (a bullet's indented
+continuation lines count as part of it, so hard-wrapping is free). The tight cap
+is the point: a header is worth having only if it is faster to read than the
+page, and the failure mode in practice is a bullet that keeps qualifying itself.
+*Which* insights lead, how plainly they are worded, and keeping them true as
+research moves is judgment — that lives in RULES.md and the growth worker, and
+no check can score it. The missing heading itself is
 `product-wiki-page-sections`' finding, never double-reported.
 
 `product-wiki-freshness` is advisory **by design**, not as a maturity stage: it
@@ -80,8 +84,8 @@ What this wiki tracks, in a sentence or two.
 
 ## Key insights
 
-- The first thing a reader needs to know, stated as the finding itself.
-- ...up to seven; each one insight, a sentence or so, no citation clutter.
+- The non-obvious thing this research found, in one plain line.
+- ...up to seven; short beats clever, no citations, no hedges.
 
 ## <Your content sections>
 
