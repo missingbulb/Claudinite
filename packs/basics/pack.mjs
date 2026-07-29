@@ -9,7 +9,6 @@ import claudeMdLength from './claude-md-length.mjs';
 import generatedMergeDriver from './generated-merge-driver.mjs';
 import sharedConstants from './shared-constants.mjs';
 import catalogCompleteness from './catalog-completeness.mjs';
-import packRoutingDeclared from './pack-routing-declared.mjs';
 import claudiniteIsolation from './claudinite-isolation.mjs';
 import schedulerWorkflowShape from './scheduler-workflow-shape.mjs';
 import taskDeclarationShape from './task-declaration-shape.mjs';
@@ -21,7 +20,7 @@ import taskDeclarationShape from './task-declaration-shape.mjs';
 // authoritative — dropping it is a deliberate choice).
 export default {
   id: 'basics',
-  routing: {
+  ruleRoutingGuidance: {
     belongs: 'cross-project working discipline, issue-branch-PR lifecycle, repo hygiene, doc/reference integrity and the baseline engineering, testing and debugging skills',
     excludes: 'technology-specific content — its own tech pack; GitHub Actions workflow or platform behaviour — github-actions; git procedure — git-github',
   },
@@ -38,23 +37,15 @@ export default {
   // requires closure materializes both declarations alongside it.
   requires: ['barriers', 'git-github'],
   contributes: { barriers: [claudiniteIsolation] },
-  rules: [
-    commentClassification,
-    referenceIntegrity,
+  // Rules that audit the repo as it stands, whatever this session did.
+  worldRules: [
     markdownLinkLabels,
-    taskLifecycle,
     warningSuppression,
     filePlacement,
-    squashMergeHistory,
     claudeMdLength,
     generatedMergeDriver,
     sharedConstants,
     catalogCompleteness,
-    // Manifest integrity for the pack system itself: every pack states its own
-    // boundary (routing.belongs / routing.excludes), which is what keeps content
-    // from defaulting into this pack. Relevance-first — inert until a pack.mjs is
-    // in the sweep, so a consumer sees it only for its own local packs.
-    packRoutingDeclared,
     // The per-project scheduling conformance guards (scheduled-tasks.md):
     // scheduling is baseline Claudinite discipline — the scheduler workflow and
     // the task-declaration contract are guarded wherever basics is declared
@@ -63,15 +54,32 @@ export default {
     schedulerWorkflowShape,
     taskDeclarationShape,
   ],
+  // Rules that judge the change and the session in front of you — the branch's
+  // commits, the diff, the conversation.
+  workRules: [
+    commentClassification,
+    referenceIntegrity,
+    taskLifecycle,
+    squashMergeHistory,
+  ],
   // The baseline skills — general engineering practice every project's work
-  // can call for, whatever its technology — are bundled under skills/ in this
-  // pack's own tree and mounted wherever basics is declared (which --init
-  // seeds everywhere). The directory listing IS the manifest; when one stops
-  // being a baseline activity, move its directory to the pack whose projects
-  // need it (#385 moved the git/GitHub and Claudinite-lifecycle skills out).
+  // can call for, whatever its technology — bundled under skills/ in this pack's
+  // own tree and mounted wherever basics is declared (which --init seeds
+  // everywhere). When one stops being a baseline activity, move its directory to
+  // the pack whose projects need it and move this line with it (#385 moved the
+  // git/GitHub and Claudinite-lifecycle skills out).
   //
   // The baseline scheduled task every repo runs — baselining, the per-repo
   // self-refresh — lives in this pack's `tasks/baselining/`, discovered by the
   // scheduler's filesystem scan (engine/scheduler/discover.mjs), not declared
   // here. Being in basics — declared everywhere — makes it universal.
+  skills: [
+    'authoring-agent-docs',
+    'bug-investigation',
+    'bump-version',
+    'engineering-practices',
+    'file-placement',
+    'repo-text-sweeps',
+    'writing-tests',
+  ],
 };

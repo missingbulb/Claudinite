@@ -15,7 +15,7 @@
 // there is no ordering barrier and a dimension with nothing to do stays silent.
 export default {
   id: 'tidy-repo',
-  routing: {
+  ruleRoutingGuidance: {
     belongs: 'housekeeping of open issues, pull requests and branches in one repo — triage verdicts, standing trackers, assess-vs-act policy',
     excludes: 'extracting lessons into packs — that is grow_with_claudinite; cross-repo fleet sweeps are sheepdog',
   },
@@ -24,10 +24,15 @@ export default {
   marker: null,
   seededByDefault: true,
   prose: 'RULES.md',
-  rules: [],
+  worldRules: [],
   // The pack's scheduled tasks live in this pack's own `tasks/<id>/`, discovered by
   // the scheduler's filesystem scan (engine/scheduler/discover.mjs), not declared here.
   //
   // The single-object worker skills those workers apply live under this pack's own
   // skills/ and mount wherever tidy-repo is declared.
+  skills: [
+    'single-branch-status',
+    'single-issue-triage',
+    'single-pr-status',
+  ],
 };

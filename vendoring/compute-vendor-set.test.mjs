@@ -28,6 +28,9 @@ function makeCanon({ packs = [], skills = [] } = {}) {
   mkdirSync(join(root, 'packs'), { recursive: true });
   copyFileSync(join(MOUNT_DIR, 'compute-vendor-set.mjs'), join(root, 'vendoring', 'compute-vendor-set.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-registry.mjs'), join(root, 'engine', 'pack_loader', 'pack-registry.mjs'));
+  // The registry validates every manifest against the spec, so the fake corpus
+  // needs the spec module too — it is part of the loader, not an optional extra.
+  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-schema.mjs'), join(root, 'engine', 'pack_loader', 'pack-schema.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'module-imports.mjs'), join(root, 'engine', 'checks', 'helpers', 'module-imports.mjs'));
   // engine roots: real-shaped content plus everything that must stay out
   writeAt(root, 'engine/checks/check_the_world.mjs', 'stub\n');
@@ -95,6 +98,7 @@ test('structural set: engine roots + machinery + declared pack + its skills, exa
     'engine/pack_loader/env-requirements.mjs',
     'engine/pack_loader/inject-pack-prose.mjs',
     'engine/pack_loader/pack-registry.mjs',
+    'engine/pack_loader/pack-schema.mjs',
     'engine/pack_loader/mount-skills.mjs',
     'packs/alpha/RULES.md',
     'packs/alpha/check.mjs',

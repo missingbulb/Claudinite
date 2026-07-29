@@ -145,7 +145,7 @@ test('discoverPacks: with no localRoot, finds only the canon packs (all non-loca
 
 test('discoverPacks: finds a consumer local pack, stamped local with its own dir', async () => {
   const root = makeLocalRoot({
-    proj: `export default { id: 'proj', prose: 'RULES.md', rules: [], skills: [] };`,
+    proj: `export default { id: 'proj', prose: 'RULES.md', worldRules: [], ruleRoutingGuidance: { belongs: 'this demo local pack', excludes: 'anything a canon pack owns' } };`,
   });
   try {
     const { packs, errors } = await discoverPacks({ localRoot: root });

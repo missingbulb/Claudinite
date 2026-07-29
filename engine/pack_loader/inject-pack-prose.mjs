@@ -25,9 +25,15 @@ try {
   // system rather than an explicit @import.
   const packs = await loadPacks({ localRoot: projectRoot });
 
+  // Nothing active means this repo runs no Claudinite: no prose, and no routing
+  // table either. The hook stays silent rather than pushing a catalog of the
+  // corpus into a session that declared none of it.
+  const active = packs.filter((pack) => isActive(pack, { packs: declared }));
+  if (!active.length) process.exit(0);
+
   const sections = [];
-  for (const pack of packs) {
-    if (!pack.prose || !isActive(pack, { packs: declared })) continue;
+  for (const pack of active) {
+    if (!pack.prose) continue;
     // Resolve prose off the pack's OWN directory (canon or local_packs), not a
     // single shared root — so a local pack's RULES.md is found where it lives.
     const prosePath = join(pack.dir, pack.prose);
@@ -41,12 +47,12 @@ try {
   // DISCOVERED, not only the active ones — a consumer holds just the packs it
   // vendored, so the discovered set is already the set it can route into, and in
   // the canon every pack is a legitimate destination whether or not this repo
-  // declares it. Rows are short by contract (the `pack-routing-declared` check
-  // caps each side at 20 words), so the whole table stays a cheap session cost.
-  const routed = packs.filter((p) => p.routing?.belongs && p.routing?.excludes);
+  // declares it. Rows are short by contract (the manifest spec caps each side at
+  // 20 words — pack-schema.mjs), so the whole table stays a cheap session cost.
+  const routed = packs.filter((p) => p.ruleRoutingGuidance?.belongs && p.ruleRoutingGuidance?.excludes);
   const routingTable = routed.length
     ? `# Claudinite — where content goes (pack routing)\n\nEach pack states what it owns and what it does not. When a rule, doc, skill or check could live in more than one, this table decides it — and "no pack fits" means a new pack or the project's own \`local_packs/\`, never the baseline by default.\n\n| Pack | Belongs | Does not belong |\n|---|---|---|\n${routed
-        .map((p) => `| \`${p.id}\`${p.local ? ' (local)' : ''} | ${p.routing.belongs} | ${p.routing.excludes} |`)
+        .map((p) => `| \`${p.id}\`${p.local ? ' (local)' : ''} | ${p.ruleRoutingGuidance.belongs} | ${p.ruleRoutingGuidance.excludes} |`)
         .join('\n')}\n`
     : '';
 

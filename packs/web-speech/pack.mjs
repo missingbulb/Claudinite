@@ -15,7 +15,7 @@ const SOURCE = /\.(mjs|cjs|js|jsx|ts|tsx)$/;
 
 export default {
   id: 'web-speech',
-  routing: {
+  ruleRoutingGuidance: {
     belongs: 'browser voice I/O gotchas — SpeechRecognition results and errors, speechSynthesis and chrome.tts, mic permission and lifecycle',
     excludes: 'general MV3 service-worker and content-script mechanics — that is chrome-extension; page markup is html',
   },
@@ -28,5 +28,6 @@ export default {
       return text !== null && SPEECH_API.test(text);
     }),
   prose: 'RULES.md',
-  rules: [],
+  worldRules: [],
+  skills: ['web-speech-io'],
 };

@@ -16,7 +16,7 @@ const hasMarkerNearRoot = (ctx, marker) =>
 
 export default {
   id: 'firebase',
-  routing: {
+  ruleRoutingGuidance: {
     belongs: 'building on Firebase: Firestore security rules, callable Cloud Function patterns, FCM, emulator testing, functions deploy layout',
     excludes: 'dev/prod project separation, config injection and App Check store gating — that is firebase-release',
   },
@@ -28,5 +28,5 @@ export default {
   // until the repo carries a firebase.json declaring a functions codebase whose
   // package.json is in this checkout — so a rules-only or hosting-only Firebase
   // repo never hears from them.
-  rules: [functionsNodePin, functionsPredeployBuild],
+  worldRules: [functionsNodePin, functionsPredeployBuild],
 };

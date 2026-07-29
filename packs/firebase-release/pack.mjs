@@ -5,7 +5,7 @@
 // its workflow stubs.
 export default {
   id: 'firebase-release',
-  routing: {
+  ruleRoutingGuidance: {
     belongs: 'dev/prod Firebase project split, committed-default-dev discipline, pipeline-injected prod config, App Check attestation gating, promotion cadence',
     excludes: 'everyday Firestore rules, function patterns and deploy layout — firebase; app store submission — play-store-release, app-store-release',
   },
@@ -15,5 +15,5 @@ export default {
   // The release standard builds on the Firebase coding/deploy pack.
   requires: ['firebase'],
   prose: 'RULES.md',
-  rules: [],
+  worldRules: [],
 };

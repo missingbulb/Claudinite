@@ -60,8 +60,8 @@ test('pack manifest: id, marker, six uniquely-named rules, the contributed isola
   assert.equal(pack.id, 'product-wiki');
   assert.equal(pack.marker, 'product-wiki/product-requirements/README.md');
   assert.equal(pack.prose, 'RULES.md');
-  assert.equal(pack.rules.length, 6);
-  const ids = pack.rules.map((r) => r.id);
+  assert.equal(pack.worldRules.length, 6);
+  const ids = pack.worldRules.map((r) => r.id);
   assert.equal(new Set(ids).size, 6);
   assert.ok(ids.every((id) => id.startsWith('product-wiki-')));
   // The isolation wall rides the barriers mechanism: declared (requires) and

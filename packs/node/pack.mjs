@@ -12,7 +12,7 @@ const hasMarkerNearRoot = (ctx, marker) =>
 
 export default {
   id: 'node',
-  routing: {
+  ruleRoutingGuidance: {
     belongs: 'conventions for a Node/npm project — module resolution, ESM vs CJS, dependency justification, jsdom test divergences',
     excludes: 'browser-runtime API behaviour — that is html or web-speech; Python packaging is python',
   },
@@ -20,7 +20,7 @@ export default {
   marker: 'package.json (at the repo root or one directory down)',
   detect: (ctx) => hasMarkerNearRoot(ctx, 'package.json'),
   prose: 'RULES.md',
-  rules: [earnEachDependency],
+  workRules: [earnEachDependency],
   // The Node runtime ships in the base image, but a repo's (often uncommitted,
   // devDependency) modules don't — so `npm test`/build would trigger a
   // confusing mid-session install. Install them at environment-image build. The

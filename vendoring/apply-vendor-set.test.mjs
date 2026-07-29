@@ -29,6 +29,9 @@ function makeCanon() {
     copyFileSync(join(MOUNT_DIR, f), join(root, 'vendoring', f));
   }
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-registry.mjs'), join(root, 'engine', 'pack_loader', 'pack-registry.mjs'));
+  // The registry validates every manifest against the spec, so the fake corpus
+  // needs the spec module too — it is part of the loader, not an optional extra.
+  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-schema.mjs'), join(root, 'engine', 'pack_loader', 'pack-schema.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'module-imports.mjs'), join(root, 'engine', 'checks', 'helpers', 'module-imports.mjs'));
   writeAt(root, 'engine/checks/check_the_world.mjs', 'engine v2\n');
   writeAt(root, 'engine/pack_loader/mount-skills.mjs', 'machinery\n');
@@ -148,6 +151,7 @@ test('#328: a canon tree nested in a FOREIGN git repo is rootless — upward .gi
   mkdirSync(join(canon, 'packs'), { recursive: true });
   for (const f of ['apply-vendor-set.mjs', 'compute-vendor-set.mjs']) copyFileSync(join(MOUNT_DIR, f), join(canon, 'vendoring', f));
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-registry.mjs'), join(canon, 'engine', 'pack_loader', 'pack-registry.mjs'));
+  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-schema.mjs'), join(canon, 'engine', 'pack_loader', 'pack-schema.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'module-imports.mjs'), join(canon, 'engine', 'checks', 'helpers', 'module-imports.mjs'));
   writeAt(canon, 'engine/checks/check_the_world.mjs', 'engine v2\n');
   writeAt(canon, 'migrations/apply.mjs', 'export const apply = 1;\n');

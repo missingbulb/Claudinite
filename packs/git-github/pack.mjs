@@ -6,7 +6,7 @@
 // every declaration — never seeded directly (#385).
 export default {
   id: 'git-github',
-  routing: {
+  ruleRoutingGuidance: {
     belongs: 'git and GitHub procedure: commit layering, branch and merge mechanics, squash-merge recovery, PR and merge-to-main commands',
     excludes: 'the issue-branch-PR lifecycle rules themselves — basics; workflow YAML and Actions runtime behaviour — github-actions',
   },
@@ -14,5 +14,9 @@ export default {
   detect: null,
   marker: null,
   prose: null,
-  rules: [],
+  worldRules: [],
+  skills: [
+    'git-github-advanced',
+    'merge-to-main',
+  ],
 };

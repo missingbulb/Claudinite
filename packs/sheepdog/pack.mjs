@@ -30,7 +30,7 @@
 // pack-agnostic; the planner never runs, dispatches, or depends on these sweeps.
 export default {
   id: 'sheepdog',
-  routing: {
+  ruleRoutingGuidance: {
     belongs: 'fleet-enforcer duties for the repo that watches every other repo — coverage census, freshness drift, usage aggregation',
     excludes: 'anything a member does to itself — tidying is tidy-repo, lesson capture is grow_with_claudinite',
   },
@@ -38,5 +38,5 @@ export default {
   detect: null,
   marker: null,
   prose: 'RULES.md',
-  rules: [],
+  worldRules: [],
 };

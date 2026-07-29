@@ -40,7 +40,7 @@ function shipsReleasePipeline(ctx) {
 
 export default {
   id: 'chrome-extension-release',
-  routing: {
+  ruleRoutingGuidance: {
     belongs: 'store publication for a Chrome extension: release workflows, package versioning, release config, privacy and permission disclosure',
     excludes: 'extension coding and MV3 runtime gotchas — chrome-extension; generic workflow lint rules — github-actions',
   },
@@ -54,16 +54,17 @@ export default {
   // and from findings), not always-on prose: it is long, and only the checks
   // need to be eager.
   prose: null,
-  rules: [
+  worldRules: [
     releaseWorkflows,
     templateTokens,
     releaseConfig,
     versionSync,
     releaseLayout,
     privacyPermissionAlignment,
-    permissionAddedStoreIssue,
     readmeSections,
   ],
+  // Judges the change: a permission added in THIS diff needs its store issue.
+  workRules: [permissionAddedStoreIssue],
   // Pack-contributed scheduled task: `tasks/store-release/` — the scheduler's
   // filesystem scan (engine/scheduler/discover.mjs) picks it up only on repos that
   // declare chrome-extension-release, so it is not declared here.

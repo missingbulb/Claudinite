@@ -15,7 +15,7 @@ const SOURCE = /\.(html?|mjs|cjs|jsx?|tsx?)$/;
 
 export default {
   id: 'leaflet',
-  routing: {
+  ruleRoutingGuidance: {
     belongs: 'map rendering with the Leaflet library — map init options, tile layers, markers and divIcons, CDN plugin pinning',
     excludes: 'generic HTML markup rules — that is html; non-map dependency policy belongs to node',
   },
@@ -28,5 +28,5 @@ export default {
       return text !== null && (LEAFLET_ASSET.test(text) || LEAFLET_API.test(text));
     }),
   prose: 'RULES.md',
-  rules: [assetIntegrity],
+  worldRules: [assetIntegrity],
 };

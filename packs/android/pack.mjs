@@ -1,7 +1,7 @@
 // Technology stub pack: Android app development (Gradle/AGP, manifests, permissions, signing, flavors).
 export default {
   id: 'android',
-  routing: {
+  ruleRoutingGuidance: {
     belongs: 'gradle/AGP builds, AndroidManifest, permissions, signing configs, product flavors and emulator workflows for an Android app module',
     excludes: 'store submission and release cadence — play-store-release; Flutter-side widget or Dart code — flutter',
   },
@@ -9,5 +9,5 @@ export default {
   marker: 'android/app/src/main/AndroidManifest.xml',
   detect: (ctx) => ctx.tracked.some((f) => f.endsWith('android/app/src/main/AndroidManifest.xml')),
   prose: 'RULES.md',
-  rules: [],
+  worldRules: [],
 };
