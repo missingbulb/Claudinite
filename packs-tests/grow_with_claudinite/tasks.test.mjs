@@ -6,6 +6,7 @@ import proseToChecks from '../../packs/grow_with_claudinite/tasks/prose-to-check
 import extract from '../../packs/grow_with_claudinite/tasks/growth-extract/task.mjs';
 import dedup from '../../packs/grow_with_claudinite/tasks/growth-dedup/task.mjs';
 import usageFold from '../../packs/grow_with_claudinite/tasks/usage-fold/task.mjs';
+import planStatusUpdate from '../../packs/grow_with_claudinite/tasks/plan-status-update/task.mjs';
 
 // grow_with_claudinite per-repo task declarations + preconditions
 // (per-project-scheduling redesign: discover-packs and prose-to-checks are local,
@@ -255,4 +256,28 @@ test('usage-fold: no logs branch is no longer a skip — the scheduler run recor
   assert.equal(v.run, true);
   assert.match(v.reason, /task-run records only/);
   assert.equal(usageFold.precondition({}).run, true, 'and a missing signal does not wedge it either');
+});
+
+// --- plan-status-update (the nightly tracker re-verification) ----------------
+
+test('plan-status-update: daily/sonnet/none over the issues signal', () => {
+  assert.equal(planStatusUpdate.frequency, 'daily');
+  assert.equal(planStatusUpdate.agent_model, 'sonnet'); // prose criteria need judgment; code verifiers decide themselves
+  assert.equal(planStatusUpdate.expected_outcome, 'none'); // writes issue state, never a PR
+  assert.deepEqual(planStatusUpdate.precondition_signals, ['issues']);
+});
+
+test('plan-status-update: fires iff an open issue carries the plan-tracking label, naming it as scope', () => {
+  const v = planStatusUpdate.precondition({ issues: { open: [
+    { number: 409, title: 'Tracking-issue freshness', labels: ['plan-tracking'] },
+    { number: 7, title: 'unrelated', labels: ['bug'] },
+  ] } });
+  assert.equal(v.run, true);
+  assert.match(v.context.join(' '), /#409/);
+  assert.doesNotMatch(v.context.join(' '), /#7/); // unlabeled issues are not in scope
+});
+
+test('plan-status-update: no labeled tracker (or no issues signal) → does not run', () => {
+  assert.equal(planStatusUpdate.precondition({ issues: { open: [{ number: 7, title: 'x', labels: [] }] } }).run, false);
+  assert.equal(planStatusUpdate.precondition({}).run, false);
 });

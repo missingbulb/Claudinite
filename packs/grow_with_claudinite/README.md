@@ -10,7 +10,7 @@ lessons into its local packs, and pruning them once the shared canon covers them
 **promote** stage — which lifts portable lessons up into the shared canon — is a home-only duty
 that runs canon-side, not a repo-side task, so it lives outside this pack.
 
-Its scheduled work is four tasks under this pack's own `tasks/`, each discovered by the repo's
+Its scheduled work is five tasks under this pack's own `tasks/`, each discovered by the repo's
 scheduler (`engine/scheduler/discover.mjs`) wherever the pack is declared:
 
 | Task | Runs when | Where it lands |
@@ -19,6 +19,7 @@ scheduler (`engine/scheduler/discover.mjs`) wherever the pack is declared:
 | `growth-dedup` ([tasks/growth-dedup/task.md](tasks/growth-dedup/task.md)) | weekly, when the canon or the project's local packs moved in the week | the repo's own local packs, via a PR that auto-merges after CI |
 | `growth-discover-packs` ([tasks/growth-discover-packs/task.md](tasks/growth-discover-packs/task.md)) | weekly | a new **local** pack in the repo's own `.claudinite/local/packs/`, via a reviewed PR |
 | `prose-to-checks-sweep` ([tasks/prose-to-checks-sweep/task.md](tasks/prose-to-checks-sweep/task.md)) | weekly (no-ops cheaply on a quiet corpus) | a PR converting always-testable pack prose into checks |
+| `plan-status-update` ([tasks/plan-status-update/task.md](tasks/plan-status-update/task.md)) | daily, iff an open `plan-tracking` issue exists | checkbox flips + a summary comment on the tracker(s); no PR |
 
 (Plus [usage-fold](tasks/usage-fold/task.md), the agentless daily fold described below.)
 
@@ -148,6 +149,16 @@ credential — `in-session-github-access`), so its evidence is the session's own
 the Stop hook grows a post-merge trigger so it fires on the clean tree the merge recipe leaves. The
 `merge-to-main` skill asks for the sync as an explicit step; this check is the guarantee. Full
 rationale: [docs/tracking-issue-freshness/DESIGN.md](../../docs/tracking-issue-freshness/DESIGN.md).
+
+**Per-phase verifiers.** A plan should attempt to state, per phase, *how completion is decided*:
+a checklist item may carry an inline `<!-- verify: <repo-path> -->` marker naming a
+dependency-free Node script (conventionally `docs/<plan>/verify/<phase-id>.mjs`, beside the plan)
+whose **exit 0 means the phase is done** — "if this code passes, phase 3 is done." An item with no
+marker falls back to the phase's prose **Verify** block in the committed plan doc, judged against
+observable state. The nightly [`plan-status-update`](tasks/plan-status-update/task.md) task
+re-derives every open tracker's checklist from these verifiers — flipping what sessions missed,
+flagging (never auto-un-flipping) a checked item whose code verifier now fails — so the tracker
+converges on truth even when no session touches it.
 
 ## Rules
 
