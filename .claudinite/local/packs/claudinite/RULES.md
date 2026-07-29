@@ -117,6 +117,23 @@ prose below).
   `workflow_dispatch` run outside the slot's window succeeds, prints `- no tasks due`, and
   does nothing. It looks like a healthy run. To exercise a task Action-side, invoke its
   worker directly, or move the slot hour in `taskScheduler` and wait for the cron.
+- **A scheduled task is gated twice — prove a change through `planRun`, never through its own
+  precondition.** `planRun` computes the due list *before* any precondition runs, so a task whose
+  most-recent slot has already been run is never evaluated and never reads its signals at all. #513's
+  forced-run override landed with every test driving the precondition (or the signal collector) directly
+  and was inert on exactly the run it existed for — the mid-day manual trigger — because the due-list
+  gate it never touched had already dropped the task (`evaluations: []`; fixed in #516). A test that
+  starts *inside* the gate proves only "works once evaluated" and says nothing about whether the task
+  ever gets there. Drive the real `planRun` from a deliberately **non-due** slot: that is the only shape
+  that catches it.
+- **Every due task in a run shares ONE checkout — an agentless worker must not touch it.** The
+  scheduler runs the whole due list in a single working tree, so a worker that checks out a branch or
+  leaves an index behind hands the next task a tree it did not expect, and a run that dies leaves the
+  mess for whatever follows. A task whose output is a regenerated file lands it through
+  `engine/scheduler/deliver-generated.mjs` — git plumbing against the fetched base tip, with HEAD, the
+  index and the working tree untouched — and reads its prior state from that base rather than local
+  HEAD, so stacked runs stay idempotent. (`basics/baselining`'s own deliver is the deliberate
+  exception: it commits a whole working tree under the member's delivery preference.)
 - **A code-search hit is evidence; a code-search miss is not — survey by reading each file.**
 - **Derive the test file list from the tree — every hand-written glob here under-runs the suite.**
   There is no `package.json` and no test script, so each session invents its own incantation and
