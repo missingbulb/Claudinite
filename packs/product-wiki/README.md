@@ -21,9 +21,13 @@ standard.
   reserved subtrees. The folder is the classifier; there is no wikis manifest
   to drift, and a renamed wiki folder is still a wiki folder — still checked,
   still barred.
-- Every wiki page carries `## Sources` (every source bullet carrying its real
-  URL), `## Growth log` (dated bullets, newest change appended per pass), and
-  `## Open questions` (the research backlog the growth passes work from).
+- Every wiki page **opens with `## Key insights`** — up to seven short bullets
+  carrying what the research found, ahead of every other section. The body is
+  the research record; the header is what makes it readable, so a human who
+  reads only the header understands what was researched and what came of it.
+- Every wiki page also carries `## Sources` (every source bullet carrying its
+  real URL), `## Growth log` (dated bullets, newest change appended per pass),
+  and `## Open questions` (the research backlog the growth passes work from).
 - Growth is scheduled research: the pack's weekly scheduled task
   ([tasks/wiki-growth/task.md](tasks/wiki-growth/task.md)) reads
   the wikis, researches what their own open questions flag, writes back cited,
@@ -34,7 +38,8 @@ standard.
 | Rule | Enforces (≤5 words) | How |
 |---|---|---|
 | `product-wiki-layout` | skeleton exists (index + sink) | check, blocking |
-| `product-wiki-page-sections` | pages carry the three sections | check, blocking |
+| `product-wiki-page-sections` | pages carry the four sections | check, blocking |
+| `product-wiki-key-insights` | header leads, bulleted, succinct | check, blocking |
 | `product-wiki-growth-log` | log bullets dated, real dates | check, blocking |
 | `product-wiki-sources` | source bullets carry their URL | check, blocking |
 | `product-wiki-freshness` | stale wiki gets a nag | check, **advisory** |
@@ -43,6 +48,14 @@ standard.
 | cite / correct-with-note / no fabrication | — | prose + worker method |
 | sample-data ≠ test fixtures | — | prose |
 | unattended growth lands as unmerged PR | — | prose + worker delivery policy |
+
+`product-wiki-key-insights` enforces the header's **shape** — it leads every other
+section, it is bullets only, it carries at least one and at most seven, and no
+bullet runs past 300 characters (a bullet's indented continuation lines count as
+part of it, so hard-wrapping is free). *Which* insights lead, and keeping them
+true as research moves, is judgment — that lives in RULES.md and the growth
+worker, and no check can score it. The missing heading itself is
+`product-wiki-page-sections`' finding, never double-reported.
 
 `product-wiki-freshness` is advisory **by design**, not as a maturity stage: it
 is time-driven (a repo goes stale with no change to its tree), and a
@@ -64,6 +77,11 @@ product-wiki/
 # <YourWiki>
 
 What this wiki tracks, in a sentence or two.
+
+## Key insights
+
+- The first thing a reader needs to know, stated as the finding itself.
+- ...up to seven; each one insight, a sentence or so, no citation clutter.
 
 ## <Your content sections>
 
