@@ -12,6 +12,15 @@ import { matchingLines, ruleIdsIn } from '../../../../../../engine/checks/helper
 const RUNNER = /checks\/run\.mjs/;
 const asWord = (id) => new RegExp(`(^|[^\\w-])${id}([^\\w-]|$)`); // never inside a longer kebab name
 
+// A skill lives inside its owning pack (#385) — `<pack>/skills/<name>/SKILL.md`,
+// under packs/ in the canon or under .claudinite/local(/packs|_packs)/ for a
+// project's own. The leading `(^|/)` is what spans both roots; anchoring on
+// `packs/` (rather than a bare `skills/`) keeps a consumer's mounted
+// .claude/skills/ out of the scan. This rule scanned the pre-#385 root-level
+// `skills/<name>/` for long enough to matter: no tree has carried that shape
+// since, so the check silently matched nothing while reading as live.
+const SKILL_DOC = /(^|\/)packs\/[^/]+\/skills\/[^/]+\/SKILL\.md$/;
+
 const rule = {
   id: 'skill-no-enforcement-narration',
   severity: 'blocking',
@@ -21,7 +30,7 @@ const rule = {
 
   run(ctx) {
     if (!ctx.tracked.includes('engine/pack_loader/pack-registry.mjs')) return [];
-    const docs = ctx.files.filter((f) => /^skills\/[^/]+\/SKILL\.md$/.test(f));
+    const docs = ctx.files.filter((f) => SKILL_DOC.test(f));
     return [
       ...matchingLines(ctx, docs, RUNNER).map(({ file, line }) => finding(rule, {
         file, line,
