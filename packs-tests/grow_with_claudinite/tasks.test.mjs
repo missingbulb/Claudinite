@@ -220,10 +220,12 @@ test('usage-fold: a logs branch is the whole precondition — it runs on a quiet
   assert.match(quiet.reason, /fold 4 captured log/);
 });
 
-test('usage-fold: no logs branch means nothing has ever been captured — it self-skips', () => {
+test('usage-fold: no logs branch is no longer a skip — the scheduler run records are a second source', () => {
+  // A repo whose sessions are all unattended may never have captured anything, and it
+  // is exactly the repo whose task invocations are worth counting. The fold is agentless
+  // and converges to a byte-identical file (no PR) when there is nothing new either way.
   const v = usageFold.precondition({ conversationLogs: { present: false } });
-  assert.equal(v.run, false);
-  assert.match(v.reason, /nothing to fold/);
-  // and a missing signal is not a reason to run either
-  assert.equal(usageFold.precondition({}).run, false);
+  assert.equal(v.run, true);
+  assert.match(v.reason, /task-run records only/);
+  assert.equal(usageFold.precondition({}).run, true, 'and a missing signal does not wedge it either');
 });

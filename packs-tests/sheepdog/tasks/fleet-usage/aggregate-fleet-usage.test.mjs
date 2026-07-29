@@ -12,7 +12,7 @@ const member = (repo, weeks, days = {}, foldedThrough = '2026-07-27') => ({
 });
 const week = (over) => ({
   days: 7, captures: 10, merges: 8, sessionDays: 9, userMessages: 100, userCommands: 5, skillLoads: {},
-  checks: {}, checkFindings: {}, ...over,
+  checks: {}, checkFindings: {}, tasks: {}, ...over,
 });
 const scope = (over) => ({ runs: 0, failures: 0, errors: 0, blocking: 0, advisory: 0, ...over });
 
@@ -45,6 +45,31 @@ test('aggregate carries each member\'s current day window verbatim, for the fast
   const days = { '2026-07-28': { captures: 3, merges: 2, sessions: 2, userMessages: 31, userCommands: 4, skillLoads: { a: 1 } } };
   const file = aggregate({ members: [member('owner/alpha', {}, days)], generatedAt: '2026-07-28' });
   assert.deepEqual(file.days['owner/alpha'], days);
+});
+
+test('aggregate keeps each member\'s task invocations at week x repo x task grain', () => {
+  // A different population from everything else in the file: these come from each
+  // member's SCHEDULER, not from a captured session, so they are a census of scheduled
+  // work. The fleet view is what tells "this task's precondition never fires here" from
+  // "it never fires anywhere" — the second is a broken task, the first is a quiet repo.
+  const taskRow = (over) => ({ agent: 0, preprocess: 0, skipped: 0, failed: 0, deferred: 0, ...over });
+  const file = aggregate({
+    members: [
+      member('owner/alpha', { '2026-W30': week({
+        tasks: { 'tidy-repo/tidy-issues': taskRow({ agent: 7 }), 'grow_with_claudinite/usage-fold': taskRow({ preprocess: 7, skipped: 161 }) },
+      }) }),
+      member('owner/beta', { '2026-W30': week({ tasks: { 'tidy-repo/tidy-issues': taskRow({ skipped: 7 }) } }) }),
+      // A member still on an older fold carries no `tasks` key at all — it must land as
+      // an empty row rather than an exception, because the sweep leads the upgrades.
+      member('owner/gamma', { '2026-W30': week() }),
+    ],
+    generatedAt: '2026-07-28',
+  });
+  assert.equal(file.weeks['2026-W30']['owner/alpha'].tasks['tidy-repo/tidy-issues'].agent, 7);
+  assert.equal(file.weeks['2026-W30']['owner/beta'].tasks['tidy-repo/tidy-issues'].agent, 0,
+    'the same task did no agent work in the other member — visible, not absent');
+  assert.deepEqual(file.weeks['2026-W30']['owner/gamma'].tasks, {});
+  assert.match(file._note, /census of\s+scheduled work/, 'and the file states that these rows are not a sample');
 });
 
 test('aggregate keeps the check activations at the same week x repo x rule grain', () => {

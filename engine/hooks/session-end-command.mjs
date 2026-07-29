@@ -11,9 +11,20 @@
 // conformance checks); a step that writes anything per-session would fire once per
 // TURN there. SessionEnd fires once, when the session ends.
 //
-// BEST EFFORT, and that is enough. A container reclaimed by timeout never fires
-// this hook at all, so nothing may depend on it having run: every firing strictly
+// BEST EFFORT AS A HOOK, and that is enough there: a container reclaimed by timeout
+// never fires it, so nothing may depend on it having run — every firing strictly
 // enriches the record, every miss leaves exactly the prior behaviour.
+//
+// AND EXPLICITLY INVOCABLE, which is what makes unattended sessions countable at
+// all. An UNATTENDED session — the scheduler's executor, running a dispatch in a
+// cloud container nobody is sitting in front of — ends when its container is
+// reclaimed, so the hook is exactly the firing that does not happen, and every one
+// of those sessions used to leave no record anywhere. So the executor runs this
+// runner itself as its last step (engine/scheduler/executor.md), naming the dispatch
+// issue in `CLAUDINITE_SESSION_ISSUE`. Steps must therefore tolerate being run
+// mid-session: the transcript is complete only up to the invocation, and the later
+// hook firing (when it happens at all) is a second event over the same session,
+// which the capture step's session-keyed delta already makes safe.
 //
 // FAIL-SOFT, absolutely. A session must never fail to end because of this hook, so
 // every error — a step that throws, a step that hangs, a broken pack registry — is
@@ -71,6 +82,12 @@ async function main() {
         // to re-derive it. Named for the engine, not for any one step's CLI flags.
         ...(input.session_id ? { CLAUDINITE_SESSION_ID: String(input.session_id) } : {}),
         ...(input.transcript_path ? { CLAUDINITE_TRANSCRIPT: String(input.transcript_path) } : {}),
+        // The issue this session was ABOUT, when its launcher knew one. A hook
+        // firing never does — nothing tells a SessionEnd hook what the session was
+        // for — so this is only ever set by an explicit invocation (the executor
+        // naming its dispatch). Passed through verbatim: core states the fact, and
+        // a step decides what, if anything, to do with it.
+        ...(process.env.CLAUDINITE_SESSION_ISSUE ? { CLAUDINITE_SESSION_ISSUE: process.env.CLAUDINITE_SESSION_ISSUE } : {}),
       },
     });
     const tail = (run.stdout || run.stderr || '').trim().split('\n').pop() || '';

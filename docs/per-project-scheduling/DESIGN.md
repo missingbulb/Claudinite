@@ -231,7 +231,14 @@ refresh, not workflow edits). It runs
    dispatch issue (§4) labeled `ready-for-agent`.
 6. **Reports** — the job summary lists every evaluated task with run/skip/reason
    (the observability `plan.json` used to give). Whole-run failure escalates per
-   `gha/scheduled-failure-escalation`.
+   `gha/scheduled-failure-escalation`. Beside the prose, the run prints one
+   **machine-readable record per evaluated task** — `claudinite-task-run v1
+   <pack>/<task> [<slot>] <outcome>`, outcome ∈ `agent` / `preprocess` /
+   `skipped` / `failed` / `deferred` (`run-record.mjs`, the single home of both
+   the renderer and its parser). Printed *after* the action loop, so it states
+   what happened rather than what was planned. Nothing in the scheduler reads it
+   back — it exists so the usage aggregation can count task invocations without
+   the scheduler acquiring state of its own (skill-usage-metrics DESIGN §4.2).
 
 `fullSweep`, `full_sweep_supported`, and the hash-stagger retire: "weekly" is now
 a declaration, not a gate trick. And the scheduler is **the only cron in the

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   isUserMessage, commandName, skillToolLoads, countEntries,
   hookCheckRuns, checkSummaries, findingHeaders, checkInvocations, checkOutputs, countChecks,
-  foldDays, isoWeek, daysToFold, addDayToWeek, foldUsage,
+  foldDays, isoWeek, daysToFold, addDayToWeek, foldUsage, foldTaskRuns, withinTaskWindow,
 } from '../../../../packs/grow_with_claudinite/tasks/usage-fold/fold-usage.mjs';
 
 // --- entry fixtures -----------------------------------------------------------
@@ -374,6 +374,7 @@ test('foldDays: captures, merges and DISTINCT sessions per day', () => {
     skillLoads: { a: 2, b: 3 },
     checks: {},
     checkFindings: {},
+    tasks: {},
   });
   assert.equal(days['2026-07-27'].merges, 0);
 });
@@ -433,6 +434,7 @@ test('addDayToWeek sums the counters and declares how many days it absorbed', ()
     days: 2, captures: 4, merges: 2, sessionDays: 4, userMessages: 20, userCommands: 2, skillLoads: { a: 2 },
     checks: { work: { runs: 6, failures: 2, errors: 0, blocking: 2, advisory: 0 } },
     checkFindings: { 'task-lifecycle': { blocking: 2, advisory: 0 } },
+    tasks: {},
   });
 });
 
@@ -522,4 +524,87 @@ test('foldUsage: a mounted skill that never loads has no key — the zero set is
   const mounted = ['merge-to-main', 'writing-tests', 'bug-investigation'];
   const never = mounted.filter((s) => !(s in folded.days['2026-07-27'].skillLoads));
   assert.deepEqual(never, ['writing-tests', 'bug-investigation']);
+});
+
+// --- task invocations -----------------------------------------------------------
+// The second source: what the SCHEDULER did with each task, from its own run
+// records. Unlike everything above, these rows are appended once past their own
+// watermark rather than recomputed — the trade the fold makes because the scheduler's
+// logs are a rate-limited REST read and the logs branch is local git.
+
+const runOf = (date, task, outcome, pack = 'grow_with_claudinite') => ({ date, pack, task, outcome });
+
+test('foldTaskRuns counts each outcome per task, on the day the run started', () => {
+  const days = {};
+  foldTaskRuns(days, {}, [
+    runOf('2026-07-28', 'usage-fold', 'preprocess'),
+    runOf('2026-07-28', 'usage-fold', 'skipped'),
+    runOf('2026-07-28', 'usage-fold', 'skipped'),
+    runOf('2026-07-28', 'growth-extract', 'agent'),
+    runOf('2026-07-27', 'growth-extract', 'failed'),
+  ], '2026-07-28');
+  assert.deepEqual(days['2026-07-28'].tasks['grow_with_claudinite/usage-fold'],
+    { agent: 0, preprocess: 1, skipped: 2, failed: 0, deferred: 0 });
+  assert.equal(days['2026-07-28'].tasks['grow_with_claudinite/growth-extract'].agent, 1);
+  assert.equal(days['2026-07-27'].tasks['grow_with_claudinite/growth-extract'].failed, 1);
+  // A day with scheduler activity and no captures still gets a row: a repo whose
+  // sessions are all unattended would otherwise show nothing at all for that day.
+  assert.equal(days['2026-07-27'].captures, 0);
+});
+
+test('foldTaskRuns carries prior day rows forward — they are appended, never recomputed', () => {
+  const prior = { '2026-07-28': { tasks: { 'p/t': { agent: 2, preprocess: 0, skipped: 5, failed: 0, deferred: 0 } } } };
+  const days = { '2026-07-28': { captures: 1, tasks: {} } };
+  foldTaskRuns(days, prior, [{ date: '2026-07-28', pack: 'p', task: 't', outcome: 'agent' }], '2026-07-28');
+  assert.deepEqual(days['2026-07-28'].tasks['p/t'], { agent: 3, preprocess: 0, skipped: 5, failed: 0, deferred: 0 });
+  assert.equal(days['2026-07-28'].captures, 1, 'the recomputed capture counts are untouched');
+});
+
+test('foldTaskRuns drops prior task rows past the day window, and ignores unknown outcomes', () => {
+  const prior = {
+    '2026-07-28': { tasks: { 'p/fresh': { agent: 1 } } },
+    '2026-06-01': { tasks: { 'p/ancient': { agent: 9 } } },   // long since folded into its week
+  };
+  const days = {};
+  foldTaskRuns(days, prior, [{ date: '2026-07-28', pack: 'p', task: 't', outcome: 'exploded' }], '2026-07-28');
+  assert.ok(days['2026-07-28'].tasks['p/fresh']);
+  assert.equal(days['2026-06-01'], undefined);
+  assert.equal(days['2026-07-28'].tasks['p/t'], undefined, 'an outcome word the fold does not know mints no counter');
+});
+
+test('foldUsage folds task rows into the closing day\'s week, and carries the run watermark', () => {
+  const first = foldUsage({
+    files: [], prior: {}, today: '2026-07-29',
+    taskRuns: [runOf('2026-07-28', 'usage-fold', 'preprocess'), runOf('2026-07-29', 'usage-fold', 'agent')],
+    runsFoldedThrough: '2026-07-29T04:44:00Z',
+  });
+  assert.equal(first.runsFoldedThrough, '2026-07-29T04:44:00Z');
+  assert.equal(first.weeks['2026-W31'].tasks['grow_with_claudinite/usage-fold'].preprocess, 1,
+    'the day that closed carried its task counts into its week');
+  assert.equal(first.weeks['2026-W31'].tasks['grow_with_claudinite/usage-fold'].agent, 0,
+    'today is not folded — its runs are still arriving');
+
+  // A run that read no new records leaves both the counts and the watermark alone.
+  const second = foldUsage({ files: [], prior: first, today: '2026-07-29', taskRuns: [], runsFoldedThrough: null });
+  assert.equal(second.runsFoldedThrough, '2026-07-29T04:44:00Z');
+  assert.deepEqual(second.days['2026-07-29'].tasks, first.days['2026-07-29'].tasks);
+  assert.equal(second.weeks['2026-W31'].tasks['grow_with_claudinite/usage-fold'].preprocess, 1,
+    'and the closed week is not folded a second time');
+});
+
+test('addDayToWeek extends a week folded BEFORE task invocations were counted', () => {
+  const old = { days: 3, captures: 6, merges: 5, sessionDays: 4, userMessages: 50, userCommands: 2, skillLoads: {} };
+  const week = addDayToWeek(old, {
+    captures: 0, merges: 0, sessions: 0, userMessages: 0, userCommands: 0, skillLoads: {},
+    tasks: { 'p/t': { agent: 1, preprocess: 0, skipped: 0, failed: 0, deferred: 0 } },
+  });
+  assert.equal(week.tasks['p/t'].agent, 1);
+  assert.equal(week.days, 4);
+});
+
+test('withinTaskWindow keeps the last 14 days and nothing older', () => {
+  assert.ok(withinTaskWindow('2026-07-29', '2026-07-29'), 'today is in');
+  assert.ok(withinTaskWindow('2026-07-16', '2026-07-29'), 'day 13 is in');
+  assert.ok(!withinTaskWindow('2026-07-15', '2026-07-29'), 'day 14 has aged out into its week row');
+  assert.ok(!withinTaskWindow('2026-07-30', '2026-07-29'), 'a future date is not a window this fold owns');
 });

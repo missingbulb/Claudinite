@@ -22,7 +22,9 @@ goes through your GitHub tools.
    node <engine>/scheduler/resolve-dispatch.mjs <scope>
    ```
 
-   `<engine>` is the directory this file sits in. `<scope>` is the word your launcher prompt
+   `<engine>` is the engine root — the **parent** of the directory this file sits in (this file
+   is `<engine>/scheduler/executor.md`), so the same `<engine>` addresses every command below.
+   `<scope>` is the word your launcher prompt
    names — `self` if it names none. The shell finds the trigger that started this session and
    asserts, before any judgment of yours, that the issue body names a legal task path, the
    file exists at HEAD, its pack is declared, and its `task.mjs` sibling parses to a valid
@@ -83,6 +85,24 @@ goes through your GitHub tools.
      `agent-running`, add `needs-human`. Do not close.
 
    Your issue is converged, so **your session's work is done**. Do not go looking for more.
+
+5. **Capture this session before you end it.** Last step, after the issue is converged, and
+   run it whichever way step 4 went — a failed run is the one most worth having a record of:
+
+   ```bash
+   CLAUDINITE_SESSION_ISSUE=<issue> node <engine>/hooks/session-end-command.mjs
+   ```
+
+   That runner invokes whatever session-end steps this repo's declared packs contribute; it
+   knows nothing about what any of them do, and a repo that contributes none does nothing.
+   Nobody is sitting in front of this session, so it ends by having its container reclaimed —
+   which is precisely the ending that fires no `SessionEnd` hook. Left to the hook, every
+   unattended run would leave no record of itself anywhere: not of the skills it loaded, not
+   of the checks that caught something, not of how the work actually went. Run it here and it
+   does.
+
+   It cannot fail your dispatch — the issue is already converged and this changes nothing on
+   GitHub. If it reports an error, **say so plainly in your final message** and end anyway.
 
 **Two things are never yours to rescue:** a stale `agent-running` claim left by a session that
 died mid-run, and a dispatch whose label event never landed. The scheduler converges both in

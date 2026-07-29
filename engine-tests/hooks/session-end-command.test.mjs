@@ -96,5 +96,31 @@ test('the grow_with_claudinite pack ships the capture step the runner picks up',
   const packStep = join(dirname(fileURLToPath(import.meta.url)), '..', '..',
     'packs', 'grow_with_claudinite', 'session-end.mjs');
   assert.ok(existsSync(packStep), 'grow_with_claudinite/session-end.mjs is what the runner discovers');
-  assert.match(readFileSync(packStep, 'utf8'), /--issue', '0'/, 'and it captures with issue 0 (no associated issue)');
+  const source = readFileSync(packStep, 'utf8');
+  assert.match(source, /CLAUDINITE_SESSION_ISSUE/, 'and it reads the issue the runner passes on');
+  assert.match(source, /'0'/, 'defaulting to issue 0 — no associated issue — when none was named');
+});
+
+test('the runner passes on the issue an explicit invocation named, and nothing when it did not', () => {
+  // The unattended path: a scheduler executor session ends by having its container
+  // reclaimed, so no SessionEnd hook ever fires for it. It runs this runner itself and
+  // names its dispatch issue — which is what files that session's log under the task
+  // it ran instead of in the issueless pile.
+  const root = withLocalPack(`
+    import { writeFileSync } from 'node:fs';
+    writeFileSync('ran.json', JSON.stringify({ issue: process.env.CLAUDINITE_SESSION_ISSUE ?? null }));
+  `);
+  try {
+    const named = spawnSync(process.execPath, [HOOK], {
+      cwd: root, input: '', encoding: 'utf8',
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root, CLAUDINITE_SESSION_ISSUE: '772' },
+    });
+    assert.equal(named.status, 0, named.stderr);
+    assert.equal(JSON.parse(readFileSync(join(root, 'ran.json'), 'utf8')).issue, '772');
+
+    // A hook firing knows nothing about what the session was for, and must not invent it.
+    const hook = runHook(root, { session_id: 'sess-1', transcript_path: '/tmp/s.jsonl' });
+    assert.equal(hook.status, 0, hook.stderr);
+    assert.equal(JSON.parse(readFileSync(join(root, 'ran.json'), 'utf8')).issue, null);
+  } finally { cleanup(root); }
 });

@@ -20,6 +20,7 @@ import {
 } from './dispatch.mjs';
 import { isAgentless } from './model-map.mjs';
 import { isDormant } from '../checks/helpers/repo-context.mjs';
+import { renderTaskRuns } from './run-record.mjs';
 import { localSignalContext } from './signals/local.mjs';
 import { runPreprocessing, preprocessingFailure, agentRequestPath, clearAgentRequest, agentRequested } from './preprocess.mjs';
 
@@ -546,6 +547,14 @@ async function main() {
 
   console.log('## Claudinite scheduler\n');
   console.log(renderSummary(evaluations) || '- no tasks due');
+
+  // The machine-readable half of the same story (run-record.mjs): one line per due
+  // task saying what this run DID with it — dispatched an agent, ran it as
+  // preprocessing only, skipped it on its precondition, failed it, or deferred it.
+  // Printed AFTER the action loop, so each line reports what happened rather than
+  // what was planned, and read back by the usage fold to count task invocations.
+  // Nothing else in the scheduler depends on it: this is a record, not a signal.
+  if (evaluations.length) console.log(`\n${renderTaskRuns(evaluations)}`);
 }
 
 // Run only when invoked directly (the workflow's `node run.mjs`), never on import.
