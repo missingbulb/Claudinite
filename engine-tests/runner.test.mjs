@@ -340,8 +340,12 @@ test('a skill-owned check rides its owning pack\'s activation, and is listed', (
 // A pack.mjs whose one rule fires on a marker file, dependency-free (a real
 // local pack's checks can't import the gitignored mount's helpers).
 const LOCAL_PACK = `export default {
-  id: 'proj', prose: 'RULES.md', skills: [],
-  rules: [{
+  id: 'proj', prose: 'RULES.md',
+  ruleRoutingGuidance: {
+    belongs: 'this demo project pack, whose one rule fires on a marker file',
+    excludes: 'anything portable to another repo — that is a canon pack',
+  },
+  worldRules: [{
     id: 'no-todo-marker', severity: 'blocking',
     description: 'no TODO_MARKER files', doc: '.claudinite/local_packs/proj/RULES.md',
     why: 'demo local check',

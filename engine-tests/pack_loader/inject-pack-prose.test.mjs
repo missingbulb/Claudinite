@@ -19,6 +19,9 @@ function makeCorpus({ packs }, root = mkdtempSync(join(tmpdir(), 'claudinite-cor
   mkdirSync(join(root, 'packs'), { recursive: true });
   mkdirSync(join(root, 'engine', 'pack_loader'), { recursive: true });
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-registry.mjs'), join(root, 'engine', 'pack_loader', 'pack-registry.mjs'));
+  // The registry validates every manifest against the spec, so the fake corpus
+  // needs the spec module too — it is part of the loader, not an optional extra.
+  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-schema.mjs'), join(root, 'engine', 'pack_loader', 'pack-schema.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'inject-pack-prose.mjs'), join(root, 'engine', 'pack_loader', 'inject-pack-prose.mjs'));
   for (const [id, manifest] of Object.entries(packs)) {
     // The def IS the pack.mjs manifest (an optional `prose: '<file>'` field and
@@ -26,7 +29,7 @@ function makeCorpus({ packs }, root = mkdtempSync(join(tmpdir(), 'claudinite-cor
     mkdirSync(join(root, 'packs', id), { recursive: true });
     writeFileSync(
       join(root, 'packs', id, 'pack.mjs'),
-      `export default ${JSON.stringify({ id, detect: null, rules: [], ...manifest })};\n`
+      `export default ${JSON.stringify({ id, detect: null, worldRules: [], ruleRoutingGuidance: { belongs: `whatever ${id} owns`, excludes: `whatever ${id} does not own` }, ...manifest })};\n`
     );
   }
   return root;

@@ -22,6 +22,10 @@ import packIndependence from './pack-independence.mjs';
 // without touching the members' side (grow_with_claudinite).
 export default {
   id: 'canon-curation',
+  ruleRoutingGuidance: {
+    belongs: 'fleet-facing curation of the shared corpus — promoting member lessons into packs/, sweeping the fleet stack, policing packs/',
+    excludes: 'working rules for developing Claudinite itself — that is the claudinite local pack; a member tidying itself — tidy-repo',
+  },
   badge: 'badge.svg',
   detect: null,
   marker: null,
@@ -34,7 +38,8 @@ export default {
   contributes: { barriers: [packIndependence] },
   // The prose-narration rule polices pack prose CONTENT (not segregation), so
   // it stays a code check, bundled here.
-  rules: [noEnforcementNarration],
+  worldRules: [noEnforcementNarration],
   // writing-claudinite-skills is canon-home activity (authoring corpus skills), so
   // this pack bundles it under its own skills/ — members author no corpus skills.
+  skills: ['writing-claudinite-skills'],
 };

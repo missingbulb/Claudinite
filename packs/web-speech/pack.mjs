@@ -15,6 +15,10 @@ const SOURCE = /\.(mjs|cjs|js|jsx|ts|tsx)$/;
 
 export default {
   id: 'web-speech',
+  ruleRoutingGuidance: {
+    belongs: 'browser voice I/O gotchas — SpeechRecognition results and errors, speechSynthesis and chrome.tts, mic permission and lifecycle',
+    excludes: 'general MV3 service-worker and content-script mechanics — that is chrome-extension; page markup is html',
+  },
   badge: 'badge.svg',
   marker: 'a browser speech API (SpeechRecognition / speechSynthesis / chrome.tts) referenced in JS/TS source',
   detect: (ctx) =>
@@ -24,5 +28,6 @@ export default {
       return text !== null && SPEECH_API.test(text);
     }),
   prose: 'RULES.md',
-  rules: [],
+  worldRules: [],
+  skills: ['web-speech-io'],
 };

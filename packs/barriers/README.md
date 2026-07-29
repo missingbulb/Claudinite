@@ -4,12 +4,6 @@ Enforce a **directed folder-access graph** in a repo: declare that the files und
 
 Declared like any pack (no fingerprint — wanting structural segregation is the project's own call; a pack that needs it names `barriers` in its `requires`). Check-only, no prose: the finding is the instruction.
 
-## Checks (hardcoded)
-
-| Check | Enforces (≤5 words) | Severity |
-|---|---|---|
-| `barrier` | folders honor declared access graph | blocking |
-
 ## Declaring barriers
 
 A repo states its graph as `config.rules` on its **barriers pack entry** in `.claudinite-checks.json` — an array of rules. A rule is the unit; each rule owns its exceptions.

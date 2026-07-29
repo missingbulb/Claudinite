@@ -1,6 +1,6 @@
 # packs/ — the corpus content, active by declaration
 
-Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session start when the pack is active), its **checks** (run at every Stop), and its **bundled skills** (`<pack>/skills/`, mounted at session start). **No pack is active by default** — every pack, the `basics` baseline included, activates only when declared in `.claudinite-checks.json` (bootstrap's `--init` seeds `basics` plus the fingerprinted technology packs; the nightly baselining backfills the explicit `basics` declaration into existing consumers). Discovery is structural — any `packs/<name>/pack.mjs` is a pack. Each pack's `README.md` lists its rules with a ≤5-word description and whether each is **hardcoded** (a check) or **prose**.
+Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session start when the pack is active), its **checks** (run at every Stop), and its **bundled skills** (`<pack>/skills/`, mounted at session start). **No pack is active by default** — every pack, the `basics` baseline included, activates only when declared in `.claudinite-checks.json` (bootstrap's `--init` seeds `basics` plus the fingerprinted technology packs; the nightly baselining backfills the explicit `basics` declaration into existing consumers). Discovery is structural — any `packs/<name>/pack.mjs` is a pack, and that manifest is the pack's index: what it owns, the checks it runs in each scope, the skills it bundles. A pack's `README.md` is **optional** and carries only what the manifest cannot — provenance, design rationale, an index of its prose. A README that restates the manifest is duplication with a drift risk, and several had already drifted.
 
 ## Packs
 
@@ -12,7 +12,7 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 | <img src="grow_with_claudinite/badge.svg" width="18" height="18" alt=""> [grow_with_claudinite](grow_with_claudinite/README.md) | declared (seeded by `--init`, opt-out by removal) | 1 | growth member-side daily tasks (extract / dedup / pack discovery / conversation-extract) + in-session merge capture |
 | <img src="tidy-repo/badge.svg" width="18" height="18" alt=""> [tidy-repo](tidy-repo/README.md) | declared (seeded by `--init`, opt-out by removal) | 0 | policy (assess-only-vs-act) + 3 per-dimension tidy tasks (issues daily, PRs/branches weekly) |
 | <img src="sheepdog/badge.svg" width="18" height="18" alt=""> [sheepdog](sheepdog/README.md) | declared (opt-in; the fleet-enforcer repo only) | 0 | fleet-enforcer marker + config + the agentless `fleet-census` daily task (the coverage census) |
-| <img src="github-actions/badge.svg" width="18" height="18" alt=""> [github-actions](github-actions/README.md) | `.github/workflows/` | 8 | 0 |
+| <img src="github-actions/badge.svg" width="18" height="18" alt=""> [github-actions](github-actions/) | `.github/workflows/` | 8 | 0 |
 | <img src="chrome-extension/badge.svg" width="18" height="18" alt=""> [chrome-extension](chrome-extension/README.md) | manifest_version manifest | 0 | 8 |
 | <img src="chrome-extension-release/badge.svg" width="18" height="18" alt=""> [chrome-extension-release](chrome-extension-release/README.md) | single `Release to Chrome Store` stub (opt-in) | 8 | 0 (+ RELEASE contract) |
 | <img src="node/badge.svg" width="18" height="18" alt=""> [node](node/README.md) | root package.json | 0 | 4 |
@@ -25,10 +25,10 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 | <img src="flutter/badge.svg" width="18" height="18" alt=""> [flutter](flutter/README.md) | pubspec.yaml | 0 | 0 (stub) |
 | <img src="firebase/badge.svg" width="18" height="18" alt=""> [firebase](firebase/README.md) | `firebase.json` | 2 | rules / functions / deploy discipline |
 | <img src="firebase-release/badge.svg" width="18" height="18" alt=""> [firebase-release](firebase-release/README.md) | declared (opt-in) | 0 | dev/prod split + App Check store gating |
-| <img src="android/badge.svg" width="18" height="18" alt=""> [android](android/README.md) | `AndroidManifest.xml` | 0 | stub |
-| <img src="ios/badge.svg" width="18" height="18" alt=""> [ios](ios/README.md) | `ios/Runner/Info.plist` | 0 | stub |
-| <img src="play-store-release/badge.svg" width="18" height="18" alt=""> [play-store-release](play-store-release/README.md) | declared (opt-in) | 0 | stub |
-| <img src="app-store-release/badge.svg" width="18" height="18" alt=""> [app-store-release](app-store-release/README.md) | declared (opt-in) | 0 | stub |
+| <img src="android/badge.svg" width="18" height="18" alt=""> [android](android/) | `AndroidManifest.xml` | 0 | stub |
+| <img src="ios/badge.svg" width="18" height="18" alt=""> [ios](ios/) | `ios/Runner/Info.plist` | 0 | stub |
+| <img src="play-store-release/badge.svg" width="18" height="18" alt=""> [play-store-release](play-store-release/) | declared (opt-in) | 0 | stub |
+| <img src="app-store-release/badge.svg" width="18" height="18" alt=""> [app-store-release](app-store-release/) | declared (opt-in) | 0 | stub |
 | <img src="research-project/badge.svg" width="18" height="18" alt=""> [research-project](research-project/README.md) | declared (class) | 0 | 56 (14 sections) |
 | <img src="product-wiki/badge.svg" width="18" height="18" alt=""> [product-wiki](product-wiki/README.md) | declared (marker: `product-wiki/product-requirements/README.md`) | 7 | wiki growth discipline + weekly growth daily task |
 | <img src="spec-driven-product/badge.svg" width="18" height="18" alt=""> [spec-driven-product](spec-driven-product/README.md) | declared (class) | 0 | 25 (8 sections) |
@@ -74,9 +74,36 @@ A pack states the packs it depends on in an optional `requires` field on its `pa
 
 This is **not a check** — a pack can't be imported without its dependencies, so the resolution happens **when the declaration is written**, at bootstrap `--init` and the baselining backfill ([bootstrap.md](../bootstrap.md) Part 2): [`resolveDeclaredPacks`](../engine/pack_loader/pack-registry.mjs) pulls each declared pack's transitive `requires` closure into `.claudinite-checks.json`. The prerequisite is materialized and visible in the file — droppable like every other entry, the same reason `basics` is written explicitly rather than defaulted — rather than resolved implicitly at run time. Declared ids keep their order; each pack's pulled-in dependencies land right after it.
 
-## Bundled skills (`<pack>/skills/`)
+## The manifest spec (`pack.mjs`)
 
-A pack's skills live in its own tree — `<pack>/skills/<skill>/SKILL.md`, one owning pack per skill (#385). The directory listing IS the manifest: there is no `skills` field on `pack.mjs` and no separate skills collection to own or cross-declare.
+What a `pack.mjs` may and must carry is declared once, in [`engine/pack_loader/pack-schema.mjs`](../engine/pack_loader/pack-schema.mjs), and [`validateManifest`](../engine/pack_loader/pack-schema.mjs) is the only thing that judges a manifest against it. The **loader** runs it on every pack it imports, canon and local alike, so an incomplete or malformed declaration surfaces as a blocking `config` error at load — the same class as invalid JSON in `.claudinite-checks.json`, and for the same reason: a required manifest field is part of the pack contract, not a conformance opinion about a repo's content. A conformance *check* would have to be declared by a pack, run only when that pack is active, and re-derive the manifest by reading its source text — enforcing the shape of the system from inside one of its members.
+
+Reporting is not fatal: a pack whose declaration is incomplete still loads and still runs its checks. Silently disabling a repo's own rules is a worse failure than the one being reported. The field vocabulary is **closed** — an undeclared key is an error, so a typo (`rule:`, `skill:`) fails loudly instead of being ignored forever.
+
+### `ruleRoutingGuidance` — what belongs here, and what does not
+
+```js
+ruleRoutingGuidance: {
+  belongs: 'workflow YAML and Actions runner platform behaviour: triggers, secrets, permissions, scheduling, artifacts, reusable workflows and their pitfalls',
+  excludes: 'git and GitHub command procedure — git-github; release pipeline content for one product — its release pack',
+},
+```
+
+Both sides are required and each is capped at **20 words**. The cap is a session-context budget, not a style rule: [`inject-pack-prose`](../engine/pack_loader/inject-pack-prose.mjs) emits the whole set as a **routing table at session start**, one row per pack, so a session deciding where a rule, doc, skill or check goes reads the answer instead of guessing. Guess-by-default lands everything in `basics` — that is the failure this field exists to stop.
+
+Write `excludes` to **name the pack that owns the other side** wherever one exists (`— that is chrome-extension-release`), so the table routes rather than merely refuses. A boundary that is **true of every pack carries no routing information** and wastes the row: "anything portable belongs in the canon" is the local-pack rule restated, not this local pack's edge. State what separates a pack from its **nearest neighbours** — the packs a reader would actually confuse it with. Sibling packs that split a domain (a technology pack and its `-release` pack, `basics` and `git-github`) are where the pair earns its keep, and their two declarations should agree on where the line falls. "No pack fits" is a real answer — it means a new pack, or the project's own `local_packs/` — never the baseline as a fallback.
+
+The table is emitted for every pack **discovered**, active or not: a consumer holds only the packs it vendored, so the discovered set is already what it can route into, and in the canon every pack is a legitimate destination. Local packs declare it on the same terms.
+
+### `worldRules` / `workRules` — a rule's scope is its placement
+
+A pack declares its checks in two lists, and **which list a rule sits in is what makes it world- or work-scoped**: `worldRules` audit repo state ([`check_the_world`](../engine/checks/check_the_world.mjs)), `workRules` judge the change and session in front of you ([`check_the_work`](../engine/checks/check_the_work.mjs)). The loader flattens both into the single `rules` array the runners walk, stamping each rule's scope from the list it came from — one derivation, nothing downstream re-decides it. A rule module that carries its own `scope` field is a second source for the same fact, free to contradict the manifest a reader trusts, so the spec rejects it.
+
+A skill's own `checks.mjs` sits outside this partition (it is a skill's content, not a manifest list) and still declares `scope` on the rule itself.
+
+### `skills` — the bundle, declared
+
+A pack's skills live in its own tree — `<pack>/skills/<skill>/SKILL.md`, one owning pack per skill (#385) — and the manifest **names them**: `skills: ['merge-to-main', ...]`. The spec holds the declaration and the tree to each other in **both directions**: an undeclared directory is a skill nothing announces, and a declared name with no directory is a manifest that lies. What each skill covers stays in its own `SKILL.md` frontmatter, the description the harness triggers on — the manifest carries the membership, not a second copy of the summary.
 
 The SessionStart hook [`../engine/pack_loader/mount-skills.mjs`](../engine/pack_loader/mount-skills.mjs) mounts the **union over the active packs' bundles** (same activation as prose/checks/env) as session-generated `.claude/skills/<name>` symlinks — nothing committed, and a self-ignoring `.claude/skills/.gitignore` keeps them out of git status. A skill rides its pack everywhere the pack goes: the vendor set, the mounts, the sweep (its `checks.mjs` runs when the pack is active). The baseline activities every project has (`merge-to-main`, `writing-tests`, `bug-investigation`, …) ride the `basics` pack's bundle; move a skill's directory to a narrower pack when it stops being a baseline activity.
 

@@ -12,8 +12,13 @@
 // chrome-extension pack's turf; this pack owns the *validator* side.
 export default {
   id: 'google-identity',
+  ruleRoutingGuidance: {
+    belongs: 'server-side Google Sign-In ID token validation: audience pinning, issuer and email_verified checks, JWT authorizer/OIDC verifier config',
+    excludes: 'obtaining the token in a browser or extension client — chrome-extension; Firebase Auth usage — firebase',
+  },
   badge: 'badge.svg',
   marker: 'a backend that validates Google Sign-In ID tokens (a JWT authorizer / OIDC verifier with the Google accounts issuer)',
   detect: null,
-  rules: [],
+  worldRules: [],
+  skills: ['google-id-token-validation'],
 };

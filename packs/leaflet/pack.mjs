@@ -15,6 +15,10 @@ const SOURCE = /\.(html?|mjs|cjs|jsx?|tsx?)$/;
 
 export default {
   id: 'leaflet',
+  ruleRoutingGuidance: {
+    belongs: 'map rendering with the Leaflet library — map init options, tile layers, markers and divIcons, CDN plugin pinning',
+    excludes: 'generic HTML markup rules — that is html; non-map dependency policy belongs to node',
+  },
   badge: 'badge.svg',
   marker: 'a Leaflet reference (CDN asset, or an L.map/L.tileLayer/L.markerClusterGroup call) in HTML/JS source',
   detect: (ctx) =>
@@ -24,5 +28,5 @@ export default {
       return text !== null && (LEAFLET_ASSET.test(text) || LEAFLET_API.test(text));
     }),
   prose: 'RULES.md',
-  rules: [assetIntegrity],
+  worldRules: [assetIntegrity],
 };
