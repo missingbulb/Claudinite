@@ -64,6 +64,296 @@ export function skillToolLoads(entry) {
     .map((b) => b.input.skill);
 }
 
+// --- check activations ---------------------------------------------------------
+// The conformance checks are the other half of the picture, and the more valuable
+// half: a check that FAILS is a win — the finding lands back in the session and the
+// agent corrects before the work leaves. So the questions here are "how often did
+// each scope actually run" and "how often did it catch something", and the second
+// one is the one that matters.
+//
+// Neither runner writes a metrics file, so both are read off the marks they already
+// leave in the transcript. There are exactly three, and each was verified against
+// real captured logs:
+//
+//   1. The Stop hook's `hooklog` line — `<iso> run=<id> Stop: done exit=<n> <reason>`
+//      — reaches the transcript because hooklog mirrors to stderr and the harness
+//      records hook stderr. This is the ONLY mark that survives a PASSING run, which
+//      is what makes work-scope run counts (not just failure counts) possible at all.
+//   2. `report-findings`' summary line — `N blocking, M advisory (<scope> scope: …)`
+//      — names its own scope and survives the `| tail` an agent usually pipes
+//      through. It is printed ONLY when there were findings, so it counts failures
+//      and finding volume, never runs.
+//   3. The runner's own invocation in a Bash command (`node …/check_the_world.mjs`),
+//      which is how the world scope runs — its Stop-hook sibling does not exist,
+//      because the world sweep is wired into the test/CI flow, not the hook.
+//
+// CI COUNTS WHEN THE AGENT WAS IN THE LOOP ON IT. The write-commit-watch-CI-fix-it
+// cycle is the same correction loop as the Stop hook's, one turn wider, so a CI
+// check failure the session acted on is as much a win as a hook one. It is counted
+// exactly when the session PULLED THE JOB LOG IN — which is what "the agent was in
+// the loop" means operationally. A nightly or post-merge run nobody looked at stays
+// uncounted, correctly: nothing was corrected. Those logs come through a CI-log tool
+// rather than Bash, and their lines carry the Actions timestamp prefix, so both are
+// read below.
+//
+// STATED BOUNDARY: this counts what the SESSION saw. A sweep whose CI log nobody
+// fetched is invisible here, and so is a hook killed before it logged. A CI run is
+// also only visible when it PRINTED something — a green sweep prints nothing at all
+// — so `ciRuns`/`ciFailures` record the CI share separately, and a consumer wanting
+// a clean session-only rate subtracts them. Every number below is a floor on
+// activations, never an over-count, which is the direction that keeps "the checks
+// caught N things" honest.
+
+// The Stop hook's completion line. `reason` distinguishes the three outcomes the
+// hook itself declares: `checks-passed`, `blocking-findings`, `loop-guard-relent`
+// (blocking findings that survived two fix attempts — a failure that prints no
+// findings block, so it must be read from here), and `runner-error` (the checks did
+// not run at all, which is an anti-win masquerading as a quiet day).
+const HOOK_DONE_RE = /(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z) run=(\S+) Stop: done exit=(\d+) ?([a-z-]*)/g;
+export function hookCheckRuns(text) {
+  return [...String(text ?? '').matchAll(HOOK_DONE_RE)]
+    .map((m) => ({ stamp: `${m[1]} ${m[2]}`, exit: Number(m[3]), reason: m[4] || null }));
+}
+
+// A GitHub Actions log line stamps its own timestamp in front of the command's
+// output, so every mark below has to tolerate that prefix or a fetched CI log reads
+// as having printed nothing at all. Optional, and still anchored to the line start.
+const ACTIONS_STAMP = String.raw`(?:\d{4}-\d{2}-\d{2}T[\d:.]+Z )?`;
+
+// `report-findings`' summary line, which names the scope it ran. Anchored to the
+// line start so a doc or a fixture quoting the shape mid-sentence never counts.
+const SUMMARY_RE = new RegExp(`^${ACTIONS_STAMP}(\\d+) blocking, (\\d+) advisory \\((work|world) scope: `, 'gm');
+export function checkSummaries(text) {
+  return [...String(text ?? '').matchAll(SUMMARY_RE)]
+    .map((m) => ({ scope: m[3], blocking: Number(m[1]), advisory: Number(m[2]) }));
+}
+
+// The rendered header of one finding — `[BLOCKING] <rule>  <file>` — which is where
+// the RULE ID lives. Per-rule counts are the actionable end of this: "which rule
+// catches something, and how often". They are lossier than the summary totals (an
+// agent that pipes the run through `tail -3` keeps the summary and drops the
+// headers), so both are kept and a gap between them is visible truncation.
+const HEADER_RE = new RegExp(`^${ACTIONS_STAMP}\\[(BLOCKING|ADVISORY)\\] ([a-z0-9][a-z0-9-]*) {2}`, 'gm');
+export function findingHeaders(text) {
+  return [...String(text ?? '').matchAll(HEADER_RE)]
+    .map((m) => ({ severity: m[1] === 'BLOCKING' ? 'blocking' : 'advisory', rule: m[2] }));
+}
+
+// Runner invocations inside one Bash command. Requires `node` and the `.mjs` on the
+// same shell word run — so `grep -i check_the_world` never counts — and the
+// separator class stops one match from swallowing a second runner on the same line.
+const INVOKE_RE = /\bnode\b[^\n;|&]*?\bcheck_the_(work|world)\.mjs\b/g;
+export function checkInvocations(command) {
+  const counts = { work: 0, world: 0 };
+  for (const m of String(command ?? '').matchAll(INVOKE_RE)) counts[m[1]] += 1;
+  return counts;
+}
+
+// A tool that fetches CI job logs — the one way a CI run reaches a session, and
+// therefore the one way "the agent was in the loop on this CI run" is observable.
+// Matched by name shape rather than by one hardcoded tool: the same session can
+// reach CI through an MCP server, a different server, or a future rename, and all of
+// them say what they are in their name.
+const CI_LOG_TOOL_RE = /(job|run|workflow)_logs/i;
+
+// The transcript entries that can carry check output, reduced to the text to read
+// and the source that produced it. Five shapes, all verified against real captures:
+// the hook's blocking feedback (an `isMeta` user turn), the harness's
+// `stop_hook_summary` (which repeats that same stderr), the passing hook's
+// `hook_success` attachment, a Bash tool result, and a fetched CI job log — the last
+// two paired back to the tool that produced them, so a Read of a file that merely
+// CONTAINS this vocabulary is never mistaken for a run.
+//
+// Two different duplicate problems, so two different identities:
+//   - the first two shapes are ONE hook execution recorded twice, so hook texts
+//     dedupe on the `hooklog` stamps they carry — stable across both shapes and
+//     unique per execution (its own timestamp, to the second);
+//   - a CI job log can be fetched repeatedly (re-read while iterating), and there is
+//     no per-fetch identity that says which RUN it was, so CI texts dedupe on the
+//     check output itself. Two fetches of one job are byte-identical and collapse;
+//     two real runs differ by their Actions timestamps at least. Two genuinely
+//     identical runs would collapse too — an under-count, which is the direction
+//     this whole counter is allowed to be wrong in.
+// A Bash result needs neither: each tool call is its own run, and the invocation is
+// counted from the command.
+export function checkOutputs(entries) {
+  const toolById = new Map();
+  for (const entry of entries) {
+    if (entry?.type !== 'assistant') continue;
+    for (const block of entry?.message?.content ?? []) {
+      if (block?.type !== 'tool_use' || typeof block?.name !== 'string') continue;
+      if (block.name === 'Bash' && typeof block?.input?.command === 'string') {
+        toolById.set(block.id, { source: 'bash', command: block.input.command });
+      } else if (CI_LOG_TOOL_RE.test(block.name)) {
+        toolById.set(block.id, { source: 'ci', command: null });
+      }
+    }
+  }
+
+  const out = [];
+  const seenHooks = new Set();
+  const seenCi = new Set();
+  const hook = (text) => {
+    const key = hookCheckRuns(text).map((r) => r.stamp).join('|');
+    if (key && seenHooks.has(key)) return;      // the same execution, recorded twice
+    if (key) seenHooks.add(key);
+    out.push({ source: 'hook', text, command: null });
+  };
+
+  for (const entry of entries) {
+    if (entry?.type === 'system' && entry?.subtype === 'stop_hook_summary') {
+      hook((entry.hookErrors ?? []).join('\n'));
+    } else if (entry?.type === 'attachment' && entry?.attachment?.hookEvent === 'Stop') {
+      hook(`${entry.attachment.stderr ?? ''}\n${entry.attachment.stdout ?? ''}`);
+    } else if (entry?.type === 'user' && entry?.isMeta === true && typeof entry?.message?.content === 'string') {
+      if (entry.message.content.includes('Stop hook feedback')) hook(entry.message.content);
+    } else if (entry?.type === 'user' && Array.isArray(entry?.message?.content)) {
+      for (const block of entry.message.content) {
+        if (block?.type !== 'tool_result') continue;
+        const tool = toolById.get(block.tool_use_id);
+        if (tool === undefined) continue;       // neither a runner nor a CI log — not a run
+        const text = resultText(entry.toolUseResult, block.content);
+        if (tool.source === 'ci') {
+          // The CI log's OWN content is its identity; a fetch that carried no check
+          // output at all (a green run, a different job) is not a run to dedupe.
+          const key = checkOutputKey(text);
+          if (!key || seenCi.has(key)) continue;
+          seenCi.add(key);
+        }
+        out.push({ source: tool.source, text, command: tool.command });
+      }
+    }
+  }
+  return out;
+}
+
+// A tool result's text, whichever shape the tool reports in: Bash reports
+// `{ stdout, stderr }`, an MCP tool reports content blocks the harness also copies
+// onto the result block. Both are read, so neither tool family needs special-casing
+// beyond this one function.
+function resultText(result, blockContent) {
+  if (typeof result === 'string') return unwrapJson(result);
+  if (result && (typeof result.stdout === 'string' || typeof result.stderr === 'string')) {
+    return `${unwrapJson(result.stdout ?? '')}\n${result.stderr ?? ''}`;
+  }
+  if (typeof blockContent === 'string') return unwrapJson(blockContent);
+  if (Array.isArray(blockContent)) {
+    return unwrapJson(blockContent.map((b) => (typeof b?.text === 'string' ? b.text : '')).join('\n'));
+  }
+  return result === undefined || result === null ? '' : unwrapJson(JSON.stringify(result));
+}
+
+// An MCP tool returns its payload as a JSON DOCUMENT inside a text block, so a job
+// log's newlines arrive escaped and every mark below — all of them line-anchored —
+// would see one enormous single line and match nothing. Decode by parsing and
+// joining every string leaf with real newlines: field names never matter, so this
+// holds for whichever tool or server delivers the log. Text that is not JSON is
+// returned untouched, which is every Bash stdout.
+function unwrapJson(text) {
+  const trimmed = String(text ?? '').trim();
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return text;
+  let parsed;
+  try { parsed = JSON.parse(trimmed); } catch { return text; }
+  const strings = [];
+  const walk = (value) => {
+    if (typeof value === 'string') strings.push(value);
+    else if (Array.isArray(value)) value.forEach(walk);
+    else if (value && typeof value === 'object') Object.values(value).forEach(walk);
+  };
+  walk(parsed);
+  return strings.join('\n');
+}
+
+// The check output a text carries, as one string — the identity of a CI job log for
+// deduping. Built from the marked lines only, so unrelated log noise around them
+// (which differs between a tailed fetch and a full one) cannot make one run look
+// like two.
+function checkOutputKey(text) {
+  const marks = [
+    ...String(text ?? '').matchAll(SUMMARY_RE),
+    ...String(text ?? '').matchAll(HEADER_RE),
+  ].map((m) => m[0]);
+  return marks.length ? marks.join('|') : null;
+}
+
+// An empty per-scope check row. Uniform across scopes so folding is one loop:
+// `runs` is observed activations, `failures` the subset that reported at least one
+// blocking finding, `errors` the runs where the runner itself could not launch, and
+// `blocking`/`advisory` the finding VOLUME summed over those runs (a rule blocking
+// twice across two runs counts twice — the question is how often the checks caught
+// something, not how many distinct problems existed).
+//
+// `ciRuns`/`ciFailures` are the SUBSET of `runs`/`failures` that came from a CI job
+// log the session pulled in, carried separately because that source can only see a
+// run that printed something: a green CI sweep prints nothing and is invisible. A
+// consumer wanting a rate over runs it can see the whole of subtracts them; one
+// asking "how often did the checks catch something" adds nothing and uses the total.
+const emptyScope = () => ({ runs: 0, failures: 0, errors: 0, blocking: 0, advisory: 0, ciRuns: 0, ciFailures: 0 });
+
+// Count check activations across one capture file's entries.
+//
+// Runs are counted from the marks that a PASSING run also leaves — hook completion
+// lines, and Bash invocations — never from the summary line, which only a run with
+// findings prints. Where a runner ran without its command naming it (a `make test`
+// step that wraps it), the summary lines in its output are the floor: hence the
+// `max` — the two signals are alternative views of the same runs, not additive ones.
+export function countChecks(entries) {
+  const checks = {};
+  const checkFindings = {};
+  const scope = (name) => (checks[name] ??= emptyScope());
+  const finding = (rule, severity) => {
+    (checkFindings[rule] ??= { blocking: 0, advisory: 0 })[severity] += 1;
+  };
+
+  for (const { source, text, command } of checkOutputs(entries)) {
+    const summaries = checkSummaries(text);
+
+    if (source === 'hook') {
+      // The hook only ever runs the WORK scope, and its completion line is the run.
+      for (const run of hookCheckRuns(text)) {
+        const work = scope('work');
+        work.runs += 1;
+        if (run.reason === 'runner-error') work.errors += 1;
+        // A relent prints the reason instead of the findings, so its failure is
+        // visible here and nowhere else.
+        if (run.reason === 'loop-guard-relent') work.failures += 1;
+      }
+      for (const s of summaries) if (s.blocking > 0) scope(s.scope).failures += 1;
+    } else if (source === 'ci') {
+      // A CI log has no invocation to count — the summary lines ARE the runs, and
+      // only the runs that printed. Recorded in the totals AND in the ci-only
+      // counters, so the visible-in-full share stays derivable.
+      for (const name of ['work', 'world']) {
+        const reported = summaries.filter((s) => s.scope === name);
+        if (reported.length === 0) continue;
+        const failed = reported.filter((s) => s.blocking > 0).length;
+        const row = scope(name);
+        row.runs += reported.length;
+        row.ciRuns += reported.length;
+        row.failures += failed;
+        row.ciFailures += failed;
+      }
+    } else {
+      const invoked = checkInvocations(command);
+      for (const name of ['work', 'world']) {
+        const reported = summaries.filter((s) => s.scope === name);
+        const runs = Math.max(invoked[name], reported.length);
+        if (runs === 0) continue;
+        scope(name).runs += runs;
+        scope(name).failures += reported.filter((s) => s.blocking > 0).length;
+      }
+    }
+
+    for (const s of summaries) {
+      const row = scope(s.scope);
+      row.blocking += s.blocking;
+      row.advisory += s.advisory;
+    }
+    for (const f of findingHeaders(text)) finding(f.rule, f.severity);
+  }
+  return { checks, checkFindings };
+}
+
 // --- per-file counting ---------------------------------------------------------
 
 // Count one capture file's entries. `mounted` is the set of skill names this repo
@@ -87,7 +377,7 @@ export function countEntries(entries, mounted = new Set()) {
       if (mounted.has(command)) load(command);
     }
   }
-  return { userMessages, userCommands, skillLoads };
+  return { userMessages, userCommands, skillLoads, ...countChecks(entries) };
 }
 
 // --- day buckets ---------------------------------------------------------------
@@ -95,10 +385,20 @@ export function countEntries(entries, mounted = new Set()) {
 // An empty day row — the shape every counter folds through.
 const emptyDay = () => ({
   captures: 0, merges: 0, sessions: 0, userMessages: 0, userCommands: 0, skillLoads: {},
+  checks: {}, checkFindings: {},
 });
 
 function addLoads(into, from) {
   for (const [name, n] of Object.entries(from)) into[name] = (into[name] ?? 0) + n;
+}
+
+// The check maps fold the same way skillLoads do — key-wise, zeros implicit — only
+// with a fixed-shape counter object under each key instead of a bare number.
+function addCounters(into, from) {
+  for (const [key, row] of Object.entries(from ?? {})) {
+    const target = (into[key] ??= Object.fromEntries(Object.keys(row).map((k) => [k, 0])));
+    for (const [field, n] of Object.entries(row)) target[field] = (target[field] ?? 0) + n;
+  }
 }
 
 // Recompute the day rows from scratch, from the live capture files. `files` is
@@ -118,6 +418,8 @@ export function foldDays(files) {
     day.userMessages += file.counts.userMessages;
     day.userCommands += file.counts.userCommands;
     addLoads(day.skillLoads, file.counts.skillLoads);
+    addCounters(day.checks, file.counts.checks);
+    addCounters(day.checkFindings, file.counts.checkFindings);
     (sessionsByDay[file.date] ??= new Set()).add(file.sessionId);
   }
   // Distinct sessions, not capture count: one session can capture more than once
@@ -163,7 +465,10 @@ export function daysToFold(days, foldedThrough, today) {
 // the day-level distinct counts — rather than claiming a precision folding cannot
 // give.
 export function addDayToWeek(week, day) {
-  const w = week ?? { days: 0, captures: 0, merges: 0, sessionDays: 0, userMessages: 0, userCommands: 0, skillLoads: {} };
+  const w = week ?? {
+    days: 0, captures: 0, merges: 0, sessionDays: 0, userMessages: 0, userCommands: 0,
+    skillLoads: {}, checks: {}, checkFindings: {},
+  };
   w.days += 1;
   w.captures += day.captures;
   w.merges += day.merges;
@@ -171,6 +476,11 @@ export function addDayToWeek(week, day) {
   w.userMessages += day.userMessages;
   w.userCommands += day.userCommands;
   addLoads(w.skillLoads, day.skillLoads);
+  // A week folded before the checks were counted has no `checks` key at all —
+  // default rather than crash, so the first fold after this shipped extends the
+  // existing weeks instead of refusing to advance the watermark past them.
+  addCounters((w.checks ??= {}), day.checks);
+  addCounters((w.checkFindings ??= {}), day.checkFindings);
   return w;
 }
 
@@ -185,7 +495,12 @@ function sortKeys(obj) {
 }
 
 function sortRow(row) {
-  return { ...row, skillLoads: sortKeys(row.skillLoads) };
+  return {
+    ...row,
+    skillLoads: sortKeys(row.skillLoads),
+    checks: sortKeys(row.checks ?? {}),
+    checkFindings: sortKeys(row.checkFindings ?? {}),
+  };
 }
 
 // Fold one run: day rows recomputed from `files` (the live raw window), week rows
