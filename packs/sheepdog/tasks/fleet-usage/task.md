@@ -12,7 +12,11 @@ A **stateless full recompute** — the file is a pure function of the members' c
 
 Each member folds its own numbers, so each can say whether a skill ever loads *there*. Whether a skill earns its place at all is a fleet-shaped question: never loading in one repo may only mean it isn't that repo's subject, while never loading in **any** of them means the trigger is mis-described — or that the content should never have been gated behind a skill in the first place. Only a view across every member separates those.
 
-The grain is therefore full — week × repo × skill for history, plus each member's current day window verbatim — with nothing pre-summed. Every coarser view stays derivable from the file; a summary that threw the grain away would not.
+The **conformance checks** are carried at the same grain and for exactly the same reason, and they answer a sharper question, because a check failure is an observed correction rather than an inferred one: the finding went back into the session and the agent fixed it before the work left the branch. A rule with steady failures across the fleet is a guard earning its keep; a rule that has never fired in *any* member is unreachable or describing something that does not happen; a rule firing on nearly every run is a default the corpus should change rather than a violation worth blocking on. The `errors` counter reads differently from all three — enforcement was silently off — and is the one number here whose right value is zero.
+
+The grain is therefore full — week × repo × skill, and week × repo × rule, for history, plus each member's current day window verbatim — with nothing pre-summed. Every coarser view stays derivable from the file; a summary that threw the grain away would not.
+
+A member still on an older fold carries no `checks` key. It lands as an empty check row, never as an exception: the sweep leads the members' upgrades, so that is the normal state for a while.
 
 ## Coverage gaps are reported, not skipped
 
@@ -21,6 +25,8 @@ A covered member with no usage file (not folding yet), or one whose file cannot 
 ## It is a sample, not a census
 
 The file carries a `_note` saying so. Its whole population is *captured* sessions: sessions that merged, plus sessions that ended cleanly enough for the SessionEnd capture to fire. A session whose container was reclaimed, or that crashed, is invisible to every number in it.
+
+The check counts sit inside a narrower boundary still, and the note says that too: they are what a *session* saw. A CI run counts when the session pulled its job log in — which is what "the agent was in the loop on it" means, and it is the loop that produces the correction — while a nightly or post-merge run nobody looked at does not, because nothing was corrected. CI can only see a run that *printed* something, so its share rides separately as `ciRuns`/`ciFailures` rather than skewing a rate. The under-count is one-directional — every check number is a floor on activations, never an over-count — which is what keeps "the checks caught N things fleet-wide this week" a claim worth making.
 
 ## Not a fleet mechanism
 
