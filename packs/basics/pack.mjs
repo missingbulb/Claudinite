@@ -9,6 +9,7 @@ import claudeMdLength from './claude-md-length.mjs';
 import generatedMergeDriver from './generated-merge-driver.mjs';
 import sharedConstants from './shared-constants.mjs';
 import catalogCompleteness from './catalog-completeness.mjs';
+import packRoutingDeclared from './pack-routing-declared.mjs';
 import claudiniteIsolation from './claudinite-isolation.mjs';
 import schedulerWorkflowShape from './scheduler-workflow-shape.mjs';
 import taskDeclarationShape from './task-declaration-shape.mjs';
@@ -20,6 +21,10 @@ import taskDeclarationShape from './task-declaration-shape.mjs';
 // authoritative — dropping it is a deliberate choice).
 export default {
   id: 'basics',
+  routing: {
+    belongs: 'cross-project working discipline, issue-branch-PR lifecycle, repo hygiene, doc/reference integrity and the baseline engineering, testing and debugging skills',
+    excludes: 'technology-specific content — its own tech pack; GitHub Actions workflow or platform behaviour — github-actions; git procedure — git-github',
+  },
   badge: 'badge.svg',
   detect: null,
   marker: null,
@@ -45,6 +50,11 @@ export default {
     generatedMergeDriver,
     sharedConstants,
     catalogCompleteness,
+    // Manifest integrity for the pack system itself: every pack states its own
+    // boundary (routing.belongs / routing.excludes), which is what keeps content
+    // from defaulting into this pack. Relevance-first — inert until a pack.mjs is
+    // in the sweep, so a consumer sees it only for its own local packs.
+    packRoutingDeclared,
     // The per-project scheduling conformance guards (scheduled-tasks.md):
     // scheduling is baseline Claudinite discipline — the scheduler workflow and
     // the task-declaration contract are guarded wherever basics is declared

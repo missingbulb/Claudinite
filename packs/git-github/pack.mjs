@@ -6,6 +6,10 @@
 // every declaration — never seeded directly (#385).
 export default {
   id: 'git-github',
+  routing: {
+    belongs: 'git and GitHub procedure: commit layering, branch and merge mechanics, squash-merge recovery, PR and merge-to-main commands',
+    excludes: 'the issue-branch-PR lifecycle rules themselves — basics; workflow YAML and Actions runtime behaviour — github-actions',
+  },
   badge: 'badge.svg',
   detect: null,
   marker: null,

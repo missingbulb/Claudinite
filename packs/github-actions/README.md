@@ -1,6 +1,12 @@
 # github-actions pack
 
-Active when the repo has `.github/workflows/`. Workflow lints only — no prose.
+Active when the repo has `.github/workflows/`. Workflow lints plus one bundled skill — no `RULES.md` prose.
+
+## Skills
+
+| Skill | Covers |
+|---|---|
+| [`github-actions-scheduling`](skills/github-actions-scheduling/SKILL.md) | what a `schedule:` trigger actually guarantees (late/dropped fires, the 60-day disable) and how to build and describe cron'd work around it |
 
 ## Checks (hardcoded)
 

@@ -22,6 +22,10 @@ import packIndependence from './pack-independence.mjs';
 // without touching the members' side (grow_with_claudinite).
 export default {
   id: 'canon-curation',
+  routing: {
+    belongs: 'the canon home maintaining itself — promoting member lessons into packs/, sweeping the fleet stack, policing the corpus tree',
+    excludes: 'anything portable to a consuming repo — that belongs in a packs/ canon pack',
+  },
   badge: 'badge.svg',
   detect: null,
   marker: null,

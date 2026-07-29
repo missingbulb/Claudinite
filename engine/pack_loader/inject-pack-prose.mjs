@@ -35,10 +35,26 @@ try {
     sections.push(`<!-- pack:${pack.id} -->\n${readFileSync(prosePath, 'utf8').trim()}`);
   }
 
-  if (sections.length) {
-    process.stdout.write(
-      `# Claudinite — active-pack guidance\n\nThe baseline plus the packs this project declares. Deeper per-pack reference (e.g. a pack's release doc) is linked from its prose and read on demand.\n\n${sections.join('\n\n---\n\n')}\n`
-    );
+  // The routing table: every pack's own statement of its boundary, so a session
+  // holding a piece of content (a doc, a rule, a skill) routes it to the pack
+  // that owns it instead of defaulting into the baseline. Emitted for every pack
+  // DISCOVERED, not only the active ones — a consumer holds just the packs it
+  // vendored, so the discovered set is already the set it can route into, and in
+  // the canon every pack is a legitimate destination whether or not this repo
+  // declares it. Rows are short by contract (the `pack-routing-declared` check
+  // caps each side at 20 words), so the whole table stays a cheap session cost.
+  const routed = packs.filter((p) => p.routing?.belongs && p.routing?.excludes);
+  const routingTable = routed.length
+    ? `# Claudinite — where content goes (pack routing)\n\nEach pack states what it owns and what it does not. When a rule, doc, skill or check could live in more than one, this table decides it — and "no pack fits" means a new pack or the project's own \`local_packs/\`, never the baseline by default.\n\n| Pack | Belongs | Does not belong |\n|---|---|---|\n${routed
+        .map((p) => `| \`${p.id}\`${p.local ? ' (local)' : ''} | ${p.routing.belongs} | ${p.routing.excludes} |`)
+        .join('\n')}\n`
+    : '';
+
+  if (sections.length || routingTable) {
+    const guidance = sections.length
+      ? `# Claudinite — active-pack guidance\n\nThe baseline plus the packs this project declares. Deeper per-pack reference (e.g. a pack's release doc) is linked from its prose and read on demand.\n\n${sections.join('\n\n---\n\n')}\n`
+      : '';
+    process.stdout.write([guidance, routingTable].filter(Boolean).join('\n---\n\n'));
   }
 } catch {
   // fail soft — a broken loader must never block a session

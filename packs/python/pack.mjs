@@ -20,6 +20,10 @@ const hasMarkerNearRoot = (ctx, marker) =>
 
 export default {
   id: 'python',
+  routing: {
+    belongs: 'packaging and import conventions for a Python project — pyproject extras, lazy optional heavy deps, stdlib-only core',
+    excludes: 'npm and module packaging — that is node; research methodology is research-project',
+  },
   badge: 'badge.svg',
   marker: 'pyproject.toml (at the repo root or one directory down)',
   detect: (ctx) => hasMarkerNearRoot(ctx, 'pyproject.toml'),

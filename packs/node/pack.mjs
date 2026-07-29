@@ -12,6 +12,10 @@ const hasMarkerNearRoot = (ctx, marker) =>
 
 export default {
   id: 'node',
+  routing: {
+    belongs: 'conventions for a Node/npm project — module resolution, ESM vs CJS, dependency justification, jsdom test divergences',
+    excludes: 'browser-runtime API behaviour — that is html or web-speech; Python packaging is python',
+  },
   badge: 'badge.svg',
   marker: 'package.json (at the repo root or one directory down)',
   detect: (ctx) => hasMarkerNearRoot(ctx, 'package.json'),

@@ -74,6 +74,23 @@ A pack states the packs it depends on in an optional `requires` field on its `pa
 
 This is **not a check** — a pack can't be imported without its dependencies, so the resolution happens **when the declaration is written**, at bootstrap `--init` and the baselining backfill ([bootstrap.md](../bootstrap.md) Part 2): [`resolveDeclaredPacks`](../engine/pack_loader/pack-registry.mjs) pulls each declared pack's transitive `requires` closure into `.claudinite-checks.json`. The prerequisite is materialized and visible in the file — droppable like every other entry, the same reason `basics` is written explicitly rather than defaulted — rather than resolved implicitly at run time. Declared ids keep their order; each pack's pulled-in dependencies land right after it.
 
+## Routing declarations (`routing`)
+
+Every pack states its own boundary on `pack.mjs` — **what belongs in it and what does not**:
+
+```js
+routing: {
+  belongs: 'workflow YAML and Actions runner platform behaviour: triggers, secrets, permissions, scheduling, artifacts, reusable workflows and their pitfalls',
+  excludes: 'git and GitHub command procedure — git-github; release pipeline content for one product — its release pack',
+},
+```
+
+Both sides are required and each is capped at **20 words** (`pack-routing-declared`, blocking). The cap is a session-context budget, not a style rule: [`inject-pack-prose`](../engine/pack_loader/inject-pack-prose.mjs) emits the whole set as a **routing table at session start**, one row per pack, so a session deciding where a rule, doc, skill or check goes reads the answer instead of guessing. Guess-by-default lands everything in `basics` — that is the failure this field exists to stop.
+
+Write `excludes` to **name the pack that owns the other side** wherever one exists (`— that is chrome-extension-release`), so the table routes rather than merely refuses. Sibling packs that split a domain (a technology pack and its `-release` pack, `basics` and `git-github`) are where the pair earns its keep, and their two declarations should agree on where the line falls. "No pack fits" is a real answer — it means a new pack, or the project's own `local_packs/` — never the baseline as a fallback.
+
+The table is emitted for every pack **discovered**, active or not: a consumer holds only the packs it vendored, so the discovered set is already what it can route into, and in the canon every pack is a legitimate destination. Local packs declare `routing` on the same terms.
+
 ## Bundled skills (`<pack>/skills/`)
 
 A pack's skills live in its own tree — `<pack>/skills/<skill>/SKILL.md`, one owning pack per skill (#385). The directory listing IS the manifest: there is no `skills` field on `pack.mjs` and no separate skills collection to own or cross-declare.

@@ -15,6 +15,10 @@ import isolation from './isolation.mjs';
 
 export default {
   id: 'product-wiki',
+  routing: {
+    belongs: 'agent-maintained market, user and competitor research wikis — cited pages, growth logs, the reviewed product-requirements sink',
+    excludes: 'how the product is built or specced — that is spec-driven-product; requirement proofs are executable-requirements',
+  },
   badge: 'badge.svg',
   marker: SINK_README,
   detect: (ctx) => ctx.tracked.includes(SINK_README),

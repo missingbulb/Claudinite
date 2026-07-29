@@ -45,6 +45,10 @@ import dedupIntegrity from './dedup-integrity.mjs';
 // active sets retention_days itself.
 export default {
   id: 'grow_with_claudinite',
+  routing: {
+    belongs: 'rules and tasks for capturing lessons into local packs — extraction, dedup, conversation logs, skill-usage folding',
+    excludes: 'repo housekeeping of issues, PRs and branches — that is tidy-repo; cross-repo fleet sweeps are sheepdog',
+  },
   badge: 'badge.svg',
   detect: null,
   marker: null,

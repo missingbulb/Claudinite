@@ -16,6 +16,10 @@ import { contributedBarrierRules } from './contributed.mjs';
 // running empty and guessing separations from existing state.
 export default {
   id: 'barriers',
+  routing: {
+    belongs: 'directed folder-access graph rules — which directories may never reference which, plus the exceptions each rule allows',
+    excludes: 'where a file should live or naming conventions — that is basics file-placement, not an access barrier',
+  },
   badge: 'badge.svg',
   detect: null,
   marker: null,

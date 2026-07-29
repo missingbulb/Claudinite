@@ -12,6 +12,10 @@ import homeSeededPacksDeclared from './home-seeded-packs-declared.mjs';
 // id must equal its directory name ("claudinite") and may not shadow a canon pack.
 export default {
   id: 'claudinite',
+  routing: {
+    belongs: 'working rules and lessons specific to developing Claudinite itself and not portable to any consumer',
+    excludes: 'a lesson that travels to other repos — open it against packs/ instead',
+  },
   badge: 'badge.svg',
   prose: 'RULES.md',
   rules: [homeSeededPacksDeclared],

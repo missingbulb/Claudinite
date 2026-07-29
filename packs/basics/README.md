@@ -13,6 +13,7 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | `skill-ownership` | every skill required by some pack | blocking |
 | `shared-constants` | declared copies match their count | blocking |
 | `squash-merge-history` | change introduces no merge commits | blocking |
+| `pack-routing-declared` | pack.mjs declares its routing boundary | blocking |
 | `scheduler-workflow-shape` | scheduler workflow is thin shim | blocking |
 | `task-declaration-shape` | task.mjs carries full contract | blocking |
 | `file-placement` | code references stay near | advisory |

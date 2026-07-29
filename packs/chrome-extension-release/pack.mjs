@@ -40,6 +40,10 @@ function shipsReleasePipeline(ctx) {
 
 export default {
   id: 'chrome-extension-release',
+  routing: {
+    belongs: 'store publication for a Chrome extension: release workflows, package versioning, release config, privacy and permission disclosure',
+    excludes: 'extension coding and MV3 runtime gotchas — chrome-extension; generic workflow lint rules — github-actions',
+  },
   badge: 'badge.svg',
   marker: 'the "Release to Chrome Store" orchestrator (wires the vendored reusable workflows + composite actions)',
   detect: shipsReleasePipeline,

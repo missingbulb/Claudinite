@@ -8,6 +8,10 @@ import featureRequirementsFirst from './feature-requirements-first.mjs';
 // structural constant: the spec file itself.
 export default {
   id: 'executable-requirements',
+  routing: {
+    belongs: 'running a numbered spec as tests: dev/requirements layout, requirement ids, kinds, coverage and gallery gates, determinism rules',
+    excludes: 'doc-first judgment, owner-owned expecteds and honest-gap tracking — spec-driven-product; general test practice — basics writing-tests',
+  },
   badge: 'badge.svg',
   marker: 'dev/requirements/requirements.md',
   detect: (ctx) => ctx.tracked.includes('dev/requirements/requirements.md'),

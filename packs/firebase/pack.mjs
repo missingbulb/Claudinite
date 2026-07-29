@@ -16,6 +16,10 @@ const hasMarkerNearRoot = (ctx, marker) =>
 
 export default {
   id: 'firebase',
+  routing: {
+    belongs: 'building on Firebase: Firestore security rules, callable Cloud Function patterns, FCM, emulator testing, functions deploy layout',
+    excludes: 'dev/prod project separation, config injection and App Check store gating — that is firebase-release',
+  },
   badge: 'badge.svg',
   marker: 'firebase.json (at the repo root or one directory down)',
   detect: (ctx) => hasMarkerNearRoot(ctx, 'firebase.json'),
