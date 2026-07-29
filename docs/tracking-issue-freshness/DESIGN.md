@@ -117,6 +117,43 @@ read). Two ways to close the gap, either acceptable:
   the standing invariant "no open `plan-tracking` issue is behind its merged phases." Precise
   (it reads the box) but not in-session-timely — a slower net under the timely nudge.
 
+## Per-phase verifiers and the nightly status update
+
+The in-session check guards the merge moment; a second, slower surface keeps the tracker
+honest over time. The insight: a migration plan's phases should each attempt to state
+**how completion is decided** — in code where a machine can decide it, in prose where it
+can't — so that a scheduled sweep can *re-derive* the checklist instead of trusting it.
+
+**The verifier convention.** Each checklist item in a plan-tracking issue carries, in
+order of preference:
+
+1. **A code verifier** — an inline marker `<!-- verify: <repo-path> -->` on the item,
+   naming a dependency-free Node script (conventionally `docs/<plan>/verify/<phase-id>.mjs`,
+   source-controlled beside the plan). Exit 0 ⇒ the phase is done; non-zero ⇒ not done,
+   stdout saying what's missing. "If this code passes, phase 3 is done" — the verdict is
+   authoritative, no judgment involved.
+2. **Prose criteria** — no marker: the phase's **Verify** block in the committed plan doc
+   is the acceptance criteria (the shape `per-project-scheduling/MIGRATION.md` already
+   writes), judged by an agent against observable state, flipped only on high confidence.
+
+A plan should *attempt* code first — a phase whose completion no script can decide states
+its criteria in prose, which is a fact about the phase, not a failure of the convention.
+
+**The nightly task.** [`tasks/plan-status-update/`](../../packs/grow_with_claudinite/tasks/plan-status-update/task.mjs)
+(grow_with_claudinite, `daily`/`sonnet`/`none`): fires iff the `issues` signal shows an
+open issue labeled `plan-tracking`; the worker re-verifies each tracker — unchecked items
+get their verifier run (code first, prose fallback) and flip on pass; **checked** items
+with a code verifier are re-run as a regression probe, and a failure is *flagged in a
+comment, never auto-un-flipped* (the verifier may have rotted; a human decides). One
+description update and at most one summary comment per tracker, only when something
+changed. Unlike the in-session check, the task runs where a GitHub credential
+legitimately lives (the executor session's MCP tools), so it has no label blind spot —
+it closes exactly the precision gap the transcript-only check accepts.
+
+Division of labor, in one line: the **session** check catches "you merged and walked
+away"; the **nightly** sweep catches everything else — phases completed implicitly,
+sessions that never consulted the tracker, and regressions.
+
 ## Belt and suspenders: the recipe asks, the check guarantees
 
 Mirroring the corpus principle *"prose is a request; the post-hoc check is the guarantee"*:
@@ -163,6 +200,12 @@ reproduced here only as the design's summary of scope.
    merge" step.
 5. **Docs** ✅ — the convention recorded in the pack README; this status box flipped; the
    tracking issue points at this doc.
-6. **(Contingent, not built) world-scope backstop** — a network check (CI/fleet) for the
-   label-precise "no open `plan-tracking` issue is behind its merged phases." Resolved with the
-   owner to rely on transcript evidence instead; build only if that proves insufficient.
+6. **Per-phase verifiers (convention)** ✅ — checklist items may carry
+   `<!-- verify: … -->` code verifiers (exit 0 ⇒ done), with the plan doc's prose Verify
+   blocks as the fallback criteria; recorded in the pack README and the nightly worker doc.
+7. **Nightly status update** ✅ — the `plan-status-update` task (grow_with_claudinite):
+   daily, gated on an open `plan-tracking` issue, re-derives each tracker's checklist from
+   its verifiers; regressions flagged, never auto-un-flipped.
+8. **(Superseded) world-scope backstop** — the originally contingent network check is
+   subsumed by the nightly task, which runs with the executor session's MCP credential and
+   has no label blind spot.
