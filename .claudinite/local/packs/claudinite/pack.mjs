@@ -1,3 +1,5 @@
+import homeSeededPacksDeclared from './home-seeded-packs-declared.mjs';
+
 // The canon home repo's OWN local pack — Claudinite-specific working rules and
 // lessons that are NOT portable to consumers (those belong in packs/, the shared
 // canon). This is the capture surface the growth-extract and conversation-extract
@@ -12,5 +14,5 @@ export default {
   id: 'claudinite',
   badge: 'badge.svg',
   prose: 'RULES.md',
-  rules: [],
+  rules: [homeSeededPacksDeclared],
 };

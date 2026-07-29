@@ -34,22 +34,19 @@ prose below).
 
 ## Canon-specific gotchas
 
-- **Baselining backfill skips the home — hand-declare fleet-seeded packs here.** The nightly
-  baselining that lands a `seededByDefault` pack (and canon-delivered declaration changes) on
-  every member is gated `!isHome`, so the canon home is the one repo it never reaches: a newly
-  seeded pack does *not* arrive here automatically — the home's own `.claudinite-checks.json`
-  must be updated by hand in the same change that flips the seed. The natural drift-guard (a
-  future check, once the home is clean) is: the home declares every `seededByDefault` non-local
-  pack.
+- **Baselining backfill skips the home.** The nightly baselining that lands a `seededByDefault`
+  pack (and canon-delivered declaration changes) on every member is gated `!isHome`, so the canon
+  home is the one repo it never reaches: what the fleet receives automatically, this repo's own
+  `.claudinite-checks.json` only ever gets by hand.
 - **The home doesn't declare `git-github`, so its skills never mount — never conclude "no such
   skill" from `.claude/skills/`.** `mount-skills.mjs` filters on the *literal* declaration
   (`isActive(p, { packs: declared })`), not the `requires` closure `check_the_world.mjs` resolves,
   and the baselining that would normalize that closure into `.claudinite-checks.json` is the one
   thing gated `!isHome` — so `merge-to-main` and `git-github-advanced` are simply absent here.
   Read `packs/<pack>/skills/<name>/SKILL.md` out of the tracked tree — the corpus *is* this repo,
-  and an unmounted skill says nothing about whether its procedure applies. The seed-based
-  drift-guard above would not catch this (`git-github` arrives by closure, never
-  `seededByDefault`); a real one compares `resolveDeclaredPacks` against the literal declaration.
+  and an unmounted skill says nothing about whether its procedure applies. The seeding gap above
+  is a different one (`git-github` arrives by closure, never `seededByDefault`); catching this
+  one needs `resolveDeclaredPacks` compared against the literal declaration.
 - **Never re-serialize a repo's JSON config to apply an edit — patch the text.** A round-trip
   rewrites what it wasn't asked to: Python's `json.dump` defaults to `ensure_ascii=True` (every
   non-ASCII character becomes a `\uXXXX` escape), and indent, key order and the trailing newline
