@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeRepo, cleanup, git, gitDated, writeFiles } from './helpers.mjs';
-import { buildContext, loadConfig, CONFIG_KEYS } from '../engine/checks/helpers/repo-context.mjs';
+import { buildContext, loadConfig, CONFIG_KEYS, isDormant } from '../engine/checks/helpers/repo-context.mjs';
 
 test('loadConfig: clean settings validate with no errors; a missing file is empty and error-free', () => {
   const ok = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({ packs: ['basics'], rules: {}, maintenance: { delivery: 'auto' } }) } });
@@ -373,6 +373,40 @@ test('every key in CONFIG_KEYS survives loadConfig — declarable implies readab
     assert.equal(cfg.claudinite.ref, 'deadbeef');
     assert.equal(cfg.claudinite.updated, '2026-07-26T20:10:18.694Z');
     assert.equal(cfg.maintenance.delivery, 'auto-merge');
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+// ── dormant: the project's own declaration that it is out of the recurring work ──
+test('dormant loads as a boolean — declared true, and false when absent or false', () => {
+  const root = mkdtempSync(join(tmpdir(), 'claudinite-dormant-'));
+  try {
+    writeFiles(root, { '.claudinite-checks.json': JSON.stringify({ packs: ['basics'], dormant: true }) + '\n' });
+    const on = loadConfig(root);
+    assert.deepEqual(on.errors, [], 'declaring dormancy is a legal settings file');
+    assert.equal(on.dormant, true);
+    assert.equal(isDormant(on), true, 'the predicate reads the loaded config…');
+    assert.equal(isDormant({ packs: [], dormant: true }), true, '…and a raw declaration, which is how the fleet sweeps read another repo');
+
+    // Opt-in: absence is active, and so is an explicit false. This is the shape every
+    // repo in the fleet has, so it must never drift toward dormant.
+    writeFiles(root, { '.claudinite-checks.json': JSON.stringify({ packs: ['basics'] }) + '\n' });
+    assert.equal(loadConfig(root).dormant, false);
+    writeFiles(root, { '.claudinite-checks.json': JSON.stringify({ packs: ['basics'], dormant: false }) + '\n' });
+    assert.equal(loadConfig(root).dormant, false);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('a non-boolean dormant is a settings error, not a truthy value', () => {
+  // `"dormant": "yes"` or `{ "since": … }` reads as dormant to any truthiness test
+  // and as active to this one, and the difference is a whole repo's scheduled work.
+  // Fail at load rather than silently pick one.
+  const root = mkdtempSync(join(tmpdir(), 'claudinite-dormant-bad-'));
+  try {
+    writeFiles(root, { '.claudinite-checks.json': JSON.stringify({ packs: ['basics'], dormant: 'yes' }) + '\n' });
+    const cfg = loadConfig(root);
+    assert.equal(cfg.errors.length, 1);
+    assert.match(cfg.errors[0].what, /"dormant" must be true or false/);
+    assert.equal(cfg.dormant, false, 'an invalid declaration is not a dormancy declaration');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 

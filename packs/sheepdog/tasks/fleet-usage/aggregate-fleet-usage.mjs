@@ -22,7 +22,10 @@
 //
 // COVERAGE IS EXPLICIT. A member with no usage file (not folding yet) or an
 // unreadable one is LISTED as absent, census-style, never silently skipped. A
-// denominator with an invisible hole in it is worse than no denominator.
+// denominator with an invisible hole in it is worse than no denominator. A member
+// that declares itself DORMANT is out of the denominator entirely — and listed
+// under its own heading, because "not in the race" and "should be folding and
+// isn't" are different facts and only one of them is a problem.
 //
 // The canon knows mechanisms, never repos: no member is named anywhere here. The
 // member set is enumerated at runtime from the enforcer's own sheepdog config,
@@ -37,10 +40,8 @@
 // (fleet-api.mjs) and the config reader (fleet-config.mjs).
 
 import { pathToFileURL } from 'node:url';
-import { makeGh, paged, isCovered } from '../../fleet-api.mjs';
+import { makeGh, paged, readDeclaration, isDormant, DECLARATION } from '../../fleet-api.mjs';
 import { parseSheepdogConfig } from '../../fleet-config.mjs';
-
-const DECLARATION = '.claudinite-checks.json';
 export const MEMBER_USAGE_PATH = '.claudinite/local/usage.GENERATED.json';
 export const FLEET_USAGE_PATH = 'usage-fleet.GENERATED.json';
 export const FLEET_VERSION = 1;
@@ -68,7 +69,7 @@ const sortKeys = (obj) => Object.fromEntries(Object.keys(obj).sort().map((k) => 
 // window verbatim for the fast view. Nothing is pre-summed: every coarser view
 // (a skill fleet-wide, a repo over time, this week across the fleet) stays derivable
 // from this file, and a summary that threw away the grain would not.
-export function aggregate({ members, absent = [], generatedAt }) {
+export function aggregate({ members, absent = [], dormant = [], generatedAt }) {
   const weeks = {};
   const days = {};
   const repos = {};
@@ -109,6 +110,13 @@ export function aggregate({ members, absent = [], generatedAt }) {
     coverage: {
       folding: Object.keys(repos).sort(),
       absent: [...absent].sort(),
+      // Dormant members are OUT of the denominator, and named rather than dropped.
+      // They are not an absence to chase — nobody is working there, so a skill that
+      // never loads there says nothing about whether it earns its place — but a
+      // reader comparing this file against the fleet's repo count needs to see where
+      // the difference went. Absent means "should be folding and isn't"; dormant
+      // means "not in the race at all".
+      dormant: [...dormant].sort(),
     },
     repos: sortKeys(repos),
     days: sortKeys(days),
@@ -168,18 +176,26 @@ export async function main({ now = new Date() } = {}) {
 
   const members = [];
   const absent = [];
+  const dormant = [];
   for (const r of mine.sort((a, b) => a.full_name.localeCompare(b.full_name))) {
     const fullName = r.full_name;
     const key = fullName.toLowerCase();
     if (r.archived || r.fork || exclude.has(key)) continue;
     // Only COVERED repos are members. An uncovered repo is the census's subject, not
     // this sweep's — reporting it as an absent member would file the same fact twice.
-    let covered;
-    try { covered = await isCovered(gh, fullName); } catch (e) {
+    // The declaration is read rather than merely counted because dormancy is inside
+    // it, and the same read answers both questions.
+    let decl;
+    try { decl = await readDeclaration(gh, fullName); } catch (e) {
       absent.push(`${fullName} (coverage check failed: ${e.message})`);
       continue;
     }
-    if (!covered) continue;
+    if (decl === null) continue;
+    // A dormant member is out of the DENOMINATOR, not an absence: nobody is working
+    // there, so "this skill never loaded" is a fact about the silence, not about the
+    // skill, and averaging it in would drag every fleet-wide number toward zero as
+    // the fleet accumulates finished projects.
+    if (isDormant(decl)) { dormant.push(fullName); continue; }
     try {
       const usage = await readUsage(gh, fullName);
       if (usage === null) absent.push(`${fullName} (no ${MEMBER_USAGE_PATH} — not folding yet)`);
@@ -189,7 +205,7 @@ export async function main({ now = new Date() } = {}) {
     }
   }
 
-  return aggregate({ members, absent, generatedAt: now.toISOString().slice(0, 10) });
+  return aggregate({ members, absent, dormant, generatedAt: now.toISOString().slice(0, 10) });
 }
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;

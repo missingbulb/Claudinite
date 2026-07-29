@@ -40,6 +40,20 @@ is measured against — named rather than inferred, because a ref tells you noth
 from. `staleDays` (default `14`) is how far behind is too far. Both are freshness-only and both
 default, so an existing sheepdog config keeps working untouched.
 
+**Dormant members are left alone** — a member declares itself out of the recurring work with
+`"dormant": true` in its own `.claudinite-checks.json` ([the scheduler's
+gate](../basics/scheduled-tasks.md)), and the sweeps honour that member's declaration with the
+same predicate its own scheduler used (`isDormant`, re-exported from the engine — a sweep with a
+private notion of dormancy would nag exactly the repos that had already opted out). The
+**freshness sweep** skips it before it reads the stamp, and closes any open drift issue as *not
+planned*: its scheduler is stopped, so its mount falls behind **by design**, and reporting that
+would be nagging a repo for obeying its own declaration. The **usage sweep** drops it from the
+denominator and lists it under `coverage.dormant` — "not in the race" and "should be folding and
+isn't" are different facts, and averaging a silent repo in would drag every fleet-wide number
+toward zero as the fleet accumulates finished projects. The **census** is deliberately unchanged:
+a dormant repo still carries its declaration, so it is still a **member** — dormancy is about
+upkeep, never about membership, and a dormant repo must never be asked to adopt Claudinite again.
+
 **Classification** — all three sweeps are ordinary **pack tasks**, not fleet mechanisms. Their
 *implementation* — an account-spanning PAT — happens to scan every repo under the owner, but their
 declaration, scheduling, and lifecycle are exactly those of any pack task. None declares the

@@ -101,3 +101,38 @@ Which ready label a task dispatches under follows from its `session_scope`, and 
 session started by that label is the one with the matching reach — a `fleet` task's session
 has the owner's repos in its sources, a `self` task's has this repo alone. The task declares
 the scope; nothing downstream re-decides it.
+
+## A dormant project runs nothing
+
+A project that is finished, parked, or simply not being worked on declares itself
+**dormant** in `.claudinite-checks.json`:
+
+```json
+"dormant": true
+```
+
+The scheduler reads it **first**, ahead of the due-slot math and every task's own
+precondition, and stops: no task is evaluated, no signal is collected, no dispatch
+issue is filed or maintained, no agent session starts, no maintenance PR is opened.
+It is not that each task finds nothing to do — nothing is asked. That is the point:
+a repo nobody is working on should not be paying for the ceremony of one that is.
+One gate covers every task, canon and local, present and future, and no task
+declaration ever mentions dormancy.
+
+**It is narrow.** Dormancy switches off *recurring, unattended* work — nothing else.
+Open a session on a dormant repo and the hooks, the checks engine, the mounted
+skills and the pack prose all work exactly as they did. Claudinite is not
+uninstalled; it is off the treadmill.
+
+**Waking up is symmetric** — flip the key to `false` or delete it, and the next
+hourly run schedules normally. Sleeping slots are *skipped*, never deferred: the
+watermark advances while dormant, so waking a project does not replay the months it
+slept through. A manual `FORCE_TASKS` run does not reach past the gate either —
+forcing overrides a *precondition*, and dormancy is not one.
+
+**The fleet respects it too.** The enforcer's fleet-wide sweeps
+([sheepdog](../sheepdog/RULES.md)) leave a dormant member alone: no drift issue for
+a mount that has fallen behind by design, and no place in the usage denominator. A
+repo told to stop keeping up must not then be nagged for not keeping up. Coverage is
+the one thing dormancy does *not* change — a dormant repo is still a member, still
+carries its declaration, and is never asked to adopt Claudinite again.

@@ -8,7 +8,21 @@
 // process is MCP-native and carries no REST client). It knows nothing about any
 // specific pack: it is the generic "talk to many repos" layer, no more.
 
+import { isDormant } from '../../engine/checks/helpers/repo-context.mjs';
+
 const API = 'https://api.github.com';
+
+// The tracked declaration every member carries — the file the sweeps read a member's
+// membership, stamp and dormancy out of. Named once here because all three sweeps
+// name it.
+export const DECLARATION = '.claudinite-checks.json';
+
+// Dormancy, re-exported from the engine rather than re-tested here. A member declares
+// itself dormant in its OWN declaration, and the test has to be the same one that
+// member's scheduler used to stop itself — a sweep with its own private notion of
+// dormancy would nag exactly the repos that had already opted out, which is the whole
+// failure this exists to prevent.
+export { isDormant };
 
 export function makeGh(token) {
   return async function gh(path, { method = 'GET', body } = {}) {
@@ -69,6 +83,23 @@ export async function fileExists(gh, fullName, path) {
   if (status === 200) return true;
   if (status === 404) return false;
   throw new Error(`marker check ${fullName}:${path} returned ${status}`);
+}
+
+// One repo's parsed declaration, or null when it has none (uncovered). Anything
+// else — an unreadable response, an unparsable body — THROWS, because a sweep that
+// cannot read a member's declaration knows nothing about it, and "I could not read
+// it" must never quietly become "it says nothing". Shared by the sweeps that need
+// what is INSIDE the file (the stamp, the dormancy flag) rather than only that it
+// exists.
+export async function readDeclaration(gh, fullName, path = DECLARATION) {
+  const res = await gh(`/repos/${fullName}/contents/${path}`);
+  if (res.status === 404) return null;
+  if (res.status !== 200 || !res.json?.content) throw new Error(`${path} returned ${res.status}`);
+  try {
+    return JSON.parse(Buffer.from(res.json.content, 'base64').toString('utf8'));
+  } catch (e) {
+    throw new Error(`unparsable ${path}: ${e.message}`);
+  }
 }
 
 // Does this repo mount Claudinite? (Method B sync hook / legacy gitkeep / Method A

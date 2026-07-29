@@ -132,6 +132,42 @@ test('planRun dispatches a running agent task and skips a non-running one', asyn
   assert.equal(byTask.quiet.dispatch, undefined);
 });
 
+// ── Dormancy: the gate ahead of every other decision ────────────────────────
+test('planRun evaluates nothing at all when the project declares itself dormant', async () => {
+  // A task whose precondition would say "run", and would even dispatch — the point
+  // is that the dormant project never asks it. Forcing does not reach past this
+  // either: FORCE_TASKS is a manual override of a PRECONDITION, and dormancy is not
+  // a precondition — the way to run this project's tasks again is to wake it up.
+  const tasks = [mkTask('runs', { precondition: () => ({ run: true, reason: 'work found' }) })];
+  let collected = false; let askedIssues = false;
+  const { evaluations, dormant } = await planRun({
+    tasks, schedule: D, now: '2026-07-22T06:00:00Z', lastSuccess: '2026-07-21T06:00:00Z',
+    config: { dormant: true }, overrides: { FORCE_TASKS: 'runs' },
+    collectSignals: async () => { collected = true; return {}; },
+    existingIssuesFor: async () => { askedIssues = true; return []; },
+  });
+  assert.equal(dormant, true);
+  assert.deepEqual(evaluations, []);
+  assert.equal(collected, false, 'a dormant project pays for no signal collection');
+  assert.equal(askedIssues, false, 'a dormant project files and searches no dispatch issue');
+});
+
+test('planRun runs normally when dormancy is absent or explicitly false', async () => {
+  // The honest negative: `dormant` is opt-IN, so the overwhelmingly common shape —
+  // no key at all — must not read as dormant, and neither must `false`. A gate this
+  // wide failing open in the wrong direction would silently stop a whole repo.
+  const tasks = [mkTask('runs', { precondition: () => ({ run: true, reason: 'work found' }) })];
+  for (const config of [undefined, {}, { dormant: false }, { dormant: 'true' }]) {
+    const { evaluations, dormant } = await planRun({
+      tasks, schedule: D, now: '2026-07-22T06:00:00Z', lastSuccess: '2026-07-21T06:00:00Z',
+      config, collectSignals: async () => ({}), existingIssuesFor: async () => [],
+    });
+    assert.equal(dormant, undefined, `config ${JSON.stringify(config)} must not read as dormant`);
+    assert.equal(evaluations.length, 1);
+    assert.equal(evaluations[0].dispatch.action, 'create');
+  }
+});
+
 test('planRun marks a agent_model:none task inline instead of dispatching an issue', async () => {
   const tasks = [mkTask('code', { agent_model: 'none', expected_outcome: 'none', precondition: () => ({ run: true, reason: 'deployable change' }) })];
   let askedIssues = false;
