@@ -14,7 +14,7 @@ export default {
   id: 'claudinite',
   routing: {
     belongs: 'working rules and lessons specific to developing Claudinite itself and not portable to any consumer',
-    excludes: 'a lesson that travels to other repos — open it against packs/ instead',
+    excludes: 'fleet-facing curation duties and policing of the packs/ tree — that is the canon-curation local pack',
   },
   badge: 'badge.svg',
   prose: 'RULES.md',

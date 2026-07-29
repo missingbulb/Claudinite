@@ -23,8 +23,8 @@ import packIndependence from './pack-independence.mjs';
 export default {
   id: 'canon-curation',
   routing: {
-    belongs: 'the canon home maintaining itself — promoting member lessons into packs/, sweeping the fleet stack, policing the corpus tree',
-    excludes: 'anything portable to a consuming repo — that belongs in a packs/ canon pack',
+    belongs: 'fleet-facing curation of the shared corpus — promoting member lessons into packs/, sweeping the fleet stack, policing packs/',
+    excludes: 'working rules for developing Claudinite itself — that is the claudinite local pack; a member tidying itself — tidy-repo',
   },
   badge: 'badge.svg',
   detect: null,
