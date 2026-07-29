@@ -100,9 +100,10 @@ test('the file states its sampling population — it must not read as a census',
   assert.equal(file._note, SAMPLING_NOTE);
   assert.match(file._note, /Captured sessions only/);
   assert.match(file._note, /Reclaimed containers and crashes are invisible/);
-  // The checks carry a second, narrower boundary — a CI-run world sweep is in no
-  // session's transcript — and the file must say so where it is read.
+  // The checks carry a second, narrower boundary — a CI run counts only when the
+  // session pulled its log in — and the file must say so where it is read.
   assert.match(file._note, /floor on activations, never an over-count/);
+  assert.match(file._note, /pulled its job log in/);
   assert.equal(file.version, FLEET_VERSION);
 });
 

@@ -51,8 +51,11 @@ export const FLEET_VERSION = 1;
 export const SAMPLING_NOTE = 'Captured sessions only — sessions that merged, plus sessions that ended '
   + 'cleanly enough for the SessionEnd capture to fire. Reclaimed containers and crashes are invisible '
   + 'here, so these are SAMPLE counts, not a census of all work. The check counts are narrower still: '
-  + 'they are what a session SAW, so a world sweep that ran in CI rather than in a session is not in '
-  + 'them. Every check number is a floor on activations, never an over-count.';
+  + 'they are what a session SAW. A CI run counts when the session pulled its job log in — which is '
+  + 'what "the agent was in the loop on it" means — and a nightly or post-merge run nobody looked at '
+  + 'does not, because nothing was corrected. CI can only see a run that PRINTED something, so its '
+  + 'share is carried separately as ciRuns/ciFailures. Every check number is a floor on activations, '
+  + 'never an over-count.';
 
 // --- the pure aggregation -----------------------------------------------------
 

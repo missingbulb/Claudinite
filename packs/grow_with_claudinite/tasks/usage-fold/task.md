@@ -12,7 +12,7 @@ What it counts, per bucket:
 - **`captures`** — capture events folded. **`merges`** — the subset with an issue behind them (issue `0` means none).
 - **`sessions`** — distinct session ids; one session can capture more than once.
 - **`userMessages`** — genuine human turns. **`userCommands`** — every typed `/command`.
-- **`checks`**, per scope (`work` / `world`) — `runs` (observed activations), `failures` (runs that reported a blocking finding), `errors` (the runner could not launch), and the `blocking`/`advisory` finding volume. **`checkFindings`**, per rule id — which rule caught what.
+- **`checks`**, per scope (`work` / `world`) — `runs` (observed activations), `failures` (runs that reported a blocking finding), `errors` (the runner could not launch), the `blocking`/`advisory` finding volume, and `ciRuns`/`ciFailures` (the CI subset of the first two). **`checkFindings`**, per rule id — which rule caught what.
 
 The denominators are the point. A raw load count cannot tell healthy-rare from broken — a version-bump skill loading rarely is fine — so the question is loads *against the sessions where that skill's own declared trigger plausibly applied.*
 
@@ -26,9 +26,15 @@ Neither runner writes a metrics file, so both are counted off the marks they alr
 - **`report-findings`' summary line** (`N blocking, M advisory (<scope> scope: …)`), which names its own scope and survives the `| tail` an agent usually pipes a run through — printed only when there *were* findings, so it counts failures, never runs;
 - **the runner's invocation in a Bash command** (`node …/check_the_world.mjs`), which is how the world scope runs at all — it is wired into the test/CI flow, not the Stop hook.
 
-Runs come only from the marks a passing run also leaves; where a runner ran without its command naming it (a `make test` wrapping it), the summary lines are the floor, so the count is the **max** of the two signals rather than their sum. Only Bash results are read, paired back to the command that produced them — in the corpus that owns the runners, reading a file that merely *mentions* this vocabulary is the ordinary case.
+Runs come only from the marks a passing run also leaves; where a runner ran without its command naming it (a `make test` wrapping it), the summary lines are the floor, so the count is the **max** of the two signals rather than their sum. Only Bash and CI-log tool results are read, paired back to the tool that produced them — in the corpus that owns the runners, reading a file that merely *mentions* this vocabulary is the ordinary case.
 
-**Every check number is a floor.** A world sweep that ran in CI left no mark in any session transcript; neither did a hook killed before it logged. The under-count is one-directional by construction, which is what keeps "the checks caught N things this week" a claim worth making.
+### CI counts when the agent was in the loop on it
+
+Write, commit, let CI run, fix what it caught is the same correction loop as the Stop hook's, one turn wider — so a CI check failure the session acted on is the same kind of win. It counts exactly when the session **pulled the job log in**, which is what "the agent was in the loop" means operationally. A nightly or post-merge run nobody looked at stays uncounted, correctly: nothing was corrected.
+
+Two consequences, both mechanism rather than policy. Actions stamps every log line with its own timestamp before the command's output, so each mark tolerates that prefix — without it a fetched CI log reads as having printed nothing at all. And a job log gets fetched repeatedly while iterating on the failure, with nothing in a fetch saying *which run* it was, so CI texts dedupe on the check output itself: two fetches of one job collapse, two real runs differ by their timestamps.
+
+**Every check number is a floor.** A run whose CI log nobody fetched left no mark in any session transcript; neither did a hook killed before it logged; and a green CI sweep prints nothing to be seen by, which is why the CI share is carried separately as `ciRuns`/`ciFailures` instead of quietly skewing a rate. The under-count is one-directional by construction, which is what keeps "the checks caught N things this week" a claim worth making.
 
 ## Two tiers, two different mechanisms
 

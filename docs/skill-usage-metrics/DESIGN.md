@@ -186,6 +186,27 @@ real captured logs rather than inferred:
    exist, because the world sweep is wired into the test/CI flow rather than
    the hook (`engine/checks/README.md`, "Enforcement wiring").
 
+**CI counts when the agent was in the loop on it.** Write, commit, let CI run,
+fix what it caught is the same correction loop as the Stop hook's, one turn
+wider, so a CI check failure the session acted on is the same kind of win. It
+is counted exactly when the session **pulled the job log in** — which is what
+"the agent was in the loop" means operationally, and it draws the line the
+owner asked for: a nightly or post-merge run nobody looked at stays uncounted,
+correctly, because nothing was corrected. Two things follow, and both are
+mechanism, not policy:
+
+- CI logs arrive through a CI-log tool rather than Bash (matched by name shape
+  — `job_logs` / `run_logs` / `workflow_logs` — so a different MCP server or a
+  rename still lands), and every line carries the Actions timestamp in front of
+  the command's own output, so each mark tolerates that prefix. Without it a
+  fetched CI log reads as having printed nothing.
+- A job log can be fetched repeatedly while iterating on the failure, and
+  nothing in a fetch says *which run* it was. So CI texts dedupe on the check
+  output itself: two fetches of one job are identical and collapse; two real
+  runs differ by their Actions timestamps at least. Two genuinely identical
+  runs collapse too — an under-count, the direction this counter is allowed to
+  be wrong in.
+
 From those, per bucket:
 
 - **`checks`**, keyed by scope (`work` / `world`): `runs` — observed
@@ -193,7 +214,12 @@ From those, per bucket:
   finding; `errors` — runs where the runner could not launch; `blocking` /
   `advisory` — finding *volume* summed over those runs. A rule blocking in two
   consecutive runs counts twice: the question is how often the checks caught
-  something, not how many distinct problems existed.
+  something, not how many distinct problems existed. Plus `ciRuns` /
+  `ciFailures`, the **subset** of those that came from a fetched CI log —
+  carried separately because that source can only see a run that printed
+  something (a green CI sweep prints nothing and is invisible), so a consumer
+  wanting a rate over runs it can see the whole of subtracts them, while one
+  asking "how often did the checks catch something" uses the totals.
 - **`checkFindings`**, keyed by rule id, `{ blocking, advisory }` — read off
   each rendered `[BLOCKING] <rule>  <file>` header. Lossier than the summary
   totals (a run piped through `tail -3` keeps the summary and drops the
@@ -208,13 +234,14 @@ signals, never their sum, because they are two views of the same runs.
 
 Two things keep this honest and must stay stated wherever the numbers are read:
 
-- **Only Bash tool results count**, paired back to their `tool_use` command. In
-  the corpus that owns the runners, reading a file that merely *contains* this
-  vocabulary is the ordinary case, not a corner one.
-- **These are floors, never over-counts.** A world sweep that ran in CI left no
-  mark in any transcript. A hook killed before it logged left none either. The
-  bias is one-directional by construction, which is the direction that keeps
-  "the checks caught N things this week" a claim worth making.
+- **Only Bash and CI-log tool results count**, paired back to their `tool_use`.
+  In the corpus that owns the runners, reading a file that merely *contains*
+  this vocabulary is the ordinary case, not a corner one.
+- **These are floors, never over-counts.** A sweep whose CI log nobody fetched
+  left no mark in any transcript. A hook killed before it logged left none
+  either. A green CI run prints nothing to be seen by. The bias is
+  one-directional by construction, which is the direction that keeps "the
+  checks caught N things this week" a claim worth making.
 
 One hook execution is recorded under two entry shapes (the feedback turn the
 model sees, and the harness's `stop_hook_summary` repeating the same stderr).
@@ -264,8 +291,10 @@ Two tiers, per the owner's fast-insight requirement:
                     "userMessages": 31, "userCommands": 4,
                     "skillLoads": { "merge-to-main": 1 },
                     "checks": {
-                      "work":  { "runs": 34, "failures": 12, "errors": 0, "blocking": 15, "advisory": 0 },
-                      "world": { "runs": 41, "failures": 2, "errors": 0, "blocking": 4, "advisory": 127 }
+                      "work":  { "runs": 34, "failures": 12, "errors": 0, "blocking": 15,
+                                 "advisory": 0, "ciRuns": 0, "ciFailures": 0 },
+                      "world": { "runs": 42, "failures": 3, "errors": 0, "blocking": 5,
+                                 "advisory": 131, "ciRuns": 1, "ciFailures": 1 }
                     },
                     "checkFindings": { "task-lifecycle": { "blocking": 8, "advisory": 0 } } }
   },
@@ -273,7 +302,8 @@ Two tiers, per the owner's fast-insight requirement:
     "2026-W30": { "days": 7, "captures": 11, "merges": 9, "sessionDays": 8,
                   "userMessages": 210, "userCommands": 23,
                   "skillLoads": { "merge-to-main": 6 },
-                  "checks": { "work": { "runs": 190, "failures": 51, "errors": 0, "blocking": 66, "advisory": 3 } },
+                  "checks": { "work": { "runs": 190, "failures": 51, "errors": 0, "blocking": 66,
+                                        "advisory": 3, "ciRuns": 0, "ciFailures": 0 } },
                   "checkFindings": { "task-lifecycle": { "blocking": 40, "advisory": 0 } } }
   }
 }
@@ -390,11 +420,14 @@ nothing to optimize.
 - **A member goes quiet**: its day window empties, its weeks stop growing, and
   the fleet file shows it with zeros-by-absence plus its last folded week —
   distinguishable from "not folding" via the `coverage` section.
-- **A check ran where no session saw it** (world sweep in CI, hook killed
-  before it logged): the run is simply not counted. This is the one under-count
-  the design accepts by construction, and it is one-directional — the numbers
-  are floors, never inflated. Stated in the fleet file's own `_note` so a
-  consumer cannot read them as a census of enforcement.
+- **A check ran where no session saw it** (a CI run nobody fetched the log for,
+  a hook killed before it logged, a green CI sweep that printed nothing): the
+  run is simply not counted. This is the one under-count the design accepts by
+  construction, and it is one-directional — the numbers are floors, never
+  inflated. Stated in the fleet file's own `_note` so a consumer cannot read
+  them as a census of enforcement. Detached CI is *deliberately* out: the
+  metric is about the correction loop, and a run nobody looked at corrected
+  nothing.
 - **The harness changes how it records hooks**: the marks in §4.1 are harness
   output, not a contract Claudinite owns. A shape change makes check counts
   fall to zero — loudly, since a repo with checks wired cannot plausibly report
@@ -432,3 +465,9 @@ nothing to optimize.
 9. **Per-rule grain is kept**, not just per-scope totals: "which rule catches
    things" is what the promote run and `prose-to-checks` actually need, and it
    is what the fleet view exists to answer across members.
+10. **CI counts when it was part of the agent loop** — write, commit, let CI
+    run, fix what it caught — and not otherwise. Operationally: the session
+    pulled the job log in. A nightly or post-merge run nobody looked at is
+    explicitly *not crucial* and stays uncounted, because nothing was
+    corrected. The CI share is carried separately (`ciRuns` / `ciFailures`)
+    since that source sees only runs that printed.

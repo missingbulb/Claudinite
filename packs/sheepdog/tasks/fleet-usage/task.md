@@ -26,7 +26,7 @@ A covered member with no usage file (not folding yet), or one whose file cannot 
 
 The file carries a `_note` saying so. Its whole population is *captured* sessions: sessions that merged, plus sessions that ended cleanly enough for the SessionEnd capture to fire. A session whose container was reclaimed, or that crashed, is invisible to every number in it.
 
-The check counts sit inside a narrower boundary still, and the note says that too: they are what a *session* saw, so a world sweep that ran in CI is in none of them. The under-count is one-directional — every check number is a floor on activations, never an over-count — which is what keeps "the checks caught N things fleet-wide this week" a claim worth making.
+The check counts sit inside a narrower boundary still, and the note says that too: they are what a *session* saw. A CI run counts when the session pulled its job log in — which is what "the agent was in the loop on it" means, and it is the loop that produces the correction — while a nightly or post-merge run nobody looked at does not, because nothing was corrected. CI can only see a run that *printed* something, so its share rides separately as `ciRuns`/`ciFailures` rather than skewing a rate. The under-count is one-directional — every check number is a floor on activations, never an over-count — which is what keeps "the checks caught N things fleet-wide this week" a claim worth making.
 
 ## Not a fleet mechanism
 

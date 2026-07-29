@@ -147,6 +147,30 @@ const readResult = (id, content) => ({
   message: { content: [{ type: 'tool_result', tool_use_id: id, content }] },
   toolUseResult: { type: 'text', file: { content } },
 });
+// A CI job log the session pulled in: an MCP tool call, and a result whose text
+// reaches the transcript as content blocks rather than as `{ stdout }`. Every line
+// of an Actions log carries the runner's own timestamp in front of the output.
+// The payload is a JSON document inside a text block, so the log's newlines arrive
+// ESCAPED — copied from a real capture, because a fixture with real newlines would
+// pass while every actual CI log matched nothing.
+const ciFetch = (id) => ({ type: 'assistant', message: { content: [{ type: 'tool_use', id, name: 'mcp__github__get_job_logs', input: { job_id: 1 } }] } });
+const ciResult = (id, logs) => {
+  const text = JSON.stringify({ job_id: 90518898761, logs_content: logs });
+  return {
+    type: 'user',
+    message: { content: [{ type: 'tool_result', tool_use_id: id, content: [{ type: 'text', text }] }] },
+    toolUseResult: [{ type: 'text', text }],
+  };
+};
+const CI_LOG = '2026-07-29T08:12:04.1234567Z ##[group]Run node engine/checks/check_the_world.mjs\n'
+  + '2026-07-29T08:12:05.7654321Z [BLOCKING] task-lifecycle  (branch)\n'
+  + '2026-07-29T08:12:05.7654322Z   none of the 1 commit(s) since origin/main references an issue (#N)\n'
+  + '2026-07-29T08:12:05.7654323Z 1 blocking, 4 advisory (world scope: all vs origin/main).\n'
+  + '2026-07-29T08:12:05.9000000Z ##[error]Process completed with exit code 1.\n';
+
+// One place for the per-scope row shape, so adding a counter is one edit rather than
+// a sweep through every assertion that names the whole row.
+const scopeRow = (over) => ({ runs: 0, failures: 0, errors: 0, blocking: 0, advisory: 0, ciRuns: 0, ciFailures: 0, ...over });
 
 test('hookCheckRuns reads the hook\'s own completion line, with the outcome it declares', () => {
   assert.deepEqual(hookCheckRuns(HOOK_PASS), [{ stamp: '2026-07-28T22:14:43Z 4421', exit: 0, reason: 'checks-passed' }]);
@@ -208,13 +232,13 @@ test('checkOutputs takes Bash results and leaves every other tool result alone',
 
 test('countChecks: a passing hook run is an activation, not a failure', () => {
   const { checks, checkFindings } = countChecks([hookSuccess(HOOK_PASS)]);
-  assert.deepEqual(checks.work, { runs: 1, failures: 0, errors: 0, blocking: 0, advisory: 0 });
+  assert.deepEqual(checks.work, scopeRow({ runs: 1 }));
   assert.deepEqual(checkFindings, {}, 'nothing was caught, so no rule has a key');
 });
 
 test('countChecks: a failing hook run is one activation, one failure, and its rules', () => {
   const { checks, checkFindings } = countChecks([hookFeedback(HOOK_FAIL), hookSummary(HOOK_FAIL)]);
-  assert.deepEqual(checks.work, { runs: 1, failures: 1, errors: 0, blocking: 2, advisory: 0 });
+  assert.deepEqual(checks.work, scopeRow({ runs: 1, failures: 1, blocking: 2 }));
   assert.deepEqual(checkFindings, {
     'comment-classification': { blocking: 1, advisory: 0 },
     'task-lifecycle': { blocking: 1, advisory: 0 },
@@ -228,13 +252,13 @@ test('countChecks: the loop-guard relent is a FAILURE — it prints no findings 
     '2026-07-28T10:00:00Z run=7 Stop: done exit=0 loop-guard-relent\n',
     'claudinite checks: the same blocking findings survived 2 fix attempts — letting the stop through.',
   )]);
-  assert.deepEqual(checks.work, { runs: 1, failures: 1, errors: 0, blocking: 0, advisory: 0 });
+  assert.deepEqual(checks.work, scopeRow({ runs: 1, failures: 1 }));
 });
 
 test('countChecks: a runner that could not launch is an ERROR, never a quiet clean day', () => {
   const { checks } = countChecks([hookFeedback(
     'Stop hook feedback:\n[node …/stop-command.mjs]: 2026-07-28T10:00:00Z run=7 Stop: done exit=2 runner-error\n')]);
-  assert.deepEqual(checks.work, { runs: 1, failures: 0, errors: 1, blocking: 0, advisory: 0 });
+  assert.deepEqual(checks.work, scopeRow({ runs: 1, errors: 1 }));
 });
 
 test('countChecks: world-scope runs come off the Bash invocation, so a PASSING sweep still counts', () => {
@@ -244,7 +268,7 @@ test('countChecks: world-scope runs come off the Bash invocation, so a PASSING s
     bash('t2', 'node engine/checks/check_the_world.mjs 2>&1 | tail -5'),
     bashResult('t2', '[BLOCKING] task-lifecycle  (branch)\n  …\n1 blocking, 4 advisory (world scope: all vs origin/main).'),
   ]);
-  assert.deepEqual(checks.world, { runs: 2, failures: 1, errors: 0, blocking: 1, advisory: 4 });
+  assert.deepEqual(checks.world, scopeRow({ runs: 2, failures: 1, blocking: 1, advisory: 4 }));
 });
 
 test('countChecks: a runner wrapped in a test command is counted from its OUTPUT, not double-counted', () => {
@@ -258,6 +282,61 @@ test('countChecks: a runner wrapped in a test command is counted from its OUTPUT
     bashResult('t1', '0 blocking, 7 advisory (world scope: all vs origin/main).'),
   ]);
   assert.equal(named.checks.world.runs, 1, 'named AND reported is still one run');
+});
+
+test('a GitHub Actions timestamp prefix does not hide the marks', () => {
+  // Actions stamps every log line before the command's own output. Anchoring to the
+  // bare line start would make every fetched CI log read as having printed nothing.
+  assert.deepEqual(checkSummaries(CI_LOG), [{ scope: 'world', blocking: 1, advisory: 4 }]);
+  assert.deepEqual(findingHeaders(CI_LOG), [{ severity: 'blocking', rule: 'task-lifecycle' }]);
+});
+
+test('checkOutputs decodes the JSON-wrapped CI payload, so the log has real lines again', () => {
+  // Every mark is line-anchored. Left encoded, the whole job log is ONE line and the
+  // CI counting silently measures nothing at all — the failure mode that looks like
+  // "CI just never catches anything".
+  const [output] = checkOutputs([ciFetch('c1'), ciResult('c1', CI_LOG)]);
+  assert.equal(output.source, 'ci');
+  assert.ok(output.text.includes('\n'), 'the escaped newlines are real newlines by the time a mark reads them');
+  assert.deepEqual(checkSummaries(output.text), [{ scope: 'world', blocking: 1, advisory: 4 }]);
+});
+
+test('countChecks: a CI run the session pulled the log for IS counted', () => {
+  // write → commit → let CI run → fix what it caught is the same correction loop as
+  // the Stop hook's, one turn wider, and its failures are the same kind of win.
+  const { checks, checkFindings } = countChecks([ciFetch('c1'), ciResult('c1', CI_LOG)]);
+  assert.deepEqual(checks.world, scopeRow({ runs: 1, failures: 1, blocking: 1, advisory: 4, ciRuns: 1, ciFailures: 1 }));
+  assert.deepEqual(checkFindings, { 'task-lifecycle': { blocking: 1, advisory: 0 } });
+});
+
+test('countChecks: the CI share stays separable, because CI can only see runs that PRINTED', () => {
+  // A green CI sweep prints nothing, so it is invisible — which would skew any rate
+  // computed over a total that mixed the two sources without saying so.
+  const { checks } = countChecks([
+    bash('t1', 'node engine/checks/check_the_world.mjs'), bashResult('t1', ''),
+    ciFetch('c1'), ciResult('c1', CI_LOG),
+  ]);
+  assert.equal(checks.world.runs, 2);
+  assert.equal(checks.world.ciRuns, 1);
+  assert.equal(checks.world.runs - checks.world.ciRuns, 1, 'the session-observed runs stay derivable');
+});
+
+test('countChecks: re-reading one CI job log is still one run', () => {
+  // Iterating on a CI failure means fetching the same log more than once. Nothing in
+  // a fetch says WHICH run it was, so the check output is the identity.
+  const { checks } = countChecks([ciFetch('c1'), ciResult('c1', CI_LOG), ciFetch('c2'), ciResult('c2', CI_LOG)]);
+  assert.equal(checks.world.runs, 1);
+  const next = countChecks([
+    ciFetch('c1'), ciResult('c1', CI_LOG),
+    ciFetch('c2'), ciResult('c2', CI_LOG.replaceAll('08:12:05', '09:30:11')),
+  ]);
+  assert.equal(next.checks.world.runs, 2, 'a genuinely later run differs by its Actions timestamps');
+});
+
+test('countChecks: a CI log carrying no check output at all is not a run', () => {
+  const { checks } = countChecks([ciFetch('c1'), ciResult('c1',
+    '2026-07-29T08:12:04.1234567Z ##[group]Run npm ci\n2026-07-29T08:12:09.0000000Z added 0 packages\n')]);
+  assert.deepEqual(checks, {});
 });
 
 test('countChecks: a scope that never ran has no key — zeros stay implicit here too', () => {
