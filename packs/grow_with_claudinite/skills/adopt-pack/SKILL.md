@@ -32,11 +32,6 @@ declared pack that asks questions:
   `distill` note, derive the entry's `config` from the answer (e.g. `executable-requirements`'s
   spec path → `config.spec`).
 
-This is enforced, not merely encouraged: the `adoption-answers-pending` work-scope check
-(this skill's [checks.mjs](checks.mjs)) blocks the branch until every pack it *added* has recorded
-an answer for every question it asks. A pack already in the base is never re-litigated, and a
-`via`-materialized dependency the project didn't choose asks nothing.
-
 ## 3. Re-vendor
 
 The new packs' prose, checks, and skills must land under the tracked `.claudinite/shared/` mount.
