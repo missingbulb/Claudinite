@@ -10,9 +10,12 @@
 //      in this repo, so one tree read plus one blob read per file beats any REST
 //      round-trip, and there is no rate budget to spend);
 //   2. count each capture file still in the raw retention window;
-//   3. fold: day rows recomputed from scratch, week rows advanced past the
-//      `foldedThrough` watermark (skill-usage-metrics DESIGN §5);
-//   4. deliver the regenerated `.claudinite/local/usage.GENERATED.json` on an
+//   3. read the scheduler's own task-run records from its Actions logs, past the
+//      `runsFoldedThrough` watermark (read-task-runs.mjs) — the second source, and
+//      the only one that sees a task that never opened a session at all;
+//   4. fold: day rows recomputed from scratch, task rows appended once, week rows
+//      advanced past the `foldedThrough` watermark (skill-usage-metrics DESIGN §5);
+//   5. deliver the regenerated `.claudinite/local/usage.GENERATED.json` on an
 //      auto-merging PR — and open NOTHING when the recompute is byte-identical.
 //
 // The aggregate lives under `.claudinite/local/` because that is the repo-owned area
@@ -24,6 +27,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { deliverGenerated, baseTip, readAt, remoteUrl } from '../../../../engine/scheduler/deliver-generated.mjs';
 import { countEntries, foldUsage, mountedSkillNames } from './fold-usage.mjs';
+import { makeReader, readTaskRuns } from './read-task-runs.mjs';
 
 const BRANCH = 'conversation-logs';
 export const USAGE_PATH = '.claudinite/local/usage.GENERATED.json';
@@ -94,14 +98,18 @@ export async function main() {
   if (!token) throw new Error('GITHUB_TOKEN is not set — the fold cannot read the logs branch or deliver its PR');
   const remote = remoteUrl(repo, token);
 
+  // No logs branch is no longer "nothing to do": the capture-derived half of the
+  // aggregate is empty, but the scheduler's own run records are a separate source
+  // that exists as soon as the repo has a scheduler — and a repo whose sessions are
+  // all unattended is exactly the one whose task invocations are worth counting.
   const found = logFiles(root, remote);
-  if (found === null) { log(`no ${BRANCH} branch — nothing captured yet, nothing to fold`); return; }
+  if (found === null) log(`no ${BRANCH} branch — nothing captured yet; folding the scheduler's task runs only`);
 
   let config = {};
   try { config = JSON.parse(readFileSync(join(root, '.claudinite-checks.json'), 'utf8')); } catch { /* no declaration */ }
   const mounted = await mountedSkillNames(root, config);
 
-  const files = found.names.map((name) => ({
+  const files = (found?.names ?? []).map((name) => ({
     ...parseLogName(name),
     counts: countEntries(parseEntries(git(root, ['show', `${found.tip}:${name}`])), mounted),
   }));
@@ -115,8 +123,22 @@ export async function main() {
   let prior = {};
   try { prior = JSON.parse(readAt(root, baseSha, USAGE_PATH) ?? '{}'); } catch { /* unparsable → refold */ }
 
-  const today = new Date().toISOString().slice(0, 10);
-  const text = `${JSON.stringify(foldUsage({ files, prior, today }), null, 2)}\n`;
+  // The second source: what the scheduler itself did with each task, read from its
+  // own run logs past the aggregate's run watermark (read-task-runs.mjs). Fail-soft
+  // and independent — a ledger this fold cannot read costs the task rows this run
+  // and nothing else, because the skill and check counts come from the logs branch
+  // that was already read above.
+  const now = new Date().toISOString();
+  const taskRuns = await readTaskRuns({
+    reader: makeReader({ token }), repo, since: prior.runsFoldedThrough ?? null, now,
+  });
+  if (taskRuns.error) log(`${taskRuns.error} — task-invocation rows unchanged this run`);
+  if (taskRuns.remaining) log(`${taskRuns.remaining} scheduler run(s) past this fold's cap — the next fold continues from the watermark`);
+
+  const today = now.slice(0, 10);
+  const text = `${JSON.stringify(foldUsage({
+    files, prior, today, taskRuns: taskRuns.records, runsFoldedThrough: taskRuns.watermark,
+  }), null, 2)}\n`;
   const attributes = withMergeAttribute(readAt(root, baseSha, '.gitattributes'));
 
   if (readAt(root, baseSha, USAGE_PATH) === text && attributes === null) {
@@ -130,15 +152,18 @@ export async function main() {
     message: 'Claudinite: fold skill-usage metrics',
     title: 'Claudinite: skill-usage fold',
     body: [
-      `Regenerated \`${USAGE_PATH}\` from this repo's captured conversation logs.`,
+      `Regenerated \`${USAGE_PATH}\` from this repo's captured conversation logs and`,
+      "the scheduler's own run records.",
       '',
       'Day rows are recomputed from scratch every run from the logs still inside the',
       'retention window; week rows are appended once, past the `foldedThrough` watermark.',
+      'Task-invocation rows are appended once past the `runsFoldedThrough` watermark —',
+      'the scheduler runs they come from are a rate-limited REST read, not a local branch.',
       'A byte-identical recompute opens no PR at all. Machine-written — never hand-edit it.',
     ].join('\n'),
   });
-  log(`${files.length} capture file(s) folded — ${pr.reused ? 'updated' : 'opened'} `
-    + `PR ${pr.number !== null ? `#${pr.number}` : `on ${pr.branch}`}`);
+  log(`${files.length} capture file(s) and ${taskRuns.records.length} task-run record(s) folded — `
+    + `${pr.reused ? 'updated' : 'opened'} PR ${pr.number !== null ? `#${pr.number}` : `on ${pr.branch}`}`);
 }
 
 // Run only when invoked directly (the scheduler's `node worker.mjs`), never on import.

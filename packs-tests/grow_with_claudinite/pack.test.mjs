@@ -337,6 +337,30 @@ test('capture with --issue 0 files a no-issue capture holding exactly the post-m
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+test('the session-end step captures under the issue its launcher named, or 0 when it named none', () => {
+  // The unattended path end to end: the executor names its dispatch issue, this step
+  // passes it to capture, and the log lands filed under the task that ran. Nothing
+  // else about the capture differs — same script, same filename shape, same delta.
+  const STEP = join(packDir, 'session-end.mjs');
+  const { dir, origin, work, transcript } = makeCaptureFixture();
+  try {
+    writeFileSync(transcript, [userLine(1, 'run the dispatch'), assistantLine(2, 'done')].join('\n') + '\n');
+    sh(work, process.execPath, [STEP], {
+      env: { ...process.env, CLAUDINITE_SESSION_ISSUE: '772', CLAUDINITE_TRANSCRIPT: transcript, CLAUDE_PROJECT_DIR: work },
+    });
+    assert.ok(originFiles(origin, 'conversation-logs').some((f) => f.includes('--issue-772--')),
+      `expected a capture filed under the dispatch issue, got: ${originFiles(origin, 'conversation-logs')}`);
+
+    // A hook firing carries no issue, and a junk value is ignored rather than passed on
+    // to capture's argument validation.
+    appendFileSync(transcript, [userLine(3, 'a later turn'), assistantLine(4, 'noted')].join('\n') + '\n');
+    sh(work, process.execPath, [STEP], {
+      env: { ...process.env, CLAUDINITE_SESSION_ISSUE: 'not-a-number', CLAUDINITE_TRANSCRIPT: transcript, CLAUDE_PROJECT_DIR: work },
+    });
+    assert.ok(originFiles(origin, 'conversation-logs').some((f) => f.includes('--issue-0--')));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 // --- dedup-prune-integrity ---------------------------------------------------
 
 const PROSE = '.claudinite/local/packs/gcec/RULES.md';

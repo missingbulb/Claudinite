@@ -6,17 +6,25 @@
 //   - which skills did a captured session LOAD, and how often;
 //   - what workload was that against (captures, merges, sessions, user messages,
 //     user commands) — the denominators without which a raw load count cannot
-//     distinguish healthy-rare from broken.
+//     distinguish healthy-rare from broken;
+//   - what the SCHEDULER did with each task — agent runs, deterministic
+//     preprocessing-only runs, precondition skips, failures, deferrals. That last
+//     family comes from the scheduler's own run records rather than from a captured
+//     session, which is why it is a census of scheduled work where everything else
+//     here is a sample of captured sessions.
 //
 // Zeros are implicit throughout: a mounted skill with no loads simply has no key.
 // The zero set is derived by the consumer, diffing against the repo's mounted
 // skills — which is exactly what makes "this skill never loads" visible at all.
 
-// The one non-builtin import: the engine surface a pack may build on
+// The non-builtin imports are both the engine surface a pack may build on
 // (pack-independence). "Which skills does this repo mount" has exactly one home —
 // the pack registry — and asking it here is what keeps the fold's answer identical
-// to what the SessionStart hook actually mounted.
+// to what the SessionStart hook actually mounted. The task-run outcome vocabulary
+// has exactly one home too: the scheduler that prints those records, so the counter
+// keys here cannot drift from the words the runs actually emit.
 import { loadPacks, isActive, bundledSkillSources } from '../../../../engine/pack_loader/pack-registry.mjs';
+import { TASK_RUN_OUTCOMES, emptyTaskRun } from '../../../../engine/scheduler/run-record.mjs';
 
 // --- entry classification -----------------------------------------------------
 // Every shape below was verified against real captured transcripts on a
@@ -385,7 +393,7 @@ export function countEntries(entries, mounted = new Set()) {
 // An empty day row — the shape every counter folds through.
 const emptyDay = () => ({
   captures: 0, merges: 0, sessions: 0, userMessages: 0, userCommands: 0, skillLoads: {},
-  checks: {}, checkFindings: {},
+  checks: {}, checkFindings: {}, tasks: {},
 });
 
 function addLoads(into, from) {
@@ -425,6 +433,51 @@ export function foldDays(files) {
   // Distinct sessions, not capture count: one session can capture more than once
   // (a merge, then the session-end tail).
   for (const [date, set] of Object.entries(sessionsByDay)) days[date].sessions = set.size;
+  return days;
+}
+
+// --- task invocations -----------------------------------------------------------
+
+// How long a task row stays in the DAY tier. Independent of the capture retention
+// on purpose: these rows come from the scheduler's Actions logs, not from the logs
+// branch, so nothing about them ages out when a capture file does — and a repo that
+// captured nothing for a week must still show that its scheduled tasks ran. Past
+// this, the day row goes and its week row carries it, exactly as the capture-derived
+// days do.
+export const TASK_DAY_WINDOW_DAYS = 14;
+
+export function withinTaskWindow(date, today, days = TASK_DAY_WINDOW_DAYS) {
+  const age = (new Date(`${today}T00:00:00Z`) - new Date(`${date}T00:00:00Z`)) / 86400000;
+  return Number.isFinite(age) && age >= 0 && age < days;
+}
+
+// Accumulate this run's new task-run records into the day rows, on top of what
+// earlier folds already counted.
+//
+// APPEND-ONCE, not recomputed — the one place this file departs from "days are a
+// pure function of their sources", and deliberately. The capture files are a local
+// git branch this fold can re-read for free; the scheduler's run logs are a paged
+// REST resource with a rate budget, and re-reading the whole window every night
+// would cost ~20x the API calls for an identical answer. So the caller reads only
+// the runs past the `runsFoldedThrough` watermark and hands them here, and the
+// watermark is the entire exactly-once mechanism — the same trade the week rows
+// already make, with the same consequence stated in the same place: a counting bug
+// fixed later does NOT heal these rows, it applies from the fix forward.
+//
+// `records` is `[{ date, pack, task, outcome }]`; `priorDays` is the previous file's
+// day rows, whose task counts are carried forward while they are inside the window.
+export function foldTaskRuns(days, priorDays = {}, records = [], today) {
+  for (const [date, row] of Object.entries(priorDays)) {
+    const tasks = row?.tasks;
+    if (!tasks || !Object.keys(tasks).length || !withinTaskWindow(date, today)) continue;
+    (days[date] ??= emptyDay()).tasks = structuredClone(tasks);
+  }
+  for (const { date, pack, task, outcome } of records) {
+    if (!TASK_RUN_OUTCOMES.includes(outcome)) continue;   // an outcome word this fold does not know
+    const day = (days[date] ??= emptyDay());
+    const row = (day.tasks[`${pack}/${task}`] ??= emptyTaskRun());
+    row[outcome] += 1;
+  }
   return days;
 }
 
@@ -481,6 +534,10 @@ export function addDayToWeek(week, day) {
   // existing weeks instead of refusing to advance the watermark past them.
   addCounters((w.checks ??= {}), day.checks);
   addCounters((w.checkFindings ??= {}), day.checkFindings);
+  // Same default-rather-than-crash treatment for the task invocations: a week
+  // folded before they were counted has no `tasks` key, and grows one from the day
+  // it closes forward instead of wedging the watermark behind it.
+  addCounters((w.tasks ??= {}), day.tasks);
   return w;
 }
 
@@ -500,6 +557,7 @@ function sortRow(row) {
     skillLoads: sortKeys(row.skillLoads),
     checks: sortKeys(row.checks ?? {}),
     checkFindings: sortKeys(row.checkFindings ?? {}),
+    tasks: sortKeys(row.tasks ?? {}),
   };
 }
 
@@ -512,8 +570,14 @@ function sortRow(row) {
 // heals them), weeks are not (frozen once folded — re-freezing would need raw data
 // the retention TTL deliberately destroyed), so weeks only ever absorb days that
 // have closed and can no longer change.
-export function foldUsage({ files, prior = {}, today }) {
+export function foldUsage({ files, prior = {}, today, taskRuns = [], runsFoldedThrough = null }) {
   const days = foldDays(files);
+  // Task rows are accumulated BEFORE the week fold, so a day that closed since the
+  // last run carries its scheduler invocations into its week in the same pass that
+  // freezes it. (A day whose week is already frozen still shows its late-arriving
+  // task counts in the day tier — visible there, absent from the week: the same
+  // boundary every new counter has, and the same one weeks state for themselves.)
+  foldTaskRuns(days, prior.days ?? {}, taskRuns, today);
   const weeks = structuredClone(prior.weeks ?? {});
   let foldedThrough = prior.foldedThrough ?? null;
 
@@ -526,6 +590,12 @@ export function foldUsage({ files, prior = {}, today }) {
   return {
     version: USAGE_VERSION,
     foldedThrough,
+    // The second watermark: how far the scheduler's own run ledger has been read.
+    // Separate from `foldedThrough` because it advances on a different clock (runs,
+    // not closed days) over a different source, and conflating them would make an
+    // outage in one silently look like an outage in the other. Carried forward
+    // unchanged when this run read no new runs.
+    runsFoldedThrough: runsFoldedThrough ?? prior.runsFoldedThrough ?? null,
     days: sortKeys(Object.fromEntries(Object.entries(days).map(([k, v]) => [k, sortRow(v)]))),
     weeks: sortKeys(Object.fromEntries(Object.entries(weeks).map(([k, v]) => [k, sortRow(v)]))),
   };

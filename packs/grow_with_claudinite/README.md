@@ -65,6 +65,12 @@ tree; only posting the summary on the issue uses the GitHub MCP tools.
    having run — every firing enriches the record, every miss leaves exactly the merge-only
    behaviour. An `issue-0` log has no issue for `conversation-extract` to post its exchange
    summary on; nothing else about its lifecycle differs.
+   **Unattended sessions capture through the same step, deliberately not through the hook.** A
+   scheduled task's executor session ends by having its container reclaimed, which is exactly
+   the ending no `SessionEnd` fires on — so the executor runs the engine's runner itself as its
+   last step and names its dispatch issue in `CLAUDINITE_SESSION_ISSUE`, which this step uses in
+   place of `0`. Those logs therefore file under the task that ran (the dispatch issue's title
+   names `pack/task`), and the work no human watched becomes as countable as the work one did.
 2. **Fresh pass — the [conversation-extract](tasks/conversation-extract/task.md) scheduled task**
    (precondition: a substantive merge, or a logs branch with retention configured so the age-based
    prune still runs on a quiet repo; local git on the

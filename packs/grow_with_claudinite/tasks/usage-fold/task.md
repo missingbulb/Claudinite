@@ -4,7 +4,7 @@
 
 ## What it does
 
-Daily: fetch this repo's orphan `conversation-logs` branch, count each capture file still inside the retention window, and regenerate `.claudinite/local/usage.GENERATED.json` on an auto-merging PR. A byte-identical recompute opens nothing.
+Daily: fetch this repo's orphan `conversation-logs` branch, count each capture file still inside the retention window, read the scheduler's own task-run records from its Actions logs since the last fold, and regenerate `.claudinite/local/usage.GENERATED.json` on an auto-merging PR. A byte-identical recompute opens nothing, and a repo with no logs branch yet still folds its task rows.
 
 What it counts, per bucket:
 
@@ -13,6 +13,8 @@ What it counts, per bucket:
 - **`sessions`** — distinct session ids; one session can capture more than once.
 - **`userMessages`** — genuine human turns. **`userCommands`** — every typed `/command`.
 - **`checks`**, per scope (`work` / `world`) — `runs` (observed activations), `failures` (runs that reported a blocking finding), `errors` (the runner could not launch), the `blocking`/`advisory` finding volume, and `ciRuns`/`ciFailures` (the CI subset of the first two). **`checkFindings`**, per rule id — which rule caught what.
+
+- **`tasks`**, per `pack/task` — what the **scheduler** did with each due task: `agent` (a dispatch was filed, so an executor session ran it with an agent), `preprocess` (it ran with no agent — an `agent_model: none` task, or an agentful one whose preprocessing requested no agent stage), `skipped` (its precondition said there was nothing to do), `failed` (its preprocessing failed and converged to needs-human), `deferred` (due, past its precondition, but no new dispatch — this slot was already filed, or an earlier one is still open).
 
 The denominators are the point. A raw load count cannot tell healthy-rare from broken — a version-bump skill loading rarely is fine — so the question is loads *against the sessions where that skill's own declared trigger plausibly applied.*
 
@@ -35,6 +37,14 @@ Write, commit, let CI run, fix what it caught is the same correction loop as the
 Two consequences, both mechanism rather than policy. Actions stamps every log line with its own timestamp before the command's output, so each mark tolerates that prefix — without it a fetched CI log reads as having printed nothing at all. And a job log gets fetched repeatedly while iterating on the failure, with nothing in a fetch saying *which run* it was, so CI texts dedupe on the check output itself: two fetches of one job collapse, two real runs differ by their timestamps.
 
 **Every check number is a floor.** A run whose CI log nobody fetched left no mark in any session transcript; neither did a hook killed before it logged; and a green CI sweep prints nothing to be seen by, which is why the CI share is carried separately as `ciRuns`/`ciFailures` instead of quietly skewing a rate. The under-count is one-directional by construction, which is what keeps "the checks caught N things this week" a claim worth making.
+
+## The task invocations are a census, not a sample
+
+Everything above is read out of *sessions*, so it sees only what was captured. A whole half of what this repo does opens no session at all — a precondition that finds nothing to do, a deterministic task whose whole work is its preprocessing, a dispatch suppressed because an earlier one is still open. None of that leaves a transcript, and the first of them is the most common thing the scheduler does.
+
+So the `tasks` rows come from the other source: the **scheduler's own run records** in its Actions logs. Each run prints one line per due task saying what it did with it (`claudinite-task-run v1 <pack>/<task> [<slot>] <outcome>`), emitted after the actions run so it states what happened rather than what was planned; renderer and parser live together in [`engine/scheduler/run-record.mjs`](../../../../engine/scheduler/run-record.mjs) with a round-trip test, so the format cannot drift between the writer and this reader. Every scheduler run records every due task, whether or not anything was ever captured — which makes these rows a **census of scheduled work**, sitting beside numbers that are a sample of captured sessions. Read them accordingly.
+
+They are also the one family here that is **appended once rather than recomputed**, past a `runsFoldedThrough` watermark ([`read-task-runs.mjs`](read-task-runs.mjs)). The reason is the source: the capture files are a local git branch this fold re-reads for free, while the run logs are a rate-limited REST read at two calls per run, and re-reading the whole window nightly would cost ~20x the API calls for the same answer. The price is stated rather than hidden — a counting bug fixed later applies from the fix forward and does not heal these rows — and a per-fold cap logs what it left for the next run instead of truncating silently.
 
 ## Two tiers, two different mechanisms
 

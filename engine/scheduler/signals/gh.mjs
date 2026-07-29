@@ -46,7 +46,14 @@ export function makeGh({ token = process.env.GITHUB_TOKEN, api = API, fetchImpl 
 // a failed run never enters the success ledger, so the watermark stays put and
 // the next successful run catches up every missed slot — the outage self-healing
 // of DESIGN §3.1, applied to the ledger read itself (#522).
-export async function lastSuccessTime(gh, repo, workflowFile = 'claudinite-scheduler.yml') {
+// The scheduler workflow's file name — the vendored shim's, identical in every
+// member (the workflow is core, not pack content). Named here because this is the
+// module that reads the workflow's own run ledger; anything else that needs to find
+// those runs (the usage fold reads their logs for the task-invocation records)
+// imports it rather than restating the string.
+export const SCHEDULER_WORKFLOW_FILE = 'claudinite-scheduler.yml';
+
+export async function lastSuccessTime(gh, repo, workflowFile = SCHEDULER_WORKFLOW_FILE) {
   const { status, json } = await gh(`/repos/${repo}/actions/workflows/${workflowFile}/runs?status=success&per_page=1`);
   if (status !== 200) throw new Error(`run ledger unreadable: GET workflow runs returned ${status}`);
   const run = json?.workflow_runs?.[0];

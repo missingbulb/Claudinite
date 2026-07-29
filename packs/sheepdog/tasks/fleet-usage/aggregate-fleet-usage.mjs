@@ -56,7 +56,10 @@ export const SAMPLING_NOTE = 'Captured sessions only — sessions that merged, p
   + 'what "the agent was in the loop on it" means — and a nightly or post-merge run nobody looked at '
   + 'does not, because nothing was corrected. CI can only see a run that PRINTED something, so its '
   + 'share is carried separately as ciRuns/ciFailures. Every check number is a floor on activations, '
-  + 'never an over-count.';
+  + 'never an over-count. The `tasks` rows are the ONE exception to all of the above: they come from '
+  + "each member's scheduler run records rather than from a captured session, so they are a census of "
+  + 'scheduled work — every due task of every run, whether or not any session was ever captured — '
+  + 'bounded only by how far back that member has been folding them.';
 
 // --- the pure aggregation -----------------------------------------------------
 
@@ -99,6 +102,14 @@ export function aggregate({ members, absent = [], dormant = [], generatedAt }) {
         // in the file as an empty row rather than an exception.
         checks: sortKeys(row.checks ?? {}),
         checkFindings: sortKeys(row.checkFindings ?? {}),
+        // What each member's SCHEDULER did, per task: agent runs, deterministic
+        // preprocessing-only runs, precondition skips, failures, deferrals. Carried
+        // at the same week × repo × task grain and defaulted the same way, but drawn
+        // from a different population and answering a different question — this is
+        // the fleet's view of whether a scheduled task is doing anything at all. A
+        // task that skips in every member every day is a precondition that never
+        // fires; one that fails across members is broken machinery, not a bad night.
+        tasks: sortKeys(row.tasks ?? {}),
       });
     }
   }

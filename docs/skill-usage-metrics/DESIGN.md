@@ -5,7 +5,7 @@ Status: **agreed** (owner decisions recorded in §10; design review in the
 only; there is no migration plan — the rollout self-converges through the
 existing machinery (the nightly vendored-canon refresh carries the code, a
 baselining-applied migration note registers the hook), and the one ordering
-constraint (§3.4) is satisfied by shipping the capture changes in one PR.
+constraint (§3.5) is satisfied by shipping the capture changes in one PR.
 
 The problem: skills are mounted per repo, but mounting only puts a name and a
 one-line description into the session's system prompt — actually *loading* the
@@ -24,21 +24,32 @@ those corrections either — so "is this rule earning its place" and "is
 enforcement even running" are as unanswerable as "does this skill ever load".
 The checks ride the same pipeline, and §4.1 is where they are counted.
 
+A third blind spot sits outside sessions entirely. Most of what a repo does on a
+schedule opens no session at all — a precondition that finds nothing to do, an
+`agent_model: none` task whose deterministic pass is the whole task, a dispatch
+suppressed because an earlier one is still open — so "how much agent work did
+this task cause" and "is this task doing anything" are not under-counted by the
+capture pipeline, they are absent from it. §4.2 counts them from the scheduler's
+own run records. And the sessions that *do* run unattended never captured at all
+until §3.4: an executor session ends by having its container reclaimed, which is
+exactly the ending no `SessionEnd` hook fires on.
+
 The shape: session transcripts already record every skill invocation, and the
 check runners leave readable marks in them too. Capture already ships
 transcripts to each repo's orphan `conversation-logs` branch at merge time.
-This design (a) enriches capture with a best-effort session-end event, (b) adds
-a deterministic daily **fold** in each repo that counts skill loads, check
-activations and failures, and activity denominators from the live logs into a
-small tracked aggregate, and (c) adds a **fleet sweep** in the sheepdog pack
-that recomputes a fleet-wide aggregate from the members' files into the
-fleet-enforcer repo. Every stage is deterministic code — no agent judgment
-anywhere in the pipeline.
+This design (a) enriches capture with a best-effort session-end event and an
+explicit one for unattended runs, (b) adds a deterministic daily **fold** in each
+repo that counts skill loads, check activations and failures, activity
+denominators, and task invocations into a small tracked aggregate, and (c) adds a
+**fleet sweep** in the sheepdog pack that recomputes a fleet-wide aggregate from
+the members' files into the fleet-enforcer repo. Every stage is deterministic
+code — no agent judgment anywhere in the pipeline.
 
 ```
-transcript ──(merge capture / SessionEnd capture)──▶ conversation-logs branch
-    conversation-logs ──(usage-fold, per repo, daily)──▶ .claudinite/local/usage.GENERATED.json
-    member usage files ──(fleet-usage, sheepdog, daily)──▶ usage-fleet.GENERATED.json (enforcer repo)
+transcript ──(merge capture / SessionEnd capture / the executor's own last step)──▶ conversation-logs branch
+    conversation-logs ─────┐
+    scheduler run logs ────┴──(usage-fold, per repo, daily)──▶ .claudinite/local/usage.GENERATED.json
+    member usage files ───────(fleet-usage, sheepdog, daily)──▶ usage-fleet.GENERATED.json (enforcer repo)
 ```
 
 ---
@@ -50,7 +61,8 @@ The canon knows **mechanisms**, never repos. The fleet-enforcer repo knows
 
 | piece | home | knows about |
 |---|---|---|
-| capture (merge + SessionEnd) | `grow_with_claudinite` pack (canon) | its own session, its own logs branch |
+| capture (merge + SessionEnd + the executor's explicit call) | `grow_with_claudinite` pack (canon) | its own session, its own logs branch |
+| the task-run record format | `engine/scheduler/run-record.mjs` (core) | the scheduler's own outcomes — no pack, no repo |
 | `usage-fold` (daily) | `grow_with_claudinite/tasks/usage-fold/` (canon) | its own logs branch, its own aggregate file |
 | `fleet-usage` (daily) | `sheepdog/tasks/fleet-usage/` (canon pack; runs only where sheepdog is declared) | nothing hardcoded — members enumerated at runtime from the sheepdog config (`{ owner, kind, exclude, canonRepo }`) via `fleet-api.mjs`, exactly as `fleet-census` does |
 | the fleet aggregate | the fleet-enforcer repo's default branch | — |
@@ -63,8 +75,11 @@ where it already is today for the census and freshness sweeps.
 - The **transcript** is the source of truth for what happened in a session.
 - The **`conversation-logs` branch** is a byte-faithful (scrubbed) window onto
   transcripts, retained `retention_days` (§3).
-- The **per-repo aggregate** is derived: day rows are a pure function of the
-  live logs; week rows are append-once sums of closed day rows (§5).
+- The **scheduler's Actions log** is the source of truth for what each run did
+  with each due task, by an owned contract rather than by scraping (§4.2).
+- The **per-repo aggregate** is derived: capture-derived day rows are a pure
+  function of the live logs; task rows are appended once past their own run
+  watermark; week rows are append-once sums of closed day rows (§5).
 - The **fleet aggregate** is derived: a pure function of the current member
   files, fully recomputed each run (§6). Never store what you can derive —
   the fleet file keeps full (week × repo × skill) grain precisely so every
@@ -73,7 +88,7 @@ where it already is today for the census and freshness sweeps.
 Both aggregate files are `GENERATED`-named and machine-written only, under the
 canon's GENERATED-file discipline (regenerated, never hand-edited).
 
-## 3. Capture — two events, one idempotent mechanism
+## 3. Capture — three events, one idempotent mechanism
 
 ### 3.1 The delta contract (existing, now pinned by tests)
 
@@ -119,7 +134,55 @@ consumer's `.claude/settings.json` like its siblings) runs capture with
 - Scrubbing is the existing capture scrub, unchanged — the hook adds a capture
   *event*, not a new write path.
 
-### 3.4 Ordering constraint
+### 3.4 The unattended sessions — capture where no hook fires
+
+The two events above cover the sessions a **human** is in. They covered none of
+the sessions a human is not: a scheduled task's executor session runs a dispatch
+in a cloud container, never merges through `merge-to-main` (its task delivers by
+opening a PR, or by converging its issue), and ends by having that container
+reclaimed — which is exactly the ending that fires no `SessionEnd`. Measured on
+the canon repo the day this was written: **47 capture files, not one of them from
+an executor session**, while the scheduler had dispatched hundreds. Every skill
+those runs loaded and every check that caught something in them was invisible.
+
+The fix is not a third capture path but the **same** step, invoked deliberately
+instead of waited for. `session-end-command.mjs` is a runner, not a hook body: it
+invokes every active pack's `session-end.mjs`, discovering them structurally. So
+the executor's last step (`executor.md` step 5, after its issue is converged)
+runs that runner itself:
+
+```bash
+CLAUDINITE_SESSION_ISSUE=<issue> node <engine>/hooks/session-end-command.mjs
+```
+
+- **`CLAUDINITE_SESSION_ISSUE`** is the runner's documented pass-through: *the
+  issue this session was about, when its launcher knew one*. A hook firing never
+  does (nothing tells `SessionEnd` what the session was for), so it is only ever
+  set by an explicit invocation. The capture step uses it in place of `0` — which
+  files an unattended run's log under **the dispatch issue whose title names
+  `pack/task`**, so the log is attributable to the task that produced it rather
+  than landing in the issueless pile.
+- **Core still names no pack.** The executor invokes a runner; the runner invokes
+  whatever steps the declared packs contribute; a repo that declares no capturing
+  pack does nothing at all.
+- **Mid-session invocation is safe and lossy in one known way**: the transcript is
+  complete only up to that call, so the executor's own final message is not in the
+  file. If the hook *does* fire later, its capture is a second event over the same
+  session, which §3.1's session-keyed delta already makes safe by construction.
+- **It cannot fail the dispatch.** The issue is already converged; a failed
+  capture is reported in the session's final message and nothing else.
+
+The one thing this cannot assert in advance is whether a *trigger-started*
+session can push to the logs branch at all. Capture pushes over `origin` with
+git, not over the MCP GitHub tools the executor is otherwise restricted to; every
+existing capture on the branch was pushed from a cloud container of the same
+kind, but all of them were owner-started sessions. If a trigger-started one turns
+out to lack that credential, the step reports the failure in the session's final
+message and the outcome is exactly today's — no capture, nothing worse — and the
+task-invocation counts (§4.2) are unaffected, because they never depended on a
+session at all.
+
+### 3.5 Ordering constraint
 
 The idempotence tests and the `issue-0` relaxation must be in the canon before
 the hook registration reaches any member — an old `conversation-extract` would
@@ -254,6 +317,75 @@ key. Consumers derive the zero set by diffing against the repo's mounted
 skills (pack registry for a member; for the fleet view, each member's declared
 packs), which is what makes "never loads" visible at all.
 
+### 4.2 Task invocations — what the scheduler did, from the scheduler's own log
+
+Skill loads and check failures are both read out of *sessions*. A whole half of
+what a repo does never opens a session at all: a precondition that says "nothing
+to do", an `agent_model: none` task whose deterministic pass is the entire task,
+a dispatch suppressed because an earlier one is still open. None of those leave a
+transcript, and the first of them is the single most common thing the scheduler
+does. So "how much agent work did this task actually cause" and "is this task
+doing anything at all" were unanswerable from the capture pipeline by
+construction — not under-counted, absent.
+
+**Source: the scheduler's own Actions log, by contract rather than by scraping.**
+Each run prints one machine-readable record per evaluated task —
+`claudinite-task-run v1 <pack>/<task> [<slot>] <outcome>` — emitted **after** the
+action loop, so it states what happened rather than what was planned. Renderer
+and parser live in one module (`engine/scheduler/run-record.mjs`) with a
+round-trip test, because a format written in one place and re-guessed in another
+is precisely the drift this corpus bans. The human job-summary line is
+deliberately *not* the source: it is written before the actions run, so an
+agentful task whose preprocessing then requested no agent still reads there as
+its dispatch decision.
+
+**Why a log line and not a file.** The scheduler is stateless by design — its
+only watermark is the Actions run ledger — and a per-run write to a tracked
+branch would be 24 commits a day of data the run already emits. Writing them to
+the `conversation-logs` branch was considered and rejected for a second reason:
+that branch's retention prune is *filename-shaped*, so a new shape on it would be
+invisible to the prune and become immortal (§3.2).
+
+**The five outcomes**, one counter each, keyed by `pack/task`:
+
+| outcome | means |
+|---|---|
+| `agent` | a dispatch issue was filed — an executor session ran this task with an agent |
+| `preprocess` | the task ran with no agent: `agent_model: none`, or an agentful task whose preprocessing requested no agent stage |
+| `skipped` | due, but its precondition said there was nothing to do |
+| `failed` | its preprocessing failed; the run converged it to a needs-human issue |
+| `deferred` | due and past its precondition, but no new agent run started (this slot was already dispatched, or an earlier dispatch is still open) |
+
+`failed` and `deferred` are not decoration. Folding `failed` into `preprocess`
+would make a task that fails every night identical to one that works every night;
+folding `deferred` into `agent` would report executions that never happened, and
+into `skipped` would hide a task whose dispatches are piling up unrun.
+
+**Forward-only, past a `runsFoldedThrough` watermark** — the one place the day
+tier departs from "recomputed from scratch every run" (§5), and the reason is the
+source rather than taste. The capture files are a local git branch the fold
+re-reads for free; the run logs are a paged REST resource at two calls per run,
+where re-reading a 10-day window nightly would cost ~20× the API calls for an
+identical answer. So each fold reads only the completed runs newer than the
+watermark, and the watermark is the whole exactly-once mechanism. It advances
+past an idle run too — a quiet hour legitimately prints no records, and re-reading
+it forever is the one way this stays expensive. The trade is the same one the
+week rows already make and is stated the same way: **a counting bug fixed later
+applies from the fix forward, it does not heal history.** A per-fold cap
+(240 runs, ~10 days of catch-up) bounds a backlog, advances the watermark only
+through what it actually read, and *logs the remainder* rather than truncating
+silently.
+
+**These rows are a census, not a sample** — and that is the sharpest difference
+between them and everything else in the file. Every scheduler run records every
+due task, whether or not a session was ever captured. The distinction is stated
+in the fleet file's own `_note`, because a consumer reading task counts beside
+skill counts would otherwise apply the sampling caveat to both.
+
+**Fail-soft and independent.** An unreadable ledger costs the task rows for that
+run and nothing else; the watermark stays put, so the next fold retries exactly
+those runs.
+
 ## 5. The per-repo aggregate — `.claudinite/local/usage.GENERATED.json`
 
 Written by **`usage-fold`**: an agentless daily task of `grow_with_claudinite`
@@ -282,14 +414,33 @@ Two tiers, per the owner's fast-insight requirement:
   each week row records how many days it absorbed (`days: 5` declares its own
   hole).
 
+The task-invocation rows (§4.2) ride in the same two tiers and fold into weeks
+identically, but reach the day tier by the other mechanism: appended once past
+`runsFoldedThrough`, on top of what earlier folds counted, rather than
+recomputed. They are accumulated **before** the week fold, so a day that closes
+carries its scheduler counts into its week in the same pass that freezes it. Two
+consequences worth stating rather than discovering: a day with scheduler activity
+and no captures still gets a day row (a repo whose sessions are all unattended
+would otherwise show nothing at all), and those rows leave the day tier on their
+own 14-day window rather than the raw retention window, because nothing about
+them ages out when a capture file does.
+
+The fold's precondition is therefore no longer "there is a `conversation-logs`
+branch": it has two sources, and the second exists in any repo that has a
+scheduler. A repo that has never captured folds its task rows and nothing else.
+
 ```json
 {
   "version": 1,
   "foldedThrough": "2026-07-26",
+  "runsFoldedThrough": "2026-07-28T22:44:00Z",
   "days": {
     "2026-07-28": { "captures": 3, "merges": 2, "sessions": 2,
                     "userMessages": 31, "userCommands": 4,
                     "skillLoads": { "merge-to-main": 1 },
+                    "tasks": { "tidy-repo/tidy-issues":
+                                 { "agent": 1, "preprocess": 0, "skipped": 23,
+                                   "failed": 0, "deferred": 0 } },
                     "checks": {
                       "work":  { "runs": 34, "failures": 12, "errors": 0, "blocking": 15,
                                  "advisory": 0, "ciRuns": 0, "ciFailures": 0 },
@@ -302,6 +453,9 @@ Two tiers, per the owner's fast-insight requirement:
     "2026-W30": { "days": 7, "captures": 11, "merges": 9, "sessionDays": 8,
                   "userMessages": 210, "userCommands": 23,
                   "skillLoads": { "merge-to-main": 6 },
+                  "tasks": { "tidy-repo/tidy-issues":
+                               { "agent": 7, "preprocess": 0, "skipped": 161,
+                                 "failed": 0, "deferred": 0 } },
                   "checks": { "work": { "runs": 190, "failures": 51, "errors": 0, "blocking": 66,
                                         "advisory": 3, "ciRuns": 0, "ciFailures": 0 } },
                   "checkFindings": { "task-lifecycle": { "blocking": 40, "advisory": 0 } } }
@@ -324,8 +478,8 @@ check counts existed carry no `checks` key, and the fold extends them from the
 day they close forward rather than refusing to advance the watermark past them
 — a partial series beats a wedged one, and the boundary is visible in the file.
 
-Precondition: the `conversationLogs` signal reports the branch present. Runs
-where nothing changed are no-ops (no PR), and the agentless run costs seconds.
+Precondition: none — it runs daily. Runs where nothing changed are no-ops (no
+PR), and the agentless run costs seconds.
 
 ## 6. The fleet aggregate — `usage-fleet.GENERATED.json`
 
@@ -343,8 +497,8 @@ the inputs. Stateless recompute is idempotent by definition and self-heals any
 past error; at this cardinality (~repos × skills × weeks, all small) there is
 nothing to optimize.
 
-- **Grain**: full (week × repo × skill, and week × repo × **rule**) for
-  history, plus the members' current day windows verbatim for the fast view —
+- **Grain**: full (week × repo × skill, week × repo × **rule**, and week × repo
+  × **task**) for history, plus the members' current day windows verbatim for the fast view —
   "what happened this week?" at day-grain, trends at week-grain. Nothing
   pre-summed. The checks are carried at the same grain and for the same reason
   as the skill loads: whether a rule earns its place is a fleet-shaped
@@ -392,6 +546,13 @@ nothing to optimize.
   rather than a violation worth blocking on. `errors` reads differently from
   all three: it means enforcement was silently off, and it is the one number
   here whose right value is zero.
+- **The scheduled system itself** (new with §4.2): whether a task earns its slot
+  is now answerable. A task that has skipped every run in every member for weeks
+  has a precondition that never fires — either its signal is broken or the work
+  it waits for does not happen. One with a steady `failed` count is broken
+  machinery rather than a bad night. One with a rising `deferred` count is
+  dispatching faster than its executor drains. And "how many agent executions did
+  this task cause" — the cost question — has a number instead of an impression.
 - **Sheepdog's fleet tasks**, later: freshness-style drift issues citing the
   fleet file ("skill X: 0 loads fleet-wide in 6 weeks"). The learning loop
   stays in the enforcer's domain, not the canon's. Out of scope here; noted so
@@ -403,7 +564,9 @@ nothing to optimize.
 |---|---|---|
 | transcript | harness config dir | harness-owned (ephemeral in cloud sessions) |
 | raw capture `.jsonl` | `conversation-logs` branch | `retention_days` (unchanged; unset ⇒ capture-only, no prune) |
-| day rows | member usage file | the raw window — then their week row carries them |
+| scheduler run log | GitHub Actions | platform-owned (90 days by default) |
+| day rows (capture-derived) | member usage file | the raw window — then their week row carries them |
+| day rows (task invocations) | member usage file | 14 days — then their week row carries them |
 | week rows | member usage file | indefinite (~KBs/year; revisit only if a file nears 1 MB) |
 | fleet file | enforcer repo | none needed — derived; history is git's |
 
@@ -413,7 +576,11 @@ nothing to optimize.
   their raw backing. The hole is visible (week's `days` count short), never a
   silently wrong number.
 - **Hook never fires** (reclaim, crash): the record degrades exactly to
-  today's merge-only capture. No consumer breaks.
+  today's merge-only capture. No consumer breaks. For an *unattended* session
+  that is the normal case, which is why its capture is an explicit step rather
+  than a hook (§3.4); if that step is skipped or fails, that session is
+  invisible exactly as it was before, and its task-invocation record (§4.2) is
+  unaffected — the scheduler logged it either way.
 - **Scrub boundary** (unchanged from capture's existing statement): a secret
   the session itself transformed is invisible to any static scrub; the branch
   shares the repo's access control and push protection stays the last net.
@@ -428,6 +595,19 @@ nothing to optimize.
   them as a census of enforcement. Detached CI is *deliberately* out: the
   metric is about the correction loop, and a run nobody looked at corrected
   nothing.
+- **Fold outage longer than the Actions log retention**: the task records for
+  those runs are gone, and the watermark still points before them, so the fold
+  reads what survives and the lost runs are simply never counted. Silent in the
+  file itself — but the same outage is loud in the week rows' `days` count, and
+  the fold would have to be down for ~90 days for it to happen at all.
+- **A run's log is unreadable** (a 404, a rate limit): the task rows do not
+  advance that run, the watermark stays put, and the next fold retries exactly
+  those runs. The skill and check counts are unaffected — the two sources fail
+  independently, by design.
+- **A counting bug in the task rows**: unlike the capture-derived days, these do
+  NOT self-heal, because the fold no longer re-reads the runs behind them. A fix
+  applies from the fix forward. This is the price of not re-fetching a
+  rate-limited API every night, and it is the same trade the week rows make.
 - **The harness changes how it records hooks**: the marks in §4.1 are harness
   output, not a contract Claudinite owns. A shape change makes check counts
   fall to zero — loudly, since a repo with checks wired cannot plausibly report
@@ -452,7 +632,7 @@ nothing to optimize.
    double-write safety being proven first (§3.1's tests), with `issue-0`
    naming for issueless captures.
 7. **No migration plan** — the existing convergence machinery carries the
-   rollout; ordering is handled by shipping §3 in one PR (§3.4).
+   rollout; ordering is handled by shipping §3 in one PR (§3.5).
 
 ### Owner, 2026-07-29
 
@@ -471,3 +651,23 @@ nothing to optimize.
     explicitly *not crucial* and stays uncounted, because nothing was
     corrected. The CI share is carried separately (`ciRuns` / `ciFailures`)
     since that source sees only runs that printed.
+
+### Owner, 2026-07-29 (second round)
+
+11. **Unattended runs must reach the conversation-logs branch** (§3.4). They did
+    not: no executor session had ever been captured, because those sessions end
+    by container reclaim and merge nothing. Capture becomes an explicit last step
+    of the executor routine, filed under its dispatch issue, rather than a hook
+    firing nobody can rely on.
+12. **The aggregation counts task invocations** (§4.2), per task: agent
+    executions first, and beside them the runs that were deterministic
+    preprocessing only and the runs whose precondition said no. Read from the
+    Actions logs — all task invocation data is already there — which keeps the
+    scheduler stateless and needs no new storage anywhere.
+13. **`failed` and `deferred` are counted too**, not folded into their
+    neighbours: a task that fails every night must not read as one that runs
+    quietly, and a dispatch that was never filed must not read as an execution.
+14. **These rows are a census, and the file says so** — every scheduler run
+    records every due task, unlike the skill and check counts, which see only
+    captured sessions. The two populations sit side by side in one file, so the
+    difference is stated in the file rather than assumed by the reader.
