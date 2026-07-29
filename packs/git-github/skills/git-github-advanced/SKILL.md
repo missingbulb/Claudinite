@@ -141,6 +141,15 @@ In a GitHub-rendered Markdown file, cmark-gfm re-enters Markdown mode inside a r
 
 A broad call (e.g. `search_repositories` with `org:X`, or any list/search tool that takes no repo argument) returns every repo the token can see, not just an allowed subset — filtering the result afterward doesn't undo the fact that disallowed repos' data was already pulled into the call. When operating under a repo allowlist, scope every call explicitly instead: pass the specific `owner`/`repo` params, or anchor the query to `repo:owner/name`, one call per repo in the allowlist rather than one broad call filtered after the fact.
 
+## Cap *and* qualify every list/search call — an unbounded one blows the tool-result limit
+
+A list or search API call that isn't bounded returns a full page of full-bodied records and overruns the agent's tool-result cap, which costs two or three further calls to dig the answer back out of the spilled result — a pure-overhead round trip on a call whose wanted answer was a single record. Two independent bounds, both needed:
+
+- **Qualify the query so it matches what you mean.** A bare string handed to an issue/PR search is a *full-text* search over the whole repo — title, body, and comments — so a lookup for one known issue returns every issue that merely mentions the phrase, each with its whole body. Anchor it to the field (`in:title "<exact title>"`), or use the narrower tool (a label-filtered `list_issues`, a run-id or head-SHA query) instead of a search.
+- **Pass a small explicit page size.** Default page sizes are tuned for a browser, not a tool result; when the answer wanted is one issue or one run, ask for 5–10, never a bare unpaged call.
+
+Both, not either: a qualified query still returns a full page, and a small page of unqualified matches is still the wrong records.
+
 ## Merging gotchas
 
 These conflict/merge traps are independent of any one project's file layout.
