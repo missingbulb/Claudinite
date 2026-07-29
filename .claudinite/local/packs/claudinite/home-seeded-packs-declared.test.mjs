@@ -28,41 +28,27 @@ test('home-seeded-packs-declared: silent when every seeded pack is declared', ()
   }
 });
 
-test('home-seeded-packs-declared: fires when a seeded pack is missing from the declaration', () => {
-  const root = makeRepo({
-    base: {
-      'packs/basics/pack.mjs': packModule('basics', { seeded: true }),
-      // Newly seeded upstream; baselining is gated !isHome, so it never arrives here.
-      'packs/tidy-repo/pack.mjs': packModule('tidy-repo', { seeded: true }),
-      '.claudinite-checks.json': settings(['basics', 'local/claudinite']),
-    },
-  });
-  try {
-    const findings = run(root);
-    assert.equal(findings.length, 1);
-    assert.equal(findings[0].rule, 'home-seeded-packs-declared');
-    assert.equal(findings[0].file, '.claudinite-checks.json');
-    assert.equal(findings[0].severity, 'blocking');
-    assert.match(findings[0].what, /tidy-repo/);
-  } finally {
-    cleanup(root);
-  }
-});
-
 test('home-seeded-packs-declared: reports every undeclared seeded pack, not just the first', () => {
   const root = makeRepo({
     base: {
       'packs/basics/pack.mjs': packModule('basics', { seeded: true }),
+      // Newly seeded upstream; baselining is gated !isHome, so they never arrive here.
       'packs/grow_with_claudinite/pack.mjs': packModule('grow_with_claudinite', { seeded: true }),
       'packs/tidy-repo/pack.mjs': packModule('tidy-repo', { seeded: true }),
       '.claudinite-checks.json': settings(['basics']),
     },
   });
   try {
-    const ids = run(root).map((f) => f.what).join(' ');
+    const findings = run(root);
+    assert.equal(findings.length, 2);
+    const ids = findings.map((f) => f.what).join(' ');
     assert.match(ids, /grow_with_claudinite/);
     assert.match(ids, /tidy-repo/);
-    assert.equal(run(root).length, 2);
+    for (const finding of findings) {
+      assert.equal(finding.rule, 'home-seeded-packs-declared');
+      assert.equal(finding.file, '.claudinite-checks.json');
+      assert.equal(finding.severity, 'blocking');
+    }
   } finally {
     cleanup(root);
   }
