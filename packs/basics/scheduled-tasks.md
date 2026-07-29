@@ -15,6 +15,46 @@ The checks below are the doctrine's enforcement; the phased rollout (and the
 retirement of the legacy central planner it replaces) lives in
 [MIGRATION.md](../../docs/per-project-scheduling/MIGRATION.md).
 
+## Cron is best-effort — the platform truth to design and speak by
+
+GitHub's `schedule:` trigger is a **request to queue**, not a promise to run. A
+cron'd workflow routinely fires minutes to tens of minutes late, and under load
+GitHub **drops** a firing outright: the run never happens, with no failure, no
+notification, and nothing in the ledger to look at. The effect is worst at :00
+and other round minutes, which is why a repo's scheduler minute is hashed into
+:10–:50 ([hash-minute.mjs](../../engine/scheduler/hash-minute.mjs)) rather than
+parked on the hour. GitHub's own docs concede only that a schedule "may be
+delayed during periods of high loads"; the behaviour is measured across a fleet
+in [Upptime's write-up](https://upptime.js.org/blog/2021/01/22/github-actions-schedule-not-working/).
+Adjacent platform rule, same family: GitHub **disables** a repo's scheduled
+workflows after 60 days without repository activity.
+
+What follows for how we build and how we talk about it:
+
+- **The engine is built for it; don't design against punctuality anyway.**
+  Due-ness is schedule math against the Actions run ledger, never wall-clock
+  equality with the cron minute, and only the most-recent slot per frequency is
+  considered — so a late fire is a non-event and a missed one self-heals on the
+  next successful run, one catch-up evaluation rather than a backfill storm
+  ([slots.mjs](../../engine/scheduler/slots.mjs), DESIGN §3.1). A precondition
+  that assumes "the last run was exactly an hour ago", or an ordering that only
+  holds if two frequencies fire in the same run, is broken by the platform, not
+  by the engine.
+- **An hourly task must not depend on every hour running.** Hourly slots never
+  catch up — a stale poll is worthless — so a dropped firing means that hour is
+  simply skipped. Hourly work must be idempotent and self-catching (do whatever
+  is outstanding *now*), never per-tick bookkeeping that loses information when a
+  tick vanishes.
+- **Say "about hourly, best-effort" to a human, and don't debug a late run as a
+  bug.** Promising an interval the platform doesn't honour turns normal jitter
+  into a bug report. When a run "didn't happen", the first question is whether
+  GitHub fired at all — the workflow's run list — not what the engine decided;
+  and a single missed slot is expected behaviour, not evidence of a defect.
+- **Anything that must happen at a precise time doesn't belong on this cron.**
+  Nothing in Claudinite needs punctuality, and that is a constraint on what may
+  become a task, not an accident: a deadline-bound job wants a trigger that
+  fires on the event, not an hourly poll that may skip.
+
 ## What the checks guard
 
 - **The scheduler workflow is a thin shim.** The vendored
