@@ -1,9 +1,10 @@
 // The sheepdog pack's fleet CONFIG reader — the one parser for the enforcer repo's
 // `sheepdog` pack entry.
 //
-// It lives at the pack root, not inside a task, because BOTH sweeps read the same
+// It lives at the pack root, not inside a task, because EVERY sweep reads the same
 // entry: the census (tasks/fleet-census/) needs `owner` and `exclude`, the freshness
-// sweep (tasks/fleet-freshness/) needs those plus `canonRepo` and `staleDays`. A
+// sweep (tasks/fleet-freshness/) needs those plus `canonRepo` and `staleDays`, the
+// preferences sweep (tasks/fleet-preferences/) those plus `preferencesRepo`. A
 // second reader would be a second place for the owner/exclude semantics to drift —
 // and this is what the file-placement skill calls lifting a shared dependency to the
 // nearest common ancestor: distance 2 from each task instead of one task reaching
@@ -11,11 +12,13 @@
 
 // The sheepdog repo's .claudinite-checks.json carries, on its sheepdog pack entry:
 //   { "id": "sheepdog", "config": { owner: "missingbulb", kind: "user", exclude: ["owner/repo", ...],
-//                                   canonRepo: "missingbulb/Claudinite", staleDays: 14 } }
+//                                   canonRepo: "missingbulb/Claudinite", staleDays: 14,
+//                                   preferencesRepo: "missingbulb/Sheepdog" } }
 // owner is who to cover (default: the sheepdog repo's own owner); exclude is the repos
 // deliberately kept out (a full owner/name each, lowercased). canonRepo and staleDays
-// are the freshness sweep's two knobs and both default, so an existing config keeps
-// working untouched. Callers read the home repo's file raw (fetched over the API, no
+// are the freshness sweep's two knobs, preferencesRepo the preferences sweep's one, and
+// all three default, so an existing config keeps working untouched. Callers read the
+// home repo's file raw (fetched over the API, no
 // engine on hand), so this resolves the entry itself — legacy top-level
 // packConfig.sheepdog stays readable underneath until the `pack-entry-config` baseline
 // migration retires (drop the fallback then). A missing config is an unreadable
@@ -36,5 +39,12 @@ export function parseSheepdogConfig(cfg, home) {
   // legitimately go quiet for longer raises it rather than living with false alarms.
   const raw = Number(sd.staleDays);
   const staleDays = Number.isFinite(raw) && raw > 0 ? raw : 14;
-  return { owner, exclude, canonRepo, staleDays };
+  // Where this fleet's users keep their personal preferences — the pointer the
+  // preferences sweep writes into every member. Defaults to THIS repo: the enforcer is
+  // the fleet's own repo, so it is the natural host for content that belongs to the
+  // fleet's users rather than to any one project (and never to the canon, which is
+  // shared by every fleet). A fleet that keeps them somewhere else — a private repo,
+  // say — names it here, and nothing else about the sweep changes.
+  const preferencesRepo = String(sd.preferencesRepo ?? home);
+  return { owner, exclude, canonRepo, staleDays, preferencesRepo };
 }

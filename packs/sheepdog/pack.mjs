@@ -3,14 +3,17 @@
 // opt-in (a dedicated sheepdog repo declares it; NOT seeded by --init).
 //
 // The pack is thin: prose (RULES.md), the config schema (the pack entry's config =
-// { owner, kind, exclude, canonRepo, staleDays }), and the account-spanning sweeps
+// { owner, kind, exclude, canonRepo, staleDays, preferencesRepo }), and the
+// account-spanning sweeps
 // that ARE the cross-repo reach the pack adds — each with the ordinary agentless
 // scheduled task that runs it (the sweep IS its prework, and its
 // required_secrets is what asks the repo for FLEET_GITHUB_TOKEN):
 //
-//   tasks/fleet-census/check-fleet-coverage.mjs      is a repo a MEMBER?
-//   tasks/fleet-freshness/check-fleet-freshness.mjs  is a member KEEPING UP?
-//   tasks/fleet-usage/aggregate-fleet-usage.mjs      what does the fleet USE?
+//   tasks/fleet-census/check-fleet-coverage.mjs        is a repo a MEMBER?
+//   tasks/fleet-freshness/check-fleet-freshness.mjs    is a member KEEPING UP?
+//   tasks/fleet-usage/aggregate-fleet-usage.mjs        what does the fleet USE?
+//   tasks/fleet-preferences/check-fleet-preferences.mjs does a member know where the
+//                                                      fleet's users' PREFERENCES are?
 //
 // Each sweep lives INSIDE its task's folder — nothing outside that task uses it.
 // The pack root holds only what they all need: fleet-api.mjs (the cross-repo REST
@@ -21,7 +24,10 @@
 // outside — self-maintenance cannot detect its own absence. The third exists for the
 // same shape of reason a rung up: a member folds its own skill-usage numbers and can
 // therefore only say whether a skill loads THERE; whether a skill earns its place at
-// all is a fleet-shaped question no member can answer about itself.
+// all is a fleet-shaped question no member can answer about itself. The fourth is the
+// one that WRITES to members: personal preferences belong to a fleet's users, so each
+// member carries a POINTER at the repo holding them — and only the enforcer knows which
+// repo that is, because it is the fleet.
 //
 // The sweeps carry no workflow of their own: preprocessing runs Action-side inside
 // the repo's one scheduler workflow, where that secret is already reachable. The
@@ -41,7 +47,7 @@
 export default {
   id: 'sheepdog',
   ruleRoutingGuidance: {
-    belongs: 'fleet-enforcer duties for the repo that watches every other repo — coverage census, freshness drift, usage aggregation',
+    belongs: 'fleet-enforcer duties for the repo watching every other repo — coverage, freshness, usage, the fleet\'s preferences home',
     excludes: 'anything a member does to itself — tidying is tidy-repo, lesson capture is grow_with_claudinite',
   },
   badge: 'badge.svg',

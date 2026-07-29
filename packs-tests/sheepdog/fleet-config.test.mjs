@@ -21,6 +21,19 @@ test('parseSheepdogConfig: reads owner + exclude; defaults owner to the home own
   assert.throws(() => parseSheepdogConfig({}, 'acme/fleet'), /declares no sheepdog config/);
 });
 
+test('parseSheepdogConfig: preferencesRepo defaults to the enforcer repo itself', () => {
+  // The enforcer IS the fleet's own repo, so it is the natural host for content that
+  // belongs to the fleet's users rather than to any one project — and defaulting means
+  // an existing sheepdog config needs no edit to gain the preferences sweep.
+  assert.equal(parseSheepdogConfig({ packs: [{ id: 'sheepdog', config: { owner: 'acme' } }] }, 'acme/Fleet').preferencesRepo, 'acme/Fleet');
+  // A fleet keeping them elsewhere (a private repo, say) names it, and nothing else changes.
+  assert.equal(parseSheepdogConfig({ packs: [{ id: 'sheepdog', config: { preferencesRepo: 'acme/People' } }] }, 'acme/Fleet').preferencesRepo, 'acme/People');
+  // NOT lowercased, unlike owner/exclude: it is written verbatim into every member's
+  // settings and read back as a repo path, so the case the owner typed is the case
+  // that lands.
+  assert.equal(parseSheepdogConfig({ packs: [{ id: 'sheepdog', config: {} }] }, 'missingbulb/Sheepdog').preferencesRepo, 'missingbulb/Sheepdog');
+});
+
 test('parseSheepdogConfig: canonRepo and staleDays default, so an existing config keeps working', () => {
   const bare = parseSheepdogConfig({ packs: [{ id: 'sheepdog', config: { owner: 'MissingBulb' } }] }, 'missingbulb/sheepdog');
   assert.equal(bare.canonRepo, 'missingbulb/Claudinite');
