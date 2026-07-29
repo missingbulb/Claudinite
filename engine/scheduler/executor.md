@@ -79,23 +79,31 @@ so use `engine/scheduler/`.
      `CCR_TRIGGER_EVENT`, `CCR_TRIGGER_REPO`, `CCR_TRIGGER_ISSUE_NUMBER` — which
      **name your issue but carry neither its labels nor its body**. So this
      resolves in two commands: the shell exits `13` telling you the number, you
-     fetch **that one issue** over MCP, and you re-run with what you fetched.
+     fetch **that one issue** over MCP, save the tool's raw JSON response
+     **verbatim** to a file, and re-run with `--issue-json <path>`. No
+     hand-extraction: the shell parses body, labels, and title out of the
+     response itself, and rejects in code a response whose number is not the
+     trigger's — fetching the wrong issue cannot slip through.
 
    **Act on its exit code — that is the interface**, not the prose it prints:
 
    | exit | verdict | what you do |
    | --- | --- | --- |
-   | `0` | valid dispatch, your scope | Go to step 2. The printed block is your brief: issue, task path, pack, task, model, outcome ceiling, `executionTimeout`. |
-   | `13` | CCR trigger, issue named, body needed | Fetch **the printed issue and only it** over MCP — its body and its current labels — write the body verbatim to a file, and re-run: `node <engine>/scheduler/resolve-dispatch.mjs self --issue-body-file <path> --issue-labels <csv>`. Then act on *that* run's exit code. |
+   | `0` | valid dispatch, your scope | Quote the printed `brief:` line in chat (see below), then go to step 2. The printed block is your brief: issue, task path, pack, task, slot, model, outcome ceiling, `executionTimeout`. |
+   | `13` | CCR trigger, issue named, body needed | Fetch **the printed issue and only it** over MCP, save the raw response JSON **verbatim** to a file, and re-run: `node <engine>/scheduler/resolve-dispatch.mjs self --issue-json <path>`. Then act on *that* run's exit code. |
    | `10` | invalid dispatch | It never runs. Comment the printed `reason`, remove the ready label, add `needs-human`, end the session. |
    | `11` | not yours | The trigger label is the *other* executor's, no ready label at all, or the issue no longer carries a ready label (another session already claimed it). **Stop**: change nothing, comment nothing, end the session. |
    | `12` | no trigger at all | **Stop the session immediately.** See below. |
    | `2`, `1` | bad invocation, internal fault | Comment what you saw, add `needs-human` if you know the issue, end the session. Do not proceed on a guess. |
 
-   **State the issue number before you act**, so everything after this has one
-   unambiguous subject. Run that issue and nothing else: do **not** list, claim,
-   or process any other open issue — not under your ready label, and not under
-   the other one.
+   **Announce your dispatch before you act**: quote the printed `brief:` line
+   prominently in chat — bold, on its own line, e.g.
+   **`Task: grow_with_claudinite/growth-dedup (slot d2026-07-29) — issue #546,
+   model opus, outcome ceiling open-pr, timeout 1800s`** — so everything after
+   this has one unambiguous subject a human skimming the session sees at a
+   glance. Run that issue and nothing else: do **not** list, claim, or process
+   any other open issue — not under your ready label, and not under the other
+   one.
 
    **Why one issue, and never a sweep.** One scheduler run files every due task's
    dispatch within a couple of seconds, each already carrying its ready label, so

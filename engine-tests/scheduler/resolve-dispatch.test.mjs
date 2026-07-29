@@ -45,9 +45,10 @@ function fixtureRepo() {
 }
 
 const GOOD_PATH = 'packs/demo/tasks/demo-task/task.md';
+const GOOD_TITLE = '[claudinite-task] demo/demo-task d2026-07-29';
 
-const labeled = (label, { number = 4242, body = `${GOOD_PATH}\n\n## Context\n- scoped\n` } = {}) =>
-  ({ action: 'labeled', label: { name: label }, issue: { number, body } });
+const labeled = (label, { number = 4242, body = `${GOOD_PATH}\n\n## Context\n- scoped\n`, title = GOOD_TITLE } = {}) =>
+  ({ action: 'labeled', label: { name: label }, issue: { number, body, title } });
 
 // Run the real CLI against `root`. `event` undefined ⇒ GITHUB_EVENT_PATH unset;
 // `eventPath` overrides the path (to point at a file that isn't there); `ccr`
@@ -99,6 +100,22 @@ test('a valid self dispatch exits 0 and prints the whole brief the executor need
     assert.equal(field(r.stdout, 'resolvedModel'), 'sonnet');
     assert.equal(field(r.stdout, 'outcome'), 'open-pr');
     assert.equal(field(r.stdout, 'executionTimeout'), '1800');
+    // The announce line the executor quotes in chat: task, slot, and the run
+    // parameters, in one greppable field.
+    assert.equal(field(r.stdout, 'slot'), 'd2026-07-29');
+    assert.equal(field(r.stdout, 'brief'),
+      'Task: demo/demo-task (slot d2026-07-29) — issue #4242, model sonnet, outcome ceiling open-pr, timeout 1800s');
+  } finally { cleanup(root); }
+});
+
+test('a payload whose title is not a dispatch title still validates — the slot is just unknown', () => {
+  const root = fixtureRepo();
+  try {
+    const r = run(root, { event: labeled('ready-for-agent', { title: 'renamed by a human' }) });
+    assert.equal(r.status, OK, `${r.stdout}${r.stderr}`);
+    assert.equal(field(r.stdout, 'slot'), 'unknown');
+    assert.equal(field(r.stdout, 'brief'),
+      'Task: demo/demo-task — issue #4242, model sonnet, outcome ceiling open-pr, timeout 1800s');
   } finally { cleanup(root); }
 });
 
@@ -243,9 +260,96 @@ test('a CCR trigger names its issue instead of stopping, and asks for the rest',
     assert.equal(field(r.stdout, 'dispatch'), 'needs-issue');
     assert.equal(field(r.stdout, 'issue'), '772'); // the whole point: it knows which one
     assert.equal(field(r.stdout, 'source'), 'ccr');
-    assert.match(r.stderr, /--issue-body-file/);
-    assert.match(r.stderr, /--issue-labels/);
+    assert.match(r.stderr, /--issue-json/);
+    assert.match(r.stderr, /verbatim/);
     assert.doesNotMatch(r.stderr, /\boldest\b/i);
+  } finally { cleanup(root); }
+});
+
+// The one-step handshake: the executor saves the MCP fetch's raw response and
+// the shell extracts every field itself — no hand-built body file, no CSV.
+
+test('the --issue-json handshake resolves from the raw MCP response in one step', () => {
+  const root = fixtureRepo();
+  try {
+    const jsonFile = join(root, 'issue.json');
+    // The MCP issue-get shape observed live: labels as plain strings.
+    writeFileSync(jsonFile, JSON.stringify({
+      number: 772,
+      title: '[claudinite-task] demo/demo-task d2026-07-28',
+      body: `${GOOD_PATH}\n\n## Context\n- scoped\n`,
+      labels: ['ready-for-agent'],
+      state: 'open',
+    }));
+    const r = run(root, { ccr: ccrEnv(), args: ['--issue-json', jsonFile] });
+    assert.equal(r.status, OK, `${r.stdout}${r.stderr}`);
+    assert.equal(field(r.stdout, 'issue'), '772');
+    assert.equal(field(r.stdout, 'label'), 'ready-for-agent');
+    assert.equal(field(r.stdout, 'source'), 'ccr');
+    assert.equal(field(r.stdout, 'taskPath'), GOOD_PATH);
+    assert.equal(field(r.stdout, 'slot'), 'd2026-07-28');
+    assert.equal(field(r.stdout, 'brief'),
+      'Task: demo/demo-task (slot d2026-07-28) — issue #772, model sonnet, outcome ceiling open-pr, timeout 1800s');
+  } finally { cleanup(root); }
+});
+
+test('--issue-json accepts the REST label shape ({ name }) as well as plain strings', () => {
+  const root = fixtureRepo();
+  try {
+    const jsonFile = join(root, 'issue.json');
+    writeFileSync(jsonFile, JSON.stringify({
+      number: 772,
+      body: `${GOOD_PATH}\n`,
+      labels: [{ name: 'ready-for-agent' }, { name: 'enhancement' }],
+    }));
+    const r = run(root, { ccr: ccrEnv(), args: ['--issue-json', jsonFile] });
+    assert.equal(r.status, OK, `${r.stdout}${r.stderr}`);
+    assert.equal(field(r.stdout, 'label'), 'ready-for-agent');
+  } finally { cleanup(root); }
+});
+
+test('--issue-json for a different issue number than the trigger is refused in code', () => {
+  const root = fixtureRepo();
+  try {
+    const jsonFile = join(root, 'issue.json');
+    writeFileSync(jsonFile, JSON.stringify({
+      number: 773, // the trigger names 772
+      body: `${GOOD_PATH}\n`,
+      labels: ['ready-for-agent'],
+    }));
+    const r = run(root, { ccr: ccrEnv(), args: ['--issue-json', jsonFile] });
+    assert.equal(r.status, USAGE, `${r.stdout}${r.stderr}`);
+    assert.match(r.stderr, /#773/);
+    assert.match(r.stderr, /#772/);
+  } finally { cleanup(root); }
+});
+
+test('--issue-json whose issue has lost its ready label is another session\'s — not-mine', () => {
+  const root = fixtureRepo();
+  try {
+    const jsonFile = join(root, 'issue.json');
+    writeFileSync(jsonFile, JSON.stringify({
+      number: 772,
+      body: `${GOOD_PATH}\n`,
+      labels: ['agent-running'],
+    }));
+    const r = run(root, { ccr: ccrEnv(), args: ['--issue-json', jsonFile] });
+    assert.equal(r.status, NOT_MINE, `${r.stdout}${r.stderr}`);
+    assert.match(r.stderr, /already been claimed|converged/i);
+  } finally { cleanup(root); }
+});
+
+test('an unreadable or non-JSON --issue-json is a usage error, never a silent empty body', () => {
+  const root = fixtureRepo();
+  try {
+    const missing = run(root, { ccr: ccrEnv(), args: ['--issue-json', join(root, 'ghost.json')] });
+    assert.equal(missing.status, USAGE, `${missing.stdout}${missing.stderr}`);
+
+    const junkFile = join(root, 'junk.json');
+    writeFileSync(junkFile, '{not json');
+    const junk = run(root, { ccr: ccrEnv(), args: ['--issue-json', junkFile] });
+    assert.equal(junk.status, USAGE, `${junk.stdout}${junk.stderr}`);
+    assert.match(junk.stderr, /not valid JSON/);
   } finally { cleanup(root); }
 });
 
