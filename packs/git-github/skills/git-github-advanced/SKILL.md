@@ -83,31 +83,15 @@ A `workflow_dispatch` or scheduled workflow runs from the copy on the **default 
 
 GitHub's OIDC `sub` uses the repository's **canonical casing** (`repo:Owner/Repo:ref:…`), and a cloud trust policy compares it exactly — AWS IAM `StringEquals` is case-sensitive — so a trust policy written with the wrong case fails with a bare `Not authorized to perform sts:AssumeRoleWithWebIdentity` and **no** hint that casing is the cause. Match the exact canonical `owner/repo` (or list both casings in the condition). The same exact-match caution applies to any OIDC-federated cloud, not just AWS.
 
-## Gate an optional CI job on a repo variable, not a secret
-
-`secrets.*` are not available in a job-level `if:`, so a job gated on a secret can't evaluate its condition and **fails (red)** instead of skipping. Put a non-sensitive flag (a deploy-role ARN, a feature toggle) in a repository **variable** and gate with `if: ${{ vars.X != '' }}` so the job is **skipped (neutral)** until it's configured — keeping the default branch green for anyone who hasn't set the integration up. Reserve secrets for the values consumed *inside* the job's steps.
-
 ## An automated job needs a unique branch per run
 
 An automated or scheduled job that derives its branch name from a non-unique key (e.g. the date) collides with itself on a repeat run for that key — `git checkout -b` fails when the branch already exists, and a push to the diverged remote branch is rejected non-fast-forward (so the run can't even open its PR). Give every run its own branch: append a per-run-unique suffix (`$RANDOM` / a short token) to the readable prefix.
-
-## A workflow that adds a brand-new label must create it first
-
-`gh issue edit --add-label "<name>"` fails when the label doesn't exist yet — unlike applying an already-defined label, GitHub won't create it on demand, so a workflow that introduces a new label breaks the first time it runs. Create it idempotently before the edit (`gh label create "<name>" --color … 2>/dev/null || true`), then `--add-label`.
-
-## A GitHub Actions `run:` step's default shell has no `pipefail`
-
-GitHub's implicit default run-shell is `bash -e {0}` — **without** `pipefail` — so a step piping through another command (e.g. `cmd 2>&1 | tee log`) reports the *last* command's exit code, not the piped command's: a failing command still shows the step green. Set `defaults.run.shell: bash` (job- or step-level), which GitHub runs as `bash --noprofile --norc -eo pipefail {0}`, so the step fails when any command in the pipe fails.
 
 ## An unattended workflow must escalate its own failure to a human-visible state
 
 A workflow with no human watching the run — scheduled, triggered by a push/merge, or a fire-and-forget manual dispatch, with no other path that reaches a person — must converge a failure to something a human will see (e.g. open a `workflow-failure` issue for it) rather than merely exiting red in the Actions list, where nobody looks. Skip this only when the failure is already loud: a `pull_request`/push CI run that blocks merge with a red required check the author is watching, or a workflow that already flags the triggering issue itself on failure. The canon's [report-failure](../../../../.github/actions/report-failure/action.yml) action does exactly this — a **fresh** issue per failure, with earlier open failure issues for the same workflow closed as duplicates of the newest — so the current failure is always the single open bug to triage; a standing per-workflow issue appended to on each failure is an equally valid shape, the invariant is only that the red run reaches a person.
 
 When the escalation is itself a separate reusable workflow invoked via `workflow_call`, permissions don't propagate implicitly through the chain: the job that calls it needs the permission explicitly granted (e.g. `issues: write`), and if that reusable workflow in turn calls another one, the middle workflow must forward the same grant to its own call — a caller two levels up granting it once is not enough.
-
-## A CI job that reads submodule files must fetch submodules in its checkout
-
-`actions/checkout` does **not** fetch submodules by default — the submodule directory is an empty folder in CI unless you pass `submodules: true` (or `recurse-submodules: true`). Without it, any gate that reads submodule content passes vacuously: the check is a no-op, not a signal. Add the flag to every CI job whose tests read submodule content.
 
 ## A CI job that inspects commit shape must check out the PR head, not the merge ref
 

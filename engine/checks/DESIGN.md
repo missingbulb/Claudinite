@@ -296,9 +296,12 @@ order of strength:
 
 ## Governance
 
-- **A converted rule leaves its doc.** The check's failure message owns the rule now; the doc
-  keeps only rationale and the judgment parts. Keeping both pays twice and springs the corpus's
-  own drift trap (two sources of truth).
+- **A converted rule leaves its doc — deleted whole, not trimmed.** The check's failure message
+  owns the rule now and its header comment owns the rationale, so the doc keeps only what neither
+  carries: the judgment parts, the exemptions a check can't encode, the rules it doesn't reach.
+  A paragraph restating a landed check's message or its rationale pays twice and springs the
+  corpus's own drift trap (two sources of truth). The per-paragraph decision is the
+  `prose-to-checks` skill's deletion test, applied by a reader.
 - **Fail fast: a new check ships at its real severity — blocking for defect-kind rules.** A
   wrong blocking check surfaces in the very next session and gets fixed; an advisory false
   positive is noise nobody reads, so a burn-in stage never actually observes the precision it

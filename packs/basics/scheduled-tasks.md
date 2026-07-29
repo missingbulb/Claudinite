@@ -59,12 +59,6 @@ retirement of the legacy central planner it replaces) lives in
   after N minutes") and the stale-`agent-running` backstop catches a dead session.
   Set it generously — extreme protection against a runaway, not a scheduling knob.
 
-- **Preprocessing is optional, bounded, and task-local.** A task may declare
-  `agent_preprocessing` — a command the scheduler runs as a subprocess before the
-  agent (its executable a script beside `task.mjs`, no absolute path or `..`) —
-  which then **requires** `agent_preprocessing_timeout`, the hard subprocess kill
-  that fails the task on overrun.
-
 - **A task says which repo secrets it needs.** Preprocessing runs Action-side, so
   repo Actions secrets are reachable there and nowhere else in a task's life (an
   executor session carries none). A task lists what it needs in `required_secrets`;
