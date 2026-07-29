@@ -1,8 +1,23 @@
-// THE PACK MANIFEST SPEC — the single declarative statement of what a
-// `pack.mjs` may and must carry. Everything a pack declares about itself is
-// described here once, and `validateManifest` is the only thing that judges a
-// manifest against it. The loader calls it on every pack it imports (canon and a
-// consumer's own `local_packs/` alike), so a malformed or incomplete manifest
+// THE MANIFEST AS THE ENGINE HOLDS IT — the in-memory pack contract, and the
+// semantic guards no field-shape schema can express.
+//
+// The AUTHORING spec is `pack.schema.json`: what a hand-edited `pack.json` may
+// and must carry, in the form an editor validates and completes against. This
+// module owns the two things that outlive it:
+//
+//   - `PACK_FIELDS`, the RESOLVED shape — the manifest after the loader has
+//     turned filenames into modules and a `detect` spec into a predicate. It is
+//     also the whole field-shape check for the pre-2026-07 `pack.mjs` module
+//     shape, which the loader still reads while consumer-held local packs
+//     migrate; when that shape retires, this collapses into a post-resolution
+//     assertion. A test holds its vocabulary and the schema's to each other
+//     (engine-tests/pack_loader/pack-schema.test.mjs), so the two cannot drift.
+//   - The guards a schema cannot state: a word CAP over prose, a rule module's
+//     `scope` agreeing with the list it sits in, and the bundled-skills
+//     declaration agreeing with the `skills/` tree in both directions.
+//
+// The loader calls `validateManifest` on every pack it loads (canon and a
+// consumer's own local packs alike), so a malformed or incomplete manifest
 // surfaces as a blocking `config` error at load — the same class as invalid JSON
 // in `.claudinite-checks.json`.
 //
@@ -33,8 +48,12 @@ const isPlainObject = (v) => v !== null && typeof v === 'object' && !Array.isArr
 const isStringArray = (v) => Array.isArray(v) && v.every((x) => typeof x === 'string');
 const isRuleArray = (v) => Array.isArray(v) && v.every((x) => isPlainObject(x) && typeof x.id === 'string' && typeof x.run === 'function');
 
-// Every field a manifest may carry. `required` fields must be present; the rest
-// are validated only when declared. An UNDECLARED field is an error: the spec is
+// Every field a RESOLVED manifest may carry — the same vocabulary
+// `pack.schema.json` declares for the JSON, with each module-naming field's value
+// as the loader leaves it (a rule filename resolved to the rule, a `detect` spec
+// compiled to a predicate). The authoring-only fields (`$schema`, `helpers`) are
+// stripped before this sees the manifest. `required` fields must be present; the
+// rest are validated only when declared. An UNDECLARED field is an error: this is
 // the closed vocabulary of a pack, so a typo (`rule:`, `skill:`) fails loudly
 // instead of being silently ignored forever.
 export const PACK_FIELDS = {
@@ -69,7 +88,7 @@ export function validateManifest(mod, { label, skillDirs = [] } = {}) {
   const err = (what, fix) => errors.push({ what: `${at}${what}`, fix });
 
   if (!isPlainObject(mod)) {
-    err('the pack has no object default export', 'export default { id, ruleRoutingGuidance, ... } from its pack.mjs');
+    err('the manifest is not an object', 'declare the pack as a JSON object in pack.json: { "id": ..., "ruleRoutingGuidance": ... }');
     return errors;
   }
 
@@ -79,7 +98,7 @@ export function validateManifest(mod, { label, skillDirs = [] } = {}) {
   for (const [key, value] of Object.entries(mod)) {
     const field = PACK_FIELDS[key];
     if (!field) {
-      err(`declares "${key}", which is not a pack manifest field`, `remove it, or add it to the spec in engine/pack_loader/pack-schema.mjs — the known fields are: ${Object.keys(PACK_FIELDS).join(', ')}`);
+      err(`declares "${key}", which is not a pack manifest field`, `remove it, or add it to engine/pack_loader/pack.schema.json and to PACK_FIELDS beside it — the known fields are: ${Object.keys(PACK_FIELDS).join(', ')}`);
       continue;
     }
     if (!field.valid(value)) err(`"${key}" is not a valid value`, `${key} is ${field.describe}`);

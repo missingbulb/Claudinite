@@ -1,0 +1,14 @@
+{
+  "$schema": "../../engine/pack_loader/pack.schema.json",
+  "id": "firebase",
+  "ruleRoutingGuidance": {
+    "belongs": "building on Firebase: Firestore security rules, callable Cloud Function patterns, FCM, emulator testing, functions deploy layout",
+    "excludes": "dev/prod project separation, config injection and App Check store gating — that is firebase-release"
+  },
+  "badge": "badge.svg",
+  "marker": "firebase.json (at the repo root or one directory down)",
+  "detect": { "trackedPath": { "basename": "firebase.json", "maxDepth": 2 } },
+  "prose": "RULES.md",
+  "worldRules": ["functions-node-pin.mjs", "functions-predeploy-build.mjs"],
+  "helpers": ["lib.mjs"]
+}

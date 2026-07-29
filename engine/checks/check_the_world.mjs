@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // World-scope conformance runner (see DESIGN.md): the rules that audit repo
 // state as it exists now, plus the pack-agnostic settings/load integrity
-// diagnostics (malformed config, an unknown pack, a broken pack.mjs). Rules that
+// diagnostics (malformed config, an unknown pack, a broken pack manifest). Rules that
 // judge the current change (`scope: 'work'`) run in check_the_work.mjs, which
 // this file shares no code with — only the scope-blind mechanism helpers
 // (run-active-pack-rules.mjs, report-findings.mjs). It names NO pack: adoption
@@ -83,7 +83,7 @@ const ctx = buildContext({ root, mode: has('--changed') ? 'changed' : 'all', bas
 // Settings validity is checked at load: malformed JSON, an unknown
 // property, and a wrong pack name are all equally settings errors. loadConfig
 // reports the first two; the runner adds unknown pack names (only it holds the
-// registry) and broken/duplicate local pack.mjs faults.
+// registry) and broken/duplicate local pack-manifest faults.
 const findings = [];
 for (const e of ctx.config.errors) findings.push(configError(e.what, e.fix));
 for (const e of packErrors) findings.push(configError(e.what, e.fix));

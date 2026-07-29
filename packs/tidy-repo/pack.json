@@ -1,0 +1,14 @@
+{
+  "$schema": "../../engine/pack_loader/pack.schema.json",
+  "id": "tidy-repo",
+  "ruleRoutingGuidance": {
+    "belongs": "housekeeping of open issues, pull requests and branches in one repo — triage verdicts, standing trackers, assess-vs-act policy",
+    "excludes": "extracting lessons into packs — that is grow_with_claudinite; cross-repo fleet sweeps are sheepdog"
+  },
+  "badge": "badge.svg",
+  "marker": null,
+  "detect": null,
+  "prose": "RULES.md",
+  "seededByDefault": true,
+  "skills": ["single-branch-status", "single-issue-triage", "single-pr-status"]
+}

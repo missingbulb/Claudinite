@@ -1,16 +1,20 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, cleanup } from './helpers.mjs';
+import { makeRepo, cleanup, canonPack } from './helpers.mjs';
 import { buildContext } from '../engine/checks/helpers/repo-context.mjs';
-import flutter from '../packs/flutter/pack.mjs';
-import node from '../packs/node/pack.mjs';
-import firebase from '../packs/firebase/pack.mjs';
 
-// Deliberately stays in engine/test/, not co-located into any one pack: each
+const [flutter, node, firebase] = await Promise.all(['flutter', 'node', 'firebase'].map(canonPack));
+
+// Deliberately stays in engine-tests/, not co-located into any one pack: each
 // test asserts the *shared* marker-depth detect convention (marker at the repo
 // root OR one directory down, but not deeper, and only the exact basename)
 // across several packs at once. It proves a cross-pack behaviour, so it belongs
 // with the engine tests rather than duplicated three times under packs/.
+//
+// Since #564 the three declare that convention as DATA —
+// `{ trackedPath: { basename: ..., maxDepth: 2 } }` — so this is also the
+// end-to-end proof that the detect-spec compiler means what the three packs
+// used to spell out in three copies of the same arrow function.
 function detect(pack, files) {
   const root = makeRepo({ base: files });
   try {

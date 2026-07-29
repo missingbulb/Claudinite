@@ -1,0 +1,13 @@
+{
+  "$schema": "../../engine/pack_loader/pack.schema.json",
+  "id": "chrome-extension",
+  "ruleRoutingGuidance": {
+    "belongs": "manifest V3 service-worker, permissions, content-script and extension-auth gotchas that apply while coding a Chrome extension",
+    "excludes": "store submission, packaging, versioning and privacy disclosure — that is chrome-extension-release"
+  },
+  "badge": "badge.svg",
+  "marker": "a manifest.json declaring manifest_version",
+  "detect": "detect.mjs",
+  "prose": "RULES.md",
+  "worldRules": ["declarative-content-set-icon.mjs"]
+}

@@ -4,9 +4,10 @@ import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { makeRepo, cleanup, writeFiles } from '../../engine-tests/helpers.mjs';
+import { makeRepo, cleanup, writeFiles, canonPack } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
-import pack from '../../packs/product-wiki/pack.mjs';
+import { SINK_README } from '../../packs/product-wiki/lib.mjs';
+import { contributedBarrierRules } from '../../packs/barriers/contributed.mjs';
 import layout from '../../packs/product-wiki/layout.mjs';
 import pageSections from '../../packs/product-wiki/page-sections.mjs';
 import keyInsights from '../../packs/product-wiki/key-insights.mjs';
@@ -14,11 +15,11 @@ import growthLog from '../../packs/product-wiki/growth-log.mjs';
 import sources from '../../packs/product-wiki/sources.mjs';
 import freshness from '../../packs/product-wiki/freshness.mjs';
 import wikiGrowth from '../../packs/product-wiki/tasks/wiki-growth/task.mjs';
+
+const pack = await canonPack('product-wiki');
 // Built through the real path: the product-wiki manifest contributes it as
 // data and the barriers pack's factory turns it into the rule.
-import productWikiPack from '../../packs/product-wiki/pack.mjs';
-import { contributedBarrierRules } from '../../packs/barriers/contributed.mjs';
-const isolation = contributedBarrierRules([productWikiPack]).find((r) => r.id === 'product-wiki-isolation');
+const isolation = contributedBarrierRules([pack]).find((r) => r.id === 'product-wiki-isolation');
 
 const here = dirname(fileURLToPath(import.meta.url));
 const canonRoot = join(here, '..', '..');
@@ -58,7 +59,13 @@ function run(rule, files, { mode = 'all', packConfig, now, uncommitted } = {}) {
 
 test('pack manifest: id, marker, six uniquely-named rules, the contributed isolation barrier', () => {
   assert.equal(pack.id, 'product-wiki');
-  assert.equal(pack.marker, 'product-wiki/product-requirements/README.md');
+  // The manifest is DATA, so the sink path it fingerprints is a literal rather
+  // than an import of lib.mjs's constant. That is the one thing the JSON shape
+  // cannot share with the checks, so the agreement is asserted instead: a rename
+  // in lib.mjs that leaves the manifest behind fails here, not in a consumer.
+  assert.equal(pack.marker, SINK_README);
+  assert.equal(pack.detect({ tracked: [SINK_README], read: () => null }), true);
+  assert.equal(pack.detect({ tracked: ['product-wiki/README.md'], read: () => null }), false);
   assert.equal(pack.prose, 'RULES.md');
   assert.equal(pack.worldRules.length, 6);
   const ids = pack.worldRules.map((r) => r.id);
@@ -69,7 +76,7 @@ test('pack manifest: id, marker, six uniquely-named rules, the contributed isola
   assert.deepEqual(pack.requires, ['barriers']);
   assert.equal(pack.contributes.barriers.length, 1);
   assert.equal(pack.contributes.barriers[0].id, 'product-wiki-isolation');
-  // The pack's scheduled task is NOT a pack.mjs slot any more — the repo's
+  // The pack's scheduled task is NOT a manifest slot any more — the repo's
   // scheduler finds tasks/<name>/task.mjs structurally (#394).
   assert.equal(pack.run_daily, undefined);
   // Adoption interview scopes the research: product, users, market.

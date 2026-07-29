@@ -29,7 +29,13 @@ export default {
     for (const e of packs) {
       const id = typeof e === 'string' ? e : e?.id;
       if (typeof id !== 'string' || id.startsWith('local_packs/')) continue;
-      if (await exists(`.claudinite/local_packs/${id}/pack.mjs`)) return true;
+      // Either manifest shape marks a local pack — `pack.json` since #564, and the
+      // `pack.mjs` module while that migration runs. Probing only one would report
+      // a converted repo as already migrated OFF the legacy namespace it still uses,
+      // retiring this record early and orphaning the repos it was tracking.
+      for (const manifest of ['pack.json', 'pack.mjs']) {
+        if (await exists(`.claudinite/local_packs/${id}/${manifest}`)) return true;
+      }
     }
     return false;
   },

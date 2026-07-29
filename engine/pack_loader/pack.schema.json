@@ -1,0 +1,224 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/missingbulb/Claudinite/blob/main/engine/pack_loader/pack.schema.json",
+  "title": "Claudinite pack manifest",
+  "description": "THE PACK MANIFEST SPEC — the single declarative statement of what a pack.json may and must carry. A pack declares DATA here and names its code by filename: sibling .mjs modules the loader imports (rules, an env block, a detect predicate that needs real logic). Editors validate and complete a pack.json against this file via its $schema pointer; the loader validates against it too, so a malformed manifest surfaces as a blocking config error at load — canon packs and a consumer's own local packs alike. An undeclared field is an error: this is the closed vocabulary of a pack, so a typo (rule:, skill:) fails loudly instead of being silently ignored forever.",
+  "type": "object",
+  "required": ["id", "ruleRoutingGuidance"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "minLength": 1,
+      "description": "the relative path to this schema, so an editor validates and completes the file"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "the pack id, matching its directory name"
+    },
+    "ruleRoutingGuidance": {
+      "type": "object",
+      "required": ["belongs", "excludes"],
+      "additionalProperties": false,
+      "description": "what belongs in this pack and what does not, each at most 20 words — both sides are emitted as one row of a table every session loads",
+      "properties": {
+        "belongs": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the kind of content this pack owns, in at most 20 words"
+        },
+        "excludes": {
+          "type": "string",
+          "minLength": 1,
+          "description": "what belongs elsewhere and which pack owns it, in at most 20 words"
+        }
+      }
+    },
+    "badge": {
+      "type": "string",
+      "minLength": 1,
+      "description": "the pack badge filename, resolved off the pack directory"
+    },
+    "marker": {
+      "type": ["string", "null"],
+      "description": "a human-readable glob naming what detect looks for, or null"
+    },
+    "detect": {
+      "description": "the repo fingerprint — null when the declaration alone is authoritative, a tracked-path predicate as data, or a detect.mjs filename when recognizing the technology needs real logic (reading file CONTENT, parsing a manifest)",
+      "anyOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/moduleFile" },
+        { "$ref": "#/$defs/detectSpec" }
+      ]
+    },
+    "prose": {
+      "type": ["string", "null"],
+      "description": "the RULES.md filename injected at session start, or null"
+    },
+    "seededByDefault": {
+      "type": "boolean",
+      "description": "whether bootstrap --init seeds this pack everywhere"
+    },
+    "requires": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "pack ids this pack depends on, resolved when the declaration is written"
+    },
+    "contributes": {
+      "type": "object",
+      "description": "rules addressed to another pack, keyed by that pack id — each value the filenames of the modules whose default export is the contributed DATA (a contribution is never a cross-pack code import)",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "$ref": "#/$defs/moduleFile" }
+      }
+    },
+    "contributedRules": {
+      "$ref": "#/$defs/moduleFile",
+      "description": "the module whose default export is the seam interpreting other packs' contributions to this one"
+    },
+    "env": {
+      "description": "an environment requirement the base image does not ship — inline when setup and probe are fixed shell, or an env.mjs filename when they are functions of the project's per-pack config",
+      "anyOf": [
+        { "$ref": "#/$defs/moduleFile" },
+        { "$ref": "#/$defs/envSpec" }
+      ]
+    },
+    "questions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/question" },
+      "description": "the pack adoption-interview questions"
+    },
+    "skills": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "the skill directory names bundled under this pack's skills/"
+    },
+    "worldRules": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/moduleFile" },
+      "description": "the rule modules auditing repo state (check_the_world), by filename"
+    },
+    "workRules": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/moduleFile" },
+      "description": "the rule modules judging the current change and session (check_the_work), by filename"
+    },
+    "helpers": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/moduleFile" },
+      "description": "the pack-root .mjs modules that are NOT rules — shared libraries, hook entry points — named so every module in the pack directory is accounted for and an undeclared rule cannot hide"
+    }
+  },
+  "$defs": {
+    "moduleFile": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9.-]*\\.mjs$",
+      "description": "a sibling module filename in the pack directory — a bare name, never a path"
+    },
+    "detectSpec": {
+      "type": "object",
+      "required": ["trackedPath"],
+      "additionalProperties": false,
+      "description": "a fingerprint as data: true when ANY tracked path satisfies every matcher declared under trackedPath",
+      "properties": {
+        "trackedPath": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": false,
+          "description": "the matchers one tracked path must ALL satisfy; where a matcher takes a list, any entry satisfies it",
+          "properties": {
+            "is": {
+              "$ref": "#/$defs/stringOrList",
+              "description": "the whole repo-relative path, exactly"
+            },
+            "endsWith": {
+              "$ref": "#/$defs/stringOrList",
+              "description": "a suffix of the repo-relative path"
+            },
+            "basename": {
+              "$ref": "#/$defs/stringOrList",
+              "description": "the final path segment, exactly"
+            },
+            "matches": {
+              "type": "string",
+              "minLength": 1,
+              "description": "a regular expression the whole path must match"
+            },
+            "maxDepth": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "the most path segments allowed — 1 is the repo root, 2 one directory down"
+            }
+          }
+        }
+      }
+    },
+    "envSpec": {
+      "type": "object",
+      "required": ["label", "setup", "probe"],
+      "additionalProperties": false,
+      "description": "an inline environment requirement — fixed shell, no dependence on the project's config",
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "what is being installed, named in the setup log and in the missing-requirement alert"
+        },
+        "setup": {
+          "$ref": "#/$defs/shell",
+          "description": "the shell that installs the requirement, run in the checkout at environment-image build"
+        },
+        "probe": {
+          "$ref": "#/$defs/shell",
+          "description": "the shell that exits 0 when the requirement is actually present"
+        }
+      }
+    },
+    "question": {
+      "type": "object",
+      "required": ["id", "prompt"],
+      "additionalProperties": false,
+      "description": "one adoption-interview question",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the question id, unique within the pack — the key the answer is recorded under"
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the question as it is put to the adopter"
+        },
+        "distill": {
+          "type": "string",
+          "minLength": 1,
+          "description": "what the interviewer does with the answer — which config the answer sets, or that it records as intent"
+        }
+      }
+    },
+    "shell": {
+      "description": "a shell fragment — one string, or the lines of a script, which the loader joins with newlines so a multi-line install reads as lines instead of one escaped blob",
+      "anyOf": [
+        { "type": "string", "minLength": 1 },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        }
+      ]
+    },
+    "stringOrList": {
+      "description": "one string, or a non-empty list of them",
+      "anyOf": [
+        { "type": "string", "minLength": 1 },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      ]
+    }
+  }
+}

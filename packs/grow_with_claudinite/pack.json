@@ -1,0 +1,23 @@
+{
+  "$schema": "../../engine/pack_loader/pack.schema.json",
+  "id": "grow_with_claudinite",
+  "ruleRoutingGuidance": {
+    "belongs": "rules and tasks for capturing lessons into local packs — extraction, dedup, conversation logs, skill-usage folding",
+    "excludes": "repo housekeeping of issues, PRs and branches — that is tidy-repo; cross-repo fleet sweeps are sheepdog"
+  },
+  "badge": "badge.svg",
+  "marker": null,
+  "detect": null,
+  "prose": null,
+  "seededByDefault": true,
+  "skills": [
+    "adopt-claudinite",
+    "adopt-pack",
+    "generate-project-instructions",
+    "prose-to-checks",
+    "unattended-agents"
+  ],
+  "worldRules": ["config-check.mjs"],
+  "workRules": ["dedup-integrity.mjs"],
+  "helpers": ["capture-log.mjs", "session-end.mjs"]
+}

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Environment requirements — a pack declares a toolchain (or per-repo deps) a
 // cloud session needs but the base image doesn't ship, via an optional `env`
-// field on its pack.mjs. Driven by the repo's ACTIVE packs and the per-pack
+// field on its manifest. Driven by the repo's ACTIVE packs and the per-pack
 // parameters it supplies in .claudinite-checks.json (each pack entry's
 // `config`; loadConfig folds the legacy top-level "packConfig" into the same
 // view):
@@ -19,9 +19,13 @@
 //                          the probes ARE the source of truth.
 //   node env.mjs plan      Print what install would run (review / debug).
 //
-// A pack's declaration — `setup` and `probe` may be a string, or a function of
-// the project's per-pack params (so a repo can say WHERE its package.json is):
-//   env: {
+// A pack's declaration reaches this module already resolved by the loader: an
+// inline `env` block in `pack.json` arrives with its `setup`/`probe` shell as
+// strings (line lists joined), while a pack whose fragments depend on the
+// project's own config names an `env.mjs` whose default export supplies them as
+// FUNCTIONS of the per-pack params — which is why `resolveField` below still has
+// two cases:
+//   {
 //     label: 'Node dependencies',
 //     setup: (p) => (p.dirs ?? ['.']).map((d) => `( cd "${d}" && npm ci ) || true`).join('\n'),
 //     probe: (p) => (p.dirs ?? ['.']).map((d) => `[ -d "${d}/node_modules" ]`).join(' && '),

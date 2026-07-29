@@ -1,0 +1,12 @@
+{
+  "$schema": "../../engine/pack_loader/pack.schema.json",
+  "id": "ios",
+  "ruleRoutingGuidance": {
+    "belongs": "app-target conventions for iOS — Xcode project, Info.plist usage strings, entitlements, code signing",
+    "excludes": "shipping builds to the App Store — that is app-store-release; Android equivalents are android"
+  },
+  "badge": "badge.svg",
+  "marker": "ios/Runner/Info.plist",
+  "detect": { "trackedPath": { "endsWith": "ios/Runner/Info.plist" } },
+  "prose": "RULES.md"
+}

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -9,13 +9,24 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const MOUNT_DIR = dirname(fileURLToPath(import.meta.url)); // <canon>/vendoring/
 const REPO_ROOT = dirname(MOUNT_DIR);
 
+// The pack loader is copied into the fixture WHOLESALE rather than module by
+// module. Which modules the registry imports is the loader's own business, and a
+// fixture that enumerates them goes stale silently the next time it gains one (it
+// did, when pack.json's reader arrived). So: every non-test file in the real
+// engine/pack_loader/ is the real thing here, and LOADER_FILES is exactly what a
+// vendor set must therefore carry — .md excluded, since engine docs never vendor.
+const LOADER_DIR = 'engine/pack_loader';
+const loaderEntries = () => readdirSync(join(REPO_ROOT, LOADER_DIR), { withFileTypes: true })
+  .filter((d) => d.isFile() && !d.name.endsWith('.test.mjs')).map((d) => d.name).sort();
+const LOADER_FILES = loaderEntries().filter((n) => !n.endsWith('.md')).map((n) => `${LOADER_DIR}/${n}`);
+
 function writeAt(root, rel, content) {
   mkdirSync(dirname(join(root, rel)), { recursive: true });
   writeFileSync(join(root, rel), content);
 }
 
 // A hermetic canon mirroring the real layout: the REAL vendor.mjs with the
-// REAL modules it imports (engine/pack_loader/pack-registry.mjs, engine/checks/helpers/module-imports.mjs — all
+// REAL modules it imports (the whole engine/pack_loader/, engine/checks/helpers/module-imports.mjs — all
 // self-locate relative to their own file), a small engine tree with the things
 // that must be EXCLUDED present (tests, engine-root docs, preferences), and
 // fixture packs/skills — so the tests exercise the structural-discovery
@@ -27,10 +38,7 @@ function makeCanon({ packs = [], skills = [] } = {}) {
   mkdirSync(join(root, 'engine', 'checks', 'helpers'), { recursive: true });
   mkdirSync(join(root, 'packs'), { recursive: true });
   copyFileSync(join(MOUNT_DIR, 'compute-vendor-set.mjs'), join(root, 'vendoring', 'compute-vendor-set.mjs'));
-  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-registry.mjs'), join(root, 'engine', 'pack_loader', 'pack-registry.mjs'));
-  // The registry validates every manifest against the spec, so the fake corpus
-  // needs the spec module too — it is part of the loader, not an optional extra.
-  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-schema.mjs'), join(root, 'engine', 'pack_loader', 'pack-schema.mjs'));
+  for (const name of loaderEntries()) copyFileSync(join(REPO_ROOT, LOADER_DIR, name), join(root, LOADER_DIR, name));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'module-imports.mjs'), join(root, 'engine', 'checks', 'helpers', 'module-imports.mjs'));
   // engine roots: real-shaped content plus everything that must stay out
   writeAt(root, 'engine/checks/check_the_world.mjs', 'stub\n');
@@ -44,11 +52,8 @@ function makeCanon({ packs = [], skills = [] } = {}) {
   writeAt(root, 'engine/hooks/session-start-command.sh', 'stub\n');
   writeAt(root, 'vendoring/DESIGN.md', 'canon doc\n');
   // machinery roots: top-level .mjs picked up, tests and dirs' docs not
-  writeAt(root, 'engine/pack_loader/inject-pack-prose.mjs', 'stub\n');
-  writeAt(root, 'engine/pack_loader/env-requirements.mjs', 'stub\n');
   writeAt(root, 'packs/env.test.mjs', 'stub\n');
   writeAt(root, 'packs/README.md', 'canon doc\n');
-  writeAt(root, 'engine/pack_loader/mount-skills.mjs', 'stub\n');
   // per-user content: must never appear in any vendor set
   writeAt(root, 'preferences/owner@example.com.md', 'prefs\n');
   // migrations: the applier + registry + records vendor (agent-preprocessing §7),
@@ -60,8 +65,12 @@ function makeCanon({ packs = [], skills = [] } = {}) {
   writeAt(root, 'migrations/fleet-apply.mjs', 'export const fleet = 1;\n'); // fleet-only — excluded
   writeAt(root, 'migrations/README.md', 'canon doc\n'); // doc — excluded
   for (const { id, requires = [], skills: skl = [], extraFiles = [] } of packs) {
-    writeAt(root, `packs/${id}/pack.mjs`,
-      `export default { id: ${JSON.stringify(id)}, requires: ${JSON.stringify(requires)} };\n`);
+    writeAt(root, `packs/${id}/pack.json`, `${JSON.stringify({
+      id,
+      ruleRoutingGuidance: { belongs: `the ${id} fixture pack`, excludes: 'nothing — a fixture' },
+      requires,
+      helpers: (extraFiles ?? []).map((f) => (typeof f === 'string' ? f : f.file)).filter((f) => f.endsWith('.mjs') && !f.endsWith('.test.mjs')),
+    }, null, 2)}\n`);
     // A pack's skills are bundled in its own tree — the one shape (#385).
     for (const name of skl) writeAt(root, `packs/${id}/skills/${name}/SKILL.md`, 'stub\n');
     for (const file of extraFiles) {
@@ -95,14 +104,10 @@ test('structural set: engine roots + machinery + declared pack + its skills, exa
     'engine/checks/check_the_world.mjs',
     'engine/hooks/session-start-command.sh',
     'engine/scheduler/executor.md',
-    'engine/pack_loader/env-requirements.mjs',
-    'engine/pack_loader/inject-pack-prose.mjs',
-    'engine/pack_loader/pack-registry.mjs',
-    'engine/pack_loader/pack-schema.mjs',
-    'engine/pack_loader/mount-skills.mjs',
+    ...LOADER_FILES,
     'packs/alpha/RULES.md',
     'packs/alpha/check.mjs',
-    'packs/alpha/pack.mjs',
+    'packs/alpha/pack.json',
     'packs/alpha/stubs/wf.yml',
     'packs/alpha/skills/s1/SKILL.md',
     'migrations/apply.mjs',
@@ -153,8 +158,8 @@ test('requires closure pulls the dependency pack (bundled skills included) in', 
   const root = makeCanon(FIXTURE);
   const { files, errors } = await vendorAt(root, ['beta']);
   assert.deepEqual(errors, []);
-  assert.ok(files.includes('packs/beta/pack.mjs'));
-  assert.ok(files.includes('packs/gamma/pack.mjs'));
+  assert.ok(files.includes('packs/beta/pack.json'));
+  assert.ok(files.includes('packs/gamma/pack.json'));
   assert.ok(files.includes('packs/gamma/skills/s2/SKILL.md'));
   assert.ok(!files.some((f) => f.startsWith('packs/alpha/')));
 });
@@ -222,7 +227,7 @@ test('real corpus: the composing packs\' vendor sets carry the barriers pack and
   for (const pack of ['basics', 'product-wiki']) {
     const { files, errors } = await computeVendorSet([pack]);
     assert.deepEqual(errors, [], `${pack}: the vendor set must be coherent`);
-    for (const carried of ['packs/barriers/pack.mjs', 'packs/barriers/engine.mjs', 'packs/barriers/contributed.mjs']) {
+    for (const carried of ['packs/barriers/pack.json', 'packs/barriers/engine.mjs', 'packs/barriers/contributed.mjs']) {
       assert.ok(files.includes(carried), `${pack} must vendor ${carried}`);
     }
   }

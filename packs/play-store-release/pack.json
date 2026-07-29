@@ -1,0 +1,12 @@
+{
+  "$schema": "../../engine/pack_loader/pack.schema.json",
+  "id": "play-store-release",
+  "ruleRoutingGuidance": {
+    "belongs": "shipping an Android app to Google Play — Play Console, signing, integrity, staged rollout",
+    "excludes": "day-to-day Android or iOS coding rules — those are android and ios; Apple shipping is app-store-release"
+  },
+  "badge": "badge.svg",
+  "marker": null,
+  "detect": null,
+  "prose": "RULES.md"
+}

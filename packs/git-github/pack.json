@@ -1,0 +1,13 @@
+{
+  "$schema": "../../engine/pack_loader/pack.schema.json",
+  "id": "git-github",
+  "ruleRoutingGuidance": {
+    "belongs": "git and GitHub procedure: commit layering, branch and merge mechanics, squash-merge recovery, PR and merge-to-main commands",
+    "excludes": "the issue-branch-PR lifecycle rules themselves — basics; workflow YAML and Actions runtime behaviour — github-actions"
+  },
+  "badge": "badge.svg",
+  "marker": null,
+  "detect": null,
+  "prose": null,
+  "skills": ["git-github-advanced", "merge-to-main"]
+}

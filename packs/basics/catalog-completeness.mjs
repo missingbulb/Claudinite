@@ -10,8 +10,13 @@ import { finding } from '../../engine/checks/helpers/findings.mjs';
 // The membership token is the pack DIRECTORY, not a README inside it: a pack
 // whose whole README was the checks-and-skills table the manifest now carries
 // has no README at all, and the catalog still has to list it.
+// A pack directory is recognized by its MANIFEST, in either shape: `pack.json`
+// is the manifest, and the pre-2026-07 `pack.mjs` module still names a pack while
+// consumer-held local packs migrate. Matching only one shape would quietly empty
+// this check's subject list, and an empty list has no findings to make — the
+// catalog would read as complete while listing nothing.
 const CATALOGS = [
-  { kind: 'pack', member: /^packs\/([^/]+)\/pack\.mjs$/, readme: 'packs/README.md', token: (n) => `(${n}/` },
+  { kind: 'pack', member: /^packs\/([^/]+)\/pack\.(?:json|mjs)$/, readme: 'packs/README.md', token: (n) => `(${n}/` },
 ];
 
 const rule = {

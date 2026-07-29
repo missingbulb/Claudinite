@@ -1,0 +1,17 @@
+{
+  "$schema": "../../../../engine/pack_loader/pack.schema.json",
+  "id": "canon-curation",
+  "ruleRoutingGuidance": {
+    "belongs": "fleet-facing curation of the shared corpus — promoting member lessons into packs/, sweeping the fleet stack, policing packs/",
+    "excludes": "working rules for developing Claudinite itself — that is the claudinite local pack; a member tidying itself — tidy-repo"
+  },
+  "badge": "badge.svg",
+  "marker": null,
+  "detect": null,
+  "prose": null,
+  "requires": ["barriers"],
+  "contributes": { "barriers": ["pack-independence.mjs"] },
+  "skills": ["writing-claudinite-skills"],
+  "worldRules": ["no-enforcement-narration.mjs"],
+  "helpers": ["promote-scope.mjs"]
+}

@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import pack from '../../packs/chrome-extension-release/pack.mjs';
+import { canonPack } from '../../engine-tests/helpers.mjs';
+
+const pack = await canonPack('chrome-extension-release');
 import storeRelease from '../../packs/chrome-extension-release/tasks/store-release/task.mjs';
 
 const TASK_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../packs/chrome-extension-release/tasks/store-release');

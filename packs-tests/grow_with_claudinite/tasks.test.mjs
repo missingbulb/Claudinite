@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import pack from '../../packs/grow_with_claudinite/pack.mjs';
+import { canonPack } from '../../engine-tests/helpers.mjs';
+
+const pack = await canonPack('grow_with_claudinite');
 import discover from '../../packs/grow_with_claudinite/tasks/growth-discover-packs/task.mjs';
 import proseToChecks from '../../packs/grow_with_claudinite/tasks/prose-to-checks-sweep/task.mjs';
 import extract from '../../packs/grow_with_claudinite/tasks/growth-extract/task.mjs';

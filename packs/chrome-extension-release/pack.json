@@ -1,0 +1,23 @@
+{
+  "$schema": "../../engine/pack_loader/pack.schema.json",
+  "id": "chrome-extension-release",
+  "ruleRoutingGuidance": {
+    "belongs": "store publication for a Chrome extension: release workflows, package versioning, release config, privacy and permission disclosure",
+    "excludes": "extension coding and MV3 runtime gotchas — chrome-extension; generic workflow lint rules — github-actions"
+  },
+  "badge": "badge.svg",
+  "marker": "the \"Release to Chrome Store\" orchestrator (wires the vendored reusable workflows + composite actions)",
+  "detect": "detect.mjs",
+  "prose": null,
+  "requires": ["chrome-extension"],
+  "worldRules": [
+    "release-workflows.mjs",
+    "template-tokens.mjs",
+    "release-config.mjs",
+    "version-sync.mjs",
+    "release-layout.mjs",
+    "privacy-permission-alignment.mjs",
+    "readme-sections.mjs"
+  ],
+  "workRules": ["permission-added-store-issue.mjs"]
+}

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync, existsSync, readFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync, existsSync, readFileSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
@@ -9,6 +9,18 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 // This test lives at <repo>/vendoring/apply-vendor.test.mjs.
 const MOUNT_DIR = dirname(fileURLToPath(import.meta.url)); // <canon>/vendoring/
 const REPO_ROOT = dirname(MOUNT_DIR);
+
+// The pack loader goes into a fixture canon WHOLESALE — which modules the registry
+// imports is its own business, and a fixture that names them goes stale silently
+// the next time it gains one.
+const LOADER_DIR = 'engine/pack_loader';
+function copyLoader(root) {
+  mkdirSync(join(root, LOADER_DIR), { recursive: true });
+  for (const entry of readdirSync(join(REPO_ROOT, LOADER_DIR), { withFileTypes: true })) {
+    if (!entry.isFile() || entry.name.endsWith('.test.mjs')) continue;
+    copyFileSync(join(REPO_ROOT, LOADER_DIR, entry.name), join(root, LOADER_DIR, entry.name));
+  }
+}
 
 function writeAt(root, rel, content) {
   mkdirSync(dirname(join(root, rel)), { recursive: true });
@@ -28,14 +40,16 @@ function makeCanon() {
   for (const f of ['apply-vendor-set.mjs', 'compute-vendor-set.mjs']) {
     copyFileSync(join(MOUNT_DIR, f), join(root, 'vendoring', f));
   }
-  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-registry.mjs'), join(root, 'engine', 'pack_loader', 'pack-registry.mjs'));
-  // The registry validates every manifest against the spec, so the fake corpus
-  // needs the spec module too — it is part of the loader, not an optional extra.
-  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-schema.mjs'), join(root, 'engine', 'pack_loader', 'pack-schema.mjs'));
+  copyLoader(root);
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'module-imports.mjs'), join(root, 'engine', 'checks', 'helpers', 'module-imports.mjs'));
   writeAt(root, 'engine/checks/check_the_world.mjs', 'engine v2\n');
-  writeAt(root, 'engine/pack_loader/mount-skills.mjs', 'machinery\n');
-  writeAt(root, 'packs/alpha/pack.mjs', 'export default { id: "alpha" };\n');
+  // The real loader's one import outside its own directory — stubbed so the
+  // import-closure guard resolves it.
+  writeAt(root, 'engine/checks/helpers/repo-context.mjs', 'export const loadConfig = () => ({});\n');
+  writeAt(root, 'packs/alpha/pack.json', JSON.stringify({
+    id: 'alpha',
+    ruleRoutingGuidance: { belongs: 'the alpha fixture pack', excludes: 'nothing — a fixture' },
+  }) + '\n');
   writeAt(root, 'packs/alpha/RULES.md', 'rules\n');
   writeAt(root, 'packs/alpha/skills/s1/SKILL.md', 'skill\n');
   // migrations vendor into the mount (agent-preprocessing §7): applier + registry
@@ -50,7 +64,7 @@ function makeTarget(declaration = { packs: ['alpha'] }) {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-target-'));
   writeAt(root, '.claudinite-checks.json', JSON.stringify(declaration, null, 2) + '\n');
   writeAt(root, 'src/app.js', 'project code\n');
-  writeAt(root, '.claudinite/local_packs/mine/pack.mjs', 'export default { id: "mine" };\n');
+  writeAt(root, '.claudinite/local_packs/mine/pack.json', '{ "id": "mine" }\n');
   return root;
 }
 
@@ -81,7 +95,7 @@ test('convergence is whole-set: stale files vanish, drift reverts, everything ou
   assert.deepEqual(r.errors, []);
   assert.ok(!existsSync(join(target, '.claudinite', 'shared', 'zzz-stale.txt')), 'stale file must vanish');
   assert.equal(readFileSync(join(target, '.claudinite', 'shared', 'engine', 'checks', 'check_the_world.mjs'), 'utf8'), 'engine v2\n');
-  assert.ok(existsSync(join(target, '.claudinite', 'local_packs', 'mine', 'pack.mjs')), 'local_packs untouched');
+  assert.ok(existsSync(join(target, '.claudinite', 'local_packs', 'mine', 'pack.json')), 'local_packs untouched');
   assert.equal(readFileSync(join(target, 'src', 'app.js'), 'utf8'), 'project code\n');
 });
 
@@ -150,10 +164,10 @@ test('#328: a canon tree nested in a FOREIGN git repo is rootless — upward .gi
   mkdirSync(join(canon, 'engine', 'checks', 'helpers'), { recursive: true });
   mkdirSync(join(canon, 'packs'), { recursive: true });
   for (const f of ['apply-vendor-set.mjs', 'compute-vendor-set.mjs']) copyFileSync(join(MOUNT_DIR, f), join(canon, 'vendoring', f));
-  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-registry.mjs'), join(canon, 'engine', 'pack_loader', 'pack-registry.mjs'));
-  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-schema.mjs'), join(canon, 'engine', 'pack_loader', 'pack-schema.mjs'));
+  copyLoader(canon);
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'module-imports.mjs'), join(canon, 'engine', 'checks', 'helpers', 'module-imports.mjs'));
   writeAt(canon, 'engine/checks/check_the_world.mjs', 'engine v2\n');
+  writeAt(canon, 'engine/checks/helpers/repo-context.mjs', 'export const loadConfig = () => ({});\n');
   writeAt(canon, 'migrations/apply.mjs', 'export const apply = 1;\n');
   writeAt(canon, 'migrations/registry.mjs', 'export const registry = 1;\n');
   writeAt(canon, 'migrations/active_migrations/2026-01-01-seed.mjs', 'export default { id: "seed" };\n');

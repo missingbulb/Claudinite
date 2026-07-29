@@ -1,7 +1,7 @@
 // Pack independence (extending.md; the canon-side `pack-independence` barrier):
 // packs no longer import each other's code — a fixed folder-barrier is now
 // CONTRIBUTED as manifest data (`requires` the mechanism pack +
-// `contributes` on pack.mjs; the engine builds the rule) and the shared
+// `contributes` on the pack manifest; the engine builds the rule) and the shared
 // path/migration helpers moved into the vendored engine lib (engine/checks/helpers/).
 // The old code-composition export (`defineBarrier`) is gone.
 //
