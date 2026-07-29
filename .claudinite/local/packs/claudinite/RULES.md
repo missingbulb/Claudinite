@@ -31,6 +31,24 @@ prose below).
   correction, 2026-07-23). The owner's opener is `continue work on #<n>`, so state not written
   into the issue is lost. Before ending a session on unfinished work, update the issue and let
   the session summary be a pointer to it — never compose a bespoke "pick up from here" prompt.
+- **The canon never knows which repos consume it — fleet-wide aggregation is Sheepdog's domain**
+  (owner correction, 2026-07-28, #520). Designing anything that spans repos, the tempting shape is
+  a member list (or a "fleet" task) living in the canon. It doesn't go here: the canon carries only
+  **mechanisms exercised on itself**, and the knowledge of *which* repos exist stays in the
+  **Sheepdog** repo and its pack, which enumerates members at runtime from its own
+  `.claudinite-checks.json` entry — exactly where `fleet-census` and `fleet-freshness` already keep
+  it. So a cross-repo feature splits in two: a self-contained per-repo half in the canon, and the
+  aggregation half as a Sheepdog fleet task. **No repo list exists anywhere in canon code** — and a
+  derived fleet artifact lands in Sheepdog as a daily **auto-merged PR of a `GENERATED` file**,
+  never a direct commit to its `main`.
+- **A pack default stays in the pack — don't ask it at adoption, don't write it into a member's
+  config** (owner ruling, 2026-07-28, #527/#528). An adoption question whose recommended answer is
+  right for nearly everyone is "bad noise": it taxes every adopting repo to re-state the default,
+  and materializing that answer into `.claudinite-checks.json` freezes a copy that then drifts from
+  the pack and has to be migrated. Keep the default in the pack's own code, ask nothing, and let the
+  rare project that wants to differ add the setting by hand. Read config as *optional* — an unset
+  key means "the default", never "misconfigured" (`retention_days` unset is precisely why the
+  conversation-extract prune is skipped rather than failing).
 
 ## Canon-specific gotchas
 
@@ -124,6 +142,14 @@ prose below).
   whether the problem is still there, what the goal was, and what survives. Do this whenever you
   return to a paused branch, before presenting it — the owner should never have to ask "is this
   change still needed" (asked three times on #465 before it was volunteered).
+- **`subscribe_pr_activity` blocks for minutes — subscribe once, and never as a way to "wait for
+  CI".** It reads like a cheap registration, so a session calls it, gets no answer, and calls it
+  again on the same PR. Measured in the #520 session (`2026-07-28T2208Z`): two consecutive calls on
+  PR #524 cost **237s + 220s**, and a `send_later` check-in a further **101s** — **558s of that
+  session's 841s of total tool wall-clock (66%)**, all pure idle, in a session whose actual work was
+  153 tool calls. One subscription per PR is all there is to gain; a second adds nothing but the
+  wait. When what you actually want is "is it green yet", read the check status directly and merge
+  on the already-green result — don't buy the same notification twice.
 - **The home has no `.claudinite/shared/` mount — machinery paths must accept both roots.** A
   consumer runs the vendored engine under `.claudinite/shared/engine/…` with packs under
   `.claudinite/(shared|local)/packs/…`; the home *is* the corpus and runs the same code from the
