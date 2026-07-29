@@ -1,7 +1,7 @@
 // Python-packaging knowledge the two optional-dependency checks share: which
 // packages THIS repo declared optional, and how a distribution name maps to the
 // import name a .py file would write. This is policy specific to the rules, not
-// engine mechanism (that lives in checks/lib per the #351 lesson) — so it stays
+// engine mechanism (that lives in engine/checks/helpers per the #351 lesson) — so it stays
 // here beside the rules, imported by both. The checks runner only loads
 // checks.mjs, so this module is inert to skill discovery.
 

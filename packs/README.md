@@ -199,11 +199,13 @@ manifest.
 
 | | Count |
 |---|---|
-| **Hardcoded conformance checks** | **41 canon** (13 basics + 1 barriers + 1 grow_with_claudinite + 8 github-actions + 8 chrome-extension-release + 3 aws-sam + 7 product-wiki) + the canon home's own [canon-curation local pack](../.claudinite/local/packs/canon-curation/README.md) (1 code check + the contributed `pack-independence` barrier); plus skill-owned checks (e.g. the `unattended-agents` skill's `routine-structure`, `in-session-github-access`) that ride their pack's activation |
+| **Hardcoded conformance checks** | **65** — every rule the runner carries: each pack's own, its bundled skills' checks, and the contributed barriers, plus the canon home's own [canon-curation](../.claudinite/local/packs/canon-curation/README.md) and [claudinite](../.claudinite/local/packs/claudinite/RULES.md) local packs |
 | PreToolUse guard | 1 (remote-branch-delete) |
 | Platform setting | 1 (squash-only) |
 | **Prose rules** — packs + practice skills + baseline | **~150** |
 | Prose — research-project playbook (class pack) | 54 |
 | Prose — spec-driven-product playbook (class pack) | 25 |
 
-**Ratio ≈ 39 hardcoded : ~150 prose ≈ 1 : 4** (~20% of rules mechanized). Read against the *convertible* subset instead of all rules, it's higher: the audit ([../docs/conversion-inventory.md](../docs/conversion-inventory.md)) found only ~45 rules have any static signature — the other ~105 are judgment, in-flight process, or runtime knowledge that *should* stay prose — and ~25 of that ~45 are now checks. The `prose-to-checks` sweep keeps working the remainder; its adversarial pass rejects candidates whose detection would false-positive (the two SAM YAML checks needed a structural parser to stay FP-free), so the yield is deliberately small and high-precision.
+The check count is **derived, not maintained**: `check_the_world.mjs --list` prints the catalog a rule at a time (id, severity, description, doc pointer), and a guard in `packs-tests/` fails when this table disagrees with it. Read the per-pack breakdown off `--list` rather than trusting a hand-written split — the previous one drifted to 41 against a real 65, and the ratio it fed was wrong by a third. The prose figures have no such source; they are estimates from the conversion audit ([../docs/conversion-inventory.md](../docs/conversion-inventory.md)) and are only as fresh as it is.
+
+**Ratio ≈ 65 hardcoded : ~150 prose ≈ 1 : 2.3** (~30% of rules mechanized). Read against the *convertible* subset it is higher still, though the audit's own arithmetic has been overtaken: it found ~45 rules with any static signature — the other ~105 judgment, in-flight process, or runtime knowledge that *should* stay prose — and the check count has since passed that estimate, so treat ~45 as that audit's floor rather than a live ceiling. The `prose-to-checks` sweep keeps working the remainder; its adversarial pass rejects candidates whose detection would false-positive (the two SAM YAML checks needed a structural parser to stay FP-free), so the yield is deliberately small and high-precision.

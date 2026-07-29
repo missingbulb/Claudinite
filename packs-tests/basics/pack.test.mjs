@@ -661,3 +661,22 @@ test('claudinite-isolation: inert without the vendored mount; a consumer file re
     assert.equal(f[0].severity, 'blocking');
   } finally { cleanup(off); cleanup(on); }
 });
+
+// The finding renders what / why / fix / doc — never the rule's `description`,
+// so a remedy stated only there never reaches the agent that trips the rule.
+// This rule's remedy IS "inline what you need": routing through a shared folder
+// (the barrier engine's default first clause, written for a two-sided edge)
+// is the wrong move for a one-sided isolation edge — there is no shared folder
+// to route through, and the canon is not ours to restructure.
+test('claudinite-isolation: the finding\'s own fix says to inline, not to route through a shared folder', () => {
+  const root = makeRepo({ changed: {
+    'src/tool.mjs': 'import x from "../.claudinite/shared/engine/checks/helpers/findings.mjs";\n',
+    '.claudinite/shared/engine/checks/helpers/findings.mjs': 'engine\n',
+  } });
+  try {
+    const f = run(claudiniteIsolation, root, 'all');
+    assert.equal(f.length, 1, JSON.stringify(f, null, 2));
+    assert.match(f[0].fix, /inline/i);
+    assert.doesNotMatch(f[0].fix, /shared\/contracts/);
+  } finally { cleanup(root); }
+});

@@ -141,7 +141,7 @@ export async function computeVendorSet(declaredEntries) {
       } else if (!inSet.has(resolved)) {
         errors.push({
           what: `${file} imports "${spec}" → ${resolved}, which the vendor set does not carry — a pack imports only its own files and the engine surface (pack-independence)`,
-          fix: 'fix the import to honor pack-independence (declare the dependency and contribute configuration, or move the helper into checks/lib)',
+          fix: 'fix the import to honor pack-independence (declare the dependency and contribute configuration, or move the helper into engine/checks/helpers)',
         });
       }
     }
