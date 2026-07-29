@@ -32,15 +32,18 @@ goes through your GitHub tools.
 
    | exit | verdict | what you do |
    | --- | --- | --- |
-   | `0` | valid dispatch, yours | Go to step 2. The printed block is your brief: issue, label, task path, pack, task, model, outcome ceiling, `executionTimeout`. |
-   | `13` | issue named, body needed | Fetch **the printed issue and only it** over MCP — its body and its current labels — write the body verbatim to a file, and re-run with `--issue-body-file <path> --issue-labels <csv>`. Act on *that* run's exit code. |
+   | `0` | valid dispatch, yours | Quote the printed `brief:` line in chat (see below), then go to step 2. The printed block is your brief: issue, label, task path, pack, task, slot, model, outcome ceiling, `executionTimeout`. |
+   | `13` | issue named, body needed | Fetch **the printed issue and only it** over MCP, save the raw response JSON **verbatim** to a file, and re-run with `--issue-json <path>` — the shell extracts body, labels, and title itself, and refuses a response for the wrong issue. Act on *that* run's exit code. |
    | `10` | invalid dispatch | It never runs. Comment the printed `reason`, remove the ready label, add `needs-human`, end the session. |
    | `11` | not yours | Another scope's dispatch, or one another session has already claimed. **Stop**: change nothing, comment nothing, end the session. |
    | `12` | no trigger at all | **Stop**: run nothing, change nothing, comment nothing. There is no fallback — do not list the queue, do not take the oldest, do not take *any*. Say plainly in your final message that no trigger reached the shell; that is a defect worth a human seeing. |
    | `2`, `1` | bad invocation, internal fault | Comment what you saw, add `needs-human` if you know the issue, end the session. Do not proceed on a guess. |
 
-   **State the issue number before you act**, so everything after this has one unambiguous
-   subject. Run that issue and nothing else — every other dispatch in the queue already has
+   **Announce your dispatch before you act**: quote the printed `brief:` line prominently in
+   chat — bold, on its own line, e.g. **`Task: grow_with_claudinite/growth-dedup (slot
+   d2026-07-29) — issue #546, model opus, outcome ceiling open-pr, timeout 1800s`** — so
+   everything after this has one unambiguous subject a human skimming the session sees at a
+   glance. Run that issue and nothing else — every other dispatch in the queue already has
    its own session, and two sessions on one issue run the task twice.
 
 2. **Claim the issue — read, swap, then re-read to confirm you won.** The same issue can be

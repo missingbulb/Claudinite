@@ -313,8 +313,11 @@ sessions burn on empty hours.
      instead sets `CCR_TRIGGER_SOURCE` / `CCR_TRIGGER_EVENT` / `CCR_TRIGGER_REPO`
      / `CCR_TRIGGER_ISSUE_NUMBER`, which name the issue but carry neither its
      labels nor its body — so that path resolves in two shots (`needs-issue`,
-     exit 13: the executor fetches that one issue over MCP and re-invokes with
-     `--issue-body-file` / `--issue-labels`). Reading only the Actions transport
+     exit 13: the executor fetches that one issue over MCP, saves the raw
+     response JSON verbatim, and re-invokes with `--issue-json`; the shell
+     extracts body/labels/title itself and rejects a response for the wrong
+     issue number — `--issue-body-file` / `--issue-labels` remain as the manual
+     fallback). Reading only the Actions transport
      is what let the duplicate-execution bug back in: every CCR-run executor
      session missed its own trigger, fell through to the fallback, and selected
      an issue by listing. Observed 2026-07-28, dispatch #772 claimed twice one
