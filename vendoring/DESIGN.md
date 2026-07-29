@@ -79,9 +79,9 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    whole-set atomic, because mixed per-pack versions inside one repo would recreate exactly the
    engine↔pack skew this design eliminates (declaring a new pack therefore triggers a whole-set
    refresh, not a lone pack copy). The engine already tolerates the key
-   (`CONFIG_KEYS` in checks/lib).
+   (`CONFIG_KEYS` in engine/checks/helpers).
 6. **The shared mount is structurally out of the sweep.** The engine's file-set builder drops
-   everything under `.claudinite/shared/` (`buildContext` in checks/lib) — the corpus is
+   everything under `.claudinite/shared/` (`buildContext` in engine/checks/helpers) — the corpus is
    canon-owned, never the project's own code — while `.claudinite/local_packs/` stays fully in
    scope. Deliberately a structural rule in the engine, **not** a `.gitattributes` /
    `linguist-vendored` convention: the exclusion must hold on any git host and any checkout.

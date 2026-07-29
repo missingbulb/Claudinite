@@ -60,7 +60,7 @@ pack's code, and never a canon-internal tree (`migrations/`, `vendoring/`): the 
 a pack only when declared and ships no canon-internal tree at all, so such an import crashes
 every consumer that vendors the importer without its target. A pack that wants another pack's
 *abilities* declares the dependency (`requires`) and passes **configuration**; a helper both
-sides need moves into `checks/lib`. Enforced canon-side as **barriers configuration, never
+sides need moves into `engine/checks/helpers`. Enforced canon-side as **barriers configuration, never
 bespoke checking code**: the `pack-independence` barrier is contributed as manifest data by the
 canon home's own curation local pack (`.claudinite/local/packs/canon-curation/` — a home-repo
 duty, since the `packs/` tree it polices exists only here), with the vendor writer's coherence

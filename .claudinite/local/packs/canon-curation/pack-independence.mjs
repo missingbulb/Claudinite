@@ -1,7 +1,7 @@
 // Pack independence — as BARRIERS CONFIGURATION, not code. A pack's code
 // imports only its OWN files and the engine surface; another pack's abilities
 // arrive by DECLARING the dependency (`requires` on the pack manifest) and
-// passing configuration, and a helper both sides need moves into checks/lib.
+// passing configuration, and a helper both sides need moves into engine/checks/helpers.
 // A cross-pack import crashes every consumer that vendors the importer without
 // its target (the vendor set ships a pack only when declared, and ships no
 // canon-internal tree at all) — the failure the gated vendored-mount flip
@@ -37,6 +37,6 @@ export default {
     allow: [
       'engine',
     ],
-    reason: 'a pack imports only its own files and the engine surface — declare the dependency and pass configuration (a contributed rule), or move the shared helper into engine/checks_helpers',
+    reason: 'a pack imports only its own files and the engine surface — declare the dependency and pass configuration (a contributed rule), or move the shared helper into engine/checks/helpers',
   }],
 };
