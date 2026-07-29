@@ -102,10 +102,15 @@ into the project's test/CI flow in Part 8:
 Invoke scripts **through `bash`/`node`**, never as bare paths — a dropped exec bit would fail the
 hook before line 1 and swallow its own message. Notes on how the steps behave:
 
-- **Preferences are fail-soft** — per-user content is never vendored;
-  `shared/engine/hooks/inject-preferences.sh` reads a local copy where the tree has one and otherwise
-  fetches the single `preferences/<email>.md`; any miss is a one-line note, and the session
-  proceeds on defaults.
+- **Preferences are fail-soft, and their location is declared** — per-user content is never
+  vendored and never lives in the canon (it belongs to one fleet's *users*), so the project's own
+  settings name the home: `"preferences": { "repo": "owner/name" }` (optional `"path"`, default
+  `preferences/`). `shared/engine/hooks/steps/inject-preferences.mjs` reads
+  `<path>/<email>.md` locally where this tree carries it and otherwise fetches that single file;
+  any miss — including **no declared home** — is a one-line note, and the session proceeds on
+  defaults. Bootstrap does **not** write the pointer: canon can't know which fleet it is being
+  bootstrapped into. A fleet with an enforcer gets it from the sheepdog pack's `fleet-preferences`
+  sweep; otherwise add the key by hand.
 - **The halt-gate** — a SessionStart hook cannot block, but its stdout is injected into context,
   so a step that can't do its load-bearing job (`env.mjs check` — a missing toolchain) prints a
   plain-text directive telling the assistant to STOP and confirm via `AskUserQuestion` before any

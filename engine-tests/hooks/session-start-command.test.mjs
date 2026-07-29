@@ -15,14 +15,14 @@ const HOOKS_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'eng
 // steps, so the test exercises the ORCHESTRATOR's own contract — sequence,
 // stdout forwarding, lifecycle logging, exit 0 — without dragging in the real
 // children and their dependencies.
-function makeCorpus({ prefs = '#!/bin/bash\n', prose = '', skills = '', env = '', interview = '', selftest = '' } = {}) {
+function makeCorpus({ prefs = '', prose = '', skills = '', env = '', interview = '', selftest = '' } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-sessionstart-'));
   mkdirSync(join(root, 'engine', 'hooks'), { recursive: true });
   mkdirSync(join(root, 'engine', 'pack_loader'), { recursive: true });
   copyFileSync(join(HOOKS_DIR, 'session-start-command.sh'), join(root, 'engine', 'hooks', 'session-start-command.sh'));
   mkdirSync(join(root, 'engine', 'hooks', 'steps'), { recursive: true });
   writeFileSync(join(root, 'engine', 'selftest.mjs'), selftest);
-  writeFileSync(join(root, 'engine', 'hooks', 'steps', 'inject-preferences.sh'), prefs);
+  writeFileSync(join(root, 'engine', 'hooks', 'steps', 'inject-preferences.mjs'), prefs);
   writeFileSync(join(root, 'engine', 'pack_loader', 'inject-pack-prose.mjs'), prose);
   writeFileSync(join(root, 'engine', 'pack_loader', 'mount-skills.mjs'), skills);
   writeFileSync(join(root, 'engine', 'pack_loader', 'env-requirements.mjs'), env);
@@ -41,7 +41,7 @@ function run(corpus, projectDir, env = {}) {
 
 test('orchestrator runs steps in order, forwards only step stdout, logs the lifecycle, exits 0', () => {
   const corpus = makeCorpus({
-    prefs: '#!/bin/bash\necho PREFS\n',
+    prefs: 'process.stdout.write("PREFS\\n");',
     prose: 'process.stdout.write("PROSE\\n");',
   });
   const projectDir = mkdtempSync(join(tmpdir(), 'claudinite-proj-'));
@@ -66,8 +66,8 @@ test('orchestrator runs steps in order, forwards only step stdout, logs the life
 
 test('a failing step never aborts the orchestrator nor turns the hook non-zero', () => {
   const corpus = makeCorpus({
-    prefs: '#!/bin/bash\necho A\nexit 1\n', // a step exits non-zero...
-    prose: 'process.stdout.write("B\\n");', // ...the rest still runs
+    prefs: 'process.stdout.write("A\\n"); process.exit(1);', // a step exits non-zero...
+    prose: 'process.stdout.write("B\\n");',                  // ...the rest still runs
   });
   const projectDir = mkdtempSync(join(tmpdir(), 'claudinite-proj-'));
   const r = run(corpus, projectDir);
@@ -79,29 +79,68 @@ test('a failing step never aborts the orchestrator nor turns the hook non-zero',
   assert.ok(log.includes('inject-preferences: done exit=1'), log);
 });
 
-// The REAL prefs step, standalone: local copy wins; a miss is fail-soft — a
-// one-line plain-text note (never a halt directive, never a JSON envelope),
-// because preferences are per-user nice-to-have, unlike the corpus itself.
-test('inject-preferences: local copy wins; a miss injects a soft note, not a halt', () => {
-  const corpus = mkdtempSync(join(tmpdir(), 'claudinite-prefs-'));
-  mkdirSync(join(corpus, 'engine', 'hooks', 'steps'), { recursive: true });
-  mkdirSync(join(corpus, 'preferences'), { recursive: true });
-  copyFileSync(join(HOOKS_DIR, 'steps', 'inject-preferences.sh'), join(corpus, 'engine', 'hooks', 'steps', 'inject-preferences.sh'));
-  writeFileSync(join(corpus, 'preferences', 'me@example.com.md'), 'MY PREFS\n');
-  const runPrefs = (email) => spawnSync('bash', [join(corpus, 'engine', 'hooks', 'steps', 'inject-preferences.sh')], {
-    encoding: 'utf8',
+// The REAL prefs step (run from the real tree — it imports the engine's one pointer
+// resolver, so a hermetic copy of the file alone would not resolve): the project's
+// DECLARED home decides where to look, a local copy wins, and every miss is fail-soft —
+// a one-line plain-text note (never a halt directive, never a JSON envelope), because
+// preferences are per-user nice-to-have, unlike the corpus itself.
+const STEP = join(HOOKS_DIR, 'steps', 'inject-preferences.mjs');
+const runPrefs = (projectDir, email, extraEnv = {}) => spawnSync('node', [STEP], {
+  encoding: 'utf8',
+  env: {
+    ...process.env,
+    CLAUDE_PROJECT_DIR: projectDir,
+    CLAUDE_CODE_USER_EMAIL: email,
     // An unreachable base forces the fetch path to fail fast and prove fail-soft.
-    env: { ...process.env, CLAUDE_CODE_USER_EMAIL: email, CLAUDINITE_PREFS_URL: 'https://127.0.0.1:1/preferences' },
-  });
+    CLAUDINITE_PREFS_URL: 'https://127.0.0.1:1/preferences',
+    ...extraEnv,
+  },
+});
+const project = (declaration) => {
+  const root = mkdtempSync(join(tmpdir(), 'claudinite-prefs-'));
+  if (declaration) writeFileSync(join(root, '.claudinite-checks.json'), `${JSON.stringify(declaration, null, 2)}\n`);
+  return root;
+};
 
-  const local = runPrefs('me@example.com');
+test('inject-preferences: the declared home is read locally when this tree carries it', () => {
+  // The preferences home repo itself: the working copy is what the owner is editing,
+  // so it wins over anything the default branch would serve.
+  const root = project({ packs: [], preferences: { repo: 'owner/fleet-repo' } });
+  mkdirSync(join(root, 'preferences'), { recursive: true });
+  writeFileSync(join(root, 'preferences', 'me@example.com.md'), 'MY PREFS\n');
+
+  const local = runPrefs(root, 'me@example.com');
   assert.equal(local.status, 0);
   assert.match(local.stdout, /MY PREFS/);
 
-  const miss = runPrefs('nobody@example.com');
+  const miss = runPrefs(root, 'nobody@example.com');
   assert.equal(miss.status, 0);
-  assert.match(miss.stdout, /PREFERENCES: no local copy and the fetch for nobody@example\.com failed/);
+  assert.match(miss.stdout, /PREFERENCES: nobody@example\.com at owner\/fleet-repo could not be read/);
   assert.match(miss.stdout, /default interaction behavior/);
   assert.doesNotMatch(miss.stdout, /STOP|AskUserQuestion/);           // fail-soft, no halt-gate
   assert.doesNotMatch(miss.stdout, /hookSpecificOutput|additionalContext/); // plain text, no JSON envelope
+});
+
+test('inject-preferences: no declared home is an ordinary state, not a fault', () => {
+  // A project with no fleet behind it has no preferences home. Same for a declaration
+  // that isn't there at all (pre-adoption) — one calm line, and the session proceeds.
+  for (const root of [project({ packs: ['basics'] }), project(null)]) {
+    const r = runPrefs(root, 'me@example.com');
+    assert.equal(r.status, 0);
+    assert.match(r.stdout, /PREFERENCES: this project declares no preferences home/);
+    assert.doesNotMatch(r.stdout, /STOP|AskUserQuestion/);
+  }
+});
+
+test('inject-preferences: no usable email means nothing to look up', () => {
+  const root = project({ packs: [], preferences: { repo: 'owner/fleet-repo' } });
+  const unset = runPrefs(root, '');
+  assert.equal(unset.status, 0);
+  assert.match(unset.stdout, /CLAUDE_CODE_USER_EMAIL is not set/);
+
+  // The address becomes a path and a URL component — an implausible one is refused
+  // rather than traversed with.
+  const traversal = runPrefs(root, '../../../etc/passwd');
+  assert.equal(traversal.status, 0);
+  assert.match(traversal.stdout, /is not a usable file name/);
 });

@@ -42,13 +42,18 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    next refresh (the engine's unknown-pack `config` error surfaces a declared-but-absent pack
    loudly), and links from vendored docs to non-vendored canon files may dangle locally by
    design (the sweep never inspects the shared mount — see 6).
-3. **Preferences are never vendored** — per-user settings, not project content. The
-   session-start step ([inject-preferences.sh](../engine/hooks/steps/inject-preferences.sh), mount machinery now)
-   reads the local `preferences/<email>.md` when its tree carries one (the canon repo; a future
-   submodule mount; the interim full-tarball sync) and otherwise **fetches just that file** over
-   HTTPS, fresh each session. Every miss — no email, no file, fetch failure — is **fail-soft**:
+3. **Preferences are never vendored** — per-user settings, not project content, and not the
+   *canon's* content either: personal preferences belong to one fleet's users, so the canon (mounted
+   by every fleet) is the wrong host **and** the wrong authority on where they live. A project
+   therefore declares the home in its own settings — `"preferences": { "repo": "owner/name" }` — and
+   the session-start step ([inject-preferences.mjs](../engine/hooks/steps/inject-preferences.mjs), mount machinery now)
+   resolves it: the local `<path>/<email>.md` when THIS tree carries one (the preferences home repo
+   itself, where the working copy is the truth), otherwise **fetching just that file** over
+   HTTPS, fresh each session. Every miss — no email, no declared home, no file, fetch failure — is **fail-soft**:
    a one-line note and the session proceeds on defaults. The halt-gate is reserved for the
-   load-bearing corpus, which after the flip is always local and can't miss.
+   load-bearing corpus, which after the flip is always local and can't miss. Populating the pointer
+   is a **fleet** job, never bootstrap's: canon does not know which fleet it is being mounted into
+   (the sheepdog pack's `fleet-preferences` sweep writes it for a fleet that has an enforcer).
 4. **Transactional nightly update.** Per repo and per night: apply the pending migration notes,
    converge the vendored tree to the canon snapshot, advance the stamp — **one commit**. (One
    MCP reality: file *deletions* can't ride a `push_files` commit, so convergence's prunes

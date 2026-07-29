@@ -128,5 +128,8 @@
     "dailyHour": 4,
     "weeklyDay": "Sun",
     "monthlyDay": 1
+  },
+  "preferences": {
+    "repo": "missingbulb/Sheepdog"
   }
 }
