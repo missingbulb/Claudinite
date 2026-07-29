@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   normalizeDelivery, resolveDelivery, DEFAULT_DELIVERY, pendingAgentic, heldStamp,
   maintenanceBranchName, openMaintenanceBranch, openMaintenancePull, shouldRequestAgent,
-  unconfiguredSecrets, SECRETS_ISSUE_TITLE,
+  unconfiguredSecrets, SECRETS_ISSUE_TITLE, workflowTriggers, ciDispatchPlan,
 } from '../../packs/basics/tasks/baselining/worker.mjs';
 
 // The worker's PURE decision helpers (agent-preprocessing DESIGN §7, E4). The
@@ -125,4 +125,56 @@ test('unconfiguredSecrets: reports only the missing ones, and nothing when none 
 
 test('the ask issue title is a stable exact-match key (the at-most-one-open guard depends on it)', () => {
   assert.equal(SECRETS_ISSUE_TITLE, 'Claudinite: configure required Actions secrets');
+});
+
+// --- CI dispatch on the maintenance PR (#565) --------------------------------
+// A branch pushed and a PR opened over the Action's GITHUB_TOKEN emit no
+// pull_request run (GitHub's recursion guard), so deliver() must start the PR's
+// checks itself via workflow_dispatch — the guard's documented exception. These
+// cover the pure planning half: reading a workflow's `on:` triggers and picking
+// which files to dispatch.
+
+test('workflowTriggers reads a block-map on: — the common shape', () => {
+  const yaml = [
+    'name: Tests', 'on:', '  workflow_dispatch:', '  pull_request:',
+    '    branches: [main]', '  push:', '    branches: [main, "claude/**"]',
+    'jobs:', '  test:', '    runs-on: ubuntu-latest',
+  ].join('\n');
+  assert.deepEqual(workflowTriggers(yaml), ['workflow_dispatch', 'pull_request', 'push']);
+});
+
+test('workflowTriggers reads bare-key children (no nested config)', () => {
+  const yaml = 'name: CI\non:\n  pull_request:\n  push:\n    branches: [main]\njobs: {}\n';
+  assert.deepEqual(workflowTriggers(yaml), ['pull_request', 'push']);
+});
+
+test('workflowTriggers reads the inline scalar and inline list forms', () => {
+  assert.deepEqual(workflowTriggers('on: workflow_dispatch\njobs: {}\n'), ['workflow_dispatch']);
+  assert.deepEqual(workflowTriggers('on: [pull_request, push]\njobs: {}\n'), ['pull_request', 'push']);
+});
+
+test('workflowTriggers is not fooled by nested keys deeper than the trigger level', () => {
+  const yaml = [
+    'on:', '  schedule:', '    - cron: "24 * * * *"', '  workflow_dispatch:',
+    '    inputs:', '      overrides:', '        required: false', 'jobs: {}',
+  ].join('\n');
+  assert.deepEqual(workflowTriggers(yaml), ['schedule', 'workflow_dispatch']);
+});
+
+test('workflowTriggers on a file with no on: block returns nothing', () => {
+  assert.deepEqual(workflowTriggers('name: fragment\njobs: {}\n'), []);
+});
+
+test('ciDispatchPlan dispatches exactly the PR-triggered AND dispatchable workflows', () => {
+  const files = [
+    { name: 'test.yml', content: 'on:\n  workflow_dispatch:\n  pull_request:\n    branches: [main]\njobs: {}\n' },
+    { name: 'release.yml', content: 'on:\n  workflow_dispatch:\njobs: {}\n' },        // dispatchable but NOT PR CI — never touch
+    { name: 'scheduler.yml', content: 'on:\n  schedule:\n    - cron: "0 * * * *"\njobs: {}\n' },
+  ];
+  assert.deepEqual(ciDispatchPlan(files), { dispatch: ['test.yml'], missing: [] });
+});
+
+test('ciDispatchPlan names a PR workflow it cannot dispatch, so the log can say what to fix', () => {
+  const files = [{ name: 'ci.yml', content: 'on:\n  pull_request:\n  push:\n    branches: [main]\njobs: {}\n' }];
+  assert.deepEqual(ciDispatchPlan(files), { dispatch: [], missing: ['ci.yml'] });
 });
