@@ -239,6 +239,27 @@ function checkTheWorldPasses(root) {
   catch { return false; }
 }
 
+// Why the PR-open POST must be status-checked, as a pure predicate: null when
+// the PR was created, else the message to fail on.
+//
+// This is the one call whose silent failure is invisible AND self-perpetuating.
+// `openMaintenancePull` reuses by OPEN PR, so a cycle that pushes its branch but
+// fails to open the PR mints a FRESH branch next cycle, and the next — branches
+// pile up nightly, the stamp never advances, and the run still reports `ok`
+// because nothing read the status. The fleet ran exactly that way for two days:
+// every consumer but the pilot sat on the same canon ref carrying 07-29 and
+// 07-30 maintenance branches with no PR behind either.
+//
+// The usual cause is repo-level and invisible from here — "Allow GitHub Actions
+// to create and approve pull requests" is off and the POST 403s — so the message
+// names that remedy rather than leaving a bare status code.
+export function pullCreateError(status, json) {
+  if (status === 201 && json?.number) return null;
+  const detail = json?.message ?? `HTTP ${status}`;
+  return `${detail} — if this is the Actions PR permission, enable Settings → Actions`
+    + ' → General → "Allow GitHub Actions to create and approve pull requests"';
+}
+
 // Deliver the converge as one commit on the per-cycle maintenance branch, native
 // git. Reuses the family's open PR (by prefix) or mints a dated branch + PR;
 // arms auto-merge when the member asked for it. Force-push is the regenerate-not-
@@ -260,9 +281,12 @@ async function deliver(root, repo, base, token, delivery, seed) {
     const body = delivery === 'auto-merge'
       ? 'Automated Claudinite maintenance (deterministic converge + any migration notes). Regenerated each cycle; auto-merges once this repo\'s checks pass.'
       : 'Automated Claudinite maintenance (deterministic converge + any migration notes). Regenerated each cycle; left for your review.';
-    ({ json: pr } = await gh(token, `/repos/${repo}/pulls`, {
+    const created = await gh(token, `/repos/${repo}/pulls`, {
       method: 'POST', body: { head: branch, base, title: 'Claudinite maintenance', body },
-    }));
+    });
+    const failure = pullCreateError(created.status, created.json);
+    if (failure) throw new Error(`could not open the maintenance PR for ${branch}: ${failure}`);
+    pr = created.json;
   }
 
   // ARM GitHub's native auto-merge (not an immediate merge): the PR lands
