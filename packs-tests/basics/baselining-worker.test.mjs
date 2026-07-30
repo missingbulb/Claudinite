@@ -225,3 +225,25 @@ test('deliveryAction never merges or arms a review-delivery member', () => {
   assert.equal(deliveryAction({ delivery: 'review', hasPrCi: false }), 'none');
   assert.equal(deliveryAction({ delivery: 'review', hasPrCi: true }), 'none');
 });
+
+// A converged mount that cannot pass its own self-test escalates to the agent
+// even when the diff looks clean and the content checks report green. That
+// combination is exactly #555: a pack that fails validation contributes NO
+// rules, so check_the_world went on reporting green about a corpus it had
+// stopped running.
+
+test('shouldRequestAgent escalates on a failed self-test even when checks report green', () => {
+  assert.equal(shouldRequestAgent({
+    pendingCount: 0, meaningfulChange: true, checksPass: true, selftestOk: false,
+  }), true);
+});
+
+test('shouldRequestAgent escalates on a failed self-test even with no visible change', () => {
+  assert.equal(shouldRequestAgent({
+    pendingCount: 0, meaningfulChange: false, checksPass: true, selftestOk: false,
+  }), true);
+});
+
+test('shouldRequestAgent defaults selftestOk true, so an older mount without one is unchanged', () => {
+  assert.equal(shouldRequestAgent({ pendingCount: 0, meaningfulChange: true, checksPass: true }), false);
+});

@@ -143,8 +143,12 @@ export function openMaintenanceBranch(pulls, prefix = MAINT_PREFIX) {
 // The escalation predicate (owner, 2026-07-23): agent iff a pending agentic note,
 // or a real change the deterministic converge left non-green. No change, or a
 // green change with no agentic note, stays agentless.
-export function shouldRequestAgent({ pendingCount, meaningfulChange, checksPass }) {
+export function shouldRequestAgent({ pendingCount, meaningfulChange, checksPass, selftestOk = true }) {
   if (pendingCount > 0) return true;
+  // A converged mount that cannot pass its own self-test is the judgment case
+  // whether or not the converge "changed" anything a diff can see: broken
+  // machinery reports no findings precisely because it is not running.
+  if (!selftestOk) return true;
   return Boolean(meaningfulChange) && !checksPass;
 }
 
@@ -280,6 +284,16 @@ export function pullCreateError(status, json) {
 export function deliveryAction({ delivery, hasPrCi }) {
   if (delivery !== 'auto-merge') return 'none';
   return hasPrCi ? 'arm' : 'merge';
+}
+
+// Run the engine's self-test against the converged tree; true when the machinery
+// is intact. Same soft shape as checkTheWorldPasses — a missing selftest (an
+// older mount that predates it) is not a failure, it is nothing to run.
+function selfTestPasses(root) {
+  const st = join(root, '.claudinite/shared/engine/selftest.mjs');
+  if (!existsSync(st)) return true;
+  try { node([st, '--strict'], { CLAUDE_PROJECT_DIR: root }); return true; }
+  catch { return false; }
 }
 
 // Deliver the converge as one commit on the per-cycle maintenance branch, native
@@ -512,10 +526,24 @@ export async function main() {
   }
   const meaningfulChange = changed.length > 0;
 
+  // 6b. SELF-TEST the converged tree before judging its content. This asks "can
+  //     Claudinite still run here?" — mount, stamp, pack manifests, hook targets,
+  //     mounted skills, cron, migrations registry — and it is the gate that would
+  //     have caught #555 the night it landed: a required manifest field arrived
+  //     with no migration, every consumer pack stopped validating, and because a
+  //     pack that fails validation contributes NO rules, check_the_world went on
+  //     reporting green about a corpus it was no longer running. A content check
+  //     cannot see its own machinery break. This runs on the just-converged tree,
+  //     so it judges what the member is about to live with.
+  const selftestOk = selfTestPasses(root);
+  if (!selftestOk) console.log('baselining: the converged mount FAILED its self-test — requesting the agent');
+
   // 7. Escalation gate: run the conformance checks only when a change happened and
-  //    no agentic note already forces the agent.
+  //    no agentic note already forces the agent. A failed self-test forces it too:
+  //    broken machinery is exactly the judgment case, and merging it would spread
+  //    the breakage to a repo that was working an hour ago.
   const checksPass = (meaningfulChange && !pending.length) ? checkTheWorldPasses(root) : true;
-  const requestAgent = shouldRequestAgent({ pendingCount: pending.length, meaningfulChange, checksPass });
+  const requestAgent = shouldRequestAgent({ pendingCount: pending.length, meaningfulChange, checksPass, selftestOk });
 
   // 8. Deliver the converge (only when there's something to land).
   if (meaningfulChange || pending.length) {
