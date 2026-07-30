@@ -260,6 +260,28 @@ export function pullCreateError(status, json) {
     + ' → General → "Allow GitHub Actions to create and approve pull requests"';
 }
 
+// How an `auto-merge` member's PR actually lands, given whether this repo has any
+// pull_request-triggered workflow at all.
+//
+// GitHub's auto-merge is a QUEUE FOR CHECKS. On a repo with no PR CI there is
+// nothing to queue behind: the mutation is rejected ("Pull request is in clean
+// status"), and since the failure was swallowed the PR sat open forever — the
+// stamp never advanced, the next cycle reused the same PR, and a repo that asked
+// for `auto-merge` got no merge at all. Seven of twelve consumers are in exactly
+// that shape (no `pull_request` trigger anywhere in .github/workflows).
+//
+// So: no CI to wait for → MERGE IT, which is what `auto-merge` meant all along.
+// CI present → arm, and let the checks gate it as designed.
+//
+// `hasPrCi` comes from ciDispatchPlan over the branch's own workflow files —
+// `dispatch` (startable) plus `missing` (PR-triggered but not dispatchable). Both
+// empty means no workflow anywhere runs on a pull_request, so no check will ever
+// appear. That is a fact about the tree, not a race against checks registering.
+export function deliveryAction({ delivery, hasPrCi }) {
+  if (delivery !== 'auto-merge') return 'none';
+  return hasPrCi ? 'arm' : 'merge';
+}
+
 // Deliver the converge as one commit on the per-cycle maintenance branch, native
 // git. Reuses the family's open PR (by prefix) or mints a dated branch + PR;
 // arms auto-merge when the member asked for it. Force-push is the regenerate-not-
@@ -302,19 +324,35 @@ async function deliver(root, repo, base, token, delivery, seed) {
   // every later run reuses the branch and never retried, so the PR sat open
   // forever. The stable-PR form this superseded re-asserted the arm on every run;
   // this restores that. Idempotent: arming an already-armed PR is a no-op.
-  if (delivery === 'auto-merge' && pr?.node_id) {
-    await enableAutoMerge(token, pr.node_id).catch(() => {});
-  }
+  // Start the PR's checks FIRST — the GITHUB_TOKEN push/open above emitted no
+  // pull_request event, so without this the PR has no runs (#565, the
+  // ciDispatchPlan block). AFTER the push, so the dispatched runs execute the
+  // branch's own head; every delivering cycle, since a force-push emits no
+  // synchronize event either and each new head needs its own runs. Best-effort:
+  // a dispatch failure must not fail the converge that was already pushed.
+  //
+  // It runs BEFORE the delivery decision because it is what establishes whether
+  // this repo has any PR CI at all — the fact deliveryAction turns on.
+  const ci = await dispatchCiRuns(token, repo, branch)
+    .catch((e) => { console.log(`baselining: CI dispatch on ${branch} failed: ${e.message}`); return null; });
+  const hasPrCi = ci ? ci.dispatch.length + ci.missing.length > 0 : true; // unknown → assume CI, never merge blind
 
-  // Start the PR's checks — the GITHUB_TOKEN push/open above emitted no
-  // pull_request event, so without this the PR has no runs and the arm above
-  // waits forever (#565, the ciDispatchPlan block). AFTER the push, so the
-  // dispatched runs execute the branch's own head; every delivering cycle, since
-  // a force-push emits no synchronize event either and each new head needs its
-  // own runs. Best-effort like the arm: a dispatch failure must not fail the
-  // converge that was already pushed.
-  await dispatchCiRuns(token, repo, branch)
-    .catch((e) => console.log(`baselining: CI dispatch on ${branch} failed: ${e.message}`));
+  if (pr?.number) {
+    const action = deliveryAction({ delivery, hasPrCi });
+    if (action === 'merge') {
+      const res = await gh(token, `/repos/${repo}/pulls/${pr.number}/merge`, {
+        method: 'PUT', body: { merge_method: 'squash' },
+      });
+      if (res.status === 200) console.log(`baselining: merged PR #${pr.number} directly — this repo has no pull_request CI to gate on`);
+      else console.log(`baselining: could not merge PR #${pr.number} (${res.status}: ${res.json?.message ?? 'no message'})`);
+    } else if (action === 'arm' && pr.node_id) {
+      // Surfaced, not swallowed: a failed arm is why a maintenance PR sits open
+      // forever, and the two usual causes are both fixable repo settings.
+      await enableAutoMerge(token, pr.node_id)
+        .catch((e) => console.log(`baselining: could not arm auto-merge on PR #${pr.number}: ${e.message}`
+          + ' — check Settings → General → "Allow auto-merge"'));
+    }
+  }
   return branch;
 }
 
@@ -348,6 +386,7 @@ async function dispatchCiRuns(token, repo, branch) {
     if (res.status === 204) console.log(`baselining: dispatched ${name} on ${branch} — the maintenance PR gets its checks`);
     else console.log(`baselining: could not dispatch ${name} on ${branch} (${res.status})`);
   }
+  return { dispatch, missing };
 }
 
 // Ask the owner to add a repo Actions secret a task declares in `required_secrets`

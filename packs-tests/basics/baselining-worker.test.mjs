@@ -4,7 +4,7 @@ import {
   normalizeDelivery, resolveDelivery, DEFAULT_DELIVERY, pendingAgentic, heldStamp,
   maintenanceBranchName, openMaintenanceBranch, openMaintenancePull, shouldRequestAgent,
   unconfiguredSecrets, SECRETS_ISSUE_TITLE, workflowTriggers, ciDispatchPlan,
-  pullCreateError,
+  pullCreateError, deliveryAction,
 } from '../../packs/basics/tasks/baselining/worker.mjs';
 
 // The worker's PURE decision helpers (agent-preprocessing DESIGN §7, E4). The
@@ -205,4 +205,23 @@ test('pullCreateError rejects a 201 with no PR number — a body that is not a P
 
 test('pullCreateError falls back to the bare status when there is no message', () => {
   assert.match(pullCreateError(502, null), /HTTP 502/);
+});
+
+// GitHub's auto-merge is a queue for CHECKS. On a repo with no pull_request CI the
+// mutation is rejected outright, and while that rejection was swallowed the PR sat
+// open forever — a member that asked for auto-merge got no merge at all. Seven of
+// twelve consumers have no pull_request trigger anywhere, so this was most of the
+// fleet.
+
+test('deliveryAction merges directly when there is no PR CI to gate on', () => {
+  assert.equal(deliveryAction({ delivery: 'auto-merge', hasPrCi: false }), 'merge');
+});
+
+test('deliveryAction arms auto-merge when the repo does have PR CI', () => {
+  assert.equal(deliveryAction({ delivery: 'auto-merge', hasPrCi: true }), 'arm');
+});
+
+test('deliveryAction never merges or arms a review-delivery member', () => {
+  assert.equal(deliveryAction({ delivery: 'review', hasPrCi: false }), 'none');
+  assert.equal(deliveryAction({ delivery: 'review', hasPrCi: true }), 'none');
 });
