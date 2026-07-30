@@ -1,3 +1,4 @@
+import consumerSafeChange from './consumer-safe-change.mjs';
 import homeSeededPacksDeclared from './home-seeded-packs-declared.mjs';
 
 // The canon home repo's OWN local pack — Claudinite-specific working rules and
@@ -19,4 +20,5 @@ export default {
   badge: 'badge.svg',
   prose: 'RULES.md',
   worldRules: [homeSeededPacksDeclared],
+  workRules: [consumerSafeChange],
 };
