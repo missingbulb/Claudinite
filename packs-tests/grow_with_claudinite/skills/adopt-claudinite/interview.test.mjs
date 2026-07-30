@@ -1,9 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { makeRepo, cleanup } from '../../../../engine-tests/helpers.mjs';
 import { loadConfig } from '../../../../engine/checks/helpers/repo-context.mjs';
 import { loadPacks } from '../../../../engine/pack_loader/pack-registry.mjs';
 import { packQuestions, interviewState, renderPending } from '../../../../packs/grow_with_claudinite/skills/adopt-claudinite/interview.mjs';
+
+const CLI = fileURLToPath(new URL('../../../../packs/grow_with_claudinite/skills/adopt-claudinite/interview.mjs', import.meta.url));
 
 const pack = (over = {}) => ({
   id: 'p',
@@ -97,4 +101,45 @@ test('integration: declaring barriers pends its goals question until the entry a
     assert.deepEqual(p[0].questions.map((q) => q.id), ['goals']);
     assert.deepEqual(interviewState(packs, loadConfig(answered)).pending, []);
   } finally { cleanup(unanswered); cleanup(answered); }
+});
+
+// The CLI, run as a CHILD PROCESS — the only context where this module's import
+// cycle closes, and so the only shape that can catch it. Every test above
+// imports the pure helpers directly, which is exactly why the cycle shipped: it
+// deadlocked `interview.mjs check` in every repo (Node exits 13, "unsettled
+// top-level await") while the pure-function coverage stayed green. Asserting the
+// note reaches stdout, not merely that the exit code is 0, is deliberate — a
+// process that exits clean having printed nothing is the bug's own signature.
+test('CLI: `check` prints the pending note and exits clean (its import cycle must not deadlock)', () => {
+  const repo = makeRepo({ base: { '.claudinite-checks.json': JSON.stringify({ packs: ['barriers'] }) } });
+  try {
+    const r = spawnSync(process.execPath, [CLI, 'check'], {
+      encoding: 'utf8',
+      env: { ...process.env, CLAUDE_PROJECT_DIR: repo },
+    });
+    assert.equal(r.status, 0, `exited ${r.status}\nstderr: ${r.stderr}`);
+    assert.doesNotMatch(r.stderr, /unsettled top-level await/, 'the CLI deadlocked on its own import cycle');
+    assert.match(r.stdout, /Pack adoption interview pending/);
+    assert.match(r.stdout, /- barriers \/ goals:/);
+  } finally { cleanup(repo); }
+});
+
+test('CLI: a repo with nothing pending prints nothing and exits clean', () => {
+  const repo = makeRepo({ base: { '.claudinite-checks.json': JSON.stringify({
+    packs: [{ id: 'barriers', answers: { goals: 'n/a — none wanted' } }],
+  }) } });
+  try {
+    const r = spawnSync(process.execPath, [CLI, 'check'], {
+      encoding: 'utf8',
+      env: { ...process.env, CLAUDE_PROJECT_DIR: repo },
+    });
+    assert.equal(r.status, 0, `exited ${r.status}\nstderr: ${r.stderr}`);
+    assert.equal(r.stdout, '');
+  } finally { cleanup(repo); }
+});
+
+test('CLI: an unknown subcommand still reports usage and exits 2', () => {
+  const r = spawnSync(process.execPath, [CLI, 'nope'], { encoding: 'utf8' });
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /usage: interview\.mjs check/);
 });
