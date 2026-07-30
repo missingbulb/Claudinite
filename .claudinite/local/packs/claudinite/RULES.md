@@ -109,6 +109,28 @@ prose below).
   against the real canon tree, not only a synthetic fixture: a fixture keeps proving the
   whitelist mechanism works while the live path silently drops out from under it (see the
   paired tests in `vendoring/compute-vendor-set.test.mjs`).
+- **A check that selects its inputs by path pattern can reach zero files and still pass — assert
+  the live in-scope count.** When skills moved inside their owning pack (#385),
+  `skill-no-enforcement-narration` kept scanning the root-level `skills/<name>/SKILL.md` layout: it
+  matched nothing in any tree, read as live, and caught nothing until a human noticed the prose it
+  should have flagged (#560 — 21 skills in scope once repointed). Its fixtures are why it hid so
+  well; they spelled the same dead layout, so five green tests proved the *matching* and never the
+  *selection*. A scan-based check therefore needs one assertion over the **real** tree that its
+  scope is non-empty. Other half of the same class: agent-facing text pointing where the code isn't
+  — the same PR fixed a rule whose `why`, fix text and `doc` all named `engine/checks_helpers` or
+  `checks/lib`, neither of which ever existed. Nothing catches that on its own —
+  `reference-integrity` is work-scoped and flags only paths the branch itself deletes — so grep the
+  tree for any directory you name in a finding, a remedy, or a doc pointer before shipping it.
+- **A scheduled task's precondition gates on movement in the window, never on standing state.** "An
+  open PR exists" is true forever once it is true once, so the task wakes every night, spends an
+  agent, and re-derives yesterday's verdict over an unchanged set (three of tidy-repo's tasks
+  shipped that way; fixed in #554). Gate on the objects' own movement — a `touched` list or a
+  tip-commit date, which the signal collector has to actually carry (`branches` carried names only,
+  so "is any of this new" had no answer at all). A signal that is true most days on an active repo
+  — a substantive `main` move — may only **widen** an already-triggered run, never wake one. And the
+  gate is not the scope: where a verdict is relative to the rest of the set (superseded-by,
+  already-in-`main`), newness gates and the full set stays the scope. (Portable — a promote
+  candidate for `basics/scheduled-tasks.md`, which states the precondition contract but not this.)
 - **You cannot force a due slot by running the scheduler workflow by hand.** Dueness is
   stateless — a slot is due iff its time falls in `(last successful run, now]` — so a
   `workflow_dispatch` run outside the slot's window succeeds, prints `- no tasks due`, and
