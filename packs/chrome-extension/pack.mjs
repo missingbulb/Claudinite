@@ -1,4 +1,5 @@
 import { findExtensionManifest } from '../../engine/checks/helpers/chrome-manifest.mjs';
+import contentScriptModuleSyntax from './content-script-module-syntax.mjs';
 import declarativeContentSetIcon from './declarative-content-set-icon.mjs';
 
 // The coding pack: MV3 build/runtime gotchas that apply whenever you are writing
@@ -17,5 +18,5 @@ export default {
   marker: 'a manifest.json declaring manifest_version',
   detect: (ctx) => findExtensionManifest(ctx) !== null,
   prose: 'RULES.md',
-  worldRules: [declarativeContentSetIcon],
+  worldRules: [contentScriptModuleSyntax, declarativeContentSetIcon],
 };
