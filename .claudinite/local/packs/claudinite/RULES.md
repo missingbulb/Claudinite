@@ -156,14 +156,33 @@ prose below).
   whether the problem is still there, what the goal was, and what survives. Do this whenever you
   return to a paused branch, before presenting it — the owner should never have to ask "is this
   change still needed" (asked three times on #465 before it was volunteered).
-- **`subscribe_pr_activity` blocks for minutes — subscribe once, and never as a way to "wait for
-  CI".** It reads like a cheap registration, so a session calls it, gets no answer, and calls it
-  again on the same PR. Measured in the #520 session (`2026-07-28T2208Z`): two consecutive calls on
-  PR #524 cost **237s + 220s**, and a `send_later` check-in a further **101s** — **558s of that
-  session's 841s of total tool wall-clock (66%)**, all pure idle, in a session whose actual work was
-  153 tool calls. One subscription per PR is all there is to gain; a second adds nothing but the
-  wait. When what you actually want is "is it green yet", read the check status directly and merge
-  on the already-green result — don't buy the same notification twice.
+- **Every `Claude_Code_Remote` call costs minutes, and a call that returns nothing has NOT failed —
+  never re-issue it.** The whole server behaves this way, not one tool: measured over four sessions
+  on 2026-07-29, `add_repo` ran 270–285s a call, `send_later` 117–390s, `list_triggers` 139–325s,
+  `delete_trigger` 286–301s, `subscribe_pr_activity` 14–237s. They read like cheap registrations,
+  so a session issues one, sits through minutes of silence, concludes it hung, and issues it again —
+  and *the duplicate is the dominant cost*, because the first call had already succeeded:
+  **#562 (`2026-07-29T1500Z`) — 6 `add_repo` calls, 1121s of that session's 1391s of tool
+  wall-clock (81%)**, with `HelloWorldFlutterApp` added twice (285s + 271s); **#553
+  (`2026-07-29T2206Z`) — the same PR check-in `send_later`d 4 times, 1107s of 2028s (55%)**; **#544
+  (`2026-07-29T1248Z`) — `list_triggers` ×2, `delete_trigger` ×2 on one trigger id, `send_later` ×2:
+  1854s of 2472s (75%)**, in a session whose real work was 166 tool calls. `AskUserQuestion` shares
+  the shape — #559's session asked one question twice for 218s + 204s. So: **one call per intent,
+  ever**, and when what you want is "is it green yet", read the check status directly and merge on
+  the already-green result rather than buying a notification. Budget these calls before making them:
+  four of them is most of an hour.
+- **Sync local `main` with `git reset --hard origin/main`, never `git pull` — this repo's session
+  clones are shallow.** The post-merge sync step of `merge-to-main` is where it bites, and it bit
+  five separate sessions on 2026-07-29 alone (#548, #551, #537, #559 and the session-end capture of
+  `73a4db48`). A shallow clone has no common ancestor with the fetched remote, so `git pull` either
+  demands an explicit strategy or reports the stale local ref as carrying unique commits it does not
+  have — and the tempting reading, "local `main` has work the remote lacks", is wrong every time:
+  the session's own work is already *in* `origin/main`, which is why it just merged. #537's session
+  spent 87s across `git pull`, `git rev-parse --is-shallow-repository` and log comparisons proving
+  that from scratch; #559's landed on "git sees no common ancestor" the same way. Nothing of value
+  is ever on this repo's local `main`, so the sync is unconditional: `git fetch origin main && git
+  reset --hard origin/main`. (Portable — a promote candidate for `git-github`'s merge procedure,
+  where "your clone may be shallow" is true of any container-hosted session.)
 - **The home has no `.claudinite/shared/` mount — machinery paths must accept both roots.** A
   consumer runs the vendored engine under `.claudinite/shared/engine/…` with packs under
   `.claudinite/(shared|local)/packs/…`; the home *is* the corpus and runs the same code from the
