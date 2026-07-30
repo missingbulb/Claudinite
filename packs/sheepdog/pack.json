@@ -1,0 +1,13 @@
+{
+  "$schema": "../../engine/pack_loader/pack.schema.json",
+  "id": "sheepdog",
+  "ruleRoutingGuidance": {
+    "belongs": "fleet-enforcer duties for the repo that watches every other repo — coverage census, freshness drift, usage aggregation",
+    "excludes": "anything a member does to itself — tidying is tidy-repo, lesson capture is grow_with_claudinite"
+  },
+  "badge": "badge.svg",
+  "marker": null,
+  "detect": null,
+  "prose": "RULES.md",
+  "helpers": ["fleet-api.mjs", "fleet-config.mjs"]
+}

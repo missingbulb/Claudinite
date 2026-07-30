@@ -4,7 +4,7 @@ import { matchingLines, ruleIdsIn } from '../../../../engine/checks/helpers/line
 
 // A pack's injected prose must not narrate its own enforcement: checks run on
 // their own at every Stop and in CI, and each failure message carries its
-// rule. Scans exactly the file each pack.mjs declares as `prose`, never the
+// rule. Scans exactly the file each pack manifest declares as `prose`, never the
 // pack README — the catalog convention *requires* the README to list the
 // pack's rules and how each is enforced. Home-only by declaration:
 // canon-curation is declared solely in the canon home repo, which gates this
@@ -20,11 +20,18 @@ const rule = {
   why: 'checks run automatically at every Stop and in CI, and each failure message carries its rule — prose narrating its own enforcement duplicates the mechanism and drifts from it',
 
   run(ctx) {
+    // The manifest is JSON since #564, so the prose filename is read rather than
+    // pattern-matched out of source text. Scope is the home's own packs/ tree,
+    // which this repo has fully converted — a not-yet-migrated `pack.mjs` only
+    // ever exists in a CONSUMER's local packs, where this rule does not run.
     const docs = ctx.files
-      .filter((f) => /^packs\/[^/]+\/pack\.mjs$/.test(f))
+      .filter((f) => /^packs\/[^/]+\/pack\.json$/.test(f))
       .flatMap((f) => {
-        const m = /\bprose:\s*'([^']+)'/.exec(ctx.read(f) ?? '');
-        return m ? [join(dirname(f), m[1])] : [];
+        const raw = ctx.read(f);
+        if (raw === null) return [];
+        let manifest;
+        try { manifest = JSON.parse(raw); } catch { return []; }
+        return typeof manifest?.prose === 'string' ? [join(dirname(f), manifest.prose)] : [];
       });
     return [
       ...matchingLines(ctx, docs, RUNNER).map(({ file, line }) => finding(rule, {

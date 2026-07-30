@@ -11,12 +11,15 @@ import {
 // declares `requires: ['barriers']` and carries the barrier as DATA on its
 // manifest:
 //
-//   contributes: { barriers: [{ id, edges, description?, why?, doc?,
-//                               severity?, crossingRemedy?, crossingExcuse?,
-//                               gateDir? }] }
+//   contributes: { barriers: ['<module>.mjs'] }
+//
+// each named module default-exporting the contribution DATA:
+//
+//   { id, edges, description?, why?, doc?, severity?, crossingRemedy?,
+//     crossingExcuse?, gateDir? }
 //
 // The runner's generic seam hands this pack the ACTIVE pack list
-// (`contributedRules` on pack.mjs); this factory builds a first-class rule per
+// (`contributedRules` on the manifest); this factory builds a first-class rule per
 // contribution — the contribution's own id, so per-rule overrides
 // (`rules: { "<id>": "off" }`) and acceptances keep addressing it exactly as
 // they addressed the formerly code-composed rule. `gateDir` is the one
@@ -66,7 +69,7 @@ function faultRule(file, what) {
     run: () => [finding(rule, {
       file,
       what,
-      fix: 'shape the contribution as contributes: { barriers: [{ "id": ..., "edges": [...] }] } on the pack manifest',
+      fix: 'shape the contribution as contributes: { "barriers": ["<module>.mjs"] } on the pack manifest, the named module default-exporting { "id": ..., "edges": [...] }',
     })],
   };
 }
@@ -80,7 +83,10 @@ export function contributedBarrierRules(activePacks) {
   for (const pack of activePacks) {
     const contrib = pack.contributes?.barriers;
     if (contrib === undefined || contrib === null) continue;
-    const manifest = `${pack.local ? LOCAL_PACKS_SUBDIR : 'packs'}/${pack.id}/pack.mjs`;
+    // Name the pack's REAL manifest file: the loader stamps which of the two
+    // shapes it read (pack.json, or a not-yet-migrated pack.mjs), so a finding
+    // never points a consumer at a file their pack does not have.
+    const manifest = `${pack.local ? LOCAL_PACKS_SUBDIR : 'packs'}/${pack.id}/${pack.manifestFile ?? 'pack.json'}`;
     if (!Array.isArray(contrib)) {
       rules.push(faultRule(manifest, `the "${pack.id}" pack's contributes.barriers is not an array`));
       continue;
@@ -95,3 +101,9 @@ export function contributedBarrierRules(activePacks) {
   }
   return rules;
 }
+
+// The default export is the seam the manifest names (`contributedRules` in
+// pack.json): the loader imports this module by filename and hands the function
+// the active pack list. The named export stays for the tests, which drive it
+// directly.
+export default contributedBarrierRules;

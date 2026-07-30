@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import pack from '../../packs/basics/pack.mjs';
+import { canonPack } from '../../engine-tests/helpers.mjs';
+
+const pack = await canonPack('basics');
 import baselining from '../../packs/basics/tasks/baselining/task.mjs';
 
 const TASK_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../packs/basics/tasks/baselining');

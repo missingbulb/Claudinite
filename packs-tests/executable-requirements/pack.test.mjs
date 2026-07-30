@@ -1,11 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { makeRepo, cleanup, git, writeFiles, makeTranscript } from '../../engine-tests/helpers.mjs';
+import { makeRepo, cleanup, git, writeFiles, makeTranscript, canonPack } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import { runRule as dispatch } from '../../engine/checks/helpers/work.mjs';
 import featureRequirementsFirst from '../../packs/executable-requirements/feature-requirements-first.mjs';
-import pack from '../../packs/executable-requirements/pack.mjs';
+const pack = await canonPack('executable-requirements');
 
 test('pack manifest: asks the UI-testing and requirements-source adoption questions', () => {
   assert.deepEqual(pack.questions.map((q) => q.id), ['ui_testing', 'requirements_source']);

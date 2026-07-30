@@ -26,9 +26,9 @@ test('a missing required field is an error naming it', () => {
   assert.match(whats(noId), /declares no "id"/);
 });
 
-test('a non-object default export is an error, not a throw', () => {
-  assert.match(whats(null), /has no object default export/);
-  assert.match(whats('nope'), /has no object default export/);
+test('a non-object manifest is an error, not a throw', () => {
+  assert.match(whats(null), /the manifest is not an object/);
+  assert.match(whats('nope'), /the manifest is not an object/);
 });
 
 test('an undeclared field is an error — the vocabulary is closed', () => {
@@ -86,4 +86,31 @@ test('real corpus: every pack satisfies the spec it is loaded through', async ()
   const packs = await loadPacks({ localRoot: process.cwd(), onError: (e) => errors.push(e) });
   assert.ok(packs.length > 0, 'no packs discovered');
   assert.deepEqual(errors.map((e) => e.what), []);
+});
+
+// The one drift risk of having an authoring schema AND an in-memory contract: the
+// two vocabularies must name the same fields, or a field added to pack.schema.json
+// is accepted by the editor and then rejected at load as "not a pack manifest
+// field". `$schema` and `helpers` are authoring-only and stripped before the
+// resolved manifest reaches PACK_FIELDS, so they are the declared exceptions.
+test('PACK_FIELDS and pack.schema.json name the same manifest fields', async () => {
+  const { readFileSync } = await import('node:fs');
+  const schema = JSON.parse(
+    readFileSync(new URL('../../engine/pack_loader/pack.schema.json', import.meta.url), 'utf8')
+  );
+  const AUTHORING_ONLY = ['$schema', 'helpers'];
+  assert.deepEqual(
+    Object.keys(schema.properties).filter((k) => !AUTHORING_ONLY.includes(k)).sort(),
+    Object.keys(PACK_FIELDS).sort(),
+    'the JSON schema and the resolved-manifest contract have drifted — add the field to both, or to AUTHORING_ONLY'
+  );
+  for (const key of AUTHORING_ONLY) {
+    assert.ok(schema.properties[key], `${key} must be declared in the schema`);
+    assert.equal(PACK_FIELDS[key], undefined, `${key} is authoring-only and must not reach the resolved manifest`);
+  }
+  assert.deepEqual(
+    schema.required.sort(),
+    Object.entries(PACK_FIELDS).filter(([, f]) => f.required).map(([k]) => k).sort(),
+    'the two must also agree on which fields are required'
+  );
 });

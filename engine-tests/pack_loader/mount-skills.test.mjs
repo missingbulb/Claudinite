@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { makeRepo, cleanup, git } from '../helpers.mjs';
+import { makeRepo, cleanup, git, copyPackLoader } from '../helpers.mjs';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -19,19 +19,13 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 // one shape, #385).
 function makeCorpus({ packs }, root = mkdtempSync(join(tmpdir(), 'claudinite-corpus-'))) {
   mkdirSync(join(root, 'packs'), { recursive: true });
-  mkdirSync(join(root, 'engine', 'pack_loader'), { recursive: true });
-  mkdirSync(join(root, 'engine', 'pack_loader'), { recursive: true });
-  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-registry.mjs'), join(root, 'engine', 'pack_loader', 'pack-registry.mjs'));
-  // The registry validates every manifest against the spec, so the fake corpus
-  // needs the spec module too — it is part of the loader, not an optional extra.
-  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-schema.mjs'), join(root, 'engine', 'pack_loader', 'pack-schema.mjs'));
-  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'mount-skills.mjs'), join(root, 'engine', 'pack_loader', 'mount-skills.mjs'));
+  copyPackLoader(root);
   for (const [id, def] of Object.entries(packs)) {
     const { skills = [], ...manifest } = def;
     mkdirSync(join(root, 'packs', id), { recursive: true });
     writeFileSync(
-      join(root, 'packs', id, 'pack.mjs'),
-      `export default ${JSON.stringify({ id, detect: null, worldRules: [], ruleRoutingGuidance: { belongs: `whatever ${id} owns`, excludes: `whatever ${id} does not own` }, ...manifest })};\n`
+      join(root, 'packs', id, 'pack.json'),
+      `${JSON.stringify({ id, detect: null, ruleRoutingGuidance: { belongs: `whatever ${id} owns`, excludes: `whatever ${id} does not own` }, skills, ...manifest }, null, 2)}\n`
     );
     for (const name of skills) {
       mkdirSync(join(root, 'packs', id, 'skills', name), { recursive: true });
@@ -190,7 +184,9 @@ test('mount-skills: mounts a local pack\'s bundled skill from the tracked pack d
   });
   try {
     // The project's own local pack bundles its own skill; the canon skill
-    // mounts from its owning pack's bundle (basics).
+    // mounts from its owning pack's bundle (basics). Deliberately the LEGACY
+    // `pack.mjs` shape — a consumer's local pack is where it still lives while
+    // the fleet migrates, so mounting must keep reading it.
     const packDir = join(project, '.claudinite', 'local_packs', 'proj');
     mkdirSync(join(packDir, 'skills', 'proj-skill'), { recursive: true });
     writeFileSync(join(packDir, 'pack.mjs'),

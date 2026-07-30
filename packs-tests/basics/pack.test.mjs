@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, deletePath, cleanup, git, writeFiles, makeTranscript } from '../../engine-tests/helpers.mjs';
+import { makeRepo, deletePath, cleanup, git, writeFiles, makeTranscript, canonPack } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import { runRule } from '../../engine/checks/helpers/work.mjs';
 import commentClassification from '../../packs/basics/comment-classification.mjs';
@@ -629,7 +629,7 @@ test('comment-classification: silent without a transcript (CI) and on an empty c
 // --- claudinite-isolation ----------------------------------------------------
 // Built through the real path: the basics manifest contributes it as data and
 // the barriers pack's factory turns it into the rule.
-import basicsPack from '../../packs/basics/pack.mjs';
+const basicsPack = await canonPack('basics');
 import { contributedBarrierRules } from '../../packs/barriers/contributed.mjs';
 const claudiniteIsolation = contributedBarrierRules([basicsPack]).find((r) => r.id === 'claudinite-isolation');
 

@@ -130,7 +130,7 @@ const SCHEDULE_WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 // The properties a `packs` entry object may carry: the pack's parameters
 // (`config`), its adoption-interview answers (`answers` — the owner's verbatim
-// responses to the questions the pack declares on its pack.mjs, keyed by
+// responses to the questions the pack declares on its pack.json, keyed by
 // question id; read by the adoption skill's interview machinery), and the rule overrides / acceptances that
 // exist BECAUSE this pack is declared (`rules`, `accept` — they may name any
 // rule; the entry is their provenance). `via` is written by

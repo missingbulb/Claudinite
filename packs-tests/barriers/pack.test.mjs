@@ -264,15 +264,18 @@ test('gateDir keeps a contributed barrier inert until the gate directory exists'
 
 test('packs without contributions add nothing; a malformed contribution is a blocking finding at the manifest', () => {
   assert.deepEqual(contributedBarrierRules([{ id: 'plain' }, { id: 'other', contributes: {} }]), []);
+  // Each fault names the pack's REAL manifest file — the shape the loader stamped
+  // on it — so a consumer whose local pack has not migrated off `pack.mjs` is not
+  // pointed at a `pack.json` they do not have.
   const rules = contributedBarrierRules([
-    { id: 'bad-shape', contributes: { barriers: { id: 'not-an-array' } } },
-    { id: 'no-id', local: true, contributes: { barriers: [{ edges: [] }] } },
+    { id: 'bad-shape', manifestFile: 'pack.json', contributes: { barriers: { id: 'not-an-array' } } },
+    { id: 'no-id', local: true, manifestFile: 'pack.mjs', contributes: { barriers: [{ edges: [] }] } },
   ]);
   assert.equal(rules.length, 2);
   const findings = rules.flatMap((r) => r.run());
   assert.equal(findings.length, 2);
   assert.ok(findings.every((f) => f.severity === 'blocking'));
-  assert.equal(findings[0].file, 'packs/bad-shape/pack.mjs');
+  assert.equal(findings[0].file, 'packs/bad-shape/pack.json');
   assert.match(findings[0].what, /not an array/);
   assert.match(findings[1].file, /local\/packs\/no-id\/pack\.mjs$/);
   assert.match(findings[1].what, /no string "id"/);

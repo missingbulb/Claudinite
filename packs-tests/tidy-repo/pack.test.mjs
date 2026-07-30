@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { readdirSync, existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import pack from '../../packs/tidy-repo/pack.mjs';
+import { canonPack } from '../../engine-tests/helpers.mjs';
+
+const pack = await canonPack('tidy-repo');
 import tidyIssues from '../../packs/tidy-repo/tasks/tidy-issues/task.mjs';
 import tidyPrs from '../../packs/tidy-repo/tasks/tidy-prs/task.mjs';
 import tidyBranches from '../../packs/tidy-repo/tasks/tidy-branches/task.mjs';

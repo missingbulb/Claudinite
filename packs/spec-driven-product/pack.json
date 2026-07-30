@@ -1,0 +1,13 @@
+{
+  "$schema": "../../engine/pack_loader/pack.schema.json",
+  "id": "spec-driven-product",
+  "ruleRoutingGuidance": {
+    "belongs": "playbook for shipping a small end-user product from an executable spec — leaf claims, owner-owned expecteds, green-main releases",
+    "excludes": "the requirements file format and coverage gates — that is executable-requirements; research wikis are product-wiki"
+  },
+  "badge": "badge.svg",
+  "marker": null,
+  "detect": null,
+  "prose": "RULES.md",
+  "requires": ["executable-requirements"]
+}

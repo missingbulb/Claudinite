@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import { runRule } from '../../engine/checks/helpers/work.mjs';
-import releasePack from '../../packs/chrome-extension-release/pack.mjs';
+import { canonPack } from '../../engine-tests/helpers.mjs';
+
+const releasePack = await canonPack('chrome-extension-release');
 import releaseWorkflows from '../../packs/chrome-extension-release/release-workflows.mjs';
 import templateTokens from '../../packs/chrome-extension-release/template-tokens.mjs';
 import releaseConfig from '../../packs/chrome-extension-release/release-config.mjs';

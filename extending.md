@@ -26,7 +26,7 @@ only to extend the *mechanism*, never to add one project's rule or task:
 | Engine piece | Home | What it is |
 |---|---|---|
 | Checks runner + hooks | [`checks/`](engine/checks/README.md) | the dependency-free runner, its lib, the Stop hook, the PreToolUse guard — runs the packs' checks; owns no rule itself |
-| Pack discovery + prose injection | `engine/pack_loader/pack-registry.mjs`, `engine/pack_loader/inject-pack-prose.mjs` | structural scan of `packs/*/pack.mjs`; SessionStart injection of active packs' prose |
+| Pack discovery + prose injection | `engine/pack_loader/pack-registry.mjs`, `engine/pack_loader/pack-json.mjs`, `engine/pack_loader/inject-pack-prose.mjs` | structural scan of `packs/*/pack.json` (validated against `pack.schema.json`); SessionStart injection of active packs' prose |
 | Skill mounting | `engine/pack_loader/mount-skills.mjs` | per-session symlink of the active packs' bundled-skill union (`<pack>/skills/<name>/`) |
 | Adoption interviews | `packs/grow_with_claudinite/skills/adopt-claudinite/interview.mjs` | the gap computation (a pack's declared questions minus the entry's stored answers) and the SessionStart nudge; owns no question itself — bundled in the adoption skill, resolved fail-soft by the engine |
 | Baseline-migration mechanism | [`migrations/`](migrations/README.md) | the read-side resolver, write-side rename, and fleet telemetry that auto-retires a relocation once every consumer has moved |
@@ -42,17 +42,18 @@ ownership* even though they run as pack tasks: **baselining** (the baseline pack
 
 ## What a pack contributes
 
-A pack is a directory `packs/<name>/pack.mjs` exporting contribution slots (any subset
-— a pack may carry only prose, only a task, only checks):
+A pack is a directory `packs/<name>/pack.json` — a **data** declaration of contribution slots
+(any subset — a pack may carry only prose, only a task, only checks), with its code in sibling
+modules the JSON names by filename ([packs/README.md](packs/README.md#the-manifest-spec-packjson)):
 
 | Slot | Field | Carries |
 |---|---|---|
-| **Prose** | `prose: 'RULES.md'` | always-relevant-to-a-project guidance, injected into context when the pack is active |
-| **Checks** | `rules: [...]` | deterministic conformance rules run at every Stop and in CI |
+| **Prose** | `"prose": "RULES.md"` | always-relevant-to-a-project guidance, injected into context when the pack is active |
+| **Checks** | `"worldRules"` / `"workRules"` | the filenames of deterministic conformance rules run at every Stop and in CI; the list a rule sits in is its scope |
 | **Skills** | `<pack>/skills/<name>/` | activity-scoped procedures bundled in the pack's own tree, mounted wherever the pack is declared |
-| **Scheduled tasks** | `<pack>/tasks/<name>/` | a `task.mjs` declaration (frequency, precondition, model, expected outcome) plus its worker — `task.md` for an agent stage, `worker.mjs` for deterministic preprocessing — found structurally by the repo's scheduler, not listed on `pack.mjs` |
-| **Questions** | `questions: [...]` | mandatory adoption-interview questions; the owner's answers live verbatim on the project's pack entry ([packs/README.md](packs/README.md#adoption-interview-questions)) |
-| **Contributed config** | `contributes: { <pack>: ... }` | configuration addressed to another (required) pack — a fixed folder-barrier is the canonical case. The target pack interprets its active contributors' data via its own `contributedRules(activePacks)` seam, returning first-class rules; the runner wires the two together, so composition is declaration + data, never a cross-pack import |
+| **Scheduled tasks** | `<pack>/tasks/<name>/` | a `task.mjs` declaration (frequency, precondition, model, expected outcome) plus its worker — `task.md` for an agent stage, `worker.mjs` for deterministic preprocessing — found structurally by the repo's scheduler, not named on the manifest |
+| **Questions** | `"questions": [...]` | mandatory adoption-interview questions; the owner's answers live verbatim on the project's pack entry ([packs/README.md](packs/README.md#adoption-interview-questions)) |
+| **Contributed config** | `"contributes": { "<pack>": ["<module>.mjs"] }` | configuration addressed to another (required) pack — a fixed folder-barrier is the canonical case. The named modules default-export the data; the target pack interprets its active contributors' data via its own `contributedRules(activePacks)` seam, returning first-class rules; the runner wires the two together, so composition is declaration + data, never a cross-pack import |
 
 **Packs are independent.** A pack's code imports only its **own** files and the engine surface
 (`checks/`, `mount/`, the machinery `.mjs` at the `packs/`/`skills/` roots) — never another

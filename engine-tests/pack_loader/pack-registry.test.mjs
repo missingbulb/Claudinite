@@ -123,16 +123,25 @@ test('resolveDeclaredPacks: preserves an entry it cannot interpret rather than d
 // --- local-pack discovery ---------------------------------------------------
 
 // Build a throwaway consumer checkout with local packs at
-// <root>/.claudinite/local_packs/<name>/pack.mjs and return its root.
+// <root>/.claudinite/local_packs/<name>/ and return its root. Each value is
+// either a `pack.mjs` module source (the pre-2026-07 shape a member repo still
+// holds) or a `{ 'pack.json': ..., ... }` map of files to write.
 function makeLocalRoot(packs) {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-localpacks-'));
   for (const [name, source] of Object.entries(packs)) {
     const dir = join(root, '.claudinite', 'local_packs', name);
     mkdirSync(dir, { recursive: true });
-    writeFileSync(join(dir, 'pack.mjs'), source);
+    const files = typeof source === 'string' ? { 'pack.mjs': source } : source;
+    for (const [file, content] of Object.entries(files)) writeFileSync(join(dir, file), content);
   }
   return root;
 }
+
+const localManifest = (id, extra = {}) => `${JSON.stringify({
+  id,
+  ruleRoutingGuidance: { belongs: `whatever the ${id} local pack owns`, excludes: 'anything a canon pack owns' },
+  ...extra,
+}, null, 2)}\n`;
 
 test('discoverPacks: with no localRoot, finds only the canon packs (all non-local)', async () => {
   const { packs, errors } = await discoverPacks();
@@ -156,6 +165,46 @@ test('discoverPacks: finds a consumer local pack, stamped local with its own dir
     assert.equal(local.dir, join(root, '.claudinite', 'local_packs', 'proj'));
     // canon packs are still present and marked non-local
     assert.ok(packs.some((p) => p.id === 'basics' && p.local === false));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// BOTH-SHAPES TOLERANCE. `pack.mjs` is a consumer-held shape: every member repo
+// carries its own local packs, and nothing in the canon can rewrite those files.
+// So the loader reads either shape, and stamps which one it read so a finding can
+// name the file the consumer actually has.
+test('discoverPacks: a local pack still on the pack.mjs module shape loads, stamped with it', async () => {
+  const root = makeLocalRoot({
+    legacy: `export default { id: 'legacy', prose: 'RULES.md', worldRules: [], ruleRoutingGuidance: { belongs: 'the legacy local pack', excludes: 'anything a canon pack owns' } };`,
+    modern: { 'pack.json': localManifest('modern', { prose: 'RULES.md' }) },
+  });
+  try {
+    const { packs, errors } = await discoverPacks({ localRoot: root });
+    assert.deepEqual(errors, []);
+    assert.equal(packs.find((p) => p.id === 'legacy').manifestFile, 'pack.mjs');
+    assert.equal(packs.find((p) => p.id === 'modern').manifestFile, 'pack.json');
+    assert.ok(packs.every((p) => p.local === false || p.manifestFile !== undefined));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('discoverPacks: a pack carrying BOTH manifests resolves to pack.json, and the leftover is reported', async () => {
+  const root = makeLocalRoot({
+    half: {
+      'pack.json': localManifest('half', { prose: 'FROM-JSON.md' }),
+      'pack.mjs': `export default { id: 'half', prose: 'FROM-MJS.md' };`,
+    },
+  });
+  try {
+    const { packs, errors } = await discoverPacks({ localRoot: root });
+    const pack = packs.find((p) => p.id === 'half');
+    assert.equal(pack.prose, 'FROM-JSON.md', 'a half-finished migration must not resolve to the old shape');
+    assert.equal(pack.manifestFile, 'pack.json');
+    const both = errors.find((e) => /carries both pack\.json and pack\.mjs/.test(e.what));
+    assert.ok(both, 'the leftover module is reported so it gets deleted');
+    assert.match(both.fix, /delete pack\.mjs/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

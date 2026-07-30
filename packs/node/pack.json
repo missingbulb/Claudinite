@@ -1,0 +1,14 @@
+{
+  "$schema": "../../engine/pack_loader/pack.schema.json",
+  "id": "node",
+  "ruleRoutingGuidance": {
+    "belongs": "conventions for a Node/npm project — module resolution, ESM vs CJS, dependency justification, jsdom test divergences",
+    "excludes": "browser-runtime API behaviour — that is html or web-speech; Python packaging is python"
+  },
+  "badge": "badge.svg",
+  "marker": "package.json (at the repo root or one directory down)",
+  "detect": { "trackedPath": { "basename": "package.json", "maxDepth": 2 } },
+  "prose": "RULES.md",
+  "env": "env.mjs",
+  "workRules": ["earn-each-dependency.mjs"]
+}

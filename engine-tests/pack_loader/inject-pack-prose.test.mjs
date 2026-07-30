@@ -7,29 +7,25 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { makeRepo, cleanup } from '../helpers.mjs';
+import { makeRepo, cleanup, copyPackLoader } from '../helpers.mjs';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 // A fake corpus with the REAL registry and the REAL inject script copied in
 // verbatim — the script self-locates via import.meta.url, so running the copy
 // derives everything from the fake packs, no test-only knobs in the script.
-// Each pack carries its prose RULES.md beside its pack.mjs (the one shape).
+// Each pack carries its prose RULES.md beside its pack.json (the one shape).
 function makeCorpus({ packs }, root = mkdtempSync(join(tmpdir(), 'claudinite-corpus-'))) {
   mkdirSync(join(root, 'packs'), { recursive: true });
   mkdirSync(join(root, 'engine', 'pack_loader'), { recursive: true });
-  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-registry.mjs'), join(root, 'engine', 'pack_loader', 'pack-registry.mjs'));
-  // The registry validates every manifest against the spec, so the fake corpus
-  // needs the spec module too — it is part of the loader, not an optional extra.
-  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-schema.mjs'), join(root, 'engine', 'pack_loader', 'pack-schema.mjs'));
-  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'inject-pack-prose.mjs'), join(root, 'engine', 'pack_loader', 'inject-pack-prose.mjs'));
+  copyPackLoader(root);
   for (const [id, manifest] of Object.entries(packs)) {
-    // The def IS the pack.mjs manifest (an optional `prose: '<file>'` field and
+    // The def IS the pack.json manifest (an optional `prose: '<file>'` field and
     // whatever else); each test writes the prose file's content itself.
     mkdirSync(join(root, 'packs', id), { recursive: true });
     writeFileSync(
-      join(root, 'packs', id, 'pack.mjs'),
-      `export default ${JSON.stringify({ id, detect: null, worldRules: [], ruleRoutingGuidance: { belongs: `whatever ${id} owns`, excludes: `whatever ${id} does not own` }, ...manifest })};\n`
+      join(root, 'packs', id, 'pack.json'),
+      `${JSON.stringify({ id, detect: null, ruleRoutingGuidance: { belongs: `whatever ${id} owns`, excludes: `whatever ${id} does not own` }, ...manifest }, null, 2)}\n`
     );
   }
   return root;
@@ -94,7 +90,9 @@ test('inject-pack-prose: loads a local pack\'s RULES.md from the project\'s own 
   });
   try {
     // The project's own local pack bundles its own prose; it must load off the
-    // pack's OWN directory (local_packs/), not a single shared root.
+    // pack's OWN directory (local_packs/), not a single shared root. Deliberately
+    // the LEGACY `pack.mjs` shape — a consumer's local pack is exactly where it
+    // still lives while the fleet migrates, so prose injection must keep reading it.
     const packDir = join(project, '.claudinite', 'local_packs', 'proj');
     mkdirSync(packDir, { recursive: true });
     writeFileSync(join(packDir, 'pack.mjs'), `export default { id: 'proj', rules: [], prose: 'RULES.md' };\n`);

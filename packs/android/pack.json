@@ -1,0 +1,12 @@
+{
+  "$schema": "../../engine/pack_loader/pack.schema.json",
+  "id": "android",
+  "ruleRoutingGuidance": {
+    "belongs": "gradle/AGP builds, AndroidManifest, permissions, signing configs, product flavors and emulator workflows for an Android app module",
+    "excludes": "store submission and release cadence — play-store-release; Flutter-side widget or Dart code — flutter"
+  },
+  "badge": "badge.svg",
+  "marker": "android/app/src/main/AndroidManifest.xml",
+  "detect": { "trackedPath": { "endsWith": "android/app/src/main/AndroidManifest.xml" } },
+  "prose": "RULES.md"
+}

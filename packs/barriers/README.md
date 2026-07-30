@@ -134,17 +134,21 @@ On a whole-repo sweep with a clean config, an exception that matched **nothing**
 
 A pack ships a *fixed* barrier — no project config needed — by **declaring** this pack and **contributing** the barrier as data on its manifest, never by importing this pack's code (`pack-independence`): name `barriers` in the pack's `requires` and carry the barrier under `contributes`:
 
+```json
+// packs/<somepack>/pack.json
+{
+  "id": "somepack",
+  "requires": ["barriers"],
+  "contributes": { "barriers": ["isolation.mjs"] }
+}
+```
+
 ```js
-// packs/<somepack>/pack.mjs
+// packs/<somepack>/isolation.mjs — the contribution is DATA, so this module
+// imports nothing and the barriers pack builds it into the rule.
 export default {
-  id: 'somepack',
-  requires: ['barriers'],
-  contributes: {
-    barriers: [{
-      id: 'requirements-isolation',
-      edges: [{ from: 'dev/requirements', to: '*', reason: 'requirements is a pure sink' }],
-    }],
-  },
+  id: 'requirements-isolation',
+  edges: [{ from: 'dev/requirements', to: '*', reason: 'requirements is a pure sink' }],
 };
 ```
 

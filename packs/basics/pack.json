@@ -1,0 +1,41 @@
+{
+  "$schema": "../../engine/pack_loader/pack.schema.json",
+  "id": "basics",
+  "ruleRoutingGuidance": {
+    "belongs": "cross-project working discipline, issue-branch-PR lifecycle, repo hygiene, doc/reference integrity and the baseline engineering, testing and debugging skills",
+    "excludes": "technology-specific content — its own tech pack; GitHub Actions workflow or platform behaviour — github-actions; git procedure — git-github"
+  },
+  "badge": "badge.svg",
+  "marker": null,
+  "detect": null,
+  "prose": "RULES.md",
+  "seededByDefault": true,
+  "requires": ["barriers", "git-github"],
+  "contributes": { "barriers": ["claudinite-isolation.mjs"] },
+  "skills": [
+    "authoring-agent-docs",
+    "bug-investigation",
+    "bump-version",
+    "engineering-practices",
+    "file-placement",
+    "repo-text-sweeps",
+    "writing-tests"
+  ],
+  "worldRules": [
+    "markdown-link-labels.mjs",
+    "warning-suppression.mjs",
+    "file-placement.mjs",
+    "claude-md-length.mjs",
+    "generated-merge-driver.mjs",
+    "shared-constants.mjs",
+    "catalog-completeness.mjs",
+    "scheduler-workflow-shape.mjs",
+    "task-declaration-shape.mjs"
+  ],
+  "workRules": [
+    "comment-classification.mjs",
+    "reference-integrity.mjs",
+    "task-lifecycle.mjs",
+    "squash-merge-history.mjs"
+  ]
+}

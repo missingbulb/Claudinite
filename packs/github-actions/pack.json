@@ -1,0 +1,23 @@
+{
+  "$schema": "../../engine/pack_loader/pack.schema.json",
+  "id": "github-actions",
+  "ruleRoutingGuidance": {
+    "belongs": "workflow YAML and Actions runner platform behaviour: triggers, secrets, permissions, scheduling, artifacts, reusable workflows and their pitfalls",
+    "excludes": "git and GitHub command procedure — git-github; release pipeline content for one product — its release pack"
+  },
+  "badge": "badge.svg",
+  "marker": ".github/workflows/*.ya?ml",
+  "detect": { "trackedPath": { "matches": "^\\.github/workflows/.+\\.ya?ml$" } },
+  "prose": null,
+  "skills": ["github-actions-scheduling"],
+  "worldRules": [
+    "secrets-in-job-if.mjs",
+    "run-pipefail.mjs",
+    "checkout-submodules.mjs",
+    "scheduled-failure-escalation.mjs",
+    "label-create-before-add.mjs",
+    "unique-automation-branch.mjs",
+    "pages-artifact-symlinks.mjs",
+    "no-scheduled-fleet-executor.mjs"
+  ]
+}

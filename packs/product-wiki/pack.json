@@ -1,0 +1,40 @@
+{
+  "$schema": "../../engine/pack_loader/pack.schema.json",
+  "id": "product-wiki",
+  "ruleRoutingGuidance": {
+    "belongs": "agent-maintained market, user and competitor research wikis — cited pages, growth logs, the reviewed product-requirements sink",
+    "excludes": "how the product is built or specced — that is spec-driven-product; requirement proofs are executable-requirements"
+  },
+  "badge": "badge.svg",
+  "marker": "product-wiki/product-requirements/README.md",
+  "detect": { "trackedPath": { "is": "product-wiki/product-requirements/README.md" } },
+  "prose": "RULES.md",
+  "requires": ["barriers"],
+  "contributes": { "barriers": ["isolation.mjs"] },
+  "questions": [
+    {
+      "id": "product",
+      "prompt": "What is the product — what does it do, and what is the core value it delivers? If the repo already carries a product brief or spec, read it and confirm rather than asking cold.",
+      "distill": "recorded as intent on this entry (the pack takes no config); it names what the research is about and frames every seeded wiki"
+    },
+    {
+      "id": "users",
+      "prompt": "Who are the users or customers — the segments whose needs the research must track?",
+      "distill": "recorded as intent; scopes the user-research wiki and whose problems the findings answer to"
+    },
+    {
+      "id": "market",
+      "prompt": "What market or category is this in, and who are the main competitors or alternatives? This is what the competitor research is scoped against.",
+      "distill": "recorded as intent; names the competitor set the initial competitor-landscape wiki is seeded from"
+    }
+  ],
+  "worldRules": [
+    "layout.mjs",
+    "page-sections.mjs",
+    "key-insights.mjs",
+    "growth-log.mjs",
+    "sources.mjs",
+    "freshness.mjs"
+  ],
+  "helpers": ["lib.mjs"]
+}

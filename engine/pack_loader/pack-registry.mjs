@@ -2,6 +2,7 @@ import { readdirSync, existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { validateManifest, normalizeManifest } from './pack-schema.mjs';
+import { loadPackJson, PACK_JSON, LEGACY_PACK_MANIFEST } from './pack-json.mjs';
 
 // This module lives at <canon>/engine/pack_loader/; the packs it scans at <canon>/packs/.
 const canonRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
@@ -26,13 +27,17 @@ export const legacyLocalPacksDir = (root) => join(resolve(root), LEGACY_LOCAL_PA
 // — which is why nothing consumer-owned (local_packs/ above) lives inside it.
 export const SHARED_SUBDIR = join('.claudinite', 'shared');
 
-// Load a directory of `<name>/pack.mjs` manifests, isolating each import so one
-// broken manifest can't sink the rest (a consumer-authored local pack.mjs must
-// never disable every other pack's prose/checks/skills). Each loaded pack is
-// stamped with `dir` (its own directory — prose and bundled skills resolve off
-// this, so a pack's files never have to sit under a single shared root) and
-// `local` (whether it came from a consumer's local_packs). A pack's skills live
-// in its own tree — `<pack>/skills/<skill>/` is the one bundled-skill shape,
+// Load a directory of `<name>/pack.json` manifests (the pre-2026-07 `pack.mjs`
+// module shape still reads while consumer-held local packs migrate), isolating
+// each pack so one broken manifest can't sink the rest (a consumer-authored local
+// manifest must never disable every other pack's prose/checks/skills). Each
+// loaded pack is stamped with `dir` (its own directory — prose and bundled skills
+// resolve off this, so a pack's files never have to sit under a single shared
+// root), `manifestFile` (which of the two shapes it was read from, so a finding
+// can name the real file) and `local` (whether it came from a consumer's own
+// packs tree).
+//
+// A pack's skills live in its own tree — `<pack>/skills/<skill>/` is the one bundled-skill shape,
 // canon and local alike (#385: a skill rides exactly one pack; there is no
 // separate skills collection to own or cross-declare). A bundled skill's
 // checks.mjs is gathered onto `skillChecks` and run by the runner only when the
@@ -101,30 +106,50 @@ async function scanPackDir(dir, { local, subdir }, errors) {
   for (const name of names) {
     const packDir = join(dir, name);
     const rel = local ? `${label}/${name}` : `packs/${name}`;
-    const manifest = join(packDir, 'pack.mjs');
-    if (!existsSync(manifest)) continue;
+    const hasJson = existsSync(join(packDir, PACK_JSON));
+    const hasLegacy = existsSync(join(packDir, LEGACY_PACK_MANIFEST));
+    if (!hasJson && !hasLegacy) continue;
+    // `pack.json` wins where both are present — a half-finished migration must
+    // resolve to the new shape, not to whichever the loader happened to try
+    // first — and the leftover module is reported so it gets deleted rather than
+    // sitting there looking authoritative.
+    const manifestFile = hasJson ? PACK_JSON : LEGACY_PACK_MANIFEST;
     let mod;
-    try {
-      mod = (await import(pathToFileURL(manifest).href)).default;
-    } catch (e) {
-      errors.push({
-        what: `the pack in ${rel} failed to load: ${e.message}`,
-        fix: `fix pack.mjs in ${rel}, or remove the pack`,
-        dir: packDir,
-      });
-      continue;
+    if (hasJson) {
+      if (hasLegacy) {
+        errors.push({
+          what: `the pack in ${rel} carries both ${PACK_JSON} and ${LEGACY_PACK_MANIFEST}`,
+          fix: `delete ${LEGACY_PACK_MANIFEST} — ${PACK_JSON} is the manifest, and the leftover module is read by nothing`,
+          dir: packDir,
+        });
+      }
+      const { manifest, errors: jsonErrors } = await loadPackJson(packDir, { label: `the pack in ${rel}` });
+      for (const e of jsonErrors) errors.push({ ...e, dir: packDir });
+      if (manifest === null) continue;
+      mod = manifest;
+    } else {
+      try {
+        mod = (await import(pathToFileURL(join(packDir, LEGACY_PACK_MANIFEST)).href)).default;
+      } catch (e) {
+        errors.push({
+          what: `the pack in ${rel} failed to load: ${e.message}`,
+          fix: `fix ${LEGACY_PACK_MANIFEST} in ${rel}, or remove the pack`,
+          dir: packDir,
+        });
+        continue;
+      }
     }
     if (!mod || typeof mod.id !== 'string') {
       errors.push({
-        what: `the pack in ${rel} has no string "id" default export`,
-        fix: 'export default { id: "<name>", ... } from its pack.mjs',
+        what: `the pack in ${rel} declares no string "id"`,
+        fix: `give ${manifestFile} an "id" naming the pack — its directory name`,
         dir: packDir,
       });
       continue;
     }
     // A local pack's id must equal its directory name. The engine activates a pack
     // by its exported id, but the fleet planner reads a local pack's daily tasks by
-    // directory name (it never imports pack.mjs), so a mismatch would silently
+    // directory name (it never reads the manifest), so a mismatch would silently
     // diverge — the engine runs the pack while the fleet skips its task. Require
     // dir == id so the two can never disagree (the canon convention, enforced here
     // for local packs).
@@ -148,7 +173,7 @@ async function scanPackDir(dir, { local, subdir }, errors) {
     for (const e of validateManifest(mod, { label: `the pack in ${rel}`, skillDirs: skillDirNames(packDir) })) {
       errors.push({ ...e, dir: packDir });
     }
-    const pack = { ...normalizeManifest(mod), dir: packDir, local };
+    const pack = { ...normalizeManifest(mod), dir: packDir, local, manifestFile };
     pack.skillChecks = await scanSkillChecks(packDir, errors);
     out.push(pack);
   }
@@ -197,8 +222,8 @@ async function scanSkillChecks(packDir, errors) {
   return rules;
 }
 
-// Discover every pack structurally — canon `packs/<name>/pack.mjs` always, plus a
-// consumer's own `<localRoot>/.claudinite/local_packs/<name>/pack.mjs` when a
+// Discover every pack structurally — canon `packs/<name>/pack.json` always, plus a
+// consumer's own `<localRoot>/.claudinite/local/packs/<name>/pack.json` when a
 // localRoot is given (the repo under test / the session's project root). No
 // registry list to maintain — dropping a directory in adds it. Returns the packs
 // plus any load-time `errors` (a broken manifest, a missing id, an id collision);

@@ -1,0 +1,12 @@
+{
+  "$schema": "../../engine/pack_loader/pack.schema.json",
+  "id": "app-store-release",
+  "ruleRoutingGuidance": {
+    "belongs": "shipping to the Apple App Store: App Store Connect, provisioning, App Attest, TestFlight, review guidelines, release cadence",
+    "excludes": "iOS coding, Info.plist and Xcode project practices — that is ios; backend environment split — firebase-release"
+  },
+  "badge": "badge.svg",
+  "marker": null,
+  "detect": null,
+  "prose": "RULES.md"
+}

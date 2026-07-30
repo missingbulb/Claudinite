@@ -1,15 +1,18 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, cleanup } from '../../../../engine-tests/helpers.mjs';
+import { makeRepo, cleanup, canonPack } from '../../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../../engine/checks/helpers/repo-context.mjs';
 import noEnforcementNarration from './no-enforcement-narration.mjs';
-import canonCuration from './pack.mjs';
 import { contributedBarrierRules } from '../../../../packs/barriers/contributed.mjs';
+
+const canonCuration = await canonPack('canon-curation');
 
 const run = (root) => noEnforcementNarration.run(buildContext({ root, mode: 'all' }));
 
+const demoManifest = (prose) => `${JSON.stringify({ id: 'demo', prose, worldRules: ['rule.mjs'] }, null, 2)}\n`;
+
 const DEMO_PACK = {
-  'packs/demo/pack.mjs': "export default { id: 'demo', prose: 'RULES.md', rules: [] };\n",
+  'packs/demo/pack.json': demoManifest('RULES.md'),
   'packs/demo/rule.mjs': "const rule = { id: 'demo-rule', run() { return []; } };\nexport default rule;\n",
 };
 
@@ -63,7 +66,7 @@ test('pack-no-enforcement-narration: the pack README (the rules catalog) is neve
 
 test('pack-no-enforcement-narration: a prose-less pack contributes nothing', () => {
   const root = makeRepo({ changed: {
-    'packs/demo/pack.mjs': "export default { id: 'demo', prose: null, rules: [] };\n",
+    'packs/demo/pack.json': demoManifest(null),
     'packs/demo/rule.mjs': "const rule = { id: 'demo-rule', run() { return []; } };\nexport default rule;\n",
   } });
   try {
@@ -80,7 +83,7 @@ const packIndependence = contributedBarrierRules([{ ...canonCuration, local: tru
 
 test('pack-independence: a cross-pack import fires; own files, the engine surface, and prose stay open', () => {
   const root = makeRepo({ changed: {
-    'packs/a/pack.mjs': "import other from '../b/rule.mjs';\nimport own from './own.mjs';\nimport { finding } from '../../engine/checks/helpers/findings.mjs';\nimport { loadPacks } from '../registry.mjs';\n",
+    'packs/a/check.mjs': "import other from '../b/rule.mjs';\nimport own from './own.mjs';\nimport { finding } from '../../engine/checks/helpers/findings.mjs';\nimport { loadPacks } from '../registry.mjs';\n",
     'packs/a/own.mjs': 'export default 1;\n',
     'packs/a/README.md': 'Composes with [the b pack](../b/rule.mjs) by declaration.\n',
     'packs/b/rule.mjs': 'export default 1;\n',
@@ -90,7 +93,7 @@ test('pack-independence: a cross-pack import fires; own files, the engine surfac
   try {
     const findings = packIndependence.run(buildContext({ root, mode: 'all' }));
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].file, 'packs/a/pack.mjs');
+    assert.equal(findings[0].file, 'packs/a/check.mjs');
     assert.equal(findings[0].line, 1);
     assert.match(findings[0].what, /packs\/b/);
   } finally { cleanup(root); }

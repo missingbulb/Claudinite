@@ -83,7 +83,7 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
   id still activates while the fleet migrates (baselining rewrites it; the `local-pack-namespace`
   baseline migration tracks convergence). An
   **unknown** pack name — one that matches neither a canon nor a local pack — is a settings error,
-  caught at load (see below); a broken or id-colliding local pack.mjs is likewise surfaced as a
+  caught at load (see below); a broken or id-colliding local pack manifest is likewise surfaced as a
   blocking `config` finding, never a silent drop. A pack's fingerprint only *suspects* it is wanted
   and never forces or forbids its declaration (a local pack is never fingerprinted or seeded — it is
   always declared by hand). An entry object carries:
@@ -95,7 +95,7 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
     ([migrations/](../../migrations/README.md)) tracks the fleet's convergence; when it retires,
     the key stops being a valid setting.
   - **answers** — the pack's adoption-interview answers, **verbatim**, keyed by question id
-    (`{ "<question-id>": "<answer>" }`). A pack declares its questions on its `pack.mjs`; the
+    (`{ "<question-id>": "<answer>" }`). A pack declares its questions on its `pack.json`; the
     unanswered gap surfaces only as a mild SessionStart note (strict solely inside the bootstrap
     adoption flow), never a conformance finding —
     [packs/README.md](../../packs/README.md#adoption-interview-questions). A stored answer whose
@@ -156,15 +156,20 @@ the change in front of the session, one about the repo as a whole:
 
 One module per rule under `../packs/<pack>/`, exporting
 `{ id, severity, description, doc, why, run(ctx) }` — list it in that pack's
-`../packs/<pack>/pack.mjs` manifest. The failure message *is* the instruction: `what` states the
+`../packs/<pack>/pack.json` manifest — by filename, in `worldRules` or `workRules` (the list is the
+rule's scope, and the loader holds the manifest and the directory to each other, so a module in
+neither list is a load error rather than a rule that silently never runs).
+The failure message *is* the instruction: `what` states the
 violation, `why` the one-line motivation, `fix` the exact remedy, `doc` the corpus doc that owns
 the depth. Write the fixture test first and see it fail — each pack carries one
 `../packs-tests/<pack>/pack.test.mjs` beside the rules it proves, sharing the scratch-git-repo harness
 [engine-tests/helpers.mjs](../../engine-tests/helpers.mjs); a violating fixture must find, a clean one must not.
 A new rule ships at its real severity, fail-fast: `blocking` when a finding is a defect to
 fix, `advisory` only when the rule's own semantics are directional (a smell to judge). A whole
-new pack is just a `../packs/<name>/` directory with a `pack.mjs` (its `id`, fingerprint
-`detect`, `rules`, and optional `prose`) — [engine/pack_loader/pack-registry.mjs](../pack_loader/pack-registry.mjs)
+new pack is just a `../packs/<name>/` directory with a `pack.json` (its `id`, `ruleRoutingGuidance`,
+fingerprint `detect`, rule filenames, and optional `prose`), validated against
+[pack.schema.json](../pack_loader/pack.schema.json) —
+[engine/pack_loader/pack-registry.mjs](../pack_loader/pack-registry.mjs)
 discovers it structurally, no list to edit.
 
 **Shared helpers carry mechanism, not policy.** A `engine/checks/helpers/` helper owns only the walking —
