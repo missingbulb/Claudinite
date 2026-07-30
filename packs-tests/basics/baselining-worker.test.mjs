@@ -4,6 +4,7 @@ import {
   normalizeDelivery, resolveDelivery, DEFAULT_DELIVERY, pendingAgentic, heldStamp,
   maintenanceBranchName, openMaintenanceBranch, openMaintenancePull, shouldRequestAgent,
   unconfiguredSecrets, SECRETS_ISSUE_TITLE, workflowTriggers, ciDispatchPlan,
+  pullCreateError,
 } from '../../packs/basics/tasks/baselining/worker.mjs';
 
 // The worker's PURE decision helpers (agent-preprocessing DESIGN §7, E4). The
@@ -177,4 +178,31 @@ test('ciDispatchPlan dispatches exactly the PR-triggered AND dispatchable workfl
 test('ciDispatchPlan names a PR workflow it cannot dispatch, so the log can say what to fix', () => {
   const files = [{ name: 'ci.yml', content: 'on:\n  pull_request:\n  push:\n    branches: [main]\njobs: {}\n' }];
   assert.deepEqual(ciDispatchPlan(files), { dispatch: [], missing: ['ci.yml'] });
+});
+
+// The PR-open POST is status-checked. Before this, deliver() destructured only
+// `json` and never read `status`, so a 403 left `pr` holding the error body:
+// auto-merge was skipped (no node_id), the run reported ok, and the next cycle
+// minted a fresh branch because no OPEN PR existed to reuse. Branches piled up
+// nightly across the fleet while every stamp stood still.
+
+test('pullCreateError is null only on a 201 carrying a PR number', () => {
+  assert.equal(pullCreateError(201, { number: 42, node_id: 'PR_x' }), null);
+});
+
+test('pullCreateError catches the Actions PR permission 403 and names the setting', () => {
+  const msg = pullCreateError(403, {
+    message: 'GitHub Actions is not permitted to create or approve pull requests',
+  });
+  assert.match(msg, /not permitted to create or approve pull requests/);
+  assert.match(msg, /Allow GitHub Actions to create and approve pull requests/);
+});
+
+test('pullCreateError rejects a 201 with no PR number — a body that is not a PR', () => {
+  assert.ok(pullCreateError(201, {}));
+  assert.ok(pullCreateError(201, null));
+});
+
+test('pullCreateError falls back to the bare status when there is no message', () => {
+  assert.match(pullCreateError(502, null), /HTTP 502/);
 });
