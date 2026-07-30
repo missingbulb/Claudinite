@@ -142,7 +142,10 @@ keeps it true, both through the one wiring converge
 ([`../engine/scheduler/converge-wiring.mjs`](../engine/scheduler/converge-wiring.mjs), bootstrap
 Part 6): a one-line row of the declared packs' badges, under the title, between
 `<!-- claudinite:packs -->` markers — so it re-converges in place wherever the repo moves it, and
-anything the repo writes after the closing marker on that line is its own. Because the row is
+anything the repo writes after the closing marker on that line is its own. The opening marker sits
+on its own line above the badges and must stay there: a line that *begins* with `<!--` opens a
+CommonMark HTML block, and badges written after it on the same line render as literal `![…](…)`
+text rather than images. Because the row is
 derived from the declaration each night, it can't go stale the day the repo declares its next pack,
 which is the whole reason it isn't hand-written.
 
