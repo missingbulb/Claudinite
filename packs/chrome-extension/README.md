@@ -14,5 +14,6 @@ Releasing and Chrome-Web-Store publication are a separate, opt-in concern: the [
 | CDP-introspecting an MV3 worker traps | prose |
 | JWT auth via launchWebAuthFlow id_token | prose |
 | MV3 loads ES modules natively | prose |
+| Content scripts are classic, not modules | prose + check (`content-script-module-syntax`) |
 | Silent token refresh needs prompt=none | prose |
 | host_permissions does not bypass CORS | prose |
