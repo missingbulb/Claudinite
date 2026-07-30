@@ -4,7 +4,7 @@ import {
   normalizeDelivery, resolveDelivery, DEFAULT_DELIVERY, pendingAgentic, heldStamp,
   maintenanceBranchName, openMaintenanceBranch, openMaintenancePull, shouldRequestAgent,
   unconfiguredSecrets, SECRETS_ISSUE_TITLE, workflowTriggers, ciDispatchPlan,
-  pullCreateError, deliveryAction,
+  pullCreateError, deliveryAction, canonSource,
 } from '../../packs/basics/tasks/baselining/worker.mjs';
 
 // The worker's PURE decision helpers (agent-preprocessing DESIGN §7, E4). The
@@ -246,4 +246,33 @@ test('shouldRequestAgent escalates on a failed self-test even with no visible ch
 
 test('shouldRequestAgent defaults selftestOk true, so an older mount without one is unchanged', () => {
   assert.equal(shouldRequestAgent({ pendingCount: 0, meaningfulChange: true, checksPass: true }), false);
+});
+
+// --- rehearsal mode (#593 phase 0) ------------------------------------------
+// A run can be pointed at a canon BRANCH so a change is tried against a real
+// repo before it merges. The stamp is why this needs a decision of its own: a
+// branch head is not on trunk, and stamping it leaves the member in the exact
+// `ref-not-on-trunk` shape the #328 guard then refuses to converge over.
+
+test('canonSource defaults to the canon default branch, and is not a rehearsal', () => {
+  const s = canonSource({});
+  assert.equal(s.ref, null);
+  assert.equal(s.rehearsal, false);
+  assert.match(s.url, /missingbulb\/Claudinite/);
+});
+
+test('canonSource treats a ref as a rehearsal', () => {
+  const s = canonSource({ CLAUDINITE_CANON_REF: 'claude/some-branch' });
+  assert.equal(s.ref, 'claude/some-branch');
+  assert.equal(s.rehearsal, true);
+});
+
+test('canonSource ignores a blank ref — an unset Actions input arrives as ""', () => {
+  assert.equal(canonSource({ CLAUDINITE_CANON_REF: '' }).rehearsal, false);
+  assert.equal(canonSource({ CLAUDINITE_CANON_REF: '   ' }).rehearsal, false);
+});
+
+test('canonSource honours a fork url, and falls back when it is blank', () => {
+  assert.equal(canonSource({ CLAUDINITE_CANON_URL: 'https://example.test/x.git' }).url, 'https://example.test/x.git');
+  assert.match(canonSource({ CLAUDINITE_CANON_URL: '' }).url, /missingbulb\/Claudinite/);
 });

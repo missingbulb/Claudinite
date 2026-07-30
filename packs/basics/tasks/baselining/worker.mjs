@@ -243,6 +243,27 @@ function checkTheWorldPasses(root) {
   catch { return false; }
 }
 
+// REHEARSAL MODE (per-project-scheduling rehearsal, #593 phase 0). A run may be
+// pointed at a canon BRANCH instead of its default head, so a canon change can be
+// tried against a real repo before it merges. `CLAUDINITE_CANON_REF` selects the
+// ref; `CLAUDINITE_CANON_URL` a fork.
+//
+// The stamp is the whole reason this needs its own decision rather than an extra
+// clone argument. A branch head is NOT on trunk, and stamping it is precisely the
+// shape vendoring's #328 anti-rewind guard refuses to write over afterwards
+// (`ref-not-on-trunk`, which the sheepdog freshness sweep reads as WEDGED, not
+// late) — a rehearsal would leave the repo unable to baseline ever again. This
+// was not hypothetical: it happened by hand on 2026-07-30, to all thirteen
+// members at once, from a converge run out of an unmerged branch.
+//
+// So a rehearsal stamps NOTHING. It converges, it reports, and it leaves the
+// member's provenance exactly as it found it.
+export function canonSource(env = {}) {
+  const ref = String(env.CLAUDINITE_CANON_REF ?? '').trim();
+  const url = String(env.CLAUDINITE_CANON_URL ?? '').trim() || CANON_URL;
+  return { url, ref: ref || null, rehearsal: Boolean(ref) };
+}
+
 // Why the PR-open POST must be status-checked, as a pure predicate: null when
 // the PR was created, else the message to fail on.
 //
@@ -480,10 +501,17 @@ export async function main() {
   // 1. Fetch canon at head as a ROOTLESS tree (drop .git so apply-vendor-set's
   //    ancestry guards skip — a shallow clone can't answer them, and it is head
   //    by construction).
+  const source = canonSource(process.env);
   const tmp = mkdtempSync(join(tmpdir(), 'claudinite-canon-'));
-  git(['clone', '--depth', '1', CANON_URL, tmp]);
+  git(source.ref
+    ? ['clone', '--depth', '1', '--branch', source.ref, source.url, tmp]
+    : ['clone', '--depth', '1', source.url, tmp]);
   const headSha = git(['-C', tmp, 'rev-parse', 'HEAD']).trim();
   rmSync(join(tmp, '.git'), { recursive: true, force: true });
+  if (source.rehearsal) {
+    console.log(`baselining: REHEARSAL against ${source.url}@${source.ref} (${headSha.slice(0, 8)}) — `
+      + 'the stamp will be restored, and nothing is delivered');
+  }
 
   // 2-4. Deterministic converge: mount + stamp, then wiring, then mechanical notes.
   node([join(tmp, 'vendoring/apply-vendor-set.mjs'), '--target', root, '--ref', headSha]);
@@ -544,6 +572,23 @@ export async function main() {
   //    the breakage to a repo that was working an hour ago.
   const checksPass = (meaningfulChange && !pending.length) ? checkTheWorldPasses(root) : true;
   const requestAgent = shouldRequestAgent({ pendingCount: pending.length, meaningfulChange, checksPass, selftestOk });
+
+  // 7b. A REHEARSAL stops here. It has done the only thing it was for — converged
+  //     this real repo against a canon BRANCH and asked whether the result still
+  //     works — and now it must leave no trace: no commit, no branch, no PR, and
+  //     above all no stamp. Stamping a branch head would leave the member
+  //     `ref-not-on-trunk`, which the #328 anti-rewind guard then refuses to
+  //     converge over: a rehearsal that wedged the repo it was rehearsing on.
+  //     `git checkout -- .` restores the working tree wholesale, so the mount goes
+  //     back to the vendored snapshot the repo actually runs.
+  if (source.rehearsal) {
+    git(['-C', root, 'checkout', '--', '.']);
+    const verdict = selftestOk && checksPass ? 'PASS' : 'FAIL';
+    console.log(`baselining: rehearsal ${verdict} — selftest ${selftestOk ? 'ok' : 'FAILED'}, `
+      + `checks ${checksPass ? 'green' : 'RED'}, ${changed.length} file(s) would have changed. Working tree restored.`);
+    if (verdict === 'FAIL') process.exit(1);   // the canary's whole purpose: fail the canon PR
+    return;
+  }
 
   // 8. Deliver the converge (only when there's something to land).
   if (meaningfulChange || pending.length) {
