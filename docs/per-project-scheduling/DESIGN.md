@@ -119,7 +119,7 @@ daily slots stage the whole growth chain in order:
 02:00  daily-2h   baselining (+ migrations-apply)   ─ own mount converged before anything reads it
 03:00  daily-1h   extract, conversation-extract     ─ lessons captured from a converged repo
 04:00  daily      promote (canon repo)              ─ lifts the night's merged extracts to canon
-05:00  daily+1h   dedup                             ─ prunes against the mounted (merged) canon
+Sun 04:00 weekly  dedup                             ─ prunes against the mounted (merged) canon
 ```
 
 The stages couple through *merged* upstream state, not a barrier: extract's
@@ -127,6 +127,19 @@ auto-merge PR usually lands well within the hour before promote reads it, and
 dedup reads only the merged/mounted canon (never an in-flight promote PR), so the
 ordering is freshness staging that mostly holds and self-heals to next-day
 propagation when a merge lags.
+
+> **As-built (#582): dedup left the nightly chain for the weekly anchor.** It was
+> designed at `daily+1h` (05:00), an hour after promote. But a member's mount moves
+> most nights — baselining converges it daily — so the `sharedMount` arm fired this
+> opus dispatch, and the owner-gated PR behind it, nearly every night, for prunes
+> nobody is waiting on: a local item the canon has already absorbed stays harmlessly
+> correct until it goes. Nothing is missed by the move, because its signals are
+> **window-scoped** (§3.3) and the window is the widest due task's period — the
+> weekly run sees a full 7 days of movement, batched into one dispatch. The staging
+> that mattered survives: that morning's 02:00 baselining converges the mount before
+> dedup reads it at 04:00. The 05:00 ordering behind promote never bought freshness
+> anyway — a promotion reaches a member only once *its* baselining pulls it in,
+> which is a later day regardless.
 
 ## 3. The scheduler — one vendored hourly Action per repo
 
@@ -420,7 +433,7 @@ Per-project tasks — run by every declaring repo's own scheduler:
 | baselining (basics) | daily-2h | stamp, sharedMount | sonnet | merged-pr | **Now a per-repo self-refresh, not a fleet pass**: converge own `.claudinite/shared/` to canon head, apply pending migration notes (the old fleet apply pass folds in here), advance the stamp — delivered on the per-cycle `claudinite/maintenance-*` PR, delivery per member config. **Superseded by agent-preprocessing DESIGN §7/E4–E5**: the deterministic converge is now `agent_preprocessing` fetching **public** canon Action-side (no in-session canon checkout — E5 drops canon from the executor's sources), and the agent stage runs only on the nights judgment is left (conditional hand-off). Precondition fires ~daily via the stamp-age fallback (`canonHead` is null now — the worker fetches canon, not the Action). The canon repo skips naturally (no shared mount). |
 | growth-extract (grow_with_claudinite) | daily-1h | commits, prs, issues | opus | merged-pr | Precondition = substantiveChange; context = the commit/PR/issue lists. |
 | conversation-extract (grow_with_claudinite) | daily-1h | commits, conversationLogs | opus | merged-pr | Age-based retention prune fires correctly on quiet repos. |
-| growth-dedup (grow_with_claudinite) | daily+1h | localPacks, sharedMount, commits | opus | open-pr | `relevantCanonChanged` → `sharedMount`. The weekly re-check crutch retires; a quiet repo skips. |
+| growth-dedup (grow_with_claudinite) | weekly | localPacks, sharedMount, commits | opus | open-pr | `relevantCanonChanged` → `sharedMount`; movement, not the calendar, is what wakes it — a quiet repo skips. **Weekly as built (#582), designed `daily+1h`**: a member's mount moves most nights, so the daily slot fired an opus dispatch and an owner-gated PR nightly for prunes nobody waits on. The window-scoped signals batch the week's movement into one run (§2). |
 | tidy-issues (tidy-repo) | daily | issues, commits | sonnet | none | The undeclared-canon carve-out dies: the canon repo declares tidy-repo like everyone else. **One task per tidy dimension** (the single `repo-tidy` pass split, #481): the acting dimension. Trigger = an issue touched in the window; scope = those issues, widened to every open issue when the default branch ALSO moved substantively — that move is what can make an old issue implemented, so the "full sweep" is signal-triggered, never a calendar flag. The move does not *wake* the task, only widen it: on a repo whose `main` moves most days, waking on it re-triaged every open issue daily. |
 | tidy-prs (tidy-repo) | weekly | prs | sonnet | none | Assess-only. Gated on an open PR being opened or updated in the window; full whenever it runs (scope = every open PR, since a verdict is relative to the others). A PR verdict is a standing recommendation, not a same-day alert, so the full sweep is the **frequency declaration** — consistent with `fullSweep` retiring in §3. An untouched set of open PRs yields the verdicts already in the tracker, so it is not re-swept. |
 | tidy-branches (tidy-repo) | weekly | branches | sonnet | none | Assess-only. Gated on a branch being created or pushed in the window (the `branches` signal carries tip dates for exactly this; a push to the default or an infra branch does not count); full whenever it runs, since a branch verdict is relative to the others. Branch cruft accumulates on a weekly clock. Excludes the presumed default names and the infra branches (`conversation-logs`, `claudinite/maintenance`); the worker owns excluding the repo's *real* default branch. |
@@ -552,5 +565,6 @@ classification note — landed with this PR), and GCEC's `CLAUDE.md` / gcec
    prose-to-checks is a canon-local task, **daily**.
 9. **Growth chain ordered across the four daily slots** (review): baselining +
    migrations-apply `daily-2h` (02:00) → extract `daily-1h` (03:00) → promote
-   `daily` (04:00) → dedup `daily+1h` (05:00).
+   `daily` (04:00) → dedup `daily+1h` (05:00). *(Dedup since moved to `weekly`,
+   #582 — see the as-built note in §2; the rest of the chain is unchanged.)*
 10. **Scheduler cron minute constrained to :10–:50** (review).

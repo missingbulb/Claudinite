@@ -121,8 +121,12 @@ test('growth-extract: no merged PRs in the window adds no merged line', () => {
 
 // --- growth-dedup (the pruning stage) ----------------------------------------
 
-test('growth-dedup: daily+1h/opus/open-pr — a wrongful prune needs a human gate', () => {
-  assert.equal(dedup.frequency, 'daily+1h');
+test('growth-dedup: weekly/opus/open-pr — a wrongful prune needs a human gate', () => {
+  // Weekly, not daily: a member's mount moves most nights, so a daily slot fired
+  // this opus dispatch (and its owner-gated PR) nearly every night for prunes
+  // nobody is waiting on. Both signals are window-scoped, so the week's movement
+  // is batched into one run, never missed.
+  assert.equal(dedup.frequency, 'weekly');
   assert.equal(dedup.agent_model, 'opus');
   assert.equal(dedup.expected_outcome, 'open-pr'); // never auto-merged
   assert.deepEqual(dedup.precondition_signals, ['localPacks', 'sharedMount', 'commits']);
