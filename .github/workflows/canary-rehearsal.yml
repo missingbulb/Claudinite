@@ -1,0 +1,110 @@
+# The LIVE CANARY (#593 phase 3) — the required final step of any core change.
+#
+# The fixture rehearsal (packs-tests/rehearsal/) is the fast gate: hermetic,
+# seconds, on every PR. It has one honest weakness — a fixture only tests what
+# someone remembered to model. This is the other half: a REAL repo, really
+# adopting Claudinite, really running its own scheduler, converged against this
+# canon ref and asked whether it still works.
+#
+# WHY IT IS A SEPARATE WORKFLOW. It takes minutes, needs a cross-repo token, and
+# mutates another repository's working tree. A gate with those properties cannot
+# run on every push without becoming something people route around. So: manual
+# dispatch, plus automatic on merge to main — the post-merge smoke test, which
+# the owner's own framing settles as "still much much better than not knowing".
+#
+# WHY A DEDICATED REPO, NOT A REAL PROJECT. A rehearsal rewrites the mount and
+# can leave a failed converge behind. Pointing that at EdFringeNow means a bad
+# canon commit leaves a real project dirty at the exact moment attention is
+# elsewhere. The canary is disposable by construction; that is its whole value.
+#
+# WHAT PROTECTS THE CANARY ITSELF: the worker's rehearsal mode
+# (CLAUDINITE_CANON_REF) converges, reports, and then RESTORES the working tree —
+# no commit, no branch, no PR, and above all no stamp. Stamping a branch head
+# would leave the canary `ref-not-on-trunk`, which vendoring's #328 anti-rewind
+# guard then refuses to converge over: a rehearsal that wedges its own canary.
+name: Canary rehearsal
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Canon ref to rehearse (blank = this workflow's own ref)"
+        required: false
+        type: string
+  push:
+    branches: [main]
+    # Only the surfaces a consumer actually vendors. A README or a doc change
+    # cannot break a member, and spending minutes proving that teaches everyone
+    # to ignore the result.
+    paths:
+      - 'engine/**'
+      - 'packs/**'
+      - 'vendoring/**'
+      - 'migrations/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  # One canary at a time: two rehearsals converging the same repo would race on
+  # its working tree and report each other's damage.
+  group: canary-rehearsal
+  cancel-in-progress: false
+
+jobs:
+  rehearse:
+    name: Rehearse against the canary repo
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Resolve the canary repo
+        id: cfg
+        env:
+          CANARY: ${{ vars.CLAUDINITE_CANARY_REPO }}
+        run: |
+          if [ -z "$CANARY" ]; then
+            echo "::warning::No CLAUDINITE_CANARY_REPO variable set — skipping the live canary."
+            echo "Create a disposable repo, adopt Claudinite in it, then set the repository"
+            echo "variable CLAUDINITE_CANARY_REPO to its <owner>/<name>. Until then the fixture"
+            echo "rehearsal is the only consumer gate."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "repo=$CANARY" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check out the canary
+        if: steps.cfg.outputs.skip == 'false'
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ steps.cfg.outputs.repo }}
+          token: ${{ secrets.FLEET_GITHUB_TOKEN }}
+          path: canary
+
+      - uses: actions/setup-node@v5
+        if: steps.cfg.outputs.skip == 'false'
+        with:
+          node-version: '24'
+
+      # The canary runs ITS OWN vendored worker, not this checkout's — that is
+      # the copy a member would run, and testing anything else would be testing
+      # a code path no consumer ever executes. The worker then fetches THIS ref
+      # and converges the canary against it.
+      - name: Rehearse
+        if: steps.cfg.outputs.skip == 'false'
+        env:
+          CLAUDINITE_CANON_REF: ${{ inputs.ref || github.ref_name }}
+          CLAUDINITE_REPO_ROOT: ${{ github.workspace }}/canary
+          CLAUDINITE_REPO: ${{ steps.cfg.outputs.repo }}
+          GITHUB_TOKEN: ${{ secrets.FLEET_GITHUB_TOKEN }}
+        working-directory: canary/.claudinite/shared/packs/basics/tasks/baselining
+        run: node worker.mjs
+
+      - name: What a failure means
+        if: failure()
+        run: |
+          echo "::error::The canary repo could not be converged against this canon ref."
+          echo "A real consumer, on its real mount, either failed the self-test or went"
+          echo "red on its own conformance sweep. This is the failure mode the fixture"
+          echo "rehearsal is designed to catch early and the fleet is designed never to"
+          echo "see: do not merge (or, post-merge, revert) until the canary is green."

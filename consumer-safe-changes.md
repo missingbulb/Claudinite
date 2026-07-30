@@ -111,3 +111,50 @@ UTC and nothing else. The reasoning: the person who asked can carry the original
 consumers shouldn't inherit it, and the canon shouldn't have to re-explain a conversion (or its
 edge cases, like DST) forever. If the origin matters for revisiting the decision, it belongs in
 the issue/PR that made the change, not in the shipped artifact.
+
+## How to prove a change is consumer-safe
+
+Canon CI is not evidence about consumers. The canon's own packs are always already migrated, so a
+change that breaks every member passes it green — which is exactly what #555 did, on 2026-07-29,
+while eleven consumer packs stopped validating and (because a pack that fails validation
+contributes no rules) their checks stopped running with no other symptom.
+
+So there is a procedure, in three layers, cheapest first.
+
+**1. The fixture rehearsal — automatic, every PR.** `packs-tests/rehearsal/` builds four fixture
+consumers, one per shape the fleet has, and runs the REAL converge against your working tree:
+`apply-vendor-set` → `converge-wiring` → `migrations/apply`, then `engine/selftest.mjs` and
+`check_the_world`. It runs in **two modes**, and the second is the half people forget:
+
+| mode | stamp | answers |
+|---|---|---|
+| `fresh` | now | does the ordinary nightly path still work? |
+| `stale` | pinned in the past | **does it work WITH a migration?** — note selection only fires against an old stamp, so a record that is missing, misdated, or not idempotent shows up here and nowhere else |
+
+Adding a shape is the cheap way to cover a case the fixtures don't: a new entry in
+`fixtures.mjs` is a few lines, and it is one of the two things that discharge the
+`consumer-safe-change` check.
+
+**2. The `consumer-safe-change` check — automatic, work scope.** A change touching a contract
+consumers hold a copy of (the manifest vocabulary, a blocking rule's severity, the scheduler stub)
+must ship **either** a migration record **or** a rehearsal fixture. They answer different
+questions — *members are moved across* versus *members are unharmed* — and both are legitimate.
+A genuinely additive change needs only the fixture; anything that renames or requires something
+needs the record, because only a record moves a member that is already out there.
+
+**3. The live canary — the required final step of any core change.** A fixture only tests what
+someone remembered to model. `.github/workflows/canary-rehearsal.yml` converges a real disposable
+repo against a canon ref and asks whether it still works: manually via `workflow_dispatch`, and
+automatically on merge to `main`. Post-merge is still worth having — knowing within minutes beats
+finding out from the fleet two days later, which is how long #585 went unnoticed.
+
+Run it by hand before merging anything structural:
+`gh workflow run canary-rehearsal.yml -f ref=<your-branch>`. The worker's rehearsal mode converges,
+reports, and **restores** — no commit, no branch, no stamp. That last one matters: stamping a branch
+head leaves the member `ref-not-on-trunk`, which the #328 anti-rewind guard then refuses to converge
+over, so a careless rehearsal wedges the repo it was rehearsing on. That is not hypothetical; it
+happened by hand to all thirteen members at once on 2026-07-30.
+
+**What none of this covers.** A change whose damage is invisible to both the self-test and the
+conformance sweep — a behaviour change inside a task, say — is still on you to reason about. The
+layers narrow the class; they do not close it.

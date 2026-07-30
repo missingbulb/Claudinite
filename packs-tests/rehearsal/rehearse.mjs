@@ -55,13 +55,20 @@ export function buildFixture(fixture, mode) {
   }
   // A real repo, because the sweep scopes its file set with git and an
   // uninitialised directory makes it fall back to whatever cwd it can find.
-  const git = (...a) => execFileSync('git', a, { cwd: root, stdio: 'ignore' });
+  //
+  // `--no-gpg-sign` and the inline identity are not tidiness: a fixture must not
+  // depend on the HOST's git configuration. A machine with commit signing wired
+  // up fails these commits for reasons that have nothing to do with the canon
+  // change under test, and the rehearsal then reports a fleet-breaking result
+  // because a signing helper was unavailable.
+  const git = (...a) => execFileSync('git', [
+    '-c', 'user.email=rehearsal@example.invalid', '-c', 'user.name=rehearsal',
+    '-c', 'commit.gpgsign=false', '-c', 'gpg.format=openpgp', ...a,
+  ], { cwd: root, stdio: 'ignore' });
   git('init', '-q', '-b', 'main');
-  git('-c', 'user.email=rehearsal@example.invalid', '-c', 'user.name=rehearsal',
-    'commit', '-q', '--allow-empty', '-m', 'fixture');
+  git('commit', '-q', '--allow-empty', '--no-gpg-sign', '-m', 'fixture');
   git('add', '-A');
-  git('-c', 'user.email=rehearsal@example.invalid', '-c', 'user.name=rehearsal',
-    'commit', '-q', '-m', 'fixture content');
+  git('commit', '-q', '--no-gpg-sign', '-m', 'fixture content');
   return root;
 }
 
