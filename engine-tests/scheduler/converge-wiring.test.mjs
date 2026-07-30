@@ -196,18 +196,37 @@ test('convergeBadgeRow: a README with no heading takes the row at the top', () =
   const root = mkRepo();
   writeFileSync(join(root, README), 'Just prose.\n');
   convergeBadgeRow(root, ROW);
-  assert.equal(readFileSync(join(root, README), 'utf8').split('\n')[0], renderBadgeRow(ROW));
+  const lines = readFileSync(join(root, README), 'utf8').split('\n');
+  assert.equal(lines.slice(0, 2).join('\n'), renderBadgeRow(ROW));
+});
+
+// The whole point of the row is that it renders. A line that BEGINS with `<!--`
+// opens a CommonMark HTML block that runs through the line carrying `-->`, so
+// badges written after the opening marker on its line reach a README as the
+// literal text `![basics](…)` (#587). The opening marker therefore owns its line
+// and the badges start the next one — pinned here because nothing else would
+// notice the day someone "tidies" the row back onto one line.
+test('renderBadgeRow: the badges start their own line, so markdown parses them', () => {
+  const lines = renderBadgeRow(ROW).split('\n');
+  assert.equal(lines.length, 2);
+  assert.equal(lines[0], BADGE_ROW_START, 'the opening marker owns its line');
+  assert.ok(!lines[1].startsWith('<!--'), 'the badge line must not open an HTML block');
+  assert.ok(lines[1].startsWith('![basics]'));
+  assert.ok(lines[1].endsWith(BADGE_ROW_END), 'the closing marker stays inline, so a tagline can follow it');
 });
 
 test('convergeBadgeRow: re-converges in place, keeping what the repo wrote beside it', () => {
   const root = mkRepo();
+  // The stale row is in the pre-#587 single-line form, so this also covers the
+  // migration a consumer's next nightly performs.
   const stale = `# P\n\n${BADGE_ROW_START}![gone](packs/gone/badge.svg "gone")${BADGE_ROW_END} &nbsp;our own tagline\n`;
   writeFileSync(join(root, README), stale);
   assert.equal(convergeBadgeRow(root, ROW), true);
   const text = readFileSync(join(root, README), 'utf8');
   assert.ok(text.includes(renderBadgeRow(ROW)));
   assert.ok(!text.includes('gone'), 'the stale row is replaced, not appended to');
-  assert.ok(text.includes('&nbsp;our own tagline'), 'what the repo wrote after the marker is its own');
+  assert.ok(text.includes(`${BADGE_ROW_END} &nbsp;our own tagline`),
+    'what the repo wrote after the closing marker stays on the badges line, where it renders');
 });
 
 test('convergeBadgeRow: no README, or nothing to show, writes nothing', () => {

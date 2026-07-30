@@ -141,7 +141,9 @@ adoption:
    set is defined once in code, not re-enacted from this prose each night.
 2. **The README pack-badge row needs no step either** — the same converge writes a
    one-line row of the declared packs' badges into `README.md`, under the title, between
-   `<!-- claudinite:packs -->` markers; anything the repo writes after the closing marker
+   `<!-- claudinite:packs -->` markers — the opening one on its own line above the badges,
+   so the badges are not swallowed by the HTML block a line beginning with `<!--` opens;
+   anything the repo writes after the closing marker
    on that line is its own and is never touched. It also materializes
    `"badges": { "readme": "auto" }` into `.claudinite-checks.json` so the knob is visible
    where anyone would look for it — a repo that wants no row sets `"off"`, and the
