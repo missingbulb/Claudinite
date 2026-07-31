@@ -31,6 +31,11 @@ signature in the repo artifact* — something a post-hoc scan could observe?**
   judgment ("name by scope"), or knowledge whose failure is only visible at runtime (jsdom
   diverging from Chrome). These are why the rule is prose; don't force them.
 
+**A static signature is necessary, not sufficient.** Both shapes the working-discipline rules bar
+— a rule that pins today's code in place, and one derivable from the product's requirements —
+answer *yes* here, so screen every candidate against that bar before converting it. Leave either
+where it is; routing a requirement to the spec and its suite is its own change, not this sweep's.
+
 The check-the-world rule from DESIGN holds: if a rule is always-testable, it was never really
 part of the on-demand skill — it belongs in a pack as a check.
 
