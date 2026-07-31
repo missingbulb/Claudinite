@@ -1,0 +1,33 @@
+name: Read the site release config
+description: >-
+  Reads the repo's required `.github/site.config` (five explicit keys, no
+  defaults) and exposes them as step outputs, so the vendored reusable workflows
+  stay copy-verbatim and carry no repo values of their own. A missing file, a
+  missing or empty required key, or an unknown (typo'd) key fails the run —
+  never a silent fallback to a default publish set. Composite so it adds no
+  reusable-workflow nesting level, and dependency-free so it runs on a bare
+  runner.
+
+outputs:
+  publish_root:
+    description: The directory the published site is rooted at ("." = repo root)
+    value: ${{ steps.read.outputs.publish_root }}
+  publish_paths:
+    description: Space-separated publish set, relative to publish_root
+    value: ${{ steps.read.outputs.publish_paths }}
+  version_files:
+    description: Space-separated version records, first one the source of truth
+    value: ${{ steps.read.outputs.version_files }}
+  build_command:
+    description: The command producing the publish set ("" = nothing to build)
+    value: ${{ steps.read.outputs.build_command }}
+  test_command:
+    description: The repo's CI gate ("" = no tests)
+    value: ${{ steps.read.outputs.test_command }}
+
+runs:
+  using: composite
+  steps:
+    - id: read
+      shell: bash
+      run: node "${{ github.action_path }}/read-config.mjs"

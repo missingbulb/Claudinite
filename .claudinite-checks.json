@@ -110,6 +110,16 @@
     },
     {
       "rule": "file-placement",
+      "path": "packs/static-website/version-scheme.mjs",
+      "reason": "the version rule deliberately imports the scheme itself (VERSION_RE, the version reader) and the config parser from the pack's own vendored stubs, because those files are the definition: they are what runs in every site repo's .github/. Restating either canon-side would be a second copy that drifts from the code that actually bumps and reads. The reach into stubs/ is inherent to a pack whose logic ships vendored, not a misplacement"
+    },
+    {
+      "rule": "file-placement",
+      "path": "packs/static-website/site-config.mjs",
+      "reason": "same as version-scheme.mjs: the config rule parses .github/site.config with the very parser the vendored read-site-config action runs, so the check and the pipeline can never disagree about what a valid config is"
+    },
+    {
+      "rule": "file-placement",
       "path": "vendoring/compute-vendor-set.mjs",
       "reason": "the vendor-set computation deliberately imports the import-surface facts from the engine lib (engine/checks/helpers/module-imports.mjs \u2014 the one home the pack-independence check judges against), so \"what a pack may import\" and \"what a vendor set must carry\" share one definition; the cross-tree reach is inherent, not a misplacement"
     }

@@ -1,0 +1,44 @@
+name: Release static site
+
+# THE ORCHESTRATOR of the static-website release standard — the one entry point
+# every static-site repo of ours carries, vendored from the pack into this repo's
+# own .github/ (GitHub resolves a reusable workflow or composite action only from
+# the repo's own .github/, never from a mount). It owns the TRIGGERS and nothing
+# else: the logic lives in the local reusable workflows it calls, and every
+# repo-specific value comes from this repo's `.github/site.config` (read inside
+# those workflows), so this file is copy-verbatim in every site repo.
+#
+# Release on push: any push to main that touches the repo's declared publish set
+# cuts a release — bump the date-anchored version, tag it, deploy the site. A
+# push that touches nothing published is a clean no-op, so ordinary README and
+# tooling commits do not churn the version or redeploy an unchanged site.
+#
+# The dispatch form re-runs the same pipeline by hand; `force: true` releases
+# even when nothing published changed (a rebuild after a settings fix, a first
+# deploy on a repo whose site predates the pipeline).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Release even when no published file changed"
+        type: boolean
+        default: false
+
+# One release at a time, and never cancel one mid-flight: a cancelled run can
+# leave the version bumped with no release or deploy behind it.
+concurrency:
+  group: static-site-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    permissions:
+      contents: write   # push the version bump, create the release
+      pages: write      # deploy the site
+      id-token: write   # the OIDC token deploy-pages exchanges
+      issues: write     # the failure reporter
+    uses: ./.github/workflows/static-site-publish.yml
+    with:
+      force: ${{ inputs.force || false }}

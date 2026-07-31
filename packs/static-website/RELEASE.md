@@ -1,0 +1,176 @@
+# Static website — versioning, release-on-push and Pages publication standard
+
+Every static-site repo of ours ships the **same** pipeline: same workflows, same versioning, same
+publish-set rules, same CI gate. This doc is that contract, the setup for a new site repo, and the
+one-time GitHub settings the automation cannot turn on for itself.
+
+The workflow **logic** is authored once, in this pack's [`stubs/`](stubs/) — the
+[orchestrator](stubs/workflows/static-site-release.yml), two `workflow_call`-only **reusable
+workflows** ([publish](stubs/workflows/static-site-publish.yml),
+[deploy](stubs/workflows/static-site-deploy-pages.yml)), the
+[CI gate](stubs/workflows/static-site-ci.yml), and three composite actions
+([read-site-config](stubs/actions/read-site-config/action.yml),
+[bump-site-version](stubs/actions/bump-site-version/action.yml),
+[assemble-site](stubs/actions/assemble-site/action.yml)) — and **vendored into each site repo's own
+`.github/`**, where the whole pipeline runs with no cross-repo dependency. GitHub resolves a
+reusable workflow or a composite action only from a repo's own `.github/`, never from the shared
+mount, so "the logic lives in the pack" means the pack holds the templates and each repo hosts a
+*managed* copy: edit the pack, not the copy. Everything repo-specific is the five keys of
+`.github/site.config`, so every vendored file is copy-verbatim across repos.
+
+## The contract
+
+### Versioning — `v<major>.<ymmdd>.<n>`
+
+The site's version is **date-anchored**, and it is computed, never typed. The scheme, and the code
+that computes it, live together in [bump.mjs](stubs/actions/bump-site-version/bump.mjs):
+
+| Part | What it is |
+|---|---|
+| `major` | the wrap counter. Raised by hand only as a deliberate "new generation of the site" statement — and automatically on the decade wrap (below). |
+| `ymmdd` | the **last digit of the UTC year**, then `MM`, then `DD`. 2026-12-31 → `61231`; 2027-01-01 → `70101`. |
+| `n` | the day's release counter: `1` for the day's first release, the previous release's `n + 1` for each further release the **same** day. |
+
+**Why the year digit.** The bare `MMDD` form is not monotonic across a year boundary: December
+31st's `1.1231.3` sorts *above* the next day's `1.0101.1`, so "later" stopped meaning "bigger" —
+which is the one thing every reader of a version assumes. Prefixing the year digit restores it:
+`1.61231.3` → `1.70101.1`.
+
+**The decade wrap.** One year digit means 2029-12-31 (`91231`) is followed by 2030-01-01 (`00101`)
+— the one legitimate decrease. The major absorbs it: `1.91231.4` → `2.00101.1`, and the ordering
+holds forever. Any *other* decrease (a version dated in the future — a hand edit, a wrong clock) is
+an error and fails the bump loudly; burning a major to paper over it would hide a real problem.
+
+**Moving an existing site onto the scheme** is a one-line edit, once: rewrite the current version
+in place with the year digit inserted (`1.1231.3` → `1.61231.3`). The result is strictly greater
+than what it replaces (`61231 > 1231`), so no tag or release ordering is disturbed and no major
+bump is needed. Every release after that is the pipeline's.
+
+The version lives in the files the repo names in `version_files` — the first is the source of
+truth, the rest must agree. `sw/version-scheme` holds them to the scheme and to each other; the
+bump validates every record before writing any, so a failure never leaves a half-bumped tree.
+
+### The published artifact — an explicit list
+
+The Pages artifact is assembled from `publish_paths` under `publish_root`, **and nothing else**.
+The rejected alternative is subtractive — "serve the repo except `.claude/` and `.claudinite/`" —
+and it fails in the direction that hurts: it publishes every file nobody thought to exclude, and it
+publishes each *new* one silently, the day it lands. An additive list can only publish what the
+repo asked for, and its failure mode (a file that doesn't appear) is visible on the site and caught
+on the PR. Two guards make that concrete, in [assemble-site](stubs/actions/assemble-site/action.yml):
+a publish path that doesn't exist fails the run, and so does an assembled site with no `index.html`
+at its root. Both also run on every pull request, so a broken publish set never reaches `main`.
+
+### `.github/site.config` — required, five keys, no defaults
+
+A dotenv file, **every key required and explicit**. A default that "happens to match" a repo's
+layout silently publishes the wrong tree the day the layout or the default changes:
+
+| Key | What it is |
+|---|---|
+| `publish_root` | the directory the site is rooted at; `.` = the repo root. It becomes the site's `/`. |
+| `publish_paths` | the publish set: space-separated files/directories under `publish_root`. |
+| `version_files` | space-separated version records; the first is the source of truth. |
+| `build_command` | what produces the publish set; `""` = nothing to build, stated. |
+| `test_command` | the repo's gate; `""` = no tests, stated. |
+
+A command that needs dependencies installs them itself (`npm ci && npm test`) — that's why there is
+no sixth "setup" key and no assumption that a lockfile exists.
+
+```dotenv
+# A hand-authored site with no build step.
+publish_root=.
+publish_paths=index.html about.html assets data
+version_files=package.json
+build_command=
+test_command=npm ci && npm test
+```
+
+`read-site-config` fails the run on a missing file, a missing or empty required key, or an unknown
+(typo'd) key; `sw/site-config` fails the same cases in the repo's own checks, plus a publish path
+that matches nothing tracked, a tooling directory in the publish set, and a site with no
+`index.html`.
+
+### The workflows
+
+**One orchestrator per repo** — [`static-site-release.yml`](stubs/workflows/static-site-release.yml),
+named exactly `Release static site`. It owns only the triggers (push to `main`, plus a
+`workflow_dispatch` with `force`) and calls the local publish reusable, which runs:
+
+| Stage | What it does |
+|---|---|
+| `check` | is a release due? A push that touched the publish set, or `force`, or a repo with no release yet. The baseline is the **latest release tag**, not a time window, so a failed run is caught by the next push instead of stranded. |
+| `verify` | the repo's `test_command`, on the tree being released — **before** anything is bumped, tagged or deployed. |
+| `bump` | the date-anchored version across `version_files`, pushed to `main` as `Release v… [skip ci]`. |
+| `release` | GitHub Release `v<major>.<ymmdd>.<n>` at the bump commit, auto-generated notes. |
+| `deploy` | the Pages deploy of that exact commit, from the explicit publish set. |
+| `report-failure` | any failure above opens a fresh `workflow-failure` issue and closes earlier open ones for this workflow as duplicates, so the newest failure is the single open bug to triage. |
+
+The bump is pushed with `GITHUB_TOKEN`, which fires no workflow — which is why the deploy is an
+explicit call rather than a second push trigger, and why the push cannot loop.
+
+A push that touches nothing published is a clean no-op: no bump, no tag, no redeploy.
+
+**CI** — [`static-site-ci.yml`](stubs/workflows/static-site-ci.yml) runs on every pull request with
+**no `paths:` filter**: the Claudinite world sweep, the repo's `test_command`, the build, and a dry
+run of the artifact assembly. The missing path filter is deliberate — a path-filtered conformance
+flow arms auto-merge and then never runs, so the repo's own maintenance PR waits forever.
+
+## Setting up a new site repo
+
+1. **Declare** `static-website` in `.claudinite-checks.json` and answer the pack's two adoption
+   questions (where it's served; what's published). Re-vendor so the pack's tree lands under the
+   shared mount.
+2. **Vendor the pipeline** into the repo's own `.github/`: everything under
+   [`stubs/workflows/`](stubs/workflows/) and [`stubs/actions/`](stubs/actions/). There are no
+   tokens to replace. A repo whose site deploys somewhere **other** than Pages takes the CI stub
+   and the versioning half only, and skips the orchestrator + the two reusables — every rule in
+   this pack is gated on the orchestrator, so nothing here fires on it.
+3. **Write `.github/site.config`** with all five keys, from the adoption answers.
+4. **Put the version on the scheme** — one hand edit in each `version_files` record (`1.1231.3` →
+   `1.61231.3` for an existing site; `1.<today's ymmdd>.1` for a new one).
+5. **Open the one-time settings issue** (below) — idempotent: search the tracker first and skip if
+   one already exists, open or closed.
+6. Run the world sweep; `sw/release-workflows`, `sw/site-config` and `sw/version-scheme` are the
+   checklist for whether the wiring is complete.
+
+## The settings only a human can turn on
+
+Repository settings are not repo content: no workflow, check or agent can set them, and a pipeline
+that silently depends on one is a pipeline that fails on its first run for a reason nobody wrote
+down. So they are tracked as **state, in one issue in the adopting repo** — done once, then closed
+— not as a standing file:
+
+```markdown
+### One-time GitHub settings for the static-site release pipeline
+
+The release pipeline is vendored and green in CI, but the following are repository *settings* —
+nothing in the repo can set them, so they are turned on by hand (Settings → …). Until they are,
+the first release-on-push run fails and opens a `workflow-failure` issue.
+
+- [ ] **Pages → Build and deployment → Source = "GitHub Actions"** (not "Deploy from a branch").
+      Without it `actions/deploy-pages` fails and nothing is served.
+- [ ] **Actions → General → Workflow permissions = "Read and write permissions"**, so the pipeline
+      can push the version bump and create the release. (Not needed if the repo is already on
+      read/write.)
+- [ ] **Environments → `github-pages` → deployment branches** must allow `main` — the default
+      "protected branches only" rule already does; check it if the repo renamed its default branch.
+- [ ] Optional: **Pages → Custom domain**, if this site has one. Note that a custom domain moves
+      the site from `/<repo>/` to the domain root — see the relative-URL rule in the pack's
+      [RULES.md](RULES.md).
+
+Close this issue once the first release-on-push run has deployed successfully.
+```
+
+## Routine work
+
+- **Ship a change**: merge it to `main`. If it touched the publish set, the site redeploys under a
+  new `v<major>.<ymmdd>.<n>` on its own — that is the whole release procedure.
+- **Redeploy without a content change** (a settings fix, a first deploy): run **Release static
+  site** from its dispatch page with `force: true`.
+- **"bump version"** on a site repo means the **major** — the deliberate "new generation" statement.
+  Edit it in every `version_files` record together, in one PR; the pipeline's next run takes the
+  date and the counter from there.
+- **A failed release** leaves a `workflow-failure` issue with the run link. The stages are ordered
+  so a failure before `bump` changes nothing at all; a failure after it leaves the version bumped
+  on `main`, and the next push (or a `force` dispatch) releases from there.
