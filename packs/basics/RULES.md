@@ -26,6 +26,14 @@ Before working around a finding from a vendored check, confirm the vendored copy
 
 When a warning can't be fixed with a small cause-addressing change now without hindering current work (e.g. it's waiting on an upstream release, or the real fix is a larger refactor), open a dedicated issue for it unless one is already open, then move on — resolving it (real fix, or a consciously-chosen suppression) happens in that issue's own change.
 
+Inspecting a file through the shell (`cat`, `grep`, `sed`, `tail`) does not satisfy an edit tool's read precondition — only the read tool does. The moment shell output tells you a file is the one you are about to change, read that exact path (a targeted offset/limit window is enough) before the first edit, or you pay a round of rejected edits for information you already had on screen.
+
+A keyword search over deferred/available tools that finds nothing is evidence about your query, not about the environment: the index matches your words, not the tool's own vocabulary. Before telling the owner a step is theirs because the capability is missing, search the **literal tool name** and try it — handing back work the session could have done is the expensive half of that mistake.
+
+A fetch tool that *summarizes* cannot deliver content you must have verbatim: when the exact text matters, download it to disk and read the file instead. When a page returns 403, do not retry it and do not try a sibling URL — take the search-result snippet, attribute it to the publisher rather than asserting it as fact, and flag it for re-verification.
+
+Never publish an unverified claim about a named real person. When the primary source is unreachable, do not substitute a data-broker or aggregator listing, and do not ship the claim with a caveat — flagging is not verification, because the cost is not a wrong paragraph but a public statement someone never made. Ask the person, or the owner; one question is cheaper than any research.
+
 An approval — to merge, to ship, to proceed — applies only *backward*, to the work already in front of the owner when it's given, never to anything requested or done *after* it. A later follow-up, even a fix to the just-approved change, needs its own explicit approval; a chosen answer to a multiple-choice prompt isn't authorization just because an option's wording mentioned the action.
 
 # The task lifecycle
