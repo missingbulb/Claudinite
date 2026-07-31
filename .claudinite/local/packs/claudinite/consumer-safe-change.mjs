@@ -1,0 +1,102 @@
+import { finding } from '../../../../engine/checks/helpers/findings.mjs';
+
+// Phase 4 of #593: the rule that stops the class recurring by omission.
+//
+// `consumer-safe-changes.md` has always SAID that a change to a vendored
+// contract must carry consumers across it. Nothing enforced that, and #555
+// merged green while eleven consumer packs stopped validating — because the
+// canon's own packs were updated in the same commit, and canon CI has nothing
+// else to look at.
+//
+// So this is a check over the canon's OWN diff, not prose about the diff. It
+// runs in the WORK scope: the branch's change is exactly what it judges, and
+// judging the whole tree would be meaningless (the tree always contains a
+// manifest field; the question is whether THIS change added one).
+//
+// WHAT IT CATCHES. A change that alters a contract every consumer holds a copy
+// of, without either of the two things that carry consumers across:
+//
+//   a MIGRATION RECORD  — migrations/active_migrations/<date>-<name>.mjs, the
+//                         mechanism that rewrites a member on its next converge
+//   a REHEARSAL FIXTURE — packs-tests/rehearsal/fixtures.mjs, which proves a
+//                         consumer in that shape still converges green
+//
+// Either satisfies it. They answer different questions — "members are moved
+// across" versus "members are unharmed" — and both are legitimate; a change that
+// is genuinely additive needs only the second.
+//
+// DELIBERATELY NARROW. It triggers on three surfaces, each chosen because a
+// consumer holds a copy of it and cannot be asked to change in the same commit:
+//
+//   pack-schema.mjs        the manifest vocabulary — #555's exact surface
+//   a rule's `severity`    advisory -> blocking turns a member red overnight
+//   the scheduler stub     every member vendors it verbatim
+//
+// It does NOT fire on ordinary pack or engine edits. A rule that cried wolf on
+// every canon commit would be turned off within a week, and then it would be
+// worth nothing on the day it mattered.
+const SCHEMA = 'engine/pack_loader/pack-schema.mjs';
+const STUB = 'engine/scheduler/stubs/claudinite-scheduler.yml';
+const MIGRATIONS = 'migrations/active_migrations/';
+const FIXTURES = 'packs-tests/rehearsal/fixtures.mjs';
+
+// The contract surfaces this change touched, and why each counts. Pure over the
+// changed-file list plus a reader, so the whole decision is testable with no git.
+export function contractChanges(changed, read) {
+  const out = [];
+  if (changed.includes(SCHEMA)) {
+    out.push({ file: SCHEMA, what: 'the pack manifest vocabulary — every consumer local pack is validated against it' });
+  }
+  if (changed.includes(STUB)) {
+    out.push({ file: STUB, what: 'the scheduler workflow stub — every member vendors it verbatim' });
+  }
+  for (const file of changed) {
+    // A rule module whose severity line changed. Read the current text: a rule
+    // that now says `blocking` in a changed file is the case worth asking about,
+    // and the direction that matters (advisory -> blocking) is the one that turns
+    // a green member red without the member changing at all.
+    if (!/\.mjs$/.test(file) || file.startsWith('packs-tests/') || file.startsWith('engine-tests/')) continue;
+    const text = read(file);
+    if (text && /severity:\s*'blocking'/.test(text) && /^\s*const rule = \{/m.test(text)) {
+      out.push({ file, what: 'a rule that is blocking — a severity a member did not ask for turns it red overnight' });
+    }
+  }
+  return out;
+}
+
+// Did this change ALSO carry consumers across? Either answer is enough.
+export function carriesConsumers(changed) {
+  return {
+    migration: changed.some((f) => f.startsWith(MIGRATIONS)),
+    fixture: changed.includes(FIXTURES),
+  };
+}
+
+const rule = {
+  id: 'consumer-safe-change',
+  severity: 'blocking',
+  scope: 'work',
+  description: 'A change to a contract consumers hold a copy of ships a migration record or a rehearsal fixture',
+  doc: 'consumer-safe-changes.md',
+  why: 'canon CI cannot see a consumer — the canon\'s own packs are always already migrated, so a change that breaks every member passes it green (#555 did exactly that)',
+
+  run(work) {
+    const changed = work.changedFiles ?? [];
+    if (!changed.length) return [];
+    const touched = contractChanges(changed, (f) => work.read(f));
+    if (!touched.length) return [];
+    const carried = carriesConsumers(changed);
+    if (carried.migration || carried.fixture) return [];
+
+    const first = touched[0];
+    return [finding(rule, {
+      file: first.file,
+      what: `this change touches ${first.what}, but carries no migration record and no rehearsal fixture`,
+      fix: `add a record under ${MIGRATIONS} that moves members across, OR a shape in ${FIXTURES} that proves a consumer `
+        + 'still converges green — then say in the PR which one you chose and why. If the change is genuinely additive, '
+        + 'the fixture is the honest answer; if it renames or requires something, only a record will move the fleet.',
+    })];
+  },
+};
+
+export default rule;

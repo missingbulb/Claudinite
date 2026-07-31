@@ -15,12 +15,13 @@ const HOOKS_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'eng
 // steps, so the test exercises the ORCHESTRATOR's own contract — sequence,
 // stdout forwarding, lifecycle logging, exit 0 — without dragging in the real
 // children and their dependencies.
-function makeCorpus({ prefs = '#!/bin/bash\n', prose = '', skills = '', env = '', interview = '' } = {}) {
+function makeCorpus({ prefs = '#!/bin/bash\n', prose = '', skills = '', env = '', interview = '', selftest = '' } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-sessionstart-'));
   mkdirSync(join(root, 'engine', 'hooks'), { recursive: true });
   mkdirSync(join(root, 'engine', 'pack_loader'), { recursive: true });
   copyFileSync(join(HOOKS_DIR, 'session-start-command.sh'), join(root, 'engine', 'hooks', 'session-start-command.sh'));
   mkdirSync(join(root, 'engine', 'hooks', 'steps'), { recursive: true });
+  writeFileSync(join(root, 'engine', 'selftest.mjs'), selftest);
   writeFileSync(join(root, 'engine', 'hooks', 'steps', 'inject-preferences.sh'), prefs);
   writeFileSync(join(root, 'engine', 'pack_loader', 'inject-pack-prose.mjs'), prose);
   writeFileSync(join(root, 'engine', 'pack_loader', 'mount-skills.mjs'), skills);
@@ -50,11 +51,12 @@ test('orchestrator runs steps in order, forwards only step stdout, logs the life
   // order, followed by the one-line confirmation footer; the timestamped log
   // goes to stderr + the file, never stdout.
   assert.ok(r.stdout.startsWith('PREFS\nPROSE\n'), r.stdout);
-  assert.match(r.stdout, /^Claudinite session-start: ran 5 steps \(inject-preferences, load-active-prose, mount-skills, env-check, interview-check\) at .+\.$/m);
+  assert.match(r.stdout, /^Claudinite session-start: ran 6 steps \(selftest, inject-preferences, load-active-prose, mount-skills, env-check, interview-check\) at .+\.$/m);
   assert.doesNotMatch(r.stdout, /WARNING/); // all steps exited 0
   const log = readFileSync(join(projectDir, '.claudinite-hooks.log'), 'utf8');
   for (const s of [
     'run=testrun orchestrator: start',
+    'selftest: start', 'selftest: done exit=0',
     'inject-preferences: start', 'inject-preferences: done exit=0',
     'load-active-prose: start', 'load-active-prose: done exit=0',
     'mount-skills: start', 'env-check: start', 'interview-check: start',
