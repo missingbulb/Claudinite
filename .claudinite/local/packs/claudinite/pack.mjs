@@ -1,4 +1,5 @@
 import homeSeededPacksDeclared from './home-seeded-packs-declared.mjs';
+import packDiscoveryEntryAwait from './pack-discovery-entry-await.mjs';
 
 // The canon home repo's OWN local pack — Claudinite-specific working rules and
 // lessons that are NOT portable to consumers (those belong in packs/, the shared
@@ -18,5 +19,5 @@ export default {
   },
   badge: 'badge.svg',
   prose: 'RULES.md',
-  worldRules: [homeSeededPacksDeclared],
+  worldRules: [homeSeededPacksDeclared, packDiscoveryEntryAwait],
 };
