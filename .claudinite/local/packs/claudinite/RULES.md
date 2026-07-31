@@ -213,3 +213,35 @@ prose below).
   surfaces late. Write the two-root form up front: make the `.claudinite/(shared|local)/` prefix
   optional in a pattern, and in a command probe for `.claudinite/shared/` first, falling back to
   the repo root.
+- **Tightening a contract that member-owned files must satisfy has NO carrier — baseline
+  migrations move paths, not schemas — so it lands as a fleet-wide silent break.** Vendoring
+  refreshes `.claudinite/shared/` only; a member's `.claudinite/local/packs/<pack>/pack.mjs` is
+  the member's own content, which no converge may edit. And `migrations/` cannot help: its record
+  is a path relocation (`aliases: [{ canonical, legacy }]`, applied by `applyFileAliases`), so it
+  has no way to express "the field `rules` is now `worldRules`/`workRules`" or "`ruleRoutingGuidance`
+  is now required" — exactly what #555 tightened, shipping no record because there was none to
+  ship. The break is worse than loud: `normalizeManifest` returns `{ ...mod, rules }` with `rules`
+  rebuilt **only** from the two scoped keys, so a legacy manifest's array is overwritten with `[]`
+  and **that pack's checks simply stop running** — no error, the pack still loads. Measured on
+  2026-07-30: **eleven local packs across ten of the thirteen members** had to be rewritten by
+  hand in one session, and the members' own pack tests asserted `pack.rules` and went red on CI
+  the moment the manifests moved. So before tightening anything a member's own file must satisfy,
+  ask what carries it across the fleet; if the answer is "nothing", the change is not ready —
+  accept the legacy shape in `normalizeManifest` (and say so) until a carrier exists, and never
+  let a stale declaration degrade to *fewer checks running* rather than a failure.
+- **This repo's fleet machinery reports success from reaching the end of the code path, not from
+  the artifact — check the response, and alarm on the stamp.** `deliver()` in
+  `packs/basics/tasks/baselining/worker.mjs` destructured only `json` from the PR-open POST and
+  never read `status`, so a 403 (the member's *"Allow GitHub Actions to create and approve pull
+  requests"* setting, invisible from inside the Action) put the error body in `pr`, left
+  `pr.node_id` undefined, skipped the auto-merge arm silently — and the run still logged
+  `preprocessing basics/baselining: ok`. It compounds because `openMaintenancePull` reuses by open
+  **PR**, not by branch: a cycle that pushes a branch but fails to open its PR finds nothing to
+  reuse and mints a fresh one nightly. Measured 2026-07-29/30: **eleven of twelve consumers frozen
+  on the 2026-07-28 canon ref, 27 orphan `claudinite/maintenance-*` branches, several repos
+  carrying two for one day** — and every nightly run green throughout. Nothing detected it; the
+  owner did, by feel ("I feel the situation is bad"). Two habits follow. Read the status of every
+  API write whose result you then branch on — a body-only destructure turns a refusal into a
+  plausible object. And judge the fleet by **members' stamps**, never by scheduler run
+  conclusions: the stamp is the only artifact that moves when baselining actually worked, which is
+  why a stamp-staleness alarm (#331) is the missing guard and not a nice-to-have.
