@@ -73,6 +73,14 @@ Follow the extract stage's check-authoring discipline (the local promotion ladde
 4. **Delete the prose the check now covers** — whole, never trimmed. The deletion test below is
    how you decide which paragraphs those are.
 
+**Prefer a positive allowlist over an enumerated API surface to a list of the bad cases.** Where the
+rule's subject is a bounded API — a fixed set of enum cases, a known set of call shapes — flag
+everything that is *not* the one allowed literal, rather than banning the values you don't want. That
+buys two things a ban list can't: a case that doesn't exist yet is caught the day it lands, and an
+indirect argument (a variable where a literal was expected) becomes a finding too — refusing to
+reason about indirection is a feature, since indirection is precisely what would otherwise defeat the
+check. Invert this only where the allowed set is genuinely open-ended.
+
 **Before writing a rule off as un-checkable, try parsing the file's structure instead of grepping
 its text.** Grep finds the pattern anywhere; parsing finds it in the one spot the rule means —
 which kills the false alarm. (Example: `Authorization` is only wrong inside a CloudFront policy's
@@ -81,6 +89,14 @@ check to the same fixture bar.
 
 When even a scoped parser can't make detection confident, **leave the prose and log the
 candidate** to a tagged conversion-backlog issue rather than shipping a shaky check.
+
+**"Not statically checkable" was a verdict about the tree's shape at the time, not about the rule —
+re-derive it against today's sources.** A removal, a migration, or a consolidation can collapse the
+entry points a rule had to cover, and a rule that genuinely needed data-flow tracing across many
+call sites becomes a one-literal scan once only two remain. So when a sweep meets prose a previous
+sweep left behind, re-ask the question rather than trusting the recorded verdict. (This applies to
+the *technical* un-checkability finding only — an owner's rejection of a conversion is settled, and
+re-derivable objections are not a licence to re-litigate it.)
 
 ## Coming out: the deletion test
 

@@ -10,6 +10,13 @@ work is: declare, answer what the pack asks, materialize its content, satisfy wh
 
 ## 1. Declare
 
+**Finding out what is adoptable is not a local lookup.** The repo's vendored mount holds only what
+it already adopted, so nothing in the checkout enumerates the catalog — don't grep the tree to
+"prove" a pack is missing. Shallow-clone the canon to scratch, list its pack directory, pick from
+there, and delete the clone when the adoption is done. And **match the owner's plain-words name to a
+pack id yourself** before asking them to disambiguate: the names differ from how people describe
+them, so read the candidate's manifest and prose in that clone and confirm the fit.
+
 Add each chosen pack's id to `packs` in `.claudinite-checks.json`. A pack that only makes sense
 alongside another names it in `requires`; `resolveDeclaredPacks` pulls that closure in when the
 declaration is written, so you declare what you *chose* and its dependencies follow (e.g.
