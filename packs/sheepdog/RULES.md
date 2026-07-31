@@ -37,7 +37,13 @@ nightly, so the rollout needs no coordination. And it **never overwrites a point
 the fleet is the authority on where its preferences live, but a pointer someone set deliberately is a
 decision the sweep cannot second-guess. A dormant member is skipped entirely.
 
-**One manual lever, not a fourth sweep** — [force-fleet-baseline.mjs](fleet-baseline/force-fleet-baseline.mjs)
+The fleet that existed when the setting landed was carried by a **baseline migration** instead (a
+`settings` op, applied by each member's own baselining in the same commit that vendors the engine
+accepting the key). This sweep is the **standing** half: a migration record is dated, retires, and
+carries its value as a literal in shared canon, while the sweep reads the home from this repo's config
+and so keeps serving members adopted after the record is gone.
+
+**One manual lever, not a fifth sweep** — [force-fleet-baseline.mjs](fleet-baseline/force-fleet-baseline.mjs)
 fires every covered member's own `claudinite-scheduler.yml` with `overrides: FORCE_TASKS=baselining`,
 which is the same button the owner would press in that repo's Actions tab, pressed across the fleet in
 one run. It is a **dispatcher, not a maintainer**: each member converges its own mount, with its own

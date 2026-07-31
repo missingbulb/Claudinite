@@ -36,6 +36,14 @@ The write is **one PUT to the member's default branch**, guarded by the blob sha
 
 `expected_outcome: none` is therefore not a contradiction: the ceiling describes what a task may do to **its own** repo, and this task opens no PR here at all.
 
+## The one-time backfill is not this sweep's job
+
+The fleet that existed when the setting landed was carried by a **baseline migration**
+([`migrations/active_migrations/2026-07-29-preferences-home.mjs`](../../../../migrations/active_migrations/2026-07-29-preferences-home.mjs)),
+whose `settings` op declares the key on each member's next baselining — in the *same* transactional commit that vendors the engine which accepts it. That is strictly better than an outside write for the members that already exist: no ordering window, and no token that can write to other repos.
+
+What the migration cannot be is **standing**. It is a dated record that retires, and its value is a literal in shared canon — which is exactly why it is allowed to name one fleet's repo (the same exemption the barriers rule grants migrations: naming the specific thing is a one-off record's purpose). This sweep is the durable half: it reads the home from *this repo's* config, so it serves any fleet, and it keeps working for members adopted long after the record is gone.
+
 ## The engine gate — why the rollout needs one
 
 A top-level settings key the engine does not know is a **blocking `config` error** (an unknown setting is as much an error as invalid JSON). A member runs whatever engine version its vendored mount carries, so writing the pointer into a member whose mount predates the `preferences` key would break that repo's checks until its next baselining.

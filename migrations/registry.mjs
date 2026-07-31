@@ -138,6 +138,48 @@ export async function applyRewrites(migration, { read, write }) {
   return done;
 }
 
+// The declaration a settings op writes into. Fixed, not a parameter: this op sets
+// SETTINGS, and settings live in exactly one file. A `file` knob would quietly make
+// it a general JSON editor, which is a much larger thing to own.
+export const DECLARATION = '.claudinite-checks.json';
+
+// Write side — "every member should now declare this": for each declared
+// `{ key, value }`, set that TOP-LEVEL settings key when the member does not already
+// carry one. The op the other three could not express — `materialize` writes a whole
+// template (it would clobber a per-repo declaration) and `rewrite` replaces literal
+// text (a declaration has no literal in common across repos) — and the shape a
+// fleet-wide settings change actually has: a new key every member needs, whose value
+// the canon knows and the member cannot derive.
+//
+// SET-IF-ABSENT, never overwrite. A key the repo already declares is that repo's
+// decision, even when it differs from the record's value; a migration that reasserted
+// it would fight the project every night. That makes the op idempotent by
+// construction — a no-op once the key is there.
+//
+// It round-trips the file through JSON rather than editing settings as text, so the
+// result is canonical 2-space settings with a trailing newline (what `--init` writes,
+// and what every fleet declaration already is). Malformed JSON is left alone: the
+// world runner reports it as the settings error it is, and a migration is not the
+// place to guess at a repair. Same `appliesTo` gate as the other write ops.
+export async function applySettings(migration, { read, write }) {
+  if (!migration.settings?.length) return [];
+  if (migration.appliesTo && !(await migration.appliesTo(read))) return [];
+  const raw = await read(DECLARATION);
+  if (raw == null) return [];                       // not a member — nothing to declare into
+  let config;
+  try { config = JSON.parse(raw); } catch { return []; }
+  if (config === null || typeof config !== 'object' || Array.isArray(config)) return [];
+  const done = [];
+  let next = config;
+  for (const { key, value } of migration.settings) {
+    if (key in next) continue;                      // the repo has spoken — leave it
+    next = { ...next, [key]: value };
+    done.push(`${DECLARATION}: ${key}`);
+  }
+  if (done.length) await write(DECLARATION, `${JSON.stringify(next, null, 2)}\n`);
+  return done;
+}
+
 // A migration record MAY carry a machine-readable AGENTIC note (task-prework
 // DESIGN §7, the primitive absorbed from #405): member-side adaptation that no
 // script can do — adapting consumer-authored `local/packs/` content to a changed
