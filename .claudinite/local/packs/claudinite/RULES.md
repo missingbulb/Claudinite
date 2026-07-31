@@ -56,6 +56,41 @@ prose below).
   pack (and canon-delivered declaration changes) on every member is gated `!isHome`, so the canon
   home is the one repo it never reaches: what the fleet receives automatically, this repo's own
   `.claudinite-checks.json` only ever gets by hand.
+- **Pack discovery imports the whole pack tree eagerly — declaration is irrelevant.**
+  `discoverPacks` imports every `packs/<name>/pack.mjs` on disk and `scanSkillChecks` imports
+  every `<pack>/skills/<skill>/checks.mjs` beside it, *before* activation is consulted. So
+  anything in that import graph loads in every repo under every declaration, and a module that is
+  also a CLI entry point gets re-imported while it is still evaluating: a top-level `await` in its
+  entry block then never settles and Node exits 13 having run nothing (#581 — `interview.mjs
+  check` deadlocked fleet-wide, invisible because the SessionStart orchestrator's fail-soft reads
+  it as a merely-absent note). Start the work *after* evaluation completes — `check(…).catch(…)`.
+  Enforced by `pack-discovery-entry-await`; the corollary it can't check is to keep these modules
+  import-light in the first place.
+- **Green canon CI is not evidence about a consumer — the canon's own packs are always already
+  migrated.** The one thing canon CI cannot exercise is what a canon change does to a repo on its
+  *next* baselining, and every consumer-breaking change so far passed it cleanly: #555 (manifest
+  became a closed vocabulary → 11 local packs across 10 repos silently stopped running their
+  checks), #585 (PR-open status never read → 12 repos frozen two days while the run reported
+  `ok`), #588 (auto-merge armed where no PR CI exists → a PR that never lands). All were invisible
+  until a consumer ran. So when a change adds or requires a manifest field, moves a check's
+  severity or id, or alters a vendored contract, say in the PR *which* consumer-side evidence
+  carries it — a migration record, or a demonstration that an unmigrated member stays green — and
+  never treat a green canon suite as that evidence (#592 tracks the missing gate).
+- **A pack's `RULES.md` is injected into every session that declares the pack — an idea nobody can
+  act on belongs in `docs/`, and a pack file must not link there.** Deferred directions, blocked
+  proposals and status live in `docs/` (e.g. `docs/future-directions.md`) precisely because pack
+  prose costs context in every consumer session. And the pointer cannot go the other way: `docs/`
+  is outside the vendor set, so a link from any file under `packs/` resolves to nothing in every
+  consumer — the `reference-integrity` class that reached `main` unnoticed in #424 (and that
+  check is work-scoped, so it only sees paths the branch itself deletes). Reference `docs/` from
+  the issue or PR instead.
+- **Pick a scheduled task's cadence from how often its signal actually moves.** On a member the
+  mounted canon changes most nights — baselining converges `.claudinite/shared/` daily — so any
+  precondition reading `sharedMount` fires nearly every night, spending an opus dispatch per
+  firing. Where the work isn't latency-sensitive (pruning, dedup), a stale item stays harmlessly
+  correct, so daily buys noise, not freshness: `growth-dedup` moved to `weekly` in #583 and loses
+  nothing, because the signals are window-scoped (`sinceIso`) and `windowStart` widens to the
+  widest due task's period — a weekly run sees all 7 days, batched rather than dropped.
 - **The home doesn't declare `git-github`, so its skills never mount — never conclude "no such
   skill" from `.claude/skills/`.** `mount-skills.mjs` filters on the *literal* declaration
   (`isActive(p, { packs: declared })`), not the `requires` closure `check_the_world.mjs` resolves,
@@ -213,3 +248,35 @@ prose below).
   surfaces late. Write the two-root form up front: make the `.claudinite/(shared|local)/` prefix
   optional in a pattern, and in a command probe for `.claudinite/shared/` first, falling back to
   the repo root.
+- **Tightening a contract that member-owned files must satisfy has NO carrier — baseline
+  migrations move paths, not schemas — so it lands as a fleet-wide silent break.** Vendoring
+  refreshes `.claudinite/shared/` only; a member's `.claudinite/local/packs/<pack>/pack.mjs` is
+  the member's own content, which no converge may edit. And `migrations/` cannot help: its record
+  is a path relocation (`aliases: [{ canonical, legacy }]`, applied by `applyFileAliases`), so it
+  has no way to express "the field `rules` is now `worldRules`/`workRules`" or "`ruleRoutingGuidance`
+  is now required" — exactly what #555 tightened, shipping no record because there was none to
+  ship. The break is worse than loud: `normalizeManifest` returns `{ ...mod, rules }` with `rules`
+  rebuilt **only** from the two scoped keys, so a legacy manifest's array is overwritten with `[]`
+  and **that pack's checks simply stop running** — no error, the pack still loads. Measured on
+  2026-07-30: **eleven local packs across ten of the thirteen members** had to be rewritten by
+  hand in one session, and the members' own pack tests asserted `pack.rules` and went red on CI
+  the moment the manifests moved. So before tightening anything a member's own file must satisfy,
+  ask what carries it across the fleet; if the answer is "nothing", the change is not ready —
+  accept the legacy shape in `normalizeManifest` (and say so) until a carrier exists, and never
+  let a stale declaration degrade to *fewer checks running* rather than a failure.
+- **This repo's fleet machinery reports success from reaching the end of the code path, not from
+  the artifact — check the response, and alarm on the stamp.** `deliver()` in
+  `packs/basics/tasks/baselining/worker.mjs` destructured only `json` from the PR-open POST and
+  never read `status`, so a 403 (the member's *"Allow GitHub Actions to create and approve pull
+  requests"* setting, invisible from inside the Action) put the error body in `pr`, left
+  `pr.node_id` undefined, skipped the auto-merge arm silently — and the run still logged
+  `preprocessing basics/baselining: ok`. It compounds because `openMaintenancePull` reuses by open
+  **PR**, not by branch: a cycle that pushes a branch but fails to open its PR finds nothing to
+  reuse and mints a fresh one nightly. Measured 2026-07-29/30: **eleven of twelve consumers frozen
+  on the 2026-07-28 canon ref, 27 orphan `claudinite/maintenance-*` branches, several repos
+  carrying two for one day** — and every nightly run green throughout. Nothing detected it; the
+  owner did, by feel ("I feel the situation is bad"). Two habits follow. Read the status of every
+  API write whose result you then branch on — a body-only destructure turns a refusal into a
+  plausible object. And judge the fleet by **members' stamps**, never by scheduler run
+  conclusions: the stamp is the only artifact that moves when baselining actually worked, which is
+  why a stamp-staleness alarm (#331) is the missing guard and not a nice-to-have.
