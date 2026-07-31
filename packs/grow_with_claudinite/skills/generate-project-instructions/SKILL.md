@@ -71,8 +71,8 @@ rules land in the project's own local pack.
 And a *statement of what the product does* isn't a pack rule at all — not even a local one. A pack, canon
 or local, homes **how we work**: the conventions, gotchas and review discipline that recur across tasks
 whatever the feature happens to be. The working-discipline rules bar the requirement-shaped rule outright;
-what this step adds is recognizing one while it wears a convention's clothes — a rule asserting which
-entities exist, what a surface must render, or that a feature's parts are wired to each other. Pack-worthiness
+here, catch it wearing a convention's clothes — a rule asserting which entities exist, what a surface must
+render, or that a feature's parts are wired to each other. Pack-worthiness
 is a question about the *work*, not about how load-bearing the code is — a real gap in product coverage is a
 requirements gap, and answering it with a pack is how a feature's spec ends up somewhere nothing executes it.
 
