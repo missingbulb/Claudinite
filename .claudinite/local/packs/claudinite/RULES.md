@@ -304,3 +304,13 @@ prose below).
   `run-active-pack-rules.mjs`), write that number, re-run the tally test. Measured 2026-07-31: the
   same tally was resolved three times in one day across two sessions (67→68 in #600, then 68→69→70
   twice inside #593's merge sequence).
+  The nastier half of the same tally: a PR that **forgets** the aggregate doesn't conflict at all.
+  #607 bumped its pack's own row in the catalog table — the *other* hand-maintained number a new
+  rule must update — and never touched the corpus tally, so it merged clean on a suite that had run
+  **once**, 12.5 hours earlier against a base that predated #606's own check, and left `main` red
+  for every PR after it until #608 corrected 68 → 69 as an aside. A conflict at least stops you;
+  the omission is silent, because a whole-tree aggregate is judged against the merged result and
+  no branch's CI ever sees that. So a green from before `main` moved is not evidence about
+  post-merge `main`: re-run the suite against current `main` immediately before merging a
+  rule-adding PR, and update **both** numbers. (Portable — a promote candidate for `git-github`'s
+  `merge-to-main`, which today says nothing about merging on a stale green.)
