@@ -1,4 +1,5 @@
 import featureRequirementsFirst from './feature-requirements-first.mjs';
+import requirementsCaseWallClock from './requirements-case-wall-clock.mjs';
 
 // The executable-requirements framework standard: the concrete, portable
 // conventions — layout, naming, gates, kinds, gallery, determinism — shared by
@@ -33,5 +34,6 @@ export default {
       distill: "record the source; set config.spec to the executable spec's home (default dev/requirements/requirements.md) and extract the initial requirements from the named source",
     },
   ],
+  worldRules: [requirementsCaseWallClock],
   workRules: [featureRequirementsFirst],
 };
