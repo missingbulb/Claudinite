@@ -77,6 +77,23 @@ layout silently publishes the wrong tree the day the layout or the default chang
 A command that needs dependencies installs them itself (`npm ci && npm test`) — that's why there is
 no sixth "setup" key and no assumption that a lockfile exists.
 
+**A repo's own values reach `build_command` as environment variables.** Both the deploy and the PR
+gate export every **repo variable** (Settings → Secrets and variables → Actions → Variables) into
+the environment before running the repo's commands, so a build that needs a value the pack knows
+nothing about — an analytics beacon token, a base URL — reads it as `$NAME`:
+
+```dotenv
+build_command=sed -i "s#REPLACE_WITH_TOKEN#${ANALYTICS_TOKEN}#" site/analytics.js
+```
+
+Wholesale rather than a named `env:` block, because these workflow files are copy-verbatim across
+every site repo: naming one repo's variables here would put that repo's vocabulary in all of them.
+Repo *variables* are non-secret by definition — that is the distinction GitHub draws between `vars`
+and `secrets` — and `secrets` is never read or exported. An unset variable simply isn't in the
+environment, so a build that substitutes it produces the empty value; make that the safe outcome
+(a beacon that no-ops), not a half-configured one. The export runs in CI too, so a build that
+depends on a variable behaves the same on the pull request as on the release.
+
 ```dotenv
 # A hand-authored site with no build step.
 publish_root=.
