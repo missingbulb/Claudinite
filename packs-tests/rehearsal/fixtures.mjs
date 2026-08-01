@@ -106,10 +106,12 @@ export const FIXTURES = [
   },
   {
     name: 'canon-packs',
-    why: 'no local pack at all — isolates canon-side breakage from local-pack breakage',
+    why: 'no local pack at all — isolates canon-side breakage from local-pack breakage. Also declares '
+      + 'executable-requirements (no spec file present) to prove the new requirements-case-wall-clock '
+      + 'check converges green on a consumer with no requirements tree yet',
     files: {
       'README.md': '# fixture-canon-packs\n\nA rehearsal fixture.\n',
-      '.claudinite-checks.json': checks(['basics']),
+      '.claudinite-checks.json': checks(['basics', 'executable-requirements']),
     },
   },
   {
