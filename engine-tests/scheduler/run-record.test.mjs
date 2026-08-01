@@ -23,6 +23,16 @@ test('a filed dispatch is an agent run; a suppressed or already-filed one is a d
   assert.equal(taskRunOutcome(rec({ dispatch: { action: 'skip' } })), 'deferred');
 });
 
+test('a task deferred by another task\'s exclusive claim is a deferral, not a skip', () => {
+  // Same reasoning as at-most-one-open above: the precondition DID find work, and
+  // this run chose not to do it. Counting it as a skip would make a repo whose
+  // nightly chain is repeatedly held back look exactly like one with nothing to do.
+  assert.equal(taskRunOutcome(rec({ deferred: 'deferred — basics/baselining claimed this run exclusively' })), 'deferred');
+  // Deferral is decided before preprocessing, so the flag can ride a record that
+  // would otherwise have read as a preprocess run.
+  assert.equal(taskRunOutcome(rec({ deferred: 'x', inline: true })), 'deferred');
+});
+
 test('an agentless task that ran its preprocessing is a preprocess run', () => {
   assert.equal(taskRunOutcome(rec({ inline: true, preprocessing: true, preprocessResult: { ok: true } })), 'preprocess');
 });
