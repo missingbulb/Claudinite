@@ -5,7 +5,6 @@ import discover from '../../packs/grow_with_claudinite/tasks/growth-discover-pac
 import proseToChecks from '../../packs/grow_with_claudinite/tasks/prose-to-checks-sweep/task.mjs';
 import extract from '../../packs/grow_with_claudinite/tasks/growth-extract/task.mjs';
 import dedup from '../../packs/grow_with_claudinite/tasks/growth-dedup/task.mjs';
-import conversationExtract from '../../packs/grow_with_claudinite/tasks/conversation-extract/task.mjs';
 import usageFold from '../../packs/grow_with_claudinite/tasks/usage-fold/task.mjs';
 
 // grow_with_claudinite per-repo task declarations + preconditions
@@ -44,8 +43,11 @@ test('growth-discover-packs: fires weekly (standing reflection, worker no-ops wh
 
 // --- prose-to-checks-sweep (per-repo, pack_paths config) ---------------------
 
-test('prose-to-checks-sweep: daily/opus/open-pr, no signals', () => {
-  assert.equal(proseToChecks.frequency, 'daily');
+// WEEKLY, not daily: growth-extract now runs the prose-to-checks skill over its own
+// additions on every capture run, so fresh prose never waits for this task. What is
+// left is the standing backlog, which moves on a weekly clock.
+test('prose-to-checks-sweep: weekly/opus/open-pr, no signals', () => {
+  assert.equal(proseToChecks.frequency, 'weekly');
   assert.equal(proseToChecks.agent_model, 'opus');
   assert.equal(proseToChecks.expected_outcome, 'open-pr'); // a check can break CI → reviewed, not auto-merged
   assert.deepEqual(proseToChecks.precondition_signals, []);
@@ -66,16 +68,21 @@ test('prose-to-checks-sweep: an empty/invalid pack_paths falls back to the defau
   assert.match(proseToChecks.precondition({}, { pack_paths: 'nope' }).context.join(' '), /\.claudinite\/local\/packs/);
 });
 
-// --- growth-extract (the capture stage) --------------------------------------
+// --- growth-extract (the capture stage — BOTH sources in one task) -----------
+//
+// The activity half and the conversation half were two tasks firing in the same
+// nightly slot against the same local packs. They are one task now, so the
+// precondition has two independent arms and the Context has to say WHICH halves
+// are live — a run woken only by an aged log must not invent an activity window.
 
-test('growth-extract: daily-1h/opus/merged-pr over the window signals', () => {
+test('growth-extract: daily-1h/opus/merged-pr over the window AND the logs signals', () => {
   assert.equal(extract.frequency, 'daily-1h');
   assert.equal(extract.agent_model, 'opus');
   assert.equal(extract.expected_outcome, 'merged-pr'); // additive local-pack edits auto-merge after CI
-  assert.deepEqual(extract.precondition_signals, ['commits', 'prs', 'issues']);
+  assert.deepEqual(extract.precondition_signals, ['commits', 'prs', 'issues', 'conversationLogs']);
 });
 
-test('growth-extract: fires only on a SUBSTANTIVE default-branch change', () => {
+test('growth-extract: a SUBSTANTIVE default-branch change fires it (a bot bump does not)', () => {
   // A bot bump / [skip ci] / nightly baselining commit advancing main is not a
   // lesson to extract — the same discrimination the legacy gate made.
   assert.equal(extract.precondition({ commits: { substantiveChange: false } }).run, false);
@@ -111,12 +118,79 @@ test('growth-extract: merged-in-window PRs are named in the binding scope', () =
   assert.match(ctx, /#4/); // the open-and-touched set is still there alongside
 });
 
-test('growth-extract: no merged PRs in the window adds no merged line', () => {
+test('growth-extract: no merged PRs in the window adds no merged-PR line', () => {
   const v = extract.precondition({
     commits: { substantiveChange: true, list: [{ sha: 'abcdef1234', substantive: true }] },
     prs: { touched: [], merged: [] },
   });
-  assert.doesNotMatch(v.context.join(' '), /merged/i);
+  assert.doesNotMatch(v.context.join(' '), /PRs merged in the window/);
+});
+
+test('growth-extract: a substantive merge puts the conversation half in scope too', () => {
+  // A merge means a fresh capture now sits on the logs branch — the reason the two
+  // tasks always fired together.
+  const ctx = extract.precondition({
+    commits: { substantiveChange: true, list: [{ sha: 'abcdef1234', substantive: true }] },
+  }).context.join(' ');
+  assert.match(ctx, /Activity half IS in scope/);
+  assert.match(ctx, /Conversation half IS in scope/);
+});
+
+test('growth-extract: the age-based prune fires on a quiet repo — with the activity half OFF', () => {
+  // A log ages out on wall time, not on the repo changing. The Context must say the
+  // activity half is out of scope, or the worker mines a window that never happened.
+  const v = extract.precondition({
+    commits: { substantiveChange: false },
+    conversationLogs: { present: true, retentionDays: 10, oldestLogAgeDays: 14 },
+  });
+  assert.equal(v.run, true);
+  assert.match(v.reason, /retention 10d/);
+  const ctx = v.context.join(' ');
+  assert.match(ctx, /Activity half is NOT in scope/);
+  assert.match(ctx, /Retention prune IS due/);
+});
+
+// The regression this gate exists for: "a logs branch exists and retention is
+// configured" is true on every capturing repo every day, so without the age test
+// an opus agent was dispatched daily to find nothing.
+test('growth-extract: a quiet repo whose logs are all YOUNGER than retention does NOT fire', () => {
+  const v = extract.precondition({
+    commits: { substantiveChange: false },
+    conversationLogs: { present: true, retentionDays: 10, oldestLogAgeDays: 3 },
+  });
+  assert.equal(v.run, false);
+  assert.match(v.reason, /nothing to extract or prune/);
+  // The boundary: at exactly retention the log has not yet aged OUT.
+  assert.equal(extract.precondition({
+    commits: { substantiveChange: false },
+    conversationLogs: { present: true, retentionDays: 10, oldestLogAgeDays: 10 },
+  }).run, false);
+});
+
+test('growth-extract: quiet with no logs branch, retention unset, or an empty branch', () => {
+  assert.equal(extract.precondition({ commits: {}, conversationLogs: { present: false } }).run, false);
+  assert.equal(extract.precondition({ commits: {}, conversationLogs: { present: true } }).run, false);
+  // A branch with retention set but no logs at all — no age to compare.
+  assert.equal(extract.precondition({
+    commits: {},
+    conversationLogs: { present: true, retentionDays: 10, oldestLogAgeDays: null },
+  }).run, false);
+});
+
+test('growth-extract: a substantive run with nothing prunable is told NOT to delete', () => {
+  // Both halves live but the prune is not due — the Context says so positively, so
+  // the run cannot read "conversation half in scope" as licence to delete.
+  const configured = extract.precondition({
+    commits: { substantiveChange: true, list: [] },
+    conversationLogs: { present: true, retentionDays: 10, oldestLogAgeDays: 3 },
+  }).context.join(' ');
+  assert.match(configured, /Retention prune is NOT due.*Delete nothing/);
+
+  const unset = extract.precondition({
+    commits: { substantiveChange: true, list: [] },
+    conversationLogs: { present: true },
+  }).context.join(' ');
+  assert.match(unset, /retention is unset.*Delete nothing/);
 });
 
 // --- growth-dedup (the pruning stage) ----------------------------------------
@@ -147,59 +221,6 @@ test('growth-dedup: with local packs, a declared pack moving in the mount fires 
 test('growth-dedup: a local-pack change in the window fires it; a quiet repo does not', () => {
   assert.equal(dedup.precondition({ localPacks: { present: true, changedInWindow: true }, sharedMount: { changedPacks: [] } }).run, true);
   assert.equal(dedup.precondition({ localPacks: { present: true, changedInWindow: false }, sharedMount: { changedPacks: [] } }).run, false);
-});
-
-// --- conversation-extract ----------------------------------------------------
-
-test('conversation-extract: daily-1h/opus/merged-pr over commits + the logs branch', () => {
-  assert.equal(conversationExtract.frequency, 'daily-1h');
-  assert.equal(conversationExtract.agent_model, 'opus');
-  assert.equal(conversationExtract.expected_outcome, 'merged-pr');
-  assert.deepEqual(conversationExtract.precondition_signals, ['commits', 'conversationLogs']);
-});
-
-test('conversation-extract: a substantive merge (a fresh capture) fires it', () => {
-  const v = conversationExtract.precondition({ commits: { substantiveChange: true }, conversationLogs: { present: false } });
-  assert.equal(v.run, true);
-  assert.match(v.reason, /substantive merge/);
-});
-
-test('conversation-extract: the age-based prune fires on a quiet repo — the weekly-sweep crutch retires', () => {
-  // A log ages out on wall time, not on the repo changing.
-  const v = conversationExtract.precondition({
-    commits: { substantiveChange: false },
-    conversationLogs: { present: true, retentionDays: 10, oldestLogAgeDays: 14 },
-  });
-  assert.equal(v.run, true);
-  assert.match(v.reason, /retention prune/);
-});
-
-// The regression this gate exists for: "a logs branch exists and retention is
-// configured" is true on every capturing repo every day, so without the age test
-// an opus agent was dispatched daily to find nothing. Nothing is prunable until a
-// log is actually older than retention.
-test('conversation-extract: a quiet repo whose logs are all YOUNGER than retention does NOT fire', () => {
-  const v = conversationExtract.precondition({
-    commits: { substantiveChange: false },
-    conversationLogs: { present: true, retentionDays: 10, oldestLogAgeDays: 3 },
-  });
-  assert.equal(v.run, false);
-  assert.match(v.reason, /nothing to prune/);
-  // The boundary: at exactly retention the log has not yet aged OUT.
-  assert.equal(conversationExtract.precondition({
-    commits: { substantiveChange: false },
-    conversationLogs: { present: true, retentionDays: 10, oldestLogAgeDays: 10 },
-  }).run, false);
-});
-
-test('conversation-extract: quiet with no logs branch, retention unset, or an empty branch', () => {
-  assert.equal(conversationExtract.precondition({ commits: {}, conversationLogs: { present: false } }).run, false);
-  assert.equal(conversationExtract.precondition({ commits: {}, conversationLogs: { present: true } }).run, false);
-  // A branch with retention set but no logs at all — no age to compare.
-  assert.equal(conversationExtract.precondition({
-    commits: {},
-    conversationLogs: { present: true, retentionDays: 10, oldestLogAgeDays: null },
-  }).run, false);
 });
 
 // --- usage-fold (the skill-usage aggregate) ----------------------------------

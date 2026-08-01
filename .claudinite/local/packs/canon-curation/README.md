@@ -105,7 +105,7 @@ CCR config, not a GitHub artifact an Action can see. If promote or discover-pack
 producing anything, read the routine's prompt first.
 
 The session-scoped sibling of this nightly lifecycle — mining a single working session for lessons
-— lives with [the growth pack's extracting-lessons method](../../../../packs/grow_with_claudinite/extracting-lessons.md)
-(applied by its conversation-extract daily task over captured logs), and the member-side method docs
-(extract, dedup, pack discovery, and how a project's local packs are identified) live with
-[grow_with_claudinite](../../../../packs/grow_with_claudinite/README.md).
+— lives with [the growth pack's extract-from-conversations skill](../../../../packs/grow_with_claudinite/skills/extract-from-conversations/SKILL.md)
+(applied by the conversation half of its growth-extract daily task over captured logs), and the
+member-side method docs (extract, dedup, pack discovery, and how a project's local packs are
+identified) live with [grow_with_claudinite](../../../../packs/grow_with_claudinite/README.md).

@@ -117,7 +117,7 @@ daily slots stage the whole growth chain in order:
 
 ```
 02:00  daily-2h   baselining (+ migrations-apply)   ─ own mount converged before anything reads it
-03:00  daily-1h   extract, conversation-extract     ─ lessons captured from a converged repo
+03:00  daily-1h   extract (activity + conversation)  ─ lessons captured from a converged repo
 04:00  daily      promote (canon repo)              ─ lifts the night's merged extracts to canon
 Sun 04:00 weekly  dedup                             ─ prunes against the mounted (merged) canon
 ```
@@ -431,8 +431,7 @@ Per-project tasks — run by every declaring repo's own scheduler:
 | Task (pack) | frequency | precondition_signals | agent_model | expected_outcome | Notes |
 |---|---|---|---|---|---|
 | baselining (basics) | daily-2h | stamp, sharedMount | sonnet | merged-pr | **Now a per-repo self-refresh, not a fleet pass**: converge own `.claudinite/shared/` to canon head, apply pending migration notes (the old fleet apply pass folds in here), advance the stamp — delivered on the per-cycle `claudinite/maintenance-*` PR, delivery per member config. **Superseded by agent-preprocessing DESIGN §7/E4–E5**: the deterministic converge is now `agent_preprocessing` fetching **public** canon Action-side (no in-session canon checkout — E5 drops canon from the executor's sources), and the agent stage runs only on the nights judgment is left (conditional hand-off). Precondition fires ~daily via the stamp-age fallback (`canonHead` is null now — the worker fetches canon, not the Action). The canon repo skips naturally (no shared mount). |
-| growth-extract (grow_with_claudinite) | daily-1h | commits, prs, issues | opus | merged-pr | Precondition = substantiveChange; context = the commit/PR/issue lists. |
-| conversation-extract (grow_with_claudinite) | daily-1h | commits, conversationLogs | opus | merged-pr | Age-based retention prune fires correctly on quiet repos. |
+| growth-extract (grow_with_claudinite) | daily-1h | commits, prs, issues, conversationLogs | opus | merged-pr | Precondition = substantiveChange OR a log actually past retention; context = the commit/PR/issue lists **and which halves are live**. **As built: one task over both sources.** Designed (and first built) as two tasks — `growth-extract` over activity, `conversation-extract` over the captured logs — firing in the same 03:00 slot against the same local packs. They share the lesson bar, the promotion ladder and the dedup surface, so the split cost a second opus dispatch, a second PR, and two runs deduping against a corpus the other was concurrently writing. The worker now runs the `extract-from-activity` and `extract-from-conversations` skills in turn, then `prose-to-checks` over the prose it just wrote, and lands all of it in one auto-merging PR. The age-based retention prune still fires correctly on quiet repos — as its own precondition arm, with Context saying the activity half is out of scope. |
 | growth-dedup (grow_with_claudinite) | weekly | localPacks, sharedMount, commits | opus | open-pr | `relevantCanonChanged` → `sharedMount`; movement, not the calendar, is what wakes it — a quiet repo skips. **Weekly as built (#582), designed `daily+1h`**: a member's mount moves most nights, so the daily slot fired an opus dispatch and an owner-gated PR nightly for prunes nobody waits on. The window-scoped signals batch the week's movement into one run (§2). |
 | tidy-issues (tidy-repo) | daily | issues, commits | sonnet | none | The undeclared-canon carve-out dies: the canon repo declares tidy-repo like everyone else. **One task per tidy dimension** (the single `repo-tidy` pass split, #481): the acting dimension. Trigger = an issue touched in the window; scope = those issues, widened to every open issue when the default branch ALSO moved substantively — that move is what can make an old issue implemented, so the "full sweep" is signal-triggered, never a calendar flag. The move does not *wake* the task, only widen it: on a repo whose `main` moves most days, waking on it re-triaged every open issue daily. |
 | tidy-prs (tidy-repo) | weekly | prs | sonnet | none | Assess-only. Gated on an open PR being opened or updated in the window; full whenever it runs (scope = every open PR, since a verdict is relative to the others). A PR verdict is a standing recommendation, not a same-day alert, so the full sweep is the **frequency declaration** — consistent with `fullSweep` retiring in §3. An untouched set of open PRs yields the verdicts already in the tracker, so it is not re-swept. |
@@ -453,7 +452,7 @@ rest of what the old central routine did has moved above:
 | growth-promote (canon-curation) | daily | opus | open-pr | yes | Reads members' local packs (`fleet` signal: which members' local packs changed); writes the canon; owner-gated PR. 04:00, after the fleet's 03:00 extracts. |
 | growth-discover-packs (canon-curation) | weekly | opus | open-pr | yes | Moves from member-scheduled/centrally-executed to plainly central: one weekly sweep over members; first-sight dedup is trivial with a single run. |
 | migrations-retire (canon-curation) | daily+1h | none | open-pr | yes | Apply evidence is now per-repo (each member's stamp advances when its own baselining applies notes), so the retire guard reads member stamps + `legacyPresent` probes over the `fleet` signal — the same five-condition guard with per-repo stamps replacing the in-memory same-cycle handoff. No artifact plumbing. |
-| prose-to-checks-sweep (canon-curation) | **daily** | opus | open-pr | no | Not a fleet thing — a canon task going over the canon's own prose. Daily per owner decision. |
+| prose-to-checks-sweep (canon-curation) | **daily** | opus | open-pr | no | Not a fleet thing — a canon task going over the canon's own prose. Daily per owner decision. **Weekly as built**, and a per-repo grow_with_claudinite task rather than a canon-local one: growth-extract now runs the same skill over its *own* additions every night, so fresh prose never waits for the sweep and what the sweep sees is a standing backlog that moves on a weekly clock. |
 
 ## 7. Recoverability semantics (the message-semantics contract)
 
@@ -562,7 +561,9 @@ classification note — landed with this PR), and GCEC's `CLAUDE.md` / gcec
    stamp+probe evidence (review).
 8. **Census and prose-to-checks are not fleet tasks** (review): the census is an
    ordinary sheepdog pack task whose implementation happens to scan the fleet;
-   prose-to-checks is a canon-local task, **daily**.
+   prose-to-checks is a canon-local task, **daily**. *(Prose-to-checks since
+   became a per-repo grow_with_claudinite task and moved to `weekly` — see the
+   as-built note in §6, table 2.)*
 9. **Growth chain ordered across the four daily slots** (review): baselining +
    migrations-apply `daily-2h` (02:00) → extract `daily-1h` (03:00) → promote
    `daily` (04:00) → dedup `daily+1h` (05:00). *(Dedup since moved to `weekly`,

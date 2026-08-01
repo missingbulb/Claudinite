@@ -111,9 +111,9 @@ The filename stays `<stamp>--issue-<n>--<session>.jsonl`, with **`0` meaning
 scheduler's `conversationLogs` signal already accept `0` — only the CLI's
 argument validation refuses it, and that is the whole change. Keeping the
 filename shape identical is deliberate: any *new* shape would be invisible to
-the prune and become immortal. `conversation-extract` treats an `issue-0` file
-as having no issue to post its exchange summary on; everything else about its
-two-pass lifecycle is unchanged.
+the prune and become immortal. The extract's conversation half treats an
+`issue-0` file as having no issue to post its exchange summary on; everything
+else about its two-pass lifecycle is unchanged.
 
 ### 3.3 The SessionEnd hook — best effort, fail-soft
 
