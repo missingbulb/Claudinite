@@ -5,9 +5,9 @@ This is the Claudinite home repo's own local pack: the capture surface for lesso
 project. Portable lessons — anything true for repos beyond this one — belong in the shared canon
 under `packs/`/`skills/` instead (proposed by PR, or lifted by the promote stage).
 
-The growth lifecycle writes here automatically: the `growth-extract` and `conversation-extract`
-daily tasks route the canon's own non-portable lessons into this pack (each at the local
-promotion ladder's strongest mechanism — a check where the rule is deterministic, otherwise terse
+The growth lifecycle writes here automatically: the `growth-extract` daily task routes the canon's
+own non-portable lessons — mined from repo activity and from captured conversations alike — into
+this pack (each at the local promotion ladder's strongest mechanism — a check where the rule is deterministic, otherwise terse
 prose below).
 
 ## Standing owner decisions — settled, do not re-litigate
@@ -48,7 +48,7 @@ prose below).
   the pack and has to be migrated. Keep the default in the pack's own code, ask nothing, and let the
   rare project that wants to differ add the setting by hand. Read config as *optional* — an unset
   key means "the default", never "misconfigured" (`retention_days` unset is precisely why the
-  conversation-extract prune is skipped rather than failing).
+  growth-extract retention prune is skipped rather than failing).
 
 ## Canon-specific gotchas
 
