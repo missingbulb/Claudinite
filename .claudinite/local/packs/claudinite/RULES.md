@@ -280,3 +280,27 @@ prose below).
   plausible object. And judge the fleet by **members' stamps**, never by scheduler run
   conclusions: the stamp is the only artifact that moves when baselining actually worked, which is
   why a stamp-staleness alarm (#331) is the missing guard and not a nice-to-have.
+- **A fleet task's target list is enumerated dynamically; the routine's reachable-repo grant is
+  hand-typed UI config — they drift, and the drift completes rather than fails.** The precondition
+  builds its member list over `FLEET_GITHUB_TOKEN` (`engine/scheduler/signals/fleet.mjs`, "the one
+  token that can enumerate every repo the owner owns"), while the executor routine's MCP repo scope
+  is set by hand in a UI no Action can read — so every member adopted from here on is enumerated by
+  the precondition and invisible to the executor until someone widens the grant, and the gap only
+  ever widens. Measured 2026-07-31 on #602: the dispatch named 12 members, the session's grant
+  listed 10, and `growth-promote` reads members **over the API, never a checkout** — so the run
+  would have noted two denials, proceeded, and filed a PR reading as a complete 12-member sweep.
+  That is the worse of the two failure shapes: a routing mismatch stalls visibly (nothing happens,
+  forever, and you notice), an unreachable target *succeeds wrongly*. So a fleet task must **fail
+  loudly on a Context target it cannot reach** rather than proceed on a partial list, and adopting a
+  member is not done until the routine's repo scope names it. No check can catch either half — this
+  is routine config, not repo content.
+- **`packs/README.md`'s check tally conflicts on every concurrent check-adding PR — recompute it,
+  never take a side.** The hand-maintained "Hardcoded conformance checks" count is a repo-wide
+  aggregate that each PR adding a rule must bump, so two such PRs in flight always collide there,
+  and a branch that sat overnight collides with whatever landed meanwhile. Both sides of the
+  conflict are stale the moment a third PR merges, so picking one — or incrementing the higher —
+  is guessing; `packs-tests/catalog-tally.test.mjs` then goes red and the loop repeats. Derive it
+  instead: discover the packs and count the active rules (`discoverPacks` +
+  `run-active-pack-rules.mjs`), write that number, re-run the tally test. Measured 2026-07-31: the
+  same tally was resolved three times in one day across two sessions (67→68 in #600, then 68→69→70
+  twice inside #593's merge sequence).
