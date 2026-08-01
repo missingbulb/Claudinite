@@ -128,6 +128,34 @@ dedup reads only the merged/mounted canon (never an in-flight promote PR), so th
 ordering is freshness staging that mostly holds and self-heals to next-day
 propagation when a merge lags.
 
+> **As-built (owner, 2026-08-01): the staging holds only while the fires do — so one task can
+> take the run.** The hour between anchors is not a barrier, and it is not a
+> guarantee either: a GitHub `schedule:` fire is dropped and delayed freely (see
+> the `github-actions-scheduling` skill), and a run that fires at 05:40 after
+> three dropped fires finds all four daily slots due at once. Every one of them
+> dispatches together, so **baselining runs beside the tasks whose ground it
+> exists to repair** rather than an hour ahead of them — and baselining is not
+> freshness staging like the rest of the chain, it is the pass that converges the
+> mount, the wiring and the migration notes the others then execute against.
+>
+> On those runs the ordering has to be asserted rather than implied. A
+> precondition may return **`exclusive: true`** beside `run: true` — *if I run
+> this cycle, I run alone* — and the scheduler defers every other due task
+> (§3, step 4). Baselining claims it exactly when the mount is genuinely overdue:
+> more than a day since the last converge landed, and not more than three (past
+> that the repo is wedged — an unmerged maintenance PR, a broken converge — which
+> is a human's problem, and holding the rest of the repo back another night does
+> not fix it). The routine same-day case claims nothing, so the common night is
+> unchanged.
+>
+> **A deferred slot is spent, not queued.** Due-ness is `slotTime ∈ (lastSuccess,
+> now]` and the claiming run *succeeds*, so the watermark moves past the slot it
+> deferred: a deferred daily task runs at tomorrow's slot, a weekly one next
+> week. That is the accepted price — the alternative is running the nightly chain
+> against a mount that baselining has not yet fixed. The run says so in its
+> summary (`defer —`) and its run record (`deferred`), so the cost is counted
+> rather than silent.
+
 > **As-built (#582): dedup left the nightly chain for the weekly anchor.** It was
 > designed at `daily+1h` (05:00), an hour after promote. But a member's mount moves
 > most nights — baselining converges it daily — so the `sharedMount` arm fired this
@@ -238,10 +266,31 @@ refresh, not workflow edits). It runs
 
 4. **Runs preconditions** — pure code, per-task try/catch isolation; a throwing
    precondition converges to the standard failure state (`report-failure`
-   composite → `workflow-failure` issue); other tasks proceed.
+   composite → `workflow-failure` issue); other tasks proceed. Every due task's
+   verdict is computed **before** anything is dispatched, because of the next
+   point: a claim on the run is only knowable once they have all spoken.
+
+   A verdict may carry **`exclusive: true`** beside `run: true` — *if I run this
+   cycle, I run alone* — and every other due task whose precondition said run is
+   **deferred**: no preprocessing subprocess, no dispatch issue, no inline work
+   (owner, 2026-08-01). It exists because the hourly cron is not hourly: a run that fires
+   hours late finds several daily slots due at once and dispatches the whole
+   nightly chain together, which puts baselining *beside* the tasks whose mount
+   it exists to converge instead of an hour ahead of them (§2 as-built). The
+   engine learns "this verdict claims the run", never which task claims it or
+   why — the same separation `FORCE_TASKS` keeps, and the reason no engine module
+   mentions baselining. Two claimants are not a conflict: they both run and
+   everything else defers, so no priority order between packs is needed. A
+   **forced** task is exempt from deferral and cannot claim (its verdict is the
+   engine's, not the task's) — a claim swallowing the task the operator asked for
+   would make a hand-started run do nothing it was started for.
+
+   A deferred slot is **spent, not queued**: this run succeeds, so the watermark
+   moves past it and the task runs again at its *next* slot (tomorrow, or next
+   week). That cost is the point of bounding who may claim — see §2.
 5. **Executes or dispatches** — `model: 'none'` → run the worker `.mjs` inline
    (which may itself dispatch and await another workflow); otherwise file the
-   dispatch issue (§4) labeled `ready-for-agent`.
+   dispatch issue (§4) labeled `ready-for-agent`. A deferred task does neither.
 6. **Reports** — the job summary lists every evaluated task with run/skip/reason
    (the observability `plan.json` used to give). Whole-run failure escalates per
    `gha/scheduled-failure-escalation`. Beside the prose, the run prints one

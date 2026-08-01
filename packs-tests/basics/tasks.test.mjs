@@ -61,6 +61,42 @@ test('baselining: runs when a declared pack\'s vendored files moved', () => {
 // override signal and has no force branch to test. `engine-tests/scheduler/
 // run.test.mjs` owns that behaviour.
 
+// ── The exclusive claim (#619) ───────────────────────────────────────────────
+// A late/dropped cron fire piles every daily slot into one run, so baselining
+// would dispatch beside the tasks it exists to converge the mount for. When the
+// mount is genuinely overdue it takes the run instead — what the ENGINE then does
+// with `exclusive` is run.test.mjs's business; these pin when this task asks.
+
+test('baselining: claims the run exclusively when the mount is more than a day stale', () => {
+  const v = baselining.precondition(S({ canonHead: null, ageDays: 2 }));
+  assert.equal(v.run, true);
+  assert.equal(v.exclusive, true);
+});
+
+test('baselining: a converge that landed within the day claims nothing', () => {
+  // The routine nightly pass has no standing to hold the chain up — and this is
+  // the common case, so a claim here would defer the fleet's daily work every day.
+  const v = baselining.precondition(S({ canonHead: 'def5678', ageDays: 0.4 }));
+  assert.equal(v.run, true);
+  assert.equal(v.exclusive, false);
+  // Exactly at the boundary is not "more than a day".
+  assert.equal(baselining.precondition(S({ canonHead: 'def5678', ageDays: 1 })).exclusive, false);
+});
+
+test('baselining: stops claiming once the mount is stale enough to be wedged', () => {
+  // Days-stale is an unmerged maintenance PR or a broken converge, not a missed
+  // fire. Holding every other task back another night does not fix it — it just
+  // stops the repo doing anything at all, silently and for as long as it lasts.
+  assert.equal(baselining.precondition(S({ canonHead: null, ageDays: 3 })).exclusive, true);
+  assert.equal(baselining.precondition(S({ canonHead: null, ageDays: 3.5 })).exclusive, false);
+  assert.equal(baselining.precondition(S({ canonHead: null, ageDays: 40 })).run, true, 'it still runs — it just runs alongside');
+});
+
+test('baselining: an unstamped mount claims nothing (there is no age to judge)', () => {
+  const v = baselining.precondition(S({ canonHead: 'def5678', ageDays: null }));
+  assert.equal(v.exclusive, false);
+});
+
 test('baselining: quiet when the mount is at the canon head and nothing moved', () => {
   const v = baselining.precondition(S({ ref: 'abc1234', canonHead: 'abc1234' }));
   assert.equal(v.run, false);

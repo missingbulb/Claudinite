@@ -107,7 +107,7 @@ test('signalsUnion collects only the union of the due tasks\' declared signals',
 
 test('runPrecondition isolates a throwing precondition into a skip with the error', () => {
   const good = runPrecondition(mkTask('a'), {}, {});
-  assert.deepEqual(good, { run: true, reason: 'ok', context: [] });
+  assert.deepEqual(good, { run: true, exclusive: false, reason: 'ok', context: [] });
   const bad = runPrecondition(mkTask('b', { precondition: () => { throw new Error('boom'); } }), {}, {});
   assert.equal(bad.run, false);
   assert.match(bad.reason, /precondition threw: boom/);
@@ -130,6 +130,128 @@ test('planRun dispatches a running agent task and skips a non-running one', asyn
   assert.deepEqual(byTask.runs.context, ['scope line']);
   assert.equal(byTask.quiet.run, false);
   assert.equal(byTask.quiet.dispatch, undefined);
+});
+
+// ── The exclusive claim: one task takes the whole run (#619) ────────────────
+// The hourly cron is not hourly — GitHub drops and delays scheduled fires — so a
+// late run finds every daily slot due at once and dispatches the whole nightly
+// chain together, beside the task that was anchored an hour ahead of it to repair
+// the ground the others run on. A precondition returning `exclusive: true` takes
+// the cycle; everything else defers.
+
+test('planRun defers every other running task when one claims the run exclusively', async () => {
+  const tasks = [
+    mkTask('claimer', { precondition: () => ({ run: true, exclusive: true, reason: 'overdue' }) }),
+    mkTask('other', { precondition: () => ({ run: true, reason: 'work found' }) }),
+    mkTask('agentless', { agent_model: 'none', expected_outcome: 'none', agent_preprocessing: 'node w.mjs', agent_preprocessing_timeout: 60, precondition: () => ({ run: true, reason: 'work found' }) }),
+    mkTask('quiet', { precondition: () => ({ run: false, reason: 'nothing to do' }) }),
+  ];
+  const searched = [];
+  const { evaluations } = await planRun({
+    tasks, schedule: D, now: '2026-07-22T06:00:00Z', lastSuccess: '2026-07-21T06:00:00Z',
+    collectSignals: async () => ({}),
+    existingIssuesFor: async (pack, task) => { searched.push(task); return []; },
+  });
+  const by = Object.fromEntries(evaluations.map((e) => [e.task, e]));
+
+  // The claimant does its full run — dispatch planned as usual.
+  assert.equal(by.claimer.exclusive, true);
+  assert.equal(by.claimer.deferred, undefined);
+  assert.equal(by.claimer.dispatch.action, 'create');
+
+  // Everything else that WANTED to run is deferred: run:true kept (its
+  // precondition did find work), but no dispatch, no inline, no preprocessing.
+  assert.equal(by.other.run, true);
+  assert.match(by.other.deferred, /claimed this run exclusively/);
+  assert.equal(by.other.dispatch, undefined);
+  assert.equal(by.agentless.run, true);
+  assert.ok(by.agentless.deferred);
+  assert.equal(by.agentless.inline, undefined);
+  assert.equal(by.agentless.preprocessing, undefined, 'a deferred task must not run its preprocessing subprocess');
+
+  // A task that had nothing to do is a skip, not a deferral — nothing was taken
+  // from it.
+  assert.equal(by.quiet.run, false);
+  assert.equal(by.quiet.deferred, undefined);
+
+  // And the deferred tasks cost no GitHub reads: the claim is decided before any
+  // issue search happens.
+  assert.deepEqual(searched, ['claimer']);
+});
+
+test('planRun claims nothing when the claimant\'s own precondition says skip', async () => {
+  // `exclusive` is a rider on a RUN verdict. A task that is not running this cycle
+  // has no run to claim, and reading the flag on its own would let a task that
+  // declines its work still stop everyone else's.
+  const tasks = [
+    mkTask('claimer', { precondition: () => ({ run: false, exclusive: true, reason: 'nothing to do' }) }),
+    mkTask('other', { precondition: () => ({ run: true, reason: 'work found' }) }),
+  ];
+  const { evaluations } = await planRun({
+    tasks, schedule: D, now: '2026-07-22T06:00:00Z', lastSuccess: '2026-07-21T06:00:00Z',
+    collectSignals: async () => ({}), existingIssuesFor: async () => [],
+  });
+  const by = Object.fromEntries(evaluations.map((e) => [e.task, e]));
+  assert.equal(by.other.deferred, undefined);
+  assert.equal(by.other.dispatch.action, 'create');
+});
+
+test('planRun leaves the ordinary run untouched when nobody claims it', async () => {
+  // The honest negative: `exclusive` is opt-in, and a corpus of tasks that never
+  // mention it must schedule exactly as it did before.
+  const tasks = [mkTask('a'), mkTask('b')];
+  const { evaluations } = await planRun({
+    tasks, schedule: D, now: '2026-07-22T06:00:00Z', lastSuccess: '2026-07-21T06:00:00Z',
+    collectSignals: async () => ({}), existingIssuesFor: async () => [],
+  });
+  assert.equal(evaluations.length, 2);
+  assert.ok(evaluations.every((e) => e.deferred === undefined && e.exclusive === undefined));
+  assert.ok(evaluations.every((e) => e.dispatch.action === 'create'));
+});
+
+test('planRun does not defer a FORCED task behind an exclusive claim', async () => {
+  // Forcing is a decision the operator already made on a hand-started run. A claim
+  // swallowing it would make that run do nothing it was started for — and the
+  // forced task cannot claim either (FORCED_VERDICT carries no `exclusive`).
+  const tasks = [
+    mkTask('claimer', { precondition: () => ({ run: true, exclusive: true, reason: 'overdue' }) }),
+    // Weekly, so mid-week its slot has already been run — the only shape forcing
+    // exists for (computeDueTaskSlots reaches for the most-recent slot).
+    mkTask('forced', { frequency: 'weekly', precondition: () => ({ run: false, reason: 'nothing to do' }) }),
+  ];
+  const { evaluations } = await planRun({
+    tasks, schedule: D, now: '2026-07-22T06:00:00Z', lastSuccess: '2026-07-21T06:00:00Z',
+    overrides: { FORCE_TASKS: 'forced' },
+    collectSignals: async () => ({}), existingIssuesFor: async () => [],
+  });
+  const by = Object.fromEntries(evaluations.map((e) => [e.task, e]));
+  assert.equal(by.forced.forced, true);
+  assert.equal(by.forced.deferred, undefined);
+  assert.equal(by.forced.dispatch.action, 'create');
+});
+
+test('planRun lets several claimants share the run, deferring only the rest', async () => {
+  // Two claims are not a conflict to arbitrate: they all run and everything else
+  // defers, which is the only reading that needs no priority order between packs.
+  const tasks = [
+    mkTask('c1', { precondition: () => ({ run: true, exclusive: true, reason: 'x' }) }),
+    mkTask('c2', { precondition: () => ({ run: true, exclusive: true, reason: 'y' }) }),
+    mkTask('other', { precondition: () => ({ run: true, reason: 'z' }) }),
+  ];
+  const { evaluations } = await planRun({
+    tasks, schedule: D, now: '2026-07-22T06:00:00Z', lastSuccess: '2026-07-21T06:00:00Z',
+    collectSignals: async () => ({}), existingIssuesFor: async () => [],
+  });
+  const by = Object.fromEntries(evaluations.map((e) => [e.task, e]));
+  assert.equal(by.c1.dispatch.action, 'create');
+  assert.equal(by.c2.dispatch.action, 'create');
+  assert.match(by.other.deferred, /p\/c1, p\/c2/);
+});
+
+test('runPrecondition normalizes `exclusive` like every other verdict field', () => {
+  assert.equal(runPrecondition(mkTask('a', { precondition: () => ({ run: true, exclusive: true }) }), {}, {}).exclusive, true);
+  assert.equal(runPrecondition(mkTask('b'), {}, {}).exclusive, false, 'a verdict that omits it is not claiming');
+  assert.equal(runPrecondition(mkTask('c', { precondition: () => ({ run: true, exclusive: 'yes' }) }), {}, {}).exclusive, false, 'only a literal true claims');
 });
 
 // ── Dormancy: the gate ahead of every other decision ────────────────────────
@@ -221,10 +343,15 @@ test('renderSummary lists each evaluated task with its verb and reason', () => {
     { pack: 'p', task: 'a', slotId: 'd2026-07-22', run: true, dispatch: { action: 'create', reason: 'new' } },
     { pack: 'p', task: 'b', slotId: 'd2026-07-22', run: false, reason: 'quiet' },
     { pack: 'p', task: 'c', slotId: 'd2026-07-22', run: true, inline: true, reason: 'inline work' },
+    { pack: 'p', task: 'd', slotId: 'd2026-07-22', run: true, exclusive: true, dispatch: { action: 'create', reason: 'new' } },
+    { pack: 'p', task: 'e', slotId: 'd2026-07-22', run: true, reason: 'work found', deferred: 'deferred — p/d claimed this run exclusively' },
   ]);
   assert.match(summary, /- p\/a \[d2026-07-22\] create — new/);
   assert.match(summary, /- p\/b \[d2026-07-22\] skip — quiet/);
   assert.match(summary, /- p\/c \[d2026-07-22\] run-inline — inline work/);
+  // The claim and the deferral it caused are both legible in the run's own summary.
+  assert.match(summary, /- p\/d \[d2026-07-22\] \(exclusive\) create — new/);
+  assert.match(summary, /- p\/e \[d2026-07-22\] defer — deferred — p\/d claimed this run exclusively/);
 });
 
 // --- maintainDispatchIssues: the recovery the executor's sweep used to do -----
