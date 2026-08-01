@@ -1,0 +1,88 @@
+name: "Static site: Deploy to GitHub Pages (reusable)"
+
+# Deploys the repo's EXPLICIT publish set to GitHub Pages. Vendored from the
+# static-website pack into the repo's own .github/; workflow_call ONLY — it is
+# invoked by "Static site: Publish" at the released commit, so what is live is
+# always exactly what was tagged. A repo never dispatches it directly.
+#
+# The artifact is assembled by the assemble-site composite action from
+# `publish_root` + `publish_paths` — an additive list, so the agent-tooling dirs
+# (.claude/, .claudinite/), dev tooling, notes and anything else unlisted are
+# absent by construction rather than by remembering to exclude them. That also
+# sidesteps the dangling-symlink trap that breaks a whole-root Pages upload:
+# upload-pages-artifact tars with --dereference, and .claude/skills/* are
+# symlinks into the gitignored corpus, empty on a runner.
+#
+# One-time owner setup in the calling repo: Settings → Pages → Source =
+# "GitHub Actions". Until that is set, deploy-pages fails; the caller's failure
+# reporter opens the tracking issue.
+#
+# The calling job must grant `permissions: contents: read, pages: write,
+# id-token: write`.
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Commit to deploy (empty = the default checkout)"
+        required: false
+        type: string
+        default: ""
+
+# Least privilege for a Pages deploy: read the repo, write Pages, mint the OIDC
+# token deploy-pages exchanges.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never run two Pages deploys at once; let an in-flight deploy finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref }}
+
+      - id: cfg
+        uses: ./.github/actions/read-site-config
+
+      - uses: actions/setup-node@v5
+        if: steps.cfg.outputs.build_command != ''
+        with:
+          node-version: 22
+
+      # A build_command that needs dependencies installs them itself
+      # (`npm ci && npm run build`) — see the config's five keys.
+      - name: Build the site
+        if: steps.cfg.outputs.build_command != ''
+        run: ${{ steps.cfg.outputs.build_command }}
+
+      - uses: ./.github/actions/assemble-site
+        with:
+          publish_root: ${{ steps.cfg.outputs.publish_root }}
+          publish_paths: ${{ steps.cfg.outputs.publish_paths }}
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

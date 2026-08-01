@@ -1,0 +1,66 @@
+name: Assemble the published site
+description: >-
+  Builds the Pages artifact directory from the repo's EXPLICIT publish set —
+  `publish_paths` under `publish_root`, and nothing else. The artifact is
+  composed from a named list rather than "the repo minus the dirs we know to
+  hide": a subtractive rule publishes every file nobody thought to exclude (a
+  draft, a scratch note, an agent-tooling dir, a key), and it publishes each new
+  one silently the day it lands. An additive list can only ever publish what the
+  repo asked for, and its failure mode — a file that does not show up — is
+  visible on the site.
+
+  Two loud guards, because a Pages deploy has no other reviewer: a publish path
+  that does not exist fails the run (a rename that silently dropped a directory
+  from the site is exactly what the explicit list is for), and so does an
+  assembled site with no index.html at its root (a site whose "/" 404s is a
+  broken deploy, not a deploy).
+
+  Composite so it adds no reusable-workflow nesting level, and used by both the
+  Pages deploy and PR CI, so a PR proves its publish set assembles before it can
+  break the live site.
+
+inputs:
+  publish_root:
+    description: Directory the site is rooted at ("." = repo root)
+    required: true
+  publish_paths:
+    description: Space-separated publish set, relative to publish_root
+    required: true
+  dest:
+    description: Directory to assemble into, relative to the workspace
+    required: false
+    default: _site
+
+outputs:
+  dest:
+    description: The assembled site directory (workspace-relative)
+    value: ${{ inputs.dest }}
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        PUBLISH_ROOT: ${{ inputs.publish_root }}
+        # Intentionally word-split below into the individual publish paths.
+        PUBLISH_PATHS: ${{ inputs.publish_paths }}
+        DEST: ${{ inputs.dest }}
+      run: |
+        set -euo pipefail
+        dest="$GITHUB_WORKSPACE/$DEST"
+        rm -rf "$dest"
+        mkdir -p "$dest"
+        cd "$PUBLISH_ROOT"
+        for p in $PUBLISH_PATHS; do
+          if [ ! -e "$p" ]; then
+            echo "::error::publish path '$p' does not exist under '$PUBLISH_ROOT' — fix .github/site.config or restore the file" >&2
+            exit 1
+          fi
+          mkdir -p "$dest/$(dirname "$p")"
+          cp -R "$p" "$dest/$(dirname "$p")/"
+        done
+        if [ ! -f "$dest/index.html" ]; then
+          echo "::error::the assembled site has no index.html at its root — the site's / would 404" >&2
+          exit 1
+        fi
+        { echo "### Published set"; echo; (cd "$dest" && find . -type f | sort | sed 's|^\./|- |'); } >> "$GITHUB_STEP_SUMMARY"
