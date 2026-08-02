@@ -79,7 +79,11 @@ Follow the extract stage's check-authoring discipline (the local promotion ladde
    not (the test lives beside the pack's other tests). A conversion with no proving fixture
    doesn't ship.
 3. **Ship at real severity, fail-fast** — blocking for a defect, advisory only when the rule is
-   directional by kind.
+   directional by kind, or when the condition is real and blocking-grade but **irreversible by the
+   time it is observable** (an append-only transcript, a published artifact). A blocking finding no
+   edit can retract never converges: it spends every remaining Stop cycle on something nothing can
+   fix. Advisory there is *diagnostic* — it names the cause the moment it appears, so the session
+   doesn't re-derive it from an unexplained downstream failure.
 4. **Delete the prose the check now covers** — whole, never trimmed. The deletion test below is
    how you decide which paragraphs those are.
 
@@ -91,6 +95,39 @@ check to the same fixture bar.
 
 When even a scoped parser can't make detection confident, **leave the prose and log the
 candidate** to a tagged conversion-backlog issue rather than shipping a shaky check.
+
+**A recorded "not statically checkable" verdict expires when the tree changes — re-derive it, don't
+trust it.** Un-checkability is a judgment about the shape of the sources at the time, not a property
+of the rule. A removal, a migration or a consolidation can collapse the entry points a check would
+have had to cover and make yesterday's impossible detection trivial. When a sweep meets prose an
+earlier sweep left behind, re-ask the objection against today's sources.
+
+**Write the detection as a positive allowlist over an enumerated surface, not as a list of the bad
+cases.** Match the one shape that *is* allowed and flag everything else — a ban list only covers the
+routes whoever wrote it thought of, so a new API, a new spelling, or an indirection defeats it
+silently, and the same reasoning that drew the list is blind to what it missed. Matching the allowed
+case catches the case that doesn't exist yet, and turns indirection into a finding rather than an
+escape. Invert this only where the allowed set is genuinely open-ended.
+
+**When a rule mandates a *form*, the check asserts that form — never the intent behind it.** Where
+the prose says *write it exactly like this*, the check's whole job is deciding whether the artifact
+is that form; inferring what the author meant is unbounded in the wrong direction and leaves the
+likeliest reproduction uncaught (a hand-picked marker list will always miss the phrasing nobody
+enumerated). Expect a form check to fire on something that breaks the form while causing no harm —
+that is the rule as written doing its job, not a reason to re-add intent-guessing.
+
+**"Already covered by another check" is a claim to test, not to reason out.** Before dropping a
+candidate as a duplicate, hand the sibling check a file that violates the rule and watch what it
+does. A ban on one API is not a ban on the *capability*: the same thing is usually reachable through
+a language built-in, a re-exported namespace, or a different import the sibling never listed. Three
+consecutive sweeps can each re-derive the same wrong duplicate verdict from the same plausible
+reasoning; running it costs a minute and is the only step that can disagree with you.
+
+**Read the conversion tracker's prior comments before authoring a conversion, not after.** A
+rejection recorded there is settled — a fresh reading of the same prose will happily re-nominate the
+same rule, build it out in full, and only then discover it was built and rejected before. Independent
+re-derivation is exactly how the duplicate work happens, so the tracker is a precondition of the
+work, not a place to log it.
 
 ## Coming out: the deletion test
 
