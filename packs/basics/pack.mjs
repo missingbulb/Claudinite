@@ -12,6 +12,7 @@ import catalogCompleteness from './catalog-completeness.mjs';
 import claudiniteIsolation from './claudinite-isolation.mjs';
 import schedulerWorkflowShape from './scheduler-workflow-shape.mjs';
 import taskDeclarationShape from './task-declaration-shape.mjs';
+import taskDeclarationMatchesFolder from './task-declaration-matches-folder.mjs';
 import conformanceWorkflow from './conformance-workflow.mjs';
 
 // The baseline pack: working discipline, the task lifecycle, and the core
@@ -50,10 +51,11 @@ export default {
     // The per-project scheduling conformance guards (scheduled-tasks.md):
     // scheduling is baseline Claudinite discipline — the scheduler workflow and
     // the task-declaration contract are guarded wherever basics is declared
-    // (everywhere). Both rules are relevance-first: inert until the repo carries
+    // (everywhere). All three are relevance-first: inert until the repo carries
     // the workflow / a tasks/<name>/task.mjs of its own.
     schedulerWorkflowShape,
     taskDeclarationShape,
+    taskDeclarationMatchesFolder,
     // And the CI half of the same discipline: a member whose world sweep cannot
     // run on a pull request has no gate, and its maintenance PR never lands.
     conformanceWorkflow,
