@@ -30,6 +30,12 @@ session or window.** Before adding anything:
 - **Promote what's portable.** A lesson true for projects beyond this one belongs in shared, cross-project
   canon, not stuck in one repo's local packs — the growth lifecycle's promote stage lifts it there
   centrally; capture it well locally and let promote generalize whatever travels.
+- **A mechanic being *copied* from a sibling repo is a canon candidate, not a file to author here.** When
+  the release wiring, the version scheme or the CI plumbing you are about to write is being transcribed
+  from another project that already solved it, the second copy is the moment to raise it centrally —
+  look for the canon pack that owns it first, and if none does, report that as the finding rather than
+  writing a bespoke third copy that gets deleted along with its reviewed workflow. The lesson to capture
+  is the *gap*, not the code.
 
 ## Route to the local pack that owns it — the promotion ladder
 
