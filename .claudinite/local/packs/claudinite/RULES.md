@@ -314,3 +314,22 @@ prose below).
   post-merge `main`: re-run the suite against current `main` immediately before merging a
   rule-adding PR, and update **both** numbers. (Portable — a promote candidate for `git-github`'s
   `merge-to-main`, which today says nothing about merging on a stale green.)
+- **GitHub accepts an auto-merge arm only while the PR's checks are still PENDING — both "too late"
+  and "failing" are refusals, and neither means the PR is stuck.** Every task here that ends in an
+  auto-merging PR (`growth-extract`, `usage-fold`, baselining's delivery) hits a three-state window
+  the API surfaces only as errors. Measured on 2026-08-01, PR #618 in one growth run: arming while a
+  required check was red returned *"The pull request is in unstable status (required checks are
+  failing)"*; arming again once the same checks went green returned *"The pull request is already in
+  clean status … Auto-merge only applies when checks are pending — you can merge directly."* The
+  session read the second as another failure and fell through to `merge_pull_request`, which then hit
+  a real `405 Pull Request has merge conflicts` and was re-issued — three arm attempts and three merge
+  attempts for one PR. So **branch on which refusal you got** — and don't read *unstable* as *failing*:
+  GitHub's `UNSTABLE` covers any non-passing commit status, so a check merely **`in_progress`** returns
+  the identical *"required checks are failing"* string (measured again 2026-08-02 on PR #636, arming
+  seconds after opening, whose one check was `in_progress` and later went green). Read the check runs
+  before believing it, then poll and re-arm; *clean* means the work is already done — merge it directly and
+  report that as the armed outcome, never as a failed one; anything else (409/405, auto-merge disabled
+  repo-wide) is the genuinely-blocked case that `unattended-agents` says to stop and report. And
+  because the pending window is short — this repo's CI is minutes — **arm immediately after opening
+  the PR**, before running any further verification, or the window closes while you work. (Portable —
+  a promote candidate for `git-github`'s `merge-to-main`, which today names arming but not its window.)
