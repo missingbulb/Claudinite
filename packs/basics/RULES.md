@@ -26,6 +26,12 @@ Before working around a finding from a vendored check, confirm the vendored copy
 
 When a warning can't be fixed with a small cause-addressing change now without hindering current work (e.g. it's waiting on an upstream release, or the real fix is a larger refactor), open a dedicated issue for it unless one is already open, then move on — resolving it (real fix, or a consciously-chosen suppression) happens in that issue's own change.
 
+A tool search that finds nothing is evidence about your query, not about the environment. Tool discovery matches on keywords that are not the tool's own vocabulary, so a plausible description can miss a tool that is present the whole time. Before telling the owner a step is theirs because the capability is missing, search the **literal name** and try the tool — handing back work the session could have done is the expensive half of the mistake.
+
+When the content itself matters, don't take it from a tool that may summarize — fetch it to disk and read the file. A summarizing fetch asked for a document's verbatim text can return a description of it instead, with nothing to signal the substitution. And when a page refuses the fetch outright, don't retry it or try a sibling URL: take the search snippet, **attribute** it to the publisher rather than asserting it, and flag it for verification at source.
+
+Never publish an unverified claim about a named real person. When the primary source is unreachable, do not substitute a third-party aggregator and do not ship the claim with a caveat — ask the owner, or the person. Flagging is not a substitute for verification here, because the cost is not a wrong paragraph but a public claim about someone that they never made; one question is cheaper than any research.
+
 An approval — to merge, to ship, to proceed — applies only *backward*, to the work already in front of the owner when it's given, never to anything requested or done *after* it. A later follow-up, even a fix to the just-approved change, needs its own explicit approval; a chosen answer to a multiple-choice prompt isn't authorization just because an option's wording mentioned the action.
 
 # The task lifecycle

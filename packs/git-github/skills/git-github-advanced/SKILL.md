@@ -29,6 +29,10 @@ There's no cost to a branch carrying many commits when the project uses a **squa
   - **`git rebase origin/main` only drops the old commit cleanly when the branch carried a *single* squash-merged commit.** When it carried *several* commits that `main` squashed into *one* (then kept developing), git can't match them to the squash as already-applied, so it replays them and conflicts mid-rebase. Replant only the genuinely-new commits instead: `git rebase --onto origin/main <last-squash-merged-commit>` (then `git push --force-with-lease`). If the new work is small, a `git reset --hard origin/main` + redo beats fighting the replay.
   - **If the merge auto-deleted the remote branch, start follow-up work on a new branch off `origin/main`** rather than reusing the old name — it has no stale tracking ref and no rebase dance. If you do reuse the old name: `--force-with-lease` actively *fails* — `git push --force-with-lease` rejects with `stale info` then `couldn't find remote ref <branch>` because the lease expects a remote branch that no longer exists. There's nothing to overwrite, so `git fetch --prune` (drop the stale tracking ref) then a plain `git push -u origin <branch>` just recreates it.
 
+## Don't drop a `.gitignore` section in the same commit that removes what it ignored
+
+Retiring a toolchain (a reference implementation, a build system, a generator) invites tidying its ignore rules away alongside it — but the artifacts those rules were hiding are usually still sitting untracked in the worktree (`__pycache__/` from an earlier test run, a `build/` from an earlier build). The moment the rules go, the next `git add -A` sweeps that junk *into* the very commit meant to remove it, and nothing complains: the commit is valid, the tests still pass, and it surfaces only as an inflated file count in the diff a reviewer reads. Delete (or `git clean`) the artifacts from the worktree first, then drop their ignore lines — and read `git diff --cached --stat` after any bulk `git add -A`, since staged additions are exactly what a clean `git status` stops telling you about.
+
 ## An automated commit-nag is not authorization to commit drift
 
 An automated prompt to commit the working tree (a stop-hook, a CI nag) tells you the tree is dirty — not that the changes are yours or intended. Before obeying, inspect what actually changed (`git status` / `git diff`): if it's environment/setup drift — a submodule pointer moved by `git submodule update` at clone time, a lockfile a setup script regenerated, generated artifacts — revert it rather than committing it onto your branch. Committing drift slips an unintended dependency or generated-file bump into an unrelated change.
@@ -104,6 +108,10 @@ GitHub **Actions** reports results as **check runs**, not the legacy **commit st
 ## To confirm a non-PR run (push / dispatch), read its job logs — it has no PR check runs
 
 A `push` or `workflow_dispatch` run isn't attached to a PR, so the PR-scoped check-run query above doesn't apply to it. Confirm such a run through the GitHub API/MCP tools: `get_job_logs(run_id, failed_only: true)` — "0 failed jobs" means green — or, for a release build, `get_release_by_tag`. Don't `curl` the run's status instead: in a sandboxed session `api.github.com` is proxy-blocked and returns an error body that never matches a success pattern, so a `curl`/`Monitor` poll silently reports "still running" until it times out.
+
+## A green run is not evidence its job ran — read the job's own conclusion
+
+A workflow that gates a later job (an `if:` on changed paths, a mode flag, a preceding job's output) concludes **success** with that job **skipped** — so "the release workflow is green" is not evidence the publish step ever executed, and most green runs may never have reached it. When triaging whether something actually happened, read the conclusion of the **job that does it**, never the run's. The corollary for closing an issue: the only closing evidence is a run that actually reached that job and went green (or the external system showing the effect) — fixing a repo-side defect that merely co-occurred with the failure verifies nothing, and a failure whose cause is state in an external service has no fix in the repo at all.
 
 ## Mark large committed fixtures `linguist-vendored` to fix language stats
 

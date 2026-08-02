@@ -56,6 +56,21 @@ signature in the repo artifact* — something a post-hoc scan could observe?**
   judgment ("name by scope"), or knowledge whose failure is only visible at runtime (jsdom
   diverging from Chrome). These are why the rule is prose; don't force them.
 
+**"Not statically checkable" is a verdict about the tree's shape at the time, not about the rule
+— re-derive it against today's sources.** A removal, a migration, or a consolidation can collapse
+the entry points a rule would have had to cover, turning a correct earlier "no" into a yes: a rule
+that looked to need data-flow tracing while a tree had many entry points becomes a one-literal
+check once the tree has two. When a sweep meets prose a previous sweep left behind, re-ask the
+objection rather than trusting the recorded verdict.
+
+**"Already covered by another check" is a claim to test, not to reason out — hand the sibling
+check a file that violates the rule before dropping it as a duplicate.** A ban list only covers
+the routes whoever wrote it thought of, so the routes it misses are invisible to exactly the
+reasoning that drew it — three sweeps in a row dropped a "the app opens no socket" rule because a
+neighbouring check banned the obvious networking import, while the base library re-exported a raw
+socket call that sailed straight through. Running the sibling against a violating file costs a
+minute and is the only step that can disagree with you.
+
 **A static signature is necessary, not sufficient.** Both shapes the working-discipline rules bar
 — a rule that pins today's code in place, and one derivable from the product's requirements —
 answer *yes* here, so screen every candidate against that bar before converting it. Leave either
@@ -82,6 +97,14 @@ Follow the extract stage's check-authoring discipline (the local promotion ladde
    directional by kind.
 4. **Delete the prose the check now covers** — whole, never trimmed. The deletion test below is
    how you decide which paragraphs those are.
+
+**Write the detection as a positive whitelist over an enumerated API surface, not as a list of
+the bad cases.** Flag every call whose argument is not the one literal the rule allows, rather
+than enumerating the arguments it forbids. Matching the allowed case buys two things a ban list
+cannot: a member of the surface that does not exist yet is caught the day it lands, and an
+indirect argument (a variable where a literal was expected) becomes a finding too — indirection
+is precisely what would otherwise defeat the check, so refusing to reason about it is a feature.
+Invert this only where the allowed set is genuinely open-ended.
 
 **Before writing a rule off as un-checkable, try parsing the file's structure instead of grepping
 its text.** Grep finds the pattern anywhere; parsing finds it in the one spot the rule means —
