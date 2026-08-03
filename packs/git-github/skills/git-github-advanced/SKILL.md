@@ -11,6 +11,20 @@ The project-agnostic half of how we drive GitHub: the branch/commit-history rule
 
 To post a **status update** on an issue (the lifecycle's "update the issue's status" step), use `add_issue_comment`. **Don't** reach for `issue_write` with `method: update` — that edits the issue itself and **replaces the whole body**, silently wiping the original description. Reserve `issue_write`/`update` for genuinely editing the issue (retitling, rewriting the body on purpose).
 
+## A step only a human can perform goes in its own issue, never the PR body
+
+A merged PR's description is not a to-do list anyone returns to: the note merges and disappears with it, and the setting stays unflipped until someone re-derives it weeks later. So when a change lands something that cannot work until a human flips a switch only they can reach — a repository or console setting, a permission grant, a secret, a deployment-environment rule — open an **issue** for it: a checkbox per step, what breaks while each is off, and a stated closing condition. Link it from the PR; keeping the note in the PR too is fine, but the issue is the thing that survives the merge. The one exception is a step whose home is an artifact the owner is already editing. And before handing a step over at all, confirm you actually can't do it yourself — a capability you failed to find is not a capability that's absent.
+
+## An auto-merge refusal is not a verdict — read the PR's state, then act, and never re-arm on a loop
+
+`enable_pr_auto_merge` only accepts a PR whose required checks are still **pending**, so its refusals are answers about *timing and configuration*, not about the change. Take each at face value and stop:
+
+- *"already in clean status (all checks passed)"* — the checks finished before you got there (fast CI does this routinely). That is the green light: `merge_pull_request` directly.
+- *"in unstable status (required checks are failing)"* — this wording covers a check that is **queued**, or **held at an approval gate**, exactly as it covers one that failed. Resolve it by reading the PR's check runs and looking at **`status`**, not `conclusion`; a check that hasn't `completed` has no verdict to report.
+- *"Protected branch rules not configured"* — auto-merge is a **protected-branch** feature, so a repo with no rule on its default branch can never arm it. This one is final; don't retry, and don't let the *first* refusal's wording (often the "checks are failing" message) convince you otherwise.
+
+Never re-arm on a loop hoping the answer changes: observed runs answered "unstable" and then "clean" seconds later with nothing changed in between, and one spent ~6 minutes of a 13-minute budget circling a single PR's merge state without merging it. Read the state once, merge when it's clean, and arm auto-merge only while checks are genuinely pending.
+
 ## Branch and commit history
 
 ### Commit often, in layers

@@ -38,7 +38,12 @@ it (the full rule lives in
 This gate comes **first** because product statements sail through the check-the-world test below —
 "this module must export `X`" has an obvious static signature. Converting one splits a feature's
 definition across two systems and lands half of it in the one no test of the product ever reads.
-Load-bearingness is not the test: a real gap in product coverage is a *requirements* gap.
+Load-bearingness is not the test: a real gap in product coverage is a *requirements* gap. Neither is
+build quality — a product statement converts into a genuinely well-made check, with a clean scoped
+parse and a real see-it-fail proof, and is still the wrong kind. Ask the counterfactual instead, and
+ask it **before** writing anything: *if the product changed its mind tomorrow, would this rule be
+wrong?* Yes → it is a requirement, and a red check would be reporting a product decision as a process
+violation. No — it holds regardless of what the product decides — → it is a working rule.
 
 A product statement already sitting in pack prose is mis-homed, and a sweep is not the place to
 re-home it. **Leave the prose and log it** as a mis-homed rule, the same way an un-checkable
