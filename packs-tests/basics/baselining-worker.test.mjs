@@ -5,6 +5,7 @@ import {
   maintenanceBranchName, openMaintenanceBranch, openMaintenancePull, shouldRequestAgent,
   unconfiguredSecrets, SECRETS_ISSUE_TITLE, workflowTriggers, ciDispatchPlan,
   pullCreateError, deliveryAction, pullDisposition, mergeReason, failureSummary, canonSource,
+  withheldWorkflowPaths, UNPUSHABLE_PREFIX,
 } from '../../packs/basics/tasks/baselining/worker.mjs';
 
 // The worker's PURE decision helpers (agent-preprocessing DESIGN §7, E4). The
@@ -102,6 +103,45 @@ test('shouldRequestAgent: agent iff a pending note, or a change left non-green',
   assert.equal(shouldRequestAgent({ pendingCount: 0, meaningfulChange: true, checksPass: false }), true);  // change, not green
   assert.equal(shouldRequestAgent({ pendingCount: 0, meaningfulChange: true, checksPass: true }), false);  // change, green → agentless
   assert.equal(shouldRequestAgent({ pendingCount: 0, meaningfulChange: false, checksPass: false }), false); // no change → agentless
+});
+
+// --- the unpushable set (#649) -----------------------------------------------
+// The Action's GITHUB_TOKEN may not write under .github/workflows/, and GitHub
+// rejects the WHOLE ref when a push contains one. Withholding those paths is what
+// keeps one undeliverable file from failing the mount converge, the wiring, and
+// every other note along with it — the wedge that hit missingbulb/Sheepdog.
+
+test('withheldWorkflowPaths: selects workflow files and nothing else', () => {
+  const changed = [
+    '.claudinite-checks.json',
+    '.claudinite/shared/engine/scheduler/run.mjs',
+    '.github/workflows/fleet-baseline.yml',
+    '.github/workflows/claudinite-scheduler.yml',   // convergeWiring's own output — the latent case
+    '.github/actions/report-failure/action.yml',    // an action, not a workflow: pushable
+    'docs/workflows/notes.md',                      // the prefix must anchor, not merely appear
+  ];
+  assert.deepEqual(withheldWorkflowPaths(changed), [
+    '.github/workflows/fleet-baseline.yml',
+    '.github/workflows/claudinite-scheduler.yml',
+  ]);
+});
+
+test('withheldWorkflowPaths: an ordinary converge withholds nothing, and a missing list is not a crash', () => {
+  assert.deepEqual(withheldWorkflowPaths(['.claudinite-checks.json']), []);
+  assert.deepEqual(withheldWorkflowPaths([]), []);
+  assert.deepEqual(withheldWorkflowPaths(undefined), []);
+  assert.equal(UNPUSHABLE_PREFIX, '.github/workflows/');
+});
+
+test('shouldRequestAgent: a withheld workflow file escalates — nothing else can land it', () => {
+  // Green, no note, no self-test failure: agentless by every other measure. But the
+  // file the converge could not push would then never land at all, and the cycle would
+  // report itself clean while the repo stayed un-updated.
+  assert.equal(shouldRequestAgent({
+    pendingCount: 0, meaningfulChange: true, checksPass: true, withheldCount: 1,
+  }), true);
+  // And the default keeps every existing caller's verdict unchanged.
+  assert.equal(shouldRequestAgent({ pendingCount: 0, meaningfulChange: true, checksPass: true }), false);
 });
 
 // --- required_secrets ask (agent-preprocessing DESIGN §9) --------------------
