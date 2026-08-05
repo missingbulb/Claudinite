@@ -4,7 +4,7 @@ import {
   normalizeDelivery, resolveDelivery, DEFAULT_DELIVERY, pendingAgentic, heldStamp,
   maintenanceBranchName, openMaintenanceBranch, openMaintenancePull, shouldRequestAgent,
   unconfiguredSecrets, SECRETS_ISSUE_TITLE, workflowTriggers, ciDispatchPlan,
-  pullCreateError, deliveryAction, canonSource,
+  pullCreateError, deliveryAction, pullDisposition, mergeReason, failureSummary, canonSource,
 } from '../../packs/basics/tasks/baselining/worker.mjs';
 
 // The worker's PURE decision helpers (agent-preprocessing DESIGN §7, E4). The
@@ -224,6 +224,66 @@ test('deliveryAction arms auto-merge when the repo does have PR CI', () => {
 test('deliveryAction never merges or arms a review-delivery member', () => {
   assert.equal(deliveryAction({ delivery: 'review', hasPrCi: false }), 'none');
   assert.equal(deliveryAction({ delivery: 'review', hasPrCi: true }), 'none');
+});
+
+// Disposing of the previous cycle's PR (#455/#205/#95). An arm that failed
+// permanently must not mean a maintenance PR sits open forever — so a PR either
+// lands on the evidence of its own concluded runs, or it is closed and re-cut.
+// Nothing is ever inherited: baselining is deterministic and idempotent, so the
+// previous attempt carries nothing this one needs.
+
+const done = (conclusion, name = 'CI') => ({ name, status: 'completed', conclusion });
+
+test('pullDisposition merges when the only non-success run is a gated action_required one', () => {
+  assert.equal(pullDisposition({
+    delivery: 'auto-merge', runs: [done('success'), done('action_required')],
+  }), 'merge');
+});
+
+test('pullDisposition merges an all-green PR the arm never landed (auto-merge off)', () => {
+  assert.equal(pullDisposition({ delivery: 'auto-merge', runs: [done('success')] }), 'merge');
+});
+
+test('pullDisposition closes rather than merges when CI really failed', () => {
+  for (const bad of ['failure', 'timed_out', 'cancelled', 'startup_failure']) {
+    assert.equal(pullDisposition({
+      delivery: 'auto-merge', runs: [done('success'), done('action_required'), done(bad)],
+    }), 'close', `${bad} must never be merged over`);
+  }
+});
+
+test('pullDisposition waits while anything is still queued or running', () => {
+  assert.equal(pullDisposition({
+    delivery: 'auto-merge', runs: [done('success'), { name: 'CI', status: 'in_progress', conclusion: null }],
+  }), 'wait');
+  assert.equal(pullDisposition({
+    delivery: 'auto-merge', runs: [{ name: 'CI', status: 'queued', conclusion: null }],
+  }), 'wait');
+});
+
+test('pullDisposition closes a PR with no success to stand on rather than reusing it', () => {
+  assert.equal(pullDisposition({ delivery: 'auto-merge', runs: [] }), 'close');
+  assert.equal(pullDisposition({ delivery: 'auto-merge', runs: null }), 'close');
+  assert.equal(pullDisposition({ delivery: 'auto-merge', runs: [done('action_required')] }), 'close');
+  assert.equal(pullDisposition({ delivery: 'auto-merge', runs: [done('skipped')] }), 'close');
+});
+
+// A review member's PR is the owner's: never merged behind their back, and never
+// closed out from under them either.
+test('pullDisposition keeps a review-delivery member\'s PR whatever its runs say', () => {
+  assert.equal(pullDisposition({ delivery: 'review', runs: [done('success')] }), 'keep');
+  assert.equal(pullDisposition({ delivery: 'review', runs: [done('failure')] }), 'keep');
+  assert.equal(pullDisposition({ delivery: 'review', runs: [] }), 'keep');
+});
+
+test('mergeReason names the gated run when there is one, the arm otherwise', () => {
+  assert.match(mergeReason([done('success'), done('action_required')]), /action_required/);
+  assert.match(mergeReason([done('success')]), /Allow auto-merge/);
+});
+
+test('failureSummary names the failing workflows, or the absence of a green one', () => {
+  assert.match(failureSummary([done('failure', 'verify'), done('success')]), /verify failure/);
+  assert.match(failureSummary([done('action_required')]), /no successful run/);
 });
 
 // A converged mount that cannot pass its own self-test escalates to the agent
