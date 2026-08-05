@@ -203,6 +203,39 @@ test('migrationActive: true for every live record, false once archived', () => {
   assert.equal(migrationActive('no-such-migration-slug'), false);
 });
 
+// The record's second gate is a deadlock-breaker, and a silent regression in it re-wedges
+// the enforcer's every converge — so it is pinned here rather than left to the record.
+test('sheepdog-fleet-baseline migration: inert until the member runs a worker that can withhold', async () => {
+  const m = (await loadMigrations()).find((x) => x.id === 'sheepdog-fleet-baseline');
+  assert.ok(m, 'discovered');
+
+  const DECL = '.claudinite-checks.json';
+  const WORKER = '.claudinite/shared/packs/basics/tasks/baselining/worker.mjs';
+  const declares = JSON.stringify({ packs: ['basics', { id: 'sheepdog', config: {} }] });
+  const read = ({ decl = declares, worker = 'export function withheldWorkflowPaths() {}' }) =>
+    async (p) => (p === DECL ? decl : p === WORKER ? worker : null);
+
+  // The enforcer, on a withhold-capable engine: the one case that materializes.
+  assert.equal(await m.appliesTo(read({})), true);
+
+  // The DEADLOCK case — declares the pack, but its vendored worker predates the withhold.
+  // Materializing here would reject the push, fail the converge, and stop the very
+  // delivery that would bring the newer worker in. It must stay inert for one cycle.
+  assert.equal(await m.appliesTo(read({ worker: 'export function shouldRequestAgent() {}' })), false);
+  assert.equal(await m.appliesTo(read({ worker: null })), false);   // no mount to read
+
+  // Not an enforcer: never, whatever engine it runs.
+  assert.equal(await m.appliesTo(read({ decl: JSON.stringify({ packs: ['basics'] }) })), false);
+  assert.equal(await m.appliesTo(read({ decl: 'not json' })), false);
+  assert.equal(await m.appliesTo(read({ decl: null })), false);     // canon itself
+
+  // Standing record: one file, nothing legacy to leave behind, never auto-retired.
+  assert.equal(m.materialize.length, 1);
+  assert.equal(m.materialize[0].dest, '.github/workflows/fleet-baseline.yml');
+  assert.equal(await m.legacyPresent(() => false, async () => null), false);
+  assert.equal(m.retire, 'manual');
+});
+
 test('chrome-release-vendoring migration: gate, telemetry, and the home-file retirement list', async () => {
   const m = (await loadMigrations()).find((x) => x.id === 'chrome-release-vendoring');
   assert.ok(m, 'discovered');
