@@ -4,7 +4,7 @@ import {
   normalizeDelivery, resolveDelivery, DEFAULT_DELIVERY, pendingAgentic, heldStamp,
   maintenanceBranchName, openMaintenanceBranch, openMaintenancePull, shouldRequestAgent,
   unconfiguredSecrets, SECRETS_ISSUE_TITLE, workflowTriggers, ciDispatchPlan,
-  pullCreateError, deliveryAction, reconcileAction, reconcileReason, canonSource,
+  pullCreateError, deliveryAction, pullDisposition, mergeReason, failureSummary, canonSource,
 } from '../../packs/basics/tasks/baselining/worker.mjs';
 
 // The worker's PURE decision helpers (agent-preprocessing DESIGN §7, E4). The
@@ -226,54 +226,64 @@ test('deliveryAction never merges or arms a review-delivery member', () => {
   assert.equal(deliveryAction({ delivery: 'review', hasPrCi: true }), 'none');
 });
 
-// The reconcile (#455/#205/#95): an arm that failed permanently must not mean a
-// maintenance PR sits open forever on top of green CI. The gated-run shape is
-// the one that produced these issues — the dispatched run passed, and a
-// pull_request run that NEVER EXECUTED is what auto-merge refuses over.
+// Disposing of the previous cycle's PR (#455/#205/#95). An arm that failed
+// permanently must not mean a maintenance PR sits open forever — so a PR either
+// lands on the evidence of its own concluded runs, or it is closed and re-cut.
+// Nothing is ever inherited: baselining is deterministic and idempotent, so the
+// previous attempt carries nothing this one needs.
 
 const done = (conclusion, name = 'CI') => ({ name, status: 'completed', conclusion });
 
-test('reconcileAction merges when the only non-success run is a gated action_required one', () => {
-  assert.equal(reconcileAction({
+test('pullDisposition merges when the only non-success run is a gated action_required one', () => {
+  assert.equal(pullDisposition({
     delivery: 'auto-merge', runs: [done('success'), done('action_required')],
   }), 'merge');
 });
 
-test('reconcileAction merges an all-green PR the arm never landed (auto-merge off)', () => {
-  assert.equal(reconcileAction({ delivery: 'auto-merge', runs: [done('success')] }), 'merge');
+test('pullDisposition merges an all-green PR the arm never landed (auto-merge off)', () => {
+  assert.equal(pullDisposition({ delivery: 'auto-merge', runs: [done('success')] }), 'merge');
 });
 
-test('reconcileAction is blocked by a real failure, gated run or not', () => {
+test('pullDisposition closes rather than merges when CI really failed', () => {
   for (const bad of ['failure', 'timed_out', 'cancelled', 'startup_failure']) {
-    assert.equal(reconcileAction({
+    assert.equal(pullDisposition({
       delivery: 'auto-merge', runs: [done('success'), done('action_required'), done(bad)],
-    }), 'blocked', `${bad} must block the reconcile`);
+    }), 'close', `${bad} must never be merged over`);
   }
 });
 
-test('reconcileAction waits while anything is still queued or running', () => {
-  assert.equal(reconcileAction({
+test('pullDisposition waits while anything is still queued or running', () => {
+  assert.equal(pullDisposition({
     delivery: 'auto-merge', runs: [done('success'), { name: 'CI', status: 'in_progress', conclusion: null }],
   }), 'wait');
-  assert.equal(reconcileAction({
+  assert.equal(pullDisposition({
     delivery: 'auto-merge', runs: [{ name: 'CI', status: 'queued', conclusion: null }],
   }), 'wait');
 });
 
-test('reconcileAction never merges without a success to stand on', () => {
-  assert.equal(reconcileAction({ delivery: 'auto-merge', runs: [] }), 'none');
-  assert.equal(reconcileAction({ delivery: 'auto-merge', runs: null }), 'none');
-  assert.equal(reconcileAction({ delivery: 'auto-merge', runs: [done('action_required')] }), 'none');
-  assert.equal(reconcileAction({ delivery: 'auto-merge', runs: [done('skipped')] }), 'none');
+test('pullDisposition closes a PR with no success to stand on rather than reusing it', () => {
+  assert.equal(pullDisposition({ delivery: 'auto-merge', runs: [] }), 'close');
+  assert.equal(pullDisposition({ delivery: 'auto-merge', runs: null }), 'close');
+  assert.equal(pullDisposition({ delivery: 'auto-merge', runs: [done('action_required')] }), 'close');
+  assert.equal(pullDisposition({ delivery: 'auto-merge', runs: [done('skipped')] }), 'close');
 });
 
-test('reconcileAction leaves a review-delivery member alone however green it is', () => {
-  assert.equal(reconcileAction({ delivery: 'review', runs: [done('success')] }), 'none');
+// A review member's PR is the owner's: never merged behind their back, and never
+// closed out from under them either.
+test('pullDisposition keeps a review-delivery member\'s PR whatever its runs say', () => {
+  assert.equal(pullDisposition({ delivery: 'review', runs: [done('success')] }), 'keep');
+  assert.equal(pullDisposition({ delivery: 'review', runs: [done('failure')] }), 'keep');
+  assert.equal(pullDisposition({ delivery: 'review', runs: [] }), 'keep');
 });
 
-test('reconcileReason names the gated run when there is one, the arm otherwise', () => {
-  assert.match(reconcileReason([done('success'), done('action_required')]), /action_required/);
-  assert.match(reconcileReason([done('success')]), /Allow auto-merge/);
+test('mergeReason names the gated run when there is one, the arm otherwise', () => {
+  assert.match(mergeReason([done('success'), done('action_required')]), /action_required/);
+  assert.match(mergeReason([done('success')]), /Allow auto-merge/);
+});
+
+test('failureSummary names the failing workflows, or the absence of a green one', () => {
+  assert.match(failureSummary([done('failure', 'verify'), done('success')]), /verify failure/);
+  assert.match(failureSummary([done('action_required')]), /no successful run/);
 });
 
 // A converged mount that cannot pass its own self-test escalates to the agent

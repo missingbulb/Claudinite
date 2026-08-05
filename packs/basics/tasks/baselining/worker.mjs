@@ -28,8 +28,9 @@
 //      at the day before the earliest one so the agent still sees the note (the
 //      stamp/agentic coupling rule);
 //   6. deliver the converge as ONE commit on the per-cycle maintenance branch via
-//      NATIVE git (find the family's open PR by head-branch prefix and reuse it,
-//      else mint a dated branch and open the PR), arming auto-merge per the
+//      NATIVE git (dispose of the family's open PR — merge it if its own runs
+//      verified it, else close it — then cut a fresh dated branch and open the
+//      PR), arming auto-merge per the
 //      member's `maintenance.delivery` and DISPATCHING the repo's PR CI on the
 //      branch — the GITHUB_TOKEN push emits no pull_request run of its own
 //      (#565), so the checks the arm waits on must be started explicitly;
@@ -126,11 +127,12 @@ export function maintenanceBranchName(dateStr, seed) {
   return `${MAINT_PREFIX}-${dateStr}-${seed}`;
 }
 
-// The family's open maintenance PR, found by head-branch PREFIX (idempotency is
-// by prefix now that the name carries a per-cycle seed): a run reuses that PR so
-// they never pile up night-over-night. null → mint a fresh one. The whole PR is
-// returned, not just its ref, because the reuse path needs its `node_id` to
-// re-assert the auto-merge arm each cycle.
+// The family's open maintenance PR, found by head-branch PREFIX (the name carries
+// a per-cycle seed, so the prefix is what identifies the family): the cycle
+// DISPOSES of this one — merge or close — before cutting its own, which is what
+// keeps them from piling up night-over-night. null → nothing to dispose of. The
+// whole PR is returned, not just its ref, because disposal needs its number and
+// head sha.
 export function openMaintenancePull(pulls, prefix = MAINT_PREFIX) {
   return (pulls ?? []).find((pr) => String(pr?.head?.ref ?? '').startsWith(prefix)) ?? null;
 }
@@ -172,7 +174,7 @@ export const AGENT_REQUEST_MARKER = 'agent-requested';
 // members GitHub CREATES the pull_request run and parks it at `action_required`
 // awaiting an approval nobody clicks. The dispatch above still supplies the real
 // green, but the parked run is what auto-merge refuses over — which is why
-// arming is not the end of the story and reconcileAction exists.
+// arming is not the end of the story and pullDisposition exists.
 //
 // Reading the triggers is a best-effort TEXTUAL scan of a workflow's top-level
 // `on:` block (the worker is dependency-free — no YAML parser). It covers the
@@ -274,9 +276,9 @@ export function canonSource(env = {}) {
 // the PR was created, else the message to fail on.
 //
 // This is the one call whose silent failure is invisible AND self-perpetuating.
-// `openMaintenancePull` reuses by OPEN PR, so a cycle that pushes its branch but
-// fails to open the PR mints a FRESH branch next cycle, and the next — branches
-// pile up nightly, the stamp never advances, and the run still reports `ok`
+// `openMaintenancePull` finds only an OPEN PR, so a cycle that pushes its branch
+// but fails to open the PR leaves nothing for the next cycle to dispose of, and
+// the next — branches pile up nightly, the stamp never advances, and the run still reports `ok`
 // because nothing read the status. The fleet ran exactly that way for two days:
 // every consumer but the pilot sat on the same canon ref carrying 07-29 and
 // 07-30 maintenance branches with no PR behind either.
@@ -334,32 +336,51 @@ export function deliveryAction({ delivery, hasPrCi }) {
 // on that sha is verified and `auto-merge` means merge it. A gated
 // `action_required` run is not a failure — it is a run that never happened.
 //
-// Deliberately conservative, because this bypasses the arm:
-//   - Anything still queued/running → `wait`. Never merge mid-flight.
-//   - Any real failure (failure / timed_out / cancelled / startup_failure) →
-//     `blocked`. This is what keeps a member whose CI is genuinely red (a broken
-//     `verify` on main, say) from having the breakage merged on top of itself.
-//   - No successful run at all → `none`. Absence of evidence is not green.
+// Deliberately conservative about MERGING, because that bypasses the arm:
+//   - Anything still queued/running → `wait`. Never merge mid-flight, and never
+//     bin a cycle whose checks might still land it.
+//   - Any real failure (failure / timed_out / cancelled / startup_failure), or no
+//     successful run to stand on → `close`. NOT a merge, and equally not a reuse.
+//
+// `close` is the other half of the fix, and the more important one. Reusing the
+// open PR — force-pushing each cycle's converge onto whatever state it had
+// accumulated — is what made a single failed arm permanent: the PR outlived every
+// cycle, so one bad night was inherited forever. Baselining is a DETERMINISTIC,
+// IDEMPOTENT converge; the previous attempt carries no information this one needs.
+// So a PR that did not land gets closed and re-cut from scratch, and no PR ever
+// survives more than one cycle. Pile-up is prevented by closing the old one in the
+// same step that mints the new, not by reusing it.
+//
+// A `review` member's PR is the owner's to act on, on their own clock — never
+// merged, and never closed out from under them either.
 export const REAL_FAILURES = ['failure', 'timed_out', 'cancelled', 'startup_failure'];
 
-export function reconcileAction({ delivery, runs }) {
-  if (delivery !== 'auto-merge') return 'none';
+export function pullDisposition({ delivery, runs }) {
+  if (delivery !== 'auto-merge') return 'keep';
   const list = (runs ?? []).filter(Boolean);
-  if (!list.length) return 'none';
   if (list.some((r) => r.status !== 'completed')) return 'wait';
-  if (list.some((r) => REAL_FAILURES.includes(r.conclusion))) return 'blocked';
-  if (!list.some((r) => r.conclusion === 'success')) return 'none';
+  if (list.some((r) => REAL_FAILURES.includes(r.conclusion))) return 'close';
+  if (!list.some((r) => r.conclusion === 'success')) return 'close';
   return 'merge';
 }
 
-// Why the reconcile merged — the log line has to name which of the two shapes
-// this was, or the underlying repo misconfiguration stays invisible.
-export function reconcileReason(runs) {
+// Why the merge had to happen here rather than through the arm. The log line has
+// to name which shape this was, or the repo misconfiguration behind it stays
+// invisible — and it is a REPO setting, so only a human can retire it.
+export function mergeReason(runs) {
   return (runs ?? []).some((r) => r?.conclusion === 'action_required')
     ? 'its pull_request run is parked at action_required (never ran) while the dispatched run passed'
     + ' — check Settings → Actions → General → workflow-approval requirements'
     : 'CI concluded green but the auto-merge arm never landed it'
     + ' — check Settings → General → "Allow auto-merge"';
+}
+
+// Why a PR was closed rather than merged — the same visibility argument, for the
+// case that matters more: a member whose CI is genuinely red.
+export function failureSummary(runs) {
+  const failed = (runs ?? []).filter((r) => REAL_FAILURES.includes(r?.conclusion));
+  if (failed.length) return `failing CI: ${failed.map((r) => `${r.name} ${r.conclusion}`).join(', ')}`;
+  return 'no successful run on its head sha';
 }
 
 // Run the engine's self-test against the converged tree; true when the machinery
@@ -372,28 +393,34 @@ function selfTestPasses(root) {
   catch { return false; }
 }
 
-// Deliver the converge as one commit on the per-cycle maintenance branch, native
-// git. Reuses the family's open PR (by prefix) or mints a dated branch + PR;
-// arms auto-merge when the member asked for it. Force-push is the regenerate-not-
-// reconcile stance for this bot-owned branch.
+// Deliver the converge as one commit on a FRESH per-cycle maintenance branch,
+// native git: dispose of the family's open PR first (merge it if last cycle's
+// content is verified, otherwise close it), then cut a new dated branch + PR and
+// arm auto-merge when the member asked for it.
+//
+// Nothing is reused. A maintenance PR is one cycle's deterministic converge, and
+// a cycle that did not land has nothing to hand the next one — inheriting it is
+// what turned a single failed arm into a PR that outlived every subsequent cycle
+// (#455/#205/#95). The disposal happens BEFORE the converge is pushed, because
+// the push would replace the head sha the merge evidence hangs on.
 async function deliver(root, repo, base, token, delivery, seed) {
   const { json: pulls } = await gh(token, `/repos/${repo}/pulls?state=open&per_page=100`);
-  let pr = openMaintenancePull(Array.isArray(pulls) ? pulls : []);
+  const openPr = openMaintenancePull(Array.isArray(pulls) ? pulls : []);
+  let pr = null;
 
-  // BEFORE regenerating onto it: land the PR the last cycle's arm could not land
-  // (reconcileAction). Judged on the runs for the head sha AS IT STANDS — this
-  // cycle's force-push would replace that sha and throw the evidence away, which
-  // is exactly how these PRs accumulated cycles of green nobody ever acted on.
-  // A merge here frees the family, so this cycle mints a fresh branch instead of
-  // reusing a merged one.
-  if (pr?.number && pr?.head?.sha) {
-    const landed = await reconcileOpenPull(token, repo, pr, delivery)
-      .catch((e) => { console.log(`baselining: reconcile on PR #${pr.number} failed: ${e.message}`); return false; });
-    if (landed) pr = null;
+  if (openPr?.number) {
+    // `wait` is the one case that keeps the PR: its checks are still running and
+    // may yet land it. Skip this cycle entirely rather than race them — the
+    // converge is idempotent, so tomorrow simply does it again.
+    const kept = await disposeOpenPull(token, repo, openPr, delivery)
+      .catch((e) => { console.log(`baselining: disposing of PR #${openPr.number} failed: ${e.message}`); return openPr; });
+    if (kept) {
+      console.log(`baselining: PR #${openPr.number} still stands — leaving this cycle's converge undelivered`);
+      return kept.head?.ref ?? null;
+    }
   }
 
-  const reuse = Boolean(pr);
-  let branch = reuse ? pr.head.ref : maintenanceBranchName(new Date().toISOString().slice(0, 10), seed);
+  const branch = maintenanceBranchName(new Date().toISOString().slice(0, 10), seed);
 
   git(['-C', root, 'checkout', '-B', branch]);
   git(['-C', root, 'add', '-A']);
@@ -402,31 +429,25 @@ async function deliver(root, repo, base, token, delivery, seed) {
   const remote = `https://x-access-token:${token}@github.com/${repo}.git`;
   git(['-C', root, 'push', '--force', remote, `HEAD:refs/heads/${branch}`]);
 
-  if (!reuse) {
-    const body = delivery === 'auto-merge'
-      ? 'Automated Claudinite maintenance (deterministic converge + any migration notes). Regenerated each cycle; auto-merges once this repo\'s checks pass.'
-      : 'Automated Claudinite maintenance (deterministic converge + any migration notes). Regenerated each cycle; left for your review.';
-    const created = await gh(token, `/repos/${repo}/pulls`, {
-      method: 'POST', body: { head: branch, base, title: 'Claudinite maintenance', body },
-    });
-    const failure = pullCreateError(created.status, created.json);
-    if (failure) throw new Error(`could not open the maintenance PR for ${branch}: ${failure}`);
-    pr = created.json;
-  }
+  const body = delivery === 'auto-merge'
+    ? 'Automated Claudinite maintenance (deterministic converge + any migration notes). Re-cut each cycle; auto-merges once this repo\'s checks pass.'
+    : 'Automated Claudinite maintenance (deterministic converge + any migration notes). Re-cut each cycle; left for your review.';
+  const created = await gh(token, `/repos/${repo}/pulls`, {
+    method: 'POST', body: { head: branch, base, title: 'Claudinite maintenance', body },
+  });
+  const failure = pullCreateError(created.status, created.json);
+  if (failure) throw new Error(`could not open the maintenance PR for ${branch}: ${failure}`);
+  pr = created.json;
 
   // ARM GitHub's native auto-merge (not an immediate merge): the PR lands
   // automatically once this repo's required checks pass, and the run never blocks
   // on CI. Auto-merge is a GraphQL-only mutation.
   //
-  // RE-ASSERTED EVERY CYCLE, reuse or not. The arm is best-effort, and there are
-  // three ordinary ways for it to be absent from an open maintenance PR: the
-  // mutation failed when the PR was opened; the repo had not enabled auto-merge
-  // yet (a settings change nothing here can see); or the member flipped
-  // `maintenance.delivery` from `review` to `auto-merge` while this PR was
-  // already open. Arming only on the opening cycle left all three unrecoverable —
-  // every later run reuses the branch and never retried, so the PR sat open
-  // forever. The stable-PR form this superseded re-asserted the arm on every run;
-  // this restores that. Idempotent: arming an already-armed PR is a no-op.
+  // Every cycle opens its own PR and arms it, so the arm is never stale — and it
+  // is no longer the only thing standing between a converge and `main`: the arm
+  // failing (auto-merge off, or a gated pull_request run) now costs one cycle,
+  // not forever, because the next cycle merges this PR on its concluded runs
+  // (pullDisposition) or closes it and re-cuts. Idempotent either way.
   // Start the PR's checks FIRST — the GITHUB_TOKEN push/open above emitted no
   // pull_request event, so without this the PR has no runs (#565, the
   // ciDispatchPlan block). AFTER the push, so the dispatched runs execute the
@@ -455,40 +476,68 @@ async function deliver(root, repo, base, token, delivery, seed) {
         .catch((e) => console.log(`baselining: could not arm auto-merge on PR #${pr.number}: ${e.message}`
           + ' — check Settings → General → "Allow auto-merge", and Settings → Actions → General for a'
           + ' workflow-approval requirement parking this PR\'s pull_request run at action_required.'
-          + ' The next cycle reconciles it from the runs on this head sha (reconcileAction).'));
+          + ' The next cycle lands it from the runs on this head sha, or closes and re-cuts it'
+          + ' (pullDisposition).'));
     }
   }
   return branch;
 }
 
-// The I/O half of the reconcile: read every workflow run for the open PR's head
-// sha, decide with reconcileAction, and squash-merge when the evidence says the
-// arm simply failed to land verified content. Returns true iff it merged.
-// Best-effort by construction — a reconcile that cannot read or cannot merge
-// leaves the PR exactly as it found it and the cycle proceeds normally.
-async function reconcileOpenPull(token, repo, pr, delivery) {
-  const { status, json } = await gh(token, `/repos/${repo}/actions/runs?head_sha=${pr.head.sha}&per_page=100`);
+// The I/O half of the disposal: read the workflow runs for the open PR's head
+// sha, decide with pullDisposition, and either merge it (last cycle's content is
+// verified — the arm just never landed it) or close it and delete its branch so
+// this cycle re-cuts from scratch. Returns the PR when it still stands (a `wait`,
+// a `review` member, or a failed attempt), null when the way is clear.
+//
+// Best-effort throughout: anything unreadable or unmergeable leaves the PR as it
+// found it, and the cycle skips rather than piling a second PR on top.
+async function disposeOpenPull(token, repo, pr, delivery) {
+  const { status, json } = await gh(token, `/repos/${repo}/actions/runs?head_sha=${pr.head?.sha}&per_page=100`);
   if (status !== 200) {
-    console.log(`baselining: could not read the runs for PR #${pr.number}'s head (HTTP ${status}) — skipping reconcile`);
-    return false;
+    console.log(`baselining: could not read the runs for PR #${pr.number}'s head (HTTP ${status})`);
+    return pr;
   }
   const runs = (json?.workflow_runs ?? []).map((r) => ({ name: r.name, status: r.status, conclusion: r.conclusion }));
-  const action = reconcileAction({ delivery, runs });
-  if (action !== 'merge') {
-    // Named, not silent: `blocked` in particular is a member whose CI is really
-    // red, and the open PR is the symptom someone has to go look at.
-    if (action !== 'none') console.log(`baselining: leaving PR #${pr.number} open — reconcile says ${action}`);
-    return false;
+  const disposition = pullDisposition({ delivery, runs });
+
+  if (disposition === 'keep' || disposition === 'wait') {
+    console.log(`baselining: keeping PR #${pr.number} (${disposition})`);
+    return pr;
   }
-  const res = await gh(token, `/repos/${repo}/pulls/${pr.number}/merge`, {
-    method: 'PUT', body: { merge_method: 'squash' },
-  });
-  if (res.status === 200) {
-    console.log(`baselining: reconciled PR #${pr.number} — merged it directly because ${reconcileReason(runs)}`);
-    return true;
+
+  if (disposition === 'merge') {
+    const res = await gh(token, `/repos/${repo}/pulls/${pr.number}/merge`, {
+      method: 'PUT', body: { merge_method: 'squash' },
+    });
+    if (res.status === 200) {
+      console.log(`baselining: merged PR #${pr.number} — ${mergeReason(runs)}`);
+      await deleteBranch(token, repo, pr.head?.ref);
+      return null;
+    }
+    console.log(`baselining: could not merge PR #${pr.number} (${res.status}: ${res.json?.message ?? 'no message'})`
+      + ' — closing it instead; the converge is idempotent and this cycle re-cuts it');
   }
-  console.log(`baselining: could not reconcile PR #${pr.number} (${res.status}: ${res.json?.message ?? 'no message'})`);
-  return false;
+
+  // Closed, not left to rot: whatever went wrong on that head, the next converge
+  // reproduces the same content from the same inputs. Named in the log because a
+  // member closing its maintenance PR every single night is a repo whose CI needs
+  // a human, and the pattern has to be visible to be noticed.
+  const closed = await gh(token, `/repos/${repo}/pulls/${pr.number}`, { method: 'PATCH', body: { state: 'closed' } });
+  if (closed.status !== 200) {
+    console.log(`baselining: could not close PR #${pr.number} (${closed.status}) — leaving it and skipping this cycle`);
+    return pr;
+  }
+  console.log(`baselining: closed PR #${pr.number} — it did not land (${failureSummary(runs)}); re-cutting this cycle`);
+  await deleteBranch(token, repo, pr.head?.ref);
+  return null;
+}
+
+// Tidy the ref behind a disposed PR — a closed branch left on the remote is litter
+// that accumulates one per cycle. Never fatal: the branch is not the deliverable.
+async function deleteBranch(token, repo, ref) {
+  if (!ref) return;
+  const res = await gh(token, `/repos/${repo}/git/refs/heads/${encodeURIComponent(ref)}`, { method: 'DELETE' });
+  if (res.status !== 204) console.log(`baselining: could not delete branch ${ref} (HTTP ${res.status})`);
 }
 
 // The I/O half of the CI dispatch (#565): read the workflow files as they exist
