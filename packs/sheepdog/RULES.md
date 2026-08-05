@@ -22,9 +22,37 @@ measurement rather than a condition to converge. It exists because a member fold
 numbers and can therefore only say whether a skill loads *there*; whether a skill earns its place at
 all is fleet-shaped, and nothing inside a member can see it.
 
+**One manual lever, not a fourth sweep** — [force-fleet-baseline.mjs](fleet-baseline/force-fleet-baseline.mjs)
+fires every covered member's own `claudinite-scheduler.yml` with `overrides: FORCE_TASKS=baselining`,
+which is the same button the owner would press in that repo's Actions tab, pressed across the fleet in
+one run. It is a **dispatcher, not a maintainer**: each member converges its own mount, with its own
+token, under its own delivery policy, and this writes nothing to any member — one queued Actions run
+each, and no commit, issue or comment. Under per-project scheduling the fleet needs no push in the
+ordinary case; this is for the un-ordinary ones — a canon change the fleet should pick up *now*, or the
+tail of members whose next slot is hours away while someone is standing by. A forced run bypasses
+baselining's precondition, so a member with nothing to do converges to a cheap no-op: over-using it is
+wasteful, never unsafe. A **dormant** member is skipped and reported (it stopped its own scheduler on
+purpose); `include_dormant` overrides that. Canon is skipped — its baselining self-skips — but the
+enforcer repo is **not**: it is an ordinary member, and leaving it out would make the one repo the owner
+is watching the one repo that did not move.
+
+**Why that one is a workflow** — every other thing this pack does answers a recurring question, so it
+is a scheduled task. Force-baseline answers none and has no cadence: it is owner-initiated, carries its
+own inputs (repo filter, dry run, dormant opt-in), and starts when a human presses *Run workflow*. Its
+workflow declares **`workflow_dispatch` only** — no `schedule:` — so the vendored scheduler remains the
+repo's only cron and [scheduled-tasks.md](../basics/scheduled-tasks.md)'s doctrine is untouched. GitHub
+reads workflows solely from a repo's own `.github/`, never from the mount, so the enforcer hosts a
+**managed copy** of [stubs/workflows/fleet-baseline.yml](stubs/workflows/fleet-baseline.yml),
+re-materialized every maintenance cycle by the
+[`sheepdog-fleet-baseline`](../../migrations/active_migrations/2026-08-05-sheepdog-fleet-baseline.mjs)
+record — edit the pack, never the copy. That record gates on the repo **declaring this pack**, so
+declaring sheepdog is the whole adoption: the next apply pass installs the workflow.
+
 **Where the code lives** — each sweep sits **inside its task's folder**, because only that task's
-`worker.mjs` uses it. The pack root holds just what both need: [fleet-api.mjs](fleet-api.mjs) (cross-repo
-REST primitives) and [fleet-config.mjs](fleet-config.mjs) (the one reader of the entry `config` below).
+`worker.mjs` uses it; force-baseline sits in [fleet-baseline/](fleet-baseline/) beside them, because it
+belongs to no task and its runner is the vendored workflow. The pack root holds just what they all
+need: [fleet-api.mjs](fleet-api.mjs) (cross-repo REST primitives) and
+[fleet-config.mjs](fleet-config.mjs) (the one reader of the entry `config` below).
 
 **Config** — this repo's `.claudinite-checks.json` carries, as its `packs` entry for this pack:
 
@@ -60,7 +88,14 @@ reachable there; each task's `required_secrets: ['FLEET_GITHUB_TOKEN']` stamps t
 workflow's env and is what asks the owner for it (a fine-grained PAT spanning the owner's repos:
 Metadata + Contents read, Issues read/write, and Contents write on this repo for baseline-migration
 retirement — freshness adds no scope). A workflow that exists only to hold a secret is redundant
-([packs/basics/scheduled-tasks.md](../basics/scheduled-tasks.md)).
+([packs/basics/scheduled-tasks.md](../basics/scheduled-tasks.md)) — the force-baseline workflow above is
+not that: it exists because the operation is manual, and it reads the same secret only incidentally.
+
+**The one scope the sweeps don't need** — force-baseline adds **Actions: read and write** on the owner's
+repositories to that PAT. Dispatching another repo's workflow is an Actions *write*, so a token scoped
+for the three read-only sweeps answers `403` on every member. The sweep reports that per repo as
+`no-permission` and fails the run rather than retrying: it is a grant to fix once, not a transient. The
+sweeps themselves are unaffected — they never dispatch anything.
 
 **What freshness assumes** — baselining reverts a stamp-only bump, so `claudinite.updated` advances
 only when canon changed that member's vendor set. Age of the **stamped ref** is therefore the honest

@@ -1,0 +1,73 @@
+name: Fleet baseline
+
+# THE ENFORCER'S MANUAL LEVER over the whole fleet: force every covered member to
+# baseline NOW, instead of waiting for each one's next hourly slot. It fires each
+# member's OWN scheduler workflow with `overrides: FORCE_TASKS=baselining` — the same
+# button the owner would press in that repo's Actions tab, pressed across the fleet in
+# one run. Nothing is baselined here: each member converges its own mount, with its own
+# token, under its own delivery policy.
+#
+# A MANAGED COPY. This file is owned by the sheepdog pack
+# (packs/sheepdog/stubs/workflows/fleet-baseline.yml) and vendored into this repo by the
+# `sheepdog-fleet-baseline` baseline migration, which re-materializes it every cycle —
+# so a local edit is overwritten. Fix the pack and let the next maintenance cycle carry
+# it here. It lives in .github/ rather than running from the mount because GitHub reads
+# workflows only from a repo's own .github/; the LOGIC it runs stays in the mount
+# (.claudinite/shared/packs/sheepdog/fleet-baseline/), so this file is copy-verbatim in
+# every enforcer repo and changes only when its inputs change.
+#
+# NO `schedule:` TRIGGER, DELIBERATELY. The vendored `claudinite-scheduler.yml` is this
+# repo's only cron (packs/basics/scheduled-tasks.md), and this workflow does not add a
+# second one. It is not recurring work with a cadence — it is an owner-initiated
+# operation, started by a human pressing "Run workflow", which is exactly what
+# workflow_dispatch is for. Members baseline themselves hourly; this is for the cases
+# that should not wait for that.
+on:
+  workflow_dispatch:
+    inputs:
+      repos:
+        description: 'Limit to these repos (comma-separated; bare name or owner/name). Empty = every covered member.'
+        required: false
+        default: ''
+      dry_run:
+        description: 'List what would be dispatched without dispatching anything.'
+        type: boolean
+        required: false
+        default: false
+      include_dormant:
+        description: 'Also force members that declared themselves dormant (they are skipped by default — a dormant repo stopped its own scheduler on purpose).'
+        type: boolean
+        required: false
+        default: false
+
+# One fleet-wide force at a time. Not cancel-in-progress: a run that has already
+# dispatched half the fleet has done half its work for real, and killing it would leave
+# the fleet in a state no report describes.
+concurrency:
+  group: fleet-baseline
+  cancel-in-progress: false
+
+# Reads this repo's own declaration for the sheepdog config; every write it makes is to
+# ANOTHER repo's Actions, over FLEET_GITHUB_TOKEN, which github.token cannot do.
+permissions:
+  contents: read
+
+jobs:
+  force-baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Force baselining across the fleet
+        env:
+          # The account-spanning PAT the sheepdog sweeps already use, plus ONE scope they
+          # do not need: Actions READ AND WRITE on the owner's repositories. Dispatching
+          # another repo's workflow is an Actions write; without it every member reports
+          # `no-permission` and the run fails.
+          FLEET_GITHUB_TOKEN: ${{ secrets.FLEET_GITHUB_TOKEN }}
+          FLEET_BASELINE_REPOS: ${{ inputs.repos }}
+          FLEET_BASELINE_DRY_RUN: ${{ inputs.dry_run }}
+          FLEET_BASELINE_INCLUDE_DORMANT: ${{ inputs.include_dormant }}
+        run: node .claudinite/shared/packs/sheepdog/fleet-baseline/force-fleet-baseline.mjs

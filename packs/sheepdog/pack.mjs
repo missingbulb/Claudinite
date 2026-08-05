@@ -23,9 +23,16 @@
 // therefore only say whether a skill loads THERE; whether a skill earns its place at
 // all is a fleet-shaped question no member can answer about itself.
 //
-// No workflow of its own: preprocessing
-// runs Action-side inside the repo's one scheduler workflow, where that secret is
-// already reachable. Everything else — the SCHEDULER (engine/scheduler/run.mjs), the
+// The sweeps carry no workflow of their own: preprocessing runs Action-side inside
+// the repo's one scheduler workflow, where that secret is already reachable. The
+// pack's ONE workflow is fleet-baseline (stubs/workflows/fleet-baseline.yml, driven
+// by fleet-baseline/force-fleet-baseline.mjs) — the owner's manual lever to make every
+// member baseline now. It answers no recurring question, so it is not a task; it
+// declares workflow_dispatch and no schedule, so it adds no second cron; and a
+// migration keeps a managed copy of it in the enforcer's own .github/, because GitHub
+// reads workflows only from there.
+//
+// Everything else — the SCHEDULER (engine/scheduler/run.mjs), the
 // orchestrator/daily-run, the task engine (engine/scheduler/), scheduling — is CORE and
 // pack-agnostic; the planner never runs, dispatches, or depends on these sweeps.
 export default {
