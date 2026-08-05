@@ -32,10 +32,10 @@ with `FORCE_TASKS=baselining` so the fleet picks canon up now instead of over th
 repo filter, a dry run, and an opt-in for dormant members; it writes nothing to any member (one queued
 Actions run each) and reports what it fired. Its `workflow_dispatch`-only workflow adds no cron, so the
 vendored scheduler stays the enforcer's only one — and because GitHub reads workflows solely from a
-repo's own `.github/`, the enforcer carries a byte-identical copy of the stub there, **landed by a
-session** and synced by nothing: the nightly converge pushes with the Action's `GITHUB_TOKEN`, which can
-never write under `.github/workflows/` ([#649](https://github.com/missingbulb/Claudinite/issues/649)).
-Edit the pack, then land the copy.
+repo's own `.github/`, the [`sheepdog-fleet-baseline`](../../migrations/active_migrations/2026-08-05-sheepdog-fleet-baseline.mjs)
+migration keeps a byte-identical copy there, gated on the repo declaring this pack. The nightly's own
+token cannot write a workflow file, so the converge withholds it and baselining's agent stage lands it
+over MCP ([#649](https://github.com/missingbulb/Claudinite/issues/649)) — automatic either way.
 
 Each sweep lives **inside its task's folder**, because nothing outside that task uses it; force-baseline
 lives in [fleet-baseline/](fleet-baseline/) beside them, because it belongs to no task. Only what they

@@ -45,15 +45,16 @@ reads workflows solely from a repo's own `.github/`, never from the mount, so th
 of [stubs/workflows/fleet-baseline.yml](stubs/workflows/fleet-baseline.yml) — byte-identical, carrying
 no repo-specific value.
 
-**That copy is landed by a session, and nothing syncs it.** A baseline migration cannot deliver it and
-neither can anything else in the nightly: baselining's converge pushes with the Action's
-`GITHUB_TOKEN`, which GitHub never permits to create *or update* a file under `.github/workflows/`, and
-a rejected push fails the **whole** converge — so one undeliverable workflow file wedges every other
-update that member had, on every run, until a human intervenes (the failure that taught us this, and
-the options for a durable mechanism, are in
-[#649](https://github.com/missingbulb/Claudinite/issues/649)). So: adopting this pack means landing the
-workflow in the enforcer's `.github/` by hand, and a later change to the stub reaches the enforcer the
-same way. Edit the pack, then land the copy — and until you do, the copy is **stale, not managed**.
+**It arrives, and stays current, on its own** — through the
+[`sheepdog-fleet-baseline`](../../migrations/active_migrations/2026-08-05-sheepdog-fleet-baseline.mjs)
+record, gated on the repo **declaring this pack**, so declaring sheepdog is the whole adoption. Its
+delivery takes one detour worth knowing about: the Action's `GITHUB_TOKEN` may not write under
+`.github/workflows/`, so the nightly converge **withholds** the file from its own push and baselining's
+**agent stage** lands it on the same maintenance branch over MCP, whose credential does hold that
+permission ([#649](https://github.com/missingbulb/Claudinite/issues/649); the mechanism is
+`withheldWorkflowPaths` in the baselining worker and §2b of its task.md). Nothing about that is
+sheepdog-specific — the scheduler workflow itself rides the same path — and nothing about it needs a
+human. Edit the pack; the copy follows.
 
 **Where the code lives** — each sweep sits **inside its task's folder**, because only that task's
 `worker.mjs` uses it; force-baseline sits in [fleet-baseline/](fleet-baseline/) beside them, because it

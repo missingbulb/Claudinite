@@ -29,9 +29,9 @@
 // by fleet-baseline/force-fleet-baseline.mjs) — the owner's manual lever to make every
 // member baseline now. It answers no recurring question, so it is not a task; it
 // declares workflow_dispatch and no schedule, so it adds no second cron; and because
-// GitHub reads workflows only from a repo's own .github/, the enforcer carries a copy
-// there — landed by a session, since the nightly converge's GITHUB_TOKEN can never
-// write a workflow file (#649).
+// GitHub reads workflows only from a repo's own .github/, a migration keeps a copy there
+// — delivered by the converge's withhold-and-hand-to-the-agent path, since the Action
+// token cannot write a workflow file itself (#649).
 //
 // Everything else — the SCHEDULER (engine/scheduler/run.mjs), the
 // orchestrator/daily-run, the task engine (engine/scheduler/), scheduling — is CORE and
