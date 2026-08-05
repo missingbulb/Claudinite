@@ -37,6 +37,49 @@ test('runPreprocessing: a command that cannot start is a failure, not a throw', 
   assert.equal(r.ok, false);
 });
 
+// The worker's own output is the scheduler's only account of what preprocessing did.
+// Before it was echoed, a failed worker read as a bare `preprocessing exited 1` and
+// diagnosing one meant reproducing it by hand.
+
+test('runPreprocessing: the child output is echoed as it arrives, tagged by stream', async () => {
+  const seen = [];
+  const cmd = `"${NODE}" -e "process.stdout.write('converging\\n'); process.stderr.write('rejected\\n')"`;
+  const r = await runPreprocessing(cmd, {
+    taskDir: process.cwd(), env: process.env, timeoutSeconds: 10,
+    echo: (chunk, stream) => seen.push([stream, chunk]),
+  });
+  assert.equal(r.ok, true);
+  assert.deepEqual(seen.filter(([s]) => s === 'stdout').map(([, c]) => c), ['converging\n']);
+  assert.deepEqual(seen.filter(([s]) => s === 'stderr').map(([, c]) => c), ['rejected\n']);
+  // Still collected as well — the failure summary and the needs-human issue read these.
+  assert.equal(r.stdout, 'converging\n');
+  assert.equal(r.stderr, 'rejected\n');
+});
+
+test('runPreprocessing: a worker killed at its timeout still echoed what it printed first', async () => {
+  const seen = [];
+  const cmd = `"${NODE}" -e "process.stdout.write('got this far\\n'); setTimeout(()=>{}, 10000)"`;
+  const r = await runPreprocessing(cmd, {
+    taskDir: process.cwd(), env: process.env, timeoutSeconds: 0.5,
+    echo: (chunk) => seen.push(chunk),
+  });
+  assert.equal(r.timedOut, true);
+  // This is the whole reason the echo is live rather than a dump at exit: the buffer
+  // of a SIGKILLed child is exactly the output nobody would otherwise ever see.
+  assert.deepEqual(seen, ['got this far\n']);
+});
+
+test('runPreprocessing: a broken echo sink never fails the run', async () => {
+  const r = await runPreprocessing(`"${NODE}" -e "console.log('hi')"`, {
+    taskDir: process.cwd(),
+    env: process.env,
+    timeoutSeconds: 10,
+    echo: () => { throw new Error('sink is gone'); },
+  });
+  assert.equal(r.ok, true);       // the run's verdict is the child's, never the log's
+  assert.equal(r.stdout, 'hi\n'); // and the collection is unaffected
+});
+
 test('preprocessingFailure: distinguishes a timeout from a non-zero exit', () => {
   assert.match(preprocessingFailure({ timedOut: true, code: null, stderr: '' }), /exceeded its agent_preprocessing_timeout/);
   assert.match(preprocessingFailure({ timedOut: false, code: 2, stderr: '' }), /exited 2/);

@@ -28,9 +28,10 @@
 // pack's ONE workflow is fleet-baseline (stubs/workflows/fleet-baseline.yml, driven
 // by fleet-baseline/force-fleet-baseline.mjs) — the owner's manual lever to make every
 // member baseline now. It answers no recurring question, so it is not a task; it
-// declares workflow_dispatch and no schedule, so it adds no second cron; and a
-// migration keeps a managed copy of it in the enforcer's own .github/, because GitHub
-// reads workflows only from there.
+// declares workflow_dispatch and no schedule, so it adds no second cron; and because
+// GitHub reads workflows only from a repo's own .github/, the enforcer carries a copy
+// there — landed by a session, since the nightly converge's GITHUB_TOKEN can never
+// write a workflow file (#649).
 //
 // Everything else — the SCHEDULER (engine/scheduler/run.mjs), the
 // orchestrator/daily-run, the task engine (engine/scheduler/), scheduling — is CORE and
