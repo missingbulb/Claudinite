@@ -7,14 +7,20 @@ name: Fleet baseline
 # one run. Nothing is baselined here: each member converges its own mount, with its own
 # token, under its own delivery policy.
 #
-# A MANAGED COPY. This file is owned by the sheepdog pack
-# (packs/sheepdog/stubs/workflows/fleet-baseline.yml) and vendored into this repo by the
-# `sheepdog-fleet-baseline` baseline migration, which re-materializes it every cycle —
-# so a local edit is overwritten. Fix the pack and let the next maintenance cycle carry
-# it here. It lives in .github/ rather than running from the mount because GitHub reads
-# workflows only from a repo's own .github/; the LOGIC it runs stays in the mount
-# (.claudinite/shared/packs/sheepdog/fleet-baseline/), so this file is copy-verbatim in
-# every enforcer repo and changes only when its inputs change.
+# A MANAGED COPY, LANDED BY HAND. This file is owned by the sheepdog pack
+# (packs/sheepdog/stubs/workflows/fleet-baseline.yml); the copy here is byte-identical
+# and carries no repo-specific value. It lives in .github/ rather than running from the
+# mount because GitHub reads workflows only from a repo's own .github/; the LOGIC it
+# runs stays in the mount (.claudinite/shared/packs/sheepdog/fleet-baseline/), so this
+# file is copy-verbatim in every enforcer repo and changes only when its inputs change.
+#
+# NOTHING SYNCS IT, and nothing can: baselining's converge pushes with the Action's
+# GITHUB_TOKEN, which GitHub never permits to create or update a file under
+# .github/workflows/ (there is no `permissions:` key that grants it), and a rejected
+# push fails the WHOLE converge — one unpushable file wedges the member's every other
+# update too (#649). So a change to the pack stub reaches here the same way this file
+# first did: a session PR, using credentials that hold the `workflows` permission.
+# Fix the pack, then land the copy — and until you do, this file is stale, not managed.
 #
 # NO `schedule:` TRIGGER, DELIBERATELY. The vendored `claudinite-scheduler.yml` is this
 # repo's only cron (packs/basics/scheduled-tasks.md), and this workflow does not add a
