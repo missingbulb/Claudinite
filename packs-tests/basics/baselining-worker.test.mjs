@@ -4,7 +4,7 @@ import {
   normalizeDelivery, resolveDelivery, DEFAULT_DELIVERY, pendingAgentic, heldStamp,
   maintenanceBranchName, openMaintenanceBranch, openMaintenancePull, shouldRequestAgent,
   unconfiguredSecrets, SECRETS_ISSUE_TITLE, workflowTriggers, ciDispatchPlan,
-  pullCreateError, deliveryAction, canonSource,
+  pullCreateError, deliveryAction, reconcileAction, reconcileReason, canonSource,
 } from '../../packs/basics/tasks/baselining/worker.mjs';
 
 // The worker's PURE decision helpers (agent-preprocessing DESIGN §7, E4). The
@@ -224,6 +224,56 @@ test('deliveryAction arms auto-merge when the repo does have PR CI', () => {
 test('deliveryAction never merges or arms a review-delivery member', () => {
   assert.equal(deliveryAction({ delivery: 'review', hasPrCi: false }), 'none');
   assert.equal(deliveryAction({ delivery: 'review', hasPrCi: true }), 'none');
+});
+
+// The reconcile (#455/#205/#95): an arm that failed permanently must not mean a
+// maintenance PR sits open forever on top of green CI. The gated-run shape is
+// the one that produced these issues — the dispatched run passed, and a
+// pull_request run that NEVER EXECUTED is what auto-merge refuses over.
+
+const done = (conclusion, name = 'CI') => ({ name, status: 'completed', conclusion });
+
+test('reconcileAction merges when the only non-success run is a gated action_required one', () => {
+  assert.equal(reconcileAction({
+    delivery: 'auto-merge', runs: [done('success'), done('action_required')],
+  }), 'merge');
+});
+
+test('reconcileAction merges an all-green PR the arm never landed (auto-merge off)', () => {
+  assert.equal(reconcileAction({ delivery: 'auto-merge', runs: [done('success')] }), 'merge');
+});
+
+test('reconcileAction is blocked by a real failure, gated run or not', () => {
+  for (const bad of ['failure', 'timed_out', 'cancelled', 'startup_failure']) {
+    assert.equal(reconcileAction({
+      delivery: 'auto-merge', runs: [done('success'), done('action_required'), done(bad)],
+    }), 'blocked', `${bad} must block the reconcile`);
+  }
+});
+
+test('reconcileAction waits while anything is still queued or running', () => {
+  assert.equal(reconcileAction({
+    delivery: 'auto-merge', runs: [done('success'), { name: 'CI', status: 'in_progress', conclusion: null }],
+  }), 'wait');
+  assert.equal(reconcileAction({
+    delivery: 'auto-merge', runs: [{ name: 'CI', status: 'queued', conclusion: null }],
+  }), 'wait');
+});
+
+test('reconcileAction never merges without a success to stand on', () => {
+  assert.equal(reconcileAction({ delivery: 'auto-merge', runs: [] }), 'none');
+  assert.equal(reconcileAction({ delivery: 'auto-merge', runs: null }), 'none');
+  assert.equal(reconcileAction({ delivery: 'auto-merge', runs: [done('action_required')] }), 'none');
+  assert.equal(reconcileAction({ delivery: 'auto-merge', runs: [done('skipped')] }), 'none');
+});
+
+test('reconcileAction leaves a review-delivery member alone however green it is', () => {
+  assert.equal(reconcileAction({ delivery: 'review', runs: [done('success')] }), 'none');
+});
+
+test('reconcileReason names the gated run when there is one, the arm otherwise', () => {
+  assert.match(reconcileReason([done('success'), done('action_required')]), /action_required/);
+  assert.match(reconcileReason([done('success')]), /Allow auto-merge/);
 });
 
 // A converged mount that cannot pass its own self-test escalates to the agent

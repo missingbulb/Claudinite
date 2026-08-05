@@ -168,6 +168,12 @@ export const AGENT_REQUEST_MARKER = 'agent-requested';
 // dispatch every workflow that WOULD have run on pull_request and CAN be
 // dispatched.
 //
+// "Suppresses" is only half true, and the other half is #455/#205/#95: on some
+// members GitHub CREATES the pull_request run and parks it at `action_required`
+// awaiting an approval nobody clicks. The dispatch above still supplies the real
+// green, but the parked run is what auto-merge refuses over — which is why
+// arming is not the end of the story and reconcileAction exists.
+//
 // Reading the triggers is a best-effort TEXTUAL scan of a workflow's top-level
 // `on:` block (the worker is dependency-free — no YAML parser). It covers the
 // shapes workflows actually use: a block map of trigger keys (with or without
@@ -307,6 +313,55 @@ export function deliveryAction({ delivery, hasPrCi }) {
   return hasPrCi ? 'arm' : 'merge';
 }
 
+// --- Landing a PR the arm could not land (#455/#205/#95) ---------------------
+// Arming is best-effort and can fail PERMANENTLY, so "arm and move on" is not a
+// delivery guarantee. Two shapes, both observed across the fleet, both leaving a
+// green PR open forever:
+//
+//   1. GATED CI. The block above assumes GitHub SUPPRESSES the pull_request run
+//      for a GITHUB_TOKEN push. On several members it does not — it CREATES the
+//      run and parks it at conclusion `action_required`, pending a human
+//      "Approve and run" that nobody is watching for. The run never executes, so
+//      it never reports; `enablePullRequestAutoMerge` then refuses the PR with
+//      "in unstable status (required checks are failing)". Meanwhile the
+//      workflow_dispatch run deliver() started on the SAME head sha ran and
+//      passed. So CI did pass; only the phantom gated run says otherwise.
+//   2. AUTO-MERGE OFF. The repo never enabled Settings → General → "Allow
+//      auto-merge", so the mutation is rejected outright no matter how green.
+//
+// Both are settled by the same evidence, read from the runs on the PR's own head
+// sha a cycle later: if CI has CONCLUDED and nothing actually failed, the content
+// on that sha is verified and `auto-merge` means merge it. A gated
+// `action_required` run is not a failure — it is a run that never happened.
+//
+// Deliberately conservative, because this bypasses the arm:
+//   - Anything still queued/running → `wait`. Never merge mid-flight.
+//   - Any real failure (failure / timed_out / cancelled / startup_failure) →
+//     `blocked`. This is what keeps a member whose CI is genuinely red (a broken
+//     `verify` on main, say) from having the breakage merged on top of itself.
+//   - No successful run at all → `none`. Absence of evidence is not green.
+export const REAL_FAILURES = ['failure', 'timed_out', 'cancelled', 'startup_failure'];
+
+export function reconcileAction({ delivery, runs }) {
+  if (delivery !== 'auto-merge') return 'none';
+  const list = (runs ?? []).filter(Boolean);
+  if (!list.length) return 'none';
+  if (list.some((r) => r.status !== 'completed')) return 'wait';
+  if (list.some((r) => REAL_FAILURES.includes(r.conclusion))) return 'blocked';
+  if (!list.some((r) => r.conclusion === 'success')) return 'none';
+  return 'merge';
+}
+
+// Why the reconcile merged — the log line has to name which of the two shapes
+// this was, or the underlying repo misconfiguration stays invisible.
+export function reconcileReason(runs) {
+  return (runs ?? []).some((r) => r?.conclusion === 'action_required')
+    ? 'its pull_request run is parked at action_required (never ran) while the dispatched run passed'
+    + ' — check Settings → Actions → General → workflow-approval requirements'
+    : 'CI concluded green but the auto-merge arm never landed it'
+    + ' — check Settings → General → "Allow auto-merge"';
+}
+
 // Run the engine's self-test against the converged tree; true when the machinery
 // is intact. Same soft shape as checkTheWorldPasses — a missing selftest (an
 // older mount that predates it) is not a failure, it is nothing to run.
@@ -324,6 +379,19 @@ function selfTestPasses(root) {
 async function deliver(root, repo, base, token, delivery, seed) {
   const { json: pulls } = await gh(token, `/repos/${repo}/pulls?state=open&per_page=100`);
   let pr = openMaintenancePull(Array.isArray(pulls) ? pulls : []);
+
+  // BEFORE regenerating onto it: land the PR the last cycle's arm could not land
+  // (reconcileAction). Judged on the runs for the head sha AS IT STANDS — this
+  // cycle's force-push would replace that sha and throw the evidence away, which
+  // is exactly how these PRs accumulated cycles of green nobody ever acted on.
+  // A merge here frees the family, so this cycle mints a fresh branch instead of
+  // reusing a merged one.
+  if (pr?.number && pr?.head?.sha) {
+    const landed = await reconcileOpenPull(token, repo, pr, delivery)
+      .catch((e) => { console.log(`baselining: reconcile on PR #${pr.number} failed: ${e.message}`); return false; });
+    if (landed) pr = null;
+  }
+
   const reuse = Boolean(pr);
   let branch = reuse ? pr.head.ref : maintenanceBranchName(new Date().toISOString().slice(0, 10), seed);
 
@@ -385,10 +453,42 @@ async function deliver(root, repo, base, token, delivery, seed) {
       // forever, and the two usual causes are both fixable repo settings.
       await enableAutoMerge(token, pr.node_id)
         .catch((e) => console.log(`baselining: could not arm auto-merge on PR #${pr.number}: ${e.message}`
-          + ' — check Settings → General → "Allow auto-merge"'));
+          + ' — check Settings → General → "Allow auto-merge", and Settings → Actions → General for a'
+          + ' workflow-approval requirement parking this PR\'s pull_request run at action_required.'
+          + ' The next cycle reconciles it from the runs on this head sha (reconcileAction).'));
     }
   }
   return branch;
+}
+
+// The I/O half of the reconcile: read every workflow run for the open PR's head
+// sha, decide with reconcileAction, and squash-merge when the evidence says the
+// arm simply failed to land verified content. Returns true iff it merged.
+// Best-effort by construction — a reconcile that cannot read or cannot merge
+// leaves the PR exactly as it found it and the cycle proceeds normally.
+async function reconcileOpenPull(token, repo, pr, delivery) {
+  const { status, json } = await gh(token, `/repos/${repo}/actions/runs?head_sha=${pr.head.sha}&per_page=100`);
+  if (status !== 200) {
+    console.log(`baselining: could not read the runs for PR #${pr.number}'s head (HTTP ${status}) — skipping reconcile`);
+    return false;
+  }
+  const runs = (json?.workflow_runs ?? []).map((r) => ({ name: r.name, status: r.status, conclusion: r.conclusion }));
+  const action = reconcileAction({ delivery, runs });
+  if (action !== 'merge') {
+    // Named, not silent: `blocked` in particular is a member whose CI is really
+    // red, and the open PR is the symptom someone has to go look at.
+    if (action !== 'none') console.log(`baselining: leaving PR #${pr.number} open — reconcile says ${action}`);
+    return false;
+  }
+  const res = await gh(token, `/repos/${repo}/pulls/${pr.number}/merge`, {
+    method: 'PUT', body: { merge_method: 'squash' },
+  });
+  if (res.status === 200) {
+    console.log(`baselining: reconciled PR #${pr.number} — merged it directly because ${reconcileReason(runs)}`);
+    return true;
+  }
+  console.log(`baselining: could not reconcile PR #${pr.number} (${res.status}: ${res.json?.message ?? 'no message'})`);
+  return false;
 }
 
 // The I/O half of the CI dispatch (#565): read the workflow files as they exist
