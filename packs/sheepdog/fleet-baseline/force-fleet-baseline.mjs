@@ -12,6 +12,17 @@
 // own mount, with its own token, under its own scheduler and its own delivery policy. This
 // sweep only presses the button, which is why it is a dispatcher and not a maintainer.
 //
+// AND THEN IT WATCHES. Dispatching is half the job: a 204 means QUEUED, and the owner
+// pulls this lever exactly on the occasions they are standing by for the RESULT. So the
+// run does not end at the last dispatch — it follows every member it forced until that
+// member reaches a terminal state (its maintenance PR merged, or nothing to deliver, or a
+// PR left open for a `review` member to merge), including the nights where the converge
+// hands off to an AGENT that runs outside the member's Actions run entirely. That half
+// lives in follow-fleet-baseline.mjs, beside this file: what it observes, when a member
+// counts as finished, and the report it renders (updated members with their OLD and new
+// canon refs, lines changed, per-member timing, errors and warnings, whether an agent was
+// involved). Set the `follow` input false for the old fire-and-forget behaviour.
+//
 // WHY IT EXISTS. Under per-project scheduling every member baselines itself hourly, so the
 // fleet needs no push in the ordinary case. The cases it is FOR are the un-ordinary ones:
 // a canon change the fleet should pick up now rather than over the next day (a broken
@@ -46,6 +57,10 @@ import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { makeGh, paged, readDeclaration, isDormant, DECLARATION } from '../fleet-api.mjs';
 import { parseSheepdogConfig } from '../fleet-config.mjs';
+import {
+  latestRunId, followFleet, renderFollowReport, deliveryOf, stampedRef,
+  parseFollowMinutes, asBool, DEFAULT_FOLLOW_MINUTES,
+} from './follow-fleet-baseline.mjs';
 
 // The member-side workflow being fired, and the exact manual-run override it is fired
 // with. Both are the vendored scheduler's public surface (engine/scheduler/stubs/
@@ -119,6 +134,12 @@ export async function main() {
 
   const dryRun = String(process.env.FLEET_BASELINE_DRY_RUN ?? '').toLowerCase() === 'true';
   const includeDormant = String(process.env.FLEET_BASELINE_INCLUDE_DORMANT ?? '').toLowerCase() === 'true';
+  // Following is the DEFAULT, and unset means on: the report is the reason the lever is
+  // pulled by hand, and a run that has to be asked for its outcome is the shape this
+  // replaced. Opting out stays available for the case it was built for — dispatching the
+  // fleet and going away.
+  const follow = asBool(process.env.FLEET_BASELINE_FOLLOW, true) && !dryRun;
+  const followMinutes = parseFollowMinutes(process.env.FLEET_BASELINE_FOLLOW_MINUTES, DEFAULT_FOLLOW_MINUTES);
 
   const cfgRes = await gh(`/repos/${home}/contents/${DECLARATION}`);
   if (cfgRes.status !== 200 || !cfgRes.json?.content) {
@@ -137,7 +158,7 @@ export async function main() {
     throw new Error(`enumeration returned no repos owned by ${owner} — wrong token user or scope`);
   }
 
-  const forced = []; const skipped = []; const failed = [];
+  const forced = []; const skipped = []; const failed = []; const watches = [];
   for (const r of mine.sort((a, b) => a.name.localeCompare(b.name))) {
     const fullName = r.full_name.toLowerCase();
     // Canon has no vendored mount, so its own baselining self-skips — forcing it would
@@ -172,9 +193,23 @@ export async function main() {
       forced.push({ fullName, state: 'would-force', detail: `would dispatch ${SCHEDULER}@${r.default_branch} with ${FORCE_OVERRIDES}` });
       continue;
     }
+    // The two things that can only be read BEFORE the button is pressed: the ref this
+    // member is stamped at (the "old version" the report reports against) and the newest
+    // run already on its scheduler (how the run we are about to start is told apart from
+    // the one its own hourly cron may start seconds later).
+    const beforeRef = stampedRef(decl);
+    const afterRunId = follow ? await latestRunId(gh, r.full_name, SCHEDULER) : null;
+
     const verdict = await forceOne(gh, r.full_name, r.default_branch);
-    if (verdict.state === 'forced') forced.push({ fullName, ...verdict });
-    else failed.push({ fullName, ...verdict });
+    if (verdict.state !== 'forced') { failed.push({ fullName, ...verdict }); continue; }
+    forced.push({ fullName, ...verdict });
+    if (follow) {
+      watches.push({
+        fullName: r.full_name, defaultBranch: r.default_branch, delivery: deliveryOf(decl),
+        beforeRef, afterRef: beforeRef, afterRunId, dispatchedAtMs: Date.now(),
+        run: null, pull: null, agent: null, verdict: null, errors: [], warnings: [],
+      });
+    }
   }
 
   const runsUrl = (n) => `https://github.com/${n}/actions/workflows/${SCHEDULER}`;
@@ -194,20 +229,49 @@ export async function main() {
     skipped.length ? `**Skipped:**\n${skipped.map((s) => `- \`${s.fullName}\` — **${s.state}**: ${s.detail}`).join('\n')}` : '',
     failed.length ? `**Failed:**\n${failed.map((f) => `- \`${f.fullName}\` — **${f.state}**: ${f.detail}`).join('\n')}` : '',
     '',
-    // The dispatch API returns 204 with no body, so there is no run id to link: each
-    // member's own workflow page is the honest destination. A queued run is not a
-    // finished baseline, and this sweep deliberately does not wait for one — a fleet's
-    // worth of member runs takes longer than a poll loop should hold an Action open.
-    '_A dispatch queues a run; it does not report its outcome. Each member reports its own_',
-    '_baselining the way it always does — a maintenance PR, or a failure issue in that repo._',
+    // The dispatch API returns 204 with no body, so there is no run id to link here: each
+    // member's own workflow page is the honest destination for the dispatch half. What
+    // the queued run then DID is the follow half's report, appended below.
+    follow
+      ? '_A dispatch only queues a run. What each queued run went on to do is below — this sweep_\n'
+        + '_follows every member it forced until that member has finished baselining._'
+      : '_A dispatch queues a run; it does not report its outcome, and `follow` was off for this run._\n'
+        + '_Each member reports its own baselining the way it always does — a maintenance PR, or a failure issue in that repo._',
   ].filter(Boolean).join('\n');
 
-  console.log(summary);
-  if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${summary}\n`);
+  const emit = (text) => {
+    console.log(text);
+    if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${text}\n`);
+  };
+  emit(summary);
 
-  if (failed.length) {
-    throw new Error(`${failed.length} member(s) could not be forced (${failed.map((f) => `${f.fullName}: ${f.state}`).join('; ')}) — `
-      + 'the rest were dispatched, and this run fails so the cause is escalated');
+  // THE FOLLOW. Emitted as its own document after the dispatch table, because the two
+  // answer different questions ("did the button get pressed" vs "what did the fleet do")
+  // and a reader looking for the second should not have to read past the first. A DRY RUN
+  // renders it too, with true zeros — see renderFollowReport: the shape of the report is
+  // itself something to be able to inspect without changing anything.
+  let unfinished = [];
+  if (dryRun) {
+    emit(renderFollowReport([], 0, followMinutes, { dryRun: true }));
+  } else if (follow && watches.length) {
+    console.log(`fleet-baseline: following ${watches.length} member(s) to completion (deadline ${followMinutes}m)`);
+    const { elapsedMs } = await followFleet(gh, watches, { workflow: SCHEDULER, minutes: followMinutes });
+    emit(renderFollowReport(watches, elapsedMs, followMinutes));
+    unfinished = watches.filter((w) => w.verdict?.ok === false);
+  }
+
+  // What fails the run, and why each one does. A dispatch that never landed is a grant or
+  // an adoption to fix; a member that baselined RED, or never finished inside the window,
+  // is the outcome the owner pulled this lever to find out about, and reporting it in a
+  // green run is how it goes unnoticed. Everything that DID converge is already reported
+  // above — the throw ends the run, it does not withdraw the report.
+  const reasons = [
+    ...failed.map((f) => `${f.fullName}: ${f.state}`),
+    ...unfinished.map((w) => `${w.fullName}: ${w.verdict.state}`),
+  ];
+  if (reasons.length) {
+    throw new Error(`${reasons.length} member(s) did not come through cleanly (${reasons.join('; ')}) — `
+      + 'the rest are reported above, and this run fails so the cause is escalated');
   }
 }
 

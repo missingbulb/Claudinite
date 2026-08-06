@@ -14,7 +14,7 @@ that has no cadence and therefore does have a workflow:
 | [check-fleet-coverage.mjs](tasks/fleet-census/check-fleet-coverage.mjs) | [fleet-census](tasks/fleet-census/task.md) (daily) | is this repo a **member**? → adoption issues |
 | [check-fleet-freshness.mjs](tasks/fleet-freshness/check-fleet-freshness.mjs) | [fleet-freshness](tasks/fleet-freshness/task.md) (weekly) | is a member **keeping up**? → drift issues |
 | [aggregate-fleet-usage.mjs](tasks/fleet-usage/aggregate-fleet-usage.mjs) | [fleet-usage](tasks/fleet-usage/task.md) (daily) | what does the fleet **actually use**? → `usage-fleet.GENERATED.json` |
-| [force-fleet-baseline.mjs](fleet-baseline/force-fleet-baseline.mjs) | *(no task — the [fleet-baseline workflow](stubs/workflows/fleet-baseline.yml), `workflow_dispatch` only)* | make every member baseline **now** → one queued run per member |
+| [force-fleet-baseline.mjs](fleet-baseline/force-fleet-baseline.mjs) + [follow-fleet-baseline.mjs](fleet-baseline/follow-fleet-baseline.mjs) | *(no task — the [fleet-baseline workflow](stubs/workflows/fleet-baseline.yml), `workflow_dispatch` only)* | make every member baseline **now**, watch each one finish → what the fleet did |
 
 The second exists because per-project scheduling made every member maintain itself and, in doing so,
 removed the last thing that looked at a member from the **outside** — self-maintenance cannot detect its
@@ -30,7 +30,11 @@ The fourth is not a sweep and not a task: **force-baseline** answers no recurrin
 no cadence to schedule. It is the owner pressing *Run workflow* — fire every member's own scheduler
 with `FORCE_TASKS=baselining` so the fleet picks canon up now instead of over the next day. It takes a
 repo filter, a dry run, and an opt-in for dormant members; it writes nothing to any member (one queued
-Actions run each) and reports what it fired. Its `workflow_dispatch`-only workflow adds no cron, so the
+Actions run each). It then **follows** what it fired — a `204` is *queued*, not baselined — until every
+member has finished baselining, agentic handoffs included, and reports what the fleet did: which members
+moved and from which canon ref to which, lines changed, per-member timing, errors and warnings, whether
+an agent ran. A dry run prints the same report with true zeros, so its shape can be inspected without
+changing anything. Its `workflow_dispatch`-only workflow adds no cron, so the
 vendored scheduler stays the enforcer's only one — and because GitHub reads workflows solely from a
 repo's own `.github/`, the [`sheepdog-fleet-baseline`](../../migrations/active_migrations/2026-08-05-sheepdog-fleet-baseline.mjs)
 migration keeps a byte-identical copy there, gated on the repo declaring this pack. The nightly's own

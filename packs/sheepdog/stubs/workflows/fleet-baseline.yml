@@ -7,6 +7,17 @@ name: Fleet baseline
 # one run. Nothing is baselined here: each member converges its own mount, with its own
 # token, under its own delivery policy.
 #
+# IT ALSO WAITS. By default the run does not end at the last dispatch — it FOLLOWS every
+# member it forced until that member has finished baselining (its maintenance PR merged,
+# or nothing to deliver, or a PR left open for a `review` member), including the nights
+# where a member's converge hands off to an agent that runs outside its Actions run, and
+# reports what the fleet did: which members moved, from which canon ref to which, lines
+# changed, how long each took, errors and warnings, and whether an agent was involved.
+# THE LOGIC OF THAT LIVES IN THE MOUNT, not here — this file grows two inputs and passes
+# them through, because a workflow file in a consumer repo is the one thing the nightly
+# converge cannot push (see the sync note below), so every line put here is a line that
+# only reaches the fleet through the slow path.
+#
 # A MANAGED COPY, LANDED BY HAND. This file is owned by the sheepdog pack
 # (packs/sheepdog/stubs/workflows/fleet-baseline.yml); the copy here is byte-identical
 # and carries no repo-specific value. It lives in .github/ rather than running from the
@@ -44,6 +55,15 @@ on:
         type: boolean
         required: false
         default: false
+      follow:
+        description: 'Watch every forced member until it has finished baselining (its maintenance PR merged, nothing to deliver, or left open for review) and report what each one did. Off = dispatch and exit, the old fire-and-forget behaviour.'
+        type: boolean
+        required: false
+        default: true
+      follow_timeout_minutes:
+        description: 'How long to keep following before calling the remaining members unfinished. An agentic night on a slow member is the case this is sized for.'
+        required: false
+        default: '45'
 
 # One fleet-wide force at a time. Not cancel-in-progress: a run that has already
 # dispatched half the fleet has done half its work for real, and killing it would leave
@@ -60,6 +80,12 @@ permissions:
 jobs:
   force-baseline:
     runs-on: ubuntu-latest
+    # A followed run is mostly SLEEP — it waits on a fleet's worth of member runs, their
+    # CI, and any agent the converge handed off to. The bound here is the backstop for a
+    # follow that never converges, deliberately above `follow_timeout_minutes` (the
+    # script's own deadline, which ends the follow with a REPORT); this one only ever
+    # fires if the script itself is wedged, and a killed job reports nothing at all.
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -67,12 +93,18 @@ jobs:
           node-version: 24
       - name: Force baselining across the fleet
         env:
-          # The account-spanning PAT the sheepdog sweeps already use, plus ONE scope they
-          # do not need: Actions READ AND WRITE on the owner's repositories. Dispatching
-          # another repo's workflow is an Actions write; without it every member reports
-          # `no-permission` and the run fails.
+          # The account-spanning PAT the sheepdog sweeps already use, plus the scopes they
+          # do not need:
+          #   - Actions READ AND WRITE — dispatching another repo's workflow is an Actions
+          #     write; without it every member reports `no-permission` and the run fails.
+          #     The READ half is what the follow reads run state and job findings through.
+          #   - Pull requests READ and Issues READ — how the follow sees a member's
+          #     maintenance PR land and its `ready-for-agent` dispatch issue close, which
+          #     is what "finished baselining" is actually measured on.
           FLEET_GITHUB_TOKEN: ${{ secrets.FLEET_GITHUB_TOKEN }}
           FLEET_BASELINE_REPOS: ${{ inputs.repos }}
           FLEET_BASELINE_DRY_RUN: ${{ inputs.dry_run }}
           FLEET_BASELINE_INCLUDE_DORMANT: ${{ inputs.include_dormant }}
+          FLEET_BASELINE_FOLLOW: ${{ inputs.follow }}
+          FLEET_BASELINE_FOLLOW_MINUTES: ${{ inputs.follow_timeout_minutes }}
         run: node .claudinite/shared/packs/sheepdog/fleet-baseline/force-fleet-baseline.mjs
