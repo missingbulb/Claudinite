@@ -5,7 +5,7 @@ import {
   maintenanceBranchName, openMaintenanceBranch, openMaintenancePull, shouldRequestAgent,
   unconfiguredSecrets, SECRETS_ISSUE_TITLE, workflowTriggers, ciDispatchPlan,
   pullCreateError, deliveryAction, pullDisposition, mergeReason, failureSummary, canonSource,
-  withheldWorkflowPaths, UNPUSHABLE_PREFIX,
+  withheldWorkflowPaths, UNPUSHABLE_PREFIX, escalation, gateOutcome, GATE_ABSENT,
 } from '../../packs/basics/tasks/baselining/worker.mjs';
 
 // The worker's PURE decision helpers (agent-preprocessing DESIGN §7, E4). The
@@ -103,6 +103,90 @@ test('shouldRequestAgent: agent iff a pending note, or a change left non-green',
   assert.equal(shouldRequestAgent({ pendingCount: 0, meaningfulChange: true, checksPass: false }), true);  // change, not green
   assert.equal(shouldRequestAgent({ pendingCount: 0, meaningfulChange: true, checksPass: true }), false);  // change, green → agentless
   assert.equal(shouldRequestAgent({ pendingCount: 0, meaningfulChange: false, checksPass: false }), false); // no change → agentless
+});
+
+// --- the escalation REASON (#664) -------------------------------------------
+// The worker knows which of four conditions fired; before this it threw that away and
+// the woken agent re-derived it from the repo — wrongly, on EdFringeAllocator#82.
+
+test('escalation names the condition, and shouldRequestAgent is derived from it', () => {
+  // The drift guard: one decision, two readings. A precedence that disagreed with its
+  // own bit is exactly the two-copies failure this shape exists to prevent.
+  const cases = [
+    { pendingCount: 1, meaningfulChange: false, checksPass: true },
+    { pendingCount: 0, meaningfulChange: true, checksPass: true, withheldCount: 2 },
+    { pendingCount: 0, meaningfulChange: false, checksPass: true, selftestOk: false },
+    { pendingCount: 0, meaningfulChange: true, checksPass: false },
+    { pendingCount: 0, meaningfulChange: true, checksPass: true },
+    { pendingCount: 0, meaningfulChange: false, checksPass: false },
+  ];
+  for (const c of cases) {
+    assert.equal(shouldRequestAgent(c), escalation(c) !== null, JSON.stringify(c));
+  }
+});
+
+test('escalation: each condition gets its own code, in precedence order', () => {
+  assert.equal(escalation({ pendingCount: 2, meaningfulChange: true, checksPass: false }).code, 'agentic-notes');
+  assert.equal(escalation({ pendingCount: 0, meaningfulChange: true, checksPass: true, withheldCount: 1 }).code, 'withheld-workflows');
+  assert.equal(escalation({ pendingCount: 0, meaningfulChange: true, checksPass: true, selftestOk: false }).code, 'selftest-failed');
+  assert.equal(escalation({ pendingCount: 0, meaningfulChange: true, checksPass: false }).code, 'checks-not-green');
+  assert.equal(escalation({ pendingCount: 0, meaningfulChange: true, checksPass: true }), null);
+});
+
+test('escalation: a gate that could not run is not the same sentence as a gate that failed', () => {
+  // The distinction `catch { return false }` erased: a verdict about the repo vs no
+  // verdict at all. Both escalate; only one is a statement about the content.
+  assert.equal(escalation({
+    pendingCount: 0, meaningfulChange: true, checksPass: false, checksCrashed: true,
+  }).code, 'checks-could-not-run');
+  assert.equal(escalation({
+    pendingCount: 0, meaningfulChange: true, checksPass: true, selftestOk: false, selftestCrashed: true,
+  }).code, 'selftest-could-not-run');
+});
+
+test('escalation: the detail counts what fired, and never carries findings', () => {
+  const notes = escalation({ pendingCount: 3, meaningfulChange: false, checksPass: true });
+  assert.match(notes.detail, /3 pending agentic migration note/);
+  const withheld = escalation({ pendingCount: 0, meaningfulChange: true, checksPass: true, withheldCount: 2 });
+  assert.match(withheld.detail, /2 workflow file/);
+  // Every detail is a sentence about the CONDITION — the §3 boundary the payload rides.
+  for (const c of [notes, withheld, escalation({ pendingCount: 0, meaningfulChange: true, checksPass: false })]) {
+    assert.equal(typeof c.detail, 'string');
+    assert.ok(c.detail.length > 0 && c.detail.length < 160, c.detail);
+  }
+});
+
+// --- gate outcomes (#665) ----------------------------------------------------
+// Both gates the worker escalates on used to collapse to a boolean and drop the
+// findings that explained it — so an escalation was unexplainable after the fact.
+
+test('gateOutcome: a clean run is green with nothing to say', () => {
+  assert.deepEqual(gateOutcome(null), { ok: true, ran: true, crashed: false, status: 0, output: '' });
+});
+
+test('gateOutcome: a non-zero exit keeps the findings the check printed', () => {
+  const out = gateOutcome({ status: 1, stdout: 'FINDING: x\n', stderr: '' });
+  assert.equal(out.ok, false);
+  assert.equal(out.crashed, false);   // it answered — the answer was "no"
+  assert.equal(out.status, 1);
+  assert.match(out.output, /FINDING: x/);
+});
+
+test('gateOutcome: no exit status at all is a crash, not a verdict', () => {
+  // A signal kill or a spawn failure (ENOENT) produces no status. The repo was never
+  // judged, and saying "not green" about it would be a claim nothing made.
+  for (const e of [{ status: null, signal: 'SIGKILL' }, { code: 'ENOENT', stderr: 'not found' }]) {
+    const out = gateOutcome(e);
+    assert.equal(out.ok, false);
+    assert.equal(out.crashed, true);
+    assert.equal(out.status, null);
+  }
+});
+
+test('GATE_ABSENT: a gate that is not vendored is nothing to run, not a failure', () => {
+  assert.equal(GATE_ABSENT.ok, true);
+  assert.equal(GATE_ABSENT.ran, false);
+  assert.equal(GATE_ABSENT.crashed, false);
 });
 
 // --- the unpushable set ------------------------------------------------------

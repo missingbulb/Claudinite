@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   dispatchTitle, dispatchTaskKey, parseDispatchTitle, isDispatchTitle,
-  dispatchBody, deliveredLines, planDispatch, staleDispatchIssues, staleEscalationComment,
+  dispatchBody, deliveredLines, escalationLines, planDispatch, staleDispatchIssues, staleEscalationComment,
   rearmDispatchIssues, readyLabelOn, staleClaimedDispatchIssues, staleClaimComment,
   READY_LABEL, READY_FLEET_LABEL, NEEDS_HUMAN_LABEL, AGENT_RUNNING_LABEL,
   readyLabelForScope, SCHEDULER_LABELS,
@@ -74,6 +74,46 @@ test('dispatchBody omits the section entirely when nothing was created — absen
   }
   // No placeholder line either — absence is what says nothing was created.
   assert.deepEqual(deliveredLines({ branch: null, pr: null, merged: false }), []);
+});
+
+// --- the Why section (#664) ---
+// Which of preprocessing's escalation conditions fired. Without it the agent re-derives
+// all four from the repo, and a wrong re-derivation is how EdFringeAllocator#82 reported
+// "preprocessing created nothing" about a cycle that had merged a PR a second earlier.
+
+test('dispatchBody names the condition that woke the agent', () => {
+  const body = dispatchBody({
+    taskPath: 'p/task.md', pack: 'basics', task: 'baselining', slotId: 'd2026-08-06',
+    reason: { code: 'checks-not-green', detail: 'check_the_world reported findings on the converged tree' },
+  });
+  assert.match(body, /### Why the agent is here/);
+  assert.match(body, /check_the_world reported findings/);
+  assert.match(body, /`checks-not-green`/);   // the stable id, for a consumer that branches on it
+});
+
+test('dispatchBody puts why before what — the reason decides which artifacts matter', () => {
+  const body = dispatchBody({
+    taskPath: 'p/task.md', pack: 'basics', task: 'baselining', slotId: 'd',
+    reason: { code: 'withheld-workflows', detail: '1 workflow file(s) the Action token cannot push' },
+    delivered: { branch: 'claudinite/maintenance-2026-08-06-l0i4gd', pr: 71, merged: false },
+  });
+  assert.ok(body.indexOf('### Why the agent is here') < body.indexOf('### Delivered by preprocessing'));
+});
+
+test('dispatchBody omits the Why section when no reason was named — never a false claim', () => {
+  // An older vendored worker names no reason. Absence must read as "nothing asserted",
+  // which is what lets the task file fall back to its own full sweep.
+  for (const reason of [null, undefined, {}, { code: null, detail: null }]) {
+    const body = dispatchBody({ taskPath: 'p/task.md', pack: 'basics', task: 'baselining', slotId: 'd', reason });
+    assert.doesNotMatch(body, /### Why the agent is here/, JSON.stringify(reason));
+  }
+  assert.deepEqual(escalationLines({ code: null, detail: null }), []);
+});
+
+test('escalationLines: a code with no detail still says something true', () => {
+  const lines = escalationLines({ code: 'selftest-failed' });
+  assert.ok(lines.length > 0);
+  assert.match(lines.join('\n'), /selftest-failed/);
 });
 
 // --- planDispatch: exactly-once, at-most-one-open, create ---
