@@ -33,53 +33,32 @@
 // sheepdog, so the canon never self-applies.
 const DECLARATION = '.claudinite-checks.json';
 const PACK = 'sheepdog';
-// The member's OWN vendored copy of the baselining worker, and the marker that says it
-// can withhold. See the deadlock note on `appliesTo`.
-const VENDORED_WORKER = '.claudinite/shared/packs/basics/tasks/baselining/worker.mjs';
-const WITHHOLD_MARKER = 'withheldWorkflowPaths';
 
 export default {
   id: 'sheepdog-fleet-baseline',
   landed: '2026-08-05',
   summary: 'sheepdog fleet-baseline workflow kept byte-current in the enforcer repo own .github/',
 
-  // TWO conditions, and the second exists to break a DEADLOCK.
+  // The gate is ONE question — does this repo declare the sheepdog pack. A `packs` entry
+  // is either the bare id or `{ id, ... }`, both legal in a declaration, so both are
+  // matched. An unreadable or unparsable declaration means "not an enforcer as far as this
+  // record can tell": skip, never guess a repo into hosting a fleet-wide lever.
   //
-  // The first is the gate proper: the repo declares the sheepdog pack. A `packs` entry is
-  // either the bare id or `{ id, ... }` — both forms are legal in a declaration, so both
-  // are matched. An unreadable or unparsable declaration means "not an enforcer as far as
-  // this record can tell": skip, never guess a repo into hosting a fleet-wide lever.
-  //
-  // The second is about WHICH ENGINE THE MEMBER IS RUNNING. `migrations/apply.mjs` runs
-  // from a fresh canon clone, so this record is always the newest one — but the worker
-  // that pushes the result is the member's own VENDORED copy, which is only as new as its
-  // last successful converge. A member still on a pre-withhold worker materializes this
-  // file and then pushes it, the push is rejected whole, the converge fails, and the mount
-  // never advances — so the withhold-capable worker can never arrive, because the only
-  // thing that could deliver it is the converge this record is breaking. That is not
-  // hypothetical: it is what happened to missingbulb/Sheepdog on 2026-08-05, twice.
-  //
-  // So the record asks the member whether it can cope yet, and stays inert until it can.
-  // On the first cycle after the engine fix, this returns false, the converge pushes
-  // cleanly, and the mount advances to a worker that withholds; on the next, it returns
-  // true and the file is delivered through the agent stage as designed. Self-healing, in
-  // two cycles, with no manual step on any member.
-  //
-  // The probe is a string match on the member's vendored worker rather than a version
-  // read because there is no per-file version to read — the stamp covers the whole mount
-  // and says nothing about which engine change is in it. It fails SAFE in every direction:
-  // a missing or unreadable worker reads as "not capable", which only ever delays this
-  // record, never wedges a repo.
+  // It deliberately does NOT ask whether the member can deliver a workflow file. That
+  // question belongs to the machinery, not to each record that happens to ship one:
+  // `applyMaterializations` skips a `.github/workflows/` dest unless the running caller
+  // announced (WITHHOLD_CAPABLE_ENV) that it can withhold the path from its push. A
+  // record-local probe was tried first and was WRONG — it read the member's vendored
+  // worker off disk, which the vendor step earlier in the same cycle had already replaced
+  // with the new version while the old code was still executing, so it answered "capable"
+  // for a worker that was not, and Sheepdog stayed wedged.
   appliesTo: async (read) => {
     const text = await read(DECLARATION);
     if (!text) return false;
     let cfg;
     try { cfg = JSON.parse(text); } catch { return false; }
-    const declares = (Array.isArray(cfg?.packs) ? cfg.packs : [])
+    return (Array.isArray(cfg?.packs) ? cfg.packs : [])
       .some((e) => (typeof e === 'string' ? e : e?.id) === PACK);
-    if (!declares) return false;
-    const worker = await read(VENDORED_WORKER);
-    return Boolean(worker && worker.includes(WITHHOLD_MARKER));
   },
 
   materialize: [
