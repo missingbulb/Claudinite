@@ -50,6 +50,21 @@ prose below).
   key means "the default", never "misconfigured" (`retention_days` unset is precisely why the
   growth-extract retention prune is skipped rather than failing).
 
+- **What Claudinite ships must run on the credentials and settings a member already has**
+  (owner ruling, 2026-08-06). Requiring a member to flip a platform setting, or to provision a wider
+  credential (a PAT, an app installation, a new secret), is a last resort — not because it is hard,
+  but because it is per-repo manual work that reliably does not happen: the capability is then
+  quietly dead in every repo nobody configured, indistinguishable from a Claudinite bug, while the
+  automation's own report says nothing is wrong. Three members filed issues asking for the same
+  Actions approval setting (ClaudiniteWebsite#95, EdFringeNow#205, TLDR#182); none was changed, and
+  each repo's converge kept succeeding while its mount fell a day behind. Prefer the route that
+  works with the Action's own `GITHUB_TOKEN` and stock configuration even when it is less direct,
+  and where a platform behaviour blocks you, neutralise its *effect* rather than asking for the
+  platform to be reconfigured. Where no such route exists — a capability the default credential
+  cannot hold at all, which is why `FLEET_GITHUB_TOKEN` is legitimate — take the requirement
+  deliberately: name the exact scope, say why nothing weaker suffices, and have the automation
+  report when it is missing rather than silently degrading.
+
 ## Canon-specific gotchas
 
 - **Baselining backfill skips the home.** The nightly baselining that lands a `seededByDefault`
