@@ -1,5 +1,5 @@
 // The fleet-freshness preprocessing entry point — the script the scheduler runs as
-// `node worker.mjs` (cwd = this task dir, bounded by agent_preprocessing_timeout).
+// `node worker.mjs` (cwd = this task dir, bounded by prework_timeout).
 //
 // It holds NO sweep logic. The sweep is `check-fleet-freshness.mjs`, its SIBLING in
 // this task folder — nothing outside this task uses it, so that is where it lives;

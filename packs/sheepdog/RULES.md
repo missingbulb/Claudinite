@@ -85,7 +85,7 @@ how a task is wired. (The task files carry the same note.)
 **How they run** — as the pack's [`fleet-census`](tasks/fleet-census/task.md) (`daily`),
 [`fleet-freshness`](tasks/fleet-freshness/task.md) (`weekly`) and
 [`fleet-usage`](tasks/fleet-usage/task.md) (`daily`) scheduled tasks, all `agent_model: none`, each
-with its sweep as `agent_preprocessing`. The first two are `expected_outcome: none` (they open
+with its sweep as `prework`. The first two are `expected_outcome: none` (they open
 **issues**, never a PR); the usage sweep is `merged-pr`, because its output IS a tracked file and an
 auto-merging PR keeps that write inside the outcome taxonomy, lets this repo's CI gate a malformed
 file, and makes the daily PR stream a browsable audit trail. Freshness is weekly because drift is

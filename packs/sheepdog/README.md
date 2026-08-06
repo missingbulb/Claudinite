@@ -6,7 +6,7 @@ standardizes the fleet coverage that used to be bespoke Claudinite infrastructur
 
 Thin by design: prose + the config schema (the sheepdog pack entry's `config` = `{ owner, kind, exclude,
 canonRepo, staleDays }`) + three cross-repo **sweeps**, each with the one agentless scheduled task that
-runs it (the sweep is its `agent_preprocessing`; no workflow of its own) — plus one **manual lever**
+runs it (the sweep is its `prework`; no workflow of its own) — plus one **manual lever**
 that has no cadence and therefore does have a workflow:
 
 | sweep | task | asks |

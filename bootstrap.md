@@ -163,7 +163,7 @@ adoption:
    `Claudinite executor - <repo>`, with the launcher prompt
    `Execute the Claudinite executor: .claudinite/shared/engine/scheduler/executor.md`.
    The finished routine fires on the `ready-for-agent` label event, runs Sonnet 5, and
-   has sources = **this repo alone** (not the Claudinite canon — agent-preprocessing
+   has sources = **this repo alone** (not the Claudinite canon — task-prework
    DESIGN §7/E5: baselining fetches canon Action-side, so no executor task needs it in
    session).
 

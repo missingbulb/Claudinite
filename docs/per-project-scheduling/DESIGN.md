@@ -12,6 +12,18 @@ a per-repo **executor routine**, fired by that label event, executes them. Work 
 is genuinely fleet-scoped becomes ordinary tasks *of the canon repo* on the same
 machinery — no separate central mechanism survives.
 
+> **Revised (owner, 2026-08-06) — the three-responsibility split.** This record
+> now reads through §12: the machinery is scheduler (creates task issues),
+> executor (runs exactly its one issue — no cleanups, no sweeps), and a third
+> **task-janitor** responsibility (an ordinary daily `basics` task) that owns all
+> dispatch-issue recovery and health review. The precondition is a task's ONLY
+> run/no-run decision point; the execution phases are named **prework** and
+> **agentic work** (`prework` / `prework_timeout` in the contract, legacy
+> `agent_preprocessing*` accepted); and a dispatch naming a task the repo no
+> longer carries is **closed** by the executor, not parked on `needs-human`.
+> Where the sections below say otherwise (§5's scheduler-side maintenance pass,
+> §4's invalid-dispatch lifecycle), §12 wins.
+
 ---
 
 ## 1. Task anatomy — the pack folder
@@ -352,9 +364,9 @@ sessions burn on empty hours.
   survives a single-model routine).
 - **Launcher prompt** (thin pointer, per the unattended-agents rule):
   `Execute the Claudinite executor: .claudinite/shared/engine/scheduler/executor.md`.
-- **Session sources** are the **member repo alone** (agent-preprocessing DESIGN
+- **Session sources** are the **member repo alone** (task-prework DESIGN
   §7/E5). The executor no longer needs the canon checkout: baselining fetches
-  PUBLIC canon **Action-side** in its `agent_preprocessing` worker and reads
+  PUBLIC canon **Action-side** in its `prework` worker and reads
   migration notes from the member's own vendored mount, so a project-only session
   is all the ambient scope executor work requires. (Superseded the earlier model,
   where the canon rode in the session sources so the baselining task could run the
@@ -436,9 +448,11 @@ sessions burn on empty hours.
      every session triggered by the same run swept the same issues in parallel:
      the duplicate-work bug again, in miniature.
 
-**The scheduler's maintenance pass** (`run.mjs` `maintainDispatchIssues`, over the
-pure rules in `dispatch.mjs`) is now the single home for executor recovery. Each
-hourly run, after filing the cycle's dispatches:
+**The maintenance pass** — *superseded (owner, 2026-08-06): this recovery left
+the scheduler and is now the daily `basics/task-janitor` task's worker (§12.1);
+the scheduler creates dispatches and does nothing else to them. The pure rules
+below are unchanged in `dispatch.mjs`* — was the single home for executor
+recovery. Each run, after (originally) filing the cycle's dispatches:
 
   1. **Stale** — a dispatch open past ~2 of its own scheduling periods →
      escalation comment, drop the ready label, add `needs-human`
@@ -479,7 +493,7 @@ Per-project tasks — run by every declaring repo's own scheduler:
 
 | Task (pack) | frequency | precondition_signals | agent_model | expected_outcome | Notes |
 |---|---|---|---|---|---|
-| baselining (basics) | daily-2h | stamp, sharedMount | sonnet | merged-pr | **Now a per-repo self-refresh, not a fleet pass**: converge own `.claudinite/shared/` to canon head, apply pending migration notes (the old fleet apply pass folds in here), advance the stamp — delivered on the per-cycle `claudinite/maintenance-*` PR, delivery per member config. **Superseded by agent-preprocessing DESIGN §7/E4–E5**: the deterministic converge is now `agent_preprocessing` fetching **public** canon Action-side (no in-session canon checkout — E5 drops canon from the executor's sources), and the agent stage runs only on the nights judgment is left (conditional hand-off). Precondition fires ~daily via the stamp-age fallback (`canonHead` is null now — the worker fetches canon, not the Action). The canon repo skips naturally (no shared mount). |
+| baselining (basics) | daily-2h | stamp, sharedMount | sonnet | merged-pr | **Now a per-repo self-refresh, not a fleet pass**: converge own `.claudinite/shared/` to canon head, apply pending migration notes (the old fleet apply pass folds in here), advance the stamp — delivered on the per-cycle `claudinite/maintenance-*` PR, delivery per member config. **Superseded by task-prework DESIGN §7/E4–E5**: the deterministic converge is now `prework` fetching **public** canon Action-side (no in-session canon checkout — E5 drops canon from the executor's sources), and the agent stage runs only on the nights judgment is left (conditional hand-off). Precondition fires ~daily via the stamp-age fallback (`canonHead` is null now — the worker fetches canon, not the Action). The canon repo skips naturally (no shared mount). |
 | growth-extract (grow_with_claudinite) | daily-1h | commits, prs, issues, conversationLogs | opus | merged-pr | Precondition = substantiveChange OR a log actually past retention; context = the commit/PR/issue lists **and which halves are live**. **As built: one task over both sources.** Designed (and first built) as two tasks — `growth-extract` over activity, `conversation-extract` over the captured logs — firing in the same 03:00 slot against the same local packs. They share the lesson bar, the promotion ladder and the dedup surface, so the split cost a second opus dispatch, a second PR, and two runs deduping against a corpus the other was concurrently writing. The worker now runs the `extract-from-activity` and `extract-from-conversations` skills in turn, then `prose-to-checks` over the prose it just wrote, and lands all of it in one auto-merging PR. The age-based retention prune still fires correctly on quiet repos — as its own precondition arm, with Context saying the activity half is out of scope. |
 | growth-dedup (grow_with_claudinite) | weekly | localPacks, sharedMount, commits | opus | open-pr | `relevantCanonChanged` → `sharedMount`; movement, not the calendar, is what wakes it — a quiet repo skips. **Weekly as built (#582), designed `daily+1h`**: a member's mount moves most nights, so the daily slot fired an opus dispatch and an owner-gated PR nightly for prunes nobody waits on. The window-scoped signals batch the week's movement into one run (§2). |
 | tidy-issues (tidy-repo) | daily | issues, commits | sonnet | none | The undeclared-canon carve-out dies: the canon repo declares tidy-repo like everyone else. **One task per tidy dimension** (the single `repo-tidy` pass split, #481): the acting dimension. Trigger = an issue touched in the window; scope = those issues, widened to every open issue when the default branch ALSO moved substantively — that move is what can make an old issue implemented, so the "full sweep" is signal-triggered, never a calendar flag. The move does not *wake* the task, only widen it: on a repo whose `main` moves most days, waking on it re-triaged every open issue daily. |
@@ -487,7 +501,7 @@ Per-project tasks — run by every declaring repo's own scheduler:
 | tidy-branches (tidy-repo) | weekly | branches | sonnet | none | Assess-only. Gated on a branch being created or pushed in the window (the `branches` signal carries tip dates for exactly this; a push to the default or an infra branch does not count); full whenever it runs, since a branch verdict is relative to the others. Branch cruft accumulates on a weekly clock. Excludes the presumed default names and the infra branches (`conversation-logs`, `claudinite/maintenance`); the worker owns excluding the repo's *real* default branch. |
 | wiki-growth (product-wiki) | weekly | commits | opus | open-pr | The open-growth-PR preflight is subsumed by the at-most-one-open-issue guard + a precondition check. |
 | store-release (chrome-extension-release) | daily | release, commits | none | none | **Absorbs the release workflow's independent 00:30 cron**: the precondition detects a deployable change since the last release (or an unreleased manifest bump); the inline worker dispatches the `Release to Chrome Store` workflow in daily mode and awaits it. The workflow becomes push + `workflow_dispatch` only; its conformance check flips from *requiring* the contract cron to *forbidding* any cron. |
-| create-extractor (gcec, local) | **hourly** | issues | sonnet | open-pr | **Revised by agent-preprocessing (§9), as built.** The *precondition* is only the cheap gate it can be from signals alone: is any open request issue eligible (not already claimed or handed to a human)? Everything deterministic — triage, closing the requests that need no work, branch + scaffold, the page fetch its `required_secrets` pays for, and the draft PR — is `agent_preprocessing`, which needs the issue bodies, GitHub writes, and network fetch a precondition may not do. The agent is requested (conditional hand-off) only when there is genuinely something left to write. The user-facing request issue stays; the dispatch issue references it. |
+| create-extractor (gcec, local) | **hourly** | issues | sonnet | open-pr | **Revised by task-prework (§9), as built.** The *precondition* is only the cheap gate it can be from signals alone: is any open request issue eligible (not already claimed or handed to a human)? Everything deterministic — triage, closing the requests that need no work, branch + scaffold, the page fetch its `required_secrets` pays for, and the draft PR — is `prework`, which needs the issue bodies, GitHub writes, and network fetch a precondition may not do. The agent is requested (conditional hand-off) only when there is genuinely something left to write. The user-facing request issue stays; the dispatch issue references it. |
 | auto-fallback-coverage (gcec, local) | daily | commits | opus | open-pr | `preconditions.sh` becomes the precondition over `commits`. Fixes the live cadence bug (daily spec vs weekly cron: ~6/7 of windows currently unexamined). |
 | fleet-freshness (sheepdog) | weekly | none | none | none | **Added after this design, by what this design caused.** Making every member maintain itself removed the last outside look at a member: one whose scheduler was never vendored, was deleted, or was auto-disabled after 60 quiet days is still `covered` to the census and files no failure issue, because nothing runs there to fail — self-maintenance cannot detect its own absence. This sweep probes each covered member's declaration, scheduler workflow, and stamped ref against Claudinite's default branch, and classifies drift by root cause (`no-stamp` → `no-scheduler` → `ref-not-on-trunk` → `behind`), converging `fleet-drift` issues. Same classification as its sibling: an ordinary pack task whose *implementation* spans the fleet. Weekly because drift is measured in days (`staleDays`, default 14); it shares the census's PAT and adds no scope. |
 | fleet-census (sheepdog) | daily | none | none | none | **An ordinary pack task, not a fleet mechanism**: its *implementation* — preprocessing that runs the census with the account-spanning PAT, declared as `required_secrets` — happens to scan every repo under the owner, but its declaration, scheduling, and lifecycle are exactly those of any pack task. This classification is noted in the sheepdog pack's RULES.md and in the task file itself. (As designed here this was a dispatch-only workflow holding the PAT; #472 folded it into preprocessing, since a workflow existing only to hold a secret is redundant once a task can declare one.) |
@@ -618,3 +632,53 @@ classification note — landed with this PR), and GCEC's `CLAUDE.md` / gcec
    `daily` (04:00) → dedup `daily+1h` (05:00). *(Dedup since moved to `weekly`,
    #582 — see the as-built note in §2; the rest of the chain is unchanged.)*
 10. **Scheduler cron minute constrained to :10–:50** (review).
+
+## 12. Decisions on record (owner, 2026-08-06) — the three-responsibility rework
+
+These override the earlier sections where they conflict.
+
+1. **Three responsibilities, strictly separated.** The scheduler CREATES task
+   issues; the executor EXECUTES exactly the one issue that triggered it — no
+   cleanups, no merging of tasks, no attention to other tasks, failed attempts
+   or scheduling; the **task-janitor** — an ordinary daily `agent_model: none`
+   task in the basics pack — owns dispatch-issue recovery (stale escalation,
+   dead-claim reclaim, lost-event re-arm) and the health review. This retires
+   §5's "scheduler's maintenance pass" (`maintainDispatchIssues` left `run.mjs`;
+   the janitor's worker is the only I/O shell over `dispatch.mjs`'s unchanged
+   pure rules). Stated trade: recovery latency for a lost label event or dead
+   claim grows from ~an hour to up to a day.
+2. **A dispatch whose task the repo no longer carries is CLOSED, not triaged.**
+   `resolve-dispatch` exit `14` (`task-gone`: task file or `task.mjs` missing,
+   pack undeclared) → the executor comments and closes the issue as not
+   planned. No `needs-human`, and no task ever keeps updating a tracking issue
+   about a failed state — every exit is one terminal convergence. Malformed
+   dispatches (bad path shape, unparseable declaration) keep the `needs-human`
+   convergence: those may be forgery or breakage a human must see.
+3. **The precondition is a task's only decision point.** After it passes, the
+   two execution phases must not skip the run for state/timing reasons;
+   failures may stop a run, discretion may not, and an empty outcome is always
+   legal. Enforced as doctrine in `scheduled-tasks.md` and hunted by the
+   advisory `task-phase-discipline` world check (basics).
+4. **The phases are named prework and agentic work** — similar, consecutive
+   parts of one task execution, neither framed as serving the other. Contract:
+   `prework` / `prework_timeout` (legacy `agent_preprocessing` /
+   `agent_preprocessing_timeout` accepted and normalized at load; the shape
+   check flags them for rename). The task-prework design record moved to
+   `docs/task-prework/`; the run-record outcome word is `prework` (the parser
+   still reads `preprocess` from pre-rename logs).
+5. **Task statuses are distilled from the conversation logs, in hard-coded
+   code.** Executor-side terminal states print a machine-readable
+   `claudinite-task-exec v1 <pack>/<task> [<slot>] <status>` record
+   (`success` / `failed` / `task-gone` / `invalid`; rendered by
+   `record-exec.mjs` and `resolve-dispatch.mjs`, format owned by
+   `run-record.mjs`). The captured executor transcripts carry them to the
+   conversation-logs branch, and the fully automatic `usage-fold` task counts
+   them (`taskExec` rows) beside the scheduler-side census — invocations,
+   precondition passes, prework runs, failures, deferrals (§ skill-usage-metrics
+   DESIGN §4.2/§4.3).
+6. **Invocation stays label-event-wired.** Migrating executor invocation to a
+   URL-invoked routine was considered and declined: the label is both the
+   trigger and the write-gated authorization surface, the re-arm recovery is
+   built on it, and a URL endpoint would add a callable credential to every
+   repo's Action for no reduction in moving parts. Revisit only if the platform
+   grows a first-class routine-invocation API with equivalent auth.

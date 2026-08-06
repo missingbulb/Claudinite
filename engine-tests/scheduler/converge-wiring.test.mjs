@@ -26,7 +26,7 @@ test('convergeSchedulerWorkflow: writes the stub with the repo-hashed cron, and 
   assert.equal(convergeSchedulerWorkflow(root, REPO, STUB), false);
 });
 
-// --- required_secrets delivery (agent-preprocessing DESIGN §9) --------------
+// --- required_secrets delivery (task-prework DESIGN §9) --------------
 // Actions needs every secret named statically in the workflow, so a task's
 // `required_secrets` IS that list and the wiring converge writes it. These cover
 // the whole delivery mechanism — there is no other secrets code.

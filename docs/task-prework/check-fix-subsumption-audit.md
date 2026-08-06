@@ -8,7 +8,7 @@ gate to summon an agent only when judgment is genuinely left?
 The old baselining ran an AGENT "align" step that, for every failing conformance
 check, applied that check's own `fix` remedy. E4 replaced the mechanical work with
 a deterministic preprocessing worker and made the agent stage **conditional**
-(agent-preprocessing DESIGN §3, §11). For that to be safe, every check the old
+(task-prework DESIGN §3, §11). For that to be safe, every check the old
 align step would have fixed must be **either** (a) handled deterministically by
 preprocessing, **or** (b) caught by the escalation gate so it still summons the
 agent. A check that is *neither* would be a **silent regression** — drift the old

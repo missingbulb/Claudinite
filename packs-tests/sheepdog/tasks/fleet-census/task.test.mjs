@@ -41,9 +41,9 @@ test('fleet-census: an ordinary pack task — not wired as a fleet mechanism', (
 });
 
 test('fleet-census: the census is the preprocessing, bounded and task-local', () => {
-  assert.equal(decl.agent_preprocessing, 'node worker.mjs');
-  assert.ok(!decl.agent_preprocessing.includes('..'));   // contract: no traversal out of the task dir
-  assert.ok(Number.isInteger(decl.agent_preprocessing_timeout) && decl.agent_preprocessing_timeout > 0);
+  assert.equal(decl.prework, 'node worker.mjs');
+  assert.ok(!decl.prework.includes('..'));   // contract: no traversal out of the task dir
+  assert.ok(Number.isInteger(decl.prework_timeout) && decl.prework_timeout > 0);
   assert.ok(existsSync(join(taskDir, 'worker.mjs')));
   assert.equal(decl.agent_instructions, undefined);   // vestigial field dropped: none task, no agent to instruct
 });

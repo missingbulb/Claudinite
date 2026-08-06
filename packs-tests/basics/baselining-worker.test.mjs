@@ -9,7 +9,7 @@ import {
   landAttempt, LAND_TIMEOUT_MS,
 } from '../../packs/basics/tasks/baselining/worker.mjs';
 
-// The worker's PURE decision helpers (agent-preprocessing DESIGN §7, E4). The
+// The worker's PURE decision helpers (task-prework DESIGN §7, E4). The
 // native-git / clone / REST I/O in main() is validated by the live pilot; these
 // are the git-free unit surface.
 
@@ -229,7 +229,7 @@ test('shouldRequestAgent: a withheld workflow file escalates — nothing else ca
   assert.equal(shouldRequestAgent({ pendingCount: 0, meaningfulChange: true, checksPass: true }), false);
 });
 
-// --- required_secrets ask (agent-preprocessing DESIGN §9) --------------------
+// --- required_secrets ask (task-prework DESIGN §9) --------------------
 // The wiring converge stamps every declared name into the workflow, so by the time
 // the worker runs the value is either in the environment or genuinely unset. That
 // makes the ask a plain env read — no probe, no bundle, no engine-side machinery.

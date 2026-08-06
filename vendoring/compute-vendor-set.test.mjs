@@ -51,7 +51,7 @@ function makeCanon({ packs = [], skills = [] } = {}) {
   writeAt(root, 'engine/pack_loader/mount-skills.mjs', 'stub\n');
   // per-user content: must never appear in any vendor set
   writeAt(root, 'preferences/owner@example.com.md', 'prefs\n');
-  // migrations: the applier + registry + records vendor (agent-preprocessing §7),
+  // migrations: the applier + registry + records vendor (task-prework §7),
   // the fleet-only drivers / README / tests do not. Stubs — structural inclusion.
   writeAt(root, 'migrations/apply.mjs', 'export const apply = 1;\n');
   writeAt(root, 'migrations/registry.mjs', 'export const registry = 1;\n');

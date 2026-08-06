@@ -26,7 +26,7 @@ test('baselining declaration: the 02:00 slot, sonnet residual stage, determinist
   assert.equal(baselining.agent_model, 'sonnet'); // the residual judgment stage, requested only when needed
   assert.equal(baselining.expected_outcome, 'merged-pr');
   assert.deepEqual(baselining.precondition_signals, ['stamp', 'sharedMount']);
-  assert.equal(baselining.agent_preprocessing, 'node worker.mjs');
+  assert.equal(baselining.prework, 'node worker.mjs');
   assert.ok(existsSync(join(TASK_DIR, 'worker.mjs')), 'the deterministic converge worker must exist');
   assert.ok(existsSync(join(TASK_DIR, baselining.agent_instructions)), `worker doc missing: ${baselining.agent_instructions}`);
 });

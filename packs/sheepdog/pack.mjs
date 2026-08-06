@@ -5,7 +5,7 @@
 // The pack is thin: prose (RULES.md), the config schema (the pack entry's config =
 // { owner, kind, exclude, canonRepo, staleDays }), and the account-spanning sweeps
 // that ARE the cross-repo reach the pack adds — each with the ordinary agentless
-// scheduled task that runs it (the sweep IS its agent_preprocessing, and its
+// scheduled task that runs it (the sweep IS its prework, and its
 // required_secrets is what asks the repo for FLEET_GITHUB_TOKEN):
 //
 //   tasks/fleet-census/check-fleet-coverage.mjs      is a repo a MEMBER?

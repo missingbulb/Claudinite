@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // The sheepdog pack's fleet-coverage CENSUS — the cross-repo reach the pack adds.
 // Run by this pack's `fleet-census` scheduled task (tasks/fleet-census/), whose
-// worker calls `main()` below as the task's `agent_preprocessing` — Action-side
+// worker calls `main()` below as the task's `prework` — Action-side
 // inside the repo's scheduler workflow, where the FLEET_GITHUB_TOKEN the task
 // declares in `required_secrets` is reachable as ordinary environment. Still
 // runnable by hand (`node check-fleet-coverage.mjs`) via the CLI guard at the foot.

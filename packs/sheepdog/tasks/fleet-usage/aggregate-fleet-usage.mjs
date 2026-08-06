@@ -2,7 +2,7 @@
 // The sheepdog pack's fleet-USAGE sweep — the third cross-repo reach the pack adds,
 // alongside the coverage census and the freshness sweep. Run by this pack's
 // `fleet-usage` scheduled task (tasks/fleet-usage/), whose worker calls `main()`
-// below as the task's `agent_preprocessing`, Action-side inside the enforcer repo's
+// below as the task's `prework`, Action-side inside the enforcer repo's
 // scheduler workflow where FLEET_GITHUB_TOKEN is reachable. Still runnable by hand
 // (`node aggregate-fleet-usage.mjs`) via the CLI guard at the foot.
 //

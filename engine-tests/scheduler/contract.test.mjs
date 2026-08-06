@@ -49,10 +49,10 @@ test('validateTaskDeclaration: an agentless (none) task needs preprocessing but 
   const none = { ...validTask, agent_model: 'none', expected_outcome: 'none' };
   delete none.agent_execution_timeout;
   // a bare none task with no preprocessing does nothing → flagged
-  assert.match(validateTaskDeclaration(none)[0].what, /declares no "agent_preprocessing"/);
+  assert.match(validateTaskDeclaration(none)[0].what, /declares no "prework"/);
   // with preprocessing + its timeout it is clean, and needs no execution bound
   assert.deepEqual(
-    validateTaskDeclaration({ ...none, agent_preprocessing: 'node worker.mjs', agent_preprocessing_timeout: 120 }),
+    validateTaskDeclaration({ ...none, prework: 'node worker.mjs', prework_timeout: 120 }),
     [],
   );
 });
@@ -60,7 +60,7 @@ test('validateTaskDeclaration: an agentless (none) task needs preprocessing but 
 test('validateTaskDeclaration: agent_instructions is required for an agentic task but not applicable to none', () => {
   // a none task with NO agent_instructions at all is clean — the field is not
   // applicable when there is no agent.
-  const none = { ...validTask, agent_model: 'none', expected_outcome: 'none', agent_preprocessing: 'node worker.mjs', agent_preprocessing_timeout: 120 };
+  const none = { ...validTask, agent_model: 'none', expected_outcome: 'none', prework: 'node worker.mjs', prework_timeout: 120 };
   delete none.agent_execution_timeout;
   delete none.agent_instructions;
   assert.deepEqual(validateTaskDeclaration(none), []);
@@ -70,26 +70,26 @@ test('validateTaskDeclaration: agent_instructions is required for an agentic tas
   assert.match(validateTaskDeclaration(noInstructions)[0].what, /no string "agent_instructions"/);
 });
 
-test('validateTaskDeclaration validates agent_preprocessing + its required timeout and containment', () => {
+test('validateTaskDeclaration validates prework + its required timeout and containment', () => {
   const none = { ...validTask, agent_model: 'none', expected_outcome: 'none' };
   delete none.agent_execution_timeout;
   // preprocessing without a timeout is rejected
   assert.match(
-    validateTaskDeclaration({ ...none, agent_preprocessing: 'node prepare.mjs' })[0].what,
-    /"agent_preprocessing_timeout" is not a positive integer/,
+    validateTaskDeclaration({ ...none, prework: 'node prepare.mjs' })[0].what,
+    /"prework_timeout" is not a positive integer/,
   );
   // a task-local command with a timeout is accepted
   assert.deepEqual(
-    validateTaskDeclaration({ ...none, agent_preprocessing: 'node prepare.mjs', agent_preprocessing_timeout: 120 }),
+    validateTaskDeclaration({ ...none, prework: 'node prepare.mjs', prework_timeout: 120 }),
     [],
   );
   // an absolute path or a `..` traversal is rejected
   assert.match(
-    validateTaskDeclaration({ ...none, agent_preprocessing: 'node /usr/bin/x.mjs', agent_preprocessing_timeout: 120 })[0].what,
+    validateTaskDeclaration({ ...none, prework: 'node /usr/bin/x.mjs', prework_timeout: 120 })[0].what,
     /reaches outside the task directory/,
   );
   assert.match(
-    validateTaskDeclaration({ ...none, agent_preprocessing: 'node ../evil.mjs', agent_preprocessing_timeout: 120 })[0].what,
+    validateTaskDeclaration({ ...none, prework: 'node ../evil.mjs', prework_timeout: 120 })[0].what,
     /reaches outside the task directory/,
   );
 });

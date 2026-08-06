@@ -1,6 +1,6 @@
 # Fleet freshness — is each covered member still keeping up?
 
-**This task runs no agent.** It is `agent_model: none` with `agent_preprocessing: node worker.mjs`, so the whole pass is the deterministic [`worker.mjs`](worker.mjs) the scheduler runs as a subprocess, which calls its sibling in this folder, the sweep ([`check-fleet-freshness.mjs`](check-fleet-freshness.mjs)). This file is the human-facing record of what that worker does; there is no dispatch issue and no subagent.
+**This task runs no agent.** It is `agent_model: none` with `prework: node worker.mjs`, so the whole pass is the deterministic [`worker.mjs`](worker.mjs) the scheduler runs as a subprocess, which calls its sibling in this folder, the sweep ([`check-fleet-freshness.mjs`](check-fleet-freshness.mjs)). This file is the human-facing record of what that worker does; there is no dispatch issue and no subagent.
 
 ## Why it exists
 

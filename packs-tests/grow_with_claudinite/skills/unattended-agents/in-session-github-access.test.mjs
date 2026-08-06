@@ -56,7 +56,7 @@ test('in-session-github-access: a run_daily/ path is no longer an in-session sur
 });
 
 test('in-session-github-access: a scheduled task\'s preprocessing worker keeps its REST client', () => {
-  // agent_preprocessing runs Action-side as a subprocess with an injected
+  // prework runs Action-side as a subprocess with an injected
   // GITHUB_TOKEN — the one sanctioned non-MCP surface — so tasks/ is deliberately
   // outside the in-session scope.
   const root = makeRepo({ changed: {

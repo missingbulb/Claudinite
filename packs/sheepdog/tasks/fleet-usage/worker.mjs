@@ -1,5 +1,5 @@
 // The fleet-usage preprocessing entry point — the script the scheduler runs as
-// `node worker.mjs` (cwd = this task dir, bounded by agent_preprocessing_timeout).
+// `node worker.mjs` (cwd = this task dir, bounded by prework_timeout).
 //
 // It holds NO aggregation logic. The sweep is `aggregate-fleet-usage.mjs`, its
 // SIBLING in this task folder — nothing outside this task uses it, so that is where

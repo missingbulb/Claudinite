@@ -232,8 +232,8 @@ test('usage-fold: daily/agentless/merged-pr, on the conversationLogs signal alon
   assert.equal(usageFold.expected_outcome, 'merged-pr');
   assert.deepEqual(usageFold.precondition_signals, ['conversationLogs']);
   // An agentless task's whole work is its preprocessing — with none it does nothing.
-  assert.equal(usageFold.agent_preprocessing, 'node worker.mjs');
-  assert.ok(usageFold.agent_preprocessing_timeout > 0);
+  assert.equal(usageFold.prework, 'node worker.mjs');
+  assert.ok(usageFold.prework_timeout > 0);
 });
 
 test('usage-fold: a logs branch is the whole precondition — it runs on a quiet repo too', () => {

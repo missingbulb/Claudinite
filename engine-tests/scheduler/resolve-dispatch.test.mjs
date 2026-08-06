@@ -15,7 +15,7 @@ import { writeFiles, cleanup } from '../helpers.mjs';
 const ENGINE = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'engine');
 const SHELL = join(ENGINE, 'scheduler', 'resolve-dispatch.mjs');
 
-const OK = 0, USAGE = 2, INVALID = 10, NOT_MINE = 11, NO_TRIGGER = 12, NEEDS_ISSUE = 13;
+const OK = 0, USAGE = 2, INVALID = 10, NOT_MINE = 11, NO_TRIGGER = 12, NEEDS_ISSUE = 13, TASK_GONE = 14;
 
 const taskMjs = (id) => `export default {
   id: ${JSON.stringify(id)},
@@ -182,21 +182,28 @@ test('a task path escaping the packs shape is invalid (traversal, wrong file, tr
   } finally { cleanup(root); }
 });
 
-test('a well-formed path into a pack the repo does not declare is invalid', () => {
+test('a well-formed path into a pack the repo does not declare is task-gone — close, not triage', () => {
   const root = fixtureRepo();
   try {
     const r = run(root, { event: labeled('ready-for-agent', { body: 'packs/undeclared/tasks/rogue-task/task.md\n' }) });
-    assert.equal(r.status, INVALID, `${r.stdout}${r.stderr}`);
+    assert.equal(r.status, TASK_GONE, `${r.stdout}${r.stderr}`);
+    assert.equal(field(r.stdout, 'dispatch'), 'task-gone');
     assert.match(field(r.stdout, 'reason'), /pack "undeclared" is not declared/);
+    assert.match(r.stderr, /CLOSE the issue/);
+    assert.doesNotMatch(r.stderr, /remove the "ready/);
+    // The execution record is printed by code, so the fold counts the closure
+    // whatever the agent says afterwards.
+    assert.match(field(r.stdout, 'record'), /^claudinite-task-exec v1 undeclared\/rogue-task \[\S+\] task-gone$/);
   } finally { cleanup(root); }
 });
 
-test('a path to a task file that is not in the checkout is invalid', () => {
+test('a path to a task file that is not in the checkout is task-gone — close, not triage', () => {
   const root = fixtureRepo();
   try {
     const r = run(root, { event: labeled('ready-for-agent', { body: 'packs/demo/tasks/ghost/task.md\n' }) });
-    assert.equal(r.status, INVALID, `${r.stdout}${r.stderr}`);
+    assert.equal(r.status, TASK_GONE, `${r.stdout}${r.stderr}`);
     assert.match(field(r.stdout, 'reason'), /does not exist at HEAD/);
+    assert.match(r.stderr, /CLOSE the issue/);
   } finally { cleanup(root); }
 });
 

@@ -1,5 +1,5 @@
 // sheepdog task: fleet-usage — the fleet-wide skill-usage aggregate, as a scheduled
-// task. `agent_model: 'none'` with `agent_preprocessing: 'node worker.mjs'`: the
+// task. `agent_model: 'none'` with `prework: 'node worker.mjs'`: the
 // whole pass is deterministic code the scheduler runs as a subprocess — no agent, no
 // dispatch issue. The worker calls its sibling, the sweep
 // (aggregate-fleet-usage.mjs): read every member's own usage aggregate and rebuild
@@ -26,15 +26,15 @@ export default {
   id: 'fleet-usage',
   frequency: 'daily',                    // the members fold daily; this follows them
   precondition_signals: [],              // no signal — the sweep reads the fleet itself, over the PAT
-  agent_model: 'none',                   // pure code — no agent (agent-preprocessing DESIGN §4)
+  agent_model: 'none',                   // pure code — no agent (task-prework DESIGN §4)
   expected_outcome: 'merged-pr',         // the regenerated GENERATED aggregate rides an auto-merging PR
-  agent_preprocessing: 'node worker.mjs',
+  prework: 'node worker.mjs',
   // One paged enumeration plus two REST reads per member (the coverage probe and the
   // usage file), all serial, then one PR. Same 900s the census and freshness sweep
   // carry, for the same reason: ~10x the expected walk while staying well inside the
   // hourly scheduler cadence, so a hung run is killed long before the next could
   // collide with it.
-  agent_preprocessing_timeout: 900,
+  prework_timeout: 900,
   required_secrets: ['FLEET_GITHUB_TOKEN'], // the account-spanning PAT the sweep reads the fleet with
 
   // Fire daily unconditionally. Every input lives OUTSIDE this repo — each member's

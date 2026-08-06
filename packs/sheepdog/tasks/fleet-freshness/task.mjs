@@ -1,5 +1,5 @@
 // sheepdog task: fleet-freshness — is each COVERED member actually keeping up?
-// `agent_model: 'none'` with `agent_preprocessing: 'node worker.mjs'`: the whole
+// `agent_model: 'none'` with `prework: 'node worker.mjs'`: the whole
 // pass is deterministic code the scheduler runs as a subprocess — no agent, no
 // dispatch issue. The worker calls its sibling, the sweep (check-fleet-freshness.mjs):
 // probe every covered repo under the configured owner, classify its drift by root
@@ -30,14 +30,14 @@ export default {
   id: 'fleet-freshness',
   frequency: 'weekly',                   // drift is measured in DAYS (staleDays, default 14) — a daily sweep would re-ask a question whose answer cannot have changed
   precondition_signals: [],              // no signal — the sweep reads the fleet itself, over the PAT
-  agent_model: 'none',                   // pure code — no agent (agent-preprocessing DESIGN §4)
+  agent_model: 'none',                   // pure code — no agent (task-prework DESIGN §4)
   expected_outcome: 'none',              // the honest ceiling: the sweep opens DRIFT ISSUES, never a PR — it reports, it does not repair
-  agent_preprocessing: 'node worker.mjs',
+  prework: 'node worker.mjs',
   // Three REST reads per member (declaration, scheduler workflow, canon compare)
   // plus the enumeration and the issue convergence, all serial, and a secondary
   // rate limit makes it slower still. Same 900s the census carries, for the same
   // reason: ~10x the expected walk while staying well inside the hourly cadence.
-  agent_preprocessing_timeout: 900,
+  prework_timeout: 900,
   required_secrets: ['FLEET_GITHUB_TOKEN'], // the account-spanning PAT the sweep reads the fleet with
 
   // Fire weekly unconditionally. Every input lives OUTSIDE this repo — another

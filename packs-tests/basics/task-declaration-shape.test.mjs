@@ -74,13 +74,13 @@ test('task-declaration-shape: a none task needs no execution bound but flags pre
   precondition_signals: ['release'],
   agent_model: 'none',
   expected_outcome: 'none',
-  agent_preprocessing: 'node worker.mjs',
+  prework: 'node worker.mjs',
   precondition() { return { run: false }; },
 };
 `;
   const whats = run({ [TASK]: noneTask }).map((f) => f.what).join(' | ');
   assert.doesNotMatch(whats, /agent_execution_timeout/);        // none = no agent, no bound needed
-  assert.match(whats, /no numeric "agent_preprocessing_timeout"/);
+  assert.match(whats, /no numeric "prework_timeout"/);
 });
 
 test('task-declaration-shape: flags an agentless (none) task that declares no preprocessing', () => {
@@ -94,7 +94,7 @@ test('task-declaration-shape: flags an agentless (none) task that declares no pr
 };
 `;
   const whats = run({ [TASK]: bareNone }).map((f) => f.what).join(' | ');
-  assert.match(whats, /declares no "agent_preprocessing"/);
+  assert.match(whats, /declares no "prework"/);
 });
 
 test('task-declaration-shape: a none task with no agent_instructions is clean â€” the field is not applicable', () => {
@@ -104,8 +104,8 @@ test('task-declaration-shape: a none task with no agent_instructions is clean â€
   precondition_signals: ['release'],
   agent_model: 'none',
   expected_outcome: 'none',
-  agent_preprocessing: 'node worker.mjs',
-  agent_preprocessing_timeout: 120,
+  prework: 'node worker.mjs',
+  prework_timeout: 120,
   precondition() { return { run: false }; },
 };
 `;
@@ -115,7 +115,7 @@ test('task-declaration-shape: a none task with no agent_instructions is clean â€
 test('task-declaration-shape: flags a preprocessing command that escapes the task directory', () => {
   const bad = goodTask.replace(
     '  agent_execution_timeout: 1800,\n',
-    "  agent_execution_timeout: 1800,\n  agent_preprocessing: 'node ../evil.mjs',\n  agent_preprocessing_timeout: 120,\n",
+    "  agent_execution_timeout: 1800,\n  prework: 'node ../evil.mjs',\n  prework_timeout: 120,\n",
   );
   const whats = run({ [TASK]: bad }).map((f) => f.what).join(' | ');
   assert.match(whats, /reaches outside the task directory/);
@@ -124,7 +124,7 @@ test('task-declaration-shape: flags a preprocessing command that escapes the tas
 test('task-declaration-shape: a well-formed task with preprocessing + both timeouts is clean', () => {
   const withPrep = goodTask.replace(
     '  agent_execution_timeout: 1800,\n',
-    "  agent_execution_timeout: 1800,\n  agent_preprocessing: 'node prepare.mjs',\n  agent_preprocessing_timeout: 300,\n",
+    "  agent_execution_timeout: 1800,\n  prework: 'node prepare.mjs',\n  prework_timeout: 300,\n",
   );
   assert.deepEqual(run({ [TASK]: withPrep }), []);
 });

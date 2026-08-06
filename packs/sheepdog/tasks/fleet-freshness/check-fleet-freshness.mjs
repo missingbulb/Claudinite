@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // The sheepdog pack's fleet-FRESHNESS sweep — the second half of the enforcer's job.
 // Run by this pack's `fleet-freshness` scheduled task (tasks/fleet-freshness/), whose
-// worker calls `main()` below as the task's `agent_preprocessing`, Action-side inside
+// worker calls `main()` below as the task's `prework`, Action-side inside
 // the enforcer repo's scheduler workflow where FLEET_GITHUB_TOKEN is reachable. Still
 // runnable by hand (`node check-fleet-freshness.mjs`) via the CLI guard at the foot.
 //
