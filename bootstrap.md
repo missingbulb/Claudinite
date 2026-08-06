@@ -137,17 +137,20 @@ adoption:
    hook registrations, dropping the retired `@.claudinite/shared/CLAUDE.md` import, and
    the README pack-badge row (below)
    are all mechanized by `node .claudinite/shared/engine/scheduler/converge-wiring.mjs
-   <owner/repo>` — the single wiring surface bootstrap and baselining both call, so the
-   set is defined once in code, not re-enacted from this prose each night.
+   <owner/repo> --badges` — the single wiring surface bootstrap and baselining both call,
+   so the set is defined once in code, not re-enacted from this prose each night. Pass
+   `--badges` here and only here: it is the one surface adoption converges that the
+   nightly deliberately does not (step 2).
 2. **The README pack-badge row needs no step either** — the same converge writes a
    one-line row of the declared packs' badges into `README.md`, under the title, between
    `<!-- claudinite:packs -->` markers — the opening one on its own line above the badges,
    so the badges are not swallowed by the HTML block a line beginning with `<!--` opens;
    anything the repo writes after the closing marker
-   on that line is its own and is never touched. It also materializes
-   `"badges": { "readme": "auto" }` into `.claudinite-checks.json` so the knob is visible
-   where anyone would look for it — a repo that wants no row sets `"off"`, and the
-   nightly then neither updates the row nor re-adds one the repo has deleted.
+   on that line is its own and is never touched. **This is a one-time seed.** Baselining
+   runs the same converge WITHOUT `--badges`, so from here the row is the repo's own text
+   — edit it, move it, or delete it, and nothing will argue. A README belongs to its repo,
+   and a nightly-derived row would put a README diff in the baselining commit every time
+   the declaration moved.
 3. **Labels need no step** — the scheduler ensures `ready-for-agent`,
    `agent-running`, `needs-human`, and `workflow-failure` exist (create-if-missing,
    idempotent) before it dispatches, so they materialize on the first run and

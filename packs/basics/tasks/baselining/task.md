@@ -90,9 +90,11 @@ deterministically by preprocessing; you only touch what a check still flags.
 `convergeWiring`'s set is exactly four surfaces — the scheduler workflow
 `.github/workflows/claudinite-scheduler.yml` (with its hashed cron and the tasks'
 declared secrets), the settings hooks, removal of the retired `CLAUDE.md` corpus
-import, and the README's pack-badge row (with the `badges.readme` knob it
-materializes into `.claudinite-checks.json`, which a repo sets to `"off"` to be left
-alone). Pack-adoption **interview status** is not preprocessing's: unanswered questions
+import, and removal of the retired `badges` setting from `.claudinite-checks.json`.
+**The README is not one of them**: the pack-badge row is seeded once at adoption
+(`converge-wiring --badges`, which baselining never passes) and is the repo's own
+text from then on — so a baselining run producing a README diff is a bug, not
+upkeep. Pack-adoption **interview status** is not preprocessing's: unanswered questions
 surface as a mild SessionStart note (never a finding), and a stale stored answer as
 adopt-claudinite's advisory hygiene check — so interview drift reaches you here, as a
 check finding like any other.

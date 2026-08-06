@@ -138,17 +138,26 @@ what runs pack content and what every consumer vendors. The badge FILES do ship 
 rides its directory into a consumer's vendor set exactly like its prose and skills, so a repo's row
 points at its own `.claudinite/shared/packs/<id>/badge.svg` with no network dependency on this repo.
 
-**Getting the row into a README is not a maintainer's job.** Adoption writes it and the nightly
-keeps it true, both through the one wiring converge
-([`../engine/scheduler/converge-wiring.mjs`](../engine/scheduler/converge-wiring.mjs), bootstrap
-Part 6): a one-line row of the declared packs' badges, under the title, between
-`<!-- claudinite:packs -->` markers — so it re-converges in place wherever the repo moves it, and
-anything the repo writes after the closing marker on that line is its own. The opening marker sits
+**Getting the row into a README is not a maintainer's job — keeping it current is.** Adoption writes
+it, once, through the wiring converge
+([`../engine/scheduler/converge-wiring.mjs`](../engine/scheduler/converge-wiring.mjs) run with
+`--badges`, bootstrap Part 6): a one-line row of the declared packs' badges, under the title, between
+`<!-- claudinite:packs -->` markers — so it lands where a reader looks first, and anything the repo
+writes after the closing marker on that line is its own. The opening marker sits
 on its own line above the badges and must stay there: a line that *begins* with `<!--` opens a
 CommonMark HTML block, and badges written after it on the same line render as literal `![…](…)`
-text rather than images. Because the row is
-derived from the declaration each night, it can't go stale the day the repo declares its next pack,
-which is the whole reason it isn't hand-written.
+text rather than images.
+
+**The nightly does not touch it.** Baselining runs the same converge without `--badges`, so a
+member's README is never rewritten by a run it didn't ask for — a re-derived row would put a README
+diff in every vendoring commit that followed a declaration change. The row is a seed, not maintained
+state: once written, it belongs to the repo — edit it, move it, or delete it.
+
+**The declaration is what makes a row wrong, so the row is refreshed where the declaration changes:**
+adopting a pack re-runs the converge with `--badges`
+([`grow_with_claudinite/skills/adopt-pack/SKILL.md`](grow_with_claudinite/skills/adopt-pack/SKILL.md), step 3),
+which rewrites the row in place. Nothing else derives it — a repo that edits its declaration by hand
+runs `converge-wiring <owner/repo> --badges` itself, or lives with a stale row.
 
 The converge also materializes the repo's say into `.claudinite-checks.json`, so the knob sits where
 anyone would look for it rather than being inferred from absence:
