@@ -18,8 +18,14 @@ export default rule;
 
 const ADVISORY_RULE = BLOCKING_RULE.replace("'blocking'", "'advisory'");
 
-// The work context a work rule receives — only the two members this rule reads.
-const work = (changedFiles, files = {}) => ({ changedFiles, read: (f) => files[f] ?? null });
+// The work context a work rule receives — only the three members this rule reads.
+// `base` defaults to empty, so a fixture file reads as newly added unless a test
+// says otherwise.
+const work = (changedFiles, files = {}, base = {}) => ({
+  changedFiles,
+  read: (f) => files[f] ?? null,
+  readBase: (f) => base[f] ?? null,
+});
 
 // --- what counts as a contract surface --------------------------------------
 
@@ -33,14 +39,23 @@ test('the scheduler stub is a contract surface — members vendor it verbatim', 
   assert.equal(contractChanges([STUB], () => null).length, 1);
 });
 
-test('a changed rule that is blocking is a contract surface', () => {
-  const out = contractChanges(['packs/basics/demo.mjs'], () => BLOCKING_RULE);
+test('a rule promoted from advisory to blocking is a contract surface', () => {
+  const out = contractChanges(['packs/basics/demo.mjs'], () => BLOCKING_RULE, () => ADVISORY_RULE);
   assert.equal(out.length, 1);
-  assert.match(out[0].what, /blocking/);
+  assert.match(out[0].what, /became blocking/);
+});
+
+test('a brand-new blocking rule is a contract surface — it has no base to have asked for', () => {
+  assert.equal(contractChanges(['packs/basics/demo.mjs'], () => BLOCKING_RULE, () => null).length, 1);
+});
+
+test('editing a rule that was ALREADY blocking is not — it asks nothing new of a member', () => {
+  const edited = BLOCKING_RULE.replace("id: 'demo'", "id: 'demo', doc: 'packs/basics/RULES.md'");
+  assert.deepEqual(contractChanges(['packs/basics/demo.mjs'], () => edited, () => BLOCKING_RULE), []);
 });
 
 test('a changed rule that stays advisory is not — it cannot turn a member red', () => {
-  assert.deepEqual(contractChanges(['packs/basics/demo.mjs'], () => ADVISORY_RULE), []);
+  assert.deepEqual(contractChanges(['packs/basics/demo.mjs'], () => ADVISORY_RULE, () => ADVISORY_RULE), []);
 });
 
 // The narrowness is the point: a rule that fires on every canon commit gets
