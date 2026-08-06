@@ -207,7 +207,6 @@ test('migrationActive: true for every live record, false once archived', () => {
 // A workflow materialization can only be written by a caller that can get it delivered.
 // Writing one into a tree an Action-token push is about to carry does not deliver a
 // workflow — it rejects the whole ref and fails the converge with everything riding it.
-// This is the guard that kept missingbulb/Sheepdog wedged for three cycles until it existed.
 
 test('applyMaterializations: a workflow dest is skipped unless the caller announced it can withhold', async () => {
   const m = M({ materialize: [
@@ -309,7 +308,7 @@ test('chrome-release-vendoring migration: gate, telemetry, and the home-file ret
   // Four of this record's nine materializations are WORKFLOW files, so the caller has to
   // be one that can deliver them — the same handshake baselining's worker makes. Run it
   // without the announcement and those four are skipped instead of wedging the push, which
-  // is exactly the latent hazard this record carried before the guard existed (#649).
+  // is the hazard a workflow materialization carries for a caller that cannot push one.
   const capable = { [WITHHOLD_CAPABLE_ENV]: '1' };
   const incapable = await applyMaterializations(m, { readTemplate, read, write, env: {} });
   assert.equal(incapable.filter((l) => l.startsWith('SKIPPED')).length, 4);

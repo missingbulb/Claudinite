@@ -105,11 +105,11 @@ test('shouldRequestAgent: agent iff a pending note, or a change left non-green',
   assert.equal(shouldRequestAgent({ pendingCount: 0, meaningfulChange: false, checksPass: false }), false); // no change → agentless
 });
 
-// --- the unpushable set (#649) -----------------------------------------------
+// --- the unpushable set ------------------------------------------------------
 // The Action's GITHUB_TOKEN may not write under .github/workflows/, and GitHub
 // rejects the WHOLE ref when a push contains one. Withholding those paths is what
 // keeps one undeliverable file from failing the mount converge, the wiring, and
-// every other note along with it — the wedge that hit missingbulb/Sheepdog.
+// every other note along with it.
 
 test('withheldWorkflowPaths: selects workflow files and nothing else', () => {
   const changed = [

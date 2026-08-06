@@ -81,19 +81,10 @@ goes through your GitHub tools.
 
    **The issue also names every artifact this run's preprocessing created** — a `### Delivered
    by preprocessing` section listing a PR number and branch ref. Pass it to the subagent as
-   given, and hold it to the rule that governs every task:
+   given; those are the artifacts it works on, and if the section is absent there are none.
 
-   > **Never locate your working artifacts by name.** Not a branch prefix, not a PR title
-   > pattern, not a naming convention a task doc describes. The issue names them, or they do
-   > not exist. A search that returns nothing is indistinguishable from nothing having been
-   > created, and an agent acting on that difference acts on a coin flip — which is how a
-   > delivered-and-merged PR read as "this cycle delivered nothing" and a repo sat undelivered
-   > for a day (#649).
-
-   The same rule applies to what the subagent itself creates: when it opens a PR or a branch,
-   it **comments the number on this dispatch issue**, so the next run finds it by association
-   rather than by guessing. A task doc that tells you to search for an artifact by name is
-   out of date — follow this instead, and say so in your final message. **Give the subagent its
+   What the subagent itself creates is recorded the same way: when it opens a PR or a branch,
+   it **comments the number on this dispatch issue**, so a later run finds it by association. **Give the subagent its
    run bound**, from step 1's `executionTimeout` and never from the issue body: *"you have N
    minutes; if you exceed it, stop, comment what's done, and converge this issue to
    `needs-human` rather than pressing on."* Nothing enforces that bound but the subagent

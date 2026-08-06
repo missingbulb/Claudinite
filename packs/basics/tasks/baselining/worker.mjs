@@ -143,23 +143,17 @@ export function openMaintenanceBranch(pulls, prefix = MAINT_PREFIX) {
 }
 
 // The paths this stage is STRUCTURALLY UNABLE to deliver. deliver() pushes with the
-// Action's GITHUB_TOKEN, and GitHub refuses to let that token create or update
-// anything under `.github/workflows/` — there is no `permissions:` key that grants it,
-// so this is a wall, not a misconfiguration. Worse, the refusal is remote-side and
-// rejects the WHOLE ref: before this, one workflow file the converge wanted to write
-// failed the entire push, and with it the mount convergence, the wiring and every other
-// note — every cycle, forever, since the converge is idempotent and re-attempted it
-// identically each run (#649, and the live wedge on missingbulb/Sheepdog).
+// Action's GITHUB_TOKEN, and GitHub refuses to let that token create or update anything
+// under `.github/workflows/` — there is no `permissions:` key that grants it. The refusal
+// is remote-side and rejects the WHOLE ref, so a workflow file left in the commit fails
+// the entire push, taking the mount convergence, the wiring and every other note with it.
 //
-// So the converge withholds exactly these paths from its commit and hands them to the
-// AGENT stage, whose writes go through the session's MCP GitHub tools — a different
-// credential, one that does hold the `workflows` permission. Nothing is passed to the
-// agent directly: the branch is the whole handoff, and the agent rediscovers the work by
-// re-running the same mechanical apply in its own checkout (DESIGN §3, no code→agent
-// data channel).
+// So the converge withholds exactly these paths and hands them to the AGENT stage, whose
+// writes go through the session's MCP GitHub tools — a credential that does hold the
+// `workflows` permission. The agent re-runs the same mechanical apply in its own checkout
+// to produce them.
 //
-// This is not only about pack-owned workflows. `convergeWiring` writes the scheduler
-// workflow itself, so a change to that stub was latently the same wedge on every member.
+// It covers `convergeWiring`'s scheduler workflow as much as any pack-owned one.
 export const UNPUSHABLE_PREFIX = '.github/workflows/';
 export function withheldWorkflowPaths(changedPaths) {
   return (changedPaths ?? []).filter((p) => p.startsWith(UNPUSHABLE_PREFIX));
@@ -521,9 +515,8 @@ async function deliver(root, repo, base, token, delivery, seed, withheld = []) {
           + ' (pullDisposition).'));
     }
   }
-  // What this cycle actually delivered — the artifacts by IDENTITY, not by a naming
-  // convention someone downstream has to guess at. The scheduler records these in the
-  // dispatch issue, which is the agent's only source for them (#649).
+  // What this cycle delivered. The scheduler records it in the dispatch issue, which is
+  // the agent's source for these artifacts.
   return { branch, pr: pr?.number ?? null, merged };
 }
 
@@ -812,11 +805,9 @@ export async function main() {
   }
 
   // 9. Request the agent only when judgment is left (conditional handoff, §3) — and name
-  //    what this run created, so the scheduler can record it in the dispatch issue. The
-  //    agent reads its branch and PR from there and never searches by name: a search that
-  //    finds nothing cannot be told apart from nothing existing, and this repo has already
-  //    paid for that once (#649). `delivered` stays null when nothing was opened, which is
-  //    the honest signal that there is nothing to continue.
+  //    what this run created, which the scheduler records in the dispatch issue for the
+  //    agent to work on. `delivered` stays null when nothing was opened, and the issue
+  //    then names nothing.
   if (requestAgent && requestFile) {
     writeFileSync(requestFile, `${JSON.stringify({ marker: AGENT_REQUEST_MARKER, delivered })}\n`);
   }

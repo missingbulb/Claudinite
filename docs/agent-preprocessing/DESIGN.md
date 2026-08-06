@@ -153,22 +153,16 @@ intact.
 **The exception: the artifacts this run created** (owner decision, 2026-08-06).
 A worker that opens a branch or a PR writes their identifiers into the
 agent-request file, and `dispatch.mjs` renders them as a `### Delivered by
-preprocessing` section. The rule as originally written left the agent to
-*rediscover* what preprocessing had made, and in practice every task doc solved
-that by searching for a branch or PR matching a naming convention — which is a
-silent-error generator, because a search that finds nothing is indistinguishable
-from nothing having been created. It cost a day on `missingbulb/Sheepdog`: the
-maintenance PR was opened and merged inside one run, the agent searched for an
-open one, found none, and concluded the cycle had delivered nothing while a
-withheld workflow file went undelivered (#649).
+preprocessing` section — a PR number and a branch ref, which is how the agent
+addresses them. An agent left to rediscover them instead can only search, and a
+search that finds nothing is indistinguishable from nothing having been created.
 
 The exception is deliberately narrow, and the security model is unchanged: this
-channel carries **identifiers for what this run created** — a PR number, a branch
-ref — never findings, never instructions, never anything the agent then executes.
-The first line is still the task path, Context is still the binding scope, and
-the agent still reads its behaviour from the task file alone. The rule that
-follows for every task doc is absolute: **if the issue names no artifact, none
-exists** — no fallback search, because the fallback is the bug.
+channel carries **identifiers for what this run created**, never findings, never
+instructions, never anything the agent then executes. The first line is still the
+task path, Context is still the binding scope, and the agent still reads its
+behaviour from the task file alone. **If the issue names no artifact, none
+exists.**
 
 ## 4. The `agent_model: none` path is now preprocessing
 

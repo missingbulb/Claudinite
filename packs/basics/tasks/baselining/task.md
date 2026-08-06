@@ -20,26 +20,16 @@ already open. The dispatch issue's **Context** is binding scope — do not widen
 ## 1. Continue on the open maintenance PR
 
 **The dispatch issue names what preprocessing created**, under `### Delivered by
-preprocessing` — a PR number and a branch ref. That section is your ONLY source for
-them.
-
-**Never search for a branch or PR by name.** Not by the `claudinite/maintenance` prefix,
-not by any convention: a search that finds nothing is indistinguishable from nothing
-having been created, and you will believe the wrong one. This exact mistake cost a day —
-preprocessing opened a maintenance PR and merged it in the same run, an earlier version
-of this file said to find the *open* one, and the agent correctly concluded from an empty
-search that the cycle had delivered nothing while a withheld file sat undelivered.
-
-So read the section and act on what it says:
+preprocessing` — a PR number and a branch ref. That section is your source for them.
 
 - **A PR marked `(open)`** — make every change below on its head branch. Never the
   default branch, never a new branch.
 - **A PR marked `(already merged)`** — normal on a repo with no `pull_request` CI, where
   preprocessing merges in the same run. Its content has landed; further work goes on a
   fresh PR of your own (§2b says where).
-- **No `### Delivered` section at all** — preprocessing created nothing this cycle. That
-  is authoritative; do not go looking. §2 and §3 may still have work; only when §2, §2b
-  and §3 all come up empty is this run a no-op to comment and close.
+- **No `### Delivered` section** — preprocessing created nothing this cycle. §2 and §3
+  may still have work; only when §2, §2b and §3 all come up empty is this run a no-op to
+  comment and close.
 
 ## 2. Apply the pending flagged-agentic migration note(s)
 
@@ -58,7 +48,7 @@ correct; never invent a change to justify the run.
 Preprocessing pushes with the Action's `GITHUB_TOKEN`, which GitHub never permits to
 create or update a file under `.github/workflows/` — and because the refusal rejects the
 whole ref, the converge **withholds** those paths from its commit rather than losing the
-entire push to them (#649). Your MCP writes go through a credential that *does* hold the
+entire push to them. Your MCP writes go through a credential that *does* hold the
 `workflows` permission, so landing them is yours, and only yours: nothing else in the
 cycle can.
 
