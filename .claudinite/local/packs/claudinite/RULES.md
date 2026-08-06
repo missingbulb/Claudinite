@@ -264,6 +264,32 @@ prose below).
   ask what carries it across the fleet; if the answer is "nothing", the change is not ready —
   accept the legacy shape in `normalizeManifest` (and say so) until a carrier exists, and never
   let a stale declaration degrade to *fewer checks running* rather than a failure.
+- **A migration record is always the newest code; the engine that executes its result is the
+  member's, and only as new as its last successful converge.** `migrations/apply.mjs` runs from a
+  **fresh canon clone**, so every member gets today's record — but the worker that then commits and
+  pushes it is the member's own **vendored** `.claudinite/shared/packs/basics/tasks/baselining/worker.mjs`,
+  frozen at whatever converge last succeeded. So a record that needs a *new engine capability* to be
+  deliverable is a **deadlock** on any member that hasn't got it yet: the record fires, the converge
+  fails, the mount never advances — and the engine fix that would make the record deliverable can
+  never arrive, because the only thing that could carry it is the converge the record is breaking.
+  Measured 2026-08-05: `sheepdog-fleet-baseline` materialized `.github/workflows/fleet-baseline.yml`,
+  which the Action's `GITHUB_TOKEN` may not push, and wedged `missingbulb/Sheepdog`'s every converge
+  **twice** — the second time *after* the engine fix (#651) had merged to canon, because Sheepdog was
+  still running the pre-fix worker. So when a record depends on engine behaviour newer than the record's
+  own landing date, make `appliesTo` **probe the member's own mount** for that capability and stay
+  inert until it reads back — self-healing in two cycles, no manual step on any member (#652). Probe by
+  content, not by version: the baselining stamp covers the whole mount and says nothing about *which*
+  engine change is in it. And fail **safe** — an unreadable or missing mount file must read as "not
+  capable", which only ever delays that one record instead of wedging the repo.
+- **When the owner asks why something failed, lead with the throwing call site — `file:line`, the
+  function, and which side enforced it.** He is asking for the mechanism, not the sequence; an answer
+  that narrates the flow correctly but never names the line reads as unanswered, and he will ask again.
+  Measured 2026-08-05 (#649): "explain why the flow failed" → a correct stage-by-stage narrative →
+  *"You didn't explain my question from before. What exactly threw the error?"* → `worker.mjs:429`,
+  `execFileSync` on `git push`, refused **remote-side** on receipt → understood immediately. Three
+  rounds and ~10 minutes for one fact that fits on one line. The local/remote half matters as much as
+  the line: it is what says why nothing local — the commit, `migrations/apply.mjs`, the suite, the
+  sweep — saw it coming.
 - **This repo's fleet machinery reports success from reaching the end of the code path, not from
   the artifact — check the response, and alarm on the stamp.** `deliver()` in
   `packs/basics/tasks/baselining/worker.mjs` destructured only `json` from the PR-open POST and
