@@ -184,6 +184,36 @@ test('staleDispatchIssues respects a daily issue crossing the 2-day threshold', 
   assert.deepEqual(staleDispatchIssues(open, now).map((i) => i.number), [7]);
 });
 
+// Escalation adds a label and leaves the issue OPEN, so without a guard the same
+// issue matches forever and the shell re-posts the identical comment every run.
+// ClaudiniteCanary#2 carried four of them, one per hourly run.
+test('staleDispatchIssues escalates an issue once — an already-escalated one is done', () => {
+  const now = '2026-07-24T05:00:00Z';
+  const old = { number: 7, title: '[claudinite-task] basics/baselining d2026-07-21', created_at: '2026-07-21T02:00:00Z' };
+  assert.deepEqual(staleDispatchIssues([old], now).map((i) => i.number), [7]); // first pass: escalate
+  const escalated = { ...old, labels: [{ name: NEEDS_HUMAN_LABEL }] };
+  assert.deepEqual(staleDispatchIssues([escalated], now), []);                 // every pass after: silent
+  assert.deepEqual(staleDispatchIssues([{ ...escalated, labels: [NEEDS_HUMAN_LABEL] }], now), []); // bare-string labels too
+});
+
+// The two sweeps overlapped on an old claimed issue, and the shell runs stale first
+// (`deadClaims` filters out anything already in `stale`) — so the issue was told "no
+// executor session ran it" about a session that demonstrably ran. Claimed issues
+// belong to the claim sweep, which says the true thing.
+test('staleDispatchIssues leaves a CLAIMED issue to the claim sweep, which words it correctly', () => {
+  const now = '2026-07-25T05:00:00Z';
+  const claimed = {
+    number: 8,
+    title: '[claudinite-task] basics/baselining d2026-07-21',
+    created_at: '2026-07-21T02:00:00Z',
+    updated_at: '2026-07-21T02:00:00Z',
+    labels: [{ name: AGENT_RUNNING_LABEL }],
+  };
+  assert.deepEqual(staleDispatchIssues([claimed], now), []);
+  assert.deepEqual(staleClaimedDispatchIssues([claimed], now).map((i) => i.number), [8]);
+  assert.match(staleClaimComment(claimed), new RegExp(AGENT_RUNNING_LABEL));
+});
+
 test('staleEscalationComment names the task and the needs-human label', () => {
   const c = staleEscalationComment({ number: 1, title: '[claudinite-task] gcec/create-extractor h2026-07-22T09Z' });
   assert.match(c, /gcec\/create-extractor \(slot h2026-07-22T09Z\)/);
