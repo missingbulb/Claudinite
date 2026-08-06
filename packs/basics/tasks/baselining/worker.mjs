@@ -472,6 +472,38 @@ export function failureSummary(runs) {
   return 'no successful run on its head sha';
 }
 
+// --- landing THIS cycle's PR when the arm could not (#649) --------------------
+// The disposal above is correct and a full day late. On a member whose
+// pull_request run is gated, EVERY cycle's arm fails, so every converge waits for
+// the next cycle to land it — a standing ~24h offset between canon and that
+// member's main, which reads as a mount that is permanently stale.
+//
+// The evidence that settles it does not take a day to arrive: the dispatched run
+// this cycle just started finishes in seconds. So we wait for it, once, and merge
+// on exactly the reasoning disposal uses. Same decision, made now.
+//
+// Bounded and cheap because it only runs where the arm ALREADY failed: a healthy
+// member arms and returns without waiting at all. The bound is well inside
+// `agent_preprocessing_timeout` (900s), and hitting it costs nothing — the PR is
+// simply left for the next cycle, exactly as before this existed.
+export const LAND_TIMEOUT_MS = 180_000;
+export const LAND_POLL_MS = 5_000;
+
+// What one poll of the head sha's runs says to do: `merge`, `poll` again, or
+// `give-up` and leave the PR standing.
+//
+// It NEVER closes. Disposal may close a PR because that PR is last cycle's and
+// this cycle is about to re-cut it; here the PR IS this cycle's delivery, and
+// closing it would throw away the converge that just ran. A red member therefore
+// leaves its PR open for the next cycle to dispose of properly — the behaviour
+// that existed before this, reached deliberately rather than by omission.
+export function landAttempt({ delivery, runs, elapsedMs = 0, timeoutMs = LAND_TIMEOUT_MS }) {
+  const disposition = pullDisposition({ delivery, runs });
+  if (disposition === 'merge') return 'merge';
+  if (disposition === 'wait') return elapsedMs >= timeoutMs ? 'give-up' : 'poll';
+  return 'give-up';
+}
+
 // Run the engine's self-test against the converged tree; green when the machinery
 // is intact. Same soft shape as runCheckTheWorld — a missing selftest (an older
 // mount that predates it) is not a failure, it is nothing to run.
@@ -584,17 +616,60 @@ async function deliver(root, repo, base, token, delivery, seed, withheld = []) {
     } else if (action === 'arm' && pr.node_id) {
       // Surfaced, not swallowed: a failed arm is why a maintenance PR sits open
       // forever, and the two usual causes are both fixable repo settings.
-      await enableAutoMerge(token, pr.node_id)
-        .catch((e) => console.log(`baselining: could not arm auto-merge on PR #${pr.number}: ${e.message}`
-          + ' — check Settings → General → "Allow auto-merge", and Settings → Actions → General for a'
-          + ' workflow-approval requirement parking this PR\'s pull_request run at action_required.'
-          + ' The next cycle lands it from the runs on this head sha, or closes and re-cuts it'
-          + ' (pullDisposition).'));
+      const armed = await enableAutoMerge(token, pr.node_id).then(() => true)
+        .catch((e) => {
+          console.log(`baselining: could not arm auto-merge on PR #${pr.number}: ${e.message}`
+            + ' — check Settings → General → "Allow auto-merge", and Settings → Actions → General for a'
+            + ' workflow-approval requirement parking this PR\'s pull_request run at action_required.'
+            + ' Waiting for this cycle\'s dispatched run and landing it here.');
+          return false;
+        });
+      // Only where the arm failed. A member that armed is GitHub's to land, and
+      // waiting on it here would add a poll to every healthy repo for nothing.
+      if (!armed && await landNow(token, repo, pr, delivery)) merged = true;
     }
   }
   // What this cycle delivered. The scheduler records it in the dispatch issue, which is
   // the agent's source for these artifacts.
   return { branch, pr: pr?.number ?? null, merged };
+}
+
+// The I/O half of same-cycle landing: poll this PR's head sha until its runs have
+// concluded, then merge on the same evidence disposal would use a day later.
+// Returns true iff it merged. Best-effort throughout — every failure path leaves
+// the PR exactly as the arm left it, which is what the next cycle expects.
+const sleep = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
+
+async function landNow(token, repo, pr, delivery) {
+  const started = Date.now();
+  for (;;) {
+    const { status, json } = await gh(token, `/repos/${repo}/actions/runs?head_sha=${pr.head?.sha ?? ''}&per_page=100`);
+    if (status !== 200) {
+      console.log(`baselining: could not read this cycle's runs for PR #${pr.number} (HTTP ${status}) — leaving it for the next cycle`);
+      return false;
+    }
+    const runs = (json?.workflow_runs ?? []).map((r) => ({ name: r.name, status: r.status, conclusion: r.conclusion }));
+    const attempt = landAttempt({ delivery, runs, elapsedMs: Date.now() - started });
+
+    if (attempt === 'poll') { await sleep(LAND_POLL_MS); continue; }
+    if (attempt === 'give-up') {
+      console.log(`baselining: PR #${pr.number} not landable this cycle (${failureSummary(runs)})`
+        + ' — leaving it open for the next cycle to dispose of');
+      return false;
+    }
+
+    const res = await gh(token, `/repos/${repo}/pulls/${pr.number}/merge`, {
+      method: 'PUT', body: { merge_method: 'squash' },
+    });
+    if (res.status === 200) {
+      console.log(`baselining: merged PR #${pr.number} in-cycle — ${mergeReason(runs)}`);
+      await deleteBranch(token, repo, pr.head?.ref);
+      return true;
+    }
+    console.log(`baselining: could not merge PR #${pr.number} (${res.status}: ${res.json?.message ?? 'no message'})`
+      + ' — leaving it for the next cycle');
+    return false;
+  }
 }
 
 // The I/O half of the disposal: read the workflow runs for the open PR's head
