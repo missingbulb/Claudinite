@@ -705,7 +705,14 @@ export async function main() {
   // 2-4. Deterministic converge: mount + stamp, then wiring, then mechanical notes.
   node([join(tmp, 'vendoring/apply-vendor-set.mjs'), '--target', root, '--ref', headSha]);
   const wiringOut = node([join(tmp, 'engine/scheduler/converge-wiring.mjs'), repo], { CLAUDINITE_REPO_ROOT: root });
-  node([join(tmp, 'migrations/apply.mjs')], { CLAUDE_PROJECT_DIR: root });
+  // The handshake (migrations/registry.mjs, WITHHOLD_CAPABLE_ENV): THIS worker withholds
+  // workflow paths from its commit and hands them to the agent, so a record may safely
+  // materialize one. An older vendored worker does not set it and the materialization is
+  // skipped instead of wedging its push. Set here, by the code that does the withholding,
+  // because the question is what the RUNNING process can do — and the disk cannot answer
+  // it: apply-vendor-set above has already overwritten this very file with the new
+  // version while this old-or-new code is the thing actually executing.
+  node([join(tmp, 'migrations/apply.mjs')], { CLAUDE_PROJECT_DIR: root, CLAUDINITE_CAN_WITHHOLD_WORKFLOWS: '1' });
 
   // Ask about any declared secret the repo hasn't configured — but only once the
   // wiring is settled. On the cycle that FIRST stamps a name into the workflow the

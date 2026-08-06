@@ -5,6 +5,7 @@ import {
   migrationsPastTtl, MIGRATIONS_OLD_SUBDIR,
   applyMaterializations, applyRewrites, migrationActive,
   migrationAgentic, agenticMigrations,
+  callerCanDeliverWorkflows, WITHHOLD_CAPABLE_ENV,
 } from '../migrations/registry.mjs';
 import { specFiles, oldSpecFiles } from '../engine/checks/helpers/active-migrations.mjs';
 
@@ -203,33 +204,67 @@ test('migrationActive: true for every live record, false once archived', () => {
   assert.equal(migrationActive('no-such-migration-slug'), false);
 });
 
-// The record's second gate is a deadlock-breaker, and a silent regression in it re-wedges
-// the enforcer's every converge — so it is pinned here rather than left to the record.
-test('sheepdog-fleet-baseline migration: inert until the member runs a worker that can withhold', async () => {
+// A workflow materialization can only be written by a caller that can get it delivered.
+// Writing one into a tree an Action-token push is about to carry does not deliver a
+// workflow — it rejects the whole ref and fails the converge with everything riding it.
+// This is the guard that kept missingbulb/Sheepdog wedged for three cycles until it existed.
+
+test('applyMaterializations: a workflow dest is skipped unless the caller announced it can withhold', async () => {
+  const m = M({ materialize: [
+    { template: 'tpl/wf.yml', dest: '.github/workflows/fleet-baseline.yml' },
+    { template: 'tpl/act.yml', dest: '.github/actions/thing/action.yml' },
+  ] });
+  const written = new Map();
+  const io = (env) => ({
+    readTemplate: async (p) => `content of ${p}`,
+    read: async (p) => written.get(p) ?? null,
+    write: async (p, c) => { written.set(p, c); },
+    env,
+  });
+
+  // An incapable caller — an older vendored worker, a hand-run apply, CI.
+  const skipped = await applyMaterializations(m, io({}));
+  assert.deepEqual(skipped, [
+    'SKIPPED .github/workflows/fleet-baseline.yml (workflow file; this caller cannot deliver one)',
+    '.github/actions/thing/action.yml <- tpl/act.yml',
+  ]);
+  // The workflow was NOT written; the ordinary .github/ file was. Only workflow files are
+  // special — an action, a template, a CODEOWNERS all push fine with the Action token.
+  assert.equal(written.has('.github/workflows/fleet-baseline.yml'), false);
+  assert.equal(written.get('.github/actions/thing/action.yml'), 'content of tpl/act.yml');
+  // And it SAYS it skipped: a silent skip reads as "already current", and the file would
+  // then never arrive at all.
+
+  // The capable caller writes it, and the withhold path downstream keeps it out of the push.
+  const applied = await applyMaterializations(m, io({ CLAUDINITE_CAN_WITHHOLD_WORKFLOWS: '1' }));
+  assert.deepEqual(applied, ['.github/workflows/fleet-baseline.yml <- tpl/wf.yml']);
+  assert.equal(written.get('.github/workflows/fleet-baseline.yml'), 'content of tpl/wf.yml');
+});
+
+test('callerCanDeliverWorkflows: only the exact announcement counts', () => {
+  assert.equal(callerCanDeliverWorkflows({ CLAUDINITE_CAN_WITHHOLD_WORKFLOWS: '1' }), true);
+  for (const env of [{}, { CLAUDINITE_CAN_WITHHOLD_WORKFLOWS: '' }, { CLAUDINITE_CAN_WITHHOLD_WORKFLOWS: 'true' }, { CLAUDINITE_CAN_WITHHOLD_WORKFLOWS: '0' }]) {
+    assert.equal(callerCanDeliverWorkflows(env), false, JSON.stringify(env));
+  }
+  assert.equal(WITHHOLD_CAPABLE_ENV, 'CLAUDINITE_CAN_WITHHOLD_WORKFLOWS');
+});
+
+test('sheepdog-fleet-baseline migration: gated on declaring the pack, and on nothing else', async () => {
   const m = (await loadMigrations()).find((x) => x.id === 'sheepdog-fleet-baseline');
   assert.ok(m, 'discovered');
+  const read = (decl) => async (p) => (p === '.claudinite-checks.json' ? decl : null);
 
-  const DECL = '.claudinite-checks.json';
-  const WORKER = '.claudinite/shared/packs/basics/tasks/baselining/worker.mjs';
-  const declares = JSON.stringify({ packs: ['basics', { id: 'sheepdog', config: {} }] });
-  const read = ({ decl = declares, worker = 'export function withheldWorkflowPaths() {}' }) =>
-    async (p) => (p === DECL ? decl : p === WORKER ? worker : null);
+  // Both declaration forms, since both are legal.
+  assert.equal(await m.appliesTo(read(JSON.stringify({ packs: [{ id: 'sheepdog', config: {} }] }))), true);
+  assert.equal(await m.appliesTo(read(JSON.stringify({ packs: ['sheepdog'] }))), true);
+  assert.equal(await m.appliesTo(read(JSON.stringify({ packs: ['basics'] }))), false);
+  assert.equal(await m.appliesTo(read('not json')), false);
+  assert.equal(await m.appliesTo(read(null)), false);   // canon itself
 
-  // The enforcer, on a withhold-capable engine: the one case that materializes.
-  assert.equal(await m.appliesTo(read({})), true);
-
-  // The DEADLOCK case — declares the pack, but its vendored worker predates the withhold.
-  // Materializing here would reject the push, fail the converge, and stop the very
-  // delivery that would bring the newer worker in. It must stay inert for one cycle.
-  assert.equal(await m.appliesTo(read({ worker: 'export function shouldRequestAgent() {}' })), false);
-  assert.equal(await m.appliesTo(read({ worker: null })), false);   // no mount to read
-
-  // Not an enforcer: never, whatever engine it runs.
-  assert.equal(await m.appliesTo(read({ decl: JSON.stringify({ packs: ['basics'] }) })), false);
-  assert.equal(await m.appliesTo(read({ decl: 'not json' })), false);
-  assert.equal(await m.appliesTo(read({ decl: null })), false);     // canon itself
-
-  // Standing record: one file, nothing legacy to leave behind, never auto-retired.
+  // Deliverability is NOT the record's question — the machinery owns it. A record-local
+  // probe of the member's vendored worker was tried and was wrong: the vendor step earlier
+  // in the same cycle has already replaced that file with the new version while the OLD
+  // code is still executing, so the probe answers for the wrong worker.
   assert.equal(m.materialize.length, 1);
   assert.equal(m.materialize[0].dest, '.github/workflows/fleet-baseline.yml');
   assert.equal(await m.legacyPresent(() => false, async () => null), false);
@@ -271,7 +306,16 @@ test('chrome-release-vendoring migration: gate, telemetry, and the home-file ret
   const readTemplate = (p) => `TEMPLATE:${p}`;
   const read = (p) => repo.get(p) ?? null;
   const write = (p, c) => repo.set(p, c);
-  await applyMaterializations(m, { readTemplate, read, write });
+  // Four of this record's nine materializations are WORKFLOW files, so the caller has to
+  // be one that can deliver them — the same handshake baselining's worker makes. Run it
+  // without the announcement and those four are skipped instead of wedging the push, which
+  // is exactly the latent hazard this record carried before the guard existed (#649).
+  const capable = { [WITHHOLD_CAPABLE_ENV]: '1' };
+  const incapable = await applyMaterializations(m, { readTemplate, read, write, env: {} });
+  assert.equal(incapable.filter((l) => l.startsWith('SKIPPED')).length, 4);
+  assert.equal(repo.size, 6, 'orchestrator + the 5 non-workflow files');
+
+  await applyMaterializations(m, { readTemplate, read, write, env: capable });
   await applyRewrites(m, { read, write });
   assert.equal(repo.size, 10, 'orchestrator + 9 vendored files');
   assert.match(repo.get('.github/workflows/chrome-extension-release.yml'), /\.\/\.github\/workflows\/chrome-extension-create-package\.yml/);
