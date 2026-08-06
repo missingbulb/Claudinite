@@ -113,7 +113,7 @@ engineeringPractices judgment core.
 | Repo-allowlist scoping: query per-repo, never org-wide | stays (in-flight) |
 | Merging gotchas (relocation refs, invariant reintroduction, porting across invariants) | stays/knowledge — reference-integrity re-run after a merge covers part |
 
-## skills/engineering-practices/SKILL.md
+## packs/basics/RULES.md — engineering practices
 
 | Rule | Disposition |
 |---|---|
