@@ -32,45 +32,13 @@ nothing to prune, and that's fine. You run under the executor, dispatched by a `
   rename window). That's the corpus this task prunes within; the read-only mounted canon elsewhere under
   `.claudinite/` is never a prune target, only the yardstick you prune *against*.
 
-## What it does: prune / rephrase local packs the canon now covers
+## The method lives in the skill
 
-When the canon has **absorbed** a practice a local doc still carries — most often an item the central promote
-task lifted up and the canon now owns — the local copy is redundant. This task:
-
-- **Removes** the now-duplicated local item, since the canon is the single source of truth for portable rules.
-- **Strips** a *partially* covered item down to its residue — when an item's general half is now canon-owned
-  but it still carries a stronger point about a narrower case, **delete the portable half in place and keep
-  only the residue**. A strip is a **deletion that shrinks the entry**: lead with the residual point (using the
-  file's own `(canon)` tag convention if it has one), never with a meta-line like "this rule is portable
-  (canon)", and **never re-state the now-canon rule, its fix, or which pack owns it** — carrying it is exactly
-  what you are removing. If your "strip" adds words or restates the canon, you have *un*-deduped the item: keep
-  the pre-edit text instead.
-- **Rephrases** a local procedure *only* when the canon's wording of the same idea has changed, so the local
-  packs stay consistent with the canon they point at — a rephrase tracks a wording drift; it never grows the
-  entry and never re-imports canon prose.
-
-**Keep a local item only if it says *more* than the canon — not merely says it more specifically.** Every
-local item is more specific than the canon, so specificity alone is never the test. Distinguish two cases:
-
-- **The general rule in local dress** — it makes the canon's point but leans on this repo's classes, files, or
-  names to make it. Once the canon covers the point, those names were only illustration: prune it.
-- **A stronger point about a narrower case** — it asserts something the canon's general rule leaves out: a
-  tighter constraint, a sharper claim that holds for this repo's narrower situation. Keep it.
-
-So ask not "is it specific" (it always is) but "does it only lean on specific names to make the general point,
-or does it make a point the canon doesn't?" Prune the first; keep the second.
-
-## A canon check covers an item too — and more strongly than prose
-
-The canon carries rules as **conformance checks**, not only prose. A local item is covered when a canon check
-*enforces* it — stronger coverage than a stated line, since the rule runs on every session and CI pass.
-Consult the machine-readable rule catalog (`node .claudinite/shared/engine/checks/check_the_world.mjs --list`:
-id, severity, description, doc pointer — it lists the active local packs' own checks too) alongside the prose
-corpus, and when a check covers the item, **quote the rule id** where you'd otherwise quote a canon line. This
-cuts both ways: a **local pack's own check** is redundant once a canon check enforces the same rule — prune the
-local `.mjs` (and drop it from `pack.mjs` + its fixture) exactly as you'd prune a duplicated prose line. The
-keep-test above is unchanged: a local item that says *more* than the check detects (a stronger point about a
-narrower case) stays.
+What to prune, strip, or rephrase; the keep-test (an item that says *more* than the canon stays; one that
+only says it in repo-specific names goes); how a canon **check** covers an item more strongly than prose;
+and the shrink-only discipline — all of that is owned by the
+[**growth-dedup** skill](../../skills/growth-dedup/SKILL.md). Follow it; don't re-derive it here. This
+worker only frames the unattended run around it.
 
 ## Discipline
 
@@ -81,7 +49,9 @@ narrower case) stays.
   whole run's prunes, not one per item — never a direct push. This is an unattended task, on a capable model, and a **wrongful prune
   deletes a real local lesson**, so — unlike [growth-extract](../growth-extract/task.md), whose additive edits
   ride a PR that auto-merges after CI — this task keeps a **human** approval gate (its declared outcome ceiling
-  is `open-pr`: it may open a PR but never merge it). **Put the issue reference in the commit message** —
+  is `open-pr`: it may open a PR but never merge it). **Title the commit and the PR
+  `Claudinite growth: dedup local packs`** — the `growth-write-scope` check keys on that title to certify
+  the run pruned only the repo's local packs — and **put the issue reference in the commit message**:
   `Refs #<n>` for this task's tracking issue (below), in the commit itself, not only the PR body. The repo's
   `basics` `task-lifecycle` check gates a PR on its commits referencing an issue, so a prune commit that cites
   none reds the repo's CI and blocks the merge.
@@ -107,7 +77,8 @@ review, so don't lean on it. This task declares `agent_model: opus`; the executo
 
 ## What this task must never do
 
-- **Never edit the read-only canon** — it only prunes the repo's *local packs* against it.
+- **Never edit the read-only canon** — it only prunes the repo's *local packs* against it, and the
+  `growth-write-scope` check reds a run that touches anything outside them.
 - **Never merge its own PR** — the human approval gate is the whole point (`outcome: open-pr`).
 - **Never prune a local item without quoting the mounted-canon line (or covering check rule id) that covers
   it** — when unsure, leave it.
@@ -117,11 +88,6 @@ review, so don't lean on it. This task declares `agent_model: opus`; the executo
 - **Never prune a local item that makes a stronger point about a narrower case** than the canon — that isn't
   redundancy. (A local item that only restates the canon in repo-specific names *is* prunable once the canon
   covers the point.)
-- **Never let a dedup edit grow an entry or re-import canon prose.** Every action this task takes *removes*
-  portable text: a Remove deletes the item, a Strip deletes its portable half, a Rephrase tracks a wording
-  drift without adding. An edit that leaves an entry the same size or larger, re-quotes the now-canon rule, or
-  names the owning pack's fix is a **corruption, not a dedup** — the exact inverse of the job. When in doubt
-  about a kept item, leave it byte-for-byte unchanged rather than "reconcile" its wording. The
-  `dedup-prune-integrity` check (`basics`-style work-scope rule, this pack) is the backstop: it reds the
-  session when a dedup-labeled commit grows a local-pack prose file, or when any change adds a line that
-  restates a canon rule ("… is portable (canon)", "… pack owns …").
+- **Never let a dedup edit grow an entry or re-import canon prose** — every action removes portable text;
+  the skill owns the strip discipline, and the `dedup-prune-integrity` check (this pack) is the backstop
+  that reds the session when a dedup-labeled commit grows a local-pack prose file or restates a canon rule.

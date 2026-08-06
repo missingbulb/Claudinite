@@ -55,6 +55,12 @@ jobs:
         # bootstrap wires into consumers. World only: the work scope judges a
         # session's change and runs at that session's Stop hook, not here.
         run: node engine/checks/check_the_world.mjs
+      - name: Growth write-surface gate
+        # The lifecycle's capture runs (extract, dedup) are bounded to the repo's own
+        # local packs. Unlike promote below, a capture run marks ITSELF — the pinned
+        # commit subject its task doc gives it — so the gate self-gates and this step
+        # runs on every PR, exiting 0 in ~no time on any other branch.
+        run: node .claudinite/local/packs/canon-curation/growth-scope-gate.mjs
       - name: Promote write-surface gate
         # The growth promote stage (.claudinite/local/packs/canon-curation/tasks/growth-promote/task.md)
         # is the one change bounded to packs/ + skills/ — an ordinary engine PR legitimately edits
