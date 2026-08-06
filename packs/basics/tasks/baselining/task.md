@@ -19,17 +19,27 @@ already open. The dispatch issue's **Context** is binding scope — do not widen
 
 ## 1. Continue on the open maintenance PR
 
-Preprocessing pushed to a per-cycle branch named `claudinite/maintenance-<date>-<seed>`.
-**Find the family's open PR by that head-branch prefix** (`claudinite/maintenance`),
-and make every change below on **its head branch** — never the default branch, never
-a new branch. There is exactly one.
+**The dispatch issue names what preprocessing created**, under `### Delivered by
+preprocessing` — a PR number and a branch ref. That section is your ONLY source for
+them.
 
-**A closed family is not an empty cycle.** On a repo with no `pull_request` CI to gate
-on, preprocessing opens that PR and *merges it in the same run* — so by the time you
-look there is legitimately nothing open, and the cycle nevertheless did deliver. Do not
-read "no open maintenance PR" as "nothing to do": check §2b, which is reachable whether
-or not a PR is open and which is the ONLY thing that can land a withheld workflow file.
-Only when §2, §2b and §3 all come up empty is this run a no-op to comment and close.
+**Never search for a branch or PR by name.** Not by the `claudinite/maintenance` prefix,
+not by any convention: a search that finds nothing is indistinguishable from nothing
+having been created, and you will believe the wrong one. This exact mistake cost a day —
+preprocessing opened a maintenance PR and merged it in the same run, an earlier version
+of this file said to find the *open* one, and the agent correctly concluded from an empty
+search that the cycle had delivered nothing while a withheld file sat undelivered.
+
+So read the section and act on what it says:
+
+- **A PR marked `(open)`** — make every change below on its head branch. Never the
+  default branch, never a new branch.
+- **A PR marked `(already merged)`** — normal on a repo with no `pull_request` CI, where
+  preprocessing merges in the same run. Its content has landed; further work goes on a
+  fresh PR of your own (§2b says where).
+- **No `### Delivered` section at all** — preprocessing created nothing this cycle. That
+  is authoritative; do not go looking. §2 and §3 may still have work; only when §2, §2b
+  and §3 all come up empty is this run a no-op to comment and close.
 
 ## 2. Apply the pending flagged-agentic migration note(s)
 
@@ -52,22 +62,22 @@ entire push to them (#649). Your MCP writes go through a credential that *does* 
 `workflows` permission, so landing them is yours, and only yours: nothing else in the
 cycle can.
 
-You are not handed the list — preprocessing communicates only through the repository
-(agent-preprocessing DESIGN §3), and the branch is the whole handoff. Rediscover it the
-same way preprocessing produced it: in a checkout of **the maintenance branch**, run
-`node .claudinite/shared/migrations/apply.mjs` (the mechanical apply, idempotent) and
-compare `.github/workflows/` against what it wrote. The commit message on the branch's
-head also names each withheld path, as a cross-check — not as your source of truth.
+Rediscover the list the same way preprocessing produced it — this part is deterministic,
+not a search: in a checkout of the branch §1 named (or the default branch when its PR
+already merged), run `node .claudinite/shared/migrations/apply.mjs` (the mechanical
+apply, idempotent) and compare `.github/workflows/` against what it wrote. The head
+commit's message also names each withheld path, as a cross-check.
 
-Commit whatever differs, via the MCP tools, and **where it goes depends on what §1 found**:
+Commit whatever differs, via the MCP tools, and **where it goes depends on what §1's
+`### Delivered` section said**:
 
-- **The maintenance PR is still open** — commit to its head branch, so the cycle stays one
-  reviewable change.
-- **It already merged, or never stayed open** — the ordinary case on a repo with no
-  `pull_request` CI, where preprocessing merges in the same run. Open your own small PR
-  from a fresh branch (`claudinite/workflows-<date>`) against the default branch, carrying
-  only these files, and deliver it per this repo's `maintenance.delivery` exactly as §4
-  describes. This is within the task's `merged-pr` ceiling.
+- **The PR is `(open)`** — commit to its head branch, so the cycle stays one reviewable
+  change.
+- **The PR is `(already merged)`, or no section at all** — open your own PR against the
+  default branch carrying only these files, and deliver it per this repo's
+  `maintenance.delivery` exactly as §4 describes. This is within the task's `merged-pr`
+  ceiling. **Comment its number on this dispatch issue**, so the next run finds it by
+  association rather than by guessing at its name.
 
 Either way the file must land this cycle. It is not deferrable: preprocessing withholds it
 on *every* run, so leaving it produces a repo that reports a clean converge forever while

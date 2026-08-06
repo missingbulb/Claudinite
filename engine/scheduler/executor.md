@@ -77,7 +77,23 @@ goes through your GitHub tools.
 
 3. **Dispatch a subagent at the model step 1 printed.** It reads the task file (`task.md`) and
    follows it exactly. The issue's **Context** section is **binding scope** — never re-decide
-   or widen it: if the precondition ruled something out, it stays out. **Give the subagent its
+   or widen it: if the precondition ruled something out, it stays out.
+
+   **The issue also names every artifact this run's preprocessing created** — a `### Delivered
+   by preprocessing` section listing a PR number and branch ref. Pass it to the subagent as
+   given, and hold it to the rule that governs every task:
+
+   > **Never locate your working artifacts by name.** Not a branch prefix, not a PR title
+   > pattern, not a naming convention a task doc describes. The issue names them, or they do
+   > not exist. A search that returns nothing is indistinguishable from nothing having been
+   > created, and an agent acting on that difference acts on a coin flip — which is how a
+   > delivered-and-merged PR read as "this cycle delivered nothing" and a repo sat undelivered
+   > for a day (#649).
+
+   The same rule applies to what the subagent itself creates: when it opens a PR or a branch,
+   it **comments the number on this dispatch issue**, so the next run finds it by association
+   rather than by guessing. A task doc that tells you to search for an artifact by name is
+   out of date — follow this instead, and say so in your final message. **Give the subagent its
    run bound**, from step 1's `executionTimeout` and never from the issue body: *"you have N
    minutes; if you exceed it, stop, comment what's done, and converge this issue to
    `needs-human` rather than pressing on."* Nothing enforces that bound but the subagent

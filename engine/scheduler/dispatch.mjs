@@ -76,7 +76,27 @@ export const isDispatchTitle = (title) => parseDispatchTitle(title) !== null;
 // only thing the executor reads to locate the worker; everything below is human
 // framing plus the precondition's binding Context. The Context block is emitted
 // only when the precondition produced lines (an empty scope has nothing to bind).
-export function dispatchBody({ taskPath, pack, task, slotId, context = [] }) {
+// The `### Delivered` section — what THIS run's preprocessing actually created, by
+// identity. It is the agent's only source for those artifacts: an agent that instead
+// searches for a branch or PR matching a naming convention cannot tell "nothing was
+// created" from "my search missed it", and believes the wrong one (#649).
+//
+// Absence is meaningful and must stay so: no section, or a section naming no PR, means
+// preprocessing opened none. Never write a placeholder here.
+export function deliveredLines(delivered) {
+  const { branch = null, pr = null, merged = false } = delivered ?? {};
+  if (!branch && !pr) return [];
+  return [
+    '### Delivered by preprocessing',
+    'These are the artifacts this run created. They are the ONLY ones to work on — do not',
+    'search for a branch or PR by name, and if this section is absent, nothing was created.',
+    '',
+    ...(pr ? [`- PR: #${pr}${merged ? ' (already merged — do not reopen it; open your own PR for further work)' : ' (open)'}`] : []),
+    ...(branch ? [`- Branch: \`${branch}\``] : []),
+  ];
+}
+
+export function dispatchBody({ taskPath, pack, task, slotId, context = [], delivered = null }) {
   const lines = [taskPath, ''];
   if (context.length) {
     lines.push(
@@ -89,6 +109,8 @@ export function dispatchBody({ taskPath, pack, task, slotId, context = [] }) {
   } else {
     lines.push(`Execute the Claudinite task above (pack \`${pack}\`, task \`${task}\`, slot \`${slotId}\`).`);
   }
+  const del = deliveredLines(delivered);
+  if (del.length) lines.push('', ...del);
   return lines.join('\n') + '\n';
 }
 

@@ -21,7 +21,7 @@
 // stderr tail in an issue, and diagnosing one meant reproducing it by hand.
 
 import { spawn } from 'node:child_process';
-import { existsSync, rmSync } from 'node:fs';
+import { existsSync, rmSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -76,6 +76,37 @@ export function agentRequestPath({ pack, task, slotId }) {
 }
 export function clearAgentRequest(path) { try { rmSync(path, { force: true }); } catch { /* nothing to clear */ } }
 export function agentRequested(path) { return existsSync(path); }
+
+// …AND the artifacts that request refers to. A worker that opened a branch or a PR
+// writes them here as JSON, and the scheduler records them verbatim in the dispatch
+// issue, which is where the agent reads them.
+//
+// This is the ONE thing that crosses the code→agent boundary as data, and it is
+// deliberate (owner, 2026-08-06). §3 originally allowed none, so an agent had to
+// REDISCOVER what preprocessing had made — in practice by searching for a branch or PR
+// whose name matched a convention. That is a silent-error generator: a search that finds
+// nothing is indistinguishable from nothing having been created, and the agent believes
+// it. It cost a whole day on missingbulb/Sheepdog, where the maintenance PR had been
+// opened AND merged in the same run, the agent searched for an open one, found none, and
+// correctly-by-its-instructions concluded the cycle had delivered nothing.
+//
+// Identity, not names: what the issue carries is a PR NUMBER and a branch REF that the
+// creating process actually used. The rule that follows is absolute and belongs in every
+// agent's instructions — **if the issue names no artifact, none exists**. No falling back
+// to a search, because the fallback is the bug.
+//
+// Anything else about the work still travels through the repository (§3 otherwise
+// stands): this channel carries identifiers for what this run made, never findings,
+// never instructions.
+export function readAgentRequest(path) {
+  if (!existsSync(path)) return null;
+  const raw = readFileSync(path, 'utf8').trim();
+  if (!raw) return {};
+  // A pre-payload worker writes the bare marker line. Not an error — it requested the
+  // agent and named no artifacts, which reads as "nothing delivered", exactly as if the
+  // field were absent.
+  try { return JSON.parse(raw); } catch { return {}; }
+}
 
 // A one-line reason for the job summary / an issue comment when preprocessing
 // fails — distinguishing a timeout kill from a non-zero exit.

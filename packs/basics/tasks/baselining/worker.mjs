@@ -434,6 +434,7 @@ async function deliver(root, repo, base, token, delivery, seed, withheld = []) {
   const { json: pulls } = await gh(token, `/repos/${repo}/pulls?state=open&per_page=100`);
   const openPr = openMaintenancePull(Array.isArray(pulls) ? pulls : []);
   let pr = null;
+  let merged = false;
 
   if (openPr?.number) {
     // `wait` is the one case that keeps the PR: its checks are still running and
@@ -507,7 +508,7 @@ async function deliver(root, repo, base, token, delivery, seed, withheld = []) {
       const res = await gh(token, `/repos/${repo}/pulls/${pr.number}/merge`, {
         method: 'PUT', body: { merge_method: 'squash' },
       });
-      if (res.status === 200) console.log(`baselining: merged PR #${pr.number} directly — this repo has no pull_request CI to gate on`);
+      if (res.status === 200) { merged = true; console.log(`baselining: merged PR #${pr.number} directly — this repo has no pull_request CI to gate on`); }
       else console.log(`baselining: could not merge PR #${pr.number} (${res.status}: ${res.json?.message ?? 'no message'})`);
     } else if (action === 'arm' && pr.node_id) {
       // Surfaced, not swallowed: a failed arm is why a maintenance PR sits open
@@ -520,7 +521,10 @@ async function deliver(root, repo, base, token, delivery, seed, withheld = []) {
           + ' (pullDisposition).'));
     }
   }
-  return branch;
+  // What this cycle actually delivered — the artifacts by IDENTITY, not by a naming
+  // convention someone downstream has to guess at. The scheduler records these in the
+  // dispatch issue, which is the agent's only source for them (#649).
+  return { branch, pr: pr?.number ?? null, merged };
 }
 
 // The I/O half of the disposal: read the workflow runs for the open PR's head
@@ -663,6 +667,9 @@ export async function main() {
   const base = process.env.CLAUDINITE_DEFAULT_BRANCH || 'main';
   const token = process.env.GITHUB_TOKEN;
   const requestFile = process.env.CLAUDINITE_REQUEST_AGENT;
+  // Set by deliver() to `{ branch, pr, merged }`; stays null when this cycle opened
+  // nothing, which is what the dispatch issue then says.
+  let delivered = null;
   if (!repo) { console.error('baselining: no repo (CLAUDINITE_REPO/GITHUB_REPOSITORY)'); process.exit(1); }
   if (!token) { console.error('baselining: no GITHUB_TOKEN in env'); process.exit(1); }
 
@@ -798,14 +805,21 @@ export async function main() {
   // 8. Deliver the converge (only when there's something to land).
   if (meaningfulChange || pending.length) {
     const seed = Math.random().toString(36).slice(2, 8);
-    const branch = await deliver(root, repo, base, token, delivery, seed, withheld);
-    console.log(`baselining: delivered converge on ${branch} (${delivery})`);
+    delivered = await deliver(root, repo, base, token, delivery, seed, withheld);
+    console.log(`baselining: delivered converge on ${delivered.branch}${delivered.pr ? ` (PR #${delivered.pr}${delivered.merged ? ', merged' : ''})` : ''} (${delivery})`);
   } else {
     console.log('baselining: no change to deliver');
   }
 
-  // 9. Request the agent only when judgment is left (conditional handoff, §3).
-  if (requestAgent && requestFile) writeFileSync(requestFile, `${AGENT_REQUEST_MARKER}\n`);
+  // 9. Request the agent only when judgment is left (conditional handoff, §3) — and name
+  //    what this run created, so the scheduler can record it in the dispatch issue. The
+  //    agent reads its branch and PR from there and never searches by name: a search that
+  //    finds nothing cannot be told apart from nothing existing, and this repo has already
+  //    paid for that once (#649). `delivered` stays null when nothing was opened, which is
+  //    the honest signal that there is nothing to continue.
+  if (requestAgent && requestFile) {
+    writeFileSync(requestFile, `${JSON.stringify({ marker: AGENT_REQUEST_MARKER, delivered })}\n`);
+  }
   const why = pending.length ? `${pending.length} agentic note(s)`
     : withheld.length ? `${withheld.length} withheld workflow file(s)`
       : 'conformance not green';
