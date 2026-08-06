@@ -6,7 +6,7 @@ import {
   unconfiguredSecrets, SECRETS_ISSUE_TITLE, workflowTriggers, ciDispatchPlan,
   pullCreateError, deliveryAction, pullDisposition, mergeReason, failureSummary, canonSource,
   withheldWorkflowPaths, UNPUSHABLE_PREFIX, escalation, gateOutcome, GATE_ABSENT,
-  landAttempt, LAND_TIMEOUT_MS,
+  landAttempt, LAND_TIMEOUT_MS, mergeGatePresent, armFailureAdvice, NO_GATE_REASON,
 } from '../../packs/basics/tasks/baselining/worker.mjs';
 
 // The worker's PURE decision helpers (agent-preprocessing DESIGN §7, E4). The
@@ -343,12 +343,55 @@ test('deliveryAction merges directly when there is no PR CI to gate on', () => {
 });
 
 test('deliveryAction arms auto-merge when the repo does have PR CI', () => {
-  assert.equal(deliveryAction({ delivery: 'auto-merge', hasPrCi: true }), 'arm');
+  assert.equal(deliveryAction({ delivery: 'auto-merge', hasPrCi: true, hasMergeGate: true }), 'arm');
 });
 
 test('deliveryAction never merges or arms a review-delivery member', () => {
   assert.equal(deliveryAction({ delivery: 'review', hasPrCi: false }), 'none');
   assert.equal(deliveryAction({ delivery: 'review', hasPrCi: true }), 'none');
+});
+
+// The second way to have nothing to wait for (#674): CI that runs but that the
+// base branch requires nothing of. `"protected": false` and no ruleset means the
+// PR is mergeable the whole time its checks run, so the arm is rejected as
+// "clean status" exactly as it is on a repo with no CI — but the checks are real
+// and must still be honoured, which is why this is `land`, not `merge`.
+test('deliveryAction lands on the runs, rather than arming, when nothing requires the PR to wait', () => {
+  assert.equal(deliveryAction({ delivery: 'auto-merge', hasPrCi: true, hasMergeGate: false }), 'land');
+});
+
+test('deliveryAction still merges outright when there is no CI to honour, gate or not', () => {
+  assert.equal(deliveryAction({ delivery: 'auto-merge', hasPrCi: false, hasMergeGate: false }), 'merge');
+  assert.equal(deliveryAction({ delivery: 'auto-merge', hasPrCi: false, hasMergeGate: true }), 'merge');
+});
+
+// An older caller that knows nothing of the gate must keep arming, never merge
+// past a protection it could not see.
+test('deliveryAction assumes a gate when none was read', () => {
+  assert.equal(deliveryAction({ delivery: 'auto-merge', hasPrCi: true }), 'arm');
+});
+
+// A gate is anything auto-merge can wait behind — required checks OR required
+// review — so this asks whether the base branch blocks a PR at all, and never
+// which rule does it.
+test('mergeGatePresent reads classic protection off the branch', () => {
+  assert.equal(mergeGatePresent({ branch: { protected: true }, rules: [] }), true);
+  assert.equal(mergeGatePresent({ branch: { protected: false }, rules: [] }), false);
+});
+
+test('mergeGatePresent reads a ruleset that requires something of a PR', () => {
+  const branch = { protected: false };
+  assert.equal(mergeGatePresent({ branch, rules: [{ type: 'required_status_checks' }] }), true);
+  assert.equal(mergeGatePresent({ branch, rules: [{ type: 'pull_request' }] }), true);
+});
+
+test('mergeGatePresent ignores rules a merge never waits on', () => {
+  assert.equal(mergeGatePresent({ branch: { protected: false }, rules: [{ type: 'deletion' }, { type: 'non_fast_forward' }] }), false);
+});
+
+test('mergeGatePresent treats a missing read as no gate, leaving the caller to default', () => {
+  assert.equal(mergeGatePresent({}), false);
+  assert.equal(mergeGatePresent(), false);
 });
 
 // Disposing of the previous cycle's PR (#455/#205/#95). An arm that failed
@@ -434,6 +477,21 @@ test('landAttempt leaves a review member\'s PR alone', () => {
 test('mergeReason names the gated run when there is one, the arm otherwise', () => {
   assert.match(mergeReason([done('success'), done('action_required')]), /action_required/);
   assert.match(mergeReason([done('success')]), /Allow auto-merge/);
+});
+
+// The shape with no remedy. Sending an owner to fix a setting that is already
+// correct is worse than saying nothing, and it is what an unprotected base branch
+// got told every cycle.
+test('mergeReason blames no setting when GitHub rejected the arm as already-mergeable', () => {
+  const reason = mergeReason([done('success')], 'Pull request is in clean status');
+  assert.equal(reason, NO_GATE_REASON);
+  assert.doesNotMatch(reason, /Settings/);
+});
+
+test('armFailureAdvice names both repo settings, except where neither is the cause', () => {
+  assert.match(armFailureAdvice('auto-merge is not allowed for this repository'), /Allow auto-merge/);
+  assert.match(armFailureAdvice('Pull request is in clean status'), /nothing for auto-merge to wait behind/i);
+  assert.doesNotMatch(armFailureAdvice('Pull request is in clean status'), /Settings/);
 });
 
 test('failureSummary names the failing workflows, or the absence of a green one', () => {

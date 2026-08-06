@@ -162,7 +162,9 @@ export function runDurationMs(run) {
 //   - merged → converged, the outcome the lever was pulled for.
 //   - closed unmerged → done, and reported: baselining closes a PR its own CI went red on.
 //   - open + `review` → done. That PR is the owner's; see deliveryOf().
-//   - open + `auto-merge` → wait for the arm to land it.
+//   - open + `auto-merge` → wait for it to land, by whichever route that member has:
+//     GitHub's arm where the base branch requires something, baselining's own in-cycle
+//     merge where it requires nothing (#674).
 export function settle({ run, pull, agent, delivery }) {
   if (!run) return { done: false, state: 'awaiting-run', detail: 'the dispatched run has not appeared yet' };
   if (run.status !== 'completed') return { done: false, state: 'running', detail: `the member scheduler run is ${run.status}` };
@@ -184,7 +186,7 @@ export function settle({ run, pull, agent, delivery }) {
   if (delivery === 'review') {
     return { done: true, ok: true, state: 'open-for-review', detail: `maintenance PR #${pull.number} is open — this member delivers by review, so merging it is the owner's call` };
   }
-  return { done: false, state: 'pr-open', detail: `maintenance PR #${pull.number} is open, waiting on auto-merge` };
+  return { done: false, state: 'pr-open', detail: `maintenance PR #${pull.number} is open, waiting to land` };
 }
 
 // What the deadline turns an unfinished member into. Not a silent drop and not a bare

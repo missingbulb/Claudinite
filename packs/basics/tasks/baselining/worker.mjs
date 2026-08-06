@@ -382,26 +382,75 @@ export function pullCreateError(status, json) {
     + ' → General → "Allow GitHub Actions to create and approve pull requests"';
 }
 
-// How an `auto-merge` member's PR actually lands, given whether this repo has any
-// pull_request-triggered workflow at all.
+// Whether the BASE branch has anything auto-merge could wait behind (#674).
 //
-// GitHub's auto-merge is a QUEUE FOR CHECKS. On a repo with no PR CI there is
-// nothing to queue behind: the mutation is rejected ("Pull request is in clean
-// status"), and since the failure was swallowed the PR sat open forever — the
-// stamp never advanced, the next cycle reused the same PR, and a repo that asked
-// for `auto-merge` got no merge at all. Seven of twelve consumers are in exactly
-// that shape (no `pull_request` trigger anywhere in .github/workflows).
+// A running workflow is not a gate. GitHub only queues a PR behind checks that
+// the base branch REQUIRES — via classic branch protection or a ruleset — so a
+// repo can have PR CI, watch it go green, and still be `clean` the whole time.
+// Arming there is rejected exactly as it is on a repo with no CI at all.
 //
-// So: no CI to wait for → MERGE IT, which is what `auto-merge` meant all along.
-// CI present → arm, and let the checks gate it as designed.
+// Two facts, because the two mechanisms report in different places and either one
+// alone is a gate:
+//   - `branch.protected` (GET /repos/{repo}/branches/{base}) — true when any
+//     protection or ruleset applies. Cheap, and needs no scope beyond the read the
+//     rest of this worker already has. Deliberately NOT /branches/{base}/protection,
+//     which wants admin the Action's GITHUB_TOKEN does not carry.
+//   - `rules` (GET /repos/{repo}/rules/branches/{base}) — the ruleset rules that
+//     apply, readable by anyone with repo read. A `required_status_checks` or
+//     `pull_request` rule is something to wait behind even where `protected` lags.
+//
+// Nothing is subtracted: a gate is a gate whether it requires checks or reviews,
+// since auto-merge waits on either. Only the total absence of both is the shape
+// this exists to name.
+export const GATING_RULE_TYPES = ['required_status_checks', 'pull_request'];
+
+export function mergeGatePresent({ branch, rules } = {}) {
+  if (branch?.protected) return true;
+  return (rules ?? []).some((r) => GATING_RULE_TYPES.includes(r?.type));
+}
+
+// How an `auto-merge` member's PR actually lands, given what — if anything — a
+// merge would have to wait for.
+//
+// GitHub's auto-merge is a QUEUE FOR REQUIRED CHECKS. Where nothing is required
+// there is nothing to queue behind: the mutation is rejected ("Pull request is in
+// clean status"), and since the failure was swallowed the PR sat open forever —
+// the stamp never advanced, the next cycle reused the same PR, and a repo that
+// asked for `auto-merge` got no merge at all.
+//
+// Two ways to reach that emptiness, and BOTH are the same delivery decision:
+//   - no `pull_request` trigger anywhere in .github/workflows, so no check will
+//     ever appear (seven of twelve consumers);
+//   - PR CI that runs but is required by nothing, because the base branch is
+//     unprotected (`"protected": false`, no ruleset). The checks report; the PR is
+//     mergeable the entire time they do.
+//
+// Nothing to wait for → MERGE IT, which is what `auto-merge` meant all along. A
+// real gate → arm, and let it gate as designed. But the two empty shapes differ in
+// what they leave to VERIFY, and collapsing them would merge unverified content:
+//
+//   - no PR CI at all           → `merge`. No check will ever report on this sha.
+//                                 There is nothing to wait for and nothing to wait
+//                                 ON. Merge now.
+//   - PR CI, but nothing requires it → `land`. The dispatched runs are about to
+//                                 report; they are just not a gate. Skip the arm
+//                                 (GitHub would reject it) and land on the runs'
+//                                 own evidence — the same wait, the same green,
+//                                 minus a mutation that cannot succeed.
+//
+// `land` is why this is not simply "no gate → merge": an unprotected repo with a
+// full test suite still gets its suite honoured. It reaches landNow directly
+// instead of via a failed arm, which is the only part that changes.
 //
 // `hasPrCi` comes from ciDispatchPlan over the branch's own workflow files —
 // `dispatch` (startable) plus `missing` (PR-triggered but not dispatchable). Both
-// empty means no workflow anywhere runs on a pull_request, so no check will ever
-// appear. That is a fact about the tree, not a race against checks registering.
-export function deliveryAction({ delivery, hasPrCi }) {
+// empty means no workflow anywhere runs on a pull_request. `hasMergeGate` comes
+// from mergeGatePresent over the base branch. Both are facts about the repo, not
+// races against checks registering.
+export function deliveryAction({ delivery, hasPrCi, hasMergeGate = true }) {
   if (delivery !== 'auto-merge') return 'none';
-  return hasPrCi ? 'arm' : 'merge';
+  if (!hasPrCi) return 'merge';
+  return hasMergeGate ? 'arm' : 'land';
 }
 
 // --- Landing a PR the arm could not land (#455/#205/#95) ---------------------
@@ -455,13 +504,38 @@ export function pullDisposition({ delivery, runs }) {
 
 // Why the merge had to happen here rather than through the arm. The log line has
 // to name which shape this was, or the repo misconfiguration behind it stays
-// invisible — and it is a REPO setting, so only a human can retire it.
-export function mergeReason(runs) {
+// invisible — and it is usually a REPO setting, so only a human can retire it.
+//
+// `armError` is the mutation's own message when there is one, because the third
+// shape is only distinguishable from it: a base branch that we read as gated but
+// which requires nothing of THIS PR is rejected as "clean status", and naming a
+// setting there would send the owner to fix something that is already correct.
+// Nothing to fix is a legitimate answer, and saying so is the point.
+export const NO_GATE_REASON = 'nothing on the base branch requires this PR to wait'
+  + ' — auto-merge cannot arm on an already-mergeable PR, so `auto-merge` delivery means merging it here'
+  + ' (no repo setting to change)';
+
+export function mergeReason(runs, armError = '') {
+  if (/clean status/i.test(String(armError))) return NO_GATE_REASON;
   return (runs ?? []).some((r) => r?.conclusion === 'action_required')
     ? 'its pull_request run is parked at action_required (never ran) while the dispatched run passed'
     + ' — check Settings → Actions → General → workflow-approval requirements'
     : 'CI concluded green but the auto-merge arm never landed it'
     + ' — check Settings → General → "Allow auto-merge"';
+}
+
+// What to tell the owner when the arm fails, given what GitHub said. Same
+// argument as mergeReason and the same third shape: a "clean status" rejection is
+// not a misconfiguration, so it must not print a remedy. Every OTHER rejection
+// names both settings, because from here the two are indistinguishable.
+export function armFailureAdvice(message) {
+  if (/clean status/i.test(String(message))) {
+    return ' — the base branch requires nothing of this PR, so there is nothing for auto-merge to wait behind.'
+      + ' Nothing to fix; landing it here instead.';
+  }
+  return ' — check Settings → General → "Allow auto-merge", and Settings → Actions → General for a'
+    + ' workflow-approval requirement parking this PR\'s pull_request run at action_required.'
+    + ' Waiting for this cycle\'s dispatched run and landing it here.';
 }
 
 // Why a PR was closed rather than merged — the same visibility argument, for the
@@ -604,29 +678,40 @@ async function deliver(root, repo, base, token, delivery, seed, withheld = []) {
   const ci = await dispatchCiRuns(token, repo, branch)
     .catch((e) => { console.log(`baselining: CI dispatch on ${branch} failed: ${e.message}`); return null; });
   const hasPrCi = ci ? ci.dispatch.length + ci.missing.length > 0 : true; // unknown → assume CI, never merge blind
+  // …and whether anything on the base branch would make this PR wait. Unknown →
+  // assume a gate, for the same reason: arming a PR that needed no arm costs one
+  // failed mutation and lands via landNow, while merging one that WAS gated
+  // bypasses the gate.
+  const hasMergeGate = await readMergeGate(token, repo, base);
 
   if (pr?.number) {
-    const action = deliveryAction({ delivery, hasPrCi });
+    const action = deliveryAction({ delivery, hasPrCi, hasMergeGate });
     if (action === 'merge') {
       const res = await gh(token, `/repos/${repo}/pulls/${pr.number}/merge`, {
         method: 'PUT', body: { merge_method: 'squash' },
       });
       if (res.status === 200) { merged = true; console.log(`baselining: merged PR #${pr.number} directly — this repo has no pull_request CI to gate on`); }
       else console.log(`baselining: could not merge PR #${pr.number} (${res.status}: ${res.json?.message ?? 'no message'})`);
+    } else if (action === 'land') {
+      // The arm is skipped, not attempted-and-failed: GitHub rejects it on a PR
+      // nothing is waiting on, and the rejection would carry a remedy that names
+      // settings which are not the cause. The runs still have to conclude green.
+      console.log(`baselining: not arming auto-merge on PR #${pr.number} — ${NO_GATE_REASON}`);
+      if (await landNow(token, repo, pr, delivery, { reason: NO_GATE_REASON })) merged = true;
     } else if (action === 'arm' && pr.node_id) {
       // Surfaced, not swallowed: a failed arm is why a maintenance PR sits open
-      // forever, and the two usual causes are both fixable repo settings.
+      // forever, and its usual causes are fixable repo settings — except the one
+      // that isn't, which armFailureAdvice is careful not to blame on a setting.
+      let armError = '';
       const armed = await enableAutoMerge(token, pr.node_id).then(() => true)
         .catch((e) => {
-          console.log(`baselining: could not arm auto-merge on PR #${pr.number}: ${e.message}`
-            + ' — check Settings → General → "Allow auto-merge", and Settings → Actions → General for a'
-            + ' workflow-approval requirement parking this PR\'s pull_request run at action_required.'
-            + ' Waiting for this cycle\'s dispatched run and landing it here.');
+          armError = e.message;
+          console.log(`baselining: could not arm auto-merge on PR #${pr.number}: ${e.message}${armFailureAdvice(e.message)}`);
           return false;
         });
       // Only where the arm failed. A member that armed is GitHub's to land, and
       // waiting on it here would add a poll to every healthy repo for nothing.
-      if (!armed && await landNow(token, repo, pr, delivery)) merged = true;
+      if (!armed && await landNow(token, repo, pr, delivery, { armError })) merged = true;
     }
   }
   // What this cycle delivered. The scheduler records it in the dispatch issue, which is
@@ -640,7 +725,7 @@ async function deliver(root, repo, base, token, delivery, seed, withheld = []) {
 // the PR exactly as the arm left it, which is what the next cycle expects.
 const sleep = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
-async function landNow(token, repo, pr, delivery) {
+async function landNow(token, repo, pr, delivery, { reason = null, armError = '' } = {}) {
   const started = Date.now();
   for (;;) {
     const { status, json } = await gh(token, `/repos/${repo}/actions/runs?head_sha=${pr.head?.sha ?? ''}&per_page=100`);
@@ -662,7 +747,7 @@ async function landNow(token, repo, pr, delivery) {
       method: 'PUT', body: { merge_method: 'squash' },
     });
     if (res.status === 200) {
-      console.log(`baselining: merged PR #${pr.number} in-cycle — ${mergeReason(runs)}`);
+      console.log(`baselining: merged PR #${pr.number} in-cycle — ${reason ?? mergeReason(runs, armError)}`);
       await deleteBranch(token, repo, pr.head?.ref);
       return true;
     }
@@ -791,6 +876,33 @@ async function askForSecrets(token, repo, names) {
   ].join('\n');
   await gh(token, `/repos/${repo}/issues`, { method: 'POST', body: { title: SECRETS_ISSUE_TITLE, body } });
   return true;
+}
+
+// The I/O half of mergeGatePresent: read the base branch's protection state and
+// the ruleset rules that apply to it. Both reads are best-effort and an
+// unreadable one is UNKNOWN, not absent — unknown returns true, so a repo whose
+// gate we cannot see is armed (a wasted mutation at worst) rather than merged
+// past a gate that was there all along.
+async function readMergeGate(token, repo, base) {
+  const ref = encodeURIComponent(base);
+  const [branch, rules] = await Promise.all([
+    gh(token, `/repos/${repo}/branches/${ref}`).catch(() => null),
+    gh(token, `/repos/${repo}/rules/branches/${ref}`).catch(() => null),
+  ]);
+  if (branch?.status !== 200) {
+    console.log(`baselining: could not read ${base}'s protection state (HTTP ${branch?.status ?? 'error'})`
+      + ' — assuming auto-merge has something to wait for');
+    return true;
+  }
+  const gate = mergeGatePresent({
+    branch: branch.json,
+    rules: rules?.status === 200 && Array.isArray(rules.json) ? rules.json : [],
+  });
+  if (!gate) {
+    console.log(`baselining: ${base} is unprotected and no ruleset requires anything of a PR`
+      + ' — auto-merge has nothing to wait behind on this repo');
+  }
+  return gate;
 }
 
 // Arm native auto-merge on a PR (by node id) via the GraphQL mutation — the REST
