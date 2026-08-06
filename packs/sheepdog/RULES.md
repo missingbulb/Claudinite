@@ -38,7 +38,7 @@ is watching the one repo that did not move.
 
 **Why that one is a workflow** — every other thing this pack does answers a recurring question, so it
 is a scheduled task. Force-baseline answers none and has no cadence: it is owner-initiated, carries its
-own inputs (repo filter, dry run, dormant opt-in), and starts when a human presses *Run workflow*. Its
+own inputs (repo filter, dry run, dormant opt-in, follow), and starts when a human presses *Run workflow*. Its
 workflow declares **`workflow_dispatch` only** — no `schedule:` — so the vendored scheduler remains the
 repo's only cron and [scheduled-tasks.md](../basics/scheduled-tasks.md)'s doctrine is untouched. GitHub
 reads workflows solely from a repo's own `.github/`, never from the mount, so the enforcer hosts a copy
@@ -103,7 +103,9 @@ not that: it exists because the operation is manual, and it reads the same secre
 repositories to that PAT. Dispatching another repo's workflow is an Actions *write*, so a token scoped
 for the three read-only sweeps answers `403` on every member. The sweep reports that per repo as
 `no-permission` and fails the run rather than retrying: it is a grant to fix once, not a transient. The
-sweeps themselves are unaffected — they never dispatch anything.
+sweeps themselves are unaffected — they never dispatch anything. Watching what it dispatched adds two
+more *read* scopes to the same PAT — **Pull requests: read** and **Issues: read**; without them a
+followed run reports every member as unfinished, and never the reverse.
 
 **What freshness assumes** — baselining reverts a stamp-only bump, so `claudinite.updated` advances
 only when canon changed that member's vendor set. Age of the **stamped ref** is therefore the honest

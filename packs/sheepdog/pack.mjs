@@ -26,8 +26,10 @@
 // The sweeps carry no workflow of their own: preprocessing runs Action-side inside
 // the repo's one scheduler workflow, where that secret is already reachable. The
 // pack's ONE workflow is fleet-baseline (stubs/workflows/fleet-baseline.yml, driven
-// by fleet-baseline/force-fleet-baseline.mjs) — the owner's manual lever to make every
-// member baseline now. It answers no recurring question, so it is not a task; it
+// by fleet-baseline/force-fleet-baseline.mjs, which follows what it dispatched via
+// fleet-baseline/follow-fleet-baseline.mjs) — the owner's manual lever to make every
+// member baseline now, and the report of what the fleet then did. It answers no
+// recurring question, so it is not a task; it
 // declares workflow_dispatch and no schedule, so it adds no second cron; and because
 // GitHub reads workflows only from a repo's own .github/, a migration keeps a copy there
 // — delivered by the converge's withhold-and-hand-to-the-agent path, since the Action
