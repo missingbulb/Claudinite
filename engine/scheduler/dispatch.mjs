@@ -93,7 +93,27 @@ export function deliveredLines(delivered) {
   ];
 }
 
-export function dispatchBody({ taskPath, pack, task, slotId, context = [], delivered = null }) {
+// The `### Why the agent is here` section — which of preprocessing's escalation
+// conditions fired. The worker knows it exactly; without this the agent re-derives it
+// from the repo, and a re-derivation that disagrees with the truth is how a run ends up
+// reporting "preprocessing created nothing" about a cycle that just merged a PR
+// (EdFringeAllocator#82).
+//
+// The condition and its counts, never the findings — those stay in the repo (DESIGN §3).
+// Absence is meaningful here too: a worker too old to name a reason says nothing, and
+// the agent falls back to its task file's own sweep.
+export function escalationLines(reason) {
+  const { code = null, detail = null } = reason ?? {};
+  if (!code && !detail) return [];
+  return [
+    '### Why the agent is here',
+    'The condition preprocessing escalated on. Start here; the findings themselves are in the repo, not this issue.',
+    '',
+    `- ${detail || code}${detail && code ? ` (\`${code}\`)` : ''}`,
+  ];
+}
+
+export function dispatchBody({ taskPath, pack, task, slotId, context = [], delivered = null, reason = null }) {
   const lines = [taskPath, ''];
   if (context.length) {
     lines.push(
@@ -106,6 +126,10 @@ export function dispatchBody({ taskPath, pack, task, slotId, context = [], deliv
   } else {
     lines.push(`Execute the Claudinite task above (pack \`${pack}\`, task \`${task}\`, slot \`${slotId}\`).`);
   }
+  // Why first, then what: the reason is what decides which of the task file's sections
+  // the agent actually needs, and the artifacts are what it does that work on.
+  const why = escalationLines(reason);
+  if (why.length) lines.push('', ...why);
   const del = deliveredLines(delivered);
   if (del.length) lines.push('', ...del);
   return lines.join('\n') + '\n';

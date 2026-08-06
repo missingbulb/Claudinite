@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, writeFileSync, rmSync } from 'node:fs';
-import { runPreprocessing, preprocessingFailure, agentRequestPath, clearAgentRequest, agentRequested } from '../../engine/scheduler/preprocess.mjs';
+import { runPreprocessing, preprocessingFailure, agentRequestPath, clearAgentRequest, agentRequested, readAgentRequest } from '../../engine/scheduler/preprocess.mjs';
 
 const NODE = process.execPath; // the running node, so the tests don't assume PATH
 
@@ -102,4 +102,36 @@ test('the request signal round-trips: written → requested, cleared → not (cl
   clearAgentRequest(path);
   assert.equal(agentRequested(path), false);     // cleared
   assert.equal(existsSync(path), false);
+});
+
+// --- the request PAYLOAD (#664) ---
+// The §3 exception: identity of what the run created, and the NAME of the condition
+// that woke the agent. Every key is optional, and a key the worker did not write must
+// read back as absent rather than as something invented.
+
+test('readAgentRequest: a worker names what it made and why the agent is here', () => {
+  const path = agentRequestPath({ pack: 'p', task: 't', slotId: 's-payload-test' });
+  writeFileSync(path, `${JSON.stringify({
+    marker: 'agent-requested',
+    delivered: { branch: 'claudinite/maintenance-2026-08-06-l0i4gd', pr: 71, merged: true },
+    reason: { code: 'checks-not-green', detail: 'check_the_world reported findings' },
+  })}\n`);
+  const payload = readAgentRequest(path);
+  assert.equal(payload.delivered.pr, 71);
+  assert.equal(payload.reason.code, 'checks-not-green');
+  clearAgentRequest(path);
+});
+
+test('readAgentRequest: a bare marker, empty file, or garbage names nothing — never throws', () => {
+  // The version-skew case: an older vendored worker writes a bare marker. It still
+  // requests the agent; it just asserts nothing about why, and the issue says nothing.
+  const path = agentRequestPath({ pack: 'p', task: 't', slotId: 's-payload-old' });
+  for (const raw of ['agent-requested\n', '', '   \n', '{not json']) {
+    writeFileSync(path, raw);
+    const payload = readAgentRequest(path);
+    assert.equal(payload?.delivered ?? null, null, JSON.stringify(raw));
+    assert.equal(payload?.reason ?? null, null, JSON.stringify(raw));
+  }
+  clearAgentRequest(path);
+  assert.equal(readAgentRequest(path), null);   // absent → no payload at all
 });
