@@ -41,8 +41,9 @@ const MIGRATIONS = 'migrations/active_migrations/';
 const FIXTURES = 'packs-tests/rehearsal/fixtures.mjs';
 
 // The contract surfaces this change touched, and why each counts. Pure over the
-// changed-file list plus a reader, so the whole decision is testable with no git.
-export function contractChanges(changed, read) {
+// changed-file list plus a head and a base reader, so the whole decision is
+// testable with no git.
+export function contractChanges(changed, read, readBase = () => null) {
   const out = [];
   if (changed.includes(SCHEMA)) {
     out.push({ file: SCHEMA, what: 'the pack manifest vocabulary — every consumer local pack is validated against it' });
@@ -51,14 +52,19 @@ export function contractChanges(changed, read) {
     out.push({ file: STUB, what: 'the scheduler workflow stub — every member vendors it verbatim' });
   }
   for (const file of changed) {
-    // A rule module whose severity line changed. Read the current text: a rule
-    // that now says `blocking` in a changed file is the case worth asking about,
-    // and the direction that matters (advisory -> blocking) is the one that turns
-    // a green member red without the member changing at all.
+    // A rule module that BECAME blocking in this change — either newly added, or
+    // promoted from advisory. That transition is the one that turns a green member
+    // red without the member changing at all. A rule already blocking at the base
+    // asked nothing new of anyone, so editing its wording, its `doc` pointer or its
+    // logic is an ordinary pack edit and stays out of scope: firing on those would
+    // make every touch of a blocking rule a migration question, which is the
+    // cried-wolf failure this rule is built to avoid.
     if (!/\.mjs$/.test(file) || file.startsWith('packs-tests/') || file.startsWith('engine-tests/')) continue;
-    const text = read(file);
-    if (text && /severity:\s*'blocking'/.test(text) && /^\s*const rule = \{/m.test(text)) {
-      out.push({ file, what: 'a rule that is blocking — a severity a member did not ask for turns it red overnight' });
+    const isBlockingRule = (text) => Boolean(text)
+      && /severity:\s*'blocking'/.test(text)
+      && /^\s*const rule = \{/m.test(text);
+    if (isBlockingRule(read(file)) && !isBlockingRule(readBase(file))) {
+      out.push({ file, what: 'a rule that became blocking — a severity a member did not ask for turns it red overnight' });
     }
   }
   return out;
@@ -83,7 +89,7 @@ const rule = {
   run(work) {
     const changed = work.changedFiles ?? [];
     if (!changed.length) return [];
-    const touched = contractChanges(changed, (f) => work.read(f));
+    const touched = contractChanges(changed, (f) => work.read(f), (f) => work.readBase(f));
     if (!touched.length) return [];
     const carried = carriesConsumers(changed);
     if (carried.migration || carried.fixture) return [];
