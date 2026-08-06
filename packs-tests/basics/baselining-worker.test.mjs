@@ -6,6 +6,7 @@ import {
   unconfiguredSecrets, SECRETS_ISSUE_TITLE, workflowTriggers, ciDispatchPlan,
   pullCreateError, deliveryAction, pullDisposition, mergeReason, failureSummary, canonSource,
   withheldWorkflowPaths, UNPUSHABLE_PREFIX, escalation, gateOutcome, GATE_ABSENT,
+  landAttempt, LAND_TIMEOUT_MS,
 } from '../../packs/basics/tasks/baselining/worker.mjs';
 
 // The worker's PURE decision helpers (agent-preprocessing DESIGN §7, E4). The
@@ -398,6 +399,36 @@ test('pullDisposition keeps a review-delivery member\'s PR whatever its runs say
   assert.equal(pullDisposition({ delivery: 'review', runs: [done('success')] }), 'keep');
   assert.equal(pullDisposition({ delivery: 'review', runs: [done('failure')] }), 'keep');
   assert.equal(pullDisposition({ delivery: 'review', runs: [] }), 'keep');
+});
+
+// --- same-cycle landing (#649) ----------------------------------------------
+// On a gated member EVERY arm fails, so deferring to disposal put a standing ~24h
+// offset between canon and that member's main. The evidence arrives in seconds;
+// landAttempt is disposal's decision made now instead of tomorrow.
+
+test('landAttempt merges the gated shape in-cycle — the dispatched run passed', () => {
+  assert.equal(landAttempt({ delivery: 'auto-merge', runs: [done('success'), done('action_required')] }), 'merge');
+});
+
+test('landAttempt polls while a run is still going, and gives up at the bound', () => {
+  const running = [done('success'), { name: 'CI', status: 'in_progress', conclusion: null }];
+  assert.equal(landAttempt({ delivery: 'auto-merge', runs: running, elapsedMs: 0 }), 'poll');
+  assert.equal(landAttempt({ delivery: 'auto-merge', runs: running, elapsedMs: LAND_TIMEOUT_MS - 1 }), 'poll');
+  // At the bound the PR is left standing, which is exactly the pre-existing behaviour.
+  assert.equal(landAttempt({ delivery: 'auto-merge', runs: running, elapsedMs: LAND_TIMEOUT_MS }), 'give-up');
+});
+
+// The one place this must NOT mirror disposal. Disposal may close, because the PR
+// it judges is last cycle's and this cycle re-cuts it; here the PR is this cycle's
+// own delivery and closing it would discard the converge that just ran.
+test('landAttempt never closes this cycle\'s PR — a red or empty result just stands', () => {
+  for (const runs of [[done('failure')], [done('success'), done('timed_out')], [], [done('action_required')]]) {
+    assert.equal(landAttempt({ delivery: 'auto-merge', runs }), 'give-up', JSON.stringify(runs));
+  }
+});
+
+test('landAttempt leaves a review member\'s PR alone', () => {
+  assert.equal(landAttempt({ delivery: 'review', runs: [done('success')] }), 'give-up');
 });
 
 test('mergeReason names the gated run when there is one, the arm otherwise', () => {
