@@ -142,12 +142,27 @@ one sanctioned non-MCP GitHub surface (the Action `GITHUB_TOKEN`) and can do
 optimized native-git operations — the same surface the `store-release` inline
 worker already uses, now generalized.
 
-**No code→agent data channel.** Preprocessing communicates with the agent
-*only* through the repository — commits it pushes, files it writes. Nothing it
-prints is threaded into the dispatch issue; the issue stays "data, not
-instructions" with a first-line task path and the precondition's binding Context,
-exactly as `dispatch.mjs` builds it today. This keeps the executor's
-label-as-authorization / first-line-path-validation security model intact.
+**No code→agent data channel, with one named exception.** Preprocessing
+communicates with the agent *only* through the repository — commits it pushes,
+files it writes. Nothing it prints is threaded into the dispatch issue; the issue
+stays "data, not instructions" with a first-line task path and the precondition's
+binding Context, exactly as `dispatch.mjs` builds it today. This keeps the
+executor's label-as-authorization / first-line-path-validation security model
+intact.
+
+**The exception: the artifacts this run created** (owner decision, 2026-08-06).
+A worker that opens a branch or a PR writes their identifiers into the
+agent-request file, and `dispatch.mjs` renders them as a `### Delivered by
+preprocessing` section — a PR number and a branch ref, which is how the agent
+addresses them. An agent left to rediscover them instead can only search, and a
+search that finds nothing is indistinguishable from nothing having been created.
+
+The exception is deliberately narrow, and the security model is unchanged: this
+channel carries **identifiers for what this run created**, never findings, never
+instructions, never anything the agent then executes. The first line is still the
+task path, Context is still the binding scope, and the agent still reads its
+behaviour from the task file alone. **If the issue names no artifact, none
+exists.**
 
 ## 4. The `agent_model: none` path is now preprocessing
 

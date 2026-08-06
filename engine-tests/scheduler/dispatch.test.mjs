@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   dispatchTitle, dispatchTaskKey, parseDispatchTitle, isDispatchTitle,
-  dispatchBody, planDispatch, staleDispatchIssues, staleEscalationComment,
+  dispatchBody, deliveredLines, planDispatch, staleDispatchIssues, staleEscalationComment,
   rearmDispatchIssues, readyLabelOn, staleClaimedDispatchIssues, staleClaimComment,
   READY_LABEL, READY_FLEET_LABEL, NEEDS_HUMAN_LABEL, AGENT_RUNNING_LABEL,
   readyLabelForScope, SCHEDULER_LABELS,
@@ -41,6 +41,39 @@ test('dispatchBody puts the task path first and includes Context only when prese
   assert.equal(noCtx.split('\n')[0], 'p/task.md');
   assert.doesNotMatch(noCtx, /### Context/);
   assert.doesNotMatch(noCtx, /binding scope/); // no scope sentence with nothing to bind
+});
+
+// --- the Delivered section ---
+// The agent's source for what preprocessing created: a PR number and a branch ref.
+
+test('dispatchBody names the artifacts preprocessing created, by identity', () => {
+  const body = dispatchBody({
+    taskPath: 'p/task.md', pack: 'basics', task: 'baselining', slotId: 'd2026-08-06',
+    delivered: { branch: 'claudinite/maintenance-2026-08-06-l0i4gd', pr: 71, merged: false },
+  });
+  assert.match(body, /### Delivered by preprocessing/);
+  assert.match(body, /- PR: #71 \(open\)/);
+  assert.match(body, /- Branch: `claudinite\/maintenance-2026-08-06-l0i4gd`/);
+});
+
+test('dispatchBody distinguishes a merged PR from an open one', () => {
+  // On a repo with no pull_request CI, preprocessing merges in the same run — the agent
+  // works on its own PR from there rather than the one named.
+  const body = dispatchBody({
+    taskPath: 'p/task.md', pack: 'basics', task: 'baselining', slotId: 'd2026-08-06',
+    delivered: { branch: 'claudinite/maintenance-2026-08-06-l0i4gd', pr: 71, merged: true },
+  });
+  assert.match(body, /- PR: #71 \(already merged/);
+  assert.match(body, /open your own PR for further work/);
+});
+
+test('dispatchBody omits the section entirely when nothing was created — absence is the signal', () => {
+  for (const delivered of [null, undefined, {}, { branch: null, pr: null }]) {
+    const body = dispatchBody({ taskPath: 'p/task.md', pack: 'basics', task: 'baselining', slotId: 'd', delivered });
+    assert.doesNotMatch(body, /### Delivered/, JSON.stringify(delivered));
+  }
+  // No placeholder line either — absence is what says nothing was created.
+  assert.deepEqual(deliveredLines({ branch: null, pr: null, merged: false }), []);
 });
 
 // --- planDispatch: exactly-once, at-most-one-open, create ---

@@ -15,9 +15,9 @@ the default branch.
 
 ## Preflight
 
-**Before researching**, search the repo for an open PR whose head branch matches `claude/product-wiki-growth/*`.
-If one is open, do **not** stack a second round of unreviewed research on it — add one dated nudge comment on
-that PR and stop.
+**Before researching**, list this repo's open PRs carrying the **`product-wiki-growth` label** — the marker
+every PR of this family applies to itself, and the only thing that identifies one. If one is open, do **not**
+stack a second round of unreviewed research on it — add one dated nudge comment on that PR and stop.
 
 This is the *only* guard against that stacking — nothing upstream covers it. The scheduler's at-most-one-open
 guard is about **dispatch issues**, not pull requests: a completed run converges and closes its own dispatch
@@ -59,8 +59,10 @@ Neither mode yields citable material → stop. No commit, no log entry, no PR.
 
 ## Delivery
 
-Branch `claude/product-wiki-growth/<date>` (unique branch per run), commits touching only `product-wiki/**`
-minus `product-requirements/`, one **PR — never merged, never pushed to the default branch directly**.
+A unique branch per run, commits touching only `product-wiki/**` minus `product-requirements/`, one
+**PR — never merged, never pushed to the default branch directly** — carrying the **`product-wiki-growth`
+label**. The label is load-bearing: it is how the next run's preflight sees this PR at all, so a PR opened
+without it will be stacked on by the following slot.
 Web-researched claims entering a committed knowledge base need the review gate. PR body: the question(s)
 researched, what changed where, the citations added, and the open questions left for the next run.
 
