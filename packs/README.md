@@ -151,8 +151,13 @@ text rather than images.
 **The nightly does not touch it.** Baselining runs the same converge without `--badges`, so a
 member's README is never rewritten by a run it didn't ask for — a re-derived row would put a README
 diff in every vendoring commit that followed a declaration change. The row is a seed, not maintained
-state: once adoption has written it, it belongs to the repo — edit it, move it, or delete it, and
-re-run the converge with `--badges` by hand to refresh it in place.
+state: once written, it belongs to the repo — edit it, move it, or delete it.
+
+**The declaration is what makes a row wrong, so the row is refreshed where the declaration changes:**
+adopting a pack re-runs the converge with `--badges`
+([`grow_with_claudinite/skills/adopt-pack/SKILL.md`](grow_with_claudinite/skills/adopt-pack/SKILL.md), step 3),
+which rewrites the row in place. Nothing else derives it — a repo that edits its declaration by hand
+runs `converge-wiring <owner/repo> --badges` itself, or lives with a stale row.
 
 The converge also materializes the repo's say into `.claudinite-checks.json`, so the knob sits where
 anyone would look for it rather than being inferred from absence:
