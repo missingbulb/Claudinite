@@ -4,7 +4,7 @@ import {
   normalizeDelivery, resolveDelivery, DEFAULT_DELIVERY, pendingAgentic, heldStamp,
   maintenanceBranchName, openMaintenanceBranch, openMaintenancePull, shouldRequestAgent,
   unconfiguredSecrets, SECRETS_ISSUE_TITLE, workflowTriggers, ciDispatchPlan,
-  pullCreateError, deliveryAction, pullDisposition, mergeReason, failureSummary, canonSource,
+  pullCreateError, deliveryAction, classifyMergeGate, pullDisposition, mergeReason, failureSummary, canonSource,
   withheldWorkflowPaths, UNPUSHABLE_PREFIX, escalation, gateOutcome, GATE_ABSENT,
   landAttempt, LAND_TIMEOUT_MS,
 } from '../../packs/basics/tasks/baselining/worker.mjs';
@@ -340,15 +340,44 @@ test('pullCreateError falls back to the bare status when there is no message', (
 
 test('deliveryAction merges directly when there is no PR CI to gate on', () => {
   assert.equal(deliveryAction({ delivery: 'auto-merge', hasPrCi: false }), 'merge');
+  assert.equal(deliveryAction({ delivery: 'auto-merge', hasPrCi: false, gate: 'present' }), 'merge');
 });
 
-test('deliveryAction arms auto-merge when the repo does have PR CI', () => {
+test('deliveryAction arms only when the base branch has (or may have) a merge gate', () => {
+  // Auto-merge queues behind what the base REQUIRES, not behind CI existing
+  // (#677): with no gate the mutation is rejected "clean status" every time, so
+  // arming is skipped in favour of verify-then-land. Unknown assumes a gate —
+  // never merge past a gate we could not see.
+  assert.equal(deliveryAction({ delivery: 'auto-merge', hasPrCi: true, gate: 'present' }), 'arm');
+  assert.equal(deliveryAction({ delivery: 'auto-merge', hasPrCi: true, gate: 'unknown' }), 'arm');
   assert.equal(deliveryAction({ delivery: 'auto-merge', hasPrCi: true }), 'arm');
+  assert.equal(deliveryAction({ delivery: 'auto-merge', hasPrCi: true, gate: 'absent' }), 'land');
 });
 
 test('deliveryAction never merges or arms a review-delivery member', () => {
   assert.equal(deliveryAction({ delivery: 'review', hasPrCi: false }), 'none');
-  assert.equal(deliveryAction({ delivery: 'review', hasPrCi: true }), 'none');
+  assert.equal(deliveryAction({ delivery: 'review', hasPrCi: true, gate: 'absent' }), 'none');
+});
+
+// --- the merge-gate read (#677, rebuilt) --------------------------------------
+// Classifies what the BASE BRANCH requires from the two reads the Action token
+// can make (branch.protected + the rulesets that apply to the branch). Unknown is
+// never collapsed into absent: a gate we cannot see gets armed, not merged past.
+
+test('classifyMergeGate: protected branch, or a blocking ruleset rule, is a present gate', () => {
+  assert.equal(classifyMergeGate({ branchStatus: 200, branchJson: { protected: true }, rulesStatus: 200, rulesJson: [] }), 'present');
+  assert.equal(classifyMergeGate({ branchStatus: 200, branchJson: { protected: false }, rulesStatus: 200, rulesJson: [{ type: 'required_status_checks' }] }), 'present');
+  assert.equal(classifyMergeGate({ branchStatus: 200, branchJson: { protected: false }, rulesStatus: 200, rulesJson: [{ type: 'pull_request' }] }), 'present');
+});
+
+test('classifyMergeGate: unprotected with no blocking rules is absent; non-blocking rules do not gate', () => {
+  assert.equal(classifyMergeGate({ branchStatus: 200, branchJson: { protected: false }, rulesStatus: 200, rulesJson: [] }), 'absent');
+  assert.equal(classifyMergeGate({ branchStatus: 200, branchJson: { protected: false }, rulesStatus: 200, rulesJson: [{ type: 'deletion' }, { type: 'non_fast_forward' }] }), 'absent');
+});
+
+test('classifyMergeGate: an unreadable answer is unknown, not absent', () => {
+  assert.equal(classifyMergeGate({ branchStatus: 404, branchJson: null, rulesStatus: 200, rulesJson: [] }), 'unknown');
+  assert.equal(classifyMergeGate({ branchStatus: 200, branchJson: { protected: false }, rulesStatus: 403, rulesJson: null }), 'unknown');
 });
 
 // Disposing of the previous cycle's PR (#455/#205/#95). An arm that failed
@@ -427,13 +456,33 @@ test('landAttempt never closes this cycle\'s PR — a red or empty result just s
   }
 });
 
+// THE RACE THAT STRANDED SEVEN MEMBERS (2026-08-07): the worker dispatched the
+// verification run and read the head sha 0.3s later, before the run had
+// registered — and read the empty list as "nothing will ever verify this"
+// instead of "the run I just started has not appeared yet". Fewer runs than the
+// worker itself dispatched is a POLL, for the whole landing budget.
+test('landAttempt waits for the runs it knows were dispatched before judging', () => {
+  assert.equal(landAttempt({ delivery: 'auto-merge', runs: [], expected: 1, elapsedMs: 0 }), 'poll');
+  assert.equal(landAttempt({ delivery: 'auto-merge', runs: [done('action_required')], expected: 2, elapsedMs: 0 }), 'poll');
+  // The bound still holds — a dispatched run that never registers cannot wedge the cycle.
+  assert.equal(landAttempt({ delivery: 'auto-merge', runs: [], expected: 1, elapsedMs: LAND_TIMEOUT_MS }), 'give-up');
+  // Once everything expected is visible and concluded green, it lands.
+  assert.equal(landAttempt({ delivery: 'auto-merge', runs: [done('success')], expected: 1 }), 'merge');
+  // Nothing was dispatched and nothing is there: nothing will ever come — give up now.
+  assert.equal(landAttempt({ delivery: 'auto-merge', runs: [], expected: 0 }), 'give-up');
+});
+
 test('landAttempt leaves a review member\'s PR alone', () => {
   assert.equal(landAttempt({ delivery: 'review', runs: [done('success')] }), 'give-up');
 });
 
-test('mergeReason names the gated run when there is one, the arm otherwise', () => {
+test('mergeReason names the gated run when there is one, and no false remedy otherwise', () => {
   assert.match(mergeReason([done('success'), done('action_required')]), /action_required/);
-  assert.match(mergeReason([done('success')]), /Allow auto-merge/);
+  // The no-gate shape has NO setting to fix (#677) — pointing an owner at
+  // "Allow auto-merge" about a repo where nothing was wrong sent them to fix
+  // something already correct.
+  assert.doesNotMatch(mergeReason([done('success')]), /Allow auto-merge/);
+  assert.match(mergeReason([done('success')]), /nothing on the base branch queues/);
 });
 
 test('failureSummary names the failing workflows, or the absence of a green one', () => {
