@@ -116,18 +116,20 @@ test('structural set: engine roots + machinery + declared pack + its skills, exa
   assert.ok(!files.some((f) => f.includes('.test.mjs') || f.startsWith('engine/test/')), 'tests stay canon-side');
 });
 
-test('executor.md is the one engine .md that vendors — the executor reads it from the mount', async () => {
+test('the operational engine .md whitelist vendors — consumer sessions read them from the mount', async () => {
   const root = makeCanon(FIXTURE);
   const { files } = await vendorAt(root, ['alpha']);
   assert.ok(files.includes('engine/scheduler/executor.md'), 'executor.md must ship — the label-wired routine points at it in the mount');
   assert.ok(!files.includes('engine/scheduler/DESIGN.md'), 'other engine .md (maintainer docs) stay canon-side');
 });
 
-test('regression (fleet executor-broken): the REAL canon tree vendors engine/scheduler/executor.md', async () => {
+test('regression (fleet executor-broken): the REAL canon tree vendors the operational scheduler docs', async () => {
   const { computeVendorSet } = await import('./compute-vendor-set.mjs');
   const { files, errors } = await computeVendorSet(['basics']);
   assert.deepEqual(errors, []);
   assert.ok(files.includes('engine/scheduler/executor.md'), 'the live executor.md must be in the vendor set');
+  assert.ok(files.includes('engine/scheduler/deliver-pr.md'),
+    'the live deliver-pr.md must be in the vendor set — merged-pr task workers link to it from the mount');
 });
 
 test('migrations: the applier + registry + records vendor; fleet drivers, README, tests do not', async () => {

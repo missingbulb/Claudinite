@@ -99,7 +99,7 @@ export async function main() {
 
   const today = new Date().toISOString().slice(0, 10);
   const pr = await deliverGenerated({
-    root, repo, base, token, stamp: today, branchPrefix: PR_BRANCH_PREFIX,
+    root, repo, base, token, stamp: today, branchPrefix: PR_BRANCH_PREFIX, log,
     files: { [FLEET_USAGE_PATH]: text },
     message: 'Claudinite: recompute the fleet skill-usage aggregate',
     title: 'Claudinite: fleet skill-usage aggregate',
@@ -117,7 +117,8 @@ export async function main() {
     ].join('\n'),
   });
   log(`${covered} member(s) folding, ${gaps} coverage gap(s) — ${pr.reused ? 'updated' : 'opened'} `
-    + `PR ${pr.number !== null ? `#${pr.number}` : `on ${pr.branch}`}`);
+    + `PR ${pr.number !== null ? `#${pr.number}` : `on ${pr.branch}`}`
+    + `${pr.merged ? ' (landed)' : pr.delivery === 'review' ? ' (left for review)' : ''}`);
 }
 
 // Run only when invoked directly (the scheduler's `node worker.mjs`), never on import.

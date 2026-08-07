@@ -37,9 +37,12 @@ const isTest = (name) => name.endsWith('.test.mjs');
 // instructions; the label-wired routine's thin-pointer prompt points at
 // `.claudinite/shared/engine/scheduler/executor.md`, so if it is stripped, every
 // consumer's executor session boots with no instructions and can drain nothing
-// (the fleet-wide executor-broken finding). Whitelisted by canon-relative path so
-// the blanket .md exclusion still drops the maintainer docs beside it.
-const VENDORED_ENGINE_DOCS = new Set(['engine/scheduler/executor.md']);
+// (the fleet-wide executor-broken finding). `deliver-pr.md` is the agent-lane
+// delivery procedure the merged-pr task worker files link to — stripped, every
+// such task.md points at a hole and the subagent improvises its own landing.
+// Whitelisted by canon-relative path so the blanket .md exclusion still drops
+// the maintainer docs beside them.
+const VENDORED_ENGINE_DOCS = new Set(['engine/scheduler/executor.md', 'engine/scheduler/deliver-pr.md']);
 
 // The migration machinery a consumer applies from its OWN mount (task-prework
 // DESIGN §7): the applier + registry + the note records, so baselining reads the

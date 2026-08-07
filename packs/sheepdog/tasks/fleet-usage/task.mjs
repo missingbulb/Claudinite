@@ -27,7 +27,7 @@ export default {
   frequency: 'daily',                    // the members fold daily; this follows them
   precondition_signals: [],              // no signal — the sweep reads the fleet itself, over the PAT
   agent_model: 'none',                   // pure code — no agent (task-prework DESIGN §4)
-  expected_outcome: 'merged-pr',         // the regenerated GENERATED aggregate rides an auto-merging PR
+  expected_outcome: 'merged-pr',         // the regenerated GENERATED aggregate rides a PR landed per the repo's delivery settings
   prework: 'node worker.mjs',
   // One paged enumeration plus two REST reads per member (the coverage probe and the
   // usage file), all serial, then one PR. Same 900s the census and freshness sweep
