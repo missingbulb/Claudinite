@@ -228,7 +228,8 @@ prose below).
   `engine/scheduler/deliver-generated.mjs` — git plumbing against the fetched base tip, with HEAD, the
   index and the working tree untouched — and reads its prior state from that base rather than local
   HEAD, so stacked runs stay idempotent. (`basics/baselining`'s own deliver is the deliberate
-  exception: it commits a whole working tree under the member's delivery preference.)
+  exception: it commits a whole working tree and re-cuts a dated family branch; the landing itself —
+  delivery preference, CI dispatch, arm/land/merge — is shared, in `engine/scheduler/land-pr.mjs`.)
 - **A code-search hit is evidence; a code-search miss is not — survey by reading each file.**
 - **Derive the test file list from the tree — every hand-written glob here under-runs the suite.**
   There is no `package.json` and no test script, so each session invents its own incantation and

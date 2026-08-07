@@ -4,7 +4,7 @@
 
 ## What it does
 
-Daily, over the `FLEET_GITHUB_TOKEN` PAT: read this (sheepdog) repo's `sheepdog` pack entry `config`, enumerate every repo that owner owns, read each covered member's `.claudinite/local/usage.GENERATED.json` at its default branch, and rebuild `usage-fleet.GENERATED.json` in this repo on an auto-merging PR.
+Daily, over the `FLEET_GITHUB_TOKEN` PAT: read this (sheepdog) repo's `sheepdog` pack entry `config`, enumerate every repo that owner owns, read each covered member's `.claudinite/local/usage.GENERATED.json` at its default branch, and rebuild `usage-fleet.GENERATED.json` in this repo on a PR that lands itself where this repo's delivery settings allow (the shared landing helper, `engine/scheduler/land-pr.mjs`).
 
 A **stateless full recompute** — the file is a pure function of the members' current files. Idempotent by definition, self-healing after any past error, and cheap to no-op: a fleet whose numbers did not move produces the same file and opens no PR.
 

@@ -96,7 +96,10 @@ export default {
   PR, `open-pr` may open but never merge, `merged-pr` may arm auto-merge. "No
   change" is always a legal result. Enforced post-hoc by the executor in code,
   not just requested in prose. A repo whose `maintenance.delivery` is `review`
-  degrades `merged-pr` tasks to `open-pr` — member config wins. Pushes to
+  degrades `merged-pr` tasks to `open-pr` — member config wins, and the task
+  never reads the setting itself: the shared delivery helper does
+  (`engine/scheduler/land-pr.mjs` for the code lane, its prose twin
+  `engine/scheduler/deliver-pr.md` for executor subagents — §12.8). Pushes to
   non-default branches (e.g. the `conversation-logs` prune) are outside the
   taxonomy.
 - **`precondition`** — today's `gate` renamed. It both asserts need-to-run and
@@ -695,3 +698,18 @@ These override the earlier sections where they conflict.
    bases. The deployment itself modeled the shelf-life rule (#684): forced
    fleet passes, watched to terminal state, stragglers landed in-session —
    never "check tomorrow".
+8. **One delivery procedure, shared by every PR-delivering task (owner,
+   2026-08-07).** The #690 landing nuances were baselining's alone while the
+   other `merged-pr` tasks hit the identical failure shapes — growth-extract's
+   worker prose claimed "where the repo has no CI, GitHub lands it as soon as
+   it's mergeable" (false: the arm is rejected `clean status` and the PR
+   strands), and `deliver-generated.mjs` (usage-fold, fleet-usage) swallowed
+   the arm rejection and never dispatched the PR's checks at all. The landing
+   moved to one home per lane: `engine/scheduler/land-pr.mjs` (code lane —
+   baselining's worker and deliver-generated both call `landDelivery`) and its
+   prose twin `engine/scheduler/deliver-pr.md` (agent lane — vendored, linked
+   from every merged-pr task.md), which must keep saying the same thing. The
+   contract: a task knows only its outcome CEILING; whether its PR actually
+   lands unreviewed is the repo's `maintenance.delivery` plus the repo's own
+   shape (no PR CI / ungated base / gate present), and every one of those
+   nuances lives in the helpers, never in a task.
