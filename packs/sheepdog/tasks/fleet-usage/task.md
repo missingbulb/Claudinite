@@ -22,6 +22,8 @@ A member still on an older fold carries no `checks` key. It lands as an empty ch
 
 A covered member with no usage file (not folding yet), or one whose file cannot be read, is listed in `coverage.absent` with the reason — census-style. A denominator with an invisible hole in it is worse than no denominator at all.
 
+The `coverage` section accounts for the **whole fleet**, not just the members: uncovered repos land under `coverage.uncovered` and archived/fork/excluded ones under `coverage.outOfScope` (reason inline), neither contributing to any number. The worker also emits a run summary on **every** run — even one that opens no PR — naming every repo under its state, and flagging the folding members with no captured activity that day (*inactive today*). That daily fact lives in the run report, not the file: it moves with the date alone, and the file's unchanged-compare deliberately ignores the day stamp so an unmoved fleet opens no PR.
+
 ## A dormant member leaves the denominator
 
 A member that declares `"dormant": true` ([the scheduler's gate](../../../basics/scheduled-tasks.md)) is dropped from every rate and listed under `coverage.dormant` — distinct from `coverage.absent`, because "not in the race" and "should be folding and isn't" are different facts. Averaging a deliberately silent repo in would drag every fleet-wide number toward zero as the fleet accumulates finished projects. The test is `isDormant`, re-exported from the engine, so the sweep and the member's own scheduler cannot disagree.

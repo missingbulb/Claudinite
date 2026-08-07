@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  classifyDispatch, parseRepoFilter, forceOne, SCHEDULER, FORCE_OVERRIDES,
+  classifyDispatch, classifyScope, parseRepoFilter, forceOne, SCHEDULER, FORCE_OVERRIDES,
 } from '../../../packs/sheepdog/fleet-baseline/force-fleet-baseline.mjs';
 
 // The sweep's judgement is `classifyDispatch` — pure, so every status the dispatch API
@@ -62,4 +62,30 @@ test('the override string is exactly what the vendored scheduler understands', (
   // commas; the member-side task id is `baselining`. A typo here fires nothing and the
   // dispatch still returns 204, so this is the one coupling worth pinning literally.
   assert.equal(FORCE_OVERRIDES, 'FORCE_TASKS=baselining');
+});
+
+// --- scope classification -----------------------------------------------------
+// Every repo the dispatch does NOT reach lands in the report's skipped list with a
+// reason — classifyScope is that judgement, pure so each branch is testable. A
+// silent `continue` here is a repo the fleet-wide report loses.
+
+test('classifyScope: canon, archived, forks, excluded and filtered-out are all named reasons', () => {
+  const ctx = { canonRepo: 'o/Claudinite', exclude: new Set(['o/left-out']), filter: null };
+  const repo = (over) => ({ full_name: 'o/alpha', archived: false, fork: false, ...over });
+  assert.equal(classifyScope(repo({ full_name: 'o/Claudinite' }), ctx).state, 'canon');
+  assert.equal(classifyScope(repo({ archived: true }), ctx).state, 'out-of-scope');
+  assert.match(classifyScope(repo({ archived: true }), ctx).detail, /archived/);
+  assert.equal(classifyScope(repo({ fork: true }), ctx).state, 'out-of-scope');
+  assert.match(classifyScope(repo({ fork: true }), ctx).detail, /fork/);
+  assert.equal(classifyScope(repo({ full_name: 'o/left-out' }), ctx).state, 'excluded');
+  const filtered = { ...ctx, filter: new Set(['o/beta']) };
+  assert.equal(classifyScope(repo({}), filtered).state, 'filtered-out');
+});
+
+test('classifyScope: an ordinary in-scope member is null — the dispatch proceeds', () => {
+  const ctx = { canonRepo: 'o/Claudinite', exclude: new Set(), filter: null };
+  assert.equal(classifyScope({ full_name: 'o/alpha', archived: false, fork: false }, ctx), null);
+  // …and a filter that names it keeps it in scope.
+  assert.equal(classifyScope({ full_name: 'o/alpha', archived: false, fork: false },
+    { ...ctx, filter: new Set(['o/alpha']) }), null);
 });

@@ -105,6 +105,25 @@ export function parseRepoFilter(raw, owner) {
   return new Set(names.map((n) => (n.includes('/') ? n : `${owner}/${n}`).toLowerCase()));
 }
 
+// Why a repo is out of this dispatch's scope BEFORE its declaration is even read —
+// or null when it is in scope. Every branch lands in the report's skipped list,
+// never a silent `continue`: the report enumerates the full fleet, and a fleet-wide
+// force whose report names only the dispatched members reads as fleet-wide coverage
+// when it was not. (Canon is skipped because its baselining self-skips — but the
+// enforcer repo is NOT exempt: it is an ordinary member with a mount to converge,
+// and leaving it out would make the one repo the owner is looking at the one repo
+// that did not move.) Kept free of I/O so every branch is testable directly.
+export function classifyScope(r, { canonRepo, exclude, filter }) {
+  const fullName = r.full_name.toLowerCase();
+  if (fullName === canonRepo.toLowerCase()) {
+    return { state: 'canon', detail: 'canon has no vendored mount — forcing it would queue a run whose only outcome is its own self-skip' };
+  }
+  if (r.archived || r.fork) return { state: 'out-of-scope', detail: r.archived ? 'archived' : 'a fork' };
+  if (exclude.has(fullName)) return { state: 'excluded', detail: "on the sheepdog config's exclude list" };
+  if (filter && !filter.has(fullName)) return { state: 'filtered-out', detail: "not in this run's repos filter" };
+  return null;
+}
+
 // --- the dispatch -------------------------------------------------------------
 
 // Fire one member's scheduler. `ref` is the member's DEFAULT branch (read from the
@@ -161,14 +180,11 @@ export async function main() {
   const forced = []; const skipped = []; const failed = []; const watches = [];
   for (const r of mine.sort((a, b) => a.name.localeCompare(b.name))) {
     const fullName = r.full_name.toLowerCase();
-    // Canon has no vendored mount, so its own baselining self-skips — forcing it would
-    // queue a run whose only outcome is that skip. The enforcer repo itself is NOT
-    // exempt: it is an ordinary member with a mount to converge, and leaving it out of a
-    // fleet-wide force would make the one repo the owner is looking at the one repo that
-    // did not move.
-    if (fullName === canonRepo.toLowerCase()) continue;
-    if (r.archived || r.fork || exclude.has(fullName)) continue;
-    if (filter && !filter.has(fullName)) continue;
+    // Out of scope before the declaration is read — canon, archived, a fork, excluded,
+    // or filtered out. classifyScope says why, and each lands in the skipped list: no
+    // repo leaves this report silently, whatever its state.
+    const scope = classifyScope(r, { canonRepo, exclude, filter });
+    if (scope) { skipped.push({ fullName, ...scope }); continue; }
 
     let decl;
     try {
@@ -179,7 +195,10 @@ export async function main() {
       failed.push({ fullName, state: 'error', detail: `could not read ${DECLARATION}: ${e.message}` });
       continue;
     }
-    if (decl === null) continue;                                        // uncovered — the census's business
+    if (decl === null) {
+      skipped.push({ fullName, state: 'uncovered', detail: `no tracked ${DECLARATION} — adoption is the census's business, and there is nothing there to baseline` });
+      continue;
+    }
     if (isDormant(decl) && !includeDormant) {
       // A dormant member stopped its own scheduler; a forced dispatch on it either does
       // nothing (the run stops before evaluating anything) or wakes a repo that asked to

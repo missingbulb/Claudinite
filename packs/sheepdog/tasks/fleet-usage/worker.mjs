@@ -18,9 +18,10 @@
 // failed task — it converges one open `needs-human` issue for the task family
 // (engine/scheduler/run.mjs) instead of handing off to any agent.
 
+import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { deliverGenerated, baseTip, readAt, remoteUrl } from '../../../../engine/scheduler/deliver-generated.mjs';
-import { main as sweep, FLEET_USAGE_PATH } from './aggregate-fleet-usage.mjs';
+import { main as sweep, inactiveToday, FLEET_USAGE_PATH } from './aggregate-fleet-usage.mjs';
 
 const PR_BRANCH_PREFIX = 'claudinite/fleet-usage';
 const slotId = process.env.CLAUDINITE_SLOT_ID || '';
@@ -36,6 +37,33 @@ export function unchanged(priorText, nextText) {
   };
   const prior = strip(priorText);
   return prior !== null && prior === strip(nextText);
+}
+
+// The run report — the FULL fleet roster, every repo named under exactly one state,
+// emitted on every run (the PR only opens when the fleet moved, and a fleet that
+// did not move still deserves an account of itself — including who was inactive
+// today, a daily fact that deliberately lives here and not in the file, because
+// `unchanged` above ignores the day stamp). Pure so the full-roster property is
+// testable directly.
+export function renderUsageSummary(file) {
+  const { folding, absent, dormant, uncovered, outOfScope } = file.coverage;
+  const quiet = inactiveToday(file);
+  const quietSet = new Set(quiet);
+  const active = folding.filter((r) => !quietSet.has(r));
+  return [
+    `# Fleet usage sweep — ${file.generatedAt}`,
+    '',
+    '| folding | inactive today | absent | dormant | uncovered | out of scope |',
+    '| --- | --- | --- | --- | --- | --- |',
+    `| ${folding.length} | ${quiet.length} | ${absent.length} | ${dormant.length} | ${uncovered.length} | ${outOfScope.length} |`,
+    '',
+    active.length ? `**Folding, active today:** ${active.join(', ')}` : '**Folding, active today:** none',
+    quiet.length ? `**Folding, inactive today (no captured activity on ${file.generatedAt}):** ${quiet.join(', ')}` : '',
+    absent.length ? `**Absent (should be folding and isn't):** ${absent.join('; ')}` : '',
+    dormant.length ? `**Dormant (self-declared, out of the denominator):** ${dormant.join(', ')}` : '',
+    uncovered.length ? `**Uncovered (the census's subject):** ${uncovered.join(', ')}` : '',
+    outOfScope.length ? `**Out of scope:** ${outOfScope.join(', ')}` : '',
+  ].filter(Boolean).join('\n');
 }
 
 export async function main() {
@@ -59,6 +87,10 @@ export async function main() {
   const covered = file.coverage.folding.length;
   const gaps = file.coverage.absent.length;
 
+  const summary = renderUsageSummary(file);
+  console.log(summary);
+  if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${summary}\n`);
+
   const baseSha = baseTip(root, remoteUrl(repo, token), base);
   if (unchanged(readAt(root, baseSha, FLEET_USAGE_PATH), text)) {
     log(`${covered} member(s) folding, ${gaps} coverage gap(s) — recompute is unchanged, nothing to deliver`);
@@ -74,7 +106,10 @@ export async function main() {
     body: [
       `Recomputed \`${FLEET_USAGE_PATH}\` from the fleet members' own usage aggregates.`,
       '',
-      `**${covered}** member(s) folding; **${gaps}** coverage gap(s) listed under \`coverage.absent\`.`,
+      `**${covered}** member(s) folding (**${inactiveToday(file).length}** of them inactive today); `
+        + `**${gaps}** coverage gap(s) under \`coverage.absent\`; **${file.coverage.dormant.length}** dormant, `
+        + `**${file.coverage.uncovered.length}** uncovered and **${file.coverage.outOfScope.length}** out-of-scope `
+        + 'repo(s) named under `coverage` — the file accounts for every repo under the owner.',
       '',
       'A stateless full recompute: this file is a pure function of the members\' current',
       'files, so it self-heals any past error and an unchanged fleet opens no PR.',
