@@ -20,7 +20,7 @@ Weekly, over the `FLEET_GITHUB_TOKEN` PAT: read this (sheepdog) repo's `sheepdog
 | `behind` | on trunk, but stamped at a commit older than `staleDays` while canon has moved on — baselining has stopped landing |
 | `fresh` | at canon head, or behind it only within the window |
 
-It publishes the picture to the run summary and converges **one drift issue per unhealthy member** in this repo, labelled `fleet-drift`: opened while unhealthy, closed `completed` once fresh again, closed `not planned` once the repo leaves the fleet (excluded, deleted, archived, or no longer covered), reopened if it regresses.
+It publishes the picture to the run summary as a **full roster** — fresh members named with how fresh, out-of-scope repos (archived, forks, excluded, uncovered) named with why, and the two repos it never measures (the enforcer, canon) named as such — and converges **one drift issue per unhealthy member** in this repo, labelled `fleet-drift`: opened while unhealthy, closed `completed` once fresh again, closed `not planned` once the repo leaves the fleet (excluded, deleted, archived, or no longer covered), reopened if it regresses.
 
 It **reports; it does not repair** — `expected_outcome: none`, and the issue body carries the fix for the specific state it found.
 
@@ -32,7 +32,7 @@ The test is `isDormant`, re-exported from the engine rather than re-implemented 
 
 ## Freshness, not coverage
 
-The [census](../fleet-census/task.md) asks the prior question — is a repo covered **at all** — and opens adoption issues. This sweep takes coverage as given and asks whether that coverage still **means** anything. An uncovered repo is skipped here, never double-reported.
+The [census](../fleet-census/task.md) asks the prior question — is a repo covered **at all** — and opens adoption issues. This sweep takes coverage as given and asks whether that coverage still **means** anything. An uncovered repo gets no drift finding here — the adoption issue is the census's, and filing it twice would be double-reporting — but the summary still names it under *out of scope*, because the roster accounts for every repo.
 
 ## The one assumption
 

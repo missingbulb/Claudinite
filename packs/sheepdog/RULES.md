@@ -113,6 +113,14 @@ liveness measure, and `behind` reads *"has not picked canon up in `staleDays`"*,
 A member whose vendor set genuinely saw no change in the window is the one false positive; `staleDays`
 is the knob, and the drift issue says so.
 
+**Full-roster reporting** — every sweep's report enumerates the whole fleet, not just its findings.
+Each repo under the owner lands in the report under exactly one named state — covered, dormant,
+uncovered, opted out, archived/fork, unknown, fresh, behind, out of scope, inactive today, skipped
+with a reason — and the repos a sweep deliberately never measures (the enforcer itself, canon) are
+named as such rather than silently absent. The sheepdog provides data on the fleet regardless of
+state: a roster that names only the exceptions has silent holes, and a reader cannot tell "fine"
+from "fell out of the report".
+
 **When they fail** — a repo the census cannot classify is `unknown`, never uncovered, and a member the
 freshness sweep cannot probe is `unknown`, never behind: no issue opened, no open issue closed on its
 behalf, and a non-zero exit. A non-zero preprocessing subprocess fails the task, and the scheduler

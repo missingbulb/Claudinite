@@ -103,8 +103,10 @@ export async function readDeclaration(gh, fullName, path = DECLARATION) {
 }
 
 // Does this repo mount Claudinite? (Method B sync hook / legacy gitkeep / Method A
-// submodule.) The structural "is this a covered member" test, shared by the planner
-// (which repos to plan over) and the census (which repos are uncovered).
+// submodule.) The structural "is this a covered member" test — the existence-only
+// probe for callers that need nothing from inside the file. The census itself now
+// reads the declaration (readDeclaration) instead, because its roster names dormant
+// members and dormancy lives inside the file; the membership rule is the same.
 export async function isCovered(gh, fullName) {
   // The tracked declaration file is THE membership signal — the one file every
   // member carries whatever its mount shape (the engine can't run without it,

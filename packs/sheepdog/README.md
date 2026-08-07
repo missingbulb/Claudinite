@@ -23,8 +23,17 @@ skill loads *there*, and only a view across every member can say whether it earn
 
 A member that declares itself **dormant** (`"dormant": true` in its own declaration) is out of the
 freshness sweep and out of the usage denominator — its scheduler is stopped, so its mount falls
-behind by design and its silence says nothing about any skill. It stays a **member**: the census
+behind by design and its silence says nothing about any skill. It stays a **member**: membership
 is unchanged, because dormancy is about upkeep, not membership.
+
+**Every report enumerates the full fleet.** Whatever a repo's state — covered, dormant, uncovered,
+excluded, archived, a fork, inactive today, or simply not measured by that sweep — each sweep's
+report names it under exactly one state rather than dropping it. A roster that names only the
+exceptions has silent holes, and a reader cannot tell "fine" from "fell out of the report": the
+census lists covered members (dormant ones flagged) alongside the uncovered; the freshness sweep
+names its fresh members and its out-of-scope repos with why; the usage sweep's `coverage` section
+accounts for every repo under the owner and its run report flags folding members with no captured
+activity that day; force-baseline reports every repo it did *not* dispatch, with the reason.
 
 The fourth is not a sweep and not a task: **force-baseline** answers no recurring question, so it has
 no cadence to schedule. It is the owner pressing *Run workflow* — fire every member's own scheduler

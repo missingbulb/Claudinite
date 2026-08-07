@@ -20,12 +20,15 @@
 // definition, and it self-heals any past error — at this cardinality (repos ×
 // skills × weeks, all small) there is nothing to optimize away.
 //
-// COVERAGE IS EXPLICIT. A member with no usage file (not folding yet) or an
-// unreadable one is LISTED as absent, census-style, never silently skipped. A
-// denominator with an invisible hole in it is worse than no denominator. A member
-// that declares itself DORMANT is out of the denominator entirely — and listed
-// under its own heading, because "not in the race" and "should be folding and
-// isn't" are different facts and only one of them is a problem.
+// COVERAGE IS EXPLICIT — over the WHOLE fleet, not just the members. A member with
+// no usage file (not folding yet) or an unreadable one is LISTED as absent,
+// census-style, never silently skipped. A denominator with an invisible hole in it
+// is worse than no denominator. A member that declares itself DORMANT is out of the
+// denominator entirely — and listed under its own heading, because "not in the
+// race" and "should be folding and isn't" are different facts and only one of them
+// is a problem. Uncovered and out-of-scope (archived/fork/excluded) repos are named
+// too, contributing to no number: the coverage section accounts for every repo
+// under the owner, so no state can drop a repo out of the report.
 //
 // The canon knows mechanisms, never repos: no member is named anywhere here. The
 // member set is enumerated at runtime from the enforcer's own sheepdog config,
@@ -72,7 +75,7 @@ const sortKeys = (obj) => Object.fromEntries(Object.keys(obj).sort().map((k) => 
 // window verbatim for the fast view. Nothing is pre-summed: every coarser view
 // (a skill fleet-wide, a repo over time, this week across the fleet) stays derivable
 // from this file, and a summary that threw away the grain would not.
-export function aggregate({ members, absent = [], dormant = [], generatedAt }) {
+export function aggregate({ members, absent = [], dormant = [], uncovered = [], outOfScope = [], generatedAt }) {
   const weeks = {};
   const days = {};
   const repos = {};
@@ -128,11 +131,28 @@ export function aggregate({ members, absent = [], dormant = [], generatedAt }) {
       // the difference went. Absent means "should be folding and isn't"; dormant
       // means "not in the race at all".
       dormant: [...dormant].sort(),
+      // The rest of the owner's repos, so the coverage section accounts for the WHOLE
+      // fleet: uncovered repos (the census's subject — no member data to read) and
+      // repos out of scope entirely (archived, forks, excluded — reason inline).
+      // Neither contributes to any number; both are named so a reader can never
+      // mistake "not a member" for "fell out of the file".
+      uncovered: [...uncovered].sort(),
+      outOfScope: [...outOfScope].sort(),
     },
     repos: sortKeys(repos),
     days: sortKeys(days),
     weeks: sortKeys(Object.fromEntries(Object.entries(weeks).map(([w, byRepo]) => [w, sortKeys(byRepo)]))),
   };
+}
+
+// The folding members with NO captured activity on the day the file was generated —
+// its day window carries no row for `generatedAt`. DERIVED from the file, not stored
+// in it: the verdict moves when the date alone moves, and the worker's
+// unchanged-compare deliberately ignores the day stamp so an unmoved fleet opens no
+// PR — a stored copy would reopen that PR every midnight. The worker names them in
+// the run report instead, where a daily fact belongs.
+export function inactiveToday(file) {
+  return file.coverage.folding.filter((repo) => !file.days[repo]?.[file.generatedAt]);
 }
 
 // --- the fleet read -----------------------------------------------------------
@@ -188,20 +208,26 @@ export async function main({ now = new Date() } = {}) {
   const members = [];
   const absent = [];
   const dormant = [];
+  const uncovered = [];
+  const outOfScope = [];
   for (const r of mine.sort((a, b) => a.full_name.localeCompare(b.full_name))) {
     const fullName = r.full_name;
     const key = fullName.toLowerCase();
-    if (r.archived || r.fork || exclude.has(key)) continue;
+    // Not members, but not dropped either: the coverage section accounts for every
+    // repo under the owner, and these land there with their reason.
+    if (r.archived || r.fork) { outOfScope.push(`${fullName} (${r.archived ? 'archived' : 'fork'})`); continue; }
+    if (exclude.has(key)) { outOfScope.push(`${fullName} (excluded)`); continue; }
     // Only COVERED repos are members. An uncovered repo is the census's subject, not
-    // this sweep's — reporting it as an absent member would file the same fact twice.
-    // The declaration is read rather than merely counted because dormancy is inside
-    // it, and the same read answers both questions.
+    // this sweep's — it is NAMED under coverage.uncovered, never counted as an absent
+    // member, because "should be folding and isn't" is a different fact from "not a
+    // member at all". The declaration is read rather than merely counted because
+    // dormancy is inside it, and the same read answers both questions.
     let decl;
     try { decl = await readDeclaration(gh, fullName); } catch (e) {
       absent.push(`${fullName} (coverage check failed: ${e.message})`);
       continue;
     }
-    if (decl === null) continue;
+    if (decl === null) { uncovered.push(fullName); continue; }
     // A dormant member is out of the DENOMINATOR, not an absence: nobody is working
     // there, so "this skill never loaded" is a fact about the silence, not about the
     // skill, and averaging it in would drag every fleet-wide number toward zero as
@@ -216,7 +242,7 @@ export async function main({ now = new Date() } = {}) {
     }
   }
 
-  return aggregate({ members, absent, dormant, generatedAt: now.toISOString().slice(0, 10) });
+  return aggregate({ members, absent, dormant, uncovered, outOfScope, generatedAt: now.toISOString().slice(0, 10) });
 }
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;

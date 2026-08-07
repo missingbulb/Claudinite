@@ -4,7 +4,7 @@
 
 ## What it does
 
-Daily, over the `FLEET_GITHUB_TOKEN` PAT: read this (sheepdog) repo's `sheepdog` pack entry `config` (`owner` to cover, `exclude` list), enumerate every repo that owner owns, classify each — **covered** (carries a tracked `.claudinite-checks.json`), **uncovered**, **opted out**, or **skipped** (fork/archived) — publish the picture to the run summary, and converge **one adoption issue per actionable uncovered repo** in this repo: opened while uncovered, closed `completed` once covered, closed `not planned` once excluded, reopened if it regresses.
+Daily, over the `FLEET_GITHUB_TOKEN` PAT: read this (sheepdog) repo's `sheepdog` pack entry `config` (`owner` to cover, `exclude` list), enumerate every repo that owner owns, classify each — **covered** (carries a tracked `.claudinite-checks.json`), **dormant** (covered, but self-declared out of the recurring work), **uncovered**, **opted out**, or **skipped** (fork/archived) — publish the picture to the run summary as a **full roster** (every repo named under exactly one state, the enforcer itself included, never only the exceptions), and converge **one adoption issue per actionable uncovered repo** in this repo: opened while uncovered, closed `completed` once covered, closed `not planned` once excluded, reopened if it regresses. Dormancy annotates the roster only — a dormant repo is a covered member, and its issues converge the same.
 
 It is **coverage, not planning** — it does not build the work plan (that is the core planner's job) — and it carries **no migration logic**.
 

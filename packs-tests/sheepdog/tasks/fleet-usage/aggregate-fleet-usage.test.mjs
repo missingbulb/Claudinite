@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  aggregate, SAMPLING_NOTE, FLEET_USAGE_PATH, MEMBER_USAGE_PATH, FLEET_VERSION,
+  aggregate, inactiveToday, SAMPLING_NOTE, FLEET_USAGE_PATH, MEMBER_USAGE_PATH, FLEET_VERSION,
 } from '../../../../packs/sheepdog/tasks/fleet-usage/aggregate-fleet-usage.mjs';
-import { unchanged } from '../../../../packs/sheepdog/tasks/fleet-usage/worker.mjs';
+import { unchanged, renderUsageSummary } from '../../../../packs/sheepdog/tasks/fleet-usage/worker.mjs';
 import task from '../../../../packs/sheepdog/tasks/fleet-usage/task.mjs';
 import { USAGE_PATH } from '../../../../packs/grow_with_claudinite/tasks/usage-fold/worker.mjs';
 
@@ -185,4 +185,58 @@ test('fleet-usage: daily/agentless/merged-pr over the fleet PAT, wired as an ord
   assert.deepEqual(task.precondition_signals, []);
   assert.equal(task.session_scope, undefined);
   assert.ok(FLEET_USAGE_PATH.includes('GENERATED'), 'a machine-written file says so in its name');
+});
+
+test('coverage accounts for the whole fleet — uncovered and out-of-scope repos are named', () => {
+  const file = aggregate({
+    members: [member('owner/alpha', { '2026-W30': week({}) })],
+    uncovered: ['owner/naked'],
+    outOfScope: ['owner/attic (archived)', 'owner/copy (fork)', 'owner/left-out (excluded)'],
+    generatedAt: '2026-07-28',
+  });
+  assert.deepEqual(file.coverage.uncovered, ['owner/naked']);
+  assert.deepEqual(file.coverage.outOfScope, ['owner/attic (archived)', 'owner/copy (fork)', 'owner/left-out (excluded)']);
+  assert.equal(file.repos['owner/naked'], undefined, 'named, but contributing to no number');
+  // The common case — nothing uncovered, nothing out of scope — still reports the
+  // keys, empty: a reader must not have to tell "none" from "predates the idea".
+  const bare = aggregate({ members: [], generatedAt: '2026-07-28' });
+  assert.deepEqual(bare.coverage.uncovered, []);
+  assert.deepEqual(bare.coverage.outOfScope, []);
+});
+
+test('inactiveToday: a folding member with no day row for the generation date', () => {
+  const activeDays = { '2026-07-28': { captures: 3 } };
+  const staleDays2 = { '2026-07-20': { captures: 1 } };
+  const file = aggregate({
+    members: [member('owner/alpha', {}, activeDays), member('owner/beta', {}, staleDays2), member('owner/gamma', {})],
+    dormant: ['owner/zeta'],
+    generatedAt: '2026-07-28',
+  });
+  assert.deepEqual(inactiveToday(file), ['owner/beta', 'owner/gamma'],
+    'quiet-today and never-active members are inactive; a dormant repo is not counted — it is not folding at all');
+});
+
+test('inactiveToday is derived, never stored — the file must stay date-stamp-insensitive', () => {
+  // The worker's `unchanged` ignores only generatedAt; a stored inactive-today list
+  // would move with the date alone and reopen the delivery PR every midnight.
+  const file = aggregate({ members: [member('owner/alpha', {})], generatedAt: '2026-07-28' });
+  assert.equal(file.inactiveToday, undefined);
+  assert.equal(file.coverage.inactiveToday, undefined);
+});
+
+test('the run summary names every repo, whatever its state, and flags inactive-today', () => {
+  const file = aggregate({
+    members: [member('owner/alpha', {}, { '2026-07-28': { captures: 1 } }), member('owner/beta', {})],
+    absent: ['owner/gap (no file — not folding yet)'],
+    dormant: ['owner/zeta'],
+    uncovered: ['owner/naked'],
+    outOfScope: ['owner/attic (archived)'],
+    generatedAt: '2026-07-28',
+  });
+  const out = renderUsageSummary(file);
+  for (const repo of ['owner/alpha', 'owner/beta', 'owner/gap', 'owner/zeta', 'owner/naked', 'owner/attic']) {
+    assert.ok(out.includes(repo), `${repo} must be named in the summary`);
+  }
+  assert.match(out, /inactive today \(no captured activity on 2026-07-28\).*owner\/beta/);
+  assert.match(out, /\*\*Folding, active today:\*\* owner\/alpha/);
 });

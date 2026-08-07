@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { classifyFreshness, convergeDrift, probe, FRESH } from '../../../../packs/sheepdog/tasks/fleet-freshness/check-fleet-freshness.mjs';
+import {
+  classifyFreshness, convergeDrift, probe, renderFreshnessSummary, FRESH,
+} from '../../../../packs/sheepdog/tasks/fleet-freshness/check-fleet-freshness.mjs';
 
 // The freshness sweep's whole judgement is `classifyFreshness` — pure, so every
 // branch is exercised here without a network. The precedence between states is the
@@ -174,4 +176,53 @@ test('convergeDrift: reopens a regression, but honours a deliberate not-planned 
   const declined = fakeGh([{ ...issue(7, 'o/a', 'closed', 'behind'), state_reason: 'not_planned' }]);
   assert.deepEqual(await convergeDrift(declined.gh, 'o/home', { ...empty, unhealthy: [verdict('o/a', 'behind')] }), []);
   assert.deepEqual(declined.calls, []);
+});
+
+// --- the run summary ----------------------------------------------------------
+// The sweep's report is a FULL-fleet roster: fresh members are named with how
+// fresh, out-of-scope repos with why, and the two repos the sweep never measures
+// (the enforcer and canon) are named rather than silently absent. Pure renderer,
+// so the property is testable without a network.
+
+const summaryInput = {
+  owner: 'o',
+  home: 'o/sheepdog',
+  canonRepo: 'o/Claudinite',
+  canonBranch: 'main',
+  staleDays: 14,
+  fresh: [{ fullName: 'o/alpha', detail: 'at canon head' }, { fullName: 'o/beta', detail: '2 canon commit(s) behind, within the 14-day window' }],
+  unhealthy: [{ fullName: 'o/late', state: 'behind', detail: 'stamped 20 days ago' }],
+  dormant: ['o/asleep'],
+  outOfScope: ['o/attic (archived)', 'o/naked (uncovered — the census\'s subject)', 'o/left-out (excluded)'],
+  unknown: ['o/flaky — probe returned 500'],
+  actions: [],
+};
+
+test('freshness summary: every repo appears by name, whatever its state', () => {
+  const out = renderFreshnessSummary(summaryInput);
+  for (const repo of ['o/alpha', 'o/beta', 'o/late', 'o/asleep', 'o/attic', 'o/naked', 'o/left-out', 'o/flaky']) {
+    assert.ok(out.includes(repo), `${repo} must be named in the summary`);
+  }
+  // The two the sweep never measures are still accounted for, with why.
+  assert.match(out, /\*\*Not measured:\*\* `o\/sheepdog` — the enforcer.*`o\/Claudinite` — canon/);
+});
+
+test('freshness summary: fresh members carry their detail, out-of-scope their reason', () => {
+  const out = renderFreshnessSummary(summaryInput);
+  assert.match(out, /`o\/alpha` — at canon head/);
+  assert.match(out, /`o\/beta` — 2 canon commit\(s\) behind/);
+  assert.match(out, /o\/attic \(archived\)/);
+  assert.match(out, /o\/naked \(uncovered/);
+});
+
+test('freshness summary: canon named once when the enforcer IS canon', () => {
+  const out = renderFreshnessSummary({ ...summaryInput, canonRepo: 'o/sheepdog' });
+  assert.match(out, /\*\*Not measured:\*\* `o\/sheepdog` — the enforcer/);
+  assert.equal(out.match(/— canon, with no vendored mount/g), null);
+});
+
+test('freshness summary: empty states say none rather than vanishing', () => {
+  const out = renderFreshnessSummary({ ...summaryInput, fresh: [], unhealthy: [] });
+  assert.match(out, /\*\*Fresh:\*\* none/);
+  assert.match(out, /\*\*Every covered member is up to date 🎉\*\*/);
 });
