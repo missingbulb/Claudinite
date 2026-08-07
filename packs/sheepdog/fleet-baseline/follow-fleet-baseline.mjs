@@ -184,7 +184,10 @@ export function settle({ run, pull, agent, delivery }) {
   if (delivery === 'review') {
     return { done: true, ok: true, state: 'open-for-review', detail: `maintenance PR #${pull.number} is open — this member delivers by review, so merging it is the owner's call` };
   }
-  return { done: false, state: 'pr-open', detail: `maintenance PR #${pull.number} is open, waiting on auto-merge` };
+  // Not "waiting on auto-merge": whether an arm exists is the member's own
+  // delivery decision (its base may queue nothing), and this observer cannot
+  // see it — say only what is true from here.
+  return { done: false, state: 'pr-open', detail: `maintenance PR #${pull.number} is open — not yet landed` };
 }
 
 // What the deadline turns an unfinished member into. Not a silent drop and not a bare
