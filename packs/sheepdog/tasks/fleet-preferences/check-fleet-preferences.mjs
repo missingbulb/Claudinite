@@ -2,7 +2,7 @@
 // The sheepdog pack's fleet-PREFERENCES sweep — the enforcer telling every member
 // where this fleet's users keep their personal preferences. Run by this pack's
 // `fleet-preferences` scheduled task (tasks/fleet-preferences/), whose worker calls
-// `main()` below as the task's `agent_preprocessing`, Action-side inside the enforcer
+// `main()` below as the task's `prework`, Action-side inside the enforcer
 // repo's scheduler workflow where FLEET_GITHUB_TOKEN is reachable. Still runnable by
 // hand (`node check-fleet-preferences.mjs`) via the CLI guard at the foot.
 //

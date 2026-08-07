@@ -1,5 +1,5 @@
-// The fleet-preferences preprocessing entry point — the script the scheduler runs as
-// `node worker.mjs` (cwd = this task dir, bounded by agent_preprocessing_timeout).
+// The fleet-preferences prework entry point — the script the scheduler runs as
+// `node worker.mjs` (cwd = this task dir, bounded by prework_timeout).
 //
 // It holds NO sweep logic. The sweep is `check-fleet-preferences.mjs`, its SIBLING in
 // this task folder — nothing outside this task uses it, so that is where it lives;
@@ -9,7 +9,7 @@
 // Failure is the escalation path. The sweep THROWS when a member could not be read or
 // its pointer could not be written (an unusable token, a protected branch, a file that
 // changed under the run); this worker turns that into a non-zero exit, and the
-// scheduler treats a non-zero preprocessing subprocess as a failed task — it converges
+// scheduler treats a non-zero prework subprocess as a failed task — it converges
 // one open `needs-human` issue for the task family (engine/scheduler/run.mjs) instead
 // of handing off to any agent.
 

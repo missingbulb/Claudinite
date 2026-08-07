@@ -44,10 +44,10 @@ test('fleet-preferences: an ordinary pack task — not wired as a fleet mechanis
   assert.ok(!decl.precondition_signals.includes('fleet'));
 });
 
-test('fleet-preferences: the sweep is the preprocessing, bounded and task-local', () => {
-  assert.equal(decl.agent_preprocessing, 'node worker.mjs');
-  assert.ok(!decl.agent_preprocessing.includes('..'));   // contract: no traversal out of the task dir
-  assert.ok(Number.isInteger(decl.agent_preprocessing_timeout) && decl.agent_preprocessing_timeout > 0);
+test('fleet-preferences: the sweep is the prework, bounded and task-local', () => {
+  assert.equal(decl.prework, 'node worker.mjs');
+  assert.ok(!decl.prework.includes('..'));   // contract: no traversal out of the task dir
+  assert.ok(Number.isInteger(decl.prework_timeout) && decl.prework_timeout > 0);
   assert.ok(existsSync(join(taskDir, 'worker.mjs')));
   assert.equal(decl.agent_instructions, undefined);   // vestigial field dropped: none task, no agent to instruct
 });
@@ -80,7 +80,7 @@ test('fleet-preferences: running the worker reaches the sweep, and its failure e
   // Behavioural, no network: with no FLEET_GITHUB_TOKEN the sweep throws before its
   // first fetch, so the message on stderr proves the worker actually got into
   // check-fleet-preferences.mjs — and the non-zero exit is the escalation path (the
-  // scheduler converges a failed preprocessing subprocess to a `needs-human` issue).
+  // scheduler converges a failed prework subprocess to a `needs-human` issue).
   const env = { ...process.env, GITHUB_REPOSITORY: 'acme/sheepdog' };
   delete env.FLEET_GITHUB_TOKEN;
   const { code, stderr } = await new Promise((resolve) => {

@@ -1,6 +1,5 @@
 // sheepdog task: fleet-preferences — does every member know where this fleet's users
-// keep their personal preferences? `agent_model: 'none'` with `agent_preprocessing:
-// 'node worker.mjs'`: the whole pass is deterministic code the scheduler runs as a
+// keep their personal preferences? `agent_model: 'none'` with `prework: 'node worker.mjs'`: the whole pass is deterministic code the scheduler runs as a
 // subprocess — no agent, no dispatch issue. The worker calls its sibling, the sweep
 // (check-fleet-preferences.mjs): read every covered member's declaration and write the
 // fleet's `preferences` pointer into the ones that lack it.
@@ -34,14 +33,14 @@ export default {
   id: 'fleet-preferences',
   frequency: 'daily',                    // a member becomes writable the moment its nightly baselining lands the engine that accepts the key — daily is what turns that into "the next morning"
   precondition_signals: [],              // no signal — the sweep reads the fleet itself, over the PAT
-  agent_model: 'none',                   // pure code — no agent (agent-preprocessing DESIGN §4)
+  agent_model: 'none',                   // pure code — no agent (task-prework DESIGN §4)
   expected_outcome: 'none',              // it writes to MEMBERS, never to this repo: no PR here, ever
-  agent_preprocessing: 'node worker.mjs',
+  prework: 'node worker.mjs',
   // Two or three REST reads per member (declaration, the member's vendored engine, and
   // one PUT for the members being written) plus the enumeration, all serial, with a
   // secondary rate limit making it slower still. The same 900s the other sweeps carry,
   // for the same reason: ~10x the expected walk while staying inside the hourly cadence.
-  agent_preprocessing_timeout: 900,
+  prework_timeout: 900,
   required_secrets: ['FLEET_GITHUB_TOKEN'], // the account-spanning PAT — this sweep needs Contents WRITE on it, unlike the read-only two
 
   // Fire daily unconditionally. Every input lives OUTSIDE this repo — another member's

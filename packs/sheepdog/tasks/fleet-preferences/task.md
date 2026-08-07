@@ -1,6 +1,6 @@
 # Fleet preferences — does every member know where this fleet's users' preferences live?
 
-**This task runs no agent.** It is `agent_model: none` with `agent_preprocessing: node worker.mjs`, so the whole pass is the deterministic [`worker.mjs`](worker.mjs) the scheduler runs as a subprocess, which calls its sibling in this folder, the sweep ([`check-fleet-preferences.mjs`](check-fleet-preferences.mjs)). This file is the human-facing record of what that worker does; there is no dispatch issue and no subagent.
+**This task runs no agent.** It is `agent_model: none` with `prework: node worker.mjs`, so the whole pass is the deterministic [`worker.mjs`](worker.mjs) the scheduler runs as a subprocess, which calls its sibling in this folder, the sweep ([`check-fleet-preferences.mjs`](check-fleet-preferences.mjs)). This file is the human-facing record of what that worker does; there is no dispatch issue and no subagent.
 
 ## Why it exists
 
@@ -66,4 +66,4 @@ Its *implementation* reads and writes every repo under the owner, but its declar
 
 ## Failure is loud
 
-A member whose declaration cannot be read, or whose pointer cannot be written (an unusable token, a protected default branch, a 409), is classified `unknown`: it is named in the summary and the sweep exits non-zero. The scheduler treats a non-zero preprocessing subprocess as a failed task and converges a `needs-human` issue, so a missing **Contents write** scope escalates rather than silently leaving members without their pointer.
+A member whose declaration cannot be read, or whose pointer cannot be written (an unusable token, a protected default branch, a 409), is classified `unknown`: it is named in the summary and the sweep exits non-zero. The scheduler treats a non-zero prework subprocess as a failed task and converges a `needs-human` issue, so a missing **Contents write** scope escalates rather than silently leaving members without their pointer.
