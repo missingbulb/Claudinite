@@ -107,6 +107,15 @@ GitHub **Actions** reports results as **check runs**, not the legacy **commit st
 
 A `push` or `workflow_dispatch` run isn't attached to a PR, so the PR-scoped check-run query above doesn't apply to it. Confirm such a run through the GitHub API/MCP tools: `get_job_logs(run_id, failed_only: true)` — "0 failed jobs" means green — or, for a release build, `get_release_by_tag`. Don't `curl` the run's status instead: in a sandboxed session `api.github.com` is proxy-blocked and returns an error body that never matches a success pattern, so a `curl`/`Monitor` poll silently reports "still running" until it times out.
 
+## An auto-merge arming refusal is an answer about the PR's state — read it, never re-arm on a loop
+
+Arming GitHub auto-merge only accepts a PR whose required checks are still **pending**, so both of its refusals are statements about merge state rather than failures to retry:
+
+- *"already in clean status (all checks passed)"* — the checks finished before you got to the arming step (common on fast CI, where the run lands in under a minute). Take it as the verdict and merge directly; re-arming can never succeed, because the condition it needs has already passed.
+- *"in unstable status (required checks are failing)"* — **not** a verdict that anything failed. A check that is queued, or parked at an Actions approval gate, is indistinguishable here from one that genuinely failed. Read the PR or its runs to find out which, and act on that.
+
+Never loop on the arming call waiting for the answer to change: the same PR answers "unstable" and then "clean" seconds later with nothing having changed in between, so a retry loop is reading noise and burns wall clock without advancing anything (one measured run spent ~45% of its session circling a single PR's merge state and still didn't land it). Check the state first, merge when it is clean, and arm auto-merge only while the checks are genuinely still running.
+
 ## Mark large committed fixtures `linguist-vendored` to fix language stats
 
 Large committed fixture files (full-page HTML, generated data dumps) can dwarf actual source by byte count and cause GitHub to mislabel the repo's primary language. Add a `.gitattributes` entry for each such path (e.g. `test/fixtures/*.html linguist-vendored`) to tell Linguist to ignore it; apply the same annotation whenever you add another large generated or fixture file.
