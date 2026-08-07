@@ -20,29 +20,28 @@ self-maintenance cannot detect its own absence. The **usage sweep**
 actually use* and writes `usage-fleet.GENERATED.json` — a file, not issues, because it reports a
 measurement rather than a condition to converge. It exists because a member folds its own skill-usage
 numbers and can therefore only say whether a skill loads *there*; whether a skill earns its place at
-all is fleet-shaped, and nothing inside a member can see it. The **preferences sweep**
-([check-fleet-preferences.mjs](tasks/fleet-preferences/check-fleet-preferences.mjs)) asks *does each member
-know where this fleet's people keep their personal preferences* and **declares it** in the ones that
-don't. It exists because those preferences belong to the fleet's *people* — not to any project, and not to
-the canon, which every fleet mounts and which therefore cannot know whose preferences to name. Only this
-repo knows: it is the fleet.
+all is fleet-shaped, and nothing inside a member can see it. The **pack-seed sweep**
+([check-fleet-pack-seeds.mjs](tasks/fleet-pack-seeds/check-fleet-pack-seeds.mjs)) asks *does each member
+declare what this fleet standardizes on* and **adds the declaration** where it is missing. It exists
+because some packs need a parameter no member can derive — the answer is a fact about the fleet, and canon
+cannot supply it either, since a bootstrap run does not know which fleet it is bootstrapping into. Only
+this repo knows: it is the fleet.
 
-**The preferences sweep is the one that writes to members**, and it stays narrow on purpose: one pack
-declaration (`{ "id": "UserPreferencesStore", "config": { "repo": … } }` — the pack whose session-start
-step reads a person's preferences into their session), one PUT to the member's default branch guarded by
-the blob sha the read returned, idempotent, no issue in either direction. Two rules keep it safe. It
+**The pack-seed sweep is the one that writes to members**, and it stays narrow on purpose: one pack
+declaration from this repo's `packSeeds` list, one PUT to the member's default branch guarded by the blob
+sha the read returned, idempotent, no issue in either direction. Three rules keep it safe. It **names no
+pack** — every id comes from the config, so the enforcer never becomes a second place packs are known. It
 **gates on the member's own mount**: a declared pack whose code is absent is a blocking `config` error
 there, and a member's mount carries only what it declared as of its last converge, so the sweep writes
 only where the pack is already on disk — `not-vendored` is a wait, not a finding, and members converge
-nightly, so the rollout needs no coordination. And it **never overwrites a store someone else set**:
-the fleet is the authority on where its preferences live, but a store set deliberately is a
-decision the sweep cannot second-guess. A dormant member is never written to.
+nightly, so the rollout needs no coordination. And it **seeds, never overrides**: a member that already
+declares the pack, or already carries a config for it, keeps both — the fleet's list is a floor, and a
+choice a repo made is a decision the sweep cannot second-guess. A dormant member is never written to.
 
-The fleet that existed when the pack landed was carried by a **baseline migration** instead (a
-`declarePacks` op, applied by each member's own baselining in the same transactional commit that vendors
-the pack's code). This sweep is the **standing** half: a migration record is dated, retires, and carries
-its value as a literal in shared canon, while the sweep reads the store from this repo's config and so
-keeps serving members adopted after the record is gone.
+A pack arriving with canon reaches the fleet that already exists through a **baseline migration** instead
+(a `declarePacks` op, applied by each member's own baselining in the same transactional commit that
+vendors the pack's code). This sweep is the **standing** half: a migration record is dated and retires,
+while the sweep keeps converging every member the fleet acquires after it is gone.
 
 **One manual lever, not a fifth sweep** — [force-fleet-baseline.mjs](fleet-baseline/force-fleet-baseline.mjs)
 fires every covered member's own `claudinite-scheduler.yml` with `overrides: FORCE_TASKS=baselining`,
@@ -82,7 +81,7 @@ human. Edit the pack; the copy follows.
 `worker.mjs` uses it; force-baseline sits in [fleet-baseline/](fleet-baseline/) beside them, because it
 belongs to no task and its runner is the vendored workflow. The pack root holds just what they all
 need: [fleet-api.mjs](fleet-api.mjs) (cross-repo REST primitives — read-only toward members but for the
-one `putFile` the preferences sweep needs) and
+one `putFile` the pack-seed sweep needs) and
 [fleet-config.mjs](fleet-config.mjs) (the one reader of the entry `config` below).
 
 **Config** — this repo's `.claudinite-checks.json` carries, as its `packs` entry for this pack:
@@ -90,17 +89,17 @@ one `putFile` the preferences sweep needs) and
 ```json
 { "id": "sheepdog", "config": { "owner": "missingbulb", "kind": "user", "exclude": ["owner/repo-a"],
                                 "canonRepo": "missingbulb/Claudinite", "staleDays": 14,
-                                "preferencesRepo": "missingbulb/Sheepdog" } }
+                                "packSeeds": [{ "id": "<a pack>", "config": { … } }] } }
 ```
 
 `owner` (default: this repo's owner) is who to cover; `exclude` is the repos deliberately kept out of
 the fleet (a full `owner/name` each) — a repo is kept out by adding it here. `kind: "user"` today; org
 support is a later addition. `canonRepo` (default `<owner>/Claudinite`) is what a member's stamped ref
 is measured against — named rather than inferred, because a ref tells you nothing about where it came
-from. `staleDays` (default `14`) is how far behind is too far. `preferencesRepo` (default: **this repo**)
-is where this fleet's users keep their personal preferences — the enforcer is the fleet's own repo, so it
-is the natural host; a fleet keeping them elsewhere (a private repo, say) names it here. All three
-default, so an existing sheepdog config keeps working untouched.
+from. `staleDays` (default `14`) is how far behind is too far. `packSeeds` (default: **none**) is what
+this fleet wants every member to declare — each `{ id, config? }`, seeded into members that lack it. This
+list is the **only** place a pack is named: the sweep carries the mechanism, the fleet carries the
+choice. All three default, so an existing sheepdog config keeps working untouched.
 
 **Classification** — all four sweeps are ordinary **pack tasks**, not fleet mechanisms. Their
 *implementation* — an account-spanning PAT — happens to scan every repo under the owner, but their
@@ -111,22 +110,22 @@ how a task is wired. (The task files carry the same note.)
 **How they run** — as the pack's [`fleet-census`](tasks/fleet-census/task.md) (`daily`),
 [`fleet-freshness`](tasks/fleet-freshness/task.md) (`weekly`),
 [`fleet-usage`](tasks/fleet-usage/task.md) (`daily`) and
-[`fleet-preferences`](tasks/fleet-preferences/task.md) (`daily`) scheduled tasks, all `agent_model: none`,
+[`fleet-pack-seeds`](tasks/fleet-pack-seeds/task.md) (`daily`) scheduled tasks, all `agent_model: none`,
 each with its sweep as `prework`. All are `expected_outcome: none` except usage
 (`merged-pr`), because its output IS a tracked file and an
 auto-merging PR keeps that write inside the outcome taxonomy, lets this repo's CI gate a malformed
-file, and makes the daily PR stream a browsable audit trail. The preferences sweep is `none` for a
+file, and makes the daily PR stream a browsable audit trail. The pack-seed sweep is `none` for a
 different reason: its write goes to **other** repos, and the ceiling describes what a task may do to its
 own. Freshness is weekly because drift is
 measured in days — a daily sweep would re-ask a question whose answer cannot have changed; usage is
-daily because the members fold daily; preferences is daily because a member becomes writable the moment
-its nightly baselining lands, and daily makes that "the next morning". There is **no coverage workflow** — preprocessing
+daily because the members fold daily; pack seeds is daily because a member becomes writable the moment
+its nightly converge vendors the pack, and daily makes that "the next morning". There is **no coverage workflow** — preprocessing
 runs Action-side inside this repo's one scheduler workflow, so the repo Actions secret is already
 reachable there; each task's `required_secrets: ['FLEET_GITHUB_TOKEN']` stamps the name into that
 workflow's env and is what asks the owner for it (a fine-grained PAT spanning the owner's repos:
 Metadata read, **Contents read and write**, Issues read/write — freshness adds no scope, and the
-preferences sweep is what raises Contents from read-only across the fleet to read/write, because writing
-one settings key into each member is its whole job; Contents write on this repo also covers
+pack-seed sweep is what raises Contents from read-only across the fleet to read/write, because writing
+one declaration into each member is its whole job; Contents write on this repo also covers
 baseline-migration retirement). A workflow that exists only to hold a secret is redundant
 ([packs/basics/scheduled-tasks.md](../basics/scheduled-tasks.md)) — the force-baseline workflow above is
 not that: it exists because the operation is manual, and it reads the same secret only incidentally.
@@ -154,7 +153,7 @@ state: a roster that names only the exceptions has silent holes, and a reader ca
 from "fell out of the report".
 
 **When they fail** — a repo the census cannot classify is `unknown`, never uncovered; a member the
-freshness sweep cannot probe is `unknown`, never behind; a member the preferences sweep cannot read or
-write is `unknown`, never assumed pointed-home: no issue opened, no open issue closed on its
+freshness sweep cannot probe is `unknown`, never behind; a member the pack-seed sweep cannot read or
+write is `unknown`, never assumed converged: no issue opened, no open issue closed on its
 behalf, and a non-zero exit. A non-zero preprocessing subprocess fails the task, and the scheduler
 converges one open `needs-human` issue for it.

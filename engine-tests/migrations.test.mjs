@@ -242,9 +242,9 @@ test('apply.mjs really performs the pack-declaration op — the wire, not just t
     const out = execFileSync(process.execPath, [join(canon, 'migrations/apply.mjs')], {
       encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: root },
     });
-    assert.match(out, /declared UserPreferencesStore/);
+    assert.match(out, /declared claude-code-web-users-support/);
     const after = JSON.parse(readFileSync(join(root, '.claudinite-checks.json'), 'utf8'));
-    assert.deepEqual(after.packs, ['basics', { id: 'UserPreferencesStore', config: { repo: 'missingbulb/Sheepdog' } }]);
+    assert.deepEqual(after.packs, ['basics', { id: 'claude-code-web-users-support', config: { repo: 'missingbulb/Sheepdog' } }]);
     // …and running it again writes nothing at all.
     assert.equal(execFileSync(process.execPath, [join(canon, 'migrations/apply.mjs')], {
       encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: root },
@@ -252,18 +252,18 @@ test('apply.mjs really performs the pack-declaration op — the wire, not just t
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test('user-preferences-store migration: seeds the pack with the fleet\'s store, and tracks who still lacks it', async () => {
-  const m = (await loadMigrations()).find((x) => x.id === 'user-preferences-store');
-  assert.ok(m, 'user-preferences-store migration is discovered');
+test('claude-code-web-users-support migration: seeds the pack with the fleet\'s store, and tracks who still lacks it', async () => {
+  const m = (await loadMigrations()).find((x) => x.id === 'claude-code-web-users-support');
+  assert.ok(m, 'claude-code-web-users-support migration is discovered');
   assert.equal(m.retire, 'auto');
   // The one-time backfill: the pack every member should run, and the store none of
   // them can derive.
-  assert.deepEqual(m.declarePacks, [{ id: 'UserPreferencesStore', config: { repo: 'missingbulb/Sheepdog' } }]);
+  assert.deepEqual(m.declarePacks, [{ id: 'claude-code-web-users-support', config: { repo: 'missingbulb/Sheepdog' } }]);
 
   const read = (json) => async () => (json === null ? null : JSON.stringify(json));
   assert.equal(await m.legacyPresent(() => false, read({ packs: ['basics'] })), true, 'pack undeclared -> legacy');
-  assert.equal(await m.legacyPresent(() => false, read({ packs: ['UserPreferencesStore'] })), false, 'declared -> done');
-  assert.equal(await m.legacyPresent(() => false, read({ packs: [{ id: 'UserPreferencesStore', config: { repo: 'o/other' } }] })), false,
+  assert.equal(await m.legacyPresent(() => false, read({ packs: ['claude-code-web-users-support'] })), false, 'declared -> done');
+  assert.equal(await m.legacyPresent(() => false, read({ packs: [{ id: 'claude-code-web-users-support', config: { repo: 'o/other' } }] })), false,
     'declared with a store of its own -> done, whatever it names');
   assert.equal(await m.legacyPresent(() => false, read(null)), false, 'no declaration -> not a member, not held');
   assert.equal(await m.legacyPresent(() => false, async () => 'nope'), false, 'unparsable -> not held');

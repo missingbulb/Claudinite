@@ -92,7 +92,7 @@
       }
     },
     {
-      "id": "UserPreferencesStore",
+      "id": "claude-code-web-users-support",
       "config": {
         "repo": "missingbulb/Sheepdog"
       },

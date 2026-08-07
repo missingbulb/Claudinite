@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveStore, fileFor, isUsableIdentity, DEFAULT_PATH } from '../../packs/UserPreferencesStore/store.mjs';
+import { resolveStore, fileFor, isUsableIdentity, DEFAULT_PATH } from '../../packs/claude-code-web-users-support/store.mjs';
 
 // The pack's ONE reader of its own entry config, shared by the session-start step and
 // the conformance rule. Its tests are here for the same reason it is a module rather

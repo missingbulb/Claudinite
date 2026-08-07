@@ -4,7 +4,7 @@
 // It lives at the pack root, not inside a task, because EVERY sweep reads the same
 // entry: the census (tasks/fleet-census/) needs `owner` and `exclude`, the freshness
 // sweep (tasks/fleet-freshness/) needs those plus `canonRepo` and `staleDays`, the
-// preferences sweep (tasks/fleet-preferences/) those plus `preferencesRepo`. A
+// pack-seed sweep (tasks/fleet-pack-seeds/) those plus `packSeeds`. A
 // second reader would be a second place for the owner/exclude semantics to drift —
 // and this is what the file-placement skill calls lifting a shared dependency to the
 // nearest common ancestor: distance 2 from each task instead of one task reaching
@@ -13,10 +13,10 @@
 // The sheepdog repo's .claudinite-checks.json carries, on its sheepdog pack entry:
 //   { "id": "sheepdog", "config": { owner: "missingbulb", kind: "user", exclude: ["owner/repo", ...],
 //                                   canonRepo: "missingbulb/Claudinite", staleDays: 14,
-//                                   preferencesRepo: "missingbulb/Sheepdog" } }
+//                                   packSeeds: [{ id: "<a pack>", config: { ... } }] } }
 // owner is who to cover (default: the sheepdog repo's own owner); exclude is the repos
 // deliberately kept out (a full owner/name each, lowercased). canonRepo and staleDays
-// are the freshness sweep's two knobs, preferencesRepo the preferences sweep's one, and
+// are the freshness sweep's two knobs, packSeeds the pack-seed sweep's one, and
 // all three default, so an existing config keeps working untouched. Callers read the
 // home repo's file raw (fetched over the API, no
 // engine on hand), so this resolves the entry itself — legacy top-level
@@ -39,12 +39,18 @@ export function parseSheepdogConfig(cfg, home) {
   // legitimately go quiet for longer raises it rather than living with false alarms.
   const raw = Number(sd.staleDays);
   const staleDays = Number.isFinite(raw) && raw > 0 ? raw : 14;
-  // Where this fleet's people keep their personal preferences — the store the
-  // preferences sweep declares in every member. Defaults to THIS repo: the enforcer is
-  // the fleet's own repo, so it is the natural host for content that belongs to the
-  // fleet's users rather than to any one project (and never to the canon, which is
-  // shared by every fleet). A fleet that keeps them somewhere else — a private repo,
-  // say — names it here, and nothing else about the sweep changes.
-  const preferencesRepo = String(sd.preferencesRepo ?? home);
-  return { owner, exclude, canonRepo, staleDays, preferencesRepo };
+  // The pack declarations this fleet wants in every member — each `{ id, config? }`,
+  // seeded by the pack-seed sweep. THE ENFORCER NAMES NO PACK: this list is the whole
+  // vocabulary, supplied by the fleet that declares this pack, because the packs a
+  // fleet standardizes on (and the parameters only the fleet knows — where its
+  // people's files live, which repo holds something shared) are its business and not
+  // this pack's. Absent or malformed is an empty list: a fleet asking its members to
+  // declare nothing in particular is an ordinary fleet.
+  const packSeeds = (Array.isArray(sd.packSeeds) ? sd.packSeeds : [])
+    .filter((seed) => seed && typeof seed === 'object' && typeof seed.id === 'string' && seed.id.trim())
+    .map((seed) => ({
+      id: seed.id.trim(),
+      ...(seed.config !== null && typeof seed.config === 'object' && !Array.isArray(seed.config) ? { config: seed.config } : {}),
+    }));
+  return { owner, exclude, canonRepo, staleDays, packSeeds };
 }

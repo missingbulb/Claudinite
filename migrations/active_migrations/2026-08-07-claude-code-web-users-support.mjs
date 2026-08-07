@@ -1,8 +1,9 @@
-// One-time seed of the UserPreferencesStore pack into the EXISTING fleet's
-// declarations, naming this fleet's store.
+// One-time seed of the claude-code-web-users-support pack into the EXISTING fleet's
+// declarations, naming this fleet's preferences store.
 //
-// The pack reads the current user's personal interaction preferences into their
-// session from a repo its entry config names. New repos get the pack from
+// The pack carries what a project can offer people working from Claude Code on the
+// WEB, where the session knows who they are — today, reading the current user's
+// personal interaction preferences into their session from a repo its config names. New repos get the pack from
 // `--init` (it flags `seededByDefault`) and the store from its adoption question;
 // this record catches the repos bootstrapped before the pack existed, so today's
 // sessions do not silently lose the preferences they had.
@@ -29,17 +30,17 @@
 // converged as far as this record is concerned.
 // retire: 'auto' — self-retires once the fleet has converged and stayed quiet a cycle.
 export default {
-  id: 'user-preferences-store',
+  id: 'claude-code-web-users-support',
   landed: '2026-08-07',
-  summary: 'seed the UserPreferencesStore pack into existing members, naming the fleet\'s preferences repo',
-  declarePacks: [{ id: 'UserPreferencesStore', config: { repo: 'missingbulb/Sheepdog' } }],
+  summary: 'seed the claude-code-web-users-support pack into existing members, naming the fleet\'s preferences repo',
+  declarePacks: [{ id: 'claude-code-web-users-support', config: { repo: 'missingbulb/Sheepdog' } }],
   legacyPresent: async (exists, read) => {
     const raw = await read('.claudinite-checks.json');
     if (raw == null) return false;
     try {
       const { packs } = JSON.parse(raw);
       if (!Array.isArray(packs)) return false;
-      return !packs.some((e) => (typeof e === 'string' ? e : e?.id) === 'UserPreferencesStore');
+      return !packs.some((e) => (typeof e === 'string' ? e : e?.id) === 'claude-code-web-users-support');
     } catch {
       return false; // unparsable settings are the world runner's finding, not this record's
     }

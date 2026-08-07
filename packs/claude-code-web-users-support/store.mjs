@@ -8,7 +8,7 @@
 //
 // THE SHAPE, on this pack's own entry in `.claudinite-checks.json`:
 //
-//   { "id": "UserPreferencesStore", "config": { "repo": "owner/name", "path": "preferences" } }
+//   { "id": "claude-code-web-users-support", "config": { "repo": "owner/name", "path": "preferences" } }
 //
 // `repo` is required — the store is a repository, because personal preferences
 // belong to a group of people rather than to any one project, and a repo is the

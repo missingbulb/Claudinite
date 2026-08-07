@@ -21,17 +21,28 @@ test('parseSheepdogConfig: reads owner + exclude; defaults owner to the home own
   assert.throws(() => parseSheepdogConfig({}, 'acme/fleet'), /declares no sheepdog config/);
 });
 
-test('parseSheepdogConfig: preferencesRepo defaults to the enforcer repo itself', () => {
-  // The enforcer IS the fleet's own repo, so it is the natural host for content that
-  // belongs to the fleet's users rather than to any one project — and defaulting means
-  // an existing sheepdog config needs no edit to gain the preferences sweep.
-  assert.equal(parseSheepdogConfig({ packs: [{ id: 'sheepdog', config: { owner: 'acme' } }] }, 'acme/Fleet').preferencesRepo, 'acme/Fleet');
-  // A fleet keeping them elsewhere (a private repo, say) names it, and nothing else changes.
-  assert.equal(parseSheepdogConfig({ packs: [{ id: 'sheepdog', config: { preferencesRepo: 'acme/People' } }] }, 'acme/Fleet').preferencesRepo, 'acme/People');
-  // NOT lowercased, unlike owner/exclude: it is written verbatim into every member's
-  // settings and read back as a repo path, so the case the owner typed is the case
-  // that lands.
-  assert.equal(parseSheepdogConfig({ packs: [{ id: 'sheepdog', config: {} }] }, 'missingbulb/Sheepdog').preferencesRepo, 'missingbulb/Sheepdog');
+test('parseSheepdogConfig: packSeeds is the fleet\'s own vocabulary, and defaults to none', () => {
+  // The enforcer names no pack: this list is where every seeded id comes from, supplied
+  // by the fleet that declares the pack. A fleet asking its members to declare nothing
+  // in particular is an ordinary fleet, so absent is an empty list, not an error.
+  assert.deepEqual(parseSheepdogConfig({ packs: [{ id: 'sheepdog', config: { owner: 'acme' } }] }, 'acme/Fleet').packSeeds, []);
+  const seeds = parseSheepdogConfig({
+    packs: [{ id: 'sheepdog', config: { packSeeds: [{ id: 'a-pack', config: { repo: 'acme/People' } }, { id: 'b-pack' }] } }],
+  }, 'acme/Fleet').packSeeds;
+  assert.deepEqual(seeds, [{ id: 'a-pack', config: { repo: 'acme/People' } }, { id: 'b-pack' }]);
+
+  // Ids are NOT lowercased, unlike owner/exclude: an id is written verbatim into every
+  // member's settings and matched against a pack directory, so the case the fleet typed
+  // is the case that lands.
+  assert.deepEqual(parseSheepdogConfig({ packs: [{ id: 'sheepdog', config: { packSeeds: [{ id: 'MixedCase' }] } }] }, 'a/f').packSeeds,
+    [{ id: 'MixedCase' }]);
+
+  // Junk in the list is dropped rather than written: a seed with no id names nothing,
+  // and a non-object config is not parameters.
+  assert.deepEqual(parseSheepdogConfig({
+    packs: [{ id: 'sheepdog', config: { packSeeds: [null, 'a-pack', { id: '  ' }, { id: 'ok', config: 'nope' }] } }],
+  }, 'a/f').packSeeds, [{ id: 'ok' }]);
+  assert.deepEqual(parseSheepdogConfig({ packs: [{ id: 'sheepdog', config: { packSeeds: 'a-pack' } }] }, 'a/f').packSeeds, []);
 });
 
 test('parseSheepdogConfig: canonRepo and staleDays default, so an existing config keeps working', () => {

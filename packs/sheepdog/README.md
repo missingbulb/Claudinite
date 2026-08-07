@@ -5,7 +5,7 @@ under an owner. Opt-in (a dedicated sheepdog repo declares it; **not** seeded by
 standardizes the fleet coverage that used to be bespoke Claudinite infrastructure into a declaration.
 
 Thin by design: prose + the config schema (the sheepdog pack entry's `config` = `{ owner, kind, exclude,
-canonRepo, staleDays, preferencesRepo }`) + four cross-repo **sweeps**, each with the one agentless
+canonRepo, staleDays, packSeeds }`) + four cross-repo **sweeps**, each with the one agentless
 scheduled task that runs it (the sweep is its `prework`; no workflow of its own) — plus one
 **manual lever** that has no cadence and therefore does have a workflow:
 
@@ -14,20 +14,20 @@ scheduled task that runs it (the sweep is its `prework`; no workflow of its own)
 | [check-fleet-coverage.mjs](tasks/fleet-census/check-fleet-coverage.mjs) | [fleet-census](tasks/fleet-census/task.md) (daily) | is this repo a **member**? → adoption issues |
 | [check-fleet-freshness.mjs](tasks/fleet-freshness/check-fleet-freshness.mjs) | [fleet-freshness](tasks/fleet-freshness/task.md) (weekly) | is a member **keeping up**? → drift issues |
 | [aggregate-fleet-usage.mjs](tasks/fleet-usage/aggregate-fleet-usage.mjs) | [fleet-usage](tasks/fleet-usage/task.md) (daily) | what does the fleet **actually use**? → `usage-fleet.GENERATED.json` |
-| [check-fleet-preferences.mjs](tasks/fleet-preferences/check-fleet-preferences.mjs) | [fleet-preferences](tasks/fleet-preferences/task.md) (daily) | does a member know where the fleet's people keep their **preferences**? → the pack declaration, written |
+| [check-fleet-pack-seeds.mjs](tasks/fleet-pack-seeds/check-fleet-pack-seeds.mjs) | [fleet-pack-seeds](tasks/fleet-pack-seeds/task.md) (daily) | does a member declare what this fleet **standardizes on**? → the declaration, written |
 | [force-fleet-baseline.mjs](fleet-baseline/force-fleet-baseline.mjs) + [follow-fleet-baseline.mjs](fleet-baseline/follow-fleet-baseline.mjs) | *(no task — the [fleet-baseline workflow](stubs/workflows/fleet-baseline.yml), `workflow_dispatch` only)* | make every member baseline **now**, watch each one finish → what the fleet did |
 
 The second exists because per-project scheduling made every member maintain itself and, in doing so,
 removed the last thing that looked at a member from the **outside** — self-maintenance cannot detect its
 own absence. The third exists for the same shape of reason one rung up: a member can say whether a
 skill loads *there*, and only a view across every member can say whether it earns its place at all.
-The fourth is the only one that **writes** to a member: personal preferences belong to a fleet's *people*,
-so each member declares the `UserPreferencesStore` pack and names the repo holding them (that pack's
-session-start step reads the current user's file from it) — and only the enforcer can name it, because the
-canon does not know which fleet it is being mounted into.
+The fourth is the only one that **writes** to a member: some packs need a parameter no member can derive,
+because the answer is a fact about the *fleet* — and canon cannot supply it either, since a bootstrap run
+does not know which fleet it is bootstrapping into. This repo's `packSeeds` config lists what its members
+should declare, and the sweep converges that list. It names no pack itself: the fleet supplies every id.
 
 A member that declares itself **dormant** (`"dormant": true` in its own declaration) is out of the
-freshness sweep, out of the usage denominator, and never written to by the preferences sweep — its
+freshness sweep, out of the usage denominator, and never written to by the pack-seed sweep — its
 scheduler is stopped, so its mount falls behind by design, its silence says nothing about any skill,
 and a commit landed in it from outside is the upkeep it opted out of. It stays a **member**: membership
 is unchanged, because dormancy is about upkeep, not membership.

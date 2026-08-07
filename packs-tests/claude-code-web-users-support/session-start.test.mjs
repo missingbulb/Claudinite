@@ -6,7 +6,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
-const STEP = join(dirname(fileURLToPath(import.meta.url)), '../../packs/UserPreferencesStore/session-start.mjs');
+const STEP = join(dirname(fileURLToPath(import.meta.url)), '../../packs/claude-code-web-users-support/session-start.mjs');
 
 // The pack's session-start step, run exactly as the engine runs it: a subprocess,
 // handed its own entry config in CLAUDINITE_PACK_CONFIG and the session's identity in

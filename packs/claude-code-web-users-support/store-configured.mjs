@@ -13,19 +13,19 @@ import { resolveStore } from './store.mjs';
 const rule = {
   id: 'preferences-store-configured',
   severity: 'advisory',
-  description: 'A declared UserPreferencesStore names a store its session-start step can read',
-  doc: 'packs/UserPreferencesStore/RULES.md',
+  description: 'A declared claude-code-web-users-support pack names a store its session-start step can read',
+  doc: 'packs/claude-code-web-users-support/RULES.md',
   why: 'a declared pack with no store injects nobody\'s preferences and says so only in a fail-soft note nobody reads twice',
 
   run(ctx) {
     // The pack's own entry config, through the engine's normalized per-pack view.
-    const config = ctx.config.packConfig?.UserPreferencesStore;
+    const config = ctx.config.packConfig?.['claude-code-web-users-support'];
     if (resolveStore(config ?? null)) return [];
     return [finding(rule, {
       file: '.claudinite-checks.json',
       what: config === undefined
-        ? 'the UserPreferencesStore pack is declared but names no store'
-        : `the UserPreferencesStore pack's store does not resolve (${JSON.stringify(config)})`,
+        ? 'the claude-code-web-users-support pack is declared but names no store'
+        : `the claude-code-web-users-support pack's store does not resolve (${JSON.stringify(config)})`,
       fix: 'give the pack entry a "config": { "repo": "owner/name" } naming the repo that holds this project\'s users\' preferences — "path" is optional and defaults to preferences/',
     })];
   },

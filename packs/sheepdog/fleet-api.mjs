@@ -9,9 +9,9 @@
 // specific pack: it is the generic "talk to many repos" layer, no more.
 //
 // It is READ-ONLY toward members but for ONE primitive — `putFile`, which the
-// preferences sweep uses to land the fleet's preferences-store declaration in a
-// member. Keeping the write to a single named function is deliberate: "what can
-// this module change in someone else's repo" then has exactly one answer to read.
+// pack-seed sweep uses to land a declaration this fleet wants in every member.
+// Keeping the write to a single named function is deliberate: "what can this module
+// change in someone else's repo" then has exactly one answer to read.
 
 import { isDormant } from '../../engine/checks/helpers/repo-context.mjs';
 

@@ -5,30 +5,30 @@ import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { validateTaskDeclaration } from '../../../../engine/scheduler/task-contract.mjs';
-import decl from '../../../../packs/sheepdog/tasks/fleet-preferences/task.mjs';
+import decl from '../../../../packs/sheepdog/tasks/fleet-pack-seeds/task.mjs';
 import census from '../../../../packs/sheepdog/tasks/fleet-census/task.mjs';
 
-// The sheepdog pack's fleet-preferences task: the enforcer telling every member where
-// this fleet's users keep their personal preferences. Same agentless shape as the other
+// The sheepdog pack's fleet-pack-seeds task: the enforcer converging the pack
+// declarations this fleet standardizes on. Same agentless shape as the other
 // sweeps and locked down the same way — the declaration satisfies the contract the
 // scheduler and executor both read, and the worker INVOKES the sweep rather than
-// reimplementing it (a copy would rot against check-fleet-preferences.mjs).
+// reimplementing it (a copy would rot against check-fleet-pack-seeds.mjs).
 
 const packRoot = join(dirname(fileURLToPath(import.meta.url)), '../../../../packs/sheepdog');
-const taskDir = join(packRoot, 'tasks/fleet-preferences');
+const taskDir = join(packRoot, 'tasks/fleet-pack-seeds');
 const workerSrc = readFileSync(join(taskDir, 'worker.mjs'), 'utf8');
-const sweepSrc = readFileSync(join(taskDir, 'check-fleet-preferences.mjs'), 'utf8');
+const sweepSrc = readFileSync(join(taskDir, 'check-fleet-pack-seeds.mjs'), 'utf8');
 
 // --- the declaration ----------------------------------------------------------
 
-test('fleet-preferences: the declaration satisfies the task contract', () => {
+test('fleet-pack-seeds: the declaration satisfies the task contract', () => {
   assert.deepEqual(validateTaskDeclaration(decl), []);
 });
 
-test('fleet-preferences: daily, agentless, and ceilinged at "none" — its write goes to OTHER repos', () => {
-  assert.equal(decl.id, 'fleet-preferences');      // must match its directory name (discover.mjs)
-  // A member becomes writable the moment its nightly baselining lands the engine that
-  // accepts the key; daily is what turns that into "the next morning".
+test('fleet-pack-seeds: daily, agentless, and ceilinged at "none" — its write goes to OTHER repos', () => {
+  assert.equal(decl.id, 'fleet-pack-seeds');      // must match its directory name (discover.mjs)
+  // A member becomes writable the moment its nightly converge vendors the pack; daily
+  // is what turns that into "the next morning".
   assert.equal(decl.frequency, 'daily');
   assert.equal(decl.agent_model, 'none');
   // Not a contradiction with a sweep that writes: the ceiling describes what a task may
@@ -37,14 +37,14 @@ test('fleet-preferences: daily, agentless, and ceilinged at "none" — its write
   assert.deepEqual(decl.precondition_signals, []);
 });
 
-test('fleet-preferences: an ordinary pack task — not wired as a fleet mechanism', () => {
+test('fleet-pack-seeds: an ordinary pack task — not wired as a fleet mechanism', () => {
   // Same classification the other sweeps carry (per-project-scheduling DESIGN §6): the
   // cross-repo reach is in the implementation, never in the wiring.
   assert.equal(decl.session_scope, undefined);
   assert.ok(!decl.precondition_signals.includes('fleet'));
 });
 
-test('fleet-preferences: the sweep is the prework, bounded and task-local', () => {
+test('fleet-pack-seeds: the sweep is the prework, bounded and task-local', () => {
   assert.equal(decl.prework, 'node worker.mjs');
   assert.ok(!decl.prework.includes('..'));   // contract: no traversal out of the task dir
   assert.ok(Number.isInteger(decl.prework_timeout) && decl.prework_timeout > 0);
@@ -52,7 +52,7 @@ test('fleet-preferences: the sweep is the prework, bounded and task-local', () =
   assert.equal(decl.agent_instructions, undefined);   // vestigial field dropped: none task, no agent to instruct
 });
 
-test('fleet-preferences: one fleet secret, shared with the other sweeps — but it needs Contents WRITE', () => {
+test('fleet-pack-seeds: one fleet secret, shared with the other sweeps — but it needs Contents WRITE', () => {
   assert.deepEqual(decl.required_secrets, ['FLEET_GITHUB_TOKEN']);
   assert.deepEqual(decl.required_secrets, census.required_secrets);
   // The scope bump is the sweep's own business to explain: it is the only thing in the
@@ -61,7 +61,7 @@ test('fleet-preferences: one fleet secret, shared with the other sweeps — but 
   assert.match(sweepSrc, /Contents READ AND WRITE/);
 });
 
-test('fleet-preferences: fires unconditionally, with a reason', () => {
+test('fleet-pack-seeds: fires unconditionally, with a reason', () => {
   const v = decl.precondition({}, {});
   assert.equal(v.run, true);
   assert.match(v.reason, /\S/);
@@ -69,17 +69,17 @@ test('fleet-preferences: fires unconditionally, with a reason', () => {
 
 // --- the worker delegates to the sweep ----------------------------------------
 
-test('fleet-preferences: the worker imports the pack\'s sweep instead of reimplementing it', () => {
-  assert.match(workerSrc, /from '\.\/check-fleet-preferences\.mjs'/);
-  for (const marker of ['/user/repos', 'classifyPreferences', 'parseSheepdogConfig', 'withPreferences']) {
+test('fleet-pack-seeds: the worker imports the pack\'s sweep instead of reimplementing it', () => {
+  assert.match(workerSrc, /from '\.\/check-fleet-pack-seeds\.mjs'/);
+  for (const marker of ['/user/repos', 'classifySeed', 'parseSheepdogConfig', 'withSeeds']) {
     assert.ok(!workerSrc.includes(marker), `worker.mjs should not reimplement the sweep (found ${marker})`);
   }
 });
 
-test('fleet-preferences: running the worker reaches the sweep, and its failure exits non-zero', async () => {
+test('fleet-pack-seeds: running the worker reaches the sweep, and its failure exits non-zero', async () => {
   // Behavioural, no network: with no FLEET_GITHUB_TOKEN the sweep throws before its
   // first fetch, so the message on stderr proves the worker actually got into
-  // check-fleet-preferences.mjs — and the non-zero exit is the escalation path (the
+  // check-fleet-pack-seeds.mjs — and the non-zero exit is the escalation path (the
   // scheduler converges a failed prework subprocess to a `needs-human` issue).
   const env = { ...process.env, GITHUB_REPOSITORY: 'acme/sheepdog' };
   delete env.FLEET_GITHUB_TOKEN;
@@ -94,7 +94,19 @@ test('fleet-preferences: running the worker reaches the sweep, and its failure e
 
 // --- it stays in its own lane -------------------------------------------------
 
-test('fleet-preferences: the only sweep that writes to a member, and it reaches up for what is shared', () => {
+test('fleet-pack-seeds: names no pack — every id comes from the fleet\'s own config', () => {
+  // The constraint that keeps the enforcer from becoming a second place packs are
+  // known. The sweep carries the mechanism; the fleet that declares this pack supplies
+  // which packs, in its own `packSeeds`.
+  const packSrc = [sweepSrc, workerSrc, readFileSync(join(taskDir, 'task.mjs'), 'utf8'),
+    readFileSync(join(packRoot, 'fleet-config.mjs'), 'utf8')].join('\n');
+  for (const known of ['claude-code-web-users-support', 'UserPreferencesStore', 'preferences']) {
+    assert.ok(!packSrc.includes(known), `the sheepdog pack must not name "${known}"`);
+  }
+  assert.match(sweepSrc, /packSeeds/);
+});
+
+test('fleet-pack-seeds: the only sweep that writes to a member, and it reaches up for what is shared', () => {
   // Each sweep lives IN its own task folder and reaches UP for what is shared — never
   // sideways into another task's folder, and never with a private copy.
   assert.match(sweepSrc, /from '\.\.\/\.\.\/fleet-api\.mjs'/);
