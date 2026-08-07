@@ -685,3 +685,13 @@ These override the earlier sections where they conflict.
    built on it, and a URL endpoint would add a callable credential to every
    repo's Action for no reduction in moving parts. Revisit only if the platform
    grows a first-class routine-invocation API with equivalent auth.
+7. **Delivery lands every cycle (owner, 2026-08-07; #690).** The 2026-08-07
+   forced fleet deployment of this rework surfaced a race in the #649 in-cycle
+   landing (an empty run list read 0.3s after dispatching the verification run
+   was judged terminal), stranding seven members' green maintenance PRs. Fixed
+   the same day: `landAttempt` waits for the runs the worker itself dispatched,
+   and the arm predicate follows #677's insight — gate on what the base branch
+   REQUIRES, with `land` (verify-then-merge, no doomed arm) on unprotected
+   bases. The deployment itself modeled the shelf-life rule (#684): forced
+   fleet passes, watched to terminal state, stragglers landed in-session —
+   never "check tomorrow".
