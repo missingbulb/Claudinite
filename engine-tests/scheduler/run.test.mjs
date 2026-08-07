@@ -505,3 +505,34 @@ test('forcedTaskIds reads only FORCE_TASKS, trimming and dropping blanks', () =>
   assert.deepEqual(forcedTaskIds({}), []);
   assert.deepEqual(forcedTaskIds({ FORCE_BASELINING: 'true' }), [], 'the superseded key forces nothing');
 });
+
+test('FORCE_TASKS re-runs a slot the schedule already ran — exactly-once must not swallow the operator', async () => {
+  // The exact silent-failure shape: the slot's dispatch issue already exists
+  // (closed after a successful run), and the operator forces a re-run mid-day.
+  // Without the per-run slot marker, planDispatch's state=all title match
+  // answered 'skip' and FORCE_TASKS did nothing at all.
+  const { evaluations } = await planRun({
+    tasks: [notDue('baselining')], schedule: D, ...MIDDAY,
+    overrides: { FORCE_TASKS: 'baselining' },
+    runId: '424242',
+    collectSignals: async () => ({}),
+    existingIssuesFor: async () => [
+      { number: 9, title: '[claudinite-task] p/baselining d2026-07-28', state: 'closed' },
+    ],
+  });
+  assert.equal(evaluations[0].slotId, 'd2026-07-28~f424242', 'a forced dispatch slot carries the run marker');
+  assert.equal(evaluations[0].dispatch.action, 'create', 'the already-run slot must not block the forced dispatch');
+});
+
+test('a forced dispatch still never stacks on an OPEN dispatch of the same family', async () => {
+  const { evaluations } = await planRun({
+    tasks: [notDue('baselining')], schedule: D, ...MIDDAY,
+    overrides: { FORCE_TASKS: 'baselining' },
+    runId: '424242',
+    collectSignals: async () => ({}),
+    existingIssuesFor: async () => [
+      { number: 9, title: '[claudinite-task] p/baselining d2026-07-28', state: 'open' },
+    ],
+  });
+  assert.equal(evaluations[0].dispatch.action, 'suppress', 'at-most-one-open holds for forced runs too');
+});

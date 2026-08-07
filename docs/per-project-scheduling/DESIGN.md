@@ -260,7 +260,10 @@ refresh, not workflow edits). It runs
    inputs. It reaches the engine as `CLAUDINITE_OVERRIDES`, and the engine
    understands exactly one key: **`FORCE_TASKS=<comma-separated task ids>`**.
    A forced task is put in the due list under its most-recent slot **and runs
-   without its precondition being consulted at all** — forcing is a decision the
+   without its precondition being consulted at all** *(as-built 2026-08-06: a
+   forced dispatch's slot id carries a per-run marker, `<slot>~f<run-id>`, so the
+   exactly-once guard never silently swallows an operator re-run of a slot the
+   schedule already ran; at-most-one-open still applies)* — forcing is a decision the
    operator already made, so nothing asks the task whether it agrees, and no task
    declaration mentions forcing anywhere (#515). The engine learns "run these
    ids", never what any of them do. An id matching no discovered task forces

@@ -171,7 +171,7 @@ export function renderSummary(evaluations) {
 // run; a claim silently swallowing the task the operator asked for would make that
 // run do nothing it was started for.
 export async function planRun({
-  tasks, schedule, now, lastSuccess, overrides = {}, config = {},
+  tasks, schedule, now, lastSuccess, overrides = {}, config = {}, runId = null,
   collectSignals, packConfigFor = () => ({}), existingIssuesFor = async () => [],
 }) {
   if (isDormant(config)) return { evaluations: [], dormant: true };
@@ -202,7 +202,15 @@ export async function planRun({
   const claimants = verdicts.filter((v) => v.pre.run && v.pre.exclusive).map((v) => `${v.task.pack}/${v.task.id}`);
 
   const evaluations = [];
-  for (const { task, slotId, forced, pre } of verdicts) {
+  for (const { task, slotId: dueSlot, forced, pre } of verdicts) {
+    // A FORCED dispatch carries a per-run marker in its slot id. The exactly-once
+    // guard keys on the (task, slot) title, and a forced run's whole point is to
+    // re-run a slot the schedule already ran — without the marker, planDispatch's
+    // state=all title match silently skipped exactly the dispatch the operator
+    // asked for. The marker keeps every title unique and every record attributable
+    // to the hand-started run that caused it. At-most-one-open still applies: a
+    // forced run never stacks a second dispatch on one that is still open.
+    const slotId = forced && runId !== null ? `${dueSlot}~f${runId}` : dueSlot;
     const rec = {
       pack: task.pack, task: task.id, slotId,
       model: task.decl.agent_model, outcome: task.decl.expected_outcome,
@@ -436,6 +444,9 @@ async function main() {
 
   const { evaluations } = await planRun({
     tasks, schedule, now, lastSuccess, overrides, config,
+    // The per-run marker a FORCED dispatch's slot id carries (see planRun) —
+    // the Actions run id, unique per hand-started run by the platform.
+    runId: process.env.GITHUB_RUN_ID ?? null,
     collectSignals: (names) => collectSignals(gh, ctx, names),
     packConfigFor,
     existingIssuesFor: (pack, task) => existingIssuesViaSearch(gh, repo, pack, task),
