@@ -81,7 +81,9 @@ goes through your GitHub tools.
    or widen it: if the precondition ruled something out, it stays out.
 
    **The issue also names every artifact this run's prework created** — a `### Delivered
-   by prework` section listing a PR number and branch ref. Pass it to the subagent as
+   by prework` section listing a PR number and branch ref. (A dispatch filed before the
+   2026-08-06 rename titles it `### Delivered by preprocessing` — the same section; read
+   either heading.) Pass it to the subagent as
    given; those are the artifacts it works on, and if the section is absent there are none.
 
    What the subagent itself creates is recorded the same way: when it opens a PR or a branch,
