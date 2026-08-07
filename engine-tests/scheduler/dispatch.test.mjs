@@ -302,3 +302,12 @@ test('staleClaimComment names the task and the needs-human label', () => {
   assert.match(c, new RegExp(NEEDS_HUMAN_LABEL));
   assert.match(c, new RegExp(AGENT_RUNNING_LABEL));
 });
+
+test('every scheduler label description fits GitHub\'s 100-char cap', () => {
+  // Over the cap, the create 422s and — worse — the reconcile PATCH 422s on
+  // EVERY labels-ensured run, forever (observed live on ready-for-agent-fleet,
+  // 106 chars, 2026-08-07). The API rejects it; nothing self-heals it.
+  for (const l of SCHEDULER_LABELS) {
+    assert.ok(l.description.length <= 100, `${l.name}: ${l.description.length} chars`);
+  }
+});
