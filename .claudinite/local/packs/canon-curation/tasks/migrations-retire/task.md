@@ -1,6 +1,6 @@
 # Migrations — archive records past their TTL
 
-**This task runs no agent.** It is `agent_model: none` with `agent_preprocessing: node worker.mjs`, so the whole pass is the deterministic [`worker.mjs`](worker.mjs) the scheduler runs as a subprocess. This file is the human-facing record of what that worker does; there is no dispatch issue and no subagent.
+**This task runs no agent.** It is `agent_model: none` with `prework: node worker.mjs`, so the whole pass is the deterministic [`worker.mjs`](worker.mjs) the scheduler runs as a subprocess. This file is the human-facing record of what that worker does; there is no dispatch issue and no subagent.
 
 ## What it does
 

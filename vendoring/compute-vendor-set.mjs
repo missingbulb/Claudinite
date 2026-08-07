@@ -41,7 +41,7 @@ const isTest = (name) => name.endsWith('.test.mjs');
 // the blanket .md exclusion still drops the maintainer docs beside it.
 const VENDORED_ENGINE_DOCS = new Set(['engine/scheduler/executor.md']);
 
-// The migration machinery a consumer applies from its OWN mount (agent-preprocessing
+// The migration machinery a consumer applies from its OWN mount (task-prework
 // DESIGN §7): the applier + registry + the note records, so baselining reads the
 // notes locally and needs no canon checkout in session. NOT the fleet-only drivers
 // (fleet-apply/fleet-retire, which read the fleet) or the README. Vendoring these

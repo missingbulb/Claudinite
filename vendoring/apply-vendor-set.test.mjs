@@ -38,7 +38,7 @@ function makeCanon() {
   writeAt(root, 'packs/alpha/pack.mjs', 'export default { id: "alpha" };\n');
   writeAt(root, 'packs/alpha/RULES.md', 'rules\n');
   writeAt(root, 'packs/alpha/skills/s1/SKILL.md', 'skill\n');
-  // migrations vendor into the mount (agent-preprocessing §7): applier + registry
+  // migrations vendor into the mount (task-prework §7): applier + registry
   // + records. Stubs — this suite exercises the apply/converge, not the content.
   writeAt(root, 'migrations/apply.mjs', 'export const apply = 1;\n');
   writeAt(root, 'migrations/registry.mjs', 'export const registry = 1;\n');

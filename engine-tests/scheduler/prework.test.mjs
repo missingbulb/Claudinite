@@ -1,39 +1,39 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, writeFileSync, rmSync } from 'node:fs';
-import { runPreprocessing, preprocessingFailure, agentRequestPath, clearAgentRequest, agentRequested, readAgentRequest } from '../../engine/scheduler/preprocess.mjs';
+import { runPrework, preworkFailure, agentRequestPath, clearAgentRequest, agentRequested, readAgentRequest } from '../../engine/scheduler/prework.mjs';
 
 const NODE = process.execPath; // the running node, so the tests don't assume PATH
 
-test('runPreprocessing: a clean exit is ok', async () => {
-  const r = await runPreprocessing(`"${NODE}" -e "process.exit(0)"`, { taskDir: process.cwd(), env: process.env, timeoutSeconds: 10 });
+test('runPrework: a clean exit is ok', async () => {
+  const r = await runPrework(`"${NODE}" -e "process.exit(0)"`, { taskDir: process.cwd(), env: process.env, timeoutSeconds: 10 });
   assert.equal(r.ok, true);
   assert.equal(r.timedOut, false);
   assert.equal(r.code, 0);
 });
 
-test('runPreprocessing: a non-zero exit is a failure carrying the code', async () => {
-  const r = await runPreprocessing(`"${NODE}" -e "process.exit(3)"`, { taskDir: process.cwd(), env: process.env, timeoutSeconds: 10 });
+test('runPrework: a non-zero exit is a failure carrying the code', async () => {
+  const r = await runPrework(`"${NODE}" -e "process.exit(3)"`, { taskDir: process.cwd(), env: process.env, timeoutSeconds: 10 });
   assert.equal(r.ok, false);
   assert.equal(r.timedOut, false);
   assert.equal(r.code, 3);
 });
 
-test('runPreprocessing: an overrun is hard-killed and reported timedOut', async () => {
-  const r = await runPreprocessing(`"${NODE}" -e "setTimeout(()=>{}, 10000)"`, { taskDir: process.cwd(), env: process.env, timeoutSeconds: 0.3 });
+test('runPrework: an overrun is hard-killed and reported timedOut', async () => {
+  const r = await runPrework(`"${NODE}" -e "setTimeout(()=>{}, 10000)"`, { taskDir: process.cwd(), env: process.env, timeoutSeconds: 0.3 });
   assert.equal(r.ok, false);
   assert.equal(r.timedOut, true);
   assert.notEqual(r.signal, null); // killed by signal, not a clean exit
 });
 
-test('runPreprocessing: the child inherits the injected env', async () => {
+test('runPrework: the child inherits the injected env', async () => {
   const cmd = `"${NODE}" -e "process.exit(process.env.CLAUDINITE_SLOT_ID === 'd2026' ? 0 : 1)"`;
-  const r = await runPreprocessing(cmd, { taskDir: process.cwd(), env: { ...process.env, CLAUDINITE_SLOT_ID: 'd2026' }, timeoutSeconds: 10 });
+  const r = await runPrework(cmd, { taskDir: process.cwd(), env: { ...process.env, CLAUDINITE_SLOT_ID: 'd2026' }, timeoutSeconds: 10 });
   assert.equal(r.ok, true);
 });
 
-test('runPreprocessing: a command that cannot start is a failure, not a throw', async () => {
-  const r = await runPreprocessing('definitely-not-a-real-command-xyz', { taskDir: process.cwd(), env: process.env, timeoutSeconds: 10 });
+test('runPrework: a command that cannot start is a failure, not a throw', async () => {
+  const r = await runPrework('definitely-not-a-real-command-xyz', { taskDir: process.cwd(), env: process.env, timeoutSeconds: 10 });
   assert.equal(r.ok, false);
 });
 
@@ -41,10 +41,10 @@ test('runPreprocessing: a command that cannot start is a failure, not a throw', 
 // Before it was echoed, a failed worker read as a bare `preprocessing exited 1` and
 // diagnosing one meant reproducing it by hand.
 
-test('runPreprocessing: the child output is echoed as it arrives, tagged by stream', async () => {
+test('runPrework: the child output is echoed as it arrives, tagged by stream', async () => {
   const seen = [];
   const cmd = `"${NODE}" -e "process.stdout.write('converging\\n'); process.stderr.write('rejected\\n')"`;
-  const r = await runPreprocessing(cmd, {
+  const r = await runPrework(cmd, {
     taskDir: process.cwd(), env: process.env, timeoutSeconds: 10,
     echo: (chunk, stream) => seen.push([stream, chunk]),
   });
@@ -56,10 +56,10 @@ test('runPreprocessing: the child output is echoed as it arrives, tagged by stre
   assert.equal(r.stderr, 'rejected\n');
 });
 
-test('runPreprocessing: a worker killed at its timeout still echoed what it printed first', async () => {
+test('runPrework: a worker killed at its timeout still echoed what it printed first', async () => {
   const seen = [];
   const cmd = `"${NODE}" -e "process.stdout.write('got this far\\n'); setTimeout(()=>{}, 10000)"`;
-  const r = await runPreprocessing(cmd, {
+  const r = await runPrework(cmd, {
     taskDir: process.cwd(), env: process.env, timeoutSeconds: 0.5,
     echo: (chunk) => seen.push(chunk),
   });
@@ -69,8 +69,8 @@ test('runPreprocessing: a worker killed at its timeout still echoed what it prin
   assert.deepEqual(seen, ['got this far\n']);
 });
 
-test('runPreprocessing: a broken echo sink never fails the run', async () => {
-  const r = await runPreprocessing(`"${NODE}" -e "console.log('hi')"`, {
+test('runPrework: a broken echo sink never fails the run', async () => {
+  const r = await runPrework(`"${NODE}" -e "console.log('hi')"`, {
     taskDir: process.cwd(),
     env: process.env,
     timeoutSeconds: 10,
@@ -80,10 +80,10 @@ test('runPreprocessing: a broken echo sink never fails the run', async () => {
   assert.equal(r.stdout, 'hi\n'); // and the collection is unaffected
 });
 
-test('preprocessingFailure: distinguishes a timeout from a non-zero exit', () => {
-  assert.match(preprocessingFailure({ timedOut: true, code: null, stderr: '' }), /exceeded its agent_preprocessing_timeout/);
-  assert.match(preprocessingFailure({ timedOut: false, code: 2, stderr: '' }), /exited 2/);
-  assert.match(preprocessingFailure({ timedOut: false, code: null, stderr: 'boom\n' }), /could not run: boom/);
+test('preworkFailure: distinguishes a timeout from a non-zero exit', () => {
+  assert.match(preworkFailure({ timedOut: true, code: null, stderr: '' }), /exceeded its prework_timeout/);
+  assert.match(preworkFailure({ timedOut: false, code: 2, stderr: '' }), /exited 2/);
+  assert.match(preworkFailure({ timedOut: false, code: null, stderr: 'boom\n' }), /could not run: boom/);
 });
 
 test('agentRequestPath is deterministic per (pack, task, slot)', () => {

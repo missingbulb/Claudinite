@@ -4,6 +4,7 @@ import {
   isUserMessage, commandName, skillToolLoads, countEntries,
   hookCheckRuns, checkSummaries, findingHeaders, checkInvocations, checkOutputs, countChecks,
   foldDays, isoWeek, daysToFold, addDayToWeek, foldUsage, foldTaskRuns, withinTaskWindow,
+  countTaskExecs, emptyTaskExec,
 } from '../../../../packs/grow_with_claudinite/tasks/usage-fold/fold-usage.mjs';
 
 // --- entry fixtures -----------------------------------------------------------
@@ -374,7 +375,7 @@ test('foldDays: captures, merges and DISTINCT sessions per day', () => {
     skillLoads: { a: 2, b: 3 },
     checks: {},
     checkFindings: {},
-    tasks: {},
+    tasks: {}, taskExec: {},
   });
   assert.equal(days['2026-07-27'].merges, 0);
 });
@@ -434,7 +435,7 @@ test('addDayToWeek sums the counters and declares how many days it absorbed', ()
     days: 2, captures: 4, merges: 2, sessionDays: 4, userMessages: 20, userCommands: 2, skillLoads: { a: 2 },
     checks: { work: { runs: 6, failures: 2, errors: 0, blocking: 2, advisory: 0 } },
     checkFindings: { 'task-lifecycle': { blocking: 2, advisory: 0 } },
-    tasks: {},
+    tasks: {}, taskExec: {},
   });
 });
 
@@ -537,14 +538,14 @@ const runOf = (date, task, outcome, pack = 'grow_with_claudinite') => ({ date, p
 test('foldTaskRuns counts each outcome per task, on the day the run started', () => {
   const days = {};
   foldTaskRuns(days, {}, [
-    runOf('2026-07-28', 'usage-fold', 'preprocess'),
+    runOf('2026-07-28', 'usage-fold', 'prework'),
     runOf('2026-07-28', 'usage-fold', 'skipped'),
     runOf('2026-07-28', 'usage-fold', 'skipped'),
     runOf('2026-07-28', 'growth-extract', 'agent'),
     runOf('2026-07-27', 'growth-extract', 'failed'),
   ], '2026-07-28');
   assert.deepEqual(days['2026-07-28'].tasks['grow_with_claudinite/usage-fold'],
-    { agent: 0, preprocess: 1, skipped: 2, failed: 0, deferred: 0 });
+    { agent: 0, prework: 1, skipped: 2, failed: 0, deferred: 0 });
   assert.equal(days['2026-07-28'].tasks['grow_with_claudinite/growth-extract'].agent, 1);
   assert.equal(days['2026-07-27'].tasks['grow_with_claudinite/growth-extract'].failed, 1);
   // A day with scheduler activity and no captures still gets a row: a repo whose
@@ -553,10 +554,10 @@ test('foldTaskRuns counts each outcome per task, on the day the run started', ()
 });
 
 test('foldTaskRuns carries prior day rows forward — they are appended, never recomputed', () => {
-  const prior = { '2026-07-28': { tasks: { 'p/t': { agent: 2, preprocess: 0, skipped: 5, failed: 0, deferred: 0 } } } };
+  const prior = { '2026-07-28': { tasks: { 'p/t': { agent: 2, prework: 0, skipped: 5, failed: 0, deferred: 0 } } } };
   const days = { '2026-07-28': { captures: 1, tasks: {} } };
   foldTaskRuns(days, prior, [{ date: '2026-07-28', pack: 'p', task: 't', outcome: 'agent' }], '2026-07-28');
-  assert.deepEqual(days['2026-07-28'].tasks['p/t'], { agent: 3, preprocess: 0, skipped: 5, failed: 0, deferred: 0 });
+  assert.deepEqual(days['2026-07-28'].tasks['p/t'], { agent: 3, prework: 0, skipped: 5, failed: 0, deferred: 0 });
   assert.equal(days['2026-07-28'].captures, 1, 'the recomputed capture counts are untouched');
 });
 
@@ -575,11 +576,11 @@ test('foldTaskRuns drops prior task rows past the day window, and ignores unknow
 test('foldUsage folds task rows into the closing day\'s week, and carries the run watermark', () => {
   const first = foldUsage({
     files: [], prior: {}, today: '2026-07-29',
-    taskRuns: [runOf('2026-07-28', 'usage-fold', 'preprocess'), runOf('2026-07-29', 'usage-fold', 'agent')],
+    taskRuns: [runOf('2026-07-28', 'usage-fold', 'prework'), runOf('2026-07-29', 'usage-fold', 'agent')],
     runsFoldedThrough: '2026-07-29T04:44:00Z',
   });
   assert.equal(first.runsFoldedThrough, '2026-07-29T04:44:00Z');
-  assert.equal(first.weeks['2026-W31'].tasks['grow_with_claudinite/usage-fold'].preprocess, 1,
+  assert.equal(first.weeks['2026-W31'].tasks['grow_with_claudinite/usage-fold'].prework, 1,
     'the day that closed carried its task counts into its week');
   assert.equal(first.weeks['2026-W31'].tasks['grow_with_claudinite/usage-fold'].agent, 0,
     'today is not folded — its runs are still arriving');
@@ -588,7 +589,7 @@ test('foldUsage folds task rows into the closing day\'s week, and carries the ru
   const second = foldUsage({ files: [], prior: first, today: '2026-07-29', taskRuns: [], runsFoldedThrough: null });
   assert.equal(second.runsFoldedThrough, '2026-07-29T04:44:00Z');
   assert.deepEqual(second.days['2026-07-29'].tasks, first.days['2026-07-29'].tasks);
-  assert.equal(second.weeks['2026-W31'].tasks['grow_with_claudinite/usage-fold'].preprocess, 1,
+  assert.equal(second.weeks['2026-W31'].tasks['grow_with_claudinite/usage-fold'].prework, 1,
     'and the closed week is not folded a second time');
 });
 
@@ -596,7 +597,7 @@ test('addDayToWeek extends a week folded BEFORE task invocations were counted', 
   const old = { days: 3, captures: 6, merges: 5, sessionDays: 4, userMessages: 50, userCommands: 2, skillLoads: {} };
   const week = addDayToWeek(old, {
     captures: 0, merges: 0, sessions: 0, userMessages: 0, userCommands: 0, skillLoads: {},
-    tasks: { 'p/t': { agent: 1, preprocess: 0, skipped: 0, failed: 0, deferred: 0 } },
+    tasks: { 'p/t': { agent: 1, prework: 0, skipped: 0, failed: 0, deferred: 0 } },
   });
   assert.equal(week.tasks['p/t'].agent, 1);
   assert.equal(week.days, 4);
@@ -607,4 +608,37 @@ test('withinTaskWindow keeps the last 14 days and nothing older', () => {
   assert.ok(withinTaskWindow('2026-07-16', '2026-07-29'), 'day 13 is in');
   assert.ok(!withinTaskWindow('2026-07-15', '2026-07-29'), 'day 14 has aged out into its week row');
   assert.ok(!withinTaskWindow('2026-07-30', '2026-07-29'), 'a future date is not a window this fold owns');
+});
+
+// --- executor execution statuses out of a captured session ----------------------
+// The exec records are printed by executor-side code (resolve-dispatch,
+// record-exec) into Bash tool results; the model may quote one back. The count
+// dedupes on the full tuple so one execution never counts twice.
+
+const execLine = (status, slot = 'd2026-08-06') => `claudinite-task-exec v1 tidy-repo/tidy-issues [${slot}] ${status}`;
+
+test('countTaskExecs reads exec records out of tool-result text', () => {
+  const entries = [
+    { type: 'user', message: { content: [{ type: 'tool_result', content: [{ type: 'text', text: `brief...\n${execLine('success')}\n` }] }] } },
+  ];
+  assert.deepEqual(countTaskExecs(entries), {
+    'tidy-repo/tidy-issues': { ...emptyTaskExec(), success: 1 },
+  });
+});
+
+test('countTaskExecs dedupes an echoed record, and keeps distinct statuses/slots', () => {
+  const entries = [
+    { type: 'user', message: { content: [{ type: 'tool_result', content: `${execLine('failed')}\n` }] } },
+    { type: 'assistant', message: { content: [{ type: 'text', text: `the run failed: ${execLine('failed')}` }] } },
+    { type: 'user', message: { content: `${execLine('failed', 'd2026-08-07')}` } },
+  ];
+  const counts = countTaskExecs(entries);
+  assert.equal(counts['tidy-repo/tidy-issues'].failed, 2); // two slots, echo collapsed
+});
+
+test('countEntries carries taskExec beside the other counters', () => {
+  const counts = countEntries([
+    { type: 'user', message: { content: `${execLine('task-gone')}` } },
+  ]);
+  assert.deepEqual(counts.taskExec, { 'tidy-repo/tidy-issues': { ...emptyTaskExec(), 'task-gone': 1 } });
 });

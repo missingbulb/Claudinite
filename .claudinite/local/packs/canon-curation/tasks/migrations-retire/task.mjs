@@ -1,6 +1,6 @@
 // canon-curation task: migrations-retire — the migration TTL ARCHIVER
 // (per-project-scheduling redesign). `agent_model: 'none'` with
-// `agent_preprocessing: 'node worker.mjs'`: the whole pass is deterministic code
+// `prework: 'node worker.mjs'`: the whole pass is deterministic code
 // the scheduler runs as a subprocess — no agent, no dispatch issue. It moves any
 // migration record past its 7-day TTL from `active_migrations/` to the canon-only
 // `migrations-old/` archive (still applies for backfill; stops shipping + stops
@@ -17,10 +17,10 @@ export default {
   id: 'migrations-retire',
   frequency: 'daily+1h',                 // a daily housekeeping sweep — the 05:00 slot
   precondition_signals: [],              // no signal — the worker reads the canon's own migration records
-  agent_model: 'none',                   // pure code — no agent (agent-preprocessing DESIGN §4)
+  agent_model: 'none',                   // pure code — no agent (task-prework DESIGN §4)
   expected_outcome: 'open-pr',           // stages the archival move as one reviewable PR
-  agent_preprocessing: 'node worker.mjs',
-  agent_preprocessing_timeout: 180,      // a handful of REST calls (read/create/delete per aged record) — a tight bound
+  prework: 'node worker.mjs',
+  prework_timeout: 180,      // a handful of REST calls (read/create/delete per aged record) — a tight bound
   required_secrets: ['FLEET_GITHUB_TOKEN'], // so the archive PR starts CI (#432) — absent, the worker warns and opens it anyway
 
   // Fire daily+1h unconditionally: the worker compares each active record's age to

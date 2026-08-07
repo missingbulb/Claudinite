@@ -25,7 +25,7 @@ prose below).
   missing). Never write standalone code that checks packs-tree segregation.
 - **A `docs/<initiative>/DESIGN.md` records the mechanism only** (owner decision, 2026-07-23,
   #420). Status, phase tracking, in-flight-PR reconciliation and remaining work live in that
-  initiative's tracking issue (agent-preprocessing → #394); a phased plan lives in the sibling
+  initiative's tracking issue (task-prework → #394); a phased plan lives in the sibling
   `MIGRATION.md`. Don't reintroduce a status / open-questions / remaining-work section there.
 - **Multi-session work hands off through the tracking issue, never a prepared prompt** (owner
   correction, 2026-07-23). The owner's opener is `continue work on #<n>`, so state not written

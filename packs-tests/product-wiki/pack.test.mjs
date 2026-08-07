@@ -427,7 +427,7 @@ test('wiki-growth task: weekly/opus/open-pr, worker doc present', () => {
   assert.equal(wikiGrowth.frequency, 'weekly'); // research arrives on the world's clock, not the repo's
   assert.equal(wikiGrowth.agent_model, 'opus');
   assert.equal(wikiGrowth.expected_outcome, 'open-pr'); // researched claims need the human review gate
-  assert.deepEqual(wikiGrowth.precondition_signals, ['commits']);
+  assert.deepEqual(wikiGrowth.precondition_signals, ['commits', 'prs']);
   assert.ok(existsSync(join(canonRoot, 'packs/product-wiki/tasks/wiki-growth', wikiGrowth.agent_instructions)),
     `worker doc missing: ${wikiGrowth.agent_instructions}`);
 });
@@ -446,14 +446,24 @@ test('wiki-growth precondition: the weekly slot IS the trigger; a wiki move only
   assert.deepEqual(wikiGrowth.precondition({ commits: { touchedPaths: ['src/app.js'] } }).context, []);
 });
 
-// This precondition has NO non-firing path, and that is a deliberate design
-// choice, not an omission: a wiki grows on research availability, not repo
-// activity, so there is no cheaper gate to apply and the weekly slot itself is
-// the trigger. The worker's own stop condition (no citable material → no branch,
-// no PR) is the real "nothing to do" outcome. Pin it, so a future edit that
-// quietly adds a self-skip arm — reintroducing the repo-activity gate this task
-// exists to avoid — has to break a test that says why.
-test('wiki-growth precondition: no arm ever declines — the weekly slot is the whole gate', () => {
+// This precondition has exactly ONE declining arm, and it is the only decision
+// point in the task's life (per-project-scheduling DESIGN §12): an open PR still
+// carrying the `product-wiki-growth` label means the last round is unreviewed,
+// and a second round of unreviewed research is never stacked on it. That gate
+// used to be a task.md preflight — the agentic phase deciding to skip a run the
+// precondition had granted — and moved here when the prs signal grew labels.
+// Everything else always runs: a wiki grows on research availability, not repo
+// activity, so the weekly slot itself is the trigger and the worker's own stop
+// condition (no citable material → no branch, no PR) is an empty OUTCOME, not a
+// skip. Pin both directions.
+test('wiki-growth precondition: declines ONLY while a labeled growth PR sits open', () => {
+  const withPr = wikiGrowth.precondition({
+    prs: { open: [{ number: 12, title: 'wiki round', labels: ['product-wiki-growth'] }] },
+  });
+  assert.equal(withPr.run, false);
+  assert.match(withPr.reason, /#12/);
+  assert.match(withPr.reason, /product-wiki-growth/);
+
   const shapes = [
     {},                                                   // no signals at all
     { commits: {} },                                      // signal present, no touchedPaths (the ?? [] fallback)
@@ -461,6 +471,8 @@ test('wiki-growth precondition: no arm ever declines — the weekly slot is the 
     { commits: { touchedPaths: ['src/app.js'] } },        // busy, but nothing wiki-side
     { commits: { touchedPaths: ['product-wiki/Market/README.md'] } },
     { commits: null },                                    // malformed — still must not decline or throw
+    { prs: { open: [{ number: 9, title: 'other', labels: ['bug'] }] } },  // unrelated PR is not a gate
+    { prs: { open: [{ number: 9, title: 'no labels field' }] } },
   ];
   for (const signals of shapes) {
     const v = wikiGrowth.precondition(signals);

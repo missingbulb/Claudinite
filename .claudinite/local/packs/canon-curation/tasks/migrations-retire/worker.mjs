@@ -1,8 +1,8 @@
 // canon-curation task: migrations-retire — the migration TTL ARCHIVER, as an
 // agentless scheduler task (per-project-scheduling redesign). This task is
-// `agent_model: 'none'` with `agent_preprocessing: 'node worker.mjs'`, so the
+// `agent_model: 'none'` with `prework: 'node worker.mjs'`, so the
 // scheduler runs THIS FILE as a subprocess (cwd = this task dir) bounded by
-// `agent_preprocessing_timeout` — no agent, no dispatch issue.
+// `prework_timeout` — no agent, no dispatch issue.
 //
 // What it does: move every migration record whose age has passed the TTL (7 days
 // since `landed`) from `migrations/active_migrations/` to the canon-only
