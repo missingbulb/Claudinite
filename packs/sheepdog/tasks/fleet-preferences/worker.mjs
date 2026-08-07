@@ -7,7 +7,7 @@
 // workers, deliberately.
 //
 // Failure is the escalation path. The sweep THROWS when a member could not be read or
-// its pointer could not be written (an unusable token, a protected branch, a file that
+// its store could not be written (an unusable token, a protected branch, a file that
 // changed under the run); this worker turns that into a non-zero exit, and the
 // scheduler treats a non-zero prework subprocess as a failed task — it converges
 // one open `needs-human` issue for the task family (engine/scheduler/run.mjs) instead
@@ -21,14 +21,14 @@ const log = (s) => console.log(`fleet-preferences${slotId ? ` [${slotId}]` : ''}
 
 export async function main() {
   // The sweep resolves the HOME repo — the one whose sheepdog pack entry carries
-  // `{ owner, exclude, preferencesRepo }`, and the default preferences home itself —
+  // `{ owner, exclude, preferencesRepo }`, and the default store itself —
   // from GITHUB_REPOSITORY. Actions sets it and the subprocess inherits it;
   // CLAUDINITE_REPO is the scheduler's own name for the same fact, so fall back to it
   // rather than depending on which of the two happens to be present.
   if (!process.env.GITHUB_REPOSITORY && process.env.CLAUDINITE_REPO) {
     process.env.GITHUB_REPOSITORY = process.env.CLAUDINITE_REPO;
   }
-  log('telling every member where this fleet keeps its users\' preferences');
+  log('telling every member where this fleet keeps its people\'s preferences');
   await sweep();
   log('sweep complete');
 }

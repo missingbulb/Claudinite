@@ -1,11 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  isCovered, readFile, readDeclaration, putFile, isDormant, preferencesLocation, DECLARATION,
+  isCovered, readFile, readDeclaration, putFile, isDormant, DECLARATION,
 } from '../../packs/sheepdog/fleet-api.mjs';
-import {
-  isDormant as engineIsDormant, preferencesLocation as enginePreferencesLocation,
-} from '../../engine/checks/helpers/repo-context.mjs';
+import { isDormant as engineIsDormant } from '../../engine/checks/helpers/repo-context.mjs';
 
 // The pack's shared cross-repo REST layer. Membership is the tracked declaration
 // file, the ONE probe every member carries whatever its mount shape
@@ -77,12 +75,4 @@ test('the sweeps decide dormancy with the ENGINE\'s predicate, not a private cop
   assert.equal(DECLARATION, '.claudinite-checks.json');
   assert.equal(isDormant(await readDeclaration(ghServing('{"dormant":true}'), 'o/asleep')), true);
   assert.equal(isDormant(await readDeclaration(ghServing('{"packs":[]}'), 'o/awake')), false);
-});
-
-test('the preferences pointer is read with the ENGINE\'s resolver too — same reason', async () => {
-  // The sweep must resolve a member's pointer exactly as the session-start step does,
-  // or it would "fix" pointers that already work and leave broken ones alone.
-  assert.equal(preferencesLocation, enginePreferencesLocation);
-  const cfg = await readDeclaration(ghServing('{"preferences":{"repo":"o/fleet"}}'), 'o/member');
-  assert.deepEqual(preferencesLocation(cfg), { repo: 'o/fleet', path: 'preferences' });
 });

@@ -39,8 +39,8 @@ export function parseSheepdogConfig(cfg, home) {
   // legitimately go quiet for longer raises it rather than living with false alarms.
   const raw = Number(sd.staleDays);
   const staleDays = Number.isFinite(raw) && raw > 0 ? raw : 14;
-  // Where this fleet's users keep their personal preferences — the pointer the
-  // preferences sweep writes into every member. Defaults to THIS repo: the enforcer is
+  // Where this fleet's people keep their personal preferences — the store the
+  // preferences sweep declares in every member. Defaults to THIS repo: the enforcer is
   // the fleet's own repo, so it is the natural host for content that belongs to the
   // fleet's users rather than to any one project (and never to the canon, which is
   // shared by every fleet). A fleet that keeps them somewhere else — a private repo,

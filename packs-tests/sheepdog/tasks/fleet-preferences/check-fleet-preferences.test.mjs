@@ -4,118 +4,104 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
-  classifyPreferences, engineKnowsPreferences, withPreferences, SET,
+  classifyPreferences, withPreferencesPack, PACK_ID, SET,
 } from '../../../../packs/sheepdog/tasks/fleet-preferences/check-fleet-preferences.mjs';
 
-// The preferences sweep's whole judgement is `classifyPreferences` plus the engine gate
-// and the one edit — all pure, so every branch is exercised here without a network.
-// This is the one sweep in the pack that WRITES to a member, and each test below pins
-// one of the reasons it is safe to.
+// The preferences sweep's whole judgement is `classifyPreferences` plus the one edit —
+// both pure, so every branch is exercised here without a network. This is the one
+// sweep in the pack that WRITES to a member, and each test below pins one of the
+// reasons it is safe to.
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '../../../..');
+const classify = (over) => classifyPreferences({ config: { packs: [] }, wanted: 'o/fleet', vendored: true, ...over });
+const entry = (config) => ({ packs: [{ id: PACK_ID, ...(config ? { config } : {}) }] });
 
-// --- the engine gate ----------------------------------------------------------
-
-test('engineKnowsPreferences: THIS repo\'s engine passes the gate', () => {
-  // The drift guard that matters most. The gate reads the setting vocabulary out of a
-  // member's own engine source; if CONFIG_KEYS is ever renamed or reformatted past the
-  // pattern, the gate silently answers "no" for every member forever and the sweep
-  // quietly stops writing — a failure with no error anywhere. Reading the real file
-  // makes that rename fail here instead.
-  const engine = readFileSync(join(repoRoot, 'engine/checks/helpers/repo-context.mjs'), 'utf8');
-  assert.equal(engineKnowsPreferences(engine), true);
+test('the pack it declares is the pack that reads preferences into a session', () => {
+  // The sweep names the pack as a string because it runs against another repo's tree
+  // over the API — nothing of that member's mount is importable. That makes the name a
+  // literal that can drift, so it is checked against the canon's own tree.
+  const manifest = readFileSync(join(repoRoot, 'packs', PACK_ID, 'pack.mjs'), 'utf8');
+  assert.match(manifest, new RegExp(`id: '${PACK_ID}'`));
 });
 
-test('engineKnowsPreferences: an engine that predates the setting is a NO, and so is nothing at all', () => {
-  // The real shape of the vocabulary before this change: legal, complete, and it would
-  // reject `preferences` as an unknown setting — a blocking config error in that repo.
-  const before = "export const CONFIG_KEYS = ['packs', 'rules', 'accept', 'sharedConstants', 'packConfig', 'maintenance', 'claudinite', 'taskScheduler', 'badges', 'dormant'];";
-  assert.equal(engineKnowsPreferences(before), false);
-  // A near-miss must not pass: the word appearing elsewhere in the file is not the key
-  // being in the list.
-  assert.equal(engineKnowsPreferences(`${before}\n// preferences are per-user\n`), false);
-  for (const nothing of ['', null, undefined, 'export const OTHER = [1];']) {
-    assert.equal(engineKnowsPreferences(nothing), false, String(nothing));
-  }
-  assert.equal(engineKnowsPreferences('const CONFIG_KEYS = ["dormant", "preferences"]'), true);
-});
-
-// --- classification -----------------------------------------------------------
-
-const classify = (over) => classifyPreferences({ config: { packs: [] }, wanted: 'o/fleet', engineKnows: true, ...over });
-
-test('classifyPreferences: a member already pointing home is read and left alone', () => {
-  const v = classify({ config: { preferences: { repo: 'o/fleet' } } });
+test('a member already naming the fleet\'s store is read and left alone', () => {
+  const v = classify({ config: entry({ repo: 'o/fleet' }) });
   assert.equal(v.state, SET);
-  // Case is not identity for a GitHub repo path, so a differently-cased pointer is the
-  // same pointer — rewriting it would be a commit a day, forever.
-  assert.equal(classify({ config: { preferences: { repo: 'O/Fleet' } } }).state, SET);
-  assert.match(v.detail, /already points at/);
+  // Case is not identity for a GitHub repo path, so a differently-cased value is the
+  // same store — rewriting it would be a commit a day, forever.
+  assert.equal(classify({ config: entry({ repo: 'O/Fleet' }) }).state, SET);
   // A path the member chose is the member's business: the fleet is the authority on
   // WHICH REPO, not on where inside it.
-  assert.equal(classify({ config: { preferences: { repo: 'o/fleet', path: 'people' } } }).state, SET);
+  assert.equal(classify({ config: entry({ repo: 'o/fleet', path: 'people' }) }).state, SET);
 });
 
-test('classifyPreferences: a member with no pointer is writable, and says which case it was', () => {
+test('a member without a store is writable, and says which case it was', () => {
   const missing = classify({});
   assert.equal(missing.state, 'writable');
-  assert.equal(missing.malformed, false);
-  assert.match(missing.detail, /declares no preferences home/);
+  assert.match(missing.detail, /declares no preferences store/);
 
-  // A key that does not RESOLVE is a repair, not an addition — and the summary says so,
-  // because replacing a value someone wrote is a different act from adding one.
-  const broken = classify({ config: { preferences: 'o/fleet' } });
-  assert.equal(broken.state, 'writable');
-  assert.equal(broken.malformed, true);
-  assert.match(broken.detail, /does not resolve/);
+  // Declared but unusable is a repair, not an addition — and the summary says so,
+  // because completing a half-configured entry is a different act from adding one.
+  const half = classify({ config: entry({}) });
+  assert.equal(half.state, 'writable');
+  assert.match(half.detail, /with no usable store/);
+  // A bare string entry is the same case: declared, no config to read.
+  assert.equal(classify({ config: { packs: [PACK_ID] } }).state, 'writable');
 });
 
-test('classifyPreferences: a pointer at a DIFFERENT repo is reported, never overwritten', () => {
-  const v = classify({ config: { preferences: { repo: 'o/somewhere-else' } } });
+test('a member naming a DIFFERENT store is reported, never overwritten', () => {
+  const v = classify({ config: entry({ repo: 'o/somewhere-else' }) });
   assert.equal(v.state, 'elsewhere');
   assert.match(v.detail, /left alone/);
 });
 
-test('classifyPreferences: the engine gate outranks the write — a member is never given a key it would reject', () => {
-  // An unknown top-level setting is a BLOCKING config error, and a member runs whatever
-  // engine its vendored mount carries. So this is a WAIT, not a finding: members
-  // re-vendor nightly and get written the first run after their own mount learned the
-  // key, which is what makes the rollout need no coordination.
-  const v = classify({ engineKnows: false });
-  assert.equal(v.state, 'engine-behind');
-  assert.match(v.detail, /blocking config error|does not accept/);
-  // …and it applies to the malformed case too — repairing a key the engine rejects
-  // would trade one config error for another.
-  assert.equal(classify({ engineKnows: false, config: { preferences: 42 } }).state, 'engine-behind');
-  // But a member already pointing home is never gated: nothing is being written.
-  assert.equal(classify({ engineKnows: false, config: { preferences: { repo: 'o/fleet' } } }).state, SET);
+test('the mount gate outranks the write — a member is never handed a pack it does not have', () => {
+  // A declared pack whose code is absent is a blocking `config` error there, and a
+  // member's mount carries only what it declared as of its last converge. So this is a
+  // WAIT: members converge nightly and are written the first run after the pack lands.
+  const v = classify({ vendored: false });
+  assert.equal(v.state, 'not-vendored');
+  assert.match(v.detail, /blocking config error/);
+  // …and it applies to the half-configured case too — completing an entry whose pack
+  // is missing would trade one config error for another.
+  assert.equal(classify({ vendored: false, config: entry({}) }).state, 'not-vendored');
+  // But a member already naming the store is never gated: nothing is being written.
+  assert.equal(classify({ vendored: false, config: entry({ repo: 'o/fleet' }) }).state, SET);
 });
 
 // --- the edit -----------------------------------------------------------------
 
-test('withPreferences: adds the key, keeps everything else, and writes canonical settings', () => {
-  const before = `${JSON.stringify({ packs: ['basics'], maintenance: { delivery: 'auto-merge' } }, null, 2)}\n`;
-  const after = withPreferences(before, 'o/fleet');
+const decl = (o) => `${JSON.stringify(o, null, 2)}\n`;
+
+test('withPreferencesPack: declares the pack, keeps everything else, writes canonical settings', () => {
+  const before = decl({ packs: ['basics'], maintenance: { delivery: 'auto-merge' } });
+  const after = withPreferencesPack(before, 'o/fleet');
   const parsed = JSON.parse(after);
-  assert.deepEqual(parsed.packs, ['basics']);
+  assert.deepEqual(parsed.packs[0], 'basics', 'the packs already declared survive, in order');
+  assert.deepEqual(parsed.packs[1], { id: PACK_ID, config: { repo: 'o/fleet' } });
   assert.deepEqual(parsed.maintenance, { delivery: 'auto-merge' });
-  assert.deepEqual(parsed.preferences, { repo: 'o/fleet' });
   // 2-space with a trailing newline — the shape `--init` writes, because the file is
   // round-tripped through JSON rather than edited as text.
-  assert.equal(after, `${JSON.stringify(parsed, null, 2)}\n`);
-  assert.ok(after.endsWith('}\n'));
+  assert.equal(after, decl(parsed));
   // Idempotent: running it again changes nothing at all.
-  assert.equal(withPreferences(after, 'o/fleet'), after);
+  assert.equal(withPreferencesPack(after, 'o/fleet'), after);
 });
 
-test('withPreferences: replaces an unresolvable pointer in place, and refuses a non-object declaration', () => {
-  const after = withPreferences(`${JSON.stringify({ packs: [], preferences: 'o/typo' }, null, 2)}\n`, 'o/fleet');
-  assert.deepEqual(JSON.parse(after).preferences, { repo: 'o/fleet' });
-  // Only the pointer is written — the path stays the engine's default, so no member
-  // carries a knob nobody chose.
-  assert.deepEqual(Object.keys(JSON.parse(after).preferences), ['repo']);
+test('withPreferencesPack: completes an existing entry in place, keeping what it already carries', () => {
+  const before = decl({ packs: ['basics', { id: PACK_ID, config: { path: 'team' }, answers: { store: 'n/a' } }] });
+  const parsed = JSON.parse(withPreferencesPack(before, 'o/fleet'));
+  assert.equal(parsed.packs.length, 2, 'the entry is completed, never duplicated');
+  assert.deepEqual(parsed.packs[1], {
+    id: PACK_ID, config: { path: 'team', repo: 'o/fleet' }, answers: { store: 'n/a' },
+  }, 'its position, its path and its recorded answer all survive');
+  // A bare string declaration becomes an entry object carrying the store.
+  const fromString = JSON.parse(withPreferencesPack(decl({ packs: [PACK_ID] }), 'o/fleet'));
+  assert.deepEqual(fromString.packs, [{ id: PACK_ID, config: { repo: 'o/fleet' } }]);
+});
+
+test('withPreferencesPack: refuses a declaration that is not a settings object', () => {
   for (const bad of ['[]', 'null', '"text"']) {
-    assert.throws(() => withPreferences(bad, 'o/fleet'), /not a JSON object/, bad);
+    assert.throws(() => withPreferencesPack(bad, 'o/fleet'), /not a JSON object/, bad);
   }
-  assert.throws(() => withPreferences('{oops', 'o/fleet'));
+  assert.throws(() => withPreferencesPack('{oops', 'o/fleet'));
 });

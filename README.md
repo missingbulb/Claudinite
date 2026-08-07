@@ -1,7 +1,7 @@
 # Claudinite
 
 <!-- claudinite:packs -->
-![basics](packs/basics/badge.svg "basics") ![barriers](packs/barriers/badge.svg "barriers") ![git-github](packs/git-github/badge.svg "git-github") ![github-actions](packs/github-actions/badge.svg "github-actions") ![grow_with_claudinite](packs/grow_with_claudinite/badge.svg "grow_with_claudinite") ![tidy-repo](packs/tidy-repo/badge.svg "tidy-repo") ![claudinite](.claudinite/local/packs/claudinite/badge.svg "claudinite") ![canon-curation](.claudinite/local/packs/canon-curation/badge.svg "canon-curation")<!-- /claudinite:packs --> &nbsp;the packs this repo runs
+![basics](packs/basics/badge.svg "basics") ![barriers](packs/barriers/badge.svg "barriers") ![git-github](packs/git-github/badge.svg "git-github") ![github-actions](packs/github-actions/badge.svg "github-actions") ![grow_with_claudinite](packs/grow_with_claudinite/badge.svg "grow_with_claudinite") ![tidy-repo](packs/tidy-repo/badge.svg "tidy-repo") ![claudinite](.claudinite/local/packs/claudinite/badge.svg "claudinite") ![canon-curation](.claudinite/local/packs/canon-curation/badge.svg "canon-curation") ![UserPreferencesStore](packs/UserPreferencesStore/badge.svg "UserPreferencesStore")<!-- /claudinite:packs --> &nbsp;the packs this repo runs
 
 Portable Claude instructions/rules shared across projects — the **project-agnostic** maintainer guidelines, maintained **once** here and mounted into each consuming repo so they don't have to be copy-pasted per project. Project-*specific* rules stay in the consuming repo's own docs.
 

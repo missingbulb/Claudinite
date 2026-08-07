@@ -48,12 +48,14 @@ export default {
   (copies each `{ template, dest }` from the canon/mount to the consumer, overwriting on drift),
   [`applyRewrites`](registry.mjs) applies in-place `{ file, replace: [{ from, to }] }` edits
   (repointing refs while preserving the rest of the file), and
-  [`applySettings`](registry.mjs) **declares** a settings key the member doesn't carry yet — each
-  `{ key, value }` set on `.claudinite-checks.json` **only when absent**, because a key the repo
-  already declares is that repo's decision. It is the shape a fleet-wide *settings* change has: a new
-  top-level key every member needs, whose value the canon knows and the member cannot derive
+  [`applyPackDeclarations`](registry.mjs) **declares a pack** the member doesn't carry yet — each
+  `{ id, config }` added to `.claudinite-checks.json`'s `packs` when absent, filling in a `config`
+  only where the entry has none, because a pack the repo already declares (and the parameters it
+  chose) are that repo's decisions. It is the shape a fleet-wide *capability* change has: a pack
+  every member should run, whose parameters the canon knows and the member cannot derive
   (`materialize` would clobber a per-repo declaration; `rewrite` has no literal in common across
-  repos). All honor an optional `appliesTo(read)`
+  repos). Declaring a pack whose code is not yet in the member's mount would be a blocking `config`
+  error there, so baselining **re-converges the mount** whenever this pass changed the declaration. All honor an optional `appliesTo(read)`
   gate so a migration only touches the repos it's meant for (never the canon itself).
   [`apply.mjs`](apply.mjs) runs all four over a checkout (`node migrations/apply.mjs`); idempotent, a
   no-op once done. Baselining runs it **after** the vendor step, so a key and the engine version that

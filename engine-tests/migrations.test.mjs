@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import {
   loadMigrations, resolvePath, applyFileAliases, retirableMigrations,
   migrationsPastTtl, MIGRATIONS_OLD_SUBDIR,
-  applyMaterializations, applyRewrites, applySettings, migrationActive,
+  applyMaterializations, applyRewrites, applyPackDeclarations, migrationActive,
   migrationAgentic, agenticMigrations,
   callerCanDeliverWorkflows, WITHHOLD_CAPABLE_ENV,
 } from '../migrations/registry.mjs';
@@ -190,53 +190,61 @@ test('applyRewrites: applies literal from->to replacements in place, idempotentl
   assert.match(repo.get('.github/w.yml'), /keep me/);
 });
 
-test('applySettings: declares an absent key, never overwrites one the repo carries, gated by appliesTo', async () => {
+test('applyPackDeclarations: declares an absent pack, never overrides what the repo chose, gated by appliesTo', async () => {
   const decl = (o) => `${JSON.stringify(o, null, 2)}\n`;
   const repo = new Map([['.claudinite-checks.json', decl({ packs: ['basics'], maintenance: { delivery: 'auto-merge' } })]]);
   const read = (p) => repo.get(p) ?? null;
   const write = (p, c) => repo.set(p, c);
-  const m = M({ settings: [{ key: 'preferences', value: { repo: 'o/fleet' } }] });
+  const m = M({ declarePacks: [{ id: 'NewPack', config: { repo: 'o/store' } }] });
 
-  assert.deepEqual(await applySettings(m, { read, write }), ['.claudinite-checks.json: preferences']);
+  assert.deepEqual(await applyPackDeclarations(m, { read, write }), ['.claudinite-checks.json: declared NewPack']);
   const after = JSON.parse(repo.get('.claudinite-checks.json'));
-  assert.deepEqual(after.preferences, { repo: 'o/fleet' });
-  assert.deepEqual(after.packs, ['basics'], 'the rest of the declaration survives');
+  assert.deepEqual(after.packs, ['basics', { id: 'NewPack', config: { repo: 'o/store' } }]);
+  assert.deepEqual(after.maintenance, { delivery: 'auto-merge' }, 'the rest of the declaration survives');
   assert.equal(repo.get('.claudinite-checks.json'), decl(after), 'canonical 2-space settings with a trailing newline');
 
-  // Idempotent, and — the contract that matters — a key the repo already declares is
-  // that repo's decision, even when it names a different value.
-  assert.deepEqual(await applySettings(m, { read, write }), []);
-  const other = M({ settings: [{ key: 'preferences', value: { repo: 'o/somewhere-else' } }] });
-  assert.deepEqual(await applySettings(other, { read, write }), []);
-  assert.deepEqual(JSON.parse(repo.get('.claudinite-checks.json')).preferences, { repo: 'o/fleet' });
+  // Idempotent, and — the contract that matters — a pack the repo already declares
+  // keeps its own config, even when the record names a different one.
+  assert.deepEqual(await applyPackDeclarations(m, { read, write }), []);
+  const other = M({ declarePacks: [{ id: 'NewPack', config: { repo: 'o/somewhere-else' } }] });
+  assert.deepEqual(await applyPackDeclarations(other, { read, write }), []);
+  assert.deepEqual(JSON.parse(repo.get('.claudinite-checks.json')).packs[1].config, { repo: 'o/store' });
+
+  // A pack declared as a bare string, with no config, is the one entry still owed
+  // something: it gets the config, in place, without losing its position.
+  const bare = new Map([['.claudinite-checks.json', decl({ packs: ['basics', 'NewPack', 'tidy-repo'] })]]);
+  assert.deepEqual(
+    await applyPackDeclarations(m, { read: (p) => bare.get(p) ?? null, write: (p, c) => bare.set(p, c) }),
+    ['.claudinite-checks.json: configured NewPack'],
+  );
+  assert.deepEqual(JSON.parse(bare.get('.claudinite-checks.json')).packs,
+    ['basics', { id: 'NewPack', config: { repo: 'o/store' } }, 'tidy-repo']);
 
   // appliesTo:false skips, and a non-member / unparsable declaration is left alone
   // (the world runner owns that finding; a migration must not guess at a repair).
   const fresh = new Map([['.claudinite-checks.json', decl({ packs: [] })]]);
   const w2 = (p, c) => fresh.set(p, c);
-  assert.deepEqual(await applySettings(M({ appliesTo: async () => false, settings: m.settings }), { read: (p) => fresh.get(p) ?? null, write: w2 }), []);
-  assert.deepEqual(await applySettings(m, { read: () => null, write: w2 }), []);
-  assert.deepEqual(await applySettings(m, { read: () => '{oops', write: w2 }), []);
-  assert.deepEqual(await applySettings(m, { read: () => '[]', write: w2 }), []);
+  assert.deepEqual(await applyPackDeclarations(M({ appliesTo: async () => false, declarePacks: m.declarePacks }), { read: (p) => fresh.get(p) ?? null, write: w2 }), []);
+  assert.deepEqual(await applyPackDeclarations(m, { read: () => null, write: w2 }), []);
+  assert.deepEqual(await applyPackDeclarations(m, { read: () => '{oops', write: w2 }), []);
+  assert.deepEqual(await applyPackDeclarations(m, { read: () => '[]', write: w2 }), []);
   assert.equal(fresh.get('.claudinite-checks.json'), decl({ packs: [] }), 'nothing was written');
 });
 
-test('apply.mjs really performs the settings op — the wire, not just the function', () => {
-  // The unit test above proves applySettings; this proves the applier CALLS it. A
-  // missing line in apply.mjs would leave every unit test green and every member
-  // un-migrated, which is the exact failure mode a settings op is meant to prevent.
+test('apply.mjs really performs the pack-declaration op — the wire, not just the function', () => {
+  // The unit test above proves applyPackDeclarations; this proves the applier CALLS
+  // it. A missing line in apply.mjs would leave every unit test green and every member
+  // un-migrated, which is the exact failure mode a seed op is meant to prevent.
   const root = mkdtempSync(join(tmpdir(), 'claudinite-apply-'));
   try {
-    const before = `${JSON.stringify({ packs: ['basics'] }, null, 2)}\n`;
-    writeFileSync(join(root, '.claudinite-checks.json'), before);
+    writeFileSync(join(root, '.claudinite-checks.json'), `${JSON.stringify({ packs: ['basics'] }, null, 2)}\n`);
     const canon = dirname(dirname(fileURLToPath(import.meta.url)));
     const out = execFileSync(process.execPath, [join(canon, 'migrations/apply.mjs')], {
       encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: root },
     });
-    assert.match(out, /\.claudinite-checks\.json: preferences/);
+    assert.match(out, /declared UserPreferencesStore/);
     const after = JSON.parse(readFileSync(join(root, '.claudinite-checks.json'), 'utf8'));
-    assert.deepEqual(after.preferences, { repo: 'missingbulb/Sheepdog' });
-    assert.deepEqual(after.packs, ['basics']);
+    assert.deepEqual(after.packs, ['basics', { id: 'UserPreferencesStore', config: { repo: 'missingbulb/Sheepdog' } }]);
     // …and running it again writes nothing at all.
     assert.equal(execFileSync(process.execPath, [join(canon, 'migrations/apply.mjs')], {
       encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: root },
@@ -244,17 +252,19 @@ test('apply.mjs really performs the settings op — the wire, not just the funct
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test('preferences-home migration: declares the fleet\'s preferences home, and tracks the members still without one', async () => {
-  const m = (await loadMigrations()).find((x) => x.id === 'preferences-home');
-  assert.ok(m, 'preferences-home migration is discovered');
+test('user-preferences-store migration: seeds the pack with the fleet\'s store, and tracks who still lacks it', async () => {
+  const m = (await loadMigrations()).find((x) => x.id === 'user-preferences-store');
+  assert.ok(m, 'user-preferences-store migration is discovered');
   assert.equal(m.retire, 'auto');
-  // The one-time backfill: the key every member needs and none can derive.
-  assert.deepEqual(m.settings, [{ key: 'preferences', value: { repo: 'missingbulb/Sheepdog' } }]);
+  // The one-time backfill: the pack every member should run, and the store none of
+  // them can derive.
+  assert.deepEqual(m.declarePacks, [{ id: 'UserPreferencesStore', config: { repo: 'missingbulb/Sheepdog' } }]);
 
   const read = (json) => async () => (json === null ? null : JSON.stringify(json));
-  assert.equal(await m.legacyPresent(() => false, read({ packs: ['basics'] })), true, 'no pointer -> legacy');
-  assert.equal(await m.legacyPresent(() => false, read({ packs: [], preferences: { repo: 'o/elsewhere' } })), false,
-    'a pointer of its own -> done, whatever it names');
+  assert.equal(await m.legacyPresent(() => false, read({ packs: ['basics'] })), true, 'pack undeclared -> legacy');
+  assert.equal(await m.legacyPresent(() => false, read({ packs: ['UserPreferencesStore'] })), false, 'declared -> done');
+  assert.equal(await m.legacyPresent(() => false, read({ packs: [{ id: 'UserPreferencesStore', config: { repo: 'o/other' } }] })), false,
+    'declared with a store of its own -> done, whatever it names');
   assert.equal(await m.legacyPresent(() => false, read(null)), false, 'no declaration -> not a member, not held');
   assert.equal(await m.legacyPresent(() => false, async () => 'nope'), false, 'unparsable -> not held');
 });

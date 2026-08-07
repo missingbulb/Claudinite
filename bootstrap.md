@@ -70,8 +70,8 @@ trees — so nothing there needs ignoring (#385).
 
 Claude Code runs `SessionStart` entries **in parallel, in non-deterministic order**, so anything
 sequenced must live inside **one** entry. Register exactly one — the orchestrator, which runs
-the context steps in sequence in a single process (preferences → active-pack prose → skill
-mounts → env check → interview check) and forwards their stdout into the session context:
+the context steps in sequence in a single process (self-test → active-pack prose → each
+active pack's own session-start step → skill mounts → env check → interview check) and forwards their stdout into the session context:
 
 ```json
 { "hooks": { "SessionStart": [ { "hooks": [
@@ -102,15 +102,14 @@ into the project's test/CI flow in Part 8:
 Invoke scripts **through `bash`/`node`**, never as bare paths — a dropped exec bit would fail the
 hook before line 1 and swallow its own message. Notes on how the steps behave:
 
-- **Preferences are fail-soft, and their location is declared** — per-user content is never
-  vendored and never lives in the canon (it belongs to one fleet's *users*), so the project's own
-  settings name the home: `"preferences": { "repo": "owner/name" }` (optional `"path"`, default
-  `preferences/`). `shared/engine/hooks/steps/inject-preferences.mjs` reads
-  `<path>/<email>.md` locally where this tree carries it and otherwise fetches that single file;
-  any miss — including **no declared home** — is a one-line note, and the session proceeds on
-  defaults. Bootstrap does **not** write the pointer: canon can't know which fleet it is being
-  bootstrapped into. A fleet with an enforcer gets it from the sheepdog pack's `fleet-preferences`
-  sweep; otherwise add the key by hand.
+- **A pack may contribute its own session-start step** — the orchestrator runs
+  `<pack>/session-start.mjs` for every declared pack that ships one, hands it that pack's
+  entry `config`, and forwards what it prints into the session context under the pack's
+  marker. It is for what a pack can only know at session time (content from outside this
+  repo, or keyed to the person in front of it), where `RULES.md` is fixed at vendor time.
+  Bounded and **fail-soft**: a step that fails, hangs, or overruns the context cap is one
+  plain-text note and the session proceeds. Which packs contribute one is the packs'
+  business, not bootstrap's.
 - **The halt-gate** — a SessionStart hook cannot block, but its stdout is injected into context,
   so a step that can't do its load-bearing job (`env.mjs check` — a missing toolchain) prints a
   plain-text directive telling the assistant to STOP and confirm via `AskUserQuestion` before any

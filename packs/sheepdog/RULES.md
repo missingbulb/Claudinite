@@ -22,26 +22,27 @@ measurement rather than a condition to converge. It exists because a member fold
 numbers and can therefore only say whether a skill loads *there*; whether a skill earns its place at
 all is fleet-shaped, and nothing inside a member can see it. The **preferences sweep**
 ([check-fleet-preferences.mjs](tasks/fleet-preferences/check-fleet-preferences.mjs)) asks *does each member
-know where this fleet's users' personal preferences live* and **writes the pointer** into the ones that
-don't. It exists because those preferences belong to the fleet's *users* — not to any project, and not to
+know where this fleet's people keep their personal preferences* and **declares it** in the ones that
+don't. It exists because those preferences belong to the fleet's *people* — not to any project, and not to
 the canon, which every fleet mounts and which therefore cannot know whose preferences to name. Only this
 repo knows: it is the fleet.
 
-**The preferences sweep is the one that writes to members**, and it stays narrow on purpose: one
-additive settings key (`"preferences": { "repo": … }`), one PUT to the member's default branch guarded by
+**The preferences sweep is the one that writes to members**, and it stays narrow on purpose: one pack
+declaration (`{ "id": "UserPreferencesStore", "config": { "repo": … } }` — the pack whose session-start
+step reads a person's preferences into their session), one PUT to the member's default branch guarded by
 the blob sha the read returned, idempotent, no issue in either direction. Two rules keep it safe. It
-**gates on the member's own engine**: an unknown top-level setting is a blocking `config` error, and a
-member runs whatever engine its vendored mount carries, so the sweep reads that mount's `CONFIG_KEYS` and
-writes only when the setting is in it — `engine-behind` is a wait, not a finding, and members re-vendor
-nightly, so the rollout needs no coordination. And it **never overwrites a pointer at a different repo**:
-the fleet is the authority on where its preferences live, but a pointer someone set deliberately is a
-decision the sweep cannot second-guess. A dormant member is skipped entirely.
+**gates on the member's own mount**: a declared pack whose code is absent is a blocking `config` error
+there, and a member's mount carries only what it declared as of its last converge, so the sweep writes
+only where the pack is already on disk — `not-vendored` is a wait, not a finding, and members converge
+nightly, so the rollout needs no coordination. And it **never overwrites a store someone else set**:
+the fleet is the authority on where its preferences live, but a store set deliberately is a
+decision the sweep cannot second-guess. A dormant member is never written to.
 
-The fleet that existed when the setting landed was carried by a **baseline migration** instead (a
-`settings` op, applied by each member's own baselining in the same commit that vendors the engine
-accepting the key). This sweep is the **standing** half: a migration record is dated, retires, and
-carries its value as a literal in shared canon, while the sweep reads the home from this repo's config
-and so keeps serving members adopted after the record is gone.
+The fleet that existed when the pack landed was carried by a **baseline migration** instead (a
+`declarePacks` op, applied by each member's own baselining in the same transactional commit that vendors
+the pack's code). This sweep is the **standing** half: a migration record is dated, retires, and carries
+its value as a literal in shared canon, while the sweep reads the store from this repo's config and so
+keeps serving members adopted after the record is gone.
 
 **One manual lever, not a fifth sweep** — [force-fleet-baseline.mjs](fleet-baseline/force-fleet-baseline.mjs)
 fires every covered member's own `claudinite-scheduler.yml` with `overrides: FORCE_TASKS=baselining`,

@@ -94,14 +94,7 @@ function vendoredSet(root, files) {
 // below, and the wiring converge (engine/scheduler/converge-wiring.mjs) clears it.
 // `dormant` is the project's own declaration that it is out of the RECURRING work —
 // see isDormant below for exactly how much that covers.
-// `preferences` is where this project's users' PERSONAL interaction preferences live —
-// { repo: "owner/name", path?: "preferences" }, read by the session-start preferences
-// step (engine/hooks/steps/inject-preferences.mjs). A pointer rather than content,
-// because the preferences themselves belong to neither this repo nor the canon: they
-// are one fleet's users' own, and the fleet says where they are. Absence is legal and
-// silent-by-design — a project with no fleet behind it has no preferences home, and
-// the step then runs on defaults (see preferencesLocation below).
-export const CONFIG_KEYS = ['packs', 'rules', 'accept', 'sharedConstants', 'packConfig', 'maintenance', 'claudinite', 'taskScheduler', 'dormant', 'preferences'];
+export const CONFIG_KEYS = ['packs', 'rules', 'accept', 'sharedConstants', 'packConfig', 'maintenance', 'claudinite', 'taskScheduler', 'dormant'];
 
 // Does this project declare itself DORMANT? A project goes dormant when it is
 // finished, parked, or simply not being worked on: it should stop paying the
@@ -128,35 +121,6 @@ export const CONFIG_KEYS = ['packs', 'rules', 'accept', 'sharedConstants', 'pack
 // notion of dormancy would nag exactly the repos that had already opted out. One
 // definition, both sides.
 export const isDormant = (config) => config?.dormant === true;
-
-// Where a project's users' personal preferences live, when it declares one. The
-// convention for the directory inside that repo — one `<email>.md` per person — so a
-// declaration only has to name the repo.
-export const PREFERENCES_PATH_DEFAULT = 'preferences';
-
-// The preferences POINTER: `{ repo, path }` when this project names a preferences
-// home, else null. WHY A POINTER AND NOT A PATH IN THE CANON: personal preferences
-// are the concern of one fleet's users, so the canon is the wrong place to keep them
-// and the wrong authority to name their location — the fleet is. A project therefore
-// declares the home, and whoever bootstraps that fleet's repos is what puts the
-// declaration there (the sheepdog pack's fleet-preferences sweep does it for a fleet
-// with an enforcer).
-//
-// Read the same way from a raw parsed .claudinite-checks.json and from the normalized
-// config loadConfig returns — the isDormant contract, for the same reason: a
-// cross-repo reader fetches another repo's declaration over the API with no engine
-// loaded against that tree, and it must resolve the pointer by the same test the
-// session-start step used. One definition, both sides. A misshaped pointer resolves
-// to null here and is reported as a settings error by loadConfig; nothing downstream
-// re-decides what a valid pointer is.
-export function preferencesLocation(config) {
-  const p = config?.preferences;
-  if (p === null || typeof p !== 'object' || Array.isArray(p)) return null;
-  if (typeof p.repo !== 'string' || !/^[^/\s]+\/[^/\s]+$/.test(p.repo)) return null;
-  if (p.path !== undefined && (typeof p.path !== 'string' || p.path.includes('..') || p.path.startsWith('/'))) return null;
-  const path = (p.path ?? PREFERENCES_PATH_DEFAULT).replace(/^\.\/+|\/+$/g, '');
-  return { repo: p.repo, path: path || PREFERENCES_PATH_DEFAULT };
-}
 
 // The keys a `schedule` object may carry, and the canonical weekday vocabulary
 // (mirrored from engine/scheduler/slots.mjs WEEKDAYS — kept as a literal here so
@@ -192,7 +156,7 @@ export const PACK_ENTRY_KEYS = ['id', 'config', 'answers', 'rules', 'accept', 'v
 // read this one shape regardless of which form the file used.
 export function loadConfig(root) {
   const path = join(root, '.claudinite-checks.json');
-  const empty = { packs: [], packEntries: [], rules: {}, accept: [], sharedConstants: [], packConfig: {}, taskScheduler: null, claudinite: null, maintenance: null, dormant: false, preferences: null, errors: [] };
+  const empty = { packs: [], packEntries: [], rules: {}, accept: [], sharedConstants: [], packConfig: {}, taskScheduler: null, claudinite: null, maintenance: null, dormant: false, errors: [] };
   if (!existsSync(path)) return empty;
 
   let raw;
@@ -342,19 +306,6 @@ export function loadConfig(root) {
     });
   }
 
-  // --- preferences: the pointer at where this project's users' personal
-  // preferences live. Absent is legal (no fleet, no home, defaults apply), but a
-  // DECLARED pointer that does not resolve is a settings error: it reads as "these
-  // users have a preferences home" while the step it exists for silently falls back
-  // to defaults, and a preference nobody sees is indistinguishable from one nobody
-  // wrote.
-  if (raw.preferences !== undefined && preferencesLocation(raw) === null) {
-    errors.push({
-      what: `"preferences" must be { "repo": "owner/name", "path"?: "<dir>" }, got ${JSON.stringify(raw.preferences)}`,
-      fix: `name the repo holding this fleet's per-user preferences, e.g. { "repo": "owner/fleet-repo" } — "path" defaults to "${PREFERENCES_PATH_DEFAULT}/" and may not be absolute or escape the repo`,
-    });
-  }
-
   return {
     packs,
     packEntries,
@@ -379,10 +330,6 @@ export function loadConfig(root) {
     // asks "is this project dormant", and a tri-state (true / false / absent) would
     // invite each caller to answer the absent case for itself. Absent is active.
     dormant: isDormant(raw),
-    // Normalized through the one resolver (path defaulted), so every reader gets the
-    // same `{ repo, path }` and null means "no home declared" — never a half-read
-    // pointer.
-    preferences: preferencesLocation(raw),
     errors,
   };
 }

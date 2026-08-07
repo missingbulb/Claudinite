@@ -9,11 +9,11 @@
 // specific pack: it is the generic "talk to many repos" layer, no more.
 //
 // It is READ-ONLY toward members but for ONE primitive — `putFile`, which the
-// preferences sweep uses to land the fleet's preferences pointer in a member's
-// declaration. Keeping the write to a single named function is deliberate: "what can
+// preferences sweep uses to land the fleet's preferences-store declaration in a
+// member. Keeping the write to a single named function is deliberate: "what can
 // this module change in someone else's repo" then has exactly one answer to read.
 
-import { isDormant, preferencesLocation, PREFERENCES_PATH_DEFAULT } from '../../engine/checks/helpers/repo-context.mjs';
+import { isDormant } from '../../engine/checks/helpers/repo-context.mjs';
 
 const API = 'https://api.github.com';
 
@@ -29,12 +29,6 @@ export const DECLARATION = '.claudinite-checks.json';
 // failure this exists to prevent.
 export { isDormant };
 
-// The preferences pointer resolver, re-exported for the same reason and on the same
-// terms: a member's `preferences` setting has to be read by the ONE resolver the
-// session-start step reads it with, or the sweep would "fix" pointers that already
-// work (or leave broken ones alone). The engine owns the shape; this module only
-// carries it across the wire.
-export { preferencesLocation, PREFERENCES_PATH_DEFAULT };
 
 export function makeGh(token) {
   return async function gh(path, { method = 'GET', body } = {}) {

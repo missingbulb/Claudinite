@@ -22,7 +22,7 @@
     {
       "id": "barriers",
       "answers": {
-        "goals": "Keep extending.md's engine/content boundary structural: core (checks/, mount/, engine/, .github/, the top-level docs, and the shared engine modules under packs/ and skills/) must never name a specific pack or skill \u2014 packs and skills are discovered content, and a core file citing one couples the engine to its content. One rule per namespace (packs/*, skills/*); reviewed inherent couplings live in each rule's except. migrations/ is deliberately NOT core here: a migration record is a dated one-off that exists to move the fleet off a specific pack's old shape, so naming that pack is its purpose, not a coupling \u2014 and the record moves between active_migrations/ and migrations-old/ over its life, which no path-keyed exception can track."
+        "goals": "Keep extending.md's engine/content boundary structural: core (checks/, mount/, engine/, .github/, the top-level docs, and the shared engine modules under packs/ and skills/) must never name a specific pack or skill — packs and skills are discovered content, and a core file citing one couples the engine to its content. One rule per namespace (packs/*, skills/*); reviewed inherent couplings live in each rule's except. migrations/ is deliberately NOT core here: a migration record is a dated one-off that exists to move the fleet off a specific pack's old shape, so naming that pack is its purpose, not a coupling — and the record moves between active_migrations/ and migrations-old/ over its life, which no path-keyed exception can track."
       },
       "config": {
         "rules": [
@@ -37,7 +37,7 @@
             "to": "packs/*",
             "matchNames": true,
             "matchUniqueFilenames": false,
-            "reason": "core is the engine that runs pack content \u2014 it must not name the specific packs it runs (extending.md)",
+            "reason": "core is the engine that runs pack content — it must not name the specific packs it runs (extending.md)",
             "except": [
               {
                 "path": ".github/workflows/README.md",
@@ -90,23 +90,32 @@
           }
         ]
       }
+    },
+    {
+      "id": "UserPreferencesStore",
+      "config": {
+        "repo": "missingbulb/Sheepdog"
+      },
+      "answers": {
+        "store": "missingbulb/Sheepdog — the fleet's own repo, which holds one <email>.md per person under preferences/"
+      }
     }
   ],
   "accept": [
     {
       "rule": "reference-integrity",
       "path": "docs/per-project-scheduling/",
-      "reason": "the per-project-scheduling DESIGN/MIGRATION pair is the historical record of migration #394 \u2014 it names the central routine and planner files this migration deleted precisely because deleting them is what it records; rewriting those names would falsify the record, so its inbound-reference dangling is deliberate and permanent"
+      "reason": "the per-project-scheduling DESIGN/MIGRATION pair is the historical record of migration #394 — it names the central routine and planner files this migration deleted precisely because deleting them is what it records; rewriting those names would falsify the record, so its inbound-reference dangling is deliberate and permanent"
     },
     {
       "rule": "file-placement",
       "path": "engine/checks/helpers/repo-context.mjs",
-      "reason": "the engine's file-set builder deliberately imports the consumer-layout constant SHARED_SUBDIR (beside LOCAL_PACKS_SUBDIR in engine/pack_loader/pack-registry.mjs \u2014 core machinery per extending.md, not a specific pack) so the shared-mount sweep exclusion and the vendor writer share one definition; the cross-tree reach is inherent, not a misplacement"
+      "reason": "the engine's file-set builder deliberately imports the consumer-layout constant SHARED_SUBDIR (beside LOCAL_PACKS_SUBDIR in engine/pack_loader/pack-registry.mjs — core machinery per extending.md, not a specific pack) so the shared-mount sweep exclusion and the vendor writer share one definition; the cross-tree reach is inherent, not a misplacement"
     },
     {
       "rule": "file-placement",
       "path": "migrations/registry.mjs",
-      "reason": "the canon-side migration registry deliberately builds on the vendored sync surface in the engine lib (engine/checks/helpers/active-migrations.mjs \u2014 the home pack-independence mandates, since pack checks consult migrationActive and packs import only the engine surface); one definition, re-exported for canon callers, so the cross-tree reach is inherent, not a misplacement"
+      "reason": "the canon-side migration registry deliberately builds on the vendored sync surface in the engine lib (engine/checks/helpers/active-migrations.mjs — the home pack-independence mandates, since pack checks consult migrationActive and packs import only the engine surface); one definition, re-exported for canon callers, so the cross-tree reach is inherent, not a misplacement"
     },
     {
       "rule": "file-placement",
@@ -121,15 +130,12 @@
     {
       "rule": "file-placement",
       "path": "vendoring/compute-vendor-set.mjs",
-      "reason": "the vendor-set computation deliberately imports the import-surface facts from the engine lib (engine/checks/helpers/module-imports.mjs \u2014 the one home the pack-independence check judges against), so \"what a pack may import\" and \"what a vendor set must carry\" share one definition; the cross-tree reach is inherent, not a misplacement"
+      "reason": "the vendor-set computation deliberately imports the import-surface facts from the engine lib (engine/checks/helpers/module-imports.mjs — the one home the pack-independence check judges against), so \"what a pack may import\" and \"what a vendor set must carry\" share one definition; the cross-tree reach is inherent, not a misplacement"
     }
   ],
   "taskScheduler": {
     "dailyHour": 4,
     "weeklyDay": "Sun",
     "monthlyDay": 1
-  },
-  "preferences": {
-    "repo": "missingbulb/Sheepdog"
   }
 }

@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeRepo, cleanup, git, gitDated, writeFiles } from './helpers.mjs';
-import { buildContext, loadConfig, CONFIG_KEYS, isDormant, preferencesLocation } from '../engine/checks/helpers/repo-context.mjs';
+import { buildContext, loadConfig, CONFIG_KEYS, isDormant } from '../engine/checks/helpers/repo-context.mjs';
 
 test('loadConfig: clean settings validate with no errors; a missing file is empty and error-free', () => {
   const ok = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({ packs: ['basics'], rules: {}, maintenance: { delivery: 'auto' } }) } });
@@ -353,7 +353,6 @@ test('every key in CONFIG_KEYS survives loadConfig — declarable implies readab
         maintenance: { delivery: 'auto-merge' },
         taskScheduler: { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 },
         claudinite: { updated: '2026-07-26T20:10:18.694Z', ref: 'deadbeef' },
-        preferences: { repo: 'owner/fleet-repo' },
       }, null, 2) + '\n',
     });
     const cfg = loadConfig(root);
@@ -374,7 +373,6 @@ test('every key in CONFIG_KEYS survives loadConfig — declarable implies readab
     assert.equal(cfg.claudinite.ref, 'deadbeef');
     assert.equal(cfg.claudinite.updated, '2026-07-26T20:10:18.694Z');
     assert.equal(cfg.maintenance.delivery, 'auto-merge');
-    assert.deepEqual(cfg.preferences, { repo: 'owner/fleet-repo', path: 'preferences' });
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
@@ -409,50 +407,6 @@ test('a non-boolean dormant is a settings error, not a truthy value', () => {
     assert.equal(cfg.errors.length, 1);
     assert.match(cfg.errors[0].what, /"dormant" must be true or false/);
     assert.equal(cfg.dormant, false, 'an invalid declaration is not a dormancy declaration');
-  } finally { rmSync(root, { recursive: true, force: true }); }
-});
-
-// ── preferences: the pointer at where this project's users' preferences live ──
-test('preferences resolves to { repo, path } with the path defaulted, and reads a raw declaration too', () => {
-  const root = mkdtempSync(join(tmpdir(), 'claudinite-prefs-'));
-  try {
-    writeFiles(root, { '.claudinite-checks.json': JSON.stringify({ packs: ['basics'], preferences: { repo: 'owner/fleet-repo' } }) + '\n' });
-    const cfg = loadConfig(root);
-    assert.deepEqual(cfg.errors, [], 'declaring a preferences home is a legal settings file');
-    assert.deepEqual(cfg.preferences, { repo: 'owner/fleet-repo', path: 'preferences' });
-
-    // A declared path wins, normalized of its trailing slash.
-    writeFiles(root, { '.claudinite-checks.json': JSON.stringify({ packs: [], preferences: { repo: 'owner/r', path: 'people/prefs/' } }) + '\n' });
-    assert.deepEqual(loadConfig(root).preferences, { repo: 'owner/r', path: 'people/prefs' });
-
-    // Absent is legal and silent: a project with no fleet behind it has no home, and
-    // the session-start step then runs on defaults rather than reporting anything.
-    writeFiles(root, { '.claudinite-checks.json': JSON.stringify({ packs: ['basics'] }) + '\n' });
-    const none = loadConfig(root);
-    assert.deepEqual(none.errors, []);
-    assert.equal(none.preferences, null);
-
-    // The same resolver reads a RAW declaration — how a cross-repo sweep reads another
-    // repo's pointer, with no engine loaded against that tree.
-    assert.deepEqual(preferencesLocation({ preferences: { repo: 'owner/r' } }), { repo: 'owner/r', path: 'preferences' });
-    assert.equal(preferencesLocation({}), null);
-  } finally { rmSync(root, { recursive: true, force: true }); }
-});
-
-test('a declared preferences pointer that does not resolve is a settings error', () => {
-  // Not silence: the key claims "these users have a preferences home" while the step
-  // it exists for falls back to defaults, and a preference nobody sees is
-  // indistinguishable from one nobody wrote. Traversal is refused for the same reason
-  // it always is — the path becomes a file read.
-  const root = mkdtempSync(join(tmpdir(), 'claudinite-prefs-bad-'));
-  try {
-    for (const bad of ['missingbulb', { path: 'preferences' }, { repo: 'owner/r', path: '../../etc' }, { repo: 'owner/r', path: '/abs' }, null]) {
-      writeFiles(root, { '.claudinite-checks.json': JSON.stringify({ packs: [], preferences: bad }) + '\n' });
-      const cfg = loadConfig(root);
-      assert.equal(cfg.errors.length, 1, `${JSON.stringify(bad)} must be a settings error`);
-      assert.match(cfg.errors[0].what, /"preferences" must be/);
-      assert.equal(cfg.preferences, null, 'an unresolvable pointer is not a pointer');
-    }
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
