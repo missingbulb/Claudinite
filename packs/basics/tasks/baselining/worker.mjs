@@ -286,8 +286,16 @@ export function ciDispatchPlan(files) {
 
 const git = (args, opts = {}) =>
   execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], ...opts });
-const node = (args, extraEnv = {}) =>
-  execFileSync(process.execPath, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, ...extraEnv } });
+// `opts` exists for ONE reason: `cwd`. This worker's own cwd is the task dir INSIDE the
+// mount (prework.mjs spawns it there), and step 2 deletes that whole tree before
+// re-copying it — so from the vendor step onward this process is running in an unlinked
+// directory, and every child it spawns inherits it. A child that calls `process.cwd()`
+// dies with `ENOENT … uv_cwd` (#689). Children are therefore pointed at the repo root,
+// which is the directory they were always meant to be working in.
+const node = (args, extraEnv = {}, opts = {}) =>
+  execFileSync(process.execPath, args, {
+    encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, ...extraEnv }, ...opts,
+  });
 
 async function gh(token, path, { method = 'GET', body } = {}) {
   const res = await fetch(`${API}${path}`, {
@@ -336,7 +344,7 @@ export const GATE_ABSENT = Object.freeze({ ok: true, ran: false, crashed: false,
 function runCheckTheWorld(root) {
   const cw = join(root, '.claudinite/shared/engine/checks/check_the_world.mjs');
   if (!existsSync(cw)) return GATE_ABSENT; // no vendored checks to gate on
-  try { node([cw], { CLAUDE_PROJECT_DIR: root }); return gateOutcome(null); }
+  try { node([cw], { CLAUDE_PROJECT_DIR: root }, { cwd: root }); return gateOutcome(null); }
   catch (e) { return gateOutcome(e); }
 }
 
@@ -510,7 +518,7 @@ export function landAttempt({ delivery, runs, elapsedMs = 0, timeoutMs = LAND_TI
 function runSelfTest(root) {
   const st = join(root, '.claudinite/shared/engine/selftest.mjs');
   if (!existsSync(st)) return GATE_ABSENT;
-  try { node([st, '--strict'], { CLAUDE_PROJECT_DIR: root }); return gateOutcome(null); }
+  try { node([st, '--strict'], { CLAUDE_PROJECT_DIR: root }, { cwd: root }); return gateOutcome(null); }
   catch (e) { return gateOutcome(e); }
 }
 
