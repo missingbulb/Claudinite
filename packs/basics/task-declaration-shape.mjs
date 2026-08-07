@@ -72,7 +72,12 @@ const rule = {
       const legacyPrework = /\bagent_preprocessing:\s*['"]/.test(text);
       const hasPrework = /\bprework:\s*['"]/.test(text) || legacyPrework;
       if (legacyPrework) {
-        flag('declares prework under the legacy name "agent_preprocessing"', 'rename "agent_preprocessing" → "prework" and "agent_preprocessing_timeout" → "prework_timeout" (the phases of task execution are prework, then agentic work)');
+        // ADVISORY, deliberately, on a blocking rule: the legacy names still
+        // satisfy the runtime contract (normalized at load), and a member's
+        // vendor refresh must not turn its CI red over files nothing has renamed
+        // yet — the 2026-08-06 migration note drives the rename; this finding
+        // only keeps it visible until it lands.
+        out.push(finding(rule, { file, severity: 'advisory', what: 'declares prework under the legacy name "agent_preprocessing"', fix: 'rename "agent_preprocessing" → "prework" and "agent_preprocessing_timeout" → "prework_timeout" (the phases of task execution are prework, then agentic work)' }));
       }
       if (model && MODEL_FAMILIES.includes(model) && model !== 'none' && !hasNum('agent_execution_timeout')) {
         flag('an agentic task (agent_model !== "none") declares no numeric "agent_execution_timeout"', 'add "agent_execution_timeout": seconds bounding the agentic run');

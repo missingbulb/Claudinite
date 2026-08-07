@@ -222,3 +222,30 @@ test('verifyOutcome enforces each ceiling and always allows no-change', () => {
   // unknown ceiling fails closed
   assert.equal(verifyOutcome({ outcome: 'push', openedPr: true }).ok, false);
 });
+
+// --- the 2026-08-06 rename boundary ------------------------------------------
+// Consumer local packs rename on their own clock, so the LEGACY field names must
+// stay a valid way to declare prework: normalized at the door (discover,
+// resolve-dispatch), canonical everywhere downstream.
+test('normalizeTaskDeclaration maps legacy agent_preprocessing names to prework, canonical winning on conflict', async () => {
+  const { normalizeTaskDeclaration } = await import('../../engine/scheduler/task-contract.mjs');
+  const n = normalizeTaskDeclaration({ agent_preprocessing: 'node w.mjs', agent_preprocessing_timeout: 60, agent_model: 'none' });
+  assert.equal(n.prework, 'node w.mjs');
+  assert.equal(n.prework_timeout, 60);
+  assert.equal(n.agent_preprocessing, undefined);
+  assert.equal(n.agent_preprocessing_timeout, undefined);
+  // Both present → canonical wins; nothing is destroyed silently elsewhere.
+  assert.equal(normalizeTaskDeclaration({ prework: 'node a.mjs', agent_preprocessing: 'node b.mjs' }).prework, 'node a.mjs');
+  // Non-objects pass through for validate to report.
+  assert.equal(normalizeTaskDeclaration(null), null);
+});
+
+test('a legacy-named agentless declaration validates clean — the rename is not a breaking change', async () => {
+  const { validateTaskDeclaration } = await import('../../engine/scheduler/task-contract.mjs');
+  const problems = validateTaskDeclaration({
+    id: 't', frequency: 'daily', precondition_signals: [], agent_model: 'none',
+    expected_outcome: 'none', precondition: () => ({ run: true }),
+    agent_preprocessing: 'node worker.mjs', agent_preprocessing_timeout: 120,
+  });
+  assert.deepEqual(problems, []);
+});

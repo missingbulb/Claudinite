@@ -128,3 +128,20 @@ test('task-declaration-shape: a well-formed task with preprocessing + both timeo
   );
   assert.deepEqual(run({ [TASK]: withPrep }), []);
 });
+
+// The 2026-08-06 rename boundary: a member's local pack still declaring the
+// legacy prework names must keep working — the loader normalizes them — and the
+// vendor refresh must not turn its CI red over files nothing has renamed yet.
+// So the legacy declaration is contract-complete (no missing-prework, no
+// missing-timeout findings) and earns exactly one ADVISORY rename nudge.
+test('task-declaration-shape: legacy agent_preprocessing names satisfy the contract, advisory rename only', () => {
+  const legacy = goodTask
+    .replace("agent_model: 'opus'", "agent_model: 'none'")
+    .replace("agent_instructions: 'task.md',\n", '')
+    .replace("agent_execution_timeout: 1800,", "agent_preprocessing: 'node worker.mjs',\n  agent_preprocessing_timeout: 120,");
+  const findings = run({ [TASK]: legacy });
+  assert.equal(findings.length, 1, JSON.stringify(findings));
+  assert.equal(findings[0].severity, 'advisory');
+  assert.match(findings[0].what, /legacy name/);
+  assert.match(findings[0].fix, /"agent_preprocessing" → "prework"/);
+});
