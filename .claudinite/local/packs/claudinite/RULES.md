@@ -65,6 +65,21 @@ prose below).
   deliberately: name the exact scope, say why nothing weaker suffices, and have the automation
   report when it is missing rather than silently degrading.
 
+- **A change to what members receive is not verified until a member has received it — force that in
+  the same session** (owner requirement, 2026-08-06: *"We're not waiting till tomorrow to see if
+  something worked"*). Merging to canon is evidence about canon; the only thing that exercises a
+  canon change end to end is a member's converge, and on a daily slot that is a day away — so a
+  session that closes on "it reaches the fleet tonight" has shipped an unverified change and hands
+  the owner a question they will ask anyway (asked five separate ways across 2026-08-05/06:
+  *"Check status"*, *"Did the Sheepdog baselining work?"*, *"check now"*, *"How do you know 'the
+  fleet is now fully on 076c029'?"*, and forced baselines appended to three consecutive `lgtm`s).
+  After landing anything that alters what baselining delivers, drive Sheepdog's `fleet-baseline`
+  workflow with `follow` and report what it did per member, unasked. Two corollaries. **A dispatch
+  is not a result** — the API's 204 means queued. And **attaching a member repo to the session is a
+  read you already have**, so attach the repos the verification needs rather than offering to: *"2
+  of 11 members confirmed … say the word and I'll attach and verify"* bought a round-trip, one of
+  four the owner spent that morning telling this session to attach repos.
+
 ## Canon-specific gotchas
 
 - **Baselining backfill skips the home.** The nightly baselining that lands a `seededByDefault`
@@ -99,6 +114,17 @@ prose below).
   consumer — the `reference-integrity` class that reached `main` unnoticed in #424 (and that
   check is work-scoped, so it only sees paths the branch itself deletes). Reference `docs/` from
   the issue or PR instead.
+- **A pack's `RULES.md` carries directives an agent must obey — never a walkthrough of how the
+  feature works** (owner correction, 2026-08-06: *"Rules are context for any agentic work, not for
+  random explanations"*). The same injection that makes the prose useful makes description
+  expensive: a paragraph that only *describes* a mechanism is paid for by every session in every
+  declaring repo and steers none of them. Shipping the fleet-baseline `follow` half, the rule the
+  change actually added was one sentence — the two extra PAT read scopes a followed run needs —
+  and everything around it was a feature tour. Behaviour description goes in the module header and
+  the pack `README.md`, read by whoever works on that code rather than loaded ambiently; the test
+  before a paragraph goes in is whether an agent could *act* differently for having read it. Same
+  instinct as the comment rule `basics` now carries (describe the current state, not the change),
+  applied where the cost is per session rather than per reader.
 - **Pick a scheduled task's cadence from how often its signal actually moves.** On a member the
   mounted canon changes most nights — baselining converges `.claudinite/shared/` daily — so any
   precondition reading `sharedMount` fires nearly every night, spending an opus dispatch per
