@@ -382,3 +382,34 @@ prose below).
   post-merge `main`: re-run the suite against current `main` immediately before merging a
   rule-adding PR, and update **both** numbers. (Portable — a promote candidate for `git-github`'s
   `merge-to-main`, which today says nothing about merging on a stale green.)
+- **A worker whose cwd sits inside the tree it deletes takes every child with it — and the death
+  arrives dressed as a legitimate outcome.** Baselining's prework runs with its cwd *inside the
+  mount* (`.claudinite/shared/packs/basics/tasks/baselining/`), and converge step 2 `rmSync`s that
+  whole tree before re-copying it. On Linux the worker survives on the unlinked inode and so does
+  every child it spawns — so `check_the_world` died at `process.cwd()` with `ENOENT … uv_cwd`
+  **before running a single check**, on every night that actually converged. Nothing looked wrong,
+  because `escalation()` folded the crash into `checks-could-not-run` (worker.mjs:184) — a real code
+  that reads as "this mount is too old to have checks". Net effect, fleet-wide and invisible: the
+  conformance gate had never gated a converged tree, and every converging night burned an agent
+  escalation on it. Caught live on a Sheepdog run, by nobody's test (#689/#691). Two habits. **Give
+  every spawned child an explicit `cwd`** — `node([…], env, { cwd: root })` — rather than letting it
+  inherit a directory its parent is about to delete, and resolve a root that cannot vanish underneath
+  you (`--root`, then `CLAUDE_PROJECT_DIR`, then `cwd`: the order `check_the_world` and
+  `engine/selftest.mjs` now share; the disagreement between them is the only reason selftest survived
+  the same dead cwd untouched). And **when a crash and a benign state share one outcome code, the
+  crash is unobservable** — keep "could not run" distinguishable from "had nothing to run".
+- **When a member's maintenance PR won't land, read the member before theorizing — `unstable` beside
+  a green sweep is a *parked* run, not a missing repo setting.** GitHub gates `pull_request` runs on
+  Actions-pushed branches at `action_required`; a parked run never reports, so the PR reads
+  `mergeable_state: unstable` and `enablePullRequestAutoMerge` refuses it. Measured 2026-08-07 (#676):
+  a session read that signature as the members lacking *"Allow GitHub Actions to create and approve
+  pull requests"* and offered to have the owner flip it across the fleet. The owner's *"Check that
+  setting. I think you're wrong."* was right, and the two reads that settled it took under a minute —
+  each member's raw `.claudinite-checks.json` (all eight already said `delivery: auto-merge`) and the
+  head sha's `pull_request` runs (4 of the last 5 parked `action_required`). The tree already knew:
+  `baselining/worker.mjs` documents both shapes and the session quoted the wrong one — but this is a
+  mistake of omission you make *without* opening that file, which is why it belongs here rather than
+  beside the code. So propose a platform-settings change only as a **conclusion**, never as a
+  diagnosis, and never on a symptom two API reads resolve. (Sibling of the standing ruling above that
+  what Claudinite ships must run on the settings a member already has — that one is about what to
+  *build*, this one about what to *believe*.)
