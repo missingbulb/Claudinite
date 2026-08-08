@@ -113,6 +113,34 @@ export const FIXTURES = [
     },
   },
   {
+    name: 'jwt-consumer',
+    why: 'a member declaring the jwt technology pack over clean JWT source — the pack\'s blocking skill checks are opt-in, and this proves a member that opts in converges green',
+    files: {
+      'README.md': '# fixture-jwt-consumer\n\nA rehearsal fixture.\n',
+      '.claudinite-checks.json': checks(['basics', 'jwt']),
+      // Clean under all five jwt checks: algorithms pinned, audience and issuer
+      // bound, secret from the environment, expiry set, no "none" anywhere.
+      'server/auth.js': `const jwt = require('jsonwebtoken');
+
+const BINDINGS = { audience: 'api://fixture', issuer: 'https://fixture.example' };
+
+function issue(sub) {
+  return jwt.sign({ sub }, process.env.JWT_SECRET, {
+    algorithm: 'HS256', expiresIn: '15m', ...BINDINGS,
+  });
+}
+
+function check(token) {
+  return jwt.verify(token, process.env.JWT_SECRET, {
+    algorithms: ['HS256'], ...BINDINGS,
+  });
+}
+
+module.exports = { issue, check };
+`,
+    },
+  },
+  {
     name: 'dormant',
     why: 'a declared-dormant member: its mount falls behind BY DESIGN, never a failure',
     files: {
