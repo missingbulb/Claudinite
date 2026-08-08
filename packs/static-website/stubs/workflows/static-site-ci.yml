@@ -45,6 +45,22 @@ jobs:
       - id: cfg
         uses: ./.github/actions/read-site-config
 
+      # The same environment the deploy builds in — see the matching step in
+      # static-site-deploy-pages.yml. Every repo variable becomes an environment
+      # variable, so a build_command that reads one behaves identically on the
+      # pull request and on the release, and a missing variable shows up here
+      # rather than for the first time on a deploy. Repo variables are
+      # non-secret by definition; `secrets` is not read here.
+      - name: Export the repo's variables to the build environment
+        env:
+          REPO_VARS: ${{ toJSON(vars) }}
+          EOF_MARK: GH_VARS_EOF_${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$REPO_VARS" \
+            | jq -r --arg eof "$EOF_MARK" 'to_entries[] | "\(.key)<<\($eof)\n\(.value)\n\($eof)"' \
+            >> "$GITHUB_ENV"
+
       - name: Conformance sweep
         run: node .claudinite/shared/engine/checks/check_the_world.mjs
 

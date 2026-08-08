@@ -60,6 +60,25 @@ jobs:
         with:
           node-version: 22
 
+      # Every repo variable (Settings → Secrets and variables → Actions →
+      # Variables) becomes an environment variable for the build below. That is
+      # how a build_command reaches a repo's own values — an analytics beacon
+      # token, a base URL — without this file, which is copy-verbatim across
+      # every site repo, having to know their names. Repo variables are
+      # non-secret by definition (that is the distinction GitHub draws between
+      # `vars` and `secrets`); `secrets` is not read here and is never exported.
+      # The heredoc delimiter carries the run id so a variable whose value
+      # happens to contain it cannot terminate its own block early.
+      - name: Export the repo's variables to the build environment
+        env:
+          REPO_VARS: ${{ toJSON(vars) }}
+          EOF_MARK: GH_VARS_EOF_${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$REPO_VARS" \
+            | jq -r --arg eof "$EOF_MARK" 'to_entries[] | "\(.key)<<\($eof)\n\(.value)\n\($eof)"' \
+            >> "$GITHUB_ENV"
+
       # A build_command that needs dependencies installs them itself
       # (`npm ci && npm run build`) — see the config's five keys.
       - name: Build the site

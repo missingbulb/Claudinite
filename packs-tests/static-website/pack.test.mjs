@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { makeRepo, cleanup } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import pack from '../../packs/static-website/pack.mjs';
@@ -196,4 +197,35 @@ test('sw/version-scheme: inert with no site config (FP guard)', () => {
   try {
     assert.deepEqual(run(versionScheme, root), []);
   } finally { cleanup(root); }
+});
+
+// The repo's own values reach its build_command as environment variables: both
+// the deploy and the PR gate export every repo VARIABLE before running any
+// repo-authored command. Asserted on the stubs themselves — they are the
+// definition, and each site repo carries a byte-identical copy.
+const stub = (name) => readFileSync(new URL(`../../packs/static-website/stubs/workflows/${name}`, import.meta.url), 'utf8');
+
+test('stubs: repo variables are exported into the environment before the repo\'s own commands run', () => {
+  for (const name of ['static-site-deploy-pages.yml', 'static-site-ci.yml']) {
+    const text = stub(name);
+    const exportAt = text.indexOf('REPO_VARS: ${{ toJSON(vars) }}');
+    assert.ok(exportAt > 0, `${name}: no repo-variable export step`);
+    assert.match(text, /jq -r --arg eof .* >> "\$GITHUB_ENV"/s, `${name}: the export must land in $GITHUB_ENV`);
+
+    // Before every command the repo authored — otherwise a build_command that
+    // reads a variable sees it unset, which fails as a silently wrong artifact
+    // rather than as a red run.
+    for (const key of ['build_command', 'test_command']) {
+      const consumer = `run: \${{ steps.cfg.outputs.${key} }}`;
+      for (let at = text.indexOf(consumer); at >= 0; at = text.indexOf(consumer, at + 1)) {
+        assert.ok(exportAt < at, `${name}: the export must precede ${key}`);
+      }
+    }
+  }
+});
+
+test('stubs: the export carries variables only — secrets are never put in the environment', () => {
+  for (const name of ['static-site-deploy-pages.yml', 'static-site-ci.yml']) {
+    assert.doesNotMatch(stub(name), /toJSON\(secrets\)|secrets\.\*/, `${name}: secrets must not be exported wholesale`);
+  }
 });
