@@ -40,9 +40,21 @@ This gate comes **first** because product statements sail through the check-the-
 definition across two systems and lands half of it in the one no test of the product ever reads.
 Load-bearingness is not the test: a real gap in product coverage is a *requirements* gap.
 
+The discriminator, applied **before** you write anything: *if the product changed its mind tomorrow,
+would this rule be wrong?* Wrong → it is a requirement, and a red check would report a product
+decision as a process violation. Still true whatever the product decides → it is a working rule.
+
 A product statement already sitting in pack prose is mis-homed, and a sweep is not the place to
 re-home it. **Leave the prose and log it** as a mis-homed rule, the same way an un-checkable
 candidate is logged — never cement it as a check.
+
+## Read the conversion tracker before authoring, not after
+
+A rule this sweep rejected before is settled, however convincing a fresh reading of the prose
+looks — and independent re-derivation lands on the same rule repeatedly, so "I picked it on the
+merits" is not evidence it is unsettled. Read the prior-run comments on the routine's standing
+tracker issue **before** building a conversion, and skip anything already recorded as rejected;
+the alternative is a fully-built check thrown away twice.
 
 ## What to look for — the check-the-world test
 
@@ -91,6 +103,27 @@ check to the same fixture bar.
 
 When even a scoped parser can't make detection confident, **leave the prose and log the
 candidate** to a tagged conversion-backlog issue rather than shipping a shaky check.
+
+**"Not statically checkable" is a verdict about the tree's shape when it was taken, not about the
+rule — re-derive it against today's sources.** A removal, a migration or a consolidation can
+collapse the entry points a rule had to cover, and the objection dies with them (a "one deletable
+storage directory" rule needed data-flow tracing while many entry points wrote paths, and needed
+none once one root remained: constrain the root and every derived path is constrained). When a
+sweep meets prose a previous sweep left behind, ask the question again rather than trusting the
+recorded answer.
+
+**"Already covered by another check" is a claim to test, not to reason out — hand the sibling check
+a violating file before dropping a rule as a duplicate.** A ban list only covers the routes whoever
+wrote it thought of, so the routes it misses are invisible to exactly the reasoning that drew it
+(three sweeps in a row read "the app opens no socket" as covered by an import ban, and a file whose
+whole content was one raw `socket()` call passed untouched). Running the sibling against a
+rule-breaking input costs a minute and is the only step that can disagree with you.
+
+**Write a check as a positive whitelist over an enumerated API surface, not as a list of the bad
+cases** — wherever the allowed set is genuinely closed. Matching the allowed case buys two things a
+ban list cannot: an API variant that does not exist yet is caught the day it lands, and a
+non-literal argument becomes a finding too, so the indirection that would otherwise defeat the
+check is caught rather than reasoned about. Invert this only where the allowed set is open-ended.
 
 ## Coming out: the deletion test
 
