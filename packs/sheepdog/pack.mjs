@@ -10,6 +10,7 @@
 //
 //   tasks/fleet-census/check-fleet-coverage.mjs      is a repo a MEMBER?
 //   tasks/fleet-freshness/check-fleet-freshness.mjs  is a member KEEPING UP?
+//   tasks/fleet-fit/check-fleet-fit.mjs              does a member declare what its SHAPE suspects?
 //   tasks/fleet-usage/aggregate-fleet-usage.mjs      what does the fleet USE?
 //
 // Each sweep lives INSIDE its task's folder — nothing outside that task uses it.
@@ -18,10 +19,17 @@
 //
 // The second exists because per-project scheduling made every member maintain
 // itself and, in doing so, removed the last thing that looked at a member from the
-// outside — self-maintenance cannot detect its own absence. The third exists for the
-// same shape of reason a rung up: a member folds its own skill-usage numbers and can
-// therefore only say whether a skill loads THERE; whether a skill earns its place at
-// all is a fleet-shaped question no member can answer about itself.
+// outside — self-maintenance cannot detect its own absence. The third exists because
+// a pack's `detect` fingerprint is consulted ONCE, at bootstrap's --init: baselining
+// backfills the seeded packs and each declared pack's `requires` closure, but never
+// re-fingerprints, so a member that grows into a pack after adoption is never told.
+// It is also the one task here with an agent stage — the detecting is code, the
+// adopting is a repo edit — and the only one whose reach is in the WIRING
+// (session_scope: 'fleet'), because its agent works in member checkouts. The fourth
+// exists for the same shape of reason a rung up: a member folds its own skill-usage
+// numbers and can therefore only say whether a skill loads THERE; whether a skill
+// earns its place at all is a fleet-shaped question no member can answer about
+// itself.
 //
 // The sweeps carry no workflow of their own: preprocessing runs Action-side inside
 // the repo's one scheduler workflow, where that secret is already reachable. The
