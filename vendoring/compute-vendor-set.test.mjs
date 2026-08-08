@@ -17,7 +17,8 @@ function writeAt(root, rel, content) {
 // A hermetic canon mirroring the real layout: the REAL vendor.mjs with the
 // REAL modules it imports (engine/pack_loader/pack-registry.mjs, engine/checks/helpers/module-imports.mjs — all
 // self-locate relative to their own file), a small engine tree with the things
-// that must be EXCLUDED present (tests, engine-root docs, preferences), and
+// that must be EXCLUDED present (tests, engine-root docs, an undeclared top-level
+// tree), and
 // fixture packs/skills — so the tests exercise the structural-discovery
 // contract, not the live corpus's contents.
 function makeCanon({ packs = [], skills = [] } = {}) {
@@ -49,8 +50,9 @@ function makeCanon({ packs = [], skills = [] } = {}) {
   writeAt(root, 'packs/env.test.mjs', 'stub\n');
   writeAt(root, 'packs/README.md', 'canon doc\n');
   writeAt(root, 'engine/pack_loader/mount-skills.mjs', 'stub\n');
-  // per-user content: must never appear in any vendor set
-  writeAt(root, 'preferences/owner@example.com.md', 'prefs\n');
+  // a top-level tree no engine root and no pack names: the set is what the
+  // declaration reaches, never "everything that happens to be in the canon"
+  writeAt(root, 'canon-only/notes.md', 'canon-side\n');
   // migrations: the applier + registry + records vendor (task-prework §7),
   // the fleet-only drivers / README / tests do not. Stubs — structural inclusion.
   writeAt(root, 'migrations/apply.mjs', 'export const apply = 1;\n');
@@ -84,7 +86,7 @@ const FIXTURE = {
   ],
 };
 
-test('structural set: engine roots + machinery + declared pack + its skills, exact; tests, engine docs, preferences all out', async () => {
+test('structural set: engine roots + machinery + declared pack + its skills, exact; tests, engine docs, undeclared trees all out', async () => {
   const root = makeCanon(FIXTURE);
   // entry-object form must work like a bare id (packEntryId handles both)
   const { files, errors } = await vendorAt(root, [{ id: 'alpha', config: { k: 1 } }]);
@@ -111,7 +113,7 @@ test('structural set: engine roots + machinery + declared pack + its skills, exa
   ].sort();
   assert.deepEqual(files, expected);
   // The owner-decided exclusions, asserted by name so a regression reads clearly:
-  assert.ok(!files.some((f) => f.startsWith('preferences/')), 'per-user preferences must never vendor');
+  assert.ok(!files.some((f) => f.startsWith('canon-only/')), 'a tree nothing declares never vendors');
   assert.ok(!files.some((f) => f.endsWith('README.md') || f.endsWith('DESIGN.md')), 'engine-root docs stay canon-side');
   assert.ok(!files.some((f) => f.includes('.test.mjs') || f.startsWith('engine/test/')), 'tests stay canon-side');
 });

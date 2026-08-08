@@ -101,8 +101,7 @@ function walk(relDir, files, errors, { engine = false } = {}) {
 // strings and/or entry objects). Returns { files, errors }:
 // sorted canon-relative paths, and { what, fix } diagnostics. Ids naming no
 // canon pack (a consumer's local packs, or a typo the runner's settings
-// validation already flags) are skipped without error; per-user preferences
-// are deliberately absent — they are never vendored (DESIGN.md). A pack's
+// validation already flags) are skipped without error. A pack's
 // bundled skills (<pack>/skills/) ride its directory walk — there is no
 // separate skills collection to union (#385).
 export async function computeVendorSet(declaredEntries) {

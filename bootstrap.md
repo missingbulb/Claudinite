@@ -70,8 +70,8 @@ trees — so nothing there needs ignoring (#385).
 
 Claude Code runs `SessionStart` entries **in parallel, in non-deterministic order**, so anything
 sequenced must live inside **one** entry. Register exactly one — the orchestrator, which runs
-the context steps in sequence in a single process (preferences → active-pack prose → skill
-mounts → env check → interview check) and forwards their stdout into the session context:
+the context steps in sequence in a single process (self-test → active-pack prose → each
+active pack's own session-start step → skill mounts → env check → interview check) and forwards their stdout into the session context:
 
 ```json
 { "hooks": { "SessionStart": [ { "hooks": [
@@ -102,10 +102,14 @@ into the project's test/CI flow in Part 8:
 Invoke scripts **through `bash`/`node`**, never as bare paths — a dropped exec bit would fail the
 hook before line 1 and swallow its own message. Notes on how the steps behave:
 
-- **Preferences are fail-soft** — per-user content is never vendored;
-  `shared/engine/hooks/inject-preferences.sh` reads a local copy where the tree has one and otherwise
-  fetches the single `preferences/<email>.md`; any miss is a one-line note, and the session
-  proceeds on defaults.
+- **A pack may contribute its own session-start step** — the orchestrator runs
+  `<pack>/session-start.mjs` for every declared pack that ships one, hands it that pack's
+  entry `config`, and forwards what it prints into the session context under the pack's
+  marker. It is for what a pack can only know at session time (content from outside this
+  repo, or keyed to the person in front of it), where `RULES.md` is fixed at vendor time.
+  Bounded and **fail-soft**: a step that fails, hangs, or overruns the context cap is one
+  plain-text note and the session proceeds. Which packs contribute one is the packs'
+  business, not bootstrap's.
 - **The halt-gate** — a SessionStart hook cannot block, but its stdout is injected into context,
   so a step that can't do its load-bearing job (`env.mjs check` — a missing toolchain) prints a
   plain-text directive telling the assistant to STOP and confirm via `AskUserQuestion` before any

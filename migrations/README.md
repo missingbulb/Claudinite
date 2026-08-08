@@ -41,16 +41,25 @@ export default {
 - **Read — "prefer Y, fall back to X".** [`resolvePath(migrations, canonical)`](registry.mjs) returns
   `[canonical, ...legacy]`. A tolerance point (a check, a script) consults this instead of hardcoding
   its own `LEGACY_*` constant, so the accepted shapes for a path are declared **once, here**.
-- **Write — "and rename X → Y" (plus vendor and rewrite).** [`applyFileAliases`](registry.mjs) moves
-  each legacy file to its canonical path when the legacy exists and the canonical doesn't. Two more
-  write ops cover relocations a rename can't express:
+- **Write — "and rename X → Y" (plus vendor, rewrite and declare).** [`applyFileAliases`](registry.mjs) moves
+  each legacy file to its canonical path when the legacy exists and the canonical doesn't. Three more
+  write ops cover changes a rename can't express:
   [`applyMaterializations`](registry.mjs) **vendors** a pack's templates into the repo's own tree
-  (copies each `{ template, dest }` from the canon/mount to the consumer, overwriting on drift), and
+  (copies each `{ template, dest }` from the canon/mount to the consumer, overwriting on drift),
   [`applyRewrites`](registry.mjs) applies in-place `{ file, replace: [{ from, to }] }` edits
-  (repointing refs while preserving the rest of the file). Both honor an optional `appliesTo(read)`
+  (repointing refs while preserving the rest of the file), and
+  [`applyPackDeclarations`](registry.mjs) **declares a pack** the member doesn't carry yet — each
+  `{ id, config }` added to `.claudinite-checks.json`'s `packs` when absent, filling in a `config`
+  only where the entry has none, because a pack the repo already declares (and the parameters it
+  chose) are that repo's decisions. It is the shape a fleet-wide *capability* change has: a pack
+  every member should run, whose parameters the canon knows and the member cannot derive
+  (`materialize` would clobber a per-repo declaration; `rewrite` has no literal in common across
+  repos). Declaring a pack whose code is not yet in the member's mount would be a blocking `config`
+  error there, so baselining **re-converges the mount** whenever this pass changed the declaration. All honor an optional `appliesTo(read)`
   gate so a migration only touches the repos it's meant for (never the canon itself).
-  [`apply.mjs`](apply.mjs) runs all three over a checkout (`node migrations/apply.mjs`); idempotent, a
-  no-op once done. In the fleet, the **apply pass** ([`fleet-apply.mjs`](fleet-apply.mjs)) performs the
+  [`apply.mjs`](apply.mjs) runs all four over a checkout (`node migrations/apply.mjs`); idempotent, a
+  no-op once done. Baselining runs it **after** the vendor step, so a key and the engine version that
+  accepts it always land in the same transactional commit. In the fleet, the **apply pass** ([`fleet-apply.mjs`](fleet-apply.mjs)) performs the
   equivalent writes over the GitHub API — **phase 1** of the daily maintenance routine, before the pack
   tasks — landing each member's whole set as **one commit** on the `claudinite/maintenance` branch and
   honoring its `auto`/`review` delivery (`auto` arms auto-merge on the PR; `review` leaves it for the

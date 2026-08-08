@@ -42,12 +42,13 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    next refresh (the engine's unknown-pack `config` error surfaces a declared-but-absent pack
    loudly), and links from vendored docs to non-vendored canon files may dangle locally by
    design (the sweep never inspects the shared mount — see 6).
-3. **Preferences are never vendored** — per-user settings, not project content. The
-   session-start step ([inject-preferences.sh](../engine/hooks/steps/inject-preferences.sh), mount machinery now)
-   reads the local `preferences/<email>.md` when its tree carries one (the canon repo; a future
-   submodule mount; the interim full-tarball sync) and otherwise **fetches just that file** over
-   HTTPS, fresh each session. Every miss — no email, no file, fetch failure — is **fail-soft**:
-   a one-line note and the session proceeds on defaults. The halt-gate is reserved for the
+3. **Per-user content is never vendored, and never lives in the canon.** The canon is
+   mounted by every fleet that adopts it, so content belonging to one fleet's *people*
+   is both wrongly hosted and wrongly located there. A pack that needs such content
+   fetches it at session time through its own `session-start.mjs`
+   ([the pack session-start runner](../engine/pack_loader/run-pack-session-start.mjs)),
+   from wherever that pack's config says it lives. Every miss is **fail-soft**: a
+   one-line note and the session proceeds. The halt-gate is reserved for the
    load-bearing corpus, which after the flip is always local and can't miss.
 4. **Transactional nightly update.** Per repo and per night: apply the pending migration notes,
    converge the vendored tree to the canon snapshot, advance the stamp — **one commit**. (One
@@ -131,7 +132,7 @@ allowlist prerequisite, `CLAUDINITE_REF` pinning (the commit *is* the pin), the
 `.claudinite.new` swap and tracked-copy preservation, the Method A/B split with the submodule
 caveats, and the stale-mount caveat in [engine/checks/README.md](../engine/checks/README.md). Session start
 becomes a single offline SessionStart entry invoking [session-start.sh](../engine/hooks/session-start-command.sh)
-directly (its four steps are unchanged; the preferences step is fail-soft per 3, the env-check
+directly (its steps are unchanged; a pack's own session-start step is fail-soft per 3, the env-check
 halt-gate stays). The consumer `CLAUDE.md` carries nothing of Claudinite's — the corpus
 index, its `@`-import, and the self-check paragraph are all retired by owner decision (#385). The
 plugin-packaging rationale in [engine/checks/DESIGN.md](../engine/checks/DESIGN.md) also loses its
@@ -145,7 +146,7 @@ the nightly touches everyone, and never break the channel the migration itself t
 
 - **Phase 0 (done):** this record + [vendor.mjs](compute-vendor-set.mjs), the vendor-set computation
   everything else builds on.
-- **Phase 1 — canon capabilities:** the fail-soft preferences step (done); the `claudinite`
+- **Phase 1 — canon capabilities:** the fail-soft session-start step contract (done); the `claudinite`
   stamp key in `loadConfig` (done); the engine's shared-mount sweep exclusion (done); the local
   vendor writer [apply-vendor.mjs](apply-vendor-set.mjs) — whole-set convergence + stamp, erroring
   before any write (done); the consumer CI stub, shipped in the baseline pack's `stubs/` (done; later retired by owner

@@ -4,8 +4,8 @@
 // and the canon-curation migrations-retire task.
 //
 // What it does: for every member the routine hands it, compute the member's pending
-// migration writes — the same three write ops the local applier runs (file aliases,
-// materialize, rewrite; registry.mjs) — against the member's target branch and land
+// migration writes — the same write ops the local applier runs (file aliases,
+// materialize, rewrite, declarePacks; registry.mjs) — against the member's target branch and land
 // them. Templates are read from the canon checkout this runs in (the parent of
 // migrations/); member reads/writes go through the injected `io` (below). Idempotent:
 // a member already on the canonical shape stages nothing and gets no commit.
@@ -49,7 +49,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { applyFileAliases, applyMaterializations, applyRewrites } from './registry.mjs';
+import { applyFileAliases, applyMaterializations, applyRewrites, applyPackDeclarations } from './registry.mjs';
 
 const MAINT_BRANCH = 'claudinite/maintenance';
 const canonRoot = dirname(dirname(fileURLToPath(import.meta.url))); // the checkout ships the templates
@@ -76,7 +76,8 @@ async function stageMemberWrites(io, fullName, branch, migrations) {
     const a = await applyFileAliases(m, { exists, move });
     const mat = await applyMaterializations(m, { readTemplate, read, write });
     const rw = await applyRewrites(m, { read, write });
-    if (a.length || mat.length || rw.length) ids.add(m.id);
+    const set = await applyPackDeclarations(m, { read, write });
+    if (a.length || mat.length || rw.length || set.length) ids.add(m.id);
   }
   return (files.size || deletes.size) ? { files, deletes, ids } : null;
 }
