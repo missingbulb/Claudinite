@@ -188,6 +188,27 @@ last.
 | repo settings to touch | Pages source (1 repo), analytics var, domain | Pages source, workflow perms (moot), analytics var, domain | domain only |
 | release record | none | tag + Release per push incl. data churn | tag + Release per content release; deploy-only for data |
 
+## PR #626, reviewed after the fact
+
+Per the owner's instruction, #626 (the disapproved earlier attempt: export every repo
+variable into the build environment of both vendored workflows) was reviewed only after
+this design was written. The design makes its mechanism unnecessary — D3 removes the one
+consumer the export existed for. Three details of it are worth keeping anyway:
+
+- **Parity between CI and deploy**: #626 exported the variables in the PR gate too, so a
+  `build_command` behaves identically on the pull request and on the release, and a
+  missing input surfaces on the PR. This design keeps that property by construction — the
+  CI shim runs the same `build_command` + assembly scripts the deploy runs.
+- **Stub-content tests**: #626 added pack tests asserting invariants of the vendored
+  workflow files themselves (the export exists, precedes every command invocation, and
+  `secrets` is never exported). The reshaped pack should do the same over its two shims
+  and pipeline scripts — e.g. "no shim ever references `secrets`", "the shims invoke the
+  pipeline scripts and carry no logic".
+- **The fallback, if D3's answer is "keep the variable"**: #626's vars-only wholesale
+  export (never `secrets`, run-id-salted heredoc delimiter so a value cannot terminate its
+  own block) is the right mechanism for that world — repo-vocabulary-free, injection-safe.
+  Recorded here so it isn't reinvented worse.
+
 ## Open questions for the owner
 
 1. Rename the pack to `github-pages-serving`, or keep `static-website`? (D1 — cosmetic;
