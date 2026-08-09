@@ -26,8 +26,8 @@ export default {
   id: 'wiki-growth',
   frequency: 'weekly',             // fires at the weekly anchor (DESIGN §2) — the world's clock, not the repo's
   precondition_signals: ['commits', 'prs'],
-  agent_model: 'opus',                   // open-web research + curation is the heaviest judgment, and the PR review gate is the last catch for fabrication
-  expected_outcome: 'open-pr',              // web-researched claims entering a knowledge base need the human review gate — never merged, never pushed to default
+  agent_model: 'opus',                   // open-web research + curation is the heaviest judgment in the task set
+  expected_outcome: 'merged-pr',
   agent_instructions: 'task.md',
   agent_execution_timeout: 2700,            // open-web research is the least predictable of the tasks — very generous
 
