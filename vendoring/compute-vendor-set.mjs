@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadPacks, resolveDeclaredPacks, packEntryId, SHARED_SUBDIR } from '../engine/pack_loader/pack-registry.mjs';
+import { loadPacks, resolveDeclaredPacks, packEntryId, SHARED_SUBDIR, PACK_DIRECTORY_FILE } from '../engine/pack_loader/pack-registry.mjs';
 import { relativeImports, resolveRelative, ENGINE_DIR_ROOTS } from '../engine/checks/helpers/module-imports.mjs';
 
 // The vendor-set computation for the vendored mount (DESIGN.md): given a repo's
@@ -110,6 +110,14 @@ export async function computeVendorSet(declaredEntries) {
 
   for (const root of ENGINE_DIR_ROOTS) walk(root, files, errors, { engine: true });
   walkMigrations(files, errors);
+
+  // The full pack directory ships with EVERY mount, whatever the declaration:
+  // the set otherwise carries only the declared packs, so without this catalog
+  // a member session has no view of what else it could adopt (#726). Missing
+  // is canon-side breakage — a mount silently without it would blind the whole
+  // fleet to the catalog — so it aborts the converge like any other set error.
+  if (existsSync(join(canonRoot, PACK_DIRECTORY_FILE))) files.add(PACK_DIRECTORY_FILE);
+  else errors.push({ what: `${PACK_DIRECTORY_FILE} is missing from the canon tree`, fix: 'regenerate it (its drift test in packs-tests/ renders it from the pack manifests) and commit it' });
 
   const packs = await loadPacks();
   const byId = new Map(packs.map((p) => [p.id, p]));

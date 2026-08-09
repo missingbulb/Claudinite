@@ -21,7 +21,7 @@ function writeAt(root, rel, content) {
 // tree), and
 // fixture packs/skills — so the tests exercise the structural-discovery
 // contract, not the live corpus's contents.
-function makeCanon({ packs = [], skills = [] } = {}) {
+function makeCanon({ packs = [], skills = [], packDirectory = true } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-vendor-'));
   mkdirSync(join(root, 'vendoring'), { recursive: true });
   mkdirSync(join(root, 'engine', 'pack_loader'), { recursive: true });
@@ -50,6 +50,8 @@ function makeCanon({ packs = [], skills = [] } = {}) {
   writeAt(root, 'packs/env.test.mjs', 'stub\n');
   writeAt(root, 'packs/README.md', 'canon doc\n');
   writeAt(root, 'engine/pack_loader/mount-skills.mjs', 'stub\n');
+  // the full pack directory: generated catalog, vendored unconditionally
+  if (packDirectory) writeAt(root, 'packs/directory.GENERATED.md', 'stub catalog\n');
   // a top-level tree no engine root and no pack names: the set is what the
   // declaration reaches, never "everything that happens to be in the canon"
   writeAt(root, 'canon-only/notes.md', 'canon-side\n');
@@ -107,6 +109,7 @@ test('structural set: engine roots + machinery + declared pack + its skills, exa
     'packs/alpha/pack.mjs',
     'packs/alpha/stubs/wf.yml',
     'packs/alpha/skills/s1/SKILL.md',
+    'packs/directory.GENERATED.md',
     'migrations/apply.mjs',
     'migrations/registry.mjs',
     'migrations/active_migrations/2026-01-01-seed.mjs',
@@ -132,6 +135,27 @@ test('regression (fleet executor-broken): the REAL canon tree vendors the operat
   assert.ok(files.includes('engine/scheduler/executor.md'), 'the live executor.md must be in the vendor set');
   assert.ok(files.includes('engine/scheduler/deliver-pr.md'),
     'the live deliver-pr.md must be in the vendor set — merged-pr task workers link to it from the mount');
+});
+
+test('the full pack directory vendors regardless of declaration — a member sees what it could adopt', async () => {
+  const root = makeCanon(FIXTURE);
+  const { files, errors } = await vendorAt(root, []);
+  assert.deepEqual(errors, []);
+  assert.ok(files.includes('packs/directory.GENERATED.md'), 'the pack directory must ship with every mount, declared packs or none');
+});
+
+test('a canon tree missing the pack directory is an error, before any write', async () => {
+  const root = makeCanon({ ...FIXTURE, packDirectory: false });
+  const { errors } = await vendorAt(root, ['alpha']);
+  assert.ok(errors.some((e) => e.what.includes('directory.GENERATED.md')),
+    'a mount silently missing the catalog would blind every member to what it could adopt — this must abort the converge');
+});
+
+test('regression: the REAL canon tree carries the pack directory in every vendor set', async () => {
+  const { computeVendorSet } = await import('./compute-vendor-set.mjs');
+  const { files, errors } = await computeVendorSet([]);
+  assert.deepEqual(errors, []);
+  assert.ok(files.includes('packs/directory.GENERATED.md'), 'the live packs/directory.GENERATED.md must be in the vendor set');
 });
 
 test('migrations: the applier + registry + records vendor; fleet drivers, README, tests do not', async () => {
