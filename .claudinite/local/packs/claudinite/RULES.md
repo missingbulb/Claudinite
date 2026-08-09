@@ -96,16 +96,6 @@ prose below).
   it as a merely-absent note). Start the work *after* evaluation completes — `check(…).catch(…)`.
   Enforced by `pack-discovery-entry-await`; the corollary it can't check is to keep these modules
   import-light in the first place.
-- **Green canon CI is not evidence about a consumer — the canon's own packs are always already
-  migrated.** The one thing canon CI cannot exercise is what a canon change does to a repo on its
-  *next* baselining, and every consumer-breaking change so far passed it cleanly: #555 (manifest
-  became a closed vocabulary → 11 local packs across 10 repos silently stopped running their
-  checks), #585 (PR-open status never read → 12 repos frozen two days while the run reported
-  `ok`), #588 (auto-merge armed where no PR CI exists → a PR that never lands). All were invisible
-  until a consumer ran. So when a change adds or requires a manifest field, moves a check's
-  severity or id, or alters a vendored contract, say in the PR *which* consumer-side evidence
-  carries it — a migration record, or a demonstration that an unmigrated member stays green — and
-  never treat a green canon suite as that evidence (#592 tracks the missing gate).
 - **A pack's `RULES.md` is injected into every session that declares the pack — an idea nobody can
   act on belongs in `docs/`, and a pack file must not link there.** Deferred directions, blocked
   proposals and status live in `docs/` (e.g. `docs/future-directions.md`) precisely because pack
