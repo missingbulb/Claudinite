@@ -98,12 +98,16 @@ export function validateTaskDeclaration(raw) {
     bad('"precondition" is not a function', 'export a precondition(signals, config) that returns { run, reason, context? }');
   }
 
-  // session_scope — DEPRECATED and OPTIONAL; still honoured while it lingers (the
-  // canon's curation tasks are the one standing use). It stays VALIDATED rather
-  // than ignored: a deprecated field that silently accepts a typo mis-routes the
-  // dispatch to an executor that declines it, and the task then never runs while
-  // the scheduler re-arms it hourly. The `deprecated-session-scope` check (basics)
-  // is the pressure off it; this is only the guard that a lingering one still works.
+  /**
+   * session_scope — OPTIONAL; still honoured while it lingers (the canon's
+   * curation tasks are the one standing use — each pacifies the warning with a
+   * comment at its declaration site). It stays VALIDATED rather than ignored: a
+   * deprecated field that silently accepts a typo mis-routes the dispatch to an
+   * executor that declines it, and the task then never runs while the scheduler
+   * re-arms it hourly.
+   * @deprecated An executor's reach is how its repo is provisioned, never
+   *   something a task asks for — drop the field; dispatches ride ready-for-agent.
+   */
   if (decl.session_scope !== undefined && !SESSION_SCOPES.includes(decl.session_scope)) {
     bad(`"session_scope" ${JSON.stringify(decl.session_scope)} is not a legal session scope`, `drop it (dispatches ride ready-for-agent by default) — or, while it lingers, set one of: ${SESSION_SCOPES.join(', ')}`);
   }

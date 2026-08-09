@@ -74,8 +74,11 @@ retirement of the legacy central planner it replaces) lives in
   word `fleet`; the executor declines a dispatch that reaches the wrong routine). The
   canon home's curation tasks (`growth-promote`, `growth-discover-packs`) are the one
   standing use — the canon repo's ordinary executor does *not* hold the fleet, so the
-  second label is what keeps that grant off it. Everything else drops the field; the
-  advisory `deprecated-session-scope` check is the pressure.
+  second label is what keeps that grant off it. Everything else drops the field. The
+  deprecation is carried the standard way — an `@deprecated` tag on the contract
+  (`engine/scheduler/task-contract.mjs`), for linters and readers alike — and each
+  sanctioned holdout pacifies the warning with a comment at its declaration site;
+  there is no bespoke conformance check for it, deliberately.
 
 - **Every run is bounded.** An agentic task (`agent_model !== none`) declares
   `agent_execution_timeout` — seconds bounding the agentic run

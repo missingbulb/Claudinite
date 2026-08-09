@@ -25,12 +25,12 @@
 //                 task-level `session_scope` — the shape a consumer that predates
 //                 the 2026-08-09 retirement still has on disk. It holds the
 //                 retirement HARMLESS to such a member: red if the field ever
-//                 stops validating, red if the `deprecated-session-scope` check is
-//                 ever raised to blocking — the ways an un-migrated member would
-//                 stop converging. What it does NOT cover is the routing itself:
-//                 the rehearsal runs the vendor + the sweeps, never the scheduler,
-//                 so that a lingering field still routes to the fleet label is a
-//                 unit test's job (engine-tests/scheduler/session-scope.test.mjs).
+//                 stops validating or any future check starts blocking on it —
+//                 the ways an un-migrated member would stop converging. What it
+//                 does NOT cover is the routing itself: the rehearsal runs the
+//                 vendor + the sweeps, never the scheduler, so that a lingering
+//                 field still routes to the fleet label is a unit test's job
+//                 (engine-tests/scheduler/session-scope.test.mjs).
 //
 // A fixture carries NO `claudinite.ref`. That is deliberate: apply-vendor-set's
 // #328 anti-rewind guard compares the prior ref against the canon checkout's

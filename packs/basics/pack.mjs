@@ -13,7 +13,6 @@ import claudiniteIsolation from './claudinite-isolation.mjs';
 import schedulerWorkflowShape from './scheduler-workflow-shape.mjs';
 import taskDeclarationShape from './task-declaration-shape.mjs';
 import taskPhaseDiscipline from './task-phase-discipline.mjs';
-import deprecatedSessionScope from './deprecated-session-scope.mjs';
 import conformanceWorkflow from './conformance-workflow.mjs';
 
 // The baseline pack: working discipline, the task lifecycle, and the core
@@ -60,10 +59,6 @@ export default {
     // advisory hunt for tasks that "escape" — skip their work in the prework or
     // agentic phase after the precondition already said run.
     taskPhaseDiscipline,
-    // The deprecation of the task-level `session_scope` (owner ruling,
-    // 2026-08-09): the executor scope belongs to the owning pack's reach, not to
-    // each task. Advisory, because the old field still routes correctly.
-    deprecatedSessionScope,
     // And the CI half of the same discipline: a member whose world sweep cannot
     // run on a pull request has no gate, and its maintenance PR never lands.
     conformanceWorkflow,
