@@ -87,14 +87,12 @@ owner, but their declaration, scheduling, and lifecycle are exactly those of any
 declares the `fleet` signal; the cross-repo reach lives in the implementation, never in how a task is
 wired. (The task files carry the same note.)
 
-**The pack declares the fleet reach; no task here does.** This pack's `sessionScope: 'fleet'`
-(`pack.mjs`) is true of everything it contributes — that reach *is* the pack — so every dispatch it
-files goes to the `ready-for-agent-fleet` label and the broader executor. It matters only for the one
-task with an agent stage (`fleet-fit`, whose agent edits *member* checkouts); the three agentless
-sweeps dispatch nothing at all, so the declaration costs them nothing and, more to the point, no task
-file here can forget it. That routing needs a fleet executor routine in the enforcer repo
-([scheduled-tasks.md](../basics/scheduled-tasks.md)) — declaring the scope does not create it, and
-without it the dispatch is filed and never runs.
+**No session scope anywhere in this pack.** The enforcer repo's executor session is provisioned
+with the owner's repos — declaring this pack *is* the statement that the repo reaches the fleet — so
+`fleet-fit`'s dispatch rides the ordinary `ready-for-agent` label like any other task's, and the
+three agentless sweeps dispatch nothing at all. The deprecated task-level `session_scope`
+([scheduled-tasks.md](../basics/scheduled-tasks.md)) has no place here: an executor's access comes
+from how its repo is provisioned, never from what a task asks for.
 
 **A fit finding is a recommendation, never a verdict.** The `pack-declaration` conformance check was
 deliberately retired ([engine/checks/README.md](../../engine/checks/README.md)) because whether to

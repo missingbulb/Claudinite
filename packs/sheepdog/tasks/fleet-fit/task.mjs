@@ -33,13 +33,14 @@
 // reviewed. The ceiling is enforced in code (verify-outcome.mjs), so this line is
 // what actually keeps auto-merge off the PR.
 //
-// WHERE THE FLEET REACH COMES FROM: not from here. The agent works in MEMBER
-// checkouts, so its session needs the owner's repos in its sources — and that is the
-// sheepdog PACK's `sessionScope: 'fleet'`, true of everything the pack contributes,
-// rather than a per-task field this file could forget. It routes the dispatch to
-// `ready-for-agent-fleet`, which requires a fleet executor routine in the enforcer
-// repo (packs/basics/scheduled-tasks.md) — declaring the scope does not create it.
-// Without that routine the dispatch is filed and never runs.
+// WHERE THE FLEET REACH COMES FROM: the repo, not any declaration. The agent works
+// in MEMBER checkouts, and the enforcer repo's executor session is provisioned with
+// the owner's repos — declaring the sheepdog pack IS the statement that this repo
+// reaches the fleet, so the dispatch rides the ordinary `ready-for-agent` label like
+// every other task's. There is no `session_scope` here and none is wanted: that
+// field is deprecated (owner ruling, 2026-08-09; the canon's curation tasks are its
+// one standing use), because the executor's access comes from how the repo is
+// provisioned, never from what a task asks for.
 //
 // Self-contained (imports nothing): the whole contract is this default export.
 

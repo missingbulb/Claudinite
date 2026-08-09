@@ -84,10 +84,11 @@ consumer-side Action, no cross-repo PAT, no labelled-issue up-path. The planner 
 worker the changed participants as `targets`.
 
 **This pack's tasks need the fleet executor routine — a second routine, only in this repo.** Both
-tasks here declare the **deprecated** task-level `session_scope: 'fleet'` (the executor scope is the
-owning pack's `sessionScope` now — [scheduled-tasks.md](../../../../packs/basics/scheduled-tasks.md);
-the old field still routes correctly, which is why these two still work and why the
-`deprecated-session-scope` check is advisory), so the scheduler files their dispatches under
+tasks here declare the **deprecated** task-level `session_scope: 'fleet'` — they are its one
+sanctioned holdout ([scheduled-tasks.md](../../../../packs/basics/scheduled-tasks.md)): the canon's
+ordinary executor does not hold the fleet, so the second label is what keeps that grant off it, and
+the advisory `deprecated-session-scope` findings on these two files are the standing record of the
+exception, not drift to fix — so the scheduler files their dispatches under
 `ready-for-agent-fleet` rather than `ready-for-agent`, and a *distinct* CCR routine runs them: named
 `Claudinite executor - fleet`, fired by the **`ready-for-agent-fleet`** label event, with sources =
 this repo **and every participating member** (that cross-repo reach is the whole reason the scope is

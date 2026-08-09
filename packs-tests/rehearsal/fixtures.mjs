@@ -22,17 +22,15 @@
 //   dormant       a member that declares itself dormant. Its mount falls behind
 //                 BY DESIGN, and the rehearsal must not read that as failure.
 //   legacy-task   a local pack whose scheduled task still declares the DEPRECATED
-//                 task-level `session_scope`, and whose manifest declares no
-//                 `sessionScope`. Every consumer pack in the fleet is that second
-//                 shape today, so this is what holds the 2026-08-09 move of the
-//                 executor scope onto the pack ADDITIVE. It goes red if the new
-//                 manifest field is ever made required, and red if the
-//                 deprecation check is ever raised to blocking — the two ways a
-//                 member that has not migrated would stop converging. What it
-//                 does NOT cover is the routing itself: the rehearsal runs the
-//                 vendor + the sweeps, never the scheduler, so that the
-//                 deprecated field still resolves to `fleet` is a unit test's job
-//                 (engine-tests/scheduler/session-scope.test.mjs).
+//                 task-level `session_scope` — the shape a consumer that predates
+//                 the 2026-08-09 retirement still has on disk. It holds the
+//                 retirement HARMLESS to such a member: red if the field ever
+//                 stops validating, red if the `deprecated-session-scope` check is
+//                 ever raised to blocking — the ways an un-migrated member would
+//                 stop converging. What it does NOT cover is the routing itself:
+//                 the rehearsal runs the vendor + the sweeps, never the scheduler,
+//                 so that a lingering field still routes to the fleet label is a
+//                 unit test's job (engine-tests/scheduler/session-scope.test.mjs).
 //
 // A fixture carries NO `claudinite.ref`. That is deliberate: apply-vendor-set's
 // #328 anti-rewind guard compares the prior ref against the canon checkout's
@@ -149,7 +147,7 @@ export const FIXTURES = [
   },
   {
     name: 'legacy-task',
-    why: 'a local pack with no `sessionScope` whose task still declares the deprecated `session_scope` — the un-migrated shape every consumer has today',
+    why: 'a local pack whose task still declares the deprecated `session_scope` — the shape a consumer predating the retirement still has on disk',
     files: {
       'README.md': '# fixture-legacy-task\n\nA rehearsal fixture.\n',
       '.claudinite-checks.json': checks(['basics', 'local/fixture-legacy']),

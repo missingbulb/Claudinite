@@ -32,13 +32,6 @@ export const RULE_SCOPES = { worldRules: 'world', workRules: 'work' };
 const isPlainObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const isStringArray = (v) => Array.isArray(v) && v.every((x) => typeof x === 'string');
 const isRuleArray = (v) => Array.isArray(v) && v.every((x) => isPlainObject(x) && typeof x.id === 'string' && typeof x.run === 'function');
-// The executor-session vocabulary. It lives HERE, with the manifest spec, because a
-// pack's `sessionScope` is now where the scope is declared; the scheduler's
-// session-scope.mjs imports it rather than keeping a second copy, so a pack manifest
-// and the resolver cannot disagree about what the legal values are. (The direction
-// matters: scheduler imports pack_loader, never the reverse.)
-export const SESSION_SCOPES = ['self', 'fleet'];
-const isSessionScope = (v) => SESSION_SCOPES.includes(v);
 
 // Every field a manifest may carry. `required` fields must be present; the rest
 // are validated only when declared. An UNDECLARED field is an error: the spec is
@@ -52,7 +45,6 @@ export const PACK_FIELDS = {
   marker: { describe: 'a human-readable glob naming what detect looks for, or null', valid: (v) => v === null || typeof v === 'string' },
   prose: { describe: 'the RULES.md filename injected at session start, or null', valid: (v) => v === null || typeof v === 'string' },
   seededByDefault: { describe: 'whether bootstrap --init seeds this pack everywhere', valid: (v) => typeof v === 'boolean' },
-  sessionScope: { describe: "the executor session every task in this pack needs ('self' default, or 'fleet' for a pack whose reach is other repos)", valid: isSessionScope },
   requires: { describe: 'pack ids this pack depends on, resolved when the declaration is written', valid: isStringArray },
   contributes: { describe: 'rules addressed to another pack, keyed by that pack id', valid: isPlainObject },
   contributedRules: { describe: 'the seam interpreting other packs contributions to this one', valid: (v) => typeof v === 'function' },

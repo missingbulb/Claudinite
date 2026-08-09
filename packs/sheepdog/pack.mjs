@@ -24,9 +24,9 @@
 // backfills the seeded packs and each declared pack's `requires` closure, but never
 // re-fingerprints, so a member that grows into a pack after adoption is never told.
 // It is also the one task here with an agent stage — the detecting is code, the
-// adopting is a repo edit — and so the first task here whose DISPATCH is routed to
-// the fleet executor, which is this pack's `sessionScope` and not the task's
-// business. The fourth
+// adopting is a repo edit. No session scope anywhere: the enforcer repo's own
+// executor is provisioned with the fleet reach this whole pack presumes, so its
+// dispatches ride the ordinary ready label like any other task's. The fourth
 // exists for the same shape of reason a rung up: a member folds its own skill-usage
 // numbers and can therefore only say whether a skill loads THERE; whether a skill
 // earns its place at all is a fleet-shaped question no member can answer about
@@ -54,11 +54,6 @@ export default {
     excludes: 'anything a member does to itself — tidying is tidy-repo, lesson capture is grow_with_claudinite',
   },
   badge: 'badge.svg',
-  // Every task this pack contributes reaches the owner's other repos — that IS the
-  // pack. So the executor scope is declared once, here, and no task in it decides
-  // (or can forget) its own: a fleet task filed to the self executor runs in a
-  // session that cannot see what it was written to read, silently and forever.
-  sessionScope: 'fleet',
   detect: null,
   marker: null,
   prose: 'RULES.md',

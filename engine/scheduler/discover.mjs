@@ -18,16 +18,12 @@ import { join, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { loadPacks, isActive } from '../pack_loader/pack-registry.mjs';
 import { normalizeTaskDeclaration, validateTaskDeclaration } from './task-contract.mjs';
-import { resolveSessionScope } from './session-scope.mjs';
 
 // Discover every task the repo's active packs contribute. Returns
 // `{ tasks, errors }` where each task is
-// `{ pack, id, taskDir, taskPath, decl, sessionScope, sessionScopeSource }` —
-// `taskPath` is the repo-relative path to the worker file's directory's task.md (the
-// dispatch issue's first line), `decl` the validated declaration, and `sessionScope`
-// the RESOLVED executor scope. Resolving it here is why nothing downstream reads the
-// deprecated `decl.session_scope`: this is the one place holding both the pack
-// manifest and the declaration, so it is the only place that could resolve the two.
+// `{ pack, id, taskDir, taskPath, decl }` — `taskPath` is the repo-relative
+// path to the worker file's directory's task.md (the dispatch issue's first
+// line), `decl` the validated declaration.
 export async function discoverTasks(root, config) {
   const errors = [];
   const packs = await loadPacks({ localRoot: root });
@@ -70,15 +66,12 @@ export async function discoverTasks(root, config) {
         errors.push({ pack: pack.id, task: name, what: `task in ${relative(root, taskDir)} declares id "${decl.id}" but its directory is "${name}"`, fix: 'rename the directory to the task id, or set the id to the directory name' });
         continue;
       }
-      const { scope, source } = resolveSessionScope({ pack, decl });
       tasks.push({
         pack: pack.id,
         id: decl.id,
         taskDir,
         taskPath: `${relative(root, taskDir).split('\\').join('/')}/task.md`,
         decl,
-        sessionScope: scope,
-        sessionScopeSource: source,
       });
     }
   }

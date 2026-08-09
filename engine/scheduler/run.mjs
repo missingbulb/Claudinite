@@ -242,11 +242,10 @@ export async function planRun({
         rec.inline = true;
       } else {
         const existing = await existingIssuesFor(task.pack, task.id);
-        // Route the dispatch to the self or fleet ready label by the task's RESOLVED
-        // scope (discover.mjs) — the pack's declaration, or the deprecated task-level
-        // one where a pack declares nothing. The executor routine wired to that label
-        // runs it.
-        const readyLabel = readyLabelForScope(task.sessionScope);
+        // Route the dispatch by the task's (deprecated, lingering) session_scope —
+        // absent on everything but the canon's curation tasks, so almost every
+        // dispatch rides the ordinary ready label.
+        const readyLabel = readyLabelForScope(task.decl.session_scope);
         rec.dispatch = planDispatch({ existing, pack: task.pack, task: task.id, slotId, readyLabel });
       }
     }

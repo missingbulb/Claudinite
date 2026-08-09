@@ -1,6 +1,7 @@
-// The deprecation of the task-level `session_scope` (owner ruling, 2026-08-09): the
-// executor scope belongs to the owning pack's reach. Advisory, because the field still
-// routes correctly — this is migration pressure, not a breakage.
+// The deprecation of the task-level `session_scope` (owner ruling, 2026-08-09): an
+// executor's reach is how its repo is provisioned, not something a task asks for.
+// Advisory, because the field still routes correctly — this is migration pressure,
+// not a breakage.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -27,9 +28,11 @@ test('flags a task that declares the deprecated field', () => {
   assert.equal(out.length, 1);
   assert.equal(out[0].file, TASK);
   assert.match(out[0].what, /deprecated task-level "session_scope"/);
-  // The fix has to name where the answer moved to, or it is just a complaint.
-  assert.match(out[0].fix, /sessionScope/);
-  assert.match(out[0].fix, /pack\.mjs/);
+  // The fix has to say where the reach actually comes from, or it is just a
+  // complaint — and it must name the sanctioned holdout so the canon's own
+  // curation tasks read it as "you are the exception", not "you are broken".
+  assert.match(out[0].fix, /ready-for-agent/);
+  assert.match(out[0].fix, /curation/);
 });
 
 test('quiet on a task that already moved', () => {
@@ -38,12 +41,12 @@ test('quiet on a task that already moved', () => {
 
 test('a task explaining where its scope comes from is the OUTCOME, not a violation', () => {
   // sheepdog's fleet-fit carries exactly this: a comment saying the reach is the
-  // pack's. Flagging it would punish the migration the check is asking for, and the
-  // author would "fix" it by deleting the explanation.
+  // repo's provisioning. Flagging it would punish the migration the check is asking
+  // for, and the author would "fix" it by deleting the explanation.
   assert.deepEqual(run({
     [TASK]: [
-      '// WHERE THE FLEET REACH COMES FROM: not from here — the pack declares',
-      "// `sessionScope: 'fleet'`, so no session_scope: 'fleet' lives in this file.",
+      '// WHERE THE FLEET REACH COMES FROM: the repo, not any declaration — the',
+      "// deprecated session_scope: 'fleet' field has no place in this file.",
       "export default { id: 'demo-task' };",
       '',
     ].join('\n'),

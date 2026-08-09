@@ -1,17 +1,15 @@
 import { finding } from '../../engine/checks/helpers/findings.mjs';
 
 // `session_scope` on a task declaration is DEPRECATED (owner ruling, 2026-08-09).
-// Which executor session a dispatch goes to follows from the OWNING PACK's reach —
-// `sessionScope` on the manifest — not from a per-task field.
-//
-// The reason it moved is that a task author choosing it can only get it wrong. Forget
-// it on a task that reaches other repos and the dispatch is filed to the self
-// executor, which declines it as another scope's; the session ends without
-// commenting, the scheduler re-arms the issue hourly, and the task never runs —
-// silently and forever. Declare it where it was not warranted and an ordinary
-// project's dispatch carries a fleet-wide session grant it never needed. Neither
-// mistake is visible in a run report. A pack whose whole purpose is reaching other
-// repos knows the answer once, for everything it contributes.
+// An executor's reach is how its REPO is provisioned — the sheepdog enforcer's
+// executor spans the fleet because that repo is the fleet enforcer — never something
+// a task asks for. A task author choosing it can only get it wrong, invisibly:
+// forgotten where the routing needed it, the dispatch goes to an executor that
+// declines it and the scheduler re-arms it hourly forever; declared where it was
+// not, a dispatch asks for a fleet-wide grant it never needed. The one standing use
+// is the canon home's curation tasks (growth-promote, growth-discover-packs), whose
+// separate fleet executor keeps the owner-wide grant off the canon's ordinary
+// routine.
 //
 // ADVISORY, not blocking, and deliberately so: the field still WORKS
 // (engine/scheduler/session-scope.mjs honours it wherever the pack declares nothing),
@@ -30,9 +28,9 @@ const DECLARES = /^\s*session_scope:\s*['"]/m;
 const rule = {
   id: 'deprecated-session-scope',
   severity: 'advisory',
-  description: 'A tasks/<name>/task.mjs does not declare session_scope — the executor session scope is the owning pack\'s `sessionScope`, not a per-task field',
+  description: 'A tasks/<name>/task.mjs does not declare session_scope — an executor\'s reach is how its repo is provisioned, not something a task asks for',
   doc: 'packs/basics/scheduled-tasks.md',
-  why: 'a task author choosing the scope can only get it wrong: forgotten, the dispatch goes to an executor that declines it and the task never runs while the scheduler re-arms it hourly; over-declared, an ordinary project\'s dispatch carries a fleet-wide grant — and neither shows up in a run report',
+  why: 'a task author choosing the scope can only get it wrong: forgotten, the dispatch goes to an executor that declines it and the task never runs while the scheduler re-arms it hourly; over-declared, a dispatch asks for a fleet-wide grant it never needed — and neither shows up in a run report',
 
   run(ctx) {
     const out = [];
@@ -42,7 +40,7 @@ const rule = {
       out.push(finding(rule, {
         file,
         what: 'declares the deprecated task-level "session_scope"',
-        fix: 'drop the field and declare `sessionScope` on the owning pack\'s pack.mjs instead — every task the pack contributes then carries that reach (the field still routes correctly until you do)',
+        fix: 'drop the field — a dispatch rides ready-for-agent and the executor carries the access its repo provisioned (the canon\'s curation tasks are the one sanctioned holdout; the field still routes correctly while it lingers)',
       }));
     }
     return out;
