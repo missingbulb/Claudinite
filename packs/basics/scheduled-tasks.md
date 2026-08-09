@@ -59,17 +59,35 @@ retirement of the legacy central planner it replaces) lives in
   issue — so an illegal or missing value means a task never fires, fires wrong,
   or writes past its declared ceiling. The same contract
   (`engine/scheduler/task-contract.mjs`) is re-validated at run time, so the
-  static and runtime views can't drift. Optionally, `session_scope` (`self` default
-  | `fleet`) declares whether the task reaches only its own repo or across the
-  owner's repos: a `fleet` task dispatches to the `ready-for-agent-fleet` label so a
-  distinct, broader-scoped executor runs it, keeping the fleet-wide session grant
-  off every ordinary project's `ready-for-agent` (self) executor. **Declaring
-  `fleet` routes the dispatch; it does not create the routine that runs it** — that
-  second, label-wired routine exists only in the canon repo, and its launcher prompt
-  must end in the word `fleet` (the executor defaults an unnamed scope to `self` and
-  then declines the dispatch as another scope's). Get either wrong and the task fails
-  *silently and forever*: the session stops without commenting, the scheduler re-arms
-  the issue hourly, and nothing ever runs it.
+  static and runtime views can't drift. A task declares **no session scope** — see
+  the next entry.
+
+- **The executor scope is the PACK's, not the task's** (owner ruling, 2026-08-09).
+  A pack whose reach is other repos declares `sessionScope: 'fleet'` on its
+  `pack.mjs`, and every task it contributes is dispatched to the
+  `ready-for-agent-fleet` label so a distinct, broader-scoped executor runs it —
+  keeping the fleet-wide session grant off every ordinary project's
+  `ready-for-agent` (self) executor. Nothing else declares a scope, and `self`
+  is what a pack that says nothing gets.
+
+  It moved off the task because a task author choosing it can only get it wrong,
+  and both ways are invisible: **forget it** on a task that reaches other repos and
+  the dispatch is filed to the self executor, which declines it as another scope's —
+  the session stops without commenting, the scheduler re-arms the issue hourly, and
+  nothing ever runs it; **declare it** where it was not warranted and an ordinary
+  project's dispatch carries a fleet-wide grant it never needed. A pack whose whole
+  purpose is the reach knows the answer once, for everything it contributes.
+
+  The task-level `session_scope` field is **deprecated**. It still routes correctly
+  wherever the owning pack declares nothing, so no repo breaks; the advisory
+  `deprecated-session-scope` check is the pressure to move it, and
+  `engine/scheduler/session-scope.mjs` is the one resolver both paths go through.
+
+  **Declaring the scope routes the dispatch; it does not create the routine that
+  runs it** — that second, label-wired routine exists only in the canon repo, and
+  its launcher prompt must end in the word `fleet` (the executor defaults an unnamed
+  scope to `self` and then declines the dispatch as another scope's). Get that wrong
+  and the task fails *silently and forever*, exactly as above.
 
 - **Every run is bounded.** An agentic task (`agent_model !== none`) declares
   `agent_execution_timeout` — seconds bounding the agentic run
@@ -164,10 +182,12 @@ that needs to mark an issue as claimed or handed to a human; a task reusing them
 whole lifecycle on its own issues, since the scheduler's stale-claim backstop only converges
 `[claudinite-task]` dispatch issues.
 
-Which ready label a task dispatches under follows from its `session_scope`, and the executor
-session started by that label is the one with the matching reach — a `fleet` task's session
-has the owner's repos in its sources, a `self` task's has this repo alone. The task declares
-the scope; nothing downstream re-decides it.
+Which ready label a task dispatches under follows from its **owning pack's** `sessionScope`
+(resolved once in `engine/scheduler/discover.mjs`, the one place holding both the manifest and
+the declaration), and the executor session started by that label is the one with the matching
+reach — a `fleet` pack's task runs in a session with the owner's repos in its sources, everything
+else in one holding this repo alone. The pack declares the reach; nothing downstream re-decides
+it, and no task decides it at all.
 
 ## Dispatch lifecycle — every exit is terminal, and stale dispatches close
 

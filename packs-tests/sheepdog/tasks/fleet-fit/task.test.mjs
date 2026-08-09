@@ -31,13 +31,17 @@ test('fleet-fit: weekly, and ceilinged at open-pr — a pack declaration is alwa
   assert.deepEqual(decl.precondition_signals, []);
 });
 
-test('fleet-fit: fleet-scoped, unlike this pack\'s other three tasks', () => {
-  // The census/freshness/usage sweeps keep their cross-repo reach in the
-  // IMPLEMENTATION and stay `self`. This one does not: its agent edits MEMBER
-  // checkouts, so the reach is in the wiring and the dispatch must route to the
-  // broader executor (ready-for-agent-fleet). Dropping this makes the agent stage
-  // run with only the enforcer repo in its sources — and quietly do nothing.
-  assert.equal(decl.session_scope, 'fleet');
+test('fleet-fit: takes its fleet reach from the PACK, never declaring its own', async () => {
+  // The agent edits MEMBER checkouts, so its dispatch must route to the broader
+  // executor (ready-for-agent-fleet) — but that is the sheepdog pack's
+  // `sessionScope`, true of everything it contributes, not a field this task could
+  // forget. The deprecated per-task field must be gone from here.
+  assert.equal(decl.session_scope, undefined);
+  const { default: pack } = await import('../../../../packs/sheepdog/pack.mjs');
+  assert.equal(pack.sessionScope, 'fleet');
+  // And the resolution the scheduler actually routes on agrees.
+  const { resolveSessionScope } = await import('../../../../engine/scheduler/session-scope.mjs');
+  assert.deepEqual(resolveSessionScope({ pack, decl }), { scope: 'fleet', source: 'pack' });
 });
 
 test('fleet-fit: two stages — a bounded, task-local sweep, then an agent', () => {

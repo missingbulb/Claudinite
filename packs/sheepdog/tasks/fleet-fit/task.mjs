@@ -33,12 +33,13 @@
 // reviewed. The ceiling is enforced in code (verify-outcome.mjs), so this line is
 // what actually keeps auto-merge off the PR.
 //
-// WHY session_scope: 'fleet' — unlike this pack's other three tasks, the reach here
-// is in the WIRING, not just the implementation: the agent works in MEMBER
-// checkouts, so its session needs the owner's repos in its sources. That routes the
-// dispatch to `ready-for-agent-fleet`, which requires a fleet executor routine in the
-// enforcer repo (packs/basics/scheduled-tasks.md) — declaring the scope does not
-// create it. Without that routine the dispatch is filed and never runs.
+// WHERE THE FLEET REACH COMES FROM: not from here. The agent works in MEMBER
+// checkouts, so its session needs the owner's repos in its sources — and that is the
+// sheepdog PACK's `sessionScope: 'fleet'`, true of everything the pack contributes,
+// rather than a per-task field this file could forget. It routes the dispatch to
+// `ready-for-agent-fleet`, which requires a fleet executor routine in the enforcer
+// repo (packs/basics/scheduled-tasks.md) — declaring the scope does not create it.
+// Without that routine the dispatch is filed and never runs.
 //
 // Self-contained (imports nothing): the whole contract is this default export.
 
@@ -49,7 +50,6 @@ export default {
   agent_model: 'sonnet',                 // applies an existing pack by an existing skill; the detecting already happened in prework
   expected_outcome: 'open-pr',           // a new pack ships checks that run in the member's CI — always reviewed, never auto-merged
   agent_instructions: 'task.md',
-  session_scope: 'fleet',                // the agent edits MEMBER repos → the fleet executor, not the self one
   prework: 'node worker.mjs',
   // One tree listing per member plus a bounded handful of content reads per
   // content-reading fingerprint, all serial, with a secondary rate limit on top. The

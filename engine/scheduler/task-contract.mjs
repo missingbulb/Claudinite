@@ -6,6 +6,7 @@
 
 import { FREQUENCIES } from './slots.mjs';
 import { MODEL_FAMILIES } from './model-map.mjs';
+import { SESSION_SCOPES } from './session-scope.mjs';
 
 // A declared timeout is always a whole number of seconds, > 0.
 const isPositiveInt = (n) => Number.isInteger(n) && n > 0;
@@ -42,17 +43,12 @@ export function normalizeTaskDeclaration(decl) {
 // `merged-pr` may arm auto-merge. "No change" is always legal.
 export const OUTCOMES = ['none', 'open-pr', 'merged-pr'];
 
-// The executor-session repo scope a task needs (per-project-scheduling split):
-//   'self'  — the task touches only its own repo; a project-only executor session
-//             is all it needs. This is the default, and almost every task's scope.
-//   'fleet' — the task reaches across the owner's other repos (e.g. growth-promote
-//             reads every member's local packs), so its dispatch goes to a
-//             SEPARATE, broader-scoped executor. Isolating this to the few tasks
-//             that truly need it keeps the fleet-wide session grant off every
-//             ordinary project's executor. The scheduler routes a fleet task's
-//             dispatch to the `ready-for-agent-fleet` label so a distinct executor
-//             routine (with the owner's repos in its sources) runs it.
-export const SESSION_SCOPES = ['self', 'fleet'];
+
+// The executor-session repo scope vocabulary, re-exported from its owner
+// (session-scope.mjs) so existing importers of this module keep working. The scope
+// itself is now the PACK's declaration (`sessionScope` on the manifest); the
+// task-level `session_scope` below is the deprecated older spelling.
+export { SESSION_SCOPES };
 
 // The signal-collector vocabulary (DESIGN §3.3). A task collects only the union
 // of what its due tasks declare. `fleet` is canon-only (consumers cannot declare
@@ -99,11 +95,16 @@ export function validateTaskDeclaration(raw) {
     bad('"precondition" is not a function', 'export a precondition(signals, config) that returns { run, reason, context? }');
   }
 
-  // session_scope — OPTIONAL, defaults to 'self'. Only a task that reaches other
-  // repos declares 'fleet' (routed to the fleet executor). A bad value would
-  // silently mis-route the dispatch, so it is validated when present.
+  // session_scope — DEPRECATED and OPTIONAL. The scope is the owning PACK's
+  // declaration now (`sessionScope` on the manifest, session-scope.mjs); this field
+  // is the older spelling and is still honoured when the pack declares nothing, so
+  // no repo breaks on the change. It stays VALIDATED rather than ignored: a
+  // deprecated field that silently accepts a typo mis-routes the dispatch to an
+  // executor that declines it, and the task then never runs while the scheduler
+  // re-arms it hourly. The `deprecated-session-scope` check (basics) is the pressure
+  // to move it; this is only the guard that a lingering one still works.
   if (decl.session_scope !== undefined && !SESSION_SCOPES.includes(decl.session_scope)) {
-    bad(`"session_scope" ${JSON.stringify(decl.session_scope)} is not a legal session scope`, `omit it (defaults to "self") or set one of: ${SESSION_SCOPES.join(', ')}`);
+    bad(`"session_scope" ${JSON.stringify(decl.session_scope)} is not a legal session scope`, `drop it — declare "sessionScope" on the owning pack instead — or, while it lingers, set one of: ${SESSION_SCOPES.join(', ')}`);
   }
 
   // Prework (task-prework DESIGN §2) — OPTIONAL. The deterministic first phase
