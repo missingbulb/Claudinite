@@ -27,9 +27,9 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write        # read the repo; migrations-retire's TTL archiver moves records + baselining's deliver() (n/a on canon — self-skips)
+  contents: write        # read the repo; baselining's deliver() (n/a on canon — self-skips)
   issues: write          # file / label / close dispatch issues
-  pull-requests: write   # migrations-retire opens the archive PR; agentful tasks' delivery
+  pull-requests: write   # agentful tasks' delivery
   actions: write         # read the run ledger (last successful run) for due-slot math, AND
                          # start a delivered PR's checks via workflow_dispatch (land-pr.mjs's
                          # dispatchCiRuns — usage-fold's fold PR needs its evidence run) — a

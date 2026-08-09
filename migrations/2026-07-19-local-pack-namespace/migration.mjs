@@ -10,12 +10,11 @@
 // namespaced form (see the baselining worker doc). This record holds no ops of its
 // own; it is the convergence telemetry. The engine accepts BOTH forms throughout (and
 // after — packEntryId's strip is the permanent parser, not a tolerance this record
-// carries), so retiring strands nothing.
+// carries), so the record holds nothing that could be stranded.
 //
 // legacyPresent: a member still declares a bare id (string entry or entry-object id,
 // no `local_packs/` prefix) whose pack lives in its own .claudinite/local_packs/ tree.
 // A bare id with no such local pack is a canon declaration — not this record's business.
-// retire: 'auto' — self-retires once the fleet has converged and stayed quiet a cycle.
 export default {
   id: 'local-pack-namespace',
   landed: '2026-07-19',
@@ -33,5 +32,4 @@ export default {
     }
     return false;
   },
-  retire: 'auto',
 };

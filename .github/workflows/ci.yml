@@ -7,8 +7,8 @@ on:
     branches: [main]
   # Dispatchable so a GITHUB_TOKEN-authored PR (whose push/open GitHub never
   # turns into a pull_request run — the recursion guard) can still get this
-  # suite started on its branch: baselining's deliver() and any bot flow like
-  # migrations-retire's archive PR (#432, #565) dispatch it explicitly.
+  # suite started on its branch: baselining's deliver() and any bot-authored
+  # PR flow (#432, #565) dispatch it explicitly.
   workflow_dispatch:
 defaults:
   run:

@@ -13,19 +13,20 @@
 //                    on drift, so a hand-edited copy self-heals).
 //   - rewrite      — repoint the orchestrator's three cross-repo @main calls at the
 //                    local vendored files, preserving any per-repo build_env tweak.
-//   - legacyPresent — fleet telemetry: still on the old shape while anything under
+//   - legacyPresent — telemetry: still on the old shape while anything under
 //                    .github/workflows/ references Claudinite's core release
 //                    workflows @main.
-//   - retire:'auto' + retireDeletesFromHome — once the retire pass sees 0 repos on
-//                    the old shape, it deletes Claudinite's now-unused core release
-//                    plumbing from the canon repo, then this record. The check-layer
-//                    tolerance is driven by migrationActive('chrome-release-vendoring')
-//                    (registry.mjs), so it vanishes in the same step this file is
-//                    deleted — nothing inline is stranded, so 'auto' is honest.
 //
-// The automatic deletion is done by the migration retire pass over daily
-// maintenance's own access to the canon repo (no special grant) — once the fleet has
-// vendored the copy, so the canon ends with no leftovers.
+// The check-layer tolerance is driven by migrationActive('chrome-release-vendoring')
+// (registry.mjs), which ends on its own once this record ages out of the recency
+// window. The canon's now-unused core release plumbing (the four workflows + two
+// composite actions this record vendored into the consumers — NOT report-failure,
+// which is shared canon infrastructure that non-chrome workflows call @main
+// directly) stays in the canon until someone sweeps it by hand, together with the
+// inline references that name it — the barriers `except` entries in the canon's
+// .claudinite-checks.json, the .github/workflows/README.md links, and this
+// migration's own tests. (A past automated retirement deleted them on fleet
+// telemetry alone and broke the canon's CI with 53 stale-ref findings.)
 const STUB = '.github/workflows/chrome-extension-release.yml';
 const S = 'packs/chrome-extension-release/stubs';
 
@@ -74,44 +75,4 @@ export default {
     const text = (await read(STUB)) || '';
     return text.includes('missingbulb/Claudinite/.github/workflows/chrome-extension-');
   },
-
-  // retire: 'manual' — the fleet has fully vendored (0 repos on the legacy shape),
-  // but this record is NOT safe to auto-retire: deleting it + retireDeletesFromHome
-  // strands a web of inline references the retire pass does not clean — the barriers
-  // `except` entries in the canon's .claudinite-checks.json that excuse those core
-  // files, the .github/workflows/README.md links to them, and this migration's own
-  // tests (migrations.test.mjs asserts migrationActive('chrome-release-vendoring')
-  // and the deletion-set length). Auto-retiring broke the canon's CI (53 stale-ref
-  // findings + 2 tests). Retire it by hand in one change that also prunes those
-  // references (and consider teaching the retire pass to sweep references, or
-  // driving these tolerances off resolvePath, before flipping back to 'auto').
-  retire: 'manual',
-  // Claudinite's now-unused core release plumbing, deleted on retirement (each
-  // file explicitly — the Contents API deletes files, not directories; an emptied
-  // action dir drops out with its last file).
-  //
-  // report-failure is deliberately EXCLUDED from this deletion set: it is shared
-  // canon infrastructure, NOT chrome-release-exclusive. Non-chrome workflows call
-  // `…/.github/actions/report-failure@main` directly (the canon's own
-  // deploy-privacy-page.yml, and consumer repos across the fleet), and it is the
-  // general unattended-workflow failure reporter documented for them. This
-  // migration's legacyPresent probe only inspects the
-  // chrome-extension-release *stub*, so its "0 repos on the legacy shape" signal says
-  // nothing about those non-chrome @main callers — deleting report-failure on that
-  // signal would break them. The four release *workflows* being deleted here
-  // reference report-failure @main internally, but those references vanish with the
-  // files; the canon action itself must survive for the non-chrome callers. Chrome
-  // consumers keep working via the copy `materialize` vendors into each of them.
-  // (Retiring report-failure itself, if ever, belongs to whatever owns that shared
-  // action — not to this chrome-release migration.)
-  retireDeletesFromHome: [
-    '.github/workflows/chrome-extension-release.yml',
-    '.github/workflows/chrome-extension-publish-store.yml',
-    '.github/workflows/chrome-extension-daily-release.yml',
-    '.github/workflows/deploy-privacy-page.yml',
-    '.github/actions/read-release-config/action.yml',
-    '.github/actions/read-release-config/read-config.mjs',
-    '.github/actions/bump-extension-patch/action.yml',
-    '.github/actions/bump-extension-patch/bump.mjs',
-  ],
 };

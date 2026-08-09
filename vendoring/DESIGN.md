@@ -109,16 +109,16 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    until the vendored mount exists, so it fires neither in the canon repo nor in pre-flip
    consumers.
 9. **Migration notes v2.** A canon change that consumers must be amended for ships as a dated
-   record (the existing `migrations/active_migrations/` shape): mechanical ops where code can
+   record (the `migrations/<date>-<slug>/` shape): mechanical ops where code can
    express them, plus a **brief agentic note** for what it can't (chiefly adapting
    consumer-authored `local_packs/` content to a changed engine contract). The nightly applies
    the notes dated on or after the day of the repo's stamp (same-day inclusive, note
    idempotency absorbing the overlap — #330), oldest first, inside the one transactional commit.
    No read-side tolerances in live code, no `LEGACY_*` constants, and **no per-consumer state
-   held in the canon** — the stamp in each consumer is the only bookkeeping. **Retirement is a
-   retention window**: a note is deleted ~5 weeks after landing; a repo lagging longer has been
-   failing loudly in the nightly log (or was off the access list), and its catch-up path is
-   re-running adoption, which vendors head idempotently. The one surviving two-phase case is
+   held in the canon** — the stamp in each consumer is the only bookkeeping. **Relevance is a
+   fetch-time window, not a retention window**: records are kept forever, vendoring ships
+   consumers only the notes landed within the last 7 days, and a repo lagging longer catches up
+   from the fresh canon clone its baselining fetches, which carries every record. The one surviving two-phase case is
    **out-of-repo state** no commit can reach — the pasted web-environment Setup script keeps
    the probe + halt-gate pattern ([consumer-safe-changes.md](../consumer-safe-changes.md)).
 10. **Accepted trade-off.** A bad canon change (typically an overzealous blocking check)

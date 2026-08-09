@@ -51,7 +51,7 @@ moved and from which canon ref to which, lines changed, per-member timing, error
 an agent ran. A dry run prints the same report with true zeros, so its shape can be inspected without
 changing anything. Its `workflow_dispatch`-only workflow adds no cron, so the
 vendored scheduler stays the enforcer's only one — and because GitHub reads workflows solely from a
-repo's own `.github/`, the [`sheepdog-fleet-baseline`](../../migrations/active_migrations/2026-08-05-sheepdog-fleet-baseline.mjs)
+repo's own `.github/`, the [`sheepdog-fleet-baseline`](../../migrations/2026-08-05-sheepdog-fleet-baseline/migration.mjs)
 migration keeps a byte-identical copy there, gated on the repo declaring this pack. The nightly's own
 token cannot write a workflow file, so the converge withholds it and baselining's agent stage lands it
 over MCP ([#649](https://github.com/missingbulb/Claudinite/issues/649)) — automatic either way.

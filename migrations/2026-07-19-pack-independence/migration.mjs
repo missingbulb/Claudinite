@@ -18,9 +18,9 @@
 // diagnostic is the member-side signal. Consumers with no such local packs
 // need nothing.
 //
-// retire: 'auto' — the durable enforcement is the check, which every member
-// runs from its own snapshot; this record only carries the one-time
-// conversion guidance through the fleet's next cycles.
+// The durable enforcement is the check, which every member runs from its own
+// snapshot; this record only carries the one-time conversion guidance through
+// the fleet's next cycles.
 export default {
   id: 'pack-independence',
   landed: '2026-07-19',

@@ -7,7 +7,8 @@ import discover from './tasks/growth-discover-packs/task.mjs';
 // DESIGN §6 table 2): growth-promote reads which members changed their local
 // packs, growth-discover-packs sweeps the members' stacks for technologies the
 // canon does not home. (prose-to-checks-sweep moved to grow_with_claudinite as a
-// per-repo task, and migrations-retire became a canon-local TTL archiver.)
+// per-repo task; migration records need no curation task at all — they are kept
+// forever, and vendoring's recency window decides what ships.)
 // Each precondition is pure over the collected signals, so it tests directly
 // against a fabricated `fleet` signal.
 
