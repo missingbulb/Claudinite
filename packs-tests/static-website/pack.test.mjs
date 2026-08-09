@@ -6,6 +6,8 @@ import pack from '../../packs/static-website/pack.mjs';
 import releaseWorkflows, { VENDORED_ACTIONS, VENDORED_WORKFLOWS } from '../../packs/static-website/release-workflows.mjs';
 import siteConfig from '../../packs/static-website/site-config.mjs';
 import versionScheme from '../../packs/static-website/version-scheme.mjs';
+import { parseConfig } from '../../packs/static-website/stubs/actions/read-site-config/read-config.mjs';
+import { resolve, toGithubEnv } from '../../packs/static-website/stubs/actions/read-site-config/export-build-vars.mjs';
 
 const run = (rule, root) => rule.run(buildContext({ root, mode: 'all' }));
 
@@ -195,5 +197,79 @@ test('sw/version-scheme: inert with no site config (FP guard)', () => {
   const root = makeRepo({ base: { 'package.json': '{"version": "1.2.3"}' } });
   try {
     assert.deepEqual(run(versionScheme, root), []);
+  } finally { cleanup(root); }
+});
+
+// ---------------------------------------------------------------------------
+// build_vars — the optional key, its exporter, and the drift guard that makes
+// declaring it safe on a repo whose vendored copy is older than the feature.
+
+test('site.config: build_vars is optional — an untouched five-key config stays valid', () => {
+  const { values, errors } = parseConfig(CONFIG);
+  assert.deepEqual(errors, []);
+  assert.equal(values.has('build_vars'), false);
+});
+
+test('site.config: build_vars entries must be variable names, not values', () => {
+  const { errors } = parseConfig(`${CONFIG}build_vars=GOOD_ONE not-a-name\n`);
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /'not-a-name' is not a variable name/);
+});
+
+test('sw/site-config: a build_vars entry that is not a variable name is blocking', () => {
+  const root = siteRepo({ '.github/site.config': `${CONFIG}build_vars=TOKEN=secretvalue\n` });
+  try {
+    const what = run(siteConfig, root).map((f) => f.what).join('\n');
+    assert.match(what, /is not a variable name/);
+  } finally { cleanup(root); }
+});
+
+test('export-build-vars: resolves the declared names and reports the ones with no value', () => {
+  const { resolved, missing } = resolve('PRESENT BLANK ABSENT', { PRESENT: 'yes', BLANK: '' });
+  assert.deepEqual(resolved, [['PRESENT', 'yes']]);
+  // Empty is not "set" — an exported blank is the silent half-configured build.
+  assert.deepEqual(missing, ['BLANK', 'ABSENT']);
+});
+
+test('export-build-vars: undeclared repo variables are never exported', () => {
+  const { resolved } = resolve('WANTED', { WANTED: 'a', OTHER: 'b' });
+  assert.deepEqual(resolved, [['WANTED', 'a']]);
+});
+
+test('export-build-vars: a multi-line value is written in the heredoc form', () => {
+  assert.equal(toGithubEnv([['ONE', 'a']]), 'ONE=a');
+  assert.equal(
+    toGithubEnv([['KEY', 'line1\nline2']]),
+    'KEY<<__EOF_KEY__\nline1\nline2\n__EOF_KEY__',
+  );
+});
+
+test('sw/release-workflows: declaring build_vars on a pre-exporter vendored copy is blocking', () => {
+  const root = siteRepo({ '.github/site.config': `${CONFIG}build_vars=SITE_TOKEN\n` });
+  try {
+    const findings = run(releaseWorkflows, root);
+    const files = findings.map((f) => f.file);
+    assert.ok(files.includes('.github/actions/read-site-config/export-build-vars.mjs'));
+    assert.ok(files.includes('.github/workflows/static-site-deploy-pages.yml'));
+    assert.ok(files.includes('.github/workflows/static-site-ci.yml'));
+  } finally { cleanup(root); }
+});
+
+test('sw/release-workflows: a vendored copy that honours build_vars is clean', () => {
+  const root = siteRepo({
+    '.github/site.config': `${CONFIG}build_vars=SITE_TOKEN\n`,
+    '.github/actions/read-site-config/export-build-vars.mjs': '// vendored exporter\n',
+    '.github/workflows/static-site-deploy-pages.yml': 'name: deploy\nrun: node .github/actions/read-site-config/export-build-vars.mjs\n',
+    '.github/workflows/static-site-ci.yml': 'name: CI\non:\n  pull_request:\nrun: node .github/actions/read-site-config/export-build-vars.mjs\n',
+  });
+  try {
+    assert.deepEqual(run(releaseWorkflows, root), []);
+  } finally { cleanup(root); }
+});
+
+test('sw/release-workflows: a repo that declares no build_vars is untouched by the exporter (FP guard)', () => {
+  const root = siteRepo();
+  try {
+    assert.deepEqual(run(releaseWorkflows, root), []);
   } finally { cleanup(root); }
 });

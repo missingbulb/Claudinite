@@ -1,8 +1,8 @@
 name: Read the site release config
 description: >-
   Reads the repo's required `.github/site.config` (five explicit keys, no
-  defaults) and exposes them as step outputs, so the vendored reusable workflows
-  stay copy-verbatim and carry no repo values of their own. A missing file, a
+  defaults, plus the optional build_vars) and exposes them as step outputs, so
+  the vendored reusable workflows stay copy-verbatim and carry no repo values of their own. A missing file, a
   missing or empty required key, or an unknown (typo'd) key fails the run —
   never a silent fallback to a default publish set. Composite so it adds no
   reusable-workflow nesting level, and dependency-free so it runs on a bare
@@ -24,6 +24,12 @@ outputs:
   test_command:
     description: The repo's CI gate ("" = no tests)
     value: ${{ steps.read.outputs.test_command }}
+  build_vars:
+    description: >-
+      Space-separated names of repo variables the build may read ("" = none, and
+      the only key a config may omit entirely). A caller that runs build_command
+      exports them first with the export-build-vars.mjs script beside this action.
+    value: ${{ steps.read.outputs.build_vars }}
 
 runs:
   using: composite

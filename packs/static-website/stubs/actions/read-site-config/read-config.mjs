@@ -23,21 +23,48 @@
 // A missing file, a missing key, an unknown (typo'd) key and an empty required
 // path key are all hard failures — a pipeline that "worked" because a typo fell
 // back to a default is the failure mode this shape exists to prevent.
+//
+// One key is OPTIONAL, and deliberately so:
+//
+//   build_vars      space-separated names of repo VARIABLES the build may read,
+//                   exported into build_command's environment (absent = none).
+//
+// It is optional because the explicitness rule above exists to stop a default
+// from silently publishing the WRONG TREE — and an absent build_vars cannot do
+// that. Absent means the build sees no variables, which is what every site did
+// before the key existed, so an untouched config keeps its exact meaning. What
+// is NOT tolerated is a declared name with no value behind it: that is the
+// silently half-configured build — a blank analytics token, an empty base URL —
+// baked into a published page, so a declared-but-unset variable fails the run.
+//
+// VARIABLES, NEVER SECRETS. The exporter beside this file is handed
+// `toJSON(vars)`, a context that structurally cannot carry a secret. A value
+// that must not appear in a published artifact has no business reaching the
+// step whose output IS that artifact, so the boundary is enforced by which
+// context the workflow passes, not by a convention someone has to remember.
 
 import { readFileSync, appendFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const CONFIG_PATH = '.github/site.config';
 
-// Keys that must be present. `allowEmpty` marks the two whose empty value is a
-// real, stated answer ("no build" / "no tests") rather than an omission.
+// The five required keys, plus the one optional key. `allowEmpty` marks the
+// values whose empty form is a real, stated answer ("no build" / "no tests")
+// rather than an omission; `optional` marks the key a config may leave out
+// entirely (see the header for why exactly one key gets that licence).
 export const KEYS = [
   { name: 'publish_root', allowEmpty: false },
   { name: 'publish_paths', allowEmpty: false },
   { name: 'version_files', allowEmpty: false },
   { name: 'build_command', allowEmpty: true },
   { name: 'test_command', allowEmpty: true },
+  { name: 'build_vars', allowEmpty: true, optional: true },
 ];
+
+// A build_vars entry becomes an environment variable name, so it must be one.
+// Rejecting `FOO=bar` or `foo-bar` here means the failure lands on the config
+// line that is wrong, not as an unbound shell name three steps later.
+const ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 // dotenv-ish: KEY=value, one per line; # comments and blank lines ignored; the
 // value may be wrapped in matching single or double quotes (so a command with
@@ -68,9 +95,18 @@ export function parseConfig(text) {
     values.set(key, value);
   });
 
-  for (const { name, allowEmpty } of KEYS) {
-    if (!values.has(name)) errors.push(`${CONFIG_PATH}: required key '${name}' is missing`);
-    else if (!allowEmpty && !values.get(name)) errors.push(`${CONFIG_PATH}: '${name}' is empty — it must name a real path`);
+  for (const { name, allowEmpty, optional } of KEYS) {
+    if (!values.has(name)) {
+      if (!optional) errors.push(`${CONFIG_PATH}: required key '${name}' is missing`);
+    } else if (!allowEmpty && !values.get(name)) {
+      errors.push(`${CONFIG_PATH}: '${name}' is empty — it must name a real path`);
+    }
+  }
+
+  for (const name of (values.get('build_vars') ?? '').split(/\s+/).filter(Boolean)) {
+    if (!ENV_NAME.test(name)) {
+      errors.push(`${CONFIG_PATH}: build_vars entry '${name}' is not a variable name — list the repo variable NAMES to export, space-separated, never their values`);
+    }
   }
   return { values, errors };
 }
@@ -90,7 +126,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     process.exit(1);
   }
 
-  const out = KEYS.map(({ name }) => `${name}=${values.get(name)}`).join('\n');
+  // An omitted optional key emits as empty, so every consumer of these outputs
+  // sees the same "" it would see from an explicitly empty value.
+  const out = KEYS.map(({ name }) => `${name}=${values.get(name) ?? ''}`).join('\n');
   if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `${out}\n`);
   console.log(out);
 }

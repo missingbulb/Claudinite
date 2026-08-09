@@ -15,7 +15,7 @@ workflows** ([publish](stubs/workflows/static-site-publish.yml),
 `.github/`**, where the whole pipeline runs with no cross-repo dependency. GitHub resolves a
 reusable workflow or a composite action only from a repo's own `.github/`, never from the shared
 mount, so "the logic lives in the pack" means the pack holds the templates and each repo hosts a
-*managed* copy: edit the pack, not the copy. Everything repo-specific is the five keys of
+*managed* copy: edit the pack, not the copy. Everything repo-specific is the keys of
 `.github/site.config`, so every vendored file is copy-verbatim across repos.
 
 ## The contract
@@ -61,9 +61,9 @@ on the PR. Two guards make that concrete, in [assemble-site](stubs/actions/assem
 a publish path that doesn't exist fails the run, and so does an assembled site with no `index.html`
 at its root. Both also run on every pull request, so a broken publish set never reaches `main`.
 
-### `.github/site.config` — required, five keys, no defaults
+### `.github/site.config` — five required keys, no defaults
 
-A dotenv file, **every key required and explicit**. A default that "happens to match" a repo's
+A dotenv file, **every required key explicit**. A default that "happens to match" a repo's
 layout silently publishes the wrong tree the day the layout or the default changes:
 
 | Key | What it is |
@@ -75,7 +75,38 @@ layout silently publishes the wrong tree the day the layout or the default chang
 | `test_command` | the repo's gate; `""` = no tests, stated. |
 
 A command that needs dependencies installs them itself (`npm ci && npm test`) — that's why there is
-no sixth "setup" key and no assumption that a lockfile exists.
+no "setup" key and no assumption that a lockfile exists.
+
+#### `build_vars` — the one optional key
+
+`build_command` otherwise runs with no access to any repo configuration at all, which leaves a site
+needing a build-time value (an analytics token, a base URL, a feature flag) with nowhere to put it.
+`build_vars` is the declaration that closes that gap: space-separated names of **repo variables**,
+exported into the build's environment before `build_command` runs.
+
+```dotenv
+build_command=node tools/build.mjs
+build_vars=SITE_ANALYTICS_TOKEN SITE_BASE_URL
+```
+
+Three properties are load-bearing, and each is the opposite of a nearby easier choice:
+
+- **Optional, unlike the five.** The explicitness rule exists to stop a default from publishing the
+  *wrong tree*; an absent `build_vars` can't do that — it means the build sees no variables, exactly
+  what every site did before the key existed. So an untouched config keeps its exact meaning and no
+  existing repo has to be migrated to stay valid.
+- **A declared-but-unset variable fails the run.** Exporting an empty string instead would give the
+  original failure one level down: the build succeeds, the page ships, and the feature that needed
+  the value is silently dead on the live site. Better a failed deploy naming the variable.
+- **Variables, never secrets.** The exporter is handed `toJSON(vars)`, a context that structurally
+  cannot carry a secret — so a value that must not appear in a published artifact cannot reach the
+  step that produces one. That boundary is a property of what the workflow passes, not a convention
+  to remember. A build that genuinely needs a secret is doing something a published static site
+  should not be doing.
+
+Declaring `build_vars` also holds the repo to a vendored copy new enough to honour it: `sw/release-workflows`
+fails if the config names variables while the vendored action or workflows predate the exporter, since
+that combination reads the key, ignores it, and builds with the variables unset.
 
 ```dotenv
 # A hand-authored site with no build step.
@@ -126,7 +157,8 @@ flow arms auto-merge and then never runs, so the repo's own maintenance PR waits
    tokens to replace. A repo whose site deploys somewhere **other** than Pages takes the CI stub
    and the versioning half only, and skips the orchestrator + the two reusables — every rule in
    this pack is gated on the orchestrator, so nothing here fires on it.
-3. **Write `.github/site.config`** with all five keys, from the adoption answers.
+3. **Write `.github/site.config`** with all five required keys, from the adoption answers (plus
+   `build_vars` if the build needs repo variables).
 4. **Put the version on the scheme** — one hand edit in each `version_files` record (`1.1231.3` →
    `1.61231.3` for an existing site; `1.<today's ymmdd>.1` for a new one).
 5. **Open the one-time settings issue** (below) — idempotent: search the tracker first and skip if
