@@ -80,6 +80,35 @@ Pages actions. Everything else — config read, due-check, bump, assembly, `gh r
 create`, failure reporting — is plain node/git/gh, the class of logic the fleet already
 ships as one engine script behind a ~60-line shim (`claudinite-scheduler.yml`).
 
+## State update (2026-08-09, evening) — findings against the moved fleet
+
+The analysis above ran against canon `main` before #727/#729 and before EdFringeNow's
+adoption (#319). What the same-day movement changes, finding by finding:
+
+- **Finding 1 (release blind to workflow-authored pushes) — now live, not hypothetical.**
+  EdFringeNow adopted with data files in the publish set and *no* dispatch wiring; its
+  hourly refresh pushes ride the scheduler's GITHUB_TOKEN. #319 expects those pushes to
+  keep releasing ("roughly 17/day") — the platform fact says they release nothing, and
+  the site serves stale data between content pushes. Whichever way it lands empirically,
+  one of the two intended behaviors (fresh data deploys / releases stay meaningful) is
+  broken as merged.
+- **Finding 2 (EdFringeNow release semantics) — still open, explicitly deferred by #319**
+  ("a separate decision from this PR"). Note the two failure directions are now
+  entangled: if dispatch wiring is added naively (fixing finding 1), the ~17 releases/day
+  problem materializes; without it, data never deploys.
+- **Finding 5 (the vars/analytics gap) — resolved in canon, by #729's `build_vars`**: a
+  declared per-repo list in `site.config` (repo vocabulary stays out of the copy-verbatim
+  stubs), fail-on-unset (a deleted variable breaks the deploy loudly instead of shipping
+  a silently beaconless site), vars-context-only (a secret structurally cannot reach the
+  build). This addresses both objections to #626's wholesale export. It *keeps* the
+  variable indirection and its machinery, which the design still argues is unnecessary
+  for public-by-construction values — see DESIGN.md D3.
+- **Findings 3, 4, 6, 7, 8 — unchanged in canon**: the post-bump staleness window, both
+  platform-fact errors in RELEASE.md (the moot workflow-permissions settings item; the
+  overbroad composite-action-resolution claim), the missing `enablement: true`, the dead
+  `pages` concurrency group, and the fresh-issue-supersede reporter are all still as
+  analyzed — now vendored into a live adopter.
+
 ## The first-go manual set (a fresh repo)
 
 Irreducible: **custom domain + DNS** (where applicable) — and, until `enablement: true` is

@@ -3,7 +3,10 @@
 Status: analysis input for the alignment design ([DESIGN.md](DESIGN.md); soundness review
 in [SOUNDNESS.md](SOUNDNESS.md)). Surveys how the
 three static-site repos — **EdFringeNow**, **ClaudiniteWebsite**, **MissingBulbWebsite** —
-release today, against the canon `static-website` pack (merged in #611, adopted by nobody yet).
+released as of the original survey (2026-08-09, morning), against the canon `static-website`
+pack (merged in #611). **The fleet moved the same day** — see
+[State update](#state-update-2026-08-09-evening) at the end; the survey body below is kept
+as the record of the bespoke era it analyzed.
 
 ## The short version
 
@@ -121,7 +124,7 @@ The standard the fleet already agreed on, vendored into each repo's own `.github
 | Failure visibility | red run, no escalation | fresh `workflow-failure` issue, dedup of older ones |
 | Vendored surface per repo | 1 deploy workflow + 1 CI workflow + 1 script | 4 workflows + 3 actions + config file |
 
-## Adoption state and the blocking question
+## Adoption state and the blocking question (as surveyed)
 
 - MissingBulbWebsite PR #39 (open, conflicts): full pack adoption, deletes the bespoke
   halves, moves analytics injection into `build_command` — which only works if the
@@ -131,3 +134,51 @@ The standard the fleet already agreed on, vendored into each repo's own `.github
   needs an answer for "data pushes should release" (its publish set includes `data/`,
   which the pack's due-check handles naturally) and for its root-published layout (the
   publish-set question forces the right conversation).
+
+## State update (2026-08-09, evening)
+
+The same day as the survey, the vars question was settled in canon and EdFringeNow
+adopted the pack. Recorded here as **data about the current state, not as the desired
+outcome** — where the alignment design disagrees with what shipped, the design
+([DESIGN.md](DESIGN.md)) is the authority.
+
+**Canon (`static-website` pack):**
+
+- **#729 (merged)**: `site.config` gains `build_vars` — an *optional* sixth key naming
+  the repo variables to export into `build_command`'s environment, in CI and deploy
+  alike. Declared-but-unset fails the run naming the variable; the exporter is handed
+  `toJSON(vars)` only, so a secret structurally cannot reach the build. A drift guard in
+  `sw/release-workflows` fails a config that names variables while the vendored copies
+  predate the exporter.
+- **#626 (closed unmerged, 2026-08-09)**: the wholesale-export attempt is dead;
+  `build_vars` is its owner-approved replacement (declared list instead of everything;
+  fail-on-unset instead of silently-empty substitution).
+- **#727 (merged)**: four rules about the data a page fetches — pack scope growth,
+  not release mechanics.
+
+**EdFringeNow — the pack's first adopter (its PR #319, merged 2026-08-09T20:28Z;
+the older duplicate attempt #207 closed unmerged):**
+
+- The bespoke column in the table above is now historical: `pages.yml`, `ci.yml` and
+  `scripts/bump-version.mjs` are deleted; the four `static-site-*.yml` workflows and
+  three composite actions are vendored; version on-scheme in place
+  (`1.0809.84` → `v1.60809.85` on the first pipeline release).
+- **The root-publish flaw is fixed** by the explicit publish set: `publish_root=.` with a
+  named list — the scraper, docs, plan-design, product-wiki and scripts trees stop being
+  served, and 10.3 MB of never-fetched scraper inputs (`shows.json`, `prices.json`) are
+  dropped from the artifact, verified against the fetch call sites.
+- The build stamp + analytics injection became `scripts/build-site.sh`
+  (`build_command`), with `build_vars=CLOUDFLARE_ANALYTICS_TOKEN` — the injection
+  machinery *survived* via #729 rather than being deleted.
+- **The data-refresh release question is explicitly deferred**, and #319's own framing of
+  it contains the trap SOUNDNESS.md finding 1 predicted: it expects hourly refreshes to
+  keep cutting releases ("roughly 17/day"), but the refresh-tickets task runs inside the
+  scheduler workflow and pushes with its `GITHUB_TOKEN` — which fires no `push` workflow.
+  As adopted, hourly data pushes land on `main` and **nothing deploys them**; the live
+  site serves stale availability until the next human/agent-credential push. (Merged
+  hours ago; not yet observable either way in the commit log.) The scrape/prices
+  workflows' GITHUB_TOKEN pushes are blind the same way.
+
+**Unchanged:** ClaudiniteWebsite and MissingBulbWebsite still run their bespoke flows;
+MissingBulbWebsite PR #39 is still open, conflicting, and now references a closed PR
+(#626) and predates `build_vars` — triply stale.

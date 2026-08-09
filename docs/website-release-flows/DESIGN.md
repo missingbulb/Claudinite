@@ -3,7 +3,13 @@
 Status: **proposed** (owner review pending). Refs #722.
 Inputs: [COMPARISON.md](COMPARISON.md) (the fleet evidence), [SOUNDNESS.md](SOUNDNESS.md)
 (the independent soundness analysis). The subject is the `static-website` pack — merged in
-#611, adopted by nobody — and the three site repos' bespoke flows it is meant to replace.
+#611 — and the three site repos' bespoke flows it is meant to replace.
+
+> **State note (2026-08-09, evening).** After this design was written, canon merged #729
+> (`build_vars`) and EdFringeNow adopted the pack (#319) — see the state updates in
+> COMPARISON.md and SOUNDNESS.md. Per the owner's instruction, that movement is treated
+> as *data, not as the desired outcome*: this design's conclusions stand where they
+> disagree with what shipped. Decisions affected by the new state say so inline.
 
 ## Goal
 
@@ -29,8 +35,11 @@ must work on the first go.
 ### D1. Keep one pack; reshape `static-website` in place
 
 The consolidation policy survives the soundness review intact — one vendored standard,
-repo-specifics in a small explicit config. With zero adopters, the pack is free to be
-reworked in place with no migration debt. The pack keeps its `static-website` id (it owns
+repo-specifics in a small explicit config. The pack is reworked in place; with EdFringeNow
+now adopted (#319), the reshape carries one live adopter's vendored copies along — a
+normal converge plus one agent-stage handoff for its workflow files, small and bounded,
+rather than the zero-cost rework the original draft assumed. The pack keeps its
+`static-website` id (it owns
 versioning and CI, not just serving); renaming to `github-pages-serving` is possible but
 buys nothing the id doesn't already say — owner's call, recorded as an open question.
 
@@ -73,8 +82,20 @@ construction, and the variable + sed-injection + placeholder machinery protects 
 (SOUNDNESS.md fact 4). Each site commits its token directly in its analytics loader; the
 `CLOUDFLARE_ANALYTICS_TOKEN` repo variable and the injection step are deleted in all three
 repos. This dissolves the vars-into-build problem entirely — the pack needs no repo-variable
-export, which was the sole reason MissingBulbWebsite's PR #39 depended on the disapproved
-#626.
+export.
+
+*State note:* canon has since answered the vars question differently — #729's `build_vars`
+key (a declared list, fail-on-unset, vars-context-only), now live on EdFringeNow. It is a
+well-built mechanism that fixes both flaws of the disapproved #626. This design still
+holds D3 over it: `build_vars` can structurally carry only *non-secret* values (the `vars`
+context is all it is handed), and any value safe for a repo variable is safe to commit —
+so every possible `build_vars` use has a simpler equivalent in source, and what the key
+buys (rotation without a commit, forks not inheriting live analytics) does not pay for an
+exporter script, a config key, a drift guard, a placeholder convention and a per-repo
+injection script. Under D3, EdFringeNow's `build_vars` line and the injection half of its
+`build-site.sh` are removed with the variable (the build stamp half stays); whether the
+`build_vars` capability itself is then retired from the pack or kept dormant is open
+question 3.
 
 Pack prose records the dividing rule: **a value that ships to the client is source and is
 committed; a value that must not ship is a secret, and a secret forces the step that uses
@@ -99,6 +120,12 @@ release workflow** (`workflow_dispatch` needs `actions: write`, which the schedu
 already holds; "store-release fires the release orchestrator's daily leg" is the existing
 precedent). This also closes the race-recovery gap: a workflow-authored push that broke an
 in-flight bump now always has its own dispatched run queued behind it.
+
+*State note:* this stopped being hypothetical on 2026-08-09 — EdFringeNow adopted the pack
+with no dispatch wiring, and its hourly refresh pushes ride the scheduler's GITHUB_TOKEN.
+#319 expects them to keep releasing (~17/day); the platform fact says they deploy nothing,
+and the live site serves stale availability between content pushes. D5 + D6 are the fix,
+and they are now the most urgent piece of this design.
 
 ### D6. Two dispatch modes: `release` and `deploy-only`
 
@@ -153,10 +180,13 @@ edit. The pack prose says this plainly instead of implying unlimited customizabi
 
 ### D10. Migration and the acceptance probe
 
-Order: rework the pack (D2–D9) → probe on MissingBulbWebsite → roll out to the other two.
+Order: rework the pack (D2–D9) → probe on MissingBulbWebsite → roll out to
+ClaudiniteWebsite → EdFringeNow's correction pass. Exception: EdFringeNow's dispatch
+wiring (D5/D6) is a live-gap fix that should not wait for the reshape.
 
-**MissingBulbWebsite — the purge test (owner-specified).** Close PR #39 as superseded
-(its diff predates the reshape and its #626 dependency is dissolved). Then, simulating a
+**MissingBulbWebsite — the purge test (owner-specified).** Close PR #39 as superseded —
+it predates the reshape, references the closed #626, and predates `build_vars`. Then,
+simulating a
 fresh repo:
 
 1. Purge: `deploy-pages.yml`, `checks.yml`, `scripts/bump-version.mjs` and its
@@ -172,11 +202,13 @@ fresh repo:
 **ClaudiniteWebsite**: same shape, no surprises; its local-pack test fixtures fold into
 `test_command`.
 
-**EdFringeNow**: the interview forces the publish-set decision (today it publishes the
-repo root subtractively — scraper, docs and plan trees are live). `verify.sh` becomes
-`test_command`, the build stamp becomes `build_command`, and the data-refresh task gains
-the `deploy-only` dispatch (D5/D6). This is the adoption with real per-repo work, done
-last.
+**EdFringeNow**: adoption happened (#319) and settled most of what this step originally
+covered — the explicit publish set (fixing the root-publish exposure and dropping 10.3 MB
+of scraper inputs), `verify.sh` as `test_command`, the build stamp in `build_command`.
+What remains is a correction pass, and its first item is urgent: wire the data-refresh
+task to dispatch `deploy-only` (D5/D6 — as merged, hourly data pushes deploy nothing),
+then swap the analytics variable for the committed token (D3). The rest of the reshape
+(D2's thin shims, D7's reporter) reaches it as an ordinary converge.
 
 ## The surface, before and after
 
@@ -204,16 +236,22 @@ consumer the export existed for. Three details of it are worth keeping anyway:
   `secrets` is never exported). The reshaped pack should do the same over its two shims
   and pipeline scripts — e.g. "no shim ever references `secrets`", "the shims invoke the
   pipeline scripts and carry no logic".
-- **The fallback, if D3's answer is "keep the variable"**: #626's vars-only wholesale
-  export (never `secrets`, run-id-salted heredoc delimiter so a value cannot terminate its
-  own block) is the right mechanism for that world — repo-vocabulary-free, injection-safe.
-  Recorded here so it isn't reinvented worse.
+- **The fallback, if D3's answer is "keep the variable"**: originally recorded here as
+  #626's wholesale export. Overtaken by events — #626 is closed and canon merged #729's
+  `build_vars` (declared list, fail-on-unset, vars-only), which is strictly better than
+  the wholesale shape on both of its weak points. If the variable indirection survives
+  owner review, `build_vars` as merged *is* the fallback; nothing needs reinventing.
 
 ## Open questions for the owner
 
 1. Rename the pack to `github-pages-serving`, or keep `static-website`? (D1 — cosmetic;
    default: keep.)
 2. EdFringeNow data refreshes: `deploy-only` (recommended, D6) or full releases per data
-   push (today's de-facto behavior, at ~8k Releases/year under the pack)?
-3. Committing the public beacon token (D3): any reason to keep the variable indirection
-   (fork hygiene, rotation-without-commit) that outweighs deleting the machinery?
+   push (#319's stated expectation, ~17 Releases/day under the pack)? As merged, neither
+   happens — data pushes deploy nothing (D5 state note) — so this needs an answer either
+   way.
+3. Committing the public beacon token (D3): the fleet has de facto answered "keep the
+   variable" via #729's `build_vars`, now live on EdFringeNow. The design still recommends
+   committing the token and deleting the injection machinery; if D3 is accepted,
+   should the then-userless `build_vars` capability be retired from the pack, or kept
+   dormant for future build-time values?
