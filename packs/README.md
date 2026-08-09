@@ -24,7 +24,7 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 | <img src="google-identity/badge.svg" width="18" height="18" alt=""> [google-identity](google-identity/README.md) | declared | 0 (3 in its skill) | 0 |
 | <img src="jwt/badge.svg" width="18" height="18" alt=""> [jwt](jwt/README.md) | JWT library in JS/TS/Python source | 0 (5 in its skills) | 0 (2 skills + monthly advisory-watch task) |
 | <img src="html/badge.svg" width="18" height="18" alt=""> [html](html/README.md) | declared | 0 | 1 |
-| <img src="static-website/badge.svg" width="18" height="18" alt=""> [static-website](static-website/README.md) | declared (opt-in); marker: the `Release static site` orchestrator | 3 | 4 (+ RELEASE contract) |
+| <img src="static-website/badge.svg" width="18" height="18" alt=""> [static-website](static-website/README.md) | declared (opt-in); marker: the `Release static site` orchestrator | 3 | 8 (+ RELEASE contract) |
 | <img src="flutter/badge.svg" width="18" height="18" alt=""> [flutter](flutter/README.md) | pubspec.yaml | 0 | 0 (stub) |
 | <img src="firebase/badge.svg" width="18" height="18" alt=""> [firebase](firebase/README.md) | `firebase.json` | 2 | rules / functions / deploy discipline |
 | <img src="firebase-release/badge.svg" width="18" height="18" alt=""> [firebase-release](firebase-release/README.md) | declared (opt-in) | 0 | dev/prod split + App Check store gating |

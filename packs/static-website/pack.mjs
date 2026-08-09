@@ -16,7 +16,7 @@ import versionScheme from './version-scheme.mjs';
 export default {
   id: 'static-website',
   ruleRoutingGuidance: {
-    belongs: 'shipping a static site: date-anchored versioning, release on push, the explicit publish set, GitHub Pages deploy',
+    belongs: 'shipping and serving a static site: date-anchored versioning, release on push, the publish set, Pages deploy, client-side caching',
     excludes: 'hand-authored markup gotchas — html; generic workflow lint — github-actions; store publication — the release packs',
   },
   badge: 'badge.svg',
