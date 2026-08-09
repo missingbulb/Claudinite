@@ -88,7 +88,7 @@ test('reference-integrity: does not flag a deleted path already governed by an a
     base: {
       'old.sh': 'x\n',
       'consumer-docs.md': 'see `.vendored/old.sh` (or the legacy `.hooks/old.sh`)\n',
-      'migrations/active_migrations/2026-01-01-old-relocation.mjs': `export default {
+      'migrations/2026-01-01-old-relocation/migration.mjs': `export default {
   id: 'old-relocation',
   landed: '2026-01-01',
   aliases: [{ canonical: '.vendored/old.sh', legacy: ['.hooks/old.sh'] }],

@@ -3,6 +3,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadPacks, resolveDeclaredPacks, packEntryId, SHARED_SUBDIR, PACK_DIRECTORY_FILE } from '../engine/pack_loader/pack-registry.mjs';
 import { relativeImports, resolveRelative, ENGINE_DIR_ROOTS } from '../engine/checks/helpers/module-imports.mjs';
+import { recordDirIsRecent } from '../engine/checks/helpers/active-migrations.mjs';
 
 // The vendor-set computation for the vendored mount (DESIGN.md): given a repo's
 // pack declaration, the minimal corpus file set that repo persists under
@@ -45,32 +46,37 @@ const isTest = (name) => name.endsWith('.test.mjs');
 const VENDORED_ENGINE_DOCS = new Set(['engine/scheduler/executor.md', 'engine/scheduler/deliver-pr.md']);
 
 // The migration machinery a consumer applies from its OWN mount (task-prework
-// DESIGN §7): the applier + registry + the note records, so baselining reads the
-// notes locally and needs no canon checkout in session. NOT the fleet-only drivers
-// (fleet-apply/fleet-retire, which read the fleet) or the README. Vendoring these
-// also activates `migrationActive()` legacy-tolerance in consumer checks — inert
-// until now because no mount migrations existed — which is the intended fleet-wide
-// behaviour of that gate (a check tolerates a legacy shape while its migration is
-// live), not a regression.
+// DESIGN §7): the applier + registry + the RECENT record folders, so baselining
+// reads the notes locally and needs no canon checkout in session. Not the README.
+// All records live flat under migrations/ as <landed-date>-<slug>/ folders, and
+// FETCHING decides relevance: only the folders landed within the recency window
+// (recordDirIsRecent, the same predicate migrationActive tolerates by) ship in a
+// mount — an up-to-date consumer carries few-to-none, and a dormant project
+// catches up from the fresh canon clone baselining fetches, where every record
+// ever landed is present. Vendoring these also activates `migrationActive()`
+// legacy-tolerance in consumer checks — a check tolerates a legacy shape while
+// its migration is recent.
 const MIGRATIONS_ROOT = 'migrations';
 const VENDORED_MIGRATION_MODULES = ['apply.mjs', 'registry.mjs'];
-function walkMigrations(files, errors) {
+function walkMigrations(files, errors, today) {
   for (const name of VENDORED_MIGRATION_MODULES) {
     if (existsSync(join(canonRoot, MIGRATIONS_ROOT, name))) files.add(`${MIGRATIONS_ROOT}/${name}`);
     else errors.push({ what: `${MIGRATIONS_ROOT}/${name} is missing from the canon tree`, fix: `restore ${MIGRATIONS_ROOT}/${name}` });
   }
-  const recordsDir = `${MIGRATIONS_ROOT}/active_migrations`;
   let entries;
   try {
-    entries = readdirSync(join(canonRoot, recordsDir), { withFileTypes: true });
+    entries = readdirSync(join(canonRoot, MIGRATIONS_ROOT), { withFileTypes: true });
   } catch (e) {
-    errors.push({ what: `${recordsDir} is not a readable directory in the canon tree: ${e.message}`, fix: `restore ${recordsDir}` });
+    errors.push({ what: `${MIGRATIONS_ROOT} is not a readable directory in the canon tree: ${e.message}`, fix: `restore ${MIGRATIONS_ROOT}` });
     return;
   }
   for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
-    if (entry.isFile() && entry.name.endsWith('.mjs') && !isTest(entry.name)) files.add(`${recordsDir}/${entry.name}`);
+    if (entry.isDirectory() && isRecordDir(entry.name) && recordDirIsRecent(entry.name, today)) {
+      walk(`${MIGRATIONS_ROOT}/${entry.name}`, files, errors);
+    }
   }
 }
+const isRecordDir = (name) => /^\d{4}-\d{2}-\d{2}-/.test(name);
 
 function walk(relDir, files, errors, { engine = false } = {}) {
   let entries;
@@ -103,13 +109,14 @@ function walk(relDir, files, errors, { engine = false } = {}) {
 // canon pack (a consumer's local packs, or a typo the runner's settings
 // validation already flags) are skipped without error. A pack's
 // bundled skills (<pack>/skills/) ride its directory walk — there is no
-// separate skills collection to union (#385).
-export async function computeVendorSet(declaredEntries) {
+// separate skills collection to union (#385). `today` (YYYY-MM-DD) pins the
+// migration recency window for a deterministic set; defaults to the wall clock.
+export async function computeVendorSet(declaredEntries, { today } = {}) {
   const files = new Set();
   const errors = [];
 
   for (const root of ENGINE_DIR_ROOTS) walk(root, files, errors, { engine: true });
-  walkMigrations(files, errors);
+  walkMigrations(files, errors, today);
 
   // The full pack directory ships with EVERY mount, whatever the declaration:
   // the set otherwise carries only the declared packs, so without this catalog

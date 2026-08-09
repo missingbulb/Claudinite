@@ -10,13 +10,13 @@ The four release reusable workflows + three composite actions below **exist sole
 holds them as templates ([`packs/chrome-extension-release/stubs/`](../../packs/chrome-extension-release/stubs/)),
 and the `chrome-release-vendoring` migration vendors the full set into each consumer's own
 `.github/` — so a consumer runs the whole pipeline locally, with **no** cross-repo `@main`
-dependency. Once the fleet census confirms every consumer has vendored (0 repos on the `@main`
-shape), it **auto-deletes** these files here as part of migration retirement (needs the FLEET token
-granted Contents-write on this repo — #239). Until then they remain the `@main` API for the
-consumers baselining hasn't reached yet, so while any survive, the frozen-API rule still holds:
-renaming or removing one by hand breaks an un-migrated consumer's pipeline — let the migration
-retire them. Any *other* rename here is the two-phase migration in
-[../../consumer-safe-changes.md](../../consumer-safe-changes.md), never a one-shot.
+dependency. Once every consumer has vendored (0 repos on the `@main` shape, confirmed by hand
+against the fleet), these files are deleted here in one deliberate change that also prunes the
+inline references naming them (the barriers `except` entries, this README's links, the
+migration's tests). Until then they remain the `@main` API for the consumers baselining hasn't
+reached yet, so while any survive, the frozen-API rule still holds: renaming or removing one by
+hand breaks an un-migrated consumer's pipeline. Any *other* rename here is the two-phase
+migration in [../../consumer-safe-changes.md](../../consumer-safe-changes.md), never a one-shot.
 
 ## Repo CI — runs only here
 
@@ -29,7 +29,7 @@ retire them. Any *other* rename here is the two-phase migration in
 | File | Purpose |
 |---|---|
 
-## Transitional `@main` API — un-migrated consumers still depend on these; let the migration retire them
+## Transitional `@main` API — un-migrated consumers still depend on these; delete only with the fleet confirmed off them
 
 Reusable workflows (`workflow_call` only — they never run in Claudinite itself):
 

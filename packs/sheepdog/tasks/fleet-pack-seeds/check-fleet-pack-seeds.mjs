@@ -26,8 +26,8 @@
 // made it, in this repo's config), so an issue asking someone to copy it into every
 // member would be ceremony around a mechanical edit. The write is one PUT to the
 // member's default branch, guarded by the blob sha the read returned. It is not a
-// content migration and does not use the maintenance-branch lane
-// (migrations/fleet-apply.mjs): there is no code in it, nothing to review, and it is
+// content migration and does not ride the maintenance-branch lane baselining
+// delivers on: there is no code in it, nothing to review, and it is
 // idempotent — a member already declaring the seed is read and left alone. It does
 // REFORMAT the declaration it edits to canonical 2-space JSON (the shape `--init`
 // writes), because it round-trips the file through JSON rather than text-editing

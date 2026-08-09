@@ -3,14 +3,14 @@
 // composite action only from the repo's own .github/, never from the shared mount. So every
 // site repo hosts a MANAGED copy: the pack owns the content, the repo owns the file.
 //
-// This record is what makes "edit the pack, not the copy" true after adoption. The apply pass
-// re-materializes the whole set on every cycle, so a hand-edited or stale copy self-heals and a
+// This record is what makes "edit the pack, not the copy" true after adoption. Each member's
+// baselining re-materializes the whole set on every cycle (applying from the fresh canon clone,
+// where every record loads regardless of age), so a hand-edited or stale copy self-heals and a
 // canon fix reaches all three site repos the night it lands (#609).
 //
-// STANDING, NOT TRANSITIONAL — and that is why `retire: 'manual'`. Every other record here
-// moves the fleet OFF an old shape and dies when the last repo has moved; this one has no old
-// shape to leave behind (`legacyPresent` is false everywhere by construction), so the retire
-// pass would otherwise stage its deletion after one quiet cycle and silently end the sync.
+// STANDING, NOT TRANSITIONAL. Every other record here moves the fleet OFF an old shape; this
+// one has no old shape to leave behind (`legacyPresent` is false everywhere by construction) —
+// it exists to keep the copies current, forever. Records are never deleted, so it just stays.
 // If a general "keep a pack's vendored set current" mechanism is ever built, this record is
 // what it replaces.
 //
@@ -46,5 +46,4 @@ export default {
   // Nothing to leave behind: this record exists to keep copies current, not to move a repo off
   // an older shape.
   legacyPresent: async () => false,
-  retire: 'manual',
 };

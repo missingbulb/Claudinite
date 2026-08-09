@@ -14,7 +14,7 @@
 // test that escapes the set, the second catches a root left behind after a rename.
 //
 // It lives in engine-tests/ alongside the canon's other top-level-folder tests
-// (migrations.test.mjs, fleet-retire.test.mjs): the roots span the whole repo, so no
+// (migrations.test.mjs): the roots span the whole repo, so no
 // pack owns them.
 
 import test from 'node:test';

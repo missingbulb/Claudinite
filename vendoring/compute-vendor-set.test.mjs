@@ -33,6 +33,8 @@ function makeCanon({ packs = [], skills = [], packDirectory = true } = {}) {
   // needs the spec module too — it is part of the loader, not an optional extra.
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-schema.mjs'), join(root, 'engine', 'pack_loader', 'pack-schema.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'module-imports.mjs'), join(root, 'engine', 'checks', 'helpers', 'module-imports.mjs'));
+  // The recency predicate the migrations walk shares with check-tolerance.
+  copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'active-migrations.mjs'), join(root, 'engine', 'checks', 'helpers', 'active-migrations.mjs'));
   // engine roots: real-shaped content plus everything that must stay out
   writeAt(root, 'engine/checks/check_the_world.mjs', 'stub\n');
   writeAt(root, 'engine/checks/helpers/repo-context.mjs', 'stub\n');
@@ -55,13 +57,14 @@ function makeCanon({ packs = [], skills = [], packDirectory = true } = {}) {
   // a top-level tree no engine root and no pack names: the set is what the
   // declaration reaches, never "everything that happens to be in the canon"
   writeAt(root, 'canon-only/notes.md', 'canon-side\n');
-  // migrations: the applier + registry + records vendor (task-prework §7),
-  // the fleet-only drivers / README / tests do not. Stubs — structural inclusion.
+  // migrations: the applier + registry + the RECENT record folders vendor
+  // (task-prework §7); aged records, the README and tests do not. Stubs —
+  // structural inclusion, recency by folder-name date prefix.
   writeAt(root, 'migrations/apply.mjs', 'export const apply = 1;\n');
   writeAt(root, 'migrations/registry.mjs', 'export const registry = 1;\n');
-  writeAt(root, 'migrations/active_migrations/2026-01-01-seed.mjs', 'export default { id: "seed" };\n');
-  writeAt(root, 'migrations/active_migrations/note.test.mjs', 'stub\n'); // a test — excluded
-  writeAt(root, 'migrations/fleet-apply.mjs', 'export const fleet = 1;\n'); // fleet-only — excluded
+  writeAt(root, 'migrations/2026-01-01-seed/migration.mjs', 'export default { id: "seed" };\n');
+  writeAt(root, 'migrations/2026-01-01-seed/note.test.mjs', 'stub\n'); // a test — excluded
+  writeAt(root, 'migrations/2025-06-01-ancient/migration.mjs', 'export default { id: "ancient" };\n'); // aged out — excluded
   writeAt(root, 'migrations/README.md', 'canon doc\n'); // doc — excluded
   for (const { id, requires = [], skills: skl = [], extraFiles = [] } of packs) {
     writeAt(root, `packs/${id}/pack.mjs`,
@@ -91,11 +94,12 @@ const FIXTURE = {
 test('structural set: engine roots + machinery + declared pack + its skills, exact; tests, engine docs, undeclared trees all out', async () => {
   const root = makeCanon(FIXTURE);
   // entry-object form must work like a bare id (packEntryId handles both)
-  const { files, errors } = await vendorAt(root, [{ id: 'alpha', config: { k: 1 } }]);
+  const { files, errors } = await vendorAt(root, [{ id: 'alpha', config: { k: 1 } }], { today: '2026-01-05' });
   assert.deepEqual(errors, []);
   const expected = [
     'engine/checks/helpers/repo-context.mjs',
     'engine/checks/helpers/module-imports.mjs',
+    'engine/checks/helpers/active-migrations.mjs',
     'engine/checks/check_the_world.mjs',
     'engine/hooks/session-start-command.sh',
     'engine/scheduler/executor.md',
@@ -112,7 +116,7 @@ test('structural set: engine roots + machinery + declared pack + its skills, exa
     'packs/directory.GENERATED.md',
     'migrations/apply.mjs',
     'migrations/registry.mjs',
-    'migrations/active_migrations/2026-01-01-seed.mjs',
+    'migrations/2026-01-01-seed/migration.mjs',
   ].sort();
   assert.deepEqual(files, expected);
   // The owner-decided exclusions, asserted by name so a regression reads clearly:
@@ -158,16 +162,25 @@ test('regression: the REAL canon tree carries the pack directory in every vendor
   assert.ok(files.includes('packs/directory.GENERATED.md'), 'the live packs/directory.GENERATED.md must be in the vendor set');
 });
 
-test('migrations: the applier + registry + records vendor; fleet drivers, README, tests do not', async () => {
+test('migrations: the applier + registry + RECENT record folders vendor; aged records, README, tests do not', async () => {
   const root = makeCanon(FIXTURE);
-  const { files, errors } = await vendorAt(root, ['alpha']);
+  const { files, errors } = await vendorAt(root, ['alpha'], { today: '2026-01-05' });
   assert.deepEqual(errors, []);
   assert.ok(files.includes('migrations/apply.mjs'));
   assert.ok(files.includes('migrations/registry.mjs'));
-  assert.ok(files.includes('migrations/active_migrations/2026-01-01-seed.mjs'));
-  assert.ok(!files.includes('migrations/fleet-apply.mjs'), 'fleet-only drivers stay canon-side');
+  assert.ok(files.includes('migrations/2026-01-01-seed/migration.mjs'), 'a record within the window ships');
+  assert.ok(!files.some((f) => f.startsWith('migrations/2025-06-01-ancient/')), 'a record past the window stays canon-side — fetching decides relevance');
   assert.ok(!files.includes('migrations/README.md'), 'the migrations README stays canon-side');
   assert.ok(!files.some((f) => f.startsWith('migrations/') && f.includes('.test.mjs')), 'migration tests stay canon-side');
+});
+
+test('migrations recency is a moving window: the same record ships at first and ages out later', async () => {
+  const root = makeCanon(FIXTURE);
+  const early = await vendorAt(root, ['alpha'], { today: '2026-01-01' });
+  assert.ok(early.files.includes('migrations/2026-01-01-seed/migration.mjs'), 'ships the day it lands');
+  const late = await vendorAt(root, ['alpha'], { today: '2026-01-08' });
+  assert.ok(!late.files.some((f) => f.startsWith('migrations/2026-01-01-seed/')), 'aged out exactly a window later');
+  assert.ok(late.files.includes('migrations/apply.mjs'), 'the machinery still ships regardless');
 });
 
 test('a pack .md is payload and vendors even though engine-root .md does not', async () => {

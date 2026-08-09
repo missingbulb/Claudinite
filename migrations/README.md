@@ -1,42 +1,38 @@
-# Baseline migrations (`migrations/`) — declared, self-retiring path relocations
+# Baseline migrations (`migrations/`) — declared path relocations, applied by each member itself
 
-> The **baseline migrations** mechanism. The daily maintenance routine's own migration passes
-> ([`fleet-apply.mjs`](fleet-apply.mjs) + [`fleet-retire.mjs`](fleet-retire.mjs)) apply and retire each
-> one — no longer baselining or the coverage census. The records live in
-> [`active_migrations/`](active_migrations/); the machinery (this README, `registry.mjs`, `apply.mjs`,
-> the two fleet passes) reads cleanly beside them. The directory and code identifiers stay `migrations/`
-> / `*Migrations`; "baseline migration" is what to call the mechanism.
+> The **baseline migrations** mechanism. Every migration ever landed lives here, one folder per
+> record — [`<landed-date>-<slug>/migration.mjs`](.) — beside the machinery (this README,
+> `registry.mjs`, `apply.mjs`). Records are never retired, archived, or deleted: the full history
+> is the durable backfill source, and **fetching decides relevance** — vendoring ships a consumer
+> only the records landed within the last 7 days, while a dormant project baselining out of a
+> fresh canon clone sees them all and applies what it needs. The directory and code identifiers
+> stay `migrations/` / `*Migrations`; "baseline migration" is what to call the mechanism.
 
 When the canon renames or relocates an artifact that consumers hold their own copy of — a tracked
 file, a `settings.json` registration, a stub, a path a check or script references — the consumer's
 copy doesn't move on its own. Historically each such rename grew its own scattered tolerance
 (`LEGACY_STUB_NAMES` in a check, a `.gitkeep` fallback in the sync script and again in the census, a
-Part-3b step in bootstrap) with **no single home and no signal for when it was safe to delete**.
-[consumer-safe-changes.md](../consumer-safe-changes.md) named the gap: *"We don't yet have fleet-wide
-telemetry for 'everyone has migrated', so dropping a legacy tolerance later is a judgment call."*
-
-A **baseline migration** closes that gap: one declarative record per in-flight rename, discovered
-structurally (any `migrations/active_migrations/<file>.mjs`, like packs and skills), that supplies the
-read-side resolver, the write-side rename, and the fleet telemetry that **retires it automatically once
-every repo has moved — and has stayed quiet for a cycle**.
+Part-3b step in bootstrap) with **no single home**. A **baseline migration** closes that gap: one
+declarative record per rename, discovered structurally (any `migrations/<date>-<slug>/migration.mjs`,
+like packs and skills), that supplies the read-side resolver and the write-side rename.
 
 ## A baseline migration
 
 ```js
 // An illustrative record (the shape, not a live migration): the historical
 // mount-folder relocation, which moved the tracked sync hook into mount/.
+// Lives at migrations/2026-07-13-mount-folder-relocation/migration.mjs.
 export default {
   id: 'mount-folder-relocation',
-  landed: '2026-07-13',                 // date it merged to canon (YYYY-MM-DD)
+  landed: '2026-07-13',                 // date it merged to canon (YYYY-MM-DD; = the folder prefix)
   summary: 'sync hook + orchestrator + env-setup bundled into a mount folder',
   aliases: [{ canonical: '.claudinite/mount/sync-claudinite.sh',
               legacy: ['.claudinite/sync-claudinite.sh', '.claude/hooks/sync-claudinite.sh'] }],
   legacyPresent: async (exists) => exists('.claudinite/sync-claudinite.sh'),
-  retire: 'auto',                       // default; 'manual' when tolerance is still inline
 };
 ```
 
-## Three jobs, three consumers
+## Two jobs, two consumers
 
 - **Read — "prefer Y, fall back to X".** [`resolvePath(migrations, canonical)`](registry.mjs) returns
   `[canonical, ...legacy]`. A tolerance point (a check, a script) consults this instead of hardcoding
@@ -55,51 +51,44 @@ export default {
   every member should run, whose parameters the canon knows and the member cannot derive
   (`materialize` would clobber a per-repo declaration; `rewrite` has no literal in common across
   repos). Declaring a pack whose code is not yet in the member's mount would be a blocking `config`
-  error there, so baselining **re-converges the mount** whenever this pass changed the declaration. All honor an optional `appliesTo(read)`
-  gate so a migration only touches the repos it's meant for (never the canon itself).
-  [`apply.mjs`](apply.mjs) runs all four over a checkout (`node migrations/apply.mjs`); idempotent, a
-  no-op once done. Baselining runs it **after** the vendor step, so a key and the engine version that
-  accepts it always land in the same transactional commit. In the fleet, the **apply pass** ([`fleet-apply.mjs`](fleet-apply.mjs)) performs the
-  equivalent writes over the GitHub API — **phase 1** of the daily maintenance routine, before the pack
-  tasks — landing each member's whole set as **one commit** on the `claudinite/maintenance` branch and
-  honoring its `auto`/`review` delivery (`auto` arms auto-merge on the PR; `review` leaves it for the
-  owner; `push`/`pr` are accepted as legacy aliases) — never a direct commit to the default branch.
-- **Retire — the telemetry.** The **retire pass** ([`fleet-retire.mjs`](fleet-retire.mjs)) — **phase 3**
-  of the routine, after the pack tasks settle — evaluates each migration's `legacyPresent` across the
-  covered fleet and reports how many repos still carry the legacy shape. When one is fully applied **and
-  the apply pass touched it on no repo this cycle**, it **stages the migration record's deletion** — and,
-  for a migration that relocated canon plumbing into the consumers, first the home-repo files it names in
-  `retireDeletesFromHome` — onto a stable retire branch and opens **one PR** for it (never pushed to the
-  canon's default branch, never auto-merged). The canon's own CI then **validates the retirement**: a
-  clean one is a green, mergeable PR; one that would strand an inline reference is a red PR held for
-  cleanup, so `main` never breaks. (A past version pushed the deletes straight to `main` and took it red
-  when a record's inline tolerances were stranded.) See the guard below.
+  error there, so baselining **re-converges the mount** whenever this pass changed the declaration.
+  All honor an optional `appliesTo(read)` gate so a migration only touches the repos it's meant for
+  (never the canon itself). [`apply.mjs`](apply.mjs) runs all four over a checkout
+  (`node migrations/apply.mjs`); idempotent, a no-op once done. Each member migrates **itself**:
+  baselining runs the applier from the fresh canon clone it fetched, **after** the vendor step, so a
+  key and the engine version that accepts it always land in the same transactional commit. There is
+  no fleet-wide apply pass and no central delivery — the member's own maintenance commit carries its
+  migration writes.
 
-## The retirement guard (smart, not overzealous)
+## Relevance is decided at fetch time, not by a cleanup pass
 
-`retirableMigrations` retires a migration only when **all** hold:
+There is no retirement, no archive, and no TTL mover. All records are equal; three readers each take
+the slice they need:
 
-1. the retire pass classified **every** repo (`unknown === 0`) — an API error must never hide a holdout;
-2. **zero** repos still carry the legacy shape;
-3. the apply pass touched it on **no** repo this cycle (`appliedThisCycle` lacks its id) — so the cycle
-   that converges the last member (or crashes mid-apply) can never also retire it; one guaranteed-quiet
-   apply cycle always separates "last application" from the irreversible delete, and a transient
-   false-zero from a mid-run crash/delay can't trigger it;
-4. it landed **strictly before today** (≥ one nightly cycle, so an apply pass has had a chance to
-   migrate everyone — a migration is never retired the night it lands); and
-5. `retire !== 'manual'`.
+- **Apply/backfill** ([`loadMigrations`](registry.mjs)) loads **every** record present. In a fresh
+  canon clone that is the full history, so a dormant project that fell behind and only now baselines
+  still catches up on everything it missed — `apply.mjs` is idempotent, so records it already
+  applied are no-ops.
+- **Vendoring** ([`compute-vendor-set.mjs`](../vendoring/compute-vendor-set.mjs)) ships a consumer
+  mount only the records landed within the last **7 days**
+  (`recordDirIsRecent`, [engine/checks/helpers/active-migrations.mjs](../engine/checks/helpers/active-migrations.mjs)).
+  A project up to speed on migrations therefore carries few-to-none locally — it already applied
+  them — and the mount stays small.
+- **Check-tolerance** ([`migrationActive(slug)`](../engine/checks/helpers/active-migrations.mjs))
+  answers true only for a record that is present **and** within that same window — one shared
+  predicate, so "recent enough to tolerate" and "recent enough to vendor" can never drift. Every
+  up-to-date repo converges within the window, and a dormant one is converged by baselining's apply
+  step *before* its checks run, so an aged record needs no tolerance anywhere.
 
-Set **`retire: 'manual'`** when the migration's tolerance still lives inline somewhere the resolver
-doesn't yet drive — deleting the record alone would strand that inline tolerance. Flip it to `'auto'`
-in the same change that wires the last reader to `resolvePath`. Auto-retirement deletes **only the
-migration record**; because a fully-wired migration's tolerance lives entirely in that file (via the
-resolver), the delete removes the record and the tolerance in one step.
+A tolerance that cannot be expressed through `migrationActive`/`resolvePath` — one living inline in
+a check or script — is swept by hand when the transition is over; the record itself just stays, as
+history.
 
 ## Adding one
 
-1. Drop a `migrations/active_migrations/<landed-date>-<slug>.mjs` exporting the spec above. Structural
-   discovery picks it up — no list to edit.
-2. Point every reader of the old path at `resolvePath(...)`; the apply pass performs the consumer-side
-   write (and `apply.mjs` does the same in a local checkout).
-3. Leave `retire: 'auto'` if the tolerance is fully expressed here; else `'manual'` with a comment
-   naming the inline holdouts. The retire pass does the rest.
+1. Drop a `migrations/<landed-date>-<slug>/migration.mjs` exporting the spec above (folder prefix =
+   the `landed` date). Structural discovery picks it up — no list to edit.
+2. Point every reader of the old path at `resolvePath(...)`, or gate an inline tolerance on
+   `migrationActive('<slug>')` so it ends itself when the record ages out of the window.
+3. There is no step 3 — the record ships to consumers for 7 days, every member applies it on its own
+   next converge, and the folder remains here as the durable backfill for the long tail.

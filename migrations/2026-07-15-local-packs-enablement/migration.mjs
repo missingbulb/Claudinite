@@ -13,14 +13,11 @@
 // own local packs; the move of existing capture is a judgment task carried by the
 // project-instructions and growth-extract skills, never a mechanical alias).
 //
-// This record is therefore TELEMETRY ONLY: the retire pass reports how many
-// members still carry the pre-enablement hook, so the owner can see when the whole
-// fleet is safe to author local packs in. `legacyPresent` reads the member's
-// tracked hook and returns true while it lacks the local_packs preserve block.
-//
-// retire: 'manual' — the enablement lives in baselining + bootstrap, not here, so
-// this record holds no tolerance to strand; retire it by hand once the retire pass
-// reports zero members on the legacy shape.
+// This record is therefore TELEMETRY ONLY: `legacyPresent` reads the member's
+// tracked hook and returns true while it lacks the local_packs preserve block, so
+// anyone probing the fleet can see when the whole fleet is safe to author local
+// packs in. The enablement lives in baselining + bootstrap, not here, so the
+// record holds no tolerance and simply stays as history.
 export default {
   id: 'local-packs-enablement',
   landed: '2026-07-15',

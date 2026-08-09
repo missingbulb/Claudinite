@@ -43,7 +43,7 @@ A declared pack whose code is **not in the member's mount** is a blocking `confi
 
 ## The write
 
-One PUT to the member's default branch, guarded by the blob sha the read returned (the file moving under the run is a 409, which fails that member and is retried next run). It deliberately does *not* use the maintenance-branch lane that carries migrations ([`migrations/fleet-apply.mjs`](../../../../migrations/fleet-apply.mjs)): there is no code in it, nothing to review, and it is idempotent. It does **reformat** the declaration it edits to canonical 2-space JSON — the shape `--init` writes — because it round-trips the file through JSON instead of editing settings as text.
+One PUT to the member's default branch, guarded by the blob sha the read returned (the file moving under the run is a 409, which fails that member and is retried next run). It deliberately does *not* ride the maintenance-branch lane baselining delivers migrations on: there is no code in it, nothing to review, and it is idempotent. It does **reformat** the declaration it edits to canonical 2-space JSON — the shape `--init` writes — because it round-trips the file through JSON instead of editing settings as text.
 
 `expected_outcome: none` is therefore not a contradiction: the ceiling describes what a task may do to **its own** repo, and this task opens no PR here at all.
 

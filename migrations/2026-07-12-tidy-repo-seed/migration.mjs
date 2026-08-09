@@ -4,28 +4,25 @@
 //
 // Unlike a path-relocation migration, the "legacy shape" here lives inside a file —
 // a member whose .claudinite-checks.json declares no tidy-repo — so legacyPresent
-// READS the declaration (the retire pass passes it a content `read` alongside `exists`;
+// READS the declaration (callers pass a content `read` alongside `exists`;
 // path-only migrations ignore the extra arg).
 //
-// While this migration is live, baselining seeds tidy-repo into any member that lacks
-// it (bootstrap.md). The retire pass auto-retires it once every member has converged (zero
-// on the legacy shape); with the record gone, baselining stops seeding and a later
-// removal is durable. retire:'auto' — the tolerance lives entirely here (the bootstrap
-// seed step keys off this migration's presence), so deleting the record disables it.
+// While this migration is recent (bootstrap.md), baselining seeds tidy-repo into any
+// member that lacks it. Once the record ages out of the vendoring window the seeding
+// ends with it, so a later removal by an owner is durable — nothing re-adds the pack.
 export default {
   id: 'tidy-repo-seed',
   landed: '2026-07-12',
   summary: "seed the tidy-repo pack into existing members' declarations (one-time; not backfilled after)",
   legacyPresent: async (exists, read) => {
     const raw = await read('.claudinite-checks.json');
-    if (raw == null) return false; // no declaration to read — don't hold retirement on it
+    if (raw == null) return false; // no declaration to read — not a member, not held
     try {
       const { packs } = JSON.parse(raw);
       // Entries are id strings or { id, ... } objects — compare by id.
       return Array.isArray(packs) && !packs.some((e) => (typeof e === 'string' ? e : e?.id) === 'tidy-repo');
     } catch {
-      return false; // unparsable — don't block retirement
+      return false; // unparsable — not held
     }
   },
-  retire: 'auto',
 };

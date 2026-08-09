@@ -67,7 +67,7 @@ of [stubs/workflows/fleet-baseline.yml](stubs/workflows/fleet-baseline.yml) — 
 no repo-specific value.
 
 **It arrives, and stays current, on its own** — through the
-[`sheepdog-fleet-baseline`](../../migrations/active_migrations/2026-08-05-sheepdog-fleet-baseline.mjs)
+[`sheepdog-fleet-baseline`](../../migrations/2026-08-05-sheepdog-fleet-baseline/migration.mjs)
 record, gated on the repo **declaring this pack**, so declaring sheepdog is the whole adoption. Its
 delivery takes one detour worth knowing about: the Action's `GITHUB_TOKEN` may not write under
 `.github/workflows/`, so the nightly converge **withholds** the file from its own push and baselining's
