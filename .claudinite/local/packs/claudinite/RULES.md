@@ -413,3 +413,26 @@ prose below).
   diagnosis, and never on a symptom two API reads resolve. (Sibling of the standing ruling above that
   what Claudinite ships must run on the settings a member already has — that one is about what to
   *build*, this one about what to *believe*.)
+- **A canon pack's directory name is kebab-case — lowercase words joined by single hyphens.** The
+  directory name is the pack's public id: members spell it in `.claudinite-checks.json`, a migration's
+  `declarePacks` op seeds it, the catalog row and every cross-reference repeat it — so a name in another
+  casing is renamed later across all of them. Every pack under `packs/` follows it; `grow_with_claudinite`
+  is the single grandfathered exception (it predates the convention and sits in every member's
+  declaration, so renaming it would be a fleet migration, not a tidy-up). Nothing stated this until now,
+  which is how `UserPreferencesStore` shipped in #567 and cost a whole-pack rename to
+  `claude-code-web-users-support` after the owner asked for *"the appropriate casing for pack names"*.
+  Name from the **surface** the pack serves, not the first feature you are building for it — that same
+  rename widened the pack from one store to every Claude-Code-web capability. (Convertible: a check over
+  `packs/*/pack.mjs` directory names would carry this whole rule, and the fixture is trivial — but any
+  new rule moves `packs/README.md`'s check tally, which a growth-extract run may not touch. Left for the
+  weekly prose-to-checks sweep's reviewed PR.)
+- **The home is the last repo to receive its own stub changes — nothing delivers to it.** Every member
+  gets `engine/scheduler/stubs/claudinite-scheduler.yml` written into `.github/workflows/` by its nightly
+  converge; the canon has no mount and no converge, so its own copy is hand-maintained and drifts from the
+  stub it ships. That drift is invisible until it is a permission denial in production: the canon's
+  workflow sat on `actions: read` while the stub had carried `write` since store-release, so the CI
+  dispatch POST 403'd and **only** the canon's own fold PR stranded — for ten days (#535, fixed in #704).
+  Paired tests over the two files are not the safety net you think: one already asserted the
+  `overrides` input on both and said nothing about `permissions`, so the drift walked straight past it.
+  So when a change touches the vendored stub, edit the canon's `.github/workflows/` copy in the **same
+  commit** and diff the two whole files, never just the lines you came for.
