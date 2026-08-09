@@ -422,12 +422,18 @@ test('runner integration: a reasoned accept excuses an isolation crossing', () =
 
 // --- the scheduled task declaration ----------------------------------------------------
 
-test('wiki-growth task: weekly/opus/open-pr, worker doc present', () => {
-  assert.equal(wikiGrowth.id, 'wiki-growth');
-  assert.equal(wikiGrowth.frequency, 'weekly'); // research arrives on the world's clock, not the repo's
-  assert.equal(wikiGrowth.agent_model, 'opus');
-  assert.equal(wikiGrowth.expected_outcome, 'open-pr'); // researched claims need the human review gate
-  assert.deepEqual(wikiGrowth.precondition_signals, ['commits', 'prs']);
+// Only the claims that can actually come apart. The declaration's own values
+// (frequency, agent_model, expected_outcome…) are not asserted: re-stating a
+// literal from the file under test proves nothing and turns every deliberate
+// change into a two-file edit — see the writing-tests skill, "Never pin a
+// declaration to itself".
+test('wiki-growth task: every signal the precondition reads is declared, and the worker doc it names exists', () => {
+  const read = new Set();
+  wikiGrowth.precondition(new Proxy({}, { get: (_, k) => { read.add(String(k)); return undefined; } }));
+  for (const signal of read) {
+    assert.ok(wikiGrowth.precondition_signals.includes(signal),
+      `precondition reads signals.${signal}, which precondition_signals does not declare — the scheduler would never collect it`);
+  }
   assert.ok(existsSync(join(canonRoot, 'packs/product-wiki/tasks/wiki-growth', wikiGrowth.agent_instructions)),
     `worker doc missing: ${wikiGrowth.agent_instructions}`);
 });
