@@ -1,6 +1,7 @@
 # Website release flows — comparison
 
-Status: analysis input for the alignment design (DESIGN.md, landing alongside this doc). Surveys how the
+Status: analysis input for the alignment design ([DESIGN.md](DESIGN.md); soundness review
+in [SOUNDNESS.md](SOUNDNESS.md)). Surveys how the
 three static-site repos — **EdFringeNow**, **ClaudiniteWebsite**, **MissingBulbWebsite** —
 release today, against the canon `static-website` pack (merged in #611, adopted by nobody yet).
 
