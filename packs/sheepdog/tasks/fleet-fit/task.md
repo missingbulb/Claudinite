@@ -17,7 +17,7 @@ Take them **oldest first**, and take as many as you can finish properly. One mem
 A fingerprint **suspects**; it does not prove. This is the same judgment the retired `pack-declaration` check was deleted for making automatically (`engine/checks/README.md`) — so make it deliberately, per pack:
 
 - Read that pack's `README.md` and its `ruleRoutingGuidance`. Does the member's actual use match what the pack owns, or did the marker merely happen to be present? A `package.json` in a repo that ships no JavaScript is a fixture, not a Node project.
-- Where the issue lists packs under **Not decided from outside**, you can settle them exactly — you have the member checked out, which the sweep did not. Use `localFits` from `engine/checks/fingerprint-fit.mjs` against a context built over that checkout; it decides every fingerprint the REST sweep had to defer.
+- Where the issue lists packs under **Not decided from outside**, you can settle them exactly — you have the member checked out, which the sweep did not. Use `localFits` from this task's own [`fingerprint-fit.mjs`](fingerprint-fit.mjs) against a context built over that checkout; it decides every fingerprint the REST sweep had to defer.
 - A pack you judge **not** wanted is a real answer. Say which and why in a comment on the fit issue, and don't declare it. If every pack on the issue is declined, close it `not planned` — the sweep honours a deliberate `not_planned` close and will not reopen it.
 
 ## 3. Adopt, per member

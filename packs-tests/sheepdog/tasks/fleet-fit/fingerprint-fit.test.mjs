@@ -1,10 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fitCandidates, undeclaredFits, localFits } from '../engine/checks/fingerprint-fit.mjs';
+import { fitCandidates, undeclaredFits, localFits } from '../../../../packs/sheepdog/tasks/fleet-fit/fingerprint-fit.mjs';
 
-// The per-repo half of the pack-fit question, tested with SYNTHETIC packs on purpose:
+// The one-repo half of the pack-fit question, tested with SYNTHETIC packs on purpose:
 // the module is pack-agnostic, and a test that reached for real canon packs would
-// couple the engine's test to whichever packs happen to carry a fingerprint today.
+// couple this test to whichever packs happen to carry a fingerprint today.
 
 const pack = (id, over = {}) => ({ id, detect: () => false, local: false, ...over });
 

@@ -115,7 +115,7 @@ this week.
 answers those over one tree call per member. A fingerprint that reads file *contents* is resolved by a
 bounded prefetch of exactly the files it asked for; one that greps every source file exceeds that budget
 and is reported **undecided**, never `false`. The agent stage — which has the member checked out —
-settles those exactly (`localFits`, [engine/checks/fingerprint-fit.mjs](../../engine/checks/fingerprint-fit.mjs)).
+settles those exactly (`localFits`, [tasks/fleet-fit/fingerprint-fit.mjs](tasks/fleet-fit/fingerprint-fit.mjs)).
 A truncated tree listing makes every non-match on that repo undecided for the same reason: "we did not
 look" and "we looked and it isn't there" are different facts, and only one is safe to act on.
 

@@ -78,7 +78,7 @@ async function fetchBlob(gh, repo, ref, path) {
 
 // Evaluate ONE pack's fingerprint against a remote repo, resolving file reads on
 // demand within the budget. Returns true / false / null (undecided), which is exactly
-// the `evaluate` contract engine/checks/fingerprint-fit.mjs expects.
+// the `evaluate` contract its sibling fingerprint-fit.mjs expects.
 export function makeRemoteEvaluator(gh, repo, ref, { tracked, truncated, budget = DEFAULT_READ_BUDGET } = {}) {
   return async function evaluate(pack) {
     // Pass 1 — probe. The verdict is thrown away; what the fingerprint ASKED FOR is

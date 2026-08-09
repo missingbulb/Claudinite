@@ -22,10 +22,9 @@
 // is wrong. The agent stage that follows this sweep is what turns an accepted
 // suspicion into a reviewed PR on the member, via the adopt-pack skill.
 //
-// Split exactly where the canon's own rule says to split a cross-repo feature: the
-// per-repo half is engine/checks/fingerprint-fit.mjs (pack-agnostic, fleet-blind, and
-// the complete answer when it has a checkout); the aggregation half is here, in
-// sheepdog, which is the only place that knows which repos exist.
+// The whole feature lives in this task folder — the fingerprint half
+// (fingerprint-fit.mjs, pack-agnostic and fleet-blind) beside the aggregation half
+// (this file), because nothing outside this task uses either.
 //
 // Dependency-free (global fetch, Node 20+); read-only toward every member, and writes
 // only the fit issues + label in the home repo.
@@ -34,7 +33,7 @@ import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { makeGh, paged, readDeclaration, isDormant, ensureLabel, labeledIssues } from '../../fleet-api.mjs';
 import { parseSheepdogConfig } from '../../fleet-config.mjs';
-import { undeclaredFits } from '../../../../engine/checks/fingerprint-fit.mjs';
+import { undeclaredFits } from './fingerprint-fit.mjs';
 import { fetchTree, makeRemoteEvaluator } from './remote-context.mjs';
 import { loadCanonPacks } from './canon-packs.mjs';
 
@@ -75,7 +74,8 @@ export function fitBody(fullName, { fits, undecided, packsById = new Map() }) {
       '',
       'These fingerprints read file **contents** rather than paths, which a REST sweep cannot',
       'settle within its read budget. A session with the repo checked out can answer them',
-      'exactly — `localFits` in `engine/checks/fingerprint-fit.mjs`:',
+      'exactly — `localFits` in this task\'s `fingerprint-fit.mjs` (under the enforcer\'s mount,',
+      '`.claudinite/shared/packs/sheepdog/tasks/fleet-fit/`):',
       '',
       ...undecided.map((u) => `- \`${u.id}\` — ${u.why}`),
     );

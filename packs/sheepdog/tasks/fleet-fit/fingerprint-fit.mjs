@@ -13,13 +13,13 @@
 // must be. So nothing here returns a finding, blocks, or writes: it returns a list a
 // caller may act on, and every caller so far turns it into something a human reviews.
 //
-// Pack-agnostic by construction (extending.md): it names no pack and reads no pack's
+// Still pack-agnostic by construction: it names no pack and reads no pack's
 // internals beyond the manifest fields every pack has. `evaluate` is injected rather
 // than calling `pack.detect(ctx)` here, because a caller that cannot serve file
 // CONTENTS synchronously (a remote tree listing, say) must be able to answer "I could
 // not decide this one" without that being mistaken for "no".
 
-import { packEntryId } from '../pack_loader/pack-registry.mjs';
+import { packEntryId } from '../../../../engine/pack_loader/pack-registry.mjs';
 
 // The packs a fit sweep may consider at all: canon packs (a local pack is declared by
 // hand, never fingerprinted — pack-registry) that carry a fingerprint and are not
