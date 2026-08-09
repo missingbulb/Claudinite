@@ -4,6 +4,11 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 
 ## Packs
 
+This table is the canon maintainer's view. The catalog **consumers** receive is
+[`directory.GENERATED.md`](directory.GENERATED.md) — rendered from the pack manifests by its drift
+test (`packs-tests/pack-directory.test.mjs`, which regenerates it locally and asserts it in CI) and
+vendored into every mount regardless of declaration, so a member session can see what it could adopt.
+
 | Pack | Active when | Checks | Prose rules |
 |---|---|---|---|
 | <img src="basics/badge.svg" width="18" height="18" alt=""> [basics](basics/README.md) | declared (seeded by `--init`) | 11 | ~8 (working-discipline + task-lifecycle) |

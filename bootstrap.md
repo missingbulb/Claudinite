@@ -29,7 +29,10 @@ node "$scratch/engine/checks/check_the_world.mjs" --init
 `--init` seeds `.claudinite-checks.json`: the baseline, the technology packs the repo's
 fingerprint suspects, the default-on maintenance packs, each declared pack's `requires` closure,
 and `"maintenance": { "delivery": "auto-merge" }`. A fingerprint only *suspects* a pack — from here on
-the declaration is authoritative and adding/dropping packs is the project's call. Settings
+the declaration is authoritative and adding/dropping packs is the project's call. Offer the owner
+that call from the full pack directory (`$scratch/packs/directory.GENERATED.md` — id, coverage,
+activation and requires for every adoptable pack; it also vendors into the mount, so later
+sessions re-read it from `.claudinite/shared/`). Settings
 **validity** is enforced at load: an unknown pack name, an unknown property, or malformed JSON is
 a blocking `config` error.
 
@@ -47,7 +50,7 @@ node "$scratch/vendoring/apply-vendor-set.mjs" --target . ${ref:+--ref "$ref"}
 ```
 
 This materializes the repo's vendor set — the engine, the mount, the declared packs with their
-skills, the corpus index — under `.claudinite/shared/` at canon-relative paths, and stamps the
+skills, the full pack directory — under `.claudinite/shared/` at canon-relative paths, and stamps the
 declaration (`"claudinite": { "updated": "YYYY-MM-DD", "ref": "<sha>" }`). Whole-set convergence:
 re-running it (or declaring a new pack and re-running) rebuilds the tree; errors abort before any
 write. The `shared/` root is a **submodule emulation** — a future `git submodule add … .claudinite/shared`
