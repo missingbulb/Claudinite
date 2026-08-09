@@ -27,6 +27,7 @@ the members' side ([grow_with_claudinite](../../../../packs/grow_with_claudinite
 | Rule (≤5 words) | How enforced |
 |---|---|
 | Pack prose: no enforcement narration | check `pack-no-enforcement-narration` |
+| Pack files never link into `docs/` | check `pack-no-docs-link` |
 | Packs import only own + engine | contributed barrier `pack-independence` ([pack-independence.mjs](pack-independence.mjs) — pure data; the [barriers pack](../../../../packs/barriers/README.md) builds the rule) |
 
 - **[tasks/growth-promote/](tasks/growth-promote/task.md)** — the growth lifecycle's central stage: read the changed members'

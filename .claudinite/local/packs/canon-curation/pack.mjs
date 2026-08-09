@@ -1,4 +1,5 @@
 import noEnforcementNarration from './no-enforcement-narration.mjs';
+import packDocsLink from './pack-docs-link.mjs';
 import packIndependence from './pack-independence.mjs';
 
 // Claudinite's own curation pack — the fleet-facing work only Claudinite runs:
@@ -36,9 +37,9 @@ export default {
   // composition basics uses for claudinite-isolation).
   requires: ['barriers'],
   contributes: { barriers: [packIndependence] },
-  // The prose-narration rule polices pack prose CONTENT (not segregation), so
-  // it stays a code check, bundled here.
-  worldRules: [noEnforcementNarration],
+  // The prose-narration and docs-link rules police pack file CONTENT (not
+  // segregation), so they stay code checks, bundled here.
+  worldRules: [noEnforcementNarration, packDocsLink],
   // writing-claudinite-skills is canon-home activity (authoring corpus skills), so
   // this pack bundles it under its own skills/ — members author no corpus skills.
   skills: ['writing-claudinite-skills'],
