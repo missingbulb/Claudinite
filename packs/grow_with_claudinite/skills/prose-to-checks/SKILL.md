@@ -64,6 +64,20 @@ where it is; routing a requirement to the spec and its suite is its own change, 
 The check-the-world rule from DESIGN holds: if a rule is always-testable, it was never really
 part of the on-demand skill — it belongs in a pack as a check.
 
+**A recorded "not statically checkable" verdict expires when the tree changes.** That answer was
+about the shape of the sources at the time, not about the rule: a removal, a migration or a
+consolidation can collapse the entry points a rule had to cover and make a check trivial — a
+constraint that needed data-flow tracking across many entry points needs none once there is one.
+So when a sweep meets prose an earlier sweep left behind, re-derive the objection against today's
+sources instead of inheriting the verdict.
+
+**"Already covered by another check" is a claim to test, not one to reason out.** Before dropping
+a candidate as a duplicate, hand the sibling check a file that violates the rule and watch what it
+does. A ban list only covers the routes whoever wrote it thought of, so the routes it misses are
+invisible to exactly the reasoning that drew it — a capability reachable through a second API, a
+re-exported module, or an indirection sails past a check that reads as if it owned the whole
+subject. Running it costs a minute and is the only step that can disagree with you.
+
 ## How to convert one
 
 Follow the extract stage's check-authoring discipline (the local promotion ladder in
@@ -80,6 +94,12 @@ Follow the extract stage's check-authoring discipline (the local promotion ladde
    doesn't ship.
 3. **Ship at real severity, fail-fast** — blocking for a defect, advisory only when the rule is
    directional by kind.
+   - **Prefer a positive whitelist over an enumerated list of the bad cases.** Match the one
+     allowed shape and flag everything else, rather than banning the violations you can name. A
+     whitelist catches a variant that does not exist yet the day it lands, and turns an
+     indirection (a value passed through a variable instead of written literally) into a finding
+     too — refusing to reason about indirection is the feature. Invert this only where the
+     allowed set is genuinely open-ended.
 4. **Delete the prose the check now covers** — whole, never trimmed. The deletion test below is
    how you decide which paragraphs those are.
 
