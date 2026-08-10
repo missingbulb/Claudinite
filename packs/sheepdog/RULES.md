@@ -15,9 +15,12 @@ member* and converges `fleet-adoption` issues. The **freshness sweep**
 ([check-fleet-freshness.mjs](tasks/fleet-freshness/check-fleet-freshness.mjs)) takes coverage as given, asks *is that
 membership still meaning anything*, and converges `fleet-drift` issues. The second exists because
 per-project scheduling made every member maintain itself and removed the last outside look at one:
-self-maintenance cannot detect its own absence. The **fit sweep**
-([check-fleet-fit.mjs](tasks/fleet-fit/check-fleet-fit.mjs)) asks whether a member's declared pack set
-still *matches the repo*, and converges `fleet-fit` issues. It exists because a pack's `detect`
+self-maintenance cannot detect its own absence. The **missing-packs task**
+([fleet-add-missing-packs](tasks/fleet-add-missing-packs/task.md)) asks whether a member's declared pack
+set still *matches the repo* — by fingerprint on its weekly scan
+([scan-for-needed-packs.mjs](tasks/fleet-add-missing-packs/scan-for-needed-packs.mjs)), or from what the
+owner named on a forced run ([force-add-packs.mjs](tasks/fleet-add-missing-packs/force-add-packs.mjs)) —
+and converges `fleet-add-missing-packs` issues. It exists because a pack's `detect`
 fingerprint is consulted exactly once, at bootstrap's `--init`: baselining backfills the seeded packs
 and each declared pack's `requires` closure but never re-fingerprints, so a member that grows into a
 pack after adoption is never told the pack exists. The **usage sweep**
@@ -114,19 +117,22 @@ task is wired. (The task files carry the same note.)
 
 **No session scope anywhere in this pack.** The enforcer repo's executor session is provisioned
 with the owner's repos — declaring this pack *is* the statement that the repo reaches the fleet — so
-`fleet-fit`'s dispatch rides the ordinary `ready-for-agent` label like any other task's, and the
+`fleet-add-missing-packs`'s dispatch rides the ordinary `ready-for-agent` label like any other task's, and the
 agentless sweeps dispatch nothing at all. The deprecated task-level `session_scope`
 ([scheduled-tasks.md](../basics/scheduled-tasks.md)) has no place here: an executor's access comes
 from how its repo is provisioned, never from what a task asks for.
 
-**A fit finding is a recommendation, never a verdict.** The `pack-declaration` conformance check was
+**A SCANNED finding is a recommendation, never a verdict.** The `pack-declaration` conformance check was
 deliberately retired ([engine/checks/README.md](../../engine/checks/README.md)) because whether to
 declare a pack is the project's call — a marker is a way to *suspect* a pack is wanted, never proof it
-must be. The fit sweep must not re-introduce that check one rung further out: it opens an issue a human
-(or the agent stage, then a reviewer) acts on, its body says "suspects", and an owner who closes a fit
-issue `not planned` has given a standing answer the sweep honours rather than reopening weekly.
+must be. The scan must not re-introduce that check one rung further out: it opens an issue a human
+(or the agent stage, then a reviewer) acts on, its body says "suspects", and an owner who closes a
+scanned issue `not planned` has given a standing answer the scan honours rather than reopening weekly.
+A **forced** addition is the other thing entirely — a decision already made, by the one person entitled
+to make it — so it carries the config and the interview answers with it, and the agent stage adopts what
+it says rather than re-judging whether it was wanted.
 
-**The fit sweep fingerprints against CANON, not against this repo's mount.** A consumer's
+**The scan fingerprints against CANON, not against this repo's mount.** A consumer's
 `.claudinite/shared/` carries the vendor set for the packs *it* declares — four, for a sheepdog repo —
 so running the fingerprints out of the mount would test every member against a handful of packs and
 report the whole fleet as perfectly fitted. That failure is silent by construction, so the sweep
@@ -140,12 +146,12 @@ this week.
 answers those over one tree call per member. A fingerprint that reads file *contents* is resolved by a
 bounded prefetch of exactly the files it asked for; one that greps every source file exceeds that budget
 and is reported **undecided**, never `false`. The agent stage — which has the member checked out —
-settles those exactly (`localFits`, [tasks/fleet-fit/fingerprint-fit.mjs](tasks/fleet-fit/fingerprint-fit.mjs)).
+settles those exactly (`localFits`, [tasks/fleet-add-missing-packs/fingerprint-fit.mjs](tasks/fleet-add-missing-packs/fingerprint-fit.mjs)).
 A truncated tree listing makes every non-match on that repo undecided for the same reason: "we did not
 look" and "we looked and it isn't there" are different facts, and only one is safe to act on.
 
 **How they run** — as the pack's [`fleet-census`](tasks/fleet-census/task.md) (`daily`),
-[`fleet-freshness`](tasks/fleet-freshness/task.md) (`weekly`), [`fleet-fit`](tasks/fleet-fit/task.md)
+[`fleet-freshness`](tasks/fleet-freshness/task.md) (`weekly`), [`fleet-add-missing-packs`](tasks/fleet-add-missing-packs/task.md)
 (`weekly`), [`fleet-usage`](tasks/fleet-usage/task.md) (`daily`) and
 [`fleet-pack-seeds`](tasks/fleet-pack-seeds/task.md) (`daily`) scheduled tasks, each with its
 sweep as `prework`. All are `agent_model: none` except fit, whose sweep is agentless in exactly the

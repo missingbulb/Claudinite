@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRemoteContext, makeRemoteEvaluator, fetchTree } from '../../../../packs/sheepdog/tasks/fleet-fit/remote-context.mjs';
+import { makeRemoteContext, makeRemoteEvaluator, fetchTree } from '../../../../packs/sheepdog/tasks/fleet-add-missing-packs/remote-context.mjs';
 
 // The remote context is an APPROXIMATION of buildContext, and the whole point of the
 // tests below is the boundary of that approximation: what it can decide from a path

@@ -1,5 +1,13 @@
-#!/usr/bin/env node
-// The sheepdog pack's fleet-FIT sweep — the fourth cross-repo question.
+// The SCAN half of fleet-add-missing-packs — the cross-repo question "what might a
+// member want that it does not declare?".
+//
+// It is one of the task's two first stages, reached when `scan_for_needed_packs=true`
+// (params.mjs); the other is force-add-packs.mjs, where the answer was decided by hand
+// instead of fingerprinted. Both converge work-list issues under the SAME label, and both
+// hand the same second stage — adopt-pack, per member, one reviewed PR — the work.
+//
+// It is invoked by worker.mjs, which owns the token, the config, the canon corpus and the
+// issue surface both halves share; this module holds the sweep and what it says.
 //
 // The census asks "is this repo a MEMBER". Freshness asks "is that membership still
 // MEANING anything". Both take the member's declared pack set as given. Neither ever
@@ -12,8 +20,8 @@
 //
 // This sweep is that re-ask, from the outside, weekly: for every covered member, run
 // each canon pack's fingerprint against the member's tree over REST, and converge one
-// `fleet-fit` ISSUE per member listing the packs its shape suspects and its
-// declaration does not carry.
+// work-list ISSUE per member listing the packs its shape suspects and its declaration
+// does not carry.
 //
 // It is a SUSPICION, and the issue says so. The `pack-declaration` conformance check
 // was deliberately retired (engine/checks/README.md) because declaring a pack is the
@@ -27,17 +35,20 @@
 // (this file), because nothing outside this task uses either.
 //
 // Dependency-free (global fetch, Node 20+); read-only toward every member, and writes
-// only the fit issues + label in the home repo.
+// only the work-list issues + label in the home repo.
 
-import { appendFileSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
-import { makeGh, paged, readDeclaration, isDormant, ensureLabel, labeledIssues } from '../../fleet-api.mjs';
-import { parseSheepdogConfig } from '../../fleet-config.mjs';
+import { paged, readDeclaration, isDormant } from '../../fleet-api.mjs';
 import { undeclaredFits } from './fingerprint-fit.mjs';
 import { fetchTree, makeRemoteEvaluator } from './remote-context.mjs';
-import { loadCanonPacks } from './canon-packs.mjs';
 
-const LABEL = 'fleet-fit';
+// The label both halves converge under, and the one this task's agent stage reads its
+// work list from. It follows the task's name: the issues are "packs this member is
+// missing", however that was decided.
+export const LABEL = 'fleet-add-missing-packs';
+// What the label was called while this task was `fleet-fit` (renamed 2026-08-10). The
+// worker adopts any issue still carrying it, so the fleet's open findings survive the
+// rename instead of being silently abandoned and re-opened as duplicates.
+export const LEGACY_LABEL = 'fleet-fit';
 const fitTitle = (fullName) => `Pack fit: ${fullName} may want packs it does not declare`;
 const TITLE_RE = /^Pack fit: (\S+\/\S+) may want packs it does not declare$/;
 
@@ -75,14 +86,14 @@ export function fitBody(fullName, { fits, undecided, packsById = new Map() }) {
       'These fingerprints read file **contents** rather than paths, which a REST sweep cannot',
       'settle within its read budget. A session with the repo checked out can answer them',
       'exactly — `localFits` in this task\'s `fingerprint-fit.mjs` (under the enforcer\'s mount,',
-      '`.claudinite/shared/packs/sheepdog/tasks/fleet-fit/`):',
+      '`.claudinite/shared/packs/sheepdog/tasks/fleet-add-missing-packs/`):',
       '',
       ...undecided.map((u) => `- \`${u.id}\` — ${u.why}`),
     );
   }
   lines.push(
     '',
-    'Converged weekly by the fleet-fit task: it closes `completed` once the repo declares',
+    'Converged weekly by the fleet-add-missing-packs task: it closes `completed` once the repo declares',
     'the packs, and `not planned` once the repo leaves the fleet.',
   );
   return lines.join('\n');
@@ -96,10 +107,8 @@ export function fitBody(fullName, { fits, undecided, packsById = new Map() }) {
 // converge identically. The one difference is the deliberate close: an owner who
 // closes a fit issue `not planned` has DECLINED these packs, and reopening it every
 // week would be nagging about a decision already made.
-async function convergeIssues(gh, home, { findings, inFleet, packsById }) {
+async function convergeIssues(gh, home, { findings, inFleet, packsById, open, closed, swept }) {
   const actions = [];
-  const { open: openIssues, closed } = await labeledIssues(gh, home, LABEL);
-  const open = new Map(openIssues.map((i) => [i.title, i]));
   const byRepo = new Map(findings.map((f) => [f.repo, f]));
 
   for (const finding of findings) {
@@ -127,10 +136,18 @@ async function convergeIssues(gh, home, { findings, inFleet, packsById }) {
   }
 
   for (const [title, issue] of open) {
+    // Only the SCAN's own issues: a forced addition's work list (`Add packs: …`, under
+    // the same label) says nothing about what a fingerprint suspects, and closing one
+    // here would retract a request the owner made by hand.
     const m = TITLE_RE.exec(title);
     if (!m) continue;
     const repo = m[1].toLowerCase();
     if (byRepo.has(repo)) continue;
+    // A SCOPED scan (`repos` naming members rather than the whole fleet) knows nothing
+    // about the members it did not look at. Closing their issues on this run's silence
+    // would read "converged" into "not measured" — the one inference a partial sweep
+    // must never make.
+    if (!swept.has(repo)) continue;
     const left = !inFleet.has(repo);
     const note = left
       ? 'is no longer a covered member of the fleet'
@@ -154,11 +171,16 @@ async function convergeIssues(gh, home, { findings, inFleet, packsById }) {
 // came back clean from one that fell out of the report.
 export function renderFitSummary({
   owner, home, canonRepo, packCount, findings, fitted, dormant, outOfScope, unknown, actions,
+  repoFilter = null,
 }) {
   const undecidedCount = findings.reduce((n, f) => n + f.undecided.length, 0);
   return [
     `# Fleet pack-fit sweep — ${owner}`,
     '',
+    // A SCOPED scan measured part of the fleet, and every count below is a count of
+    // that part. Saying so first is what keeps "nothing suspected" from reading as a
+    // statement about the fleet when it was a statement about four repos.
+    repoFilter ? `Scoped to **${repoFilter.length} named repo(s)**: ${repoFilter.join(', ')}` : '',
     // The denominator, stated. "Nothing suspected" means nothing against THIS corpus,
     // and a corpus that quietly shrank (the enforcer's own mount instead of canon, a
     // half-fetched clone) produces a clean report for the wrong reason. Naming what
@@ -184,46 +206,21 @@ export function renderFitSummary({
   ].filter(Boolean).join('\n');
 }
 
-// --- main --------------------------------------------------------------------
+// --- the sweep ---------------------------------------------------------------
 
-export async function main() {
-  const token = process.env.FLEET_GITHUB_TOKEN;
-  const home = process.env.GITHUB_REPOSITORY;
-  if (!token) {
-    throw new Error('FLEET_GITHUB_TOKEN is not set. Add a repo secret with a fine-grained PAT '
-      + '(this account, ALL repositories, Metadata read, Contents read + Issues read/write) — '
-      + 'the default GITHUB_TOKEN sees only this repo and cannot sweep the fleet.');
-  }
-  if (!home || !home.includes('/')) throw new Error('GITHUB_REPOSITORY is not set (owner/repo)');
-  const gh = makeGh(token);
-
-  const cfgRes = await gh(`/repos/${home}/contents/.claudinite-checks.json`);
-  if (cfgRes.status !== 200 || !cfgRes.json?.content) {
-    throw new Error(`the sheepdog repo ${home} has no readable .claudinite-checks.json (status ${cfgRes.status})`);
-  }
-  let cfg;
-  try { cfg = JSON.parse(Buffer.from(cfgRes.json.content, 'base64').toString('utf8')); } catch (e) {
-    throw new Error(`unparsable .claudinite-checks.json on ${home}: ${e.message}`);
-  }
-  const { owner, canonRepo } = parseSheepdogConfig(cfg, home);
-
-  // The fingerprints come from CANON, not from this enforcer's own mount — the mount
-  // carries only the packs this repo declares, so fingerprinting the fleet against it
-  // would silently test every member against a handful of packs and report the whole
-  // fleet as fitted. See canon-packs.mjs.
-  const { packs, dispose } = await loadCanonPacks({ canonRepo, token });
-  try {
-    await sweepFleet({ gh, home, owner, canonRepo, packs });
-  } finally {
-    dispose();
-  }
-}
-
-// The sweep proper, with the corpus already in hand. Split out so the scratch clone
-// has exactly one disposal site whatever happens inside — including the deliberate
-// throw at the foot, which must still fail the run.
-async function sweepFleet({ gh, home, owner, canonRepo, packs }) {
+// The scan stage, with the corpus, the config and the issue surface already in hand —
+// worker.mjs owns all three, because the force half needs the same ones and neither half
+// may end up with its own idea of which label it converges under.
+//
+// `repos` is null for the fleet-wide scan (`repos=all-covered-members`) or a list of
+// qualified `owner/name` when the run was scoped. A scoped scan measures what it was
+// asked to and asserts nothing about the rest — see the close loop and the summary.
+//
+// Returns `{ findings, unknown }`; it does not throw on an unswept member, because the
+// worker decides what a partial picture means for a run that may also have a force half.
+export async function runScan({ gh, home, owner, canonRepo, packs, repos = null, open, closed }) {
   const packsById = new Map(packs.map((p) => [p.id, p]));
+  const wanted = repos ? new Set(repos.map((n) => n.toLowerCase())) : null;
 
   const mine = (await paged(gh, '/user/repos?affiliation=owner'))
     .filter((r) => r.owner.login.toLowerCase() === owner);
@@ -233,10 +230,16 @@ async function sweepFleet({ gh, home, owner, canonRepo, packs }) {
   }
 
   const findings = []; const fitted = []; const dormant = []; const outOfScope = []; const unknown = [];
-  const inFleet = new Set();
+  const inFleet = new Set(); const swept = new Set();
   for (const r of mine.sort((a, b) => a.name.localeCompare(b.name))) {
     const fullName = r.full_name.toLowerCase();
     if (fullName === home.toLowerCase()) continue; // the enforcer itself — named in the summary, not swept
+    if (wanted && !wanted.has(fullName)) continue; // out of this run's scope, and silent: the filter is the report's subject line
+    // Looked at, so this run may act on its issue — including CLOSING one for a repo
+    // that has left the fleet since it was opened. It is un-set again the moment the
+    // repo turns out to be unreadable: an `unknown` member was not measured, and the
+    // close loop must not read this run's silence about it as convergence.
+    swept.add(fullName);
     if (r.archived || r.fork) { outOfScope.push(`${r.full_name} (${r.archived ? 'archived' : 'fork'})`); continue; }
 
     let decl;
@@ -244,6 +247,7 @@ async function sweepFleet({ gh, home, owner, canonRepo, packs }) {
       decl = await readDeclaration(gh, r.full_name);
     } catch (e) {
       unknown.push(`${r.full_name} — ${e.message}`);
+      swept.delete(fullName);
       continue;
     }
     // Coverage is the census's question, not this sweep's: an uncovered repo has no
@@ -261,28 +265,21 @@ async function sweepFleet({ gh, home, owner, canonRepo, packs }) {
       result = await undeclaredFits({ packs, declared: decl.packs ?? [], evaluate });
     } catch (e) {
       unknown.push(`${r.full_name} — ${e.message}`);
+      swept.delete(fullName);
       continue;
     }
     if (result.fits.length) findings.push({ repo: fullName, ...result });
     else fitted.push(fullName);
   }
 
-  await ensureLabel(gh, home, LABEL, { color: '0E8A16', description: 'Member carries file shapes fingerprinting packs it does not declare' });
-  const actions = await convergeIssues(gh, home, { findings, inFleet, packsById });
+  const actions = await convergeIssues(gh, home, { findings, inFleet, packsById, open, closed, swept });
 
-  const summary = renderFitSummary({
-    owner, home, canonRepo, packCount: packs.length, findings, fitted, dormant, outOfScope, unknown, actions,
-  });
-  console.log(summary);
-  if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${summary}\n`);
-
-  if (unknown.length) {
-    throw new Error(`${unknown.length} repo(s) could not be swept — unknown is not fitted, `
-      + 'no fit issue was opened or closed for them, and this run fails so the cause is escalated');
-  }
-}
-
-const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
-if (isMain) {
-  main().catch((e) => { console.error(`fleet-fit sweep failed: ${e.message}`); process.exit(1); });
+  return {
+    findings,
+    unknown,
+    summary: renderFitSummary({
+      owner, home, canonRepo, packCount: packs.length, findings, fitted, dormant, outOfScope, unknown, actions,
+      repoFilter: repos,
+    }),
+  };
 }

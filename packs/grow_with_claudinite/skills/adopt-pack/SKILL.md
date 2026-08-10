@@ -39,8 +39,8 @@ declared pack that asks questions:
 
 ### When nobody is there to ask
 
-Adoption also runs **unattended** — a scheduled task acting on a recommendation, the fleet-fit
-sweep's agent stage, any run with no human in the loop. The interview is then the hard stop, and
+Adoption also runs **unattended** — a scheduled task acting on a recommendation, the
+fleet-add-missing-packs task's agent stage, any run with no human in the loop. The interview is then the hard stop, and
 the order matters:
 
 1. **Never guess an answer, and never leave the question unrecorded.** A pack whose question is

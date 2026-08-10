@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fitBody, renderFitSummary } from '../../../../packs/sheepdog/tasks/fleet-fit/check-fleet-fit.mjs';
+import { fitBody, renderFitSummary } from '../../../../packs/sheepdog/tasks/fleet-add-missing-packs/scan-for-needed-packs.mjs';
 
 // The sweep's network half is exercised through remote-context.test.mjs; what is
 // tested here is what the sweep SAYS — the issue body (which is also the agent

@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync, mkdirSync, writeFileSync, cpSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadCanonPacks } from '../../../../packs/sheepdog/tasks/fleet-fit/canon-packs.mjs';
+import { loadCanonPacks } from '../../../../packs/sheepdog/tasks/fleet-add-missing-packs/canon-packs.mjs';
 
 // The corpus loader guards ONE silent failure, and it is the worst one this task
 // could have: sweeping the fleet against a pack corpus that is nearly empty. Every
