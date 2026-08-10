@@ -21,6 +21,14 @@
 //                 breakage, so a red rehearsal says which.
 //   dormant       a member that declares itself dormant. Its mount falls behind
 //                 BY DESIGN, and the rehearsal must not read that as failure.
+//   growth-consumer  a member declaring grow_with_claudinite — the pack every
+//                 member carries (seeded by default) and that no fixture covered.
+//                 It holds the pack's manifest and its converge honest as the
+//                 pack gains rules. NOTE the limit, shared by every shape here:
+//                 the rehearsal runs the WORLD sweep only, so it says nothing
+//                 about a work rule's firing behaviour — that a conversation-
+//                 scoped rule self-skips without a transcript is a unit test's
+//                 job (packs-tests/grow_with_claudinite/plan-tracking-freshness.test.mjs).
 //   legacy-task   a local pack whose scheduled task still declares the DEPRECATED
 //                 task-level `session_scope` — the shape a consumer that predates
 //                 the 2026-08-09 retirement still has on disk. It holds the
@@ -192,6 +200,16 @@ function check(token) {
 
 module.exports = { issue, check };
 `,
+    },
+  },
+  {
+    name: 'growth-consumer',
+    why: 'a member declaring grow_with_claudinite — the pack every member has (seeded by default) and that no other fixture covered: proves its manifest still validates and the member converges green as the pack gains rules',
+    files: {
+      'README.md': '# fixture-growth-consumer\n\nA rehearsal fixture.\n',
+      '.claudinite-checks.json': checks(['basics', 'grow_with_claudinite']),
+      // No retention_days: unset is the fail-safe default (capture-only, the
+      // prune deletes nothing), and growth-config accepts an absent config.
     },
   },
   {
