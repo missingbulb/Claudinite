@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fitCandidates, undeclaredFits, localFits } from '../../../../packs/sheepdog/tasks/fleet-fit/fingerprint-fit.mjs';
+import { fitCandidates, undeclaredFits, localFits } from '../../../../packs/sheepdog/tasks/fleet-add-missing-packs/fingerprint-fit.mjs';
 
 // The one-repo half of the pack-fit question, tested with SYNTHETIC packs on purpose:
 // the module is pack-agnostic, and a test that reached for real canon packs would

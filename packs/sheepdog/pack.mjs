@@ -11,7 +11,9 @@
 //
 //   tasks/fleet-census/check-fleet-coverage.mjs        is a repo a MEMBER?
 //   tasks/fleet-freshness/check-fleet-freshness.mjs    is a member KEEPING UP?
-//   tasks/fleet-fit/check-fleet-fit.mjs                does a member declare what its SHAPE suspects?
+//   tasks/fleet-add-missing-packs/                     which packs is a member MISSING — the
+//     scan-for-needed-packs.mjs + force-add-packs.mjs  ones its SHAPE suspects, or the ones
+//                                                      the owner named on a forced run?
 //   tasks/fleet-usage/aggregate-fleet-usage.mjs        what does the fleet USE?
 //   tasks/fleet-pack-seeds/check-fleet-pack-seeds.mjs  does a member DECLARE what
 //                                                      this fleet standardizes on?
@@ -26,8 +28,11 @@
 // a pack's `detect` fingerprint is consulted ONCE, at bootstrap's --init: baselining
 // backfills the seeded packs and each declared pack's `requires` closure, but never
 // re-fingerprints, so a member that grows into a pack after adoption is never told.
-// It is also the one task here with an agent stage — the detecting is code, the
-// adopting is a repo edit. No session scope anywhere: the enforcer repo's own
+// It is also the one task here with an agent stage — the deciding is code
+// (a fingerprint, or an owner's forced parameters), the adopting is a repo edit. It is
+// likewise the one task here that is PARAMETERISED: `scan_for_needed_packs` and `repos`
+// have no defaults, the weekly declaration sends them explicitly, and a forced run sends
+// its own through the scheduler's manual-run override bag. No session scope anywhere: the enforcer repo's own
 // executor is provisioned with the fleet reach this whole pack presumes, so its
 // dispatches ride the ordinary ready label like any other task's. The fourth exists
 // for the same shape of reason a rung up: a member folds its own skill-usage numbers

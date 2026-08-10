@@ -1,5 +1,19 @@
-// sheepdog task: fleet-fit — does each covered member declare the packs its SHAPE
-// suspects? The fourth fleet question, and the first one with an agent stage.
+// sheepdog task: fleet-add-missing-packs — get a member declaring the packs it is
+// missing. The fourth fleet question, and the first one with an agent stage.
+//
+// TWO WAYS A PACK COMES TO BE MISSING, and the task is PARAMETERISED over them rather
+// than split in two, because they differ only in their first stage:
+//   scan_for_needed_packs=true   nobody has decided anything: fingerprint every member's
+//                                shape and suspect what its declaration does not carry.
+//                                What the weekly run sends.
+//   ADD_PACKS=<ids>              the owner already decided: put these packs, with this
+//                                config and these interview answers, on these named
+//                                repos. What a FORCED run sends, through the scheduler's
+//                                manual-run override bag (`CLAUDINITE_OVERRIDES`, which
+//                                the prework subprocess inherits) — see worker.mjs for
+//                                the full override set and params.mjs for why neither
+//                                parameter has a default.
+// Both converge the same work-list issues and meet the same second stage.
 //
 // WHY: a pack's `detect` fingerprint is consulted exactly ONCE, at bootstrap's
 // `--init`. Baselining backfills the seeded packs and each declared pack's `requires`
@@ -11,9 +25,12 @@
 // still matches the repo.
 //
 // TWO STAGES, and the split is the point:
-//   prework (deterministic, no agent) — enumerate the fleet over the PAT, run every
-//     canon fingerprint against every covered member's tree, converge one `fleet-fit`
-//     issue per member with undeclared fits, publish the full roster.
+//   prework (deterministic, no agent) — resolve the parameters, then run the half each
+//     one asks for: the scan (enumerate the fleet over the PAT, fingerprint every
+//     covered member's tree, publish the full roster) and/or the force (vet the named
+//     repos and packs, and refuse the whole run if anything is off). Either way it
+//     converges one `fleet-add-missing-packs` issue per member with work outstanding,
+//     and requests the agent ONLY if there is any.
 //   agent (sonnet) — take the accepted suspicions and ACT on them: adopt-pack against
 //     the member, per task.md.
 // Everything decidable in code stays in code; the agent is reached only for the part
@@ -45,13 +62,18 @@
 // Self-contained (imports nothing): the whole contract is this default export.
 
 export default {
-  id: 'fleet-fit',
+  id: 'fleet-add-missing-packs',
   frequency: 'weekly',                   // a repo's shape is slow-moving — the same cadence growth-discover-packs uses for the same reason
   precondition_signals: [],              // no signal — every input is another repo's tree, which no per-repo collector can see
   agent_model: 'sonnet',                 // applies an existing pack by an existing skill; the detecting already happened in prework
   expected_outcome: 'open-pr',           // a new pack ships checks that run in the member's CI — always reviewed, never auto-merged
   agent_instructions: 'task.md',
-  prework: 'node worker.mjs',
+  // The weekly run's PARAMETERS, sent explicitly on the command line rather than defaulted
+  // inside the worker (params.mjs): the declaration is where a reader looks first to learn
+  // what the cadence does, so what the cadence does is written here. `all-covered-members`
+  // is a keyword the caller sends, not a fallback the worker assumes — no call site can
+  // reach the whole fleet by omission.
+  prework: 'node worker.mjs --scan-for-needed-packs=true --repos=all-covered-members',
   // One tree listing per member plus a bounded handful of content reads per
   // content-reading fingerprint, all serial, with a secondary rate limit on top. The
   // same 900s the census and freshness sweeps carry, for the same reason: ~10x the
@@ -67,8 +89,13 @@ export default {
   // member's tree, another member's declaration — and no per-repo collector can see
   // any of them, so there is no signal that would tell us in advance whether the
   // answer changed. Cheap to no-op: a fleet that declares what it should opens and
-  // closes nothing, and the agent stage finds no open fit issue and stops.
+  // closes nothing, and the worker then requests no agent at all, so the quiet weeks
+  // cost one deterministic sweep and nothing else.
+  //
+  // A FORCED run never consults this — the engine records a forced task as run with its
+  // precondition unevaluated — which is exactly what makes the override bag the way to
+  // run this task as something other than its weekly self.
   precondition() {
-    return { run: true, reason: 'weekly fleet pack-fit sweep (no-ops cheaply on a fleet whose members already declare what their shape suspects)' };
+    return { run: true, reason: 'weekly fleet scan for packs a member is missing (no-ops cheaply on a fleet whose members already declare what their shape suspects)' };
   },
 };
