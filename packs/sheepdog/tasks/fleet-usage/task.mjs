@@ -17,7 +17,8 @@
 // *implementation* reads every member over a PAT, but its declaration, scheduling and
 // lifecycle are exactly those of any pack task — it is active because this repo
 // declares the sheepdog pack, and it runs however this repo's tasks run. Hence no
-// `session_scope: 'fleet'` and no `fleet` signal: those describe how a task is WIRED,
+// `fleet` signal, and no session scope of its own (the PACK declares the executor
+// reach — session-scope.mjs): those describe how a task is WIRED,
 // and nothing about this task's wiring is fleet-shaped.
 //
 // Self-contained (imports nothing): the whole contract is this default export.

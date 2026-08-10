@@ -21,6 +21,16 @@
 //                 breakage, so a red rehearsal says which.
 //   dormant       a member that declares itself dormant. Its mount falls behind
 //                 BY DESIGN, and the rehearsal must not read that as failure.
+//   legacy-task   a local pack whose scheduled task still declares the DEPRECATED
+//                 task-level `session_scope` — the shape a consumer that predates
+//                 the 2026-08-09 retirement still has on disk. It holds the
+//                 retirement HARMLESS to such a member: red if the field ever
+//                 stops validating or any future check starts blocking on it —
+//                 the ways an un-migrated member would stop converging. What it
+//                 does NOT cover is the routing itself: the rehearsal runs the
+//                 vendor + the sweeps, never the scheduler, so that a lingering
+//                 field still routes to the fleet label is a unit test's job
+//                 (engine-tests/scheduler/session-scope.test.mjs).
 //
 // A fixture carries NO `claudinite.ref`. That is deliberate: apply-vendor-set's
 // #328 anti-rewind guard compares the prior ref against the canon checkout's
@@ -80,6 +90,37 @@ const PACK_PROSE_ONLY = `export default {
 };
 `;
 
+const PACK_LEGACY_TASK = `export default {
+  id: 'fixture-legacy',
+  ruleRoutingGuidance: {
+    belongs: 'the fixture project\\'s own scheduled work, for rehearsal purposes only',
+    excludes: 'anything portable — that belongs in a canon pack',
+  },
+  detect: null,
+  marker: null,
+  prose: 'RULES.md',
+  worldRules: [],
+  workRules: [],
+};
+`;
+
+// Deliberately declares the deprecated task-level scope AND no pack-level one —
+// the exact shape a consumer that has not migrated still has on disk.
+const LEGACY_TASK = `export default {
+  id: 'legacy-scoped',
+  frequency: 'weekly',
+  precondition_signals: [],
+  agent_model: 'sonnet',
+  expected_outcome: 'none',
+  agent_instructions: 'task.md',
+  session_scope: 'fleet',
+  agent_execution_timeout: 600,
+  precondition() {
+    return { run: false, reason: 'a rehearsal fixture task — never runs' };
+  },
+};
+`;
+
 export const FIXTURES = [
   {
     name: 'local-rules',
@@ -102,6 +143,19 @@ export const FIXTURES = [
       '.claudinite-checks.json': checks(['basics', 'local/fixture-prose']),
       '.claudinite/local/packs/fixture-prose/pack.mjs': PACK_PROSE_ONLY,
       '.claudinite/local/packs/fixture-prose/RULES.md': '# fixture-prose\n\nNo standing rules.\n',
+    },
+  },
+  {
+    name: 'legacy-task',
+    why: 'a local pack whose task still declares the deprecated `session_scope` — the shape a consumer predating the retirement still has on disk',
+    files: {
+      'README.md': '# fixture-legacy-task\n\nA rehearsal fixture.\n',
+      '.claudinite-checks.json': checks(['basics', 'local/fixture-legacy']),
+      '.claudinite/local/packs/fixture-legacy/pack.mjs': PACK_LEGACY_TASK,
+      '.claudinite/local/packs/fixture-legacy/RULES.md': '# fixture-legacy\n\nNo standing rules.\n',
+      '.claudinite/local/packs/fixture-legacy/tasks/legacy-scoped/task.mjs': LEGACY_TASK,
+      '.claudinite/local/packs/fixture-legacy/tasks/legacy-scoped/task.md':
+        '# legacy-scoped\n\nA rehearsal fixture task. Its precondition never fires.\n',
     },
   },
   {

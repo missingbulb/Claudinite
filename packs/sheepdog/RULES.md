@@ -9,13 +9,18 @@ schema and the scheduled tasks that run them. The rest of the machinery — runn
 orchestrator), the task engine (`engine/scheduler/`), scheduling — is Claudinite **core**, because
 baselining and the daily-run are Claudinite's own responsibility, not the pack's.
 
-**Four sweeps, four questions** — separate, because they close on unrelated conditions. The
+**Five sweeps, five questions** — separate, because they close on unrelated conditions. The
 **census** ([check-fleet-coverage.mjs](tasks/fleet-census/check-fleet-coverage.mjs)) asks *is this repo a
 member* and converges `fleet-adoption` issues. The **freshness sweep**
 ([check-fleet-freshness.mjs](tasks/fleet-freshness/check-fleet-freshness.mjs)) takes coverage as given, asks *is that
 membership still meaning anything*, and converges `fleet-drift` issues. The second exists because
 per-project scheduling made every member maintain itself and removed the last outside look at one:
-self-maintenance cannot detect its own absence. The **usage sweep**
+self-maintenance cannot detect its own absence. The **fit sweep**
+([check-fleet-fit.mjs](tasks/fleet-fit/check-fleet-fit.mjs)) asks whether a member's declared pack set
+still *matches the repo*, and converges `fleet-fit` issues. It exists because a pack's `detect`
+fingerprint is consulted exactly once, at bootstrap's `--init`: baselining backfills the seeded packs
+and each declared pack's `requires` closure but never re-fingerprints, so a member that grows into a
+pack after adoption is never told the pack exists. The **usage sweep**
 ([aggregate-fleet-usage.mjs](tasks/fleet-usage/aggregate-fleet-usage.mjs)) asks *what does the fleet
 actually use* and writes `usage-fleet.GENERATED.json` — a file, not issues, because it reports a
 measurement rather than a condition to converge. It exists because a member folds its own skill-usage
@@ -101,18 +106,54 @@ this fleet wants every member to declare — each `{ id, config? }`, seeded into
 list is the **only** place a pack is named: the sweep carries the mechanism, the fleet carries the
 choice. All three default, so an existing sheepdog config keeps working untouched.
 
-**Classification** — all four sweeps are ordinary **pack tasks**, not fleet mechanisms. Their
-*implementation* — an account-spanning PAT — happens to scan every repo under the owner, but their
-declaration, scheduling, and lifecycle are exactly those of any pack task. None declares the
-`fleet` signal nor `session_scope: fleet`; the cross-repo reach lives in the implementation, never in
-how a task is wired. (The task files carry the same note.)
+**Classification** — the census, freshness, usage and pack-seed sweeps are ordinary **pack tasks**,
+not fleet mechanisms. Their *implementation* — an account-spanning PAT — happens to scan every repo
+under the owner, but their declaration, scheduling, and lifecycle are exactly those of any pack task.
+None declares the `fleet` signal; the cross-repo reach lives in the implementation, never in how a
+task is wired. (The task files carry the same note.)
+
+**No session scope anywhere in this pack.** The enforcer repo's executor session is provisioned
+with the owner's repos — declaring this pack *is* the statement that the repo reaches the fleet — so
+`fleet-fit`'s dispatch rides the ordinary `ready-for-agent` label like any other task's, and the
+agentless sweeps dispatch nothing at all. The deprecated task-level `session_scope`
+([scheduled-tasks.md](../basics/scheduled-tasks.md)) has no place here: an executor's access comes
+from how its repo is provisioned, never from what a task asks for.
+
+**A fit finding is a recommendation, never a verdict.** The `pack-declaration` conformance check was
+deliberately retired ([engine/checks/README.md](../../engine/checks/README.md)) because whether to
+declare a pack is the project's call — a marker is a way to *suspect* a pack is wanted, never proof it
+must be. The fit sweep must not re-introduce that check one rung further out: it opens an issue a human
+(or the agent stage, then a reviewer) acts on, its body says "suspects", and an owner who closes a fit
+issue `not planned` has given a standing answer the sweep honours rather than reopening weekly.
+
+**The fit sweep fingerprints against CANON, not against this repo's mount.** A consumer's
+`.claudinite/shared/` carries the vendor set for the packs *it* declares — four, for a sheepdog repo —
+so running the fingerprints out of the mount would test every member against a handful of packs and
+report the whole fleet as perfectly fitted. That failure is silent by construction, so the sweep
+shallow-clones `canonRepo` to scratch, loads the corpus from there, refuses to run at all on a corpus
+too small to be canon, and **states the denominator in its report** (*"fingerprinted against N canon
+packs from `owner/Claudinite`"*). Fetching also makes the fingerprints current rather than as-of this
+enforcer's last baseline: a pack added to canon this week is one the fleet should be measured against
+this week.
+
+**Undecidable is not a non-match.** Most fingerprints are answerable from a path listing, and the sweep
+answers those over one tree call per member. A fingerprint that reads file *contents* is resolved by a
+bounded prefetch of exactly the files it asked for; one that greps every source file exceeds that budget
+and is reported **undecided**, never `false`. The agent stage — which has the member checked out —
+settles those exactly (`localFits`, [tasks/fleet-fit/fingerprint-fit.mjs](tasks/fleet-fit/fingerprint-fit.mjs)).
+A truncated tree listing makes every non-match on that repo undecided for the same reason: "we did not
+look" and "we looked and it isn't there" are different facts, and only one is safe to act on.
 
 **How they run** — as the pack's [`fleet-census`](tasks/fleet-census/task.md) (`daily`),
-[`fleet-freshness`](tasks/fleet-freshness/task.md) (`weekly`),
-[`fleet-usage`](tasks/fleet-usage/task.md) (`daily`) and
-[`fleet-pack-seeds`](tasks/fleet-pack-seeds/task.md) (`daily`) scheduled tasks, all `agent_model: none`,
-each with its sweep as `prework`. All are `expected_outcome: none` except usage
-(`merged-pr`), because its output IS a tracked file and an
+[`fleet-freshness`](tasks/fleet-freshness/task.md) (`weekly`), [`fleet-fit`](tasks/fleet-fit/task.md)
+(`weekly`), [`fleet-usage`](tasks/fleet-usage/task.md) (`daily`) and
+[`fleet-pack-seeds`](tasks/fleet-pack-seeds/task.md) (`daily`) scheduled tasks, each with its
+sweep as `prework`. All are `agent_model: none` except fit, whose sweep is agentless in exactly the
+same way and which then hands what only a repo edit can finish to a `sonnet` stage. Census and
+freshness are `expected_outcome: none` (they open **issues**, never a PR), and so is pack-seeds; fit
+is `open-pr` and never `merged-pr`,
+because declaring a pack switches on checks that run in the member's CI the moment they land, so it is
+always reviewed; the usage sweep is `merged-pr`, because its output IS a tracked file and an
 auto-merging PR keeps that write inside the outcome taxonomy, lets this repo's CI gate a malformed
 file, and makes the daily PR stream a browsable audit trail. The pack-seed sweep is `none` for a
 different reason: its write goes to **other** repos, and the ceiling describes what a task may do to its
@@ -146,14 +187,16 @@ is the knob, and the drift issue says so.
 
 **Full-roster reporting** — every sweep's report enumerates the whole fleet, not just its findings.
 Each repo under the owner lands in the report under exactly one named state — covered, dormant,
-uncovered, opted out, archived/fork, unknown, fresh, behind, out of scope, inactive today, skipped
-with a reason — and the repos a sweep deliberately never measures (the enforcer itself, canon) are
+uncovered, opted out, archived/fork, unknown, fresh, behind, fitted, out of scope, inactive today,
+skipped with a reason — and the repos a sweep deliberately never measures (the enforcer itself, canon) are
 named as such rather than silently absent. The sheepdog provides data on the fleet regardless of
 state: a roster that names only the exceptions has silent holes, and a reader cannot tell "fine"
 from "fell out of the report".
 
 **When they fail** — a repo the census cannot classify is `unknown`, never uncovered; a member the
-freshness sweep cannot probe is `unknown`, never behind; a member the pack-seed sweep cannot read or
+freshness sweep cannot probe is `unknown`, never behind; a member the fit sweep cannot read is
+`unknown`, never fitted (and its agent stage is never reached, because an agent acting on a partial
+picture is worse than one that did not run); a member the pack-seed sweep cannot read or
 write is `unknown`, never assumed converged: no issue opened, no open issue closed on its
 behalf, and a non-zero exit. A non-zero preprocessing subprocess fails the task, and the scheduler
 converges one open `needs-human` issue for it.
