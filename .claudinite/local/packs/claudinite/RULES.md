@@ -131,6 +131,22 @@ prose below).
   and an unmounted skill says nothing about whether its procedure applies. The seeding gap above
   is a different one (`git-github` arrives by closure, never `seededByDefault`); catching this
   one needs `resolveDeclaredPacks` compared against the literal declaration.
+- **The same blindness on the member side: a session sees only the packs its repo *declares*, so never
+  conclude from the mount that no canon pack owns a lesson.** A member's `.claudinite/shared/packs/`
+  holds its declared set, not the canon — so a pack the repo doesn't declare is simply absent, and the
+  honest-looking reading ("nothing here covers this") is wrong in the one direction that costs most:
+  the lesson gets homed in a **new local pack** on the member, duplicating canon territory. Measured
+  2026-08-09 on EdFringeNow: the client-side data-caching rules that belonged to `static-website` went
+  into a fresh local pack (whose `ruleRoutingGuidance.belongs` ran 31 words against the 20-word cap, so
+  the session's own selftest was red), because the repo carries no `site.config` and doesn't declare
+  the pack — nothing in the session pointed at it. The owner did, by URL: *"That pack does exist … move
+  the changes into that pack and cleanup the EdFringeNow rules."* Since #728 every mount carries
+  `packs/directory.GENERATED.md`, the catalog of **every** canon pack — read that, not the mounted
+  subset, before homing a lesson locally. And when the owning pack's territory is merely too narrow,
+  **widen its `belongs`** rather than route around it: #727 widened `static-website` by two words,
+  "shipping" → "shipping and serving", and the rules landed where they belonged. (Portable — a promote
+  candidate for `grow_with_claudinite/extracting-lessons.md`, whose "route to the pack whose territory
+  owns it" step assumes that pack is visible from the session.)
 - **Never re-serialize a repo's JSON config to apply an edit — patch the text.** A round-trip
   rewrites what it wasn't asked to: Python's `json.dump` defaults to `ensure_ascii=True` (every
   non-ASCII character becomes a `\uXXXX` escape), and indent, key order and the trailing newline
@@ -296,6 +312,19 @@ prose below).
   ask what carries it across the fleet; if the answer is "nothing", the change is not ready —
   accept the legacy shape in `normalizeManifest` (and say so) until a carrier exists, and never
   let a stale declaration degrade to *fewer checks running* rather than a failure.
+- **A stub is copied once and never re-copied — extend its contract through an *optional* key, and let
+  the declaration itself trigger the staleness check.** Vendoring refreshes `.claudinite/shared/`, but
+  `packs/*/stubs/` are artifacts a member copied into its own `.github/` and no converge ever touches
+  again — so a stub that learns to read a new config key is invisible to every repo still holding the
+  old copy: the config names the key, the copied action ignores it, the run goes green, and the feature
+  is silently dead in production. `build_vars` (#729) is the shape to copy. The key is **optional**, so
+  no existing config is invalidated and no member has to be migrated to stay valid. A
+  **declared-but-unset** value fails the run rather than exporting `""`, which would reproduce the same
+  silent death one level down. And `release-workflows` flags exactly the combination that reads the key
+  and ignores it — a config declaring it against an action or workflow copy predating the exporter — so
+  the repos that opted in are told to re-copy and nobody else sees a finding. That pairing is the
+  carrier the entry above asks for: an opt-in contract can ship without one only because declaring it
+  is itself the signal a check can see.
 - **A migration record is always the newest code; the engine that executes its result is the
   member's, and only as new as its last successful converge.** `migrations/apply.mjs` runs from a
   **fresh canon clone**, so every member gets today's record — but the worker that then commits and
