@@ -17,9 +17,9 @@
 // adopts it either: the owner reads the issue and chooses to adopt Claudinite or to
 // ignore it. It does NOT build the
 // work plan (that is each repo's own scheduler's job, engine/scheduler/run.mjs) and it does
-// NOT touch migrations: application and retirement are the migrations flow's own
-// standalone passes (migrations/fleet-apply.mjs + migrations/fleet-retire.mjs, run
-// by the daily routine) — the census is a coverage audit, not a migrations helper.
+// NOT touch migrations: each member applies those itself, from the fresh canon
+// clone its own baselining fetches (migrations/apply.mjs) — the census is a
+// coverage audit, not a migrations helper.
 //
 // Two rules kept deliberately:
 //   - a marker check that ERRORS makes the repo UNKNOWN, never uncovered — no

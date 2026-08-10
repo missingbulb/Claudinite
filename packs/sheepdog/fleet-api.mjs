@@ -7,6 +7,11 @@
 // fine-grained PAT; nothing in the daily-maintenance process imports this (that
 // process is MCP-native and carries no REST client). It knows nothing about any
 // specific pack: it is the generic "talk to many repos" layer, no more.
+//
+// It is READ-ONLY toward members but for ONE primitive — `putFile`, which the
+// pack-seed sweep uses to land a declaration this fleet wants in every member.
+// Keeping the write to a single named function is deliberate: "what can this module
+// change in someone else's repo" then has exactly one answer to read.
 
 import { isDormant } from '../../engine/checks/helpers/repo-context.mjs';
 
@@ -23,6 +28,7 @@ export const DECLARATION = '.claudinite-checks.json';
 // dormancy would nag exactly the repos that had already opted out, which is the whole
 // failure this exists to prevent.
 export { isDormant };
+
 
 export function makeGh(token) {
   return async function gh(path, { method = 'GET', body } = {}) {
@@ -85,21 +91,53 @@ export async function fileExists(gh, fullName, path) {
   throw new Error(`marker check ${fullName}:${path} returned ${status}`);
 }
 
+// One file's text and its blob sha, or null when the repo has no such file. The sha
+// is what a later write passes back as its precondition (see putFile), so reading and
+// writing a file is one read here and one write there — never a second read that could
+// see a different commit.
+export async function readFile(gh, fullName, path) {
+  const res = await gh(`/repos/${fullName}/contents/${encodeURI(path)}`);
+  if (res.status === 404) return null;
+  if (res.status !== 200 || typeof res.json?.content !== 'string') throw new Error(`${fullName}:${path} returned ${res.status}`);
+  return { text: Buffer.from(res.json.content, 'base64').toString('utf8'), sha: res.json.sha };
+}
+
 // One repo's parsed declaration, or null when it has none (uncovered). Anything
 // else — an unreadable response, an unparsable body — THROWS, because a sweep that
 // cannot read a member's declaration knows nothing about it, and "I could not read
 // it" must never quietly become "it says nothing". Shared by the sweeps that need
 // what is INSIDE the file (the stamp, the dormancy flag) rather than only that it
-// exists.
-export async function readDeclaration(gh, fullName, path = DECLARATION) {
-  const res = await gh(`/repos/${fullName}/contents/${path}`);
-  if (res.status === 404) return null;
-  if (res.status !== 200 || !res.json?.content) throw new Error(`${path} returned ${res.status}`);
+// exists. `withFile` returns `{ config, text, sha }` instead — the parsed settings, the
+// exact bytes, and the write precondition, all from the ONE response, for a sweep that
+// goes on to write the file back: a second read could see a different commit.
+export async function readDeclaration(gh, fullName, path = DECLARATION, { withFile = false } = {}) {
+  const file = await readFile(gh, fullName, path);
+  if (file === null) return null;
+  let config;
   try {
-    return JSON.parse(Buffer.from(res.json.content, 'base64').toString('utf8'));
+    config = JSON.parse(file.text);
   } catch (e) {
     throw new Error(`unparsable ${path}: ${e.message}`);
   }
+  return withFile ? { config, text: file.text, sha: file.sha } : config;
+}
+
+// Write one file back to a repo's default branch, guarded by the sha the read
+// returned: a 409 means the file moved under us, so the caller's decision was made
+// against content that no longer exists and this run simply does not write it (the
+// next run re-reads and decides again). The ONE write primitive that touches another
+// repo — every other call in this module reads.
+export async function putFile(gh, fullName, { path, text, sha, message }) {
+  const { status, json } = await gh(`/repos/${fullName}/contents/${encodeURI(path)}`, {
+    method: 'PUT',
+    body: { message, content: Buffer.from(text, 'utf8').toString('base64'), ...(sha ? { sha } : {}) },
+  });
+  if (status === 200 || status === 201) return json?.commit?.sha ?? null;
+  if (status === 409) throw new Error(`${fullName}:${path} changed under the sweep (409) — not written this run`);
+  if (status === 403 || status === 404) {
+    throw new Error(`writing ${fullName}:${path} returned ${status} — the fleet PAT needs Contents WRITE on this repo (${json?.message ?? 'no message'})`);
+  }
+  throw new Error(`writing ${fullName}:${path} returned ${status} (${json?.message ?? 'no message'})`);
 }
 
 // Does this repo mount Claudinite? (Method B sync hook / legacy gitkeep / Method A

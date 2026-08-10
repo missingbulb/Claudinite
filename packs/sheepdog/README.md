@@ -5,9 +5,10 @@ under an owner. Opt-in (a dedicated sheepdog repo declares it; **not** seeded by
 standardizes the fleet coverage that used to be bespoke Claudinite infrastructure into a declaration.
 
 Thin by design: prose + the config schema (the sheepdog pack entry's `config` = `{ owner, kind, exclude,
-canonRepo, staleDays }`) + three cross-repo **sweeps**, each with the one agentless scheduled task that
-runs it (the sweep is its `prework`; no workflow of its own) — plus one **manual lever**
-that has no cadence and therefore does have a workflow:
+canonRepo, staleDays, packSeeds }`) + five cross-repo **sweeps**, each with the one
+scheduled task that runs it (the sweep is its `prework`, agentless — fit alone adds an agent stage
+after its sweep; no workflow of its own) — plus one
+**manual lever** that has no cadence and therefore does have a workflow:
 
 | sweep | task | asks |
 |---|---|---|
@@ -15,6 +16,7 @@ that has no cadence and therefore does have a workflow:
 | [check-fleet-freshness.mjs](tasks/fleet-freshness/check-fleet-freshness.mjs) | [fleet-freshness](tasks/fleet-freshness/task.md) (weekly) | is a member **keeping up**? → drift issues |
 | [check-fleet-fit.mjs](tasks/fleet-fit/check-fleet-fit.mjs) | [fleet-fit](tasks/fleet-fit/task.md) (weekly) | does a member declare the packs its **shape** suspects? → fit issues, then adoption PRs |
 | [aggregate-fleet-usage.mjs](tasks/fleet-usage/aggregate-fleet-usage.mjs) | [fleet-usage](tasks/fleet-usage/task.md) (daily) | what does the fleet **actually use**? → `usage-fleet.GENERATED.json` |
+| [check-fleet-pack-seeds.mjs](tasks/fleet-pack-seeds/check-fleet-pack-seeds.mjs) | [fleet-pack-seeds](tasks/fleet-pack-seeds/task.md) (daily) | does a member declare what this fleet **standardizes on**? → the declaration, written |
 | [force-fleet-baseline.mjs](fleet-baseline/force-fleet-baseline.mjs) + [follow-fleet-baseline.mjs](fleet-baseline/follow-fleet-baseline.mjs) | *(no task — the [fleet-baseline workflow](stubs/workflows/fleet-baseline.yml), `workflow_dispatch` only)* | make every member baseline **now**, watch each one finish → what the fleet did |
 
 The second exists because per-project scheduling made every member maintain itself and, in doing so,
@@ -24,7 +26,11 @@ bootstrap's `--init`: baselining backfills the seeded packs and each declared pa
 closure, but never re-fingerprints, so a member that grows into a pack after adoption is never told
 the pack exists and the owner has to already know what to ask for. The fourth exists for the same
 shape of reason one rung up: a member can say whether a skill loads *there*, and only a view across
-every member can say whether it earns its place at all.
+every member can say whether it earns its place at all. The fifth is the only one that **writes** to a
+member: some packs need a parameter no member can derive, because the answer is a fact about the
+*fleet* — and canon cannot supply it either, since a bootstrap run does not know which fleet it is
+bootstrapping into. This repo's `packSeeds` config lists what its members should declare, and the
+sweep converges that list. It names no pack itself: the fleet supplies every id.
 
 The fit sweep fingerprints against a scratch clone of `canonRepo`, never against this repo's own
 mount — the mount carries only the packs the enforcer declares, and sweeping against it would report
@@ -39,10 +45,11 @@ ceilinged at `open-pr` and never auto-merges: declaring a pack switches on confo
 in that member's CI from the moment they land.
 
 A member that declares itself **dormant** (`"dormant": true` in its own declaration) is out of the
-freshness sweep, out of the fit sweep, and out of the usage denominator — its scheduler is stopped,
-so its mount falls behind by design, its silence says nothing about any skill, and recommending it a
-pack would be recommending work it has declared it is not doing. It stays a **member**: membership is
-unchanged, because dormancy is about upkeep, not membership.
+freshness sweep, out of the fit sweep, out of the usage denominator, and never written to by the
+pack-seed sweep — its scheduler is stopped, so its mount falls behind by design, its silence says
+nothing about any skill, recommending it a pack would be recommending work it has declared it is not
+doing, and a commit landed in it from outside is the upkeep it opted out of. It stays a **member**:
+membership is unchanged, because dormancy is about upkeep, not membership.
 
 **Every report enumerates the full fleet.** Whatever a repo's state — covered, dormant, uncovered,
 excluded, archived, a fork, inactive today, or simply not measured by that sweep — each sweep's
@@ -55,7 +62,7 @@ from outside rather than counting them as non-matches; the usage sweep's `covera
 accounts for every repo under the owner and its run report flags folding members with no captured
 activity that day; force-baseline reports every repo it did *not* dispatch, with the reason.
 
-The last one is not a sweep and not a task: **force-baseline** answers no recurring question, so it has
+The **manual lever** is not a sweep and not a task: **force-baseline** answers no recurring question, so it has
 no cadence to schedule. It is the owner pressing *Run workflow* — fire every member's own scheduler
 with `FORCE_TASKS=baselining` so the fleet picks canon up now instead of over the next day. It takes a
 repo filter, a dry run, and an opt-in for dormant members; it writes nothing to any member (one queued
@@ -65,7 +72,7 @@ moved and from which canon ref to which, lines changed, per-member timing, error
 an agent ran. A dry run prints the same report with true zeros, so its shape can be inspected without
 changing anything. Its `workflow_dispatch`-only workflow adds no cron, so the
 vendored scheduler stays the enforcer's only one — and because GitHub reads workflows solely from a
-repo's own `.github/`, the [`sheepdog-fleet-baseline`](../../migrations/active_migrations/2026-08-05-sheepdog-fleet-baseline.mjs)
+repo's own `.github/`, the [`sheepdog-fleet-baseline`](../../migrations/2026-08-05-sheepdog-fleet-baseline/migration.mjs)
 migration keeps a byte-identical copy there, gated on the repo declaring this pack. The nightly's own
 token cannot write a workflow file, so the converge withholds it and baselining's agent stage lands it
 over MCP ([#649](https://github.com/missingbulb/Claudinite/issues/649)) — automatic either way.

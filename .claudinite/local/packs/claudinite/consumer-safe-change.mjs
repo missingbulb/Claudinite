@@ -16,7 +16,7 @@ import { finding } from '../../../../engine/checks/helpers/findings.mjs';
 // WHAT IT CATCHES. A change that alters a contract every consumer holds a copy
 // of, without either of the two things that carry consumers across:
 //
-//   a MIGRATION RECORD  — migrations/active_migrations/<date>-<name>.mjs, the
+//   a MIGRATION RECORD  — migrations/<date>-<name>/migration.mjs, the
 //                         mechanism that rewrites a member on its next converge
 //   a REHEARSAL FIXTURE — packs-tests/rehearsal/fixtures.mjs, which proves a
 //                         consumer in that shape still converges green
@@ -37,7 +37,10 @@ import { finding } from '../../../../engine/checks/helpers/findings.mjs';
 // worth nothing on the day it mattered.
 const SCHEMA = 'engine/pack_loader/pack-schema.mjs';
 const STUB = 'engine/scheduler/stubs/claudinite-scheduler.yml';
-const MIGRATIONS = 'migrations/active_migrations/';
+// A record folder, not the machinery beside it: registry/apply edits are engine
+// work and carry no member across anything.
+const MIGRATION_RECORD = /^migrations\/\d{4}-\d{2}-\d{2}-[^/]+\//;
+const MIGRATIONS = 'migrations/<date>-<name>/';
 const FIXTURES = 'packs-tests/rehearsal/fixtures.mjs';
 
 // The contract surfaces this change touched, and why each counts. Pure over the
@@ -73,7 +76,7 @@ export function contractChanges(changed, read, readBase = () => null) {
 // Did this change ALSO carry consumers across? Either answer is enough.
 export function carriesConsumers(changed) {
   return {
-    migration: changed.some((f) => f.startsWith(MIGRATIONS)),
+    migration: changed.some((f) => MIGRATION_RECORD.test(f)),
     fixture: changed.includes(FIXTURES),
   };
 }

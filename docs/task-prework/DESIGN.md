@@ -47,8 +47,7 @@ Two problems in the current staging (`engine/scheduler/run.mjs`):
 2. **The canon repo is a session source it mostly needn't be.** A review of every
    task (2026-07-23) found that of the seven consumer-side tasks, **only
    `baselining`** reads the canon repo — for two things: the vendor-set head
-   snapshot it converges the mount against, and the `migrations/active_migrations/`
-   notes. Every other consumer task is confined to its own repo. Carrying a full
+   snapshot it converges the mount against, and the `migrations/` notes. Every other consumer task is confined to its own repo. Carrying a full
    canon checkout in every executor session to serve one task's two reads is
    more ambient authority than the work needs.
 
@@ -247,8 +246,8 @@ preprocessing process but not the agent's session.
 With preprocessing able to fetch what baselining needs, both of baselining's
 canon reads (§1.2) are closed **without** a canon session source:
 
-- **The migration notes** → vendor `migrations/active_migrations/*` (and the
-  `apply.mjs` applier; `fleet-apply.mjs` / `registry.mjs` stay canon-internal)
+- **The migration notes** → vendor the recent `migrations/<date>-<slug>/`
+  records (and the `apply.mjs` applier + `registry.mjs`)
   into `.claudinite/shared/migrations/` via `vendoring/compute-vendor-set.mjs`.
   The agent's note-application read then resolves from the mount, locally.
 - **The head snapshot** → baselining's preprocessing does a **direct public

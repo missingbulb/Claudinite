@@ -1,4 +1,5 @@
 import { finding } from '../../engine/checks/helpers/findings.mjs';
+import { parseConfig } from './stubs/actions/read-site-config/read-config.mjs';
 
 // The static-site release pipeline is VENDORED into each consumer's own
 // .github/: the orchestrator (STUB_FILE, named STUB_NAME) owns the triggers and
@@ -81,6 +82,39 @@ const rule = {
         }));
       }
     }
+    // build_vars is opt-in, and so is this: a repo that never declares one is
+    // untouched by the exporter's arrival and stays on its older vendored copy
+    // quite happily. Declaring one is the moment the older copy becomes WRONG —
+    // it reads the key, ignores it, and builds with the variable unset — and
+    // that failure is silent all the way to the live page, so it is caught here
+    // instead. This is the shape to reuse when a stub gains a capability: gate
+    // the conformance on the repo having asked for it.
+    const declaresBuildVars = (() => {
+      const cfg = ctx.read('.github/site.config');
+      if (cfg === null) return false;
+      return Boolean(parseConfig(cfg).values.get('build_vars')?.trim());
+    })();
+    if (declaresBuildVars) {
+      const exporter = `.github/actions/${VENDORED_ACTIONS[0]}/export-build-vars.mjs`;
+      if (ctx.read(exporter) === null) {
+        out.push(finding(rule, {
+          file: exporter,
+          what: 'missing, but .github/site.config declares build_vars — the vendored action predates the exporter, so the declared variables reach the build as nothing at all',
+          fix: `copy it from the pack's stubs/actions/${VENDORED_ACTIONS[0]}/ (re-copy the whole directory, the action.yml gained an output too)`,
+        }));
+      }
+      for (const wf of ['static-site-deploy-pages.yml', CI_STUB_FILE]) {
+        const text = ctx.read(stubPath(wf));
+        if (text !== null && !text.includes('export-build-vars.mjs')) {
+          out.push(finding(rule, {
+            file: stubPath(wf),
+            what: 'runs build_command without exporting the build_vars the config declares — the build sees none of them',
+            fix: `re-copy it from the pack's stubs/workflows/${wf}`,
+          }));
+        }
+      }
+    }
+
     // The gate. A pipeline that releases on push with nothing checking the pull
     // request publishes whatever merged.
     if (ctx.read(stubPath(CI_STUB_FILE)) === null && !ctx.tracked.some((f) => /^\.github\/workflows\/.*ci.*\.ya?ml$/i.test(f))) {

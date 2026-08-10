@@ -24,7 +24,7 @@ its git history:
   rollback story is the same channel: fix the canon, the next nightly re-heals. A wrong
   *blocking* check still fails every member's Stop hook — visible and recoverable, but
   fleet-wide noise, so treat check changes as production changes.
-- **Migration notes** (`migrations/active_migrations/`) — the channel for anything convergence
+- **Migration notes** (`migrations/<date>-<slug>/`) — the channel for anything convergence
   can't express: renames of consumer-held wiring, declaration rewrites, one-off agentic steps.
   Stamp-day-gated and idempotent; the note's `legacyPresent` telemetry says when the fleet has
   moved and (for `retire: 'auto'`) retires the record itself.

@@ -60,8 +60,18 @@ jobs:
         with:
           node-version: 22
 
+      # Repo variables the config declares, exported into the build's env.
+      # `vars` structurally cannot carry a secret, which is the point: this
+      # feeds the step that produces the published artifact.
+      - name: Export the declared build variables
+        if: steps.cfg.outputs.build_vars != ''
+        env:
+          DECLARED_BUILD_VARS: ${{ steps.cfg.outputs.build_vars }}
+          REPO_VARS_JSON: ${{ toJSON(vars) }}
+        run: node .github/actions/read-site-config/export-build-vars.mjs
+
       # A build_command that needs dependencies installs them itself
-      # (`npm ci && npm run build`) — see the config's five keys.
+      # (`npm ci && npm run build`) — see the config's keys.
       - name: Build the site
         if: steps.cfg.outputs.build_command != ''
         run: ${{ steps.cfg.outputs.build_command }}

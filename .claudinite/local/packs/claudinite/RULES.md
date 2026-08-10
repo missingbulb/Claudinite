@@ -96,16 +96,6 @@ prose below).
   it as a merely-absent note). Start the work *after* evaluation completes — `check(…).catch(…)`.
   Enforced by `pack-discovery-entry-await`; the corollary it can't check is to keep these modules
   import-light in the first place.
-- **Green canon CI is not evidence about a consumer — the canon's own packs are always already
-  migrated.** The one thing canon CI cannot exercise is what a canon change does to a repo on its
-  *next* baselining, and every consumer-breaking change so far passed it cleanly: #555 (manifest
-  became a closed vocabulary → 11 local packs across 10 repos silently stopped running their
-  checks), #585 (PR-open status never read → 12 repos frozen two days while the run reported
-  `ok`), #588 (auto-merge armed where no PR CI exists → a PR that never lands). All were invisible
-  until a consumer ran. So when a change adds or requires a manifest field, moves a check's
-  severity or id, or alters a vendored contract, say in the PR *which* consumer-side evidence
-  carries it — a migration record, or a demonstration that an unmigrated member stays green — and
-  never treat a green canon suite as that evidence (#592 tracks the missing gate).
 - **A pack's `RULES.md` is injected into every session that declares the pack — an idea nobody can
   act on belongs in `docs/`, and a pack file must not link there.** Deferred directions, blocked
   proposals and status live in `docs/` (e.g. `docs/future-directions.md`) precisely because pack
@@ -141,6 +131,22 @@ prose below).
   and an unmounted skill says nothing about whether its procedure applies. The seeding gap above
   is a different one (`git-github` arrives by closure, never `seededByDefault`); catching this
   one needs `resolveDeclaredPacks` compared against the literal declaration.
+- **The same blindness on the member side: a session sees only the packs its repo *declares*, so never
+  conclude from the mount that no canon pack owns a lesson.** A member's `.claudinite/shared/packs/`
+  holds its declared set, not the canon — so a pack the repo doesn't declare is simply absent, and the
+  honest-looking reading ("nothing here covers this") is wrong in the one direction that costs most:
+  the lesson gets homed in a **new local pack** on the member, duplicating canon territory. Measured
+  2026-08-09 on EdFringeNow: the client-side data-caching rules that belonged to `static-website` went
+  into a fresh local pack (whose `ruleRoutingGuidance.belongs` ran 31 words against the 20-word cap, so
+  the session's own selftest was red), because the repo carries no `site.config` and doesn't declare
+  the pack — nothing in the session pointed at it. The owner did, by URL: *"That pack does exist … move
+  the changes into that pack and cleanup the EdFringeNow rules."* Since #728 every mount carries
+  `packs/directory.GENERATED.md`, the catalog of **every** canon pack — read that, not the mounted
+  subset, before homing a lesson locally. And when the owning pack's territory is merely too narrow,
+  **widen its `belongs`** rather than route around it: #727 widened `static-website` by two words,
+  "shipping" → "shipping and serving", and the rules landed where they belonged. (Portable — a promote
+  candidate for `grow_with_claudinite/extracting-lessons.md`, whose "route to the pack whose territory
+  owns it" step assumes that pack is visible from the session.)
 - **Never re-serialize a repo's JSON config to apply an edit — patch the text.** A round-trip
   rewrites what it wasn't asked to: Python's `json.dump` defaults to `ensure_ascii=True` (every
   non-ASCII character becomes a `\uXXXX` escape), and indent, key order and the trailing newline
@@ -306,6 +312,19 @@ prose below).
   ask what carries it across the fleet; if the answer is "nothing", the change is not ready —
   accept the legacy shape in `normalizeManifest` (and say so) until a carrier exists, and never
   let a stale declaration degrade to *fewer checks running* rather than a failure.
+- **A stub is copied once and never re-copied — extend its contract through an *optional* key, and let
+  the declaration itself trigger the staleness check.** Vendoring refreshes `.claudinite/shared/`, but
+  `packs/*/stubs/` are artifacts a member copied into its own `.github/` and no converge ever touches
+  again — so a stub that learns to read a new config key is invisible to every repo still holding the
+  old copy: the config names the key, the copied action ignores it, the run goes green, and the feature
+  is silently dead in production. `build_vars` (#729) is the shape to copy. The key is **optional**, so
+  no existing config is invalidated and no member has to be migrated to stay valid. A
+  **declared-but-unset** value fails the run rather than exporting `""`, which would reproduce the same
+  silent death one level down. And `release-workflows` flags exactly the combination that reads the key
+  and ignores it — a config declaring it against an action or workflow copy predating the exporter — so
+  the repos that opted in are told to re-copy and nobody else sees a finding. That pairing is the
+  carrier the entry above asks for: an opt-in contract can ship without one only because declaring it
+  is itself the signal a check can see.
 - **A migration record is always the newest code; the engine that executes its result is the
   member's, and only as new as its last successful converge.** `migrations/apply.mjs` runs from a
   **fresh canon clone**, so every member gets today's record — but the worker that then commits and
@@ -413,3 +432,26 @@ prose below).
   diagnosis, and never on a symptom two API reads resolve. (Sibling of the standing ruling above that
   what Claudinite ships must run on the settings a member already has — that one is about what to
   *build*, this one about what to *believe*.)
+- **A canon pack's directory name is kebab-case — lowercase words joined by single hyphens.** The
+  directory name is the pack's public id: members spell it in `.claudinite-checks.json`, a migration's
+  `declarePacks` op seeds it, the catalog row and every cross-reference repeat it — so a name in another
+  casing is renamed later across all of them. Every pack under `packs/` follows it; `grow_with_claudinite`
+  is the single grandfathered exception (it predates the convention and sits in every member's
+  declaration, so renaming it would be a fleet migration, not a tidy-up). Nothing stated this until now,
+  which is how `UserPreferencesStore` shipped in #567 and cost a whole-pack rename to
+  `claude-code-web-users-support` after the owner asked for *"the appropriate casing for pack names"*.
+  Name from the **surface** the pack serves, not the first feature you are building for it — that same
+  rename widened the pack from one store to every Claude-Code-web capability. (Convertible: a check over
+  `packs/*/pack.mjs` directory names would carry this whole rule, and the fixture is trivial — but any
+  new rule moves `packs/README.md`'s check tally, which a growth-extract run may not touch. Left for the
+  weekly prose-to-checks sweep's reviewed PR.)
+- **The home is the last repo to receive its own stub changes — nothing delivers to it.** Every member
+  gets `engine/scheduler/stubs/claudinite-scheduler.yml` written into `.github/workflows/` by its nightly
+  converge; the canon has no mount and no converge, so its own copy is hand-maintained and drifts from the
+  stub it ships. That drift is invisible until it is a permission denial in production: the canon's
+  workflow sat on `actions: read` while the stub had carried `write` since store-release, so the CI
+  dispatch POST 403'd and **only** the canon's own fold PR stranded — for ten days (#535, fixed in #704).
+  Paired tests over the two files are not the safety net you think: one already asserted the
+  `overrides` input on both and said nothing about `permissions`, so the drift walked straight past it.
+  So when a change touches the vendored stub, edit the canon's `.github/workflows/` copy in the **same
+  commit** and diff the two whole files, never just the lines you came for.

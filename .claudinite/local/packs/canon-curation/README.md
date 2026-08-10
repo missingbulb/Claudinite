@@ -22,7 +22,6 @@ the members' side ([grow_with_claudinite](../../../../packs/grow_with_claudinite
 |---|---|---|
 | `growth-promote` | a participating member changed its local packs in the window | a PR against Claudinite's `main` |
 | `growth-discover-packs` | weekly, over every covered member | a PR against Claudinite's `main` |
-| `migrations-retire` | a fully-applied migration record has passed its TTL | a PR against Claudinite's `main` |
 
 | Rule (≤5 words) | How enforced |
 |---|---|

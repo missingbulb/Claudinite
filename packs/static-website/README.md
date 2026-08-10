@@ -1,6 +1,6 @@
 # static-website pack
 
-The release standard for a plain static site: the date-anchored version scheme, release-on-push, the explicit publish set, the GitHub Pages deploy, and the PR gate — the contract and its setup in [RELEASE.md](RELEASE.md), the **vendored pipeline** in [`stubs/`](stubs/) (materialized into each site repo's own `.github/`), the four in-session rules in [RULES.md](RULES.md), and the conformance checks beside them. **Opt-in**: a project declares it in `.claudinite-checks.json` when it's ready to ship a site this way. GitHub only resolves a reusable workflow / composite action from a repo's own `.github/`, so the pack holds the templates and each repo hosts a managed copy — no cross-repo `@main` dependency, and the repo's own values live in one `.github/site.config`.
+The release standard for a plain static site: the date-anchored version scheme, release-on-push, the explicit publish set, the GitHub Pages deploy, and the PR gate — the contract and its setup in [RELEASE.md](RELEASE.md), the **vendored pipeline** in [`stubs/`](stubs/) (materialized into each site repo's own `.github/`), the eight in-session rules in [RULES.md](RULES.md), and the conformance checks beside them. **Opt-in**: a project declares it in `.claudinite-checks.json` when it's ready to ship a site this way. GitHub only resolves a reusable workflow / composite action from a repo's own `.github/`, so the pack holds the templates and each repo hosts a managed copy — no cross-repo `@main` dependency, and the repo's own values live in one `.github/site.config`.
 
 Fingerprint: the `Release static site` orchestrator (`.github/workflows/static-site-release.yml` carrying that `name:`). It only *suspects* the pack — declaring is the project's call. Every rule here is gated on it too, so a repo that declares the pack for the versioning and CI half while its site deploys somewhere other than GitHub Pages carries none of the deploy machinery and none of these rules fire on it.
 
@@ -20,5 +20,9 @@ Fingerprint: the `Release static site` orchestrator (`.github/workflows/static-s
 | Never hand-edit the version | prose; the scheme itself is a check (`sw/version-scheme`) |
 | Vendored pipeline files are managed copies | prose; presence is a check (`sw/release-workflows`) |
 | Pages serves from a subpath | prose |
+| Manifest, not per-file TTLs | prose |
+| Nothing attests own freshness | prose |
+| Separately-cached files drift apart | prose |
+| Follow missing data downstream | prose |
 
 The version scheme and the code that computes it live together in [stubs/actions/bump-site-version/bump.mjs](stubs/actions/bump-site-version/bump.mjs) — the checks import `VERSION_RE` from there rather than restating it, so the rule and the bump can't disagree about what a version is.

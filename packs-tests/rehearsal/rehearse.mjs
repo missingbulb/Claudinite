@@ -8,6 +8,9 @@
 //   vendoring/apply-vendor-set.mjs   the mount + stamp
 //   engine/scheduler/converge-wiring.mjs   workflow, hooks, badge row
 //   migrations/apply.mjs             the mechanical notes
+//   vendoring/apply-vendor-set.mjs   again, when a note changed the DECLARATION (a
+//                                    seeded pack's content is not in the first pass's
+//                                    set — the worker does the same, conditionally)
 //
 // then asks the two questions that matter, in the order that matters:
 //
@@ -84,7 +87,15 @@ export function rehearse(fixture, mode) {
     if (steps.at(-1).ok) {
       steps.push(step('converge-wiring', [join(CANON, 'engine/scheduler/converge-wiring.mjs'), 'fixture/rehearsal'],
         { CLAUDINITE_REPO_ROOT: root }, root));
+      const declarationBefore = readFileSync(join(root, '.claudinite-checks.json'), 'utf8');
       steps.push(step('migrations-apply', [join(CANON, 'migrations/apply.mjs')], { CLAUDE_PROJECT_DIR: root }, root));
+      // The worker's conditional second pass, mirrored: a note that DECLARED a pack
+      // left its content out of the set the first pass computed, and the fixture must
+      // meet the same converge a member does — otherwise the rehearsal green-lights a
+      // seed that would red every member for a night.
+      if (readFileSync(join(root, '.claudinite-checks.json'), 'utf8') !== declarationBefore) {
+        steps.push(step('re-converge', [join(CANON, 'vendoring/apply-vendor-set.mjs'), '--target', root]));
+      }
       steps.push(step('selftest', [join(CANON, 'engine/selftest.mjs'), '--strict'], { CLAUDE_PROJECT_DIR: root }, root));
       const sweep = join(root, '.claudinite/shared/engine/checks/check_the_world.mjs');
       // The member runs its own VENDORED sweep, not the canon's — that is the

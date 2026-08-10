@@ -19,7 +19,7 @@ const NEVER_PUBLISHED = ['.claude', '.claudinite', '.github', 'node_modules'];
 const rule = {
   id: 'sw/site-config',
   severity: 'blocking',
-  description: `${CONFIG_PATH} declares the publish set explicitly — all five keys, no unknown keys, every published path present`,
+  description: `${CONFIG_PATH} declares the publish set explicitly — the five required keys, no unknown keys, every published path present`,
   doc: 'packs/static-website/RELEASE.md',
   why: 'the published artifact is an explicit list, so a stale entry silently drops a page from the live site and an unknown key silently does nothing',
 
@@ -29,8 +29,8 @@ const rule = {
     if (text === null) {
       return [finding(rule, {
         file: CONFIG_PATH,
-        what: `missing — the pipeline reads every repo value from it (${KEYS.map((k) => k.name).join(', ')})`,
-        fix: `write ${CONFIG_PATH} with all five keys, explicitly (see the pack's RELEASE.md)`,
+        what: `missing — the pipeline reads every repo value from it (${KEYS.filter((k) => !k.optional).map((k) => k.name).join(', ')})`,
+        fix: `write ${CONFIG_PATH} with all five required keys, explicitly (see the pack's RELEASE.md)`,
       })];
     }
 
@@ -38,7 +38,7 @@ const rule = {
     const out = errors.map((e) => finding(rule, {
       file: CONFIG_PATH,
       what: e.replace(`${CONFIG_PATH}: `, '').replace(`${CONFIG_PATH}:`, 'line '),
-      fix: 'fix the key (the five are required and fully explicit — there are no defaults to fall back on)',
+      fix: 'fix the key (the five are required and fully explicit — there are no defaults to fall back on; build_vars is the one key a config may omit)',
     }));
 
     const root = values.get('publish_root');

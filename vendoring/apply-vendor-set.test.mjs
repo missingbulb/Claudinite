@@ -33,8 +33,10 @@ function makeCanon() {
   // needs the spec module too — it is part of the loader, not an optional extra.
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-schema.mjs'), join(root, 'engine', 'pack_loader', 'pack-schema.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'module-imports.mjs'), join(root, 'engine', 'checks', 'helpers', 'module-imports.mjs'));
+  copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'active-migrations.mjs'), join(root, 'engine', 'checks', 'helpers', 'active-migrations.mjs'));
   writeAt(root, 'engine/checks/check_the_world.mjs', 'engine v2\n');
   writeAt(root, 'engine/pack_loader/mount-skills.mjs', 'machinery\n');
+  writeAt(root, 'packs/directory.GENERATED.md', 'stub catalog\n');
   writeAt(root, 'packs/alpha/pack.mjs', 'export default { id: "alpha" };\n');
   writeAt(root, 'packs/alpha/RULES.md', 'rules\n');
   writeAt(root, 'packs/alpha/skills/s1/SKILL.md', 'skill\n');
@@ -42,7 +44,7 @@ function makeCanon() {
   // + records. Stubs — this suite exercises the apply/converge, not the content.
   writeAt(root, 'migrations/apply.mjs', 'export const apply = 1;\n');
   writeAt(root, 'migrations/registry.mjs', 'export const registry = 1;\n');
-  writeAt(root, 'migrations/active_migrations/2026-01-01-seed.mjs', 'export default { id: "seed" };\n');
+  writeAt(root, 'migrations/2026-01-01-seed/migration.mjs', 'export default { id: "seed" };\n');
   return root;
 }
 
@@ -153,10 +155,12 @@ test('#328: a canon tree nested in a FOREIGN git repo is rootless — upward .gi
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-registry.mjs'), join(canon, 'engine', 'pack_loader', 'pack-registry.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-schema.mjs'), join(canon, 'engine', 'pack_loader', 'pack-schema.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'module-imports.mjs'), join(canon, 'engine', 'checks', 'helpers', 'module-imports.mjs'));
+  copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'active-migrations.mjs'), join(canon, 'engine', 'checks', 'helpers', 'active-migrations.mjs'));
   writeAt(canon, 'engine/checks/check_the_world.mjs', 'engine v2\n');
+  writeAt(canon, 'packs/directory.GENERATED.md', 'stub catalog\n');
   writeAt(canon, 'migrations/apply.mjs', 'export const apply = 1;\n');
   writeAt(canon, 'migrations/registry.mjs', 'export const registry = 1;\n');
-  writeAt(canon, 'migrations/active_migrations/2026-01-01-seed.mjs', 'export default { id: "seed" };\n');
+  writeAt(canon, 'migrations/2026-01-01-seed/migration.mjs', 'export default { id: "seed" };\n');
   g('add', '-A');
   g('commit', '-q', '-m', 'consumer commit');
   const target = makeTarget({ packs: [] });
