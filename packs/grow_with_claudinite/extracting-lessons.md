@@ -30,6 +30,12 @@ session or window.** Before adding anything:
 - **Promote what's portable.** A lesson true for projects beyond this one belongs in shared, cross-project
   canon, not stuck in one repo's local packs — the growth lifecycle's promote stage lifts it there
   centrally; capture it well locally and let promote generalize whatever travels.
+- **A mechanic being *copied* from a sibling repo is a canon candidate, not a file to author here.** When
+  the release wiring, the version scheme or the CI plumbing you are about to write is being transcribed
+  from another project that already solved it, the second copy is the moment to raise it centrally —
+  look for the canon pack that owns it first, and if none does, report that as the finding rather than
+  writing a bespoke third copy that gets deleted along with its reviewed workflow. The lesson to capture
+  is the *gap*, not the code.
 
 ## Route to the local pack that owns it — the promotion ladder
 
@@ -53,6 +59,15 @@ that line sees it — never collected into a centralized gotchas list. Co-locate
 comment when the trap spans the whole file and you'd only hit it *while editing that file*. Reserve a
 central gotchas doc for what no single usage site owns: a trap you could hit *without* reading the relevant
 file (a mistake of omission), or a cross-cutting invariant.
+
+**Two more kinds never become a pack rule, however strong the evidence — filter on what the lesson is
+*about* before picking a mechanism.** (1) **The owner's own preferences** — which word authorizes a merge,
+tone, how a summary is shaped. They belong to the person, are injected per session from their own
+preference file, and change without any repo hearing about it; a pack copy goes stale silently and then
+contradicts the live one. (2) **The agent framework's own loading mechanics** — which packs are declared,
+why a skill didn't mount, why an injection missed. That is engine plumbing, not project knowledge: a real
+defect there is filed upstream against the framework, and writing it down as a project rule preserves a bug
+instead of fixing it.
 
 ## "No new lessons" is a valid — and common — result
 

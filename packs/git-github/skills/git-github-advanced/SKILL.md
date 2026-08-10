@@ -11,6 +11,20 @@ The project-agnostic half of how we drive GitHub: the branch/commit-history rule
 
 To post a **status update** on an issue (the lifecycle's "update the issue's status" step), use `add_issue_comment`. **Don't** reach for `issue_write` with `method: update` — that edits the issue itself and **replaces the whole body**, silently wiping the original description. Reserve `issue_write`/`update` for genuinely editing the issue (retitling, rewriting the body on purpose).
 
+## A step only a human can perform goes in its own issue, never the PR body
+
+A merged PR's description is not a to-do list anyone returns to: the note merges and disappears with it, and the setting stays unflipped until someone re-derives it weeks later. So when a change lands something that cannot work until a human flips a switch only they can reach — a repository or console setting, a permission grant, a secret, a deployment-environment rule — open an **issue** for it: a checkbox per step, what breaks while each is off, and a stated closing condition. Link it from the PR; keeping the note in the PR too is fine, but the issue is the thing that survives the merge. The one exception is a step whose home is an artifact the owner is already editing. And before handing a step over at all, confirm you actually can't do it yourself — a capability you failed to find is not a capability that's absent.
+
+## An auto-merge refusal is not a verdict — read the PR's state, then act, and never re-arm on a loop
+
+`enable_pr_auto_merge` only accepts a PR whose required checks are still **pending**, so its refusals are answers about *timing and configuration*, not about the change. Take each at face value and stop:
+
+- *"already in clean status (all checks passed)"* — the checks finished before you got there (fast CI does this routinely). That is the green light: `merge_pull_request` directly.
+- *"in unstable status (required checks are failing)"* — this wording covers a check that is **queued**, or **held at an approval gate**, exactly as it covers one that failed. Resolve it by reading the PR's check runs and looking at **`status`**, not `conclusion`; a check that hasn't `completed` has no verdict to report.
+- *"Protected branch rules not configured"* — auto-merge is a **protected-branch** feature, so a repo with no rule on its default branch can never arm it. This one is final; don't retry, and don't let the *first* refusal's wording (often the "checks are failing" message) convince you otherwise.
+
+Never re-arm on a loop hoping the answer changes: observed runs answered "unstable" and then "clean" seconds later with nothing changed in between, and one spent ~6 minutes of a 13-minute budget circling a single PR's merge state without merging it. Read the state once, merge when it's clean, and arm auto-merge only while checks are genuinely pending.
+
 ## Branch and commit history
 
 ### Commit often, in layers
@@ -36,6 +50,10 @@ An automated prompt to commit the working tree (a stop-hook, a CI nag) tells you
 ## Open a PR early when the reviewable artifact only exists on CI
 
 The default is to hold a PR until asked. Reverse that when a change's only reviewable output is produced by CI — an e2e/heavy-browser run, or a rendered artifact (a UI-snapshot pixel diff, a generated gallery) that can't be exercised in the local sandbox. Opening the PR is how the change is seen working and how failures surface, so doing it up front — rather than iterating locally first, which proves nothing for these classes — is the faster path to a working, reviewable result. Each CI iteration costs a full round-trip, so get the first one running as early as possible.
+
+## Don't prune a `.gitignore` section in the same commit that deletes what produced its artifacts
+
+Removing a toolchain (a reference implementation, a build system, a generator) invites tidying away its ignore rules in the same commit — but the artifacts it already produced are usually still sitting untracked in the worktree (`__pycache__/` from an earlier test run, `build/` from an earlier build). The moment those rules go, the next `git add -A` sweeps the junk *into* the very commit that was supposed to remove it, and nothing complains: the commit is valid, the tests still pass, and it surfaces only as an inflated file count in the diff a reviewer reads. Delete (or `git clean`) the artifacts first, then drop their ignore lines. And after any bulk `git add -A`, read `git diff --cached --stat`, not just `git status` — staged additions are exactly what a clean `git status` stops telling you about.
 
 ## Never `git checkout <ref> -- <paths>` to carry uncommitted edits onto another branch
 
@@ -107,6 +125,9 @@ GitHub **Actions** reports results as **check runs**, not the legacy **commit st
 
 A `push` or `workflow_dispatch` run isn't attached to a PR, so the PR-scoped check-run query above doesn't apply to it. Confirm such a run through the GitHub API/MCP tools: `get_job_logs(run_id, failed_only: true)` — "0 failed jobs" means green — or, for a release build, `get_release_by_tag`. Don't `curl` the run's status instead: in a sandboxed session `api.github.com` is proxy-blocked and returns an error body that never matches a success pattern, so a `curl`/`Monitor` poll silently reports "still running" until it times out.
 
+## A green run is not evidence its job ran — read the job's own conclusion
+
+A workflow that gates a later job (an `if:` on changed paths, a mode flag, a preceding job's output) concludes **success** with that job **skipped** — so "the release workflow is green" is not evidence the publish step ever executed, and most green runs may never have reached it. When triaging whether something actually happened, read the conclusion of the **job that does it**, never the run's. The corollary for closing an issue: the only closing evidence is a run that actually reached that job and went green (or the external system showing the effect) — fixing a repo-side defect that merely co-occurred with the failure verifies nothing, and a failure whose cause is state in an external service has no fix in the repo at all.
 ## Mark large committed fixtures `linguist-vendored` to fix language stats
 
 Large committed fixture files (full-page HTML, generated data dumps) can dwarf actual source by byte count and cause GitHub to mislabel the repo's primary language. Add a `.gitattributes` entry for each such path (e.g. `test/fixtures/*.html linguist-vendored`) to tell Linguist to ignore it; apply the same annotation whenever you add another large generated or fixture file.
