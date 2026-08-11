@@ -67,7 +67,7 @@ migration).
 ```js
 export default {
   id: 'growth-extract',
-  frequency: 'daily-1h',   // hourly | daily-2h | daily-1h | daily | daily+1h | weekly | monthly — nothing else
+  frequency: 'daily-1h',   // hourly | daily-2h | daily-1h | daily | daily+1h | weekly | monthly | manual — nothing else
   precondition_signals: ['commits', 'prs', 'issues'],   // which parts of the signals object to collect
   agent_model: 'opus',     // opus | sonnet | haiku | none — 'none' = pure code, no agent, no issue
   expected_outcome: 'merged-pr', // none | open-pr | merged-pr — the task's write ceiling (§4)
@@ -84,7 +84,11 @@ export default {
 }
 ```
 
-- **`frequency`** — exactly the seven values above. `daily±Nh` offsets the repo's
+- **`frequency`** — exactly the values above. `manual` is the one non-cadence
+  (as-built 2026-08-11, #749): the task is never due on any schedule and runs only
+  when a hand-started run forces it — the operator-lever shape, for work that
+  answers no recurring question but wants the task apparatus (contract validation,
+  prework, the dispatch issue) when a human pulls it. `daily±Nh` offsets the repo's
   daily anchor hour (§2); weekly/monthly fire at the anchor hour on the configured day.
 - **`precondition_signals`** — the scheduler collects only the union of what the *due* tasks
   declare; a non-daily slot never pays for daily tasks' signals.
@@ -262,7 +266,13 @@ refresh, not workflow edits). It runs
    free-form `KEY=value` string, since GitHub cannot declare arbitrary named
    inputs. It reaches the engine as `CLAUDINITE_OVERRIDES`, and the engine
    understands exactly one key: **`FORCE_TASKS=<comma-separated task ids>`**.
-   A forced task is put in the due list under its most-recent slot **and runs
+   A run carrying FORCE_TASKS evaluates **only** the forced tasks (as-built
+   2026-08-11, #749) — never whatever else happened to be due at that minute, so a
+   button that names specific work means the same thing whenever it is pressed, and
+   a fleet fan-out firing twenty members' schedulers means exactly one task in each.
+   The skipped due work is not lost: the success watermark counts **schedule-event
+   runs only** (`lastSuccessTime`), so a slot a forced run stepped over stays due
+   for the next cron. Each forced task runs under its most-recent slot **and runs
    without its precondition being consulted at all** *(as-built 2026-08-06: a
    forced dispatch's slot id carries a per-run marker, `<slot>~f<run-id>`, so the
    exactly-once guard never silently swallows an operator re-run of a slot the

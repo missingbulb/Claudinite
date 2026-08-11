@@ -1,13 +1,21 @@
-// The fleet-add-missing-packs preprocessing entry point — the script the scheduler runs
-// as `node worker.mjs …` (cwd = this task dir, bounded by prework_timeout), before the
-// agent stage.
+// The fleet-add-missing-packs prework entry point — the script the scheduler runs
+// as `node worker.mjs …` (cwd = this task dir, bounded by prework_timeout). The
+// WHOLE task: `agent_model: 'none'`, no dispatch issue here, no enforcer-side agent.
 //
-// It holds no sweep logic and no force logic. It holds what BOTH halves need and neither
-// may own privately: the parameters (params.mjs), the token and the fleet config, the
-// canon pack corpus, and the ONE read of this repo's work-list issues that both halves
-// converge against. The halves themselves are its siblings in this folder —
-// scan-for-needed-packs.mjs (what might a member want?) and force-add-packs.mjs (put
-// these packs on these repos, now) — because nothing outside this task uses either.
+// THE FAN-OUT MODEL (#749). This task used to end in an agent stage that ran
+// adopt-pack against members from the ENFORCER's session — which failed in
+// production the first time it ran, because the enforcer's executor is (correctly)
+// scoped to the enforcer repo alone. Now the enforcer only DISPATCHES: each half
+// converges a work-list issue IN the member (protocol.mjs) and fires that member's
+// own scheduler with `FORCE_TASKS=adopt-requested-packs`; the member's own task
+// reads its own issue, its own executor adopts with the repo checked out, and the
+// reviewed PR lands there. No agent anywhere needs cross-repo access.
+//
+// It holds no scan logic and no force logic — those are its siblings,
+// scan-for-needed-packs.mjs (what might a member want?) and force-add-packs.mjs
+// (put these packs on these repos, now). It holds what both need and neither may
+// own privately: the parameters (params.mjs), the token and fleet config, the canon
+// pack corpus, and the firing loop.
 //
 // TWO CALL SITES, NO DEFAULTS (params.mjs has the reasoning):
 //   weekly   task.mjs's prework line — `--scan-for-needed-packs=true --repos=all-covered-members`
@@ -20,34 +28,29 @@
 //              PACK_ANSWER=some-pack.store=owner/Store — the fleet's store
 //            (keys split on commas, so values are space-separated and comma-free.)
 //
-// What it hands the agent is the ISSUE SURFACE, not a data channel: both halves converge
-// `fleet-add-missing-packs` issues in this repo, and the agent stage reads them from there
-// under its own instructions (task.md). The one thing that crosses as data is the agent
-// REQUEST — the scheduler hands this worker a path via CLAUDINITE_REQUEST_AGENT and files
-// the `ready-for-agent` dispatch iff the worker creates it (engine/scheduler/prework.mjs),
-// carrying the NAME of the condition and nothing else. So a week with an empty work list
-// runs no agent at all, which is what makes an unconditionally-scheduled weekly sweep
-// cheap, and a forced run reaches the agent in the same run that filed its request.
-//
-// Failure is the escalation path. Anything unusable — a parameter that was not sent, a
-// pack that does not exist, an interview question the force did not answer, a member that
-// could not be swept — throws, and this worker turns that into a non-zero exit. The
-// scheduler treats a non-zero prework subprocess as a failed task: it converges one open
-// `needs-human` issue for the task family (engine/scheduler/run.mjs) and never reaches the
-// agent stage. A run that could not see what it was acting on must not be followed by an
-// agent acting on a partial picture.
+// Failure is the escalation path. Anything unusable — a parameter that was not
+// sent, a pack that does not exist, an interview question the force did not answer,
+// a member that could not be swept or fired — throws, and this worker turns that
+// into a non-zero exit; the scheduler converges one open `needs-human` issue for
+// the task family. A run that could not see (or reach) what it was acting on must
+// not report itself green.
 
-import { appendFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { makeGh, ensureLabel, labeledIssues, DECLARATION } from '../../fleet-api.mjs';
+import { makeGh, paged, DECLARATION, fireScheduler } from '../../fleet-api.mjs';
 import { parseSheepdogConfig } from '../../fleet-config.mjs';
 import { parseParams } from './params.mjs';
 import { loadCanonPacks } from './canon-packs.mjs';
-import { runScan, LABEL, LEGACY_LABEL } from './scan-for-needed-packs.mjs';
+import { runScan, renderFitSummary } from './scan-for-needed-packs.mjs';
 import {
-  resolveTargets, convergeForceIssues, convergeForceClosures, renderForceSummary,
+  resolveTargets, convergeRequestedIssue, requestedBody, renderForceSummary,
   unknownPacks, unansweredQuestions, qualify,
 } from './force-add-packs.mjs';
+
+// The member-side task every fan-out fires — grow_with_claudinite's, present in
+// every member because that pack is seeded by default. Named once; the member task's
+// directory name is the other half of this coupling, pinned by the protocol test.
+export const MEMBER_TASK = 'adopt-requested-packs';
 
 const slotId = process.env.CLAUDINITE_SLOT_ID || '';
 const log = (s) => console.log(`fleet-add-missing-packs${slotId ? ` [${slotId}]` : ''}: ${s}`);
@@ -57,11 +60,11 @@ const emit = (text) => {
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${text}\n`);
 };
 
-// The override bag, re-parsed here rather than imported from the engine: this worker runs
-// as a SUBPROCESS of the scheduler and inherits `CLAUDINITE_OVERRIDES` as text, and a pack
-// importing an engine module for four lines of splitting is the coupling packs exist to
-// avoid. The shape is the engine's (`A=1,B=2`, newline-separated, bare key ⇒ `true`) and
-// is asserted against it in this task's tests.
+// The override bag, re-parsed here rather than imported from the engine: this worker
+// runs as a SUBPROCESS of the scheduler and inherits `CLAUDINITE_OVERRIDES` as text,
+// and a pack importing an engine module for four lines of splitting is the coupling
+// packs exist to avoid. The shape is the engine's (`A=1,B=2`, newline-separated,
+// bare key ⇒ `'true'`) and is asserted against it in this task's tests.
 export function parseOverrideBag(raw) {
   const out = {};
   for (const part of String(raw ?? '').split(/[,\n]/)) {
@@ -74,33 +77,10 @@ export function parseOverrideBag(raw) {
   return out;
 }
 
-// The one read of this repo's work-list issues, under the current label AND the one it
-// carried before the 2026-08-10 rename. A legacy-labelled issue is RELABELLED on sight
-// rather than left alone: the agent stage reads one label, so an issue still carrying the
-// old one is a finding nobody acts on and the next sweep would file a duplicate beside it.
-async function readWorkLists(gh, home) {
-  const current = await labeledIssues(gh, home, LABEL);
-  const legacy = await labeledIssues(gh, home, LEGACY_LABEL);
-  const relabelled = [];
-  for (const issue of legacy.open) {
-    if (issue.labels?.some((l) => (l.name ?? l) === LABEL)) continue;
-    await gh(`/repos/${home}/issues/${issue.number}/labels`, { method: 'POST', body: { labels: [LABEL] } });
-    await gh(`/repos/${home}/issues/${issue.number}/labels/${LEGACY_LABEL}`, { method: 'DELETE' });
-    relabelled.push(`#${issue.number}`);
-  }
-  const byNumber = new Map([...legacy.open, ...current.open].map((i) => [i.number, i]));
-  return {
-    open: new Map([...byNumber.values()].map((i) => [i.title, i])),
-    closed: [...legacy.closed, ...current.closed],
-    relabelled,
-  };
-}
-
 export async function main() {
-  // The scan resolves the HOME repo — the one whose sheepdog pack entry carries the fleet
-  // config, and the one the work-list issues land in — from GITHUB_REPOSITORY. Actions
-  // sets it and the subprocess inherits it; CLAUDINITE_REPO is the scheduler's own name
-  // for the same fact, so fall back to it rather than depending on which is present.
+  // GITHUB_REPOSITORY names the HOME repo — the one whose sheepdog entry carries the
+  // fleet config. Actions sets it; CLAUDINITE_REPO is the scheduler's own name for
+  // the same fact, so fall back rather than depending on which is present.
   if (!process.env.GITHUB_REPOSITORY && process.env.CLAUDINITE_REPO) {
     process.env.GITHUB_REPOSITORY = process.env.CLAUDINITE_REPO;
   }
@@ -117,8 +97,9 @@ export async function main() {
   const home = process.env.GITHUB_REPOSITORY;
   if (!token) {
     throw new Error('FLEET_GITHUB_TOKEN is not set. Add a repo secret with a fine-grained PAT '
-      + '(this account, ALL repositories, Metadata read, Contents read + Issues read/write) — '
-      + 'the default GITHUB_TOKEN sees only this repo and cannot reach the fleet.');
+      + '(this account, ALL repositories, Metadata read, Contents read, Issues read/write, and Actions '
+      + 'READ AND WRITE — firing a member\'s scheduler is an Actions write) — the default GITHUB_TOKEN '
+      + 'sees only this repo and cannot reach the fleet.');
   }
   if (!home || !home.includes('/')) throw new Error('GITHUB_REPOSITORY is not set (owner/repo)');
   const gh = makeGh(token);
@@ -135,8 +116,8 @@ export async function main() {
 
   // The pack corpus comes from CANON, not from this enforcer's own mount — the mount
   // carries only the packs this repo declares, so the scan would test every member
-  // against a handful of packs and report the whole fleet as fitted, and the force would
-  // reject a perfectly real pack id as unknown. See canon-packs.mjs.
+  // against a handful of packs and report the whole fleet as fitted, and the force
+  // would reject a perfectly real pack id as unknown. See canon-packs.mjs.
   const { packs, dispose } = await loadCanonPacks({ canonRepo, token });
   try {
     await run({ gh, home, owner, canonRepo, packs, params });
@@ -145,15 +126,15 @@ export async function main() {
   }
 }
 
-// The run proper, with the corpus in hand. Split out so the scratch clone has exactly one
-// disposal site whatever happens inside — including the deliberate throw at the foot,
-// which must still fail the run.
+// The run proper, with the corpus in hand. Split out so the scratch clone has exactly
+// one disposal site whatever happens inside — including the deliberate throw at the
+// foot, which must still fail the run.
 async function run({ gh, home, owner, canonRepo, packs, params }) {
   const packsById = new Map(packs.map((p) => [p.id, p]));
 
-  // VALIDATE THE FORCE FIRST, before the label, the issue read, or a single member is
-  // touched. A force is all-or-nothing (force-add-packs.mjs), and the cheapest place to
-  // refuse one is before anything has happened at all.
+  // VALIDATE THE FORCE FIRST, before a single member is touched. A force is
+  // all-or-nothing (force-add-packs.mjs), and the cheapest place to refuse one is
+  // before anything has happened at all.
   if (params.addPacks.length) {
     const unknown = unknownPacks(params.addPacks, packs);
     if (unknown.length) {
@@ -169,79 +150,71 @@ async function run({ gh, home, owner, canonRepo, packs, params }) {
     }
   }
 
-  await ensureLabel(gh, home, LABEL, {
-    color: '0E8A16',
-    description: 'A member is missing packs — fingerprinted by the weekly scan, or requested by hand',
-  });
-  const { open, closed, relabelled } = await readWorkLists(gh, home);
-  if (relabelled.length) log(`adopted ${relabelled.length} issue(s) still labelled \`${LEGACY_LABEL}\`: ${relabelled.join(', ')}`);
+  // One fleet enumeration, shared by both halves and the fire step (the fire needs
+  // each member's default branch — workflow_dispatch resolves on a ref).
+  const mine = (await paged(gh, '/user/repos?affiliation=owner'))
+    .filter((r) => r.owner.login.toLowerCase() === owner);
+  const reposByName = new Map(mine.map((r) => [r.full_name.toLowerCase(), r]));
 
-  // The scan compares against `owner/name` throughout, so a name typed bare in the
-  // override box is qualified here — the same rule the force half applies to the same
-  // input, kept in one place so the two halves can never disagree about what was named.
+  const fireFailures = [];
+  const fire = async ({ fullName, defaultBranch }) => {
+    const branch = defaultBranch ?? reposByName.get(fullName.toLowerCase())?.default_branch;
+    if (!branch) { fireFailures.push(`${fullName}: not in the enumeration — cannot resolve its default branch`); return null; }
+    const verdict = await fireScheduler(gh, fullName, branch, MEMBER_TASK);
+    if (verdict.state !== 'fired') { fireFailures.push(`${fullName}: ${verdict.state} — ${verdict.detail}`); return null; }
+    return fullName;
+  };
+
+  // A name typed bare in the override box is qualified against the configured owner
+  // here, once, so the two halves can never disagree about what was named.
   const scopedRepos = params.repos ? params.repos.map((n) => qualify(n, owner)) : null;
 
-  let scanned = null;
+  let scanUnknown = [];
   if (params.scan) {
-    log('sweeping for packs a member\'s shape suspects but its declaration does not carry');
-    scanned = await runScan({
-      gh, home, owner, canonRepo, packs, repos: scopedRepos, open, closed,
-    });
-    emit(scanned.summary);
+    log('scanning the fleet for packs a member\'s shape suspects but its declaration does not carry');
+    const scanned = await runScan({ gh, home, owner, canonRepo, packs, repos: scopedRepos });
+    scanUnknown = scanned.unknown;
+    const fired = [];
+    for (const target of scanned.toFire) {
+      const ok = await fire(target);
+      if (ok) fired.push(ok);
+    }
+    emit(renderFitSummary({ ...scanned.summaryArgs, fired }));
+    if (fired.length) log(`fired ${fired.length} member scheduler(s): ${fired.join(', ')}`);
   }
 
-  let forcedTargets = [];
   if (params.addPacks.length) {
-    log(`forcing ${params.addPacks.join(', ')} onto ${params.repos.length} named repo(s)`);
+    log(`requesting ${params.addPacks.join(', ')} in ${params.repos.length} named repo(s)`);
     const { targets, alreadyDeclared } = await resolveTargets(gh, {
-      repos: params.repos, owner, addPacks: params.addPacks,
+      repos: params.repos, owner, addPacks: params.addPacks, reposByName,
     });
-    const actions = await convergeForceIssues(gh, home, {
-      targets,
-      addPacks: params.addPacks,
-      packConfig: params.packConfig,
-      packAnswers: params.packAnswers,
-      packsById,
-      requestedBy: 'a forced run of fleet-add-missing-packs',
-      open,
-    });
-    forcedTargets = targets;
-    emit(renderForceSummary({ owner, addPacks: params.addPacks, targets, alreadyDeclared, actions }));
+    const actions = []; const fired = [];
+    for (const target of targets) {
+      const body = requestedBody({
+        addPacks: target.missing,
+        packConfig: params.packConfig,
+        packAnswers: params.packAnswers,
+        packsById,
+        enforcer: home,
+      });
+      const { action } = await convergeRequestedIssue(gh, target.fullName, { body });
+      if (action) actions.push(`${action} (${target.fullName})`);
+      const ok = await fire(target);
+      if (ok) fired.push(ok);
+    }
+    emit(renderForceSummary({ owner, addPacks: params.addPacks, targets, alreadyDeclared, actions, fired }));
   }
 
-  // Close what has landed since — on every run, whichever half opened it.
-  const closures = await convergeForceClosures(gh, home, { open });
-  if (closures.length) log(`forced work lists closed: ${closures.join('; ')}`);
-
-  // THE AGENT REQUEST. The dispatch is conditional (engine/scheduler/prework.mjs): the
-  // agent stage runs iff this file is written, so a quiet week costs an agent nothing and
-  // a forced run reaches the agent inside the same run that filed its request. What the
-  // request carries is the NAME of the condition and a count — never the findings, which
-  // stay in the issues the agent reads for itself.
-  const scanFindings = scanned?.findings.length ?? 0;
-  const wanted = scanFindings + forcedTargets.length;
-  const requestPath = process.env.CLAUDINITE_REQUEST_AGENT;
-  if (wanted && requestPath) {
-    writeFileSync(requestPath, JSON.stringify({
-      reason: {
-        code: params.addPacks.length ? 'packs-requested' : 'undeclared-fits',
-        detail: [
-          forcedTargets.length ? `${forcedTargets.length} member(s) were asked by hand to declare ${params.addPacks.join(', ')}` : '',
-          scanFindings ? `${scanFindings} member(s) carry shapes fingerprinting packs they do not declare` : '',
-        ].filter(Boolean).join('; '),
-      },
-    }));
-    log(`agent requested — ${wanted} member(s) on the work list`);
-  } else if (!wanted) {
-    log('no member is missing a pack this run — no agent needed');
-  }
-
-  // Unknown is not fitted. A member the scan could not read was not measured, no issue was
-  // opened or closed for it, and the run fails so the cause is escalated — AFTER the
-  // reports above, which stand.
-  if (scanned?.unknown.length) {
-    throw new Error(`${scanned.unknown.length} repo(s) could not be swept — unknown is not fitted, `
-      + 'no work list was opened or closed for them, and this run fails so the cause is escalated');
+  // Unknown is not fitted, and unfired is not dispatched. A member the scan could not
+  // read was not measured; a member whose scheduler refused the dispatch has a work
+  // list nobody will act on. Both fail the run — AFTER the reports above, which stand.
+  const problems = [
+    ...scanUnknown.map((u) => `unswept: ${u}`),
+    ...fireFailures.map((f) => `unfired: ${f}`),
+  ];
+  if (problems.length) {
+    throw new Error(`${problems.length} member(s) did not come through cleanly — ${problems.join('; ')} — `
+      + 'the rest are reported above, and this run fails so the cause is escalated');
   }
 }
 

@@ -484,9 +484,11 @@ test('an id matching no discovered task forces nothing, and never throws', async
   assert.deepEqual(evaluations, []);
 });
 
-test('a task due on its own merit is judged normally, not forced', async () => {
-  // Same slot due AND named in FORCE_TASKS: the due branch wins, so the task is
-  // evaluated the ordinary way and its own "no" stands.
+test('a forced task that happens to also be due is still FORCED — the operator\'s decision wins', async () => {
+  // Same slot due AND named in FORCE_TASKS: forcing wins (#749). The operator
+  // pressed a button naming this task; whether its slot coincidentally came due is
+  // an accident of when they pressed it, and must not change what the button does —
+  // the precondition stays unconsulted either way.
   const { evaluations } = await planRun({
     tasks: [notDue('baselining')], schedule: D,
     now: '2026-07-28T02:30:00Z', lastSuccess: '2026-07-28T01:44:00Z', // the 02:00 slot IS due
@@ -495,8 +497,57 @@ test('a task due on its own merit is judged normally, not forced', async () => {
     existingIssuesFor: async () => [],
   });
   assert.equal(evaluations.length, 1);
-  assert.equal(evaluations[0].forced, undefined);
-  assert.equal(evaluations[0].run, false, 'due on its own merit → its precondition decides');
+  assert.equal(evaluations[0].forced, true);
+  assert.equal(evaluations[0].run, true, 'forced means run, even when the slot was also due');
+});
+
+test('a forced run evaluates ONLY the forced tasks — never the rest of the due backlog', async () => {
+  // The fan-out contract (#749): an enforcer firing FORCE_TASKS at twenty members
+  // must mean exactly one task in each, not one task plus whatever each member's
+  // clock happened to owe. The due task is not lost — its slot stays ahead of the
+  // schedule-event watermark (lastSuccessTime counts schedule runs only), so the
+  // next cron run picks it up.
+  let dueConsulted = false;
+  const { evaluations } = await planRun({
+    tasks: [
+      mkTask('wanted', { frequency: 'weekly', precondition: () => { throw new Error('never consulted'); } }),
+      mkTask('coincident', { frequency: 'hourly', precondition: () => { dueConsulted = true; return { run: true, reason: 'due' }; } }),
+    ],
+    schedule: D,
+    now: '2026-07-28T02:30:00Z', lastSuccess: '2026-07-28T01:44:00Z', // hourly 02:00 IS due
+    overrides: { FORCE_TASKS: 'wanted' },
+    collectSignals: async () => ({}),
+    existingIssuesFor: async () => [],
+  });
+  assert.equal(evaluations.length, 1, 'only the forced task is evaluated');
+  assert.equal(evaluations[0].task, 'wanted');
+  assert.equal(evaluations[0].forced, true);
+  assert.equal(dueConsulted, false, 'the coincidentally-due task was never looked at');
+});
+
+test('a manual-frequency task never fires on any cadence, and fires when forced', async () => {
+  // `manual` is the operator-lever frequency (#749): dueSlots skips it
+  // unconditionally, so only FORCE_TASKS reaches it — with the forced slot
+  // synthesized from the anchor date plus planRun's per-run marker.
+  const manual = mkTask('lever', { frequency: 'manual', precondition: () => { throw new Error('never consulted'); } });
+  const idle = await planRun({
+    tasks: [manual], schedule: D,
+    now: '2026-07-28T02:30:00Z', lastSuccess: '2026-07-27T01:44:00Z', // a day's backlog — everything cadenced would fire
+    collectSignals: async () => ({}),
+    existingIssuesFor: async () => [],
+  });
+  assert.equal(idle.evaluations.length, 0, 'no cadence ever makes a manual task due');
+
+  const forced = await planRun({
+    tasks: [manual], schedule: D,
+    now: '2026-07-28T02:30:00Z', lastSuccess: '2026-07-27T01:44:00Z',
+    overrides: { FORCE_TASKS: 'lever' }, runId: '99',
+    collectSignals: async () => ({}),
+    existingIssuesFor: async () => [],
+  });
+  assert.equal(forced.evaluations.length, 1);
+  assert.equal(forced.evaluations[0].forced, true);
+  assert.match(forced.evaluations[0].slotId, /^x2026-07-28~f99$/, 'anchor-date slot + the per-run forced marker');
 });
 
 test('forcedTaskIds reads only FORCE_TASKS, trimming and dropping blanks', () => {

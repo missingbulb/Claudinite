@@ -155,3 +155,57 @@ export async function isCovered(gh, fullName) {
   // "covered" repo no task ever runs on. (vendoring/DESIGN.md)
   return fileExists(gh, fullName, '.claudinite-checks.json');
 }
+
+// --- firing a member's own scheduler -------------------------------------------
+
+// The member-side workflow every fan-out fires, and the shape of the firing. Two of
+// this pack's tasks press this button — fleet-baseline (each member baselines itself)
+// and fleet-add-missing-packs (each member adopts the packs its work-list issue names)
+// — so the primitive lives here on the shared floor rather than in either task. The
+// fan-out model is the point (#749): the enforcer DISPATCHES, the member EXECUTES —
+// every agentic step happens inside the member, under its own scheduler, executor and
+// grant, so no agent anywhere needs cross-repo access. The one credential is the PAT,
+// and the one scope beyond the read-only sweeps' is Actions WRITE (a workflow_dispatch
+// POST is an Actions write).
+export const SCHEDULER = 'claudinite-scheduler.yml';
+
+// Fire one member's scheduler with a FORCE_TASKS override, ONE task id per fire —
+// the override bag splits pairs on commas (engine parseOverrides), so a
+// comma-separated id list would not survive the trip, and no fan-out here wants more
+// than one task anyway. `ref` is the member's DEFAULT branch (read from the
+// enumeration, never assumed to be `main`): workflow_dispatch resolves the workflow
+// file on the ref it is given, and a repo whose trunk is `master` would otherwise 404
+// as if it carried no scheduler at all. A forced run evaluates ONLY the named task
+// (engine/scheduler/run.mjs, #749) — never the member's coincident backlog.
+export async function fireScheduler(gh, fullName, ref, taskId) {
+  const { status } = await gh(`/repos/${fullName}/actions/workflows/${SCHEDULER}/dispatches`, {
+    method: 'POST',
+    body: { ref, inputs: { overrides: `FORCE_TASKS=${taskId}` } },
+  });
+  return classifyDispatch(status);
+}
+
+// What the dispatch POST's status means. Every branch is a DIFFERENT thing for the
+// reader to do, which is why callers report a state per repo instead of a count of
+// failures: a 404 is a repo to adopt, a 403 is a token to re-scope, a 422 is a
+// workflow GitHub has switched off. Kept free of I/O so the whole table is testable.
+export function classifyDispatch(status) {
+  switch (status) {
+    case 204:
+      return { state: 'fired', detail: 'queued on its own scheduler' };
+    case 404:
+      // The workflow is missing, the repo has Actions disabled, or the PAT cannot see
+      // the repo at all — indistinguishable from here, and all three mean "nothing was
+      // queued".
+      return { state: 'no-scheduler', detail: `no ${SCHEDULER} on the default branch, or Actions is disabled — nothing there can run its own tasks` };
+    case 403:
+      return { state: 'no-permission', detail: 'the PAT lacks Actions: write on this repo — dispatching a workflow is an Actions write, a scope the read-only sweeps never needed' };
+    case 422:
+      // GitHub disables a repo's scheduled workflows after 60 days of inactivity, and a
+      // disabled workflow refuses dispatch; a scheduler stub too old to carry the
+      // `overrides` input lands here too.
+      return { state: 'not-dispatchable', detail: 'the workflow exists but refused the dispatch — it is disabled (GitHub switches off cron on inactive repos), or too old to accept the `overrides` input' };
+    default:
+      return { state: 'error', detail: `dispatch returned ${status}` };
+  }
+}
