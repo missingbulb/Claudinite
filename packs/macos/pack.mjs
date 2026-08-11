@@ -1,3 +1,6 @@
+import signalTeardownRouting from './signal-teardown-routing.mjs';
+import suddenTerminationVsTeardown from './sudden-termination-vs-teardown.mjs';
+
 // Technology pack: a native macOS app — the app bundle, TCC and Hardened
 // Runtime, the Developer ID / notarization / DMG distribution lane, and the
 // process-lifecycle rules a Mac agent app has to get right.
@@ -23,9 +26,12 @@ export default {
   marker: 'Package.swift (at the repo root or one directory down)',
   detect: (ctx) => hasMarkerNearRoot(ctx, 'Package.swift'),
   prose: 'RULES.md',
-  // No conformance checks yet. Every rule below is either runtime device
-  // behaviour, a CI lane's shape, or a plist/entitlement judgment call whose
-  // grounded cases have no false-positive-free static signature — so they land
-  // as prose rather than as a check that would fire on healthy repos.
-  worldRules: [],
+  // Two checks, both on the exit-path rules — the only ones whose violation has
+  // a static signature that is false-positive-free *because the rule is itself
+  // conditional*: each fires only where the tree shows the posture the rule is
+  // about (terminate-time teardown; an AppKit app that installs a capture tap).
+  // Everything else in RULES.md stays prose — runtime device behaviour, a CI
+  // lane's shape, or a plist/entitlement judgment call, none of which a scan can
+  // separate from a healthy repo.
+  worldRules: [suddenTerminationVsTeardown, signalTeardownRouting],
 };

@@ -26,8 +26,12 @@ target is `ios`.
 ## TCC and the Hardened Runtime are two different gates — know which applies
 
 Every protected resource needs a **usage-description string** in `Info.plist` (the text of the
-consent prompt; without it the app is killed rather than prompted). Only *some* also need a
-**codesign entitlement**, and only under the Hardened Runtime:
+consent prompt; without it the app is killed rather than prompted) — one key per resource, and they
+are separate keys for capabilities that feel like one feature: `NSMicrophoneUsageDescription` covers
+audio input, `NSSpeechRecognitionUsageDescription` covers the Speech framework, and an app that
+listens *and* transcribes needs both or is killed at whichever it forgot. What each string says is
+what the user consents to. Only *some* resources also need a **codesign entitlement**, and only
+under the Hardened Runtime:
 
 - **Notarization requires the Hardened Runtime** (`codesign --options runtime`), and under it a
   resource-access exception must be granted explicitly by entitlement — device capture
@@ -40,6 +44,19 @@ consent prompt; without it the app is killed rather than prompted). Only *some* 
 - **Do not enable the App Sandbox on the Developer ID track.** The sandbox belongs to the Mac App
   Store lane, needs a different (Apple Distribution) certificate, and silently removes
   capabilities the direct-download build has — distributed notifications, for one.
+
+## Speech recognition leaves the machine unless you say it must not
+
+- **`SFSpeechRecognizer` streams audio to Apple's servers by default.** On-device recognition is
+  opt-in, and the opt-in is a property of the **request**
+  (`request.requiresOnDeviceRecognition = true`), not of the recognizer — so it has to be set on
+  every request the app builds, and a new call site added later starts out server-side. Nothing in
+  the build says which mode ran; the difference is only visible in what left the machine.
+- **The opt-in is only honourable where the locale's model is installed.** `supportsOnDeviceRecognition`
+  is per-recognizer and false until then, and requiring on-device recognition where it isn't
+  supported fails the request rather than quietly falling back — so check it and decide the degrade
+  deliberately (refuse the feature, or say plainly that this locale would transcribe off-device).
+- Speech is TCC-gated, so it needs its usage string and **no** entitlement — see the section above.
 
 ## Keep signing and notarization an optional, secret-gated lane
 
@@ -93,8 +110,6 @@ The machine running a distributed app installed the artifact; it has no Xcode. T
   **before** `resume()`, or a signal arriving in the gap still takes the fatal default.
   `SIGKILL`, Force Quit and a crash stay uncoverable; name that as residual risk rather than
   claiming coverage.
-- **Don't add `NSSupportsSuddenTermination` if you have teardown that must run** — it licenses the
-  system to `SIGKILL` the app at logout, past everything above.
 - **An uncaught Objective-C exception is an exit path too.** It aborts the process, so no teardown
   runs; a framework call that *raises* (rather than throws) is therefore a resource-release bug as
   well as a crash. Swift cannot catch `NSException` — a tiny Objective-C target of your own is the
@@ -133,20 +148,30 @@ most to learn:
   opens the default device and mints a hidden per-client aggregate device; a retry ladder built on
   that is not a cheap probe but an open/close plus an aggregate create-and-destroy, repeated for as
   long as the hardware is missing. Query the HAL's device properties instead — a property read
-  opens nothing and can be sampled forever for free.
-- **Presence is not usability.** Mid-teardown a device enumerates as alive with an unreadable name
-  and a **zero** sample rate. Require a nonzero rate and a sane channel count, and judge the
-  *system default* input — a healthy device behind a broken default is not one you can capture
-  from.
+  opens nothing and can be sampled forever for free. The churn is observable rather than
+  theoretical: each hidden aggregate appears in the HAL as `CADefaultDeviceAggregate-<pid>-<n>`, so
+  what a retry ladder is really doing can be counted instead of argued about.
+- **Presence is not usability, at either layer.** Mid-teardown a device enumerates as alive with an
+  unreadable name and a **zero** sample rate. Require a nonzero rate and a sane channel count, and
+  judge the *system default* input — a healthy device behind a broken default is not one you can
+  capture from. One layer up, the engine lies in the opposite direction: with the input torn down,
+  the input node's `outputFormat(forBus: 0)` still reports a plausible 48 kHz while its
+  `inputFormat` reports 0, so a guard written against the wrong one waves through starts that
+  cannot succeed — read both and require them to agree. Whatever a new probe reads, ask what that
+  field says while the device is absent.
 - **A duration is a claim about a span you observed.** "It has been present for N seconds" is only
   as good as the observation behind it: a state maintained by a timer must be **seeded at start**
   (a repeating timer does not fire immediately) and **invalidated across any gap** — a sleep is a
   gap, and carrying a settle clock straight through one makes the gate inert on exactly the
-  transition it was built for. Model "not observed" as its own state, distinct from "absent".
+  transition it was built for. Model "not observed" as its own state, distinct from "absent", and
+  key the span on the device's **UID** — an unplug-and-replug, or a swap for a different mic, is a
+  new arrival that starts its own clock rather than inheriting the departed device's.
 - **"Started" is not "working".** A running engine delivering buffers of pure silence looks
   identical to a healthy one from the inside. Measure what actually arrives, publish a health state
   the UI renders, and when a failure mode has exactly one remedy, name **that** remedy rather than
   the generic one.
 - **Compile-green is not a gate for device code.** `swift build` cannot see a raise-vs-throw bug or
   a lifecycle race, and both are reachable in the first second of a run. A change here is not
-  verified until the app has actually launched on a Mac.
+  verified until the app has actually launched on a Mac. Reaching the interesting case needs no
+  hardware theatre: let the display sleep and `coreaudiod` tears its device contexts down seconds
+  later, which is the same transition as an unplug from the app's point of view.
