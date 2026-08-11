@@ -44,8 +44,12 @@ prefer the strongest mechanism it allows:
 3. **Terse prose** in the pack's `RULES.md` — only what neither of the above can carry.
 
 Write **more checks and less prose**: a check relieves every session's context completely, where prose only
-relocates it. When no pack's scope fits and the lesson warrants segregation, a new local pack is a
-self-contained directory drop.
+relocates it. When no pack's scope fits, the lesson lands in the repo's general local pack. A **new** local
+pack is justified only by the repo's own **project structure** — a segment of the repo's tree whose work is
+its own territory (a `client` pack for work under `client/`), so a repo's local packs mirror its layout.
+**Never mint a local pack around a technology or a methodology**, however real the knowledge: capture those
+lessons in the structural pack that owns the work, and let the canon-side promote stage — Claudinite's call,
+never a member's — decide whether a technology or methodology facet earns a pack of its own.
 
 **A gotcha tied to one call site is not a pack rule at all.** A trap from misusing a specific API, class, or
 library goes as a **comment right at the usage site** — next to the call itself, where the next editor of
