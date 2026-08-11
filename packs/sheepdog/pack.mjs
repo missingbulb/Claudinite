@@ -59,6 +59,14 @@
 // Everything else — the SCHEDULER (engine/scheduler/run.mjs), the
 // orchestrator/daily-run, the task engine (engine/scheduler/), scheduling — is CORE and
 // pack-agnostic; the planner never runs, dispatches, or depends on these sweeps.
+//
+// ONE CHECK, and it names no pack either (seeds-agree.mjs): the seed sweep writes this
+// repo's `packSeeds` into every member without ever consulting what this repo declares
+// for the same pack, so the two can drift apart silently. That is a fact about seeding,
+// not about any pack seeded — which is why it lives here and not in the pack whose
+// config happened to drift.
+import seedsAgree from './seeds-agree.mjs';
+
 export default {
   id: 'sheepdog',
   ruleRoutingGuidance: {
@@ -69,5 +77,7 @@ export default {
   detect: null,
   marker: null,
   prose: 'RULES.md',
-  worldRules: [],
+  // Audits the enforcer's config as it stands, whatever this session touched: a seed
+  // that drifted in an earlier commit is just as silent as one that drifted in this one.
+  worldRules: [seedsAgree],
 };
