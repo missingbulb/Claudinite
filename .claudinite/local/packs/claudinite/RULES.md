@@ -480,3 +480,12 @@ prose below).
   `overrides` input on both and said nothing about `permissions`, so the drift walked straight past it.
   So when a change touches the vendored stub, edit the canon's `.github/workflows/` copy in the **same
   commit** and diff the two whole files, never just the lines you came for.
+- **Never combine PRs by pushing one's branch onto the other's base — update the PR you're keeping,
+  close the other** (owner decision, 2026-08-11). GitHub marks a PR merged the moment its head is
+  reachable from its base, so the push merges it under your name and shows it merged into a branch
+  that is itself an open PR's head. A later `state: closed` is a no-op — check the API's `merged`
+  field before reporting (#754).
+- **One approved change is one PR.** A dispatch prompt's designated branch routes work, not review:
+  work that completes or corrects an open PR belongs on that PR's branch. Splitting it gives the owner
+  two gates for one decision and invites approving half — #739's new pack was approvable while
+  `basics` still held a rule the pack owned.
