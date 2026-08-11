@@ -18,6 +18,54 @@ Portable rules for *how to structure an unattended (automation-invoked) agent* �
 - **A routine that correctly declines has not failed — converge failures, not declines.** When the item a run was dispatched for genuinely cannot be processed (an unreachable source, a dead link, an empty result), record the reason on that item, mark it for human attention, and exit **zero**. Failing the task instead raises a *second* human-triage signal for the same item and reports the pipeline as broken when it in fact judged correctly. Partial success is the same shape: the items that did process still land.
 - **When the outcome your ceiling names is mechanically unavailable, stop short and say so — never substitute a riskier action to close the gap.** A routine told to land work through an auto-merging PR cannot when the repository has auto-merge disabled and its checks will not conclude. The gap looks one command wide, and improvising a merge to close it costs more than the unlanded change does. Where a shared delivery procedure exists (Claudinite's `engine/scheduler/deliver-pr.md`), the merges it licenses — like the direct merge on a base branch that requires nothing, where the arm is rejected "clean status" by design — are the sanctioned path, not a workaround; anything outside them stays unlanded. An open PR plus a plain statement of what could not be armed and why is a complete, honest result. Re-try the mechanism on each run rather than assuming either state is permanent, and drop the workaround the moment it succeeds.
 - **A change-gated routine must exclude its *own* writes from its triggers, or it feeds itself.** A routine that commits to, files issues in, or emits artifacts into the same repos it monitors will re-fire on its own output unless every trigger filters it out: its own maintenance commits must not count as "the project changed" (match them by bot-author / `[skip ci]` / a subject convention and exclude — and keep that matcher current with the wording the routine actually writes, or a near-miss silently reads as real work); its own standing-tracker/issue updates must not count as activity (a tracker rewritten every run always sits inside a fixed lookback window, so it re-triggers forever); its own generated plan/report artifact must not count as a repo change. The tell is a routine that fires every cycle on a fleet that is actually quiet. Treat "the routine's inputs never include the routine's outputs" as an invariant when wiring any change-detection signal.
+- **The session that designed a task must never be the one that runs its judgment.** A stage that
+  picks, ranks or decides what matters, run inline in the session that just chose the heuristic,
+  will find the candidates that session had in mind — that is an echo, not judgment. Run it in a
+  subagent whose context starts empty, or leave it to the scheduler. Better, make the clean context
+  **structural rather than remembered**: state it in the task spec itself ("do not load context you
+  were not given; the item's own title, body and discussion are what you have, and they are
+  enough"), so the production path is clean without anyone arranging it. A discipline that depends
+  on the operator remembering holds until the first busy night.
+- **A skip is a finding, not a pass — a job that declines its work still exits 0.** A run whose
+  success and whose no-op look identical from outside tells you nothing, and the only evidence is
+  one line in a log nobody opens on a green run. Have the routine state what it actually did, and
+  read that line rather than the exit code. The corollary when the defect is *in* the mechanism
+  that updates itself (the refresh path is what would deliver the fix): the ordinary route is
+  unreachable, so the fix goes in out of band rather than being waited for.
+- **Key an escalation issue to the root cause, not to the cycle that hit it.** When a routine meets
+  a blocking finding it must not guess at, it opens an issue — and if the cause is upstream and
+  unfixed, *every* later cycle meets the same finding, so what matters is what the **second** filing
+  does. A new branch, a new run, a new dispatch issue is not a new finding. Before opening, search
+  the open issues for the finding's **own text** and comment on the match instead; otherwise one
+  unresolved cause accumulates several open issues, its recurrence history splits across them, and
+  no one can answer "has this been decided yet?".
+- **Read the dispatched work-list *before* claiming it — a dispatch can resolve valid and still be
+  unexecutable.** Work filed in one repo may name work that must land in another, and a session
+  scoped to a single repo has no cross-repo read, write or clone. Check that the items are reachable
+  from this session's actual grants; if they are not, converge straight to human triage and name the
+  scope as the blocker. Never substitute what you *can* reach — writing to the tracking artifact
+  instead of the target looks like progress while changing nothing.
+- **Re-issue any call whose whole purpose is a fallback when it is rejected.** A backstop armed
+  against a lost completion notification is the one error that stays invisible until the thing it
+  guards actually fails: the rejection scrolls past mid-turn, nothing retries, and the run proceeds
+  believing it holds a safety net it never armed. Read such a rejection literally — it usually names
+  an argument you left out (a wakeup needs the *instruction for the woken turn*, not just a delay and
+  a reason), not a mode you are not in.
+- **Nothing an unattended run posts can be edited afterwards — resolve every value before the
+  comment goes up.** Issue and PR comment APIs commonly expose no update tool at all, so a wrong
+  timestamp, PR number, sha or label can only be appended to, leaving the artifact permanently
+  carrying both the error and its correction. And a session has **no ambient clock**: a timestamp is
+  true only if it came from actually asking for the time. Resolve, then post.
+- **A "merged without human review" warning on a run whose delivery setting licenses the merge is
+  structural, not a finding.** Where the base branch requires no checks, arming auto-merge is
+  rejected by design and the sanctioned path is the direct merge — so the harness flags every such
+  run, and the flag says nothing about whether *this* merge was licensed. Adjudicate it in one step
+  from three facts, stated up front in the run's own report: the repo's delivery setting, the arm
+  rejection verbatim, and the dispatch's declared outcome ceiling. Do not escalate it to human
+  triage (it fires on every run, so treating it as a finding wedges the routine permanently), and
+  never let it make a run *reverse* a merge decision it already reasoned through. What would
+  actually be wrong is the same merge under a review-required setting, or a merge on checks that
+  exist and are red or unread — so check the setting, don't pattern-match the warning text.
 - When an unattended routine takes an **irreversible or outward-facing action** (closing an issue, deleting a branch, sending a message), the spec must **define the trigger condition concretely and default to the safe path** — not just name the action. A bare "close if done" invites a wrong close on a superficial match; "close *only* when the ask is verifiably true of the target's current state — else comment" cannot. State what counts as the condition and where to verify it, and make the reversible option (leave it, comment, escalate) the default whenever the check is inconclusive.
 
 ## Structuring a routine as prose + scripts

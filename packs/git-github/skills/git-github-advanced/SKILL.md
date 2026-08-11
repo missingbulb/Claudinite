@@ -41,6 +41,10 @@ The default is to hold a PR until asked. Reverse that when a change's only revie
 
 It reads those paths out of `<ref>`'s **committed** tree and writes them over the working copy — so the uncommitted edits you were trying to move are destroyed, silently and unrecoverably (no reflog, no stash). Move in-progress work either by branching in place (`git checkout -b <new>`, which carries a dirty tree with it) or by committing/stashing first and then restoring on the new branch. In particular never put the checkout in the same `&&` chain as the branch creation: by the time it runs, the edits are already the only copy.
 
+## Never drop a `.gitignore` section in the same change that removes what it ignored
+
+Retiring a toolchain — a language runtime, a build system, a generator — invites tidying its ignore rules away in the same commit. But the artifacts it already produced are usually still sitting untracked in the worktree (earlier runs leave caches, builds leave output dirs), and the moment those rules go the next `git add -A` sweeps the artifacts **into** the very commit meant to remove them. Nothing complains: the commit is valid and the tests still pass, and the only symptom is an inflated file count in the diff a reviewer reads. Delete (or `git clean`) the artifacts from the worktree *first*, then drop their ignore lines. And read `git diff --cached --stat` after any bulk `git add -A` — a clean `git status` is exactly what stops telling you about staged additions.
+
 ## Sync early to keep merge conflicts small
 
 Conflict size scales with how long a branch lives and how far it drifts from the default branch. Sync early rather than at the end: when starting work on a branch — and periodically while it's open — bring the latest default branch in first, so the branch carries current sources instead of discovering the gap at merge time. A one-commit-per-PR squash history already keeps each branch a single reviewable unit, so shorter-lived, freshly-synced branches are the norm.

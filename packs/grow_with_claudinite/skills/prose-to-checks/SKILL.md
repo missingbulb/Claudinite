@@ -56,6 +56,20 @@ signature in the repo artifact* — something a post-hoc scan could observe?**
   judgment ("name by scope"), or knowledge whose failure is only visible at runtime (jsdom
   diverging from Chrome). These are why the rule is prose; don't force them.
 
+**"Not statically checkable" is a verdict about the tree's shape at the time, not about the
+rule — re-ask it against today's sources.** A removal, a migration or a consolidation can
+collapse the entry points a rule would have had to cover, and a rule that needed data-flow
+tracing across many of them may need none once one root is left. When a sweep meets prose an
+earlier sweep left behind, re-derive the objection instead of trusting the recorded verdict.
+
+**"Already covered by another check" is a claim to test, not to reason out — hand the sibling
+check a violating file before dropping a rule as a duplicate.** The reasoning is always of the
+form "any violation needs API *X*, and *X* is already banned", which is true of the one API
+whoever wrote the ban list thought of and false of the *capability*: the routes a ban list
+misses are invisible to exactly the reasoning that drew it. Writing the smallest file that
+breaks the rule and running the sibling against it costs a minute and is the only step that can
+disagree with you.
+
 **A static signature is necessary, not sufficient.** Both shapes the working-discipline rules bar
 — a rule that pins today's code in place, and one derivable from the product's requirements —
 answer *yes* here, so screen every candidate against that bar before converting it. Leave either
@@ -77,10 +91,17 @@ Follow the extract stage's check-authoring discipline (the local promotion ladde
    failure message *is* the rule (what / why / fix / `doc:` pointer back to the prose).
 2. **Write the fixture first and see it fail** — a violating fixture must find, a clean one must
    not (the test lives beside the pack's other tests). A conversion with no proving fixture
-   doesn't ship.
-3. **Ship at real severity, fail-fast** — blocking for a defect, advisory only when the rule is
+   doesn't ship. Make one of the silent cases the repo's **real** sources, not only a synthetic
+   clean file: a synthetic clean case passes for a check that is about to false-positive on the
+   tree it will actually run against, so the real-tree case is what catches that before it ships.
+3. **Prefer a positive whitelist over a list of the bad cases** wherever the allowed set is
+   enumerable — match "the argument is this literal" rather than banning the values you don't
+   want. A whitelist catches a member of the surface that doesn't exist yet the day it lands, and
+   turns indirection (a variable where a literal was expected) into a finding rather than an
+   escape hatch. Invert only where the allowed set is genuinely open-ended.
+4. **Ship at real severity, fail-fast** — blocking for a defect, advisory only when the rule is
    directional by kind.
-4. **Delete the prose the check now covers** — whole, never trimmed. The deletion test below is
+5. **Delete the prose the check now covers** — whole, never trimmed. The deletion test below is
    how you decide which paragraphs those are.
 
 **Before writing a rule off as un-checkable, try parsing the file's structure instead of grepping
