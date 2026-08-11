@@ -82,9 +82,32 @@ digits out of the string files everything an hour off during daylight saving, an
 data is simply wrong. Do the conversion in one function at the ingestion boundary and
 have everything downstream speak local time.
 
+"Exactly once" cuts both ways. A stage downstream of the boundary that parses,
+re-offsets or re-reads a stored value as UTC is the same bug from the other end, and
+so is a "now" taken from the device clock rather than the domain's zone — a reader in
+the same zone as the developer cannot see the difference, which is how a device clock
+survives review.
+
 Because the failure is silent, keep a **known-answer probe**: an item whose correct
 value you know independently (something named after its own time, a figure published
 elsewhere). Check it after every fresh pull.
+
+**Read an ambiguous value by what the page declares, centrally — never per-source,
+never guessed.** A numeric slash date whose parts are both ≤ 12 (`05/07/2026`) has no
+intrinsic answer; resolve it from a *positive* signal the document gives you (an
+explicit region in `<html lang>` or `og:locale`, a non-English language) and keep the
+default when the signal is absent or region-less, rather than inferring one from the
+host or the venue. Put that resolution in one helper the whole pipeline threads, so a
+new source cannot invent its own reading. Note also that a trailing `Z` or `+00:00` is
+*serialization*, not a claim about the subject's zone: it neither supplies the zone
+nor vetoes deriving one from what the page says about the place.
+
+**A change to the conversion is a full-snapshot change.** Committed derived data is
+generator output, so the fix isn't done until the raw record is re-run through the new
+conversion and every downstream artifact regenerated. Expect the boundary to move
+records between partitions — items at the end of a day land in the next one, and may
+fall outside the range your day-partitioned files cover — and check that rather than
+reading it as data loss.
 
 ## 6. Missing is its own state — never fold it into zero or false
 
@@ -125,9 +148,14 @@ Where that module may run is a policy question, not a convenience one:
   the credential in repository secrets — and let sessions read the committed raw
   records instead.
 
-**Reaching a commercial rendering proxy** is the standard answer when the target
-blocks datacenter IPs or needs its JavaScript executed; ask it to render, and give it
-a wait-for-selector when the content you want arrives late.
+**A fetch that works on your machine and fails from CI is usually the IP, not the
+headers.** A 403/400 or a CAPTCHA wall from a runner or a sandbox is the *datacenter
+IP* being blocked; browser-like headers won't change that, so tuning them is wasted
+work. **Reaching a commercial rendering proxy** is the standard answer — a residential
+lane clears the IP block, and these services usually execute JavaScript too, so a
+single-page app records real content. Ask it to render, and give it a wait-for-selector
+when the content you want arrives late. A target that stays blocked even through the
+proxy is un-cacheable: say so and stop, rather than hunting for another route.
 
 ## 9. No bulk endpoint is not the same as no bulk request
 
