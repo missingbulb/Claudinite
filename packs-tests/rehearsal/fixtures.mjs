@@ -220,6 +220,82 @@ module.exports = { issue, check };
     },
   },
   {
+    name: 'macos-app',
+    why: 'a member declaring the macos pack over a conforming Mac app — the pack\'s two exit-path rules are blocking, and this proves an app in the shape they are about (AppKit, a capture tap, terminate-time teardown) converges green rather than going red overnight on a rule nobody asked for',
+    files: {
+      'README.md': '# fixture-macos-app\n\nA rehearsal fixture.\n',
+      '.claudinite-checks.json': checks(['basics', 'macos']),
+      // The fingerprint the pack detects on, near the root as the marker requires.
+      'Package.swift': `// swift-tools-version:5.9
+import PackageDescription
+
+let package = Package(
+  name: "FixtureApp",
+  platforms: [.macOS(.v13)],
+  targets: [.executableTarget(name: "FixtureApp")]
+)
+`,
+      // Deliberately the shape BOTH checks engage on — an AppKit app that installs
+      // a capture tap and tears down at terminate — so the fixture proves the rules
+      // are inert on a conforming member rather than passing because it dodged the
+      // gates. (That they FIRE is proved by their own see-it-fail fixtures.)
+      'Sources/FixtureApp/AppDelegate.swift': `import AppKit
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+  func applicationWillTerminate(_ notification: Notification) {
+    Capture.shared.stop()
+  }
+}
+`,
+      'Sources/FixtureApp/Capture.swift': `import AVFoundation
+
+final class Capture {
+  static let shared = Capture()
+  private let engine = AVAudioEngine()
+
+  func start(format: AVAudioFormat) {
+    engine.inputNode.installTap(onBus: 0, bufferSize: 4096, format: format) { _, _ in }
+  }
+
+  func stop() {
+    engine.inputNode.removeTap(onBus: 0)
+    engine.stop()
+  }
+}
+`,
+      // SIG_IGN before resume(), all three catchable signals routed into terminate.
+      'Sources/FixtureApp/main.swift': `import AppKit
+
+let delegate = AppDelegate()
+NSApplication.shared.delegate = delegate
+
+let signalSources = [SIGTERM, SIGINT, SIGHUP].map { sig -> DispatchSourceSignal in
+  signal(sig, SIG_IGN)
+  let source = DispatchSource.makeSignalSource(signal: sig, queue: .main)
+  source.setEventHandler { NSApp.terminate(nil) }
+  source.resume()
+  return source
+}
+
+NSApplication.shared.run()
+`,
+      // No NSSupportsSuddenTermination: the app has teardown that must run.
+      'Resources/Info.plist': `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key>
+  <string>FixtureApp</string>
+  <key>LSUIElement</key>
+  <true/>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Analyses audio on this Mac.</string>
+</dict>
+</plist>
+`,
+    },
+  },
+  {
     name: 'dormant',
     why: 'a declared-dormant member: its mount falls behind BY DESIGN, never a failure',
     files: {
