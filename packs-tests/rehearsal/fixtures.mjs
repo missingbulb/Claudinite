@@ -195,6 +195,31 @@ module.exports = { issue, check };
     },
   },
   {
+    name: 'sheepdog-enforcer',
+    why: 'the fleet-enforcer shape: a repo declaring `sheepdog` with a packSeeds entry AND its own declaration of the seeded pack — the two configs a blocking rule now requires to agree, proving a conforming enforcer converges green',
+    files: {
+      'README.md': '# fixture-sheepdog-enforcer\n\nA rehearsal fixture.\n',
+      // The enforcer states the seeded pack's config twice, exactly as a real one
+      // does: once for the fleet (packSeeds) and once for itself. They agree, which
+      // is the conforming shape — the fixture proves the rule is inert on it, not
+      // that the rule works (its own see-it-fail fixture does that). It names the
+      // fixture itself as the store and holds no store directory, so the store rules
+      // resolve and stay quiet the way they do in any member that only reads one.
+      '.claudinite-checks.json': checks([
+        'basics',
+        {
+          id: 'sheepdog',
+          config: {
+            owner: 'fixture-owner',
+            kind: 'user',
+            packSeeds: [{ id: 'claude-code-web-users-support', config: { repo: 'fixture-owner/fixture-store' } }],
+          },
+        },
+        { id: 'claude-code-web-users-support', config: { repo: 'fixture-owner/fixture-store' } },
+      ]),
+    },
+  },
+  {
     name: 'dormant',
     why: 'a declared-dormant member: its mount falls behind BY DESIGN, never a failure',
     files: {

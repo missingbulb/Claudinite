@@ -49,6 +49,15 @@ nightly, so the rollout needs no coordination. And it **seeds, never overrides**
 declares the pack, or already carries a config for it, keeps both — the fleet's list is a floor, and a
 choice a repo made is a decision the sweep cannot second-guess. A dormant member is never written to.
 
+Because it seeds and never overrides, **a wrong seed reaches each member exactly once and then sticks**
+— correcting it here un-writes nothing, so it has to be right before the sweep runs. This repo states
+a seeded pack's config in **two** places: the `packSeeds` entry the fleet is given, and its own entry
+for that pack, which is what a session *here* runs. For every seeded pack this repo also declares,
+those two must carry the **same** config — nothing compares them at seed time, and a member has no way
+to know what the enforcer kept for itself. Agreement is **exact**, because nothing here may know one
+pack's defaults: spell a default out on both sides rather than leaving one implicit. A pack the fleet
+standardizes on but this repo does not itself run has nothing to agree with.
+
 A pack arriving with canon reaches the fleet that already exists through a **baseline migration** instead
 (a `declarePacks` op, applied by each member's own baselining in the same transactional commit that
 vendors the pack's code). This sweep is the **standing** half: a migration record is dated and retires,
