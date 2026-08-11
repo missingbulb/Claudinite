@@ -80,6 +80,17 @@ prose below).
   of 11 members confirmed … say the word and I'll attach and verify"* bought a round-trip, one of
   four the owner spent that morning telling this session to attach repos.
 
+- **A code deprecation rides the standard `@deprecated` tag — never a bespoke conformance check**
+  (owner ruling, 2026-08-09, #707). Retiring a field, option or module does not earn its own rule
+  module, test file and catalog row: that is machinery to say what one JSDoc line says, and it grows
+  once per retirement forever. `deprecated-session-scope` was authored as a `basics` check and deleted
+  the same day it was reviewed (*"I don't think we want to add a check for every code deprecation"*).
+  Put `@deprecated` on the **definition** — the one place the thing is declared, here the
+  `session_scope` section of `engine/scheduler/task-contract.mjs` — and have each sanctioned holdout
+  pacify the warning with a comment at its own declaration site saying why it still carries the field.
+  Keep the contract **validating** the lingering field either way: validation catches a typo that would
+  otherwise strand a dispatch, and is not the same thing as a conformance rule.
+
 ## Canon-specific gotchas
 
 - **Baselining backfill skips the home.** The nightly baselining that lands a `seededByDefault`
@@ -445,6 +456,20 @@ prose below).
   `packs/*/pack.mjs` directory names would carry this whole rule, and the fixture is trivial — but any
   new rule moves `packs/README.md`'s check tally, which a growth-extract run may not touch. Left for the
   weekly prose-to-checks sweep's reviewed PR.)
+- **"No X should decide this" is a question about whether the decision exists at all — never answer it
+  by relocating the knob one rung out.** Measured 2026-08-09 (#707): asked to retire the task-level
+  `session_scope` because *"tasks on Sheepdog have the access to the fleet and they know what they
+  do"*, the session moved the same choice up to the pack manifest as `sessionScope: 'fleet'` — a new
+  manifest-vocabulary entry, a resolver module, `discover.mjs` wiring, a rehearsal fixture and tests,
+  all authored, pushed and then deleted one round later on *"Why do you think you need `sessionScope:
+  'fleet'`? Who does this help?"*. The reach was already implied by **which repo runs the task** — the
+  sheepdog enforcer *is* the fleet — so the field only ever protected one structural holdout (the
+  canon's own curation tasks, whose ordinary executor does not hold the fleet), which is an exception
+  at that caller, not a knob for everyone. So when a declaration is questioned, first ask **who would
+  ever set it differently, and why they could not be read off the structure**; a single structural
+  answer means delete the field and document the exception where it lives. Cousin of the standing "a
+  pack default stays in the pack — don't ask it at adoption" ruling above: both are about refusing to
+  materialize a decision nobody actually has to make.
 - **The home is the last repo to receive its own stub changes — nothing delivers to it.** Every member
   gets `engine/scheduler/stubs/claudinite-scheduler.yml` written into `.github/workflows/` by its nightly
   converge; the canon has no mount and no converge, so its own copy is hand-maintained and drifts from the
