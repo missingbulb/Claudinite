@@ -5,19 +5,20 @@ under an owner. Opt-in (a dedicated sheepdog repo declares it; **not** seeded by
 standardizes the fleet coverage that used to be bespoke Claudinite infrastructure into a declaration.
 
 Thin by design: prose + the config schema (the sheepdog pack entry's `config` = `{ owner, kind, exclude,
-canonRepo, staleDays, packSeeds }`) + five cross-repo **sweeps**, each with the one
-scheduled task that runs it (the sweep is its `prework`, agentless — fit alone adds an agent stage
-after its sweep; no workflow of its own) — plus one
-**manual lever** that has no cadence and therefore does have a workflow:
+canonRepo, staleDays, packSeeds }`) + six cross-repo **sweeps/levers**, each an agentless
+scheduled task whose sweep is its `prework`. The pack carries **no workflow and no agent of its
+own**: anything agentic happens in the *member*, on the fan-out model
+([#749](https://github.com/missingbulb/Claudinite/issues/749)) — the enforcer dispatches, the
+member executes:
 
 | sweep | task | asks |
 |---|---|---|
 | [check-fleet-coverage.mjs](tasks/fleet-census/check-fleet-coverage.mjs) | [fleet-census](tasks/fleet-census/task.md) (daily) | is this repo a **member**? → adoption issues |
 | [check-fleet-freshness.mjs](tasks/fleet-freshness/check-fleet-freshness.mjs) | [fleet-freshness](tasks/fleet-freshness/task.md) (weekly) | is a member **keeping up**? → drift issues |
-| [scan-for-needed-packs.mjs](tasks/fleet-add-missing-packs/scan-for-needed-packs.mjs) + [force-add-packs.mjs](tasks/fleet-add-missing-packs/force-add-packs.mjs) | [fleet-add-missing-packs](tasks/fleet-add-missing-packs/task.md) (weekly, and forceable) | which packs is a member missing — the ones its **shape** suspects, or the ones the owner named? → work-list issues, then adoption PRs |
+| [scan-for-needed-packs.mjs](tasks/fleet-add-missing-packs/scan-for-needed-packs.mjs) + [force-add-packs.mjs](tasks/fleet-add-missing-packs/force-add-packs.mjs) | [fleet-add-missing-packs](tasks/fleet-add-missing-packs/task.md) (weekly, and forceable) | which packs is a member missing — the ones its **shape** suspects, or the ones the owner named? → a work-list issue *in* each member + that member's scheduler fired; the member's own agent adopts |
 | [aggregate-fleet-usage.mjs](tasks/fleet-usage/aggregate-fleet-usage.mjs) | [fleet-usage](tasks/fleet-usage/task.md) (daily) | what does the fleet **actually use**? → `usage-fleet.GENERATED.json` |
 | [check-fleet-pack-seeds.mjs](tasks/fleet-pack-seeds/check-fleet-pack-seeds.mjs) | [fleet-pack-seeds](tasks/fleet-pack-seeds/task.md) (daily) | does a member declare what this fleet **standardizes on**? → the declaration, written |
-| [force-fleet-baseline.mjs](fleet-baseline/force-fleet-baseline.mjs) + [follow-fleet-baseline.mjs](fleet-baseline/follow-fleet-baseline.mjs) | *(no task — the [fleet-baseline workflow](stubs/workflows/fleet-baseline.yml), `workflow_dispatch` only)* | make every member baseline **now**, watch each one finish → what the fleet did |
+| [force-fleet-baseline.mjs](tasks/fleet-baseline/force-fleet-baseline.mjs) | [fleet-baseline](tasks/fleet-baseline/task.md) (`manual` — forced runs only) | make every member baseline **now** → each member's own run, reported in its own repo |
 
 The second exists because per-project scheduling made every member maintain itself and, in doing so,
 removed the last thing that looked at a member from the **outside** — self-maintenance cannot detect its
@@ -60,26 +61,23 @@ names its fresh members and its out-of-scope repos with why; the fit sweep names
 back **fitted** as loudly as the ones with findings, and names the fingerprints it could not decide
 from outside rather than counting them as non-matches; the usage sweep's `coverage` section
 accounts for every repo under the owner and its run report flags folding members with no captured
-activity that day; force-baseline reports every repo it did *not* dispatch, with the reason.
+activity that day; fleet-baseline reports every repo it did *not* dispatch, with the reason.
 
-The **manual lever** is not a sweep and not a task: **force-baseline** answers no recurring question, so it has
-no cadence to schedule. It is the owner pressing *Run workflow* — fire every member's own scheduler
-with `FORCE_TASKS=baselining` so the fleet picks canon up now instead of over the next day. It takes a
-repo filter, a dry run, and an opt-in for dormant members; it writes nothing to any member (one queued
-Actions run each). It then **follows** what it fired — a `204` is *queued*, not baselined — until every
-member has finished baselining, agentic handoffs included, and reports what the fleet did: which members
-moved and from which canon ref to which, lines changed, per-member timing, errors and warnings, whether
-an agent ran. A dry run prints the same report with true zeros, so its shape can be inspected without
-changing anything. Its `workflow_dispatch`-only workflow adds no cron, so the
-vendored scheduler stays the enforcer's only one — and because GitHub reads workflows solely from a
-repo's own `.github/`, the [`sheepdog-fleet-baseline`](../../migrations/2026-08-05-sheepdog-fleet-baseline/migration.mjs)
-migration keeps a byte-identical copy there, gated on the repo declaring this pack. The nightly's own
-token cannot write a workflow file, so the converge withholds it and baselining's agent stage lands it
-over MCP ([#649](https://github.com/missingbulb/Claudinite/issues/649)) — automatic either way.
+**The two operator levers ride the scheduler, not a workflow.** `fleet-baseline` is the first
+`manual`-frequency task: never due on any cadence, it runs only when the owner presses *Run
+workflow* on the vendored scheduler with `overrides: FORCE_TASKS=fleet-baseline` (plus `REPOS=…`,
+`DRY_RUN=true`, `INCLUDE_DORMANT=true` as wanted) — firing every covered member's own scheduler
+with `FORCE_TASKS=baselining` so the fleet picks canon up now instead of over the next day. A
+forced fleet-add-missing-packs run is the second lever, same button, its own overrides. Neither
+waits on what it fired: a dispatch queues a member's own run, and each member reports its own
+outcome where it always does. (The standalone fleet-baseline workflow, its fleet-wide follow
+report, and the `.github/` managed copy it required were retired 2026-08-11 —
+[#749](https://github.com/missingbulb/Claudinite/issues/749),
+[`2026-08-11-fleet-baseline-task`](../../migrations/2026-08-11-fleet-baseline-task/migration.mjs).)
 
-Each sweep lives **inside its task's folder**, because nothing outside that task uses it; force-baseline
-lives in [fleet-baseline/](fleet-baseline/) beside them, because it belongs to no task. Only what they
-all share sits at the pack root: [fleet-api.mjs](fleet-api.mjs) (the cross-repo REST primitives) and
+Each sweep lives **inside its task's folder**, because nothing outside that task uses it. Only what
+they all share sits at the pack root: [fleet-api.mjs](fleet-api.mjs) (the cross-repo REST
+primitives, including the one that fires a member's scheduler) and
 [fleet-config.mjs](fleet-config.mjs) (the one reader of this pack's entry `config`).
 
 The rest of the machinery — running the daily-run, the task engine (`engine/scheduler/`), scheduling —

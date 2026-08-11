@@ -9,7 +9,7 @@ schema and the scheduled tasks that run them. The rest of the machinery — runn
 orchestrator), the task engine (`engine/scheduler/`), scheduling — is Claudinite **core**, because
 baselining and the daily-run are Claudinite's own responsibility, not the pack's.
 
-**Five sweeps, five questions** — separate, because they close on unrelated conditions. The
+**Six tasks, six questions** — separate, because they close on unrelated conditions. The
 **census** ([check-fleet-coverage.mjs](tasks/fleet-census/check-fleet-coverage.mjs)) asks *is this repo a
 member* and converges `fleet-adoption` issues. The **freshness sweep**
 ([check-fleet-freshness.mjs](tasks/fleet-freshness/check-fleet-freshness.mjs)) takes coverage as given, asks *is that
@@ -20,7 +20,10 @@ self-maintenance cannot detect its own absence. The **missing-packs task**
 set still *matches the repo* — by fingerprint on its weekly scan
 ([scan-for-needed-packs.mjs](tasks/fleet-add-missing-packs/scan-for-needed-packs.mjs)), or from what the
 owner named on a forced run ([force-add-packs.mjs](tasks/fleet-add-missing-packs/force-add-packs.mjs)) —
-and converges `fleet-add-missing-packs` issues. It exists because a pack's `detect`
+and, per member with work, converges an `add-packs` work-list issue **in that member** and fires that
+member's own scheduler at its adopt-requested-packs task (grow_with_claudinite): the fan-out model
+([#749](https://github.com/missingbulb/Claudinite/issues/749)) — the enforcer dispatches, the member
+executes. It exists because a pack's `detect`
 fingerprint is consulted exactly once, at bootstrap's `--init`: baselining backfills the seeded packs
 and each declared pack's `requires` closure but never re-fingerprints, so a member that grows into a
 pack after adoption is never told the pack exists. The **usage sweep**
@@ -51,7 +54,7 @@ A pack arriving with canon reaches the fleet that already exists through a **bas
 vendors the pack's code). This sweep is the **standing** half: a migration record is dated and retires,
 while the sweep keeps converging every member the fleet acquires after it is gone.
 
-**One manual lever, not a fifth sweep** — [force-fleet-baseline.mjs](fleet-baseline/force-fleet-baseline.mjs)
+**One manual lever, riding the same task machinery** — [force-fleet-baseline.mjs](tasks/fleet-baseline/force-fleet-baseline.mjs)
 fires every covered member's own `claudinite-scheduler.yml` with `overrides: FORCE_TASKS=baselining`,
 which is the same button the owner would press in that repo's Actions tab, pressed across the fleet in
 one run. It is a **dispatcher, not a maintainer**: each member converges its own mount, with its own
@@ -65,29 +68,20 @@ purpose); `include_dormant` overrides that. Canon is skipped — its baselining 
 enforcer repo is **not**: it is an ordinary member, and leaving it out would make the one repo the owner
 is watching the one repo that did not move.
 
-**Why that one is a workflow** — every other thing this pack does answers a recurring question, so it
-is a scheduled task. Force-baseline answers none and has no cadence: it is owner-initiated, carries its
-own inputs (repo filter, dry run, dormant opt-in, follow), and starts when a human presses *Run workflow*. Its
-workflow declares **`workflow_dispatch` only** — no `schedule:` — so the vendored scheduler remains the
-repo's only cron and [scheduled-tasks.md](../basics/scheduled-tasks.md)'s doctrine is untouched. GitHub
-reads workflows solely from a repo's own `.github/`, never from the mount, so the enforcer hosts a copy
-of [stubs/workflows/fleet-baseline.yml](stubs/workflows/fleet-baseline.yml) — byte-identical, carrying
-no repo-specific value.
-
-**It arrives, and stays current, on its own** — through the
-[`sheepdog-fleet-baseline`](../../migrations/2026-08-05-sheepdog-fleet-baseline/migration.mjs)
-record, gated on the repo **declaring this pack**, so declaring sheepdog is the whole adoption. Its
-delivery takes one detour worth knowing about: the Action's `GITHUB_TOKEN` may not write under
-`.github/workflows/`, so the nightly converge **withholds** the file from its own push and baselining's
-**agent stage** lands it on the same maintenance branch over MCP, whose credential does hold that
-permission ([#649](https://github.com/missingbulb/Claudinite/issues/649); the mechanism is
-`withheldWorkflowPaths` in the baselining worker and §2b of its task.md). Nothing about that is
-sheepdog-specific — the scheduler workflow itself rides the same path — and nothing about it needs a
-human. Edit the pack; the copy follows.
+**The pack ships no workflow.** The standalone fleet-baseline workflow — and the `.github/` managed
+copy it forced every enforcer to host, deliverable only by the withhold-and-hand-to-the-agent path
+([#649](https://github.com/missingbulb/Claudinite/issues/649)) — was retired on 2026-08-11
+([#749](https://github.com/missingbulb/Claudinite/issues/749); the
+[`fleet-baseline-task`](../../migrations/2026-08-11-fleet-baseline-task/migration.mjs) record removes
+lingering copies). The lever is now the [`fleet-baseline`](tasks/fleet-baseline/task.md) task,
+`frequency: manual`: never due on any cadence, run by pressing *Run workflow* on the vendored
+scheduler with `overrides: FORCE_TASKS=fleet-baseline` (plus `REPOS=…`, `DRY_RUN=true`,
+`INCLUDE_DORMANT=true`). It fires each member's own scheduler with `FORCE_TASKS=baselining` and does
+**not** wait: a dispatch queues a member's own run, and each member reports its own outcome where it
+always does.
 
 **Where the code lives** — each sweep sits **inside its task's folder**, because only that task's
-`worker.mjs` uses it; force-baseline sits in [fleet-baseline/](fleet-baseline/) beside them, because it
-belongs to no task and its runner is the vendored workflow. The pack root holds just what they all
+`worker.mjs` uses it. The pack root holds just what they all
 need: [fleet-api.mjs](fleet-api.mjs) (cross-repo REST primitives — read-only toward members but for the
 one `putFile` the pack-seed sweep needs) and
 [fleet-config.mjs](fleet-config.mjs) (the one reader of the entry `config` below).
@@ -115,22 +109,25 @@ under the owner, but their declaration, scheduling, and lifecycle are exactly th
 None declares the `fleet` signal; the cross-repo reach lives in the implementation, never in how a
 task is wired. (The task files carry the same note.)
 
-**No session scope anywhere in this pack.** The enforcer repo's executor session is provisioned
-with the owner's repos — declaring this pack *is* the statement that the repo reaches the fleet — so
-`fleet-add-missing-packs`'s dispatch rides the ordinary `ready-for-agent` label like any other task's, and the
-agentless sweeps dispatch nothing at all. The deprecated task-level `session_scope`
-([scheduled-tasks.md](../basics/scheduled-tasks.md)) has no place here: an executor's access comes
-from how its repo is provisioned, never from what a task asks for.
+**No agent, no session scope, anywhere in this pack.** Every task here is `agent_model: none`; the
+agentic work a fleet operation needs happens in the *member*, run by that member's own executor
+under its own grant. That is not an implementation detail but the trust model
+([#749](https://github.com/missingbulb/Claudinite/issues/749)), learned the hard way: the first
+fleet-add-missing-packs design ended in an enforcer-side agent stage, and its very first production
+run stopped at `needs-human` because the enforcer's executor is — correctly — scoped to the enforcer
+repo alone. What crosses a repo boundary is an issue and a `workflow_dispatch`, both over the
+`FLEET_GITHUB_TOKEN` PAT; the deprecated task-level `session_scope`
+([scheduled-tasks.md](../basics/scheduled-tasks.md)) has no place here.
 
 **A SCANNED finding is a recommendation, never a verdict.** The `pack-declaration` conformance check was
 deliberately retired ([engine/checks/README.md](../../engine/checks/README.md)) because whether to
 declare a pack is the project's call — a marker is a way to *suspect* a pack is wanted, never proof it
-must be. The scan must not re-introduce that check one rung further out: it opens an issue a human
-(or the agent stage, then a reviewer) acts on, its body says "suspects", and an owner who closes a
-scanned issue `not planned` has given a standing answer the scan honours rather than reopening weekly.
-A **forced** addition is the other thing entirely — a decision already made, by the one person entitled
-to make it — so it carries the config and the interview answers with it, and the agent stage adopts what
-it says rather than re-judging whether it was wanted.
+must be. The scan must not re-introduce that check one rung further out: it opens an issue in the member that
+the member's own agent (then a reviewer) acts on, its body says "suspects", and a `not planned` close
+is a standing answer the scan honours rather than reopening weekly. A **forced** addition is the other
+thing entirely — a decision already made, by the one person entitled to make it — so its issue carries
+the config and the interview answers with it, and the member's agent adopts what it says rather than
+re-judging whether it was wanted.
 
 **The scan fingerprints against CANON, not against this repo's mount.** A consumer's
 `.claudinite/shared/` carries the vendor set for the packs *it* declares — four, for a sheepdog repo —
@@ -145,7 +142,7 @@ this week.
 **Undecidable is not a non-match.** Most fingerprints are answerable from a path listing, and the sweep
 answers those over one tree call per member. A fingerprint that reads file *contents* is resolved by a
 bounded prefetch of exactly the files it asked for; one that greps every source file exceeds that budget
-and is reported **undecided**, never `false`. The agent stage — which has the member checked out —
+and is reported **undecided**, never `false`. The member's own agent — which has the repo checked out —
 settles those exactly (`localFits`, [tasks/fleet-add-missing-packs/fingerprint-fit.mjs](tasks/fleet-add-missing-packs/fingerprint-fit.mjs)).
 A truncated tree listing makes every non-match on that repo undecided for the same reason: "we did not
 look" and "we looked and it isn't there" are different facts, and only one is safe to act on.
@@ -153,11 +150,10 @@ look" and "we looked and it isn't there" are different facts, and only one is sa
 **How they run** — as the pack's [`fleet-census`](tasks/fleet-census/task.md) (`daily`),
 [`fleet-freshness`](tasks/fleet-freshness/task.md) (`weekly`), [`fleet-add-missing-packs`](tasks/fleet-add-missing-packs/task.md)
 (`weekly`), [`fleet-usage`](tasks/fleet-usage/task.md) (`daily`) and
-[`fleet-pack-seeds`](tasks/fleet-pack-seeds/task.md) (`daily`) scheduled tasks, each with its
-sweep as `prework`. All are `agent_model: none` except fit, whose sweep is agentless in exactly the
-same way and which then hands what only a repo edit can finish to a `sonnet` stage. Census and
-freshness are `expected_outcome: none` (they open **issues**, never a PR), and so is pack-seeds; fit
-is `open-pr` and never `merged-pr`,
+[`fleet-pack-seeds`](tasks/fleet-pack-seeds/task.md) (`daily`) and
+[`fleet-baseline`](tasks/fleet-baseline/task.md) (`manual`) scheduled tasks, each with its
+sweep as `prework`. All are `agent_model: none` and `expected_outcome: none` — what only a repo edit
+can finish is the member's own adopt-requested-packs task's, ceilinged at `open-pr` *there*,
 because declaring a pack switches on checks that run in the member's CI the moment they land, so it is
 always reviewed; the usage sweep is `merged-pr`, because its output IS a tracked file and an
 auto-merging PR keeps that write inside the outcome taxonomy, lets this repo's CI gate a malformed
@@ -177,13 +173,11 @@ baseline-migration retirement). A workflow that exists only to hold a secret is 
 ([packs/basics/scheduled-tasks.md](../basics/scheduled-tasks.md)) — the force-baseline workflow above is
 not that: it exists because the operation is manual, and it reads the same secret only incidentally.
 
-**The one scope the sweeps don't need** — force-baseline adds **Actions: read and write** on the owner's
-repositories to that PAT. Dispatching another repo's workflow is an Actions *write*, so a token scoped
-for the sweeps alone answers `403` on every member. The sweep reports that per repo as
-`no-permission` and fails the run rather than retrying: it is a grant to fix once, not a transient. The
-sweeps themselves are unaffected — they never dispatch anything. Watching what it dispatched adds two
-more *read* scopes to the same PAT — **Pull requests: read** and **Issues: read**; without them a
-followed run reports every member as unfinished, and never the reverse.
+**The one scope the read-only sweeps don't need** — the two fan-out tasks (fleet-baseline,
+fleet-add-missing-packs) add **Actions: read and write** on the owner's repositories to that PAT.
+Dispatching another repo's workflow is an Actions *write*, so a token scoped for the read-only
+sweeps alone answers `403` on every member. Both report that per repo as `no-permission` and fail
+the run rather than retrying: it is a grant to fix once, not a transient.
 
 **What freshness assumes** — baselining reverts a stamp-only bump, so `claudinite.updated` advances
 only when canon changed that member's vendor set. Age of the **stamped ref** is therefore the honest
@@ -200,9 +194,9 @@ state: a roster that names only the exceptions has silent holes, and a reader ca
 from "fell out of the report".
 
 **When they fail** — a repo the census cannot classify is `unknown`, never uncovered; a member the
-freshness sweep cannot probe is `unknown`, never behind; a member the fit sweep cannot read is
-`unknown`, never fitted (and its agent stage is never reached, because an agent acting on a partial
-picture is worse than one that did not run); a member the pack-seed sweep cannot read or
+freshness sweep cannot probe is `unknown`, never behind; a member the fit scan cannot read is
+`unknown`, never fitted, and a member whose scheduler refused the fan-out dispatch is named and fails
+the run — a work list nobody will act on is not a green outcome; a member the pack-seed sweep cannot read or
 write is `unknown`, never assumed converged: no issue opened, no open issue closed on its
 behalf, and a non-zero exit. A non-zero preprocessing subprocess fails the task, and the scheduler
 converges one open `needs-human` issue for it.

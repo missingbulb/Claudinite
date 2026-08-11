@@ -17,6 +17,9 @@
 //   tasks/fleet-usage/aggregate-fleet-usage.mjs        what does the fleet USE?
 //   tasks/fleet-pack-seeds/check-fleet-pack-seeds.mjs  does a member DECLARE what
 //                                                      this fleet standardizes on?
+//   tasks/fleet-baseline/force-fleet-baseline.mjs      make every member baseline NOW
+//                                                      (frequency: manual — the
+//                                                      operator's lever, forced only)
 //
 // Each sweep lives INSIDE its task's folder — nothing outside that task uses it.
 // The pack root holds only what they all need: fleet-api.mjs (the cross-repo REST
@@ -28,13 +31,13 @@
 // a pack's `detect` fingerprint is consulted ONCE, at bootstrap's --init: baselining
 // backfills the seeded packs and each declared pack's `requires` closure, but never
 // re-fingerprints, so a member that grows into a pack after adoption is never told.
-// It is also the one task here with an agent stage — the deciding is code
-// (a fingerprint, or an owner's forced parameters), the adopting is a repo edit. It is
-// likewise the one task here that is PARAMETERISED: `scan_for_needed_packs` and `repos`
-// have no defaults, the weekly declaration sends them explicitly, and a forced run sends
-// its own through the scheduler's manual-run override bag. No session scope anywhere: the enforcer repo's own
-// executor is provisioned with the fleet reach this whole pack presumes, so its
-// dispatches ride the ordinary ready label like any other task's. The fourth exists
+// It is PARAMETERISED (`scan_for_needed_packs`, `repos`, `ADD_PACKS`… — no defaults;
+// the weekly declaration sends its own explicitly, a forced run sends the rest through
+// the scheduler's override bag) and it runs NO agent here: it converges a work-list
+// issue IN each member and fires that member's own scheduler, whose
+// adopt-requested-packs task (grow_with_claudinite) adopts with the repo checked out —
+// the fan-out model (#749): the enforcer dispatches, the member executes, and no agent
+// anywhere needs cross-repo access. The fourth exists
 // for the same shape of reason a rung up: a member folds its own skill-usage numbers
 // and can therefore only say whether a skill loads THERE; whether a skill earns its
 // place at all is a fleet-shaped question no member can answer about itself. The
@@ -43,17 +46,15 @@
 // it, because it IS the fleet. It names no pack itself: every id comes from this
 // repo's own `packSeeds`.
 //
-// The sweeps carry no workflow of their own: preprocessing runs Action-side inside
-// the repo's one scheduler workflow, where that secret is already reachable. The
-// pack's ONE workflow is fleet-baseline (stubs/workflows/fleet-baseline.yml, driven
-// by fleet-baseline/force-fleet-baseline.mjs, which follows what it dispatched via
-// fleet-baseline/follow-fleet-baseline.mjs) — the owner's manual lever to make every
-// member baseline now, and the report of what the fleet then did. It answers no
-// recurring question, so it is not a task; it
-// declares workflow_dispatch and no schedule, so it adds no second cron; and because
-// GitHub reads workflows only from a repo's own .github/, a migration keeps a copy there
-// — delivered by the converge's withhold-and-hand-to-the-agent path, since the Action
-// token cannot write a workflow file itself (#649).
+// The pack carries NO workflow of its own: every sweep runs Action-side inside the
+// repo's one scheduler workflow, where the secret is already reachable, and the two
+// operator levers (fleet-baseline; a forced fleet-add-missing-packs) are `manual` /
+// forced runs of that same workflow — Run workflow → `overrides: FORCE_TASKS=…`. The
+// standalone fleet-baseline workflow this pack once kept in the enforcer's .github/
+// (the one file the nightly converge could never push itself, #649) was retired
+// 2026-08-11 (#749, migrations/2026-08-11-fleet-baseline-task) along with its
+// follow-the-fleet report: dispatching is the enforcer's job, reporting is each
+// member's own.
 //
 // Everything else — the SCHEDULER (engine/scheduler/run.mjs), the
 // orchestrator/daily-run, the task engine (engine/scheduler/), scheduling — is CORE and

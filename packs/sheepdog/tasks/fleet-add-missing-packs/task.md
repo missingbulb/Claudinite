@@ -1,47 +1,33 @@
-# Fleet: add the packs a member is missing
+# Fleet: get every member declaring the packs it is missing
 
-Two stages. The first is [`worker.mjs`](worker.mjs), which runs as `prework` before you start; by the time you read this, it has already happened. **You are the second stage**, and your job is the same whichever way the work list was made: turn each open work-list issue into a reviewed PR on that member. The whole of *how* is the [adopt-pack](../../../grow_with_claudinite/skills/adopt-pack/SKILL.md) skill — including what to do about failing checks and unanswered interview questions, which that skill defines for unattended runs like this one. Don't re-derive it here.
+**This task runs no agent.** It is `agent_model: none` with a parameterised `prework` ([`worker.mjs`](worker.mjs)), so the whole pass is deterministic code the scheduler runs as a subprocess. This file is the human-facing record of what that code does; there is no dispatch issue and no enforcer-side subagent. The *agentic* half of the job belongs to each member's own **adopt-requested-packs** task (grow_with_claudinite) — see "The fan-out model" below.
 
-## The work list, and the two ways an entry got onto it
+## Two first stages, one parameter set
 
-The open issues labelled `fleet-add-missing-packs` in **this** (sheepdog) repo. There is no work list anywhere else — no branch, no file, nothing threaded into your dispatch issue. Each names one member, and its title says where it came from:
+The task is parameterised over the two ways a pack comes to be missing ([`params.mjs`](params.mjs) — no parameter has a default; both call sites say everything):
 
-| title | how it was decided | what you owe it |
+| run | parameters | first stage |
 |---|---|---|
-| `Pack fit: <repo> may want packs it does not declare` | a **fingerprint** suspected it — the weekly scan ([`scan-for-needed-packs.mjs`](scan-for-needed-packs.mjs)) ran every canon pack's `detect` against the member's tree | confirm the suspicion first (§1), then adopt what survives |
-| `Add packs: <repo>` | the **owner asked for it by hand** — a forced run ([`force-add-packs.mjs`](force-add-packs.mjs)) carrying the packs, the config and the interview answers | adopt exactly what the issue says, with the entry it renders |
+| weekly (scheduled) | `--scan-for-needed-packs=true --repos=all-covered-members`, on the `prework` line in [`task.mjs`](task.mjs) | the **scan** ([`scan-for-needed-packs.mjs`](scan-for-needed-packs.mjs)): fingerprint every covered member's tree against the canon corpus and *suspect* what its declaration does not carry |
+| forced (hand-started) | the scheduler's override bag: `FORCE_TASKS=fleet-add-missing-packs`, `SCAN_FOR_NEEDED_PACKS=false`, `REPOS=Alpha Beta`, `ADD_PACKS=<ids>`, `PACK_CONFIG=<pack>.<key>=<v>`, `PACK_ANSWER=<pack>.<question>=<answer>` (values space-separated — the bag splits on commas) | the **force** ([`force-add-packs.mjs`](force-add-packs.mjs)): the owner names the packs, repos, config and interview answers — nothing is suspected, because it was decided |
 
-The list is often **empty**, and an empty list is a complete run with an empty outcome — a fleet already declaring what it should. Report it as that.
+A force **refuses itself entirely** — before any issue is written — on an unknown pack id, a repo that is not a covered member or is dormant, `all-covered-members` as a target, or **any adoption-interview question the overrides did not answer**: an answer is the owner's to give, never one this task may infer.
 
-Take them **oldest first**, and take as many as you can finish properly. One member fully adopted beats four half-adopted: a member you started and abandoned mid-adoption is worse than one you never touched, because its declaration now names packs whose content was never vendored.
+## The fan-out model
 
-## 1. Confirm a *suspicion* before acting on it — and never re-litigate a *request*
+Both stages end the same way, per member with work ([`protocol.mjs`](protocol.mjs)):
 
-A fingerprint **suspects**; it does not prove. This is the same judgment the retired `pack-declaration` check was deleted for making automatically (`engine/checks/README.md`) — so on a `Pack fit:` issue, make it deliberately, per pack:
+1. **Converge one work-list issue in that member** under the `add-packs` label — `Add packs: requested for this repo` (a decision, carrying the exact declaration entries as JSON, config and answers included) or `Add packs: suspected from this repo’s shape` (a suspicion, carrying the evidence and the fingerprints the REST sweep could not decide).
+2. **Fire that member's own scheduler** with `FORCE_TASKS=adopt-requested-packs`. A forced run evaluates only that task (engine contract, #749).
 
-- Read that pack's `README.md` and its `ruleRoutingGuidance`. Does the member's actual use match what the pack owns, or did the marker merely happen to be present? A `package.json` in a repo that ships no JavaScript is a fixture, not a Node project.
-- Where the issue lists packs under **Not decided from outside**, you can settle them exactly — you have the member checked out, which the sweep did not. Use `localFits` from this task's own [`fingerprint-fit.mjs`](fingerprint-fit.mjs) against a context built over that checkout; it decides every fingerprint the REST sweep had to defer.
-- A pack you judge **not** wanted is a real answer. Say which and why in a comment on the issue, and don't declare it. If every pack on the issue is declined, close it `not planned` — the scan honours a deliberate `not_planned` close and will not reopen it.
+The member's task reads its own issue, its own executor confirms/adopts with the repo checked out, and one reviewed PR lands *there*. The enforcer **dispatches**; the member **executes**. Nothing here writes to any member's tree, and no agent anywhere needs cross-repo access — the one fleet credential is `FLEET_GITHUB_TOKEN` (Contents read, Issues read/write, Actions read+write).
 
-On an `Add packs:` issue the confirming is already done, by a human: they named the pack, the repo and the configuration, and the run refused itself unless every one of that pack's interview questions was answered. Adopt it. Your judgment there is about *how* to land it cleanly, never about whether it was wanted. If you believe it is wrong, say so on the issue and leave it for a human — never quietly adopt something else in its place.
+## Convergence
 
-## 2. Adopt, per member
+- A **requested** issue closes `completed` once the member's declaration carries everything its JSON block asks for — checked on every weekly visit, whichever run opened it.
+- A **suspected** issue closes `completed` once the member declares the packs (or its shape stops suggesting them), and a `not planned` close is a standing decline the scan honours rather than re-suggesting weekly.
+- A member with a still-open work list is **re-fired** on the weekly visit — the retry loop for a member whose earlier adoption run died.
 
-For each member with at least one confirmed or requested pack, run **adopt-pack** against that repo. It owns declaring, the interview, re-vendoring, scaffolding, getting the checks green, and landing one PR.
+## Failure is loud
 
-Three things belong to you rather than the skill:
-
-- **One PR per member**, not one per pack — a member's adoption is one reviewed change.
-- **On an `Add packs:` issue, write the rendered entry verbatim.** The issue's JSON block is the declaration entry, `config` and `answers` included; the answers are the owner's, recorded as adopt-pack requires. Merge it into an entry the repo already carries — never replace a config that repo already chose.
-- **Link both ways**: the PR body names the work-list issue, and you comment the PR link on that issue. The task closes the issue on its own once the member's declaration carries the packs; your comment is what makes the intervening week legible.
-
-## 3. Report
-
-Comment on your dispatch issue: per member, the packs adopted with a PR link, the packs declined with the reason, and any member left for a human — an adoption blocked on an interview question is exactly that, and naming it is the whole handoff.
-
-## What you must not do
-
-- **Never merge.** This task is ceilinged at `open-pr` and the executor enforces it in code (`verify-outcome.mjs`); merging fails the run.
-- **Never declare a pack you did not confirm** (on a `Pack fit:` issue) **or that was not requested** (on an `Add packs:` one), and never guess an interview answer to get past a question — see adopt-pack's rule on that. A declaration nobody chose is the failure mode this whole task exists to avoid recreating from the other direction.
-- **Never touch a dormant or uncovered member.** Both halves already excluded them; if one is on an issue, that issue is stale — say so rather than acting on it.
-- **Never apply `ready-for-agent` or `ready-for-agent-fleet` to a work-list issue.** Both labels are scheduler triggers ([scheduled-tasks.md](../../../basics/scheduled-tasks.md)); a work list is not a dispatch.
+A member that could not be swept is `unknown` — never "fitted" — and a member whose scheduler refused the dispatch (missing workflow, PAT without Actions write, workflow disabled) is a work list nobody will act on. Both are named in the summary and fail the run; the scheduler converges a `needs-human` issue for the task family.
