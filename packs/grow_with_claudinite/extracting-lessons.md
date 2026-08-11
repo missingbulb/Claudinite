@@ -54,6 +54,14 @@ comment when the trap spans the whole file and you'd only hit it *while editing 
 central gotchas doc for what no single usage site owns: a trap you could hit *without* reading the relevant
 file (a mistake of omission), or a cross-cutting invariant.
 
+**Two kinds never become a pack rule, however strong the evidence** — filter on what the lesson is *about*
+before picking a mechanism. (1) **The owner's own preferences** — which word authorizes a merge, tone, how a
+summary is shaped. They belong to the person, are injected per session from their own preference file, and
+change without any repo hearing about it; a pack copy goes stale silently and then contradicts the live one.
+(2) **The agent framework's own loading mechanics** — which packs are declared, why a skill didn't mount, why
+an injection missed. That's engine plumbing, not project knowledge: a real defect there is filed upstream, and
+writing it down as a project rule preserves the bug instead of fixing it.
+
 ## "No new lessons" is a valid — and common — result
 
 Most sessions and most windows yield nothing durable, and that's the expected outcome. Say so and write
