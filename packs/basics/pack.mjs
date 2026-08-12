@@ -14,6 +14,7 @@ import schedulerWorkflowShape from './scheduler-workflow-shape.mjs';
 import taskDeclarationShape from './task-declaration-shape.mjs';
 import taskPhaseDiscipline from './task-phase-discipline.mjs';
 import conformanceWorkflow from './conformance-workflow.mjs';
+import rulesLineLength from './rules-line-length.mjs';
 
 // The baseline pack: working discipline, the task lifecycle, and the core
 // checks. Declared explicitly like every other pack — no pack is active by
@@ -42,6 +43,7 @@ export default {
   // Rules that audit the repo as it stands, whatever this session did.
   worldRules: [
     markdownLinkLabels,
+    rulesLineLength,
     warningSuppression,
     filePlacement,
     claudeMdLength,
