@@ -107,3 +107,15 @@ test('the rule is work-scoped and blocking — it judges the change in front of 
   assert.equal(rule.scope, 'work');
   assert.equal(rule.severity, 'blocking');
 });
+
+test('a rule in the canon\'s own local packs is out of scope — no consumer can receive it', () => {
+  // The vendor set carries engine/ and packs/ only, so a local-pack rule runs in this
+  // repo and nowhere else: it can never turn a member red, and demanding a migration
+  // for it would be a toll on every canon-only rule.
+  const local = '.claudinite/local/packs/claudinite/new-rule.mjs';
+  assert.deepEqual(contractChanges([local], () => BLOCKING_RULE, () => null), []);
+  assert.deepEqual(rule.run(work([local], { [local]: BLOCKING_RULE })), []);
+  // …while the same module under a shipped pack still counts.
+  const shipped = 'packs/basics/new-rule.mjs';
+  assert.equal(contractChanges([shipped], () => BLOCKING_RULE, () => null).length, 1);
+});

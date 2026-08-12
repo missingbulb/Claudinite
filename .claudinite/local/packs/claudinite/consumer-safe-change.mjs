@@ -43,6 +43,8 @@ const STUB = 'engine/scheduler/stubs/claudinite-scheduler.yml';
 const MIGRATION_RECORD = /^(engine|packs\/[^/]+)\/migrations\/\d{4}-\d{2}-\d{2}-[^/]+\//;
 const MIGRATIONS = '<engine|packs/*>/migrations/<date>-<name>/';
 const FIXTURES = 'packs-tests/rehearsal/fixtures.mjs';
+// The canon's own local packs — repo-only content, outside every vendor set.
+const LOCAL_PACKS = '.claudinite/local/packs';
 
 // The contract surfaces this change touched, and why each counts. Pure over the
 // changed-file list plus a head and a base reader, so the whole decision is
@@ -64,6 +66,12 @@ export function contractChanges(changed, read, readBase = () => null) {
     // make every touch of a blocking rule a migration question, which is the
     // cried-wolf failure this rule is built to avoid.
     if (!/\.mjs$/.test(file) || file.startsWith('packs-tests/') || file.startsWith('engine-tests/')) continue;
+    // A rule in the canon's OWN local packs reaches no consumer by construction:
+    // the vendor set carries engine/ and packs/, never .claudinite/local/, so such a
+    // rule runs in exactly one repo — this one — and its severity asks nothing of
+    // anybody else. Firing here would demand a migration for a change no member can
+    // even see, which is the cried-wolf failure the narrowing above exists to avoid.
+    if (file.startsWith(`${LOCAL_PACKS}/`)) continue;
     const isBlockingRule = (text) => Boolean(text)
       && /severity:\s*'blocking'/.test(text)
       && /^\s*const rule = \{/m.test(text);
