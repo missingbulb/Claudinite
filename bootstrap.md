@@ -113,6 +113,11 @@ hook before line 1 and swallow its own message. Notes on how the steps behave:
   Bounded and **fail-soft**: a step that fails, hangs, or overruns the context cap is one
   plain-text note and the session proceeds. Which packs contribute one is the packs'
   business, not bootstrap's.
+- **The session opens by stating what loaded** — a last step counts the active packs, their
+  checks, the token weight of the prose injected and the skills mounted, and emits that as one
+  line the session repeats back before anything else. A pack whose step computed something worth
+  adding to it says so on the facet channel (a `CLAUDINITE-FACET:` line), which the orchestrator
+  opens and cleans up; core learns no pack's name to carry a facet.
 - **The halt-gate** — a SessionStart hook cannot block, but its stdout is injected into context,
   so a step that can't do its load-bearing job (`env.mjs check` — a missing toolchain) prints a
   plain-text directive telling the assistant to STOP and confirm via `AskUserQuestion` before any
