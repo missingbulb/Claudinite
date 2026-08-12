@@ -16,7 +16,7 @@ import { finding } from '../../../../engine/checks/helpers/findings.mjs';
 // WHAT IT CATCHES. A change that alters a contract every consumer holds a copy
 // of, without either of the two things that carry consumers across:
 //
-//   a MIGRATION RECORD  — migrations/<date>-<name>/migration.mjs, the
+//   a MIGRATION RECORD  — <flow>/migrations/<date>-<name>/migration.mjs, the
 //                         mechanism that rewrites a member on its next converge
 //   a REHEARSAL FIXTURE — packs-tests/rehearsal/fixtures.mjs, which proves a
 //                         consumer in that shape still converges green
@@ -38,9 +38,10 @@ import { finding } from '../../../../engine/checks/helpers/findings.mjs';
 const SCHEMA = 'engine/pack_loader/pack-schema.mjs';
 const STUB = 'engine/scheduler/stubs/claudinite-scheduler.yml';
 // A record folder, not the machinery beside it: registry/apply edits are engine
-// work and carry no member across anything.
-const MIGRATION_RECORD = /^migrations\/\d{4}-\d{2}-\d{2}-[^/]+\//;
-const MIGRATIONS = 'migrations/<date>-<name>/';
+// work and carry no member across anything. A record lives under the flow that
+// owns it — the engine's own, or one pack's — so both homes count (#768).
+const MIGRATION_RECORD = /^(engine|packs\/[^/]+)\/migrations\/\d{4}-\d{2}-\d{2}-[^/]+\//;
+const MIGRATIONS = '<engine|packs/*>/migrations/<date>-<name>/';
 const FIXTURES = 'packs-tests/rehearsal/fixtures.mjs';
 
 // The contract surfaces this change touched, and why each counts. Pure over the
