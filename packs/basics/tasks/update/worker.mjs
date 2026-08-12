@@ -19,7 +19,9 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
 import { servedBy } from '../../../../engine/served-by.mjs';
-import { resolveDelivery, pullCreateError, landDelivery } from '../../../../engine/scheduler/land-pr.mjs';
+import {
+  resolveDelivery, pullCreateError, landDelivery, openDeliveredPull, disposeOpenPull,
+} from '../../../../engine/scheduler/land-pr.mjs';
 
 const CANON_URL = 'https://github.com/missingbulb/Claudinite.git'; // public — no token
 const UPDATE_PREFIX = 'claudinite/update';
@@ -96,9 +98,33 @@ export async function main() {
     process.exit(1);
   }
 
+  // DISPOSE OF THE INCUMBENT FIRST (#787). A cycle that could not land its PR — the
+  // usual cause is a `pull_request` run parked at `action_required` while the
+  // dispatched one goes green seconds after the wait gave up — leaves it open for
+  // "the next run to dispose of". This is that disposal, and it must happen BEFORE
+  // the converge for the reason the bug existed: a cycle that finds nothing to do
+  // returns early, so disposal placed after the converge is unreachable on exactly
+  // the quiet cycle that should perform it. A cycle that cannot clear the way does
+  // not deliver on top of it — one update PR is alive at a time, or none.
+  const open = await gh(token, `/repos/${repo}/pulls?state=open&per_page=100`);
+  const incumbent = openDeliveredPull(open.json, UPDATE_PREFIX);
+  if (incumbent) {
+    const disposal = await disposeOpenPull({
+      token, repo, pr: incumbent, delivery, log: (s) => console.log(`update: ${s}`),
+    }).catch((e) => { console.log(`update: disposing of PR #${incumbent.number} failed: ${e.message}`); return 'kept'; });
+    if (disposal === 'kept') {
+      console.log(`update: PR #${incumbent.number} still stands — this cycle cannot deliver on top of it`);
+      return;
+    }
+    if (disposal === 'merged') {
+      console.log(`update: landed PR #${incumbent.number}; main has moved past this checkout — next cycle converges from it`);
+      return;
+    }
+  }
+
   // The flows run from a FRESH CANON CLONE, never from this repo's mount: the mount is
   // the thing being replaced, and a flow executing its own stale copy is how a broken
-  // update makes itself permanent (baselining's worker takes the same care).
+  // update makes itself permanent.
   const tmp = mkdtempSync(join(tmpdir(), 'claudinite-canon-'));
   try {
     git(['clone', '--depth', '1', CANON_URL, tmp]);

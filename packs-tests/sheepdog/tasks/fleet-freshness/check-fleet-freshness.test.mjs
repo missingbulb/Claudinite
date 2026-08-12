@@ -1,8 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   classifyFreshness, convergeDrift, probe, renderFreshnessSummary, FRESH,
+  versionGap, parseEngineVersion, parsePackVersion, makeCanonVersions, fixesKey,
 } from '../../../../packs/sheepdog/tasks/fleet-freshness/check-fleet-freshness.mjs';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
 
 // The freshness sweep's whole judgement is `classifyFreshness` — pure, so every
 // branch is exercised here without a network. The precedence between states is the
@@ -55,6 +61,115 @@ test('classifyFreshness: root cause wins over symptom', () => {
   assert.equal(classify({ stampedRef: null, compare: null }).state, 'no-stamp');
 });
 
+// --- the version measure (#786) -----------------------------------------------
+// A member served by the update flows has a FROZEN ref by design — those flows
+// stamp versions and never write `ref` or `updated`. Measuring its age would report
+// every healthy member as drifting once canon moved past the commit baselining last
+// wrote, which is the bug this measure exists to remove.
+
+const versioned = (over) => classifyFreshness({
+  mechanism: 'updates', hasScheduler: true, stampedRef: 'frozen',
+  installed: { engineVersion: 2, packVersions: { basics: 1 } },
+  canon: { engineVersion: 2, packVersions: { basics: 1 } },
+  nowMs: NOW, staleDays: 14, ...over,
+});
+
+test('classifyFreshness: an updates member at canon\'s versions is fresh however old its ref', () => {
+  // The exact shape that used to read as drift: a ref a year stale, canon far ahead
+  // of it — and nothing wrong, because the versions are current.
+  const v = versioned({ compare: ancestor(500, 365) });
+  assert.equal(v.state, FRESH);
+  assert.match(v.detail, /engine 2/);
+});
+
+test('classifyFreshness: an updates member behind on any component is behind, and names it', () => {
+  const engine = versioned({ canon: { engineVersion: 3, packVersions: { basics: 1 } } });
+  assert.equal(engine.state, 'behind');
+  assert.match(engine.detail, /engine 2 → 3/);
+
+  const pack = versioned({ canon: { engineVersion: 2, packVersions: { basics: 4 } } });
+  assert.equal(pack.state, 'behind');
+  assert.match(pack.detail, /basics 1 → 4/);
+  assert.ok(!pack.detail.includes('engine'), 'a component that is current is not news');
+});
+
+test('classifyFreshness: the date measure never runs on a version-measured member', () => {
+  // Both date-only verdicts must be unreachable: the ref is frozen, so an off-trunk
+  // or long-stale reading of it is an answer to a question that no longer applies.
+  assert.equal(versioned({ compare: null }).state, FRESH, 'no compare is even consulted');
+  assert.equal(versioned({ compare: { status: 'diverged', aheadBy: 0, baseDateMs: NOW } }).state, FRESH);
+  // …while the same member on baselining is judged exactly as before.
+  assert.equal(versioned({ mechanism: 'baselining', compare: null }).state, 'ref-not-on-trunk');
+});
+
+test('classifyFreshness: never vendored is asked of whichever field the mechanism writes', () => {
+  // A repo installed under the update flows may never have carried a ref at all.
+  assert.equal(versioned({ stampedRef: null }).state, FRESH, 'versions are the stamp here');
+  // Neither field → genuinely never vendored, under either mechanism.
+  assert.equal(versioned({ stampedRef: null, installed: { packVersions: {} } }).state, 'no-stamp');
+  assert.equal(classify({ stampedRef: null }).state, 'no-stamp');
+});
+
+test('versionGap compares only what canon states a number for', () => {
+  const gaps = versionGap({
+    installed: { engineVersion: 1, packVersions: { basics: 1, 'local/thing': 9, retired: 3 } },
+    canon: { engineVersion: 2, packVersions: { basics: 2 } },
+  });
+  assert.deepEqual(gaps, ['engine 1 → 2', 'basics 1 → 2']);
+  // A repo-owned local pack has no canon version to be behind, and a pack canon has
+  // since dropped is not the member's drift either — both simply absent from canon.
+  assert.ok(!gaps.join(' ').includes('local/thing'));
+  assert.ok(!gaps.join(' ').includes('retired'));
+  // Ahead of canon is not behind (a member mid-rollout of a pack canon just reverted).
+  assert.deepEqual(versionGap({ installed: { engineVersion: 5, packVersions: {} }, canon: { engineVersion: 2 } }), []);
+  // Unstamped reads as unstamped, never as version zero.
+  assert.deepEqual(versionGap({ installed: {}, canon: { engineVersion: 2 } }), ['engine unstamped → 2']);
+});
+
+test('the version parsers read canon\'s REAL declarations, not a shape they invented', () => {
+  // The measure is only as good as these two regexes, and the files they read are
+  // maintained by other flows entirely — an engine release rewrites the first, a pack
+  // release the second. Parsing this repo's own files is what catches a reformat.
+  assert.equal(
+    parseEngineVersion(readFileSync(join(ROOT, 'engine', 'version.mjs'), 'utf8')),
+    Number(/ENGINE_VERSION = (\d+)/.exec(readFileSync(join(ROOT, 'engine', 'version.mjs'), 'utf8'))[1]));
+  assert.ok(parseEngineVersion(readFileSync(join(ROOT, 'engine', 'version.mjs'), 'utf8')) >= 1);
+  assert.equal(parsePackVersion(readFileSync(join(ROOT, 'packs', 'basics', 'pack.mjs'), 'utf8')), 1);
+  assert.equal(parsePackVersion(readFileSync(join(ROOT, 'packs', 'sheepdog', 'pack.mjs'), 'utf8')), 1);
+  // A file that states no version yields null — "canon says nothing", never zero.
+  assert.equal(parsePackVersion('export default { id: \'x\' }\n'), null);
+  assert.equal(parseEngineVersion('nothing here'), null);
+  // And a nested `version:` deeper in a manifest is not mistaken for the pack's own.
+  assert.equal(parsePackVersion('export default {\n  id: \'x\',\n  config: {\n    version: 9,\n  },\n};\n'), null);
+});
+
+test('canon versions are read once per artifact, however many members ask', async () => {
+  let reads = 0;
+  const gh = async (path) => {
+    reads += 1;
+    const body = path.includes('engine/version.mjs')
+      ? 'export const ENGINE_VERSION = 7;\n'
+      : 'export default {\n  id: \'basics\',\n  version: 3,\n};\n';
+    return { status: 200, json: { content: Buffer.from(body).toString('base64') } };
+  };
+  const canon = makeCanonVersions(gh, 'o/canon');
+  const installed = { engineVersion: 1, packVersions: { basics: 1 } };
+  assert.deepEqual(await canon.forInstalled(installed), { engineVersion: 7, packVersions: { basics: 3 } });
+  assert.equal(reads, 2, 'engine + one pack');
+  // A second member carrying the same packs costs nothing — the point of the cache,
+  // since the fleet shares one canon and most of its packs.
+  await canon.forInstalled(installed);
+  await canon.forInstalled(installed);
+  assert.equal(reads, 2, 'the cache is what keeps this from being a read per member per pack');
+});
+
+test('a version-measured drift issue does not offer a window there is nothing to tune', () => {
+  assert.equal(fixesKey('behind', 'updates'), 'behind-versions');
+  assert.equal(fixesKey('behind', 'baselining'), 'behind');
+  // Only the shared symptom forks; a root cause reads the same under both measures.
+  assert.equal(fixesKey('no-scheduler', 'updates'), 'no-scheduler');
+});
+
 // --- dormancy -----------------------------------------------------------------
 // A dormant member's scheduler stops before it evaluates anything, so its mount
 // falls behind BY DESIGN. Every state above would fire on it, and each would be a
@@ -94,6 +209,26 @@ test('probe: an ordinary member is still probed in full', async () => {
   assert.equal(p.stampedRef, 'abc');
   assert.equal(p.hasScheduler, false);           // the fake serves no workflow file
   assert.equal(seen.length, 3, 'declaration + scheduler workflow + canon compare');
+});
+
+test('probe: an updates member asks canon for versions and never for the compare', async () => {
+  const { gh, seen } = contentsGh({
+    'o/flipped:.claudinite-checks.json': {
+      packs: ['basics'],
+      maintenance: { delivery: 'auto-merge', mechanism: 'updates' },
+      claudinite: { ref: 'frozen', engineVersion: 2, packVersions: { basics: 1 } },
+    },
+    'o/flipped:.github/workflows/claudinite-scheduler.yml': {},
+  });
+  const canonVersions = { forInstalled: async (i) => ({ engineVersion: 9, packVersions: { basics: i.packVersions.basics } }) };
+  const p = await probe(gh, 'o/flipped', { canonRepo: 'o/canon', canonBranch: 'main', canonVersions });
+
+  assert.equal(p.mechanism, 'updates');
+  assert.deepEqual(p.installed, { engineVersion: 2, packVersions: { basics: 1 } });
+  assert.equal(p.canon.engineVersion, 9);
+  assert.equal(p.compare, null);
+  assert.ok(!seen.some((s) => s.includes('/compare/')), 'a frozen ref is never compared against canon');
+  assert.equal(classifyFreshness({ ...p, nowMs: NOW, staleDays: 14 }).state, 'behind');
 });
 
 // --- convergence --------------------------------------------------------------

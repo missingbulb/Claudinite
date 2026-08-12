@@ -31,15 +31,31 @@
 //   ref-not-on-trunk  the stamped ref is not an ancestor of canon's default branch
 //                   (or is not a canon commit at all) — vendoring's #328 anti-rewind
 //                   guard refuses to write over it, so the repo is WEDGED, not merely late
-//   behind          on trunk, but the commit it is stamped at is older than staleDays
-//                   while canon has moved on — baselining has stopped landing
+//   behind          it has not picked canon up — measured by VERSION or by DATE
+//                   depending on which mechanism maintains the member (below)
 //
-// THE ONE ASSUMPTION, stated plainly: baselining reverts a stamp-only bump, so
-// `claudinite.updated` advances only when canon actually changed that member's vendor
-// set. Age of the STAMPED REF is therefore the honest liveness measure, and `behind`
-// reads "this member has not picked canon up in staleDays" — not "canon moved". It can
-// still misfire on a member whose vendor set genuinely saw no change in that window;
-// `staleDays` (default 14) is the knob, and the issue body says so.
+// TWO MEASURES, because there are two mechanisms (#768). Which one a member runs is
+// its own declaration to make (`maintenance.mechanism`, engine/served-by.mjs), and
+// the sweep asks the question that mechanism can actually answer:
+//
+//   baselining → BY DATE. Baselining reverts a stamp-only bump, so `claudinite.ref`
+//     advances only when canon actually changed that member's vendor set. Age of the
+//     stamped ref is the honest liveness measure there, and `behind` reads "this
+//     member has not picked canon up in staleDays" — not "canon moved". It can still
+//     misfire on a member whose vendor set genuinely saw no change in the window;
+//     `staleDays` (default 14) is the knob, and the issue body says so.
+//   updates → BY VERSION. The update flows stamp `engineVersion` and `packVersions`
+//     and deliberately never write `ref` or `updated`: a no-op cycle must produce no
+//     PR, and a date stamped every night is exactly the churn the versioned scheme
+//     removed. So on a flipped member the ref FREEZES, and measuring its age would
+//     report every healthy repo as drifting the moment canon moved past the commit
+//     baselining last wrote (#786). The installed versions answer the same question
+//     exactly rather than by estimate: behind is `installed < canon`, per component,
+//     and the issue can name which version is missing instead of a number of days.
+//
+// `staleDays` therefore governs only the date measure. A version-measured member is
+// behind the moment canon publishes a higher version — there is no window to tune,
+// because there is nothing being estimated.
 //
 // Same two rules the census keeps: an indeterminate repo is UNKNOWN, never a finding —
 // no issue is opened for it and the run fails so the cause escalates; and an unreadable
@@ -55,8 +71,9 @@
 
 import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { makeGh, paged, ensureLabel, labeledIssues, readDeclaration, isDormant, DECLARATION } from '../../fleet-api.mjs';
+import { makeGh, paged, ensureLabel, labeledIssues, readDeclaration, readFile, isDormant, DECLARATION } from '../../fleet-api.mjs';
 import { parseSheepdogConfig } from '../../fleet-config.mjs';
+import { servedBy } from '../../../../engine/served-by.mjs';
 
 const LABEL = 'fleet-drift';
 const SCHEDULER = '.github/workflows/claudinite-scheduler.yml';
@@ -72,15 +89,55 @@ const MARKER_RE = /<!-- fleet-freshness: ([a-z-]+) -->/;
 
 // --- classification (pure) ----------------------------------------------------
 
+// What a member has INSTALLED against what canon PUBLISHES, per component, as text a
+// drift issue can name. Empty means current.
+//
+// Only the packs canon actually ships are compared. A member's `local/*` packs are
+// repo-owned — no version, no migrations, no install flow (DESIGN §8) — so there is
+// no canon version for them to be behind, and a pack canon has since retired is not
+// drift on the member's side either. Both fall out of the same rule: compare only
+// where canon states a number.
+export function versionGap({ installed, canon }) {
+  const gaps = [];
+  const engine = installed?.engineVersion ?? null;
+  if (canon?.engineVersion != null && (engine === null || engine < canon.engineVersion)) {
+    gaps.push(`engine ${engine ?? 'unstamped'} → ${canon.engineVersion}`);
+  }
+  for (const [id, have] of Object.entries(installed?.packVersions ?? {})) {
+    const target = canon?.packVersions?.[id];
+    if (target != null && have < target) gaps.push(`${id} ${have} → ${target}`);
+  }
+  return gaps;
+}
+
 // `compare` is what canon's compare endpoint said about `stampedRef → canon default
 // branch`, normalized to { status, aheadBy, baseDateMs }, or null when the ref is not
-// a commit in canon at all. Kept free of I/O so every branch is testable directly.
-export function classifyFreshness({ stampedRef, hasScheduler, compare, nowMs, staleDays }) {
-  if (!stampedRef) {
-    return { state: 'no-stamp', detail: `${DECLARATION} carries no claudinite.ref — the repo declares packs but has never been vendored` };
+// a commit in canon at all — read only for a DATE-measured member, and null for a
+// version-measured one, which never consults it. Kept free of I/O so every branch is
+// testable directly.
+export function classifyFreshness({
+  mechanism, stampedRef, installed, canon, hasScheduler, compare, nowMs, staleDays,
+}) {
+  const versioned = mechanism === 'updates';
+  // "Never vendored" is the same question under both measures, asked of whichever
+  // field that mechanism writes: a repo installed under the update flows may never
+  // have carried a ref at all, and reading its absence as "never vendored" would
+  // report every such member the day it adopted.
+  if (!stampedRef && installed?.engineVersion == null) {
+    return {
+      state: 'no-stamp',
+      detail: `${DECLARATION} carries no claudinite.ref and no claudinite.engineVersion`
+        + ' — the repo declares packs but has never been vendored',
+    };
   }
   if (!hasScheduler) {
-    return { state: 'no-scheduler', detail: `no ${SCHEDULER} — the repo has no cron, so nothing there will ever baseline it` };
+    return { state: 'no-scheduler', detail: `no ${SCHEDULER} — the repo has no cron, so nothing there will ever update it` };
+  }
+  if (versioned) {
+    const gaps = versionGap({ installed, canon });
+    return gaps.length
+      ? { state: 'behind', detail: `installed versions trail canon: ${gaps.join(', ')}` }
+      : { state: FRESH, detail: `at canon's engine ${canon?.engineVersion ?? '?'} and every pack version it carries` };
   }
   if (compare === null) {
     return { state: 'ref-not-on-trunk', detail: `the stamped ref ${stampedRef} is not a commit in canon` };
@@ -99,6 +156,66 @@ export function classifyFreshness({ stampedRef, hasScheduler, compare, nowMs, st
     };
   }
   return { state: FRESH, detail: compare.aheadBy > 0 ? `${compare.aheadBy} canon commit(s) behind, within the ${staleDays}-day window` : 'at canon head' };
+}
+
+// --- what canon publishes (the version measure's other half) ------------------
+
+// Canon's engine version and a pack's version, read as TEXT out of canon over the
+// API rather than imported. The enforcer's own mount is a different commit from
+// canon by definition, and "what does canon publish right now" is precisely the
+// question — importing would answer it with whatever this repo last vendored.
+//
+// Both declarations are single-line and machine-written (an engine release bumps
+// the first; a pack release the second), so a regex is the whole parser. A file
+// that does not match yields null, which reads as "canon states no number" and
+// simply drops that component from the comparison — never as version zero.
+export function parseEngineVersion(text) {
+  const m = /^export const ENGINE_VERSION\s*=\s*(\d+)\s*;/m.exec(String(text ?? ''));
+  return m ? Number(m[1]) : null;
+}
+
+// Anchored at the manifest's own indent so it cannot match a `version:` nested
+// inside some other object further down the file.
+export function parsePackVersion(text) {
+  const m = /^ {2}version:\s*(\d+),$/m.exec(String(text ?? ''));
+  return m ? Number(m[1]) : null;
+}
+
+// A cached reader over canon's published versions. The fleet shares one canon, and
+// members share most of their packs, so every read here is made once per sweep no
+// matter how many members ask for it — the cache is what keeps a version measure
+// from costing a canon round-trip per member per pack.
+// Reads canon's DEFAULT BRANCH — the contents API's own default, and the same trunk
+// the date measure compares against, so both measures answer "behind what?" with the
+// same canon.
+export function makeCanonVersions(gh, canonRepo) {
+  const packs = new Map();
+  let engineVersion;
+  return {
+    async engine() {
+      if (engineVersion === undefined) {
+        engineVersion = parseEngineVersion((await readFile(gh, canonRepo, 'engine/version.mjs'))?.text);
+      }
+      return engineVersion;
+    },
+    async pack(id) {
+      if (!packs.has(id)) {
+        packs.set(id, parsePackVersion((await readFile(gh, canonRepo, `packs/${id}/pack.mjs`))?.text));
+      }
+      return packs.get(id);
+    },
+    // Canon's side of the comparison for ONE member: its engine version, plus a
+    // version for each pack that member has stamped. Scoped to what the member
+    // actually carries so the sweep never reads the 30-odd packs nobody asked about.
+    async forInstalled(installed) {
+      const packVersions = {};
+      for (const id of Object.keys(installed?.packVersions ?? {})) {
+        const v = await this.pack(id);
+        if (v != null) packVersions[id] = v;
+      }
+      return { engineVersion: await this.engine(), packVersions };
+    },
+  };
 }
 
 // --- issue bodies -------------------------------------------------------------
@@ -123,17 +240,36 @@ const FIXES = {
     'commit that IS on the default branch.',
   ],
   behind: [
-    'The scheduler workflow exists but its baselining is not landing. Check the repo\'s',
+    'The scheduler workflow exists but its update task is not landing. Check the repo\'s',
     'recent `Claudinite scheduler` runs: a disabled workflow (GitHub disables cron on repos',
-    'with no activity for 60 days), a failing baselining task, or a maintenance PR that',
-    'never merges all look like this.',
+    'with no activity for 60 days), a failing task, or a delivered PR that never merges all',
+    'look like this.',
     '',
     'If instead this member\'s vendor set legitimately saw no change in the window, the',
     'window is wrong, not the repo — raise `staleDays` on the sheepdog pack entry\'s config.',
   ],
+  // The version-measured twin. Same symptom, but nothing here is an estimate, so the
+  // "maybe the window is wrong" escape hatch above would be a lie: canon publishes a
+  // higher number than this member installed, and that is the whole finding.
+  'behind-versions': [
+    'The scheduler workflow exists but its `update` task is not landing the versions canon',
+    'publishes. Check the repo\'s recent `Claudinite scheduler` runs: a disabled workflow',
+    '(GitHub disables cron on repos with no activity for 60 days), an update run ending at',
+    '`needs-human`, or a delivered PR that never merges all look like this.',
+    '',
+    'Forcing one cycle by hand is the quickest probe — dispatch the scheduler with',
+    '`FORCE_TASKS=update` and read what the run says; the flows report the terminal they',
+    'reached and why.',
+  ],
 };
 
-function driftBody(fullName, { state, detail }, staleDays) {
+// Which remedy prose fits: `behind` is one symptom reached by two measures, and the
+// advice differs entirely (a tunable window versus an exact version gap).
+export const fixesKey = (state, mechanism) =>
+  (state === 'behind' && mechanism === 'updates' ? 'behind-versions' : state);
+
+function driftBody(fullName, { state, detail, mechanism }, staleDays) {
+  const versioned = mechanism === 'updates';
   return [
     marker(state),
     `\`${fullName}\` is covered — it carries a tracked \`${DECLARATION}\` — but it is not keeping up with canon.`,
@@ -142,9 +278,11 @@ function driftBody(fullName, { state, detail }, staleDays) {
     '',
     '**What to do**',
     '',
-    ...FIXES[state],
+    ...FIXES[fixesKey(state, mechanism)],
     '',
-    `This issue is converged by the weekly fleet-freshness task (window: ${staleDays} days): it closes`,
+    `This issue is converged by the weekly fleet-freshness task (${versioned
+      ? 'measured by installed version, so there is no window to tune'
+      : `window: ${staleDays} days`}): it closes`,
     'itself `completed` once the repo is fresh again, and `not planned` once the repo leaves the',
     'fleet (excluded, deleted, archived, or no longer covered). A close without either gets',
     'reopened while the repo stays behind.',
@@ -235,7 +373,7 @@ export async function convergeDrift(gh, home, { unhealthy, healthySet, goneSet, 
 // Throws on anything indeterminate; the caller turns that into UNKNOWN. Exported so
 // the "a dormant member is never probed further" contract is testable without a
 // network — it is a decision, not plumbing.
-export async function probe(gh, fullName, { canonRepo, canonBranch }) {
+export async function probe(gh, fullName, { canonRepo, canonBranch, canonVersions }) {
   const cfg = await readDeclaration(gh, fullName);
   if (cfg === null) return null; // uncovered — the census's business, not this sweep's
   // A DORMANT member is not measured. Its scheduler stops before it evaluates
@@ -245,10 +383,25 @@ export async function probe(gh, fullName, { canonRepo, canonBranch }) {
   // obeying its own declaration. Detected here, before the stamp is even read.
   if (isDormant(cfg)) return { dormant: true };
   const stampedRef = cfg?.claudinite?.ref ?? null;
+  // Which mechanism maintains this member decides which measure applies — read from
+  // the member's own declaration, through the same predicate the flows themselves
+  // obey, so the sweep can never disagree with the worker about who serves a repo.
+  const { mechanism } = servedBy(cfg);
+  const installed = {
+    engineVersion: cfg?.claudinite?.engineVersion ?? null,
+    packVersions: cfg?.claudinite?.packVersions ?? {},
+  };
 
   const wf = await gh(`/repos/${fullName}/contents/${SCHEDULER}`);
   if (wf.status !== 200 && wf.status !== 404) throw new Error(`${SCHEDULER} check returned ${wf.status}`);
   const hasScheduler = wf.status === 200;
+
+  // A version-measured member never consults the ref: it is frozen by design, so
+  // both the compare call and every verdict derived from it (`ref-not-on-trunk`,
+  // the age window) would be answering a question that no longer means anything.
+  if (mechanism === 'updates') {
+    return { mechanism, stampedRef, installed, hasScheduler, canon: await canonVersions.forInstalled(installed), compare: null };
+  }
 
   let compare = null;
   if (stampedRef) {
@@ -267,7 +420,7 @@ export async function probe(gh, fullName, { canonRepo, canonBranch }) {
       if (!Number.isFinite(compare.baseDateMs)) throw new Error(`canon returned no usable date for ${stampedRef}`);
     }
   }
-  return { stampedRef, hasScheduler, compare };
+  return { mechanism, stampedRef, installed, hasScheduler, compare, canon: null };
 }
 
 // --- the run summary (pure) ---------------------------------------------------
@@ -337,6 +490,7 @@ export async function main() {
     throw new Error(`canon repo ${canonRepo} is unreadable (status ${canonRes.status}) — set canonRepo on the sheepdog pack entry's config if it is not ${owner}/Claudinite`);
   }
   const canonBranch = canonRes.json.default_branch;
+  const canonVersions = makeCanonVersions(gh, canonRepo);
 
   const mine = (await paged(gh, '/user/repos?affiliation=owner'))
     .filter((r) => r.owner.login.toLowerCase() === owner);
@@ -355,7 +509,7 @@ export async function main() {
     if (exclude.has(fullName)) { outOfScope.push(`${r.full_name} (excluded)`); gone.push(fullName); continue; }
     let p;
     try {
-      p = await probe(gh, r.full_name, { canonRepo, canonBranch });
+      p = await probe(gh, r.full_name, { canonRepo, canonBranch, canonVersions });
     } catch (e) {
       unknown.push(`${r.full_name} — ${e.message}`);
       continue;
@@ -367,7 +521,9 @@ export async function main() {
     if (p.dormant) { dormant.push(fullName); continue; }
     const verdict = classifyFreshness({ ...p, nowMs: Date.now(), staleDays });
     if (verdict.state === FRESH) fresh.push({ fullName, detail: verdict.detail });
-    else unhealthy.push({ fullName, ...verdict });
+    // The mechanism rides along: it is what decides which remedy prose a drift issue
+    // carries, and re-deriving it there would be a second answer to a settled question.
+    else unhealthy.push({ fullName, mechanism: p.mechanism, ...verdict });
   }
 
   await ensureLabel(gh, home, LABEL, { color: 'D93F0B', description: 'Covered member whose Claudinite mount has fallen behind canon' });

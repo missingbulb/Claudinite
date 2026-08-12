@@ -85,3 +85,40 @@ test('the terminal vocabulary the runner acts on is the flows\' own', async () =
   }
   assert.equal(NEEDS_HUMAN, 'needs-human', 'the label and the terminal are one string');
 });
+
+test('the runner disposes of an open update PR BEFORE it converges (#787)', async () => {
+  // The defect this closes: disposal placed after the converge is unreachable on a
+  // quiet cycle, because `nothing changed — no branch, no PR` returns first. So the
+  // cycle that should have landed the stranded PR opened a duplicate instead.
+  // Asserted structurally, on the one ordering that makes the promise keepable.
+  const fs = await import('node:fs');
+  const src = fs.readFileSync('packs/basics/tasks/update/worker.mjs', 'utf8');
+
+  const disposal = src.indexOf('disposeOpenPull(');
+  const clone = src.indexOf("git(['clone'");
+  const quietReturn = src.indexOf('nothing changed — no branch, no PR');
+  assert.ok(disposal > 0 && clone > 0 && quietReturn > 0, 'the three landmarks still exist');
+  assert.ok(disposal < clone, 'disposal must precede the canon clone and the converge that follows it');
+  assert.ok(disposal < quietReturn, 'a cycle with nothing to converge must still dispose of the incumbent');
+
+  // And two of the three outcomes must END the cycle: treating either `kept` or
+  // `merged` as "carry on" is what puts a second PR on top of a live one, or
+  // re-delivers a diff that just landed. Counted between the disposal and the clone,
+  // so a handler that stops branching still has to stop the run.
+  const block = src.slice(disposal, clone);
+  assert.equal((block.match(/\breturn;/g) ?? []).length, 2,
+    'both cycle-ending outcomes must return before the converge begins');
+  for (const outcome of ['kept', 'merged']) {
+    assert.match(block, new RegExp(`disposal === '${outcome}'`), `the runner ignores the ${outcome} outcome`);
+  }
+});
+
+test('the runner finds its incumbent by the same prefix it delivers on', async () => {
+  // A prefix that drifted from the branch names would silently find nothing to
+  // dispose of, which reads exactly like a healthy cycle.
+  const fs = await import('node:fs');
+  const src = fs.readFileSync('packs/basics/tasks/update/worker.mjs', 'utf8');
+  assert.match(src, /openDeliveredPull\(open\.json, UPDATE_PREFIX\)/);
+  assert.ok(updateBranchName('2026-08-12', 'abc123').startsWith('claudinite/update'),
+    'the delivered branch and the searched prefix are the same family');
+});
