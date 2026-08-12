@@ -1,0 +1,186 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { installPacks, planInstall, unansweredQuestions } from '../updates/install.mjs';
+import { terminalFor, applyStageBrief } from '../updates/terminals.mjs';
+import { NEEDS_HUMAN } from '../updates/engine-update.mjs';
+import { loadPacks } from '../engine/pack_loader/pack-registry.mjs';
+import { validateManifest } from '../engine/pack_loader/pack-schema.mjs';
+
+const MOUNT = join('.claudinite', 'shared');
+const makeRepo = (declaration = { packs: [] }) => {
+  const root = mkdtempSync(join(tmpdir(), 'claudinite-install-'));
+  writeFileSync(join(root, '.claudinite-checks.json'), `${JSON.stringify(declaration, null, 2)}\n`);
+  mkdirSync(join(root, 'src'), { recursive: true });
+  return root;
+};
+const settingsOf = (root) => JSON.parse(readFileSync(join(root, '.claudinite-checks.json'), 'utf8'));
+
+test('an install refuses a pack the repo already has a version for', async () => {
+  const packs = await loadPacks();
+  const { install, refused } = planInstall(packs, ['basics'], { packVersions: { basics: 1 } });
+  assert.deepEqual(install, []);
+  assert.match(refused[0].why, /already installed at version 1 — that is an update, not an install/);
+});
+
+test('an install refuses a pack this repo\'s engine is too old for, and an unknown id', async () => {
+  const packs = await loadPacks().then((ps) => ps.map((p) => (p.id === 'basics' ? { ...p, minEngineVersion: 99 } : p)));
+  const { install, refused } = planInstall(packs, ['basics', 'not-a-pack'], null, { engineVersion: 2 });
+  assert.deepEqual(install, []);
+  assert.deepEqual(refused.map((r) => r.id).sort(), ['basics', 'not-a-pack']);
+  assert.match(refused.find((r) => r.id === 'basics').why, /needs engine 99/);
+});
+
+test('an install stamps the latest version and fetches NO migration records', async () => {
+  const root = makeRepo();
+  const r = await installPacks(root, ['basics'], { selfTestRun: () => 'ok' });
+  assert.notEqual(r.status, undefined);
+
+  const packs = await loadPacks();
+  const latest = packs.find((p) => p.id === 'basics').version;
+  assert.equal(settingsOf(root).claudinite.packVersions.basics, latest, 'the install claims the newest version directly');
+  assert.ok(settingsOf(root).packs.includes('basics'), 'and declares the pack it installed');
+
+  // The correctness rule, asserted as an absence: a record assumes the shapes its own
+  // era produced, and an empty repo is not one of them.
+  const mounted = join(root, MOUNT, 'packs', 'basics');
+  assert.ok(existsSync(join(mounted, 'RULES.md')), 'the content is there');
+  assert.ok(!existsSync(join(mounted, 'migrations')), 'and not one migration record with it');
+  rmSync(root, { recursive: true, force: true });
+});
+
+test('an install never runs a record even for a pack that has them', async () => {
+  const root = makeRepo();
+  const r = await installPacks(root, ['sheepdog'], { dryRun: true });
+  assert.equal(r.dryRun, true);
+  assert.equal(r.records, 0, 'sheepdog carries records; a fresh install fetches none of them');
+  rmSync(root, { recursive: true, force: true });
+});
+
+test('unanswered adoption questions end the run the same way a red check does', async () => {
+  const packs = await loadPacks();
+  const withQuestions = packs.find((p) => p.questions?.length);
+  assert.ok(withQuestions, 'the corpus has a pack that interviews');
+
+  // Declared bare — no answers at all.
+  assert.ok(unansweredQuestions(packs, [withQuestions.id]).length > 0);
+  // …and answered, it asks nothing.
+  const answers = Object.fromEntries(withQuestions.questions.map((q) => [q.id, 'answered']));
+  assert.deepEqual(unansweredQuestions(packs, [{ id: withQuestions.id, answers }]), []);
+
+  const root = makeRepo();
+  const r = await installPacks(root, [withQuestions.id], { selfTestRun: () => 'ok' });
+  assert.equal(r.status, NEEDS_HUMAN, 'an interview is one instance of the rule, not a rule of its own');
+  assert.match(r.decision.why, /unanswered/);
+  // The content still landed and the version is still stamped — what the terminal
+  // governs is the merge, not whether the install happened.
+  assert.ok(settingsOf(root).claudinite.packVersions[withQuestions.id]);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test('an install always wants the apply stage — the rules meet the repo for the first time', async () => {
+  const root = makeRepo();
+  const r = await installPacks(root, ['basics'], { selfTestRun: () => 'ok' });
+  assert.equal(r.applyStage.needed, true);
+  assert.deepEqual(r.applyStage.packs, ['basics']);
+  rmSync(root, { recursive: true, force: true });
+});
+
+// --- the uniform terminal ------------------------------------------------------
+
+test('needs-human outranks everything, including a repo that would auto-merge', () => {
+  const t = terminalFor({ status: NEEDS_HUMAN, detail: 'the tree failed its self-test', decision: { action: 'merge' } });
+  assert.equal(t.action, 'needs-human');
+  assert.match(t.why, /failed its self-test/);
+});
+
+test('the apply stage outranks a merge — landing first would call the repair optional', () => {
+  const t = terminalFor({ status: 'ok', applyStage: { needed: true, packs: ['basics'] }, decision: { action: 'merge', why: 'green' } });
+  assert.equal(t.action, 'apply-stage');
+  assert.deepEqual(t.packs, ['basics']);
+});
+
+test('an outcome that decided nothing is not a merge', () => {
+  assert.equal(terminalFor({ status: 'ok' }).action, 'needs-human');
+  assert.equal(terminalFor(null).action, 'needs-human');
+  assert.equal(terminalFor('ok').action, 'needs-human');
+});
+
+test('a judged, nothing-pending outcome takes the flow\'s own decision', () => {
+  assert.equal(terminalFor({ status: 'ok', decision: { action: 'merge', why: 'green' } }).action, 'merge');
+  assert.equal(terminalFor({ status: 'ok', decision: { action: 'keep', why: 'review' } }).action, 'keep');
+  assert.equal(terminalFor({ status: 'ok', applyStage: { needed: false }, decision: { action: 'merge', why: 'green' } }).action, 'merge');
+  assert.equal(terminalFor({ status: 'ok', decision: { action: 'merge', forced: true, why: 'forced' } }).forced, true);
+});
+
+test('the apply-stage brief scopes the session and re-homes the executor verification', () => {
+  const brief = applyStageBrief({ packs: ['basics', 'sheepdog'], branch: 'claudinite/update-1' });
+  assert.match(brief, /basics, sheepdog/);
+  assert.match(brief, /claudinite\/update-1/);
+  assert.match(brief, /executor routine/, 'the one verification no Action can make');
+  assert.match(brief, /needs-human/);
+});
+
+// --- seed ops: run once at install, repo-owned thereafter ----------------------
+
+test('the manifest accepts seedOps and rejects a malformed one', () => {
+  const valid = {
+    id: 'demo',
+    ruleRoutingGuidance: { belongs: 'a b c', excludes: 'd e f' },
+  };
+  assert.deepEqual(validateManifest({ ...valid, seedOps: [{ template: 'stubs/x.yml', dest: '.github/x.yml' }] }), []);
+  assert.deepEqual(validateManifest(valid), [], 'optional — most packs seed nothing');
+  for (const bad of [[{ template: 'x' }], [{ dest: 'y' }], ['x'], [null], 'x']) {
+    assert.match(validateManifest({ ...valid, seedOps: bad }).map((e) => e.what).join(' '), /"seedOps" is not a valid value/, JSON.stringify(bad));
+  }
+});
+
+test('an install seeds a declared op, and never overwrites what the repo already has', async () => {
+  // Driven through the real install with the pack set injected, because the seed-op
+  // path is only reachable through a manifest that declares one and the canon has
+  // none yet. The template is a file that really exists in the pack.
+  const packs = await loadPacks();
+  const patched = packs.map((p) => (p.id === 'basics'
+    ? { ...p, seedOps: [{ template: 'RULES.md', dest: 'SEEDED.md' }] }
+    : p));
+
+  const root = makeRepo();
+  const first = await installPacks(root, ['basics'], { packs: patched, selfTestRun: () => 'ok' });
+  assert.deepEqual(first.seeded, ['SEEDED.md']);
+  assert.ok(existsSync(join(root, 'SEEDED.md')));
+
+  // The repo owns it from here. Re-seeding into a repo that already has the file —
+  // the README-diff class of bug — must not happen even on a fresh install.
+  writeFileSync(join(root, 'SEEDED.md'), 'the repo edited this\n');
+  const second = makeRepo();
+  writeFileSync(join(second, 'SEEDED.md'), 'this repo already had one\n');
+  const again = await installPacks(second, ['basics'], { packs: patched, selfTestRun: () => 'ok' });
+  assert.deepEqual(again.seeded, [], 'a dest that exists is never overwritten');
+  assert.equal(readFileSync(join(second, 'SEEDED.md'), 'utf8'), 'this repo already had one\n');
+  assert.equal(readFileSync(join(root, 'SEEDED.md'), 'utf8'), 'the repo edited this\n');
+  rmSync(root, { recursive: true, force: true });
+  rmSync(second, { recursive: true, force: true });
+});
+
+test('an UPDATE never seeds — the run-once guarantee is structural, not a flag', async () => {
+  // The hazard the issue names: an install op that re-runs on update rewrites a
+  // repo-owned surface. It cannot here, because only this flow reads seedOps — so
+  // the assurance is behavioural: a pack update over a seeded, then edited, file
+  // leaves it exactly as the repo left it.
+  const { packUpdate } = await import('../updates/pack-update.mjs');
+  const { applyVendor } = await import('../vendoring/apply-vendor-set.mjs');
+  const root = makeRepo({ packs: ['basics'] });
+  assert.deepEqual((await applyVendor(root)).errors, []);
+  writeFileSync(join(root, 'SEEDED.md'), 'seeded once, then edited by the repo\n');
+  const settings = settingsOf(root);
+  settings.claudinite.packVersions = { basics: 0 };
+  writeFileSync(join(root, '.claudinite-checks.json'), `${JSON.stringify(settings, null, 2)}\n`);
+
+  const r = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
+  assert.equal(r.status, 'ok', r.detail);
+  assert.equal(r.seeded, undefined, 'an update has no seeding step at all');
+  assert.equal(readFileSync(join(root, 'SEEDED.md'), 'utf8'), 'seeded once, then edited by the repo\n');
+  rmSync(root, { recursive: true, force: true });
+});
