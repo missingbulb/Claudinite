@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { engineUpdate, engineRecordsInGap, isEngineFile, NEEDS_HUMAN } from '../updates/engine-update.mjs';
+import { engineUpdate, engineRecordsInGap, isEngineFile, NEEDS_HUMAN, deliveryDecision, runSelfTest } from '../updates/engine-update.mjs';
 import { ENGINE_VERSION } from '../engine/version.mjs';
 import { applyVendor } from '../vendoring/apply-vendor-set.mjs';
 import { SCHEDULER_WORKFLOW } from '../engine/scheduler/converge-wiring.mjs';
@@ -151,5 +151,71 @@ test('dry run judges everything and writes nothing', async () => {
   assert.equal(r.dryRun, true);
   assert.ok(r.files > 0, 'it reports what it would lay down');
   assert.equal(readFileSync(join(root, MOUNT, 'engine', 'selftest.mjs'), 'utf8'), 'mangled\n', 'and changed nothing');
+  rmSync(root, { recursive: true, force: true });
+});
+
+// --- the self-test gate and its override (#768 Phase 1) -----------------------
+
+test('the gate decides by the self-test, and every non-green end looks the same', () => {
+  assert.deepEqual(deliveryDecision({ selftestOk: true }).action, 'merge');
+  // A repo that reviews its own PRs is not overridden by a green gate.
+  assert.equal(deliveryDecision({ selftestOk: true, delivery: 'review' }).action, 'keep');
+
+  const red = deliveryDecision({ selftestOk: false });
+  assert.equal(red.action, 'needs-human');
+  assert.equal(red.label, NEEDS_HUMAN);
+  assert.match(red.why, /FAILED its self-test/);
+  // Red is red whatever the repo's delivery preference says.
+  assert.equal(deliveryDecision({ selftestOk: false, delivery: 'review' }).action, 'needs-human');
+});
+
+test('force-merge-on-red-ci is per-invocation, and leaves a trace when used', () => {
+  const forced = deliveryDecision({ selftestOk: false, forceMergeOnRedCi: true });
+  assert.equal(forced.action, 'merge');
+  assert.equal(forced.forced, true, 'an override that leaves no trace is indistinguishable from a gate that passed');
+  assert.match(forced.why, /force-merge-on-red-ci/);
+  // Absent, the default is the gate — never the override.
+  assert.equal(deliveryDecision({ selftestOk: false }).action, 'needs-human');
+});
+
+test('the override is never read from the repo — a stored default is not an override', async () => {
+  // The whole point of "per-invocation, never a stored default": one operator's
+  // judgment about one release must not become standing policy nobody remembers
+  // granting. A declaration that asks for it is simply not consulted.
+  const root = makeMember({ packs: ['basics'], forceMergeOnRedCi: true, claudinite: { forceMergeOnRedCi: true } });
+  assert.deepEqual((await applyVendor(root)).errors, []);
+  const r = await engineUpdate(root, { fullName: 'o/r', selfTestRun: () => { throw new Error('mount is broken'); } });
+  assert.equal(r.status, NEEDS_HUMAN, 'the declaration asked to force a merge and was ignored');
+  assert.equal(r.decision.action, 'needs-human');
+  rmSync(root, { recursive: true, force: true });
+});
+
+test('a converged tree that fails its self-test ends at needs-human, with the update still applied', async () => {
+  // The update itself is not rolled back: the mount is converged and stamped, and
+  // what the gate decides is whether that lands on main — the PR stays open instead.
+  const root = makeMember();
+  assert.deepEqual((await applyVendor(root)).errors, []);
+  const r = await engineUpdate(root, { fullName: 'o/r', selfTestRun: () => { const e = new Error('x'); e.stdout = 'selftest: 1 of 5 probes FAILED'; throw e; } });
+  assert.equal(r.status, NEEDS_HUMAN);
+  assert.equal(r.selftest.ok, false);
+  assert.match(r.selftest.output, /probes FAILED/);
+  assert.equal(stampOf(root).engineVersion, ENGINE_VERSION, 'the converge happened; the gate governs the merge');
+  rmSync(root, { recursive: true, force: true });
+});
+
+test('the gate runs the MOUNT\'s self-test, not the canon\'s', async () => {
+  const root = makeMember();
+  assert.deepEqual((await applyVendor(root)).errors, []);
+  const seen = [];
+  await engineUpdate(root, { fullName: 'o/r', selfTestRun: (st, r) => { seen.push(st); return 'ok'; } });
+  assert.ok(seen[0].startsWith(join(root, MOUNT)), `${seen[0]} is not inside the member's own mount`);
+});
+
+test('runSelfTest reports an absent gate as a failure, never as a pass', () => {
+  // A mount with no selftest is not a green mount — it is one nothing can vouch for.
+  const root = mkdtempSync(join(tmpdir(), 'claudinite-nomount-'));
+  const r = runSelfTest(root);
+  assert.equal(r.ok, false);
+  assert.equal(r.ran, false);
   rmSync(root, { recursive: true, force: true });
 });

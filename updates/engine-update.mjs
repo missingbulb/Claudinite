@@ -1,4 +1,5 @@
 import { copyFileSync, mkdirSync, rmSync, renameSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { computeVendorSet, SHARED_SUBDIR } from '../vendoring/compute-vendor-set.mjs';
@@ -7,6 +8,7 @@ import { ENGINE_VERSION } from '../engine/version.mjs';
 import { migrationDirs, migrationApplies, flowOf, DECLARATION_FILE } from '../engine/checks/helpers/active-migrations.mjs';
 import { loadMigrations, migrationAgentic, applyMigration } from '../engine/migrations/registry.mjs';
 import { convergeWiring } from '../engine/scheduler/converge-wiring.mjs';
+import { NEEDS_HUMAN_LABEL } from '../engine/scheduler/dispatch.mjs';
 
 // THE ENGINE UPDATE FLOW (docs/versioned-updates/DESIGN.md §2): move one repo from
 // the engine version it has installed to the one this canon tree ships. Fully
@@ -57,8 +59,57 @@ export function engineRecordsInGap(installed, { today } = {}) {
 
 // The terminal reasons this flow can end on. Every one of them is a refusal to
 // write, never a partial update — and each is a sentence a human can act on,
-// because the only thing waiting on the other side of a stop is a person.
-export const NEEDS_HUMAN = 'needs-human';
+// because the only thing waiting on the other side of a stop is a person. It is
+// the scheduler's existing label, not a second spelling of the same idea: a repo
+// with two "a human is needed" labels has neither.
+export const NEEDS_HUMAN = NEEDS_HUMAN_LABEL;
+
+// THE SELF-TEST GATE (DESIGN §2.5). The converged tree is asked "can Claudinite
+// still run here?" before anything merges. It exists because of #555, where an
+// engine change silently stopped every consumer pack from validating while the
+// content checks stayed green — a content check cannot see its own machinery
+// break, so a green sweep over a broken mount says nothing at all.
+//
+// Run from the MOUNT, never from the canon: the copy under test is the one the
+// member will live with.
+export function runSelfTest(root, run = defaultRun) {
+  const st = join(root, SHARED_SUBDIR, 'engine', 'selftest.mjs');
+  if (!existsSync(st)) return { ok: false, ran: false, output: 'no vendored selftest to gate on' };
+  try { return { ok: true, ran: true, output: run(st, root) }; }
+  catch (e) { return { ok: false, ran: true, output: `${e.stdout ?? ''}${e.stderr ?? ''}`.trim() || e.message }; }
+}
+const defaultRun = (st, root) => execFileSync(process.execPath, [st, '--root', root, '--strict'],
+  { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], cwd: root });
+
+// What happens to the update's PR, given the gate and the repo's own delivery
+// preference. PURE — the whole policy in one place, so the shell that opens and
+// merges the PR carries no judgment of its own.
+//
+//   green  → the repo's delivery setting decides (auto-merge, or leave for review)
+//   red    → PR open, `needs-human`, stop. Every non-green terminal looks the same
+//            (DESIGN §5); there is no "merge it anyway because the diff looked fine".
+//
+// `forceMergeOnRedCi` is the operator's signed judgment that a red gate is
+// acceptable (owner decision 1). It is a PER-INVOCATION argument and is never read
+// from the repo's declaration — a stored default would turn one operator's judgment
+// about one release into a standing policy nobody remembers granting, which is the
+// opposite of what an override is for. The outcome still records that it was used:
+// an override that leaves no trace is indistinguishable from a gate that passed.
+export function deliveryDecision({ selftestOk, delivery = 'auto-merge', forceMergeOnRedCi = false } = {}) {
+  if (selftestOk) {
+    return delivery === 'auto-merge'
+      ? { action: 'merge', why: 'the converged tree passed its self-test' }
+      : { action: 'keep', why: `the converged tree passed its self-test; delivery is "${delivery}", so the PR is the owner's to merge` };
+  }
+  if (forceMergeOnRedCi) {
+    return { action: 'merge', forced: true, why: 'the converged tree FAILED its self-test, merged on the operator\'s explicit force-merge-on-red-ci' };
+  }
+  return {
+    action: 'needs-human',
+    label: NEEDS_HUMAN,
+    why: 'the converged tree FAILED its self-test — the machinery that runs the rules is not intact, so the PR stays open',
+  };
+}
 
 const outcome = (status, detail, extra = {}) => ({ status, detail, ...extra });
 
@@ -66,7 +117,13 @@ const outcome = (status, detail, extra = {}) => ({ status, detail, ...extra });
 // owner/name, needed by the wiring converge. `today` pins the date fallback for a
 // repo with no version stamp. `dryRun` runs every judgment and writes nothing —
 // what the rehearsal wants, and what makes this testable against a real tree.
-export async function engineUpdate(targetRoot, { fullName, today, dryRun = false } = {}) {
+// `delivery` is the repo's own preference and `forceMergeOnRedCi` the operator's
+// per-invocation override; both feed the decision this returns, never a merge it
+// performs. `selfTestRun` is the gate's runner, injected so a test can drive both
+// outcomes without a mount that is genuinely broken.
+export async function engineUpdate(targetRoot, {
+  fullName, today, dryRun = false, delivery = 'auto-merge', forceMergeOnRedCi = false, selfTestRun,
+} = {}) {
   const settingsPath = join(targetRoot, DECLARATION_FILE);
   if (!existsSync(settingsPath)) {
     return outcome(NEEDS_HUMAN, `${targetRoot} has no ${DECLARATION_FILE} — it has never adopted Claudinite`);
@@ -136,7 +193,15 @@ export async function engineUpdate(targetRoot, { fullName, today, dryRun = false
   next.claudinite = { ...(next.claudinite ?? {}), engineVersion: ENGINE_VERSION };
   writeFileSync(settingsPath, `${JSON.stringify(next, null, 2)}\n`);
 
-  return outcome('ok', `engine ${from ?? 'unstamped'} → ${ENGINE_VERSION}`, {
-    from, to: ENGINE_VERSION, records, files: written.length, applied, wiring: wiring.changed,
-  });
+  // 4. Gate on the converged tree, and say what happens to the PR. This flow does
+  //    not open or merge it — that is the shell's, which carries a token; what it
+  //    must never carry is the judgment, so the decision is made and reported here.
+  const selftest = runSelfTest(targetRoot, selfTestRun);
+  const decision = deliveryDecision({ selftestOk: selftest.ok, delivery, forceMergeOnRedCi });
+
+  return outcome(decision.action === 'needs-human' ? NEEDS_HUMAN : 'ok',
+    decision.why, {
+      from, to: ENGINE_VERSION, records, files: written.length, applied, wiring: wiring.changed,
+      selftest, decision,
+    });
 }
