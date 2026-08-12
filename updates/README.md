@@ -12,6 +12,7 @@ the release discipline the engine's versions follow is [`engine/RELEASES.md`](..
 | [`pack-update.mjs`](pack-update.mjs) | The **pack update**: the same shape, per declared pack — replace the pack's tree, run its records, stamp its version, same gate. It enforces `minEngineVersion` against the version the TARGET runs, it may write `.github/workflows/` (which the engine flow may not), and it ends by saying whether the agentic apply stage is needed. |
 | [`install.mjs`](install.mjs) | The **install**: the pack flow started from version zero, **running no migrations** — the vendored content is already the newest shape, and a record assumes the shapes its own era produced, which an empty repo is not. It stamps the latest version directly, and refuses a pack the repo already has a version for. |
 | [`terminals.mjs`](terminals.mjs) | The **uniform terminal**: what happens to an update's PR, given what a flow returned. One function for every flow, so no shell re-decides it. |
+| [`served-by.mjs`](served-by.mjs) | The **skew guard**: which mechanism serves a repo while baselining and these flows both exist. Exactly one, per repo, flipped by the update that migrates it — and a repo that says nothing keeps doing what it does today. |
 
 ## The custom update — the one named lane out of the engine flow
 
