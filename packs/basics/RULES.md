@@ -6,23 +6,21 @@ change, independent of any one project.
 - **Starting any requested change** — begin from the *problem*, not the solution, in any
   repository and not just this one. Reach an explicit shared understanding with the owner of the
   problem the change is meant to solve **and** agreement that the requested change is the best way
-  to solve it; a different fix, or no change at all, may serve the underlying problem better.
+  to solve it; a different fix, or none, may serve better.
 
 - **Replying to an owner comment** — open with an explicit classification line,
   `Comment class: correction | feature | process-change | other`, where `other` covers questions,
-  approvals and command phrases and a mixed comment names each part. The class decides where the
-  change lands and what must exist before any fix.
+  approvals and command phrases and a mixed comment names each part.
 
 - **An automation dispatch prompt** — it is a comment too: classify it, class `other`, in your
   *first* substantive reply rather than at the end of the run.
 
 - **Writing that classification line** — put the class **alone on it** and any explanation on the
-  next line. The line is scanned for *every* class token on it, so restating the menu to rule
-  options out ("not a correction, feature request, or process-change") declares all of them and arms
-  the gates those classes carry.
+  next line; the line is scanned for *every* class token on it, so restating the menu declares all
+  of them.
 
-- **A class you have declared** — it cannot be taken back. The transcript is append-only, and a
-  clean re-declaration further down does not override the first.
+- **A class you have declared** — it cannot be taken back, and a clean re-declaration further down
+  does not override the first.
 
 - **Classified a correction** — you misunderstood something. Repair the shared understanding, then
   rework what the misread already touched; the artifact changes as much as the correction demands,
@@ -42,9 +40,9 @@ change, independent of any one project.
   outlives any one feature; a checkable signature doesn't earn a rule its place.
 
 - **Two rule shapes to reject outright** — a check that asserts particular code exists or still
-  reads a particular way (it pins a point in time, dies with the code it pins, and constrains no
-  later change), and a rule derivable from the product's requirements (that is a requirement —
-  take it to the feature path, the requirements document and the test that proves it).
+  reads a particular way (it pins a point in time), and a rule derivable from the product's
+  requirements (that is a requirement — take it to the feature path, the requirements document and
+  the test that proves it).
 
 - **Landing a rule anywhere on the ladder** — author the assurance first, the check the future
   world must satisfy, execute it and watch it fail, and only then make the fixes that turn it green.
@@ -53,28 +51,23 @@ change, independent of any one project.
   equivalent step is showing the corpus doesn't already cover the rule before writing it.
 
 - **Both build paths** — they share one spine: state the expectation in its durable home first,
-  watch it fail against the current world, then change the world to satisfy it. A fix made before
-  its assurance exists can never show it addressed what the owner actually asked for.
+  watch it fail against the current world, then change the world to satisfy it.
 
 - **Building a mechanism for a behavior** — verify against a real run that it isn't already
   provided.
 
 - **Release, deploy, versioning or CI plumbing** — look for the shared pack that owns it first;
   copying a mechanic from a sibling repo is the tell that it belongs centrally. If no pack owns it,
-  report the gap rather than author a third copy that gets deleted later along with its reviewed
-  workflow.
+  report the gap rather than author a third copy.
 
 - **Every task** — minimize its shelf-life, the time from starting it until everyone can forget
-  about it. An open task is a standing tax: whoever returns to it pays a full reload of the context
-  that was free while the work was hot.
+  about it.
 
-- **Finishing a change** — watch it work **now**; never park it on "check tomorrow", which is
-  almost always the wrong choice in any context.
+- **Finishing a change** — watch it work **now**; never park it on "check tomorrow".
 
 - **Changing scheduled or unattended machinery** — force a run now (the scheduler's `FORCE_TASKS`
   lever, a `workflow_dispatch`, the fleet-wide force sweep) and watch it to a terminal state rather
-  than wait for its next natural run. Those levers exist precisely so verification can happen while
-  the change is still in someone's head.
+  than wait for its next natural run.
 
 - **Planning a migration** — prefer the design that converges in one forced pass to the one that
   trickles across nightly cycles, accept legacy input at the door so nothing has to wait for
@@ -86,53 +79,46 @@ change, independent of any one project.
   issue something converges. Never a human's memory.
 
 - **Feedback that flags a misunderstanding** — check whether the artifact is already correct
-  before expanding it; if it is, say so and push back rather than edit. A misread doesn't imply the
-  text is wrong.
+  before expanding it; if it is, say so and push back rather than edit.
 
 - **Writing anything** — size it to its idea: "open one issue" takes a sentence, not three
   paragraphs.
 
 - **Correcting or auditing an artifact against an authoritative source** — derive the corrected
   version from the *source* before reading the existing draft, then diff against the old draft to
-  surface what was actually wrong. Reading the draft first anchors you to its framing and quietly
-  carries its errors into your "fix".
+  surface what was actually wrong.
 
 ## Harness-tool contracts
 
 Three contracts worth knowing before you spend a call rediscovering them.
 
 - **Searching for a tool with `ToolSearch`** — a search that finds nothing is evidence about your
-  query, not about the environment: deferred tools are matched on keywords that aren't their own
-  vocabulary, so a capability can sit in the session while the search denies it. Search the
-  fully-qualified name (`select:mcp__<server>__<tool>`, copied off the deferred-tools listing) and
-  try the tool before telling the owner a step is theirs — the bare short name returns "no
-  matching tools", which reads exactly like absence.
+  query, not about the environment. Search the fully-qualified name (`select:mcp__<server>__<tool>`,
+  copied off the deferred-tools listing) and try the tool before telling the owner a step is theirs;
+  the bare short name returns "no matching tools", which reads exactly like absence.
 
 - **Calling `Edit`** — the file must have been read *with the read tool*; `cat`/`grep`/`sed` don't
-  count, however much is already on screen. The moment shell output tells you which file you're
-  about to change, read that exact path; a narrow offset window satisfies it.
+  count. The moment shell output tells you which file you're about to change, read that exact path;
+  a narrow offset window satisfies it.
 
-- **Needing exact text from the web** — a summarizing fetch tool is not a source: asked for exact
-  text it returns a description, and ordinary publisher pages routinely `403`. When the bytes
+- **Needing exact text from the web** — a summarizing fetch tool is not a source; when the bytes
   matter, `curl` into the scratchpad and read from disk. On a `403` don't retry and don't try a
   sibling URL — attribute the search snippet to the publisher instead of asserting it, and mark it
   for re-verification.
 
 - **A build, test or CI warning** — fix it rather than tolerate it, with a small, targeted fix
-  that addresses the *cause* in the same change; a clean run makes a genuinely new warning or error
-  stand out.
+  that addresses the *cause* in the same change.
 
 - **Suppressing a warning** — muting it with a flag (e.g. `--disable-warning`), `eslint-disable`,
   swallowing it — is **not** a small fix and never the quick path. Reach for it only as a
   deliberate, reviewed decision once the real fix has been weighed and rejected.
 
 - **A suppression you do keep** — **carry its reason at the site**, on the suppression line or in
-  the comment immediately above it, saying why the fix was rejected. That inline reason *is* the
-  review record, so no second justification is recorded elsewhere.
+  the comment immediately above it, saying why the fix was rejected; that inline reason *is* the
+  review record, so record no second justification elsewhere.
 
-- **A finding on *text* rather than code** — try deleting the flagged phrase before waiving it;
-  decoration often buys the coupling the rule exists to prevent for nothing, and a waiver is for a
-  crossing that genuinely must exist.
+- **A finding on *text* rather than code** — try deleting the flagged phrase before waiving it; a
+  waiver is for a crossing that genuinely must exist.
 
 - **A sandbox or proxy denying a fetch** — treat it as a **policy boundary, not an obstacle to
   route around**: don't reach for an open-network runner, an ad-hoc CI workflow or a push-triggered
@@ -140,8 +126,7 @@ Three contracts worth knowing before you spend a call rediscovering them.
   reference material or ask the owner, and say plainly that anything unverifiable is unverified.
 
 - **Working around a finding from a vendored check** — confirm the vendored copy is current first;
-  it reflects its last refresh, not upstream's head, so the fix may already exist upstream and
-  simply not be pulled in yet.
+  the fix may already exist upstream and simply not be pulled in.
 
 - **A warning you can't fix now with a small cause-addressing change** (it waits on an upstream
   release, or the real fix is a larger refactor) — open a dedicated issue unless one is already
@@ -168,9 +153,8 @@ For every new task:
 3. Update the issue's status (comments / close) as work progresses and when it's done.
 
 - **A step only a human can perform** (flipping a repository or console setting, granting a
-  permission, adding a secret) — give it **its own issue**, never a note in the PR body: the note
-  merges and disappears with the PR while the setting stays unflipped. The exception is a step whose
-  home is an artifact the human is already editing.
+  permission, adding a secret) — give it **its own issue**, never a note in the PR body. The
+  exception is a step whose home is an artifact the human is already editing.
 
 - **That issue** — give it a checkbox per step, what breaks while each is off, and its closing
   condition.
