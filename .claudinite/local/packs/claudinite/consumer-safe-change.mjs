@@ -16,7 +16,7 @@ import { finding } from '../../../../engine/checks/helpers/findings.mjs';
 // WHAT IT CATCHES. A change that alters a contract every consumer holds a copy
 // of, without either of the two things that carry consumers across:
 //
-//   a MIGRATION RECORD  — migrations/<date>-<name>/migration.mjs, the
+//   a MIGRATION RECORD  — <flow>/migrations/<date>-<name>/migration.mjs, the
 //                         mechanism that rewrites a member on its next converge
 //   a REHEARSAL FIXTURE — packs-tests/rehearsal/fixtures.mjs, which proves a
 //                         consumer in that shape still converges green
@@ -38,10 +38,13 @@ import { finding } from '../../../../engine/checks/helpers/findings.mjs';
 const SCHEMA = 'engine/pack_loader/pack-schema.mjs';
 const STUB = 'engine/scheduler/stubs/claudinite-scheduler.yml';
 // A record folder, not the machinery beside it: registry/apply edits are engine
-// work and carry no member across anything.
-const MIGRATION_RECORD = /^migrations\/\d{4}-\d{2}-\d{2}-[^/]+\//;
-const MIGRATIONS = 'migrations/<date>-<name>/';
+// work and carry no member across anything. A record lives under the flow that
+// owns it — the engine's own, or one pack's — so both homes count (#768).
+const MIGRATION_RECORD = /^(engine|packs\/[^/]+)\/migrations\/\d{4}-\d{2}-\d{2}-[^/]+\//;
+const MIGRATIONS = '<engine|packs/*>/migrations/<date>-<name>/';
 const FIXTURES = 'packs-tests/rehearsal/fixtures.mjs';
+// The canon's own local packs — repo-only content, outside every vendor set.
+const LOCAL_PACKS = '.claudinite/local/packs';
 
 // The contract surfaces this change touched, and why each counts. Pure over the
 // changed-file list plus a head and a base reader, so the whole decision is
@@ -63,6 +66,12 @@ export function contractChanges(changed, read, readBase = () => null) {
     // make every touch of a blocking rule a migration question, which is the
     // cried-wolf failure this rule is built to avoid.
     if (!/\.mjs$/.test(file) || file.startsWith('packs-tests/') || file.startsWith('engine-tests/')) continue;
+    // A rule in the canon's OWN local packs reaches no consumer by construction:
+    // the vendor set carries engine/ and packs/, never .claudinite/local/, so such a
+    // rule runs in exactly one repo — this one — and its severity asks nothing of
+    // anybody else. Firing here would demand a migration for a change no member can
+    // even see, which is the cried-wolf failure the narrowing above exists to avoid.
+    if (file.startsWith(`${LOCAL_PACKS}/`)) continue;
     const isBlockingRule = (text) => Boolean(text)
       && /severity:\s*'blocking'/.test(text)
       && /^\s*const rule = \{/m.test(text);

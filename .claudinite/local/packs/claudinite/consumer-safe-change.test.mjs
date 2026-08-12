@@ -4,7 +4,8 @@ import rule, { contractChanges, carriesConsumers } from './consumer-safe-change.
 
 const SCHEMA = 'engine/pack_loader/pack-schema.mjs';
 const STUB = 'engine/scheduler/stubs/claudinite-scheduler.yml';
-const RECORD = 'migrations/2026-08-01-thing/migration.mjs';
+const RECORD = 'engine/migrations/2026-08-01-thing/migration.mjs';
+const PACK_RECORD = 'packs/sheepdog/migrations/2026-08-01-thing/migration.mjs';
 const FIXTURES = 'packs-tests/rehearsal/fixtures.mjs';
 
 const BLOCKING_RULE = `import { finding } from '../x.mjs';
@@ -73,6 +74,10 @@ test('test files are never contract surfaces, even when they contain a blocking 
 
 test('carriesConsumers recognises a migration record and a fixture change', () => {
   assert.deepEqual(carriesConsumers([RECORD]), { migration: true, fixture: false });
+  // A record lives under the flow that owns it, so a pack's own record counts too —
+  // the relocation in #768 left this pattern matching a path no record can have.
+  assert.deepEqual(carriesConsumers([PACK_RECORD]), { migration: true, fixture: false });
+  assert.deepEqual(carriesConsumers(['migrations/2026-08-01-thing/migration.mjs']), { migration: false, fixture: false });
   assert.deepEqual(carriesConsumers([FIXTURES]), { migration: false, fixture: true });
   assert.deepEqual(carriesConsumers(['engine/x.mjs']), { migration: false, fixture: false });
 });
@@ -101,4 +106,16 @@ test('a change touching nothing contractual passes, and an empty diff is a no-op
 test('the rule is work-scoped and blocking — it judges the change in front of you', () => {
   assert.equal(rule.scope, 'work');
   assert.equal(rule.severity, 'blocking');
+});
+
+test('a rule in the canon\'s own local packs is out of scope — no consumer can receive it', () => {
+  // The vendor set carries engine/ and packs/ only, so a local-pack rule runs in this
+  // repo and nowhere else: it can never turn a member red, and demanding a migration
+  // for it would be a toll on every canon-only rule.
+  const local = '.claudinite/local/packs/claudinite/new-rule.mjs';
+  assert.deepEqual(contractChanges([local], () => BLOCKING_RULE, () => null), []);
+  assert.deepEqual(rule.run(work([local], { [local]: BLOCKING_RULE })), []);
+  // …while the same module under a shipped pack still counts.
+  const shipped = 'packs/basics/new-rule.mjs';
+  assert.equal(contractChanges([shipped], () => BLOCKING_RULE, () => null).length, 1);
 });
