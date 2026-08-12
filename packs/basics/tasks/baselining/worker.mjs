@@ -70,6 +70,8 @@ import {
   resolveDelivery, pullCreateError, landDelivery,
   pullDisposition, mergeReason, failureSummary, deleteBranch,
 } from '../../../../engine/scheduler/land-pr.mjs';
+// The skew guard, from the engine so BOTH mechanisms read one definition (#768).
+import { servedBy } from '../../../../engine/served-by.mjs';
 
 const CANON_URL = 'https://github.com/missingbulb/Claudinite.git'; // public — no token
 const MAINT_PREFIX = 'claudinite/maintenance';
@@ -488,6 +490,26 @@ export async function main() {
     console.log('baselining: no vendored-mount stamp — nothing to self-refresh (canon home or pre-adoption)');
     return; // quiet, no agent (matches the precondition self-skip)
   }
+  // A repo the update flows serve is not this mechanism's to converge (#768's skew
+  // risk). Stepping aside is the FIRST thing after reading the declaration and
+  // before any clone or write: two mechanisms converging one mount would race on
+  // the same files, and the loser's write reads as drift the winner then repairs,
+  // nightly, forever. Quiet and agentless — a repo served elsewhere is not an
+  // anomaly, so there is nothing here for a human to look at.
+  //
+  // A member's copy of this worker is only as new as its last converge, so a repo
+  // flipped before its mount carries this check keeps baselining for one more
+  // cycle. That is the safe direction of that lag: it converges twice by the old
+  // mechanism rather than falling between the two.
+  const served = servedBy(priorRaw);
+  if (served.mechanism !== 'baselining') {
+    console.log(`baselining: this repo is served by the ${served.mechanism} flow — standing down`);
+    return;
+  }
+  if (served.invalid !== undefined) {
+    console.log(`baselining: maintenance.mechanism "${served.invalid}" is not a mechanism — proceeding as ${served.mechanism}`);
+  }
+
   const { delivery, materialize } = resolveDelivery(priorRaw?.maintenance?.delivery);
   if (!delivery) {
     console.error(`baselining: maintenance.delivery "${priorRaw?.maintenance?.delivery}" is neither auto-merge nor review`);
