@@ -1,6 +1,6 @@
 # Versioned updates — design
 
-Status: **agreed** (owner decisions recorded in §9; settled in the
+Status: **agreed** (owner decisions recorded in §10; settled in the
 2026-08-12 design conversation). Supersedes, once migrated, the unified
 **baselining** task (`packs/basics/tasks/baselining/`) — its nightly
 converge-everything-at-canon-head model, its date-held stamp, and its
@@ -188,14 +188,56 @@ install-specific provisions:
   codes actually fire) would validate the split's cost model; nice to have
   before Phase 2, not a blocker.
 
-## 8. Migration
+## 8. Propagation and session access
+
+**Member repos change nothing by hand, and their local packs change not at
+all.** Local packs are repo-owned, not distributed: under this scheme they
+get no version numbers, no `migrations/` folders, and no install flow, and
+the cutover never rewrites them. The one indirect touch is
+`migrationActive()` tolerance moving from date-based to version-based —
+shipped together with the fetch gate (§2.3) so a lagging repo's local
+packs keep their legacy-shape tolerance until that repo actually updates.
+A local pack's adaptation remains what it is today: a conformance finding
+resolved in the repo's own sessions, never a step of this migration.
+
+The member-side deltas the migration does produce are all written by the
+flows themselves: new stamp fields in `.claudinite-checks.json`
+(installed engine version, per-pack versions, the which-mechanism rollout
+flag), the relocated migration records inside the vendored mount, and
+eventually the new worker.
+
+**Implementation happens in the canon repo alone** — no fleet-scoped
+session is required. The propagation channel already exists and is
+self-carrying: the vendored worker shallow-clones fresh canon every cycle
+and executes the *cloned* canon's vendoring, wiring, and migration
+scripts as subprocesses, never its own stale copies (worker.mjs:14–25,
+51–54). New vendor-set logic, the per-pack migration layout, and the
+version gate are live fleet-wide the night after they land in canon;
+changes to the worker/driver itself lag exactly one cycle (vendored in
+cycle N, executing in N+1). Three caveats, none requiring fleet access to
+implement:
+
+1. **Scheduler workflow stub changes** land per-repo through the existing
+   agent lane (baselining §2b's MCP credential; the pack flow's lane after
+   Phase 2) — automatic, during each repo's own cycle.
+2. **The CCR executor routines** are the one per-repo artifact outside
+   GitHub's reach. Their prompt is a thin pointer to the vendored
+   `executor.md`, so content changes ride the mount; only a change to the
+   dispatch *wiring* (label name, model, launcher prompt) would need
+   per-repo trigger-API access. The rollout should avoid requiring that —
+   or accept the bootstrap-Part-6 owner-issue path where it cannot.
+3. **The fleet-wide cutover verification** (Phase 5's precondition) is
+   fleet-scoped, but it belongs to the sheepdog enforcer's existing fleet
+   tasks — machinery, not an implementation session.
+
+## 9. Migration
 
 Phased rollout tracked in the migration-plan issue (filed alongside this
 doc). Summary: version scaffolding first (no behavior change), then the
 engine flow, then the pack flow, then install, then retirement of
 baselining and its vocabulary.
 
-## 9. Owner decisions recorded
+## 10. Owner decisions recorded
 
 1. Engine auto-merge is selftest-gated, **with a `force-merge-on-red-ci`
    override** (2026-08-12).
