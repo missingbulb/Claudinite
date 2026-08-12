@@ -22,6 +22,8 @@ import conformanceWorkflow from './conformance-workflow.mjs';
 // authoritative — dropping it is a deliberate choice).
 export default {
   id: 'basics',
+  version: 1,
+  minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'cross-project working discipline, issue-branch-PR lifecycle, repo hygiene, doc/reference integrity and the baseline engineering, testing and debugging skills',
     excludes: 'technology-specific content — its own tech pack; GitHub Actions workflow or platform behaviour — github-actions; git procedure — git-github',

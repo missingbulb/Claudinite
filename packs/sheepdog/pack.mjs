@@ -69,6 +69,8 @@ import seedsAgree from './seeds-agree.mjs';
 
 export default {
   id: 'sheepdog',
+  version: 1,
+  minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'fleet-enforcer duties for the repo watching every other repo — coverage, freshness, usage, the packs the fleet standardizes on',
     excludes: 'anything a member does to itself — tidying is tidy-repo, lesson capture is grow_with_claudinite',

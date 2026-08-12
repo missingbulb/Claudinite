@@ -64,7 +64,7 @@ export async function applyVendor(targetRoot, { ref = null } = {}) {
     }
   }
 
-  const { files, errors } = await computeVendorSet(declared);
+  const { files, errors, engineVersion, packVersions } = await computeVendorSet(declared);
   if (errors.length) return { errors };
 
   const sharedDir = join(targetRoot, SHARED_SUBDIR);
@@ -78,7 +78,18 @@ export async function applyVendor(targetRoot, { ref = null } = {}) {
   // Full ISO datetime, not a bare date: note selection is same-day-INCLUSIVE
   // against the stamp's day (a note landing later on the stamp's day must still
   // apply — #330), and the datetime pins exactly when this snapshot was taken.
-  raw.claudinite = { updated: new Date().toISOString(), ...(ref ? { ref } : {}) };
+  //
+  // The versions ride alongside, recording WHAT this mount is rather than WHEN it
+  // was taken: the update flows ask "installed version → target version", and the
+  // date can only answer "before or after" (docs/versioned-updates/DESIGN.md §5).
+  // The date stamp stays authoritative until the cutover switches note selection
+  // and fetching onto these numbers — until then they are a record, read by nothing.
+  raw.claudinite = {
+    updated: new Date().toISOString(),
+    ...(ref ? { ref } : {}),
+    engineVersion,
+    packVersions,
+  };
   writeFileSync(settingsPath, JSON.stringify(raw, null, 2) + '\n');
   return { files: files.length, stamp: raw.claudinite, errors: [] };
 }

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { loadPacks, resolveDeclaredPacks, packEntryId, SHARED_SUBDIR, PACK_DIRECTORY_FILE } from '../engine/pack_loader/pack-registry.mjs';
 import { relativeImports, resolveRelative, ENGINE_DIR_ROOTS } from '../engine/checks/helpers/module-imports.mjs';
 import { recordDirIsRecent } from '../engine/checks/helpers/active-migrations.mjs';
+import { ENGINE_VERSION } from '../engine/version.mjs';
 
 // The vendor-set computation for the vendored mount (DESIGN.md): given a repo's
 // pack declaration, the minimal corpus file set that repo persists under
@@ -164,5 +165,18 @@ export async function computeVendorSet(declaredEntries, { today } = {}) {
     }
   }
 
-  return { files: [...files].sort(), errors };
+  // The versions this set is made of, returned beside it so the writer can stamp
+  // them in the same pass that lays the files down (DESIGN §2, §3.6). Computed
+  // here rather than re-derived by the writer for the reason the set itself is:
+  // the numbers and the content then come from one snapshot by construction. A
+  // pack with no `version` contributes no entry — that is a local pack, which is
+  // repo-owned and versionless, and an "unknown" version must stay absent rather
+  // than become a 0 nothing downstream could tell from a real one.
+  const packVersions = {};
+  for (const id of ids) {
+    const v = byId.get(id)?.version;
+    if (v !== undefined) packVersions[id] = v;
+  }
+
+  return { files: [...files].sort(), errors, engineVersion: ENGINE_VERSION, packVersions };
 }

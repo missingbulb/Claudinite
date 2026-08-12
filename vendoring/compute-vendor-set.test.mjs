@@ -35,6 +35,9 @@ function makeCanon({ packs = [], skills = [], packDirectory = true } = {}) {
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'module-imports.mjs'), join(root, 'engine', 'checks', 'helpers', 'module-imports.mjs'));
   // The recency predicate the migrations walk shares with check-tolerance.
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'active-migrations.mjs'), join(root, 'engine', 'checks', 'helpers', 'active-migrations.mjs'));
+  // The engine version the set reports beside the files — the real module, so the
+  // fixture cannot disagree with the canon about what version this engine is.
+  copyFileSync(join(REPO_ROOT, 'engine', 'version.mjs'), join(root, 'engine', 'version.mjs'));
   // engine roots: real-shaped content plus everything that must stay out
   writeAt(root, 'engine/checks/check_the_world.mjs', 'stub\n');
   writeAt(root, 'engine/checks/helpers/repo-context.mjs', 'stub\n');
@@ -66,9 +69,10 @@ function makeCanon({ packs = [], skills = [], packDirectory = true } = {}) {
   writeAt(root, 'migrations/2026-01-01-seed/note.test.mjs', 'stub\n'); // a test — excluded
   writeAt(root, 'migrations/2025-06-01-ancient/migration.mjs', 'export default { id: "ancient" };\n'); // aged out — excluded
   writeAt(root, 'migrations/README.md', 'canon doc\n'); // doc — excluded
-  for (const { id, requires = [], skills: skl = [], extraFiles = [] } of packs) {
+  for (const { id, requires = [], skills: skl = [], extraFiles = [], version } of packs) {
+    const declaredVersion = version === undefined ? '' : `, version: ${JSON.stringify(version)}`;
     writeAt(root, `packs/${id}/pack.mjs`,
-      `export default { id: ${JSON.stringify(id)}, requires: ${JSON.stringify(requires)} };\n`);
+      `export default { id: ${JSON.stringify(id)}, requires: ${JSON.stringify(requires)}${declaredVersion} };\n`);
     // A pack's skills are bundled in its own tree — the one shape (#385).
     for (const name of skl) writeAt(root, `packs/${id}/skills/${name}/SKILL.md`, 'stub\n');
     for (const file of extraFiles) {
@@ -85,9 +89,9 @@ const vendorAt = async (root, declared, opts) =>
 
 const FIXTURE = {
   packs: [
-    { id: 'alpha', skills: ['s1'], extraFiles: ['RULES.md', 'check.mjs', 'pack.test.mjs', 'stubs/wf.yml', 'skills/s1/helper.test.mjs'] },
-    { id: 'beta', requires: ['gamma'] },
-    { id: 'gamma', skills: ['s2'] },
+    { id: 'alpha', version: 4, skills: ['s1'], extraFiles: ['RULES.md', 'check.mjs', 'pack.test.mjs', 'stubs/wf.yml', 'skills/s1/helper.test.mjs'] },
+    { id: 'beta', version: 7, requires: ['gamma'] },
+    { id: 'gamma', skills: ['s2'] },   // versionless — the shape a member's own local pack has
   ],
 };
 
@@ -108,6 +112,7 @@ test('structural set: engine roots + machinery + declared pack + its skills, exa
     'engine/pack_loader/pack-registry.mjs',
     'engine/pack_loader/pack-schema.mjs',
     'engine/pack_loader/mount-skills.mjs',
+    'engine/version.mjs',
     'packs/alpha/RULES.md',
     'packs/alpha/check.mjs',
     'packs/alpha/pack.mjs',
@@ -123,6 +128,18 @@ test('structural set: engine roots + machinery + declared pack + its skills, exa
   assert.ok(!files.some((f) => f.startsWith('canon-only/')), 'a tree nothing declares never vendors');
   assert.ok(!files.some((f) => f.endsWith('README.md') || f.endsWith('DESIGN.md')), 'engine-root docs stay canon-side');
   assert.ok(!files.some((f) => f.includes('.test.mjs') || f.startsWith('engine/test/')), 'tests stay canon-side');
+});
+
+test('the set reports the versions it is made of — engine, and each declared pack that has one', async () => {
+  const root = makeCanon(FIXTURE);
+  const { engineVersion, packVersions } = await vendorAt(root, ['alpha', 'beta', 'gamma'], { today: '2026-01-05' });
+  // The engine version comes from the module the set itself vendors, so the number
+  // stamped on a member and the code it received can never be from two snapshots.
+  const { ENGINE_VERSION } = await import(pathToFileURL(join(root, 'engine', 'version.mjs')).href);
+  assert.equal(engineVersion, ENGINE_VERSION);
+  // gamma declares no version and gets no entry: absent is how "versionless" is
+  // recorded, never a 0 a reader would take for a real version.
+  assert.deepEqual(packVersions, { alpha: 4, beta: 7 });
 });
 
 test('the operational engine .md whitelist vendors — consumer sessions read them from the mount', async () => {
