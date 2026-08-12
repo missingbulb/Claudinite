@@ -10,8 +10,8 @@ import {
   applyMaterializations, applyRewrites, applyPackDeclarations, migrationActive,
   migrationAgentic, agenticMigrations,
   callerCanDeliverWorkflows, WITHHOLD_CAPABLE_ENV,
-} from '../migrations/registry.mjs';
-import { migrationDirs, recordDirIsRecent, RECENT_WINDOW_DAYS } from '../engine/checks/helpers/active-migrations.mjs';
+} from '../engine/migrations/registry.mjs';
+import { migrationDirs, migrationRoots, recordName, recordDirIsRecent, RECENT_WINDOW_DAYS } from '../engine/checks/helpers/active-migrations.mjs';
 
 const M = (over = {}) => ({ id: 'm', landed: '2026-01-01', aliases: [], ...over });
 
@@ -176,14 +176,14 @@ test('apply.mjs really performs the pack-declaration op — the wire, not just t
   try {
     writeFileSync(join(root, '.claudinite-checks.json'), `${JSON.stringify({ packs: ['basics'] }, null, 2)}\n`);
     const canon = dirname(dirname(fileURLToPath(import.meta.url)));
-    const out = execFileSync(process.execPath, [join(canon, 'migrations/apply.mjs')], {
+    const out = execFileSync(process.execPath, [join(canon, 'engine/migrations/apply.mjs')], {
       encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: root },
     });
     assert.match(out, /declared claude-code-web-users-support/);
     const after = JSON.parse(readFileSync(join(root, '.claudinite-checks.json'), 'utf8'));
     assert.deepEqual(after.packs, ['basics', { id: 'claude-code-web-users-support', config: { repo: 'missingbulb/Sheepdog' } }]);
     // …and running it again writes nothing at all.
-    assert.equal(execFileSync(process.execPath, [join(canon, 'migrations/apply.mjs')], {
+    assert.equal(execFileSync(process.execPath, [join(canon, 'engine/migrations/apply.mjs')], {
       encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: root },
     }), '');
   } finally { rmSync(root, { recursive: true, force: true }); }
@@ -211,13 +211,13 @@ test('claude-code-web-users-support migration: seeds the pack with the fleet\'s 
 // what matters, and it holds for every record: tolerated while its landed date is
 // within the window, not after — its apply logic persists for backfill (a dormant
 // project applies from the fresh canon clone); the tolerance is what aging ends.
-const slugOf = (d) => d.replace(/^\d{4}-\d{2}-\d{2}-/, '');
+const slugOf = (d) => recordName(d).replace(/^\d{4}-\d{2}-\d{2}-/, '');
 
 test('migrationActive: true for every record within the window, false once aged out', () => {
   const dirs = migrationDirs();
   assert.ok(dirs.length > 0, 'the live corpus has records');
   for (const d of dirs) {
-    const landed = d.slice(0, 10);
+    const landed = recordName(d).slice(0, 10);
     assert.equal(migrationActive(slugOf(d), landed), true, `recent: ${d}`);
     const aged = new Date(new Date(`${landed}T00:00:00Z`).getTime() + RECENT_WINDOW_DAYS * 86400000)
       .toISOString().slice(0, 10);
@@ -230,8 +230,8 @@ test('every record folder is <landed>-<slug>/migration.mjs, prefix matching its 
   const migs = await loadMigrations();
   assert.equal(migs.length, migrationDirs().length);
   for (const m of migs) {
-    assert.match(m.dir, /^\d{4}-\d{2}-\d{2}-/, `dated folder: ${m.dir}`);
-    assert.equal(m.dir.slice(0, 10), m.landed, `folder prefix = landed for ${m.id} — vendoring and tolerance window off the prefix`);
+    assert.match(recordName(m.dir), /^\d{4}-\d{2}-\d{2}-/, `dated folder: ${m.dir}`);
+    assert.equal(recordName(m.dir).slice(0, 10), m.landed, `folder prefix = landed for ${m.id} — vendoring and tolerance window off the prefix`);
   }
 });
 
@@ -383,5 +383,18 @@ test('loadMigrations: the phase-3 retirements are really gone from the active se
   const ids = new Set((await loadMigrations()).map((m) => m.id));
   for (const retired of ['vendored-mount-flip', 'mount-folder-relocation', 'engine-restructure']) {
     assert.ok(!ids.has(retired), `${retired} must stay retired`);
+  }
+});
+
+test('every record lives under the flow that owns it — the engine, or one pack', () => {
+  // The engine/pack split (DESIGN §3.7): a record's home is what says which flow
+  // fetches, version-ranges and applies it, so a record in neither home belongs to
+  // no flow and would simply stop being delivered once the flat directory is gone.
+  const roots = migrationRoots();
+  assert.ok(roots.includes('engine/migrations'), 'the engine root is always a home, records or not');
+  for (const d of migrationDirs()) {
+    const home = dirname(d);
+    assert.ok(roots.includes(home), `${d} sits in "${home}", which is no flow's migrations home`);
+    assert.match(home, /^(engine|packs\/[^/]+)\/migrations$/, `${d} is not under an engine or pack home`);
   }
 });

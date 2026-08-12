@@ -21,6 +21,14 @@
 //                 breakage, so a red rehearsal says which.
 //   dormant       a member that declares itself dormant. Its mount falls behind
 //                 BY DESIGN, and the rehearsal must not read that as failure.
+//   versioned-local
+//                 a local pack that declares the manifest's `version` field. Local
+//                 packs are repo-owned and versionless by contract, so the fleet
+//                 shape this covers is the OTHER direction: a member that adopts a
+//                 newly-added optional field must not be rejected by an engine that
+//                 defines it. The vocabulary is closed, so every widening of it is
+//                 only additive on paper until a consumer's own manifest carries the
+//                 new key through validation.
 //   legacy-task   a local pack whose scheduled task still declares the DEPRECATED
 //                 task-level `session_scope` — the shape a consumer that predates
 //                 the 2026-08-09 retirement still has on disk. It holds the
@@ -81,6 +89,22 @@ const PACK_PROSE_ONLY = `export default {
   ruleRoutingGuidance: {
     belongs: 'judgment this fixture project carries as prose, with no deterministic half',
     excludes: 'anything a check could enforce — that becomes a rule instead',
+  },
+  detect: null,
+  marker: null,
+  prose: 'RULES.md',
+  worldRules: [],
+  workRules: [],
+};
+`;
+
+const PACK_VERSIONED = `export default {
+  id: 'fixture-versioned',
+  version: 3,
+  minEngineVersion: 1,
+  ruleRoutingGuidance: {
+    belongs: 'the fixture project\\'s own invariants, for rehearsal purposes only',
+    excludes: 'anything portable — that belongs in a canon pack',
   },
   detect: null,
   marker: null,
@@ -156,6 +180,16 @@ export const FIXTURES = [
       '.claudinite/local/packs/fixture-legacy/tasks/legacy-scoped/task.mjs': LEGACY_TASK,
       '.claudinite/local/packs/fixture-legacy/tasks/legacy-scoped/task.md':
         '# legacy-scoped\n\nA rehearsal fixture task. Its precondition never fires.\n',
+    },
+  },
+  {
+    name: 'versioned-local',
+    why: 'a local pack declaring the manifest version fields — proves the widened vocabulary validates on a CONSUMER-authored manifest, not only on the canon\'s own',
+    files: {
+      'README.md': '# fixture-versioned\n\nA rehearsal fixture.\n',
+      '.claudinite-checks.json': checks(['basics', 'local/fixture-versioned']),
+      '.claudinite/local/packs/fixture-versioned/pack.mjs': PACK_VERSIONED,
+      '.claudinite/local/packs/fixture-versioned/RULES.md': '# fixture-versioned\n\nNo standing rules.\n',
     },
   },
   {

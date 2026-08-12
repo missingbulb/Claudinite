@@ -13,8 +13,9 @@ same PR.
 You run under the executor, GitHub writes go through the session's **MCP tools**
 (`mcp__github__*`), and — unlike before — the Claudinite canon is **not** in your
 session (task-prework DESIGN §7/E5). Everything you need is in THIS repo: the
-migration notes are in your own vendored mount
-(`.claudinite/shared/migrations/`), and the maintenance branch is
+migration notes are in your own vendored mount, under the flow that owns each
+(`.claudinite/shared/engine/migrations/` and
+`.claudinite/shared/packs/<pack>/migrations/`), and the maintenance branch is
 already open. The dispatch issue's **Context** is binding scope — do not widen it.
 
 ## 0. Read why you are here
@@ -60,7 +61,7 @@ prework` — a PR number and a branch ref. That section is your source for them.
 
 Read this repo's stamp (`.claudinite-checks.json` → `claudinite.updated`): preprocessing
 **held** it at the day before the earliest pending agentic note. Every
-`.claudinite/shared/migrations/<date>-<slug>/migration.mjs` record whose `landed` date is **on or
+`.claudinite/shared/**/migrations/<date>-<slug>/migration.mjs` record whose `landed` date is **on or
 after** that day (same-day inclusive, #330) and which carries an `agentic: { model,
 instructions }` note is yours to apply, **oldest first**. Follow each note's own
 `instructions` exactly — they describe member-side adaptation no script can do (e.g.
@@ -79,7 +80,7 @@ cycle can.
 
 Rediscover the list the same way preprocessing produced it — this part is deterministic,
 not a search: in a checkout of the branch §1 named (or the default branch when its PR
-already merged), run `node .claudinite/shared/migrations/apply.mjs` (the mechanical
+already merged), run `node .claudinite/shared/engine/migrations/apply.mjs` (the mechanical
 apply, idempotent) and compare `.github/workflows/` against what it wrote. The head
 commit's message also names each withheld path, as a cross-check.
 

@@ -73,7 +73,7 @@ waits on what it fired: a dispatch queues a member's own run, and each member re
 outcome where it always does. (The standalone fleet-baseline workflow, its fleet-wide follow
 report, and the `.github/` managed copy it required were retired 2026-08-11 —
 [#749](https://github.com/missingbulb/Claudinite/issues/749),
-[`2026-08-11-fleet-baseline-task`](../../migrations/2026-08-11-fleet-baseline-task/migration.mjs).)
+[`2026-08-11-fleet-baseline-task`](migrations/2026-08-11-fleet-baseline-task/migration.mjs).)
 
 Each sweep lives **inside its task's folder**, because nothing outside that task uses it. Only what
 they all share sits at the pack root: [fleet-api.mjs](fleet-api.mjs) (the cross-repo REST

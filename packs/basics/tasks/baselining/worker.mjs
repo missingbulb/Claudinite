@@ -22,7 +22,7 @@
 //      tasks' declared required_secrets, settings hooks, retired-import removal),
 //      and ask the owner for any declared secret the repo hasn't configured;
 //   4. apply the MECHANICAL migration notes (aliases/materialize/rewrite/declarePacks)
-//      via the cloned migrations/apply.mjs — idempotent — and re-converge the mount
+//      via the cloned engine/migrations/apply.mjs — idempotent — and re-converge the mount
 //      when that changed the DECLARATION, since a newly declared pack's content was
 //      not in the set the vendor pass computed a moment earlier;
 //   5. detect pending AGENTIC notes (registry.mjs `agenticMigrations`, gated on
@@ -519,7 +519,7 @@ export async function main() {
   // 2-4. Deterministic converge: mount + stamp, then wiring, then mechanical notes.
   node([join(tmp, 'vendoring/apply-vendor-set.mjs'), '--target', root, '--ref', headSha]);
   const wiringOut = node([join(tmp, 'engine/scheduler/converge-wiring.mjs'), repo], { CLAUDINITE_REPO_ROOT: root });
-  // The handshake (migrations/registry.mjs, WITHHOLD_CAPABLE_ENV): THIS worker withholds
+  // The handshake (engine/migrations/registry.mjs, WITHHOLD_CAPABLE_ENV): THIS worker withholds
   // workflow paths from its commit and hands them to the agent, so a record may safely
   // materialize one. An older vendored worker does not set it and the materialization is
   // skipped instead of wedging its push. Set here, by the code that does the withholding,
@@ -527,7 +527,7 @@ export async function main() {
   // it: apply-vendor-set above has already overwritten this very file with the new
   // version while this old-or-new code is the thing actually executing.
   const declarationBefore = readFileSync(checksPath, 'utf8');
-  node([join(tmp, 'migrations/apply.mjs')], { CLAUDE_PROJECT_DIR: root, CLAUDINITE_CAN_WITHHOLD_WORKFLOWS: '1' });
+  node([join(tmp, 'engine/migrations/apply.mjs')], { CLAUDE_PROJECT_DIR: root, CLAUDINITE_CAN_WITHHOLD_WORKFLOWS: '1' });
   // A note may have DECLARED a pack (the seed shape). The mount above was computed
   // from the declaration as it stood a moment ago, so the new pack's content is not
   // in it — and a declared pack whose code is absent is a BLOCKING config error until
@@ -552,7 +552,7 @@ export async function main() {
   }
 
   // 5. Pending agentic notes (from the fresh canon clone) + stamp hold.
-  const { loadMigrations, agenticMigrations } = await import(pathToFileURL(join(tmp, 'migrations/registry.mjs')).href);
+  const { loadMigrations, agenticMigrations } = await import(pathToFileURL(join(tmp, 'engine/migrations/registry.mjs')).href);
   const pending = pendingAgentic(agenticMigrations(await loadMigrations()), priorStamp.updated);
   if (pending.length) {
     const raw = JSON.parse(readFileSync(checksPath, 'utf8'));

@@ -24,7 +24,7 @@ its git history:
   rollback story is the same channel: fix the canon, the next nightly re-heals. A wrong
   *blocking* check still fails every member's Stop hook — visible and recoverable, but
   fleet-wide noise, so treat check changes as production changes.
-- **Migration notes** (`migrations/<date>-<slug>/`) — the channel for anything convergence
+- **Migration notes** (`engine/migrations/<date>-<slug>/`, or `packs/<pack>/migrations/<date>-<slug>/`) — the channel for anything convergence
   can't express: renames of consumer-held wiring, declaration rewrites, one-off agentic steps.
   Stamp-day-gated and idempotent; the note's `legacyPresent` telemetry says when the fleet has
   moved and (for `retire: 'auto'`) retires the record itself.
@@ -57,7 +57,7 @@ checks, in one Claudinite-only change:
    not-yet-migrated repo and seeds the pack.
 
 Fleet-wide "everyone has migrated" telemetry exists — declare the rename as a
-[baseline migration](migrations/README.md), **in the same change that introduces the tolerance**: a
+[baseline migration](engine/migrations/README.md), **in the same change that introduces the tolerance**: a
 tolerance that lands without its record has no signal that will ever retire it. Any legacy shape a
 tolerance keeps readable (an old path, a stub's old form, a legacy key *inside* a consumer's config
 file) is trackable the same way, `legacyPresent` reading whatever expresses the old shape. The
@@ -123,7 +123,7 @@ So there is a procedure, in three layers, cheapest first.
 
 **1. The fixture rehearsal — automatic, every PR.** `packs-tests/rehearsal/` builds four fixture
 consumers, one per shape the fleet has, and runs the REAL converge against your working tree:
-`apply-vendor-set` → `converge-wiring` → `migrations/apply`, then `engine/selftest.mjs` and
+`apply-vendor-set` → `converge-wiring` → `engine/migrations/apply`, then `engine/selftest.mjs` and
 `check_the_world`. It runs in **two modes**, and the second is the half people forget:
 
 | mode | stamp | answers |
