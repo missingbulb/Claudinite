@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   servedBy, servedByUpdates, servedByBaselining, withMechanism,
   MECHANISMS, DEFAULT_MECHANISM, MAINTENANCE, MECHANISM_KEY,
-} from '../updates/served-by.mjs';
+} from '../engine/served-by.mjs';
 
 // The skew guard (#768's first risk): while both mechanisms exist, exactly one
 // serves a repo. These are the cases that decide which — including the ones where

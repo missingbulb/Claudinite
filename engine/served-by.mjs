@@ -1,5 +1,8 @@
 // WHICH MECHANISM SERVES THIS REPO — the skew guard for the rollout (#768's first
-// risk). While baselining and the update flows both exist, a repo must be served by
+// risk). In the ENGINE, not in the canon-internal `updates/` tree, because both
+// sides must read one definition and one of them is VENDORED: baselining's worker
+// runs from a member's own mount, so a guard it could not import would be a guard
+// only half the system obeys — which is worse than none. While baselining and the update flows both exist, a repo must be served by
 // exactly ONE of them: two mechanisms converging one mount would race on the same
 // files, and the loser's write would look like drift the winner then "repairs",
 // nightly, forever.

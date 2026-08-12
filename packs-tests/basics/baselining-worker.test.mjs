@@ -7,6 +7,9 @@ import {
   withheldWorkflowPaths, UNPUSHABLE_PREFIX, escalation, gateOutcome, GATE_ABSENT,
 } from '../../packs/basics/tasks/baselining/worker.mjs';
 import { escalationLabel } from '../../engine/scheduler/dispatch.mjs';
+import { mkdtempSync, writeFileSync, existsSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 // The worker's PURE decision helpers (task-prework DESIGN §7, E4). The
 // native-git / clone / REST I/O in main() is validated by the live pilot; these
@@ -296,4 +299,33 @@ test('every code escalation can fire is countable — it mints a label', () => {
     assert.ok(label, `escalation code "${code}" mints no label — it would be uncountable across the fleet`);
     assert.ok(label.description.length <= 100, `${label.name}: ${label.description.length} chars`);
   }
+});
+
+test('the worker stands down for a repo the update flows serve', async () => {
+  // The skew guard at its only load-bearing call site. Driven through the real
+  // main() against a real repo directory: the guard must run BEFORE the clone, so a
+  // test that stubbed the clone would prove nothing about the ordering that matters.
+  const { main } = await import('../../packs/basics/tasks/baselining/worker.mjs');
+  const root = mkdtempSync(join(tmpdir(), 'claudinite-skew-'));
+  try {
+    writeFileSync(join(root, '.claudinite-checks.json'), `${JSON.stringify({
+      packs: ['basics'],
+      maintenance: { delivery: 'auto-merge', mechanism: 'updates' },
+      claudinite: { updated: '2026-08-12T00:00:00Z', ref: 'abc123' },
+    }, null, 2)}\n`);
+
+    const said = [];
+    const log = console.log;
+    const env = { ...process.env };
+    process.env.CLAUDINITE_REPO_ROOT = root;
+    process.env.CLAUDINITE_REPO = 'o/r';
+    process.env.GITHUB_TOKEN = 'not-used-because-it-stands-down-first';
+    console.log = (...a) => said.push(a.join(' '));
+    try {
+      await main();
+    } finally { console.log = log; process.env = env; }
+    assert.match(said.join('\n'), /served by the updates flow — standing down/);
+    // Nothing was cloned, converged or written: the mount is still absent.
+    assert.ok(!existsSync(join(root, '.claudinite', 'shared')));
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });
