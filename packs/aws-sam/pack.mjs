@@ -6,6 +6,8 @@ import cloudfrontAuthorization from './cloudfront-authorization.mjs';
 // parser); the jsdom-style runtime ones stay prose in RULES.md.
 export default {
   id: 'aws-sam',
+  version: 1,
+  minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'serverless AWS stacks: SAM template shape, Lambda handler paths, esbuild bundling, API Gateway and CloudFront gotchas',
     excludes: 'backend Google ID token validation — google-identity; generic Node packaging habits — node',

@@ -25,7 +25,7 @@ model repaired that the new model neither fixes nor escalates on.
      ([`converge-wiring.mjs`](../../engine/scheduler/converge-wiring.mjs)).
    - **declaration-normalization** — the `local/<name>` pack token.
    - **mechanical migrations** — aliases / materialize / rewrite
-     ([`migrations/apply.mjs`](../../migrations/apply.mjs)).
+     ([`engine/migrations/apply.mjs`](../../engine/migrations/apply.mjs)).
 2. **The escalation gate** — preprocessing requests the agent iff a pending
    *agentic* migration note exists, **or** the converge changed something and
    `check_the_world` is **not green**.

@@ -15,6 +15,8 @@ import isolation from './isolation.mjs';
 
 export default {
   id: 'product-wiki',
+  version: 1,
+  minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'agent-maintained market, user and competitor research wikis — cited pages, growth logs, the reviewed product-requirements sink',
     excludes: 'how the product is built or specced — that is spec-driven-product; requirement proofs are executable-requirements',

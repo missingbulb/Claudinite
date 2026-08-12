@@ -33,12 +33,29 @@ const isPlainObject = (v) => v !== null && typeof v === 'object' && !Array.isArr
 const isStringArray = (v) => Array.isArray(v) && v.every((x) => typeof x === 'string');
 const isRuleArray = (v) => Array.isArray(v) && v.every((x) => isPlainObject(x) && typeof x.id === 'string' && typeof x.run === 'function');
 
+// A version — engine or pack — is a positive integer (engine/version.mjs states why
+// the corpus versions this way rather than in semver). Shared by both version fields
+// below, and the only judgment either gets: `minEngineVersion` is validated for SHAPE
+// here and enforced by the pack updater, which is the only caller that knows what
+// engine version the target repo actually runs.
+const isVersion = (v) => Number.isInteger(v) && v > 0;
+
 // Every field a manifest may carry. `required` fields must be present; the rest
 // are validated only when declared. An UNDECLARED field is an error: the spec is
 // the closed vocabulary of a pack, so a typo (`rule:`, `skill:`) fails loudly
 // instead of being silently ignored forever.
+//
+// The two version fields are OPTIONAL BY CONTRACT, not by leniency: a member's own
+// `local/packs/` are repo-owned and distributed to nobody, so they carry no version
+// and no update flow (docs/versioned-updates/DESIGN.md §8). Requiring the field would
+// invalidate every local pack in the fleet at once, with nothing to carry the fix.
+// Every CANON pack does declare both — asserted by packs-tests/pack-versions.test.mjs,
+// which is a canon-side test rather than a conformance rule precisely because it is
+// true of this tree only.
 export const PACK_FIELDS = {
   id: { required: true, describe: 'the pack id, matching its directory name', valid: (v) => typeof v === 'string' && v.length > 0 },
+  version: { describe: 'the pack version — a positive integer, advanced by a pack release', valid: isVersion },
+  minEngineVersion: { describe: 'the lowest engine version this pack version runs on — a positive integer', valid: isVersion },
   ruleRoutingGuidance: { required: true, describe: 'what belongs in this pack and what does not, each at most 20 words', valid: isPlainObject },
   badge: { describe: 'the pack badge filename, resolved off the pack directory', valid: (v) => typeof v === 'string' },
   detect: { describe: 'a fingerprint predicate over the repo context, or null', valid: (v) => v === null || typeof v === 'function' },

@@ -91,3 +91,34 @@ test('no usable identity means there is nothing to look up', () => {
     assert.match(traversal.stdout, /is not a usable file name/);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
+
+test('the loaded preferences are counted onto the engine facet channel', () => {
+  // The session's opening summary states how much loaded; how many preferences this
+  // person has is knowable only here, because the file came from another repository.
+  const root = project();
+  try {
+    mkdirSync(join(root, 'preferences'), { recursive: true });
+    writeFileSync(join(root, 'preferences', 'me@example.com.md'), [
+      '# Prefs', '', '## Preferences', '',
+      '- **First** — do a thing.',
+      '- **Second** — do another.',
+      '  continued prose that is not its own preference',
+      '* **Third** — a bullet by the other marker.',
+      '', 'Closing prose.', '',
+    ].join('\n'));
+    const r = run(root, { config: { repo: 'owner/store' } });
+    assert.equal(r.status, 0);
+    assert.match(r.stdout, /^CLAUDINITE-FACET: 3 personal preference rules$/m);
+    assert.match(r.stdout, /## Preferences/);                           // the content still lands
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('a preferences file with no bullets states no facet', () => {
+  const root = project();
+  try {
+    mkdirSync(join(root, 'preferences'), { recursive: true });
+    writeFileSync(join(root, 'preferences', 'me@example.com.md'), 'Just prose, no bullets.\n');
+    const r = run(root, { config: { repo: 'owner/store' } });
+    assert.doesNotMatch(r.stdout, /CLAUDINITE-FACET/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});

@@ -17,6 +17,8 @@ const SOURCE = /\.(mjs|cjs|js|jsx|ts|tsx|py)$/;
 
 export default {
   id: 'jwt',
+  version: 1,
+  minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'minting and validating JSON Web Tokens: algorithm pinning, claim validation, key strength and secrecy, expiry, JWE',
     excludes: 'the Google-issuer validator config — google-identity; OAuth client-side token acquisition — chrome-extension',

@@ -5,7 +5,7 @@ import {
   dispatchBody, deliveredLines, escalationLines, planDispatch, staleDispatchIssues, staleEscalationComment,
   rearmDispatchIssues, readyLabelOn, staleClaimedDispatchIssues, staleClaimComment,
   READY_LABEL, READY_FLEET_LABEL, NEEDS_HUMAN_LABEL, AGENT_RUNNING_LABEL,
-  readyLabelForScope, SCHEDULER_LABELS,
+  readyLabelForScope, SCHEDULER_LABELS, escalationLabel, ESCALATION_LABEL_PREFIX,
 } from '../../engine/scheduler/dispatch.mjs';
 
 // --- identity: title / key / parse round-trip ---
@@ -310,4 +310,23 @@ test('every scheduler label description fits GitHub\'s 100-char cap', () => {
   for (const l of SCHEDULER_LABELS) {
     assert.ok(l.description.length <= 100, `${l.name}: ${l.description.length} chars`);
   }
+});
+
+test('an escalation code mints a queryable label; a malformed one mints none', () => {
+  const l = escalationLabel('checks-not-green');
+  assert.equal(l.name, `${ESCALATION_LABEL_PREFIX}checks-not-green`);
+  assert.match(l.description, /checks-not-green/);
+  assert.ok(/^[0-9a-f]{6}$/.test(l.color), 'a label needs a real colour or GitHub picks grey forever');
+  // The counting surface is the label NAME, so a code that would make an
+  // unqueryable or forged one is refused outright — the body still names it.
+  for (const bad of [null, undefined, 42, '', 'Checks Not Green', 'checks_not_green', '-leading', 'trailing-', 'a--b']) {
+    assert.equal(escalationLabel(bad), null, JSON.stringify(bad));
+  }
+});
+
+test('a minted escalation label fits GitHub\'s 100-char description cap', () => {
+  // Same failure the SCHEDULER_LABELS cap test exists for, one level nastier: this
+  // description is built from the code, so length is only bounded by the code's.
+  const longest = 'a'.repeat(50);
+  assert.ok(escalationLabel(longest).description.length <= 100, 'the mint template leaves no room for a long code');
 });

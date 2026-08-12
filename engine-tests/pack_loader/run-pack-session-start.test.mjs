@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  mkdtempSync, mkdirSync, writeFileSync, copyFileSync, rmSync,
+  mkdtempSync, mkdirSync, writeFileSync, copyFileSync, rmSync, readFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
@@ -164,4 +164,32 @@ test('no declaration, or no active pack, means silence', () => {
     rmSync(bare, { recursive: true, force: true });
     rmSync(none, { recursive: true, force: true });
   }
+});
+
+test('facet lines address the summary step, not the reader: lifted out, appended to the channel', () => {
+  const corpus = makeCorpus({
+    alpha: { step: 'process.stdout.write("BEFORE\\nCLAUDINITE-FACET: 7 shrubberies\\nAFTER\\n");' },
+    beta: { step: 'process.stdout.write("CLAUDINITE-FACET: 2 herrings\\n");' },
+  });
+  const project = makeProject({ packs: ['alpha', 'beta'] });
+  const channel = join(project, 'facets');
+  try {
+    const out = run(corpus, project, { CLAUDINITE_SESSION_FACETS: channel });
+    // The reader sees the step's contribution with the facet line gone...
+    assert.match(out, /<!-- pack:alpha -->\nBEFORE\nAFTER/);
+    assert.doesNotMatch(out, /CLAUDINITE-FACET|shrubberies|herrings/);
+    // ...and beta, which said ONLY a facet, contributes no marker at all.
+    assert.doesNotMatch(out, /pack:beta/);
+    assert.equal(readFileSync(channel, 'utf8'), '7 shrubberies\n2 herrings\n');
+  } finally { rmSync(corpus, { recursive: true, force: true }); rmSync(project, { recursive: true, force: true }); }
+});
+
+test('no channel configured drops the facet and leaves the contribution whole', () => {
+  const corpus = makeCorpus({ alpha: { step: 'process.stdout.write("CLAUDINITE-FACET: 1 grail\\nKEPT\\n");' } });
+  const project = makeProject({ packs: ['alpha'] });
+  try {
+    const out = run(corpus, project);
+    assert.match(out, /KEPT/);
+    assert.doesNotMatch(out, /grail/);
+  } finally { rmSync(corpus, { recursive: true, force: true }); rmSync(project, { recursive: true, force: true }); }
 });

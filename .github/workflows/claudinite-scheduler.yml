@@ -22,8 +22,11 @@ on:
         required: false
         default: ''
 
+# Runs carrying overrides get a per-run group: a forced run does exactly one named
+# task, and it must neither queue behind the hourly cron nor be pending-cancelled by
+# it (GitHub keeps one pending run per group). Mirrors the vendored stub.
 concurrency:
-  group: claudinite-scheduler
+  group: claudinite-scheduler${{ inputs.overrides != '' && inputs.overrides != null && format('-forced-{0}', github.run_id) || '' }}
   cancel-in-progress: false
 
 permissions:

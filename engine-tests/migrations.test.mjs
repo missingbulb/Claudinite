@@ -8,10 +8,14 @@ import { fileURLToPath } from 'node:url';
 import {
   loadMigrations, resolvePath, applyFileAliases,
   applyMaterializations, applyRewrites, applyPackDeclarations, migrationActive,
+  applyLocalDeclarationNormalization, applyMigration,
   migrationAgentic, agenticMigrations,
   callerCanDeliverWorkflows, WITHHOLD_CAPABLE_ENV,
-} from '../migrations/registry.mjs';
-import { migrationDirs, recordDirIsRecent, RECENT_WINDOW_DAYS } from '../engine/checks/helpers/active-migrations.mjs';
+} from '../engine/migrations/registry.mjs';
+import {
+  migrationDirs, migrationRoots, recordName, recordDirIsRecent, RECENT_WINDOW_DAYS,
+  recordVersion, flowOf, installedFor, installedVersions, migrationApplies,
+} from '../engine/checks/helpers/active-migrations.mjs';
 
 const M = (over = {}) => ({ id: 'm', landed: '2026-01-01', aliases: [], ...over });
 
@@ -176,14 +180,14 @@ test('apply.mjs really performs the pack-declaration op — the wire, not just t
   try {
     writeFileSync(join(root, '.claudinite-checks.json'), `${JSON.stringify({ packs: ['basics'] }, null, 2)}\n`);
     const canon = dirname(dirname(fileURLToPath(import.meta.url)));
-    const out = execFileSync(process.execPath, [join(canon, 'migrations/apply.mjs')], {
+    const out = execFileSync(process.execPath, [join(canon, 'engine/migrations/apply.mjs')], {
       encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: root },
     });
     assert.match(out, /declared claude-code-web-users-support/);
     const after = JSON.parse(readFileSync(join(root, '.claudinite-checks.json'), 'utf8'));
     assert.deepEqual(after.packs, ['basics', { id: 'claude-code-web-users-support', config: { repo: 'missingbulb/Sheepdog' } }]);
     // …and running it again writes nothing at all.
-    assert.equal(execFileSync(process.execPath, [join(canon, 'migrations/apply.mjs')], {
+    assert.equal(execFileSync(process.execPath, [join(canon, 'engine/migrations/apply.mjs')], {
       encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: root },
     }), '');
   } finally { rmSync(root, { recursive: true, force: true }); }
@@ -211,13 +215,13 @@ test('claude-code-web-users-support migration: seeds the pack with the fleet\'s 
 // what matters, and it holds for every record: tolerated while its landed date is
 // within the window, not after — its apply logic persists for backfill (a dormant
 // project applies from the fresh canon clone); the tolerance is what aging ends.
-const slugOf = (d) => d.replace(/^\d{4}-\d{2}-\d{2}-/, '');
+const slugOf = (d) => recordName(d).replace(/^\d{4}-\d{2}-\d{2}-/, '');
 
 test('migrationActive: true for every record within the window, false once aged out', () => {
   const dirs = migrationDirs();
   assert.ok(dirs.length > 0, 'the live corpus has records');
   for (const d of dirs) {
-    const landed = d.slice(0, 10);
+    const landed = recordName(d).slice(0, 10);
     assert.equal(migrationActive(slugOf(d), landed), true, `recent: ${d}`);
     const aged = new Date(new Date(`${landed}T00:00:00Z`).getTime() + RECENT_WINDOW_DAYS * 86400000)
       .toISOString().slice(0, 10);
@@ -230,8 +234,8 @@ test('every record folder is <landed>-<slug>/migration.mjs, prefix matching its 
   const migs = await loadMigrations();
   assert.equal(migs.length, migrationDirs().length);
   for (const m of migs) {
-    assert.match(m.dir, /^\d{4}-\d{2}-\d{2}-/, `dated folder: ${m.dir}`);
-    assert.equal(m.dir.slice(0, 10), m.landed, `folder prefix = landed for ${m.id} — vendoring and tolerance window off the prefix`);
+    assert.match(recordName(m.dir), /^\d{4}-\d{2}-\d{2}-/, `dated folder: ${m.dir}`);
+    assert.equal(recordName(m.dir).slice(0, 10), m.landed, `folder prefix = landed for ${m.id} — vendoring and tolerance window off the prefix`);
   }
 });
 
@@ -384,4 +388,156 @@ test('loadMigrations: the phase-3 retirements are really gone from the active se
   for (const retired of ['vendored-mount-flip', 'mount-folder-relocation', 'engine-restructure']) {
     assert.ok(!ids.has(retired), `${retired} must stay retired`);
   }
+});
+
+test('every record lives under the flow that owns it — the engine, or one pack', () => {
+  // The engine/pack split (DESIGN §3.7): a record's home is what says which flow
+  // fetches, version-ranges and applies it, so a record in neither home belongs to
+  // no flow and would simply stop being delivered once the flat directory is gone.
+  const roots = migrationRoots();
+  assert.ok(roots.includes('engine/migrations'), 'the engine root is always a home, records or not');
+  for (const d of migrationDirs()) {
+    const home = dirname(d);
+    assert.ok(roots.includes(home), `${d} sits in "${home}", which is no flow's migrations home`);
+    assert.match(home, /^(engine|packs\/[^/]+)\/migrations$/, `${d} is not under an engine or pack home`);
+  }
+});
+
+// --- the version gate (#768 Phase 1) ------------------------------------------
+
+test('flowOf reads the owning flow off the path — no record declares which it is', () => {
+  assert.deepEqual(flowOf('engine/migrations/2026-08-06-x'), { flow: 'engine' });
+  assert.deepEqual(flowOf('packs/sheepdog/migrations/2026-08-11-y'), { flow: 'pack', pack: 'sheepdog' });
+});
+
+test('installedFor keeps "the stamp says nothing" distinct from a real number', () => {
+  const stamp = { engineVersion: 3, packVersions: { sheepdog: 2, tidy: 0 } };
+  assert.equal(installedFor('engine/migrations/2026-01-01-a', stamp), 3);
+  assert.equal(installedFor('packs/sheepdog/migrations/2026-01-01-a', stamp), 2);
+  assert.equal(installedFor('packs/tidy/migrations/2026-01-01-a', stamp), 0, 'a real zero is a version, not an absence');
+  assert.equal(installedFor('packs/never-heard-of/migrations/2026-01-01-a', stamp), undefined);
+  assert.equal(installedFor('engine/migrations/2026-01-01-a', null), undefined);
+  assert.equal(installedFor('engine/migrations/2026-01-01-a', { packVersions: {} }), undefined);
+});
+
+test('installedVersions returns null for every shape that is not a version stamp', () => {
+  assert.equal(installedVersions(() => null), null);
+  assert.equal(installedVersions(() => 'not json'), null);
+  assert.equal(installedVersions(() => '{"packs":[]}'), null);
+  assert.equal(installedVersions(() => '{"claudinite":{"updated":"2026-01-01T00:00:00Z"}}'), null,
+    'a pre-version stamp is unknown, not zero');
+  assert.deepEqual(installedVersions(() => '{"claudinite":{"engineVersion":2}}'), { engineVersion: 2, packVersions: {} });
+});
+
+test('migrationApplies: version-ranged when known, date-windowed when not', () => {
+  // Driven over the live records, so the predicate is exercised against real paths
+  // and real declared versions rather than a shape a fixture invented.
+  const dir = migrationDirs().find((d) => flowOf(d).flow === 'engine');
+  const at = recordVersion(dir);
+  const landed = recordName(dir).slice(0, 10);
+
+  // Known both sides: applies strictly below the version its change took effect at.
+  assert.equal(migrationApplies(dir, { installed: { engineVersion: at - 1 } }), true, 'a lagging repo still needs it');
+  assert.equal(migrationApplies(dir, { installed: { engineVersion: at } }), false, 'an up-to-date repo does not');
+  assert.equal(migrationApplies(dir, { installed: { engineVersion: at + 1 } }), false);
+  // …and the date is irrelevant once versions answer: an ancient record still
+  // applies to a repo below it, which is exactly what the window could never say.
+  assert.equal(migrationApplies(dir, { installed: { engineVersion: at - 1 }, today: '2099-01-01' }), true);
+
+  // Unknown: the window, unchanged — the behaviour every member had before this.
+  assert.equal(migrationApplies(dir, { installed: null, today: landed }), true);
+  assert.equal(migrationApplies(dir, { installed: null, today: '2099-01-01' }), false);
+});
+
+test('every record declares a version, and the regex reads what the module exports', async () => {
+  // Two readings of one fact: `recordVersion` regexes the source because every
+  // caller is synchronous, while the applier imports the spec. A record whose
+  // literal the regex cannot see would silently fall back to the date window —
+  // invisible, and wrong the moment versions are what gate fetching. So the guard
+  // EXECUTES both readings over every real record rather than trusting either.
+  const migs = await loadMigrations();
+  assert.ok(migs.length > 0, 'the live corpus has records');
+  for (const m of migs) {
+    assert.ok(Number.isInteger(m.version) && m.version > 0,
+      `${m.dir} declares no version — a record needs the version its change takes effect at`);
+    assert.equal(recordVersion(m.dir), m.version,
+      `${m.dir}: the version read from the source disagrees with the module's — keep the field a plain literal on its own line`);
+  }
+});
+
+// --- regex rewrites and the local-declaration codemod (#768 Phase 1) ----------
+
+const io = (files, exists = () => false) => {
+  const written = { ...files };
+  return {
+    written,
+    read: (p) => written[p] ?? null,
+    write: (p, c) => { written[p] = c; },
+    exists: (p) => exists(p),
+    move: () => {},
+    readTemplate: () => null,
+  };
+};
+
+test('applyRewrites: a global pattern rewrites every match; a non-global one is refused', async () => {
+  const m = M({ rewrite: [{ file: 'f.txt', replace: [{ pattern: /v(\d)/g, to: 'V$1' }] }] });
+  const w = io({ 'f.txt': 'v1 and v2\n' });
+  assert.deepEqual(await applyRewrites(m, w), ['f.txt']);
+  assert.equal(w.written['f.txt'], 'V1 and V2\n');
+  // Idempotent: nothing matches the second time.
+  assert.deepEqual(await applyRewrites(m, w), []);
+
+  // A non-global pattern would rewrite the first match and leave a file that reads
+  // as migrated — loud, not silent.
+  const bad = M({ rewrite: [{ file: 'f.txt', replace: [{ pattern: /v(\d)/, to: 'V$1' }] }] });
+  await assert.rejects(() => applyRewrites(bad, io({ 'f.txt': 'v1 v2' })), /must be a global RegExp/);
+  await assert.rejects(() => applyRewrites(M({ rewrite: [{ file: 'f.txt', replace: [{ pattern: 'v1', to: 'V1' }] }] }), io({ 'f.txt': 'v1' })), /global RegExp/);
+});
+
+test('local declarations normalize to local/<id>, from both earlier forms', async () => {
+  const decl = {
+    packs: ['basics', 'mine', 'local_packs/older', { id: 'configured', config: { k: 1 } }, 'local/already'],
+  };
+  const local = new Set(['.claudinite/local/packs/mine/pack.mjs', '.claudinite/local_packs/configured/pack.mjs']);
+  const w = io({ '.claudinite-checks.json': `${JSON.stringify(decl, null, 2)}\n` }, (p) => local.has(p));
+  const done = await applyLocalDeclarationNormalization(M({ normalizeLocalDeclarations: true }), w);
+
+  const after = JSON.parse(w.written['.claudinite-checks.json']);
+  assert.deepEqual(after.packs, [
+    'basics',                                     // a canon id: untouched, though bare
+    'local/mine',                                 // bare, and this repo has the pack
+    'local/older',                                // the earlier namespaced form
+    { id: 'local/configured', config: { k: 1 } }, // an entry object keeps everything else
+    'local/already',                              // already canonical
+  ]);
+  assert.equal(done.length, 3);
+  // Idempotent — the second pass finds nothing to do and writes nothing.
+  const again = { ...w, written: { ...w.written } };
+  assert.deepEqual(await applyLocalDeclarationNormalization(M({ normalizeLocalDeclarations: true }), { ...again, read: (p) => again.written[p] ?? null, write: (p, c) => { again.written[p] = c; }, exists: (p) => local.has(p) }), []);
+});
+
+test('a record without the flag normalizes nothing', async () => {
+  const w = io({ '.claudinite-checks.json': '{"packs":["mine"]}\n' }, () => true);
+  assert.deepEqual(await applyLocalDeclarationNormalization(M(), w), []);
+  assert.equal(w.written['.claudinite-checks.json'], '{"packs":["mine"]}\n');
+});
+
+test('applyMigration runs every op — the vocabulary has one runner, not one per caller', async () => {
+  // The omission this guards is silent: an op wired into one applier and not the
+  // other leaves records that simply do nothing on that path. Asserted by running a
+  // record that carries EVERY op through the single entry point.
+  const m = M({
+    rewrite: [{ file: 'f.txt', replace: [{ from: 'old', to: 'new' }] }],
+    declarePacks: [{ id: 'added' }],
+    normalizeLocalDeclarations: true,
+  });
+  // `exists` answers only for the repo's real local pack — a blanket true would make
+  // every id look local, including one this record's own declarePacks just added.
+  const w = io({ 'f.txt': 'old\n', '.claudinite-checks.json': '{"packs":["mine"]}\n' },
+    (p) => p === '.claudinite/local/packs/mine/pack.mjs');
+  const applied = await applyMigration(m, w);
+  assert.equal(w.written['f.txt'], 'new\n', 'rewrite ran');
+  const after = JSON.parse(w.written['.claudinite-checks.json']);
+  assert.deepEqual(after.packs, ['local/mine', 'added'], 'normalization and declaration both ran');
+  assert.ok(applied.length >= 3, applied.join(' | '));
 });

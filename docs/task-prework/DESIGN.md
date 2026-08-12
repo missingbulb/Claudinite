@@ -248,7 +248,7 @@ canon reads (§1.2) are closed **without** a canon session source:
 
 - **The migration notes** → vendor the recent `migrations/<date>-<slug>/`
   records (and the `apply.mjs` applier + `registry.mjs`)
-  into `.claudinite/shared/migrations/` via `vendoring/compute-vendor-set.mjs`.
+  into the mount's `engine/migrations/` and `packs/<pack>/migrations/` via `vendoring/compute-vendor-set.mjs`.
   The agent's note-application read then resolves from the mount, locally.
 - **The head snapshot** → baselining's preprocessing does a **direct public
   `git` fetch of the canon repo at the target head sha** (canon is public — owner

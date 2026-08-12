@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "foldedThrough": "2026-08-08",
-  "runsFoldedThrough": "2026-08-09T02:51:20Z",
+  "foldedThrough": "2026-08-11",
+  "runsFoldedThrough": "2026-08-12T03:12:38Z",
   "days": {
     "2026-07-19": {
       "captures": 5,
@@ -1141,14 +1141,63 @@
       }
     },
     "2026-08-09": {
-      "captures": 0,
-      "merges": 0,
-      "sessions": 0,
-      "userMessages": 0,
+      "captures": 8,
+      "merges": 7,
+      "sessions": 8,
+      "userMessages": 9,
       "userCommands": 0,
-      "skillLoads": {},
-      "checks": {},
-      "checkFindings": {},
+      "skillLoads": {
+        "file-placement": 1,
+        "merge-to-main": 1,
+        "single-issue-triage": 1,
+        "writing-tests": 1
+      },
+      "checks": {
+        "work": {
+          "runs": 18,
+          "failures": 11,
+          "errors": 0,
+          "blocking": 12,
+          "advisory": 0,
+          "ciRuns": 0,
+          "ciFailures": 0
+        },
+        "world": {
+          "runs": 13,
+          "failures": 0,
+          "errors": 0,
+          "blocking": 0,
+          "advisory": 102,
+          "ciRuns": 0,
+          "ciFailures": 0
+        }
+      },
+      "checkFindings": {
+        "comment-classification": {
+          "blocking": 9,
+          "advisory": 0
+        },
+        "consumer-safe-change": {
+          "blocking": 1,
+          "advisory": 0
+        },
+        "file-placement": {
+          "blocking": 0,
+          "advisory": 5
+        },
+        "squash-merge-history": {
+          "blocking": 2,
+          "advisory": 0
+        },
+        "task-lifecycle": {
+          "blocking": 2,
+          "advisory": 0
+        },
+        "task-phase-discipline": {
+          "blocking": 0,
+          "advisory": 18
+        }
+      },
       "tasks": {
         "basics/baselining": {
           "agent": 0,
@@ -1156,9 +1205,436 @@
           "skipped": 1,
           "failed": 0,
           "deferred": 0
+        },
+        "basics/task-janitor": {
+          "agent": 0,
+          "prework": 1,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "canon-curation/growth-discover-packs": {
+          "agent": 1,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "canon-curation/growth-promote": {
+          "agent": 1,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "canon-curation/migrations-retire": {
+          "agent": 0,
+          "prework": 1,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "grow_with_claudinite/growth-dedup": {
+          "agent": 1,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "grow_with_claudinite/growth-discover-packs": {
+          "agent": 1,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "grow_with_claudinite/growth-extract": {
+          "agent": 1,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "grow_with_claudinite/prose-to-checks-sweep": {
+          "agent": 1,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "grow_with_claudinite/usage-fold": {
+          "agent": 0,
+          "prework": 1,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "tidy-repo/tidy-branches": {
+          "agent": 1,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "tidy-repo/tidy-issues": {
+          "agent": 1,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "tidy-repo/tidy-prs": {
+          "agent": 1,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
         }
       },
-      "taskExec": {}
+      "taskExec": {
+        "grow_with_claudinite/growth-dedup": {
+          "success": 1,
+          "failed": 0,
+          "task-gone": 0,
+          "invalid": 0
+        },
+        "grow_with_claudinite/growth-discover-packs": {
+          "success": 1,
+          "failed": 0,
+          "task-gone": 0,
+          "invalid": 0
+        },
+        "grow_with_claudinite/growth-extract": {
+          "success": 1,
+          "failed": 0,
+          "task-gone": 0,
+          "invalid": 0
+        },
+        "grow_with_claudinite/prose-to-checks-sweep": {
+          "success": 1,
+          "failed": 0,
+          "task-gone": 0,
+          "invalid": 0
+        },
+        "tidy-repo/tidy-branches": {
+          "success": 1,
+          "failed": 0,
+          "task-gone": 0,
+          "invalid": 0
+        },
+        "tidy-repo/tidy-issues": {
+          "success": 1,
+          "failed": 0,
+          "task-gone": 0,
+          "invalid": 0
+        }
+      }
+    },
+    "2026-08-10": {
+      "captures": 6,
+      "merges": 6,
+      "sessions": 6,
+      "userMessages": 8,
+      "userCommands": 2,
+      "skillLoads": {
+        "single-pr-status": 3
+      },
+      "checks": {
+        "work": {
+          "runs": 10,
+          "failures": 4,
+          "errors": 0,
+          "blocking": 5,
+          "advisory": 0,
+          "ciRuns": 0,
+          "ciFailures": 0
+        },
+        "world": {
+          "runs": 20,
+          "failures": 0,
+          "errors": 0,
+          "blocking": 0,
+          "advisory": 270,
+          "ciRuns": 0,
+          "ciFailures": 0
+        }
+      },
+      "checkFindings": {
+        "comment-classification": {
+          "blocking": 3,
+          "advisory": 0
+        },
+        "consumer-safe-change": {
+          "blocking": 1,
+          "advisory": 0
+        },
+        "deprecated-session-scope": {
+          "blocking": 0,
+          "advisory": 2
+        },
+        "task-lifecycle": {
+          "blocking": 1,
+          "advisory": 0
+        },
+        "task-phase-discipline": {
+          "blocking": 0,
+          "advisory": 12
+        }
+      },
+      "tasks": {
+        "basics/baselining": {
+          "agent": 0,
+          "prework": 0,
+          "skipped": 1,
+          "failed": 0,
+          "deferred": 0
+        },
+        "basics/task-janitor": {
+          "agent": 0,
+          "prework": 1,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "canon-curation/growth-promote": {
+          "agent": 0,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 1
+        },
+        "grow_with_claudinite/growth-extract": {
+          "agent": 1,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "grow_with_claudinite/usage-fold": {
+          "agent": 0,
+          "prework": 1,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "tidy-repo/tidy-issues": {
+          "agent": 1,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        }
+      },
+      "taskExec": {
+        "canon-curation/growth-discover-packs": {
+          "success": 1,
+          "failed": 0,
+          "task-gone": 0,
+          "invalid": 0
+        },
+        "canon-curation/growth-promote": {
+          "success": 1,
+          "failed": 0,
+          "task-gone": 0,
+          "invalid": 0
+        },
+        "grow_with_claudinite/growth-extract": {
+          "success": 1,
+          "failed": 0,
+          "task-gone": 0,
+          "invalid": 0
+        },
+        "tidy-repo/tidy-issues": {
+          "success": 1,
+          "failed": 0,
+          "task-gone": 0,
+          "invalid": 0
+        },
+        "tidy-repo/tidy-prs": {
+          "success": 1,
+          "failed": 0,
+          "task-gone": 0,
+          "invalid": 0
+        }
+      }
+    },
+    "2026-08-11": {
+      "captures": 5,
+      "merges": 5,
+      "sessions": 5,
+      "userMessages": 13,
+      "userCommands": 0,
+      "skillLoads": {
+        "git-github:merge-to-main": 1,
+        "merge-to-main": 1,
+        "prose-to-checks": 1
+      },
+      "checks": {
+        "work": {
+          "runs": 16,
+          "failures": 4,
+          "errors": 0,
+          "blocking": 4,
+          "advisory": 0,
+          "ciRuns": 0,
+          "ciFailures": 0
+        },
+        "world": {
+          "runs": 17,
+          "failures": 0,
+          "errors": 0,
+          "blocking": 0,
+          "advisory": 232,
+          "ciRuns": 0,
+          "ciFailures": 0
+        }
+      },
+      "checkFindings": {
+        "comment-classification": {
+          "blocking": 2,
+          "advisory": 0
+        },
+        "consumer-safe-change": {
+          "blocking": 1,
+          "advisory": 0
+        },
+        "file-placement": {
+          "blocking": 0,
+          "advisory": 3
+        },
+        "task-lifecycle": {
+          "blocking": 1,
+          "advisory": 0
+        },
+        "task-phase-discipline": {
+          "blocking": 0,
+          "advisory": 11
+        }
+      },
+      "tasks": {
+        "basics/baselining": {
+          "agent": 0,
+          "prework": 0,
+          "skipped": 1,
+          "failed": 0,
+          "deferred": 0
+        },
+        "basics/task-janitor": {
+          "agent": 0,
+          "prework": 1,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "canon-curation/growth-promote": {
+          "agent": 1,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "grow_with_claudinite/growth-extract": {
+          "agent": 1,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "grow_with_claudinite/usage-fold": {
+          "agent": 0,
+          "prework": 1,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "tidy-repo/tidy-issues": {
+          "agent": 0,
+          "prework": 0,
+          "skipped": 1,
+          "failed": 0,
+          "deferred": 0
+        }
+      },
+      "taskExec": {
+        "canon-curation/growth-promote": {
+          "success": 1,
+          "failed": 0,
+          "task-gone": 0,
+          "invalid": 0
+        },
+        "grow_with_claudinite/growth-extract": {
+          "success": 1,
+          "failed": 0,
+          "task-gone": 0,
+          "invalid": 0
+        }
+      }
+    },
+    "2026-08-12": {
+      "captures": 1,
+      "merges": 1,
+      "sessions": 1,
+      "userMessages": 0,
+      "userCommands": 0,
+      "skillLoads": {},
+      "checks": {
+        "work": {
+          "runs": 3,
+          "failures": 3,
+          "errors": 0,
+          "blocking": 3,
+          "advisory": 0,
+          "ciRuns": 0,
+          "ciFailures": 0
+        },
+        "world": {
+          "runs": 1,
+          "failures": 0,
+          "errors": 0,
+          "blocking": 0,
+          "advisory": 17,
+          "ciRuns": 0,
+          "ciFailures": 0
+        }
+      },
+      "checkFindings": {
+        "comment-classification": {
+          "blocking": 1,
+          "advisory": 0
+        },
+        "consumer-safe-change": {
+          "blocking": 1,
+          "advisory": 0
+        },
+        "task-lifecycle": {
+          "blocking": 1,
+          "advisory": 0
+        }
+      },
+      "tasks": {
+        "basics/baselining": {
+          "agent": 0,
+          "prework": 0,
+          "skipped": 1,
+          "failed": 0,
+          "deferred": 0
+        },
+        "grow_with_claudinite/growth-extract": {
+          "agent": 1,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        }
+      },
+      "taskExec": {
+        "grow_with_claudinite/growth-extract": {
+          "success": 1,
+          "failed": 0,
+          "task-gone": 0,
+          "invalid": 0
+        }
+      }
     }
   },
   "weeks": {
@@ -1404,40 +1880,41 @@
       "taskExec": {}
     },
     "2026-W32": {
-      "days": 5,
-      "captures": 37,
-      "merges": 35,
-      "sessionDays": 23,
-      "userMessages": 94,
+      "days": 6,
+      "captures": 45,
+      "merges": 42,
+      "sessionDays": 31,
+      "userMessages": 103,
       "userCommands": 3,
       "skillLoads": {
         "authoring-agent-docs": 2,
         "bump-version": 1,
         "extract-from-activity": 1,
         "extract-from-conversations": 1,
+        "file-placement": 1,
         "github-actions-scheduling": 1,
-        "merge-to-main": 3,
+        "merge-to-main": 4,
         "prose-to-checks": 1,
-        "single-issue-triage": 3,
+        "single-issue-triage": 4,
         "writing-claudinite-skills": 2,
-        "writing-tests": 2
+        "writing-tests": 3
       },
       "checks": {
         "work": {
-          "runs": 78,
-          "failures": 27,
+          "runs": 96,
+          "failures": 38,
           "errors": 0,
-          "blocking": 35,
+          "blocking": 47,
           "advisory": 0,
           "ciRuns": 0,
           "ciFailures": 0
         },
         "world": {
-          "runs": 70,
+          "runs": 83,
           "failures": 3,
           "errors": 0,
           "blocking": 4,
-          "advisory": 645,
+          "advisory": 747,
           "ciRuns": 0,
           "ciFailures": 0
         }
@@ -1448,16 +1925,16 @@
           "advisory": 0
         },
         "comment-classification": {
-          "blocking": 27,
+          "blocking": 36,
           "advisory": 0
         },
         "consumer-safe-change": {
-          "blocking": 2,
+          "blocking": 3,
           "advisory": 0
         },
         "file-placement": {
           "blocking": 0,
-          "advisory": 47
+          "advisory": 52
         },
         "markdown-link-labels": {
           "blocking": 1,
@@ -1468,7 +1945,7 @@
           "advisory": 0
         },
         "squash-merge-history": {
-          "blocking": 1,
+          "blocking": 3,
           "advisory": 0
         },
         "task-declaration-shape": {
@@ -1476,12 +1953,209 @@
           "advisory": 0
         },
         "task-lifecycle": {
-          "blocking": 11,
+          "blocking": 13,
           "advisory": 0
         },
         "task-phase-discipline": {
           "blocking": 0,
-          "advisory": 35
+          "advisory": 53
+        }
+      },
+      "tasks": {
+        "basics/baselining": {
+          "agent": 0,
+          "prework": 0,
+          "skipped": 3,
+          "failed": 0,
+          "deferred": 0
+        },
+        "basics/task-janitor": {
+          "agent": 0,
+          "prework": 3,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "canon-curation/growth-discover-packs": {
+          "agent": 1,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "canon-curation/growth-promote": {
+          "agent": 3,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "canon-curation/migrations-retire": {
+          "agent": 0,
+          "prework": 4,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "grow_with_claudinite/growth-dedup": {
+          "agent": 1,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "grow_with_claudinite/growth-discover-packs": {
+          "agent": 1,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "grow_with_claudinite/growth-extract": {
+          "agent": 3,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "grow_with_claudinite/prose-to-checks-sweep": {
+          "agent": 1,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "grow_with_claudinite/usage-fold": {
+          "agent": 0,
+          "prework": 3,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "tidy-repo/tidy-branches": {
+          "agent": 1,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "tidy-repo/tidy-issues": {
+          "agent": 3,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "tidy-repo/tidy-prs": {
+          "agent": 1,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        }
+      },
+      "taskExec": {
+        "canon-curation/growth-promote": {
+          "success": 1,
+          "failed": 0,
+          "task-gone": 0,
+          "invalid": 0
+        },
+        "grow_with_claudinite/growth-dedup": {
+          "success": 1,
+          "failed": 0,
+          "task-gone": 0,
+          "invalid": 0
+        },
+        "grow_with_claudinite/growth-discover-packs": {
+          "success": 1,
+          "failed": 0,
+          "task-gone": 0,
+          "invalid": 0
+        },
+        "grow_with_claudinite/growth-extract": {
+          "success": 2,
+          "failed": 0,
+          "task-gone": 0,
+          "invalid": 0
+        },
+        "grow_with_claudinite/prose-to-checks-sweep": {
+          "success": 1,
+          "failed": 0,
+          "task-gone": 0,
+          "invalid": 0
+        },
+        "tidy-repo/tidy-branches": {
+          "success": 1,
+          "failed": 0,
+          "task-gone": 0,
+          "invalid": 0
+        },
+        "tidy-repo/tidy-issues": {
+          "success": 2,
+          "failed": 0,
+          "task-gone": 0,
+          "invalid": 0
+        }
+      }
+    },
+    "2026-W33": {
+      "days": 2,
+      "captures": 11,
+      "merges": 11,
+      "sessionDays": 11,
+      "userMessages": 21,
+      "userCommands": 2,
+      "skillLoads": {
+        "git-github:merge-to-main": 1,
+        "merge-to-main": 1,
+        "prose-to-checks": 1,
+        "single-pr-status": 3
+      },
+      "checks": {
+        "work": {
+          "runs": 26,
+          "failures": 8,
+          "errors": 0,
+          "blocking": 9,
+          "advisory": 0,
+          "ciRuns": 0,
+          "ciFailures": 0
+        },
+        "world": {
+          "runs": 37,
+          "failures": 0,
+          "errors": 0,
+          "blocking": 0,
+          "advisory": 502,
+          "ciRuns": 0,
+          "ciFailures": 0
+        }
+      },
+      "checkFindings": {
+        "comment-classification": {
+          "blocking": 5,
+          "advisory": 0
+        },
+        "consumer-safe-change": {
+          "blocking": 2,
+          "advisory": 0
+        },
+        "deprecated-session-scope": {
+          "blocking": 0,
+          "advisory": 2
+        },
+        "file-placement": {
+          "blocking": 0,
+          "advisory": 3
+        },
+        "task-lifecycle": {
+          "blocking": 2,
+          "advisory": 0
+        },
+        "task-phase-discipline": {
+          "blocking": 0,
+          "advisory": 23
         }
       },
       "tasks": {
@@ -1500,18 +2174,11 @@
           "deferred": 0
         },
         "canon-curation/growth-promote": {
-          "agent": 2,
+          "agent": 1,
           "prework": 0,
           "skipped": 0,
           "failed": 0,
-          "deferred": 0
-        },
-        "canon-curation/migrations-retire": {
-          "agent": 0,
-          "prework": 3,
-          "skipped": 0,
-          "failed": 0,
-          "deferred": 0
+          "deferred": 1
         },
         "grow_with_claudinite/growth-extract": {
           "agent": 2,
@@ -1528,27 +2195,39 @@
           "deferred": 0
         },
         "tidy-repo/tidy-issues": {
-          "agent": 2,
+          "agent": 1,
           "prework": 0,
-          "skipped": 0,
+          "skipped": 1,
           "failed": 0,
           "deferred": 0
         }
       },
       "taskExec": {
-        "canon-curation/growth-promote": {
+        "canon-curation/growth-discover-packs": {
           "success": 1,
+          "failed": 0,
+          "task-gone": 0,
+          "invalid": 0
+        },
+        "canon-curation/growth-promote": {
+          "success": 2,
           "failed": 0,
           "task-gone": 0,
           "invalid": 0
         },
         "grow_with_claudinite/growth-extract": {
-          "success": 1,
+          "success": 2,
           "failed": 0,
           "task-gone": 0,
           "invalid": 0
         },
         "tidy-repo/tidy-issues": {
+          "success": 1,
+          "failed": 0,
+          "task-gone": 0,
+          "invalid": 0
+        },
+        "tidy-repo/tidy-prs": {
           "success": 1,
           "failed": 0,
           "task-gone": 0,

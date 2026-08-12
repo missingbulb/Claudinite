@@ -80,6 +80,17 @@ prose below).
   of 11 members confirmed … say the word and I'll attach and verify"* bought a round-trip, one of
   four the owner spent that morning telling this session to attach repos.
 
+- **A code deprecation rides the standard `@deprecated` tag — never a bespoke conformance check**
+  (owner ruling, 2026-08-09, #707). Retiring a field, option or module does not earn its own rule
+  module, test file and catalog row: that is machinery to say what one JSDoc line says, and it grows
+  once per retirement forever. `deprecated-session-scope` was authored as a `basics` check and deleted
+  the same day it was reviewed (*"I don't think we want to add a check for every code deprecation"*).
+  Put `@deprecated` on the **definition** — the one place the thing is declared, here the
+  `session_scope` section of `engine/scheduler/task-contract.mjs` — and have each sanctioned holdout
+  pacify the warning with a comment at its own declaration site saying why it still carries the field.
+  Keep the contract **validating** the lingering field either way: validation catches a typo that would
+  otherwise strand a dispatch, and is not the same thing as a conformance rule.
+
 ## Canon-specific gotchas
 
 - **Baselining backfill skips the home.** The nightly baselining that lands a `seededByDefault`
@@ -131,6 +142,22 @@ prose below).
   and an unmounted skill says nothing about whether its procedure applies. The seeding gap above
   is a different one (`git-github` arrives by closure, never `seededByDefault`); catching this
   one needs `resolveDeclaredPacks` compared against the literal declaration.
+- **The same blindness on the member side: a session sees only the packs its repo *declares*, so never
+  conclude from the mount that no canon pack owns a lesson.** A member's `.claudinite/shared/packs/`
+  holds its declared set, not the canon — so a pack the repo doesn't declare is simply absent, and the
+  honest-looking reading ("nothing here covers this") is wrong in the one direction that costs most:
+  the lesson gets homed in a **new local pack** on the member, duplicating canon territory. Measured
+  2026-08-09 on EdFringeNow: the client-side data-caching rules that belonged to `static-website` went
+  into a fresh local pack (whose `ruleRoutingGuidance.belongs` ran 31 words against the 20-word cap, so
+  the session's own selftest was red), because the repo carries no `site.config` and doesn't declare
+  the pack — nothing in the session pointed at it. The owner did, by URL: *"That pack does exist … move
+  the changes into that pack and cleanup the EdFringeNow rules."* Since #728 every mount carries
+  `packs/directory.GENERATED.md`, the catalog of **every** canon pack — read that, not the mounted
+  subset, before homing a lesson locally. And when the owning pack's territory is merely too narrow,
+  **widen its `belongs`** rather than route around it: #727 widened `static-website` by two words,
+  "shipping" → "shipping and serving", and the rules landed where they belonged. (Portable — a promote
+  candidate for `grow_with_claudinite/extracting-lessons.md`, whose "route to the pack whose territory
+  owns it" step assumes that pack is visible from the session.)
 - **Never re-serialize a repo's JSON config to apply an edit — patch the text.** A round-trip
   rewrites what it wasn't asked to: Python's `json.dump` defaults to `ensure_ascii=True` (every
   non-ASCII character becomes a `\uXXXX` escape), and indent, key order and the trailing newline
@@ -245,6 +272,11 @@ prose below).
   whether the problem is still there, what the goal was, and what survives. Do this whenever you
   return to a paused branch, before presenting it — the owner should never have to ask "is this
   change still needed" (asked three times on #465 before it was volunteered).
+- **Re-basing your edit onto a moved `main` means re-applying it, never restoring a whole-file copy.**
+  A pack's `RULES.md` is append-only and several auto-merged runs write it a day, so a `cp` of the
+  version you read back over the fetched one deletes their lessons — and nothing goes red, because no
+  test or check reads prose (caught by luck on 2026-08-11/#758, 54 lines already staged). Re-read the
+  fetched file, apply the same anchored edit to it, and confirm the stat shows insertions only.
 - **Every `Claude_Code_Remote` call costs minutes, and a call that returns nothing has NOT failed —
   never re-issue it.** The whole server behaves this way, not one tool: measured over four sessions
   on 2026-07-29, `add_repo` ran 270–285s a call, `send_later` 117–390s, `list_triggers` 139–325s,
@@ -259,7 +291,10 @@ prose below).
   the shape — #559's session asked one question twice for 218s + 204s. So: **one call per intent,
   ever**, and when what you want is "is it green yet", read the check status directly and merge on
   the already-green result rather than buying a notification. Budget these calls before making them:
-  four of them is most of an hour.
+  four of them is most of an hour. And to *read* a public sibling repo, `add_repo` is not the route at
+  all: it attaches nothing and answers that the session's git proxy already serves anonymous reads —
+  measured 2026-08-11 (#641), 3m40s before the owner interrupted it plus 40s on the re-issue, against
+  `git clone --depth 1 https://github.com/<owner>/<repo> /workspace/<owner>/<repo>` in ~2s.
 - **Sync local `main` with `git reset --hard origin/main`, never `git pull` — this repo's session
   clones are shallow.** The post-merge sync step of `merge-to-main` is where it bites, and it bit
   five separate sessions on 2026-07-29 alone (#548, #551, #537, #559 and the session-end capture of
@@ -296,6 +331,19 @@ prose below).
   ask what carries it across the fleet; if the answer is "nothing", the change is not ready —
   accept the legacy shape in `normalizeManifest` (and say so) until a carrier exists, and never
   let a stale declaration degrade to *fewer checks running* rather than a failure.
+- **A stub is copied once and never re-copied — extend its contract through an *optional* key, and let
+  the declaration itself trigger the staleness check.** Vendoring refreshes `.claudinite/shared/`, but
+  `packs/*/stubs/` are artifacts a member copied into its own `.github/` and no converge ever touches
+  again — so a stub that learns to read a new config key is invisible to every repo still holding the
+  old copy: the config names the key, the copied action ignores it, the run goes green, and the feature
+  is silently dead in production. `build_vars` (#729) is the shape to copy. The key is **optional**, so
+  no existing config is invalidated and no member has to be migrated to stay valid. A
+  **declared-but-unset** value fails the run rather than exporting `""`, which would reproduce the same
+  silent death one level down. And `release-workflows` flags exactly the combination that reads the key
+  and ignores it — a config declaring it against an action or workflow copy predating the exporter — so
+  the repos that opted in are told to re-copy and nobody else sees a finding. That pairing is the
+  carrier the entry above asks for: an opt-in contract can ship without one only because declaring it
+  is itself the signal a check can see.
 - **A migration record is always the newest code; the engine that executes its result is the
   member's, and only as new as its last successful converge.** `migrations/apply.mjs` runs from a
   **fresh canon clone**, so every member gets today's record — but the worker that then commits and
@@ -416,6 +464,20 @@ prose below).
   `packs/*/pack.mjs` directory names would carry this whole rule, and the fixture is trivial — but any
   new rule moves `packs/README.md`'s check tally, which a growth-extract run may not touch. Left for the
   weekly prose-to-checks sweep's reviewed PR.)
+- **"No X should decide this" is a question about whether the decision exists at all — never answer it
+  by relocating the knob one rung out.** Measured 2026-08-09 (#707): asked to retire the task-level
+  `session_scope` because *"tasks on Sheepdog have the access to the fleet and they know what they
+  do"*, the session moved the same choice up to the pack manifest as `sessionScope: 'fleet'` — a new
+  manifest-vocabulary entry, a resolver module, `discover.mjs` wiring, a rehearsal fixture and tests,
+  all authored, pushed and then deleted one round later on *"Why do you think you need `sessionScope:
+  'fleet'`? Who does this help?"*. The reach was already implied by **which repo runs the task** — the
+  sheepdog enforcer *is* the fleet — so the field only ever protected one structural holdout (the
+  canon's own curation tasks, whose ordinary executor does not hold the fleet), which is an exception
+  at that caller, not a knob for everyone. So when a declaration is questioned, first ask **who would
+  ever set it differently, and why they could not be read off the structure**; a single structural
+  answer means delete the field and document the exception where it lives. Cousin of the standing "a
+  pack default stays in the pack — don't ask it at adoption" ruling above: both are about refusing to
+  materialize a decision nobody actually has to make.
 - **The home is the last repo to receive its own stub changes — nothing delivers to it.** Every member
   gets `engine/scheduler/stubs/claudinite-scheduler.yml` written into `.github/workflows/` by its nightly
   converge; the canon has no mount and no converge, so its own copy is hand-maintained and drifts from the
@@ -426,3 +488,12 @@ prose below).
   `overrides` input on both and said nothing about `permissions`, so the drift walked straight past it.
   So when a change touches the vendored stub, edit the canon's `.github/workflows/` copy in the **same
   commit** and diff the two whole files, never just the lines you came for.
+- **Never combine PRs by pushing one's branch onto the other's base — update the PR you're keeping,
+  close the other** (owner decision, 2026-08-11). GitHub marks a PR merged the moment its head is
+  reachable from its base, so the push merges it under your name and shows it merged into a branch
+  that is itself an open PR's head. A later `state: closed` is a no-op — check the API's `merged`
+  field before reporting (#754).
+- **One approved change is one PR.** A dispatch prompt's designated branch routes work, not review:
+  work that completes or corrects an open PR belongs on that PR's branch. Splitting it gives the owner
+  two gates for one decision and invites approving half — #739's new pack was approvable while
+  `basics` still held a rule the pack owned.

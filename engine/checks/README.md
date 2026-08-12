@@ -92,7 +92,7 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
     edge-graph pack's edge list). This is the home of what a legacy top-level `packConfig` key
     used to hold — the engine still reads that key, but baselining folds it into the entries
     and nothing should keep authoring it. The `pack-entry-config` baseline migration
-    ([migrations/](../../migrations/README.md)) documents the fold; once the fleet is off the
+    ([engine/migrations/](../migrations/README.md)) documents the fold; once the fleet is off the
     old shape, the key stops being a valid setting.
   - **answers** — the pack's adoption-interview answers, **verbatim**, keyed by question id
     (`{ "<question-id>": "<answer>" }`). A pack declares its questions on its `pack.mjs`; the

@@ -109,7 +109,7 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    until the vendored mount exists, so it fires neither in the canon repo nor in pre-flip
    consumers.
 9. **Migration notes v2.** A canon change that consumers must be amended for ships as a dated
-   record (the `migrations/<date>-<slug>/` shape): mechanical ops where code can
+   record (the `<flow>/migrations/<date>-<slug>/` shape): mechanical ops where code can
    express them, plus a **brief agentic note** for what it can't (chiefly adapting
    consumer-authored `local_packs/` content to a changed engine contract). The nightly applies
    the notes dated on or after the day of the repo's stamp (same-day inclusive, note

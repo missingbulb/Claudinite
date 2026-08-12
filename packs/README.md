@@ -16,8 +16,8 @@ vendored into every mount regardless of declaration, so a member session can see
 | <img src="git-github/badge.svg" width="18" height="18" alt=""> [git-github](git-github/README.md) | pulled in via `basics` `requires` | 0 | 0 (2 skills: git-github-advanced, merge-to-main) |
 | <img src="grow_with_claudinite/badge.svg" width="18" height="18" alt=""> [grow_with_claudinite](grow_with_claudinite/README.md) | declared (seeded by `--init`, opt-out by removal) | 1 | growth member-side tasks (extract over activity + conversations / dedup / pack discovery / prose-to-checks) + in-session merge capture |
 | <img src="tidy-repo/badge.svg" width="18" height="18" alt=""> [tidy-repo](tidy-repo/README.md) | declared (seeded by `--init`, opt-out by removal) | 0 | policy (assess-only-vs-act) + 3 per-dimension tidy tasks (issues daily, PRs/branches weekly) |
-| <img src="sheepdog/badge.svg" width="18" height="18" alt=""> [sheepdog](sheepdog/README.md) | declared (opt-in; the fleet-enforcer repo only) | 0 | fleet-enforcer marker + config + the agentless `fleet-census` daily task (the coverage census) |
-| <img src="claude-code-web-users-support/badge.svg" width="18" height="18" alt=""> [claude-code-web-users-support](claude-code-web-users-support/RULES.md) | declared (seeded by `--init`) | 1 | what a project offers people working from the web — today, their personal interaction preferences |
+| <img src="sheepdog/badge.svg" width="18" height="18" alt=""> [sheepdog](sheepdog/README.md) | declared (opt-in; the fleet-enforcer repo only) | 1 | fleet-enforcer marker + config + the agentless `fleet-census` daily task (the coverage census) |
+| <img src="claude-code-web-users-support/badge.svg" width="18" height="18" alt=""> [claude-code-web-users-support](claude-code-web-users-support/RULES.md) | declared (seeded by `--init`) | 2 | what a project offers people working from the web — today, their personal interaction preferences |
 | <img src="github-actions/badge.svg" width="18" height="18" alt=""> [github-actions](github-actions/) | `.github/workflows/` | 8 | 0 |
 | <img src="chrome-extension/badge.svg" width="18" height="18" alt=""> [chrome-extension](chrome-extension/README.md) | manifest_version manifest | 2 | 9 |
 | <img src="chrome-extension-release/badge.svg" width="18" height="18" alt=""> [chrome-extension-release](chrome-extension-release/README.md) | single `Release to Chrome Store` stub (opt-in) | 8 | 0 (+ RELEASE contract) |
@@ -35,6 +35,7 @@ vendored into every mount regardless of declaration, so a member session can see
 | <img src="firebase-release/badge.svg" width="18" height="18" alt=""> [firebase-release](firebase-release/README.md) | declared (opt-in) | 0 | dev/prod split + App Check store gating |
 | <img src="android/badge.svg" width="18" height="18" alt=""> [android](android/) | `AndroidManifest.xml` | 0 | stub |
 | <img src="ios/badge.svg" width="18" height="18" alt=""> [ios](ios/) | `ios/Runner/Info.plist` | 0 | stub |
+| <img src="macos/badge.svg" width="18" height="18" alt=""> [macos](macos/README.md) | `Package.swift` near root | 2 | bundle / TCC + Hardened Runtime / on-device speech / Developer ID + notarization / lifecycle |
 | <img src="play-store-release/badge.svg" width="18" height="18" alt=""> [play-store-release](play-store-release/) | declared (opt-in) | 0 | stub |
 | <img src="app-store-release/badge.svg" width="18" height="18" alt=""> [app-store-release](app-store-release/) | declared (opt-in) | 0 | stub |
 | <img src="web-scraping/badge.svg" width="18" height="18" alt=""> [web-scraping](web-scraping/README.md) | declared (opt-in) | 0 | 11 (+ 1 skill: map-a-data-source) |
@@ -247,7 +248,7 @@ manifest.
 
 | | Count |
 |---|---|
-| **Hardcoded conformance checks** | **80** — every rule the runner carries: each pack's own, its bundled skills' checks, and the contributed barriers, plus the canon home's own [canon-curation](../.claudinite/local/packs/canon-curation/README.md) and [claudinite](../.claudinite/local/packs/claudinite/RULES.md) local packs |
+| **Hardcoded conformance checks** | **87** — every rule the runner carries: each pack's own, its bundled skills' checks, and the contributed barriers, plus the canon home's own [canon-curation](../.claudinite/local/packs/canon-curation/README.md) and [claudinite](../.claudinite/local/packs/claudinite/RULES.md) local packs |
 | PreToolUse guard | 1 (remote-branch-delete) |
 | Platform setting | 1 (squash-only) |
 | **Prose rules** — packs + practice skills + baseline | **~150** |
