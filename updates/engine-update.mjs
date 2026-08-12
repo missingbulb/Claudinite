@@ -5,10 +5,7 @@ import { computeVendorSet, SHARED_SUBDIR } from '../vendoring/compute-vendor-set
 import { PACK_DIRECTORY_FILE } from '../engine/pack_loader/pack-registry.mjs';
 import { ENGINE_VERSION } from '../engine/version.mjs';
 import { migrationDirs, migrationApplies, flowOf, DECLARATION_FILE } from '../engine/checks/helpers/active-migrations.mjs';
-import {
-  loadMigrations, migrationAgentic,
-  applyFileAliases, applyMaterializations, applyRewrites, applyPackDeclarations,
-} from '../engine/migrations/registry.mjs';
+import { loadMigrations, migrationAgentic, applyMigration } from '../engine/migrations/registry.mjs';
 import { convergeWiring } from '../engine/scheduler/converge-wiring.mjs';
 
 // THE ENGINE UPDATE FLOW (docs/versioned-updates/DESIGN.md §2): move one repo from
@@ -123,16 +120,12 @@ export async function engineUpdate(targetRoot, { fullName, today, dryRun = false
   const move = (from_, to) => { mkdirSync(dirname(join(targetRoot, to)), { recursive: true }); renameSync(join(targetRoot, from_), join(targetRoot, to)); };
   const readTemplate = (p) => (existsSync(join(canonRoot, p)) ? readFileSync(join(canonRoot, p), 'utf8') : null);
 
+  // `env: {}` — never the ambient environment: the withhold handshake is an
+  // announcement about the RUNNING process, and this process cannot deliver a
+  // workflow file whatever its parent was able to do.
+  const io = { exists, move, read, write, readTemplate, env: {} };
   const applied = [];
-  for (const m of specs) {
-    applied.push(...(await applyFileAliases(m, { exists, move })));
-    // `env: {}` — never the ambient environment: the withhold handshake is an
-    // announcement about the RUNNING process, and this process cannot deliver a
-    // workflow file whatever its parent was able to do.
-    applied.push(...(await applyMaterializations(m, { readTemplate, read, write, env: {} })));
-    applied.push(...(await applyRewrites(m, { read, write })));
-    applied.push(...(await applyPackDeclarations(m, { read, write })));
-  }
+  for (const m of specs) applied.push(...(await applyMigration(m, io)));
 
   // 3. Wiring (never workflows), then the stamp that claims all of the above. The
   //    stub text and the secret list are the scheduler workflow's inputs, so with

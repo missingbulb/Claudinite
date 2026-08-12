@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import {
   loadMigrations, resolvePath, applyFileAliases,
   applyMaterializations, applyRewrites, applyPackDeclarations, migrationActive,
+  applyLocalDeclarationNormalization, applyMigration,
   migrationAgentic, agenticMigrations,
   callerCanDeliverWorkflows, WITHHOLD_CAPABLE_ENV,
 } from '../engine/migrations/registry.mjs';
@@ -462,4 +463,81 @@ test('every record declares a version, and the regex reads what the module expor
     assert.equal(recordVersion(m.dir), m.version,
       `${m.dir}: the version read from the source disagrees with the module's — keep the field a plain literal on its own line`);
   }
+});
+
+// --- regex rewrites and the local-declaration codemod (#768 Phase 1) ----------
+
+const io = (files, exists = () => false) => {
+  const written = { ...files };
+  return {
+    written,
+    read: (p) => written[p] ?? null,
+    write: (p, c) => { written[p] = c; },
+    exists: (p) => exists(p),
+    move: () => {},
+    readTemplate: () => null,
+  };
+};
+
+test('applyRewrites: a global pattern rewrites every match; a non-global one is refused', async () => {
+  const m = M({ rewrite: [{ file: 'f.txt', replace: [{ pattern: /v(\d)/g, to: 'V$1' }] }] });
+  const w = io({ 'f.txt': 'v1 and v2\n' });
+  assert.deepEqual(await applyRewrites(m, w), ['f.txt']);
+  assert.equal(w.written['f.txt'], 'V1 and V2\n');
+  // Idempotent: nothing matches the second time.
+  assert.deepEqual(await applyRewrites(m, w), []);
+
+  // A non-global pattern would rewrite the first match and leave a file that reads
+  // as migrated — loud, not silent.
+  const bad = M({ rewrite: [{ file: 'f.txt', replace: [{ pattern: /v(\d)/, to: 'V$1' }] }] });
+  await assert.rejects(() => applyRewrites(bad, io({ 'f.txt': 'v1 v2' })), /must be a global RegExp/);
+  await assert.rejects(() => applyRewrites(M({ rewrite: [{ file: 'f.txt', replace: [{ pattern: 'v1', to: 'V1' }] }] }), io({ 'f.txt': 'v1' })), /global RegExp/);
+});
+
+test('local declarations normalize to local/<id>, from both earlier forms', async () => {
+  const decl = {
+    packs: ['basics', 'mine', 'local_packs/older', { id: 'configured', config: { k: 1 } }, 'local/already'],
+  };
+  const local = new Set(['.claudinite/local/packs/mine/pack.mjs', '.claudinite/local_packs/configured/pack.mjs']);
+  const w = io({ '.claudinite-checks.json': `${JSON.stringify(decl, null, 2)}\n` }, (p) => local.has(p));
+  const done = await applyLocalDeclarationNormalization(M({ normalizeLocalDeclarations: true }), w);
+
+  const after = JSON.parse(w.written['.claudinite-checks.json']);
+  assert.deepEqual(after.packs, [
+    'basics',                                     // a canon id: untouched, though bare
+    'local/mine',                                 // bare, and this repo has the pack
+    'local/older',                                // the earlier namespaced form
+    { id: 'local/configured', config: { k: 1 } }, // an entry object keeps everything else
+    'local/already',                              // already canonical
+  ]);
+  assert.equal(done.length, 3);
+  // Idempotent — the second pass finds nothing to do and writes nothing.
+  const again = { ...w, written: { ...w.written } };
+  assert.deepEqual(await applyLocalDeclarationNormalization(M({ normalizeLocalDeclarations: true }), { ...again, read: (p) => again.written[p] ?? null, write: (p, c) => { again.written[p] = c; }, exists: (p) => local.has(p) }), []);
+});
+
+test('a record without the flag normalizes nothing', async () => {
+  const w = io({ '.claudinite-checks.json': '{"packs":["mine"]}\n' }, () => true);
+  assert.deepEqual(await applyLocalDeclarationNormalization(M(), w), []);
+  assert.equal(w.written['.claudinite-checks.json'], '{"packs":["mine"]}\n');
+});
+
+test('applyMigration runs every op — the vocabulary has one runner, not one per caller', async () => {
+  // The omission this guards is silent: an op wired into one applier and not the
+  // other leaves records that simply do nothing on that path. Asserted by running a
+  // record that carries EVERY op through the single entry point.
+  const m = M({
+    rewrite: [{ file: 'f.txt', replace: [{ from: 'old', to: 'new' }] }],
+    declarePacks: [{ id: 'added' }],
+    normalizeLocalDeclarations: true,
+  });
+  // `exists` answers only for the repo's real local pack — a blanket true would make
+  // every id look local, including one this record's own declarePacks just added.
+  const w = io({ 'f.txt': 'old\n', '.claudinite-checks.json': '{"packs":["mine"]}\n' },
+    (p) => p === '.claudinite/local/packs/mine/pack.mjs');
+  const applied = await applyMigration(m, w);
+  assert.equal(w.written['f.txt'], 'new\n', 'rewrite ran');
+  const after = JSON.parse(w.written['.claudinite-checks.json']);
+  assert.deepEqual(after.packs, ['local/mine', 'added'], 'normalization and declaration both ran');
+  assert.ok(applied.length >= 3, applied.join(' | '));
 });

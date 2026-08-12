@@ -4,6 +4,7 @@
 //   - materialize   — vendor pack templates into the repo's own tree
 //   - rewrite       — repoint refs in place (idempotent literal replacements)
 //   - declarePacks  — declare a pack (and its config) the member does not carry yet
+//   - normalizeLocalDeclarations — rewrite local-pack declarations to `local/<id>`
 // Idempotent: a no-op once everything has been applied. Dependency-free.
 //
 // Two roots. The DEST is the repo being healed (CLAUDE_PROJECT_DIR / cwd). The
@@ -22,7 +23,7 @@
 import { existsSync, renameSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { loadMigrations, applyFileAliases, applyMaterializations, applyRewrites, applyPackDeclarations } from './registry.mjs';
+import { loadMigrations, applyMigration } from './registry.mjs';
 
 export async function main() {
   const repoRoot = process.env.CLAUDE_PROJECT_DIR || process.cwd();
@@ -42,12 +43,7 @@ export async function main() {
   const readTemplate = (p) => (existsSync(join(canonRoot, p)) ? readFileSync(join(canonRoot, p), 'utf8') : null);
 
   const applied = [];
-  for (const m of migrations) {
-    applied.push(...(await applyFileAliases(m, { exists, move })));
-    applied.push(...(await applyMaterializations(m, { readTemplate, read, write })));
-    applied.push(...(await applyRewrites(m, { read, write })));
-    applied.push(...(await applyPackDeclarations(m, { read, write })));
-  }
+  for (const m of migrations) applied.push(...(await applyMigration(m, { exists, move, read, write, readTemplate })));
   if (applied.length) console.log(`Applied migrations:\n${applied.map((x) => `  ${x}`).join('\n')}`);
 }
 
