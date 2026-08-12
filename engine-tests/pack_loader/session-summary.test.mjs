@@ -62,11 +62,15 @@ function run(corpus, project, env = {}) {
 // the manifest is JSON-serialized into the fixture — so rules arrive as source.
 const rules = (n) => ({ manifestSource: (json) => `const rules = ${JSON.stringify(Array.from({ length: n }, (_, i) => ({ id: `r${i}` })))}.map((r) => ({ ...r, run: () => {} }));\nexport default { ...${json}, workRules: rules };\n` });
 
+// Prose is estimated through WORDS (roughly 0.75 of them per token), so a fixture
+// says how many words it is, not how many bytes.
+const words = (n) => Array.from({ length: n }, (_, i) => `word${i}${i % 12 === 11 ? '\n' : ''}`).join(' ');
+
 test('counts the active packs, their checks and their prose, and says so in one line', () => {
   const corpus = makeCorpus({
-    alpha: { prose: 'RULES.md', proseText: 'x'.repeat(8000), ...rules(3) },
-    beta: { prose: 'RULES.md', proseText: 'y'.repeat(4000), ...rules(2) },
-    gamma: { prose: 'RULES.md', proseText: 'z'.repeat(100000), ...rules(9) },
+    alpha: { prose: 'RULES.md', proseText: words(1500), ...rules(3) },
+    beta: { prose: 'RULES.md', proseText: words(750), ...rules(2) },
+    gamma: { prose: 'RULES.md', proseText: words(90000), ...rules(9) },
   });
   const project = makeProject({ packs: ['alpha', 'beta'] });
   try {

@@ -29,10 +29,12 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // The prose is reported in TOKENS because that is the unit of the cost it
-// imposes — a context window, not a disk. Four characters per token is the
-// standard rough English ratio, and the result is rounded because a session
-// summary is a sense of scale, not an accounting.
-const CHARS_PER_TOKEN = 4;
+// imposes — a context window, not a disk. The estimate goes through WORDS at the
+// standard English ratio of roughly 0.75 words per token: prose is words, and a
+// character count is thrown off by exactly what this corpus is full of — code
+// fences, paths, punctuation-dense Markdown. Rounded, because a session summary
+// is a sense of scale, not an accounting.
+const WORDS_PER_TOKEN = 0.75;
 const TOKEN_ROUNDING = 500;
 const plural = (n, one, many = `${one}s`) => `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
 
@@ -58,14 +60,16 @@ try {
   // off the pack's directory, trimmed the way the injector trims it. The routing
   // table and the directory pointer are the injector's framing rather than a
   // pack's rules, so they are not counted here.
-  let proseChars = 0;
+  let proseWords = 0;
   for (const pack of active) {
     if (!pack.prose) continue;
     const prosePath = join(pack.dir, pack.prose);
     if (!existsSync(prosePath)) continue;
-    try { proseChars += readFileSync(prosePath, 'utf8').trim().length; } catch { /* an unreadable file counts as none */ }
+    try {
+      proseWords += readFileSync(prosePath, 'utf8').trim().split(/\s+/).filter(Boolean).length;
+    } catch { /* an unreadable file counts as none */ }
   }
-  const tokens = Math.round(proseChars / CHARS_PER_TOKEN / TOKEN_ROUNDING) * TOKEN_ROUNDING;
+  const tokens = Math.round(proseWords / WORDS_PER_TOKEN / TOKEN_ROUNDING) * TOKEN_ROUNDING;
 
   // Checks are the active packs' rules, both scopes — what check_the_world and
   // check_the_work between them will run against this repo.
