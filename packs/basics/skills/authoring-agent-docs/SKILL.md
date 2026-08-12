@@ -62,11 +62,27 @@ this section has none. It is how the rules in this corpus's `RULES.md` files are
   of the world the rule applies to. Nobody notices that "a value is unknown"; they notice they
   are writing an encoder. A rule keyed to a state never fires, because nothing brings the
   reader to it.
+- **Keying a rule the reader reaches while debugging** — name the symptom that sends them
+  looking ("A fetch to a host you listed failing in-browser"), not the act that caused it. By
+  the time the rule is wanted the act is over, and the symptom is what they can see.
+- **Keying a rule that corrects a misconception** — name what the reader wants ("Wanting
+  `import`/`export` in extension code"), not the wrong move they might make ("Reaching for a
+  bundler"). Someone who doesn't yet know the move is wrong won't recognise themselves in it.
 - **Phrasing that trigger** — use the words the reader would use for the situation, and put
   them first and in bold, so the rule is findable by scanning the left margin alone.
 - **Choosing the unit** — one block per situation, not one bullet per rule. A reader arrives
   holding a problem, so give them the whole decision in one place rather than a cross-reference
   to three neighbouring bullets.
+- **Splitting a rule that only makes sense after the one above it** — don't. If the subject
+  needs a "that" pointing back ("Writing that record"), it is a clause of the rule above, not a
+  situation of its own. Split when a reader could arrive at the second rule without the first.
+- **Ordering a file of many rules** — past roughly fifteen, group them under headings naming the
+  surface each concerns, so a reader scans headings before subjects. A flat list that long makes
+  every bold subject do the work one heading would.
+- **Grouping that separates two rules which qualify each other** — add an explicit pointer from
+  the general rule to its exception, or the general one reads as unconditional. That pointer is
+  the one sentence a rewrite may add that its source didn't have; name it as an addition when
+  you report the change.
 - **Ordering the clauses** — the default first, then the `if you can't` fallback, then
   `consider` for an optional aid, then the `don't` that the earlier clauses make unnecessary.
 - **Choosing modality** — grade it per clause and claim no more than the rule needs. Keep
