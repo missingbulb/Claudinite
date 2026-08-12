@@ -208,32 +208,94 @@ exactly one of the four ends, with one comment saying what happened.
 
 ## 5. The generator — recurring work without slots
 
-The tick (hourly, the vendored workflow's cron, concurrency-serialized) walks
-the discovered tasks and, per task:
+The tick (hourly, the vendored workflow's cron, concurrency-serialized) has
+two jobs — *instantiate* and *ready* — and the whole mechanism fits in one
+block of pseudocode:
 
-1. Compute the most recent anchor instant `A ≤ now` from `frequency` and
-   `taskScheduler` — the *only* schedule math that survives, and it is now just
-   "when did this task last come due", not an identity scheme. (`manual` tasks
-   have no anchor and are never instantiated by the tick — §8.)
-2. **Occurrence guard**: search the item family (`origin:schedule`,
-   title-prefixed). An item **created at-or-after `A`** exists → this
-   occurrence is already instantiated; done.
-3. **Backlog guard**: an **open** `origin:schedule` item exists (any age) → do
-   not stack another; done. At-most-one-open, unchanged, and it is what keeps
-   an executor outage's backlog at one item per task.
-4. Collect the task's declared signals and run its precondition. `run: false` →
-   done, quietly. `run: true` → create the item: Context from the verdict,
-   `task:ready` (or `task:blocked` with a `Blocked-by`, when the task declares
-   ordering — §9), `origin:schedule`.
+```text
+tick(now):
+  if dormant: return                            # before any read, as today
 
-**The ledger is the issue family.** Step 2's timestamp comparison replaces the
-entire run-ledger watermark: "was this occurrence handled" is read from where
-the work lives, is visible to a human as an issue list, cannot be advanced past
-work that wasn't created, and needs no forced-run exclusions. The catch-up
-semantics carry over intact — only the most recent anchor is ever considered,
-so a three-day outage instantiates one occurrence per task, never a backfill
-storm; hourly tasks never backfill because their most recent anchor is always
-the current hour.
+  # ---- job 1: instantiate recurring occurrences ----------------------------
+  for task in discoverTasks():                  # active packs' tasks/*/task.mjs
+    if task.frequency == 'manual': continue     # never instantiated by the tick (§8)
+
+    # A — the ANCHOR INSTANT: the most recent wall-clock time this task's
+    # schedule came due, from `frequency` + the repo's `taskScheduler` anchors.
+    # A daily task with dailyHour 04, evaluated at 15:20Z, has A = today 04:00Z;
+    # evaluated at 03:00Z it has A = yesterday 04:00Z. This is exactly today's
+    # mostRecentSlot(...).time — the instant survives; the slot *id* derived
+    # from it is what dies.
+    A = mostRecentAnchor(task.frequency, config.taskScheduler, now)
+
+    family = issues(title startswith "[claudinite-work] <pack>/<task>",
+                    label "origin:schedule", state ALL)
+
+    if any(i.created_at >= A for i in family):  # OCCURRENCE GUARD: this
+      continue                                  # occurrence already fired
+
+    if any(i.state == OPEN for i in family):    # BACKLOG GUARD: at-most-one-
+      continue                                  # open, incl. one sat needs-human
+
+    verdict = task.precondition(collectSignals(task.precondition_signals),
+                                packConfig(task.pack))
+    if not verdict.run:                         # quiet; re-evaluated each tick
+      continue                                  # until the next anchor passes
+
+    blockers = openScheduledItemsOf(task.after) # declared ordering edges (§9)
+    createIssue(
+      title:  "[claudinite-work] <pack>/<task>",
+      body:   taskPath + blockedByLines(blockers) + contextSection(verdict.context),
+      labels: ["origin:schedule", blockers ? "task:blocked" : "task:ready"])
+
+  # ---- job 2: ready blocked items (ALL items, any origin) ------------------
+  for item in issues(label "task:blocked", state OPEN):
+    {blockedBy, notBefore} = parseBody(item)
+    if all(issue.state == CLOSED for issue in blockedBy) and now >= notBefore:
+      swapLabel(item, "task:blocked" -> "task:ready")
+```
+
+**`A` is an instant, not an identity.** It answers one question — *when did
+this task's schedule last come due?* — and is consumed by one comparison, the
+occurrence guard. Nothing names it, stores it, or parses it back out of a
+title; the moment the guard has run, `A` is gone. That is the whole difference
+from a slot: today the same instant is minted into an id (`d2026-08-12`) that
+must then be searched for exactly, period-decoded by its leading character,
+and marker-suffixed when forced.
+
+**The ledger is the issue family.** The occurrence guard's timestamp
+comparison replaces the entire run-ledger watermark: "was this occurrence
+handled" is read from where the work lives, is visible to a human as an issue
+list, cannot be advanced past work that wasn't created, and needs no
+forced-run exclusions. The catch-up semantics carry over intact — only the
+most recent anchor is ever considered, so a three-day outage instantiates one
+occurrence per task, never a backfill storm; hourly tasks never backfill
+because their most recent anchor is always the current hour.
+
+**Errored items, forced items, and the guards.** The interaction is
+deliberate, so it is spelled out:
+
+- A scheduled item that **failed** sits open with `needs-human` — and the
+  backlog guard counts it, so the tick stops instantiating a task whose last
+  run is unresolved. That is today's at-most-one-open posture, kept on
+  purpose: a broken task converges to one triage item, never one failure per
+  period.
+- A **forced** item — created by hand or by a task, so no `origin:schedule` —
+  is invisible to both guards, in both directions, *whatever state it ends
+  in*. A forced run that errored does not suppress the next scheduled
+  occurrence (the failure was the operator's experiment, not the schedule's
+  state), and a forced run that succeeded does not consume one — a force at
+  03:50 never swallows the 04:00 occurrence. This is the #749 property
+  ("forced runs are excluded from the watermark"), carried by the origin
+  marker instead of the `~f` slot-id marker.
+- **Forcing a retry of an errored scheduled item** is legal while that item
+  sits open — the forced item runs independently, guards unbothered. But the
+  open `needs-human` item is a triage state, and the force *is* the triage:
+  the operator closes it as superseded when creating the retry
+  (`create-work-item --supersedes #N` does both in one step, §8) — or leaves
+  it open when the failure still needs a human even after a retry. Nothing
+  closes it automatically: a mechanism that silently retires triage states is
+  how failures stop being seen.
 
 **A deliberate semantic change, called out:** today a slot's precondition is
 evaluated once, when the slot fires, and a `false` spends the slot — a
@@ -338,8 +400,10 @@ receives a queue, only an item.
   `~f<runId>` marker, the watermark exclusion, the deferral exemption — all of
   it reduces to: *create a work item for the task, marked urgent if you like*.
   A small CLI/composite (`create-work-item <pack>/<task> [--urgent]
-  [--context …]`) writes the generic "forced by hand — no precondition asserts
-  there is work" Context, exactly as `FORCED_VERDICT` does today. The pickup
+  [--context …] [--supersedes #N]`) writes the generic "forced by hand — no
+  precondition asserts there is work" Context, exactly as `FORCED_VERDICT`
+  does today; `--supersedes` additionally closes a named errored item as
+  superseded by this retry (§5's third guard note). The pickup
   precondition re-run (§6.4) replaces the skip-the-precondition rule: a forced
   item is evaluated like any other, and if the operator truly wants it
   unconditional the item's Context says so and the task's precondition can
