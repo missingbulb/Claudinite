@@ -11,7 +11,10 @@ import {
   migrationAgentic, agenticMigrations,
   callerCanDeliverWorkflows, WITHHOLD_CAPABLE_ENV,
 } from '../engine/migrations/registry.mjs';
-import { migrationDirs, migrationRoots, recordName, recordDirIsRecent, RECENT_WINDOW_DAYS } from '../engine/checks/helpers/active-migrations.mjs';
+import {
+  migrationDirs, migrationRoots, recordName, recordDirIsRecent, RECENT_WINDOW_DAYS,
+  recordVersion, flowOf, installedFor, installedVersions, migrationApplies,
+} from '../engine/checks/helpers/active-migrations.mjs';
 
 const M = (over = {}) => ({ id: 'm', landed: '2026-01-01', aliases: [], ...over });
 
@@ -396,5 +399,67 @@ test('every record lives under the flow that owns it — the engine, or one pack
     const home = dirname(d);
     assert.ok(roots.includes(home), `${d} sits in "${home}", which is no flow's migrations home`);
     assert.match(home, /^(engine|packs\/[^/]+)\/migrations$/, `${d} is not under an engine or pack home`);
+  }
+});
+
+// --- the version gate (#768 Phase 1) ------------------------------------------
+
+test('flowOf reads the owning flow off the path — no record declares which it is', () => {
+  assert.deepEqual(flowOf('engine/migrations/2026-08-06-x'), { flow: 'engine' });
+  assert.deepEqual(flowOf('packs/sheepdog/migrations/2026-08-11-y'), { flow: 'pack', pack: 'sheepdog' });
+});
+
+test('installedFor keeps "the stamp says nothing" distinct from a real number', () => {
+  const stamp = { engineVersion: 3, packVersions: { sheepdog: 2, tidy: 0 } };
+  assert.equal(installedFor('engine/migrations/2026-01-01-a', stamp), 3);
+  assert.equal(installedFor('packs/sheepdog/migrations/2026-01-01-a', stamp), 2);
+  assert.equal(installedFor('packs/tidy/migrations/2026-01-01-a', stamp), 0, 'a real zero is a version, not an absence');
+  assert.equal(installedFor('packs/never-heard-of/migrations/2026-01-01-a', stamp), undefined);
+  assert.equal(installedFor('engine/migrations/2026-01-01-a', null), undefined);
+  assert.equal(installedFor('engine/migrations/2026-01-01-a', { packVersions: {} }), undefined);
+});
+
+test('installedVersions returns null for every shape that is not a version stamp', () => {
+  assert.equal(installedVersions(() => null), null);
+  assert.equal(installedVersions(() => 'not json'), null);
+  assert.equal(installedVersions(() => '{"packs":[]}'), null);
+  assert.equal(installedVersions(() => '{"claudinite":{"updated":"2026-01-01T00:00:00Z"}}'), null,
+    'a pre-version stamp is unknown, not zero');
+  assert.deepEqual(installedVersions(() => '{"claudinite":{"engineVersion":2}}'), { engineVersion: 2, packVersions: {} });
+});
+
+test('migrationApplies: version-ranged when known, date-windowed when not', () => {
+  // Driven over the live records, so the predicate is exercised against real paths
+  // and real declared versions rather than a shape a fixture invented.
+  const dir = migrationDirs().find((d) => flowOf(d).flow === 'engine');
+  const at = recordVersion(dir);
+  const landed = recordName(dir).slice(0, 10);
+
+  // Known both sides: applies strictly below the version its change took effect at.
+  assert.equal(migrationApplies(dir, { installed: { engineVersion: at - 1 } }), true, 'a lagging repo still needs it');
+  assert.equal(migrationApplies(dir, { installed: { engineVersion: at } }), false, 'an up-to-date repo does not');
+  assert.equal(migrationApplies(dir, { installed: { engineVersion: at + 1 } }), false);
+  // …and the date is irrelevant once versions answer: an ancient record still
+  // applies to a repo below it, which is exactly what the window could never say.
+  assert.equal(migrationApplies(dir, { installed: { engineVersion: at - 1 }, today: '2099-01-01' }), true);
+
+  // Unknown: the window, unchanged — the behaviour every member had before this.
+  assert.equal(migrationApplies(dir, { installed: null, today: landed }), true);
+  assert.equal(migrationApplies(dir, { installed: null, today: '2099-01-01' }), false);
+});
+
+test('every record declares a version, and the regex reads what the module exports', async () => {
+  // Two readings of one fact: `recordVersion` regexes the source because every
+  // caller is synchronous, while the applier imports the spec. A record whose
+  // literal the regex cannot see would silently fall back to the date window —
+  // invisible, and wrong the moment versions are what gate fetching. So the guard
+  // EXECUTES both readings over every real record rather than trusting either.
+  const migs = await loadMigrations();
+  assert.ok(migs.length > 0, 'the live corpus has records');
+  for (const m of migs) {
+    assert.ok(Number.isInteger(m.version) && m.version > 0,
+      `${m.dir} declares no version — a record needs the version its change takes effect at`);
+    assert.equal(recordVersion(m.dir), m.version,
+      `${m.dir}: the version read from the source disagrees with the module's — keep the field a plain literal on its own line`);
   }
 });

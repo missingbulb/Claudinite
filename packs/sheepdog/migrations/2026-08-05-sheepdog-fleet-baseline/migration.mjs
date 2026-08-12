@@ -40,6 +40,7 @@ const PACK = 'sheepdog';
 export default {
   id: 'sheepdog-fleet-baseline',
   landed: '2026-08-05',
+  version: 1,
   summary: 'sheepdog fleet-baseline workflow kept byte-current in the enforcer repo own .github/',
 
   // The gate is ONE question — does this repo declare the sheepdog pack. A `packs` entry

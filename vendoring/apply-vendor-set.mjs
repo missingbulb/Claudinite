@@ -64,7 +64,10 @@ export async function applyVendor(targetRoot, { ref = null } = {}) {
     }
   }
 
-  const { files, errors, engineVersion, packVersions } = await computeVendorSet(declared);
+  // The target's own stamp decides which migration records this set carries: the
+  // records above what it has installed, none on an up-to-date repo. A repo with no
+  // stamp yet passes null and gets the date-window behaviour it had before.
+  const { files, errors, engineVersion, packVersions } = await computeVendorSet(declared, { installed: raw.claudinite ?? null });
   if (errors.length) return { errors };
 
   const sharedDir = join(targetRoot, SHARED_SUBDIR);
@@ -82,8 +85,8 @@ export async function applyVendor(targetRoot, { ref = null } = {}) {
   // The versions ride alongside, recording WHAT this mount is rather than WHEN it
   // was taken: the update flows ask "installed version → target version", and the
   // date can only answer "before or after" (docs/versioned-updates/DESIGN.md §5).
-  // The date stamp stays authoritative until the cutover switches note selection
-  // and fetching onto these numbers — until then they are a record, read by nothing.
+  // Migration fetching already reads them (above); the date stamp stays
+  // authoritative for note SELECTION until the Phase 4 cutover.
   raw.claudinite = {
     updated: new Date().toISOString(),
     ...(ref ? { ref } : {}),

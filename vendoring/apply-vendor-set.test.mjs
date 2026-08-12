@@ -46,7 +46,7 @@ function makeCanon() {
   // + records. Stubs — this suite exercises the apply/converge, not the content.
   writeAt(root, 'engine/migrations/apply.mjs', 'export const apply = 1;\n');
   writeAt(root, 'engine/migrations/registry.mjs', 'export const registry = 1;\n');
-  writeAt(root, 'engine/migrations/2026-01-01-seed/migration.mjs', 'export default { id: "seed" };\n');
+  writeAt(root, 'engine/migrations/2026-01-01-seed/migration.mjs', 'export default {\n  id: "seed",\n  version: 2,\n};\n');
   return root;
 }
 
@@ -167,7 +167,7 @@ test('#328: a canon tree nested in a FOREIGN git repo is rootless — upward .gi
   writeAt(canon, 'packs/directory.GENERATED.md', 'stub catalog\n');
   writeAt(canon, 'engine/migrations/apply.mjs', 'export const apply = 1;\n');
   writeAt(canon, 'engine/migrations/registry.mjs', 'export const registry = 1;\n');
-  writeAt(canon, 'engine/migrations/2026-01-01-seed/migration.mjs', 'export default { id: "seed" };\n');
+  writeAt(canon, 'engine/migrations/2026-01-01-seed/migration.mjs', 'export default {\n  id: "seed",\n  version: 2,\n};\n');
   g('add', '-A');
   g('commit', '-q', '-m', 'consumer commit');
   const target = makeTarget({ packs: [] });
@@ -190,4 +190,20 @@ test('transactional: errors abort before any write', async () => {
   const r2 = await applyAt(canon, badJson);
   assert.equal(r2.errors.length, 1);
   assert.ok(!existsSync(join(badJson, '.claudinite', 'shared')), 'nothing may be written on error');
+});
+
+test('the writer fetches records over the TARGET\'s stamp, not the canon\'s idea of recent', async () => {
+  // The gate is only real if the writer hands the target's own installed versions
+  // to the set. A target already at the record's version must receive none of it —
+  // and the same canon, against a target below it, must ship it.
+  const canon = makeCanon();
+  const record = join('.claudinite', 'shared', 'engine', 'migrations', '2026-01-01-seed', 'migration.mjs');
+
+  const current = makeTarget({ packs: ['alpha'], claudinite: { updated: '2026-01-01T00:00:00Z', engineVersion: 2, packVersions: {} } });
+  assert.deepEqual((await applyAt(canon, current)).errors, []);
+  assert.ok(!existsSync(join(current, record)), 'an up-to-date target carries no records');
+
+  const behind = makeTarget({ packs: ['alpha'], claudinite: { updated: '2026-01-01T00:00:00Z', engineVersion: 1, packVersions: {} } });
+  assert.deepEqual((await applyAt(canon, behind)).errors, []);
+  assert.ok(existsSync(join(behind, record)), 'a lagging target carries exactly its gap');
 });

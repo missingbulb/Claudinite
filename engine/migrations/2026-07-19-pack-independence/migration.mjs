@@ -24,6 +24,7 @@
 export default {
   id: 'pack-independence',
   landed: '2026-07-19',
+  version: 1,
   summary: 'packs compose by declaration + contributed config, never code imports; local packs that imported the shared barrier engine convert to `contributes` on their manifest',
   // The AGENTIC note above, now machine-readable (task-prework DESIGN §7):
   // baselining's deterministic preprocessing detects this and escalates to the

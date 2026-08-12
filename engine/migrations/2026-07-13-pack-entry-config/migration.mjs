@@ -16,6 +16,7 @@
 export default {
   id: 'pack-entry-config',
   landed: '2026-07-13',
+  version: 1,
   summary: "per-pack parameters moved from the top-level packConfig key onto each pack's packs entry as config (one-time fold; key stays readable until retirement)",
   legacyPresent: async (exists, read) => {
     const raw = await read('.claudinite-checks.json');

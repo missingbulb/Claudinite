@@ -18,6 +18,7 @@
 export default {
   id: 'local-pack-namespace',
   landed: '2026-07-19',
+  version: 1,
   summary: 'local-pack declarations namespaced as local_packs/<name> (baselining rewrites bare ids; the engine accepts both forms)',
   legacyPresent: async (exists, read) => {
     const raw = await read('.claudinite-checks.json');
