@@ -550,22 +550,30 @@ test('applyMigration runs every op — the vocabulary has one runner, not one pe
 
 // --- the shrinking agentic holdout on the engine flow (#768) ------------------
 
-test('no NEW engine record may carry an agentic note — the holdout set only shrinks', async () => {
-  // The engine flow admits no agentic stage by construction (DESIGN §5), so an engine
-  // record carrying a note is a stop: the flow refuses to serve any repo whose gap
-  // contains it. The registry cannot simply THROW on one yet, because the canon still
-  // ships the holdout below — a validator that rejects the tree it lives in is broken
-  // on arrival. So the guard is the set itself, named with its reason.
-  //
-  // `prework-rename` stays because it is NOT drained: measured 2026-08-12, two of the
-  // twelve fleet members (ClaudiniteCanary, GoogleCalendarEventCreator) were stamped
-  // 2026-08-05, before it landed on 2026-08-06, so they have never applied it. When
-  // their converges catch up, delete the note and this entry with it — and the moment
-  // the set is empty, replace this test with the throw in `migrationAgentic`.
-  const HOLDOUTS = ['engine/migrations/2026-08-06-prework-rename'];
+test('an engine record carrying an agentic note is rejected outright', () => {
+  // Phase 1's deferred validator, landable now that the last engine note is retired
+  // (#768). It could not ship earlier for the reason it exists: a validator that
+  // rejects records the canon itself still shipped is broken on arrival.
+  const note = { model: 'sonnet', instructions: 'adapt the local pack' };
+  assert.throws(
+    () => migrationAgentic({ ...M({ agentic: note }), dir: 'engine/migrations/2026-09-01-x' }),
+    /an ENGINE migration may not carry an "agentic" note/,
+  );
+  // A PACK record still may — that is where the work belongs, as its apply stage.
+  assert.deepEqual(
+    migrationAgentic({ ...M({ agentic: note }), dir: 'packs/sheepdog/migrations/2026-09-01-x' }),
+    note,
+  );
+  // A bare spec with no dir is a caller testing the shape, not a discovered record.
+  assert.deepEqual(migrationAgentic(M({ agentic: note })), note);
+});
+
+test('the live corpus has no engine record carrying a note', async () => {
+  // The selection half: the throw above only bites on records that go through it, and
+  // loadMigrations is what every real caller uses. Asserted over the real tree so the
+  // canon can never ship what its own flow refuses to run.
   const engineNotes = agenticMigrations(await loadMigrations())
     .map((m) => m.dir)
     .filter((d) => d.startsWith('engine/migrations/'));
-  assert.deepEqual(engineNotes.sort(), HOLDOUTS.sort(),
-    'an engine record carrying an agentic note stops the engine flow — put the work in the owning pack\'s apply stage instead');
+  assert.deepEqual(engineNotes, []);
 });
