@@ -6,6 +6,7 @@ import {
   unconfiguredSecrets, SECRETS_ISSUE_TITLE, canonSource,
   withheldWorkflowPaths, UNPUSHABLE_PREFIX, escalation, gateOutcome, GATE_ABSENT,
 } from '../../packs/basics/tasks/baselining/worker.mjs';
+import { escalationLabel } from '../../engine/scheduler/dispatch.mjs';
 
 // The worker's PURE decision helpers (task-prework DESIGN §7, E4). The
 // native-git / clone / REST I/O in main() is validated by the live pilot; these
@@ -262,4 +263,37 @@ test('canonSource ignores a blank ref — an unset Actions input arrives as ""',
 test('canonSource honours a fork url, and falls back when it is blank', () => {
   assert.equal(canonSource({ CLAUDINITE_CANON_URL: 'https://example.test/x.git' }).url, 'https://example.test/x.git');
   assert.match(canonSource({ CLAUDINITE_CANON_URL: '' }).url, /missingbulb\/Claudinite/);
+});
+
+test('every code escalation can fire is countable — it mints a label', () => {
+  // The measurement Phase 0 of the versioned-updates rollout needs (#768): which
+  // condition actually dominates across the fleet. The scheduler labels a dispatch
+  // issue with the fired code, and a label whose name the mint refuses is a code
+  // that would be invisible to every count. So the shape contract is asserted over
+  // the codes the worker can really produce — driven through escalation itself,
+  // never a hand-listed copy of them.
+  const codes = new Set();
+  for (const pendingCount of [0, 1]) {
+    for (const withheldCount of [0, 1]) {
+      for (const checksPass of [true, false]) {
+        for (const selftestOk of [true, false]) {
+          for (const checksCrashed of [true, false]) {
+            for (const selftestCrashed of [true, false]) {
+              const r = escalation({
+                pendingCount, withheldCount, checksPass, selftestOk,
+                checksCrashed, selftestCrashed, meaningfulChange: true,
+              });
+              if (r) codes.add(r.code);
+            }
+          }
+        }
+      }
+    }
+  }
+  assert.ok(codes.size >= 6, `only ${codes.size} escalation codes reachable — the sweep is not covering them`);
+  for (const code of codes) {
+    const label = escalationLabel(code);
+    assert.ok(label, `escalation code "${code}" mints no label — it would be uncountable across the fleet`);
+    assert.ok(label.description.length <= 100, `${label.name}: ${label.description.length} chars`);
+  }
 });
