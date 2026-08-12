@@ -1,4 +1,5 @@
 import consumerSafeChange from './consumer-safe-change.mjs';
+import engineReleaseRecord from './engine-release-record.mjs';
 import homeSeededPacksDeclared from './home-seeded-packs-declared.mjs';
 import packDiscoveryEntryAwait from './pack-discovery-entry-await.mjs';
 
@@ -22,5 +23,5 @@ export default {
   badge: 'badge.svg',
   prose: 'RULES.md',
   worldRules: [homeSeededPacksDeclared, packDiscoveryEntryAwait],
-  workRules: [consumerSafeChange],
+  workRules: [consumerSafeChange, engineReleaseRecord],
 };
