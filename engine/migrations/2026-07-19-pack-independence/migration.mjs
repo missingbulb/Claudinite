@@ -30,8 +30,15 @@ export default {
   // baselining's deterministic preprocessing detects this and escalates to the
   // agent stage instead of advancing the stamp past it. There are no mechanical
   // member-side ops, so this is the record's whole member-side work.
-  agentic: {
-    model: 'sonnet',
-    instructions: 'If a member local pack (.claudinite/local/packs/) composed a barrier by importing the shared engine, convert it to the contribution shape: move the barrier object (id, edges, description, why, doc, crossingExcuse, gateDir) onto the local pack manifest under `contributes`, and add the mechanism pack to its `requires`. A member with no such local pack needs nothing.',
-  },
+  // The agentic note this record carried RETIRED, drained (#768 Phase 4). It asked a
+  // member whose local pack composed a barrier by importing the shared engine to move
+  // that barrier onto its manifest under `contributes`. Every readable member's stamp
+  // now sits weeks past this record's landed date — measured 2026-08-12: ten of the
+  // twelve fleet members read 2026-08-05 or later, the remaining two are private and
+  // unreadable anonymously, and even the fleet's most stale member is 17 days past
+  // 2026-07-19 — so every repo that could apply it has.
+  //
+  // Retiring it is what lets the ENGINE flow serve a repo whose gap contains this
+  // record: that flow admits no agentic stage by construction (DESIGN §5), so a record
+  // still carrying a note is a stop, not a step.
 };

@@ -37,11 +37,17 @@ test('agenticMigrations: selects exactly the records carrying a valid agentic no
   assert.deepEqual(agenticMigrations(migs).map((m) => m.id), ['b']);
 });
 
-test('the real pack-independence record carries a valid agentic note', async () => {
+test('the real holdout record carries a valid agentic note', async () => {
+  // Stated over whichever record still holds one rather than a named record: the set
+  // shrinks as notes drain (pack-independence's retired in #768), and a test pinned to
+  // one record's name dies with it while proving nothing about the shape.
   const migs = await loadMigrations();
-  const pi = migs.find((m) => m.id === 'pack-independence');
-  assert.ok(pi, 'pack-independence record present');
-  assert.equal(migrationAgentic(pi).model, 'sonnet');
+  const held = migs.filter((m) => migrationAgentic(m) !== null);
+  assert.ok(held.length > 0, 'no record carries a note — delete this test and add the throw to migrationAgentic');
+  for (const m of held) {
+    const note = migrationAgentic(m);
+    assert.ok(note.model && note.instructions, `${m.dir}: a note must name a model and say what to do`);
+  }
 });
 
 test('resolvePath: prefers canonical then legacy; an unknown target resolves to itself', () => {
@@ -540,4 +546,26 @@ test('applyMigration runs every op — the vocabulary has one runner, not one pe
   const after = JSON.parse(w.written['.claudinite-checks.json']);
   assert.deepEqual(after.packs, ['local/mine', 'added'], 'normalization and declaration both ran');
   assert.ok(applied.length >= 3, applied.join(' | '));
+});
+
+// --- the shrinking agentic holdout on the engine flow (#768) ------------------
+
+test('no NEW engine record may carry an agentic note — the holdout set only shrinks', async () => {
+  // The engine flow admits no agentic stage by construction (DESIGN §5), so an engine
+  // record carrying a note is a stop: the flow refuses to serve any repo whose gap
+  // contains it. The registry cannot simply THROW on one yet, because the canon still
+  // ships the holdout below — a validator that rejects the tree it lives in is broken
+  // on arrival. So the guard is the set itself, named with its reason.
+  //
+  // `prework-rename` stays because it is NOT drained: measured 2026-08-12, two of the
+  // twelve fleet members (ClaudiniteCanary, GoogleCalendarEventCreator) were stamped
+  // 2026-08-05, before it landed on 2026-08-06, so they have never applied it. When
+  // their converges catch up, delete the note and this entry with it — and the moment
+  // the set is empty, replace this test with the throw in `migrationAgentic`.
+  const HOLDOUTS = ['engine/migrations/2026-08-06-prework-rename'];
+  const engineNotes = agenticMigrations(await loadMigrations())
+    .map((m) => m.dir)
+    .filter((d) => d.startsWith('engine/migrations/'));
+  assert.deepEqual(engineNotes.sort(), HOLDOUTS.sort(),
+    'an engine record carrying an agentic note stops the engine flow — put the work in the owning pack\'s apply stage instead');
 });
