@@ -52,7 +52,7 @@
 // forced runs of that same workflow — Run workflow → `overrides: FORCE_TASKS=…`. The
 // standalone fleet-baseline workflow this pack once kept in the enforcer's .github/
 // (the one file the nightly converge could never push itself, #649) was retired
-// 2026-08-11 (#749, migrations/2026-08-11-fleet-baseline-task) along with its
+// 2026-08-11 (#749, packs/sheepdog/migrations/2026-08-11-fleet-baseline-task) along with its
 // follow-the-fleet report: dispatching is the enforcer's job, reporting is each
 // member's own.
 //

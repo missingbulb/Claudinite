@@ -81,7 +81,7 @@ is watching the one repo that did not move.
 copy it forced every enforcer to host, deliverable only by the withhold-and-hand-to-the-agent path
 ([#649](https://github.com/missingbulb/Claudinite/issues/649)) — was retired on 2026-08-11
 ([#749](https://github.com/missingbulb/Claudinite/issues/749); the
-[`fleet-baseline-task`](../../migrations/2026-08-11-fleet-baseline-task/migration.mjs) record removes
+[`fleet-baseline-task`](migrations/2026-08-11-fleet-baseline-task/migration.mjs) record removes
 lingering copies). The lever is now the [`fleet-baseline`](tasks/fleet-baseline/task.md) task,
 `frequency: manual`: never due on any cadence, run by pressing *Run workflow* on the vendored
 scheduler with `overrides: FORCE_TASKS=fleet-baseline` (plus `REPOS=…`, `DRY_RUN=true`,
