@@ -272,6 +272,11 @@ prose below).
   whether the problem is still there, what the goal was, and what survives. Do this whenever you
   return to a paused branch, before presenting it — the owner should never have to ask "is this
   change still needed" (asked three times on #465 before it was volunteered).
+- **Re-basing your edit onto a moved `main` means re-applying it, never restoring a whole-file copy.**
+  A pack's `RULES.md` is append-only and several auto-merged runs write it a day, so a `cp` of the
+  version you read back over the fetched one deletes their lessons — and nothing goes red, because no
+  test or check reads prose (caught by luck on 2026-08-11/#758, 54 lines already staged). Re-read the
+  fetched file, apply the same anchored edit to it, and confirm the stat shows insertions only.
 - **Every `Claude_Code_Remote` call costs minutes, and a call that returns nothing has NOT failed —
   never re-issue it.** The whole server behaves this way, not one tool: measured over four sessions
   on 2026-07-29, `add_repo` ran 270–285s a call, `send_later` 117–390s, `list_triggers` 139–325s,
@@ -286,7 +291,10 @@ prose below).
   the shape — #559's session asked one question twice for 218s + 204s. So: **one call per intent,
   ever**, and when what you want is "is it green yet", read the check status directly and merge on
   the already-green result rather than buying a notification. Budget these calls before making them:
-  four of them is most of an hour.
+  four of them is most of an hour. And to *read* a public sibling repo, `add_repo` is not the route at
+  all: it attaches nothing and answers that the session's git proxy already serves anonymous reads —
+  measured 2026-08-11 (#641), 3m40s before the owner interrupted it plus 40s on the re-issue, against
+  `git clone --depth 1 https://github.com/<owner>/<repo> /workspace/<owner>/<repo>` in ~2s.
 - **Sync local `main` with `git reset --hard origin/main`, never `git pull` — this repo's session
   clones are shallow.** The post-merge sync step of `merge-to-main` is where it bites, and it bit
   five separate sessions on 2026-07-29 alone (#548, #551, #537, #559 and the session-end capture of
