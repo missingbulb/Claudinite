@@ -18,6 +18,8 @@
 
 export default {
   id: 'web-scraping',
+  version: 1,
+  minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs:
       'acquiring data from a site you do not own: finding its data surface, fetching defensively, caching raw payloads',
