@@ -44,9 +44,9 @@ function makeCanon() {
   writeAt(root, 'packs/alpha/skills/s1/SKILL.md', 'skill\n');
   // migrations vendor into the mount (task-prework §7): applier + registry
   // + records. Stubs — this suite exercises the apply/converge, not the content.
-  writeAt(root, 'migrations/apply.mjs', 'export const apply = 1;\n');
-  writeAt(root, 'migrations/registry.mjs', 'export const registry = 1;\n');
-  writeAt(root, 'migrations/2026-01-01-seed/migration.mjs', 'export default { id: "seed" };\n');
+  writeAt(root, 'engine/migrations/apply.mjs', 'export const apply = 1;\n');
+  writeAt(root, 'engine/migrations/registry.mjs', 'export const registry = 1;\n');
+  writeAt(root, 'engine/migrations/2026-01-01-seed/migration.mjs', 'export default { id: "seed" };\n');
   return root;
 }
 
@@ -165,9 +165,9 @@ test('#328: a canon tree nested in a FOREIGN git repo is rootless — upward .gi
   copyFileSync(join(REPO_ROOT, 'engine', 'version.mjs'), join(canon, 'engine', 'version.mjs'));
   writeAt(canon, 'engine/checks/check_the_world.mjs', 'engine v2\n');
   writeAt(canon, 'packs/directory.GENERATED.md', 'stub catalog\n');
-  writeAt(canon, 'migrations/apply.mjs', 'export const apply = 1;\n');
-  writeAt(canon, 'migrations/registry.mjs', 'export const registry = 1;\n');
-  writeAt(canon, 'migrations/2026-01-01-seed/migration.mjs', 'export default { id: "seed" };\n');
+  writeAt(canon, 'engine/migrations/apply.mjs', 'export const apply = 1;\n');
+  writeAt(canon, 'engine/migrations/registry.mjs', 'export const registry = 1;\n');
+  writeAt(canon, 'engine/migrations/2026-01-01-seed/migration.mjs', 'export default { id: "seed" };\n');
   g('add', '-A');
   g('commit', '-q', '-m', 'consumer commit');
   const target = makeTarget({ packs: [] });

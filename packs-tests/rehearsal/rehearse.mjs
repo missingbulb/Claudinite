@@ -7,7 +7,7 @@
 //
 //   vendoring/apply-vendor-set.mjs   the mount + stamp
 //   engine/scheduler/converge-wiring.mjs   workflow, hooks, badge row
-//   migrations/apply.mjs             the mechanical notes
+//   engine/migrations/apply.mjs      the mechanical notes
 //   vendoring/apply-vendor-set.mjs   again, when a note changed the DECLARATION (a
 //                                    seeded pack's content is not in the first pass's
 //                                    set — the worker does the same, conditionally)
@@ -88,7 +88,7 @@ export function rehearse(fixture, mode) {
       steps.push(step('converge-wiring', [join(CANON, 'engine/scheduler/converge-wiring.mjs'), 'fixture/rehearsal'],
         { CLAUDINITE_REPO_ROOT: root }, root));
       const declarationBefore = readFileSync(join(root, '.claudinite-checks.json'), 'utf8');
-      steps.push(step('migrations-apply', [join(CANON, 'migrations/apply.mjs')], { CLAUDE_PROJECT_DIR: root }, root));
+      steps.push(step('migrations-apply', [join(CANON, 'engine/migrations/apply.mjs')], { CLAUDE_PROJECT_DIR: root }, root));
       // The worker's conditional second pass, mirrored: a note that DECLARED a pack
       // left its content out of the set the first pass computed, and the fixture must
       // meet the same converge a member does — otherwise the rehearsal green-lights a

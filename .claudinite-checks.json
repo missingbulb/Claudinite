@@ -114,8 +114,13 @@
     },
     {
       "rule": "file-placement",
-      "path": "migrations/registry.mjs",
+      "path": "engine/migrations/registry.mjs",
       "reason": "the canon-side migration registry deliberately builds on the vendored sync surface in the engine lib (engine/checks/helpers/active-migrations.mjs — the home pack-independence mandates, since pack checks consult migrationActive and packs import only the engine surface); one definition, re-exported for canon callers, so the cross-tree reach is inherent, not a misplacement"
+    },
+    {
+      "rule": "file-placement",
+      "path": "migrations/",
+      "reason": "the two compatibility entry points every member still reaches by path (baselining's vendored worker runs node <canon clone>/migrations/apply.mjs and imports its registry.mjs, and that worker is only as new as the member's last converge) — they exist to forward to the real machinery now under engine/migrations/, so reaching across is the whole of what they are, and both are deleted in Phase 5 of #768 once no member can call them"
     },
     {
       "rule": "file-placement",

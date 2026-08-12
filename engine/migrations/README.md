@@ -1,19 +1,22 @@
-# Baseline migrations (`migrations/`) — declared path relocations, applied by each member itself
+# Baseline migrations (`engine/migrations/`) — declared path relocations, applied by each member itself
 
-> The **baseline migrations** mechanism. Every migration ever landed lives here, one folder per
-> record — [`<landed-date>-<slug>/migration.mjs`](.) — beside the machinery (this README,
-> `registry.mjs`, `apply.mjs`). Records are never retired, archived, or deleted: the full history
-> is the durable backfill source, and **fetching decides relevance** — vendoring ships a consumer
-> only the records landed within the last 7 days, while a dormant project baselining out of a
-> fresh canon clone sees them all and applies what it needs. The directory and code identifiers
-> stay `migrations/` / `*Migrations`; "baseline migration" is what to call the mechanism.
+> The **baseline migrations** mechanism, and the machinery that runs it (this README,
+> `registry.mjs`, `apply.mjs`). Every migration ever landed lives in one folder —
+> `<landed-date>-<slug>/migration.mjs` — **under the flow that owns it**: an engine change beside
+> this file, a pack's own change under `packs/<pack>/migrations/`
+> (docs/versioned-updates/DESIGN.md §3.7). Discovery walks both, so a caller never asks which.
+> Records are never retired, archived, or deleted: the full history is the durable backfill
+> source, and **fetching decides relevance** — vendoring ships a consumer only the records landed
+> within the last 7 days, while a dormant project baselining out of a fresh canon clone sees them
+> all and applies what it needs. The code identifiers stay `*Migrations`; "baseline migration" is
+> what to call the mechanism.
 
 When the canon renames or relocates an artifact that consumers hold their own copy of — a tracked
 file, a `settings.json` registration, a stub, a path a check or script references — the consumer's
 copy doesn't move on its own. Historically each such rename grew its own scattered tolerance
 (`LEGACY_STUB_NAMES` in a check, a `.gitkeep` fallback in the sync script and again in the census, a
 Part-3b step in bootstrap) with **no single home**. A **baseline migration** closes that gap: one
-declarative record per rename, discovered structurally (any `migrations/<date>-<slug>/migration.mjs`,
+declarative record per rename, discovered structurally (any `<flow>/migrations/<date>-<slug>/migration.mjs`,
 like packs and skills), that supplies the read-side resolver and the write-side rename.
 
 ## A baseline migration
@@ -21,7 +24,7 @@ like packs and skills), that supplies the read-side resolver and the write-side 
 ```js
 // An illustrative record (the shape, not a live migration): the historical
 // mount-folder relocation, which moved the tracked sync hook into mount/.
-// Lives at migrations/2026-07-13-mount-folder-relocation/migration.mjs.
+// Lives at engine/migrations/2026-07-13-mount-folder-relocation/migration.mjs.
 export default {
   id: 'mount-folder-relocation',
   landed: '2026-07-13',                 // date it merged to canon (YYYY-MM-DD; = the folder prefix)
@@ -69,12 +72,12 @@ the slice they need:
   canon clone that is the full history, so a dormant project that fell behind and only now baselines
   still catches up on everything it missed — `apply.mjs` is idempotent, so records it already
   applied are no-ops.
-- **Vendoring** ([`compute-vendor-set.mjs`](../vendoring/compute-vendor-set.mjs)) ships a consumer
+- **Vendoring** ([`compute-vendor-set.mjs`](../../vendoring/compute-vendor-set.mjs)) ships a consumer
   mount only the records landed within the last **7 days**
-  (`recordDirIsRecent`, [engine/checks/helpers/active-migrations.mjs](../engine/checks/helpers/active-migrations.mjs)).
+  (`recordDirIsRecent`, [engine/checks/helpers/active-migrations.mjs](../checks/helpers/active-migrations.mjs)).
   A project up to speed on migrations therefore carries few-to-none locally — it already applied
   them — and the mount stays small.
-- **Check-tolerance** ([`migrationActive(slug)`](../engine/checks/helpers/active-migrations.mjs))
+- **Check-tolerance** ([`migrationActive(slug)`](../checks/helpers/active-migrations.mjs))
   answers true only for a record that is present **and** within that same window — one shared
   predicate, so "recent enough to tolerate" and "recent enough to vendor" can never drift. Every
   up-to-date repo converges within the window, and a dormant one is converged by baselining's apply
@@ -86,8 +89,10 @@ history.
 
 ## Adding one
 
-1. Drop a `migrations/<landed-date>-<slug>/migration.mjs` exporting the spec above (folder prefix =
-   the `landed` date). Structural discovery picks it up — no list to edit.
+1. Drop a `<flow>/migrations/<landed-date>-<slug>/migration.mjs` exporting the spec above (folder
+   prefix = the `landed` date), under the flow whose change it repairs — `engine/migrations/` for an
+   engine contract, `packs/<pack>/migrations/` for one pack's. Structural discovery picks it up —
+   no list to edit.
 2. Point every reader of the old path at `resolvePath(...)`, or gate an inline tolerance on
    `migrationActive('<slug>')` so it ends itself when the record ages out of the window.
 3. There is no step 3 — the record ships to consumers for 7 days, every member applies it on its own

@@ -48,7 +48,6 @@ on:
       - 'engine/**'
       - 'packs/**'
       - 'vendoring/**'
-      - 'migrations/**'
 
 permissions:
   contents: read

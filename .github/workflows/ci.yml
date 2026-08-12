@@ -37,7 +37,7 @@ jobs:
         # CI. `**` removes depth from the question; what remains is the root list, and
         # engine-tests/ci-test-roots.test.mjs fails the moment a tracked test lands
         # outside it. Adding a root is a deliberate CI edit; adding a test is not.
-        #   engine-tests/            engine/ + the other top-level canon code (migrations/, …);
+        #   engine-tests/            engine/ (migrations included) + the other top-level canon code;
         #                            mirrors engine/'s inner structure, and stays canon-side
         #                            because engine/ ships to consumers exactly as-is (#385)
         #   packs-tests/             every canon pack's tests, mirroring packs/
