@@ -1,7 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  pendingAgentic, heldStamp,
   maintenanceBranchName, openMaintenanceBranch, openMaintenancePull, shouldRequestAgent,
   unconfiguredSecrets, SECRETS_ISSUE_TITLE, canonSource,
   withheldWorkflowPaths, UNPUSHABLE_PREFIX, escalation, gateOutcome, GATE_ABSENT,
@@ -18,28 +17,9 @@ import { join } from 'node:path';
 // moved to the shared engine module and are tested there —
 // engine-tests/scheduler/land-pr.test.mjs.
 
-test('pendingAgentic keeps notes dated on/after the stamp DAY (same-day inclusive), oldest first', () => {
-  const notes = [
-    { id: 'newer', landed: '2026-07-25' },
-    { id: 'sameday', landed: '2026-07-18' },
-    { id: 'older', landed: '2026-07-10' },
-  ];
-  const pending = pendingAgentic(notes, '2026-07-18T09:00:00.000Z');
-  assert.deepEqual(pending.map((n) => n.id), ['sameday', 'newer']); // 'older' dropped; sorted asc
-});
-
-test('pendingAgentic with no prior stamp returns all, sorted oldest first', () => {
-  const notes = [{ id: 'b', landed: '2026-07-20' }, { id: 'a', landed: '2026-07-01' }];
-  assert.deepEqual(pendingAgentic(notes, undefined).map((n) => n.id), ['a', 'b']);
-  assert.deepEqual(pendingAgentic([], '2026-07-01').length, 0);
-});
-
-test('heldStamp is the day BEFORE the earliest pending note; null when nothing pends', () => {
-  assert.equal(heldStamp([{ id: 'x', landed: '2026-07-19' }]), '2026-07-18T00:00:00.000Z');
-  // month boundary: the day before the 1st is the previous month's last day
-  assert.equal(heldStamp([{ id: 'y', landed: '2026-08-01' }]), '2026-07-31T00:00:00.000Z');
-  assert.equal(heldStamp([]), null);
-});
+// Note selection and the stamp hold are gone (#768 Phase 4): a note is pending while
+// its record is in the repo's gap, which `migrationApplies` decides — tested in
+// engine-tests/migrations.test.mjs, over the one predicate every reader shares.
 
 test('maintenanceBranchName carries the prefix, date, and seed', () => {
   assert.equal(maintenanceBranchName('2026-07-23', 'ab12cd'), 'claudinite/maintenance-2026-07-23-ab12cd');

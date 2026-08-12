@@ -286,6 +286,20 @@ export async function applyMigration(migration, io) {
 export function migrationAgentic(m) {
   const a = m.agentic;
   if (a === undefined || a === null) return null;
+  // NO AGENTIC WORK ON AN ENGINE MIGRATION, EVER (DESIGN §5, owner decision 3). The
+  // engine update flow has no agentic stage and no lane to add one, so a note on an
+  // engine record is not work that gets done later — it is a record that stops the
+  // flow for every repo whose gap contains it. Rejected here, at the registry, so it
+  // cannot be written in the first place; a pack record is where such work belongs,
+  // as its update's apply stage.
+  //
+  // Judged by WHERE THE RECORD LIVES (`dir`, corpus-relative), the same structural
+  // classifier everything else in this scheme uses. A spec with no `dir` is a caller
+  // testing the shape rather than a discovered record, and is left alone.
+  if (typeof m.dir === 'string' && m.dir.startsWith('engine/')) {
+    throw new Error(`migration ${m.id}: an ENGINE migration may not carry an "agentic" note — `
+      + 'the engine flow cannot run one (DESIGN §5). Move the work to the owning pack\'s apply stage.');
+  }
   if (typeof a !== 'object' || Array.isArray(a)) {
     throw new Error(`migration ${m.id}: "agentic" must be an object { model, instructions }`);
   }

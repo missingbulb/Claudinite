@@ -40,7 +40,7 @@
 //      left — the scheduler files `ready-for-agent` iff this file appears (§3,
 //      conditional handoff). NO code→agent data channel: the file is a pure
 //      control signal; the agent discovers its work by reading the repo (the
-//      pushed branch, the held stamp, the pending note).
+//      pushed branch, the pending note).
 //
 // Imports: node builtins, plus the vendored ENGINE SURFACE — the one import the
 // pack-independence barrier sanctions. The delivery/landing nuances live in
@@ -79,27 +79,17 @@ const API = 'https://api.github.com';
 
 // --- pure helpers (exported, unit-tested git-free) --------------------------
 
-// The pending AGENTIC notes: those dated on/after the DAY of the prior stamp
-// (same-day inclusive, #330), oldest first. `agenticList` is registry.mjs
-// `agenticMigrations(all)` — already filtered to records carrying a valid
-// `agentic` note (a malformed note throws THERE, aborting the run loudly).
-export function pendingAgentic(agenticList, priorUpdated) {
-  const priorDay = String(priorUpdated ?? '').slice(0, 10);
-  return [...(agenticList ?? [])]
-    .filter((m) => !priorDay || String(m.landed) >= priorDay)
-    .sort((a, b) => String(a.landed).localeCompare(String(b.landed)));
-}
+// Note selection moved to the version gate (#768 Phase 4): a note is pending while
+// its record is in this repo's gap, decided by `migrationApplies` in the engine —
+// the one predicate that also decides what a mount fetches and what a check
+// tolerates. The date-window selector that lived here is gone with the hold below;
+// nothing can now disagree about whether a record still applies.
 
-// HOLD the stamp at the day before the earliest pending agentic note (the
-// stamp/agentic coupling rule): the note stays selected next run until the agent
-// lands it and advances the stamp itself. Returns the held ISO datetime, or null
-// when nothing is pending (the stamp advances normally).
-export function heldStamp(pending) {
-  if (!pending?.length) return null;
-  const d = new Date(`${String(pending[0].landed).slice(0, 10)}T00:00:00.000Z`);
-  d.setUTCDate(d.getUTCDate() - 1);
-  return d.toISOString();
-}
+// The stamp is no longer HELD for a pending note (#768 Phase 4). Holding it kept a
+// note selected across runs while the date decided selection; version-ranged
+// selection needs no such trick, because a record leaves the gap only when the
+// version carrying its change is installed. Removing the hold is what makes
+// `claudinite.updated` mean one thing again — when this repo last converged.
 
 // A per-cycle maintenance branch name — dated + a short seed so each cycle gets a
 // distinct branch (superseding #407's scheme, native-git side). `seed` is passed
@@ -573,14 +563,21 @@ export async function main() {
     console.log(`baselining: asked the owner to configure ${missingSecrets.join(', ')}`);
   }
 
-  // 5. Pending agentic notes (from the fresh canon clone) + stamp hold.
+  // 5. Pending agentic notes — selected BY VERSION, and no stamp hold (#768 Phase 4).
+  //    A note is pending exactly while its record is still in this repo's gap, which
+  //    is the same predicate vendoring fetches by and checks tolerate by. The date
+  //    comparison it replaces needed the stamp HELD to keep a note selected, and that
+  //    hold is what made `claudinite.updated` unreadable as freshness: a healthy repo
+  //    with outstanding agentic work looked identical to a dead one, which is a
+  //    mistake made about two live members on 2026-08-12 before the flip.
+  //
+  //    Version selection needs no hold: the record leaves the gap when the version
+  //    that carries its change is installed, and nothing before then can deselect it.
   const { loadMigrations, agenticMigrations } = await import(pathToFileURL(join(tmp, 'engine/migrations/registry.mjs')).href);
-  const pending = pendingAgentic(agenticMigrations(await loadMigrations()), priorStamp.updated);
-  if (pending.length) {
-    const raw = JSON.parse(readFileSync(checksPath, 'utf8'));
-    raw.claudinite = { ...raw.claudinite, updated: heldStamp(pending) };
-    writeFileSync(checksPath, JSON.stringify(raw, null, 2) + '\n');
-  }
+  const { migrationApplies } = await import(pathToFileURL(join(tmp, 'engine/checks/helpers/active-migrations.mjs')).href);
+  const pending = agenticMigrations(await loadMigrations())
+    .filter((m) => migrationApplies(m.dir, { installed: priorStamp }))
+    .sort((a, b) => String(a.landed).localeCompare(String(b.landed)));
 
   // 6. Meaningful change? A stamp-only bump against an unchanged head is not one —
   //    revert it and stay quiet (no nightly stamp-only noise).

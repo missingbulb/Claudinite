@@ -63,25 +63,19 @@ test('malformed settings stop the run before anything is written', async () => {
   rmSync(root, { recursive: true, force: true });
 });
 
-test('an engine record carrying an agentic note stops the run, before any write', async () => {
-  // Live, not fixtured: two engine records still carry the notes DESIGN §6 retires,
-  // so a repo below version 1 genuinely cannot be served by this flow yet. The
-  // invariant is that it says so and writes nothing — never that it skips the note
-  // quietly, and never that it half-updates and then stops.
-  const root = makeMember();
-  assert.deepEqual((await applyVendor(root)).errors, []);
-  setStamp(root, { engineVersion: 0 });
-  const before = readFileSync(join(root, MOUNT, 'engine', 'selftest.mjs'), 'utf8');
-  writeFileSync(join(root, MOUNT, 'engine', 'zzz-canary.mjs'), 'still here if nothing was written\n');
-
-  const r = await engineUpdate(root, { fullName: 'o/r' });
-  assert.equal(r.status, NEEDS_HUMAN);
-  assert.match(r.detail, /agentic note/);
-  assert.match(r.detail, /engine\/migrations\//, 'it names the records, so a human knows which');
-  assert.equal(readFileSync(join(root, MOUNT, 'engine', 'selftest.mjs'), 'utf8'), before);
-  assert.ok(existsSync(join(root, MOUNT, 'engine', 'zzz-canary.mjs')), 'the mount was not touched');
-  assert.equal(stampOf(root).engineVersion, 0, 'and the stamp still says what the repo really runs');
-  rmSync(root, { recursive: true, force: true });
+test('a repo far behind is now servable end to end — the notes that blocked it are gone', () => {
+  // This test used to assert the OPPOSITE: two engine records carried agentic notes,
+  // so the flow refused any repo whose gap contained them, and a repo at version 0
+  // could not be served at all. Retiring the last of those notes (#768 Phase 4) is
+  // what changed, and the registry now REJECTS an engine record carrying one, so the
+  // refusal can no longer be reached through a real record — it is enforced a level
+  // earlier, where it cannot be written in the first place.
+  //
+  // What is left to assert here is the consequence: the gap of a badly-lagging repo
+  // is now runnable, which is the whole thing the retirement bought.
+  const behind = engineRecordsInGap({ engineVersion: 0 });
+  assert.ok(behind.length > 0, 'a repo at version 0 still has records to run');
+  assert.ok(behind.every((d) => d.startsWith('engine/migrations/')), behind.join(', '));
 });
 
 test('a real member is converged onto this canon\'s engine, and stamped for it', async () => {
