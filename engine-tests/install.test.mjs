@@ -7,6 +7,7 @@ import { installPacks, planInstall, unansweredQuestions } from '../updates/insta
 import { terminalFor, applyStageBrief } from '../updates/terminals.mjs';
 import { NEEDS_HUMAN } from '../updates/engine-update.mjs';
 import { loadPacks } from '../engine/pack_loader/pack-registry.mjs';
+import { validateManifest } from '../engine/pack_loader/pack-schema.mjs';
 
 const MOUNT = join('.claudinite', 'shared');
 const makeRepo = (declaration = { packs: [] }) => {
@@ -120,4 +121,66 @@ test('the apply-stage brief scopes the session and re-homes the executor verific
   assert.match(brief, /claudinite\/update-1/);
   assert.match(brief, /executor routine/, 'the one verification no Action can make');
   assert.match(brief, /needs-human/);
+});
+
+// --- seed ops: run once at install, repo-owned thereafter ----------------------
+
+test('the manifest accepts seedOps and rejects a malformed one', () => {
+  const valid = {
+    id: 'demo',
+    ruleRoutingGuidance: { belongs: 'a b c', excludes: 'd e f' },
+  };
+  assert.deepEqual(validateManifest({ ...valid, seedOps: [{ template: 'stubs/x.yml', dest: '.github/x.yml' }] }), []);
+  assert.deepEqual(validateManifest(valid), [], 'optional — most packs seed nothing');
+  for (const bad of [[{ template: 'x' }], [{ dest: 'y' }], ['x'], [null], 'x']) {
+    assert.match(validateManifest({ ...valid, seedOps: bad }).map((e) => e.what).join(' '), /"seedOps" is not a valid value/, JSON.stringify(bad));
+  }
+});
+
+test('an install seeds a declared op, and never overwrites what the repo already has', async () => {
+  // Driven through the real install with the pack set injected, because the seed-op
+  // path is only reachable through a manifest that declares one and the canon has
+  // none yet. The template is a file that really exists in the pack.
+  const packs = await loadPacks();
+  const patched = packs.map((p) => (p.id === 'basics'
+    ? { ...p, seedOps: [{ template: 'RULES.md', dest: 'SEEDED.md' }] }
+    : p));
+
+  const root = makeRepo();
+  const first = await installPacks(root, ['basics'], { packs: patched, selfTestRun: () => 'ok' });
+  assert.deepEqual(first.seeded, ['SEEDED.md']);
+  assert.ok(existsSync(join(root, 'SEEDED.md')));
+
+  // The repo owns it from here. Re-seeding into a repo that already has the file —
+  // the README-diff class of bug — must not happen even on a fresh install.
+  writeFileSync(join(root, 'SEEDED.md'), 'the repo edited this\n');
+  const second = makeRepo();
+  writeFileSync(join(second, 'SEEDED.md'), 'this repo already had one\n');
+  const again = await installPacks(second, ['basics'], { packs: patched, selfTestRun: () => 'ok' });
+  assert.deepEqual(again.seeded, [], 'a dest that exists is never overwritten');
+  assert.equal(readFileSync(join(second, 'SEEDED.md'), 'utf8'), 'this repo already had one\n');
+  assert.equal(readFileSync(join(root, 'SEEDED.md'), 'utf8'), 'the repo edited this\n');
+  rmSync(root, { recursive: true, force: true });
+  rmSync(second, { recursive: true, force: true });
+});
+
+test('an UPDATE never seeds — the run-once guarantee is structural, not a flag', async () => {
+  // The hazard the issue names: an install op that re-runs on update rewrites a
+  // repo-owned surface. It cannot here, because only this flow reads seedOps — so
+  // the assurance is behavioural: a pack update over a seeded, then edited, file
+  // leaves it exactly as the repo left it.
+  const { packUpdate } = await import('../updates/pack-update.mjs');
+  const { applyVendor } = await import('../vendoring/apply-vendor-set.mjs');
+  const root = makeRepo({ packs: ['basics'] });
+  assert.deepEqual((await applyVendor(root)).errors, []);
+  writeFileSync(join(root, 'SEEDED.md'), 'seeded once, then edited by the repo\n');
+  const settings = settingsOf(root);
+  settings.claudinite.packVersions = { basics: 0 };
+  writeFileSync(join(root, '.claudinite-checks.json'), `${JSON.stringify(settings, null, 2)}\n`);
+
+  const r = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
+  assert.equal(r.status, 'ok', r.detail);
+  assert.equal(r.seeded, undefined, 'an update has no seeding step at all');
+  assert.equal(readFileSync(join(root, 'SEEDED.md'), 'utf8'), 'seeded once, then edited by the repo\n');
+  rmSync(root, { recursive: true, force: true });
 });

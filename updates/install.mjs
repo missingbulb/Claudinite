@@ -77,7 +77,7 @@ export function unansweredQuestions(packs, entries) {
 // Install `ids` into `targetRoot`: declare them, vendor their content, stamp their
 // latest versions, gate, and report. `dryRun` judges everything and writes nothing.
 export async function installPacks(targetRoot, ids, {
-  today, dryRun = false, delivery = 'auto-merge', forceMergeOnRedCi = false, selfTestRun,
+  today, dryRun = false, delivery = 'auto-merge', forceMergeOnRedCi = false, selfTestRun, packs: packSet,
 } = {}) {
   const settingsPath = join(targetRoot, DECLARATION_FILE);
   if (!existsSync(settingsPath)) {
@@ -89,7 +89,10 @@ export async function installPacks(targetRoot, ids, {
 
   const installed = raw.claudinite && typeof raw.claudinite === 'object' ? raw.claudinite : null;
   const engineVersion = typeof installed?.engineVersion === 'number' ? installed.engineVersion : ENGINE_VERSION;
-  const packs = await loadPacks();
+  // `packs` is injectable for the same reason `selfTestRun` is: the seed-op path is
+  // only reachable through a manifest that declares one, and the canon deliberately
+  // has none yet.
+  const packs = packSet ?? await loadPacks();
   const { install, refused } = planInstall(packs, ids, installed, { engineVersion });
   if (!install.length) {
     return outcome(NEEDS_HUMAN, refused.map((r) => r.why).join('; ') || 'nothing to install', { refused });
@@ -133,13 +136,30 @@ export async function installPacks(targetRoot, ids, {
   next.claudinite = { ...(next.claudinite ?? {}), packVersions };
   writeFileSync(settingsPath, `${JSON.stringify(next, null, 2)}\n`);
 
+  // Seed ops: the install-only effects the repo owns from here (DESIGN §4). Written
+  // ONLY when the dest is absent — a seeded file is the member's from the moment it
+  // lands, and an install that overwrote one would be doing exactly what the
+  // seeded-vs-converged distinction exists to prevent.
+  const seeded = [];
+  for (const { id } of install) {
+    const pack = packs.find((p) => p.id === id);
+    for (const { template, dest } of pack?.seedOps ?? []) {
+      const from = join(canonRoot, 'packs', id, template);
+      const to = join(targetRoot, dest);
+      if (!existsSync(from) || existsSync(to)) continue;
+      mkdirSync(dirname(to), { recursive: true });
+      copyFileSync(from, to);
+      seeded.push(dest);
+    }
+  }
+
   const selftest = runSelfTest(targetRoot, selfTestRun);
   const decision = unanswered.length
     ? { action: 'needs-human', why: `${unanswered.length} adoption question(s) unanswered: ${unanswered.map((u) => `${u.pack}/${u.question}`).join(', ')}` }
     : deliveryDecision({ selftestOk: selftest.ok, delivery, forceMergeOnRedCi });
 
   return outcome(decision.action === 'needs-human' ? NEEDS_HUMAN : 'ok', decision.why, {
-    install, refused, unanswered, files: ourFiles.length, selftest, decision,
+    install, refused, unanswered, files: ourFiles.length, seeded, selftest, decision,
     // An install is where the pack's rules FIRST meet this repo's content, so the
     // apply stage is always the next step — there is no "nothing moved" case here.
     applyStage: { needed: true, packs: install.map((i) => i.id), why: 'the pack\'s rules meet this repo for the first time' },
