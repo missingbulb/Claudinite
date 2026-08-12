@@ -55,7 +55,16 @@ can absorb it**, and constrains the engine so its flow needs none of them.
 3. **Engine migrations cover the member-owned files that reference engine
    surfaces** (hooks in `.claude/settings.json`, paths in local-pack code,
    the declaration file). They are **usually regex-replace rules, rarely
-   code — never agentic** (owner decision). The discipline this imposes on
+   code — never agentic** (owner decision). **The vendoring flow fetches
+   only the migrations above the repo's installed engine version** (owner
+   decision) — the version replaces today's date-based recency window
+   (`recordDirIsRecent`) as the fetch predicate: an up-to-date repo
+   vendors none, a lagging repo vendors exactly its gap. Because the same
+   window currently also drives `migrationActive()` — the legacy-tolerance
+   predicate consumer checks consult — that tolerance becomes
+   version-based in the same move ("tolerate the legacy shape while
+   installed version < N"), or checks would flag legacy shapes on repos
+   that simply have not updated yet. The discipline this imposes on
    engine evolution is accepted and explicit: an engine contract change must
    either be mechanically expressible (regex or a small deterministic
    codemod shipped with the release) or remain backward-compatible, with the
@@ -87,6 +96,11 @@ can absorb it**, and constrains the engine so its flow needs none of them.
    *checkable* compatibility constraint rather than dropped.
 7. **A pack update is deterministic first**: vendor the new pack version,
    run its version-ranged migrations (vN→vN+1, in order), converge wiring.
+   **Pack migrations live in the pack's own `migrations/` folder** and are
+   fetched by the same version gate as the engine's (owner decision): only
+   the records above the repo's installed version of *that pack* ship in
+   the mount. The flat canon-wide `migrations/` directory does not survive
+   the split — each record moves to the flow (engine or pack) that owns it.
    **Workflow churn belongs to the pack flow, explicitly** (owner decision):
    the scheduler workflow's content is a function of the *task set*
    (`declaredSecrets` unions `required_secrets` across discovered tasks), so
@@ -111,9 +125,15 @@ can absorb it**, and constrains the engine so its flow needs none of them.
 ## 4. Install = update from version zero
 
 Installing a pack is the pack updater started with no prior state: vendor,
-run migrations from version 0, converge, agentic apply, deliver — the same
-flow, same terminals (§3.9: interview unanswered → PR open + `need-human`).
-Two install-specific provisions:
+converge, agentic apply, deliver — the same flow, same terminals (§3.9:
+interview unanswered → PR open + `need-human`). **An install runs no
+migrations** (owner decision): the vendored pack content is already the
+newest shape, so there is no older state to migrate — replaying history
+onto a fresh install is both wasted work and a correctness hazard
+(migrations assume the shapes their era produced, not an empty repo).
+The install stamps the pack's **latest** version directly; migrations are
+exclusively for repos that were installed at an older one. Two
+install-specific provisions:
 
 - **One-shot seed ops.** Some install effects are seeded once and owned by
   the repo thereafter (the README badge row is the existing precedent:
@@ -135,7 +155,9 @@ Two install-specific provisions:
   self-test) — both visible, neither a model.
 - **Version-ranged migrations replace the date stamp.** "Which migrations
   apply" becomes "installed version → target version," retiring the
-  held-stamp subtleties (#329, #330).
+  held-stamp subtleties (#329, #330). The same range gates **fetching**:
+  a mount carries exactly the migration records in its gap, none on an
+  up-to-date repo, and a fresh install carries — and runs — none at all.
 - **Compatibility is enforced, not assumed**: pack min-engine-version
   checked before apply; violation is a `need-human` terminal, not a guess.
 - **Every non-green terminal looks the same**: PR open, `need-human`,
@@ -185,4 +207,12 @@ baselining and its vocabulary.
 5. Pack versions **declare and enforce** a minimum engine version
    (2026-08-12).
 6. The mechanism is named **update**; baselining vocabulary retires
+   (2026-08-12).
+7. Migration fetching is **version-gated**: vendoring ships only the
+   records above the repo's installed version — engine and pack alike —
+   replacing the date-based recency window (2026-08-12).
+8. Pack migrations live in **each pack's own `migrations/` folder**; the
+   flat canon-wide directory retires with the split (2026-08-12).
+9. **An install runs no migrations**: the vendored content is already the
+   newest shape, and the install stamps the latest version directly
    (2026-08-12).
