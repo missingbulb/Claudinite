@@ -21,6 +21,7 @@ const PACK = 'sheepdog';
 export default {
   id: 'fleet-baseline-task',
   landed: '2026-08-11',
+  version: 1,
   summary: 'fleet-baseline converted from a standalone workflow to a manual-frequency sheepdog task; the enforcer\'s .github/workflows/fleet-baseline.yml copy is retired',
 
   // Same gate as the record that installed the file: does this repo declare the

@@ -13,6 +13,7 @@
 export default {
   id: 'tidy-repo-seed',
   landed: '2026-07-12',
+  version: 1,
   summary: "seed the tidy-repo pack into existing members' declarations (one-time; not backfilled after)",
   legacyPresent: async (exists, read) => {
     const raw = await read('.claudinite-checks.json');

@@ -67,9 +67,9 @@ function makeCanon({ packs = [], skills = [], packDirectory = true } = {}) {
   // folder-name date prefix.
   writeAt(root, 'engine/migrations/apply.mjs', 'export const apply = 1;\n');
   writeAt(root, 'engine/migrations/registry.mjs', 'export const registry = 1;\n');
-  writeAt(root, 'engine/migrations/2026-01-01-seed/migration.mjs', 'export default { id: "seed" };\n');
+  writeAt(root, 'engine/migrations/2026-01-01-seed/migration.mjs', 'export default {\n  id: "seed",\n  version: 2,\n};\n');
   writeAt(root, 'engine/migrations/2026-01-01-seed/note.test.mjs', 'stub\n'); // a test — excluded
-  writeAt(root, 'engine/migrations/2025-06-01-ancient/migration.mjs', 'export default { id: "ancient" };\n'); // aged out — excluded
+  writeAt(root, 'engine/migrations/2025-06-01-ancient/migration.mjs', 'export default {\n  id: "ancient",\n  version: 1,\n};\n'); // aged out — excluded
   writeAt(root, 'engine/migrations/README.md', 'canon doc\n'); // doc — excluded
   for (const { id, requires = [], skills: skl = [], extraFiles = [], version } of packs) {
     const declaredVersion = version === undefined ? '' : `, version: ${JSON.stringify(version)}`;
@@ -94,8 +94,8 @@ const FIXTURE = {
     { id: 'alpha', version: 4, skills: ['s1'], extraFiles: [
       'RULES.md', 'check.mjs', 'pack.test.mjs', 'stubs/wf.yml', 'skills/s1/helper.test.mjs',
       // a pack's own migration records: one in the window, one aged out
-      'migrations/2026-01-02-alpha-seed/migration.mjs',
-      'migrations/2025-06-02-alpha-ancient/migration.mjs',
+      { file: 'migrations/2026-01-02-alpha-seed/migration.mjs', content: 'export default {\n  id: "alpha-seed",\n  version: 5,\n};\n' },
+      { file: 'migrations/2025-06-02-alpha-ancient/migration.mjs', content: 'export default {\n  id: "alpha-ancient",\n  version: 1,\n};\n' },
     ] },
     { id: 'beta', version: 7, requires: ['gamma'] },
     { id: 'gamma', skills: ['s2'] },   // versionless — the shape a member's own local pack has
@@ -294,4 +294,43 @@ test('real corpus: the composing packs\' vendor sets carry the barriers pack and
       assert.ok(files.includes(carried), `${pack} must vendor ${carried}`);
     }
   }
+});
+
+test('fetching is version-gated: an up-to-date repo carries no records, a lagging one carries its gap', async () => {
+  const root = makeCanon(FIXTURE);
+  const records = (files) => files.filter((f) => /\/migrations\/\d{4}-/.test(f));
+  const at = (installed) => vendorAt(root, ['alpha'], { today: '2026-01-05', installed });
+
+  // The engine record takes effect at version 2, alpha's at 5.
+  const upToDate = await at({ engineVersion: 2, packVersions: { alpha: 5 } });
+  assert.deepEqual(records(upToDate.files), [], 'nothing above what this repo has installed');
+
+  const lagging = await at({ engineVersion: 1, packVersions: { alpha: 4 } });
+  assert.deepEqual(records(lagging.files).sort(), [
+    'engine/migrations/2026-01-01-seed/migration.mjs',
+    'packs/alpha/migrations/2026-01-02-alpha-seed/migration.mjs',
+  ], 'exactly the gap — and the aged-out records too, which the date window would have dropped');
+
+  // One flow behind, the other current: each is ranged on its own number.
+  const engineOnly = await at({ engineVersion: 1, packVersions: { alpha: 5 } });
+  assert.deepEqual(records(engineOnly.files), ['engine/migrations/2026-01-01-seed/migration.mjs']);
+
+  // A record OLDER than the window still ships to a repo below its version — the
+  // thing a date window structurally cannot do, and why a dormant member was
+  // previously served only by the canon clone.
+  const dormant = await at({ engineVersion: 0, packVersions: {} });
+  assert.ok(records(dormant.files).includes('engine/migrations/2025-06-01-ancient/migration.mjs'));
+});
+
+test('a repo with no version stamp keeps the date window — unknown is answered as unknown', async () => {
+  const root = makeCanon(FIXTURE);
+  const { files } = await vendorAt(root, ['alpha'], { today: '2026-01-05' });
+  const records = files.filter((f) => /\/migrations\/\d{4}-/.test(f)).sort();
+  assert.deepEqual(records, [
+    'engine/migrations/2026-01-01-seed/migration.mjs',
+    'packs/alpha/migrations/2026-01-02-alpha-seed/migration.mjs',
+  ], 'the in-window records, exactly as before versions existed');
+  // A stamp that carries a date but no versions is the same unknown.
+  const pre = await vendorAt(root, ['alpha'], { today: '2026-01-05', installed: { updated: '2026-01-05T00:00:00Z' } });
+  assert.deepEqual(pre.files.filter((f) => /\/migrations\/\d{4}-/.test(f)).sort(), records);
 });

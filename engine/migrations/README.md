@@ -28,6 +28,9 @@ like packs and skills), that supplies the read-side resolver and the write-side 
 export default {
   id: 'mount-folder-relocation',
   landed: '2026-07-13',                 // date it merged to canon (YYYY-MM-DD; = the folder prefix)
+  version: 4,                           // the OWNING FLOW's version this change takes effect at —
+                                        // a repo below it still needs the record, one at or above
+                                        // it has already had it applied. Land it with that bump.
   summary: 'sync hook + orchestrator + env-setup bundled into a mount folder',
   aliases: [{ canonical: '.claudinite/mount/sync-claudinite.sh',
               legacy: ['.claudinite/sync-claudinite.sh', '.claude/hooks/sync-claudinite.sh'] }],
@@ -63,6 +66,21 @@ export default {
   no fleet-wide apply pass and no central delivery — the member's own maintenance commit carries its
   migration writes.
 
+## The version a record declares
+
+`version` is the number of the flow that owns the record — the engine's
+(`engine/RELEASES.md`) for a record under `engine/migrations/`, that pack's for one
+under `packs/<pack>/migrations/` — **at which its change takes effect**. So a record
+lands in the same change as the bump it names, and the whole question "does this
+record still apply to that repo" is `record.version > repo's installed version`
+(`migrationApplies`, in the engine helper).
+
+Keep the field a **plain integer literal on its own line**. Every caller of the
+predicate is synchronous — `migrationActive` is called from inside check bodies —
+so the version is read out of the source rather than by importing the spec, and a
+computed or inlined value would be invisible to that read. The two readings are
+drift-guarded by a test that imports every real record and compares.
+
 ## Relevance is decided at fetch time, not by a cleanup pass
 
 There is no retirement, no archive, and no TTL mover. All records are equal; three readers each take
@@ -73,15 +91,17 @@ the slice they need:
   still catches up on everything it missed — `apply.mjs` is idempotent, so records it already
   applied are no-ops.
 - **Vendoring** ([`compute-vendor-set.mjs`](../../vendoring/compute-vendor-set.mjs)) ships a consumer
-  mount only the records landed within the last **7 days**
-  (`recordDirIsRecent`, [engine/checks/helpers/active-migrations.mjs](../checks/helpers/active-migrations.mjs)).
-  A project up to speed on migrations therefore carries few-to-none locally — it already applied
-  them — and the mount stays small.
+  mount only the records **above the versions that repo has installed**
+  (`migrationApplies`, [engine/checks/helpers/active-migrations.mjs](../checks/helpers/active-migrations.mjs)).
+  An up-to-date repo carries none; a lagging one carries exactly its gap, however old those records
+  are. A repo whose stamp says nothing about a flow — one that has not converged since versions
+  existed, or a fresh adoption — falls back to the landed-date window (7 days), which is what every
+  member had before versions: unknown is answered as unknown, never as version zero.
 - **Check-tolerance** ([`migrationActive(slug)`](../checks/helpers/active-migrations.mjs))
-  answers true only for a record that is present **and** within that same window — one shared
-  predicate, so "recent enough to tolerate" and "recent enough to vendor" can never drift. Every
-  up-to-date repo converges within the window, and a dormant one is converged by baselining's apply
-  step *before* its checks run, so an aged record needs no tolerance anywhere.
+  answers true only for a record that is present **and** still applies by that same predicate — one
+  shared function, so "shipped to the mount" and "tolerated by a check" can never mean different
+  things. In a member the answer therefore reduces to "is the record in my mount": the gate that put
+  it there is the gate that tolerates it.
 
 A tolerance that cannot be expressed through `migrationActive`/`resolvePath` — one living inline in
 a check or script — is swept by hand when the transition is over; the record itself just stays, as
@@ -92,7 +112,9 @@ history.
 1. Drop a `<flow>/migrations/<landed-date>-<slug>/migration.mjs` exporting the spec above (folder
    prefix = the `landed` date), under the flow whose change it repairs — `engine/migrations/` for an
    engine contract, `packs/<pack>/migrations/` for one pack's. Structural discovery picks it up —
-   no list to edit.
+   no list to edit. Declare the `version` its change takes effect at, and bump that flow's version in
+   the same change; without a version the record falls back to the date window and stops applying
+   after 7 days, whatever state the fleet is in.
 2. Point every reader of the old path at `resolvePath(...)`, or gate an inline tolerance on
    `migrationActive('<slug>')` so it ends itself when the record ages out of the window.
 3. There is no step 3 — the record ships to consumers for 7 days, every member applies it on its own

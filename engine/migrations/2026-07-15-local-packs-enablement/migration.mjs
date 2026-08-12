@@ -21,6 +21,7 @@
 export default {
   id: 'local-packs-enablement',
   landed: '2026-07-15',
+  version: 1,
   summary: 'members preserve + track .claudinite/local_packs/ (sync-hook preserve via baselining, gitignore via bootstrap)',
   legacyPresent: async (exists, read) => {
     const hook = await read('.claudinite/mount/sync-claudinite.sh');

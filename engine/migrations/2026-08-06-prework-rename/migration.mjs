@@ -15,6 +15,7 @@
 export default {
   id: 'prework-rename',
   landed: '2026-08-06',
+  version: 1,
   summary: 'task contract fields renamed: agent_preprocessing → prework, agent_preprocessing_timeout → prework_timeout (legacy names still accepted, normalized at load)',
   agentic: {
     model: 'haiku',

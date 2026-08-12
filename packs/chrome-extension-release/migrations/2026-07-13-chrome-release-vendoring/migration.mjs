@@ -33,6 +33,7 @@ const S = 'packs/chrome-extension-release/stubs';
 export default {
   id: 'chrome-release-vendoring',
   landed: '2026-07-13',
+  version: 1,
   summary: 'chrome-extension-release reusable workflows + composite actions vendored from Claudinite core into each consumer repo (#276)',
 
   // Only touch a repo that ships the pipeline — its orchestrator is named

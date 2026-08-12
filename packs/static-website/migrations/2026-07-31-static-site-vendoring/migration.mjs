@@ -23,6 +23,7 @@ const S = 'packs/static-website/stubs';
 export default {
   id: 'static-site-vendoring',
   landed: '2026-07-31',
+  version: 1,
   summary: 'static-website release pipeline kept byte-current in each site repo own .github/ (#609)',
 
   appliesTo: async (read) => {
