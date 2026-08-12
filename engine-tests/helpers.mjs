@@ -7,6 +7,13 @@ const GIT_ENV = {
   ...process.env,
   GIT_AUTHOR_NAME: 'test', GIT_AUTHOR_EMAIL: 'test@test',
   GIT_COMMITTER_NAME: 'test', GIT_COMMITTER_EMAIL: 'test@test',
+  // No detached git process may outlive a fixture command (#235): auto-gc runs in
+  // the foreground and the newer maintenance path stays off, so cleanup() never
+  // races a background repack still writing into .git/objects. The rmSync
+  // maxRetries below is the second line of defense, not the fix.
+  GIT_CONFIG_COUNT: '2',
+  GIT_CONFIG_KEY_0: 'gc.autoDetach', GIT_CONFIG_VALUE_0: 'false',
+  GIT_CONFIG_KEY_1: 'maintenance.auto', GIT_CONFIG_VALUE_1: 'false',
 };
 
 export function git(root, ...args) {
