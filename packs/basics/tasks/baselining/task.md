@@ -126,17 +126,12 @@ surface as a mild SessionStart note (never a finding), and a stale stored answer
 adopt-claudinite's advisory hygiene check — so interview drift reaches you here, as a
 check finding like any other.
 
-**Local-pack declaration normalization is currently unimplemented — do not assume it
-ran.** Nothing rewrites a bare or legacy declaration in `.claudinite-checks.json` to the
-canonical `local/<id>` token: `convergeWiring` never reads `packs` at all, and
-`declTokenFor` (`engine/pack_loader/pack-registry.mjs`) has no caller outside its own
-test. The `local-pack-namespace` migration record holds no ops of its own — it was
-written as convergence telemetry for a rewrite step that lived in the retired worker
-prose and went away with it. Consequence: on a repo that still declares a bare local-pack
-id, that record's `legacyPresent` probe can never reach zero and its `retire: 'auto'`
-never fires. Where the rewrite should live (preprocessing, a real migration op, or
-nowhere — the engine accepts every form) is an open decision; do not improvise it during
-a nightly run.
+**Local-pack declaration normalization is the `local-pack-namespace` record's own
+work — do not improvise it.** That record carries `normalizeLocalDeclarations`, so the
+mechanical apply step rewrites a bare or legacy local-pack declaration in
+`.claudinite-checks.json` to the canonical `local/<id>` token, leaving canon ids and
+every entry's own config alone. If a declaration still looks un-normalized after a
+converge, that is a finding to report, never something to hand-edit here.
 
 **A failed SELF-TEST is a different animal from a check finding**, and it is what §0's
 `selftest-failed` / `selftest-could-not-run` name. `node

@@ -45,8 +45,10 @@ worth naming, not on every merge.
 | Version | Date | Canary rehearsal | What it released |
 |---|---|---|---|
 | 1 | 2026-08-12 | [run 31628529342](https://github.com/missingbulb/Claudinite/actions/runs/31628529342) | The first numbered engine: version scaffolding, the versioned stamp, and migration records re-homed under their owning flow (#769). |
+| 2 | 2026-08-12 | [run 31633584458](https://github.com/missingbulb/Claudinite/actions/runs/31633584458) | Migration records gain regex rewrites and the `normalizeLocalDeclarations` codemod, and `local-pack-namespace` starts rewriting local-pack declarations to `local/<id>` — the first release whose records actually change a member's own files. |
 
 Version 1's rehearsal is the automatic post-merge run against `8dbb096`, the
 commit that introduced the constant — the procedure above landed after it, so
-there was no branch to rehearse first. Every version from 2 on cites a run
-dispatched against its own branch.
+there was no branch to rehearse first. Version 2's was dispatched against its
+own branch at `6607b7c`, which is this change's tree; the only edit after it is
+the row you are reading.

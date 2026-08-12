@@ -4,13 +4,19 @@
 // (the bare form shared the canon namespace; a collision was only CAUGHT by the
 // discoverPacks shadow guard, never prevented).
 //
-// Seed-style, like grow-with-claudinite-seed: the WRITE rides baselining — its
-// declaration-normalization step runs in the member checkout (which knows which
-// declared ids are local packs) and rewrites any bare local-pack declaration to the
-// namespaced form (see the baselining worker doc). This record holds no ops of its
-// own; it is the convergence telemetry. The engine accepts BOTH forms throughout (and
-// after — packEntryId's strip is the permanent parser, not a tolerance this record
-// carries), so the record holds nothing that could be stranded.
+// The write is this record's own, as `normalizeLocalDeclarations` (#768 Phase 1). It
+// was written as convergence telemetry for a rewrite step that lived in prose in a
+// worker since retired, so for a year nothing rewrote anything and the probe below
+// could never reach zero. The op needs the repo's disk — `local_packs/<id>` is a pure
+// pattern, but a BARE id is a local pack only where that repo has one, and a bare id
+// naming a canon pack must not be touched — so it is the named codemod in the
+// registry rather than a `rewrite` (DESIGN §2.3's "rarely code").
+//
+// VERSION 2, not 1: the record's version is the engine version at which its change
+// takes effect, and its change takes effect now. A member stamped at 1 fetches it
+// again for exactly that reason. The engine accepts BOTH forms throughout and after —
+// `packEntryId`'s strip is the permanent parser, not a tolerance this record carries —
+// so nothing here can be stranded, and a repo that never runs it stays correct.
 //
 // legacyPresent: a member still declares a bare id (string entry or entry-object id,
 // no `local_packs/` prefix) whose pack lives in its own .claudinite/local_packs/ tree.
@@ -18,8 +24,9 @@
 export default {
   id: 'local-pack-namespace',
   landed: '2026-07-19',
-  version: 1,
-  summary: 'local-pack declarations namespaced as local_packs/<name> (baselining rewrites bare ids; the engine accepts both forms)',
+  version: 2,
+  summary: 'local-pack declarations normalized to local/<name> (the record rewrites bare and legacy tokens; the engine accepts every form)',
+  normalizeLocalDeclarations: true,
   legacyPresent: async (exists, read) => {
     const raw = await read('.claudinite-checks.json');
     if (raw == null) return false;
