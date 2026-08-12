@@ -39,6 +39,11 @@
 //                 vendor + the sweeps, never the scheduler, so that a lingering
 //                 field still routes to the fleet label is a unit test's job
 //                 (engine-tests/scheduler/session-scope.test.mjs).
+//   growth-member a member enrolled in the growth lifecycle, carrying the local
+//                 packs its capture runs write. The growth stages ship blocking
+//                 work rules scoped to those runs, so this is the shape that
+//                 answers whether an enrolled member's ORDINARY converge stays
+//                 green under them.
 //
 // A fixture carries NO `claudinite.ref`. That is deliberate: apply-vendor-set's
 // #328 anti-rewind guard compares the prior ref against the canon checkout's
@@ -335,6 +340,19 @@ NSApplication.shared.run()
     files: {
       'README.md': '# fixture-dormant\n\nA rehearsal fixture.\n',
       '.claudinite-checks.json': checks(['basics'], { dormant: true }),
+    },
+  },
+  {
+    name: 'growth-member',
+    why: 'a member enrolled in the growth lifecycle, with the local packs its capture runs write',
+    files: {
+      'README.md': '# fixture-growth-member\n\nA rehearsal fixture.\n',
+      '.claudinite-checks.json': checks(['basics', 'grow_with_claudinite', 'local/fixture-local']),
+      '.claudinite/local/packs/fixture-local/pack.mjs': PACK_LOCAL_RULES,
+      '.claudinite/local/packs/fixture-local/demo-rule.mjs': DEMO_RULE,
+      '.claudinite/local/packs/fixture-local/RULES.md': '# fixture-local\n\nNo standing rules.\n',
+      '.claudinite/local/packs/fixture-local/skills/fixture-skill/SKILL.md':
+        '---\nname: fixture-skill\ndescription: A rehearsal fixture skill. Never invoked.\n---\n\nNothing to do.\n',
     },
   },
 ];
