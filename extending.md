@@ -33,6 +33,7 @@ only to extend the *mechanism*, never to add one project's rule or task:
 | The task scheduler | [`engine/scheduler/`](docs/per-project-scheduling/DESIGN.md) | in each repo's own workflow: discovers its active packs' `tasks/<name>/task.mjs`, intersects them with the due slots, collects signals, runs each precondition, dispatches; pack-agnostic, owns no task, depends on no pack |
 | The executor | [`engine/scheduler/executor.md`](engine/scheduler/executor.md) | the label-fired agent side of the scheduler — claims one dispatch issue, runs its task's worker against its own repo, delivers at the task's outcome ceiling |
 | Bootstrap / baselining | [`bootstrap.md`](bootstrap.md), `engine/checks/check_the_world.mjs --init` | adoption and the idempotent per-repo re-run |
+| The update flows | [`updates/`](updates/README.md) | canon-internal, never vendored: one runner per flow that moves a repo from the versions it has installed to the ones this canon ships — today the engine's (docs/versioned-updates/DESIGN.md) |
 
 **The test for "is this core?"** — would *every* pack's content stop working without it? The
 scheduler, the runner, the migration mechanism, the executor loop all pass; a lint for one
@@ -56,7 +57,7 @@ A pack is a directory `packs/<name>/pack.mjs` exporting contribution slots (any 
 
 **Packs are independent.** A pack's code imports only its **own** files and the engine surface
 (`checks/`, `mount/`, the machinery `.mjs` at the `packs/`/`skills/` roots) — never another
-pack's code, and never a canon-internal tree (`vendoring/`): the vendor set ships
+pack's code, and never a canon-internal tree (`vendoring/`, `updates/`): the vendor set ships
 a pack only when declared and ships no canon-internal tree at all, so such an import crashes
 every consumer that vendors the importer without its target. A pack that wants another pack's
 *abilities* declares the dependency (`requires`) and passes **configuration**; a helper both
