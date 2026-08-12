@@ -251,11 +251,6 @@ fix, probing for a real datapoint — lives in
 - **Writing the exit path of a pipeline or CI step** — an expected, handled outcome exits clean
   with a comment. Reserve non-zero for genuine breakage.
 
-- **Debugging a fetch that works locally but fails from CI or a sandbox** — a 403/400 or a CAPTCHA
-  wall is the datacenter IP, not the User-Agent, and headers won't change it. Route it through a
-  residential proxy, which usually renders JS too. If it stays blocked through the proxy, treat the
-  target as un-cacheable.
-
 - **Killing a process by pattern** — `pkill -f` matches the invoking shell's own command line too,
   so never chain it, and bracket one character of the pattern (`[h]ttp.server 8099`) to break the
   self-match.
