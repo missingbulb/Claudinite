@@ -206,6 +206,14 @@ than assumed:
 Terminal-state discipline is unchanged: every item converges exactly once to
 exactly one of the four ends, with one comment saying what happened.
 
+**The road back from `needs-human`** (SCENARIOS S12/S19, F7): a human who has
+resolved the cause re-queues the item by removing `needs-human` and applying
+`task:ready` — the sanctioned retry lever, write-gated like every label
+operation here. The next pickup re-runs the precondition (§6.4), which is what
+makes the retry safe even when the failed run half-did its work. Alternatively
+the human closes the item (optionally superseding it with a forced retry,
+§8); nothing mechanical ever re-queues a `needs-human` item.
+
 ## 5. The generator — recurring work without slots
 
 The tick (hourly, the vendored workflow's cron, concurrency-serialized) has
@@ -217,7 +225,12 @@ tick(now):
   if dormant: return                            # before any read, as today
 
   # ---- job 1: instantiate recurring occurrences ----------------------------
-  for task in discoverTasks():                  # active packs' tasks/*/task.mjs
+  # ITERATION ORDER IS LOAD-BEARING (SCENARIOS S4/F9): topological by `after`
+  # edges, so a task's upstream is instantiated before the tick asks whether an
+  # open upstream item exists. Arbitrary order would create a downstream item
+  # task:ready in the very tick its upstream's item is about to appear beside
+  # it. Cycles in `after`: fall back to declaration order and warn.
+  for task in topoSortByAfter(discoverTasks()):
     if task.frequency == 'manual': continue     # never instantiated by the tick (§8)
 
     # A — the ANCHOR INSTANT: the most recent wall-clock time this task's
@@ -230,6 +243,9 @@ tick(now):
 
     family = issues(title startswith "[claudinite-work] <pack>/<task>",
                     label "origin:schedule", state ALL)
+                    # via the REST issue LIST (label-filtered, title-filtered
+                    # client-side) — NEVER the search index, whose lag races
+                    # back-to-back serialized ticks (SCENARIOS S6/F11)
 
     if any(i.created_at >= A for i in family):  # OCCURRENCE GUARD: this
       continue                                  # occurrence already fired
@@ -327,7 +343,13 @@ events for latency **and** by the tick's cron as the poll that makes lost
 events irrelevant; `workflow_dispatch` for a hand-started drain):
 
 1. **Pick**: list open `task:ready` items; order `task:urgent` first, then
-   oldest-created. Take the first. None → exit quietly.
+   oldest-created. Skip any item whose exact title (task + qualifier) has
+   another open item in `task:executing` or `task:agent` — **one task, one
+   execution at a time** (SCENARIOS S15/F6: without this, a forced item runs a
+   task concurrently with its own scheduled run; keyed on the full title so a
+   fan-out's distinct qualifiers still run in parallel — the skipped item is
+   simply picked once its twin converges). Take the first survivor. None →
+   exit quietly.
 2. **Claim — the verified lease, unchanged in shape** (it earned its keep):
    read labels, abandon if `task:ready` is gone or `task:executing` /
    `task:agent` / `needs-human` present; swap `task:ready → task:executing` and
@@ -354,20 +376,34 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
    agent's binding scope is current, not stale.
 5. **Prework**, Action-side, unchanged contract: subprocess, task dir cwd,
    `required_secrets` as env, timeout, `CLAUDINITE_REQUEST_AGENT` conditional
-   hand-off. Failure → comment + `needs-human`, `task:executing` removed. Success,
+   hand-off. One requirement now stated explicitly (SCENARIOS S8/F12): prework
+   must be **re-entrant** — a dead executor's claim is reclaimed and the item
+   re-picked, so prework can run again over its own half-done work (it already
+   must survive this today, where a scheduler run dying mid-prework leaves the
+   slot due; the contract just never said so). Failure → comment +
+   `needs-human`, `task:executing` removed. Success,
    agentless task or no agent requested → converge now: `outcome:done` (or
    `outcome:delivered` when prework's payload names a live artifact), close,
    done — the quiet-on-success property survives as a *closed* item rather
    than no item, which is the better trade: the run is now visible.
 6. **Hand off**: write `### Delivered by prework` / `### Why the agent is
    here` into the body (unchanged shapes), swap `task:executing → task:agent`,
-   post the hand-off comment naming the CCR session it is about to create,
+   post the hand-off comment carrying a fresh **invocation nonce**, then
    **invoke the agent session via the CCR API** with a prompt naming exactly
-   this issue, and end the iteration. Invocation failure after retries →
-   revert to `needs-human` with the API error commented: a lost hand-off is a
-   *synchronous, visible* failure at the executor, not a silently missing
-   label event (this is what retires the re-arm — §11, and the credential it
-   costs is §12).
+   this issue and that nonce. The nonce exists because API invocation is
+   **at-least-once under timeout retry** — a call that times out client-side
+   may still have created a session, and the retry then creates a second
+   (SCENARIOS S10/F5). The executor cannot distinguish "failed" from
+   "unconfirmed"; the *agent-side lease* (§7) is what collapses the duplicates.
+   Invocation failure after in-run retries → **revert** `task:agent →
+   task:ready` with an attempt-counter comment (`handoff-attempts: N`); each
+   later pickup retries, the tick cadence its natural backoff, and only at a
+   bounded attempt count (~5) does the item converge `needs-human` with the
+   API error quoted — so a transient platform outage costs nothing but delay,
+   instead of converging every in-flight item to triage (SCENARIOS S9/F3).
+   Either way a lost hand-off is a *synchronous, visible* event at the
+   executor, not a silently missing label event (this is what retires the
+   re-arm — §11, and the credential it costs is §12).
 
 An executor run may iterate (claim → … → hand off, next pick) up to a
 configured `maxItems`; the default is a small number, and each item's claim is
@@ -391,6 +427,18 @@ print the `claudinite-task-exec` record, capture the session. One session, one
 item, no queue awareness — unchanged, and now structural: the session never
 receives a queue, only an item.
 
+One thing is **added**, not carried over: **the agent claims too**
+(SCENARIOS S10/F5). Because the executor's invocation is at-least-once (§6.6),
+two sessions can arrive at one item. So the agent's first act, before any
+work: post its own claim comment (session id + the invocation nonce from its
+prompt, which must match the hand-off comment on the item), re-read, and the
+**earliest agent claim wins** — the loser ends its session without touching
+the item, exactly the read-swap-confirm shape the executor lease uses. This is
+the same move the literature makes with single-use task tokens (a second
+redemption of a Step Functions task token is rejected); GitHub gives us no
+single-use token, so earliest-claim-wins stands in, as it already does one hop
+earlier.
+
 ## 8. Urgency and forcing — creating an item is the whole mechanism
 
 - **Urgent** work is an item with `task:urgent`: picked first, and the
@@ -403,7 +451,10 @@ receives a queue, only an item.
   [--context …] [--supersedes #N]`) writes the generic "forced by hand — no
   precondition asserts there is work" Context, exactly as `FORCED_VERDICT`
   does today; `--supersedes` additionally closes a named errored item as
-  superseded by this retry (§5's third guard note). The pickup
+  superseded by this retry (§5's third guard note). The CLI warns when an
+  *open* item with the same exact title already exists — the pick-time mutex
+  (§6.1) means the new item would wait behind it anyway, and the operator
+  should know they are queueing, not jumping (SCENARIOS S15/F6). The pickup
   precondition re-run (§6.4) replaces the skip-the-precondition rule: a forced
   item is evaluated like any other, and if the operator truly wants it
   unconditional the item's Context says so and the task's precondition can
@@ -552,7 +603,11 @@ vocabulary + tick + executor behind the flag on the canon repo → janitor
 re-target → dependency fields + `after` → fleet fan-out/fan-in → flip members
 by baselining → delete the slot machinery. Every retired mechanism deletes in
 the same PR that lands its replacement's fleet flip, per the corpus's
-no-lingering-legacy discipline.
+no-lingering-legacy discipline. One migration detail already known
+(SCENARIOS F8): the signal collectors' self-trigger exclusions must learn the
+new vocabulary — `[claudinite-work]` titles and the `task:*` label events —
+before the first queue-mode repo flips, or the queue's own items read as repo
+activity to the preconditions watching it.
 
 ## 15. Open questions for the owner
 
@@ -568,6 +623,28 @@ no-lingering-legacy discipline.
    and should executor identity really be comment-only (§4)?
 5. **Fleet scope routing** (§13): fleet-marked items + a fleet-only executor,
    or routine-named API invocation?
+
+From the scenario play-through ([SCENARIOS.md](SCENARIOS.md)):
+
+6. **F10 — evaluation cadence.** Mid-window firing (§5) means up to 24
+   precondition evaluations + signal collections per unfired daily occurrence,
+   vs one today. Options: continuous (as drafted — work fires the hour it
+   appears), once-per-occurrence (today's parity, cheapest), or a per-task
+   opt-in. Which default?
+7. **F4 — where the executing-leash reclaim lives.** A dead executor's
+   `task:executing` claim reclaimed by the daily janitor stalls the item up to
+   ~25h; proposal: that one deterministic label rule rides the hourly tick
+   (worst case ~2h), the janitor keeps the judgment-heavy sweeps. Accept the
+   janitor-scope amendment?
+8. **F1 — converger pokes dependents.** Optional latency optimization: on
+   closing an item, the converger readies (in code) any `task:blocked` item
+   naming it whose conditions now hold, instead of waiting for the next tick
+   (~1h/chain link). Same event+poll shape as pickup. Worth the extra moving
+   part?
+9. **Known limitation, on record (S18):** a fan-in blocked on a stuck child
+   waits until a human resolves that child — no quorum/deadline semantics,
+   deliberately, at this scale; the janitor's stale escalation is the
+   visibility. Revisit only on evidence.
 
 ---
 
