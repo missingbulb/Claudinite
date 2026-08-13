@@ -8,10 +8,10 @@ export default patternRule({
   description: 'In-session routine code reaches GitHub through the MCP tools, not a REST client + GITHUB_TOKEN',
   doc: 'skills/unattended-agents/SKILL.md',
   why: 'a routine runs in an MCP-only session with no shell GitHub REST credential; a REST client / GITHUB_TOKEN in its own steps cannot authenticate there — that belongs in a workflow_dispatch-only CI executor',
-  files: /^(routines|migrations)\/.*\.mjs$/,
-  exclude: /\.test\.mjs$/,
-  skipLines: /^\s*(\/\/|\*|\/\*)/,
-  line: [
+  scanFiles: /^(routines|migrations)\/.*\.mjs$/,
+  excludeFiles: /\.test\.mjs$/,
+  skipLinesMatching: /^\s*(\/\/|\*|\/\*)/,
+  matchLines: [
     {
       match: /process\.env\.(GITHUB_TOKEN|GH_TOKEN|FLEET_GITHUB_TOKEN)/,
       what: 'reads a GitHub REST token from the environment — in-session routine code has no REST credential',

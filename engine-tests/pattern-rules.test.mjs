@@ -11,11 +11,11 @@ const meta = (id) => ({
   id, severity: 'blocking', description: `fixture ${id}`, doc: 'engine/checks/README.md', why: 'fixture',
 });
 
-test('line assertions: match + unlessLine, {match} templating, 1-indexed anchor', () => {
+test('matchLines: match + unlessLineMatches, {match} templating, 1-indexed anchor', () => {
   const rule = patternRule({
     ...meta('fx-line'),
-    files: /\.txt$/,
-    line: [{ match: /TOK_\w+/, unlessLine: /allowed/, what: 'saw {match}', fix: 'remove it' }],
+    scanFiles: /\.txt$/,
+    matchLines: [{ match: /TOK_\w+/, unlessLineMatches: /allowed/, what: 'saw {match}', fix: 'remove it' }],
   });
   const root = makeRepo({ changed: { 'a.txt': 'clean\nTOK_ONE\nTOK_TWO allowed\n' } });
   try {
@@ -26,12 +26,12 @@ test('line assertions: match + unlessLine, {match} templating, 1-indexed anchor'
   } finally { cleanup(root); }
 });
 
-test('line assertions: first matching assertion wins per line; skipLines hides a line', () => {
+test('matchLines: first matching assertion wins per line; skipLinesMatching hides a line', () => {
   const rule = patternRule({
     ...meta('fx-first-wins'),
-    files: /\.txt$/,
-    skipLines: /^#/,
-    line: [
+    scanFiles: /\.txt$/,
+    skipLinesMatching: /^#/,
+    matchLines: [
       { match: /alpha/, what: 'alpha', fix: 'f' },
       { match: /alpha|beta/, what: 'beta', fix: 'f' },
     ],
@@ -43,11 +43,11 @@ test('line assertions: first matching assertion wins per line; skipLines hides a
   } finally { cleanup(root); }
 });
 
-test('line assertions: when (all-of) and unlessFile scope by the file\'s whole text', () => {
+test('matchLines: whenFileMatches (all-of) and unlessFileMatches scope by the file\'s whole text', () => {
   const rule = patternRule({
     ...meta('fx-when'),
-    files: /\.txt$/,
-    line: [{ match: /hit/, when: [/armed/, /live/], unlessFile: /disarmed/, what: 'w', fix: 'f' }],
+    scanFiles: /\.txt$/,
+    matchLines: [{ match: /hit/, whenFileMatches: [/armed/, /live/], unlessFileMatches: /disarmed/, what: 'w', fix: 'f' }],
   });
   const root = makeRepo({ changed: {
     'both.txt': 'armed live\nhit\n',
@@ -60,13 +60,13 @@ test('line assertions: when (all-of) and unlessFile scope by the file\'s whole t
   } finally { cleanup(root); }
 });
 
-test('file assertions: if-list + require / forbid, one finding per file, no line anchor', () => {
+test('checkEachFile: whenFileMatches-list + require / forbid, one finding per file, no line anchor', () => {
   const rule = patternRule({
     ...meta('fx-file'),
-    files: /\.yml$/,
-    file: [
-      { if: [/uses: deploy/, /root: true/], require: /pruned/, what: 'unpruned', fix: 'f' },
-      { if: /uses: deploy/, forbid: /insecure/, what: 'insecure', fix: 'f' },
+    scanFiles: /\.yml$/,
+    checkEachFile: [
+      { whenFileMatches: [/uses: deploy/, /root: true/], require: /pruned/, what: 'unpruned', fix: 'f' },
+      { whenFileMatches: /uses: deploy/, forbid: /insecure/, what: 'insecure', fix: 'f' },
     ],
   });
   const root = makeRepo({ changed: {
@@ -81,18 +81,18 @@ test('file assertions: if-list + require / forbid, one finding per file, no line
   } finally { cleanup(root); }
 });
 
-test('gates: exists / notExists / tracked / notTracked, rule-level and per-assertion', () => {
+test('relevantWhen: pathExists / pathAbsent / trackedFileMatches / noTrackedFileMatches, rule-level and per-assertion', () => {
   const ruleExists = patternRule({
     ...meta('fx-gate-exists'),
-    gate: { exists: 'marker.cfg' },
-    files: /\.txt$/,
-    line: [{ match: /x/, what: 'w', fix: 'f' }],
+    relevantWhen: { pathExists: 'marker.cfg' },
+    scanFiles: /\.txt$/,
+    matchLines: [{ match: /x/, what: 'w', fix: 'f' }],
   });
   const ruleTracked = patternRule({
     ...meta('fx-gate-tracked'),
-    gate: { tracked: /^lib\//, notTracked: /^vendor\// },
-    files: /\.txt$/,
-    line: [{ match: /x/, what: 'w', fix: 'f' }],
+    relevantWhen: { trackedFileMatches: /^lib\//, noTrackedFileMatches: /^vendor\// },
+    scanFiles: /\.txt$/,
+    matchLines: [{ match: /x/, what: 'w', fix: 'f' }],
   });
   const bare = makeRepo({ changed: { 'a.txt': 'x\n' } });
   const armed = makeRepo({ changed: { 'a.txt': 'x\n', 'marker.cfg': '1\n', 'lib/m.mjs': '1\n' } });
@@ -106,13 +106,13 @@ test('gates: exists / notExists / tracked / notTracked, rule-level and per-asser
   } finally { cleanup(bare); cleanup(armed); cleanup(vendored); }
 });
 
-test('gate.repoHas: findings survive only when some in-scope file carries the marker', () => {
+test('relevantWhen.repoContains: findings survive only when some in-scope file carries the marker', () => {
   const rule = patternRule({
     ...meta('fx-repohas'),
-    gate: { repoHas: /GOOGLE-MARK/ },
-    files: /\.mjs$/,
-    exclude: /^skills\//,
-    line: [{ match: /danger/, what: 'w', fix: 'f' }],
+    relevantWhen: { repoContains: /GOOGLE-MARK/ },
+    scanFiles: /\.mjs$/,
+    excludeFiles: /^skills\//,
+    matchLines: [{ match: /danger/, what: 'w', fix: 'f' }],
   });
   const gated = makeRepo({ changed: { 'a.mjs': 'danger\n' } });
   const marked = makeRepo({ changed: { 'a.mjs': 'danger\n', 'conf.yml': 'GOOGLE-MARK\n' } });
@@ -124,11 +124,11 @@ test('gate.repoHas: findings survive only when some in-scope file carries the ma
   } finally { cleanup(gated); cleanup(marked); cleanup(selfMarked); }
 });
 
-test('exact-path files: missing finding when declared, maxLines with {lines}/{limit}', () => {
+test('exact-path scanFiles: whenMissing finding when declared, maxLines with {lines}/{limit}', () => {
   const rule = patternRule({
     ...meta('fx-exact'),
-    files: 'DOC.md',
-    missing: { what: 'missing', fix: 'add it' },
+    scanFiles: 'DOC.md',
+    whenMissing: { what: 'missing', fix: 'add it' },
     maxLines: { limit: 3, what: '{lines} lines (max {limit})', fix: 'trim' },
   });
   const absent = makeRepo({ changed: { 'other.md': 'x\n' } });
@@ -143,16 +143,16 @@ test('exact-path files: missing finding when declared, maxLines with {lines}/{li
   } finally { cleanup(absent); cleanup(long); cleanup(short); }
 });
 
-test('over: tracked scans only git-tracked files; the default scanned set sees untracked too', () => {
+test('scanTracked: true scans only git-tracked files; the default scanned set sees untracked too', () => {
   const trackedRule = patternRule({
     ...meta('fx-over-tracked'),
-    files: /\.yml$/, over: 'tracked',
-    line: [{ match: /bad/, what: 'w', fix: 'f' }],
+    scanFiles: /\.yml$/, scanTracked: true,
+    matchLines: [{ match: /bad/, what: 'w', fix: 'f' }],
   });
   const scannedRule = patternRule({
     ...meta('fx-over-scanned'),
-    files: /\.yml$/,
-    line: [{ match: /bad/, what: 'w', fix: 'f' }],
+    scanFiles: /\.yml$/,
+    matchLines: [{ match: /bad/, what: 'w', fix: 'f' }],
   });
   const root = makeRepo({ changed: { 'in.yml': 'bad\n' }, uncommitted: { 'loose.yml': 'bad\n' } });
   try {
@@ -162,17 +162,17 @@ test('over: tracked scans only git-tracked files; the default scanned set sees u
   } finally { cleanup(root); }
 });
 
-test('repo assertions: require anywhere in scope silences; else flags each group hit at its anchor', () => {
-  const spec = {
-    files: /\.mjs$/,
-    repo: [{
-      require: /releaseAll\(/,
-      flag: [[/openMic\(/], [/Recognizer/, /\.start\(/]],
-      excludeFlagged: /\.test\.mjs$/,
+test('repoWide: a match for unlessSomeFileMatches anywhere in scope silences; else each group hit is flagged at its anchor', () => {
+  const rule = patternRule({
+    ...meta('fx-repo-leak'),
+    scanFiles: /\.mjs$/,
+    repoWide: [{
+      unlessSomeFileMatches: /releaseAll\(/,
+      flagFilesMatching: [[/openMic\(/], [/Recognizer/, /\.start\(/]],
+      neverFlagFiles: /\.test\.mjs$/,
       what: 'leaks', fix: 'release it',
     }],
-  };
-  const leakRule = patternRule({ ...meta('fx-repo-leak'), ...spec });
+  });
   const leaky = makeRepo({ changed: {
     'gum.mjs': 'setup();\nopenMic();\n',
     'rec.mjs': 'const r = new Recognizer();\nr.start();\n',
@@ -184,18 +184,89 @@ test('repo assertions: require anywhere in scope silences; else flags each group
     'teardown.mjs': 'releaseAll();\n',
   } });
   try {
-    const findings = leakRule.run(ctxOf(leaky));
+    const findings = rule.run(ctxOf(leaky));
     assert.deepEqual(findings.map((f) => [f.file, f.line]), [['gum.mjs', 2], ['rec.mjs', 1]]);
-    assert.equal(leakRule.run(ctxOf(released)).length, 0);
+    assert.equal(rule.run(ctxOf(released)).length, 0);
   } finally { cleanup(leaky); cleanup(released); }
+});
+
+test('requirePaths: each declared path must exist, with {path} interpolation', () => {
+  const rule = patternRule({
+    ...meta('fx-require-paths'),
+    requirePaths: [{ path: 'docs/PRIVACY.md', what: '{path} is missing', fix: 'create {path}' }],
+  });
+  const absent = makeRepo({ changed: { 'other.md': 'x\n' } });
+  const present = makeRepo({ changed: { 'docs/PRIVACY.md': 'p\n' } });
+  try {
+    const findings = rule.run(ctxOf(absent));
+    assert.deepEqual(findings.map((f) => [f.file, f.what, f.fix]),
+      [['docs/PRIVACY.md', 'docs/PRIVACY.md is missing', 'create docs/PRIVACY.md']]);
+    assert.equal(rule.run(ctxOf(present)).length, 0);
+  } finally { cleanup(absent); cleanup(present); }
+});
+
+test('listedInFile: every captured tree name must appear in the list file as the asText token, sorted, deduped', () => {
+  const rule = patternRule({
+    ...meta('fx-listed'),
+    listedInFile: [{
+      eachTrackedPathMatching: /^mods\/(?<name>[^/]+)\/mod\.mjs$/,
+      listFile: 'mods/INDEX.md',
+      asText: '[{name}]',
+      what: 'mod "{name}" is not listed',
+      fix: 'list [{name}] in the index',
+    }],
+  });
+  const root = makeRepo({ changed: {
+    'mods/zeta/mod.mjs': '1\n',
+    'mods/alpha/mod.mjs': '1\n',
+    'mods/listed/mod.mjs': '1\n',
+    'mods/INDEX.md': 'catalog: [listed]\n',
+  } });
+  const noIndex = makeRepo({ changed: { 'mods/alpha/mod.mjs': '1\n' } });
+  try {
+    const findings = rule.run(ctxOf(root));
+    assert.deepEqual(findings.map((f) => [f.file, f.what]),
+      [['mods/INDEX.md', 'mod "alpha" is not listed'], ['mods/INDEX.md', 'mod "zeta" is not listed']]);
+    assert.equal(rule.run(ctxOf(noIndex)).length, 0);
+  } finally { cleanup(root); cleanup(noIndex); }
+});
+
+test('coveredByGlobLine: a matching path needs a covering glob (full path or basename) on a filtered line', () => {
+  const rule = patternRule({
+    ...meta('fx-glob'),
+    coveredByGlobLine: [{
+      eachPathMatching: /(?<base>[^/]*GENERATED[^/]*)$/,
+      globFile: '.gitattributes',
+      globLineMatching: /\bmerge=ours\b/,
+      what: 'no merge=ours entry',
+      fix: 'add `{base} merge=ours`',
+    }],
+  });
+  const uncovered = makeRepo({ changed: {
+    'out/a.GENERATED.json': '{}\n',
+    '.gitattributes': '# a.GENERATED.json merge=ours\nunrelated.json merge=ours\nother.json linguist-vendored\n',
+  } });
+  const covered = makeRepo({ changed: {
+    'out/a.GENERATED.json': '{}\n',
+    'b.GENERATED.md': 'x\n',
+    '.gitattributes': '*.GENERATED.json merge=ours\nb.GENERATED.md merge=ours\n',
+  } });
+  const noGlobFile = makeRepo({ changed: { 'a.GENERATED.json': '{}\n' } });
+  try {
+    const findings = rule.run(ctxOf(uncovered));
+    assert.deepEqual(findings.map((f) => [f.file, f.fix]),
+      [['out/a.GENERATED.json', 'add `a.GENERATED.json merge=ours`']]);
+    assert.equal(rule.run(ctxOf(covered)).length, 0);
+    assert.equal(rule.run(ctxOf(noGlobFile)).length, 1);
+  } finally { cleanup(uncovered); cleanup(covered); cleanup(noGlobFile); }
 });
 
 test('one pass: files are read once for the whole rule family, and results are cached per context', () => {
   const a = patternRule({
-    ...meta('fx-pass-a'), files: /\.txt$/, line: [{ match: /aa/, what: 'a', fix: 'f' }],
+    ...meta('fx-pass-a'), scanFiles: /\.txt$/, matchLines: [{ match: /aa/, what: 'a', fix: 'f' }],
   });
   const b = patternRule({
-    ...meta('fx-pass-b'), files: /\.txt$/, file: [{ require: /present/, what: 'b', fix: 'f' }],
+    ...meta('fx-pass-b'), scanFiles: /\.txt$/, checkEachFile: [{ require: /present/, what: 'b', fix: 'f' }],
   });
   const root = makeRepo({ changed: { 'one.txt': 'aa\npresent\n', 'two.txt': 'aa\n' } });
   try {
@@ -217,11 +288,11 @@ test('one pass: files are read once for the whole rule family, and results are c
   } finally { cleanup(root); }
 });
 
-test('exclude removes files from scope (regex or exact path)', () => {
+test('excludeFiles removes files from scope (regex or exact path)', () => {
   const rule = patternRule({
     ...meta('fx-exclude'),
-    files: /\.yml$/, exclude: 'ops/skip.yml',
-    line: [{ match: /bad/, what: 'w', fix: 'f' }],
+    scanFiles: /\.yml$/, excludeFiles: 'ops/skip.yml',
+    matchLines: [{ match: /bad/, what: 'w', fix: 'f' }],
   });
   const root = makeRepo({ changed: { 'ops/skip.yml': 'bad\n', 'ops/keep.yml': 'bad\n' } });
   try {
@@ -231,7 +302,7 @@ test('exclude removes files from scope (regex or exact path)', () => {
 
 test('a fresh context is a fresh scan — the cache never bleeds between repos', () => {
   const rule = patternRule({
-    ...meta('fx-fresh'), files: /\.txt$/, line: [{ match: /bad/, what: 'w', fix: 'f' }],
+    ...meta('fx-fresh'), scanFiles: /\.txt$/, matchLines: [{ match: /bad/, what: 'w', fix: 'f' }],
   });
   const dirty = makeRepo({ changed: { 'a.txt': 'bad\n' } });
   const clean = makeRepo({ changed: { 'a.txt': 'fine\n' } });
