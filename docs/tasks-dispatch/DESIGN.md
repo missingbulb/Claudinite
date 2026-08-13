@@ -434,10 +434,13 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
    alone. That property cannot be mechanically checked, so no check is
    proposed and the residual exposure stands — an item closed
    `outcome:obsolete` with a calendar reason in its comment, which is visible
-   and costs a cycle, not correctness. The live case at migration is
-   baselining's `ageDays > 1` gate: its stale-mount half is already a work
-   question ("is the mount behind canon?"), and its once-a-day half is what
-   `frequency: daily-2h` says on its own.
+   and costs a cycle, not correctness. The one live offender is resolved by
+   ruling rather than grandfathered: **baselining's `ageDays > 1` gate is
+   dropped outright** (owner, 2026-08-13: "the wrong precondition"). Its
+   precondition becomes the work question alone — is the mount behind canon
+   head, are migration notes unapplied — with cadence carried by
+   `frequency: daily-2h` and nothing else. The corpus enters the new mechanism
+   with zero calendar preconditions.
 5. **Prework**, Action-side, unchanged contract: subprocess, task dir cwd,
    `required_secrets` as env, timeout, `CLAUDINITE_REQUEST_AGENT` conditional
    hand-off. One requirement now stated explicitly (SCENARIOS S8/F12): prework
@@ -697,15 +700,27 @@ so a task that needs wider access declares a different invocation target and
 nothing else in the system needs a concept of scope. The canon's curation
 tasks become ordinary tasks that name a wider endpoint.
 
-One elaboration on the literal instruction, flagged rather than slipped in: a
-task declares an endpoint **name**, and the repo's config maps that name to
-the URL and the credential it uses. A raw URL in a `task.mjs` would put
-deployment detail — and something adjacent to a credential — into a vendored
-pack file that every consuming repo receives verbatim, which is the one thing
-pack files must never carry. Same effect, same one-line declaration at the
-task; the indirection just keeps the secret-shaped half in the repo's config
-where `required_secrets` already lives. Say the word if you meant the literal
-URL and I will change it.
+The declaration shape (owner-confirmed, 2026-08-13): a task declares an
+endpoint **name**; the repo's config maps that name to the invocation URL and
+to **the name of the repo Actions secret holding its token**. A raw URL in a
+`task.mjs` would put deployment detail — and something adjacent to a
+credential — into a vendored pack file every consuming repo receives verbatim,
+which is the one thing pack files must never carry; the name keeps the
+secret-shaped half in the repo's config where `required_secrets` already
+lives.
+
+**The token must be usable from the GitHub Action, and the plumbing is the
+`required_secrets` plumbing, reused exactly**: the wiring converge stamps each
+endpoint's secret into the executor workflow's env by name, so the executor
+job — the *only* place invocation happens — reads it as ordinary environment.
+This works because Actions secrets are reachable Action-side and nowhere else
+in a task's life, and Action-side is precisely where the executor runs; the
+agent session it invokes still carries no secrets, unchanged. Baselining asks
+the owner (the standing-issue posture) for any endpoint secret the repo
+declares but has not configured; until then the tasks naming that endpoint
+converge `needs-human` at hand-off with the missing secret named — the same
+"nothing fails, the task just doesn't work yet" posture `required_secrets`
+has.
 
 ## 13. What retires, what survives
 
