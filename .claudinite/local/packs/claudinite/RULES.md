@@ -36,7 +36,7 @@ prose below).
   a member list (or a "fleet" task) living in the canon. It doesn't go here: the canon carries only
   **mechanisms exercised on itself**, and the knowledge of *which* repos exist stays in the
   **Sheepdog** repo and its pack, which enumerates members at runtime from its own
-  `.claudinite-checks.json` entry — exactly where `fleet-census` and `fleet-freshness` already keep
+  `.claudinite-checks.json` entry — exactly where the `fleet-roster` sweep already keeps
   it. So a cross-repo feature splits in two: a self-contained per-repo half in the canon, and the
   aggregation half as a Sheepdog fleet task. **No repo list exists anywhere in canon code** — and a
   derived fleet artifact lands in Sheepdog as a daily **auto-merged PR of a `GENERATED` file**,
@@ -497,3 +497,14 @@ prose below).
   work that completes or corrects an open PR belongs on that PR's branch. Splitting it gives the owner
   two gates for one decision and invites approving half — #739's new pack was approvable while
   `basics` still held a rule the pack owned.
+- **A held stamp reads as stale if you judge a member by `claudinite.updated` alone — read `ref`
+  too.** `heldStamp()` pins a repo's `updated` to the day before its earliest pending agentic note
+  (#330), so a mount converging normally every night can still show a week-old `updated` for as
+  long as that note stays unapplied — which is the mechanism working, not a sign of a dead repo.
+  Misread live 2026-08-12 (#768): a session called ClaudiniteCanary and GoogleCalendarEventCreator
+  stale on `updated` alone, when both were converging hourly and simply carried a pending
+  `prework-rename` note — the tell was in the same object all along, a bare-midnight `updated`
+  beside a `ref` naming a canon commit from the day before. Any freshness claim about a member must
+  read `ref` (or, once a repo is served by the versioned-updates flow, its `engineVersion` /
+  `packVersions` — #786 tracks the sweep that still doesn't) rather than `updated` in isolation: a
+  held stamp looks most stale exactly when the repo most needs someone to look at it.
