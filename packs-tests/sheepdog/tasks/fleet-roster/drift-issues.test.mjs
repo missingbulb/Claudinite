@@ -1,10 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  classifyFreshness, convergeDrift, probe, renderFreshnessSummary, FRESH,
-} from '../../../../packs/sheepdog/tasks/fleet-freshness/check-fleet-freshness.mjs';
+  classifyFreshness, convergeDrift, probeMount, renderFreshnessSummary, FRESH,
+} from '../../../../packs/sheepdog/tasks/fleet-roster/drift-issues.mjs';
 
-// The freshness sweep's whole judgement is `classifyFreshness` — pure, so every
+// The freshness question's whole judgement is `classifyFreshness` — pure, so every
 // branch is exercised here without a network. The precedence between states is the
 // point of the function, not an accident of the if-chain: a member with no scheduler
 // is ALSO behind, and reporting "behind" would send the reader chasing a symptom.
@@ -55,12 +55,11 @@ test('classifyFreshness: root cause wins over symptom', () => {
   assert.equal(classify({ stampedRef: null, compare: null }).state, 'no-stamp');
 });
 
-// --- dormancy -----------------------------------------------------------------
-// A dormant member's scheduler stops before it evaluates anything, so its mount
-// falls behind BY DESIGN. Every state above would fire on it, and each would be a
-// report that the repo did what it was told. The probe stops at the declaration.
+// --- the mount probe ----------------------------------------------------------
+// It is handed the declaration the roster walk already read, and adds only the two
+// reads this question needs on top of it. Dormancy and coverage are decided before it
+// is ever called (check-fleet-roster.mjs), which is why nothing here tests them.
 
-// A fake contents API over `{ '<owner/repo>:<path>': <object|404> }`.
 function contentsGh(files) {
   const seen = [];
   const gh = async (path) => {
@@ -73,27 +72,20 @@ function contentsGh(files) {
   return { gh, seen };
 }
 
-test('probe: a member that declares itself dormant is never classified', async () => {
-  const { gh, seen } = contentsGh({
-    'o/asleep:.claudinite-checks.json': { packs: ['basics'], dormant: true, claudinite: { ref: 'old' } },
-  });
-  assert.deepEqual(await probe(gh, 'o/asleep', { canonRepo: 'o/canon', canonBranch: 'main' }), { dormant: true });
-  // …and the stamp it carries — deliberately stale here — is not even looked up
-  // against canon: no scheduler-workflow read, no compare.
-  assert.deepEqual(seen, ['/repos/o/asleep/contents/.claudinite-checks.json']);
-});
-
-test('probe: an ordinary member is still probed in full', async () => {
-  // The negative that keeps the gate honest — dormancy is opt-in, and absence of
-  // the key must leave the sweep exactly as it was.
-  const { gh, seen } = contentsGh({
-    'o/awake:.claudinite-checks.json': { packs: ['basics'], claudinite: { ref: 'abc' } },
-  });
-  const p = await probe(gh, 'o/awake', { canonRepo: 'o/canon', canonBranch: 'main' });
-  assert.equal(p.dormant, undefined);
+test('probeMount: reads the scheduler and the compare, and never re-reads the declaration', async () => {
+  const { gh, seen } = contentsGh({});
+  const p = await probeMount(gh, 'o/awake', { claudinite: { ref: 'abc' } }, { canonRepo: 'o/canon', canonBranch: 'main' });
   assert.equal(p.stampedRef, 'abc');
   assert.equal(p.hasScheduler, false);           // the fake serves no workflow file
-  assert.equal(seen.length, 3, 'declaration + scheduler workflow + canon compare');
+  assert.equal(seen.length, 2, 'scheduler workflow + canon compare — the declaration came from the walk');
+  assert.equal(seen.filter((s) => s.includes('.claudinite-checks.json')).length, 0);
+});
+
+test('probeMount: a member with no stamp is never compared against canon', async () => {
+  const { gh, seen } = contentsGh({});
+  const p = await probeMount(gh, 'o/unvendored', { packs: [] }, { canonRepo: 'o/canon', canonBranch: 'main' });
+  assert.equal(p.stampedRef, null);
+  assert.equal(seen.length, 1, 'there is no ref to compare, so no compare is made');
 });
 
 // --- convergence --------------------------------------------------------------
@@ -119,18 +111,33 @@ const issue = (n, fullName, state, bodyState) => ({
 const verdict = (fullName, state) => ({ fullName, state, detail: 'because' });
 const empty = { unhealthy: [], healthySet: new Set(), goneSet: new Set(), staleDays: 14 };
 
+test('convergeDrift: the body marker still spells the retired task name', async () => {
+  // Every drift issue open in the enforcer right now carries `fleet-freshness` in its
+  // marker. Renaming it to match the merged task would read all of them as
+  // `unrecorded` and comment a spurious verdict change on the first run after the
+  // merge — so the marker is frozen, and this is the test that keeps it frozen.
+  const { gh, calls } = fakeGh([]);
+  await convergeDrift(gh, 'o/home', { ...empty, unhealthy: [verdict('o/a', 'behind')] });
+  assert.match(calls[0].body.body, /<!-- fleet-freshness: behind -->/);
+
+  const migrated = fakeGh([issue(7, 'o/a', 'open', 'behind')]);
+  assert.deepEqual(await convergeDrift(migrated.gh, 'o/home', { ...empty, unhealthy: [verdict('o/a', 'behind')] }), [],
+    'an issue written by the old fleet-freshness task is read, not re-opened as unrecorded');
+});
+
 test('convergeDrift: opens one issue per newly-unhealthy member', async () => {
   const { gh, calls } = fakeGh([]);
   const actions = await convergeDrift(gh, 'o/home', { ...empty, unhealthy: [verdict('o/a', 'behind')] });
   assert.deepEqual(actions, ['opened #99 (o/a: behind)']);
   assert.equal(calls[0].body.labels[0], 'fleet-drift');
-  assert.match(calls[0].body.body, /<!-- fleet-freshness: behind -->/);
 });
 
 test('convergeDrift: an unchanged verdict is silent; a changed one updates and comments once', async () => {
+  // The silence is what lets the merged task carry this question daily rather than
+  // weekly: a fleet slow to heal would otherwise get an identical note every morning.
   const same = fakeGh([issue(7, 'o/a', 'open', 'behind')]);
   assert.deepEqual(await convergeDrift(same.gh, 'o/home', { ...empty, unhealthy: [verdict('o/a', 'behind')] }), []);
-  assert.deepEqual(same.calls, [], 'a weekly sweep must not re-comment the same story');
+  assert.deepEqual(same.calls, [], 'a daily sweep must not re-comment the same story');
 
   const moved = fakeGh([issue(7, 'o/a', 'open', 'behind')]);
   const actions = await convergeDrift(moved.gh, 'o/home', { ...empty, unhealthy: [verdict('o/a', 'no-scheduler')] });
@@ -179,10 +186,10 @@ test('convergeDrift: reopens a regression, but honours a deliberate not-planned 
 });
 
 // --- the run summary ----------------------------------------------------------
-// The sweep's report is a FULL-fleet roster: fresh members are named with how
-// fresh, out-of-scope repos with why, and the two repos the sweep never measures
-// (the enforcer and canon) are named rather than silently absent. Pure renderer,
-// so the property is testable without a network.
+// The freshness section is a FULL-fleet roster: fresh members are named with how
+// fresh, out-of-scope repos with why, and the two repos it never measures (the
+// enforcer and canon) are named rather than silently absent. Pure renderer, so the
+// property is testable without a network.
 
 const summaryInput = {
   owner: 'o',
@@ -193,7 +200,7 @@ const summaryInput = {
   fresh: [{ fullName: 'o/alpha', detail: 'at canon head' }, { fullName: 'o/beta', detail: '2 canon commit(s) behind, within the 14-day window' }],
   unhealthy: [{ fullName: 'o/late', state: 'behind', detail: 'stamped 20 days ago' }],
   dormant: ['o/asleep'],
-  outOfScope: ['o/attic (archived)', 'o/naked (uncovered — the census\'s subject)', 'o/left-out (excluded)'],
+  outOfScope: ['o/attic (archived)', 'o/naked (uncovered — the adoption half\'s subject)', 'o/left-out (excluded)'],
   unknown: ['o/flaky — probe returned 500'],
   actions: [],
 };
@@ -203,7 +210,7 @@ test('freshness summary: every repo appears by name, whatever its state', () => 
   for (const repo of ['o/alpha', 'o/beta', 'o/late', 'o/asleep', 'o/attic', 'o/naked', 'o/left-out', 'o/flaky']) {
     assert.ok(out.includes(repo), `${repo} must be named in the summary`);
   }
-  // The two the sweep never measures are still accounted for, with why.
+  // The two it never measures are still accounted for, with why.
   assert.match(out, /\*\*Not measured:\*\* `o\/sheepdog` — the enforcer.*`o\/Claudinite` — canon/);
 });
 

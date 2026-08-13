@@ -4,18 +4,23 @@ Declaring this pack marks a repo as the **fleet enforcer**: the one repo that co
 every repo under an owner. It's opt-in — a dedicated `sheepdog` repo declares it (it is **not** seeded
 by `--init`).
 
-It contributes the pieces only a fleet enforcer needs — four **cross-repo sweeps** — plus their config
-schema and the scheduled tasks that run them. The rest of the machinery — running the daily-run (the
-orchestrator), the task engine (`engine/scheduler/`), scheduling — is Claudinite **core**, because
+It contributes the pieces only a fleet enforcer needs — the **cross-repo sweeps** — plus their
+config schema and the scheduled tasks that run them. The rest of the machinery — running the
+daily-run (the orchestrator), the task engine (`engine/scheduler/`), scheduling — is Claudinite
+**core**, because
 baselining and the daily-run are Claudinite's own responsibility, not the pack's.
 
-**Six tasks, six questions** — separate, because they close on unrelated conditions. The
-**census** ([check-fleet-coverage.mjs](tasks/fleet-census/check-fleet-coverage.mjs)) asks *is this repo a
-member* and converges `fleet-adoption` issues. The **freshness sweep**
-([check-fleet-freshness.mjs](tasks/fleet-freshness/check-fleet-freshness.mjs)) takes coverage as given, asks *is that
-membership still meaning anything*, and converges `fleet-drift` issues. The second exists because
+**Five tasks** — separate, because they close on unrelated conditions. The **roster sweep**
+([check-fleet-roster.mjs](tasks/fleet-roster/check-fleet-roster.mjs)) walks the fleet once and
+answers two questions from that one walk: *is this repo a member*, converging `fleet-adoption`
+issues ([adoption-issues.mjs](tasks/fleet-roster/adoption-issues.mjs)), and *is that membership
+still meaning anything*, converging `fleet-drift` issues
+([drift-issues.mjs](tasks/fleet-roster/drift-issues.mjs)). The second question exists because
 per-project scheduling made every member maintain itself and removed the last outside look at one:
-self-maintenance cannot detect its own absence. The **missing-packs task**
+self-maintenance cannot detect its own absence. They share a walk rather than a task each because
+each used to re-derive the other's classification and the two could disagree
+([#788](https://github.com/missingbulb/Claudinite/issues/788)); what stays separate is the two
+**issue families**, never the enumeration. The **missing-packs task**
 ([fleet-add-missing-packs](tasks/fleet-add-missing-packs/task.md)) asks whether a member's declared pack
 set still *matches the repo* — by fingerprint on its weekly scan
 ([scan-for-needed-packs.mjs](tasks/fleet-add-missing-packs/scan-for-needed-packs.mjs)), or from what the
@@ -112,7 +117,7 @@ this fleet wants every member to declare — each `{ id, config? }`, seeded into
 list is the **only** place a pack is named: the sweep carries the mechanism, the fleet carries the
 choice. All three default, so an existing sheepdog config keeps working untouched.
 
-**Classification** — the census, freshness, usage and pack-seed sweeps are ordinary **pack tasks**,
+**Classification** — the roster, usage and pack-seed sweeps are ordinary **pack tasks**,
 not fleet mechanisms. Their *implementation* — an account-spanning PAT — happens to scan every repo
 under the owner, but their declaration, scheduling, and lifecycle are exactly those of any pack task.
 None declares the `fleet` signal; the cross-repo reach lives in the implementation, never in how a
@@ -156,8 +161,8 @@ settles those exactly (`localFits`, [tasks/fleet-add-missing-packs/fingerprint-f
 A truncated tree listing makes every non-match on that repo undecided for the same reason: "we did not
 look" and "we looked and it isn't there" are different facts, and only one is safe to act on.
 
-**How they run** — as the pack's [`fleet-census`](tasks/fleet-census/task.md) (`daily`),
-[`fleet-freshness`](tasks/fleet-freshness/task.md) (`weekly`), [`fleet-add-missing-packs`](tasks/fleet-add-missing-packs/task.md)
+**How they run** — as the pack's [`fleet-roster`](tasks/fleet-roster/task.md) (`daily`),
+[`fleet-add-missing-packs`](tasks/fleet-add-missing-packs/task.md)
 (`weekly`), [`fleet-usage`](tasks/fleet-usage/task.md) (`daily`) and
 [`fleet-pack-seeds`](tasks/fleet-pack-seeds/task.md) (`daily`) and
 [`fleet-baseline`](tasks/fleet-baseline/task.md) (`manual`) scheduled tasks, each with its
@@ -168,17 +173,18 @@ always reviewed; the usage sweep is `merged-pr`, because its output IS a tracked
 auto-merging PR keeps that write inside the outcome taxonomy, lets this repo's CI gate a malformed
 file, and makes the daily PR stream a browsable audit trail. The pack-seed sweep is `none` for a
 different reason: its write goes to **other** repos, and the ceiling describes what a task may do to its
-own. Freshness is weekly because drift is
-measured in days — a daily sweep would re-ask a question whose answer cannot have changed; usage is
+own. The roster is daily on its coverage question's cadence, and its freshness half rides along
+rather than gating itself on a weekly clock it would have to compute — two extra reads per covered
+member, and a drift verdict that is silent unless the root cause changed; usage is
 daily because the members fold daily; pack seeds is daily because a member becomes writable the moment
 its nightly converge vendors the pack, and daily makes that "the next morning". There is **no coverage workflow** — preprocessing
 runs Action-side inside this repo's one scheduler workflow, so the repo Actions secret is already
 reachable there; each task's `required_secrets: ['FLEET_GITHUB_TOKEN']` stamps the name into that
 workflow's env and is what asks the owner for it (a fine-grained PAT spanning the owner's repos:
-Metadata read, **Contents read and write**, Issues read/write — freshness adds no scope, and the
-pack-seed sweep is what raises Contents from read-only across the fleet to read/write, because writing
-one declaration into each member is its whole job; Contents write on this repo also covers
-baseline-migration retirement). A workflow that exists only to hold a secret is redundant
+Metadata read, **Contents read and write**, Issues read/write — the roster's freshness half adds
+no scope, and the pack-seed sweep is what raises Contents from read-only across the fleet to
+read/write, because writing one declaration into each member is its whole job; Contents write on
+this repo also covers baseline-migration retirement). A workflow that exists only to hold a secret is redundant
 ([packs/basics/scheduled-tasks.md](../basics/scheduled-tasks.md)) — the force-baseline workflow above is
 not that: it exists because the operation is manual, and it reads the same secret only incidentally.
 
@@ -202,10 +208,11 @@ named as such rather than silently absent. The sheepdog provides data on the fle
 state: a roster that names only the exceptions has silent holes, and a reader cannot tell "fine"
 from "fell out of the report".
 
-**When they fail** — a repo the census cannot classify is `unknown`, never uncovered; a member the
-freshness sweep cannot probe is `unknown`, never behind; a member the fit scan cannot read is
-`unknown`, never fitted, and a member whose scheduler refused the fan-out dispatch is named and fails
-the run — a work list nobody will act on is not a green outcome; a member the pack-seed sweep cannot read or
-write is `unknown`, never assumed converged: no issue opened, no open issue closed on its
+**When they fail** — a repo whose declaration the roster cannot read is `unknown` to **both** its
+questions, never uncovered and never behind; a member whose *mount probe* fails is `unknown` to the
+freshness question alone, because its declaration was read and the coverage verdict stands; a member
+the fit scan cannot read is `unknown`, never fitted, and a member whose scheduler refused the
+fan-out dispatch is named and fails the run — a work list nobody will act on is not a green
+outcome; a member the pack-seed sweep cannot read or write is `unknown`, never assumed converged: no issue opened, no open issue closed on its
 behalf, and a non-zero exit. A non-zero preprocessing subprocess fails the task, and the scheduler
 converges one open `needs-human` issue for it.
