@@ -206,6 +206,14 @@ than assumed:
 Terminal-state discipline is unchanged: every item converges exactly once to
 exactly one of the four ends, with one comment saying what happened.
 
+**Label writes are granular, always** ([RESEARCH](RESEARCH.md) §2): add and
+remove named labels (REST POST/DELETE), never write the label *set* (PUT,
+GraphQL `updateIssue`) — a set-write replaces from a stale snapshot and
+clobbers concurrent transitions, a bug class GitHub's own CLI shipped
+([cli/cli#4861](https://github.com/cli/cli/pull/4861)). With multiple
+executors and a tick all moving labels, this is a correctness rule, not a
+style preference.
+
 **The road back from `needs-human`** (SCENARIOS S12/S19, F7): a human who has
 resolved the cause re-queues the item by removing `needs-human` and applying
 `task:ready` — the sanctioned retry lever, write-gated like every label
@@ -407,7 +415,47 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
 
 An executor run may iterate (claim → … → hand off, next pick) up to a
 configured `maxItems`; the default is a small number, and each item's claim is
-independently leased, so executor concurrency is safe at any width. Running
+independently leased, so executor concurrency is safe at any width. One bound
+ties the executor to its leash ([RESEARCH](RESEARCH.md) §2 — the
+stalled-worker lesson): the executor job's `timeout-minutes` must be **≤ the
+executing leash**, so a hung runner is killed by the platform before its
+claim is reaped and re-picked — otherwise a zombie's prework runs beside its
+replacement's.
+
+**Idempotency, honestly (owner concern, 2026-08-13: "I'm not sure we can
+guarantee all tasks to be idempotent").** Agreed — and the design does not
+require it. The queue literature's blanket "make handlers idempotent" applies
+to systems where duplicate *invocations* reach the handler; here every
+duplicate-invocation path collapses at a lease **before work starts** (the
+executor claim, §6.2; the agent claim, §7), so what tasks must actually
+tolerate is much narrower:
+
+- **Prework must be re-entrant** — a *sequential* re-run after a
+  crash-and-reclaim (§6.5). That is convergence ("check what exists, continue
+  from there"), not idempotency, and it is already required of prework today.
+  Concurrent overlap with a zombie run is excluded by construction
+  (`timeout-minutes` ≤ leash, above), not asked of the task.
+- **Re-executed agent work passes through the precondition again** (§6.4),
+  and the half-run's artifacts are on the item (Delivered section, the
+  PR-number comments the agent posts as it works — the item is the run's own
+  inbox/outbox). A re-pick therefore *sees* what already happened and
+  converges `outcome:obsolete` instead of redoing it — check-before-act,
+  carried by the mechanism, not by task-author discipline.
+- The residual overlap cases are bounded by the **write ceiling**: the worst
+  historical duplicate produced twin PRs — visible, closeable, never
+  destructive.
+
+And for a task that can promise none of this — a genuinely one-shot side
+effect (a store submission, an external notification, a payment-shaped
+action): the contract gains **`on_interrupt: 'requeue' | 'needs-human'`**
+(default `'requeue'`). Declaring `'needs-human'` makes every recovery path
+that would re-execute — leash reclaim (§11), hand-off retry (§6.6), the
+human re-queue lever (§4) — converge to triage instead: **at-most-once plus
+a human**. This is the ack-early/ack-late dial every queue exposes, and
+Celery ships ack-early as its *default* precisely so non-idempotent tasks
+are never silently re-run ([RESEARCH](RESEARCH.md) §1); here the safe-side
+default stays `'requeue'` because most of this fleet's tasks are
+sweep-shaped, and the one-shot minority declares itself. Running
 more executors — a second workflow instance, a laptop, a k8s job — requires
 only an issues-scope token; nothing about the queue knows how many exist.
 
@@ -505,8 +553,10 @@ by the tick (§5). Three patterns fall out, all from the sketch:
   a fan-out" stops being a bespoke sweep and becomes an ordinary task whose
   edges the tick already evaluates.
 
-Native GitHub sub-issues / issue dependencies can *mirror* these fields for
-human navigation where available, but the body fields are the truth the tick
+Native GitHub issue dependencies (blocked-by/blocking — GA since Aug 2025,
+API- and webhook-supported) and sub-issues *mirror* these fields: the tick
+writes the native edge alongside the body field, buying the dependency UI for
+free ([RESEARCH](RESEARCH.md) §2). The body fields remain the truth the tick
 parses — they are portable to any tracker with issues, labels, and comments,
 which is the platform-agnosticism the sketch asks for. One vendored module owns
 parse/serialize of the two fields; nothing else touches them.
@@ -584,7 +634,7 @@ fleet-marked items, or to the API invocation naming the routine; decide with
 §12), `SLOT_PERIOD_MS` title parsing.
 
 Survives unchanged: the task folder and contract (plus the new optional
-`after`), preconditions as the only decision point (evaluated at admission and
+`after` and `on_interrupt`), preconditions as the only decision point (evaluated at admission and
 at pickup, §6.4), prework and `required_secrets`, outcome ceilings and
 `verify-outcome`, the claim lease, one-agent-one-item, terminal convergence,
 `claudinite-task-exec` records and the usage fold (plus outcome labels as a
@@ -645,6 +695,18 @@ From the scenario play-through ([SCENARIOS.md](SCENARIOS.md)):
    waits until a human resolves that child — no quorum/deadline semantics,
    deliberately, at this scale; the janitor's stale escalation is the
    visibility. Revisit only on evidence.
+
+From the literature survey ([RESEARCH.md](RESEARCH.md)):
+
+10. **Ref-creation CAS claims** — git ref creation is the platform's one true
+    first-writer-wins primitive (`refs/claudinite/claim/<n>`), which would
+    replace the comment-ordering lease outright. Recommendation: keep comment
+    leases (visible on the item, sufficient at our concurrency) unless a real
+    lost-race incident occurs; recorded so it isn't re-derived.
+11. **Invocation idempotency key** — if the CCR session-creation API accepts
+    an idempotency key, pass the §6.6 nonce as one: duplicates then collapse
+    at creation and the agent-side lease becomes the backstop rather than the
+    mechanism. One API-docs check at implementation time.
 
 ---
 
