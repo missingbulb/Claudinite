@@ -12,6 +12,7 @@ import catalogCompleteness from './catalog-completeness.mjs';
 import claudiniteIsolation from './claudinite-isolation.mjs';
 import schedulerWorkflowShape from './scheduler-workflow-shape.mjs';
 import taskDeclarationShape from './task-declaration-shape.mjs';
+import taskDeclarationMatchesFolder from './task-declaration-matches-folder.mjs';
 import taskPhaseDiscipline from './task-phase-discipline.mjs';
 import conformanceWorkflow from './conformance-workflow.mjs';
 import rulesLineLength from './rules-line-length.mjs';
@@ -55,10 +56,11 @@ export default {
     // The per-project scheduling conformance guards (scheduled-tasks.md):
     // scheduling is baseline Claudinite discipline — the scheduler workflow and
     // the task-declaration contract are guarded wherever basics is declared
-    // (everywhere). Both rules are relevance-first: inert until the repo carries
+    // (everywhere). All three are relevance-first: inert until the repo carries
     // the workflow / a tasks/<name>/task.mjs of its own.
     schedulerWorkflowShape,
     taskDeclarationShape,
+    taskDeclarationMatchesFolder,
     // The precondition-is-the-only-gate discipline (owner, 2026-08-06): an
     // advisory hunt for tasks that "escape" — skip their work in the prework or
     // agentic phase after the precondition already said run.
