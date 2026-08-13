@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "foldedThrough": "2026-08-11",
-  "runsFoldedThrough": "2026-08-12T03:12:38Z",
+  "foldedThrough": "2026-08-12",
+  "runsFoldedThrough": "2026-08-13T03:54:22Z",
   "days": {
     "2026-07-19": {
       "captures": 5,
@@ -1571,48 +1571,183 @@
       }
     },
     "2026-08-12": {
-      "captures": 1,
-      "merges": 1,
-      "sessions": 1,
-      "userMessages": 0,
-      "userCommands": 0,
-      "skillLoads": {},
+      "captures": 17,
+      "merges": 16,
+      "sessions": 8,
+      "userMessages": 51,
+      "userCommands": 2,
+      "skillLoads": {
+        "single-issue-triage": 1,
+        "writing-claudinite-skills": 1
+      },
       "checks": {
         "work": {
-          "runs": 3,
-          "failures": 3,
+          "runs": 106,
+          "failures": 14,
           "errors": 0,
-          "blocking": 3,
+          "blocking": 17,
           "advisory": 0,
           "ciRuns": 0,
           "ciFailures": 0
         },
         "world": {
+          "runs": 95,
+          "failures": 2,
+          "errors": 0,
+          "blocking": 2,
+          "advisory": 1330,
+          "ciRuns": 2,
+          "ciFailures": 0
+        }
+      },
+      "checkFindings": {
+        "barrier": {
+          "blocking": 1,
+          "advisory": 0
+        },
+        "comment-classification": {
+          "blocking": 6,
+          "advisory": 0
+        },
+        "consumer-safe-change": {
+          "blocking": 4,
+          "advisory": 0
+        },
+        "engine-release-record": {
+          "blocking": 1,
+          "advisory": 0
+        },
+        "file-placement": {
+          "blocking": 0,
+          "advisory": 19
+        },
+        "reference-integrity": {
+          "blocking": 2,
+          "advisory": 0
+        },
+        "rules-line-length": {
+          "blocking": 0,
+          "advisory": 20
+        },
+        "squash-merge-history": {
+          "blocking": 2,
+          "advisory": 0
+        },
+        "task-lifecycle": {
+          "blocking": 2,
+          "advisory": 0
+        },
+        "task-phase-discipline": {
+          "blocking": 0,
+          "advisory": 17
+        }
+      },
+      "tasks": {
+        "basics/baselining": {
+          "agent": 0,
+          "prework": 0,
+          "skipped": 1,
+          "failed": 0,
+          "deferred": 0
+        },
+        "basics/task-janitor": {
+          "agent": 0,
+          "prework": 1,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "canon-curation/growth-promote": {
+          "agent": 1,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "grow_with_claudinite/growth-extract": {
+          "agent": 1,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "grow_with_claudinite/usage-fold": {
+          "agent": 0,
+          "prework": 1,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "tidy-repo/tidy-issues": {
+          "agent": 1,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        }
+      },
+      "taskExec": {
+        "canon-curation/growth-promote": {
+          "success": 0,
+          "failed": 1,
+          "task-gone": 0,
+          "invalid": 0
+        },
+        "grow_with_claudinite/growth-extract": {
+          "success": 1,
+          "failed": 0,
+          "task-gone": 0,
+          "invalid": 0
+        },
+        "tidy-repo/tidy-issues": {
+          "success": 1,
+          "failed": 0,
+          "task-gone": 0,
+          "invalid": 0
+        }
+      }
+    },
+    "2026-08-13": {
+      "captures": 1,
+      "merges": 1,
+      "sessions": 1,
+      "userMessages": 0,
+      "userCommands": 0,
+      "skillLoads": {
+        "extract-from-activity": 1,
+        "extract-from-conversations": 1,
+        "prose-to-checks": 1
+      },
+      "checks": {
+        "world": {
           "runs": 1,
           "failures": 0,
           "errors": 0,
           "blocking": 0,
-          "advisory": 17,
+          "advisory": 35,
           "ciRuns": 0,
           "ciFailures": 0
         }
       },
       "checkFindings": {
         "comment-classification": {
-          "blocking": 1,
+          "blocking": 2,
           "advisory": 0
         },
-        "consumer-safe-change": {
-          "blocking": 1,
-          "advisory": 0
-        },
-        "task-lifecycle": {
-          "blocking": 1,
-          "advisory": 0
+        "task-phase-discipline": {
+          "blocking": 0,
+          "advisory": 2
         }
       },
       "tasks": {
         "basics/baselining": {
+          "agent": 0,
+          "prework": 0,
+          "skipped": 1,
+          "failed": 0,
+          "deferred": 0
+        },
+        "basics/update": {
           "agent": 0,
           "prework": 0,
           "skipped": 1,
@@ -2100,88 +2235,110 @@
       }
     },
     "2026-W33": {
-      "days": 2,
-      "captures": 11,
-      "merges": 11,
-      "sessionDays": 11,
-      "userMessages": 21,
-      "userCommands": 2,
+      "days": 3,
+      "captures": 28,
+      "merges": 27,
+      "sessionDays": 19,
+      "userMessages": 72,
+      "userCommands": 4,
       "skillLoads": {
         "git-github:merge-to-main": 1,
         "merge-to-main": 1,
         "prose-to-checks": 1,
-        "single-pr-status": 3
+        "single-issue-triage": 1,
+        "single-pr-status": 3,
+        "writing-claudinite-skills": 1
       },
       "checks": {
         "work": {
-          "runs": 26,
-          "failures": 8,
+          "runs": 132,
+          "failures": 22,
           "errors": 0,
-          "blocking": 9,
+          "blocking": 26,
           "advisory": 0,
           "ciRuns": 0,
           "ciFailures": 0
         },
         "world": {
-          "runs": 37,
-          "failures": 0,
+          "runs": 132,
+          "failures": 2,
           "errors": 0,
-          "blocking": 0,
-          "advisory": 502,
-          "ciRuns": 0,
+          "blocking": 2,
+          "advisory": 1832,
+          "ciRuns": 2,
           "ciFailures": 0
         }
       },
       "checkFindings": {
+        "barrier": {
+          "blocking": 1,
+          "advisory": 0
+        },
         "comment-classification": {
-          "blocking": 5,
+          "blocking": 11,
           "advisory": 0
         },
         "consumer-safe-change": {
-          "blocking": 2,
+          "blocking": 6,
           "advisory": 0
         },
         "deprecated-session-scope": {
           "blocking": 0,
           "advisory": 2
         },
+        "engine-release-record": {
+          "blocking": 1,
+          "advisory": 0
+        },
         "file-placement": {
           "blocking": 0,
-          "advisory": 3
+          "advisory": 22
+        },
+        "reference-integrity": {
+          "blocking": 2,
+          "advisory": 0
+        },
+        "rules-line-length": {
+          "blocking": 0,
+          "advisory": 20
+        },
+        "squash-merge-history": {
+          "blocking": 2,
+          "advisory": 0
         },
         "task-lifecycle": {
-          "blocking": 2,
+          "blocking": 4,
           "advisory": 0
         },
         "task-phase-discipline": {
           "blocking": 0,
-          "advisory": 23
+          "advisory": 40
         }
       },
       "tasks": {
         "basics/baselining": {
           "agent": 0,
           "prework": 0,
-          "skipped": 2,
+          "skipped": 3,
           "failed": 0,
           "deferred": 0
         },
         "basics/task-janitor": {
           "agent": 0,
-          "prework": 2,
+          "prework": 3,
           "skipped": 0,
           "failed": 0,
           "deferred": 0
         },
         "canon-curation/growth-promote": {
-          "agent": 1,
+          "agent": 2,
           "prework": 0,
           "skipped": 0,
           "failed": 0,
           "deferred": 1
         },
         "grow_with_claudinite/growth-extract": {
-          "agent": 2,
+          "agent": 3,
           "prework": 0,
           "skipped": 0,
           "failed": 0,
@@ -2189,13 +2346,13 @@
         },
         "grow_with_claudinite/usage-fold": {
           "agent": 0,
-          "prework": 2,
+          "prework": 3,
           "skipped": 0,
           "failed": 0,
           "deferred": 0
         },
         "tidy-repo/tidy-issues": {
-          "agent": 1,
+          "agent": 2,
           "prework": 0,
           "skipped": 1,
           "failed": 0,
@@ -2211,18 +2368,18 @@
         },
         "canon-curation/growth-promote": {
           "success": 2,
-          "failed": 0,
+          "failed": 1,
           "task-gone": 0,
           "invalid": 0
         },
         "grow_with_claudinite/growth-extract": {
-          "success": 2,
+          "success": 3,
           "failed": 0,
           "task-gone": 0,
           "invalid": 0
         },
         "tidy-repo/tidy-issues": {
-          "success": 1,
+          "success": 2,
           "failed": 0,
           "task-gone": 0,
           "invalid": 0
