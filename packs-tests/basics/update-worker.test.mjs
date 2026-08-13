@@ -48,28 +48,36 @@ test('the apply-stage body says the merge waits on the repair', () => {
   assert.match(body, /before anything merges/);
 });
 
-test('the runner stands down for a repo baselining serves', async () => {
-  // The other half of the skew guard, at the only place it can be wrong. Driven
-  // through the real main() against a real directory, because what matters is that
-  // it stands down BEFORE the clone — a stubbed clone would prove nothing about it.
+test('the runner refuses a repo declaring the RETIRED mechanism, loudly', async () => {
+  // The other half of the old skew guard, at the only place it can be wrong. Phase 5
+  // deleted the mechanism this repo names, so it is served by NOTHING — and standing
+  // down quietly would leave it unmaintained with a green run to show for it. Driven
+  // through the real main() against a real directory, because what matters is that it
+  // stops BEFORE the clone: a stubbed clone would prove nothing about it.
   const root = mkdtempSync(join(tmpdir(), 'claudinite-updskew-'));
   try {
     writeFileSync(join(root, '.claudinite-checks.json'), `${JSON.stringify({
       packs: ['basics'],
-      maintenance: { delivery: 'auto-merge' },     // no mechanism → baselining, the status quo
+      maintenance: { delivery: 'auto-merge', mechanism: 'baselining' },
       claudinite: { updated: '2026-08-12T00:00:00Z', ref: 'abc123' },
     }, null, 2)}\n`);
 
     const said = [];
-    const log = console.log;
+    const err = console.error;
+    const exit = process.exit;
     const env = { ...process.env };
     process.env.CLAUDINITE_REPO_ROOT = root;
     process.env.CLAUDINITE_REPO = 'o/r';
-    process.env.GITHUB_TOKEN = 'not-used-because-it-stands-down-first';
-    console.log = (...a) => said.push(a.join(' '));
-    try { await main(); } finally { console.log = log; process.env = env; }
+    process.env.GITHUB_TOKEN = 'not-used-because-it-refuses-first';
+    console.error = (...a) => said.push(a.join(' '));
+    let code = null;
+    process.exit = (c) => { code = c; throw new Error('exited'); };
+    try { await main(); } catch (e) { if (e.message !== 'exited') throw e; }
+    finally { console.error = err; process.exit = exit; process.env = env; }
 
-    assert.match(said.join('\n'), /served by baselining — standing down/);
+    assert.equal(code, 1, 'a repo nothing maintains must fail its run, not pass quietly');
+    assert.match(said.join('\n'), /retired in Claudinite #768 Phase 5/);
+    assert.match(said.join('\n'), /Set it to "updates"/, 'the refusal has to say what to do');
     assert.ok(!existsSync(join(root, '.git')), 'no branch, no clone, no write');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
@@ -84,4 +92,71 @@ test('the terminal vocabulary the runner acts on is the flows\' own', async () =
     assert.ok(src.includes(`'${action}'`), `the runner never handles the ${action} terminal`);
   }
   assert.equal(NEEDS_HUMAN, 'needs-human', 'the label and the terminal are one string');
+});
+
+test('the runner disposes of an open update PR BEFORE it converges (#787)', async () => {
+  // The defect this closes: disposal placed after the converge is unreachable on a
+  // quiet cycle, because `nothing changed — no branch, no PR` returns first. So the
+  // cycle that should have landed the stranded PR opened a duplicate instead.
+  // Asserted structurally, on the one ordering that makes the promise keepable.
+  const fs = await import('node:fs');
+  const src = fs.readFileSync('packs/basics/tasks/update/worker.mjs', 'utf8');
+
+  const disposal = src.indexOf('disposeOpenPull(');
+  const clone = src.indexOf("'clone', '--depth'");
+  const quietReturn = src.indexOf('nothing changed — no branch, no PR');
+  assert.ok(disposal > 0 && clone > 0 && quietReturn > 0, 'the three landmarks still exist');
+  assert.ok(disposal < clone, 'disposal must precede the canon clone and the converge that follows it');
+  assert.ok(disposal < quietReturn, 'a cycle with nothing to converge must still dispose of the incumbent');
+
+  // And two of the three outcomes must END the cycle: treating either `kept` or
+  // `merged` as "carry on" is what puts a second PR on top of a live one, or
+  // re-delivers a diff that just landed. Counted between the disposal and the clone,
+  // so a handler that stops branching still has to stop the run.
+  const block = src.slice(disposal, clone);
+  assert.equal((block.match(/\breturn;/g) ?? []).length, 2,
+    'both cycle-ending outcomes must return before the converge begins');
+  for (const outcome of ['kept', 'merged']) {
+    assert.match(block, new RegExp(`disposal === '${outcome}'`), `the runner ignores the ${outcome} outcome`);
+  }
+});
+
+test('the runner finds its incumbent by the same prefix it delivers on', async () => {
+  // A prefix that drifted from the branch names would silently find nothing to
+  // dispose of, which reads exactly like a healthy cycle.
+  const fs = await import('node:fs');
+  const src = fs.readFileSync('packs/basics/tasks/update/worker.mjs', 'utf8');
+  assert.match(src, /openDeliveredPull\(open\.json, UPDATE_PREFIX\)/);
+  assert.ok(updateBranchName('2026-08-12', 'abc123').startsWith('claudinite/update'),
+    'the delivered branch and the searched prefix are the same family');
+});
+
+test('rehearsal mode announces that it converged, and the gate greps for it', async () => {
+  // The canary rehearsal is "the required final step of any core change" — and it
+  // silently rehearsed NOTHING from the day the canary flipped to `updates` until
+  // #768 Phase 5, because it drove a baselining worker that correctly stood down and
+  // exited 0. A green exit code was the only evidence anyone checked.
+  //
+  // So the marker is the evidence, and this pins the three places that must agree:
+  // the constant, the worker line that prints it, and the workflow step that fails
+  // without it. Any of the three drifting alone puts the gate back to vacuous.
+  const fs = await import('node:fs');
+  const { REHEARSAL_MARKER } = await import('../../packs/basics/tasks/update/worker.mjs');
+  const worker = fs.readFileSync('packs/basics/tasks/update/worker.mjs', 'utf8');
+  const workflow = fs.readFileSync('.github/workflows/canary-rehearsal.yml', 'utf8');
+
+  assert.match(worker, /\$\{REHEARSAL_MARKER\}/, 'the worker must print the marker, not a copy of its text');
+  assert.ok(workflow.includes(REHEARSAL_MARKER), `the gate does not grep for "${REHEARSAL_MARKER}"`);
+  assert.match(workflow, /working-directory: packs\/basics\/tasks\/update/,
+    'the gate must drive the update worker this ref ships');
+  assert.ok(!workflow.includes('tasks/baselining'), 'the gate still points at the retired worker');
+
+  // And a rehearsal must never deliver: no branch, no commit, no PR, no stamp.
+  const rehearsalBlock = worker.slice(worker.indexOf('if (rehearsalRef) {'));
+  const upToReturn = rehearsalBlock.slice(0, rehearsalBlock.indexOf('return;'));
+  for (const forbidden of ['checkout', '-B', 'commit', 'push']) {
+    assert.ok(!upToReturn.includes(`'${forbidden}'`) || forbidden === 'checkout',
+      `a rehearsal must not ${forbidden} — it restores the tree and reports`);
+  }
+  assert.match(upToReturn, /clean', '-fd'/, 'the rehearsal must restore the tree it converged');
 });

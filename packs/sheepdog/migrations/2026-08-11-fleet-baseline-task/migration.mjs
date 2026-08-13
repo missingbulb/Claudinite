@@ -13,8 +13,13 @@
 // .github/workflows/fleet-baseline.yml, now orphaned — its `run:` step points at a
 // mount path the vendor refresh no longer carries, so left in place it is a button
 // that fails when pressed. Removing a workflow file needs the `workflows` permission
-// the Action token does not hold, so the removal rides baselining's agent stage over
-// MCP — the same lane that landed the file (#649), run in reverse.
+// the Action token does not hold, so the removal rode an agent stage over MCP — the
+// same lane that landed the file (#649), run in reverse.
+//
+// THAT WORK IS DONE. The enforcer's orphaned copy is gone, and this record's
+// `agentic:` note went with the field itself when #768 Phase 5 retired it. The record
+// stays as the dated account of the conversion, and `legacyPresent` still answers the
+// tolerance question for any repo that somehow still carries the file.
 const DECLARATION = '.claudinite-checks.json';
 const PACK = 'sheepdog';
 
@@ -34,11 +39,6 @@ export default {
     try { cfg = JSON.parse(text); } catch { return false; }
     return (Array.isArray(cfg?.packs) ? cfg.packs : [])
       .some((e) => (typeof e === 'string' ? e : e?.id) === PACK);
-  },
-
-  agentic: {
-    model: 'haiku',
-    instructions: 'If this repo has a tracked .github/workflows/fleet-baseline.yml, delete it (git rm) on the maintenance branch — the fleet-baseline lever is now the sheepdog pack\'s manual-frequency task (run the Claudinite scheduler workflow by hand with overrides FORCE_TASKS=fleet-baseline), and the old workflow points at mount paths the vendor refresh no longer carries, so it is a button that fails when pressed. Do not touch claudinite-scheduler.yml. A repo with no such file needs nothing.',
   },
 
   legacyPresent: async (exists) => exists('.github/workflows/fleet-baseline.yml'),

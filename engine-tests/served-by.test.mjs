@@ -2,18 +2,32 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   servedBy, servedByUpdates, servedByBaselining, withMechanism,
-  MECHANISMS, DEFAULT_MECHANISM, MAINTENANCE, MECHANISM_KEY,
+  MECHANISMS, DEFAULT_MECHANISM, RETIRED_MECHANISM, MAINTENANCE, MECHANISM_KEY,
 } from '../engine/served-by.mjs';
 
-// The skew guard (#768's first risk): while both mechanisms exist, exactly one
-// serves a repo. These are the cases that decide which — including the ones where
-// the honest answer is "the repo did not say".
+// The skew guard (#768's first risk), now the record of a finished rollout. It kept
+// two mechanisms off one mount; Phase 5 retired baselining, so the default moved with
+// the fact. These are the cases that decide which mechanism serves a repo — including
+// the ones where the honest answer is "the repo did not say".
 
-test('a repo that says nothing keeps doing what it does today', () => {
-  assert.deepEqual(servedBy(undefined), { mechanism: 'baselining', declared: false });
-  assert.deepEqual(servedBy({}), { mechanism: 'baselining', declared: false });
-  assert.deepEqual(servedBy({ [MAINTENANCE]: {} }), { mechanism: 'baselining', declared: false });
-  assert.equal(DEFAULT_MECHANISM, 'baselining', 'the default points at what is already true, never at the new thing');
+test('a repo that says nothing gets the only mechanism there is', () => {
+  assert.deepEqual(servedBy(undefined), { mechanism: 'updates', declared: false });
+  assert.deepEqual(servedBy({}), { mechanism: 'updates', declared: false });
+  assert.deepEqual(servedBy({ [MAINTENANCE]: {} }), { mechanism: 'updates', declared: false });
+  // The same rule that once pointed this at baselining is what moves it: a default
+  // may only point at what is already true, and `updates` is now the only truth.
+  assert.equal(DEFAULT_MECHANISM, 'updates');
+});
+
+test('the retired mechanism still PARSES — a stale declaration is read, not reinterpreted', () => {
+  // A repo whose mount predates the flip, or was restored from a backup, can still
+  // say `baselining`. Reading that as anything else would hand it to a mechanism its
+  // owner never chose, so it stays a recognised value that reports itself declared —
+  // and the flows refuse to serve it rather than pretending it means `updates`.
+  assert.equal(RETIRED_MECHANISM, 'baselining');
+  assert.deepEqual(servedBy({ [MAINTENANCE]: { [MECHANISM_KEY]: RETIRED_MECHANISM } }),
+    { mechanism: 'baselining', declared: true });
+  assert.equal(servedByUpdates({ [MAINTENANCE]: { [MECHANISM_KEY]: RETIRED_MECHANISM } }), false);
 });
 
 test('a declared mechanism is taken, and reported as declared', () => {
@@ -29,7 +43,7 @@ test('an unrecognised value is undeclared and carries what it said — never a s
   const r = servedBy({ [MAINTENANCE]: { [MECHANISM_KEY]: 'both' } });
   assert.equal(r.declared, false);
   assert.equal(r.invalid, 'both');
-  assert.equal(r.mechanism, DEFAULT_MECHANISM, 'and it falls back to the status quo, not the new flow');
+  assert.equal(r.mechanism, DEFAULT_MECHANISM, 'and it falls back to the default, never to a guess');
   assert.equal(servedBy({ [MAINTENANCE]: { [MECHANISM_KEY]: 7 } }).invalid, 7);
 });
 

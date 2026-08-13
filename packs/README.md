@@ -1,6 +1,6 @@
 # packs/ — the corpus content, active by declaration
 
-Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session start when the pack is active), its **checks** (run at every Stop), and its **bundled skills** (`<pack>/skills/`, mounted at session start). **No pack is active by default** — every pack, the `basics` baseline included, activates only when declared in `.claudinite-checks.json` (bootstrap's `--init` seeds `basics` plus the fingerprinted technology packs; the nightly baselining backfills the explicit `basics` declaration into existing consumers). Discovery is structural — any `packs/<name>/pack.mjs` is a pack, and that manifest is the pack's index: what it owns, the checks it runs in each scope, the skills it bundles. A pack's `README.md` is **optional** and carries only what the manifest cannot — provenance, design rationale, an index of its prose. A README that restates the manifest is duplication with a drift risk, and several had already drifted.
+Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session start when the pack is active), its **checks** (run at every Stop), and its **bundled skills** (`<pack>/skills/`, mounted at session start). **No pack is active by default** — every pack, the `basics` baseline included, activates only when declared in `.claudinite-checks.json` (bootstrap's `--init` seeds `basics` plus the fingerprinted technology packs; the nightly update backfills the explicit `basics` declaration into existing consumers). Discovery is structural — any `packs/<name>/pack.mjs` is a pack, and that manifest is the pack's index: what it owns, the checks it runs in each scope, the skills it bundles. A pack's `README.md` is **optional** and carries only what the manifest cannot — provenance, design rationale, an index of its prose. A README that restates the manifest is duplication with a drift risk, and several had already drifted.
 
 ## Packs
 
@@ -56,7 +56,7 @@ bundled skills resolve off it) and a `local` flag. A local pack:
 - is **declared by hand** in `.claudinite-checks.json` like any pack — never fingerprinted or seeded
   (`detect`/`marker` null) — by its **namespaced token `local_packs/<name>`** (the canonical form;
   the engine's [`packEntryId`](../engine/pack_loader/pack-registry.mjs) resolves it and the legacy bare id alike to the bare
-  pack id, so the bare form keeps working while the fleet's baselining rewrites it), and its id must
+  pack id, so the bare form keeps working while the fleet's update flows rewrite it), and its id must
   be unique (it may not shadow a canon id — the collision is a blocking `config` finding);
 - **bundles its skills** at `<pack>/skills/<skill>/` (mounted from the tracked pack dir — the
   same one shape canon packs use); a bundled skill may carry `checks.mjs`, run when the pack is
@@ -82,7 +82,7 @@ The `"packs"` list and the rest of `.claudinite-checks.json` are validated **whe
 
 A pack states the packs it depends on in an optional `requires` field on its `pack.mjs` — a plain array of pack ids: a release pack builds on its coding pack (`chrome-extension-release` requires `chrome-extension`, `firebase-release` requires `firebase`) and a project-class pack leans on the framework that implements it (`spec-driven-product` requires `executable-requirements`).
 
-This is **not a check** — a pack can't be imported without its dependencies, so the resolution happens **when the declaration is written**, at bootstrap `--init` and the baselining backfill ([bootstrap.md](../bootstrap.md) Part 2): [`resolveDeclaredPacks`](../engine/pack_loader/pack-registry.mjs) pulls each declared pack's transitive `requires` closure into `.claudinite-checks.json`. The prerequisite is materialized and visible in the file — droppable like every other entry, the same reason `basics` is written explicitly rather than defaulted — rather than resolved implicitly at run time. Declared ids keep their order; each pack's pulled-in dependencies land right after it.
+This is **not a check** — a pack can't be imported without its dependencies, so the resolution happens **when the declaration is written**, at bootstrap `--init` and the update backfill ([bootstrap.md](../bootstrap.md) Part 2): [`resolveDeclaredPacks`](../engine/pack_loader/pack-registry.mjs) pulls each declared pack's transitive `requires` closure into `.claudinite-checks.json`. The prerequisite is materialized and visible in the file — droppable like every other entry, the same reason `basics` is written explicitly rather than defaulted — rather than resolved implicitly at run time. Declared ids keep their order; each pack's pulled-in dependencies land right after it.
 
 ## The manifest spec (`pack.mjs`)
 
@@ -238,7 +238,7 @@ The posture is **strict at bootstrap, mild everywhere else**. The adoption flow
 ([bootstrap.md](../bootstrap.md) Part 6) interviews the owner as part of `--init` — a human is
 present by construction. Outside it, pending questions surface only as a mild SessionStart note
 (the `interview-check` step) telling an interactive session to ask at a natural moment and an
-unattended one to ignore it entirely — **never a conformance finding**, so a nightly baselining or
+unattended one to ignore it entirely — **never a conformance finding**, so a nightly update or
 a new canon question can never block the fleet. The one sweep-side finding is hygiene: a stored
 answer whose question the pack no longer declares (renamed or removed upstream) is an *advisory*
 `config` finding, and a malformed `questions` declaration is a blocking one like any broken

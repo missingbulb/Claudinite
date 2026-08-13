@@ -4,7 +4,7 @@ import {
   normalizeDelivery, resolveDelivery, DEFAULT_DELIVERY, deliveryFromChecks,
   workflowTriggers, ciDispatchPlan, pullCreateError,
   deliveryAction, classifyMergeGate, pullDisposition, mergeReason, failureSummary,
-  landAttempt, LAND_TIMEOUT_MS,
+  landAttempt, LAND_TIMEOUT_MS, openDeliveredPull, disposeOpenPull,
 } from '../../engine/scheduler/land-pr.mjs';
 
 // The PURE decision helpers of the shared landing procedure. They grew inside the
@@ -305,4 +305,95 @@ test('mergeReason names the gated run when there is one, and no false remedy oth
 test('failureSummary names the failing workflows, or the absence of a green one', () => {
   assert.match(failureSummary([done('failure', 'verify'), done('success')]), /verify failure/);
   assert.match(failureSummary([done('action_required')]), /no successful run/);
+});
+
+// --- disposing of the previous cycle's delivery (#787) -----------------------
+// The promise "leaving it open for the next run to dispose of" had no
+// implementation: the update runner's quiet-cycle early return fired before
+// anything looked at open PRs, so a stranded PR was superseded by a duplicate the
+// next cycle opened instead. These are the three outcomes that promise needs.
+
+test('openDeliveredPull finds the family by branch PREFIX, since the name carries a seed', () => {
+  const pulls = [
+    { number: 1, head: { ref: 'feature/something' } },
+    { number: 2, head: { ref: 'claudinite/update-2026-08-12-ja25ab' } },
+  ];
+  assert.equal(openDeliveredPull(pulls, 'claudinite/update')?.number, 2);
+  assert.equal(openDeliveredPull(pulls, 'claudinite/maintenance'), null);
+  // A caller with nothing to dispose of must get a clean null, not a throw.
+  assert.equal(openDeliveredPull(undefined, 'claudinite/update'), null);
+  assert.equal(openDeliveredPull([], 'claudinite/update'), null);
+});
+
+// A fetch stub over the three endpoints disposal touches, recording the writes.
+function fetchStub({ runs = [], mergeStatus = 200, closeStatus = 200 }) {
+  const calls = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = async (url, opts = {}) => {
+    const path = String(url).replace('https://api.github.com', '');
+    calls.push(`${opts.method ?? 'GET'} ${path.split('?')[0]}`);
+    if (path.includes('/actions/runs')) return new Response(JSON.stringify({ workflow_runs: runs }), { status: 200 });
+    if (path.endsWith('/merge')) return new Response('{}', { status: mergeStatus });
+    if (/\/pulls\/\d+$/.test(path.split('?')[0])) return new Response('{}', { status: closeStatus });
+    return new Response(null, { status: 204 });                  // branch delete
+  };
+  return { calls, restore: () => { globalThis.fetch = original; } };
+}
+
+const pr = { number: 42, head: { ref: 'claudinite/update-2026-08-12-abc', sha: 'deadbeef' } };
+const run = (conclusion) => ({ name: 'ci', status: 'completed', conclusion });
+const dispose = async (stub) => {
+  const said = [];
+  try {
+    return { outcome: await disposeOpenPull({ token: 't', repo: 'o/r', pr, delivery: 'auto-merge', log: (s) => said.push(s) }), said };
+  } finally { stub.restore(); }
+};
+
+test('a verified incumbent is MERGED, and says main moved so the caller can stop', async () => {
+  // The exact shape that stranded TLDR #246: the gated pull_request run never ran
+  // while the dispatched one passed. That content is verified — only the arm failed.
+  const stub = fetchStub({ runs: [run('success'), run('action_required')] });
+  const { outcome, said } = await dispose(stub);
+  assert.equal(outcome, 'merged');
+  assert.match(said.join('\n'), /merged PR #42/);
+  assert.ok(stub.calls.includes('PUT /repos/o/r/pulls/42/merge'));
+  assert.ok(stub.calls.includes('DELETE /repos/o/r/git/refs/heads/claudinite%2Fupdate-2026-08-12-abc'), 'the dead ref is tidied');
+});
+
+test('an incumbent with nothing green is CLOSED, so this cycle re-cuts it', async () => {
+  const stub = fetchStub({ runs: [run('failure')] });
+  const { outcome, said } = await dispose(stub);
+  assert.equal(outcome, 'closed');
+  assert.match(said.join('\n'), /closed PR #42 — it did not land/);
+  assert.ok(stub.calls.includes('PATCH /repos/o/r/pulls/42'));
+});
+
+test('an incumbent still running is KEPT — a cycle never delivers on top of one', async () => {
+  const stub = fetchStub({ runs: [{ name: 'ci', status: 'in_progress', conclusion: null }] });
+  const { outcome, said } = await dispose(stub);
+  assert.equal(outcome, 'kept');
+  assert.match(said.join('\n'), /keeping PR #42 \(wait\)/);
+  assert.ok(!stub.calls.some((c) => c.startsWith('PUT') || c.startsWith('PATCH')), 'nothing is written to a PR still in flight');
+});
+
+test('a merge that fails falls through to a close rather than leaving two PRs alive', async () => {
+  const stub = fetchStub({ runs: [run('success')], mergeStatus: 405 });
+  const { outcome } = await dispose(stub);
+  assert.equal(outcome, 'closed');
+});
+
+test('an unreadable head, or a close that fails, KEEPS — never a silent clear way', async () => {
+  // Both are the same judgement: the helper could not establish that the way is
+  // clear, and the caller must skip rather than pile a second PR on top.
+  const stub = fetchStub({ runs: [run('success')], mergeStatus: 405, closeStatus: 500 });
+  assert.equal((await dispose(stub)).outcome, 'kept');
+});
+
+test('a review member\'s incumbent is never disposed of — it is the owner\'s to act on', async () => {
+  const stub = fetchStub({ runs: [run('success')] });
+  const said = [];
+  try {
+    assert.equal(await disposeOpenPull({ token: 't', repo: 'o/r', pr, delivery: 'review', log: (s) => said.push(s) }), 'kept');
+  } finally { stub.restore(); }
+  assert.ok(!stub.calls.some((c) => c.startsWith('PUT') || c.startsWith('PATCH')));
 });

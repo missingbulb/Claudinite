@@ -1,4 +1,4 @@
-import { copyFileSync, mkdirSync, rmSync, renameSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { copyFileSync, mkdirSync, rmSync, renameSync, readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { computeVendorSet, SHARED_SUBDIR } from '../vendoring/compute-vendor-set.mjs';
@@ -13,12 +13,21 @@ import { NEEDS_HUMAN, runSelfTest, deliveryDecision } from './engine-update.mjs'
 // The same shape as the engine flow beside it — vendor, migrate, converge, stamp,
 // gate — with three deliberate differences, each a consequence of what a pack IS:
 //
-//   1. IT WRITES `.github/workflows/`. The scheduler workflow's content is a
-//      function of the TASK SET (`declaredSecrets` unions the required secrets of
-//      every discovered task), so pack changes are what rewrite it — and this flow
-//      is the one that carries a credential able to land it (owner decision 2).
-//      That is what retires the withholding pattern: nothing is silently dropped
-//      from a push here.
+//   1. IT OWNS `.github/workflows/`, and DELIVERS IT BY WITHHOLDING. The scheduler
+//      workflow's content is a function of the TASK SET (`declaredSecrets` unions
+//      the required secrets of every discovered task), so pack changes are what
+//      rewrite it — and this flow is the only one that runs late enough to see the
+//      task set it just vendored.
+//
+//      What it does NOT have is a credential. Its caller pushes with the Action's
+//      GITHUB_TOKEN, which GitHub never lets write under `.github/workflows/`, and
+//      the refusal rejects the WHOLE ref — so a flow that wrote one would not
+//      deliver a workflow, it would fail the entire update and everything riding on
+//      it. So this flow computes the content and withholds it: nothing lands on
+//      disk, the paths ride out in `withheld`, and the apply stage — which has an
+//      MCP credential — writes them verbatim. That is a CREDENTIAL LANE, not
+//      adaptation: the content is already decided, and the session supplies only
+//      the one thing an Action token cannot (#797, #649).
 //   2. IT ENFORCES `minEngineVersion`. A pack version declares the lowest engine it
 //      runs on; applying it past that is a guess, and a guess about whether a
 //      member's engine can load a pack is how a fleet goes quiet. Violation is a
@@ -81,6 +90,100 @@ export function planPackUpdates(packs, declared, installed, { today, engineVersi
 
 const outcome = (status, detail, extra = {}) => ({ status, detail, ...extra });
 
+// Everything under here is a path this flow's caller cannot push.
+export const WORKFLOW_DIR = '.github/workflows/';
+
+// …and where the content goes instead: a staging directory that IS pushable, holding
+// the same relative paths under it, so delivery is a directory move and nothing has
+// to be recomputed by the hand that performs it.
+//
+// THE CONTENT TRAVELS THROUGH THE REPOSITORY, not through the dispatch. That is the
+// scheduler's standing rule for the code→agent boundary (engine/scheduler/prework.mjs):
+// a request payload may carry identifiers and the NAME of the condition that fired,
+// "never findings and never instructions" — everything else goes through the repo.
+// Two things fall out of obeying it, and both are worth more than the shortcut. The
+// withheld file is REVIEWABLE: it lands in the update's own PR, where a human sees
+// the workflow diff before any session touches it. And it is RECOVERABLE: if the
+// session never runs, the content sits on the branch instead of evaporating with a
+// request file, and the next cycle finds it already staged.
+export const PENDING_DIR = '.claudinite/pending-workflows/';
+export const stagedAt = (workflowPath) => `${PENDING_DIR}${workflowPath.slice(WORKFLOW_DIR.length)}`;
+
+// Every file currently staged, repo-relative. One level deep, which is all
+// `.github/workflows/` itself has.
+export function stagedFiles(targetRoot) {
+  const dir = join(targetRoot, PENDING_DIR);
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir, { withFileTypes: true }).filter((e) => e.isFile()).map((e) => `${PENDING_DIR}${e.name}`);
+}
+
+// The member's vendored scheduler stub. Read from the MEMBER, not from this canon
+// clone: the engine flow refreshed it earlier in the same cycle, and reading the
+// member's copy is what makes this agree with `converge-wiring.mjs`'s own CLI —
+// the thing a human runs by hand, and the thing bootstrap runs at adoption.
+const STUB_REL = '.claudinite/shared/engine/scheduler/stubs/claudinite-scheduler.yml';
+
+// The scheduler workflow this member should be carrying, when that differs from what
+// it has; null when it is already converged or the answer cannot be computed.
+//
+// Returning null on a failed computation rather than throwing is deliberate and is
+// the smaller of two bad outcomes. This is one surface of an update whose other
+// surfaces have already landed; a member whose settings will not parse, or whose
+// mount has no stub yet, has a problem this flow cannot fix and should not die of.
+// The drift persists and the next cycle asks again — whereas a throw here would
+// strand the whole update behind an unrelated fault.
+export async function pendingSchedulerWorkflow(targetRoot, fullName, read) {
+  try {
+    const stub = read(STUB_REL);
+    if (stub == null || !fullName) return null;
+    const { schedulerWorkflowTarget, SCHEDULER_WORKFLOW, declaredSecrets } = await import('../engine/scheduler/converge-wiring.mjs');
+    const { loadConfig } = await import('../engine/checks/helpers/repo-context.mjs');
+    const content = schedulerWorkflowTarget(fullName, stub, await declaredSecrets(targetRoot, loadConfig(targetRoot)));
+    return read(SCHEDULER_WORKFLOW) === content ? null : { path: SCHEDULER_WORKFLOW, content };
+  } catch { return null; }
+}
+
+// Whether this run's records ask for the agentic tail, and what they ask for.
+//
+// Separate and pure because it is the answer most worth being able to interrogate
+// without a member tree: it decides whether an update costs a session, it is the
+// half of the flow that #798 got wrong, and the wrong version of it was
+// indistinguishable from the right one against any single repo.
+// TWO INDEPENDENT REASONS, and they are not the same kind of thing:
+//
+//   - RECORDS ASKED. The pack's new rules met member-authored content the canon has
+//     never seen, and a record's author said so. This is judgement work.
+//   - PATHS WERE WITHHELD. `.github/workflows/` content that is already fully
+//     decided and that only an MCP credential can land. Nothing here is a judgement
+//     call; the session is a delivery mechanism.
+//
+// Kept distinct all the way to the brief, because a session told "apply the updated
+// rules" when the truth is "write these two files verbatim" will go looking for
+// judgement to exercise, and find some.
+export function applyStageFor(specs, withheld = []) {
+  const asked = specs.filter((m) => m.applyStage);
+  if (!asked.length && !withheld.length) return { needed: false };
+  // The reason names the CONDITION and the ARTIFACTS BY IDENTITY, and stops there —
+  // it becomes `reason.detail` on the dispatch issue, and the payload it rides in
+  // carries identifiers, never instructions (updates/terminals.mjs). So a record that
+  // asked for a session is named, not quoted: its `applyStage.instructions` are in
+  // the mount the update just vendored, on the branch the session is given, and the
+  // session reads them from there like any other fact about the repo.
+  const why = [
+    ...(withheld.length ? [`${withheld.length} withheld workflow file(s) staged under ${PENDING_DIR}`] : []),
+    ...asked.map((m) => `${m.dir}: ${m.applyStage.why}`),
+  ].join('; ');
+  return {
+    needed: true,
+    // The packs that RAISED the records, not every pack whose version moved: this
+    // scopes a session, and naming packs with nothing to apply widens it.
+    packs: [...new Set(asked.map((m) => flowOf(m.dir).pack))],
+    records: asked.map((m) => m.dir),
+    withheld,
+    why,
+  };
+}
+
 // Update `targetRoot`'s declared packs to the versions this canon ships. Same
 // arguments and same terminals as the engine flow; `dryRun` judges everything and
 // writes nothing.
@@ -136,14 +239,50 @@ export async function packUpdate(targetRoot, {
   const specs = (await loadMigrations()).filter((m) => wanted.has(m.dir));
   const exists = (p) => existsSync(join(targetRoot, p));
   const read = (p) => (existsSync(join(targetRoot, p)) ? readFileSync(join(targetRoot, p), 'utf8') : null);
-  const write = (p, c) => { mkdirSync(dirname(join(targetRoot, p)), { recursive: true }); writeFileSync(join(targetRoot, p), c); };
+
+  const put = (p, c) => { mkdirSync(dirname(join(targetRoot, p)), { recursive: true }); writeFileSync(join(targetRoot, p), c); };
+
+  // THE WITHHOLD, made literal. Everything bound for `.github/workflows/` is diverted
+  // to the staging directory instead, so the tree this flow's caller commits can
+  // never contain a path its token is refused for. Before this, the flow ANNOUNCED
+  // the capability (see the env below) and had none: the first record materializing a
+  // workflow would have written it, the worker's `git add -A` would have staged it,
+  // and GitHub's refusal would have rejected the whole ref — failing the entire
+  // update, not just that file.
+  const withheld = [];
+  const withhold = (path, content) => {
+    if (!withheld.some((w) => w.path === path)) withheld.push({ path, staged: stagedAt(path) });
+    put(stagedAt(path), content);
+  };
+  const write = (p, c) => (p.startsWith(WORKFLOW_DIR) ? withhold(p, c) : put(p, c));
   const move = (from, to) => { mkdirSync(dirname(join(targetRoot, to)), { recursive: true }); renameSync(join(targetRoot, from), join(targetRoot, to)); };
   const readTemplate = (p) => (existsSync(join(canonRoot, p)) ? readFileSync(join(canonRoot, p), 'utf8') : null);
-  // The withhold handshake, announced: THIS flow can deliver a workflow file, so a
-  // record that materializes one is applied rather than reported as skipped.
+  // The withhold handshake, announced — and now true. A record that materializes a
+  // workflow file is applied rather than reported as skipped, because `write` above
+  // routes it to the lane that can deliver it.
   const io = { exists, move, read, write, readTemplate, env: { CLAUDINITE_CAN_WITHHOLD_WORKFLOWS: '1' } };
   const applied = [];
   for (const m of specs) applied.push(...(await applyMigration(m, io)));
+
+  // 2b. THE SCHEDULER WORKFLOW (#797). Its content is a function of the task set,
+  //     and the vendor above is what just changed the task set — so this is the one
+  //     point in the cycle where the answer is both knowable and current. The engine
+  //     flow runs BEFORE the packs and would compute it from yesterday's tasks;
+  //     baselining used to do it and was retired in #768 Phase 5, which is how every
+  //     member's wiring came to be frozen at whatever baselining last wrote.
+  //
+  //     Withheld like any other workflow path, and by the same route, so "the file
+  //     drifted" and "a record materialized one" reach the apply stage as one list.
+  const pending = await pendingSchedulerWorkflow(targetRoot, fullName, read);
+  if (pending) withhold(pending.path, pending.content);
+
+  // …and sweep what is no longer owed. A staged file outlives its need the moment the
+  // apply stage lands it: the workflow then matches its target, nothing withholds it
+  // again, and a copy left in the staging directory would sit there permanently
+  // looking like undelivered work. Sweeping is also how a stage that DID run gets
+  // confirmed — the directory is empty exactly when nothing is outstanding.
+  const owed = new Set(withheld.map((w) => w.staged));
+  for (const stale of stagedFiles(targetRoot)) if (!owed.has(stale)) rmSync(join(targetRoot, stale), { force: true });
 
   // 3. Stamp each updated pack's version. Written per pack rather than wholesale, so
   //    a pack this run did not touch keeps the number it really has.
@@ -153,17 +292,29 @@ export async function packUpdate(targetRoot, {
   next.claudinite = { ...(next.claudinite ?? {}), packVersions };
   writeFileSync(settingsPath, `${JSON.stringify(next, null, 2)}\n`);
 
-  // 4. The same gate the engine flow uses, then the agentic tail's own question.
-  //    A pack update that changed nothing needs no session; one that moved a pack's
-  //    rules over member-authored content is exactly what the apply stage is for.
+  // 4. The same gate the engine flow uses, then the agentic tail's own question —
+  //    ASKED OF THE RECORDS, NOT OF THE VERSION PLAN (#798).
+  //
+  //    This used to be `moved.length > 0`: any declared pack whose version number
+  //    changed summoned a session. That is a fact about the CANON, and the stage
+  //    exists for a fact about the MEMBER — the pack's new rules met content the
+  //    canon has never seen. The two coincide only by accident.
+  //
+  //    The cost of conflating them was not theoretical. A record can only reach an
+  //    up-to-date member if its pack's manifest version bumps (`migrationApplies` is
+  //    `want > have` against the stamped number, and the stamp written is the
+  //    manifest's). So every mechanical migration — a regex rewrite, a rename, a
+  //    declaration seed, all deterministic and idempotent — had to buy a session on
+  //    every member in the fleet to reach them at all. Deterministic work priced as
+  //    agentic work is how a fleet learns to dread its own updates.
+  //
+  //    So the records answer. Each one's author knew which kind they were writing,
+  //    and `applyStage` is where they say so. A bump carrying no such record is
+  //    silent, which is what makes a first live run of an agentic change something
+  //    you can aim at one member instead of fourteen at once.
   const selftest = runSelfTest(targetRoot, selfTestRun);
   const decision = deliveryDecision({ selftestOk: selftest.ok, delivery, forceMergeOnRedCi });
-  const moved = plan.filter((p) => p.from !== p.to);
-
   return outcome(decision.action === 'needs-human' ? NEEDS_HUMAN : 'ok', decision.why, {
-    plan, files: packFiles.length, applied, selftest, decision,
-    applyStage: moved.length > 0
-      ? { needed: true, packs: moved.map((p) => p.id), why: 'a pack\'s rules moved over content the canon has never seen' }
-      : { needed: false },
+    plan, files: packFiles.length, applied, selftest, decision, withheld, applyStage: applyStageFor(specs, withheld),
   });
 }

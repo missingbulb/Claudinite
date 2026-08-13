@@ -1,9 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, renameSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { packUpdate, planPackUpdates, packRecordsInGap, isPackFile } from '../updates/pack-update.mjs';
+import { packUpdate, planPackUpdates, packRecordsInGap, isPackFile, applyStageFor, PENDING_DIR } from '../updates/pack-update.mjs';
+import { terminalFor } from '../updates/terminals.mjs';
+import { SCHEDULER_WORKFLOW } from '../engine/scheduler/converge-wiring.mjs';
 import { NEEDS_HUMAN } from '../updates/engine-update.mjs';
 import { ENGINE_VERSION } from '../engine/version.mjs';
 import { applyVendor } from '../vendoring/apply-vendor-set.mjs';
@@ -111,20 +113,145 @@ test('the engine half of the mount is left alone — it belongs to the engine fl
   rmSync(root, { recursive: true, force: true });
 });
 
-test('the apply stage is asked for only when a pack version actually moved', async () => {
+// Play the apply stage's credential half: move everything staged into place, which is
+// all that lane ever does. Used to get a fixture into the state a delivered member is
+// in, so the tests after it are about the thing they name.
+function deliverStaged(root) {
+  const dir = join(root, PENDING_DIR);
+  if (!existsSync(dir)) return [];
+  const moved = [];
+  for (const name of readdirSync(dir)) {
+    mkdirSync(join(root, '.github', 'workflows'), { recursive: true });
+    renameSync(join(dir, name), join(root, '.github', 'workflows', name));
+    moved.push(name);
+  }
+  return moved;
+}
+
+test('the scheduler workflow is staged for a lane that can push it, and clears once it is (#797)', async () => {
+  // The regression this closes: baselining converged this file, Phase 5 retired
+  // baselining, and NOTHING replaced it — so every member's wiring froze at whatever
+  // baselining last wrote, including the cron minute and the secrets its tasks can see.
   const root = makeMember();
   assert.deepEqual((await applyVendor(root)).errors, []);
 
-  // Already current: nothing moved, so no session is spent.
+  const first = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
+  const staged = first.withheld.find((w) => w.path === SCHEDULER_WORKFLOW);
+  assert.ok(staged, 'a member with no scheduler workflow is owed one');
+  assert.equal(staged.staged, `${PENDING_DIR}claudinite-scheduler.yml`);
+
+  // Withheld means WITHHELD: the destination must be untouched, because the caller's
+  // token is refused there and GitHub rejects the whole ref, not just the file.
+  assert.ok(!existsSync(join(root, SCHEDULER_WORKFLOW)), 'the flow must not write what its caller cannot push');
+  assert.ok(existsSync(join(root, staged.staged)), 'the content rides out on the branch, in the PR diff');
+  const content = readFileSync(join(root, staged.staged), 'utf8');
+  assert.match(content, /cron:/, 'the staged file is the converged workflow, not a marker');
+  assert.equal(first.applyStage.needed, true, 'an undelivered workflow is outstanding work');
+
+  // Delivered — and now the flow must go quiet, or every member sits permanently at
+  // `apply-stage` and no update ever merges again.
+  assert.deepEqual(deliverStaged(root), ['claudinite-scheduler.yml']);
+  const second = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
+  assert.deepEqual(second.withheld, [], 'a converged workflow is owed nothing');
+  assert.equal(second.applyStage.needed, false);
+  assert.equal(readFileSync(join(root, SCHEDULER_WORKFLOW), 'utf8'), content, 'and it is left exactly alone');
+  assert.ok(!existsSync(join(root, PENDING_DIR, 'claudinite-scheduler.yml')),
+    'the staged copy is swept, or it reads forever as work nobody did');
+  rmSync(root, { recursive: true, force: true });
+});
+
+test('the staged workflow tracks this repo, not a template', async () => {
+  // The two things that make it repo-specific are the two things a frozen file gets
+  // wrong: the cron minute is a hash of the full name, so two members do not stampede
+  // the same minute, and the env block is the union of every task's required_secrets.
+  const a = makeMember();
+  const b = makeMember();
+  assert.deepEqual((await applyVendor(a)).errors, []);
+  assert.deepEqual((await applyVendor(b)).errors, []);
+  const of = async (root, fullName) => {
+    await packUpdate(root, { fullName, selfTestRun: () => 'ok' });
+    return readFileSync(join(root, PENDING_DIR, 'claudinite-scheduler.yml'), 'utf8');
+  };
+  const cron = (t) => /cron:\s*'([^']*)'/.exec(t)?.[1];
+  assert.notEqual(cron(await of(a, 'o/one')), cron(await of(b, 'o/two')), 'two members must not share a minute');
+  rmSync(a, { recursive: true, force: true });
+  rmSync(b, { recursive: true, force: true });
+});
+
+test('a pack version moving does NOT by itself buy a session (#798)', async () => {
+  const root = makeMember();
+  assert.deepEqual((await applyVendor(root)).errors, []);
+  // Start from a member whose wiring is already delivered, so what is measured below
+  // is the version bump alone and not the workflow lane above.
+  await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
+  deliverStaged(root);
+
+  // Already current: nothing to do at all.
   const current = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
   assert.equal(current.applyStage.needed, false);
 
-  // Rolled back: the pack's rules move over content the canon has never seen.
+  // Rolled back to zero — the largest gap a member can have, every declared pack
+  // moving at once. The old trigger (`moved.length > 0`) fired here, and that is
+  // exactly the defect: this is a WHOLESALE TREE REPLACEMENT, deterministic and
+  // idempotent, and no session can improve on it. Unless a record in the gap says
+  // its change met member-authored content, the update is silent.
   setStamp(root, { packVersions: { basics: 0 } });
   const moved = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
-  assert.equal(moved.applyStage.needed, true);
-  assert.ok(moved.applyStage.packs.includes('basics'));
+  assert.ok(moved.plan.some((p) => p.from !== p.to), 'the fixture must actually move a version, or it proves nothing');
+  assert.equal(moved.applyStage.needed, false, 'a bump with no record asking for a session must not spend one');
   rmSync(root, { recursive: true, force: true });
+});
+
+test('the records decide the apply stage, and what they say reaches the session', () => {
+  // Driven over specs rather than a member tree: the fleet currently carries no pack
+  // record declaring a stage, and a test that could only pass while one happened to
+  // exist would go quietly vacuous the day it aged out — which is the failure mode
+  // that made the canary rehearsal worthless for a day (#768 Phase 5).
+  const mechanical = { dir: 'packs/basics/migrations/2026-08-13-rename', id: 'rename' };
+  assert.deepEqual(applyStageFor([mechanical]), { needed: false },
+    'a deterministic record must be deliverable without an agent');
+
+  const asks = {
+    dir: 'packs/sheepdog/migrations/2026-08-13-roster',
+    id: 'roster',
+    applyStage: { why: 'the roster rules meet each member\'s own tasks', instructions: 'Re-home any task the new roster shape orphans.' },
+  };
+  const stage = applyStageFor([mechanical, asks]);
+  assert.equal(stage.needed, true);
+  assert.deepEqual(stage.packs, ['sheepdog'], 'only the pack that RAISED the record is in scope');
+  assert.deepEqual(stage.records, ['packs/sheepdog/migrations/2026-08-13-roster']);
+
+  // The record is NAMED, not quoted. Its instructions are on the branch, in the mount
+  // the update just vendored; the reason carries an identifier so the session can find
+  // them, because a request payload may not carry instructions (prework.mjs).
+  assert.match(stage.why, /packs\/sheepdog\/migrations\/2026-08-13-roster/, 'the session must be able to find the record');
+  assert.match(stage.why, /roster rules meet/);
+  assert.ok(!stage.why.includes('Re-home any task'), 'the instructions travel through the repo, never the payload');
+  assert.equal(terminalFor({ status: 'ok', applyStage: stage, decision: { action: 'merge', why: 'green' } }).why, stage.why);
+});
+
+test('two records asking together are one session, and both are named', () => {
+  const stage = applyStageFor([
+    { dir: 'packs/basics/migrations/2026-08-13-a', id: 'a', applyStage: { why: 'first', instructions: 'Do A.' } },
+    { dir: 'packs/basics/migrations/2026-08-13-b', id: 'b', applyStage: { why: 'second' } },
+  ]);
+  assert.deepEqual(stage.packs, ['basics'], 'one pack, named once');
+  assert.deepEqual(stage.records, ['packs/basics/migrations/2026-08-13-a', 'packs/basics/migrations/2026-08-13-b']);
+  // Both reasons reach the issue — a session nobody can explain is one nobody trusts.
+  assert.match(stage.why, /first/);
+  assert.match(stage.why, /second/);
+});
+
+test('a withheld workflow needs the stage on its own, and is named by where it is staged', () => {
+  // The credential lane, not the judgement lane: no record asked for anything, and
+  // the session's whole job is a move it can perform without an opinion.
+  const stage = applyStageFor([], [{ path: '.github/workflows/claudinite-scheduler.yml', staged: '.claudinite/pending-workflows/claudinite-scheduler.yml' }]);
+  assert.equal(stage.needed, true);
+  assert.deepEqual(stage.packs, [], 'nothing asked for a rules pass — do not invent scope for one');
+  assert.deepEqual(stage.records, []);
+  assert.match(stage.why, /withheld workflow/);
+  assert.match(stage.why, /\.claudinite\/pending-workflows\//, 'the session is told where to look, not what to write');
+  assert.ok(!stage.why.includes('runs-on'), 'the CONTENT stays on the branch, in the PR diff a human can review');
 });
 
 test('a red self-test is the same needs-human terminal the engine flow has', async () => {

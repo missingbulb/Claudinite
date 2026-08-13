@@ -35,6 +35,7 @@ export function terminalFor(outcome) {
     return {
       action: 'apply-stage',
       packs: outcome.applyStage.packs ?? [],
+      withheld: outcome.applyStage.withheld ?? [],
       why: outcome.applyStage.why ?? 'the pack\'s new rules must be applied to content the canon has never seen',
     };
   }
@@ -46,26 +47,24 @@ export function terminalFor(outcome) {
   return { action: 'needs-human', label: NEEDS_HUMAN, why: 'the flow reported success but reached no delivery decision' };
 }
 
-// The agentic apply stage's own instructions, for the shell that dispatches it.
-// Stated here rather than in the shell because it is policy, not plumbing: what the
-// session is allowed to do, and where it must stop.
+// THERE IS NO RENDERED BRIEF HERE ANY MORE, and its absence is the design.
 //
-// It also inherits the ORPHANED executor-routine verification (DESIGN §3.8). The CCR
-// routine that fires on the ready label is not a GitHub artifact — no Action can see
-// whether it exists or is wired correctly — so only a session can, and this is the
-// only agent lane left once the engine flow has none.
-export function applyStageBrief({ packs = [], branch = null } = {}) {
-  return [
-    `Apply the updated rules of: ${packs.join(', ') || '(none named)'}.`,
-    '',
-    'Scope is this update\'s branch' + (branch ? ` (\`${branch}\`)` : '') + ' — fix the repo against the new rules and',
-    'repair the tests they break. Nothing outside that scope, and no new features.',
-    '',
-    'Also verify this repo\'s executor routine: it fires on the ready label and no Action can',
-    'see it, so a session is the only thing that can confirm it exists and points at the',
-    'mounted executor instructions.',
-    '',
-    'End green or end at `needs-human`. A repair you are unsure of is a `needs-human`,',
-    'not a merge — every non-green end looks the same, and that is the point.',
-  ].join('\n');
-}
+// This module used to export `applyStageBrief`, which composed a full set of
+// instructions for the apply-stage session and which the worker wrote into the
+// request payload. Nothing ever read it — that is the only reason two problems with
+// it stayed invisible.
+//
+// It restated `packs/basics/tasks/update/task.md` §2–5 from a second home that could
+// drift from the first, with no test able to notice. And it was the natural place to
+// put a withheld workflow's CONTENT, which is exactly where content must not go: the
+// scheduler's rule for the code→agent boundary (engine/scheduler/prework.mjs) is that
+// a request payload carries identifiers and the NAME of the condition that fired,
+// "never findings and never instructions — everything else travels through the
+// repository." Content routed through a payload leaves the PR's diff, and a workflow
+// nobody can see in a diff is a workflow nobody reviewed.
+//
+// So the apply stage is told three things, each from where it belongs: WHY, as
+// `reason.detail` from the terminal below; WHAT TO DO, from task.md, which the
+// dispatch issue's first line links; and WHAT TO DO IT TO, from the branch — the
+// staged workflow files and the migration record named in the reason, both of which
+// the session reads out of the repository like any other fact about it.

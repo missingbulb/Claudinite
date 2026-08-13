@@ -44,7 +44,13 @@ import { parseSheepdogConfig } from '../../fleet-config.mjs';
 // The exact member-side task this lever forces — the vendored scheduler's public
 // surface (`forcedTaskIds` in engine/scheduler/run.mjs); named as a constant so the
 // coupling is one line to find, not a string buried in a request body.
-export const FORCED_TASK = 'baselining';
+//
+// `update` since Phase 5 (#768): the task this lever used to force no longer exists,
+// and a lever that dispatches a task nothing will run reports a successful dispatch
+// for a member that then does nothing — the exact "counts dispatches, not outcomes"
+// blindness this sweep already has (Sheepdog#172). The task's own NAME is still the
+// old vocabulary; renaming it is the fleet-wide update lever's work, not this line's.
+export const FORCED_TASK = 'update';
 
 // The `REPOS` parameter, resolved against the owner: a space/whitespace-separated list
 // of bare names or full `owner/name`, lowercased, or null for "every member". A bare

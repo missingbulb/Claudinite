@@ -145,11 +145,11 @@ adoption:
    hashed minute in :10–:50 (the repo's only cron). Compute the minute — never guess it —
    with the vendored hasher: `node .claudinite/shared/engine/scheduler/hash-minute.mjs
    <owner/repo>`. It is a pure function of the repo full name, so it is the same value on
-   every re-vendor and baselining re-derives it to catch drift. This step, the Part 5
+   every re-vendor and the update task re-derives it to catch drift. This step, the Part 5
    hook registrations, dropping the retired `@.claudinite/shared/CLAUDE.md` import, and
    the README pack-badge row (below)
    are all mechanized by `node .claudinite/shared/engine/scheduler/converge-wiring.mjs
-   <owner/repo> --badges` — the single wiring surface bootstrap and baselining both call,
+   <owner/repo> --badges` — the single wiring surface bootstrap and the update flows both call,
    so the set is defined once in code, not re-enacted from this prose each night. Pass
    `--badges` here and only here: it is the one surface adoption converges that the
    nightly deliberately does not (step 2).
@@ -161,7 +161,7 @@ adoption:
    on that line is its own and is never touched. **This is a one-time seed.** Baselining
    runs the same converge WITHOUT `--badges`, so from here the row is the repo's own text
    — edit it, move it, or delete it, and nothing will argue. A README belongs to its repo,
-   and a nightly-derived row would put a README diff in the baselining commit every time
+   and a nightly-derived row would put a README diff in the update commit every time
    the declaration moved.
 3. **Labels need no step** — the scheduler ensures `ready-for-agent`,
    `agent-running`, `needs-human`, and `workflow-failure` exist (create-if-missing,
@@ -170,13 +170,13 @@ adoption:
 4. **Write the `taskScheduler` key** into `.claudinite-checks.json` (defaults:
    `{ "dailyHour": 4, "weeklyDay": "Sun", "monthlyDay": 1 }`, all UTC) — this is the
    cutover marker: the central routine stops planning the repo the same night, and its
-   own scheduler + self-baselining take over the refresh.
+   own scheduler + self-update take over the refresh.
 5. **Create the label-wired executor routine** via the trigger API, named
    `Claudinite executor - <repo>`, with the launcher prompt
    `Execute the Claudinite executor: .claudinite/shared/engine/scheduler/executor.md`.
    The finished routine fires on the `ready-for-agent` label event, runs Sonnet 5, and
    has sources = **this repo alone** (not the Claudinite canon — task-prework
-   DESIGN §7/E5: baselining fetches canon Action-side, so no executor task needs it in
+   DESIGN §7/E5: the update runner fetches canon Action-side, so no executor task needs it in
    session).
 
    The API sets only name, prompt and environment; **the repo binding, the trigger

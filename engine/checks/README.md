@@ -74,13 +74,13 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
 
 - **packs** — the declared packs; the closed set that executes. **No pack runs undeclared** —
   the baseline too is declared explicitly (`--init` seeds it; the nightly
-  baselining backfills a missing declaration). A declared id may name a **canon** pack (mounted from
+  the update flows backfill a missing declaration). A declared id may name a **canon** pack (mounted from
   `.claudinite/packs/`) or one of the repo's **own local packs** (`.claudinite/local_packs/<id>/` —
   discovered from the repo's own tree, `local: true`); both are declared and gated identically. A
   local pack's canonical declaration token is **namespaced**: `"local_packs/<id>"` (string entry, or
   an entry object's `id`) — self-documenting, and a canon id can never be claimed by accident. The
   engine resolves both forms to the bare id ([`packEntryId`](../pack_loader/pack-registry.mjs)), so a bare local
-  id still activates while the fleet migrates (baselining rewrites it; the `local-pack-namespace`
+  id still activates while the fleet migrates (the update flows rewrite it; the `local-pack-namespace`
   baseline migration tracks convergence). An
   **unknown** pack name — one that matches neither a canon nor a local pack — is a settings error,
   caught at load (see below); a broken or id-colliding local pack.mjs is likewise surfaced as a
@@ -107,7 +107,7 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
     pack named. Two sources disagreeing on a rule's severity is a settings error, never a
     silent last-writer-wins.
   - **via** — written by the engine (never by hand) when a dependency is materialized:
-    the declared packs that directly require this one, kept accurate by the baselining
+    the declared packs that directly require this one, kept accurate by the update
     backfill (an empty recomputed `via` marks an orphan the project can drop).
 - **rules** — per-rule severity override: `"off"` / `"advisory"` / `"blocking"`. The top-level
   key holds project-wide overrides and those for skill-owned checks (which run
@@ -207,5 +207,5 @@ must not) be declared — so the checker no longer second-guesses it.
 
 Pack **dependencies** are likewise *not* a check: a pack can't be imported without the packs it requires, so
 [`resolveDeclaredPacks`](../pack_loader/pack-registry.mjs) pulls each declared pack's `requires` closure into the
-declaration when it is written (bootstrap `--init` and the baselining backfill), materializing the
+declaration when it is written (bootstrap `--init` and the update backfill), materializing the
 prerequisite in `.claudinite-checks.json` rather than flagging its absence after the fact.

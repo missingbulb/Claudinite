@@ -18,7 +18,7 @@ import rulesLineLength from './rules-line-length.mjs';
 
 // The baseline pack: working discipline, the task lifecycle, and the core
 // checks. Declared explicitly like every other pack — no pack is active by
-// default. Bootstrap's --init seeds the declaration and the nightly baselining
+// default. Bootstrap's --init seeds the declaration and the nightly update
 // backfills it into existing consumers; never fingerprinted (the declaration is
 // authoritative — dropping it is a deliberate choice).
 export default {
@@ -82,8 +82,8 @@ export default {
   // the pack whose projects need it and move this line with it (#385 moved the
   // git/GitHub and Claudinite-lifecycle skills out).
   //
-  // The baseline scheduled task every repo runs — baselining, the per-repo
-  // self-refresh — lives in this pack's `tasks/baselining/`, discovered by the
+  // The baseline scheduled task every repo runs — `update`, the per-repo
+  // self-refresh — lives in this pack's `tasks/update/`, discovered by the
   // scheduler's filesystem scan (engine/scheduler/discover.mjs), not declared
   // here. Being in basics — declared everywhere — makes it universal.
   skills: [

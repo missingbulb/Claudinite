@@ -98,8 +98,11 @@ test('pack-independence: a cross-pack import fires; own files, the engine surfac
 
 test('pack-independence: an import outside the engine surface fires; inert without a packs/ tree', () => {
   const crossing = makeRepo({ changed: {
-    'packs/a/mod.mjs': "import reg from '../../migrations/registry.mjs';\n",
-    'migrations/registry.mjs': 'export default 1;\n',
+    // A canon-internal tree that is never vendored — the crossing this rule exists
+    // to catch. It was migrations/ until #768 Phase 5 deleted that tree; updates/ is
+    // the same shape of target, and equally outside the engine surface a pack may import.
+    'packs/a/mod.mjs': "import reg from '../../updates/pack-update.mjs';\n",
+    'updates/pack-update.mjs': 'export default 1;\n',
   } });
   const consumer = makeRepo({ changed: {
     'src/app.mjs': "import x from './lib.mjs';\n",
@@ -108,7 +111,7 @@ test('pack-independence: an import outside the engine surface fires; inert witho
   try {
     const f = packIndependence.run(buildContext({ root: crossing, mode: 'all' }));
     assert.equal(f.length, 1);
-    assert.match(f[0].what, /migrations\/registry\.mjs/);
+    assert.match(f[0].what, /updates\/pack-update\.mjs/);
     assert.equal(packIndependence.run(buildContext({ root: consumer, mode: 'all' })).length, 0);
   } finally { cleanup(crossing); cleanup(consumer); }
 });

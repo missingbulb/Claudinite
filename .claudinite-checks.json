@@ -124,11 +124,6 @@
     },
     {
       "rule": "file-placement",
-      "path": "migrations/",
-      "reason": "the two compatibility entry points every member still reaches by path (baselining's vendored worker runs node <canon clone>/migrations/apply.mjs and imports its registry.mjs, and that worker is only as new as the member's last converge) — they exist to forward to the real machinery now under engine/migrations/, so reaching across is the whole of what they are, and both are deleted in Phase 5 of #768 once no member can call them"
-    },
-    {
-      "rule": "file-placement",
       "path": "packs/static-website/version-scheme.mjs",
       "reason": "the version rule deliberately imports the scheme itself (VERSION_RE, the version reader) and the config parser from the pack's own vendored stubs, because those files are the definition: they are what runs in every site repo's .github/. Restating either canon-side would be a second copy that drifts from the code that actually bumps and reads. The reach into stubs/ is inherent to a pack whose logic ships vendored, not a misplacement"
     },
@@ -146,6 +141,11 @@
       "rule": "file-placement",
       "path": "vendoring/compute-vendor-set.mjs",
       "reason": "the vendor-set computation deliberately imports the import-surface facts from the engine lib (engine/checks/helpers/module-imports.mjs — the one home the pack-independence check judges against), so \"what a pack may import\" and \"what a vendor set must carry\" share one definition; the cross-tree reach is inherent, not a misplacement"
+    },
+    {
+      "rule": "barrier",
+      "path": ".github/workflows/canary-rehearsal.yml",
+      "reason": "the live canary gate names packs/basics/tasks/update because the worker is ITSELF vendored content, so a release that changes the worker cannot be rehearsed by the canary's vendored copy — that copy predates the release by definition, and a rehearsal driving it would ignore CLAUDINITE_CANON_REF entirely and run a real cycle against main, opening a PR on the canary instead of qualifying the ref. The crossing buys the one property the gate exists for: the code under test is the code every member runs the moment the release reaches them. The workflow names no pack CONTENT — only the entry point of the task that performs the converge"
     }
   ],
   "taskScheduler": {

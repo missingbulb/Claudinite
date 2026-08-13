@@ -9,7 +9,7 @@ import {
   loadMigrations, resolvePath, applyFileAliases,
   applyMaterializations, applyRewrites, applyPackDeclarations, migrationActive,
   applyLocalDeclarationNormalization, applyMigration,
-  migrationAgentic, agenticMigrations,
+  assertNoAgenticNote, assertApplyStageDeclaration,
   callerCanDeliverWorkflows, WITHHOLD_CAPABLE_ENV,
 } from '../engine/migrations/registry.mjs';
 import {
@@ -19,35 +19,62 @@ import {
 
 const M = (over = {}) => ({ id: 'm', landed: '2026-01-01', aliases: [], ...over });
 
-test('migrationAgentic: null when absent, the validated note when well-formed', () => {
-  assert.equal(migrationAgentic(M()), null);
-  const note = { model: 'sonnet', instructions: 'adapt the local pack' };
-  assert.deepEqual(migrationAgentic(M({ agentic: note })), note);
-});
-
-test('migrationAgentic: throws on a malformed note (a typo fails loudly, never silent-skips)', () => {
-  assert.throws(() => migrationAgentic(M({ agentic: { instructions: 'x' } })), /model must be a non-"none"/);
-  assert.throws(() => migrationAgentic(M({ agentic: { model: 'none', instructions: 'x' } })), /non-"none"/);
-  assert.throws(() => migrationAgentic(M({ agentic: { model: 'sonnet', instructions: '  ' } })), /instructions must be a non-empty string/);
-  assert.throws(() => migrationAgentic(M({ agentic: 'sonnet' })), /must be an object/);
-});
-
-test('agenticMigrations: selects exactly the records carrying a valid agentic note', () => {
-  const migs = [M({ id: 'a' }), M({ id: 'b', agentic: { model: 'opus', instructions: 'do the thing' } })];
-  assert.deepEqual(agenticMigrations(migs).map((m) => m.id), ['b']);
-});
-
-test('the real holdout record carries a valid agentic note', async () => {
-  // Stated over whichever record still holds one rather than a named record: the set
-  // shrinks as notes drain (pack-independence's retired in #768), and a test pinned to
-  // one record's name dies with it while proving nothing about the shape.
-  const migs = await loadMigrations();
-  const held = migs.filter((m) => migrationAgentic(m) !== null);
-  assert.ok(held.length > 0, 'no record carries a note — delete this test and add the throw to migrationAgentic');
-  for (const m of held) {
-    const note = migrationAgentic(m);
-    assert.ok(note.model && note.instructions, `${m.dir}: a note must name a model and say what to do`);
+test('the retired agentic field is REJECTED, not ignored (#768 Phase 5)', () => {
+  // Ignoring it would be the worse failure: someone writes a note in good faith and
+  // the work silently never happens, which is the exact correctness risk the note was
+  // invented to close (#405). So a record carrying one fails, with the fix attached.
+  assert.equal(assertNoAgenticNote(M()), undefined, 'a record without one is simply fine');
+  assert.equal(assertNoAgenticNote(M({ agentic: null })), undefined);
+  for (const shape of [{ model: 'sonnet', instructions: 'x' }, 'sonnet', {}]) {
+    assert.throws(() => assertNoAgenticNote(M({ agentic: shape })), /retired in #768 Phase 5/,
+      `a note shaped ${JSON.stringify(shape)} must not slip through`);
   }
+  // The error has to say where the work goes now, or it is just a wall.
+  assert.throws(() => assertNoAgenticNote(M({ agentic: { model: 'sonnet', instructions: 'x' } })), /applyStage/);
+});
+
+test('a pack record may ask for the apply stage; an engine record may not (#798)', () => {
+  const pack = (over) => ({ ...M(over), dir: 'packs/basics/migrations/2026-08-13-x' });
+  const engine = (over) => ({ ...M(over), dir: 'engine/migrations/2026-08-13-x' });
+
+  assert.equal(assertApplyStageDeclaration(pack()), undefined, 'declaring nothing is the common case');
+  assert.equal(assertApplyStageDeclaration(pack({ applyStage: { why: 'rules met member content' } })), undefined);
+  assert.equal(assertApplyStageDeclaration(pack({ applyStage: { why: 'w', instructions: 'Do the thing.' } })), undefined);
+
+  // "No agentic work in the engine flow. Ever." (DESIGN §5) — and the flow is read off
+  // where the record LIVES, so a record cannot declare its way into a lane whose flow
+  // has no session to dispatch. Without this the field would be accepted and then
+  // silently never acted on, which is the failure the retired note was killed for.
+  assert.throws(() => assertApplyStageDeclaration(engine({ applyStage: { why: 'w' } })),
+    /only a PACK record/, 'the engine update flow has no agentic lane to put this in');
+
+  // A bare flag is refused: the terminal vocabulary requires every non-green end to
+  // be explainable, and `applyStage: true` explains nothing.
+  for (const shape of [true, 'yes', ['w'], {}, { why: '' }, { why: '   ' }, { why: 42 }]) {
+    assert.throws(() => assertApplyStageDeclaration(pack({ applyStage: shape })),
+      /applyStage/, `a stage declared as ${JSON.stringify(shape)} must not load`);
+  }
+  assert.throws(() => assertApplyStageDeclaration(pack({ applyStage: { why: 'w', instructions: ['a'] } })),
+    /instructions" must be a string/);
+});
+
+test('the shape check runs at LOAD, so the live corpus is covered by it', async () => {
+  // The selection half again: a validator nothing calls is a validator that is wrong
+  // about the corpus for as long as nobody looks.
+  const migs = await loadMigrations();
+  for (const m of migs) {
+    assert.equal(assertApplyStageDeclaration(m), undefined, `${m.dir} would not load`);
+    if (m.applyStage) assert.equal(flowOf(m.dir).flow, 'pack', `${m.dir} asks for a session its flow cannot dispatch`);
+  }
+});
+
+test('no record in the live corpus carries the retired field', async () => {
+  // The selection half: the throw only bites on records that go through it, and
+  // loadMigrations is what every real caller uses — so this is also the assertion
+  // that loading the real tree does not throw.
+  const migs = await loadMigrations();
+  assert.ok(migs.length > 0, 'the corpus still has records to load');
+  for (const m of migs) assert.equal(m.agentic, undefined, `${m.dir} still carries an agentic note`);
 });
 
 test('resolvePath: prefers canonical then legacy; an unknown target resolves to itself', () => {
@@ -546,34 +573,4 @@ test('applyMigration runs every op — the vocabulary has one runner, not one pe
   const after = JSON.parse(w.written['.claudinite-checks.json']);
   assert.deepEqual(after.packs, ['local/mine', 'added'], 'normalization and declaration both ran');
   assert.ok(applied.length >= 3, applied.join(' | '));
-});
-
-// --- the shrinking agentic holdout on the engine flow (#768) ------------------
-
-test('an engine record carrying an agentic note is rejected outright', () => {
-  // Phase 1's deferred validator, landable now that the last engine note is retired
-  // (#768). It could not ship earlier for the reason it exists: a validator that
-  // rejects records the canon itself still shipped is broken on arrival.
-  const note = { model: 'sonnet', instructions: 'adapt the local pack' };
-  assert.throws(
-    () => migrationAgentic({ ...M({ agentic: note }), dir: 'engine/migrations/2026-09-01-x' }),
-    /an ENGINE migration may not carry an "agentic" note/,
-  );
-  // A PACK record still may — that is where the work belongs, as its apply stage.
-  assert.deepEqual(
-    migrationAgentic({ ...M({ agentic: note }), dir: 'packs/sheepdog/migrations/2026-09-01-x' }),
-    note,
-  );
-  // A bare spec with no dir is a caller testing the shape, not a discovered record.
-  assert.deepEqual(migrationAgentic(M({ agentic: note })), note);
-});
-
-test('the live corpus has no engine record carrying a note', async () => {
-  // The selection half: the throw above only bites on records that go through it, and
-  // loadMigrations is what every real caller uses. Asserted over the real tree so the
-  // canon can never ship what its own flow refuses to run.
-  const engineNotes = agenticMigrations(await loadMigrations())
-    .map((m) => m.dir)
-    .filter((d) => d.startsWith('engine/migrations/'));
-  assert.deepEqual(engineNotes, []);
 });

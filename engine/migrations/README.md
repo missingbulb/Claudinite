@@ -60,8 +60,8 @@ export default {
   error there, so baselining **re-converges the mount** whenever this pass changed the declaration.
   All honor an optional `appliesTo(read)` gate so a migration only touches the repos it's meant for
   (never the canon itself). [`apply.mjs`](apply.mjs) runs all four over a checkout
-  (`node migrations/apply.mjs`); idempotent, a no-op once done. Each member migrates **itself**:
-  baselining runs the applier from the fresh canon clone it fetched, **after** the vendor step, so a
+  (`node engine/migrations/apply.mjs`); idempotent, a no-op once done. Each member migrates **itself**:
+  the update flows run the applier from the fresh canon clone they fetched, **after** the vendor step, so a
   key and the engine version that accepts it always land in the same transactional commit. There is
   no fleet-wide apply pass and no central delivery — the member's own maintenance commit carries its
   migration writes.
