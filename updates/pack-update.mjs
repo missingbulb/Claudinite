@@ -123,24 +123,35 @@ export function stagedFiles(targetRoot) {
 // the thing a human runs by hand, and the thing bootstrap runs at adoption.
 const STUB_REL = '.claudinite/shared/engine/scheduler/stubs/claudinite-scheduler.yml';
 
-// The scheduler workflow this member should be carrying, when that differs from what
-// it has; null when it is already converged or the answer cannot be computed.
+// The scheduler workflow this member should be carrying, as `{ pending, error }`.
+// `pending` is null when the file is already converged; `error` is set when the
+// answer could not be computed at all.
 //
-// Returning null on a failed computation rather than throwing is deliberate and is
-// the smaller of two bad outcomes. This is one surface of an update whose other
-// surfaces have already landed; a member whose settings will not parse, or whose
-// mount has no stub yet, has a problem this flow cannot fix and should not die of.
-// The drift persists and the next cycle asks again — whereas a throw here would
-// strand the whole update behind an unrelated fault.
+// NOT THROWING is deliberate: this is one surface of an update whose other surfaces
+// have already landed, and a member whose settings will not parse has a problem this
+// flow cannot fix and must not die of. A throw here would strand the whole update
+// behind an unrelated fault.
+//
+// But NOT REPORTING was a bug, and a nasty one. The first version swallowed every
+// failure to a bare `null`, which is the same answer as "already converged" — so a
+// member whose settings stopped parsing would report a clean update, forever, while
+// its wiring silently froze. That is precisely the failure mode this whole lane
+// exists to end (#797): wiring that nothing converges and nothing complains about.
+// Silence is the right behaviour for the TERMINAL and the wrong behaviour for the
+// LOG, so the two are separated here.
 export async function pendingSchedulerWorkflow(targetRoot, fullName, read) {
   try {
+    if (!fullName) return { pending: null, error: 'no repo name — cannot resolve this repo\'s cron minute' };
     const stub = read(STUB_REL);
-    if (stub == null || !fullName) return null;
+    if (stub == null) return { pending: null, error: `no vendored scheduler stub at ${STUB_REL}` };
     const { schedulerWorkflowTarget, SCHEDULER_WORKFLOW, declaredSecrets } = await import('../engine/scheduler/converge-wiring.mjs');
     const { loadConfig } = await import('../engine/checks/helpers/repo-context.mjs');
     const content = schedulerWorkflowTarget(fullName, stub, await declaredSecrets(targetRoot, loadConfig(targetRoot)));
-    return read(SCHEDULER_WORKFLOW) === content ? null : { path: SCHEDULER_WORKFLOW, content };
-  } catch { return null; }
+    const pending = read(SCHEDULER_WORKFLOW) === content ? null : { path: SCHEDULER_WORKFLOW, content };
+    return { pending, error: null };
+  } catch (e) {
+    return { pending: null, error: `could not compute the scheduler workflow: ${e.message}` };
+  }
 }
 
 // Whether this run's records ask for the agentic tail, and what they ask for.
@@ -273,8 +284,8 @@ export async function packUpdate(targetRoot, {
   //
   //     Withheld like any other workflow path, and by the same route, so "the file
   //     drifted" and "a record materialized one" reach the apply stage as one list.
-  const pending = await pendingSchedulerWorkflow(targetRoot, fullName, read);
-  if (pending) withhold(pending.path, pending.content);
+  const wiring = await pendingSchedulerWorkflow(targetRoot, fullName, read);
+  if (wiring.pending) withhold(wiring.pending.path, wiring.pending.content);
 
   // …and sweep what is no longer owed. A staged file outlives its need the moment the
   // apply stage lands it: the workflow then matches its target, nothing withholds it
@@ -314,7 +325,14 @@ export async function packUpdate(targetRoot, {
   //    you can aim at one member instead of fourteen at once.
   const selftest = runSelfTest(targetRoot, selfTestRun);
   const decision = deliveryDecision({ selftestOk: selftest.ok, delivery, forceMergeOnRedCi });
-  return outcome(decision.action === 'needs-human' ? NEEDS_HUMAN : 'ok', decision.why, {
-    plan, files: packFiles.length, applied, selftest, decision, withheld, applyStage: applyStageFor(specs, withheld),
+  // A wiring failure rides out on `detail`, which the worker already prints and which
+  // becomes the PR body and the dispatch issue's reason. Appended rather than given a
+  // field of its own, because a new field only reaches a member when its worker
+  // catches up a cycle later, and `detail` reaches every fielded worker today.
+  const detail = wiring.error ? `${decision.why} — but ${wiring.error}` : decision.why;
+
+  return outcome(decision.action === 'needs-human' ? NEEDS_HUMAN : 'ok', detail, {
+    plan, files: packFiles.length, applied, selftest, decision, withheld,
+    wiringError: wiring.error, applyStage: applyStageFor(specs, withheld),
   });
 }

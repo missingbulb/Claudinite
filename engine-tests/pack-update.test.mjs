@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, renameSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { packUpdate, planPackUpdates, packRecordsInGap, isPackFile, applyStageFor, PENDING_DIR } from '../updates/pack-update.mjs';
+import { packUpdate, planPackUpdates, packRecordsInGap, isPackFile, applyStageFor, pendingSchedulerWorkflow, PENDING_DIR } from '../updates/pack-update.mjs';
 import { terminalFor } from '../updates/terminals.mjs';
 import { SCHEDULER_WORKFLOW } from '../engine/scheduler/converge-wiring.mjs';
 import { NEEDS_HUMAN } from '../updates/engine-update.mjs';
@@ -157,6 +157,43 @@ test('the scheduler workflow is staged for a lane that can push it, and clears o
   assert.equal(readFileSync(join(root, SCHEDULER_WORKFLOW), 'utf8'), content, 'and it is left exactly alone');
   assert.ok(!existsSync(join(root, PENDING_DIR, 'claudinite-scheduler.yml')),
     'the staged copy is swept, or it reads forever as work nobody did');
+  rmSync(root, { recursive: true, force: true });
+});
+
+test('a wiring answer that cannot be computed is REPORTED, never read as converged', async () => {
+  // The bug this closes: the first version swallowed every failure to a bare `null`,
+  // which is the same answer as "already converged". A member whose settings stopped
+  // parsing would have reported a clean update forever while its wiring silently
+  // froze — the exact failure #797 exists to end.
+  const root = makeMember();
+  assert.deepEqual((await applyVendor(root)).errors, []);
+  const read = (p) => (existsSync(join(root, p)) ? readFileSync(join(root, p), 'utf8') : null);
+
+  const healthy = await pendingSchedulerWorkflow(root, 'o/r', read);
+  assert.equal(healthy.error, null);
+  assert.ok(healthy.pending, 'a member with no scheduler workflow is owed one');
+
+  // No name to hash a cron minute from, and no stub to converge against: both are
+  // "cannot answer", and neither may look like "nothing owed".
+  for (const [why, call] of [
+    ['no repo name', () => pendingSchedulerWorkflow(root, '', read)],
+    ['no vendored stub', () => pendingSchedulerWorkflow(root, 'o/r', (p) => (p.includes('stubs/') ? null : read(p)))],
+  ]) {
+    const r = await call();
+    assert.equal(r.pending, null, why);
+    assert.ok(r.error, `${why} must be reported, not returned as "already converged"`);
+  }
+
+  // …and the report reaches the line a human actually sees. `detail` is what the
+  // worker prints, what becomes the PR body, and what becomes the dispatch issue's
+  // reason — chosen over a new field because a new field only reaches a member once
+  // its worker catches up, a cycle later.
+  writeFileSync(join(root, '.claudinite-checks.json'), '{ not json at all\n');
+  const broken = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
+  if (broken.status !== NEEDS_HUMAN) {
+    assert.ok(broken.wiringError, 'the flow must carry the fault');
+    assert.match(broken.detail, /but /, 'and say so where it is read');
+  }
   rmSync(root, { recursive: true, force: true });
 });
 
