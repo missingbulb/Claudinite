@@ -428,6 +428,28 @@ export function makeSim({
     // the task file disappears from HEAD (S20): validate-in-code closes obsolete
     removeTask(taskId) { registry.delete(taskId); return sim; },
 
+    // a declaration change lands at HEAD (S28): the very next tick/pick reads
+    // the new frequency/after/precondition — items carry no schedule to migrate
+    updateTask(taskId, patch) {
+      registry.set(taskId, { ...registry.get(taskId), ...patch });
+      return sim;
+    },
+
+    // an issue from another mechanism/vocabulary (S29): present in the repo,
+    // outside the [claudinite-work] family — the tick must never touch it
+    foreignIssue(title) {
+      const it = {
+        number: issues.length + 700, title, taskId: null, origin: 'foreign',
+        labels: new Set(['agent-dispatch']), state: 'open',
+        createdAt: now, closedAt: null, readySince: null, lastActivity: now,
+        notBefore: null, blockedBy: [], outcome: null, rolls: [], comments: [],
+        escalated: false, sessions: [], agentClaims: [], handoffAttempts: 0,
+        quarantined: false,
+      };
+      issues.push(it);
+      return it;
+    },
+
     // ---- multi-executor contention (S7) ------------------------------------
     // Two executors read the SAME snapshot of the ready list, so both pick
     // the same first item; both swap and post claim comments; the earliest

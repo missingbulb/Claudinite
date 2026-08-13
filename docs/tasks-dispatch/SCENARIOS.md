@@ -576,6 +576,35 @@ deltas and one more spec bug:
   fan-in is surfaced, a human close releases it, and it converges on its
   own.
 
+### S28 — the mechanism changes mid-flight (new)
+
+- Noon: an update lands moving tidy-issues from `daily` (04:00) to
+  `daily-2h` (02:00) and replacing its precondition. Its standing item is
+  asleep, `Not-before: tomorrow 04:00Z` — stamped under the old declaration.
+- The item **sleeps out the wake it already carries** (the one scheduling
+  fact on an item), is judged there by the **new** precondition, and that
+  roll targets the **new** 02:00 anchor; the day after, it wakes at 02:17.
+  The update itself never touched the item — no migration, no relabeling.
+  An operator wanting the new cadence immediately wakes the item (§8).
+- The general rule this pins (DESIGN §14): declarations apply at the next
+  evaluation because everything but `Not-before` is computed from HEAD at
+  every tick and pick; only a label/field **grammar** change needs a
+  migration note, and the simulator is where such a change is rehearsed.
+
+**Verdict: holds, with the stamped-wake precision the simulator forced.**
+
+### S29 — bootstrap beside the old mechanism's issues (new)
+
+- A repo flips to the queue with an open slot-era issue
+  (`[claudinite-task] basics/baselining d2026-08-11`, `agent-dispatch`).
+- A full day of ticks, drains, and the janitor: the relic's state, labels,
+  and comments are byte-identical after — the tick's family list is
+  title-filtered and every sweep is `task:*`-label-scoped — while the new
+  mechanism runs its own `[claudinite-work]` item beside it. Disjoint
+  families are what make the migration flag two-directional (DESIGN §14).
+
+**Verdict: holds.**
+
 ### S25 — adoption's first tick (new)
 
 - A freshly wired repo's first tick creates *every* task's item — including

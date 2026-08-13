@@ -749,22 +749,127 @@ second, queryable census), the janitor as sole recovery site, dormancy (the
 tick's first gate, before any read), the issue-is-data security posture, the
 one-cron rule.
 
-## 14. Migration sketch
+## 14. Arrival, updates, secrets — the mechanism's own lifecycle
 
-Deliberately thin — the phase plan belongs to a tracking issue, not this
-record. The property that makes migration tractable: the two mechanisms can
-coexist per-repo behind one config flag (`taskScheduler.dispatch:
-"slots" | "queue"`), because they share the task contract, and their issue
-families are disjoint (`[claudinite-task]` vs `[claudinite-work]`). Order:
-vocabulary + tick + executor behind the flag on the canon repo → janitor
-re-target → dependency fields + `after` → fleet fan-out/fan-in → flip members
-by baselining → delete the slot machinery. Every retired mechanism deletes in
-the same PR that lands its replacement's fleet flip, per the corpus's
-no-lingering-legacy discipline. One migration detail already known
-(SCENARIOS F8): the signal collectors' self-trigger exclusions must learn the
-new vocabulary — `[claudinite-work]` titles and the `task:*` label events —
-before the first queue-mode repo flips, or the queue's own items read as repo
-activity to the preconditions watching it.
+Three flows the design must own beyond steady state: how the mechanism
+**arrives** in a repo, what happens when the mechanism itself **changes**, and
+how a task **executes with secrets**. (Owner question, 2026-08-13 — the first
+two had only S25's fragment until this section; the scenarios named here are
+executable like the rest.)
+
+### Bootstrap — when the mechanism is added
+
+The mechanism reaches a repo the way every engine facility does — bootstrap
+for a fresh repo, baselining's wiring converge for an established one — and
+its wiring is exactly four things, all idempotent, all from the vendored
+engine at HEAD:
+
+1. **Labels**, create-if-missing: `task:ready/blocked/executing/agent/urgent`,
+   `origin:schedule`, `needs-human`, the `outcome:*` family.
+2. **Two vendored workflows**: the tick (cron at the repo's stable hashed
+   minute, plus `workflow_dispatch` so an operator or a migration never waits
+   for the cron), and the executor (invoked as the tick's drain job and by
+   `labeled` events on `task:ready`/`task:urgent`; carries the stamped
+   secrets env — below).
+3. **Config**: `taskScheduler.dispatch: "queue"`, the endpoint map (§12), the
+   anchor schedule.
+4. **Nothing else** — no seed items, no ledger to initialize. The first tick
+   after wiring creates every task's first item `task:blocked` until its next
+   real anchor (§5's first-item rule, S25), so adoption never fires weekly or
+   monthly work off-anchor on the least-proven repo. The adoption smoke test
+   is the force lever: wake one item by hand and watch it converge.
+
+Pre-existing issues from the slot mechanism (`[claudinite-task]` titles) are
+invisible to the tick — the family list is title-filtered — so bootstrap into
+a repo with old-vocabulary issues neither reads nor touches them (S29); they
+are the old mechanism's to drain or a human's to close.
+
+### Updates — when the mechanism changes
+
+The mechanism's only durable state is the items, and an item is deliberately
+schema-thin: a title naming a task, labels naming a state, two body fields,
+comments as record. Everything else — anchors, guards, yields, leashes,
+verdicts — is **computed fresh at every tick and pick from the engine and the
+declarations at HEAD**. That one property decides every update question:
+
+- **A task declaration change** (frequency, `after`, precondition, secrets)
+  applies to its standing item at the item's next evaluation, with no
+  migration and no relabeling. One precision the simulator pinned (S28): the
+  stamped `Not-before` is the *one* scheduling fact an item carries, so a
+  frequency change takes effect **at the wake already stamped** — the item
+  sleeps out its old wake, is judged there by the new precondition, and the
+  next roll targets the new anchor. An operator who wants the new cadence
+  sooner wakes the item — the force lever, as everywhere.
+- **An engine change** lands through the ordinary update flow (engine release
+  → members' baselining converges the vendored workflows). In-flight items
+  survive by construction: a run that claimed an item finishes it on the code
+  it checked out; every later touch — next tick, next pick, the janitor — is
+  new code reading labels. The label-and-field vocabulary is the
+  compatibility surface, nothing else is.
+- **Which makes grammar changes the one hard case**: renaming a label or body
+  field strands every open item. Such a change ships with a migration note
+  (the `migrations/` discipline) that relabels open items, and it is
+  rehearsed in the simulator first — change `sim.mjs`, and the red tests name
+  the scenarios the grammar change breaks before any repo runs it. Additive
+  changes (a new label, a new optional field) need none of this and are the
+  strongly preferred shape.
+- **Version skew** inside one run cannot happen (an Actions run checks out
+  one ref); skew across runs is the in-flight bullet above, and is why every
+  rule reads state from the item rather than remembering it.
+
+### Executing a task with secrets — the whole path
+
+GitHub Actions secrets are the only secret store in the system, and the
+executor workflow is the only consumer. End to end:
+
+1. **Declaration** — `task.mjs` lists `required_secrets: ['CHROME_STORE_TOKEN']`:
+   names only. The declaration is vendored to every consuming repo verbatim,
+   which is exactly why it must never hold more than a name.
+2. **Storage** — values live as repo Actions secrets, set once by the owner
+   in repo settings. Nothing else in the system stores, copies, or logs them.
+3. **Wiring** — the wiring converge stamps each declared name into the
+   **executor workflow's env** (`CHROME_STORE_TOKEN:
+   ${{ secrets.CHROME_STORE_TOKEN }}`). The tick and the janitor workflows
+   get no secrets — they never execute task code.
+4. **Execution** — after claim and a go verdict, the executor runs prework as
+   a subprocess (task dir cwd, timeout) whose env carries exactly the
+   declared names. **Prework is the only task code that ever sees values.**
+5. **The agent hop carries nothing** — the hand-off writes body sections and
+   calls the invocation endpoint with a prompt naming the issue and nonce;
+   the session works under its own identity. A task whose agent phase needs
+   a privileged effect routes it through prework's delivered artifact or a
+   wider invocation endpoint — never a secret in the session.
+6. **Endpoint tokens ride the same rail** (§12): config maps endpoint name →
+   URL + the *name* of the Actions secret; the stamp puts it in the executor
+   env; the executor reads it only at the moment of the API call. The CCR
+   session-creation token is simply the default endpoint's entry.
+7. **Missing secret** — declared but not configured: baselining asks the
+   owner on its standing issue (the adoption-interview posture), and until
+   set, execution converges the affected item `needs-human` naming the
+   missing secret — at prework for `required_secrets`, at hand-off for an
+   endpoint token. Nothing fails silently; the task just doesn't work yet.
+8. **Rotation** — rotate the value in repo settings; nothing else changes,
+   because names are the interface everywhere above.
+
+Steps 2–3 and 6–8's storage half are Actions-platform behavior the simulator
+deliberately does not model (prose rows in the coverage map); the
+needs-human convergence postures are ordinary sim territory.
+
+### Migration
+
+Deliberately thin here — **the phase plan lives in the tracking issue,
+[#801](https://github.com/missingbulb/Claudinite/issues/801)** (two PRs, two
+approval points, one same-day validation burst) — with this record keeping
+only the property that makes it tractable: the two
+mechanisms coexist per-repo behind `taskScheduler.dispatch:
+"slots" | "queue"`, sharing the task contract, with disjoint issue families
+(`[claudinite-task]` vs `[claudinite-work]`) — so the flip is a config edit
+and the rollback is the same edit backwards, with each mechanism's open
+items untouched by the other. Every retired slot mechanism deletes in the
+same PR that lands its replacement's fleet flip. One known migration detail
+(SCENARIOS F8): the signal collectors' self-trigger exclusions must learn
+the new vocabulary before the first queue-mode repo flips, or the queue's
+own items read as repo activity to the preconditions watching it.
 
 ## 15. Decisions on record (owner, 2026-08-13)
 

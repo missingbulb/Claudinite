@@ -577,3 +577,51 @@ test('S26b the closed-at guard half releases at the next anchor', () => {
   assert.ok(fam[1].createdAt >= T('2026-08-14T04:00Z'),
     "Friday's occurrence was not eaten by Thursday's close");
 });
+
+// ---- S28 — the mechanism (or a task) changes mid-flight: items carry no
+// schedule, so a declaration change applies at the very next evaluation with
+// no migration and no relabeling.
+test('S28 declaration change mid-flight: the standing item follows HEAD', () => {
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
+  // mid-day, an update lands: tidy-issues moves to the 02:00 anchor and now
+  // yields to baselining; its precondition is replaced outright
+  sim.at('2026-08-12T12:00Z', (s) => s.updateTask('tidy/tidy-issues', {
+    frequency: 'daily-2h',
+    precondition: (w) => ({ run: !!w.newSignal, reason: 'new precondition, no work' }),
+  }));
+  sim.at('2026-08-14T01:00Z', ({ world }) => { world.newSignal = true; });
+  sim.run('2026-08-12T00:00Z', '2026-08-14T12:00Z');
+
+  const it = sim.family('tidy/tidy-issues').find((i) => !i.seeded);
+  const asks = evals(sim, 'tidy/tidy-issues');
+  // day 2: the item sleeps out its ALREADY-STAMPED wake (old 04:00 anchor) —
+  // the one scheduling fact it carries — and is judged there by the NEW
+  // precondition; the update itself never touched the item
+  assert.ok(asks[1].t >= T('2026-08-13T04:00Z') && asks[1].t < T('2026-08-13T05:00Z'),
+    'second ask at the wake stamped before the update');
+  assert.equal(asks[1].run, false, 'judged by the new precondition');
+  assert.equal(it.rolls[1].reason, 'new precondition, no work');
+  // and THAT roll targets the NEW anchor: day 3's ask lands at 02:17
+  assert.ok(asks[2].t >= T('2026-08-14T02:00Z') && asks[2].t < T('2026-08-14T03:00Z'),
+    'the first roll after the update adopts the new cadence');
+  assert.equal(asks[2].run, true);
+  assert.equal(it.state, 'closed', 'and ran under the new declaration');
+});
+
+// ---- S29 — bootstrap into a repo with old-mechanism issues: the disjoint
+// title family means the tick neither reads nor touches them.
+test('S29 old-vocabulary issues are invisible to the new mechanism', () => {
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
+  let relic;
+  sim.at('2026-08-12T00:05Z', (s) => {
+    relic = s.foreignIssue('[claudinite-task] basics/baselining d2026-08-11');
+  });
+  sim.run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
+
+  assert.equal(relic.state, 'open', 'the relic is untouched');
+  assert.deepEqual([...relic.labels], ['agent-dispatch'], 'no label was added or removed');
+  assert.equal(relic.comments.length, 0);
+  const it = sim.standingItem('basics/baselining');
+  assert.ok(it && it.labels.has('task:blocked'),
+    'the new mechanism ran its own item beside the relic, undisturbed');
+});

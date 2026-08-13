@@ -85,6 +85,9 @@ test's title in `scenarios.test.mjs`.
 | §15.11 invocation idempotency key | **prose** — conditional improvement; the modeled defense is the F5 lease (`S10`) |
 | §15.12 the no-go record alternative | **prose** — superseded by §15.13 |
 | §15.13 the standing work item | `S1'`, `S21`, `S25`, `S26b`, `S12'` |
+| §14 bootstrap: first-item rule; old-vocabulary issues untouched | `S25`, `S29` |
+| §14 updates: declaration changes apply at the next evaluation; the stamped wake is the one carried fact | `S28` |
+| §14 secrets: the missing-secret needs-human posture | `S9b` (the bound); storage/stamping/rotation **prose** — Actions-platform behavior |
 
 ## What the model deliberately omits
 
