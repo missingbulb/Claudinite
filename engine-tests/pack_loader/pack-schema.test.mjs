@@ -59,6 +59,17 @@ test('a rule whose own scope contradicts its placement is drift', () => {
   assert.deepEqual(validateManifest({ ...valid, workRules: [rule('r')] }), []);
 });
 
+test('the version fields are optional, and validated for shape when declared', () => {
+  // Optional: a member's local packs carry neither, and the loader must keep
+  // accepting them (docs/versioned-updates/DESIGN.md §8).
+  assert.deepEqual(validateManifest(valid), []);
+  assert.deepEqual(validateManifest({ ...valid, version: 3, minEngineVersion: 2 }), []);
+  for (const bad of ['1', 1.5, 0, -1, null]) {
+    assert.match(whats({ ...valid, version: bad }), /"version" is not a valid value/, `version: ${bad}`);
+    assert.match(whats({ ...valid, minEngineVersion: bad }), /"minEngineVersion" is not a valid value/, `minEngineVersion: ${bad}`);
+  }
+});
+
 test('the skills declaration and the tree must agree in both directions', () => {
   assert.match(whats({ ...valid, skills: ['ghost'] }, { skillDirs: [] }), /declares a skill "ghost" with no skills\/ghost\/ directory/);
   assert.match(whats(valid, { skillDirs: ['orphan'] }), /bundles skills\/orphan\/ but does not declare it/);

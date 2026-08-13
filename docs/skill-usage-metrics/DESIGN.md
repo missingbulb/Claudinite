@@ -111,9 +111,9 @@ The filename stays `<stamp>--issue-<n>--<session>.jsonl`, with **`0` meaning
 scheduler's `conversationLogs` signal already accept `0` — only the CLI's
 argument validation refuses it, and that is the whole change. Keeping the
 filename shape identical is deliberate: any *new* shape would be invisible to
-the prune and become immortal. `conversation-extract` treats an `issue-0` file
-as having no issue to post its exchange summary on; everything else about its
-two-pass lifecycle is unchanged.
+the prune and become immortal. The extract's conversation half treats an
+`issue-0` file as having no issue to post its exchange summary on; everything
+else about its two-pass lifecycle is unchanged.
 
 ### 3.3 The SessionEnd hook — best effort, fail-soft
 
@@ -386,6 +386,22 @@ skill counts would otherwise apply the sampling caveat to both.
 run and nothing else; the watermark stays put, so the next fold retries exactly
 those runs.
 
+### 4.3 Executor execution statuses — as built (owner, 2026-08-06)
+
+§4.2 counts what the SCHEDULER did; nothing counted what the EXECUTOR SESSION
+then did with a dispatch — ran it to success, failed it to `needs-human`, or
+closed it because the repo no longer carries the task. Those statuses are now
+distilled **from the conversation logs**, deterministically: executor-side code
+prints one `claudinite-task-exec v1 <pack>/<task> [<slot>] <status>` record per
+terminal state (`success` / `failed` printed via `record-exec.mjs` at
+convergence; `task-gone` / `invalid` printed by `resolve-dispatch.mjs` itself),
+the record rides the captured transcript to the logs branch (§3.4), and the fold
+counts it into `taskExec` rows (per `pack/task`, per status), deduped on the
+full record tuple within a capture file so an echoed line never double-counts.
+Renderer and parser live in `run-record.mjs` beside the §4.2 vocabulary — same
+single-home rule. These rows are a SAMPLE (captured executor sessions only),
+and sit beside the §4.2 census; the two populations stay distinct keys.
+
 ## 5. The per-repo aggregate — `.claudinite/local/usage.GENERATED.json`
 
 Written by **`usage-fold`**: an agentless daily task of `grow_with_claudinite`
@@ -486,7 +502,7 @@ PR), and the agentless run costs seconds.
 Written by **`fleet-usage`**: an agentless daily task of the **sheepdog**
 pack, alongside `fleet-census` and `fleet-freshness` and shaped exactly like
 them — the sweep (`aggregate-fleet-usage.mjs`, inside the task's folder) *is*
-the `agent_preprocessing`, `required_secrets` asks for `FLEET_GITHUB_TOKEN`,
+the `prework`, `required_secrets` asks for `FLEET_GITHUB_TOKEN`,
 and members are enumerated via `fleet-api.mjs` from the sheepdog config entry.
 It runs only where the sheepdog pack is declared — the fleet-enforcer repo.
 

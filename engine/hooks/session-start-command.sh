@@ -12,8 +12,8 @@
 # checkout itself.
 #
 # Each step's stdout is forwarded to this hook's stdout, which SessionStart adds
-# to the session context (prose, preferences, halt-and-ask directives). Progress
-# — a timestamp and what it is doing — is written to .claudinite-hooks.log and to
+# to the session context (pack prose, a pack's own session-start step, halt-and-ask
+# directives). Progress — a timestamp and what it is doing — is written to .claudinite-hooks.log and to
 # stderr, so a triggering failure (no lines at all) reads differently from an
 # execution failure (a step logged `start` but not `done`).
 #
@@ -23,10 +23,9 @@
 # the injected directives, never the exit code.
 set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"  # <corpus>/engine/hooks
-# This script lives in <corpus>/engine/hooks/. The preferences step lives
-# beside it (per-user content is never vendored, so its step is hook machinery —
-# see ../vendoring/DESIGN.md); the remaining step scripts live in the engine's
-# loader dir (<corpus>/engine/pack_loader).
+# This script lives in <corpus>/engine/hooks/; every step script it runs lives in
+# the engine's loader dir (<corpus>/engine/pack_loader), except the self-test at
+# the engine root.
 corpus="$(dirname "$(dirname "$here")")"
 
 # --- durable hook log (format mirrored in engine/checks/helpers/hook-log.mjs —
@@ -61,9 +60,28 @@ run_step() {
   [ "$rc" -ne 0 ] && warns="${warns:+$warns; }$label exited $rc"
 }
 
+# The facet channel: a scratch file the pack session-start steps append one short
+# phrase each to, and the summary step folds into the line it emits. Created here
+# because the orchestrator is what both ends have in common; a session where mktemp
+# fails simply has no channel, and every step still runs.
+CLAUDINITE_SESSION_FACETS="$(mktemp 2>/dev/null || true)"; export CLAUDINITE_SESSION_FACETS
+cleanup() { [ -n "${CLAUDINITE_SESSION_FACETS:-}" ] && rm -f "$CLAUDINITE_SESSION_FACETS" 2>/dev/null || true; }
+trap cleanup EXIT
+
 hooklog orchestrator "start"
-run_step inject-preferences bash "$here/steps/inject-preferences.sh"
+# FIRST, and report-only: "can Claudinite run here?" — the mount, the stamp, the
+# pack manifests, the hook targets, the mounted skills, the cron, the migrations
+# registry. It runs ahead of the steps that depend on those things so its output
+# explains their failures rather than trailing them. Never `--strict` here: a
+# non-zero exit makes Claude Code DISCARD this hook's stdout, which would throw
+# away the very report it exists to deliver (and any halt directive with it).
+run_step selftest           node "$corpus/engine/selftest.mjs"
 run_step load-active-prose  node "$corpus/engine/pack_loader/inject-pack-prose.mjs"
+# What a pack can only know at session time, after the prose it is fixed beside:
+# each active pack's own session-start.mjs, run and forwarded into context. Core
+# never learns what one does — the SessionEnd runner's terms, at the other end of
+# the session.
+run_step pack-session-start node "$corpus/engine/pack_loader/run-pack-session-start.mjs"
 run_step mount-skills       node "$corpus/engine/pack_loader/mount-skills.mjs"
 run_step env-check          node "$corpus/engine/pack_loader/env-requirements.mjs" check
 # The interview machinery is the adoption skill's, bundled in the
@@ -71,6 +89,15 @@ run_step env-check          node "$corpus/engine/pack_loader/env-requirements.mj
 # there is no interview.
 interview="$corpus/packs/grow_with_claudinite/skills/adopt-claudinite/interview.mjs"
 [ -f "$interview" ] && run_step interview-check node "$interview" check
+# LAST, and about the session rather than the machinery: the one line stating what
+# loaded — the packs, their checks, the token weight of their prose, the skills, and
+# whatever the steps above said on the facet channel. It runs after them so it
+# describes the session that exists rather than the one about to.
+# Guarded on the file, like the interview: a mount converging mid-flight can hold
+# this orchestrator before it holds the step, and a missing step is a summary the
+# session goes without, not a warning about the session's own machinery.
+summary_step="$corpus/engine/pack_loader/session-summary.mjs"
+[ -f "$summary_step" ] && run_step session-summary node "$summary_step"
 hooklog orchestrator "done"
 
 # One terse, visible confirmation into the session context that the harness ran

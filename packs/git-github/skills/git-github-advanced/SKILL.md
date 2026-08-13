@@ -11,13 +11,27 @@ The project-agnostic half of how we drive GitHub: the branch/commit-history rule
 
 To post a **status update** on an issue (the lifecycle's "update the issue's status" step), use `add_issue_comment`. **Don't** reach for `issue_write` with `method: update` — that edits the issue itself and **replaces the whole body**, silently wiping the original description. Reserve `issue_write`/`update` for genuinely editing the issue (retitling, rewriting the body on purpose).
 
+## An auto-merge refusal is not a verdict — read the PR's state, then act
+
+`enable_pr_auto_merge` only accepts a PR whose required checks are still **pending**, so its refusals answer *timing and configuration*, never the change. Take each at face value and stop:
+
+- *"already in clean status (all checks passed)"* — the checks finished before you got there. That's the green light: `merge_pull_request` directly.
+- *"in unstable status (required checks are failing)"* — this same wording covers a check that is **queued** or **held at an approval gate**. Resolve it by reading the PR's check runs and looking at **`status`**, not `conclusion`; a check that hasn't `completed` has no verdict.
+- *"Protected branch rules not configured"* — auto-merge is a protected-branch feature, so a repo with no rule on its default branch can never arm it. Final; don't let an earlier refusal's wording talk you out of it.
+
+Never re-arm on a loop hoping the answer changes — observed runs answered "unstable" then "clean" seconds later with nothing changed in between, and one spent ~6 minutes of a 13-minute budget circling a single PR without merging it.
+
+## Don't prune a `.gitignore` section in the same commit that deletes what produced its artifacts
+
+Removing a toolchain invites tidying away its ignore rules alongside it — but the artifacts it already produced are usually still sitting untracked in the worktree (`__pycache__/` from an earlier run, `build/` from an earlier build). The moment those rules go, the next `git add -A` sweeps the junk *into* the commit that was supposed to remove it, and nothing complains: the commit is valid and the tests still pass. Delete (or `git clean`) the artifacts first, then drop their ignore lines. And after any bulk `git add -A`, read `git diff --cached --stat` — staged additions are exactly what a clean `git status` stops telling you about.
+
 ## Branch and commit history
 
 ### Commit often, in layers
 
 While working a branch, commit frequently rather than landing one big commit at the end — small, ordered commits let the owner follow the work as it develops. Use commits to *layer* the work in the order you'd want it reviewed:
 
-- Write the failing test(s) first, commit them, **then** implement the feature — so the history shows the contract before the code that satisfies it (and you've seen the test fail before trusting it, per [the engineering-practices skill](../../../basics/skills/engineering-practices/SKILL.md)).
+- Write the failing test(s) first, commit them, **then** implement the feature — so the history shows the contract before the code that satisfies it (and you've seen the test fail before trusting it, per [the basics pack's RULES.md](../../../basics/RULES.md)).
 - Keep any documentation update as its own commit *after* the feature, not folded into it.
 
 There's no cost to a branch carrying many commits when the project uses a **squash** merge to `main` (one commit per PR): the squash collapses them into a single commit on `main`, so `main`'s one-commit-per-PR history is unaffected no matter how granularly the branch is committed.
@@ -75,6 +89,8 @@ A squash-merge creates a new commit on `main` that the branch's own commits are 
 
 GitHub suppresses workflow runs triggered by the built-in `GITHUB_TOKEN` to prevent recursion, so a workflow's own `git push` or `gh pr create` won't fire another workflow (e.g. a `test` or cache-refresh workflow). The one exception is `workflow_dispatch` / `repository_dispatch` — which is why an automation pipeline that needs the downstream checks to run must dispatch them explicitly. A run dispatched against a branch executes on its head commit, so its checks still attach to the PR. The same suppression covers a Claude session's own app-scoped pushes: creating a PR through the API does fire its `pull_request` run, but a follow-up push to that PR gets **no** `synchronize` run — so don't wait for checks that will never start on the new head; gate by running the CI commands locally, and rely on the post-merge run (merging through the merge API does fire the `push` workflow on the default branch).
 
+**"Suppressed" is not always "absent", and the difference decides whether a PR can merge.** Where the repo requires approval for a workflow run, GitHub *creates* the `pull_request` run and parks it at conclusion `action_required` with **zero jobs**, waiting for a human "Approve and run" that unattended automation never gets. The run never executes and never reports, yet it still counts against the PR: `mergeable_state` stays `unstable` and auto-merge refuses to arm, even though the explicitly dispatched run on the same head sha passed. Nothing inside the workflow file can prevent it — `branches`/`branches-ignore` on `pull_request` filter the **base** branch (a bot branch's PR still targets the default branch), and the approval gate is applied to the whole run before any job-level `if` is evaluated. So treat a gated run as **no verdict rather than a failure**, and land the PR on the evidence of the run that actually ran.
+
 ## A workflow definition only takes effect once it's on the default branch
 
 A `workflow_dispatch` or scheduled workflow runs from the copy on the **default branch**, and a `pull_request` run uses the workflow files from the PR's **base** branch — so a workflow you only added on a feature branch isn't dispatchable, and a build/CI change doesn't apply, until it's merged. Merge workflow and build-script changes *before* the release or run that depends on them, or that run executes the *old* definition (shipping a stale build, or silently skipping a check you thought you'd added). This is distinct from the `GITHUB_TOKEN` recursion rule above: even a human-triggered run reads the definition from the default/base branch, not your feature branch.
@@ -104,6 +120,10 @@ GitHub **Actions** reports results as **check runs**, not the legacy **commit st
 ## To confirm a non-PR run (push / dispatch), read its job logs — it has no PR check runs
 
 A `push` or `workflow_dispatch` run isn't attached to a PR, so the PR-scoped check-run query above doesn't apply to it. Confirm such a run through the GitHub API/MCP tools: `get_job_logs(run_id, failed_only: true)` — "0 failed jobs" means green — or, for a release build, `get_release_by_tag`. Don't `curl` the run's status instead: in a sandboxed session `api.github.com` is proxy-blocked and returns an error body that never matches a success pattern, so a `curl`/`Monitor` poll silently reports "still running" until it times out.
+
+## A green run is not evidence its job ran — read the job's own conclusion
+
+A workflow that gates a later job (an `if:` on changed paths, a mode flag, a preceding job's output) concludes **success** with that job **skipped** — so "the release workflow is green" is not evidence the publish step ever executed, and most green runs may never have reached it. Read the conclusion of the **job that does the thing**, never the run's. The corollary for closing an issue: the only closing evidence is a run that actually reached that job and went green, or the external system showing the effect. Fixing a repo-side defect that merely co-occurred with the failure verifies nothing, and a failure caused by state in an external service has no fix in the repo at all.
 
 ## Mark large committed fixtures `linguist-vendored` to fix language stats
 

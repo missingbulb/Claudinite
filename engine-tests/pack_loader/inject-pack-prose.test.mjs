@@ -106,6 +106,28 @@ test('inject-pack-prose: loads a local pack\'s RULES.md from the project\'s own 
   } finally { rmSync(corpus, { recursive: true, force: true }); cleanup(project); }
 });
 
+test('inject-pack-prose: the routing table points at the full pack directory when the corpus carries it', () => {
+  const corpus = makeCorpus({ packs: { basics: { prose: 'RULES.md' } } });
+  writeFileSync(join(corpus, 'packs', 'basics', 'RULES.md'), 'BASICS PROSE\n');
+  writeFileSync(join(corpus, 'packs', 'directory.GENERATED.md'), 'stub catalog\n');
+  const project = makeRepo({ changed: { '.claudinite-checks.json': '{ "packs": ["basics"] }\n' } });
+  try {
+    const out = inject(corpus, project);
+    assert.match(out, /directory\.GENERATED\.md/,
+      'a session deciding what to adopt must be pointed at the full directory of adoptable packs');
+  } finally { rmSync(corpus, { recursive: true, force: true }); cleanup(project); }
+});
+
+test('inject-pack-prose: no pointer when the mount predates the pack directory', () => {
+  const corpus = makeCorpus({ packs: { basics: { prose: 'RULES.md' } } });
+  writeFileSync(join(corpus, 'packs', 'basics', 'RULES.md'), 'BASICS PROSE\n');
+  const project = makeRepo({ changed: { '.claudinite-checks.json': '{ "packs": ["basics"] }\n' } });
+  try {
+    assert.doesNotMatch(inject(corpus, project), /directory\.GENERATED\.md/,
+      'an older mount without the catalog must not be pointed at a file that is not there');
+  } finally { rmSync(corpus, { recursive: true, force: true }); cleanup(project); }
+});
+
 test('inject-pack-prose: fails soft — no config, broken config, and no active pack each emit nothing', () => {
   const corpus = makeCorpus({ packs: { basics: { prose: 'RULES.md' } } });
   writeFileSync(join(corpus, 'packs', 'basics', 'RULES.md'), 'BASICS PROSE\n');

@@ -92,8 +92,8 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
     edge-graph pack's edge list). This is the home of what a legacy top-level `packConfig` key
     used to hold — the engine still reads that key, but baselining folds it into the entries
     and nothing should keep authoring it. The `pack-entry-config` baseline migration
-    ([migrations/](../../migrations/README.md)) tracks the fleet's convergence; when it retires,
-    the key stops being a valid setting.
+    ([engine/migrations/](../migrations/README.md)) documents the fold; once the fleet is off the
+    old shape, the key stops being a valid setting.
   - **answers** — the pack's adoption-interview answers, **verbatim**, keyed by question id
     (`{ "<question-id>": "<answer>" }`). A pack declares its questions on its `pack.mjs`; the
     unanswered gap surfaces only as a mild SessionStart note (strict solely inside the bootstrap
@@ -117,17 +117,17 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
   acceptance is itself a blocking finding. The top-level key holds project-origin exemptions (the
   project's own layout is the reason) — an exemption a *pack's adoption* forces belongs on that
   pack's entry.
-- **maintenance** — fleet-maintenance delivery for this repo, **always explicit**: `"delivery":
-  "auto-merge"` (the sweep lands its baselining/alignment changes through the `claudinite/maintenance`
-  PR, armed to **auto-merge** once this repo's checks pass — no human review, named for exactly what
-  it does) or `"review"` (that same
-  PR, left for the owner to review — never auto-merged). Neither is a direct commit to the default
+- **maintenance** — scheduled-task PR delivery for this repo, **always explicit**: `"delivery":
+  "auto-merge"` (a `merged-pr` task's PR — the `claudinite/maintenance` converge, growth-extract's
+  lesson capture, the usage folds — lands itself once this repo's checks pass, no human review) or
+  `"review"` (those same PRs, left for the owner to review — never auto-merged; every `merged-pr`
+  task degrades to open-pr, member config wins). Neither is a direct commit to the default
   branch. (`push`/`auto`/`pr` are accepted as legacy aliases for `auto-merge`/`review`.) There is
   deliberately no
   implicit default — `--init` seeds `auto-merge` and the nightly sweep backfills a missing key, so the
-  selection is visible in this file rather than implied by absence. Read by
-  the baselining worker; the checks engine
-  itself ignores it.
+  selection is visible in this file rather than implied by absence. Read by the shared delivery
+  helper every PR-delivering task lands through (`engine/scheduler/land-pr.mjs` / `deliver-pr.md`),
+  never by a task itself; the checks engine ignores it.
 
 ## Enforcement wiring
 

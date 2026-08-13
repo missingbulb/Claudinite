@@ -5,6 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { ENGINE_VERSION } from '../engine/version.mjs';
 
 // This test lives at <repo>/vendoring/apply-vendor.test.mjs.
 const MOUNT_DIR = dirname(fileURLToPath(import.meta.url)); // <canon>/vendoring/
@@ -33,16 +34,19 @@ function makeCanon() {
   // needs the spec module too — it is part of the loader, not an optional extra.
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-schema.mjs'), join(root, 'engine', 'pack_loader', 'pack-schema.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'module-imports.mjs'), join(root, 'engine', 'checks', 'helpers', 'module-imports.mjs'));
+  copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'active-migrations.mjs'), join(root, 'engine', 'checks', 'helpers', 'active-migrations.mjs'));
+  copyFileSync(join(REPO_ROOT, 'engine', 'version.mjs'), join(root, 'engine', 'version.mjs'));
   writeAt(root, 'engine/checks/check_the_world.mjs', 'engine v2\n');
   writeAt(root, 'engine/pack_loader/mount-skills.mjs', 'machinery\n');
-  writeAt(root, 'packs/alpha/pack.mjs', 'export default { id: "alpha" };\n');
+  writeAt(root, 'packs/directory.GENERATED.md', 'stub catalog\n');
+  writeAt(root, 'packs/alpha/pack.mjs', 'export default { id: "alpha", version: 4 };\n');
   writeAt(root, 'packs/alpha/RULES.md', 'rules\n');
   writeAt(root, 'packs/alpha/skills/s1/SKILL.md', 'skill\n');
-  // migrations vendor into the mount (agent-preprocessing §7): applier + registry
+  // migrations vendor into the mount (task-prework §7): applier + registry
   // + records. Stubs — this suite exercises the apply/converge, not the content.
-  writeAt(root, 'migrations/apply.mjs', 'export const apply = 1;\n');
-  writeAt(root, 'migrations/registry.mjs', 'export const registry = 1;\n');
-  writeAt(root, 'migrations/active_migrations/2026-01-01-seed.mjs', 'export default { id: "seed" };\n');
+  writeAt(root, 'engine/migrations/apply.mjs', 'export const apply = 1;\n');
+  writeAt(root, 'engine/migrations/registry.mjs', 'export const registry = 1;\n');
+  writeAt(root, 'engine/migrations/2026-01-01-seed/migration.mjs', 'export default {\n  id: "seed",\n  version: 2,\n};\n');
   return root;
 }
 
@@ -69,6 +73,10 @@ test('fresh target: the set lands under .claudinite/shared/ at canon-relative pa
   const settings = JSON.parse(readFileSync(join(target, '.claudinite-checks.json'), 'utf8'));
   assert.match(settings.claudinite.updated, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/);
   assert.equal(settings.claudinite.ref, 'abc123');
+  // The versions this mount is made of, recorded beside the date (DESIGN §5): what
+  // the update flows will range over once the cutover switches authority to them.
+  assert.equal(settings.claudinite.engineVersion, ENGINE_VERSION);
+  assert.deepEqual(settings.claudinite.packVersions, { alpha: 4 });
   assert.deepEqual(settings.packs, ['alpha']); // the declaration itself is untouched
 });
 
@@ -153,10 +161,13 @@ test('#328: a canon tree nested in a FOREIGN git repo is rootless — upward .gi
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-registry.mjs'), join(canon, 'engine', 'pack_loader', 'pack-registry.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-schema.mjs'), join(canon, 'engine', 'pack_loader', 'pack-schema.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'module-imports.mjs'), join(canon, 'engine', 'checks', 'helpers', 'module-imports.mjs'));
+  copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'active-migrations.mjs'), join(canon, 'engine', 'checks', 'helpers', 'active-migrations.mjs'));
+  copyFileSync(join(REPO_ROOT, 'engine', 'version.mjs'), join(canon, 'engine', 'version.mjs'));
   writeAt(canon, 'engine/checks/check_the_world.mjs', 'engine v2\n');
-  writeAt(canon, 'migrations/apply.mjs', 'export const apply = 1;\n');
-  writeAt(canon, 'migrations/registry.mjs', 'export const registry = 1;\n');
-  writeAt(canon, 'migrations/active_migrations/2026-01-01-seed.mjs', 'export default { id: "seed" };\n');
+  writeAt(canon, 'packs/directory.GENERATED.md', 'stub catalog\n');
+  writeAt(canon, 'engine/migrations/apply.mjs', 'export const apply = 1;\n');
+  writeAt(canon, 'engine/migrations/registry.mjs', 'export const registry = 1;\n');
+  writeAt(canon, 'engine/migrations/2026-01-01-seed/migration.mjs', 'export default {\n  id: "seed",\n  version: 2,\n};\n');
   g('add', '-A');
   g('commit', '-q', '-m', 'consumer commit');
   const target = makeTarget({ packs: [] });
@@ -179,4 +190,20 @@ test('transactional: errors abort before any write', async () => {
   const r2 = await applyAt(canon, badJson);
   assert.equal(r2.errors.length, 1);
   assert.ok(!existsSync(join(badJson, '.claudinite', 'shared')), 'nothing may be written on error');
+});
+
+test('the writer fetches records over the TARGET\'s stamp, not the canon\'s idea of recent', async () => {
+  // The gate is only real if the writer hands the target's own installed versions
+  // to the set. A target already at the record's version must receive none of it —
+  // and the same canon, against a target below it, must ship it.
+  const canon = makeCanon();
+  const record = join('.claudinite', 'shared', 'engine', 'migrations', '2026-01-01-seed', 'migration.mjs');
+
+  const current = makeTarget({ packs: ['alpha'], claudinite: { updated: '2026-01-01T00:00:00Z', engineVersion: 2, packVersions: {} } });
+  assert.deepEqual((await applyAt(canon, current)).errors, []);
+  assert.ok(!existsSync(join(current, record)), 'an up-to-date target carries no records');
+
+  const behind = makeTarget({ packs: ['alpha'], claudinite: { updated: '2026-01-01T00:00:00Z', engineVersion: 1, packVersions: {} } });
+  assert.deepEqual((await applyAt(canon, behind)).errors, []);
+  assert.ok(existsSync(join(behind, record)), 'a lagging target carries exactly its gap');
 });

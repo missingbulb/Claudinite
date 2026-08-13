@@ -7,8 +7,8 @@ import { fileURLToPath } from 'node:url';
 import {
   convergeSchedulerWorkflow, ensureHooks, removeRetiredCorpusImport, convergeWiring,
   withDeclaredSecrets, SCHEDULER_WORKFLOW, SETTINGS_PATH,
-  ensureBadgeSetting, convergeBadgeRow, renderBadgeRow, badgeRowEntries,
-  BADGE_ROW_START, BADGE_ROW_END, CHECKS_PATH, README,
+  removeRetiredBadgeSetting, convergeBadgeRow, renderBadgeRow, badgeRowEntries,
+  BADGE_ROW_START, BADGE_ROW_END, README,
 } from '../../engine/scheduler/converge-wiring.mjs';
 import { hashedCron } from '../../engine/scheduler/hash-minute.mjs';
 
@@ -26,7 +26,7 @@ test('convergeSchedulerWorkflow: writes the stub with the repo-hashed cron, and 
   assert.equal(convergeSchedulerWorkflow(root, REPO, STUB), false);
 });
 
-// --- required_secrets delivery (agent-preprocessing DESIGN §9) --------------
+// --- required_secrets delivery (task-prework DESIGN §9) --------------
 // Actions needs every secret named statically in the workflow, so a task's
 // `required_secrets` IS that list and the wiring converge writes it. These cover
 // the whole delivery mechanism — there is no other secrets code.
@@ -118,12 +118,12 @@ test('removeRetiredCorpusImport: no CLAUDE.md is a no-op', () => {
 test('convergeWiring: reports every surface it changed, and is idempotent', async () => {
   const root = mkRepo();
   writeFileSync(join(root, 'CLAUDE.md'), '@.claudinite/shared/CLAUDE.md\ndocs\n');
-  writeFileSync(join(root, '.claudinite-checks.json'), '{\n  "packs": []\n}\n');
+  writeFileSync(join(root, '.claudinite-checks.json'), '{\n  "packs": [],\n  "badges": { "readme": "auto" }\n}\n');
   const first = await convergeWiring(root, REPO, STUB);
   assert.ok(first.changed.includes(SCHEDULER_WORKFLOW));
   assert.ok(first.changed.some((c) => c.startsWith('hook:')));
   assert.ok(first.changed.some((c) => c.includes('corpus import')));
-  assert.ok(first.changed.some((c) => c.includes('badges')));
+  assert.ok(first.changed.some((c) => c.includes('retired badges setting')));
   // second run: fully converged → nothing changes
   assert.deepEqual((await convergeWiring(root, REPO, STUB)).changed, []);
 });
@@ -153,31 +153,42 @@ for (const [label, path] of Object.entries(WORKFLOWS)) {
 }
 
 // --- the README pack-badge row ---------------------------------------------
-// Adoption puts the row in a repo's README and the nightly keeps it true. Both
-// halves matter: the row must track the declaration, and a repo that says "off"
-// must never see it come back.
+// Adoption seeds the row into a repo's README and nothing maintains it after, so
+// a README is never rewritten by a run the repo didn't ask for it. Both halves
+// matter: `--badges` writes a correct row, and a converge without it leaves the
+// README untouched.
+
+const CHECKS_PATH = '.claudinite-checks.json';
 
 const ROW = [{ id: 'basics', path: 'packs/basics/badge.svg' }, { id: 'tidy-repo', path: 'packs/tidy-repo/badge.svg' }];
 
-test("ensureBadgeSetting: materializes the knob, then leaves the repo's answer alone", () => {
+test('removeRetiredBadgeSetting: cuts the retired knob out as text, leaving the rest byte-identical', () => {
   const root = mkRepo();
-  assert.equal(ensureBadgeSetting(root), false, 'no settings file — nothing to write into');
-  writeFileSync(join(root, CHECKS_PATH), '{\n  "packs": ["basics"]\n}\n');
-  assert.equal(ensureBadgeSetting(root), true);
-  const raw = JSON.parse(readFileSync(join(root, CHECKS_PATH), 'utf8'));
-  assert.deepEqual(raw.badges, { readme: 'auto' });
-  assert.deepEqual(raw.packs, ['basics'], 'the rest of the settings survive');
-  assert.equal(ensureBadgeSetting(root), false, 'idempotent');
-  // A repo that has answered keeps its answer.
-  writeFileSync(join(root, CHECKS_PATH), '{\n  "badges": { "readme": "off" }\n}\n');
-  assert.equal(ensureBadgeSetting(root), false);
-  assert.equal(JSON.parse(readFileSync(join(root, CHECKS_PATH), 'utf8')).badges.readme, 'off');
+  assert.equal(removeRetiredBadgeSetting(root), false, 'no settings file — nothing to clean');
+  // An em dash written literally, as a real settings file's prose carries it: a
+  // JSON round-trip would re-escape it and turn this into a whole-file diff.
+  const before = '{\n  "packs": ["basics"],\n  "badges": {\n    "readme": "auto"\n  },\n  "accept": [{ "reason": "core — the engine" }]\n}\n';
+  writeFileSync(join(root, CHECKS_PATH), before);
+  assert.equal(removeRetiredBadgeSetting(root), true);
+  const after = readFileSync(join(root, CHECKS_PATH), 'utf8');
+  assert.equal(after, before.replace('  "badges": {\n    "readme": "auto"\n  },\n', ''),
+    'only the knob\'s lines go — every other byte, escaping included, is untouched');
+  assert.equal(removeRetiredBadgeSetting(root), false, 'idempotent');
 });
 
-test('ensureBadgeSetting: malformed settings are left untouched, never rewritten', () => {
+test('removeRetiredBadgeSetting: the knob as the LAST key takes its trailing comma with it', () => {
+  const root = mkRepo();
+  writeFileSync(join(root, CHECKS_PATH), '{\n  "packs": ["basics"],\n  "badges": { "readme": "off" }\n}\n');
+  assert.equal(removeRetiredBadgeSetting(root), true);
+  const text = readFileSync(join(root, CHECKS_PATH), 'utf8');
+  assert.deepEqual(JSON.parse(text), { packs: ['basics'] }, 'still valid JSON, knob gone');
+  assert.ok(!text.includes('badges'));
+});
+
+test('removeRetiredBadgeSetting: malformed settings are left untouched, never rewritten', () => {
   const root = mkRepo();
   writeFileSync(join(root, CHECKS_PATH), '{ not json\n');
-  assert.equal(ensureBadgeSetting(root), false);
+  assert.equal(removeRetiredBadgeSetting(root), false);
   assert.equal(readFileSync(join(root, CHECKS_PATH), 'utf8'), '{ not json\n');
 });
 
@@ -237,13 +248,19 @@ test('convergeBadgeRow: no README, or nothing to show, writes nothing', () => {
   assert.equal(readFileSync(join(root, README), 'utf8'), '# P\n', 'an empty row is not an empty block');
 });
 
-test('convergeWiring: "off" stops the row being maintained AND being re-added', async () => {
+test('convergeWiring: leaves the README alone unless the caller asks for badges', async () => {
   const root = mkRepo();
-  writeFileSync(join(root, CHECKS_PATH), '{\n  "packs": [],\n  "badges": { "readme": "off" }\n}\n');
+  writeFileSync(join(root, CHECKS_PATH), '{\n  "packs": ["basics"]\n}\n');
   writeFileSync(join(root, README), '# P\n\nprose\n');
-  const { changed } = await convergeWiring(root, REPO, STUB);
-  assert.ok(!changed.some((c) => c.includes(README)));
+  // The nightly's call — no badges. A baselining run must never produce a
+  // README diff.
+  const nightly = await convergeWiring(root, REPO, STUB);
+  assert.ok(!nightly.changed.some((c) => c.includes(README)));
   assert.equal(readFileSync(join(root, README), 'utf8'), '# P\n\nprose\n');
+  // Bootstrap's call — the row is seeded once.
+  const { changed } = await convergeWiring(root, REPO, STUB, [], { badges: true });
+  assert.ok(changed.some((c) => c.includes(README)));
+  assert.ok(readFileSync(join(root, README), 'utf8').includes(BADGE_ROW_START));
 });
 
 test('badgeRowEntries: skips a declared pack that carries no badge file', async () => {

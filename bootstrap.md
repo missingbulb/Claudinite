@@ -29,7 +29,10 @@ node "$scratch/engine/checks/check_the_world.mjs" --init
 `--init` seeds `.claudinite-checks.json`: the baseline, the technology packs the repo's
 fingerprint suspects, the default-on maintenance packs, each declared pack's `requires` closure,
 and `"maintenance": { "delivery": "auto-merge" }`. A fingerprint only *suspects* a pack — from here on
-the declaration is authoritative and adding/dropping packs is the project's call. Settings
+the declaration is authoritative and adding/dropping packs is the project's call. Offer the owner
+that call from the full pack directory (`$scratch/packs/directory.GENERATED.md` — id, coverage,
+activation and requires for every adoptable pack; it also vendors into the mount, so later
+sessions re-read it from `.claudinite/shared/`). Settings
 **validity** is enforced at load: an unknown pack name, an unknown property, or malformed JSON is
 a blocking `config` error.
 
@@ -47,7 +50,7 @@ node "$scratch/vendoring/apply-vendor-set.mjs" --target . ${ref:+--ref "$ref"}
 ```
 
 This materializes the repo's vendor set — the engine, the mount, the declared packs with their
-skills, the corpus index — under `.claudinite/shared/` at canon-relative paths, and stamps the
+skills, the full pack directory — under `.claudinite/shared/` at canon-relative paths, and stamps the
 declaration (`"claudinite": { "updated": "YYYY-MM-DD", "ref": "<sha>" }`). Whole-set convergence:
 re-running it (or declaring a new pack and re-running) rebuilds the tree; errors abort before any
 write. The `shared/` root is a **submodule emulation** — a future `git submodule add … .claudinite/shared`
@@ -70,8 +73,8 @@ trees — so nothing there needs ignoring (#385).
 
 Claude Code runs `SessionStart` entries **in parallel, in non-deterministic order**, so anything
 sequenced must live inside **one** entry. Register exactly one — the orchestrator, which runs
-the context steps in sequence in a single process (preferences → active-pack prose → skill
-mounts → env check → interview check) and forwards their stdout into the session context:
+the context steps in sequence in a single process (self-test → active-pack prose → each
+active pack's own session-start step → skill mounts → env check → interview check) and forwards their stdout into the session context:
 
 ```json
 { "hooks": { "SessionStart": [ { "hooks": [
@@ -102,10 +105,19 @@ into the project's test/CI flow in Part 8:
 Invoke scripts **through `bash`/`node`**, never as bare paths — a dropped exec bit would fail the
 hook before line 1 and swallow its own message. Notes on how the steps behave:
 
-- **Preferences are fail-soft** — per-user content is never vendored;
-  `shared/engine/hooks/inject-preferences.sh` reads a local copy where the tree has one and otherwise
-  fetches the single `preferences/<email>.md`; any miss is a one-line note, and the session
-  proceeds on defaults.
+- **A pack may contribute its own session-start step** — the orchestrator runs
+  `<pack>/session-start.mjs` for every declared pack that ships one, hands it that pack's
+  entry `config`, and forwards what it prints into the session context under the pack's
+  marker. It is for what a pack can only know at session time (content from outside this
+  repo, or keyed to the person in front of it), where `RULES.md` is fixed at vendor time.
+  Bounded and **fail-soft**: a step that fails, hangs, or overruns the context cap is one
+  plain-text note and the session proceeds. Which packs contribute one is the packs'
+  business, not bootstrap's.
+- **The session opens by stating what loaded** — a last step counts the active packs, their
+  checks, the token weight of the prose injected and the skills mounted, and emits that as one
+  line the session repeats back before anything else. A pack whose step computed something worth
+  adding to it says so on the facet channel (a `CLAUDINITE-FACET:` line), which the orchestrator
+  opens and cleans up; core learns no pack's name to carry a facet.
 - **The halt-gate** — a SessionStart hook cannot block, but its stdout is injected into context,
   so a step that can't do its load-bearing job (`env.mjs check` — a missing toolchain) prints a
   plain-text directive telling the assistant to STOP and confirm via `AskUserQuestion` before any
@@ -137,17 +149,20 @@ adoption:
    hook registrations, dropping the retired `@.claudinite/shared/CLAUDE.md` import, and
    the README pack-badge row (below)
    are all mechanized by `node .claudinite/shared/engine/scheduler/converge-wiring.mjs
-   <owner/repo>` — the single wiring surface bootstrap and baselining both call, so the
-   set is defined once in code, not re-enacted from this prose each night.
+   <owner/repo> --badges` — the single wiring surface bootstrap and baselining both call,
+   so the set is defined once in code, not re-enacted from this prose each night. Pass
+   `--badges` here and only here: it is the one surface adoption converges that the
+   nightly deliberately does not (step 2).
 2. **The README pack-badge row needs no step either** — the same converge writes a
    one-line row of the declared packs' badges into `README.md`, under the title, between
    `<!-- claudinite:packs -->` markers — the opening one on its own line above the badges,
    so the badges are not swallowed by the HTML block a line beginning with `<!--` opens;
    anything the repo writes after the closing marker
-   on that line is its own and is never touched. It also materializes
-   `"badges": { "readme": "auto" }` into `.claudinite-checks.json` so the knob is visible
-   where anyone would look for it — a repo that wants no row sets `"off"`, and the
-   nightly then neither updates the row nor re-adds one the repo has deleted.
+   on that line is its own and is never touched. **This is a one-time seed.** Baselining
+   runs the same converge WITHOUT `--badges`, so from here the row is the repo's own text
+   — edit it, move it, or delete it, and nothing will argue. A README belongs to its repo,
+   and a nightly-derived row would put a README diff in the baselining commit every time
+   the declaration moved.
 3. **Labels need no step** — the scheduler ensures `ready-for-agent`,
    `agent-running`, `needs-human`, and `workflow-failure` exist (create-if-missing,
    idempotent) before it dispatches, so they materialize on the first run and
@@ -160,7 +175,7 @@ adoption:
    `Claudinite executor - <repo>`, with the launcher prompt
    `Execute the Claudinite executor: .claudinite/shared/engine/scheduler/executor.md`.
    The finished routine fires on the `ready-for-agent` label event, runs Sonnet 5, and
-   has sources = **this repo alone** (not the Claudinite canon — agent-preprocessing
+   has sources = **this repo alone** (not the Claudinite canon — task-prework
    DESIGN §7/E5: baselining fetches canon Action-side, so no executor task needs it in
    session).
 

@@ -1,10 +1,14 @@
+import consumerSafeChange from './consumer-safe-change.mjs';
+import engineReleaseRecord from './engine-release-record.mjs';
 import homeSeededPacksDeclared from './home-seeded-packs-declared.mjs';
+import packDiscoveryEntryAwait from './pack-discovery-entry-await.mjs';
 
 // The canon home repo's OWN local pack — Claudinite-specific working rules and
 // lessons that are NOT portable to consumers (those belong in packs/, the shared
-// canon). This is the capture surface the growth-extract and conversation-extract
-// scheduled tasks route the canon's own non-portable lessons into; a lesson that
-// turns out to travel becomes a PR against packs/ instead.
+// canon). This is the capture surface the growth-extract scheduled task routes the
+// canon's own non-portable lessons into — from repo activity and from captured
+// conversations alike; a lesson that turns out to travel becomes a PR against
+// packs/ instead.
 //
 // Discovered like any local pack — the canon's own runner passes
 // discoverPacks({ localRoot: <repo root> }), so this is scanned alongside the
@@ -18,5 +22,6 @@ export default {
   },
   badge: 'badge.svg',
   prose: 'RULES.md',
-  worldRules: [homeSeededPacksDeclared],
+  worldRules: [homeSeededPacksDeclared, packDiscoveryEntryAwait],
+  workRules: [consumerSafeChange, engineReleaseRecord],
 };

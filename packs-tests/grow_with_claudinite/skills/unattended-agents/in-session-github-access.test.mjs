@@ -9,7 +9,7 @@ const run = (root) => rule.run(buildContext({ root, mode: 'all' }));
 
 test('in-session-github-access: in-session code using injected MCP I/O passes', () => {
   const root = makeRepo({ changed: {
-    'migrations/fleet-apply.mjs': 'export async function apply(io, r) { return io.commit(r, "main", [], "m"); }\n',
+    'migrations/2026-01-01-demo/migration.mjs': 'export async function apply(io, r) { return io.commit(r, "main", [], "m"); }\n',
   } });
   try {
     assert.equal(run(root).length, 0);
@@ -18,13 +18,13 @@ test('in-session-github-access: in-session code using injected MCP I/O passes', 
 
 test('in-session-github-access: flags a GITHUB_TOKEN read in migration-pass code', () => {
   const root = makeRepo({ changed: {
-    'migrations/fleet-apply.mjs': 'const token = process.env.GITHUB_TOKEN;\nexport const t = token;\n',
+    'migrations/2026-01-01-demo/migration.mjs': 'const token = process.env.GITHUB_TOKEN;\nexport const t = token;\n',
   } });
   try {
     const f = run(root);
     assert.equal(f.length, 1);
     assert.equal(f[0].severity, 'blocking');
-    assert.equal(f[0].file, 'migrations/fleet-apply.mjs');
+    assert.equal(f[0].file, 'migrations/2026-01-01-demo/migration.mjs');
     assert.match(f[0].what, /REST token/);
   } finally { cleanup(root); }
 });
@@ -56,7 +56,7 @@ test('in-session-github-access: a run_daily/ path is no longer an in-session sur
 });
 
 test('in-session-github-access: a scheduled task\'s preprocessing worker keeps its REST client', () => {
-  // agent_preprocessing runs Action-side as a subprocess with an injected
+  // prework runs Action-side as a subprocess with an injected
   // GITHUB_TOKEN — the one sanctioned non-MCP surface — so tasks/ is deliberately
   // outside the in-session scope.
   const root = makeRepo({ changed: {
@@ -69,7 +69,7 @@ test('in-session-github-access: a scheduled task\'s preprocessing worker keeps i
 
 test('in-session-github-access: flags a raw api.github.com fetch in a migration', () => {
   const root = makeRepo({ changed: {
-    'migrations/fleet-apply.mjs': 'const r = await fetch(`https://api.github.com/repos/${x}`);\nexport const y = r;\n',
+    'migrations/2026-01-01-demo/migration.mjs': 'const r = await fetch(`https://api.github.com/repos/${x}`);\nexport const y = r;\n',
   } });
   try {
     const f = run(root);
@@ -89,7 +89,7 @@ test('in-session-github-access: a dispatch-only executor outside the in-session 
 
 test('in-session-github-access: a comment mentioning GITHUB_TOKEN does not false-positive', () => {
   const root = makeRepo({ changed: {
-    'migrations/fleet-apply.mjs': '// There is no GITHUB_TOKEN here and no fetch to api.github.com.\nexport const ok = true;\n',
+    'migrations/2026-01-01-demo/migration.mjs': '// There is no GITHUB_TOKEN here and no fetch to api.github.com.\nexport const ok = true;\n',
   } });
   try {
     assert.equal(run(root).length, 0);

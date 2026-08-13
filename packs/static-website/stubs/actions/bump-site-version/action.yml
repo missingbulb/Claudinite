@@ -1,0 +1,28 @@
+name: Bump the site version
+description: >-
+  Raises the site's DATE-ANCHORED version — <major>.<ymmdd>.<n> — across every
+  file the repo declares as a version record (its `version_files` config), and
+  outputs the new version. The scheme and its rules (the year digit, the day
+  counter, the decade wrap) live in bump.mjs beside this file; the pipeline
+  passes only the paths, so no repo carries a bump script of its own. Composite
+  so it adds no reusable-workflow nesting level, and dependency-free so it runs
+  on a bare runner.
+
+inputs:
+  version_files:
+    description: >-
+      Space-separated version-record paths (the repo's `version_files`). The
+      first is the source of truth; the rest must already agree with it.
+    required: true
+
+outputs:
+  version:
+    description: The new <major>.<ymmdd>.<n> version
+    value: ${{ steps.bump.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    - id: bump
+      shell: bash
+      run: node "${{ github.action_path }}/bump.mjs" ${{ inputs.version_files }}

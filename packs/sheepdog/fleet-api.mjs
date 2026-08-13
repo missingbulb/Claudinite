@@ -7,6 +7,11 @@
 // fine-grained PAT; nothing in the daily-maintenance process imports this (that
 // process is MCP-native and carries no REST client). It knows nothing about any
 // specific pack: it is the generic "talk to many repos" layer, no more.
+//
+// It is READ-ONLY toward members but for ONE primitive — `putFile`, which the
+// pack-seed sweep uses to land a declaration this fleet wants in every member.
+// Keeping the write to a single named function is deliberate: "what can this module
+// change in someone else's repo" then has exactly one answer to read.
 
 import { isDormant } from '../../engine/checks/helpers/repo-context.mjs';
 
@@ -23,6 +28,7 @@ export const DECLARATION = '.claudinite-checks.json';
 // dormancy would nag exactly the repos that had already opted out, which is the whole
 // failure this exists to prevent.
 export { isDormant };
+
 
 export function makeGh(token) {
   return async function gh(path, { method = 'GET', body } = {}) {
@@ -85,26 +91,60 @@ export async function fileExists(gh, fullName, path) {
   throw new Error(`marker check ${fullName}:${path} returned ${status}`);
 }
 
+// One file's text and its blob sha, or null when the repo has no such file. The sha
+// is what a later write passes back as its precondition (see putFile), so reading and
+// writing a file is one read here and one write there — never a second read that could
+// see a different commit.
+export async function readFile(gh, fullName, path) {
+  const res = await gh(`/repos/${fullName}/contents/${encodeURI(path)}`);
+  if (res.status === 404) return null;
+  if (res.status !== 200 || typeof res.json?.content !== 'string') throw new Error(`${fullName}:${path} returned ${res.status}`);
+  return { text: Buffer.from(res.json.content, 'base64').toString('utf8'), sha: res.json.sha };
+}
+
 // One repo's parsed declaration, or null when it has none (uncovered). Anything
 // else — an unreadable response, an unparsable body — THROWS, because a sweep that
 // cannot read a member's declaration knows nothing about it, and "I could not read
 // it" must never quietly become "it says nothing". Shared by the sweeps that need
 // what is INSIDE the file (the stamp, the dormancy flag) rather than only that it
-// exists.
-export async function readDeclaration(gh, fullName, path = DECLARATION) {
-  const res = await gh(`/repos/${fullName}/contents/${path}`);
-  if (res.status === 404) return null;
-  if (res.status !== 200 || !res.json?.content) throw new Error(`${path} returned ${res.status}`);
+// exists. `withFile` returns `{ config, text, sha }` instead — the parsed settings, the
+// exact bytes, and the write precondition, all from the ONE response, for a sweep that
+// goes on to write the file back: a second read could see a different commit.
+export async function readDeclaration(gh, fullName, path = DECLARATION, { withFile = false } = {}) {
+  const file = await readFile(gh, fullName, path);
+  if (file === null) return null;
+  let config;
   try {
-    return JSON.parse(Buffer.from(res.json.content, 'base64').toString('utf8'));
+    config = JSON.parse(file.text);
   } catch (e) {
     throw new Error(`unparsable ${path}: ${e.message}`);
   }
+  return withFile ? { config, text: file.text, sha: file.sha } : config;
+}
+
+// Write one file back to a repo's default branch, guarded by the sha the read
+// returned: a 409 means the file moved under us, so the caller's decision was made
+// against content that no longer exists and this run simply does not write it (the
+// next run re-reads and decides again). The ONE write primitive that touches another
+// repo — every other call in this module reads.
+export async function putFile(gh, fullName, { path, text, sha, message }) {
+  const { status, json } = await gh(`/repos/${fullName}/contents/${encodeURI(path)}`, {
+    method: 'PUT',
+    body: { message, content: Buffer.from(text, 'utf8').toString('base64'), ...(sha ? { sha } : {}) },
+  });
+  if (status === 200 || status === 201) return json?.commit?.sha ?? null;
+  if (status === 409) throw new Error(`${fullName}:${path} changed under the sweep (409) — not written this run`);
+  if (status === 403 || status === 404) {
+    throw new Error(`writing ${fullName}:${path} returned ${status} — the fleet PAT needs Contents WRITE on this repo (${json?.message ?? 'no message'})`);
+  }
+  throw new Error(`writing ${fullName}:${path} returned ${status} (${json?.message ?? 'no message'})`);
 }
 
 // Does this repo mount Claudinite? (Method B sync hook / legacy gitkeep / Method A
-// submodule.) The structural "is this a covered member" test, shared by the planner
-// (which repos to plan over) and the census (which repos are uncovered).
+// submodule.) The structural "is this a covered member" test — the existence-only
+// probe for callers that need nothing from inside the file. The census itself now
+// reads the declaration (readDeclaration) instead, because its roster names dormant
+// members and dormancy lives inside the file; the membership rule is the same.
 export async function isCovered(gh, fullName) {
   // The tracked declaration file is THE membership signal — the one file every
   // member carries whatever its mount shape (the engine can't run without it,
@@ -114,4 +154,58 @@ export async function isCovered(gh, fullName) {
   // then opens an adoption issue and it heals loudly, instead of rotting as a
   // "covered" repo no task ever runs on. (vendoring/DESIGN.md)
   return fileExists(gh, fullName, '.claudinite-checks.json');
+}
+
+// --- firing a member's own scheduler -------------------------------------------
+
+// The member-side workflow every fan-out fires, and the shape of the firing. Two of
+// this pack's tasks press this button — fleet-baseline (each member baselines itself)
+// and fleet-add-missing-packs (each member adopts the packs its work-list issue names)
+// — so the primitive lives here on the shared floor rather than in either task. The
+// fan-out model is the point (#749): the enforcer DISPATCHES, the member EXECUTES —
+// every agentic step happens inside the member, under its own scheduler, executor and
+// grant, so no agent anywhere needs cross-repo access. The one credential is the PAT,
+// and the one scope beyond the read-only sweeps' is Actions WRITE (a workflow_dispatch
+// POST is an Actions write).
+export const SCHEDULER = 'claudinite-scheduler.yml';
+
+// Fire one member's scheduler with a FORCE_TASKS override, ONE task id per fire —
+// the override bag splits pairs on commas (engine parseOverrides), so a
+// comma-separated id list would not survive the trip, and no fan-out here wants more
+// than one task anyway. `ref` is the member's DEFAULT branch (read from the
+// enumeration, never assumed to be `main`): workflow_dispatch resolves the workflow
+// file on the ref it is given, and a repo whose trunk is `master` would otherwise 404
+// as if it carried no scheduler at all. A forced run evaluates ONLY the named task
+// (engine/scheduler/run.mjs, #749) — never the member's coincident backlog.
+export async function fireScheduler(gh, fullName, ref, taskId) {
+  const { status } = await gh(`/repos/${fullName}/actions/workflows/${SCHEDULER}/dispatches`, {
+    method: 'POST',
+    body: { ref, inputs: { overrides: `FORCE_TASKS=${taskId}` } },
+  });
+  return classifyDispatch(status);
+}
+
+// What the dispatch POST's status means. Every branch is a DIFFERENT thing for the
+// reader to do, which is why callers report a state per repo instead of a count of
+// failures: a 404 is a repo to adopt, a 403 is a token to re-scope, a 422 is a
+// workflow GitHub has switched off. Kept free of I/O so the whole table is testable.
+export function classifyDispatch(status) {
+  switch (status) {
+    case 204:
+      return { state: 'fired', detail: 'queued on its own scheduler' };
+    case 404:
+      // The workflow is missing, the repo has Actions disabled, or the PAT cannot see
+      // the repo at all — indistinguishable from here, and all three mean "nothing was
+      // queued".
+      return { state: 'no-scheduler', detail: `no ${SCHEDULER} on the default branch, or Actions is disabled — nothing there can run its own tasks` };
+    case 403:
+      return { state: 'no-permission', detail: 'the PAT lacks Actions: write on this repo — dispatching a workflow is an Actions write, a scope the read-only sweeps never needed' };
+    case 422:
+      // GitHub disables a repo's scheduled workflows after 60 days of inactivity, and a
+      // disabled workflow refuses dispatch; a scheduler stub too old to carry the
+      // `overrides` input lands here too.
+      return { state: 'not-dispatchable', detail: 'the workflow exists but refused the dispatch — it is disabled (GitHub switches off cron on inactive repos), or too old to accept the `overrides` input' };
+    default:
+      return { state: 'error', detail: `dispatch returned ${status}` };
+  }
 }

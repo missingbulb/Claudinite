@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // The sheepdog pack's fleet-FRESHNESS sweep — the second half of the enforcer's job.
 // Run by this pack's `fleet-freshness` scheduled task (tasks/fleet-freshness/), whose
-// worker calls `main()` below as the task's `agent_preprocessing`, Action-side inside
+// worker calls `main()` below as the task's `prework`, Action-side inside
 // the enforcer repo's scheduler workflow where FLEET_GITHUB_TOKEN is reachable. Still
 // runnable by hand (`node check-fleet-freshness.mjs`) via the CLI guard at the foot.
 //
@@ -17,8 +17,10 @@
 // ITS CONCERN IS FRESHNESS ALONE — is each COVERED member actually keeping up? The
 // census (check-fleet-coverage.mjs) asks the prior question, whether a repo is covered
 // at all, and opens adoption issues; this one takes coverage as given and asks whether
-// coverage is still MEANING anything. An uncovered repo is skipped here, not
-// double-reported — and so is a member that declares itself DORMANT: its scheduler
+// coverage is still MEANING anything. An uncovered repo gets no FINDING here (the
+// census owns that), though the summary still names it — the report enumerates the
+// full fleet, every repo under exactly one state. The same goes for a member that
+// declares itself DORMANT: its scheduler
 // stops before it evaluates anything, so its mount falls behind by design, and every
 // classification below would report a repo for obeying its own declaration.
 //
@@ -268,6 +270,44 @@ export async function probe(gh, fullName, { canonRepo, canonBranch }) {
   return { stampedRef, hasScheduler, compare };
 }
 
+// --- the run summary (pure) ---------------------------------------------------
+
+// The sweep's report enumerates the FULL fleet: every repo lands in exactly one
+// list — fresh (with how fresh), unhealthy (with its root cause), dormant, out of
+// scope (with why), unknown — plus the two repos the sweep never measures, named
+// rather than silently absent. A report that names only the failures leaves the
+// reader unable to tell "fresh" from "fell out of the report". Kept free of I/O so
+// the full-roster property is testable directly. `fresh` is `[{ fullName, detail }]`;
+// `outOfScope` entries carry their reason inline.
+export function renderFreshnessSummary({
+  owner, home, canonRepo, canonBranch, staleDays, fresh, unhealthy, dormant, outOfScope, unknown, actions,
+}) {
+  const notMeasured = [`\`${home}\` — the enforcer, swept by its own scheduler`];
+  if (canonRepo.toLowerCase() !== home.toLowerCase()) notMeasured.push(`\`${canonRepo}\` — canon, with no vendored mount to be stale`);
+  return [
+    `# Fleet freshness sweep — ${owner} (window: ${staleDays} days, canon: ${canonRepo}@${canonBranch})`,
+    '',
+    '| fresh | behind | no scheduler | no stamp | off trunk | dormant | out of scope | unknown |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- |',
+    `| ${fresh.length} | ${unhealthy.filter((u) => u.state === 'behind').length} | `
+      + `${unhealthy.filter((u) => u.state === 'no-scheduler').length} | `
+      + `${unhealthy.filter((u) => u.state === 'no-stamp').length} | `
+      + `${unhealthy.filter((u) => u.state === 'ref-not-on-trunk').length} | ${dormant.length} | ${outOfScope.length} | ${unknown.length} |`,
+    '',
+    unhealthy.length
+      ? `**Behind (drift issue open):**\n${unhealthy.map((u) => `- \`${u.fullName}\` — **${u.state}**: ${u.detail}`).join('\n')}`
+      : '**Every covered member is up to date 🎉**',
+    fresh.length
+      ? `**Fresh:**\n${fresh.map((f) => `- \`${f.fullName}\` — ${f.detail}`).join('\n')}`
+      : '**Fresh:** none',
+    dormant.length ? `**Dormant (self-declared, not measured):** ${dormant.join(', ')}` : '',
+    outOfScope.length ? `**Out of scope (not covered members):** ${outOfScope.join(', ')}` : '',
+    unknown.length ? `**UNKNOWN (probe errored — fix the token/scope):** ${unknown.join('; ')}` : '',
+    `**Not measured:** ${notMeasured.join('; ')}`,
+    actions.length ? `**Issue actions:** ${actions.join('; ')}` : '**Issue actions:** none (converged)',
+  ].filter(Boolean).join('\n');
+}
+
 // --- main ---------------------------------------------------------------------
 
 export async function main() {
@@ -305,12 +345,14 @@ export async function main() {
       + 'refusing to run a sweep that would close every drift issue as stale');
   }
 
-  const unhealthy = []; const healthy = []; const gone = []; const dormant = []; const unknown = [];
+  const unhealthy = []; const fresh = []; const outOfScope = []; const dormant = []; const unknown = [];
+  const gone = []; // names only — what convergeDrift closes as out-of-fleet; outOfScope carries the same repos WITH their reasons, for the report
   for (const r of mine.sort((a, b) => a.name.localeCompare(b.name))) {
     const fullName = r.full_name.toLowerCase();
-    if (fullName === home.toLowerCase()) continue;         // the enforcer is swept by its own scheduler
-    if (fullName === canonRepo.toLowerCase()) continue;    // canon has no vendored mount to be stale
-    if (r.archived || r.fork || exclude.has(fullName)) { gone.push(fullName); continue; }
+    if (fullName === home.toLowerCase()) continue;         // the enforcer is swept by its own scheduler — named in the summary
+    if (fullName === canonRepo.toLowerCase()) continue;    // canon has no vendored mount to be stale — named in the summary
+    if (r.archived || r.fork) { outOfScope.push(`${r.full_name} (${r.archived ? 'archived' : 'fork'})`); gone.push(fullName); continue; }
+    if (exclude.has(fullName)) { outOfScope.push(`${r.full_name} (excluded)`); gone.push(fullName); continue; }
     let p;
     try {
       p = await probe(gh, r.full_name, { canonRepo, canonBranch });
@@ -318,38 +360,24 @@ export async function main() {
       unknown.push(`${r.full_name} — ${e.message}`);
       continue;
     }
-    if (p === null) { gone.push(fullName); continue; }     // uncovered: the census owns it
+    if (p === null) { outOfScope.push(`${r.full_name} (uncovered — the census's subject)`); gone.push(fullName); continue; }
     // Dormant by its own declaration: out of the sweep, and counted SEPARATELY from
     // `gone` so the summary says how much of the fleet is asleep rather than hiding
     // it inside "out of scope". An open drift issue on it closes with its own note.
     if (p.dormant) { dormant.push(fullName); continue; }
     const verdict = classifyFreshness({ ...p, nowMs: Date.now(), staleDays });
-    if (verdict.state === FRESH) healthy.push(fullName);
+    if (verdict.state === FRESH) fresh.push({ fullName, detail: verdict.detail });
     else unhealthy.push({ fullName, ...verdict });
   }
 
   await ensureLabel(gh, home, LABEL, { color: 'D93F0B', description: 'Covered member whose Claudinite mount has fallen behind canon' });
   const actions = await convergeDrift(gh, home, {
-    unhealthy, healthySet: new Set(healthy), goneSet: new Set(gone), dormantSet: new Set(dormant), staleDays,
+    unhealthy, healthySet: new Set(fresh.map((f) => f.fullName)), goneSet: new Set(gone), dormantSet: new Set(dormant), staleDays,
   });
 
-  const summary = [
-    `# Fleet freshness sweep — ${owner} (window: ${staleDays} days, canon: ${canonRepo}@${canonBranch})`,
-    '',
-    '| fresh | behind | no scheduler | no stamp | off trunk | dormant | out of scope | unknown |',
-    '| --- | --- | --- | --- | --- | --- | --- | --- |',
-    `| ${healthy.length} | ${unhealthy.filter((u) => u.state === 'behind').length} | `
-      + `${unhealthy.filter((u) => u.state === 'no-scheduler').length} | `
-      + `${unhealthy.filter((u) => u.state === 'no-stamp').length} | `
-      + `${unhealthy.filter((u) => u.state === 'ref-not-on-trunk').length} | ${dormant.length} | ${gone.length} | ${unknown.length} |`,
-    '',
-    unhealthy.length
-      ? `**Behind (drift issue open):**\n${unhealthy.map((u) => `- \`${u.fullName}\` — **${u.state}**: ${u.detail}`).join('\n')}`
-      : '**Every covered member is up to date 🎉**',
-    dormant.length ? `**Dormant (self-declared, not measured):** ${dormant.join(', ')}` : '',
-    unknown.length ? `**UNKNOWN (probe errored — fix the token/scope):** ${unknown.join('; ')}` : '',
-    actions.length ? `**Issue actions:** ${actions.join('; ')}` : '**Issue actions:** none (converged)',
-  ].filter(Boolean).join('\n');
+  const summary = renderFreshnessSummary({
+    owner, home, canonRepo, canonBranch, staleDays, fresh, unhealthy, dormant, outOfScope, unknown, actions,
+  });
 
   console.log(summary);
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${summary}\n`);

@@ -1,79 +1,25 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  normalizeDelivery, resolveDelivery, DEFAULT_DELIVERY, pendingAgentic, heldStamp,
   maintenanceBranchName, openMaintenanceBranch, openMaintenancePull, shouldRequestAgent,
-  unconfiguredSecrets, SECRETS_ISSUE_TITLE, workflowTriggers, ciDispatchPlan,
-  pullCreateError, deliveryAction,
+  unconfiguredSecrets, SECRETS_ISSUE_TITLE, canonSource,
+  withheldWorkflowPaths, UNPUSHABLE_PREFIX, escalation, gateOutcome, GATE_ABSENT,
 } from '../../packs/basics/tasks/baselining/worker.mjs';
+import { escalationLabel } from '../../engine/scheduler/dispatch.mjs';
+import { mkdtempSync, writeFileSync, existsSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
-// The worker's PURE decision helpers (agent-preprocessing DESIGN §7, E4). The
+// The worker's PURE decision helpers (task-prework DESIGN §7, E4). The
 // native-git / clone / REST I/O in main() is validated by the live pilot; these
-// are the git-free unit surface.
+// are the git-free unit surface. The DELIVERY/LANDING helpers the worker used to
+// own (delivery resolution, CI dispatch planning, the arm/land/merge decision)
+// moved to the shared engine module and are tested there —
+// engine-tests/scheduler/land-pr.test.mjs.
 
-test('normalizeDelivery maps the accepted values and legacy aliases, rejecting the rest', () => {
-  assert.equal(normalizeDelivery('auto-merge'), 'auto-merge');
-  assert.equal(normalizeDelivery('auto'), 'auto-merge');   // legacy alias
-  assert.equal(normalizeDelivery('push'), 'auto-merge');   // legacy alias
-  assert.equal(normalizeDelivery('review'), 'review');
-  assert.equal(normalizeDelivery('pr'), 'review');         // legacy alias
-  assert.equal(normalizeDelivery(' review '), 'review');   // trimmed
-  assert.equal(normalizeDelivery('bogus'), null);
-  assert.equal(normalizeDelivery(undefined), null);
-});
-
-// A MISSING maintenance.delivery is drift, not an error: the only writer is
-// check_the_world --init (first adoption), so a repo adopted before the key existed
-// — or one whose key was hand-removed — has nothing that could ever put it back,
-// and a hard failure would just fail baselining every night forever. Materialize
-// the default instead. An UNRECOGNIZED value stays a hard failure: substituting a
-// default there would deliver the opposite of a stated intent.
-test('resolveDelivery materializes the default for a missing key rather than failing the run', () => {
-  assert.deepEqual(resolveDelivery(undefined), { delivery: DEFAULT_DELIVERY, materialize: true });
-  assert.deepEqual(resolveDelivery(null), { delivery: DEFAULT_DELIVERY, materialize: true });
-  assert.equal(DEFAULT_DELIVERY, 'auto-merge');
-});
-
-test('resolveDelivery treats a content-free value as absent, not as a typo', () => {
-  assert.deepEqual(resolveDelivery(''), { delivery: DEFAULT_DELIVERY, materialize: true });
-  assert.deepEqual(resolveDelivery('   '), { delivery: DEFAULT_DELIVERY, materialize: true });
-});
-
-test('resolveDelivery passes a stated intent through untouched — legacy aliases included', () => {
-  assert.deepEqual(resolveDelivery('review'), { delivery: 'review', materialize: false });
-  assert.deepEqual(resolveDelivery('auto-merge'), { delivery: 'auto-merge', materialize: false });
-  assert.deepEqual(resolveDelivery('pr'), { delivery: 'review', materialize: false });
-  assert.deepEqual(resolveDelivery('push'), { delivery: 'auto-merge', materialize: false });
-  assert.deepEqual(resolveDelivery('auto'), { delivery: 'auto-merge', materialize: false });
-});
-
-test('resolveDelivery still fails the run on an unrecognized value — never a silent default', () => {
-  assert.deepEqual(resolveDelivery('bogus'), { delivery: null, materialize: false });
-  assert.deepEqual(resolveDelivery('merge'), { delivery: null, materialize: false });
-});
-
-test('pendingAgentic keeps notes dated on/after the stamp DAY (same-day inclusive), oldest first', () => {
-  const notes = [
-    { id: 'newer', landed: '2026-07-25' },
-    { id: 'sameday', landed: '2026-07-18' },
-    { id: 'older', landed: '2026-07-10' },
-  ];
-  const pending = pendingAgentic(notes, '2026-07-18T09:00:00.000Z');
-  assert.deepEqual(pending.map((n) => n.id), ['sameday', 'newer']); // 'older' dropped; sorted asc
-});
-
-test('pendingAgentic with no prior stamp returns all, sorted oldest first', () => {
-  const notes = [{ id: 'b', landed: '2026-07-20' }, { id: 'a', landed: '2026-07-01' }];
-  assert.deepEqual(pendingAgentic(notes, undefined).map((n) => n.id), ['a', 'b']);
-  assert.deepEqual(pendingAgentic([], '2026-07-01').length, 0);
-});
-
-test('heldStamp is the day BEFORE the earliest pending note; null when nothing pends', () => {
-  assert.equal(heldStamp([{ id: 'x', landed: '2026-07-19' }]), '2026-07-18T00:00:00.000Z');
-  // month boundary: the day before the 1st is the previous month's last day
-  assert.equal(heldStamp([{ id: 'y', landed: '2026-08-01' }]), '2026-07-31T00:00:00.000Z');
-  assert.equal(heldStamp([]), null);
-});
+// Note selection and the stamp hold are gone (#768 Phase 4): a note is pending while
+// its record is in the repo's gap, which `migrationApplies` decides — tested in
+// engine-tests/migrations.test.mjs, over the one predicate every reader shares.
 
 test('maintenanceBranchName carries the prefix, date, and seed', () => {
   assert.equal(maintenanceBranchName('2026-07-23', 'ab12cd'), 'claudinite/maintenance-2026-07-23-ab12cd');
@@ -104,7 +50,130 @@ test('shouldRequestAgent: agent iff a pending note, or a change left non-green',
   assert.equal(shouldRequestAgent({ pendingCount: 0, meaningfulChange: false, checksPass: false }), false); // no change → agentless
 });
 
-// --- required_secrets ask (agent-preprocessing DESIGN §9) --------------------
+// --- the escalation REASON (#664) -------------------------------------------
+// The worker knows which of four conditions fired; before this it threw that away and
+// the woken agent re-derived it from the repo — wrongly, on EdFringeAllocator#82.
+
+test('escalation names the condition, and shouldRequestAgent is derived from it', () => {
+  // The drift guard: one decision, two readings. A precedence that disagreed with its
+  // own bit is exactly the two-copies failure this shape exists to prevent.
+  const cases = [
+    { pendingCount: 1, meaningfulChange: false, checksPass: true },
+    { pendingCount: 0, meaningfulChange: true, checksPass: true, withheldCount: 2 },
+    { pendingCount: 0, meaningfulChange: false, checksPass: true, selftestOk: false },
+    { pendingCount: 0, meaningfulChange: true, checksPass: false },
+    { pendingCount: 0, meaningfulChange: true, checksPass: true },
+    { pendingCount: 0, meaningfulChange: false, checksPass: false },
+  ];
+  for (const c of cases) {
+    assert.equal(shouldRequestAgent(c), escalation(c) !== null, JSON.stringify(c));
+  }
+});
+
+test('escalation: each condition gets its own code, in precedence order', () => {
+  assert.equal(escalation({ pendingCount: 2, meaningfulChange: true, checksPass: false }).code, 'agentic-notes');
+  assert.equal(escalation({ pendingCount: 0, meaningfulChange: true, checksPass: true, withheldCount: 1 }).code, 'withheld-workflows');
+  assert.equal(escalation({ pendingCount: 0, meaningfulChange: true, checksPass: true, selftestOk: false }).code, 'selftest-failed');
+  assert.equal(escalation({ pendingCount: 0, meaningfulChange: true, checksPass: false }).code, 'checks-not-green');
+  assert.equal(escalation({ pendingCount: 0, meaningfulChange: true, checksPass: true }), null);
+});
+
+test('escalation: a gate that could not run is not the same sentence as a gate that failed', () => {
+  // The distinction `catch { return false }` erased: a verdict about the repo vs no
+  // verdict at all. Both escalate; only one is a statement about the content.
+  assert.equal(escalation({
+    pendingCount: 0, meaningfulChange: true, checksPass: false, checksCrashed: true,
+  }).code, 'checks-could-not-run');
+  assert.equal(escalation({
+    pendingCount: 0, meaningfulChange: true, checksPass: true, selftestOk: false, selftestCrashed: true,
+  }).code, 'selftest-could-not-run');
+});
+
+test('escalation: the detail counts what fired, and never carries findings', () => {
+  const notes = escalation({ pendingCount: 3, meaningfulChange: false, checksPass: true });
+  assert.match(notes.detail, /3 pending agentic migration note/);
+  const withheld = escalation({ pendingCount: 0, meaningfulChange: true, checksPass: true, withheldCount: 2 });
+  assert.match(withheld.detail, /2 workflow file/);
+  // Every detail is a sentence about the CONDITION — the §3 boundary the payload rides.
+  for (const c of [notes, withheld, escalation({ pendingCount: 0, meaningfulChange: true, checksPass: false })]) {
+    assert.equal(typeof c.detail, 'string');
+    assert.ok(c.detail.length > 0 && c.detail.length < 160, c.detail);
+  }
+});
+
+// --- gate outcomes (#665) ----------------------------------------------------
+// Both gates the worker escalates on used to collapse to a boolean and drop the
+// findings that explained it — so an escalation was unexplainable after the fact.
+
+test('gateOutcome: a clean run is green with nothing to say', () => {
+  assert.deepEqual(gateOutcome(null), { ok: true, ran: true, crashed: false, status: 0, output: '' });
+});
+
+test('gateOutcome: a non-zero exit keeps the findings the check printed', () => {
+  const out = gateOutcome({ status: 1, stdout: 'FINDING: x\n', stderr: '' });
+  assert.equal(out.ok, false);
+  assert.equal(out.crashed, false);   // it answered — the answer was "no"
+  assert.equal(out.status, 1);
+  assert.match(out.output, /FINDING: x/);
+});
+
+test('gateOutcome: no exit status at all is a crash, not a verdict', () => {
+  // A signal kill or a spawn failure (ENOENT) produces no status. The repo was never
+  // judged, and saying "not green" about it would be a claim nothing made.
+  for (const e of [{ status: null, signal: 'SIGKILL' }, { code: 'ENOENT', stderr: 'not found' }]) {
+    const out = gateOutcome(e);
+    assert.equal(out.ok, false);
+    assert.equal(out.crashed, true);
+    assert.equal(out.status, null);
+  }
+});
+
+test('GATE_ABSENT: a gate that is not vendored is nothing to run, not a failure', () => {
+  assert.equal(GATE_ABSENT.ok, true);
+  assert.equal(GATE_ABSENT.ran, false);
+  assert.equal(GATE_ABSENT.crashed, false);
+});
+
+// --- the unpushable set ------------------------------------------------------
+// The Action's GITHUB_TOKEN may not write under .github/workflows/, and GitHub
+// rejects the WHOLE ref when a push contains one. Withholding those paths is what
+// keeps one undeliverable file from failing the mount converge, the wiring, and
+// every other note along with it.
+
+test('withheldWorkflowPaths: selects workflow files and nothing else', () => {
+  const changed = [
+    '.claudinite-checks.json',
+    '.claudinite/shared/engine/scheduler/run.mjs',
+    '.github/workflows/fleet-baseline.yml',
+    '.github/workflows/claudinite-scheduler.yml',   // convergeWiring's own output — the latent case
+    '.github/actions/report-failure/action.yml',    // an action, not a workflow: pushable
+    'docs/workflows/notes.md',                      // the prefix must anchor, not merely appear
+  ];
+  assert.deepEqual(withheldWorkflowPaths(changed), [
+    '.github/workflows/fleet-baseline.yml',
+    '.github/workflows/claudinite-scheduler.yml',
+  ]);
+});
+
+test('withheldWorkflowPaths: an ordinary converge withholds nothing, and a missing list is not a crash', () => {
+  assert.deepEqual(withheldWorkflowPaths(['.claudinite-checks.json']), []);
+  assert.deepEqual(withheldWorkflowPaths([]), []);
+  assert.deepEqual(withheldWorkflowPaths(undefined), []);
+  assert.equal(UNPUSHABLE_PREFIX, '.github/workflows/');
+});
+
+test('shouldRequestAgent: a withheld workflow file escalates — nothing else can land it', () => {
+  // Green, no note, no self-test failure: agentless by every other measure. But the
+  // file the converge could not push would then never land at all, and the cycle would
+  // report itself clean while the repo stayed un-updated.
+  assert.equal(shouldRequestAgent({
+    pendingCount: 0, meaningfulChange: true, checksPass: true, withheldCount: 1,
+  }), true);
+  // And the default keeps every existing caller's verdict unchanged.
+  assert.equal(shouldRequestAgent({ pendingCount: 0, meaningfulChange: true, checksPass: true }), false);
+});
+
+// --- required_secrets ask (task-prework DESIGN §9) --------------------
 // The wiring converge stamps every declared name into the workflow, so by the time
 // the worker runs the value is either in the environment or genuinely unset. That
 // makes the ask a plain env read — no probe, no bundle, no engine-side machinery.
@@ -128,100 +197,115 @@ test('the ask issue title is a stable exact-match key (the at-most-one-open guar
   assert.equal(SECRETS_ISSUE_TITLE, 'Claudinite: configure required Actions secrets');
 });
 
-// --- CI dispatch on the maintenance PR (#565) --------------------------------
-// A branch pushed and a PR opened over the Action's GITHUB_TOKEN emit no
-// pull_request run (GitHub's recursion guard), so deliver() must start the PR's
-// checks itself via workflow_dispatch — the guard's documented exception. These
-// cover the pure planning half: reading a workflow's `on:` triggers and picking
-// which files to dispatch.
+// A converged mount that cannot pass its own self-test escalates to the agent
+// even when the diff looks clean and the content checks report green. That
+// combination is exactly #555: a pack that fails validation contributes NO
+// rules, so check_the_world went on reporting green about a corpus it had
+// stopped running.
 
-test('workflowTriggers reads a block-map on: — the common shape', () => {
-  const yaml = [
-    'name: Tests', 'on:', '  workflow_dispatch:', '  pull_request:',
-    '    branches: [main]', '  push:', '    branches: [main, "claude/**"]',
-    'jobs:', '  test:', '    runs-on: ubuntu-latest',
-  ].join('\n');
-  assert.deepEqual(workflowTriggers(yaml), ['workflow_dispatch', 'pull_request', 'push']);
+test('shouldRequestAgent escalates on a failed self-test even when checks report green', () => {
+  assert.equal(shouldRequestAgent({
+    pendingCount: 0, meaningfulChange: true, checksPass: true, selftestOk: false,
+  }), true);
 });
 
-test('workflowTriggers reads bare-key children (no nested config)', () => {
-  const yaml = 'name: CI\non:\n  pull_request:\n  push:\n    branches: [main]\njobs: {}\n';
-  assert.deepEqual(workflowTriggers(yaml), ['pull_request', 'push']);
+test('shouldRequestAgent escalates on a failed self-test even with no visible change', () => {
+  assert.equal(shouldRequestAgent({
+    pendingCount: 0, meaningfulChange: false, checksPass: true, selftestOk: false,
+  }), true);
 });
 
-test('workflowTriggers reads the inline scalar and inline list forms', () => {
-  assert.deepEqual(workflowTriggers('on: workflow_dispatch\njobs: {}\n'), ['workflow_dispatch']);
-  assert.deepEqual(workflowTriggers('on: [pull_request, push]\njobs: {}\n'), ['pull_request', 'push']);
+test('shouldRequestAgent defaults selftestOk true, so an older mount without one is unchanged', () => {
+  assert.equal(shouldRequestAgent({ pendingCount: 0, meaningfulChange: true, checksPass: true }), false);
 });
 
-test('workflowTriggers is not fooled by nested keys deeper than the trigger level', () => {
-  const yaml = [
-    'on:', '  schedule:', '    - cron: "24 * * * *"', '  workflow_dispatch:',
-    '    inputs:', '      overrides:', '        required: false', 'jobs: {}',
-  ].join('\n');
-  assert.deepEqual(workflowTriggers(yaml), ['schedule', 'workflow_dispatch']);
+// --- rehearsal mode (#593 phase 0) ------------------------------------------
+// A run can be pointed at a canon BRANCH so a change is tried against a real
+// repo before it merges. The stamp is why this needs a decision of its own: a
+// branch head is not on trunk, and stamping it leaves the member in the exact
+// `ref-not-on-trunk` shape the #328 guard then refuses to converge over.
+
+test('canonSource defaults to the canon default branch, and is not a rehearsal', () => {
+  const s = canonSource({});
+  assert.equal(s.ref, null);
+  assert.equal(s.rehearsal, false);
+  assert.match(s.url, /missingbulb\/Claudinite/);
 });
 
-test('workflowTriggers on a file with no on: block returns nothing', () => {
-  assert.deepEqual(workflowTriggers('name: fragment\njobs: {}\n'), []);
+test('canonSource treats a ref as a rehearsal', () => {
+  const s = canonSource({ CLAUDINITE_CANON_REF: 'claude/some-branch' });
+  assert.equal(s.ref, 'claude/some-branch');
+  assert.equal(s.rehearsal, true);
 });
 
-test('ciDispatchPlan dispatches exactly the PR-triggered AND dispatchable workflows', () => {
-  const files = [
-    { name: 'test.yml', content: 'on:\n  workflow_dispatch:\n  pull_request:\n    branches: [main]\njobs: {}\n' },
-    { name: 'release.yml', content: 'on:\n  workflow_dispatch:\njobs: {}\n' },        // dispatchable but NOT PR CI — never touch
-    { name: 'scheduler.yml', content: 'on:\n  schedule:\n    - cron: "0 * * * *"\njobs: {}\n' },
-  ];
-  assert.deepEqual(ciDispatchPlan(files), { dispatch: ['test.yml'], missing: [] });
+test('canonSource ignores a blank ref — an unset Actions input arrives as ""', () => {
+  assert.equal(canonSource({ CLAUDINITE_CANON_REF: '' }).rehearsal, false);
+  assert.equal(canonSource({ CLAUDINITE_CANON_REF: '   ' }).rehearsal, false);
 });
 
-test('ciDispatchPlan names a PR workflow it cannot dispatch, so the log can say what to fix', () => {
-  const files = [{ name: 'ci.yml', content: 'on:\n  pull_request:\n  push:\n    branches: [main]\njobs: {}\n' }];
-  assert.deepEqual(ciDispatchPlan(files), { dispatch: [], missing: ['ci.yml'] });
+test('canonSource honours a fork url, and falls back when it is blank', () => {
+  assert.equal(canonSource({ CLAUDINITE_CANON_URL: 'https://example.test/x.git' }).url, 'https://example.test/x.git');
+  assert.match(canonSource({ CLAUDINITE_CANON_URL: '' }).url, /missingbulb\/Claudinite/);
 });
 
-// The PR-open POST is status-checked. Before this, deliver() destructured only
-// `json` and never read `status`, so a 403 left `pr` holding the error body:
-// auto-merge was skipped (no node_id), the run reported ok, and the next cycle
-// minted a fresh branch because no OPEN PR existed to reuse. Branches piled up
-// nightly across the fleet while every stamp stood still.
-
-test('pullCreateError is null only on a 201 carrying a PR number', () => {
-  assert.equal(pullCreateError(201, { number: 42, node_id: 'PR_x' }), null);
+test('every code escalation can fire is countable — it mints a label', () => {
+  // The measurement Phase 0 of the versioned-updates rollout needs (#768): which
+  // condition actually dominates across the fleet. The scheduler labels a dispatch
+  // issue with the fired code, and a label whose name the mint refuses is a code
+  // that would be invisible to every count. So the shape contract is asserted over
+  // the codes the worker can really produce — driven through escalation itself,
+  // never a hand-listed copy of them.
+  const codes = new Set();
+  for (const pendingCount of [0, 1]) {
+    for (const withheldCount of [0, 1]) {
+      for (const checksPass of [true, false]) {
+        for (const selftestOk of [true, false]) {
+          for (const checksCrashed of [true, false]) {
+            for (const selftestCrashed of [true, false]) {
+              const r = escalation({
+                pendingCount, withheldCount, checksPass, selftestOk,
+                checksCrashed, selftestCrashed, meaningfulChange: true,
+              });
+              if (r) codes.add(r.code);
+            }
+          }
+        }
+      }
+    }
+  }
+  assert.ok(codes.size >= 6, `only ${codes.size} escalation codes reachable — the sweep is not covering them`);
+  for (const code of codes) {
+    const label = escalationLabel(code);
+    assert.ok(label, `escalation code "${code}" mints no label — it would be uncountable across the fleet`);
+    assert.ok(label.description.length <= 100, `${label.name}: ${label.description.length} chars`);
+  }
 });
 
-test('pullCreateError catches the Actions PR permission 403 and names the setting', () => {
-  const msg = pullCreateError(403, {
-    message: 'GitHub Actions is not permitted to create or approve pull requests',
-  });
-  assert.match(msg, /not permitted to create or approve pull requests/);
-  assert.match(msg, /Allow GitHub Actions to create and approve pull requests/);
-});
+test('the worker stands down for a repo the update flows serve', async () => {
+  // The skew guard at its only load-bearing call site. Driven through the real
+  // main() against a real repo directory: the guard must run BEFORE the clone, so a
+  // test that stubbed the clone would prove nothing about the ordering that matters.
+  const { main } = await import('../../packs/basics/tasks/baselining/worker.mjs');
+  const root = mkdtempSync(join(tmpdir(), 'claudinite-skew-'));
+  try {
+    writeFileSync(join(root, '.claudinite-checks.json'), `${JSON.stringify({
+      packs: ['basics'],
+      maintenance: { delivery: 'auto-merge', mechanism: 'updates' },
+      claudinite: { updated: '2026-08-12T00:00:00Z', ref: 'abc123' },
+    }, null, 2)}\n`);
 
-test('pullCreateError rejects a 201 with no PR number — a body that is not a PR', () => {
-  assert.ok(pullCreateError(201, {}));
-  assert.ok(pullCreateError(201, null));
-});
-
-test('pullCreateError falls back to the bare status when there is no message', () => {
-  assert.match(pullCreateError(502, null), /HTTP 502/);
-});
-
-// GitHub's auto-merge is a queue for CHECKS. On a repo with no pull_request CI the
-// mutation is rejected outright, and while that rejection was swallowed the PR sat
-// open forever — a member that asked for auto-merge got no merge at all. Seven of
-// twelve consumers have no pull_request trigger anywhere, so this was most of the
-// fleet.
-
-test('deliveryAction merges directly when there is no PR CI to gate on', () => {
-  assert.equal(deliveryAction({ delivery: 'auto-merge', hasPrCi: false }), 'merge');
-});
-
-test('deliveryAction arms auto-merge when the repo does have PR CI', () => {
-  assert.equal(deliveryAction({ delivery: 'auto-merge', hasPrCi: true }), 'arm');
-});
-
-test('deliveryAction never merges or arms a review-delivery member', () => {
-  assert.equal(deliveryAction({ delivery: 'review', hasPrCi: false }), 'none');
-  assert.equal(deliveryAction({ delivery: 'review', hasPrCi: true }), 'none');
+    const said = [];
+    const log = console.log;
+    const env = { ...process.env };
+    process.env.CLAUDINITE_REPO_ROOT = root;
+    process.env.CLAUDINITE_REPO = 'o/r';
+    process.env.GITHUB_TOKEN = 'not-used-because-it-stands-down-first';
+    console.log = (...a) => said.push(a.join(' '));
+    try {
+      await main();
+    } finally { console.log = log; process.env = env; }
+    assert.match(said.join('\n'), /served by the updates flow — standing down/);
+    // Nothing was cloned, converged or written: the mount is still absent.
+    assert.ok(!existsSync(join(root, '.claudinite', 'shared')));
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });

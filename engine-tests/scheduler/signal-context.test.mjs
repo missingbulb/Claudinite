@@ -9,7 +9,7 @@ import { collectSignals } from '../../engine/scheduler/signals/index.mjs';
 import { loadConfig } from '../../engine/checks/helpers/repo-context.mjs';
 import storeRelease from '../../packs/chrome-extension-release/tasks/store-release/task.mjs';
 import dedup from '../../packs/grow_with_claudinite/tasks/growth-dedup/task.mjs';
-import conversationExtract from '../../packs/grow_with_claudinite/tasks/conversation-extract/task.mjs';
+import extract from '../../packs/grow_with_claudinite/tasks/growth-extract/task.mjs';
 
 // The collectors take an injected `ctx` — which makes them unit-testable with no
 // repo, and also makes it possible for a key NOTHING EVER SETS to look healthy
@@ -172,14 +172,14 @@ test('localPacks.present reaches growth-dedup, so a repo with none self-skips', 
   });
 });
 
-test('conversationLogs.retentionDays reaches conversation-extract, so the age-based prune fires when quiet', async () => {
+test('conversationLogs.retentionDays reaches growth-extract, so the age-based prune fires when quiet', async () => {
   await withRepo(FULL, async (root) => {
     const signals = await collectSignals(fakeGh(QUIET), ctxFor(root), ['commits', 'conversationLogs']);
     assert.equal(signals.conversationLogs.present, true);
     assert.equal(signals.conversationLogs.retentionDays, 10);
     assert.equal(signals.conversationLogs.oldestLogAgeDays, 21); // 2026-07-01 → 2026-07-22
     assert.equal(signals.commits.substantiveChange, false); // quiet repo — the regressed case
-    const v = conversationExtract.precondition(signals);
+    const v = extract.precondition(signals);
     assert.equal(v.run, true);
     assert.match(v.reason, /retention 10d/);
   });
@@ -188,7 +188,7 @@ test('conversationLogs.retentionDays reaches conversation-extract, so the age-ba
 // The other half of the same wire: an age the collector can actually emit, which
 // is BELOW retention, must keep the quiet repo silent. Without this the "fires
 // when quiet" test above is satisfied by a collector that always says yes.
-test('conversationLogs.oldestLogAgeDays reaches conversation-extract, so young logs keep it silent', async () => {
+test('conversationLogs.oldestLogAgeDays reaches growth-extract, so young logs keep it silent', async () => {
   await withRepo(FULL, async (root) => {
     const routes = [
       [/\/commits\?sha=/, { status: 200, json: [] }],
@@ -196,7 +196,7 @@ test('conversationLogs.oldestLogAgeDays reaches conversation-extract, so young l
     ];
     const signals = await collectSignals(fakeGh(routes), ctxFor(root), ['commits', 'conversationLogs']);
     assert.equal(signals.conversationLogs.oldestLogAgeDays, 1);
-    assert.equal(conversationExtract.precondition(signals).run, false);
+    assert.equal(extract.precondition(signals).run, false);
   });
 });
 
@@ -204,7 +204,7 @@ test('conversationLogs: retention unset keeps the prune silent — no default is
   await withRepo({ '.claudinite-checks.json': JSON.stringify({ packs: ['basics'] }) + '\n' }, async (root) => {
     const signals = await collectSignals(fakeGh(QUIET), ctxFor(root), ['commits', 'conversationLogs']);
     assert.equal(signals.conversationLogs.retentionDays, null);
-    assert.equal(conversationExtract.precondition(signals).run, false);
+    assert.equal(extract.precondition(signals).run, false);
   });
 });
 

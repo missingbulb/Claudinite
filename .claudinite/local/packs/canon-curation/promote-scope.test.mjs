@@ -41,7 +41,10 @@ test('promote-scope: fires on a path outside packs/ and skills/', () => {
   }
 });
 
-test('promote-scope: a per-user preferences edit is out of bounds', () => {
+// Per-user preferences do not live in this repo at all — they belong to a fleet's
+// users, so item-routing sends them to the repo the `preferences` setting names. The
+// gate is what stops a promote from quietly re-creating a canon-side home for them.
+test('promote-scope: a canon-side per-user preferences path is out of bounds', () => {
   const root = makeRepo({
     changed: { 'preferences/someone@example.com.md': '- pref\n' },
     commitMsg: 'promote Refs #1',

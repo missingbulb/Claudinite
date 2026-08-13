@@ -22,7 +22,6 @@ the members' side ([grow_with_claudinite](../../../../packs/grow_with_claudinite
 |---|---|---|
 | `growth-promote` | a participating member changed its local packs in the window | a PR against Claudinite's `main` |
 | `growth-discover-packs` | weekly, over every covered member | a PR against Claudinite's `main` |
-| `migrations-retire` | a fully-applied migration record has passed its TTL | a PR against Claudinite's `main` |
 
 | Rule (≤5 words) | How enforced |
 |---|---|
@@ -83,8 +82,33 @@ consumer-side Action, no cross-repo PAT, no labelled-issue up-path. The planner 
 `fleetMembers` aggregate (which members changed, and what they declare), and the gate hands the
 worker the changed participants as `targets`.
 
+**This pack's tasks need the fleet executor routine — a second routine, only in this repo.** Both
+tasks here declare the **deprecated** task-level `session_scope: 'fleet'` — they are its one
+sanctioned holdout ([scheduled-tasks.md](../../../../packs/basics/scheduled-tasks.md)): the canon's
+ordinary executor does not hold the fleet, so the second label is what keeps that grant off it; each
+declaration site carries the comment pacifying the `@deprecated` warning — so the scheduler files
+their dispatches under
+`ready-for-agent-fleet` rather than `ready-for-agent`, and a *distinct* CCR routine runs them: named
+`Claudinite executor - fleet`, fired by the **`ready-for-agent-fleet`** label event, with sources =
+this repo **and every participating member** (that cross-repo reach is the whole reason the scope is
+split, and is exactly what must stay off an ordinary project's `self` executor). Its launcher prompt
+is the ordinary one **plus the scope word**:
+
+```
+Execute the Claudinite executor: engine/scheduler/executor.md fleet
+```
+
+That last word is load-bearing and easy to lose: `resolve-dispatch.mjs` defaults an unnamed scope to
+`self`, so a fleet routine whose prompt omits it declines every dispatch with exit `11` and changes
+nothing. The failure is **silent and permanent** — the session stops without commenting, the
+scheduler re-arms the issue on its next hourly pass, and the pair repeats forever, so the only
+symptom is a `ready-for-agent-fleet` issue that keeps getting re-labeled and never runs. Nothing
+repo-side can catch it: like the per-repo executor routine baselining checks by hand, this routine is
+CCR config, not a GitHub artifact an Action can see. If promote or discover-packs has quietly stopped
+producing anything, read the routine's prompt first.
+
 The session-scoped sibling of this nightly lifecycle — mining a single working session for lessons
-— lives with [the growth pack's extracting-lessons method](../../../../packs/grow_with_claudinite/extracting-lessons.md)
-(applied by its conversation-extract daily task over captured logs), and the member-side method docs
-(extract, dedup, pack discovery, and how a project's local packs are identified) live with
-[grow_with_claudinite](../../../../packs/grow_with_claudinite/README.md).
+— lives with [the growth pack's extract-from-conversations skill](../../../../packs/grow_with_claudinite/skills/extract-from-conversations/SKILL.md)
+(applied by the conversation half of its growth-extract daily task over captured logs), and the
+member-side method docs (extract, dedup, pack discovery, and how a project's local packs are
+identified) live with [grow_with_claudinite](../../../../packs/grow_with_claudinite/README.md).

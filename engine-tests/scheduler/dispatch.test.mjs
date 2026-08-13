@@ -2,10 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   dispatchTitle, dispatchTaskKey, parseDispatchTitle, isDispatchTitle,
-  dispatchBody, planDispatch, staleDispatchIssues, staleEscalationComment,
+  dispatchBody, deliveredLines, escalationLines, planDispatch, staleDispatchIssues, staleEscalationComment,
   rearmDispatchIssues, readyLabelOn, staleClaimedDispatchIssues, staleClaimComment,
   READY_LABEL, READY_FLEET_LABEL, NEEDS_HUMAN_LABEL, AGENT_RUNNING_LABEL,
-  readyLabelForScope, SCHEDULER_LABELS,
+  readyLabelForScope, SCHEDULER_LABELS, escalationLabel, ESCALATION_LABEL_PREFIX,
 } from '../../engine/scheduler/dispatch.mjs';
 
 // --- identity: title / key / parse round-trip ---
@@ -41,6 +41,79 @@ test('dispatchBody puts the task path first and includes Context only when prese
   assert.equal(noCtx.split('\n')[0], 'p/task.md');
   assert.doesNotMatch(noCtx, /### Context/);
   assert.doesNotMatch(noCtx, /binding scope/); // no scope sentence with nothing to bind
+});
+
+// --- the Delivered section ---
+// The agent's source for what preprocessing created: a PR number and a branch ref.
+
+test('dispatchBody names the artifacts preprocessing created, by identity', () => {
+  const body = dispatchBody({
+    taskPath: 'p/task.md', pack: 'basics', task: 'baselining', slotId: 'd2026-08-06',
+    delivered: { branch: 'claudinite/maintenance-2026-08-06-l0i4gd', pr: 71, merged: false },
+  });
+  assert.match(body, /### Delivered by prework/);
+  assert.match(body, /- PR: #71 \(open\)/);
+  assert.match(body, /- Branch: `claudinite\/maintenance-2026-08-06-l0i4gd`/);
+});
+
+test('dispatchBody distinguishes a merged PR from an open one', () => {
+  // On a repo with no pull_request CI, preprocessing merges in the same run — the agent
+  // works on its own PR from there rather than the one named.
+  const body = dispatchBody({
+    taskPath: 'p/task.md', pack: 'basics', task: 'baselining', slotId: 'd2026-08-06',
+    delivered: { branch: 'claudinite/maintenance-2026-08-06-l0i4gd', pr: 71, merged: true },
+  });
+  assert.match(body, /- PR: #71 \(already merged/);
+  assert.match(body, /open your own PR for further work/);
+});
+
+test('dispatchBody omits the section entirely when nothing was created — absence is the signal', () => {
+  for (const delivered of [null, undefined, {}, { branch: null, pr: null }]) {
+    const body = dispatchBody({ taskPath: 'p/task.md', pack: 'basics', task: 'baselining', slotId: 'd', delivered });
+    assert.doesNotMatch(body, /### Delivered/, JSON.stringify(delivered));
+  }
+  // No placeholder line either — absence is what says nothing was created.
+  assert.deepEqual(deliveredLines({ branch: null, pr: null, merged: false }), []);
+});
+
+// --- the Why section (#664) ---
+// Which of preprocessing's escalation conditions fired. Without it the agent re-derives
+// all four from the repo, and a wrong re-derivation is how EdFringeAllocator#82 reported
+// "preprocessing created nothing" about a cycle that had merged a PR a second earlier.
+
+test('dispatchBody names the condition that woke the agent', () => {
+  const body = dispatchBody({
+    taskPath: 'p/task.md', pack: 'basics', task: 'baselining', slotId: 'd2026-08-06',
+    reason: { code: 'checks-not-green', detail: 'check_the_world reported findings on the converged tree' },
+  });
+  assert.match(body, /### Why the agent is here/);
+  assert.match(body, /check_the_world reported findings/);
+  assert.match(body, /`checks-not-green`/);   // the stable id, for a consumer that branches on it
+});
+
+test('dispatchBody puts why before what — the reason decides which artifacts matter', () => {
+  const body = dispatchBody({
+    taskPath: 'p/task.md', pack: 'basics', task: 'baselining', slotId: 'd',
+    reason: { code: 'withheld-workflows', detail: '1 workflow file(s) the Action token cannot push' },
+    delivered: { branch: 'claudinite/maintenance-2026-08-06-l0i4gd', pr: 71, merged: false },
+  });
+  assert.ok(body.indexOf('### Why the agent is here') < body.indexOf('### Delivered by prework'));
+});
+
+test('dispatchBody omits the Why section when no reason was named — never a false claim', () => {
+  // An older vendored worker names no reason. Absence must read as "nothing asserted",
+  // which is what lets the task file fall back to its own full sweep.
+  for (const reason of [null, undefined, {}, { code: null, detail: null }]) {
+    const body = dispatchBody({ taskPath: 'p/task.md', pack: 'basics', task: 'baselining', slotId: 'd', reason });
+    assert.doesNotMatch(body, /### Why the agent is here/, JSON.stringify(reason));
+  }
+  assert.deepEqual(escalationLines({ code: null, detail: null }), []);
+});
+
+test('escalationLines: a code with no detail still says something true', () => {
+  const lines = escalationLines({ code: 'selftest-failed' });
+  assert.ok(lines.length > 0);
+  assert.match(lines.join('\n'), /selftest-failed/);
 });
 
 // --- planDispatch: exactly-once, at-most-one-open, create ---
@@ -109,6 +182,36 @@ test('staleDispatchIssues respects a daily issue crossing the 2-day threshold', 
   const now = '2026-07-24T05:00:00Z';
   const open = [{ number: 7, title: '[claudinite-task] basics/baselining d2026-07-21', created_at: '2026-07-21T02:00:00Z' }]; // ~3d old > 2d
   assert.deepEqual(staleDispatchIssues(open, now).map((i) => i.number), [7]);
+});
+
+// Escalation adds a label and leaves the issue OPEN, so without a guard the same
+// issue matches forever and the shell re-posts the identical comment every run.
+// ClaudiniteCanary#2 carried four of them, one per hourly run.
+test('staleDispatchIssues escalates an issue once — an already-escalated one is done', () => {
+  const now = '2026-07-24T05:00:00Z';
+  const old = { number: 7, title: '[claudinite-task] basics/baselining d2026-07-21', created_at: '2026-07-21T02:00:00Z' };
+  assert.deepEqual(staleDispatchIssues([old], now).map((i) => i.number), [7]); // first pass: escalate
+  const escalated = { ...old, labels: [{ name: NEEDS_HUMAN_LABEL }] };
+  assert.deepEqual(staleDispatchIssues([escalated], now), []);                 // every pass after: silent
+  assert.deepEqual(staleDispatchIssues([{ ...escalated, labels: [NEEDS_HUMAN_LABEL] }], now), []); // bare-string labels too
+});
+
+// The two sweeps overlapped on an old claimed issue, and the shell runs stale first
+// (`deadClaims` filters out anything already in `stale`) — so the issue was told "no
+// executor session ran it" about a session that demonstrably ran. Claimed issues
+// belong to the claim sweep, which says the true thing.
+test('staleDispatchIssues leaves a CLAIMED issue to the claim sweep, which words it correctly', () => {
+  const now = '2026-07-25T05:00:00Z';
+  const claimed = {
+    number: 8,
+    title: '[claudinite-task] basics/baselining d2026-07-21',
+    created_at: '2026-07-21T02:00:00Z',
+    updated_at: '2026-07-21T02:00:00Z',
+    labels: [{ name: AGENT_RUNNING_LABEL }],
+  };
+  assert.deepEqual(staleDispatchIssues([claimed], now), []);
+  assert.deepEqual(staleClaimedDispatchIssues([claimed], now).map((i) => i.number), [8]);
+  assert.match(staleClaimComment(claimed), new RegExp(AGENT_RUNNING_LABEL));
 });
 
 test('staleEscalationComment names the task and the needs-human label', () => {
@@ -198,4 +301,32 @@ test('staleClaimComment names the task and the needs-human label', () => {
   assert.match(c, /basics\/baselining \(slot d2026-07-22\)/);
   assert.match(c, new RegExp(NEEDS_HUMAN_LABEL));
   assert.match(c, new RegExp(AGENT_RUNNING_LABEL));
+});
+
+test('every scheduler label description fits GitHub\'s 100-char cap', () => {
+  // Over the cap, the create 422s and — worse — the reconcile PATCH 422s on
+  // EVERY labels-ensured run, forever (observed live on ready-for-agent-fleet,
+  // 106 chars, 2026-08-07). The API rejects it; nothing self-heals it.
+  for (const l of SCHEDULER_LABELS) {
+    assert.ok(l.description.length <= 100, `${l.name}: ${l.description.length} chars`);
+  }
+});
+
+test('an escalation code mints a queryable label; a malformed one mints none', () => {
+  const l = escalationLabel('checks-not-green');
+  assert.equal(l.name, `${ESCALATION_LABEL_PREFIX}checks-not-green`);
+  assert.match(l.description, /checks-not-green/);
+  assert.ok(/^[0-9a-f]{6}$/.test(l.color), 'a label needs a real colour or GitHub picks grey forever');
+  // The counting surface is the label NAME, so a code that would make an
+  // unqueryable or forged one is refused outright — the body still names it.
+  for (const bad of [null, undefined, 42, '', 'Checks Not Green', 'checks_not_green', '-leading', 'trailing-', 'a--b']) {
+    assert.equal(escalationLabel(bad), null, JSON.stringify(bad));
+  }
+});
+
+test('a minted escalation label fits GitHub\'s 100-char description cap', () => {
+  // Same failure the SCHEDULER_LABELS cap test exists for, one level nastier: this
+  // description is built from the code, so length is only bounded by the code's.
+  const longest = 'a'.repeat(50);
+  assert.ok(escalationLabel(longest).description.length <= 100, 'the mint template leaves no room for a long code');
 });

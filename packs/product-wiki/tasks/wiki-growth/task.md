@@ -10,20 +10,10 @@ You run under the executor, dispatched by a `ready-for-agent` issue; GitHub acce
 actual default branch. The wiki set is derived **structurally**: every `README.md` at depth ≥ 2 under
 `product-wiki/`, excluding the `product-wiki/product-requirements/` and `product-wiki/sample-data/` subtrees.
 
-The task's declared outcome ceiling is **`open-pr`**: it may open a PR but never merges one and never pushes to
-the default branch.
-
-## Preflight
-
-**Before researching**, search the repo for an open PR whose head branch matches `claude/product-wiki-growth/*`.
-If one is open, do **not** stack a second round of unreviewed research on it — add one dated nudge comment on
-that PR and stop.
-
-This is the *only* guard against that stacking — nothing upstream covers it. The scheduler's at-most-one-open
-guard is about **dispatch issues**, not pull requests: a completed run converges and closes its own dispatch
-issue while leaving this task's PR open for the owner to review, so the next weekly slot sees an empty issue
-family and dispatches normally. Expect to find an open growth PR whenever the last one hasn't been reviewed
-yet; that is the ordinary case this preflight exists for, not an anomaly.
+There is no preflight: whether this run happens was decided by the task's **precondition** (it declines while
+a PR carrying the **`product-wiki-growth` label** — the marker every PR of this family applies to itself —
+sits open for review), so by the time you read this the round is granted. Your job is the research; label the
+PR you open `product-wiki-growth` so the next round's precondition can see it.
 
 ## Method
 
@@ -59,9 +49,11 @@ Neither mode yields citable material → stop. No commit, no log entry, no PR.
 
 ## Delivery
 
-Branch `claude/product-wiki-growth/<date>` (unique branch per run), commits touching only `product-wiki/**`
-minus `product-requirements/`, one **PR — never merged, never pushed to the default branch directly**.
-Web-researched claims entering a committed knowledge base need the review gate. PR body: the question(s)
+A unique branch per run, commits touching only `product-wiki/**` minus `product-requirements/`, one
+**PR — never a push to the default branch directly** — carrying the **`product-wiki-growth` label**. The
+label is load-bearing: it is how the next run's precondition sees this PR at all, so a PR opened without it
+will be stacked on by the following slot — label it whether or not the PR then lands.
+Then hand it to the one delivery procedure (`deliver-pr.md`) and do what it says. PR body: the question(s)
 researched, what changed where, the citations added, and the open questions left for the next run.
 
 ## Tracking
@@ -72,8 +64,8 @@ title, never by number, never opened/closed as state (open it if missing). One d
 a failed unattended run). Clean no-ops stay silent — the pack's freshness advisory is the prolonged-silence
 observer.
 
-`agent_model: opus` — open-web research plus curation is judgment-heavy, and the PR review gate is the last catch for
-fabrication.
+`agent_model: opus` — reading a wiki, judging which of its open questions is worth this run, and telling a
+citable finding from a plausible one is the heaviest judgment in the task set.
 
 ## What this worker must never do
 

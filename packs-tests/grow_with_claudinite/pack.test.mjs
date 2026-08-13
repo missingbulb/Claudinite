@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync, writeFileSync, appendFileSync, mkdirSync } from 'n
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { makeRepo, cleanup, git } from '../../engine-tests/helpers.mjs';
+import { makeRepo, cleanup, git, deletePath } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import configCheck from '../../packs/grow_with_claudinite/config-check.mjs';
 import {
@@ -14,6 +14,7 @@ import {
 } from '../../packs/grow_with_claudinite/capture-log.mjs';
 import { runRule } from '../../engine/checks/helpers/work.mjs';
 import dedupIntegrity from '../../packs/grow_with_claudinite/dedup-integrity.mjs';
+import growthWriteScope from '../../packs/grow_with_claudinite/growth-write-scope.mjs';
 
 const packDir = join(dirname(dirname(dirname(fileURLToPath(import.meta.url)))), 'packs/grow_with_claudinite');
 
@@ -475,6 +476,123 @@ test('dedup-prune-integrity: the restatement fingerprint still fires on a canon-
     const findings = runWork(root);
     assert.equal(findings.length, 1);
     assert.match(findings[0].what, /re-imports a canon rule/);
+  } finally { cleanup(root); }
+});
+
+// --- growth-write-scope ------------------------------------------------------
+
+const runScope = (root) => runRule(growthWriteScope, buildContext({ root }));
+
+test('growth-write-scope: a capture run touching outside the local packs is flagged', () => {
+  const root = makeRepo({
+    base: { 'src/app.mjs': 'call();\n' },
+    changed: {
+      [PROSE]: '- a captured lesson\n',
+      'src/app.mjs': 'call(); // gotcha: never call twice\n',
+    },
+    commitMsg: 'Claudinite growth: extract lessons\n\nRefs #12',
+  });
+  try {
+    const findings = runScope(root);
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].file, 'src/app.mjs');
+    assert.equal(findings[0].severity, 'blocking');
+    assert.match(findings[0].what, /outside \.claudinite\/local\/packs\//);
+  } finally { cleanup(root); }
+});
+
+test('growth-write-scope: the canon README an extract run edited in #606 is caught', () => {
+  // The real regression: a merged `Claudinite growth: extract lessons` run
+  // (922e059) edited packs/README.md — the shared canon the task doc forbids it
+  // to touch — and rode an auto-merging PR with no human review.
+  const root = makeRepo({
+    base: { 'packs/README.md': '# Packs\n\nA line.\n' },
+    changed: {
+      [PROSE]: '- a captured lesson\n',
+      'packs/README.md': '# Packs\n\nA reworded line.\n',
+    },
+    commitMsg: 'Claudinite growth: extract lessons\n\nRefs #606',
+  });
+  try {
+    const findings = runScope(root);
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].file, 'packs/README.md');
+  } finally { cleanup(root); }
+});
+
+test('growth-write-scope: a run entirely inside the local packs passes, deletions included', () => {
+  const legacy = '.claudinite/local_packs/old/RULES.md';
+  const root = makeRepo({
+    base: { '.claudinite/local/packs/gcec/covered.mjs': 'export default {};\n' },
+    changed: { [PROSE]: '- a lesson\n', [legacy]: '- legacy-root lesson\n' },
+    commitMsg: 'Claudinite growth: extract lessons\n\nRefs #12',
+  });
+  try {
+    // A dedup run pruning a whole local check is a deletion INSIDE the surface.
+    deletePath(root, '.claudinite/local/packs/gcec/covered.mjs', 'Claudinite growth: dedup local packs\n\nRefs #3');
+    assert.equal(runScope(root).length, 0);
+  } finally { cleanup(root); }
+});
+
+test('growth-write-scope: a capture run deleting a file outside the surface is flagged', () => {
+  const root = makeRepo({
+    base: { 'docs/old.md': 'stale\n' },
+    changed: { [PROSE]: '- a lesson\n' },
+    commitMsg: 'Claudinite growth: dedup local packs\n\nRefs #3',
+  });
+  try {
+    deletePath(root, 'docs/old.md', 'Claudinite growth: dedup local packs\n\nRefs #3');
+    const findings = runScope(root);
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].file, 'docs/old.md');
+  } finally { cleanup(root); }
+});
+
+test('growth-write-scope: the sibling growth runs with wider surfaces are not gated here', () => {
+  // Promote writes the canon by design (promote-scope is its gate), and pack
+  // discovery must also write the repo-root declaration that activates the pack.
+  const promote = makeRepo({
+    base: { 'packs/basics/RULES.md': '- a rule\n' },
+    changed: { 'packs/basics/RULES.md': '- a rule\n- a promoted rule\n' },
+    commitMsg: 'Claudinite growth: promote 5 lessons to canon (d2026-07-30)\n\nRefs #7',
+  });
+  const discover = makeRepo({
+    base: { '.claudinite-checks.json': '{"packs":["basics"]}\n' },
+    changed: {
+      '.claudinite-checks.json': '{"packs":["basics","local/packs/gcec"]}\n',
+      [PROSE]: '- the new pack\n',
+    },
+    commitMsg: 'Claudinite growth: discover local pack gcec\n\nRefs #8',
+  });
+  try {
+    assert.equal(runScope(promote).length, 0);
+    assert.equal(runScope(discover).length, 0);
+  } finally { cleanup(promote); cleanup(discover); }
+});
+
+test('growth-write-scope: an ordinary branch is not gated, and the title only counts at the subject', () => {
+  const anywhere = makeRepo({
+    changed: { 'src/app.mjs': 'x\n', [PROSE]: '- note\n' },
+    commitMsg: 'feat: ordinary work Refs #4',
+  });
+  const inBody = makeRepo({
+    changed: { 'src/app.mjs': 'x\n' },
+    commitMsg: 'feat: mention a run Refs #4\n\nClaudinite growth: extract lessons ran earlier today.',
+  });
+  try {
+    assert.equal(runScope(anywhere).length, 0);
+    assert.equal(runScope(inBody).length, 0); // body mention is not a run announcement
+  } finally { cleanup(anywhere); cleanup(inBody); }
+});
+
+test('growth-write-scope: silent on the default branch', () => {
+  const root = makeRepo({
+    changed: { 'src/app.mjs': 'x\n' },
+    commitMsg: 'Claudinite growth: extract lessons\n\nRefs #12',
+  });
+  try {
+    git(root, 'checkout', '-q', 'main');
+    assert.equal(runScope(root).length, 0);
   } finally { cleanup(root); }
 });
 

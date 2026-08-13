@@ -1,12 +1,21 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
-  loadMigrations, resolvePath, applyFileAliases, retirableMigrations,
-  migrationsPastTtl, MIGRATIONS_OLD_SUBDIR,
-  applyMaterializations, applyRewrites, migrationActive,
+  loadMigrations, resolvePath, applyFileAliases,
+  applyMaterializations, applyRewrites, applyPackDeclarations, migrationActive,
+  applyLocalDeclarationNormalization, applyMigration,
   migrationAgentic, agenticMigrations,
-} from '../migrations/registry.mjs';
-import { specFiles, oldSpecFiles } from '../engine/checks/helpers/active-migrations.mjs';
+  callerCanDeliverWorkflows, WITHHOLD_CAPABLE_ENV,
+} from '../engine/migrations/registry.mjs';
+import {
+  migrationDirs, migrationRoots, recordName, recordDirIsRecent, RECENT_WINDOW_DAYS,
+  recordVersion, flowOf, installedFor, installedVersions, migrationApplies,
+} from '../engine/checks/helpers/active-migrations.mjs';
 
 const M = (over = {}) => ({ id: 'm', landed: '2026-01-01', aliases: [], ...over });
 
@@ -28,11 +37,17 @@ test('agenticMigrations: selects exactly the records carrying a valid agentic no
   assert.deepEqual(agenticMigrations(migs).map((m) => m.id), ['b']);
 });
 
-test('the real pack-independence record carries a valid agentic note', async () => {
+test('the real holdout record carries a valid agentic note', async () => {
+  // Stated over whichever record still holds one rather than a named record: the set
+  // shrinks as notes drain (pack-independence's retired in #768), and a test pinned to
+  // one record's name dies with it while proving nothing about the shape.
   const migs = await loadMigrations();
-  const pi = migs.find((m) => m.id === 'pack-independence');
-  assert.ok(pi, 'pack-independence record present');
-  assert.equal(migrationAgentic(pi).model, 'sonnet');
+  const held = migs.filter((m) => migrationAgentic(m) !== null);
+  assert.ok(held.length > 0, 'no record carries a note — delete this test and add the throw to migrationAgentic');
+  for (const m of held) {
+    const note = migrationAgentic(m);
+    assert.ok(note.model && note.instructions, `${m.dir}: a note must name a model and say what to do`);
+  }
 });
 
 test('resolvePath: prefers canonical then legacy; an unknown target resolves to itself', () => {
@@ -61,79 +76,17 @@ test('applyFileAliases: never clobbers — no-op when the canonical already exis
   assert.deepEqual(await applyFileAliases(m, { exists, move }), []);
 });
 
-test('retirableMigrations: retires a clean, aged, auto migration', () => {
-  const migs = [M({ id: 'done', landed: '2026-07-12' })];
-  const pending = new Map([['done', 0]]);
-  const out = retirableMigrations(migs, { pending, unknownCount: 0, today: '2026-07-13' });
-  assert.deepEqual(out.map((m) => m.id), ['done']);
-});
+// --- recordDirIsRecent (the one recency predicate: vendoring + tolerance) ----
 
-test('retirableMigrations: blocked by unknowns, pending repos, same-day landing, and retire:manual', () => {
-  const base = M({ id: 'x', landed: '2026-07-12' });
-  const clean = new Map([['x', 0]]);
-  // Any unclassified repo blocks every retirement — an error can't hide a holdout.
-  assert.deepEqual(retirableMigrations([base], { pending: clean, unknownCount: 1, today: '2026-07-13' }), []);
-  // A repo still carrying the legacy shape blocks.
-  assert.deepEqual(retirableMigrations([base], { pending: new Map([['x', 1]]), unknownCount: 0, today: '2026-07-13' }), []);
-  // Landed today (< one nightly cycle old) blocks.
-  assert.deepEqual(retirableMigrations([base], { pending: clean, unknownCount: 0, today: '2026-07-12' }), []);
-  // retire:'manual' opts out entirely.
-  const manual = M({ id: 'x', landed: '2026-07-12', retire: 'manual' });
-  assert.deepEqual(retirableMigrations([manual], { pending: clean, unknownCount: 0, today: '2026-07-13' }), []);
-  // Applied to >=1 repo THIS cycle blocks (the quiescence guard): the cycle that
-  // converges the last member can never also retire it.
-  assert.deepEqual(
-    retirableMigrations([base], { pending: clean, unknownCount: 0, today: '2026-07-13', appliedThisCycle: new Set(['x']) }),
-    [],
-  );
-  // ...but a clean cycle where it was applied to no one retires it.
-  assert.deepEqual(
-    retirableMigrations([base], { pending: clean, unknownCount: 0, today: '2026-07-13', appliedThisCycle: new Set() }).map((m) => m.id),
-    ['x'],
-  );
-});
-
-test('retirableMigrations: never fleet-deletes an already-archived (migrations-old) record', () => {
-  const archived = M({ id: 'x', landed: '2026-07-12', subdir: MIGRATIONS_OLD_SUBDIR });
-  const clean = new Map([['x', 0]]);
-  assert.deepEqual(retirableMigrations([archived], { pending: clean, unknownCount: 0, today: '2026-07-20' }), []);
-});
-
-// --- migrationsPastTtl (the TTL archiver's selection) ------------------------
-
-test('migrationsPastTtl: selects records older than the TTL, skips younger and archived', () => {
-  const migs = [
-    M({ id: 'old', landed: '2026-07-01' }),      // 14 days before today → past a 7d TTL
-    M({ id: 'young', landed: '2026-07-13' }),    // 2 days → within TTL
-    M({ id: 'edge', landed: '2026-07-08' }),     // exactly 7 days → at the TTL (aged out)
-    M({ id: 'gone', landed: '2026-07-01', subdir: MIGRATIONS_OLD_SUBDIR }), // already archived
-  ];
-  const out = migrationsPastTtl(migs, { today: '2026-07-15', ttlDays: 7 });
-  assert.deepEqual(out.map((m) => m.id).sort(), ['edge', 'old']);
-});
-
-test('migrationsPastTtl: an empty set when nothing has aged out', () => {
-  const migs = [M({ id: 'a', landed: '2026-07-14' }), M({ id: 'b', landed: '2026-07-15' })];
-  assert.deepEqual(migrationsPastTtl(migs, { today: '2026-07-15', ttlDays: 7 }), []);
-});
-
-test('retire gates deletion, not archival: the TTL sweep takes a manual record, retirableMigrations does not', () => {
-  // The two passes are deliberately split. Archiving moves a record to
-  // migrations-old/, where it still loads and still applies for a dormant
-  // project's backfill — only its legacy tolerance ends. Deleting drops it for
-  // good, which is what `retire: 'manual'` exists to stop until a human sweeps
-  // the references the pass cannot reach.
-  const migs = [
-    M({ id: 'auto-old', landed: '2026-07-01', retire: 'auto' }),
-    M({ id: 'manual-old', landed: '2026-07-01', retire: 'manual' }),
-    M({ id: 'unset-old', landed: '2026-07-01' }),
-  ];
-  const archived = migrationsPastTtl(migs, { today: '2026-07-15', ttlDays: 7 });
-  assert.deepEqual(archived.map((m) => m.id).sort(), ['auto-old', 'manual-old', 'unset-old']);
-  const deletable = retirableMigrations(migs, {
-    pending: new Map(), unknownCount: 0, today: '2026-07-15',
-  });
-  assert.deepEqual(deletable.map((m) => m.id).sort(), ['auto-old', 'unset-old']);
+test('recordDirIsRecent: within the window by folder-name date prefix, aged out at exactly the window', () => {
+  assert.equal(RECENT_WINDOW_DAYS, 7);
+  const today = '2026-07-15';
+  assert.equal(recordDirIsRecent('2026-07-15-lands-today', today), true);
+  assert.equal(recordDirIsRecent('2026-07-13-young', today), true);
+  assert.equal(recordDirIsRecent('2026-07-09-edge-in', today), true);   // 6 days → still recent
+  assert.equal(recordDirIsRecent('2026-07-08-edge-out', today), false); // exactly 7 days → aged out
+  assert.equal(recordDirIsRecent('2026-07-01-old', today), false);
+  assert.equal(recordDirIsRecent('not-a-dated-folder', today), false);  // unparsable prefix → never recent
 });
 
 test('applyMaterializations: creates a dest from its template when missing or drifted; skips when equal; gated by appliesTo', async () => {
@@ -184,39 +137,182 @@ test('applyRewrites: applies literal from->to replacements in place, idempotentl
   assert.match(repo.get('.github/w.yml'), /keep me/);
 });
 
-// Stated against the live corpus rather than a named record: the old form
-// asserted migrationActive('chrome-release-vendoring'), which pinned the test to
-// one migration happening to be un-retired. Archiving it — the TTL sweep's whole
-// job — reds the suite for no defect. The contract is what matters, and it holds
-// whichever records are live: a record in active_migrations is tolerated, one in
-// migrations-old is not (its apply logic persists for backfill; its tolerance is
-// what aging out ends).
-const slugOf = (f) => f.replace(/^\d{4}-\d{2}-\d{2}-/, '').replace(/\.mjs$/, '');
+test('applyPackDeclarations: declares an absent pack, never overrides what the repo chose, gated by appliesTo', async () => {
+  const decl = (o) => `${JSON.stringify(o, null, 2)}\n`;
+  const repo = new Map([['.claudinite-checks.json', decl({ packs: ['basics'], maintenance: { delivery: 'auto-merge' } })]]);
+  const read = (p) => repo.get(p) ?? null;
+  const write = (p, c) => repo.set(p, c);
+  const m = M({ declarePacks: [{ id: 'NewPack', config: { repo: 'o/store' } }] });
 
-test('migrationActive: true for every live record, false once archived', () => {
-  for (const f of specFiles()) {
-    assert.equal(migrationActive(slugOf(f)), true, `active: ${f}`);
-  }
-  for (const f of oldSpecFiles()) {
-    assert.equal(migrationActive(slugOf(f)), false, `archived: ${f}`);
+  assert.deepEqual(await applyPackDeclarations(m, { read, write }), ['.claudinite-checks.json: declared NewPack']);
+  const after = JSON.parse(repo.get('.claudinite-checks.json'));
+  assert.deepEqual(after.packs, ['basics', { id: 'NewPack', config: { repo: 'o/store' } }]);
+  assert.deepEqual(after.maintenance, { delivery: 'auto-merge' }, 'the rest of the declaration survives');
+  assert.equal(repo.get('.claudinite-checks.json'), decl(after), 'canonical 2-space settings with a trailing newline');
+
+  // Idempotent, and — the contract that matters — a pack the repo already declares
+  // keeps its own config, even when the record names a different one.
+  assert.deepEqual(await applyPackDeclarations(m, { read, write }), []);
+  const other = M({ declarePacks: [{ id: 'NewPack', config: { repo: 'o/somewhere-else' } }] });
+  assert.deepEqual(await applyPackDeclarations(other, { read, write }), []);
+  assert.deepEqual(JSON.parse(repo.get('.claudinite-checks.json')).packs[1].config, { repo: 'o/store' });
+
+  // A pack declared as a bare string, with no config, is the one entry still owed
+  // something: it gets the config, in place, without losing its position.
+  const bare = new Map([['.claudinite-checks.json', decl({ packs: ['basics', 'NewPack', 'tidy-repo'] })]]);
+  assert.deepEqual(
+    await applyPackDeclarations(m, { read: (p) => bare.get(p) ?? null, write: (p, c) => bare.set(p, c) }),
+    ['.claudinite-checks.json: configured NewPack'],
+  );
+  assert.deepEqual(JSON.parse(bare.get('.claudinite-checks.json')).packs,
+    ['basics', { id: 'NewPack', config: { repo: 'o/store' } }, 'tidy-repo']);
+
+  // appliesTo:false skips, and a non-member / unparsable declaration is left alone
+  // (the world runner owns that finding; a migration must not guess at a repair).
+  const fresh = new Map([['.claudinite-checks.json', decl({ packs: [] })]]);
+  const w2 = (p, c) => fresh.set(p, c);
+  assert.deepEqual(await applyPackDeclarations(M({ appliesTo: async () => false, declarePacks: m.declarePacks }), { read: (p) => fresh.get(p) ?? null, write: w2 }), []);
+  assert.deepEqual(await applyPackDeclarations(m, { read: () => null, write: w2 }), []);
+  assert.deepEqual(await applyPackDeclarations(m, { read: () => '{oops', write: w2 }), []);
+  assert.deepEqual(await applyPackDeclarations(m, { read: () => '[]', write: w2 }), []);
+  assert.equal(fresh.get('.claudinite-checks.json'), decl({ packs: [] }), 'nothing was written');
+});
+
+test('apply.mjs really performs the pack-declaration op — the wire, not just the function', () => {
+  // The unit test above proves applyPackDeclarations; this proves the applier CALLS
+  // it. A missing line in apply.mjs would leave every unit test green and every member
+  // un-migrated, which is the exact failure mode a seed op is meant to prevent.
+  const root = mkdtempSync(join(tmpdir(), 'claudinite-apply-'));
+  try {
+    writeFileSync(join(root, '.claudinite-checks.json'), `${JSON.stringify({ packs: ['basics'] }, null, 2)}\n`);
+    const canon = dirname(dirname(fileURLToPath(import.meta.url)));
+    const out = execFileSync(process.execPath, [join(canon, 'engine/migrations/apply.mjs')], {
+      encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: root },
+    });
+    assert.match(out, /declared claude-code-web-users-support/);
+    const after = JSON.parse(readFileSync(join(root, '.claudinite-checks.json'), 'utf8'));
+    assert.deepEqual(after.packs, ['basics', { id: 'claude-code-web-users-support', config: { repo: 'missingbulb/Sheepdog' } }]);
+    // …and running it again writes nothing at all.
+    assert.equal(execFileSync(process.execPath, [join(canon, 'engine/migrations/apply.mjs')], {
+      encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: root },
+    }), '');
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('claude-code-web-users-support migration: seeds the pack with the fleet\'s store, and tracks who still lacks it', async () => {
+  const m = (await loadMigrations()).find((x) => x.id === 'claude-code-web-users-support');
+  assert.ok(m, 'claude-code-web-users-support migration is discovered');
+  // The one-time backfill: the pack every member should run, and the store none of
+  // them can derive.
+  assert.deepEqual(m.declarePacks, [{ id: 'claude-code-web-users-support', config: { repo: 'missingbulb/Sheepdog' } }]);
+
+  const read = (json) => async () => (json === null ? null : JSON.stringify(json));
+  assert.equal(await m.legacyPresent(() => false, read({ packs: ['basics'] })), true, 'pack undeclared -> legacy');
+  assert.equal(await m.legacyPresent(() => false, read({ packs: ['claude-code-web-users-support'] })), false, 'declared -> done');
+  assert.equal(await m.legacyPresent(() => false, read({ packs: [{ id: 'claude-code-web-users-support', config: { repo: 'o/other' } }] })), false,
+    'declared with a store of its own -> done, whatever it names');
+  assert.equal(await m.legacyPresent(() => false, read(null)), false, 'no declaration -> not a member, not held');
+  assert.equal(await m.legacyPresent(() => false, async () => 'nope'), false, 'unparsable -> not held');
+});
+
+// Stated against the live corpus rather than a named record, with `today` pinned
+// per record: asserting a named record's tolerance against the wall clock would
+// red the suite the day it ages out of the window, for no defect. The contract is
+// what matters, and it holds for every record: tolerated while its landed date is
+// within the window, not after — its apply logic persists for backfill (a dormant
+// project applies from the fresh canon clone); the tolerance is what aging ends.
+const slugOf = (d) => recordName(d).replace(/^\d{4}-\d{2}-\d{2}-/, '');
+
+test('migrationActive: true for every record within the window, false once aged out', () => {
+  const dirs = migrationDirs();
+  assert.ok(dirs.length > 0, 'the live corpus has records');
+  for (const d of dirs) {
+    const landed = recordName(d).slice(0, 10);
+    assert.equal(migrationActive(slugOf(d), landed), true, `recent: ${d}`);
+    const aged = new Date(new Date(`${landed}T00:00:00Z`).getTime() + RECENT_WINDOW_DAYS * 86400000)
+      .toISOString().slice(0, 10);
+    assert.equal(migrationActive(slugOf(d), aged), false, `aged out: ${d}`);
   }
   assert.equal(migrationActive('no-such-migration-slug'), false);
 });
 
-test('chrome-release-vendoring migration: gate, telemetry, and the home-file retirement list', async () => {
+test('every record folder is <landed>-<slug>/migration.mjs, prefix matching its landed date', async () => {
+  const migs = await loadMigrations();
+  assert.equal(migs.length, migrationDirs().length);
+  for (const m of migs) {
+    assert.match(recordName(m.dir), /^\d{4}-\d{2}-\d{2}-/, `dated folder: ${m.dir}`);
+    assert.equal(recordName(m.dir).slice(0, 10), m.landed, `folder prefix = landed for ${m.id} — vendoring and tolerance window off the prefix`);
+  }
+});
+
+// A workflow materialization can only be written by a caller that can get it delivered.
+// Writing one into a tree an Action-token push is about to carry does not deliver a
+// workflow — it rejects the whole ref and fails the converge with everything riding it.
+
+test('applyMaterializations: a workflow dest is skipped unless the caller announced it can withhold', async () => {
+  const m = M({ materialize: [
+    { template: 'tpl/wf.yml', dest: '.github/workflows/fleet-baseline.yml' },
+    { template: 'tpl/act.yml', dest: '.github/actions/thing/action.yml' },
+  ] });
+  const written = new Map();
+  const io = (env) => ({
+    readTemplate: async (p) => `content of ${p}`,
+    read: async (p) => written.get(p) ?? null,
+    write: async (p, c) => { written.set(p, c); },
+    env,
+  });
+
+  // An incapable caller — an older vendored worker, a hand-run apply, CI.
+  const skipped = await applyMaterializations(m, io({}));
+  assert.deepEqual(skipped, [
+    'SKIPPED .github/workflows/fleet-baseline.yml (workflow file; this caller cannot deliver one)',
+    '.github/actions/thing/action.yml <- tpl/act.yml',
+  ]);
+  // The workflow was NOT written; the ordinary .github/ file was. Only workflow files are
+  // special — an action, a template, a CODEOWNERS all push fine with the Action token.
+  assert.equal(written.has('.github/workflows/fleet-baseline.yml'), false);
+  assert.equal(written.get('.github/actions/thing/action.yml'), 'content of tpl/act.yml');
+  // And it SAYS it skipped: a silent skip reads as "already current", and the file would
+  // then never arrive at all.
+
+  // The capable caller writes it, and the withhold path downstream keeps it out of the push.
+  const applied = await applyMaterializations(m, io({ CLAUDINITE_CAN_WITHHOLD_WORKFLOWS: '1' }));
+  assert.deepEqual(applied, ['.github/workflows/fleet-baseline.yml <- tpl/wf.yml']);
+  assert.equal(written.get('.github/workflows/fleet-baseline.yml'), 'content of tpl/wf.yml');
+});
+
+test('callerCanDeliverWorkflows: only the exact announcement counts', () => {
+  assert.equal(callerCanDeliverWorkflows({ CLAUDINITE_CAN_WITHHOLD_WORKFLOWS: '1' }), true);
+  for (const env of [{}, { CLAUDINITE_CAN_WITHHOLD_WORKFLOWS: '' }, { CLAUDINITE_CAN_WITHHOLD_WORKFLOWS: 'true' }, { CLAUDINITE_CAN_WITHHOLD_WORKFLOWS: '0' }]) {
+    assert.equal(callerCanDeliverWorkflows(env), false, JSON.stringify(env));
+  }
+  assert.equal(WITHHOLD_CAPABLE_ENV, 'CLAUDINITE_CAN_WITHHOLD_WORKFLOWS');
+});
+
+test('sheepdog-fleet-baseline migration: gated on declaring the pack, and on nothing else', async () => {
+  const m = (await loadMigrations()).find((x) => x.id === 'sheepdog-fleet-baseline');
+  assert.ok(m, 'discovered');
+  const read = (decl) => async (p) => (p === '.claudinite-checks.json' ? decl : null);
+
+  // Both declaration forms, since both are legal.
+  assert.equal(await m.appliesTo(read(JSON.stringify({ packs: [{ id: 'sheepdog', config: {} }] }))), true);
+  assert.equal(await m.appliesTo(read(JSON.stringify({ packs: ['sheepdog'] }))), true);
+  assert.equal(await m.appliesTo(read(JSON.stringify({ packs: ['basics'] }))), false);
+  assert.equal(await m.appliesTo(read('not json')), false);
+  assert.equal(await m.appliesTo(read(null)), false);   // canon itself
+
+  // Deliverability is NOT the record's question — the machinery owns it. A record-local
+  // probe of the member's vendored worker was tried and was wrong: the vendor step earlier
+  // in the same cycle has already replaced that file with the new version while the OLD
+  // code is still executing, so the probe answers for the wrong worker.
+  assert.equal(m.materialize.length, 1);
+  assert.equal(m.materialize[0].dest, '.github/workflows/fleet-baseline.yml');
+  assert.equal(await m.legacyPresent(() => false, async () => null), false);
+});
+
+test('chrome-release-vendoring migration: gate, telemetry, and the vendoring round-trip', async () => {
   const m = (await loadMigrations()).find((x) => x.id === 'chrome-release-vendoring');
   assert.ok(m, 'discovered');
-  // 'manual', not 'auto': the fleet has vendored, but the record's references live
-  // inline across the canon (barriers `except` entries, .github/workflows/README.md
-  // links, this test) that the retire pass does not sweep — so auto-retiring it
-  // strands them and breaks CI. Retire by hand alongside those references.
-  assert.equal(m.retire, 'manual');
-  assert.equal(m.retireDeletesFromHome.length, 8);
-  assert.ok(m.retireDeletesFromHome.includes('.github/workflows/chrome-extension-release.yml'));
-  // report-failure is shared canon infra (a non-chrome pack's coverage stub + the
-  // general failure reporter reference it @main), so it must NOT be in the deletion set.
-  assert.ok(!m.retireDeletesFromHome.includes('.github/actions/report-failure/action.yml'));
-
   const orchestrator = (uses) => `name: Release to Chrome Store\njobs:\n  cp:\n    uses: ${uses}\n`;
   const legacy = orchestrator('missingbulb/Claudinite/.github/workflows/chrome-extension-release.yml@main');
   const vendored = orchestrator('./.github/workflows/chrome-extension-create-package.yml');
@@ -238,7 +334,16 @@ test('chrome-release-vendoring migration: gate, telemetry, and the home-file ret
   const readTemplate = (p) => `TEMPLATE:${p}`;
   const read = (p) => repo.get(p) ?? null;
   const write = (p, c) => repo.set(p, c);
-  await applyMaterializations(m, { readTemplate, read, write });
+  // Four of this record's nine materializations are WORKFLOW files, so the caller has to
+  // be one that can deliver them — the same handshake baselining's worker makes. Run it
+  // without the announcement and those four are skipped instead of wedging the push, which
+  // is the hazard a workflow materialization carries for a caller that cannot push one.
+  const capable = { [WITHHOLD_CAPABLE_ENV]: '1' };
+  const incapable = await applyMaterializations(m, { readTemplate, read, write, env: {} });
+  assert.equal(incapable.filter((l) => l.startsWith('SKIPPED')).length, 4);
+  assert.equal(repo.size, 6, 'orchestrator + the 5 non-workflow files');
+
+  await applyMaterializations(m, { readTemplate, read, write, env: capable });
   await applyRewrites(m, { read, write });
   assert.equal(repo.size, 10, 'orchestrator + 9 vendored files');
   assert.match(repo.get('.github/workflows/chrome-extension-release.yml'), /\.\/\.github\/workflows\/chrome-extension-create-package\.yml/);
@@ -248,7 +353,6 @@ test('chrome-release-vendoring migration: gate, telemetry, and the home-file ret
 test('pack-entry-config migration: legacyPresent reads the declaration (true iff a top-level packConfig remains)', async () => {
   const m = (await loadMigrations()).find((x) => x.id === 'pack-entry-config');
   assert.ok(m, 'pack-entry-config migration is discovered');
-  assert.equal(m.retire, 'manual'); // the tolerance is inline in loadConfig — dropped deliberately with the record
   const read = (json) => async () => JSON.stringify(json);
   assert.equal(await m.legacyPresent(() => false, read({ packs: ['node'], packConfig: { node: {} } })), true, 'top-level packConfig -> legacy');
   assert.equal(await m.legacyPresent(() => false, read({ packs: [{ id: 'node', config: {} }] })), false, 'entry config -> done');
@@ -260,7 +364,6 @@ test('pack-entry-config migration: legacyPresent reads the declaration (true iff
 test('tidy-repo-seed migration: legacyPresent reads the declaration (true iff tidy-repo absent)', async () => {
   const seed = (await loadMigrations()).find((m) => m.id === 'tidy-repo-seed');
   assert.ok(seed, 'tidy-repo-seed migration is discovered');
-  assert.equal(seed.retire, 'auto');
   const read = (packs) => async () => JSON.stringify({ packs });
   assert.equal(await seed.legacyPresent(() => false, read(['basics'])), true, 'lacks tidy-repo -> legacy');
   assert.equal(await seed.legacyPresent(() => false, read(['basics', 'tidy-repo'])), false, 'has it -> done');
@@ -271,7 +374,6 @@ test('tidy-repo-seed migration: legacyPresent reads the declaration (true iff ti
 test('local-pack-namespace migration: legacyPresent = a bare declared id whose pack lives in the member\'s local_packs', async () => {
   const m = (await loadMigrations()).find((x) => x.id === 'local-pack-namespace');
   assert.ok(m, 'local-pack-namespace migration is discovered');
-  assert.equal(m.retire, 'auto'); // baselining does the write; this record only tracks convergence
   const read = (packs) => async () => JSON.stringify({ packs });
   const hasLocal = async (p) => p === '.claudinite/local_packs/proj/pack.mjs';
   // A bare string or entry-object id naming the member's own local pack → still legacy.
@@ -292,4 +394,186 @@ test('loadMigrations: the phase-3 retirements are really gone from the active se
   for (const retired of ['vendored-mount-flip', 'mount-folder-relocation', 'engine-restructure']) {
     assert.ok(!ids.has(retired), `${retired} must stay retired`);
   }
+});
+
+test('every record lives under the flow that owns it — the engine, or one pack', () => {
+  // The engine/pack split (DESIGN §3.7): a record's home is what says which flow
+  // fetches, version-ranges and applies it, so a record in neither home belongs to
+  // no flow and would simply stop being delivered once the flat directory is gone.
+  const roots = migrationRoots();
+  assert.ok(roots.includes('engine/migrations'), 'the engine root is always a home, records or not');
+  for (const d of migrationDirs()) {
+    const home = dirname(d);
+    assert.ok(roots.includes(home), `${d} sits in "${home}", which is no flow's migrations home`);
+    assert.match(home, /^(engine|packs\/[^/]+)\/migrations$/, `${d} is not under an engine or pack home`);
+  }
+});
+
+// --- the version gate (#768 Phase 1) ------------------------------------------
+
+test('flowOf reads the owning flow off the path — no record declares which it is', () => {
+  assert.deepEqual(flowOf('engine/migrations/2026-08-06-x'), { flow: 'engine' });
+  assert.deepEqual(flowOf('packs/sheepdog/migrations/2026-08-11-y'), { flow: 'pack', pack: 'sheepdog' });
+});
+
+test('installedFor keeps "the stamp says nothing" distinct from a real number', () => {
+  const stamp = { engineVersion: 3, packVersions: { sheepdog: 2, tidy: 0 } };
+  assert.equal(installedFor('engine/migrations/2026-01-01-a', stamp), 3);
+  assert.equal(installedFor('packs/sheepdog/migrations/2026-01-01-a', stamp), 2);
+  assert.equal(installedFor('packs/tidy/migrations/2026-01-01-a', stamp), 0, 'a real zero is a version, not an absence');
+  assert.equal(installedFor('packs/never-heard-of/migrations/2026-01-01-a', stamp), undefined);
+  assert.equal(installedFor('engine/migrations/2026-01-01-a', null), undefined);
+  assert.equal(installedFor('engine/migrations/2026-01-01-a', { packVersions: {} }), undefined);
+});
+
+test('installedVersions returns null for every shape that is not a version stamp', () => {
+  assert.equal(installedVersions(() => null), null);
+  assert.equal(installedVersions(() => 'not json'), null);
+  assert.equal(installedVersions(() => '{"packs":[]}'), null);
+  assert.equal(installedVersions(() => '{"claudinite":{"updated":"2026-01-01T00:00:00Z"}}'), null,
+    'a pre-version stamp is unknown, not zero');
+  assert.deepEqual(installedVersions(() => '{"claudinite":{"engineVersion":2}}'), { engineVersion: 2, packVersions: {} });
+});
+
+test('migrationApplies: version-ranged when known, date-windowed when not', () => {
+  // Driven over the live records, so the predicate is exercised against real paths
+  // and real declared versions rather than a shape a fixture invented.
+  const dir = migrationDirs().find((d) => flowOf(d).flow === 'engine');
+  const at = recordVersion(dir);
+  const landed = recordName(dir).slice(0, 10);
+
+  // Known both sides: applies strictly below the version its change took effect at.
+  assert.equal(migrationApplies(dir, { installed: { engineVersion: at - 1 } }), true, 'a lagging repo still needs it');
+  assert.equal(migrationApplies(dir, { installed: { engineVersion: at } }), false, 'an up-to-date repo does not');
+  assert.equal(migrationApplies(dir, { installed: { engineVersion: at + 1 } }), false);
+  // …and the date is irrelevant once versions answer: an ancient record still
+  // applies to a repo below it, which is exactly what the window could never say.
+  assert.equal(migrationApplies(dir, { installed: { engineVersion: at - 1 }, today: '2099-01-01' }), true);
+
+  // Unknown: the window, unchanged — the behaviour every member had before this.
+  assert.equal(migrationApplies(dir, { installed: null, today: landed }), true);
+  assert.equal(migrationApplies(dir, { installed: null, today: '2099-01-01' }), false);
+});
+
+test('every record declares a version, and the regex reads what the module exports', async () => {
+  // Two readings of one fact: `recordVersion` regexes the source because every
+  // caller is synchronous, while the applier imports the spec. A record whose
+  // literal the regex cannot see would silently fall back to the date window —
+  // invisible, and wrong the moment versions are what gate fetching. So the guard
+  // EXECUTES both readings over every real record rather than trusting either.
+  const migs = await loadMigrations();
+  assert.ok(migs.length > 0, 'the live corpus has records');
+  for (const m of migs) {
+    assert.ok(Number.isInteger(m.version) && m.version > 0,
+      `${m.dir} declares no version — a record needs the version its change takes effect at`);
+    assert.equal(recordVersion(m.dir), m.version,
+      `${m.dir}: the version read from the source disagrees with the module's — keep the field a plain literal on its own line`);
+  }
+});
+
+// --- regex rewrites and the local-declaration codemod (#768 Phase 1) ----------
+
+const io = (files, exists = () => false) => {
+  const written = { ...files };
+  return {
+    written,
+    read: (p) => written[p] ?? null,
+    write: (p, c) => { written[p] = c; },
+    exists: (p) => exists(p),
+    move: () => {},
+    readTemplate: () => null,
+  };
+};
+
+test('applyRewrites: a global pattern rewrites every match; a non-global one is refused', async () => {
+  const m = M({ rewrite: [{ file: 'f.txt', replace: [{ pattern: /v(\d)/g, to: 'V$1' }] }] });
+  const w = io({ 'f.txt': 'v1 and v2\n' });
+  assert.deepEqual(await applyRewrites(m, w), ['f.txt']);
+  assert.equal(w.written['f.txt'], 'V1 and V2\n');
+  // Idempotent: nothing matches the second time.
+  assert.deepEqual(await applyRewrites(m, w), []);
+
+  // A non-global pattern would rewrite the first match and leave a file that reads
+  // as migrated — loud, not silent.
+  const bad = M({ rewrite: [{ file: 'f.txt', replace: [{ pattern: /v(\d)/, to: 'V$1' }] }] });
+  await assert.rejects(() => applyRewrites(bad, io({ 'f.txt': 'v1 v2' })), /must be a global RegExp/);
+  await assert.rejects(() => applyRewrites(M({ rewrite: [{ file: 'f.txt', replace: [{ pattern: 'v1', to: 'V1' }] }] }), io({ 'f.txt': 'v1' })), /global RegExp/);
+});
+
+test('local declarations normalize to local/<id>, from both earlier forms', async () => {
+  const decl = {
+    packs: ['basics', 'mine', 'local_packs/older', { id: 'configured', config: { k: 1 } }, 'local/already'],
+  };
+  const local = new Set(['.claudinite/local/packs/mine/pack.mjs', '.claudinite/local_packs/configured/pack.mjs']);
+  const w = io({ '.claudinite-checks.json': `${JSON.stringify(decl, null, 2)}\n` }, (p) => local.has(p));
+  const done = await applyLocalDeclarationNormalization(M({ normalizeLocalDeclarations: true }), w);
+
+  const after = JSON.parse(w.written['.claudinite-checks.json']);
+  assert.deepEqual(after.packs, [
+    'basics',                                     // a canon id: untouched, though bare
+    'local/mine',                                 // bare, and this repo has the pack
+    'local/older',                                // the earlier namespaced form
+    { id: 'local/configured', config: { k: 1 } }, // an entry object keeps everything else
+    'local/already',                              // already canonical
+  ]);
+  assert.equal(done.length, 3);
+  // Idempotent — the second pass finds nothing to do and writes nothing.
+  const again = { ...w, written: { ...w.written } };
+  assert.deepEqual(await applyLocalDeclarationNormalization(M({ normalizeLocalDeclarations: true }), { ...again, read: (p) => again.written[p] ?? null, write: (p, c) => { again.written[p] = c; }, exists: (p) => local.has(p) }), []);
+});
+
+test('a record without the flag normalizes nothing', async () => {
+  const w = io({ '.claudinite-checks.json': '{"packs":["mine"]}\n' }, () => true);
+  assert.deepEqual(await applyLocalDeclarationNormalization(M(), w), []);
+  assert.equal(w.written['.claudinite-checks.json'], '{"packs":["mine"]}\n');
+});
+
+test('applyMigration runs every op — the vocabulary has one runner, not one per caller', async () => {
+  // The omission this guards is silent: an op wired into one applier and not the
+  // other leaves records that simply do nothing on that path. Asserted by running a
+  // record that carries EVERY op through the single entry point.
+  const m = M({
+    rewrite: [{ file: 'f.txt', replace: [{ from: 'old', to: 'new' }] }],
+    declarePacks: [{ id: 'added' }],
+    normalizeLocalDeclarations: true,
+  });
+  // `exists` answers only for the repo's real local pack — a blanket true would make
+  // every id look local, including one this record's own declarePacks just added.
+  const w = io({ 'f.txt': 'old\n', '.claudinite-checks.json': '{"packs":["mine"]}\n' },
+    (p) => p === '.claudinite/local/packs/mine/pack.mjs');
+  const applied = await applyMigration(m, w);
+  assert.equal(w.written['f.txt'], 'new\n', 'rewrite ran');
+  const after = JSON.parse(w.written['.claudinite-checks.json']);
+  assert.deepEqual(after.packs, ['local/mine', 'added'], 'normalization and declaration both ran');
+  assert.ok(applied.length >= 3, applied.join(' | '));
+});
+
+// --- the shrinking agentic holdout on the engine flow (#768) ------------------
+
+test('an engine record carrying an agentic note is rejected outright', () => {
+  // Phase 1's deferred validator, landable now that the last engine note is retired
+  // (#768). It could not ship earlier for the reason it exists: a validator that
+  // rejects records the canon itself still shipped is broken on arrival.
+  const note = { model: 'sonnet', instructions: 'adapt the local pack' };
+  assert.throws(
+    () => migrationAgentic({ ...M({ agentic: note }), dir: 'engine/migrations/2026-09-01-x' }),
+    /an ENGINE migration may not carry an "agentic" note/,
+  );
+  // A PACK record still may — that is where the work belongs, as its apply stage.
+  assert.deepEqual(
+    migrationAgentic({ ...M({ agentic: note }), dir: 'packs/sheepdog/migrations/2026-09-01-x' }),
+    note,
+  );
+  // A bare spec with no dir is a caller testing the shape, not a discovered record.
+  assert.deepEqual(migrationAgentic(M({ agentic: note })), note);
+});
+
+test('the live corpus has no engine record carrying a note', async () => {
+  // The selection half: the throw above only bites on records that go through it, and
+  // loadMigrations is what every real caller uses. Asserted over the real tree so the
+  // canon can never ship what its own flow refuses to run.
+  const engineNotes = agenticMigrations(await loadMigrations())
+    .map((m) => m.dir)
+    .filter((d) => d.startsWith('engine/migrations/'));
+  assert.deepEqual(engineNotes, []);
 });

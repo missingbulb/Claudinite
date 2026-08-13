@@ -16,6 +16,8 @@ const hasMarkerNearRoot = (ctx, marker) =>
 
 export default {
   id: 'firebase',
+  version: 1,
+  minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'building on Firebase: Firestore security rules, callable Cloud Function patterns, FCM, emulator testing, functions deploy layout',
     excludes: 'dev/prod project separation, config injection and App Check store gating — that is firebase-release',

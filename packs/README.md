@@ -4,31 +4,41 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 
 ## Packs
 
+This table is the canon maintainer's view. The catalog **consumers** receive is
+[`directory.GENERATED.md`](directory.GENERATED.md) — rendered from the pack manifests by its drift
+test (`packs-tests/pack-directory.test.mjs`, which regenerates it locally and asserts it in CI) and
+vendored into every mount regardless of declaration, so a member session can see what it could adopt.
+
 | Pack | Active when | Checks | Prose rules |
 |---|---|---|---|
 | <img src="basics/badge.svg" width="18" height="18" alt=""> [basics](basics/README.md) | declared (seeded by `--init`) | 11 | ~8 (working-discipline + task-lifecycle) |
 | <img src="barriers/badge.svg" width="18" height="18" alt=""> [barriers](barriers/README.md) | declared (or pulled in via `requires`) | 1 | 0 (config-driven segregation) |
 | <img src="git-github/badge.svg" width="18" height="18" alt=""> [git-github](git-github/README.md) | pulled in via `basics` `requires` | 0 | 0 (2 skills: git-github-advanced, merge-to-main) |
-| <img src="grow_with_claudinite/badge.svg" width="18" height="18" alt=""> [grow_with_claudinite](grow_with_claudinite/README.md) | declared (seeded by `--init`, opt-out by removal) | 1 | growth member-side daily tasks (extract / dedup / pack discovery / conversation-extract) + in-session merge capture |
+| <img src="grow_with_claudinite/badge.svg" width="18" height="18" alt=""> [grow_with_claudinite](grow_with_claudinite/README.md) | declared (seeded by `--init`, opt-out by removal) | 1 | growth member-side tasks (extract over activity + conversations / dedup / pack discovery / prose-to-checks) + in-session merge capture |
 | <img src="tidy-repo/badge.svg" width="18" height="18" alt=""> [tidy-repo](tidy-repo/README.md) | declared (seeded by `--init`, opt-out by removal) | 0 | policy (assess-only-vs-act) + 3 per-dimension tidy tasks (issues daily, PRs/branches weekly) |
-| <img src="sheepdog/badge.svg" width="18" height="18" alt=""> [sheepdog](sheepdog/README.md) | declared (opt-in; the fleet-enforcer repo only) | 0 | fleet-enforcer marker + config + the agentless `fleet-census` daily task (the coverage census) |
+| <img src="sheepdog/badge.svg" width="18" height="18" alt=""> [sheepdog](sheepdog/README.md) | declared (opt-in; the fleet-enforcer repo only) | 1 | fleet-enforcer marker + config + the agentless `fleet-census` daily task (the coverage census) |
+| <img src="claude-code-web-users-support/badge.svg" width="18" height="18" alt=""> [claude-code-web-users-support](claude-code-web-users-support/RULES.md) | declared (seeded by `--init`) | 2 | what a project offers people working from the web — today, their personal interaction preferences |
 | <img src="github-actions/badge.svg" width="18" height="18" alt=""> [github-actions](github-actions/) | `.github/workflows/` | 8 | 0 |
 | <img src="chrome-extension/badge.svg" width="18" height="18" alt=""> [chrome-extension](chrome-extension/README.md) | manifest_version manifest | 2 | 9 |
 | <img src="chrome-extension-release/badge.svg" width="18" height="18" alt=""> [chrome-extension-release](chrome-extension-release/README.md) | single `Release to Chrome Store` stub (opt-in) | 8 | 0 (+ RELEASE contract) |
 | <img src="node/badge.svg" width="18" height="18" alt=""> [node](node/README.md) | root package.json | 0 | 4 |
 | <img src="python/badge.svg" width="18" height="18" alt=""> [python](python/README.md) | pyproject.toml near root | 0 (2 in its skill) | 3 |
 | <img src="web-speech/badge.svg" width="18" height="18" alt=""> [web-speech](web-speech/README.md) | speech API in JS/TS source | 0 (2 in its skill) | 15 |
-| <img src="leaflet/badge.svg" width="18" height="18" alt=""> [leaflet](leaflet/README.md) | Leaflet reference in HTML/JS source | 1 | 4 |
+| <img src="leaflet/badge.svg" width="18" height="18" alt=""> [leaflet](leaflet/README.md) | Leaflet reference in HTML/JS source | 2 | 4 |
 | <img src="aws-sam/badge.svg" width="18" height="18" alt=""> [aws-sam](aws-sam/README.md) | SAM template | 3 | 3 |
 | <img src="google-identity/badge.svg" width="18" height="18" alt=""> [google-identity](google-identity/README.md) | declared | 0 (3 in its skill) | 0 |
+| <img src="jwt/badge.svg" width="18" height="18" alt=""> [jwt](jwt/README.md) | JWT library in JS/TS/Python source | 0 (5 in its skills) | 0 (2 skills + monthly advisory-watch task) |
 | <img src="html/badge.svg" width="18" height="18" alt=""> [html](html/README.md) | declared | 0 | 1 |
+| <img src="static-website/badge.svg" width="18" height="18" alt=""> [static-website](static-website/README.md) | declared (opt-in); marker: the `Release static site` orchestrator | 3 | 8 (+ RELEASE contract) |
 | <img src="flutter/badge.svg" width="18" height="18" alt=""> [flutter](flutter/README.md) | pubspec.yaml | 0 | 0 (stub) |
 | <img src="firebase/badge.svg" width="18" height="18" alt=""> [firebase](firebase/README.md) | `firebase.json` | 2 | rules / functions / deploy discipline |
 | <img src="firebase-release/badge.svg" width="18" height="18" alt=""> [firebase-release](firebase-release/README.md) | declared (opt-in) | 0 | dev/prod split + App Check store gating |
 | <img src="android/badge.svg" width="18" height="18" alt=""> [android](android/) | `AndroidManifest.xml` | 0 | stub |
 | <img src="ios/badge.svg" width="18" height="18" alt=""> [ios](ios/) | `ios/Runner/Info.plist` | 0 | stub |
+| <img src="macos/badge.svg" width="18" height="18" alt=""> [macos](macos/README.md) | `Package.swift` near root | 2 | bundle / TCC + Hardened Runtime / on-device speech / Developer ID + notarization / lifecycle |
 | <img src="play-store-release/badge.svg" width="18" height="18" alt=""> [play-store-release](play-store-release/) | declared (opt-in) | 0 | stub |
 | <img src="app-store-release/badge.svg" width="18" height="18" alt=""> [app-store-release](app-store-release/) | declared (opt-in) | 0 | stub |
+| <img src="web-scraping/badge.svg" width="18" height="18" alt=""> [web-scraping](web-scraping/README.md) | declared (opt-in) | 0 | 27 (+ 1 skill: map-a-data-source) |
 | <img src="research-project/badge.svg" width="18" height="18" alt=""> [research-project](research-project/README.md) | declared (class) | 0 | 56 (14 sections) |
 | <img src="product-wiki/badge.svg" width="18" height="18" alt=""> [product-wiki](product-wiki/README.md) | declared (marker: `product-wiki/product-requirements/README.md`) | 7 | wiki growth discipline + weekly growth daily task |
 | <img src="spec-driven-product/badge.svg" width="18" height="18" alt=""> [spec-driven-product](spec-driven-product/README.md) | declared (class) | 0 | 25 (8 sections) |
@@ -137,17 +147,26 @@ what runs pack content and what every consumer vendors. The badge FILES do ship 
 rides its directory into a consumer's vendor set exactly like its prose and skills, so a repo's row
 points at its own `.claudinite/shared/packs/<id>/badge.svg` with no network dependency on this repo.
 
-**Getting the row into a README is not a maintainer's job.** Adoption writes it and the nightly
-keeps it true, both through the one wiring converge
-([`../engine/scheduler/converge-wiring.mjs`](../engine/scheduler/converge-wiring.mjs), bootstrap
-Part 6): a one-line row of the declared packs' badges, under the title, between
-`<!-- claudinite:packs -->` markers — so it re-converges in place wherever the repo moves it, and
-anything the repo writes after the closing marker on that line is its own. The opening marker sits
+**Getting the row into a README is not a maintainer's job — keeping it current is.** Adoption writes
+it, once, through the wiring converge
+([`../engine/scheduler/converge-wiring.mjs`](../engine/scheduler/converge-wiring.mjs) run with
+`--badges`, bootstrap Part 6): a one-line row of the declared packs' badges, under the title, between
+`<!-- claudinite:packs -->` markers — so it lands where a reader looks first, and anything the repo
+writes after the closing marker on that line is its own. The opening marker sits
 on its own line above the badges and must stay there: a line that *begins* with `<!--` opens a
 CommonMark HTML block, and badges written after it on the same line render as literal `![…](…)`
-text rather than images. Because the row is
-derived from the declaration each night, it can't go stale the day the repo declares its next pack,
-which is the whole reason it isn't hand-written.
+text rather than images.
+
+**The nightly does not touch it.** Baselining runs the same converge without `--badges`, so a
+member's README is never rewritten by a run it didn't ask for — a re-derived row would put a README
+diff in every vendoring commit that followed a declaration change. The row is a seed, not maintained
+state: once written, it belongs to the repo — edit it, move it, or delete it.
+
+**The declaration is what makes a row wrong, so the row is refreshed where the declaration changes:**
+adopting a pack re-runs the converge with `--badges`
+([`grow_with_claudinite/skills/adopt-pack/SKILL.md`](grow_with_claudinite/skills/adopt-pack/SKILL.md), step 3),
+which rewrites the row in place. Nothing else derives it — a repo that edits its declaration by hand
+runs `converge-wiring <owner/repo> --badges` itself, or lives with a stale row.
 
 The converge also materializes the repo's say into `.claudinite-checks.json`, so the knob sits where
 anyone would look for it rather than being inferred from absence:
@@ -229,7 +248,7 @@ manifest.
 
 | | Count |
 |---|---|
-| **Hardcoded conformance checks** | **66** — every rule the runner carries: each pack's own, its bundled skills' checks, and the contributed barriers, plus the canon home's own [canon-curation](../.claudinite/local/packs/canon-curation/README.md) and [claudinite](../.claudinite/local/packs/claudinite/RULES.md) local packs |
+| **Hardcoded conformance checks** | **87** — every rule the runner carries: each pack's own, its bundled skills' checks, and the contributed barriers, plus the canon home's own [canon-curation](../.claudinite/local/packs/canon-curation/README.md) and [claudinite](../.claudinite/local/packs/claudinite/RULES.md) local packs |
 | PreToolUse guard | 1 (remote-branch-delete) |
 | Platform setting | 1 (squash-only) |
 | **Prose rules** — packs + practice skills + baseline | **~150** |

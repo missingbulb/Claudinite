@@ -5,16 +5,24 @@
     {
       "id": "grow_with_claudinite",
       "config": {
-        "pack_paths": [".claudinite/local/packs", "packs"]
+        "pack_paths": [
+          ".claudinite/local/packs",
+          "packs"
+        ]
       }
     },
     "tidy-repo",
-    "local/claudinite",
+    {
+      "id": "local/claudinite",
+      "config": {
+        "canaryRepo": "missingbulb/ClaudiniteCanary"
+      }
+    },
     "local/canon-curation",
     {
       "id": "barriers",
       "answers": {
-        "goals": "Keep extending.md's engine/content boundary structural: core (checks/, mount/, engine/, .github/, the top-level docs, and the shared engine modules under packs/ and skills/) must never name a specific pack or skill — packs and skills are discovered content, and a core file citing one couples the engine to its content. One rule per namespace (packs/*, skills/*); reviewed inherent couplings live in each rule's except. migrations/ is deliberately NOT core here: a migration record is a dated one-off that exists to move the fleet off a specific pack's old shape, so naming that pack is its purpose, not a coupling — and the record moves between active_migrations/ and migrations-old/ over its life, which no path-keyed exception can track."
+        "goals": "Keep extending.md's engine/content boundary structural: core (checks/, mount/, engine/, .github/, the top-level docs, and the shared engine modules under packs/ and skills/) must never name a specific pack or skill — packs and skills are discovered content, and a core file citing one couples the engine to its content. One rule per namespace (packs/*, skills/*); reviewed inherent couplings live in each rule's except. migrations/ is deliberately NOT core here: a migration record is a dated one-off that exists to move the fleet off a specific pack's old shape, so naming that pack is its purpose, not a coupling — and records accumulate as dated folders, one per change, which no path-keyed exception list should have to chase."
       },
       "config": {
         "rules": [
@@ -82,6 +90,15 @@
           }
         ]
       }
+    },
+    {
+      "id": "claude-code-web-users-support",
+      "config": {
+        "repo": "missingbulb/Sheepdog"
+      },
+      "answers": {
+        "store": "missingbulb/Sheepdog — the fleet's own repo, which holds one <email>.md per person under preferences/"
+      }
     }
   ],
   "accept": [
@@ -97,8 +114,33 @@
     },
     {
       "rule": "file-placement",
-      "path": "migrations/registry.mjs",
+      "path": "engine/migrations/registry.mjs",
       "reason": "the canon-side migration registry deliberately builds on the vendored sync surface in the engine lib (engine/checks/helpers/active-migrations.mjs — the home pack-independence mandates, since pack checks consult migrationActive and packs import only the engine surface); one definition, re-exported for canon callers, so the cross-tree reach is inherent, not a misplacement"
+    },
+    {
+      "rule": "file-placement",
+      "path": "updates/",
+      "reason": "an update flow is by definition the composition of the trees it moves between — the vendor-set computation it lays down, the engine surface it replaces, the migration registry it runs and the wiring it converges — so every import it has crosses a tree boundary; that reach IS the module, and putting it inside any one of those trees would either ship canon-internal machinery to every member or hide the flow inside the thing it operates on"
+    },
+    {
+      "rule": "file-placement",
+      "path": "migrations/",
+      "reason": "the two compatibility entry points every member still reaches by path (baselining's vendored worker runs node <canon clone>/migrations/apply.mjs and imports its registry.mjs, and that worker is only as new as the member's last converge) — they exist to forward to the real machinery now under engine/migrations/, so reaching across is the whole of what they are, and both are deleted in Phase 5 of #768 once no member can call them"
+    },
+    {
+      "rule": "file-placement",
+      "path": "packs/static-website/version-scheme.mjs",
+      "reason": "the version rule deliberately imports the scheme itself (VERSION_RE, the version reader) and the config parser from the pack's own vendored stubs, because those files are the definition: they are what runs in every site repo's .github/. Restating either canon-side would be a second copy that drifts from the code that actually bumps and reads. The reach into stubs/ is inherent to a pack whose logic ships vendored, not a misplacement"
+    },
+    {
+      "rule": "file-placement",
+      "path": "packs/static-website/site-config.mjs",
+      "reason": "same as version-scheme.mjs: the config rule parses .github/site.config with the very parser the vendored read-site-config action runs, so the check and the pipeline can never disagree about what a valid config is"
+    },
+    {
+      "rule": "file-placement",
+      "path": "packs/static-website/release-workflows.mjs",
+      "reason": "same as site-config.mjs: the pipeline-completeness rule reads .github/site.config with the vendored parser to see whether the repo declares build_vars, because the answer decides whether a pre-exporter vendored copy is stale or simply untouched. Re-parsing the config canon-side would be a second definition of a valid config that drifts from the one the runner uses"
     },
     {
       "rule": "file-placement",
@@ -106,9 +148,6 @@
       "reason": "the vendor-set computation deliberately imports the import-surface facts from the engine lib (engine/checks/helpers/module-imports.mjs — the one home the pack-independence check judges against), so \"what a pack may import\" and \"what a vendor set must carry\" share one definition; the cross-tree reach is inherent, not a misplacement"
     }
   ],
-  "badges": {
-    "readme": "auto"
-  },
   "taskScheduler": {
     "dailyHour": 4,
     "weeklyDay": "Sun",

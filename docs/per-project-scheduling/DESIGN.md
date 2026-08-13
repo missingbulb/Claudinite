@@ -12,6 +12,18 @@ a per-repo **executor routine**, fired by that label event, executes them. Work 
 is genuinely fleet-scoped becomes ordinary tasks *of the canon repo* on the same
 machinery — no separate central mechanism survives.
 
+> **Revised (owner, 2026-08-06) — the three-responsibility split.** This record
+> now reads through §12: the machinery is scheduler (creates task issues),
+> executor (runs exactly its one issue — no cleanups, no sweeps), and a third
+> **task-janitor** responsibility (an ordinary daily `basics` task) that owns all
+> dispatch-issue recovery and health review. The precondition is a task's ONLY
+> run/no-run decision point; the execution phases are named **prework** and
+> **agentic work** (`prework` / `prework_timeout` in the contract, legacy
+> `agent_preprocessing*` accepted); and a dispatch naming a task the repo no
+> longer carries is **closed** by the executor, not parked on `needs-human`.
+> Where the sections below say otherwise (§5's scheduler-side maintenance pass,
+> §4's invalid-dispatch lifecycle), §12 wins.
+
 ---
 
 ## 1. Task anatomy — the pack folder
@@ -55,7 +67,7 @@ migration).
 ```js
 export default {
   id: 'growth-extract',
-  frequency: 'daily-1h',   // hourly | daily-2h | daily-1h | daily | daily+1h | weekly | monthly — nothing else
+  frequency: 'daily-1h',   // hourly | daily-2h | daily-1h | daily | daily+1h | weekly | monthly | manual — nothing else
   precondition_signals: ['commits', 'prs', 'issues'],   // which parts of the signals object to collect
   agent_model: 'opus',     // opus | sonnet | haiku | none — 'none' = pure code, no agent, no issue
   expected_outcome: 'merged-pr', // none | open-pr | merged-pr — the task's write ceiling (§4)
@@ -72,7 +84,11 @@ export default {
 }
 ```
 
-- **`frequency`** — exactly the seven values above. `daily±Nh` offsets the repo's
+- **`frequency`** — exactly the values above. `manual` is the one non-cadence
+  (as-built 2026-08-11, #749): the task is never due on any schedule and runs only
+  when a hand-started run forces it — the operator-lever shape, for work that
+  answers no recurring question but wants the task apparatus (contract validation,
+  prework, the dispatch issue) when a human pulls it. `daily±Nh` offsets the repo's
   daily anchor hour (§2); weekly/monthly fire at the anchor hour on the configured day.
 - **`precondition_signals`** — the scheduler collects only the union of what the *due* tasks
   declare; a non-daily slot never pays for daily tasks' signals.
@@ -84,7 +100,10 @@ export default {
   PR, `open-pr` may open but never merge, `merged-pr` may arm auto-merge. "No
   change" is always a legal result. Enforced post-hoc by the executor in code,
   not just requested in prose. A repo whose `maintenance.delivery` is `review`
-  degrades `merged-pr` tasks to `open-pr` — member config wins. Pushes to
+  degrades `merged-pr` tasks to `open-pr` — member config wins, and the task
+  never reads the setting itself: the shared delivery helper does
+  (`engine/scheduler/land-pr.mjs` for the code lane, its prose twin
+  `engine/scheduler/deliver-pr.md` for executor subagents — §12.8). Pushes to
   non-default branches (e.g. the `conversation-logs` prune) are outside the
   taxonomy.
 - **`precondition`** — today's `gate` renamed. It both asserts need-to-run and
@@ -117,7 +136,7 @@ daily slots stage the whole growth chain in order:
 
 ```
 02:00  daily-2h   baselining (+ migrations-apply)   ─ own mount converged before anything reads it
-03:00  daily-1h   extract, conversation-extract     ─ lessons captured from a converged repo
+03:00  daily-1h   extract (activity + conversation)  ─ lessons captured from a converged repo
 04:00  daily      promote (canon repo)              ─ lifts the night's merged extracts to canon
 Sun 04:00 weekly  dedup                             ─ prunes against the mounted (merged) canon
 ```
@@ -128,10 +147,38 @@ dedup reads only the merged/mounted canon (never an in-flight promote PR), so th
 ordering is freshness staging that mostly holds and self-heals to next-day
 propagation when a merge lags.
 
+> **As-built (owner, 2026-08-01): the staging holds only while the fires do — so one task can
+> take the run.** The hour between anchors is not a barrier, and it is not a
+> guarantee either: a GitHub `schedule:` fire is dropped and delayed freely (see
+> the `github-actions-scheduling` skill), and a run that fires at 05:40 after
+> three dropped fires finds all four daily slots due at once. Every one of them
+> dispatches together, so **baselining runs beside the tasks whose ground it
+> exists to repair** rather than an hour ahead of them — and baselining is not
+> freshness staging like the rest of the chain, it is the pass that converges the
+> mount, the wiring and the migration notes the others then execute against.
+>
+> On those runs the ordering has to be asserted rather than implied. A
+> precondition may return **`exclusive: true`** beside `run: true` — *if I run
+> this cycle, I run alone* — and the scheduler defers every other due task
+> (§3, step 4). Baselining claims it exactly when the mount is genuinely overdue:
+> more than a day since the last converge landed, and not more than three (past
+> that the repo is wedged — an unmerged maintenance PR, a broken converge — which
+> is a human's problem, and holding the rest of the repo back another night does
+> not fix it). The routine same-day case claims nothing, so the common night is
+> unchanged.
+>
+> **A deferred slot is spent, not queued.** Due-ness is `slotTime ∈ (lastSuccess,
+> now]` and the claiming run *succeeds*, so the watermark moves past the slot it
+> deferred: a deferred daily task runs at tomorrow's slot, a weekly one next
+> week. That is the accepted price — the alternative is running the nightly chain
+> against a mount that baselining has not yet fixed. The run says so in its
+> summary (`defer —`) and its run record (`deferred`), so the cost is counted
+> rather than silent.
+
 > **As-built (#582): dedup left the nightly chain for the weekly anchor.** It was
 > designed at `daily+1h` (05:00), an hour after promote. But a member's mount moves
 > most nights — baselining converges it daily — so the `sharedMount` arm fired this
-> opus dispatch, and the owner-gated PR behind it, nearly every night, for prunes
+> opus dispatch, and the PR behind it, nearly every night, for prunes
 > nobody is waiting on: a local item the canon has already absorbed stays harmlessly
 > correct until it goes. Nothing is missed by the move, because its signals are
 > **window-scoped** (§3.3) and the window is the widest due task's period — the
@@ -219,8 +266,17 @@ refresh, not workflow edits). It runs
    free-form `KEY=value` string, since GitHub cannot declare arbitrary named
    inputs. It reaches the engine as `CLAUDINITE_OVERRIDES`, and the engine
    understands exactly one key: **`FORCE_TASKS=<comma-separated task ids>`**.
-   A forced task is put in the due list under its most-recent slot **and runs
-   without its precondition being consulted at all** — forcing is a decision the
+   A run carrying FORCE_TASKS evaluates **only** the forced tasks (as-built
+   2026-08-11, #749) — never whatever else happened to be due at that minute, so a
+   button that names specific work means the same thing whenever it is pressed, and
+   a fleet fan-out firing twenty members' schedulers means exactly one task in each.
+   The skipped due work is not lost: the success watermark counts **schedule-event
+   runs only** (`lastSuccessTime`), so a slot a forced run stepped over stays due
+   for the next cron. Each forced task runs under its most-recent slot **and runs
+   without its precondition being consulted at all** *(as-built 2026-08-06: a
+   forced dispatch's slot id carries a per-run marker, `<slot>~f<run-id>`, so the
+   exactly-once guard never silently swallows an operator re-run of a slot the
+   schedule already ran; at-most-one-open still applies)* — forcing is a decision the
    operator already made, so nothing asks the task whether it agrees, and no task
    declaration mentions forcing anywhere (#515). The engine learns "run these
    ids", never what any of them do. An id matching no discovered task forces
@@ -238,10 +294,31 @@ refresh, not workflow edits). It runs
 
 4. **Runs preconditions** — pure code, per-task try/catch isolation; a throwing
    precondition converges to the standard failure state (`report-failure`
-   composite → `workflow-failure` issue); other tasks proceed.
+   composite → `workflow-failure` issue); other tasks proceed. Every due task's
+   verdict is computed **before** anything is dispatched, because of the next
+   point: a claim on the run is only knowable once they have all spoken.
+
+   A verdict may carry **`exclusive: true`** beside `run: true` — *if I run this
+   cycle, I run alone* — and every other due task whose precondition said run is
+   **deferred**: no preprocessing subprocess, no dispatch issue, no inline work
+   (owner, 2026-08-01). It exists because the hourly cron is not hourly: a run that fires
+   hours late finds several daily slots due at once and dispatches the whole
+   nightly chain together, which puts baselining *beside* the tasks whose mount
+   it exists to converge instead of an hour ahead of them (§2 as-built). The
+   engine learns "this verdict claims the run", never which task claims it or
+   why — the same separation `FORCE_TASKS` keeps, and the reason no engine module
+   mentions baselining. Two claimants are not a conflict: they both run and
+   everything else defers, so no priority order between packs is needed. A
+   **forced** task is exempt from deferral and cannot claim (its verdict is the
+   engine's, not the task's) — a claim swallowing the task the operator asked for
+   would make a hand-started run do nothing it was started for.
+
+   A deferred slot is **spent, not queued**: this run succeeds, so the watermark
+   moves past it and the task runs again at its *next* slot (tomorrow, or next
+   week). That cost is the point of bounding who may claim — see §2.
 5. **Executes or dispatches** — `model: 'none'` → run the worker `.mjs` inline
    (which may itself dispatch and await another workflow); otherwise file the
-   dispatch issue (§4) labeled `ready-for-agent`.
+   dispatch issue (§4) labeled `ready-for-agent`. A deferred task does neither.
 6. **Reports** — the job summary lists every evaluated task with run/skip/reason
    (the observability `plan.json` used to give). Whole-run failure escalates per
    `gha/scheduled-failure-escalation`. Beside the prose, the run prints one
@@ -303,9 +380,9 @@ sessions burn on empty hours.
   survives a single-model routine).
 - **Launcher prompt** (thin pointer, per the unattended-agents rule):
   `Execute the Claudinite executor: .claudinite/shared/engine/scheduler/executor.md`.
-- **Session sources** are the **member repo alone** (agent-preprocessing DESIGN
+- **Session sources** are the **member repo alone** (task-prework DESIGN
   §7/E5). The executor no longer needs the canon checkout: baselining fetches
-  PUBLIC canon **Action-side** in its `agent_preprocessing` worker and reads
+  PUBLIC canon **Action-side** in its `prework` worker and reads
   migration notes from the member's own vendored mount, so a project-only session
   is all the ambient scope executor work requires. (Superseded the earlier model,
   where the canon rode in the session sources so the baselining task could run the
@@ -387,9 +464,11 @@ sessions burn on empty hours.
      every session triggered by the same run swept the same issues in parallel:
      the duplicate-work bug again, in miniature.
 
-**The scheduler's maintenance pass** (`run.mjs` `maintainDispatchIssues`, over the
-pure rules in `dispatch.mjs`) is now the single home for executor recovery. Each
-hourly run, after filing the cycle's dispatches:
+**The maintenance pass** — *superseded (owner, 2026-08-06): this recovery left
+the scheduler and is now the daily `basics/task-janitor` task's worker (§12.1);
+the scheduler creates dispatches and does nothing else to them. The pure rules
+below are unchanged in `dispatch.mjs`* — was the single home for executor
+recovery. Each run, after (originally) filing the cycle's dispatches:
 
   1. **Stale** — a dispatch open past ~2 of its own scheduling periods →
      escalation comment, drop the ready label, add `needs-human`
@@ -430,16 +509,15 @@ Per-project tasks — run by every declaring repo's own scheduler:
 
 | Task (pack) | frequency | precondition_signals | agent_model | expected_outcome | Notes |
 |---|---|---|---|---|---|
-| baselining (basics) | daily-2h | stamp, sharedMount | sonnet | merged-pr | **Now a per-repo self-refresh, not a fleet pass**: converge own `.claudinite/shared/` to canon head, apply pending migration notes (the old fleet apply pass folds in here), advance the stamp — delivered on the per-cycle `claudinite/maintenance-*` PR, delivery per member config. **Superseded by agent-preprocessing DESIGN §7/E4–E5**: the deterministic converge is now `agent_preprocessing` fetching **public** canon Action-side (no in-session canon checkout — E5 drops canon from the executor's sources), and the agent stage runs only on the nights judgment is left (conditional hand-off). Precondition fires ~daily via the stamp-age fallback (`canonHead` is null now — the worker fetches canon, not the Action). The canon repo skips naturally (no shared mount). |
-| growth-extract (grow_with_claudinite) | daily-1h | commits, prs, issues | opus | merged-pr | Precondition = substantiveChange; context = the commit/PR/issue lists. |
-| conversation-extract (grow_with_claudinite) | daily-1h | commits, conversationLogs | opus | merged-pr | Age-based retention prune fires correctly on quiet repos. |
-| growth-dedup (grow_with_claudinite) | weekly | localPacks, sharedMount, commits | opus | open-pr | `relevantCanonChanged` → `sharedMount`; movement, not the calendar, is what wakes it — a quiet repo skips. **Weekly as built (#582), designed `daily+1h`**: a member's mount moves most nights, so the daily slot fired an opus dispatch and an owner-gated PR nightly for prunes nobody waits on. The window-scoped signals batch the week's movement into one run (§2). |
+| baselining (basics) | daily-2h | stamp, sharedMount | sonnet | merged-pr | **Now a per-repo self-refresh, not a fleet pass**: converge own `.claudinite/shared/` to canon head, apply pending migration notes (the old fleet apply pass folds in here), advance the stamp — delivered on the per-cycle `claudinite/maintenance-*` PR, delivery per member config. **Superseded by task-prework DESIGN §7/E4–E5**: the deterministic converge is now `prework` fetching **public** canon Action-side (no in-session canon checkout — E5 drops canon from the executor's sources), and the agent stage runs only on the nights judgment is left (conditional hand-off). Precondition fires ~daily via the stamp-age fallback (`canonHead` is null now — the worker fetches canon, not the Action). The canon repo skips naturally (no shared mount). |
+| growth-extract (grow_with_claudinite) | daily-1h | commits, prs, issues, conversationLogs | opus | merged-pr | Precondition = substantiveChange OR a log actually past retention; context = the commit/PR/issue lists **and which halves are live**. **As built: one task over both sources.** Designed (and first built) as two tasks — `growth-extract` over activity, `conversation-extract` over the captured logs — firing in the same 03:00 slot against the same local packs. They share the lesson bar, the promotion ladder and the dedup surface, so the split cost a second opus dispatch, a second PR, and two runs deduping against a corpus the other was concurrently writing. The worker now runs the `extract-from-activity` and `extract-from-conversations` skills in turn, then `prose-to-checks` over the prose it just wrote, and lands all of it in one auto-merging PR. The age-based retention prune still fires correctly on quiet repos — as its own precondition arm, with Context saying the activity half is out of scope. |
+| growth-dedup (grow_with_claudinite) | weekly | localPacks, sharedMount, commits | opus | merged-pr | `relevantCanonChanged` → `sharedMount`; movement, not the calendar, is what wakes it — a quiet repo skips. **Weekly as built (#582), designed `daily+1h`**: a member's mount moves most nights, so the daily slot fired an opus dispatch and a PR nightly for prunes nobody waits on. The window-scoped signals batch the week's movement into one run (§2). **Delivered to land as built (#730), designed `open-pr`**: the standing owner-gated PR bought review nobody performed on a prune nobody waits on, so the ceiling rose to `merged-pr` — a `review`-delivery member still degrades it to open-pr, keeping the gate a member-config call rather than a hardcoded one. |
 | tidy-issues (tidy-repo) | daily | issues, commits | sonnet | none | The undeclared-canon carve-out dies: the canon repo declares tidy-repo like everyone else. **One task per tidy dimension** (the single `repo-tidy` pass split, #481): the acting dimension. Trigger = an issue touched in the window; scope = those issues, widened to every open issue when the default branch ALSO moved substantively — that move is what can make an old issue implemented, so the "full sweep" is signal-triggered, never a calendar flag. The move does not *wake* the task, only widen it: on a repo whose `main` moves most days, waking on it re-triaged every open issue daily. |
 | tidy-prs (tidy-repo) | weekly | prs | sonnet | none | Assess-only. Gated on an open PR being opened or updated in the window; full whenever it runs (scope = every open PR, since a verdict is relative to the others). A PR verdict is a standing recommendation, not a same-day alert, so the full sweep is the **frequency declaration** — consistent with `fullSweep` retiring in §3. An untouched set of open PRs yields the verdicts already in the tracker, so it is not re-swept. |
 | tidy-branches (tidy-repo) | weekly | branches | sonnet | none | Assess-only. Gated on a branch being created or pushed in the window (the `branches` signal carries tip dates for exactly this; a push to the default or an infra branch does not count); full whenever it runs, since a branch verdict is relative to the others. Branch cruft accumulates on a weekly clock. Excludes the presumed default names and the infra branches (`conversation-logs`, `claudinite/maintenance`); the worker owns excluding the repo's *real* default branch. |
 | wiki-growth (product-wiki) | weekly | commits | opus | open-pr | The open-growth-PR preflight is subsumed by the at-most-one-open-issue guard + a precondition check. |
 | store-release (chrome-extension-release) | daily | release, commits | none | none | **Absorbs the release workflow's independent 00:30 cron**: the precondition detects a deployable change since the last release (or an unreleased manifest bump); the inline worker dispatches the `Release to Chrome Store` workflow in daily mode and awaits it. The workflow becomes push + `workflow_dispatch` only; its conformance check flips from *requiring* the contract cron to *forbidding* any cron. |
-| create-extractor (gcec, local) | **hourly** | issues | sonnet | open-pr | **Revised by agent-preprocessing (§9), as built.** The *precondition* is only the cheap gate it can be from signals alone: is any open request issue eligible (not already claimed or handed to a human)? Everything deterministic — triage, closing the requests that need no work, branch + scaffold, the page fetch its `required_secrets` pays for, and the draft PR — is `agent_preprocessing`, which needs the issue bodies, GitHub writes, and network fetch a precondition may not do. The agent is requested (conditional hand-off) only when there is genuinely something left to write. The user-facing request issue stays; the dispatch issue references it. |
+| create-extractor (gcec, local) | **hourly** | issues | sonnet | open-pr | **Revised by task-prework (§9), as built.** The *precondition* is only the cheap gate it can be from signals alone: is any open request issue eligible (not already claimed or handed to a human)? Everything deterministic — triage, closing the requests that need no work, branch + scaffold, the page fetch its `required_secrets` pays for, and the draft PR — is `prework`, which needs the issue bodies, GitHub writes, and network fetch a precondition may not do. The agent is requested (conditional hand-off) only when there is genuinely something left to write. The user-facing request issue stays; the dispatch issue references it. |
 | auto-fallback-coverage (gcec, local) | daily | commits | opus | open-pr | `preconditions.sh` becomes the precondition over `commits`. Fixes the live cadence bug (daily spec vs weekly cron: ~6/7 of windows currently unexamined). |
 | fleet-freshness (sheepdog) | weekly | none | none | none | **Added after this design, by what this design caused.** Making every member maintain itself removed the last outside look at a member: one whose scheduler was never vendored, was deleted, or was auto-disabled after 60 quiet days is still `covered` to the census and files no failure issue, because nothing runs there to fail — self-maintenance cannot detect its own absence. This sweep probes each covered member's declaration, scheduler workflow, and stamped ref against Claudinite's default branch, and classifies drift by root cause (`no-stamp` → `no-scheduler` → `ref-not-on-trunk` → `behind`), converging `fleet-drift` issues. Same classification as its sibling: an ordinary pack task whose *implementation* spans the fleet. Weekly because drift is measured in days (`staleDays`, default 14); it shares the census's PAT and adds no scope. |
 | fleet-census (sheepdog) | daily | none | none | none | **An ordinary pack task, not a fleet mechanism**: its *implementation* — preprocessing that runs the census with the account-spanning PAT, declared as `required_secrets` — happens to scan every repo under the owner, but its declaration, scheduling, and lifecycle are exactly those of any pack task. This classification is noted in the sheepdog pack's RULES.md and in the task file itself. (As designed here this was a dispatch-only workflow holding the PAT; #472 folded it into preprocessing, since a workflow existing only to hold a secret is redundant once a task can declare one.) |
@@ -453,7 +531,7 @@ rest of what the old central routine did has moved above:
 | growth-promote (canon-curation) | daily | opus | open-pr | yes | Reads members' local packs (`fleet` signal: which members' local packs changed); writes the canon; owner-gated PR. 04:00, after the fleet's 03:00 extracts. |
 | growth-discover-packs (canon-curation) | weekly | opus | open-pr | yes | Moves from member-scheduled/centrally-executed to plainly central: one weekly sweep over members; first-sight dedup is trivial with a single run. |
 | migrations-retire (canon-curation) | daily+1h | none | open-pr | yes | Apply evidence is now per-repo (each member's stamp advances when its own baselining applies notes), so the retire guard reads member stamps + `legacyPresent` probes over the `fleet` signal — the same five-condition guard with per-repo stamps replacing the in-memory same-cycle handoff. No artifact plumbing. |
-| prose-to-checks-sweep (canon-curation) | **daily** | opus | open-pr | no | Not a fleet thing — a canon task going over the canon's own prose. Daily per owner decision. |
+| prose-to-checks-sweep (canon-curation) | **daily** | opus | open-pr | no | Not a fleet thing — a canon task going over the canon's own prose. Daily per owner decision. **Weekly as built**, and a per-repo grow_with_claudinite task rather than a canon-local one: growth-extract now runs the same skill over its *own* additions every night, so fresh prose never waits for the sweep and what the sweep sees is a standing backlog that moves on a weekly clock. |
 
 ## 7. Recoverability semantics (the message-semantics contract)
 
@@ -562,9 +640,86 @@ classification note — landed with this PR), and GCEC's `CLAUDE.md` / gcec
    stamp+probe evidence (review).
 8. **Census and prose-to-checks are not fleet tasks** (review): the census is an
    ordinary sheepdog pack task whose implementation happens to scan the fleet;
-   prose-to-checks is a canon-local task, **daily**.
+   prose-to-checks is a canon-local task, **daily**. *(Prose-to-checks since
+   became a per-repo grow_with_claudinite task and moved to `weekly` — see the
+   as-built note in §6, table 2.)*
 9. **Growth chain ordered across the four daily slots** (review): baselining +
    migrations-apply `daily-2h` (02:00) → extract `daily-1h` (03:00) → promote
    `daily` (04:00) → dedup `daily+1h` (05:00). *(Dedup since moved to `weekly`,
    #582 — see the as-built note in §2; the rest of the chain is unchanged.)*
 10. **Scheduler cron minute constrained to :10–:50** (review).
+
+## 12. Decisions on record (owner, 2026-08-06) — the three-responsibility rework
+
+These override the earlier sections where they conflict.
+
+1. **Three responsibilities, strictly separated.** The scheduler CREATES task
+   issues; the executor EXECUTES exactly the one issue that triggered it — no
+   cleanups, no merging of tasks, no attention to other tasks, failed attempts
+   or scheduling; the **task-janitor** — an ordinary daily `agent_model: none`
+   task in the basics pack — owns dispatch-issue recovery (stale escalation,
+   dead-claim reclaim, lost-event re-arm) and the health review. This retires
+   §5's "scheduler's maintenance pass" (`maintainDispatchIssues` left `run.mjs`;
+   the janitor's worker is the only I/O shell over `dispatch.mjs`'s unchanged
+   pure rules). Stated trade: recovery latency for a lost label event or dead
+   claim grows from ~an hour to up to a day.
+2. **A dispatch whose task the repo no longer carries is CLOSED, not triaged.**
+   `resolve-dispatch` exit `14` (`task-gone`: task file or `task.mjs` missing,
+   pack undeclared) → the executor comments and closes the issue as not
+   planned. No `needs-human`, and no task ever keeps updating a tracking issue
+   about a failed state — every exit is one terminal convergence. Malformed
+   dispatches (bad path shape, unparseable declaration) keep the `needs-human`
+   convergence: those may be forgery or breakage a human must see.
+3. **The precondition is a task's only decision point.** After it passes, the
+   two execution phases must not skip the run for state/timing reasons;
+   failures may stop a run, discretion may not, and an empty outcome is always
+   legal. Enforced as doctrine in `scheduled-tasks.md` and hunted by the
+   advisory `task-phase-discipline` world check (basics).
+4. **The phases are named prework and agentic work** — similar, consecutive
+   parts of one task execution, neither framed as serving the other. Contract:
+   `prework` / `prework_timeout` (legacy `agent_preprocessing` /
+   `agent_preprocessing_timeout` accepted and normalized at load; the shape
+   check flags them for rename). The task-prework design record moved to
+   `docs/task-prework/`; the run-record outcome word is `prework` (the parser
+   still reads `preprocess` from pre-rename logs).
+5. **Task statuses are distilled from the conversation logs, in hard-coded
+   code.** Executor-side terminal states print a machine-readable
+   `claudinite-task-exec v1 <pack>/<task> [<slot>] <status>` record
+   (`success` / `failed` / `task-gone` / `invalid`; rendered by
+   `record-exec.mjs` and `resolve-dispatch.mjs`, format owned by
+   `run-record.mjs`). The captured executor transcripts carry them to the
+   conversation-logs branch, and the fully automatic `usage-fold` task counts
+   them (`taskExec` rows) beside the scheduler-side census — invocations,
+   precondition passes, prework runs, failures, deferrals (§ skill-usage-metrics
+   DESIGN §4.2/§4.3).
+6. **Invocation stays label-event-wired.** Migrating executor invocation to a
+   URL-invoked routine was considered and declined: the label is both the
+   trigger and the write-gated authorization surface, the re-arm recovery is
+   built on it, and a URL endpoint would add a callable credential to every
+   repo's Action for no reduction in moving parts. Revisit only if the platform
+   grows a first-class routine-invocation API with equivalent auth.
+7. **Delivery lands every cycle (owner, 2026-08-07; #690).** The 2026-08-07
+   forced fleet deployment of this rework surfaced a race in the #649 in-cycle
+   landing (an empty run list read 0.3s after dispatching the verification run
+   was judged terminal), stranding seven members' green maintenance PRs. Fixed
+   the same day: `landAttempt` waits for the runs the worker itself dispatched,
+   and the arm predicate follows #677's insight — gate on what the base branch
+   REQUIRES, with `land` (verify-then-merge, no doomed arm) on unprotected
+   bases. The deployment itself modeled the shelf-life rule (#684): forced
+   fleet passes, watched to terminal state, stragglers landed in-session —
+   never "check tomorrow".
+8. **One delivery procedure, shared by every PR-delivering task (owner,
+   2026-08-07).** The #690 landing nuances were baselining's alone while the
+   other `merged-pr` tasks hit the identical failure shapes — growth-extract's
+   worker prose claimed "where the repo has no CI, GitHub lands it as soon as
+   it's mergeable" (false: the arm is rejected `clean status` and the PR
+   strands), and `deliver-generated.mjs` (usage-fold, fleet-usage) swallowed
+   the arm rejection and never dispatched the PR's checks at all. The landing
+   moved to one home per lane: `engine/scheduler/land-pr.mjs` (code lane —
+   baselining's worker and deliver-generated both call `landDelivery`) and its
+   prose twin `engine/scheduler/deliver-pr.md` (agent lane — vendored, linked
+   from every merged-pr task.md), which must keep saying the same thing. The
+   contract: a task knows only its outcome CEILING; whether its PR actually
+   lands unreviewed is the repo's `maintenance.delivery` plus the repo's own
+   shape (no PR CI / ungated base / gate present), and every one of those
+   nuances lives in the helpers, never in a task.

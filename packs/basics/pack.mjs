@@ -12,6 +12,9 @@ import catalogCompleteness from './catalog-completeness.mjs';
 import claudiniteIsolation from './claudinite-isolation.mjs';
 import schedulerWorkflowShape from './scheduler-workflow-shape.mjs';
 import taskDeclarationShape from './task-declaration-shape.mjs';
+import taskPhaseDiscipline from './task-phase-discipline.mjs';
+import conformanceWorkflow from './conformance-workflow.mjs';
+import rulesLineLength from './rules-line-length.mjs';
 
 // The baseline pack: working discipline, the task lifecycle, and the core
 // checks. Declared explicitly like every other pack — no pack is active by
@@ -20,6 +23,8 @@ import taskDeclarationShape from './task-declaration-shape.mjs';
 // authoritative — dropping it is a deliberate choice).
 export default {
   id: 'basics',
+  version: 1,
+  minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'cross-project working discipline, issue-branch-PR lifecycle, repo hygiene, doc/reference integrity and the baseline engineering, testing and debugging skills',
     excludes: 'technology-specific content — its own tech pack; GitHub Actions workflow or platform behaviour — github-actions; git procedure — git-github',
@@ -40,6 +45,7 @@ export default {
   // Rules that audit the repo as it stands, whatever this session did.
   worldRules: [
     markdownLinkLabels,
+    rulesLineLength,
     warningSuppression,
     filePlacement,
     claudeMdLength,
@@ -53,6 +59,13 @@ export default {
     // the workflow / a tasks/<name>/task.mjs of its own.
     schedulerWorkflowShape,
     taskDeclarationShape,
+    // The precondition-is-the-only-gate discipline (owner, 2026-08-06): an
+    // advisory hunt for tasks that "escape" — skip their work in the prework or
+    // agentic phase after the precondition already said run.
+    taskPhaseDiscipline,
+    // And the CI half of the same discipline: a member whose world sweep cannot
+    // run on a pull request has no gate, and its maintenance PR never lands.
+    conformanceWorkflow,
   ],
   // Rules that judge the change and the session in front of you — the branch's
   // commits, the diff, the conversation.
@@ -77,7 +90,6 @@ export default {
     'authoring-agent-docs',
     'bug-investigation',
     'bump-version',
-    'engineering-practices',
     'file-placement',
     'repo-text-sweeps',
     'writing-tests',

@@ -22,15 +22,23 @@ on:
         required: false
         default: ''
 
+# Runs carrying overrides get a per-run group: a forced run does exactly one named
+# task, and it must neither queue behind the hourly cron nor be pending-cancelled by
+# it (GitHub keeps one pending run per group). Mirrors the vendored stub.
 concurrency:
-  group: claudinite-scheduler
+  group: claudinite-scheduler${{ inputs.overrides != '' && inputs.overrides != null && format('-forced-{0}', github.run_id) || '' }}
   cancel-in-progress: false
 
 permissions:
-  contents: write        # read the repo; migrations-retire's TTL archiver moves records + baselining's deliver() (n/a on canon — self-skips)
+  contents: write        # read the repo; baselining's deliver() (n/a on canon — self-skips)
   issues: write          # file / label / close dispatch issues
-  pull-requests: write   # migrations-retire opens the archive PR; agentful tasks' delivery
-  actions: read          # read the run ledger (last successful run) for due-slot math
+  pull-requests: write   # agentful tasks' delivery
+  actions: write         # read the run ledger (last successful run) for due-slot math, AND
+                         # start a delivered PR's checks via workflow_dispatch (land-pr.mjs's
+                         # dispatchCiRuns — usage-fold's fold PR needs its evidence run) — a
+                         # read-only token 403s that POST silently. The member stub has carried
+                         # `write` since store-release; the canon's own copy had drifted to `read`,
+                         # which is why only the canon's fold PR could not land (#535, 2026-08-08).
 
 jobs:
   schedule:

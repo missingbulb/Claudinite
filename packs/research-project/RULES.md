@@ -189,6 +189,24 @@ the old inputs under the new definition, or mark the old numbers as belonging to
 the old one. Carrying both definitions' numbers in one series under one name is
 the failure this rule exists to prevent.
 
+### A raw measurement is comparable only inside one calibration
+
+When each input carries its own scale (a per-image conversion factor, a per-run
+sampling rate, a per-source unit), a raw absolute quantity means something
+different in every input. **Aggregate and compare only normalized quantities** —
+a density, a ratio, a per-unit rate — never the raw number, and never a mean
+spanning two sources that differ in more than scale (a different instrument,
+subject or protocol changes *what* is measured, not just how much of it fits in
+frame). Group the rollup by source and say what the grouping is for.
+
+The conversion factor is a **measurement of that input**, not a constant: read it
+off the input itself, never infer it from a stated setting or borrow it from a
+neighbour. It lives in exactly one place in the code — a second copy is a second
+calibration, and whichever copy a given script happens to read wins silently. An
+input offering nothing to measure the factor from is **not** quietly dropped:
+mark it uncalibrated *with the reason*, report only its scale-free quantities,
+and leave it visible as a known gap.
+
 ### Definition of done for an accepted change
 - **Source updated — never the generated artifacts.** (Regenerate them.)
 - **Artifacts regenerated** with the committed generators.
@@ -224,6 +242,16 @@ When a paper, tool, or reference method matters to the project:
   Capture everything algorithmically relevant: the exact method/pipeline and its
   parameters, the definitions and formulae, calibration details, and **sanity-check
   values** you can validate your own outputs against.
+- **Capture the method that exists only inside a figure.** Part of a source's
+  actual procedure is often drawn rather than written — a panel's inset, an
+  annotated overlay, a legend. Extract and describe it in the notes; a summary
+  built from the prose alone silently omits it, and the omission is invisible
+  until someone re-opens the source.
+- **Write down what the source *fails* to say**, as an explicit gap list — the
+  parameters, thresholds and units it never states. Recording an absence is what
+  stops the next reader re-opening the source to hunt for something that was
+  never in it. The intake is done when the notes make the original redundant, and
+  a stated gap is part of that.
 - **Explicitly record where your approach diverges from the reference and why.**
 - **State what you deliberately omitted** (material not relevant to the
   algorithm — e.g. procedural/experimental setup detail, incidental statistics,

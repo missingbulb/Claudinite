@@ -15,9 +15,9 @@ import { parseBadge, renderBadge, shade, restyleAll, badgeFiles, idForBadge } fr
 // rather than sitting in the set looking subtly wrong.
 //
 // The row a README shows is the wiring converge's, not this tool's — adoption
-// writes it and the nightly keeps it true (engine/scheduler/converge-wiring.mjs).
-// What is checked here is that this repo, the one member no nightly maintains,
-// still shows what that converge would write.
+// seeds it and nothing maintains it after (engine/scheduler/converge-wiring.mjs).
+// What is checked here is that THIS repo's row says what that converge would
+// write, since no automation will notice on its own.
 
 const REPO = fileURLToPath(new URL('../../..', import.meta.url));
 
@@ -57,10 +57,12 @@ test('every badge is titled with the pack whose directory holds it', () => {
 });
 
 test("this repo's README row is what the wiring converge would write", async () => {
-  // The canon home never baselines (no vendored mount, so the task self-skips),
-  // so its row is the one in the fleet that no nightly maintains. Asserting it
+  // A row is seeded at adoption and owned by the repo after, so this test is the
+  // canon's own guard against its row drifting from its declaration. Asserting
   // against the converger rather than a regex of its own keeps the format in ONE
-  // place and proves the row a consumer gets is the row this repo shows.
+  // place and proves the row a consumer gets is the row this repo shows. A repo
+  // whose declaration has moved on refreshes with
+  // `converge-wiring <owner/repo> --badges`.
   const { badgeRowEntries, renderBadgeRow } = await import('../../../engine/scheduler/converge-wiring.mjs');
   const { loadConfig } = await import('../../../engine/checks/helpers/repo-context.mjs');
   const row = renderBadgeRow(await badgeRowEntries(REPO, loadConfig(REPO)));

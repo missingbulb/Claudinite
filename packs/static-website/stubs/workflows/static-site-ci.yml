@@ -1,0 +1,76 @@
+name: CI
+
+# The static-site repo's PR gate, vendored from the static-website pack. Three
+# things every pull request must pass, and deliberately NO `paths:` filter on
+# the trigger: a path-filtered conformance flow arms auto-merge and then never
+# runs, so the repo's own maintenance PR waits forever (the basics
+# `conformance-workflow` rule).
+#
+#   conformance  the Claudinite world sweep from this repo's own mount.
+#   gate         the repo's `test_command` ("" = it stated it has none).
+#   assemble     a dry run of the release's artifact assembly — the publish set
+#                is built exactly as the deploy builds it, so a renamed file or
+#                a stale `publish_paths` entry fails on the PR instead of
+#                silently dropping a page from the live site.
+#
+# workflow_dispatch so a GITHUB_TOKEN-authored PR (whose open GitHub never turns
+# into a pull_request run) can still have this suite started on its branch.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          # The PR's real head, not the synthetic merge commit, so CI evaluates
+          # what the session's own Stop hook does.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - id: cfg
+        uses: ./.github/actions/read-site-config
+
+      - name: Conformance sweep
+        run: node .claudinite/shared/engine/checks/check_the_world.mjs
+
+      - name: Run the repo's gate
+        if: steps.cfg.outputs.test_command != ''
+        run: ${{ steps.cfg.outputs.test_command }}
+
+      # Repo variables the config declares, exported into the build's env.
+      # `vars` structurally cannot carry a secret, which is the point: this
+      # feeds the step that produces the published artifact.
+      - name: Export the declared build variables
+        if: steps.cfg.outputs.build_vars != ''
+        env:
+          DECLARED_BUILD_VARS: ${{ steps.cfg.outputs.build_vars }}
+          REPO_VARS_JSON: ${{ toJSON(vars) }}
+        run: node .github/actions/read-site-config/export-build-vars.mjs
+
+      - name: Build the site
+        if: steps.cfg.outputs.build_command != ''
+        run: ${{ steps.cfg.outputs.build_command }}
+
+      # Assemble into a scratch dir (not _site) so nothing here can be mistaken
+      # for a deployable artifact; the guards — every publish path exists, the
+      # site has an index.html — are the point.
+      - uses: ./.github/actions/assemble-site
+        with:
+          publish_root: ${{ steps.cfg.outputs.publish_root }}
+          publish_paths: ${{ steps.cfg.outputs.publish_paths }}
+          dest: _site-check

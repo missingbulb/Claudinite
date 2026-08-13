@@ -70,12 +70,11 @@ rules land in the project's own local pack.
 
 And a *statement of what the product does* isn't a pack rule at all — not even a local one. A pack, canon
 or local, homes **how we work**: the conventions, gotchas and review discipline that recur across tasks
-whatever the feature happens to be. A rule asserting which entities exist, what a surface must render, or
-that a feature's parts are wired to each other is a **requirement**; its home is the project's executable
-spec and the suite that proves it. Encoding it as a pack check instead splits one feature's definition
-across two systems and lands it in the one no test of the product ever reads. Pack-worthiness is a question
-about the *work*, not about how load-bearing the code is — a real gap in product coverage is a requirements
-gap, and answering it with a pack is how a feature's spec ends up somewhere nothing executes it.
+whatever the feature happens to be. The working-discipline rules bar the requirement-shaped rule outright;
+here, catch it wearing a convention's clothes — a rule asserting which entities exist, what a surface must
+render, or that a feature's parts are wired to each other. Pack-worthiness
+is a question about the *work*, not about how load-bearing the code is — a real gap in product coverage is a
+requirements gap, and answering it with a pack is how a feature's spec ends up somewhere nothing executes it.
 
 <example>
 One extension project can exhibit four facets at once: `spec-driven-product` (class),
@@ -150,9 +149,11 @@ the overlay.
 
 The project-specific residue lands in a **local pack** under `.claudinite/local_packs/<pack>/` in the
 project's tree — the same pack machinery, run from the project instead of the canon. Most projects
-need **one** general pack (name it for the project); segregate a **second** only when a distinct domain
-earns its own bundle (the way the reference project split a general working pack from an
-extractor-automation pack). Each local pack is a real pack:
+need **one** general pack (name it for the project); segregate a **second** only along the repo's own
+**project structure** — a segment of the repo's tree whose work is its own territory (a `client` pack
+for work under `client/`) — never around a technology or a methodology: those axes belong to the canon
+(their portable half is a canon seed above; the project-specific residue lands in the structural pack
+that owns the work). Each local pack is a real pack:
 
 - **`pack.mjs`** — `{ id, detect: null, marker: null, prose: 'RULES.md', rules: [...], skills: [...] }`.
   A local pack is declared by hand, never fingerprinted or seeded (`detect`/`marker` stay null), as its

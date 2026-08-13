@@ -1,0 +1,239 @@
+name: "Static site: Publish (reusable)"
+
+# The logic behind every static-site repo's release, vendored from the
+# static-website pack into the repo's own .github/. workflow_call ONLY — the
+# `static-site-release.yml` orchestrator owns the triggers and passes no repo
+# values; everything repo-specific comes from `.github/site.config` via the
+# read-site-config composite action.
+#
+# The pipeline, in order — and the order is the point: nothing is bumped,
+# tagged or deployed until the tests that guard the site have passed.
+#
+#   check    is a release due? A push that touched the declared publish set,
+#            or `force`, or a repo with no release yet. The baseline is the
+#            LATEST RELEASE TAG, not a time window, so a day whose run failed
+#            is caught by the next push instead of stranded.
+#   verify   the repo's own gate (`test_command`), on the tree being released.
+#   bump     the date-anchored version (bump-site-version), pushed to main.
+#            Pushed with GITHUB_TOKEN, which fires no workflow — hence the
+#            explicit deploy call below rather than a second push trigger.
+#   release  GitHub Release `v<major>.<ymmdd>.<n>` at the bump commit, with
+#            auto-generated notes.
+#   deploy   the Pages deploy of that exact commit, from the explicit publish
+#            set.
+#
+# The caller must grant `permissions: contents: write, pages: write,
+# id-token: write, issues: write`.
+on:
+  workflow_call:
+    inputs:
+      force:
+        description: "Release even when no published file changed"
+        required: false
+        type: boolean
+        default: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      release: ${{ steps.diff.outputs.release }}
+      test_command: ${{ steps.cfg.outputs.test_command }}
+      sha: ${{ steps.head.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # The branch tip as of now, not github.sha (the tip when the push
+          # landed) — anything merged in between rides along in this release.
+          ref: main
+          # Full history + tags: the diff below is against the latest release tag.
+          fetch-depth: 0
+
+      # Pin that tip once, here: every later stage checks out THIS sha, so the
+      # tree that is tested is the tree that is bumped, tagged and deployed.
+      - id: head
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - id: cfg
+        uses: ./.github/actions/read-site-config
+
+      - name: Look for published-file changes since the last release
+        id: diff
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FORCE: ${{ inputs.force }}
+          PUBLISH_ROOT: ${{ steps.cfg.outputs.publish_root }}
+          # Intentionally word-split below into the individual publish paths.
+          PUBLISH_PATHS: ${{ steps.cfg.outputs.publish_paths }}
+        run: |
+          set -euo pipefail
+          if [ "$FORCE" = "true" ]; then
+            echo "Forced — releasing the current tree." | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          latest="$(gh release view --json tagName -q .tagName 2>/dev/null || true)"
+          if [ -z "$latest" ]; then
+            echo "No published release to diff against — releasing the current tree." | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Repo-relative prefixes of the publish set (publish paths are relative
+          # to publish_root; "." means they already are repo-relative).
+          prefixes=""
+          for p in $PUBLISH_PATHS; do
+            if [ "$PUBLISH_ROOT" = "." ]; then prefixes="$prefixes $p"; else prefixes="$prefixes $PUBLISH_ROOT/$p"; fi
+          done
+          changed=""
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            for root in $prefixes; do
+              case "$f" in
+                "$root"|"$root"/*) changed="${changed}${f}"$'\n'; break;;
+              esac
+            done
+          done < <(git diff --name-only "$latest" HEAD)
+          if [ -z "$changed" ]; then
+            echo "No published-file changes since $latest — nothing to release." | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          else
+            { echo "Published files changed since $latest — releasing:"; printf '%s' "$changed"; } | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  # The repo's own gate, on the tree about to be released. Before the bump on
+  # purpose: a failed gate must leave the version, the tag and the live site
+  # exactly as they were.
+  verify:
+    needs: check
+    if: needs.check.outputs.release == 'true' && needs.check.outputs.test_command != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.check.outputs.sha }}
+      # No install step and no npm cache: a test_command that needs dependencies
+      # says so itself (`npm ci && npm test`), which keeps the config to the five
+      # keys and never assumes a lockfile a plain HTML repo doesn't have.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Run the repo's gate
+        run: ${{ needs.check.outputs.test_command }}
+
+  bump:
+    needs: [check, verify]
+    # `always()` so the skipped verify job (a repo that states test_command="")
+    # does not skip the release with it; the explicit result test still stops a
+    # real failure.
+    if: always() && needs.check.outputs.release == 'true' && needs.verify.result != 'failure' && needs.verify.result != 'cancelled'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
+      sha: ${{ steps.push.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # The exact tree `verify` passed. If main has moved since, the push
+          # below fails non-fast-forward — a loud red the reporter turns into an
+          # issue, and the next push releases everything at once. That is the
+          # right trade: a release always ships a tested tree.
+          ref: ${{ needs.check.outputs.sha }}
+
+      - id: cfg
+        uses: ./.github/actions/read-site-config
+
+      - id: bump
+        uses: ./.github/actions/bump-site-version
+        with:
+          version_files: ${{ steps.cfg.outputs.version_files }}
+
+      - name: Push the bump to main
+        id: push
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Release v${{ steps.bump.outputs.version }} [skip ci]"
+          git push origin HEAD:main
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "Bumped to v${{ steps.bump.outputs.version }}." >> "$GITHUB_STEP_SUMMARY"
+
+  release:
+    needs: bump
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.bump.outputs.sha }}
+          fetch-depth: 0
+      - name: Cut the GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.bump.outputs.version }}
+          SHA: ${{ needs.bump.outputs.sha }}
+        run: |
+          set -euo pipefail
+          gh release create "v$VERSION" --target "$SHA" --title "v$VERSION" --generate-notes
+          echo "Released v$VERSION." >> "$GITHUB_STEP_SUMMARY"
+
+  # The site itself, from the exact commit that was released.
+  deploy:
+    needs: [bump, release]
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/static-site-deploy-pages.yml
+    with:
+      ref: ${{ needs.bump.outputs.sha }}
+
+  # Release-on-push is unattended once the merge is done — a red run in the
+  # Actions list reaches nobody. Converge any failure in this pipeline (its own
+  # jobs and the called deploy alike) to a fresh tracking issue, superseding the
+  # earlier open ones for this workflow so the newest failure is always the
+  # single open bug to triage.
+  report-failure:
+    needs: [check, verify, bump, release, deploy]
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Open a fresh failure issue and dedup earlier ones
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          prefix="⚠️ Workflow failing: Static site: Publish"
+          title="${prefix} — $(date -u +%Y-%m-%d) (run ${RUN_ID})"
+          # GitHub never creates a label on demand, and listing by a missing
+          # label errors — so create it idempotently first.
+          gh label create workflow-failure --repo "$REPO" --color B60205 \
+            --description "An unattended workflow failed and needs a human" 2>/dev/null || true
+          mapfile -t olds < <(gh issue list --repo "$REPO" --label workflow-failure \
+            --state open --json number,title --limit 100 \
+            -q "map(select(.title | startswith(\"$prefix\"))) | .[].number")
+          url="$(gh issue create --repo "$REPO" --title "$title" --label workflow-failure \
+            --body "The static-site release pipeline failed: [view run](${RUN_URL}). The site was NOT redeployed. Close this once the cause is fixed.")"
+          new="${url##*/}"
+          for n in "${olds[@]:-}"; do
+            [ -n "$n" ] || continue
+            gh issue comment "$n" --repo "$REPO" --body "Duplicate of #${new} — superseded by the latest failure of this workflow."
+            gh issue close "$n" --repo "$REPO" --reason "not planned" 2>/dev/null || gh issue close "$n" --repo "$REPO"
+          done

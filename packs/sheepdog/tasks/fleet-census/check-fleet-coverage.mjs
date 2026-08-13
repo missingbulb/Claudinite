@@ -1,24 +1,25 @@
 #!/usr/bin/env node
 // The sheepdog pack's fleet-coverage CENSUS — the cross-repo reach the pack adds.
 // Run by this pack's `fleet-census` scheduled task (tasks/fleet-census/), whose
-// worker calls `main()` below as the task's `agent_preprocessing` — Action-side
+// worker calls `main()` below as the task's `prework` — Action-side
 // inside the repo's scheduler workflow, where the FLEET_GITHUB_TOKEN the task
 // declares in `required_secrets` is reachable as ordinary environment. Still
 // runnable by hand (`node check-fleet-coverage.mjs`) via the CLI guard at the foot.
 //
 // Its concern is COVERAGE ALONE — one thing: reads the fleet config from the
 // sheepdog (home) repo's sheepdog pack-entry config (owner to cover + exclude list),
-// enumerates every repo under that owner, classifies each (covered / uncovered /
-// excluded / skipped fork-or-archived), publishes the picture to the run summary,
-// and converges one adoption issue per actionable uncovered repo in the home repo
+// enumerates every repo under that owner, classifies each (covered / dormant /
+// uncovered / excluded / skipped fork-or-archived), publishes the picture to the run
+// summary — the FULL roster, every repo named under exactly one state, never only
+// the exceptions — and converges one adoption issue per actionable uncovered repo in the home repo
 // (open while uncovered, closed once covered or excluded). That issue is its ENTIRE
 // effect on an uncovered repo — the census never writes to one, and nothing downstream
 // adopts it either: the owner reads the issue and chooses to adopt Claudinite or to
 // ignore it. It does NOT build the
 // work plan (that is each repo's own scheduler's job, engine/scheduler/run.mjs) and it does
-// NOT touch migrations: application and retirement are the migrations flow's own
-// standalone passes (migrations/fleet-apply.mjs + migrations/fleet-retire.mjs, run
-// by the daily routine) — the census is a coverage audit, not a migrations helper.
+// NOT touch migrations: each member applies those itself, from the fresh canon
+// clone its own baselining fetches (migrations/apply.mjs) — the census is a
+// coverage audit, not a migrations helper.
 //
 // Two rules kept deliberately:
 //   - a marker check that ERRORS makes the repo UNKNOWN, never uncovered — no
@@ -35,7 +36,7 @@
 
 import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { makeGh, paged, isCovered, ensureLabel, labeledIssues } from '../../fleet-api.mjs';
+import { makeGh, paged, readDeclaration, isDormant, ensureLabel, labeledIssues } from '../../fleet-api.mjs';
 import { parseSheepdogConfig } from '../../fleet-config.mjs';
 
 const LABEL = 'fleet-adoption';
@@ -115,6 +116,33 @@ async function convergeIssues(gh, home, { uncovered, coveredSet, optedOutSet }) 
   return actions;
 }
 
+// --- the run summary (pure) ---------------------------------------------------
+
+// The census's report enumerates the FULL fleet: every repo lands in exactly one
+// list below, whatever its state — covered, dormant, uncovered, opted out, skipped,
+// unknown — plus the enforcer itself, which is not censused but still named. A
+// roster that names only the exceptions has silent holes, and a reader cannot tell
+// "fine" from "fell out of the report". Kept free of I/O so the full-roster
+// property is testable directly.
+export function renderCensusSummary({ owner, home, covered, dormant, uncovered, optedOut, skipped, unknown, actions }) {
+  return [
+    `# Fleet coverage census — ${owner}`,
+    '',
+    '| covered | dormant | uncovered | opted out | skipped (fork/archived) | unknown |',
+    '| --- | --- | --- | --- | --- | --- |',
+    `| ${covered.length} | ${dormant.length} | ${uncovered.length} | ${optedOut.length} | ${skipped.length} | ${unknown.length} |`,
+    '',
+    covered.length ? `**Covered:** ${covered.join(', ')}` : '**Covered:** none',
+    dormant.length ? `**Covered but dormant (self-declared, upkeep stopped):** ${dormant.join(', ')}` : '',
+    uncovered.length ? `**Uncovered (adoption issue open):** ${uncovered.join(', ')}` : '**Uncovered:** none 🎉',
+    optedOut.length ? `**Opted out (config.exclude):** ${optedOut.join(', ')}` : '',
+    skipped.length ? `**Skipped:** ${skipped.join(', ')}` : '',
+    unknown.length ? `**UNKNOWN (declaration read errored — fix the token/scope):** ${unknown.join('; ')}` : '',
+    `**Not censused:** ${home} — the enforcer itself`,
+    actions.length ? `**Issue actions:** ${actions.join('; ')}` : '**Issue actions:** none (converged)',
+  ].filter(Boolean).join('\n');
+}
+
 // --- main --------------------------------------------------------------------
 
 // Exported so the fleet-census task's worker can invoke the census in-process
@@ -148,41 +176,35 @@ export async function main() {
       + 'refusing to run a census that would close every adoption issue as stale');
   }
 
-  const covered = []; const uncovered = []; const optedOut = []; const skipped = []; const unknown = [];
+  const covered = []; const dormant = []; const uncovered = []; const optedOut = []; const skipped = []; const unknown = [];
   for (const r of mine.sort((a, b) => a.name.localeCompare(b.name))) {
     const fullName = r.full_name.toLowerCase();
-    if (fullName === home.toLowerCase()) continue; // the canon doesn't mount itself
+    if (fullName === home.toLowerCase()) continue; // the enforcer itself — named in the summary, not censused
     if (r.archived || r.fork) { skipped.push(`${r.full_name} (${r.archived ? 'archived' : 'fork'})`); continue; }
-    let isCov;
+    // The declaration is READ, not merely probed for existence: dormancy lives inside
+    // it, and the roster names dormant members as dormant. Dormancy does not touch
+    // MEMBERSHIP — a dormant repo is covered, its adoption issue converges the same —
+    // it only annotates the report. One deliberate tightening rides along: an
+    // unparsable declaration now classifies UNKNOWN (and fails the run) instead of
+    // covered, because a file that cannot be read says nothing.
+    let decl;
     try {
-      isCov = await isCovered(gh, r.full_name);
+      decl = await readDeclaration(gh, r.full_name);
     } catch (e) {
       unknown.push(`${r.full_name} — ${e.message}`);
       continue;
     }
-    if (isCov) covered.push(fullName);
+    if (decl !== null) (isDormant(decl) ? dormant : covered).push(fullName);
     else if (optOut.has(fullName)) optedOut.push(fullName);
     else uncovered.push(fullName);
   }
 
   await ensureLabel(gh, home, LABEL, { color: '1D76DB', description: 'Repo awaiting adoption into the Claudinite fleet' });
   const actions = await convergeIssues(gh, home, {
-    uncovered, coveredSet: new Set(covered), optedOutSet: new Set(optedOut),
+    uncovered, coveredSet: new Set([...covered, ...dormant]), optedOutSet: new Set(optedOut),
   });
 
-  const summary = [
-    `# Fleet coverage census — ${owner}`,
-    '',
-    `| covered | uncovered | opted out | skipped (fork/archived) | unknown |`,
-    `| --- | --- | --- | --- | --- |`,
-    `| ${covered.length} | ${uncovered.length} | ${optedOut.length} | ${skipped.length} | ${unknown.length} |`,
-    '',
-    uncovered.length ? `**Uncovered (adoption issue open):** ${uncovered.join(', ')}` : '**Uncovered:** none 🎉',
-    optedOut.length ? `**Opted out:** ${optedOut.join(', ')}` : '',
-    skipped.length ? `**Skipped:** ${skipped.join(', ')}` : '',
-    unknown.length ? `**UNKNOWN (marker check errored — fix the token/scope):** ${unknown.join('; ')}` : '',
-    actions.length ? `**Issue actions:** ${actions.join('; ')}` : '**Issue actions:** none (converged)',
-  ].filter(Boolean).join('\n');
+  const summary = renderCensusSummary({ owner, home, covered, dormant, uncovered, optedOut, skipped, unknown, actions });
 
   console.log(summary);
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${summary}\n`);

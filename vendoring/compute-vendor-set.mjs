@@ -1,8 +1,10 @@
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadPacks, resolveDeclaredPacks, packEntryId, SHARED_SUBDIR } from '../engine/pack_loader/pack-registry.mjs';
+import { loadPacks, resolveDeclaredPacks, packEntryId, SHARED_SUBDIR, PACK_DIRECTORY_FILE } from '../engine/pack_loader/pack-registry.mjs';
 import { relativeImports, resolveRelative, ENGINE_DIR_ROOTS } from '../engine/checks/helpers/module-imports.mjs';
+import { migrationApplies, MIGRATIONS_SUBDIR } from '../engine/checks/helpers/active-migrations.mjs';
+import { ENGINE_VERSION } from '../engine/version.mjs';
 
 // The vendor-set computation for the vendored mount (DESIGN.md): given a repo's
 // pack declaration, the minimal corpus file set that repo persists under
@@ -37,39 +39,45 @@ const isTest = (name) => name.endsWith('.test.mjs');
 // instructions; the label-wired routine's thin-pointer prompt points at
 // `.claudinite/shared/engine/scheduler/executor.md`, so if it is stripped, every
 // consumer's executor session boots with no instructions and can drain nothing
-// (the fleet-wide executor-broken finding). Whitelisted by canon-relative path so
-// the blanket .md exclusion still drops the maintainer docs beside it.
-const VENDORED_ENGINE_DOCS = new Set(['engine/scheduler/executor.md']);
+// (the fleet-wide executor-broken finding). `deliver-pr.md` is the agent-lane
+// delivery procedure the merged-pr task worker files link to — stripped, every
+// such task.md points at a hole and the subagent improvises its own landing.
+// Whitelisted by canon-relative path so the blanket .md exclusion still drops
+// the maintainer docs beside them.
+const VENDORED_ENGINE_DOCS = new Set(['engine/scheduler/executor.md', 'engine/scheduler/deliver-pr.md']);
 
-// The migration machinery a consumer applies from its OWN mount (agent-preprocessing
-// DESIGN §7): the applier + registry + the note records, so baselining reads the
-// notes locally and needs no canon checkout in session. NOT the fleet-only drivers
-// (fleet-apply/fleet-retire, which read the fleet) or the README. Vendoring these
-// also activates `migrationActive()` legacy-tolerance in consumer checks — inert
-// until now because no mount migrations existed — which is the intended fleet-wide
-// behaviour of that gate (a check tolerates a legacy shape while its migration is
-// live), not a regression.
-const MIGRATIONS_ROOT = 'migrations';
-const VENDORED_MIGRATION_MODULES = ['apply.mjs', 'registry.mjs'];
-function walkMigrations(files, errors) {
-  for (const name of VENDORED_MIGRATION_MODULES) {
-    if (existsSync(join(canonRoot, MIGRATIONS_ROOT, name))) files.add(`${MIGRATIONS_ROOT}/${name}`);
-    else errors.push({ what: `${MIGRATIONS_ROOT}/${name} is missing from the canon tree`, fix: `restore ${MIGRATIONS_ROOT}/${name}` });
-  }
-  const recordsDir = `${MIGRATIONS_ROOT}/active_migrations`;
-  let entries;
-  try {
-    entries = readdirSync(join(canonRoot, recordsDir), { withFileTypes: true });
-  } catch (e) {
-    errors.push({ what: `${recordsDir} is not a readable directory in the canon tree: ${e.message}`, fix: `restore ${recordsDir}` });
-    return;
-  }
-  for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
-    if (entry.isFile() && entry.name.endsWith('.mjs') && !isTest(entry.name)) files.add(`${recordsDir}/${entry.name}`);
-  }
-}
+// The migration records a consumer carries in its OWN mount, so baselining reads
+// the notes locally and needs no canon checkout in session. Records live under the
+// flow that owns them — `engine/migrations/<record>/` and
+// `packs/<pack>/migrations/<record>/` — so they ride the engine and pack walks
+// below rather than a collection of their own; what those walks need from here is
+// the one exception to "vendor the whole tree": FETCHING decides relevance, and
+// only the folders landed within the recency window (recordDirIsRecent, the same
+// predicate migrationActive tolerates by) ship in a mount. An up-to-date consumer
+// carries few-to-none — it already applied them — and a dormant project catches up
+// from the fresh canon clone baselining fetches, where every record ever landed is
+// present. Vendoring these also activates `migrationActive()` legacy-tolerance in
+// consumer checks — the mount's records ARE what that check tolerates, because
+// both consult one predicate (`migrationApplies`).
+//
+// FETCHING IS VERSION-GATED (owner decision 7): a record ships while the target
+// repo sits below the version its change took effect at, so an up-to-date repo
+// carries none and a lagging one carries exactly its gap. A repo whose stamp says
+// nothing about that flow — one that has not converged since versions existed, or
+// a fresh adoption — falls back to the landed-date window, which is the behaviour
+// every member had before this. The predicate lives in the engine helper, not
+// here, so what a mount receives and what a check tolerates cannot drift.
+//
+// Riding the pack walk means a pack's records reach only the members that DECLARE
+// that pack, which is the split's point — the tolerance a record activates is for
+// that pack's own checks, which do not run anywhere else. It is not how a record
+// gets APPLIED: baselining applies from the fresh canon clone, where every record
+// ever landed is present whatever the member declares, so a record that seeds a
+// pack into a member not yet running it still lands.
+const isRecordDir = (name) => /^\d{4}-\d{2}-\d{2}-/.test(name);
+const isRecordOfFlow = (relDir, name) => relDir.endsWith(`/${MIGRATIONS_SUBDIR}`) && isRecordDir(name);
 
-function walk(relDir, files, errors, { engine = false } = {}) {
+function walk(relDir, files, errors, { engine = false, today, installed = null } = {}) {
   let entries;
   try {
     entries = readdirSync(join(canonRoot, relDir), { withFileTypes: true });
@@ -83,7 +91,9 @@ function walk(relDir, files, errors, { engine = false } = {}) {
   for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
     if (entry.isDirectory()) {
       if (engine && entry.name === 'test') continue;
-      walk(`${relDir}/${entry.name}`, files, errors, { engine });
+      const rel = `${relDir}/${entry.name}`;
+      if (isRecordOfFlow(relDir, entry.name) && !migrationApplies(rel, { installed, today })) continue;
+      walk(rel, files, errors, { engine, today, installed });
     } else if (!isTest(entry.name)) {
       const rel = `${relDir}/${entry.name}`;
       // engine .md is canon-maintainer reference and dropped — except the
@@ -98,16 +108,25 @@ function walk(relDir, files, errors, { engine = false } = {}) {
 // strings and/or entry objects). Returns { files, errors }:
 // sorted canon-relative paths, and { what, fix } diagnostics. Ids naming no
 // canon pack (a consumer's local packs, or a typo the runner's settings
-// validation already flags) are skipped without error; per-user preferences
-// are deliberately absent — they are never vendored (DESIGN.md). A pack's
+// validation already flags) are skipped without error. A pack's
 // bundled skills (<pack>/skills/) ride its directory walk — there is no
-// separate skills collection to union (#385).
-export async function computeVendorSet(declaredEntries) {
+// separate skills collection to union (#385). `installed` is the target repo's
+// version stamp ({ engineVersion, packVersions }) — the gap the migration records
+// are fetched over; omit it (a repo with no stamp) and fetching falls back to the
+// landed-date window, for which `today` (YYYY-MM-DD) pins a deterministic set.
+export async function computeVendorSet(declaredEntries, { today, installed = null } = {}) {
   const files = new Set();
   const errors = [];
 
-  for (const root of ENGINE_DIR_ROOTS) walk(root, files, errors, { engine: true });
-  walkMigrations(files, errors);
+  for (const root of ENGINE_DIR_ROOTS) walk(root, files, errors, { engine: true, today, installed });
+
+  // The full pack directory ships with EVERY mount, whatever the declaration:
+  // the set otherwise carries only the declared packs, so without this catalog
+  // a member session has no view of what else it could adopt (#726). Missing
+  // is canon-side breakage — a mount silently without it would blind the whole
+  // fleet to the catalog — so it aborts the converge like any other set error.
+  if (existsSync(join(canonRoot, PACK_DIRECTORY_FILE))) files.add(PACK_DIRECTORY_FILE);
+  else errors.push({ what: `${PACK_DIRECTORY_FILE} is missing from the canon tree`, fix: 'regenerate it (its drift test in packs-tests/ renders it from the pack manifests) and commit it' });
 
   const packs = await loadPacks();
   const byId = new Map(packs.map((p) => [p.id, p]));
@@ -116,7 +135,7 @@ export async function computeVendorSet(declaredEntries) {
     const id = packEntryId(entry);
     if (id !== undefined && byId.has(id) && !ids.includes(id)) ids.push(id);
   }
-  for (const id of ids) walk(`packs/${id}`, files, errors);
+  for (const id of ids) walk(`packs/${id}`, files, errors, { today, installed });
 
   // Coherence guard: the set must be import-closed — every relative import in
   // every .mjs it carries resolves to a file it also carries. Structural
@@ -147,5 +166,18 @@ export async function computeVendorSet(declaredEntries) {
     }
   }
 
-  return { files: [...files].sort(), errors };
+  // The versions this set is made of, returned beside it so the writer can stamp
+  // them in the same pass that lays the files down (DESIGN §2, §3.6). Computed
+  // here rather than re-derived by the writer for the reason the set itself is:
+  // the numbers and the content then come from one snapshot by construction. A
+  // pack with no `version` contributes no entry — that is a local pack, which is
+  // repo-owned and versionless, and an "unknown" version must stay absent rather
+  // than become a 0 nothing downstream could tell from a real one.
+  const packVersions = {};
+  for (const id of ids) {
+    const v = byId.get(id)?.version;
+    if (v !== undefined) packVersions[id] = v;
+  }
+
+  return { files: [...files].sort(), errors, engineVersion: ENGINE_VERSION, packVersions };
 }

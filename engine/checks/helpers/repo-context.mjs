@@ -77,9 +77,9 @@ function vendoredSet(root, files) {
 // JSON, caught at load so it can't silently change nothing. `packConfig` is the
 // legacy home of per-pack parameters — still honored while the fleet migrates to
 // pack-entry `config` (the baselining folds it in), no longer documented. The
-// `pack-entry-config` baseline migration (migrations/active_migrations/) tracks
-// the fleet's convergence; when it retires, drop the key here (and the overlay
-// below) so a straggler gets the unknown-setting error.
+// `pack-entry-config` baseline migration (engine/migrations/) documents the fold; when
+// the fleet is off the old shape, drop the key here (and the overlay below) so
+// a straggler gets the unknown-setting error.
 // `claudinite` is the vendored-mount stamp — { updated: "<ISO datetime>", ref: "<sha>" },
 // written by the nightly update pass, selecting which migration notes still apply
 // (vendoring/DESIGN.md owns the model); the checks engine itself only tolerates it.
@@ -88,13 +88,13 @@ function vendoredSet(root, files) {
 // all UTC. Absence means the documented defaults, so an omitted key is not an
 // error; a present one is range-validated at load below. Its declaration is also
 // the per-repo cutover marker during the scheduling rollout (MIGRATION Phase 0.6).
-// `badges` is the repo's say over the pack-badge row baselining maintains in its
-// README — { readme: 'auto' | 'off' }. Materialized explicitly into every member
-// (the wiring converge writes it) rather than inferred from absence, so the knob
-// sits visibly in the file anyone would open to change it.
+// A repo's README pack-badge row has no key here on purpose: the row is seeded at
+// adoption and owned by the repo after, so there is nothing for it to configure.
+// A member carrying a stale `badges` key therefore gets the unknown-setting error
+// below, and the wiring converge (engine/scheduler/converge-wiring.mjs) clears it.
 // `dormant` is the project's own declaration that it is out of the RECURRING work —
 // see isDormant below for exactly how much that covers.
-export const CONFIG_KEYS = ['packs', 'rules', 'accept', 'sharedConstants', 'packConfig', 'maintenance', 'claudinite', 'taskScheduler', 'badges', 'dormant'];
+export const CONFIG_KEYS = ['packs', 'rules', 'accept', 'sharedConstants', 'packConfig', 'maintenance', 'claudinite', 'taskScheduler', 'dormant'];
 
 // Does this project declare itself DORMANT? A project goes dormant when it is
 // finished, parked, or simply not being worked on: it should stop paying the
@@ -156,7 +156,7 @@ export const PACK_ENTRY_KEYS = ['id', 'config', 'answers', 'rules', 'accept', 'v
 // read this one shape regardless of which form the file used.
 export function loadConfig(root) {
   const path = join(root, '.claudinite-checks.json');
-  const empty = { packs: [], packEntries: [], rules: {}, accept: [], sharedConstants: [], packConfig: {}, taskScheduler: null, claudinite: null, maintenance: null, badges: null, dormant: false, errors: [] };
+  const empty = { packs: [], packEntries: [], rules: {}, accept: [], sharedConstants: [], packConfig: {}, taskScheduler: null, claudinite: null, maintenance: null, dormant: false, errors: [] };
   if (!existsSync(path)) return empty;
 
   let raw;
@@ -326,7 +326,6 @@ export function loadConfig(root) {
     // whole set so no future key can go the same way.
     claudinite: raw.claudinite ?? null,
     maintenance: raw.maintenance ?? null,
-    badges: raw.badges ?? null,
     // Normalized to a boolean rather than passed through: everything downstream
     // asks "is this project dormant", and a tri-state (true / false / absent) would
     // invite each caller to answer the absent case for itself. Absent is active.

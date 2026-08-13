@@ -7,8 +7,8 @@ on:
     branches: [main]
   # Dispatchable so a GITHUB_TOKEN-authored PR (whose push/open GitHub never
   # turns into a pull_request run — the recursion guard) can still get this
-  # suite started on its branch: baselining's deliver() and any bot flow like
-  # migrations-retire's archive PR (#432, #565) dispatch it explicitly.
+  # suite started on its branch: baselining's deliver() and any bot-authored
+  # PR flow (#432, #565) dispatch it explicitly.
   workflow_dispatch:
 defaults:
   run:
@@ -37,7 +37,7 @@ jobs:
         # CI. `**` removes depth from the question; what remains is the root list, and
         # engine-tests/ci-test-roots.test.mjs fails the moment a tracked test lands
         # outside it. Adding a root is a deliberate CI edit; adding a test is not.
-        #   engine-tests/            engine/ + the other top-level canon code (migrations/, …);
+        #   engine-tests/            engine/ (migrations included) + the other top-level canon code;
         #                            mirrors engine/'s inner structure, and stays canon-side
         #                            because engine/ ships to consumers exactly as-is (#385)
         #   packs-tests/             every canon pack's tests, mirroring packs/
@@ -55,6 +55,12 @@ jobs:
         # bootstrap wires into consumers. World only: the work scope judges a
         # session's change and runs at that session's Stop hook, not here.
         run: node engine/checks/check_the_world.mjs
+      - name: Growth write-surface gate
+        # The lifecycle's capture runs (extract, dedup) are bounded to the repo's own
+        # local packs. Unlike promote below, a capture run marks ITSELF — the pinned
+        # commit subject its task doc gives it — so the gate self-gates and this step
+        # runs on every PR, exiting 0 in ~no time on any other branch.
+        run: node .claudinite/local/packs/canon-curation/growth-scope-gate.mjs
       - name: Promote write-surface gate
         # The growth promote stage (.claudinite/local/packs/canon-curation/tasks/growth-promote/task.md)
         # is the one change bounded to packs/ + skills/ — an ordinary engine PR legitimately edits

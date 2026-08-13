@@ -31,7 +31,7 @@ test('store-release: agentless (model none) — the preprocessing worker IS the 
   assert.equal(storeRelease.frequency, 'daily');
   assert.equal(storeRelease.expected_outcome, 'none'); // it only triggers the gated publish workflow
   assert.deepEqual(storeRelease.precondition_signals, ['release', 'commits']);
-  assert.equal(storeRelease.agent_preprocessing, 'node worker.mjs');
+  assert.equal(storeRelease.prework, 'node worker.mjs');
   assert.ok(existsSync(join(TASK_DIR, 'worker.mjs')), 'the preprocessing worker must exist');
 });
 

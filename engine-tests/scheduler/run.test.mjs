@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeDueTaskSlots, signalsUnion, runPrecondition, renderSummary, planRun, ensureLabels, maintainDispatchIssues, parseOverrides, forcedTaskIds } from '../../engine/scheduler/run.mjs';
+import { computeDueTaskSlots, signalsUnion, runPrecondition, renderSummary, planRun, ensureLabels, parseOverrides, forcedTaskIds } from '../../engine/scheduler/run.mjs';
 import { DEFAULT_SCHEDULE } from '../../engine/scheduler/slots.mjs';
-import { SCHEDULER_LABELS, READY_LABEL, READY_FLEET_LABEL, AGENT_RUNNING_LABEL, NEEDS_HUMAN_LABEL } from '../../engine/scheduler/dispatch.mjs';
+import { SCHEDULER_LABELS, READY_LABEL } from '../../engine/scheduler/dispatch.mjs';
 
 const D = DEFAULT_SCHEDULE;
 
@@ -107,7 +107,7 @@ test('signalsUnion collects only the union of the due tasks\' declared signals',
 
 test('runPrecondition isolates a throwing precondition into a skip with the error', () => {
   const good = runPrecondition(mkTask('a'), {}, {});
-  assert.deepEqual(good, { run: true, reason: 'ok', context: [] });
+  assert.deepEqual(good, { run: true, exclusive: false, reason: 'ok', context: [] });
   const bad = runPrecondition(mkTask('b', { precondition: () => { throw new Error('boom'); } }), {}, {});
   assert.equal(bad.run, false);
   assert.match(bad.reason, /precondition threw: boom/);
@@ -130,6 +130,128 @@ test('planRun dispatches a running agent task and skips a non-running one', asyn
   assert.deepEqual(byTask.runs.context, ['scope line']);
   assert.equal(byTask.quiet.run, false);
   assert.equal(byTask.quiet.dispatch, undefined);
+});
+
+// ── The exclusive claim: one task takes the whole run (#619) ────────────────
+// The hourly cron is not hourly — GitHub drops and delays scheduled fires — so a
+// late run finds every daily slot due at once and dispatches the whole nightly
+// chain together, beside the task that was anchored an hour ahead of it to repair
+// the ground the others run on. A precondition returning `exclusive: true` takes
+// the cycle; everything else defers.
+
+test('planRun defers every other running task when one claims the run exclusively', async () => {
+  const tasks = [
+    mkTask('claimer', { precondition: () => ({ run: true, exclusive: true, reason: 'overdue' }) }),
+    mkTask('other', { precondition: () => ({ run: true, reason: 'work found' }) }),
+    mkTask('agentless', { agent_model: 'none', expected_outcome: 'none', prework: 'node w.mjs', prework_timeout: 60, precondition: () => ({ run: true, reason: 'work found' }) }),
+    mkTask('quiet', { precondition: () => ({ run: false, reason: 'nothing to do' }) }),
+  ];
+  const searched = [];
+  const { evaluations } = await planRun({
+    tasks, schedule: D, now: '2026-07-22T06:00:00Z', lastSuccess: '2026-07-21T06:00:00Z',
+    collectSignals: async () => ({}),
+    existingIssuesFor: async (pack, task) => { searched.push(task); return []; },
+  });
+  const by = Object.fromEntries(evaluations.map((e) => [e.task, e]));
+
+  // The claimant does its full run — dispatch planned as usual.
+  assert.equal(by.claimer.exclusive, true);
+  assert.equal(by.claimer.deferred, undefined);
+  assert.equal(by.claimer.dispatch.action, 'create');
+
+  // Everything else that WANTED to run is deferred: run:true kept (its
+  // precondition did find work), but no dispatch, no inline, no preprocessing.
+  assert.equal(by.other.run, true);
+  assert.match(by.other.deferred, /claimed this run exclusively/);
+  assert.equal(by.other.dispatch, undefined);
+  assert.equal(by.agentless.run, true);
+  assert.ok(by.agentless.deferred);
+  assert.equal(by.agentless.inline, undefined);
+  assert.equal(by.agentless.prework, undefined, 'a deferred task must not run its preprocessing subprocess');
+
+  // A task that had nothing to do is a skip, not a deferral — nothing was taken
+  // from it.
+  assert.equal(by.quiet.run, false);
+  assert.equal(by.quiet.deferred, undefined);
+
+  // And the deferred tasks cost no GitHub reads: the claim is decided before any
+  // issue search happens.
+  assert.deepEqual(searched, ['claimer']);
+});
+
+test('planRun claims nothing when the claimant\'s own precondition says skip', async () => {
+  // `exclusive` is a rider on a RUN verdict. A task that is not running this cycle
+  // has no run to claim, and reading the flag on its own would let a task that
+  // declines its work still stop everyone else's.
+  const tasks = [
+    mkTask('claimer', { precondition: () => ({ run: false, exclusive: true, reason: 'nothing to do' }) }),
+    mkTask('other', { precondition: () => ({ run: true, reason: 'work found' }) }),
+  ];
+  const { evaluations } = await planRun({
+    tasks, schedule: D, now: '2026-07-22T06:00:00Z', lastSuccess: '2026-07-21T06:00:00Z',
+    collectSignals: async () => ({}), existingIssuesFor: async () => [],
+  });
+  const by = Object.fromEntries(evaluations.map((e) => [e.task, e]));
+  assert.equal(by.other.deferred, undefined);
+  assert.equal(by.other.dispatch.action, 'create');
+});
+
+test('planRun leaves the ordinary run untouched when nobody claims it', async () => {
+  // The honest negative: `exclusive` is opt-in, and a corpus of tasks that never
+  // mention it must schedule exactly as it did before.
+  const tasks = [mkTask('a'), mkTask('b')];
+  const { evaluations } = await planRun({
+    tasks, schedule: D, now: '2026-07-22T06:00:00Z', lastSuccess: '2026-07-21T06:00:00Z',
+    collectSignals: async () => ({}), existingIssuesFor: async () => [],
+  });
+  assert.equal(evaluations.length, 2);
+  assert.ok(evaluations.every((e) => e.deferred === undefined && e.exclusive === undefined));
+  assert.ok(evaluations.every((e) => e.dispatch.action === 'create'));
+});
+
+test('planRun does not defer a FORCED task behind an exclusive claim', async () => {
+  // Forcing is a decision the operator already made on a hand-started run. A claim
+  // swallowing it would make that run do nothing it was started for — and the
+  // forced task cannot claim either (FORCED_VERDICT carries no `exclusive`).
+  const tasks = [
+    mkTask('claimer', { precondition: () => ({ run: true, exclusive: true, reason: 'overdue' }) }),
+    // Weekly, so mid-week its slot has already been run — the only shape forcing
+    // exists for (computeDueTaskSlots reaches for the most-recent slot).
+    mkTask('forced', { frequency: 'weekly', precondition: () => ({ run: false, reason: 'nothing to do' }) }),
+  ];
+  const { evaluations } = await planRun({
+    tasks, schedule: D, now: '2026-07-22T06:00:00Z', lastSuccess: '2026-07-21T06:00:00Z',
+    overrides: { FORCE_TASKS: 'forced' },
+    collectSignals: async () => ({}), existingIssuesFor: async () => [],
+  });
+  const by = Object.fromEntries(evaluations.map((e) => [e.task, e]));
+  assert.equal(by.forced.forced, true);
+  assert.equal(by.forced.deferred, undefined);
+  assert.equal(by.forced.dispatch.action, 'create');
+});
+
+test('planRun lets several claimants share the run, deferring only the rest', async () => {
+  // Two claims are not a conflict to arbitrate: they all run and everything else
+  // defers, which is the only reading that needs no priority order between packs.
+  const tasks = [
+    mkTask('c1', { precondition: () => ({ run: true, exclusive: true, reason: 'x' }) }),
+    mkTask('c2', { precondition: () => ({ run: true, exclusive: true, reason: 'y' }) }),
+    mkTask('other', { precondition: () => ({ run: true, reason: 'z' }) }),
+  ];
+  const { evaluations } = await planRun({
+    tasks, schedule: D, now: '2026-07-22T06:00:00Z', lastSuccess: '2026-07-21T06:00:00Z',
+    collectSignals: async () => ({}), existingIssuesFor: async () => [],
+  });
+  const by = Object.fromEntries(evaluations.map((e) => [e.task, e]));
+  assert.equal(by.c1.dispatch.action, 'create');
+  assert.equal(by.c2.dispatch.action, 'create');
+  assert.match(by.other.deferred, /p\/c1, p\/c2/);
+});
+
+test('runPrecondition normalizes `exclusive` like every other verdict field', () => {
+  assert.equal(runPrecondition(mkTask('a', { precondition: () => ({ run: true, exclusive: true }) }), {}, {}).exclusive, true);
+  assert.equal(runPrecondition(mkTask('b'), {}, {}).exclusive, false, 'a verdict that omits it is not claiming');
+  assert.equal(runPrecondition(mkTask('c', { precondition: () => ({ run: true, exclusive: 'yes' }) }), {}, {}).exclusive, false, 'only a literal true claims');
 });
 
 // ── Dormancy: the gate ahead of every other decision ────────────────────────
@@ -181,10 +303,10 @@ test('planRun marks a agent_model:none task inline instead of dispatching an iss
   assert.equal(askedIssues, false, 'an inline task never searches for a dispatch issue');
 });
 
-test('planRun flags a task that declares agent_preprocessing (agentless and agentful)', async () => {
+test('planRun flags a task that declares prework (agentless and agentful)', async () => {
   const tasks = [
-    mkTask('code', { agent_model: 'none', expected_outcome: 'none', agent_preprocessing: 'node worker.mjs', agent_preprocessing_timeout: 120, precondition: () => ({ run: true, reason: 'x' }) }),
-    mkTask('prep-then-agent', { agent_preprocessing: 'node prepare.mjs', agent_preprocessing_timeout: 120, precondition: () => ({ run: true, reason: 'x' }) }),
+    mkTask('code', { agent_model: 'none', expected_outcome: 'none', prework: 'node worker.mjs', prework_timeout: 120, precondition: () => ({ run: true, reason: 'x' }) }),
+    mkTask('prep-then-agent', { prework: 'node prepare.mjs', prework_timeout: 120, precondition: () => ({ run: true, reason: 'x' }) }),
   ];
   const { evaluations } = await planRun({
     tasks, schedule: D, now: '2026-07-22T06:00:00Z', lastSuccess: '2026-07-21T06:00:00Z',
@@ -192,11 +314,11 @@ test('planRun flags a task that declares agent_preprocessing (agentless and agen
     existingIssuesFor: async () => [],
   });
   const byTask = Object.fromEntries(evaluations.map((e) => [e.task, e]));
-  // agentless + preprocessing: both flags set; the CLI runs the subprocess, not the in-process worker.
-  assert.equal(byTask.code.preprocessing, true);
+  // agentless + prework: both flags set; the CLI runs the subprocess, not the in-process worker.
+  assert.equal(byTask.code.prework, true);
   assert.equal(byTask.code.inline, true);
-  // agentful + preprocessing: preprocessing flagged, and a dispatch is still planned for the hand-off.
-  assert.equal(byTask['prep-then-agent'].preprocessing, true);
+  // agentful + prework: prework flagged, and a dispatch is still planned for the hand-off.
+  assert.equal(byTask['prep-then-agent'].prework, true);
   assert.equal(byTask['prep-then-agent'].dispatch.action, 'create');
 });
 
@@ -221,102 +343,15 @@ test('renderSummary lists each evaluated task with its verb and reason', () => {
     { pack: 'p', task: 'a', slotId: 'd2026-07-22', run: true, dispatch: { action: 'create', reason: 'new' } },
     { pack: 'p', task: 'b', slotId: 'd2026-07-22', run: false, reason: 'quiet' },
     { pack: 'p', task: 'c', slotId: 'd2026-07-22', run: true, inline: true, reason: 'inline work' },
+    { pack: 'p', task: 'd', slotId: 'd2026-07-22', run: true, exclusive: true, dispatch: { action: 'create', reason: 'new' } },
+    { pack: 'p', task: 'e', slotId: 'd2026-07-22', run: true, reason: 'work found', deferred: 'deferred — p/d claimed this run exclusively' },
   ]);
   assert.match(summary, /- p\/a \[d2026-07-22\] create — new/);
   assert.match(summary, /- p\/b \[d2026-07-22\] skip — quiet/);
   assert.match(summary, /- p\/c \[d2026-07-22\] run-inline — inline work/);
-});
-
-// --- maintainDispatchIssues: the recovery the executor's sweep used to do -----
-// The sweep is gone (one executor session runs exactly its own triggering issue),
-// so these backstops run here, once per scheduler run, over the GitHub calls the
-// shell actually makes.
-
-// A fake gh that serves one search result set and records every write.
-const maintenanceGh = (items) => {
-  const calls = [];
-  const gh = async (path, opts = {}) => {
-    calls.push({ path, method: opts.method ?? 'GET', body: opts.body });
-    if (path.startsWith('/search/issues')) return { status: 200, json: { items } };
-    return { status: opts.method === 'POST' && path.endsWith('/labels') ? 201 : 200, json: null };
-  };
-  return { gh, calls };
-};
-const quiet = async (fn) => {
-  const orig = console.log; console.log = () => {};
-  try { return await fn(); } finally { console.log = orig; }
-};
-
-test('maintainDispatchIssues re-arms a lost trigger by removing and re-adding its own ready label', async () => {
-  const { gh, calls } = maintenanceGh([
-    { number: 11, title: '[claudinite-task] basics/baselining d2026-07-22', labels: [{ name: READY_FLEET_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T01:00:00Z', comments: 0 },
-  ]);
-  const out = await quiet(() => maintainDispatchIssues(gh, 'o/r', '2026-07-22T02:00:00Z', { labelsEnsured: true }));
-  assert.deepEqual(out.rearmed, [11]);
-
-  // Remove then re-add — a bare re-apply emits no `labeled` event, so both halves
-  // are load-bearing, and the label must be the fleet one the issue already had.
-  const del = calls.find((c) => c.method === 'DELETE');
-  assert.equal(del.path, `/repos/o/r/issues/11/labels/${encodeURIComponent(READY_FLEET_LABEL)}`);
-  const add = calls.find((c) => c.method === 'POST' && c.path === '/repos/o/r/issues/11/labels');
-  assert.deepEqual(add.body.labels, [READY_FLEET_LABEL]);
-  assert.ok(calls.indexOf(del) < calls.indexOf(add));
-});
-
-test('maintainDispatchIssues leaves a fresh, claimed, or commented issue completely alone', async () => {
-  const { gh, calls } = maintenanceGh([
-    { number: 1, title: '[claudinite-task] basics/baselining d2026-07-22', labels: [{ name: READY_LABEL }], created_at: '2026-07-22T01:55:00Z', updated_at: '2026-07-22T01:55:00Z', comments: 0 }, // 5m old
-    { number: 2, title: '[claudinite-task] p/b d2026-07-22', labels: [{ name: AGENT_RUNNING_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T01:58:00Z', comments: 1 }, // live claim
-    { number: 3, title: '[claudinite-task] p/c d2026-07-22', labels: [{ name: READY_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T01:30:00Z', comments: 2 }, // engaged
-  ]);
-  const out = await quiet(() => maintainDispatchIssues(gh, 'o/r', '2026-07-22T02:00:00Z', { labelsEnsured: true }));
-  assert.deepEqual(out, { stale: [], deadClaims: [], rearmed: [] });
-  assert.equal(calls.filter((c) => c.method !== 'GET').length, 0); // read-only run
-});
-
-test('maintainDispatchIssues escalates a stale issue and does NOT also re-arm it', async () => {
-  const { gh, calls } = maintenanceGh([
-    { number: 21, title: '[claudinite-task] basics/baselining d2026-07-22', labels: [{ name: READY_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T01:00:00Z', comments: 0 },
-  ]);
-  const out = await quiet(() => maintainDispatchIssues(gh, 'o/r', '2026-07-25T05:00:00Z', { labelsEnsured: true })); // ~3d → past 2 daily periods
-  assert.deepEqual(out.stale, [21]);
-  assert.deepEqual(out.rearmed, []); // the two rules overlap here; stale has to win
-
-  assert.ok(calls.some((c) => c.path === '/repos/o/r/issues/21/comments' && c.method === 'POST'));
-  // The ready label comes off, so an escalated issue stops being armed.
-  assert.ok(calls.some((c) => c.method === 'DELETE' && c.path.endsWith(encodeURIComponent(READY_LABEL))));
-  const add = calls.find((c) => c.method === 'POST' && c.path === '/repos/o/r/issues/21/labels');
-  assert.deepEqual(add.body.labels, [NEEDS_HUMAN_LABEL]);
-});
-
-test('maintainDispatchIssues reclaims a dead agent-running claim', async () => {
-  const { gh, calls } = maintenanceGh([
-    { number: 31, title: '[claudinite-task] p/a d2026-07-22', labels: [{ name: AGENT_RUNNING_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T02:00:00Z', comments: 1 },
-  ]);
-  const out = await quiet(() => maintainDispatchIssues(gh, 'o/r', '2026-07-22T12:00:00Z', { labelsEnsured: true })); // 10h idle
-  assert.deepEqual(out.deadClaims, [31]);
-  assert.ok(calls.some((c) => c.method === 'DELETE' && c.path.endsWith(AGENT_RUNNING_LABEL)));
-  const add = calls.find((c) => c.method === 'POST' && c.path === '/repos/o/r/issues/31/labels');
-  assert.deepEqual(add.body.labels, [NEEDS_HUMAN_LABEL]);
-});
-
-test('maintainDispatchIssues ensures the labels before applying needs-human when the run has not', async () => {
-  const { gh, calls } = maintenanceGh([
-    { number: 41, title: '[claudinite-task] p/a d2026-07-22', labels: [{ name: READY_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T01:00:00Z', comments: 0 },
-  ]);
-  await quiet(() => maintainDispatchIssues(gh, 'o/r', '2026-07-25T05:00:00Z', { labelsEnsured: false }));
-  // GitHub 422s on applying an unknown label, so the ensure has to precede the write.
-  const ensured = calls.filter((c) => c.path === '/repos/o/r/labels');
-  assert.equal(ensured.length, SCHEDULER_LABELS.length);
-  const firstWrite = calls.findIndex((c) => c.path.startsWith('/repos/o/r/issues/41'));
-  assert.ok(calls.indexOf(ensured.at(-1)) < firstWrite);
-});
-
-test('an idle repo with no open dispatch issues writes nothing', async () => {
-  const { gh, calls } = maintenanceGh([]);
-  const out = await quiet(() => maintainDispatchIssues(gh, 'o/r', '2026-07-22T02:00:00Z'));
-  assert.deepEqual(out, { stale: [], deadClaims: [], rearmed: [] });
-  assert.equal(calls.filter((c) => c.method !== 'GET').length, 0);
+  // The claim and the deferral it caused are both legible in the run's own summary.
+  assert.match(summary, /- p\/d \[d2026-07-22\] \(exclusive\) create — new/);
+  assert.match(summary, /- p\/e \[d2026-07-22\] defer — deferred — p\/d claimed this run exclusively/);
 });
 
 // ── parseOverrides ──────────────────────────────────────────────────────────
@@ -449,9 +484,11 @@ test('an id matching no discovered task forces nothing, and never throws', async
   assert.deepEqual(evaluations, []);
 });
 
-test('a task due on its own merit is judged normally, not forced', async () => {
-  // Same slot due AND named in FORCE_TASKS: the due branch wins, so the task is
-  // evaluated the ordinary way and its own "no" stands.
+test('a forced task that happens to also be due is still FORCED — the operator\'s decision wins', async () => {
+  // Same slot due AND named in FORCE_TASKS: forcing wins (#749). The operator
+  // pressed a button naming this task; whether its slot coincidentally came due is
+  // an accident of when they pressed it, and must not change what the button does —
+  // the precondition stays unconsulted either way.
   const { evaluations } = await planRun({
     tasks: [notDue('baselining')], schedule: D,
     now: '2026-07-28T02:30:00Z', lastSuccess: '2026-07-28T01:44:00Z', // the 02:00 slot IS due
@@ -460,8 +497,57 @@ test('a task due on its own merit is judged normally, not forced', async () => {
     existingIssuesFor: async () => [],
   });
   assert.equal(evaluations.length, 1);
-  assert.equal(evaluations[0].forced, undefined);
-  assert.equal(evaluations[0].run, false, 'due on its own merit → its precondition decides');
+  assert.equal(evaluations[0].forced, true);
+  assert.equal(evaluations[0].run, true, 'forced means run, even when the slot was also due');
+});
+
+test('a forced run evaluates ONLY the forced tasks — never the rest of the due backlog', async () => {
+  // The fan-out contract (#749): an enforcer firing FORCE_TASKS at twenty members
+  // must mean exactly one task in each, not one task plus whatever each member's
+  // clock happened to owe. The due task is not lost — its slot stays ahead of the
+  // schedule-event watermark (lastSuccessTime counts schedule runs only), so the
+  // next cron run picks it up.
+  let dueConsulted = false;
+  const { evaluations } = await planRun({
+    tasks: [
+      mkTask('wanted', { frequency: 'weekly', precondition: () => { throw new Error('never consulted'); } }),
+      mkTask('coincident', { frequency: 'hourly', precondition: () => { dueConsulted = true; return { run: true, reason: 'due' }; } }),
+    ],
+    schedule: D,
+    now: '2026-07-28T02:30:00Z', lastSuccess: '2026-07-28T01:44:00Z', // hourly 02:00 IS due
+    overrides: { FORCE_TASKS: 'wanted' },
+    collectSignals: async () => ({}),
+    existingIssuesFor: async () => [],
+  });
+  assert.equal(evaluations.length, 1, 'only the forced task is evaluated');
+  assert.equal(evaluations[0].task, 'wanted');
+  assert.equal(evaluations[0].forced, true);
+  assert.equal(dueConsulted, false, 'the coincidentally-due task was never looked at');
+});
+
+test('a manual-frequency task never fires on any cadence, and fires when forced', async () => {
+  // `manual` is the operator-lever frequency (#749): dueSlots skips it
+  // unconditionally, so only FORCE_TASKS reaches it — with the forced slot
+  // synthesized from the anchor date plus planRun's per-run marker.
+  const manual = mkTask('lever', { frequency: 'manual', precondition: () => { throw new Error('never consulted'); } });
+  const idle = await planRun({
+    tasks: [manual], schedule: D,
+    now: '2026-07-28T02:30:00Z', lastSuccess: '2026-07-27T01:44:00Z', // a day's backlog — everything cadenced would fire
+    collectSignals: async () => ({}),
+    existingIssuesFor: async () => [],
+  });
+  assert.equal(idle.evaluations.length, 0, 'no cadence ever makes a manual task due');
+
+  const forced = await planRun({
+    tasks: [manual], schedule: D,
+    now: '2026-07-28T02:30:00Z', lastSuccess: '2026-07-27T01:44:00Z',
+    overrides: { FORCE_TASKS: 'lever' }, runId: '99',
+    collectSignals: async () => ({}),
+    existingIssuesFor: async () => [],
+  });
+  assert.equal(forced.evaluations.length, 1);
+  assert.equal(forced.evaluations[0].forced, true);
+  assert.match(forced.evaluations[0].slotId, /^x2026-07-28~f99$/, 'anchor-date slot + the per-run forced marker');
 });
 
 test('forcedTaskIds reads only FORCE_TASKS, trimming and dropping blanks', () => {
@@ -469,4 +555,35 @@ test('forcedTaskIds reads only FORCE_TASKS, trimming and dropping blanks', () =>
   assert.deepEqual(forcedTaskIds({ FORCE_TASKS: '' }), []);
   assert.deepEqual(forcedTaskIds({}), []);
   assert.deepEqual(forcedTaskIds({ FORCE_BASELINING: 'true' }), [], 'the superseded key forces nothing');
+});
+
+test('FORCE_TASKS re-runs a slot the schedule already ran — exactly-once must not swallow the operator', async () => {
+  // The exact silent-failure shape: the slot's dispatch issue already exists
+  // (closed after a successful run), and the operator forces a re-run mid-day.
+  // Without the per-run slot marker, planDispatch's state=all title match
+  // answered 'skip' and FORCE_TASKS did nothing at all.
+  const { evaluations } = await planRun({
+    tasks: [notDue('baselining')], schedule: D, ...MIDDAY,
+    overrides: { FORCE_TASKS: 'baselining' },
+    runId: '424242',
+    collectSignals: async () => ({}),
+    existingIssuesFor: async () => [
+      { number: 9, title: '[claudinite-task] p/baselining d2026-07-28', state: 'closed' },
+    ],
+  });
+  assert.equal(evaluations[0].slotId, 'd2026-07-28~f424242', 'a forced dispatch slot carries the run marker');
+  assert.equal(evaluations[0].dispatch.action, 'create', 'the already-run slot must not block the forced dispatch');
+});
+
+test('a forced dispatch still never stacks on an OPEN dispatch of the same family', async () => {
+  const { evaluations } = await planRun({
+    tasks: [notDue('baselining')], schedule: D, ...MIDDAY,
+    overrides: { FORCE_TASKS: 'baselining' },
+    runId: '424242',
+    collectSignals: async () => ({}),
+    existingIssuesFor: async () => [
+      { number: 9, title: '[claudinite-task] p/baselining d2026-07-28', state: 'open' },
+    ],
+  });
+  assert.equal(evaluations[0].dispatch.action, 'suppress', 'at-most-one-open holds for forced runs too');
 });

@@ -1,10 +1,10 @@
 # Usage fold — count skill loads and their denominators from the captured logs
 
-**This task runs no agent.** It is `agent_model: none` with `agent_preprocessing: node worker.mjs`, so the whole pass is the deterministic [`worker.mjs`](worker.mjs) the scheduler runs as a subprocess, which calls its sibling in this folder, the counting and folding core ([`fold-usage.mjs`](fold-usage.mjs)). This file is the human-facing record of what that worker does; there is no dispatch issue and no subagent.
+**This task runs no agent.** It is `agent_model: none` with `prework: node worker.mjs`, so the whole pass is the deterministic [`worker.mjs`](worker.mjs) the scheduler runs as a subprocess, which calls its sibling in this folder, the counting and folding core ([`fold-usage.mjs`](fold-usage.mjs)). This file is the human-facing record of what that worker does; there is no dispatch issue and no subagent.
 
 ## What it does
 
-Daily: fetch this repo's orphan `conversation-logs` branch, count each capture file still inside the retention window, read the scheduler's own task-run records from its Actions logs since the last fold, and regenerate `.claudinite/local/usage.GENERATED.json` on an auto-merging PR. A byte-identical recompute opens nothing, and a repo with no logs branch yet still folds its task rows.
+Daily: fetch this repo's orphan `conversation-logs` branch, count each capture file still inside the retention window, read the scheduler's own task-run records from its Actions logs since the last fold, and regenerate `.claudinite/local/usage.GENERATED.json` on a PR that lands itself where this repo's delivery settings allow (the shared landing helper, `engine/scheduler/land-pr.mjs`, owns those nuances — a `review` repo's PR waits for the owner). A byte-identical recompute opens nothing, and a repo with no logs branch yet still folds its task rows.
 
 What it counts, per bucket:
 
@@ -14,7 +14,8 @@ What it counts, per bucket:
 - **`userMessages`** — genuine human turns. **`userCommands`** — every typed `/command`.
 - **`checks`**, per scope (`work` / `world`) — `runs` (observed activations), `failures` (runs that reported a blocking finding), `errors` (the runner could not launch), the `blocking`/`advisory` finding volume, and `ciRuns`/`ciFailures` (the CI subset of the first two). **`checkFindings`**, per rule id — which rule caught what.
 
-- **`tasks`**, per `pack/task` — what the **scheduler** did with each due task: `agent` (a dispatch was filed, so an executor session ran it with an agent), `preprocess` (it ran with no agent — an `agent_model: none` task, or an agentful one whose preprocessing requested no agent stage), `skipped` (its precondition said there was nothing to do), `failed` (its preprocessing failed and converged to needs-human), `deferred` (due, past its precondition, but no new dispatch — this slot was already filed, or an earlier one is still open).
+- **`tasks`**, per `pack/task` — what the **scheduler** did with each due task: `agent` (a dispatch was filed, so an executor session ran it with an agent), `prework` (it ran with no agent — an `agent_model: none` task, or an agentful one whose prework requested no agentic phase), `skipped` (its precondition said there was nothing to do), `failed` (its prework failed and converged to needs-human), `deferred` (due, past its precondition, but no new dispatch — this slot was already filed, or an earlier one is still open).
+- **`taskExec`**, per `pack/task` — what the **executor session** then did with a dispatch, distilled from the captured conversation logs: `success`, `failed`, `task-gone` (the dispatch named a task the repo no longer carries, so the issue was closed), `invalid`. Counted off the machine-readable `claudinite-task-exec` records executor-side code prints (`record-exec.mjs`, `resolve-dispatch.mjs`; format owned by `engine/scheduler/run-record.mjs`), deduped on the full record tuple per capture file — never scraped from the agent's prose. A sample (captured executor sessions), beside the `tasks` census.
 
 The denominators are the point. A raw load count cannot tell healthy-rare from broken — a version-bump skill loading rarely is fine — so the question is loads *against the sessions where that skill's own declared trigger plausibly applied.*
 
