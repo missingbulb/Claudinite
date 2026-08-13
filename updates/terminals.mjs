@@ -35,6 +35,7 @@ export function terminalFor(outcome) {
     return {
       action: 'apply-stage',
       packs: outcome.applyStage.packs ?? [],
+      instructions: outcome.applyStage.instructions ?? [],
       why: outcome.applyStage.why ?? 'the pack\'s new rules must be applied to content the canon has never seen',
     };
   }
@@ -54,13 +55,20 @@ export function terminalFor(outcome) {
 // routine that fires on the ready label is not a GitHub artifact — no Action can see
 // whether it exists or is wired correctly — so only a session can, and this is the
 // only agent lane left once the engine flow has none.
-export function applyStageBrief({ packs = [], branch = null } = {}) {
+// `instructions` are what the RECORDS asked for, in the words of whoever wrote them
+// (registry.mjs, `applyStage.instructions`). They sit between the scope and the
+// standing duties on purpose: the standing text holds for every apply stage and says
+// nothing about the change that summoned this one, and a session told only "apply the
+// updated rules of basics" has to guess which rules those were.
+export function applyStageBrief({ packs = [], branch = null, instructions = [] } = {}) {
+  const asked = (Array.isArray(instructions) ? instructions : [instructions]).filter(Boolean);
   return [
     `Apply the updated rules of: ${packs.join(', ') || '(none named)'}.`,
     '',
     'Scope is this update\'s branch' + (branch ? ` (\`${branch}\`)` : '') + ' — fix the repo against the new rules and',
     'repair the tests they break. Nothing outside that scope, and no new features.',
     '',
+    ...(asked.length ? ['What the records that asked for this stage want done:', '', ...asked.map((t) => t.trim()), ''] : []),
     'Also verify this repo\'s executor routine: it fires on the ready label and no Action can',
     'see it, so a session is the only thing that can confirm it exists and points at the',
     'mounted executor instructions.',

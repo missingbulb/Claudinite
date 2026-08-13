@@ -81,6 +81,26 @@ export function planPackUpdates(packs, declared, installed, { today, engineVersi
 
 const outcome = (status, detail, extra = {}) => ({ status, detail, ...extra });
 
+// Whether this run's records ask for the agentic tail, and what they ask for.
+//
+// Separate and pure because it is the answer most worth being able to interrogate
+// without a member tree: it decides whether an update costs a session, it is the
+// half of the flow that #798 got wrong, and the wrong version of it was
+// indistinguishable from the right one against any single repo.
+export function applyStageFor(specs) {
+  const asked = specs.filter((m) => m.applyStage);
+  if (!asked.length) return { needed: false };
+  return {
+    needed: true,
+    // The packs that RAISED the records, not every pack whose version moved: the
+    // brief scopes a session, and naming packs with nothing to apply widens it.
+    packs: [...new Set(asked.map((m) => flowOf(m.dir).pack))],
+    records: asked.map((m) => m.dir),
+    why: asked.map((m) => m.applyStage.why).join('; '),
+    instructions: asked.map((m) => m.applyStage.instructions).filter(Boolean),
+  };
+}
+
 // Update `targetRoot`'s declared packs to the versions this canon ships. Same
 // arguments and same terminals as the engine flow; `dryRun` judges everything and
 // writes nothing.
@@ -153,17 +173,29 @@ export async function packUpdate(targetRoot, {
   next.claudinite = { ...(next.claudinite ?? {}), packVersions };
   writeFileSync(settingsPath, `${JSON.stringify(next, null, 2)}\n`);
 
-  // 4. The same gate the engine flow uses, then the agentic tail's own question.
-  //    A pack update that changed nothing needs no session; one that moved a pack's
-  //    rules over member-authored content is exactly what the apply stage is for.
+  // 4. The same gate the engine flow uses, then the agentic tail's own question —
+  //    ASKED OF THE RECORDS, NOT OF THE VERSION PLAN (#798).
+  //
+  //    This used to be `moved.length > 0`: any declared pack whose version number
+  //    changed summoned a session. That is a fact about the CANON, and the stage
+  //    exists for a fact about the MEMBER — the pack's new rules met content the
+  //    canon has never seen. The two coincide only by accident.
+  //
+  //    The cost of conflating them was not theoretical. A record can only reach an
+  //    up-to-date member if its pack's manifest version bumps (`migrationApplies` is
+  //    `want > have` against the stamped number, and the stamp written is the
+  //    manifest's). So every mechanical migration — a regex rewrite, a rename, a
+  //    declaration seed, all deterministic and idempotent — had to buy a session on
+  //    every member in the fleet to reach them at all. Deterministic work priced as
+  //    agentic work is how a fleet learns to dread its own updates.
+  //
+  //    So the records answer. Each one's author knew which kind they were writing,
+  //    and `applyStage` is where they say so. A bump carrying no such record is
+  //    silent, which is what makes a first live run of an agentic change something
+  //    you can aim at one member instead of fourteen at once.
   const selftest = runSelfTest(targetRoot, selfTestRun);
   const decision = deliveryDecision({ selftestOk: selftest.ok, delivery, forceMergeOnRedCi });
-  const moved = plan.filter((p) => p.from !== p.to);
-
   return outcome(decision.action === 'needs-human' ? NEEDS_HUMAN : 'ok', decision.why, {
-    plan, files: packFiles.length, applied, selftest, decision,
-    applyStage: moved.length > 0
-      ? { needed: true, packs: moved.map((p) => p.id), why: 'a pack\'s rules moved over content the canon has never seen' }
-      : { needed: false },
+    plan, files: packFiles.length, applied, selftest, decision, applyStage: applyStageFor(specs),
   });
 }

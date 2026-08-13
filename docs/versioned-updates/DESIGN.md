@@ -115,6 +115,19 @@ can absorb it**, and constrains the engine so its flow needs none of them.
    (the CCR routine that fires on `ready-for-agent` is not a GitHub
    artifact; only an agent session can see it, and this is the only agent
    lane left).
+
+   **The word is *may*, and the RECORDS are what decide it** (#798). A pack
+   record declares `applyStage: { why, instructions }`; an update whose gap
+   holds no such record is delivered without a session. The first
+   implementation asked the version plan instead — "any declared pack whose
+   version moved" — and that is a fact about the *canon* where the stage
+   needs a fact about the *member*. Because a record can only reach an
+   up-to-date member if its pack's manifest bumps (§3.7), and every bump
+   summoned a session, **a purely mechanical migration could not be shipped
+   without spending an agent session on every member in the fleet**. The
+   record's author knows which of the two kinds they wrote; a version number
+   never can. An **install** stays unconditional (§4) — that genuinely is
+   first contact.
 9. **The pack update merges its PR to main** unless it ends non-green.
    **Every** non-green terminal — unanswered interview questions, an agentic
    repair that leaves checks red, a migration that could not complete —
@@ -175,7 +188,11 @@ install-specific provisions:
   codes, and its dispatch-issue protocol.
 - The `agentic:` field on migration records: engine migrations may not
   carry it at all; pack migrations express agentic work as the pack
-  update's apply stage instead.
+  update's apply stage instead, by declaring `applyStage: { why,
+  instructions }` (§3.8). What the successor drops is the **model** knob —
+  which model runs a session is the scheduler's answer, off the task
+  declaration, and a record naming its own was a second authority over the
+  same fact.
 - The date-held stamp (`claudinite.updated` gating note application).
 - The baselining vocabulary, corpus-wide.
 

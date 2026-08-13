@@ -1,7 +1,6 @@
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { MIGRATION_FILE, migrationDirs, migrationActive, recordName } from '../checks/helpers/active-migrations.mjs';
-import { MODEL_FAMILIES } from '../scheduler/model-map.mjs';
+import { MIGRATION_FILE, migrationDirs, migrationActive, recordName, flowOf } from '../checks/helpers/active-migrations.mjs';
 
 // <corpus>/engine/migrations/ — records are addressed corpus-relative, because they
 // no longer share one directory with this module: an engine record sits beside it,
@@ -31,8 +30,10 @@ export async function loadMigrations() {
   for (const d of migrationDirs()) {
     const spec = (await import(pathToFileURL(join(corpusRoot, d, MIGRATION_FILE)).href)).default;
     const record = { dir: d, ...spec };
-    // Validated at LOAD, so a retired field cannot reach a flow that would ignore it.
+    // Validated at LOAD, so a retired field cannot reach a flow that would ignore it,
+    // and a malformed apply-stage declaration cannot reach the flow that acts on it.
     assertNoAgenticNote(record);
+    assertApplyStageDeclaration(record);
     out.push(record);
   }
   return out;
@@ -277,25 +278,72 @@ export async function applyMigration(migration, io) {
   return applied;
 }
 
-// THE `agentic` FIELD IS RETIRED (#768 Phase 5). A record used to be able to carry
-// `agentic: { model, instructions }` — member-side adaptation no script could do —
-// and baselining's prework read it to decide whether a pending note needed an agent
-// stage, holding the member's stamp until one ran.
+// THE `agentic` FIELD IS RETIRED (#768 Phase 5), and its successor is `applyStage`
+// below. A record used to carry `agentic: { model, instructions }` — member-side
+// adaptation no script could do — and baselining's prework read it to decide whether
+// a pending note needed an agent stage, holding the member's stamp until one ran.
 //
-// Nothing reads it now, and nothing should: the engine flow never had an agentic
-// lane (DESIGN §5), and the pack flow's apply stage decides from the VERSION PLAN —
-// "a pack's rules moved over content the canon has never seen" — which is a fact
-// about what the update did, not a flag a record carries. A record's own opinion
-// about needing an agent was always a second answer to that question.
+// What the successor drops is the MODEL knob. Which model runs a session is the
+// scheduler's answer (engine/scheduler/model-map.mjs, off the task declaration), and
+// a record reaching around it to name its own was a second authority over the same
+// fact. What a record legitimately knows is narrower and is all `applyStage` asks
+// for: whether its change needs a session at all, and what that session must do.
 //
-// So the field is not merely ignored, it is REJECTED. An ignored field on a record
+// The field is not merely ignored, it is REJECTED. An ignored field on a record
 // someone writes in good faith is work that silently never happens; the whole reason
 // the note existed was that skipping such work quietly is a correctness risk (#405).
 // Failing at load turns a stale or hopeful note into an error with a fix attached.
 export function assertNoAgenticNote(m) {
   if (m?.agentic === undefined || m?.agentic === null) return;
   throw new Error(`migration ${m.id}: the "agentic" field was retired in #768 Phase 5 and is no longer run. `
-    + 'Member-side adaptation belongs to the owning pack update\'s apply stage, which decides from the version '
-    + 'plan; delete the field, and bump the pack\'s version if the work still needs to reach members.');
+    + 'Declare `applyStage: { why, instructions }` instead — same intent, without the model knob, which the '
+    + 'scheduler owns. Engine records may not carry it at all (DESIGN §5); a pack record may.');
+}
+
+// THE `applyStage` FIELD: this record's change needs a session on the member.
+//
+// It exists because the alternative was worse. The pack flow used to decide the
+// apply stage from its VERSION PLAN — "any pack version moved" — which is a fact
+// about the CANON, while the stage exists for a fact about the MEMBER: the pack's
+// new rules met content the canon has never seen. Since a record can only reach an
+// up-to-date member if its pack's manifest version bumps, and every bump fired the
+// stage, a purely mechanical migration — a regex rewrite, a declaration seed — could
+// not be shipped without spending an agent session on every member in the fleet
+// (#798). The record's author knows which of the two kinds they wrote; a version
+// number never can.
+//
+// SHAPE, VALIDATED AT LOAD for the same reason the retired field is rejected there:
+// a record whose declaration is malformed must fail where it is written, not go
+// quietly unread by the flow that would have acted on it.
+//
+//   - `why` (required, non-empty string) — what the session is for, in the PR and in
+//     the log. The terminal vocabulary insists every non-green end be explainable
+//     (updates/terminals.mjs), and this is the sentence for this one.
+//   - `instructions` (optional string) — appended to the standing brief. The standing
+//     brief is policy that holds for every apply stage; this is what only this record
+//     knows, and without it the declaration would be a bare boolean that tells the
+//     session nothing about the change that summoned it.
+//
+// ENGINE RECORDS MAY NOT CARRY IT. "No agentic work in the engine flow. Ever."
+// (DESIGN §5) — and the flow is read off where the record LIVES, so this is checked
+// against the same structural classifier and cannot be misdeclared.
+export function assertApplyStageDeclaration(m) {
+  const declared = m?.applyStage;
+  if (declared === undefined || declared === null) return;
+  const bad = (what) => { throw new Error(`migration ${m.id}: ${what}`); };
+  if (m.dir && flowOf(m.dir).flow !== 'pack') {
+    bad('only a PACK record may declare "applyStage" — the engine update flow has no agentic lane (DESIGN §5). '
+      + 'If the change needs a session on each member, it belongs to the pack whose rules it changes.');
+  }
+  if (typeof declared !== 'object' || Array.isArray(declared)) {
+    bad('"applyStage" must be an object `{ why, instructions }`, not a bare flag — a stage nobody can explain '
+      + 'is one nobody will trust the next time it fires.');
+  }
+  if (typeof declared.why !== 'string' || declared.why.trim() === '') {
+    bad('"applyStage.why" must be a non-empty string saying what the session is for; it is what the PR and the log report.');
+  }
+  if (declared.instructions !== undefined && typeof declared.instructions !== 'string') {
+    bad('"applyStage.instructions" must be a string — it is appended verbatim to the apply-stage brief.');
+  }
 }
 

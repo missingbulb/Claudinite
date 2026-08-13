@@ -228,7 +228,7 @@ export async function main() {
         marker: 'agent-requested',
         delivered: { branch, pr: pr.number, merged: false },
         reason: { code: 'apply-stage', detail: terminal.why },
-        brief: applyStageBrief({ packs: terminal.packs, branch }),
+        brief: applyStageBrief({ packs: terminal.packs, branch, instructions: terminal.instructions }),
       })}\n`);
       console.log(`update: requested the apply stage for ${terminal.packs.join(', ')}`);
     }

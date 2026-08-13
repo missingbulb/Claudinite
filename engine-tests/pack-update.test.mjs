@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { packUpdate, planPackUpdates, packRecordsInGap, isPackFile } from '../updates/pack-update.mjs';
+import { packUpdate, planPackUpdates, packRecordsInGap, isPackFile, applyStageFor } from '../updates/pack-update.mjs';
+import { applyStageBrief } from '../updates/terminals.mjs';
 import { NEEDS_HUMAN } from '../updates/engine-update.mjs';
 import { ENGINE_VERSION } from '../engine/version.mjs';
 import { applyVendor } from '../vendoring/apply-vendor-set.mjs';
@@ -111,20 +112,61 @@ test('the engine half of the mount is left alone — it belongs to the engine fl
   rmSync(root, { recursive: true, force: true });
 });
 
-test('the apply stage is asked for only when a pack version actually moved', async () => {
+test('a pack version moving does NOT by itself buy a session (#798)', async () => {
   const root = makeMember();
   assert.deepEqual((await applyVendor(root)).errors, []);
 
-  // Already current: nothing moved, so no session is spent.
+  // Already current: nothing to do at all.
   const current = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
   assert.equal(current.applyStage.needed, false);
 
-  // Rolled back: the pack's rules move over content the canon has never seen.
+  // Rolled back to zero — the largest gap a member can have, every declared pack
+  // moving at once. The old trigger (`moved.length > 0`) fired here, and that is
+  // exactly the defect: this is a WHOLESALE TREE REPLACEMENT, deterministic and
+  // idempotent, and no session can improve on it. Unless a record in the gap says
+  // its change met member-authored content, the update is silent.
   setStamp(root, { packVersions: { basics: 0 } });
   const moved = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
-  assert.equal(moved.applyStage.needed, true);
-  assert.ok(moved.applyStage.packs.includes('basics'));
+  assert.ok(moved.plan.some((p) => p.from !== p.to), 'the fixture must actually move a version, or it proves nothing');
+  assert.equal(moved.applyStage.needed, false, 'a bump with no record asking for a session must not spend one');
   rmSync(root, { recursive: true, force: true });
+});
+
+test('the records decide the apply stage, and what they say reaches the session', () => {
+  // Driven over specs rather than a member tree: the fleet currently carries no pack
+  // record declaring a stage, and a test that could only pass while one happened to
+  // exist would go quietly vacuous the day it aged out — which is the failure mode
+  // that made the canary rehearsal worthless for a day (#768 Phase 5).
+  const mechanical = { dir: 'packs/basics/migrations/2026-08-13-rename', id: 'rename' };
+  assert.deepEqual(applyStageFor([mechanical]), { needed: false },
+    'a deterministic record must be deliverable without an agent');
+
+  const asks = {
+    dir: 'packs/sheepdog/migrations/2026-08-13-roster',
+    id: 'roster',
+    applyStage: { why: 'the roster rules meet each member\'s own tasks', instructions: 'Re-home any task the new roster shape orphans.' },
+  };
+  const stage = applyStageFor([mechanical, asks]);
+  assert.equal(stage.needed, true);
+  assert.deepEqual(stage.packs, ['sheepdog'], 'only the pack that RAISED the record is in scope');
+  assert.deepEqual(stage.records, ['packs/sheepdog/migrations/2026-08-13-roster']);
+  assert.match(stage.why, /roster rules meet/);
+
+  // And the instructions must survive every hop to the brief — a declaration that
+  // stopped at the flow would be a bare boolean wearing prose.
+  const brief = applyStageBrief({ packs: stage.packs, branch: 'claudinite/update-1', instructions: stage.instructions });
+  assert.match(brief, /Re-home any task the new roster shape orphans\./);
+  assert.match(brief, /end at `needs-human`/, 'the standing policy is not displaced by what a record asked for');
+});
+
+test('two records asking together are one session, and both are briefed', () => {
+  const stage = applyStageFor([
+    { dir: 'packs/basics/migrations/2026-08-13-a', id: 'a', applyStage: { why: 'first', instructions: 'Do A.' } },
+    { dir: 'packs/basics/migrations/2026-08-13-b', id: 'b', applyStage: { why: 'second' } },
+  ]);
+  assert.deepEqual(stage.packs, ['basics'], 'one pack, named once');
+  assert.equal(stage.why, 'first; second', 'both reasons reach the PR — a session nobody can explain is one nobody trusts');
+  assert.deepEqual(stage.instructions, ['Do A.'], 'a record with nothing to add adds nothing');
 });
 
 test('a red self-test is the same needs-human terminal the engine flow has', async () => {

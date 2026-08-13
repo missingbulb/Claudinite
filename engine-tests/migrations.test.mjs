@@ -9,7 +9,7 @@ import {
   loadMigrations, resolvePath, applyFileAliases,
   applyMaterializations, applyRewrites, applyPackDeclarations, migrationActive,
   applyLocalDeclarationNormalization, applyMigration,
-  assertNoAgenticNote,
+  assertNoAgenticNote, assertApplyStageDeclaration,
   callerCanDeliverWorkflows, WITHHOLD_CAPABLE_ENV,
 } from '../engine/migrations/registry.mjs';
 import {
@@ -30,7 +30,42 @@ test('the retired agentic field is REJECTED, not ignored (#768 Phase 5)', () => 
       `a note shaped ${JSON.stringify(shape)} must not slip through`);
   }
   // The error has to say where the work goes now, or it is just a wall.
-  assert.throws(() => assertNoAgenticNote(M({ agentic: { model: 'sonnet', instructions: 'x' } })), /apply stage/);
+  assert.throws(() => assertNoAgenticNote(M({ agentic: { model: 'sonnet', instructions: 'x' } })), /applyStage/);
+});
+
+test('a pack record may ask for the apply stage; an engine record may not (#798)', () => {
+  const pack = (over) => ({ ...M(over), dir: 'packs/basics/migrations/2026-08-13-x' });
+  const engine = (over) => ({ ...M(over), dir: 'engine/migrations/2026-08-13-x' });
+
+  assert.equal(assertApplyStageDeclaration(pack()), undefined, 'declaring nothing is the common case');
+  assert.equal(assertApplyStageDeclaration(pack({ applyStage: { why: 'rules met member content' } })), undefined);
+  assert.equal(assertApplyStageDeclaration(pack({ applyStage: { why: 'w', instructions: 'Do the thing.' } })), undefined);
+
+  // "No agentic work in the engine flow. Ever." (DESIGN §5) — and the flow is read off
+  // where the record LIVES, so a record cannot declare its way into a lane whose flow
+  // has no session to dispatch. Without this the field would be accepted and then
+  // silently never acted on, which is the failure the retired note was killed for.
+  assert.throws(() => assertApplyStageDeclaration(engine({ applyStage: { why: 'w' } })),
+    /only a PACK record/, 'the engine update flow has no agentic lane to put this in');
+
+  // A bare flag is refused: the terminal vocabulary requires every non-green end to
+  // be explainable, and `applyStage: true` explains nothing.
+  for (const shape of [true, 'yes', ['w'], {}, { why: '' }, { why: '   ' }, { why: 42 }]) {
+    assert.throws(() => assertApplyStageDeclaration(pack({ applyStage: shape })),
+      /applyStage/, `a stage declared as ${JSON.stringify(shape)} must not load`);
+  }
+  assert.throws(() => assertApplyStageDeclaration(pack({ applyStage: { why: 'w', instructions: ['a'] } })),
+    /instructions" must be a string/);
+});
+
+test('the shape check runs at LOAD, so the live corpus is covered by it', async () => {
+  // The selection half again: a validator nothing calls is a validator that is wrong
+  // about the corpus for as long as nobody looks.
+  const migs = await loadMigrations();
+  for (const m of migs) {
+    assert.equal(assertApplyStageDeclaration(m), undefined, `${m.dir} would not load`);
+    if (m.applyStage) assert.equal(flowOf(m.dir).flow, 'pack', `${m.dir} asks for a session its flow cannot dispatch`);
+  }
 });
 
 test('no record in the live corpus carries the retired field', async () => {
