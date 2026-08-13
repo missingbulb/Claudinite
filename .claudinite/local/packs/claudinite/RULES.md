@@ -36,7 +36,7 @@ prose below).
   a member list (or a "fleet" task) living in the canon. It doesn't go here: the canon carries only
   **mechanisms exercised on itself**, and the knowledge of *which* repos exist stays in the
   **Sheepdog** repo and its pack, which enumerates members at runtime from its own
-  `.claudinite-checks.json` entry — exactly where `fleet-census` and `fleet-freshness` already keep
+  `.claudinite-checks.json` entry — exactly where the `fleet-roster` sweep already keeps
   it. So a cross-repo feature splits in two: a self-contained per-repo half in the canon, and the
   aggregation half as a Sheepdog fleet task. **No repo list exists anywhere in canon code** — and a
   derived fleet artifact lands in Sheepdog as a daily **auto-merged PR of a `GENERATED` file**,

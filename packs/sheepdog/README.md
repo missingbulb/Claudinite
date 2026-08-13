@@ -5,7 +5,7 @@ under an owner. Opt-in (a dedicated sheepdog repo declares it; **not** seeded by
 standardizes the fleet coverage that used to be bespoke Claudinite infrastructure into a declaration.
 
 Thin by design: prose + the config schema (the sheepdog pack entry's `config` = `{ owner, kind, exclude,
-canonRepo, staleDays, packSeeds }`) + six cross-repo **sweeps/levers**, each an agentless
+canonRepo, staleDays, packSeeds }`) + five cross-repo **sweeps/levers**, each an agentless
 scheduled task whose sweep is its `prework`. The pack carries **no workflow and no agent of its
 own**: anything agentic happens in the *member*, on the fan-out model
 ([#749](https://github.com/missingbulb/Claudinite/issues/749)) — the enforcer dispatches, the
@@ -13,21 +13,28 @@ member executes:
 
 | sweep | task | asks |
 |---|---|---|
-| [check-fleet-coverage.mjs](tasks/fleet-census/check-fleet-coverage.mjs) | [fleet-census](tasks/fleet-census/task.md) (daily) | is this repo a **member**? → adoption issues |
-| [check-fleet-freshness.mjs](tasks/fleet-freshness/check-fleet-freshness.mjs) | [fleet-freshness](tasks/fleet-freshness/task.md) (weekly) | is a member **keeping up**? → drift issues |
+| [check-fleet-roster.mjs](tasks/fleet-roster/check-fleet-roster.mjs) → [adoption-issues.mjs](tasks/fleet-roster/adoption-issues.mjs) + [drift-issues.mjs](tasks/fleet-roster/drift-issues.mjs) | [fleet-roster](tasks/fleet-roster/task.md) (daily) | is this repo a **member**, and is that membership still **meaning** anything? → adoption issues + drift issues |
 | [scan-for-needed-packs.mjs](tasks/fleet-add-missing-packs/scan-for-needed-packs.mjs) + [force-add-packs.mjs](tasks/fleet-add-missing-packs/force-add-packs.mjs) | [fleet-add-missing-packs](tasks/fleet-add-missing-packs/task.md) (weekly, and forceable) | which packs is a member missing — the ones its **shape** suspects, or the ones the owner named? → a work-list issue *in* each member + that member's scheduler fired; the member's own agent adopts |
 | [aggregate-fleet-usage.mjs](tasks/fleet-usage/aggregate-fleet-usage.mjs) | [fleet-usage](tasks/fleet-usage/task.md) (daily) | what does the fleet **actually use**? → `usage-fleet.GENERATED.json` |
 | [check-fleet-pack-seeds.mjs](tasks/fleet-pack-seeds/check-fleet-pack-seeds.mjs) | [fleet-pack-seeds](tasks/fleet-pack-seeds/task.md) (daily) | does a member declare what this fleet **standardizes on**? → the declaration, written |
 | [force-fleet-baseline.mjs](tasks/fleet-baseline/force-fleet-baseline.mjs) | [fleet-baseline](tasks/fleet-baseline/task.md) (`manual` — forced runs only) | make every member baseline **now** → each member's own run, reported in its own repo |
 
-The second exists because per-project scheduling made every member maintain itself and, in doing so,
-removed the last thing that looked at a member from the **outside** — self-maintenance cannot detect its
-own absence. The third exists because a pack's `detect` fingerprint is consulted **once**, at
+**The roster carries two questions** because they are asked of the same repos from the same walk
+([#788](https://github.com/missingbulb/Claudinite/issues/788)). The freshness half exists because
+per-project scheduling made every member maintain itself and, in doing so, removed the last thing that
+looked at a member from the **outside** — self-maintenance cannot detect its own absence. It used to be
+its own weekly task with its own enumeration, and re-derived the coverage it claimed to take as given;
+the two then classified the same repo differently (an excluded repo carrying a declaration read
+*covered* to one and *out of scope* to the other), and each half's `unknown` failed its own run knowing
+nothing of the other's. What is still split is the two **issue families** — they close on unrelated
+conditions — not the walk.
+
+**Missing-packs** exists because a pack's `detect` fingerprint is consulted **once**, at
 bootstrap's `--init`: baselining backfills the seeded packs and each declared pack's `requires`
 closure, but never re-fingerprints, so a member that grows into a pack after adoption is never told
-the pack exists and the owner has to already know what to ask for. The fourth exists for the same
+the pack exists and the owner has to already know what to ask for. **Usage** exists for the same
 shape of reason one rung up: a member can say whether a skill loads *there*, and only a view across
-every member can say whether it earns its place at all. The fifth is the only one that **writes** to a
+every member can say whether it earns its place at all. **Pack-seeds** is the only one that **writes** to a
 member: some packs need a parameter no member can derive, because the answer is a fact about the
 *fleet* — and canon cannot supply it either, since a bootstrap run does not know which fleet it is
 bootstrapping into. This repo's `packSeeds` config lists what its members should declare, and the
@@ -46,7 +53,7 @@ ceilinged at `open-pr` and never auto-merges: declaring a pack switches on confo
 in that member's CI from the moment they land.
 
 A member that declares itself **dormant** (`"dormant": true` in its own declaration) is out of the
-freshness sweep, out of the fit sweep, out of the usage denominator, and never written to by the
+roster's freshness half, out of the fit sweep, out of the usage denominator, and never written to by the
 pack-seed sweep — its scheduler is stopped, so its mount falls behind by design, its silence says
 nothing about any skill, recommending it a pack would be recommending work it has declared it is not
 doing, and a commit landed in it from outside is the upkeep it opted out of. It stays a **member**:
@@ -56,8 +63,8 @@ membership is unchanged, because dormancy is about upkeep, not membership.
 excluded, archived, a fork, inactive today, or simply not measured by that sweep — each sweep's
 report names it under exactly one state rather than dropping it. A roster that names only the
 exceptions has silent holes, and a reader cannot tell "fine" from "fell out of the report": the
-census lists covered members (dormant ones flagged) alongside the uncovered; the freshness sweep
-names its fresh members and its out-of-scope repos with why; the fit sweep names the members that came
+roster's coverage section lists covered members (dormant ones flagged) alongside the uncovered, and its
+freshness section names its fresh members and its out-of-scope repos with why; the fit sweep names the members that came
 back **fitted** as loudly as the ones with findings, and names the fingerprints it could not decide
 from outside rather than counting them as non-matches; the usage sweep's `coverage` section
 accounts for every repo under the owner and its run report flags folding members with no captured

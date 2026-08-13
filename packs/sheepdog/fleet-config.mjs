@@ -2,8 +2,8 @@
 // `sheepdog` pack entry.
 //
 // It lives at the pack root, not inside a task, because EVERY sweep reads the same
-// entry: the census (tasks/fleet-census/) needs `owner` and `exclude`, the freshness
-// sweep (tasks/fleet-freshness/) needs those plus `canonRepo` and `staleDays`, the
+// entry: the roster sweep (tasks/fleet-roster/) needs `owner` and `exclude` for its
+// coverage half plus `canonRepo` and `staleDays` for its freshness half, and the
 // pack-seed sweep (tasks/fleet-pack-seeds/) those plus `packSeeds`. A
 // second reader would be a second place for the owner/exclude semantics to drift —
 // and this is what the file-placement skill calls lifting a shared dependency to the

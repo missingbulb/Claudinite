@@ -25,7 +25,7 @@ Two repository settings decide whether a member's baselining can deliver at all:
 | *Allow auto-merge* | an `auto-merge` member's PR opens and never lands |
 
 Both are plain REST — `PUT /repos/{o}/{r}/actions/permissions/workflow` and
-`PATCH /repos/{o}/{r}` — so converging them alongside the `fleet-freshness` sweep would be the
+`PATCH /repos/{o}/{r}` — so converging them alongside the `fleet-roster` sweep's freshness half would be the
 natural home: a sweep keeps them true, where adoption only sets them once and cannot notice a
 later flip.
 

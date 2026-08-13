@@ -9,8 +9,9 @@
 // scheduled task that runs it (the sweep IS its prework, and its
 // required_secrets is what asks the repo for FLEET_GITHUB_TOKEN):
 //
-//   tasks/fleet-census/check-fleet-coverage.mjs        is a repo a MEMBER?
-//   tasks/fleet-freshness/check-fleet-freshness.mjs    is a member KEEPING UP?
+//   tasks/fleet-roster/check-fleet-roster.mjs          is a repo a MEMBER, and is that
+//     adoption-issues.mjs + drift-issues.mjs           membership still MEANING anything?
+//                                                      (one walk, two issue families)
 //   tasks/fleet-add-missing-packs/                     which packs is a member MISSING — the
 //     scan-for-needed-packs.mjs + force-add-packs.mjs  ones its SHAPE suspects, or the ones
 //                                                      the owner named on a forced run?
@@ -25,25 +26,32 @@
 // The pack root holds only what they all need: fleet-api.mjs (the cross-repo REST
 // primitives) and fleet-config.mjs (the one reader of this pack entry's config).
 //
-// The second exists because per-project scheduling made every member maintain
-// itself and, in doing so, removed the last thing that looked at a member from the
-// outside — self-maintenance cannot detect its own absence. The third exists because
-// a pack's `detect` fingerprint is consulted ONCE, at bootstrap's --init: baselining
-// backfills the seeded packs and each declared pack's `requires` closure, but never
-// re-fingerprints, so a member that grows into a pack after adoption is never told.
-// It is PARAMETERISED (`scan_for_needed_packs`, `repos`, `ADD_PACKS`… — no defaults;
-// the weekly declaration sends its own explicitly, a forced run sends the rest through
-// the scheduler's override bag) and it runs NO agent here: it converges a work-list
-// issue IN each member and fires that member's own scheduler, whose
+// ROSTER carries two questions rather than one because they are asked of the same
+// repos from the same walk (#788): coverage, and — because per-project scheduling made
+// every member maintain itself and in doing so removed the last thing that looked at a
+// member from the OUTSIDE — whether that coverage still means anything. Self-maintenance
+// cannot detect its own absence. Two issue families, one enumeration, one declaration
+// read per repo; the split that remains is between the FAMILIES (adoption-issues.mjs,
+// drift-issues.mjs), which close on unrelated conditions, and not between two walks that
+// could classify the same repo differently.
+//
+// ADD-MISSING-PACKS exists because a pack's `detect` fingerprint is consulted ONCE, at
+// bootstrap's --init: baselining backfills the seeded packs and each declared pack's
+// `requires` closure, but never re-fingerprints, so a member that grows into a pack
+// after adoption is never told. It is PARAMETERISED (`scan_for_needed_packs`, `repos`,
+// `ADD_PACKS`… — no defaults; the weekly declaration sends its own explicitly, a forced
+// run sends the rest through the scheduler's override bag) and it runs NO agent here: it
+// converges a work-list issue IN each member and fires that member's own scheduler, whose
 // adopt-requested-packs task (grow_with_claudinite) adopts with the repo checked out —
 // the fan-out model (#749): the enforcer dispatches, the member executes, and no agent
-// anywhere needs cross-repo access. The fourth exists
-// for the same shape of reason a rung up: a member folds its own skill-usage numbers
-// and can therefore only say whether a skill loads THERE; whether a skill earns its
-// place at all is a fleet-shaped question no member can answer about itself. The
-// fifth is the one that WRITES to members: some packs need a parameter no member can
-// derive, because the answer is a fact about the FLEET — and only the enforcer holds
-// it, because it IS the fleet. It names no pack itself: every id comes from this
+// anywhere needs cross-repo access.
+//
+// USAGE exists for the same shape of reason a rung up: a member folds its own
+// skill-usage numbers and can therefore only say whether a skill loads THERE; whether a
+// skill earns its place at all is a fleet-shaped question no member can answer about
+// itself. PACK-SEEDS is the one that WRITES to members: some packs need a parameter no
+// member can derive, because the answer is a fact about the FLEET — and only the enforcer
+// holds it, because it IS the fleet. It names no pack itself: every id comes from this
 // repo's own `packSeeds`.
 //
 // The pack carries NO workflow of its own: every sweep runs Action-side inside the

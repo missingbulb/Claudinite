@@ -1,9 +1,9 @@
-// The sheepdog census's cross-repo GitHub REST client. Dependency-free (global
+// The sheepdog sweeps' cross-repo GitHub REST client. Dependency-free (global
 // fetch, Node 20+). This is the ONE place a Claudinite process talks GitHub over
-// raw REST with a token, and it is deliberately confined to the census — the
-// account-spanning coverage audit that must enumerate EVERY repo the owner owns
-// (`/user/repos`), which a session-scoped connection structurally cannot see. The
-// census runs Action-side as the fleet-census task's preprocessing, with a
+// raw REST with a token, and it is deliberately confined to the sweeps — the
+// account-spanning audits that must enumerate EVERY repo the owner owns
+// (`/user/repos`), which a session-scoped connection structurally cannot see. They run
+// Action-side as their tasks' preprocessing, with a
 // fine-grained PAT; nothing in the daily-maintenance process imports this (that
 // process is MCP-native and carries no REST client). It knows nothing about any
 // specific pack: it is the generic "talk to many repos" layer, no more.
@@ -63,10 +63,11 @@ export async function paged(gh, path) {
 }
 
 // --- the enforcer repo's own issue surface -----------------------------------
-// Both sweeps this pack runs (coverage and freshness) converge a labelled issue
-// per finding IN THE ENFORCER REPO. The label ensure and the labelled-issue read
-// are identical between them — only the open/close POLICY differs, and that stays
-// in each sweep, where its semantics are legible. These two are the shared floor.
+// Both issue families the roster sweep converges (coverage and freshness) file a
+// labelled issue per finding IN THE ENFORCER REPO. The label ensure and the
+// labelled-issue read are identical between them — only the open/close POLICY
+// differs, and that stays in each family's module, where its semantics are legible.
+// These two are the shared floor.
 
 // Idempotent: 422 is "already exists", which is the state we wanted.
 export async function ensureLabel(gh, repo, name, { color, description }) {
@@ -142,15 +143,15 @@ export async function putFile(gh, fullName, { path, text, sha, message }) {
 
 // Does this repo mount Claudinite? (Method B sync hook / legacy gitkeep / Method A
 // submodule.) The structural "is this a covered member" test — the existence-only
-// probe for callers that need nothing from inside the file. The census itself now
-// reads the declaration (readDeclaration) instead, because its roster names dormant
-// members and dormancy lives inside the file; the membership rule is the same.
+// probe for callers that need nothing from inside the file. The roster walk itself
+// reads the declaration (readDeclaration) instead, because it names dormant members
+// and dormancy lives inside the file; the membership rule is the same.
 export async function isCovered(gh, fullName) {
   // The tracked declaration file is THE membership signal — the one file every
   // member carries whatever its mount shape (the engine can't run without it,
   // and baselining backfills it nightly), and the only shape the planner can
   // plan for at all (activePacks is read from it). A mount marker WITHOUT a
-  // declaration is a half-adoption that must classify as uncovered — the census
+  // declaration is a half-adoption that must classify as uncovered — the roster
   // then opens an adoption issue and it heals loudly, instead of rotting as a
   // "covered" repo no task ever runs on. (vendoring/DESIGN.md)
   return fileExists(gh, fullName, '.claudinite-checks.json');

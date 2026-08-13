@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { validateTaskDeclaration } from '../../../../engine/scheduler/task-contract.mjs';
 import decl from '../../../../packs/sheepdog/tasks/fleet-pack-seeds/task.mjs';
-import census from '../../../../packs/sheepdog/tasks/fleet-census/task.mjs';
+import roster from '../../../../packs/sheepdog/tasks/fleet-roster/task.mjs';
 
 // The sheepdog pack's fleet-pack-seeds task: the enforcer converging the pack
 // declarations this fleet standardizes on. Same agentless shape as the other
@@ -54,7 +54,7 @@ test('fleet-pack-seeds: the sweep is the prework, bounded and task-local', () =>
 
 test('fleet-pack-seeds: one fleet secret, shared with the other sweeps — but it needs Contents WRITE', () => {
   assert.deepEqual(decl.required_secrets, ['FLEET_GITHUB_TOKEN']);
-  assert.deepEqual(decl.required_secrets, census.required_secrets);
+  assert.deepEqual(decl.required_secrets, roster.required_secrets);
   // The scope bump is the sweep's own business to explain: it is the only thing in the
   // pack that writes to a member, so its token error has to say what the read-only
   // sweeps never needed.
