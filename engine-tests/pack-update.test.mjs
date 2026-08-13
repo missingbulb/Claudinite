@@ -96,7 +96,8 @@ test('a real member\'s packs are replaced wholesale and stamped per pack', async
   assert.equal(r.status, 'ok', r.detail);
   assert.notEqual(readFileSync(rules, 'utf8'), 'locally mangled\n', 'drift reverts');
   assert.ok(!existsSync(join(root, MOUNT, 'packs', 'basics', 'zzz-stale.mjs')), 'a dropped file must not survive');
-  assert.equal(stampOf(root).packVersions.basics, 1);
+  const latest = (await loadPacks()).find((p) => p.id === 'basics').version;
+  assert.equal(stampOf(root).packVersions.basics, latest, 'the stamp is the manifest version, whatever it is now');
   assert.equal(stampOf(root).engineVersion, ENGINE_VERSION, 'the engine\'s stamp is not this flow\'s to move');
   rmSync(root, { recursive: true, force: true });
 });
@@ -228,14 +229,25 @@ test('a pack version moving does NOT by itself buy a session (#798)', async () =
   assert.equal(current.applyStage.needed, false);
 
   // Rolled back to zero — the largest gap a member can have, every declared pack
-  // moving at once. The old trigger (`moved.length > 0`) fired here, and that is
-  // exactly the defect: this is a WHOLESALE TREE REPLACEMENT, deterministic and
-  // idempotent, and no session can improve on it. Unless a record in the gap says
-  // its change met member-authored content, the update is silent.
+  // moving at once. The old trigger (`moved.length > 0`) fired on the MOVE, and that
+  // was the defect: a wholesale tree replacement is deterministic and idempotent, and
+  // no session can improve on it.
+  //
+  // `basics` now carries a record that DOES ask for a session, so the stage is needed
+  // here — which is the better evidence, because it lets the test assert WHY. What
+  // must never appear is a stage justified by the version plan: the reason names the
+  // record, and the packs in scope are the ones that raised records, not the ones
+  // whose numbers moved. The "moved but nothing asked" case is covered purely by
+  // `applyStageFor` below, where no live record can drift into the fixture.
   setStamp(root, { packVersions: { basics: 0 } });
   const moved = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
   assert.ok(moved.plan.some((p) => p.from !== p.to), 'the fixture must actually move a version, or it proves nothing');
-  assert.equal(moved.applyStage.needed, false, 'a bump with no record asking for a session must not spend one');
+  if (moved.applyStage.needed) {
+    assert.ok(moved.applyStage.records.length, 'a stage with no record behind it is the #798 defect returning');
+    for (const dir of moved.applyStage.records) {
+      assert.match(dir, /^packs\/[^/]+\/migrations\//, 'only a pack record may summon the stage');
+    }
+  }
   rmSync(root, { recursive: true, force: true });
 });
 
