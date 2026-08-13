@@ -654,8 +654,8 @@ never enumerates executors, which is why adding one requires telling no one.
 | executor died mid-claim | — (executor was a session; janitor reclaimed via `agent-running`) | **the tick** (owner, 2026-08-13): `task:executing` with no activity past ~1h → strip to `task:ready` with a comment, so a dead executor's item is back in the queue within ~2h rather than ~25h. An executor iteration is minutes, not hours, and a lease checked once a day is not a short lease |
 | agent session died mid-run | janitor: stale `agent-running` → `needs-human` after ~3h | same, on `task:agent` (a hand-off comment names the session, so the janitor can say *which* session died) |
 | CCR invocation lost | undetectable (label event fired into the void); surfaced only by re-arm/stale | **synchronous**: the executor sees the API failure, retries, converges `needs-human` with the error (§6.6) |
-| item never picked up | stale dispatch escalation, period parsed from the slot id's leading char | same escalation, period read from the task's declared `frequency` at HEAD (or a default for ad-hoc items) — no title parsing |
-| dependency never resolves | n/a | stale escalation covers it (§9) |
+| item never picked up | stale dispatch escalation, period parsed from the slot id's leading char | same escalation, period read from the task's declared `frequency` at HEAD (or a default for ad-hoc items) — no title parsing; the stale item converges `needs-human`, out of the queue |
+| dependency never resolves | n/a | **the stale-ready rule cannot see it** — a blocked item is never ready (F14, caught by the simulator against S18's claim). The janitor gains a third rule: a blocked item whose blockers have not resolved for ~2 days gets an escalation *comment* — labels untouched, so the item still proceeds by itself the moment its blockers resolve; a human who decides it is dead closes it by hand |
 
 The janitor remains an ordinary daily task and shrinks twice over: re-arm and
 its grace window delete, and the **executing-leash reclaim moves to the tick**
@@ -665,9 +665,13 @@ janitor" split, deliberately: the split's purpose was that recovery happen
 *once, in one place, in code* rather than in every triggered session, and a
 rule that runs once per tick satisfies that as fully as one that runs once per
 day. What stays with the janitor is everything needing judgment or a longer
-horizon — the dead *agent* claim (3h), the stale-item escalation, and the
-health review, which gains the queue (ready-item age, blocked-item depth,
-outcome mix) as its subject and can now compute all of it from issues.
+horizon — three rules and a review: the dead *agent* claim (`task:agent`
+silent past ~3h → `needs-human`, the hand-off comment naming which session
+died), the stale-ready escalation (unpicked past ~2 periods →
+`needs-human`), the stuck-dependency sweep (F14 above — comment-only), and
+the health review, which gains the queue (ready-item age, blocked-item
+depth, outcome mix) as its subject and can now compute all of it from
+issues.
 
 Both recovery sites keep the same discipline: **recovery is code, run in one
 place per rule, never a sweep inside a session that is executing something.**

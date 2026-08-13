@@ -547,6 +547,35 @@ found in replay, fixed in the design.**
 **Verdict: a real double-execution bug in the standing-item draft — caught
 executable, fixed in the spec, pinned by S3′'s test.**
 
+### The executable round (owner request, 2026-08-13 — every scenario a test)
+
+All of A–G's still-live scenarios gained tests in [`sim/`](sim/): the double
+tick (S6), the executor race and the lease (S7), the hand-off failure modes
+(S9a/S9b), the duplicate-session agent lease (S10), agent death and the
+janitor's leash (S11), the force-while-executing mutex (S15), the lost label
+event (S16), the follow-up (S17/S17b), the fan-out with a stuck member
+(S18), and the human re-queue (S19). Making them executable found two
+deltas and one more spec bug:
+
+- **S12′ (delta):** old S12 ends with the re-queued item closing
+  `outcome:obsolete`; under the standing-item model the re-ask's no-go
+  **rolls** the scheduled item instead — same safety (the precondition
+  re-run is still what makes crash-retry safe), better record (the reason
+  and the next wake live on the item).
+- **S24 (delta):** with F14's sweep in place, the blocked-by starvation is
+  no longer *silent* — it surfaces as a stuck-dependency comment, days
+  late. Still the wrong wiring; the yield stands.
+- **F14 (spec bug):** S18's prose claimed the starving fan-in "trips the
+  same stale escalation ~2 days later" — it cannot. The stale rule keys on
+  *ready*-age and a blocked item is never ready; as specified, a fan-in
+  blocked on a dead child waited **silently forever**. The janitor gains a
+  third rule (DESIGN §11): blocked with unresolved blockers past ~2 days →
+  an escalation *comment*, labels untouched, so the item still proceeds by
+  itself once unstuck. S18's test drives the whole corrected chain:
+  qualifiers parallelize, the stuck member escalates out of the queue, the
+  fan-in is surfaced, a human close releases it, and it converges on its
+  own.
+
 ### S25 — adoption's first tick (new)
 
 - A freshly wired repo's first tick creates *every* task's item — including
@@ -571,6 +600,7 @@ executable, fixed in the spec, pinned by S3′'s test.**
 | **F3** | policy gap | as-written hand-off failure policy turns platform blips into triage load (S9) | **fixed in DESIGN §6**: bounded revert-to-ready with attempt counter; `needs-human` at N attempts |
 | **F12** | contract gap | prework re-runs after an executor death; re-entrancy was never stated (S8) | **fixed in DESIGN §6**: re-entrancy is an explicit prework requirement (it was already implicitly required today) |
 | **F13** | **design bug** | the occurrence guard's created-at half alone double-executes: a rolled item that runs today was created yesterday, so after it closes the same-day tick creates a second item for the same occurrence (S26) | **fixed in DESIGN §5**: the guard is created-at-or-after A *or closed*-at-or-after A. Caught by the simulator's first run — no prose replay had seen it |
+| **F14** | **design bug** | a blocked item whose dependency never resolves waits silently forever: §11 claimed the stale escalation covers it, but that rule keys on ready-age and a blocked item is never ready (S18's fan-in) | **fixed in DESIGN §11**: a third janitor rule — blocked with unresolved blockers past ~2 days gets an escalation comment, labels untouched. Caught by making S18 executable |
 | **F11** | implementation constraint | guards over the search index race its lag; back-to-back serialized ticks make it sharp (S6) | **fixed in DESIGN §5**: guards read the REST issue list, never search |
 | **F7** | doc gap | no written path from `needs-human` back to execution (S12, S19) | **fixed in DESIGN §4**: strip `needs-human` + apply `task:ready` is the sanctioned re-queue |
 | **F4** | **decided** | executing-leash reclaim on the daily janitor = up to ~25h stall for a dead executor (S8) | **accepted 2026-08-13**: the reclaim rides the tick (deterministic label rule, ~2h worst case); janitor keeps the judgment sweeps — DESIGN §11 |

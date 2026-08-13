@@ -264,8 +264,11 @@ test('S24 blocked-by wiring starves the chain; the yield does not', () => {
   const starved = play('blocked-by');
   assert.equal(evals(starved, 'grow/growth-extract').length, 0,
     'blocked-by: extract is never even asked, for as long as baselining is quiet');
-  assert.equal(starved.log.filter((e) => e.kind === 'escalate').length, 0,
-    'and the starvation is silent — the item is blocked, not stale-ready');
+  // the starvation is invisible to the stale-READY rule (the item is blocked);
+  // only F14's stuck-dependency sweep surfaces it — as a comment, days late
+  assert.equal(starved.log.filter((e) => e.rule === 'stale-ready').length, 0);
+  assert.ok(starved.log.some((e) => e.rule === 'stuck-dependency'),
+    'F14 at least names the starvation, but the wiring is still wrong');
 
   const yielded = play('yield');
   assert.equal(closedOf(yielded, 'grow/growth-extract').length, 3,
@@ -312,4 +315,265 @@ test('backlog guard: a failed run blocks new occurrences until re-queued', () =>
   assert.equal(fam.length, 1, 'no second item while needs-human sits open');
   assert.ok(fam[0].labels.has('needs-human'));
   assert.equal(evals(sim, 'basics/baselining').length, 1, 'not re-asked while broken');
+});
+
+// ---- S6 — double-fire: two ticks in the same minute, one item.
+test('S6 double tick: the occurrence guard holds under a duplicate fire', () => {
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
+  sim.at('2026-08-12T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
+  sim.dropTicks('2026-08-12T04:00Z', '2026-08-12T05:00Z'); // replace the cron fire…
+  sim.tickAt('2026-08-12T04:17:05Z');                       // …with a duplicated one
+  sim.tickAt('2026-08-12T04:17:20Z');
+  sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
+
+  const fam = sim.family('tidy/tidy-issues').filter((i) => !i.seeded);
+  assert.equal(fam.length, 1, 'one item despite two ticks');
+  assert.equal(closedOf(sim, 'tidy/tidy-issues').length, 1, 'and it ran once');
+});
+
+// ---- S7 — two executors race for one item: the verified lease, stale read
+// and all. The loser reverts nothing and picks a different item.
+test('S7 executor race: earliest claim wins, loser takes the next item', () => {
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
+  sim.at('2026-08-12T04:00Z', ({ world }) => {
+    world.issueTouchedAt = T('2026-08-12T04:00Z'); // tidy-issues has work
+    world.releasePending = true;                   // store-release has work
+  });
+  sim.dropTicks('2026-08-12T04:00Z', '2026-08-12T05:00Z');
+  sim.tickAt('2026-08-12T04:17Z'); // creates both items; the race lands just
+  sim.raceExecutorsAt('2026-08-12T04:17:35Z', ['E1', 'E2']); // before its drain
+  sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
+
+  const losses = sim.log.filter((e) => e.kind === 'claim-lost');
+  assert.equal(losses.length, 1, 'exactly one loser');
+  const raced = losses[0];
+  assert.ok(sim.log.some((e) => e.kind === 'claim' && e.issue === raced.issue && e.t === raced.t),
+    'the rival won the same item at the same instant');
+  assert.equal(sim.log.filter((e) => e.kind === 'evaluate' && e.issue === raced.issue && e.t === raced.t).length,
+    1, 'the raced item was executed once, by the winner');
+  assert.equal(closedOf(sim, 'tidy/tidy-issues').length + closedOf(sim, 'chrome/store-release').length,
+    2, 'both items converged — the loser moved on, capacity added not lost');
+});
+
+// ---- S9 — CCR API down at hand-off: bounded revert-to-ready (F3), the tick
+// cadence as backoff; a blip costs delay, an 8-hour outage costs triage.
+test('S9a API blip: hand-off reverts to ready, succeeds on a later pickup', () => {
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
+  sim.at('2026-08-12T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
+  sim.at('2026-08-12T04:10Z', (s) => s.apiDownUntil('2026-08-12T05:00Z'));
+  sim.run('2026-08-12T00:00Z', '2026-08-12T09:00Z');
+
+  const it = sim.family('tidy/tidy-issues').find((i) => !i.seeded);
+  assert.equal(sim.log.filter((e) => e.kind === 'handoff-failed').length, 1, 'one failed attempt');
+  assert.equal(it.state, 'closed');
+  assert.equal(it.outcome, 'done', 'converged once the platform recovered');
+  assert.equal(sim.log.filter((e) => e.kind === 'handoff-exhausted').length, 0, 'no triage cost');
+});
+
+test('S9b sustained outage: needs-human only after the attempt bound', () => {
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
+  sim.at('2026-08-12T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
+  sim.at('2026-08-12T04:10Z', (s) => s.apiDownUntil('2026-08-12T23:00Z'));
+  sim.run('2026-08-12T00:00Z', '2026-08-12T22:00Z');
+
+  const it = sim.family('tidy/tidy-issues').find((i) => !i.seeded);
+  assert.equal(sim.log.filter((e) => e.kind === 'handoff-failed').length, 5, 'five bounded attempts');
+  assert.ok(it.labels.has('needs-human'), 'then a human, with the error on record');
+});
+
+// ---- S10 — API timeout that actually created a session: the retry makes a
+// second session; the agent-side lease (F5) collapses the pair to one run.
+test('S10 duplicate sessions: the agent-side lease yields exactly one execution', () => {
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
+  sim.at('2026-08-12T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
+  sim.at('2026-08-12T04:10Z', (s) => s.apiTimeoutOnce());
+  sim.run('2026-08-12T00:00Z', '2026-08-12T09:00Z');
+
+  const it = sim.family('tidy/tidy-issues').find((i) => !i.seeded);
+  assert.equal(it.sessions.length, 2, 'at-least-once invocation made two sessions');
+  assert.equal(sim.log.filter((e) => e.kind === 'agent-lease-lost').length, 1,
+    'the later session lost the lease and stopped');
+  assert.equal(it.state, 'closed');
+  assert.equal(closedOf(sim, 'tidy/tidy-issues').length, 1, 'one item, one execution, one outcome');
+});
+
+// ---- S11 — agent dies mid-run: the janitor's 3h agent leash converges the
+// item needs-human, naming the dead session.
+test('S11 dead agent: janitor leash converges needs-human, names the session', () => {
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
+  sim.at('2026-08-12T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
+  sim.at('2026-08-12T04:10Z', (s) => s.crashNextAgentOf('tidy/tidy-issues'));
+  sim.run('2026-08-12T00:00Z', '2026-08-13T12:00Z');
+
+  const reclaim = sim.log.find((e) => e.kind === 'agent-reclaim');
+  assert.ok(reclaim, 'the leash fired');
+  assert.match(reclaim.session, /^s-\d+$/, 'the dead session is named');
+  const it = sim.family('tidy/tidy-issues').find((i) => !i.seeded);
+  assert.ok(it.labels.has('needs-human'));
+  assert.equal(sim.family('tidy/tidy-issues').filter((i) => !i.seeded && i.state === 'open').length, 1,
+    'the backlog guard held — no second item while triage sits open');
+});
+
+// ---- S12' — agent did the work, died before converging; the human re-queue
+// re-evaluates, and under the standing-item model the no-go ROLLS the item
+// (the §H delta from old S12's close-obsolete: the item lives on).
+test("S12' re-queue after work landed: the re-ask rolls, nothing duplicates", () => {
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
+  sim.at('2026-08-12T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
+  sim.at('2026-08-12T04:10Z', (s) => s.crashNextAgentOf('tidy/tidy-issues'));
+  // next day the human sees the work actually landed (signal gone), re-queues
+  sim.at('2026-08-13T09:00Z', (s) => {
+    s.world.issueTouchedAt = null; // the work is done; the window shows nothing
+    s.requeue(s.family('tidy/tidy-issues').find((i) => !i.seeded).number);
+  });
+  sim.run('2026-08-12T00:00Z', '2026-08-13T18:00Z');
+
+  const it = sim.family('tidy/tidy-issues').find((i) => !i.seeded);
+  assert.equal(it.state, 'open', 'not closed obsolete — rolled (the §H delta)');
+  assert.ok(it.labels.has('task:blocked'));
+  assert.equal(it.rolls.length, 1, 'the re-ask found no work and rolled with the reason');
+  assert.equal(closedOf(sim, 'tidy/tidy-issues').length, 0, 'no duplicate execution');
+});
+
+// ---- S15 — ad-hoc item while the scheduled twin is mid-execution: the
+// same-title mutex makes it wait, not run beside it.
+test('S15 force-while-executing: the mutex queues the twin', () => {
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
+  sim.at('2026-08-12T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
+  // 04:20: agent is mid-run (16m); an impatient operator creates a twin
+  sim.at('2026-08-12T04:20Z', (s) => s.createItem('tidy/tidy-issues', { urgent: true }));
+  sim.run('2026-08-12T00:00Z', '2026-08-12T12:00Z');
+
+  const scheduled = sim.family('tidy/tidy-issues').find((i) => !i.seeded);
+  const adhoc = sim.issues.find((i) => i.origin === 'manual');
+  const schedClose = scheduled.closedAt;
+  const adhocEval = sim.log.find((e) => e.kind === 'evaluate' && e.issue === adhoc.number);
+  assert.ok(adhocEval.t >= schedClose, 'the twin waited for the scheduled run to converge');
+  assert.equal(adhoc.state, 'closed', 'then had its own verdict');
+});
+
+// ---- S16 — urgent item, lost label event: the tick drain is the guarantee;
+// worst-case latency is one tick interval, not a day.
+test('S16 lost label event: the poll picks it up within a tick', () => {
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
+  sim.at('2026-08-12T14:00Z', (s) =>
+    s.createItem('sheepdog/fleet-baseline', { urgent: true, eventLost: true }));
+  sim.run('2026-08-12T12:00Z', '2026-08-12T16:00Z');
+
+  const it = sim.issues.find((i) => i.origin === 'manual');
+  const evalAt = sim.log.find((e) => e.kind === 'evaluate' && e.issue === it.number);
+  assert.ok(evalAt, 'picked without any event');
+  assert.ok(evalAt.t >= T('2026-08-12T14:17Z') && evalAt.t <= T('2026-08-12T14:18Z'),
+    'at the next tick drain — events are latency sugar, listing is the guarantee');
+});
+
+// ---- S17 — delayed validation: Blocked-by + Not-before, then the pick
+// verdict decides — obsolete when the world settled, a run when it did not.
+test('S17 follow-up validates on day 3, closes obsolete when all landed', () => {
+  const tasks = cast().concat([{
+    id: 'chrome/store-validate', frequency: 'manual', outcome: 'done',
+    preworkMinutes: 1, agentMinutes: 5,
+    precondition: (w) => ({ run: !!w.storeRejected, reason: 'v2.4 live — landed on its own' }),
+  }]);
+  const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
+  let followUp;
+  sim.at('2026-08-12T04:00Z', ({ world }) => { world.releasePending = true; });
+  sim.at('2026-08-12T04:25Z', (s) => { // prework delivered; create the follow-up
+    const parent = s.family('chrome/store-release').find((i) => !i.seeded);
+    followUp = s.createItem('chrome/store-validate', {
+      blockedBy: [parent.number], notBefore: T('2026-08-14T04:00Z'),
+    });
+  });
+  sim.run('2026-08-12T00:00Z', '2026-08-15T00:00Z');
+
+  const evalsOf = sim.log.filter((e) => e.kind === 'evaluate' && e.issue === followUp.number);
+  assert.equal(evalsOf.length, 1, 'untouched until its day');
+  assert.ok(evalsOf[0].t >= T('2026-08-14T04:00Z'), 'not before Day 3 04:00');
+  assert.equal(followUp.state, 'closed');
+  assert.equal(followUp.outcome, 'obsolete', 'the world settled on its own');
+});
+
+test('S17b follow-up finds the store rejected the release, and runs', () => {
+  const tasks = cast().concat([{
+    id: 'chrome/store-validate', frequency: 'manual', outcome: 'done',
+    preworkMinutes: 1, agentMinutes: 5,
+    precondition: (w) => ({ run: !!w.storeRejected, reason: 'v2.4 live' }),
+  }]);
+  const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
+  let followUp;
+  sim.at('2026-08-12T04:00Z', ({ world }) => { world.releasePending = true; });
+  sim.at('2026-08-12T04:25Z', (s) => {
+    const parent = s.family('chrome/store-release').find((i) => !i.seeded);
+    followUp = s.createItem('chrome/store-validate', {
+      blockedBy: [parent.number], notBefore: T('2026-08-14T04:00Z'),
+    });
+  });
+  sim.at('2026-08-13T10:00Z', ({ world }) => { world.storeRejected = true; });
+  sim.run('2026-08-12T00:00Z', '2026-08-15T00:00Z');
+
+  assert.equal(followUp.state, 'closed');
+  assert.equal(followUp.outcome, 'done', 'the agent investigated the rejection');
+});
+
+// ---- S18 — fan-out with a fan-in, one member stuck: qualifiers parallelize,
+// the stale-ready rule surfaces the stuck member, the stuck-dependency rule
+// (F14) surfaces the starving fan-in, and a human close unsticks everything.
+test('S18 fan-out: stuck member escalates, fan-in proceeds after the human acts', () => {
+  const tasks = cast().concat([{
+    id: 'sheepdog/fleet-status', frequency: 'manual', outcome: 'done', preworkMinutes: 2,
+  }]);
+  const sim = makeSim({ tasks }).seedSteadyState('2026-08-10T00:00Z');
+  const members = [];
+  let fanIn;
+  sim.at('2026-08-10T09:00Z', (s) => {
+    for (const m of ['repo-a', 'repo-b', 'repo-x']) {
+      members.push(s.createItem('sheepdog/fleet-baseline', { qualifier: m }));
+    }
+    fanIn = s.createItem('sheepdog/fleet-status', { blockedBy: members.map((i) => i.number) });
+    s.quarantine(members[2].number); // repo-x's executor is broken
+  });
+  // day 3: a human writes the stuck member off
+  sim.at('2026-08-13T09:00Z', (s) => s.closeByHand(members[2].number, 'obsolete'));
+  sim.run('2026-08-10T00:00Z', '2026-08-14T00:00Z');
+
+  assert.equal(members[0].state, 'closed');
+  assert.equal(members[1].state, 'closed', 'distinct qualifiers ran in parallel (no mutex)');
+  assert.ok(sim.log.some((e) => e.rule === 'stale-ready' && e.issue === members[2].number),
+    'the unreachable member came out of the queue as a human problem');
+  assert.ok(sim.log.some((e) => e.rule === 'stuck-dependency' && e.issue === fanIn.number),
+    'the starving fan-in was surfaced too (F14)');
+  assert.equal(fanIn.state, 'closed');
+  assert.equal(fanIn.outcome, 'done', 'and proceeded by itself once the human closed the member');
+});
+
+// ---- S19 — human re-queues after fixing the cause: F7 is the whole path
+// from needs-human back to execution.
+test('S19 re-queue after a fix: needs-human -> ready -> normal run', () => {
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
+  sim.at('2026-08-12T00:01Z', ({ world }) => { world.mountBehind = true; world.mountBroken = true; });
+  // Tuesday: the owner fixes the mount and re-queues via the force lever
+  sim.at('2026-08-13T09:00Z', (s) => { s.world.mountBroken = false; s.force('basics/baselining', { urgent: false }); });
+  sim.run('2026-08-12T00:00Z', '2026-08-13T12:00Z');
+
+  const it = sim.family('basics/baselining').find((i) => !i.seeded);
+  assert.equal(it.state, 'closed');
+  assert.equal(it.outcome, 'done', 'the same item converged after the fix — no new item was ever needed');
+  assert.equal(sim.family('basics/baselining').filter((i) => !i.seeded).length, 1);
+});
+
+// ---- S26 — the guard's second half must not over-block either: after a
+// rolled item runs and closes, the NEXT period still gets a fresh item.
+test('S26b the closed-at guard half releases at the next anchor', () => {
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
+  sim.at('2026-08-12T09:03Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T09:03Z'); });
+  sim.run('2026-08-12T00:00Z', '2026-08-14T12:00Z');
+
+  // Wednesday's item rolls, runs Thursday 04:17, closes 04:34. The closed-at
+  // guard half must suppress only THURSDAY's re-creation — Friday's anchor
+  // must still get a fresh item.
+  const fam = sim.family('tidy/tidy-issues').filter((i) => !i.seeded);
+  assert.equal(closedOf(sim, 'tidy/tidy-issues').length, 1, 'Thursday ran once, not twice');
+  assert.equal(fam.length, 2, "the Wednesday item (closed Thursday) plus Friday's fresh item");
+  assert.ok(fam[1].createdAt >= T('2026-08-14T04:00Z'),
+    "Friday's occurrence was not eaten by Thursday's close");
 });
