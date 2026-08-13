@@ -115,6 +115,41 @@ test('a judged, nothing-pending outcome takes the flow\'s own decision', () => {
   assert.equal(terminalFor({ status: 'ok', decision: { action: 'merge', forced: true, why: 'forced' } }).forced, true);
 });
 
+test('the flow surface a FIELDED worker calls stays callable, whatever this ref\'s worker uses', async () => {
+  // The asymmetry that makes this its own test: a member's vendored worker is one
+  // cycle behind, but the flows it loads come from a FRESH CANON CLONE. So deleting an
+  // export here does not deprecate it — it breaks every worker already in the field on
+  // its very next run, and no version gate stands between the two.
+  //
+  // This bit for real. `applyStageBrief` was removed as dead code (nothing consumed
+  // the payload key it fed), but every fielded worker still destructures it and calls
+  // it on the `apply-stage` path — the path #797 sends EVERY member down. The call
+  // throws after the PR is opened, so the update never completes, the mount never
+  // refreshes, and the member never receives the worker that would stop calling it.
+  //
+  // The canary rehearsal cannot cover this: it runs the worker THIS REF SHIPS, by
+  // design, so it only ever exercises the new caller. This list is the substitute.
+  // An entry leaves it one full cycle after the fleet vendors a worker without the
+  // call — not when this repo's own worker stops making it.
+  const fielded = {
+    'updates/terminals.mjs': ['terminalFor', 'applyStageBrief'],
+    'updates/engine-update.mjs': ['engineUpdate'],
+    'updates/pack-update.mjs': ['packUpdate'],
+  };
+  for (const [mod, names] of Object.entries(fielded)) {
+    const loaded = await import(`../${mod}`);
+    for (const name of names) {
+      assert.equal(typeof loaded[name], 'function',
+        `${mod} no longer exports ${name} — every fielded worker calling it wedges on its next cycle`);
+    }
+  }
+  // And callable, not merely present: a shim kept as a non-function constant would
+  // satisfy a weaker check and still throw at the call site.
+  const { applyStageBrief } = await import('../updates/terminals.mjs');
+  assert.equal(typeof applyStageBrief({ packs: ['basics'], branch: 'x' }), 'string');
+  assert.equal(typeof applyStageBrief(), 'string', 'a fielded caller may pass nothing');
+});
+
 test('the apply stage\'s duties live in its task file, and none were dropped with the brief', () => {
   // `applyStageBrief` used to render these into the request payload, where nothing
   // read them and where they duplicated the task file that the dispatch issue links.
@@ -130,7 +165,7 @@ test('the apply stage\'s duties live in its task file, and none were dropped wit
   // And the payload must stay identifiers-only: the worker may name the condition,
   // never carry the instructions (engine/scheduler/prework.mjs).
   const worker = readFileSync('packs/basics/tasks/update/worker.mjs', 'utf8');
-  assert.ok(!worker.includes('brief:'), 'the request payload carries no rendered brief');
+  assert.ok(!worker.includes('brief:'), 'this ref\'s worker carries no rendered brief — the export survives only for fielded ones');
 });
 
 // --- seed ops: run once at install, repo-owned thereafter ----------------------
