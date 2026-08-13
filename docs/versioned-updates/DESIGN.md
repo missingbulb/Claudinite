@@ -182,6 +182,19 @@ install-specific provisions:
   flow cannot write, it either hands to the flow that can (workflows → pack
   lane / custom update) or surfaces as `need-human`.
 
+  In practice this means the pack flow **stages** `.github/workflows/`
+  content at `.claudinite/pending-workflows/` — a path its Action token
+  *can* push — and ends at `apply-stage` until a session with an MCP
+  credential moves it into place. Three properties, and the design needs all
+  three: nothing is dropped (the update does not report clean while owing a
+  file), the content is **reviewable** (it lands in the update's own PR diff,
+  where a human sees the workflow change before any session touches it), and
+  it is **recoverable** (a session that never ran leaves the content on the
+  branch rather than losing it with a request file). The staging directory is
+  swept every cycle, so it is empty exactly when nothing is owed — which is
+  also what makes "did the apply stage actually run" a question with an
+  answer (#797, #649).
+
 ## 6. What this retires
 
 - The `baselining` task (task.md, task.mjs, worker.mjs), its escalation

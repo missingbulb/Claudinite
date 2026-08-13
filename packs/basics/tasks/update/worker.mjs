@@ -157,7 +157,7 @@ export async function main() {
     const load = async (rel) => import(pathToFileURL(join(tmp, rel)).href);
     const { engineUpdate } = await load('updates/engine-update.mjs');
     const { packUpdate } = await load('updates/pack-update.mjs');
-    const { terminalFor, applyStageBrief } = await load('updates/terminals.mjs');
+    const { terminalFor } = await load('updates/terminals.mjs');
 
     // ENGINE FIRST, always: a pack declares the minimum engine it runs on, and the
     // pack flow enforces that against what this repo HAS. Running packs first would
@@ -228,9 +228,8 @@ export async function main() {
         marker: 'agent-requested',
         delivered: { branch, pr: pr.number, merged: false },
         reason: { code: 'apply-stage', detail: terminal.why },
-        brief: applyStageBrief({ packs: terminal.packs, branch, instructions: terminal.instructions }),
       })}\n`);
-      console.log(`update: requested the apply stage for ${terminal.packs.join(', ')}`);
+      console.log(`update: requested the apply stage — ${terminal.why}`);
     }
   } finally {
     rmSync(tmp, { recursive: true, force: true });

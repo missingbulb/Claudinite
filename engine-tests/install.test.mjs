@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { installPacks, planInstall, unansweredQuestions } from '../updates/install.mjs';
-import { terminalFor, applyStageBrief } from '../updates/terminals.mjs';
+import { terminalFor } from '../updates/terminals.mjs';
 import { NEEDS_HUMAN } from '../updates/engine-update.mjs';
 import { loadPacks } from '../engine/pack_loader/pack-registry.mjs';
 import { validateManifest } from '../engine/pack_loader/pack-schema.mjs';
@@ -115,12 +115,22 @@ test('a judged, nothing-pending outcome takes the flow\'s own decision', () => {
   assert.equal(terminalFor({ status: 'ok', decision: { action: 'merge', forced: true, why: 'forced' } }).forced, true);
 });
 
-test('the apply-stage brief scopes the session and re-homes the executor verification', () => {
-  const brief = applyStageBrief({ packs: ['basics', 'sheepdog'], branch: 'claudinite/update-1' });
-  assert.match(brief, /basics, sheepdog/);
-  assert.match(brief, /claudinite\/update-1/);
-  assert.match(brief, /executor routine/, 'the one verification no Action can make');
-  assert.match(brief, /needs-human/);
+test('the apply stage\'s duties live in its task file, and none were dropped with the brief', () => {
+  // `applyStageBrief` used to render these into the request payload, where nothing
+  // read them and where they duplicated the task file that the dispatch issue links.
+  // Retiring it is only safe if every duty it carried still has a home — so this
+  // asserts the home, not the wording.
+  const task = readFileSync('packs/basics/tasks/update/task.md', 'utf8');
+  assert.match(task, /executor routine/, 'the one verification no Action can make');
+  assert.match(task, /needs-human/);
+  assert.match(task, /\.claudinite\/pending-workflows\//, 'the withheld-workflow lane (#797)');
+  assert.match(task, /byte for byte/i, 'a converged workflow is transcribed, never revised');
+  assert.match(task, /applyStage\.instructions/, 'what a record asked for is read from the record, on the branch');
+
+  // And the payload must stay identifiers-only: the worker may name the condition,
+  // never carry the instructions (engine/scheduler/prework.mjs).
+  const worker = readFileSync('packs/basics/tasks/update/worker.mjs', 'utf8');
+  assert.ok(!worker.includes('brief:'), 'the request payload carries no rendered brief');
 });
 
 // --- seed ops: run once at install, repo-owned thereafter ----------------------

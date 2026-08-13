@@ -93,9 +93,21 @@ export function withDeclaredSecrets(stubText, names = []) {
 // declared `required_secrets` stamped into the engine step's env. `stubText` is the
 // vendored stub's content (the caller reads it from the mount). Returns true when
 // the file was written (absent, or drifted from the target).
-export function convergeSchedulerWorkflow(root, fullName, stubText, secretNames = []) {
-  const target = withDeclaredSecrets(stubText, secretNames)
+// What this repo's scheduler workflow SHOULD contain — the stub with its secrets
+// stamped and its cron resolved, as text, touching no disk.
+//
+// Split out from the converge below because the pack update flow needs the answer
+// without the side effect: it cannot write this file (its caller pushes with the
+// Action's GITHUB_TOKEN, which GitHub never lets near `.github/workflows/`), so it
+// WITHHOLDS the content and hands it to a lane that can. A flow that had to write
+// the file in order to learn what it should say could not do that.
+export function schedulerWorkflowTarget(fullName, stubText, secretNames = []) {
+  return withDeclaredSecrets(stubText, secretNames)
     .replace(/cron:\s*'[^']*'/, `cron: '${hashedCron(fullName)}'`);
+}
+
+export function convergeSchedulerWorkflow(root, fullName, stubText, secretNames = []) {
+  const target = schedulerWorkflowTarget(fullName, stubText, secretNames);
   const path = join(root, SCHEDULER_WORKFLOW);
   const current = existsSync(path) ? readFileSync(path, 'utf8') : null;
   if (current === target) return false;
