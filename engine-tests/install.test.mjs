@@ -150,6 +150,28 @@ test('the flow surface a FIELDED worker calls stays callable, whatever this ref\
   assert.equal(typeof applyStageBrief(), 'string', 'a fielded caller may pass nothing');
 });
 
+test('the compatibility shims carry an EXPIRY, so nobody has to remember them', async () => {
+  // A comment saying "remove this once the fleet catches up" is a comment nobody
+  // rereads, and a shim kept forever is indistinguishable from a shim that is still
+  // needed. So the reminder is a failing test on a stated engine version instead.
+  //
+  // `applyStageBrief` became unnecessary the moment every member vendored a worker
+  // that stops calling it — one full cycle after engine 3. Engine 5 is the deadline:
+  // by then either the fleet has long since caught up and the shim goes, or something
+  // has gone wrong with the rollout and that is worth discovering deliberately.
+  //
+  // WHEN THIS FIRES, do not just bump the number. Check a real member's vendored
+  // worker for the call, and if it is gone, delete the shim and this test together.
+  const { ENGINE_VERSION } = await import('../engine/version.mjs');
+  const SHIMS = [{ name: 'applyStageBrief', module: 'updates/terminals.mjs', reviewAt: 5, since: 3 }];
+  for (const s of SHIMS) {
+    assert.ok(ENGINE_VERSION < s.reviewAt,
+      `engine ${ENGINE_VERSION} has passed ${s.reviewAt}: re-check whether ${s.module}'s ${s.name} shim `
+      + `(added at engine ${s.since} for one-cycle-behind workers) is still called by any fielded worker. `
+      + 'If not, delete the shim, its entry in the fielded-surface test above, and this entry.');
+  }
+});
+
 test('the apply stage\'s duties live in its task file, and none were dropped with the brief', () => {
   // `applyStageBrief` used to render these into the request payload, where nothing
   // read them and where they duplicated the task file that the dispatch issue links.
