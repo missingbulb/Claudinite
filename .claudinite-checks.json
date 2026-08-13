@@ -87,6 +87,11 @@
                 "reason": "inherent(#385): the engine map documents where the adoption-interview machinery lives now that it is bundled in the adoption skill"
               }
             ]
+          },
+          {
+            "siblings": "packs",
+            "to": "docs",
+            "reason": "docs/ is outside the vendor set, so a pack file's reference to it resolves to nothing in every consumer (#424) — cite the doc from the issue or PR instead"
           }
         ]
       }
