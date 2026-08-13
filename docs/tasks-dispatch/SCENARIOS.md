@@ -15,6 +15,14 @@ change, some are owner calls added to its §15.
 > sections are kept because the findings they produced (the leases, the
 > hand-off retry, the guards) are unchanged and their reasoning is the
 > record.
+>
+> **The scenarios are executable.** [`sim/`](sim/) holds a discrete-event
+> simulator of the mechanism (virtual clock, no threads, no waits) and
+> [`sim/scenarios.test.mjs`](sim/scenarios.test.mjs) plays the §H scenarios
+> against it as `at time X, Y happens` tests, run by CI. A future design
+> change should change the simulator first and let the red tests name the
+> scenarios it breaks. Its first run caught F13 — a double-execution bug
+> every prose replay had missed.
 
 ## Cast and constants
 
@@ -519,6 +527,26 @@ read item *state*, not item *existence*.**
 **Verdict: the one real conceptual issue in the standing-item proposal —
 found in replay, fixed in the design.**
 
+### S26 — the day after a rolled item finally runs (new; found by the simulator, F13)
+
+- tidy-issues' item #900, created Tuesday 04:17, rolls (quiet Tuesday). An
+  issue is touched Tuesday evening; Wednesday 04:17 readies #900, the pick
+  says go, the agent finishes and **closes #900 at 04:34 Wednesday**.
+- **05:17 Wednesday tick, with the occurrence guard as first drafted**
+  ("skip if any family item was *created* at-or-after A"): no open item; the
+  most recent item was created *Tuesday* 04:17 < A (Wednesday 04:00) → the
+  guard passes → **a second Wednesday item is created**, evaluates go (the
+  touched-issue signal is still inside the window), and the task runs twice
+  in one period. Prose replays missed this every round; the simulator's S3′
+  trace surfaced it on its first run.
+- **The fix (F13, folded into DESIGN §5):** the guard needs both halves — an
+  occurrence is covered by an item **created** at-or-after A *or* an item
+  **closed** at-or-after A. A rolled item created in an earlier period that
+  runs today consumes today's occurrence with its closure, not its creation.
+
+**Verdict: a real double-execution bug in the standing-item draft — caught
+executable, fixed in the spec, pinned by S3′'s test.**
+
 ### S25 — adoption's first tick (new)
 
 - A freshly wired repo's first tick creates *every* task's item — including
@@ -542,6 +570,7 @@ found in replay, fixed in the design.**
 | **F6** | **design bug** | forcing can run a task concurrently with itself (S15) | **fixed in DESIGN §6/§8**: same-title pick mutex + create-time warning; the standing-item model removes the common case outright (force = wake the existing item, S14′) |
 | **F3** | policy gap | as-written hand-off failure policy turns platform blips into triage load (S9) | **fixed in DESIGN §6**: bounded revert-to-ready with attempt counter; `needs-human` at N attempts |
 | **F12** | contract gap | prework re-runs after an executor death; re-entrancy was never stated (S8) | **fixed in DESIGN §6**: re-entrancy is an explicit prework requirement (it was already implicitly required today) |
+| **F13** | **design bug** | the occurrence guard's created-at half alone double-executes: a rolled item that runs today was created yesterday, so after it closes the same-day tick creates a second item for the same occurrence (S26) | **fixed in DESIGN §5**: the guard is created-at-or-after A *or closed*-at-or-after A. Caught by the simulator's first run — no prose replay had seen it |
 | **F11** | implementation constraint | guards over the search index race its lag; back-to-back serialized ticks make it sharp (S6) | **fixed in DESIGN §5**: guards read the REST issue list, never search |
 | **F7** | doc gap | no written path from `needs-human` back to execution (S12, S19) | **fixed in DESIGN §4**: strip `needs-human` + apply `task:ready` is the sanctioned re-queue |
 | **F4** | **decided** | executing-leash reclaim on the daily janitor = up to ~25h stall for a dead executor (S8) | **accepted 2026-08-13**: the reclaim rides the tick (deterministic label rule, ~2h worst case); janitor keeps the judgment sweeps — DESIGN §11 |

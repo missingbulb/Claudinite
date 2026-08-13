@@ -263,8 +263,13 @@ tick(now):
                     # REST issue list, never the search index (S6/F11)
     if any(i.state == OPEN for i in family):    continue  # the standing item
                                                           # already exists
-    if any(i.created_at >= A for i in family):  continue  # this occurrence
-                                                          # already got its item
+    # the occurrence guard has TWO halves (F13, caught by the simulator): an
+    # item CREATED at-or-after A covers this occurrence — and so does an item
+    # CLOSED at-or-after A, because a rolled item created in an earlier
+    # period that ran and closed today consumed today's occurrence. With the
+    # created_at half alone, the very next tick after such a close creates a
+    # second item for the same occurrence: a double execution.
+    if any(i.created_at >= A or i.closed_at >= A for i in family): continue
     createIssue(title:  "[claudinite-work] <pack>/<task>",
                 body:   taskPath,
                 labels: ["origin:schedule",
