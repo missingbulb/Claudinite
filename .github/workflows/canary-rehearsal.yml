@@ -52,6 +52,12 @@ on:
 permissions:
   contents: read
 
+# The rehearse step pipes into tee, and GitHub's implicit `bash -e` has no
+# pipefail — a worker exiting non-zero into a successful tee would show green.
+defaults:
+  run:
+    shell: bash
+
 concurrency:
   # One canary at a time: two rehearsals converging the same repo would race on
   # its working tree and report each other's damage.
@@ -100,10 +106,20 @@ jobs:
         with:
           node-version: '24'
 
-      # The canary runs ITS OWN vendored worker, not this checkout's — that is
-      # the copy a member would run, and testing anything else would be testing
-      # a code path no consumer ever executes. The worker then fetches THIS ref
-      # and converges the canary against it.
+      # WHICH WORKER RUNS, and why it changed (#768 Phase 5). This drove the CANARY'S
+      # OWN vendored worker on the argument that it is the copy a member would run.
+      # That argument breaks on the case the gate exists for: the worker is itself
+      # vendored content, so a change TO the worker cannot be rehearsed by the copy
+      # that predates it — the member's vendored copy is by definition one release
+      # behind, and a release is exactly what this is qualifying. So the worker under
+      # test is the one THIS REF SHIPS, run against the canary's real tree; it is the
+      # code every member will run the moment this release reaches them.
+      #
+      # The old path is also what made this gate VACUOUS for weeks: the canary flipped
+      # to the update mechanism, the baselining worker this step pointed at correctly
+      # stood down, and the step passed in zero seconds having converged nothing.
+      # Hence the marker check below — a rehearsal that does not say it converged is
+      # not a pass, whatever its exit code.
       - name: Rehearse
         if: steps.cfg.outputs.skip == 'false'
         env:
@@ -111,8 +127,21 @@ jobs:
           CLAUDINITE_REPO_ROOT: ${{ github.workspace }}/canary
           CLAUDINITE_REPO: ${{ steps.cfg.outputs.repo }}
           GITHUB_TOKEN: ${{ secrets.FLEET_GITHUB_TOKEN }}
-        working-directory: canary/.claudinite/shared/packs/basics/tasks/baselining
-        run: node worker.mjs
+        working-directory: packs/basics/tasks/update
+        run: node worker.mjs | tee "$RUNNER_TEMP/rehearsal.log"
+
+      # A green step is not evidence; the marker is. Without this, every way of
+      # exiting 0 without converging — a stand-down, an early return, a worker whose
+      # path moved again — reads exactly like a qualified release.
+      - name: Assert the rehearsal actually converged
+        if: steps.cfg.outputs.skip == 'false'
+        run: |
+          if ! grep -q 'claudinite-rehearsal: converged' "$RUNNER_TEMP/rehearsal.log"; then
+            echo "::error::The rehearsal exited 0 without converging the canary — it printed no"
+            echo "::error::'claudinite-rehearsal: converged' line. A pass here would qualify a"
+            echo "::error::release nothing rehearsed. Check the worker path in this workflow."
+            exit 1
+          fi
 
       - name: What a failure means
         if: failure()

@@ -103,7 +103,7 @@ test('the runner disposes of an open update PR BEFORE it converges (#787)', asyn
   const src = fs.readFileSync('packs/basics/tasks/update/worker.mjs', 'utf8');
 
   const disposal = src.indexOf('disposeOpenPull(');
-  const clone = src.indexOf("git(['clone'");
+  const clone = src.indexOf("'clone', '--depth'");
   const quietReturn = src.indexOf('nothing changed — no branch, no PR');
   assert.ok(disposal > 0 && clone > 0 && quietReturn > 0, 'the three landmarks still exist');
   assert.ok(disposal < clone, 'disposal must precede the canon clone and the converge that follows it');
@@ -129,4 +129,34 @@ test('the runner finds its incumbent by the same prefix it delivers on', async (
   assert.match(src, /openDeliveredPull\(open\.json, UPDATE_PREFIX\)/);
   assert.ok(updateBranchName('2026-08-12', 'abc123').startsWith('claudinite/update'),
     'the delivered branch and the searched prefix are the same family');
+});
+
+test('rehearsal mode announces that it converged, and the gate greps for it', async () => {
+  // The canary rehearsal is "the required final step of any core change" — and it
+  // silently rehearsed NOTHING from the day the canary flipped to `updates` until
+  // #768 Phase 5, because it drove a baselining worker that correctly stood down and
+  // exited 0. A green exit code was the only evidence anyone checked.
+  //
+  // So the marker is the evidence, and this pins the three places that must agree:
+  // the constant, the worker line that prints it, and the workflow step that fails
+  // without it. Any of the three drifting alone puts the gate back to vacuous.
+  const fs = await import('node:fs');
+  const { REHEARSAL_MARKER } = await import('../../packs/basics/tasks/update/worker.mjs');
+  const worker = fs.readFileSync('packs/basics/tasks/update/worker.mjs', 'utf8');
+  const workflow = fs.readFileSync('.github/workflows/canary-rehearsal.yml', 'utf8');
+
+  assert.match(worker, /\$\{REHEARSAL_MARKER\}/, 'the worker must print the marker, not a copy of its text');
+  assert.ok(workflow.includes(REHEARSAL_MARKER), `the gate does not grep for "${REHEARSAL_MARKER}"`);
+  assert.match(workflow, /working-directory: packs\/basics\/tasks\/update/,
+    'the gate must drive the update worker this ref ships');
+  assert.ok(!workflow.includes('tasks/baselining'), 'the gate still points at the retired worker');
+
+  // And a rehearsal must never deliver: no branch, no commit, no PR, no stamp.
+  const rehearsalBlock = worker.slice(worker.indexOf('if (rehearsalRef) {'));
+  const upToReturn = rehearsalBlock.slice(0, rehearsalBlock.indexOf('return;'));
+  for (const forbidden of ['checkout', '-B', 'commit', 'push']) {
+    assert.ok(!upToReturn.includes(`'${forbidden}'`) || forbidden === 'checkout',
+      `a rehearsal must not ${forbidden} — it restores the tree and reports`);
+  }
+  assert.match(upToReturn, /clean', '-fd'/, 'the rehearsal must restore the tree it converged');
 });
