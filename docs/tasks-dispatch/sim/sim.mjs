@@ -9,11 +9,12 @@
 // escalation, and the force-is-waking lever. `afterMode: 'blocked-by'` exists
 // solely so S24 can demonstrate the starvation that ruled that wiring out.
 //
-// What it deliberately does NOT model (say what it can't catch): search-index
-// lag (the store IS the REST list), API races between concurrent executors
-// (one deterministic executor; the lease protocol's own races are argued in
-// DESIGN §6/§7, not here), token/permission surfaces, and real prework
-// content. A bug living exactly on those boundaries will not surface here.
+// What it deliberately does NOT model is inventoried in README.md's "The
+// unsimulated world" — one row per boundary (cron delivery, list freshness,
+// label non-atomicity, comment-id ordering, event delivery, secrets, …) with
+// what defends the design there. A bug living exactly on one of those
+// boundaries will not surface here; executor contention IS modeled, as
+// stale-snapshot races over the claim protocol (raceExecutorsAt).
 //
 // Time is milliseconds UTC; events run strictly in time order (FIFO within a
 // tie). Nothing here sleeps, threads, or reads the wall clock.
@@ -74,9 +75,24 @@ export function makeSim({
   agentLeashMs = 3 * HOUR,
   staleReadyPeriods = 2,
   staleBlockedMs = 2 * DAY,
+  unsafeLeash = false, // S31 only: bypass the F17 wiring constraint
 } = {}) {
   const registry = new Map(tasks.map((t) => [t.id, t]));
   const titleOf = (id) => `[claudinite-work] ${id}`;
+
+  // F17's wiring-time constraint: a prework that can legally outlive the
+  // executing leash would be reclaimed while alive — duplicate prework runs.
+  // The real engine enforces leash > prework-timeout as a conformance check;
+  // the sim enforces it at construction. `unsafeLeash` exists only so S31
+  // can demonstrate the hazard the constraint prevents.
+  if (!unsafeLeash) {
+    for (const t of tasks) {
+      if ((t.preworkMinutes ?? 1) * MIN >= executingLeashMs) {
+        throw new Error(
+          `task ${t.id}: prework bound (${t.preworkMinutes}m) reaches the executing leash — F17`);
+      }
+    }
+  }
 
   const issues = []; // {number,title,taskId,origin,labels:Set,state,createdAt,closedAt,readySince,lastActivity,notBefore,blockedBy:[],outcome,rolls:[],comments:[],escalated,sessions:[],agentClaims:[],handoffAttempts,quarantined}
   const log = []; // {t,kind,task,issue,...}
@@ -120,6 +136,10 @@ export function makeSim({
     it.labels.delete(from);
     it.labels.add(to);
     it.readySince = to === 'task:ready' ? now : null;
+    // F18: every transition INTO ready opens a new claim episode — claim
+    // comments from a previous tenure are dead and must not outrank a live
+    // claimant (the revert/reclaim comment is the episode boundary)
+    if (to === 'task:ready') it.claimEpoch = seq++;
     it.lastActivity = now;
   }
 
@@ -139,7 +159,17 @@ export function makeSim({
       if (task.frequency === 'manual') continue;
       const A = mostRecentAnchor(task.frequency, now);
       const fam = family(task.id);
-      if (fam.some((i) => i.state === 'open')) continue; // standing item exists
+      // F16 self-heal: if a stale issue list ever let a duplicate standing
+      // item through (nothing guarantees a REST list from another node sees a
+      // creation seconds old), close every open one but the oldest. The tick
+      // is serialized (concurrency group), so this cannot race itself.
+      const openFam = fam.filter((i) => i.state === 'open')
+        .sort((a, b) => a.number - b.number);
+      for (const dup of openFam.slice(1)) {
+        close(dup, 'obsolete');
+        record('dedupe', { task: task.id, issue: dup.number });
+      }
+      if (openFam.length > 0) continue; // standing item exists
       // occurrence guard, both halves (F13): an item CREATED at-or-after A
       // covers this occurrence — and so does an item CLOSED at-or-after A,
       // because a rolled item created in an earlier period that ran today
@@ -217,7 +247,9 @@ export function makeSim({
     it.readySince = null;
     it.lastActivity = now;
     it.comments.push({ t: now, seq: seq++, kind: 'claim', exec: execId });
-    const claims = it.comments.filter((c) => c.kind === 'claim');
+    // F18: arbitrate only among THIS episode's claims — earliest since the
+    // item last became ready, by server-assigned comment order
+    const claims = it.comments.filter((c) => c.kind === 'claim' && c.seq > (it.claimEpoch ?? -1));
     const won = claims[0].exec === execId;
     record(won ? 'claim' : 'claim-lost', { task: it.taskId, issue: it.number, exec: execId });
     return won; // loser reverts nothing — the winner's labels already stand
@@ -298,9 +330,15 @@ export function makeSim({
       }
       return true;
     }
-    // prework → optional hand-off → converge, as timed phases
+    // prework → optional hand-off → converge, as timed phases. The executor
+    // re-verifies its OWN lease at the transition (F17): not just "is the
+    // item executing" but "is my claim still the newest" — a reclaim-then-
+    // re-pick puts a newer claim on the item, and the stale runner must see
+    // it and abandon silently rather than hand off work it no longer owns.
+    const myClaim = it.comments.filter((c) => c.kind === 'claim').at(-1);
     schedule(now + (task.preworkMinutes ?? 1) * MIN, () => {
       if (it.state !== 'open' || !has(it, 'task:executing')) return;
+      if (it.comments.filter((c) => c.kind === 'claim').at(-1) !== myClaim) return;
       it.lastActivity = now;
       if (task.preworkFails?.(world, now)) {
         swap(it, 'task:executing', 'needs-human');
@@ -315,11 +353,42 @@ export function makeSim({
     return true;
   }
 
+  // F15: the pick filters (same-title mutex, `after` yield) are read from
+  // possibly-stale state, so two executors can pass them simultaneously and
+  // claim DIFFERENT items that the filters should have serialized — a twin
+  // pair, or an upstream and its dependent. The lease protects one item, not
+  // one title. So after WINNING a claim, re-verify the filters against live
+  // state: if a conflicting item now holds an EARLIER claim (comment order —
+  // the same arbiter the lease trusts), revert this claim to task:ready and
+  // move on. Bounded (one revert), deterministic (comment order), and the
+  // earlier claim never even notices.
+  function postClaimVerify(it, execId) {
+    const myClaim = it.comments.filter((c) => c.kind === 'claim').at(-1);
+    const conflicts = open().filter((o) => {
+      if (o === it) return false;
+      const live = has(o, 'task:executing') || has(o, 'task:agent');
+      if (!live) return false;
+      if (o.title === it.title) return true; // twin
+      if (afterMode === 'yield' && it.origin === 'schedule') {
+        const ups = registry.get(it.taskId)?.after ?? [];
+        if (ups.some((up) => o.title === titleOf(up) && o.origin === 'schedule')) return true;
+      }
+      return false;
+    });
+    const earlier = conflicts.some((o) =>
+      o.comments.filter((c) => c.kind === 'claim').at(-1)?.seq < myClaim.seq);
+    if (!earlier) return true;
+    swap(it, 'task:executing', 'task:ready');
+    record('claim-reverted', { task: it.taskId, issue: it.number, exec: execId });
+    return false;
+  }
+
   function executorRun(execId = 'E1') {
     for (let i = 0; i < 10; i++) {
       const it = pickable()[0];
       if (!it) return;
       if (!claim(it, execId, new Set(it.labels))) continue;
+      if (!postClaimVerify(it, execId)) continue;
       const task = registry.get(it.taskId);
       if (!task) { close(it, 'obsolete'); continue; } // validate: task gone (S20)
       if (!executeClaimed(it, task)) return;
@@ -405,7 +474,7 @@ export function makeSim({
       if (!it) throw new Error(`no standing item for ${taskId}`);
       it.notBefore = null;
       if (has(it, 'task:blocked')) swap(it, 'task:blocked', 'task:ready');
-      if (has(it, 'needs-human')) { it.labels.delete('needs-human'); it.labels.add('task:ready'); it.readySince = now; }
+      if (has(it, 'needs-human')) { it.labels.delete('needs-human'); it.labels.add('task:ready'); it.readySince = now; it.claimEpoch = seq++; }
       if (urgent) it.labels.add('task:urgent');
       record('force', { task: taskId, issue: it.number });
       schedule(now + 1 * MIN, () => executorRun()); // the labeled event's latency sugar
@@ -455,23 +524,35 @@ export function makeSim({
     // the same first item; both swap and post claim comments; the earliest
     // comment wins and the loser moves on to the next item read from LIVE
     // state — the verified lease, stale-read and all (DESIGN §6.2).
-    raceExecutorsAt(isoTime, execIds) {
+    // spread: false (default) — both executors pick the SAME first item (S7's
+    // one-item race). spread: true — executor i picks snapshot[i]: different
+    // items, claimed simultaneously from the same stale read, which is how a
+    // twin pair or an upstream+dependent slip past the pick filters together
+    // (S32/F15) — only the post-claim re-verify serializes them.
+    raceExecutorsAt(isoTime, execIds, { spread = false } = {}) {
       schedule(T(isoTime), () => {
         const snapshot = pickable();
-        const target = snapshot[0];
-        if (!target) return;
-        const preRead = new Set(target.labels); // both reads predate both swaps
-        for (const execId of execIds) {
-          const won = claim(target, execId, preRead);
-          if (won) {
-            const task = registry.get(target.taskId);
-            if (task) executeClaimed(target, task);
-          } else {
-            executorRun(execId); // the loser picks a different item, from live state
-          }
+        const preReads = new Map(snapshot.map((i) => [i, new Set(i.labels)]));
+        const winners = [];
+        execIds.forEach((execId, k) => {
+          const target = spread ? snapshot[k] : snapshot[0];
+          if (!target) return;
+          if (claim(target, execId, preReads.get(target))) winners.push([target, execId]);
+          else executorRun(execId); // same-item loser moves on, from live state
+        });
+        for (const [target, execId] of winners) {
+          if (!postClaimVerify(target, execId)) continue;
+          const task = registry.get(target.taskId);
+          if (task) executeClaimed(target, task);
         }
       });
       return sim;
+    },
+
+    // F16's precondition: a tick whose issue list was stale created a second
+    // standing item. Injected directly — the sim's own tick can't produce it.
+    injectDuplicateStanding(taskId) {
+      return createIssue({ taskId, origin: 'schedule', labels: ['origin:schedule', 'task:ready'] });
     },
 
     // ---- platform failure injection (S9/S10) -------------------------------
@@ -496,6 +577,7 @@ export function makeSim({
       it.notBefore = null;
       it.labels.add('task:ready');
       it.readySince = now;
+      it.claimEpoch = seq++;
       it.lastActivity = now;
       record('requeue', { task: it.taskId, issue: it.number });
       schedule(now + 1 * MIN, () => executorRun());

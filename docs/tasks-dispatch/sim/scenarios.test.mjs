@@ -625,3 +625,75 @@ test('S29 old-vocabulary issues are invisible to the new mechanism', () => {
   assert.ok(it && it.labels.has('task:blocked'),
     'the new mechanism ran its own item beside the relic, undisturbed');
 });
+
+// ---- S30 — a stale issue list let a duplicate standing item through (F16):
+// nothing documents REST-list read-your-writes across runs, so the design
+// self-heals instead of assuming — the next tick closes every open standing
+// item but the oldest.
+test('S30 duplicate standing item: the next tick self-heals (F16)', () => {
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
+  let dup;
+  sim.at('2026-08-12T04:30Z', (s) => { dup = s.injectDuplicateStanding('tidy/tidy-issues'); });
+  sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
+
+  assert.equal(dup.state, 'closed');
+  assert.equal(dup.outcome, 'obsolete');
+  assert.ok(sim.log.some((e) => e.kind === 'dedupe' && e.issue === dup.number));
+  const openFam = sim.family('tidy/tidy-issues').filter((i) => i.state === 'open');
+  assert.equal(openFam.length, 1, 'exactly one standing item survives');
+  assert.ok(openFam[0].number < dup.number, 'and it is the oldest');
+});
+
+// ---- S31 — the leash arithmetic (F17): a prework bound that reaches the
+// executing leash is a wiring error, refused at wiring time — because run
+// unsafe, a live prework gets reclaimed and its occurrence executes prework
+// twice (the transition re-verify still keeps the hand-off single).
+test('S31 prework bound >= executing leash is refused at wiring (F17)', () => {
+  assert.throws(
+    () => makeSim({ tasks: [{ id: 'x/slow', frequency: 'daily', preworkMinutes: 90 }] }),
+    /reaches the executing leash — F17/);
+});
+
+test('S31b the hazard the constraint prevents: live prework reclaimed, run twice', () => {
+  const tasks = [{
+    id: 'x/slow', frequency: 'daily', outcome: 'done', preworkMinutes: 130, // > 1h leash
+    precondition: () => ({ run: true }),
+  }];
+  const sim = makeSim({ tasks, unsafeLeash: true }).seedSteadyState('2026-08-12T00:00Z');
+  sim.run('2026-08-12T00:00Z', '2026-08-12T12:00Z');
+
+  // worse than duplicate prework — a LIVELOCK: every run is reclaimed before
+  // it can finish, prework re-executes each cycle, and nothing ever converges
+  assert.ok(sim.log.filter((e) => e.kind === 'reclaim').length >= 3, 'reclaimed again and again');
+  assert.ok(evals(sim, 'x/slow').length >= 3, 'prework re-executed each cycle');
+  assert.equal(closedOf(sim, 'x/slow').length, 0, 'and the occurrence NEVER converges');
+});
+
+// ---- S32 — the pick-filter race (F15): two executors, same stale snapshot,
+// each claims a DIFFERENT item of the same title. The per-item lease cannot
+// see it; only the post-claim re-verify serializes the pair.
+test('S32 twin-title race: post-claim re-verify serializes, later claim reverts', () => {
+  // scoped cast: the scenario is about one title's twins racing
+  const tasks = cast().filter((t) => t.id === 'tidy/tidy-issues');
+  const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
+  sim.at('2026-08-12T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
+  sim.dropTicks('2026-08-12T04:00Z', '2026-08-12T05:00Z');
+  sim.tickAt('2026-08-12T04:16Z'); // scheduled item exists ready…
+  sim.at('2026-08-12T04:16:20Z', (s) =>
+    s.createItem('tidy/tidy-issues', { urgent: true, eventLost: true })); // …and its twin
+  sim.raceExecutorsAt('2026-08-12T04:16:35Z', ['E1', 'E2'], { spread: true }); // before the drain
+  sim.run('2026-08-12T00:00Z', '2026-08-12T12:00Z');
+
+  const reverts = sim.log.filter((e) => e.kind === 'claim-reverted');
+  assert.equal(reverts.length, 1, 'exactly one of the two simultaneous claims reverted');
+  // no instant ever had two same-title items in execution
+  const twinEvals = sim.log.filter((e) => e.kind === 'evaluate' && e.task === 'tidy/tidy-issues');
+  const times = twinEvals.map((e) => e.t);
+  assert.equal(new Set(times).size, times.length, 'the twins were never evaluated at the same instant');
+  // and BOTH still converged — the reverted one was re-claimed in a fresh
+  // episode (F18: dead claims from the reverted tenure must not outrank the
+  // next live claimant) and simply waited its turn
+  for (const it of sim.issues.filter((i) => !i.seeded)) {
+    assert.equal(it.state, 'closed', `#${it.number} converged`);
+  }
+});

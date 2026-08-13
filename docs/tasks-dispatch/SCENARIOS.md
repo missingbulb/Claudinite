@@ -605,6 +605,50 @@ deltas and one more spec bug:
 
 **Verdict: holds.**
 
+### The validation review (owner request, 2026-08-13 — is the simulator honest?)
+
+A line-by-line audit of the simulator against DESIGN.md, hunting implicit
+assumptions: every place the model treats as atomic, fresh, or ordered
+something GitHub does not promise. Four findings, all now explicit in the
+design and executable:
+
+- **S30 / F16 — a stale issue list duplicates the standing item.** The
+  occurrence guards assume the tick's REST list sees an item created by a
+  prior run. GitHub documents no such cross-node freshness bound. Rather
+  than assume, the tick self-heals: more than one open family item → close
+  all but the oldest, `outcome:obsolete`, dedupe comment.
+- **S31 / F17 — the leash arithmetic.** A prework bound that reaches the
+  executing leash is reclaimed *alive*, and the failure mode is a
+  **livelock**, not one duplicate: every tenure is reclaimed before it can
+  finish, prework re-executes each cycle, nothing ever converges (the sim
+  run shows reclaim/claim/evaluate repeating for 8 straight hours). Fixed
+  twice over: leash > prework-timeout as a wiring-time conformance check,
+  and the executor re-verifying its own lease at every state transition so
+  a reclaimed-but-alive runner abandons instead of handing off.
+- **S32 / F15 — the pick filters race.** Mutex and yield are read from
+  possibly-stale state; two executors can pass them together and claim
+  different same-title items (or an upstream and its dependent). Fixed with
+  the post-claim re-verify: the later claim (comment order) reverts itself
+  to ready; the earlier never notices.
+- **S32 / F18 — the claim arbiter must be episode-scoped.** "Earliest claim
+  comment wins" over the item's *lifetime* makes every dead claim (left
+  behind by each revert and reclaim) outrank all future live claimants —
+  the reverted item livelocks through reclaim cycles forever. Masked in
+  every single-executor test because an executor beats its own stale claim;
+  surfaced the moment S32 raced two. The arbiter is now "earliest since the
+  item last became ready", with the revert/reclaim comment as the episode
+  boundary.
+
+Two §6.2 precisions came out of the same audit without needing scenarios:
+claim ordering is by server-assigned **comment id**, never timestamps
+(one-second granularity ties); and the label swap being two non-atomic API
+calls is safe *because* comments arbitrate — but an executor dying between
+the two calls leaves a **stateless** open item no rule filters for, so the
+janitor gains the stateless-item repair (fourth rule). The full inventory
+of what the simulator deliberately does not model — and what defends the
+design at each unmodeled boundary — is
+[`sim/README.md`](sim/README.md)'s "The unsimulated world".
+
 ### S25 — adoption's first tick (new)
 
 - A freshly wired repo's first tick creates *every* task's item — including
@@ -630,6 +674,10 @@ deltas and one more spec bug:
 | **F12** | contract gap | prework re-runs after an executor death; re-entrancy was never stated (S8) | **fixed in DESIGN §6**: re-entrancy is an explicit prework requirement (it was already implicitly required today) |
 | **F13** | **design bug** | the occurrence guard's created-at half alone double-executes: a rolled item that runs today was created yesterday, so after it closes the same-day tick creates a second item for the same occurrence (S26) | **fixed in DESIGN §5**: the guard is created-at-or-after A *or closed*-at-or-after A. Caught by the simulator's first run — no prose replay had seen it |
 | **F14** | **design bug** | a blocked item whose dependency never resolves waits silently forever: §11 claimed the stale escalation covers it, but that rule keys on ready-age and a blocked item is never ready (S18's fan-in) | **fixed in DESIGN §11**: a third janitor rule — blocked with unresolved blockers past ~2 days gets an escalation comment, labels untouched. Caught by making S18 executable |
+| **F15** | **design bug** | the pick filters (same-title mutex, `after` yield) read stale state — two executors can claim different items the filters should serialize (S32) | **fixed in DESIGN §6.1**: post-claim re-verify; the later claim (comment order) reverts itself to ready |
+| **F16** | implicit assumption | the occurrence guards assume the tick's REST list sees creations from prior runs; GitHub documents no cross-node freshness bound (S30) | **made explicit + defended in DESIGN §5**: the tick self-heals — more than one open family item closes all but the oldest |
+| **F17** | **design bug** | a prework bound reaching the executing leash livelocks the occurrence: reclaimed alive every cycle, prework re-runs forever, never converges (S31) | **fixed in DESIGN §11**: leash > prework-timeout as a wiring conformance check, plus the executor re-verifying its own lease at every state transition |
+| **F18** | **design bug** | lifetime-scoped claim arbitration lets dead claims (from reverts/reclaims) outrank every future claimant — the item livelocks; masked in single-executor tests (S32) | **fixed in DESIGN §6.2**: the arbiter is episode-scoped — earliest claim since the item last became ready, by comment id |
 | **F11** | implementation constraint | guards over the search index race its lag; back-to-back serialized ticks make it sharp (S6) | **fixed in DESIGN §5**: guards read the REST issue list, never search |
 | **F7** | doc gap | no written path from `needs-human` back to execution (S12, S19) | **fixed in DESIGN §4**: strip `needs-human` + apply `task:ready` is the sanctioned re-queue |
 | **F4** | **decided** | executing-leash reclaim on the daily janitor = up to ~25h stall for a dead executor (S8) | **accepted 2026-08-13**: the reclaim rides the tick (deterministic label rule, ~2h worst case); janitor keeps the judgment sweeps — DESIGN §11 |

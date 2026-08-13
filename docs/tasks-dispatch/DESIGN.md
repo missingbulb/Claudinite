@@ -261,6 +261,12 @@ tick(now):
     family = issues(title == "[claudinite-work] <pack>/<task>",
                     label "origin:schedule", state ALL)
                     # REST issue list, never the search index (S6/F11)
+    # F16 self-heal first: nothing documents that a REST list from another
+    # node sees a creation seconds old, so a stale list can let a duplicate
+    # standing item through. Assume it will happen rather than that it won't:
+    # close every open family item but the OLDEST, outcome:obsolete, with a
+    # dedupe comment. Serialized by the tick's concurrency group.
+    if count(i.state == OPEN for i in family) > 1: closeAllButOldest(family)
     if any(i.state == OPEN for i in family):    continue  # the standing item
                                                           # already exists
     # the occurrence guard has TWO halves (F13, caught by the simulator): an
@@ -388,6 +394,17 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
      starve every dependent of a quiet upstream forever — the one real trap
      in the standing-item model, caught in replay (S24).
 
+   **The filters are advisory at pick time (F15)**: they read possibly-stale
+   state, so two executors can pass them simultaneously and claim
+   *different* items the filters should have serialized — a twin pair, or an
+   upstream and its dependent. The per-item lease cannot see this (it
+   protects one item, not one title). So after **winning** a claim, the
+   executor re-verifies the filters against live state; if a conflicting
+   item now holds an **earlier** claim (comment order — the same arbiter the
+   lease trusts), it reverts its own claim to `task:ready` and moves on.
+   Bounded (one revert per conflict), deterministic (comment order), and
+   the earlier claim never notices (S32).
+
    Take the first survivor. None → exit quietly.
 2. **Claim — the verified lease, unchanged in shape** (it earned its keep):
    read labels, abandon if `task:ready` is gone or `task:executing` /
@@ -396,7 +413,33 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
    claim comment wins, loser reverts nothing and moves on — it may pick a
    *different* item and try again (an executor is code iterating a queue, not a
    session sweeping one; the one-session-one-issue rule binds agents, and each
-   claimed item still gets exactly one agent).
+   claimed item still gets exactly one agent). Three precisions the
+   simulator's validation review forced (2026-08-13), each an implicit
+   assumption made explicit:
+   - **"Earliest" means lowest comment *id*, never timestamp** — GitHub
+     comment `created_at` has one-second granularity, so simultaneous claims
+     tie on time; comment ids are server-assigned and strictly increasing,
+     a total order the protocol gets for free. Nothing in the lease may
+     compare runner clocks.
+   - **The arbiter is episode-scoped (F18)**: earliest claim comment **since
+     the item last became ready** — the revert/reclaim/re-queue comment is
+     the episode boundary. Over the item's lifetime, dead claims accumulate
+     (every reclaim and revert leaves one behind); arbitrating over all of
+     them makes a *dead* claim outrank every future live claimant, and the
+     item livelocks through reclaim cycles forever. Caught by the simulator
+     racing two executors onto a reverted item (S32) — and masked until
+     then because a single executor beats its own stale claim by id
+     equality.
+   - **The label swap is two API calls, not a CAS** — GitHub has no atomic
+     label swap. That is fine *because* labels are not the arbiter: they are
+     visibility and the pick filter; the claim comments arbitrate, so a torn
+     swap can never mint a second owner. What it *can* do — executor dies
+     between the remove and the add — is leave an open item with **no state
+     label at all**, invisible to every rule that filters by state. The
+     janitor gains the repair (§11): an open work item wearing neither a
+     `task:*` state nor `needs-human` is off the state machine entirely →
+     `needs-human`, a human's to look at (same posture as a malformed
+     item).
 3. **Validate in code**: the body's first line is a legal task path, the file
    exists at HEAD, the pack is declared, `task.mjs` parses. Task gone → close,
    `outcome:obsolete`, comment. Malformed → `needs-human` (possible forgery, a
@@ -665,13 +708,33 @@ janitor" split, deliberately: the split's purpose was that recovery happen
 *once, in one place, in code* rather than in every triggered session, and a
 rule that runs once per tick satisfies that as fully as one that runs once per
 day. What stays with the janitor is everything needing judgment or a longer
-horizon — three rules and a review: the dead *agent* claim (`task:agent`
+horizon — four rules and a review: the dead *agent* claim (`task:agent`
 silent past ~3h → `needs-human`, the hand-off comment naming which session
 died), the stale-ready escalation (unpicked past ~2 periods →
-`needs-human`), the stuck-dependency sweep (F14 above — comment-only), and
-the health review, which gains the queue (ready-item age, blocked-item
+`needs-human`), the stuck-dependency sweep (F14 above — comment-only), the
+stateless-item repair (an open work item wearing neither a `task:*` state
+nor `needs-human` — a torn label swap's leavings, §6.2 → `needs-human`),
+and the health review, which gains the queue (ready-item age, blocked-item
 depth, outcome mix) as its subject and can now compute all of it from
 issues.
+
+Two leash constraints, made explicit by the validation review (2026-08-13):
+
+- **The executing leash must exceed every task's prework timeout bound
+  (F17)** — enforced as a wiring-time conformance check, not a convention.
+  A prework legally allowed to outlive the leash is reclaimed *alive*, and
+  the failure is not one duplicate run but a **livelock**: every tenure is
+  reclaimed before it can finish, prework re-executes each cycle, and the
+  occurrence never converges (S31's trace). The paired runtime rule: an
+  executor **re-verifies its own lease at every state transition** (is my
+  claim still this episode's earliest?) and abandons silently when it is
+  not — which is what keeps a reclaimed-but-alive runner from handing off
+  work it no longer owns.
+- **The agent leash (~3h) assumes agent sessions finish or touch their item
+  within it** — parity with today's stale `agent-running` sweep, stated as
+  an assumption rather than discovered as an incident: a legitimately
+  longer-running agent must comment on its item to reset the activity
+  clock, or it will be declared dead.
 
 Both recovery sites keep the same discipline: **recovery is code, run in one
 place per rule, never a sweep inside a session that is executing something.**
