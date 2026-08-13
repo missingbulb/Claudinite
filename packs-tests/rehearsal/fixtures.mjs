@@ -107,6 +107,27 @@ const PACK_PROSE_ONLY = `export default {
 };
 `;
 
+// A well-formed local task, declared entirely inside its own tasks/<name>/
+// folder — exercises basics' scheduled-task shape rules (task-declaration-shape,
+// task-declaration-matches-folder) against a consumer that actually schedules
+// something, which no other fixture does (a task under `.claudinite/shared/` is
+// canon-owned and structurally out of ctx.files, so it proves nothing about a
+// consumer's OWN task). `id` deliberately equals its directory name and
+// `agent_model: 'none'` keeps the fixture minimal (no agent_instructions to wire).
+const FIXTURE_TASK = `export default {
+  id: 'fixture-task',
+  frequency: 'weekly',
+  precondition_signals: [],
+  agent_model: 'none',
+  expected_outcome: 'none',
+  agent_preprocessing: 'node prepare.mjs',
+  agent_preprocessing_timeout: 60,
+  precondition() {
+    return { run: false, reason: 'a rehearsal fixture never actually dispatches' };
+  },
+};
+`;
+
 const PACK_VERSIONED = `export default {
   id: 'fixture-versioned',
   version: 3,
@@ -167,6 +188,7 @@ export const FIXTURES = [
       '.claudinite/local/packs/fixture-local/RULES.md': '# fixture-local\n\nNo standing rules.\n',
       '.claudinite/local/packs/fixture-local/skills/fixture-skill/SKILL.md':
         '---\nname: fixture-skill\ndescription: A rehearsal fixture skill. Never invoked.\n---\n\nNothing to do.\n',
+      '.claudinite/local/packs/fixture-local/tasks/fixture-task/task.mjs': FIXTURE_TASK,
     },
   },
   {
