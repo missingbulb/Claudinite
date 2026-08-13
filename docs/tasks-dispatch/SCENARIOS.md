@@ -37,16 +37,15 @@ session-creation call.
 - **02:17** tick: baselining — occurrence guard passes (no item ≥ 02:00),
   backlog guard passes, precondition: mount converged yesterday, stamp fresh →
   `run: false`. No item. Same for every other task at its hour.
-- **03:17–23:17** every tick re-evaluates each unfired occurrence; all stay
-  false. Zero items created all day.
+- **03:17–23:17** nothing re-evaluates: each occurrence had its one verdict at
+  the first tick at-or-after its anchor, and a no-go spends it. Zero items
+  created, zero further preconditions run, all day.
 
-**Verdict: holds — but exposes a cost.** Today a daily task's precondition
-runs **once** per day (its slot fires once); under the tick it runs **up to
-24×** per unfired occurrence, and the signal union is collected every tick
-that any occurrence is unfired. At this fleet's scale the API cost is
-tolerable (one signal collection per tick, shared across tasks), but it is a
-real ~×20 read amplification on quiet days and the design should pick the
-default deliberately → **F10**.
+**Verdict: holds.** *(Replayed after the 2026-08-13 go/no-go ruling. As first
+drafted, the design re-evaluated every unfired occurrence each tick — 24
+precondition runs and signal collections per quiet daily task, a ~×20 read
+amplification, which is what F10 asked about. The ruling removed both the cost
+and the question: one occurrence, one verdict.)*
 
 ### S2 — happy path, one agentic task
 
@@ -67,15 +66,20 @@ of it readable on #900.
 
 ### S3 — work appears mid-window
 
-- **04:17** tidy-issues precondition: nothing touched → no item.
-- **09:03** someone updates an old issue. **09:17** tick: occurrence guard
-  still passes (no item created ≥ 04:00 today) → precondition now true → item
-  created, runs at 09:20.
+- **04:17** tidy-issues precondition: nothing touched → no-go. The occurrence
+  is spent.
+- **09:03** someone updates an old issue. **09:17** tick: the evaluate-once
+  gate holds (this occurrence already had its verdict) → nothing happens.
+- **Tomorrow 04:17** the next occurrence evaluates, sees the issue touched
+  inside its window, and runs.
 
-**Verdict: holds** — this is the §5 mid-window-firing semantic doing what it
-promised (today this work waits for tomorrow's slot). The price is S1's
-re-evaluation cost; both faces of the same coin → **F10** (owner picks the
-default: continuous evaluation vs once-per-occurrence).
+**Verdict: holds, with the accepted latency.** *(Replayed after the go/no-go
+ruling, which reversed this scenario's original outcome — it used to fire at
+09:20.)* The work waits up to a day; the window-scoped signals mean it is
+found, not lost. A task for which that latency is wrong declares a finer
+`frequency` — which is what create-extractor's `hourly` already does, and is
+the mechanism's own answer rather than a special case. Note this is exactly
+today's behaviour, so it is parity, not a regression.
 
 ## B. Scheduler unreliability
 
@@ -175,13 +179,13 @@ harmless.
 - **04:22** the runner is killed (spot eviction / job cancelled). #931 sits
   `task:executing`, half a converge branch pushed.
 - Leash: `task:executing` with no activity past **1h** → strip back to
-  `task:ready` with a comment. But the janitor is **daily**: the strip
-  happens at the janitor's next run — worst case ~25h later. For an *urgent*
-  item that's unacceptable → **F4**: the executing-leash reclaim should ride
-  the **tick** (it is exactly the tick's kind of work — a deterministic label
-  rule, serialized, hourly), leaving the janitor the judgment-heavy sweeps.
-  Worst case then: ~2h to re-run. *Owner call, added to §15.*
-- **05:17 (amended design)** tick strips #931 → ready; E3 claims **05:18**,
+  `task:ready` with a comment. As first drafted this ran on the **daily**
+  janitor, so the strip waited up to ~25h → **F4**: the reclaim should ride
+  the **tick** (a deterministic label rule, serialized, hourly), leaving the
+  janitor the judgment-heavy sweeps. Worst case then ~2h. *Accepted by the
+  owner 2026-08-13; DESIGN §11 amended.*
+- **05:17 (as decided — the reclaim rides the tick, F4 accepted)** tick strips
+  #931 → ready; E3 claims **05:18**,
   precondition re-runs, prework **re-runs over the half-done converge** — so
   prework must be re-entrant after a crash. It already must be today (a
   scheduler run that dies mid-prework leaves the slot due; the next run
@@ -407,10 +411,10 @@ written path from `needs-human` back to execution.
 | **F12** | contract gap | prework re-runs after an executor death; re-entrancy was never stated (S8) | **fixed in DESIGN §6**: re-entrancy is an explicit prework requirement (it was already implicitly required today) |
 | **F11** | implementation constraint | guards over the search index race its lag; back-to-back serialized ticks make it sharp (S6) | **fixed in DESIGN §5**: guards read the REST issue list, never search |
 | **F7** | doc gap | no written path from `needs-human` back to execution (S12, S19) | **fixed in DESIGN §4**: strip `needs-human` + apply `task:ready` is the sanctioned re-queue |
-| **F4** | owner call | executing-leash reclaim on the daily janitor = up to ~25h stall for a dead executor (S8) | **§15**: proposal — the reclaim rides the tick (deterministic label rule); janitor keeps the judgment sweeps |
-| **F10** | owner call | mid-window firing costs up to 24 precondition evaluations + signal collections per unfired daily occurrence (S1/S3) | **§15**: pick the default — continuous (as drafted), once-per-occurrence (today's parity), or a per-task opt-in |
-| **F1** | optimization | chain readiness quantized to the tick, ~1h/link (S4) | **§15**: optional converger-poke of dependents; tick stays the backstop |
-| **F2** | accepted | an occurrence that fires-and-obsoletes is spent for the period (S13) | documented here; the alternative invites churn loops |
+| **F4** | **decided** | executing-leash reclaim on the daily janitor = up to ~25h stall for a dead executor (S8) | **accepted 2026-08-13**: the reclaim rides the tick (deterministic label rule, ~2h worst case); janitor keeps the judgment sweeps — DESIGN §11 |
+| **F10** | **decided** | mid-window firing costs up to 24 precondition evaluations + signal collections per unfired daily occurrence (S1/S3) | **resolved 2026-08-13 by ruling**: a precondition is go/no-go, not maybe-later — one verdict per occurrence, a no-go spends it. Cost and question both gone; S1/S3 replayed |
+| **F1** | **decided** | chain readiness quantized to the tick, ~1h/link (S4) | **declined 2026-08-13**: the tick's readiness job stays the single site; ~1h/link is within tolerance |
+| **F2** | accepted | an occurrence that fires-and-obsoletes is spent for the period (S13) | documented here; now simply consistent with the go/no-go ruling — every occurrence gets one verdict and one chance |
 | — | accepted | fan-in stalls on one stuck child until a human acts (S18) | documented here; no quorum/deadline semantics at this scale |
 | **F8** | migration detail | signal collectors' self-trigger exclusions must cover `[claudinite-work]` titles and the new labels | **noted in DESIGN §14** |
 

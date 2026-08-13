@@ -204,7 +204,18 @@ acks). One divergence, deliberate: IssueOps leaves terminal states unlabeled
 census data* (the usage fold, the janitor's health review), not just FSM
 states. Divergence noted, kept.
 
-## 3. The mid-window-firing question (F10), informed
+## 3. The mid-window-firing question (F10) — asked, then settled
+
+> **Settled by owner ruling, 2026-08-13**, after this was written: *"I look at
+> preconditions as go/no-go and not maybe-later — if a task doesn't pass
+> preconditions, it stops trying."* One verdict per occurrence; mid-window
+> firing is out. The pricing below stands as the record of what was weighed,
+> and one piece of it became load-bearing in a way the question didn't
+> anticipate: with no re-evaluation, nothing in the issue family records that
+> an occurrence was evaluated and declined, so the tick reads `lastTick` from
+> the Actions ledger (DESIGN §5) — the design's one remaining side-channel
+> read, and its unreadable-ledger fallback is K8s `startingDeadlineSeconds`
+> straight out of §1's taxonomy.
 
 Airflow's sensor modes give F10 its vocabulary: **poke** (hold a slot,
 check often) vs **reschedule** (wake, check, sleep — cheap, latent), and
@@ -255,3 +266,13 @@ Named, so the next reader doesn't re-derive and re-propose them:
 
 Everything else in DESIGN.md stands as validated — in several places the
 literature supplied the pattern's proper name, which the doc now uses.
+
+**Post-decision note (2026-08-13).** Two owner rulings landed after this
+survey and both have literature behind them worth naming. *Go/no-go
+preconditions* (§15.4) put us on the anacron/systemd side of the catch-up
+taxonomy — evaluate the occurrence once, coalesce, never poll — with K8s
+`startingDeadlineSeconds` as the degraded fallback when the ledger read fails.
+*Fleet eliminated* (§15.5) is the Temporal task-queue insight arriving from
+the other direction: there, work routes by which queue a worker polls; here,
+reach routes by which endpoint a task invokes. Both replace a scope concept
+with a routing fact, which is why neither system needs a permission label.

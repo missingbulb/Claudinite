@@ -1,7 +1,11 @@
 # Task dispatch without slots — the work-item queue
 
-Status: **proposed, unverified** — a continuation of the owner's sketch
-(2026-08-12, reproduced in Appendix A), not yet agreed. If adopted it supersedes
+Status: **agreed in shape; not yet built.** A continuation of the owner's
+sketch (2026-08-12, reproduced in Appendix A), played against twenty timed
+scenarios ([SCENARIOS.md](SCENARIOS.md)) and the field's prior art
+([RESEARCH.md](RESEARCH.md)), with the owner's eight decisions of 2026-08-13
+recorded in §15 and folded into the sections they changed. The phase plan
+belongs to a tracking issue, not here. It supersedes
 the slot machinery of
 [per-project-scheduling DESIGN §3–§5](../per-project-scheduling/DESIGN.md) and
 amends several of its §12 decisions (each amendment is named where it happens).
@@ -48,7 +52,9 @@ consequence of that shape.
   whole run (an exit-0 abort would advance it past slots it never evaluated).
   The state the system actually cares about — *was this occurrence's work
   created?* — is derivable from the issues themselves, and nothing reads it
-  from there.
+  from there. *(Partially amended by the go/no-go ruling — §5 still reads one
+  weak fact from the ledger, "when did the tick last run", and says plainly
+  what that costs.)*
 
 - **A decision made at one instant cannot express ordering, only simultaneity.**
   The nightly chain's ordering is faked by anchor-hour staggering, which
@@ -110,9 +116,13 @@ shrinks):
    dead agent claims, stale-item escalation, queue health review. The re-arm
    retires (§11).
 
-The queue itself is the repo's issues. There is no other state: no watermark,
-no ledger read, no plan file. Everything the system knows about a piece of work
-is on the work item, which is what the sketch means by *visibility into state*.
+The queue itself is the repo's issues. Everything the system knows about a
+piece of work is on the work item — no plan file, no watermark of processed
+slots, nothing about a task's state anywhere but the item — which is what the
+sketch means by *visibility into state*. One fact lives outside: the tick reads
+*when it itself last ran* from the Actions ledger, so an occurrence gets
+exactly one verdict (§5). That is a fact about the tick, not about any piece of
+work, and §5 states what it costs.
 
 ## 3. The work item
 
@@ -261,10 +271,18 @@ tick(now):
     if any(i.state == OPEN for i in family):    # BACKLOG GUARD: at-most-one-
       continue                                  # open, incl. one sat needs-human
 
+    # EVALUATE-ONCE GATE (owner, 2026-08-13): "a precondition is go/no-go, not
+    # maybe-later — if a task doesn't pass, it stops trying." An occurrence is
+    # evaluated by the first tick at-or-after its anchor and by no other, so a
+    # no-go SPENDS the occurrence exactly as a false precondition spends a slot
+    # today. `lastTick` is when this workflow last ran (see below).
+    if A <= lastTick: continue                  # this occurrence already had
+                                                # its one verdict
+
     verdict = task.precondition(collectSignals(task.precondition_signals),
                                 packConfig(task.pack))
-    if not verdict.run:                         # quiet; re-evaluated each tick
-      continue                                  # until the next anchor passes
+    if not verdict.run:                         # no-go: the occurrence is
+      continue                                  # spent, not retried
 
     blockers = openScheduledItemsOf(task.after) # declared ordering edges (§9)
     createIssue(
@@ -321,17 +339,39 @@ deliberate, so it is spelled out:
   closes it automatically: a mechanism that silently retires triage states is
   how failures stop being seen.
 
-**A deliberate semantic change, called out:** today a slot's precondition is
-evaluated once, when the slot fires, and a `false` spends the slot — a
-precondition that would have passed at 09:00 waits for tomorrow. Under the
-tick, every hourly run re-evaluates step 4 until the occurrence fires or the
-next anchor passes; work that becomes ready mid-window fires mid-window. That
-is *more* faithful to "run daily if there is work" — the sketch's "created
-after the daily execution time **regularly**, only if it passes preconditions"
-— and the noise bound is exactly the occurrence guard: at most one item per
-task per period, whatever hour it fires. Signal lookback windows stay
-period + slack as today; the overlap this creates is absorbed by the guards
-plus downstream idempotence, as now.
+**A precondition is go/no-go, never maybe-later** (owner, 2026-08-13). An
+earlier draft of this design had every tick re-evaluate an unfired occurrence,
+so work appearing at 09:00 fired at 09:20 instead of waiting for tomorrow.
+That was rejected, and the ruling is a statement about what a precondition
+*is*: a verdict on the occurrence, not a poll that keeps asking. So the
+occurrence is evaluated **once**, by the first tick at-or-after its anchor, and
+a no-go spends it exactly as a false precondition spends a slot today. A task
+that needs finer latency says so with its `frequency` — that is what the
+declaration is for — rather than by having a daily task re-asked hourly.
+
+**What "the first tick at-or-after the anchor" needs, honestly.** No item is
+created on a no-go, so the issue family cannot record that an occurrence was
+evaluated and declined; the tick therefore needs `lastTick` — **when this
+workflow last ran** — read from the Actions run ledger. That is a partial
+walk-back of §1's complaint about state in a platform side channel, and it
+should be read as one. What survives of the complaint is most of it: the
+read is *"when did the tick last run"*, not *"which slots were successfully
+processed"* — so it needs no forced-run exclusion (§8's items don't touch it),
+it is never advanced past work that wasn't created (the item family still
+answers exactly-once), and an unreadable ledger **degrades instead of failing
+the run**: fall back to a grace window (evaluate iff `now - A < grace`, ~3h —
+K8s CronJob's `startingDeadlineSeconds` policy), which loses at worst one
+occurrence of a task during an outage of both the ledger and the tick. Today's
+watermark can do none of that: it must be the last *successful* run, it must
+exclude forced runs, and an unreadable ledger has to fail the run outright.
+
+*The alternative, recorded (§15.12):* create an item for every occurrence,
+born closed `outcome:obsolete` when the verdict is no-go. Then the occurrence
+guard alone answers everything, no ledger read at all, and every occurrence is
+visible on record — at the cost of roughly one closed issue per task per
+period (~2,500/year here) in the issue list.
+
+Signal lookback windows stay period + slack as today.
 
 The tick's second job is **readiness**: for every open `task:blocked` item,
 parse `Blocked-by` and `Not-before`; when every named issue is closed and the
@@ -382,6 +422,22 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
    phases inventing "new reasons to skip") is untouched. The pickup verdict's
    Context *replaces* the creation Context on the item (edit the body), so the
    agent's binding scope is current, not stale.
+
+   **This holds only while preconditions ask task questions, not calendar
+   ones** (owner's condition, 2026-08-13). "Is there work?" answers the same at
+   pickup as at creation unless the world changed — which is the point. "Has it
+   been more than a day?" can flip for a purely scheduling reason, so
+   re-running it lets an item be obsoleted by the clock rather than by the
+   work. Timing belongs to `frequency`, the anchors, and `Not-before`. The rule
+   is **advisory** by owner ruling: timing in a precondition is permitted where
+   the verdict cannot flip between creation and pickup for scheduling reasons
+   alone. That property cannot be mechanically checked, so no check is
+   proposed and the residual exposure stands — an item closed
+   `outcome:obsolete` with a calendar reason in its comment, which is visible
+   and costs a cycle, not correctness. The live case at migration is
+   baselining's `ageDays > 1` gate: its stale-mount half is already a work
+   question ("is the mount behind canon?"), and its once-a-day half is what
+   `frequency: daily-2h` says on its own.
 5. **Prework**, Action-side, unchanged contract: subprocess, task dir cwd,
    `required_secrets` as env, timeout, `CLAUDINITE_REQUEST_AGENT` conditional
    hand-off. One requirement now stated explicitly (SCENARIOS S8/F12): prework
@@ -514,10 +570,13 @@ earlier.
 - **`manual` tasks** are simply tasks the tick never instantiates: their items
   are only ever created by hand or by other tasks. The frequency token
   survives; the special-case slot resolution for it dies.
-- **Fleet fan-out** is the enforcer creating one item per member repo (urgent
-  when the pass is urgent) instead of firing member schedulers with
+- **Fan-out across repos** is the enforcer creating one item per member repo
+  (urgent when the pass is urgent) instead of firing member schedulers with
   `FORCE_TASKS` — same write-gated surface, and the fan-in below gives the
-  enforcer something it never had: a status.
+  enforcer something it never had: a status. Nothing about it is a "fleet
+  mechanism": it is a task creating items, and if its work needs wider reach
+  than the repo's ordinary sessions have, it names a wider invocation endpoint
+  (§12).
 
 ## 9. Follow-ups, ordering, fan-in — the dependency fields
 
@@ -587,39 +646,66 @@ never enumerates executors, which is why adding one requires telling no one.
 | double tick | concurrency group + slot-title search | concurrency group + occurrence-guard search (same window, same answer) |
 | lost label event | janitor re-arm (remove/re-add), 20-min grace, bounded by stale escalation | **retired** — executors poll on the tick's cron; events are latency sugar, never the only delivery |
 | duplicate events / racing executors | claim lease on one implicit executor | same lease, N executors — the loser picks a different item |
-| executor died mid-claim | — (executor was a session; janitor reclaimed via `agent-running`) | janitor: `task:executing` with no activity past ~1h → strip to `task:ready` with a comment (an executor iteration is minutes, not hours — a *short* leash is safe because re-execution before the agent phase is idempotent prework at worst) |
+| executor died mid-claim | — (executor was a session; janitor reclaimed via `agent-running`) | **the tick** (owner, 2026-08-13): `task:executing` with no activity past ~1h → strip to `task:ready` with a comment, so a dead executor's item is back in the queue within ~2h rather than ~25h. An executor iteration is minutes, not hours, and a lease checked once a day is not a short lease |
 | agent session died mid-run | janitor: stale `agent-running` → `needs-human` after ~3h | same, on `task:agent` (a hand-off comment names the session, so the janitor can say *which* session died) |
 | CCR invocation lost | undetectable (label event fired into the void); surfaced only by re-arm/stale | **synchronous**: the executor sees the API failure, retries, converges `needs-human` with the error (§6.6) |
 | item never picked up | stale dispatch escalation, period parsed from the slot id's leading char | same escalation, period read from the task's declared `frequency` at HEAD (or a default for ad-hoc items) — no title parsing |
 | dependency never resolves | n/a | stale escalation covers it (§9) |
 
-The janitor remains an ordinary daily task, remains the only recovery site, and
-shrinks: re-arm and its grace window delete; the two dead-claim sweeps and the
-stale escalation re-target the new labels; the health review gains the queue
-(ready-item age, blocked-item depth, outcome mix) as its subject — which it can
-now compute entirely from issues.
+The janitor remains an ordinary daily task and shrinks twice over: re-arm and
+its grace window delete, and the **executing-leash reclaim moves to the tick**
+— a deterministic label rule, serialized and hourly, which is exactly the
+tick's kind of work. This amends the 2026-08-06 "all recovery lives in the
+janitor" split, deliberately: the split's purpose was that recovery happen
+*once, in one place, in code* rather than in every triggered session, and a
+rule that runs once per tick satisfies that as fully as one that runs once per
+day. What stays with the janitor is everything needing judgment or a longer
+horizon — the dead *agent* claim (3h), the stale-item escalation, and the
+health review, which gains the queue (ready-item age, blocked-item depth,
+outcome mix) as its subject and can now compute all of it from issues.
 
-## 12. The invocation credential — the one new trade, owner's call
+Both recovery sites keep the same discipline: **recovery is code, run in one
+place per rule, never a sweep inside a session that is executing something.**
 
-§12.6 declined URL-invoked routines because the label was trigger *and*
-write-gated authorization, the re-arm was built on it, and an API endpoint
-"would add a callable credential to every repo's Action for no reduction in
-moving parts". This design changes the balance sheet on all three points: the
-authorization surface is unchanged (creating/labeling items is write-gated
-exactly as labeling was), the re-arm no longer exists to preserve, and the
-moving parts genuinely reduce (re-arm, grace window, transport-dance exits,
-no-fallback doctrine all delete). What it costs is real and must be decided,
-not slid past: **a CCR API credential as an Actions secret in every repo**,
-readable by anything that can run a workflow with secrets access, whose blast
-radius is "start agent sessions as the owner". Mitigations if accepted: a
-dedicated key scoped to session-creation only, provisioned by
-bootstrap/baselining like any `required_secrets`, rotated centrally.
-Fallback if declined: the executor's hand-off step applies a `task:agent`
-*trigger label* wired to the routine (today's mechanism, minus discovery —
-the routine's session still gets told its item by the label event), and the
-janitor keeps a re-arm for that one hop. The design works either way; the
-recommendation is the API, because a hand-off whose failure is synchronous and
-attributable is the single biggest operability win in this document.
+## 12. Invocation is an API call — and the endpoint is a task's to choose
+
+**Decided (owner, 2026-08-13): the executor invokes the agent over the CCR
+API.** This reverses per-project-scheduling §12.6, which declined URL-invoked
+routines because the label was trigger *and* write-gated authorization, the
+re-arm was built on it, and an endpoint "would add a callable credential to
+every repo's Action for no reduction in moving parts". All three premises
+changed: the authorization surface is unchanged (creating and labeling items
+is write-gated exactly as labeling was), the re-arm no longer exists to
+preserve, and the moving parts genuinely reduce — re-arm, grace window,
+transport-dance exits and the no-fallback doctrine all delete.
+
+The cost is accepted, not waved through: **a CCR session-creation credential
+as an Actions secret in every repo**, readable by anything that can run a
+workflow with secrets access, blast radius "start agent sessions as the
+owner". Mitigations, all standard machinery here: a dedicated key scoped to
+session creation alone, provisioned like any `required_secrets` entry, rotated
+centrally.
+
+**And this is what kills the fleet concept** (owner, 2026-08-13: *"the notion
+of 'fleet' should be eliminated — a CCR with wider access is just a different
+API invocation; let specific tasks override the URL and you're done"*). The
+whole self/fleet apparatus — a second ready label, a second executor routine,
+`session_scope`, "which dispatches may a repo's executor take" — existed only
+to keep a broad grant off ordinary sessions while the trigger was a label.
+Once invocation is a call, reach is a property of *which endpoint you call*,
+so a task that needs wider access declares a different invocation target and
+nothing else in the system needs a concept of scope. The canon's curation
+tasks become ordinary tasks that name a wider endpoint.
+
+One elaboration on the literal instruction, flagged rather than slipped in: a
+task declares an endpoint **name**, and the repo's config maps that name to
+the URL and the credential it uses. A raw URL in a `task.mjs` would put
+deployment detail — and something adjacent to a credential — into a vendored
+pack file that every consuming repo receives verbatim, which is the one thing
+pack files must never carry. Same effect, same one-line declaration at the
+task; the indirection just keeps the secret-shaped half in the repo's config
+where `required_secrets` already lives. Say the word if you meant the literal
+URL and I will change it.
 
 ## 13. What retires, what survives
 
@@ -627,11 +713,11 @@ Retires: `slots.mjs` (both exports and the slot-id grammar), `lastSuccessTime`
 and the ledger-read failure mode, `FORCE_TASKS` and `FORCED_VERDICT` and the
 `~f` marker, the exclusive claim and `deferredByClaim`, the re-arm
 (`rearmDispatchIssues`) and its grace window, `resolve-dispatch`'s
-trigger-discovery exits (11/12/13) and the two-transport dance, the
-`ready-for-agent(-fleet)` labels (the fleet variant's job — keeping the broad
-grant on a separate routine — transfers to the fleet executor picking up only
-fleet-marked items, or to the API invocation naming the routine; decide with
-§12), `SLOT_PERIOD_MS` title parsing.
+trigger-discovery exits (11/12/13) and the two-transport dance, both
+`ready-for-agent` labels, `SLOT_PERIOD_MS` title parsing — and, per §12, **the
+fleet/self distinction entire**: `READY_FLEET_LABEL`, the second executor
+routine, the deprecated `session_scope` field, and the scope word every
+executor had to be told and check. Reach is which endpoint a task names.
 
 Survives unchanged: the task folder and contract (plus the new optional
 `after` and `on_interrupt`), preconditions as the only decision point (evaluated at admission and
@@ -659,54 +745,65 @@ new vocabulary — `[claudinite-work]` titles and the `task:*` label events —
 before the first queue-mode repo flips, or the queue's own items read as repo
 activity to the preconditions watching it.
 
-## 15. Open questions for the owner
+## 15. Decisions on record (owner, 2026-08-13)
 
-1. **§12 — the invocation credential.** API invocation (recommended) or the
-   trigger-label fallback? This is the one decision the rest hangs on.
-2. **§6.4 — pickup-time re-evaluation.** Accept the amendment to §12.3
-   (precondition decides *twice*, obsolete-on-pickup is a legal terminal), and
-   the death of forcing's precondition exemption (#515's rationale no longer
-   applies)?
-3. **§5 — mid-window firing.** Accept that an occurrence whose precondition
-   passes at 09:00 fires at 09:00 rather than waiting for tomorrow's anchor?
-4. **Label vocabulary.** The namespaced set above vs the sketch's literals —
-   and should executor identity really be comment-only (§4)?
-5. **Fleet scope routing** (§13): fleet-marked items + a fleet-only executor,
-   or routine-named API invocation?
+The eight questions this design opened, as answered. Where an answer changed
+the design rather than confirming it, the section it changed is named.
 
-From the scenario play-through ([SCENARIOS.md](SCENARIOS.md)):
+1. **Invocation is a CCR API call** (§12). Reverses per-project-scheduling
+   §12.6; the session-creation credential in every repo is an accepted cost.
+2. **The precondition re-runs at pickup, and forcing loses its exemption**
+   (§6.4) — conditioned on preconditions asking task questions, not calendar
+   ones. #515's rationale does not survive the pull model.
+3. **Timing in a precondition is advisory, not forbidden** (§6.4): permitted
+   where the verdict cannot flip between creation and pickup for scheduling
+   reasons alone. No check — the property is not mechanically checkable, and
+   the residual failure is a visible `outcome:obsolete`, not a wrong result.
+4. **A precondition is go/no-go, never maybe-later** (§5) — *changed the
+   design*. An occurrence gets exactly one verdict, from the first tick
+   at-or-after its anchor; a no-go spends it. Mid-window firing is out; a task
+   wanting finer latency declares a finer `frequency`. Consequence, stated
+   plainly in §5: the tick reads one weak fact from the Actions ledger
+   ("when did this workflow last run"), which partially walks back §1's
+   no-side-channel claim.
+5. **The fleet concept is eliminated** (§12, §13) — *changed the design*.
+   Wider reach is a different invocation endpoint, declared by the task that
+   needs it. `ready-for-agent-fleet`, the second executor routine, and
+   `session_scope` all delete. (One elaboration flagged in §12: the task names
+   an endpoint *key*, with the URL and credential in repo config, so no
+   vendored pack file carries deployment detail.)
+6. **The executing-leash reclaim rides the tick** (§11) — *changed the
+   design*. ~2h to recover a dead executor's item instead of ~25h; the janitor
+   keeps the judgment sweeps. Amends the 2026-08-06 single-recovery-site split
+   in siting, not in principle.
+7. **Namespaced labels, executor identity in claim comments** (§4). As
+   drafted; the sketch's literals and a label-per-executor are both declined —
+   the first for queryability, the second because executor identities are an
+   unbounded set.
+8. **Dependency readiness is the tick's alone** (§9). No converger poke: one
+   site evaluates `Blocked-by`/`Not-before`, and ~1h per chain link is within
+   what nightly work tolerates.
 
-6. **F10 — evaluation cadence.** Mid-window firing (§5) means up to 24
-   precondition evaluations + signal collections per unfired daily occurrence,
-   vs one today. Options: continuous (as drafted — work fires the hour it
-   appears), once-per-occurrence (today's parity, cheapest), or a per-task
-   opt-in. Which default?
-7. **F4 — where the executing-leash reclaim lives.** A dead executor's
-   `task:executing` claim reclaimed by the daily janitor stalls the item up to
-   ~25h; proposal: that one deterministic label rule rides the hourly tick
-   (worst case ~2h), the janitor keeps the judgment-heavy sweeps. Accept the
-   janitor-scope amendment?
-8. **F1 — converger pokes dependents.** Optional latency optimization: on
-   closing an item, the converger readies (in code) any `task:blocked` item
-   naming it whose conditions now hold, instead of waiting for the next tick
-   (~1h/chain link). Same event+poll shape as pickup. Worth the extra moving
-   part?
-9. **Known limitation, on record (S18):** a fan-in blocked on a stuck child
-   waits until a human resolves that child — no quorum/deadline semantics,
-   deliberately, at this scale; the janitor's stale escalation is the
-   visibility. Revisit only on evidence.
+Standing entries — no decision needed now:
 
-From the literature survey ([RESEARCH.md](RESEARCH.md)):
-
-10. **Ref-creation CAS claims** — git ref creation is the platform's one true
-    first-writer-wins primitive (`refs/claudinite/claim/<n>`), which would
-    replace the comment-ordering lease outright. Recommendation: keep comment
-    leases (visible on the item, sufficient at our concurrency) unless a real
-    lost-race incident occurs; recorded so it isn't re-derived.
+9. **Known limitation (S18):** a fan-in blocked on a stuck child waits for a
+   human; no quorum or deadline semantics at this scale. The janitor's stale
+   escalation is the visibility. Revisit only on evidence.
+10. **Ref-creation CAS claims** — `refs/claudinite/claim/<n>` is the
+    platform's one true first-writer-wins primitive and would replace the
+    comment lease outright. Recommendation stands: keep comment leases
+    (visible on the item, sufficient at this concurrency) unless a real
+    lost-race incident occurs. Recorded so it is not re-derived.
 11. **Invocation idempotency key** — if the CCR session-creation API accepts
-    an idempotency key, pass the §6.6 nonce as one: duplicates then collapse
-    at creation and the agent-side lease becomes the backstop rather than the
-    mechanism. One API-docs check at implementation time.
+    one, pass §6.6's nonce as it: duplicates then collapse at creation and the
+    agent-side lease becomes a backstop rather than the mechanism. One
+    API-docs check at implementation time.
+12. **The no-go record alternative** (§5) — every occurrence creates an item,
+    born closed `outcome:obsolete` on a no-go, which removes the ledger read
+    entirely and puts every occurrence on record, at ~2,500 closed issues a
+    year here. Not proposed; recorded because it is the only way to make the
+    issue family a *complete* ledger, and a future appetite for that
+    visibility is the trigger to revisit.
 
 ---
 
