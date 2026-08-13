@@ -167,9 +167,21 @@ new pack is just a `../packs/<name>/` directory with a `pack.mjs` (its `id`, fin
 `detect`, `rules`, and optional `prose`) — [engine/pack_loader/pack-registry.mjs](../pack_loader/pack-registry.mjs)
 discovers it structurally, no list to edit.
 
+**Prefer a declaration over code.** A rule whose whole logic is "these patterns over these
+files" — a required or forbidden regex, a pattern pair, a repo-level implication — is declared as
+data through [`patternRule(spec)`](helpers/pattern-rules.mjs): the module stays one-rule-one-file
+and exports the compiled rule, but its body is a comment-free spec of patterns and failure text
+(the spec vocabulary is documented in that helper's header). The engine runs every pattern rule in
+ONE shared pass — each file read once, its lines walked once for all subscribing rules — so a
+declared rule costs nothing extra however many exist. Reach for a hand-written `run(ctx)` only
+when the check needs what patterns can't say: real parsing (comment/string stripping, indentation
+blocks, balanced braces), structured-data field logic, git/diff/conversation state, or a derived
+comparison.
+
 **Shared helpers carry mechanism, not policy.** A `engine/checks/helpers/` helper owns only the walking —
 resolve a file set, find the lines a pattern matches, list the change's added lines
-([helpers/line-scanning.mjs](helpers/line-scanning.mjs)) — never one rule's forbidden tokens, file filters, or failure
+([helpers/line-scanning.mjs](helpers/line-scanning.mjs)), evaluate declared pattern specs in one pass
+([helpers/pattern-rules.mjs](helpers/pattern-rules.mjs)) — never one rule's forbidden tokens, file filters, or failure
 text; those stay in the rule module, which composes the helpers in a few lines. A lib that knows
 a rule's words is that rule's policy wearing an engine filename: unreusable by the next rule and
 a second place for the first one to drift from.
