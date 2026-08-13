@@ -8,6 +8,14 @@ or a numbered **finding**. The findings ledger at the end classifies every
 finding and says what was done about it — some amended DESIGN.md in this same
 change, some are owner calls added to its §15.
 
+> **Read §H first for the current mechanism.** Sections A–G record rounds one
+> and two (the tick-evaluates models); the owner's **standing-item model**
+> (2026-08-13) replaced generation, and §H replays everything it touches —
+> where A–G conflict with §H, §H is the design as it stands. The earlier
+> sections are kept because the findings they produced (the leases, the
+> hand-off retry, the guards) are unchanged and their reasoning is the
+> record.
+
 ## Cast and constants
 
 A fictional but realistic repo, tasks drawn from the real fleet:
@@ -398,6 +406,131 @@ written path from `needs-human` back to execution.
 
 **Verdict: holds** — parity with today's exit-14, one hop earlier.
 
+## H. Replay under the standing-item model (owner proposal, 2026-08-13)
+
+The owner's third-round proposal: *the tick creates a daily task's item
+automatically; a failed precondition marks the item delayed until tomorrow's
+time.* Every scenario above was replayed under it (with `after` compiled to
+the pick-time yield — see S24 for why the literal `Blocked-by` reading cannot
+work). Unchanged: S2 (happy path), S5–S12 (tick outage, double-tick,
+executor races and deaths, hand-off failures — none touch generation),
+S17–S20 (ad-hoc items keep their old lifecycle: a no-go *closes* them, since
+they have no anchor to roll to). What changes, and what is new:
+
+### S1′ — quiet night
+
+- **02:17** tick creates baselining's item #900 `task:ready` — no precondition
+  asked, creation is calendar-only. **02:18** executor picks #900, collects
+  baselining's signals, evaluates: no-go (mount converged, no pending notes) →
+  stamps `Not-before: <tomorrow 02:00Z>`, swaps to `task:blocked`, records the
+  reason. The item **rolls**. Same for each task at its anchor.
+- Rest of the day: nothing — the items sit blocked with their wake times
+  visible. **One evaluation per task per day**, executor-side; the tick
+  evaluated nothing and collected nothing. (F10's 24-attempts cost: gone.)
+
+**Verdict: holds.** The issue list now always shows one open blocked item per
+task — the dashboard reading, priced in DESIGN §5.
+
+### S3′ — work appears mid-window
+
+- **04:18** tidy-issues' item rolls (no-go). **09:03** an issue is touched.
+  Nothing wakes until **tomorrow 04:17**, when the readiness flip + pick
+  re-ask finds the work. Go/no-go held: one ask per period; a task wanting
+  finer latency declares a finer frequency.
+
+**Verdict: holds — today's parity, by ruling.**
+
+### S13′ — "obsolete at pickup" becomes the roll
+
+- Old S13: precondition true at creation, false at pickup → close
+  `outcome:obsolete`. Under the standing-item model there *is* no creation
+  verdict; the pick verdict is the only one, and a scheduled no-go rolls
+  instead of closing. `outcome:obsolete` narrows to: task gone from the repo
+  (S20), and ad-hoc items whose reason to exist lapsed (S17's follow-up
+  finding the store already live). F2 ("an occurrence that fires-and-obsoletes
+  is spent") dissolves — there is no fire-then-obsolete path left for
+  scheduled work.
+
+**Verdict: holds, and simpler than what it replaces.**
+
+### S14′/S16′ — forcing is waking
+
+- Scheduled task, operator wants it now: its standing item exists (blocked,
+  wake tomorrow). Force = strip `task:blocked`, clear `Not-before`, add
+  `task:urgent` → picked within a minute (label event) → precondition
+  evaluated → runs, or rolls again *with the reason where the operator reads
+  it*. No second item, so the S15 same-title collision cannot arise from the
+  common force; `create-work-item` (ad-hoc, `--supersedes`) covers the rest.
+
+**Verdict: holds — forcing got simpler than in any earlier model.**
+
+### S21 — the quiet month (new)
+
+- tidy-prs (weekly) finds nothing for five weeks. Its item rolls five times:
+  five ready/blocked flips, five `Not-before` bumps, reasons on record, one
+  issue. The janitor's stale rule keys on *ready-item age*, which a rolling
+  item never accumulates (ready for ~a minute per week) → no false
+  escalation. A human reading the repo sees one item saying "quiet since
+  July 8, next ask Aug 17".
+
+**Verdict: holds.** The long-lived open item is the feature and the cost at
+once — named in DESIGN §5.
+
+### S22 — the hourly task's churn (new)
+
+- create-extractor (hourly), no eligible requests all day: its item rolls
+  every hour — ~24 ready/blocked flips and body edits, ~2 pick-evaluate
+  executor iterations' worth of API traffic per roll, all on one issue.
+  Cheap against quotas (~100 writes/day), noisy on that one item's timeline;
+  the roll writes no comment, so it is timeline events, not comment spam.
+- **14:40** a request arrives; **15:17** the item readies, picks, prework
+  triages, agent requested → runs. Latency ≤1h, parity with today.
+
+**Verdict: holds, with the churn named and accepted (DESIGN §5).**
+
+### S23 — the chain when the upstream declines (new)
+
+- **02:18** baselining's item rolls (mount fine). **03:17** extract's item
+  created `task:ready`; the pick-time `after` yield checks baselining's item:
+  *blocked* (rolled — declined this cycle) → **not** live → extract is
+  pickable immediately and runs at 03:18. The old world needed the exclusive
+  claim NOT to fire on exactly this night; here the ordering dissolves into
+  "upstream isn't running, so there is nothing to wait for".
+- Variant: baselining sits `needs-human` from a failed Monday run. Extract
+  still runs (needs-human is not live) — a broken upstream does not halt its
+  dependents indefinitely, the same bound the old claim drew at three days.
+
+**Verdict: holds — and this is the scenario that shows why the yield must
+read item *state*, not item *existence*.**
+
+### S24 — the trap: `after` as `Blocked-by` starves the chain (new)
+
+- Suppose `after` compiled to `Blocked-by: #<upstream's standing item>`, the
+  literal reading of the earlier draft. Baselining is quiet all week — its
+  standing item rolls daily and **never closes**. Extract's item, blocked-by
+  it, waits for a closure that never comes: readiness requires the blocker
+  CLOSED. Extract never runs while its upstream has nothing to do — the
+  exact inversion of what `after` means.
+- Hence the fix, folded into DESIGN §6.1/§9: `after` is a **pick-time
+  yield** over the upstream item's live states (ready/executing/agent),
+  never a `Blocked-by` edge. `Blocked-by` remains correct for items that
+  terminate (follow-ups, fan-ins).
+
+**Verdict: the one real conceptual issue in the standing-item proposal —
+found in replay, fixed in the design.**
+
+### S25 — adoption's first tick (new)
+
+- A freshly wired repo's first tick creates *every* task's item — including
+  weekly and monthly tasks whose anchors are days past. Evaluated
+  immediately, an always-true weekly task would fire off-anchor on the
+  least-proven repo (the old first-run concern, #522). So a task's **first**
+  item (empty family) is born `task:blocked` with `Not-before: <next
+  anchor>`: every task's first ask happens at its real anchor. Bootstrap's
+  smoke test, when wanted, is the force lever — wake one item by hand.
+
+**Verdict: holds with one deliberate rule, now in §5's pseudocode.**
+
 ---
 
 ## Findings ledger
@@ -405,16 +538,16 @@ written path from `needs-human` back to execution.
 | # | severity | what | resolution |
 |---|---|---|---|
 | **F5** | **design bug** | CCR invocation is at-least-once under timeout retry → two sessions on one item (S10) | **fixed in DESIGN §6/§7**: the verified lease is required at the agent hop — agent claims with the executor's invocation nonce, earliest claim wins |
-| **F9** | **design bug** | same-tick `after` wiring depends on task iteration order (S4) | **fixed in DESIGN §5**: job 1 iterates in topological order of `after` edges |
-| **F6** | **design bug** | forcing can run a task concurrently with itself (S15) | **fixed in DESIGN §6/§8**: same-title pick mutex + create-time warning |
+| **F9** | **design bug** | same-tick `after` wiring depends on task iteration order (S4) | first fixed by topological iteration; **retired unbuilt** by the standing-item model — `after` moved to the pick-time yield (S23/S24), so creation order stopped mattering |
+| **F6** | **design bug** | forcing can run a task concurrently with itself (S15) | **fixed in DESIGN §6/§8**: same-title pick mutex + create-time warning; the standing-item model removes the common case outright (force = wake the existing item, S14′) |
 | **F3** | policy gap | as-written hand-off failure policy turns platform blips into triage load (S9) | **fixed in DESIGN §6**: bounded revert-to-ready with attempt counter; `needs-human` at N attempts |
 | **F12** | contract gap | prework re-runs after an executor death; re-entrancy was never stated (S8) | **fixed in DESIGN §6**: re-entrancy is an explicit prework requirement (it was already implicitly required today) |
 | **F11** | implementation constraint | guards over the search index race its lag; back-to-back serialized ticks make it sharp (S6) | **fixed in DESIGN §5**: guards read the REST issue list, never search |
 | **F7** | doc gap | no written path from `needs-human` back to execution (S12, S19) | **fixed in DESIGN §4**: strip `needs-human` + apply `task:ready` is the sanctioned re-queue |
 | **F4** | **decided** | executing-leash reclaim on the daily janitor = up to ~25h stall for a dead executor (S8) | **accepted 2026-08-13**: the reclaim rides the tick (deterministic label rule, ~2h worst case); janitor keeps the judgment sweeps — DESIGN §11 |
-| **F10** | **decided** | mid-window firing costs up to 24 precondition evaluations + signal collections per unfired daily occurrence (S1/S3) | **resolved 2026-08-13 by ruling**: a precondition is go/no-go, not maybe-later — one verdict per occurrence, a no-go spends it. Cost and question both gone; S1/S3 replayed |
+| **F10** | **decided** | mid-window firing costs up to 24 precondition evaluations + signal collections per unfired daily occurrence (S1/S3) | **resolved twice**: first by the go/no-go ruling (one verdict per occurrence — which required a ledger read), then properly by the standing-item model (S1′): the verdict is one-per-period at pick, the memory is the item's own `Not-before`, no ledger at all |
 | **F1** | **decided** | chain readiness quantized to the tick, ~1h/link (S4) | **declined 2026-08-13**: the tick's readiness job stays the single site; ~1h/link is within tolerance |
-| **F2** | accepted | an occurrence that fires-and-obsoletes is spent for the period (S13) | documented here; now simply consistent with the go/no-go ruling — every occurrence gets one verdict and one chance |
+| **F2** | dissolved | an occurrence that fires-and-obsoletes is spent for the period (S13) | the standing-item model has no fire-then-obsolete path for scheduled work — the pick verdict is the only verdict, and a no-go rolls (S13′) |
 | — | accepted | fan-in stalls on one stuck child until a human acts (S18) | documented here; no quorum/deadline semantics at this scale |
 | **F8** | migration detail | signal collectors' self-trigger exclusions must cover `[claudinite-work]` titles and the new labels | **noted in DESIGN §14** |
 
