@@ -33,7 +33,7 @@ its git history:
   the source file alone only affects repos bootstrapped *after* the change.
 - **Bootstrap wiring** (the committed artifacts [bootstrap.md](bootstrap.md) seeds:
   `settings.json` hook registrations, the two gitignore lines, the pack declaration) —
-  propagates through the nightly baselining's idempotent backfills on the same maintenance PR.
+  propagates through the nightly update's idempotent backfills on the same delivery PR.
   The discipline: a change here is written as steps that **converge from every layout in the
   wild**, not just from the latest.
 
@@ -75,7 +75,7 @@ copy that won't move on its own, and each needs a channel.
   other canon scripts, the fleet routine's discovery probe, docs — then grep for the old path
   afterward (the text-sweep skill owns the mechanics). Include state that lives
   **outside the repo entirely**: a web environment's pasted Setup script is snapshotted at
-  environment build, where no check or baselining can ever reach it.
+  environment build, where no check or update run can ever reach it.
 - **Never break the channel the migration itself travels through.** Fleet discovery finds
   members by the tracked `.claudinite-checks.json`; a probe that recognizes only a new shape
   doesn't make noise like a wrong check — it **silently and permanently orphans** every

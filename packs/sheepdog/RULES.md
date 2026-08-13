@@ -7,7 +7,7 @@ by `--init`).
 It contributes the pieces only a fleet enforcer needs — four **cross-repo sweeps** — plus their config
 schema and the scheduled tasks that run them. The rest of the machinery — running the daily-run (the
 orchestrator), the task engine (`engine/scheduler/`), scheduling — is Claudinite **core**, because
-baselining and the daily-run are Claudinite's own responsibility, not the pack's.
+the update task and the daily-run are Claudinite's own responsibility, not the pack's.
 
 **Six tasks, six questions** — separate, because they close on unrelated conditions. The
 **census** ([check-fleet-coverage.mjs](tasks/fleet-census/check-fleet-coverage.mjs)) asks *is this repo a
@@ -24,7 +24,7 @@ and, per member with work, converges an `add-packs` work-list issue **in that me
 member's own scheduler at its adopt-requested-packs task (grow_with_claudinite): the fan-out model
 ([#749](https://github.com/missingbulb/Claudinite/issues/749)) — the enforcer dispatches, the member
 executes. It exists because a pack's `detect`
-fingerprint is consulted exactly once, at bootstrap's `--init`: baselining backfills the seeded packs
+fingerprint is consulted exactly once, at bootstrap's `--init`: the update flows backfill the seeded packs
 and each declared pack's `requires` closure but never re-fingerprints, so a member that grows into a
 pack after adoption is never told the pack exists. The **usage sweep**
 ([aggregate-fleet-usage.mjs](tasks/fleet-usage/aggregate-fleet-usage.mjs)) asks *what does the fleet
@@ -59,21 +59,21 @@ pack's defaults: spell a default out on both sides rather than leaving one impli
 standardizes on but this repo does not itself run has nothing to agree with.
 
 A pack arriving with canon reaches the fleet that already exists through a **baseline migration** instead
-(a `declarePacks` op, applied by each member's own baselining in the same transactional commit that
+(a `declarePacks` op, applied by each member's own update run in the same transactional commit that
 vendors the pack's code). This sweep is the **standing** half: a migration record is dated and retires,
 while the sweep keeps converging every member the fleet acquires after it is gone.
 
 **One manual lever, riding the same task machinery** — [force-fleet-baseline.mjs](tasks/fleet-baseline/force-fleet-baseline.mjs)
-fires every covered member's own `claudinite-scheduler.yml` with `overrides: FORCE_TASKS=baselining`,
+fires every covered member's own `claudinite-scheduler.yml` with `overrides: FORCE_TASKS=update`,
 which is the same button the owner would press in that repo's Actions tab, pressed across the fleet in
 one run. It is a **dispatcher, not a maintainer**: each member converges its own mount, with its own
 token, under its own delivery policy, and this writes nothing to any member — one queued Actions run
 each, and no commit, issue or comment. Under per-project scheduling the fleet needs no push in the
 ordinary case; this is for the un-ordinary ones — a canon change the fleet should pick up *now*, or the
 tail of members whose next slot is hours away while someone is standing by. A forced run bypasses
-baselining's precondition, so a member with nothing to do converges to a cheap no-op: over-using it is
+the update task's precondition, so a member with nothing to do converges to a cheap no-op: over-using it is
 wasteful, never unsafe. A **dormant** member is skipped and reported (it stopped its own scheduler on
-purpose); `include_dormant` overrides that. Canon is skipped — its baselining self-skips — but the
+purpose); `include_dormant` overrides that. Canon is skipped — its own update self-skips — but the
 enforcer repo is **not**: it is an ordinary member, and leaving it out would make the one repo the owner
 is watching the one repo that did not move.
 
@@ -85,7 +85,7 @@ copy it forced every enforcer to host, deliverable only by the withhold-and-hand
 lingering copies). The lever is now the [`fleet-baseline`](tasks/fleet-baseline/task.md) task,
 `frequency: manual`: never due on any cadence, run by pressing *Run workflow* on the vendored
 scheduler with `overrides: FORCE_TASKS=fleet-baseline` (plus `REPOS=…`, `DRY_RUN=true`,
-`INCLUDE_DORMANT=true`). It fires each member's own scheduler with `FORCE_TASKS=baselining` and does
+`INCLUDE_DORMANT=true`). It fires each member's own scheduler with `FORCE_TASKS=update` and does
 **not** wait: a dispatch queues a member's own run, and each member reports its own outcome where it
 always does.
 
@@ -188,11 +188,12 @@ Dispatching another repo's workflow is an Actions *write*, so a token scoped for
 sweeps alone answers `403` on every member. Both report that per repo as `no-permission` and fail
 the run rather than retrying: it is a grant to fix once, not a transient.
 
-**What freshness assumes** — baselining reverts a stamp-only bump, so `claudinite.updated` advances
-only when canon changed that member's vendor set. Age of the **stamped ref** is therefore the honest
-liveness measure, and `behind` reads *"has not picked canon up in `staleDays`"*, not *"canon moved"*.
-A member whose vendor set genuinely saw no change in the window is the one false positive; `staleDays`
-is the knob, and the drift issue says so.
+**What freshness measures** — by **version**, not by date (#786). The update flows stamp
+`engineVersion` and `packVersions` and deliberately never write `ref` or `updated`, so on a maintained
+member the stamped ref is FROZEN and its age measures nothing; `behind` is `installed < canon`, per
+component, and the drift issue names the version that is missing. There is no window to tune, because
+nothing is being estimated — `staleDays` governs only the legacy date measure, kept for a member still
+declaring the retired `baselining` mechanism.
 
 **Full-roster reporting** — every sweep's report enumerates the whole fleet, not just its findings.
 Each repo under the owner lands in the report under exactly one named state — covered, dormant,

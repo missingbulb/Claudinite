@@ -83,7 +83,7 @@ export const DEFAULT_DELIVERY = 'auto-merge';
 // with nothing that could ever fix it (the only writer is check_the_world --init,
 // which runs once at adoption; baselining's converge is what repairs the drift).
 // So: resolve to the default and carry on — `materialize: true` tells the one
-// caller that CAN write the repair (baselining) to do so; everyone else just uses
+// caller that CAN write the repair (the update converge) to do so; everyone else just uses
 // the resolved value.
 //
 // An UNRECOGNIZED value is a different thing entirely: someone wrote an intent
@@ -304,7 +304,7 @@ export async function readMergeGate(token, repo, base) {
 //   - Anything still queued/running → `wait`. Never merge mid-flight.
 //   - Any real failure (failure / timed_out / cancelled / startup_failure), or no
 //     successful run to stand on → `close`: NOT a merge, and equally not a reuse.
-//     (What `close` means is the CALLER's policy — baselining closes and re-cuts
+//     (What `close` means is the CALLER's policy — a delivery closes and re-cuts
 //     its per-cycle branch; a landing pass just leaves the PR standing.)
 //
 // A `review` member's PR is the owner's to act on, on their own clock — never

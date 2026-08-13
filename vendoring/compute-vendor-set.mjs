@@ -46,7 +46,7 @@ const isTest = (name) => name.endsWith('.test.mjs');
 // the maintainer docs beside them.
 const VENDORED_ENGINE_DOCS = new Set(['engine/scheduler/executor.md', 'engine/scheduler/deliver-pr.md']);
 
-// The migration records a consumer carries in its OWN mount, so baselining reads
+// The migration records a consumer carries in its OWN mount, so the update flows read
 // the notes locally and needs no canon checkout in session. Records live under the
 // flow that owns them — `engine/migrations/<record>/` and
 // `packs/<pack>/migrations/<record>/` — so they ride the engine and pack walks
@@ -55,7 +55,7 @@ const VENDORED_ENGINE_DOCS = new Set(['engine/scheduler/executor.md', 'engine/sc
 // only the folders landed within the recency window (recordDirIsRecent, the same
 // predicate migrationActive tolerates by) ship in a mount. An up-to-date consumer
 // carries few-to-none — it already applied them — and a dormant project catches up
-// from the fresh canon clone baselining fetches, where every record ever landed is
+// from the fresh canon clone the update runner fetches, where every record ever landed is
 // present. Vendoring these also activates `migrationActive()` legacy-tolerance in
 // consumer checks — the mount's records ARE what that check tolerates, because
 // both consult one predicate (`migrationApplies`).
@@ -71,7 +71,7 @@ const VENDORED_ENGINE_DOCS = new Set(['engine/scheduler/executor.md', 'engine/sc
 // Riding the pack walk means a pack's records reach only the members that DECLARE
 // that pack, which is the split's point — the tolerance a record activates is for
 // that pack's own checks, which do not run anywhere else. It is not how a record
-// gets APPLIED: baselining applies from the fresh canon clone, where every record
+// gets APPLIED: the update flows apply from the fresh canon clone, where every record
 // ever landed is present whatever the member declares, so a record that seeds a
 // pack into a member not yet running it still lands.
 const isRecordDir = (name) => /^\d{4}-\d{2}-\d{2}-/.test(name);

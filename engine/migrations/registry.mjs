@@ -30,7 +30,10 @@ export async function loadMigrations() {
   const out = [];
   for (const d of migrationDirs()) {
     const spec = (await import(pathToFileURL(join(corpusRoot, d, MIGRATION_FILE)).href)).default;
-    out.push({ dir: d, ...spec });
+    const record = { dir: d, ...spec };
+    // Validated at LOAD, so a retired field cannot reach a flow that would ignore it.
+    assertNoAgenticNote(record);
+    out.push(record);
   }
   return out;
 }
@@ -274,48 +277,25 @@ export async function applyMigration(migration, io) {
   return applied;
 }
 
-// A migration record MAY carry a machine-readable AGENTIC note (task-prework
-// DESIGN §7, the primitive absorbed from #405): member-side adaptation that no
-// script can do — adapting consumer-authored `local/packs/` content to a changed
-// engine contract. Shape: `agentic: { model, instructions }`, model a non-`none`
-// family. baselining's prework reads this to decide whether a pending note
-// needs the agent STAGE (and must therefore hold the stamp) rather than converging
-// in code. Returns the validated note, or null when the record carries none;
-// throws on a malformed note so a typo fails loudly instead of silently skipping
-// agentic work (the #405 correctness risk).
-export function migrationAgentic(m) {
-  const a = m.agentic;
-  if (a === undefined || a === null) return null;
-  // NO AGENTIC WORK ON AN ENGINE MIGRATION, EVER (DESIGN §5, owner decision 3). The
-  // engine update flow has no agentic stage and no lane to add one, so a note on an
-  // engine record is not work that gets done later — it is a record that stops the
-  // flow for every repo whose gap contains it. Rejected here, at the registry, so it
-  // cannot be written in the first place; a pack record is where such work belongs,
-  // as its update's apply stage.
-  //
-  // Judged by WHERE THE RECORD LIVES (`dir`, corpus-relative), the same structural
-  // classifier everything else in this scheme uses. A spec with no `dir` is a caller
-  // testing the shape rather than a discovered record, and is left alone.
-  if (typeof m.dir === 'string' && m.dir.startsWith('engine/')) {
-    throw new Error(`migration ${m.id}: an ENGINE migration may not carry an "agentic" note — `
-      + 'the engine flow cannot run one (DESIGN §5). Move the work to the owning pack\'s apply stage.');
-  }
-  if (typeof a !== 'object' || Array.isArray(a)) {
-    throw new Error(`migration ${m.id}: "agentic" must be an object { model, instructions }`);
-  }
-  if (!MODEL_FAMILIES.includes(a.model) || a.model === 'none') {
-    throw new Error(`migration ${m.id}: agentic.model must be a non-"none" model family (${MODEL_FAMILIES.filter((f) => f !== 'none').join(', ')})`);
-  }
-  if (typeof a.instructions !== 'string' || a.instructions.trim() === '') {
-    throw new Error(`migration ${m.id}: agentic.instructions must be a non-empty string`);
-  }
-  return { model: a.model, instructions: a.instructions };
-}
-
-// The records that carry a valid agentic note — the pending set baselining must
-// escalate to an agent rather than apply in code. Stamp-date filtering (which
-// notes still apply) is the caller's; this is the agentic gate over that set.
-export function agenticMigrations(migrations) {
-  return migrations.filter((m) => migrationAgentic(m) !== null);
+// THE `agentic` FIELD IS RETIRED (#768 Phase 5). A record used to be able to carry
+// `agentic: { model, instructions }` — member-side adaptation no script could do —
+// and baselining's prework read it to decide whether a pending note needed an agent
+// stage, holding the member's stamp until one ran.
+//
+// Nothing reads it now, and nothing should: the engine flow never had an agentic
+// lane (DESIGN §5), and the pack flow's apply stage decides from the VERSION PLAN —
+// "a pack's rules moved over content the canon has never seen" — which is a fact
+// about what the update did, not a flag a record carries. A record's own opinion
+// about needing an agent was always a second answer to that question.
+//
+// So the field is not merely ignored, it is REJECTED. An ignored field on a record
+// someone writes in good faith is work that silently never happens; the whole reason
+// the note existed was that skipping such work quietly is a correctness risk (#405).
+// Failing at load turns a stale or hopeful note into an error with a fix attached.
+export function assertNoAgenticNote(m) {
+  if (m?.agentic === undefined || m?.agentic === null) return;
+  throw new Error(`migration ${m.id}: the "agentic" field was retired in #768 Phase 5 and is no longer run. `
+    + 'Member-side adaptation belongs to the owning pack update\'s apply stage, which decides from the version '
+    + 'plan; delete the field, and bump the pack\'s version if the work still needs to reach members.');
 }
 

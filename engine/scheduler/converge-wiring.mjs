@@ -1,12 +1,12 @@
 // Fresh-path wiring convergence (task-prework DESIGN §7, the primitive
-// absorbed from #405). The deterministic half of baselining's self-refresh that
+// absorbed from #405). The deterministic half of the self-refresh that
 // has nothing to do with the vendored mount's CONTENT: the repo-specific wiring a
 // scheduled Claudinite consumer must carry, converged idempotently in code so the
 // nightly refresh never needs a model to re-enact bootstrap's prose.
 //
 // One source of truth: bootstrap Part 5 (the settings hooks) + Part 6 (the
 // scheduler workflow) describe this same set for a fresh adoption; this module is
-// what both bootstrap and baselining CALL, so the wiring can never drift between
+// what both bootstrap and the update flows CALL, so the wiring can never drift between
 // "how a repo is set up" and "how the nightly keeps it set up".
 //
 // Operates on a repo working tree at `root` with node:fs directly (like
@@ -250,7 +250,7 @@ export async function convergeWiring(root, fullName, stubText, secretNames = [],
 // CLI: `node converge-wiring.mjs [owner/repo] [--badges]` — converge THIS repo's
 // wiring. The full name comes from argv or GITHUB_REPOSITORY/CLAUDINITE_REPO; the
 // scheduler stub from the vendored mount. This is the single surface bootstrap
-// (Part 6) and baselining both invoke, so the wiring set is defined once, here —
+// (Part 6) and the update flows both invoke, so the wiring set is defined once, here —
 // with `--badges` the one thing that differs between them: bootstrap passes it to
 // seed the README pack row, the nightly leaves the README alone.
 async function main() {

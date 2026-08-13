@@ -123,7 +123,7 @@ and an unknown pack name are equally settings errors, surfaced by the runner as 
 findings. A pack's `marker` only *suspects* the pack is wanted — whether to declare it is the
 project's call — so nothing checks that a declared pack carries its marker, or that a marker's
 pack is declared. Pack **dependencies** (`requires`) are likewise resolved when the declaration is
-*written* — bootstrap `--init` and the baselining backfill run `resolveDeclaredPacks` to pull each
+*written* — bootstrap `--init` and the update backfill run `resolveDeclaredPacks` to pull each
 declared pack's transitive `requires` into the file, materializing the prerequisite (like
 the baseline) rather than nagging at every Stop. A materialized dependency is written as
 `{ "id": ..., "via": [...] }` — `via` naming the declared packs that require it — so the file

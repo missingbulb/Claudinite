@@ -32,13 +32,13 @@ only to extend the *mechanism*, never to add one project's rule or task:
 | Baseline-migration mechanism | [`engine/migrations/`](engine/migrations/README.md) | the read-side resolver and write-side rename for a relocation; a record lives under the flow that owns it (the engine's, or `packs/<pack>/migrations/`), records are kept forever, and vendoring's 7-day recency window decides what ships to consumers |
 | The task scheduler | [`engine/scheduler/`](docs/per-project-scheduling/DESIGN.md) | in each repo's own workflow: discovers its active packs' `tasks/<name>/task.mjs`, intersects them with the due slots, collects signals, runs each precondition, dispatches; pack-agnostic, owns no task, depends on no pack |
 | The executor | [`engine/scheduler/executor.md`](engine/scheduler/executor.md) | the label-fired agent side of the scheduler — claims one dispatch issue, runs its task's worker against its own repo, delivers at the task's outcome ceiling |
-| Bootstrap / baselining | [`bootstrap.md`](bootstrap.md), `engine/checks/check_the_world.mjs --init` | adoption and the idempotent per-repo re-run |
+| Bootstrap / update | [`bootstrap.md`](bootstrap.md), `engine/checks/check_the_world.mjs --init` | adoption and the idempotent per-repo re-run |
 | The update flows | [`updates/`](updates/README.md) | canon-internal, never vendored: one runner per flow that moves a repo from the versions it has installed to the ones this canon ships — today the engine's (docs/versioned-updates/DESIGN.md) |
 
 **The test for "is this core?"** — would *every* pack's content stop working without it? The
 scheduler, the runner, the migration mechanism, the executor loop all pass; a lint for one
 technology, a nightly release task, a naming rule all fail. Two responsibilities are core *by
-ownership* even though they run as pack tasks: **baselining** (the baseline pack's daily task) and the
+ownership* even though they run as pack tasks: **update** (the baseline pack's daily task) and the
 **daily-run** itself are Claudinite's job, not a pack's — the pack is only the delivery slot.
 
 ## What a pack contributes

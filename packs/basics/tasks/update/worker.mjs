@@ -87,10 +87,15 @@ export async function main() {
   if (!existsSync(checksPath)) { console.log('update: no .claudinite-checks.json — nothing to update'); return; }
   const declaration = JSON.parse(readFileSync(checksPath, 'utf8'));
 
+  // A repo that declares the RETIRED mechanism is not served by anything: Phase 5
+  // deleted it. Standing down silently would leave that repo unmaintained with a
+  // green run to show for it, so the dead end is named and the fix stated.
   const served = servedBy(declaration);
   if (served.mechanism !== 'updates') {
-    console.log(`update: this repo is served by ${served.mechanism} — standing down`);
-    return;
+    console.error(`update: this repo declares maintenance.mechanism "${served.mechanism}", which was retired in`
+      + ' Claudinite #768 Phase 5 — nothing maintains this repo. Set it to "updates" (or remove the key: that is'
+      + ' now the default) to be served by the update flows.');
+    process.exit(1);
   }
   const { delivery } = resolveDelivery(declaration?.maintenance?.delivery);
   if (!delivery) {

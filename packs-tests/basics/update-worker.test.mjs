@@ -48,28 +48,36 @@ test('the apply-stage body says the merge waits on the repair', () => {
   assert.match(body, /before anything merges/);
 });
 
-test('the runner stands down for a repo baselining serves', async () => {
-  // The other half of the skew guard, at the only place it can be wrong. Driven
-  // through the real main() against a real directory, because what matters is that
-  // it stands down BEFORE the clone — a stubbed clone would prove nothing about it.
+test('the runner refuses a repo declaring the RETIRED mechanism, loudly', async () => {
+  // The other half of the old skew guard, at the only place it can be wrong. Phase 5
+  // deleted the mechanism this repo names, so it is served by NOTHING — and standing
+  // down quietly would leave it unmaintained with a green run to show for it. Driven
+  // through the real main() against a real directory, because what matters is that it
+  // stops BEFORE the clone: a stubbed clone would prove nothing about it.
   const root = mkdtempSync(join(tmpdir(), 'claudinite-updskew-'));
   try {
     writeFileSync(join(root, '.claudinite-checks.json'), `${JSON.stringify({
       packs: ['basics'],
-      maintenance: { delivery: 'auto-merge' },     // no mechanism → baselining, the status quo
+      maintenance: { delivery: 'auto-merge', mechanism: 'baselining' },
       claudinite: { updated: '2026-08-12T00:00:00Z', ref: 'abc123' },
     }, null, 2)}\n`);
 
     const said = [];
-    const log = console.log;
+    const err = console.error;
+    const exit = process.exit;
     const env = { ...process.env };
     process.env.CLAUDINITE_REPO_ROOT = root;
     process.env.CLAUDINITE_REPO = 'o/r';
-    process.env.GITHUB_TOKEN = 'not-used-because-it-stands-down-first';
-    console.log = (...a) => said.push(a.join(' '));
-    try { await main(); } finally { console.log = log; process.env = env; }
+    process.env.GITHUB_TOKEN = 'not-used-because-it-refuses-first';
+    console.error = (...a) => said.push(a.join(' '));
+    let code = null;
+    process.exit = (c) => { code = c; throw new Error('exited'); };
+    try { await main(); } catch (e) { if (e.message !== 'exited') throw e; }
+    finally { console.error = err; process.exit = exit; process.env = env; }
 
-    assert.match(said.join('\n'), /served by baselining — standing down/);
+    assert.equal(code, 1, 'a repo nothing maintains must fail its run, not pass quietly');
+    assert.match(said.join('\n'), /retired in Claudinite #768 Phase 5/);
+    assert.match(said.join('\n'), /Set it to "updates"/, 'the refusal has to say what to do');
     assert.ok(!existsSync(join(root, '.git')), 'no branch, no clone, no write');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

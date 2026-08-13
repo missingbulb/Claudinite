@@ -199,16 +199,21 @@ test('probe: a member that declares itself dormant is never classified', async (
 });
 
 test('probe: an ordinary member is still probed in full', async () => {
-  // The negative that keeps the gate honest — dormancy is opt-in, and absence of
-  // the key must leave the sweep exactly as it was.
+  // The negative that keeps the dormancy gate honest — dormancy is opt-in, and
+  // absence of the key must leave the sweep exactly as it was. Since #768 Phase 5 an
+  // undeclared member is served by `updates` (the only mechanism left), so "in full"
+  // now means the VERSION path: declaration, scheduler workflow, and canon's versions
+  // rather than a compare against a ref no flow writes any more.
   const { gh, seen } = contentsGh({
-    'o/awake:.claudinite-checks.json': { packs: ['basics'], claudinite: { ref: 'abc' } },
+    'o/awake:.claudinite-checks.json': { packs: ['basics'], claudinite: { ref: 'abc', engineVersion: 2 } },
   });
-  const p = await probe(gh, 'o/awake', { canonRepo: 'o/canon', canonBranch: 'main' });
+  const canonVersions = { forInstalled: async () => ({ engineVersion: 2, packVersions: {} }) };
+  const p = await probe(gh, 'o/awake', { canonRepo: 'o/canon', canonBranch: 'main', canonVersions });
   assert.equal(p.dormant, undefined);
+  assert.equal(p.mechanism, 'updates', 'the default is the only mechanism there is');
   assert.equal(p.stampedRef, 'abc');
   assert.equal(p.hasScheduler, false);           // the fake serves no workflow file
-  assert.equal(seen.length, 3, 'declaration + scheduler workflow + canon compare');
+  assert.equal(seen.length, 2, 'declaration + scheduler workflow; no compare on a frozen ref');
 });
 
 test('probe: an updates member asks canon for versions and never for the compare', async () => {

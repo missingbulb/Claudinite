@@ -1,6 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parseRepoFilter, classifyScope, FORCED_TASK } from '../../../../packs/sheepdog/tasks/fleet-baseline/force-fleet-baseline.mjs';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../../../..');
 import { classifyDispatch } from '../../../../packs/sheepdog/fleet-api.mjs';
 import { parseOverrideBag } from '../../../../packs/sheepdog/tasks/fleet-baseline/worker.mjs';
 import { parseOverrides } from '../../../../engine/scheduler/run.mjs';
@@ -10,8 +15,14 @@ import { parseOverrides } from '../../../../engine/scheduler/run.mjs';
 // drift silently is WHO is in scope, WHAT a dispatch status means, and HOW the
 // override bag's parameters reach the sweep.
 
-test('the forced member-side task is baselining — the vendored scheduler\'s public surface', () => {
-  assert.equal(FORCED_TASK, 'baselining');
+test('the forced member-side task is one a member actually runs', () => {
+  // `update` since #768 Phase 5 retired the task this lever used to force. Pinned
+  // against the REAL task ids a member's scheduler can discover, because a lever
+  // naming a task nothing runs still reports a clean dispatch — this sweep counts
+  // dispatches, not outcomes (Sheepdog#172), so a wrong id here is invisible.
+  assert.equal(FORCED_TASK, 'update');
+  assert.ok(existsSync(join(ROOT, 'packs/basics/tasks', FORCED_TASK, 'task.mjs')),
+    `no basics task named "${FORCED_TASK}" — this lever would dispatch a task nothing runs`);
 });
 
 // --- the repos filter ----------------------------------------------------------

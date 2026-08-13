@@ -6,7 +6,7 @@ import { computeVendorSet, SHARED_SUBDIR } from '../vendoring/compute-vendor-set
 import { PACK_DIRECTORY_FILE } from '../engine/pack_loader/pack-registry.mjs';
 import { ENGINE_VERSION } from '../engine/version.mjs';
 import { migrationDirs, migrationApplies, flowOf, DECLARATION_FILE } from '../engine/checks/helpers/active-migrations.mjs';
-import { loadMigrations, migrationAgentic, applyMigration } from '../engine/migrations/registry.mjs';
+import { loadMigrations, applyMigration } from '../engine/migrations/registry.mjs';
 import { convergeWiring } from '../engine/scheduler/converge-wiring.mjs';
 import { NEEDS_HUMAN_LABEL } from '../engine/scheduler/dispatch.mjs';
 
@@ -138,14 +138,11 @@ export async function engineUpdate(targetRoot, {
 
   // The gap, decided before anything is touched.
   const records = engineRecordsInGap(installed, { today });
+  // No agentic guard here any more: `loadMigrations` REJECTS the retired field for
+  // every record it loads (#768 Phase 5), so a note cannot reach this flow to be
+  // refused. The rule it enforced — the engine flow runs no agentic work, ever
+  // (DESIGN §5) — is now true by construction rather than by a check per caller.
   const specs = (await loadMigrations()).filter((m) => records.includes(m.dir));
-  const agentic = specs.filter((m) => migrationAgentic(m) !== null);
-  if (agentic.length) {
-    return outcome(NEEDS_HUMAN,
-      `${agentic.length} engine migration(s) carry an agentic note, which the engine flow cannot run: `
-      + `${agentic.map((m) => m.dir).join(', ')}. Move that work to the owning pack's apply stage.`,
-      { records: records.length });
-  }
 
   const declared = Array.isArray(raw.packs) ? raw.packs : [];
   const { files, errors } = await computeVendorSet(declared, { today, installed });
