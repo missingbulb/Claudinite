@@ -84,7 +84,30 @@ test('an install always wants the apply stage — the rules meet the repo for th
   const root = makeRepo();
   const r = await installPacks(root, ['basics'], { selfTestRun: () => 'ok' });
   assert.equal(r.applyStage.needed, true);
-  assert.deepEqual(r.applyStage.packs, ['basics']);
+  assert.ok(r.applyStage.packs.includes('basics'));
+  rmSync(root, { recursive: true, force: true });
+});
+
+test('the requires closure is installed and STAMPED, not just vendored', async () => {
+  // The hole this closes: `computeVendorSet` resolves the closure and lays its content
+  // down, but only the ids a caller NAMED were stamped. A pack pulled in by another was
+  // therefore installed-but-unversioned, so the next update flow read `from: null` and
+  // fell back to the landed-date window instead of comparing numbers — the same silent
+  // failure the install runner exists to prevent, one level down.
+  //
+  // Real member stamps already assume this: the canary carries `git-github: 1` without
+  // declaring it, pulled in through basics.
+  const root = makeRepo();
+  const r = await installPacks(root, ['basics'], { selfTestRun: () => 'ok' });
+  const stamped = settingsOf(root).claudinite.packVersions;
+  const pulled = r.install.map((i) => i.id).filter((id) => id !== 'basics');
+  assert.ok(pulled.length, 'basics pulls a closure in — otherwise this test proves nothing');
+  for (const id of pulled) {
+    assert.equal(typeof stamped[id], 'number', `${id} was vendored but left unversioned`);
+  }
+  // …and the closure is INSTALLED, not DECLARED: what a repo declares is its own
+  // choice, and `requires` is the canon's inference from it.
+  assert.deepEqual(settingsOf(root).packs, ['basics'], 'a pulled-in pack is not a declaration the repo made');
   rmSync(root, { recursive: true, force: true });
 });
 

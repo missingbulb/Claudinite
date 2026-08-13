@@ -1,6 +1,6 @@
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { computeVendorSet, SHARED_SUBDIR } from '../vendoring/compute-vendor-set.mjs';
 import { loadPacks, resolveDeclaredPacks, packEntryId } from '../engine/pack_loader/pack-registry.mjs';
 import { ENGINE_VERSION } from '../engine/version.mjs';
@@ -108,6 +108,19 @@ export async function installPacks(targetRoot, ids, {
   const entries = resolveDeclaredPacks(declared, packs);
   const unanswered = unansweredQuestions(packs, entries);
 
+  // THE `requires` CLOSURE IS INSTALLED TOO, and stamped. A pack pulled in by another
+  // (git-github via basics) has its content vendored either way — `computeVendorSet`
+  // resolves the same closure — so stamping only the ids a caller happened to NAME
+  // would leave the rest installed-but-unversioned. That is the same silent hole this
+  // CLI was written to close, one level down: unversioned means the update flow reads
+  // `from: null` and falls back to the landed-date window instead of comparing
+  // numbers. A repo's real stamp already reflects this — the canary carries
+  // `git-github: 1` without declaring it — so the arithmetic here is catching up with
+  // what the fleet has always meant.
+  const named = new Set(install.map((i) => i.id));
+  const pulled = entries.map(packEntryId).filter((id) => typeof id === 'string' && !named.has(id));
+  install.push(...planInstall(packs, pulled, installed, { engineVersion }).install);
+
   // No `installed` passed: an install fetches no migration records at all, whatever
   // the repo's stamp says. The set is content only.
   const { files, errors } = await computeVendorSet(declared, { today, installed: { engineVersion, packVersions: forcedCurrent(packs) } });
@@ -171,3 +184,47 @@ export async function installPacks(targetRoot, ids, {
 // predicate the other flows use is better than a second code path that could drift
 // from it.
 const forcedCurrent = (packs) => Object.fromEntries(packs.map((p) => [p.id, p.version ?? 0]));
+
+// CLI: `node install.mjs --target <dir> <pack-id>…` — install packs into a repo, from
+// a fresh canon clone. Run by the adoption skills (adopt-pack, adopt-claudinite).
+//
+// WHY THIS EXISTS AT ALL (#768). The skills used to converge an adoption by hand:
+// fetch canon, run `vendoring/apply-vendor-set.mjs`, advance the stamp. That lays the
+// pack's FILES down correctly and gets one thing wrong that nothing notices for weeks
+// — it never writes `claudinite.packVersions[<id>]`. The pack is then installed but
+// UNVERSIONED, so the next update flow reads `from: null`, and `migrationApplies`
+// falls back to its landed-date window because it cannot compare numbers. A pack
+// adopted today can therefore be handed records written for the shapes of an older
+// era, which is precisely what "an install runs no migrations" exists to prevent.
+//
+// One runner, one stamp. The skills describe intent and hand-offs; the arithmetic of
+// what version a repo is now at belongs here, where the update flows read it from.
+async function main() {
+  const argv = process.argv.slice(2);
+  const flag = (name) => { const i = argv.indexOf(name); return i === -1 ? null : argv[i + 1] ?? null; };
+  const targetRoot = flag('--target') ?? process.env.CLAUDINITE_REPO_ROOT ?? process.cwd();
+  const dryRun = argv.includes('--dry-run');
+  const consumed = new Set(['--target', targetRoot, '--dry-run', '--delivery', flag('--delivery')]);
+  const ids = argv.filter((a) => !a.startsWith('--') && !consumed.has(a));
+  if (!ids.length) {
+    console.error('install: name at least one pack id — `node install.mjs --target <dir> <pack-id>…`');
+    process.exit(1);
+  }
+
+  const r = await installPacks(targetRoot, ids, { dryRun, delivery: flag('--delivery') ?? 'auto-merge' });
+  for (const i of r.install ?? []) console.log(`install: ${i.id} → version ${i.version ?? 'unversioned'}`);
+  for (const f of r.refused ?? []) console.log(`install: REFUSED ${f.id} — ${f.why}`);
+  for (const s of r.seeded ?? []) console.log(`install: seeded ${s}`);
+  console.log(`install: ${r.status} — ${r.detail}`);
+
+  // A refusal is not a partial success. `planInstall` refuses a pack whose engine is
+  // too old, an unknown id, and a pack already installed (that is an UPDATE, and
+  // running an install over it would restamp the repo to the newest version while
+  // skipping every record in between). Exiting 0 there would let a caller's `&&`
+  // chain carry on as if the pack were adopted.
+  if (r.status === NEEDS_HUMAN || (r.refused ?? []).length) process.exit(1);
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((e) => { console.error(`install failed: ${e.message}`); process.exit(1); });
+}
