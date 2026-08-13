@@ -83,9 +83,9 @@ export async function applyFileAliases(migration, { exists, move }) {
 // ref — so writing one into a tree that is about to be pushed by such a caller does not
 // deliver a workflow, it fails the entire converge and everything else riding it.
 //
-// The capable caller announces itself with this variable. The baselining worker sets it
-// when it can WITHHOLD those paths from its commit and hand them to the agent stage;
-// anything else — an older vendored worker, a hand-run `node migrations/apply.mjs`, CI —
+// The capable caller announces itself with this variable. The pack update flow sets it
+// when it can WITHHOLD those paths from its commit and hand them to the apply stage;
+// anything else — an older vendored worker, a hand-run `node engine/migrations/apply.mjs`, CI —
 // leaves it unset and the workflow materialization is skipped with a note.
 //
 // An ENV HANDSHAKE rather than a probe of the repo on disk, because what matters is what

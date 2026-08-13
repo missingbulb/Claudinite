@@ -124,11 +124,6 @@
     },
     {
       "rule": "file-placement",
-      "path": "migrations/",
-      "reason": "the two compatibility entry points every member still reaches by path (baselining's vendored worker runs node <canon clone>/migrations/apply.mjs and imports its registry.mjs, and that worker is only as new as the member's last converge) — they exist to forward to the real machinery now under engine/migrations/, so reaching across is the whole of what they are, and both are deleted in Phase 5 of #768 once no member can call them"
-    },
-    {
-      "rule": "file-placement",
       "path": "packs/static-website/version-scheme.mjs",
       "reason": "the version rule deliberately imports the scheme itself (VERSION_RE, the version reader) and the config parser from the pack's own vendored stubs, because those files are the definition: they are what runs in every site repo's .github/. Restating either canon-side would be a second copy that drifts from the code that actually bumps and reads. The reach into stubs/ is inherent to a pack whose logic ships vendored, not a misplacement"
     },

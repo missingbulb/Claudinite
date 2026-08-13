@@ -18,7 +18,7 @@
 // ignore it. It does NOT build the
 // work plan (that is each repo's own scheduler's job, engine/scheduler/run.mjs) and it does
 // NOT touch migrations: each member applies those itself, from the fresh canon
-// clone its own baselining fetches (migrations/apply.mjs) — the census is a
+// clone its own update run fetches (engine/migrations/apply.mjs) — the census is a
 // coverage audit, not a migrations helper.
 //
 // Two rules kept deliberately:
