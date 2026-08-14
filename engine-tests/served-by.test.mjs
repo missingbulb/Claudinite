@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   servedBy, servedByUpdates, servedByBaselining, withMechanism,
-  MECHANISMS, DEFAULT_MECHANISM, RETIRED_MECHANISM, MAINTENANCE, MECHANISM_KEY,
+  MECHANISMS, DEFAULT_MECHANISM, RETIRED_MECHANISM, LEGACY_MECHANISM, VERSIONED_MECHANISM, MAINTENANCE, MECHANISM_KEY,
 } from '../engine/served-by.mjs';
 
 // The skew guard (#768's first risk), now the record of a finished rollout. It kept
@@ -10,13 +10,31 @@ import {
 // the fact. These are the cases that decide which mechanism serves a repo — including
 // the ones where the honest answer is "the repo did not say".
 
-test('a repo that says nothing gets the only mechanism there is', () => {
-  assert.deepEqual(servedBy(undefined), { mechanism: 'updates', declared: false });
-  assert.deepEqual(servedBy({}), { mechanism: 'updates', declared: false });
-  assert.deepEqual(servedBy({ [MAINTENANCE]: {} }), { mechanism: 'updates', declared: false });
+test('a repo that says nothing gets the only mechanism there is, by its current name', () => {
+  for (const shape of [undefined, {}, { [MAINTENANCE]: {} }]) {
+    assert.deepEqual(servedBy(shape), { mechanism: VERSIONED_MECHANISM, declared: false });
+  }
   // The same rule that once pointed this at baselining is what moves it: a default
-  // may only point at what is already true, and `updates` is now the only truth.
-  assert.equal(DEFAULT_MECHANISM, 'updates');
+  // may only point at what is already true.
+  assert.equal(DEFAULT_MECHANISM, VERSIONED_MECHANISM);
+});
+
+test('the renamed mechanism answers to BOTH spellings while the record drains', () => {
+  // A member reads its own declaration with the engine it currently has, which is one
+  // cycle behind the record that renames it. If the old spelling stopped parsing the
+  // moment the record landed, a correctly-declared repo would read as `invalid` — and
+  // `invalid` means "undeclared, with the offending value attached", so a repo that
+  // did nothing wrong would be reported as misdeclared for exactly one cycle.
+  const declaring = (m) => ({ [MAINTENANCE]: { [MECHANISM_KEY]: m } });
+  for (const m of [LEGACY_MECHANISM, VERSIONED_MECHANISM]) {
+    assert.deepEqual(servedBy(declaring(m)), { mechanism: m, declared: true },
+      `${m} must parse as itself, not be normalised away`);
+    assert.equal(servedByUpdates(declaring(m)), true, `${m} is served by the update flows`);
+    assert.equal(servedByBaselining(declaring(m)), false);
+  }
+  // Distinct from RETIRED: the legacy name is fully SERVED, just spelled the old way.
+  assert.notEqual(LEGACY_MECHANISM, RETIRED_MECHANISM);
+  assert.equal(servedByUpdates(declaring(RETIRED_MECHANISM)), false, 'retired is not merely a spelling');
 });
 
 test('the retired mechanism still PARSES — a stale declaration is read, not reinterpreted', () => {
@@ -53,6 +71,7 @@ test('exactly one mechanism serves a repo, whatever the declaration says', () =>
   const shapes = [
     undefined, {}, { [MAINTENANCE]: {} },
     { [MAINTENANCE]: { [MECHANISM_KEY]: 'updates' } },
+    { [MAINTENANCE]: { [MECHANISM_KEY]: 'versioned' } },
     { [MAINTENANCE]: { [MECHANISM_KEY]: 'baselining' } },
     { [MAINTENANCE]: { [MECHANISM_KEY]: 'nonsense' } },
     { [MAINTENANCE]: { delivery: 'auto-merge' } },

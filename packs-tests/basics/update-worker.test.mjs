@@ -77,7 +77,7 @@ test('the runner refuses a repo declaring the RETIRED mechanism, loudly', async 
 
     assert.equal(code, 1, 'a repo nothing maintains must fail its run, not pass quietly');
     assert.match(said.join('\n'), /retired in Claudinite #768 Phase 5/);
-    assert.match(said.join('\n'), /Set it to "updates"/, 'the refusal has to say what to do');
+    assert.match(said.join('\n'), /Set it to "versioned"/, 'the refusal has to say what to do');
     assert.ok(!existsSync(join(root, '.git')), 'no branch, no clone, no write');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
