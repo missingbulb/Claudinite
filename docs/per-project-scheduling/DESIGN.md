@@ -45,7 +45,7 @@ packs/<pack>/tasks/<task-name>/
 > The two conformance guards for this shape (`task-declaration-shape`,
 > `scheduler-workflow-shape`) live in the **basics** pack, not a separate one —
 > scheduling is baseline discipline (see
-> [`packs/basics/scheduled-tasks.md`](../../packs/basics/scheduled-tasks.md)).
+> [`packs/core/scheduled-tasks.md`](../../packs/core/scheduled-tasks.md)).
 
 Alongside this migration, `.claudinite/local_packs/` is renamed to
 `.claudinite/local/packs/` (owner decision, §11): packs then sit at one uniform

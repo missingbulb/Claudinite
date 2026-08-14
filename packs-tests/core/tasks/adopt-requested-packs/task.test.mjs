@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { validateTaskDeclaration } from '../../../../engine/scheduler/task-contract.mjs';
-import decl from '../../../../packs/grow_with_claudinite/tasks/adopt-requested-packs/task.mjs';
+import decl from '../../../../packs/core/tasks/adopt-requested-packs/task.mjs';
 
 // The MEMBER half of the fleet fan-out (#749): the enforcer places an `add-packs`
 // work-list issue here and fires this scheduler; this task's agent adopts with the
@@ -12,7 +12,7 @@ import decl from '../../../../packs/grow_with_claudinite/tasks/adopt-requested-p
 // let the task fire on its own (nagging every member on a cadence) or move the
 // adoption back outside the member's own guards.
 
-const taskDir = join(dirname(fileURLToPath(import.meta.url)), '../../../../packs/grow_with_claudinite/tasks/adopt-requested-packs');
+const taskDir = join(dirname(fileURLToPath(import.meta.url)), '../../../../packs/core/tasks/adopt-requested-packs');
 const workerSrc = readFileSync(join(taskDir, 'worker.mjs'), 'utf8');
 const briefSrc = readFileSync(join(taskDir, 'task.md'), 'utf8');
 

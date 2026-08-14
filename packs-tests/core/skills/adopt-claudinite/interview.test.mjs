@@ -5,9 +5,9 @@ import { fileURLToPath } from 'node:url';
 import { makeRepo, cleanup } from '../../../../engine-tests/helpers.mjs';
 import { loadConfig } from '../../../../engine/checks/helpers/repo-context.mjs';
 import { loadPacks } from '../../../../engine/pack_loader/pack-registry.mjs';
-import { packQuestions, interviewState, renderPending } from '../../../../packs/grow_with_claudinite/skills/adopt-claudinite/interview.mjs';
+import { packQuestions, interviewState, renderPending } from '../../../../packs/core/skills/adopt-claudinite/interview.mjs';
 
-const CLI = fileURLToPath(new URL('../../../../packs/grow_with_claudinite/skills/adopt-claudinite/interview.mjs', import.meta.url));
+const CLI = fileURLToPath(new URL('../../../../packs/core/skills/adopt-claudinite/interview.mjs', import.meta.url));
 
 const pack = (over = {}) => ({
   id: 'p',

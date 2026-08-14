@@ -131,7 +131,7 @@ fleet-add-missing-packs design ended in an enforcer-side agent stage, and its ve
 run stopped at `needs-human` because the enforcer's executor is — correctly — scoped to the enforcer
 repo alone. What crosses a repo boundary is an issue and a `workflow_dispatch`, both over the
 `FLEET_GITHUB_TOKEN` PAT; the deprecated task-level `session_scope`
-([scheduled-tasks.md](../basics/scheduled-tasks.md)) has no place here.
+([scheduled-tasks.md](../core/scheduled-tasks.md)) has no place here.
 
 **A SCANNED finding is a recommendation, never a verdict.** The `pack-declaration` conformance check was
 deliberately retired ([engine/checks/README.md](../../engine/checks/README.md)) because whether to
@@ -185,7 +185,7 @@ Metadata read, **Contents read and write**, Issues read/write — the roster's f
 no scope, and the pack-seed sweep is what raises Contents from read-only across the fleet to
 read/write, because writing one declaration into each member is its whole job; Contents write on
 this repo also covers baseline-migration retirement). A workflow that exists only to hold a secret is redundant
-([packs/basics/scheduled-tasks.md](../basics/scheduled-tasks.md)) — the force-baseline workflow above is
+([packs/core/scheduled-tasks.md](../core/scheduled-tasks.md)) — the force-baseline workflow above is
 not that: it exists because the operation is manual, and it reads the same secret only incidentally.
 
 **The one scope the read-only sweeps don't need** — the two fan-out tasks (fleet-baseline,

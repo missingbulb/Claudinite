@@ -7,7 +7,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
-import rule from '../../packs/basics/task-phase-discipline.mjs';
+import rule from '../../packs/core/task-phase-discipline.mjs';
 
 const MD = 'packs/demo/tasks/demo-task/task.md';
 const WORKER = 'packs/demo/tasks/demo-task/worker.mjs';

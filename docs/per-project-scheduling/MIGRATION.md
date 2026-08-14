@@ -35,7 +35,7 @@ Ground rules for every phase:
 > **Deviations from this plan (as-built):**
 > - **No `scheduled-tasks` pack.** The two new checks (`scheduler-workflow-shape`,
 >   `task-declaration-shape`) live in the **basics** pack, with the doctrine in
->   [`packs/basics/scheduled-tasks.md`](../../packs/basics/scheduled-tasks.md).
+>   [`packs/core/scheduled-tasks.md`](../../packs/core/scheduled-tasks.md).
 >   Scheduling is baseline discipline, active wherever basics is declared
 >   (everywhere) — so a consumer needs no separate declaration to get the guards.
 > - **Task conversions are ADDITIVE, not a rename.** Each canon pack now carries

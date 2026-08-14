@@ -48,7 +48,7 @@ so a shrunken denominator is visible rather than silent.
 **The fit sweep is the one with an agent stage**, and the split is deliberate: everything decidable in
 code stays in the agentless `prework` (enumerate, fingerprint, converge the issues), and the agent is
 reached only for what is a judgment plus a repo edit — confirming the suspicion and running the
-[adopt-pack](../grow_with_claudinite/skills/adopt-pack/SKILL.md) skill against the member. It is
+[adopt-pack](../core/skills/adopt-pack/SKILL.md) skill against the member. It is
 ceilinged at `open-pr` and never auto-merges: declaring a pack switches on conformance checks that run
 in that member's CI from the moment they land.
 

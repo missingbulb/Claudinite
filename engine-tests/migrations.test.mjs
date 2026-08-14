@@ -217,8 +217,15 @@ test('apply.mjs really performs the pack-declaration op — the wire, not just t
       encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: root },
     });
     assert.match(out, /declared claude-code-web-users-support/);
+    assert.match(out, /declared core/);
     const after = JSON.parse(readFileSync(join(root, '.claudinite-checks.json'), 'utf8'));
-    assert.deepEqual(after.packs, ['basics', { id: 'claude-code-web-users-support', config: { repo: 'missingbulb/Sheepdog' } }]);
+    // Every seed record the corpus carries, applied in record order onto the
+    // declaration the fixture started from.
+    assert.deepEqual(after.packs, [
+      'basics',
+      { id: 'claude-code-web-users-support', config: { repo: 'missingbulb/Sheepdog' } },
+      'core',
+    ]);
     // …and running it again writes nothing at all.
     assert.equal(execFileSync(process.execPath, [join(canon, 'engine/migrations/apply.mjs')], {
       encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: root },
