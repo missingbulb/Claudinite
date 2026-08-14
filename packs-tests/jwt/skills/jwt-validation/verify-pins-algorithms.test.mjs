@@ -2,7 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../../engine/checks/helpers/repo-context.mjs';
-import verifyPinsAlgorithms from '../../../../packs/jwt/skills/jwt-validation/verify-pins-algorithms.mjs';
+import { fileURLToPath } from 'node:url';
+import { loadDeclaredChecks } from '../../../../engine/checks/helpers/pattern-rules.mjs';
+
+const verifyPinsAlgorithms = loadDeclaredChecks(
+  fileURLToPath(new URL('../../../../packs/jwt/skills/jwt-validation', import.meta.url)),
+).find((r) => r.id === 'jwt-verify-pins-algorithms');
 
 const run = (root) => verifyPinsAlgorithms.run(buildContext({ root, mode: 'all' }));
 

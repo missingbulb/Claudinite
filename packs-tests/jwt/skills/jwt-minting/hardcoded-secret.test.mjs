@@ -2,7 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../../engine/checks/helpers/repo-context.mjs';
-import hardcodedSecret from '../../../../packs/jwt/skills/jwt-minting/hardcoded-secret.mjs';
+import { fileURLToPath } from 'node:url';
+import { loadDeclaredChecks } from '../../../../engine/checks/helpers/pattern-rules.mjs';
+
+const hardcodedSecret = loadDeclaredChecks(
+  fileURLToPath(new URL('../../../../packs/jwt/skills/jwt-minting', import.meta.url)),
+).find((r) => r.id === 'jwt-hardcoded-secret');
 
 const run = (root) => hardcodedSecret.run(buildContext({ root, mode: 'all' }));
 

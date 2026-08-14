@@ -183,7 +183,7 @@ const FILE_CLASSES = {
   pythonFiles: /\.py$/,
   markdownFiles: /\.md$/,
   workflowFiles: /^\.github\/workflows\/[^/]+\.ya?ml$/,
-  testFiles: /(^|\/)(tests?|__tests__|__mocks__|spec|fixtures?)\/|\.(test|spec)\./,
+  testFiles: /(^|\/)(tests?|__tests__|__mocks__|spec|fixtures?)\/|\.(test|spec)\.|_test\.[a-z]+$/,
 };
 
 const arr = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]);
