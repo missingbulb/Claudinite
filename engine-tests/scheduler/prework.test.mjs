@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, writeFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { runPrework, preworkFailure, agentRequestPath, clearAgentRequest, agentRequested, readAgentRequest } from '../../engine/scheduler/prework.mjs';
 
 const NODE = process.execPath; // the running node, so the tests don't assume PATH
@@ -24,6 +26,27 @@ test('runPrework: an overrun is hard-killed and reported timedOut', async () => 
   assert.equal(r.ok, false);
   assert.equal(r.timedOut, true);
   assert.notEqual(r.signal, null); // killed by signal, not a clean exit
+});
+
+// The kill has to reach the WORKER, not the shell `shell: true` wraps it in.
+// Killing only the shell leaves the worker running — still acting on the repo —
+// while the scheduler reports it hard-killed, and the promise resolves late
+// because the grandchild holds the stdio pipes open until it finishes anyway.
+// So the assertion is the side effect: the work the worker would have done past
+// its bound must never appear.
+test('runPrework: the timeout kills the worker itself, not just the shell around it', async () => {
+  const marker = join(tmpdir(), `claudinite-prework-kill-${process.pid}-${Date.now()}`);
+  rmSync(marker, { force: true });
+  const cmd = `"${NODE}" -e "setTimeout(()=>require('fs').writeFileSync(process.argv[1],'survived'),1500)" "${marker}"`;
+  const started = Date.now();
+  const r = await runPrework(cmd, { taskDir: process.cwd(), env: process.env, timeoutSeconds: 0.3 });
+  assert.equal(r.timedOut, true);
+  // Resolving is not enough: it must resolve when the kill lands, not when the
+  // worker would have finished on its own.
+  assert.ok(Date.now() - started < 1200, `runPrework waited out the worker (${Date.now() - started}ms)`);
+  await new Promise((res) => setTimeout(res, 1800)); // past when the worker would have written
+  assert.equal(existsSync(marker), false, 'the worker outlived its prework_timeout and kept working');
+  rmSync(marker, { force: true });
 });
 
 test('runPrework: the child inherits the injected env', async () => {
