@@ -169,9 +169,15 @@ discovers it structurally, no list to edit.
 
 **Prefer a declaration over code.** A rule whose whole logic is "these patterns over these
 files" — a required or forbidden regex, a pattern pair, a repo-level implication — is declared as
-data through [`patternRule(spec)`](helpers/pattern-rules.mjs): the module stays one-rule-one-file
-and exports the compiled rule, but its body is a comment-free spec of patterns and failure text
-(the spec vocabulary is documented in that helper's header). The engine runs every pattern rule in
+data, and data is JSON, not a module: a pack's declarations are the array in
+`../packs/<pack>/declared-checks.json`, a skill's in its own `declared-checks.json`, both discovered
+structurally by the registry and compiled by [pattern-rules.mjs](helpers/pattern-rules.mjs) (the spec
+vocabulary is documented in that helper's header). Nothing wires them — no import, no manifest line;
+writing the declaration adds the check. One file to read for a pack's declared surface, and a format
+that admits no comments and no `doc` pointer, so a declaration carries its own case: `id`,
+`severity`, the `failureMessage` every finding prints, and the assertions with their `what`/`fix`.
+Regexes are strings in `/pattern/flags` form. A rule needing a hand-written `run(ctx)` stays its own
+module, listed in the manifest as before. The engine runs every pattern rule in
 ONE shared pass — each file read once, its lines walked once for all subscribing rules — so a
 declared rule costs nothing extra however many exist. Reach for a hand-written `run(ctx)` only
 when the check needs what patterns can't say: real parsing (comment/string stripping, indentation

@@ -6,11 +6,6 @@
 // standard's one structural constant — the sink.
 import { SINK_README } from './lib.mjs';
 import layout from './layout.mjs';
-import pageSections from './page-sections.mjs';
-import keyInsights from './key-insights.mjs';
-import growthLog from './growth-log.mjs';
-import sources from './sources.mjs';
-import freshness from './freshness.mjs';
 import isolation from './isolation.mjs';
 
 export default {
@@ -52,7 +47,7 @@ export default {
       distill: 'recorded as intent; names the competitor set the initial competitor-landscape wiki is seeded from',
     },
   ],
-  worldRules: [layout, pageSections, keyInsights, growthLog, sources, freshness],
+  worldRules: [layout],
   // The pack's scheduled task — wiki-growth, the weekly research pass — lives in
   // this pack's `tasks/wiki-growth/`, discovered by the scheduler's filesystem
   // scan (engine/scheduler/discover.mjs), not declared here.

@@ -4,15 +4,16 @@ import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { makeRepo, cleanup, writeFiles } from '../../engine-tests/helpers.mjs';
+import { makeRepo, cleanup, writeFiles, declaredCheck } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import pack from '../../packs/product-wiki/pack.mjs';
 import layout from '../../packs/product-wiki/layout.mjs';
-import pageSections from '../../packs/product-wiki/page-sections.mjs';
-import keyInsights from '../../packs/product-wiki/key-insights.mjs';
-import growthLog from '../../packs/product-wiki/growth-log.mjs';
-import sources from '../../packs/product-wiki/sources.mjs';
-import freshness from '../../packs/product-wiki/freshness.mjs';
+
+const pageSections = declaredCheck('packs/product-wiki', 'product-wiki-page-sections');
+const keyInsights = declaredCheck('packs/product-wiki', 'product-wiki-key-insights');
+const growthLog = declaredCheck('packs/product-wiki', 'product-wiki-growth-log');
+const sources = declaredCheck('packs/product-wiki', 'product-wiki-sources');
+const freshness = declaredCheck('packs/product-wiki', 'product-wiki-freshness');
 import wikiGrowth from '../../packs/product-wiki/tasks/wiki-growth/task.mjs';
 // Built through the real path: the product-wiki manifest contributes it as
 // data and the barriers pack's factory turns it into the rule.
@@ -56,12 +57,14 @@ function run(rule, files, { mode = 'all', packConfig, now, uncommitted } = {}) {
 
 // --- pack manifest -----------------------------------------------------------
 
-test('pack manifest: id, marker, six uniquely-named rules, the contributed isolation barrier', () => {
+test('pack manifest: id, marker, the coded rule plus the five declared checks, the contributed isolation barrier', () => {
   assert.equal(pack.id, 'product-wiki');
   assert.equal(pack.marker, 'product-wiki/product-requirements/README.md');
   assert.equal(pack.prose, 'RULES.md');
-  assert.equal(pack.worldRules.length, 6);
-  const ids = pack.worldRules.map((r) => r.id);
+  // The manifest lists only what is CODED; the page grammar is declared in
+  // declared-checks.json beside it, which the registry discovers and appends.
+  assert.deepEqual(pack.worldRules.map((r) => r.id), ['product-wiki-layout']);
+  const ids = [...pack.worldRules, pageSections, keyInsights, growthLog, sources, freshness].map((r) => r.id);
   assert.equal(new Set(ids).size, 6);
   assert.ok(ids.every((id) => id.startsWith('product-wiki-')));
   // The isolation wall rides the barriers mechanism: declared (requires) and

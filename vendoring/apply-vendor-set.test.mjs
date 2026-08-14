@@ -35,6 +35,10 @@ function makeCanon() {
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-schema.mjs'), join(root, 'engine', 'pack_loader', 'pack-schema.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'module-imports.mjs'), join(root, 'engine', 'checks', 'helpers', 'module-imports.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'active-migrations.mjs'), join(root, 'engine', 'checks', 'helpers', 'active-migrations.mjs'));
+  // The pattern-check engine the registry reaches for when a pack carries
+  // declared-checks.json — a stub here: the fixture packs declare none, but the
+  // set's import-closure guard still resolves the registry's reference to it.
+  writeAt(root, 'engine/checks/helpers/pattern-rules.mjs', 'stub\n');
   copyFileSync(join(REPO_ROOT, 'engine', 'version.mjs'), join(root, 'engine', 'version.mjs'));
   writeAt(root, 'engine/checks/check_the_world.mjs', 'engine v2\n');
   writeAt(root, 'engine/pack_loader/mount-skills.mjs', 'machinery\n');
@@ -163,6 +167,7 @@ test('#328: a canon tree nested in a FOREIGN git repo is rootless — upward .gi
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'module-imports.mjs'), join(canon, 'engine', 'checks', 'helpers', 'module-imports.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'active-migrations.mjs'), join(canon, 'engine', 'checks', 'helpers', 'active-migrations.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'version.mjs'), join(canon, 'engine', 'version.mjs'));
+  writeAt(canon, 'engine/checks/helpers/pattern-rules.mjs', 'stub\n');
   writeAt(canon, 'engine/checks/check_the_world.mjs', 'engine v2\n');
   writeAt(canon, 'packs/directory.GENERATED.md', 'stub catalog\n');
   writeAt(canon, 'engine/migrations/apply.mjs', 'export const apply = 1;\n');

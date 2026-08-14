@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, deletePath, cleanup, git, writeFiles, makeTranscript } from '../../engine-tests/helpers.mjs';
+import { makeRepo, deletePath, cleanup, git, writeFiles, makeTranscript, declaredCheck } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import { runRule } from '../../engine/checks/helpers/work.mjs';
 import commentClassification from '../../packs/basics/comment-classification.mjs';
@@ -11,10 +11,11 @@ import warningSuppression from '../../packs/basics/warning-suppression.mjs';
 import filePlacement from '../../packs/basics/file-placement.mjs';
 import squashMergeHistory from '../../packs/basics/squash-merge-history.mjs';
 import sharedConstants from '../../packs/basics/shared-constants.mjs';
-import claudeMdLength from '../../packs/basics/claude-md-length.mjs';
-import generatedMergeDriver from '../../packs/basics/generated-merge-driver.mjs';
 import rulesIndexCurrent from '../../packs/basics/rules-index-current.mjs';
-import catalogCompleteness from '../../packs/basics/catalog-completeness.mjs';
+
+const claudeMdLength = declaredCheck('packs/basics', 'claude-md-length');
+const generatedMergeDriver = declaredCheck('packs/basics', 'generated-merge-driver');
+const catalogCompleteness = declaredCheck('packs/basics', 'catalog-completeness');
 
 function run(rule, root, mode = 'changed') {
   const ctx = buildContext({ root, mode });

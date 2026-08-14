@@ -542,7 +542,10 @@ prose below).
   (`scanFiles`, `matchLines`, `relevantWhen`, `unlessLineMatches`), never a short word that only means
   something to whoever built the vocabulary; #800 renames all of it and every converted declaration
   accordingly. The same test governs any key added to the vocabulary later: **if it needs a comment to
-  be read, it needs a better name.** (Convertible in principle — a scan for comment lines inside a
-  `patternRule({…})` literal — but a new rule moves `packs/README.md`'s check tally, which a
-  growth-extract run may not touch; left for the weekly prose-to-checks sweep, as with the kebab-case
-  entry above.)
+  be read, it needs a better name.** #827 finished the thought by moving declarations OUT of `.mjs`
+  into `packs/<pack>/declared-checks.json`: *"this is the place where only declarative rules live.
+  Why is it mjs? Let's make them json"* — a format that cannot hold a comment, so the rule is
+  enforced by construction rather than by review. The same round dropped what the declaration was
+  borrowing from prose: no `description` (*"the why section should stand on its own"*), no `doc`
+  pointer (*"these tests are self-standing and don't need a prose reference"*), and `why` renamed
+  **`failureMessage`** for what it actually is — the line the agent reads when the check fires.
