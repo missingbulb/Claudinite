@@ -60,13 +60,6 @@ change, independent of any one project.
   first; copying a mechanic from a sibling repo is the tell that it belongs centrally. If no pack
   owns it, report the gap rather than author a third copy.
 
-- **Deciding which pack owns a rule, doc, skill or check** — read the catalog before you place it:
-  `.claudinite/shared/packs/directory.GENERATED.md` (canon-side `packs/directory.GENERATED.md`),
-  which states every pack's boundary, including packs this repo doesn't hold. A repo sees only the
-  packs it declares, so "nothing here covers this" is a fact about the mount, not about the corpus
-  — and acting on it homes the lesson in a new local pack that duplicates canon territory. Where
-  the owning pack's stated territory is merely too narrow, widen it rather than route around it.
-
 - **Taking on a task** — minimize its shelf-life, the time from starting it until everyone can
   forget about it.
 
