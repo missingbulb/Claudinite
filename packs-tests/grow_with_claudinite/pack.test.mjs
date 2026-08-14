@@ -10,7 +10,7 @@ import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import configCheck from '../../packs/grow_with_claudinite/config-check.mjs';
 import {
   parseLines, bundleStreams, sliceAfter, maxTimestamp, scrub, buildRedactionValues,
-  logFilename, parseLogFilename, findTranscript,
+  logFilename, parseLogFilename, findTranscript, capture,
 } from '../../packs/grow_with_claudinite/capture-log.mjs';
 import { runRule } from '../../engine/checks/helpers/work.mjs';
 import dedupIntegrity from '../../packs/grow_with_claudinite/dedup-integrity.mjs';
@@ -276,6 +276,60 @@ test('capture discovers the transcript by session id when no --transcript is giv
     const log = files.find((f) => f.endsWith('--sess-env.jsonl'));
     assert.ok(log && log.includes('--issue-11--'), `expected an issue-11 log for sess-env, got: ${files}`);
     assert.match(sh(origin, 'git', ['show', `conversation-logs:${log}`]), /discovered by session id/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('capture retries an unreachable origin, not only a lost push race', async () => {
+  // The SessionEnd capture is a session's ONLY chance — nothing captures a
+  // non-merging session later — so a proxy blip on the reads that open each
+  // attempt must be as retryable as the push that closes it.
+  const dir = mkdtempSync(join(tmpdir(), 'claudinite-capture-'));
+  const origin = join(dir, 'origin.git');
+  const work = join(dir, 'work');
+  mkdirSync(work);
+  try {
+    sh(work, 'git', ['init', '--quiet']);
+    sh(work, 'git', ['config', 'user.email', 't@t']);
+    sh(work, 'git', ['config', 'user.name', 't']);
+    sh(work, 'git', ['remote', 'add', 'origin', origin]); // unreachable: nothing there yet
+
+    // Reachable again during the first backoff — the shape of a transient outage.
+    const heal = setTimeout(() => { mkdirSync(origin); sh(origin, 'git', ['init', '--bare', '--quiet']); }, 1000);
+    try {
+      const result = await capture({
+        root: work,
+        branch: 'conversation-logs',
+        sessionId: 'sess-blip',
+        bundled: bundleStreams([parseLines(`${userLine(1, 'through a blip')}\n${assistantLine(2, 'ok')}`)]),
+        issue: 0,
+        now: '2026-08-13T21:07:00.000Z',
+      });
+      assert.equal(result.entries, 2);
+    } finally { clearTimeout(heal); }
+
+    const files = originFiles(origin, 'conversation-logs');
+    assert.ok(files.some((f) => f.endsWith('--sess-blip.jsonl')), `expected the capture to land, got: ${files}`);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('capture reports the unreachable origin once its attempts are spent', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'claudinite-capture-'));
+  const work = join(dir, 'work');
+  mkdirSync(work);
+  try {
+    sh(work, 'git', ['init', '--quiet']);
+    sh(work, 'git', ['remote', 'add', 'origin', join(dir, 'never-there.git')]);
+    await assert.rejects(
+      capture({
+        root: work,
+        branch: 'conversation-logs',
+        sessionId: 'sess-dark',
+        bundled: bundleStreams([parseLines(userLine(1, 'into the dark'))]),
+        issue: 0,
+        now: '2026-08-13T21:07:00.000Z',
+      }),
+      /after 3 attempts/,
+    );
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
