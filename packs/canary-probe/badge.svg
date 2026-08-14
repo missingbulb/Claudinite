@@ -1,0 +1,12 @@
+<!-- A Claudinite pack badge. The colour and glyph below are this file's own — dev/tools/badges/render.mjs re-renders the template around them. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="Claudinite pack: canary-probe">
+  <title>canary-probe</title>
+  <defs>
+    <linearGradient id="b-canary-probe" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#eab308"/>
+      <stop offset="1" stop-color="#b78c06"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="8" fill="url(#b-canary-probe)"/>
+  <path d="M16 8v10 M11.5 14L16 18.5 20.5 14 M9 23h14" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
