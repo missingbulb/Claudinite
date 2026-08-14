@@ -137,7 +137,7 @@ config absence means "nothing declared").
 - Accepts against `product-wiki-isolation` are pruned by hand (no staleness
   audit — see above).
 - The weekly growth task rides the repo's own scheduler
-  ([the scheduled-tasks mechanism](../basics/scheduled-tasks.md));
+  ([the scheduled-tasks mechanism](../core/scheduled-tasks.md));
   a repo without a `taskScheduler` anchor gets no unattended growth — the freshness
   advisory is the backstop that surfaces that, and the owner phrase "grow the
   product wiki" runs the same worker method in-session.

@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { main, openWorkLists } from '../../../../packs/grow_with_claudinite/tasks/adopt-requested-packs/worker.mjs';
-import { LABEL } from '../../../../packs/grow_with_claudinite/tasks/adopt-requested-packs/protocol.mjs';
+import { main, openWorkLists } from '../../../../packs/core/tasks/adopt-requested-packs/worker.mjs';
+import { LABEL } from '../../../../packs/core/tasks/adopt-requested-packs/protocol.mjs';
 
 // The prework gate: request the agent iff this repo has an open `add-packs` work
 // list. Exercised through the real main() with fetch stubbed, because the property

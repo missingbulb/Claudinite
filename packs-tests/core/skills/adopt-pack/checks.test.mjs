@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../../engine/checks/helpers/repo-context.mjs';
 import { runRule as dispatch } from '../../../../engine/checks/helpers/work.mjs';
-import checks from '../../../../packs/grow_with_claudinite/skills/adopt-pack/checks.mjs';
+import checks from '../../../../packs/core/skills/adopt-pack/checks.mjs';
 
 const rule = checks[0];
 

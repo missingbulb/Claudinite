@@ -62,13 +62,13 @@ test('a new suppression marker blocks the run (fail fast)', () => {
 });
 
 test('interview: a stale answer is advisory (never run-failing); pending questions are no finding at all', () => {
-  // The hygiene check is grow_with_claudinite's (skill-owned), so that pack must
-  // be active for it to run; it inspects every active pack's answers. barriers
-  // declares the `goals` question: `old-id` is stale, and `goals` itself stays
-  // unanswered — which must NOT surface in the sweep (an unattended nightly run
-  // can't answer it; only SessionStart may nudge).
+  // The hygiene check is core's (bundled in the adopt-claudinite skill), so that
+  // pack must be active for it to run; it inspects every active pack's answers.
+  // barriers declares the `goals` question: `old-id` is stale, and `goals` itself
+  // stays unanswered — which must NOT surface in the sweep (an unattended nightly
+  // run can't answer it; only SessionStart may nudge).
   const root = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({
-    packs: ['grow_with_claudinite', { id: 'barriers', answers: { 'old-id': 'kept intent' } }],
+    packs: ['core', { id: 'barriers', answers: { 'old-id': 'kept intent' } }],
   }) } });
   try {
     const r = runCli(root);
@@ -271,12 +271,13 @@ test('--init writes the pack declaration once and is idempotent', () => {
     assert.ok(existsSync(join(root, '.claudinite-checks.json')));
     const first = readFileSync(join(root, '.claudinite-checks.json'), 'utf8');
     // No pack is active by default, so --init materializes the seeded-by-default
-    // declared packs: basics plus grow_with_claudinite, tidy-repo and
+    // declared packs: basics and core plus grow_with_claudinite, tidy-repo and
     // claude-code-web-users-support (each opt-out by removal) — and the requires
-    // closure: basics pulls the barriers mechanism pack in, materialized with its
-    // provenance (`via`).
+    // closure: basics pulls core and git-github in, core pulls the barriers
+    // mechanism pack in, each materialized with its provenance (`via`). core is
+    // seeded AND required, so it appears once, in the seeded order, with no `via`.
     assert.deepEqual(JSON.parse(first).packs,
-      ['basics', { id: 'barriers', via: ['basics'] }, { id: 'git-github', via: ['basics'] }, 'claude-code-web-users-support', 'grow_with_claudinite', 'tidy-repo']);
+      ['basics', 'core', { id: 'barriers', via: ['core'] }, { id: 'git-github', via: ['basics'] }, 'claude-code-web-users-support', 'grow_with_claudinite', 'tidy-repo']);
     // The delivery selection is materialized, never an implicit default —
     // and it is the ONLY key beside the declaration: empty rules/accept
     // boilerplate is noise, not settings (#385).

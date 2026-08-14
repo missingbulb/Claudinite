@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
-import rule from '../../packs/basics/task-declaration-matches-folder.mjs';
+import rule from '../../packs/core/task-declaration-matches-folder.mjs';
 
 const decl = (id, extra = "  agent_instructions: 'task.md',\n") => `export default {
   id: '${id}',

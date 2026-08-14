@@ -223,7 +223,7 @@ prose below).
   — a substantive `main` move — may only **widen** an already-triggered run, never wake one. And the
   gate is not the scope: where a verdict is relative to the rest of the set (superseded-by,
   already-in-`main`), newness gates and the full set stays the scope. (Portable — a promote
-  candidate for `basics/scheduled-tasks.md`, which states the precondition contract but not this.)
+  candidate for `core/scheduled-tasks.md`, which states the precondition contract but not this.)
 - **You cannot force a due slot by running the scheduler workflow by hand.** Dueness is
   stateless — a slot is due iff its time falls in `(last successful run, now]` — so a
   `workflow_dispatch` run outside the slot's window succeeds, prints `- no tasks due`, and

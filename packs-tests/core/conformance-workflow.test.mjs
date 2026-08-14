@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import rule, { onBlock, gatesEveryPull } from '../../packs/basics/conformance-workflow.mjs';
+import rule, { onBlock, gatesEveryPull } from '../../packs/core/conformance-workflow.mjs';
 
 const MOUNT = '.claudinite/shared/engine/checks/check_the_world.mjs';
 const SWEEP_STEP = 'run: node .claudinite/shared/engine/checks/check_the_world.mjs';

@@ -84,7 +84,7 @@ worker the changed participants as `targets`.
 
 **This pack's tasks need the fleet executor routine — a second routine, only in this repo.** Both
 tasks here declare the **deprecated** task-level `session_scope: 'fleet'` — they are its one
-sanctioned holdout ([scheduled-tasks.md](../../../../packs/basics/scheduled-tasks.md)): the canon's
+sanctioned holdout ([scheduled-tasks.md](../../../../packs/core/scheduled-tasks.md)): the canon's
 ordinary executor does not hold the fleet, so the second label is what keeps that grant off it; each
 declaration site carries the comment pacifying the `@deprecated` warning — so the scheduler files
 their dispatches under

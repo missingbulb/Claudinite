@@ -1,5 +1,6 @@
 {
   "packs": [
+    "core",
     "basics",
     "github-actions",
     {
@@ -82,9 +83,9 @@
               {
                 "path": "extending.md",
                 "to": [
-                  "packs/grow_with_claudinite"
+                  "packs/core"
                 ],
-                "reason": "inherent(#385): the engine map documents where the adoption-interview machinery lives now that it is bundled in the adoption skill"
+                "reason": "inherent(#385): the engine map documents where the adoption-interview machinery lives now that it is bundled in the adoption skill (moved with that skill into the core pack, #835)"
               }
             ]
           },
