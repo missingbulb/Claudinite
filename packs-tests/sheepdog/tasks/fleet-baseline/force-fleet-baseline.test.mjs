@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseRepoFilter, classifyScope, FORCED_TASK } from '../../../../packs/sheepdog/tasks/fleet-baseline/force-fleet-baseline.mjs';
@@ -21,8 +21,19 @@ test('the forced member-side task is one a member actually runs', () => {
   // naming a task nothing runs still reports a clean dispatch — this sweep counts
   // dispatches, not outcomes (Sheepdog#172), so a wrong id here is invisible.
   assert.equal(FORCED_TASK, 'update');
-  assert.ok(existsSync(join(ROOT, 'packs/basics/tasks', FORCED_TASK, 'task.mjs')),
-    `no basics task named "${FORCED_TASK}" — this lever would dispatch a task nothing runs`);
+  // Searched across every pack rather than pinned to the one that happens to own
+  // it today: the scheduler discovers tasks by scanning each ACTIVE pack's
+  // `tasks/`, so which pack holds `update` is not this lever's business and has
+  // already changed once (#835 moved it from basics to core). Naming a pack here
+  // would go red on a move that is invisible to the dispatch, and the failure it
+  // must actually catch — no pack owns this id at all — is the one below.
+  const owners = readdirSync(join(ROOT, 'packs'), { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .filter((d) => existsSync(join(ROOT, 'packs', d.name, 'tasks', FORCED_TASK, 'task.mjs')))
+    .map((d) => d.name);
+  assert.equal(owners.length, 1,
+    `expected exactly one pack to own a "${FORCED_TASK}" task, found ${owners.length} (${owners.join(', ') || 'none'}) — `
+    + 'a lever naming a task no pack runs dispatches into nothing and still reports success');
 });
 
 // --- the repos filter ----------------------------------------------------------

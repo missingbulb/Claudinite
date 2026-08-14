@@ -17,7 +17,7 @@ model repaired that the new model neither fixes nor escalates on.
 ## The two things the new model relies on
 
 1. **The four deterministic repairs** preprocessing runs
-   ([`worker.mjs`](../../packs/basics/tasks/update/worker.mjs)):
+   ([`worker.mjs`](../../packs/core/tasks/update/worker.mjs)):
    - **converge** — rebuild `.claudinite/shared/` to the canon vendor set
      ([`apply-vendor-set.mjs`](../../vendoring/apply-vendor-set.mjs)).
    - **converge-wiring** — the scheduler workflow + hashed cron, the settings

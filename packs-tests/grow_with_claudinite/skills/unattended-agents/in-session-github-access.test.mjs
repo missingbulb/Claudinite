@@ -61,7 +61,7 @@ test('in-session-github-access: a scheduled task\'s preprocessing worker keeps i
   // GITHUB_TOKEN — the one sanctioned non-MCP surface — so tasks/ is deliberately
   // outside the in-session scope.
   const root = makeRepo({ changed: {
-    'packs/basics/tasks/update/worker.mjs': "const t = process.env.GITHUB_TOKEN;\nconst r = await fetch('https://api.github.com/repos/x');\nexport const y = [t, r];\n",
+    'packs/core/tasks/update/worker.mjs': "const t = process.env.GITHUB_TOKEN;\nconst r = await fetch('https://api.github.com/repos/x');\nexport const y = [t, r];\n",
   } });
   try {
     assert.equal(run(root).length, 0, 'a task worker is Action-side code, not in-session code');

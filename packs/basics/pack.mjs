@@ -63,10 +63,9 @@ export default {
   // the pack whose projects need it and move this line with it (#385 moved the
   // git/GitHub and Claudinite-lifecycle skills out).
   //
-  // The baseline scheduled task every repo runs — `update`, the per-repo
-  // self-refresh — lives in this pack's `tasks/update/`, discovered by the
-  // scheduler's filesystem scan (engine/scheduler/discover.mjs), not declared
-  // here. Being in basics — declared everywhere — makes it universal.
+  // `task-janitor` is this pack's one scheduled task, discovered by the
+  // scheduler's filesystem scan (engine/scheduler/discover.mjs) rather than
+  // declared here.
   skills: [
     'authoring-agent-docs',
     'bug-investigation',

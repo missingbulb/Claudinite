@@ -4,9 +4,9 @@ import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pack from '../../packs/basics/pack.mjs';
-import update from '../../packs/basics/tasks/update/task.mjs';
+import update from '../../packs/core/tasks/update/task.mjs';
 
-const TASK_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../packs/basics/tasks/update');
+const TASK_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../packs/core/tasks/update');
 
 // The baseline scheduled task every repo runs. This file tested `baselining` until
 // #768 Phase 5 retired it; `update` is the successor in the same slot, and what is
