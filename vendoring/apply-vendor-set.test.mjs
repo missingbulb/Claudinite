@@ -207,3 +207,44 @@ test('the writer fetches records over the TARGET\'s stamp, not the canon\'s idea
   assert.deepEqual((await applyAt(canon, behind)).errors, []);
   assert.ok(existsSync(join(behind, record)), 'a lagging target carries exactly its gap');
 });
+
+test('#768: converging an ALREADY-STAMPED target advances every pack PAST records it never applied', async () => {
+  // The hazard behind "an install runs no migrations", stated as a test because the
+  // skills document it and documentation of a silent behaviour rots invisibly.
+  //
+  // `applyVendor` stamps every DECLARED pack at the version this canon ships,
+  // unconditionally — it converges the mount, it does not run records. At version
+  // zero that is exactly right: there is no older state, so nothing is skipped, and
+  // it is why bootstrap may use this writer. Run it over a target that already has a
+  // stamp and the same line burns that target's pending records, because
+  // `migrationApplies` is `want > have` and the stamp has just been moved to `want`.
+  //
+  // The damage is PERMANENT, not a missed cycle: nothing ever lowers a stamp, so the
+  // record can never apply again. The repo is left claiming a version whose shape it
+  // was never migrated into, and the stamp is the only thing that remembers — which
+  // is what makes this silent rather than merely wrong.
+  const canon = makeCanon();
+  const RECORD = 'packs/alpha/migrations/2026-08-13-alpha-shape';
+  writeAt(canon, `${RECORD}/migration.mjs`,
+    'export default {\n  id: "alpha-shape",\n  landed: "2026-08-13",\n  version: 4,\n};\n');
+  // The canon's own predicate, not a reimplementation of it here: the point is that
+  // the gate the update flow consults changes its answer across this call.
+  const { migrationApplies } = await import(
+    pathToFileURL(join(canon, 'engine', 'checks', 'helpers', 'active-migrations.mjs')).href);
+  const applies = (target) => {
+    const { claudinite } = JSON.parse(readFileSync(join(target, '.claudinite-checks.json'), 'utf8'));
+    return migrationApplies(RECORD, { installed: claudinite, today: '2026-08-14' });
+  };
+
+  const target = makeTarget({
+    packs: ['alpha'],
+    claudinite: { updated: '2026-08-10T00:00:00Z', engineVersion: ENGINE_VERSION, packVersions: { alpha: 1 } },
+  });
+  assert.equal(applies(target), true, 'precondition: a target at alpha 1 still needs a record that takes effect at 4');
+
+  assert.deepEqual((await applyAt(canon, target)).errors, []);
+
+  const { claudinite } = JSON.parse(readFileSync(join(target, '.claudinite-checks.json'), 'utf8'));
+  assert.equal(claudinite.packVersions.alpha, 4, 'the writer stamps the newest version, records or no records');
+  assert.equal(applies(target), false, 'and the record it never applied is now permanently out of range');
+});
