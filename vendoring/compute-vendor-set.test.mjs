@@ -50,7 +50,7 @@ function makeCanon({ packs = [], skills = [], packDirectory = true } = {}) {
   writeAt(root, 'engine/hooks/session-start-command.sh', 'stub\n');
   writeAt(root, 'vendoring/DESIGN.md', 'canon doc\n');
   // machinery roots: top-level .mjs picked up, tests and dirs' docs not
-  writeAt(root, 'engine/pack_loader/inject-pack-prose.mjs', 'stub\n');
+  writeAt(root, 'engine/pack_loader/generate-rules-index.mjs', 'stub\n');
   writeAt(root, 'engine/pack_loader/env-requirements.mjs', 'stub\n');
   writeAt(root, 'packs/env.test.mjs', 'stub\n');
   writeAt(root, 'packs/README.md', 'canon doc\n');
@@ -115,7 +115,7 @@ test('structural set: engine roots + machinery + declared pack + its skills, exa
     'engine/hooks/session-start-command.sh',
     'engine/scheduler/executor.md',
     'engine/pack_loader/env-requirements.mjs',
-    'engine/pack_loader/inject-pack-prose.mjs',
+    'engine/pack_loader/generate-rules-index.mjs',
     'engine/pack_loader/pack-registry.mjs',
     'engine/pack_loader/pack-schema.mjs',
     'engine/pack_loader/mount-skills.mjs',

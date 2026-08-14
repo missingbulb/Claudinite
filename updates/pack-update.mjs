@@ -287,6 +287,22 @@ export async function packUpdate(targetRoot, {
   const wiring = await pendingSchedulerWorkflow(targetRoot, fullName, read);
   if (wiring.pending) withhold(wiring.pending.path, wiring.pending.content);
 
+  // 2c. THE CLAUDE.md PACK INDEX (#807), for the same reason as 2b and at the same
+  //     point: its content is a function of the pack set, and the vendor above is
+  //     what just changed it. The engine flow converges the index too, but it runs
+  //     BEFORE the packs in a cycle — so on the one night a pack lands, the engine
+  //     flow's copy is already yesterday's, and without this the member would carry
+  //     a stale index (and inject the whole corpus through the hook as a fallback)
+  //     until some later cycle happened to touch the engine.
+  //
+  //     Written straight to the tree rather than withheld: the index is not a
+  //     workflow path, so no credential refuses it.
+  const { writeRulesIndex, RULES_INDEX_FILE } = await import('../engine/pack_loader/generate-rules-index.mjs');
+  const { ensureRulesIndexImport, ensureRulesIndexMergeAttribute } = await import('../engine/scheduler/converge-wiring.mjs');
+  if (await writeRulesIndex(targetRoot)) applied.push(`converged ${RULES_INDEX_FILE}`);
+  if (ensureRulesIndexImport(targetRoot)) applied.push('added the CLAUDE.md pack-index import');
+  if (ensureRulesIndexMergeAttribute(targetRoot)) applied.push('declared merge=ours for the pack index');
+
   // …and sweep what is no longer owed. A staged file outlives its need the moment the
   // apply stage lands it: the workflow then matches its target, nothing withholds it
   // again, and a copy left in the staging directory would sit there permanently

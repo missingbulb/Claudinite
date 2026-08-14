@@ -16,6 +16,7 @@ import taskDeclarationMatchesFolder from './task-declaration-matches-folder.mjs'
 import taskPhaseDiscipline from './task-phase-discipline.mjs';
 import conformanceWorkflow from './conformance-workflow.mjs';
 import rulesLineLength from './rules-line-length.mjs';
+import rulesIndexCurrent from './rules-index-current.mjs';
 
 // The baseline pack: working discipline, the task lifecycle, and the core
 // checks. Declared explicitly like every other pack — no pack is active by
@@ -75,6 +76,10 @@ export default {
     // And the CI half of the same discipline: a member whose world sweep cannot
     // run on a pull request has no gate, and its maintenance PR never lands.
     conformanceWorkflow,
+    // The one channel a pack's rules reach a session on since #807. A repo whose
+    // index is missing, stale or unimported runs with NO pack rules and cannot
+    // tell — so the repo goes red, which is the only signal there is.
+    rulesIndexCurrent,
   ],
   // Rules that judge the change and the session in front of you — the branch's
   // commits, the diff, the conversation.

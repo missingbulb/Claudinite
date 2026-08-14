@@ -102,6 +102,28 @@ test('a real member\'s packs are replaced wholesale and stamped per pack', async
   rmSync(root, { recursive: true, force: true });
 });
 
+test('the pack flow converges the CLAUDE.md index, because it is what changed the pack set (#807)', async () => {
+  // The engine flow converges the index too, but it runs BEFORE the packs in a cycle
+  // — so on the night a pack lands, its copy is already yesterday's. Without this the
+  // member would carry a stale index (and fall back to injecting the whole corpus
+  // through the hook that #807 showed truncates it) until some later cycle happened
+  // to touch the engine.
+  const root = makeMember({ packs: ['basics', 'tidy-repo'] });
+  assert.deepEqual((await applyVendor(root)).errors, []);
+  setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { basics: 0, 'tidy-repo': 0 } });
+
+  assert.equal((await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' })).status, 'ok');
+  const index = readFileSync(join(root, '.claudinite', 'claudinite-rules.GENERATED.md'), 'utf8');
+  // Every declared pack imported, off the mount this flow just wrote.
+  assert.match(index, /@shared\/packs\/basics\/RULES\.md/);
+  assert.match(index, /@shared\/packs\/tidy-repo\/RULES\.md/);
+  // And the wiring that makes the file load for anyone.
+  const claudeMd = readFileSync(join(root, 'CLAUDE.md'), 'utf8').split('\n');
+  assert.ok(claudeMd.some((l) => !l.includes('`') && l.includes('@.claudinite/claudinite-rules.GENERATED.md')), claudeMd.join('\n'));
+  assert.match(readFileSync(join(root, '.gitattributes'), 'utf8'), /claudinite-rules\.GENERATED\.md merge=ours/);
+  rmSync(root, { recursive: true, force: true });
+});
+
 test('the engine half of the mount is left alone — it belongs to the engine flow', async () => {
   const root = makeMember();
   assert.deepEqual((await applyVendor(root)).errors, []);

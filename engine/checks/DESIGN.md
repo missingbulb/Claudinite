@@ -67,7 +67,7 @@ Two classes deliberately **stay as instructions**:
 ```
 packs/                        # the mounted corpus: prose + checks, active by declaration
   registry.mjs                #   structural discovery — any packs/<name>/pack.mjs is a pack
-  load-active-prose.mjs       #   SessionStart hook: emits active packs' RULES.md
+  generate-rules-index.mjs    #   renders the @-import index CLAUDE.md loads RULES.md through
   <baseline>/                 #   the baseline: RULES.md + the core checks (declared like any pack)
   <technology>/               #   coding gotchas (RULES.md, prose only)
   <technology>-release/       #   RELEASE.md (standard) + stubs + conformance checks (opt-in)

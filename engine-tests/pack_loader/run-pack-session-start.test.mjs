@@ -12,9 +12,9 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 // The pack SESSION-START runner: the counterpart of the SessionEnd runner at the
 // other end of the session, and the one way a pack contributes context it has to
-// COMPUTE. Static prose is a file the injector reads (inject-pack-prose.mjs); this
-// is for what a pack can only know at session time — content fetched, derived, or
-// keyed to the person in front of it.
+// COMPUTE. Static prose rides CLAUDE.md through the generated rules index (#807);
+// this is for what a pack can only know at session time — content fetched, derived,
+// or keyed to the person in front of it, and so the only thing left on this hook.
 //
 // The contract under test is entirely generic: discover, run, forward, bound,
 // fail soft. Core never learns what any step DOES — the same terms the SessionEnd

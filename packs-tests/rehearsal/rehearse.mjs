@@ -85,8 +85,6 @@ export function rehearse(fixture, mode) {
     // against the canon and cheerfully reports on the wrong repo.
     steps.push(step('apply-vendor-set', [join(CANON, 'vendoring/apply-vendor-set.mjs'), '--target', root]));
     if (steps.at(-1).ok) {
-      steps.push(step('converge-wiring', [join(CANON, 'engine/scheduler/converge-wiring.mjs'), 'fixture/rehearsal'],
-        { CLAUDINITE_REPO_ROOT: root }, root));
       const declarationBefore = readFileSync(join(root, '.claudinite-checks.json'), 'utf8');
       steps.push(step('migrations-apply', [join(CANON, 'engine/migrations/apply.mjs')], { CLAUDE_PROJECT_DIR: root }, root));
       // The worker's conditional second pass, mirrored: a note that DECLARED a pack
@@ -96,6 +94,13 @@ export function rehearse(fixture, mode) {
       if (readFileSync(join(root, '.claudinite-checks.json'), 'utf8') !== declarationBefore) {
         steps.push(step('re-converge', [join(CANON, 'vendoring/apply-vendor-set.mjs'), '--target', root]));
       }
+      // AFTER the migrations, which is the order the real flow runs in
+      // (updates/engine-update.mjs: replace the engine, apply the records, THEN
+      // converge the wiring). Anything the wiring converge derives from the
+      // declaration — the rules index above all — is wrong if a record moved the
+      // declaration after it ran, and the rehearsal is where that shows up.
+      steps.push(step('converge-wiring', [join(CANON, 'engine/scheduler/converge-wiring.mjs'), 'fixture/rehearsal'],
+        { CLAUDINITE_REPO_ROOT: root }, root));
       steps.push(step('selftest', [join(CANON, 'engine/selftest.mjs'), '--strict'], { CLAUDE_PROJECT_DIR: root }, root));
       const sweep = join(root, '.claudinite/shared/engine/checks/check_the_world.mjs');
       // The member runs its own VENDORED sweep, not the canon's — that is the

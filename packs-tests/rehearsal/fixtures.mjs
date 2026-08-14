@@ -48,6 +48,17 @@
 //                 work rules scoped to those runs, so this is the shape that
 //                 answers whether an enrolled member's ORDINARY converge stays
 //                 green under them.
+//   pre-rules-index
+//                 a member in the shape EVERY member has the night #807 reaches it:
+//                 a CLAUDE.md of its own, no rules index, no import, no merge
+//                 attribute. Nothing carries those to a member except the converge
+//                 itself, and `rules-index-current` is blocking — so if the converge
+//                 did not write all three in the same pass, this member goes red
+//                 overnight through no act of its own. That is the whole question a
+//                 migration record would otherwise have to answer, which is why this
+//                 shape is the honest alternative to one here. It keeps its own
+//                 CLAUDE.md content so the converge is also shown NOT to clobber a
+//                 repo's instructions on its way in.
 //
 // A fixture carries NO `claudinite.ref`. That is deliberate: apply-vendor-set's
 // #328 anti-rewind guard compares the prior ref against the canon checkout's
@@ -222,6 +233,18 @@ export const FIXTURES = [
       '.claudinite-checks.json': checks(['basics', 'local/fixture-versioned']),
       '.claudinite/local/packs/fixture-versioned/pack.mjs': PACK_VERSIONED,
       '.claudinite/local/packs/fixture-versioned/RULES.md': '# fixture-versioned\n\nNo standing rules.\n',
+    },
+  },
+  {
+    name: 'pre-rules-index',
+    why: 'a member as it stands the night #807 arrives — its own CLAUDE.md, no rules index, no import — proving the converge lands all three and the new blocking rule finds them',
+    files: {
+      'README.md': '# fixture-pre-rules-index\n\nA rehearsal fixture.\n',
+      '.claudinite-checks.json': checks(['basics']),
+      // A repo's own instructions, which the converge must preserve while adding
+      // its one import line — a member's CLAUDE.md is the member's.
+      'CLAUDE.md': '# fixture-pre-rules-index\n\nBuild with `make`. Run `make test` before committing.\n',
+      '.gitattributes': 'usage.GENERATED.json merge=ours\n',
     },
   },
   {
