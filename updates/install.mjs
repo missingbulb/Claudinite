@@ -191,11 +191,23 @@ const forcedCurrent = (packs) => Object.fromEntries(packs.map((p) => [p.id, p.ve
 // WHY THIS EXISTS AT ALL (#768). The skills used to converge an adoption by hand:
 // fetch canon, run `vendoring/apply-vendor-set.mjs`, advance the stamp. That lays the
 // pack's FILES down correctly and gets one thing wrong that nothing notices for weeks
-// — it never writes `claudinite.packVersions[<id>]`. The pack is then installed but
-// UNVERSIONED, so the next update flow reads `from: null`, and `migrationApplies`
-// falls back to its landed-date window because it cannot compare numbers. A pack
-// adopted today can therefore be handed records written for the shapes of an older
-// era, which is precisely what "an install runs no migrations" exists to prevent.
+// — but not the thing this comment used to claim. `applyVendor` DOES write
+// `claudinite.packVersions`; `computeVendorSet` returns the version of every declared
+// pack and the writer stamps the lot in the same pass. The hazard is the opposite of
+// "unversioned", and worse:
+//
+//   IT STAMPS EVERY DECLARED PACK AT THE NEWEST VERSION, whether or not the records
+//   between were ever applied. `migrationApplies` is `want > have`, so the moment the
+//   stamp reaches the record's own version the record stops applying — not for this
+//   cycle, but forever. A member converged this way ends up CLAIMING a version whose
+//   shape it was never migrated into, and nothing downstream can tell the difference,
+//   because the stamp is the only thing that remembers.
+//
+// At version zero that is exactly right, and it is what an install means: no older
+// state exists, so there is nothing to skip. Run it over a repo that already has a
+// stamp and the same behaviour silently burns that repo's pending records — which is
+// why `planInstall` refuses an already-installed pack rather than treating this as an
+// optimisation (see the exit note at the bottom of `main`, which had this right).
 //
 // One runner, one stamp. The skills describe intent and hand-offs; the arithmetic of
 // what version a repo is now at belongs here, where the update flows read it from.
