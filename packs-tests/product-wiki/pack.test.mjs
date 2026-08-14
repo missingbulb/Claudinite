@@ -8,11 +8,7 @@ import { makeRepo, cleanup, writeFiles } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import pack from '../../packs/product-wiki/pack.mjs';
 import layout from '../../packs/product-wiki/layout.mjs';
-import pageSections from '../../packs/product-wiki/page-sections.mjs';
-import keyInsights from '../../packs/product-wiki/key-insights.mjs';
-import growthLog from '../../packs/product-wiki/growth-log.mjs';
-import sources from '../../packs/product-wiki/sources.mjs';
-import freshness from '../../packs/product-wiki/freshness.mjs';
+import { pageSections, keyInsights, growthLog, sources, freshness } from '../../packs/product-wiki/declared-checks.mjs';
 import wikiGrowth from '../../packs/product-wiki/tasks/wiki-growth/task.mjs';
 // Built through the real path: the product-wiki manifest contributes it as
 // data and the barriers pack's factory turns it into the rule.

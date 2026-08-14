@@ -5,13 +5,15 @@ import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import { runRule } from '../../engine/checks/helpers/work.mjs';
 import releasePack from '../../packs/chrome-extension-release/pack.mjs';
 import releaseWorkflows from '../../packs/chrome-extension-release/release-workflows.mjs';
-import templateTokens from '../../packs/chrome-extension-release/template-tokens.mjs';
-import releaseConfig from '../../packs/chrome-extension-release/release-config.mjs';
-import versionSync from '../../packs/chrome-extension-release/version-sync.mjs';
-import releaseLayout from '../../packs/chrome-extension-release/release-layout.mjs';
+import {
+  templateTokens,
+  releaseConfig,
+  versionSync,
+  releaseLayout,
+  readmeSections,
+} from '../../packs/chrome-extension-release/declared-checks.mjs';
 import privacyPermissionAlignment from '../../packs/chrome-extension-release/privacy-permission-alignment.mjs';
 import permissionAddedStoreIssue from '../../packs/chrome-extension-release/permission-added-store-issue.mjs';
-import readmeSections from '../../packs/chrome-extension-release/readme-sections.mjs';
 
 const run = (rule, root, opts) => runRule(rule, buildContext({ root, mode: 'all' }), opts);
 

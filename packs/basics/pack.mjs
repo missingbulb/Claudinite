@@ -5,10 +5,8 @@ import taskLifecycle from './task-lifecycle.mjs';
 import warningSuppression from './warning-suppression.mjs';
 import filePlacement from './file-placement.mjs';
 import squashMergeHistory from './squash-merge-history.mjs';
-import claudeMdLength from './claude-md-length.mjs';
-import generatedMergeDriver from './generated-merge-driver.mjs';
+import declaredChecks from './declared-checks.mjs';
 import sharedConstants from './shared-constants.mjs';
-import catalogCompleteness from './catalog-completeness.mjs';
 import claudiniteIsolation from './claudinite-isolation.mjs';
 import schedulerWorkflowShape from './scheduler-workflow-shape.mjs';
 import taskDeclarationShape from './task-declaration-shape.mjs';
@@ -57,10 +55,8 @@ export default {
     rulesLineLength,
     warningSuppression,
     filePlacement,
-    claudeMdLength,
-    generatedMergeDriver,
+    ...declaredChecks,
     sharedConstants,
-    catalogCompleteness,
     // The per-project scheduling conformance guards (scheduled-tasks.md):
     // scheduling is baseline Claudinite discipline — the scheduler workflow and
     // the task-declaration contract are guarded wherever basics is declared

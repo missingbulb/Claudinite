@@ -1,6 +1,5 @@
-import esbuildDependency from './esbuild-dependency.mjs';
+import declaredChecks from './declared-checks.mjs';
 import handlerPath from './handler-path.mjs';
-import cloudfrontAuthorization from './cloudfront-authorization.mjs';
 
 // Three of the pack's gotchas now have structural checks (via the minimal YAML
 // parser); the jsdom-style runtime ones stay prose in RULES.md.
@@ -16,5 +15,5 @@ export default {
   marker: 'a SAM template (template.yaml/.yml)',
   detect: (ctx) => ctx.tracked.includes('template.yaml') || ctx.tracked.includes('template.yml'),
   prose: 'RULES.md',
-  worldRules: [esbuildDependency, handlerPath, cloudfrontAuthorization],
+  worldRules: [...declaredChecks, handlerPath],
 };

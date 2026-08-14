@@ -5,11 +5,13 @@ import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import secretsInJobIf from '../../packs/github-actions/secrets-in-job-if.mjs';
 import runPipefail from '../../packs/github-actions/run-pipefail.mjs';
 import checkoutSubmodules from '../../packs/github-actions/checkout-submodules.mjs';
-import scheduledEscalation from '../../packs/github-actions/scheduled-failure-escalation.mjs';
-import labelCreate from '../../packs/github-actions/label-create-before-add.mjs';
-import uniqueBranch from '../../packs/github-actions/unique-automation-branch.mjs';
-import pagesArtifactSymlinks from '../../packs/github-actions/pages-artifact-symlinks.mjs';
-import noScheduledFleetExecutor from '../../packs/github-actions/no-scheduled-fleet-executor.mjs';
+import {
+  scheduledFailureEscalation as scheduledEscalation,
+  labelCreateBeforeAdd as labelCreate,
+  uniqueAutomationBranch as uniqueBranch,
+  pagesArtifactSymlinks,
+  noScheduledFleetExecutor,
+} from '../../packs/github-actions/declared-checks.mjs';
 
 const run = (rule, root) => rule.run(buildContext({ root, mode: 'all' }));
 const WF = '.github/workflows/x.yml';

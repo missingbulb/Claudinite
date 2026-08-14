@@ -11,10 +11,8 @@ import warningSuppression from '../../packs/basics/warning-suppression.mjs';
 import filePlacement from '../../packs/basics/file-placement.mjs';
 import squashMergeHistory from '../../packs/basics/squash-merge-history.mjs';
 import sharedConstants from '../../packs/basics/shared-constants.mjs';
-import claudeMdLength from '../../packs/basics/claude-md-length.mjs';
-import generatedMergeDriver from '../../packs/basics/generated-merge-driver.mjs';
 import rulesIndexCurrent from '../../packs/basics/rules-index-current.mjs';
-import catalogCompleteness from '../../packs/basics/catalog-completeness.mjs';
+import { claudeMdLength, generatedMergeDriver, catalogCompleteness } from '../../packs/basics/declared-checks.mjs';
 
 function run(rule, root, mode = 'changed') {
   const ctx = buildContext({ root, mode });
