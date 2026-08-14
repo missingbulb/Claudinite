@@ -9,7 +9,9 @@ import {
   withDeclaredSecrets, SCHEDULER_WORKFLOW, SETTINGS_PATH,
   removeRetiredBadgeSetting, convergeBadgeRow, renderBadgeRow, badgeRowEntries,
   BADGE_ROW_START, BADGE_ROW_END, README,
+  ensureClaudeIndexImport, ensureClaudeIndexMergeAttribute, CLAUDE_INDEX_MERGE_ATTR,
 } from '../../engine/scheduler/converge-wiring.mjs';
+import { CLAUDE_INDEX_IMPORT } from '../../engine/pack_loader/generate-claude-index.mjs';
 import { hashedCron } from '../../engine/scheduler/hash-minute.mjs';
 
 const mkRepo = () => mkdtempSync(join(tmpdir(), 'claudinite-wiring-'));
@@ -113,6 +115,89 @@ test('removeRetiredCorpusImport: strips the #385 import line, idempotently', () 
 
 test('removeRetiredCorpusImport: no CLAUDE.md is a no-op', () => {
   assert.equal(removeRetiredCorpusImport(mkRepo()), false);
+});
+
+// --- the CLAUDE.md channel (#807) ---------------------------------------------
+
+test('ensureClaudeIndexImport: adds the import under the title, keeping the repo\'s own CLAUDE.md', () => {
+  const root = mkRepo();
+  writeFileSync(join(root, 'CLAUDE.md'), '# Project\n\nBuild with `make`.\n');
+  assert.equal(ensureClaudeIndexImport(root), true);
+  const text = readFileSync(join(root, 'CLAUDE.md'), 'utf8');
+  assert.equal(text.split('\n')[0], '# Project', 'the repo\'s title stays its first line');
+  assert.ok(text.includes(CLAUDE_INDEX_IMPORT));
+  assert.ok(text.includes('Build with `make`.'), 'the repo\'s own instructions survive');
+  assert.equal(ensureClaudeIndexImport(root), false, 'idempotent — a converged repo is not rewritten');
+});
+
+test('ensureClaudeIndexImport: writes a CLAUDE.md when the repo has none', () => {
+  // Without the file there is nothing to load the index, so the index would be a
+  // generated artifact no session ever reads — the #807 failure with extra steps.
+  const root = mkRepo();
+  assert.equal(ensureClaudeIndexImport(root), true);
+  assert.equal(readFileSync(join(root, 'CLAUDE.md'), 'utf8'), `${CLAUDE_INDEX_IMPORT}\n`);
+});
+
+test('ensureClaudeIndexImport: an import documented in backticks does not count as wiring', () => {
+  // The harness skips `@` mentions inside code spans, so a CLAUDE.md that only shows
+  // the line is one it never follows. Treating that as converged would leave the repo
+  // importing nothing while every check reported it healthy.
+  const root = mkRepo();
+  writeFileSync(join(root, 'CLAUDE.md'), `Claudinite loads via \`${CLAUDE_INDEX_IMPORT}\`.\n`);
+  assert.equal(ensureClaudeIndexImport(root), true);
+  const lines = readFileSync(join(root, 'CLAUDE.md'), 'utf8').split('\n');
+  assert.ok(lines.some((l) => !l.includes('`') && l.includes(CLAUDE_INDEX_IMPORT)), 'a real, unquoted import line was added');
+});
+
+test('ensureClaudeIndexMergeAttribute: declares merge=ours for the generated index, idempotently', () => {
+  const root = mkRepo();
+  writeFileSync(join(root, '.gitattributes'), 'usage.GENERATED.json merge=ours');
+  assert.equal(ensureClaudeIndexMergeAttribute(root), true);
+  const text = readFileSync(join(root, '.gitattributes'), 'utf8');
+  assert.ok(text.includes('usage.GENERATED.json merge=ours'), 'the repo\'s existing entries survive');
+  assert.ok(text.split('\n').includes(CLAUDE_INDEX_MERGE_ATTR));
+  assert.equal(ensureClaudeIndexMergeAttribute(root), false);
+});
+
+test('convergeWiring: lands the index, its import and its merge attribute together', async () => {
+  // All three or none: an index nothing imports, or an import with no index behind it,
+  // are both a repo whose rules silently do not load.
+  const root = mkRepo();
+  mkdirSync(join(root, '.claudinite', 'shared', 'packs', 'basics'), { recursive: true });
+  writeFileSync(join(root, '.claudinite', 'shared', 'packs', 'basics', 'RULES.md'), 'BASICS PROSE\n');
+  writeFileSync(join(root, '.claudinite-checks.json'), '{ "packs": ["basics"] }\n');
+
+  const first = await convergeWiring(root, REPO, STUB);
+  assert.ok(first.changed.some((c) => c.includes('claude.GENERATED.md')), first.changed.join(', '));
+  assert.ok(first.changed.some((c) => c.includes('pack-index import')), first.changed.join(', '));
+  const index = readFileSync(join(root, '.claudinite', 'claude.GENERATED.md'), 'utf8');
+  assert.match(index, /@shared\/packs\/basics\/RULES\.md/);
+  assert.ok(readFileSync(join(root, 'CLAUDE.md'), 'utf8').includes(CLAUDE_INDEX_IMPORT));
+  assert.ok(readFileSync(join(root, '.gitattributes'), 'utf8').includes(CLAUDE_INDEX_MERGE_ATTR));
+
+  const second = await convergeWiring(root, REPO, STUB);
+  assert.ok(!second.changed.some((c) => c.includes('claude.GENERATED.md') || c.includes('pack-index')), second.changed.join(', '));
+});
+
+test('convergeWiring: a declaration change rewrites the index on the next converge', async () => {
+  // The index is a function of the declaration, so the moments a declaration moves —
+  // the nightly refresh and any pack change — are exactly when it can go stale. Both
+  // call convergeWiring, which is why it is converged here and not left to a session.
+  const root = mkRepo();
+  for (const id of ['basics', 'tidy-repo']) {
+    mkdirSync(join(root, '.claudinite', 'shared', 'packs', id), { recursive: true });
+    writeFileSync(join(root, '.claudinite', 'shared', 'packs', id, 'RULES.md'), `${id} prose\n`);
+  }
+  writeFileSync(join(root, '.claudinite-checks.json'), '{ "packs": ["basics"] }\n');
+  await convergeWiring(root, REPO, STUB);
+  // Held but undeclared: it earns a routing row, never an import.
+  const before = readFileSync(join(root, '.claudinite', 'claude.GENERATED.md'), 'utf8');
+  assert.doesNotMatch(before, /@shared\/packs\/tidy-repo\/RULES\.md/);
+
+  writeFileSync(join(root, '.claudinite-checks.json'), '{ "packs": ["basics", "tidy-repo"] }\n');
+  const r = await convergeWiring(root, REPO, STUB);
+  assert.ok(r.changed.some((c) => c.includes('claude.GENERATED.md')));
+  assert.match(readFileSync(join(root, '.claudinite', 'claude.GENERATED.md'), 'utf8'), /@shared\/packs\/tidy-repo\/RULES\.md/);
 });
 
 test('convergeWiring: reports every surface it changed, and is idempotent', async () => {

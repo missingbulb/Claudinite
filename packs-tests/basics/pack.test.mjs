@@ -642,6 +642,14 @@ test('claudinite-isolation: inert without the vendored mount; a consumer file re
     '.gitignore': '/.claudinite/*\n!/.claudinite/shared/\n',
     '.github/workflows/claudinite-checks-ci.yml': 'run: node .claudinite/shared/engine/checks/check_the_world.mjs\n',
     '.claudinite/local_packs/mine/check.mjs': 'import { run } from "../../shared/engine/check_the_world.mjs";\n',
+    // The generated pack index's import (#807) — the shape every converged member now
+    // carries. It contributes no finding for TWO independent reasons, and only one of
+    // them is the carve-out restored beside it: a bare unquoted `.claudinite/...` in
+    // prose already falls outside the engine's candidate shapes (this rule's own
+    // coverage note). So this line does not by itself prove the carve-out works — it
+    // pins the real-member shape, and the carve-out is what keeps that shape legal if
+    // reference detection is ever widened to bare prose paths.
+    'CLAUDE.md': '@.claudinite/claude.GENERATED.md\n',
   };
   const shared = {
     '.claudinite/shared/engine/checks/check_the_world.mjs': 'engine\n',

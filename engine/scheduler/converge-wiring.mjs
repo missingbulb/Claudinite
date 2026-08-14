@@ -17,6 +17,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { hashedCron } from './hash-minute.mjs';
+import { writeClaudeIndex, CLAUDE_INDEX_FILE, CLAUDE_INDEX_IMPORT } from '../pack_loader/generate-claude-index.mjs';
 
 // The settings-hook registrations a scheduled repo carries (bootstrap Part 5).
 // Ensured present without clobbering — a set-union keyed on the command string, so
@@ -156,6 +157,54 @@ export function removeRetiredCorpusImport(root) {
   return true;
 }
 
+// The CLAUDE.md channel (#807): the generated pack index, plus the one line in the
+// repo's own CLAUDE.md that imports it. Converged here rather than left to a session
+// because the index is a function of the DECLARATION — so the two flows that already
+// change a declaration (the nightly engine refresh and any pack change) are exactly
+// the moments it can go stale, and both call convergeWiring.
+//
+// NOT the retired `@.claudinite/shared/CLAUDE.md` this file still strips above. That
+// import reached INTO the mount, which is one-directional and slated to become a
+// submodule; this one names a consumer-owned file sitting BESIDE it, derived from the
+// consumer's own declaration. The two coexist deliberately: a member converging today
+// loses the old shape and gains the new one in the same pass.
+//
+// The import goes after the first `# ` heading when the repo has one (the badge row's
+// placement rule, for the same reason — a repo's title stays its first line), and at
+// the very top otherwise. A repo with no CLAUDE.md at all gets one: without it the
+// index is a file nothing loads.
+const CLAUDE_INDEX_IMPORT_RE = new RegExp(`^\\s*${CLAUDE_INDEX_IMPORT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'm');
+
+export function ensureClaudeIndexImport(root) {
+  const path = join(root, CLAUDE_MD);
+  if (!existsSync(path)) {
+    writeFileSync(path, `${CLAUDE_INDEX_IMPORT}\n`);
+    return true;
+  }
+  const text = readFileSync(path, 'utf8');
+  if (CLAUDE_INDEX_IMPORT_RE.test(text)) return false;
+  const lines = text.split('\n');
+  const title = lines.findIndex((l) => l.startsWith('# '));
+  const at = title === -1 ? 0 : title + 1;
+  lines.splice(at, 0, ...(at === 0 ? [CLAUDE_INDEX_IMPORT, ''] : ['', CLAUDE_INDEX_IMPORT]));
+  writeFileSync(path, lines.join('\n'));
+  return true;
+}
+
+// A GENERATED file wants a `merge=ours` .gitattributes entry (the canon's
+// GENERATED-file discipline and the `generated-merge-driver` check that enforces it),
+// declared in the same converge that first writes the file — otherwise every member
+// picks up an advisory finding on a file it did not author.
+export const CLAUDE_INDEX_MERGE_ATTR = 'claude.GENERATED.md merge=ours';
+
+export function ensureClaudeIndexMergeAttribute(root) {
+  const path = join(root, '.gitattributes');
+  const text = existsSync(path) ? readFileSync(path, 'utf8') : '';
+  if (text.split('\n').some((l) => l.trim() === CLAUDE_INDEX_MERGE_ATTR)) return false;
+  writeFileSync(path, (text && !text.endsWith('\n') ? `${text}\n` : text) + `${CLAUDE_INDEX_MERGE_ATTR}\n`);
+  return true;
+}
+
 // Strip the retired `badges` setting from `.claudinite-checks.json`. `badges` is
 // not in CONFIG_KEYS, so a member still carrying it gets an unknown-setting error
 // until the key goes; doing it here — beside the retired corpus import, for the
@@ -255,6 +304,11 @@ export async function convergeWiring(root, fullName, stubText, secretNames = [],
   for (const h of hooks.added) changed.push(`hook:${h}`);
   if (removeRetiredCorpusImport(root)) changed.push(`removed retired ${CLAUDE_MD} corpus import`);
   if (removeRetiredBadgeSetting(root)) changed.push('removed retired badges setting');
+  // The CLAUDE.md channel, in dependency order: the index, then the import that
+  // loads it, then the merge attribute that keeps it from being hand-resolved.
+  if (await writeClaudeIndex(root)) changed.push(CLAUDE_INDEX_FILE);
+  if (ensureClaudeIndexImport(root)) changed.push(`${CLAUDE_MD} pack-index import`);
+  if (ensureClaudeIndexMergeAttribute(root)) changed.push('.gitattributes merge=ours for the pack index');
   if (badges && convergeBadgeRow(root, await badgeRowEntries(root, await repoConfig(root)))) changed.push(`${README} pack row`);
   return { changed, ...(hooks.error ? { error: hooks.error } : {}) };
 }

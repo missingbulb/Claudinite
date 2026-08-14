@@ -33,8 +33,17 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    `.claudinite-checks.json`, computed by [vendor.mjs](compute-vendor-set.mjs) with **no hand-maintained
    file list**: the one engine root (`engine/`) vendored wholesale, plus the **declared packs**
    with their `requires` closure — each pack's bundled skills riding its own directory (#385).
-   There is no corpus-index `CLAUDE.md` and no consumer `@`-import: a session's rules arrive
-   injected (#385). Excluded
+   The mount still carries no corpus-index `CLAUDE.md` of its own (#385) — but the consumer
+   `@`-import is back, from the other side. #385 replaced it with "a session's rules arrive
+   injected"; #807 measured that claim and found it false: the SessionStart hook has no
+   delivery receipt, and ~80KB of a live session's guidance was truncated away on the way in
+   without a trace on either side. So the corpus now reaches a session through
+   `.claudinite/claude.GENERATED.md` — a **consumer-owned** file, sitting BESIDE the mount
+   rather than inside it (the submodule future in 1 forbids the latter), generated from the
+   repo's own declaration by [generate-claude-index.mjs](../engine/pack_loader/generate-claude-index.mjs)
+   on every converge, and `@`-imported by the repo's `CLAUDE.md`, which the harness loads in
+   full. The prose injector remains as the fallback and verifies before it defers, so a repo
+   mid-converge is never running with the corpus on neither channel. Excluded
    everywhere: tests; excluded at the engine root: `*.md` (canon-maintainer docs are read
    upstream when needed — a pack's `.md` files are the payload and ride their
    directories). Canon-internal trees (`docs/`, `.github/`, root maintainer docs)
@@ -133,8 +142,10 @@ allowlist prerequisite, `CLAUDINITE_REF` pinning (the commit *is* the pin), the
 caveats, and the stale-mount caveat in [engine/checks/README.md](../engine/checks/README.md). Session start
 becomes a single offline SessionStart entry invoking [session-start.sh](../engine/hooks/session-start-command.sh)
 directly (its steps are unchanged; a pack's own session-start step is fail-soft per 3, the env-check
-halt-gate stays). The consumer `CLAUDE.md` carries nothing of Claudinite's — the corpus
-index, its `@`-import, and the self-check paragraph are all retired by owner decision (#385). The
+halt-gate stays). The consumer `CLAUDE.md` carried nothing of Claudinite's — the corpus index,
+its `@`-import, and the self-check paragraph were all retired by owner decision (#385); the
+import alone came back in #807, now naming a generated, consumer-owned index beside the mount
+rather than a hand-maintained file inside it (see 2). The
 plugin-packaging rationale in [engine/checks/DESIGN.md](../engine/checks/DESIGN.md) also loses its
 update-latency premise — recorded there when the transition completes. The canon repo itself is
 untouched: it runs its own live tree and mounts nothing.

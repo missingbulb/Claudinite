@@ -23,6 +23,10 @@ function makeCorpus({ packs }, root = mkdtempSync(join(tmpdir(), 'claudinite-cor
   // needs the spec module too — it is part of the loader, not an optional extra.
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-schema.mjs'), join(root, 'engine', 'pack_loader', 'pack-schema.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'inject-pack-prose.mjs'), join(root, 'engine', 'pack_loader', 'inject-pack-prose.mjs'));
+  // The injector now asks whether the CLAUDE.md channel is carrying the corpus
+  // before it emits any (#807), so the generator that answers that question is part
+  // of the loader the fake corpus needs.
+  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'generate-claude-index.mjs'), join(root, 'engine', 'pack_loader', 'generate-claude-index.mjs'));
   for (const [id, manifest] of Object.entries(packs)) {
     // The def IS the pack.mjs manifest (an optional `prose: '<file>'` field and
     // whatever else); each test writes the prose file's content itself.
@@ -146,6 +150,88 @@ test('inject-pack-prose: fails soft — no config, broken config, and no active 
     rmSync(corpus, { recursive: true, force: true });
     for (const p of [empty, broken, inactive]) cleanup(p);
   }
+});
+
+// --- the CLAUDE.md channel (#807) ---------------------------------------------
+//
+// The corpus rides `.claudinite/claude.GENERATED.md` now, imported by the repo's
+// CLAUDE.md. This step's whole remaining job is deciding whether that channel is
+// really carrying it — so these tests are about the DECISION, not the prose.
+
+// A project with the corpus MOUNTED INSIDE IT at .claudinite/shared/, which is the
+// layout the index's relative imports are computed against — the detached fake corpus
+// the other tests use has no mount, so the generator would resolve nothing there.
+function makeMountedProject(packs, prose) {
+  const project = makeRepo({ changed: { '.claudinite-checks.json': `{ "packs": ${JSON.stringify(Object.keys(packs))} }\n` } });
+  const corpus = join(project, '.claudinite', 'shared');
+  mkdirSync(corpus, { recursive: true });
+  makeCorpus({ packs }, corpus);
+  for (const [id, text] of Object.entries(prose)) writeFileSync(join(corpus, 'packs', id, 'RULES.md'), text);
+  return { project, corpus };
+}
+
+// Wire a project for the CLAUDE.md channel the way a converge would: the index the
+// generator renders for this project, plus the import line in CLAUDE.md. The
+// overrides are how each drift case below is introduced.
+function wireClaudeChannel(corpus, project, { claudeMd, index } = {}) {
+  const r = spawnSync('node', [join(corpus, 'engine', 'pack_loader', 'generate-claude-index.mjs'), project], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  assert.ok(r.stdout.includes('@shared/packs/'), `the fixture must render a real index:\n${r.stdout}`);
+  mkdirSync(join(project, '.claudinite'), { recursive: true });
+  writeFileSync(join(project, '.claudinite', 'claude.GENERATED.md'), index ?? r.stdout);
+  writeFileSync(join(project, 'CLAUDE.md'), claudeMd ?? '@.claudinite/claude.GENERATED.md\n');
+  return r.stdout;
+}
+
+const MOUNTED = [{ basics: { prose: 'RULES.md' } }, { basics: 'BASICS PROSE\n' }];
+
+test('inject-pack-prose: stays silent when CLAUDE.md verifiably carries the corpus', () => {
+  const { project, corpus } = makeMountedProject(...MOUNTED);
+  try {
+    wireClaudeChannel(corpus, project);
+    const out = inject(corpus, project);
+    // Not one byte of corpus on the hook channel — that duplication is the cost
+    // this change exists to remove.
+    assert.doesNotMatch(out, /BASICS PROSE/);
+    assert.doesNotMatch(out, /# Claudinite — active-pack guidance/);
+    // But not silence either: a session must be able to see WHERE its rules came
+    // from, or a step that deferred looks exactly like a step that failed.
+    assert.match(out, /claude\.GENERATED\.md/);
+  } finally { cleanup(project); }
+});
+
+test('inject-pack-prose: falls back to injecting when the index is stale, quoted, unimported or absent', () => {
+  // Each project is wired for the channel, then broken one way. Every case must
+  // inject: a repo is never left with the corpus on neither channel.
+  const cases = {
+    // A pack declared since the last converge renders a different index — the exact
+    // drift an existence check would call healthy.
+    stale: { index: '# an index from before the last pack change\n' },
+    // An import inside backticks is one the harness skips, so a CLAUDE.md that only
+    // documents the line imports nothing.
+    quoted: { claudeMd: 'Claudinite is loaded via `@.claudinite/claude.GENERATED.md`.\n' },
+    // No import line at all — a hand-edited or never-converged CLAUDE.md.
+    unimported: { claudeMd: '# Project\n\nnothing about Claudinite\n' },
+  };
+  const projects = [];
+  try {
+    for (const [name, broken] of Object.entries(cases)) {
+      const { project, corpus } = makeMountedProject(...MOUNTED);
+      projects.push(project);
+      wireClaudeChannel(corpus, project, broken);
+      const out = inject(corpus, project);
+      assert.match(out, /BASICS PROSE/, `${name}: the corpus must still reach the session`);
+      // And the fallback says so FIRST — everything after it is what #807 showed a
+      // large payload can lose without trace, so the line reporting the drift has to
+      // sit where a truncated delivery still keeps it.
+      assert.match(out.split('\n')[0], /^NOTE: this repo's CLAUDE\.md is not carrying/, `${name}: ${out.slice(0, 120)}`);
+    }
+    // An import pointing at an index that is not there.
+    const { project, corpus } = makeMountedProject(...MOUNTED);
+    projects.push(project);
+    writeFileSync(join(project, 'CLAUDE.md'), '@.claudinite/claude.GENERATED.md\n');
+    assert.match(inject(corpus, project), /BASICS PROSE/, 'an imported-but-absent index must not silence the hook');
+  } finally { for (const p of projects) cleanup(p); }
 });
 
 // The real corpus, against the REAL registry filename — the direct guard for

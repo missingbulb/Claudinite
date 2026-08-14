@@ -146,7 +146,11 @@ adoption:
    with the vendored hasher: `node .claudinite/shared/engine/scheduler/hash-minute.mjs
    <owner/repo>`. It is a pure function of the repo full name, so it is the same value on
    every re-vendor and the update task re-derives it to catch drift. This step, the Part 5
-   hook registrations, dropping the retired `@.claudinite/shared/CLAUDE.md` import, and
+   hook registrations, dropping the retired `@.claudinite/shared/CLAUDE.md` import, the
+   generated pack index (`.claudinite/claude.GENERATED.md`, its `CLAUDE.md` import and its
+   `merge=ours` attribute — #807: the pack corpus reaches a session through `CLAUDE.md`,
+   which the harness loads in full, rather than through a SessionStart hook, which
+   truncates a large payload with no signal to either side), and
    the README pack-badge row (below)
    are all mechanized by `node .claudinite/shared/engine/scheduler/converge-wiring.mjs
    <owner/repo> --badges` — the single wiring surface bootstrap and the update flows both call,
