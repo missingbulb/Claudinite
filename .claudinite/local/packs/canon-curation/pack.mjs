@@ -1,5 +1,4 @@
 import noEnforcementNarration from './no-enforcement-narration.mjs';
-import packIndependence from './pack-independence.mjs';
 
 // Claudinite's own curation pack — the fleet-facing work only Claudinite runs:
 // promoting members' lessons into the shared canon (the growth lifecycle's
@@ -30,12 +29,13 @@ export default {
   detect: null,
   marker: null,
   prose: null,
-  // Packs-tree segregation is barriers CONFIGURATION, never code this pack
-  // runs: pack-independence is contributed as manifest data and the barriers
-  // pack builds it into the rule (pack-independence.mjs — pure data, the same
-  // composition basics uses for claudinite-isolation).
+  // Packs-tree segregation is barrier DATA, never code this pack runs:
+  // pack-independence is a declared check — a forbidReferences entry in this
+  // pack's declared-checks.json, run by the engine's reference-scanning (the
+  // same shape basics uses for claudinite-isolation). Its `allow` list IS the
+  // engine surface — the one always-vendored engine/ root; a new surface root
+  // would join it there, loudly (the barrier fails closed, never widens).
   requires: ['barriers'],
-  contributes: { barriers: [packIndependence] },
   // The prose-narration rule polices pack prose CONTENT (not segregation), so
   // it stays a code check, bundled here.
   worldRules: [noEnforcementNarration],

@@ -2,7 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../../engine/checks/helpers/repo-context.mjs';
-import noneNotAccepted from '../../../../packs/jwt/skills/jwt-validation/none-not-accepted.mjs';
+import { fileURLToPath } from 'node:url';
+import { loadDeclaredChecks } from '../../../../engine/checks/helpers/pattern-rules.mjs';
+
+const noneNotAccepted = loadDeclaredChecks(
+  fileURLToPath(new URL('../../../../packs/jwt/skills/jwt-validation', import.meta.url)),
+).find((r) => r.id === 'jwt-none-not-accepted');
 
 // Co-located with the check it exercises (skills own their check-the-world rules).
 const run = (root) => noneNotAccepted.run(buildContext({ root, mode: 'all' }));

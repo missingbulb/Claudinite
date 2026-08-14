@@ -15,11 +15,9 @@ const growthLog = declaredCheck('packs/product-wiki', 'product-wiki-growth-log')
 const sources = declaredCheck('packs/product-wiki', 'product-wiki-sources');
 const freshness = declaredCheck('packs/product-wiki', 'product-wiki-freshness');
 import wikiGrowth from '../../packs/product-wiki/tasks/wiki-growth/task.mjs';
-// Built through the real path: the product-wiki manifest contributes it as
-// data and the barriers pack's factory turns it into the rule.
-import productWikiPack from '../../packs/product-wiki/pack.mjs';
-import { contributedBarrierRules } from '../../packs/barriers/contributed.mjs';
-const isolation = contributedBarrierRules([productWikiPack]).find((r) => r.id === 'product-wiki-isolation');
+// Built through the real path: a forbidReferences entry in the pack's own
+// declared-checks.json, compiled by the declarative engine.
+const isolation = declaredCheck('packs/product-wiki', 'product-wiki-isolation');
 
 const here = dirname(fileURLToPath(import.meta.url));
 const canonRoot = join(here, '..', '..');
@@ -57,21 +55,19 @@ function run(rule, files, { mode = 'all', packConfig, now, uncommitted } = {}) {
 
 // --- pack manifest -----------------------------------------------------------
 
-test('pack manifest: id, marker, the coded rule plus the five declared checks, the contributed isolation barrier', () => {
+test('pack manifest: id, marker, the coded rule plus the six declared checks (the isolation barrier among them)', () => {
   assert.equal(pack.id, 'product-wiki');
   assert.equal(pack.marker, 'product-wiki/product-requirements/README.md');
   assert.equal(pack.prose, 'RULES.md');
-  // The manifest lists only what is CODED; the page grammar is declared in
-  // declared-checks.json beside it, which the registry discovers and appends.
+  // The manifest lists only what is CODED; the page grammar AND the isolation
+  // barrier are declared in declared-checks.json beside it, which the registry
+  // discovers and appends.
   assert.deepEqual(pack.worldRules.map((r) => r.id), ['product-wiki-layout']);
-  const ids = [...pack.worldRules, pageSections, keyInsights, growthLog, sources, freshness].map((r) => r.id);
-  assert.equal(new Set(ids).size, 6);
+  const ids = [...pack.worldRules, isolation, pageSections, keyInsights, growthLog, sources, freshness].map((r) => r.id);
+  assert.equal(new Set(ids).size, 7);
   assert.ok(ids.every((id) => id.startsWith('product-wiki-')));
-  // The isolation wall rides the barriers mechanism: declared (requires) and
-  // contributed as manifest data, never a cross-pack import (pack-independence).
   assert.deepEqual(pack.requires, ['barriers']);
-  assert.equal(pack.contributes.barriers.length, 1);
-  assert.equal(pack.contributes.barriers[0].id, 'product-wiki-isolation');
+  assert.equal(pack.contributes, undefined);
   // The pack's scheduled task is NOT a pack.mjs slot any more — the repo's
   // scheduler finds tasks/<name>/task.mjs structurally (#394).
   assert.equal(pack.run_daily, undefined);

@@ -2,7 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../../engine/checks/helpers/repo-context.mjs';
-import verifyBindsAudience from '../../../../packs/jwt/skills/jwt-validation/verify-binds-audience.mjs';
+import { fileURLToPath } from 'node:url';
+import { loadDeclaredChecks } from '../../../../engine/checks/helpers/pattern-rules.mjs';
+
+const verifyBindsAudience = loadDeclaredChecks(
+  fileURLToPath(new URL('../../../../packs/jwt/skills/jwt-validation', import.meta.url)),
+).find((r) => r.id === 'jwt-verify-binds-audience');
 
 const run = (root) => verifyBindsAudience.run(buildContext({ root, mode: 'all' }));
 

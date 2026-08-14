@@ -26,7 +26,7 @@ the members' side ([grow_with_claudinite](../../../../packs/grow_with_claudinite
 | Rule (≤5 words) | How enforced |
 |---|---|
 | Pack prose: no enforcement narration | check `pack-no-enforcement-narration` |
-| Packs import only own + engine | contributed barrier `pack-independence` ([pack-independence.mjs](pack-independence.mjs) — pure data; the [barriers pack](../../../../packs/barriers/README.md) builds the rule) |
+| Packs import only own + engine | declared barrier `pack-independence` ([declared-checks.json](declared-checks.json) — a `forbidReferences` entry; the [barriers pack](../../../../packs/barriers/README.md) documents the edge vocabulary) |
 
 - **[tasks/growth-promote/](tasks/growth-promote/task.md)** — the growth lifecycle's central stage: read the changed members'
   local packs, **generalize** the portable lessons, route each to the right canon home, and open a

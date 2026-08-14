@@ -2,7 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../../engine/checks/helpers/repo-context.mjs';
-import signSetsExpiry from '../../../../packs/jwt/skills/jwt-minting/sign-sets-expiry.mjs';
+import { fileURLToPath } from 'node:url';
+import { loadDeclaredChecks } from '../../../../engine/checks/helpers/pattern-rules.mjs';
+
+const signSetsExpiry = loadDeclaredChecks(
+  fileURLToPath(new URL('../../../../packs/jwt/skills/jwt-minting', import.meta.url)),
+).find((r) => r.id === 'jwt-sign-sets-expiry');
 
 const run = (root) => signSetsExpiry.run(buildContext({ root, mode: 'all' }));
 

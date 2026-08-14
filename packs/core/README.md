@@ -18,7 +18,7 @@ not prose: the session that has lost its rules is the session least able to noti
 |---|---|---|
 | `core-declared` | advisory | this pack's entry is gone from `.claudinite-checks.json`, so none of the rules below run and the session cannot tell |
 | `rules-index-current` | blocking | the generated index is missing, stale or unimported — the repo's packs contribute no prose to any session |
-| `claudinite-isolation` | blocking | the repo's own code reaches into `.claudinite/`, so the next canon refactor is a breaking migration for code the canon does not own (a contributed [barriers](../barriers/README.md) edge) |
+| `claudinite-isolation` | blocking | the repo's own code reaches into `.claudinite/`, so the next canon refactor is a breaking migration for code the canon does not own (a declared `forbidReferences` [barrier](../barriers/README.md) edge) |
 | `conformance-workflow` | advisory | nothing in CI runs the world sweep unfiltered on a pull request, so conformance is ungated and the maintenance PR never lands |
 | `scheduler-workflow-shape` | blocking | the vendored scheduler's cron, concurrency or dispatch guard has drifted — staggering, double-run safety or manual runs break |
 | `task-declaration-shape` | blocking | a task declaration the scheduler reads is incomplete or illegal, so the task never fires or fires wrong |

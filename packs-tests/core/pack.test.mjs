@@ -91,11 +91,13 @@ test('rules-index-current: a CLAUDE.md that only documents the import does not c
   } finally { cleanup(root); }
 });
 
-// Built through the real path: the core manifest contributes it as data and
-// the barriers pack's factory turns it into the rule.
-import corePack from '../../packs/core/pack.mjs';
-import { contributedBarrierRules } from '../../packs/barriers/contributed.mjs';
-const claudiniteIsolation = contributedBarrierRules([corePack]).find((r) => r.id === 'claudinite-isolation');
+// Built through the real path: a forbidReferences entry in the pack's own
+// declared-checks.json, compiled by the declarative engine.
+import { fileURLToPath } from 'node:url';
+import { loadDeclaredChecks } from '../../engine/checks/helpers/pattern-rules.mjs';
+const claudiniteIsolation = loadDeclaredChecks(
+  fileURLToPath(new URL('../../packs/core', import.meta.url)),
+).find((r) => r.id === 'claudinite-isolation');
 
 test('claudinite-isolation: inert without the vendored mount; a consumer file referencing the canon fires; wiring files and local_packs stay open', () => {
   const violating = {

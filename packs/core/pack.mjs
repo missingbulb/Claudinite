@@ -1,4 +1,3 @@
-import claudiniteIsolation from './claudinite-isolation.mjs';
 import rulesIndexCurrent from './rules-index-current.mjs';
 import coreDeclared from './core-declared.mjs';
 import conformanceWorkflow from './conformance-workflow.mjs';
@@ -35,11 +34,11 @@ export default {
   marker: null,
   seededByDefault: true,
   prose: 'RULES.md',
-  // The consumer-isolation wall rides the barriers mechanism: this pack
-  // CONTRIBUTES the fixed barrier as manifest data (claudinite-isolation.mjs —
-  // pure data, no cross-pack import; pack-independence).
+  // The consumer-isolation wall (claudinite-isolation) is a declared check — a
+  // forbidReferences entry in this pack's declared-checks.json, run by the
+  // engine's reference-scanning like any barrier. The barriers pack stays
+  // required for the per-repo config rule members' own edges ride.
   requires: ['barriers'],
-  contributes: { barriers: [claudiniteIsolation] },
   worldRules: [
     // The declaration itself, and the index the declaration produces — the two
     // things that decide whether this member is running Claudinite at all.

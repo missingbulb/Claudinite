@@ -295,7 +295,7 @@ test('real corpus: the composing packs\' vendor sets carry the barriers pack and
   for (const pack of ['basics', 'product-wiki']) {
     const { files, errors } = await computeVendorSet([pack]);
     assert.deepEqual(errors, [], `${pack}: the vendor set must be coherent`);
-    for (const carried of ['packs/barriers/pack.mjs', 'packs/barriers/engine.mjs', 'packs/barriers/contributed.mjs']) {
+    for (const carried of ['packs/barriers/pack.mjs', 'engine/checks/helpers/reference-scanning.mjs', 'packs/barriers/contributed.mjs']) {
       assert.ok(files.includes(carried), `${pack} must vendor ${carried}`);
     }
   }

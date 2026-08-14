@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup, writeFiles } from './helpers.mjs';
 import { buildContext } from '../engine/checks/helpers/repo-context.mjs';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { patternRule, loadDeclaredChecks } from '../engine/checks/helpers/pattern-rules.mjs';
@@ -665,6 +665,252 @@ test('a pattern key given a plain string names the key and the value it got', ()
     () => patternRule({ ...meta('fx-bad-regex'), scanFiles: '/[unterminated/' }),
     /"scanFiles" is not a valid regex/,
   );
+});
+
+test('checkParsedFiles: one selector serves every parsed assertion — requireField over matching files', () => {
+  const rule = patternRule({
+    ...meta('fx-parsed-merged-require'),
+    checkParsedFiles: [{
+      filesMatching: /(^|\/)wrangler\.json$/,
+      whenFieldPresent: 'routes',
+      requireField: 'account_id',
+      what: 'routes without account_id', fix: 'add it',
+    }],
+  });
+  const bad = makeRepo({ changed: { 'svc/wrangler.json': '{"routes":["a"]}' } });
+  const good = makeRepo({ changed: { 'svc/wrangler.json': '{"routes":["a"],"account_id":"x"}' } });
+  try {
+    assert.deepEqual(rule.run(ctxOf(bad)).map((f) => [f.file, f.what]), [['svc/wrangler.json', 'routes without account_id']]);
+    assert.equal(rule.run(ctxOf(good)).length, 0);
+  } finally { cleanup(bad); cleanup(good); }
+});
+
+test('checkParsedFiles: forEachEntryAtField quantifies any assertion per entry — requireField per entry', () => {
+  const rule = patternRule({
+    ...meta('fx-parsed-merged-entries'),
+    checkParsedFiles: [{
+      filesMatching: /(^|\/)template\.ya?ml$/,
+      forEachEntryAtField: 'Resources',
+      whereEntryFieldEquals: { field: 'Type', equals: 'AWS::Serverless::Function' },
+      requireField: 'Properties.Timeout',
+      what: '{entry} declares no Timeout', fix: 'set one',
+    }],
+  });
+  const root = makeRepo({ changed: { 'template.yaml':
+`Resources:
+  FnA:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: a.run
+  FnB:
+    Type: AWS::Serverless::Function
+    Properties:
+      Timeout: 30
+  Bucket:
+    Type: AWS::S3::Bucket
+` } });
+  try {
+    assert.deepEqual(rule.run(ctxOf(root)).map((f) => f.what), ['FnA declares no Timeout']);
+  } finally { cleanup(root); }
+});
+
+test('checkParsedFiles: requireEqualFields carries the version-sync shape with {first}/{second}', () => {
+  const rule = patternRule({
+    ...meta('fx-parsed-merged-equal'),
+    checkParsedFiles: [{
+      filesMatching: /manifest\.json$/,
+      whereFileContains: /"manifest_version"/,
+      requireEqualFields: {
+        field: 'version',
+        inFile: 'package.json',
+        atField: 'version',
+        whenFileMissing: { what: 'no package.json', fix: 'add it' },
+        whenUnequal: { what: '{first} vs {second}', fix: 'align' },
+      },
+    }],
+  });
+  const mismatched = makeRepo({ changed: {
+    'app/manifest.json': '{"manifest_version":3,"version":"1.2.3"}',
+    'package.json': '{"version":"9.9.9"}',
+  } });
+  const missing = makeRepo({ changed: { 'app/manifest.json': '{"manifest_version":3,"version":"1.2.3"}' } });
+  try {
+    assert.deepEqual(rule.run(ctxOf(mismatched)).map((f) => [f.file, f.what]), [['app/manifest.json', '1.2.3 vs 9.9.9']]);
+    assert.deepEqual(rule.run(ctxOf(missing)).map((f) => [f.file, f.what]), [['package.json', 'no package.json']]);
+  } finally { cleanup(mismatched); cleanup(missing); }
+});
+
+test('requireIndexCoverage: coveredByText anchored at the index file — the listedInFile shape', () => {
+  const rule = patternRule({
+    ...meta('fx-coverage-text'),
+    requireIndexCoverage: [{
+      eachTrackedPathMatching: /^mods\/(?<name>[^/]+)\/mod\.mjs$/,
+      indexFile: 'mods/INDEX.md',
+      coveredByText: '[{name}]',
+      whenIndexFileAbsent: 'assertNothing',
+      anchorFindingsAt: 'indexFile',
+      what: 'mod "{name}" is not listed', fix: 'list it',
+    }],
+  });
+  const root = makeRepo({ changed: {
+    'mods/zeta/mod.mjs': '1\n', 'mods/alpha/mod.mjs': '1\n', 'mods/INDEX.md': '[alpha]\n',
+  } });
+  const noIndex = makeRepo({ changed: { 'mods/alpha/mod.mjs': '1\n' } });
+  try {
+    assert.deepEqual(rule.run(ctxOf(root)).map((f) => [f.file, f.what]), [['mods/INDEX.md', 'mod "zeta" is not listed']]);
+    assert.equal(rule.run(ctxOf(noIndex)).length, 0);
+  } finally { cleanup(root); cleanup(noIndex); }
+});
+
+test('requireIndexCoverage: coveredByGlobLinesMatching anchored per path, absence flags — the merge-driver shape', () => {
+  const rule = patternRule({
+    ...meta('fx-coverage-glob'),
+    requireIndexCoverage: [{
+      eachScannedPathMatching: /(?<base>[^/]*GENERATED[^/]*)$/,
+      includeVendored: true,
+      indexFile: '.gitattributes',
+      coveredByGlobLinesMatching: /\bmerge=ours\b/,
+      whenIndexFileAbsent: 'flagEveryPath',
+      anchorFindingsAt: 'eachUncoveredPath',
+      what: 'no merge=ours entry', fix: 'add `{base} merge=ours`',
+    }],
+  });
+  const covered = makeRepo({ changed: {
+    'out/a.GENERATED.json': '{}\n', '.gitattributes': '*.GENERATED.json merge=ours\n',
+  } });
+  const absent = makeRepo({ changed: { 'a.GENERATED.json': '{}\n' } });
+  try {
+    assert.equal(rule.run(ctxOf(covered)).length, 0);
+    assert.deepEqual(rule.run(ctxOf(absent)).map((f) => [f.file, f.fix]),
+      [['a.GENERATED.json', 'add `a.GENERATED.json merge=ours`']]);
+  } finally { cleanup(covered); cleanup(absent); }
+});
+
+test('forbidReferences: a declared barrier edge rides the shared engine, with the rule-level fix as the crossing remedy', () => {
+  const rule = patternRule({
+    ...meta('fx-barrier'),
+    fix: 'the declared remedy',
+    relevantWhen: { pathExists: 'guarded' },
+    forbidReferences: [{ from: 'guarded', to: 'barred', reason: 'stay apart' }],
+  });
+  const crossing = makeRepo({ changed: {
+    'guarded/a.mjs': "import x from '../barred/thing.mjs';\n",
+    'barred/thing.mjs': 'export default 1;\n',
+  } });
+  const clean = makeRepo({ changed: {
+    'guarded/a.mjs': 'const ok = 1;\n',
+    'barred/thing.mjs': 'export default 1;\n',
+  } });
+  try {
+    const findings = rule.run(ctxOf(crossing));
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].file, 'guarded/a.mjs');
+    assert.match(findings[0].what, /barred\/thing\.mjs/);
+    assert.equal(findings[0].fix, 'the declared remedy');
+    assert.equal(findings[0].why, 'stay apart');
+    assert.equal(rule.run(ctxOf(clean)).length, 0);
+  } finally { cleanup(crossing); cleanup(clean); }
+});
+
+test('forbidReferences: a malformed edge is an authoring error at load', () => {
+  assert.throws(
+    () => patternRule({ ...meta('fx-barrier-bad'), forbidReferences: [{ from: 'a' }] }),
+    /"to"/,
+  );
+});
+
+test('an unknown spec key is an authoring error naming the key and its container', () => {
+  assert.throws(
+    () => patternRule({ ...meta('fx-unknown-top'), scanFiles: /\.txt$/, matchLine: [] }),
+    /"matchLine" is not a spec key.*matchLines/s,
+  );
+  assert.throws(
+    () => patternRule({
+      ...meta('fx-unknown-nested'), scanFiles: /\.txt$/,
+      matchLines: [{ match: /x/, unlesLineMatches: /y/, what: 'w', fix: 'f' }],
+    }),
+    /"unlesLineMatches" is not a key of "matchLines"/,
+  );
+  assert.throws(
+    () => patternRule({ id: 'fx-bad-severity', severity: 'fatal', failureMessage: 'm', scanFiles: /\.txt$/ }),
+    /severity/,
+  );
+});
+
+test('scanFileClasses and excludeFileClasses name shared file sets; an unknown class is an authoring error', () => {
+  const rule = patternRule({
+    ...meta('fx-classes'),
+    scanFileClasses: ['javascriptFiles', 'pythonFiles'],
+    excludeFileClasses: ['testFiles'],
+    matchLines: [{ match: /danger/, what: 'w', fix: 'f' }],
+  });
+  const root = makeRepo({ changed: {
+    'src/a.mjs': 'danger\n',
+    'src/b.py': 'danger\n',
+    'src/a.test.mjs': 'danger\n',
+    '__tests__/c.mjs': 'danger\n',
+    'notes.md': 'danger\n',
+  } });
+  try {
+    assert.deepEqual(rule.run(ctxOf(root)).map((f) => f.file).sort(), ['src/a.mjs', 'src/b.py']);
+  } finally { cleanup(root); }
+  assert.throws(
+    () => patternRule({ ...meta('fx-bad-class'), scanFileClasses: ['sourceFiles'] }),
+    /"sourceFiles" is not a file class.*javascriptFiles/s,
+  );
+});
+
+test('a rule-level fix is the default for every assertion missing its own', () => {
+  const rule = patternRule({
+    ...meta('fx-fix-default'),
+    fix: 'the one shared remedy',
+    scanFiles: /\.txt$/,
+    matchLines: [
+      { match: /alpha/, what: 'a' },
+      { match: /beta/, what: 'b', fix: 'a bespoke remedy' },
+    ],
+  });
+  const root = makeRepo({ changed: { 'a.txt': 'alpha\nbeta\n' } });
+  try {
+    assert.deepEqual(rule.run(ctxOf(root)).map((f) => [f.what, f.fix]),
+      [['a', 'the one shared remedy'], ['b', 'a bespoke remedy']]);
+  } finally { cleanup(root); }
+});
+
+test('scanIgnoringComments: comments are invisible to content assertions, strings are not, lines stay anchored', () => {
+  const rule = patternRule({
+    ...meta('fx-strip'),
+    scanFiles: /\.mjs$/,
+    scanIgnoringComments: true,
+    matchLines: [{ match: /forbiddenCall\(/, what: 'saw {match}', fix: 'f' }],
+  });
+  const root = makeRepo({ changed: { 'a.mjs':
+    '// forbiddenCall() in a comment\n/* forbiddenCall() in a block */\nconst u = "https://x//forbiddenCall(";\nforbiddenCall();\n' } });
+  try {
+    const findings = rule.run(ctxOf(root));
+    assert.deepEqual(findings.map((f) => f.line), [3, 4]);
+  } finally { cleanup(root); }
+});
+
+test('a skill\'s declared checks never scan the skill\'s own content, wherever it is mounted', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'declared-skill-'));
+  try {
+    const skillDir = join(dir, 'skills', 'my-skill');
+    mkdirSync(skillDir, { recursive: true });
+    writeFileSync(join(skillDir, 'declared-checks.json'), JSON.stringify([
+      { id: 'fx-self-exclude', severity: 'blocking', failureMessage: 'm',
+        scanFiles: '/\\.md$/', matchLines: [{ match: '/badToken/', what: 'w', fix: 'f' }] },
+    ]));
+    const [rule] = loadDeclaredChecks(skillDir);
+    const root = makeRepo({ changed: {
+      'skills/my-skill/SKILL.md': 'badToken\n',
+      'packs/p/skills/my-skill/SKILL.md': 'badToken\n',
+      'docs/real.md': 'badToken\n',
+    } });
+    try {
+      assert.deepEqual(rule.run(ctxOf(root)).map((f) => f.file), ['docs/real.md']);
+    } finally { cleanup(root); }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
 test('loadDeclaredChecks: a directory\'s declarations, compiled once; none where the file is absent', () => {
