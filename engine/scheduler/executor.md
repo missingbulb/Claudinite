@@ -58,9 +58,10 @@ goes through your GitHub tools.
    glance. Run that issue and nothing else — every other dispatch in the queue already has
    its own session, and two sessions on one issue run the task twice.
 
-2. **Claim the issue — read, swap, then re-read to confirm you won.** The same issue can be
-   labeled twice (a re-arm that overlapped a slow session, a human re-applying the label), so
-   the claim is a lease you must verify, not a write you may assume. GitHub has no
+2. **Claim the issue — read, swap, then re-read to confirm you won.** One dispatch routinely
+   starts more than one session — a dispatch filed with an escalation label alongside the ready
+   label reaches the routine as two events, and a re-arm or a human re-applying the label adds
+   more — so the claim is a lease you must verify, not a write you may assume. GitHub has no
    compare-and-swap on labels; these three steps stand in for one, and skipping the third is
    what let a duplicate through before:
 
@@ -72,7 +73,13 @@ goes through your GitHub tools.
    3. **Re-read** the issue's labels and comments. If more than one claim comment is present,
       the **earliest** one wins. If it is not yours, **end the session without dispatching** —
       do not remove `agent-running` (the winner is running behind it) and do not converge the
-      issue.
+      issue. Say so on the issue first: one comment naming the claim that won and stating that
+      this session is standing down. Two claim comments and nothing else read exactly like a
+      race nobody caught, and a human reading the issue cannot tell the guard worked from the
+      artifact alone. You cannot withdraw the claim you already posted — your tools can add a
+      comment but not edit or delete one — so the stand-down line is what makes the pair
+      unambiguous, and it keeps the duplicate visible, which the extra session is evidence of
+      and worth counting.
 
    Only past step 2.3 may you dispatch anything.
 
