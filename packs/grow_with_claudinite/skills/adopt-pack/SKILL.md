@@ -100,6 +100,12 @@ someone notices by eye. The converge rewrites the row in place between its
 no-op when the row is already right. A repo that has deleted its row keeps it deleted only if you
 skip this — dropping the row is a real choice, so don't re-seed one the repo removed on purpose.
 
+**That same converge rewrites the rules index** — `.claudinite/claudinite-rules.GENERATED.md`, the
+`@`-import file the repo's `CLAUDE.md` loads every pack's `RULES.md` through (#807). It is the only
+channel those rules travel on, so a newly declared pack whose index line is missing is a pack whose
+rules never load, in any session, silently. Commit the regenerated index with the declaration that
+caused it; `rules-index-current` fails the repo until you do.
+
 ## 4. Scaffold what the pack now demands
 
 A newly active pack may require structure the repo doesn't have yet — deliberately, so the

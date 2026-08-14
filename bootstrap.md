@@ -147,15 +147,12 @@ adoption:
    <owner/repo>`. It is a pure function of the repo full name, so it is the same value on
    every re-vendor and the update task re-derives it to catch drift. This step, the Part 5
    hook registrations, dropping the retired `@.claudinite/shared/CLAUDE.md` import, the
-   generated pack index (`.claudinite/claude.GENERATED.md`, its `CLAUDE.md` import and its
-   `merge=ours` attribute — #807: the pack corpus reaches a session through `CLAUDE.md`,
-   which the harness loads in full, rather than through a SessionStart hook, which
-   truncates a large payload with no signal to either side), and
-   the README pack-badge row (below)
+   rules index (`.claudinite/claudinite-rules.GENERATED.md` and its `CLAUDE.md` import), this
+   repo's own seed local pack, and the README pack-badge row (below)
    are all mechanized by `node .claudinite/shared/engine/scheduler/converge-wiring.mjs
-   <owner/repo> --badges` — the single wiring surface bootstrap and the update flows both call,
-   so the set is defined once in code, not re-enacted from this prose each night. Pass
-   `--badges` here and only here: it is the one surface adoption converges that the
+   <owner/repo> --badges --seed-local-pack` — the single wiring surface bootstrap and the update
+   flows both call, so the set is defined once in code, not re-enacted from this prose each
+   night. Pass both flags here and only here: they are the surfaces adoption seeds that the
    nightly deliberately does not (step 2).
 2. **The README pack-badge row needs no step either** — the same converge writes a
    one-line row of the declared packs' badges into `README.md`, under the title, between

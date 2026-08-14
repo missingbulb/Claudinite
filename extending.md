@@ -26,7 +26,7 @@ only to extend the *mechanism*, never to add one project's rule or task:
 | Engine piece | Home | What it is |
 |---|---|---|
 | Checks runner + hooks | [`checks/`](engine/checks/README.md) | the dependency-free runner, its lib, the Stop hook, the PreToolUse guard — runs the packs' checks; owns no rule itself |
-| Pack discovery + prose injection | `engine/pack_loader/pack-registry.mjs`, `engine/pack_loader/inject-pack-prose.mjs` | structural scan of `packs/*/pack.mjs`; SessionStart injection of active packs' prose |
+| Pack discovery + rules index | `engine/pack_loader/pack-registry.mjs`, `engine/pack_loader/generate-rules-index.mjs` | structural scan of `packs/*/pack.mjs`; the generated `@`-import index the repo's CLAUDE.md loads the active packs' prose through (#807) |
 | Skill mounting | `engine/pack_loader/mount-skills.mjs` | per-session symlink of the active packs' bundled-skill union (`<pack>/skills/<name>/`) |
 | Adoption interviews | `packs/grow_with_claudinite/skills/adopt-claudinite/interview.mjs` | the gap computation (a pack's declared questions minus the entry's stored answers) and the SessionStart nudge; owns no question itself — bundled in the adoption skill, resolved fail-soft by the engine |
 | Baseline-migration mechanism | [`engine/migrations/`](engine/migrations/README.md) | the read-side resolver and write-side rename for a relocation; a record lives under the flow that owns it (the engine's, or `packs/<pack>/migrations/`), records are kept forever, and vendoring's 7-day recency window decides what ships to consumers |

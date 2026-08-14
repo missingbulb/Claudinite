@@ -297,11 +297,11 @@ export async function packUpdate(targetRoot, {
   //
   //     Written straight to the tree rather than withheld: the index is not a
   //     workflow path, so no credential refuses it.
-  const { writeClaudeIndex, CLAUDE_INDEX_FILE } = await import('../engine/pack_loader/generate-claude-index.mjs');
-  const { ensureClaudeIndexImport, ensureClaudeIndexMergeAttribute } = await import('../engine/scheduler/converge-wiring.mjs');
-  if (await writeClaudeIndex(targetRoot)) applied.push(`converged ${CLAUDE_INDEX_FILE}`);
-  if (ensureClaudeIndexImport(targetRoot)) applied.push('added the CLAUDE.md pack-index import');
-  if (ensureClaudeIndexMergeAttribute(targetRoot)) applied.push('declared merge=ours for the pack index');
+  const { writeRulesIndex, RULES_INDEX_FILE } = await import('../engine/pack_loader/generate-rules-index.mjs');
+  const { ensureRulesIndexImport, ensureRulesIndexMergeAttribute } = await import('../engine/scheduler/converge-wiring.mjs');
+  if (await writeRulesIndex(targetRoot)) applied.push(`converged ${RULES_INDEX_FILE}`);
+  if (ensureRulesIndexImport(targetRoot)) applied.push('added the CLAUDE.md pack-index import');
+  if (ensureRulesIndexMergeAttribute(targetRoot)) applied.push('declared merge=ours for the pack index');
 
   // …and sweep what is no longer owed. A staged file outlives its need the moment the
   // apply stage lands it: the workflow then matches its target, nothing withholds it

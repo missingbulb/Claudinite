@@ -99,11 +99,11 @@ ruleRoutingGuidance: {
 },
 ```
 
-Both sides are required and each is capped at **20 words**. The cap is a session-context budget, not a style rule: [`inject-pack-prose`](../engine/pack_loader/inject-pack-prose.mjs) emits the whole set as a **routing table at session start**, one row per pack, so a session deciding where a rule, doc, skill or check goes reads the answer instead of guessing. Guess-by-default lands everything in `basics` — that is the failure this field exists to stop.
+Both sides are required and each is capped at **20 words**. The cap is a readability budget, not a style rule: the whole set is rendered as the two middle columns of [`directory.GENERATED.md`](directory.GENERATED.md), the catalog a session reads when deciding where a rule, doc, skill or check goes. Guess-by-default lands everything in `basics` — that is the failure this field exists to stop. (Until #807 the same rows were also injected into every session as a routing table; that duplicated the catalog on the one channel that charges for it, so the catalog is now the single home.)
 
 Write `excludes` to **name the pack that owns the other side** wherever one exists (`— that is chrome-extension-release`), so the table routes rather than merely refuses. A boundary that is **true of every pack carries no routing information** and wastes the row: "anything portable belongs in the canon" is the local-pack rule restated, not this local pack's edge. State what separates a pack from its **nearest neighbours** — the packs a reader would actually confuse it with. Sibling packs that split a domain (a technology pack and its `-release` pack, `basics` and `git-github`) are where the pair earns its keep, and their two declarations should agree on where the line falls. "No pack fits" is a real answer — it means a new pack, or the project's own `local_packs/` — never the baseline as a fallback.
 
-The table is emitted for every pack **discovered**, active or not: a consumer holds only the packs it vendored, so the discovered set is already what it can route into, and in the canon every pack is a legitimate destination. Local packs declare it on the same terms.
+The catalog covers every canon pack, whether or not a repo declares it — a session weighing what to adopt needs the ones it does *not* hold. It is vendored into every mount for that reason. Local packs declare `ruleRoutingGuidance` on the same terms, and state their boundary in their own prose.
 
 ### `worldRules` / `workRules` — a rule's scope is its placement
 
@@ -248,7 +248,7 @@ manifest.
 
 | | Count |
 |---|---|
-| **Hardcoded conformance checks** | **88** — every rule the runner carries: each pack's own, its bundled skills' checks, and the contributed barriers, plus the canon home's own [canon-curation](../.claudinite/local/packs/canon-curation/README.md) and [claudinite](../.claudinite/local/packs/claudinite/RULES.md) local packs |
+| **Hardcoded conformance checks** | **89** — every rule the runner carries: each pack's own, its bundled skills' checks, and the contributed barriers, plus the canon home's own [canon-curation](../.claudinite/local/packs/canon-curation/README.md) and [claudinite](../.claudinite/local/packs/claudinite/RULES.md) local packs |
 | PreToolUse guard | 1 (remote-branch-delete) |
 | Platform setting | 1 (squash-only) |
 | **Prose rules** — packs + practice skills + baseline | **~150** |

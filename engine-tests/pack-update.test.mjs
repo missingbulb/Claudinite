@@ -113,14 +113,14 @@ test('the pack flow converges the CLAUDE.md index, because it is what changed th
   setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { basics: 0, 'tidy-repo': 0 } });
 
   assert.equal((await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' })).status, 'ok');
-  const index = readFileSync(join(root, '.claudinite', 'claude.GENERATED.md'), 'utf8');
+  const index = readFileSync(join(root, '.claudinite', 'claudinite-rules.GENERATED.md'), 'utf8');
   // Every declared pack imported, off the mount this flow just wrote.
   assert.match(index, /@shared\/packs\/basics\/RULES\.md/);
   assert.match(index, /@shared\/packs\/tidy-repo\/RULES\.md/);
   // And the wiring that makes the file load for anyone.
   const claudeMd = readFileSync(join(root, 'CLAUDE.md'), 'utf8').split('\n');
-  assert.ok(claudeMd.some((l) => !l.includes('`') && l.includes('@.claudinite/claude.GENERATED.md')), claudeMd.join('\n'));
-  assert.match(readFileSync(join(root, '.gitattributes'), 'utf8'), /claude\.GENERATED\.md merge=ours/);
+  assert.ok(claudeMd.some((l) => !l.includes('`') && l.includes('@.claudinite/claudinite-rules.GENERATED.md')), claudeMd.join('\n'));
+  assert.match(readFileSync(join(root, '.gitattributes'), 'utf8'), /claudinite-rules\.GENERATED\.md merge=ours/);
   rmSync(root, { recursive: true, force: true });
 });
 

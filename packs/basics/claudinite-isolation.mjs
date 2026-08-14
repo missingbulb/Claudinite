@@ -19,7 +19,7 @@ import { SHARED_SUBDIR } from '../../engine/pack_loader/pack-registry.mjs';
 // - '.claude': settings.json registers the hooks by path.
 // - '.github/workflows': a repo's own workflow may run the vendored engine.
 // - '.gitignore', '.gitattributes': the mount's housekeeping rules.
-// - 'CLAUDE.md': the generated pack index's `@` import (#807 — see below).
+// - 'CLAUDE.md': the generated rules index's `@` import (#807 — see below).
 // - '.claudinite-checks.json': settings legitimately spell paths.
 // Coverage note: quoted references (imports, requires, config values) and
 // relative traversals resolve and fire; a bare unquoted `.claudinite/...` in
@@ -33,8 +33,8 @@ export default {
   // only legitimate reference gone, the carve-out went too. #807 then measured what
   // replaced it: the SessionStart hook the corpus moved onto has no delivery receipt,
   // and ~80KB of guidance was silently truncated away on the way into a live session.
-  // So a CLAUDE.md import is wiring again — `@.claudinite/claude.GENERATED.md`, the
-  // generated pack index (engine/pack_loader/generate-claude-index.mjs), converged by
+  // So a CLAUDE.md import is wiring again — `@.claudinite/claudinite-rules.GENERATED.md`, the
+  // generated rules index (engine/pack_loader/generate-rules-index.mjs), converged by
   // the same flow that converges the hooks.
   //
   // The carve-out is the FILE, not the import: a CLAUDE.md may name the index, and the
