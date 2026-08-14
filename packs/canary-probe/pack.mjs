@@ -45,7 +45,7 @@
 // shape a fleet-wide workflow fix would take.
 export default {
   id: 'canary-probe',
-  version: 1,
+  version: 2,
   minEngineVersion: 3,
   ruleRoutingGuidance: {
     belongs: 'the inert probe workflow the canon delivers to its canary to prove workflow materialization works end to end',

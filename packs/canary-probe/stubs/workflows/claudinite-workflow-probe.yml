@@ -33,4 +33,4 @@ jobs:
       # file has existed since adoption — so the canon bumps this line when it wants to
       # watch a delivery happen, and the member's copy is checked against it.
       - name: Probe revision
-        run: echo "claudinite-workflow-probe revision 1"
+        run: echo "claudinite-workflow-probe revision 2"

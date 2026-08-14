@@ -27,7 +27,7 @@ was one. This pack is that.
 |---|---|
 | [`stubs/workflows/claudinite-workflow-probe.yml`](stubs/workflows/claudinite-workflow-probe.yml) | one inert workflow — `workflow_dispatch` only, no schedule, no push |
 | `seedOps` | seeds that file at **adoption**, written by the install flow and committed by the adopting session |
-| a record, from pack version 2 on | re-vendors the same path on later cycles, through the withhold lane |
+| [`migrations/2026-08-14-workflow-probe-current/`](migrations/2026-08-14-workflow-probe-current/migration.mjs) | from pack version 2 on, re-vendors the same path through the withhold lane |
 
 The two routes are the point, and their order is the point. Seeding is the easy half — the
 adopting session holds a credential the Action token does not, so nothing is being tested there.
@@ -45,4 +45,9 @@ converged against candidate refs and is disposable by construction.
 
 The workflow's one step echoes a **revision marker**. "The file exists" stops being an assertion
 once the file has existed since adoption, so a delivery is watched by bumping that line in the
-template here and checking the member's copy against it. Current marker: **revision 1**.
+template here and checking the member's copy against it. Current marker: **revision 2**.
+
+A member whose copy reads `revision 2` was reached by the *record*, through the withhold lane —
+staged into `.claudinite/pending-workflows/`, carried in a maintenance PR, and moved into
+`.github/workflows/` by a session with a credential the Action token does not have. `revision 1`
+means the seed landed and the record has not run yet.
