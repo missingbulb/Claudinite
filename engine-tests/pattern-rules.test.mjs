@@ -933,3 +933,87 @@ test('loadDeclaredChecks: a directory\'s declarations, compiled once; none where
     } finally { cleanup(root); }
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('scanIgnoringMarkdownFences: fenced blocks are invisible in markdown files, untouched elsewhere, lines stay anchored', () => {
+  const rule = patternRule({
+    ...meta('fx-fence-blind'),
+    scanFiles: /\.(md|txt)$/,
+    scanIgnoringMarkdownFences: true,
+    matchLines: [{ match: /badToken/, what: 'saw {match}', fix: 'f' }],
+  });
+  const root = makeRepo({ changed: {
+    'page.md': 'prose\n```\nbadToken in a fence\n```\nbadToken outside\n',
+    'plain.txt': '```\nbadToken between backticks, but not markdown\n```\n',
+  } });
+  try {
+    assert.deepEqual(rule.run(ctxOf(root)).map((f) => [f.file, f.line]),
+      [['page.md', 5], ['plain.txt', 2]]);
+  } finally { cleanup(root); }
+});
+
+test('scanIgnoringMarkdownFences: a require satisfied only inside a fence still fires checkEachFile', () => {
+  const rule = patternRule({
+    ...meta('fx-fence-require'),
+    scanFiles: /^docs\/.+\.md$/,
+    scanIgnoringMarkdownFences: true,
+    checkEachFile: [{ require: /## Setup/, what: 'no Setup section', fix: 'f' }],
+  });
+  const root = makeRepo({ changed: {
+    'docs/fenced.md': 'an example:\n```\n## Setup\n```\n',
+    'docs/real.md': '## Setup\nsteps\n',
+  } });
+  try {
+    assert.deepEqual(rule.run(ctxOf(root)).map((f) => f.file), ['docs/fenced.md']);
+  } finally { cleanup(root); }
+});
+
+test('countMatchingLines: atMost anchors at the first line past the bound, atLeast fires at file level, in-bounds is silent', () => {
+  const rule = patternRule({
+    ...meta('fx-count'),
+    scanFiles: /\.yml$/,
+    countMatchingLines: [
+      { linesMatching: /^ {4}- cron:/, atLeast: 1, atMost: 2,
+        what: '{count} cron lines (between {atLeast} and {atMost})', fix: 'f' },
+    ],
+  });
+  const root = makeRepo({ changed: {
+    'many.yml': 'on:\n  schedule:\n    - cron: a\n    - cron: b\n    - cron: c\n',
+    'none.yml': 'on: push\n',
+    'fine.yml': 'on:\n  schedule:\n    - cron: a\n',
+  } });
+  try {
+    assert.deepEqual(rule.run(ctxOf(root)).map((f) => [f.file, f.line, f.what]).sort(), [
+      ['many.yml', 5, '3 cron lines (between 1 and 2)'],
+      ['none.yml', null, '0 cron lines (between 1 and 2)'],
+    ]);
+  } finally { cleanup(root); }
+});
+
+test('countMatchingLines: atMost 0 forbids, counting reads the comment-blanked view under scanIgnoringComments', () => {
+  const rule = patternRule({
+    ...meta('fx-count-forbid'),
+    scanFiles: /\.mjs$/,
+    scanIgnoringComments: true,
+    countMatchingLines: [{ linesMatching: /eval\(/, atMost: 0, what: '{count} eval calls', fix: 'f' }],
+  });
+  const root = makeRepo({ changed: {
+    'clean.mjs': '// eval() only in a comment\nconst x = 1;\n',
+    'dirty.mjs': '// eval() in a comment\neval("x");\n',
+  } });
+  try {
+    assert.deepEqual(rule.run(ctxOf(root)).map((f) => [f.file, f.line]), [['dirty.mjs', 2]]);
+  } finally { cleanup(root); }
+});
+
+test('countMatchingLines: a boundless or backwards entry is an authoring error at load', () => {
+  assert.throws(() => patternRule({
+    ...meta('fx-count-boundless'),
+    scanFiles: /\.yml$/,
+    countMatchingLines: [{ linesMatching: /x/, what: 'w', fix: 'f' }],
+  }), /atLeast|atMost/);
+  assert.throws(() => patternRule({
+    ...meta('fx-count-backwards'),
+    scanFiles: /\.yml$/,
+    countMatchingLines: [{ linesMatching: /x/, atLeast: 3, atMost: 1, what: 'w', fix: 'f' }],
+  }), /atLeast|atMost/);
+});
