@@ -14,5 +14,55 @@
         "reason": "consumer files must not couple to the vendored canon — the wiring files are the reviewed exceptions (vendoring/DESIGN.md)"
       }
     ]
+  },
+  {
+    "id": "scheduler-workflow-shape",
+    "severity": "blocking",
+    "failureMessage": "the scheduler is the repo's only cron and its slot math anchors on the hour — a drifted cron or a missing guard silently breaks staggering, double-run safety, or manual runs",
+    "scanFiles": ".github/workflows/claudinite-scheduler.yml",
+    "countMatchingLines": [
+      {
+        "linesMatching": "/\\bcron:\\s/",
+        "atLeast": 1,
+        "atMost": 1,
+        "what": "declares {count} cron schedules, expected exactly one",
+        "fix": "keep a single hourly cron — the scheduler is the repo's only cron"
+      }
+    ],
+    "matchLines": [
+      {
+        "match": "/\\bcron:.*/",
+        "unlessLineMatches": "/\\bcron:\\s*['\"]?(1[0-9]|[2-4][0-9]|50) \\* \\* \\* \\*['\"]?\\s*$/",
+        "what": "{match} is not hourly on a fixed minute in :10\u2013:50",
+        "fix": "use \"<minute> * * * *\" with a minute from 10 to 50 (bootstrap assigns the repo-hashed value) — other crons collide with the :00 stampede or the hour boundary the slot math anchors on"
+      }
+    ],
+    "checkEachFile": [
+      {
+        "require": "/^\\s*workflow_dispatch:/m",
+        "what": "has no workflow_dispatch trigger",
+        "fix": "add workflow_dispatch: so the scheduler can be run manually"
+      },
+      {
+        "require": "/^\\s*concurrency:/m",
+        "what": "has no concurrency group",
+        "fix": "add a concurrency: group so overlapping runs serialize (double-run safety)"
+      },
+      {
+        "require": "/engine\\/scheduler\\/run\\.mjs/",
+        "what": "does not run the vendored engine entry",
+        "fix": "the job must run node .claudinite/shared/engine/scheduler/run.mjs — all logic lives in the vendored engine, not the workflow"
+      },
+      {
+        "require": "/^\\s*contents:\\s*write\\b/m",
+        "what": "does not grant contents: write",
+        "fix": "set permissions.contents: write — the update runner pushes its delivery branch; without it the self-refresh 403s"
+      },
+      {
+        "require": "/^\\s*pull-requests:\\s*write\\b/m",
+        "what": "does not grant pull-requests: write",
+        "fix": "set permissions.pull-requests: write — the update runner opens its PR and arms auto-merge; without it the PR create 403s"
+      }
+    ]
   }
 ]

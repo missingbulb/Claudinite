@@ -1,7 +1,6 @@
 import rulesIndexCurrent from './rules-index-current.mjs';
 import coreDeclared from './core-declared.mjs';
 import conformanceWorkflow from './conformance-workflow.mjs';
-import schedulerWorkflowShape from './scheduler-workflow-shape.mjs';
 import taskDeclarationShape from './task-declaration-shape.mjs';
 import taskDeclarationMatchesFolder from './task-declaration-matches-folder.mjs';
 import taskPhaseDiscipline from './task-phase-discipline.mjs';
@@ -44,11 +43,11 @@ export default {
     // things that decide whether this member is running Claudinite at all.
     coreDeclared,
     rulesIndexCurrent,
-    // The member's plumbing — the CI gate its maintenance PR merges through, and
-    // the scheduler workflow that fires its tasks. Both relevance-first: inert
-    // until the repo carries the artifact.
+    // The member's plumbing — the CI gate its maintenance PR merges through
+    // (relevance-first: inert until the repo carries the artifact). The
+    // scheduler workflow's shape rule (scheduler-workflow-shape) is a declared
+    // check in this pack's declared-checks.json.
     conformanceWorkflow,
-    schedulerWorkflowShape,
     // The scheduled-task contract (scheduled-tasks.md), likewise inert until the
     // repo carries a tasks/<name>/task.mjs of its own.
     taskDeclarationShape,
