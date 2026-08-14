@@ -67,8 +67,18 @@
 // the rehearsal about the converge rather than about git ancestry.
 
 // The declaration every fixture shares, plus its own packs.
+//
+// `core` is prepended to every fixture's list because it is mandatory and every
+// real member carries it — the 2026-08-14 forced pass put it in all 11
+// non-dormant members and the canon home (#842). A fixture declaring only
+// `basics` would model a shape the fleet no longer has, and would model it in
+// the one direction that hides a regression: the `requires` closure vendors
+// core's content either way, so the mount looks complete while `isActive` reads
+// false, and every rule and task the pack owns silently does not run. The
+// `core-undeclared` fixture below pins that shape deliberately, once, instead of
+// it being every fixture's accidental default.
 const checks = (packs, extra = {}) => JSON.stringify({
-  packs,
+  packs: packs.includes('core') ? packs : ['core', ...packs],
   taskScheduler: { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 },
   maintenance: { delivery: 'auto-merge' },
   // `updated` is set per MODE by the runner (fresh vs stale), never here.
@@ -414,6 +424,31 @@ NSApplication.shared.run()
     files: {
       'README.md': '# fixture-dormant\n\nA rehearsal fixture.\n',
       '.claudinite-checks.json': checks(['basics'], { dormant: true }),
+    },
+  },
+  {
+    name: 'core-undeclared',
+    why: 'a member whose declaration never got `core` — the shape the three dormant repos are frozen in: it must still converge GREEN, because a pack that is mounted but undeclared runs nothing, including the rule that would have reported it',
+    files: {
+      'README.md': '# fixture-core-undeclared\n\nA rehearsal fixture.\n',
+      // The one fixture that bypasses the `checks()` helper's `core` prepend, on
+      // purpose. `core-declared` became blocking in #844, and the question a
+      // consumer-safe change has to answer is whether that severity can turn a
+      // member red overnight. It cannot, and this is the proof rather than the
+      // argument: activation reads the literal `packs` list, so in the only repo
+      // shape where the rule would fire, the rule does not run at all.
+      //
+      // What this member DOES lose is real and is the accepted cost recorded in
+      // #842 — `core` owns the `update` task since #844, so an undeclared member
+      // has no self-refresh and nothing able to deliver it one. The repair is one
+      // manual edit to its `packs` array. Green here means "not broken by the
+      // severity", never "fully functional".
+      '.claudinite-checks.json': JSON.stringify({
+        packs: ['basics'],
+        taskScheduler: { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 },
+        maintenance: { delivery: 'auto-merge' },
+        claudinite: { updated: null },
+      }, null, 2) + '\n',
     },
   },
   {
