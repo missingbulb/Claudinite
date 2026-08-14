@@ -47,6 +47,7 @@ worth naming, not on every merge.
 | 1 | 2026-08-12 | [run 31628529342](https://github.com/missingbulb/Claudinite/actions/runs/31628529342) | The first numbered engine: version scaffolding, the versioned stamp, and migration records re-homed under their owning flow (#769). |
 | 2 | 2026-08-12 | [run 31633584458](https://github.com/missingbulb/Claudinite/actions/runs/31633584458) | Migration records gain regex rewrites and the `normalizeLocalDeclarations` codemod, and `local-pack-namespace` starts rewriting local-pack declarations to `local/<id>` — the first release whose records actually change a member's own files. |
 | 3 | 2026-08-13 | [run 31655440833](https://github.com/missingbulb/Claudinite/actions/runs/31655440833) | Baselining retired (#768 Phase 5): the task, its escalation codes and the `migrations/` compatibility entry points are gone, the `agentic:` migration field is rejected rather than ignored, and `updates` becomes the default mechanism. Freshness is measured by version rather than by the age of a ref the update flows never write. |
+| 4 | 2026-08-14 | [run 31826589868](https://github.com/missingbulb/Claudinite/actions/runs/31826589868) | A `needs-human` dispatch issue no longer stops its task (#821): the scheduler's guard suppresses on a live claim rather than on any open issue, so an escalation awaits triage instead of shutting the lane until a person closes it by hand. Bounded — a second unresolved escalation holds the lane, under a verdict of its own that leads the run summary. |
 
 Version 1's rehearsal is the automatic post-merge run against `8dbb096`, the
 commit that introduced the constant — the procedure above landed after it, so
@@ -62,3 +63,6 @@ flipped to `updates` — a green step that converged nothing, for every core
 change since 2026-08-12. Version 2's rehearsal predates the flip and was real;
 what run 31654827686 qualifies is both this tree and the repaired gate, which
 now fails unless the run says in words that it converged.
+
+Version 4's was dispatched against `e416aed1` — this change's tree, with only the
+run id in the row you are reading edited after it.
