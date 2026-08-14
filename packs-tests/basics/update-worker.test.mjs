@@ -160,3 +160,37 @@ test('rehearsal mode announces that it converged, and the gate greps for it', as
   }
   assert.match(upToReturn, /clean', '-fd'/, 'the rehearsal must restore the tree it converged');
 });
+
+test('the apply-stage brief tells the session to LAND its own delivery, not to wait a cycle', async () => {
+  // The gap this closes, found live on the canary (#649, 2026-08-14). The worker merges
+  // only on a `merge` terminal; an `apply-stage` run never arms auto-merge, and the PR
+  // body says as much. The brief used to end "push to the branch and let the PR land per
+  // this repo's delivery setting" — but under `auto-merge` nothing had armed it, so the
+  // session pushed and stopped, correctly, and the delivery waited for the NEXT cycle's
+  // disposal. `update` is daily, so a workflow the session had already moved into
+  // `.github/workflows/` on the branch sat off `main` for up to a day.
+  //
+  // That standing ~24h offset is the exact defect `landDelivery` was written to close for
+  // the deterministic half; the apply stage reintroduced it on the agent side. Pinned as
+  // prose because the session holds the credential and the engine cannot: the executor is
+  // MCP-only and carries no repo token, so there is no code path here to assert instead.
+  const fs = await import('node:fs');
+  const brief = fs.readFileSync('packs/basics/tasks/update/task.md', 'utf8');
+  const decl = (await import('../../packs/basics/tasks/update/task.mjs')).default;
+
+  // Merging must be within the ceiling, or the instruction below tells the session to
+  // violate its own contract — verify-outcome.mjs would then fail every apply stage.
+  assert.equal(decl.expected_outcome, 'merged-pr');
+
+  const land = brief.slice(brief.indexOf('## 5.'));
+  assert.ok(land, 'the brief must still carry a §5');
+  assert.match(land, /land the delivery yourself/i, 'the session must be told to act, not to wait');
+  assert.match(land, /maintenance\.delivery/, 'and to read the repo\'s own setting rather than assume one');
+  assert.match(land, /auto-merge/, 'the setting that means "you merge it"');
+  assert.match(land, /review/, 'and the setting that means "leave it for a human"');
+
+  // The passive phrasing is the bug itself, not a stylistic preference: "let the PR land"
+  // describes something no component does on an apply-stage terminal.
+  assert.ok(!/let the PR land/i.test(brief),
+    'the brief must not tell the session to "let the PR land" — nothing lands it on an apply-stage terminal');
+});
