@@ -357,10 +357,18 @@ store-release task (§6), so recurring work has exactly one trigger surface.
   for the exact title; found → skip. Makes scheduler double-runs and
   crash-retries safe (`concurrency` serializes; the search closes the
   crashed-mid-run window).
-- **At-most-one open issue per task**: any open `[claudinite-task] <pack>/<task>`
-  issue (any slot) suppresses new filings — an executor outage accumulates zero
-  backlog beyond one issue per task. An open dispatch issue older than ~2 of its
-  periods gets an escalation comment + `needs-human` from the scheduler.
+- **At-most-one *live* issue per task**: an open `[claudinite-task] <pack>/<task>`
+  issue (any slot) that is still live work — claimed (`agent-running`) or newly
+  filed and about to be — suppresses new filings, so an executor outage
+  accumulates zero backlog beyond one issue per task. An open dispatch issue older
+  than ~2 of its periods gets an escalation comment + `needs-human` from the
+  scheduler. *(As-built correction, #821: `needs-human` is a terminal awaiting a
+  person, not live work, and suppressing on it stopped the task until someone
+  closed the issue by hand — 13 tasks across 9 repos, the oldest for three weeks.
+  A terminal no longer suppresses; the next slot files normally. The re-filing is
+  bounded, because a durable cause escalates every slot: a second unresolved
+  escalation holds the lane, under a verdict of its own so "a session is on it"
+  and "shut, pending triage" are distinguishable in the run summary.)*
 - **Lifecycle**: success → executor comments the result and closes it. Failure →
   comment naming what failed, remove `ready-for-agent`, add `needs-human`.
   Every exit converges to one visible triage state (the canon's
@@ -554,8 +562,9 @@ rest of what the old central routine did has moved above:
 - **Precondition/signal crash** → per-task isolation + `workflow-failure` issue;
   the rest of the run proceeds.
 - Not idempotence — recoverability: every anomaly lands in a visible, bounded,
-  human-triageable issue state, and issue volume is capped at one open dispatch
-  issue per task by construction.
+  human-triageable issue state, and issue volume is capped by construction at one
+  live dispatch issue per task plus the escalations awaiting triage, which
+  themselves stop the lane once a second one goes unresolved (§4).
 
 ## 8. End state — everything that remains scheduled
 
