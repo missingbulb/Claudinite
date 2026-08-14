@@ -508,3 +508,36 @@ prose below).
   read `ref` (or, once a repo is served by the versioned-updates flow, its `engineVersion` /
   `packVersions` — #786 tracks the sweep that still doesn't) rather than `updated` in isolation: a
   held stamp looks most stale exactly when the repo most needs someone to look at it.
+- **`updates/*` is a live cross-version API — empty an export, never remove one; and the canary
+  rehearsal structurally cannot catch you.** A member runs its own **vendored** update worker, frozen
+  at its last successful converge, but the flow modules that worker `load()`s come from a **fresh canon
+  clone** — so within a single call the callee is instantly current and the caller is instantly stale,
+  with no version gate between them. Deleting an export therefore does not deprecate it; it breaks
+  every worker already in the field on its **next** run. Measured 2026-08-13 (#802, on #797's path):
+  `applyStageBrief` was dropped from `updates/terminals.mjs` while every member's apply-stage path
+  still called it, so the call threw *after* the update PR was opened — the update never completed,
+  the mount never refreshed, and the member therefore never received the worker that would stop
+  calling it. A permanent fleet-wide wedge on the first cycle. **The canary rehearsal cannot see this
+  class**: by design it drives the worker *this ref ships*, so it exercises the new caller and never
+  the fielded one — right for testing a worker change, and exactly why a flow-side removal is
+  invisible to it. So keep the export **callable** until no fielded worker calls it (one full cycle
+  after members vendor a worker that doesn't), let it return something nothing reads, say at its
+  definition that it exists to be callable rather than useful, and pin the flow surface fielded
+  workers call with a test — that test is the only gate that sees this. Same skew as the migration-record
+  entry above, in the other direction: that one is a record needing engine capability a member lacks,
+  this one is canon withdrawing something members still call.
+- **A declarative check spec carries no comments — name its keys so the declaration reads alone**
+  (owner correction, 2026-08-13, #789/#799). `patternRule(spec)` exists so a pattern-shaped rule is
+  **data**, and the point is lost the moment the data needs prose beside it to be understood: *"no
+  comments on the check! make the check declaration itself be readable (pattern+error message is a
+  lot)"*, then, on the follow-up append, *"use more words to describe what a thing is: 'correspond'
+  isn't informational if you didn't read the design doc. Neither is 'files' or 'line'. Prefer
+  `scanFiles` and `matchLines`."* The reader to write for is someone opening one converted check cold,
+  with the engine's design doc unread — so a spec key spells the full noun phrase for what it holds
+  (`scanFiles`, `matchLines`, `relevantWhen`, `unlessLineMatches`), never a short word that only means
+  something to whoever built the vocabulary; #800 renames all of it and every converted declaration
+  accordingly. The same test governs any key added to the vocabulary later: **if it needs a comment to
+  be read, it needs a better name.** (Convertible in principle — a scan for comment lines inside a
+  `patternRule({…})` literal — but a new rule moves `packs/README.md`'s check tally, which a
+  growth-extract run may not touch; left for the weekly prose-to-checks sweep, as with the kebab-case
+  entry above.)
