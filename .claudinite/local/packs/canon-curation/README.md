@@ -99,8 +99,10 @@ Execute the Claudinite executor: engine/scheduler/executor.md fleet
 ```
 
 That last word is load-bearing and easy to lose: `resolve-dispatch.mjs` defaults an unnamed scope to
-`self`, so a fleet routine whose prompt omits it declines every dispatch with exit `11` and changes
-nothing. The failure is **silent and permanent** — the session stops without commenting, the
+`self`, so a fleet routine whose prompt omits it declines every dispatch as `scope-mismatch` and
+changes nothing. That verdict is the one stop the shell exits **non-zero** on (`15`), precisely
+because of what follows. The failure is **silent and permanent on GitHub** — the session stops
+without commenting, the
 scheduler re-arms the issue on its next hourly pass, and the pair repeats forever, so the only
 symptom is a `ready-for-agent-fleet` issue that keeps getting re-labeled and never runs. Nothing
 repo-side can catch it: like the per-repo executor routine baselining checks by hand, this routine is
