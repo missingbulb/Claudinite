@@ -1,4 +1,5 @@
 import { finding } from './findings.mjs';
+import { parseYaml } from './minimal-yaml.mjs';
 
 // The declarative pattern-check engine: a rule whose whole logic is "these
 // patterns over these files" is DECLARED as data — `patternRule(spec)` compiles
@@ -29,6 +30,10 @@ import { finding } from './findings.mjs';
 //                        pathExists / pathAbsent          a path present/absent
 //                        trackedFileMatches               some tracked path matches
 //                        noTrackedFileMatches             no tracked path matches
+//                        exactlyOneTrackedFileMatches     exactly one tracked path matches
+//                        someTrackedFileContains          { pathMatching, text } — some
+//                                                         tracked path matching the first
+//                                                         has text matching the second
 //                        repoContains                     some in-scope file's text
 //                                                         matches — evaluated only
 //                                                         if findings exist
@@ -66,6 +71,38 @@ import { finding } from './findings.mjs';
 //                      non-comment `globFile` line matching `globLineMatching`;
 //                      findings anchor on each uncovered path
 //
+// The structured-data assertions read PARSED documents — `.json` via JSON.parse,
+// `.yaml`/`.yml` via the minimal YAML parser — each file parsed at most once per
+// scan, shared by every rule; an absent or unparsable document asserts nothing.
+// A field path is dot-separated (`devDependencies.esbuild`), and a field counts
+// as present when its value is not undefined:
+//   checkParsedFile    [{ file, whenFieldPresent, requireField, forbidField,
+//                         what, fix }]
+//                      in the parsed document: where `whenFieldPresent` is
+//                      present, `requireField` must be present / `forbidField`
+//                      must not
+//   equalParsedValues  [{ first: { file | filesMatching + whereFileContains,
+//                                  field },
+//                         second: { file, field },
+//                         whenSecondMissing, whenUnequal }]
+//                      the two parsed fields must be equal; `filesMatching` +
+//                      `whereFileContains` select the first tracked file whose
+//                      path and text match; an absent second file fires
+//                      `whenSecondMissing` at its path, a mismatch fires
+//                      `whenUnequal` at the first file with {first}/{second}
+//   forEachParsedEntry [{ inFilesMatching, entriesAtField, whereFieldEquals:
+//                         { field, equals }, forbidValueInArray: { atField,
+//                         value, ignoreCase }, what, fix }]
+//                      in each tracked file matching, for each named entry of
+//                      the object at `entriesAtField` whose `whereFieldEquals`
+//                      holds: the array at `atField` must not contain `value`;
+//                      {entry} interpolates the entry's name
+//   checkKeyValueFile  [{ file, keys, whenMissing, whenLineNotKeyValue,
+//                         whenKeyUnknown, whenKeyMissing }]
+//                      the dotenv-style file must exist, hold only KEY=value
+//                      lines and # comments, use only the declared keys, and
+//                      declare every one; {key}/{keys}/{line} interpolate
+//
 // `what`/`fix` are templates: `{path}`, a named capture group's `{name}`, and
 // `{match}` (a matchLines hit's text), `{lines}`/`{limit}` (maxLines) interpolate.
 
@@ -83,8 +120,16 @@ function relevant(ctx, when) {
   if (when.pathAbsent && ctx.exists(when.pathAbsent)) return false;
   if (when.trackedFileMatches && !ctx.tracked.some((f) => when.trackedFileMatches.test(f))) return false;
   if (when.noTrackedFileMatches && ctx.tracked.some((f) => when.noTrackedFileMatches.test(f))) return false;
+  if (when.exactlyOneTrackedFileMatches &&
+      ctx.tracked.filter((f) => when.exactlyOneTrackedFileMatches.test(f)).length !== 1) return false;
+  if (when.someTrackedFileContains &&
+      !ctx.tracked.some((f) => when.someTrackedFileContains.pathMatching.test(f) &&
+        when.someTrackedFileContains.text.test(ctx.read(f) ?? ''))) return false;
   return true; // repoContains resolves after the pass, and only when findings exist
 }
+
+const fieldAt = (doc, path) =>
+  path.split('.').reduce((v, key) => (v && typeof v === 'object' ? v[key] : undefined), doc);
 
 function globToRe(glob) {
   return new RegExp(
@@ -129,6 +174,92 @@ function assertTreeShape(ctx, j) {
       if (globs.some((re) => re.test(path) || re.test(base))) continue;
       const vars = { path, ...(m.groups ?? {}) };
       j.out.push(finding(j.rule, { file: path, what: fill(a.what, vars), fix: fill(a.fix, vars) }));
+    }
+  }
+}
+
+// The structured-data assertions — they read a few named or tracked documents
+// through the scan's shared parse cache, so like the tree assertions they run
+// directly per rule rather than riding the content pass.
+function assertParsedShape(ctx, j, parsed) {
+  const s = j.spec;
+
+  for (const a of s.checkParsedFile ?? []) {
+    const doc = parsed(a.file);
+    if (doc == null) continue;
+    if (a.whenFieldPresent && fieldAt(doc, a.whenFieldPresent) === undefined) continue;
+    if (a.forbidField ? fieldAt(doc, a.forbidField) !== undefined
+      : fieldAt(doc, a.requireField) === undefined) {
+      j.out.push(finding(j.rule, { file: a.file, what: a.what, fix: a.fix }));
+    }
+  }
+
+  for (const a of s.equalParsedValues ?? []) {
+    const firstPath = a.first.file ?? ctx.tracked.find((f) =>
+      a.first.filesMatching.test(f) && a.first.whereFileContains.test(ctx.read(f) ?? ''));
+    if (!firstPath) continue;
+    const firstDoc = parsed(firstPath);
+    if (firstDoc == null) continue;
+    if (ctx.read(a.second.file) === null) {
+      j.out.push(finding(j.rule, { file: a.second.file, what: a.whenSecondMissing.what, fix: a.whenSecondMissing.fix }));
+      continue;
+    }
+    const secondDoc = parsed(a.second.file);
+    if (secondDoc == null) continue;
+    const vars = { first: fieldAt(firstDoc, a.first.field), second: fieldAt(secondDoc, a.second.field) };
+    if (vars.first !== vars.second) {
+      j.out.push(finding(j.rule, {
+        file: firstPath, what: fill(a.whenUnequal.what, vars), fix: fill(a.whenUnequal.fix, vars),
+      }));
+    }
+  }
+
+  for (const a of s.forEachParsedEntry ?? []) {
+    for (const path of ctx.tracked) {
+      if (!a.inFilesMatching.test(path)) continue;
+      const entries = fieldAt(parsed(path), a.entriesAtField);
+      if (!entries || typeof entries !== 'object' || Array.isArray(entries)) continue;
+      for (const [name, entry] of Object.entries(entries)) {
+        if (!entry || typeof entry !== 'object') continue;
+        if (a.whereFieldEquals && fieldAt(entry, a.whereFieldEquals.field) !== a.whereFieldEquals.equals) continue;
+        const values = fieldAt(entry, a.forbidValueInArray.atField);
+        if (!Array.isArray(values)) continue;
+        const norm = (v) => (a.forbidValueInArray.ignoreCase ? String(v).toLowerCase() : String(v));
+        if (!values.some((v) => norm(v) === norm(a.forbidValueInArray.value))) continue;
+        const vars = { entry: name, path };
+        j.out.push(finding(j.rule, { file: path, what: fill(a.what, vars), fix: fill(a.fix, vars) }));
+      }
+    }
+  }
+
+  for (const a of s.checkKeyValueFile ?? []) {
+    const keysVar = { keys: a.keys.join(', ') };
+    const text = ctx.read(a.file);
+    if (text === null) {
+      j.out.push(finding(j.rule, { file: a.file, what: fill(a.whenMissing.what, keysVar), fix: fill(a.whenMissing.fix, keysVar) }));
+      continue;
+    }
+    const seen = new Set();
+    text.split('\n').forEach((raw, i) => {
+      const line = raw.trim();
+      if (!line || line.startsWith('#')) return;
+      const eq = line.indexOf('=');
+      if (eq === -1) {
+        const vars = { ...keysVar, line };
+        j.out.push(finding(j.rule, { file: a.file, line: i + 1, what: fill(a.whenLineNotKeyValue.what, vars), fix: fill(a.whenLineNotKeyValue.fix, vars) }));
+        return;
+      }
+      const key = line.slice(0, eq).trim();
+      if (!a.keys.includes(key)) {
+        const vars = { ...keysVar, key };
+        j.out.push(finding(j.rule, { file: a.file, line: i + 1, what: fill(a.whenKeyUnknown.what, vars), fix: fill(a.whenKeyUnknown.fix, vars) }));
+      }
+      seen.add(key);
+    });
+    for (const key of a.keys) {
+      if (seen.has(key)) continue;
+      const vars = { ...keysVar, key };
+      j.out.push(finding(j.rule, { file: a.file, what: fill(a.whenKeyMissing.what, vars), fix: fill(a.whenKeyMissing.fix, vars) }));
     }
   }
 }
@@ -205,8 +336,23 @@ function results(ctx) {
     });
   }
 
+  const parsedDocs = new Map();
+  const parsed = (path) => {
+    if (!parsedDocs.has(path)) {
+      const text = ctx.read(path);
+      let doc = null;
+      if (text !== null) {
+        if (/\.ya?ml$/.test(path)) doc = parseYaml(text);
+        else { try { doc = JSON.parse(text); } catch { doc = null; } }
+      }
+      parsedDocs.set(path, doc);
+    }
+    return parsedDocs.get(path);
+  };
+
   for (const j of jobs) {
     assertTreeShape(ctx, j);
+    assertParsedShape(ctx, j, parsed);
     if (typeof j.spec.scanFiles !== 'string') continue;
     const text = ctx.read(j.spec.scanFiles);
     if (text === null) {

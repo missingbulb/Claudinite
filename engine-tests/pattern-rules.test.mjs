@@ -313,3 +313,174 @@ test('a fresh context is a fresh scan — the cache never bleeds between repos',
     assert.equal(rule.run(ctxOf(dirty)).length, 2);
   } finally { cleanup(dirty); cleanup(clean); }
 });
+
+test('checkParsedFile: whenFieldPresent + requireField / forbidField over the parsed document', () => {
+  const rule = patternRule({
+    ...meta('fx-parsed-file'),
+    checkParsedFile: [{
+      file: 'package.json',
+      whenFieldPresent: 'devDependencies.esbuild',
+      requireField: 'dependencies.esbuild',
+      what: 'dev-only', fix: 'move it',
+    }],
+  });
+  const bad = makeRepo({ changed: { 'package.json': '{"devDependencies":{"esbuild":"1"}}' } });
+  const good = makeRepo({ changed: { 'package.json': '{"devDependencies":{"esbuild":"1"},"dependencies":{"esbuild":"1"}}' } });
+  const inert = makeRepo({ changed: { 'package.json': '{"dependencies":{"other":"1"}}' } });
+  const broken = makeRepo({ changed: { 'package.json': '{not json' } });
+  try {
+    assert.deepEqual(rule.run(ctxOf(bad)).map((f) => [f.file, f.what]), [['package.json', 'dev-only']]);
+    assert.equal(rule.run(ctxOf(good)).length, 0);
+    assert.equal(rule.run(ctxOf(inert)).length, 0);
+    assert.equal(rule.run(ctxOf(broken)).length, 0);
+  } finally { cleanup(bad); cleanup(good); cleanup(inert); cleanup(broken); }
+});
+
+test('equalParsedValues: first file found by path+content probe; missing second and mismatch each fire their message', () => {
+  const rule = patternRule({
+    ...meta('fx-equal-values'),
+    equalParsedValues: [{
+      first: { filesMatching: /manifest\.json$/, whereFileContains: /"manifest_version"/, field: 'version' },
+      second: { file: 'package.json', field: 'version' },
+      whenSecondMissing: { what: 'no package.json', fix: 'add it' },
+      whenUnequal: { what: 'versions differ: {first} vs {second}', fix: 'align them' },
+    }],
+  });
+  const mismatched = makeRepo({ changed: {
+    'app/manifest.json': '{"manifest_version":3,"version":"1.2.3"}',
+    'package.json': '{"version":"9.9.9"}',
+  } });
+  const missing = makeRepo({ changed: { 'app/manifest.json': '{"manifest_version":3,"version":"1.2.3"}' } });
+  const equal = makeRepo({ changed: {
+    'app/manifest.json': '{"manifest_version":3,"version":"1.2.3"}',
+    'package.json': '{"version":"1.2.3"}',
+  } });
+  const noManifest = makeRepo({ changed: { 'package.json': '{"version":"9.9.9"}' } });
+  try {
+    const findings = rule.run(ctxOf(mismatched));
+    assert.deepEqual(findings.map((f) => [f.file, f.what]),
+      [['app/manifest.json', 'versions differ: 1.2.3 vs 9.9.9']]);
+    assert.deepEqual(rule.run(ctxOf(missing)).map((f) => [f.file, f.what]), [['package.json', 'no package.json']]);
+    assert.equal(rule.run(ctxOf(equal)).length, 0);
+    assert.equal(rule.run(ctxOf(noManifest)).length, 0);
+  } finally { cleanup(mismatched); cleanup(missing); cleanup(equal); cleanup(noManifest); }
+});
+
+test('forEachParsedEntry: YAML entries filtered by field equality; array containment case-insensitive; {entry} interpolates', () => {
+  const rule = patternRule({
+    ...meta('fx-parsed-entry'),
+    forEachParsedEntry: [{
+      inFilesMatching: /(^|\/)template\.ya?ml$/,
+      entriesAtField: 'Resources',
+      whereFieldEquals: { field: 'Type', equals: 'Custom::Policy' },
+      forbidValueInArray: { atField: 'Properties.Headers', value: 'authorization', ignoreCase: true },
+      what: '{entry} forwards Authorization', fix: 'drop it',
+    }],
+  });
+  const bad = makeRepo({ changed: { 'template.yaml':
+`Resources:
+  MyPolicy:
+    Type: Custom::Policy
+    Properties:
+      Headers:
+        - Origin
+        - Authorization
+  OtherThing:
+    Type: Other::Type
+    Properties:
+      Headers:
+        - Authorization
+` } });
+  const clean = makeRepo({ changed: { 'template.yaml':
+`Resources:
+  MyPolicy:
+    Type: Custom::Policy
+    Properties:
+      Headers:
+        - Origin
+` } });
+  try {
+    const findings = rule.run(ctxOf(bad));
+    assert.deepEqual(findings.map((f) => [f.file, f.what]), [['template.yaml', 'MyPolicy forwards Authorization']]);
+    assert.equal(rule.run(ctxOf(clean)).length, 0);
+  } finally { cleanup(bad); cleanup(clean); }
+});
+
+test('checkKeyValueFile: missing file, malformed line, unknown key, and missing key each fire their message', () => {
+  const rule = patternRule({
+    ...meta('fx-keyvalue'),
+    checkKeyValueFile: [{
+      file: 'app.config',
+      keys: ['alpha', 'beta'],
+      whenMissing: { what: 'missing (needs {keys})', fix: 'create it' },
+      whenLineNotKeyValue: { what: 'bad line "{line}"', fix: 'KEY=value only' },
+      whenKeyUnknown: { what: 'unknown "{key}"', fix: 'valid: {keys}' },
+      whenKeyMissing: { what: 'missing "{key}"', fix: 'add {key}=' },
+    }],
+  });
+  const absent = makeRepo({ changed: { 'other.txt': 'x\n' } });
+  const messy = makeRepo({ changed: { 'app.config': '# comment\nalpha=1\nnot a pair\ngamma=3\n' } });
+  const clean = makeRepo({ changed: { 'app.config': 'alpha=1\nbeta=\n' } });
+  try {
+    assert.deepEqual(rule.run(ctxOf(absent)).map((f) => f.what), ['missing (needs alpha, beta)']);
+    assert.deepEqual(rule.run(ctxOf(messy)).map((f) => [f.line, f.what]), [
+      [3, 'bad line "not a pair"'],
+      [4, 'unknown "gamma"'],
+      [null, 'missing "beta"'],
+    ]);
+    assert.equal(rule.run(ctxOf(clean)).length, 0);
+  } finally { cleanup(absent); cleanup(messy); cleanup(clean); }
+});
+
+test('relevantWhen: someTrackedFileContains and exactlyOneTrackedFileMatches gate the rule', () => {
+  const rule = patternRule({
+    ...meta('fx-parsed-gates'),
+    relevantWhen: {
+      someTrackedFileContains: { pathMatching: /\.yaml$/, text: /BuildMethod: esbuild/ },
+      exactlyOneTrackedFileMatches: /(^|\/)package\.json$/,
+    },
+    checkParsedFile: [{
+      file: 'package.json', whenFieldPresent: 'devDependencies.esbuild',
+      requireField: 'dependencies.esbuild', what: 'w', fix: 'f',
+    }],
+  });
+  const armed = makeRepo({ changed: {
+    't.yaml': 'BuildMethod: esbuild\n',
+    'package.json': '{"devDependencies":{"esbuild":"1"}}',
+  } });
+  const noMarker = makeRepo({ changed: { 'package.json': '{"devDependencies":{"esbuild":"1"}}' } });
+  const twoPackages = makeRepo({ changed: {
+    't.yaml': 'BuildMethod: esbuild\n',
+    'package.json': '{"devDependencies":{"esbuild":"1"}}',
+    'svc/package.json': '{}',
+  } });
+  try {
+    assert.equal(rule.run(ctxOf(armed)).length, 1);
+    assert.equal(rule.run(ctxOf(noMarker)).length, 0);
+    assert.equal(rule.run(ctxOf(twoPackages)).length, 0);
+  } finally { cleanup(armed); cleanup(noMarker); cleanup(twoPackages); }
+});
+
+test('parsed documents are parsed once per scan across the rule family', () => {
+  const a = patternRule({
+    ...meta('fx-parse-once-a'),
+    checkParsedFile: [{ file: 'shared.json', requireField: 'alpha', what: 'a', fix: 'f' }],
+  });
+  const b = patternRule({
+    ...meta('fx-parse-once-b'),
+    checkParsedFile: [{ file: 'shared.json', requireField: 'beta', what: 'b', fix: 'f' }],
+  });
+  const root = makeRepo({ changed: { 'shared.json': '{"alpha":1}' } });
+  try {
+    const ctx = ctxOf(root);
+    const reads = new Map();
+    const rawRead = ctx.read.bind(ctx);
+    ctx.read = (path) => {
+      reads.set(path, (reads.get(path) ?? 0) + 1);
+      return rawRead(path);
+    };
+    assert.equal(a.run(ctx).length, 0);
+    assert.equal(b.run(ctx).length, 1);
+    assert.equal(reads.get('shared.json'), 1);
+  } finally { cleanup(root); }
+});
