@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeRepo, cleanup, git, gitDated, writeFiles } from './helpers.mjs';
@@ -274,6 +274,69 @@ test('buildContext: a stale remote base ref is refreshed, so the base branch\'s 
     assert.deepEqual(fresh.introducedMergeCommits(), []);
   } finally {
     delete process.env.CLAUDINITE_CHECKS_NO_FETCH;
+    cleanup(root);
+    cleanup(origin);
+  }
+});
+
+// The refresh runs once per freshness window, not once per run: a Stop hook fires every
+// turn, and paying a network fetch per turn is the sweep's dominant wall-clock cost. A
+// marker in the git dir records which ref was refreshed and when; within the window the
+// stale-tolerance is the same class as the fetch failing (best-effort by construction).
+test('buildContext: the base-ref refresh is skipped within the freshness window, and runs again past it', () => {
+  const origin = mkdtempSync(join(tmpdir(), 'claudinite-fresh-origin-'));
+  git(origin, 'init', '-q', '-b', 'main');
+  writeFiles(origin, { 'README.md': 'seed\n' });
+  git(origin, 'add', '-A');
+  git(origin, 'commit', '-q', '-m', 'seed');
+
+  const root = mkdtempSync(join(tmpdir(), 'claudinite-fresh-clone-'));
+  rmSync(root, { recursive: true, force: true });
+  git(process.cwd(), 'clone', '-q', origin, root);
+
+  const markerPath = join(root, git(root, 'rev-parse', '--git-path', 'claudinite-base-refresh.json').trim());
+
+  try {
+    // First run: fetches (nothing to skip) and stamps the marker.
+    buildContext({ root, mode: 'changed' });
+    const marker = JSON.parse(readFileSync(markerPath, 'utf8'));
+    assert.equal(marker.ref, 'origin/main');
+
+    // The base branch gains a merge, and the work is cut from the advanced tip
+    // (fetched under its own ref name, leaving origin/main stale — the cloud-
+    // clone shape). A run inside the window skips the fetch, so the stale ref
+    // misattributes the base's merge — the bounded staleness, pinned.
+    git(origin, 'checkout', '-q', '-b', 'side');
+    writeFiles(origin, { 's.txt': 'x\n' });
+    git(origin, 'add', '-A');
+    git(origin, 'commit', '-q', '-m', 'side work');
+    git(origin, 'checkout', '-q', 'main');
+    git(origin, 'merge', '-q', '--no-ff', '-m', 'merge side', 'side');
+    git(root, 'fetch', '-q', origin, '+refs/heads/main:refs/remotes/snapshot/main');
+    git(root, 'checkout', '-q', '-B', 'feature', 'snapshot/main');
+    writeFiles(root, { 'w.txt': 'x\n' });
+    git(root, 'add', '-A');
+    git(root, 'commit', '-q', '-m', 'my work Refs #1');
+    const inWindow = buildContext({ root, mode: 'changed' });
+    assert.deepEqual(inWindow.introducedMergeCommits().map((c) => c.subject), ['merge side']);
+
+    // Aging the marker past the window makes the next run fetch again.
+    writeFileSync(markerPath, JSON.stringify({ ref: 'origin/main', at: Date.now() - 60 * 60_000 }));
+    const pastWindow = buildContext({ root, mode: 'changed' });
+    assert.deepEqual(pastWindow.introducedMergeCommits(), []);
+
+    // A marker for a DIFFERENT ref never suppresses this ref's refresh.
+    git(origin, 'checkout', '-q', '-b', 'side2');
+    writeFiles(origin, { 's2.txt': 'x\n' });
+    git(origin, 'add', '-A');
+    git(origin, 'commit', '-q', '-m', 'side2 work');
+    git(origin, 'checkout', '-q', 'main');
+    git(origin, 'merge', '-q', '--no-ff', '-m', 'merge side2', 'side2');
+    writeFileSync(markerPath, JSON.stringify({ ref: 'origin/other', at: Date.now() }));
+    const otherRef = buildContext({ root, mode: 'changed' });
+    assert.deepEqual(otherRef.introducedMergeCommits(), []);
+    assert.equal(JSON.parse(readFileSync(markerPath, 'utf8')).ref, 'origin/main');
+  } finally {
     cleanup(root);
     cleanup(origin);
   }
