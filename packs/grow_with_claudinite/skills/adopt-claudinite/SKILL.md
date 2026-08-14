@@ -17,11 +17,27 @@ version zero: it stamps every declared pack at the newest version, and with no o
 nothing to skip. Read the next section before reaching for it anywhere else.
 
 **Refreshing** an already-vendored repo is **not** a session's job, and must not be hand-rolled.
-Force the repo's own update task and let the flow do it:
+Force the repo's own update task and let the flow do it — through the **GitHub MCP tools**, which is
+the surface a session actually has (an unattended or web session carries no `gh` CLI, and `curl` to
+`api.github.com` is proxy-blocked there, so a shell recipe fails exactly where this is most needed):
 
 ```
-gh workflow run claudinite-scheduler.yml -f overrides=FORCE_TASKS=update
+actions_run_trigger(method: "run_workflow", owner: …, repo: …,
+                    workflow_id: "claudinite-scheduler.yml",
+                    ref: "main",                                  # see below
+                    inputs: { overrides: "FORCE_TASKS=update" })
 ```
+
+`ref` is the **default branch**, not whatever branch you are on: a `workflow_dispatch` always runs the
+workflow definition from the default branch, so dispatching against a feature branch neither picks up
+a workflow you only added there nor changes which definition runs. In a local session with `gh`
+authenticated, `gh workflow run claudinite-scheduler.yml -f overrides=FORCE_TASKS=update` is the same
+call.
+
+Then **watch it to a terminal state** — a forced run is how you see a change to scheduled machinery
+work *now*, and parking it on "check tomorrow" is the failure this lever exists to prevent. A
+dispatched run is not attached to a PR, so read it with `get_job_logs(run_id, failed_only: true)`
+("0 failed jobs" means green) rather than any PR-scoped check query.
 
 **Never refresh a stamped repo by running `apply-vendor-set.mjs` against it.** It advances every
 declared pack's stamp to the newest version without applying the records in between, and
