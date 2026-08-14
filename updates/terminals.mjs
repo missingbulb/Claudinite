@@ -69,35 +69,26 @@ export function terminalFor(outcome) {
 // staged workflow files and the migration record named in the reason, both of which
 // the session reads out of the repository like any other fact about it.
 
-// …EXCEPT THAT IT CANNOT SIMPLY BE DELETED, and this shim is the reason the fleet
-// still runs. THE ASYMMETRY THAT BITES HERE: a member's vendored WORKER is one cycle
-// behind, but the flows it loads come from a FRESH CANON CLONE — so canon-side code
-// is instantly current while the code CALLING it is instantly stale. Deleting an
-// export from this module does not deprecate it; it breaks every worker already in
-// the field, on its very next run.
-//
-// Every member in the fleet carries a worker doing:
+// IT OUTLIVED ITS OWN DELETION ONCE, as a callable shim, and how that ended is the
+// part worth keeping. THE ASYMMETRY: a member's vendored WORKER is one cycle behind,
+// but the flows it loads come from a FRESH CANON CLONE — so canon-side code is
+// instantly current while the code CALLING it is instantly stale. #791 deleted this
+// export while every fielded worker still did:
 //
 //     const { terminalFor, applyStageBrief } = await load('updates/terminals.mjs');
 //     ...  brief: applyStageBrief({ packs: terminal.packs, branch }),
 //
-// on its `apply-stage` path — the path #797 now sends EVERY member down, because
-// every member's scheduler workflow is stale. Without this export that line throws
-// `applyStageBrief is not a function` after the PR is opened but before the run ends:
-// the update never completes, the mount never refreshes, so the member never receives
-// the worker that would stop calling it. A permanent wedge, fleet-wide, on the first
-// cycle.
+// on its `apply-stage` path, so the call threw after the PR was opened: the update
+// never completed, the mount never refreshed, and the member therefore never received
+// the worker that would stop calling it. A fleet-wide wedge on the first cycle, which
+// no canary rehearsal can catch — by design the rehearsal drives the worker THIS REF
+// SHIPS, so it exercises the new caller and never the fielded one.
 //
-// The canary rehearsal cannot see this: it deliberately runs the worker THIS REF
-// SHIPS against the canary's tree, so it exercises the new caller and never the old
-// one. The gate is right to do that — a change to the worker cannot be rehearsed by
-// the copy that predates it — but it means removing a flow-side export is a class of
-// break no rehearsal covers.
-//
-// So it stays until no worker in the fleet calls it: one full cycle after the members
-// vendor a worker that does not. It returns a string nothing reads (the payload key
-// it fed is no longer consumed), and it exists to be CALLABLE, not to be useful.
-export function applyStageBrief({ packs = [], branch = null } = {}) {
-  return `Apply the updated rules of: ${packs.join(', ') || '(none named)'}`
-    + `${branch ? ` on ${branch}` : ''}. See this task's task.md for what that means.`;
-}
+// #802 restored it as an empty shim to unwedge the fleet, and it stayed until the
+// condition it named came true: no worker in the field calls it. Verified 2026-08-14
+// across all 14 repos — the canary and ten active members carry the current worker
+// (identical blob, no call), and the three dormant members (HelloWorldFlutterApp,
+// gRatio, EdFringeAllocator) carry no update worker at all, only retired baselining.
+// So the shim goes, at engine 3, ahead of the engine-5 expiry that was set to force
+// this decision if nobody made it. The rule it leaves behind is in the local pack's
+// RULES.md: empty an export, never remove one, until the field is checked.

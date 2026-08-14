@@ -145,17 +145,25 @@ test('the flow surface a FIELDED worker calls stays callable, whatever this ref\
   // its very next run, and no version gate stands between the two.
   //
   // This bit for real. `applyStageBrief` was removed as dead code (nothing consumed
-  // the payload key it fed), but every fielded worker still destructures it and calls
+  // the payload key it fed), but every fielded worker still destructured it and called
   // it on the `apply-stage` path — the path #797 sends EVERY member down. The call
-  // throws after the PR is opened, so the update never completes, the mount never
-  // refreshes, and the member never receives the worker that would stop calling it.
+  // threw after the PR was opened, so the update never completed, the mount never
+  // refreshed, and the member never received the worker that would stop calling it.
+  // It went back as an empty shim (#802) and came out again on 2026-08-14, once every
+  // repo in the fleet had been checked for the call and none made it.
   //
   // The canary rehearsal cannot cover this: it runs the worker THIS REF SHIPS, by
   // design, so it only ever exercises the new caller. This list is the substitute.
   // An entry leaves it one full cycle after the fleet vendors a worker without the
-  // call — not when this repo's own worker stops making it.
+  // call — not when this repo's own worker stops making it, and never on the strength
+  // of "nothing in this repo calls it" alone: read the vendored worker in the members.
+  //
+  // An export kept only for fielded callers gets an EXPIRY when it goes in — an entry
+  // in SHIMS below, naming the engine version by which someone must re-check the field
+  // — because a comment saying "remove this once the fleet catches up" is a comment
+  // nobody rereads, and a shim kept forever is indistinguishable from one still needed.
   const fielded = {
-    'updates/terminals.mjs': ['terminalFor', 'applyStageBrief'],
+    'updates/terminals.mjs': ['terminalFor'],
     'updates/engine-update.mjs': ['engineUpdate'],
     'updates/pack-update.mjs': ['packUpdate'],
   };
@@ -166,32 +174,18 @@ test('the flow surface a FIELDED worker calls stays callable, whatever this ref\
         `${mod} no longer exports ${name} — every fielded worker calling it wedges on its next cycle`);
     }
   }
-  // And callable, not merely present: a shim kept as a non-function constant would
-  // satisfy a weaker check and still throw at the call site.
-  const { applyStageBrief } = await import('../updates/terminals.mjs');
-  assert.equal(typeof applyStageBrief({ packs: ['basics'], branch: 'x' }), 'string');
-  assert.equal(typeof applyStageBrief(), 'string', 'a fielded caller may pass nothing');
-});
 
-test('the compatibility shims carry an EXPIRY, so nobody has to remember them', async () => {
-  // A comment saying "remove this once the fleet catches up" is a comment nobody
-  // rereads, and a shim kept forever is indistinguishable from a shim that is still
-  // needed. So the reminder is a failing test on a stated engine version instead.
-  //
-  // `applyStageBrief` became unnecessary the moment every member vendored a worker
-  // that stops calling it — one full cycle after engine 3. Engine 5 is the deadline:
-  // by then either the fleet has long since caught up and the shim goes, or something
-  // has gone wrong with the rollout and that is worth discovering deliberately.
-  //
-  // WHEN THIS FIRES, do not just bump the number. Check a real member's vendored
-  // worker for the call, and if it is gone, delete the shim and this test together.
+  // The expiry register. Empty is the healthy state: the fleet is level with canon and
+  // nothing is being held alive for a stale caller. WHEN AN ENTRY FIRES, do not just
+  // bump the number — read a real member's vendored worker for the call, and if it is
+  // gone, delete the shim, its name from `fielded` above, and the entry.
   const { ENGINE_VERSION } = await import('../engine/version.mjs');
-  const SHIMS = [{ name: 'applyStageBrief', module: 'updates/terminals.mjs', reviewAt: 5, since: 3 }];
+  const SHIMS = [];
   for (const s of SHIMS) {
     assert.ok(ENGINE_VERSION < s.reviewAt,
       `engine ${ENGINE_VERSION} has passed ${s.reviewAt}: re-check whether ${s.module}'s ${s.name} shim `
       + `(added at engine ${s.since} for one-cycle-behind workers) is still called by any fielded worker. `
-      + 'If not, delete the shim, its entry in the fielded-surface test above, and this entry.');
+      + 'If not, delete the shim, its entry in the fielded surface above, and this entry.');
   }
 });
 

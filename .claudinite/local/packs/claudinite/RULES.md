@@ -523,7 +523,15 @@ prose below).
   invisible to it. So keep the export **callable** until no fielded worker calls it (one full cycle
   after members vendor a worker that doesn't), let it return something nothing reads, say at its
   definition that it exists to be callable rather than useful, and pin the flow surface fielded
-  workers call with a test — that test is the only gate that sees this. Same skew as the migration-record
+  workers call with a test — that test is the only gate that sees this. **Give the shim an expiry in
+  that same test when you add it** (an engine version by which someone must re-check), because the
+  removal has no other trigger: nothing in canon ever fails to remind you. **And retire it by reading
+  the field, never by reasoning about it** — "canon's worker stopped calling it" is not the condition;
+  "no member's *vendored* worker calls it" is, and the members' repos are where that is answered. Done
+  once, for this very export, on 2026-08-14: all 14 repos read, ten active members plus the canary on
+  the current worker blob and three dormant members carrying no update worker at all, so the shim came
+  out at engine 3 rather than at the engine-5 expiry that would have forced the question anyway. Same
+  skew as the migration-record
   entry above, in the other direction: that one is a record needing engine capability a member lacks,
   this one is canon withdrawing something members still call.
 - **A declarative check spec carries no comments — name its keys so the declaration reads alone**
