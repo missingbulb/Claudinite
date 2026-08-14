@@ -149,19 +149,11 @@ test('the flow surface a FIELDED worker calls stays callable, whatever this ref\
   // it on the `apply-stage` path — the path #797 sends EVERY member down. The call
   // threw after the PR was opened, so the update never completed, the mount never
   // refreshed, and the member never received the worker that would stop calling it.
-  // It went back as an empty shim (#802) and came out again on 2026-08-14, once every
-  // repo in the fleet had been checked for the call and none made it.
   //
   // The canary rehearsal cannot cover this: it runs the worker THIS REF SHIPS, by
   // design, so it only ever exercises the new caller. This list is the substitute.
   // An entry leaves it one full cycle after the fleet vendors a worker without the
-  // call — not when this repo's own worker stops making it, and never on the strength
-  // of "nothing in this repo calls it" alone: read the vendored worker in the members.
-  //
-  // An export kept only for fielded callers gets an EXPIRY when it goes in — an entry
-  // in SHIMS below, naming the engine version by which someone must re-check the field
-  // — because a comment saying "remove this once the fleet catches up" is a comment
-  // nobody rereads, and a shim kept forever is indistinguishable from one still needed.
+  // call — read the members' vendored workers to know that, never this repo's own.
   const fielded = {
     'updates/terminals.mjs': ['terminalFor'],
     'updates/engine-update.mjs': ['engineUpdate'],
@@ -175,10 +167,12 @@ test('the flow surface a FIELDED worker calls stays callable, whatever this ref\
     }
   }
 
-  // The expiry register. Empty is the healthy state: the fleet is level with canon and
-  // nothing is being held alive for a stale caller. WHEN AN ENTRY FIRES, do not just
-  // bump the number — read a real member's vendored worker for the call, and if it is
-  // gone, delete the shim, its name from `fielded` above, and the entry.
+  // THE EXPIRY REGISTER, empty in the healthy state. An export kept alive only for
+  // stale callers gets an entry here when it goes in, because "remove this once the
+  // fleet catches up" as a comment is a reminder nobody rereads, and a shim kept
+  // forever is indistinguishable from one still needed. When an entry fires, do not
+  // bump the number: read a member's vendored worker, and if the call is gone delete
+  // the shim, its name from `fielded` above, and the entry.
   const { ENGINE_VERSION } = await import('../engine/version.mjs');
   const SHIMS = [];
   for (const s of SHIMS) {

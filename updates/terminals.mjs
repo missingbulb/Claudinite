@@ -69,26 +69,10 @@ export function terminalFor(outcome) {
 // staged workflow files and the migration record named in the reason, both of which
 // the session reads out of the repository like any other fact about it.
 
-// IT OUTLIVED ITS OWN DELETION ONCE, as a callable shim, and how that ended is the
-// part worth keeping. THE ASYMMETRY: a member's vendored WORKER is one cycle behind,
-// but the flows it loads come from a FRESH CANON CLONE — so canon-side code is
-// instantly current while the code CALLING it is instantly stale. #791 deleted this
-// export while every fielded worker still did:
-//
-//     const { terminalFor, applyStageBrief } = await load('updates/terminals.mjs');
-//     ...  brief: applyStageBrief({ packs: terminal.packs, branch }),
-//
-// on its `apply-stage` path, so the call threw after the PR was opened: the update
-// never completed, the mount never refreshed, and the member therefore never received
-// the worker that would stop calling it. A fleet-wide wedge on the first cycle, which
-// no canary rehearsal can catch — by design the rehearsal drives the worker THIS REF
-// SHIPS, so it exercises the new caller and never the fielded one.
-//
-// #802 restored it as an empty shim to unwedge the fleet, and it stayed until the
-// condition it named came true: no worker in the field calls it. Verified 2026-08-14
-// across all 14 repos — the canary and ten active members carry the current worker
-// (identical blob, no call), and the three dormant members (HelloWorldFlutterApp,
-// gRatio, EdFringeAllocator) carry no update worker at all, only retired baselining.
-// So the shim goes, at engine 3, ahead of the engine-5 expiry that was set to force
-// this decision if nobody made it. The rule it leaves behind is in the local pack's
-// RULES.md: empty an export, never remove one, until the field is checked.
+// EVERY EXPORT HERE IS A LIVE CROSS-VERSION API. A member's vendored worker is a cycle
+// stale, but the flows it loads come from a fresh canon clone — so removing an export
+// does not deprecate it, it breaks every worker already in the field on its next run,
+// and the canary rehearsal cannot see it (it drives the worker THIS ref ships). Empty
+// an export rather than removing one, and remove it only after reading the members'
+// vendored workers. `engine-tests/install.test.mjs` pins this surface and holds the
+// expiry register for anything kept alive that way.
