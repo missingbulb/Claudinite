@@ -484,3 +484,137 @@ test('parsed documents are parsed once per scan across the rule family', () => {
     assert.equal(reads.get('shared.json'), 1);
   } finally { cleanup(root); }
 });
+
+test('checkSections: requirePresent honors fences, case, and heading suffix words; {section} interpolates', () => {
+  const rule = patternRule({
+    ...meta('fx-sections-present'),
+    scanFiles: /(^|\/)page\.md$/,
+    checkSections: [{
+      sections: ['Alpha', 'Beta'],
+      requirePresent: { what: 'missing "## {section}"', fix: 'add {section}' },
+    }],
+  });
+  const root = makeRepo({ changed: { 'page.md':
+'# Title\n\n## alpha notes\n\ntext\n\n```\n## Beta\n```\n' } });
+  try {
+    const findings = rule.run(ctxOf(root));
+    assert.deepEqual(findings.map((f) => f.what), ['missing "## Beta"']);
+  } finally { cleanup(root); }
+});
+
+test('checkSections: requireFirstOnPage and forbidProseLines (continuations and blanks are not prose)', () => {
+  const rule = patternRule({
+    ...meta('fx-sections-first'),
+    scanFiles: /\.md$/,
+    checkSections: [{
+      section: 'Summary',
+      requireFirstOnPage: { what: 'opens with "## {first}"', fix: 'move it up' },
+      forbidProseLines: { what: 'prose: "{line}"', fix: 'bullets only' },
+    }],
+  });
+  const root = makeRepo({ changed: { 'page.md':
+'# Title\n\n## History\n\nold\n\n## Summary\n\n- fine bullet\n  wrapped continuation\n\nloose sentence\n' } });
+  try {
+    const findings = rule.run(ctxOf(root));
+    assert.deepEqual(findings.map((f) => f.what), ['opens with "## History"', 'prose: "loose sentence"']);
+    assert.equal(findings[1].line, 12);
+  } finally { cleanup(root); }
+});
+
+test('checkSections: eachBulletBlockMatches judges the bullet plus its continuations as one block', () => {
+  const rule = patternRule({
+    ...meta('fx-sections-block'),
+    scanFiles: /\.md$/,
+    checkSections: [{
+      section: 'Sources',
+      eachBulletBlockMatches: { pattern: /https?:\/\//, what: 'no URL: "{bullet}"', fix: 'cite it' },
+    }],
+  });
+  const root = makeRepo({ changed: { 'page.md':
+'## Sources\n\n- wrapped source\n  https://example.com\n- bare claim with no link\n' } });
+  try {
+    const findings = rule.run(ctxOf(root));
+    assert.deepEqual(findings.map((f) => [f.line, f.what]), [[5, 'no URL: "- bare claim with no link"']]);
+  } finally { cleanup(root); }
+});
+
+test('checkSections: eachBulletLeadsWithDate flags undated bullets and impossible calendar dates', () => {
+  const rule = patternRule({
+    ...meta('fx-sections-dated'),
+    scanFiles: /\.md$/,
+    checkSections: [{
+      section: 'Log',
+      eachBulletLeadsWithDate: {
+        whenUndated: { what: 'undated: "{bullet}"', fix: 'date it' },
+        whenNotRealDate: { what: '"{date}" is not real', fix: 'fix it' },
+      },
+      minBullets: { count: 1, what: 'empty log', fix: 'seed it' },
+    }],
+  });
+  const messy = makeRepo({ changed: { 'page.md':
+'## Log\n\n- **2026-07-15** fine\n- 2026-02-30 rolled over\n- no date here\n' } });
+  const empty = makeRepo({ changed: { 'page.md': '## Log\n\nprose only\n' } });
+  try {
+    const findings = rule.run(ctxOf(messy));
+    assert.deepEqual(findings.map((f) => f.what), ['"2026-02-30" is not real', 'undated: "- no date here"']);
+    assert.deepEqual(rule.run(ctxOf(empty)).map((f) => f.what), ['empty log']);
+  } finally { cleanup(messy); cleanup(empty); }
+});
+
+test('checkSections: maxBullets and maxBulletBlockLength cap the list; min wins over max at zero', () => {
+  const rule = patternRule({
+    ...meta('fx-sections-caps'),
+    scanFiles: /\.md$/,
+    checkSections: [{
+      section: 'Summary',
+      minBullets: { count: 1, what: 'no bullets', fix: 'add one' },
+      maxBullets: { count: 2, what: '{bullets} bullets (max 2)', fix: 'trim' },
+      maxBulletBlockLength: { characters: 30, what: '{characters} chars: "{bullet}…"', fix: 'shorten' },
+    }],
+  });
+  const over = makeRepo({ changed: { 'page.md':
+`## Summary\n\n- one\n- two\n- a bullet that runs well past the thirty character ceiling\n` } });
+  try {
+    const findings = rule.run(ctxOf(over));
+    assert.equal(findings[0].what, '59 chars: "- a bullet that runs well past the thirty character ceiling…"');
+    assert.equal(findings[1].what, '3 bullets (max 2)');
+  } finally { cleanup(over); }
+});
+
+test('checkSections: newestDatedBulletWithinDays uses ctx.now, discards far-future dates, and respects the boundary', () => {
+  const rule = patternRule({
+    ...meta('fx-sections-fresh'),
+    relevantWhen: { scanningWholeRepo: true },
+    scanFiles: /\.md$/,
+    checkSections: [{
+      section: 'Log',
+      newestDatedBulletWithinDays: { days: 45, what: '{age} days old ({date}), window {days}', fix: 'refresh' },
+    }],
+  });
+  const NOW = Date.UTC(2026, 6, 1); // 2026-07-01
+  const page = (entry) => makeRepo({ changed: { 'page.md': `## Log\n\n- ${entry} x\n` } });
+  const onWindow = page('2026-05-17');   // exactly 45 days before NOW
+  const stale = page('2026-05-16');      // 46 days
+  const typoFuture = makeRepo({ changed: { 'page.md':
+    '## Log\n\n- 2026-05-16 stale x\n- 2099-01-01 typo x\n' } }); // the future typo is discarded, so the stale entry still fires
+  try {
+    const at = (root) => { const ctx = ctxOf(root); ctx.now = NOW; return rule.run(ctx); };
+    assert.equal(at(onWindow).length, 0);
+    assert.deepEqual(at(stale).map((f) => f.what), ['46 days old (2026-05-16), window 45']);
+    assert.deepEqual(at(typoFuture).map((f) => f.what), ['46 days old (2026-05-16), window 45']);
+  } finally { cleanup(onWindow); cleanup(stale); cleanup(typoFuture); }
+});
+
+test('relevantWhen.scanningWholeRepo: the rule is inert under a --changed run', () => {
+  const rule = patternRule({
+    ...meta('fx-whole-repo-gate'),
+    relevantWhen: { scanningWholeRepo: true },
+    scanFiles: /\.md$/,
+    matchLines: [{ match: /bad/, what: 'w', fix: 'f' }],
+  });
+  const root = makeRepo({ changed: { 'a.md': 'bad\n' } });
+  try {
+    assert.equal(rule.run(buildContext({ root, mode: 'all' })).length, 1);
+    assert.equal(rule.run(buildContext({ root, mode: 'changed' })).length, 0);
+  } finally { cleanup(root); }
+});
