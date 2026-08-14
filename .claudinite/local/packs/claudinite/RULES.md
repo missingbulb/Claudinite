@@ -183,15 +183,15 @@ prose below).
   treat capture as part of the merge, not as an optional epilogue.
 - **Fail-soft SessionStart steps hide their own breakage fleet-wide — test the emitted
   output, not the exit code.** Every `engine/pack_loader/` SessionStart step
-  (`inject-pack-prose.mjs`, `mount-skills.mjs`, `env-requirements.mjs`) wraps its body in
+  (`run-pack-session-start.mjs`, `mount-skills.mjs`, `env-requirements.mjs`) wraps its body in
   `try { ... } catch {}` so a broken loader never blocks a session. That fail-soft is deliberate,
   but it means a runtime fault — a wrong dynamic-import target, a renamed module — exits 0 and
   simply emits nothing: no error, no signal. And because the engine is vendored verbatim into
   every member, one canon regression silently disables that step across the whole fleet at once.
   So a step like this must be guarded by a regression test that runs the real script against a
-  real corpus and asserts the **positive** effect — prose IS emitted — never merely that
+  real corpus and asserts the **positive** effect — the output IS emitted — never merely that
   `status === 0` (which fail-soft makes meaningless); see
-  `engine-tests/pack_loader/inject-pack-prose.test.mjs`.
+  `engine-tests/pack_loader/run-pack-session-start.test.mjs`.
 - **The nightly self-refresh cannot repair the vendor-set computation — pin operational
   files against the REAL canon tree.** Baselining's converge re-runs
   `vendoring/compute-vendor-set.mjs` from canon HEAD, so a bug *in that computation* is
