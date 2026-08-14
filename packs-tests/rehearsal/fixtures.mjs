@@ -385,6 +385,30 @@ NSApplication.shared.run()
     },
   },
   {
+    name: 'local-declared-checks',
+    why: 'a local pack carrying its own declared-checks.json — in a LEGACY spelling (checkParsedFile) and with in-cap messages: proves a member\'s declarations keep loading across vocabulary merges and stay green under declared-check-messages',
+    files: {
+      'README.md': '# fixture-declared\n\nA rehearsal fixture.\n',
+      '.claudinite-checks.json': checks(['basics', 'local/fixture-declared']),
+      '.claudinite/local/packs/fixture-declared/pack.mjs': PACK_PROSE_ONLY.replace(/fixture-prose/g, 'fixture-declared'),
+      '.claudinite/local/packs/fixture-declared/RULES.md': '# fixture-declared\n\nNo standing rules.\n',
+      '.claudinite/local/packs/fixture-declared/declared-checks.json': `${JSON.stringify([
+        {
+          id: 'fixture-declared-manifest',
+          severity: 'advisory',
+          failureMessage: 'a fixture declaration in the legacy checkParsedFile spelling',
+          checkParsedFile: [{
+            file: 'package.json',
+            whenFieldPresent: 'never.present',
+            requireField: 'never.required',
+            what: 'never fires',
+            fix: 'nothing to do',
+          }],
+        },
+      ], null, 2)}\n`,
+    },
+  },
+  {
     name: 'dormant',
     why: 'a declared-dormant member: its mount falls behind BY DESIGN, never a failure',
     files: {

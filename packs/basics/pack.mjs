@@ -7,6 +7,7 @@ import filePlacement from './file-placement.mjs';
 import squashMergeHistory from './squash-merge-history.mjs';
 import sharedConstants from './shared-constants.mjs';
 import rulesLineLength from './rules-line-length.mjs';
+import declaredCheckMessages from './declared-check-messages.mjs';
 
 // The baseline pack: cross-project working discipline, the task lifecycle, and
 // the general engineering skills. Declared explicitly like every other pack — no pack is active by
@@ -42,6 +43,7 @@ export default {
   worldRules: [
     markdownLinkLabels,
     rulesLineLength,
+    declaredCheckMessages,
     warningSuppression,
     filePlacement,
     sharedConstants,

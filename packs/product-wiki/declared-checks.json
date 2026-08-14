@@ -10,7 +10,7 @@
         "sections": ["Key insights", "Sources", "Growth log", "Open questions"],
         "requirePresent": {
           "what": "wiki page is missing its \"## {section}\" section",
-          "fix": "add it — every wiki page opens with the Key insights header, then carries the growth machinery: the citations list, the dated growth log, and the open-questions backlog (an empty \"## Open questions\" is valid)"
+          "fix": "add it — the reader header plus the growth machinery: citations, dated growth log, open-questions backlog (an empty \"## Open questions\" is valid)"
         }
       }
     ]
@@ -40,7 +40,7 @@
         "minBullets": {
           "count": 1,
           "what": "Key insights header carries no bullets",
-          "fix": "open the page with \"## Key insights\" — up to 7 bullets, each one finding stated plainly in a line (max 140 characters), together enough for a reader to understand what the research found without reading the body"
+          "fix": "open the page with \"## Key insights\": 1–7 bullets, each one finding stated plainly in a line (max 140 characters)"
         },
         "maxBullets": {
           "count": 7,
@@ -54,6 +54,7 @@
     "id": "product-wiki-growth-log",
     "severity": "blocking",
     "failureMessage": "undated or absent log entries break the audit trail and the freshness signal every other growth mechanism keys on",
+    "fix": "lead every growth-log bullet with the run date, e.g. \"- **2026-07-15** — what changed\"; append the seed entry when the page is first committed",
     "scanFiles": "/^product-wiki\\/.+\\/README\\.md$/",
     "excludeFiles": "/^product-wiki\\/(product-requirements|sample-data)\\//",
     "checkSections": [
@@ -61,18 +62,15 @@
         "section": "Growth log",
         "eachBulletLeadsWithDate": {
           "whenUndated": {
-            "what": "growth-log entry does not lead with its date: \"{bullet}\"",
-            "fix": "lead every growth-log bullet with the run date, e.g. \"- **2026-07-15** — what changed\"; append the seed entry when the page is first committed"
+            "what": "growth-log entry does not lead with its date: \"{bullet}\""
           },
           "whenNotRealDate": {
-            "what": "growth-log entry \"{date}\" is not a real calendar date",
-            "fix": "lead every growth-log bullet with the run date, e.g. \"- **2026-07-15** — what changed\"; append the seed entry when the page is first committed"
+            "what": "growth-log entry \"{date}\" is not a real calendar date"
           }
         },
         "minBullets": {
           "count": 1,
-          "what": "growth log has no dated entries",
-          "fix": "lead every growth-log bullet with the run date, e.g. \"- **2026-07-15** — what changed\"; append the seed entry when the page is first committed"
+          "what": "growth log has no dated entries"
         }
       }
     ]
@@ -107,7 +105,7 @@
         "newestDatedBulletWithinDays": {
           "days": 45,
           "what": "newest Growth log entry is {age} days old ({date}) — past the {days}-day freshness window",
-          "fix": "run a product-wiki growth pass (in-session: \"grow the product wiki\"; method: the canon's packs/product-wiki/tasks/wiki-growth/task.md, mounted under .claudinite/ in consumers), or confirm this repo's scheduler workflow is wired and the wiki-growth task is on its schedule; silence via rules: {\"product-wiki-freshness\": \"off\"}"
+          "fix": "run a growth pass (in-session: \"grow the product wiki\") or confirm the scheduler's wiki-growth task is wired; silence via rules: {\"product-wiki-freshness\": \"off\"}"
         }
       }
     ]

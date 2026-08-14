@@ -17,7 +17,7 @@
   {
     "id": "jwt-verify-pins-algorithms",
     "severity": "blocking",
-    "failureMessage": "without an allowlist the verification algorithm can come from the token's own header — the attacker writes that header, so they pick the algorithm (\"none\", or HS256 keyed with your published public key)",
+    "failureMessage": "without an allowlist the verification algorithm comes from the token's own header — the attacker writes that header, so they pick the algorithm",
     "scanFileClasses": ["javascriptFiles"],
     "excludeFileClasses": ["testFiles"],
     "matchLines": [

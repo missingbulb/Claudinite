@@ -80,6 +80,7 @@
     "id": "cer/readme-sections",
     "severity": "blocking",
     "failureMessage": "every extension repo documents install and release the same way, from the standard template",
+    "fix": "copy it from the README template in the release standard and fill in the repo values",
     "scanFiles": "README.md",
     "whenMissing": {
       "what": "missing",
@@ -88,13 +89,11 @@
     "checkEachFile": [
       {
         "require": "/^##\\s+Install\\b/m",
-        "what": "missing the standard \"## Install\" section",
-        "fix": "copy it from the README template in the release standard and fill in the repo values"
+        "what": "missing the standard \"## Install\" section"
       },
       {
         "require": "/^##\\s+Releasing\\b/m",
-        "what": "missing the standard \"## Releasing\" section",
-        "fix": "copy it from the README template in the release standard and fill in the repo values"
+        "what": "missing the standard \"## Releasing\" section"
       }
     ]
   }

@@ -5,7 +5,7 @@
     "failureMessage": "a secret in source ships with every clone and survives in git history forever, and an HMAC secret grants full token-MINTING power to anyone who reads it",
     "scanFileClasses": ["javascriptFiles", "pythonFiles"],
     "excludeFileClasses": ["testFiles"],
-    "fix": "load the secret from the environment or a secret store, and make it >= 32 random bytes (RFC 7518: an HMAC key at least as long as the hash output) — then rotate the committed one",
+    "fix": "load the secret from the environment or a secret store at >= 32 random bytes (RFC 7518), and rotate the committed one",
     "matchLines": [
       {
         "match": "/\\.(sign|verify)\\s*\\(\\s*[^,()]+,\\s*(['\"`])(?!\\s*\\2)[^'\"`]+\\2/",

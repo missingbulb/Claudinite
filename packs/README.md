@@ -12,7 +12,7 @@ vendored into every mount regardless of declaration, so a member session can see
 | Pack | Active when | Checks | Prose rules |
 |---|---|---|---|
 | <img src="core/badge.svg" width="18" height="18" alt=""> [core](core/README.md) | declared (seeded by `--init`, mandatory — pulled in via `basics` `requires`) | 9 (+1 contributed barrier) | ~8 (Claudinite's own surface) + the scheduled-task contract |
-| <img src="basics/badge.svg" width="18" height="18" alt=""> [basics](basics/README.md) | declared (seeded by `--init`) | 12 | ~8 (working-discipline + task-lifecycle) |
+| <img src="basics/badge.svg" width="18" height="18" alt=""> [basics](basics/README.md) | declared (seeded by `--init`) | 13 | ~8 (working-discipline + task-lifecycle) |
 | <img src="barriers/badge.svg" width="18" height="18" alt=""> [barriers](barriers/README.md) | declared (or pulled in via `requires`) | 1 | 0 (config-driven segregation) |
 | <img src="git-github/badge.svg" width="18" height="18" alt=""> [git-github](git-github/README.md) | pulled in via `basics` `requires` | 0 | 0 (2 skills: git-github-advanced, merge-to-main) |
 | <img src="grow_with_claudinite/badge.svg" width="18" height="18" alt=""> [grow_with_claudinite](grow_with_claudinite/README.md) | declared (seeded by `--init`, opt-out by removal) | 1 | growth member-side tasks (extract over activity + conversations / dedup / pack discovery / prose-to-checks) + in-session merge capture |
