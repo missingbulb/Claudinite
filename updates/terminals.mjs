@@ -69,35 +69,10 @@ export function terminalFor(outcome) {
 // staged workflow files and the migration record named in the reason, both of which
 // the session reads out of the repository like any other fact about it.
 
-// …EXCEPT THAT IT CANNOT SIMPLY BE DELETED, and this shim is the reason the fleet
-// still runs. THE ASYMMETRY THAT BITES HERE: a member's vendored WORKER is one cycle
-// behind, but the flows it loads come from a FRESH CANON CLONE — so canon-side code
-// is instantly current while the code CALLING it is instantly stale. Deleting an
-// export from this module does not deprecate it; it breaks every worker already in
-// the field, on its very next run.
-//
-// Every member in the fleet carries a worker doing:
-//
-//     const { terminalFor, applyStageBrief } = await load('updates/terminals.mjs');
-//     ...  brief: applyStageBrief({ packs: terminal.packs, branch }),
-//
-// on its `apply-stage` path — the path #797 now sends EVERY member down, because
-// every member's scheduler workflow is stale. Without this export that line throws
-// `applyStageBrief is not a function` after the PR is opened but before the run ends:
-// the update never completes, the mount never refreshes, so the member never receives
-// the worker that would stop calling it. A permanent wedge, fleet-wide, on the first
-// cycle.
-//
-// The canary rehearsal cannot see this: it deliberately runs the worker THIS REF
-// SHIPS against the canary's tree, so it exercises the new caller and never the old
-// one. The gate is right to do that — a change to the worker cannot be rehearsed by
-// the copy that predates it — but it means removing a flow-side export is a class of
-// break no rehearsal covers.
-//
-// So it stays until no worker in the fleet calls it: one full cycle after the members
-// vendor a worker that does not. It returns a string nothing reads (the payload key
-// it fed is no longer consumed), and it exists to be CALLABLE, not to be useful.
-export function applyStageBrief({ packs = [], branch = null } = {}) {
-  return `Apply the updated rules of: ${packs.join(', ') || '(none named)'}`
-    + `${branch ? ` on ${branch}` : ''}. See this task's task.md for what that means.`;
-}
+// EVERY EXPORT HERE IS A LIVE CROSS-VERSION API. A member's vendored worker is a cycle
+// stale, but the flows it loads come from a fresh canon clone — so removing an export
+// does not deprecate it, it breaks every worker already in the field on its next run,
+// and the canary rehearsal cannot see it (it drives the worker THIS ref ships). Empty
+// an export rather than removing one, and remove it only after reading the members'
+// vendored workers. `engine-tests/install.test.mjs` pins this surface and holds the
+// expiry register for anything kept alive that way.
