@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeDueTaskSlots, signalsUnion, runPrecondition, renderSummary, planRun, ensureLabels, parseOverrides, forcedTaskIds } from '../../engine/scheduler/run.mjs';
+import { computeDueTaskSlots, signalsUnion, runPrecondition, renderSummary, planRun, ensureLabels, parseOverrides, forcedTaskIds, existingIssuesViaSearch } from '../../engine/scheduler/run.mjs';
 import { DEFAULT_SCHEDULE } from '../../engine/scheduler/slots.mjs';
-import { SCHEDULER_LABELS, READY_LABEL } from '../../engine/scheduler/dispatch.mjs';
+import { SCHEDULER_LABELS, READY_LABEL, planDispatch } from '../../engine/scheduler/dispatch.mjs';
 
 const D = DEFAULT_SCHEDULE;
 
@@ -352,6 +352,36 @@ test('renderSummary lists each evaluated task with its verb and reason', () => {
   // The claim and the deferral it caused are both legible in the run's own summary.
   assert.match(summary, /- p\/d \[d2026-07-22\] \(exclusive\) create — new/);
   assert.match(summary, /- p\/e \[d2026-07-22\] defer — deferred — p\/d claimed this run exclusively/);
+});
+
+test('renderSummary leads with a lane held for triage, ahead of the precondition reason (#821)', () => {
+  const summary = renderSummary([
+    {
+      pack: 'basics', task: 'update', slotId: 'd2026-08-15', run: true, reason: 'the mount is a version behind',
+      dispatch: { action: 'suppress', escalated: true, reason: '2 unresolved escalations (#182, #190) on basics/update — held for triage, not running' },
+    },
+  ]);
+  assert.match(summary, /suppress — 2 unresolved escalations \(#182, #190\).*held for triage/);
+  assert.doesNotMatch(summary, /a version behind/);
+});
+
+// The projection the guard reads. planDispatch tells a live claim from a
+// `needs-human` terminal by LABEL, so a shell that drops labels re-creates the bug
+// with every pure test still green (#821).
+test('existingIssuesViaSearch carries each issue\'s labels through to the dispatch guard', async () => {
+  const gh = async () => ({
+    status: 200,
+    json: {
+      items: [
+        { number: 182, title: '[claudinite-task] basics/update d2026-08-13', state: 'open', labels: [{ name: 'needs-human' }] },
+        { number: 7, title: '[claudinite-task] basics/update-notes d2026-08-13', state: 'open', labels: [] },
+      ],
+    },
+  });
+  const rows = await existingIssuesViaSearch(gh, 'o/r', 'basics', 'update');
+  assert.deepEqual(rows, [{ number: 182, title: '[claudinite-task] basics/update d2026-08-13', state: 'open', labels: [{ name: 'needs-human' }] }]);
+  // …and the guard, fed that projection, files the next slot rather than stopping.
+  assert.equal(planDispatch({ existing: rows, pack: 'basics', task: 'update', slotId: 'd2026-08-14' }).action, 'create');
 });
 
 // ── parseOverrides ──────────────────────────────────────────────────────────

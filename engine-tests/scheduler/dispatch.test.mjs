@@ -150,6 +150,56 @@ test('planDispatch suppresses a new filing while any slot of the task is still o
   assert.equal(v.openIssue, 12);
 });
 
+// --- planDispatch: a terminal is not a claim (#821) ---
+// The guard suppresses on LIVE work. `needs-human` is a terminal awaiting a
+// person, so it must not stop the task — that is what left 13 tasks across 9
+// repos filing nothing, the oldest since 2026-07-23.
+test('planDispatch files the next slot while an escalated (needs-human) issue stays open', () => {
+  const existing = [{
+    number: 182, title: '[claudinite-task] basics/update d2026-08-13', state: 'open',
+    labels: [{ name: NEEDS_HUMAN_LABEL }],
+  }];
+  const v = planDispatch({ existing, pack: 'basics', task: 'update', slotId: 'd2026-08-14' });
+  assert.equal(v.action, 'create');
+});
+
+test('planDispatch still suppresses on a live claim — agent-running, or a just-filed issue with no labels yet', () => {
+  const claimed = [{
+    number: 12, title: '[claudinite-task] gcec/create-extractor h2026-07-22T13Z', state: 'open',
+    labels: [{ name: AGENT_RUNNING_LABEL }],
+  }];
+  assert.equal(planDispatch({ existing: claimed, pack: 'gcec', task: 'create-extractor', slotId: 'h2026-07-22T14Z' }).action, 'suppress');
+  // an issue filed seconds ago carries only its ready label — a claim about to happen
+  const armed = [{
+    number: 13, title: '[claudinite-task] gcec/create-extractor h2026-07-22T13Z', state: 'open',
+    labels: [{ name: READY_LABEL }],
+  }];
+  assert.equal(planDispatch({ existing: armed, pack: 'gcec', task: 'create-extractor', slotId: 'h2026-07-22T14Z' }).action, 'suppress');
+});
+
+test('planDispatch bounds the re-filing: escalations that accumulate unresolved stop the lane, and say so', () => {
+  const escalated = (number, slotId) => ({
+    number, title: `[claudinite-task] basics/update ${slotId}`, state: 'open',
+    labels: [{ name: NEEDS_HUMAN_LABEL }],
+  });
+  const existing = [escalated(182, 'd2026-08-13'), escalated(190, 'd2026-08-14')];
+  const v = planDispatch({ existing, pack: 'basics', task: 'update', slotId: 'd2026-08-15' });
+  assert.equal(v.action, 'suppress');
+  assert.equal(v.escalated, true); // held for triage, NOT "a session is working it"
+  assert.match(v.reason, /triage/);
+});
+
+test('planDispatch reports a live claim as a claim even when escalations are also open', () => {
+  const existing = [
+    { number: 182, title: '[claudinite-task] basics/update d2026-08-13', state: 'open', labels: [{ name: NEEDS_HUMAN_LABEL }] },
+    { number: 190, title: '[claudinite-task] basics/update d2026-08-14', state: 'open', labels: [{ name: AGENT_RUNNING_LABEL }] },
+  ];
+  const v = planDispatch({ existing, pack: 'basics', task: 'update', slotId: 'd2026-08-15' });
+  assert.equal(v.action, 'suppress');
+  assert.equal(v.openIssue, 190);
+  assert.notEqual(v.escalated, true);
+});
+
 test('planDispatch does not confuse a task whose name prefixes another (the trailing-space guard)', () => {
   // An open `extract-more` issue must not suppress `extract`, and vice versa.
   const existing = [{ number: 5, title: '[claudinite-task] gcec/extract-more h2026-07-22T13Z', state: 'open' }];
