@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup, writeFiles } from './helpers.mjs';
 import { buildContext } from '../engine/checks/helpers/repo-context.mjs';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { patternRule, loadDeclaredChecks } from '../engine/checks/helpers/pattern-rules.mjs';
@@ -665,6 +665,100 @@ test('a pattern key given a plain string names the key and the value it got', ()
     () => patternRule({ ...meta('fx-bad-regex'), scanFiles: '/[unterminated/' }),
     /"scanFiles" is not a valid regex/,
   );
+});
+
+test('an unknown spec key is an authoring error naming the key and its container', () => {
+  assert.throws(
+    () => patternRule({ ...meta('fx-unknown-top'), scanFiles: /\.txt$/, matchLine: [] }),
+    /"matchLine" is not a spec key.*matchLines/s,
+  );
+  assert.throws(
+    () => patternRule({
+      ...meta('fx-unknown-nested'), scanFiles: /\.txt$/,
+      matchLines: [{ match: /x/, unlesLineMatches: /y/, what: 'w', fix: 'f' }],
+    }),
+    /"unlesLineMatches" is not a key of "matchLines"/,
+  );
+  assert.throws(
+    () => patternRule({ id: 'fx-bad-severity', severity: 'fatal', failureMessage: 'm', scanFiles: /\.txt$/ }),
+    /severity/,
+  );
+});
+
+test('scanFileClasses and excludeFileClasses name shared file sets; an unknown class is an authoring error', () => {
+  const rule = patternRule({
+    ...meta('fx-classes'),
+    scanFileClasses: ['javascriptFiles', 'pythonFiles'],
+    excludeFileClasses: ['testFiles'],
+    matchLines: [{ match: /danger/, what: 'w', fix: 'f' }],
+  });
+  const root = makeRepo({ changed: {
+    'src/a.mjs': 'danger\n',
+    'src/b.py': 'danger\n',
+    'src/a.test.mjs': 'danger\n',
+    '__tests__/c.mjs': 'danger\n',
+    'notes.md': 'danger\n',
+  } });
+  try {
+    assert.deepEqual(rule.run(ctxOf(root)).map((f) => f.file).sort(), ['src/a.mjs', 'src/b.py']);
+  } finally { cleanup(root); }
+  assert.throws(
+    () => patternRule({ ...meta('fx-bad-class'), scanFileClasses: ['sourceFiles'] }),
+    /"sourceFiles" is not a file class.*javascriptFiles/s,
+  );
+});
+
+test('a rule-level fix is the default for every assertion missing its own', () => {
+  const rule = patternRule({
+    ...meta('fx-fix-default'),
+    fix: 'the one shared remedy',
+    scanFiles: /\.txt$/,
+    matchLines: [
+      { match: /alpha/, what: 'a' },
+      { match: /beta/, what: 'b', fix: 'a bespoke remedy' },
+    ],
+  });
+  const root = makeRepo({ changed: { 'a.txt': 'alpha\nbeta\n' } });
+  try {
+    assert.deepEqual(rule.run(ctxOf(root)).map((f) => [f.what, f.fix]),
+      [['a', 'the one shared remedy'], ['b', 'a bespoke remedy']]);
+  } finally { cleanup(root); }
+});
+
+test('scanIgnoringComments: comments are invisible to content assertions, strings are not, lines stay anchored', () => {
+  const rule = patternRule({
+    ...meta('fx-strip'),
+    scanFiles: /\.mjs$/,
+    scanIgnoringComments: true,
+    matchLines: [{ match: /forbiddenCall\(/, what: 'saw {match}', fix: 'f' }],
+  });
+  const root = makeRepo({ changed: { 'a.mjs':
+    '// forbiddenCall() in a comment\n/* forbiddenCall() in a block */\nconst u = "https://x//forbiddenCall(";\nforbiddenCall();\n' } });
+  try {
+    const findings = rule.run(ctxOf(root));
+    assert.deepEqual(findings.map((f) => f.line), [3, 4]);
+  } finally { cleanup(root); }
+});
+
+test('a skill\'s declared checks never scan the skill\'s own content, wherever it is mounted', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'declared-skill-'));
+  try {
+    const skillDir = join(dir, 'skills', 'my-skill');
+    mkdirSync(skillDir, { recursive: true });
+    writeFileSync(join(skillDir, 'declared-checks.json'), JSON.stringify([
+      { id: 'fx-self-exclude', severity: 'blocking', failureMessage: 'm',
+        scanFiles: '/\\.md$/', matchLines: [{ match: '/badToken/', what: 'w', fix: 'f' }] },
+    ]));
+    const [rule] = loadDeclaredChecks(skillDir);
+    const root = makeRepo({ changed: {
+      'skills/my-skill/SKILL.md': 'badToken\n',
+      'packs/p/skills/my-skill/SKILL.md': 'badToken\n',
+      'docs/real.md': 'badToken\n',
+    } });
+    try {
+      assert.deepEqual(rule.run(ctxOf(root)).map((f) => f.file), ['docs/real.md']);
+    } finally { cleanup(root); }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
 test('loadDeclaredChecks: a directory\'s declarations, compiled once; none where the file is absent', () => {

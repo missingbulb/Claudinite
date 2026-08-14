@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { finding } from './findings.mjs';
 import { parseYaml } from './minimal-yaml.mjs';
+import { stripComments } from './code-scanning.mjs';
 
 // The declarative pattern-check engine: a rule whose whole logic is "these
 // patterns over these files" is DECLARED as data — and data is JSON, not code.
@@ -35,9 +36,26 @@ import { parseYaml } from './minimal-yaml.mjs';
 // pattern rule the runner reaches pays for the whole family and the rest are
 // lookups. Regexes must be non-global (`.test` on a /g regex is stateful).
 //
+// Every key at every level is validated against the vocabulary at load — an
+// unknown key is an authoring error (a typo'd key would otherwise assert
+// nothing, silently), reported with the container's valid keys.
+//
 // The spec vocabulary — everything beyond the rule metadata is optional:
+//   fix                rule-level default: any assertion declaring `what` but
+//                      no `fix` of its own inherits this one (for rules whose
+//                      every assertion shares one remedy)
 //   scanFiles          which files the content assertions read: a RegExp over
 //                      repo paths, or one exact path (read directly)
+//   scanFileClasses    named shared file sets widening the scan scope (unioned
+//                      with a RegExp scanFiles): javascriptFiles, pythonFiles,
+//                      markdownFiles, workflowFiles, testFiles
+//   excludeFileClasses named shared file sets removed from scope (the same
+//                      class names — testFiles is the usual one)
+//   scanIgnoringComments  true = content assertions (matchLines, checkEachFile,
+//                      repoWide) read each file with its JS/TS comments blanked
+//                      (string-aware, line count preserved — code-scanning.mjs
+//                      stripComments), so a comment merely naming a forbidden
+//                      token never fires
 //   scanTracked        true = scan every git-tracked file (mode-independent);
 //                      default is ctx.files (the run's scanned set —
 //                      tracked+untracked minus vendored, and only the changed
@@ -158,10 +176,99 @@ import { parseYaml } from './minimal-yaml.mjs';
 const REGISTRY = [];
 const scans = new WeakMap();
 
+// The named file sets scanFileClasses/excludeFileClasses may reference —
+// shared here so every declaration means the same thing by "test files".
+const FILE_CLASSES = {
+  javascriptFiles: /\.(mjs|cjs|jsx?|mts|cts|tsx?)$/,
+  pythonFiles: /\.py$/,
+  markdownFiles: /\.md$/,
+  workflowFiles: /^\.github\/workflows\/[^/]+\.ya?ml$/,
+  testFiles: /(^|\/)(tests?|__tests__|__mocks__|spec|fixtures?)\/|\.(test|spec)\./,
+};
+
 const arr = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]);
 const fill = (tpl, vars) => tpl.replace(/\{(\w+)\}/g, (whole, key) => (key in vars ? String(vars[key]) : whole));
-const excluded = (path, exclude) =>
+const excludedByOne = (path, exclude) =>
   exclude != null && (exclude instanceof RegExp ? exclude.test(path) : path === exclude);
+const excluded = (path, exclude) =>
+  Array.isArray(exclude) ? exclude.some((e) => excludedByOne(path, e)) : excludedByOne(path, exclude);
+
+// --- spec-key validation ------------------------------------------------------
+// Every container key's allowed children. A key absent from this table is a
+// leaf (its value is never descended into); an unknown key inside a listed
+// container throws at load, so a typo cannot silently assert nothing.
+const MSG = ['what', 'fix'];
+const SPEC_KEYS = {
+  spec: ['id', 'severity', 'failureMessage', 'fix', 'scanFiles', 'scanTracked', 'excludeFiles',
+    'scanFileClasses', 'excludeFileClasses', 'scanIgnoringComments', 'relevantWhen', 'whenMissing',
+    'maxLines', 'skipLinesMatching', 'matchLines', 'checkEachFile', 'repoWide', 'requirePaths',
+    'listedInFile', 'coveredByGlobLine', 'checkParsedFile', 'equalParsedValues',
+    'forEachParsedEntry', 'checkKeyValueFile', 'checkSections'],
+  relevantWhen: ['pathExists', 'pathAbsent', 'trackedFileMatches', 'noTrackedFileMatches',
+    'exactlyOneTrackedFileMatches', 'someTrackedFileContains', 'scanningWholeRepo', 'repoContains'],
+  someTrackedFileContains: ['pathMatching', 'text'],
+  whenMissing: MSG,
+  maxLines: ['limit', ...MSG],
+  matchLines: ['match', 'unlessLineMatches', 'whenFileMatches', 'unlessFileMatches', ...MSG],
+  checkEachFile: ['relevantWhen', 'whenFileMatches', 'require', 'forbid', ...MSG],
+  repoWide: ['unlessSomeFileMatches', 'flagFilesMatching', 'neverFlagFiles', ...MSG],
+  requirePaths: ['path', ...MSG],
+  listedInFile: ['eachTrackedPathMatching', 'listFile', 'asText', ...MSG],
+  coveredByGlobLine: ['eachPathMatching', 'includeVendored', 'globFile', 'globLineMatching', ...MSG],
+  checkParsedFile: ['file', 'whenFieldPresent', 'requireField', 'forbidField', ...MSG],
+  equalParsedValues: ['first', 'second', 'whenSecondMissing', 'whenUnequal'],
+  first: ['file', 'filesMatching', 'whereFileContains', 'field'],
+  second: ['file', 'field'],
+  whenSecondMissing: MSG,
+  whenUnequal: MSG,
+  forEachParsedEntry: ['inFilesMatching', 'entriesAtField', 'whereFieldEquals', 'forbidValueInArray', ...MSG],
+  whereFieldEquals: ['field', 'equals'],
+  forbidValueInArray: ['atField', 'value', 'ignoreCase'],
+  checkKeyValueFile: ['file', 'keys', 'whenMissing', 'whenLineNotKeyValue', 'whenKeyUnknown', 'whenKeyMissing'],
+  whenLineNotKeyValue: MSG,
+  whenKeyUnknown: MSG,
+  whenKeyMissing: MSG,
+  checkSections: ['section', 'sections', 'requirePresent', 'requireFirstOnPage', 'forbidProseLines',
+    'eachBulletBlockMatches', 'eachBulletLeadsWithDate', 'minBullets', 'maxBullets',
+    'maxBulletBlockLength', 'newestDatedBulletWithinDays'],
+  requirePresent: MSG,
+  requireFirstOnPage: MSG,
+  forbidProseLines: MSG,
+  eachBulletBlockMatches: ['pattern', ...MSG],
+  eachBulletLeadsWithDate: ['whenUndated', 'whenNotRealDate'],
+  whenUndated: MSG,
+  whenNotRealDate: MSG,
+  minBullets: ['count', ...MSG],
+  maxBullets: ['count', ...MSG],
+  maxBulletBlockLength: ['characters', ...MSG],
+  newestDatedBulletWithinDays: ['days', ...MSG],
+};
+
+function validateSpecKeys(value, containerKey, where) {
+  if (Array.isArray(value)) { for (const v of value) validateSpecKeys(v, containerKey, where); return; }
+  const allowed = SPEC_KEYS[containerKey];
+  if (!allowed || value === null || typeof value !== 'object' || value instanceof RegExp) return;
+  for (const [k, v] of Object.entries(value)) {
+    if (!allowed.includes(k)) {
+      throw new Error(containerKey === 'spec'
+        ? `${where}: "${k}" is not a spec key — the vocabulary here is: ${allowed.join(', ')}`
+        : `${where}: "${k}" is not a key of "${containerKey}" — its keys are: ${allowed.join(', ')}`);
+    }
+    validateSpecKeys(v, k, where);
+  }
+}
+
+// Rule-level `fix` inherited by every assertion that declares `what` without a
+// `fix` of its own; the message-shaped sub-objects (whenMissing, whenUndated, …)
+// inherit the same way, since they are what/fix pairs too.
+function applyFixDefault(value, fix) {
+  if (Array.isArray(value)) { for (const v of value) applyFixDefault(v, fix); return; }
+  if (value === null || typeof value !== 'object' || value instanceof RegExp) return;
+  if (typeof value.what === 'string' && value.fix === undefined) value.fix = fix;
+  for (const [k, v] of Object.entries(value)) {
+    if (k !== 'what' && k !== 'fix') applyFixDefault(v, fix);
+  }
+}
 
 function relevant(ctx, when) {
   if (!when) return true;
@@ -442,10 +549,18 @@ function assertParsedShape(ctx, j, parsed) {
 
 // One file visited once for every subscribing rule: whole-text assertions and
 // repo-wide bookkeeping first, then a single walk of the lines shared by all
-// the rules' line assertions.
+// the rules' line assertions. A rule with scanIgnoringComments reads the
+// comment-blanked view of the same file (computed at most once per visit;
+// stripComments preserves line count, so both views' line numbers agree and
+// the markdown-section index stays on the raw text).
 function visit(ctx, subs, path, text) {
-  let split = null;
-  const lines = () => (split ??= text.split('\n'));
+  let strippedText = null;
+  const textFor = (j) => (j.spec.scanIgnoringComments ? (strippedText ??= stripComments(text)) : text);
+  let rawSplit = null;
+  let strippedSplit = null;
+  const lines = () => (rawSplit ??= text.split('\n'));
+  const linesFor = (j) => (j.spec.scanIgnoringComments
+    ? (strippedSplit ??= textFor(j).split('\n')) : lines());
   let mdIndex = null;
   const md = () => (mdIndex ??= markdownIndex(text));
   const lineJobs = [];
@@ -462,28 +577,29 @@ function visit(ctx, subs, path, text) {
     }
     for (const a of s.checkEachFile ?? []) {
       if (a.relevantWhen && !relevant(ctx, a.relevantWhen)) continue;
-      if (!arr(a.whenFileMatches).every((re) => re.test(text))) continue;
-      if (a.forbid ? a.forbid.test(text) : !a.require.test(text)) {
+      if (!arr(a.whenFileMatches).every((re) => re.test(textFor(j)))) continue;
+      if (a.forbid ? a.forbid.test(textFor(j)) : !a.require.test(textFor(j))) {
         j.out.push(finding(j.rule, { file: path, what: a.what, fix: a.fix }));
       }
     }
     for (const st of j.repoStates) {
-      if (st.a.unlessSomeFileMatches.test(text)) st.satisfied = true;
+      if (st.a.unlessSomeFileMatches.test(textFor(j))) st.satisfied = true;
       if (excluded(path, st.a.neverFlagFiles)) continue;
-      const group = st.a.flagFilesMatching.find((g) => g.every((re) => re.test(text)));
+      const group = st.a.flagFilesMatching.find((g) => g.every((re) => re.test(textFor(j))));
       if (group) {
-        const at = lines().findIndex((ln) => group[0].test(ln));
+        const at = linesFor(j).findIndex((ln) => group[0].test(ln));
         st.hits.push({ file: path, line: at === -1 ? null : at + 1, what: st.a.what, fix: st.a.fix });
       }
     }
     const eligible = (s.matchLines ?? []).filter((a) =>
-      arr(a.whenFileMatches).every((re) => re.test(text)) && !a.unlessFileMatches?.test(text));
-    if (eligible.length) lineJobs.push({ j, eligible });
+      arr(a.whenFileMatches).every((re) => re.test(textFor(j))) && !a.unlessFileMatches?.test(textFor(j)));
+    if (eligible.length) lineJobs.push({ j, eligible, viewLines: linesFor(j) });
   }
 
   if (!lineJobs.length) return;
-  lines().forEach((ln, i) => {
-    for (const { j, eligible } of lineJobs) {
+  for (let i = 0; i < lines().length; i++) {
+    for (const { j, eligible, viewLines } of lineJobs) {
+      const ln = viewLines[i];
       if (j.spec.skipLinesMatching?.test(ln)) continue;
       for (const a of eligible) {
         const m = ln.match(a.match);
@@ -495,7 +611,7 @@ function visit(ctx, subs, path, text) {
         break;
       }
     }
-  });
+  }
 }
 
 function results(ctx) {
@@ -543,14 +659,14 @@ function results(ctx) {
     visit(ctx, [j], j.spec.scanFiles, text);
   }
 
-  const swept = jobs.filter((j) => j.spec.scanFiles instanceof RegExp);
+  const swept = jobs.filter((j) => j.spec.scanMatchers.length);
   if (swept.length) {
     const scanned = new Set(ctx.files);
     const tracked = new Set(ctx.tracked);
     for (const path of [...ctx.files, ...ctx.tracked.filter((f) => !scanned.has(f))]) {
       const subs = swept.filter((j) =>
         (j.spec.scanTracked ? tracked : scanned).has(path) &&
-        j.spec.scanFiles.test(path) && !excluded(path, j.spec.excludeFiles));
+        j.spec.scanMatchers.some((re) => re.test(path)) && !excluded(path, j.spec.excludeMatchers));
       if (!subs.length) continue;
       const text = ctx.read(path);
       if (text !== null) visit(ctx, subs, path, text);
@@ -563,7 +679,7 @@ function results(ctx) {
     }
     const marker = j.spec.relevantWhen?.repoContains;
     if (marker && j.out.length &&
-        !ctx.files.some((f) => !excluded(f, j.spec.excludeFiles) && marker.test(ctx.read(f) ?? ''))) {
+        !ctx.files.some((f) => !excluded(f, j.spec.excludeMatchers) && marker.test(ctx.read(f) ?? ''))) {
       j.out.length = 0;
     }
   }
@@ -606,8 +722,36 @@ function compileSpec(value, key, where) {
   return out;
 }
 
-export function patternRule(declaration) {
-  const spec = compileSpec(declaration, null, `the declared check "${declaration.id}"`);
+export function patternRule(declaration, { selfExclude = null } = {}) {
+  const where = `the declared check "${declaration.id}"`;
+  if (typeof declaration.id !== 'string' || !declaration.id.trim()) {
+    throw new Error('a declared check needs a non-empty "id"');
+  }
+  if (declaration.severity !== 'blocking' && declaration.severity !== 'advisory') {
+    throw new Error(`${where}: severity must be "blocking" or "advisory", not ${JSON.stringify(declaration.severity)}`);
+  }
+  validateSpecKeys(declaration, 'spec', where);
+  const spec = compileSpec(declaration, null, where);
+  const classPatterns = (names) => (names ?? []).map((n) => {
+    if (!FILE_CLASSES[n]) {
+      throw new Error(`${where}: "${n}" is not a file class — the classes are: ${Object.keys(FILE_CLASSES).join(', ')}`);
+    }
+    return FILE_CLASSES[n];
+  });
+  const scanClasses = classPatterns(spec.scanFileClasses);
+  if (scanClasses.length && typeof spec.scanFiles === 'string') {
+    throw new Error(`${where}: scanFileClasses cannot combine with an exact-path scanFiles`);
+  }
+  // The normalized selection surface the scan reads: the sweep patterns
+  // (regex scanFiles + classes) and every exclusion (declared, class-named,
+  // and the loader-supplied self-exclusion) as flat lists.
+  spec.scanMatchers = [...(spec.scanFiles instanceof RegExp ? [spec.scanFiles] : []), ...scanClasses];
+  spec.excludeMatchers = [
+    ...(spec.excludeFiles != null ? [spec.excludeFiles] : []),
+    ...classPatterns(spec.excludeFileClasses),
+    ...(selfExclude ? [selfExclude] : []),
+  ];
+  if (typeof spec.fix === 'string') applyFixDefault(spec, spec.fix);
   const rule = {
     id: spec.id,
     severity: spec.severity,
@@ -623,6 +767,13 @@ export function patternRule(declaration) {
 // compiled into rules — none when the file is absent. Cached by path, so the
 // registry and a test asking the same directory share one set of rule objects
 // (two would each re-run the shared scan for the same assertions).
+//
+// A SKILL's declarations (a dir named `…/skills/<name>`) are compiled with a
+// structural self-exclusion — content under any `skills/<name>/` path segment
+// pair is out of every assertion's scope — so a skill's own SKILL.md examples
+// never trip its checks, in whichever tree the skill's content appears (the
+// canon's packs/<pack>/skills/, a root skills/ layout, a consumer's mounted
+// .claude/skills/ links), without each declaration hand-spelling the exclusion.
 const loaded = new Map();
 export function loadDeclaredChecks(dir) {
   const path = join(dir, 'declared-checks.json');
@@ -635,7 +786,9 @@ export function loadDeclaredChecks(dir) {
       if (!Array.isArray(raw)) throw new Error(`${path} must be an array of check declarations`);
       specs = raw;
     }
-    loaded.set(path, specs.map(patternRule));
+    const skillName = /(^|[\\/])skills[\\/]([^\\/]+)$/.exec(dir)?.[2];
+    const selfExclude = skillName ? new RegExp(`(^|/)skills/${escapeRe(skillName)}/`) : null;
+    loaded.set(path, specs.map((s) => patternRule(s, { selfExclude })));
   }
   return loaded.get(path);
 }
