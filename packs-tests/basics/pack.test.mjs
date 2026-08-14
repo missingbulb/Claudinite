@@ -7,12 +7,13 @@ import commentClassification from '../../packs/basics/comment-classification.mjs
 import referenceIntegrity from '../../packs/basics/reference-integrity.mjs';
 import linkLabels from '../../packs/basics/markdown-link-labels.mjs';
 import taskLifecycle from '../../packs/basics/task-lifecycle.mjs';
-import warningSuppression from '../../packs/basics/warning-suppression.mjs';
 import filePlacement from '../../packs/basics/file-placement.mjs';
 import squashMergeHistory from '../../packs/basics/squash-merge-history.mjs';
 import sharedConstants from '../../packs/basics/shared-constants.mjs';
 
 const claudeMdLength = declaredCheck('packs/basics', 'claude-md-length');
+const warningSuppression = declaredCheck('packs/basics', 'warning-suppression');
+const rulesLineLength = declaredCheck('packs/basics', 'rules-line-length');
 const generatedMergeDriver = declaredCheck('packs/basics', 'generated-merge-driver');
 const catalogCompleteness = declaredCheck('packs/basics', 'catalog-completeness');
 
@@ -237,6 +238,18 @@ test('warning-suppression: still flags a bare marker with only a rule code (no r
     const findings = run(warningSuppression, root, 'all');
     assert.equal(findings.length, 4); // one for a.py, one for b.js, two markers in c.js
     assert.ok(findings.every((f) => /no reason at the site/.test(f.what)));
+  } finally { cleanup(root); }
+});
+
+test('rules-line-length: one advisory per RULES.md whose lines run past 100 bytes', () => {
+  const root = makeRepo({ changed: {
+    'packs/demo/RULES.md': `- short rule\n- ${'x'.repeat(120)}\n`,
+    'docs/notes.md': `${'x'.repeat(120)}\n`,
+  } });
+  try {
+    const findings = rulesLineLength.run(buildContext({ root, mode: 'all' }));
+    assert.deepEqual(findings.map((f) => [f.file, f.line]), [['packs/demo/RULES.md', 2]]);
+    assert.match(findings[0].what, /1 line\(s\) over 100 bytes, longest 122/);
   } finally { cleanup(root); }
 });
 
