@@ -151,6 +151,16 @@
       "rule": "barrier",
       "path": ".github/workflows/canary-rehearsal.yml",
       "reason": "the live canary gate names packs/basics/tasks/update because the worker is ITSELF vendored content, so a release that changes the worker cannot be rehearsed by the canary's vendored copy — that copy predates the release by definition, and a rehearsal driving it would ignore CLAUDINITE_CANON_REF entirely and run a real cycle against main, opening a PR on the canary instead of qualifying the ref. The crossing buys the one property the gate exists for: the code under test is the code every member runs the moment the release reaches them. The workflow names no pack CONTENT — only the entry point of the task that performs the converge"
+    },
+    {
+      "rule": "file-placement",
+      "path": "engine/pack_loader/pack-registry.mjs",
+      "reason": "the registry discovers a pack's declared checks (declared-checks.json) beside its manifest and reaches the pattern-check engine that compiles them (engine/checks/helpers/pattern-rules.mjs) — imported lazily, only where a declaration file exists; one seam so every reader of a pack's rules (the runners, --list, the session summary) agrees on what the pack carries, rather than each re-deriving it"
+    },
+    {
+      "rule": "file-placement",
+      "path": "engine-tests/helpers.mjs",
+      "reason": "the shared test harness reaches the engine's declared-check loader so a pack test proves the SAME compiled rule object the runner runs, not a re-parse of the same JSON; a test file's own reach into the engine is exempt, and the harness they all share is that reach spelled once"
     }
   ],
   "taskScheduler": {

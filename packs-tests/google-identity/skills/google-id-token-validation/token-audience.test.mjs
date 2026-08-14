@@ -1,8 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, cleanup } from '../../../../engine-tests/helpers.mjs';
+import { makeRepo, cleanup, declaredCheck } from '../../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../../engine/checks/helpers/repo-context.mjs';
-import { tokenAudience } from '../../../../packs/google-identity/skills/google-id-token-validation/checks.mjs';
+
+const tokenAudience = declaredCheck('packs/google-identity/skills/google-id-token-validation', 'google-token-audience-pinned');
 
 // Co-located with the check it exercises (skills own their check-the-work rules).
 const run = (root) => tokenAudience.run(buildContext({ root, mode: 'all' }));

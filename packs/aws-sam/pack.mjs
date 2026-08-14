@@ -1,4 +1,3 @@
-import declaredChecks from './declared-checks.mjs';
 import handlerPath from './handler-path.mjs';
 
 // Three of the pack's gotchas now have structural checks (via the minimal YAML
@@ -15,5 +14,5 @@ export default {
   marker: 'a SAM template (template.yaml/.yml)',
   detect: (ctx) => ctx.tracked.includes('template.yaml') || ctx.tracked.includes('template.yml'),
   prose: 'RULES.md',
-  worldRules: [...declaredChecks, handlerPath],
+  worldRules: [handlerPath],
 };

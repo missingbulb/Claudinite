@@ -1,17 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, cleanup } from '../../engine-tests/helpers.mjs';
+import { makeRepo, cleanup, declaredCheck } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import secretsInJobIf from '../../packs/github-actions/secrets-in-job-if.mjs';
 import runPipefail from '../../packs/github-actions/run-pipefail.mjs';
 import checkoutSubmodules from '../../packs/github-actions/checkout-submodules.mjs';
-import {
-  scheduledFailureEscalation as scheduledEscalation,
-  labelCreateBeforeAdd as labelCreate,
-  uniqueAutomationBranch as uniqueBranch,
-  pagesArtifactSymlinks,
-  noScheduledFleetExecutor,
-} from '../../packs/github-actions/declared-checks.mjs';
+
+const scheduledEscalation = declaredCheck('packs/github-actions', 'gha/scheduled-failure-escalation');
+const labelCreate = declaredCheck('packs/github-actions', 'gha/label-create-before-add');
+const uniqueBranch = declaredCheck('packs/github-actions', 'gha/unique-automation-branch');
+const pagesArtifactSymlinks = declaredCheck('packs/github-actions', 'gha/pages-artifact-symlinks');
+const noScheduledFleetExecutor = declaredCheck('packs/github-actions', 'gha/no-scheduled-fleet-executor');
 
 const run = (rule, root) => rule.run(buildContext({ root, mode: 'all' }));
 const WF = '.github/workflows/x.yml';

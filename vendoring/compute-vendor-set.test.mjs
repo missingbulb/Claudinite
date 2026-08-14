@@ -41,6 +41,10 @@ function makeCanon({ packs = [], skills = [], packDirectory = true } = {}) {
   // engine roots: real-shaped content plus everything that must stay out
   writeAt(root, 'engine/checks/check_the_world.mjs', 'stub\n');
   writeAt(root, 'engine/checks/helpers/repo-context.mjs', 'stub\n');
+  // The pattern-check engine the registry reaches for when a pack carries
+  // declared-checks.json — a stub here: the fixture packs declare none, but the
+  // set's import-closure guard still resolves the registry's reference to it.
+  writeAt(root, 'engine/checks/helpers/pattern-rules.mjs', 'stub\n');
   writeAt(root, 'engine/checks/README.md', 'canon doc\n');
   // engine/scheduler: an OPERATIONAL doc the consumer reads at runtime (vendored,
   // despite .md) beside a maintainer doc (excluded like every other engine .md).
@@ -110,6 +114,7 @@ test('structural set: engine roots + machinery + declared pack + its skills, exa
   const expected = [
     'engine/checks/helpers/repo-context.mjs',
     'engine/checks/helpers/module-imports.mjs',
+    'engine/checks/helpers/pattern-rules.mjs',
     'engine/checks/helpers/active-migrations.mjs',
     'engine/checks/check_the_world.mjs',
     'engine/hooks/session-start-command.sh',

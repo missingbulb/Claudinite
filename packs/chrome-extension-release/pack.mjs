@@ -1,6 +1,5 @@
 import { workflowFiles } from '../../engine/checks/helpers/github-workflows.mjs';
 import releaseWorkflows, { STUB_NAME, LEGACY_STUB_NAMES, LEGACY_CREATE_PACKAGE, VENDORED_CREATE_PACKAGE } from './release-workflows.mjs';
-import declaredChecks from './declared-checks.mjs';
 import privacyPermissionAlignment from './privacy-permission-alignment.mjs';
 import permissionAddedStoreIssue from './permission-added-store-issue.mjs';
 
@@ -54,7 +53,6 @@ export default {
   prose: null,
   worldRules: [
     releaseWorkflows,
-    ...declaredChecks,
     privacyPermissionAlignment,
   ],
   // Judges the change: a permission added in THIS diff needs its store issue.

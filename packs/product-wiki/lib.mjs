@@ -1,23 +1,21 @@
 import { finding } from '../../engine/checks/helpers/findings.mjs';
 
-// The standard's path constants and the wiki-page classifier — spelled ONCE
-// here so the checks, the manifest, and the barrier can't drift apart. The wiki
-// set is STRUCTURAL, not configured: a wiki page is a README.md at depth >= 2
-// under product-wiki/, outside the two reserved subtrees (product-requirements/
-// — the human-reviewed sink — and sample-data/ — illustrative assets). No wikis
-// manifest exists anywhere, so a renamed or newly added wiki folder is
-// classified correctly with nothing to drift (folder-is-the-classifier).
-// The section/bullet/date grammar the page checks assert lives in the
-// declarative engine (engine/checks/helpers/pattern-rules.mjs, checkSections) —
-// one grammar there, so the checks that share it can never disagree about it.
+// The standard's path constants — spelled ONCE here so the manifest, the
+// barrier, and the layout check can't drift apart. The wiki set is STRUCTURAL,
+// not configured: a wiki page is a README.md at depth >= 2 under product-wiki/,
+// outside the two reserved subtrees (product-requirements/ — the human-reviewed
+// sink — and sample-data/ — illustrative assets). No wikis manifest exists
+// anywhere, so a renamed or newly added wiki folder is classified correctly with
+// nothing to drift (folder-is-the-classifier). That classifier and the
+// section/bullet/date grammar the page checks assert live in declared-checks.json
+// beside this file, run by the declarative engine
+// (engine/checks/helpers/pattern-rules.mjs) — one grammar there, so the checks
+// that share it can never disagree about it.
 export const PRODUCT_ROOT = 'product-wiki';
 export const SINK_DIR = 'product-wiki/product-requirements';
 export const SAMPLE_DATA_DIR = 'product-wiki/sample-data';
 export const INDEX_README = 'product-wiki/README.md';
 export const SINK_README = 'product-wiki/product-requirements/README.md';
-
-export const WIKI_PAGE = /^product-wiki\/.+\/README\.md$/;
-export const WIKI_RESERVED = /^product-wiki\/(product-requirements|sample-data)\//;
 
 // The pack takes no config — the product-wiki/ layout IS the standard. A config
 // object on the pack entry is a settings mistake (probably a misremembered

@@ -1,15 +1,32 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { finding } from './findings.mjs';
 import { parseYaml } from './minimal-yaml.mjs';
 
 // The declarative pattern-check engine: a rule whose whole logic is "these
-// patterns over these files" is DECLARED as data — `patternRule(spec)` compiles
-// the spec into an ordinary `{ id, severity, description, doc, why, run(ctx) }`
-// rule module the runner treats like any other. The engine owns only the
-// walking (the mechanism/policy line line-scanning.mjs draws): every pattern,
-// file filter, and failure text stays in the declaring spec. Spec keys are
-// deliberately wordy — a declaration must read as the whole check without this
-// header — and a declaration carries no comments: the pattern plus its
-// what/why/fix text IS the check.
+// patterns over these files" is DECLARED as data — and data is JSON, not code.
+// A pack's declarations live in `packs/<pack>/declared-checks.json` (a skill's
+// in `<pack>/skills/<name>/declared-checks.json`), an array of specs the pack
+// registry discovers structurally and compiles here into ordinary
+// `{ id, severity, why, run(ctx) }` rule objects the runner treats like any
+// other. Nothing wires them: dropping a declaration into the file adds it.
+//
+// The format admits no comments — the pattern plus its failureMessage/what/fix
+// text IS the check — and no prose pointers: a declaration states its own case
+// or it isn't finished. So a spec carries exactly:
+//   id              the rule id settings and findings name it by
+//   severity        'blocking' | 'advisory'
+//   failureMessage  why this matters, printed on every finding the rule makes
+//   …the assertions below, each with the `what` and `fix` it fails with
+//
+// REGEXES ARE STRINGS in `/body/flags` form — "/^\\s*schedule:/m" — compiled at
+// load. Keys that accept a path instead (scanFiles, excludeFiles, pathExists)
+// read any other string as an exact repo path; at every other pattern key a
+// string that is not in `/…/` form is an authoring error, reported as one.
+// The engine owns only the walking (the mechanism/policy line line-scanning.mjs
+// draws): every pattern, file filter, and failure text stays in the declaration.
+// Spec keys are deliberately wordy — a declaration must read as the whole check
+// without this header.
 //
 // Built for MANY such rules at once: however many pattern rules a run holds,
 // the engine makes ONE pass over the scanned tree — each file is read once and
@@ -553,16 +570,72 @@ function results(ctx) {
   return res;
 }
 
-export function patternRule(spec) {
+// Where a declaration says RegExp: keys reading `/body/flags` strings. The two
+// sets differ in what a NON-regex string means — a path at PATH_OR_PATTERN_KEYS
+// (scanFiles: "README.md" is read directly), an authoring error anywhere else.
+const PATH_OR_PATTERN_KEYS = new Set(['scanFiles', 'excludeFiles']);
+const PATTERN_KEYS = new Set([
+  'skipLinesMatching', 'match', 'unlessLineMatches', 'whenFileMatches', 'unlessFileMatches',
+  'require', 'forbid', 'trackedFileMatches', 'noTrackedFileMatches', 'exactlyOneTrackedFileMatches',
+  'pathMatching', 'text', 'repoContains', 'unlessSomeFileMatches', 'flagFilesMatching',
+  'neverFlagFiles', 'eachTrackedPathMatching', 'eachPathMatching', 'globLineMatching',
+  'filesMatching', 'whereFileContains', 'inFilesMatching', 'pattern',
+]);
+const RE_FORM = /^\/(.*)\/([dgimsuvy]*)$/s;
+
+// Compile a spec's pattern strings in place of their keys, leaving every other
+// value (paths, field names, failure text, numbers) exactly as declared. A real
+// RegExp passes through, so a spec built in code — the engine's own tests — is
+// the same object either way.
+function compileSpec(value, key, where) {
+  if (Array.isArray(value)) return value.map((v) => compileSpec(v, key, where));
+  if (value === null || value instanceof RegExp) return value;
+  if (typeof value === 'string') {
+    if (!PATTERN_KEYS.has(key) && !PATH_OR_PATTERN_KEYS.has(key)) return value;
+    const form = RE_FORM.exec(value);
+    if (!form) {
+      if (PATH_OR_PATTERN_KEYS.has(key)) return value;
+      throw new Error(`${where}: "${key}" takes a regex in /pattern/flags form, not ${JSON.stringify(value)}`);
+    }
+    try { return new RegExp(form[1], form[2]); }
+    catch (e) { throw new Error(`${where}: "${key}" is not a valid regex — ${e.message}`); }
+  }
+  if (typeof value !== 'object') return value;
+  const out = {};
+  for (const [k, v] of Object.entries(value)) out[k] = compileSpec(v, k, where);
+  return out;
+}
+
+export function patternRule(declaration) {
+  const spec = compileSpec(declaration, null, `the declared check "${declaration.id}"`);
   const rule = {
     id: spec.id,
     severity: spec.severity,
-    description: spec.description,
-    doc: spec.doc,
-    why: spec.why,
+    why: spec.failureMessage,
     spec,
     run(ctx) { return results(ctx).get(rule); },
   };
   REGISTRY.push(rule);
   return rule;
+}
+
+// A directory's declared checks: `<dir>/declared-checks.json`, an array of specs
+// compiled into rules — none when the file is absent. Cached by path, so the
+// registry and a test asking the same directory share one set of rule objects
+// (two would each re-run the shared scan for the same assertions).
+const loaded = new Map();
+export function loadDeclaredChecks(dir) {
+  const path = join(dir, 'declared-checks.json');
+  if (!loaded.has(path)) {
+    let specs = [];
+    if (existsSync(path)) {
+      let raw;
+      try { raw = JSON.parse(readFileSync(path, 'utf8')); }
+      catch (e) { throw new Error(`${path} is not valid JSON: ${e.message}`); }
+      if (!Array.isArray(raw)) throw new Error(`${path} must be an array of check declarations`);
+      specs = raw;
+    }
+    loaded.set(path, specs.map(patternRule));
+  }
+  return loaded.get(path);
 }

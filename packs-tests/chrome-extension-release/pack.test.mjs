@@ -1,17 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, cleanup } from '../../engine-tests/helpers.mjs';
+import { makeRepo, cleanup, declaredCheck } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import { runRule } from '../../engine/checks/helpers/work.mjs';
 import releasePack from '../../packs/chrome-extension-release/pack.mjs';
 import releaseWorkflows from '../../packs/chrome-extension-release/release-workflows.mjs';
-import {
-  templateTokens,
-  releaseConfig,
-  versionSync,
-  releaseLayout,
-  readmeSections,
-} from '../../packs/chrome-extension-release/declared-checks.mjs';
+
+const templateTokens = declaredCheck('packs/chrome-extension-release', 'cer/template-tokens');
+const releaseConfig = declaredCheck('packs/chrome-extension-release', 'cer/release-config');
+const versionSync = declaredCheck('packs/chrome-extension-release', 'cer/version-sync');
+const releaseLayout = declaredCheck('packs/chrome-extension-release', 'cer/release-layout');
+const readmeSections = declaredCheck('packs/chrome-extension-release', 'cer/readme-sections');
 import privacyPermissionAlignment from '../../packs/chrome-extension-release/privacy-permission-alignment.mjs';
 import permissionAddedStoreIssue from '../../packs/chrome-extension-release/permission-added-store-issue.mjs';
 

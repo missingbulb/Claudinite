@@ -1,8 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, cleanup } from '../../../../engine-tests/helpers.mjs';
+import { makeRepo, cleanup, declaredCheck } from '../../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../../engine/checks/helpers/repo-context.mjs';
-import { captureReleasedOnPagehide } from '../../../../packs/web-speech/skills/web-speech-io/checks.mjs';
+
+const captureReleasedOnPagehide = declaredCheck('packs/web-speech/skills/web-speech-io', 'web-speech-capture-released-on-pagehide');
 
 // Co-located with the check it exercises. check-the-world: the whole tracked
 // source is the scope, so the fixtures run in mode 'all'.

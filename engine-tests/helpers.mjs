@@ -1,7 +1,11 @@
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { loadDeclaredChecks } from '../engine/checks/helpers/pattern-rules.mjs';
+
+const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
 const GIT_ENV = {
   ...process.env,
@@ -80,6 +84,17 @@ export function makeTranscript(entries) {
   const path = join(dir, 'session.jsonl');
   writeFileSync(path, entries.map((e) => JSON.stringify(e)).join('\n') + '\n');
   return { path, cleanup: () => rmSync(dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 }) };
+}
+
+// One declared check, by rule id, out of a pack's or skill's declared-checks.json
+// — the test-side counterpart to the registry's structural discovery, so a test
+// proves the same compiled rule object the runner runs. `dir` is repo-relative
+// (`packs/aws-sam`). An unknown id is the test's bug, not a silent undefined.
+export function declaredCheck(dir, id) {
+  const rules = loadDeclaredChecks(join(repoRoot, dir));
+  const rule = rules.find((r) => r.id === id);
+  if (!rule) throw new Error(`${dir}/declared-checks.json declares no rule "${id}" (it has: ${rules.map((r) => r.id).join(', ')})`);
+  return rule;
 }
 
 export function cleanup(root) {

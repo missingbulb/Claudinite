@@ -235,6 +235,46 @@ test('discoverPacks: gathers a local pack\'s bundled skill-owned checks', async 
   }
 });
 
+test('discoverPacks: a pack\'s declared-checks.json rides its world rules, a skill\'s its skill checks', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'claudinite-declared-'));
+  const packDir = join(root, '.claudinite', 'local_packs', 'proj');
+  mkdirSync(join(packDir, 'skills', 'thing'), { recursive: true });
+  writeFileSync(join(packDir, 'pack.mjs'), `export default { id: 'proj', worldRules: [], skills: ['thing'], ruleRoutingGuidance: { belongs: 'whatever proj owns', excludes: 'whatever proj does not' } };`);
+  writeFileSync(join(packDir, 'declared-checks.json'), JSON.stringify([
+    { id: 'proj-declared', severity: 'blocking', failureMessage: 'it matters', scanFiles: '/\\.txt$/', matchLines: [{ match: '/bad/', what: 'w', fix: 'f' }] },
+  ]));
+  writeFileSync(join(packDir, 'skills', 'thing', 'declared-checks.json'), JSON.stringify([
+    { id: 'proj-thing-declared', severity: 'advisory', failureMessage: 'it matters too', scanFiles: '/\\.txt$/', matchLines: [{ match: '/bad/', what: 'w', fix: 'f' }] },
+  ]));
+  try {
+    const { packs, errors } = await discoverPacks({ localRoot: root });
+    const local = packs.find((p) => p.id === 'proj');
+    assert.deepEqual(errors, []);
+    // The declaration is discovered structurally — nothing in the manifest names
+    // it — and lands in the pack's rules stamped world scope, like a listed one.
+    assert.deepEqual(local.rules.map((r) => [r.id, r.scope]), [['proj-declared', 'world']]);
+    assert.equal(local.rules[0].why, 'it matters');
+    assert.deepEqual(local.skillChecks.map((r) => r.id), ['proj-thing-declared']);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('discoverPacks: a broken declared-checks.json is reported, and the pack still loads', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'claudinite-declared-broken-'));
+  const packDir = join(root, '.claudinite', 'local_packs', 'proj');
+  mkdirSync(packDir, { recursive: true });
+  writeFileSync(join(packDir, 'pack.mjs'), `export default { id: 'proj', worldRules: [], ruleRoutingGuidance: { belongs: 'whatever proj owns', excludes: 'whatever proj does not' } };`);
+  writeFileSync(join(packDir, 'declared-checks.json'), '{ not json');
+  try {
+    const { packs, errors } = await discoverPacks({ localRoot: root });
+    assert.ok(packs.some((p) => p.id === 'proj'), 'the pack loads without its declarations');
+    assert.ok(errors.some((e) => /declared checks in .*proj failed to load/.test(e.what)), JSON.stringify(errors));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('loadPacks: thin array wrapper over discoverPacks', async () => {
   const packs = await loadPacks();
   assert.ok(Array.isArray(packs));

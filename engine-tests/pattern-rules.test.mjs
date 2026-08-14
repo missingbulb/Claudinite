@@ -2,14 +2,15 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup, writeFiles } from './helpers.mjs';
 import { buildContext } from '../engine/checks/helpers/repo-context.mjs';
-import { patternRule } from '../engine/checks/helpers/pattern-rules.mjs';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { patternRule, loadDeclaredChecks } from '../engine/checks/helpers/pattern-rules.mjs';
 
 // The declarative engine's own contract, proven over fixture rules — the pack
 // declarations built on it are proven by their packs' existing tests.
 const ctxOf = (root) => buildContext({ root, mode: 'all' });
-const meta = (id) => ({
-  id, severity: 'blocking', description: `fixture ${id}`, doc: 'engine/checks/README.md', why: 'fixture',
-});
+const meta = (id) => ({ id, severity: 'blocking', failureMessage: `fixture ${id} matters` });
 
 test('matchLines: match + unlessLineMatches, {match} templating, 1-indexed anchor', () => {
   const rule = patternRule({
@@ -617,4 +618,72 @@ test('relevantWhen.scanningWholeRepo: the rule is inert under a --changed run', 
     assert.equal(rule.run(buildContext({ root, mode: 'all' })).length, 1);
     assert.equal(rule.run(buildContext({ root, mode: 'changed' })).length, 0);
   } finally { cleanup(root); }
+});
+
+// --- the JSON declaration surface --------------------------------------------
+
+test('a declaration is JSON: /pattern/flags strings compile, other strings stay literal', () => {
+  const rule = patternRule(JSON.parse(JSON.stringify({
+    id: 'fx-json', severity: 'blocking', failureMessage: 'json rules load',
+    scanFiles: 'a.txt',
+    matchLines: [{ match: '/^\\s*BAD/m', what: 'saw {match}', fix: 'f' }],
+  })));
+  assert.ok(rule.spec.matchLines[0].match instanceof RegExp);
+  assert.equal(rule.spec.matchLines[0].match.flags, 'm');
+  assert.equal(rule.spec.scanFiles, 'a.txt');
+  const root = makeRepo({ changed: { 'a.txt': 'fine\n  BAD line\n' } });
+  try {
+    const findings = rule.run(ctxOf(root));
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].line, 2);
+  } finally { cleanup(root); }
+});
+
+test('failureMessage is what the finding says; a declaration carries no description or doc', () => {
+  const rule = patternRule({
+    ...meta('fx-message'),
+    scanFiles: /\.txt$/,
+    matchLines: [{ match: /bad/, what: 'w', fix: 'f' }],
+  });
+  assert.equal(rule.why, 'fixture fx-message matters');
+  assert.equal(rule.description, undefined);
+  assert.equal(rule.doc, undefined);
+  const root = makeRepo({ changed: { 'a.txt': 'bad\n' } });
+  try {
+    const [f] = rule.run(ctxOf(root));
+    assert.equal(f.why, 'fixture fx-message matters');
+    assert.equal(f.doc, undefined);
+  } finally { cleanup(root); }
+});
+
+test('a pattern key given a plain string names the key and the value it got', () => {
+  assert.throws(
+    () => patternRule({ ...meta('fx-bad-pattern'), scanFiles: /\.txt$/, matchLines: [{ match: 'bad', what: 'w', fix: 'f' }] }),
+    /"match" takes a regex in \/pattern\/flags form, not "bad"/,
+  );
+  assert.throws(
+    () => patternRule({ ...meta('fx-bad-regex'), scanFiles: '/[unterminated/' }),
+    /"scanFiles" is not a valid regex/,
+  );
+});
+
+test('loadDeclaredChecks: a directory\'s declarations, compiled once; none where the file is absent', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'declared-checks-'));
+  try {
+    assert.deepEqual(loadDeclaredChecks(join(dir, 'empty')), []);
+    writeFileSync(join(dir, 'declared-checks.json'), JSON.stringify([
+      { id: 'fx-declared-a', severity: 'advisory', failureMessage: 'a', scanFiles: '/\\.txt$/', matchLines: [{ match: '/bad/', what: 'w', fix: 'f' }] },
+      { id: 'fx-declared-b', severity: 'blocking', failureMessage: 'b', scanFiles: 'CLAUDE.md', maxLines: { limit: 1, what: '{lines}', fix: 'f' } },
+    ]));
+    const rules = loadDeclaredChecks(dir);
+    assert.deepEqual(rules.map((r) => r.id), ['fx-declared-a', 'fx-declared-b']);
+    assert.deepEqual(rules.map((r) => r.severity), ['advisory', 'blocking']);
+    // Compiled once: a second read hands back the same rule objects, so the
+    // registry and a test asking for the same declaration share one scan.
+    assert.equal(loadDeclaredChecks(dir)[0], rules[0]);
+    const root = makeRepo({ changed: { 'a.txt': 'bad\n' } });
+    try {
+      assert.deepEqual(rules[0].run(ctxOf(root)).map((f) => f.file), ['a.txt']);
+    } finally { cleanup(root); }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });
