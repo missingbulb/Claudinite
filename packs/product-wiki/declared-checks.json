@@ -1,5 +1,21 @@
 [
   {
+    "id": "product-wiki-isolation",
+    "severity": "blocking",
+    "failureMessage": "the wikis are agent-rewritten, loosely-sourced research — code, tests and docs that silently depend on them inherit unreviewed churn",
+    "fix": "depend on product-wiki/product-requirements (the one reviewed crossing point), remove the reference, or accept it with a reason in .claudinite-checks.json (rule \"product-wiki-isolation\")",
+    "forbidReferences": [
+      {
+        "from": ".",
+        "to": "product-wiki/*",
+        "allow": ["product-wiki/product-requirements"],
+        "matchUniqueFilenames": false,
+        "except": ["product-wiki", ".claudinite-checks.json"],
+        "reason": "the self-growing product wikis and their sample data are autonomous research the repo must not depend on; product-wiki/product-requirements is the one reviewed crossing point"
+      }
+    ]
+  },
+  {
     "id": "product-wiki-page-sections",
     "severity": "blocking",
     "failureMessage": "the sections are the page's reader header plus the wiki's audit trail and backlog — without them compile-once/refine-in-place degrades to unsourced, unreviewable rewrites nobody can read at a glance",

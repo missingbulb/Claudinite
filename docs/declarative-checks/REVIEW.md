@@ -194,7 +194,9 @@ whole family costs ~35ms — adding declared rules is nearly free, which is the 
 conversion program needs. Two boosts are worth taking; both are localized:
 
 1. **The `barrier` scan re-derives per-line candidates once per edge** (274ms, 61% of rule time).
-   [packs/barriers/engine.mjs](../../packs/barriers/engine.mjs) runs `candidatesOn(line)` (two
+   the barrier engine (at review time `packs/barriers/engine.mjs`; since moved to
+   [engine/checks/helpers/reference-scanning.mjs](../../engine/checks/helpers/reference-scanning.mjs))
+   runs `candidatesOn(line)` (two
    regex sweeps) and `resolveRef` per candidate inside `scanEdge`, so a `siblings` edge — expanded
    to one sub-edge per child directory — and any overlapping edges recompute identical extraction.
    Candidates depend only on the line; caching extraction per file (as the pattern engine caches

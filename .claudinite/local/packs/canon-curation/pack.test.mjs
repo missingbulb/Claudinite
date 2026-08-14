@@ -1,10 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { fileURLToPath } from 'node:url';
 import { makeRepo, cleanup } from '../../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../../engine/checks/helpers/repo-context.mjs';
+import { loadDeclaredChecks } from '../../../../engine/checks/helpers/pattern-rules.mjs';
 import noEnforcementNarration from './no-enforcement-narration.mjs';
-import canonCuration from './pack.mjs';
-import { contributedBarrierRules } from '../../../../packs/barriers/contributed.mjs';
 
 const run = (root) => noEnforcementNarration.run(buildContext({ root, mode: 'all' }));
 
@@ -71,11 +71,11 @@ test('pack-no-enforcement-narration: a prose-less pack contributes nothing', () 
   } finally { cleanup(root); }
 });
 
-// --- pack-independence (contributed barrier) ---------------------------------
-// Built through the real path: this pack's manifest contributes it as DATA and
-// the barriers pack builds the rule — packs-tree segregation is barriers
-// configuration only, no code here checks anything.
-const packIndependence = contributedBarrierRules([{ ...canonCuration, local: true }])
+// --- pack-independence (declared barrier) ------------------------------------
+// Built through the real path: a forbidReferences entry in this pack's own
+// declared-checks.json, compiled by the declarative engine — packs-tree
+// segregation is barrier data only, no code here checks anything.
+const packIndependence = loadDeclaredChecks(fileURLToPath(new URL('.', import.meta.url)))
   .find((r) => r.id === 'pack-independence');
 
 test('pack-independence: a cross-pack import fires; own files, the engine surface, and prose stay open', () => {

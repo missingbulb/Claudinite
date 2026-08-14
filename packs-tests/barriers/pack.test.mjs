@@ -5,7 +5,7 @@ import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import barrier from '../../packs/barriers/check.mjs';
 import {
   normalizeEdges, resolveRef, candidatesOn, buildIndex, under, normPrefix,
-} from '../../packs/barriers/engine.mjs';
+} from '../../engine/checks/helpers/reference-scanning.mjs';
 import { contributedBarrierRules } from '../../packs/barriers/contributed.mjs';
 
 // Run the config-driven check with the given packConfig.barriers and repo files.

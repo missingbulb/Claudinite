@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { finding } from './findings.mjs';
 import { parseYaml } from './minimal-yaml.mjs';
 import { stripComments } from './code-scanning.mjs';
+import { normalizeEdges, barrierFindings, staleFindings } from './reference-scanning.mjs';
 
 // The declarative pattern-check engine: a rule whose whole logic is "these
 // patterns over these files" is DECLARED as data — and data is JSON, not code.
@@ -143,6 +144,18 @@ import { stripComments } from './code-scanning.mjs';
 //                      lines and # comments, use only the declared keys, and
 //                      declare every one; {key}/{keys}/{line} interpolate
 //
+// The reference-barrier assertion — a directed folder-access graph enforced by
+// the reference-scanning engine (helpers/reference-scanning.mjs, which owns the
+// edge vocabulary's semantics):
+//   forbidReferences   [{ from | between | siblings, to, scope, allow, except,
+//                         matchNames, alsoMatchNames, matchUniqueFilenames,
+//                         reason }]
+//                      each entry one barrier edge, normalized at load (a
+//                      malformed edge is an authoring error); the rule's
+//                      failureMessage is the why (an edge's `reason` overrides
+//                      it), and a rule-level `fix` replaces the engine's
+//                      composed crossing remedy
+//
 // The markdown-section assertions read each scanned page's `## ` sections —
 // headings matched case-insensitively with suffix words allowed, fenced code
 // blocks invisible, a section running to the next `## ` heading or EOF. A
@@ -210,7 +223,7 @@ const SPEC_KEYS = {
   spec: ['id', 'severity', 'failureMessage', 'fix', 'scanFiles', 'scanTracked', 'excludeFiles',
     'scanFileClasses', 'excludeFileClasses', 'scanIgnoringComments', 'relevantWhen', 'whenMissing',
     'maxLines', 'skipLinesMatching', 'matchLines', 'checkEachFile', 'repoWide', 'requirePaths',
-    'requireIndexCoverage', 'checkParsedFiles',
+    'requireIndexCoverage', 'checkParsedFiles', 'forbidReferences',
     'listedInFile', 'coveredByGlobLine', 'checkParsedFile', 'equalParsedValues',
     'forEachParsedEntry', 'checkKeyValueFile', 'checkSections'],
   checkParsedFiles: ['file', 'filesMatching', 'whereFileContains', 'forEachEntryAtField',
@@ -222,6 +235,9 @@ const SPEC_KEYS = {
   requireIndexCoverage: ['eachTrackedPathMatching', 'eachScannedPathMatching', 'includeVendored',
     'indexFile', 'coveredByText', 'coveredByGlobLinesMatching', 'whenIndexFileAbsent',
     'anchorFindingsAt', ...MSG],
+  forbidReferences: ['from', 'to', 'between', 'siblings', 'scope', 'allow', 'except',
+    'matchNames', 'alsoMatchNames', 'matchUniqueFilenames', 'reason'],
+  except: ['path', 'to', 'reason'],
   relevantWhen: ['pathExists', 'pathAbsent', 'trackedFileMatches', 'noTrackedFileMatches',
     'exactlyOneTrackedFileMatches', 'someTrackedFileContains', 'scanningWholeRepo', 'repoContains'],
   someTrackedFileContains: ['pathMatching', 'text'],
@@ -666,6 +682,21 @@ function assertParsedShape(ctx, j, parsed) {
   }
 }
 
+// A declared check's barrier edges (forbidReferences, normalized at load into
+// spec.edges): the reference-scanning engine finds the crossings, the rule's
+// failureMessage is the why (an edge's own `reason` overrides it per finding),
+// and a rule-level `fix` replaces the engine's composed remedy on every
+// crossing finding — the structural fail-closed findings (an empty glob
+// expansion) keep their own texts. Stale reviewed-exception findings are
+// judged only on a whole-repo sweep, as everywhere the staleness test runs.
+function assertReferenceEdges(ctx, j) {
+  const { findings, stale } = barrierFindings(ctx, j.spec.edges, j.rule);
+  const scanErrors = findings.some((f) => f.resolved === undefined);
+  j.out.push(...(j.spec.fix === undefined ? findings
+    : findings.map((f) => (f.resolved === undefined ? f : { ...f, fix: j.spec.fix }))));
+  if (ctx.mode === 'all' && !scanErrors) j.out.push(...staleFindings(stale, j.rule));
+}
+
 // One file visited once for every subscribing rule: whole-text assertions and
 // repo-wide bookkeeping first, then a single walk of the lines shared by all
 // the rules' line assertions. A rule with scanIgnoringComments reads the
@@ -767,6 +798,7 @@ function results(ctx) {
   for (const j of jobs) {
     assertTreeShape(ctx, j);
     assertParsedShape(ctx, j, parsed);
+    if (j.spec.edges) assertReferenceEdges(ctx, j);
     if (typeof j.spec.scanFiles !== 'string') continue;
     const text = ctx.read(j.spec.scanFiles);
     if (text === null) {
@@ -874,6 +906,11 @@ export function patternRule(declaration, { selfExclude = null } = {}) {
     ...(selfExclude ? [selfExclude] : []),
   ];
   if (typeof spec.fix === 'string') applyFixDefault(spec, spec.fix);
+  if (spec.forbidReferences !== undefined) {
+    const { edges, errors } = normalizeEdges(spec.forbidReferences);
+    if (errors.length) throw new Error(`${where}: ${errors[0].what} — ${errors[0].fix}`);
+    spec.edges = edges;
+  }
   const rule = {
     id: spec.id,
     severity: spec.severity,

@@ -6,7 +6,6 @@
 // standard's one structural constant — the sink.
 import { SINK_README } from './lib.mjs';
 import layout from './layout.mjs';
-import isolation from './isolation.mjs';
 
 export default {
   id: 'product-wiki',
@@ -20,11 +19,12 @@ export default {
   marker: SINK_README,
   detect: (ctx) => ctx.tracked.includes(SINK_README),
   prose: 'RULES.md',
-  // The isolation wall rides the barriers mechanism: this pack requires
-  // barriers and CONTRIBUTES the fixed barrier as manifest data
-  // (isolation.mjs — pure data, no cross-pack import; pack-independence).
+  // The isolation wall (product-wiki-isolation) is a declared check — a
+  // forbidReferences entry in this pack's declared-checks.json, run by the
+  // engine's reference-scanning like any barrier. This edge and layout are a
+  // designed pair: the glob target fails closed on an empty product-wiki/
+  // expansion, and layout owns the missing-skeleton complaint.
   requires: ['barriers'],
-  contributes: { barriers: [isolation] },
   // Adoption interview: the standard takes no config (the layout IS the config),
   // but a wiki with no research scope is a hollow skeleton — the answers frame
   // WHICH wikis get seeded and what the competitor set is measured against. They

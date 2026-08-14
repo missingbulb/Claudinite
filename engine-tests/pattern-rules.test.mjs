@@ -786,6 +786,39 @@ test('requireIndexCoverage: coveredByGlobLinesMatching anchored per path, absenc
   } finally { cleanup(covered); cleanup(absent); }
 });
 
+test('forbidReferences: a declared barrier edge rides the shared engine, with the rule-level fix as the crossing remedy', () => {
+  const rule = patternRule({
+    ...meta('fx-barrier'),
+    fix: 'the declared remedy',
+    relevantWhen: { pathExists: 'guarded' },
+    forbidReferences: [{ from: 'guarded', to: 'barred', reason: 'stay apart' }],
+  });
+  const crossing = makeRepo({ changed: {
+    'guarded/a.mjs': "import x from '../barred/thing.mjs';\n",
+    'barred/thing.mjs': 'export default 1;\n',
+  } });
+  const clean = makeRepo({ changed: {
+    'guarded/a.mjs': 'const ok = 1;\n',
+    'barred/thing.mjs': 'export default 1;\n',
+  } });
+  try {
+    const findings = rule.run(ctxOf(crossing));
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].file, 'guarded/a.mjs');
+    assert.match(findings[0].what, /barred\/thing\.mjs/);
+    assert.equal(findings[0].fix, 'the declared remedy');
+    assert.equal(findings[0].why, 'stay apart');
+    assert.equal(rule.run(ctxOf(clean)).length, 0);
+  } finally { cleanup(crossing); cleanup(clean); }
+});
+
+test('forbidReferences: a malformed edge is an authoring error at load', () => {
+  assert.throws(
+    () => patternRule({ ...meta('fx-barrier-bad'), forbidReferences: [{ from: 'a' }] }),
+    /"to"/,
+  );
+});
+
 test('an unknown spec key is an authoring error naming the key and its container', () => {
   assert.throws(
     () => patternRule({ ...meta('fx-unknown-top'), scanFiles: /\.txt$/, matchLine: [] }),

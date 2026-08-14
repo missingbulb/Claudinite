@@ -1,18 +1,22 @@
-import { finding } from '../../engine/checks/helpers/findings.mjs';
-import { normPrefix, under } from '../../engine/checks/helpers/path-containment.mjs';
+import { finding } from './findings.mjs';
+import { normPrefix, under } from './path-containment.mjs';
 
-// The barriers detection engine — language-agnostic enforcement of a directed
+// The reference-scanning engine — language-agnostic enforcement of a directed
 // folder-access graph. A *barrier edge* forbids the files under one set of
 // folders (`from`) from referencing another (`to`); the engine finds every
-// crossing reference.
+// crossing reference. Mechanism only, like every helper here: the edges are
+// POLICY and arrive as data — a declared check's `forbidReferences` entries
+// (pattern-rules.mjs), or the barriers pack's per-repo config rule and its
+// pack-manifest contribution seam — and every failure text beyond the
+// composed crossing message stays with the declaration.
 //
 // The one idea that keeps it precise and technology-agnostic: **the repo tree is
 // the oracle.** A candidate reference (an import specifier, a path in a comment, a
 // bare filename) only counts when it *resolves to a real tracked path* inside the
 // barred folder. An English word that merely happens to be a folder's name never
 // resolves, so it never fires — no per-language parser, no allowlist of file
-// types, and near-zero false positives. See packs/barriers/README.md, including
-// its "Known limitations" section for the reference forms this does not resolve.
+// types, and near-zero false positives. The barriers pack's README documents
+// the edge vocabulary, including the reference forms this does not resolve.
 // (One deliberate exception: with `matchNames: true` an edge opts into matching
 // the bare *names* of its barred folders — restricted to distinctive names so
 // prose can't false-positive; see the names layer below.)
@@ -21,16 +25,6 @@ import { normPrefix, under } from '../../engine/checks/helpers/path-containment.
 // carve-out (a folder/glob/pattern string that removes files from the guarded
 // region — the `from: "."` helper) or a reviewed exception ({ path, to?, reason }
 // — a specific file's deliberate crossing, staleness-audited when `to` is pinned).
-//
-// Composition happens through DECLARATION, never through importing this module
-// from another pack (pack-independence): a pack that wants a fixed barrier
-// `requires` this pack and carries the barrier as data on its manifest
-// (`contributes` — see contributed.mjs, which builds the rule from that data).
-// The exports here serve this pack's own modules; the path-prefix primitives
-// (`normPrefix`, `under`) live in the engine lib (engine/checks/helpers/path-containment.mjs) and are
-// re-exported for them.
-
-export const DEFAULT_DOC = 'packs/barriers/README.md';
 
 // Test files are out of scope by nature: a test references what it tests, so a
 // core test naming pack/skill content is expected, not a coupling. The engine
@@ -40,8 +34,8 @@ const isTestFile = (f) => /\.test\.[cm]?js$/.test(f);
 // --- path helpers (posix; both separators accepted on input) ----------------
 
 // The prefix primitives (`normPrefix` — a folder/target prefix as the config
-// author wrote it → a bare posix prefix; `under` — containment) come from the
-// engine lib, re-exported for this pack's own modules and tests.
+// author wrote it → a bare posix prefix; `under` — containment) live in
+// path-containment.mjs, re-exported for this engine's consumers and tests.
 export { normPrefix, under };
 
 // Join `rel` onto `base` and resolve "." / ".." segments, posix-style. Returns
@@ -654,7 +648,7 @@ export function barrierFindings(ctx, edges, rule) {
     return cands;
   };
   const resolvedRef = (f, fromDir, candidate, matchUniqueFilenames) => {
-    const key = `${matchUniqueFilenames ? 'u' : 'n'} ${f} ${candidate}`;
+    const key = `${matchUniqueFilenames ? 'u' : 'n'}\u0000${f}\u0000${candidate}`;
     let r = state.resolved.get(key);
     if (r === undefined) {
       r = resolveRef(candidate, fromDir, index, matchUniqueFilenames);

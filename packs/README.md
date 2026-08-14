@@ -11,7 +11,7 @@ vendored into every mount regardless of declaration, so a member session can see
 
 | Pack | Active when | Checks | Prose rules |
 |---|---|---|---|
-| <img src="core/badge.svg" width="18" height="18" alt=""> [core](core/README.md) | declared (seeded by `--init`, mandatory — pulled in via `basics` `requires`) | 9 (+1 contributed barrier) | ~8 (Claudinite's own surface) + the scheduled-task contract |
+| <img src="core/badge.svg" width="18" height="18" alt=""> [core](core/README.md) | declared (seeded by `--init`, mandatory — pulled in via `basics` `requires`) | 10 | ~8 (Claudinite's own surface) + the scheduled-task contract |
 | <img src="basics/badge.svg" width="18" height="18" alt=""> [basics](basics/README.md) | declared (seeded by `--init`) | 13 | ~8 (working-discipline + task-lifecycle) |
 | <img src="barriers/badge.svg" width="18" height="18" alt=""> [barriers](barriers/README.md) | declared (or pulled in via `requires`) | 1 | 0 (config-driven segregation) |
 | <img src="git-github/badge.svg" width="18" height="18" alt=""> [git-github](git-github/README.md) | pulled in via `basics` `requires` | 0 | 0 (2 skills: git-github-advanced, merge-to-main) |
@@ -250,7 +250,7 @@ manifest.
 
 | | Count |
 |---|---|
-| **Hardcoded conformance checks** | **90** — every rule the runner carries: each pack's own, its bundled skills' checks, and the contributed barriers, plus the canon home's own [canon-curation](../.claudinite/local/packs/canon-curation/README.md) and [claudinite](../.claudinite/local/packs/claudinite/RULES.md) local packs |
+| **Hardcoded conformance checks** | **91** — every rule the runner carries: each pack's own, its bundled skills' checks, and the contributed barriers, plus the canon home's own [canon-curation](../.claudinite/local/packs/canon-curation/README.md) and [claudinite](../.claudinite/local/packs/claudinite/RULES.md) local packs |
 | PreToolUse guard | 1 (remote-branch-delete) |
 | Platform setting | 1 (squash-only) |
 | **Prose rules** — packs + practice skills + baseline | **~150** |
