@@ -7,10 +7,10 @@ export default patternRule({
   description: 'A workflow applying a label should create it idempotently first',
   doc: 'skills/git-github-advanced/SKILL.md',
   why: '--add-label fails when the label does not exist yet — GitHub will not create it on demand',
-  files: WORKFLOW_FILE,
-  over: 'tracked',
-  file: [{
-    if: /--add-label/,
+  scanFiles: WORKFLOW_FILE,
+  scanTracked: true,
+  checkEachFile: [{
+    whenFileMatches: /--add-label/,
     require: /label create/,
     what: 'uses --add-label with no idempotent `gh label create … || true` beforehand',
     fix: 'create the label idempotently before adding it, so the workflow survives its first run',

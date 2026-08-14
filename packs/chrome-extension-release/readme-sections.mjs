@@ -6,12 +6,12 @@ export default patternRule({
   description: 'The README carries the standard Install and Releasing sections',
   doc: 'packs/chrome-extension-release/RELEASE.md',
   why: 'every extension repo documents install and release the same way, from the standard template',
-  files: 'README.md',
-  missing: {
+  scanFiles: 'README.md',
+  whenMissing: {
     what: 'missing',
     fix: 'add a README with the standard Install and Releasing sections',
   },
-  file: [
+  checkEachFile: [
     {
       require: /^##\s+Install\b/m,
       what: 'missing the standard "## Install" section',
