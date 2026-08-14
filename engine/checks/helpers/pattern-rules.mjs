@@ -83,13 +83,22 @@ import { normalizeEdges, barrierFindings, staleFindings } from './reference-scan
 //                                                         if findings exist
 //   whenMissing        { what, fix } — fires when an exact-path scanFiles is absent
 //   maxLines           { limit, what, fix } — fires past `limit` lines, anchored there
+//   maxLineLength      { bytes, what, fix } — one finding per file whose lines
+//                      run past `bytes` (UTF-8 bytes, so wide characters count
+//                      what they cost), anchored at the first over-long line;
+//                      {count}/{longest}/{bytes} interpolate
 //   skipLinesMatching  RegExp — lines it matches are invisible to matchLines
-//   matchLines         [{ match, unlessLineMatches, whenFileMatches,
-//                         unlessFileMatches, what, fix }]
-//                      flag each line `match` hits (unless `unlessLineMatches`
-//                      hits it too), in files where every `whenFileMatches`
-//                      matches and `unlessFileMatches` does not; per line, the
-//                      first matching assertion wins
+//   matchLines         [{ match, andLineMatches, unlessLineMatches,
+//                         unlessPreviousLineMatches, whenPathMatches,
+//                         whenFileMatches, unlessFileMatches, what, fix }]
+//                      flag each line `match` hits — provided `andLineMatches`
+//                      (if declared) also hits it, `unlessLineMatches` does
+//                      not, and `unlessPreviousLineMatches` does not hit the
+//                      line above (the first line has none) — in files whose
+//                      path matches `whenPathMatches` (absent = every scanned
+//                      file), where every `whenFileMatches` matches the text
+//                      and `unlessFileMatches` does not; per line, the first
+//                      matching assertion wins
 //   countMatchingLines [{ linesMatching, atLeast, atMost, what, fix }]
 //                      per file, the number of lines `linesMatching` hits must
 //                      sit within the declared bounds (at least one bound;
@@ -234,8 +243,8 @@ const SPEC_KEYS = {
   spec: ['id', 'severity', 'failureMessage', 'fix', 'scanFiles', 'scanTracked', 'excludeFiles',
     'scanFileClasses', 'excludeFileClasses', 'scanIgnoringComments', 'scanIgnoringMarkdownFences',
     'relevantWhen', 'whenMissing',
-    'maxLines', 'skipLinesMatching', 'matchLines', 'countMatchingLines', 'checkEachFile',
-    'repoWide', 'requirePaths',
+    'maxLines', 'maxLineLength', 'skipLinesMatching', 'matchLines', 'countMatchingLines',
+    'checkEachFile', 'repoWide', 'requirePaths',
     'requireIndexCoverage', 'checkParsedFiles', 'forbidReferences',
     'listedInFile', 'coveredByGlobLine', 'checkParsedFile', 'equalParsedValues',
     'forEachParsedEntry', 'checkKeyValueFile', 'checkSections'],
@@ -256,7 +265,9 @@ const SPEC_KEYS = {
   someTrackedFileContains: ['pathMatching', 'text'],
   whenMissing: MSG,
   maxLines: ['limit', ...MSG],
-  matchLines: ['match', 'unlessLineMatches', 'whenFileMatches', 'unlessFileMatches', ...MSG],
+  maxLineLength: ['bytes', ...MSG],
+  matchLines: ['match', 'andLineMatches', 'unlessLineMatches', 'unlessPreviousLineMatches',
+    'whenPathMatches', 'whenFileMatches', 'unlessFileMatches', ...MSG],
   countMatchingLines: ['linesMatching', 'atLeast', 'atMost', ...MSG],
   checkEachFile: ['relevantWhen', 'whenFileMatches', 'require', 'forbid', ...MSG],
   repoWide: ['unlessSomeFileMatches', 'flagFilesMatching', 'neverFlagFiles', ...MSG],
@@ -777,6 +788,18 @@ function visit(ctx, subs, path, text) {
         what: fill(s.maxLines.what, vars), fix: fill(s.maxLines.fix, vars),
       }));
     }
+    if (s.maxLineLength) {
+      const a = s.maxLineLength;
+      const over = linesFor(j)
+        .map((ln, i) => ({ n: i + 1, bytes: Buffer.byteLength(ln) }))
+        .filter((l) => l.bytes > a.bytes);
+      if (over.length) {
+        const vars = { count: over.length, bytes: a.bytes, longest: Math.max(...over.map((l) => l.bytes)) };
+        j.out.push(finding(j.rule, {
+          file: path, line: over[0].n, what: fill(a.what, vars), fix: fill(a.fix, vars),
+        }));
+      }
+    }
     for (const a of s.countMatchingLines ?? []) {
       const view = linesFor(j);
       let count = 0;
@@ -813,6 +836,7 @@ function visit(ctx, subs, path, text) {
       }
     }
     const eligible = (s.matchLines ?? []).filter((a) =>
+      (!a.whenPathMatches || a.whenPathMatches.test(path)) &&
       arr(a.whenFileMatches).every((re) => re.test(textFor(j))) && !a.unlessFileMatches?.test(textFor(j)));
     if (eligible.length) lineJobs.push({ j, eligible, viewLines: linesFor(j) });
   }
@@ -824,7 +848,8 @@ function visit(ctx, subs, path, text) {
       if (j.spec.skipLinesMatching?.test(ln)) continue;
       for (const a of eligible) {
         const m = ln.match(a.match);
-        if (!m || a.unlessLineMatches?.test(ln)) continue;
+        if (!m || (a.andLineMatches && !a.andLineMatches.test(ln)) || a.unlessLineMatches?.test(ln)) continue;
+        if (a.unlessPreviousLineMatches && i > 0 && a.unlessPreviousLineMatches.test(viewLines[i - 1])) continue;
         const vars = { match: m[0] };
         j.out.push(finding(j.rule, {
           file: path, line: i + 1, what: fill(a.what, vars), fix: fill(a.fix, vars),
@@ -913,7 +938,8 @@ function results(ctx) {
 // (scanFiles: "README.md" is read directly), an authoring error anywhere else.
 const PATH_OR_PATTERN_KEYS = new Set(['scanFiles', 'excludeFiles']);
 const PATTERN_KEYS = new Set([
-  'skipLinesMatching', 'match', 'unlessLineMatches', 'whenFileMatches', 'unlessFileMatches',
+  'skipLinesMatching', 'match', 'andLineMatches', 'unlessLineMatches',
+  'unlessPreviousLineMatches', 'whenPathMatches', 'whenFileMatches', 'unlessFileMatches',
   'require', 'forbid', 'trackedFileMatches', 'noTrackedFileMatches', 'exactlyOneTrackedFileMatches',
   'pathMatching', 'text', 'repoContains', 'unlessSomeFileMatches', 'flagFilesMatching',
   'neverFlagFiles', 'eachTrackedPathMatching', 'eachPathMatching', 'globLineMatching',

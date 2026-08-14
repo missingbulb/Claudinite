@@ -3,7 +3,6 @@ import coreDeclared from './core-declared.mjs';
 import conformanceWorkflow from './conformance-workflow.mjs';
 import taskDeclarationShape from './task-declaration-shape.mjs';
 import taskDeclarationMatchesFolder from './task-declaration-matches-folder.mjs';
-import taskPhaseDiscipline from './task-phase-discipline.mjs';
 
 // Claudinite's own surface in a repo that runs it: the vendored mount, the
 // declaration that activates a pack, adopting Claudinite and adopting a pack,
@@ -49,10 +48,10 @@ export default {
     // check in this pack's declared-checks.json.
     conformanceWorkflow,
     // The scheduled-task contract (scheduled-tasks.md), likewise inert until the
-    // repo carries a tasks/<name>/task.mjs of its own.
+    // repo carries a tasks/<name>/task.mjs of its own; its third rule
+    // (task-phase-discipline) is a declared check in declared-checks.json.
     taskDeclarationShape,
     taskDeclarationMatchesFolder,
-    taskPhaseDiscipline,
   ],
   workRules: [],
   // Bootstrapping a repo, and adding a pack to one already bootstrapped. Both

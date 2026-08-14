@@ -1017,3 +1017,66 @@ test('countMatchingLines: a boundless or backwards entry is an authoring error a
     countMatchingLines: [{ linesMatching: /x/, atLeast: 3, atMost: 1, what: 'w', fix: 'f' }],
   }), /atLeast|atMost/);
 });
+
+test('unlessPreviousLineMatches: a hit is excused by the line above; the first line has no line above', () => {
+  const rule = patternRule({
+    ...meta('fx-prev-line'),
+    scanFiles: /\.cfg$/,
+    matchLines: [{ match: /MUTE/, unlessPreviousLineMatches: /reason:/, what: 'bare {match}', fix: 'f' }],
+  });
+  const root = makeRepo({ changed: {
+    'a.cfg': 'reason: flaky upstream\nMUTE\nMUTE\n',
+    'b.cfg': 'MUTE\n',
+  } });
+  try {
+    assert.deepEqual(rule.run(ctxOf(root)).map((f) => [f.file, f.line]).sort(),
+      [['a.cfg', 3], ['b.cfg', 1]]);
+  } finally { cleanup(root); }
+});
+
+test('andLineMatches: both patterns must hit the same line for the assertion to flag it', () => {
+  const rule = patternRule({
+    ...meta('fx-and-line'),
+    scanFiles: /\.txt$/,
+    matchLines: [{ match: /.*\bskip\b.*/, andLineMatches: /\bwhen\b/, what: 'saw {match}', fix: 'f' }],
+  });
+  const root = makeRepo({ changed: { 'a.txt': 'skip always\nskip when idle\nwhen idle\n' } });
+  try {
+    const findings = rule.run(ctxOf(root));
+    assert.deepEqual(findings.map((f) => f.line), [2]);
+    assert.equal(findings[0].what, 'saw skip when idle');
+  } finally { cleanup(root); }
+});
+
+test('whenPathMatches: an assertion applies only in files whose path matches, so one rule scopes per file family', () => {
+  const rule = patternRule({
+    ...meta('fx-path-scoped'),
+    scanFiles: /\.(txt|cfg)$/,
+    matchLines: [
+      { match: /tok/, whenPathMatches: /\.txt$/, what: 'text hit', fix: 'f' },
+      { match: /tok/, whenPathMatches: /\.cfg$/, what: 'config hit', fix: 'f' },
+    ],
+  });
+  const root = makeRepo({ changed: { 'a.txt': 'tok\n', 'b.cfg': 'tok\n' } });
+  try {
+    assert.deepEqual(rule.run(ctxOf(root)).map((f) => [f.file, f.what]).sort(),
+      [['a.txt', 'text hit'], ['b.cfg', 'config hit']]);
+  } finally { cleanup(root); }
+});
+
+test('maxLineLength: one finding per file at the first over-long line, measured in bytes', () => {
+  const rule = patternRule({
+    ...meta('fx-line-length'),
+    scanFiles: /^docs\/.+\.md$/,
+    maxLineLength: { bytes: 100, what: '{count} line(s) over {bytes} bytes, longest {longest}', fix: 'f' },
+  });
+  const root = makeRepo({ changed: {
+    'docs/long.md': `short\n${'é'.repeat(60)}\n${'x'.repeat(150)}\n`,
+    'docs/fine.md': `${'x'.repeat(100)}\n`,
+  } });
+  try {
+    const findings = rule.run(ctxOf(root));
+    assert.deepEqual(findings.map((f) => [f.file, f.line]), [['docs/long.md', 2]]);
+    assert.equal(findings[0].what, '2 line(s) over 100 bytes, longest 150');
+  } finally { cleanup(root); }
+});
