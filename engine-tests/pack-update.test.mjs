@@ -10,6 +10,7 @@ import { NEEDS_HUMAN } from '../updates/engine-update.mjs';
 import { ENGINE_VERSION } from '../engine/version.mjs';
 import { applyVendor } from '../vendoring/apply-vendor-set.mjs';
 import { loadPacks } from '../engine/pack_loader/pack-registry.mjs';
+import { loadMigrations, applyMaterializations } from '../engine/migrations/registry.mjs';
 
 // Driven against real member trees and the real pack set, like the engine flow's
 // suite: the question a member has is whether THIS canon's packs can be laid down
@@ -236,6 +237,77 @@ test('the staged workflow tracks this repo, not a template', async () => {
   assert.notEqual(cron(await of(a, 'o/one')), cron(await of(b, 'o/two')), 'two members must not share a minute');
   rmSync(a, { recursive: true, force: true });
   rmSync(b, { recursive: true, force: true });
+});
+
+test('a RECORD materializing a workflow is withheld too, not written where the token is refused (#649)', async () => {
+  // The gap this closes. The withhold lane had ONE exercised caller — the scheduler
+  // workflow's own convergence, two tests up. A record's `materialize` reaches the same
+  // `write` from the other side, through `applyMaterializations`, which carries its own
+  // branch for a workflow `dest`: unless the caller announces
+  // `CLAUDINITE_CAN_WITHHOLD_WORKFLOWS`, the write is REPORTED AS SKIPPED rather than
+  // made. Nothing had ever driven that branch with the variable set, and the failure it
+  // guards against is not a wrong file — it is the Action's token refusing the push and
+  // GitHub rejecting the whole ref, failing the entire converge.
+  //
+  // Driven through the real canary-probe record, not a fixture, because the thing worth
+  // pinning is that a record shipped in this corpus travels the lane — a fake record
+  // would only prove that `write` can be called.
+  const root = makeMember({ packs: ['basics', 'canary-probe'] });
+  assert.deepEqual((await applyVendor(root)).errors, []);
+  const probe = '.github/workflows/claudinite-workflow-probe.yml';
+
+  // A member at pack version 1: seeded copy present (what `seedOps` does at install),
+  // stale content, and a real gap for the record at version 2 to close.
+  mkdirSync(join(root, '.github', 'workflows'), { recursive: true });
+  writeFileSync(join(root, probe), 'name: Claudinite workflow probe\non:\n  workflow_dispatch:\n');
+  setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { basics: 99, 'canary-probe': 1 } });
+
+  const first = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
+  const staged = first.withheld.find((w) => w.path === probe);
+  assert.ok(staged, 'the record materialized a workflow, so the flow owes it through the lane');
+  assert.equal(staged.staged, `${PENDING_DIR}claudinite-workflow-probe.yml`);
+
+  // The two halves of "withheld". The destination is untouched — a write there is what
+  // takes the whole push down — and the content still rides out on the branch, where a
+  // reviewer sees it and the apply stage can find it.
+  assert.equal(readFileSync(join(root, probe), 'utf8'), 'name: Claudinite workflow probe\non:\n  workflow_dispatch:\n',
+    'the flow must not write what its caller cannot push');
+  const template = readFileSync('packs/canary-probe/stubs/workflows/claudinite-workflow-probe.yml', 'utf8');
+  assert.equal(readFileSync(join(root, staged.staged), 'utf8'), template, 'and the staged copy is the pack template, byte for byte');
+  assert.equal(first.applyStage.needed, true, 'an undelivered workflow is outstanding work');
+
+  // Delivered — and the flow must then go quiet, or the member parks at `apply-stage`
+  // forever and no update ever merges again.
+  assert.ok(deliverStaged(root).includes('claudinite-workflow-probe.yml'));
+  const second = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
+  assert.ok(!second.withheld.some((w) => w.path === probe), 'a delivered workflow is owed nothing');
+  assert.equal(readFileSync(join(root, probe), 'utf8'), template, 'and is left exactly alone');
+  assert.ok(!existsSync(join(root, PENDING_DIR, 'claudinite-workflow-probe.yml')),
+    'the staged copy is swept, or it reads forever as work nobody did');
+  rmSync(root, { recursive: true, force: true });
+});
+
+test('a workflow materialization is SKIPPED, never written, by a caller that cannot deliver it (#649)', async () => {
+  // The other side of the same branch, and the one that was latent: the pack flow
+  // announced `CLAUDINITE_CAN_WITHHOLD_WORKFLOWS` before it had the mechanism, so a
+  // record materializing a workflow would have been WRITTEN, staged by `git add -A`,
+  // and pushed into GitHub's refusal. Any other caller — an older vendored worker, a
+  // hand-run apply, CI — must still refuse, and must SAY so rather than skip silently,
+  // because a silent skip reads as "already current".
+  const record = (await loadMigrations()).find((m) => m.id === 'workflow-probe-current');
+  assert.ok(record, 'the canary-probe record is what this test is about');
+  const probe = '.github/workflows/claudinite-workflow-probe.yml';
+  const writes = [];
+  const io = {
+    read: async (p) => (p === probe ? 'name: Claudinite workflow probe\n' : null),
+    readTemplate: async () => 'fresh template\n',
+    write: async (p, c) => writes.push([p, c]),
+    env: {},
+  };
+  const done = await applyMaterializations(record, io);
+  assert.deepEqual(writes, [], 'nothing may be written into a tree the caller is about to push');
+  assert.equal(done.length, 1);
+  assert.match(done[0], /^SKIPPED .*claudinite-workflow-probe\.yml \(workflow file/, 'and the skip is reported, not swallowed');
 });
 
 test('a pack version moving does NOT by itself buy a session (#798)', async () => {
