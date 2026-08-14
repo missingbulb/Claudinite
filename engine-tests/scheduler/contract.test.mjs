@@ -143,7 +143,7 @@ const caps = ({ existsPaths, declared = ['gcec'], task = validTask }) => ({
 });
 
 test('DISPATCH_PATH_RE accepts shared/, local/, and the canon root packs/ forms — nothing else', () => {
-  assert.ok(DISPATCH_PATH_RE.test('.claudinite/shared/packs/basics/tasks/update/task.md')); // consumer canon pack
+  assert.ok(DISPATCH_PATH_RE.test('.claudinite/shared/packs/core/tasks/update/task.md')); // consumer canon pack
   assert.ok(DISPATCH_PATH_RE.test(goodPath));                                                    // local pack
   assert.ok(DISPATCH_PATH_RE.test('packs/grow_with_claudinite/tasks/growth-extract/task.md'));   // the CANON's own root pack
   assert.ok(!DISPATCH_PATH_RE.test('.claudinite/local/packs/gcec/tasks/create-extractor/task.mjs')); // not task.md

@@ -54,7 +54,7 @@ export function terminalFor(outcome) {
 // request payload. Nothing ever read it — that is the only reason two problems with
 // it stayed invisible.
 //
-// It restated `packs/basics/tasks/update/task.md` §2–5 from a second home that could
+// It restated `packs/core/tasks/update/task.md` §2–5 from a second home that could
 // drift from the first, with no test able to notice. And it was the natural place to
 // put a withheld workflow's CONTENT, which is exactly where content must not go: the
 // scheduler's rule for the code→agent boundary (engine/scheduler/prework.mjs) is that

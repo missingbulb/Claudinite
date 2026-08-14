@@ -127,7 +127,7 @@ jobs:
           CLAUDINITE_REPO_ROOT: ${{ github.workspace }}/canary
           CLAUDINITE_REPO: ${{ steps.cfg.outputs.repo }}
           GITHUB_TOKEN: ${{ secrets.FLEET_GITHUB_TOKEN }}
-        working-directory: packs/basics/tasks/update
+        working-directory: packs/core/tasks/update
         run: node worker.mjs | tee "$RUNNER_TEMP/rehearsal.log"
 
       # A green step is not evidence; the marker is. Without this, every way of

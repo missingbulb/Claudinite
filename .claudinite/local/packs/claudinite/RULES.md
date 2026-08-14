@@ -347,7 +347,7 @@ prose below).
 - **A migration record is always the newest code; the engine that executes its result is the
   member's, and only as new as its last successful converge.** `engine/migrations/apply.mjs` runs from a
   **fresh canon clone**, so every member gets today's record — but the worker that then commits and
-  pushes it is the member's own **vendored** `.claudinite/shared/packs/basics/tasks/update/worker.mjs`,
+  pushes it is the member's own **vendored** `.claudinite/shared/packs/core/tasks/update/worker.mjs`,
   frozen at whatever converge last succeeded. So a record that needs a *new engine capability* to be
   deliverable is a **deadlock** on any member that hasn't got it yet: the record fires, the converge
   fails, the mount never advances — and the engine fix that would make the record deliverable can
@@ -372,7 +372,7 @@ prose below).
   the sweep — saw it coming.
 - **This repo's fleet machinery reports success from reaching the end of the code path, not from
   the artifact — check the response, and alarm on the stamp.** the delivery in
-  `packs/basics/tasks/update/worker.mjs` destructured only `json` from the PR-open POST and
+  `packs/core/tasks/update/worker.mjs` destructured only `json` from the PR-open POST and
   never read `status`, so a 403 (the member's *"Allow GitHub Actions to create and approve pull
   requests"* setting, invisible from inside the Action) put the error body in `pr`, left
   `pr.node_id` undefined, skipped the auto-merge arm silently — and the run still logged
@@ -422,7 +422,7 @@ prose below).
   `merge-to-main`, which today says nothing about merging on a stale green.)
 - **A worker whose cwd sits inside the tree it deletes takes every child with it — and the death
   arrives dressed as a legitimate outcome.** The converging task's prework runs with its cwd
-  *inside the mount* (`.claudinite/shared/packs/basics/tasks/update/`), and the converge `rmSync`s that
+  *inside the mount* (`.claudinite/shared/packs/core/tasks/update/`), and the converge `rmSync`s that
   whole tree before re-copying it. On Linux the worker survives on the unlinked inode and so does
   every child it spawns — so `check_the_world` died at `process.cwd()` with `ENOENT … uv_cwd`
   **before running a single check**, on every night that actually converged. Nothing looked wrong,

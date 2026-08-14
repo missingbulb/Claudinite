@@ -62,7 +62,13 @@ export default {
     'adopt-claudinite',
     'adopt-pack',
   ],
-  // The scheduled task that acts on a repo's pack-adoption requests lives in this
-  // pack's `tasks/`, discovered by the scheduler's filesystem scan
-  // (engine/scheduler/discover.mjs), not declared here.
+  // Both scheduled tasks live in this pack's `tasks/`, discovered by the
+  // scheduler's filesystem scan (engine/scheduler/discover.mjs) rather than
+  // declared here: `update`, the per-repo self-refresh every member runs, and
+  // `adopt-requested-packs`, which acts on a repo's pack-adoption requests.
+  //
+  // `update` being HERE is what `core-declared` is blocking for. A member runs it
+  // from its vendored copy and discovery finds only a literally-declared pack's
+  // tasks, so a repo that loses this pack's entry loses its self-refresh — and
+  // nothing is left that could deliver it one.
 };

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { updateBranchName, updatePullText, main } from '../../packs/basics/tasks/update/worker.mjs';
+import { updateBranchName, updatePullText, main } from '../../packs/core/tasks/update/worker.mjs';
 import { NEEDS_HUMAN } from '../../updates/engine-update.mjs';
 
 // The update runner's git-free surface. Its clone/push/PR half is validated by the
@@ -86,7 +86,7 @@ test('the terminal vocabulary the runner acts on is the flows\' own', async () =
   // A drift guard across the seam: the runner branches on `terminal.action`, and the
   // strings it branches on have to be the ones terminals.mjs can actually produce.
   const { TERMINALS } = await import('../../updates/terminals.mjs');
-  const src = await import('node:fs').then((fs) => fs.readFileSync('packs/basics/tasks/update/worker.mjs', 'utf8'));
+  const src = await import('node:fs').then((fs) => fs.readFileSync('packs/core/tasks/update/worker.mjs', 'utf8'));
   for (const action of ['merge', 'needs-human', 'apply-stage']) {
     assert.ok(TERMINALS.includes(action), `${action} is not a terminal the flows produce`);
     assert.ok(src.includes(`'${action}'`), `the runner never handles the ${action} terminal`);
@@ -100,7 +100,7 @@ test('the runner disposes of an open update PR BEFORE it converges (#787)', asyn
   // cycle that should have landed the stranded PR opened a duplicate instead.
   // Asserted structurally, on the one ordering that makes the promise keepable.
   const fs = await import('node:fs');
-  const src = fs.readFileSync('packs/basics/tasks/update/worker.mjs', 'utf8');
+  const src = fs.readFileSync('packs/core/tasks/update/worker.mjs', 'utf8');
 
   const disposal = src.indexOf('disposeOpenPull(');
   const clone = src.indexOf("'clone', '--depth'");
@@ -125,7 +125,7 @@ test('the runner finds its incumbent by the same prefix it delivers on', async (
   // A prefix that drifted from the branch names would silently find nothing to
   // dispose of, which reads exactly like a healthy cycle.
   const fs = await import('node:fs');
-  const src = fs.readFileSync('packs/basics/tasks/update/worker.mjs', 'utf8');
+  const src = fs.readFileSync('packs/core/tasks/update/worker.mjs', 'utf8');
   assert.match(src, /openDeliveredPull\(open\.json, UPDATE_PREFIX\)/);
   assert.ok(updateBranchName('2026-08-12', 'abc123').startsWith('claudinite/update'),
     'the delivered branch and the searched prefix are the same family');
@@ -141,13 +141,13 @@ test('rehearsal mode announces that it converged, and the gate greps for it', as
   // the constant, the worker line that prints it, and the workflow step that fails
   // without it. Any of the three drifting alone puts the gate back to vacuous.
   const fs = await import('node:fs');
-  const { REHEARSAL_MARKER } = await import('../../packs/basics/tasks/update/worker.mjs');
-  const worker = fs.readFileSync('packs/basics/tasks/update/worker.mjs', 'utf8');
+  const { REHEARSAL_MARKER } = await import('../../packs/core/tasks/update/worker.mjs');
+  const worker = fs.readFileSync('packs/core/tasks/update/worker.mjs', 'utf8');
   const workflow = fs.readFileSync('.github/workflows/canary-rehearsal.yml', 'utf8');
 
   assert.match(worker, /\$\{REHEARSAL_MARKER\}/, 'the worker must print the marker, not a copy of its text');
   assert.ok(workflow.includes(REHEARSAL_MARKER), `the gate does not grep for "${REHEARSAL_MARKER}"`);
-  assert.match(workflow, /working-directory: packs\/basics\/tasks\/update/,
+  assert.match(workflow, /working-directory: packs\/core\/tasks\/update/,
     'the gate must drive the update worker this ref ships');
   assert.ok(!workflow.includes('tasks/baselining'), 'the gate still points at the retired worker');
 
@@ -175,8 +175,8 @@ test('the apply-stage brief tells the session to LAND its own delivery, not to w
   // prose because the session holds the credential and the engine cannot: the executor is
   // MCP-only and carries no repo token, so there is no code path here to assert instead.
   const fs = await import('node:fs');
-  const brief = fs.readFileSync('packs/basics/tasks/update/task.md', 'utf8');
-  const decl = (await import('../../packs/basics/tasks/update/task.mjs')).default;
+  const brief = fs.readFileSync('packs/core/tasks/update/task.md', 'utf8');
+  const decl = (await import('../../packs/core/tasks/update/task.mjs')).default;
 
   // Merging must be within the ceiling, or the instruction below tells the session to
   // violate its own contract — verify-outcome.mjs would then fail every apply stage.
