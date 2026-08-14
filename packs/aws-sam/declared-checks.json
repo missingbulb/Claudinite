@@ -10,7 +10,7 @@
       },
       "exactlyOneTrackedFileMatches": "/(^|\\/)package\\.json$/"
     },
-    "checkParsedFile": [
+    "checkParsedFiles": [
       {
         "file": "package.json",
         "whenFieldPresent": "devDependencies.esbuild",
@@ -24,11 +24,11 @@
     "id": "aws-sam/cloudfront-authorization",
     "severity": "blocking",
     "failureMessage": "CloudFront rejects a custom origin-request policy that forwards Authorization at deploy time",
-    "forEachParsedEntry": [
+    "checkParsedFiles": [
       {
-        "inFilesMatching": "/(^|\\/)template\\.ya?ml$/",
-        "entriesAtField": "Resources",
-        "whereFieldEquals": { "field": "Type", "equals": "AWS::CloudFront::OriginRequestPolicy" },
+        "filesMatching": "/(^|\\/)template\\.ya?ml$/",
+        "forEachEntryAtField": "Resources",
+        "whereEntryFieldEquals": { "field": "Type", "equals": "AWS::CloudFront::OriginRequestPolicy" },
         "forbidValueInArray": {
           "atField": "Properties.OriginRequestPolicyConfig.HeadersConfig.Headers",
           "value": "authorization",

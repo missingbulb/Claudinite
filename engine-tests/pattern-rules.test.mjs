@@ -667,6 +667,125 @@ test('a pattern key given a plain string names the key and the value it got', ()
   );
 });
 
+test('checkParsedFiles: one selector serves every parsed assertion — requireField over matching files', () => {
+  const rule = patternRule({
+    ...meta('fx-parsed-merged-require'),
+    checkParsedFiles: [{
+      filesMatching: /(^|\/)wrangler\.json$/,
+      whenFieldPresent: 'routes',
+      requireField: 'account_id',
+      what: 'routes without account_id', fix: 'add it',
+    }],
+  });
+  const bad = makeRepo({ changed: { 'svc/wrangler.json': '{"routes":["a"]}' } });
+  const good = makeRepo({ changed: { 'svc/wrangler.json': '{"routes":["a"],"account_id":"x"}' } });
+  try {
+    assert.deepEqual(rule.run(ctxOf(bad)).map((f) => [f.file, f.what]), [['svc/wrangler.json', 'routes without account_id']]);
+    assert.equal(rule.run(ctxOf(good)).length, 0);
+  } finally { cleanup(bad); cleanup(good); }
+});
+
+test('checkParsedFiles: forEachEntryAtField quantifies any assertion per entry — requireField per entry', () => {
+  const rule = patternRule({
+    ...meta('fx-parsed-merged-entries'),
+    checkParsedFiles: [{
+      filesMatching: /(^|\/)template\.ya?ml$/,
+      forEachEntryAtField: 'Resources',
+      whereEntryFieldEquals: { field: 'Type', equals: 'AWS::Serverless::Function' },
+      requireField: 'Properties.Timeout',
+      what: '{entry} declares no Timeout', fix: 'set one',
+    }],
+  });
+  const root = makeRepo({ changed: { 'template.yaml':
+`Resources:
+  FnA:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: a.run
+  FnB:
+    Type: AWS::Serverless::Function
+    Properties:
+      Timeout: 30
+  Bucket:
+    Type: AWS::S3::Bucket
+` } });
+  try {
+    assert.deepEqual(rule.run(ctxOf(root)).map((f) => f.what), ['FnA declares no Timeout']);
+  } finally { cleanup(root); }
+});
+
+test('checkParsedFiles: requireEqualFields carries the version-sync shape with {first}/{second}', () => {
+  const rule = patternRule({
+    ...meta('fx-parsed-merged-equal'),
+    checkParsedFiles: [{
+      filesMatching: /manifest\.json$/,
+      whereFileContains: /"manifest_version"/,
+      requireEqualFields: {
+        field: 'version',
+        inFile: 'package.json',
+        atField: 'version',
+        whenFileMissing: { what: 'no package.json', fix: 'add it' },
+        whenUnequal: { what: '{first} vs {second}', fix: 'align' },
+      },
+    }],
+  });
+  const mismatched = makeRepo({ changed: {
+    'app/manifest.json': '{"manifest_version":3,"version":"1.2.3"}',
+    'package.json': '{"version":"9.9.9"}',
+  } });
+  const missing = makeRepo({ changed: { 'app/manifest.json': '{"manifest_version":3,"version":"1.2.3"}' } });
+  try {
+    assert.deepEqual(rule.run(ctxOf(mismatched)).map((f) => [f.file, f.what]), [['app/manifest.json', '1.2.3 vs 9.9.9']]);
+    assert.deepEqual(rule.run(ctxOf(missing)).map((f) => [f.file, f.what]), [['package.json', 'no package.json']]);
+  } finally { cleanup(mismatched); cleanup(missing); }
+});
+
+test('requireIndexCoverage: coveredByText anchored at the index file — the listedInFile shape', () => {
+  const rule = patternRule({
+    ...meta('fx-coverage-text'),
+    requireIndexCoverage: [{
+      eachTrackedPathMatching: /^mods\/(?<name>[^/]+)\/mod\.mjs$/,
+      indexFile: 'mods/INDEX.md',
+      coveredByText: '[{name}]',
+      whenIndexFileAbsent: 'assertNothing',
+      anchorFindingsAt: 'indexFile',
+      what: 'mod "{name}" is not listed', fix: 'list it',
+    }],
+  });
+  const root = makeRepo({ changed: {
+    'mods/zeta/mod.mjs': '1\n', 'mods/alpha/mod.mjs': '1\n', 'mods/INDEX.md': '[alpha]\n',
+  } });
+  const noIndex = makeRepo({ changed: { 'mods/alpha/mod.mjs': '1\n' } });
+  try {
+    assert.deepEqual(rule.run(ctxOf(root)).map((f) => [f.file, f.what]), [['mods/INDEX.md', 'mod "zeta" is not listed']]);
+    assert.equal(rule.run(ctxOf(noIndex)).length, 0);
+  } finally { cleanup(root); cleanup(noIndex); }
+});
+
+test('requireIndexCoverage: coveredByGlobLinesMatching anchored per path, absence flags — the merge-driver shape', () => {
+  const rule = patternRule({
+    ...meta('fx-coverage-glob'),
+    requireIndexCoverage: [{
+      eachScannedPathMatching: /(?<base>[^/]*GENERATED[^/]*)$/,
+      includeVendored: true,
+      indexFile: '.gitattributes',
+      coveredByGlobLinesMatching: /\bmerge=ours\b/,
+      whenIndexFileAbsent: 'flagEveryPath',
+      anchorFindingsAt: 'eachUncoveredPath',
+      what: 'no merge=ours entry', fix: 'add `{base} merge=ours`',
+    }],
+  });
+  const covered = makeRepo({ changed: {
+    'out/a.GENERATED.json': '{}\n', '.gitattributes': '*.GENERATED.json merge=ours\n',
+  } });
+  const absent = makeRepo({ changed: { 'a.GENERATED.json': '{}\n' } });
+  try {
+    assert.equal(rule.run(ctxOf(covered)).length, 0);
+    assert.deepEqual(rule.run(ctxOf(absent)).map((f) => [f.file, f.fix]),
+      [['a.GENERATED.json', 'add `a.GENERATED.json merge=ours`']]);
+  } finally { cleanup(covered); cleanup(absent); }
+});
+
 test('an unknown spec key is an authoring error naming the key and its container', () => {
   assert.throws(
     () => patternRule({ ...meta('fx-unknown-top'), scanFiles: /\.txt$/, matchLine: [] }),
