@@ -294,7 +294,9 @@ test('capture retries an unreachable origin, not only a lost push race', async (
     sh(work, 'git', ['remote', 'add', 'origin', origin]); // unreachable: nothing there yet
 
     // Reachable again during the first backoff — the shape of a transient outage.
-    const heal = setTimeout(() => { mkdirSync(origin); sh(origin, 'git', ['init', '--bare', '--quiet']); }, 1000);
+    // Heals inside the first backoff (200ms into a 400ms wait), so the retry is
+    // what lands the capture — the real timings scaled down, not skipped.
+    const heal = setTimeout(() => { mkdirSync(origin); sh(origin, 'git', ['init', '--bare', '--quiet']); }, 200);
     try {
       const result = await capture({
         root: work,
@@ -303,6 +305,7 @@ test('capture retries an unreachable origin, not only a lost push race', async (
         bundled: bundleStreams([parseLines(`${userLine(1, 'through a blip')}\n${assistantLine(2, 'ok')}`)]),
         issue: 0,
         now: '2026-08-13T21:07:00.000Z',
+        retryBackoffMs: 400,
       });
       assert.equal(result.entries, 2);
     } finally { clearTimeout(heal); }
@@ -327,6 +330,7 @@ test('capture reports the unreachable origin once its attempts are spent', async
         bundled: bundleStreams([parseLines(userLine(1, 'into the dark'))]),
         issue: 0,
         now: '2026-08-13T21:07:00.000Z',
+        retryBackoffMs: 50,
       }),
       /after 3 attempts/,
     );
