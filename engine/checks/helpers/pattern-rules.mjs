@@ -34,6 +34,9 @@ import { parseYaml } from './minimal-yaml.mjs';
 //                        someTrackedFileContains          { pathMatching, text } — some
 //                                                         tracked path matching the first
 //                                                         has text matching the second
+//                        scanningWholeRepo                true = only under a whole-repo
+//                                                         sweep (mode 'all'), never a
+//                                                         --changed run
 //                        repoContains                     some in-scope file's text
 //                                                         matches — evaluated only
 //                                                         if findings exist
@@ -103,6 +106,35 @@ import { parseYaml } from './minimal-yaml.mjs';
 //                      lines and # comments, use only the declared keys, and
 //                      declare every one; {key}/{keys}/{line} interpolate
 //
+// The markdown-section assertions read each scanned page's `## ` sections —
+// headings matched case-insensitively with suffix words allowed, fenced code
+// blocks invisible, a section running to the next `## ` heading or EOF. A
+// top-level bullet is a column-0 `-`/`*`/`+` line; a bullet BLOCK is the bullet
+// plus its indented continuation lines; a DATED bullet leads with its
+// YYYY-MM-DD run date, bold or plain, validated as a real calendar date. Every
+// assertion except requirePresent asserts nothing when the section is absent
+// (presence is its own declared finding, never double-reported):
+//   checkSections      [{ section | sections: [names], … }] with, each optional:
+//                        requirePresent                   the `## {section}` heading must exist
+//                        requireFirstOnPage               no other `## ` heading may precede it
+//                                                         ({first} = the heading that does)
+//                        forbidProseLines                 non-bullet, non-continuation lines
+//                                                         are findings ({line} = the text)
+//                        eachBulletBlockMatches           { pattern } — every bullet block must match
+//                        eachBulletLeadsWithDate          { whenUndated, whenNotRealDate } —
+//                                                         every bullet starts with a real date
+//                                                         ({date} = the one that isn't)
+//                        minBullets / maxBullets          { count } — bullet-count floor/ceiling
+//                                                         ({bullets} = the actual count)
+//                        maxBulletBlockLength             { characters } — block-length ceiling
+//                                                         ({characters} = the actual length)
+//                        newestDatedBulletWithinDays      { days } — the newest dated bullet
+//                                                         (dates > 2 days in the future
+//                                                         discarded; clock = ctx.now, wall
+//                                                         clock otherwise) must be at most
+//                                                         `days` old ({age}, {date}, {days})
+//                      {bullet} everywhere = the bullet line's first 80 characters
+//
 // `what`/`fix` are templates: `{path}`, a named capture group's `{name}`, and
 // `{match}` (a matchLines hit's text), `{lines}`/`{limit}` (maxLines) interpolate.
 
@@ -125,7 +157,134 @@ function relevant(ctx, when) {
   if (when.someTrackedFileContains &&
       !ctx.tracked.some((f) => when.someTrackedFileContains.pathMatching.test(f) &&
         when.someTrackedFileContains.text.test(ctx.read(f) ?? ''))) return false;
+  if (when.scanningWholeRepo && ctx.mode !== 'all') return false;
   return true; // repoContains resolves after the pass, and only when findings exist
+}
+
+// --- markdown-section machinery (checkSections) ------------------------------
+
+const MD_BULLET = /^[-*+]\s/;
+const MD_DATED = /^[-*+]\s+(?:\*\*)?(\d{4})-(\d{2})-(\d{2})(?:\*\*)?\b/;
+const MD_CONTINUATION = /^\s+\S/;
+const DAY_MS = 86_400_000;
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Date.UTC rolls out-of-range parts over (2026-02-30 → March 2) instead of
+// failing, so calendar validity needs the explicit round-trip.
+function realDateUTC(y, mo, d) {
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d
+    ? dt.getTime() : null;
+}
+
+// One parse of a page's section structure, shared by every subscribing rule:
+// fenced lines blanked (count preserved, so line numbers never shift), the
+// first `## ` heading, and each named section's body ({ line, text } entries,
+// 1-indexed) memoized per name.
+function markdownIndex(text) {
+  let inFence = false;
+  const stripped = text.split('\n').map((l) => {
+    if (/^\s*(```|~~~)/.test(l)) { inFence = !inFence; return ''; }
+    return inFence ? '' : l;
+  });
+  const firstLine = stripped.find((l) => /^##\s/.test(l));
+  const sections = new Map();
+  return {
+    firstHeading: firstLine === undefined ? null : firstLine.replace(/^##\s+/, '').trim(),
+    section(name) {
+      const key = name.toLowerCase();
+      if (!sections.has(key)) {
+        const re = new RegExp(`^##\\s+${escapeRe(name)}\\b`, 'i');
+        const start = stripped.findIndex((l) => re.test(l));
+        if (start === -1) sections.set(key, null);
+        else {
+          let end = stripped.length;
+          for (let i = start + 1; i < stripped.length; i++) {
+            if (/^##\s/.test(stripped[i])) { end = i; break; }
+          }
+          sections.set(key, stripped.slice(start + 1, end).map((t, i) => ({ line: start + 2 + i, text: t })));
+        }
+      }
+      return sections.get(key);
+    },
+  };
+}
+
+function assertSections(ctx, j, path, md) {
+  const excerpt = (s) => s.trim().slice(0, 80);
+  const push = (a, at, vars) => j.out.push(finding(j.rule, {
+    file: path, ...(at === null ? {} : { line: at }), what: fill(a.what, vars), fix: fill(a.fix, vars),
+  }));
+
+  for (const entry of j.spec.checkSections) {
+    for (const name of entry.sections ?? [entry.section]) {
+      const body = md().section(name);
+      const vars = { section: name };
+      if (body === null) {
+        if (entry.requirePresent) push(entry.requirePresent, null, vars);
+        continue;
+      }
+
+      if (entry.requireFirstOnPage) {
+        const first = md().firstHeading;
+        if (first !== null && !new RegExp(`^${escapeRe(name)}\\b`, 'i').test(first)) {
+          push(entry.requireFirstOnPage, null, { ...vars, first });
+        }
+      }
+
+      let bullets = 0;
+      const dated = [];
+      const now = ctx.now ?? Date.now();
+      for (let i = 0; i < body.length; i++) {
+        const { line, text: t } = body[i];
+        if (!MD_BULLET.test(t)) {
+          if (entry.forbidProseLines && t.trim() !== '' && !MD_CONTINUATION.test(t)) {
+            push(entry.forbidProseLines, line, { ...vars, line: excerpt(t) });
+          }
+          continue;
+        }
+        bullets += 1;
+        const m = MD_DATED.exec(t);
+        if (entry.eachBulletLeadsWithDate) {
+          if (!m) push(entry.eachBulletLeadsWithDate.whenUndated, line, { ...vars, bullet: excerpt(t) });
+          else if (realDateUTC(+m[1], +m[2], +m[3]) === null) {
+            push(entry.eachBulletLeadsWithDate.whenNotRealDate, line, { ...vars, date: `${m[1]}-${m[2]}-${m[3]}` });
+          }
+        }
+        if (entry.newestDatedBulletWithinDays && m) {
+          const ts = realDateUTC(+m[1], +m[2], +m[3]);
+          if (ts !== null && ts <= now + 2 * DAY_MS) dated.push(ts);
+        }
+        if (entry.eachBulletBlockMatches || entry.maxBulletBlockLength) {
+          let block = t;
+          for (let k = i + 1; k < body.length && MD_CONTINUATION.test(body[k].text); k++) {
+            block += ` ${body[k].text.trim()}`;
+          }
+          if (entry.eachBulletBlockMatches && !entry.eachBulletBlockMatches.pattern.test(block)) {
+            push(entry.eachBulletBlockMatches, line, { ...vars, bullet: excerpt(t) });
+          }
+          if (entry.maxBulletBlockLength && block.trim().length > entry.maxBulletBlockLength.characters) {
+            push(entry.maxBulletBlockLength, line, { ...vars, bullet: excerpt(t), characters: block.trim().length });
+          }
+        }
+      }
+
+      if (entry.minBullets && bullets < entry.minBullets.count) {
+        push(entry.minBullets, null, { ...vars, bullets });
+      } else if (entry.maxBullets && bullets > entry.maxBullets.count) {
+        push(entry.maxBullets, null, { ...vars, bullets });
+      }
+
+      if (entry.newestDatedBulletWithinDays && dated.length) {
+        const a = entry.newestDatedBulletWithinDays;
+        const newest = Math.max(...dated);
+        const age = Math.floor(((ctx.now ?? Date.now()) - newest) / DAY_MS);
+        if (age > a.days) {
+          push(a, null, { ...vars, age, days: a.days, date: new Date(newest).toISOString().slice(0, 10) });
+        }
+      }
+    }
+  }
 }
 
 const fieldAt = (doc, path) =>
@@ -270,10 +429,13 @@ function assertParsedShape(ctx, j, parsed) {
 function visit(ctx, subs, path, text) {
   let split = null;
   const lines = () => (split ??= text.split('\n'));
+  let mdIndex = null;
+  const md = () => (mdIndex ??= markdownIndex(text));
   const lineJobs = [];
 
   for (const j of subs) {
     const s = j.spec;
+    if (s.checkSections) assertSections(ctx, j, path, md);
     if (s.maxLines && lines().length > s.maxLines.limit) {
       const vars = { lines: lines().length, limit: s.maxLines.limit };
       j.out.push(finding(j.rule, {
