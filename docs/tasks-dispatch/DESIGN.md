@@ -556,7 +556,8 @@ only an issues-scope token; nothing about the queue knows how many exist.
 ## 7. The agent
 
 Today's `executor.md` collapses: the trigger-identification dance
-(`resolve-dispatch`'s exits 11/12/13, the two transports, the no-fallback rule)
+(`resolve-dispatch`'s not-mine / scope-mismatch / no-trigger / needs-issue
+verdicts, the two transports, the no-fallback rule)
 existed because the session had to *discover* which label event started it. An
 invoked session is told its item in its prompt — one issue number — and the
 prompt is written by executor code, not by a human. What survives, verbatim in

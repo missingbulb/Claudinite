@@ -414,8 +414,9 @@ sessions burn on empty hours.
      label + body, one shot). Claude Code on the web writes no payload file and
      instead sets `CCR_TRIGGER_SOURCE` / `CCR_TRIGGER_EVENT` / `CCR_TRIGGER_REPO`
      / `CCR_TRIGGER_ISSUE_NUMBER`, which name the issue but carry neither its
-     labels nor its body — so that path resolves in two shots (`needs-issue`,
-     exit 13: the executor fetches that one issue over MCP, saves the raw
+     labels nor its body — so that path resolves in two shots (the
+     `needs-issue` verdict, at exit 0 — the routine is mid-handshake, not
+     stopped: the executor fetches that one issue over MCP, saves the raw
      response JSON verbatim, and re-invokes with `--issue-json`; the shell
      extracts body/labels/title itself and rejects a response for the wrong
      issue number — `--issue-body-file` / `--issue-labels` remain as the manual
@@ -664,7 +665,7 @@ These override the earlier sections where they conflict.
    pure rules). Stated trade: recovery latency for a lost label event or dead
    claim grows from ~an hour to up to a day.
 2. **A dispatch whose task the repo no longer carries is CLOSED, not triaged.**
-   `resolve-dispatch` exit `14` (`task-gone`: task file or `task.mjs` missing,
+   `resolve-dispatch`'s `task-gone` verdict (task file or `task.mjs` missing,
    pack undeclared) → the executor comments and closes the issue as not
    planned. No `needs-human`, and no task ever keeps updating a tracking issue
    about a failed state — every exit is one terminal convergence. Malformed
@@ -723,3 +724,41 @@ These override the earlier sections where they conflict.
    lands unreviewed is the repo's `maintenance.delivery` plus the repo's own
    shape (no PR CI / ungated base / gate present), and every one of those
    nuances lives in the helpers, never in a task.
+
+## 13. Decision on record (owner, 2026-08-14) — the exit code says whether the routine broke
+
+`resolve-dispatch.mjs` gave each verdict its own exit code (0/10/11/12/13/14)
+and the executor branched on the number. Every verdict but `valid` therefore
+ended a session non-zero, which harnesses paint as a failed command: an
+ordinary "not mine, another session claimed it" read as red in the transcript,
+and taught both the human skimming it and the agent acting on it that a routine
+outcome was a fault.
+
+**The rule, replacing the old table: exit 0 whenever the routine goes on —
+including when going on means stopping on purpose — and non-zero only when it
+stops unexpectedly.**
+
+- The **verdict** is the interface, and always was available: every decided
+  branch prints `dispatch: <verdict>` as the first line of its block, so the
+  executor branches on that field and loses nothing. `valid`, `needs-issue`,
+  `invalid`, `task-gone` and `not-mine` all exit **0** — the first two because
+  the routine continues, the next two because the routine has prescribed work to
+  do (comment, de-label, close), the last because an expected stop is not an
+  error.
+- The **exit code** answers only "did this routine break". Non-zero survives for
+  `no-trigger` (`12`, unchanged — no source named an issue, a defect worth a
+  human seeing), `scope-mismatch` (`15`, new) and the two faults, `usage` (`2`)
+  and `internal` (`1`).
+- **`scope-mismatch` is split out of the old `not-mine`** and is the one stop
+  loud enough to keep its red. Each executor routine fires on its own ready
+  label, so a dispatch arriving under the other scope's label did not wander in:
+  the routine that woke for it is misconfigured (a fleet routine whose prompt
+  lost the word `fleet`, most often). Nothing on GitHub records that, the
+  janitor re-arms the dispatch, and it declines forever until a human reads the
+  session — so the session is the only place the signal can live.
+- Codes `10`, `11`, `13` and `14` are **retired, not renumbered**, so no live
+  code carries a changed meaning for a reader who remembers the old table.
+
+Enforced by `engine-tests/scheduler/resolve-dispatch.test.mjs`, which asserts the
+rule over every verdict in one test as well as per-verdict, with the codes
+written literal so a renumbering cannot pass green.
