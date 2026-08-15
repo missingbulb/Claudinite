@@ -1080,3 +1080,112 @@ test('maxLineLength: one finding per file at the first over-long line, measured 
     assert.equal(findings[0].what, '2 line(s) over 100 bytes, longest 150');
   } finally { cleanup(root); }
 });
+
+test('someTrackedFileContains.ignoringComments: a marker only a comment carries does not arm the rule', () => {
+  const ruleOf = (id) => patternRule({
+    ...meta(id),
+    relevantWhen: {
+      someTrackedFileContains: { pathMatching: /\.swift$/, text: /\binstallTap\s*\(/, ignoringComments: true },
+    },
+    scanFiles: /\.plist$/,
+    matchLines: [{ match: /Sudden/, what: 'w', fix: 'f' }],
+  });
+  const commentOnly = makeRepo({ changed: {
+    'App.swift': '// we call installTap ( elsewhere\nlet x = 1\n',
+    'Info.plist': 'Sudden\n',
+  } });
+  const inCode = makeRepo({ changed: {
+    'App.swift': 'engine.inputNode.installTap (onBus: 0)\n',
+    'Info.plist': 'Sudden\n',
+  } });
+  try {
+    assert.equal(ruleOf('fx-gate-comment-blind-a').run(ctxOf(commentOnly)).length, 0);
+    assert.equal(ruleOf('fx-gate-comment-blind-b').run(ctxOf(inCode)).length, 1);
+  } finally { cleanup(commentOnly); cleanup(inCode); }
+});
+
+test('checkParsedFiles: requireValueInArray flags a missing value, and matches an entry object by its declared field', () => {
+  const rule = patternRule({
+    ...meta('fx-require-value'),
+    checkParsedFiles: [{
+      file: 'settings.json',
+      requireValueInArray: { atField: 'packs', value: 'core', matchingEntryObjectsByField: 'id' },
+      what: 'does not declare core', fix: 'add it',
+    }],
+  });
+  const missing = makeRepo({ changed: { 'settings.json': '{"packs":["basics"]}' } });
+  const asString = makeRepo({ changed: { 'settings.json': '{"packs":["basics","core"]}' } });
+  const asObject = makeRepo({ changed: { 'settings.json': '{"packs":[{"id":"core","config":{}}]}' } });
+  const noField = makeRepo({ changed: { 'settings.json': '{"rules":{}}' } });
+  const absent = makeRepo({ changed: { 'other.json': '{}' } });
+  try {
+    const findings = rule.run(ctxOf(missing));
+    assert.deepEqual(findings.map((f) => [f.file, f.what]), [['settings.json', 'does not declare core']]);
+    assert.equal(rule.run(ctxOf(asString)).length, 0);
+    assert.equal(rule.run(ctxOf(asObject)).length, 0);
+    assert.equal(rule.run(ctxOf(noField)).length, 1);
+    assert.equal(rule.run(ctxOf(absent)).length, 0);
+  } finally { [missing, asString, asObject, noField, absent].forEach(cleanup); }
+});
+
+test('requireIndexCoverage: whoseTextMatches narrows the path quantifier by content, read comment-blind under scanIgnoringComments', () => {
+  const rule = patternRule({
+    ...meta('fx-coverage-content'),
+    scanIgnoringComments: true,
+    requireIndexCoverage: [{
+      eachTrackedPathMatching: /^packs\/(?<pack>[^/]+)\/pack\.mjs$/,
+      whoseTextMatches: /(^|[^\w.$])seededByDefault\s*:\s*true\b/,
+      indexFile: 'settings.json',
+      coveredByValueInArrayAtField: { atField: 'packs', value: '{pack}', matchingEntryObjectsByField: 'id' },
+      whenIndexFileAbsent: 'assertNothing',
+      anchorFindingsAt: 'indexFile',
+      what: '"{pack}" is seeded but not declared', fix: 'declare {pack}',
+    }],
+  });
+  const root = makeRepo({ changed: {
+    'packs/seeded/pack.mjs': "export default { id: 'seeded', seededByDefault: true };\n",
+    'packs/talked/pack.mjs': "// seededByDefault: true — prose only\nexport default { id: 'talked' };\n",
+    'packs/declared/pack.mjs': "export default { id: 'declared', seededByDefault: true };\n",
+    'packs/object/pack.mjs': "export default { id: 'object', seededByDefault: true };\n",
+    'settings.json': '{"packs":["declared",{"id":"object"}]}',
+  } });
+  const noIndex = makeRepo({ changed: {
+    'packs/seeded/pack.mjs': "export default { id: 'seeded', seededByDefault: true };\n",
+  } });
+  try {
+    const findings = rule.run(ctxOf(root));
+    assert.deepEqual(findings.map((f) => [f.file, f.what]),
+      [['settings.json', '"seeded" is seeded but not declared']]);
+    assert.equal(rule.run(ctxOf(noIndex)).length, 0);
+  } finally { cleanup(root); cleanup(noIndex); }
+});
+
+test('requireIndexCoverage: eachValueInParsedArray quantifies a parsed array\'s values into coveredByText', () => {
+  const rule = patternRule({
+    ...meta('fx-coverage-values'),
+    requireIndexCoverage: [{
+      eachValueInParsedArray: {
+        filesMatching: /(^|\/)manifest\.json$/, whereFileContains: /"manifest_version"/, atField: 'permissions',
+      },
+      indexFile: 'PRIVACY.md',
+      coveredByText: '{value}',
+      whenIndexFileAbsent: 'assertNothing',
+      anchorFindingsAt: 'indexFile',
+      what: 'manifest requests "{value}" undisclosed', fix: 'disclose {value}',
+    }],
+  });
+  const root = makeRepo({ changed: {
+    'app/manifest.json': '{"manifest_version":3,"permissions":["tabs","storage"]}',
+    'decoy/manifest.json': '{"permissions":["cookies"]}',
+    'PRIVACY.md': 'We use storage to keep your notes.\n',
+  } });
+  const noPrivacy = makeRepo({ changed: {
+    'app/manifest.json': '{"manifest_version":3,"permissions":["tabs"]}',
+  } });
+  try {
+    const findings = rule.run(ctxOf(root));
+    assert.deepEqual(findings.map((f) => [f.file, f.what]),
+      [['PRIVACY.md', 'manifest requests "tabs" undisclosed']]);
+    assert.equal(rule.run(ctxOf(noPrivacy)).length, 0);
+  } finally { cleanup(root); cleanup(noPrivacy); }
+});
