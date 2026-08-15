@@ -114,59 +114,9 @@
       "reason": "the per-project-scheduling DESIGN/MIGRATION pair is the historical record of migration #394 — it names the central routine and planner files this migration deleted precisely because deleting them is what it records; rewriting those names would falsify the record, so its inbound-reference dangling is deliberate and permanent"
     },
     {
-      "rule": "file-placement",
-      "path": "engine/scheduler/queue/",
-      "reason": "the queue's three CLI shells (tick, executor, create-work-item) read the repo's declaration through the one validated loader in engine/checks/helpers/repo-context.mjs \u2014 the same single reviewable edge engine/scheduler/run.mjs already crosses for dormancy and taskScheduler, one directory shallower; a second settings loader beside the scheduler, or an indirection module whose whole content is a re-export, would each be worse than the reach"
-    },
-    {
-      "rule": "file-placement",
-      "path": "engine/checks/helpers/repo-context.mjs",
-      "reason": "the engine's file-set builder deliberately imports the consumer-layout constant SHARED_SUBDIR (beside LOCAL_PACKS_SUBDIR in engine/pack_loader/pack-registry.mjs — core machinery per extending.md, not a specific pack) so the shared-mount sweep exclusion and the vendor writer share one definition; the cross-tree reach is inherent, not a misplacement"
-    },
-    {
-      "rule": "file-placement",
-      "path": "engine/migrations/registry.mjs",
-      "reason": "the canon-side migration registry deliberately builds on the vendored sync surface in the engine lib (engine/checks/helpers/active-migrations.mjs — the home pack-independence mandates, since pack checks consult migrationActive and packs import only the engine surface); one definition, re-exported for canon callers, so the cross-tree reach is inherent, not a misplacement"
-    },
-    {
-      "rule": "file-placement",
-      "path": "updates/",
-      "reason": "an update flow is by definition the composition of the trees it moves between — the vendor-set computation it lays down, the engine surface it replaces, the migration registry it runs and the wiring it converges — so every import it has crosses a tree boundary; that reach IS the module, and putting it inside any one of those trees would either ship canon-internal machinery to every member or hide the flow inside the thing it operates on"
-    },
-    {
-      "rule": "file-placement",
-      "path": "packs/static-website/version-scheme.mjs",
-      "reason": "the version rule deliberately imports the scheme itself (VERSION_RE, the version reader) and the config parser from the pack's own vendored stubs, because those files are the definition: they are what runs in every site repo's .github/. Restating either canon-side would be a second copy that drifts from the code that actually bumps and reads. The reach into stubs/ is inherent to a pack whose logic ships vendored, not a misplacement"
-    },
-    {
-      "rule": "file-placement",
-      "path": "packs/static-website/site-config.mjs",
-      "reason": "same as version-scheme.mjs: the config rule parses .github/site.config with the very parser the vendored read-site-config action runs, so the check and the pipeline can never disagree about what a valid config is"
-    },
-    {
-      "rule": "file-placement",
-      "path": "packs/static-website/release-workflows.mjs",
-      "reason": "same as site-config.mjs: the pipeline-completeness rule reads .github/site.config with the vendored parser to see whether the repo declares build_vars, because the answer decides whether a pre-exporter vendored copy is stale or simply untouched. Re-parsing the config canon-side would be a second definition of a valid config that drifts from the one the runner uses"
-    },
-    {
-      "rule": "file-placement",
-      "path": "vendoring/compute-vendor-set.mjs",
-      "reason": "the vendor-set computation deliberately imports the import-surface facts from the engine lib (engine/checks/helpers/module-imports.mjs — the one home the pack-independence check judges against), so \"what a pack may import\" and \"what a vendor set must carry\" share one definition; the cross-tree reach is inherent, not a misplacement"
-    },
-    {
       "rule": "barrier",
       "path": ".github/workflows/canary-rehearsal.yml",
       "reason": "the live canary gate names packs/core/tasks/update because the worker is ITSELF vendored content, so a release that changes the worker cannot be rehearsed by the canary's vendored copy — that copy predates the release by definition, and a rehearsal driving it would ignore CLAUDINITE_CANON_REF entirely and run a real cycle against main, opening a PR on the canary instead of qualifying the ref. The crossing buys the one property the gate exists for: the code under test is the code every member runs the moment the release reaches them. The workflow names no pack CONTENT — only the entry point of the task that performs the converge"
-    },
-    {
-      "rule": "file-placement",
-      "path": "engine/pack_loader/pack-registry.mjs",
-      "reason": "the registry discovers a pack's declared checks (declared-checks.json) beside its manifest and reaches the pattern-check engine that compiles them (engine/checks/helpers/pattern-rules.mjs) — imported lazily, only where a declaration file exists; one seam so every reader of a pack's rules (the runners, --list, the session summary) agrees on what the pack carries, rather than each re-deriving it"
-    },
-    {
-      "rule": "file-placement",
-      "path": "engine-tests/helpers.mjs",
-      "reason": "the shared test harness reaches the engine's declared-check loader so a pack test proves the SAME compiled rule object the runner runs, not a re-parse of the same JSON; a test file's own reach into the engine is exempt, and the harness they all share is that reach spelled once"
     }
   ],
   "taskScheduler": {
