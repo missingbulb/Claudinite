@@ -7,7 +7,7 @@
 # A thin shim: all logic lives in the vendored engine, so this file changes
 # rarely. The minute below is a placeholder; bootstrap and the wiring converge
 # rewrite it to this repo's stable hashed minute in :10–:50, computed by
-# `node engine/scheduler/hash-minute.mjs <owner/repo>`.
+# `node .claudinite/shared/engine/scheduler/hash-minute.mjs <owner/repo>`.
 #
 # TWO JOBS, IN ORDER. The tick is pure label mechanics over the issue list —
 # instantiate each task's standing item at its anchor, ready what is due, reclaim
@@ -23,7 +23,7 @@ name: Claudinite scheduler
 
 on:
   schedule:
-    - cron: '44 * * * *'
+    - cron: '10 * * * *'
   workflow_dispatch:
 
 # One tick at a time, always. The tick's duplicate-standing-item self-heal is
@@ -50,7 +50,7 @@ jobs:
       - name: Instantiate, ready and reclaim work items
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: node engine/scheduler/queue/tick.mjs
+        run: node .claudinite/shared/engine/scheduler/queue/tick.mjs
 
   # The post-tick drain. `timeout-minutes` MUST stay ≤ the engine's executing
   # leash (60m): a hung runner has to be killed by the platform before its claim
@@ -68,11 +68,10 @@ jobs:
       - name: Drain the queue
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          # On a member this block is stamped by the wiring converge (the
-          # `# claudinite:secrets` marker in the stub); the canon has no converge,
-          # so its own list is written here, by hand, in the same commit.
-          FLEET_GITHUB_TOKEN: ${{ secrets.FLEET_GITHUB_TOKEN }}
-        run: node engine/scheduler/queue/executor.mjs
+          # The wiring converge stamps every declared required_secret, and every
+          # configured invocation endpoint's token, below this marker — by name.
+          # claudinite:secrets
+        run: node .claudinite/shared/engine/scheduler/queue/executor.mjs
 
   # A scheduled run reaches no one when it goes red, so escalate a whole-run
   # failure to a human-visible `workflow-failure` issue. Converges to ONE open

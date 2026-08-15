@@ -21,6 +21,11 @@ export default {
   // the fleet, and this task reads every member's local packs, so its dispatch must
   // reach the separate fleet routine (ready-for-agent-fleet).
   session_scope: 'fleet',
+  // …and its queue-dispatch replacement (tasks-dispatch DESIGN §12): reach is a
+  // property of WHICH endpoint the executor calls, so a task needing more than an
+  // ordinary session names one. The key resolves in this repo's own config; until
+  // it is configured, hand-off converges the item to triage naming what is missing.
+  invocation_endpoint: 'fleet',
   agent_model: 'opus',                   // portability, dedup-vs-corpus, and routing are the heaviest judgment
   expected_outcome: 'open-pr',           // the judgment gate before shared canon — owner-approved, never auto-merged
   agent_instructions: 'task.md',

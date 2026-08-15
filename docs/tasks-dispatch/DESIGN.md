@@ -1,7 +1,7 @@
 # Task dispatch without slots — the work-item queue
 
-Status: **agreed in shape; not yet built.** A continuation of the owner's
-sketch (2026-08-12, reproduced in Appendix A), played against twenty timed
+The mechanism lives in [`engine/scheduler/queue/`](../../engine/scheduler/queue/),
+behind `taskScheduler.dispatch`. A continuation of the owner's sketch (2026-08-12, reproduced in Appendix A), played against twenty timed
 scenarios ([SCENARIOS.md](SCENARIOS.md)) and the field's prior art
 ([RESEARCH.md](RESEARCH.md)), with the owner's eight decisions of 2026-08-13
 recorded in §15 and folded into the sections they changed. The phase plan

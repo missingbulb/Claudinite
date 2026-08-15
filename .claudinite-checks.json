@@ -115,6 +115,11 @@
     },
     {
       "rule": "file-placement",
+      "path": "engine/scheduler/queue/",
+      "reason": "the queue's three CLI shells (tick, executor, create-work-item) read the repo's declaration through the one validated loader in engine/checks/helpers/repo-context.mjs \u2014 the same single reviewable edge engine/scheduler/run.mjs already crosses for dormancy and taskScheduler, one directory shallower; a second settings loader beside the scheduler, or an indirection module whose whole content is a re-export, would each be worse than the reach"
+    },
+    {
+      "rule": "file-placement",
       "path": "engine/checks/helpers/repo-context.mjs",
       "reason": "the engine's file-set builder deliberately imports the consumer-layout constant SHARED_SUBDIR (beside LOCAL_PACKS_SUBDIR in engine/pack_loader/pack-registry.mjs — core machinery per extending.md, not a specific pack) so the shared-mount sweep exclusion and the vendor writer share one definition; the cross-tree reach is inherent, not a misplacement"
     },
@@ -165,6 +170,7 @@
     }
   ],
   "taskScheduler": {
+    "dispatch": "queue",
     "dailyHour": 4,
     "weeklyDay": "Sun",
     "monthlyDay": 1

@@ -1,0 +1,84 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  WORK_PREFIX, workItemTitle, parseWorkItemTitle, isWorkItemTitle,
+  workItemBody, parseWorkItemBody, withNotBefore, withSection,
+  QUEUE_LABELS, STATE_LABELS, labelNames, hasLabel,
+} from '../../../engine/scheduler/queue/work-item.mjs';
+
+// The title is the identity's readable half; the ISSUE NUMBER is the identity.
+// Nothing ever encodes a date here — that was the slot grammar.
+test('a work-item title round-trips, with and without a qualifier', () => {
+  assert.equal(workItemTitle({ pack: 'core', task: 'update' }), '[claudinite-work] core/update');
+  assert.deepEqual(parseWorkItemTitle('[claudinite-work] core/update'), { pack: 'core', task: 'update', qualifier: null });
+  assert.equal(workItemTitle({ pack: 'sheepdog', task: 'fleet-baseline', qualifier: 'member-repo-x' }),
+    '[claudinite-work] sheepdog/fleet-baseline member-repo-x');
+  assert.deepEqual(parseWorkItemTitle('[claudinite-work] sheepdog/fleet-baseline member-repo-x'),
+    { pack: 'sheepdog', task: 'fleet-baseline', qualifier: 'member-repo-x' });
+});
+
+test('the slot mechanism\'s titles are invisible here — the two families are disjoint (S29)', () => {
+  assert.equal(parseWorkItemTitle('[claudinite-task] core/update d2026-08-14'), null);
+  assert.equal(isWorkItemTitle('Some ordinary issue'), false);
+  assert.equal(isWorkItemTitle(`${WORK_PREFIX} basics/task-janitor`), true);
+});
+
+test('the body carries the task path first and the two scheduling fields', () => {
+  const body = workItemBody({
+    taskPath: 'packs/core/tasks/update/task.md',
+    notBefore: '2026-08-15T02:00:00.000Z',
+    blockedBy: [812, 813],
+    context: ['only the mount', 'nothing else'],
+  });
+  assert.match(body.split('\n')[0], /^packs\/core\/tasks\/update\/task\.md$/);
+  assert.deepEqual(parseWorkItemBody(body), {
+    taskPath: 'packs/core/tasks/update/task.md',
+    notBefore: '2026-08-15T02:00:00.000Z',
+    blockedBy: [812, 813],
+  });
+  assert.match(body, /### Context\n- only the mount\n- nothing else/);
+});
+
+test('absence is meaningful: no fields parse to null and an empty list', () => {
+  const body = workItemBody({ taskPath: 'packs/x/tasks/y/task.md' });
+  assert.deepEqual(parseWorkItemBody(body), { taskPath: 'packs/x/tasks/y/task.md', notBefore: null, blockedBy: [] });
+});
+
+// The roll's whole mechanic: stamp the next anchor onto an item that already
+// carries a Context somebody else wrote.
+test('withNotBefore stamps in place, inserts under the task path, and clears', () => {
+  const fresh = workItemBody({ taskPath: 'p/t/task.md', context: ['scope'] });
+  const stamped = withNotBefore(fresh, '2026-08-15T04:00:00.000Z');
+  assert.equal(parseWorkItemBody(stamped).notBefore, '2026-08-15T04:00:00.000Z');
+  assert.match(stamped, /### Context\n- scope/);            // the Context survives untouched
+
+  const restamped = withNotBefore(stamped, '2026-08-16T04:00:00.000Z');
+  assert.equal(parseWorkItemBody(restamped).notBefore, '2026-08-16T04:00:00.000Z');
+  assert.equal((restamped.match(/^Not-before:/gm) ?? []).length, 1);
+
+  assert.equal(parseWorkItemBody(withNotBefore(restamped, null)).notBefore, null);
+});
+
+test('withSection appends prework\'s delivered artifacts without disturbing the body', () => {
+  const body = workItemBody({ taskPath: 'p/t/task.md' });
+  const out = withSection(body, 'Delivered by prework', ['PR: #12 (open)']);
+  assert.match(out, /### Delivered by prework\n\n- PR: #12 \(open\)/);
+  assert.equal(parseWorkItemBody(out).taskPath, 'p/t/task.md');
+});
+
+test('every label the mechanism applies is ensured, and the four states are named', () => {
+  const names = QUEUE_LABELS.map((l) => l.name);
+  for (const l of STATE_LABELS) assert.ok(names.includes(l), `${l} must be ensurable`);
+  for (const l of ['origin:schedule', 'needs-human', 'outcome:done', 'outcome:delivered', 'outcome:obsolete', 'task:urgent']) {
+    assert.ok(names.includes(l), `${l} must be ensurable`);
+  }
+  // Every label carries a colour and a description, so nothing is ever minted
+  // grey-and-undocumented by being applied.
+  for (const l of QUEUE_LABELS) assert.ok(l.color && l.description, `${l.name} needs a colour and a description`);
+});
+
+test('labels are read from either shape GitHub returns them in', () => {
+  assert.deepEqual(labelNames({ labels: ['task:ready', { name: 'origin:schedule' }] }), ['task:ready', 'origin:schedule']);
+  assert.equal(hasLabel({ labels: [{ name: 'task:ready' }] }, 'task:ready'), true);
+  assert.equal(hasLabel({ labels: [] }, 'task:ready'), false);
+});

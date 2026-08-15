@@ -121,7 +121,13 @@ export function stagedFiles(targetRoot) {
 // clone: the engine flow refreshed it earlier in the same cycle, and reading the
 // member's copy is what makes this agree with `converge-wiring.mjs`'s own CLI —
 // the thing a human runs by hand, and the thing bootstrap runs at adoption.
-const STUB_REL = '.claudinite/shared/engine/scheduler/stubs/claudinite-scheduler.yml';
+// Which stub is a function of the member's dispatch mode: `slots` keeps the slot
+// scheduler, `queue` puts the tick and its drain at the same path (tasks-dispatch
+// DESIGN §14). The path the content lands at is the same either way, which is why
+// this whole lane needs to know only which stub to read.
+const STUB_DIR = '.claudinite/shared/engine/scheduler/stubs/';
+export const stubFor = (config) =>
+  `${STUB_DIR}${config?.taskScheduler?.dispatch === 'queue' ? 'claudinite-tick.yml' : 'claudinite-scheduler.yml'}`;
 
 // The scheduler workflow this member should be carrying, as `{ pending, error }`.
 // `pending` is null when the file is already converged; `error` is set when the
@@ -142,11 +148,13 @@ const STUB_REL = '.claudinite/shared/engine/scheduler/stubs/claudinite-scheduler
 export async function pendingSchedulerWorkflow(targetRoot, fullName, read) {
   try {
     if (!fullName) return { pending: null, error: 'no repo name — cannot resolve this repo\'s cron minute' };
-    const stub = read(STUB_REL);
-    if (stub == null) return { pending: null, error: `no vendored scheduler stub at ${STUB_REL}` };
     const { schedulerWorkflowTarget, SCHEDULER_WORKFLOW, declaredSecrets } = await import('../engine/scheduler/converge-wiring.mjs');
     const { loadConfig } = await import('../engine/checks/helpers/repo-context.mjs');
-    const content = schedulerWorkflowTarget(fullName, stub, await declaredSecrets(targetRoot, loadConfig(targetRoot)));
+    const config = loadConfig(targetRoot);
+    const stubRel = stubFor(config);
+    const stub = read(stubRel);
+    if (stub == null) return { pending: null, error: `no vendored scheduler stub at ${stubRel}` };
+    const content = schedulerWorkflowTarget(fullName, stub, await declaredSecrets(targetRoot, config));
     const pending = read(SCHEDULER_WORKFLOW) === content ? null : { path: SCHEDULER_WORKFLOW, content };
     return { pending, error: null };
   } catch (e) {

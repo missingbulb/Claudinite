@@ -211,6 +211,31 @@ test('loadConfig: out-of-range and misshaped schedule values are settings errors
   } finally { cleanup(ranges); cleanup(notObject); }
 });
 
+// The queue's per-repo cutover key and its endpoint map (tasks-dispatch DESIGN
+// §12, §14). The two mechanisms coexist behind `dispatch`, so a typo in it must be
+// a settings error rather than a silent fall-back to the other mechanism.
+test('loadConfig: taskScheduler.dispatch and the endpoint map are validated', () => {
+  const good = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({
+    packs: ['basics'],
+    taskScheduler: { dispatch: 'queue', endpoints: { default: { url: 'https://x.invalid/s', tokenSecret: 'CCR_TOKEN' } } },
+  }) } });
+  const bad = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({
+    packs: ['basics'],
+    taskScheduler: { dispatch: 'queues', endpoints: { default: { url: 'https://x.invalid/s' } } },
+  }) } });
+  try {
+    const cfg = loadConfig(good);
+    assert.deepEqual(cfg.errors, []);
+    assert.equal(cfg.taskScheduler.dispatch, 'queue');
+    assert.equal(cfg.taskScheduler.endpoints.default.tokenSecret, 'CCR_TOKEN');
+
+    const errs = loadConfig(bad).errors;
+    assert.equal(errs.length, 2);
+    assert.match(errs[0].what, /"taskScheduler\.dispatch" must be one of slots, queue/);
+    assert.match(errs[1].what, /"taskScheduler\.endpoints\.default" must be \{ url, tokenSecret \}/);
+  } finally { cleanup(good); cleanup(bad); }
+});
+
 test('buildContext: the shared mount is structurally out of scope; local_packs stays in', () => {
   const root = makeRepo({ changed: {
     'src/app.js': 'x\n',

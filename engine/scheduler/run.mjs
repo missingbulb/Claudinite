@@ -21,6 +21,7 @@ import { isDormant } from '../checks/helpers/repo-context.mjs';
 import { renderTaskRuns } from './run-record.mjs';
 import { localSignalContext } from './signals/local.mjs';
 import { runPrework, preworkFailure, agentRequestPath, clearAgentRequest, agentRequested, readAgentRequest } from './prework.mjs';
+import { ensureLabels } from './github.mjs';
 
 // The due tasks, each paired with the slot it runs under. Union the discovered
 // tasks' frequencies, ask slots which are due (run-ledger math), then map due
@@ -352,31 +353,9 @@ export async function existingIssuesViaSearch(gh, repo, pack, task) {
 // one issue, janitor cleans up and assesses health. The pure rules stay in
 // dispatch.mjs; the janitor's worker is the only I/O shell over them.
 
-// Ensure the dispatch labels exist before any is applied — GitHub 422s when you
-// apply an unknown label (it never creates one on demand), so the scheduler, as the
-// thing that assigns them, guarantees them here. Idempotent (201 created / 422 already
-// exists are both success) and self-healing (a deleted label reappears next run), which
-// is why no separate one-off label-creation step is needed. Exported for the run tests.
-export async function ensureLabels(gh, repo, labels) {
-  for (const { name, color, description } of labels) {
-    const res = await gh(`/repos/${repo}/labels`, { method: 'POST', body: { name, color, description } });
-    if (res.status === 201) continue;                       // created to spec — nothing further
-    if (res.status === 422) {
-      // The NAME is taken; that says nothing about the colour or description. A
-      // label GitHub auto-created (applying an unknown name to an issue mints it
-      // grey `ededed`, no description) would keep those defaults for good, because
-      // POST 422s forever. So reconcile the shape, not just the existence — that
-      // is what makes the self-healing claim above true for drift and not only for
-      // deletion. PATCH is idempotent: an already-correct label is a no-op write.
-      const fix = await gh(`/repos/${repo}/labels/${encodeURIComponent(name)}`, {
-        method: 'PATCH', body: { color, description },
-      });
-      if (fix.status !== 200) console.log(`! could not reconcile label "${name}": ${fix.status}`);
-      continue;
-    }
-    console.log(`! could not ensure label "${name}": ${res.status}`);
-  }
-}
+// The label guarantee both dispatch mechanisms need lives in github.mjs; it is
+// re-exported here because the scheduler's own tests reach for it by this name.
+export { ensureLabels };
 
 async function main() {
   const { makeGh, lastSuccessTime, actionRepoContext } = await import('./signals/gh.mjs');
@@ -404,6 +383,17 @@ async function main() {
   if (isDormant(config)) {
     console.log('## Claudinite scheduler\n');
     console.log('- this project declares itself dormant ("dormant": true in .claudinite-checks.json) — no tasks evaluated, no work dispatched');
+    return;
+  }
+
+  // A repo that has flipped to the work-item queue runs the tick and the executor
+  // instead, and its scheduler workflow is re-converged to the tick. This gate is
+  // what makes the flip safe from EITHER side: a copy of this workflow that has
+  // not yet been re-converged keeps firing on the old cron, and without the gate
+  // both mechanisms would dispatch the same work under two disjoint vocabularies.
+  if (config.taskScheduler?.dispatch === 'queue') {
+    console.log('## Claudinite scheduler\n');
+    console.log('- this project dispatches through the work-item queue ("taskScheduler.dispatch": "queue") — the slot scheduler evaluates nothing here');
     return;
   }
 
