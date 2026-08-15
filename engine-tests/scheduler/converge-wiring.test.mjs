@@ -291,21 +291,52 @@ test('convergeWiring: reports every surface it changed, and is idempotent', asyn
 // task just never fires. So assert on the files that ship.
 
 const ENGINE_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const WORKFLOWS = {
-  'the vendored consumer stub': join(ENGINE_ROOT, 'engine/scheduler/stubs/claudinite-scheduler.yml'),
-  "the canon's own workflow": join(ENGINE_ROOT, '.github/workflows/claudinite-scheduler.yml'),
-};
 
-for (const [label, path] of Object.entries(WORKFLOWS)) {
-  test(`${label} declares the overrides input and pipes it to CLAUDINITE_OVERRIDES`, () => {
-    const text = readFileSync(path, 'utf8');
-    assert.match(text, /workflow_dispatch:\s*\n\s+inputs:\s*\n\s+overrides:/, 'must declare the `overrides` workflow_dispatch input');
-    assert.match(text, /CLAUDINITE_OVERRIDES:\s*\$\{\{\s*inputs\.overrides\s*\}\}/, 'must pass the input to the engine as CLAUDINITE_OVERRIDES');
-    // The env var belongs to the step that runs the engine, not the escalation job.
-    const schedulerJob = text.slice(0, text.indexOf('report-failure:'));
-    assert.ok(schedulerJob.includes('CLAUDINITE_OVERRIDES'), 'the env must sit on the scheduler job, not the failure reporter');
-  });
-}
+// The SLOT stub's forcing lever: the override reaches a task only if the file
+// declares the input AND passes it through as CLAUDINITE_OVERRIDES. Miss either
+// half and forcing silently does nothing — the run goes green, the task just never
+// fires. (The queue has no equivalent: forcing there is waking an item, so the
+// tick declares a bare workflow_dispatch and no input at all.)
+test('the vendored consumer stub declares the overrides input and pipes it to CLAUDINITE_OVERRIDES', () => {
+  const text = readFileSync(join(ENGINE_ROOT, 'engine/scheduler/stubs/claudinite-scheduler.yml'), 'utf8');
+  assert.match(text, /workflow_dispatch:\s*\n\s+inputs:\s*\n\s+overrides:/, 'must declare the `overrides` workflow_dispatch input');
+  assert.match(text, /CLAUDINITE_OVERRIDES:\s*\$\{\{\s*inputs\.overrides\s*\}\}/, 'must pass the input to the engine as CLAUDINITE_OVERRIDES');
+  const schedulerJob = text.slice(0, text.indexOf('report-failure:'));
+  assert.ok(schedulerJob.includes('CLAUDINITE_OVERRIDES'), 'the env must sit on the scheduler job, not the failure reporter');
+});
+
+// ── The canon's own copy against the stub it ships ──────────────────────────
+// THE HOME IS THE LAST REPO TO RECEIVE ITS OWN STUB CHANGES: every member gets
+// the stub written into `.github/workflows/` by its nightly converge, and the
+// canon has no mount and no converge, so its copy is hand-maintained and drifts.
+// That drift is invisible until it is a permission denial in production (#535:
+// `actions: read` here against `write` in the stub, ten days of a stranded PR).
+// A test that compares only the lines someone came for walks straight past it —
+// so compare the STRUCTURE, whole.
+test("the canon's own tick workflow has not drifted from the stub it ships", () => {
+  const stub = readFileSync(join(ENGINE_ROOT, 'engine/scheduler/stubs/claudinite-tick.yml'), 'utf8');
+  const mine = readFileSync(join(ENGINE_ROOT, '.github/workflows/claudinite-scheduler.yml'), 'utf8');
+  // The three documented differences, and no others: the canon runs its own
+  // engine at the repo root, carries its resolved cron minute, and names its own
+  // secrets where a member's converge would stamp them.
+  const structure = (text) => text
+    .split('\n')
+    .filter((l) => !l.trim().startsWith('#') && l.trim() !== '')
+    .map((l) => l.replace('.claudinite/shared/engine/', 'engine/').replace(/cron: '\d+ /, "cron: 'M "))
+    .filter((l) => !/_TOKEN:/.test(l));
+  assert.deepEqual(structure(mine), structure(stub));
+});
+
+test("the canon's own executor workflow has not drifted from the stub it ships", () => {
+  const stub = readFileSync(join(ENGINE_ROOT, 'engine/scheduler/stubs/claudinite-executor.yml'), 'utf8');
+  const mine = readFileSync(join(ENGINE_ROOT, '.github/workflows/claudinite-executor.yml'), 'utf8');
+  const structure = (text) => text
+    .split('\n')
+    .filter((l) => !l.trim().startsWith('#') && l.trim() !== '')
+    .map((l) => l.replace('.claudinite/shared/engine/', 'engine/'))
+    .filter((l) => !/_TOKEN:/.test(l));
+  assert.deepEqual(structure(mine), structure(stub));
+});
 
 // --- the README pack-badge row ---------------------------------------------
 // Adoption seeds the row into a repo's README and nothing maintains it after, so
@@ -423,4 +454,63 @@ test('badgeRowEntries: skips a declared pack that carries no badge file', async 
   const ids = (await badgeRowEntries(root, { packs: ['basics', 'nonexistent-pack'] })).map((e) => e.id);
   assert.ok(ids.includes('basics'));
   assert.ok(!ids.includes('nonexistent-pack'), 'an id naming no pack contributes nothing');
+});
+
+// --- the work-item queue's wiring (tasks-dispatch DESIGN §14) -----------------
+// The repo's one cron workflow keeps its path and changes its CONTENT with the
+// dispatch mode; the executor is a second workflow beside it, and it is the only
+// place a secret is ever named.
+
+const TICK_STUB = "name: Claudinite scheduler\non:\n  schedule:\n    - cron: '10 * * * *'\n  workflow_dispatch:\n"
+  + "jobs:\n  tick:\n    steps:\n      - name: Tick\n        env:\n          GITHUB_TOKEN: ${{ github.token }}\n        run: node tick.mjs\n"
+  + "  drain:\n    steps:\n      - name: Drain\n        env:\n          GITHUB_TOKEN: ${{ github.token }}\n          # claudinite:secrets\n        run: node executor.mjs\n";
+
+test('withDeclaredSecrets stamps at the marker, so the tick job never sees a secret', () => {
+  const out = withDeclaredSecrets(TICK_STUB, ['STORE_TOKEN']);
+  const [tickJob, drainJob] = out.split('  drain:');
+  assert.ok(!tickJob.includes('STORE_TOKEN'), 'the tick executes no task code and gets no secret');
+  assert.match(drainJob, /# claudinite:secrets\n {10}STORE_TOKEN: \$\{\{ secrets\.STORE_TOKEN \}\}/);
+});
+
+test('convergeWiring writes the executor workflow beside the cron one, secrets stamped', async () => {
+  const root = mkRepo();
+  writeFileSync(join(root, '.claudinite-checks.json'), JSON.stringify({ packs: [] }));
+  const executorStub = "name: Claudinite executor\non:\n  issues:\n    types: [labeled]\n"
+    + "jobs:\n  execute:\n    steps:\n      - env:\n          GITHUB_TOKEN: ${{ github.token }}\n          # claudinite:secrets\n        run: node executor.mjs\n";
+  const { changed } = await convergeWiring(root, REPO, TICK_STUB, ['CCR_TOKEN'], { executorStub });
+  assert.ok(changed.includes('.github/workflows/claudinite-executor.yml'));
+  const written = readFileSync(join(root, '.github/workflows/claudinite-executor.yml'), 'utf8');
+  assert.match(written, /CCR_TOKEN: \$\{\{ secrets\.CCR_TOKEN \}\}/);
+  assert.ok(!written.includes('cron:'), 'the executor carries no cron — the tick\'s drain is the poll');
+  // Idempotent, like every other surface here.
+  const again = await convergeWiring(root, REPO, TICK_STUB, ['CCR_TOKEN'], { executorStub });
+  assert.equal(again.changed.filter((c) => c.endsWith('claudinite-executor.yml')).length, 0);
+});
+
+test('an endpoint\'s token secret is stamped exactly like a required_secret', async () => {
+  const { declaredSecrets, dispatchMode } = await import('../../engine/scheduler/converge-wiring.mjs');
+  const root = mkRepo();
+  writeFileSync(join(root, '.claudinite-checks.json'), JSON.stringify({ packs: [] }));
+  const config = { packs: [], taskScheduler: { dispatch: 'queue', endpoints: { default: { url: 'https://x', tokenSecret: 'CCR_TOKEN' } } } };
+  assert.deepEqual(await declaredSecrets(root, config), ['CCR_TOKEN']);
+  assert.equal(dispatchMode(config), 'queue');
+  assert.equal(dispatchMode({}), 'slots');
+});
+
+test('the vendored stubs are what the converge is written against', () => {
+  const canon = join(dirname(fileURLToPath(import.meta.url)), '../..');
+  const tick = readFileSync(join(canon, 'engine/scheduler/stubs/claudinite-tick.yml'), 'utf8');
+  const executor = readFileSync(join(canon, 'engine/scheduler/stubs/claudinite-executor.yml'), 'utf8');
+  // The marker is the contract between stub and stamper — a stub that lost it
+  // would converge a workflow whose tasks silently have no secrets.
+  assert.equal((tick.match(/^\s*# claudinite:secrets$/gm) ?? []).length, 1);
+  assert.equal((executor.match(/^\s*# claudinite:secrets$/gm) ?? []).length, 1);
+  // The executing jobs' timeout must stay under the engine's claim leash (F17).
+  for (const [name, text] of [['tick', tick], ['executor', executor]]) {
+    for (const m of text.matchAll(/timeout-minutes:\s*(\d+)/g)) {
+      assert.ok(Number(m[1]) <= 60, `${name}: timeout-minutes ${m[1]} exceeds the executing leash`);
+    }
+  }
+  assert.equal((tick.match(/^\s*- cron:/gm) ?? []).length, 1, 'the tick is the repo\'s only cron');
+  assert.equal((executor.match(/^\s*- cron:/gm) ?? []).length, 0, 'the executor has no schedule of its own');
 });

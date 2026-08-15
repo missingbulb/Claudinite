@@ -249,3 +249,62 @@ test('a legacy-named agentless declaration validates clean — the rename is not
   });
   assert.deepEqual(problems, []);
 });
+
+// --- the work-item queue's three optional declarations ------------------------
+// All three are ADDITIVE (tasks-dispatch DESIGN §14): a declaration that names
+// none of them stays valid, which is what lets the mechanism ship to a fleet whose
+// local packs nothing migrates.
+
+test('after / on_interrupt / invocation_endpoint are optional and validated when present', async () => {
+  const { validateTaskDeclaration } = await import('../../engine/scheduler/task-contract.mjs');
+  const base = {
+    id: 't', frequency: 'daily', precondition_signals: [], agent_model: 'none',
+    expected_outcome: 'none', precondition: () => ({ run: true }),
+    prework: 'node w.mjs', prework_timeout: 60,
+  };
+  assert.deepEqual(validateTaskDeclaration(base), [], 'declaring none of them is legal');
+  assert.deepEqual(validateTaskDeclaration({ ...base, after: ['core/update'], on_interrupt: 'needs-human', invocation_endpoint: 'fleet' }), []);
+
+  const bad = (patch, re) => {
+    const problems = validateTaskDeclaration({ ...base, ...patch });
+    assert.equal(problems.length, 1, JSON.stringify(patch));
+    assert.match(problems[0].what, re);
+  };
+  bad({ after: 'core/update' }, /"after" is not an array/);
+  bad({ after: ['update'] }, /"after" is not an array/);          // a bare id names no pack
+  bad({ on_interrupt: 'retry' }, /"on_interrupt"/);
+  bad({ invocation_endpoint: 'https://example.invalid/x' }, /kebab-case endpoint name/);
+});
+
+// F17 — the constraint that has no other home: a prework legally allowed to
+// outlive the executor's claim leash is reclaimed WHILE ALIVE, and the failure is
+// a livelock (every tenure reclaimed before it can finish), not one duplicate run.
+test('a prework_timeout reaching the executing leash is rejected at author time (F17)', async () => {
+  const { validateTaskDeclaration } = await import('../../engine/scheduler/task-contract.mjs');
+  const { EXECUTING_LEASH_MS } = await import('../../engine/scheduler/queue/leases.mjs');
+  const base = {
+    id: 't', frequency: 'daily', precondition_signals: [], agent_model: 'none',
+    expected_outcome: 'none', precondition: () => ({ run: true }), prework: 'node w.mjs',
+  };
+  const seconds = EXECUTING_LEASH_MS / 1000;
+  assert.deepEqual(validateTaskDeclaration({ ...base, prework_timeout: seconds - 1 }), []);
+  const problems = validateTaskDeclaration({ ...base, prework_timeout: seconds });
+  assert.equal(problems.length, 1);
+  assert.match(problems[0].what, /claim leash/);
+});
+
+// The corpus itself must satisfy that constraint — a rule proven only on fixtures
+// says nothing about the tasks this repo actually ships.
+test('every task this repo carries declares a prework bound under the leash', async () => {
+  const { discoverTasks } = await import('../../engine/scheduler/discover.mjs');
+  const { loadConfig } = await import('../../engine/checks/helpers/repo-context.mjs');
+  const { EXECUTING_LEASH_MS } = await import('../../engine/scheduler/queue/leases.mjs');
+  const root = process.cwd();
+  const { tasks } = await discoverTasks(root, loadConfig(root));
+  assert.ok(tasks.length > 0, 'the scan must actually reach this repo\'s tasks');
+  for (const t of tasks) {
+    if (t.decl.prework === undefined) continue;
+    assert.ok(t.decl.prework_timeout * 1000 < EXECUTING_LEASH_MS,
+      `${t.pack}/${t.id} declares prework_timeout ${t.decl.prework_timeout}s`);
+  }
+});

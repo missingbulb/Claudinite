@@ -1,7 +1,7 @@
 # Task dispatch without slots — the work-item queue
 
-Status: **agreed in shape; not yet built.** A continuation of the owner's
-sketch (2026-08-12, reproduced in Appendix A), played against twenty timed
+The mechanism lives in [`engine/scheduler/queue/`](../../engine/scheduler/queue/),
+behind `taskScheduler.dispatch`. A continuation of the owner's sketch (2026-08-12, reproduced in Appendix A), played against twenty timed
 scenarios ([SCENARIOS.md](SCENARIOS.md)) and the field's prior art
 ([RESEARCH.md](RESEARCH.md)), with the owner's eight decisions of 2026-08-13
 recorded in §15 and folded into the sections they changed. The phase plan
@@ -491,18 +491,31 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
 6. **Hand off**: write `### Delivered by prework` / `### Why the agent is
    here` into the body (unchanged shapes), swap `task:executing → task:agent`,
    post the hand-off comment carrying a fresh **invocation nonce**, then
-   **invoke the agent session via the CCR API** with a prompt naming exactly
-   this issue and that nonce. The nonce exists because API invocation is
-   **at-least-once under timeout retry** — a call that times out client-side
-   may still have created a session, and the retry then creates a second
-   (SCENARIOS S10/F5). The executor cannot distinguish "failed" from
-   "unconfirmed"; the *agent-side lease* (§7) is what collapses the duplicates.
-   Invocation failure after in-run retries → **revert** `task:agent →
-   task:ready` with an attempt-counter comment (`handoff-attempts: N`); each
-   later pickup retries, the tick cadence its natural backoff, and only at a
-   bounded attempt count (~5) does the item converge `needs-human` with the
-   API error quoted — so a transient platform outage costs nothing but delay,
-   instead of converging every in-flight item to triage (SCENARIOS S9/F3).
+   **fire the invocation endpoint exactly once** with a payload naming this
+   issue and that nonce.
+
+   **Once per item, ever — and that one decision removes a whole protocol**
+   (owner, 2026-08-15). An earlier draft retried a timed-out call and, because
+   a client-side timeout may still have started a session, accepted
+   at-least-once invocation and paid for it with an agent-side claim lease
+   (§7) to collapse the duplicates. But a retry is only safe when you know the
+   first call did nothing, and the timeout is exactly the case where you
+   cannot know. Declining to retry keeps invocation **at-most-once**, so two
+   sessions can never arrive at one item and the lease has nothing to collapse.
+   The nonce survives, earning its keep differently: it proves a fire names
+   *this* hand-off rather than a stale or replayed one.
+
+   Three outcomes, and the third is the whole point:
+   - **fired** — a session exists; the item is the agent's.
+   - **refused** (a status came back) — no session, and the cause is a token,
+     a URL or a routine, which no retry fixes: converge `needs-human` naming it.
+   - **unanswered** (a timeout, a dropped connection) — the session may or may
+     not exist, and nothing may guess. The item **stays** `task:agent` with a
+     comment saying the outcome is unknown; whichever way it went is settled by
+     a rule that already exists — a session that started converges the item, and
+     one that never did leaves it silent until the janitor's agent leash (§11)
+     brings it to triage. No new mechanism, no re-queue that could duplicate.
+
    Either way a lost hand-off is a *synchronous, visible* event at the
    executor, not a silently missing label event (this is what retires the
    re-arm — §11, and the credential it costs is §12).
@@ -570,17 +583,26 @@ print the `claudinite-task-exec` record, capture the session. One session, one
 item, no queue awareness — unchanged, and now structural: the session never
 receives a queue, only an item.
 
-One thing is **added**, not carried over: **the agent claims too**
-(SCENARIOS S10/F5). Because the executor's invocation is at-least-once (§6.6),
-two sessions can arrive at one item. So the agent's first act, before any
-work: post its own claim comment (session id + the invocation nonce from its
-prompt, which must match the hand-off comment on the item), re-read, and the
-**earliest agent claim wins** — the loser ends its session without touching
-the item, exactly the read-swap-confirm shape the executor lease uses. This is
-the same move the literature makes with single-use task tokens (a second
-redemption of a Step Functions task token is rejected); GitHub gives us no
-single-use token, so earliest-claim-wins stands in, as it already does one hop
-earlier.
+**The agent does NOT claim** (owner, 2026-08-15 — reversing an earlier draft of
+this section). A claim lease here would answer "two sessions arrived at one
+item", and under at-most-once invocation (§6.6) that cannot happen: the endpoint
+is called once per item and never retried, so there is no second session to
+arbitrate against. Adding the lease anyway would be machinery maintaining a
+property the caller already guarantees — and machinery that reads as a licence to
+retry, which is what would break the guarantee.
+
+What the session does instead is **check, not claim**: before touching anything,
+confirm in code that the item carries `task:agent` and that its newest hand-off
+comment carries the nonce this fire was given. A mismatch means the fire names a
+hand-off that is not the current one — a replay, or an episode that has since been
+reclaimed — and the session stops without touching the item. One comparison, no
+protocol, and it costs nothing when it passes.
+
+The session's instructions are themselves a tracked file
+([`engine/scheduler/queue/instructions.md`](../../engine/scheduler/queue/instructions.md))
+that the routine's stored prompt does nothing but point at, so the issue-is-data
+posture holds at this hop too: the payload names an item, and every instruction
+comes from a file under review.
 
 ## 8. Urgency and forcing — creating or waking an item is the whole mechanism
 
@@ -778,6 +800,19 @@ credential — into a vendored pack file every consuming repo receives verbatim,
 which is the one thing pack files must never carry; the name keeps the
 secret-shaped half in the repo's config where `required_secrets` already
 lives.
+
+**The endpoint is a ROUTINE's API trigger, and that moves where the agent's
+instructions live** (verified against the routines documentation at
+implementation, not assumed): firing a routine runs *its* saved prompt, and the
+`text` we send arrives wrapped in a block explicitly labelled untrusted, which a
+routine acts on only because its stored prompt says to. So the payload names the
+item and the nonce and instructs nothing, and the prompt is a tracked artifact —
+— [`engine/scheduler/queue/instructions.md`](../../engine/scheduler/queue/instructions.md),
+which the routine's stored prompt does nothing but point at, one line long. The issue-is-data posture arrives intact at one more
+hop: behavior comes from files under review, never from what an API caller sent.
+A routine's repository scope is then the whole meaning of an endpoint, which is
+what makes "reach is which endpoint you name" true in the deployment and not only
+in the design.
 
 **The token must be usable from the GitHub Action, and the plumbing is the
 `required_secrets` plumbing, reused exactly**: the wiring converge stamps each
@@ -986,10 +1021,14 @@ Standing entries — no decision needed now:
     comment lease outright. Recommendation stands: keep comment leases
     (visible on the item, sufficient at this concurrency) unless a real
     lost-race incident occurs. Recorded so it is not re-derived.
-11. **Invocation idempotency key** — if the CCR session-creation API accepts
-    one, pass §6.6's nonce as it: duplicates then collapse at creation and the
-    agent-side lease becomes a backstop rather than the mechanism. One
-    API-docs check at implementation time.
+11. **Invocation idempotency key** — **answered at implementation: there is
+    none.** The endpoint is a routine's API trigger (`POST
+    /v1/claude_code/routines/<id>/fire`), whose body accepts one freeform `text`
+    field and no idempotency key. The conclusion drawn from that was initially the
+    wrong one — build a lease to clean up the duplicates — and the owner corrected
+    it (2026-08-15): **don't create the duplicates.** One call per item, no retry,
+    the unanswered case left to the agent leash (§6.6), and §7's claim protocol
+    deleted rather than written.
 12. **The no-go record alternative** — every occurrence creating an item born
     closed on a no-go was recorded here as the only ledger-free way to keep
     every occurrence on record, priced at ~2,500 closed issues a year.

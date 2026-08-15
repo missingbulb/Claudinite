@@ -49,9 +49,9 @@
         "fix": "add a concurrency: group so overlapping runs serialize (double-run safety)"
       },
       {
-        "require": "/engine\\/scheduler\\/run\\.mjs/",
+        "require": "/engine\\/scheduler\\/(run|queue\\/tick)\\.mjs/",
         "what": "does not run the vendored engine entry",
-        "fix": "the job must run node .claudinite/shared/engine/scheduler/run.mjs — all logic lives in the vendored engine, not the workflow"
+        "fix": "the job must run the vendored engine — node .claudinite/shared/engine/scheduler/run.mjs (slot dispatch) or .../queue/tick.mjs (queue dispatch); all logic lives in the engine, not the workflow"
       },
       {
         "require": "/^\\s*contents:\\s*write\\b/m",
