@@ -15,9 +15,16 @@ const GIT_ENV = {
   // the foreground and the newer maintenance path stays off, so cleanup() never
   // races a background repack still writing into .git/objects. The rmSync
   // maxRetries below is the second line of defense, not the fix.
-  GIT_CONFIG_COUNT: '2',
+  // …and no fixture commit may reach the developer's signing setup. A throwaway
+  // tmpdir commit gains nothing from a signature, and inheriting the ambient
+  // `commit.gpgsign` makes every one of them a round trip to a signing service:
+  // measured in a signing session, a makeRepo fixture costs 202ms against 38ms
+  // with this off, and a service that degrades blocks each commit and leaks the
+  // descriptors behind it until git fails process-wide.
+  GIT_CONFIG_COUNT: '3',
   GIT_CONFIG_KEY_0: 'gc.autoDetach', GIT_CONFIG_VALUE_0: 'false',
   GIT_CONFIG_KEY_1: 'maintenance.auto', GIT_CONFIG_VALUE_1: 'false',
+  GIT_CONFIG_KEY_2: 'commit.gpgsign', GIT_CONFIG_VALUE_2: 'false',
 };
 
 export function git(root, ...args) {
