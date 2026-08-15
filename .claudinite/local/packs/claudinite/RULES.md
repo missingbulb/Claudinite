@@ -549,3 +549,36 @@ prose below).
   borrowing from prose: no `description` (*"the why section should stand on its own"*), no `doc`
   pointer (*"these tests are self-standing and don't need a prose reference"*), and `why` renamed
   **`failureMessage`** for what it actually is — the line the agent reads when the check fires.
+- **`until <guard>; do sleep 5; done; sleep N & wait` is a blind sleep wearing a condition's costume —
+  and it is how a session spends twenty minutes doing nothing.** Foreground `sleep` is blocked, so the
+  shape gets invented to get around the block, and the `until` guard is then picked for being
+  *satisfiable* rather than for being the thing actually being waited on. Measured 2026-08-14 on the
+  #768 session (`d585d2ae`): seven calls guarded by `[ -n "$(git ls-remote origin HEAD)" ]` — true on
+  its first evaluation every time, and unrelated to the CI run, the canary cycle or the apply-stage
+  session each call said it was waiting for — for **1342s (22.4 min) of pure idle**, on guessed
+  durations (300, 202, 184, 181, 171, 151, 151). The same window carries the honest shape twice:
+  `until curl … | grep -q '"status": "completed"'` against the run id (#846), and a real clock deadline
+  (#843) — each returning when the thing happened rather than when a padded interval elapsed. So the
+  guard must name the condition being waited on (a run's status, a file's arrival, a deadline) with no
+  trailing padded `sleep`, or use `Monitor`, which exists for this. A guard you would not be willing to
+  write as the *whole* test is the tell that you are sleeping and calling it polling.
+- **`AskUserQuestion` blocks for minutes, so spend it on a fork you cannot take back — never on a
+  confirmation.** Measured across 2026-08-14's captured sessions: **20 calls, 3640s (60.7 min)**, median
+  ~170s, with the #807 session alone spending 1227s (20.5 min) inside five of them. The expensive ones
+  were right to ask — forcing a fleet-wide pass, moving the update task between packs, which shape the
+  #807 fix takes — because the owner does want an irreversible or fleet-touching step gated. The cheap
+  ones cost exactly the same and bought nothing: 327s on *"should I watch PR #812 for CI failures and
+  review comments?"*, 173s on whether the owner's own `caludinite-rules` was a typo, 64s on what a
+  phrase in a file meant. Each was answerable from the instruction, the tree, or a reversible default —
+  so answer it, act, and say what you assumed. Ask only where being wrong costs more than the ~3
+  minutes the asking costs.
+- **A "make it more general" or "review this" ask is not delivered by the generality or by the review —
+  land the conversions it unlocks in the same change.** Twice in one day the owner had to say so:
+  *"So what are your action points about 1-4? No changes suggested?"* on the #838 review, and then,
+  after a round that added vocabulary keys and converted nothing, *"But you didn't convert any checks
+  for 1 or 2. I thought this was the whole point."* (#843). The shape that satisfied him is the title
+  #845 shipped under — *"Six declarative-vocabulary keys and the four conversions they unlock"* — and
+  every key in that round and the two before it (#820, #825) names its first customer in the commit
+  body. So a new capability ships with the caller that exercises it, and an analysis ships with the
+  first of its recommendations applied: an unexercised key is unproven surface, and a findings document
+  with no action points reads, correctly, as the work not having been done.
