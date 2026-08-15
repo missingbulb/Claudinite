@@ -582,3 +582,47 @@ prose below).
   body. So a new capability ships with the caller that exercises it, and an analysis ships with the
   first of its recommendations applied: an unexercised key is unproven surface, and a findings document
   with no action points reads, correctly, as the work not having been done.
+- **A retry across a call whose outcome you cannot observe needs no arbitration protocol at all —
+  decline to retry and let an existing sweep close the gap.** The work-item queue's first invocation
+  design treated the dispatch API as at-least-once and built an agent-side claim/lease specifically to
+  arbitrate the duplicate a client-side timeout retry could produce. Owner correction (#854, commit
+  `f0e18dc`, 2026-08-15): *"the API should be called once per item... a retry is only safe when you know
+  the first call did nothing, and the timeout is exactly the case where you cannot."* Declining to retry
+  made invocation at-most-once, and the claim/lease had nothing left to collapse — its outcomes reduced
+  to "refused" (definite, converge to needs-human) and "unanswered" (the item stays with the agent; an
+  already-existing janitor rule, the agent leash, sweeps the case where no session ever started). Before
+  building dedup or arbitration machinery around an uncertain call outcome, check whether declining to
+  retry removes the uncertainty instead of managing it.
+- **A function meant to be safe to call repeatedly over an object's own lifecycle needs a round-trip
+  test, not a per-call one.** `withSection` appended a same-named section instead of replacing it in
+  place, so a work-item body that was written twice — once at birth, once at hand-off — carried two
+  `### Context` sections, while `instructions.md` reads "the issue's Context section", singular: whichever
+  section a session read first, the other's content silently vanished (#881, commit `d9509ea`,
+  2026-08-15). Every existing unit test of `withSection` passed, because each called it once — and
+  `rollBody` had already hand-stripped its own section before calling `withSection` at one of its two
+  call sites, a workaround for the same bug nobody had generalized. Where a helper is meant to be
+  reapplied across a hand-off, a re-queue, or a retry, write a test that calls it twice and asserts no
+  duplication; a suite of single-call tests can stay green while the multi-call case silently corrupts
+  state.
+- **A check's `fix` text carries force independent of its declared `severity` — never write a
+  config-acceptance escape into an advisory check's remedy.** `basics/file-placement` was
+  `severity: 'advisory'` and never failed a run, but its `fix` text read *"or accept it in
+  `.claudinite-checks.json` with a reason if it is a deliberate cross-cutting concern"* — sessions
+  followed the words, not the severity field, and this repo alone accumulated eight acceptance entries,
+  each a paragraph, for findings that were never blocking anything. Owner (#856, 2026-08-15): *"That is
+  cost with no purchase. An acceptance entry exists to make a blocking violation reviewable; on an
+  advisory finding it buys nothing and taxes every repo that hits the smell."* Fixed in #858 by dropping
+  the acceptance suggestion and deleting all nine entries. When authoring a check's `fix` line, the
+  remedies it names must match the severity actually enforced — an advisory finding's only remedies are
+  act on it or leave it, never a config escape that implies a gate nothing enforces.
+- **After an `AskUserQuestion` is declined or interrupted, don't re-post the identical question on
+  resume — take the tool's own recommended default and state the assumption, or open the question up.**
+  Measured on the #801 session (2026-08-15): the canon-flip endpoint question was asked, declined
+  (4m40s), re-asked verbatim on resume, declined again (4m36s), then asked a third time before landing —
+  on the tool's own "Recommended" option (1m33s). The "B6 route" question was asked, declined (4m07s),
+  re-asked verbatim, declined again (14m00s) — and was never answered by either offered option at all;
+  the owner instead typed past the popup, in plain prose, "B6 seems not crucial for now. You can continue
+  without it." Both round-trips cost real minutes to a second identical popup that, in neither case, was
+  what actually resolved things — the resolution was either the tool's own default or an answer outside
+  the choice set. A decline is signal that the closed choice set is wrong, not that the same choices need
+  asking again.
