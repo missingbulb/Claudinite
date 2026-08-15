@@ -11,6 +11,17 @@ const run = (files) => {
 
 const imports = (spec) => `import { finding } from '${spec}';\n`;
 
+// Placement is a direction to judge, not a gate to release: the rule never blocks, and
+// its remedies are all placement moves. Pointing at an acceptance entry would make every
+// repo that hits the smell write a paragraph of config to release a finding that was
+// never holding anything (#856).
+test('file-placement: is advisory and offers no config acceptance as a remedy', () => {
+  assert.equal(rule.severity, 'advisory');
+  const f = run({ 'src/app/ui/main.mjs': imports('../../../lib/deep/thing.mjs') });
+  assert.equal(f.length, 1);
+  assert.doesNotMatch(f[0].fix, /accept|\.claudinite-checks\.json/i);
+});
+
 test('file-placement: a near reference yields no findings', () => {
   assert.deepEqual(run({
     'src/app/main.mjs': imports('./helper.mjs') + imports('../shared.mjs'),

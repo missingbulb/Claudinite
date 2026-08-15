@@ -44,6 +44,9 @@ function distance(fromDir, toDir) {
 
 const rule = {
   id: 'file-placement',
+  // Advisory, permanently: placement is a direction to judge against the tree in front of
+  // you, not a gate a change has to clear. So a finding here is never released either —
+  // there is nothing to release — and the remedy text names only placement moves (#856).
   severity: 'advisory',
   description: 'A code file should mostly reference files at folder distance 0–2; distance 3+ is reach',
   doc: 'skills/file-placement/SKILL.md',
@@ -77,7 +80,7 @@ const rule = {
           out.push(finding(rule, {
             file, line,
             what: `references ${target} at distance ${d}`,
-            fix: 'move one of the two nearer the other, lift the shared dependency to a common ancestor, or accept it in .claudinite-checks.json with a reason if it is a deliberate cross-cutting concern',
+            fix: 'move one of the two nearer the other, lift the shared dependency to a common ancestor, or introduce an entry point so outsiders reference one near file — and leave it as it stands if the reach is a deliberate cross-cutting concern',
           }));
         }
       }
