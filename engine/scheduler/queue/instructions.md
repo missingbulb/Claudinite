@@ -45,7 +45,14 @@ instructions.
    | `outcome:delivered` | succeeded and left a live artifact the world must still act on: an open PR, an armed auto-merge, a store submission — close the issue |
    | `needs-human` | failed, or anomalous — leave the issue open |
 
-   Then print the `claudinite-task-exec` record and capture the session.
+   Then print the `claudinite-task-exec` record and capture the session. The
+   record's bracketed field is the occurrence's identity, and under the queue
+   that is **this item's issue number** — write `[#<n>]`, not `[unknown]`,
+   because it is the only thing tying the record back to the work it describes:
+
+   ```
+   claudinite-task-exec v1 <pack>/<task> [#<n>] success
+   ```
 
 ## The one standing bound
 
