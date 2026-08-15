@@ -22,6 +22,7 @@ import { renderTaskRuns } from './run-record.mjs';
 import { localSignalContext } from './signals/local.mjs';
 import { runPrework, preworkFailure, agentRequestPath, clearAgentRequest, agentRequested, readAgentRequest } from './prework.mjs';
 import { ensureLabels } from './github.mjs';
+import { dispatchMode } from './converge-wiring.mjs';
 
 // The due tasks, each paired with the slot it runs under. Union the discovered
 // tasks' frequencies, ask slots which are due (run-ledger math), then map due
@@ -391,9 +392,18 @@ async function main() {
   // what makes the flip safe from EITHER side: a copy of this workflow that has
   // not yet been re-converged keeps firing on the old cron, and without the gate
   // both mechanisms would dispatch the same work under two disjoint vocabularies.
-  if (config.taskScheduler?.dispatch === 'queue') {
+  if (dispatchMode(config) === 'queue') {
     console.log('## Claudinite scheduler\n');
-    console.log('- this project dispatches through the work-item queue ("taskScheduler.dispatch": "queue") — the slot scheduler evaluates nothing here');
+    console.log('- this project dispatches through the work-item queue — the slot scheduler evaluates nothing here');
+    // Reaching this line AT ALL means the workflow that started this run is still the
+    // slot shim: the tick's own workflow calls `queue/tick.mjs` and never gets here.
+    // So this is not a quiet no-op, it is the one moment the transitional state is
+    // observable from inside — the mount has flipped and `.github/workflows/` has not
+    // caught up, which is the one path a converge cannot push for itself. Said out
+    // loud, with the remedy, because the alternative is a repo where nothing runs and
+    // every run is green.
+    console.log('! this run came from the SLOT workflow, so this repo\'s .github/workflows/claudinite-scheduler.yml has not been converged to the tick yet — nothing is dispatched until it is');
+    console.log('  fix: land the staged workflows in .claudinite/pending-workflows/ (the update\'s apply stage does this), or run engine/scheduler/converge-wiring.mjs by hand');
     return;
   }
 
