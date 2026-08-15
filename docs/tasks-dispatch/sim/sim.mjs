@@ -5,9 +5,13 @@
 // instantiation with both guards and the first-item rule, readiness, the
 // executing-leash reclaim), the executor loop (pick order, same-title mutex,
 // the `after` yield, claim, validate, the single precondition evaluation, the
-// roll, prework/hand-off/converge as timed phases), the janitor's stale-ready
-// escalation, and the force-is-waking lever. `afterMode: 'blocked-by'` exists
-// solely so S24 can demonstrate the starvation that ruled that wiring out.
+// roll, the work step/hand-off/converge as timed phases, heartbeat comments
+// during the work step so the leash measures executor death rather than work
+// duration), at-most-once invocation (one call per item, never retried — the
+// fired/refused/unanswered trichotomy of DESIGN §6.6), the readiness re-check
+// on close (F1, reopened 2026-08-15), the janitor's stale-ready escalation,
+// and the force-is-waking lever. `afterMode: 'blocked-by'` exists solely so
+// S24 can demonstrate the starvation that ruled that wiring out.
 //
 // What it deliberately does NOT model is inventoried in README.md's "The
 // unsimulated world" — one row per boundary (cron delivery, list freshness,
@@ -73,28 +77,27 @@ export function makeSim({
   tickMinute = 17,
   executingLeashMs = 1 * HOUR,
   agentLeashMs = 3 * HOUR,
+  heartbeatMinutes = 15, // the executor's activity comment cadence during the work step
   staleReadyPeriods = 2,
   staleBlockedMs = 2 * DAY,
-  unsafeLeash = false, // S31 only: bypass the F17 wiring constraint
+  heartbeatsDisabled = false, // S31b only: demonstrate the livelock heartbeats prevent
 } = {}) {
   const registry = new Map(tasks.map((t) => [t.id, t]));
   const titleOf = (id) => `[claudinite-work] ${id}`;
 
-  // F17's wiring-time constraint: a prework that can legally outlive the
-  // executing leash would be reclaimed while alive — duplicate prework runs.
-  // The real engine enforces leash > prework-timeout as a conformance check;
-  // the sim enforces it at construction. `unsafeLeash` exists only so S31
-  // can demonstrate the hazard the constraint prevents.
-  if (!unsafeLeash) {
-    for (const t of tasks) {
-      if ((t.preworkMinutes ?? 1) * MIN >= executingLeashMs) {
-        throw new Error(
-          `task ${t.id}: prework bound (${t.preworkMinutes}m) reaches the executing leash — F17`);
-      }
-    }
+  // F17, reframed by the work-as-work review (2026-08-15): the leash no longer
+  // has to exceed every task's work bound — heartbeat comments during the work
+  // step keep a LIVE executor's item out of the reclaim, however long the work
+  // runs, so the leash measures executor death, not work duration. The wiring
+  // constraint that remains is the one the heartbeat itself needs: the
+  // heartbeat interval must sit well inside the leash, or every heartbeat
+  // arrives too late to matter.
+  if (heartbeatMinutes * MIN >= executingLeashMs) {
+    throw new Error(
+      `heartbeat interval (${heartbeatMinutes}m) reaches the executing leash — F17 (reframed)`);
   }
 
-  const issues = []; // {number,title,taskId,origin,labels:Set,state,createdAt,closedAt,readySince,lastActivity,notBefore,blockedBy:[],outcome,rolls:[],comments:[],escalated,sessions:[],agentClaims:[],handoffAttempts,quarantined}
+  const issues = []; // {number,title,taskId,origin,labels:Set,state,createdAt,closedAt,readySince,lastActivity,notBefore,blockedBy:[],outcome,rolls:[],comments:[],escalated,sessions:[],quarantined}
   const log = []; // {t,kind,task,issue,...}
   const world = {}; // scenario-owned signal state, read by precondition fns
   const queue = []; // {t,seq,fn}
@@ -102,6 +105,7 @@ export function makeSim({
   let now = 0;
   let sessionSeq = 0;
   const crashNextOf = new Set(); // taskIds whose next execution dies mid-claim
+  const crashDuringWorkOf = new Map(); // taskId -> minutes into the work step the runner dies
   const crashAgentOf = new Set(); // taskIds whose next agent session dies mid-run
 
   const schedule = (t, fn) => queue.push({ t, seq: seq++, fn });
@@ -125,7 +129,7 @@ export function makeSim({
       lastActivity: now,
       notBefore, blockedBy,
       outcome: null, rolls: [], comments: [], escalated: false,
-      sessions: [], agentClaims: [], handoffAttempts: 0, quarantined: false,
+      sessions: [], quarantined: false,
     };
     issues.push(it);
     record('create', { task: taskId, issue: it.number, origin });
@@ -149,6 +153,21 @@ export function makeSim({
     it.outcome = outcome;
     for (const l of [...it.labels]) if (l.startsWith('task:')) it.labels.delete(l);
     record('close', { task: it.taskId, issue: it.number, outcome });
+    // F1, reopened 2026-08-15: whoever closes an item — executor or agent —
+    // also re-checks blocked items' readiness in code (Blocked-by all closed,
+    // Not-before passed) and a drain follows, so chain links proceed in
+    // minutes instead of waiting out the tick. The tick's readiness job stays
+    // the backstop; a HAND close runs no engine code and is covered by it.
+    for (const b of open().filter((i) => has(i, 'task:blocked'))) {
+      const blockersDone = b.blockedBy.every(
+        (n) => issues.find((x) => x.number === n)?.state === 'closed'
+      );
+      if (blockersDone && (b.notBefore === null || now >= b.notBefore)) {
+        swap(b, 'task:blocked', 'task:ready');
+        record('ready', { task: b.taskId, issue: b.number, by: 'close' });
+      }
+    }
+    schedule(now + 1 * MIN, () => executorRun());
   }
 
   // ---- the tick (DESIGN §5): pure function of the clock and the issue list --
@@ -255,46 +274,49 @@ export function makeSim({
     return won; // loser reverts nothing — the winner's labels already stand
   }
 
-  // Hand-off + invocation (DESIGN §6.6): swap to task:agent, then call the
-  // API. Failure after in-run retries reverts to task:ready with an attempt
-  // counter (F3); at 5 attempts the item converges needs-human. A client
-  // timeout that still created a session makes invocation at-least-once
-  // (S10): the retry spawns a second session, and the agent-side lease (F5,
-  // DESIGN §7) — earliest agent claim comment wins — collapses the pair.
+  // Hand-off + invocation (DESIGN §6.6, as amended 2026-08-15): swap to
+  // task:agent, then fire the endpoint EXACTLY ONCE — never retried, because a
+  // retry is only safe when the first call is known to have done nothing, and
+  // the unanswered case is exactly where nothing can be known. Three outcomes:
+  //  - fired      → a session exists; the item is the agent's
+  //  - refused    → a status came back, no session exists and none will (a
+  //                 token / URL / routine is wrong, which no retry fixes):
+  //                 converge needs-human naming the cause
+  //  - unanswered → the session may or may not exist and nothing may guess:
+  //                 the item STAYS task:agent with the outcome-unknown comment;
+  //                 a session that started converges it, one that never did
+  //                 leaves it silent until the janitor's agent leash (§11)
+  // At-most-once invocation is what deleted the agent-side claim lease: two
+  // sessions can never arrive at one item, so there is nothing to arbitrate.
   function handOff(it, task) {
     swap(it, 'task:executing', 'task:agent');
-    if (world._apiDownUntil != null && now < world._apiDownUntil) {
-      it.handoffAttempts += 1;
-      record('handoff-failed', { task: it.taskId, issue: it.number, attempts: it.handoffAttempts });
-      if (it.handoffAttempts >= 5) {
-        swap(it, 'task:agent', 'needs-human');
-        record('handoff-exhausted', { task: it.taskId, issue: it.number });
-      } else {
-        swap(it, 'task:agent', 'task:ready'); // bounded revert; tick cadence is the backoff
-      }
+    if (world._apiRefusedUntil != null && now < world._apiRefusedUntil) {
+      record('handoff-refused', { task: it.taskId, issue: it.number });
+      swap(it, 'task:agent', 'needs-human');
       return;
     }
-    record('handoff', { task: it.taskId, issue: it.number });
-    const spawn = () => {
+    if (world._apiUnanswered) {
+      const { started } = world._apiUnanswered;
+      world._apiUnanswered = null;
+      record('handoff-unanswered', { task: it.taskId, issue: it.number, started });
+      it.comments.push({ t: now, body: 'invocation got no answer — outcome unknown, the agent leash decides' });
+      if (!started) return; // silent item; the janitor's agent leash is the recovery
       const s = { id: `s-${++sessionSeq}`, item: it.number };
       it.sessions.push(s);
       schedule(now + 30_000, () => startAgentSession(s, it, task));
-    };
-    spawn();
-    if (world._apiTimeoutOnce) { // the call timed out client-side but landed
-      world._apiTimeoutOnce = false;
-      record('invoke-retry-duplicate', { task: it.taskId, issue: it.number });
-      spawn(); // the retry creates the second session
+      return;
     }
+    record('handoff', { task: it.taskId, issue: it.number });
+    const s = { id: `s-${++sessionSeq}`, item: it.number };
+    it.sessions.push(s);
+    schedule(now + 30_000, () => startAgentSession(s, it, task));
   }
 
   function startAgentSession(s, it, task) {
     if (it.state !== 'open' || !has(it, 'task:agent')) return;
-    it.agentClaims.push(s); // the agent-side lease: claim comment, re-read
-    if (it.agentClaims[0] !== s) {
-      record('agent-lease-lost', { task: it.taskId, issue: it.number, session: s.id });
-      return; // the loser stops without touching the item (F5)
-    }
+    // No agent-side claim (DESIGN §7, amended 2026-08-15): the session checks,
+    // not claims — the item wears task:agent and the fire's nonce matches the
+    // newest hand-off, both modeled by the guard above.
     it.lastActivity = now;
     if (crashAgentOf.delete(it.taskId)) {
       record('agent-died', { task: it.taskId, issue: it.number, session: s.id });
@@ -330,19 +352,47 @@ export function makeSim({
       }
       return true;
     }
-    // prework → optional hand-off → converge, as timed phases. The executor
-    // re-verifies its OWN lease at the transition (F17): not just "is the
-    // item executing" but "is my claim still the newest" — a reclaim-then-
+    // the work step → optional hand-off → converge, as timed phases. The
+    // executor re-verifies its OWN lease at the transition (F17): not just "is
+    // the item executing" but "is my claim still the newest" — a reclaim-then-
     // re-pick puts a newer claim on the item, and the stale runner must see
     // it and abandon silently rather than hand off work it no longer owns.
     const myClaim = it.comments.filter((c) => c.kind === 'claim').at(-1);
-    schedule(now + (task.preworkMinutes ?? 1) * MIN, () => {
-      if (it.state !== 'open' || !has(it, 'task:executing')) return;
-      if (it.comments.filter((c) => c.kind === 'claim').at(-1) !== myClaim) return;
+    const mineStill = () => it.state === 'open' && has(it, 'task:executing') &&
+      it.comments.filter((c) => c.kind === 'claim').at(-1) === myClaim;
+    const workMs = (task.preworkMinutes ?? 1) * MIN;
+    const diesAtMin = crashDuringWorkOf.has(it.taskId)
+      ? crashDuringWorkOf.get(it.taskId) : null;
+    if (diesAtMin !== null) crashDuringWorkOf.delete(it.taskId);
+    // Heartbeat comments during the work step (work-as-work review,
+    // 2026-08-15): the executor touches the item every heartbeatMinutes, so
+    // the leash reclaims a DEAD executor within ~leash regardless of how long
+    // the work legally runs — and the item's timeline shows live progress
+    // instead of going dark for the duration.
+    if (!heartbeatsDisabled) {
+      for (let m = heartbeatMinutes; m * MIN < workMs; m += heartbeatMinutes) {
+        if (diesAtMin !== null && m >= diesAtMin) break;
+        schedule(now + m * MIN, () => {
+          if (!mineStill()) return;
+          it.lastActivity = now;
+          record('heartbeat', { task: it.taskId, issue: it.number });
+        });
+      }
+    }
+    if (diesAtMin !== null) {
+      // the runner dies mid-work: heartbeats stop, the completion never runs,
+      // and the leash reclaims from the LAST heartbeat — recovery is bounded
+      // by the leash, not by the work's duration
+      schedule(now + diesAtMin * MIN, () =>
+        record('executor-crash', { task: it.taskId, issue: it.number }));
+      return true;
+    }
+    schedule(now + workMs, () => {
+      if (!mineStill()) return;
       it.lastActivity = now;
       if (task.preworkFails?.(world, now)) {
         swap(it, 'task:executing', 'needs-human');
-        record('prework-failed', { task: it.taskId, issue: it.number });
+        record('work-failed', { task: it.taskId, issue: it.number });
         return;
       }
       const wantsAgent = task.agentMinutes != null &&
@@ -411,7 +461,7 @@ export function makeSim({
     // died; converge needs-human, naming the dead session (S11)
     for (const it of open().filter((i) => has(i, 'task:agent'))) {
       if (now - it.lastActivity >= agentLeashMs) {
-        const dead = it.agentClaims[0]?.id ?? it.sessions.at(-1)?.id ?? 'unknown';
+        const dead = it.sessions.at(-1)?.id ?? 'unknown';
         swap(it, 'task:agent', 'needs-human');
         it.comments.push({ t: now, body: `agent session ${dead} went silent past the leash` });
         record('agent-reclaim', { task: it.taskId, issue: it.number, session: dead });
@@ -492,6 +542,9 @@ export function makeSim({
     },
 
     crashNextExecutionOf(taskId) { crashNextOf.add(taskId); return sim; },
+    // the runner dies `minutes` INTO the work step: heartbeats until then, none
+    // after, completion never runs — the leash-from-last-heartbeat recovery
+    crashDuringWorkOf(taskId, minutes) { crashDuringWorkOf.set(taskId, minutes); return sim; },
     crashNextAgentOf(taskId) { crashAgentOf.add(taskId); return sim; },
 
     // the task file disappears from HEAD (S20): validate-in-code closes obsolete
@@ -512,7 +565,7 @@ export function makeSim({
         labels: new Set(['agent-dispatch']), state: 'open',
         createdAt: now, closedAt: null, readySince: null, lastActivity: now,
         notBefore: null, blockedBy: [], outcome: null, rolls: [], comments: [],
-        escalated: false, sessions: [], agentClaims: [], handoffAttempts: 0,
+        escalated: false, sessions: [],
         quarantined: false,
       };
       issues.push(it);
@@ -556,8 +609,11 @@ export function makeSim({
     },
 
     // ---- platform failure injection (S9/S10) -------------------------------
-    apiDownUntil(isoTime) { world._apiDownUntil = T(isoTime); return sim; },
-    apiTimeoutOnce() { world._apiTimeoutOnce = true; return sim; },
+    // refused: the endpoint answers with an error status — no session exists
+    apiRefusedUntil(isoTime) { world._apiRefusedUntil = T(isoTime); return sim; },
+    // unanswered: timeout/dropped connection — `started` says whether the call
+    // actually created a session on the far side (the executor cannot know)
+    apiUnansweredOnce({ started }) { world._apiUnanswered = { started }; return sim; },
 
     // ---- fleet / human levers ----------------------------------------------
     quarantine(number) { issues.find((i) => i.number === number).quarantined = true; return sim; },

@@ -136,6 +136,9 @@ test('S4 late fire: the chain completes the same morning, ordered', () => {
   const extractClaim = sim.log.find((e) => e.kind === 'evaluate' && e.task === 'grow/growth-extract');
   assert.ok(extractClaim.t >= base.closedAt, 'yield held while upstream ran');
   assert.ok(baseClaim.t >= T('2026-08-12T05:41Z'), 'nothing happened before the late tick');
+  // F1 (reopened 2026-08-15): the close-time drain picks the yielded dependent
+  // in minutes — chain links no longer wait out the tick
+  assert.ok(extractClaim.t <= base.closedAt + 5 * 60e3, 'picked within minutes of the upstream closing');
 });
 
 // ---- S5 — the tick is down for three days: rolled items simply wake on the
@@ -355,46 +358,49 @@ test('S7 executor race: earliest claim wins, loser takes the next item', () => {
     2, 'both items converged — the loser moved on, capacity added not lost');
 });
 
-// ---- S9 — CCR API down at hand-off: bounded revert-to-ready (F3), the tick
-// cadence as backoff; a blip costs delay, an 8-hour outage costs triage.
-test('S9a API blip: hand-off reverts to ready, succeeds on a later pickup', () => {
+// ---- S9 — invocation is at-most-once (DESIGN §6.6 as amended 2026-08-15):
+// one call per item, never retried. A REFUSED call (a status came back — no
+// session exists and none will) converges needs-human immediately: the cause
+// is a token, URL or routine, which no retry fixes.
+test('S9a refused invocation: needs-human at once, naming the cause', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
-  sim.at('2026-08-12T04:10Z', (s) => s.apiDownUntil('2026-08-12T05:00Z'));
+  sim.at('2026-08-12T04:10Z', (s) => s.apiRefusedUntil('2026-08-12T05:00Z'));
   sim.run('2026-08-12T00:00Z', '2026-08-12T09:00Z');
 
   const it = sim.family('tidy/tidy-issues').find((i) => !i.seeded);
-  assert.equal(sim.log.filter((e) => e.kind === 'handoff-failed').length, 1, 'one failed attempt');
-  assert.equal(it.state, 'closed');
-  assert.equal(it.outcome, 'done', 'converged once the platform recovered');
-  assert.equal(sim.log.filter((e) => e.kind === 'handoff-exhausted').length, 0, 'no triage cost');
+  assert.equal(sim.log.filter((e) => e.kind === 'handoff-refused').length, 1, 'one call, ever');
+  assert.ok(it.labels.has('needs-human'), 'triage, with the refusal on record');
+  assert.equal(it.sessions.length, 0, 'no session was ever started');
 });
 
-test('S9b sustained outage: needs-human only after the attempt bound', () => {
+// ---- S10 — the UNANSWERED call (timeout / dropped connection): the session
+// may or may not exist and nothing may guess, so the item STAYS task:agent.
+// Whichever way it went is settled by rules that already exist.
+test('S10a unanswered but the session started: it converges the item itself', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
-  sim.at('2026-08-12T04:10Z', (s) => s.apiDownUntil('2026-08-12T23:00Z'));
-  sim.run('2026-08-12T00:00Z', '2026-08-12T22:00Z');
-
-  const it = sim.family('tidy/tidy-issues').find((i) => !i.seeded);
-  assert.equal(sim.log.filter((e) => e.kind === 'handoff-failed').length, 5, 'five bounded attempts');
-  assert.ok(it.labels.has('needs-human'), 'then a human, with the error on record');
-});
-
-// ---- S10 — API timeout that actually created a session: the retry makes a
-// second session; the agent-side lease (F5) collapses the pair to one run.
-test('S10 duplicate sessions: the agent-side lease yields exactly one execution', () => {
-  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
-  sim.at('2026-08-12T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
-  sim.at('2026-08-12T04:10Z', (s) => s.apiTimeoutOnce());
+  sim.at('2026-08-12T04:10Z', (s) => s.apiUnansweredOnce({ started: true }));
   sim.run('2026-08-12T00:00Z', '2026-08-12T09:00Z');
 
   const it = sim.family('tidy/tidy-issues').find((i) => !i.seeded);
-  assert.equal(it.sessions.length, 2, 'at-least-once invocation made two sessions');
-  assert.equal(sim.log.filter((e) => e.kind === 'agent-lease-lost').length, 1,
-    'the later session lost the lease and stopped');
+  assert.equal(sim.log.filter((e) => e.kind === 'handoff-unanswered').length, 1);
   assert.equal(it.state, 'closed');
-  assert.equal(closedOf(sim, 'tidy/tidy-issues').length, 1, 'one item, one execution, one outcome');
+  assert.equal(it.outcome, 'done', 'the session that (unknowably) started converged it');
+  assert.equal(it.sessions.length, 1, 'exactly one session — no retry ever fired');
+});
+
+test('S10b unanswered and no session: the agent leash brings it to triage', () => {
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
+  sim.at('2026-08-12T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
+  sim.at('2026-08-12T04:10Z', (s) => s.apiUnansweredOnce({ started: false }));
+  sim.run('2026-08-12T00:00Z', '2026-08-13T12:00Z');
+
+  const it = sim.family('tidy/tidy-issues').find((i) => !i.seeded);
+  assert.equal(it.sessions.length, 0, 'the call created nothing');
+  assert.ok(sim.log.some((e) => e.kind === 'agent-reclaim' && e.issue === it.number),
+    "the janitor's agent leash swept the silent item");
+  assert.ok(it.labels.has('needs-human'), 'triage — no retry ever risked a duplicate session');
 });
 
 // ---- S11 — agent dies mid-run: the janitor's 3h agent leash converges the
@@ -561,6 +567,35 @@ test('S19 re-queue after a fix: needs-human -> ready -> normal run', () => {
   assert.equal(sim.family('basics/baselining').filter((i) => !i.seeded).length, 1);
 });
 
+// ---- S33 — the readiness re-check on close (F1, reopened 2026-08-15): when a
+// mechanism close resolves the last Blocked-by edge, the closing side readies
+// the dependent in code and a drain follows — minutes, not the next tick. (A
+// HAND close runs no engine code; S18 keeps the tick as that path's backstop.)
+test('S33 fan-in readies within minutes of its last blocker closing', () => {
+  const tasks = cast().concat([{
+    id: 'sheepdog/fleet-status', frequency: 'manual', outcome: 'done', preworkMinutes: 2,
+  }]);
+  const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
+  const members = [];
+  let fanIn;
+  sim.at('2026-08-12T09:00Z', (s) => {
+    for (const m of ['repo-a', 'repo-b']) {
+      members.push(s.createItem('sheepdog/fleet-baseline', { qualifier: m }));
+    }
+    fanIn = s.createItem('sheepdog/fleet-status', { blockedBy: members.map((i) => i.number) });
+  });
+  sim.run('2026-08-12T00:00Z', '2026-08-12T12:00Z');
+
+  const lastMemberClose = Math.max(...members.map((i) => i.closedAt));
+  const readied = sim.log.find((e) => e.kind === 'ready' && e.issue === fanIn.number);
+  assert.equal(readied.by, 'close', 'readied by the closing side, not the tick');
+  assert.ok(readied.t - lastMemberClose < 60e3, 'readiness followed the close immediately');
+  assert.equal(fanIn.state, 'closed');
+  assert.equal(fanIn.outcome, 'done');
+  assert.ok(fanIn.closedAt - lastMemberClose <= 10 * 60e3,
+    'the fan-in ran minutes after its last blocker, not a tick later');
+});
+
 // ---- S26 — the guard's second half must not over-block either: after a
 // rolled item runs and closes, the NEXT period still gets a fresh item.
 test('S26b the closed-at guard half releases at the next anchor', () => {
@@ -644,29 +679,63 @@ test('S30 duplicate standing item: the next tick self-heals (F16)', () => {
   assert.ok(openFam[0].number < dup.number, 'and it is the oldest');
 });
 
-// ---- S31 — the leash arithmetic (F17): a prework bound that reaches the
-// executing leash is a wiring error, refused at wiring time — because run
-// unsafe, a live prework gets reclaimed and its occurrence executes prework
-// twice (the transition re-verify still keeps the hand-off single).
-test('S31 prework bound >= executing leash is refused at wiring (F17)', () => {
+// ---- S31 — the leash under long work (F17, reframed by the work-as-work
+// review 2026-08-15): the work step IS the work — long, crash-prone, often the
+// whole task — so the leash must not have to exceed every task's work bound.
+// Heartbeat comments during the work step keep a LIVE executor's item out of
+// the reclaim however long the work runs; the wiring constraint that remains
+// is heartbeat interval < leash.
+test('S31 heartbeat interval >= executing leash is refused at wiring (F17 reframed)', () => {
   assert.throws(
-    () => makeSim({ tasks: [{ id: 'x/slow', frequency: 'daily', preworkMinutes: 90 }] }),
+    () => makeSim({ tasks: cast(), heartbeatMinutes: 90 }),
     /reaches the executing leash — F17/);
 });
 
-test('S31b the hazard the constraint prevents: live prework reclaimed, run twice', () => {
+test('S31b the livelock heartbeats prevent: silent long work reclaimed alive, forever', () => {
   const tasks = [{
     id: 'x/slow', frequency: 'daily', outcome: 'done', preworkMinutes: 130, // > 1h leash
     precondition: () => ({ run: true }),
   }];
-  const sim = makeSim({ tasks, unsafeLeash: true }).seedSteadyState('2026-08-12T00:00Z');
+  const sim = makeSim({ tasks, heartbeatsDisabled: true }).seedSteadyState('2026-08-12T00:00Z');
   sim.run('2026-08-12T00:00Z', '2026-08-12T12:00Z');
 
-  // worse than duplicate prework — a LIVELOCK: every run is reclaimed before
-  // it can finish, prework re-executes each cycle, and nothing ever converges
+  // worse than one duplicate run — a LIVELOCK: every tenure is reclaimed
+  // before it can finish, the work re-executes each cycle, nothing converges
   assert.ok(sim.log.filter((e) => e.kind === 'reclaim').length >= 3, 'reclaimed again and again');
-  assert.ok(evals(sim, 'x/slow').length >= 3, 'prework re-executed each cycle');
+  assert.ok(evals(sim, 'x/slow').length >= 3, 'the work re-executed each cycle');
   assert.equal(closedOf(sim, 'x/slow').length, 0, 'and the occurrence NEVER converges');
+});
+
+test('S31c long work with heartbeats: never reclaimed alive, converges once', () => {
+  const tasks = [{
+    id: 'x/slow', frequency: 'daily', outcome: 'done', preworkMinutes: 130, // > 1h leash — legal now
+    precondition: () => ({ run: true }),
+  }];
+  const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
+  sim.run('2026-08-12T00:00Z', '2026-08-12T12:00Z');
+
+  assert.equal(sim.log.filter((e) => e.kind === 'reclaim').length, 0, 'no reclaim of a live run');
+  assert.ok(sim.log.filter((e) => e.kind === 'heartbeat').length >= 8,
+    'the item timeline stayed live throughout (a heartbeat every 15m of a 130m run)');
+  assert.equal(closedOf(sim, 'x/slow').length, 1, 'one execution, one outcome');
+});
+
+test('S31d dead executor mid-long-work: recovery is bounded by the leash, not the work', () => {
+  const tasks = [{
+    id: 'x/slow', frequency: 'daily', outcome: 'done', preworkMinutes: 130,
+    precondition: () => ({ run: true }),
+  }];
+  const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
+  sim.at('2026-08-12T04:00Z', (s) => s.crashDuringWorkOf('x/slow', 40)); // dies 40m in
+  sim.run('2026-08-12T00:00Z', '2026-08-12T12:00Z');
+
+  const crash = sim.log.find((e) => e.kind === 'executor-crash');
+  const reclaim = sim.log.find((e) => e.kind === 'reclaim');
+  assert.ok(crash && reclaim, 'died, then reclaimed');
+  // last heartbeat was at +30m; the leash (1h) reclaims from there at a tick —
+  // hours, not the 130m work bound plus anything
+  assert.ok(reclaim.t - crash.t <= 2 * 3600e3, 'reclaimed within ~leash+tick of the death');
+  assert.equal(closedOf(sim, 'x/slow').length, 1, 're-picked and converged (the work step is re-entrant)');
 });
 
 // ---- S32 — the pick-filter race (F15): two executors, same stale snapshot,

@@ -21,7 +21,7 @@ recurring task a standing work item at its anchor and flips blocked items
 ready — pure label mechanics, no preconditions, no signals. An executor — a
 GitHub Action by default, but anything that can read issues — picks up the
 next ready item, claims it by label, evaluates the precondition (the only
-place it ever runs): on a go it runs prework and hands off to agentic work (a
+place it ever runs): on a go it runs the work step and hands off to agentic work (a
 CCR session invoked by API); on a no-go the item **rolls** — stamped
 not-before the task's next anchor, blocked, reason recorded — so the item
 itself carries "asked, declined, wakes at T". Follow-ups, fan-outs, urgency,
@@ -110,7 +110,7 @@ shrinks):
    preconditions and collects no signals (§5); it executes nothing.
 2. **Executors** — any number of pull workers. Each iteration: pick the next
    ready item (urgent first), claim it, evaluate the precondition — the only
-   place it is ever evaluated — then on a go run prework and either finish
+   place it is ever evaluated — then on a go run the work step and either finish
    (agentless task) or invoke the agentic phase and hand the item to it; on a
    no-go, roll a scheduled item to its next anchor (§5). An executor is
    platform-agnostic by construction: its whole interface is issue read/write
@@ -158,8 +158,8 @@ The Context section below is binding scope — do not re-decide it.
 - <written by the executor at hand-off, unchanged shape>
 ```
 
-Everything behavior-defining — model, outcome ceiling, worker content, prework
-command — is still read from the tracked task files at HEAD, never from the
+Everything behavior-defining — model, outcome ceiling, worker content, the
+work step's command — is still read from the tracked task files at HEAD, never from the
 issue. A work item whose task the repo no longer carries is closed as obsolete,
 exactly like today's exit-14.
 
@@ -299,7 +299,7 @@ And the roll, executor-side (the full pick flow is §6):
 
 ```text
 on pick, verdict = precondition(signals, config):
-  go     -> proceed (prework, hand-off, converge, CLOSE with an outcome)
+  go     -> proceed (work step, hand-off, converge, CLOSE with an outcome)
   no-go  -> item carries origin:schedule?
               yes: Not-before = nextAnchor(task.frequency); ready -> blocked;
                    record the reason            # the item ROLLS — not an exit
@@ -376,7 +376,13 @@ events for latency **and** by the tick's cron as the poll that makes lost
 events irrelevant; `workflow_dispatch` for a hand-started drain):
 
 1. **Pick**: list open `task:ready` items; order `task:urgent` first, then
-   oldest-created. Two skip rules, both live reads at pick time:
+   oldest-created — deterministic at the single-executor width this deploys
+   at. A deployment that runs executors in parallel (§10) randomizes the
+   after-urgent order in the same change: W executors walking one
+   oldest-first list all collide on its head at every drain start, a cascade
+   the lease resolves but should not have to (owner decision, 2026-08-15 —
+   ship the shuffle with the width, not before). Two skip rules, both live
+   reads at pick time:
    - **Same-title mutex** (SCENARIOS S15/F6): skip an item whose exact title
      (task + qualifier) has another open item in `task:executing` or
      `task:agent` — one task, one execution at a time; a fan-out's distinct
@@ -456,7 +462,7 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
    settled on its own, S17). **This amends §12.3's "the precondition is the
    only decision point" by re-siting, not weakening it**: still exactly the
    precondition deciding, still one decision point — moved from the scheduler
-   run to the pick — and prework and the agent still may not skip; the
+   run to the pick — and the work step and the agent still may not skip; the
    doctrine's target (later phases inventing "new reasons to skip") is
    untouched.
 
@@ -476,16 +482,36 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
    head, are migration notes unapplied — with cadence carried by
    `frequency: daily-2h` and nothing else. The corpus enters the new mechanism
    with zero calendar preconditions.
-5. **Prework**, Action-side, unchanged contract: subprocess, task dir cwd,
-   `required_secrets` as env, timeout, `CLAUDINITE_REQUEST_AGENT` conditional
-   hand-off. One requirement now stated explicitly (SCENARIOS S8/F12): prework
-   must be **re-entrant** — a dead executor's claim is reclaimed and the item
-   re-picked, so prework can run again over its own half-done work (it already
-   must survive this today, where a scheduler run dying mid-prework leaves the
-   slot due; the contract just never said so). Failure → comment +
-   `needs-human`, `task:executing` removed. Success,
+5. **The work step**, Action-side, unchanged contract: subprocess, task dir
+   cwd, `required_secrets` as env, timeout, `CLAUDINITE_REQUEST_AGENT`
+   conditional hand-off. **This step is the work, not preparation for it**
+   (owner correction, 2026-08-15): for most of the fleet it is the whole task —
+   long-running, crash-prone, PR-creating — and the agent phase is the
+   sometimes-important judgment minority. The contract key is still spelled
+   `prework` (renaming a vendored key is a migration, tracked separately);
+   the design calls the phase what it is. Three requirements, the first
+   stated explicitly since SCENARIOS S8/F12:
+   - **Re-entrant** — a dead executor's claim is reclaimed and the item
+     re-picked, so the work can run again over its own half-done output (it
+     already must survive this today, where a scheduler run dying mid-work
+     leaves the slot due; the contract just never said so).
+   - **Heartbeat while it runs** (work-as-work review, 2026-08-15): the
+     executor comments on the item every ~15 minutes during the work step.
+     The heartbeat is what lets one short global executing leash survive
+     arbitrarily long work — the leash measures executor *death* (heartbeats
+     stopped), never work *duration* — and it is the item's visibility during
+     the hours its timeline would otherwise go dark (§11 has the leash
+     arithmetic this replaces).
+   - **The terminal comment is the durable record.** Actions logs expire; the
+     item is what remains. Whatever ends the item — converge here, or the
+     agent later — the closing comment carries the `claudinite-task-exec`
+     record and every artifact the work created (PR links above all). For an
+     agentless task this comment is the *only* durable trace of the run, which
+     is what makes it non-optional.
+
+   Failure → comment + `needs-human`, `task:executing` removed. Success,
    agentless task or no agent requested → converge now: `outcome:done` (or
-   `outcome:delivered` when prework's payload names a live artifact), close,
+   `outcome:delivered` when the work's payload names a live artifact), close,
    done — the quiet-on-success property survives as a *closed* item rather
    than no item, which is the better trade: the run is now visible.
 6. **Hand off**: write `### Delivered by prework` / `### Why the agent is
@@ -522,26 +548,33 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
 
 An executor run may iterate (claim → … → hand off, next pick) up to a
 configured `maxItems`; the default is a small number, and each item's claim is
-independently leased, so executor concurrency is safe at any width. One bound
-ties the executor to its leash ([RESEARCH](RESEARCH.md) §2 — the
-stalled-worker lesson): the executor job's `timeout-minutes` must be **≤ the
-executing leash**, so a hung runner is killed by the platform before its
-claim is reaped and re-picked — otherwise a zombie's prework runs beside its
-replacement's.
+independently leased, so executor concurrency is safe at any width. The old
+bound tying the run to its leash — `timeout-minutes` ≤ the executing leash, so
+the platform killed a hung runner before its claim was reaped — **retires with
+the heartbeat** (2026-08-15): it capped every run at under an hour, which the
+work-as-work model cannot accept. The stalled-worker lesson
+([RESEARCH](RESEARCH.md) §2) is now held by three smaller pieces instead: a
+*dead* runner stops heartbeating and is reclaimed within ~the leash; a *wedged
+work subprocess* is killed by the work's own declared timeout (the contract's
+existing bound), after which the executor converges the failure; and a
+*reclaimed-but-alive* runner abandons at its next transition, because the
+executor re-verifies its own lease at every state change (§11). The run's
+`timeout-minutes` is then sized to the work it may legally do — `maxItems` ×
+the largest work bound it can pick — not to the leash.
 
 **Idempotency, honestly (owner concern, 2026-08-13: "I'm not sure we can
 guarantee all tasks to be idempotent").** Agreed — and the design does not
 require it. The queue literature's blanket "make handlers idempotent" applies
-to systems where duplicate *invocations* reach the handler; here every
-duplicate-invocation path collapses at a lease **before work starts** (the
-executor claim, §6.2; the agent claim, §7), so what tasks must actually
-tolerate is much narrower:
+to systems where duplicate *invocations* reach the handler; here the executor
+claim collapses duplicate pickups **before work starts** (§6.2) and at-most-once
+invocation means no duplicate ever reaches the agent hop (§6.6), so what tasks
+must actually tolerate is much narrower:
 
-- **Prework must be re-entrant** — a *sequential* re-run after a
+- **The work step must be re-entrant** — a *sequential* re-run after a
   crash-and-reclaim (§6.5). That is convergence ("check what exists, continue
-  from there"), not idempotency, and it is already required of prework today.
-  Concurrent overlap with a zombie run is excluded by construction
-  (`timeout-minutes` ≤ leash, above), not asked of the task.
+  from there"), not idempotency, and it is already required of the work today.
+  Concurrent overlap with a zombie run is excluded by the lease re-verify and
+  the work's own timeout (above), not asked of the task.
 - **Re-executed agent work passes through the precondition again** (§6.4),
   and the half-run's artifacts are on the item (Delivered section, the
   PR-number comments the agent posts as it works — the item is the run's own
@@ -556,9 +589,8 @@ And for a task that can promise none of this — a genuinely one-shot side
 effect (a store submission, an external notification, a payment-shaped
 action): the contract gains **`on_interrupt: 'requeue' | 'needs-human'`**
 (default `'requeue'`). Declaring `'needs-human'` makes every recovery path
-that would re-execute — leash reclaim (§11), hand-off retry (§6.6), the
-human re-queue lever (§4) — converge to triage instead: **at-most-once plus
-a human**. This is the ack-early/ack-late dial every queue exposes, and
+that would re-execute — leash reclaim (§11), the human re-queue lever (§4) —
+converge to triage instead: **at-most-once plus a human**. This is the ack-early/ack-late dial every queue exposes, and
 Celery ships ack-early as its *default* precisely so non-idempotent tasks
 are never silently re-run ([RESEARCH](RESEARCH.md) §1); here the safe-side
 default stays `'requeue'` because most of this fleet's tasks are
@@ -678,10 +710,24 @@ by the tick (§5). Three patterns fall out, all from the sketch:
   (follow-ups, fan-ins).
 - **Fan-out with a fan-in.** Fanning out is creating N items (§8). The fan-in
   is one more item — the status/aggregation task — created `Blocked-by` all N.
-  It readies only when every child converged, and its precondition/prework read
+  It readies only when every child converged, and its precondition/work step read
   the children's outcome labels to report or escalate. "Getting the status of
   a fan-out" stops being a bespoke sweep and becomes an ordinary task whose
   edges the tick already evaluates.
+
+**Readiness has a second site: whoever closes an item re-checks its dependents
+in code** (F1, reopened by the owner 2026-08-15 — reversing the 2026-08-13
+decline, and amending §15.8's "dependency readiness is the tick's alone" in
+siting, not in principle). On closing an item, the executor or agent doing the
+closing evaluates every open `task:blocked` item naming it: `Blocked-by` all
+closed and `Not-before` passed flips the dependent to `task:ready`, and a
+drain follows — so a chain link or a fan-in proceeds within minutes of its
+upstream converging instead of waiting out the tick. What changed since the
+decline: under the work-as-work model the ~1h/link quantization stacks on
+drain occupancy, so a three-link chain on a busy morning trailed into the
+afternoon. The tick's readiness job stays exactly as it was, as the backstop —
+a close by hand runs no engine code, and a missed re-check costs a tick of
+latency, never correctness (SCENARIOS S33, and S4's tightened chain timing).
 
 Native GitHub issue dependencies (blocked-by/blocking — GA since Aug 2025,
 API- and webhook-supported) and sub-issues *mirror* these fields: the tick
@@ -698,16 +744,46 @@ does not attempt cycle detection; the janitor's health review may.
 
 ## 10. Capacity and platform-agnosticism
 
-The default deployment stays one vendored workflow — the repo's only cron,
-rule unchanged — now containing the tick job and one executor job (the tick
-runs first; the executor drains what it created, which keeps the common case's
+The default deployment stays one vendored cron workflow — the repo's only
+cron, rule unchanged — containing the tick job and a drain (the tick runs
+first; the executor drains what it created, which keeps the common case's
 latency at zero even without events). Event triggers (`task:ready` labeled)
-give urgent and hand-created items sub-minute pickup. Scaling is a config
-knob: the executor job's `maxItems`, a matrix width for parallel executor
-jobs, or executors outside Actions entirely — the executor contract is "issue
-read/write plus the repo checkout at HEAD", so a runner anywhere with a token
-qualifies. Executor identity is self-declared in claim comments; the system
-never enumerates executors, which is why adding one requires telling no one.
+give urgent and hand-created items sub-minute pickup — with one platform fact
+worth knowing: a label written by a workflow's own `GITHUB_TOKEN` emits no
+triggering event (GitHub's recursion guard), so events only ever come from
+*foreign* tokens — a human, a CLI on a PAT, an agent session. The drain being
+in-run is what makes that harmless; it is the structural delivery, events the
+sugar.
+
+**The capacity model, honestly** (work-as-work review, 2026-08-15): the work
+step is the work, so a drain's throughput is its *occupancy* — one run
+completes roughly `maxItems` heavy items serially, and everything it leaves
+waits a tick. The CCR sessions it hands off parallelize for free; the
+executor-side work does not. So `maxItems` and executor width are the primary
+capacity parameters, not a garnish: scale with a matrix width for parallel
+executor jobs (shipping the randomized after-urgent pick order in the same
+change, §6.1), with executors outside Actions entirely — the contract is
+"issue read/write plus the repo checkout at HEAD", so a runner anywhere with a
+token qualifies — and, for the drain-until-empty shape without inflating any
+one run, with **self-re-dispatch**: `workflow_dispatch` is one of the two
+event types a `GITHUB_TOKEN` *can* fire, so a drain that exits with ready
+items left re-dispatches the executor workflow and lets a fresh run continue.
+One fairness note, accepted at today's scale: oldest-first plus heavy work
+lets one task's item dominate a drain's whole budget while light tasks queue
+behind it — a sentence here rather than machinery, until it is measured.
+
+**The tick must never wait on a drain** (work-as-work review, 2026-08-15).
+The heartbeat retires the sub-hour cap on executor runs (§6), and a long
+drain sharing the tick's serializing `concurrency` group would then hold the
+next cron fire — instantiation, readiness and the leash reclaim all stalling
+behind the very work they schedule. So the serialization the double-tick
+guard needs (S6) scopes to the **tick alone**, and executor work runs outside
+it: the drain leaves the cron workflow's concurrency group (its own group, or
+the separate executor workflow via dispatch). A deployment where the drain
+can still block the tick is mis-wired even while nothing visibly fails.
+
+Executor identity is self-declared in claim comments; the system never
+enumerates executors, which is why adding one requires telling no one.
 
 ## 11. Recovery — what the janitor keeps, what dies
 
@@ -719,7 +795,7 @@ never enumerates executors, which is why adding one requires telling no one.
 | duplicate events / racing executors | claim lease on one implicit executor | same lease, N executors — the loser picks a different item |
 | executor died mid-claim | — (executor was a session; janitor reclaimed via `agent-running`) | **the tick** (owner, 2026-08-13): `task:executing` with no activity past ~1h → strip to `task:ready` with a comment, so a dead executor's item is back in the queue within ~2h rather than ~25h. An executor iteration is minutes, not hours, and a lease checked once a day is not a short lease |
 | agent session died mid-run | janitor: stale `agent-running` → `needs-human` after ~3h | same, on `task:agent` (a hand-off comment names the session, so the janitor can say *which* session died) |
-| CCR invocation lost | undetectable (label event fired into the void); surfaced only by re-arm/stale | **synchronous**: the executor sees the API failure, retries, converges `needs-human` with the error (§6.6) |
+| CCR invocation lost | undetectable (label event fired into the void); surfaced only by re-arm/stale | **synchronous**: a refused call converges `needs-human` with the error at once; an unanswered call leaves the item with the agent and the agent leash settles it — one call per item, never retried (§6.6) |
 | item never picked up | stale dispatch escalation, period parsed from the slot id's leading char | same escalation, period read from the task's declared `frequency` at HEAD (or a default for ad-hoc items) — no title parsing; the stale item converges `needs-human`, out of the queue |
 | dependency never resolves | n/a | **the stale-ready rule cannot see it** — a blocked item is never ready (F14, caught by the simulator against S18's claim). The janitor gains a third rule: a blocked item whose blockers have not resolved for ~2 days gets an escalation *comment* — labels untouched, so the item still proceeds by itself the moment its blockers resolve; a human who decides it is dead closes it by hand |
 
@@ -741,23 +817,34 @@ and the health review, which gains the queue (ready-item age, blocked-item
 depth, outcome mix) as its subject and can now compute all of it from
 issues.
 
-Two leash constraints, made explicit by the validation review (2026-08-13):
+Two leash constraints, made explicit by the validation review (2026-08-13) and
+the first **reframed by the work-as-work review (2026-08-15)**:
 
-- **The executing leash must exceed every task's prework timeout bound
-  (F17)** — enforced as a wiring-time conformance check, not a convention.
-  A prework legally allowed to outlive the leash is reclaimed *alive*, and
-  the failure is not one duplicate run but a **livelock**: every tenure is
-  reclaimed before it can finish, prework re-executes each cycle, and the
-  occurrence never converges (S31's trace). The paired runtime rule: an
-  executor **re-verifies its own lease at every state transition** (is my
-  claim still this episode's earliest?) and abandons silently when it is
-  not — which is what keeps a reclaimed-but-alive runner from handing off
-  work it no longer owns.
+- **The executing leash measures executor death, never work duration — the
+  heartbeat is what buys that (F17, reframed).** As first written, F17 made
+  the leash exceed every task's work bound, which under the work-as-work model
+  inflates it to the heaviest task in the fleet: one legitimate three-hour
+  task and a dead executor on a two-minute task also waits three hours to
+  reclaim. Instead the executor **comments a heartbeat on the item every ~15
+  minutes during the work step** (§6.5): a live run is never reclaimed however
+  long it works (S31c), a dead one stops heartbeating and is reclaimed within
+  ~the leash of its last heartbeat regardless of the work's bound (S31d), and
+  the wiring-time conformance check shrinks to the one relation the heartbeat
+  itself needs — **heartbeat interval well inside the leash** (S31). The
+  livelock the original constraint prevented — every tenure reclaimed alive
+  before it can finish, the work re-executing forever, nothing converging —
+  is still demonstrable by switching the heartbeat off (S31b), which is why
+  the heartbeat is contract, not courtesy. The paired runtime rule is
+  unchanged: an executor **re-verifies its own lease at every state
+  transition** (is my claim still this episode's earliest?) and abandons
+  silently when it is not — which is what keeps a reclaimed-but-alive runner
+  from handing off work it no longer owns.
 - **The agent leash (~3h) assumes agent sessions finish or touch their item
   within it** — parity with today's stale `agent-running` sweep, stated as
   an assumption rather than discovered as an incident: a legitimately
   longer-running agent must comment on its item to reset the activity
-  clock, or it will be declared dead.
+  clock, or it will be declared dead. (The same move as the executor's
+  heartbeat, at the other hop.)
 
 Both recovery sites keep the same discipline: **recovery is code, run in one
 place per rule, never a sweep inside a session that is executing something.**
@@ -841,7 +928,7 @@ executor had to be told and check. Reach is which endpoint a task names.
 
 Survives unchanged: the task folder and contract (plus the new optional
 `after` and `on_interrupt`), preconditions as the only decision point (evaluated at admission and
-at pickup, §6.4), prework and `required_secrets`, outcome ceilings and
+at pickup, §6.4), the work step (contract key `prework`) and `required_secrets`, outcome ceilings and
 `verify-outcome`, the claim lease, one-agent-one-item, terminal convergence,
 `claudinite-task-exec` records and the usage fold (plus outcome labels as a
 second, queryable census), the janitor as sole recovery site, dormancy (the
@@ -930,13 +1017,13 @@ executor workflow is the only consumer. End to end:
    **executor workflow's env** (`CHROME_STORE_TOKEN:
    ${{ secrets.CHROME_STORE_TOKEN }}`). The tick and the janitor workflows
    get no secrets — they never execute task code.
-4. **Execution** — after claim and a go verdict, the executor runs prework as
+4. **Execution** — after claim and a go verdict, the executor runs the work step as
    a subprocess (task dir cwd, timeout) whose env carries exactly the
-   declared names. **Prework is the only task code that ever sees values.**
+   declared names. **The work step is the only task code that ever sees values.**
 5. **The agent hop carries nothing** — the hand-off writes body sections and
    calls the invocation endpoint with a prompt naming the issue and nonce;
    the session works under its own identity. A task whose agent phase needs
-   a privileged effect routes it through prework's delivered artifact or a
+   a privileged effect routes it through the work step's delivered artifact or a
    wider invocation endpoint — never a secret in the session.
 6. **Endpoint tokens ride the same rail** (§12): config maps endpoint name →
    URL + the *name* of the Actions secret; the stamp puts it in the executor
@@ -945,7 +1032,7 @@ executor workflow is the only consumer. End to end:
 7. **Missing secret** — declared but not configured: baselining asks the
    owner on its standing issue (the adoption-interview posture), and until
    set, execution converges the affected item `needs-human` naming the
-   missing secret — at prework for `required_secrets`, at hand-off for an
+   missing secret — at the work step for `required_secrets`, at hand-off for an
    endpoint token. Nothing fails silently; the task just doesn't work yet.
 8. **Rotation** — rotate the value in repo settings; nothing else changes,
    because names are the interface everywhere above.
@@ -970,9 +1057,10 @@ same PR that lands its replacement's fleet flip. One known migration detail
 the new vocabulary before the first queue-mode repo flips, or the queue's
 own items read as repo activity to the preconditions watching it.
 
-## 15. Decisions on record (owner, 2026-08-13)
+## 15. Decisions on record (owner, 2026-08-13, and the work-as-work review of 2026-08-15)
 
-The eight questions this design opened, as answered. Where an answer changed
+The eight questions this design opened, as answered, followed by the standing
+entries and the 2026-08-15 review's decisions (14–21). Where an answer changed
 the design rather than confirming it, the section it changed is named.
 
 1. **Invocation is a CCR API call** (§12). Reverses per-project-scheduling
@@ -1007,9 +1095,11 @@ the design rather than confirming it, the section it changed is named.
    drafted; the sketch's literals and a label-per-executor are both declined —
    the first for queryability, the second because executor identities are an
    unbounded set.
-8. **Dependency readiness is the tick's alone** (§9). No converger poke: one
+8. **Dependency readiness is the tick's alone** (§9). No re-check at close: one
    site evaluates `Blocked-by`/`Not-before`, and ~1h per chain link is within
-   what nightly work tolerates.
+   what nightly work tolerates. *(Amended by decision 19, 2026-08-15: a second
+   site at close, with the tick as backstop — the ~1h/link stacked on drain
+   occupancy once the work step was priced honestly.)*
 
 Standing entries — no decision needed now:
 
@@ -1047,6 +1137,52 @@ Standing entries — no decision needed now:
     never closes, so blocked-by would starve dependents of a quiet upstream
     forever (S24). Titles carry no timestamp; the issue number is the
     identity, as ever.
+
+The work-as-work review (owner, 2026-08-15). The correcting premise, in the
+owner's words: *"The pre work is not pre work. It's work. Sometimes there's
+also agentic work. The work can take time. The work can crash. The work
+creates PRs. The work is a lot."* Every sizing assumption in the design was
+re-derived under it — the mechanics survived; the arithmetic and the
+deployment coupling did not:
+
+14. **The work step is the work** (§6.5) — the executor-side subprocess is the
+    whole task for most of the fleet; the agent phase is the judgment
+    minority. The design names the phase **the work step**; the vendored
+    contract key stays spelled `prework` until its own rename migration
+    (tracked in the follow-up issue), because renaming a key every member's
+    files carry is a fleet migration, not a doc edit.
+15. **Heartbeat comments during the work step** (§6.5, §11) — *changed the
+    design*: F17 reframed (heartbeat interval < leash replaces leash >
+    every work bound), the `timeout-minutes ≤ leash` run cap retired (§6),
+    and the item's timeline stays live through long work. One mechanism
+    serves recovery and visibility.
+16. **The tick never waits on a drain** (§10) — *changed the design*: the
+    double-tick serialization scopes to the tick alone; executor work runs
+    outside that concurrency group, or the heartbeat's legal long runs would
+    starve the hourly tick behind the platform's queueing.
+17. **The occupancy capacity model** (§10): a drain's throughput is its
+    serial work-step occupancy, so `maxItems` and executor width are the
+    primary capacity parameters; self-re-dispatch (`workflow_dispatch`, one
+    of the two events a `GITHUB_TOKEN` can fire) is the drain-until-empty
+    shape; the oldest-first fairness exposure is named and accepted at
+    today's scale.
+18. **The terminal comment is the durable record** (§6.5): the
+    `claudinite-task-exec` record and every artifact the work created land on
+    the item at close — Actions logs expire, and for agentless runs (the
+    majority, under this review's premise) the item is the only durable trace.
+19. **F1 reopened — readiness re-checks at close** (§9), amending decision 8
+    in siting, not principle: whoever closes an item readies its dependents in
+    code and a drain follows; the tick stays the backstop. (S33, S4.)
+20. **Randomized pick order ships with executor width, not before** (§6.1,
+    §10): at width 1 it is a no-op; at width >1 the oldest-first head
+    collision cascade justifies it, in the same change.
+21. **"Tick" keeps its name for now** — the owner's naming rule (spell names
+    out; no single nouns that need contextual reading) applies to everything
+    new here ("the work step", "the readiness re-check at close", "heartbeat
+    comments"), and renaming the tick itself is deferred to
+    [#877](https://github.com/missingbulb/Claudinite/issues/877) so it lands
+    after the old slot scheduler's vocabulary retires and the
+    "scheduler"-name collision is moot.
 
 ---
 

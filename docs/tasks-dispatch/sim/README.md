@@ -60,9 +60,11 @@ test's title in `scenarios.test.mjs`.
 | §6.1 the `after` yield (not Blocked-by) | `S4`, `S23`, `S23b`, `S24` |
 | §6.2 the verified claim lease, N executors | `S7` |
 | §6.4 the single evaluation site; roll vs close by origin | `S3'`, `S13'`, `S17` |
-| §6.5 prework failure → needs-human; re-entrant re-pick | `S19`, `S8` |
-| §6.6 hand-off failure: bounded revert-to-ready (F3) | `S9a`, `S9b` |
-| §7 the agent-side lease under at-least-once invocation (F5) | `S10` |
+| §6.5 work-step failure → needs-human; re-entrant re-pick | `S19`, `S8` |
+| §6.5 heartbeat comments: the leash measures executor death, not work duration | `S31c`, `S31d` |
+| §6.5 durable record: the terminal comment carries the exec record + artifacts | **prose** — comment content, not label mechanics |
+| §6.6 at-most-once invocation: refused → needs-human; unanswered → stays with the agent, the leash decides | `S9a`, `S10a`, `S10b` |
+| §7 the agent checks, not claims — no lease, no second session to arbitrate | `S10a` (exactly one session); the nonce check **prose** |
 | §8 force = waking the standing item | `S14'`, `S16'`, `S19` |
 | §8 ad-hoc work = creating an item; obsolete on no-go | `S13'`, `S15`, `S16` |
 | §9 follow-ups: Blocked-by + Not-before, verdict at wake | `S17`, `S17b` |
@@ -72,7 +74,7 @@ test's title in `scenarios.test.mjs`.
 | §11 janitor stale-ready escalation (~2 periods) | `S18`, `S21` (never on a rolling item) |
 | §11 janitor stuck-dependency sweep (F14) | `S18`, `S24` |
 | §4/F7 the human re-queue lever | `S19`, `S12'` |
-| §15.1 invocation is a CCR API call | failure modes: `S9a`, `S9b`, `S10`; **prose** for the call contract itself |
+| §15.1 invocation is a CCR API call | failure modes: `S9a`, `S10a`, `S10b`; **prose** for the call contract itself |
 | §15.2 precondition at pickup; forcing loses its exemption | `S14'`, `S16'` |
 | §15.3 timing-in-preconditions is advisory | **prose** — advisory by ruling, unenforceable by design |
 | §15.4 go/no-go, once per period | `S1'`, `S3'`, `S22` |
@@ -82,14 +84,24 @@ test's title in `scenarios.test.mjs`.
 | §15.8 dependency readiness is the tick's alone | `S17` (readied only at Not-before), `S4` (tick-quantized links) |
 | §15.9 known limitation: stuck fan-in waits for a human | `S18` |
 | §15.10 ref-creation CAS claims | **prose** — recorded alternative, not designed in |
-| §15.11 invocation idempotency key | **prose** — conditional improvement; the modeled defense is the F5 lease (`S10`) |
+| §15.11 invocation idempotency key | **answered: none exists** — the modeled defense is at-most-once invocation (`S9a`, `S10a`, `S10b`) |
 | §15.12 the no-go record alternative | **prose** — superseded by §15.13 |
 | §15.13 the standing work item | `S1'`, `S21`, `S25`, `S26b`, `S12'` |
+| §15.14 the work step is the work (naming; contract key unchanged) | **prose** — vocabulary, not mechanics |
+| §15.15 heartbeat comments during the work step | `S31`, `S31b`, `S31c`, `S31d` |
+| §15.16 the tick never waits on a drain | **prose** — workflow concurrency wiring (see "The unsimulated world") |
+| §15.17 the occupancy capacity model; self-re-dispatch | **prose** — deployment sizing; the sim models one executor's loop, not runner budgets |
+| §15.18 the terminal comment is the durable record | **prose** — comment content, not label mechanics |
+| §15.19 F1 reopened: readiness re-checks at close | `S33`, `S4` |
+| §15.20 randomized pick order ships with executor width | **prose** — width-1 deployments are deliberately deterministic |
+| §15.21 "tick" keeps its name for now (#877) | **prose** — vocabulary |
 | §14 bootstrap: first-item rule; old-vocabulary issues untouched | `S25`, `S29` |
 | §14 updates: declaration changes apply at the next evaluation; the stamped wake is the one carried fact | `S28` |
-| §14 secrets: the missing-secret needs-human posture | `S9b` (the bound); storage/stamping/rotation **prose** — Actions-platform behavior |
+| §14 secrets: the missing-secret needs-human posture | `S9a` (the refused hand-off's same convergence); storage/stamping/rotation **prose** — Actions-platform behavior |
 | §5 F16 duplicate-standing-item self-heal | `S30` |
-| §11 F17 leash constraint + livelock hazard; transition lease re-verify | `S31`, `S31b` |
+| §11 F17 (reframed): heartbeat interval < leash; the livelock heartbeats prevent; transition lease re-verify | `S31`, `S31b`, `S31c`, `S31d` |
+| §9/§15.8 readiness re-check on close (F1, reopened 2026-08-15) | `S33`, `S4` (yielded chain picked in minutes) |
+| §10 occupancy capacity model; tick/executor decoupling; randomize-with-width | **prose** — deployment wiring and sizing, not label mechanics |
 | §6.1 F15 post-claim filter re-verify | `S32` |
 | §6.2 F18 episode-scoped claim arbitration | `S32` |
 | §6.2 comment-id ordering; label-swap non-atomicity; stateless-item repair | **prose** — see "The unsimulated world" |
@@ -115,7 +127,8 @@ can still teach us.
 | **Event delivery** | `labeled` webhook events are droppable | modeled only as `eventLost` on creation (S16); every flow is poll-guaranteed by the tick's drain — events are latency sugar everywhere by design |
 | **Rate limits / quotas** | API quotas, secondary rate limits | costs estimated in DESIGN §5 (hourly-task churn); not modeled; the burst (B-rows) observes real consumption |
 | **Clocks** | runner clocks skew; only server timestamps are trustworthy | no rule compares runner clocks; ordering is by server-assigned ids, durations by server timestamps; anchors tolerate minute-scale skew by construction (tick-quantized) |
-| **The invocation wire** | the CCR API's real contract, timeouts, the nonce's comment grammar | the *semantics* (at-least-once, bounded retry, agent lease) are modeled (S9/S10); the wire format is not — burst rows B3/B7 prove it live |
+| **The invocation wire** | the routine-fire API's real contract, timeouts, the nonce's payload grammar | the *semantics* (at-most-once, the refused/unanswered split, the leash settling the unknown case) are modeled (S9a/S10a/S10b); the wire format is not — burst rows B3/B7 prove it live |
+| **Workflow concurrency between the tick and a long drain** | the tick and drain share a workflow whose `concurrency` group holds the next cron fire until the whole run ends — a drain doing hours of real work starves the hourly tick | the decoupling wiring (work-as-work review, DESIGN §10): the drain must run outside the tick's serializing group once work may legally outlive an hour; platform config the sim cannot see, verified in the migration burst |
 | **Secrets & permissions** | Actions secret storage, env stamping, write-gating of labels/comments | prose + conformance checks (§14 secrets path); burst row B4/B7 |
 | **Search index** | minutes-stale, eventually consistent | never used by the design (F11) — the REST issue list is the only read |
 | **Real prework/agent content** | side effects, repos, PRs, sessions | durations and verdicts are scenario inputs; the outcome ceiling and record formats are the engine's existing tested surface |
