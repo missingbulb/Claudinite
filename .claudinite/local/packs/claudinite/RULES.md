@@ -165,12 +165,6 @@ prose below).
   JSON as anchored text; if you must round-trip, pin every lossy default and read the resulting
   diff before committing. (Portable — a promote candidate for `repo-text-sweeps`, where a
   `\uXXXX`-in-tracked-JSON check would carry it.)
-- **Test git fixtures must commit with signing off.** `engine-tests/helpers.mjs`'s `makeRepo`
-  overrides identity but not signing, so all 31 call sites route fixture commits through the
-  signing service; when it degrades, each commit blocks on it and the suite leaks descriptors
-  (~800 per full run against a 4096 cap) until `git commit` and `git push` fail process-wide.
-  Commit with `git -c commit.gpgsign=false commit --no-gpg-sign`: signing a tmpdir throwaway
-  buys nothing. (Portable — a promote candidate for `writing-tests`.)
 - **A canon session with a consumer repo also in its sources will reach for the *consumer's*
   merge skill — merge by the skill of the repo you are merging into.** Canon work is routinely
   dual-repo (the canon plus the fleet member being piloted), and both repos ship a merge skill
