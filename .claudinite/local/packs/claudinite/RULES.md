@@ -6,13 +6,6 @@ lesson at the strongest mechanism available — a check where the rule is determ
 
 ## Standing owner decisions — settled, do not re-litigate
 
-- **Wondering where `canon-curation` belongs** — `.claudinite/local/packs/`, not `packs/`: the
-  canon home's curation duties are Claudinite maintaining itself. Don't propose moving it back,
-  and don't call the placement provisional.
-
-- **Describing local-pack `run_daily` scheduling** — it is ON, the fleet's default path. Never
-  reintroduce an "experimental / not enabled" framing or an opt-in seam for it.
-
 - **Wanting a rule about what the `packs/` tree may reference** — declare and configure the
   `barriers` pack, extending it generically if a capability is missing. Never write standalone
   code that checks packs-tree segregation.
@@ -57,11 +50,8 @@ lesson at the strongest mechanism available — a check where the rule is determ
 
 - **Reaching for `AskUserQuestion`** — it blocks for minutes (~170s median), so spend it only
   on a fork you cannot take back. Anything answerable from the instruction, the tree, or a
-  reversible default: answer it, act, and say what you assumed.
-
-- **Resuming after a declined or interrupted `AskUserQuestion`** — don't re-post it. Take the
-  tool's own recommended default and state the assumption, or open the question up; a decline
-  means the closed choice set was wrong.
+  reversible default: answer it, act, and say what you assumed. Never re-post a question that was
+  declined — take its recommended default, or open the question up.
 
 - **Being asked to generalise something, or to review it** — land the conversions or action
   points it unlocks in the same change. A capability ships with the caller that exercises it; an
@@ -84,14 +74,7 @@ lesson at the strongest mechanism available — a check where the rule is determ
   the pack `README.md`; the test is whether an agent could act differently for having read it.
 
 - **Having a deferred direction, blocked proposal or status to record** — put it in `docs/`
-  and point at it from the issue or PR. No file under `packs/` may link to `docs/`: it is outside
-  the vendor set, so the link is dead in every consumer.
-
-- **Homing a lesson when no visible pack seems to own it** — read
-  `packs/directory.GENERATED.md`, the catalog of every canon pack, never the mounted subset: a
-  session sees only its repo's declared packs, so the owning pack can be invisible and the lesson
-  gets duplicated into a new local pack. Where that pack's territory is merely too narrow, widen
-  its `belongs`. (portable → `grow_with_claudinite/extracting-lessons.md`)
+  and point at it from the issue or PR, not from a pack file: `docs/` is outside the vendor set.
 
 - **Naming a new canon pack** — kebab-case, named for the surface it serves rather than the
   first feature you are building for it. The directory name is the pack's public id, spelled in
@@ -119,9 +102,6 @@ lesson at the strongest mechanism available — a check where the rule is determ
   `description`, no `doc`; the line the agent reads is `failureMessage`.
 
 ## The engine, the mount and what reaches members
-
-- **Expecting the home to receive what the fleet receives** — it doesn't: backfill is gated
-  `!isHome`, so this repo's own `.claudinite-checks.json` only ever changes by hand.
 
 - **Writing a path, regex or command against the mount** — write the two-root form: the
   `.claudinite/(shared|local)/` prefix optional in a pattern, and a probe for
