@@ -44,9 +44,6 @@ function distance(fromDir, toDir) {
 
 const rule = {
   id: 'file-placement',
-  // Advisory, permanently: placement is a direction to judge against the tree in front of
-  // you, not a gate a change has to clear. So a finding here is never released either —
-  // there is nothing to release — and the remedy text names only placement moves (#856).
   severity: 'advisory',
   description: 'A code file should mostly reference files at folder distance 0–2; distance 3+ is reach',
   doc: 'skills/file-placement/SKILL.md',
