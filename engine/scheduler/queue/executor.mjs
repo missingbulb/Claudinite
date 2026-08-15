@@ -290,8 +290,7 @@ async function executeItem({
 // line, not a log; its timeline carries the history.
 export function rollBody(body, until, reason, at) {
   const stamped = withNotBefore(body, until);
-  const withoutOld = stamped.replace(/\n*### Last verdict\n[\s\S]*$/, '\n');
-  return withSection(withoutOld, 'Last verdict', [
+  return withSection(stamped, 'Last verdict', [
     `${at} — the precondition declined: ${reason}`,
     `Asked again at ${until}.`,
   ]);
