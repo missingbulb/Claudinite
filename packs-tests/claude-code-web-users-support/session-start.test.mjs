@@ -92,33 +92,47 @@ test('no usable identity means there is nothing to look up', () => {
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test('the loaded preferences are counted onto the engine facet channel', () => {
-  // The session's opening summary states how much loaded; how many preferences this
-  // person has is knowable only here, because the file came from another repository.
+test('the loaded preferences are weighed onto the engine facet channel', () => {
+  // The session's opening summary states how much loaded, and states it in TOKENS,
+  // because a context window is what every part of the load is spent against. This
+  // is the only thing in the session that can weigh these: the file came from
+  // another repository.
   const root = project();
   try {
     mkdirSync(join(root, 'preferences'), { recursive: true });
+    // 76 words: 2 in the title, 2 in the heading, 3 of bullet-and-bold markup, and
+    // 69 of prose — 101 tokens at the ratio, stated as 100 on the facet's rounding.
     writeFileSync(join(root, 'preferences', 'me@example.com.md'), [
       '# Prefs', '', '## Preferences', '',
-      '- **First** — do a thing.',
-      '- **Second** — do another.',
-      '  continued prose that is not its own preference',
-      '* **Third** — a bullet by the other marker.',
-      '', 'Closing prose.', '',
+      `- **First** — ${Array.from({ length: 69 }, (_, i) => `w${i}`).join(' ')}`,
+      '',
     ].join('\n'));
     const r = run(root, { config: { repo: 'owner/store' } });
     assert.equal(r.status, 0);
-    assert.match(r.stdout, /^CLAUDINITE-FACET: 3 personal preference rules$/m);
+    assert.match(r.stdout, /^CLAUDINITE-FACET: 100 personal preference tokens$/m);
     assert.match(r.stdout, /## Preferences/);                           // the content still lands
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test('a preferences file with no bullets states no facet', () => {
+test('prose weighs the same as bullets — the window does not care about markup', () => {
+  // Counting bullets would call this file empty. It is not: it is in the window,
+  // and the facet reports what being in the window costs.
   const root = project();
   try {
     mkdirSync(join(root, 'preferences'), { recursive: true });
     writeFileSync(join(root, 'preferences', 'me@example.com.md'), 'Just prose, no bullets.\n');
     const r = run(root, { config: { repo: 'owner/store' } });
+    assert.match(r.stdout, /^CLAUDINITE-FACET: \d+ personal preference tokens$/m);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('a file with no words at all states no facet', () => {
+  const root = project();
+  try {
+    mkdirSync(join(root, 'preferences'), { recursive: true });
+    writeFileSync(join(root, 'preferences', 'me@example.com.md'), '  \n\n \t\n');
+    const r = run(root, { config: { repo: 'owner/store' } });
+    assert.equal(r.status, 0);
     assert.doesNotMatch(r.stdout, /CLAUDINITE-FACET/);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
