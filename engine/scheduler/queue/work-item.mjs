@@ -154,10 +154,28 @@ export function withNotBefore(body, iso) {
   return lines.join('\n');
 }
 
-// Append a section to an item body (prework's Delivered, the agent's Why). Used
-// at hand-off, where the executor adds to a body the tick wrote.
+// Set a section of an item body (the Context, prework's Delivered, the agent's Why)
+// — replacing one of the same heading if it is already there, appending otherwise.
+//
+// REPLACING IS THE WHOLE POINT, and appending was a live bug (#879). Every standing
+// item is born carrying a `### Context`, and the hand-off writes Context again — so
+// an append leaves TWO sections of that name, while the session is told to read "the
+// issue's Context section", singular. The one it reads first is then the tick's birth
+// note and the binding scope is in the other, which fails silently whichever section
+// the agent picks. It also grows: an item re-queued through hand-off twice carried a
+// third.
+//
+// A section runs to the next `### ` heading or to the end of the body, so a replaced
+// section keeps its position rather than migrating to the bottom — the body stays in
+// the order a reader learned it.
 export function withSection(body, heading, lines) {
   if (!lines.length) return body;
   const text = String(body ?? '').replace(/\s*$/, '');
-  return `${text}\n\n### ${heading}\n\n${lines.map((l) => `- ${l}`).join('\n')}\n`;
+  const section = [`### ${heading}`, '', ...lines.map((l) => `- ${l}`)];
+  const existing = text.split('\n');
+  const at = existing.findIndex((l) => l.trim() === `### ${heading}`);
+  if (at === -1) return `${text}\n\n${section.join('\n')}\n`;
+  const after = existing.findIndex((l, i) => i > at && l.startsWith('### '));
+  const tail = after === -1 ? [] : ['', ...existing.slice(after)];
+  return `${[...existing.slice(0, at), ...section, ...tail].join('\n')}\n`;
 }

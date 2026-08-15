@@ -82,3 +82,40 @@ test('labels are read from either shape GitHub returns them in', () => {
   assert.equal(hasLabel({ labels: [{ name: 'task:ready' }] }, 'task:ready'), true);
   assert.equal(hasLabel({ labels: [] }, 'task:ready'), false);
 });
+
+test('a section is replaced in place, so a body round-tripped twice has one of each', () => {
+  // #879, found on the queue's first live hand-off: every standing item is born with
+  // a `### Context`, the hand-off writes Context again, and an append left TWO — with
+  // the session told to read "the Context section", singular. The section it reads
+  // first was the tick's birth note; the binding scope was in the other one.
+  const born = workItemBody({
+    taskPath: 'packs/p/tasks/t/task.md',
+    context: ['born blocked until its first anchor'],
+  });
+  assert.equal(born.match(/^### Context$/gm).length, 1);
+
+  const handed = withSection(born, 'Context', ['Issues to triage: #1, #2.']);
+  assert.equal(handed.match(/^### Context$/gm).length, 1, 'one Context, not two');
+  assert.match(handed, /Issues to triage/, 'and it is the new scope that survives');
+  assert.doesNotMatch(handed, /born blocked/, 'the replaced scope is gone, not stacked above');
+
+  // The growth half: a re-queued item runs the hand-off again.
+  const twice = withSection(handed, 'Context', ['Issues to triage: #3.']);
+  assert.equal(twice.match(/^### Context$/gm).length, 1, 'still one after a second round');
+  assert.match(twice, /#3/);
+
+  // A heading not yet present still appends — replacing must not cost the append.
+  const delivered = withSection(twice, 'Delivered by prework', ['a branch']);
+  assert.equal(delivered.match(/^### Delivered by prework$/gm).length, 1);
+  assert.equal(delivered.match(/^### Context$/gm).length, 1, 'and the neighbour is untouched');
+
+  // Position is held, not migrated to the bottom: a replaced section stays where the
+  // reader learned it, and every later section survives intact.
+  const again = withSection(delivered, 'Context', ['Issues to triage: #4.']);
+  assert.ok(again.indexOf('### Context') < again.indexOf('### Delivered by prework'),
+    'the replaced section keeps its position');
+  assert.match(again, /- a branch/, 'and the section after it is not swallowed');
+
+  // The fields above the first heading are untouched by any of it.
+  assert.match(again, /^packs\/p\/tasks\/t\/task\.md$/m);
+});
