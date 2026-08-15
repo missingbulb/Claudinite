@@ -25,6 +25,10 @@ session or window.** Before adding anything:
 
 - **Dedupe ruthlessly** against the existing packs — a lesson already covered (even worded differently,
   even in another pack, even enforced by a check) is not a new lesson.
+- **A dedupe miss has a second reading**, and when the candidate rule names an identifier you don't
+  own — a function, field or setting — it is the likelier one: grep that identifier in the
+  dependency's **code** before landing anything. No hit usually means the mechanism was retired and
+  the rule is *expired*, not that the lesson is novel.
 - **One-offs don't qualify.** A situational detail, a restatement of a generic truism, or something already
   implied by an existing rule is below the bar.
 - **Promote what's portable.** A lesson true for projects beyond this one belongs in shared, cross-project

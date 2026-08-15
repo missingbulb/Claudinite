@@ -41,6 +41,12 @@ them. The full growth procedure is the pack's task doc
   wrong or superseded claim is corrected with a note of why (and its source),
   never deleted without trace. Every real change records itself in the page's
   growth log and updates the open questions in both directions.
+- **Seeing a figure in several places is not evidence of who published it.**
+  Search snippets quote each other, so a number that recurs across five results
+  is one source repeated, and the firm the snippets name is routinely not the
+  firm that produced it. When you cannot open the report, attribute the figure to
+  the publisher a source explicitly names as its **origin**; when sources
+  disagree about that, say so on the page rather than picking one.
 - **No fabricated growth.** Most passes find little or nothing; no new citable
   material → no edit, no log entry, no PR.
 - **sample-data and new wikis.** `product-wiki/sample-data/` gains a file only when

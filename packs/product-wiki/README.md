@@ -44,6 +44,7 @@ standard.
 | The sink is human-reviewed only. | critical | correctness | prose: 56 words |
 | Compile once, refine in place. | medium | complexity | prose: 49 words |
 | Cited, never silently rewritten. | high | correctness | prose: 48 words + check (`product-wiki-sources`) |
+| Seeing a figure in several places | high | correctness | prose: 78 words |
 | No fabricated growth. | critical | correctness | prose: 22 words |
 | sample-data and new wikis. | medium | complexity | prose: 66 words |
 | Review discipline. | medium | complexity | prose: 44 words |
