@@ -162,6 +162,37 @@ export async function pendingSchedulerWorkflow(targetRoot, fullName, read) {
   }
 }
 
+// The executor workflow, which exists only for a member dispatching through the
+// work-item queue (tasks-dispatch DESIGN §10). Separate from the scheduler lane above
+// because the two answer different questions: every member owes a workflow at the
+// scheduler path, and a slot-dispatch member owes NO executor file at all — so the
+// pending answer here is legitimately null for most of the fleet, and stays null
+// until that repo's config says `queue`.
+//
+// It has to converge in the SAME cycle as the tick, which is the whole reason this
+// lane exists. The tick and the executor are one mechanism split across two files:
+// the tick creates and readies work items and nothing else, so a member that received
+// the tick without the executor has a generator with no worker — a queue that fills
+// every hour and is never drained, looking exactly like a repo whose tasks all
+// declined. Delivering the pair together is what keeps that state unreachable.
+export const EXECUTOR_STUB = `${STUB_DIR}claudinite-executor.yml`;
+
+export async function pendingExecutorWorkflow(targetRoot, read) {
+  try {
+    const { EXECUTOR_WORKFLOW, declaredSecrets, dispatchMode, withDeclaredSecrets } = await import('../engine/scheduler/converge-wiring.mjs');
+    const { loadConfig } = await import('../engine/checks/helpers/repo-context.mjs');
+    const config = loadConfig(targetRoot);
+    if (dispatchMode(config) !== 'queue') return { pending: null, error: null };
+    const stub = read(EXECUTOR_STUB);
+    if (stub == null) return { pending: null, error: `no vendored executor stub at ${EXECUTOR_STUB}` };
+    const content = withDeclaredSecrets(stub, await declaredSecrets(targetRoot, config));
+    const pending = read(EXECUTOR_WORKFLOW) === content ? null : { path: EXECUTOR_WORKFLOW, content };
+    return { pending, error: null };
+  } catch (e) {
+    return { pending: null, error: `could not compute the executor workflow: ${e.message}` };
+  }
+}
+
 // Whether this run's records ask for the agentic tail, and what they ask for.
 //
 // Separate and pure because it is the answer most worth being able to interrogate
@@ -294,6 +325,8 @@ export async function packUpdate(targetRoot, {
   //     drifted" and "a record materialized one" reach the apply stage as one list.
   const wiring = await pendingSchedulerWorkflow(targetRoot, fullName, read);
   if (wiring.pending) withhold(wiring.pending.path, wiring.pending.content);
+  const executor = await pendingExecutorWorkflow(targetRoot, read);
+  if (executor.pending) withhold(executor.pending.path, executor.pending.content);
 
   // 2c. THE CLAUDE.md PACK INDEX (#807), for the same reason as 2b and at the same
   //     point: its content is a function of the pack set, and the vendor above is
@@ -353,10 +386,11 @@ export async function packUpdate(targetRoot, {
   // becomes the PR body and the dispatch issue's reason. Appended rather than given a
   // field of its own, because a new field only reaches a member when its worker
   // catches up a cycle later, and `detail` reaches every fielded worker today.
-  const detail = wiring.error ? `${decision.why} — but ${wiring.error}` : decision.why;
+  const wiringError = [wiring.error, executor.error].filter(Boolean).join('; ') || null;
+  const detail = wiringError ? `${decision.why} — but ${wiringError}` : decision.why;
 
   return outcome(decision.action === 'needs-human' ? NEEDS_HUMAN : 'ok', detail, {
     plan, files: packFiles.length, applied, selftest, decision, withheld,
-    wiringError: wiring.error, applyStage: applyStageFor(specs, withheld),
+    wiringError, applyStage: applyStageFor(specs, withheld),
   });
 }
