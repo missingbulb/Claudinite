@@ -50,7 +50,7 @@ test('orchestrator runs steps in order, forwards only step stdout, logs the life
   // order, followed by the one-line confirmation footer; the timestamped log
   // goes to stderr + the file, never stdout.
   assert.ok(r.stdout.startsWith('PACKSTEP\nSUMMARY\n'), r.stdout);
-  assert.match(r.stdout, /^Claudinite session-start: ran 6 steps \(selftest, pack-session-start, mount-skills, env-check, interview-check, session-summary\) at .+\.$/m);
+  assert.match(r.stdout, /^Claudinite session-start: ran 6 steps \(mount-skills, selftest, pack-session-start, env-check, interview-check, session-summary\) at .+\.$/m);
   // No prose step, and none may come back (#807): static pack prose rides CLAUDE.md,
   // on a channel that does not truncate. This hook carries only what a session can
   // learn at session time.
@@ -65,6 +65,30 @@ test('orchestrator runs steps in order, forwards only step stdout, logs the life
     'session-summary: start', 'session-summary: done exit=0',
     'run=testrun orchestrator: done',
   ]) assert.ok(log.includes(s), `log missing line: ${s}\n--- log ---\n${log}`);
+});
+
+test('the self-test judges a tree the converging steps have already converged', () => {
+  // A probe must judge state that no LATER step in the same firing changes, and
+  // mount-skills is the one step that converges what a probe reads: it rebuilds the
+  // .claude/skills links probeSkillLinks judges. Ordered the other way round, a
+  // resume whose mounts had gone stale reported dangling links that the same firing
+  // repaired a second later — a finding about a state that no longer existed by the
+  // time anyone read it, under a "re-run the skill mount" remedy that had already
+  // run (#875).
+  //
+  // Asserted through the EFFECT rather than the label order, because the label
+  // order is not the property: what matters is that the self-test can observe the
+  // converged tree. The stub mount step converges (writes the marker) and the stub
+  // self-test reports what it sees.
+  const marker = (body) => `import { existsSync, writeFileSync } from "node:fs";\nconst m = process.env.CLAUDE_PROJECT_DIR + "/converged";\n${body}`;
+  const corpus = makeCorpus({
+    skills: marker('writeFileSync(m, "");'),
+    selftest: marker('process.stdout.write((existsSync(m) ? "CONVERGED" : "STALE") + "\\n");'),
+  });
+  const projectDir = mkdtempSync(join(tmpdir(), 'claudinite-proj-'));
+  const r = run(corpus, projectDir);
+  assert.equal(r.status, 0);
+  assert.match(r.stdout, /^CONVERGED$/m);
 });
 
 test('a failing step never aborts the orchestrator nor turns the hook non-zero', () => {
