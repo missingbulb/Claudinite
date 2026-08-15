@@ -90,11 +90,12 @@ test's title in `scenarios.test.mjs`.
 | §15.14 the work step is the work (naming; contract key unchanged) | **prose** — vocabulary, not mechanics |
 | §15.15 heartbeat comments during the work step | `S31`, `S31b`, `S31c`, `S31d` |
 | §15.16 the tick never waits on a drain | **prose** — workflow concurrency wiring (see "The unsimulated world") |
-| §15.17 the occupancy capacity model; self-re-dispatch | **prose** — deployment sizing; the sim models one executor's loop, not runner budgets |
+| §15.17 the occupancy capacity model; self-re-dispatch | `S34` (re-dispatch chains the queue), `S35` (work steps serialize within a run); runner budgets **prose** |
 | §15.18 the terminal comment is the durable record | **prose** — comment content, not label mechanics |
 | §15.19 F1 reopened: readiness re-checks at close | `S33`, `S4` |
 | §15.20 randomized pick order ships with executor width | **prose** — width-1 deployments are deliberately deterministic |
 | §15.21 "tick" keeps its name for now (#877) | **prose** — vocabulary |
+| §15.22 maxItems defaults to one; runs are serial, bounded, and record their trigger | `S34`, `S35` (F23) |
 | §14 bootstrap: first-item rule; old-vocabulary issues untouched | `S25`, `S29` |
 | §14 updates: declaration changes apply at the next evaluation; the stamped wake is the one carried fact | `S28` |
 | §14 secrets: the missing-secret needs-human posture | `S9a` (the refused hand-off's same convergence); storage/stamping/rotation **prose** — Actions-platform behavior |

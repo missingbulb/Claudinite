@@ -547,7 +547,12 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
    re-arm — §11, and the credential it costs is §12).
 
 An executor run may iterate (claim → … → hand off, next pick) up to a
-configured `maxItems`; the default is a small number, and each item's claim is
+configured `maxItems`, **serially — the next pick happens only after the
+previous item settles** (rolls, closes, hands off, or fails), because the work
+step occupies the runner. The default is **one** (owner, 2026-08-15): one run,
+one item — the run's `timeout-minutes` sizes to a single work bound, a
+platform kill loses at most one item's progress, and self-re-dispatch (§10)
+chains the rest at ~a minute of spin-up per item. Each item's claim is
 independently leased, so executor concurrency is safe at any width. The old
 bound tying the run to its leash — `timeout-minutes` ≤ the executing leash, so
 the platform killed a hung runner before its claim was reaped — **retires with
@@ -771,6 +776,18 @@ items left re-dispatches the executor workflow and lets a fresh run continue.
 One fairness note, accepted at today's scale: oldest-first plus heavy work
 lets one task's item dominate a drain's whole budget while light tasks queue
 behind it — a sentence here rather than machinery, until it is measured.
+
+**What starts an executor run is an enumerable list, and each cause is on the
+record** (2026-08-15, and the sim asserts it — S34): (1) **the tick's own
+drain job** — the guaranteed delivery, started by the cron workflow's job
+graph (`needs: tick`), no event involved; (2) **a `task:ready`/`task:urgent`
+label event** — foreign tokens only, the latency sugar; (3) **the close-time
+drain** — whoever converges an item triggers a drain when anything is
+pickable after its readiness re-check (§9); (4) **self-re-dispatch** — a run
+that hits `maxItems` with items still pickable dispatches a fresh run.
+Causes 3 and 4 ride `workflow_dispatch`, which the default `GITHUB_TOKEN`
+*is* permitted to fire — the explicit exemption in the same recursion guard
+that suppresses its label events — so no wider credential is involved.
 
 **The tick must never wait on a drain** (work-as-work review, 2026-08-15).
 The heartbeat retires the sub-hour cap on executor runs (§6), and a long
@@ -1183,6 +1200,14 @@ deployment coupling did not:
     [#877](https://github.com/missingbulb/Claudinite/issues/877) so it lands
     after the old slot scheduler's vocabulary retires and the
     "scheduler"-name collision is moot.
+22. **`maxItems` defaults to one, and runs are serial** (§6, §10) — one run
+    settles one item; a run that ends with items still pickable
+    re-dispatches a fresh run, so the queue drains run by run and the
+    run-timeout arithmetic never multiplies work bounds. The sim models runs
+    as first-class objects — serial occupancy, a hard `maxItems` bound, and
+    a recorded trigger (tick-drain / label-event / close-drain /
+    re-dispatch) on every run — asserted by S34/S35. (Engine:
+    `DEFAULT_MAX_ITEMS` 3 → 1 and the dispatch plumbing ride #883.)
 
 ---
 

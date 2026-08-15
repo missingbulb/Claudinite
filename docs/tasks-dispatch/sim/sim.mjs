@@ -78,6 +78,9 @@ export function makeSim({
   executingLeashMs = 1 * HOUR,
   agentLeashMs = 3 * HOUR,
   heartbeatMinutes = 15, // the executor's activity comment cadence during the work step
+  maxItems = 1, // items one executor run settles before re-dispatching a fresh run
+                // (owner, 2026-08-15: one run, one item — the run's timeout sizes to
+                // one work bound, and self-re-dispatch chains the rest)
   staleReadyPeriods = 2,
   staleBlockedMs = 2 * DAY,
   heartbeatsDisabled = false, // S31b only: demonstrate the livelock heartbeats prevent
@@ -167,7 +170,9 @@ export function makeSim({
         record('ready', { task: b.taskId, issue: b.number, by: 'close' });
       }
     }
-    schedule(now + 1 * MIN, () => executorRun());
+    if (pickable().length > 0) {
+      schedule(now + 1 * MIN, () => executorRun('E1', 'close-drain'));
+    }
   }
 
   // ---- the tick (DESIGN §5): pure function of the clock and the issue list --
@@ -333,10 +338,17 @@ export function makeSim({
     });
   }
 
-  function executeClaimed(it, task) {
+  // One claimed item through to its settle. `onSettled` is the RUN's
+  // continuation — called when the item stops occupying this executor (roll,
+  // close, hand-off, work failure), and deliberately NOT called when the
+  // runner itself dies (the run died with it; the leash is the recovery).
+  // The hand-off settles the item for the run: the executor never waits for
+  // the agent, which is why agent work parallelizes and executor work is the
+  // occupancy (DESIGN §10).
+  function executeClaimed(it, task, onSettled = () => {}) {
     if (crashNextOf.delete(it.taskId)) {
       record('executor-crash', { task: it.taskId, issue: it.number });
-      return false; // died mid-claim: labels stay, the leash reclaim recovers (S8)
+      return; // died mid-claim: labels stay, the leash reclaim recovers (S8)
     }
     // the single precondition evaluation (DESIGN §6.4)
     const verdict = task.precondition ? task.precondition(world, now) : { run: true };
@@ -350,7 +362,8 @@ export function makeSim({
       } else {
         close(it, 'obsolete'); // ad-hoc: no anchor to roll to (S17)
       }
-      return true;
+      onSettled();
+      return;
     }
     // the work step → optional hand-off → converge, as timed phases. The
     // executor re-verifies its OWN lease at the transition (F17): not just "is
@@ -385,22 +398,23 @@ export function makeSim({
       // by the leash, not by the work's duration
       schedule(now + diesAtMin * MIN, () =>
         record('executor-crash', { task: it.taskId, issue: it.number }));
-      return true;
+      return; // the run dies with the runner — no settle, no re-dispatch
     }
     schedule(now + workMs, () => {
-      if (!mineStill()) return;
+      if (!mineStill()) return; // reclaimed while (presumed) dead: the run is gone
       it.lastActivity = now;
       if (task.preworkFails?.(world, now)) {
         swap(it, 'task:executing', 'needs-human');
         record('work-failed', { task: it.taskId, issue: it.number });
+        onSettled();
         return;
       }
       const wantsAgent = task.agentMinutes != null &&
         (task.requestsAgent ? task.requestsAgent(world, now) : true);
-      if (!wantsAgent) { close(it, task.outcome ?? 'done'); return; }
+      if (!wantsAgent) { close(it, task.outcome ?? 'done'); onSettled(); return; }
       handOff(it, task);
+      onSettled(); // the hand-off ends the executor's occupancy, not the item
     });
-    return true;
   }
 
   // F15: the pick filters (same-title mutex, `after` yield) are read from
@@ -433,16 +447,38 @@ export function makeSim({
     return false;
   }
 
-  function executorRun(execId = 'E1') {
-    for (let i = 0; i < 10; i++) {
+  // One executor RUN — a workflow run in the real deployment. Serial by
+  // construction: the next pick happens only after the previous item SETTLES
+  // (roll, close, hand-off, failure), because the work step occupies the
+  // runner — this is the occupancy model of DESIGN §10, and what one run may
+  // do is bounded by `maxItems`. A run that hits its bound with items still
+  // pickable RE-DISPATCHES a fresh run (`workflow_dispatch`, which the
+  // default GITHUB_TOKEN may fire), so the queue drains run by run without
+  // any single run growing unbounded. Every run records its trigger —
+  // tick-drain | label-event | close-drain | re-dispatch — so tests can
+  // assert WHAT caused each run, not just that items converged.
+  let runSeq = 0;
+  function executorRun(execId = 'E1', trigger = 'label-event') {
+    const runId = `R${++runSeq}`;
+    record('executor-run', { run: runId, exec: execId, trigger });
+    const step = (settled) => {
+      if (settled >= maxItems) {
+        record('run-end', { run: runId, exec: execId, trigger, settled });
+        if (pickable().length > 0) {
+          schedule(now + 1 * MIN, () => executorRun(execId, 're-dispatch'));
+        }
+        return;
+      }
       const it = pickable()[0];
-      if (!it) return;
-      if (!claim(it, execId, new Set(it.labels))) continue;
-      if (!postClaimVerify(it, execId)) continue;
+      if (!it) { record('run-end', { run: runId, exec: execId, trigger, settled }); return; }
+      if (!claim(it, execId, new Set(it.labels))) return step(settled); // loser picks another
+      if (!postClaimVerify(it, execId)) return step(settled);
       const task = registry.get(it.taskId);
-      if (!task) { close(it, 'obsolete'); continue; } // validate: task gone (S20)
-      if (!executeClaimed(it, task)) return;
-    }
+      if (!task) { close(it, 'obsolete'); return step(settled + 1); } // validate: task gone (S20)
+      record('pick', { run: runId, exec: execId, task: it.taskId, issue: it.number });
+      executeClaimed(it, task, () => step(settled + 1));
+    };
+    step(0);
   }
 
   // ---- the janitor (DESIGN §11): the judgment-and-long-horizon sweeps -------
@@ -496,7 +532,7 @@ export function makeSim({
     // one late/manual tick outside the cron grid (with its post-tick drain)
     tickAt(isoTime) {
       schedule(T(isoTime), tick);
-      schedule(T(isoTime) + 40_000, executorRun);
+      schedule(T(isoTime) + 40_000, () => executorRun('E1', 'tick-drain'));
       return sim;
     },
 
@@ -527,7 +563,7 @@ export function makeSim({
       if (has(it, 'needs-human')) { it.labels.delete('needs-human'); it.labels.add('task:ready'); it.readySince = now; it.claimEpoch = seq++; }
       if (urgent) it.labels.add('task:urgent');
       record('force', { task: taskId, issue: it.number });
-      schedule(now + 1 * MIN, () => executorRun()); // the labeled event's latency sugar
+      schedule(now + 1 * MIN, () => executorRun('E1', 'label-event')); // the labeled event's latency sugar
       return it;
     },
 
@@ -537,7 +573,7 @@ export function makeSim({
     createItem(taskId, { urgent = false, notBefore = null, blockedBy = [], qualifier = null, eventLost = false } = {}) {
       const born = notBefore !== null || blockedBy.length ? 'task:blocked' : 'task:ready';
       const it = createIssue({ taskId, origin: 'manual', labels: [born], notBefore, blockedBy, urgent, qualifier });
-      if (born === 'task:ready' && !eventLost) schedule(now + 1 * MIN, () => executorRun());
+      if (born === 'task:ready' && !eventLost) schedule(now + 1 * MIN, () => executorRun('E1', 'label-event'));
       return it;
     },
 
@@ -636,7 +672,7 @@ export function makeSim({
       it.claimEpoch = seq++;
       it.lastActivity = now;
       record('requeue', { task: it.taskId, issue: it.number });
-      schedule(now + 1 * MIN, () => executorRun());
+      schedule(now + 1 * MIN, () => executorRun('E1', 'label-event'));
       return sim;
     },
 
@@ -648,7 +684,7 @@ export function makeSim({
         if (t < from) continue;
         if (droppedTicks.some(([a, b]) => t >= a && t < b)) continue;
         schedule(t, tick);
-        schedule(t + 40_000, executorRun);
+        schedule(t + 40_000, () => executorRun('E1', 'tick-drain'));
       }
       for (let t = Math.ceil(from / DAY) * DAY + 4 * HOUR + 3 * MIN; t < to; t += DAY) {
         if (t >= from) schedule(t, janitor);

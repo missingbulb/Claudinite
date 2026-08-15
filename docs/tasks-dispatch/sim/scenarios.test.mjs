@@ -596,6 +596,69 @@ test('S33 fan-in readies within minutes of its last blocker closing', () => {
     'the fan-in ran minutes after its last blocker, not a tick later');
 });
 
+// ---- S34 — run granularity under maxItems 1 (the default): a busy morning
+// with several tasks' work drains ONE ITEM PER RUN, and what causes each next
+// run is on the record — the tick's own drain job first, then self-re-dispatch
+// (workflow_dispatch, which the default GITHUB_TOKEN may fire) and the
+// close-time drain, never a wait for the next cron.
+test('S34 busy morning, maxItems 1: every run settles exactly one item; re-dispatch chains the queue', () => {
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
+  sim.at('2026-08-12T04:00Z', ({ world }) => {
+    world.issueTouchedAt = T('2026-08-12T04:00Z'); // tidy-issues has work
+    world.releasePending = true;                   // store-release has work
+  });
+  sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
+
+  // every completed run settled at most one item — maxItems is a hard bound
+  const ends = sim.log.filter((e) => e.kind === 'run-end');
+  assert.ok(ends.length >= 4, 'several runs completed');
+  for (const e of ends) assert.ok(e.settled <= 1, `run ${e.run} settled ${e.settled} — over maxItems`);
+  // and the busy runs settled EXACTLY one — never a second item smuggled in
+  assert.ok(ends.filter((e) => e.settled === 1).length >= 3, 'the working runs each did one item');
+
+  // both work items converged the same hour — so something OTHER than the
+  // hourly cron chained the runs; name it
+  const [tidy] = closedOf(sim, 'tidy/tidy-issues');
+  const [store] = closedOf(sim, 'chrome/store-release');
+  assert.ok(tidy && store, 'both converged');
+  assert.ok(store.closedAt < T('2026-08-12T05:00Z'), 'well before the next tick could have helped');
+  const triggers = sim.log.filter((e) => e.kind === 'executor-run').map((e) => e.trigger);
+  assert.ok(triggers.includes('tick-drain'), 'the first run is the tick workflow\'s own drain job');
+  assert.ok(triggers.includes('re-dispatch'), 'a full run re-dispatched a fresh one for the remainder');
+  // each pick belongs to a named run, so occupancy is auditable per run
+  const picks = sim.log.filter((e) => e.kind === 'pick');
+  const perRun = new Map();
+  for (const p of picks) perRun.set(p.run, (perRun.get(p.run) ?? 0) + 1);
+  for (const [run, n] of perRun) assert.ok(n <= 1, `run ${run} picked ${n} items under maxItems 1`);
+});
+
+// ---- S35 — serial occupancy inside one run (maxItems 3): a run that takes
+// several items runs their work steps ONE AFTER ANOTHER — the second item's
+// evaluation happens only after the first item's work completes, which is the
+// occupancy model §10 prices (executor work serializes; agent work does not).
+test('S35 one run, several items: work steps serialize within the run', () => {
+  const tasks = [
+    { id: 'x/heavy-a', frequency: 'daily', outcome: 'done', preworkMinutes: 30,
+      precondition: () => ({ run: true }) },
+    { id: 'x/heavy-b', frequency: 'daily', outcome: 'done', preworkMinutes: 30,
+      precondition: () => ({ run: true }) },
+  ];
+  const sim = makeSim({ tasks, maxItems: 3 }).seedSteadyState('2026-08-12T00:00Z');
+  sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
+
+  const evalA = sim.log.find((e) => e.kind === 'evaluate' && e.task === 'x/heavy-a');
+  const evalB = sim.log.find((e) => e.kind === 'evaluate' && e.task === 'x/heavy-b');
+  const closeA = sim.log.find((e) => e.kind === 'close' && e.task === 'x/heavy-a');
+  assert.ok(evalA && evalB && closeA, 'both picked, first converged');
+  assert.ok(evalB.t >= closeA.t, 'the second work step started only after the first completed');
+  assert.ok(evalB.t - evalA.t >= 30 * 60e3, 'separated by a full work bound — serial, not parallel');
+  // and both picks happened inside ONE run
+  const picks = sim.log.filter((e) => e.kind === 'pick');
+  assert.equal(new Set(picks.map((p) => p.run)).size, 1, 'one run took both items');
+  const [end] = sim.log.filter((e) => e.kind === 'run-end' && e.settled === 2);
+  assert.ok(end, 'the run ended having settled both');
+});
+
 // ---- S26 — the guard's second half must not over-block either: after a
 // rolled item runs and closes, the NEXT period still gets a fresh item.
 test('S26b the closed-at guard half releases at the next anchor', () => {
