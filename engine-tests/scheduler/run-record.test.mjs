@@ -162,3 +162,18 @@ test('execRecordLine validates its three arguments and renders the line', () => 
   assert.match(execRecordLine(['p/t', 'd2026-08-06', 'won']).error, /must be one of/);
   assert.match(execRecordLine(['p/t']).error ?? execRecordLine(['p/t', '', 'success']).error, /slot/);
 });
+
+test('a queue-shaped record carries its item number through render and parse', () => {
+  // #882: under the queue there is no slot, and the occurrence's identity is the work
+  // item. The format has to survive an issue number in the bracketed field, because
+  // that is the only join from a record back to the work it describes — the first
+  // live queue session wrote `[unknown]` and lost it.
+  const line = renderTaskExec({ pack: 'tidy-repo', task: 'tidy-issues', slotId: '#867', status: 'success' });
+  assert.equal(line, `${TASK_EXEC_TAG} v1 tidy-repo/tidy-issues [#867] success`);
+  assert.deepEqual(parseTaskExec(line), { pack: 'tidy-repo', task: 'tidy-issues', slotId: '#867', status: 'success' });
+
+  // …and two items of the same task stay two records rather than collapsing, which is
+  // exactly what a constant in that field costs the fold's (pack, task, slot, status) key.
+  const other = renderTaskExec({ pack: 'tidy-repo', task: 'tidy-issues', slotId: '#901', status: 'success' });
+  assert.notEqual(parseTaskExec(other).slotId, parseTaskExec(line).slotId);
+});
