@@ -115,7 +115,8 @@ export async function main() {
   const root = process.env.CLAUDINITE_REPO_ROOT || process.cwd();
   const { loadConfig } = await import('../../../../engine/checks/helpers/repo-context.mjs');
   const config = loadConfig(root);
-  if (config.taskScheduler?.dispatch === 'queue') {
+  const { dispatchMode } = await import('../../../../engine/scheduler/converge-wiring.mjs');
+  if (dispatchMode(config) === 'queue') {
     const { sweepQueue } = await import('./queue-sweep.mjs');
     const { discoverTasks } = await import('../../../../engine/scheduler/discover.mjs');
     const { tasks } = await discoverTasks(root, config);

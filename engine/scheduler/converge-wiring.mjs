@@ -89,9 +89,22 @@ export async function declaredSecrets(root, config) {
   return [...new Set([...names, ...endpointTokens])].sort();
 }
 
-// Which dispatch mechanism this repo's wiring must express. Absence is `slots` —
-// a repo that has not flipped keeps exactly the workflow it had.
-export const dispatchMode = (config) => (config?.taskScheduler?.dispatch === 'queue' ? 'queue' : 'slots');
+// Which dispatch mechanism this repo's wiring must express — THE one place the
+// question is answered, so a caller never re-derives it from the config key (three
+// used to, and a default cannot be changed while the rule lives in four places).
+//
+// ABSENCE IS NOW `queue`: the work-item queue is the mechanism, and the slot
+// scheduler is the retired thing a repo must ask for by name. That is what flips the
+// fleet — a member's next converge changes its answer here with no edit to any file
+// the member owns, which is the standing "a default stays in the code, never
+// materialized into a member's config" ruling applied to the migration itself.
+//
+// What the flip does NOT do is move a repo's workflow: `.github/workflows/` is the
+// one path a converge cannot push, so the tick and executor files are staged and
+// landed by the apply stage. Between those two moments the repo answers `queue`
+// while still running the slot workflow — which is why `run.mjs` treats being run at
+// all in queue mode as the reportable state it is, rather than a silent no-op.
+export const dispatchMode = (config) => (config?.taskScheduler?.dispatch === 'slots' ? 'slots' : 'queue');
 
 // Stamp the declared secrets into the scheduler workflow's engine step, beside
 // GITHUB_TOKEN. This is the whole delivery mechanism: GitHub Actions requires each

@@ -174,7 +174,9 @@ test('the scheduler workflow is staged for a lane that can push it, and clears o
 
   // Delivered — and now the flow must go quiet, or every member sits permanently at
   // `apply-stage` and no update ever merges again.
-  assert.deepEqual(deliverStaged(root), ['claudinite-scheduler.yml']);
+  // Both files, because a member on the default dispatch is a QUEUE member and the
+  // tick without its executor is a generator with no worker (#874).
+  assert.deepEqual(deliverStaged(root).sort(), ['claudinite-executor.yml', 'claudinite-scheduler.yml']);
   const second = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
   assert.deepEqual(second.withheld, [], 'a converged workflow is owed nothing');
   assert.equal(second.applyStage.needed, false);
@@ -436,8 +438,8 @@ test('a queue-dispatch member is owed the executor workflow, and a slot member i
   // which reads from outside exactly like a repo whose tasks all declined. This lane
   // staged only the scheduler path, so that state was reachable for every member the
   // fleet flip touches.
-  const slots = makeMember();
-  const queue = makeMember({ packs: ['basics'], taskScheduler: { dispatch: 'queue' } });
+  const slots = makeMember({ packs: ['basics'], taskScheduler: { dispatch: 'slots' } });
+  const queue = makeMember();   // absence IS the queue — the fleet flip's whole mechanism
   for (const root of [slots, queue]) assert.deepEqual((await applyVendor(root)).errors, []);
   const readerFor = (root) => (p) => (existsSync(join(root, p)) ? readFileSync(join(root, p), 'utf8') : null);
 

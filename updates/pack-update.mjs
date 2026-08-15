@@ -6,6 +6,7 @@ import { loadPacks, resolveDeclaredPacks, packEntryId } from '../engine/pack_loa
 import { ENGINE_VERSION } from '../engine/version.mjs';
 import { migrationDirs, migrationApplies, flowOf, DECLARATION_FILE } from '../engine/checks/helpers/active-migrations.mjs';
 import { loadMigrations, applyMigration } from '../engine/migrations/registry.mjs';
+import { dispatchMode as dispatchModeOf } from '../engine/scheduler/converge-wiring.mjs';
 import { NEEDS_HUMAN, runSelfTest, deliveryDecision } from './engine-update.mjs';
 
 // THE PACK UPDATE FLOW (docs/versioned-updates/DESIGN.md §3): move one repo's
@@ -121,13 +122,14 @@ export function stagedFiles(targetRoot) {
 // clone: the engine flow refreshed it earlier in the same cycle, and reading the
 // member's copy is what makes this agree with `converge-wiring.mjs`'s own CLI —
 // the thing a human runs by hand, and the thing bootstrap runs at adoption.
-// Which stub is a function of the member's dispatch mode: `slots` keeps the slot
-// scheduler, `queue` puts the tick and its drain at the same path (tasks-dispatch
-// DESIGN §14). The path the content lands at is the same either way, which is why
-// this whole lane needs to know only which stub to read.
+// Which stub is a function of the member's dispatch mode — asked of `dispatchMode`
+// rather than re-read off the config key here, so the fleet's default lives in one
+// place. `queue` puts the tick and its drain at the same path the slot scheduler
+// held (tasks-dispatch DESIGN §14), which is why this whole lane needs to know only
+// which stub to read.
 const STUB_DIR = '.claudinite/shared/engine/scheduler/stubs/';
 export const stubFor = (config) =>
-  `${STUB_DIR}${config?.taskScheduler?.dispatch === 'queue' ? 'claudinite-tick.yml' : 'claudinite-scheduler.yml'}`;
+  `${STUB_DIR}${dispatchModeOf(config) === 'queue' ? 'claudinite-tick.yml' : 'claudinite-scheduler.yml'}`;
 
 // The scheduler workflow this member should be carrying, as `{ pending, error }`.
 // `pending` is null when the file is already converged; `error` is set when the
