@@ -51,7 +51,13 @@ jobs:
         run: |
           shopt -s globstar nullglob
           tests=(engine-tests/**/*.test.mjs packs-tests/**/*.test.mjs vendoring/**/*.test.mjs dev/tools/**/*.test.mjs .claudinite/local/packs/**/*.test.mjs docs/tasks-dispatch/sim/**/*.test.mjs)
-          node --test "${tests[@]}"
+          # Deliberately oversubscribed. node --test defaults to one worker per core
+          # minus one, which fits a CPU-bound suite; this one spends most of its wall
+          # clock waiting — on git plumbing, spawned workers and converge fixtures — so
+          # the cores idle at that default (measured on this tree: 106s wall against
+          # 187s of user+sys on 4 cores). Doubling the workers: 106s -> 70s, with 16
+          # buying only another 2s.
+          node --test --test-concurrency=$(( $(nproc) * 2 )) "${tests[@]}"
       - name: Conformance sweep
         # The world sweep's home is the test/CI flow (not the Stop hook, which
         # carries only the work scope) — this canon repo models the pattern
