@@ -1,8 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { fileURLToPath } from 'node:url';
 import { makeRepo, cleanup } from '../../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../../engine/checks/helpers/repo-context.mjs';
-import rule from './home-seeded-packs-declared.mjs';
+import { loadDeclaredChecks } from '../../../../engine/checks/helpers/pattern-rules.mjs';
+
+const rule = loadDeclaredChecks(
+  fileURLToPath(new URL('.', import.meta.url)),
+).find((r) => r.id === 'home-seeded-packs-declared');
 
 const run = (root) => rule.run(buildContext({ root, mode: 'all' }));
 
