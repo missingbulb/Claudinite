@@ -31,13 +31,20 @@ export const DEFAULT_ENDPOINT = 'default';
 //    untrusted, and a routine acts on it only because its own saved prompt says
 //    to. That is the issue-is-data posture arriving for free at one more hop: our
 //    payload names an item, and every instruction comes from a stored artifact.
-//    The prompt to store is tracked beside this file, in `routine-prompt.md`.
+//    The routine's stored prompt is one line pointing at `instructions.md` beside
+//    this file, so the whole of what a session does is tracked and reviewed.
 //  - THE BODY CARRIES ONE FIELD. `text` is freeform and unparsed — structured
 //    JSON would arrive as a literal string — so the item number and nonce go in
 //    as prose, and nothing else goes in at all.
 //  - THERE IS NO IDEMPOTENCY KEY (standing entry 11, answered: the endpoint
-//    offers none). So the agent-side lease is THE mechanism that collapses a
-//    timeout-retry duplicate, not a backstop to one.
+//    offers none), which is exactly why THIS MODULE CALLS ONCE PER ITEM AND NEVER
+//    RETRIES. A retry is only safe when you know the first call did nothing, and
+//    a client-side timeout is the one case where you cannot know — the session
+//    may well have started. Retrying there is what would make invocation
+//    at-least-once and put two sessions on one item; declining to retry is what
+//    keeps it at-most-once and lets the whole agent-side claim protocol delete.
+//    An outcome we did not learn is reported as UNKNOWN and resolved by the agent
+//    leash, which is a rule that already exists, rather than by a guess here.
 //
 // The beta header is dated and the endpoint is a research preview whose two most
 // recent header versions keep working, so it lives in config with a default here
@@ -68,62 +75,71 @@ export function resolveEndpoint(config, task) {
 // the hand-off comment recorded. Prose, not JSON — the field is freeform and
 // unparsed, so a structured payload would arrive as a literal string — and
 // deliberately free of instructions, because the routine's stored prompt is what
-// says how to act on it (see `routine-prompt.md`). The session still validates
+// says how to act on it (see `instructions.md`). The session still validates
 // the item in code before touching it: a payload labelled untrusted is trusted no
 // more than a label event was.
 export const firePayload = ({ repo, item, nonce }) =>
   `Claudinite work item: ${repo}#${item.number}. Invocation nonce: ${nonce}.`;
 
-// The invoker seam the executor calls. Failure is DATA (`{ ok: false, error }`),
-// never a throw: the caller's retry/revert path is what turns a platform outage
-// into delay rather than a queue converged to triage.
-export function agentInvoker({ repo, config, env = process.env, fetchImpl = fetch, attempts = 2, timeoutMs = 60e3 }) {
+// The invoker seam the executor calls, exactly once per item. Failure is DATA,
+// never a throw, and it comes in two kinds the caller must treat differently:
+//
+//   { ok: true, sessionId, sessionUrl }   the routine fired; a session exists
+//   { ok: false, answered: true, error }  the endpoint ANSWERED and refused —
+//                                         no session, and the cause is a
+//                                         configuration fault a retry cannot fix
+//   { ok: false, answered: false, error } no answer reached us — a timeout, a
+//                                         dropped connection. The session may or
+//                                         may not exist, and nothing here may
+//                                         guess which.
+export function agentInvoker({ repo, config, env = process.env, fetchImpl = fetch, timeoutMs = 60e3 }) {
   return async function invoke({ task, item, nonce }) {
     const endpoint = resolveEndpoint(config, task);
-    if (endpoint.error) return { ok: false, error: endpoint.error };
+    // A configuration fault, decided before any call: definite, and no session.
+    if (endpoint.error) return { ok: false, answered: true, error: endpoint.error };
     const token = env[endpoint.tokenEnv];
     if (!token) {
       // The `required_secrets` posture, applied to the endpoint token: nothing
       // fails silently, the task just doesn't work yet, and the item names which
       // secret to set (DESIGN §14.7).
-      return { ok: false, error: `the Actions secret \`${endpoint.tokenEnv}\` for invocation endpoint "${endpoint.name}" is not set in this repo` };
+      return { ok: false, answered: true, error: `the Actions secret \`${endpoint.tokenEnv}\` for invocation endpoint "${endpoint.name}" is not set in this repo` };
     }
 
     const payload = { text: firePayload({ repo, item, nonce }) };
 
-    let lastError = 'unknown error';
-    for (let attempt = 1; attempt <= attempts; attempt += 1) {
-      try {
-        const res = await fetchImpl(endpoint.url, {
-          method: 'POST',
-          headers: {
-            ...endpoint.headers,
-            'content-type': 'application/json',
-            authorization: `Bearer ${token}`,
-            'user-agent': 'claudinite-executor',
-          },
-          body: JSON.stringify(payload),
-          signal: AbortSignal.timeout(timeoutMs),
-        });
-        let json = null;
-        try { json = await res.json(); } catch { json = null; }
-        if (res.status >= 200 && res.status < 300) {
-          return {
-            ok: true,
-            sessionId: json?.claude_code_session_id ?? null,
-            sessionUrl: json?.claude_code_session_url ?? null,
-          };
-        }
-        lastError = `endpoint "${endpoint.name}" returned ${res.status}${json?.error ? `: ${JSON.stringify(json.error)}` : ''}`;
-        // A 4xx is a decision, not a blip — retrying it buys nothing and doubles
-        // the chance that a call which DID create a session creates a second.
-        if (res.status < 500) break;
-      } catch (e) {
-        // A client-side timeout is the at-least-once case: the call may still have
-        // created a session, which is exactly why the agent-side lease exists.
-        lastError = `endpoint "${endpoint.name}" call failed: ${e.message}`;
+    // ONE call. No loop, and deliberately no `attempts` knob for anyone to raise.
+    try {
+      const res = await fetchImpl(endpoint.url, {
+        method: 'POST',
+        headers: {
+          ...endpoint.headers,
+          'content-type': 'application/json',
+          authorization: `Bearer ${token}`,
+          'user-agent': 'claudinite-executor',
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      let json = null;
+      try { json = await res.json(); } catch { json = null; }
+      if (res.status >= 200 && res.status < 300) {
+        return {
+          ok: true,
+          sessionId: json?.claude_code_session_id ?? null,
+          sessionUrl: json?.claude_code_session_url ?? null,
+        };
       }
+      // A status came back, so the endpoint decided: no session was started, and
+      // the cause is a token, a URL or a routine — none of which a retry fixes.
+      return {
+        ok: false, answered: true,
+        error: `endpoint "${endpoint.name}" returned ${res.status}${json?.error ? `: ${JSON.stringify(json.error)}` : ''}`,
+      };
+    } catch (e) {
+      // Nothing came back. The request may have landed and started a session, so
+      // this is the one outcome that must never be retried and never be reported
+      // as a failure — it is genuinely unknown, and the caller says so on the item.
+      return { ok: false, answered: false, error: `endpoint "${endpoint.name}" gave no answer: ${e.message}` };
     }
-    return { ok: false, error: lastError };
   };
 }

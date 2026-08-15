@@ -34,7 +34,7 @@ test('an unconfigured endpoint is reported, never thrown or guessed at', () => {
 
 // The payload names an item and proves the call is the one the hand-off recorded
 // — and carries no instructions, because the routine's stored prompt is what says
-// how to act on it (routine-prompt.md). The field is freeform and unparsed, so
+// how to act on it (instructions.md). The field is freeform and unparsed, so
 // prose is the only shape that survives the hop.
 test('the fire payload names exactly one item and its nonce, and instructs nothing', () => {
   const p = firePayload({ repo: 'o/r', item, nonce: 'n-1' });
@@ -43,7 +43,7 @@ test('the fire payload names exactly one item and its nonce, and instructs nothi
   assert.equal(typeof p, 'string');
 });
 
-test('a fired routine returns its session id, and the beta header rides every call', async () => {
+test('a fired routine returns its session id, and the beta header rides the call', async () => {
   const seen = [];
   const invoke = agentInvoker({
     repo: 'o/r', config: CONFIG, env: { CCR_TOKEN: 'secret' },
@@ -93,28 +93,43 @@ test('a missing endpoint token names the secret to set rather than failing silen
   assert.match(res.error, /`CCR_TOKEN`/);
 });
 
-// A 4xx is a decision, not a blip: retrying it buys nothing and doubles the
-// chance that a call which DID create a session creates a second.
-test('a 4xx is not retried; a 5xx is', async () => {
-  let calls = 0;
-  const withStatus = (status) => agentInvoker({
-    repo: 'o/r', config: CONFIG, env: { CCR_TOKEN: 't' }, attempts: 3,
-    fetchImpl: async () => { calls += 1; return { status, json: async () => ({}) }; },
-  });
-  await withStatus(422)({ task: task(null), item, nonce: 'n' });
-  assert.equal(calls, 1);
-  calls = 0;
-  const res = await withStatus(503)({ task: task(null), item, nonce: 'n' });
-  assert.equal(calls, 3);
-  assert.match(res.error, /503/);
+// THE PROPERTY THE WHOLE DESIGN TURNS ON: one call per item, ever. A retry is
+// only safe when you know the first call did nothing, and the endpoint offers no
+// idempotency key — so a second call is how two sessions land on one item, which
+// is precisely what the deleted agent-side claim protocol existed to clean up.
+test('the endpoint is called exactly once — no status is ever retried', async () => {
+  for (const status of [422, 401, 500, 503]) {
+    let calls = 0;
+    const invoke = agentInvoker({
+      repo: 'o/r', config: CONFIG, env: { CCR_TOKEN: 't' },
+      fetchImpl: async () => { calls += 1; return { status, json: async () => ({}) }; },
+    });
+    const res = await invoke({ task: task(null), item, nonce: 'n' });
+    assert.equal(calls, 1, `status ${status} must not be retried`);
+    assert.equal(res.ok, false);
+    assert.equal(res.answered, true, 'a status came back, so no session was started');
+  }
 });
 
-test('a call that throws is data, not an exception — the caller decides what it costs', async () => {
+// The one outcome that must never be reported as a plain failure: the call may
+// have started a session. Answering "unknown" is what lets the caller leave the
+// item with the agent instead of re-queueing it into a duplicate.
+test('a call that gets no answer is UNKNOWN, not failed, and is not retried', async () => {
+  let calls = 0;
   const invoke = agentInvoker({
-    repo: 'o/r', config: CONFIG, env: { CCR_TOKEN: 't' }, attempts: 1,
-    fetchImpl: async () => { throw new Error('socket timeout'); },
+    repo: 'o/r', config: CONFIG, env: { CCR_TOKEN: 't' },
+    fetchImpl: async () => { calls += 1; throw new Error('socket timeout'); },
   });
   const res = await invoke({ task: task(null), item, nonce: 'n' });
+  assert.equal(calls, 1);
   assert.equal(res.ok, false);
+  assert.equal(res.answered, false);
   assert.match(res.error, /socket timeout/);
+});
+
+test('a configuration fault is answered-and-definite: nothing was fired', async () => {
+  const noToken = agentInvoker({ repo: 'o/r', config: CONFIG, env: {}, fetchImpl: async () => { throw new Error('must not be called'); } });
+  assert.equal((await noToken({ task: task(null), item, nonce: 'n' })).answered, true);
+  const noEndpoint = agentInvoker({ repo: 'o/r', config: {}, env: {}, fetchImpl: async () => { throw new Error('must not be called'); } });
+  assert.equal((await noEndpoint({ task: task(null), item, nonce: 'n' })).answered, true);
 });

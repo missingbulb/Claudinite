@@ -138,29 +138,43 @@ test('a hand-off swaps to task:agent and invokes exactly one session', async () 
   assert.ok(issue.comments.some((c) => c.body.includes(invocations[0].nonce)));
 });
 
-// S9/F3 — a transient outage must cost delay, never a queue converged to triage.
-test('a failed invocation reverts the item to the queue with an attempt on record', async () => {
+// ONE CALL PER ITEM. An endpoint that ANSWERED and refused started no session and
+// never will — a token, a URL or a routine is wrong — so the item goes to a human
+// rather than round the loop again.
+test('a refused invocation converges to triage: no session exists and a retry cannot help', async () => {
   const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
   const done = await drive(repo, [task('a')], {
     maxItems: 1,
     runTaskPrework: async () => ({ ok: true, agentRequested: true }),
-    invokeAgent: async () => ({ ok: false, error: 'endpoint "default" returned 503' }),
+    invokeAgent: async () => ({ ok: false, answered: true, error: 'endpoint "default" returned 401' }),
   });
-  assert.deepEqual(done, [{ issue: 1, outcome: 'retry' }]);
+  assert.deepEqual(done, [{ issue: 1, outcome: 'needs-human' }]);
   const issue = repo.find(1);
-  assert.ok(issue.labels.includes('task:ready'));
-  assert.equal(issue.labels.includes('needs-human'), false);
-  assert.ok(issue.comments.some((c) => c.body.includes('503')));
+  assert.ok(issue.labels.includes('needs-human'));
+  assert.equal(issue.labels.includes('task:agent'), false);
+  assert.ok(issue.comments.some((c) => c.body.includes('401')));
 });
 
-test('a one-shot task never rides the retry — a failed invocation may still have started a session', async () => {
+// …and the case the whole design turns on. A call that got no answer may have
+// started a session, so re-queueing would be how two sessions land on one item and
+// converging to triage would kill a run that is very possibly alive. The item
+// stays with the agent, and an existing rule — the janitor's agent leash — settles
+// it either way.
+test('an unanswered invocation leaves the item with the agent and says the outcome is unknown', async () => {
   const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
-  await drive(repo, [task('a', { on_interrupt: 'needs-human' })], {
+  let calls = 0;
+  const done = await drive(repo, [task('a')], {
     maxItems: 1,
     runTaskPrework: async () => ({ ok: true, agentRequested: true }),
-    invokeAgent: async () => ({ ok: false, error: 'timeout' }),
+    invokeAgent: async () => { calls += 1; return { ok: false, answered: false, error: 'no answer: socket timeout' }; },
   });
-  assert.ok(repo.find(1).labels.includes('needs-human'));
+  assert.deepEqual(done, [{ issue: 1, outcome: 'unknown' }]);
+  assert.equal(calls, 1, 'never called twice');
+  const issue = repo.find(1);
+  assert.deepEqual(issue.labels.filter((l) => l.startsWith('task:')), ['task:agent']);
+  assert.equal(issue.labels.includes('needs-human'), false);
+  assert.equal(issue.state, 'open');
+  assert.ok(issue.comments.some((c) => c.body.includes('may or may not have started')));
 });
 
 test('failed prework converges to triage and never hands off', async () => {

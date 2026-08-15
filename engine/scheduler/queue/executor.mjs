@@ -27,10 +27,6 @@ import {
 // longer loop (DESIGN §10).
 export const DEFAULT_MAX_ITEMS = 3;
 
-// Hand-off retries before an item converges to triage. A transient platform
-// outage then costs delay, not a queue full of `needs-human` (S9/F3).
-export const MAX_HANDOFF_ATTEMPTS = 5;
-
 const titleOf = (item) => (item.title ?? '').trim();
 const taskIdOf = (item) => {
   const p = parseWorkItemTitle(item.title);
@@ -301,11 +297,10 @@ export function rollBody(body, until, reason, at) {
   ]);
 }
 
-// Hand off to an agent session (DESIGN §6.6). The nonce exists because API
-// invocation is at-least-once under timeout retry — a call that times out
-// client-side may still have created a session, and the retry then creates a
-// second. The executor cannot tell "failed" from "unconfirmed"; the AGENT-side
-// lease (DESIGN §7) is what collapses the duplicates.
+// Hand off to an agent session (DESIGN §6.6). ONE call per item, ever — which is
+// what lets this be as short as it is. The nonce goes on the item before the call
+// and travels in the payload, so the session can prove the fire it arrived on is
+// the hand-off this item recorded and stop if it is not.
 async function handOff({ api, gh, repo, item, task, id, verdict, result, executorId, invokeAgent, config, log }) {
   const nonce = `${item.number}-${Math.random().toString(36).slice(2, 10)}`;
   let body = item.body;
@@ -318,33 +313,34 @@ async function handOff({ api, gh, repo, item, task, id, verdict, result, executo
   await api.comment(gh, repo, item.number,
     `${HANDOFF_MARKER}\nHanded off by executor \`${executorId}\` — invocation nonce \`${nonce}\`.`);
 
-  const attempts = handoffAttempts(await api.listComments(gh, repo, item.number));
   const invocation = await invokeAgent({ task, item, nonce, config });
   if (invocation.ok) {
-    log(`- #${item.number} ${id}: handed off to an agent session${invocation.sessionId ? ` (${invocation.sessionId})` : ''}`);
+    await api.comment(gh, repo, item.number,
+      `Agent session started${invocation.sessionUrl ? `: ${invocation.sessionUrl}` : ''}.`);
+    log(`- #${item.number} ${id}: handed off${invocation.sessionId ? ` (${invocation.sessionId})` : ''}`);
     return 'agent';
   }
-  // A one-shot task never rides the retry: an invocation that failed client-side
-  // may still have created a session, so re-queueing it is exactly the
-  // re-execution `on_interrupt: 'needs-human'` exists to refuse.
-  const oneShot = task.decl.on_interrupt === 'needs-human';
-  if (oneShot || attempts + 1 >= MAX_HANDOFF_ATTEMPTS) {
+  if (invocation.answered) {
+    // The endpoint refused, so no session exists and none will: a token, a URL or
+    // a routine is wrong, and every future pick would be refused the same way.
     await converge(api, gh, repo, item.number, AGENT, NEEDS_HUMAN,
-      `Could not start an agent session${oneShot ? '' : ` after ${attempts + 1} attempts`}: ${invocation.error}`
-      + (oneShot ? '\n\nThis task declares `on_interrupt: \'needs-human\'`, so nothing retries it automatically — the call may still have started a session. Check, then re-queue by hand.' : ''));
+      `Could not start an agent session: ${invocation.error}\n\nNo session was started. Fix the invocation endpoint, then re-queue this item (remove \`${NEEDS_HUMAN}\`, add \`${READY}\`).`);
     return 'needs-human';
   }
-  // A bounded revert, the tick cadence its natural backoff — a transient platform
-  // outage costs delay, never a queue converged to triage.
+  // NOTHING CAME BACK, and this is the case the whole design turns on: the call
+  // may have started a session. Re-queueing here is what would put two sessions on
+  // one item, and converging to triage would kill a run that is very possibly
+  // alive. So the item STAYS with the agent and says the outcome is unknown —
+  // whichever way it went is then settled by a rule that already exists: a session
+  // that started converges the item, and one that never did leaves the item silent
+  // until the janitor's agent leash sweeps it to triage.
   await api.comment(gh, repo, item.number,
-    `${EPISODE_MARKER}\nAgent invocation failed (attempt ${attempts + 1}/${MAX_HANDOFF_ATTEMPTS}): ${invocation.error}. Returning the item to the queue.`);
-  await api.swapLabel(gh, repo, item.number, AGENT, READY);
-  log(`! #${item.number} ${id}: invocation failed — ${invocation.error}`);
-  return 'retry';
+    `The agent invocation got no answer: ${invocation.error}\n\n`
+    + 'The session may or may not have started, so nothing here re-tries it — a second call could put two sessions on this item. '
+    + `If a session did start it will converge this item; if it did not, the janitor's agent leash brings this item to \`${NEEDS_HUMAN}\` within a few hours.`);
+  log(`! #${item.number} ${id}: invocation unanswered — left with the agent, leash decides — ${invocation.error}`);
+  return 'unknown';
 }
-
-export const handoffAttempts = (comments = []) =>
-  comments.filter((c) => (c.body ?? '').includes(HANDOFF_MARKER)).length;
 
 // Every exit converges the item exactly once, with one comment saying what
 // happened — the terminal-state discipline the incidents bought.

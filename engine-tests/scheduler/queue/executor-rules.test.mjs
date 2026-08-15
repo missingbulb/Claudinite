@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  pickOrder, claimWinner, conflictsWithEarlierClaim, noGoPlan, rollBody, handoffAttempts, claimComment,
+  pickOrder, claimWinner, conflictsWithEarlierClaim, noGoPlan, rollBody, claimComment,
 } from '../../../engine/scheduler/queue/executor.mjs';
 import { CLAIM_MARKER, HANDOFF_MARKER, EPISODE_MARKER, parseWorkItemBody } from '../../../engine/scheduler/queue/work-item.mjs';
 
@@ -140,8 +140,11 @@ test('the roll stamps the wake and keeps ONE verdict — the item is a status li
   assert.equal(parseWorkItemBody(second).notBefore, '2026-08-16T04:00:00.000Z');
 });
 
-test('hand-off attempts are counted off the item\'s own comments (S9/F3)', () => {
-  assert.equal(handoffAttempts([{ id: 1, body: 'hello' }]), 0);
-  assert.equal(handoffAttempts([{ id: 1, body: `${HANDOFF_MARKER}\nx` }, { id: 2, body: `${HANDOFF_MARKER}\ny` }]), 2);
+test('a claim comment names its executor, and the markers are the item\'s vocabulary', () => {
   assert.ok(claimComment({ executor: 'E1', runUrl: 'http://x', at: 'now' }).includes(CLAIM_MARKER));
+  assert.ok(claimComment({ executor: 'E1', runUrl: 'http://x', at: 'now' }).includes('E1'));
+  // The hand-off marker survives the retry's deletion: the janitor still reads it
+  // to name which session went silent, and the session reads its nonce to prove
+  // the fire it arrived on is this item's current hand-off.
+  assert.equal(typeof HANDOFF_MARKER, 'string');
 });

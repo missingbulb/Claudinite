@@ -52,4 +52,6 @@ jobs:
           # at the repo root and no converge writes its workflows, so this list is
           # what the stub's `# claudinite:secrets` stamp produces on a member.
           FLEET_GITHUB_TOKEN: ${{ secrets.FLEET_GITHUB_TOKEN }}
+          CCR_ROUTINE_TOKEN: ${{ secrets.CCR_ROUTINE_TOKEN }}
+          CCR_FLEET_ROUTINE_TOKEN: ${{ secrets.CCR_FLEET_ROUTINE_TOKEN }}
         run: node engine/scheduler/queue/executor.mjs

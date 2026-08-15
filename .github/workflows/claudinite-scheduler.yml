@@ -72,6 +72,8 @@ jobs:
           # `# claudinite:secrets` marker in the stub); the canon has no converge,
           # so its own list is written here, by hand, in the same commit.
           FLEET_GITHUB_TOKEN: ${{ secrets.FLEET_GITHUB_TOKEN }}
+          CCR_ROUTINE_TOKEN: ${{ secrets.CCR_ROUTINE_TOKEN }}
+          CCR_FLEET_ROUTINE_TOKEN: ${{ secrets.CCR_FLEET_ROUTINE_TOKEN }}
         run: node engine/scheduler/queue/executor.mjs
 
   # A scheduled run reaches no one when it goes red, so escalate a whole-run
