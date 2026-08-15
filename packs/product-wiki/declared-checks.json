@@ -1,5 +1,15 @@
 [
   {
+    "id": "product-wiki-layout",
+    "severity": "blocking",
+    "failureMessage": "a declared standard with no scaffold silently enforces nothing — the isolation wall and the wiki discipline both hang off these fixed paths",
+    "fix": "scaffold it per the template in packs/product-wiki/README.md, or remove the product-wiki declaration if this repo doesn't adopt the standard",
+    "requirePaths": [
+      { "path": "product-wiki/README.md", "what": "the product-wiki standard requires {path} but it does not exist" },
+      { "path": "product-wiki/product-requirements/README.md", "what": "the product-wiki standard requires {path} but it does not exist" }
+    ]
+  },
+  {
     "id": "product-wiki-isolation",
     "severity": "blocking",
     "failureMessage": "the wikis are agent-rewritten, loosely-sourced research — code, tests and docs that silently depend on them inherit unreviewed churn",

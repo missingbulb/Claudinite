@@ -5,7 +5,7 @@
 // everything else under product-wiki/ is wiki space. Fingerprinted by the
 // standard's one structural constant — the sink.
 import { SINK_README } from './lib.mjs';
-import layout from './layout.mjs';
+import configGuard from './config-guard.mjs';
 
 export default {
   id: 'product-wiki',
@@ -19,11 +19,11 @@ export default {
   marker: SINK_README,
   detect: (ctx) => ctx.tracked.includes(SINK_README),
   prose: 'RULES.md',
-  // The isolation wall (product-wiki-isolation) is a declared check — a
-  // forbidReferences entry in this pack's declared-checks.json, run by the
-  // engine's reference-scanning like any barrier. This edge and layout are a
-  // designed pair: the glob target fails closed on an empty product-wiki/
-  // expansion, and layout owns the missing-skeleton complaint.
+  // The isolation wall (product-wiki-isolation) and the skeleton check
+  // (product-wiki-layout) are both declared checks in this pack's
+  // declared-checks.json. They are a designed pair: the barrier's glob target
+  // fails closed on an empty product-wiki/ expansion, and layout owns the
+  // missing-skeleton complaint.
   requires: ['barriers'],
   // Adoption interview: the standard takes no config (the layout IS the config),
   // but a wiki with no research scope is a hollow skeleton — the answers frame
@@ -47,7 +47,7 @@ export default {
       distill: 'recorded as intent; names the competitor set the initial competitor-landscape wiki is seeded from',
     },
   ],
-  worldRules: [layout],
+  worldRules: [configGuard],
   // The pack's scheduled task — wiki-growth, the weekly research pass — lives in
   // this pack's `tasks/wiki-growth/`, discovered by the scheduler's filesystem
   // scan (engine/scheduler/discover.mjs), not declared here.
