@@ -7,9 +7,13 @@ import { makeRepo, cleanup } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import { runRule } from '../../engine/checks/helpers/work.mjs';
 import { discoverPacks, resolveDeclaredPacks, packEntryId } from '../../engine/pack_loader/pack-registry.mjs';
+import { loadDeclaredChecks } from '../../engine/checks/helpers/pattern-rules.mjs';
 import basicsPack from '../../packs/basics/pack.mjs';
 import corePack from '../../packs/core/pack.mjs';
-import coreDeclared from '../../packs/core/core-declared.mjs';
+
+const coreDeclared = loadDeclaredChecks(
+  fileURLToPath(new URL('../../packs/core', import.meta.url)),
+).find((r) => r.id === 'core-declared');
 
 // `core` is mandatory in every Claudinite member. Nothing in a single module can
 // assert that on its own — it is three facts in three places, and this file holds
@@ -19,15 +23,19 @@ import coreDeclared from '../../packs/core/core-declared.mjs';
 //   2. the CLOSURE actually materializing the declaration from that edge, and
 //   3. the CHECK that reports a member whose declaration lacks it.
 //
-// The check itself spells `core` as a literal, because a rule's `run` is
-// synchronous and reading a manifest is a dynamic import. Case 1 is the drift
-// guard for that literal.
+// The check (a declared check in packs/core/declared-checks.json) spells `core`
+// as a literal; case 1 is the drift guard for that literal. It reads the RAW
+// packs array, so an entry object must count by its id — and it reports, never
+// rescues: activation reads the literal declaration, so in a repo missing the
+// entry the rule itself does not run. The entry arrives two other ways (the
+// requires closure on every declaration write, the core-seed record), which is
+// why the check only has to catch a hand-deleted entry.
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 test('basics requires core — the edge that makes it mandatory', () => {
   assert.ok(
     basicsPack.requires?.includes('core'),
-    'basics must require core: it is the pack seeded everywhere, so its requires closure is what carries core into every member. Without this edge nothing declares core and packs/core/core-declared.mjs guards a literal that means nothing.',
+    'basics must require core: it is the pack seeded everywhere, so its requires closure is what carries core into every member. Without this edge nothing declares core and the core-declared check in packs/core/declared-checks.json guards a literal that means nothing.',
   );
 });
 

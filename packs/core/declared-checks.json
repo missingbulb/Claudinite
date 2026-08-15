@@ -87,5 +87,18 @@
         "fix": "let the precondition make that call, or complete the work and report an empty outcome; only a genuine failure may stop a run past the precondition"
       }
     ]
+  },
+  {
+    "id": "core-declared",
+    "severity": "blocking",
+    "failureMessage": "core carries Claudinite's own rules — the mount, the declaration, adoption, the update and the task contract — a member that does not declare it runs the machinery with none of them",
+    "checkParsedFiles": [
+      {
+        "file": ".claudinite-checks.json",
+        "requireValueInArray": { "atField": "packs", "value": "core", "matchingEntryObjectsByField": "id" },
+        "what": "does not declare the mandatory \"core\" pack",
+        "fix": "add \"core\" to \"packs\" — it is basics' own dependency, so the requires closure writes it back the next time the declaration is written"
+      }
+    ]
   }
 ]
