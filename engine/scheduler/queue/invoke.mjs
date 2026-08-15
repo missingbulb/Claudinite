@@ -20,9 +20,37 @@
 
 export const DEFAULT_ENDPOINT = 'default';
 
+// The endpoint is a ROUTINE'S API TRIGGER — `POST /v1/claude_code/routines/
+// <trigger-id>/fire` with a per-routine bearer token — which is what Claude Code
+// on the web actually exposes to an HTTP caller. Three consequences the design's
+// "a CCR API call" did not spell out, each verified against the routines docs
+// rather than assumed:
+//
+//  - THE BEHAVIOR IS THE ROUTINE'S STORED PROMPT, not ours. `text` reaches the
+//    session wrapped in a `<routine-fire-payload>` block explicitly labelled
+//    untrusted, and a routine acts on it only because its own saved prompt says
+//    to. That is the issue-is-data posture arriving for free at one more hop: our
+//    payload names an item, and every instruction comes from a stored artifact.
+//    The prompt to store is tracked beside this file, in `routine-prompt.md`.
+//  - THE BODY CARRIES ONE FIELD. `text` is freeform and unparsed — structured
+//    JSON would arrive as a literal string — so the item number and nonce go in
+//    as prose, and nothing else goes in at all.
+//  - THERE IS NO IDEMPOTENCY KEY (standing entry 11, answered: the endpoint
+//    offers none). So the agent-side lease is THE mechanism that collapses a
+//    timeout-retry duplicate, not a backstop to one.
+//
+// The beta header is dated and the endpoint is a research preview whose two most
+// recent header versions keep working, so it lives in config with a default here
+// — a rotation is then a config edit on one repo, never an engine release the
+// whole fleet waits for.
+export const DEFAULT_HEADERS = Object.freeze({
+  'anthropic-beta': 'experimental-cc-routine-2026-04-01',
+  'anthropic-version': '2023-06-01',
+});
+
 // The endpoint a task's hand-off calls, resolved against the repo's config.
-// Returns `{ name, url, tokenEnv, body }` or `{ name, error }` — a task naming an
-// endpoint the repo has not configured is a repo-configuration fact, reported
+// Returns `{ name, url, tokenEnv, headers }` or `{ name, error }` — a task naming
+// an endpoint the repo has not configured is a repo-configuration fact, reported
 // where the operator reads it, never a crash.
 export function resolveEndpoint(config, task) {
   const name = task?.decl?.invocation_endpoint ?? DEFAULT_ENDPOINT;
@@ -33,22 +61,18 @@ export function resolveEndpoint(config, task) {
   }
   if (!entry.url) return { name, error: `invocation endpoint "${name}" declares no url` };
   if (!entry.tokenSecret) return { name, error: `invocation endpoint "${name}" declares no tokenSecret (the NAME of the repo Actions secret holding its token)` };
-  return { name, url: entry.url, tokenEnv: entry.tokenSecret, body: entry.body ?? {} };
+  return { name, url: entry.url, tokenEnv: entry.tokenSecret, headers: { ...DEFAULT_HEADERS, ...(entry.headers ?? {}) } };
 }
 
-// The prompt the session is started with. Deliberately minimal: an invoked
-// session is TOLD its item, so none of the slot mechanism's trigger-discovery
-// dance survives — but the session still re-resolves the task path at HEAD and
-// validates the item in code, because a prompt is trusted no more than a label
-// event was.
-export const invocationPrompt = ({ repo, item, nonce }) => [
-  `Execute Claudinite work item #${item.number} in ${repo}.`,
-  '',
-  `Invocation nonce: ${nonce}`,
-  '',
-  'Read that issue, validate it in code (its first body line is the task path — confirm the file exists at HEAD and the pack is declared), post your agent claim comment carrying the nonce above, and stop without touching the item if an earlier agent claim already exists.',
-  'Then run the task file at its declared model, honour the item\'s Context as binding scope, verify your outcome against the task\'s declared ceiling, and converge the item to exactly one terminal state with one comment saying what happened.',
-].join('\n');
+// The fire payload: which item, and the nonce that proves this call is the one
+// the hand-off comment recorded. Prose, not JSON — the field is freeform and
+// unparsed, so a structured payload would arrive as a literal string — and
+// deliberately free of instructions, because the routine's stored prompt is what
+// says how to act on it (see `routine-prompt.md`). The session still validates
+// the item in code before touching it: a payload labelled untrusted is trusted no
+// more than a label event was.
+export const firePayload = ({ repo, item, nonce }) =>
+  `Claudinite work item: ${repo}#${item.number}. Invocation nonce: ${nonce}.`;
 
 // The invoker seam the executor calls. Failure is DATA (`{ ok: false, error }`),
 // never a throw: the caller's retry/revert path is what turns a platform outage
@@ -65,15 +89,7 @@ export function agentInvoker({ repo, config, env = process.env, fetchImpl = fetc
       return { ok: false, error: `the Actions secret \`${endpoint.tokenEnv}\` for invocation endpoint "${endpoint.name}" is not set in this repo` };
     }
 
-    const payload = {
-      ...endpoint.body,
-      prompt: invocationPrompt({ repo, item, nonce }),
-      // Standing entry 11: if the session-creation API honours an idempotency key,
-      // this collapses a timeout-retry duplicate at creation and leaves the
-      // agent-side lease as a backstop rather than the mechanism. An endpoint that
-      // ignores the field loses nothing — the lease still collapses the pair.
-      idempotency_key: nonce,
-    };
+    const payload = { text: firePayload({ repo, item, nonce }) };
 
     let lastError = 'unknown error';
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
@@ -81,6 +97,7 @@ export function agentInvoker({ repo, config, env = process.env, fetchImpl = fetc
         const res = await fetchImpl(endpoint.url, {
           method: 'POST',
           headers: {
+            ...endpoint.headers,
             'content-type': 'application/json',
             authorization: `Bearer ${token}`,
             'user-agent': 'claudinite-executor',
@@ -91,7 +108,11 @@ export function agentInvoker({ repo, config, env = process.env, fetchImpl = fetc
         let json = null;
         try { json = await res.json(); } catch { json = null; }
         if (res.status >= 200 && res.status < 300) {
-          return { ok: true, sessionId: json?.id ?? json?.session_id ?? null };
+          return {
+            ok: true,
+            sessionId: json?.claude_code_session_id ?? null,
+            sessionUrl: json?.claude_code_session_url ?? null,
+          };
         }
         lastError = `endpoint "${endpoint.name}" returned ${res.status}${json?.error ? `: ${JSON.stringify(json.error)}` : ''}`;
         // A 4xx is a decision, not a blip — retrying it buys nothing and doubles

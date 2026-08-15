@@ -779,6 +779,19 @@ which is the one thing pack files must never carry; the name keeps the
 secret-shaped half in the repo's config where `required_secrets` already
 lives.
 
+**The endpoint is a ROUTINE's API trigger, and that moves where the agent's
+instructions live** (verified against the routines documentation at
+implementation, not assumed): firing a routine runs *its* saved prompt, and the
+`text` we send arrives wrapped in a block explicitly labelled untrusted, which a
+routine acts on only because its stored prompt says to. So the payload names the
+item and the nonce and instructs nothing, and the prompt is a tracked artifact —
+[`engine/scheduler/queue/routine-prompt.md`](../../engine/scheduler/queue/routine-prompt.md)
+— pasted into the routine. The issue-is-data posture arrives intact at one more
+hop: behavior comes from files under review, never from what an API caller sent.
+A routine's repository scope is then the whole meaning of an endpoint, which is
+what makes "reach is which endpoint you name" true in the deployment and not only
+in the design.
+
 **The token must be usable from the GitHub Action, and the plumbing is the
 `required_secrets` plumbing, reused exactly**: the wiring converge stamps each
 endpoint's secret into the executor workflow's env by name, so the executor
@@ -986,10 +999,13 @@ Standing entries — no decision needed now:
     comment lease outright. Recommendation stands: keep comment leases
     (visible on the item, sufficient at this concurrency) unless a real
     lost-race incident occurs. Recorded so it is not re-derived.
-11. **Invocation idempotency key** — if the CCR session-creation API accepts
-    one, pass §6.6's nonce as it: duplicates then collapse at creation and the
-    agent-side lease becomes a backstop rather than the mechanism. One
-    API-docs check at implementation time.
+11. **Invocation idempotency key** — **answered at implementation: there is
+    none.** The endpoint is a routine's API trigger (`POST
+    /v1/claude_code/routines/<id>/fire`), whose body accepts one freeform `text`
+    field and no idempotency key. So §7's agent-side lease is THE mechanism that
+    collapses a timeout-retry duplicate, not a backstop to one — and §6.6's nonce
+    earns its keep as the thing that proves a session was invoked by the hand-off
+    it claims, rather than as a key the platform dedupes on.
 12. **The no-go record alternative** — every occurrence creating an item born
     closed on a no-go was recorded here as the only ledger-free way to keep
     every occurrence on record, priced at ~2,500 closed issues a year.
