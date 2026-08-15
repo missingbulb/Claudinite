@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "foldedThrough": "2026-08-13",
-  "runsFoldedThrough": "2026-08-14T03:14:32Z",
+  "foldedThrough": "2026-08-14",
+  "runsFoldedThrough": "2026-08-15T03:23:08Z",
   "days": {
     "2026-07-19": {
       "captures": 5,
@@ -1839,52 +1839,163 @@
       }
     },
     "2026-08-14": {
-      "captures": 3,
-      "merges": 3,
-      "sessions": 3,
-      "userMessages": 13,
-      "userCommands": 0,
+      "captures": 16,
+      "merges": 16,
+      "sessions": 10,
+      "userMessages": 47,
+      "userCommands": 3,
       "skillLoads": {},
       "checks": {
         "work": {
-          "runs": 17,
-          "failures": 11,
+          "runs": 83,
+          "failures": 25,
           "errors": 0,
-          "blocking": 11,
+          "blocking": 29,
           "advisory": 0,
           "ciRuns": 0,
           "ciFailures": 0
         },
         "world": {
-          "runs": 10,
-          "failures": 0,
+          "runs": 88,
+          "failures": 2,
           "errors": 0,
-          "blocking": 0,
-          "advisory": 224,
+          "blocking": 18,
+          "advisory": 1638,
           "ciRuns": 0,
           "ciFailures": 0
         }
       },
       "checkFindings": {
         "comment-classification": {
-          "blocking": 12,
+          "blocking": 19,
+          "advisory": 0
+        },
+        "consumer-safe-change": {
+          "blocking": 3,
+          "advisory": 0
+        },
+        "declared-check-messages": {
+          "blocking": 14,
           "advisory": 0
         },
         "file-placement": {
           "blocking": 0,
-          "advisory": 3
+          "advisory": 17
         },
         "reference-integrity": {
-          "blocking": 1,
+          "blocking": 5,
+          "advisory": 0
+        },
+        "rules-line-length": {
+          "blocking": 0,
+          "advisory": 6
+        },
+        "squash-merge-history": {
+          "blocking": 3,
           "advisory": 0
         },
         "task-phase-discipline": {
           "blocking": 0,
-          "advisory": 1
+          "advisory": 7
         }
       },
       "tasks": {
+        "basics/task-janitor": {
+          "agent": 0,
+          "prework": 1,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
         "basics/update": {
+          "agent": 0,
+          "prework": 0,
+          "skipped": 1,
+          "failed": 0,
+          "deferred": 0
+        },
+        "canon-curation/growth-promote": {
+          "agent": 0,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 1
+        },
+        "grow_with_claudinite/growth-extract": {
+          "agent": 1,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "grow_with_claudinite/usage-fold": {
+          "agent": 0,
+          "prework": 1,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        },
+        "tidy-repo/tidy-issues": {
+          "agent": 1,
+          "prework": 0,
+          "skipped": 0,
+          "failed": 0,
+          "deferred": 0
+        }
+      },
+      "taskExec": {
+        "grow_with_claudinite/growth-extract": {
+          "success": 1,
+          "failed": 0,
+          "task-gone": 0,
+          "invalid": 0
+        },
+        "tidy-repo/tidy-issues": {
+          "success": 1,
+          "failed": 0,
+          "task-gone": 0,
+          "invalid": 0
+        }
+      }
+    },
+    "2026-08-15": {
+      "captures": 2,
+      "merges": 2,
+      "sessions": 2,
+      "userMessages": 1,
+      "userCommands": 0,
+      "skillLoads": {
+        "extract-from-activity": 1,
+        "extract-from-conversations": 1
+      },
+      "checks": {
+        "work": {
+          "runs": 2,
+          "failures": 1,
+          "errors": 0,
+          "blocking": 1,
+          "advisory": 0,
+          "ciRuns": 0,
+          "ciFailures": 0
+        },
+        "world": {
+          "runs": 1,
+          "failures": 0,
+          "errors": 0,
+          "blocking": 0,
+          "advisory": 0,
+          "ciRuns": 0,
+          "ciFailures": 0
+        }
+      },
+      "checkFindings": {
+        "comment-classification": {
+          "blocking": 1,
+          "advisory": 0
+        }
+      },
+      "tasks": {
+        "core/update": {
           "agent": 0,
           "prework": 0,
           "skipped": 1,
@@ -2372,12 +2483,12 @@
       }
     },
     "2026-W33": {
-      "days": 4,
-      "captures": 34,
-      "merges": 33,
-      "sessionDays": 25,
-      "userMessages": 93,
-      "userCommands": 6,
+      "days": 5,
+      "captures": 50,
+      "merges": 49,
+      "sessionDays": 35,
+      "userMessages": 140,
+      "userCommands": 9,
       "skillLoads": {
         "engineering-practices": 1,
         "extract-from-activity": 1,
@@ -2392,20 +2503,20 @@
       },
       "checks": {
         "work": {
-          "runs": 155,
-          "failures": 27,
+          "runs": 238,
+          "failures": 52,
           "errors": 0,
-          "blocking": 46,
+          "blocking": 75,
           "advisory": 0,
           "ciRuns": 0,
           "ciFailures": 0
         },
         "world": {
-          "runs": 178,
-          "failures": 3,
+          "runs": 266,
+          "failures": 5,
           "errors": 0,
-          "blocking": 4,
-          "advisory": 2670,
+          "blocking": 22,
+          "advisory": 4308,
           "ciRuns": 2,
           "ciFailures": 0
         }
@@ -2416,11 +2527,15 @@
           "advisory": 0
         },
         "comment-classification": {
-          "blocking": 16,
+          "blocking": 35,
           "advisory": 0
         },
         "consumer-safe-change": {
-          "blocking": 6,
+          "blocking": 9,
+          "advisory": 0
+        },
+        "declared-check-messages": {
+          "blocking": 14,
           "advisory": 0
         },
         "deprecated-session-scope": {
@@ -2433,18 +2548,18 @@
         },
         "file-placement": {
           "blocking": 0,
-          "advisory": 38
+          "advisory": 55
         },
         "reference-integrity": {
-          "blocking": 18,
+          "blocking": 23,
           "advisory": 0
         },
         "rules-line-length": {
           "blocking": 0,
-          "advisory": 27
+          "advisory": 33
         },
         "squash-merge-history": {
-          "blocking": 3,
+          "blocking": 6,
           "advisory": 0
         },
         "task-lifecycle": {
@@ -2453,7 +2568,7 @@
         },
         "task-phase-discipline": {
           "blocking": 0,
-          "advisory": 59
+          "advisory": 66
         }
       },
       "tasks": {
@@ -2466,7 +2581,7 @@
         },
         "basics/task-janitor": {
           "agent": 0,
-          "prework": 4,
+          "prework": 5,
           "skipped": 0,
           "failed": 0,
           "deferred": 0
@@ -2474,7 +2589,7 @@
         "basics/update": {
           "agent": 0,
           "prework": 0,
-          "skipped": 1,
+          "skipped": 2,
           "failed": 0,
           "deferred": 0
         },
@@ -2483,10 +2598,10 @@
           "prework": 0,
           "skipped": 0,
           "failed": 0,
-          "deferred": 2
+          "deferred": 3
         },
         "grow_with_claudinite/growth-extract": {
-          "agent": 4,
+          "agent": 5,
           "prework": 0,
           "skipped": 0,
           "failed": 0,
@@ -2494,13 +2609,13 @@
         },
         "grow_with_claudinite/usage-fold": {
           "agent": 0,
-          "prework": 4,
+          "prework": 5,
           "skipped": 0,
           "failed": 0,
           "deferred": 0
         },
         "tidy-repo/tidy-issues": {
-          "agent": 3,
+          "agent": 4,
           "prework": 0,
           "skipped": 1,
           "failed": 0,
@@ -2521,13 +2636,13 @@
           "invalid": 0
         },
         "grow_with_claudinite/growth-extract": {
-          "success": 4,
+          "success": 5,
           "failed": 0,
           "task-gone": 0,
           "invalid": 0
         },
         "tidy-repo/tidy-issues": {
-          "success": 3,
+          "success": 4,
           "failed": 0,
           "task-gone": 0,
           "invalid": 0
