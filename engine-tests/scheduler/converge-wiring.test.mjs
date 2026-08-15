@@ -494,7 +494,12 @@ test('an endpoint\'s token secret is stamped exactly like a required_secret', as
   const config = { packs: [], taskScheduler: { dispatch: 'queue', endpoints: { default: { url: 'https://x', tokenSecret: 'CCR_TOKEN' } } } };
   assert.deepEqual(await declaredSecrets(root, config), ['CCR_TOKEN']);
   assert.equal(dispatchMode(config), 'queue');
-  assert.equal(dispatchMode({}), 'slots');
+  // ABSENCE IS THE QUEUE. This is the fleet flip: a member's next converge changes
+  // its answer with no edit to any file the member owns. The retired slot scheduler
+  // is the thing a repo must now ask for by name.
+  assert.equal(dispatchMode({}), 'queue', 'an unset dispatch is the queue');
+  assert.equal(dispatchMode({ taskScheduler: {} }), 'queue');
+  assert.equal(dispatchMode({ taskScheduler: { dispatch: 'slots' } }), 'slots', 'slots is opt-in by name');
 });
 
 test('the vendored stubs are what the converge is written against', () => {

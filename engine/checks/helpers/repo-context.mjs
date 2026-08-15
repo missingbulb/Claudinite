@@ -150,9 +150,10 @@ const SCHEDULE_KEYS = ['dailyHour', 'weeklyDay', 'monthlyDay', 'dispatch', 'endp
 
 // Which dispatch mechanism this repo runs (tasks-dispatch DESIGN §14). The two
 // coexist per-repo behind this one key, sharing the task contract and keeping
-// disjoint issue families (`[claudinite-task]` vs `[claudinite-work]`) — so the
-// flip is a config edit and the rollback is the same edit backwards, with each
-// mechanism's open items untouched by the other. Absence means `slots`.
+// disjoint issue families (`[claudinite-task]` vs `[claudinite-work]`) — so a repo
+// can move either way with each mechanism's open items untouched by the other.
+// ABSENCE MEANS `queue`: the answer lives in `dispatchMode`, and `slots` is the
+// retired mechanism a repo must now ask for by name.
 export const DISPATCH_MODES = ['slots', 'queue'];
 const SCHEDULE_WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -321,7 +322,7 @@ export function loadConfig(root) {
       }
       const { dispatch, endpoints } = raw.taskScheduler;
       if (dispatch !== undefined && !DISPATCH_MODES.includes(dispatch)) {
-        errors.push({ what: `"taskScheduler.dispatch" must be one of ${DISPATCH_MODES.join(', ')}, got ${JSON.stringify(dispatch)}`, fix: 'omit it for the slot mechanism, or set "queue" to run the work-item queue' });
+        errors.push({ what: `"taskScheduler.dispatch" must be one of ${DISPATCH_MODES.join(', ')}, got ${JSON.stringify(dispatch)}`, fix: 'omit it for the work-item queue, or set "slots" to keep the retired slot scheduler' });
       }
       // The endpoint map (tasks-dispatch DESIGN §12): a name → { url, tokenSecret }.
       // `tokenSecret` is the NAME of a repo Actions secret and never a value —
