@@ -723,7 +723,7 @@ yield side: the chain's dependent is picked within minutes of its upstream
 closing. A close by hand still runs no engine code; S18 keeps the tick as
 that path's backstop, unchanged.
 
-### S34/S35 — run granularity, and what causes the next run (F23)
+### S34/S36 — run granularity, and what causes the next run (F23)
 
 The first simulator brought up to this review still modeled the executor as an
 instantaneous loop: all picked items' work phases started in the same virtual
@@ -731,26 +731,38 @@ instant, nothing bounded a run, and no test could say *which run* did *what* —
 exactly the shape F21 warned about, reproduced in the model meant to catch it
 (owner question, 2026-08-15: *"asserted that each executor run completes just
 one task from the queue? Have you simulated what causes the next executor
-run?"*). The sim now models runs as first-class objects: **serial** (the next
-pick waits for the previous item to settle — roll, close, hand-off, or
-failure), **bounded** (`maxItems`, default one, per the owner's ruling), and
-**caused** (every run records its trigger: `tick-drain` — the cron workflow's
-own drain job, started by the job graph, no event involved; `label-event` — a
-foreign token's `task:ready`/`task:urgent`; `close-drain` — the converge path,
-when its readiness re-check leaves something pickable; `re-dispatch` — a full
+run?"*). The sim now models runs as first-class objects. **A run performs one
+item** — not a bound but the executor's essence (owner, same day: *"An
+executor performs a task. It's not a current value. It's the essence of
+it."*): claim, see it to its settle (roll, close, hand-off, failure), end.
+**Every run records its cause**: `tick-drain` — the cron workflow's own drain
+job, started by the job graph, no event involved; `label-event` — a foreign
+token's `task:ready`/`task:urgent`; `close-drain` — the converge path, when
+its readiness re-check leaves something pickable; `re-dispatch` — a finished
 run chaining a fresh one via `workflow_dispatch`, which the default
-`GITHUB_TOKEN` may fire). A run whose runner dies records no end and settles
-nothing — the leash is its recovery, unchanged.
+`GITHUB_TOKEN` may fire; `failure-redispatch` — the workflow's continuation
+job (S36 below). And the pick order is **urgent first, then random among the
+ready** (owner, same day — the stale-ready escalation is period-scale, so
+nothing leaned on oldest-first), seeded in the sim so scenarios replay
+identically.
 
-- **S34** (maxItems 1, two tasks with real work plus the day's rolls): every
-  completed run settled **at most one item**, the working runs exactly one;
-  both work items converged well inside the hour, so the record must show —
-  and does — `tick-drain` first, then `re-dispatch`/`close-drain` chaining
-  the queue dry with no second cron fire involved.
-- **S35** (maxItems 3, two 30-minute tasks): one run took both items and its
-  work steps **serialized** — the second evaluation lands only after the
-  first item's close, a full work bound apart — pinning the occupancy model
-  §10 prices (executor work serializes; agent work does not).
+- **S34** (two tasks with real work plus the day's rolls): every completed
+  run settled **at most one item**, the working runs exactly one; both work
+  items converged well inside the hour, so the record must show — and does —
+  `tick-drain` first, then `re-dispatch`/`close-drain` chaining the queue
+  dry with no second cron fire involved.
+- **S36** (the broken train — owner question: *"the 2nd executor fails, or
+  dies, or times out — what will cause the third executor to start?"*): five
+  tasks with work; the run executing one of them dies two minutes in. Its
+  ordinary re-dispatch never fires — it fires at run *end* — and the answer
+  is the **failure-continuation job**: `needs: execute`, `if: failure() ||
+  cancelled()`, run by the platform on a fresh runner even after a timeout,
+  cancellation, or runner loss, its one step re-dispatching the workflow. The
+  test asserts the four unaffected items drained within minutes with no cron
+  fire involved, the crashed item alone waited out the leash reclaim and then
+  converged, and no run ever settled more than its one item. The hourly tick
+  drain remains the backstop for the case where the whole run vanishes,
+  continuation job included.
 
 ### The prose-only findings (no scenario can carry them)
 
@@ -762,8 +774,8 @@ nothing — the leash is its recovery, unchanged.
   executor work runs outside it. The sim cannot see workflow concurrency
   (unsimulated-world row); the migration burst verifies the wiring.
 - **F21 — throughput was priced as if drains were free.** A drain's real
-  throughput is its serial work-step occupancy; `maxItems` and executor width
-  are the primary capacity parameters, with self-re-dispatch as the
+  throughput is its serial work-step occupancy — one item per run — so
+  executor width and the re-dispatch chain are the capacity, with self-re-dispatch as the
   drain-until-empty shape and the oldest-first fairness exposure named and
   accepted. DESIGN §10 carries the model.
 - **F22 — the durable record was implicit.** Actions logs expire; for an
@@ -801,7 +813,7 @@ nothing — the leash is its recovery, unchanged.
 | **F20** | **design bug** | one global executing leash must exceed the heaviest task's work bound, so a single slow task slows every dead-executor recovery fleet-wide (§I) | **fixed in DESIGN §6.5/§11**: heartbeat comments during the work step; F17's wiring check reframed (S31, S31b, S31c, S31d) |
 | **F21** | sizing gap | throughput was priced as if drains were free; a drain's real throughput is its serial work-step occupancy (§I) | **stated in DESIGN §10**: `maxItems` and executor width as the primary capacity parameters, self-re-dispatch for drain-until-empty, the oldest-first fairness exposure named |
 | **F22** | contract gap | the durable per-run record was implicit — Actions logs expire, and an agentless run leaves no other trace (§I) | **fixed in DESIGN §6.5**: the terminal comment carries the `claudinite-task-exec` record and every artifact the work created |
-| **F23** | **sim fidelity bug** | the simulator modeled the executor as an instantaneous unbounded loop — items' work started concurrently, nothing modeled `maxItems`, run boundaries, or what triggers the next run — so F21's occupancy model had no executable teeth (§I) | **fixed in the sim**: runs are serial, bounded (`maxItems`, default 1 per the owner's ruling — DESIGN §15.22), and carry a recorded trigger; asserted by S34/S35, with S4's chain re-verified under it |
+| **F23** | **sim fidelity bug** | the simulator modeled the executor as an instantaneous unbounded loop — items' work started concurrently, nothing modeled run boundaries or what triggers the next run — so F21's occupancy model had no executable teeth (§I) | **fixed in the sim**: a run performs one item (structural — DESIGN §15.22), picks urgent-then-random, and records its trigger, the failure continuation included (§15.23); asserted by S34/S36, with S4's chain re-verified under it |
 
 What the exercise did **not** find: any scenario where work is lost silently,
 executed with no record, or where two mechanisms disagree about an item's

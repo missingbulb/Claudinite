@@ -375,13 +375,12 @@ job in the vendored workflow, triggered by `issues: labeled [task:ready]`
 events for latency **and** by the tick's cron as the poll that makes lost
 events irrelevant; `workflow_dispatch` for a hand-started drain):
 
-1. **Pick**: list open `task:ready` items; order `task:urgent` first, then
-   oldest-created — deterministic at the single-executor width this deploys
-   at. A deployment that runs executors in parallel (§10) randomizes the
-   after-urgent order in the same change: W executors walking one
-   oldest-first list all collide on its head at every drain start, a cascade
-   the lease resolves but should not have to (owner decision, 2026-08-15 —
-   ship the shuffle with the width, not before). Two skip rules, both live
+1. **Pick**: list open `task:ready` items; `task:urgent` first, then
+   **random order among the ready** (owner decision, 2026-08-15). Two
+   executors listing the same queue then contend on *different* heads
+   instead of cascading down one — and nothing leans on oldest-first: the
+   stale-ready escalation is period-scale (~2 periods), indifferent to the
+   minute-scale reordering a shuffle introduces. Two skip rules, both live
    reads at pick time:
    - **Same-title mutex** (SCENARIOS S15/F6): skip an item whose exact title
      (task + qualifier) has another open item in `task:executing` or
@@ -546,14 +545,13 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
    executor, not a silently missing label event (this is what retires the
    re-arm — §11, and the credential it costs is §12).
 
-An executor run may iterate (claim → … → hand off, next pick) up to a
-configured `maxItems`, **serially — the next pick happens only after the
-previous item settles** (rolls, closes, hands off, or fails), because the work
-step occupies the runner. The default is **one** (owner, 2026-08-15): one run,
-one item — the run's `timeout-minutes` sizes to a single work bound, a
-platform kill loses at most one item's progress, and self-re-dispatch (§10)
-chains the rest at ~a minute of spin-up per item. Each item's claim is
-independently leased, so executor concurrency is safe at any width. The old
+**An executor run performs one item** — not a configured maximum but the
+executor's essence (owner, 2026-08-15): claim it, see it through to its
+settle (roll, close, hand-off, or failure), end. The run's `timeout-minutes`
+sizes to a single work bound, a platform kill loses at most one item's
+progress, and self-re-dispatch (§10) chains the rest at ~a minute of spin-up
+per item. Each item's claim is independently leased, so executor concurrency
+is safe at any width. The old
 bound tying the run to its leash — `timeout-minutes` ≤ the executing leash, so
 the platform killed a hung runner before its claim was reaped — **retires with
 the heartbeat** (2026-08-15): it capped every run at under an hour, which the
@@ -564,8 +562,8 @@ work subprocess* is killed by the work's own declared timeout (the contract's
 existing bound), after which the executor converges the failure; and a
 *reclaimed-but-alive* runner abandons at its next transition, because the
 executor re-verifies its own lease at every state change (§11). The run's
-`timeout-minutes` is then sized to the work it may legally do — `maxItems` ×
-the largest work bound it can pick — not to the leash.
+`timeout-minutes` is then sized to the work it may legally do — the largest
+single work bound it can pick — not to the leash.
 
 **Idempotency, honestly (owner concern, 2026-08-13: "I'm not sure we can
 guarantee all tasks to be idempotent").** Agreed — and the design does not
@@ -761,21 +759,20 @@ in-run is what makes that harmless; it is the structural delivery, events the
 sugar.
 
 **The capacity model, honestly** (work-as-work review, 2026-08-15): the work
-step is the work, so a drain's throughput is its *occupancy* — one run
-completes roughly `maxItems` heavy items serially, and everything it leaves
-waits a tick. The CCR sessions it hands off parallelize for free; the
-executor-side work does not. So `maxItems` and executor width are the primary
-capacity parameters, not a garnish: scale with a matrix width for parallel
-executor jobs (shipping the randomized after-urgent pick order in the same
-change, §6.1), with executors outside Actions entirely — the contract is
-"issue read/write plus the repo checkout at HEAD", so a runner anywhere with a
-token qualifies — and, for the drain-until-empty shape without inflating any
-one run, with **self-re-dispatch**: `workflow_dispatch` is one of the two
-event types a `GITHUB_TOKEN` *can* fire, so a drain that exits with ready
-items left re-dispatches the executor workflow and lets a fresh run continue.
-One fairness note, accepted at today's scale: oldest-first plus heavy work
-lets one task's item dominate a drain's whole budget while light tasks queue
-behind it — a sentence here rather than machinery, until it is measured.
+step is the work, so throughput is run *occupancy* — one run, one item, and
+the queue drains as a chain of runs. The CCR sessions runs hand off
+parallelize for free; the executor-side work does not. So executor width is
+the primary capacity parameter, not a garnish: scale with a matrix width for
+parallel executor jobs, or with executors outside Actions entirely — the
+contract is "issue read/write plus the repo checkout at HEAD", so a runner
+anywhere with a token qualifies. The chain itself is **self-re-dispatch**:
+`workflow_dispatch` is one of the two event types a `GITHUB_TOKEN` *can*
+fire, so a run that ends with ready items left re-dispatches the executor
+workflow and a fresh run continues.
+One fairness note, accepted at today's scale: the randomized pick (§6.1)
+removes any *systematic* head domination, but a heavy item still occupies its
+run for the full work bound while light tasks wait out the chain — a sentence
+here rather than machinery, until it is measured.
 
 **What starts an executor run is an enumerable list, and each cause is on the
 record** (2026-08-15, and the sim asserts it — S34): (1) **the tick's own
@@ -784,10 +781,16 @@ graph (`needs: tick`), no event involved; (2) **a `task:ready`/`task:urgent`
 label event** — foreign tokens only, the latency sugar; (3) **the close-time
 drain** — whoever converges an item triggers a drain when anything is
 pickable after its readiness re-check (§9); (4) **self-re-dispatch** — a run
-that hits `maxItems` with items still pickable dispatches a fresh run.
-Causes 3 and 4 ride `workflow_dispatch`, which the default `GITHUB_TOKEN`
-*is* permitted to fire — the explicit exemption in the same recursion guard
-that suppresses its label events — so no wider credential is involved.
+that ends its one item with others still pickable dispatches a fresh run;
+(5) **the failure continuation** — a run that dies (crash, timeout,
+cancellation, runner loss) never reaches its re-dispatch, so the executor
+workflow carries a second job, `needs: execute` with `if: failure() ||
+cancelled()`, which the platform runs on a fresh runner and whose one step
+re-dispatches — a dead run stalls the train by ~a minute, not until the next
+cron fire (S36). Causes 3–5 ride `workflow_dispatch`, which the default
+`GITHUB_TOKEN` *is* permitted to fire — the explicit exemption in the same
+recursion guard that suppresses its label events — so no wider credential is
+involved.
 
 **The tick must never wait on a drain** (work-as-work review, 2026-08-15).
 The heartbeat retires the sub-hour cap on executor runs (§6), and a long
@@ -811,6 +814,7 @@ enumerates executors, which is why adding one requires telling no one.
 | lost label event | janitor re-arm (remove/re-add), 20-min grace, bounded by stale escalation | **retired** — executors poll on the tick's cron; events are latency sugar, never the only delivery |
 | duplicate events / racing executors | claim lease on one implicit executor | same lease, N executors — the loser picks a different item |
 | executor died mid-claim | — (executor was a session; janitor reclaimed via `agent-running`) | **the tick** (owner, 2026-08-13): `task:executing` with no activity past ~1h → strip to `task:ready` with a comment, so a dead executor's item is back in the queue within ~2h rather than ~25h. An executor iteration is minutes, not hours, and a lease checked once a day is not a short lease |
+| executor run died with items still queued | n/a (one implicit executor; the next slot was a day away) | **the failure-continuation job** (owner, 2026-08-15): `needs: execute`, `if: failure() \|\| cancelled()` re-dispatches on a fresh runner, so the *queue* resumes in ~a minute while the dead run's own item waits for the leash; the tick drain is the backstop when the whole workflow run is lost (§10, S36) |
 | agent session died mid-run | janitor: stale `agent-running` → `needs-human` after ~3h | same, on `task:agent` (a hand-off comment names the session, so the janitor can say *which* session died) |
 | CCR invocation lost | undetectable (label event fired into the void); surfaced only by re-arm/stale | **synchronous**: a refused call converges `needs-human` with the error at once; an unanswered call leaves the item with the agent and the agent leash settles it — one call per item, never retried (§6.6) |
 | item never picked up | stale dispatch escalation, period parsed from the slot id's leading char | same escalation, period read from the task's declared `frequency` at HEAD (or a default for ad-hoc items) — no title parsing; the stale item converges `needs-human`, out of the queue |
@@ -1190,9 +1194,12 @@ deployment coupling did not:
 19. **F1 reopened — readiness re-checks at close** (§9), amending decision 8
     in siting, not principle: whoever closes an item readies its dependents in
     code and a drain follows; the tick stays the backstop. (S33, S4.)
-20. **Randomized pick order ships with executor width, not before** (§6.1,
-    §10): at width 1 it is a no-op; at width >1 the oldest-first head
-    collision cascade justifies it, in the same change.
+20. **Randomized pick order, adopted outright** (§6.1) — *amended 2026-08-15,
+    same day*: first recorded as "ship with width", then adopted
+    unconditionally on the owner's rebuttal of the one argument against —
+    the stale-ready escalation is period-scale, so nothing in the system
+    leans on minute-scale oldest-first ordering. Urgent first, then random
+    among the ready.
 21. **"Tick" keeps its name for now** — the owner's naming rule (spell names
     out; no single nouns that need contextual reading) applies to everything
     new here ("the work step", "the readiness re-check at close", "heartbeat
@@ -1200,14 +1207,23 @@ deployment coupling did not:
     [#877](https://github.com/missingbulb/Claudinite/issues/877) so it lands
     after the old slot scheduler's vocabulary retires and the
     "scheduler"-name collision is moot.
-22. **`maxItems` defaults to one, and runs are serial** (§6, §10) — one run
-    settles one item; a run that ends with items still pickable
-    re-dispatches a fresh run, so the queue drains run by run and the
-    run-timeout arithmetic never multiplies work bounds. The sim models runs
-    as first-class objects — serial occupancy, a hard `maxItems` bound, and
-    a recorded trigger (tick-drain / label-event / close-drain /
-    re-dispatch) on every run — asserted by S34/S35. (Engine:
-    `DEFAULT_MAX_ITEMS` 3 → 1 and the dispatch plumbing ride #883.)
+22. **One executor run performs one item — structurally** (§6, §10) —
+    *amended 2026-08-15, same day*: first recorded as "`maxItems` defaults to
+    one", then the knob deleted on the owner's correction ("An executor
+    performs a task. It's not a current value. It's the essence of it.").
+    A run claims one item, sees it to its settle, and ends; a run ending
+    with items still pickable re-dispatches a fresh run, so the queue drains
+    run by run and a run's timeout sizes to a single work bound. The sim
+    models runs as first-class objects with a recorded trigger on every run
+    — asserted by S34. (Engine: the `maxItems` surface deletes and the
+    dispatch plumbing lands via #883.)
+23. **A dead executor run must not stall the re-dispatch train** (§10, §11):
+    the executor workflow carries a failure-continuation job — `needs:
+    execute`, `if: failure() || cancelled()`, which the platform runs on a
+    fresh runner even after a timeout or runner loss — whose one step
+    re-dispatches the workflow. The remaining queue resumes in ~a minute;
+    the dead item itself still waits for the leash reclaim; the tick drain
+    stays the backstop behind everything. (S36; wiring rides #883.)
 
 ---
 

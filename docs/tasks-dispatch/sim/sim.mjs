@@ -78,9 +78,7 @@ export function makeSim({
   executingLeashMs = 1 * HOUR,
   agentLeashMs = 3 * HOUR,
   heartbeatMinutes = 15, // the executor's activity comment cadence during the work step
-  maxItems = 1, // items one executor run settles before re-dispatching a fresh run
-                // (owner, 2026-08-15: one run, one item — the run's timeout sizes to
-                // one work bound, and self-re-dispatch chains the rest)
+  pickSeed = 1, // seed for the randomized pick order, so scenarios replay identically
   staleReadyPeriods = 2,
   staleBlockedMs = 2 * DAY,
   heartbeatsDisabled = false, // S31b only: demonstrate the livelock heartbeats prevent
@@ -107,6 +105,10 @@ export function makeSim({
   let seq = 0;
   let now = 0;
   let sessionSeq = 0;
+  // Randomized pick order (owner, 2026-08-15) wants randomness; reproducible
+  // tests want determinism. A seeded LCG gives both.
+  let prngState = pickSeed >>> 0;
+  const prng = () => (prngState = (prngState * 1664525 + 1013904223) >>> 0) / 2 ** 32;
   const crashNextOf = new Set(); // taskIds whose next execution dies mid-claim
   const crashDuringWorkOf = new Map(); // taskId -> minutes into the work step the runner dies
   const crashAgentOf = new Set(); // taskIds whose next agent session dies mid-run
@@ -253,9 +255,15 @@ export function makeSim({
         }
         return true;
       })
+      .map((i) => ({ i, r: prng() }))
+      // urgent first, then RANDOM among the ready (owner, 2026-08-15) — two
+      // executors listing the same queue then contend on DIFFERENT heads, and
+      // nothing leaned on oldest-first: the stale-ready escalation is
+      // period-scale, indifferent to minute-scale pick reordering
       .sort((a, b) =>
-        (has(b, 'task:urgent') ? 1 : 0) - (has(a, 'task:urgent') ? 1 : 0) ||
-        a.createdAt - b.createdAt || a.number - b.number);
+        (has(b.i, 'task:urgent') ? 1 : 0) - (has(a.i, 'task:urgent') ? 1 : 0) ||
+        a.r - b.r)
+      .map(({ i }) => i);
   }
 
   // The claim is the verified lease (DESIGN §6.2): swap, post a claim
@@ -348,6 +356,11 @@ export function makeSim({
   function executeClaimed(it, task, onSettled = () => {}) {
     if (crashNextOf.delete(it.taskId)) {
       record('executor-crash', { task: it.taskId, issue: it.number });
+      // The workflow's failure-continuation job (needs: execute, if:
+      // failure() || cancelled()) re-dispatches on a fresh runner, so a dead
+      // run never stalls the train — the crashed ITEM still waits for the
+      // leash reclaim; only the QUEUE keeps moving (S36).
+      schedule(now + 1 * MIN, () => executorRun('E-failover', 'failure-redispatch'));
       return; // died mid-claim: labels stay, the leash reclaim recovers (S8)
     }
     // the single precondition evaluation (DESIGN §6.4)
@@ -396,9 +409,13 @@ export function makeSim({
       // the runner dies mid-work: heartbeats stop, the completion never runs,
       // and the leash reclaims from the LAST heartbeat — recovery is bounded
       // by the leash, not by the work's duration
-      schedule(now + diesAtMin * MIN, () =>
-        record('executor-crash', { task: it.taskId, issue: it.number }));
-      return; // the run dies with the runner — no settle, no re-dispatch
+      schedule(now + diesAtMin * MIN, () => {
+        record('executor-crash', { task: it.taskId, issue: it.number });
+        // the failure-continuation job fires here too — timeout, cancellation
+        // and runner loss all run the needs:execute/if:failure() job (S36)
+        schedule(now + 1 * MIN, () => executorRun('E-failover', 'failure-redispatch'));
+      });
+      return; // the run dies with the runner — no settle, no ordinary re-dispatch
     }
     schedule(now + workMs, () => {
       if (!mineStill()) return; // reclaimed while (presumed) dead: the run is gone
@@ -447,38 +464,37 @@ export function makeSim({
     return false;
   }
 
-  // One executor RUN — a workflow run in the real deployment. Serial by
-  // construction: the next pick happens only after the previous item SETTLES
-  // (roll, close, hand-off, failure), because the work step occupies the
-  // runner — this is the occupancy model of DESIGN §10, and what one run may
-  // do is bounded by `maxItems`. A run that hits its bound with items still
-  // pickable RE-DISPATCHES a fresh run (`workflow_dispatch`, which the
-  // default GITHUB_TOKEN may fire), so the queue drains run by run without
-  // any single run growing unbounded. Every run records its trigger —
-  // tick-drain | label-event | close-drain | re-dispatch — so tests can
-  // assert WHAT caused each run, not just that items converged.
+  // One executor RUN — a workflow run in the real deployment — performs ONE
+  // item. Not a configured maximum: the essence of the executor (owner,
+  // 2026-08-15). The run claims an item, sees it through to its settle (roll,
+  // close, hand-off, failure), and ends; if the queue still has pickable
+  // items it RE-DISPATCHES a fresh run (`workflow_dispatch`, which the
+  // default GITHUB_TOKEN may fire), so the queue drains run by run and a
+  // run's timeout sizes to a single work bound. Every run records its
+  // trigger — tick-drain | label-event | close-drain | re-dispatch |
+  // failure-redispatch — so tests assert WHAT caused each run, not just that
+  // items converged.
   let runSeq = 0;
   function executorRun(execId = 'E1', trigger = 'label-event') {
     const runId = `R${++runSeq}`;
     record('executor-run', { run: runId, exec: execId, trigger });
-    const step = (settled) => {
-      if (settled >= maxItems) {
-        record('run-end', { run: runId, exec: execId, trigger, settled });
-        if (pickable().length > 0) {
-          schedule(now + 1 * MIN, () => executorRun(execId, 're-dispatch'));
-        }
-        return;
+    const settle = () => {
+      record('run-end', { run: runId, exec: execId, trigger, settled: 1 });
+      if (pickable().length > 0) {
+        schedule(now + 1 * MIN, () => executorRun(execId, 're-dispatch'));
       }
-      const it = pickable()[0];
-      if (!it) { record('run-end', { run: runId, exec: execId, trigger, settled }); return; }
-      if (!claim(it, execId, new Set(it.labels))) return step(settled); // loser picks another
-      if (!postClaimVerify(it, execId)) return step(settled);
-      const task = registry.get(it.taskId);
-      if (!task) { close(it, 'obsolete'); return step(settled + 1); } // validate: task gone (S20)
-      record('pick', { run: runId, exec: execId, task: it.taskId, issue: it.number });
-      executeClaimed(it, task, () => step(settled + 1));
     };
-    step(0);
+    const step = () => { // claim attempts until one item is held, or the queue is empty
+      const it = pickable()[0];
+      if (!it) { record('run-end', { run: runId, exec: execId, trigger, settled: 0 }); return; }
+      if (!claim(it, execId, new Set(it.labels))) return step(); // loser tries another item
+      if (!postClaimVerify(it, execId)) return step();
+      const task = registry.get(it.taskId);
+      if (!task) { close(it, 'obsolete'); return settle(); } // validate: task gone (S20)
+      record('pick', { run: runId, exec: execId, task: it.taskId, issue: it.number });
+      executeClaimed(it, task, settle);
+    };
+    step();
   }
 
   // ---- the janitor (DESIGN §11): the judgment-and-long-horizon sweeps -------

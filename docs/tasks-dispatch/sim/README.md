@@ -11,12 +11,15 @@ whole argument for its existence.
 
 - [`sim.mjs`](sim.mjs) — the model: a virtual clock and an ordered event
   queue (no threads, no waits, no wall clock), an in-memory issue store, and
-  the mechanism as DESIGN.md specifies it — the tick's three jobs, the
-  executor's pick/claim/evaluate/roll with the verified lease, prework →
-  hand-off → converge as timed phases, the invocation layer (bounded retry,
-  at-least-once duplicates, the agent-side lease), the janitor's three
-  rules, and the force/re-queue levers. `afterMode: 'blocked-by'` exists
-  solely so S24 can demonstrate the starvation that ruled that wiring out.
+  the mechanism as DESIGN.md specifies it — the tick's three jobs; executor
+  RUNS as first-class objects (one item each, urgent-then-random pick under a
+  seeded PRNG, the verified lease, a recorded trigger: tick-drain /
+  label-event / close-drain / re-dispatch / failure-redispatch); the work
+  step → hand-off → converge as timed phases with heartbeat comments;
+  at-most-once invocation (fired / refused / unanswered); the readiness
+  re-check on close; the janitor's rules; and the force/re-queue levers.
+  `afterMode: 'blocked-by'` exists solely so S24 can demonstrate the
+  starvation that ruled that wiring out.
 - [`scenarios.test.mjs`](scenarios.test.mjs) — the play-throughs, numbered
   to match SCENARIOS.md. Each test schedules world events at instants
   (`sim.at('2026-08-12T09:03Z', …)`), runs the clock across a window, and
@@ -55,7 +58,7 @@ test's title in `scenarios.test.mjs`.
 | §5 first-item adoption rule | `S25` |
 | §5 backlog guard: needs-human suppresses occurrences | `backlog`, `S11` |
 | §5 catch-up: most recent occurrence only, no backfill | `S5` |
-| §6.1 pick order — urgent first, then oldest | `S16` |
+| §6.1 pick order — urgent first, then random among the ready (seeded) | `S16` (urgent precedence); the whole suite runs under the shuffle |
 | §6.1 same-title mutex; qualifiers parallelize | `S15`, `S18` |
 | §6.1 the `after` yield (not Blocked-by) | `S4`, `S23`, `S23b`, `S24` |
 | §6.2 the verified claim lease, N executors | `S7` |
@@ -90,19 +93,20 @@ test's title in `scenarios.test.mjs`.
 | §15.14 the work step is the work (naming; contract key unchanged) | **prose** — vocabulary, not mechanics |
 | §15.15 heartbeat comments during the work step | `S31`, `S31b`, `S31c`, `S31d` |
 | §15.16 the tick never waits on a drain | **prose** — workflow concurrency wiring (see "The unsimulated world") |
-| §15.17 the occupancy capacity model; self-re-dispatch | `S34` (re-dispatch chains the queue), `S35` (work steps serialize within a run); runner budgets **prose** |
+| §15.17 the occupancy capacity model; self-re-dispatch | `S34` (re-dispatch chains the queue); runner budgets **prose** |
 | §15.18 the terminal comment is the durable record | **prose** — comment content, not label mechanics |
 | §15.19 F1 reopened: readiness re-checks at close | `S33`, `S4` |
-| §15.20 randomized pick order ships with executor width | **prose** — width-1 deployments are deliberately deterministic |
+| §15.20 randomized pick order after urgent, adopted outright | modeled with a seeded PRNG (`pickSeed`); urgent precedence `S16` |
 | §15.21 "tick" keeps its name for now (#877) | **prose** — vocabulary |
-| §15.22 maxItems defaults to one; runs are serial, bounded, and record their trigger | `S34`, `S35` (F23) |
+| §15.22 one run performs one item — structural; every run records its trigger | `S34` (F23) |
+| §15.23 a dead run must not stall the train — the failure-continuation job | `S36` |
 | §14 bootstrap: first-item rule; old-vocabulary issues untouched | `S25`, `S29` |
 | §14 updates: declaration changes apply at the next evaluation; the stamped wake is the one carried fact | `S28` |
 | §14 secrets: the missing-secret needs-human posture | `S9a` (the refused hand-off's same convergence); storage/stamping/rotation **prose** — Actions-platform behavior |
 | §5 F16 duplicate-standing-item self-heal | `S30` |
 | §11 F17 (reframed): heartbeat interval < leash; the livelock heartbeats prevent; transition lease re-verify | `S31`, `S31b`, `S31c`, `S31d` |
 | §9/§15.8 readiness re-check on close (F1, reopened 2026-08-15) | `S33`, `S4` (yielded chain picked in minutes) |
-| §10 occupancy capacity model; tick/executor decoupling; randomize-with-width | **prose** — deployment wiring and sizing, not label mechanics |
+| §10 tick/executor decoupling; runner budgets | **prose** — deployment wiring and sizing, not label mechanics |
 | §6.1 F15 post-claim filter re-verify | `S32` |
 | §6.2 F18 episode-scoped claim arbitration | `S32` |
 | §6.2 comment-id ordering; label-swap non-atomicity; stateless-item repair | **prose** — see "The unsimulated world" |

@@ -596,12 +596,12 @@ test('S33 fan-in readies within minutes of its last blocker closing', () => {
     'the fan-in ran minutes after its last blocker, not a tick later');
 });
 
-// ---- S34 — run granularity under maxItems 1 (the default): a busy morning
-// with several tasks' work drains ONE ITEM PER RUN, and what causes each next
-// run is on the record — the tick's own drain job first, then self-re-dispatch
-// (workflow_dispatch, which the default GITHUB_TOKEN may fire) and the
-// close-time drain, never a wait for the next cron.
-test('S34 busy morning, maxItems 1: every run settles exactly one item; re-dispatch chains the queue', () => {
+// ---- S34 — one run, one item (the executor's essence, not a configured
+// value): a busy morning with several tasks' work drains ONE ITEM PER RUN,
+// and what causes each next run is on the record — the tick's own drain job
+// first, then self-re-dispatch (workflow_dispatch, which the default
+// GITHUB_TOKEN may fire) and the close-time drain, never a wait for the cron.
+test('S34 busy morning: every run settles exactly one item; re-dispatch chains the queue', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T04:00Z', ({ world }) => {
     world.issueTouchedAt = T('2026-08-12T04:00Z'); // tidy-issues has work
@@ -609,10 +609,10 @@ test('S34 busy morning, maxItems 1: every run settles exactly one item; re-dispa
   });
   sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
 
-  // every completed run settled at most one item — maxItems is a hard bound
+  // every completed run settled at most one item — structural, not configured
   const ends = sim.log.filter((e) => e.kind === 'run-end');
   assert.ok(ends.length >= 4, 'several runs completed');
-  for (const e of ends) assert.ok(e.settled <= 1, `run ${e.run} settled ${e.settled} — over maxItems`);
+  for (const e of ends) assert.ok(e.settled <= 1, `run ${e.run} settled ${e.settled} — more than its one item`);
   // and the busy runs settled EXACTLY one — never a second item smuggled in
   assert.ok(ends.filter((e) => e.settled === 1).length >= 3, 'the working runs each did one item');
 
@@ -629,34 +629,46 @@ test('S34 busy morning, maxItems 1: every run settles exactly one item; re-dispa
   const picks = sim.log.filter((e) => e.kind === 'pick');
   const perRun = new Map();
   for (const p of picks) perRun.set(p.run, (perRun.get(p.run) ?? 0) + 1);
-  for (const [run, n] of perRun) assert.ok(n <= 1, `run ${run} picked ${n} items under maxItems 1`);
+  for (const [run, n] of perRun) assert.ok(n <= 1, `run ${run} picked ${n} items — a run performs one`);
+  // and heavy items serialize ACROSS runs: two work steps never overlap
+  // unless raced deliberately — here, sequential picks a re-dispatch apart
 });
 
-// ---- S35 — serial occupancy inside one run (maxItems 3): a run that takes
-// several items runs their work steps ONE AFTER ANOTHER — the second item's
-// evaluation happens only after the first item's work completes, which is the
-// occupancy model §10 prices (executor work serializes; agent work does not).
-test('S35 one run, several items: work steps serialize within the run', () => {
-  const tasks = [
-    { id: 'x/heavy-a', frequency: 'daily', outcome: 'done', preworkMinutes: 30,
-      precondition: () => ({ run: true }) },
-    { id: 'x/heavy-b', frequency: 'daily', outcome: 'done', preworkMinutes: 30,
-      precondition: () => ({ run: true }) },
-  ];
-  const sim = makeSim({ tasks, maxItems: 3 }).seedSteadyState('2026-08-12T00:00Z');
+// ---- S36 — the broken train (owner question, 2026-08-15): five tasks with
+// work, and the run executing one of them DIES mid-work. The workflow's
+// failure-continuation job (needs: execute, if: failure() || cancelled(), on
+// a fresh runner) re-dispatches, so the four remaining items drain within
+// minutes; the crashed ITEM alone waits for the leash reclaim, and the tick
+// remains the backstop behind all of it.
+test('S36 dead run mid-queue: failure-redispatch keeps the train moving; the leash recovers the item', () => {
+  const tasks = ['c1', 'c2', 'c3', 'c4', 'c5'].map((n) => ({
+    id: `x/${n}`, frequency: 'daily', outcome: 'done', preworkMinutes: 5,
+    precondition: () => ({ run: true }),
+  }));
+  const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
+  sim.at('2026-08-12T04:00Z', (s) => s.crashDuringWorkOf('x/c3', 2)); // dies 2m into its work
   sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
 
-  const evalA = sim.log.find((e) => e.kind === 'evaluate' && e.task === 'x/heavy-a');
-  const evalB = sim.log.find((e) => e.kind === 'evaluate' && e.task === 'x/heavy-b');
-  const closeA = sim.log.find((e) => e.kind === 'close' && e.task === 'x/heavy-a');
-  assert.ok(evalA && evalB && closeA, 'both picked, first converged');
-  assert.ok(evalB.t >= closeA.t, 'the second work step started only after the first completed');
-  assert.ok(evalB.t - evalA.t >= 30 * 60e3, 'separated by a full work bound — serial, not parallel');
-  // and both picks happened inside ONE run
-  const picks = sim.log.filter((e) => e.kind === 'pick');
-  assert.equal(new Set(picks.map((p) => p.run)).size, 1, 'one run took both items');
-  const [end] = sim.log.filter((e) => e.kind === 'run-end' && e.settled === 2);
-  assert.ok(end, 'the run ended having settled both');
+  const crash = sim.log.find((e) => e.kind === 'executor-crash');
+  assert.ok(crash, 'one run died mid-work');
+  assert.ok(sim.log.some((e) => e.kind === 'executor-run' && e.trigger === 'failure-redispatch'),
+    'the failure-continuation job re-dispatched a fresh run');
+  // the four unaffected items drained within minutes of the death — no item
+  // except the crashed one waited for the next cron fire
+  const survivors = tasks.filter((t) => t.id !== 'x/c3');
+  for (const t of survivors) {
+    const [done] = closedOf(sim, t.id);
+    assert.ok(done, `${t.id} converged`);
+    assert.ok(done.closedAt < T('2026-08-12T05:00Z'), `${t.id} did not wait out the hour`);
+  }
+  // the crashed item: reclaimed by the leash (from its last activity), then
+  // re-picked and converged — recovery bounded by leash + tick, not lost
+  assert.equal(sim.log.filter((e) => e.kind === 'reclaim' && e.task === 'x/c3').length, 1);
+  const [c3] = closedOf(sim, 'x/c3');
+  assert.ok(c3, 'the crashed item converged after the reclaim');
+  assert.ok(c3.closedAt > crash.t + 60 * 60e3 - 1, 'its recovery cost was the leash, nothing less');
+  // and no run ever settled more than its one item, dead-run day or not
+  for (const e of sim.log.filter((e) => e.kind === 'run-end')) assert.ok(e.settled <= 1);
 });
 
 // ---- S26 — the guard's second half must not over-block either: after a
