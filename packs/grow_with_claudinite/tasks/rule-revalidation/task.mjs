@@ -9,9 +9,8 @@
 // Scope is the pack's existing `pack_paths` config — the same key the sibling
 // prose-to-checks-sweep reads, so a repo names its capture surface once: a
 // consuming repo revalidates only its OWN local packs, and Claudinite (which
-// configures `packs`) revalidates the whole canon. Never a read-only mounted canon
-// pack under `.claudinite/shared/` — a consumer cannot fix one there, and its home
-// repo revalidates it on this same task.
+// configures `packs`) revalidates the whole canon — so every pack's claims are
+// re-probed in the one repo that can fix them, exactly once across the fleet.
 //
 // Self-contained (imports nothing): the whole contract is this default export.
 
@@ -39,7 +38,7 @@ export default {
       run: true,
       reason: `weekly revalidation of environment-dependent claims in ${paths.join(', ')} (no-ops cheaply when every probe still passes)`,
       context: [
-        `Pack paths to revalidate (work ONLY these; never a read-only mounted canon pack under .claudinite/shared/): ${paths.join(', ')}.`,
+        `Pack paths to revalidate (these, and only these): ${paths.join(', ')}.`,
         'Probe read-only. A claim whose probe would write, delete, merge, publish, or notify is verified from authoritative documentation instead — never by performing it.',
         'A probe this session lacks the reach to run is UNPROBED, not disproven: leave the rule exactly as it stands and log it.',
       ],

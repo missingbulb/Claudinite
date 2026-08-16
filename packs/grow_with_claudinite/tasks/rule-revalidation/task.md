@@ -4,7 +4,7 @@ Most of a pack's prose is judgment: how to approach a change, what to do first, 
 
 This task re-runs the probe behind each such claim, weekly, and corrects what no longer holds.
 
-You run under the executor, dispatched by a `ready-for-agent` issue whose **Context section is binding scope**: it names the **pack paths** to revalidate and the two probe rules below. Work only those paths — a consuming repo's own local packs by default; Claudinite also its core `packs/`. **Never** edit a read-only mounted canon pack under `.claudinite/shared/`: a consumer cannot fix a rule there, and that pack's home repo revalidates it on this same task.
+You run under the executor, dispatched by a `ready-for-agent` issue whose **Context section is binding scope**: it names the **pack paths** to revalidate and the two probe rules below. Work those paths — a consuming repo's own local packs by default; Claudinite also its core `packs/`. A canon pack a repo only mounts is revalidated in the repo that owns it, on this same task.
 
 The declared outcome ceiling is **`open-pr`**. This task rewrites the rules sessions obey, on evidence a reviewer cannot re-derive from the diff, so every run's changes go in front of the owner.
 
@@ -33,14 +33,6 @@ Two rules bound it, both binding scope from the dispatch:
 
 1. **Slice.** The corpus is standing and mostly stable, so a run takes a **slice**, not the whole thing: the claims longest since their last recorded probe, per the tracker's log, plus any the log has never covered. Prefer the claims whose staleness would cost most — a rule that would send a session down a dead path beats a version number in a comment. Ten well-probed claims beat forty skimmed.
 2. **Probe each**, per the rules above, and record what you ran and what came back.
-3. **Correct what is stale.** Rewrite the rule to what the probe showed, in the same voice and at the same length, and carry the *new* fact — not a note about the correction, and not a dated changelog. Where the claim was a check's premise rather than prose, and the check itself is now asserting a dead fact, fix the check and its fixture. Where a claim has become simply irrelevant (the surface it describes is gone), delete the rule whole rather than trimming it toward nothing.
+3. **Correct what is stale**, as far as the probe reaches and no further — one probe answers one claim, and a neighbouring claim it seems to imply gets its own probe. Rewrite the rule to what the probe showed, in the same voice and at the same length, and carry the *new* fact — not a note about the correction, and not a dated changelog. Where the claim was a check's premise rather than prose, and the check itself is now asserting a dead fact, fix the check and its fixture. Where a claim has become simply irrelevant (the surface it describes is gone), delete the rule whole rather than trimming it toward nothing.
 4. **Open a PR** — one per run, on a per-run-unique branch, its commit referencing the tracking issue so the `task-lifecycle` gate passes. The PR body is the evidence a reviewer cannot re-derive: per changed rule, the probe run and its result. Keep the repo's offline test suite green.
 5. **Log to the tracker.** The standing log is the issue titled exactly **`Claudinite tracker: Rule Revalidation`** in this repo. Find it **by that exact title, never a fuzzy match or a hard-coded number**; create it already closed if missing. **Never open, close, or reopen it.** Log each run as a dated comment listing every claim probed with its verdict — `holds`, `stale (corrected)`, `unprobed (why)`, or `doc-verified` — because that list is what the *next* run slices against. A run that found everything still true logs exactly that.
-
-## What this task must never do
-
-- **Never rewrite a rule on a failed probe from a session that lacked the reach to run it** — that is `unprobed`.
-- **Never perform a writing, destructive or outward-facing action as a probe**, however conclusive the answer would be.
-- **Never touch a pack path outside the Context**, and never edit a mounted canon pack under `.claudinite/shared/`.
-- **Never re-litigate a rule's judgment** — whether a rule is *wise* is the growth lifecycle's business, and its extraction and dedup tasks own it. This task changes a rule only where its factual premise has moved.
-- **Never widen the corrected rule beyond what the probe showed.** One probe answers one claim; a neighbouring claim it seems to imply gets its own probe or stays untouched.
