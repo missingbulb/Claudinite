@@ -56,19 +56,36 @@ Strip the member (names, paths, and product concepts stay in the origin repo —
 
 Open a PR against `main` on a per-run-unique branch — never a direct push. Write surface is **`packs/` only**: the new pack's files and the `packs/README.md` index row. Don't "improve" unrelated packs while you're in there. Keep every commit and PR terse, and **put the issue reference in the commit message** (`Refs #<n>` for the tracker below), in the commit itself and not only the PR body.
 
-### 6. Log the run to the tracker
+### 6. Tell the members that evidenced the pack
+
+A pack is authored because a member's real files demonstrated the knowledge — so that member is the first repo that should be running it, and the sweep is the only thing that knows why. For **each** member the fleet view records at `core` or `supporting` prominence for the technology, open **one issue in that member repo**, titled exactly `Adopt canon pack: <name>`. Find it by that exact title first and leave an existing one alone — one issue per member per pack, converged, never a second copy on a later run.
+
+The body carries what the member cannot re-derive: **the evidence** (that repo's own files, the ones the pack was grounded in), **the canon PR** link, **the blocker** (nothing to do until that PR merges *and* this repo's next converge carries the pack — declaring a pack whose code is not on disk is a blocking `config` error), and **the action** once both hold: the `adopt-pack` skill, which declares it, asks its adoption questions and re-vendors.
+
+Two things it is not:
+
+- **Not the `add-packs` protocol.** Don't use that label or either of its converged titles — those issues are a member's `adopt-requested-packs` task's input, and pointing it at a pack no member's mount can carry yet is exactly the blocking error above. This is a plain issue for a human.
+- **Not a substitute for the fingerprint sweep.** `fleet-add-missing-packs` will suspect the pack in a member once it is in canon and its `detect` fingerprint matches. This issue is the immediate signal, carrying the evidence that sweep never had — and the only signal at all for a pack whose fingerprint is `detect: null`.
+
+A member the fleet view shows only at `vestigial` prominence gets no issue: it did not evidence the pack.
+
+If an issue cannot be created (no Issues write on that member), that is a **tracker line, not a failed run** — the PR is the deliverable and it already exists. Name the member and what failed, and open nothing here.
+
+The "member X should declare existing pack Y" note from step 3 stays a tracker note: the pack is already in canon, so the fingerprint sweep converges an actionable issue for it on its own.
+
+### 7. Log the run to the tracker
 
 The standing log is the issue titled exactly **`Claudinite tracker: Discover Canon Packs`**.
 
 - **Find it by that exact title, never a fuzzy match or a hard-coded number** (a bare number can dangle).
 - **Create it already closed if missing. Never open, close, or reopen it** — its state carries no meaning; only the log does.
-- Log every run as a **dated comment**: the members swept; each pack authored (technology, the members that evidenced it, the rungs its rules landed on); each "member X should declare existing pack Y" note; and, for a candidate you rejected, its name and why. "Nothing unhomed this run" is worth a line too.
+- Log every run as a **dated comment**: the members swept; each pack authored (technology, the members that evidenced it, the rungs its rules landed on); the adopt issue opened in each of those members (or why it could not be); each "member X should declare existing pack Y" note; and, for a candidate you rejected, its name and why. "Nothing unhomed this run" is worth a line too.
 
 ## What this task must never do
 
-- **Never widen past the Context member list**, and **never touch a member repo** — this task only reads members and writes the Claudinite PR.
+- **Never widen past the Context member list**, and **never write to a member's tree** — the only thing this task writes in a member is the step 6 adopt issue, in a member that evidenced the pack it just authored.
 - **Never author a pack for a technology the canon already homes** — a stub counts as homed; note the "declare the existing pack" action instead.
 - **Never author from imagination or pad, and never open an empty stub** — every rule traces to a named member's real files.
 - **Never write a member's product names, paths, or concepts into a canon pack** — that is the local-pack answer, and it belongs to the per-repo task.
-- **Never write outside `packs/`** — no engine, no docs, no member-side change.
+- **Never write outside `packs/`** — no engine, no docs, no change to any member's files.
 - **Run on `opus`** — every step is a judgment call (is this technology genuinely unhomed, has the fleet earned a shared pack for it, what does the evidence actually support), and you are authoring from *other* repos' evidence with no owner able to re-derive each call. This task declares `agent_model: opus`.

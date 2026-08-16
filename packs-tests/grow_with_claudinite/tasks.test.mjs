@@ -208,6 +208,17 @@ test('growth-dedup: weekly/opus/merged-pr — the prune PR is delivered to land'
   assert.deepEqual(dedup.precondition_signals, ['localPacks', 'sharedMount', 'commits']);
 });
 
+test('growth-dedup: prework detects the canon window diff before the agentic phase', () => {
+  // The detection is deterministic code over commit records, so it is prework's
+  // half — inside the pack, beside task.mjs. The bound stays under the executor's
+  // claim leash, which validateTaskDeclaration enforces for every task.
+  assert.equal(dedup.prework, 'node worker.mjs');
+  assert.ok(Number.isInteger(dedup.prework_timeout) && dedup.prework_timeout > 0);
+  // Prework + a non-`none` agent_model is the CONDITIONAL hand-off, so the model
+  // has to stay declared or the judgment half never runs.
+  assert.equal(dedup.agent_model, 'opus');
+});
+
 test('growth-dedup: no local packs → never runs, whatever else moved', () => {
   const none = { localPacks: { present: false, changedInWindow: true }, sharedMount: { changedPacks: ['basics'] } };
   assert.equal(dedup.precondition(none).run, false);
