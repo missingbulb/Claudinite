@@ -10,11 +10,32 @@ missingbulb/ShoutsAndWhispers (Firestore + Functions + FCM + Google sign-in). En
 separation and store gating are deliberately NOT here — that is the opt-in
 [firebase-release](../firebase-release/README.md) pack.
 
-## Prose (`RULES.md`) — by section
+## Rules (`RULES.md`)
 
-| Section (≤5 words) | How enforced |
-|---|---|
-| Rules are merge-aware, default-deny | prose (+ the project's rules tests) |
-| Functions own identity and limits | prose |
-| Test logic pure, rules empirically | prose (+ the project's suites) |
-| Deploy layout and aliases | prose + the pack's two checks |
+| Rule | Severity | Reason | Enforcement |
+|---|---|---|---|
+| End every ruleset with catch-all deny | critical | correctness | prose: 24 words |
+| Write rules against merge semantics | critical | correctness | prose: 45 words |
+| Guard every field dereference for absence. | high | correctness | prose: 33 words |
+| Server-owned fields stay off the client list | critical | correctness | prose: 27 words |
+| Pin client timestamps to request.time | high | correctness | prose: 32 words |
+| Bound every client-writable string/blob | high | correctness | prose: 17 words |
+| Admin-SDK code bypasses rules | critical | correctness | prose: 26 words |
+| Identity comes from the verified token | critical | correctness | prose: 14 words |
+| Validate inputs at the boundary | critical | correctness | prose: 39 words |
+| Rate limits need a transaction. | high | correctness | prose: 39 words |
+| Chunk batched writes under the limit | high | correctness | prose: 36 words |
+| Push is best-effort by construction | medium | correctness | prose: 37 words |
+| Extract decision logic into pure modules | medium | complexity | prose: 26 words |
+| Test the rules themselves empirically | high | correctness | prose: 37 words |
+| Cross-language contracts get mirrored test vectors. | high | correctness | prose: 44 words |
+| Keep the Firebase project root self-contained | medium | complexity | prose: 71 words |
+| Commit .firebaserc with a safe default | critical | correctness | prose: 31 words |
+| Smoke-load the built entrypoint | high | correctness | prose: 36 words + check (`firebase/functions-predeploy-build`) |
+
+## Checks
+
+| Check | Severity | Reason | Enforcement |
+|---|---|---|---|
+| `firebase/functions-node-pin` | high | correctness | check: blocking |
+| `firebase/functions-predeploy-build` | high | correctness | check: blocking |

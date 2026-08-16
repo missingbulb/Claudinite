@@ -34,21 +34,31 @@ standard.
   the wikis, researches what their own open questions flag, writes back cited,
   and delivers an unmerged PR. Most passes correctly change nothing.
 
-## Rules
+## Rules (`RULES.md`)
 
-| Rule | Enforces (≤5 words) | How |
-|---|---|---|
-| `product-wiki-layout` | skeleton exists (index + sink) | check, blocking |
-| `product-wiki-page-sections` | pages carry the four sections | check, blocking |
-| `product-wiki-key-insights` | header leads, bulleted, succinct | check, blocking |
-| `product-wiki-growth-log` | log bullets dated, real dates | check, blocking |
-| `product-wiki-sources` | source bullets carry their URL | check, blocking |
-| `product-wiki-freshness` | stale wiki gets a nag | check, **advisory** |
-| `product-wiki-isolation` | repo can't reference wiki space | check, blocking (fixed barrier) |
-| sink is human-reviewed only | — | prose + worker must-never-do |
-| cite / correct-with-note / no fabrication | — | prose + worker method |
-| sample-data ≠ test fixtures | — | prose |
-| unattended growth lands as unmerged PR | — | prose + worker delivery policy |
+| Rule | Severity | Reason | Enforcement |
+|---|---|---|---|
+| Every page opens with what it found. | medium | complexity | prose: 92 words + check (`product-wiki-key-insights`) |
+| Terse, plain, and only the non-obvious. | low | complexity | prose: 96 words |
+| The header is a current view | medium | complexity | prose: 63 words |
+| The sink is human-reviewed only. | critical | correctness | prose: 56 words |
+| Compile once, refine in place. | medium | complexity | prose: 49 words |
+| Cited, never silently rewritten. | high | correctness | prose: 48 words + check (`product-wiki-sources`) |
+| No fabricated growth. | critical | correctness | prose: 22 words |
+| sample-data and new wikis. | medium | complexity | prose: 66 words |
+| Review discipline. | medium | complexity | prose: 44 words |
+
+## Checks
+
+| Check | Severity | Reason | Enforcement |
+|---|---|---|---|
+| `product-wiki-layout` | high | correctness | check: blocking |
+| `product-wiki-page-sections` | medium | complexity | check: blocking |
+| `product-wiki-key-insights` | medium | complexity | check: blocking |
+| `product-wiki-growth-log` | medium | correctness | check: blocking |
+| `product-wiki-sources` | high | correctness | check: blocking |
+| `product-wiki-freshness` | medium | correctness | check: advisory |
+| `product-wiki-isolation` | critical | correctness | check: blocking (fixed barrier) |
 
 `product-wiki-key-insights` enforces the header's **shape** — it leads every other
 section, it is bullets only, it carries at least one and at most seven, and no

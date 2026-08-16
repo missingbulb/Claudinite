@@ -6,23 +6,29 @@ Fingerprint: the `Release static site` orchestrator (`.github/workflows/static-s
 
 ## Checks
 
-| Rule | What it holds |
-|---|---|
-| `sw/release-workflows` | the orchestrator (named, push-triggered, calling the local publish reusable), both reusable workflows, all three composite actions, and a PR gate are vendored |
-| `sw/site-config` | `.github/site.config` exists with its five explicit keys, no unknown keys, every publish path tracked, no tooling directory published, and an `index.html` in the set |
-| `sw/version-scheme` | every declared version record carries the same `<major>.<ymmdd>.<n>` version |
+| Check | Severity | Reason | Enforcement |
+|---|---|---|---|
+| `sw/release-workflows` | high | correctness | check: blocking |
+| `sw/site-config` | high | correctness | check: blocking |
+| `sw/version-scheme` | medium | correctness | check: blocking |
 
-## Prose (`RULES.md`)
+What each holds:
 
-| Rule (≤5 words) | How enforced |
-|---|---|
-| Publish set names every published file | prose for the habit; check (`sw/site-config`) for a path that matches nothing |
-| Never hand-edit the version | prose; the scheme itself is a check (`sw/version-scheme`) |
-| Vendored pipeline files are managed copies | prose; presence is a check (`sw/release-workflows`) |
-| Pages serves from a subpath | prose |
-| Manifest, not per-file TTLs | prose |
-| Nothing attests own freshness | prose |
-| Separately-cached files drift apart | prose |
-| Follow missing data downstream | prose |
+- `sw/release-workflows` — the orchestrator (named, push-triggered, calling the local publish reusable), both reusable workflows, all three composite actions, and a PR gate are vendored.
+- `sw/site-config` — `.github/site.config` exists with its five explicit keys, no unknown keys, every publish path tracked, no tooling directory published, and an `index.html` in the set.
+- `sw/version-scheme` — every declared version record carries the same `<major>.<ymmdd>.<n>` version.
+
+## Rules (`RULES.md`)
+
+| Rule | Severity | Reason | Enforcement |
+|---|---|---|---|
+| The publish set names every published file | high | correctness | prose: 120 words + check (`sw/site-config`) |
+| Never hand-edit the version. | high | correctness | prose: 81 words + check (`sw/version-scheme`) |
+| The pipeline files are managed stub copies | high | correctness | prose: 55 words + check (`sw/release-workflows`) |
+| The site is served from a subpath | high | correctness | prose: 64 words |
+| Freshness is a published manifest's job | high | correctness | prose: 174 words |
+| Nothing attests to its own freshness | high | correctness | prose: 183 words |
+| Split caches join across generations | critical | correctness | prose: 182 words |
+| Follow missing data to the pixel | high | correctness | prose: 123 words |
 
 The version scheme and the code that computes it live together in [stubs/actions/bump-site-version/bump.mjs](stubs/actions/bump-site-version/bump.mjs) — the checks import `VERSION_RE` from there rather than restating it, so the rule and the bump can't disagree about what a version is.

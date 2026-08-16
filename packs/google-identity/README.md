@@ -6,14 +6,16 @@ reliable structural fingerprint, so it is declared by hand. **Prose-free:** the 
 [`google-id-token-validation`](skills/google-id-token-validation/SKILL.md) skill, whose
 check-the-work rules run at every Stop and in CI — each failure message is the rule.
 
-| Rule (≤5 words) | How enforced |
-|---|---|
-| Pin the validator audience | skill check `google-token-audience-pinned` |
-| Client id: one origin | skill check `google-client-id-single-origin` (advisory) |
-| Gate email on email_verified | skill check `google-token-email-verified` |
-
 Scope: the **validator** side of Google auth. Obtaining the ID token in a browser/extension
 client lives in the [`chrome-extension`](../chrome-extension/README.md) pack.
 
 _Provenance: distilled from missingbulb/TLDR — its backend authenticates users with Google ID
 tokens validated at an API Gateway JWT authorizer._
+
+## Checks
+
+| Check | Severity | Reason | Enforcement |
+|---|---|---|---|
+| `google-token-audience-pinned` | critical | correctness | check: blocking |
+| `google-token-email-verified` | critical | correctness | check: blocking |
+| `google-client-id-single-origin` | medium | correctness | check: advisory |
