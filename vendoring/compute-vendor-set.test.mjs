@@ -169,6 +169,25 @@ test('regression (fleet executor-broken): the REAL canon tree vendors the operat
   assert.ok(files.includes('engine/scheduler/executor.md'), 'the live executor.md must be in the vendor set');
   assert.ok(files.includes('engine/scheduler/deliver-pr.md'),
     'the live deliver-pr.md must be in the vendor set — merged-pr task workers link to it from the mount');
+  assert.ok(files.includes('engine/scheduler/queue/instructions.md'),
+    'the live queue instructions.md must be in the vendor set — the routine\'s stored prompt points a queue session at it in the mount');
+});
+
+// The queue engine is runtime-only: every file under it is read by a tick, an
+// executor or the agent session those hand off to, and none of it is
+// maintainer reference. So the blanket engine-.md drop must never take anything
+// here, whatever a future file is called.
+test('regression: the REAL canon tree vendors the WHOLE queue engine, .md included', async () => {
+  const { readdirSync } = await import('node:fs');
+  const { computeVendorSet } = await import('./compute-vendor-set.mjs');
+  const { files } = await computeVendorSet(['basics']);
+  const queueDir = new URL('../engine/scheduler/queue/', import.meta.url);
+  const onDisk = readdirSync(queueDir).filter((n) => !n.endsWith('.test.mjs'));
+  assert.ok(onDisk.length > 0, 'the queue engine directory must exist and be non-empty');
+  for (const name of onDisk) {
+    assert.ok(files.includes(`engine/scheduler/queue/${name}`),
+      `engine/scheduler/queue/${name} is runtime-operational and must vendor — a mount missing it breaks the queue on every member`);
+  }
 });
 
 test('the full pack directory vendors regardless of declaration — a member sees what it could adopt', async () => {

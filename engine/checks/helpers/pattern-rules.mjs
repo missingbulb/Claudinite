@@ -45,8 +45,28 @@ import { normalizeEdges, barrierFindings, staleFindings } from './reference-scan
 //   fix                rule-level default: any assertion declaring `what` but
 //                      no `fix` of its own inherits this one (for rules whose
 //                      every assertion shares one remedy)
-//   scanFiles          which files the content assertions read: a RegExp over
-//                      repo paths, or one exact path (read directly)
+//   scope              "work" = this declaration judges the CHANGE rather than
+//                      the repo, so it runs in check_the_work and may carry the
+//                      work assertions below. Absent = world scope, the default
+//                      (the pack manifest's own two rule lists say the same
+//                      thing for a coded rule — a declaration has no list to
+//                      sit in, so it states its scope here)
+//   scanFiles          which files the content assertions read, in one of three
+//                      forms: a RegExp over repo paths, one exact path (read
+//                      directly), or an object naming the files ANOTHER parsed
+//                      document points at —
+//                        { inParsedFilesMatching, whereFileContains,
+//                          namedByField, defaultingTo, withSuffix }
+//                      every tracked document `inParsedFilesMatching` (refined
+//                      by the `whereFileContains` probe) is parsed, the string
+//                      at `namedByField` read from it — an array anywhere along
+//                      that field path fans out over its entries, and
+//                      `defaultingTo` supplies the name when the field's own
+//                      parent is there without it — and each name, plus any
+//                      `withSuffix`, resolved against the NAMING file's
+//                      directory. A name pointing outside the scan set is
+//                      dropped silently: a check has nothing to say about a
+//                      file this checkout does not carry
 //   scanFileClasses    named shared file sets widening the scan scope (unioned
 //                      with a RegExp scanFiles): javascriptFiles, pythonFiles,
 //                      markdownFiles, workflowFiles, testFiles
@@ -183,11 +203,13 @@ import { normalizeEdges, barrierFindings, staleFindings } from './reference-scan
 // scan, shared by every rule; an absent or unparsable document asserts nothing.
 // A field path is dot-separated (`devDependencies.esbuild`), and a field counts
 // as present when its value is not undefined:
-//   checkParsedFiles   [{ file | filesMatching (+ whereFileContains),
+//   checkParsedFiles   [{ file | filesMatching (+ whereFileContains)
+//                         | everyScannedFile: true,
 //                         forEachEntryAtField, whereEntryFieldEquals:
 //                           { field, equals },
 //                         whenFieldPresent,
-//                         requireField, forbidField,
+//                         requireField, requireFieldMatching: { field, pattern },
+//                         forbidField,
 //                         forbidValueInArray | requireValueInArray:
 //                           { atField, value, ignoreCase,
 //                             matchingEntryObjectsByField },
@@ -195,12 +217,17 @@ import { normalizeEdges, barrierFindings, staleFindings } from './reference-scan
 //                           whenFileMissing, whenUnequal },
 //                         what, fix }]
 //                      the select-then-assert family: pick documents (one
-//                      exact `file`, or every tracked file `filesMatching`
-//                      whose text matches `whereFileContains`), optionally
+//                      exact `file`, every tracked file `filesMatching` whose
+//                      text matches `whereFileContains`, or whatever the rule's
+//                      own `scanFiles` selected — `everyScannedFile`, the way a
+//                      field-named scan set is asserted over), optionally
 //                      quantify over the named entries of the object at
 //                      `forEachEntryAtField` (kept where `whereEntryFieldEquals`
 //                      holds; {entry} interpolates), gate on `whenFieldPresent`,
-//                      then assert: `requireField` present / `forbidField`
+//                      then assert: `requireField` present / the value at
+//                      `requireFieldMatching.field` matching its `pattern` as
+//                      text (so a field present but blank still fails) /
+//                      `forbidField`
 //                      absent / the array at `forbidValueInArray.atField` free
 //                      of the value, or holding it under `requireValueInArray`
 //                      (either way an entry that is an object counts by its
@@ -214,6 +241,29 @@ import { normalizeEdges, barrierFindings, staleFindings } from './reference-scan
 //                      the dotenv-style file must exist, hold only KEY=value
 //                      lines and # comments, use only the declared keys, and
 //                      declare every one; {key}/{keys}/{line} interpolate
+//
+// The WORK assertions — declarable only under `scope: "work"`, and reading the
+// change rather than the tree: the branch's commit messages, the merges it
+// introduces, and each file's parsed base beside its parsed head (work.mjs owns
+// those surfaces). They run per rule, outside the shared file scan:
+//   checkBranchCommits [{ someMessageMatches, unlessOnDefaultBranch, what, fix }]
+//                      one finding at "(branch)" when NO commit message since
+//                      the base matches; a branch carrying no commits of its
+//                      own asserts nothing, and unlessOnDefaultBranch exempts
+//                      main/master. {commits} (the count) and {base} interpolate
+//   forbidIntroducedMergeCommits { what, fix }
+//                      one finding per merge commit the change introduces —
+//                      merges already on the base are the repo's history, not
+//                      the work — anchored at "<branch>@<sha>"; {sha} and
+//                      {subject} interpolate
+//   forbidAddedValueInArray [{ file | filesMatching (+ whereFileContains),
+//                              atFields, what, fix }]
+//                      one finding per value the change ADDS to any of the JSON
+//                      arrays at `atFields`, comparing the parsed head against
+//                      the parsed base — a set comparison, never the text diff,
+//                      because appending an array element re-touches the line
+//                      above it. An unparsable head asserts nothing; an absent
+//                      base makes every value an addition. {value} interpolates
 //
 // The reference-barrier assertion — a directed folder-access graph enforced by
 // the reference-scanning engine (helpers/reference-scanning.mjs, which owns the
@@ -291,17 +341,21 @@ const excluded = (path, exclude) =>
 // container throws at load, so a typo cannot silently assert nothing.
 const MSG = ['what', 'fix'];
 const SPEC_KEYS = {
-  spec: ['id', 'severity', 'failureMessage', 'fix', 'scanFiles', 'scanTracked', 'excludeFiles',
+  spec: ['id', 'severity', 'failureMessage', 'fix', 'scope', 'scanFiles', 'scanTracked', 'excludeFiles',
     'scanFileClasses', 'excludeFileClasses', 'scanIgnoringComments', 'scanIgnoringMarkdownFences',
     'relevantWhen', 'whenMissing',
     'maxLines', 'maxLineLength', 'skipLinesMatching', 'matchLines', 'countMatchingLines',
     'checkEachFile', 'repoWide', 'requirePaths',
     'extractValueSets', 'requireIndexCoverage', 'checkParsedFiles', 'forbidReferences',
+    'checkBranchCommits', 'forbidIntroducedMergeCommits', 'forbidAddedValueInArray',
     'listedInFile', 'coveredByGlobLine', 'checkParsedFile', 'equalParsedValues',
     'forEachParsedEntry', 'checkKeyValueFile', 'checkSections'],
-  checkParsedFiles: ['file', 'filesMatching', 'whereFileContains', 'forEachEntryAtField',
-    'whereEntryFieldEquals', 'whenFieldPresent', 'requireField', 'forbidField',
+  checkParsedFiles: ['file', 'filesMatching', 'whereFileContains', 'everyScannedFile',
+    'forEachEntryAtField', 'whereEntryFieldEquals', 'whenFieldPresent',
+    'requireField', 'requireFieldMatching', 'forbidField',
     'forbidValueInArray', 'requireValueInArray', 'requireEqualFields', ...MSG],
+  requireFieldMatching: ['field', 'pattern'],
+  scanFiles: ['inParsedFilesMatching', 'whereFileContains', 'namedByField', 'defaultingTo', 'withSuffix'],
   whereEntryFieldEquals: ['field', 'equals'],
   requireEqualFields: ['field', 'inFile', 'atField', 'whenFileMissing', 'whenUnequal'],
   whenFileMissing: MSG,
@@ -328,6 +382,9 @@ const SPEC_KEYS = {
   checkEachFile: ['relevantWhen', 'whenFileMatches', 'require', 'forbid', ...MSG],
   repoWide: ['unlessSomeFileMatches', 'flagFilesMatching', 'neverFlagFiles', ...MSG],
   requirePaths: ['path', ...MSG],
+  checkBranchCommits: ['someMessageMatches', 'unlessOnDefaultBranch', ...MSG],
+  forbidIntroducedMergeCommits: MSG,
+  forbidAddedValueInArray: ['file', 'filesMatching', 'whereFileContains', 'atFields', ...MSG],
   listedInFile: ['eachTrackedPathMatching', 'listFile', 'asText', ...MSG],
   coveredByGlobLine: ['eachPathMatching', 'includeVendored', 'globFile', 'globLineMatching', ...MSG],
   checkParsedFile: ['file', 'whenFieldPresent', 'requireField', 'forbidField', ...MSG],
@@ -429,7 +486,33 @@ function normalizeLegacySpellings(spec) {
 // Shape rules the key table can't state: each merged-family entry needs exactly
 // one selector, at least one assertion, and closed-vocabulary mode values; a
 // count entry needs its pattern and a coherent bound.
+const WORK_ASSERTIONS = ['checkBranchCommits', 'forbidIntroducedMergeCommits', 'forbidAddedValueInArray'];
+
 function validateEntryShapes(spec, where) {
+  if (spec.scope !== undefined && spec.scope !== 'work') {
+    throw new Error(`${where}: "scope" takes "work" (judging the change) or nothing at all (the default, judging the repo), not ${JSON.stringify(spec.scope)}`);
+  }
+  for (const key of WORK_ASSERTIONS) {
+    if (spec[key] !== undefined && spec.scope !== 'work') {
+      throw new Error(`${where}: "${key}" reads the change, so its declaration needs scope: "work"`);
+    }
+  }
+  for (const a of spec.forbidAddedValueInArray ?? []) {
+    if ((a.file === undefined) === (a.filesMatching === undefined)) {
+      throw new Error(`${where}: a forbidAddedValueInArray entry selects by exactly one of "file" or "filesMatching"`);
+    }
+    if (a.whereFileContains && a.filesMatching === undefined) {
+      throw new Error(`${where}: "whereFileContains" refines "filesMatching" and cannot go with "file"`);
+    }
+    if (!Array.isArray(a.atFields) || !a.atFields.length || a.atFields.some((f) => typeof f !== 'string')) {
+      throw new Error(`${where}: "atFields" is a non-empty list of field paths whose arrays the change may not grow`);
+    }
+  }
+  for (const a of spec.checkBranchCommits ?? []) {
+    if (!(a.someMessageMatches instanceof RegExp)) {
+      throw new Error(`${where}: a checkBranchCommits entry needs "someMessageMatches", the pattern one message must carry`);
+    }
+  }
   for (const a of spec.countMatchingLines ?? []) {
     if (!(a.linesMatching instanceof RegExp)) {
       throw new Error(`${where}: a countMatchingLines entry needs "linesMatching", the pattern it counts`);
@@ -446,14 +529,19 @@ function validateEntryShapes(spec, where) {
     }
   }
   for (const a of spec.checkParsedFiles ?? []) {
-    if ((a.file === undefined) === (a.filesMatching === undefined)) {
-      throw new Error(`${where}: a checkParsedFiles entry selects by exactly one of "file" or "filesMatching"`);
+    const selectors = [a.file, a.filesMatching, a.everyScannedFile].filter((v) => v !== undefined);
+    if (selectors.length !== 1) {
+      throw new Error(`${where}: a checkParsedFiles entry selects by exactly one of "file", "filesMatching" or "everyScannedFile"`);
     }
     if (a.whereFileContains && a.filesMatching === undefined) {
       throw new Error(`${where}: "whereFileContains" refines "filesMatching" and cannot go with "file"`);
     }
-    if (!a.requireField && !a.forbidField && !a.forbidValueInArray && !a.requireValueInArray && !a.requireEqualFields) {
-      throw new Error(`${where}: a checkParsedFiles entry asserts nothing — add requireField, forbidField, forbidValueInArray, requireValueInArray, or requireEqualFields`);
+    if (a.requireFieldMatching &&
+        (typeof a.requireFieldMatching.field !== 'string' || !(a.requireFieldMatching.pattern instanceof RegExp))) {
+      throw new Error(`${where}: "requireFieldMatching" takes the "field" to read and the "pattern" its value must match`);
+    }
+    if (!a.requireField && !a.requireFieldMatching && !a.forbidField && !a.forbidValueInArray && !a.requireValueInArray && !a.requireEqualFields) {
+      throw new Error(`${where}: a checkParsedFiles entry asserts nothing — add requireField, requireFieldMatching, forbidField, forbidValueInArray, requireValueInArray, or requireEqualFields`);
     }
   }
   for (const s of spec.extractValueSets ?? []) {
@@ -802,6 +890,16 @@ function assertTreeShape(ctx, j, parsed) {
   }
 }
 
+// The files a rule scans, whichever form its scanFiles takes — the sweep's own
+// membership test, reused by the assertion that reads the scan set as documents.
+function scanPaths(ctx, j) {
+  const base = j.spec.scanTracked ? ctx.tracked : ctx.files;
+  if (typeof j.spec.scanFiles === 'string') return [j.spec.scanFiles];
+  return base.filter((p) =>
+    (j.named ? j.named.has(p) : j.spec.scanMatchers.some((re) => re.test(p))) &&
+    !excluded(p, j.spec.excludeMatchers));
+}
+
 // The structured-data assertions — they read a few named or tracked documents
 // through the scan's shared parse cache, so like the tree assertions they run
 // directly per rule rather than riding the content pass.
@@ -814,9 +912,10 @@ function assertParsedShape(ctx, j, parsed) {
   // against each selected base object. An absent or unparsable document
   // asserts nothing, as everywhere in the parsed family.
   for (const a of s.checkParsedFiles ?? []) {
-    const paths = a.file !== undefined ? [a.file]
-      : ctx.tracked.filter((f) =>
-        a.filesMatching.test(f) && (!a.whereFileContains || a.whereFileContains.test(ctx.read(f) ?? '')));
+    const paths = a.everyScannedFile ? scanPaths(ctx, j)
+      : a.file !== undefined ? [a.file]
+        : ctx.tracked.filter((f) =>
+          a.filesMatching.test(f) && (!a.whereFileContains || a.whereFileContains.test(ctx.read(f) ?? '')));
     for (const path of paths) {
       const doc = parsed(path);
       if (doc == null) continue;
@@ -839,6 +938,10 @@ function assertParsedShape(ctx, j, parsed) {
           file: at, what: fill(what, { ...vars, ...extraVars }), fix: fill(fix, { ...vars, ...extraVars }),
         }));
         if (a.requireField && fieldAt(base, a.requireField) === undefined) flag(a.what, a.fix);
+        if (a.requireFieldMatching) {
+          const value = fieldAt(base, a.requireFieldMatching.field);
+          if (value === undefined || !a.requireFieldMatching.pattern.test(String(value))) flag(a.what, a.fix);
+        }
         if (a.forbidField && fieldAt(base, a.forbidField) !== undefined) flag(a.what, a.fix);
         if (a.forbidValueInArray &&
             arrayHoldsValue(fieldAt(base, a.forbidValueInArray.atField), a.forbidValueInArray, a.forbidValueInArray.value)) {
@@ -909,6 +1012,100 @@ function assertReferenceEdges(ctx, j) {
   j.out.push(...(j.spec.fix === undefined ? findings
     : findings.map((f) => (f.resolved === undefined ? f : { ...f, fix: j.spec.fix }))));
   if (ctx.mode === 'all' && !scanErrors) j.out.push(...staleFindings(stale, j.rule));
+}
+
+// A path named INSIDE a document, resolved against that document's own
+// directory — the convention every config format in reach follows (a Chrome
+// manifest's service worker, a firebase.json codebase source), and the reason
+// the naming file's location travels with the name.
+function resolveFrom(namingFile, rel) {
+  const slash = namingFile.lastIndexOf('/');
+  const parts = [];
+  for (const seg of `${slash === -1 ? '' : namingFile.slice(0, slash)}/${rel}`.split('/')) {
+    if (seg === '' || seg === '.') continue;
+    if (seg === '..') parts.pop();
+    else parts.push(seg);
+  }
+  return parts.join('/');
+}
+
+// Every string the field path selects, fanning out over an array met anywhere
+// along it, with `defaultingTo` standing in wherever the field's own parent is
+// present without it (a config whose entry omits an optional name).
+function namesAtField(doc, field, defaultingTo) {
+  let level = [doc];
+  const segments = field.split('.');
+  for (const [i, segment] of segments.entries()) {
+    const next = [];
+    for (const node of level.flatMap((n) => (Array.isArray(n) ? n : [n]))) {
+      if (node === null || typeof node !== 'object' || Array.isArray(node)) continue;
+      const value = node[segment];
+      if (value === undefined && i === segments.length - 1 && defaultingTo !== undefined) next.push(defaultingTo);
+      else if (value !== undefined) next.push(value);
+    }
+    level = next;
+  }
+  return level.flatMap((n) => (Array.isArray(n) ? n : [n])).filter((v) => typeof v === 'string' && v);
+}
+
+// The scan set a field-named scanFiles selects: every name its naming documents
+// carry, resolved and suffixed. Membership in the run's own file set is left to
+// the sweep, which applies it to every scan form alike.
+function namedScanSet(ctx, spec, parsed) {
+  const n = spec.namedScan;
+  const out = new Set();
+  const namers = ctx.tracked.filter((f) =>
+    n.inParsedFilesMatching.test(f) && !excluded(f, spec.excludeMatchers) &&
+    (!n.whereFileContains || n.whereFileContains.test(ctx.read(f) ?? '')));
+  for (const namer of namers) {
+    const doc = parsed(namer);
+    if (doc == null) continue;
+    for (const name of namesAtField(doc, n.namedByField, n.defaultingTo)) {
+      out.add(resolveFrom(namer, `${name}${n.withSuffix ?? ''}`));
+    }
+  }
+  return out;
+}
+
+// The work assertions, evaluated per rule against the fluent work surface — no
+// file scan to ride, since their subjects are the branch's commits, the merges
+// it introduces, and each selected file's parsed base beside its parsed head.
+function workFindings(rule, work) {
+  const s = rule.spec;
+  const out = [];
+  for (const a of s.checkBranchCommits ?? []) {
+    if (a.unlessOnDefaultBranch && work.onDefaultBranch()) continue;
+    if (!work.commits.length || work.commits.some((m) => a.someMessageMatches.test(m))) continue;
+    const vars = { commits: work.commits.length, base: work.baseRef };
+    out.push(finding(rule, { file: '(branch)', what: fill(a.what, vars), fix: fill(a.fix, vars) }));
+  }
+  const merges = s.forbidIntroducedMergeCommits;
+  for (const { sha, subject } of merges ? work.introducedMerges() : []) {
+    const vars = { sha, subject };
+    out.push(finding(rule, {
+      file: `${work.branch || 'HEAD'}@${sha}`, what: fill(merges.what, vars), fix: fill(merges.fix, vars),
+    }));
+  }
+  for (const a of s.forbidAddedValueInArray ?? []) {
+    const paths = a.file !== undefined ? [a.file]
+      : work.tracked.filter((f) => a.filesMatching.test(f) &&
+          (!a.whereFileContains || a.whereFileContains.test(work.read(f) ?? '')));
+    for (const path of paths) {
+      const { head, base } = work.jsonPair(path);
+      if (head == null) continue;
+      const valuesAt = (doc) => a.atFields.flatMap((field) => {
+        const values = doc == null ? undefined : fieldAt(doc, field);
+        return Array.isArray(values) ? values.map(String) : [];
+      });
+      const before = new Set(valuesAt(base));
+      for (const value of new Set(valuesAt(head))) {
+        if (before.has(value)) continue;
+        const vars = { value };
+        out.push(finding(rule, { file: path, what: fill(a.what, vars), fix: fill(a.fix, vars) }));
+      }
+    }
+  }
+  return out;
 }
 
 // The indentation structure matchLines' block relations read. A line's own
@@ -1095,6 +1292,10 @@ function results(ctx) {
     return parsedDocs.get(path);
   };
 
+  // Resolved before any assertion runs: a field-named scan set is both the
+  // sweep's membership test and what `everyScannedFile` asserts over.
+  for (const j of jobs) if (j.spec.namedScan) j.named = namedScanSet(ctx, j.spec, parsed);
+
   for (const j of jobs) {
     assertTreeShape(ctx, j, parsed);
     assertParsedShape(ctx, j, parsed);
@@ -1110,14 +1311,15 @@ function results(ctx) {
     visit(ctx, [j], j.spec.scanFiles, text);
   }
 
-  const swept = jobs.filter((j) => j.spec.scanMatchers.length);
+  const swept = jobs.filter((j) => j.spec.scanMatchers.length || j.spec.namedScan);
   if (swept.length) {
     const scanned = new Set(ctx.files);
     const tracked = new Set(ctx.tracked);
     for (const path of [...ctx.files, ...ctx.tracked.filter((f) => !scanned.has(f))]) {
       const subs = swept.filter((j) =>
         (j.spec.scanTracked ? tracked : scanned).has(path) &&
-        j.spec.scanMatchers.some((re) => re.test(path)) && !excluded(path, j.spec.excludeMatchers));
+        (j.named ? j.named.has(path) : j.spec.scanMatchers.some((re) => re.test(path))) &&
+        !excluded(path, j.spec.excludeMatchers));
       if (!subs.length) continue;
       const text = ctx.read(path);
       if (text !== null) visit(ctx, subs, path, text);
@@ -1150,7 +1352,7 @@ const PATTERN_KEYS = new Set([
   'neverFlagFiles', 'eachTrackedPathMatching', 'eachPathMatching', 'globLineMatching',
   'filesMatching', 'whereFileContains', 'inFilesMatching', 'pattern', 'linesMatching',
   'eachScannedPathMatching', 'coveredByGlobLinesMatching', 'whoseTextMatches',
-  'fromParsedFilesMatching',
+  'fromParsedFilesMatching', 'someMessageMatches', 'inParsedFilesMatching',
 ]);
 const RE_FORM = /^\/(.*)\/([dgimsuvy]*)$/s;
 
@@ -1199,6 +1401,19 @@ export function patternRule(declaration, { selfExclude = null } = {}) {
   if (scanClasses.length && typeof spec.scanFiles === 'string') {
     throw new Error(`${where}: scanFileClasses cannot combine with an exact-path scanFiles`);
   }
+  // The field-named scan form: its own key, so nothing downstream has to ask
+  // which of scanFiles' three shapes it is holding.
+  if (spec.scanFiles !== null && typeof spec.scanFiles === 'object' && !(spec.scanFiles instanceof RegExp)) {
+    spec.namedScan = spec.scanFiles;
+    delete spec.scanFiles;
+    if (scanClasses.length) throw new Error(`${where}: scanFileClasses cannot combine with a field-named scanFiles`);
+    if (!(spec.namedScan.inParsedFilesMatching instanceof RegExp) || typeof spec.namedScan.namedByField !== 'string') {
+      throw new Error(`${where}: a field-named scanFiles needs "inParsedFilesMatching" (the documents that name files) and "namedByField" (the field holding each name)`);
+    }
+    if (spec.namedScan.whereFileContains && !(spec.namedScan.whereFileContains instanceof RegExp)) {
+      throw new Error(`${where}: "whereFileContains" refines the naming documents by their text, so it takes a regex`);
+    }
+  }
   // The normalized selection surface the scan reads: the sweep patterns
   // (regex scanFiles + classes) and every exclusion (declared, class-named,
   // and the loader-supplied self-exclusion) as flat lists.
@@ -1218,8 +1433,16 @@ export function patternRule(declaration, { selfExclude = null } = {}) {
     id: spec.id,
     severity: spec.severity,
     why: spec.failureMessage,
+    ...(spec.scope ? { scope: spec.scope } : {}),
     spec,
-    run(ctx) { return results(ctx).get(rule); },
+    // A work-scoped rule is handed the fluent work surface (runRule dispatches
+    // on the scope above); the scan machinery underneath it still reads the raw
+    // context the surface wraps.
+    run(input) {
+      const work = spec.scope === 'work' ? input : null;
+      const scanned = results(work ? work.ctx : input).get(rule);
+      return work ? [...scanned, ...workFindings(rule, work)] : scanned;
+    },
   };
   REGISTRY.push(rule);
   return rule;

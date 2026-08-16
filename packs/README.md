@@ -27,6 +27,7 @@ vendored into every mount regardless of declaration, so a member session can see
 | <img src="python/badge.svg" width="18" height="18" alt=""> [python](python/README.md) | pyproject.toml near root | 0 (2 in its skill) | 3 |
 | <img src="web-speech/badge.svg" width="18" height="18" alt=""> [web-speech](web-speech/README.md) | speech API in JS/TS source | 0 (2 in its skill) | 15 |
 | <img src="leaflet/badge.svg" width="18" height="18" alt=""> [leaflet](leaflet/README.md) | Leaflet reference in HTML/JS source | 2 | 4 |
+| <img src="headless-browser/badge.svg" width="18" height="18" alt=""> [headless-browser](headless-browser/README.md) | driver reference in JS/TS source | 0 | 18 |
 | <img src="aws-sam/badge.svg" width="18" height="18" alt=""> [aws-sam](aws-sam/README.md) | SAM template | 3 | 13 |
 | <img src="google-identity/badge.svg" width="18" height="18" alt=""> [google-identity](google-identity/README.md) | declared | 0 (3 in its skill) | 0 |
 | <img src="jwt/badge.svg" width="18" height="18" alt=""> [jwt](jwt/README.md) | JWT library in JS/TS/Python source | 0 (5 in its skills) | 0 (2 skills + monthly advisory-watch task) |
@@ -42,7 +43,7 @@ vendored into every mount regardless of declaration, so a member session can see
 | <img src="app-store-release/badge.svg" width="18" height="18" alt=""> [app-store-release](app-store-release/) | declared (opt-in) | 0 | 0 (stub) |
 | <img src="web-scraping/badge.svg" width="18" height="18" alt=""> [web-scraping](web-scraping/README.md) | declared (opt-in) | 0 | 27 (+ 1 skill: map-a-data-source) |
 | <img src="research-project/badge.svg" width="18" height="18" alt=""> [research-project](research-project/README.md) | declared (class) | 0 | 54 (14 sections) |
-| <img src="product-wiki/badge.svg" width="18" height="18" alt=""> [product-wiki](product-wiki/README.md) | declared (marker: `product-wiki/product-requirements/README.md`) | 8 | 9 (wiki growth discipline + weekly growth daily task) |
+| <img src="product-wiki/badge.svg" width="18" height="18" alt=""> [product-wiki](product-wiki/README.md) | declared (marker: `product-wiki/product-requirements/README.md`) | 7 | 9 (wiki growth discipline + weekly growth daily task) |
 | <img src="spec-driven-product/badge.svg" width="18" height="18" alt=""> [spec-driven-product](spec-driven-product/README.md) | declared (class) | 0 | 26 (8 sections) |
 | <img src="executable-requirements/badge.svg" width="18" height="18" alt=""> [executable-requirements](executable-requirements/README.md) | `dev/requirements/requirements.md` | 0 | 19 (framework standard: layout / gates / kinds) |
 
@@ -297,13 +298,13 @@ manifest.
 
 | | Count |
 |---|---|
-| **Hardcoded conformance checks** | **92** — every rule the runner carries: each pack's own, its bundled skills' checks, and the contributed barriers, plus the canon home's own [canon-curation](../.claudinite/local/packs/canon-curation/README.md) and [claudinite](../.claudinite/local/packs/claudinite/RULES.md) local packs |
+| **Hardcoded conformance checks** | **90** — every rule the runner carries: each pack's own, its bundled skills' checks, and the contributed barriers, plus the canon home's own [canon-curation](../.claudinite/local/packs/canon-curation/README.md) and [claudinite](../.claudinite/local/packs/claudinite/RULES.md) local packs |
 | PreToolUse guard | 1 (remote-branch-delete) |
 | Platform setting | 1 (squash-only) |
-| **Prose rules** — every rule in a pack's `RULES.md` | **343** across 21 packs, **18,485 words** |
+| **Prose rules** — every rule in a pack's `RULES.md` | **362** across 22 packs, **19,856 words** |
 | Prose — research-project playbook (class pack) | 54 |
 | Prose — spec-driven-product playbook (class pack) | 26 |
 
 Both counts are **derived, not maintained**, and guarded in `packs-tests/`: `check_the_world.mjs --list` prints the check catalog a rule at a time (id, severity, description, doc pointer), and the prose figures are the packs' own rule indexes summed. Read the per-pack breakdown off `--list` and off each pack README's index rather than trusting a hand-written split — the previous check split drifted to 41 against a real 65, and the ratio it fed was wrong by a third.
 
-**Ratio ≈ 92 hardcoded : 343 prose ≈ 1 : 3.7** (~21% of rules mechanized). Read against the *convertible* subset it is higher still, though the audit's own arithmetic has been overtaken: it found ~45 rules with any static signature — the other ~105 judgment, in-flight process, or runtime knowledge that *should* stay prose — and the check count has since passed that estimate, so treat ~45 as that audit's floor rather than a live ceiling. The `prose-to-checks` sweep keeps working the remainder; its adversarial pass rejects candidates whose detection would false-positive (the two SAM YAML checks needed a structural parser to stay FP-free), so the yield is deliberately small and high-precision.
+**Ratio ≈ 90 hardcoded : 362 prose ≈ 1 : 4.0** (~20% of rules mechanized). Read against the *convertible* subset it is higher still, though the audit's own arithmetic has been overtaken: it found ~45 rules with any static signature — the other ~105 judgment, in-flight process, or runtime knowledge that *should* stay prose — and the check count has since passed that estimate, so treat ~45 as that audit's floor rather than a live ceiling. The `prose-to-checks` sweep keeps working the remainder; its adversarial pass rejects candidates whose detection would false-positive (the two SAM YAML checks needed a structural parser to stay FP-free), so the yield is deliberately small and high-precision.

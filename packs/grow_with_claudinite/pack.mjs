@@ -1,4 +1,3 @@
-import growthConfig from './config-check.mjs';
 import dedupIntegrity from './dedup-integrity.mjs';
 import growthWriteScope from './growth-write-scope.mjs';
 
@@ -75,7 +74,7 @@ export default {
   // pack catalog and landed by adopting or authoring a pack — so `core` is a
   // prerequisite rather than an ambient assumption.
   requires: ['core'],
-  worldRules: [growthConfig],
+  worldRules: [],
   workRules: [dedupIntegrity, growthWriteScope],
   skills: [
     'extract-from-activity',

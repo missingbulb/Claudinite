@@ -5,7 +5,6 @@
 // everything else under product-wiki/ is wiki space. Fingerprinted by the
 // standard's one structural constant — the sink.
 import { SINK_README } from './lib.mjs';
-import configGuard from './config-guard.mjs';
 
 export default {
   id: 'product-wiki',
@@ -47,7 +46,7 @@ export default {
       distill: 'recorded as intent; names the competitor set the initial competitor-landscape wiki is seeded from',
     },
   ],
-  worldRules: [configGuard],
+  worldRules: [],
   // The pack's scheduled task — wiki-growth, the weekly research pass — lives in
   // this pack's `tasks/wiki-growth/`, discovered by the scheduler's filesystem
   // scan (engine/scheduler/discover.mjs), not declared here.

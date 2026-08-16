@@ -59,7 +59,6 @@ standard.
 | `product-wiki-sources` | high | correctness | check: blocking |
 | `product-wiki-freshness` | medium | correctness | check: advisory |
 | `product-wiki-isolation` | critical | correctness | check: blocking (fixed barrier) |
-| `product-wiki-config-guard` | medium | complexity | check: blocking |
 
 `product-wiki-key-insights` enforces the header's **shape** — it leads every other
 section, it is bullets only, it carries at least one and at most seven, and no
