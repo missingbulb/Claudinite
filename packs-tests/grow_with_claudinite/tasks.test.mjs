@@ -6,6 +6,7 @@ import proseToChecks from '../../packs/grow_with_claudinite/tasks/prose-to-check
 import extract from '../../packs/grow_with_claudinite/tasks/growth-extract/task.mjs';
 import dedup from '../../packs/grow_with_claudinite/tasks/growth-dedup/task.mjs';
 import usageFold from '../../packs/grow_with_claudinite/tasks/usage-fold/task.mjs';
+import revalidation from '../../packs/grow_with_claudinite/tasks/rule-revalidation/task.mjs';
 
 // grow_with_claudinite per-repo task declarations + preconditions
 // (per-project-scheduling redesign: discover-packs and prose-to-checks are local,
@@ -66,6 +67,47 @@ test('prose-to-checks-sweep: defaults to the repo own local packs; config overri
 test('prose-to-checks-sweep: an empty/invalid pack_paths falls back to the default', () => {
   assert.match(proseToChecks.precondition({}, { pack_paths: [] }).context.join(' '), /\.claudinite\/local\/packs/);
   assert.match(proseToChecks.precondition({}, { pack_paths: 'nope' }).context.join(' '), /\.claudinite\/local\/packs/);
+});
+
+// --- rule-revalidation (re-probing environment claims, pack_paths config) ----
+
+test('rule-revalidation: weekly/opus/open-pr, no signals (the calendar is the whole trigger)', () => {
+  assert.equal(revalidation.id, 'rule-revalidation');
+  assert.equal(revalidation.frequency, 'weekly');
+  assert.equal(revalidation.agent_model, 'opus');
+  // It rewrites the rules sessions obey, on evidence a reviewer cannot re-derive
+  // from the diff — reviewed, like its two weekly siblings.
+  assert.equal(revalidation.expected_outcome, 'open-pr');
+  // Deliberately signal-less: the repo does NOT move when its claims expire, so a
+  // signal arm would gate this task on exactly the wrong evidence.
+  assert.deepEqual(revalidation.precondition_signals, []);
+});
+
+test('rule-revalidation: shares prose-to-checks-sweep pack_paths — local by default, canon by config', () => {
+  const def = revalidation.precondition({}, {});
+  assert.equal(def.run, true);
+  assert.match(def.context.join(' '), /\.claudinite\/local\/packs/);
+  assert.doesNotMatch(def.context.join(' '), /(^|\s)packs(,|\s)/); // no core packs/ by default
+
+  const canon = revalidation.precondition({}, { pack_paths: ['.claudinite/local/packs', 'packs'] });
+  assert.match(canon.context.join(' '), /\.claudinite\/local\/packs, packs/);
+});
+
+test('rule-revalidation: an empty/invalid pack_paths falls back to the default', () => {
+  assert.match(revalidation.precondition({}, { pack_paths: [] }).context.join(' '), /\.claudinite\/local\/packs/);
+  assert.match(revalidation.precondition({}, { pack_paths: 'nope' }).context.join(' '), /\.claudinite\/local\/packs/);
+});
+
+// The two probe rules are BINDING scope, not advice in task.md: the worst outcome
+// available to this task is a session with narrow reach rewriting a rule into "you
+// cannot do X", which is unfalsifiable afterwards. The dispatch issue has to carry
+// both, on every run, whatever the paths are.
+test('rule-revalidation: every run carries the read-only and unprobed rules as binding context', () => {
+  for (const config of [{}, { pack_paths: ['packs'] }]) {
+    const ctx = revalidation.precondition({}, config).context.join(' ');
+    assert.match(ctx, /read-only/i);
+    assert.match(ctx, /UNPROBED, not disproven/);
+  }
 });
 
 // --- growth-extract (the capture stage — BOTH sources in one task) -----------
