@@ -301,7 +301,7 @@ manifest.
 | **Hardcoded conformance checks** | **92** — every rule the runner carries: each pack's own, its bundled skills' checks, and the contributed barriers, plus the canon home's own [canon-curation](../.claudinite/local/packs/canon-curation/README.md) and [claudinite](../.claudinite/local/packs/claudinite/RULES.md) local packs |
 | PreToolUse guard | 1 (remote-branch-delete) |
 | Platform setting | 1 (squash-only) |
-| **Prose rules** — every rule in a pack's `RULES.md` | **364** across 22 packs, **20,107 words** |
+| **Prose rules** — every rule in a pack's `RULES.md` | **364** across 22 packs, **20,129 words** |
 | Prose — research-project playbook (class pack) | 54 |
 | Prose — spec-driven-product playbook (class pack) | 26 |
 

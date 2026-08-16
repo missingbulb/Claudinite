@@ -17,7 +17,7 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Building release, deploy, versioning or CI plumbing | medium | complexity | prose: 46 words |
 | Finishing a change | high | correctness | prose: 33 words |
 | Changing scheduled or unattended machinery | high | correctness | prose: 36 words |
-| Planning a migration | medium | complexity | prose: 52 words |
+| Planning a migration | medium | complexity | prose: 68 words + skill (`writing-migration-plans`) |
 | When verifying now is genuinely impossible | medium | complexity | prose: 40 words |
 | Receiving feedback that flags a misunderstanding | medium | complexity | prose: 29 words |
 | Writing anything | low | complexity | prose: 18 words |
@@ -33,7 +33,7 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Waiving a finding on text | low | complexity | prose: 26 words |
 | Working around a vendored check's finding | medium | complexity | prose: 29 words |
 | Deferring a warning you can't fix now | medium | complexity | prose: 199 words |
-| Handing over a human-only step | high | complexity | prose: 132 words |
+| Handing over a human-only step | high | complexity | prose: 138 words |
 | Naming a file, module, or symbol | low | complexity | prose: 22 words |
 | Referring to a value from two places | high | correctness | prose: 117 words + check (`shared-constants`) |
 | Writing a file that depends on another | medium | complexity | prose: 48 words |

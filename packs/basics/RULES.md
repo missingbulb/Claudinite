@@ -58,7 +58,8 @@ change, independent of any one project.
 - **Planning a migration** — prefer the design that converges in one forced pass to the one that
   trickles across nightly cycles, accept legacy input at the door so nothing has to wait for
   stragglers, and drive the stragglers with a standing mechanism rather than a phase someone must
-  remember to close.
+  remember to close. Order the plan's phases by what blocks rather than by subject —
+  [writing-migration-plans](skills/writing-migration-plans/SKILL.md) owns that sort.
 
 - **When verifying now is genuinely impossible** (an external release window, an upstream fix in
   flight) — make the follow-up a mechanism that comes to you: a scheduled task, a watched PR, an
@@ -155,11 +156,12 @@ For every new task:
 # Engineering practices
 
 General software-engineering practices, independent of any one project; project-specific rules
-(architecture, test mechanics) live in the consuming repo's own docs. Four neighbouring skills own
+(architecture, test mechanics) live in the consuming repo's own docs. Five neighbouring skills own
 their own procedures: [git-github-advanced](../git-github/skills/git-github-advanced/SKILL.md) for
 branch, commit and merge operations, [repo-text-sweeps](skills/repo-text-sweeps/SKILL.md) for
 sweeps and renames across files, [writing-tests](skills/writing-tests/SKILL.md) for tests you can
-trust, and [bug-investigation](skills/bug-investigation/SKILL.md) for pinning down a root cause.
+trust, [bug-investigation](skills/bug-investigation/SKILL.md) for pinning down a root cause, and
+[writing-migration-plans](skills/writing-migration-plans/SKILL.md) for ordering a phased plan.
 
 - **Naming a file, module, or symbol** — name it for its scope or responsibility, not the
   technology or mechanism behind it.
