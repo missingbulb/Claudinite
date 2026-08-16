@@ -10,21 +10,37 @@ behaviour (which field is authoritative, whether an instant is UTC, when a 200 i
 bot wall), none of which is written into repo state in a shape a check could read
 without firing on ordinary HTTP code.
 
-## Prose (`RULES.md`)
+## Rules (`RULES.md`)
 
-| Rule (≤5 words) | How enforced |
-|---|---|
-| Parse the data surface | prose (+ the `map-a-data-source` skill for the recon) |
-| Write the findings down | prose |
-| Cache regenerable, commit raw | prose |
-| A 200 isn't success | prose |
-| Convert timestamps at edge | prose |
-| Missing isn't zero | prose |
-| Retry only what improves | prose |
-| One fetching module, sanctioned callers | prose |
-| Batch without a bulk endpoint | prose |
-| Refresh on each field's clock | prose |
-| Unfetchable page, not failed run | prose |
+| Rule | Words | Severity | Reason | How enforced |
+|---|---|---|---|---|
+| Adding a source, or deciding what to parse | 90 | medium | complexity | prose |
+| A rendered-snapshot expectation shifting after a re-record | 31 | medium | correctness | prose |
+| Learning something non-obvious by probing the service | 71 | medium | complexity | prose |
+| Writing the fetch itself | 44 | medium | correctness | prose |
+| Deciding whether to retry a failed request | 43 | medium | correctness | prose |
+| Porting a fetch to a language-level HTTP client | 47 | medium | correctness | prose |
+| Setting the retry budget | 38 | medium | performance | prose |
+| One item in a batch failing to fetch | 30 | high | correctness | prose |
+| A sandbox refusing the target host | 80 | critical | legal | prose |
+| A fetch that works on your machine and fails from CI | 108 | medium | correctness | prose |
+| Needing many items from a service with no list endpoint | 66 | medium | performance | prose |
+| A fetch that cannot produce a page at all | 66 | medium | correctness | prose |
+| Deciding whether a fetch succeeded | 55 | high | correctness | prose |
+| Getting an empty body back | 36 | high | correctness | prose |
+| Choosing which field to read | 57 | high | correctness | prose |
+| Filtering rows by a status | 40 | high | correctness | prose |
+| Reading a numeric field | 17 | high | correctness | prose |
+| Reducing a set to its "cheapest" or "first" | 45 | medium | correctness | prose |
+| Converting an instant to the domain's local time | 132 | high | correctness | prose |
+| Taking a "now" | 38 | high | correctness | prose |
+| Parsing a value whose format is ambiguous | 129 | high | correctness | prose |
+| Changing the conversion | 78 | high | correctness | prose |
+| Emitting a value your pipeline hasn't reached yet | 64 | high | correctness | prose |
+| Deciding what a fetch writes to disk | 128 | medium | complexity | prose |
+| Re-running a fetch that already ran | 70 | medium | correctness | prose |
+| Scheduling the refresh | 75 | medium | correctness | prose |
+| Generating the artifacts downstream of the stored data | 55 | medium | correctness | prose |
 
 ## Skill
 

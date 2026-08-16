@@ -195,3 +195,13 @@ run against the member repo and read the local packs from the working tree; prom
 and reads the same subtree over the GitHub API (get-file-contents under `.claudinite/local_packs/`).
 Extract writes into it, promote reads from it, dedup prunes within it — all against the identical,
 `.claudinite/local_packs/`-rooted set.
+
+## Checks
+
+| Check | Reported as | Severity | Reason | Enforces |
+|---|---|---|---|---|
+| `growth-config` | blocking | medium | complexity | the growth configuration is legal, so a member's capture surface is where the tasks write |
+| `dedup-prune-integrity` | blocking | high | correctness | a dedup pass prunes and rewrites entries rather than growing them |
+| `growth-write-scope` | blocking | high | correctness | a growth run writes only into the repo's own local packs |
+| `in-session-github-access` | blocking | high | correctness | a routine reaches GitHub the way its session actually can — an MCP-only session has no REST credential |
+| `routine-structure` | blocking | medium | complexity | a routine declares the structure the unattended-agents skill defines |

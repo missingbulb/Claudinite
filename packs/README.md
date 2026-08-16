@@ -11,40 +11,40 @@ vendored into every mount regardless of declaration, so a member session can see
 
 | Pack | Active when | Checks | Prose rules |
 |---|---|---|---|
-| <img src="core/badge.svg" width="18" height="18" alt=""> [core](core/README.md) | declared (seeded by `--init`, mandatory — pulled in via `basics` `requires`) | 10 | ~8 (Claudinite's own surface) + the scheduled-task contract |
-| <img src="basics/badge.svg" width="18" height="18" alt=""> [basics](basics/README.md) | declared (seeded by `--init`) | 13 | ~8 (working-discipline + task-lifecycle) |
+| <img src="core/badge.svg" width="18" height="18" alt=""> [core](core/README.md) | declared (seeded by `--init`, mandatory — pulled in via `basics` `requires`) | 10 | 8 (Claudinite's own surface, plus the scheduled-task contract) |
+| <img src="basics/badge.svg" width="18" height="18" alt=""> [basics](basics/README.md) | declared (seeded by `--init`) | 13 | 49 (working-discipline + task-lifecycle) |
 | <img src="barriers/badge.svg" width="18" height="18" alt=""> [barriers](barriers/README.md) | declared (or pulled in via `requires`) | 1 | 0 (config-driven segregation) |
 | <img src="git-github/badge.svg" width="18" height="18" alt=""> [git-github](git-github/README.md) | pulled in via `basics` `requires` | 0 | 0 (2 skills: git-github-advanced, merge-to-main) |
-| <img src="grow_with_claudinite/badge.svg" width="18" height="18" alt=""> [grow_with_claudinite](grow_with_claudinite/README.md) | declared (seeded by `--init`, opt-out by removal) | 1 | growth member-side tasks (extract over activity + conversations / dedup / pack discovery / prose-to-checks) + in-session merge capture |
-| <img src="tidy-repo/badge.svg" width="18" height="18" alt=""> [tidy-repo](tidy-repo/README.md) | declared (seeded by `--init`, opt-out by removal) | 0 | policy (assess-only-vs-act) + 3 per-dimension tidy tasks (issues daily, PRs/branches weekly) |
-| <img src="sheepdog/badge.svg" width="18" height="18" alt=""> [sheepdog](sheepdog/README.md) | declared (opt-in; the fleet-enforcer repo only) | 1 | fleet-enforcer marker + config + the agentless `fleet-roster` daily task (coverage + freshness in one walk) |
-| <img src="claude-code-web-users-support/badge.svg" width="18" height="18" alt=""> [claude-code-web-users-support](claude-code-web-users-support/RULES.md) | declared (seeded by `--init`) | 2 | what a project offers people working from the web — today, their personal interaction preferences |
+| <img src="grow_with_claudinite/badge.svg" width="18" height="18" alt=""> [grow_with_claudinite](grow_with_claudinite/README.md) | declared (seeded by `--init`, opt-out by removal) | 1 | 0 — growth member-side tasks (extract over activity + conversations / dedup / pack discovery / prose-to-checks) + in-session merge capture |
+| <img src="tidy-repo/badge.svg" width="18" height="18" alt=""> [tidy-repo](tidy-repo/README.md) | declared (seeded by `--init`, opt-out by removal) | 0 | 2 (policy (assess-only-vs-act) + 3 per-dimension tidy tasks (issues daily, PRs/branches weekly)) |
+| <img src="sheepdog/badge.svg" width="18" height="18" alt=""> [sheepdog](sheepdog/README.md) | declared (opt-in; the fleet-enforcer repo only) | 1 | 0 (fleet-enforcer marker + config + the agentless `fleet-roster` daily task (coverage + freshness in one walk)) |
+| <img src="claude-code-web-users-support/badge.svg" width="18" height="18" alt=""> [claude-code-web-users-support](claude-code-web-users-support/RULES.md) | declared (seeded by `--init`) | 2 | 3 (what a project offers people working from the web — today, their personal interaction preferences) |
 | <img src="canary-probe/badge.svg" width="18" height="18" alt=""> [canary-probe](canary-probe/README.md) | declared (opt-in; the canary repo only) | 0 | 0 (one inert workflow, seeded then converged — the live proof of the workflow-delivery lane) |
 | <img src="github-actions/badge.svg" width="18" height="18" alt=""> [github-actions](github-actions/) | `.github/workflows/` | 8 | 0 |
-| <img src="chrome-extension/badge.svg" width="18" height="18" alt=""> [chrome-extension](chrome-extension/README.md) | manifest_version manifest | 2 | 9 |
+| <img src="chrome-extension/badge.svg" width="18" height="18" alt=""> [chrome-extension](chrome-extension/README.md) | manifest_version manifest | 2 | 24 |
 | <img src="chrome-extension-release/badge.svg" width="18" height="18" alt=""> [chrome-extension-release](chrome-extension-release/README.md) | single `Release to Chrome Store` stub (opt-in) | 8 | 0 (+ RELEASE contract) |
-| <img src="node/badge.svg" width="18" height="18" alt=""> [node](node/README.md) | root package.json | 0 | 4 |
+| <img src="node/badge.svg" width="18" height="18" alt=""> [node](node/README.md) | root package.json | 0 | 5 |
 | <img src="python/badge.svg" width="18" height="18" alt=""> [python](python/README.md) | pyproject.toml near root | 0 (2 in its skill) | 3 |
 | <img src="web-speech/badge.svg" width="18" height="18" alt=""> [web-speech](web-speech/README.md) | speech API in JS/TS source | 0 (2 in its skill) | 15 |
 | <img src="leaflet/badge.svg" width="18" height="18" alt=""> [leaflet](leaflet/README.md) | Leaflet reference in HTML/JS source | 2 | 4 |
-| <img src="aws-sam/badge.svg" width="18" height="18" alt=""> [aws-sam](aws-sam/README.md) | SAM template | 3 | 3 |
+| <img src="aws-sam/badge.svg" width="18" height="18" alt=""> [aws-sam](aws-sam/README.md) | SAM template | 3 | 13 |
 | <img src="google-identity/badge.svg" width="18" height="18" alt=""> [google-identity](google-identity/README.md) | declared | 0 (3 in its skill) | 0 |
 | <img src="jwt/badge.svg" width="18" height="18" alt=""> [jwt](jwt/README.md) | JWT library in JS/TS/Python source | 0 (5 in its skills) | 0 (2 skills + monthly advisory-watch task) |
-| <img src="html/badge.svg" width="18" height="18" alt=""> [html](html/README.md) | declared | 0 | 1 |
+| <img src="html/badge.svg" width="18" height="18" alt=""> [html](html/README.md) | declared | 0 | 4 |
 | <img src="static-website/badge.svg" width="18" height="18" alt=""> [static-website](static-website/README.md) | declared (opt-in); marker: the `Release static site` orchestrator | 3 | 8 (+ RELEASE contract) |
-| <img src="flutter/badge.svg" width="18" height="18" alt=""> [flutter](flutter/README.md) | pubspec.yaml | 0 | 0 (stub) |
-| <img src="firebase/badge.svg" width="18" height="18" alt=""> [firebase](firebase/README.md) | `firebase.json` | 2 | rules / functions / deploy discipline |
-| <img src="firebase-release/badge.svg" width="18" height="18" alt=""> [firebase-release](firebase-release/README.md) | declared (opt-in) | 0 | dev/prod split + App Check store gating |
-| <img src="android/badge.svg" width="18" height="18" alt=""> [android](android/) | `AndroidManifest.xml` | 0 | stub |
-| <img src="ios/badge.svg" width="18" height="18" alt=""> [ios](ios/) | `ios/Runner/Info.plist` | 0 | stub |
-| <img src="macos/badge.svg" width="18" height="18" alt=""> [macos](macos/README.md) | `Package.swift` near root | 2 | bundle / TCC + Hardened Runtime / on-device speech / Developer ID + notarization / lifecycle |
-| <img src="play-store-release/badge.svg" width="18" height="18" alt=""> [play-store-release](play-store-release/) | declared (opt-in) | 0 | stub |
-| <img src="app-store-release/badge.svg" width="18" height="18" alt=""> [app-store-release](app-store-release/) | declared (opt-in) | 0 | stub |
+| <img src="flutter/badge.svg" width="18" height="18" alt=""> [flutter](flutter/README.md) | pubspec.yaml | 0 | 15 |
+| <img src="firebase/badge.svg" width="18" height="18" alt=""> [firebase](firebase/README.md) | `firebase.json` | 2 | 18 (rules / functions / deploy discipline) |
+| <img src="firebase-release/badge.svg" width="18" height="18" alt=""> [firebase-release](firebase-release/README.md) | declared (opt-in) | 0 | 6 (dev/prod split + App Check store gating) |
+| <img src="android/badge.svg" width="18" height="18" alt=""> [android](android/) | `AndroidManifest.xml` | 0 | 0 (stub) |
+| <img src="ios/badge.svg" width="18" height="18" alt=""> [ios](ios/) | `ios/Runner/Info.plist` | 0 | 0 (stub) |
+| <img src="macos/badge.svg" width="18" height="18" alt=""> [macos](macos/README.md) | `Package.swift` near root | 2 | 31 (bundle / TCC + Hardened Runtime / on-device speech / Developer ID + notarization / lifecycle) |
+| <img src="play-store-release/badge.svg" width="18" height="18" alt=""> [play-store-release](play-store-release/) | declared (opt-in) | 0 | 0 (stub) |
+| <img src="app-store-release/badge.svg" width="18" height="18" alt=""> [app-store-release](app-store-release/) | declared (opt-in) | 0 | 0 (stub) |
 | <img src="web-scraping/badge.svg" width="18" height="18" alt=""> [web-scraping](web-scraping/README.md) | declared (opt-in) | 0 | 27 (+ 1 skill: map-a-data-source) |
-| <img src="research-project/badge.svg" width="18" height="18" alt=""> [research-project](research-project/README.md) | declared (class) | 0 | 56 (14 sections) |
-| <img src="product-wiki/badge.svg" width="18" height="18" alt=""> [product-wiki](product-wiki/README.md) | declared (marker: `product-wiki/product-requirements/README.md`) | 8 | wiki growth discipline + weekly growth daily task |
-| <img src="spec-driven-product/badge.svg" width="18" height="18" alt=""> [spec-driven-product](spec-driven-product/README.md) | declared (class) | 0 | 25 (8 sections) |
-| <img src="executable-requirements/badge.svg" width="18" height="18" alt=""> [executable-requirements](executable-requirements/README.md) | `dev/requirements/requirements.md` | 0 | framework standard (layout / gates / kinds) |
+| <img src="research-project/badge.svg" width="18" height="18" alt=""> [research-project](research-project/README.md) | declared (class) | 0 | 54 (14 sections) |
+| <img src="product-wiki/badge.svg" width="18" height="18" alt=""> [product-wiki](product-wiki/README.md) | declared (marker: `product-wiki/product-requirements/README.md`) | 8 | 9 (wiki growth discipline + weekly growth daily task) |
+| <img src="spec-driven-product/badge.svg" width="18" height="18" alt=""> [spec-driven-product](spec-driven-product/README.md) | declared (class) | 0 | 26 (8 sections) |
+| <img src="executable-requirements/badge.svg" width="18" height="18" alt=""> [executable-requirements](executable-requirements/README.md) | `dev/requirements/requirements.md` | 0 | 19 (framework standard: layout / gates / kinds) |
 
 ## Local packs — a project's own packs
 
@@ -118,6 +118,54 @@ A skill's own `checks.mjs` sits outside this partition (it is a skill's content,
 A pack's skills live in its own tree — `<pack>/skills/<skill>/SKILL.md`, one owning pack per skill (#385) — and the manifest **names them**: `skills: ['merge-to-main', ...]`. The spec holds the declaration and the tree to each other in **both directions**: an undeclared directory is a skill nothing announces, and a declared name with no directory is a manifest that lies. What each skill covers stays in its own `SKILL.md` frontmatter, the description the harness triggers on — the manifest carries the membership, not a second copy of the summary.
 
 The SessionStart hook [`../engine/pack_loader/mount-skills.mjs`](../engine/pack_loader/mount-skills.mjs) mounts the **union over the active packs' bundles** (same activation as prose/checks/env) as session-generated `.claude/skills/<name>` symlinks — nothing committed, and a self-ignoring `.claude/skills/.gitignore` keeps them out of git status. A skill rides its pack everywhere the pack goes: the vendor set, the mounts, the sweep (its `checks.mjs` runs when the pack is active). The baseline activities every project has (`merge-to-main`, `writing-tests`, `bug-investigation`, …) ride the `basics` pack's bundle; move a skill's directory to a narrower pack when it stops being a baseline activity.
+
+## The rule index a pack README carries
+
+A pack README is optional, but where one exists it **indexes what the pack asks of a project**: one
+row per prose rule in its `RULES.md`, and one row per check it runs. Both tables carry the same two
+judgments — **how bad it is when the rule isn't followed**, and **what kind of cost that is** —
+because a reader deciding whether to adopt a pack, or which of its findings to fix first, is asking
+exactly that and can otherwise only get it by reading every rule.
+
+The prose index lists **every** rule, in the order `RULES.md` states them, with its word count:
+
+```markdown
+## Rules (`RULES.md`)
+
+| Rule | Words | Severity | Reason | How enforced |
+|---|---|---|---|---|
+| Keep the tile provider's attribution — it's a licence term, not decoration. | 52 | critical | legal | prose + check (`leaflet/tile-attribution`) |
+```
+
+- **Rule** — the rule's own lead-in, kept short enough to scan.
+- **Words** — the length of that rule's bullet (or section, for a pack whose rules are written as
+  sections), counted by [`../packs-tests/rule-index.mjs`](../packs-tests/rule-index.mjs). It is what
+  the rule *costs*: every declaring repo pays these words in every session's context.
+- **Severity** — the consequence of ignoring the rule: `critical` (it ships a defect to users,
+  loses data, breaks the fleet, or violates a licence or platform policy), `high` (the work lands
+  wrong or silently doesn't work and someone must redo it), `medium` (rework or drift caught inside
+  the repo), `low` (friction or untidiness only). Not the same axis as a check's `severity` field,
+  which says how the *engine* reports a finding — a check table spells that under **Reported as**.
+- **Reason** — the kind of cost: `correctness`, `performance`, `complexity`, or `legal` (licence,
+  privacy, disclosure, store or platform policy). One per rule, the dominant one.
+- **How enforced** — `prose`, or `prose + check (id)` where a check carries the same rule.
+
+The checks index does the same for every rule the pack runs, its own and its skills' alike:
+
+```markdown
+## Checks
+
+| Check | Reported as | Severity | Reason | Enforces |
+|---|---|---|---|---|
+| `leaflet/tile-attribution` | blocking | critical | legal | a tile layer keeps its provider attribution |
+```
+
+Both indexes are held to the tree by [`../packs-tests/rule-index.test.mjs`](../packs-tests/rule-index.test.mjs):
+the rows must match `RULES.md` one-for-one with the right word counts, every check the pack runs must
+appear, and both vocabularies are closed. That guard is what makes a second listing of the rules safe
+here — an earlier hand-kept index drifted into claiming a prose rule that never existed (#777) — so
+recount a rule's row in the same change that edits its prose, and add a check's row in the change
+that declares it.
 
 ## Pack badge (`badge`)
 
@@ -253,10 +301,10 @@ manifest.
 | **Hardcoded conformance checks** | **92** — every rule the runner carries: each pack's own, its bundled skills' checks, and the contributed barriers, plus the canon home's own [canon-curation](../.claudinite/local/packs/canon-curation/README.md) and [claudinite](../.claudinite/local/packs/claudinite/RULES.md) local packs |
 | PreToolUse guard | 1 (remote-branch-delete) |
 | Platform setting | 1 (squash-only) |
-| **Prose rules** — packs + practice skills + baseline | **~150** |
+| **Prose rules** — every rule in a pack's `RULES.md` | **343** across 21 packs, **18,485 words** |
 | Prose — research-project playbook (class pack) | 54 |
-| Prose — spec-driven-product playbook (class pack) | 25 |
+| Prose — spec-driven-product playbook (class pack) | 26 |
 
-The check count is **derived, not maintained**: `check_the_world.mjs --list` prints the catalog a rule at a time (id, severity, description, doc pointer), and a guard in `packs-tests/` fails when this table disagrees with it. Read the per-pack breakdown off `--list` rather than trusting a hand-written split — the previous one drifted to 41 against a real 65, and the ratio it fed was wrong by a third. The prose figures have no such source; they are estimates from the conversion audit ([../docs/conversion-inventory.md](../docs/conversion-inventory.md)) and are only as fresh as it is.
+Both counts are **derived, not maintained**, and guarded in `packs-tests/`: `check_the_world.mjs --list` prints the check catalog a rule at a time (id, severity, description, doc pointer), and the prose figures are the packs' own rule indexes summed. Read the per-pack breakdown off `--list` and off each pack README's index rather than trusting a hand-written split — the previous check split drifted to 41 against a real 65, and the ratio it fed was wrong by a third.
 
-**Ratio ≈ 65 hardcoded : ~150 prose ≈ 1 : 2.3** (~30% of rules mechanized). Read against the *convertible* subset it is higher still, though the audit's own arithmetic has been overtaken: it found ~45 rules with any static signature — the other ~105 judgment, in-flight process, or runtime knowledge that *should* stay prose — and the check count has since passed that estimate, so treat ~45 as that audit's floor rather than a live ceiling. The `prose-to-checks` sweep keeps working the remainder; its adversarial pass rejects candidates whose detection would false-positive (the two SAM YAML checks needed a structural parser to stay FP-free), so the yield is deliberately small and high-precision.
+**Ratio ≈ 92 hardcoded : 343 prose ≈ 1 : 3.7** (~21% of rules mechanized). Read against the *convertible* subset it is higher still, though the audit's own arithmetic has been overtaken: it found ~45 rules with any static signature — the other ~105 judgment, in-flight process, or runtime knowledge that *should* stay prose — and the check count has since passed that estimate, so treat ~45 as that audit's floor rather than a live ceiling. The `prose-to-checks` sweep keeps working the remainder; its adversarial pass rejects candidates whose detection would false-positive (the two SAM YAML checks needed a structural parser to stay FP-free), so the yield is deliberately small and high-precision.

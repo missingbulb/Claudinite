@@ -12,11 +12,13 @@ prod backend. Declared when a project approaches shipping, like
 > release through it yet. Expect refinement — and conformance checks, mirroring
 > chrome-extension-release's — when the first release exercises it.
 
-## Prose (`RULES.md`) — by section
+## Rules (`RULES.md`)
 
-| Section (≤5 words) | How enforced |
-|---|---|
-| Committed default is dev, always | prose (+ guard tests at release) |
-| Prod config is pipeline-injected | prose (+ release-workflow gate) |
-| Attestation beats provenance | prose (App Check enforcement) |
-| Promotion is deliberate, dev automatic | prose |
+| Rule | Words | Severity | Reason | How enforced |
+|---|---|---|---|---|
+| Two fully separate Firebase projects | 20 | critical | correctness | prose |
+| Everything committed points at dev | 40 | critical | correctness | prose |
+| Dev builds coexist with prod installs | 25 | medium | complexity | prose |
+| Guard tests pin the contract | 31 | high | correctness | prose |
+| The release workflow fails if any injected variable is unset | 43 | high | correctness | prose |
+| Dev keeps the App Check debug provider | 59 | medium | correctness | prose |

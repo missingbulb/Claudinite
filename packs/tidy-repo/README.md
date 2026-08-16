@@ -9,6 +9,13 @@ repo in the sweep; removing it is a durable opt-out (baselining never re-adds it
 work is a maintenance task, not checks. Its policy (`RULES.md`): assess PRs and branches read-only, act
 only on issues.
 
+## Rules (`RULES.md`)
+
+| Rule | Words | Severity | Reason | How enforced |
+|---|---|---|---|---|
+| Branches, PRs — assess only. | 34 | critical | correctness | prose |
+| Issues — act. | 125 | medium | correctness | prose |
+
 ## Maintenance tasks
 
 One task per dimension. Each is triggered by the only thing that changes its answers, scoped to

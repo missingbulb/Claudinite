@@ -7,14 +7,6 @@ mounts two action skills, [`jwt-minting`](skills/jwt-minting/SKILL.md) and
 and in CI — each failure message is the rule. What a static sweep cannot judge (key-type/API
 discipline, nested-JWT validation, JWE vs JWS guarantees) lives in the skills, read at usage time.
 
-| Rule (≤5 words) | How enforced |
-|---|---|
-| Never accept alg none | skill check `jwt-none-not-accepted` |
-| Pin verification algorithms | skill check `jwt-verify-pins-algorithms` |
-| Bind audience/issuer at verify | skill check `jwt-verify-binds-audience` (advisory) |
-| No secrets in source | skill check `jwt-hardcoded-secret` |
-| Minted tokens expire | skill check `jwt-sign-sets-expiry` (advisory) |
-
 One scheduled task, [`jwt-advisory-watch`](tasks/jwt-advisory-watch/task.md) (monthly, assess-only):
 JWT libraries have a history of critical vulnerabilities, and an advisory can publish while the
 repo's own history stands still — so the watch runs on the calendar, not on repo movement, and
@@ -26,3 +18,13 @@ clients is [`chrome-extension`](../chrome-extension/README.md)'s.
 
 _Provenance: distilled from **The JWT Handbook** (Sebastián E. Peyrott, Auth0, v0.14.2) — chapters
 2–6 (applications, JWS/JWE/JWK structure) and Annex A (pitfalls, attacks, best current practices)._
+
+## Checks
+
+| Check | Reported as | Severity | Reason | Enforces |
+|---|---|---|---|---|
+| `jwt-none-not-accepted` | blocking | critical | correctness | a verifier never accepts `alg: none` — an unsigned token's claims are attacker-written |
+| `jwt-verify-pins-algorithms` | blocking | critical | correctness | verification pins its algorithm allowlist rather than reading the attacker-written header |
+| `jwt-verify-binds-audience` | advisory | high | correctness | verification binds audience and issuer, so a token minted for another service does not pass |
+| `jwt-hardcoded-secret` | blocking | critical | correctness | no signing secret in source — it ships with every clone and grants full minting power forever |
+| `jwt-sign-sets-expiry` | advisory | high | correctness | a minted token carries `exp`: stateless validation has no revocation, so a leak is otherwise permanent |

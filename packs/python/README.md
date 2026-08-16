@@ -6,13 +6,22 @@ into check-the-work rules (mounted via the [`python-optional-deps`](skills/pytho
 skill, run at every Stop and in CI — each failure message is the rule); the rest is
 architecture judgment with no false-positive-free signature, kept as prose.
 
-| Rule (≤5 words) | How enforced |
-|---|---|
-| Import optional deps lazily | skill check `python-optional-import-top-level` |
-| `ImportError` re-raise names the extra | skill check `python-optional-import-install-hint` (advisory) |
-| Core importable with stdlib only | prose (`RULES.md`) |
-| Stdlib backend keeps tests dep-free | prose (`RULES.md`) |
-| `# noqa: F401` the availability probe | prose (`RULES.md`) |
+## Rules (`RULES.md`)
+
+| Rule | Words | Severity | Reason | How enforced |
+|---|---|---|---|---|
+| Keep the importable core dependency-free; heavy/native deps go in optional extras, not base dependencies | 98 | high | complexity | prose + skill check (`python-optional-import-top-level`) |
+| Provide a stdlib-only implementation behind the same interface so tests and offline modes need no extra | 113 | medium | complexity | prose |
+| Mark the availability-probe import as a deliberate unused-import suppression | 67 | low | complexity | prose + skill check (`python-optional-import-install-hint`) |
+
+## Checks
+
+Both ride the [`python-optional-deps`](skills/python-optional-deps/SKILL.md) skill's bundle.
+
+| Check | Reported as | Severity | Reason | Enforces |
+|---|---|---|---|---|
+| `python-optional-import-top-level` | blocking | high | correctness | an optional extra is imported lazily, not at module top level |
+| `python-optional-import-install-hint` | advisory | medium | complexity | the `ImportError` re-raise names the extra to install |
 
 The two checks are gated on the repo declaring `[project.optional-dependencies]` in a
 `pyproject.toml` — the only place a package is declared optional, which is what makes a

@@ -18,15 +18,32 @@ pixel-exact snapshots), missingbulb/TLDR (adds the cross-tier `server` kind), an
 missingbulb/ShoutsAndWhispers (`dev/requirements/` — the Flutter port: golden-file rendering, the
 fake-world harness, and the `saga` storyboard kind's first implementation).
 
-## Prose (`RULES.md`) — by section
+## Rules (`RULES.md`)
 
-| Section (≤5 words) | How enforced |
-|---|---|
-| The layout is the contract | prose (+ the project's coverage gate) |
-| What the coverage gate checks | prose (checklist the project's gate implements) |
-| The kind vocabulary | prose |
-| Sagas: stories as storyboards | prose (+ the project's saga runner) |
-| Determinism or it isn't spec | prose (+ the project's harness) |
-| Rendering recipes per stack | prose |
-| The gallery is derived output | prose (+ the project's gallery gate) |
-| Refresh is a review step | prose (judgment: spec-driven-product + writing-tests) |
+| Rule | Words | Severity | Reason | How enforced |
+|---|---|---|---|---|
+| A requirement line | 42 | medium | complexity | prose |
+| The line is a scannable one-liner; expanded detail collapses. | 77 | low | complexity | prose |
+| The folder is the kind. | 41 | medium | complexity | prose |
+| Artifact expecteds live beside their case | 66 | medium | complexity | prose |
+| surface snapshot | 33 | medium | correctness | prose |
+| behavior | 22 | medium | correctness | prose |
+| logic | 12 | low | correctness | prose |
+| saga | 10 | low | correctness | prose |
+| per-project kinds | 41 | low | complexity | prose |
+| heavy/e2e singleton | 21 | medium | performance | prose |
+| Strip dead delay, keep the animation. | 49 | medium | performance | prose |
+| Lossless, so byte-identity still holds. | 70 | high | correctness | prose |
+| Mark the gesture. | 30 | medium | correctness | prose |
+| Pin the clock. | 26 | high | correctness | prose |
+| Fake every nondeterministic input | 31 | high | correctness | prose |
+| Load real fonts | 51 | high | correctness | prose |
+| Never wait for "settled". | 21 | high | correctness | prose |
+| Browser-extension / DOM products | 58 | medium | correctness | prose |
+| Flutter | 91 | medium | correctness | prose |
+
+## Checks
+
+| Check | Reported as | Severity | Reason | Enforces |
+|---|---|---|---|---|
+| `feature-requirements-first` | blocking | high | correctness | a feature reaches the requirements document before the code that implements it |

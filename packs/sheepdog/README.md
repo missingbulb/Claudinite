@@ -89,3 +89,9 @@ primitives, including the one that fires a member's scheduler) and
 
 The rest of the machinery — running the daily-run, the task engine (`engine/scheduler/`), scheduling —
 is Claudinite **core**. Carries no conformance checks. Policy + config: [RULES.md](RULES.md).
+
+## Checks
+
+| Check | Reported as | Severity | Reason | Enforces |
+|---|---|---|---|---|
+| `fleet-pack-seed-agrees` | blocking | medium | correctness | the fleet's seeded-pack list agrees with what the enforcer actually standardizes on, so a seed cannot be enforced in one place and absent in the other |
