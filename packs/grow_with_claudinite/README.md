@@ -184,9 +184,10 @@ Markdown (a repo with no local packs yet simply has nothing to extract, dedup, o
 project adopts the structure via the `generate-project-instructions` skill).
 
 Prefer the strongest mechanism the lesson allows — the **local promotion ladder**, applied at the
-project's own level: a deterministic rule becomes a **check** in the owning pack's `rules` (its
-failure message carries the lesson), an activity-scoped procedure becomes a **pack skill**, and only
-what neither can carry lands as **prose** in a pack's `RULES.md`. A check relieves every session's
+project's own level: a deterministic rule becomes a **check** whose failure message carries the lesson —
+a **declared** one in the owning pack's `declared-checks.json` wherever patterns over files can say it,
+a **rule module** in its `rules` only where they can't — an activity-scoped procedure becomes a **pack
+skill**, and only what none of those can carry lands as **prose** in a pack's `RULES.md`. A check relieves every session's
 context completely where prose only relocates it, so capture writes *more checks and less prose*.
 
 The stages differ only in *how they read that set*, never in *which set it is*: extract and dedup

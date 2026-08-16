@@ -49,10 +49,19 @@ Read `.claudinite/shared/packs/directory.GENERATED.md` (canon-side `packs/direct
 which states every canon pack's boundary including the ones this repo doesn't hold. Where the owning
 pack's stated territory is merely too narrow, propose widening it rather than routing around it.
 
-1. **A check** in that pack's rules — author the `.mjs`, list it on the pack's `pack.mjs`, ship it with a
-   red-first fixture. Its failure message *is* the lesson.
-2. **A pack skill**, when the lesson is an activity-scoped procedure rather than a condition.
-3. **Terse prose** in the pack's `RULES.md` — only what neither of the above can carry.
+1. **A declared check** — an entry in that pack's `declared-checks.json`, whose `failureMessage` *is* the
+   lesson. Nothing wires it: writing the declaration adds the check. This is the first rung to try for any
+   lesson whose whole logic is "these patterns over these files", and most captured conditions are.
+2. **A custom code rule** — a `<rule>.mjs` exporting `run(ctx)`, listed on the pack's `pack.mjs` — only
+   when the check needs what patterns can't say: real parsing, structured-data field logic, git/diff or
+   conversation state, a derived comparison. Reaching for code where a declaration would do costs a module
+   to read and maintain for nothing.
+3. **A pack skill**, when the lesson is an activity-scoped procedure rather than a condition.
+4. **Terse prose** in the pack's `RULES.md` — the fallback, only what none of the above can carry.
+
+Either check rung ships with a **red-first fixture**; the declaration vocabulary is documented in
+[`pattern-rules.mjs`](../../engine/checks/helpers/pattern-rules.mjs)'s header, and the authoring shape for
+both rungs in [`engine/checks/README.md`](../../engine/checks/README.md#adding-a-rule).
 
 Write **more checks and less prose**: a check relieves every session's context completely, where prose only
 relocates it. When no pack's scope fits, the lesson lands in the repo's general local pack. A **new** local
