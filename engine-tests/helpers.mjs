@@ -1,3 +1,6 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { buildContext } from '../engine/checks/helpers/repo-context.mjs';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
@@ -110,4 +113,58 @@ export function cleanup(root) {
   // throws ENOTEMPTY. rmSync retries that error class with linear backoff — without it
   // a healthy run reddens CI (seen on PR #255).
   rmSync(root, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
+}
+
+/**
+ * Table-driven rule testing — a test case is its data: a repo shape in, the
+ * expected findings out. Each entry in `clean` / `flagged` registers one
+ * node:test; makeRepo / buildContext / try-finally-cleanup live here so the
+ * test file reads as fixture -> expectation and nothing else.
+ *
+ *   ruleTester(rule, {
+ *     clean: {
+ *       'the safe state stays silent': { files: { 'a.txt': 'ok\n' } },
+ *     },
+ *     flagged: {
+ *       'the hazard is reported at its line': {
+ *         files: { 'a.txt': 'bad\n' },
+ *         at: [{ file: 'a.txt', line: 1, what: /bad/ }],
+ *       },
+ *     },
+ *   });
+ *
+ * A case's repo shape: `files` commits on the feature branch (makeRepo
+ * `changed`), `base` on main, `uncommitted` stays untracked; `mode` defaults
+ * to 'all'. A flagged case's `at` lists every expected finding in engine
+ * order; each expectation may pin `file` (exact), `line` (exact — a finding
+ * with no line anchor carries the explicit `line: null`), `severity` (exact),
+ * and `what` / `fix` (regexes). Keys an expectation omits are not judged.
+ */
+export function ruleTester(rule, { clean = {}, flagged = {} }) {
+  const runCase = (c) => {
+    const root = makeRepo({ base: c.base ?? {}, changed: c.files ?? {}, uncommitted: c.uncommitted ?? {} });
+    try {
+      return rule.run(buildContext({ root, mode: c.mode ?? 'all' }));
+    } finally { cleanup(root); }
+  };
+  for (const [name, c] of Object.entries(clean)) {
+    test(`${rule.id}: ${name}`, () => {
+      assert.deepEqual(runCase(c), []);
+    });
+  }
+  for (const [name, c] of Object.entries(flagged)) {
+    test(`${rule.id}: ${name}`, () => {
+      const findings = runCase(c);
+      assert.equal(findings.length, c.at.length,
+        `expected ${c.at.length} finding(s), got ${findings.length}: ${JSON.stringify(findings, null, 2)}`);
+      c.at.forEach((expected, i) => {
+        const got = findings[i];
+        if ('file' in expected) assert.equal(got.file, expected.file);
+        if ('line' in expected) assert.equal(got.line, expected.line);
+        if ('severity' in expected) assert.equal(got.severity, expected.severity);
+        if ('what' in expected) assert.match(got.what, expected.what);
+        if ('fix' in expected) assert.match(got.fix, expected.fix);
+      });
+    });
+  }
 }
