@@ -8,13 +8,14 @@ or a numbered **finding**. The findings ledger at the end classifies every
 finding and says what was done about it — some amended DESIGN.md in this same
 change, some are owner calls added to its §15.
 
-> **Read §H first for the current mechanism.** Sections A–G record rounds one
-> and two (the tick-evaluates models); the owner's **standing-item model**
-> (2026-08-13) replaced generation, and §H replays everything it touches —
-> where A–G conflict with §H, §H is the design as it stands. The earlier
-> sections are kept because the findings they produced (the leases, the
-> hand-off retry, the guards) are unchanged and their reasoning is the
-> record.
+> **Read §H, then §I, for the current mechanism.** Sections A–G record rounds
+> one and two (the tick-evaluates models); the owner's **standing-item model**
+> (2026-08-13) replaced generation, and §H replays everything it touches. §I
+> records the **work-as-work review** (2026-08-15) — the correction that the
+> work step IS the work — and the invocation reversal (at-most-once, the
+> agent lease deleted) decided the same day: where earlier sections conflict
+> with §I, §I is the design as it stands. The superseded sections are kept
+> because their reasoning is the record.
 >
 > **The scenarios are executable.** [`sim/`](sim/) holds a discrete-event
 > simulator of the mechanism (virtual clock, no threads, no waits) and
@@ -40,9 +41,9 @@ A fictional but realistic repo, tasks drawn from the real fleet:
 
 Constants: tick cron minute **:17** (hourly); executor = post-tick drain job +
 `task:ready`-labeled event runs; janitor = a daily item around 04:00; leashes —
-`task:executing` 1h, `task:agent` 3h, unpicked-`task:ready` ~2 periods.
-"E1/E2" are executor iterations (workflow runs); "the API" is the CCR
-session-creation call.
+`task:executing` 1h, `task:agent` 3h, unpicked-`task:ready` ~2 periods; work-step
+heartbeat every **15m** (§I). "E1/E2" are executor iterations (workflow runs);
+"the API" is the CCR routine-fire call, made **once per item, never retried** (§I).
 
 ---
 
@@ -661,31 +662,184 @@ design at each unmodeled boundary — is
 
 **Verdict: holds with one deliberate rule, now in §5's pseudocode.**
 
+## I. The work-as-work review (owner corrections, 2026-08-15)
+
+Two owner rulings landed the same day, and this section replays what they
+touch. First the **invocation reversal** (recorded in DESIGN §6.6/§7/§15.11
+when the mechanism was built): the routine-fire endpoint has no idempotency
+key, and the owner's correction was *don't create the duplicates* — one call
+per item, never retried, so at-least-once invocation, the hand-off retry (F3)
+and the agent-side claim lease (F5) all delete. Then the **work-as-work
+correction**: *"The pre work is not pre work. It's work. Sometimes there's
+also agentic work. The work can take time. The work can crash. The work
+creates PRs. The work is a lot."* The executor-side work step is the whole
+task for most of the fleet; every sizing assumption built on "the drain is
+quick" was re-derived. The simulator was brought up to both in this same
+change — the sections below supersede S9/S10/S31 as previously written.
+
+### S9/S10, replayed under at-most-once invocation
+
+- **S9a (refused)**: the endpoint answers with an error — a token, URL or
+  routine is wrong, which no retry fixes. The item converges `needs-human` at
+  once, naming the cause; zero sessions exist. (Replaces the bounded
+  revert-and-retry of F3, which assumed retrying was safe.)
+- **S10a (unanswered, session started)**: the call times out client-side but
+  did create a session. Nothing retries — so exactly one session exists, and
+  it converges the item itself. The duplicate-session problem F5's lease
+  solved can no longer occur.
+- **S10b (unanswered, no session)**: the call created nothing. The item stays
+  `task:agent` wearing the outcome-unknown comment, silent, until the
+  janitor's agent leash brings it to triage within hours. The cost of never
+  guessing is bounded latency on a rare platform failure — the trade the
+  owner chose over any path that could put two sessions on one item.
+
+### S31, replayed under the heartbeat (F20 — the leash inflation)
+
+F17 as first written made the executing leash exceed every task's work bound —
+which, once the work step is priced as the work, inflates the leash to the
+heaviest task in the fleet and slows every dead-executor recovery to match.
+The heartbeat replaces that arithmetic:
+
+- **S31**: the wiring check shrinks to the one relation the heartbeat needs —
+  interval well inside the leash; a violating configuration is refused at
+  construction.
+- **S31b**: with heartbeats switched off, the original livelock is still
+  demonstrable — a silent long work step is reclaimed alive every cycle,
+  re-executes forever, never converges. This is why the heartbeat is
+  contract, not courtesy.
+- **S31c**: a 130-minute work step heartbeats through two leash windows, is
+  never reclaimed, and converges once — long work is now legal.
+- **S31d**: the runner dies 40 minutes into that work; heartbeats stop, and
+  the reclaim lands within ~leash of the last heartbeat — recovery is bounded
+  by the leash, never by the work's duration. The re-pick converges (the work
+  step's re-entrancy contract, F12, unchanged).
+
+### S33 — the readiness re-check at close (F1, reopened)
+
+Two fan-out members converge; the close of the second readies the fan-in **in
+code, within the minute**, and the follow-on drain runs it — no tick in the
+path (`ready` carries `by: close`). S4 gains the matching assertion on the
+yield side: the chain's dependent is picked within minutes of its upstream
+closing. A close by hand still runs no engine code; S18 keeps the tick as
+that path's backstop, unchanged.
+
+### S34/S36 — run granularity, and what causes the next run (F23)
+
+The first simulator brought up to this review still modeled the executor as an
+instantaneous loop: all picked items' work phases started in the same virtual
+instant, nothing bounded a run, and no test could say *which run* did *what* —
+exactly the shape F21 warned about, reproduced in the model meant to catch it
+(owner question, 2026-08-15: *"asserted that each executor run completes just
+one task from the queue? Have you simulated what causes the next executor
+run?"*). The sim now models runs as first-class objects. **A run performs one
+item** — not a bound but the executor's essence (owner, same day: *"An
+executor performs a task. It's not a current value. It's the essence of
+it."*): claim, see it to its settle (roll, close, hand-off, failure), end.
+**Every run records its cause**: `tick-drain` — the cron workflow's own drain
+job, started by the job graph, no event involved; `label-event` — a foreign
+token's `task:ready`/`task:urgent`; `close-drain` — the converge path, when
+its readiness re-check leaves something pickable; `re-dispatch` — a finished
+run chaining a fresh one via `workflow_dispatch`, which the default
+`GITHUB_TOKEN` may fire; `failure-redispatch` — the workflow's continuation
+job (S36 below). And the pick order is **urgent first, then random among the
+ready** (owner, same day — the stale-ready escalation is period-scale, so
+nothing leaned on oldest-first), seeded in the sim so scenarios replay
+identically.
+
+- **S34** (two tasks with real work plus the day's rolls): every completed
+  run settled **at most one item**, the working runs exactly one; both work
+  items converged well inside the hour, so the record must show — and does —
+  `tick-drain` first, then `re-dispatch`/`close-drain` chaining the queue
+  dry with no second cron fire involved.
+- **S36** (the broken train — owner question: *"the 2nd executor fails, or
+  dies, or times out — what will cause the third executor to start?"*): five
+  tasks with work; the run executing one of them dies two minutes in. Its
+  ordinary re-dispatch never fires — it fires at run *end* — and the answer
+  is the **failure-continuation job**: `needs: execute`, `if: failure() ||
+  cancelled()`, run by the platform on a fresh runner even after a timeout,
+  cancellation, or runner loss, its one step re-dispatching the workflow. The
+  test asserts the four unaffected items drained within minutes with no cron
+  fire involved, the crashed item alone waited out the leash reclaim and then
+  converged, and no run ever settled more than its one item. The hourly tick
+  drain remains the backstop for the case where the whole run vanishes,
+  continuation job included.
+
+### S37/S38 — the operator hold, and resume (owner, 2026-08-16)
+
+The cancellation-intent question: a user cancelling one executor run almost
+always means *"this run is stalled — let the system move on"*, and the
+mechanism already treats it exactly so (cancellation = crash: the failure
+continuation keeps the train moving, the leash frees the item). The intent it
+can never express is *"stop processing"*, so that one is a lever:
+**`CLAUDINITE_TASKS_SUSPEND_ALL`**, a repo Actions variable every Claudinite
+workflow checks as its first act, exiting cleanly having fired nothing.
+
+- **S37 (the hold)**: five tasks mid-drain; the variable set at 04:30. No
+  pick, no evaluation happens after the hold — but an in-flight run finishes
+  its item (suspension gates *starts*, not running work), the in-flight
+  continuation's one re-dispatch parks at its first act, every later cron
+  fire exits as a recorded `suspended-skip`, and every never-picked item
+  freezes as `task:ready`, untouched — the hold is stateless.
+- **S38 (cancel + suspend, then resume)**: the user cancels a stalled run
+  mid-work AND suspends before its continuation lands — intent 2 overrides
+  intent 1's train, the continuation's re-dispatch parks. Hours later the
+  variable is cleared, **and nothing else is done**: the next cron tick alone
+  reclaims the cancelled run's long-silent claim, readies what came due, and
+  its drain converges the whole queue. The impatient path — a hand-dispatched
+  *scheduler* run (tick + drain), not a bare executor run — is the same
+  recovery a minute sooner; a bare executor would drain ready items but skip
+  the reclaim/ready half.
+
+### The prose-only findings (no scenario can carry them)
+
+- **F19 — a long drain starves the tick.** The drain job shares the cron
+  workflow's serializing `concurrency` group, so once the heartbeat legalizes
+  multi-hour work, a busy drain holds the next hourly fire — instantiation,
+  readiness and the leash reclaim all stall behind the very work they
+  schedule. Fixed in DESIGN §10: the serialization scopes to the tick alone;
+  executor work runs outside it. The sim cannot see workflow concurrency
+  (unsimulated-world row); the migration burst verifies the wiring.
+- **F21 — throughput was priced as if drains were free.** A drain's real
+  throughput is its serial work-step occupancy — one item per run — so
+  executor width and the re-dispatch chain are the capacity, with self-re-dispatch as the
+  drain-until-empty shape and the oldest-first fairness exposure named and
+  accepted. DESIGN §10 carries the model.
+- **F22 — the durable record was implicit.** Actions logs expire; for an
+  agentless run — the majority, under this review's premise — the item's
+  terminal comment is the only durable trace, so it must carry the
+  `claudinite-task-exec` record and every artifact the work created. DESIGN
+  §6.5 makes it contract.
+
 ---
 
 ## Findings ledger
 
 | # | severity | what | resolution |
 |---|---|---|---|
-| **F5** | **design bug** | CCR invocation is at-least-once under timeout retry → two sessions on one item (S10) | **fixed in DESIGN §6/§7**: the verified lease is required at the agent hop — agent claims with the executor's invocation nonce, earliest claim wins |
+| **F5** | **design bug** | CCR invocation is at-least-once under timeout retry → two sessions on one item (S10) | first fixed with an agent-side claim lease; **superseded 2026-08-15 (§I)**: invocation is at-most-once — one call per item, never retried — so no second session can exist and the lease deleted (S10a/S10b are the replacement tests; the nonce survives as a replay check) |
 | **F9** | **design bug** | same-tick `after` wiring depends on task iteration order (S4) | first fixed by topological iteration; **retired unbuilt** by the standing-item model — `after` moved to the pick-time yield (S23/S24), so creation order stopped mattering |
 | **F6** | **design bug** | forcing can run a task concurrently with itself (S15) | **fixed in DESIGN §6/§8**: same-title pick mutex + create-time warning; the standing-item model removes the common case outright (force = wake the existing item, S14′) |
-| **F3** | policy gap | as-written hand-off failure policy turns platform blips into triage load (S9) | **fixed in DESIGN §6**: bounded revert-to-ready with attempt counter; `needs-human` at N attempts |
+| **F3** | policy gap | as-written hand-off failure policy turns platform blips into triage load (S9) | first fixed with bounded revert-and-retry; **superseded 2026-08-15 (§I)**: no retry exists to bound — refused converges `needs-human` at once (S9a), unanswered is settled by the agent leash (S10b) |
 | **F12** | contract gap | prework re-runs after an executor death; re-entrancy was never stated (S8) | **fixed in DESIGN §6**: re-entrancy is an explicit prework requirement (it was already implicitly required today) |
 | **F13** | **design bug** | the occurrence guard's created-at half alone double-executes: a rolled item that runs today was created yesterday, so after it closes the same-day tick creates a second item for the same occurrence (S26) | **fixed in DESIGN §5**: the guard is created-at-or-after A *or closed*-at-or-after A. Caught by the simulator's first run — no prose replay had seen it |
 | **F14** | **design bug** | a blocked item whose dependency never resolves waits silently forever: §11 claimed the stale escalation covers it, but that rule keys on ready-age and a blocked item is never ready (S18's fan-in) | **fixed in DESIGN §11**: a third janitor rule — blocked with unresolved blockers past ~2 days gets an escalation comment, labels untouched. Caught by making S18 executable |
 | **F15** | **design bug** | the pick filters (same-title mutex, `after` yield) read stale state — two executors can claim different items the filters should serialize (S32) | **fixed in DESIGN §6.1**: post-claim re-verify; the later claim (comment order) reverts itself to ready |
 | **F16** | implicit assumption | the occurrence guards assume the tick's REST list sees creations from prior runs; GitHub documents no cross-node freshness bound (S30) | **made explicit + defended in DESIGN §5**: the tick self-heals — more than one open family item closes all but the oldest |
-| **F17** | **design bug** | a prework bound reaching the executing leash livelocks the occurrence: reclaimed alive every cycle, prework re-runs forever, never converges (S31) | **fixed in DESIGN §11**: leash > prework-timeout as a wiring conformance check, plus the executor re-verifying its own lease at every state transition |
+| **F17** | **design bug** | a work bound reaching the executing leash livelocks the occurrence: reclaimed alive every cycle, the work re-runs forever, never converges (S31b) | first fixed as leash > work-bound; **reframed 2026-08-15 (§I, F20)**: heartbeat comments during the work step — the leash measures executor death, not work duration; the wiring check shrinks to heartbeat interval < leash (S31, S31c, S31d); the transition lease re-verify stays |
 | **F18** | **design bug** | lifetime-scoped claim arbitration lets dead claims (from reverts/reclaims) outrank every future claimant — the item livelocks; masked in single-executor tests (S32) | **fixed in DESIGN §6.2**: the arbiter is episode-scoped — earliest claim since the item last became ready, by comment id |
 | **F11** | implementation constraint | guards over the search index race its lag; back-to-back serialized ticks make it sharp (S6) | **fixed in DESIGN §5**: guards read the REST issue list, never search |
 | **F7** | doc gap | no written path from `needs-human` back to execution (S12, S19) | **fixed in DESIGN §4**: strip `needs-human` + apply `task:ready` is the sanctioned re-queue |
 | **F4** | **decided** | executing-leash reclaim on the daily janitor = up to ~25h stall for a dead executor (S8) | **accepted 2026-08-13**: the reclaim rides the tick (deterministic label rule, ~2h worst case); janitor keeps the judgment sweeps — DESIGN §11 |
 | **F10** | **decided** | mid-window firing costs up to 24 precondition evaluations + signal collections per unfired daily occurrence (S1/S3) | **resolved twice**: first by the go/no-go ruling (one verdict per occurrence — which required a ledger read), then properly by the standing-item model (S1′): the verdict is one-per-period at pick, the memory is the item's own `Not-before`, no ledger at all |
-| **F1** | **decided** | chain readiness quantized to the tick, ~1h/link (S4) | **declined 2026-08-13**: the tick's readiness job stays the single site; ~1h/link is within tolerance |
+| **F1** | **decided** | chain readiness quantized to the tick, ~1h/link (S4) | declined 2026-08-13; **reopened and accepted 2026-08-15 (§I)**: under the work-as-work model the ~1h/link stacks on drain occupancy — whoever closes an item re-checks its dependents' readiness in code, the tick stays the backstop (S33, S4) |
 | **F2** | dissolved | an occurrence that fires-and-obsoletes is spent for the period (S13) | the standing-item model has no fire-then-obsolete path for scheduled work — the pick verdict is the only verdict, and a no-go rolls (S13′) |
 | — | accepted | fan-in stalls on one stuck child until a human acts (S18) | documented here; no quorum/deadline semantics at this scale |
 | **F8** | migration detail | signal collectors' self-trigger exclusions must cover `[claudinite-work]` titles and the new labels | **noted in DESIGN §14** |
+| **F19** | **design bug** | a long drain holds the cron workflow's concurrency group and starves the hourly tick — legal the moment the heartbeat legalizes multi-hour work (§I) | **fixed in DESIGN §10**: the serialization scopes to the tick alone; executor work runs outside it. Unsimulable (workflow concurrency); the migration burst verifies the wiring |
+| **F20** | **design bug** | one global executing leash must exceed the heaviest task's work bound, so a single slow task slows every dead-executor recovery fleet-wide (§I) | **fixed in DESIGN §6.5/§11**: heartbeat comments during the work step; F17's wiring check reframed (S31, S31b, S31c, S31d) |
+| **F21** | sizing gap | throughput was priced as if drains were free; a drain's real throughput is its serial work-step occupancy (§I) | **stated in DESIGN §10**: `maxItems` and executor width as the primary capacity parameters, self-re-dispatch for drain-until-empty, the oldest-first fairness exposure named |
+| **F22** | contract gap | the durable per-run record was implicit — Actions logs expire, and an agentless run leaves no other trace (§I) | **fixed in DESIGN §6.5**: the terminal comment carries the `claudinite-task-exec` record and every artifact the work created |
+| **F23** | **sim fidelity bug** | the simulator modeled the executor as an instantaneous unbounded loop — items' work started concurrently, nothing modeled run boundaries or what triggers the next run — so F21's occupancy model had no executable teeth (§I) | **fixed in the sim**: a run performs one item (structural — DESIGN §15.22), picks urgent-then-random, and records its trigger, the failure continuation included (§15.23); asserted by S34/S36, with S4's chain re-verified under it |
 
 What the exercise did **not** find: any scenario where work is lost silently,
 executed with no record, or where two mechanisms disagree about an item's
