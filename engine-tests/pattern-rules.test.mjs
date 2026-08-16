@@ -1,11 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, cleanup, writeFiles, ruleTester } from './helpers.mjs';
+import { makeRepo, cleanup, writeFiles, git, ruleTester } from './helpers.mjs';
 import { buildContext } from '../engine/checks/helpers/repo-context.mjs';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { patternRule, loadDeclaredChecks } from '../engine/checks/helpers/pattern-rules.mjs';
+import { runRule } from '../engine/checks/helpers/work.mjs';
 
 // The declarative engine's own contract, proven over fixture rules — the pack
 // declarations built on it are proven by their packs' existing tests.
@@ -1314,6 +1315,174 @@ ruleTester(patternRule({
       at: [
         { file: 'a.yml', line: 3, what: /reads secrets\.DEPLOY_ARN/ },
         { file: 'a.yml', line: 10, what: /reads secrets\.PUBLISH_ARN/ },
+      ] },
+  },
+});
+
+// The work scope: a declaration that judges the CHANGE. Its assertions read the
+// branch's commits and the base's parsed files, so they run through runRule's
+// dispatch (the ruleTester's own path) rather than the file scan.
+ruleTester(patternRule({
+  ...meta('fx-work-commits'),
+  scope: 'work',
+  checkBranchCommits: [{
+    someMessageMatches: /#\d+/,
+    unlessOnDefaultBranch: true,
+    what: 'none of the {commits} commit(s) since {base} references an issue (#N)',
+    fix: 'reference the issue in a commit message',
+  }],
+}), {
+  clean: {
+    'a commit message referencing an issue': { files: { 'f.txt': 'x\n' }, commitMsg: 'work Refs #12' },
+    'a branch with no commits of its own asserts nothing': { files: {} },
+  },
+  flagged: {
+    'no commit since the base references one': {
+      files: { 'f.txt': 'x\n' }, commitMsg: 'no reference here',
+      at: [{ file: '(branch)', line: null, what: /none of the 1 commit\(s\) since \S+ references an issue/ }],
+    },
+  },
+});
+
+ruleTester(patternRule({
+  ...meta('fx-work-added-values'),
+  scope: 'work',
+  forbidAddedValueInArray: [{
+    filesMatching: /(^|\/)manifest\.json$/,
+    whereFileContains: /"manifest_version"/,
+    atFields: ['permissions', 'host_permissions'],
+    what: 'this change adds the "{value}" permission',
+    fix: 'open the tracking issue for {value}',
+  }],
+}), {
+  clean: {
+    'a permission already in the base is not an addition': {
+      base: { 'app/manifest.json': '{"manifest_version":3,"permissions":["storage"]}' },
+      files: { 'app/manifest.json': '{"manifest_version":3,"permissions":["storage"],"version":"2"}' },
+    },
+    'a document the content probe rejects is not read': {
+      files: { 'decoy/manifest.json': '{"permissions":["cookies"]}' },
+    },
+  },
+  flagged: {
+    'each value the change adds, across every listed field': {
+      base: { 'app/manifest.json': '{"manifest_version":3,"permissions":["storage"]}' },
+      files: { 'app/manifest.json': '{"manifest_version":3,"permissions":["storage","tabs"],"host_permissions":["https://x.io/*"]}' },
+      at: [
+        { file: 'app/manifest.json', line: null, what: /adds the "tabs" permission/ },
+        { file: 'app/manifest.json', what: /adds the "https:\/\/x\.io\/\*" permission/ },
+      ],
+    },
+    'a file the change creates outright adds every value in it': {
+      files: { 'app/manifest.json': '{"manifest_version":3,"permissions":["alarms"]}' },
+      at: [{ file: 'app/manifest.json', what: /adds the "alarms" permission/ }],
+    },
+  },
+});
+
+test('forbidIntroducedMergeCommits: one finding per merge the work introduces, none for the base\'s own', () => {
+  const rule = patternRule({
+    ...meta('fx-work-merges'),
+    scope: 'work',
+    forbidIntroducedMergeCommits: { what: 'merge commit introduced by this change: {subject}', fix: 'rebase to drop it' },
+  });
+  const introduced = makeRepo({ changed: { 'f.txt': 'x\n' } });
+  git(introduced, 'checkout', '-q', '-b', 'side');
+  writeFiles(introduced, { 's.txt': 'x\n' });
+  git(introduced, 'add', '-A');
+  git(introduced, 'commit', '-q', '-m', 'side work');
+  git(introduced, 'checkout', '-q', 'feature');
+  git(introduced, 'merge', '-q', '--no-ff', '-m', 'merge side into feature', 'side');
+  const linear = makeRepo({ changed: { 'f.txt': 'x\n' } });
+  try {
+    const findings = runRule(rule, ctxOf(introduced));
+    assert.equal(findings.length, 1);
+    assert.match(findings[0].what, /merge side into feature/);
+    assert.match(findings[0].file, /^feature@/);
+    assert.equal(runRule(rule, ctxOf(linear)).length, 0);
+  } finally { cleanup(introduced); cleanup(linear); }
+});
+
+test('the work assertions are authoring errors outside the work scope, and scope takes only "work"', () => {
+  assert.throws(() => patternRule({
+    ...meta('fx-work-unscoped'),
+    checkBranchCommits: [{ someMessageMatches: /#\d+/, what: 'w', fix: 'f' }],
+  }), /scope: "work"/);
+  assert.throws(() => patternRule({ ...meta('fx-work-bad-scope'), scope: 'world' }), /"scope"/);
+});
+
+// The third scanFiles form: the scan set is named by a field of another parsed
+// document, resolved against that document's own directory. Its target is
+// dropped when the naming file points outside the scan set — the check has
+// nothing to say about a file this checkout doesn't carry.
+ruleTester(patternRule({
+  ...meta('fx-named-scan'),
+  scanFiles: {
+    inParsedFilesMatching: /(^|\/)manifest\.json$/,
+    whereFileContains: /"manifest_version"\s*:\s*3/,
+    namedByField: 'background.service_worker',
+  },
+  matchLines: [{ match: /speechSynthesis/, what: 'window API in the named worker', fix: 'move it' }],
+}), {
+  clean: {
+    'the same hazard in a file nothing names is out of scope': { files: {
+      'app/manifest.json': '{"manifest_version":3,"background":{"service_worker":"sw.js"}}',
+      'app/sw.js': 'const x = 1;\n',
+      'app/page.js': 'speechSynthesis.speak(u);\n',
+    } },
+    'a manifest the content probe rejects names nothing': { files: {
+      'app/manifest.json': '{"manifest_version":2,"background":{"service_worker":"sw.js"}}',
+      'app/sw.js': 'speechSynthesis.speak(u);\n',
+    } },
+    'a named file this checkout does not carry is dropped': { files: {
+      'app/manifest.json': '{"manifest_version":3,"background":{"service_worker":"dist/bundle.js"}}',
+    } },
+  },
+  flagged: {
+    'the named worker is scanned, resolved against the manifest\'s own directory': { files: {
+      'app/manifest.json': '{"manifest_version":3,"background":{"service_worker":"../shared/sw.js"}}',
+      'shared/sw.js': 'const u = 1;\nspeechSynthesis.speak(u);\n',
+    },
+      at: [{ file: 'shared/sw.js', line: 2, what: /window API in the named worker/ }] },
+  },
+});
+
+// The same form with a suffix and a declared default — a config naming a
+// DIRECTORY — feeding a parsed assertion over whatever the scan selected.
+ruleTester(patternRule({
+  ...meta('fx-named-scan-dir'),
+  scanFiles: {
+    inParsedFilesMatching: /^([^/]+\/)?config\.json$/,
+    namedByField: 'functions.source',
+    defaultingTo: 'functions',
+    withSuffix: '/package.json',
+  },
+  scanTracked: true,
+  checkParsedFiles: [{
+    everyScannedFile: true,
+    requireFieldMatching: { field: 'engines.node', pattern: /\S/ },
+    what: 'a deployed codebase with no engines.node pin', fix: 'pin the Node major',
+  }],
+}), {
+  clean: {
+    'the named package pins the field': { files: {
+      'config.json': '{"functions":{"source":"fns"}}',
+      'fns/package.json': '{"engines":{"node":"22"}}',
+    } },
+    'a config naming no codebase selects nothing': { files: {
+      'config.json': '{"hosting":{"public":"public"}}',
+      'functions/package.json': '{"name":"not-deployed"}',
+    } },
+  },
+  flagged: {
+    'every entry of an array field fans out, and an absent name falls to the declared default': { files: {
+      'config.json': '{"functions":[{"source":"a"},{"codebase":"unnamed"}]}',
+      'a/package.json': '{"name":"a"}',
+      'functions/package.json': '{"engines":{"node":"  "}}',
+    },
+      at: [
+        { file: 'a/package.json', line: null, what: /no engines\.node pin/ },
+        { file: 'functions/package.json', what: /no engines\.node pin/ },
       ] },
   },
 });

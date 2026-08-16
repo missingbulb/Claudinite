@@ -1,5 +1,27 @@
 [
   {
+    "id": "web-speech-no-window-api-in-service-worker",
+    "severity": "blocking",
+    "failureMessage": "the recognition API and speechSynthesis live on window, which a service worker has none of — referencing them there throws or reads undefined, so the listen or speak silently never happens",
+    "scanFiles": {
+      "inParsedFilesMatching": "/(^|\\/)manifest\\.json$/",
+      "whereFileContains": "/\"manifest_version\"\\s*:\\s*3/",
+      "namedByField": "background.service_worker"
+    },
+    "matchLines": [
+      {
+        "match": "/\\b(webkitSpeechRecognition|SpeechRecognitionPhrase|SpeechRecognition)\\b/",
+        "what": "constructs or references the Web Speech recognition API in the MV3 service worker",
+        "fix": "move the listening half to a content script, side panel, popup or offscreen document — recognition needs a document"
+      },
+      {
+        "match": "/\\b(speechSynthesis|SpeechSynthesisUtterance)\\b/",
+        "what": "references speechSynthesis in the MV3 service worker, where it is undefined",
+        "fix": "speak from the worker with chrome.tts (extension-only, needs the \"tts\" permission); reserve speechSynthesis for a document context"
+      }
+    ]
+  },
+  {
     "id": "web-speech-recognition-feature-detected",
     "severity": "advisory",
     "failureMessage": "Chrome exposes recognition only under the webkit prefix and other contexts may expose neither, so the bare prefixed constructor throws a ReferenceError wherever that global is absent",

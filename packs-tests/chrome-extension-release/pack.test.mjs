@@ -2,6 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup, declaredCheck } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { runRule } from '../../engine/checks/helpers/work.mjs';
 import releasePack from '../../packs/chrome-extension-release/pack.mjs';
 import releaseWorkflows from '../../packs/chrome-extension-release/release-workflows.mjs';
@@ -12,7 +15,9 @@ const versionSync = declaredCheck('packs/chrome-extension-release', 'cer/version
 const releaseLayout = declaredCheck('packs/chrome-extension-release', 'cer/release-layout');
 const readmeSections = declaredCheck('packs/chrome-extension-release', 'cer/readme-sections');
 const privacyPermissionAlignment = declaredCheck('packs/chrome-extension-release', 'cer/privacy-permission-alignment');
-import permissionAddedStoreIssue from '../../packs/chrome-extension-release/permission-added-store-issue.mjs';
+const permissionAddedStoreIssue = declaredCheck('packs/chrome-extension-release', 'cer/permission-added-store-issue');
+
+const repoRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 
 const run = (rule, root, opts) => runRule(rule, buildContext({ root, mode: 'all' }), opts);
 
@@ -354,4 +359,16 @@ test('readme-sections: flags a README missing the Install or Releasing section',
     assert.equal(findings.length, 1);
     assert.match(findings[0].what, /Releasing/);
   } finally { cleanup(root); }
+});
+
+// The four store-reviewed permission keys are spelled twice in this pack's
+// declarations — the privacy check quantifies over their values, the
+// permission-added check watches the same arrays for growth — and a declaration
+// borrows nothing, so the drift guard lives here rather than in a shared module.
+test('the permission-alignment and permission-added declarations watch the same manifest keys', () => {
+  const specs = JSON.parse(readFileSync(join(repoRoot, 'packs/chrome-extension-release/declared-checks.json'), 'utf8'));
+  const byId = (id) => specs.find((s) => s.id === id);
+  assert.deepEqual(
+    byId('cer/permission-added-store-issue').forbidAddedValueInArray[0].atFields,
+    byId('cer/privacy-permission-alignment').extractValueSets[0].valuesOfArraysAtFields);
 });
