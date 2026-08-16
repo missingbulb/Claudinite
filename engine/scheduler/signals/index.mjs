@@ -11,15 +11,6 @@
 
 import { LOCAL_PACK_ROOTS } from './local.mjs';
 
-// A file belonging to a shared pack, in the two-root form: the mount prefix is
-// optional because the canon home runs this same code from the repo root, where
-// its shared packs sit at `packs/` and nothing is vendored under
-// `.claudinite/shared/`. Mount-only, the sharedMount signal was permanently dead
-// in the one repo whose canon moves every day. A LOCAL pack
-// (`.claudinite/local/packs/…`) matches neither root, which is the intent: it is
-// what a consumer of this signal prunes, never the yardstick.
-const MOUNT_PACK_FILE = /^(?:\.claudinite\/shared\/)?packs\/([^/]+)\/.+/;
-
 // A default-branch commit is genuine project work unless it is bot/CI
 // housekeeping or one of Claudinite's own automated writes — the same exclusions
 // the fleet planner applies (kept in sync), extended with the scheduler's own
@@ -215,29 +206,18 @@ const COLLECTORS = {
   },
 
   // Which DECLARED packs' vendored files changed in the window — the local echo
-  // of "canon changed" (replaces the cross-repo relevantCanonChanged) — and the
-  // FILES that moved inside them, grouped by pack, plus the window start they
-  // moved within. The pack name alone tells a consumer nothing about what
-  // changed, which sends it re-reading a whole corpus; the file list turns that
-  // into a diff it can read. It costs nothing: the commit file lists are already
-  // in hand for the pack derivation itself.
+  // of "canon changed" (replaces the cross-repo relevantCanonChanged).
   async sharedMount(gh, ctx) {
     const commits = ctx.commits ?? await windowCommits(gh, ctx.repo, ctx.defaultBranch, ctx.sinceIso);
     const declared = new Set(ctx.activePacks ?? []);
-    const changed = new Map();
+    const changed = new Set();
     for (const c of commits) {
       for (const f of c.files) {
-        const m = MOUNT_PACK_FILE.exec(f);
-        if (!m || !declared.has(m[1])) continue;
-        if (!changed.has(m[1])) changed.set(m[1], new Set());
-        changed.get(m[1]).add(f);
+        const m = /^\.claudinite\/shared\/packs\/([^/]+)\//.exec(f);
+        if (m && declared.has(m[1])) changed.add(m[1]);
       }
     }
-    return {
-      changedPacks: [...changed.keys()],
-      changedFiles: Object.fromEntries([...changed].map(([pack, files]) => [pack, [...files]])),
-      sinceIso: ctx.sinceIso ?? null,
-    };
+    return { changedPacks: [...changed] };
   },
 
   // The conversation-logs orphan branch: present, and the age of its oldest JSONL

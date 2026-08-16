@@ -172,23 +172,6 @@ test('localPacks.present reaches growth-dedup, so a repo with none self-skips', 
   });
 });
 
-test('sharedMount.changedFiles reaches growth-dedup, so its dispatch names the diff to read', async () => {
-  // The unit tests hand-build the signal; this drives the real ctx (activePacks
-  // off the checkout's own declaration) so the file list and window start cannot
-  // go dead behind a green precondition test.
-  const moved = [
-    [/\/commits\?sha=/, { status: 200, json: [{ sha: 'a', commit: { message: 'Baselining' }, author: { login: 'x' } }] }],
-    [/\/commits\/a$/, { status: 200, json: { files: [{ filename: '.claudinite/shared/packs/basics/RULES.md' }] } }],
-  ];
-  await withRepo(FULL, async (root) => {
-    const signals = await collectSignals(fakeGh(moved), ctxFor(root), ['localPacks', 'sharedMount', 'commits']);
-    assert.deepEqual(signals.sharedMount.changedPacks, ['basics']);
-    const context = dedup.precondition(signals).context.join('\n');
-    assert.match(context, /packs\/basics\/RULES\.md/);
-    assert.match(context, /2026-07-21T00:00:00Z/);
-  });
-});
-
 test('conversationLogs.retentionDays reaches growth-extract, so the age-based prune fires when quiet', async () => {
   await withRepo(FULL, async (root) => {
     const signals = await collectSignals(fakeGh(QUIET), ctxFor(root), ['commits', 'conversationLogs']);

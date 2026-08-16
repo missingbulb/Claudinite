@@ -27,33 +27,30 @@ the canon now covers. It lands the run's prunes through a single PR against the 
   pack names, so there is nothing to match up.) A dispatch with **no** Context block carries no such bound: the
   precondition emits the list only when the mounted canon moved, and its other arm — the repo's own local packs
   changed — deliberately emits none, so that run compares the fresh local items against the whole mounted canon.
-  The Context also names the **canon files that moved** and the **window start** — that is the run's starting
-  point, not a second bound: a prune may still cite an older line in one of those packs.
 - **The repo's local packs.** The set identified in [this pack's README](../../README.md#identifying-a-projects-capture-surface-its-local-packs) —
   everything under `.claudinite/local/packs/` (the legacy `.claudinite/local_packs/` accepted during the
   rename window). That's the corpus this task prunes within; the read-only mounted canon elsewhere under
   `.claudinite/` is never a prune target, only the yardstick you prune *against*.
 
-## Start by reading what the canon changed
+## Start by reading the canon window diff
 
-The run's **first step**, before opening a single local pack: read the mounted canon's diff over the window
-the Context names. A pack id alone would send you re-reading a whole corpus for coverage that mostly predates
-this run; what can *newly* cover a local item is what the canon **added** — a prose line, and just as much a
-check, since a canon check covers an item more strongly than prose does.
+**Prework already ran** — [worker.mjs](worker.mjs), the deterministic first phase of this task — and wrote
+what the mounted canon **added** in this window into the tracking issue's body: per declared pack, the added
+prose lines file by file, and the ids of any checks the window introduced. Your dispatch names that issue.
+**Read it before opening a single local pack.**
 
-The mount is vendored into *this* repo, so its window diff is this repo's own history — no cross-repo read.
-The checkout is shallow, so deepen it to the window first:
+That brief is the run's *starting point*, not a second bound: the Context's pack list is still what a prune
+may cite, so a local item covered by an older line in one of those packs is a legitimate prune when you can
+quote that line. What the brief buys you is attention spent where the *new* coverage is, instead of re-reading
+a corpus whose lines mostly predate this run. It is complete except where it says otherwise — a file whose
+diff was too large to fetch, and a per-file line cap, are both stated in place with the remainder counted; go
+read those files directly.
 
-```sh
-git fetch --shallow-since="<the window start the Context names>" origin <default-branch>
-git log --since="<the window start>" -p -- <the changed canon files the Context names>
-```
+A window in which no declared canon pack moved says so, and that run compares the repo's fresh local items
+against the mounted canon as a whole — the same as a dispatch with no Context block.
 
-The added (`+`) lines are the candidate list; the [skill](../../skills/growth-dedup/SKILL.md) owns what to do
-with them. If the deepen fails — an old git, a proxy refusal — fall back to reading those files whole at their
-current content: less focused, still far narrower than the pack. A dispatch with no Context block (the
-local-packs-changed arm) has no window to diff: those runs compare the fresh local items against the whole
-mounted canon, as before.
+The [skill](../../skills/growth-dedup/SKILL.md) owns what to do with the additions: which are candidates,
+which prune nothing, and why a removed canon line is the reverse signal.
 
 ## The method lives in the skill
 
@@ -90,10 +87,13 @@ The task's standing log is the issue titled exactly, in this repo:
 
 > **Claudinite tracker: Growth Dedup**
 
-Find it **by that exact title, never a fuzzy match or a hard-coded number**. A run that finds no issue under
-the exact title just creates one (closed). **Never open, close, or reopen it** afterward — its state carries no
-meaning, only the log does. Log each run that changed a doc as a **dated comment** — naming what was pruned and
-the canon line that now covers it. A run that prunes nothing logs nothing.
+Find it **by that exact title, never a fuzzy match or a hard-coded number** — prework creates it (closed) when
+no issue carries that title. **Never open, close, or reopen it** — its state carries no meaning, only the log
+does.
+
+Its **body** is prework's, rewritten every run: this window's canon diff, the brief you started from. Leave it
+alone. The **comments** are yours: log each run that changed a doc as a **dated comment** — naming what was
+pruned and the canon line that now covers it. A run that prunes nothing logs nothing.
 
 ## Run on a capable model
 

@@ -208,6 +208,17 @@ test('growth-dedup: weekly/opus/merged-pr — the prune PR is delivered to land'
   assert.deepEqual(dedup.precondition_signals, ['localPacks', 'sharedMount', 'commits']);
 });
 
+test('growth-dedup: prework detects the canon window diff before the agentic phase', () => {
+  // The detection is deterministic code over commit records, so it is prework's
+  // half — inside the pack, beside task.mjs. The bound stays under the executor's
+  // claim leash, which validateTaskDeclaration enforces for every task.
+  assert.equal(dedup.prework, 'node worker.mjs');
+  assert.ok(Number.isInteger(dedup.prework_timeout) && dedup.prework_timeout > 0);
+  // Prework + a non-`none` agent_model is the CONDITIONAL hand-off, so the model
+  // has to stay declared or the judgment half never runs.
+  assert.equal(dedup.agent_model, 'opus');
+});
+
 test('growth-dedup: no local packs → never runs, whatever else moved', () => {
   const none = { localPacks: { present: false, changedInWindow: true }, sharedMount: { changedPacks: ['basics'] } };
   assert.equal(dedup.precondition(none).run, false);
@@ -218,35 +229,6 @@ test('growth-dedup: with local packs, a declared pack moving in the mount fires 
   assert.equal(v.run, true);
   assert.match(v.reason, /basics/);
   assert.match(v.context.join(' '), /basics/);
-});
-
-test('growth-dedup: the Context names the changed FILES and the window start, so the run starts from the diff', () => {
-  // Naming only the pack sends the run to re-read a whole corpus for coverage
-  // that mostly predates the window. What newly covers a local item is what the
-  // canon ADDED in the window — prose lines and checks alike — so the dispatch
-  // hands over the file list and the date to diff from (#912).
-  const v = dedup.precondition({
-    localPacks: { present: true, changedInWindow: false },
-    sharedMount: {
-      changedPacks: ['basics'],
-      changedFiles: { basics: ['.claudinite/shared/packs/basics/RULES.md', '.claudinite/shared/packs/basics/declared-checks.json'] },
-      sinceIso: '2026-08-09T00:00:00Z',
-    },
-  });
-  const context = v.context.join('\n');
-  assert.match(context, /basics\/RULES\.md/);
-  assert.match(context, /basics\/declared-checks\.json/);
-  assert.match(context, /2026-08-09/);
-});
-
-test('growth-dedup: an older collector carrying no file list still dispatches on the pack names alone', () => {
-  // The signal collector is engine code, vendored; a member on a mount that
-  // predates the changedFiles field must still get a usable dispatch rather
-  // than a Context asserting an empty file list.
-  const v = dedup.precondition({ localPacks: { present: true, changedInWindow: false }, sharedMount: { changedPacks: ['basics'] } });
-  assert.equal(v.run, true);
-  assert.match(v.context.join('\n'), /basics/);
-  assert.doesNotMatch(v.context.join('\n'), /undefined|\[object/);
 });
 
 test('growth-dedup: a local-pack change in the window fires it; a quiet repo does not', () => {
