@@ -11,37 +11,37 @@ mechanics for the CI that runs the lane).
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| SwiftPM builds a binary; nothing builds you a .app. | high | correctness | prose: 49 words |
-| Commit one high-resolution icon master and generate the .icns | low | complexity | prose: 44 words |
+| SwiftPM builds a binary, not a .app | high | correctness | prose: 49 words |
+| Commit an icon master, generate .icns | low | complexity | prose: 44 words |
 | A menu-bar-only app is LSUIElement: true | medium | correctness | prose: 23 words |
-| Pin LSMinimumSystemVersion to the same OS version the package's platforms: declares. | high | correctness | prose: 30 words |
+| Pin LSMinimumSystemVersion to the package's platform | high | correctness | prose: 30 words |
 | Notarization requires the Hardened Runtime | critical | legal | prose: 64 words |
-| Capabilities gated purely by TCC plus their usage string need no entitlement at all | medium | correctness | prose: 41 words |
-| Do not enable the App Sandbox on the Developer ID track. | high | correctness | prose: 40 words |
-| SFSpeechRecognizer streams audio to Apple's servers by default. | critical | legal | prose: 70 words |
-| The opt-in is only honourable where the locale's model is installed. | high | correctness | prose: 74 words |
-| The unsigned path must stay a working path. | medium | complexity | prose: 57 words |
+| TCC-gated capabilities need no entitlement | medium | correctness | prose: 41 words |
+| No App Sandbox on Developer ID | high | correctness | prose: 40 words |
+| SFSpeechRecognizer streams to Apple by default | critical | legal | prose: 70 words |
+| On-device opt-in needs the locale's model | high | correctness | prose: 74 words |
+| The unsigned path stays a working path | medium | complexity | prose: 57 words |
 | An ad-hoc signature cannot be notarized. | high | legal | prose: 40 words |
 | Notarize the distributed container, then staple it | high | legal | prose: 41 words |
-| In CI, an imported identity must be in the searchable keychain list. | medium | correctness | prose: 53 words |
-| Say out loud, in a build annotation, which lane ran. | medium | complexity | prose: 27 words |
-| A drag-to-install DMG is a staged folder, not Finder scripting. | medium | complexity | prose: 55 words |
-| Write the Gatekeeper bypass for the OS your users are on. | medium | correctness | prose: 51 words |
-| A notarized build should need none of that | low | complexity | prose: 26 words |
+| A CI identity joins the searchable keychain | medium | correctness | prose: 53 words |
+| Annotate which signing lane ran | medium | complexity | prose: 27 words |
+| A drag-install DMG is a staged folder | medium | complexity | prose: 55 words |
+| Write the Gatekeeper bypass users actually have | medium | correctness | prose: 51 words |
+| A notarized build needs no bypass | low | complexity | prose: 26 words |
 | Diagnostics belong inside the shipped app | medium | complexity | prose: 33 words |
-| command -v swift does not test for a Swift toolchain. | medium | correctness | prose: 62 words |
+| command -v swift doesn't test the toolchain | medium | correctness | prose: 62 words |
 | NSApplication installs no signal handlers. | high | correctness | prose: 75 words + check (`signal-teardown-routing`) |
-| An uncaught Objective-C exception is an exit path too. | high | correctness | prose: 63 words |
-| There is no "the machine is back" notification. | high | correctness | prose: 57 words |
+| An uncaught Objective-C exception is an exit | high | correctness | prose: 63 words |
+| There is no wake notification | high | correctness | prose: 57 words |
 | Coalesce with an id, not a boolean. | high | correctness | prose: 50 words |
-| asyncAfter work scheduled before sleep fires immediately on wake. | high | correctness | prose: 65 words |
-| Measure a span that includes a sleep with Date(), not ProcessInfo.systemUptime. | high | correctness | prose: 45 words |
-| Release the device on every path where capture ends. | critical | correctness | prose: 52 words |
-| Never construct a capture engine to ask whether a device exists. | high | correctness | prose: 104 words |
+| asyncAfter fires immediately on wake | high | correctness | prose: 65 words |
+| Measure a span across sleep with Date() | high | correctness | prose: 45 words |
+| Release the device on every capture path | critical | correctness | prose: 52 words |
+| Never build an engine to probe devices | high | correctness | prose: 104 words |
 | Presence is not usability, at either layer. | high | correctness | prose: 121 words |
-| A duration is a claim about a span you observed. | high | correctness | prose: 119 words |
+| A duration claims a span you observed | high | correctness | prose: 119 words |
 | "Started" is not "working". | high | correctness | prose: 50 words |
-| Compile-green is not a gate for device code. | high | correctness | prose: 81 words |
+| Compile-green is no gate for device code | high | correctness | prose: 81 words |
 
 ## Checks
 

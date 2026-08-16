@@ -12,10 +12,10 @@ reports it.
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Reading a rule, check or skill that arrived from Claudinite | high | correctness | prose: 43 words + check (`claudinite-isolation`) |
+| Reading a rule that arrived from Claudinite | high | correctness | prose: 43 words + check (`claudinite-isolation`) |
 | Wanting a pack's rules to apply here | high | correctness | prose: 47 words + check (`core-declared`) |
 | Adding a pack | medium | complexity | prose: 27 words |
-| Setting a project up on Claudinite for the first time | medium | complexity | prose: 15 words |
+| Setting a project up on Claudinite | medium | complexity | prose: 15 words |
 | Deciding which pack owns a lesson | medium | complexity | prose: 59 words |
 | Judging whether Claudinite is current here | medium | correctness | prose: 43 words |
 | Writing or changing a scheduled task | high | correctness | prose: 26 words + checks (`task-declaration-shape`, `task-declaration-matches-folder`) |

@@ -14,33 +14,33 @@ without firing on ordinary HTTP code.
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Adding a source, or deciding what to parse | medium | complexity | prose: 90 words |
+| Adding a source, or what to parse | medium | complexity | prose: 90 words |
 | A rendered-snapshot expectation shifting after a re-record | medium | correctness | prose: 31 words |
 | Learning something non-obvious by probing the service | medium | complexity | prose: 71 words |
 | Writing the fetch itself | medium | correctness | prose: 44 words |
 | Deciding whether to retry a failed request | medium | correctness | prose: 43 words |
-| Porting a fetch to a language-level HTTP client | medium | correctness | prose: 47 words |
+| Porting a fetch to an HTTP client | medium | correctness | prose: 47 words |
 | Setting the retry budget | medium | performance | prose: 38 words |
-| One item in a batch failing to fetch | high | correctness | prose: 30 words |
+| One item in a batch failing | high | correctness | prose: 30 words |
 | A sandbox refusing the target host | critical | legal | prose: 80 words |
-| A fetch that works on your machine and fails from CI | medium | correctness | prose: 108 words |
-| Needing many items from a service with no list endpoint | medium | performance | prose: 66 words |
-| A fetch that cannot produce a page at all | medium | correctness | prose: 66 words |
+| A fetch that fails only in CI | medium | correctness | prose: 108 words |
+| Needing many items with no list endpoint | medium | performance | prose: 66 words |
+| A fetch that cannot produce a page | medium | correctness | prose: 66 words |
 | Deciding whether a fetch succeeded | high | correctness | prose: 55 words |
 | Getting an empty body back | high | correctness | prose: 36 words |
 | Choosing which field to read | high | correctness | prose: 57 words |
 | Filtering rows by a status | high | correctness | prose: 40 words |
 | Reading a numeric field | high | correctness | prose: 17 words |
-| Reducing a set to its "cheapest" or "first" | medium | correctness | prose: 45 words |
-| Converting an instant to the domain's local time | high | correctness | prose: 132 words |
+| Reducing a set to its cheapest | medium | correctness | prose: 45 words |
+| Converting an instant to local time | high | correctness | prose: 132 words |
 | Taking a "now" | high | correctness | prose: 38 words |
 | Parsing a value whose format is ambiguous | high | correctness | prose: 129 words |
 | Changing the conversion | high | correctness | prose: 78 words |
-| Emitting a value your pipeline hasn't reached yet | high | correctness | prose: 64 words |
+| Emitting a value the pipeline hasn't reached | high | correctness | prose: 64 words |
 | Deciding what a fetch writes to disk | medium | complexity | prose: 128 words |
 | Re-running a fetch that already ran | medium | correctness | prose: 70 words |
 | Scheduling the refresh | medium | correctness | prose: 75 words |
-| Generating the artifacts downstream of the stored data | medium | correctness | prose: 55 words |
+| Generating artifacts from the stored data | medium | correctness | prose: 55 words |
 
 ## Skill
 

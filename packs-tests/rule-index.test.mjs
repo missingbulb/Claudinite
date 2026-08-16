@@ -102,6 +102,10 @@ test('every rule-index row draws its severity and reason from the closed vocabul
         REASONS.includes(row.reason),
         `packs/${pack.id}/README.md row "${row.label}" has reason "${row.reason}"; use one of ${REASONS.join(', ')}.`
       );
+      assert.ok(
+        row.label.split(/\s+/).length < 8,
+        `packs/${pack.id}/README.md row "${row.label}" runs to ${row.label.split(/\s+/).length} words; a rule's name stays under 8 — the prose says the rest.`
+      );
     }
   }
 });

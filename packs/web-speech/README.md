@@ -10,21 +10,21 @@ Where a rule touches MV3 service-worker / content-script mechanics that also bea
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| The recognizer owns its own microphone capture — you cannot hand it getUserMedia audio constraints. | high | correctness | prose: 99 words + skill check (`web-speech-capture-released-on-pagehide`) |
-| Read the whole n-best list, not just alternative [0]. | medium | correctness | prose: 33 words |
-| onresult, onend, and onerror all fire — settle the cycle exactly once. | high | correctness | prose: 46 words |
-| With interimResults off, engines omit isFinal — treat a result as final unless isFinal === false. | high | correctness | prose: 35 words |
-| The classic recognizer streams audio to a cloud service (Google's) — plan for it. | critical | legal | prose: 74 words |
-| Contextual biasing (SpeechRecognitionPhrase + recognizer.phrases) works only on the on-device path | medium | correctness | prose: 71 words |
-| Map the raw Web Speech error names to a small taxonomy | medium | complexity | prose: 48 words |
-| A missed endpoint mid-utterance needs a pause watchdog, not just onend. | high | correctness | prose: 82 words |
-| Mic permission is per-origin, and the grant belongs to whatever page the recognizer runs in. | high | correctness | prose: 93 words |
-| Prefer chrome.tts over speechSynthesis — it's immune to page autoplay / user-activation gating. | medium | correctness | prose: 58 words |
-| chrome.tts doesn't exist in a content script — relay speak/cancel to the service worker over a port. | high | correctness | prose: 66 words + skill check (`web-speech-no-window-api-in-service-worker`) |
-| Voice lists load lazily — an empty getVoices() means "not ready yet", not "no voices". | high | correctness | prose: 44 words |
-| Don't trust the OS/browser default voice — it's often the most robotic one installed. | low | correctness | prose: 39 words |
-| Resolve a speak() promise on any terminal event, and never reject. | high | correctness | prose: 60 words |
-| Neither engine reliably supports SSML — you can't force intonation. | low | correctness | prose: 37 words |
+| The recognizer owns its microphone capture | high | correctness | prose: 99 words + skill check (`web-speech-capture-released-on-pagehide`) |
+| Read the whole n-best list | medium | correctness | prose: 33 words |
+| Settle the listen cycle exactly once | high | correctness | prose: 46 words |
+| A missing isFinal means final | high | correctness | prose: 35 words |
+| Classic recognition streams to the cloud | critical | legal | prose: 74 words |
+| Biasing works only on-device | medium | correctness | prose: 71 words |
+| Map error names to a small taxonomy | medium | complexity | prose: 48 words |
+| A missed endpoint needs a pause watchdog | high | correctness | prose: 82 words |
+| Mic permission is per-origin | high | correctness | prose: 93 words |
+| Prefer chrome.tts over speechSynthesis | medium | correctness | prose: 58 words |
+| Relay chrome.tts from a content script | high | correctness | prose: 66 words + skill check (`web-speech-no-window-api-in-service-worker`) |
+| An empty getVoices() means not-ready | high | correctness | prose: 44 words |
+| Don't trust the default voice | low | correctness | prose: 39 words |
+| Resolve speak() on any terminal event | high | correctness | prose: 60 words |
+| Neither engine reliably supports SSML | low | correctness | prose: 37 words |
 
 ## Provenance
 

@@ -145,7 +145,7 @@ The prose index lists **every** rule, in the order `RULES.md` states them:
 | `leaflet/tile-attribution` | critical | legal | check: blocking |
 ```
 
-- **Rule** — the rule's own lead-in, kept short enough to scan. **Check** — its id.
+- **Rule** — a name, under 8 words: enough to find the rule, never a summary of it. **Check** — its id.
 - **Severity** — the consequence of ignoring it: `critical` (ships a defect to users, loses data,
   breaks the fleet, or violates a licence or platform policy), `high` (the work lands wrong or
   silently doesn't work and someone must redo it), `medium` (rework or drift caught inside the

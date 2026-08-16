@@ -6,19 +6,19 @@ Active when the repo has a SAM `template.yaml`/`.yml`.
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| esbuild must be a regular dependency, not a devDependency. | high | correctness | prose: 50 words + check (`aws-sam/esbuild-dependency`) |
-| CloudFront won't forward Authorization via a custom origin-request policy | critical | correctness | prose: 81 words + check (`aws-sam/cloudfront-authorization`) |
-| A deploy role must be able to drive the transform and CloudFront, or change-set creation fails with the real reason hidden. | high | correctness | prose: 79 words |
-| A brand-new AWS account can't create a CloudFront distribution until AWS verifies it. | medium | correctness | prose: 58 words |
-| A failed first CREATE must be cleaned up before you retry. | high | correctness | prose: 54 words |
-| API Gateway HTTP API (v2) rejects a chrome-extension:// origin in CORS AllowOrigins | high | correctness | prose: 51 words |
-| A CDN cache hit is served before the request reaches the origin or its authorizer | critical | correctness | prose: 62 words |
-| Prefer a short CloudFront TTL over per-write cache invalidation. | medium | performance | prose: 48 words |
-| Bundle the AWS SDK into the Lambda artifact rather than relying on the managed runtime's copy. | high | correctness | prose: 59 words |
-| Review the change set before applying — Replacement: True on a stateful resource is a data-loss hard stop. | critical | correctness | prose: 55 words |
-| Adding a DynamoDB GSI does not backfill existing items. | high | correctness | prose: 51 words |
-| A custom request header turns even a public GET into a preflighted CORS request. | medium | correctness | prose: 60 words |
-| Reach AWS from a session with the AWS CLI or a boto3 script — there is no AWS MCP tool. | low | complexity | prose: 96 words |
+| esbuild is a regular dependency | high | correctness | prose: 50 words + check (`aws-sam/esbuild-dependency`) |
+| CloudFront won't forward Authorization | critical | correctness | prose: 81 words + check (`aws-sam/cloudfront-authorization`) |
+| The deploy role drives transform and CloudFront | high | correctness | prose: 79 words |
+| A new account waits for CloudFront verification | medium | correctness | prose: 58 words |
+| Clean up a failed first CREATE | high | correctness | prose: 54 words |
+| HTTP API rejects a chrome-extension:// origin | high | correctness | prose: 51 words |
+| A CDN hit skips the authorizer | critical | correctness | prose: 62 words |
+| Short TTL beats cache invalidation | medium | performance | prose: 48 words |
+| Bundle the AWS SDK into the artifact | high | correctness | prose: 59 words |
+| Review the change set for Replacement | critical | correctness | prose: 55 words |
+| A new GSI doesn't backfill items | high | correctness | prose: 51 words |
+| A custom header preflights any GET | medium | correctness | prose: 60 words |
+| Reach AWS by CLI or boto3 | low | complexity | prose: 96 words |
 
 ## Checks
 

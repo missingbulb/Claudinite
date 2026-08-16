@@ -21,37 +21,37 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | When verifying now is genuinely impossible | medium | complexity | prose: 40 words |
 | Receiving feedback that flags a misunderstanding | medium | complexity | prose: 29 words |
 | Writing anything | low | complexity | prose: 18 words |
-| Correcting or auditing an artifact against an authoritative source | high | correctness | prose: 35 words |
-| Acting on an approval to merge, ship or proceed | high | correctness | prose: 69 words |
+| Auditing an artifact against its source | high | correctness | prose: 35 words |
+| Acting on an approval | high | correctness | prose: 69 words |
 | Searching for a tool with ToolSearch | medium | complexity | prose: 57 words |
 | Calling Edit | low | complexity | prose: 39 words |
 | Needing exact text from the web | high | correctness | prose: 56 words |
-| Hitting a sandbox or proxy that denies a fetch | critical | legal | prose: 64 words |
+| Hitting a denied fetch | critical | legal | prose: 64 words |
 | Seeing a build, test or CI warning | medium | correctness | prose: 28 words |
 | Suppressing a warning | medium | complexity | prose: 74 words + check (`warning-suppression`) |
-| Waiving a finding on text rather than code | low | complexity | prose: 26 words |
-| Working around a finding from a vendored check | medium | complexity | prose: 29 words |
-| Deferring a warning you can't fix now with a small cause-addressing change | medium | complexity | prose: 136 words |
-| Handing over a step only a human can perform | high | complexity | prose: 132 words |
+| Waiving a finding on text | low | complexity | prose: 26 words |
+| Working around a vendored check's finding | medium | complexity | prose: 29 words |
+| Deferring a warning you can't fix now | medium | complexity | prose: 136 words |
+| Handing over a human-only step | high | complexity | prose: 132 words |
 | Naming a file, module, or symbol | low | complexity | prose: 22 words |
-| Referring to a value from more than one place | high | correctness | prose: 117 words + check (`shared-constants`) |
-| Writing file A so it depends on file B | medium | complexity | prose: 48 words |
+| Referring to a value from two places | high | correctness | prose: 117 words + check (`shared-constants`) |
+| Writing a file that depends on another | medium | complexity | prose: 48 words |
 | Committing | medium | complexity | prose: 43 words |
-| Working with a file a test or tool generates | high | correctness | prose: 64 words + check (`generated-merge-driver`) |
-| Writing code that depends on how a platform or runtime behaves | high | correctness | prose: 31 words |
+| Working with a generated file | high | correctness | prose: 64 words + check (`generated-merge-driver`) |
+| Depending on platform or runtime behaviour | high | correctness | prose: 31 words |
 | Optimising | high | correctness | prose: 53 words |
 | Needing a library for a narrow job | medium | complexity | prose: 27 words |
 | Answering an edge case a review raised | medium | complexity | prose: 55 words |
 | Documenting a procedure | medium | complexity | prose: 40 words |
 | Writing code that can silently do nothing | high | correctness | prose: 76 words |
 | Persisting anything on a user's machine | medium | correctness | prose: 43 words |
-| Changing what the software does with a user's data | critical | legal | prose: 90 words |
-| Driving an external runtime more than once in a session | low | complexity | prose: 51 words |
+| Changing what you do with user data | critical | legal | prose: 90 words |
+| Driving an external runtime repeatedly | low | complexity | prose: 51 words |
 | Automating something that needs live conversation context | medium | complexity | prose: 46 words |
-| Writing the exit path of a pipeline or CI step | medium | correctness | prose: 26 words |
+| Writing a pipeline step's exit path | medium | correctness | prose: 26 words |
 | Killing a process by pattern | high | correctness | prose: 34 words |
 | Working in a fresh checkout or sandbox | low | complexity | prose: 54 words |
-| Deciding where a config value or a classification lives | medium | complexity | prose: 69 words |
+| Deciding where a config value lives | medium | complexity | prose: 69 words |
 | Handling a value that can be unknown | high | correctness | prose: 103 words |
 | Writing a check that scans the repo | high | correctness | prose: 93 words |
 | Writing a comment | low | complexity | prose: 93 words |

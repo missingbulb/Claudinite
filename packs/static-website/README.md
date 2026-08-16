@@ -22,13 +22,13 @@ What each holds:
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| A published file is a file the publish set names — adding a page is two edits. | high | correctness | prose: 120 words + check (`sw/site-config`) |
+| The publish set names every published file | high | correctness | prose: 120 words + check (`sw/site-config`) |
 | Never hand-edit the version. | high | correctness | prose: 81 words + check (`sw/version-scheme`) |
-| The pipeline files under .github/workflows/static-site- and .github/actions/{read-site-config,bump-site-version,assemble-site} are managed copies of the pack's stubs/. | high | correctness | prose: 55 words + check (`sw/release-workflows`) |
-| The site is served from a subpath, not a domain root. | high | correctness | prose: 64 words |
-| Freshness is a published manifest's job, not a per-file TTL's. | high | correctness | prose: 174 words |
-| Nothing can attest to its own freshness, and size attests to nothing at all. | high | correctness | prose: 183 words |
-| Two files cached on separate clocks and later joined will be joined across generations — make them a verified set or don't split them. | critical | correctness | prose: 182 words |
-| Don't call missing data survivable until you have followed it to the pixel. | high | correctness | prose: 123 words |
+| The pipeline files are managed stub copies | high | correctness | prose: 55 words + check (`sw/release-workflows`) |
+| The site is served from a subpath | high | correctness | prose: 64 words |
+| Freshness is a published manifest's job | high | correctness | prose: 174 words |
+| Nothing attests to its own freshness | high | correctness | prose: 183 words |
+| Split caches join across generations | critical | correctness | prose: 182 words |
+| Follow missing data to the pixel | high | correctness | prose: 123 words |
 
 The version scheme and the code that computes it live together in [stubs/actions/bump-site-version/bump.mjs](stubs/actions/bump-site-version/bump.mjs) — the checks import `VERSION_RE` from there rather than restating it, so the rule and the bump can't disagree about what a version is.

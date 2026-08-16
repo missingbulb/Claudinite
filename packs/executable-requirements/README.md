@@ -23,7 +23,7 @@ fake-world harness, and the `saga` storyboard kind's first implementation).
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
 | A requirement line | medium | complexity | prose: 42 words |
-| The line is a scannable one-liner; expanded detail collapses. | low | complexity | prose: 77 words |
+| A requirement line is a scannable one-liner | low | complexity | prose: 77 words |
 | The folder is the kind. | medium | complexity | prose: 41 words |
 | Artifact expecteds live beside their case | medium | complexity | prose: 66 words |
 | surface snapshot | medium | correctness | prose: 33 words |

@@ -20,5 +20,5 @@ prod backend. Declared when a project approaches shipping, like
 | Everything committed points at dev | critical | correctness | prose: 40 words |
 | Dev builds coexist with prod installs | medium | complexity | prose: 25 words |
 | Guard tests pin the contract | high | correctness | prose: 31 words |
-| The release workflow fails if any injected variable is unset | high | correctness | prose: 43 words |
+| The release fails on an unset variable | high | correctness | prose: 43 words |
 | Dev keeps the App Check debug provider | medium | correctness | prose: 59 words |

@@ -10,9 +10,9 @@ architecture judgment with no false-positive-free signature, kept as prose.
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Keep the importable core dependency-free; heavy/native deps go in optional extras, not base dependencies | high | complexity | prose: 98 words + skill check (`python-optional-import-top-level`) |
-| Provide a stdlib-only implementation behind the same interface so tests and offline modes need no extra | medium | complexity | prose: 113 words |
-| Mark the availability-probe import as a deliberate unused-import suppression | low | complexity | prose: 67 words + skill check (`python-optional-import-install-hint`) |
+| Keep the importable core dependency-free | high | complexity | prose: 98 words + skill check (`python-optional-import-top-level`) |
+| Ship a stdlib-only backend behind the interface | medium | complexity | prose: 113 words |
+| Mark the availability-probe import suppressed | low | complexity | prose: 67 words + skill check (`python-optional-import-install-hint`) |
 
 ## Checks
 

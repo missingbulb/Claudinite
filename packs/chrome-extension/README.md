@@ -16,29 +16,29 @@ hand-kept one drifted into claiming a prose rule that never existed (#777).
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Handing a path to a Chrome API or fetch from an MV3 service worker | high | correctness | prose: 68 words |
+| Passing a path from a service worker | high | correctness | prose: 68 words |
 | Wanting import/export in extension code | medium | correctness | prose: 51 words |
-| Assembling a shared global from several injected content-script files | high | correctness | prose: 51 words |
-| Accumulating state in a file that is re-injected | high | correctness | prose: 22 words |
-| Loading ES module code into a content script | high | correctness | prose: 118 words + check (`content-script-module-syntax`) |
+| Assembling a shared global across files | high | correctness | prose: 51 words |
+| Accumulating state in a re-injected file | high | correctness | prose: 22 words |
+| Loading module code into a content script | high | correctness | prose: 118 words + check (`content-script-module-syntax`) |
 | Adding an import to a content-script module | high | correctness | prose: 30 words |
 | Keeping that webaccessibleresources list correct | high | correctness | prose: 29 words |
 | Matching a host with chrome.events.UrlFilter | high | correctness | prose: 63 words |
-| Running a content script on arbitrary third-party pages without an install-time host warning | high | legal | prose: 60 words |
-| Starting the service worker when a runtime-granted permission is in play | medium | correctness | prose: 43 words |
-| A fetch to a host you listed failing in-browser | medium | correctness | prose: 42 words |
+| Running on third-party pages without a warning | high | legal | prose: 60 words |
+| Starting the worker on a granted permission | medium | correctness | prose: 43 words |
+| A listed host's fetch failing in-browser | medium | correctness | prose: 42 words |
 | Reaching your own backend | medium | correctness | prose: 35 words |
 | Authenticating an extension to a JWT-validating backend | critical | correctness | prose: 83 words |
 | Refreshing a token silently | medium | correctness | prose: 28 words |
-| Refreshing silently with more than one account signed in | medium | correctness | prose: 41 words |
+| Refreshing silently with two accounts | medium | correctness | prose: 41 words |
 | Storing a token | critical | correctness | prose: 38 words |
-| Wanting a token to survive a browser restart | medium | correctness | prose: 30 words |
+| Keeping a token across a restart | medium | correctness | prose: 30 words |
 | Knowing whether your side panel is open | low | correctness | prose: 37 words |
 | Opening the side panel programmatically | medium | correctness | prose: 15 words |
-| Putting a menu on the toolbar icon itself | low | correctness | prose: 30 words |
-| Recreating those menu items on install or startup | medium | correctness | prose: 30 words |
+| Putting a menu on the toolbar icon | low | correctness | prose: 30 words |
+| Recreating menu items on startup | medium | correctness | prose: 30 words |
 | Awaiting a chrome. callback API inside Runtime.evaluate | low | correctness | prose: 34 words |
-| Reading a worker value from an injected evaluate | low | correctness | prose: 30 words |
+| Reading a worker value over CDP | low | correctness | prose: 30 words |
 | Attaching to a dormant worker | low | correctness | prose: 39 words |
 
 ## Checks

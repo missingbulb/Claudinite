@@ -40,7 +40,7 @@ standard.
 |---|---|---|---|
 | Every page opens with what it found. | medium | complexity | prose: 92 words + check (`product-wiki-key-insights`) |
 | Terse, plain, and only the non-obvious. | low | complexity | prose: 96 words |
-| The header is a current view, not a log. | medium | complexity | prose: 63 words |
+| The header is a current view | medium | complexity | prose: 63 words |
 | The sink is human-reviewed only. | critical | correctness | prose: 56 words |
 | Compile once, refine in place. | medium | complexity | prose: 49 words |
 | Cited, never silently rewritten. | high | correctness | prose: 48 words + check (`product-wiki-sources`) |

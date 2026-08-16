@@ -14,24 +14,24 @@ separation and store gating are deliberately NOT here — that is the opt-in
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| End every ruleset with an explicit catch-all deny | critical | correctness | prose: 24 words |
-| Write rules against merge semantics, not just creates. | critical | correctness | prose: 45 words |
+| End every ruleset with catch-all deny | critical | correctness | prose: 24 words |
+| Write rules against merge semantics | critical | correctness | prose: 45 words |
 | Guard every field dereference for absence. | high | correctness | prose: 33 words |
-| Server-owned fields are absent from the client-allowed key list | critical | correctness | prose: 27 words |
+| Server-owned fields stay off the client list | critical | correctness | prose: 27 words |
 | Pin client timestamps to request.time | high | correctness | prose: 32 words |
 | Bound every client-writable string/blob | high | correctness | prose: 17 words |
 | Admin-SDK code bypasses rules | critical | correctness | prose: 26 words |
-| Identity comes from the verified token, never the request body | critical | correctness | prose: 14 words |
-| Validate inputs at the boundary like an adversary wrote them | critical | correctness | prose: 39 words |
+| Identity comes from the verified token | critical | correctness | prose: 14 words |
+| Validate inputs at the boundary | critical | correctness | prose: 39 words |
 | Rate limits need a transaction. | high | correctness | prose: 39 words |
-| Chunk batched writes well under the 500-op limit | high | correctness | prose: 36 words |
+| Chunk batched writes under the limit | high | correctness | prose: 36 words |
 | Push is best-effort by construction | medium | correctness | prose: 37 words |
 | Extract decision logic into pure modules | medium | complexity | prose: 26 words |
-| When rules themselves are under test, test them empirically | high | correctness | prose: 37 words |
+| Test the rules themselves empirically | high | correctness | prose: 37 words |
 | Cross-language contracts get mirrored test vectors. | high | correctness | prose: 44 words |
 | Keep the Firebase project root self-contained | medium | complexity | prose: 71 words |
-| Commit .firebaserc with named aliases and make the default the safe target | critical | correctness | prose: 31 words |
-| Smoke-load the built entrypoint in the test lane | high | correctness | prose: 36 words + check (`firebase/functions-predeploy-build`) |
+| Commit .firebaserc with a safe default | critical | correctness | prose: 31 words |
+| Smoke-load the built entrypoint | high | correctness | prose: 36 words + check (`firebase/functions-predeploy-build`) |
 
 ## Checks
 
