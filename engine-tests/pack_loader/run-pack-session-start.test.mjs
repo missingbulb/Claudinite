@@ -7,7 +7,6 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { copyLoader } from '../helpers.mjs';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -23,7 +22,10 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 function makeCorpus(packs) {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-corpus-'));
   mkdirSync(join(root, 'packs'), { recursive: true });
-  copyLoader(root);
+  mkdirSync(join(root, 'engine', 'pack_loader'), { recursive: true });
+  for (const f of ['pack-registry.mjs', 'pack-schema.mjs', 'run-pack-session-start.mjs']) {
+    copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', f), join(root, 'engine', 'pack_loader', f));
+  }
   for (const [id, { step, ...manifest }] of Object.entries(packs)) {
     mkdirSync(join(root, 'packs', id), { recursive: true });
     writeFileSync(

@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { makeRepo, cleanup, git, copyLoader } from '../helpers.mjs';
+import { makeRepo, cleanup, git } from '../helpers.mjs';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -19,7 +19,13 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 // one shape, #385).
 function makeCorpus({ packs }, root = mkdtempSync(join(tmpdir(), 'claudinite-corpus-'))) {
   mkdirSync(join(root, 'packs'), { recursive: true });
-  copyLoader(root);
+  mkdirSync(join(root, 'engine', 'pack_loader'), { recursive: true });
+  mkdirSync(join(root, 'engine', 'pack_loader'), { recursive: true });
+  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-registry.mjs'), join(root, 'engine', 'pack_loader', 'pack-registry.mjs'));
+  // The registry validates every manifest against the spec, so the fake corpus
+  // needs the spec module too — it is part of the loader, not an optional extra.
+  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-schema.mjs'), join(root, 'engine', 'pack_loader', 'pack-schema.mjs'));
+  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'mount-skills.mjs'), join(root, 'engine', 'pack_loader', 'mount-skills.mjs'));
   for (const [id, def] of Object.entries(packs)) {
     const { skills = [], ...manifest } = def;
     mkdirSync(join(root, 'packs', id), { recursive: true });

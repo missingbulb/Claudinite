@@ -32,9 +32,6 @@ function makeCanon({ packs = [], skills = [], packDirectory = true } = {}) {
   // The registry validates every manifest against the spec, so the fake corpus
   // needs the spec module too — it is part of the loader, not an optional extra.
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-schema.mjs'), join(root, 'engine', 'pack_loader', 'pack-schema.mjs'));
-  // …and the spec's configSchema seam, plus the finding shape it mints rules with.
-  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'config-schema.mjs'), join(root, 'engine', 'pack_loader', 'config-schema.mjs'));
-  copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'findings.mjs'), join(root, 'engine', 'checks', 'helpers', 'findings.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'module-imports.mjs'), join(root, 'engine', 'checks', 'helpers', 'module-imports.mjs'));
   // The recency predicate the migrations walk shares with check-tolerance.
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'active-migrations.mjs'), join(root, 'engine', 'checks', 'helpers', 'active-migrations.mjs'));
@@ -116,7 +113,6 @@ test('structural set: engine roots + machinery + declared pack + its skills, exa
   assert.deepEqual(errors, []);
   const expected = [
     'engine/checks/helpers/repo-context.mjs',
-    'engine/checks/helpers/findings.mjs',
     'engine/checks/helpers/module-imports.mjs',
     'engine/checks/helpers/pattern-rules.mjs',
     'engine/checks/helpers/active-migrations.mjs',
@@ -127,7 +123,6 @@ test('structural set: engine roots + machinery + declared pack + its skills, exa
     'engine/pack_loader/generate-rules-index.mjs',
     'engine/pack_loader/pack-registry.mjs',
     'engine/pack_loader/pack-schema.mjs',
-    'engine/pack_loader/config-schema.mjs',
     'engine/pack_loader/mount-skills.mjs',
     'engine/version.mjs',
     'packs/alpha/RULES.md',

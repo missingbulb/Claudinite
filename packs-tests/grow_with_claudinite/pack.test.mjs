@@ -7,8 +7,6 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeRepo, cleanup, git, deletePath } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
-import { normalizeManifest } from '../../engine/pack_loader/pack-schema.mjs';
-import growthPack from '../../packs/grow_with_claudinite/pack.mjs';
 import {
   parseLines, bundleStreams, sliceAfter, maxTimestamp, scrub, buildRedactionValues,
   logFilename, parseLogFilename, findTranscript, capture,
@@ -144,44 +142,6 @@ test('findTranscript returns null when there is nothing to find', () => {
     assert.equal(findTranscript({ root: '/x', sessionId: 'whatever', projects }), null);
     assert.equal(findTranscript({ root: '/x', sessionId: 'whatever', projects: join(projects, 'absent') }), null);
   } finally { rmSync(projects, { recursive: true, force: true }); }
-});
-
-// --- the growth-config check --------------------------------------------------
-// Minted from the pack's configSchema, under the id its coded validator had.
-const configCheck = normalizeManifest(growthPack).rules.find((r) => r.id === 'growth-config');
-
-function runConfigCheck(cfg) {
-  const root = makeRepo({ changed: { 'a.txt': 'x\n' } });
-  try {
-    const ctx = buildContext({ root, mode: 'all' });
-    ctx.config = { ...ctx.config, packConfig: { grow_with_claudinite: cfg } };
-    return configCheck.run(ctx);
-  } finally { cleanup(root); }
-}
-
-test('growth-config: absent or empty config is fine (capture-only, promote participating)', () => {
-  assert.deepEqual(runConfigCheck(undefined), []);
-  assert.deepEqual(runConfigCheck(null), []);
-});
-
-test('growth-config: valid retention and promote pass, malformed shapes fail', () => {
-  assert.deepEqual(runConfigCheck({ retention_days: 10 }), []);
-  assert.deepEqual(runConfigCheck({ retention_days: 10, promote: false }), []);
-  assert.deepEqual(runConfigCheck({ promote: true }), []);
-  assert.ok(runConfigCheck({ retention_days: '10' }).length === 1);
-  assert.ok(runConfigCheck({ retention_days: 0 }).length === 1);
-  assert.ok(runConfigCheck({ promote: 'yes' }).length === 1);
-  assert.ok(runConfigCheck({ retention_days: 10, surprise: true }).length === 1);
-  assert.ok(runConfigCheck([]).length === 1);
-});
-
-test('growth-config: pack_paths must be a non-empty array of path strings', () => {
-  assert.deepEqual(runConfigCheck({ pack_paths: ['.claudinite/local/packs'] }), []);
-  assert.deepEqual(runConfigCheck({ pack_paths: ['.claudinite/local/packs', 'packs'] }), []); // Claudinite's own
-  assert.ok(runConfigCheck({ pack_paths: [] }).length === 1);      // empty is a mis-scope
-  assert.ok(runConfigCheck({ pack_paths: '.claudinite/local/packs' }).length === 1); // not an array
-  assert.ok(runConfigCheck({ pack_paths: ['ok', ''] }).length === 1); // an empty string member
-  assert.ok(runConfigCheck({ pack_paths: ['ok', 3] }).length === 1);  // a non-string member
 });
 
 // --- capture end-to-end against a local origin --------------------------------

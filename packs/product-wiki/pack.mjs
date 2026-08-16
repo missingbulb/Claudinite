@@ -46,17 +46,6 @@ export default {
       distill: 'recorded as intent; names the competitor set the initial competitor-landscape wiki is seeded from',
     },
   ],
-  // The pack takes no config — the product-wiki/ layout IS the standard, so an
-  // empty properties set is the whole shape, and a config object on the entry
-  // reads as a knob that works.
-  configSchema: {
-    ruleId: 'product-wiki-config-guard',
-    severity: 'blocking',
-    why: 'an ignored config object reads as a knob that works — the standard has none, so the mistake is surfaced once instead of silently doing nothing',
-    fix: 'remove the "config" object from the product-wiki pack entry (to silence the freshness advisory use rules: {"product-wiki-freshness": "off"})',
-    doc: 'packs/product-wiki/README.md',
-    properties: {},
-  },
   worldRules: [],
   // The pack's scheduled task — wiki-growth, the weekly research pass — lives in
   // this pack's `tasks/wiki-growth/`, discovered by the scheduler's filesystem

@@ -13,12 +13,9 @@
 // system from inside one of its members. The spec is upstream of every pack, so
 // there is nothing to declare and nothing to parse.
 //
-// Filesystem-free by the engine's module rule, and pure: the caller supplies the
-// facts from disk (the `skills/` directory listing), so this module is testable
-// standalone. Its one import — the configSchema seam it delegates that field's
-// validation and rule-minting to — is pure on the same terms.
-
-import { validateConfigSchema, configSchemaRule } from './config-schema.mjs';
+// Dependency-free by the engine's module rule: no imports, no filesystem. The
+// caller supplies the facts from disk (the `skills/` directory listing), so this
+// module is pure and testable standalone.
 
 // The routing budget. Both sides of `ruleRoutingGuidance` become one row of the
 // pack catalog (packs/directory.GENERATED.md), which a session reads when deciding
@@ -84,7 +81,6 @@ export const PACK_FIELDS = {
   env: { describe: 'environment requirements the pack needs to run its checks', valid: isPlainObject },
   questions: { describe: 'the pack adoption-interview questions', valid: (v) => Array.isArray(v) },
   skills: { describe: 'the skill directory names bundled under this pack skills/', valid: isStringArray },
-  configSchema: { describe: "the shape of this pack's own entry config, minting the rule that reports a member's mistake", valid: isPlainObject },
   worldRules: { describe: 'rules auditing repo state (check_the_world)', valid: isRuleArray },
   workRules: { describe: 'rules judging the current change and session (check_the_work)', valid: isRuleArray },
 };
@@ -118,8 +114,6 @@ export function validateManifest(mod, { label, skillDirs = [] } = {}) {
     }
     if (!field.valid(value)) err(`"${key}" is not a valid value`, `${key} is ${field.describe}`);
   }
-
-  if (mod.configSchema !== undefined) validateConfigSchema(mod.configSchema, err);
 
   if (isPlainObject(mod.ruleRoutingGuidance)) {
     for (const side of ['belongs', 'excludes']) {
@@ -175,9 +169,6 @@ export function validateManifest(mod, { label, skillDirs = [] } = {}) {
 // downstream re-decides a rule's scope.
 export function normalizeManifest(mod) {
   const rules = [];
-  // The config-shape rule is minted from the declaration, so a pack states the
-  // shape once instead of carrying a validator that says the same thing.
-  if (mod.configSchema) rules.push(configSchemaRule(mod.id, mod.configSchema));
   for (const [key, scope] of Object.entries(RULE_SCOPES)) {
     for (const rule of mod[key] ?? []) rules.push({ ...rule, scope });
   }

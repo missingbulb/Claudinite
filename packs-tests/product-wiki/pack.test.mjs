@@ -7,7 +7,6 @@ import { fileURLToPath } from 'node:url';
 import { makeRepo, cleanup, writeFiles, declaredCheck } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import pack from '../../packs/product-wiki/pack.mjs';
-import { normalizeManifest } from '../../engine/pack_loader/pack-schema.mjs';
 
 const layout = declaredCheck('packs/product-wiki', 'product-wiki-layout');
 const pageSections = declaredCheck('packs/product-wiki', 'product-wiki-page-sections');
@@ -60,14 +59,12 @@ test('pack manifest: id, marker, the coded rule plus the seven declared checks (
   assert.equal(pack.id, 'product-wiki');
   assert.equal(pack.marker, 'product-wiki/product-requirements/README.md');
   assert.equal(pack.prose, 'RULES.md');
-  // The manifest CODES no rule at all: the config guard is minted from its
-  // configSchema, and the layout skeleton, the page grammar AND the isolation
-  // barrier are declared in declared-checks.json beside it, which the registry
-  // discovers and appends.
+  // The manifest CODES no rule: every one of the pack's checks — the layout
+  // skeleton, the page grammar, the isolation barrier — is declared in
+  // declared-checks.json beside it, which the registry discovers and appends.
   assert.deepEqual(pack.worldRules, []);
-  assert.deepEqual(normalizeManifest(pack).rules.map((r) => r.id), ['product-wiki-config-guard']);
-  const ids = [configGuard, layout, isolation, pageSections, keyInsights, growthLog, sources, freshness].map((r) => r.id);
-  assert.equal(new Set(ids).size, 8);
+  const ids = [layout, isolation, pageSections, keyInsights, growthLog, sources, freshness].map((r) => r.id);
+  assert.equal(new Set(ids).size, 7);
   assert.ok(ids.every((id) => id.startsWith('product-wiki-')));
   assert.deepEqual(pack.requires, ['barriers']);
   assert.equal(pack.contributes, undefined);
@@ -101,22 +98,6 @@ test('layout: missing sink alone yields exactly one finding naming it', () => {
   assert.equal(f.length, 1);
   assert.equal(f[0].file, 'product-wiki/product-requirements/README.md');
   assert.equal(f[0].severity, 'blocking');
-});
-
-// The rule the pack's configSchema mints — the same id its coded validator had,
-// because a member's settings may already address it.
-const configGuard = normalizeManifest(pack).rules.find((r) => r.id === 'product-wiki-config-guard');
-
-test('config-guard: any config object on the pack entry is a blocking settings finding', () => {
-  const f = run(configGuard, SCAFFOLD, { packConfig: {} });
-  assert.equal(f.length, 1);
-  assert.equal(f[0].file, '.claudinite-checks.json');
-  assert.equal(f[0].severity, 'blocking');
-  assert.match(f[0].what, /takes no config/);
-});
-
-test('config-guard: absent packConfig is the normal state and adds nothing', () => {
-  assert.deepEqual(run(configGuard, SCAFFOLD), []);
 });
 
 test('layout: a freshly written, not-yet-staged scaffold satisfies the check', () => {

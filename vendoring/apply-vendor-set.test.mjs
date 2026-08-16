@@ -33,9 +33,6 @@ function makeCanon() {
   // The registry validates every manifest against the spec, so the fake corpus
   // needs the spec module too — it is part of the loader, not an optional extra.
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-schema.mjs'), join(root, 'engine', 'pack_loader', 'pack-schema.mjs'));
-  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'config-schema.mjs'), join(root, 'engine', 'pack_loader', 'config-schema.mjs'));
-  mkdirSync(join(root, 'engine', 'checks', 'helpers'), { recursive: true });
-  copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'findings.mjs'), join(root, 'engine', 'checks', 'helpers', 'findings.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'module-imports.mjs'), join(root, 'engine', 'checks', 'helpers', 'module-imports.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'active-migrations.mjs'), join(root, 'engine', 'checks', 'helpers', 'active-migrations.mjs'));
   // The pattern-check engine the registry reaches for when a pack carries
@@ -167,9 +164,6 @@ test('#328: a canon tree nested in a FOREIGN git repo is rootless — upward .gi
   for (const f of ['apply-vendor-set.mjs', 'compute-vendor-set.mjs']) copyFileSync(join(MOUNT_DIR, f), join(canon, 'vendoring', f));
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-registry.mjs'), join(canon, 'engine', 'pack_loader', 'pack-registry.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-schema.mjs'), join(canon, 'engine', 'pack_loader', 'pack-schema.mjs'));
-  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'config-schema.mjs'), join(canon, 'engine', 'pack_loader', 'config-schema.mjs'));
-  mkdirSync(join(canon, 'engine', 'checks', 'helpers'), { recursive: true });
-  copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'findings.mjs'), join(canon, 'engine', 'checks', 'helpers', 'findings.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'module-imports.mjs'), join(canon, 'engine', 'checks', 'helpers', 'module-imports.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'active-migrations.mjs'), join(canon, 'engine', 'checks', 'helpers', 'active-migrations.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'version.mjs'), join(canon, 'engine', 'version.mjs'));

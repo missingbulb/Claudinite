@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildContext } from '../engine/checks/helpers/repo-context.mjs';
-import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync, cpSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -79,20 +79,6 @@ export function makeRepo({ base = {}, changed = {}, commitMsg = 'change Refs #1'
   }
   writeFiles(root, uncommitted);
   return root;
-}
-
-/**
- * A fake-corpus fixture runs the REAL loader out of a scratch tree: mirror the
- * whole engine/pack_loader/ directory — so a module added there lands in every
- * fixture for free rather than as a hand-listed copy that goes stale — plus the
- * one checks helper it reaches for (the manifest spec's configSchema seam builds
- * its rule with `finding`).
- */
-export function copyLoader(root) {
-  cpSync(join(repoRoot, 'engine', 'pack_loader'), join(root, 'engine', 'pack_loader'), { recursive: true });
-  mkdirSync(join(root, 'engine', 'checks', 'helpers'), { recursive: true });
-  copyFileSync(join(repoRoot, 'engine', 'checks', 'helpers', 'findings.mjs'),
-    join(root, 'engine', 'checks', 'helpers', 'findings.mjs'));
 }
 
 export function deletePath(root, path, commitMsg = 'delete Refs #1') {
