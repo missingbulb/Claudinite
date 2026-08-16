@@ -33,7 +33,7 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Waiving a finding on text | low | complexity | prose: 26 words |
 | Working around a vendored check's finding | medium | complexity | prose: 29 words |
 | Deferring a warning you can't fix now | medium | complexity | prose: 199 words |
-| Handing over a human-only step | high | complexity | prose: 138 words |
+| Handing over a human-only step | high | complexity | prose: 142 words |
 | Naming a file, module, or symbol | low | complexity | prose: 22 words |
 | Referring to a value from two places | high | correctness | prose: 117 words + check (`shared-constants`) |
 | Writing a file that depends on another | medium | complexity | prose: 48 words |

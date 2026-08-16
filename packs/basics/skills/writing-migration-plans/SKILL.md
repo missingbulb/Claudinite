@@ -1,6 +1,6 @@
 ---
 name: writing-migration-plans
-description: How to order the phases of an implementation or migration plan so nothing stalls mid-run — front-load the out-of-band setup, collapse the review gates into one stacked-PR pass, leave only executable steps. Use when writing or reviewing a migration plan, a phased implementation plan, or the tracking issue for one.
+description: How to order the phases of an implementation or migration plan so nothing stalls mid-run — front-load the out-of-band setup, collapse the review gates into one stacked-PR pass, leave only executable steps — and how to keep its tracking issue append-only while implementing. Use when writing or reviewing a migration plan or a phased implementation plan, and when working through one's tracking issue.
 ---
 
 # Writing migration and implementation plans
@@ -70,6 +70,26 @@ a step that was sorted wrong. Move it, or say in the plan why it genuinely canno
   is genuinely impossible*). A phase whose closing condition is "check next week" is not a phase.
 - **Size each step to what it is**, and don't restate in the plan what the design document or the
   linked issue already carries.
+
+## Working through the plan
+
+Once the plan is agreed, the issue body's plan is **append-only**. While implementing, tick its
+checkboxes and add below it — a comment, or a new section for what the work turned up — and never
+edit, reword, condense or re-order what was already there.
+
+The body is the record of what was agreed, and it is the only copy: an edit overwrites it in place
+with nothing left to diff against, so a plan silently rewritten to match what was built reads
+afterwards as a plan that was followed. Keeping it fixed is what makes the divergence visible —
+and a divergence is the interesting part, not an embarrassment to tidy away.
+
+So when the work shows a phase was wrong, say so **underneath**: what the plan assumed, what turned
+out to be true, and what you did instead. If that changes the plan going forward, the new steps are
+an addition, appended and dated; the superseded ones stay where they are, marked superseded rather
+than deleted.
+
+The exception is a **correction to the plan itself before implementation of it starts** — the owner
+saying the plan misreads what they asked for. That is a correction (basics' *Acting on a
+correction*): repair the body, since there is no work yet for it to have diverged from.
 
 ## Reviewing someone else's plan
 

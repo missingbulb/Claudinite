@@ -161,7 +161,8 @@ their own procedures: [git-github-advanced](../git-github/skills/git-github-adva
 branch, commit and merge operations, [repo-text-sweeps](skills/repo-text-sweeps/SKILL.md) for
 sweeps and renames across files, [writing-tests](skills/writing-tests/SKILL.md) for tests you can
 trust, [bug-investigation](skills/bug-investigation/SKILL.md) for pinning down a root cause, and
-[writing-migration-plans](skills/writing-migration-plans/SKILL.md) for ordering a phased plan.
+[writing-migration-plans](skills/writing-migration-plans/SKILL.md) for a phased plan's ordering and
+its tracking issue.
 
 - **Naming a file, module, or symbol** — name it for its scope or responsibility, not the
   technology or mechanism behind it.
