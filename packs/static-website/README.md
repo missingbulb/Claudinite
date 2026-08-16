@@ -12,6 +12,12 @@ Fingerprint: the `Release static site` orchestrator (`.github/workflows/static-s
 | `sw/site-config` | high | correctness | check: blocking |
 | `sw/version-scheme` | medium | correctness | check: blocking |
 
+What each holds:
+
+- `sw/release-workflows` — the orchestrator (named, push-triggered, calling the local publish reusable), both reusable workflows, all three composite actions, and a PR gate are vendored.
+- `sw/site-config` — `.github/site.config` exists with its five explicit keys, no unknown keys, every publish path tracked, no tooling directory published, and an `index.html` in the set.
+- `sw/version-scheme` — every declared version record carries the same `<major>.<ymmdd>.<n>` version.
+
 ## Rules (`RULES.md`)
 
 | Rule | Severity | Reason | Enforcement |

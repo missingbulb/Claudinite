@@ -38,6 +38,17 @@ not prose: the session that has lost its rules is the session least able to noti
 | `task-declaration-matches-folder` | high | correctness | check: blocking |
 | `task-phase-discipline` | medium | complexity | check: advisory |
 
+What goes wrong when one fires:
+
+- `core-declared` — this pack's entry is gone from `.claudinite-checks.json`, so none of the rules above run and the session cannot tell.
+- `rules-index-current` — the generated index is missing, stale or unimported: the repo's packs contribute no prose to any session.
+- `claudinite-isolation` — the repo's own code reaches into `.claudinite/`, so the next canon refactor is a breaking migration for code the canon does not own (a declared `forbidReferences` [barrier](../barriers/README.md) edge).
+- `conformance-workflow` — nothing in CI runs the world sweep unfiltered on a pull request, so conformance is ungated and the maintenance PR never lands.
+- `scheduler-workflow-shape` — the vendored scheduler's cron, concurrency or dispatch guard has drifted: staggering, double-run safety or manual runs break.
+- `task-declaration-shape` — a task declaration the scheduler reads is incomplete or illegal, so the task never fires or fires wrong.
+- `task-declaration-matches-folder` — a declaration disagrees with its folder: discovery drops it into `errors` and every run keeps reporting healthy without it.
+- `task-phase-discipline` — a task decides not to run after its precondition already said run, hiding the decision from the run records.
+
 The scope cuts the other way too: a rule about how the **canon's own** content is maintained is not
 this pack's, however much it looks like one. `catalog-completeness` — `packs/README.md` lists every
 `packs/<name>/` — reads as Claudinite machinery and is not: it can only fire in the corpus repo, and
