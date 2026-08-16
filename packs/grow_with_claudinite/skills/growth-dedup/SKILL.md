@@ -17,6 +17,28 @@ to reconcile local packs against the canon. Often there's nothing to prune, and 
 here only once baselining has converged the mount to include it). The mount is never a prune
 *target*, only what you prune *against*.
 
+## Start from the canon's diff, not the canon
+
+Reconciling a local pack against a whole canon is a search with no shape: most canon lines have been there
+for months, and if they were going to cover a local item they mostly already did on an earlier pass. What
+makes an item newly prunable is a canon **change**. So when the reconciliation has a window — the unattended
+run always does, and an owner asking in-session usually can name one ("since we last did this") — derive the
+candidate list from the diff over that window before reading any local pack:
+
+- **Added prose lines** — each is a canon rule that did not exist last pass. Ask of each: which local item
+  was carrying this point in this repo's own names?
+- **Added or widened checks** — a new id in a pack's `declared-checks.json`, a new check module, or a
+  widened `scanFiles`/`matchLines` on an existing one. These are the strongest coverage there is (see below),
+  and they are invisible in the prose corpus, so a prose-only read of the window misses them entirely.
+- **Rewordings** — the canon stating an idea it already had in different words. These prune nothing; they
+  are what the **rephrase** action below tracks.
+- **Removed canon lines** — the reverse signal. Coverage the canon just *dropped* can never justify a prune,
+  and a local item the canon used to cover has become load-bearing. Never prune against a `-` line.
+
+The diff sets the run's *focus*, never its permission: a local item covered by an older line in a changed
+pack is still a legitimate prune when you can quote that line. Working the diff first just means the run
+spends its attention where the new coverage actually is.
+
 ## The three actions — every one removes portable text
 
 - **Remove** a now-duplicated local item, since the canon is the single source of truth for

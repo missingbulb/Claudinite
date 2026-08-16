@@ -20,6 +20,34 @@
 //
 // Self-contained (imports nothing): the whole contract is this default export.
 
+// How many changed files one pack contributes to the Context before the rest are
+// counted rather than listed. A dispatch issue is read by a person as well as an
+// agent, and a heavy canon week can move dozens of files in one pack; the count
+// keeps the truncation visible instead of passing a partial list off as the set.
+const FILES_LISTED_PER_PACK = 15;
+
+// The Context lines that turn "these packs moved" into "read this diff". A pack
+// name sends the run re-reading a whole corpus for coverage that mostly predates
+// the window; what can NEWLY cover a local item is what the canon ADDED in the
+// window, so the dispatch hands over the moved files and the date to diff from.
+// Both fields are absent on a mount whose vendored collector predates them, and
+// the run still works off the pack names alone — so each is emitted only when
+// the signal actually carries it, never as an empty assertion.
+function canonDiffContext({ changedFiles, sinceIso }) {
+  const lines = [];
+  const entries = Object.entries(changedFiles ?? {}).filter(([, files]) => files?.length);
+  if (entries.length) {
+    lines.push('These are the canon files that moved in the window — read their diff first; the lines and checks they ADDED are where this run\'s prunes come from:');
+    for (const [pack, files] of entries) {
+      const shown = files.slice(0, FILES_LISTED_PER_PACK).join(', ');
+      const rest = files.length - FILES_LISTED_PER_PACK;
+      lines.push(`- ${pack}: ${shown}${rest > 0 ? ` (+${rest} more under this pack — read them too)` : ''}`);
+    }
+  }
+  if (sinceIso) lines.push(`The window opens at ${sinceIso} — diff the canon from there to now.`);
+  return lines;
+}
+
 export default {
   id: 'growth-dedup',
   frequency: 'weekly',             // the weekly anchor — prunes against the mounted canon that morning's 02:00 baselining converged (DESIGN §2)
@@ -47,7 +75,14 @@ export default {
     const localChanged = local.changedInWindow === true;
 
     if (canonMoved) {
-      return { run: true, reason: `declared pack(s) changed in the mounted canon: ${changedPacks.join(', ')} — local items may now be covered`, context: [`Re-check local items against these newly-changed canon packs: ${changedPacks.join(', ')}.`] };
+      return {
+        run: true,
+        reason: `declared pack(s) changed in the mounted canon: ${changedPacks.join(', ')} — local items may now be covered`,
+        context: [
+          `Re-check local items against these newly-changed canon packs: ${changedPacks.join(', ')}.`,
+          ...canonDiffContext(signals.sharedMount ?? {}),
+        ],
+      };
     }
     if (localChanged) {
       return { run: true, reason: 'local packs changed in the window — re-check the fresh items against the mounted canon' };

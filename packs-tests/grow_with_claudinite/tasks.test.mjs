@@ -220,6 +220,35 @@ test('growth-dedup: with local packs, a declared pack moving in the mount fires 
   assert.match(v.context.join(' '), /basics/);
 });
 
+test('growth-dedup: the Context names the changed FILES and the window start, so the run starts from the diff', () => {
+  // Naming only the pack sends the run to re-read a whole corpus for coverage
+  // that mostly predates the window. What newly covers a local item is what the
+  // canon ADDED in the window — prose lines and checks alike — so the dispatch
+  // hands over the file list and the date to diff from (#912).
+  const v = dedup.precondition({
+    localPacks: { present: true, changedInWindow: false },
+    sharedMount: {
+      changedPacks: ['basics'],
+      changedFiles: { basics: ['.claudinite/shared/packs/basics/RULES.md', '.claudinite/shared/packs/basics/declared-checks.json'] },
+      sinceIso: '2026-08-09T00:00:00Z',
+    },
+  });
+  const context = v.context.join('\n');
+  assert.match(context, /basics\/RULES\.md/);
+  assert.match(context, /basics\/declared-checks\.json/);
+  assert.match(context, /2026-08-09/);
+});
+
+test('growth-dedup: an older collector carrying no file list still dispatches on the pack names alone', () => {
+  // The signal collector is engine code, vendored; a member on a mount that
+  // predates the changedFiles field must still get a usable dispatch rather
+  // than a Context asserting an empty file list.
+  const v = dedup.precondition({ localPacks: { present: true, changedInWindow: false }, sharedMount: { changedPacks: ['basics'] } });
+  assert.equal(v.run, true);
+  assert.match(v.context.join('\n'), /basics/);
+  assert.doesNotMatch(v.context.join('\n'), /undefined|\[object/);
+});
+
 test('growth-dedup: a local-pack change in the window fires it; a quiet repo does not', () => {
   assert.equal(dedup.precondition({ localPacks: { present: true, changedInWindow: true }, sharedMount: { changedPacks: [] } }).run, true);
   assert.equal(dedup.precondition({ localPacks: { present: true, changedInWindow: false }, sharedMount: { changedPacks: [] } }).run, false);

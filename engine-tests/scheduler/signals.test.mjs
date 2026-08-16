@@ -249,6 +249,53 @@ test('sharedMount: only DECLARED packs whose vendored files changed are reported
   assert.deepEqual(out.sharedMount.changedPacks, ['basics']); // product-wiki not declared → ignored
 });
 
+test('sharedMount: the changed FILES ride along, grouped by pack, with the window start', async () => {
+  // Which packs moved is not what a consumer needs to act — it needs what moved
+  // inside them. The commit file lists are already in hand, so carrying them
+  // costs no extra read, and a dedup run starting from the diff beats one
+  // re-reading a whole pack (#912).
+  const gh = fakeGh([
+    [/\/commits\?sha=/, { status: 200, json: [
+      { sha: 'a', commit: { message: 'Baseline' }, author: { login: 'x' } },
+      { sha: 'b', commit: { message: 'Baseline' }, author: { login: 'x' } },
+    ] }],
+    [/\/commits\/a$/, { status: 200, json: { files: [
+      { filename: '.claudinite/shared/packs/basics/RULES.md' },
+      { filename: '.claudinite/shared/packs/basics/declared-checks.json' },
+      { filename: '.claudinite/shared/packs/product-wiki/x.mjs' },
+      { filename: 'src/app.js' },
+    ] } }],
+    // The same file moving twice in the window is one entry, not two.
+    [/\/commits\/b$/, { status: 200, json: { files: [
+      { filename: '.claudinite/shared/packs/basics/RULES.md' },
+      { filename: '.claudinite/shared/packs/core/skills/x/SKILL.md' },
+    ] } }],
+  ]);
+  const out = await collectSignals(gh, ctx({ activePacks: ['basics', 'core'] }), ['sharedMount']);
+  assert.deepEqual(out.sharedMount.changedFiles, {
+    basics: ['.claudinite/shared/packs/basics/RULES.md', '.claudinite/shared/packs/basics/declared-checks.json'],
+    core: ['.claudinite/shared/packs/core/skills/x/SKILL.md'],
+  });
+  assert.equal(out.sharedMount.sinceIso, '2026-07-21T00:00:00Z');
+});
+
+test('sharedMount: the canon home\'s own packs/ root counts as the mount', async () => {
+  // Two-root form: the mount prefix is optional, so the home — which runs the
+  // same code from the repo root, its shared packs at `packs/` — sees its own
+  // canon move. Mount-only, this signal was dead in exactly the repo where the
+  // canon changes every day.
+  const gh = fakeGh([
+    [/\/commits\?sha=/, { status: 200, json: [{ sha: 'a', commit: { message: 'work' }, author: { login: 'x' } }] }],
+    [/\/commits\/a$/, { status: 200, json: { files: [
+      { filename: 'packs/basics/RULES.md' },
+      { filename: '.claudinite/local/packs/claudinite/RULES.md' }, // a LOCAL pack is never the yardstick
+    ] } }],
+  ]);
+  const out = await collectSignals(gh, ctx({ activePacks: ['basics', 'claudinite'] }), ['sharedMount']);
+  assert.deepEqual(out.sharedMount.changedPacks, ['basics']);
+  assert.deepEqual(out.sharedMount.changedFiles, { basics: ['packs/basics/RULES.md'] });
+});
+
 test('stamp: age is derived from the mount stamp and now', async () => {
   const gh = fakeGh([]);
   const out = await collectSignals(gh, ctx({ config: { claudinite: { updated: '2026-07-20T00:00:00Z', ref: 'abc' } }, now: '2026-07-22T00:00:00Z' }), ['stamp']);

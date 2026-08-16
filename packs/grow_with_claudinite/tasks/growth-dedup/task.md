@@ -27,10 +27,33 @@ the canon now covers. It lands the run's prunes through a single PR against the 
   pack names, so there is nothing to match up.) A dispatch with **no** Context block carries no such bound: the
   precondition emits the list only when the mounted canon moved, and its other arm — the repo's own local packs
   changed — deliberately emits none, so that run compares the fresh local items against the whole mounted canon.
+  The Context also names the **canon files that moved** and the **window start** — that is the run's starting
+  point, not a second bound: a prune may still cite an older line in one of those packs.
 - **The repo's local packs.** The set identified in [this pack's README](../../README.md#identifying-a-projects-capture-surface-its-local-packs) —
   everything under `.claudinite/local/packs/` (the legacy `.claudinite/local_packs/` accepted during the
   rename window). That's the corpus this task prunes within; the read-only mounted canon elsewhere under
   `.claudinite/` is never a prune target, only the yardstick you prune *against*.
+
+## Start by reading what the canon changed
+
+The run's **first step**, before opening a single local pack: read the mounted canon's diff over the window
+the Context names. A pack id alone would send you re-reading a whole corpus for coverage that mostly predates
+this run; what can *newly* cover a local item is what the canon **added** — a prose line, and just as much a
+check, since a canon check covers an item more strongly than prose does.
+
+The mount is vendored into *this* repo, so its window diff is this repo's own history — no cross-repo read.
+The checkout is shallow, so deepen it to the window first:
+
+```sh
+git fetch --shallow-since="<the window start the Context names>" origin <default-branch>
+git log --since="<the window start>" -p -- <the changed canon files the Context names>
+```
+
+The added (`+`) lines are the candidate list; the [skill](../../skills/growth-dedup/SKILL.md) owns what to do
+with them. If the deepen fails — an old git, a proxy refusal — fall back to reading those files whole at their
+current content: less focused, still far narrower than the pack. A dispatch with no Context block (the
+local-packs-changed arm) has no window to diff: those runs compare the fresh local items against the whole
+mounted canon, as before.
 
 ## The method lives in the skill
 
