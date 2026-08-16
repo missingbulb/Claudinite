@@ -27,11 +27,12 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Calling Edit | low | complexity | prose: 39 words |
 | Needing exact text from the web | high | correctness | prose: 56 words |
 | Hitting a denied fetch | critical | legal | prose: 64 words |
+| Scheduling a wake-up with the harness | high | correctness | prose: 60 words |
 | Seeing a build, test or CI warning | medium | correctness | prose: 28 words |
 | Suppressing a warning | medium | complexity | prose: 74 words + check (`warning-suppression`) |
 | Waiving a finding on text | low | complexity | prose: 26 words |
 | Working around a vendored check's finding | medium | complexity | prose: 29 words |
-| Deferring a warning you can't fix now | medium | complexity | prose: 136 words |
+| Deferring a warning you can't fix now | medium | complexity | prose: 199 words |
 | Handing over a human-only step | high | complexity | prose: 132 words |
 | Naming a file, module, or symbol | low | complexity | prose: 22 words |
 | Referring to a value from two places | high | correctness | prose: 117 words + check (`shared-constants`) |
