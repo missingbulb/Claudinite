@@ -23,6 +23,14 @@ function fakeRepo(issues = []) {
       const page = Number(/[?&]page=(\d+)/.exec(path)?.[1] ?? 1); // NOT /page=/ — that matches per_page
       return { status: 200, json: page === 1 ? state.issues.filter((i) => i.state === 'open') : [] };
     }
+    if ((m = /^\/repos\/[^/]+\/[^/]+\/issues\/comments\/(\d+)$/.exec(path))) {
+      const id = Number(m[1]);
+      for (const issue of state.issues) {
+        const c = issue.comments.find((x) => x.id === id);
+        if (c) { if (method === 'PATCH') c.body = body.body; return { status: 200, json: c }; }
+      }
+      return { status: 404, json: null };
+    }
     if ((m = /^\/repos\/[^/]+\/[^/]+\/issues\/(\d+)\/comments/.exec(path))) {
       const issue = find(Number(m[1]));
       if (method === 'POST') {
@@ -244,4 +252,68 @@ test('the loop stops at maxItems even with more ready work', async () => {
   // each converges before the next is picked.
   const done = await drive(repo, [task('a', { agent_model: 'none', prework: 'node w.mjs', prework_timeout: 60 })], { maxItems: 2 });
   assert.equal(done.length, 2);
+});
+
+// --- F24: letting go of an open item kills your claim --------------------------
+//
+// A single-executor test cannot see this class: an executor beats its own stale
+// claim by id equality, so the item runs and the leak stays invisible. What
+// exposes it is a SECOND executor arriving after the first let the item go — the
+// shape the whole burst missed and live traffic found.
+
+test('a second executor wins immediately on a ROLLED item — the first strike killed its claim (F24)', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
+  const declines = task('a', { precondition: () => ({ run: false, reason: 'no work' }) });
+
+  await drive(repo, [declines]);                                   // E1 claims, rolls, strikes
+  assert.deepEqual(repo.find(1).labels.filter((l) => l.startsWith('task:')), ['task:blocked']);
+
+  // The tick readies it at the next anchor; a DIFFERENT executor picks it up.
+  repo.find(1).labels = ['task:ready', 'origin:schedule'];
+  const done = await drive(repo, [declines], { executorId: 'E2' });
+
+  assert.deepEqual(done, [{ issue: 1, outcome: 'rolled' }],
+    'E2 must run the item, not lose the lease to E1\'s spent claim');
+  // Still no roll comment: the strike is an edit to a comment that already exists.
+  const issue = repo.find(1);
+  assert.deepEqual(issue.comments.filter((c) => !c.body.includes('claudinite-claim')), [],
+    'striking must not cost a timeline entry — that is why the roll can use it');
+});
+
+test('a second executor wins immediately on a PARKED item a human re-queued (F24)', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
+  const agentic = task('a');
+
+  // E1 claims, hands off, the endpoint refuses → parked needs-human, claim struck.
+  await drive(repo, [agentic], { invokeAgent: async () => ({ ok: false, answered: true, error: 'no endpoint' }) });
+  assert.ok(repo.find(1).labels.includes('needs-human'));
+
+  // The sanctioned re-queue, exactly as the park's own comment instructs (F7):
+  // drop needs-human, add task:ready. Nothing else — no marker, no cleanup.
+  repo.find(1).labels = ['task:ready', 'origin:schedule'];
+  const done = await drive(repo, [agentic], { executorId: 'E2' });
+
+  assert.deepEqual(done, [{ issue: 1, outcome: 'agent' }],
+    'the item must be claimable again — a park that leaves its claim standing livelocks forever');
+});
+
+test('a losing claimant strikes its own claim too — otherwise it owns the NEXT episode (F24)', async () => {
+  // A rival already holds this episode; E1 claims, loses, and walks away.
+  const rival = { id: 50, body: '<!-- claudinite-claim -->\nClaimed by executor `E9` at t.' };
+  const repo = fakeRepo([{ ...workItem(1, 'a', ['task:ready', 'origin:schedule']), comments: [rival] }]);
+  const agentless = task('a', { agent_model: 'none', prework: 'node w.mjs', prework_timeout: 60 });
+
+  await drive(repo, [agentless]);
+  assert.equal(repo.find(1).state, 'open', 'E1 left the item to its holder');
+
+  // E9's tenure ends — reclaimed by the leash — which opens a fresh episode.
+  // E1's abandoned claim is younger than E9's, so unless it was struck it is now
+  // the earliest of the new episode and nothing can ever take the item.
+  const issue = repo.find(1);
+  issue.comments.push({ id: 60, body: '<!-- claudinite-episode -->\nreclaimed: executor went silent' });
+  issue.labels = ['task:ready', 'origin:schedule'];
+
+  const done = await drive(repo, [agentless], { executorId: 'E2' });
+  assert.deepEqual(done, [{ issue: 1, outcome: 'outcome:done' }],
+    'E2 must win the fresh episode — a loser\'s leftover claim must not outlive its own episode');
 });

@@ -435,6 +435,23 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
      racing two executors onto a reverted item (S32) — and masked until
      then because a single executor beats its own stale claim by id
      equality.
+   - **Letting go of an open item kills your claim (F24)**: the boundary is
+     a *rule about every path that ends an episode*, not a property of the
+     three that happened to write a comment. An executor that stops owning
+     an item without closing it — the roll, every `needs-human` park, and a
+     claimant that *lost* the arbitration — **strikes its own claim**,
+     appending the episode marker to the claim comment it already wrote. The
+     loser matters as much as the winner: its claim is younger than the
+     winner's, so it survives the winner's own strike and becomes the
+     earliest claim of the *next* episode, moving the livelock one episode
+     along rather than removing it. That satisfies the boundary with no new
+     timeline entry, which is what lets the roll keep its silence (§5); a
+     marker *comment* there would put one on every declining hourly task,
+     every hour. Only a claim's author strikes it, so a claim can be
+     withdrawn but never forged earlier, and comment ids still give the
+     total order. A successful hand-off does **not** strike — that episode
+     is live, owned by the session — and a *dead* executor strikes nothing,
+     which is the case the leash reclaim already covers.
    - **The label swap is two API calls, not a CAS** — GitHub has no atomic
      label swap. That is fine *because* labels are not the arbiter: they are
      visibility and the pick filter; the claim comments arbitrate, so a torn

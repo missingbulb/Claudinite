@@ -639,6 +639,20 @@ design and executable:
   surfaced the moment S32 raced two. The arbiter is now "earliest since the
   item last became ready", with the revert/reclaim comment as the episode
   boundary.
+- **S39 / F24 — the boundary must be maintained by *every* path that ends
+  an episode.** F18 stated the rule semantically ("earliest claim since the
+  item last became ready") and it was implemented over the three paths that
+  already wrote a comment — revert, reclaim, hand-wake. The two that end an
+  episode *silently* were left out: the roll (comment-free on purpose, §5)
+  and the `needs-human` park. Both leave the claim standing, so the next
+  claimant loses to a dead one. The roll self-heals in ≤1h via the leash
+  reclaim; the park never does, because nothing reclaims a parked item — a
+  human following the park's own re-queue instruction (F7) gets a
+  permanently unclaimable item. Fixed by **striking the claim**: the
+  departing executor appends the marker to its own claim comment, which
+  ends the episode without a timeline entry. Found on live traffic during
+  the migration burst, not in simulation — S32 raced two executors within
+  one episode, and this needs a race *across* one.
 
 Two §6.2 precisions came out of the same audit without needing scenarios:
 claim ordering is by server-assigned **comment id**, never timestamps
@@ -839,6 +853,7 @@ workflow checks as its first act, exiting cleanly having fired nothing.
 | **F20** | **design bug** | one global executing leash must exceed the heaviest task's work bound, so a single slow task slows every dead-executor recovery fleet-wide (§I) | **fixed in DESIGN §6.5/§11**: heartbeat comments during the work step; F17's wiring check reframed (S31, S31b, S31c, S31d) |
 | **F21** | sizing gap | throughput was priced as if drains were free; a drain's real throughput is its serial work-step occupancy (§I) | **stated in DESIGN §10**: `maxItems` and executor width as the primary capacity parameters, self-re-dispatch for drain-until-empty, the oldest-first fairness exposure named |
 | **F22** | contract gap | the durable per-run record was implicit — Actions logs expire, and an agentless run leaves no other trace (§I) | **fixed in DESIGN §6.5**: the terminal comment carries the `claudinite-task-exec` record and every artifact the work created |
+| **F24** | **design bug** | F18's episode boundary was stated as a rule ("earliest claim since the item last became ready") and implemented over only the paths that already wrote a comment; the roll and the `needs-human` park end an episode silently and leave the claim standing, so the next claimant loses to a dead one — the roll costs a leash period, the park livelocks forever (S39) | **fixed in DESIGN §6.2**: letting go of an open item kills your claim — the departing executor strikes its own claim comment, which ends the episode without the timeline entry §5 refuses. Found on live traffic (a member's first re-queue), not in simulation |
 | **F23** | **sim fidelity bug** | the simulator modeled the executor as an instantaneous unbounded loop — items' work started concurrently, nothing modeled run boundaries or what triggers the next run — so F21's occupancy model had no executable teeth (§I) | **fixed in the sim**: a run performs one item (structural — DESIGN §15.22), picks urgent-then-random, and records its trigger, the failure continuation included (§15.23); asserted by S34/S36, with S4's chain re-verified under it |
 
 What the exercise did **not** find: any scenario where work is lost silently,
