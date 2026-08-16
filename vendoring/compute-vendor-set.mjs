@@ -42,9 +42,16 @@ const isTest = (name) => name.endsWith('.test.mjs');
 // (the fleet-wide executor-broken finding). `deliver-pr.md` is the agent-lane
 // delivery procedure the merged-pr task worker files link to — stripped, every
 // such task.md points at a hole and the subagent improvises its own landing.
+// `queue/instructions.md` is the whole behavior of a work-item session: the CCR
+// routine's stored prompt is one line pointing at it in the mount, so a member
+// missing it starts an agent hop with no instructions at all.
 // Whitelisted by canon-relative path so the blanket .md exclusion still drops
 // the maintainer docs beside them.
-const VENDORED_ENGINE_DOCS = new Set(['engine/scheduler/executor.md', 'engine/scheduler/deliver-pr.md']);
+const VENDORED_ENGINE_DOCS = new Set([
+  'engine/scheduler/executor.md',
+  'engine/scheduler/deliver-pr.md',
+  'engine/scheduler/queue/instructions.md',
+]);
 
 // The migration records a consumer carries in its OWN mount, so the update flows read
 // the notes locally and needs no canon checkout in session. Records live under the
