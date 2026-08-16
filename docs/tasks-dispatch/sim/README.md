@@ -100,6 +100,7 @@ test's title in `scenarios.test.mjs`.
 | §15.21 "tick" keeps its name for now (#877) | **prose** — vocabulary |
 | §15.22 one run performs one item — structural; every run records its trigger | `S34` (F23) |
 | §15.23 a dead run must not stall the train — the failure-continuation job | `S36` |
+| §15.24 the operator hold (`CLAUDINITE_TASKS_SUSPEND_ALL`) and the tick-alone resume | `S37`, `S38` |
 | §14 bootstrap: first-item rule; old-vocabulary issues untouched | `S25`, `S29` |
 | §14 updates: declaration changes apply at the next evaluation; the stamped wake is the one carried fact | `S28` |
 | §14 secrets: the missing-secret needs-human posture | `S9a` (the refused hand-off's same convergence); storage/stamping/rotation **prose** — Actions-platform behavior |
@@ -133,6 +134,7 @@ can still teach us.
 | **Rate limits / quotas** | API quotas, secondary rate limits | costs estimated in DESIGN §5 (hourly-task churn); not modeled; the burst (B-rows) observes real consumption |
 | **Clocks** | runner clocks skew; only server timestamps are trustworthy | no rule compares runner clocks; ordering is by server-assigned ids, durations by server timestamps; anchors tolerate minute-scale skew by construction (tick-quantized) |
 | **The invocation wire** | the routine-fire API's real contract, timeouts, the nonce's payload grammar | the *semantics* (at-most-once, the refused/unanswered split, the leash settling the unknown case) are modeled (S9a/S10a/S10b); the wire format is not — burst rows B3/B7 prove it live |
+| **Actions variable delivery** | `vars.CLAUDINITE_TASKS_SUSPEND_ALL` reaches a run's env only at run start — a value changed mid-run is invisible to it | by design: suspension gates starts, never running work (S37 asserts exactly that boundary); the stamp is stub wiring, burst-verified |
 | **Workflow concurrency between the tick and a long drain** | the tick and drain share a workflow whose `concurrency` group holds the next cron fire until the whole run ends — a drain doing hours of real work starves the hourly tick | the decoupling wiring (work-as-work review, DESIGN §10): the drain must run outside the tick's serializing group once work may legally outlive an hour; platform config the sim cannot see, verified in the migration burst |
 | **Secrets & permissions** | Actions secret storage, env stamping, write-gating of labels/comments | prose + conformance checks (§14 secrets path); burst row B4/B7 |
 | **Search index** | minutes-stale, eventually consistent | never used by the design (F11) — the REST issue list is the only read |

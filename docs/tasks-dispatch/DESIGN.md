@@ -667,6 +667,34 @@ comes from a file under review.
   queueing, not jumping (SCENARIOS S15/F6). `FORCE_TASKS`, the
   forced-verdict path, the `~f` marker and the watermark exclusion all
   reduce to these two levers.
+- **Cancelling one executor run means "move on", and the mechanism already
+  reads it that way** (owner, 2026-08-16). A single cancellation is
+  indistinguishable from a crash: the failure continuation (§10) keeps the
+  train moving, and the cancelled run's item is freed by the leash. What a
+  single cancellation can *never* mean is "stop the system" — the tick and
+  events keep spawning runs — so that intent gets its own lever:
+- **Suspending the whole queue is `CLAUDINITE_TASKS_SUSPEND_ALL`** (owner,
+  2026-08-16): a repo Actions **variable** (`vars.*`, stamped into each
+  workflow's env by the wiring — settable in the UI or over the API, **no
+  commit**), which every Claudinite workflow — tick and executor alike —
+  checks as its *first act* and, when true, exits cleanly having fired
+  nothing. The train parks at most one hop after suspension (an already
+  in-flight continuation may fire one re-dispatch; that fresh run sees the
+  variable and parks). Suspension gates workflow *starts* only: in-flight
+  runs and agent sessions finish on their own — cancel those by hand if the
+  hold is urgent — and items freeze exactly where they are, no labels
+  touched, which is what makes the hold stateless. This is not dormancy:
+  `dormant` is a *declared standing state* in tracked config, a commit,
+  read by the same gates; the suspend variable is the instant, out-of-band
+  operational hold. (S37.)
+- **Resuming is clearing the variable — recovery needs no lever of its own.**
+  The next cron tick performs the entire self-heal unaided: its reclaim job
+  frees the claims of runs killed during the hold (their heartbeats long
+  silent), its readiness job wakes whatever came due, and its drain picks the
+  queue back up. An operator who won't wait the ≤1h dispatches the
+  **scheduler** workflow by hand — the tick-plus-drain pair, *not* the bare
+  executor, whose run would drain ready items but skip the reclaim/ready
+  half that makes resume complete. (S38.)
 - **`manual` tasks** are simply tasks the tick never instantiates: their items
   are only ever created by hand or by other tasks. The frequency token
   survives; the special-case slot resolution for it dies.
@@ -1224,6 +1252,14 @@ deployment coupling did not:
     re-dispatches the workflow. The remaining queue resumes in ~a minute;
     the dead item itself still waits for the leash reclaim; the tick drain
     stays the backstop behind everything. (S36; wiring rides #883.)
+24. **The operator hold: `CLAUDINITE_TASKS_SUSPEND_ALL`** (§8, owner,
+    2026-08-16) — cancelling one run means "move on" (intent already served
+    by the continuation + leash); stopping the *system* is a repo Actions
+    variable every workflow checks as its first act, exiting having fired
+    nothing. Items freeze untouched; resume is clearing the variable — the
+    next cron tick self-heals everything, or a hand-dispatched **scheduler**
+    run (not the bare executor) does it immediately. (S37/S38; wiring rides
+    #883.)
 
 ---
 

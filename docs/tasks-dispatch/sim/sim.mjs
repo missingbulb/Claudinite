@@ -109,6 +109,12 @@ export function makeSim({
   // tests want determinism. A seeded LCG gives both.
   let prngState = pickSeed >>> 0;
   const prng = () => (prngState = (prngState * 1664525 + 1013904223) >>> 0) / 2 ** 32;
+  // CLAUDINITE_TASKS_SUSPEND_ALL (owner, 2026-08-16): a repo Actions variable
+  // every Claudinite workflow checks as its FIRST act — when true, the run
+  // exits cleanly and fires nothing, so the train parks at most one hop after
+  // suspension. Gates workflow STARTS only: in-flight runs and agent sessions
+  // finish on their own, and items freeze in place with no labels touched.
+  let suspendedAll = false;
   const crashNextOf = new Set(); // taskIds whose next execution dies mid-claim
   const crashDuringWorkOf = new Map(); // taskId -> minutes into the work step the runner dies
   const crashAgentOf = new Set(); // taskIds whose next agent session dies mid-run
@@ -179,6 +185,7 @@ export function makeSim({
 
   // ---- the tick (DESIGN §5): pure function of the clock and the issue list --
   function tick() {
+    if (suspendedAll) { record('suspended-skip', { workflow: 'tick' }); return; }
     record('tick', {});
     // job 1: instantiate — calendar-only, no preconditions, no signals
     for (const task of registry.values()) {
@@ -476,6 +483,7 @@ export function makeSim({
   // items converged.
   let runSeq = 0;
   function executorRun(execId = 'E1', trigger = 'label-event') {
+    if (suspendedAll) { record('suspended-skip', { workflow: 'executor', trigger }); return; }
     const runId = `R${++runSeq}`;
     record('executor-run', { run: runId, exec: execId, trigger });
     const settle = () => {
@@ -499,6 +507,7 @@ export function makeSim({
 
   // ---- the janitor (DESIGN §11): the judgment-and-long-horizon sweeps -------
   function janitor() {
+    if (suspendedAll) { record('suspended-skip', { workflow: 'janitor' }); return; }
     // rule A — stale-ready: an item no executor picked for ~2 periods comes
     // out of the queue as a human's problem (S18's stuck member)
     for (const it of open().filter((i) => has(i, 'task:ready') && !i.escalated)) {
@@ -676,6 +685,12 @@ export function makeSim({
       record('close', { task: it.taskId, issue: it.number, outcome, by: 'hand' });
       return sim;
     },
+    // the operator hold (DESIGN §8): set/clear the suspend-all variable. Resume
+    // needs no dispatch of its own — the next cron tick self-heals — but the
+    // impatient path is a hand-dispatched scheduler run (tickAt models it).
+    suspendAll() { suspendedAll = true; record('suspend', {}); return sim; },
+    resumeAll() { suspendedAll = false; record('resume', {}); return sim; },
+
     // the sanctioned human re-queue (F7, DESIGN §4): strip needs-human,
     // apply task:ready — the same lever forcing uses
     requeue(number) {

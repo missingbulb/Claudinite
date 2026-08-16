@@ -671,6 +671,82 @@ test('S36 dead run mid-queue: failure-redispatch keeps the train moving; the lea
   for (const e of sim.log.filter((e) => e.kind === 'run-end')) assert.ok(e.settled <= 1);
 });
 
+// ---- S37 — the operator hold (owner, 2026-08-16): CLAUDINITE_TASKS_SUSPEND_ALL
+// set mid-morning. Every workflow — tick, executor, janitor — exits at its
+// first act; the re-dispatch train parks one hop later at most; items freeze
+// exactly where they were, no labels touched, nothing lost.
+test('S37 suspend-all: workflows exit at start, the queue freezes in place', () => {
+  const tasks = ['c1', 'c2', 'c3', 'c4', 'c5'].map((n) => ({
+    id: `x/${n}`, frequency: 'daily', outcome: 'done', preworkMinutes: 5,
+    precondition: () => ({ run: true }),
+  }));
+  const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
+  const AT = T('2026-08-12T04:30Z');
+  sim.at('2026-08-12T04:30Z', (s) => s.suspendAll());
+  sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z'); // no resume in this window
+
+  // suspension gates STARTS, not running work: an in-flight run may still
+  // finish its item after the hold, but nothing NEW is ever picked
+  assert.ok(sim.log.some((e) => e.kind === 'close' && e.t < AT), 'the morning had started');
+  assert.equal(sim.log.filter((e) => e.kind === 'pick' && e.t >= AT).length, 0, 'no pick after the hold');
+  assert.equal(sim.log.filter((e) => e.kind === 'evaluate' && e.t >= AT).length, 0, 'no evaluation after the hold');
+  const pickedBefore = new Set(sim.log.filter((e) => e.kind === 'pick' && e.t < AT).map((e) => e.issue));
+  for (const c of sim.log.filter((e) => e.kind === 'close')) {
+    assert.ok(pickedBefore.has(c.issue), `#${c.issue} closed post-hold without a pre-hold pick`);
+  }
+  // the parked runs are visible, workflow by workflow: the re-dispatch that was
+  // already in flight, then every hourly tick
+  const skips = sim.log.filter((e) => e.kind === 'suspended-skip');
+  assert.ok(skips.some((e) => e.workflow === 'executor'), 'the in-flight follow-up run parked');
+  assert.ok(skips.filter((e) => e.workflow === 'tick').length >= 3, 'every cron fire exited at start');
+  // and the queue is frozen, not lost: every never-picked item still sits ready
+  const openReady = sim.issues.filter((i) => !i.seeded && i.state === 'open');
+  assert.equal(openReady.length, 5 - pickedBefore.size, 'unpicked items all survived the hold');
+  for (const it of openReady) assert.ok(it.labels.has('task:ready'), `#${it.number} froze as ready`);
+});
+
+// ---- S38 — cancel + suspend, then resume (owner, 2026-08-16): the user
+// cancels a stalled run (intent 1 is the continuation's business), suspends
+// the queue before the continuation lands (intent 2), and later resumes by
+// clearing the variable — the next cron tick alone self-heals everything:
+// reclaims the cancelled run's claim, drains the queue, converges all.
+test('S38 resume after a hold: clearing the variable + the next tick recovers everything', () => {
+  const tasks = [
+    { id: 'x/slow', frequency: 'daily', outcome: 'done', preworkMinutes: 30,
+      precondition: () => ({ run: true }) },
+    { id: 'x/quick', frequency: 'daily', outcome: 'done', preworkMinutes: 3,
+      precondition: () => ({ run: true }) },
+  ];
+  const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
+  // the user cancels x/slow's run 5 minutes into its work…
+  sim.at('2026-08-12T04:00Z', (s) => s.crashDuringWorkOf('x/slow', 5));
+  // …and suspends everything moments later, before the continuation job's
+  // re-dispatch lands — intent 2 overrides intent 1's train
+  sim.at('2026-08-12T04:23Z', (s) => s.suspendAll());
+  sim.at('2026-08-12T10:00Z', (s) => s.resumeAll()); // clear the variable; no manual dispatch
+  sim.run('2026-08-12T00:00Z', '2026-08-12T14:00Z');
+
+  const hold = [T('2026-08-12T04:23Z'), T('2026-08-12T10:00Z')];
+  // during the hold: the continuation's re-dispatch parked, and nothing ran
+  assert.ok(sim.log.some((e) => e.kind === 'suspended-skip'
+    && e.workflow === 'executor' && e.trigger === 'failure-redispatch'),
+    'the cancelled run\'s continuation fired one re-dispatch, which parked at start');
+  assert.equal(sim.log.filter((e) => e.kind === 'evaluate' && e.t >= hold[0] && e.t < hold[1]).length,
+    0, 'the hold held');
+  // after clearing the variable, the 10:17 cron tick alone recovers: it
+  // reclaims the cancelled run's silent claim (leash long expired during the
+  // hold) and its drain converges the whole queue — no manual dispatch needed
+  const reclaim = sim.log.find((e) => e.kind === 'reclaim' && e.task === 'x/slow');
+  assert.ok(reclaim && reclaim.t >= hold[1], 'the first tick back reclaimed the cancelled claim');
+  for (const id of ['x/slow', 'x/quick']) {
+    const [done] = closedOf(sim, id);
+    assert.ok(done, `${id} converged after resume`);
+    assert.ok(done.closedAt >= hold[1], `${id} converged after the hold lifted`);
+  }
+  assert.ok(closedOf(sim, 'x/slow')[0].closedAt < T('2026-08-12T11:30Z'),
+    'recovery took the tick + the work bound, not another day');
+});
+
 // ---- S26 — the guard's second half must not over-block either: after a
 // rolled item runs and closes, the NEXT period still gets a fresh item.
 test('S26b the closed-at guard half releases at the next anchor', () => {

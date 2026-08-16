@@ -764,6 +764,32 @@ identically.
   drain remains the backstop for the case where the whole run vanishes,
   continuation job included.
 
+### S37/S38 — the operator hold, and resume (owner, 2026-08-16)
+
+The cancellation-intent question: a user cancelling one executor run almost
+always means *"this run is stalled — let the system move on"*, and the
+mechanism already treats it exactly so (cancellation = crash: the failure
+continuation keeps the train moving, the leash frees the item). The intent it
+can never express is *"stop processing"*, so that one is a lever:
+**`CLAUDINITE_TASKS_SUSPEND_ALL`**, a repo Actions variable every Claudinite
+workflow checks as its first act, exiting cleanly having fired nothing.
+
+- **S37 (the hold)**: five tasks mid-drain; the variable set at 04:30. No
+  pick, no evaluation happens after the hold — but an in-flight run finishes
+  its item (suspension gates *starts*, not running work), the in-flight
+  continuation's one re-dispatch parks at its first act, every later cron
+  fire exits as a recorded `suspended-skip`, and every never-picked item
+  freezes as `task:ready`, untouched — the hold is stateless.
+- **S38 (cancel + suspend, then resume)**: the user cancels a stalled run
+  mid-work AND suspends before its continuation lands — intent 2 overrides
+  intent 1's train, the continuation's re-dispatch parks. Hours later the
+  variable is cleared, **and nothing else is done**: the next cron tick alone
+  reclaims the cancelled run's long-silent claim, readies what came due, and
+  its drain converges the whole queue. The impatient path — a hand-dispatched
+  *scheduler* run (tick + drain), not a bare executor run — is the same
+  recovery a minute sooner; a bare executor would drain ready items but skip
+  the reclaim/ready half.
+
 ### The prose-only findings (no scenario can carry them)
 
 - **F19 — a long drain starves the tick.** The drain job shares the cron
