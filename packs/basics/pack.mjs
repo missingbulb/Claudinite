@@ -69,6 +69,7 @@ export default {
     'ci-performance-evaluation',
     'file-placement',
     'repo-text-sweeps',
+    'writing-migration-plans',
     'writing-tests',
   ],
 };
