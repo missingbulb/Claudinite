@@ -10,7 +10,7 @@ lessons into its local packs, and pruning them once the shared canon covers them
 **promote** stage — which lifts portable lessons up into the shared canon — is a home-only duty
 that runs canon-side, not a repo-side task, so it lives outside this pack.
 
-Its scheduled work is four tasks under this pack's own `tasks/`, each discovered by the repo's
+Its scheduled work is five tasks under this pack's own `tasks/`, each discovered by the repo's
 scheduler (`engine/scheduler/discover.mjs`) wherever the pack is declared:
 
 | Task | Runs when | Where it lands |
@@ -19,6 +19,7 @@ scheduler (`engine/scheduler/discover.mjs`) wherever the pack is declared:
 | `growth-dedup` ([tasks/growth-dedup/task.md](tasks/growth-dedup/task.md)) | weekly, when the canon or the project's local packs moved in the week | the repo's own local packs, via a PR that auto-merges after CI |
 | `growth-discover-packs` ([tasks/growth-discover-packs/task.md](tasks/growth-discover-packs/task.md)) | weekly | a new **local** pack in the repo's own `.claudinite/local/packs/`, via a reviewed PR |
 | `prose-to-checks-sweep` ([tasks/prose-to-checks-sweep/task.md](tasks/prose-to-checks-sweep/task.md)) | weekly (no-ops cheaply on a quiet corpus) | a PR converting always-testable pack prose into checks |
+| `rule-revalidation` ([tasks/rule-revalidation/task.md](tasks/rule-revalidation/task.md)) | weekly | a reviewed PR correcting rules whose environment claim no longer probes true |
 
 (Plus [usage-fold](tasks/usage-fold/task.md), the agentless daily fold described below.)
 
@@ -169,6 +170,29 @@ existing local packs, and — for genuinely project-specific knowledge neither h
 the one place this stage differs from extract). It writes only the repo's own
 `.claudinite/local/packs/`; lifting a local pack up into the shared canon is the central promote
 task's job.
+
+## Rules expire when the environment moves — revalidation
+
+Capture, dedup and conversion all assume a rule is either right or superseded. A third failure mode
+has no local signal at all: the rule was right, and the **world** changed. A claim that the harness
+rejects a call in some shape, that the Action's token cannot push a path, that an MCP tool exists —
+each is a fact about a platform this repo does not control, and when it stops being true nothing
+here goes red. The prose keeps reading as authoritative, sessions keep obeying it, and the cost
+lands as a session spent on a route that closed.
+
+[rule-revalidation](tasks/rule-revalidation/task.md) is the weekly re-probe. It slices the corpus by
+longest-since-probed, **runs** the smallest read-only thing that would distinguish true from false
+for each environment-dependent claim, and corrects what the probe contradicts — in a reviewed PR
+whose body carries the probe evidence, since that is the one thing a reviewer cannot re-derive from
+the diff. Its scope is the same `pack_paths` config `prose-to-checks-sweep` reads, so a repo names
+its capture surface once.
+
+The dangerous verdict is the one it refuses to reach. An executor session carries the reach its
+repo's routine was provisioned with, which is not the reach every rule was written under, so a probe
+that cannot run is logged **unprobed** and the rule is left untouched. Rewriting a rule into "you
+cannot do X" because one session could not is unfalsifiable afterwards and removes the capability
+from every future session — which is why the corpus each run touches is small and every verdict is
+logged on a standing tracker, including the ones that changed nothing.
 
 ## Identifying a project's capture surface: its local packs (the same way in every stage)
 
