@@ -11,6 +11,7 @@ const labelCreate = declaredCheck('packs/github-actions', 'gha/label-create-befo
 const uniqueBranch = declaredCheck('packs/github-actions', 'gha/unique-automation-branch');
 const pagesArtifactSymlinks = declaredCheck('packs/github-actions', 'gha/pages-artifact-symlinks');
 const noScheduledFleetExecutor = declaredCheck('packs/github-actions', 'gha/no-scheduled-fleet-executor');
+const cronMinuteOffTheHour = declaredCheck('packs/github-actions', 'gha/cron-minute-off-the-hour');
 
 const run = (rule, root) => rule.run(buildContext({ root, mode: 'all' }));
 const WF = '.github/workflows/x.yml';
@@ -388,4 +389,110 @@ jobs:
     assert.equal(run(noScheduledFleetExecutor, cutOverStrayCron).length, 1); // stray cron flagged post-cutover
     assert.equal(run(noScheduledFleetExecutor, cutOverClean).length, 0);     // scheduler-only cron is fine
   } finally { cleanup(cutOverStrayCron); cleanup(cutOverClean); }
+});
+
+const scheduled = (cronLines) => `name: Nightly
+on:
+  schedule:
+${cronLines}
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi
+`;
+const cronAt = (expression) => `    - cron: '${expression}'`;
+
+ruleTester(cronMinuteOffTheHour, {
+  flagged: {
+    'a cron on the hour': {
+      files: { [WF]: scheduled(cronAt('0 3 * * *')) },
+      at: [{ file: WF, line: 4, what: /cron "cron: '0 3 \* \* \*'" fires outside/ }],
+    },
+    'a step value fires on :00 too': {
+      files: { [WF]: scheduled(cronAt('*/15 * * * *')) },
+      at: [{ file: WF, what: /cron "cron: '\*\/15/ }],
+    },
+    'a minute below the band': {
+      files: { [WF]: scheduled(cronAt('5 4 * * *')) },
+      at: [{ file: WF, what: /cron "cron: '5 4/ }],
+    },
+    'a minute above the band': {
+      files: { [WF]: scheduled(cronAt('55 * * * *')) },
+      at: [{ file: WF, what: /cron "cron: '55/ }],
+    },
+    'a comma list is not a fixed minute': {
+      files: { [WF]: scheduled(cronAt('0,30 * * * *')) },
+      at: [{ file: WF, what: /cron "cron: '0,30/ }],
+    },
+    'every entry in the block is judged, and an unquoted scalar reads the same': {
+      files: { [WF]: scheduled(`${cronAt('44 * * * *')}\n    - cron: 0 12 * * *   # midday sweep`) },
+      at: [{ file: WF, line: 5, what: /cron "cron: 0 12/ }],
+    },
+  },
+  clean: {
+    'a fixed minute inside the band': { files: { [WF]: scheduled(cronAt('44 3 * * *')) } },
+    'the band is inclusive at both ends': {
+      files: {
+        '.github/workflows/low.yml': scheduled(cronAt('10 * * * *')),
+        '.github/workflows/high.yml': scheduled(cronAt('50 * * * *')),
+      },
+    },
+    'a `cron` mapping key outside any schedule: block (FP guard)': {
+      files: { [WF]: `name: Manual
+on:
+  workflow_dispatch:
+    inputs:
+      cron: '0 * * * *'
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi
+` },
+    },
+    'a `- cron:` item under a step input, after the schedule block closed (FP guard)': {
+      files: { [WF]: `name: Nightly
+on:
+  schedule:
+    - cron: '44 3 * * *'
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: acme/mirror-schedule@v1
+        with:
+          schedules:
+            - cron: '0 * * * *'
+` },
+    },
+    'a `cron:` mapping key inside a step\'s own `schedule:` input is not a trigger (FP guard)': {
+      files: { [WF]: `name: Nightly
+on:
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: acme/scheduler@v1
+        with:
+          schedule:
+            cron: '0 * * * *'
+` },
+    },
+    'a commented-out cron line is not a schedule (FP guard)': {
+      files: { [WF]: scheduled(`${cronAt('44 3 * * *')}\n    # - cron: '0 3 * * *'`) },
+    },
+    'the vendored scheduler is core scheduler-workflow-shape\'s file, not this rule\'s (FP guard)': {
+      files: { '.github/workflows/claudinite-scheduler.yml': scheduled(cronAt('0 * * * *')) },
+    },
+    'a cron outside .github/workflows is out of scope (FP guard)': {
+      files: { 'deploy/cron.yml': scheduled(cronAt('0 * * * *')) },
+    },
+  },
 });

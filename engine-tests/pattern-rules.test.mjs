@@ -1319,6 +1319,46 @@ ruleTester(patternRule({
   },
 });
 
+ruleTester(patternRule({
+  ...meta('fx-block-inside-positive'),
+  scanFiles: /\.yml$/,
+  matchLines: [
+    { match: /- cron:/, andWithinBlockOpenedBy: /^\s*schedule:\s*$/,
+      what: 'a cron entry inside schedule:', fix: 'n/a' },
+  ],
+}), {
+  clean: {
+    'a cron entry with no enclosing schedule: block': { files: { 'a.yml':
+`on:
+  workflow_dispatch:
+    inputs:
+      - cron: '0 * * * *'
+` } },
+    'a sibling block at the opener column does not enclose': { files: { 'a.yml':
+`on:
+  schedule:
+    - foo: bar
+  workflow_dispatch:
+    - cron: '0 * * * *'
+` } },
+  },
+  flagged: {
+    'a cron entry nested directly under schedule:': { files: { 'a.yml':
+`on:
+  schedule:
+    - cron: '0 3 * * *'
+` },
+      at: [{ file: 'a.yml', line: 3 }] },
+    'the positive relation reaches through deeper nesting too': { files: { 'a.yml':
+`on:
+  schedule:
+    entries:
+      - cron: '0 3 * * *'
+` },
+      at: [{ file: 'a.yml', line: 4 }] },
+  },
+});
+
 // The work scope: a declaration that judges the CHANGE. Its assertions read the
 // branch's commits and the base's parsed files, so they run through runRule's
 // dispatch (the ruleTester's own path) rather than the file scan.

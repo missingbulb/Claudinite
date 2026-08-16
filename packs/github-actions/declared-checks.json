@@ -143,5 +143,22 @@
         "fix": "remove the schedule: trigger — make it workflow_dispatch only, and adopt the vendored claudinite-scheduler.yml, which owns every recurring Claudinite job (packs/core/scheduled-tasks.md)"
       }
     ]
+  },
+  {
+    "id": "gha/cron-minute-off-the-hour",
+    "severity": "advisory",
+    "failureMessage": "a cron on a round minute is the firing GitHub's scheduler queue most often delays or silently drops, since every repo's cron lands there at once",
+    "fix": "move the minute to a single fixed literal in :10–:50, clear of the :00 stampede and the hour boundary",
+    "scanFiles": "/^\\.github\\/workflows\\/[^/]+\\.ya?ml$/",
+    "scanTracked": true,
+    "excludeFiles": ".github/workflows/claudinite-scheduler.yml",
+    "matchLines": [
+      {
+        "match": "/(?<=^\\s*-\\s*)cron\\s*:\\s*\\S.*$/",
+        "andWithinBlockOpenedBy": "/^\\s*schedule\\s*:\\s*(#.*)?$/",
+        "unlessLineMatches": "/^\\s*-\\s*cron\\s*:\\s*['\"]?(1[0-9]|[2-4][0-9]|50)\\b/",
+        "what": "cron \"{match}\" fires outside a fixed minute in :10–:50"
+      }
+    ]
   }
 ]

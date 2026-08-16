@@ -21,3 +21,4 @@ own `-release` pack (the content of one release pipeline, not the platform under
 | `gha/scheduled-failure-escalation` | high | correctness | check: advisory |
 | `gha/label-create-before-add` | medium | correctness | check: advisory |
 | `gha/unique-automation-branch` | medium | correctness | check: advisory |
+| `gha/cron-minute-off-the-hour` | medium | correctness | check: advisory |

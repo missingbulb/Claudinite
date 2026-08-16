@@ -14,7 +14,7 @@ mechanics for the CI that runs the lane).
 | SwiftPM builds a binary, not a .app | high | correctness | prose: 49 words |
 | Commit an icon master, generate .icns | low | complexity | prose: 44 words |
 | A menu-bar-only app is LSUIElement: true | medium | correctness | prose: 23 words |
-| Pin LSMinimumSystemVersion to the package's platform | high | correctness | prose: 30 words |
+| Pin LSMinimumSystemVersion to the package's platform | high | correctness | prose: 30 words + check (`minimum-system-version-agrees`) |
 | Notarization requires the Hardened Runtime | critical | legal | prose: 64 words |
 | TCC-gated capabilities need no entitlement | medium | correctness | prose: 41 words |
 | No App Sandbox on Developer ID | high | correctness | prose: 40 words |
@@ -49,14 +49,15 @@ mechanics for the CI that runs the lane).
 |---|---|---|---|
 | `sudden-termination-vs-teardown` | high | correctness | check: blocking |
 | `signal-teardown-routing` | high | correctness | check: blocking |
+| `minimum-system-version-agrees` | high | correctness | check: blocking |
 
-Two checks, both on the exit paths — the rules whose static signature is false-positive-free
-*because the rule is itself conditional*: each fires only where the tree shows the posture the rule
-is about (terminate-time teardown; an AppKit app that installs a capture tap). The rest stays prose:
-runtime device behaviour, a CI lane's shape, or a plist/entitlement judgment call, none of which a
-scan can tell apart from a healthy repo. The `Package.swift` fingerprint only **suspects** the
-pack — a Swift package can be a library or an iOS-only target, so declaration stays the project's
-call.
+Three checks, each on a rule whose static signature is false-positive-free *because the rule is
+itself conditional*: each fires only where the tree already shows the posture the rule is about —
+terminate-time teardown, an AppKit app that installs a capture tap, or a plist and a package
+manifest that both state an OS floor. The rest stays prose: runtime device behaviour, a CI lane's
+shape, or a plist/entitlement judgment call, none of which a scan can tell apart from a healthy
+repo. The `Package.swift` fingerprint only **suspects** the pack — a Swift package can be a
+library or an iOS-only target, so declaration stays the project's call.
 
 **Provenance.** Distilled from `missingbulb/LaughCounter` — a SwiftPM menu-bar agent app published
 as a notarized DMG through GitHub Actions, whose `mac/scripts/`, `mac/Resources/`, release workflow
