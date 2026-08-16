@@ -93,7 +93,10 @@ import { normalizeEdges, barrierFindings, staleFindings } from './reference-scan
 //                      {count}/{longest}/{bytes} interpolate
 //   skipLinesMatching  RegExp — lines it matches are invisible to matchLines
 //   matchLines         [{ match, andLineMatches, unlessLineMatches,
-//                         unlessPreviousLineMatches, whenPathMatches,
+//                         unlessPreviousLineMatches,
+//                         andIndentedBlockBelowMatches,
+//                         unlessIndentedBlockBelowMatches,
+//                         unlessWithinBlockOpenedBy, whenPathMatches,
 //                         whenFileMatches, unlessFileMatches, what, fix }]
 //                      flag each line `match` hits — provided `andLineMatches`
 //                      (if declared) also hits it, `unlessLineMatches` does
@@ -102,7 +105,24 @@ import { normalizeEdges, barrierFindings, staleFindings } from './reference-scan
 //                      path matches `whenPathMatches` (absent = every scanned
 //                      file), where every `whenFileMatches` matches the text
 //                      and `unlessFileMatches` does not; per line, the first
-//                      matching assertion wins
+//                      matching assertion wins.
+//                      The three BLOCK relations read the indentation structure
+//                      a line sits in, so an assertion can say "under this key"
+//                      / "inside that section" instead of hand-walking the
+//                      columns (the shape Semgrep spells pattern-inside and
+//                      ast-grep spells inside/has). A line's indented BLOCK is
+//                      every following line more indented than it, up to the
+//                      first non-blank line at or left of its own column
+//                      (blank lines belong to the block, and a YAML `|`/`>`
+//                      scalar's body is just such a block):
+//                        andIndentedBlockBelowMatches     some line of the
+//                                                         matched line's block
+//                                                         matches
+//                        unlessIndentedBlockBelowMatches  no line of it does
+//                        unlessWithinBlockOpenedBy        no enclosing line —
+//                                                         any ancestor, walking
+//                                                         out to column 0 —
+//                                                         matches
 //   countMatchingLines [{ linesMatching, atLeast, atMost, what, fix }]
 //                      per file, the number of lines `linesMatching` hits must
 //                      sit within the declared bounds (at least one bound;
@@ -302,6 +322,7 @@ const SPEC_KEYS = {
   maxLines: ['limit', ...MSG],
   maxLineLength: ['bytes', ...MSG],
   matchLines: ['match', 'andLineMatches', 'unlessLineMatches', 'unlessPreviousLineMatches',
+    'andIndentedBlockBelowMatches', 'unlessIndentedBlockBelowMatches', 'unlessWithinBlockOpenedBy',
     'whenPathMatches', 'whenFileMatches', 'unlessFileMatches', ...MSG],
   countMatchingLines: ['linesMatching', 'atLeast', 'atMost', ...MSG],
   checkEachFile: ['relevantWhen', 'whenFileMatches', 'require', 'forbid', ...MSG],
@@ -890,6 +911,40 @@ function assertReferenceEdges(ctx, j) {
   if (ctx.mode === 'all' && !scanErrors) j.out.push(...staleFindings(stale, j.rule));
 }
 
+// The indentation structure matchLines' block relations read. A line's own
+// column is where its first non-space character sits; a blank line has none, so
+// it neither opens nor closes anything and simply belongs to the block it sits
+// inside. Both directions of the same shape: the block BELOW a line is what is
+// indented under it until the first line back at or left of its column, and a
+// line is ENCLOSED BY every line further out that is still open at its own
+// column — walking outwards, each ancestor being the nearest preceding line
+// left of the last one found.
+const columnOf = (line) => line.search(/\S/);
+
+function blockBelow(lines, i) {
+  const opener = columnOf(lines[i]);
+  const out = [];
+  for (let j = i + 1; j < lines.length; j += 1) {
+    const col = columnOf(lines[j]);
+    if (col !== -1 && col <= opener) break;
+    out.push(lines[j]);
+  }
+  return out;
+}
+
+function enclosedBy(lines, i, re) {
+  let inner = columnOf(lines[i]);
+  if (inner < 1) return false;
+  for (let j = i - 1; j >= 0; j -= 1) {
+    const col = columnOf(lines[j]);
+    if (col === -1 || col >= inner) continue;
+    if (re.test(lines[j])) return true;
+    inner = col;
+    if (inner === 0) return false;
+  }
+  return false;
+}
+
 // One file visited once for every subscribing rule: whole-text assertions and
 // repo-wide bookkeeping first, then a single walk of the lines shared by all
 // the rules' line assertions. A rule's scanIgnoring* keys pick its VIEW of the
@@ -996,6 +1051,9 @@ function visit(ctx, subs, path, text) {
         const m = ln.match(a.match);
         if (!m || (a.andLineMatches && !a.andLineMatches.test(ln)) || a.unlessLineMatches?.test(ln)) continue;
         if (a.unlessPreviousLineMatches && i > 0 && a.unlessPreviousLineMatches.test(viewLines[i - 1])) continue;
+        if (a.andIndentedBlockBelowMatches && !blockBelow(viewLines, i).some((b) => a.andIndentedBlockBelowMatches.test(b))) continue;
+        if (a.unlessIndentedBlockBelowMatches && blockBelow(viewLines, i).some((b) => a.unlessIndentedBlockBelowMatches.test(b))) continue;
+        if (a.unlessWithinBlockOpenedBy && enclosedBy(viewLines, i, a.unlessWithinBlockOpenedBy)) continue;
         const vars = { match: m[0] };
         j.out.push(finding(j.rule, {
           file: path, line: i + 1, what: fill(a.what, vars), fix: fill(a.fix, vars),
@@ -1085,7 +1143,8 @@ function results(ctx) {
 const PATH_OR_PATTERN_KEYS = new Set(['scanFiles', 'excludeFiles']);
 const PATTERN_KEYS = new Set([
   'skipLinesMatching', 'match', 'andLineMatches', 'unlessLineMatches',
-  'unlessPreviousLineMatches', 'whenPathMatches', 'whenFileMatches', 'unlessFileMatches',
+  'unlessPreviousLineMatches', 'andIndentedBlockBelowMatches', 'unlessIndentedBlockBelowMatches',
+  'unlessWithinBlockOpenedBy', 'whenPathMatches', 'whenFileMatches', 'unlessFileMatches',
   'require', 'forbid', 'trackedFileMatches', 'noTrackedFileMatches', 'exactlyOneTrackedFileMatches',
   'pathMatching', 'text', 'repoContains', 'unlessSomeFileMatches', 'flagFilesMatching',
   'neverFlagFiles', 'eachTrackedPathMatching', 'eachPathMatching', 'globLineMatching',
