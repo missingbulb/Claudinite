@@ -2,10 +2,11 @@
 
 Declared for hand-authored HTML (no reliable fingerprint). Prose-only.
 
-## Prose (`RULES.md`)
+## Rules (`RULES.md`)
 
-| Rule (≤5 words) | How enforced |
-|---|---|
-| Injected block in <p> lands sibling | prose |
-| Investigate live before you ship | prose |
-| Console request: snippet, not essay | prose |
+| Rule | Severity | Reason | Enforcement |
+|---|---|---|---|
+| Injected block markup lands beside the <p> | medium | correctness | prose: 76 words |
+| Infer a slash date's convention once | high | correctness | prose: 156 words |
+| Investigate a live page before you ship | high | correctness | prose: 81 words |
+| Make a console request a snippet | low | complexity | prose: 38 words |

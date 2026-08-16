@@ -194,3 +194,12 @@ run against the member repo and read the local packs from the working tree; prom
 and reads the same subtree over the GitHub API (get-file-contents under `.claudinite/local_packs/`).
 Extract writes into it, promote reads from it, dedup prunes within it — all against the identical,
 `.claudinite/local_packs/`-rooted set.
+
+## Checks
+
+| Check | Severity | Reason | Enforcement |
+|---|---|---|---|
+| `dedup-prune-integrity` | high | correctness | check: blocking |
+| `growth-write-scope` | high | correctness | check: blocking |
+| `in-session-github-access` | high | correctness | check: blocking |
+| `routine-structure` | medium | complexity | check: blocking |

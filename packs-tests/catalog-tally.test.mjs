@@ -13,10 +13,8 @@ import { packRules } from '../engine/checks/run-active-pack-rules.mjs';
 // prose equal to it. `packRules` is the same assembly `--list` prints, so the
 // tally can never disagree with the runner about what a rule is.
 //
-// Deliberately guards only the CHECK count. The prose-rule figures beside it
-// are audit estimates from docs/conversion-inventory.md — nothing derives them,
-// so the README marks them as a dated snapshot rather than pretending they are
-// live, and no test can hold them honest.
+// Guards the CHECK count only. The prose-rule figures beside it are derived
+// from the packs' own rule indexes and guarded by rule-index.test.mjs.
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CATALOG = 'packs/README.md';
 const TALLY = /\|\s*\*\*Hardcoded conformance checks\*\*\s*\|\s*\*\*(\d+)\*\*/;

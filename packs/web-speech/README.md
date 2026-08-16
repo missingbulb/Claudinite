@@ -6,26 +6,36 @@ Most gotchas are runtime browser behaviours with no repo-state signature a stati
 
 Where a rule touches MV3 service-worker / content-script mechanics that also bear on non-speech APIs, the general extension gotchas live in the [`chrome-extension`](../chrome-extension/README.md) pack; this pack owns the speech-API facets specifically.
 
-## Prose gotchas (`RULES.md`)
+## Rules (`RULES.md`)
 
-| Rule (≤5 words) | How enforced |
-|---|---|
-| Recognizer owns its mic capture | prose |
-| Read the n-best list | prose |
-| Settle the listen cycle once | prose |
-| Missing isFinal means final | prose |
-| Classic recognition is cloud/online | prose |
-| Biasing only on-device, modest | prose |
-| Map speech errors to taxonomy | prose |
-| Pause watchdog for missed endpoints | prose |
-| Mic permission is per-origin | prose |
-| Prefer chrome.tts over speechSynthesis | prose |
-| Relay chrome.tts from content script | prose |
-| Empty getVoices means not-ready | prose |
-| Don't trust the default voice | prose |
-| Resolve speak on any terminal event | prose |
-| No SSML — speak the cue | prose |
+| Rule | Severity | Reason | Enforcement |
+|---|---|---|---|
+| The recognizer owns its microphone capture | high | correctness | prose: 99 words + skill check (`web-speech-capture-released-on-pagehide`) |
+| Read the whole n-best list | medium | correctness | prose: 33 words |
+| Settle the listen cycle exactly once | high | correctness | prose: 46 words |
+| A missing isFinal means final | high | correctness | prose: 35 words |
+| Classic recognition streams to the cloud | critical | legal | prose: 74 words |
+| Biasing works only on-device | medium | correctness | prose: 71 words |
+| Map error names to a small taxonomy | medium | complexity | prose: 48 words |
+| A missed endpoint needs a pause watchdog | high | correctness | prose: 82 words |
+| Mic permission is per-origin | high | correctness | prose: 93 words |
+| Prefer chrome.tts over speechSynthesis | medium | correctness | prose: 58 words |
+| Relay chrome.tts from a content script | high | correctness | prose: 66 words + skill check (`web-speech-no-window-api-in-service-worker`) |
+| An empty getVoices() means not-ready | high | correctness | prose: 44 words |
+| Don't trust the default voice | low | correctness | prose: 39 words |
+| Resolve speak() on any terminal event | high | correctness | prose: 60 words |
+| Neither engine reliably supports SSML | low | correctness | prose: 37 words |
 
 ## Provenance
 
 Distilled from `missingbulb/CrosswordChat` — a Chrome extension that solves the NYT crossword conversationally (voice in, voice out). Grounded in its `extension/src/speech/` ports (`stt-port.js`, `tts-port.js`, `remote-tts-port.js`, `biasing.js`), the service-worker TTS relay (`extension/src/background/service-worker.js`), and its `dev/docs/FEASIBILITY.md` speech-API analysis.
+
+## Checks
+
+All three ride the [`web-speech-io`](skills/web-speech-io/SKILL.md) skill's bundle.
+
+| Check | Severity | Reason | Enforcement |
+|---|---|---|---|
+| `web-speech-no-window-api-in-service-worker` | high | correctness | check: blocking |
+| `web-speech-capture-released-on-pagehide` | critical | correctness | check: blocking |
+| `web-speech-recognition-feature-detected` | medium | correctness | check: advisory |

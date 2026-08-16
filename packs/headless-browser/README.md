@@ -9,29 +9,29 @@ Prose only. Every rule is a runtime browser behaviour or a judgment about a harn
 neither of which has a repo-state signature a check could read without asserting that a
 particular call still exists — the shape the corpus rejects outright.
 
-## Prose (`RULES.md`)
+## Rules (`RULES.md`)
 
-| Rule (≤5 words) | How enforced |
-|---|---|
-| Resolve binary, never download | prose |
-| Pin the build for pixels | prose |
-| Zero-diff costs whole recipe | prose |
-| Fake origin, abort by default | prose |
-| `https` origin for geolocation | prose |
-| Route vendored assets host-agnostically | prose |
-| Context knobs vs page knobs | prose |
-| Window-size flag isn't a viewport | prose |
-| Fakes as init scripts | prose |
-| CSS freeze misses `element.animate` | prose |
-| Two clock modes | prose |
-| Font jail, not just webfonts | prose |
-| Reproducible rasterisation flags | prose |
-| Wait on the page's signal | prose |
-| Clip, don't screenshot the element | prose |
-| Bounding boxes go stale | prose |
-| Whole-pixel clips | prose |
-| Strip scripts needing the runtime | prose |
-| One browser, many contexts | prose |
+| Rule | Severity | Reason | Enforcement |
+|---|---|---|---|
+| Resolve binary, never download | high | correctness | prose: 123 words |
+| Pin the build for pixels | high | correctness | prose: 87 words |
+| Zero-diff costs whole recipe | medium | correctness | prose: 95 words |
+| Fake origin, abort by default | high | correctness | prose: 80 words |
+| `https` origin for geolocation | medium | correctness | prose: 48 words |
+| Route vendored assets host-agnostically | medium | correctness | prose: 75 words |
+| Context knobs vs page knobs | medium | correctness | prose: 67 words |
+| Window-size flag isn't a viewport | high | correctness | prose: 132 words |
+| Fakes as init scripts | high | correctness | prose: 42 words |
+| CSS freeze misses `element.animate` | high | correctness | prose: 45 words |
+| Two clock modes | medium | correctness | prose: 55 words |
+| Font jail, not just webfonts | high | correctness | prose: 111 words |
+| Reproducible rasterisation flags | high | correctness | prose: 60 words |
+| Wait on the page's signal | high | correctness | prose: 66 words |
+| Clip, don't screenshot the element | medium | correctness | prose: 65 words |
+| Bounding boxes go stale | medium | correctness | prose: 59 words |
+| Whole-pixel clips | medium | correctness | prose: 57 words |
+| Strip scripts needing the runtime | medium | correctness | prose: 53 words |
+| One browser, many contexts | medium | performance | prose: 51 words |
 
 ## Boundary
 
