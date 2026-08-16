@@ -25,7 +25,24 @@ instructions.
    A nonce mismatch in particular means this fire named a hand-off that is not the
    current one; the item belongs to someone else or to an earlier episode.
 
-3. **Run the task file** at its declared model.
+3. **Say what you are about to run**, in your first reply after reading the issue
+   and before any work — a fenced block, so it reads as a box in the transcript.
+   A session's own scrollback is where a human lands when a run goes wrong, and a
+   run that never names itself has to be identified by inference from its edits:
+
+   ```
+   task:       <pack>/<task>
+   item:       #<n>            ← the occurrence's identity (a slot id where the
+                                 dispatch has one; the queue has none)
+   parameters: <the title's qualifier, and any Context field that narrows the run>
+   prework:    <branch/PR named under "Delivered by prework" — the artifacts this
+                run continues on, never duplicates>
+   ```
+
+   Omit a line that has nothing to say rather than filling it with a placeholder:
+   most items carry no qualifier and most tasks deliver no prework artifact.
+
+4. **Run the task file** at its declared model.
    - The issue's **Context** section is binding scope. The precondition decided it
      and you may not re-decide it, widen it, or skip the run because you disagree.
    - **Delivered by prework** names artifacts this run already created — a branch,
@@ -33,11 +50,11 @@ instructions.
    - If the work turns out empty, that is a legitimate result. "The work ran and
      produced nothing" is an outcome; deciding not to run is not yours to make.
 
-4. **Verify your outcome in code** against the task's declared ceiling before you
+5. **Verify your outcome in code** against the task's declared ceiling before you
    finish. A `none` task may not open a PR; an `open-pr` task may not merge one.
    Exceeding the ceiling is a failure, not a success with a surprise.
 
-5. **Converge the issue exactly once**, with one comment saying what happened:
+6. **Converge the issue exactly once**, with one comment saying what happened:
 
    | label | when |
    |---|---|
