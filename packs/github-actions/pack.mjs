@@ -1,6 +1,7 @@
 import secretsInJobIf from './secrets-in-job-if.mjs';
 import runPipefail from './run-pipefail.mjs';
 import checkoutSubmodules from './checkout-submodules.mjs';
+import cronMinuteOffTheHour from './cron-minute-off-the-hour.mjs';
 
 export default {
   id: 'github-actions',
@@ -18,6 +19,7 @@ export default {
     secretsInJobIf,
     runPipefail,
     checkoutSubmodules,
+    cronMinuteOffTheHour,
   ],
   skills: ['github-actions-scheduling'],
 };

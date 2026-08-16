@@ -9,7 +9,7 @@ mechanics for the CI that runs the lane).
 
 | Section | How enforced |
 |---|---|
-| Bundle is assembled | prose |
+| Bundle is assembled | prose + `minimum-system-version-agrees` |
 | TCC vs entitlement | prose |
 | On-device speech | prose |
 | Secret-gated signing lane | prose |
@@ -19,13 +19,13 @@ mechanics for the CI that runs the lane).
 | Sleep and deferred work | prose |
 | Holding a device | prose |
 
-Two checks, both on the exit paths — the rules whose static signature is false-positive-free
-*because the rule is itself conditional*: each fires only where the tree shows the posture the rule
-is about (terminate-time teardown; an AppKit app that installs a capture tap). The rest stays prose:
-runtime device behaviour, a CI lane's shape, or a plist/entitlement judgment call, none of which a
-scan can tell apart from a healthy repo. The `Package.swift` fingerprint only **suspects** the
-pack — a Swift package can be a library or an iOS-only target, so declaration stays the project's
-call.
+Three checks, each on a rule whose static signature is false-positive-free *because the rule is
+itself conditional*: each fires only where the tree already shows the posture the rule is about —
+terminate-time teardown, an AppKit app that installs a capture tap, or a plist and a package
+manifest that both state an OS floor. The rest stays prose: runtime device behaviour, a CI lane's
+shape, or a plist/entitlement judgment call, none of which a scan can tell apart from a healthy
+repo. The `Package.swift` fingerprint only **suspects** the pack — a Swift package can be a library
+or an iOS-only target, so declaration stays the project's call.
 
 **Provenance.** Distilled from `missingbulb/LaughCounter` — a SwiftPM menu-bar agent app published
 as a notarized DMG through GitHub Actions, whose `mac/scripts/`, `mac/Resources/`, release workflow

@@ -1,4 +1,5 @@
 import signalTeardownRouting from './signal-teardown-routing.mjs';
+import minimumSystemVersionAgrees from './minimum-system-version-agrees.mjs';
 
 // Technology pack: a native macOS app — the app bundle, TCC and Hardened
 // Runtime, the Developer ID / notarization / DMG distribution lane, and the
@@ -27,14 +28,15 @@ export default {
   marker: 'Package.swift (at the repo root or one directory down)',
   detect: (ctx) => hasMarkerNearRoot(ctx, 'Package.swift'),
   prose: 'RULES.md',
-  // Two checks, both on the exit-path rules — the only ones whose violation has
-  // a static signature that is false-positive-free *because the rule is itself
-  // conditional*: each fires only where the tree shows the posture the rule is
-  // about (terminate-time teardown; an AppKit app that installs a capture tap).
-  // sudden-termination-vs-teardown lives in declared-checks.json beside this
-  // file; signal-teardown-routing stays coded for its ordered-occurrence arm.
+  // Three checks, each on a rule whose static signature is false-positive-free
+  // *because the rule is itself conditional*: each fires only where the tree
+  // already shows the posture the rule is about — terminate-time teardown, an
+  // AppKit app that installs a capture tap, or a plist and a package manifest
+  // that both state an OS floor. sudden-termination-vs-teardown lives in
+  // declared-checks.json beside this file; the other two stay coded, for an
+  // ordered-occurrence arm and a cross-file comparison respectively.
   // Everything else in RULES.md stays prose — runtime device behaviour, a CI
   // lane's shape, or a plist/entitlement judgment call, none of which a scan can
   // separate from a healthy repo.
-  worldRules: [signalTeardownRouting],
+  worldRules: [signalTeardownRouting, minimumSystemVersionAgrees],
 };
