@@ -68,10 +68,12 @@ export function normalizeLeadIn(text) {
   return text.replace(/[`*_]/g, '').replace(/\s+/g, ' ').trim().replace(/[—–-]$/, '').trim();
 }
 
-// The README's own index: the rows of the first table whose header carries a
-// Words column. Rows are held against RULES.md by position — the index lists
-// the rules in the order the prose does — so a row's label stays a human
-// summary rather than a second copy of the rule's lead-in.
+// The README's own index: the rows of the first `| Rule | Severity | Reason |
+// Enforcement |` table, whose Enforcement cell states the rule's length
+// ("prose: 52 words", plus the check that also carries it). Rows are held
+// against RULES.md by position — the index lists the rules in the order the
+// prose does — so a row's label stays a human summary rather than a second copy
+// of the rule's lead-in.
 export function readmeRuleIndex(readme) {
   const rows = [];
   let inIndex = false;
@@ -82,11 +84,16 @@ export function readmeRuleIndex(readme) {
     }
     const cells = line.split('|').slice(1, -1).map((c) => c.trim());
     if (!inIndex) {
-      inIndex = cells.some((c) => /^words$/i.test(c));
+      inIndex = /^rule$/i.test(cells[0]) && /^enforcement$/i.test(cells.at(-1));
       continue;
     }
     if (cells.every((c) => /^:?-+:?$/.test(c))) continue;
-    rows.push({ label: cells[0], words: Number(cells[1]), severity: cells[2], reason: cells[3] });
+    rows.push({
+      label: cells[0],
+      severity: cells[1],
+      reason: cells[2],
+      words: Number(/prose: (\d+) words/.exec(cells[3])?.[1]),
+    });
   }
   return rows;
 }

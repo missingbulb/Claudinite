@@ -198,10 +198,10 @@ Extract writes into it, promote reads from it, dedup prunes within it — all ag
 
 ## Checks
 
-| Check | Reported as | Severity | Reason | Enforces |
-|---|---|---|---|---|
-| `growth-config` | blocking | medium | complexity | the growth configuration is legal, so a member's capture surface is where the tasks write |
-| `dedup-prune-integrity` | blocking | high | correctness | a dedup pass prunes and rewrites entries rather than growing them |
-| `growth-write-scope` | blocking | high | correctness | a growth run writes only into the repo's own local packs |
-| `in-session-github-access` | blocking | high | correctness | a routine reaches GitHub the way its session actually can — an MCP-only session has no REST credential |
-| `routine-structure` | blocking | medium | complexity | a routine declares the structure the unattended-agents skill defines |
+| Check | Severity | Reason | Enforcement |
+|---|---|---|---|
+| `growth-config` | medium | complexity | check: blocking |
+| `dedup-prune-integrity` | high | correctness | check: blocking |
+| `growth-write-scope` | high | correctness | check: blocking |
+| `in-session-github-access` | high | correctness | check: blocking |
+| `routine-structure` | medium | complexity | check: blocking |

@@ -124,41 +124,40 @@ The SessionStart hook [`../engine/pack_loader/mount-skills.mjs`](../engine/pack_
 A pack README is optional, but where one exists it **indexes what the pack asks of a project**: one
 row per prose rule in its `RULES.md`, and one row per check it runs. Both tables carry the same two
 judgments — **how bad it is when the rule isn't followed**, and **what kind of cost that is** —
-because a reader deciding whether to adopt a pack, or which of its findings to fix first, is asking
-exactly that and can otherwise only get it by reading every rule.
+because a reader deciding whether to adopt a pack, or which finding to fix first, is asking exactly
+that and can otherwise only get it by reading every rule.
 
-The prose index lists **every** rule, in the order `RULES.md` states them, with its word count:
+The prose index lists **every** rule, in the order `RULES.md` states them:
 
 ```markdown
 ## Rules (`RULES.md`)
 
-| Rule | Words | Severity | Reason | How enforced |
-|---|---|---|---|---|
-| Keep the tile provider's attribution — it's a licence term, not decoration. | 52 | critical | legal | prose + check (`leaflet/tile-attribution`) |
+| Rule | Severity | Reason | Enforcement |
+|---|---|---|---|
+| Keep the tile provider's attribution | critical | legal | prose: 52 words + check (`leaflet/tile-attribution`) |
 ```
-
-- **Rule** — the rule's own lead-in, kept short enough to scan.
-- **Words** — the length of that rule's bullet (or section, for a pack whose rules are written as
-  sections), counted by [`../packs-tests/rule-index.mjs`](../packs-tests/rule-index.mjs). It is what
-  the rule *costs*: every declaring repo pays these words in every session's context.
-- **Severity** — the consequence of ignoring the rule: `critical` (it ships a defect to users,
-  loses data, breaks the fleet, or violates a licence or platform policy), `high` (the work lands
-  wrong or silently doesn't work and someone must redo it), `medium` (rework or drift caught inside
-  the repo), `low` (friction or untidiness only). Not the same axis as a check's `severity` field,
-  which says how the *engine* reports a finding — a check table spells that under **Reported as**.
-- **Reason** — the kind of cost: `correctness`, `performance`, `complexity`, or `legal` (licence,
-  privacy, disclosure, store or platform policy). One per rule, the dominant one.
-- **How enforced** — `prose`, or `prose + check (id)` where a check carries the same rule.
-
-The checks index does the same for every rule the pack runs, its own and its skills' alike:
 
 ```markdown
 ## Checks
 
-| Check | Reported as | Severity | Reason | Enforces |
-|---|---|---|---|---|
-| `leaflet/tile-attribution` | blocking | critical | legal | a tile layer keeps its provider attribution |
+| Check | Severity | Reason | Enforcement |
+|---|---|---|---|
+| `leaflet/tile-attribution` | critical | legal | check: blocking |
 ```
+
+- **Rule** — the rule's own lead-in, kept short enough to scan. **Check** — its id.
+- **Severity** — the consequence of ignoring it: `critical` (ships a defect to users, loses data,
+  breaks the fleet, or violates a licence or platform policy), `high` (the work lands wrong or
+  silently doesn't work and someone must redo it), `medium` (rework or drift caught inside the
+  repo), `low` (friction only).
+- **Reason** — the kind of cost: `correctness`, `performance`, `complexity`, or `legal` (licence,
+  privacy, disclosure, store or platform policy). One per rule, the dominant one.
+- **Enforcement** — the mechanism and its price. `prose: <n> words` is what the rule *costs*: every
+  declaring repo pays those words in every session's context, counted by
+  [`../packs-tests/rule-index.mjs`](../packs-tests/rule-index.mjs). `check: blocking | advisory` is
+  how the engine reports a finding. A rule carried both ways names the check too.
+
+Neither table describes what a rule says — the prose and the check's own failure message do that.
 
 Both indexes are held to the tree by [`../packs-tests/rule-index.test.mjs`](../packs-tests/rule-index.test.mjs):
 the rows must match `RULES.md` one-for-one with the right word counts, every check the pack runs must

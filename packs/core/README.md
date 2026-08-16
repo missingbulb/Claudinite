@@ -10,16 +10,16 @@ reports it.
 
 ## Rules (`RULES.md`)
 
-| Rule | Words | Severity | Reason | How enforced |
-|---|---|---|---|---|
-| Reading a rule, check or skill that arrived from Claudinite | 43 | high | correctness | prose + check (`claudinite-isolation`) |
-| Wanting a pack's rules to apply here | 47 | high | correctness | prose + check (`core-declared`) |
-| Adding a pack | 27 | medium | complexity | prose |
-| Setting a project up on Claudinite for the first time | 15 | medium | complexity | prose |
-| Deciding which pack owns a lesson | 59 | medium | complexity | prose |
-| Judging whether Claudinite is current here | 43 | medium | correctness | prose |
-| Writing or changing a scheduled task | 26 | high | correctness | prose + checks (`task-declaration-shape`, `task-declaration-matches-folder`) |
-| Answering "why did the mount not update" | 39 | medium | correctness | prose |
+| Rule | Severity | Reason | Enforcement |
+|---|---|---|---|
+| Reading a rule, check or skill that arrived from Claudinite | high | correctness | prose: 43 words + check (`claudinite-isolation`) |
+| Wanting a pack's rules to apply here | high | correctness | prose: 47 words + check (`core-declared`) |
+| Adding a pack | medium | complexity | prose: 27 words |
+| Setting a project up on Claudinite for the first time | medium | complexity | prose: 15 words |
+| Deciding which pack owns a lesson | medium | complexity | prose: 59 words |
+| Judging whether Claudinite is current here | medium | correctness | prose: 43 words |
+| Writing or changing a scheduled task | high | correctness | prose: 26 words + checks (`task-declaration-shape`, `task-declaration-matches-folder`) |
+| Answering "why did the mount not update" | medium | correctness | prose: 39 words |
 
 ## Checks
 
@@ -27,16 +27,16 @@ Each of these asks the same kind of question: **is Claudinite working in this re
 converged, gated, scheduled. A repo can fail any of them silently, which is why they are checks and
 not prose: the session that has lost its rules is the session least able to notice.
 
-| Rule | Reported as | Severity | Reason | What goes wrong when it fires |
-|---|---|---|---|---|
-| `core-declared` | blocking | critical | correctness | this pack's entry is gone from `.claudinite-checks.json`, so none of the rules below run and the session cannot tell |
-| `rules-index-current` | blocking | critical | correctness | the generated index is missing, stale or unimported — the repo's packs contribute no prose to any session |
-| `claudinite-isolation` | blocking | high | complexity | the repo's own code reaches into `.claudinite/`, so the next canon refactor is a breaking migration for code the canon does not own (a declared `forbidReferences` [barrier](../barriers/README.md) edge) |
-| `conformance-workflow` | advisory | high | correctness | nothing in CI runs the world sweep unfiltered on a pull request, so conformance is ungated and the maintenance PR never lands |
-| `scheduler-workflow-shape` | blocking | high | correctness | the vendored scheduler's cron, concurrency or dispatch guard has drifted — staggering, double-run safety or manual runs break |
-| `task-declaration-shape` | blocking | high | correctness | a task declaration the scheduler reads is incomplete or illegal, so the task never fires or fires wrong |
-| `task-declaration-matches-folder` | blocking | high | correctness | a declaration disagrees with its folder — discovery drops it into `errors` and every run keeps reporting healthy without it |
-| `task-phase-discipline` | advisory | medium | complexity | a task decides not to run after its precondition already said run, hiding the decision from the run records |
+| Check | Severity | Reason | Enforcement |
+|---|---|---|---|
+| `core-declared` | critical | correctness | check: blocking |
+| `rules-index-current` | critical | correctness | check: blocking |
+| `claudinite-isolation` | high | complexity | check: blocking |
+| `conformance-workflow` | high | correctness | check: advisory |
+| `scheduler-workflow-shape` | high | correctness | check: blocking |
+| `task-declaration-shape` | high | correctness | check: blocking |
+| `task-declaration-matches-folder` | high | correctness | check: blocking |
+| `task-phase-discipline` | medium | complexity | check: advisory |
 
 The scope cuts the other way too: a rule about how the **canon's own** content is maintained is not
 this pack's, however much it looks like one. `catalog-completeness` — `packs/README.md` lists every
@@ -54,10 +54,10 @@ what it guards is a hand-maintained index, not a member's status. It stays in
 The adoption skills bundle two more checks of the same kind, over the answers a member stores
 against each declared pack's questions:
 
-| Check | Reported as | Severity | Reason | Enforces |
-|---|---|---|---|---|
-| `adoption-answers-pending` | blocking | medium | complexity | a declared pack's mandatory adoption questions have been answered, so the pack is configured rather than merely present |
-| `interview-answer-stale` | advisory | low | complexity | a stored answer still matches the question it was given for |
+| Check | Severity | Reason | Enforcement |
+|---|---|---|---|
+| `adoption-answers-pending` | medium | complexity | check: blocking |
+| `interview-answer-stale` | low | complexity | check: advisory |
 
 ## Tasks
 

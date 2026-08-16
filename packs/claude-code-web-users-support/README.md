@@ -13,17 +13,17 @@ note and the session proceeds on default interaction behaviour.
 
 ## Rules (`RULES.md`)
 
-| Rule | Words | Severity | Reason | How enforced |
-|---|---|---|---|---|
-| Personal interaction preferences | 277 | medium | complexity | prose |
-| If this repo is the store | 104 | high | correctness | prose + check (`preferences-store-file-names`) |
-| Adding or changing a preference | 67 | medium | complexity | prose |
+| Rule | Severity | Reason | Enforcement |
+|---|---|---|---|
+| Personal interaction preferences | medium | complexity | prose: 277 words |
+| If this repo is the store | high | correctness | prose: 104 words + check (`preferences-store-file-names`) |
+| Adding or changing a preference | medium | complexity | prose: 67 words |
 
 ## Checks
 
 Both are advisory: a preference store is a nice-to-have, and nothing here may block a session.
 
-| Check | Reported as | Severity | Reason | Enforces |
-|---|---|---|---|---|
-| `preferences-store-configured` | advisory | medium | complexity | a declaring repo names its store, without which the pack is a silent no-op |
-| `preferences-store-file-names` | advisory | high | correctness | in the store repo itself, every file under `path` is a person's `<identity>.md` (or the store's own `README.md`) — the file name is the whole address, so a misnamed file is never opened |
+| Check | Severity | Reason | Enforcement |
+|---|---|---|---|
+| `preferences-store-configured` | medium | complexity | check: advisory |
+| `preferences-store-file-names` | high | correctness | check: advisory |

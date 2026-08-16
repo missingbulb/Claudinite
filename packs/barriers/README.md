@@ -152,6 +152,6 @@ Each contribution becomes a **first-class rule under its own id** — per-rule o
 
 ## The check
 
-| Check | Reported as | Severity | Reason | Enforces |
-|---|---|---|---|---|
-| `barrier` | blocking | high | complexity | every declared edge of the repo's folder-access graph: a reference from a `from` folder into a `to` folder is a crossing, reported with the file and line that makes it |
+| Check | Severity | Reason | Enforcement |
+|---|---|---|---|
+| `barrier` | high | complexity | check: blocking |

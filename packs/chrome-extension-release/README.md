@@ -8,13 +8,13 @@ Fingerprint: a repo already carrying the standard's `Release to Chrome Store` or
 
 The release set's conformance rules. Every one of them is about a release that would otherwise fail — or publish the wrong thing — only once it reached the store.
 
-| Check | Reported as | Severity | Reason | Enforces |
-|---|---|---|---|---|
-| `cer/release-workflows` | blocking | high | correctness | the vendored orchestrator, reusable workflows and composite actions are present and wired to the local copies |
-| `cer/template-tokens` | blocking | high | correctness | no `__TOKEN__` placeholder survives setup |
-| `cer/release-config` | blocking | high | correctness | the release config is explicit with no defaults — a missing or typo'd key would ship the wrong thing with no signal |
-| `cer/version-sync` | blocking | high | correctness | every declared version agrees; a divergent one ships the wrong number to the store or refuses to publish |
-| `cer/release-layout` | blocking | medium | correctness | the privacy page deploys from `PRIVACY.md`, which the store listing points at as a live URL |
-| `cer/readme-sections` | blocking | low | complexity | install and release are documented the same way in every extension repo |
-| `cer/privacy-permission-alignment` | blocking | critical | legal | the deployed privacy policy discloses everything the extension can access — an undisclosed permission is a store-review and trust failure |
-| `cer/permission-added-store-issue` | advisory | high | legal | adding a permission opens the store-listing issue that its disclosure and review ride |
+| Check | Severity | Reason | Enforcement |
+|---|---|---|---|
+| `cer/release-workflows` | high | correctness | check: blocking |
+| `cer/template-tokens` | high | correctness | check: blocking |
+| `cer/release-config` | high | correctness | check: blocking |
+| `cer/version-sync` | high | correctness | check: blocking |
+| `cer/release-layout` | medium | correctness | check: blocking |
+| `cer/readme-sections` | low | complexity | check: blocking |
+| `cer/privacy-permission-alignment` | critical | legal | check: blocking |
+| `cer/permission-added-store-issue` | high | legal | check: advisory |

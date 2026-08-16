@@ -14,36 +14,36 @@ hand-kept one drifted into claiming a prose rule that never existed (#777).
 
 ## Rules (`RULES.md`)
 
-| Rule | Words | Severity | Reason | How enforced |
-|---|---|---|---|---|
-| Handing a path to a Chrome API or fetch from an MV3 service worker | 68 | high | correctness | prose |
-| Wanting import/export in extension code | 51 | medium | correctness | prose |
-| Assembling a shared global from several injected content-script files | 51 | high | correctness | prose |
-| Accumulating state in a file that is re-injected | 22 | high | correctness | prose |
-| Loading ES module code into a content script | 118 | high | correctness | prose + check (`content-script-module-syntax`) |
-| Adding an import to a content-script module | 30 | high | correctness | prose |
-| Keeping that webaccessibleresources list correct | 29 | high | correctness | prose |
-| Matching a host with chrome.events.UrlFilter | 63 | high | correctness | prose |
-| Running a content script on arbitrary third-party pages without an install-time host warning | 60 | high | legal | prose |
-| Starting the service worker when a runtime-granted permission is in play | 43 | medium | correctness | prose |
-| A fetch to a host you listed failing in-browser | 42 | medium | correctness | prose |
-| Reaching your own backend | 35 | medium | correctness | prose |
-| Authenticating an extension to a JWT-validating backend | 83 | critical | correctness | prose |
-| Refreshing a token silently | 28 | medium | correctness | prose |
-| Refreshing silently with more than one account signed in | 41 | medium | correctness | prose |
-| Storing a token | 38 | critical | correctness | prose |
-| Wanting a token to survive a browser restart | 30 | medium | correctness | prose |
-| Knowing whether your side panel is open | 37 | low | correctness | prose |
-| Opening the side panel programmatically | 15 | medium | correctness | prose |
-| Putting a menu on the toolbar icon itself | 30 | low | correctness | prose |
-| Recreating those menu items on install or startup | 30 | medium | correctness | prose |
-| Awaiting a chrome. callback API inside Runtime.evaluate | 34 | low | correctness | prose |
-| Reading a worker value from an injected evaluate | 30 | low | correctness | prose |
-| Attaching to a dormant worker | 39 | low | correctness | prose |
+| Rule | Severity | Reason | Enforcement |
+|---|---|---|---|
+| Handing a path to a Chrome API or fetch from an MV3 service worker | high | correctness | prose: 68 words |
+| Wanting import/export in extension code | medium | correctness | prose: 51 words |
+| Assembling a shared global from several injected content-script files | high | correctness | prose: 51 words |
+| Accumulating state in a file that is re-injected | high | correctness | prose: 22 words |
+| Loading ES module code into a content script | high | correctness | prose: 118 words + check (`content-script-module-syntax`) |
+| Adding an import to a content-script module | high | correctness | prose: 30 words |
+| Keeping that webaccessibleresources list correct | high | correctness | prose: 29 words |
+| Matching a host with chrome.events.UrlFilter | high | correctness | prose: 63 words |
+| Running a content script on arbitrary third-party pages without an install-time host warning | high | legal | prose: 60 words |
+| Starting the service worker when a runtime-granted permission is in play | medium | correctness | prose: 43 words |
+| A fetch to a host you listed failing in-browser | medium | correctness | prose: 42 words |
+| Reaching your own backend | medium | correctness | prose: 35 words |
+| Authenticating an extension to a JWT-validating backend | critical | correctness | prose: 83 words |
+| Refreshing a token silently | medium | correctness | prose: 28 words |
+| Refreshing silently with more than one account signed in | medium | correctness | prose: 41 words |
+| Storing a token | critical | correctness | prose: 38 words |
+| Wanting a token to survive a browser restart | medium | correctness | prose: 30 words |
+| Knowing whether your side panel is open | low | correctness | prose: 37 words |
+| Opening the side panel programmatically | medium | correctness | prose: 15 words |
+| Putting a menu on the toolbar icon itself | low | correctness | prose: 30 words |
+| Recreating those menu items on install or startup | medium | correctness | prose: 30 words |
+| Awaiting a chrome. callback API inside Runtime.evaluate | low | correctness | prose: 34 words |
+| Reading a worker value from an injected evaluate | low | correctness | prose: 30 words |
+| Attaching to a dormant worker | low | correctness | prose: 39 words |
 
 ## Checks
 
-| Check | Reported as | Severity | Reason | Enforces |
-|---|---|---|---|---|
-| `content-script-module-syntax` | blocking | high | correctness | a content script is a classic script, so its top-level `import` throws — prose in `RULES.md` too |
-| `declarative-content-set-icon` | blocking | medium | correctness | a `declarativeContent.SetIcon` action supplies `imageData`, never `path` — carried by the check alone; the rule's whole account is its `why` and `fix` |
+| Check | Severity | Reason | Enforcement |
+|---|---|---|---|
+| `content-script-module-syntax` | high | correctness | check: blocking |
+| `declarative-content-set-icon` | medium | correctness | check: blocking |

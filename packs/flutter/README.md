@@ -10,20 +10,20 @@ committed tests inside the consuming project.
 
 ## Rules (`RULES.md`)
 
-| Rule | Words | Severity | Reason | How enforced |
-|---|---|---|---|---|
-| Widgets depend on ports, never on plugins. | 70 | medium | complexity | prose |
-| Enforce the boundary with a committed import-scan test | 25 | medium | complexity | prose |
-| Ship the fakes in the package | 59 | low | complexity | prose |
-| Extract the root shell into a widget | 38 | low | complexity | prose |
-| Inject the clock. | 25 | high | correctness | prose |
-| Load real fonts before any golden | 75 | high | correctness | prose |
-| Never pumpAndSettle around indeterminate progress indicators | 59 | high | correctness | prose |
-| Anything that fetches must be injectable | 47 | medium | complexity | prose |
-| Fix the viewport per suite | 31 | medium | correctness | prose |
-| Async lifecycle guards need an epoch counter. | 51 | high | correctness | prose |
-| Verify plugin APIs against the installed source, not memory. | 41 | high | correctness | prose |
-| pubspec.lock moving without pubspec.yaml moving is version skew, not a dependency change. | 69 | medium | correctness | prose |
-| flutter analyze at zero issues | 39 | medium | complexity | prose |
-| Sandboxed/CI runners | 57 | medium | complexity | prose |
-| The web sandbox ships no Flutter SDK. | 81 | medium | complexity | prose |
+| Rule | Severity | Reason | Enforcement |
+|---|---|---|---|
+| Widgets depend on ports, never on plugins. | medium | complexity | prose: 70 words |
+| Enforce the boundary with a committed import-scan test | medium | complexity | prose: 25 words |
+| Ship the fakes in the package | low | complexity | prose: 59 words |
+| Extract the root shell into a widget | low | complexity | prose: 38 words |
+| Inject the clock. | high | correctness | prose: 25 words |
+| Load real fonts before any golden | high | correctness | prose: 75 words |
+| Never pumpAndSettle around indeterminate progress indicators | high | correctness | prose: 59 words |
+| Anything that fetches must be injectable | medium | complexity | prose: 47 words |
+| Fix the viewport per suite | medium | correctness | prose: 31 words |
+| Async lifecycle guards need an epoch counter. | high | correctness | prose: 51 words |
+| Verify plugin APIs against the installed source, not memory. | high | correctness | prose: 41 words |
+| pubspec.lock moving without pubspec.yaml moving is version skew, not a dependency change. | medium | correctness | prose: 69 words |
+| flutter analyze at zero issues | medium | complexity | prose: 39 words |
+| Sandboxed/CI runners | medium | complexity | prose: 57 words |
+| The web sandbox ships no Flutter SDK. | medium | complexity | prose: 81 words |

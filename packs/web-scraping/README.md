@@ -12,35 +12,35 @@ without firing on ordinary HTTP code.
 
 ## Rules (`RULES.md`)
 
-| Rule | Words | Severity | Reason | How enforced |
-|---|---|---|---|---|
-| Adding a source, or deciding what to parse | 90 | medium | complexity | prose |
-| A rendered-snapshot expectation shifting after a re-record | 31 | medium | correctness | prose |
-| Learning something non-obvious by probing the service | 71 | medium | complexity | prose |
-| Writing the fetch itself | 44 | medium | correctness | prose |
-| Deciding whether to retry a failed request | 43 | medium | correctness | prose |
-| Porting a fetch to a language-level HTTP client | 47 | medium | correctness | prose |
-| Setting the retry budget | 38 | medium | performance | prose |
-| One item in a batch failing to fetch | 30 | high | correctness | prose |
-| A sandbox refusing the target host | 80 | critical | legal | prose |
-| A fetch that works on your machine and fails from CI | 108 | medium | correctness | prose |
-| Needing many items from a service with no list endpoint | 66 | medium | performance | prose |
-| A fetch that cannot produce a page at all | 66 | medium | correctness | prose |
-| Deciding whether a fetch succeeded | 55 | high | correctness | prose |
-| Getting an empty body back | 36 | high | correctness | prose |
-| Choosing which field to read | 57 | high | correctness | prose |
-| Filtering rows by a status | 40 | high | correctness | prose |
-| Reading a numeric field | 17 | high | correctness | prose |
-| Reducing a set to its "cheapest" or "first" | 45 | medium | correctness | prose |
-| Converting an instant to the domain's local time | 132 | high | correctness | prose |
-| Taking a "now" | 38 | high | correctness | prose |
-| Parsing a value whose format is ambiguous | 129 | high | correctness | prose |
-| Changing the conversion | 78 | high | correctness | prose |
-| Emitting a value your pipeline hasn't reached yet | 64 | high | correctness | prose |
-| Deciding what a fetch writes to disk | 128 | medium | complexity | prose |
-| Re-running a fetch that already ran | 70 | medium | correctness | prose |
-| Scheduling the refresh | 75 | medium | correctness | prose |
-| Generating the artifacts downstream of the stored data | 55 | medium | correctness | prose |
+| Rule | Severity | Reason | Enforcement |
+|---|---|---|---|
+| Adding a source, or deciding what to parse | medium | complexity | prose: 90 words |
+| A rendered-snapshot expectation shifting after a re-record | medium | correctness | prose: 31 words |
+| Learning something non-obvious by probing the service | medium | complexity | prose: 71 words |
+| Writing the fetch itself | medium | correctness | prose: 44 words |
+| Deciding whether to retry a failed request | medium | correctness | prose: 43 words |
+| Porting a fetch to a language-level HTTP client | medium | correctness | prose: 47 words |
+| Setting the retry budget | medium | performance | prose: 38 words |
+| One item in a batch failing to fetch | high | correctness | prose: 30 words |
+| A sandbox refusing the target host | critical | legal | prose: 80 words |
+| A fetch that works on your machine and fails from CI | medium | correctness | prose: 108 words |
+| Needing many items from a service with no list endpoint | medium | performance | prose: 66 words |
+| A fetch that cannot produce a page at all | medium | correctness | prose: 66 words |
+| Deciding whether a fetch succeeded | high | correctness | prose: 55 words |
+| Getting an empty body back | high | correctness | prose: 36 words |
+| Choosing which field to read | high | correctness | prose: 57 words |
+| Filtering rows by a status | high | correctness | prose: 40 words |
+| Reading a numeric field | high | correctness | prose: 17 words |
+| Reducing a set to its "cheapest" or "first" | medium | correctness | prose: 45 words |
+| Converting an instant to the domain's local time | high | correctness | prose: 132 words |
+| Taking a "now" | high | correctness | prose: 38 words |
+| Parsing a value whose format is ambiguous | high | correctness | prose: 129 words |
+| Changing the conversion | high | correctness | prose: 78 words |
+| Emitting a value your pipeline hasn't reached yet | high | correctness | prose: 64 words |
+| Deciding what a fetch writes to disk | medium | complexity | prose: 128 words |
+| Re-running a fetch that already ran | medium | correctness | prose: 70 words |
+| Scheduling the refresh | medium | correctness | prose: 75 words |
+| Generating the artifacts downstream of the stored data | medium | correctness | prose: 55 words |
 
 ## Skill
 

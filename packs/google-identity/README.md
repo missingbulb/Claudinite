@@ -14,8 +14,8 @@ tokens validated at an API Gateway JWT authorizer._
 
 ## Checks
 
-| Check | Reported as | Severity | Reason | Enforces |
-|---|---|---|---|---|
-| `google-token-audience-pinned` | blocking | critical | correctness | the validator pins the audience — every Google token shares the issuer, so without it any Google OAuth client's token authenticates |
-| `google-token-email-verified` | blocking | critical | correctness | an email-gated action checks `email_verified`, not the bare `email` claim |
-| `google-client-id-single-origin` | advisory | medium | correctness | one client id per origin, so a token's audience means what the validator assumes |
+| Check | Severity | Reason | Enforcement |
+|---|---|---|---|
+| `google-token-audience-pinned` | critical | correctness | check: blocking |
+| `google-token-email-verified` | critical | correctness | check: blocking |
+| `google-client-id-single-origin` | medium | correctness | check: advisory |

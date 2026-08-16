@@ -8,20 +8,20 @@ architecture judgment with no false-positive-free signature, kept as prose.
 
 ## Rules (`RULES.md`)
 
-| Rule | Words | Severity | Reason | How enforced |
-|---|---|---|---|---|
-| Keep the importable core dependency-free; heavy/native deps go in optional extras, not base dependencies | 98 | high | complexity | prose + skill check (`python-optional-import-top-level`) |
-| Provide a stdlib-only implementation behind the same interface so tests and offline modes need no extra | 113 | medium | complexity | prose |
-| Mark the availability-probe import as a deliberate unused-import suppression | 67 | low | complexity | prose + skill check (`python-optional-import-install-hint`) |
+| Rule | Severity | Reason | Enforcement |
+|---|---|---|---|
+| Keep the importable core dependency-free; heavy/native deps go in optional extras, not base dependencies | high | complexity | prose: 98 words + skill check (`python-optional-import-top-level`) |
+| Provide a stdlib-only implementation behind the same interface so tests and offline modes need no extra | medium | complexity | prose: 113 words |
+| Mark the availability-probe import as a deliberate unused-import suppression | low | complexity | prose: 67 words + skill check (`python-optional-import-install-hint`) |
 
 ## Checks
 
 Both ride the [`python-optional-deps`](skills/python-optional-deps/SKILL.md) skill's bundle.
 
-| Check | Reported as | Severity | Reason | Enforces |
-|---|---|---|---|---|
-| `python-optional-import-top-level` | blocking | high | correctness | an optional extra is imported lazily, not at module top level |
-| `python-optional-import-install-hint` | advisory | medium | complexity | the `ImportError` re-raise names the extra to install |
+| Check | Severity | Reason | Enforcement |
+|---|---|---|---|
+| `python-optional-import-top-level` | high | correctness | check: blocking |
+| `python-optional-import-install-hint` | medium | complexity | check: advisory |
 
 The two checks are gated on the repo declaring `[project.optional-dependencies]` in a
 `pyproject.toml` — the only place a package is declared optional, which is what makes a

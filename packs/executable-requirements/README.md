@@ -20,30 +20,30 @@ fake-world harness, and the `saga` storyboard kind's first implementation).
 
 ## Rules (`RULES.md`)
 
-| Rule | Words | Severity | Reason | How enforced |
-|---|---|---|---|---|
-| A requirement line | 42 | medium | complexity | prose |
-| The line is a scannable one-liner; expanded detail collapses. | 77 | low | complexity | prose |
-| The folder is the kind. | 41 | medium | complexity | prose |
-| Artifact expecteds live beside their case | 66 | medium | complexity | prose |
-| surface snapshot | 33 | medium | correctness | prose |
-| behavior | 22 | medium | correctness | prose |
-| logic | 12 | low | correctness | prose |
-| saga | 10 | low | correctness | prose |
-| per-project kinds | 41 | low | complexity | prose |
-| heavy/e2e singleton | 21 | medium | performance | prose |
-| Strip dead delay, keep the animation. | 49 | medium | performance | prose |
-| Lossless, so byte-identity still holds. | 70 | high | correctness | prose |
-| Mark the gesture. | 30 | medium | correctness | prose |
-| Pin the clock. | 26 | high | correctness | prose |
-| Fake every nondeterministic input | 31 | high | correctness | prose |
-| Load real fonts | 51 | high | correctness | prose |
-| Never wait for "settled". | 21 | high | correctness | prose |
-| Browser-extension / DOM products | 58 | medium | correctness | prose |
-| Flutter | 91 | medium | correctness | prose |
+| Rule | Severity | Reason | Enforcement |
+|---|---|---|---|
+| A requirement line | medium | complexity | prose: 42 words |
+| The line is a scannable one-liner; expanded detail collapses. | low | complexity | prose: 77 words |
+| The folder is the kind. | medium | complexity | prose: 41 words |
+| Artifact expecteds live beside their case | medium | complexity | prose: 66 words |
+| surface snapshot | medium | correctness | prose: 33 words |
+| behavior | medium | correctness | prose: 22 words |
+| logic | low | correctness | prose: 12 words |
+| saga | low | correctness | prose: 10 words |
+| per-project kinds | low | complexity | prose: 41 words |
+| heavy/e2e singleton | medium | performance | prose: 21 words |
+| Strip dead delay, keep the animation. | medium | performance | prose: 49 words |
+| Lossless, so byte-identity still holds. | high | correctness | prose: 70 words |
+| Mark the gesture. | medium | correctness | prose: 30 words |
+| Pin the clock. | high | correctness | prose: 26 words |
+| Fake every nondeterministic input | high | correctness | prose: 31 words |
+| Load real fonts | high | correctness | prose: 51 words |
+| Never wait for "settled". | high | correctness | prose: 21 words |
+| Browser-extension / DOM products | medium | correctness | prose: 58 words |
+| Flutter | medium | correctness | prose: 91 words |
 
 ## Checks
 
-| Check | Reported as | Severity | Reason | Enforces |
-|---|---|---|---|---|
-| `feature-requirements-first` | blocking | high | correctness | a feature reaches the requirements document before the code that implements it |
+| Check | Severity | Reason | Enforcement |
+|---|---|---|---|
+| `feature-requirements-first` | high | correctness | check: blocking |

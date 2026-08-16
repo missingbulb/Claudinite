@@ -36,30 +36,30 @@ standard.
 
 ## Rules (`RULES.md`)
 
-| Rule | Words | Severity | Reason | How enforced |
-|---|---|---|---|---|
-| Every page opens with what it found. | 92 | medium | complexity | prose + check (`product-wiki-key-insights`) |
-| Terse, plain, and only the non-obvious. | 96 | low | complexity | prose |
-| The header is a current view, not a log. | 63 | medium | complexity | prose |
-| The sink is human-reviewed only. | 56 | critical | correctness | prose |
-| Compile once, refine in place. | 49 | medium | complexity | prose |
-| Cited, never silently rewritten. | 48 | high | correctness | prose + check (`product-wiki-sources`) |
-| No fabricated growth. | 22 | critical | correctness | prose |
-| sample-data and new wikis. | 66 | medium | complexity | prose |
-| Review discipline. | 44 | medium | complexity | prose |
+| Rule | Severity | Reason | Enforcement |
+|---|---|---|---|
+| Every page opens with what it found. | medium | complexity | prose: 92 words + check (`product-wiki-key-insights`) |
+| Terse, plain, and only the non-obvious. | low | complexity | prose: 96 words |
+| The header is a current view, not a log. | medium | complexity | prose: 63 words |
+| The sink is human-reviewed only. | critical | correctness | prose: 56 words |
+| Compile once, refine in place. | medium | complexity | prose: 49 words |
+| Cited, never silently rewritten. | high | correctness | prose: 48 words + check (`product-wiki-sources`) |
+| No fabricated growth. | critical | correctness | prose: 22 words |
+| sample-data and new wikis. | medium | complexity | prose: 66 words |
+| Review discipline. | medium | complexity | prose: 44 words |
 
 ## Checks
 
-| Check | Reported as | Severity | Reason | Enforces |
-|---|---|---|---|---|
-| `product-wiki-layout` | blocking | high | correctness | skeleton exists (index + sink) |
-| `product-wiki-page-sections` | blocking | medium | complexity | pages carry the four sections |
-| `product-wiki-key-insights` | blocking | medium | complexity | header leads, bulleted, succinct |
-| `product-wiki-growth-log` | blocking | medium | correctness | log bullets dated, real dates |
-| `product-wiki-sources` | blocking | high | correctness | source bullets carry their URL |
-| `product-wiki-freshness` | **advisory** | medium | correctness | stale wiki gets a nag |
-| `product-wiki-isolation` | blocking (fixed barrier) | critical | correctness | repo can't reference wiki space |
-| `product-wiki-config-guard` | blocking | medium | complexity | the pack takes no config, so a configured entry is a mistake to report |
+| Check | Severity | Reason | Enforcement |
+|---|---|---|---|
+| `product-wiki-layout` | high | correctness | check: blocking |
+| `product-wiki-page-sections` | medium | complexity | check: blocking |
+| `product-wiki-key-insights` | medium | complexity | check: blocking |
+| `product-wiki-growth-log` | medium | correctness | check: blocking |
+| `product-wiki-sources` | high | correctness | check: blocking |
+| `product-wiki-freshness` | medium | correctness | check: advisory |
+| `product-wiki-isolation` | critical | correctness | check: blocking (fixed barrier) |
+| `product-wiki-config-guard` | medium | complexity | check: blocking |
 
 `product-wiki-key-insights` enforces the header's **shape** — it leads every other
 section, it is bullets only, it carries at least one and at most seven, and no

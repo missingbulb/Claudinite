@@ -59,16 +59,15 @@ test('each pack README lists every check it runs, with a severity and a reason',
   }
 });
 
-// A checks table's rows are keyed by the check id in their first cell, and
-// carry Severity and Reason in the two cells after the engine's blocking /
-// advisory column.
+// A checks table's rows are keyed by the check id in their first cell, and read
+// `| Check | Severity | Reason | Enforcement |`.
 function checkRows(readme) {
   const rows = new Map();
   for (const line of readme.split('\n')) {
     if (!line.startsWith('| `')) continue;
     const cells = line.split('|').slice(1, -1).map((c) => c.trim());
     const id = /^`([^`]+)`$/.exec(cells[0]);
-    if (id && cells.length >= 4) rows.set(id[1], { severity: cells[2], reason: cells[3] });
+    if (id && cells.length === 4) rows.set(id[1], { severity: cells[1], reason: cells[2] });
   }
   return rows;
 }

@@ -21,10 +21,10 @@ _Provenance: distilled from **The JWT Handbook** (Sebastián E. Peyrott, Auth0, 
 
 ## Checks
 
-| Check | Reported as | Severity | Reason | Enforces |
-|---|---|---|---|---|
-| `jwt-none-not-accepted` | blocking | critical | correctness | a verifier never accepts `alg: none` — an unsigned token's claims are attacker-written |
-| `jwt-verify-pins-algorithms` | blocking | critical | correctness | verification pins its algorithm allowlist rather than reading the attacker-written header |
-| `jwt-verify-binds-audience` | advisory | high | correctness | verification binds audience and issuer, so a token minted for another service does not pass |
-| `jwt-hardcoded-secret` | blocking | critical | correctness | no signing secret in source — it ships with every clone and grants full minting power forever |
-| `jwt-sign-sets-expiry` | advisory | high | correctness | a minted token carries `exp`: stateless validation has no revocation, so a leak is otherwise permanent |
+| Check | Severity | Reason | Enforcement |
+|---|---|---|---|
+| `jwt-none-not-accepted` | critical | correctness | check: blocking |
+| `jwt-verify-pins-algorithms` | critical | correctness | check: blocking |
+| `jwt-verify-binds-audience` | high | correctness | check: advisory |
+| `jwt-hardcoded-secret` | critical | correctness | check: blocking |
+| `jwt-sign-sets-expiry` | high | correctness | check: advisory |

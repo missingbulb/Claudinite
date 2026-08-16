@@ -92,6 +92,6 @@ is Claudinite **core**. Carries no conformance checks. Policy + config: [RULES.m
 
 ## Checks
 
-| Check | Reported as | Severity | Reason | Enforces |
-|---|---|---|---|---|
-| `fleet-pack-seed-agrees` | blocking | medium | correctness | the fleet's seeded-pack list agrees with what the enforcer actually standardizes on, so a seed cannot be enforced in one place and absent in the other |
+| Check | Severity | Reason | Enforcement |
+|---|---|---|---|
+| `fleet-pack-seed-agrees` | medium | correctness | check: blocking |

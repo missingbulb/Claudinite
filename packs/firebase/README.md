@@ -12,30 +12,30 @@ separation and store gating are deliberately NOT here — that is the opt-in
 
 ## Rules (`RULES.md`)
 
-| Rule | Words | Severity | Reason | How enforced |
-|---|---|---|---|---|
-| End every ruleset with an explicit catch-all deny | 24 | critical | correctness | prose |
-| Write rules against merge semantics, not just creates. | 45 | critical | correctness | prose |
-| Guard every field dereference for absence. | 33 | high | correctness | prose |
-| Server-owned fields are absent from the client-allowed key list | 27 | critical | correctness | prose |
-| Pin client timestamps to request.time | 32 | high | correctness | prose |
-| Bound every client-writable string/blob | 17 | high | correctness | prose |
-| Admin-SDK code bypasses rules | 26 | critical | correctness | prose |
-| Identity comes from the verified token, never the request body | 14 | critical | correctness | prose |
-| Validate inputs at the boundary like an adversary wrote them | 39 | critical | correctness | prose |
-| Rate limits need a transaction. | 39 | high | correctness | prose |
-| Chunk batched writes well under the 500-op limit | 36 | high | correctness | prose |
-| Push is best-effort by construction | 37 | medium | correctness | prose |
-| Extract decision logic into pure modules | 26 | medium | complexity | prose |
-| When rules themselves are under test, test them empirically | 37 | high | correctness | prose |
-| Cross-language contracts get mirrored test vectors. | 44 | high | correctness | prose |
-| Keep the Firebase project root self-contained | 71 | medium | complexity | prose |
-| Commit .firebaserc with named aliases and make the default the safe target | 31 | critical | correctness | prose |
-| Smoke-load the built entrypoint in the test lane | 36 | high | correctness | prose + check (`firebase/functions-predeploy-build`) |
+| Rule | Severity | Reason | Enforcement |
+|---|---|---|---|
+| End every ruleset with an explicit catch-all deny | critical | correctness | prose: 24 words |
+| Write rules against merge semantics, not just creates. | critical | correctness | prose: 45 words |
+| Guard every field dereference for absence. | high | correctness | prose: 33 words |
+| Server-owned fields are absent from the client-allowed key list | critical | correctness | prose: 27 words |
+| Pin client timestamps to request.time | high | correctness | prose: 32 words |
+| Bound every client-writable string/blob | high | correctness | prose: 17 words |
+| Admin-SDK code bypasses rules | critical | correctness | prose: 26 words |
+| Identity comes from the verified token, never the request body | critical | correctness | prose: 14 words |
+| Validate inputs at the boundary like an adversary wrote them | critical | correctness | prose: 39 words |
+| Rate limits need a transaction. | high | correctness | prose: 39 words |
+| Chunk batched writes well under the 500-op limit | high | correctness | prose: 36 words |
+| Push is best-effort by construction | medium | correctness | prose: 37 words |
+| Extract decision logic into pure modules | medium | complexity | prose: 26 words |
+| When rules themselves are under test, test them empirically | high | correctness | prose: 37 words |
+| Cross-language contracts get mirrored test vectors. | high | correctness | prose: 44 words |
+| Keep the Firebase project root self-contained | medium | complexity | prose: 71 words |
+| Commit .firebaserc with named aliases and make the default the safe target | critical | correctness | prose: 31 words |
+| Smoke-load the built entrypoint in the test lane | high | correctness | prose: 36 words + check (`firebase/functions-predeploy-build`) |
 
 ## Checks
 
-| Check | Reported as | Severity | Reason | Enforces |
-|---|---|---|---|---|
-| `firebase/functions-node-pin` | blocking | high | correctness | the functions runtime is pinned, so a Google-side default bump cannot change what the deployed code runs on |
-| `firebase/functions-predeploy-build` | blocking | high | correctness | a build runs before deploy, so the deployed bundle is the committed source |
+| Check | Severity | Reason | Enforcement |
+|---|---|---|---|
+| `firebase/functions-node-pin` | high | correctness | check: blocking |
+| `firebase/functions-predeploy-build` | high | correctness | check: blocking |

@@ -14,11 +14,11 @@ prod backend. Declared when a project approaches shipping, like
 
 ## Rules (`RULES.md`)
 
-| Rule | Words | Severity | Reason | How enforced |
-|---|---|---|---|---|
-| Two fully separate Firebase projects | 20 | critical | correctness | prose |
-| Everything committed points at dev | 40 | critical | correctness | prose |
-| Dev builds coexist with prod installs | 25 | medium | complexity | prose |
-| Guard tests pin the contract | 31 | high | correctness | prose |
-| The release workflow fails if any injected variable is unset | 43 | high | correctness | prose |
-| Dev keeps the App Check debug provider | 59 | medium | correctness | prose |
+| Rule | Severity | Reason | Enforcement |
+|---|---|---|---|
+| Two fully separate Firebase projects | critical | correctness | prose: 20 words |
+| Everything committed points at dev | critical | correctness | prose: 40 words |
+| Dev builds coexist with prod installs | medium | complexity | prose: 25 words |
+| Guard tests pin the contract | high | correctness | prose: 31 words |
+| The release workflow fails if any injected variable is unset | high | correctness | prose: 43 words |
+| Dev keeps the App Check debug provider | medium | correctness | prose: 59 words |

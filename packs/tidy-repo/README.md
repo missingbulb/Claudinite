@@ -11,10 +11,10 @@ only on issues.
 
 ## Rules (`RULES.md`)
 
-| Rule | Words | Severity | Reason | How enforced |
-|---|---|---|---|---|
-| Branches, PRs — assess only. | 34 | critical | correctness | prose |
-| Issues — act. | 125 | medium | correctness | prose |
+| Rule | Severity | Reason | Enforcement |
+|---|---|---|---|
+| Branches, PRs — assess only. | critical | correctness | prose: 34 words |
+| Issues — act. | medium | correctness | prose: 125 words |
 
 ## Maintenance tasks
 
