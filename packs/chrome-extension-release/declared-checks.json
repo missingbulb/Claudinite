@@ -99,6 +99,21 @@
     ]
   },
   {
+    "id": "cer/permission-added-store-issue",
+    "severity": "advisory",
+    "failureMessage": "the store requires a written justification per permission and blocks publishing the new version until the dashboard carries it; that step is manual, so a proactive issue beats the reactive publish failure",
+    "scope": "work",
+    "forbidAddedValueInArray": [
+      {
+        "filesMatching": "/(^|\\/)manifest\\.json$/",
+        "whereFileContains": "/\"manifest_version\"/",
+        "atFields": ["permissions", "host_permissions", "optional_permissions", "optional_host_permissions"],
+        "what": "this change adds the \"{value}\" permission",
+        "fix": "open a tracking issue for the manual Chrome Web Store dashboard step: the Privacy-practices tab needs a written justification for \"{value}\" before the next publish can ship"
+      }
+    ]
+  },
+  {
     "id": "cer/privacy-permission-alignment",
     "severity": "blocking",
     "failureMessage": "the deployed privacy policy must disclose everything the extension can access; an undisclosed permission is a store-review and trust failure",

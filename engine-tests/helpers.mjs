@@ -7,6 +7,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { loadDeclaredChecks } from '../engine/checks/helpers/pattern-rules.mjs';
+import { runRule } from '../engine/checks/helpers/work.mjs';
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -134,17 +135,23 @@ export function cleanup(root) {
  *   });
  *
  * A case's repo shape: `files` commits on the feature branch (makeRepo
- * `changed`), `base` on main, `uncommitted` stays untracked; `mode` defaults
- * to 'all'. A flagged case's `at` lists every expected finding in engine
+ * `changed`, under `commitMsg` where the rule judges the message), `base` on
+ * main, `uncommitted` stays untracked; `mode` defaults to 'all'. The rule is
+ * invoked through `runRule`, the same dispatch seam the runner uses, so a
+ * work-scoped rule gets its fluent surface here exactly as it does in a run.
+ * A flagged case's `at` lists every expected finding in engine
  * order; each expectation may pin `file` (exact), `line` (exact — a finding
  * with no line anchor carries the explicit `line: null`), `severity` (exact),
  * and `what` / `fix` (regexes). Keys an expectation omits are not judged.
  */
 export function ruleTester(rule, { clean = {}, flagged = {} }) {
   const runCase = (c) => {
-    const root = makeRepo({ base: c.base ?? {}, changed: c.files ?? {}, uncommitted: c.uncommitted ?? {} });
+    const root = makeRepo({
+      base: c.base ?? {}, changed: c.files ?? {}, uncommitted: c.uncommitted ?? {},
+      ...(c.commitMsg ? { commitMsg: c.commitMsg } : {}),
+    });
     try {
-      return rule.run(buildContext({ root, mode: c.mode ?? 'all' }));
+      return runRule(rule, buildContext({ root, mode: c.mode ?? 'all' }));
     } finally { cleanup(root); }
   };
   for (const [name, c] of Object.entries(clean)) {

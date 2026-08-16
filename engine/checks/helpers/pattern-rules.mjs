@@ -45,6 +45,12 @@ import { normalizeEdges, barrierFindings, staleFindings } from './reference-scan
 //   fix                rule-level default: any assertion declaring `what` but
 //                      no `fix` of its own inherits this one (for rules whose
 //                      every assertion shares one remedy)
+//   scope              "work" = this declaration judges the CHANGE rather than
+//                      the repo, so it runs in check_the_work and may carry the
+//                      work assertions below. Absent = world scope, the default
+//                      (the pack manifest's own two rule lists say the same
+//                      thing for a coded rule — a declaration has no list to
+//                      sit in, so it states its scope here)
 //   scanFiles          which files the content assertions read: a RegExp over
 //                      repo paths, or one exact path (read directly)
 //   scanFileClasses    named shared file sets widening the scan scope (unioned
@@ -215,6 +221,29 @@ import { normalizeEdges, barrierFindings, staleFindings } from './reference-scan
 //                      lines and # comments, use only the declared keys, and
 //                      declare every one; {key}/{keys}/{line} interpolate
 //
+// The WORK assertions — declarable only under `scope: "work"`, and reading the
+// change rather than the tree: the branch's commit messages, the merges it
+// introduces, and each file's parsed base beside its parsed head (work.mjs owns
+// those surfaces). They run per rule, outside the shared file scan:
+//   checkBranchCommits [{ someMessageMatches, unlessOnDefaultBranch, what, fix }]
+//                      one finding at "(branch)" when NO commit message since
+//                      the base matches; a branch carrying no commits of its
+//                      own asserts nothing, and unlessOnDefaultBranch exempts
+//                      main/master. {commits} (the count) and {base} interpolate
+//   forbidIntroducedMergeCommits { what, fix }
+//                      one finding per merge commit the change introduces —
+//                      merges already on the base are the repo's history, not
+//                      the work — anchored at "<branch>@<sha>"; {sha} and
+//                      {subject} interpolate
+//   forbidAddedValueInArray [{ file | filesMatching (+ whereFileContains),
+//                              atFields, what, fix }]
+//                      one finding per value the change ADDS to any of the JSON
+//                      arrays at `atFields`, comparing the parsed head against
+//                      the parsed base — a set comparison, never the text diff,
+//                      because appending an array element re-touches the line
+//                      above it. An unparsable head asserts nothing; an absent
+//                      base makes every value an addition. {value} interpolates
+//
 // The reference-barrier assertion — a directed folder-access graph enforced by
 // the reference-scanning engine (helpers/reference-scanning.mjs, which owns the
 // edge vocabulary's semantics):
@@ -291,12 +320,13 @@ const excluded = (path, exclude) =>
 // container throws at load, so a typo cannot silently assert nothing.
 const MSG = ['what', 'fix'];
 const SPEC_KEYS = {
-  spec: ['id', 'severity', 'failureMessage', 'fix', 'scanFiles', 'scanTracked', 'excludeFiles',
+  spec: ['id', 'severity', 'failureMessage', 'fix', 'scope', 'scanFiles', 'scanTracked', 'excludeFiles',
     'scanFileClasses', 'excludeFileClasses', 'scanIgnoringComments', 'scanIgnoringMarkdownFences',
     'relevantWhen', 'whenMissing',
     'maxLines', 'maxLineLength', 'skipLinesMatching', 'matchLines', 'countMatchingLines',
     'checkEachFile', 'repoWide', 'requirePaths',
     'extractValueSets', 'requireIndexCoverage', 'checkParsedFiles', 'forbidReferences',
+    'checkBranchCommits', 'forbidIntroducedMergeCommits', 'forbidAddedValueInArray',
     'listedInFile', 'coveredByGlobLine', 'checkParsedFile', 'equalParsedValues',
     'forEachParsedEntry', 'checkKeyValueFile', 'checkSections'],
   checkParsedFiles: ['file', 'filesMatching', 'whereFileContains', 'forEachEntryAtField',
@@ -328,6 +358,9 @@ const SPEC_KEYS = {
   checkEachFile: ['relevantWhen', 'whenFileMatches', 'require', 'forbid', ...MSG],
   repoWide: ['unlessSomeFileMatches', 'flagFilesMatching', 'neverFlagFiles', ...MSG],
   requirePaths: ['path', ...MSG],
+  checkBranchCommits: ['someMessageMatches', 'unlessOnDefaultBranch', ...MSG],
+  forbidIntroducedMergeCommits: MSG,
+  forbidAddedValueInArray: ['file', 'filesMatching', 'whereFileContains', 'atFields', ...MSG],
   listedInFile: ['eachTrackedPathMatching', 'listFile', 'asText', ...MSG],
   coveredByGlobLine: ['eachPathMatching', 'includeVendored', 'globFile', 'globLineMatching', ...MSG],
   checkParsedFile: ['file', 'whenFieldPresent', 'requireField', 'forbidField', ...MSG],
@@ -429,7 +462,33 @@ function normalizeLegacySpellings(spec) {
 // Shape rules the key table can't state: each merged-family entry needs exactly
 // one selector, at least one assertion, and closed-vocabulary mode values; a
 // count entry needs its pattern and a coherent bound.
+const WORK_ASSERTIONS = ['checkBranchCommits', 'forbidIntroducedMergeCommits', 'forbidAddedValueInArray'];
+
 function validateEntryShapes(spec, where) {
+  if (spec.scope !== undefined && spec.scope !== 'work') {
+    throw new Error(`${where}: "scope" takes "work" (judging the change) or nothing at all (the default, judging the repo), not ${JSON.stringify(spec.scope)}`);
+  }
+  for (const key of WORK_ASSERTIONS) {
+    if (spec[key] !== undefined && spec.scope !== 'work') {
+      throw new Error(`${where}: "${key}" reads the change, so its declaration needs scope: "work"`);
+    }
+  }
+  for (const a of spec.forbidAddedValueInArray ?? []) {
+    if ((a.file === undefined) === (a.filesMatching === undefined)) {
+      throw new Error(`${where}: a forbidAddedValueInArray entry selects by exactly one of "file" or "filesMatching"`);
+    }
+    if (a.whereFileContains && a.filesMatching === undefined) {
+      throw new Error(`${where}: "whereFileContains" refines "filesMatching" and cannot go with "file"`);
+    }
+    if (!Array.isArray(a.atFields) || !a.atFields.length || a.atFields.some((f) => typeof f !== 'string')) {
+      throw new Error(`${where}: "atFields" is a non-empty list of field paths whose arrays the change may not grow`);
+    }
+  }
+  for (const a of spec.checkBranchCommits ?? []) {
+    if (!(a.someMessageMatches instanceof RegExp)) {
+      throw new Error(`${where}: a checkBranchCommits entry needs "someMessageMatches", the pattern one message must carry`);
+    }
+  }
   for (const a of spec.countMatchingLines ?? []) {
     if (!(a.linesMatching instanceof RegExp)) {
       throw new Error(`${where}: a countMatchingLines entry needs "linesMatching", the pattern it counts`);
@@ -911,6 +970,47 @@ function assertReferenceEdges(ctx, j) {
   if (ctx.mode === 'all' && !scanErrors) j.out.push(...staleFindings(stale, j.rule));
 }
 
+// The work assertions, evaluated per rule against the fluent work surface — no
+// file scan to ride, since their subjects are the branch's commits, the merges
+// it introduces, and each selected file's parsed base beside its parsed head.
+function workFindings(rule, work) {
+  const s = rule.spec;
+  const out = [];
+  for (const a of s.checkBranchCommits ?? []) {
+    if (a.unlessOnDefaultBranch && work.onDefaultBranch()) continue;
+    if (!work.commits.length || work.commits.some((m) => a.someMessageMatches.test(m))) continue;
+    const vars = { commits: work.commits.length, base: work.baseRef };
+    out.push(finding(rule, { file: '(branch)', what: fill(a.what, vars), fix: fill(a.fix, vars) }));
+  }
+  const merges = s.forbidIntroducedMergeCommits;
+  for (const { sha, subject } of merges ? work.introducedMerges() : []) {
+    const vars = { sha, subject };
+    out.push(finding(rule, {
+      file: `${work.branch || 'HEAD'}@${sha}`, what: fill(merges.what, vars), fix: fill(merges.fix, vars),
+    }));
+  }
+  for (const a of s.forbidAddedValueInArray ?? []) {
+    const paths = a.file !== undefined ? [a.file]
+      : work.tracked.filter((f) => a.filesMatching.test(f) &&
+          (!a.whereFileContains || a.whereFileContains.test(work.read(f) ?? '')));
+    for (const path of paths) {
+      const { head, base } = work.jsonPair(path);
+      if (head == null) continue;
+      const valuesAt = (doc) => a.atFields.flatMap((field) => {
+        const values = doc == null ? undefined : fieldAt(doc, field);
+        return Array.isArray(values) ? values.map(String) : [];
+      });
+      const before = new Set(valuesAt(base));
+      for (const value of new Set(valuesAt(head))) {
+        if (before.has(value)) continue;
+        const vars = { value };
+        out.push(finding(rule, { file: path, what: fill(a.what, vars), fix: fill(a.fix, vars) }));
+      }
+    }
+  }
+  return out;
+}
+
 // The indentation structure matchLines' block relations read. A line's own
 // column is where its first non-space character sits; a blank line has none, so
 // it neither opens nor closes anything and simply belongs to the block it sits
@@ -1150,7 +1250,7 @@ const PATTERN_KEYS = new Set([
   'neverFlagFiles', 'eachTrackedPathMatching', 'eachPathMatching', 'globLineMatching',
   'filesMatching', 'whereFileContains', 'inFilesMatching', 'pattern', 'linesMatching',
   'eachScannedPathMatching', 'coveredByGlobLinesMatching', 'whoseTextMatches',
-  'fromParsedFilesMatching',
+  'fromParsedFilesMatching', 'someMessageMatches',
 ]);
 const RE_FORM = /^\/(.*)\/([dgimsuvy]*)$/s;
 
@@ -1218,8 +1318,16 @@ export function patternRule(declaration, { selfExclude = null } = {}) {
     id: spec.id,
     severity: spec.severity,
     why: spec.failureMessage,
+    ...(spec.scope ? { scope: spec.scope } : {}),
     spec,
-    run(ctx) { return results(ctx).get(rule); },
+    // A work-scoped rule is handed the fluent work surface (runRule dispatches
+    // on the scope above); the scan machinery underneath it still reads the raw
+    // context the surface wraps.
+    run(input) {
+      const work = spec.scope === 'work' ? input : null;
+      const scanned = results(work ? work.ctx : input).get(rule);
+      return work ? [...scanned, ...workFindings(rule, work)] : scanned;
+    },
   };
   REGISTRY.push(rule);
   return rule;

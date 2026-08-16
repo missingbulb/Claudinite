@@ -6,11 +6,11 @@ import { runRule } from '../../engine/checks/helpers/work.mjs';
 import commentClassification from '../../packs/basics/comment-classification.mjs';
 import referenceIntegrity from '../../packs/basics/reference-integrity.mjs';
 import linkLabels from '../../packs/basics/markdown-link-labels.mjs';
-import taskLifecycle from '../../packs/basics/task-lifecycle.mjs';
 import filePlacement from '../../packs/basics/file-placement.mjs';
-import squashMergeHistory from '../../packs/basics/squash-merge-history.mjs';
 import sharedConstants from '../../packs/basics/shared-constants.mjs';
 
+const taskLifecycle = declaredCheck('packs/basics', 'task-lifecycle');
+const squashMergeHistory = declaredCheck('packs/basics', 'squash-merge-history');
 const claudeMdLength = declaredCheck('packs/basics', 'claude-md-length');
 const warningSuppression = declaredCheck('packs/basics', 'warning-suppression');
 const rulesLineLength = declaredCheck('packs/basics', 'rules-line-length');
