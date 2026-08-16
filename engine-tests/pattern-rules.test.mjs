@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, cleanup, writeFiles } from './helpers.mjs';
+import { makeRepo, cleanup, writeFiles, ruleTester } from './helpers.mjs';
 import { buildContext } from '../engine/checks/helpers/repo-context.mjs';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -1160,32 +1160,66 @@ test('requireIndexCoverage: whoseTextMatches narrows the path quantifier by cont
   } finally { cleanup(root); cleanup(noIndex); }
 });
 
-test('requireIndexCoverage: eachValueInParsedArray quantifies a parsed array\'s values into coveredByText', () => {
-  const rule = patternRule({
-    ...meta('fx-coverage-values'),
-    requireIndexCoverage: [{
-      eachValueInParsedArray: {
-        filesMatching: /(^|\/)manifest\.json$/, whereFileContains: /"manifest_version"/, atField: 'permissions',
+// The value-set pair, exercised through the table-driven ruleTester: one
+// extraction names the set, the coverage quantifier consumes it.
+ruleTester(patternRule({
+  ...meta('fx-value-sets'),
+  extractValueSets: [{
+    setName: 'requestedPermissions',
+    fromParsedFilesMatching: /(^|\/)manifest\.json$/,
+    whereFileContains: /"manifest_version"/,
+    valuesOfArraysAtFields: ['permissions', 'host_permissions'],
+    whenSetEmpty: 'assertNothing',
+  }],
+  requireIndexCoverage: [{
+    eachValueOfSet: 'requestedPermissions',
+    indexFile: 'PRIVACY.md',
+    coveredByText: '{value}',
+    whenIndexFileAbsent: 'assertNothing',
+    anchorFindingsAt: 'indexFile',
+    what: 'manifest requests "{value}" undisclosed', fix: 'disclose {value}',
+  }],
+}), {
+  clean: {
+    'every extracted value is covered in the index text': { files: {
+      'app/manifest.json': '{"manifest_version":3,"permissions":["storage"],"host_permissions":["https://e.com/*"]}',
+      'PRIVACY.md': 'We use storage, and connect to https://e.com/* for data.\n',
+    } },
+    'an absent index file asserts nothing, as declared': { files: {
+      'app/manifest.json': '{"manifest_version":3,"permissions":["tabs"]}',
+    } },
+    'no matching source document means an empty set, declared to assert nothing': { files: {
+      'decoy/manifest.json': '{"permissions":["cookies"]}',
+      'PRIVACY.md': 'Nothing to disclose.\n',
+    } },
+  },
+  flagged: {
+    'values from every listed field are quantified; the decoy without the content probe is not': {
+      files: {
+        'app/manifest.json': '{"manifest_version":3,"permissions":["tabs","storage"],"host_permissions":["https://x.io/*"]}',
+        'decoy/manifest.json': '{"permissions":["cookies"]}',
+        'PRIVACY.md': 'We use storage to keep your notes.\n',
       },
-      indexFile: 'PRIVACY.md',
-      coveredByText: '{value}',
-      whenIndexFileAbsent: 'assertNothing',
-      anchorFindingsAt: 'indexFile',
-      what: 'manifest requests "{value}" undisclosed', fix: 'disclose {value}',
+      at: [
+        { file: 'PRIVACY.md', what: /"https:\/\/x\.io\/\*" undisclosed/ },
+        { file: 'PRIVACY.md', what: /"tabs" undisclosed/ },
+      ],
+    },
+  },
+});
+
+test('extractValueSets: a consumer naming an undeclared set, and a malformed entry, are authoring errors', () => {
+  assert.throws(() => patternRule({
+    ...meta('fx-set-unknown'),
+    requireIndexCoverage: [{
+      eachValueOfSet: 'nobodyDeclaredMe', indexFile: 'x.md', coveredByText: '{value}',
+      whenIndexFileAbsent: 'assertNothing', anchorFindingsAt: 'indexFile', what: 'w', fix: 'f',
     }],
-  });
-  const root = makeRepo({ changed: {
-    'app/manifest.json': '{"manifest_version":3,"permissions":["tabs","storage"]}',
-    'decoy/manifest.json': '{"permissions":["cookies"]}',
-    'PRIVACY.md': 'We use storage to keep your notes.\n',
-  } });
-  const noPrivacy = makeRepo({ changed: {
-    'app/manifest.json': '{"manifest_version":3,"permissions":["tabs"]}',
-  } });
-  try {
-    const findings = rule.run(ctxOf(root));
-    assert.deepEqual(findings.map((f) => [f.file, f.what]),
-      [['PRIVACY.md', 'manifest requests "tabs" undisclosed']]);
-    assert.equal(rule.run(ctxOf(noPrivacy)).length, 0);
-  } finally { cleanup(root); cleanup(noPrivacy); }
+  }), /names no declared value set/);
+  assert.throws(() => patternRule({
+    ...meta('fx-set-no-empty-mode'),
+    extractValueSets: [{
+      setName: 's', fromParsedFile: 'a.json', valuesOfArraysAtFields: ['p'],
+    }],
+  }), /whenSetEmpty/);
 });
