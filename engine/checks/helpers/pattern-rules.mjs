@@ -96,7 +96,8 @@ import { normalizeEdges, barrierFindings, staleFindings } from './reference-scan
 //                         unlessPreviousLineMatches,
 //                         andIndentedBlockBelowMatches,
 //                         unlessIndentedBlockBelowMatches,
-//                         unlessWithinBlockOpenedBy, whenPathMatches,
+//                         andWithinBlockOpenedBy, unlessWithinBlockOpenedBy,
+//                         whenPathMatches,
 //                         whenFileMatches, unlessFileMatches, what, fix }]
 //                      flag each line `match` hits — provided `andLineMatches`
 //                      (if declared) also hits it, `unlessLineMatches` does
@@ -106,7 +107,7 @@ import { normalizeEdges, barrierFindings, staleFindings } from './reference-scan
 //                      file), where every `whenFileMatches` matches the text
 //                      and `unlessFileMatches` does not; per line, the first
 //                      matching assertion wins.
-//                      The three BLOCK relations read the indentation structure
+//                      The four BLOCK relations read the indentation structure
 //                      a line sits in, so an assertion can say "under this key"
 //                      / "inside that section" instead of hand-walking the
 //                      columns (the shape Semgrep spells pattern-inside and
@@ -119,9 +120,11 @@ import { normalizeEdges, barrierFindings, staleFindings } from './reference-scan
 //                                                         matched line's block
 //                                                         matches
 //                        unlessIndentedBlockBelowMatches  no line of it does
-//                        unlessWithinBlockOpenedBy        no enclosing line —
+//                        andWithinBlockOpenedBy           some enclosing line —
 //                                                         any ancestor, walking
 //                                                         out to column 0 —
+//                                                         matches
+//                        unlessWithinBlockOpenedBy        no enclosing line
 //                                                         matches
 //   countMatchingLines [{ linesMatching, atLeast, atMost, what, fix }]
 //                      per file, the number of lines `linesMatching` hits must
@@ -322,7 +325,8 @@ const SPEC_KEYS = {
   maxLines: ['limit', ...MSG],
   maxLineLength: ['bytes', ...MSG],
   matchLines: ['match', 'andLineMatches', 'unlessLineMatches', 'unlessPreviousLineMatches',
-    'andIndentedBlockBelowMatches', 'unlessIndentedBlockBelowMatches', 'unlessWithinBlockOpenedBy',
+    'andIndentedBlockBelowMatches', 'unlessIndentedBlockBelowMatches',
+    'andWithinBlockOpenedBy', 'unlessWithinBlockOpenedBy',
     'whenPathMatches', 'whenFileMatches', 'unlessFileMatches', ...MSG],
   countMatchingLines: ['linesMatching', 'atLeast', 'atMost', ...MSG],
   checkEachFile: ['relevantWhen', 'whenFileMatches', 'require', 'forbid', ...MSG],
@@ -1053,6 +1057,7 @@ function visit(ctx, subs, path, text) {
         if (a.unlessPreviousLineMatches && i > 0 && a.unlessPreviousLineMatches.test(viewLines[i - 1])) continue;
         if (a.andIndentedBlockBelowMatches && !blockBelow(viewLines, i).some((b) => a.andIndentedBlockBelowMatches.test(b))) continue;
         if (a.unlessIndentedBlockBelowMatches && blockBelow(viewLines, i).some((b) => a.unlessIndentedBlockBelowMatches.test(b))) continue;
+        if (a.andWithinBlockOpenedBy && !enclosedBy(viewLines, i, a.andWithinBlockOpenedBy)) continue;
         if (a.unlessWithinBlockOpenedBy && enclosedBy(viewLines, i, a.unlessWithinBlockOpenedBy)) continue;
         const vars = { match: m[0] };
         j.out.push(finding(j.rule, {
@@ -1144,7 +1149,7 @@ const PATH_OR_PATTERN_KEYS = new Set(['scanFiles', 'excludeFiles']);
 const PATTERN_KEYS = new Set([
   'skipLinesMatching', 'match', 'andLineMatches', 'unlessLineMatches',
   'unlessPreviousLineMatches', 'andIndentedBlockBelowMatches', 'unlessIndentedBlockBelowMatches',
-  'unlessWithinBlockOpenedBy', 'whenPathMatches', 'whenFileMatches', 'unlessFileMatches',
+  'andWithinBlockOpenedBy', 'unlessWithinBlockOpenedBy', 'whenPathMatches', 'whenFileMatches', 'unlessFileMatches',
   'require', 'forbid', 'trackedFileMatches', 'noTrackedFileMatches', 'exactlyOneTrackedFileMatches',
   'pathMatching', 'text', 'repoContains', 'unlessSomeFileMatches', 'flagFilesMatching',
   'neverFlagFiles', 'eachTrackedPathMatching', 'eachPathMatching', 'globLineMatching',
