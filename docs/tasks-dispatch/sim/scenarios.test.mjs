@@ -917,3 +917,49 @@ test('S32 twin-title race: post-claim re-verify serializes, later claim reverts'
     assert.equal(it.state, 'closed', `#${it.number} converged`);
   }
 });
+
+// ---- S39 — the episode boundary must survive an episode that ended SILENTLY
+// (F24). S32 races two executors WITHIN one episode; this races them ACROSS
+// one. The roll and the `needs-human` park both end an episode without writing
+// a comment, so unless the departing executor strikes its own claim, the next
+// claimant loses to a dead one — the roll for a leash period, the park forever.
+//
+// The second attempt MUST come from a different executor. A single executor
+// beats its own stale claim by identity, which is the same masking that hid
+// F18 until S32 raced two — and why every one of tonight's real runs looked
+// healthy from the outside.
+test('S39 a rolled item is claimable by another executor on its next anchor (F24)', () => {
+  const tasks = cast().filter((t) => t.id === 'tidy/tidy-issues');
+  const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
+  sim.at('2026-08-12T00:00Z', ({ world }) => { world.issueTouchedAt = null; }); // declines: every anchor rolls
+  // Day 1's tick-drain (E1) claims, declines and ROLLS — ending that episode
+  // silently. Day 2's tick readies the item again; a DIFFERENT executor reaches
+  // it between the tick (:17) and the drain (:17:40).
+  sim.raceExecutorsAt('2026-08-13T04:17:20Z', ['E2']);
+  sim.run('2026-08-12T00:00Z', '2026-08-14T00:00Z');
+
+  assert.ok(sim.log.some((e) => e.kind === 'roll'), 'day one ended in a roll');
+  assert.deepEqual(sim.log.filter((e) => e.kind === 'claim-lost'), [],
+    'E2 must not lose to the spent claim E1 left behind when it rolled the item');
+  assert.ok(sim.log.some((e) => e.kind === 'claim' && e.exec === 'E2'), 'E2 held the item');
+});
+
+test('S39b a parked item a human re-queues is claimable by another executor at once (F24)', () => {
+  const tasks = cast().filter((t) => t.id === 'basics/baselining');
+  const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
+  sim.at('2026-08-12T00:00Z', ({ world }) => { world.mountBehind = true; world.mountBroken = true; });
+  sim.run('2026-08-12T00:00Z', '2026-08-12T06:00Z');
+
+  const parked = sim.issues.find((i) => i.labels.has('needs-human'));
+  assert.ok(parked, 'the work step failed, so the item parked for a human');
+
+  // The sanctioned re-queue (F7) and nothing else: strip needs-human, apply
+  // task:ready. No marker, no cleanup — the strike already happened.
+  sim.at('2026-08-12T07:00Z', (s) => { s.world.mountBroken = false; s.requeue(parked.number); });
+  sim.raceExecutorsAt('2026-08-12T07:00:30Z', ['E2']);
+  sim.run('2026-08-12T06:00Z', '2026-08-12T14:00Z');
+
+  assert.deepEqual(sim.log.filter((e) => e.kind === 'claim-lost'), [],
+    're-queued work must be claimable — a claim standing from the parked episode livelocks it forever');
+  assert.ok(sim.log.some((e) => e.kind === 'claim' && e.exec === 'E2'), 'E2 held the item');
+});

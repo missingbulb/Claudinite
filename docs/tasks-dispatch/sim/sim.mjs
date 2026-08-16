@@ -151,12 +151,21 @@ export function makeSim({
     it.labels.delete(from);
     it.labels.add(to);
     it.readySince = to === 'task:ready' ? now : null;
-    // F18: every transition INTO ready opens a new claim episode — claim
-    // comments from a previous tenure are dead and must not outrank a live
-    // claimant (the revert/reclaim comment is the episode boundary)
-    if (to === 'task:ready') it.claimEpoch = seq++;
     it.lastActivity = now;
   }
+
+  // F18/F24: the episode boundary is an ARTIFACT on the item, not a property of
+  // the label transition. Modelling it as "every transition into ready opens a
+  // new episode" is what made this simulator unable to reproduce F24: it encoded
+  // the rule's intent, so the paths that end an episode without writing anything
+  // looked correct here and livelocked in production. So the epoch advances
+  // exactly where the engine leaves a mark — the tick's reclaim, the F15 revert,
+  // and the departing executor's strike on a roll or a park (DESIGN §6.2).
+  //
+  // A human re-queue deliberately does NOT advance it: a human editing labels
+  // writes no comment, which is precisely why the strike has to have happened
+  // already.
+  function endEpisode(it) { it.claimEpoch = seq++; }
 
   function close(it, outcome) {
     it.state = 'closed';
@@ -236,6 +245,7 @@ export function makeSim({
       if (now - it.lastActivity >= executingLeashMs) {
         swap(it, 'task:executing', 'task:ready');
         it.comments.push({ t: now, body: 'reclaimed: executor went silent past the leash' });
+        endEpisode(it);
         record('reclaim', { task: it.taskId, issue: it.number });
       }
     }
@@ -377,6 +387,7 @@ export function makeSim({
       if (it.origin === 'schedule') { // roll
         it.notBefore = nextAnchor(task.frequency, now);
         it.rolls.push({ t: now, reason: verdict.reason ?? 'no work' });
+        endEpisode(it);                       // F24: the roll strikes its claim
         swap(it, 'task:executing', 'task:blocked');
         record('roll', { task: it.taskId, issue: it.number, until: iso(it.notBefore) });
       } else {
@@ -428,6 +439,7 @@ export function makeSim({
       if (!mineStill()) return; // reclaimed while (presumed) dead: the run is gone
       it.lastActivity = now;
       if (task.preworkFails?.(world, now)) {
+        endEpisode(it);                       // F24: a park strikes its claim
         swap(it, 'task:executing', 'needs-human');
         record('work-failed', { task: it.taskId, issue: it.number });
         onSettled();
@@ -466,6 +478,7 @@ export function makeSim({
     const earlier = conflicts.some((o) =>
       o.comments.filter((c) => c.kind === 'claim').at(-1)?.seq < myClaim.seq);
     if (!earlier) return true;
+    endEpisode(it);
     swap(it, 'task:executing', 'task:ready');
     record('claim-reverted', { task: it.taskId, issue: it.number, exec: execId });
     return false;
@@ -585,7 +598,9 @@ export function makeSim({
       if (!it) throw new Error(`no standing item for ${taskId}`);
       it.notBefore = null;
       if (has(it, 'task:blocked')) swap(it, 'task:blocked', 'task:ready');
-      if (has(it, 'needs-human')) { it.labels.delete('needs-human'); it.labels.add('task:ready'); it.readySince = now; it.claimEpoch = seq++; }
+      // The hand-wake writes its own episode-marker comment (create-work-item),
+      // unlike the bare human re-queue — so forcing ends the episode itself.
+      if (has(it, 'needs-human')) { it.labels.delete('needs-human'); it.labels.add('task:ready'); it.readySince = now; endEpisode(it); }
       if (urgent) it.labels.add('task:urgent');
       record('force', { task: taskId, issue: it.number });
       schedule(now + 1 * MIN, () => executorRun('E1', 'label-event')); // the labeled event's latency sugar
@@ -700,7 +715,6 @@ export function makeSim({
       it.notBefore = null;
       it.labels.add('task:ready');
       it.readySince = now;
-      it.claimEpoch = seq++;
       it.lastActivity = now;
       record('requeue', { task: it.taskId, issue: it.number });
       schedule(now + 1 * MIN, () => executorRun('E1', 'label-event'));
