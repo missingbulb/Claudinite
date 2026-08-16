@@ -1,11 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, cleanup, declaredCheck } from '../../engine-tests/helpers.mjs';
+import { makeRepo, cleanup, declaredCheck, ruleTester } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
-import secretsInJobIf from '../../packs/github-actions/secrets-in-job-if.mjs';
-import runPipefail from '../../packs/github-actions/run-pipefail.mjs';
-import checkoutSubmodules from '../../packs/github-actions/checkout-submodules.mjs';
 
+const secretsInJobIf = declaredCheck('packs/github-actions', 'gha/secrets-in-job-if');
+const runPipefail = declaredCheck('packs/github-actions', 'gha/run-pipefail');
+const checkoutSubmodules = declaredCheck('packs/github-actions', 'gha/checkout-submodules');
 const scheduledEscalation = declaredCheck('packs/github-actions', 'gha/scheduled-failure-escalation');
 const labelCreate = declaredCheck('packs/github-actions', 'gha/label-create-before-add');
 const uniqueBranch = declaredCheck('packs/github-actions', 'gha/unique-automation-branch');
@@ -15,18 +15,9 @@ const noScheduledFleetExecutor = declaredCheck('packs/github-actions', 'gha/no-s
 const run = (rule, root) => rule.run(buildContext({ root, mode: 'all' }));
 const WF = '.github/workflows/x.yml';
 
-test('secrets-in-job-if: flags a job-level if using secrets, not a step-level one', () => {
-  const bad = makeRepo({ changed: { [WF]:
-`name: x
-on: push
-jobs:
-  deploy:
-    if: \${{ secrets.DEPLOY_ARN != '' }}
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo hi
-` } });
-  const good = makeRepo({ changed: { [WF]:
+ruleTester(secretsInJobIf, {
+  clean: {
+    'a step-level if may read secrets; the job gates on vars': { files: { [WF]:
 `name: x
 on: push
 jobs:
@@ -36,26 +27,34 @@ jobs:
     steps:
       - run: echo hi
         if: \${{ secrets.TOKEN != '' }}
-` } });
-  try {
-    const findings = run(secretsInJobIf, bad);
-    assert.equal(findings.length, 1);
-    assert.equal(findings[0].line, 5);
-    assert.equal(run(secretsInJobIf, good).length, 0);
-  } finally { cleanup(bad); cleanup(good); }
-});
-
-test('run-pipefail: flags a piped run step without a bash shell default; || is not a pipe', () => {
-  const bad = makeRepo({ changed: { [WF]:
+` } },
+  },
+  flagged: {
+    'a job-level if reading secrets, before its own steps and after a previous job\'s': { files: { [WF]:
 `name: x
 on: push
 jobs:
-  t:
+  deploy:
+    if: \${{ secrets.DEPLOY_ARN != '' }}
     runs-on: ubuntu-latest
     steps:
-      - run: make test 2>&1 | tee log
-` } });
-  const good = makeRepo({ changed: { [WF]:
+      - run: echo hi
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo bye
+    if: \${{ secrets.PUBLISH_ARN != '' }}
+` },
+      at: [
+        { file: WF, line: 5, what: /reads secrets\.DEPLOY_ARN/ },
+        { file: WF, line: 13, what: /reads secrets\.PUBLISH_ARN/ },
+      ] },
+  },
+});
+
+ruleTester(runPipefail, {
+  clean: {
+    'a bash shell default covers every piped step in the file': { files: { [WF]:
 `name: x
 on: push
 defaults:
@@ -67,8 +66,8 @@ jobs:
     steps:
       - run: make test 2>&1 | tee log
       - run: try || fallback
-` } });
-  const orOnly = makeRepo({ changed: { [WF]:
+` } },
+    '|| is the or-operator, not a pipe — and a block scalar that pipes nothing is fine': { files: { [WF]:
 `name: x
 on: push
 jobs:
@@ -76,27 +75,44 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: try || fallback
-` } });
-  try {
-    assert.equal(run(runPipefail, bad).length, 1);
-    assert.equal(run(runPipefail, good).length, 0);
-    assert.equal(run(runPipefail, orOnly).length, 0);
-  } finally { cleanup(bad); cleanup(good); cleanup(orOnly); }
-});
-
-test('checkout-submodules: repo with .gitmodules needs submodules on every checkout', () => {
-  const gitmodules = '[submodule "x"]\n\tpath = x\n\turl = https://e.com/x.git\n';
-  const bad = makeRepo({ changed: { '.gitmodules': gitmodules, [WF]:
+      - run: |
+          make build
+          make test
+` } },
+  },
+  flagged: {
+    'an inline piped run: step': { files: { [WF]:
 `name: x
 on: push
 jobs:
   t:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: echo hi
-` } });
-  const good = makeRepo({ changed: { '.gitmodules': gitmodules, [WF]:
+      - run: make test 2>&1 | tee log
+` },
+      at: [{ file: WF, line: 7, what: /piped run: step/ }] },
+    'a pipe inside a run: | block, anchored at the run: line': { files: { [WF]:
+`name: x
+on: push
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          make build
+
+          make test 2>&1 | tee log
+      - run: echo done
+` },
+      at: [{ file: WF, line: 7, what: /piped run: step/ }] },
+  },
+});
+
+const GITMODULES = '[submodule "x"]\n\tpath = x\n\turl = https://e.com/x.git\n';
+
+ruleTester(checkoutSubmodules, {
+  clean: {
+    'the checkout step passes submodules: true': { files: { '.gitmodules': GITMODULES, [WF]:
 `name: x
 on: push
 jobs:
@@ -106,8 +122,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
-` } });
-  const noSubmodules = makeRepo({ changed: { [WF]:
+` } },
+    'no .gitmodules — nothing to fetch': { files: { [WF]:
 `name: x
 on: push
 jobs:
@@ -115,12 +131,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-` } });
-  try {
-    assert.equal(run(checkoutSubmodules, bad).length, 1);
-    assert.equal(run(checkoutSubmodules, good).length, 0);
-    assert.equal(run(checkoutSubmodules, noSubmodules).length, 0);
-  } finally { cleanup(bad); cleanup(good); cleanup(noSubmodules); }
+` } },
+  },
+  flagged: {
+    'a bare checkout, and one whose sibling step carries the key': { files: { '.gitmodules': GITMODULES, [WF]:
+`name: x
+on: push
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo hi
+  u:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+` },
+      at: [
+        { file: WF, line: 7, what: /without submodules/ },
+        { file: WF, line: 12, what: /without submodules/ },
+      ] },
+  },
 });
 
 test('scheduled-failure-escalation: a scheduled workflow must escalate its own failure', () => {

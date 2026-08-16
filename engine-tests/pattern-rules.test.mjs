@@ -1223,3 +1223,97 @@ test('extractValueSets: a consumer naming an undeclared set, and a malformed ent
     }],
   }), /whenSetEmpty/);
 });
+
+// The indented-block relations, in both directions. The fixture is the YAML
+// shape they were built for: a `steps:` block whose members are indented under
+// it, and a step key whose own value block sits below it.
+ruleTester(patternRule({
+  ...meta('fx-block-has'),
+  scanFiles: /\.yml$/,
+  matchLines: [
+    { match: /uses: checkout/, unlessIndentedBlockBelowMatches: /submodules: true/,
+      what: 'checkout without submodules', fix: 'add submodules: true' },
+    { match: /^\s*(?:-\s+)?run: \|\s*$/, andIndentedBlockBelowMatches: /\|/,
+      what: 'a pipe in the run block', fix: 'set shell: bash' },
+  ],
+}), {
+  clean: {
+    'the block below the matched line satisfies the negative relation': { files: { 'a.yml':
+`jobs:
+  t:
+    steps:
+      - uses: checkout
+        with:
+          submodules: true
+` } },
+    'the positive relation is unmet — the block below holds no match': { files: { 'a.yml':
+`jobs:
+  t:
+    steps:
+      - run: |
+          make test
+` } },
+  },
+  flagged: {
+    'a dedent to the opener column closes the block, so a later sibling does not cover': { files: { 'a.yml':
+`jobs:
+  t:
+    steps:
+      - uses: checkout
+      - uses: other
+        with:
+          submodules: true
+` },
+      at: [{ file: 'a.yml', line: 4, what: /without submodules/ }] },
+    'the positive relation reaches through blank lines to the whole indented block': { files: { 'a.yml':
+`jobs:
+  t:
+    steps:
+      - run: |
+          make build
+
+          make test 2>&1 | tee log
+      - uses: checkout
+        with:
+          submodules: true
+` },
+      at: [{ file: 'a.yml', line: 4, what: /a pipe in the run block/ }] },
+  },
+});
+
+ruleTester(patternRule({
+  ...meta('fx-block-inside'),
+  scanFiles: /\.yml$/,
+  matchLines: [
+    { match: /secrets\.\w+/, andLineMatches: /^\s*if:\s/, unlessWithinBlockOpenedBy: /^\s*steps:\s*$/,
+      what: 'job-level if: reads {match}', fix: 'gate with vars.*' },
+  ],
+}), {
+  clean: {
+    'a line inside the named block is exempt, however deeply nested': { files: { 'a.yml':
+`jobs:
+  deploy:
+    steps:
+      - run: echo hi
+        if: \${{ secrets.TOKEN != '' }}
+` } },
+  },
+  flagged: {
+    'outside the block, and a sibling at the opener column is outside it': { files: { 'a.yml':
+`jobs:
+  deploy:
+    if: \${{ secrets.DEPLOY_ARN != '' }}
+    steps:
+      - run: echo hi
+        if: \${{ secrets.TOKEN != '' }}
+  publish:
+    steps:
+      - run: echo bye
+    if: \${{ secrets.PUBLISH_ARN != '' }}
+` },
+      at: [
+        { file: 'a.yml', line: 3, what: /reads secrets\.DEPLOY_ARN/ },
+        { file: 'a.yml', line: 10, what: /reads secrets\.PUBLISH_ARN/ },
+      ] },
+  },
+});
