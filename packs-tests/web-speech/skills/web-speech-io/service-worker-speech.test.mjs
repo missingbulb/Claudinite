@@ -1,10 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, cleanup } from '../../../../engine-tests/helpers.mjs';
+import { makeRepo, cleanup, declaredCheck } from '../../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../../engine/checks/helpers/repo-context.mjs';
-import serviceWorkerSpeech from '../../../../packs/web-speech/skills/web-speech-io/service-worker-speech.mjs';
 
-// Co-located with the check it exercises (skills own their check-the-work rules).
+// Co-located with the check it exercises (skills own their checks).
+const serviceWorkerSpeech = declaredCheck('packs/web-speech/skills/web-speech-io', 'web-speech-no-window-api-in-service-worker');
 const run = (root) => serviceWorkerSpeech.run(buildContext({ root, mode: 'all' }));
 
 const MV3 = (sw) => JSON.stringify({ manifest_version: 3, background: { service_worker: sw } }) + '\n';

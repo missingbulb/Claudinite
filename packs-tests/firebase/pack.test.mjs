@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, cleanup } from '../../engine-tests/helpers.mjs';
+import { makeRepo, cleanup, declaredCheck } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
-import functionsNodePin from '../../packs/firebase/functions-node-pin.mjs';
 import functionsPredeployBuild from '../../packs/firebase/functions-predeploy-build.mjs';
+
+const functionsNodePin = declaredCheck('packs/firebase', 'firebase/functions-node-pin');
 
 const run = (rule, root) => rule.run(buildContext({ root, mode: 'all' }));
 

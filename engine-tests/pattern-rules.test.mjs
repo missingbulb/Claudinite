@@ -1410,3 +1410,79 @@ test('the work assertions are authoring errors outside the work scope, and scope
   }), /scope: "work"/);
   assert.throws(() => patternRule({ ...meta('fx-work-bad-scope'), scope: 'world' }), /"scope"/);
 });
+
+// The third scanFiles form: the scan set is named by a field of another parsed
+// document, resolved against that document's own directory. Its target is
+// dropped when the naming file points outside the scan set — the check has
+// nothing to say about a file this checkout doesn't carry.
+ruleTester(patternRule({
+  ...meta('fx-named-scan'),
+  scanFiles: {
+    inParsedFilesMatching: /(^|\/)manifest\.json$/,
+    whereFileContains: /"manifest_version"\s*:\s*3/,
+    namedByField: 'background.service_worker',
+  },
+  matchLines: [{ match: /speechSynthesis/, what: 'window API in the named worker', fix: 'move it' }],
+}), {
+  clean: {
+    'the same hazard in a file nothing names is out of scope': { files: {
+      'app/manifest.json': '{"manifest_version":3,"background":{"service_worker":"sw.js"}}',
+      'app/sw.js': 'const x = 1;\n',
+      'app/page.js': 'speechSynthesis.speak(u);\n',
+    } },
+    'a manifest the content probe rejects names nothing': { files: {
+      'app/manifest.json': '{"manifest_version":2,"background":{"service_worker":"sw.js"}}',
+      'app/sw.js': 'speechSynthesis.speak(u);\n',
+    } },
+    'a named file this checkout does not carry is dropped': { files: {
+      'app/manifest.json': '{"manifest_version":3,"background":{"service_worker":"dist/bundle.js"}}',
+    } },
+  },
+  flagged: {
+    'the named worker is scanned, resolved against the manifest\'s own directory': { files: {
+      'app/manifest.json': '{"manifest_version":3,"background":{"service_worker":"../shared/sw.js"}}',
+      'shared/sw.js': 'const u = 1;\nspeechSynthesis.speak(u);\n',
+    },
+      at: [{ file: 'shared/sw.js', line: 2, what: /window API in the named worker/ }] },
+  },
+});
+
+// The same form with a suffix and a declared default — a config naming a
+// DIRECTORY — feeding a parsed assertion over whatever the scan selected.
+ruleTester(patternRule({
+  ...meta('fx-named-scan-dir'),
+  scanFiles: {
+    inParsedFilesMatching: /^([^/]+\/)?config\.json$/,
+    namedByField: 'functions.source',
+    defaultingTo: 'functions',
+    withSuffix: '/package.json',
+  },
+  scanTracked: true,
+  checkParsedFiles: [{
+    everyScannedFile: true,
+    requireFieldMatching: { field: 'engines.node', pattern: /\S/ },
+    what: 'a deployed codebase with no engines.node pin', fix: 'pin the Node major',
+  }],
+}), {
+  clean: {
+    'the named package pins the field': { files: {
+      'config.json': '{"functions":{"source":"fns"}}',
+      'fns/package.json': '{"engines":{"node":"22"}}',
+    } },
+    'a config naming no codebase selects nothing': { files: {
+      'config.json': '{"hosting":{"public":"public"}}',
+      'functions/package.json': '{"name":"not-deployed"}',
+    } },
+  },
+  flagged: {
+    'every entry of an array field fans out, and an absent name falls to the declared default': { files: {
+      'config.json': '{"functions":[{"source":"a"},{"codebase":"unnamed"}]}',
+      'a/package.json': '{"name":"a"}',
+      'functions/package.json': '{"engines":{"node":"  "}}',
+    },
+      at: [
+        { file: 'a/package.json', line: null, what: /no engines\.node pin/ },
+        { file: 'functions/package.json', what: /no engines\.node pin/ },
+      ] },
+  },
+});
