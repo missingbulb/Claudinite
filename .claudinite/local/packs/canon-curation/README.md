@@ -21,7 +21,7 @@ the members' side ([grow_with_claudinite](../../../../packs/grow_with_claudinite
 | Task | Runs when | Where it lands |
 |---|---|---|
 | `growth-promote` | a participating member changed its local packs in the window | a PR against Claudinite's `main` |
-| `growth-discover-packs` | weekly, over every covered member | a PR against Claudinite's `main` |
+| `growth-discover-packs` | weekly, over every covered member | a PR against Claudinite's `main`, plus an adopt issue in each member that evidenced the pack |
 
 | Rule (≤5 words) | How enforced |
 |---|---|
@@ -36,7 +36,9 @@ the members' side ([grow_with_claudinite](../../../../packs/grow_with_claudinite
 - **[tasks/growth-discover-packs/](tasks/growth-discover-packs/task.md)** — the weekly **fleet sweep** for
   technologies the canon does not yet home: read every member's stack, fold the members into one view
   (so first-sight dedup is free — the third member using a technology is the same gap as the first),
-  and open an owner-reviewed PR authoring the missing `packs/<tech>/`. Its per-repo namesake in
+  and open an owner-reviewed PR authoring the missing `packs/<tech>/`. A pack is authored because
+  particular members' files demonstrated it, so each of those members also gets an issue asking it to
+  adopt the pack once the PR merges and its mount carries it. Its per-repo namesake in
   [grow_with_claudinite](../../../../packs/grow_with_claudinite/tasks/growth-discover-packs/task.md)
   is the other side of that line — it authors a repo's own **local** packs and may never re-create what
   a canon pack homes, so only this task can close a canon gap. (Promote's stub-minting is narrower
