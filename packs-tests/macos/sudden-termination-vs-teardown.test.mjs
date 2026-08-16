@@ -2,7 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
-import suddenTermination from '../../packs/macos/sudden-termination-vs-teardown.mjs';
+import { fileURLToPath } from 'node:url';
+import { loadDeclaredChecks } from '../../engine/checks/helpers/pattern-rules.mjs';
+
+const suddenTermination = loadDeclaredChecks(
+  fileURLToPath(new URL('../../packs/macos', import.meta.url)),
+).find((r) => r.id === 'sudden-termination-vs-teardown');
 
 const run = (root) => suddenTermination.run(buildContext({ root, mode: 'all' }));
 
@@ -37,8 +42,9 @@ test('sudden-termination-vs-teardown: flags the key set true in an app with term
     assert.equal(findings.length, 1);
     assert.equal(findings[0].rule, 'sudden-termination-vs-teardown');
     assert.equal(findings[0].severity, 'blocking');
+    // The declared form judges the whole plist (the key/value pair spans
+    // lines), so the finding anchors at the file, not a line.
     assert.equal(findings[0].file, 'Resources/Info.plist');
-    assert.equal(findings[0].line, 7);
     assert.match(findings[0].fix, /remove the NSSupportsSuddenTermination key/);
   } finally { cleanup(root); }
 });

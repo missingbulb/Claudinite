@@ -11,7 +11,7 @@ const releaseConfig = declaredCheck('packs/chrome-extension-release', 'cer/relea
 const versionSync = declaredCheck('packs/chrome-extension-release', 'cer/version-sync');
 const releaseLayout = declaredCheck('packs/chrome-extension-release', 'cer/release-layout');
 const readmeSections = declaredCheck('packs/chrome-extension-release', 'cer/readme-sections');
-import privacyPermissionAlignment from '../../packs/chrome-extension-release/privacy-permission-alignment.mjs';
+const privacyPermissionAlignment = declaredCheck('packs/chrome-extension-release', 'cer/privacy-permission-alignment');
 import permissionAddedStoreIssue from '../../packs/chrome-extension-release/permission-added-store-issue.mjs';
 
 const run = (rule, root, opts) => runRule(rule, buildContext({ root, mode: 'all' }), opts);

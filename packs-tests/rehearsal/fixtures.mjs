@@ -294,6 +294,20 @@ module.exports = { issue, check };
     },
   },
   {
+    name: 'product-wiki-consumer',
+    why: 'a member declaring the product-wiki standard over its scaffold, no config object on the entry — the skeleton check is declared data and the takes-no-config guard is its own coded rule, and this proves a member that adopted the standard converges green across that split',
+    files: {
+      'README.md': '# fixture-product-wiki-consumer\n\nA rehearsal fixture.\n',
+      '.claudinite-checks.json': checks(['basics', 'product-wiki']),
+      // The two fixed paths product-wiki-layout requires; a sink-first scaffold
+      // with no wiki pages yet is a legitimate adoption state, and it keeps the
+      // page-grammar checks quiet (a wiki page is structural: a README.md at
+      // depth >= 2 outside the sink).
+      'product-wiki/README.md': '# product\n\nThe product research root.\n',
+      'product-wiki/product-requirements/README.md': '# Product requirements\n\nThe reviewed sink.\n',
+    },
+  },
+  {
     name: 'sheepdog-enforcer',
     why: 'the fleet-enforcer shape: a repo declaring `sheepdog` with a packSeeds entry AND its own declaration of the seeded pack — the two configs a blocking rule now requires to agree, proving a conforming enforcer converges green',
     files: {

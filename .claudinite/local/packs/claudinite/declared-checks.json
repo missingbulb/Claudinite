@@ -1,0 +1,20 @@
+[
+  {
+    "id": "home-seeded-packs-declared",
+    "severity": "blocking",
+    "failureMessage": "baselining lands a seeded pack on every member but is gated !isHome, so a newly seeded pack reaches the whole fleet except this repo, invisibly",
+    "scanIgnoringComments": true,
+    "requireIndexCoverage": [
+      {
+        "eachTrackedPathMatching": "/^packs\\/(?<pack>[^/]+)\\/pack\\.mjs$/",
+        "whoseTextMatches": "/(^|[^\\w.$])seededByDefault\\s*:\\s*true\\b/",
+        "indexFile": ".claudinite-checks.json",
+        "coveredByValueInArrayAtField": { "atField": "packs", "value": "{pack}", "matchingEntryObjectsByField": "id" },
+        "whenIndexFileAbsent": "assertNothing",
+        "anchorFindingsAt": "indexFile",
+        "what": "the \"{pack}\" pack flags seededByDefault (packs/{pack}/pack.mjs) but is not declared here",
+        "fix": "add \"{pack}\" to the \"packs\" array — baselining skips the home, so this repo's declaration is hand-maintained; a deliberate opt-out is an acceptance with a reason instead"
+      }
+    ]
+  }
+]
