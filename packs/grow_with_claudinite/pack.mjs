@@ -1,4 +1,3 @@
-import growthConfig from './config-check.mjs';
 import dedupIntegrity from './dedup-integrity.mjs';
 import growthWriteScope from './growth-write-scope.mjs';
 
@@ -75,7 +74,22 @@ export default {
   // pack catalog and landed by adopting or authoring a pack — so `core` is a
   // prerequisite rather than an ambient assumption.
   requires: ['core'],
-  worldRules: [growthConfig],
+  // Declared-but-unconfigured is fine and fail-safe: capture and the growth
+  // tasks run, promotion participates, and the retention sweep deletes nothing
+  // until the project states an explicit retention_days.
+  configSchema: {
+    ruleId: 'growth-config',
+    severity: 'blocking',
+    why: 'a malformed retention config silently stalls the conversation retention sweep, a mistyped promote flag silently changes what leaves the repo, and a bad pack_paths silently mis-scopes the prose-to-checks sweep',
+    fix: 'set the entry to { "id": "grow_with_claudinite", "config": { "retention_days": 10 } } — retention_days is a whole number of days (10 is the recommended floor), promote false opts out of the central promote stage, pack_paths names the pack roots to sweep',
+    doc: 'packs/grow_with_claudinite/README.md',
+    properties: {
+      retention_days: { type: 'positiveInteger' },
+      promote: { type: 'boolean' },
+      pack_paths: { type: 'nonEmptyStringArray' },
+    },
+  },
+  worldRules: [],
   workRules: [dedupIntegrity, growthWriteScope],
   skills: [
     'extract-from-activity',

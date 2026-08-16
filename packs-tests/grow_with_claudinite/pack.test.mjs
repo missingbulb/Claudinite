@@ -7,7 +7,8 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeRepo, cleanup, git, deletePath } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
-import configCheck from '../../packs/grow_with_claudinite/config-check.mjs';
+import { normalizeManifest } from '../../engine/pack_loader/pack-schema.mjs';
+import growthPack from '../../packs/grow_with_claudinite/pack.mjs';
 import {
   parseLines, bundleStreams, sliceAfter, maxTimestamp, scrub, buildRedactionValues,
   logFilename, parseLogFilename, findTranscript, capture,
@@ -146,6 +147,8 @@ test('findTranscript returns null when there is nothing to find', () => {
 });
 
 // --- the growth-config check --------------------------------------------------
+// Minted from the pack's configSchema, under the id its coded validator had.
+const configCheck = normalizeManifest(growthPack).rules.find((r) => r.id === 'growth-config');
 
 function runConfigCheck(cfg) {
   const root = makeRepo({ changed: { 'a.txt': 'x\n' } });

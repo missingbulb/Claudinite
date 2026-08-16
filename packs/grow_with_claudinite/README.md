@@ -150,7 +150,7 @@ rephrase, the keep-test, and the shrink-only discipline. The pack also bundles
 
 | Rule | Kind | What |
 |---|---|---|
-| `growth-config` | hardcoded ([config-check.mjs](config-check.mjs)) | entry config shape valid |
+| `growth-config` | declared (the pack manifest's `configSchema`) | entry config shape valid |
 | `dedup-prune-integrity` | work-scope ([dedup-integrity.mjs](dedup-integrity.mjs)) | a dedup edit only removes portable text — never grows a local pack or re-imports a canon rule |
 | `growth-write-scope` | work-scope ([growth-write-scope.mjs](growth-write-scope.mjs)) | a capture run (extract, dedup) writes only the repo's own local packs |
 

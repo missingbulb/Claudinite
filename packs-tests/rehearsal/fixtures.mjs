@@ -161,6 +161,13 @@ const PACK_VERSIONED = `export default {
   detect: null,
   marker: null,
   prose: 'RULES.md',
+  configSchema: {
+    ruleId: 'fixture-versioned-config',
+    severity: 'advisory',
+    why: 'a malformed entry config silently changes what the fixture pack does',
+    fix: 'set { "id": "local/fixture-versioned", "config": { "depth": 2 } }',
+    properties: { depth: { type: 'positiveInteger' } },
+  },
   worldRules: [],
   workRules: [],
 };
@@ -237,7 +244,7 @@ export const FIXTURES = [
   },
   {
     name: 'versioned-local',
-    why: 'a local pack declaring the manifest version fields — proves the widened vocabulary validates on a CONSUMER-authored manifest, not only on the canon\'s own',
+    why: 'a local pack declaring the manifest version fields AND a configSchema — proves each widening of the vocabulary validates on a CONSUMER-authored manifest, not only on the canon\'s own',
     files: {
       'README.md': '# fixture-versioned\n\nA rehearsal fixture.\n',
       '.claudinite-checks.json': checks(['basics', 'local/fixture-versioned']),
