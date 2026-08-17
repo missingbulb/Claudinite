@@ -42,6 +42,11 @@ lesson at the strongest mechanism available — a check where the rule is determ
   each sanctioned holdout's declaration site saying why it still carries the field. Never a
   bespoke conformance check for a deprecation. Keep the contract validating the lingering field.
 
+- **Wanting a `.claudinite-checks.json` entry's config validated** — that is a real JSON Schema
+  the file points at with `$schema`, checked by ordinary tooling. Never a coded per-pack
+  validation vocabulary or a bespoke `configSchema` type system on the manifest — built and
+  reverted in #919 ("That's why we have schemas").
+
 ## Working with the owner and the session's tools
 
 - **Answering "why did it fail?"** — lead with the throwing call site: `file:line`, the
@@ -64,8 +69,17 @@ lesson at the strongest mechanism available — a check where the rule is determ
   proxy doesn't already serve.
 
 - **Waiting for something to happen** — the guard must name the condition awaited (a run's
-  status, a file's arrival, a deadline), with no trailing padded `sleep` — or use `Monitor`. A
-  guard you wouldn't write as the *whole* test means you are sleeping and calling it polling.
+  status, a file's arrival, a deadline), with no trailing padded `sleep`. A guard you wouldn't
+  write as the *whole* test means you are sleeping and calling it polling. **Exception: GitHub
+  CI/PR check status is not this repo's case for `Monitor` or a `curl`/shell poll loop** — this
+  sandbox proxy-blocks `api.github.com`, so both silently report "still running" until they time
+  out (measured ~26 minutes lost across two PRs waiting past an already-green check, #880). Read
+  the head sha's check runs with the GitHub MCP tool instead.
+
+- **Replying to an owner comment that raises more than one claim** — answer **every** claim in
+  that first reply, including the one you intend to push back on. A claim left silently
+  unaddressed, even when the rest of the reply is right, just makes the owner re-raise it later
+  (#864: a placement objection went unanswered for 55 minutes before the owner repeated it).
 
 ## Authoring packs, prose and checks
 
@@ -146,12 +160,27 @@ lesson at the strongest mechanism available — a check where the rule is determ
 - **Excluding files from the vendor set by pattern** — whitelist any operational file that
   matches by path, and pin it with a test against the real canon tree, not only a fixture. The
   nightly refresh re-runs the computation from canon HEAD, so a bug there is the one canon
-  regression that is not self-healing.
+  regression that is not self-healing. Assert that the **whole containing directory** vendors,
+  not just the one file that broke — a test re-asserting only the known-missing file needs a
+  fresh edit for the next file added there; one that walks the real directory doesn't (#907).
+
+- **Retiring or reshaping a protocol the engine exposes** (a dispatch input, a stub's declared
+  interface) — sweep for callers **outside this repo**, not just what greps locally. `FORCE_TASKS`'s
+  replacement broke Sheepdog's only caller because the migration enumerated this repo's own
+  callers and missed the cross-repo one (#929); two independently-maintained stub copies at the
+  same path declaring different input names is the same failure from the other side (#801, #907)
+  — the two spellings *are* the protocol, and they live in different trees.
 
 - **Branching on the result of an API write in fleet machinery** — read its status, not just
   the body: a body-only destructure turns a 403 into a plausible object and the run still logs
   `ok`. Judge the fleet by members' stamps, never by run conclusions — the stamp is the only
   artifact that moves when delivery actually worked.
+
+- **Writing generated content into a size-capped GitHub API field** (an issue or PR body) —
+  budget it explicitly, in two tiers: an always-complete compact summary plus best-effort detail
+  rationed to a byte budget with an explicit omitted-count, never a single unbounded write that
+  can 422 outright at the ~64KB cap. `growth-dedup`'s brief rendered 350KB against that limit and
+  would have failed the run at its first step.
 
 - **Adding a fleet task** — fail loudly on a Context target it cannot reach rather than
   proceeding on a partial list, and treat a member as un-adopted until the routine's repo scope
@@ -198,6 +227,14 @@ lesson at the strongest mechanism available — a check where the rule is determ
   window succeeds, prints `- no tasks due`, and does nothing — looking exactly like a healthy
   run.
 
+- **Converging an unattended run** — do the final label/comment/close sequence as the run's very
+  next action once the outcome is known, not deferred to a checklist recalled from memory at the
+  end of a long session, when context is fullest and the remaining work looks like formality.
+  Two runs closed `outcome:done` while their own PR sat open needing a human, and one skipped the
+  outcome label and the exec record entirely (#939, #892) — five days of green-looking runs on
+  one of them. `outcome:done` means nothing is left for anyone to act on; never close it while a
+  PR, branch, or open question from this run is still live.
+
 ## Proving a change
 
 - **Testing a change to a task's triggering** — drive the real `planRun` from a deliberately
@@ -216,12 +253,26 @@ lesson at the strongest mechanism available — a check where the rule is determ
 
 - **Testing a helper reapplied across a hand-off, a re-queue or a retry** — call it twice and
   assert no duplication. A suite of single-call tests stays green while the multi-call case
-  corrupts state.
+  corrupts state. When the mechanism arbitrates by identity (a claim, a lock), the second call
+  must come from a **different actor** — a single actor retrying its own stale claim can't expose
+  an identity-masked race, which is exactly what hid F18 until two distinct executors raced (#925).
+
+- **Building or extending a simulator for a stateful engine mechanism** — model what the real
+  engine's code actually *writes* (the artifact), never the rule's stated *intent*. A sim that
+  advances state on every transition matching the rule's description, rather than only where the
+  real engine leaves a mark, is correct by construction and blind to exactly the silent paths
+  where the two diverge — which is where the bug lived (an episode-boundary livelock, #925).
+
+- **Restoring source after a deliberate see-it-fail mutation** — `git checkout -- <file>` (or
+  `git stash`) at the moment of mutating, never a `.bak` copy taken earlier: a `.bak` predates
+  whatever else you edited in between, and restoring from it silently destroys that work (#922).
 
 - **Running the test suite** — `node --test $(git ls-files '*.test.mjs')`. There is no test
   script, and every hand-written glob under-runs it silently: `node --test <dir>` doesn't recurse,
   and bash `**` without `globstar` reached 37 of 65 files. `ci.yml`'s array is not authoritative
-  either.
+  either. Redirect one run to a file and grep that file for whatever slice you need next — never
+  re-run the ~55s suite to re-slice the same unchanged output (five reruns cost 4.5 minutes for
+  five different greps, #930, #931).
 
 - **Surveying whether something exists in the tree** — a code-search hit is evidence; a
   code-search miss is not. Survey by reading each file.
@@ -237,6 +288,15 @@ lesson at the strongest mechanism available — a check where the rule is determ
   still there and what survives. This repo auto-merges its own PRs on top of migrations that
   retire whole directories, so a branch can rebase cleanly, stay green, and no longer be the
   change to make.
+
+- **Re-verifying a branch against a `main` that has moved** — `git rebase origin/main`, never
+  `git merge origin/main`. A merge commit trips the blocking squash-merge-history check and costs
+  a full rebase, a discarded CI run, and a fresh wait — paid twice in one evening on #880.
+
+- **After a PR lands by squash-merge** — `git remote prune origin` before touching that branch
+  again. GitHub deletes the head ref on squash-merge here, so a stale local tracking ref makes git
+  count the pre-squash commits as unpushed: the next push is rejected and the stop hook reports
+  phantom local work (#922).
 
 - **Re-applying your edit onto a moved `main`** — re-read the fetched file, apply the same
   anchored edit, and confirm the stat shows insertions only. A pack's `RULES.md` is append-only
