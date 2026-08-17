@@ -17,17 +17,17 @@
 // Shortening it would mean copying a comment-stripper nearer, and a second stripper
 // that drifts from the canonical one is worse than the distance.
 
-import { stripComments } from '../../checks/helpers/code-scanning.mjs';
-import { mostRecentAnchor, nextAnchor, periodMs } from '../queue/anchors.mjs';
+import { stripComments } from '../../engine/checks/helpers/code-scanning.mjs';
+import { mostRecentAnchor, nextAnchor, periodMs } from '../../engine/scheduler/queue/anchors.mjs';
 import {
   EXECUTING_LEASH_MS, AGENT_LEASH_MS, STALE_READY_PERIODS, STUCK_BLOCKED_MS,
-} from '../queue/leases.mjs';
+} from '../../engine/scheduler/queue/leases.mjs';
 import {
   WORK_PREFIX, BLOCKED, READY, URGENT, EXECUTING, AGENT, NEEDS_HUMAN,
   OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE, STATE_LABELS,
   CLAIM_MARKER, HANDOFF_MARKER, EPISODE_MARKER,
   parseWorkItemTitle, parseWorkItemBody, hasLabel, labelNames,
-} from '../queue/work-item.mjs';
+} from '../../engine/scheduler/queue/work-item.mjs';
 
 export {
   WORK_PREFIX, BLOCKED, READY, URGENT, EXECUTING, AGENT, NEEDS_HUMAN,

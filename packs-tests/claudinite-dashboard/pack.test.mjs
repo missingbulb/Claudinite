@@ -1,0 +1,198 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile, mkdtemp, mkdir, writeFile, cp, rm } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { tmpdir } from 'node:os';
+import { join, resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import pack from '../../packs/claudinite-dashboard/pack.mjs';
+
+const run = promisify(execFile);
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const PACK_DIR = join(ROOT, 'packs/claudinite-dashboard');
+
+// --- the manifest ----------------------------------------------------------------
+
+test('the pack is opt-in and never fingerprinted', () => {
+  assert.equal(pack.id, 'claudinite-dashboard');
+  // Nothing in a repo's shape implies wanting a dashboard. A fingerprint would suspect
+  // one in every member on the fleet, since every member has a scheduler.
+  assert.equal(pack.detect, null);
+  assert.equal(pack.marker, null);
+  assert.equal(pack.seededByDefault, false);
+});
+
+test('it enforces nothing and costs no session prose', () => {
+  // A page is not a practice: there is no way to write the dashboard wrongly in a
+  // consuming repo, and prose here would bill every session in every declaring repo.
+  assert.equal(pack.prose, null);
+  assert.deepEqual(pack.worldRules, []);
+  assert.deepEqual(pack.workRules, []);
+});
+
+// The whole point of the remodel: adoption is what wires the deploy, because
+// `.github/workflows/` cannot be written by the nightly and so can only be seeded.
+test('adoption seeds the Pages workflow, and its template exists', async () => {
+  assert.equal(pack.seedOps.length, 1);
+  const [op] = pack.seedOps;
+  assert.equal(op.dest, '.github/workflows/claudinite-dashboard-pages.yml');
+  assert.ok(existsSync(join(PACK_DIR, op.template)), `seedOp template missing: ${op.template}`);
+});
+
+// A seeded workflow never converges, so anything it hardcodes is frozen in every
+// member forever. It must therefore call the mount, not carry the logic.
+test('the seeded workflow is a shim over the mount, holding no build logic', async () => {
+  const yml = await readFile(join(PACK_DIR, pack.seedOps[0].template), 'utf8');
+  assert.match(yml, /node \.claudinite\/shared\/packs\/claudinite-dashboard\/build-site\.mjs/);
+  assert.doesNotMatch(yml, /\bcp -r\b|\brsync\b/, 'the workflow must not stage files itself');
+  // Configuration lives in the declaration, so the frozen file has none to go stale.
+  assert.doesNotMatch(yml, /vars\.DASHBOARD_/, 'settings belong in .claudinite-checks.json, not in the frozen stub');
+});
+
+test('the build script is NOT seeded — it has to keep converging', () => {
+  const dests = pack.seedOps.map((o) => o.dest);
+  assert.ok(!dests.some((d) => d.includes('build-site')), 'build-site.mjs must stay in the mount');
+});
+
+// --- build-site, against a simulated member mount ----------------------------------
+
+// Stand up a member the way a converge leaves one: the pack and the engine side by
+// side under `.claudinite/shared/`. The relative imports the page uses resolve only
+// if that shape is right, so building here is what proves the shape.
+async function member(declaration, extraFiles = {}) {
+  const dir = await mkdtemp(join(tmpdir(), 'cd-member-'));
+  await mkdir(join(dir, '.claudinite/shared/packs'), { recursive: true });
+  await cp(join(ROOT, 'engine'), join(dir, '.claudinite/shared/engine'), { recursive: true });
+  await cp(PACK_DIR, join(dir, '.claudinite/shared/packs/claudinite-dashboard'), { recursive: true });
+  await writeFile(join(dir, '.claudinite-checks.json'), JSON.stringify(declaration));
+  for (const [name, body] of Object.entries(extraFiles)) await writeFile(join(dir, name), body);
+  return dir;
+}
+
+const build = (dir, env = {}) => run('node',
+  ['.claudinite/shared/packs/claudinite-dashboard/build-site.mjs'],
+  { cwd: dir, env: { ...process.env, ...env } });
+
+const readJson = async (p) => JSON.parse(await readFile(p, 'utf8'));
+const CONFIG_AT = '_site/packs/claudinite-dashboard/dashboard.config.json';
+
+test('a bare declaration builds this repo\'s own dashboard', async (t) => {
+  const dir = await member({ packs: ['claudinite-dashboard'] });
+  t.after(() => rm(dir, { recursive: true, force: true }));
+
+  await build(dir, { GITHUB_REPOSITORY: 'o/mine' });
+  const cfg = await readJson(join(dir, CONFIG_AT));
+  assert.equal(cfg.defaultRepo, 'o/mine');
+  assert.equal(cfg.rosterUrl, null, 'no roster means no fleet view');
+  assert.equal(cfg.clientId, null);
+});
+
+// The layout the page's relative imports depend on. Flattening it would send
+// `../../engine/...` above the site root and the page would not boot.
+test('the staged tree mirrors the mount, with the root a redirect', async (t) => {
+  const dir = await member({ packs: ['claudinite-dashboard'] });
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await build(dir);
+
+  for (const p of [
+    '_site/index.html',
+    '_site/packs/claudinite-dashboard/index.html',
+    '_site/packs/claudinite-dashboard/model.mjs',
+    '_site/engine/scheduler/queue/work-item.mjs',
+    '_site/engine/checks/helpers/code-scanning.mjs',
+    '_site/.nojekyll',
+  ]) assert.ok(existsSync(join(dir, p)), `missing from the staged site: ${p}`);
+
+  const root = await readFile(join(dir, '_site/index.html'), 'utf8');
+  assert.match(root, /url=\.\/packs\/claudinite-dashboard\//);
+});
+
+// Every relative import the page makes must resolve inside the staged tree — the
+// check that would have caught the flattening bug without a browser.
+test('every relative import in the staged page resolves inside the site', async (t) => {
+  const dir = await member({ packs: ['claudinite-dashboard'] });
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await build(dir);
+
+  const pageDir = join(dir, '_site/packs/claudinite-dashboard');
+  const { stdout } = await run('sh', ['-c', `grep -ho "from '[^']*'" ${pageDir}/*.mjs | sort -u`]);
+  const specs = stdout.split('\n').map((l) => /from '([^']*)'/.exec(l)?.[1]).filter((x) => x?.startsWith('.'));
+  assert.ok(specs.length > 0, 'found no relative imports — the grep is wrong, not the page');
+  for (const spec of specs) {
+    assert.ok(existsSync(resolve(pageDir, spec)), `staged page imports ${spec}, which is not in the site`);
+  }
+});
+
+test('local-only and explanatory files are not published', async (t) => {
+  const dir = await member({ packs: ['claudinite-dashboard'] });
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await build(dir);
+
+  for (const f of ['serve.mjs', 'build-site.mjs', 'pack.mjs', 'README.md', 'stubs', 'oauth-exchange.example.mjs']) {
+    assert.ok(!existsSync(join(dir, '_site/packs/claudinite-dashboard', f)), `${f} must not be published`);
+  }
+});
+
+test('a roster file turns on the fleet view and publishes only the names', async (t) => {
+  const dir = await member(
+    { packs: [{ id: 'claudinite-dashboard', config: { rosterFile: 'fleet.json', canonRepo: 'o/canon' } }] },
+    { 'fleet.json': JSON.stringify({ repos: { 'o/a': { tonnes: 'of stats' }, 'o/b': {} } }) },
+  );
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await build(dir);
+
+  const cfg = await readJson(join(dir, CONFIG_AT));
+  assert.equal(cfg.rosterUrl, './fleet-roster.GENERATED.json');
+  assert.equal(cfg.canonRepo, 'o/canon');
+  assert.equal(cfg.defaultRepo, null, 'a fleet deployment lands on the overview, not inside one member');
+
+  const roster = await readJson(join(dir, '_site/packs/claudinite-dashboard/fleet-roster.GENERATED.json'));
+  assert.deepEqual(roster.repos, ['o/a', 'o/b']);
+  assert.equal(JSON.stringify(roster).includes('tonnes'), false, 'only the names travel');
+});
+
+// Saying so matters: the site would otherwise publish as a single-repo dashboard and
+// look entirely intentional.
+test('an unreadable roster file warns instead of silently covering one repo', async (t) => {
+  const dir = await member({ packs: [{ id: 'claudinite-dashboard', config: { rosterFile: 'absent.json' } }] });
+  t.after(() => rm(dir, { recursive: true, force: true }));
+
+  const { stdout } = await build(dir);
+  assert.match(stdout, /WARNING: rosterFile absent\.json could not be read/);
+  assert.equal((await readJson(join(dir, CONFIG_AT))).rosterUrl, null);
+});
+
+test('sign-in needs both halves, and the build says which is missing', async (t) => {
+  const dir = await member({ packs: [{ id: 'claudinite-dashboard', config: { clientId: 'Iv1.x' } }] });
+  t.after(() => rm(dir, { recursive: true, force: true }));
+
+  const { stdout } = await build(dir);
+  assert.match(stdout, /sign-in: NOT configured/);
+  assert.match(stdout, /exchangeUrl missing/);
+});
+
+// An adopted-but-not-yet-converged member is the ordinary state on a fleet, not a
+// fault. Failing here would paint every run red until the converge caught up.
+test('a mount without the page produces nothing and exits clean', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'cd-bare-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await mkdir(join(dir, '.claudinite/shared/packs/claudinite-dashboard'), { recursive: true });
+  await cp(join(PACK_DIR, 'build-site.mjs'), join(dir, '.claudinite/shared/packs/claudinite-dashboard/build-site.mjs'));
+  await writeFile(join(dir, '.claudinite-checks.json'), JSON.stringify({ packs: ['claudinite-dashboard'] }));
+
+  const { stdout } = await build(dir);
+  assert.match(stdout, /nothing to publish/i);
+  assert.equal(existsSync(join(dir, '_site')), false);
+});
+
+test('a repo with no declaration at all still builds rather than throwing', async (t) => {
+  const dir = await member({ packs: ['claudinite-dashboard'] });
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await rm(join(dir, '.claudinite-checks.json'));
+
+  await build(dir, { GITHUB_REPOSITORY: 'o/x' });
+  assert.equal((await readJson(join(dir, CONFIG_AT))).defaultRepo, 'o/x');
+});

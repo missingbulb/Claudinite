@@ -19,7 +19,7 @@ import { join, normalize, extname, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
-const HOME = '/engine/scheduler/dashboard/';
+const HOME = '/packs/claudinite-dashboard/';
 const port = Number(process.env.PORT ?? 8099);
 
 const TYPES = {

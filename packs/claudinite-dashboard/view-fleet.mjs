@@ -9,7 +9,7 @@ import {
   $, el, ago, duration, head, emptyRow, repoLink, tiles, segmentBar,
   reasonNodes, LEVEL_GLYPH, STATE_ORDER, STATE_COLOR, STATE_UI, OUTCOME_COLOR,
 } from './ui.mjs';
-import { OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE } from '../queue/work-item.mjs';
+import { OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE } from '../../engine/scheduler/queue/work-item.mjs';
 
 // Members are read concurrently, but not all at once: a dozen members at six calls
 // each is enough parallel load to trip secondary rate limiting, and the page is not

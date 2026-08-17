@@ -23,7 +23,7 @@ const RATE = { 'x-ratelimit-remaining': '4321', 'x-ratelimit-limit': '5000' };
 // the end of history.
 const fullPage = (n = 100) => Array.from({ length: n }, (_, i) => ({ number: i + 1, title: `i${i}`, state: 'closed', labels: [], body: '' }));
 
-const load = () => import(`../../../engine/scheduler/dashboard/github.mjs?t=${Math.random()}`);
+const load = () => import(`../../packs/claudinite-dashboard/github.mjs?t=${Math.random()}`);
 
 beforeEach(() => { globalThis.localStorage = new Mem(); });
 

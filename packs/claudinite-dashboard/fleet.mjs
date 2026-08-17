@@ -24,11 +24,11 @@
 //   independently and a read that failed becomes a row saying so, so a single private
 //   repo or a rate-limit stumble cannot blank the page.
 
-import { periodMs } from '../queue/anchors.mjs';
+import { periodMs } from '../../engine/scheduler/queue/anchors.mjs';
 import {
   BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN, URGENT,
   OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE,
-} from '../queue/work-item.mjs';
+} from '../../engine/scheduler/queue/work-item.mjs';
 import { describeItem, isWorkItem, parseWorkItemTitle, taskDeclarationPaths } from './model.mjs';
 
 // Severity ladder, worst first. The order IS the sort, so it is stated once here

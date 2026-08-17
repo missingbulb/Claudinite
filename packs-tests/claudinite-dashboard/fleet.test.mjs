@@ -3,11 +3,11 @@ import assert from 'node:assert/strict';
 import {
   summariseMember, summariseRuns, mountState, rankMembers, rollUp, packSpread, taskSpread,
   MOUNT_STALE_MS,
-} from '../../../engine/scheduler/dashboard/fleet.mjs';
+} from '../../packs/claudinite-dashboard/fleet.mjs';
 import {
   BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN,
   OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE,
-} from '../../../engine/scheduler/queue/work-item.mjs';
+} from '../../engine/scheduler/queue/work-item.mjs';
 
 const NOW = Date.parse('2026-08-17T12:00:00Z');
 const CANON = { repo: 'o/canon', ref: 'canonsha', engineVersion: 4 };

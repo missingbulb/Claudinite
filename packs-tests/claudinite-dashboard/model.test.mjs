@@ -9,9 +9,9 @@ import {
   parseDeclaration, taskDeclarationPaths, warningsFor, commentKind,
   EXECUTING_LEASH_MS, AGENT_LEASH_MS, STUCK_BLOCKED_MS,
   BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN, OUTCOME_DONE, OUTCOME_DELIVERED,
-} from '../../../engine/scheduler/dashboard/model.mjs';
+} from '../../packs/claudinite-dashboard/model.mjs';
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const NOW = Date.parse('2026-08-16T12:00:00Z');
 const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
 
@@ -56,7 +56,7 @@ test('the engine modules the page imports stay browser-pure', async () => {
 // label strings — a restated label is exactly the drift this design exists to
 // prevent, and it would look completely correct on the day it was written.
 test('the page states no queue label of its own', async () => {
-  for (const rel of ['engine/scheduler/dashboard/model.mjs', 'engine/scheduler/dashboard/app.mjs']) {
+  for (const rel of ['packs/claudinite-dashboard/model.mjs', 'packs/claudinite-dashboard/app.mjs']) {
     const src = await readFile(resolve(ROOT, rel), 'utf8');
     const code = src.replace(/^\s*\/\/.*$/gm, '');
     assert.doesNotMatch(code, /'(task:(ready|blocked|executing|agent|urgent)|outcome:\w+)'/, `${rel} hardcodes a queue label`);

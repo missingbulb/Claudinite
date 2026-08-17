@@ -1,9 +1,44 @@
-# The task dashboard
+<img src="badge.svg" width="24" height="24" alt=""> claudinite-dashboard
 
-A read-only view of what a repo's Claudinite scheduler is doing — the declared task
-roster, the live work-item queue, the outcome history, and the Actions runs behind
-them — on one page. It is part of the engine, so every member gets it in its mount
-at `.claudinite/shared/engine/scheduler/dashboard/` and any of them can serve it.
+A read-only view of what a repo's — or a fleet's — Claudinite scheduler is doing: the
+declared task roster, the live work-item queue, the outcome history, and the Actions
+runs behind them.
+
+**Opt-in.** Nothing fingerprints it and `--init` never seeds it: a repo carries this
+because someone declared it. Adopting it wires the GitHub Pages deploy.
+
+## Adopting it
+
+```jsonc
+// .claudinite-checks.json
+{ "packs": ["claudinite-dashboard"] }
+```
+
+That is the whole of it for a member: the dashboard covers this repo, signs in with a
+pasted token, and publishes to Pages. Adoption seeds
+[the deploy workflow](stubs/workflows/claudinite-dashboard-pages.yml) into
+`.github/workflows/`, and **you must enable Pages with source *GitHub Actions*** — a
+repository setting no Action can flip; until then the deploy job is the only thing
+that fails.
+
+Everything else is optional `config` on the declaration:
+
+| Key | Default | What it buys |
+|---|---|---|
+| `rosterFile` | — | A file in the repo listing members; more than one makes the **fleet overview** the landing view |
+| `repos` | — | An inline roster instead of a file |
+| `canonRepo` | — | The reference member mounts are compared against; unset means freshness reads *unknown* rather than being guessed |
+| `clientId`, `exchangeUrl` | — | Both together turn on **Sign in with GitHub**; either alone does nothing |
+| `redirectUri` | the page's URL | Override when the callback differs |
+| `defaultRepo` | this repo | Which repo a single-repo deployment shows |
+
+## Why a pack and not engine code
+
+Nothing converges, ticks or executes because the dashboard exists, and a member that
+never looks at it should not carry it. Engine code is what every member *runs*; this
+is content a member opts into. Being a pack also buys it a version and migration
+lane, a declaration that gates it, and an adoption moment at which the deploy can be
+wired — none of which engine code has.
 
 It has **two views**, and which one you land on is the URL:
 
@@ -15,16 +50,11 @@ It has **two views**, and which one you land on is the URL:
 A deployment with one member (or none) goes straight to the repo view: a one-row
 fleet overview would be nothing but a click in the way.
 
-## Running it
-
-Locally, against a checkout:
+## Running it locally
 
 ```sh
-node engine/scheduler/dashboard/serve.mjs missingbulb/Claudinite
+node packs/claudinite-dashboard/serve.mjs missingbulb/Claudinite
 ```
-
-Deployed, it is static files behind any web server — including GitHub Pages. See
-**Deploying** below for the one file a deployment adds.
 
 ## What it shows
 
@@ -129,17 +159,29 @@ dropped and an open one's truncated past its scheduling fields, because
 `localStorage` gives about 5MB and a fleet's raw issue JSON is far more. A full
 quota degrades to "uncached", never to an error. **Clear cache** forces a cold read.
 
-## Deploying
+## How publishing works
 
-The dashboard is static files. A deployment adds exactly one:
-`dashboard.config.json`, beside the page — see
-[`dashboard.config.example.json`](dashboard.config.example.json) for every key.
+[`build-site.mjs`](build-site.mjs) stages the page and the engine modules it imports
+into `_site/`, then writes the roster and the `dashboard.config.json` the page reads —
+derived from the declaration's `config`, so there is no second place to configure the
+same thing.
 
-It is **not** committed here, and that is deliberate: this directory is vendored
-into every member under `.claudinite/shared/`, where nothing may be hand-edited
-because the converge replaces the tree. A deploying site copies the dashboard and
-writes its own config next to the copy. Absent config is valid — it means the
-token fallback and whatever repo the URL names.
+Two things about that split are deliberate:
+
+- **The workflow is seeded; the build script is not.** `.github/workflows/` is the one
+  directory the nightly update cannot push to, so a deploy workflow can only arrive by
+  being written at adoption — and it never converges after. It is therefore a thin
+  shim that calls `build-site.mjs` out of the mount, exactly as the scheduler stub
+  calls the engine's tick. Only the file that must be frozen is frozen.
+- **The staged tree mirrors the mount's layout**, publishing at
+  `/packs/claudinite-dashboard/` with the root as a redirect. That is load-bearing, not
+  tidiness: the page imports the queue's modules by relative path so it cannot drift
+  from them, and flattening it to the site root sends those imports above the root —
+  the page would not boot.
+
+The build is inert until the mount carries the pack (adopted, not yet converged): it
+exits clean with no `_site`, and the workflow skips the deploy rather than replacing a
+working site with an empty artifact.
 
 `serve.mjs` is for local use only: it binds loopback, serves the checkout read-only,
 and never talks to GitHub.
@@ -148,10 +190,15 @@ and never talks to GitHub.
 
 The page states none of the queue's vocabulary. Labels, the title grammar, the leash
 constants and the anchor arithmetic all come from the modules that define them —
-[`../queue/work-item.mjs`](../queue/work-item.mjs),
-[`../queue/leases.mjs`](../queue/leases.mjs),
-[`../queue/anchors.mjs`](../queue/anchors.mjs) — so there is no second copy to drift
+[`work-item.mjs`](../../engine/scheduler/queue/work-item.mjs),
+[`leases.mjs`](../../engine/scheduler/queue/leases.mjs),
+[`anchors.mjs`](../../engine/scheduler/queue/anchors.mjs) — so there is no second copy to drift
 from the mechanism being rendered.
+
+Those paths — `../../engine/scheduler/queue/…` — resolve identically in the canon
+(`packs/<id>/` beside `engine/`) and in a member's mount
+(`.claudinite/shared/packs/<id>/` beside `.claudinite/shared/engine/`), which is why
+the pack is readable straight out of the mount with nothing rewritten.
 
 ES module imports are CORS-checked, which is the one consequence: the page needs an
 `http(s)://` origin and will not run from `file://`. Any static server satisfies it.

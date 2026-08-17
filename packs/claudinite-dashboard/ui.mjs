@@ -6,7 +6,7 @@
 import {
   BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN,
   OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE,
-} from '../queue/work-item.mjs';
+} from '../../engine/scheduler/queue/work-item.mjs';
 
 export const $ = (id) => document.getElementById(id);
 

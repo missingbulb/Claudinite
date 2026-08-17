@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { rosterFrom, loadConfig, loadRoster, DEFAULTS } from '../../../engine/scheduler/dashboard/config.mjs';
-import { isOAuthConfigured } from '../../../engine/scheduler/dashboard/auth.mjs';
+import { rosterFrom, loadConfig, loadRoster, DEFAULTS } from '../../packs/claudinite-dashboard/config.mjs';
+import { isOAuthConfigured } from '../../packs/claudinite-dashboard/auth.mjs';
 
 // The roster's source is a fleet artifact this page does not own, so it accepts the
 // shapes such an artifact plausibly has rather than dictating one.

@@ -19,7 +19,7 @@ class FakeStorage {
   }
 }
 
-const load = async () => import(`../../../engine/scheduler/dashboard/cache.mjs?t=${Math.random()}`);
+const load = async () => import(`../../packs/claudinite-dashboard/cache.mjs?t=${Math.random()}`);
 
 beforeEach(() => { globalThis.localStorage = new FakeStorage(); });
 
