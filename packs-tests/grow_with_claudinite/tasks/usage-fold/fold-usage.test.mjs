@@ -716,6 +716,52 @@ test('a version-1 file decodes as itself — the fold reads back weeks it froze 
   assert.equal(file.weeks['2026-W30'].totals[file.fields.week.indexOf('captures')], 4);
 });
 
+test('the first fold after the upgrade rewrites the whole file, losing nothing', () => {
+  // The answer to "is there a migration": no. The fold rewrites the file wholesale
+  // every run from its decoded prior, so the version-1 file a repo is carrying is
+  // converted by its next ordinary run — and the watermarks come across untouched, so
+  // nothing is re-counted and no day is re-folded into a week that already has it.
+  const v1 = {
+    version: 1,
+    foldedThrough: '2026-07-26',
+    runsFoldedThrough: '2026-07-26T03:00:00Z',
+    days: {
+      '2026-07-26': {
+        captures: 2, merges: 2, sessions: 1, userMessages: 9, userCommands: 1,
+        skillLoads: { 'merge-to-main': 2 },
+        checks: { work: { runs: 9, failures: 2, errors: 0, blocking: 3, advisory: 0, ciRuns: 0, ciFailures: 0 } },
+        checkFindings: { 'task-lifecycle': { blocking: 3, advisory: 0 } },
+        tasks: { 'tidy-repo/tidy-issues': { agent: 1, prework: 0, skipped: 5, failed: 0, deferred: 0 } },
+        taskExec: { 'tidy-repo/tidy-issues': { success: 1, failed: 0, 'task-gone': 0, invalid: 0 } },
+      },
+    },
+    weeks: {
+      '2026-W30': {
+        days: 3, captures: 4, merges: 4, sessionDays: 3, userMessages: 40, userCommands: 1,
+        skillLoads: { 'merge-to-main': 3 },
+        checks: { work: { runs: 20, failures: 5, errors: 0, blocking: 8, advisory: 0, ciRuns: 0, ciFailures: 0 } },
+        checkFindings: { 'task-lifecycle': { blocking: 8, advisory: 0 } },
+        tasks: { 'tidy-repo/tidy-issues': { agent: 3, prework: 0, skipped: 15, failed: 0, deferred: 0 } },
+        taskExec: { 'tidy-repo/tidy-issues': { success: 3, failed: 0, 'task-gone': 0, invalid: 0 } },
+      },
+    },
+  };
+  // No new sources at all: the run that finds nothing to count still converts the file.
+  const written = encodeUsage(foldUsage({ files: [], prior: decodeUsage(v1), today: '2026-07-27' }));
+  const back = decodeUsage(written);
+  assert.equal(written.version, USAGE_VERSION);
+  assert.equal(written.foldedThrough, v1.foldedThrough, 'the day watermark does not move');
+  assert.equal(written.runsFoldedThrough, v1.runsFoldedThrough, 'nor the run watermark');
+  assert.deepEqual(back.weeks, v1.weeks, 'every frozen week row survives the conversion intact');
+  // The day tier behaves exactly as it does on any other run — nothing about the
+  // conversion is special. The capture-derived counters recompute from the live files
+  // (none here), and the scheduler's task rows are carried forward on their own window,
+  // which is what keeps a repo whose sessions are all unattended from showing nothing.
+  assert.deepEqual(back.days['2026-07-26'].tasks, v1.days['2026-07-26'].tasks);
+  assert.equal(back.days['2026-07-26'].captures, 0, 'no capture file, no capture-derived count');
+  assert.deepEqual(back.days['2026-07-26'].taskExec, {}, 'and those come from captures too');
+});
+
 test('adding and removing a pack, skill or task is pure key presence', () => {
   // Names are literal keys, never dictionary ids, precisely so this holds: a skill
   // that appears carries a key from the day it appears, one that is retired simply

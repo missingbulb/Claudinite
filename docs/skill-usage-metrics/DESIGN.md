@@ -503,7 +503,17 @@ Three properties are load-bearing, and each is a test:
   objects — decodes as itself, so the fold reads back weeks it froze under
   earlier code with no rollout ordering. A *retired* field is the one thing that
   does not survive: it decodes, and then drops out of the file the next time that
-  row is written.
+  row is written. **Renaming a counter is therefore a history-losing change** —
+  the frozen week rows spelling the old name are rewritten without it — so a
+  rename keeps both spellings in the vocabulary, or accepts the loss knowingly.
+
+**There is no migration, and no migration record.** The fold rewrites the whole
+file from its decoded prior every run, so a repo carrying the old format is
+converted by its next ordinary nightly run — including a run that finds nothing
+new to count. Both watermarks come across untouched, so nothing is re-counted
+and no closed day is re-folded into a week that already holds it. A repo whose
+fold PR from before the upgrade is still open is no different: prior state is
+read from the base branch, never from that PR.
 
 Keys are sorted for stable diffs. All counters sum exactly under folding —
 except distinct-session counts, which do not (a session spanning two days is
