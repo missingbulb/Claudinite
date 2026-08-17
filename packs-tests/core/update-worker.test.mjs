@@ -194,3 +194,20 @@ test('the apply-stage brief tells the session to LAND its own delivery, not to w
   assert.ok(!/let the PR land/i.test(brief),
     'the brief must not tell the session to "let the PR land" — nothing lands it on an apply-stage terminal');
 });
+
+test('the needs-human terminal exits NON-ZERO, so the work item does not close outcome:done', async () => {
+  // #939's invisibility, pinned. A parked PR means the converge DELIVERED NOTHING,
+  // but the runner returned normally, so the executor saw a clean prework and closed
+  // the item `outcome:done`. Every member's nightly update reported success for five
+  // days while the whole fleet sat frozen on one canon ref. The executor's contract
+  // is `if (!result.ok)` -> needs-human, so the exit code is the entire signal.
+  const fs = await import('node:fs');
+  const src = fs.readFileSync('packs/core/tasks/update/worker.mjs', 'utf8');
+  // Anchored on the terminal-dispatch block specifically: the same comparison
+  // appears earlier in the file, on paths that already exit non-zero.
+  const dispatch = src.slice(src.indexOf('// The terminal, acted on.'));
+  const branch = dispatch.slice(dispatch.indexOf("terminal.action === 'needs-human'"));
+  const body = branch.slice(0, branch.indexOf("terminal.action === 'apply-stage'"));
+  assert.match(body, /process\.exit(Code)?\s*=?\s*\(?1/,
+    'the needs-human branch must exit non-zero — exiting 0 reports a converge that did not happen as success');
+});
