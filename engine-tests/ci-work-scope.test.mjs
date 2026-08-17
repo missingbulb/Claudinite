@@ -12,11 +12,11 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { spawnSync, execFileSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { makeRepo, cleanup } from './helpers.mjs';
+import { makeRepo, cleanup, git } from './helpers.mjs';
 import { decide, isAutomationBranch } from '../engine/checks/ci-work-scope.mjs';
 
 const REPO = fileURLToPath(new URL('..', import.meta.url));
@@ -40,6 +40,10 @@ const repoWithChange = ({ failing = false } = {}) => makeRepo({
     } : {}),
   },
 });
+
+// Fixture git goes through helpers' `git`, never a bare spawn: it carries the
+// identity env every commit needs (a CI runner configures none) and the auto-gc
+// settings that keep a fixture from outliving its test.
 
 // The entry point as CI invokes it — a real process, so the exit code and the
 // printed lines are the ones a workflow would see.
@@ -75,7 +79,7 @@ test('no base branch is an ERROR, not a pass — a baseless scope passes every r
   const root = makeRepo({ changed: { 'a.txt': 'one\n' } });
   try {
     // Rename both candidate branches away, leaving the checkout with no base to judge against.
-    execFileSync('git', ['branch', '-m', 'main', 'trunk'], { cwd: root });
+    git(root, 'branch', '-m', 'main', 'trunk');
     const verdict = decide(root, { branch: 'feature', fetch: false });
     assert.equal(verdict.run, false);
     assert.equal(verdict.code, 1);
@@ -86,9 +90,8 @@ test('no base branch is an ERROR, not a pass — a baseless scope passes every r
 test('an empty diff against a resolved base is an ERROR too', () => {
   const root = repoWithChange();
   try {
-    execFileSync('git', ['commit', '-q', '--allow-empty', '-m', 'empty Refs #1'], { cwd: root });
-    execFileSync('git', ['checkout', '-q', '-B', 'feature', 'main'], { cwd: root });
-    execFileSync('git', ['commit', '-q', '--allow-empty', '-m', 'empty Refs #1'], { cwd: root });
+    git(root, 'checkout', '-q', '-B', 'feature', 'main');
+    git(root, 'commit', '-q', '--allow-empty', '-m', 'empty Refs #1');
     const verdict = decide(root, { branch: 'feature', fetch: false });
     assert.equal(verdict.run, false);
     assert.equal(verdict.code, 1);
@@ -99,7 +102,7 @@ test('an empty diff against a resolved base is an ERROR too', () => {
 test('sitting ON the base branch is a clean skip — there is no change to judge', () => {
   const root = makeRepo({ changed: { 'a.txt': 'one\n' } });
   try {
-    execFileSync('git', ['checkout', '-q', 'main'], { cwd: root });
+    git(root, 'checkout', '-q', 'main');
     const verdict = decide(root, { branch: 'main', fetch: false });
     assert.equal(verdict.run, false);
     assert.equal(verdict.code, 0);
