@@ -69,6 +69,23 @@ export default {
   //   exchangeUrl — the code-to-token endpoint that sign-in needs
   questions: [],
 
+  // The one step adoption CANNOT take, stated where the install flow can print it and
+  // the adopting session can file it. Enabling Pages is a repository setting, and
+  // `actions/configure-pages`' own `enablement` input cannot do it with the Action's
+  // `GITHUB_TOKEN` — it needs a PAT with `repo`, or an app with `administration:write`.
+  // Holding a credential that wide, in every member, to save one click is a far worse
+  // trade than naming the click. So it is named.
+  //
+  // In a README this would be met after the first deploy had already failed; here it
+  // arrives at the moment someone is present and the pack is new.
+  adoptionHandover: [
+    {
+      step: 'Enable GitHub Pages on this repo with source "GitHub Actions" (Settings → Pages).',
+      breaks: 'the deploy job fails on every run; the build still succeeds, so nothing else is affected',
+      done: 'the Pages URL serves the dashboard, and the Claudinite dashboard workflow is green',
+    },
+  ],
+
   // Seeded, never converged: `.github/workflows/` cannot be written by the nightly, so
   // this arrives once, at adoption, and the repo owns it from there. It is a thin shim
   // over `build-site.mjs` in the mount for exactly that reason — the part that cannot

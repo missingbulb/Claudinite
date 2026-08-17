@@ -11,6 +11,13 @@ import { fileURLToPath } from 'node:url';
 import pack from '../../packs/claudinite-dashboard/pack.mjs';
 
 const run = promisify(execFile);
+
+// The install runner exits non-zero when the converged tree fails its self-test, which
+// a bare temp directory always does — no git, no mount. These tests assert on what it
+// REPORTS, so the exit code is not the subject and stdout is read either way.
+const runReporting = async (...args) => {
+  try { return await run(...args); } catch (e) { return { stdout: e.stdout ?? '', stderr: e.stderr ?? '' }; }
+};
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const PACK_DIR = join(ROOT, 'packs/claudinite-dashboard');
 
@@ -195,4 +202,51 @@ test('a repo with no declaration at all still builds rather than throwing', asyn
 
   await build(dir, { GITHUB_REPOSITORY: 'o/x' });
   assert.equal((await readJson(join(dir, CONFIG_AT))).defaultRepo, 'o/x');
+});
+
+// --- the handover -------------------------------------------------------------------
+
+// Enabling Pages cannot be automated: `actions/configure-pages`' `enablement` input
+// needs a PAT with `repo` or an app with `administration:write`, never the Action's own
+// GITHUB_TOKEN — and holding a credential that wide in every member to save one click
+// is a worse trade than naming the click. So it must be declared, not just documented.
+test('the pack declares its human-only step in the shape the rule requires', () => {
+  assert.ok(Array.isArray(pack.adoptionHandover) && pack.adoptionHandover.length >= 1);
+  for (const h of pack.adoptionHandover) {
+    assert.match(h.step, /\S/, 'a handover step needs a step');
+    assert.match(h.breaks, /\S/, 'and what breaks while it is off');
+    assert.match(h.done, /\S/, 'and a closing condition');
+  }
+  assert.match(pack.adoptionHandover[0].step, /Pages/i);
+});
+
+// The point of the field over a README line: a README is read after the deploy has
+// already failed. This asserts the install flow actually surfaces it.
+test('the install flow reports the handover so adoption cannot miss it', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'cd-install-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await writeFile(join(dir, '.claudinite-checks.json'), JSON.stringify({ packs: [] }, null, 2));
+
+  const { stdout } = await runReporting('node',
+    [join(ROOT, 'updates/install.mjs'), '--target', dir, 'claudinite-dashboard'],
+    { cwd: ROOT });
+
+  assert.match(stdout, /only a human can do/, 'the handover is printed');
+  assert.match(stdout, /\[ \] \(claudinite-dashboard\) Enable GitHub Pages/);
+  assert.match(stdout, /while off:/);
+  assert.match(stdout, /done when:/);
+  // And the thing it is a handover FOR actually landed.
+  assert.match(stdout, /seeded \.github\/workflows\/claudinite-dashboard-pages\.yml/);
+});
+
+// A pack with nothing to hand over must not print an empty section.
+test('a pack with no handover prints none', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'cd-install2-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await writeFile(join(dir, '.claudinite-checks.json'), JSON.stringify({ packs: [] }, null, 2));
+
+  const { stdout } = await runReporting('node',
+    [join(ROOT, 'updates/install.mjs'), '--target', dir, 'html'],
+    { cwd: ROOT });
+  assert.doesNotMatch(stdout, /only a human can do/);
 });
