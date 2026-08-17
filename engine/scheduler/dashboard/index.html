@@ -90,10 +90,14 @@
     border: 1px solid var(--border); border-radius: 7px; padding: 6px 9px;
   }
   input { min-width: 190px; }
+  select { max-width: 260px; }
   button { cursor: pointer; }
   button:hover { border-color: var(--muted); }
   button[disabled] { opacity: .5; cursor: default; }
+  button.primary { background: var(--s-blue); border-color: var(--s-blue); color: #fff; font-weight: 600; }
   .hint { color: var(--muted); font-size: 12px; }
+  .authbox { display: inline-flex; align-items: center; gap: 8px; }
+  .avatar { border-radius: 50%; display: block; }
 
   /* --- stat tiles: the headline numbers, no chart needed --- */
   .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
@@ -169,11 +173,12 @@
 <header class="topbar">
   <div class="topbar-in">
     <h1>Claudinite tasks</h1>
-    <input id="repo" placeholder="owner/repo" autocomplete="off" spellcheck="false">
-    <input id="token" type="password" placeholder="GitHub token" autocomplete="off">
-    <button id="load">Load</button>
+    <select id="repo-picker" title="Switch repository" hidden></select>
+    <button id="reload" title="Re-read (cached data is revalidated, not refetched)">Reload</button>
     <span class="grow"></span>
     <span id="rate" class="hint"></span>
+    <button id="purge" title="Drop every cached response and re-read from GitHub">Clear cache</button>
+    <span id="auth" class="authbox"></span>
     <button id="theme" title="Toggle light / dark">◐</button>
   </div>
 </header>
@@ -185,15 +190,21 @@
     <summary>How this reads your repo</summary>
     <p>
       Everything happens in this browser tab. The page calls <code>api.github.com</code>
-      directly with the token you paste, so <strong>your own GitHub permissions are the
-      only access control</strong> — there is no server and no shared credential. The token
-      is kept in this browser's <code>localStorage</code> and is sent to GitHub and nowhere
-      else. A fine-grained token with <em>read-only</em> Contents, Issues and Actions on the
-      repo is enough; for a public repo you can leave it blank and use the (much smaller)
-      anonymous rate limit.
+      directly as <strong>you</strong>, so <strong>your own GitHub permissions are the only
+      access control</strong> — there is no backend, no shared credential, and this page can
+      show you nothing your account cannot already read. Your credential is held for this
+      tab only (<code>sessionStorage</code>) and is sent to GitHub and nowhere else.
+    </p>
+    <p>
+      Where sign-in is configured, <em>Sign in with GitHub</em> authorizes once and everything
+      afterwards runs as you. Otherwise the page falls back to a pasted token, which needs
+      <em>read-only</em> Contents, Issues and Actions.
     </p>
     <p class="hint">
-      Pass a repo in the URL to skip the box: <code>?repo=owner/name</code>
+      Responses are cached in this browser: repo content is keyed by commit SHA, live data is
+      revalidated with ETags (a <code>304</code> costs no rate limit), and settled history ages
+      out after 24 hours. <em>Clear cache</em> forces a cold read. Pass <code>?repo=owner/name</code>
+      to jump straight to a repo.
     </p>
   </details>
 

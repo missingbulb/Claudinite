@@ -1,12 +1,14 @@
-// The page: fetch, then render. Every derivation it shows comes from `model.mjs`
-// (pure, tested); every byte it reads comes from `github.mjs` (the only I/O). This
-// file is the wiring between them and the DOM, and holds no logic worth testing.
+// The page: authenticate, fetch, render. Every derivation comes from `model.mjs`
+// (pure, tested), every byte from `github.mjs` (the only I/O), every credential from
+// `auth.mjs`. This file is the wiring between them and the DOM.
 
 import * as gh from './github.mjs';
+import * as auth from './auth.mjs';
+import { loadConfig, loadRoster } from './config.mjs';
+import { clearAll, stats } from './cache.mjs';
 import {
   buildRoster, describeItem, isWorkItem, parseDeclaration, taskDeclarationPaths,
-  commentKind, outcomeTally, periodMs,
-  BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN,
+  periodMs, BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN,
   OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE,
 } from './model.mjs';
 
@@ -16,6 +18,9 @@ const el = (tag, props = {}, kids = []) => {
   for (const k of [].concat(kids)) n.append(k);
   return n;
 };
+
+let CONFIG = null;
+let ROSTER = [];
 
 // --- formatting ---------------------------------------------------------------
 
@@ -73,10 +78,7 @@ function renderTiles(rows, open, runs, now) {
   const inflight = runs.filter((r) => r.status === 'in_progress' || r.status === 'queued');
   const parked = open.filter((i) => i.state === NEEDS_HUMAN);
   const warned = open.filter((i) => i.warnings.length && i.state !== NEEDS_HUMAN);
-  const soonest = rows
-    .map((r) => r.nextAnchor)
-    .filter(Boolean)
-    .sort((a, b) => a - b)[0] ?? null;
+  const soonest = rows.map((r) => r.nextAnchor).filter(Boolean).sort((a, b) => a - b)[0] ?? null;
 
   const tiles = [
     [rows.length, 'tasks declared'],
@@ -147,7 +149,7 @@ function renderQueue(open, repo, now) {
   const body = head(table, ['Item', 'Task', 'State', 'Waiting on', 'Idle', 'Comments']);
   if (!open.length) { body.append(emptyRow(6, 'The queue is empty — no open work item.')); return; }
 
-  // Parked and warned first: the whole reason to open this panel is what is wrong.
+  // Parked and warned first: the reason to open this panel is what is wrong.
   const rank = (i) => (i.state === NEEDS_HUMAN ? 0 : i.warnings.length ? 1 : 2);
   for (const i of open.sort((a, b) => rank(a) - rank(b) || b.idleMs - a.idleMs)) {
     const waiting = [];
@@ -184,7 +186,7 @@ function renderRuns(runs, now) {
     const label = r.status === 'completed' ? (r.conclusion ?? 'completed') : r.status.replace('_', ' ');
     body.append(el('tr', {}, [
       el('td', {}, [el('a', { href: r.html_url, target: '_blank', rel: 'noopener', textContent: r.name ?? '(workflow)' })]),
-      // Icon + word, so the run's health never rests on the dot's color.
+      // Icon + word, so a run's health never rests on the dot's color.
       el('td', {}, [el('span', { className: 'chip' }, [
         el('i', { className: 'dot', style: `background:${color(r)}` }), label,
       ])]),
@@ -197,58 +199,110 @@ function renderRuns(runs, now) {
 
 const showError = (msg) => $('errors').append(el('div', { className: 'err', textContent: msg }));
 
+// --- auth surface ---------------------------------------------------------------
+
+function renderAuth(viewer) {
+  const box = $('auth');
+  box.replaceChildren();
+  const oauth = auth.isOAuthConfigured(CONFIG);
+
+  if (viewer) {
+    box.append(
+      el('img', { className: 'avatar', src: viewer.avatar_url, alt: '', width: 22, height: 22 }),
+      el('span', { className: 'hint', textContent: viewer.login }),
+      el('button', { textContent: 'Sign out', onclick: () => { auth.signOut(); location.reload(); } }),
+    );
+    return;
+  }
+  if (oauth) {
+    box.append(el('button', { className: 'primary', textContent: 'Sign in with GitHub', onclick: () => auth.beginSignIn(CONFIG) }));
+    return;
+  }
+  // No OAuth configured — the paste fallback, which is also the local-dev path.
+  const input = el('input', { id: 'token', type: 'password', placeholder: 'GitHub token', autocomplete: 'off' });
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { auth.setPastedToken(input.value); load(); } });
+  box.append(input, el('button', { textContent: 'Use token', onclick: () => { auth.setPastedToken(input.value); load(); } }));
+}
+
+function renderRepoPicker(current) {
+  const sel = $('repo-picker');
+  sel.replaceChildren();
+  // Whatever the roster says, plus whatever the URL asked for — a repo not on the
+  // roster is still viewable, so the roster is a convenience and never a gate.
+  const names = [...new Set([...(current ? [current] : []), ...ROSTER])].sort();
+  if (!names.length) { sel.hidden = true; return; }
+  sel.hidden = false;
+  for (const n of names) sel.append(el('option', { value: n, textContent: n, selected: n === current }));
+}
+
 // --- load ---------------------------------------------------------------------
 
-async function load() {
-  const repo = $('repo').value.trim().replace(/^https?:\/\/github\.com\//, '').replace(/\/+$/, '');
-  const token = $('token').value.trim();
-  if (!/^[^/\s]+\/[^/\s]+$/.test(repo)) { showError('Enter a repo as owner/name.'); return; }
-  gh.writeToken(token);
+const currentRepo = () =>
+  new URL(location.href).searchParams.get('repo')
+  || CONFIG?.defaultRepo
+  || ROSTER[0]
+  || '';
 
+function setRepoInUrl(repo) {
   const url = new URL(location.href);
   url.searchParams.set('repo', repo);
   history.replaceState(null, '', url);
+}
+
+async function load() {
+  const repo = currentRepo();
+  const token = auth.currentToken();
+  if (!/^[^/\s]+\/[^/\s]+$/.test(repo)) {
+    $('footnote').textContent = '';
+    showError('No repo selected. Add ?repo=owner/name, or configure a roster.');
+    return;
+  }
+  setRepoInUrl(repo);
 
   $('errors').replaceChildren();
-  $('load').disabled = true;
-  $('load').textContent = 'Loading…';
-  $('footnote').textContent = 'Reading the repo…';
+  $('footnote').textContent = 'Reading…';
+  gh.resetCounters();
+
+  let viewer = null;
+  try {
+    if (token) viewer = await gh.getViewer(repo, token);
+  } catch (e) {
+    if (e.status === 401) { auth.signOut(); showError('That credential is no longer valid — sign in again.'); }
+  }
+  renderAuth(viewer);
+  renderRepoPicker(repo);
 
   try {
     const now = Date.now();
     const meta = await gh.getRepo(repo, token);
-    const ref = meta.default_branch;
+    const sha = await gh.getHeadSha(repo, meta.default_branch, token);
 
-    // The declaration first: it decides which packs contribute tasks at all, so a
-    // repo without one has no roster to build rather than an empty-looking one.
-    const configText = await gh.getText(repo, '.claudinite-checks.json', ref, token);
-    if (!configText) {
-      showError(`${repo} has no .claudinite-checks.json on ${ref} — it does not run Claudinite, so there are no declared tasks to show.`);
-    }
-    let config = null;
-    try { config = configText ? JSON.parse(configText) : null; } catch {
+    const configText = await gh.getTextAtSha(repo, sha, '.claudinite-checks.json', token);
+    if (!configText) showError(`${repo} has no .claudinite-checks.json — it does not run Claudinite, so there are no declared tasks.`);
+    let declaration = null;
+    try { declaration = configText ? JSON.parse(configText) : null; } catch {
       showError('.claudinite-checks.json is present but is not valid JSON — the roster will be empty.');
     }
-    const schedule = config?.taskScheduler ?? null;
-    if (config && !schedule) showError('No taskScheduler block in the declaration — next-anchor times cannot be computed.');
+    const schedule = declaration?.taskScheduler ?? null;
+    if (declaration && !schedule) showError('No taskScheduler block — next-anchor times cannot be computed.');
 
     const [{ paths, truncated }, runs, issuePage] = await Promise.all([
-      gh.listTree(repo, ref, token),
+      gh.listTreeAtSha(repo, sha, token),
       gh.listRuns(repo, token).catch((e) => { showError(`Actions unreadable — ${e.message}`); return []; }),
       gh.listIssues(repo, token),
     ]);
-    if (truncated) showError('The repo tree listing was truncated by GitHub — some tasks may be missing from the roster.');
+    if (truncated) showError('GitHub truncated the tree listing — some tasks may be missing from the roster.');
 
-    const declPaths = config ? taskDeclarationPaths(paths, config) : [];
+    const declPaths = declaration ? taskDeclarationPaths(paths, declaration) : [];
     const tasks = await Promise.all(declPaths.map(async (t) => ({
       ...t,
-      declaration: parseDeclaration(await gh.getText(repo, t.path, ref, token)),
+      declaration: parseDeclaration(await gh.getTextAtSha(repo, sha, t.path, token)),
     })));
 
     const items = issuePage.issues.filter(isWorkItem);
     const rows = buildRoster({ tasks, items, now, schedule });
-    const periodFor = (key) => {
-      const f = rows.find((r) => r.key === key)?.frequency;
+    const periodFor = (k) => {
+      const f = rows.find((r) => r.key === k)?.frequency;
       return f && f !== 'manual' ? periodMs(f) : null;
     };
     const open = items.filter((i) => i.state === 'open').map((i) => describeItem(i, now, { periodFor }));
@@ -258,40 +312,57 @@ async function load() {
     renderQueue(open, repo, now);
     renderRuns(runs, now);
 
-    // Say what the window was. Every history count above is over the issues this
-    // scan actually saw, and a truncated scan must not read as "never ran".
-    const rl = Number.isFinite(gh.rate.remaining) ? ` · ${gh.rate.remaining}/${gh.rate.limit} API calls left` : '';
-    $('rate').textContent = rl.replace(' · ', '');
+    // What this cost, and what the window was. Both are things a viewer otherwise
+    // has to guess: a cached history must not read as "never ran", and a fleet
+    // sweep's rate-limit spend should be visible before it runs out.
+    const c = stats();
+    $('rate').textContent = Number.isFinite(gh.rate.remaining)
+      ? `${gh.rate.remaining}/${gh.rate.limit} left · ${gh.rate.spent} spent, ${gh.rate.revalidated + gh.rate.served} cached`
+      : '';
     $('footnote').textContent =
-      `${repo} @ ${ref} · ${tasks.length} declared tasks · ${items.length} work items found in the `
+      `${repo} @ ${meta.default_branch} (${sha.slice(0, 7)}) · ${tasks.length} declared tasks · ${items.length} work items in the `
       + `${issuePage.complete ? `full issue history (${issuePage.scanned} issues)` : `most recent ${issuePage.scanned} issues — older history not scanned`}`
+      + ` · this load: ${gh.rate.spent} API calls, ${gh.rate.revalidated} revalidated free, ${gh.rate.served} from cache`
+      + ` · cache ${(c.bytes / 1024).toFixed(0)}KB in ${c.entries} entries`
       + ` · read ${new Date(now).toISOString().replace('T', ' ').slice(0, 16)}Z`;
     $('setup').open = false;
   } catch (e) {
     showError(e.message ?? String(e));
     if (e.status === 401 || e.status === 403) {
-      showError('That token cannot read this repo. A fine-grained token needs read-only Contents, Issues and Actions on it.');
+      showError(auth.isOAuthConfigured(CONFIG)
+        ? 'Sign in with an account that can read this repo.'
+        : 'That token cannot read this repo — it needs read-only Contents, Issues and Actions.');
     }
     $('footnote').textContent = '';
-  } finally {
-    $('load').disabled = false;
-    $('load').textContent = 'Load';
   }
 }
 
 // --- boot ---------------------------------------------------------------------
 
-$('token').value = gh.readToken();
-$('repo').value = new URL(location.href).searchParams.get('repo') ?? '';
-$('load').addEventListener('click', load);
-for (const id of ['repo', 'token']) {
-  $(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') load(); });
-}
-$('theme').addEventListener('click', () => {
-  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
-  const cur = document.documentElement.dataset.theme || (dark ? 'dark' : 'light');
-  document.documentElement.dataset.theme = cur === 'dark' ? 'light' : 'dark';
-});
-if ($('repo').value) load(); else $('setup').open = true;
+async function boot() {
+  CONFIG = await loadConfig();
 
-export { commentKind, outcomeTally };   // re-exported for console use against a loaded page
+  // Handle an OAuth landing before anything reads the credential.
+  const back = await auth.completeSignIn(CONFIG);
+  if (back.status === 'error') showError(back.message);
+
+  ROSTER = await loadRoster(CONFIG);
+  renderAuth(null);
+  renderRepoPicker(currentRepo());
+
+  $('repo-picker').addEventListener('change', (e) => { setRepoInUrl(e.target.value); load(); });
+  $('reload').addEventListener('click', load);
+  $('purge').addEventListener('click', () => { clearAll(); load(); });
+  $('theme').addEventListener('click', () => {
+    const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+    const cur = document.documentElement.dataset.theme || (dark ? 'dark' : 'light');
+    document.documentElement.dataset.theme = cur === 'dark' ? 'light' : 'dark';
+  });
+
+  // A signed-in viewer (or a still-valid session token) loads straight in; anyone
+  // else sees the sign-in surface and the explainer, and nothing is fetched.
+  if (auth.currentToken() || currentRepo()) load();
+  else $('setup').open = true;
+}
+
+boot();

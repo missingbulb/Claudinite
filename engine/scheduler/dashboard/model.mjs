@@ -8,25 +8,26 @@
 // drift from the mechanism it renders: there is no second copy to drift.
 //
 // Those engine modules are pure ESM with no `node:` imports, which is the property
-// this file depends on and `tasks-dashboard.test.mjs` pins.
+// this file depends on and `model.test.mjs` pins. Living inside `engine/scheduler/`
+// makes the queue modules siblings, so the dashboard sits beside the mechanism it
+// renders rather than reaching across the tree at it.
 //
-// The reach into `engine/` is long, and deliberately so — `file-placement` flags it
-// advisory and its own remedy sanctions exactly this case. Shortening it would mean
-// copying the vocabulary nearer, which is the one thing this tool must not do. The
-// reach is confined to THIS file: `app.mjs` imports from here, so the dashboard has
-// a single seam onto the engine rather than four.
+// `stripComments` is the one remaining cross-tree reach, and it is deliberate:
+// `file-placement` flags it advisory and its own remedy sanctions exactly this case.
+// Shortening it would mean copying a comment-stripper nearer, and a second stripper
+// that drifts from the canonical one is worse than the distance.
 
-import { stripComments } from '../../../engine/checks/helpers/code-scanning.mjs';
-import { mostRecentAnchor, nextAnchor, periodMs } from '../../../engine/scheduler/queue/anchors.mjs';
+import { stripComments } from '../../checks/helpers/code-scanning.mjs';
+import { mostRecentAnchor, nextAnchor, periodMs } from '../queue/anchors.mjs';
 import {
   EXECUTING_LEASH_MS, AGENT_LEASH_MS, STALE_READY_PERIODS, STUCK_BLOCKED_MS,
-} from '../../../engine/scheduler/queue/leases.mjs';
+} from '../queue/leases.mjs';
 import {
   WORK_PREFIX, BLOCKED, READY, URGENT, EXECUTING, AGENT, NEEDS_HUMAN,
   OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE, STATE_LABELS,
   CLAIM_MARKER, HANDOFF_MARKER, EPISODE_MARKER,
   parseWorkItemTitle, parseWorkItemBody, hasLabel, labelNames,
-} from '../../../engine/scheduler/queue/work-item.mjs';
+} from '../queue/work-item.mjs';
 
 export {
   WORK_PREFIX, BLOCKED, READY, URGENT, EXECUTING, AGENT, NEEDS_HUMAN,
