@@ -1526,3 +1526,48 @@ ruleTester(patternRule({
       ] },
   },
 });
+
+// The pre-#895 inline spelling of the value-set quantifier, still fielded in
+// every member's vendored packs. It is reachable — and load-bearing — because a
+// member's packs are delivered on a pack VERSION BUMP while the engine that
+// validates them is delivered on its own, so the rename reached no member while
+// the engine that rejected the old spelling reached all of them. The mixed tree
+// then failed the self-test, which parked the update PR that would have carried
+// the new spelling: a self-sustaining fleet-wide freeze (every member sat on
+// 2026-08-12's ref for five days). Translated, not merely tolerated — the old
+// form INLINED the extraction the new one names.
+ruleTester(patternRule({
+  ...meta('fx-legacy-inline-value-set'),
+  requireIndexCoverage: [{
+    eachValueInParsedArray: {
+      filesMatching: /(^|\/)manifest\.json$/,
+      whereFileContains: /"manifest_version"/,
+      atField: 'permissions',
+    },
+    indexFile: 'PRIVACY.md',
+    coveredByText: '{value}',
+    whenIndexFileAbsent: 'assertNothing',
+    anchorFindingsAt: 'indexFile',
+    what: 'manifest requests "{value}" undisclosed', fix: 'disclose {value}',
+  }],
+}), {
+  clean: {
+    'the inline extraction still quantifies, and a covered value passes': { files: {
+      'app/manifest.json': '{"manifest_version":3,"permissions":["storage"]}',
+      'PRIVACY.md': 'We use storage for your settings.\n',
+    } },
+    'the inline whereFileContains probe still excludes a decoy': { files: {
+      'decoy/manifest.json': '{"permissions":["cookies"]}',
+      'PRIVACY.md': 'Nothing to disclose.\n',
+    } },
+  },
+  flagged: {
+    'an undisclosed value is still flagged through the legacy spelling': {
+      files: {
+        'app/manifest.json': '{"manifest_version":3,"permissions":["tabs"]}',
+        'PRIVACY.md': 'We disclose nothing.\n',
+      },
+      at: [{ file: 'PRIVACY.md', what: /"tabs" undisclosed/, fix: /disclose tabs/ }],
+    },
+  },
+});
