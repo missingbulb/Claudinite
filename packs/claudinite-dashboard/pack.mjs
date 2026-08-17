@@ -35,7 +35,7 @@
 // has to be frozen is frozen.
 export default {
   id: 'claudinite-dashboard',
-  version: 1,
+  version: 2,
   minEngineVersion: 4,
   ruleRoutingGuidance: {
     belongs: 'the browser dashboard over Claudinite scheduler state, and the static site that publishes it',

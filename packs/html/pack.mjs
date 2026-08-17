@@ -2,7 +2,7 @@
 // authoritative (detect: null skips the drift check in both directions).
 export default {
   id: 'html',
-  version: 1,
+  version: 2,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'hand-authored HTML markup gotchas — element nesting, injected content placement, live browser verification of a page',

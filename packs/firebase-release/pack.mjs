@@ -5,7 +5,7 @@
 // its workflow stubs.
 export default {
   id: 'firebase-release',
-  version: 1,
+  version: 2,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'dev/prod Firebase project split, committed-default-dev discipline, pipeline-injected prod config, App Check attestation gating, promotion cadence',

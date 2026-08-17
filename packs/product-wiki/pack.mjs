@@ -8,7 +8,7 @@ import { SINK_README } from './lib.mjs';
 
 export default {
   id: 'product-wiki',
-  version: 1,
+  version: 2,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'agent-maintained market, user and competitor research wikis — cited pages, growth logs, the reviewed product-requirements sink',
