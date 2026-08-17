@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import {
   USAGE_FIELDS, USAGE_VERSION, COUNTER_GROUPS, encodeCounters, decodeCounters,
   encodeRow, decodeRow, encodeUsageFile, decodeUsageFile, isTupleFormat, fieldsOf,
-} from '../engine/usage-file.mjs';
-import { TASK_RUN_OUTCOMES, TASK_EXEC_STATUSES } from '../engine/scheduler/run-record.mjs';
+} from '../../../../packs/grow_with_claudinite/tasks/usage-fold/usage-format.mjs';
+import { TASK_RUN_OUTCOMES, TASK_EXEC_STATUSES } from '../../../../engine/scheduler/run-record.mjs';
 
 test('the task vocabularies are the scheduler\'s own, not a second spelling of them', () => {
   // Two homes for these words would drift the day an outcome is renamed, and the file

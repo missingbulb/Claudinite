@@ -6,8 +6,8 @@ import {
   foldDays, isoWeek, daysToFold, addDayToWeek, foldUsage, foldTaskRuns, withinTaskWindow,
   countTaskExecs, emptyTaskExec, encodeUsage, decodeUsage,
 } from '../../../../packs/grow_with_claudinite/tasks/usage-fold/fold-usage.mjs';
-import { renderJsonFile } from '../../../../engine/render-json.mjs';
-import { USAGE_FIELDS, USAGE_VERSION } from '../../../../engine/usage-file.mjs';
+import { renderJsonFile } from '../../../../engine/scheduler/render-json.mjs';
+import { USAGE_FIELDS, USAGE_VERSION } from '../../../../packs/grow_with_claudinite/tasks/usage-fold/usage-format.mjs';
 
 // --- entry fixtures -----------------------------------------------------------
 // Every shape below is copied from real captured transcripts on a conversation-logs

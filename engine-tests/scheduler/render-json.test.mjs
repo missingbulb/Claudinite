@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { renderJson, renderJsonFile } from '../engine/render-json.mjs';
+import { renderJson, renderJsonFile } from '../../engine/scheduler/render-json.mjs';
 
 // The contract in one line: same bytes-in-bytes-out as JSON.stringify, different
 // whitespace. Everything below is either that property or the whitespace rule.

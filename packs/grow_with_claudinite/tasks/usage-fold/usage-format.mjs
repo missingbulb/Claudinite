@@ -1,14 +1,14 @@
-// The ON-DISK SHAPE of the usage aggregates — a repo's own
-// `.claudinite/local/usage.GENERATED.json`, written by the daily fold, and the
-// fleet-wide `usage-fleet.GENERATED.json`, which embeds every member's rows.
+// The ON-DISK SHAPE of `.claudinite/local/usage.GENERATED.json` — the file this task
+// writes, and the only thing that reads it back is this task's next run.
 //
-// It lives in the engine rather than beside either writer because it is the CONTRACT
-// BETWEEN them: the fleet sweep reads member files it does not write, so a format
-// owned by one of the two would be a cross-pack import. Same reasoning, and the same
-// home, as the task-run record format in `scheduler/run-record.mjs`.
+// It lives here, beside the fold, because the shape is this task's own business.
+// Anything else that consumes the file — a fleet sweep in another repo, an ad-hoc
+// query — reads it the way any consumer of a published file does: off the `fields`
+// header the file carries, with no code from here. That is the point of declaring
+// the vocabulary IN the file rather than in a module a reader would have to import.
 //
 // WHAT THE SHAPE IS. Every counter row is a positional TUPLE whose field order is
-// declared once per file, in the file's own `fields` header:
+// declared once per file, in that header:
 //
 //     "fields": { "checks": ["runs", "failures", "errors", "blocking", …] },
 //     "checks": { "work": [19, 0, 0, 0, 0, 0, 0] }
@@ -23,14 +23,13 @@
 // inventing a zero, and the fold's accumulators start it from the first day that
 // actually carried it. A row that is short simply has no opinion past its last slot.
 //
-// READING IS VERSION-TOLERANT IN BOTH DIRECTIONS. `decodeRow` expands against the
-// FILE's declared vocabulary, not this module's, so a file written before a field was
-// added or after one was retired still decodes to what it meant. Version 1 — the
-// original fully-spelled objects — decodes as itself, which is what lets both readers
-// accept a file older than their own code: the fleet sweep leads its members'
-// upgrades by definition, and the fold reads back weeks it froze under earlier code.
+// READING IS VERSION-TOLERANT. `decodeRow` expands against the FILE's declared
+// vocabulary, not this module's, so a file written before a field was added or after
+// one was retired still decodes to what it meant. Version 1 — the original
+// fully-spelled objects — decodes as itself, which is what lets a fold read back the
+// weeks it froze under earlier code without any rollout ordering.
 
-import { TASK_RUN_OUTCOMES, TASK_EXEC_STATUSES } from './scheduler/run-record.mjs';
+import { TASK_RUN_OUTCOMES, TASK_EXEC_STATUSES } from '../../../../engine/scheduler/run-record.mjs';
 
 export const USAGE_VERSION = 2;
 
@@ -125,11 +124,10 @@ export function fieldsOf(file) {
   );
 }
 
-// --- the member file as a whole -------------------------------------------------
-// `.claudinite/local/usage.GENERATED.json`: two watermarks and two tiers of rows.
-// Written by the fold; READ by the fold (its own prior state) and by the fleet sweep
-// (every member's, at whatever version that member last folded under) — which is
-// exactly why both directions live here rather than in either pack.
+// --- the file as a whole ---------------------------------------------------------
+// Two watermarks and two tiers of rows. Both directions live here because the fold
+// reads back its OWN prior state every run — the decode is not a compatibility shim,
+// it is half of how the task works.
 
 // Named rows → the on-disk file.
 export function encodeUsageFile({ foldedThrough = null, runsFoldedThrough = null, days = {}, weeks = {} }) {

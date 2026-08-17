@@ -21,7 +21,7 @@
 import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { deliverGenerated, baseTip, readAt, remoteUrl } from '../../../../engine/scheduler/deliver-generated.mjs';
-import { renderJsonFile } from '../../../../engine/render-json.mjs';
+import { renderJsonFile } from '../../../../engine/scheduler/render-json.mjs';
 import { main as sweep, inactiveToday, FLEET_USAGE_PATH } from './aggregate-fleet-usage.mjs';
 
 const PR_BRANCH_PREFIX = 'claudinite/fleet-usage';

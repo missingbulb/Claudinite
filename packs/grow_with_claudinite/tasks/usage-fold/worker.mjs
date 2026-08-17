@@ -28,7 +28,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { deliverGenerated, baseTip, readAt, remoteUrl } from '../../../../engine/scheduler/deliver-generated.mjs';
-import { renderJsonFile } from '../../../../engine/render-json.mjs';
+import { renderJsonFile } from '../../../../engine/scheduler/render-json.mjs';
 import { countEntries, foldUsage, encodeUsage, decodeUsage, mountedSkillNames } from './fold-usage.mjs';
 import { makeReader, readTaskRuns } from './read-task-runs.mjs';
 

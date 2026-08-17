@@ -482,13 +482,18 @@ scheduler. A repo that has never captured folds its task rows and nothing else.
 ### The shape, and why it is that shape
 
 Every counter row is a positional **tuple** whose field order the file declares
-once, in its own `fields` header (`engine/usage-file.mjs` — the engine, because
-the format is the contract *between* the fold and the fleet sweep, and a format
-owned by one of the two packs would be a cross-pack import). Fully spelling each
-row cost ~120 bytes to carry seven numbers, once per day per scope per rule per
-task; the tuples plus a row-per-line renderer (`engine/render-json.mjs`) took
-this repo's own file from 64 KB to 25 KB, and made the diff of a regenerated
-file one line per changed **row** rather than one per changed number.
+once, in its own `fields` header. Fully spelling each row cost ~120 bytes to
+carry seven numbers, once per day per scope per rule per task; the tuples plus a
+row-per-line renderer took this repo's own file from 64 KB to 25 KB, and made
+the diff of a regenerated file one line per changed **row** rather than one per
+changed number.
+
+The format lives in the fold's own task folder
+(`grow_with_claudinite/tasks/usage-fold/usage-format.mjs`), beside the only code
+that writes the file and the only code that reads it back — its own next run.
+**The header in the file is what every other consumer reads**, which is why the
+vocabulary is declared in the data rather than in a module: §6's fleet sweep
+consumes these files across repos and imports nothing to do it.
 
 Three properties are load-bearing, and each is a test:
 
@@ -504,10 +509,10 @@ Three properties are load-bearing, and each is a test:
   frozen weeks already make, stated below).
 - **Reading is version-tolerant.** Rows expand against the *file's* declared
   vocabulary, not the reader's, and a version-1 file — the original fully-spelled
-  objects — decodes as itself. Neither the fold reading back its own frozen weeks
-  nor the sweep reading a member mid-upgrade needs any rollout ordering. A
-  *retired* field is the one thing that does not survive: it decodes, and then
-  drops out of the file the next time that row is written.
+  objects — decodes as itself, so the fold reads back weeks it froze under
+  earlier code with no rollout ordering. A *retired* field is the one thing that
+  does not survive: it decodes, and then drops out of the file the next time that
+  row is written.
 
 Keys are sorted for stable diffs. All counters sum exactly under folding —
 except distinct-session counts, which do not (a session spanning two days is
@@ -546,10 +551,15 @@ nothing to optimize.
 - **Grain**: full (week × repo × skill, week × repo × **rule**, and week × repo
   × **task**) for history, plus the members' current day windows for the fast view —
   "what happened this week?" at day-grain, trends at week-grain. Nothing
-  pre-summed. Rows are stored in §5's shape, under the same `fields` header, and a
-  member still on the older fully-spelled format is normalized into it on the way
-  in — so a reader of this file never has to handle two formats while the fleet is
-  mid-upgrade, which it always is. The checks are carried at the same grain and for the same reason
+  pre-summed. **Rows are copied, never rewritten**: this sweep re-keys the fleet's
+  rows, and each member's file already declares how to read its own, so that
+  declaration is carried beside them under `repos[repo]` (`format`, `fields`) and
+  a reader decodes each repo's rows with that repo's header. The sweep therefore
+  imports no format code at all — which is what keeps two packs from needing a
+  shared module, and stops one repo's numbers from being quietly restated in
+  another repo's vocabulary. The fleet is permanently mid-upgrade (members
+  converge on their own nightly cadence), so per-repo is the honest grain for
+  this, not a migration artifact. The checks are carried at the same grain and for the same reason
   as the skill loads: whether a rule earns its place is a fleet-shaped
   question. A rule that never fires in one repo may simply not be that repo's
   subject; a rule that never fires in **any** of them is mis-described or
@@ -559,9 +569,9 @@ nothing to optimize.
   or with an unreadable one is listed in a `coverage` section as absent —
   census-style, never silently skipped — so gaps in the denominators are
   visible rather than baked in. A member still on an older fold (no `checks`
-  key) lands as an empty check row rather than an exception: the sweep leads
+  key) lands as a row without one rather than an exception: the sweep leads
   the members' upgrades, so that is the normal state for a while — and a counter
-  its rows predate stays `null`, never a zero it never measured.
+  its rows predate stays absent, never a zero it never measured.
 - **A `_note` field** states the sampling population: captured sessions only —
   merging sessions plus sessions that ended cleanly enough for the SessionEnd
   hook. Reclaimed containers and crashes are invisible. The file must not read

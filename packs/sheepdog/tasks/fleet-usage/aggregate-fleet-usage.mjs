@@ -45,11 +45,6 @@
 import { pathToFileURL } from 'node:url';
 import { makeGh, paged, readDeclaration, isDormant, DECLARATION } from '../../fleet-api.mjs';
 import { parseSheepdogConfig } from '../../fleet-config.mjs';
-// The member files this sweep reads are written by ANOTHER pack's task, so their shape
-// is the engine's contract rather than either pack's: `decodeUsageFile` accepts
-// whichever version a member last folded under (the sweep leads its members' upgrades
-// by definition), and the rows land here re-encoded in this file's own vocabulary.
-import { USAGE_FIELDS, decodeUsageFile, encodeRow, usageFieldsHeader } from '../../../../engine/usage-file.mjs';
 export const MEMBER_USAGE_PATH = '.claudinite/local/usage.GENERATED.json';
 export const FLEET_USAGE_PATH = 'usage-fleet.GENERATED.json';
 export const FLEET_VERSION = 2;
@@ -80,24 +75,26 @@ const sortKeys = (obj) => Object.fromEntries(Object.keys(obj).sort().map((k) => 
 // window verbatim for the fast view. Nothing is pre-summed: every coarser view
 // (a skill fleet-wide, a repo over time, this week across the fleet) stays derivable
 // from this file, and a summary that threw away the grain would not.
+//
+// VERBATIM MEANS VERBATIM: a member's row is copied, never rewritten. The member's
+// file declares how to read its own rows, and that declaration is carried beside them
+// under `repos[repo]` — so this sweep needs no knowledge of the format at all, and
+// the members' formats are free to move on their own schedule.
 export function aggregate({ members, absent = [], dormant = [], uncovered = [], outOfScope = [], generatedAt }) {
   const weeks = {};
   const days = {};
   const repos = {};
 
   for (const { repo, usage } of members) {
-    const member = decodeUsageFile(usage);
-    // Each member's day window verbatim — re-encoded, so a member still on the old
-    // fully-spelled format lands beside the others in one shape rather than making
-    // every reader of this file handle two.
-    days[repo] = Object.fromEntries(
-      Object.keys(member.days).sort().map((d) => [d, encodeRow(member.days[d], USAGE_FIELDS.day)]),
-    );
-    repos[repo] = {
-      foldedThrough: member.foldedThrough,
-      weeks: Object.keys(member.weeks).length,
-    };
-    // A week row carries the member's counters as they came: skill loads, and the
+    // ROWS PASS THROUGH UNTOUCHED, in both tiers. This sweep re-KEYS the fleet's rows
+    // (by repo, and week × repo); it never re-interprets one. Each member's file is
+    // self-describing — it declares the vocabulary its counter rows are spelled in —
+    // so the member's own header is carried beside its rows under `repos` and a reader
+    // decodes each repo's rows with that repo's header. Nothing here needs to import
+    // the format, and nothing here can quietly restate one repo's numbers in another
+    // repo's vocabulary.
+    //
+    // The week rows carry the member's counters as they came: skill loads, and the
     // conformance checks at the same grain and for the same reason — whether a rule
     // earns its place is a FLEET question. A rule that never fires in one repo may
     // just not be that repo's subject; a rule that never fires in ANY of them is
@@ -106,11 +103,20 @@ export function aggregate({ members, absent = [], dormant = [], uncovered = [], 
     // apart. The `tasks` rows answer the same question about scheduled work — a task
     // that skips in every member every day is a precondition that never fires; one
     // that fails across members is broken machinery, not a bad night.
-    //
-    // A member still on an older fold simply has no key for a counter that did not
-    // exist yet, and its row keeps that absence rather than claiming a zero.
-    for (const [week, row] of Object.entries(member.weeks)) {
-      (weeks[week] ??= {})[repo] = encodeRow(row, USAGE_FIELDS.week);
+    days[repo] = sortKeys(usage?.days ?? {});
+    repos[repo] = {
+      foldedThrough: usage?.foldedThrough ?? null,
+      weeks: Object.keys(usage?.weeks ?? {}).length,
+      // How to read this repo's rows: the format version its file declared, and the
+      // counter vocabularies it declared with them. A member whose file predates the
+      // header has `fields: null` — its rows are fully-spelled objects and need none.
+      // The fleet is permanently mid-upgrade (members converge on their own nightly
+      // cadence), so this is a standing fact about the file, not a migration artifact.
+      format: Number(usage?.version ?? 1),
+      fields: usage?.fields ?? null,
+    };
+    for (const [week, row] of Object.entries(usage?.weeks ?? {})) {
+      (weeks[week] ??= {})[repo] = row;
     }
   }
 
@@ -118,9 +124,6 @@ export function aggregate({ members, absent = [], dormant = [], uncovered = [], 
     version: FLEET_VERSION,
     generatedAt,
     _note: SAMPLING_NOTE,
-    // The vocabularies every tuple in this file is spelled in — identical to the one
-    // the member files carry, since the rows are the members' own.
-    fields: usageFieldsHeader(),
     coverage: {
       folding: Object.keys(repos).sort(),
       absent: [...absent].sort(),

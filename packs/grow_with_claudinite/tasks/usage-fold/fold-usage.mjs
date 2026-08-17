@@ -25,11 +25,10 @@
 // keys here cannot drift from the words the runs actually emit.
 import { loadPacks, isActive, bundledSkillSources } from '../../../../engine/pack_loader/pack-registry.mjs';
 import { TASK_RUN_OUTCOMES, TASK_EXEC_STATUSES, emptyTaskRun, parseTaskExecs } from '../../../../engine/scheduler/run-record.mjs';
-// The on-disk shape is the engine's, not this pack's: the fleet sweep in `sheepdog`
-// reads the file this task writes, so the format is the contract between two packs
-// and neither may own it. Everything below works in the NAMED counter shape and only
-// meets the tuples at the two boundary functions at the foot of this file.
-import { USAGE_FIELDS, USAGE_VERSION, encodeUsageFile, decodeUsageFile } from '../../../../engine/usage-file.mjs';
+// The file's on-disk shape is its SIBLING here (usage-format.mjs). Everything below
+// works in the NAMED counter shape and meets the tuples only at the two boundary
+// functions at the foot of this file.
+import { USAGE_FIELDS, USAGE_VERSION, encodeUsageFile, decodeUsageFile } from './usage-format.mjs';
 
 // --- entry classification -----------------------------------------------------
 // Every shape below was verified against real captured transcripts on a
@@ -644,8 +643,7 @@ export function foldUsage({ files, prior = {}, today, taskRuns = [], runsFoldedT
 }
 
 // --- the file boundary ----------------------------------------------------------
-// Everything above works in NAMED counters; the on-disk tuple shape is met only here,
-// through the engine's codec — the same one the fleet sweep reads this file with.
+// Everything above works in NAMED counters; the on-disk tuple shape is met only here.
 export { encodeUsageFile as encodeUsage, decodeUsageFile as decodeUsage };
 
 // --- the mounted-skill set -----------------------------------------------------
