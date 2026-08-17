@@ -94,9 +94,14 @@ export function preworkRunner({ root, repo, defaultBranch, env = process.env }) 
 // `delivered`, and the item then says nothing about artifacts rather than
 // asserting something false.
 export function deliveredLines(delivered) {
-  const { branch = null, pr = null, merged = false } = delivered ?? {};
+  const { branch = null, pr = null, merged = false, issue = null } = delivered ?? {};
   const out = [];
   if (pr) out.push(`PR: #${pr}${merged ? ' (already merged — open your own PR for further work)' : ' (open)'}`);
   if (branch) out.push(`Branch: \`${branch}\``);
+  // An ISSUE this run resolved for the agent to write to — a task's standing
+  // tracker, typically, found or created by its own prework. Rendered for the same
+  // reason a PR number is: the agent's only source for it is this line, and without
+  // it a worker that took the trouble to resolve one hands over nothing.
+  if (issue) out.push(`Issue: #${issue} — write this run's record there.`);
   return out;
 }

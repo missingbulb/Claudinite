@@ -2,8 +2,10 @@
 
 You are here because prework measured this repo's CI and found at least one workflow whose median
 duration this week is materially above the week before. The dispatch names the workflow and the
-before/after; the standing tracker issue (`[claudinite] CI performance`) carries the full table and
-the step breakdown of the slowest run.
+before/after; the standing tracker — the issue the dispatch's **Delivered by prework** section names
+(`Issue: #<n>`) — carries the full table and the step breakdown of the slowest run, written there by
+prework before you started. Use that number; it is this task's own record and searching for another
+issue by title can only find the wrong one.
 
 The whole of *how* is the [ci-performance-evaluation](../../skills/ci-performance-evaluation/SKILL.md)
 skill. Follow it in order — it is written so each step tells you whether the next is worth doing.

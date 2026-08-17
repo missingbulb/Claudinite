@@ -67,8 +67,22 @@ test('dispatchBody distinguishes a merged PR from an open one', () => {
   assert.match(body, /open your own PR for further work/);
 });
 
+// A task that keeps a standing record resolves it in its OWN prework and passes the
+// number on through this payload — the agent's only source for it. Both live workers
+// were already writing `delivered.issue`, and it was rendered nowhere: the number
+// never reached the dispatch, and the agentic phase went looking for the issue by
+// title instead.
+test('dispatchBody names an ISSUE prework resolved for the agent to write to', () => {
+  const body = dispatchBody({
+    taskPath: 'p/task.md', pack: 'basics', task: 'ci-performance', slotId: 'd',
+    delivered: { issue: 42 },
+  });
+  assert.match(body, /### Delivered by prework/);
+  assert.match(body, /- Issue: #42/);
+});
+
 test('dispatchBody omits the section entirely when nothing was created — absence is the signal', () => {
-  for (const delivered of [null, undefined, {}, { branch: null, pr: null }]) {
+  for (const delivered of [null, undefined, {}, { branch: null, pr: null, issue: null }]) {
     const body = dispatchBody({ taskPath: 'p/task.md', pack: 'basics', task: 'baselining', slotId: 'd', delivered });
     assert.doesNotMatch(body, /### Delivered/, JSON.stringify(delivered));
   }
