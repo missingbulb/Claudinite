@@ -87,3 +87,54 @@ test('the worker\'s bag parser agrees with the engine\'s, and maps the sweep\'s 
   assert.equal(bag.DRY_RUN, 'true');
   assert.equal(bag.INCLUDE_DORMANT, 'true');   // bare key ⇒ 'true'
 });
+
+// --- the cross-repo forcing protocol (#929) -------------------------------------
+// The enforcer POSTs a `workflow_dispatch` input by name; the member's scheduler
+// workflow declares the inputs it will accept. GitHub 422s a dispatch naming an
+// undeclared input, so these two spellings ARE the protocol — and they live in
+// different trees, one shipped as a stub and one sent from a pack. When they last
+// disagreed (the flip dropped the slot stub's `overrides` without porting the
+// caller) every fleet-wide force refused, and the only symptom was a per-member
+// error string that blamed the member's repo settings.
+
+test('the input fleet-api sends is one the tick stub declares', async () => {
+  const { readFileSync } = await import('node:fs');
+  const apiSrc = readFileSync(join(ROOT, 'packs/sheepdog/fleet-api.mjs'), 'utf8');
+  const sent = [...apiSrc.matchAll(/inputs:\s*\{\s*([A-Za-z_][\w]*)\s*:/g)].map((m) => m[1]);
+  assert.ok(sent.length, 'fleet-api must dispatch with at least one named input');
+
+  for (const stub of ['engine/scheduler/stubs/claudinite-tick.yml', '.github/workflows/claudinite-scheduler.yml']) {
+    const yml = readFileSync(join(ROOT, stub), 'utf8');
+    const block = yml.match(/workflow_dispatch:\s*\n\s+inputs:\s*\n([\s\S]*?)\n(?=\S|\n\S)/);
+    assert.ok(block, `${stub} must declare workflow_dispatch inputs — a bare workflow_dispatch 422s every named input`);
+    const declared = [...block[1].matchAll(/^\s{6}([A-Za-z_][\w]*):\s*$/gm)].map((m) => m[1]);
+    for (const name of sent) {
+      assert.ok(declared.includes(name),
+        `${stub} declares [${declared.join(', ')}] but fleet-api dispatches "${name}" — GitHub rejects a dispatch naming an undeclared input, so every fleet-wide force would refuse`);
+    }
+  }
+});
+
+test('the member-side tick resolves the very id this lever sends', async () => {
+  // FORCED_TASK travels as a `wake` input and is resolved by planWake against the
+  // member's own declared tasks. A bare id must be owned by exactly one canon pack,
+  // or planWake refuses it as ambiguous and the force silently wakes nothing.
+  const { planWake } = await import('../../../../engine/scheduler/queue/tick.mjs');
+  const tasks = [{ pack: 'core', id: FORCED_TASK }];
+  const items = [{
+    number: 1, state: 'open', labels: ['task:blocked'],
+    title: `[claudinite-work] core/${FORCED_TASK}`,
+  }];
+  const { wake, unmatched } = planWake(FORCED_TASK, tasks, items);
+  assert.deepEqual(unmatched, [], `the tick must resolve "${FORCED_TASK}" — this is the exact string fleet-baseline dispatches`);
+  assert.deepEqual(wake, [{ id: `core/${FORCED_TASK}`, issue: 1 }]);
+});
+
+test('the 422 message names the stale-mount cause, not just the disabled-workflow one', () => {
+  // The misdiagnosis WAS the bug's second half: a member behind on its mount is
+  // current-but-stale, and a message saying only "disabled" sends the reader to
+  // repo settings — the diagnosis this project's rules single out as never first.
+  const detail = classifyDispatch(422).detail;
+  assert.match(detail, /wake/, 'must name the undeclared-input cause');
+  assert.match(detail, /converge/, 'must say it heals on the member\'s next converge');
+});

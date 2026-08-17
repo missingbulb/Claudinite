@@ -662,10 +662,16 @@ comes from a file under review.
   `labeled` event gives it executor latency of one spin-up. Nothing else is
   special about it.
 - **Forcing a scheduled task is waking its standing item** (owner model,
-  2026-08-13). The item exists (§5), so force = strip `task:blocked`, clear
-  `Not-before`, optionally add `task:urgent` — the same lever as the human
-  re-queue (§4), which is no accident: "run this now" and "retry this now"
-  are the same operation on the same object. The executor evaluates the
+  2026-08-13). The item exists (§5), so force = strip `task:blocked` **and
+  add `task:ready`**, clear `Not-before`, optionally add `task:urgent` — the
+  same lever as the human re-queue (§4), which is no accident: "run this
+  now" and "retry this now" are the same operation on the same object.
+  `task:ready` is not bookkeeping: `pickOrder` (§6.1) admits on that label
+  alone, so an item merely stripped of `task:blocked` wears no state any
+  executor selects on, and the run reports `nothing ready to pick up` —
+  indistinguishable from a healthy idle run. Cross-repo, the enforcer does
+  not perform this edit itself; it dispatches the member's scheduler with a
+  `wake` input and the member's own tick applies the recipe (§14). The executor evaluates the
   precondition at pick like always; a no-go rolls the item again with the
   reason on record, so a force that finds no work *says so* where the
   operator will read it. Truly unconditional force: say so in a Context line

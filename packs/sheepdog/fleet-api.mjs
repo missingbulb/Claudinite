@@ -170,18 +170,22 @@ export async function isCovered(gh, fullName) {
 // POST is an Actions write).
 export const SCHEDULER = 'claudinite-scheduler.yml';
 
-// Fire one member's scheduler with a FORCE_TASKS override, ONE task id per fire —
-// the override bag splits pairs on commas (engine parseOverrides), so a
-// comma-separated id list would not survive the trip, and no fan-out here wants more
-// than one task anyway. `ref` is the member's DEFAULT branch (read from the
-// enumeration, never assumed to be `main`): workflow_dispatch resolves the workflow
-// file on the ref it is given, and a repo whose trunk is `master` would otherwise 404
-// as if it carried no scheduler at all. A forced run evaluates ONLY the named task
-// (engine/scheduler/run.mjs, #749) — never the member's coincident backlog.
+// Fire one member's scheduler at ONE task id. Under the work-item queue, forcing a
+// scheduled task is WAKING ITS STANDING ITEM (tasks-dispatch DESIGN §8) — an issue
+// edit, not an override bag — and the `wake` input is how this repo asks for that
+// without touching the member's issues itself: the member's own tick does the wake,
+// with the member's own token, and the drain that follows runs it. Keeping the write
+// on the member's side is what holds this pack's fleet PAT at Actions write; the
+// enforcer editing issues across the fleet would need issue write on every repository.
+//
+// `ref` is the member's DEFAULT branch (read from the enumeration, never assumed to
+// be `main`): workflow_dispatch resolves the workflow file on the ref it is given,
+// and a repo whose trunk is `master` would otherwise 404 as if it carried no
+// scheduler at all.
 export async function fireScheduler(gh, fullName, ref, taskId) {
   const { status } = await gh(`/repos/${fullName}/actions/workflows/${SCHEDULER}/dispatches`, {
     method: 'POST',
-    body: { ref, inputs: { overrides: `FORCE_TASKS=${taskId}` } },
+    body: { ref, inputs: { wake: taskId } },
   });
   return classifyDispatch(status);
 }
@@ -202,10 +206,15 @@ export function classifyDispatch(status) {
     case 403:
       return { state: 'no-permission', detail: 'the PAT lacks Actions: write on this repo — dispatching a workflow is an Actions write, a scope the read-only sweeps never needed' };
     case 422:
-      // GitHub disables a repo's scheduled workflows after 60 days of inactivity, and a
-      // disabled workflow refuses dispatch; a scheduler stub too old to carry the
-      // `overrides` input lands here too.
-      return { state: 'not-dispatchable', detail: 'the workflow exists but refused the dispatch — it is disabled (GitHub switches off cron on inactive repos), or too old to accept the `overrides` input' };
+      // Two unrelated causes share this status, and the fix is opposite in each, so
+      // the message names both rather than guessing. GitHub disables a repo's
+      // scheduled workflows after 60 days of inactivity and a disabled workflow
+      // refuses dispatch — that one is a repo to nudge. The other is a member whose
+      // scheduler workflow predates the `wake` input: GitHub rejects a dispatch
+      // naming an input the workflow does not declare, so the member is behind on
+      // its mount, NOT misconfigured, and it heals on its own next converge. Saying
+      // only "disabled" sent a reader to the repo's settings for a stale checkout.
+      return { state: 'not-dispatchable', detail: 'the workflow exists but refused the dispatch (422) — either its scheduler workflow predates the `wake` input, which its next converge lands, or GitHub has disabled it (cron is switched off on inactive repos)' };
     default:
       return { state: 'error', detail: `dispatch returned ${status}` };
   }

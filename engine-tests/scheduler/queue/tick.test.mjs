@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { planTick } from '../../../engine/scheduler/queue/tick.mjs';
+import { planTick, planWake } from '../../../engine/scheduler/queue/tick.mjs';
 import { mostRecentAnchor, nextAnchor, periodMs } from '../../../engine/scheduler/queue/anchors.mjs';
 import { parseWorkItemBody } from '../../../engine/scheduler/queue/work-item.mjs';
 
@@ -160,4 +160,71 @@ test('the tick evaluates nothing: a task with a precondition that throws is stil
   const throwing = task('daily1', 'daily', { precondition() { throw new Error('the tick must never call me'); } });
   const { ops } = planTick({ tasks: [throwing], items: [], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE });
   assert.equal(kinds(ops, 'create').length, 1);
+});
+
+// --- the forced wake (DESIGN §8, #929) ----------------------------------------
+// Forcing across repos: the enforcer dispatches, the member wakes its own item.
+
+const wakeItems = [
+  item({ task: 'update', labels: ['task:blocked', 'origin:schedule'], created_at: '2026-08-16T00:00:00Z' }),
+  item({ task: 'tidy-prs', labels: ['task:executing', 'origin:schedule'], created_at: '2026-08-16T00:00:00Z' }),
+];
+const wakeTasks = [task('update', 'daily'), task('tidy-prs', 'daily')];
+
+test('a bare task id resolves against the repo\'s own declared packs', () => {
+  const { wake, unmatched } = planWake('update', wakeTasks, wakeItems);
+  assert.deepEqual(unmatched, []);
+  assert.deepEqual(wake, [{ id: 'p/update', issue: wakeItems[0].number }]);
+});
+
+test('a pack-qualified id and several ids at once both resolve', () => {
+  const { wake } = planWake('p/update', wakeTasks, wakeItems);
+  assert.deepEqual(wake, [{ id: 'p/update', issue: wakeItems[0].number }]);
+  const both = planWake('update tidy-prs', wakeTasks, wakeItems);
+  assert.equal(both.wake.length + both.already.length, 2);
+});
+
+test('an id naming nothing is REPORTED, never silently dropped', () => {
+  // A fleet-wide force whose report counts only what it woke reads as coverage.
+  const { wake, unmatched } = planWake('update nonesuch', wakeTasks, wakeItems);
+  assert.equal(wake.length, 1);
+  assert.equal(unmatched.length, 1);
+  assert.equal(unmatched[0].id, 'nonesuch');
+  assert.match(unmatched[0].why, /no declared pack owns/);
+});
+
+test('a task whose standing item is closed reports unmatched rather than waking nothing quietly', () => {
+  const closed = [item({ task: 'update', labels: [], state: 'closed', created_at: '2026-08-16T00:00:00Z' })];
+  const { wake, unmatched } = planWake('update', wakeTasks, closed);
+  assert.deepEqual(wake, []);
+  assert.match(unmatched[0].why, /no open standing item/);
+});
+
+test('an item already in flight is left alone — waking it would drop an episode boundary on a live claim', () => {
+  for (const label of ['task:ready', 'task:executing', 'task:agent']) {
+    const live = [item({ task: 'update', labels: [label], created_at: '2026-08-16T00:00:00Z' })];
+    const { wake, already } = planWake('update', wakeTasks, live);
+    assert.deepEqual(wake, [], `${label} must not be re-woken`);
+    assert.equal(already.length, 1);
+  }
+});
+
+test('a needs-human item IS wakeable — the force is the sanctioned road back from triage', () => {
+  const parked = [item({ task: 'update', labels: ['needs-human'], created_at: '2026-08-16T00:00:00Z' })];
+  const { wake } = planWake('update', wakeTasks, parked);
+  assert.equal(wake.length, 1);
+});
+
+test('an ambiguous bare id refuses rather than guessing which pack meant it', () => {
+  const twoPacks = [task('update', 'daily'), { ...task('update', 'daily'), pack: 'q' }];
+  const { wake, unmatched } = planWake('update', twoPacks, wakeItems);
+  assert.deepEqual(wake, []);
+  assert.match(unmatched[0].why, /name it as pack\/task/);
+});
+
+test('an empty spec asks for nothing at all', () => {
+  for (const spec of ['', '   ', null, undefined]) {
+    const r = planWake(spec, wakeTasks, wakeItems);
+    assert.deepEqual([r.wake, r.already, r.unmatched], [[], [], []]);
+  }
 });

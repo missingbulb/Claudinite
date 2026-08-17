@@ -41,9 +41,10 @@ import {
 } from '../../fleet-api.mjs';
 import { parseSheepdogConfig } from '../../fleet-config.mjs';
 
-// The exact member-side task this lever forces — the vendored scheduler's public
-// surface (`forcedTaskIds` in engine/scheduler/run.mjs); named as a constant so the
-// coupling is one line to find, not a string buried in a request body.
+// The exact member-side task this lever forces — the id the member's tick resolves
+// against its own declared packs (`planWake` in engine/scheduler/queue/tick.mjs);
+// named as a constant so the coupling is one line to find, not a string buried in a
+// request body.
 //
 // `update` since Phase 5 (#768): the task this lever used to force no longer exists,
 // and a lever that dispatches a task nothing will run reports a successful dispatch
@@ -147,7 +148,7 @@ export async function main() {
     }
 
     if (dryRun) {
-      fired.push({ fullName, state: 'would-fire', detail: `would dispatch ${SCHEDULER}@${r.default_branch} with FORCE_TASKS=${FORCED_TASK}` });
+      fired.push({ fullName, state: 'would-fire', detail: `would dispatch ${SCHEDULER}@${r.default_branch} to wake ${FORCED_TASK}` });
       continue;
     }
     const verdict = await fireScheduler(gh, r.full_name, r.default_branch, FORCED_TASK);
@@ -159,7 +160,7 @@ export async function main() {
   const summary = [
     `# Fleet baseline — ${owner}${dryRun ? ' (DRY RUN — nothing was dispatched)' : ''}`,
     '',
-    `Fired \`FORCE_TASKS=${FORCED_TASK}\` at each covered member's own \`${SCHEDULER}\`.`,
+    `Asked each covered member's own \`${SCHEDULER}\` to wake its \`${FORCED_TASK}\` item and run it now.`,
     filter ? `Filtered to: ${[...filter].join(', ')}` : '',
     '',
     `| ${dryRun ? 'would fire' : 'fired'} | skipped | failed |`,
