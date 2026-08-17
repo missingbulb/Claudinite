@@ -569,7 +569,7 @@ nothing to optimize.
   machinery rather than a bad night. One with a rising `deferred` count is
   dispatching faster than its executor drains. And "how many agent executions did
   this task cause" — the cost question — has a number instead of an impression.
-- **Sheepdog's fleet tasks**, later: freshness-style drift issues citing the
+- **Shepherd's fleet tasks**, later: freshness-style drift issues citing the
   fleet file ("skill X: 0 loads fleet-wide in 6 weeks"). The learning loop
   stays in the enforcer's domain, not the canon's. Out of scope here; noted so
   the file's grain is chosen for it (it is).

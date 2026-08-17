@@ -12,7 +12,7 @@
 // that shared code may not: a migration record is a dated one-off whose purpose is
 // to move a specific fleet off a specific old shape, and it stops shipping once it
 // ages out of the vendoring window. Nothing standing is left naming
-// `missingbulb/Sheepdog` — the durable path is the pack's adoption question (new
+// `missingbulb/Shepherd` — the durable path is the pack's adoption question (new
 // repos) and the sheepdog pack's fleet-preferences sweep, which reads the store
 // from the enforcer repo's own config and so serves any fleet.
 //
@@ -34,7 +34,7 @@ export default {
   landed: '2026-08-07',
   version: 1,
   summary: 'seed the claude-code-web-users-support pack into existing members, naming the fleet\'s preferences repo',
-  declarePacks: [{ id: 'claude-code-web-users-support', config: { repo: 'missingbulb/Sheepdog' } }],
+  declarePacks: [{ id: 'claude-code-web-users-support', config: { repo: 'missingbulb/Shepherd' } }],
   legacyPresent: async (exists, read) => {
     const raw = await read('.claudinite-checks.json');
     if (raw == null) return false;
