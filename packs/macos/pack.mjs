@@ -18,7 +18,7 @@ const hasMarkerNearRoot = (ctx, marker) =>
 
 export default {
   id: 'macos',
-  version: 1,
+  version: 2,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'native macOS apps: app-bundle assembly, TCC usage strings, Hardened Runtime entitlements, Developer ID signing, notarization and DMG distribution',

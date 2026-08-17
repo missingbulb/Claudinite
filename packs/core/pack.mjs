@@ -20,7 +20,7 @@ import taskDeclarationMatchesFolder from './task-declaration-matches-folder.mjs'
 // what puts it there.
 export default {
   id: 'core',
-  version: 1,
+  version: 2,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'using Claudinite itself — the vendored mount, the pack declaration, bootstrapping, adopting packs, the self-refresh update, the scheduled-task contract',
