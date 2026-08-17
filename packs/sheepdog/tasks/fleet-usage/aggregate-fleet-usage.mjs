@@ -45,9 +45,14 @@
 import { pathToFileURL } from 'node:url';
 import { makeGh, paged, readDeclaration, isDormant, DECLARATION } from '../../fleet-api.mjs';
 import { parseSheepdogConfig } from '../../fleet-config.mjs';
+// The member files this sweep reads are written by ANOTHER pack's task, so their shape
+// is the engine's contract rather than either pack's: `decodeUsageFile` accepts
+// whichever version a member last folded under (the sweep leads its members' upgrades
+// by definition), and the rows land here re-encoded in this file's own vocabulary.
+import { USAGE_FIELDS, decodeUsageFile, encodeRow, usageFieldsHeader } from '../../../../engine/usage-file.mjs';
 export const MEMBER_USAGE_PATH = '.claudinite/local/usage.GENERATED.json';
 export const FLEET_USAGE_PATH = 'usage-fleet.GENERATED.json';
-export const FLEET_VERSION = 1;
+export const FLEET_VERSION = 2;
 
 // The sampling population, stated in the file itself. This must not read as a
 // census: a session whose container was reclaimed, or that crashed, never captured
@@ -81,39 +86,31 @@ export function aggregate({ members, absent = [], dormant = [], uncovered = [], 
   const repos = {};
 
   for (const { repo, usage } of members) {
-    days[repo] = sortKeys(usage?.days ?? {});
+    const member = decodeUsageFile(usage);
+    // Each member's day window verbatim — re-encoded, so a member still on the old
+    // fully-spelled format lands beside the others in one shape rather than making
+    // every reader of this file handle two.
+    days[repo] = Object.fromEntries(
+      Object.keys(member.days).sort().map((d) => [d, encodeRow(member.days[d], USAGE_FIELDS.day)]),
+    );
     repos[repo] = {
-      foldedThrough: usage?.foldedThrough ?? null,
-      weeks: Object.keys(usage?.weeks ?? {}).length,
+      foldedThrough: member.foldedThrough,
+      weeks: Object.keys(member.weeks).length,
     };
-    for (const [week, row] of Object.entries(usage?.weeks ?? {})) {
-      ((weeks[week] ??= {})[repo] = {
-        days: row.days ?? 0,
-        captures: row.captures ?? 0,
-        merges: row.merges ?? 0,
-        sessionDays: row.sessionDays ?? 0,
-        userMessages: row.userMessages ?? 0,
-        userCommands: row.userCommands ?? 0,
-        skillLoads: sortKeys(row.skillLoads ?? {}),
-        // The conformance checks, at the same grain and for the same reason as the
-        // skill loads: whether a rule earns its place is a FLEET question. A rule
-        // that never fires in one repo may just not be that repo's subject; a rule
-        // that never fires in ANY of them is mis-described or worthless — and a rule
-        // that keeps firing everywhere is the corpus's best-performing guard, which
-        // only a view across every member can tell apart. Defaulted, not required:
-        // a member still on an older fold carries no `checks` key, and it must land
-        // in the file as an empty row rather than an exception.
-        checks: sortKeys(row.checks ?? {}),
-        checkFindings: sortKeys(row.checkFindings ?? {}),
-        // What each member's SCHEDULER did, per task: agent runs, deterministic
-        // preprocessing-only runs, precondition skips, failures, deferrals. Carried
-        // at the same week × repo × task grain and defaulted the same way, but drawn
-        // from a different population and answering a different question — this is
-        // the fleet's view of whether a scheduled task is doing anything at all. A
-        // task that skips in every member every day is a precondition that never
-        // fires; one that fails across members is broken machinery, not a bad night.
-        tasks: sortKeys(row.tasks ?? {}),
-      });
+    // A week row carries the member's counters as they came: skill loads, and the
+    // conformance checks at the same grain and for the same reason — whether a rule
+    // earns its place is a FLEET question. A rule that never fires in one repo may
+    // just not be that repo's subject; a rule that never fires in ANY of them is
+    // mis-described or worthless, and a rule that keeps firing everywhere is the
+    // corpus's best-performing guard. Only a view across every member tells those
+    // apart. The `tasks` rows answer the same question about scheduled work — a task
+    // that skips in every member every day is a precondition that never fires; one
+    // that fails across members is broken machinery, not a bad night.
+    //
+    // A member still on an older fold simply has no key for a counter that did not
+    // exist yet, and its row keeps that absence rather than claiming a zero.
+    for (const [week, row] of Object.entries(member.weeks)) {
+      (weeks[week] ??= {})[repo] = encodeRow(row, USAGE_FIELDS.week);
     }
   }
 
@@ -121,6 +118,9 @@ export function aggregate({ members, absent = [], dormant = [], uncovered = [], 
     version: FLEET_VERSION,
     generatedAt,
     _note: SAMPLING_NOTE,
+    // The vocabularies every tuple in this file is spelled in — identical to the one
+    // the member files carry, since the rows are the members' own.
+    fields: usageFieldsHeader(),
     coverage: {
       folding: Object.keys(repos).sort(),
       absent: [...absent].sort(),

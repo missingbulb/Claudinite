@@ -6,10 +6,17 @@ import {
 import { unchanged, renderUsageSummary } from '../../../../packs/sheepdog/tasks/fleet-usage/worker.mjs';
 import task from '../../../../packs/sheepdog/tasks/fleet-usage/task.mjs';
 import { USAGE_PATH } from '../../../../packs/grow_with_claudinite/tasks/usage-fold/worker.mjs';
+import { USAGE_FIELDS, decodeRow, encodeUsageFile } from '../../../../engine/usage-file.mjs';
 
 const member = (repo, weeks, days = {}, foldedThrough = '2026-07-27') => ({
   repo, usage: { version: 1, foldedThrough, days, weeks },
 });
+
+// The file stores counter rows as positional tuples; every assertion about GRAIN below
+// reads them back through the codec, so it states the fact it means rather than the
+// encoding of the day it was written.
+const weekRow = (file, week, repo) => decodeRow(file.weeks[week]?.[repo], USAGE_FIELDS.week, file.fields);
+const dayRow = (file, repo, date) => decodeRow(file.days[repo]?.[date], USAGE_FIELDS.day, file.fields);
 const week = (over) => ({
   days: 7, captures: 10, merges: 8, sessionDays: 9, userMessages: 100, userCommands: 5, skillLoads: {},
   checks: {}, checkFindings: {}, tasks: {}, ...over,
@@ -34,17 +41,21 @@ test('aggregate keeps full week x repo x skill grain — nothing pre-summed', ()
   });
   assert.deepEqual(Object.keys(file.weeks), ['2026-W30', '2026-W31']);
   assert.deepEqual(Object.keys(file.weeks['2026-W30']), ['owner/alpha', 'owner/beta']);
-  assert.equal(file.weeks['2026-W30']['owner/alpha'].skillLoads['writing-tests'], 1);
+  assert.equal(weekRow(file, '2026-W30', 'owner/alpha').skillLoads['writing-tests'], 1);
   // The coarser views a consumer wants stay DERIVABLE, which is the point of the grain.
-  const fleetWide = Object.values(file.weeks['2026-W30'])
-    .reduce((n, row) => n + (row.skillLoads['merge-to-main'] ?? 0), 0);
+  const fleetWide = Object.keys(file.weeks['2026-W30'])
+    .reduce((n, repo) => n + (weekRow(file, '2026-W30', repo).skillLoads['merge-to-main'] ?? 0), 0);
   assert.equal(fleetWide, 8);
 });
 
-test('aggregate carries each member\'s current day window verbatim, for the fast view', () => {
+test('aggregate carries each member\'s current day window, for the fast view', () => {
   const days = { '2026-07-28': { captures: 3, merges: 2, sessions: 2, userMessages: 31, userCommands: 4, skillLoads: { a: 1 } } };
   const file = aggregate({ members: [member('owner/alpha', {}, days)], generatedAt: '2026-07-28' });
-  assert.deepEqual(file.days['owner/alpha'], days);
+  const row = dayRow(file, 'owner/alpha', '2026-07-28');
+  assert.equal(row.captures, 3);
+  assert.equal(row.sessions, 2);
+  assert.equal(row.userMessages, 31);
+  assert.deepEqual(row.skillLoads, { a: 1 });
 });
 
 test('aggregate keeps each member\'s task invocations at week x repo x task grain', () => {
@@ -52,11 +63,11 @@ test('aggregate keeps each member\'s task invocations at week x repo x task grai
   // member's SCHEDULER, not from a captured session, so they are a census of scheduled
   // work. The fleet view is what tells "this task's precondition never fires here" from
   // "it never fires anywhere" — the second is a broken task, the first is a quiet repo.
-  const taskRow = (over) => ({ agent: 0, preprocess: 0, skipped: 0, failed: 0, deferred: 0, ...over });
+  const taskRow = (over) => ({ agent: 0, prework: 0, skipped: 0, failed: 0, deferred: 0, ...over });
   const file = aggregate({
     members: [
       member('owner/alpha', { '2026-W30': week({
-        tasks: { 'tidy-repo/tidy-issues': taskRow({ agent: 7 }), 'grow_with_claudinite/usage-fold': taskRow({ preprocess: 7, skipped: 161 }) },
+        tasks: { 'tidy-repo/tidy-issues': taskRow({ agent: 7 }), 'grow_with_claudinite/usage-fold': taskRow({ prework: 7, skipped: 161 }) },
       }) }),
       member('owner/beta', { '2026-W30': week({ tasks: { 'tidy-repo/tidy-issues': taskRow({ skipped: 7 }) } }) }),
       // A member still on an older fold carries no `tasks` key at all — it must land as
@@ -65,10 +76,10 @@ test('aggregate keeps each member\'s task invocations at week x repo x task grai
     ],
     generatedAt: '2026-07-28',
   });
-  assert.equal(file.weeks['2026-W30']['owner/alpha'].tasks['tidy-repo/tidy-issues'].agent, 7);
-  assert.equal(file.weeks['2026-W30']['owner/beta'].tasks['tidy-repo/tidy-issues'].agent, 0,
+  assert.equal(weekRow(file, '2026-W30', 'owner/alpha').tasks['tidy-repo/tidy-issues'].agent, 7);
+  assert.equal(weekRow(file, '2026-W30', 'owner/beta').tasks['tidy-repo/tidy-issues'].agent, 0,
     'the same task did no agent work in the other member — visible, not absent');
-  assert.deepEqual(file.weeks['2026-W30']['owner/gamma'].tasks, {});
+  assert.deepEqual(weekRow(file, '2026-W30', 'owner/gamma').tasks, {});
   assert.match(file._note, /census of\s+scheduled work/, 'and the file states that these rows are not a sample');
 });
 
@@ -89,12 +100,12 @@ test('aggregate keeps the check activations at the same week x repo x rule grain
     ],
     generatedAt: '2026-07-28',
   });
-  assert.equal(file.weeks['2026-W30']['owner/alpha'].checks.world.failures, 1);
-  assert.equal(file.weeks['2026-W30']['owner/beta'].checks.world, undefined, 'a scope that never ran there has no key');
+  assert.equal(weekRow(file, '2026-W30', 'owner/alpha').checks.world.failures, 1);
+  assert.equal(weekRow(file, '2026-W30', 'owner/beta').checks.world, undefined, 'a scope that never ran there has no key');
   // Fleet-wide "how often did this rule catch something" stays derivable — the point
   // of not pre-summing.
-  const fleetWide = Object.values(file.weeks['2026-W30'])
-    .reduce((n, row) => n + (row.checkFindings['task-lifecycle']?.blocking ?? 0), 0);
+  const fleetWide = Object.keys(file.weeks['2026-W30'])
+    .reduce((n, repo) => n + (weekRow(file, '2026-W30', repo).checkFindings['task-lifecycle']?.blocking ?? 0), 0);
   assert.equal(fleetWide, 9);
 });
 
@@ -103,9 +114,11 @@ test('a member still on the older fold lands as empty check rows, never as an ex
   // rows without `checks` are the normal case for a while, not a corruption.
   const older = { days: 7, captures: 10, merges: 8, sessionDays: 9, userMessages: 100, userCommands: 5, skillLoads: { a: 1 } };
   const file = aggregate({ members: [{ repo: 'owner/alpha', usage: { version: 1, foldedThrough: '2026-07-27', days: {}, weeks: { '2026-W30': older } } }], generatedAt: '2026-07-28' });
-  assert.deepEqual(file.weeks['2026-W30']['owner/alpha'].checks, {});
-  assert.deepEqual(file.weeks['2026-W30']['owner/alpha'].checkFindings, {});
-  assert.equal(file.weeks['2026-W30']['owner/alpha'].captures, 10, 'and everything it DOES carry still lands');
+  assert.deepEqual(weekRow(file, '2026-W30', 'owner/alpha').checks, {});
+  assert.deepEqual(weekRow(file, '2026-W30', 'owner/alpha').checkFindings, {});
+  assert.equal(weekRow(file, '2026-W30', 'owner/alpha').captures, 10, 'and everything it DOES carry still lands');
+  assert.equal(file.weeks['2026-W30']['owner/alpha'].checks, undefined,
+    'an empty group is omitted from the file rather than written as an empty object');
 });
 
 test('a member without a usage file is a reported COVERAGE GAP, never a silent skip', () => {
@@ -161,6 +174,50 @@ test('aggregate is a pure stateless recompute — same inputs, byte-identical ou
   const b = JSON.stringify(aggregate({ members: [...members].reverse(), generatedAt: '2026-07-28' }), null, 2);
   assert.equal(a, b, 'member order must not change the file — sorted keys throughout');
   assert.deepEqual(Object.keys(JSON.parse(a).weeks['2026-W31']['owner/beta'].skillLoads), ['alpha', 'zeta']);
+});
+
+test('the fleet file states the vocabulary its tuples are spelled in', () => {
+  // Without the header the tuples are unreadable by anything but the code that wrote
+  // them — which is the whole objection to a positional format, answered per file.
+  const file = aggregate({
+    members: [member('owner/alpha', { '2026-W30': week({ checks: { work: scope({ runs: 30, failures: 9 }) } }) })],
+    generatedAt: '2026-07-28',
+  });
+  assert.deepEqual(file.fields.checks, [...USAGE_FIELDS.checks]);
+  assert.deepEqual(file.fields.week, [...USAGE_FIELDS.week]);
+  const tuple = file.weeks['2026-W30']['owner/alpha'].checks.work;
+  assert.ok(Array.isArray(tuple), 'a counter row is stored positionally');
+  assert.equal(tuple[file.fields.checks.indexOf('failures')], 9);
+});
+
+test('members on either format land in ONE shape — the sweep leads their upgrades', () => {
+  // The sweep reads files it does not write, so at any moment the fleet is mid-upgrade.
+  // Both versions of the same numbers must aggregate to the same row, or every reader
+  // of this file would have to handle two formats.
+  const rows = { '2026-W30': week({ skillLoads: { 'merge-to-main': 4 } }) };
+  const asV2 = encodeUsageFile({ foldedThrough: '2026-07-27', weeks: rows, days: {} });
+  const file = aggregate({
+    members: [member('owner/alpha', rows), { repo: 'owner/beta', usage: asV2 }],
+    generatedAt: '2026-07-28',
+  });
+  assert.deepEqual(file.weeks['2026-W30']['owner/alpha'], file.weeks['2026-W30']['owner/beta']);
+  assert.equal(weekRow(file, '2026-W30', 'owner/beta').skillLoads['merge-to-main'], 4);
+  assert.equal(file.repos['owner/beta'].foldedThrough, '2026-07-27');
+});
+
+test('a counter a member row predates stays UNKNOWN, never a fabricated zero', () => {
+  // The week tier freezes, so a member carries rows written before a counter existed
+  // forever. A tuple slot the row has no opinion about is `null` — a reader can tell
+  // "this week genuinely saw none" from "this week could not have seen any".
+  const older = { days: 7, captures: 10, merges: 8, sessionDays: 9, skillLoads: {} };  // no userMessages/userCommands
+  const file = aggregate({
+    members: [{ repo: 'owner/alpha', usage: { version: 1, foldedThrough: '2026-07-27', days: {}, weeks: { '2026-W30': older } } }],
+    generatedAt: '2026-07-28',
+  });
+  const tuple = file.weeks['2026-W30']['owner/alpha'].totals;
+  assert.equal(tuple[file.fields.week.indexOf('captures')], 10);
+  assert.equal(tuple[file.fields.week.indexOf('userMessages')], null);
+  assert.ok(!('userMessages' in weekRow(file, '2026-W30', 'owner/alpha')), 'and it decodes back to no key at all');
 });
 
 test('unchanged ignores the day stamp — an unmoved fleet opens no PR', () => {
