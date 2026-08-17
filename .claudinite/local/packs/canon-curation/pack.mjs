@@ -1,4 +1,5 @@
 import noEnforcementNarration from './no-enforcement-narration.mjs';
+import packVersionBumped from './pack-version-bumped.mjs';
 
 // Claudinite's own curation pack — the fleet-facing work only Claudinite runs:
 // promoting members' lessons into the shared canon (the growth lifecycle's
@@ -39,6 +40,9 @@ export default {
   // The prose-narration rule polices pack prose CONTENT (not segregation), so
   // it stays a code check, bundled here.
   worldRules: [noEnforcementNarration],
+  // Delivery, not content: a pack's directory ships on its version number, so
+  // whether THIS change moved it is a question only the diff can answer.
+  workRules: [packVersionBumped],
   // writing-claudinite-skills is canon-home activity (authoring corpus skills), so
   // this pack bundles it under its own skills/ — members author no corpus skills.
   skills: ['writing-claudinite-skills'],
