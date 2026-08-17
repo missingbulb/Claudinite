@@ -104,14 +104,6 @@ Contracts worth knowing before you spend a call rediscovering them.
   sibling URL — attribute the search snippet to the publisher instead of asserting it, and mark it
   for re-verification.
 
-- **Publishing a claim about a real, named person** — when the primary source is unreachable
-  (blocked, paywalled, `403`), don't substitute a weaker one (a data-aggregator listing, a search
-  snippet) and don't publish the claim flagged "please verify" as a stand-in for actually
-  verifying it. The cost of a wrong claim about a named person isn't a wrong paragraph to fix
-  later — it's a public statement attributed to someone they never made. Ask the person directly
-  when they're reachable (one question is cheaper than any research and settles it for good);
-  otherwise leave the claim out until it can be verified.
-
 - **Hitting a sandbox or proxy that denies a fetch** — treat it as a **policy boundary, not an
   obstacle to route around**: don't reach for an open-network runner, an ad-hoc CI workflow or a
   push-triggered "probe", to make the request from somewhere the policy doesn't apply. Answer from
