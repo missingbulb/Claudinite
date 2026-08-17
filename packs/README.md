@@ -299,7 +299,7 @@ manifest.
 
 | | Count |
 |---|---|
-| **Hardcoded conformance checks** | **92** — every rule the runner carries: each pack's own, its bundled skills' checks, and the contributed barriers, plus the canon home's own [canon-curation](../.claudinite/local/packs/canon-curation/README.md) and [claudinite](../.claudinite/local/packs/claudinite/RULES.md) local packs |
+| **Hardcoded conformance checks** | **94** — every rule the runner carries: each pack's own, its bundled skills' checks, and the contributed barriers, plus the canon home's own [canon-curation](../.claudinite/local/packs/canon-curation/README.md) and [claudinite](../.claudinite/local/packs/claudinite/RULES.md) local packs |
 | PreToolUse guard | 1 (remote-branch-delete) |
 | Platform setting | 1 (squash-only) |
 | **Prose rules** — every rule in a pack's `RULES.md` | **364** across 22 packs, **20,133 words** |
@@ -308,4 +308,4 @@ manifest.
 
 Both counts are **derived, not maintained**, and guarded in `packs-tests/`: `check_the_world.mjs --list` prints the check catalog a rule at a time (id, severity, description, doc pointer), and the prose figures are the packs' own rule indexes summed. Read the per-pack breakdown off `--list` and off each pack README's index rather than trusting a hand-written split — the previous check split drifted to 41 against a real 65, and the ratio it fed was wrong by a third.
 
-**Ratio ≈ 90 hardcoded : 362 prose ≈ 1 : 4.0** (~20% of rules mechanized). Read against the *convertible* subset it is higher still, though the audit's own arithmetic has been overtaken: it found ~45 rules with any static signature — the other ~105 judgment, in-flight process, or runtime knowledge that *should* stay prose — and the check count has since passed that estimate, so treat ~45 as that audit's floor rather than a live ceiling. The `prose-to-checks` sweep keeps working the remainder; its adversarial pass rejects candidates whose detection would false-positive (the two SAM YAML checks needed a structural parser to stay FP-free), so the yield is deliberately small and high-precision.
+**Ratio ≈ 94 hardcoded : 364 prose ≈ 1 : 3.9** (~20% of rules mechanized). Read against the *convertible* subset it is higher still, though the audit's own arithmetic has been overtaken: it found ~45 rules with any static signature — the other ~105 judgment, in-flight process, or runtime knowledge that *should* stay prose — and the check count has since passed that estimate, so treat ~45 as that audit's floor rather than a live ceiling. The `prose-to-checks` sweep keeps working the remainder; its adversarial pass rejects candidates whose detection would false-positive (the two SAM YAML checks needed a structural parser to stay FP-free), so the yield is deliberately small and high-precision.

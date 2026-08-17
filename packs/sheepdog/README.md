@@ -5,9 +5,9 @@ under an owner. Opt-in (a dedicated sheepdog repo declares it; **not** seeded by
 standardizes the fleet coverage that used to be bespoke Claudinite infrastructure into a declaration.
 
 Thin by design: prose + the config schema (the sheepdog pack entry's `config` = `{ owner, kind, exclude,
-canonRepo, staleDays, packSeeds }`) + five cross-repo **sweeps/levers**, each an agentless
-scheduled task whose sweep is its `prework`. The pack carries **no workflow and no agent of its
-own**: anything agentic happens in the *member*, on the fan-out model
+canonRepo, staleDays, packSeeds, digest }`) + six cross-repo **sweeps/levers**, each a
+scheduled task whose sweep is its `prework`. The pack carries **no workflow**, and only the
+digest runs an agent *here* — everything else agentic happens in the *member*, on the fan-out model
 ([#749](https://github.com/missingbulb/Claudinite/issues/749)) — the enforcer dispatches, the
 member executes:
 
@@ -18,6 +18,7 @@ member executes:
 | [aggregate-fleet-usage.mjs](tasks/fleet-usage/aggregate-fleet-usage.mjs) | [fleet-usage](tasks/fleet-usage/task.md) (daily) | what does the fleet **actually use**? → `usage-fleet.GENERATED.json` |
 | [check-fleet-pack-seeds.mjs](tasks/fleet-pack-seeds/check-fleet-pack-seeds.mjs) | [fleet-pack-seeds](tasks/fleet-pack-seeds/task.md) (daily) | does a member declare what this fleet **standardizes on**? → the declaration, written |
 | [force-fleet-baseline.mjs](tasks/fleet-baseline/force-fleet-baseline.mjs) | [fleet-baseline](tasks/fleet-baseline/task.md) (`manual` — forced runs only) | make every member baseline **now** → each member's own run, reported in its own repo |
+| [collect-fleet-day.mjs](tasks/fleet-digest/collect-fleet-day.mjs) | [fleet-digest](tasks/fleet-digest/task.md) (daily, an hour after the rest) | what did the fleet **accomplish** yesterday, and what has it let go **quiet**? → `digests/<date>.md` |
 
 **The roster carries two questions** because they are asked of the same repos from the same walk
 ([#788](https://github.com/missingbulb/Claudinite/issues/788)). The freshness half exists because
@@ -40,12 +41,29 @@ member: some packs need a parameter no member can derive, because the answer is 
 bootstrapping into. This repo's `packSeeds` config lists what its members should declare, and the
 sweep converges that list. It names no pack itself: the fleet supplies every id.
 
+**The digest** is the one output addressed to a *person* rather than to the machinery: a dated
+plain-text brief of what the fleet actually did, one file a morning, plus a prod about a project that
+has gone quiet. Its collector filters Claudinite's own maintenance PRs and dispatch issues out of
+**every** stream it reads — the machine is the fleet's busiest actor, and rank by size or by
+discussion and its own bookkeeping does not merely appear in the results, it wins them. The brief is
+plain text despite its `.md` name because it is *sent*, verbatim, through a renderer that neither
+parses markdown nor keeps line breaks; the `digest-plain-text` check holds the landed series to that.
+It came from the enforcer's own local pack in
+[#954](https://github.com/missingbulb/Claudinite/issues/954): the task ends at a written file, so it
+carries no address, no recipient and no transport, and what a fleet has an opinion about is `pick` and
+`nudge` — two config knobs, both defaulted.
+
 The fit sweep fingerprints against a scratch clone of `canonRepo`, never against this repo's own
 mount — the mount carries only the packs the enforcer declares, and sweeping against it would report
 every member as fitted while testing almost nothing. Its report names the corpus it measured against,
 so a shrunken denominator is visible rather than silent.
 
-**The fit sweep is the one with an agent stage**, and the split is deliberate: everything decidable in
+**Two tasks have an agent stage, and both split the same way** — everything decidable in code
+stays in the agentless `prework`, and the agent is reached only for the part that is genuinely a
+judgment. For the digest that is picking the day's real accomplishments out of a
+size-ranked shortlist; on a day the fleet merged nothing the prework writes the brief itself and
+requests no agent, because "nothing happened" needs no model but a *missing* file in a dated series
+has to stay legible as a fault. For the fit sweep: everything decidable in
 code stays in the agentless `prework` (enumerate, fingerprint, converge the issues), and the agent is
 reached only for what is a judgment plus a repo edit — confirming the suspicion and running the
 [adopt-pack](../core/skills/adopt-pack/SKILL.md) skill against the member. It is
@@ -88,10 +106,12 @@ primitives, including the one that fires a member's scheduler) and
 [fleet-config.mjs](fleet-config.mjs) (the one reader of this pack's entry `config`).
 
 The rest of the machinery — running the daily-run, the task engine (`engine/scheduler/`), scheduling —
-is Claudinite **core**. Carries no conformance checks. Policy + config: [RULES.md](RULES.md).
+is Claudinite **core**. Policy + config: [RULES.md](RULES.md).
 
 ## Checks
 
 | Check | Severity | Reason | Enforcement |
 |---|---|---|---|
 | `fleet-pack-seed-agrees` | medium | correctness | check: blocking |
+| `digest-plain-text` | medium | correctness | check: blocking |
+| `dated-fixture-collision` | medium | correctness | check: blocking |
