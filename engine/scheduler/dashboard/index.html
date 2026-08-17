@@ -145,6 +145,24 @@
   .warn.critical { color: var(--critical); }
   .warn.serious  { color: var(--serious); }
   .warn.warning  { color: var(--ink-2); }
+  .warn.info     { color: var(--muted); }
+  .warn.ok       { color: var(--good); }
+
+  /* The fleet table leans on a left edge rather than a row wash: a tinted row fights
+     the status text inside it, and severity is already spelled out in words. */
+  tr.lvl-critical td:first-child { box-shadow: inset 3px 0 0 var(--critical); }
+  tr.lvl-serious  td:first-child { box-shadow: inset 3px 0 0 var(--serious); }
+  tr.lvl-warning  td:first-child { box-shadow: inset 3px 0 0 var(--warning); }
+  tr.muted-row td { color: var(--muted); }
+
+  /* The crumb is the widest thing that can appear in the bar, and its select grows
+     with the longest repo name. It is allowed to shrink and truncate so the controls
+     to its right stay on one row. */
+  .crumb { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+  .crumb .sep { color: var(--muted); }
+  .crumb select { max-width: 190px; min-width: 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips .chip .count { margin-left: 5px; color: var(--muted); font-weight: 600; }
 
   /* --- the one plotted mark: a thin outcome bar per task --- */
   .bar { display: flex; gap: 2px; height: 7px; width: 108px; }
@@ -152,6 +170,9 @@
   .bar i:first-child { border-radius: 4px 0 0 4px; }
   .bar i:last-child  { border-radius: 0 4px 4px 0; }
   .bar i:only-child  { border-radius: 4px; }
+  /* A bar with nothing in it still occupies its column, so the row's other bars stay
+     aligned and "empty" reads as empty rather than as a missing cell. */
+  .bar i.bar-empty { background: var(--rule); border-radius: 4px; }
   .sw { display: inline-block; width: 9px; height: 9px; border-radius: 3px;
         vertical-align: -1px; margin-right: 5px; }
   .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px;
@@ -173,7 +194,7 @@
 <header class="topbar">
   <div class="topbar-in">
     <h1>Claudinite tasks</h1>
-    <select id="repo-picker" title="Switch repository" hidden></select>
+    <span id="crumb" class="crumb" hidden></span>
     <button id="reload" title="Re-read (cached data is revalidated, not refetched)">Reload</button>
     <span class="grow"></span>
     <span id="rate" class="hint"></span>
@@ -208,6 +229,31 @@
     </p>
   </details>
 
+  <div id="fleet-view" hidden>
+    <div class="tiles" id="fleet-tiles"></div>
+
+    <section>
+      <h2>Members — worst first</h2>
+      <p class="legend">Click a member to open its scheduler in full.</p>
+      <div class="panel scroll"><table id="fleet"></table></div>
+    </section>
+
+    <section>
+      <h2>Tasks across the fleet</h2>
+      <p class="legend">
+        A shared pack's task, everywhere it runs. One parked in several members at once is
+        the pack's problem, not any one member's.
+      </p>
+      <div class="panel scroll"><table id="fleet-tasks"></table></div>
+    </section>
+
+    <section>
+      <h2>Pack adoption</h2>
+      <div class="chips" id="fleet-packs"></div>
+    </section>
+  </div>
+
+  <div id="repo-view" hidden>
   <div class="tiles" id="tiles"></div>
 
   <section>
@@ -230,6 +276,7 @@
     <h2>Scheduler runs</h2>
     <div class="panel scroll"><table id="runs"></table></div>
   </section>
+  </div>
 
   <p class="hint" id="footnote"></p>
 </div>

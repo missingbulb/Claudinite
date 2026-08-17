@@ -5,8 +5,15 @@ roster, the live work-item queue, the outcome history, and the Actions runs behi
 them — on one page. It is part of the engine, so every member gets it in its mount
 at `.claudinite/shared/engine/scheduler/dashboard/` and any of them can serve it.
 
-It renders **any** repo the viewer can read, chosen by `?repo=owner/name` or by the
-repo picker, so one deployment covers a whole fleet.
+It has **two views**, and which one you land on is the URL:
+
+- **Fleet** — every member at once, worst first. What a deployment with a roster
+  opens on.
+- **Repo** — one member's scheduler in full. Reached by clicking a member, or
+  `?repo=owner/name` directly.
+
+A deployment with one member (or none) goes straight to the repo view: a one-row
+fleet overview would be nothing but a click in the way.
 
 ## Running it
 
@@ -30,6 +37,47 @@ Deployed, it is static files behind any web server — including GitHub Pages. S
 
 A task with no work item still gets a row: "never ran" is usually the thing you
 opened this for, and an issue-derived list would omit it silently.
+
+## The fleet view
+
+A fleet page answers a different question from the per-repo one. Per repo it is
+"what is this scheduler doing"; across a fleet it is **"where do I need to look"** —
+and a page that answers the first question twelve times over does not answer the
+second. So nothing on it is a total for its own sake.
+
+| Panel | Answers |
+|---|---|
+| **Rollup tiles** | How many *members* need a human — not how many items exist |
+| **Members** | Every member ranked worst-first: its health with reasons, its open queue mix, recent outcomes, scheduler health, mount freshness, task count |
+| **Tasks across the fleet** | One task, everywhere it runs — a shared pack's task parked in four members at once is a canon problem no single repo's page reveals |
+| **Pack adoption** | Which packs are in use and how widely — who a change to a pack would reach |
+
+Three rules shape it, and they are in [`fleet.mjs`](fleet.mjs):
+
+**Attention is earned, not counted.** A member surfaces because something is *true*
+of it — an item parked, a leash blown, a scheduler failing, a mount that stopped
+converging — and each arrives as a reason with a severity, never as a number to be
+summed. One parked item outranks forty healthy work items.
+
+**Absence is a state.** A member that does not run Claudinite, one you cannot read,
+and one that is running fine are three different answers and never collapse into
+"0". Not being able to see a repo is a permissions fact reported quietly, not an
+alarm competing with a genuinely broken member.
+
+**One member's failure is one row's problem.** Every member is summarised
+independently, so a private repo or a rate-limit stumble becomes a row that says so
+rather than a blank page.
+
+Two signals are visible *only* here, because no single repo's page has the
+comparison:
+
+- **Mount drift** — each member's `ref` and `engineVersion` against the canon's.
+  Judged on those and never on `updated` alone, since a held stamp pins `updated`
+  behind a pending note while the mount converges normally. Needs `canonRepo` in the
+  config; without it freshness reads *unknown* rather than being guessed.
+- **A scheduler that never ran** — a member that declares tasks and has never
+  produced a work item is not idle, it is unwired. Every per-repo number for it is a
+  perfectly healthy zero.
 
 ## Who it runs as
 

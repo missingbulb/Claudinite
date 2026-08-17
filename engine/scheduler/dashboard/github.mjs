@@ -199,7 +199,8 @@ export const listRuns = (repo, token, perPage = 40) =>
 export const listComments = (repo, number, token) =>
   conditional(`/repos/${repo}/issues/${number}/comments?per_page=100`, token);
 
-// Who the viewer is. Also the cheapest possible credential check — a bad token
-// fails here rather than three calls into a repo sweep.
-export const getViewer = (repo, token) =>
+// Who the viewer is. Also the cheapest possible credential check — a bad token fails
+// here rather than three calls into a fleet sweep. Takes no repo: identity is not
+// scoped to one.
+export const getViewer = (token) =>
   conditional('/user', token, { transform: (u) => ({ login: u.login, avatar_url: u.avatar_url, html_url: u.html_url }) });
