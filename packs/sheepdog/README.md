@@ -48,6 +48,21 @@ has gone quiet. Its collector filters Claudinite's own maintenance PRs and dispa
 discussion and its own bookkeeping does not merely appear in the results, it wins them. The brief is
 plain text despite its `.md` name because it is *sent*, verbatim, through a renderer that neither
 parses markdown nor keeps line breaks; the `digest-plain-text` check holds the landed series to that.
+It runs at `daily+1h`, an hour behind the other sweeps: nothing in it depends on them, but a brief
+written while the census is still running reports a fleet in mid-sweep, and the owner reads one story
+about the fleet each morning, in order.
+
+Its two config knobs sit under `digest` on the pack entry:
+
+| key | default | what it does |
+|---|---|---|
+| `pick` | `4` | how many accomplishments the brief names (the shortlist is `ceil(pick × 1.5)`, so the agent has a real choice to make rather than a ranking to transcribe) |
+| `nudge` | on, 7 days | the "worth returning to" prod. `false` switches it off; `{ "quietDays": 21 }` widens the window |
+
+**Quiet is measured on meaningful merges, never on pushes.** Every member's mount is converged
+nightly, so `pushed_at` is fresh on every repo in this fleet every day and would report the whole
+fleet as permanently active.
+
 It came from the enforcer's own local pack in
 [#954](https://github.com/missingbulb/Claudinite/issues/954): the task ends at a written file, so it
 carries no address, no recipient and no transport, and what a fleet has an opinion about is `pick` and
