@@ -107,18 +107,14 @@ export const isDispatchTitle = (title) => parseDispatchTitle(title) !== null;
 // Absence is meaningful: no section means prework created nothing, so never write a
 // placeholder here.
 export function deliveredLines(delivered) {
-  const { branch = null, pr = null, merged = false, issue = null } = delivered ?? {};
-  if (!branch && !pr && !issue) return [];
+  const { branch = null, pr = null, merged = false } = delivered ?? {};
+  if (!branch && !pr) return [];
   return [
     '### Delivered by prework',
     'The artifacts this run created — the ones to work on.',
     '',
     ...(pr ? [`- PR: #${pr}${merged ? ' (already merged — open your own PR for further work)' : ' (open)'}`] : []),
     ...(branch ? [`- Branch: \`${branch}\``] : []),
-    // An ISSUE this run resolved for the agent to write to — a standing tracker a
-    // task's own prework found or created. Same contract as the PR line: this is
-    // the agent's only source for the number.
-    ...(issue ? [`- Issue: #${issue} — write this run's record there.`] : []),
   ];
 }
 

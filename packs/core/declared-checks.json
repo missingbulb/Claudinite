@@ -76,9 +76,9 @@
         "whenPathMatches": "/\\.md$/",
         "match": "/.*\\b([Ss]kip(s|ped|ping)?|stop( here)?|[Aa]bort|[Bb]ail( out)?|[Dd]o\\s+(\\*\\*?not\\*\\*?|not)\\s+(run|proceed|continue|stack)|[Ll]eav(e|ing)\\s+(it\\s+|this\\s+)?(cycle'?s?\\s+)?(converge\\s+)?undelivered)\\b.*/",
         "andLineMatches": "/\\b(if\\b|when\\b|unless\\b|already\\b|still\\s+(open|running|unreviewed)|(nothing|no\\s+new|not?\\s+\\w+)\\s+(changed|has\\s+changed)|before\\s+(anything|starting|researching)|unset\\s+means|absent\\b)\\b/i",
-        "unlessLineMatches": "/\\bContext\\b|\\bprecondition\\b/",
+        "unlessLineMatches": "/\\bContext\\b|\\bprecondition\\b|needs-human/",
         "what": "instructs a conditional skip after the precondition already passed: \"{match}\"",
-        "fix": "move the run/no-run decision into the task.mjs precondition — or, if the work ran and found nothing, reword it as an empty outcome, not a decision to skip"
+        "fix": "move the run/no-run decision into the task.mjs precondition, or reword an empty result as an empty outcome; a required input the dispatch lacks is a failure — converge to needs-human"
       },
       {
         "whenPathMatches": "/\\.mjs$/",

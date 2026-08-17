@@ -33,6 +33,11 @@ These are the owner's, verbatim in intent, and they are not negotiable:
 The item's **`### Delivered by prework`** section names a branch. Read
 `shortlist.json` from it — over your GitHub tools, at that ref.
 
+**That branch is a required input.** A work item that names none — or names one whose `shortlist.json` is not there — is a failed run: converge to `needs-human` naming what was missing.
+Never fall back to the newest branch, to a shortlist from an earlier run, or to enumerating the
+fleet yourself — the whole point of the shortlist is that prework decided which candidates this
+brief covers.
+
 > **It will not come back inline, and what does come back is not yet JSON.** The shortlist
 > carries every candidate's body text, so it runs tens of KB and overflows the file-read
 > tool's result limit; the tool spills it to a file and hands you the path instead. That

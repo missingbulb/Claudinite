@@ -3,7 +3,7 @@
 // declaration carries one, and no task is expected to want one. A task that keeps
 // an aggregated record calls these from its OWN prework and passes the number to
 // its agentic phase through the ordinary hand-off payload (`delivered.issue`,
-// rendered into the dispatch by prework-run.mjs / dispatch.mjs).
+// rendered into the work item by queue/prework-run.mjs).
 //
 // It exists because two tasks had each grown a private copy of the same search, and
 // the copies had already diverged in a way that matters — one filtered `is:open`,

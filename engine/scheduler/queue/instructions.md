@@ -45,7 +45,12 @@ instructions.
    - The issue's **Context** section is binding scope. The precondition decided it
      and you may not re-decide it, widen it, or skip the run because you disagree.
    - **Delivered by prework** names artifacts this run already created — a branch,
-     a PR. Work on those; never make your own duplicates of them.
+     a PR, an issue. Work on those; never make your own duplicates of them.
+   - **An input the task file calls required and the issue does not carry stops the
+     run.** Say which one was missing and converge this item to `needs-human`. Never
+     reconstruct it — searching for the issue by title, taking the newest branch, or
+     inferring the scope substitutes another run's inputs for this one's, and the run
+     then reports success on work nobody asked for.
    - If the work turns out empty, that is a legitimate result. "The work ran and
      produced nothing" is an outcome; deciding not to run is not yours to make.
 

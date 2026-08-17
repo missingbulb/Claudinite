@@ -83,10 +83,14 @@ worker only frames the unattended run around it.
 
 ## Tracking
 
-The task's standing log is the issue the dispatch's **Delivered by prework** section names (`Issue: #<n>`).
-Prework found or opened it and has already rewritten its body with this run's brief, so use that number —
-never search for a tracker by title, never create one, and never re-write the body it just wrote. **Never
-open, close, or reopen it** either: its state carries no meaning, only the log does.
+The task's standing log is the issue the work item's **Delivered by prework** section names (`Issue: #<n>`).
+Prework found or opened it and has already rewritten its body with this run's brief.
+
+**That number is a required input.** A work item that does not carry it is a failed run, not a lighter one: converge to `needs-human` naming the missing input.
+Never search for a tracker by title and never create one — the brief
+you are working from lives on a specific issue, and any issue you find yourself is a different one. Never
+re-write the body prework just wrote, and **never open, close, or reopen it**: its state carries no meaning,
+only the log does.
 
 Its **body** is prework's, rewritten every run: this window's canon diff, the brief you started from. Leave it
 alone. The **comments** are yours: log each run that changed a doc as a **dated comment** — naming what was

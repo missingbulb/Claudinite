@@ -111,7 +111,7 @@ than by replaying a ledger.
   Nothing in the contract declares a tracker and no task is expected to want one. A
   task that keeps an aggregated record across runs resolves the issue in its **own**
   prework and passes the number to its agentic phase the ordinary way — the hand-off
-  payload's `delivered.issue`, which both dispatch paths render as an `Issue:` line
+  payload's `delivered.issue`, which the executor renders into the work item as an `Issue:` line
   the worker doc points at. The exact-title lookup and the create-then-close pair are
   a library that prework may call (`engine/scheduler/tracker.mjs`), never a phase:
   whether a run with nothing to say should mint a tracker at all is the task's own
