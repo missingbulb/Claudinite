@@ -148,6 +148,37 @@ export function aggregate({ members, absent = [], dormant = [], uncovered = [], 
   };
 }
 
+// The file's text: ONE LINE PER ROW, the unit a reader reads and a recompute rewrites.
+// `JSON.stringify(file, null, 2)` would spend a line per number — across (repos × days)
+// and (weeks × repos × counters) that is most of the file's bytes and a diff nobody can
+// read. The two row maps are nested one level deeper than the rest, so they get their
+// own pass; everything else is small enough to hand to `JSON.stringify` whole.
+export function renderFleetFile(file) {
+  const nested = (obj) => Object.entries(obj ?? {}).map(([outer, rows]) => (
+    Object.keys(rows).length === 0
+      ? `    ${JSON.stringify(outer)}: {}`
+      : [`    ${JSON.stringify(outer)}: {`,
+        Object.entries(rows).map(([k, row]) => `      ${JSON.stringify(k)}: ${JSON.stringify(row)}`).join(',\n'),
+        '    }'].join('\n')
+  )).join(',\n');
+  const block = (name, obj, end) => (Object.keys(obj ?? {}).length === 0
+    ? [`  ${JSON.stringify(name)}: {}${end}`]
+    : [`  ${JSON.stringify(name)}: {`, nested(obj), `  }${end}`]);
+  const plain = (name, value, end) => `  ${JSON.stringify(name)}: ${JSON.stringify(value, null, 2).split('\n').join('\n  ')}${end}`;
+  return [
+    '{',
+    `  "version": ${JSON.stringify(file.version)},`,
+    `  "generatedAt": ${JSON.stringify(file.generatedAt)},`,
+    `  "_note": ${JSON.stringify(file._note)},`,
+    plain('coverage', file.coverage, ','),
+    plain('repos', file.repos, ','),
+    ...block('days', file.days, ','),
+    ...block('weeks', file.weeks, ''),
+    '}',
+    '',
+  ].join('\n');
+}
+
 // The folding members with NO captured activity on the day the file was generated —
 // its day window carries no row for `generatedAt`. DERIVED from the file, not stored
 // in it: the verdict moves when the date alone moves, and the worker's

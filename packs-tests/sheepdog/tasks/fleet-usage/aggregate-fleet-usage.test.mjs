@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  aggregate, inactiveToday, SAMPLING_NOTE, FLEET_USAGE_PATH, MEMBER_USAGE_PATH, FLEET_VERSION,
+  aggregate, inactiveToday, renderFleetFile, SAMPLING_NOTE, FLEET_USAGE_PATH, MEMBER_USAGE_PATH, FLEET_VERSION,
 } from '../../../../packs/sheepdog/tasks/fleet-usage/aggregate-fleet-usage.mjs';
 import { unchanged, renderUsageSummary } from '../../../../packs/sheepdog/tasks/fleet-usage/worker.mjs';
 import task from '../../../../packs/sheepdog/tasks/fleet-usage/task.mjs';
@@ -306,4 +306,22 @@ test('the run summary names every repo, whatever its state, and flags inactive-t
   }
   assert.match(out, /inactive today \(no captured activity on 2026-07-28\).*owner\/beta/);
   assert.match(out, /\*\*Folding, active today:\*\* owner\/alpha/);
+});
+
+test('the fleet file is written one line per row, and parses back to what went in', () => {
+  const file = aggregate({
+    members: [
+      member('owner/alpha', { '2026-W30': week({ skillLoads: { a: 1 } }) }, { '2026-07-28': { captures: 3 } }),
+      member('owner/beta', {}, {}),
+    ],
+    absent: ['owner/gamma (no file)'],
+    generatedAt: '2026-07-28',
+  });
+  const text = renderFleetFile(file);
+  assert.deepEqual(JSON.parse(text), file, 'whatever the whitespace, it is the same document');
+  const lines = text.split('\n');
+  assert.equal(lines.filter((l) => l.startsWith('      "2026-07-28"')).length, 1, 'one line per day row');
+  assert.ok(lines.some((l) => l.startsWith('      "owner/alpha"')), 'and one per week x repo row');
+  assert.ok(lines.some((l) => l.includes('"owner/beta": {}')), 'a member with no rows is written inline');
+  assert.ok(text.endsWith('}\n'));
 });

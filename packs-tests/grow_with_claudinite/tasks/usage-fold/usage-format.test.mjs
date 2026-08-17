@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   USAGE_FIELDS, USAGE_VERSION, COUNTER_GROUPS, encodeCounters, decodeCounters,
-  encodeRow, decodeRow, encodeUsageFile, decodeUsageFile, isTupleFormat, fieldsOf,
+  encodeRow, decodeRow, encodeUsageFile, decodeUsageFile, isTupleFormat, fieldsOf, renderUsageFile,
 } from '../../../../packs/grow_with_claudinite/tasks/usage-fold/usage-format.mjs';
 import { TASK_RUN_OUTCOMES, TASK_EXEC_STATUSES } from '../../../../engine/scheduler/run-record.mjs';
 
@@ -77,4 +77,27 @@ test('adding or removing a name is pure key presence — nothing is renumbered',
   assert.deepEqual(Object.keys(before.skillLoads), ['skill-a', 'skill-b']);
   assert.deepEqual(Object.keys(after.skillLoads), ['skill-b', 'skill-c']);
   assert.deepEqual(before.totals, after.totals, 'and no other row content moves with it');
+});
+
+test('the file is written one line per row, and parses back to what went in', () => {
+  const file = encodeUsageFile({
+    foldedThrough: '2026-07-26',
+    days: {
+      '2026-07-26': { captures: 2, skillLoads: { s: 1 }, checks: { work: { runs: 9 } } },
+      '2026-07-27': { captures: 1 },
+    },
+    weeks: { '2026-W30': { days: 1, captures: 2 } },
+  });
+  const text = renderUsageFile(file);
+  assert.deepEqual(JSON.parse(text), file, 'whatever the whitespace, it is the same document');
+  const lines = text.split('\n');
+  assert.equal(lines.filter((l) => l.startsWith('    "2026-07-2')).length, 2, 'one line per day row');
+  assert.ok(text.endsWith('}\n'), 'and the file ends with exactly one newline');
+});
+
+test('an empty row map is written inline, not as an empty block', () => {
+  const text = renderUsageFile(encodeUsageFile({ foldedThrough: null }));
+  assert.match(text, /"days": \{\},/);
+  assert.match(text, /"weeks": \{\}\n/);
+  assert.deepEqual(JSON.parse(text).weeks, {});
 });

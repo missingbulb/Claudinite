@@ -451,30 +451,18 @@ scheduler. A repo that has never captured folds its task rows and nothing else.
   "foldedThrough": "2026-07-26",
   "runsFoldedThrough": "2026-07-28T22:44:00Z",
   "fields": {
-    "day": ["captures", "merges", "sessions", "userMessages", "userCommands"],
-    "week": ["days", "captures", "merges", "sessionDays", "userMessages", "userCommands"],
-    "checks": ["runs", "failures", "errors", "blocking", "advisory", "ciRuns", "ciFailures"],
-    "checkFindings": ["blocking", "advisory"],
-    "tasks": ["agent", "prework", "skipped", "failed", "deferred"],
-    "taskExec": ["success", "failed", "task-gone", "invalid"]
+    "day": ["captures","merges","sessions","userMessages","userCommands"],
+    "week": ["days","captures","merges","sessionDays","userMessages","userCommands"],
+    "checks": ["runs","failures","errors","blocking","advisory","ciRuns","ciFailures"],
+    "checkFindings": ["blocking","advisory"],
+    "tasks": ["agent","prework","skipped","failed","deferred"],
+    "taskExec": ["success","failed","task-gone","invalid"]
   },
   "days": {
-    "2026-07-28": {
-      "totals": [3, 2, 2, 31, 4],
-      "skillLoads": {"merge-to-main": 1},
-      "checks": {"work": [34, 12, 0, 15, 0, 0, 0], "world": [42, 3, 0, 5, 131, 1, 1]},
-      "checkFindings": {"task-lifecycle": [8, 0]},
-      "tasks": {"tidy-repo/tidy-issues": [1, 0, 23, 0, 0]}
-    }
+    "2026-07-28": {"totals":[3,2,2,31,4],"skillLoads":{"merge-to-main":1},"checks":{"work":[34,12,0,15,0,0,0],"world":[42,3,0,5,131,1,1]},"checkFindings":{"task-lifecycle":[8,0]},"tasks":{"tidy-repo/tidy-issues":[1,0,23,0,0]}}
   },
   "weeks": {
-    "2026-W30": {
-      "totals": [7, 11, 9, 8, 210, 23],
-      "skillLoads": {"merge-to-main": 6},
-      "checks": {"work": [190, 51, 0, 66, 3, 0, 0]},
-      "checkFindings": {"task-lifecycle": [40, 0]},
-      "tasks": {"tidy-repo/tidy-issues": [7, 0, 161, 0, 0]}
-    }
+    "2026-W30": {"totals":[7,11,9,8,210,23],"skillLoads":{"merge-to-main":6},"checks":{"work":[190,51,0,66,3,0,0]},"checkFindings":{"task-lifecycle":[40,0]},"tasks":{"tidy-repo/tidy-issues":[7,0,161,0,0]}}
   }
 }
 ```
@@ -482,11 +470,14 @@ scheduler. A repo that has never captured folds its task rows and nothing else.
 ### The shape, and why it is that shape
 
 Every counter row is a positional **tuple** whose field order the file declares
-once, in its own `fields` header. Fully spelling each row cost ~120 bytes to
-carry seven numbers, once per day per scope per rule per task; the tuples plus a
-row-per-line renderer took this repo's own file from 64 KB to 25 KB, and made
-the diff of a regenerated file one line per changed **row** rather than one per
-changed number.
+once, in its own `fields` header, and the file is written **one line per row**.
+Fully spelling each row cost ~120 bytes to carry seven numbers, once per day per
+scope per rule per task, and `JSON.stringify(…, null, 2)` then spent a line on
+each of those numbers; together the two took this repo's own file from 64 KB to
+18 KB and made the diff of a regenerated file one line per changed **row**
+rather than one per changed number. Each writer emits its own file directly —
+there is no shared renderer, because a row on a line is a few lines of code and
+the two files have different shapes.
 
 The format lives in the fold's own task folder
 (`grow_with_claudinite/tasks/usage-fold/usage-format.mjs`), beside the only code

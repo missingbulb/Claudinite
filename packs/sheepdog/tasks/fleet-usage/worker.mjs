@@ -21,8 +21,7 @@
 import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { deliverGenerated, baseTip, readAt, remoteUrl } from '../../../../engine/scheduler/deliver-generated.mjs';
-import { renderJsonFile } from '../../../../engine/scheduler/render-json.mjs';
-import { main as sweep, inactiveToday, FLEET_USAGE_PATH } from './aggregate-fleet-usage.mjs';
+import { main as sweep, inactiveToday, renderFleetFile, FLEET_USAGE_PATH } from './aggregate-fleet-usage.mjs';
 
 const PR_BRANCH_PREFIX = 'claudinite/fleet-usage';
 const slotId = process.env.CLAUDINITE_SLOT_ID || '';
@@ -84,7 +83,7 @@ export async function main() {
 
   log('reading every member\'s usage aggregate');
   const file = await sweep();
-  const text = renderJsonFile(file);
+  const text = renderFleetFile(file);
   const covered = file.coverage.folding.length;
   const gaps = file.coverage.absent.length;
 

@@ -143,6 +143,29 @@ export function encodeUsageFile({ foldedThrough = null, runsFoldedThrough = null
   };
 }
 
+// The file's text: ONE LINE PER ROW. `JSON.stringify(file, null, 2)` would put every
+// number on its own line, which for tuple rows is nine lines to carry seven numbers
+// and a diff that reads per-number instead of per-day. The row is the unit anyone
+// reads and the unit the fold rewrites, so it is the unit a line holds.
+export function renderUsageFile(file) {
+  const rows = (obj) => Object.entries(obj ?? {})
+    .map(([k, v]) => `    ${JSON.stringify(k)}: ${JSON.stringify(v)}`).join(',\n');
+  const block = (name, obj, end) => (Object.keys(obj ?? {}).length === 0
+    ? [`  ${JSON.stringify(name)}: {}${end}`]
+    : [`  ${JSON.stringify(name)}: {`, rows(obj), `  }${end}`]);
+  return [
+    '{',
+    `  "version": ${JSON.stringify(file.version)},`,
+    `  "foldedThrough": ${JSON.stringify(file.foldedThrough ?? null)},`,
+    `  "runsFoldedThrough": ${JSON.stringify(file.runsFoldedThrough ?? null)},`,
+    ...block('fields', file.fields, ','),
+    ...block('days', file.days, ','),
+    ...block('weeks', file.weeks, ''),
+    '}',
+    '',
+  ].join('\n');
+}
+
 // …and back. A version-1 file is already in the named shape and passes through, which
 // is what lets a fold read back weeks it froze before this format existed and lets the
 // fleet sweep lead its members' upgrades.

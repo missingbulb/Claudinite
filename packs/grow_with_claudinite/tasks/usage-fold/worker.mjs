@@ -28,8 +28,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { deliverGenerated, baseTip, readAt, remoteUrl } from '../../../../engine/scheduler/deliver-generated.mjs';
-import { renderJsonFile } from '../../../../engine/scheduler/render-json.mjs';
 import { countEntries, foldUsage, encodeUsage, decodeUsage, mountedSkillNames } from './fold-usage.mjs';
+import { renderUsageFile } from './usage-format.mjs';
 import { makeReader, readTaskRuns } from './read-task-runs.mjs';
 
 const BRANCH = 'conversation-logs';
@@ -141,7 +141,7 @@ export async function main() {
   if (taskRuns.remaining) log(`${taskRuns.remaining} scheduler run(s) past this fold's cap — the next fold continues from the watermark`);
 
   const today = now.slice(0, 10);
-  const text = renderJsonFile(encodeUsage(foldUsage({
+  const text = renderUsageFile(encodeUsage(foldUsage({
     files, prior, today, taskRuns: taskRuns.records, runsFoldedThrough: taskRuns.watermark,
   })));
   const attributes = withMergeAttribute(readAt(root, baseSha, '.gitattributes'));

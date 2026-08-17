@@ -6,8 +6,9 @@ import {
   foldDays, isoWeek, daysToFold, addDayToWeek, foldUsage, foldTaskRuns, withinTaskWindow,
   countTaskExecs, emptyTaskExec, encodeUsage, decodeUsage,
 } from '../../../../packs/grow_with_claudinite/tasks/usage-fold/fold-usage.mjs';
-import { renderJsonFile } from '../../../../engine/scheduler/render-json.mjs';
-import { USAGE_FIELDS, USAGE_VERSION } from '../../../../packs/grow_with_claudinite/tasks/usage-fold/usage-format.mjs';
+import {
+  USAGE_FIELDS, USAGE_VERSION, renderUsageFile,
+} from '../../../../packs/grow_with_claudinite/tasks/usage-fold/usage-format.mjs';
 
 // --- entry fixtures -----------------------------------------------------------
 // Every shape below is copied from real captured transcripts on a conversation-logs
@@ -513,7 +514,7 @@ test('the written file sorts every key, so an unchanged recompute is byte-identi
     fileOf('2026-07-27', 2, 's2', { skillLoads: { zeta: 1, alpha: 2 } }),
     fileOf('2026-07-26', 1, 's1', { skillLoads: { middle: 1 } }),
   ];
-  const written = (input) => renderJsonFile(encodeUsage(foldUsage({ files: input, prior: {}, today: '2026-07-28' })));
+  const written = (input) => renderUsageFile(encodeUsage(foldUsage({ files: input, prior: {}, today: '2026-07-28' })));
   const a = written(files);
   assert.equal(a, written([...files].reverse()));
   assert.deepEqual(Object.keys(JSON.parse(a).days['2026-07-27'].skillLoads), ['alpha', 'zeta']);
@@ -660,7 +661,7 @@ test('a fold round-trips through the file unchanged', () => {
     ],
     prior: {}, today: '2026-07-28',
   });
-  const reread = decodeUsage(JSON.parse(renderJsonFile(encodeUsage(folded))));
+  const reread = decodeUsage(JSON.parse(renderUsageFile(encodeUsage(folded))));
   assert.equal(reread.foldedThrough, folded.foldedThrough);
   assert.deepEqual(reread.days['2026-07-26'].skillLoads, { 'merge-to-main': 2 });
   assert.equal(reread.days['2026-07-26'].checks.work.failures, 1);
