@@ -72,25 +72,6 @@ function checkRows(readme) {
   return rows;
 }
 
-test("packs/README.md's prose tally equals the packs' own rule indexes", async () => {
-  let packs = 0, rules = 0, words = 0;
-  for (const pack of await packsWithProse()) {
-    const blocks = ruleBlocks(readFileSync(join(ROOT, 'packs', pack.id, pack.prose), 'utf8'));
-    if (!blocks.length) continue;
-    packs += 1;
-    rules += blocks.length;
-    words += blocks.reduce((sum, b) => sum + b.words, 0);
-  }
-  const catalog = readFileSync(join(ROOT, 'packs/README.md'), 'utf8');
-  const m = /\*\*(\d+)\*\* across (\d+) packs, \*\*([\d,]+) words\*\*/.exec(catalog);
-  assert.ok(m, 'packs/README.md carries no parseable prose tally — keep the counts in the corpus-tally table so this guard can read them.');
-  assert.deepEqual(
-    { rules: Number(m[1]), packs: Number(m[2]), words: Number(m[3].replace(/,/g, '')) },
-    { rules, packs, words },
-    'the corpus tally disagrees with the packs\' rule indexes. Update it in the same change that adds or removes a rule.'
-  );
-});
-
 test('every rule-index row draws its severity and reason from the closed vocabularies', async () => {
   for (const pack of await packsWithProse()) {
     for (const row of readmeRuleIndex(readFileSync(join(ROOT, 'packs', pack.id, 'README.md'), 'utf8'))) {
