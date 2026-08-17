@@ -51,3 +51,5 @@ A member whose copy reads `revision 2` was reached by the *record*, through the 
 staged into `.claudinite/pending-workflows/`, carried in a maintenance PR, and moved into
 `.github/workflows/` by a session with a credential the Action token does not have. `revision 1`
 means the seed landed and the record has not run yet.
+
+A probe line: this edit deliberately ships no version bump.
