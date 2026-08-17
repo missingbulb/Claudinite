@@ -28,8 +28,9 @@ For each branch in the Context list, run the
 ## 2. Reconcile this task's tracker
 
 One standing tracker issue per repo, titled exactly `Claudinite tracker: Tidy Branches` — found by that
-**exact title, never a fuzzy match**; create it **already closed** if absent (never a fresh issue per run,
-never a bare number that can dangle). Each dimension keeps its **own** tracker, so three tasks never race
+**exact title, never a fuzzy match**; create it **already closed** if absent — creation always lands an issue
+open and ignores a `state: closed` argument, so create it and close it in a second call (never a fresh issue
+per run, never a bare number that can dangle). Each dimension keeps its **own** tracker, so three tasks never race
 to rewrite one body.
 
 Touch it two ways each run:
