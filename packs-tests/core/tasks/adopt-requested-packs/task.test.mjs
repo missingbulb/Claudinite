@@ -43,10 +43,14 @@ test('adopt-requested-packs: needs no fleet secret — it reads and edits only i
   assert.equal(decl.required_secrets, undefined);
 });
 
-test('adopt-requested-packs: its precondition honestly says no — forced runs never consult it', () => {
+test('adopt-requested-packs: its precondition admits its own forced item', () => {
+  // Under the slot mechanism this said NO, because a forced run bypassed the
+  // precondition and the verdict was consulted by nothing. The queue evaluates it
+  // at pick, and a manual task has no anchor to roll to — so a no-go would close
+  // the enforcer's own item `outcome:obsolete` without running it.
   const v = decl.precondition();
-  assert.equal(v.run, false);
-  assert.match(v.reason, /FORCE_TASKS=adopt-requested-packs/);
+  assert.equal(v.run, true);
+  assert.doesNotMatch(v.reason ?? '', /FORCE_TASKS/, 'the slot-era force lever no longer exists');
 });
 
 test('adopt-requested-packs: two stages — a cheap gate, then the agent, iff work exists', () => {
