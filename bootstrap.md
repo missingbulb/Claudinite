@@ -246,7 +246,7 @@ through the normal PR flow.
 The web base image ships no toolchains; installs belong in the environment **image** (built
 once, snapshotted), not a per-session hook. The corpus holds the one generic script —
 [`engine/hooks/environment-setup-command.sh`](engine/hooks/environment-setup-command.sh), vendored into
-`.claudinite/shared/engine/vendoring/` — identical for every project: paste its full body into the
+`.claudinite/shared/engine/hooks/` — identical for every project: paste its full body into the
 environment's **Setup script** field and rebuild. It runs each active pack's declared installs
 (`env.mjs install`, driven by the declaration); the SessionStart `env.mjs check` then only
 *probes* and halt-gates on a genuinely missing prerequisite. The network policy must reach what
