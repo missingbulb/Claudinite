@@ -166,13 +166,26 @@ export async function installPacks(targetRoot, ids, {
     }
   }
 
+  // Steps only a human can perform, collected from the packs actually installed
+  // (`adoptionHandover`). Adoption is the one moment someone is present and the pack
+  // is new, so this is where they get said; carrying them only in a pack's README
+  // means the adopter meets them after the deploy has already failed.
+  //
+  // Reported, never acted on: nothing here can flip a repository setting, and a flow
+  // that pretended to would be worse than one that names the gap.
+  const handover = [];
+  for (const { id } of install) {
+    const pack = packs.find((p) => p.id === id);
+    for (const step of pack?.adoptionHandover ?? []) handover.push({ pack: id, ...step });
+  }
+
   const selftest = runSelfTest(targetRoot, selfTestRun);
   const decision = unanswered.length
     ? { action: 'needs-human', why: `${unanswered.length} adoption question(s) unanswered: ${unanswered.map((u) => `${u.pack}/${u.question}`).join(', ')}` }
     : deliveryDecision({ selftestOk: selftest.ok, delivery, forceMergeOnRedCi });
 
   return outcome(decision.action === 'needs-human' ? NEEDS_HUMAN : 'ok', decision.why, {
-    install, refused, unanswered, files: ourFiles.length, seeded, selftest, decision,
+    install, refused, unanswered, seeded, handover, files: ourFiles.length, selftest, decision,
     // An install is where the pack's rules FIRST meet this repo's content, so the
     // apply stage is always the next step — there is no "nothing moved" case here.
     applyStage: { needed: true, packs: install.map((i) => i.id), why: 'the pack\'s rules meet this repo for the first time' },
@@ -227,6 +240,18 @@ async function main() {
   for (const i of r.install ?? []) console.log(`install: ${i.id} → version ${i.version ?? 'unversioned'}`);
   for (const f of r.refused ?? []) console.log(`install: REFUSED ${f.id} — ${f.why}`);
   for (const s of r.seeded ?? []) console.log(`install: seeded ${s}`);
+
+  // Loud, and last before the status line: these are the steps the adoption cannot
+  // take, and the adopting session owes each one its own tracking issue.
+  if ((r.handover ?? []).length) {
+    console.log(`\ninstall: ${r.handover.length} step(s) only a human can do — open a tracking issue for these:`);
+    for (const h of r.handover) {
+      console.log(`  [ ] (${h.pack}) ${h.step}`);
+      if (h.breaks) console.log(`        while off: ${h.breaks}`);
+      if (h.done) console.log(`        done when: ${h.done}`);
+    }
+    console.log('');
+  }
   console.log(`install: ${r.status} — ${r.detail}`);
 
   // A refusal is not a partial success. `planInstall` refuses a pack whose engine is

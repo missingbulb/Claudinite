@@ -1,0 +1,24 @@
+{
+  "_comment": [
+    "Example only. The dashboard reads ./dashboard.config.json beside itself, and this",
+    "directory is VENDORED into every member under .claudinite/shared/ — where nothing",
+    "may be hand-edited, because the converge replaces the tree. So the real config is",
+    "never committed here: the site that DEPLOYS the dashboard writes it next to its own",
+    "copy. Absent config is a valid deployment, not a broken one — it means the",
+    "token-paste fallback and whatever repo the URL names.",
+    "Every key below is optional. `canonRepo` is what the fleet view compares each",
+    "member's mount against; unset means member freshness reads unknown rather than",
+    "being guessed. `rosterUrl`/`repos` with more than one member makes the fleet",
+    "overview the landing view."
+  ],
+
+  "clientId": "Iv1.0123456789abcdef",
+  "exchangeUrl": "https://claudinite-oauth.example.workers.dev",
+  "redirectUri": "https://missingbulb.github.io/Sheepdog/",
+  "scope": null,
+
+  "canonRepo": "missingbulb/Claudinite",
+  "rosterUrl": "./fleet-roster.GENERATED.json",
+  "repos": [],
+  "defaultRepo": "missingbulb/Claudinite"
+}

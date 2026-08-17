@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claudinite tasks</title>
+<style>
+  /* Light is the base palette; the dark steps are their own selected values under
+     both the OS setting and an explicit toggle, never an automatic inversion. */
+  :root {
+    color-scheme: light;
+    --plane:      #f9f9f7;
+    --surface:    #fcfcfb;
+    --ink:        #0b0b0b;
+    --ink-2:      #52514e;
+    --muted:      #898781;
+    --rule:       #e1e0d9;
+    --border:     rgba(11,11,11,0.10);
+
+    --good:     #0ca30c;
+    --warning:  #fab219;
+    --serious:  #ec835a;
+    --critical: #d03b3b;
+
+    --s-blue:   #2a78d6;
+    --s-orange: #eb6834;
+    --s-aqua:   #1baf7a;
+    --s-yellow: #eda100;
+    --s-violet: #4a3aa7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --plane:   #0d0d0d;
+      --surface: #1a1a19;
+      --ink:     #ffffff;
+      --ink-2:   #c3c2b7;
+      --muted:   #898781;
+      --rule:    #2c2c2a;
+      --border:  rgba(255,255,255,0.10);
+      --s-blue:   #3987e5;
+      --s-orange: #d95926;
+      --s-aqua:   #199e70;
+      --s-yellow: #c98500;
+      --s-violet: #9085e9;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --plane:   #0d0d0d;
+    --surface: #1a1a19;
+    --ink:     #ffffff;
+    --ink-2:   #c3c2b7;
+    --muted:   #898781;
+    --rule:    #2c2c2a;
+    --border:  rgba(255,255,255,0.10);
+    --s-blue:   #3987e5;
+    --s-orange: #d95926;
+    --s-aqua:   #199e70;
+    --s-yellow: #c98500;
+    --s-violet: #9085e9;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--plane);
+    color: var(--ink);
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  a { color: var(--s-blue); }
+  h1 { font-size: 17px; margin: 0; letter-spacing: -0.01em; }
+  h2 { font-size: 13px; margin: 0 0 10px; color: var(--ink-2); font-weight: 600;
+       text-transform: uppercase; letter-spacing: 0.06em; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 18px 20px 64px; }
+
+  /* --- controls --- */
+  /* `topbar`, not `bar`: `.bar` is the outcome mini-chart below, and a header
+     sharing that name inherits its 7px×108px geometry. */
+  header.topbar {
+    position: sticky; top: 0; z-index: 5;
+    background: var(--surface);
+    border-bottom: 1px solid var(--rule);
+  }
+  .topbar-in { max-width: 1180px; margin: 0 auto; padding: 12px 20px;
+               display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .grow { flex: 1 1 auto; }
+  input, button, select {
+    font: inherit; color: var(--ink); background: var(--surface);
+    border: 1px solid var(--border); border-radius: 7px; padding: 6px 9px;
+  }
+  input { min-width: 190px; }
+  select { max-width: 260px; }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--muted); }
+  button[disabled] { opacity: .5; cursor: default; }
+  button.primary { background: var(--s-blue); border-color: var(--s-blue); color: #fff; font-weight: 600; }
+  .hint { color: var(--muted); font-size: 12px; }
+  .authbox { display: inline-flex; align-items: center; gap: 8px; }
+  .avatar { border-radius: 50%; display: block; }
+
+  /* --- stat tiles: the headline numbers, no chart needed --- */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+           gap: 10px; margin-bottom: 22px; }
+  .tile { background: var(--surface); border: 1px solid var(--border);
+          border-radius: 10px; padding: 12px 14px; }
+  .tile .v { font-size: 25px; line-height: 1.15; }
+  .tile .k { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
+
+  /* --- panels & tables --- */
+  section { margin-bottom: 26px; }
+  .panel { background: var(--surface); border: 1px solid var(--border);
+           border-radius: 10px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 11px; text-transform: uppercase;
+       letter-spacing: 0.05em; color: var(--muted); font-weight: 600;
+       padding: 9px 12px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  td { padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  tbody tr:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+  .num { font-variant-numeric: tabular-nums; }
+  /* Hyphenated declaration values (`merged-pr`, `daily-2h`) are single tokens to a
+     reader and must not break at their hyphen. */
+  .nw { white-space: nowrap; }
+  .scroll { overflow-x: auto; }
+  .name { font-weight: 600; }
+  .sub { color: var(--muted); font-size: 12px; }
+
+  /* --- chips: state is identity, so it always carries its own label text --- */
+  .chip { display: inline-flex; align-items: center; gap: 5px;
+          border-radius: 999px; padding: 2px 9px; font-size: 12px;
+          border: 1px solid var(--border); white-space: nowrap; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .chip.blocked   .dot { background: var(--s-blue); }
+  .chip.ready     .dot { background: var(--s-aqua); }
+  .chip.executing .dot { background: var(--s-yellow); }
+  .chip.agent     .dot { background: var(--s-violet); }
+  .chip.human     .dot { background: var(--critical); }
+  .chip.torn      .dot { background: var(--serious); }
+  .chip.idle      .dot { background: var(--muted); }
+  .chip.urgent { border-color: var(--critical); color: var(--critical); }
+
+  /* Warnings pair an icon with words — the color never carries it alone. */
+  .warn { display: block; font-size: 12px; margin-top: 3px; }
+  .warn.critical { color: var(--critical); }
+  .warn.serious  { color: var(--serious); }
+  .warn.warning  { color: var(--ink-2); }
+  .warn.info     { color: var(--muted); }
+  .warn.ok       { color: var(--good); }
+
+  /* The fleet table leans on a left edge rather than a row wash: a tinted row fights
+     the status text inside it, and severity is already spelled out in words. */
+  tr.lvl-critical td:first-child { box-shadow: inset 3px 0 0 var(--critical); }
+  tr.lvl-serious  td:first-child { box-shadow: inset 3px 0 0 var(--serious); }
+  tr.lvl-warning  td:first-child { box-shadow: inset 3px 0 0 var(--warning); }
+  tr.muted-row td { color: var(--muted); }
+
+  /* The crumb is the widest thing that can appear in the bar, and its select grows
+     with the longest repo name. It is allowed to shrink and truncate so the controls
+     to its right stay on one row. */
+  .crumb { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+  .crumb .sep { color: var(--muted); }
+  .crumb select { max-width: 190px; min-width: 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips .chip .count { margin-left: 5px; color: var(--muted); font-weight: 600; }
+
+  /* --- the one plotted mark: a thin outcome bar per task --- */
+  .bar { display: flex; gap: 2px; height: 7px; width: 108px; }
+  .bar i { display: block; height: 100%; }
+  .bar i:first-child { border-radius: 4px 0 0 4px; }
+  .bar i:last-child  { border-radius: 0 4px 4px 0; }
+  .bar i:only-child  { border-radius: 4px; }
+  /* A bar with nothing in it still occupies its column, so the row's other bars stay
+     aligned and "empty" reads as empty rather than as a missing cell. */
+  .bar i.bar-empty { background: var(--rule); border-radius: 4px; }
+  .sw { display: inline-block; width: 9px; height: 9px; border-radius: 3px;
+        vertical-align: -1px; margin-right: 5px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px;
+            color: var(--ink-2); margin-bottom: 10px; }
+
+  .empty { padding: 22px; text-align: center; color: var(--muted); }
+  .err { border-left: 3px solid var(--critical); background: var(--surface);
+         padding: 10px 14px; border-radius: 0 8px 8px 0; margin-bottom: 14px; }
+  details.setup { background: var(--surface); border: 1px solid var(--border);
+                  border-radius: 10px; padding: 12px 14px; margin-bottom: 20px; }
+  details.setup summary { cursor: pointer; font-weight: 600; }
+  details.setup p, details.setup li { color: var(--ink-2); }
+  code { background: color-mix(in srgb, var(--ink) 7%, transparent);
+         padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <h1>Claudinite tasks</h1>
+    <span id="crumb" class="crumb" hidden></span>
+    <button id="reload" title="Re-read (cached data is revalidated, not refetched)">Reload</button>
+    <span class="grow"></span>
+    <span id="rate" class="hint"></span>
+    <button id="purge" title="Drop every cached response and re-read from GitHub">Clear cache</button>
+    <span id="auth" class="authbox"></span>
+    <button id="theme" title="Toggle light / dark">◐</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div id="errors"></div>
+
+  <details class="setup" id="setup">
+    <summary>How this reads your repo</summary>
+    <p>
+      Everything happens in this browser tab. The page calls <code>api.github.com</code>
+      directly as <strong>you</strong>, so <strong>your own GitHub permissions are the only
+      access control</strong> — there is no backend, no shared credential, and this page can
+      show you nothing your account cannot already read. Your credential is held for this
+      tab only (<code>sessionStorage</code>) and is sent to GitHub and nowhere else.
+    </p>
+    <p>
+      Where sign-in is configured, <em>Sign in with GitHub</em> authorizes once and everything
+      afterwards runs as you. Otherwise the page falls back to a pasted token, which needs
+      <em>read-only</em> Contents, Issues and Actions.
+    </p>
+    <p class="hint">
+      Responses are cached in this browser: repo content is keyed by commit SHA, live data is
+      revalidated with ETags (a <code>304</code> costs no rate limit), and settled history ages
+      out after 24 hours. <em>Clear cache</em> forces a cold read. Pass <code>?repo=owner/name</code>
+      to jump straight to a repo.
+    </p>
+  </details>
+
+  <div id="fleet-view" hidden>
+    <div class="tiles" id="fleet-tiles"></div>
+
+    <section>
+      <h2>Members — worst first</h2>
+      <p class="legend">Click a member to open its scheduler in full.</p>
+      <div class="panel scroll"><table id="fleet"></table></div>
+    </section>
+
+    <section>
+      <h2>Tasks across the fleet</h2>
+      <p class="legend">
+        A shared pack's task, everywhere it runs. One parked in several members at once is
+        the pack's problem, not any one member's.
+      </p>
+      <div class="panel scroll"><table id="fleet-tasks"></table></div>
+    </section>
+
+    <section>
+      <h2>Pack adoption</h2>
+      <div class="chips" id="fleet-packs"></div>
+    </section>
+  </div>
+
+  <div id="repo-view" hidden>
+  <div class="tiles" id="tiles"></div>
+
+  <section>
+    <h2>Task roster — every declared task</h2>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--good)"></i>done</span>
+      <span><i class="sw" style="background:var(--s-violet)"></i>delivered</span>
+      <span><i class="sw" style="background:var(--muted)"></i>obsolete</span>
+      <span><i class="sw" style="background:var(--critical)"></i>no outcome</span>
+    </div>
+    <div class="panel scroll"><table id="roster"></table></div>
+  </section>
+
+  <section>
+    <h2>Queue — open work items</h2>
+    <div class="panel scroll"><table id="queue"></table></div>
+  </section>
+
+  <section>
+    <h2>Scheduler runs</h2>
+    <div class="panel scroll"><table id="runs"></table></div>
+  </section>
+  </div>
+
+  <p class="hint" id="footnote"></p>
+</div>
+
+<script type="module" src="./app.mjs"></script>
+</body>
+</html>

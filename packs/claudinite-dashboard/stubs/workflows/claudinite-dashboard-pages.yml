@@ -1,0 +1,86 @@
+# Publish the Claudinite task dashboard to GitHub Pages.
+#
+# SEEDED ONCE, AT ADOPTION, and this repo's from that moment. `.github/workflows/` is
+# the one directory the nightly update cannot push to — the Action's `GITHUB_TOKEN` is
+# refused there — so this file arrives with the adopting session and never converges.
+# That is why it is a thin shim: everything that can be updated lives in the mount, and
+# only what must be frozen is frozen here.
+#
+# The site holds NO repository data. It is a shell that calls the GitHub API from the
+# viewer's own browser with the viewer's own credential, so publishing it discloses
+# nothing a viewer could not already read — someone who cannot see a repo sees nothing
+# of it here. Do not bake API responses into the build; that property is the reason a
+# public Pages site is a safe host for it.
+#
+# Configure it in `.claudinite-checks.json`, on the `claudinite-dashboard` entry's
+# `config` — not here. Every key is optional.
+
+name: Claudinite dashboard
+
+on:
+  push:
+    branches: [main]
+    paths:
+      # The mount is the page's source, so a converge that moves it republishes.
+      - '.claudinite/shared/packs/claudinite-dashboard/**'
+      - '.claudinite/shared/engine/**'
+      - '.claudinite-checks.json'
+      - '.github/workflows/claudinite-dashboard-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never two deployments at once, and a superseded build is not worth finishing.
+concurrency:
+  group: claudinite-dashboard-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Assemble the site
+        run: node .claudinite/shared/packs/claudinite-dashboard/build-site.mjs
+
+      # The build exits clean with no `_site` when the mount does not yet carry the
+      # dashboard — adopted, not yet converged. Uploading nothing would fail the run,
+      # and deploying an empty artifact would replace a working site with a 404.
+      - name: Is there a site to publish?
+        id: built
+        run: |
+          if [ -f _site/index.html ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "No _site/index.html — skipping the deploy until the mount carries the dashboard."
+          fi
+
+      - uses: actions/configure-pages@v5
+        if: steps.built.outputs.ready == 'true'
+
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.built.outputs.ready == 'true'
+        with:
+          path: _site
+
+    outputs:
+      ready: ${{ steps.built.outputs.ready }}
+
+  deploy:
+    needs: build
+    if: needs.build.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

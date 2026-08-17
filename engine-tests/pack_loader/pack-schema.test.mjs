@@ -98,3 +98,23 @@ test('real corpus: every pack satisfies the spec it is loaded through', async ()
   assert.ok(packs.length > 0, 'no packs discovered');
   assert.deepEqual(errors.map((e) => e.what), []);
 });
+
+// A handover step that carries only a sentence is a note someone has to interpret; it
+// needs `breaks` to judge urgency and `done` to ever close the tracking issue. The
+// shape is the rule for handing over human-only work, so half of it is not valid.
+test('adoptionHandover requires all three parts of a step', () => {
+  const base = { id: 'p', ruleRoutingGuidance: { belongs: 'a', excludes: 'b' } };
+  const ok = validateManifest({ ...base, adoptionHandover: [{ step: 'Flip it', breaks: 'nothing works', done: 'it is on' }] });
+  assert.deepEqual(ok, []);
+
+  for (const bad of [
+    [{ step: 'Flip it' }],
+    [{ step: 'Flip it', breaks: 'x' }],
+    [{ step: 'Flip it', breaks: 'x', done: '   ' }],
+    [{ breaks: 'x', done: 'y' }],
+    'not an array',
+  ]) {
+    assert.ok(validateManifest({ ...base, adoptionHandover: bad }).length > 0,
+      `expected a rejection for ${JSON.stringify(bad)}`);
+  }
+});
