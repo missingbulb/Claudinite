@@ -20,6 +20,12 @@ into a workflow belongs to [github-actions](../github-actions/). This pack is th
   hardcode the version-stamped path you found by looking: it moves with the next image, and the
   failure lands on whoever rebuilds rather than on whoever wrote it.
 
+- **A fresh install of the driver package is the same danger from upstream.** Reinstalling the
+  package to fix an import error just as easily resolves to a newer release than the one paired
+  with the environment's pinned browser — it then hunts for a browser build the image was never
+  given and fails asking for a network install the sandbox cannot make. Resolve the
+  already-installed package by its global path instead of adding a second copy.
+
 - **A committed pixel golden is only comparable under the exact build that rendered it.** Two
   browsers a version apart rasterise text and shadows differently, so a comparison across them
   measures the renderer, not the product. Where the output is compared pixel by pixel, read the
