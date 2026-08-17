@@ -197,5 +197,9 @@ test('each worker reconciles its OWN tracker by exact title — three tasks neve
     assert.ok(worker.includes(`\`${title}\``), `${id}/task.md does not name its tracker \`${title}\``);
     // The tracker's state carries no meaning, so no worker may open or close it.
     assert.match(worker, /Never open, close, or reopen the tracker/);
+    // The tracker logs changes, not scans: a run that acted on nothing (issues) or
+    // re-derived the same picture (PRs, branches) leaves it untouched, and a repo
+    // with nothing to record never gets a tracker at all.
+    assert.match(worker, /nothing to record/, `${id}/task.md does not gate its tracker write on having something to record`);
   }
 });
