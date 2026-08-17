@@ -295,17 +295,16 @@ answer whose question the pack no longer declares (renamed or removed upstream) 
 `config` finding, and a malformed `questions` declaration is a blocking one like any broken
 manifest.
 
-## Corpus tally — checks vs prose
+## Corpus size — checks vs prose
 
-| | Count |
-|---|---|
-| **Hardcoded conformance checks** | **94** — every rule the runner carries: each pack's own, its bundled skills' checks, and the contributed barriers, plus the canon home's own [canon-curation](../.claudinite/local/packs/canon-curation/README.md) and [claudinite](../.claudinite/local/packs/claudinite/RULES.md) local packs |
-| PreToolUse guard | 1 (remote-branch-delete) |
-| Platform setting | 1 (squash-only) |
-| **Prose rules** — every rule in a pack's `RULES.md` | **382** across 23 packs, **21,575 words** |
-| Prose — research-project playbook (class pack) | 54 |
-| Prose — spec-driven-product playbook (class pack) | 26 |
+Counted, never quoted: `check_the_world.mjs --list` prints the check catalog a rule at a time (id,
+severity, description, doc pointer), and each pack README's rule index carries that pack's prose rules
+with their word counts. Ask those two, in the tree in front of you. A total transcribed into this file
+is a copy of derived data that every pack change falsifies — it drifted to 41 against a real 65 once,
+and the ratio it fed was wrong by a third.
 
-Both counts are **derived, not maintained**, and guarded in `packs-tests/`: `check_the_world.mjs --list` prints the check catalog a rule at a time (id, severity, description, doc pointer), and the prose figures are the packs' own rule indexes summed. Read the per-pack breakdown off `--list` and off each pack README's index rather than trusting a hand-written split — the previous check split drifted to 41 against a real 65, and the ratio it fed was wrong by a third.
-
-**Ratio ≈ 94 hardcoded : 381 prose ≈ 1 : 4.1** (~20% of rules mechanized). Read against the *convertible* subset it is higher still, though the audit's own arithmetic has been overtaken: it found ~45 rules with any static signature — the other ~105 judgment, in-flight process, or runtime knowledge that *should* stay prose — and the check count has since passed that estimate, so treat ~45 as that audit's floor rather than a live ceiling. The `prose-to-checks` sweep keeps working the remainder; its adversarial pass rejects candidates whose detection would false-positive (the two SAM YAML checks needed a structural parser to stay FP-free), so the yield is deliberately small and high-precision.
+The shape the numbers keep showing: roughly one hardcoded check per four prose rules. Most of the
+remainder is judgment, in-flight process, or runtime knowledge that *should* stay prose. The
+`prose-to-checks` sweep works the convertible part; its adversarial pass rejects candidates whose
+detection would false-positive (the two SAM YAML checks needed a structural parser to stay FP-free),
+so the yield is deliberately small and high-precision.

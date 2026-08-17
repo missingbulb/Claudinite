@@ -78,7 +78,7 @@ The "member X should declare existing pack Y" note from step 3 stays a tracker n
 The standing log is the issue titled exactly **`Claudinite tracker: Discover Canon Packs`**.
 
 - **Find it by that exact title, never a fuzzy match or a hard-coded number** (a bare number can dangle).
-- **Create it already closed if missing. Never open, close, or reopen it** — its state carries no meaning; only the log does.
+- **Create it already closed if missing** — creation always lands an issue open and ignores a `state: closed` argument, so create it and close it in a second call. **Never open, close, or reopen it** afterward — its state carries no meaning; only the log does.
 - Log every run as a **dated comment**: the members swept; each pack authored (technology, the members that evidenced it, the rungs its rules landed on); the adopt issue opened in each of those members (or why it could not be); each "member X should declare existing pack Y" note; and, for a candidate you rejected, its name and why. "Nothing unhomed this run" is worth a line too.
 
 ## What this task must never do

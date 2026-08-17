@@ -26,8 +26,9 @@ tracker instead of guessing — an empty result must mean "checked and clean", n
 ## 3. Reconcile this task's tracker
 
 One standing tracker issue per repo, titled exactly `Claudinite tracker: JWT advisory watch` — found
-by that **exact title, never a fuzzy match**; create it **already closed** if absent (never a fresh
-issue per run). Touch it two ways each run:
+by that **exact title, never a fuzzy match**; create it **already closed** if absent — creation always
+lands an issue open and ignores a `state: closed` argument, so create it and close it in a second call
+(never a fresh issue per run). Touch it two ways each run:
 
 - **Rewrite the issue body** to today's **dated** snapshot: the library list with versions, the
   advisory hits with their fixed-in versions (or "all clean" / "lookup unavailable"). The body is

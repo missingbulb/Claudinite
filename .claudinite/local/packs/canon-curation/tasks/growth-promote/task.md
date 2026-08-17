@@ -44,7 +44,7 @@ Append a dated comment for every run that promoted at least one lesson, and for 
 The standing self-improvement log is the issue titled exactly **`Claudinite tracker: Promote to Canon`**.
 
 - **Find it by that exact title, never a fuzzy match or a hard-coded number** (a bare number can dangle).
-- **Create it already closed if missing. Never open, close, or reopen it** — its state carries no meaning; only the log does.
+- **Create it already closed if missing** — creation always lands an issue open and ignores a `state: closed` argument, so create it and close it in a second call. **Never open, close, or reopen it** afterward — its state carries no meaning; only the log does.
 - Log each run as a **dated comment** — not a sub-issue, so history accumulates in one scrollable feed — the date, and per lesson: the origin repo, the **ladder rung it landed on** (check id / skill / owning doc, with the named reason when prose was the fallback), and the generalized rule (or, for a notable rejection, the reason and the existing rule that already covers it).
 
 ## What this task must never do

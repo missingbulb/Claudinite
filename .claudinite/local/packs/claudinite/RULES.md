@@ -104,10 +104,11 @@ lesson at the strongest mechanism available — a check where the rule is determ
   declaration and the home doesn't declare `git-github`, so an unmounted skill says nothing about
   whether its procedure applies.
 
-- **Adding or changing a check** — recompute `packs/README.md`'s tally (`discoverPacks` +
-  `run-active-pack-rules.mjs`) rather than taking a side of a conflict, update the pack's catalog
-  row too, and re-run the suite against current `main` before merging: a whole-tree aggregate is
-  judged post-merge, so a branch's own green never covers it. (portable → `merge-to-main`)
+- **Adding or changing a check** — update the pack's catalog row, and re-run the suite against
+  current `main` before merging: a whole-tree aggregate is judged post-merge, so a branch's own green
+  never covers it. Never transcribe a corpus-wide total into a doc — `packs/README.md` states how to
+  count checks and rules instead of quoting a number, so every pack change no longer edits it.
+  (portable → `merge-to-main`)
 
 - **Writing a check's `fix` text** — name only remedies that match the enforced severity;
   sessions follow the words, not the `severity` field. An advisory finding's remedies are act on
