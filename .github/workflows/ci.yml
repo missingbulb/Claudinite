@@ -58,12 +58,35 @@ jobs:
           # 187s of user+sys on 4 cores). Doubling the workers: 106s -> 70s, with 16
           # buying only another 2s.
           node --test --test-concurrency=$(( $(nproc) * 2 )) "${tests[@]}"
-      - name: Conformance sweep
-        # The world sweep's home is the test/CI flow (not the Stop hook, which
-        # carries only the work scope) — this canon repo models the pattern
-        # bootstrap wires into consumers. World only: the work scope judges a
-        # session's change and runs at that session's Stop hook, not here.
+      - name: Conformance sweep (world scope)
+        # The tree as it stands — the pattern bootstrap wires into consumers.
         run: node engine/checks/check_the_world.mjs
+      - name: Conformance sweep (work scope)
+        # The CHANGE, not the tree: this branch's diff against origin/main, the only
+        # scope that can see what a commit did rather than what the repo now holds.
+        # It used to run at the session's Stop hook and nowhere else, so a rule about
+        # the change was enforced only where a session happened to be — a hand-pushed
+        # branch, an interrupted session, or a hook that never fired reached main
+        # unjudged.
+        #
+        # THE BASE REF IS NAMED AND FETCHED. actions/checkout leaves no origin/main
+        # behind, and a work scope with no base resolves to an EMPTY DIFF — which
+        # passes every rule, silently. Fetching it first is what keeps a green run
+        # meaningful (engine-tests/ci-work-scope.test.mjs holds both halves).
+        #
+        # No --transcript, so the conversation-surface rules self-skip; every file-
+        # and commit-scoped work rule runs.
+        #
+        # NOT ON claudinite/* — the automation's own delivery branches: the update and
+        # maintenance PRs, and every deliverGenerated artifact. None has a session or an
+        # issue behind it, so task-lifecycle would red a nightly regenerate for lacking
+        # a task it never had; their gate is the world sweep and the self-test. A push
+        # to main is skipped for the reason it is meaningless there: the branch IS the
+        # base, so the diff is empty by construction.
+        if: ${{ github.event_name != 'push' && !startsWith(github.head_ref || github.ref_name, 'claudinite/') }}
+        run: |
+          git fetch --no-tags --quiet origin +refs/heads/main:refs/remotes/origin/main
+          node engine/checks/check_the_work.mjs --changed --base origin/main
       - name: Growth write-surface gate
         # The lifecycle's capture runs (extract, dedup) are bounded to the repo's own
         # local packs. Unlike promote below, a capture run marks ITSELF — the pinned
