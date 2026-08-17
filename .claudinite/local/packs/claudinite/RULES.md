@@ -33,10 +33,14 @@ lesson at the strongest mechanism available — a check where the rule is determ
   reconfigured. Where nothing weaker can work (`FLEET_GITHUB_TOKEN`), name the exact scope and
   have the automation report when it is missing rather than degrade silently.
 
-- **Landing a change to what members receive** — force a member to receive it in the same
-  session: drive Shepherd's `fleet-baseline` with `follow`, report per member unasked, and attach
-  the repos that verification needs rather than offering to. A dispatch is not a result; 204 means
-  queued.
+- **Landing a change to what members receive** — force delivery in the same session only when
+  *"will it work on every repo?"* is a live question: the answer turns on how members differ —
+  engine flow, a contract their own files must satisfy, a stub or workflow, a migration record, a
+  new config key. Then drive Shepherd's `fleet-baseline` with `follow`, report per member unasked,
+  and attach the repos that verification needs rather than offering to; a dispatch is not a result,
+  and 204 means queued. Where the change is uniform by construction — prose, a doc, a move of
+  something nothing executes from the mount — the nightly converge *is* the delivery, and forcing
+  buys noise rather than assurance.
 
 - **Retiring a field, option or module** — `@deprecated` on its definition, plus a comment at
   each sanctioned holdout's declaration site saying why it still carries the field. Never a
