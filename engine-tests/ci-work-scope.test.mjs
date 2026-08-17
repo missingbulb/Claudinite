@@ -17,7 +17,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -50,11 +50,18 @@ test('CI errors on an empty scope — the runner is as silent about judging noth
   assert.match(CI, /\[ "\$changed" -gt 0 \] \|\|/);
 });
 
-// The integration half: the runner really does answer in the shape CI invokes it,
-// against this repo's own tree — the real-tree run the fixture cannot stand in for.
-test('the runner answers cleanly in CI\'s exact invocation against the real tree', () => {
-  const out = execFileSync('node', [RUNNER, '--changed', '--base', 'origin/main'], {
+// The integration half: the runner really does ANSWER in the shape CI invokes it,
+// against this repo's own tree — the real-tree run no fixture stands in for.
+//
+// What it asserts is that the invocation is well-formed, NOT that this branch is
+// clean. Whether the branch violates a rule is the CI step's verdict, and a test
+// that duplicated it would fail the whole unit suite the moment a branch carried a
+// finding — reporting a rule violation as a broken test, at the wrong layer, one
+// step before the sweep that says it properly.
+test('the runner answers in CI\'s exact invocation against the real tree', () => {
+  const { status, stdout } = spawnSync('node', [RUNNER, '--changed', '--base', 'origin/main'], {
     cwd: REPO, encoding: 'utf8', env: { ...process.env, CLAUDINITE_CHECKS_NO_FETCH: '1' },
   });
-  assert.doesNotMatch(out, /\[BLOCKING\]/);
+  assert.ok(status === 0 || status === 1, `the runner exited ${status} — a crash, not a verdict`);
+  if (status === 1) assert.match(stdout, /\[BLOCKING\]/, 'a failing exit must name what failed');
 });
