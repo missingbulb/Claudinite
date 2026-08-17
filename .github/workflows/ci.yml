@@ -62,39 +62,20 @@ jobs:
         # The tree as it stands — the pattern bootstrap wires into consumers.
         run: node engine/checks/check_the_world.mjs
       - name: Conformance sweep (work scope)
-        # The CHANGE, not the tree: this branch's diff against origin/main, the only
-        # scope that can see what a commit did rather than what the repo now holds.
-        # It used to run at the session's Stop hook and nowhere else, so a rule about
-        # the change was enforced only where a session happened to be — a hand-pushed
-        # branch, an interrupted session, or a hook that never fired reached main
-        # unjudged.
+        # The CHANGE, not the tree: this branch's diff against the base branch, the
+        # only scope that can see what a commit did rather than what the repo now
+        # holds. It used to run at the session's Stop hook and nowhere else, so a
+        # rule about the change was enforced only where a session happened to be.
         #
-        # THE BASE REF IS NAMED AND FETCHED. actions/checkout leaves no origin/main
-        # behind, and a work scope with no base resolves to an EMPTY DIFF — which
-        # passes every rule, silently. Fetching it first is what keeps a green run
-        # meaningful (engine-tests/ci-work-scope.test.mjs holds both halves).
+        # The recipe — fetch the base, skip the engine's own branches, refuse an
+        # empty scope, sweep — lives in the engine entry point, which every member
+        # vendors and runs by the same one line. This repo is the one that runs it
+        # from the repo root instead of the mount.
         #
-        # No --transcript, so the conversation-surface rules self-skip; every file-
-        # and commit-scoped work rule runs.
-        #
-        # NOT ON claudinite/* — the automation's own delivery branches: the update and
-        # maintenance PRs, and every deliverGenerated artifact. None has a session or an
-        # issue behind it, so task-lifecycle would red a nightly regenerate for lacking
-        # a task it never had; their gate is the world sweep and the self-test. A push
-        # to main is skipped for the reason it is meaningless there: the branch IS the
-        # base, so the diff is empty by construction.
-        if: ${{ github.event_name != 'push' && !startsWith(github.head_ref || github.ref_name, 'claudinite/') }}
-        run: |
-          git fetch --no-tags --quiet origin +refs/heads/main:refs/remotes/origin/main
-          # The runner is SILENT on a clean sweep, and equally silent on a sweep that
-          # judged nothing — so the scope is printed, and an empty one is an error
-          # rather than a pass. Every branch reaching this step changed at least one
-          # file; zero means the base did not resolve, which is the failure this whole
-          # step exists to stop being invisible.
-          changed=$(git diff --name-only origin/main...HEAD | wc -l)
-          echo "work scope: $changed changed file(s) vs origin/main"
-          [ "$changed" -gt 0 ] || { echo "::error::no diff against origin/main — the work sweep would judge nothing"; exit 1; }
-          node engine/checks/check_the_work.mjs --changed --base origin/main
+        # --branch explicitly: the checkout above is a detached head at the PR's real
+        # head sha, where `rev-parse --abbrev-ref HEAD` says "HEAD" and no branch name
+        # is discoverable — so the skip for engine-authored branches would never fire.
+        run: node engine/checks/ci-work-scope.mjs --branch "${{ github.head_ref || github.ref_name }}"
       - name: Growth write-surface gate
         # The lifecycle's capture runs (extract, dedup) are bounded to the repo's own
         # local packs. Unlike promote below, a capture run marks ITSELF — the pinned

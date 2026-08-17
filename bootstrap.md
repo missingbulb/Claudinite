@@ -213,25 +213,43 @@ runs recurring **classes** of project, each carried by a project-class pack:
    facets and extracts its working instructions into new/refined canon packs (the primary
    deliverable) plus a thin project-specific overlay.
 
-## Part 8 — wire the world sweep into the test/CI flow, and land green
+## Part 8 — wire both sweeps into the test/CI flow, and land green
 
-The **world-scope** sweep is a whole-repo invariant assertion — the same shape as a test suite —
-so it runs wherever the project runs its tests, not on the Stop hook. Wire it in as its own step,
-invoked as the standalone command (it is the engine's always-vendored Node CLI, so it runs in any
-flow regardless of the project's own language — **never** add it as a language-specific test file
+Two commands, answering two different questions. Wire each in as its own step, invoked as the
+standalone command (both are the engine's always-vendored Node CLIs, so they run in any flow
+regardless of the project's own language — **never** add either as a language-specific test file
 a runner discovers):
 
 ```sh
-node .claudinite/shared/engine/checks/check_the_world.mjs
+node .claudinite/shared/engine/checks/check_the_world.mjs                    # the TREE
+node .claudinite/shared/engine/checks/ci-work-scope.mjs --branch "$BRANCH"   # the CHANGE
 ```
 
+The **world** sweep is a whole-repo invariant assertion — the same shape as a test suite. The
+**work** sweep judges this branch's diff against the base branch, which is the only way to see
+what a change *did* rather than what the repo now contains: whether a commit references its
+issue, whether a merge commit slipped in, whether an edit that must carry something with it did.
+The Stop hook runs the work scope too, but only where a session runs — an unattended commit or a
+hand-pushed branch reaches `main` unjudged otherwise.
+
+`ci-work-scope.mjs` owns everything that makes that sweep meaningful, so a project carries the
+invocation and never the recipe: it fetches the base branch (a CI checkout has none, and a
+baseless scope is an empty diff that passes every rule), refuses a scope that would judge
+nothing, skips the engine's own `claudinite/…` branches (their PRs have no issue behind them,
+and their auto-merge is a queue for checks — a red check there stops the repo updating rather
+than annoying anyone), and exits non-zero on a blocking finding. Pass `--branch` wherever the
+checkout is detached (GitHub Actions: `${{ github.head_ref || github.ref_name }}`), since a
+detached head reports no branch name and the skip above would never fire.
+
 - **The project already has a test/CI flow** (a CI job, a `make test` target, an npm/pnpm
-  `test` script, a `justfile`, …): add the command above as one more step, so a red world sweep
-  fails that flow exactly like a failing test. Only the world sweep goes here — the **work** scope
-  judges a session's own change and runs at that session's Stop hook, not in the test/CI flow.
+  `test` script, a `justfile`, …): add both commands as two more steps, so a red sweep fails that
+  flow exactly like a failing test.
 - **The project has none:** add a **minimal** flow — a single CI job (or a `make`/script target)
-  whose steps run the project's own tests, if any, then the world command above. The point is a
-  deterministic place the whole-repo sweep runs at each change; keep it as small as the repo needs.
+  whose steps run the project's own tests, if any, then the two commands above. The point is a
+  deterministic place both sweeps run at each change; keep it as small as the repo needs.
+- **The work sweep needs the base branch reachable**, so a CI checkout must not be shallow to the
+  point of hiding it (`fetch-depth: 0` on `actions/checkout`); the entry point fetches the ref
+  itself and fails loudly rather than judging an empty diff.
 
 Then run the world sweep once locally and clear what it surfaces. On a repo with existing code,
 **expect a backlog** — enforcement scope is whole-repo, and findings in code you never touched

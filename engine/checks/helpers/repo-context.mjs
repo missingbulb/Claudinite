@@ -15,8 +15,14 @@ function sh(root, cmd, args, { allowFail = false, input = undefined, timeout = u
 const git = (root, ...args) => sh(root, 'git', args);
 const gitTry = (root, ...args) => sh(root, 'git', args, { allowFail: true });
 
+// The base branch this repo's work is judged against, in preference order.
+// Exported because the CI entry point (../ci-work-scope.mjs) fetches these same
+// refs before a context is built at all — one list, so what CI fetches and what a
+// context resolves can never name different branches.
+export const BASE_REF_CANDIDATES = ['origin/main', 'origin/master', 'main', 'master'];
+
 function resolveBaseRef(root) {
-  for (const ref of ['origin/main', 'origin/master', 'main', 'master']) {
+  for (const ref of BASE_REF_CANDIDATES) {
     if (gitTry(root, 'rev-parse', '--verify', '--quiet', `${ref}^{commit}`) !== null) return ref;
   }
   return null;
