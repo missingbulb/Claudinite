@@ -10,7 +10,7 @@ test('known repos map to their pinned minutes', () => {
   assert.equal(hashedMinute('missingbulb/GoogleCalendarEventCreator'), 24);
   assert.equal(hashedMinute('missingbulb/Claudinite'), 44);
   assert.equal(hashedMinute('missingbulb/EdFringeNow'), 49);
-  assert.equal(hashedMinute('missingbulb/Sheepdog'), 10);
+  assert.equal(hashedMinute('missingbulb/Shepherd'), 11);
 });
 
 test('every minute lands in the :10–:50 band the shape check enforces', () => {

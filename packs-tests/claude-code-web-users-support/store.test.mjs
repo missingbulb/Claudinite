@@ -13,7 +13,7 @@ test('resolveStore: a repo is the whole requirement; path defaults and normalize
   assert.deepEqual(resolveStore({ repo: 'o/n', path: './team' }), { repo: 'o/n', path: 'team' });
   // Case is preserved: the value is written verbatim into a URL, and a repo path is
   // not case-normalizable without guessing.
-  assert.equal(resolveStore({ repo: 'MissingBulb/Sheepdog' }).repo, 'MissingBulb/Sheepdog');
+  assert.equal(resolveStore({ repo: 'MissingBulb/Shepherd' }).repo, 'MissingBulb/Shepherd');
 });
 
 test('resolveStore: nothing usable is null — "unset" and "wrong" collapse on purpose', () => {

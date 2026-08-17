@@ -223,7 +223,7 @@ test('apply.mjs really performs the pack-declaration op — the wire, not just t
     // declaration the fixture started from.
     assert.deepEqual(after.packs, [
       'basics',
-      { id: 'claude-code-web-users-support', config: { repo: 'missingbulb/Sheepdog' } },
+      { id: 'claude-code-web-users-support', config: { repo: 'missingbulb/Shepherd' } },
       'core',
     ]);
     // …and running it again writes nothing at all.
@@ -238,7 +238,7 @@ test('claude-code-web-users-support migration: seeds the pack with the fleet\'s 
   assert.ok(m, 'claude-code-web-users-support migration is discovered');
   // The one-time backfill: the pack every member should run, and the store none of
   // them can derive.
-  assert.deepEqual(m.declarePacks, [{ id: 'claude-code-web-users-support', config: { repo: 'missingbulb/Sheepdog' } }]);
+  assert.deepEqual(m.declarePacks, [{ id: 'claude-code-web-users-support', config: { repo: 'missingbulb/Shepherd' } }]);
 
   const read = (json) => async () => (json === null ? null : JSON.stringify(json));
   assert.equal(await m.legacyPresent(() => false, read({ packs: ['basics'] })), true, 'pack undeclared -> legacy');

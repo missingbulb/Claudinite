@@ -31,16 +31,16 @@ function ctx({ seed, own, declared = true }) {
 }
 
 test('a seed disagreeing with what this repo runs is found — and really is what the fleet would be given', () => {
-  const c = ctx({ own: { repo: 'missingbulb/Sheepdog' }, seed: { repo: 'missingbulb/Claudinite' } });
+  const c = ctx({ own: { repo: 'missingbulb/Shepherd' }, seed: { repo: 'missingbulb/Claudinite' } });
   const found = rule.run(c);
   assert.equal(found.length, 1);
   assert.equal(found[0].rule, 'fleet-pack-seed-agrees');
   assert.equal(found[0].severity, 'blocking');
   assert.match(found[0].what, /missingbulb\/Claudinite/);
-  assert.match(found[0].what, /missingbulb\/Sheepdog/);
+  assert.match(found[0].what, /missingbulb\/Shepherd/);
   assert.ok(found[0].line > 0, 'points at a line');
   // the defect the finding claims, demonstrated against the real sweep's config reader
-  const { packSeeds } = parseSheepdogConfig(JSON.parse(c.read('.claudinite-checks.json')), 'missingbulb/Sheepdog');
+  const { packSeeds } = parseSheepdogConfig(JSON.parse(c.read('.claudinite-checks.json')), 'missingbulb/Shepherd');
   assert.deepEqual(packSeeds.find((s) => s.id === PACK).config, { repo: 'missingbulb/Claudinite' });
 });
 

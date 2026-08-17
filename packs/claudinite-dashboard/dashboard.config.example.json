@@ -14,7 +14,7 @@
 
   "clientId": "Iv1.0123456789abcdef",
   "exchangeUrl": "https://claudinite-oauth.example.workers.dev",
-  "redirectUri": "https://missingbulb.github.io/Sheepdog/",
+  "redirectUri": "https://missingbulb.github.io/Shepherd/",
   "scope": null,
 
   "canonRepo": "missingbulb/Claudinite",

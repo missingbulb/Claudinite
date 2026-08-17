@@ -43,7 +43,7 @@ export async function loadConfig(url = './dashboard.config.json') {
 // deployment, which is the member case.
 //
 // A roster is read for its KEYS under `repos` when it is a fleet artifact (the shape
-// Sheepdog already generates), or as a plain array of names. Both are accepted
+// Shepherd already generates), or as a plain array of names. Both are accepted
 // because the artifact's job is not to serve this page and its shape is not ours to
 // dictate.
 export function rosterFrom(doc) {

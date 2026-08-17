@@ -10,7 +10,7 @@ import { parseSheepdogConfig } from '../../packs/sheepdog/fleet-config.mjs';
 
 test('parseSheepdogConfig: reads owner + exclude; defaults owner to the home owner; throws when absent', () => {
   const cfg = { packs: [{ id: 'sheepdog', config: { owner: 'MissingBulb', exclude: ['Owner/Repo-A', 'owner/repo-b'] } }] };
-  const { owner, exclude } = parseSheepdogConfig(cfg, 'missingbulb/sheepdog');
+  const { owner, exclude } = parseSheepdogConfig(cfg, 'missingbulb/shepherd');
   assert.equal(owner, 'missingbulb');
   assert.ok(exclude.has('owner/repo-a') && exclude.has('owner/repo-b'));
   // owner defaults to the home repo's owner
@@ -46,7 +46,7 @@ test('parseSheepdogConfig: packSeeds is the fleet\'s own vocabulary, and default
 });
 
 test('parseSheepdogConfig: canonRepo and staleDays default, so an existing config keeps working', () => {
-  const bare = parseSheepdogConfig({ packs: [{ id: 'sheepdog', config: { owner: 'MissingBulb' } }] }, 'missingbulb/sheepdog');
+  const bare = parseSheepdogConfig({ packs: [{ id: 'sheepdog', config: { owner: 'MissingBulb' } }] }, 'missingbulb/shepherd');
   assert.equal(bare.canonRepo, 'missingbulb/Claudinite');
   assert.equal(bare.staleDays, 14);
   const set = parseSheepdogConfig({ packs: [{ id: 'sheepdog', config: { owner: 'acme', canonRepo: 'acme/Fork', staleDays: 3 } }] }, 'acme/fleet');

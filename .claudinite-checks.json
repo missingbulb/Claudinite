@@ -100,10 +100,10 @@
     {
       "id": "claude-code-web-users-support",
       "config": {
-        "repo": "missingbulb/Sheepdog"
+        "repo": "missingbulb/Shepherd"
       },
       "answers": {
-        "store": "missingbulb/Sheepdog — the fleet's own repo, which holds one <email>.md per person under preferences/"
+        "store": "missingbulb/Shepherd — the fleet's own repo, which holds one <email>.md per person under preferences/"
       }
     }
   ],
