@@ -42,11 +42,14 @@ export default {
   prework_timeout: 900,
   required_secrets: ['FLEET_GITHUB_TOKEN'], // the account-spanning PAT, WITH Actions read+write (a dispatch is an Actions write)
 
-  // Never due on its own: `manual` means dueSlots skips this task unconditionally,
-  // so this verdict is consulted by nothing — a forced run bypasses it by design
-  // (engine/scheduler/run.mjs). Declared because the contract requires one, and
-  // honest about what it would say if asked.
+  // Never due on its own — `manual` means the tick never instantiates this task,
+  // so an item exists ONLY because a human created one, and that IS the request.
+  // Hence run: true. The queue evaluates this verdict at pick (tasks-dispatch
+  // DESIGN §6.4), unlike the slot mechanism where a forced run bypassed it; a
+  // no-go here has no anchor to roll to, so it would close the operator's own
+  // item `outcome:obsolete` without running. Answering `false` is how this lever
+  // stopped working at the flip.
   precondition() {
-    return { run: false, reason: 'manual-only lever — runs only when a hand-started scheduler run forces it (FORCE_TASKS=fleet-baseline)' };
+    return { run: true, reason: 'a work item for this manual lever exists, which is the request to run it' };
   },
 };
