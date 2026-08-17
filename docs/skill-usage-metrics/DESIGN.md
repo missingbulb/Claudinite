@@ -447,37 +447,73 @@ scheduler. A repo that has never captured folds its task rows and nothing else.
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "foldedThrough": "2026-07-26",
   "runsFoldedThrough": "2026-07-28T22:44:00Z",
+  "fields": {
+    "day": ["captures","merges","sessions","userMessages","userCommands"],
+    "week": ["days","captures","merges","sessionDays","userMessages","userCommands"],
+    "checks": ["runs","failures","errors","blocking","advisory","ciRuns","ciFailures"],
+    "checkFindings": ["blocking","advisory"],
+    "tasks": ["agent","prework","skipped","failed","deferred"],
+    "taskExec": ["success","failed","task-gone","invalid"]
+  },
   "days": {
-    "2026-07-28": { "captures": 3, "merges": 2, "sessions": 2,
-                    "userMessages": 31, "userCommands": 4,
-                    "skillLoads": { "merge-to-main": 1 },
-                    "tasks": { "tidy-repo/tidy-issues":
-                                 { "agent": 1, "preprocess": 0, "skipped": 23,
-                                   "failed": 0, "deferred": 0 } },
-                    "checks": {
-                      "work":  { "runs": 34, "failures": 12, "errors": 0, "blocking": 15,
-                                 "advisory": 0, "ciRuns": 0, "ciFailures": 0 },
-                      "world": { "runs": 42, "failures": 3, "errors": 0, "blocking": 5,
-                                 "advisory": 131, "ciRuns": 1, "ciFailures": 1 }
-                    },
-                    "checkFindings": { "task-lifecycle": { "blocking": 8, "advisory": 0 } } }
+    "2026-07-28": {"totals":[3,2,2,31,4],"skillLoads":{"merge-to-main":1},"checks":{"work":[34,12,0,15,0,0,0],"world":[42,3,0,5,131,1,1]},"checkFindings":{"task-lifecycle":[8,0]},"tasks":{"tidy-repo/tidy-issues":[1,0,23,0,0]}}
   },
   "weeks": {
-    "2026-W30": { "days": 7, "captures": 11, "merges": 9, "sessionDays": 8,
-                  "userMessages": 210, "userCommands": 23,
-                  "skillLoads": { "merge-to-main": 6 },
-                  "tasks": { "tidy-repo/tidy-issues":
-                               { "agent": 7, "preprocess": 0, "skipped": 161,
-                                 "failed": 0, "deferred": 0 } },
-                  "checks": { "work": { "runs": 190, "failures": 51, "errors": 0, "blocking": 66,
-                                        "advisory": 3, "ciRuns": 0, "ciFailures": 0 } },
-                  "checkFindings": { "task-lifecycle": { "blocking": 40, "advisory": 0 } } }
+    "2026-W30": {"totals":[7,11,9,8,210,23],"skillLoads":{"merge-to-main":6},"checks":{"work":[190,51,0,66,3,0,0]},"checkFindings":{"task-lifecycle":[40,0]},"tasks":{"tidy-repo/tidy-issues":[7,0,161,0,0]}}
   }
 }
 ```
+
+### The shape, and why it is that shape
+
+Every counter row is a positional **tuple** whose field order the file declares
+once, in its own `fields` header, and the file is written **one line per row**.
+Fully spelling each row cost ~120 bytes to carry seven numbers, once per day per
+scope per rule per task, and `JSON.stringify(…, null, 2)` then spent a line on
+each of those numbers; together the two took this repo's own file from 64 KB to
+18 KB and made the diff of a regenerated file one line per changed **row**
+rather than one per changed number. Each writer emits its own file directly —
+there is no shared renderer, because a row on a line is a few lines of code and
+the two files have different shapes.
+
+The format lives in the fold's own task folder
+(`grow_with_claudinite/tasks/usage-fold/usage-format.mjs`), beside the only code
+that writes the file and the only code that reads it back — its own next run.
+**The header in the file is what every other consumer reads**, which is why the
+vocabulary is declared in the data rather than in a module: §6's fleet sweep
+consumes these files across repos and imports nothing to do it.
+
+Three properties are load-bearing, and each is a test:
+
+- **Names stay literal keys** — packs, skills, rules and tasks are never
+  dictionary ids. Adding or removing one has to be nothing but key presence, and
+  week rows freeze forever, so an id table renumbering under them would rewrite
+  history silently.
+- **Unknown is not zero.** A tuple slot is `null`, and a short tuple simply
+  stops, when the row predates the field — a week frozen before a counter
+  existed did not see zero of them, it could not have seen any. Decoding drops
+  the key, and the accumulators start that field from the first day that
+  actually carries it (the same "a partial series beats a wedged one" trade the
+  frozen weeks already make, stated below).
+- **Reading is version-tolerant.** Rows expand against the *file's* declared
+  vocabulary, not the reader's, and a version-1 file — the original fully-spelled
+  objects — decodes as itself, so the fold reads back weeks it froze under
+  earlier code with no rollout ordering. A *retired* field is the one thing that
+  does not survive: it decodes, and then drops out of the file the next time that
+  row is written. **Renaming a counter is therefore a history-losing change** —
+  the frozen week rows spelling the old name are rewritten without it — so a
+  rename keeps both spellings in the vocabulary, or accepts the loss knowingly.
+
+**There is no migration, and no migration record.** The fold rewrites the whole
+file from its decoded prior every run, so a repo carrying the old format is
+converted by its next ordinary nightly run — including a run that finds nothing
+new to count. Both watermarks come across untouched, so nothing is re-counted
+and no closed day is re-folded into a week that already holds it. A repo whose
+fold PR from before the upgrade is still open is no different: prior state is
+read from the base branch, never from that PR.
 
 Keys are sorted for stable diffs. All counters sum exactly under folding —
 except distinct-session counts, which do not (a session spanning two days is
@@ -514,9 +550,17 @@ past error; at this cardinality (~repos × skills × weeks, all small) there is
 nothing to optimize.
 
 - **Grain**: full (week × repo × skill, week × repo × **rule**, and week × repo
-  × **task**) for history, plus the members' current day windows verbatim for the fast view —
+  × **task**) for history, plus the members' current day windows for the fast view —
   "what happened this week?" at day-grain, trends at week-grain. Nothing
-  pre-summed. The checks are carried at the same grain and for the same reason
+  pre-summed. **Rows are copied, never rewritten**: this sweep re-keys the fleet's
+  rows, and each member's file already declares how to read its own, so that
+  declaration is carried beside them under `repos[repo]` (`format`, `fields`) and
+  a reader decodes each repo's rows with that repo's header. The sweep therefore
+  imports no format code at all — which is what keeps two packs from needing a
+  shared module, and stops one repo's numbers from being quietly restated in
+  another repo's vocabulary. The fleet is permanently mid-upgrade (members
+  converge on their own nightly cadence), so per-repo is the honest grain for
+  this, not a migration artifact. The checks are carried at the same grain and for the same reason
   as the skill loads: whether a rule earns its place is a fleet-shaped
   question. A rule that never fires in one repo may simply not be that repo's
   subject; a rule that never fires in **any** of them is mis-described or
@@ -526,8 +570,9 @@ nothing to optimize.
   or with an unreadable one is listed in a `coverage` section as absent —
   census-style, never silently skipped — so gaps in the denominators are
   visible rather than baked in. A member still on an older fold (no `checks`
-  key) lands as an empty check row rather than an exception: the sweep leads
-  the members' upgrades, so that is the normal state for a while.
+  key) lands as a row without one rather than an exception: the sweep leads
+  the members' upgrades, so that is the normal state for a while — and a counter
+  its rows predate stays absent, never a zero it never measured.
 - **A `_note` field** states the sampling population: captured sessions only —
   merging sessions plus sessions that ended cleanly enough for the SessionEnd
   hook. Reclaimed containers and crashes are invisible. The file must not read

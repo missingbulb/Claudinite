@@ -47,7 +47,7 @@ import { makeGh, paged, readDeclaration, isDormant, DECLARATION } from '../../fl
 import { parseSheepdogConfig } from '../../fleet-config.mjs';
 export const MEMBER_USAGE_PATH = '.claudinite/local/usage.GENERATED.json';
 export const FLEET_USAGE_PATH = 'usage-fleet.GENERATED.json';
-export const FLEET_VERSION = 1;
+export const FLEET_VERSION = 2;
 
 // The sampling population, stated in the file itself. This must not read as a
 // census: a session whose container was reclaimed, or that crashed, never captured
@@ -75,45 +75,48 @@ const sortKeys = (obj) => Object.fromEntries(Object.keys(obj).sort().map((k) => 
 // window verbatim for the fast view. Nothing is pre-summed: every coarser view
 // (a skill fleet-wide, a repo over time, this week across the fleet) stays derivable
 // from this file, and a summary that threw away the grain would not.
+//
+// VERBATIM MEANS VERBATIM: a member's row is copied, never rewritten. The member's
+// file declares how to read its own rows, and that declaration is carried beside them
+// under `repos[repo]` — so this sweep needs no knowledge of the format at all, and
+// the members' formats are free to move on their own schedule.
 export function aggregate({ members, absent = [], dormant = [], uncovered = [], outOfScope = [], generatedAt }) {
   const weeks = {};
   const days = {};
   const repos = {};
 
   for (const { repo, usage } of members) {
+    // ROWS PASS THROUGH UNTOUCHED, in both tiers. This sweep re-KEYS the fleet's rows
+    // (by repo, and week × repo); it never re-interprets one. Each member's file is
+    // self-describing — it declares the vocabulary its counter rows are spelled in —
+    // so the member's own header is carried beside its rows under `repos` and a reader
+    // decodes each repo's rows with that repo's header. Nothing here needs to import
+    // the format, and nothing here can quietly restate one repo's numbers in another
+    // repo's vocabulary.
+    //
+    // The week rows carry the member's counters as they came: skill loads, and the
+    // conformance checks at the same grain and for the same reason — whether a rule
+    // earns its place is a FLEET question. A rule that never fires in one repo may
+    // just not be that repo's subject; a rule that never fires in ANY of them is
+    // mis-described or worthless, and a rule that keeps firing everywhere is the
+    // corpus's best-performing guard. Only a view across every member tells those
+    // apart. The `tasks` rows answer the same question about scheduled work — a task
+    // that skips in every member every day is a precondition that never fires; one
+    // that fails across members is broken machinery, not a bad night.
     days[repo] = sortKeys(usage?.days ?? {});
     repos[repo] = {
       foldedThrough: usage?.foldedThrough ?? null,
       weeks: Object.keys(usage?.weeks ?? {}).length,
+      // How to read this repo's rows: the format version its file declared, and the
+      // counter vocabularies it declared with them. A member whose file predates the
+      // header has `fields: null` — its rows are fully-spelled objects and need none.
+      // The fleet is permanently mid-upgrade (members converge on their own nightly
+      // cadence), so this is a standing fact about the file, not a migration artifact.
+      format: Number(usage?.version ?? 1),
+      fields: usage?.fields ?? null,
     };
     for (const [week, row] of Object.entries(usage?.weeks ?? {})) {
-      ((weeks[week] ??= {})[repo] = {
-        days: row.days ?? 0,
-        captures: row.captures ?? 0,
-        merges: row.merges ?? 0,
-        sessionDays: row.sessionDays ?? 0,
-        userMessages: row.userMessages ?? 0,
-        userCommands: row.userCommands ?? 0,
-        skillLoads: sortKeys(row.skillLoads ?? {}),
-        // The conformance checks, at the same grain and for the same reason as the
-        // skill loads: whether a rule earns its place is a FLEET question. A rule
-        // that never fires in one repo may just not be that repo's subject; a rule
-        // that never fires in ANY of them is mis-described or worthless — and a rule
-        // that keeps firing everywhere is the corpus's best-performing guard, which
-        // only a view across every member can tell apart. Defaulted, not required:
-        // a member still on an older fold carries no `checks` key, and it must land
-        // in the file as an empty row rather than an exception.
-        checks: sortKeys(row.checks ?? {}),
-        checkFindings: sortKeys(row.checkFindings ?? {}),
-        // What each member's SCHEDULER did, per task: agent runs, deterministic
-        // preprocessing-only runs, precondition skips, failures, deferrals. Carried
-        // at the same week × repo × task grain and defaulted the same way, but drawn
-        // from a different population and answering a different question — this is
-        // the fleet's view of whether a scheduled task is doing anything at all. A
-        // task that skips in every member every day is a precondition that never
-        // fires; one that fails across members is broken machinery, not a bad night.
-        tasks: sortKeys(row.tasks ?? {}),
-      });
+      (weeks[week] ??= {})[repo] = row;
     }
   }
 
@@ -143,6 +146,37 @@ export function aggregate({ members, absent = [], dormant = [], uncovered = [], 
     days: sortKeys(days),
     weeks: sortKeys(Object.fromEntries(Object.entries(weeks).map(([w, byRepo]) => [w, sortKeys(byRepo)]))),
   };
+}
+
+// The file's text: ONE LINE PER ROW, the unit a reader reads and a recompute rewrites.
+// `JSON.stringify(file, null, 2)` would spend a line per number — across (repos × days)
+// and (weeks × repos × counters) that is most of the file's bytes and a diff nobody can
+// read. The two row maps are nested one level deeper than the rest, so they get their
+// own pass; everything else is small enough to hand to `JSON.stringify` whole.
+export function renderFleetFile(file) {
+  const nested = (obj) => Object.entries(obj ?? {}).map(([outer, rows]) => (
+    Object.keys(rows).length === 0
+      ? `    ${JSON.stringify(outer)}: {}`
+      : [`    ${JSON.stringify(outer)}: {`,
+        Object.entries(rows).map(([k, row]) => `      ${JSON.stringify(k)}: ${JSON.stringify(row)}`).join(',\n'),
+        '    }'].join('\n')
+  )).join(',\n');
+  const block = (name, obj, end) => (Object.keys(obj ?? {}).length === 0
+    ? [`  ${JSON.stringify(name)}: {}${end}`]
+    : [`  ${JSON.stringify(name)}: {`, nested(obj), `  }${end}`]);
+  const plain = (name, value, end) => `  ${JSON.stringify(name)}: ${JSON.stringify(value, null, 2).split('\n').join('\n  ')}${end}`;
+  return [
+    '{',
+    `  "version": ${JSON.stringify(file.version)},`,
+    `  "generatedAt": ${JSON.stringify(file.generatedAt)},`,
+    `  "_note": ${JSON.stringify(file._note)},`,
+    plain('coverage', file.coverage, ','),
+    plain('repos', file.repos, ','),
+    ...block('days', file.days, ','),
+    ...block('weeks', file.weeks, ''),
+    '}',
+    '',
+  ].join('\n');
 }
 
 // The folding members with NO captured activity on the day the file was generated —

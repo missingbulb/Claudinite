@@ -4,8 +4,11 @@ import {
   isUserMessage, commandName, skillToolLoads, countEntries,
   hookCheckRuns, checkSummaries, findingHeaders, checkInvocations, checkOutputs, countChecks,
   foldDays, isoWeek, daysToFold, addDayToWeek, foldUsage, foldTaskRuns, withinTaskWindow,
-  countTaskExecs, emptyTaskExec,
+  countTaskExecs, emptyTaskExec, encodeUsage, decodeUsage,
 } from '../../../../packs/grow_with_claudinite/tasks/usage-fold/fold-usage.mjs';
+import {
+  USAGE_FIELDS, USAGE_VERSION, renderUsageFile,
+} from '../../../../packs/grow_with_claudinite/tasks/usage-fold/usage-format.mjs';
 
 // --- entry fixtures -----------------------------------------------------------
 // Every shape below is copied from real captured transcripts on a conversation-logs
@@ -503,14 +506,17 @@ test('foldUsage: a day whose raw files aged out keeps its week row and drops its
   assert.equal(later.foldedThrough, '2026-07-20', 'and the watermark does not skip forward over days it never saw');
 });
 
-test('foldUsage sorts every key, so an unchanged recompute is byte-identical', () => {
+test('the written file sorts every key, so an unchanged recompute is byte-identical', () => {
+  // Sorting is the ENCODER's job — the fold works in whatever order the sources
+  // arrived, and the file is what has to be stable, because a byte-identical recompute
+  // is what stops the delivery opening a daily no-op PR.
   const files = [
     fileOf('2026-07-27', 2, 's2', { skillLoads: { zeta: 1, alpha: 2 } }),
     fileOf('2026-07-26', 1, 's1', { skillLoads: { middle: 1 } }),
   ];
-  const a = JSON.stringify(foldUsage({ files, prior: {}, today: '2026-07-28' }), null, 2);
-  const b = JSON.stringify(foldUsage({ files: [...files].reverse(), prior: {}, today: '2026-07-28' }), null, 2);
-  assert.equal(a, b);
+  const written = (input) => renderUsageFile(encodeUsage(foldUsage({ files: input, prior: {}, today: '2026-07-28' })));
+  const a = written(files);
+  assert.equal(a, written([...files].reverse()));
   assert.deepEqual(Object.keys(JSON.parse(a).days['2026-07-27'].skillLoads), ['alpha', 'zeta']);
 });
 
@@ -641,4 +647,150 @@ test('countEntries carries taskExec beside the other counters', () => {
     { type: 'user', message: { content: `${execLine('task-gone')}` } },
   ]);
   assert.deepEqual(counts.taskExec, { 'tidy-repo/tidy-issues': { ...emptyTaskExec(), 'task-gone': 1 } });
+});
+
+// --- the file boundary ----------------------------------------------------------
+// The fold works in named counters; the file stores positional tuples. These are the
+// tests of the seam between the two.
+
+test('a fold round-trips through the file unchanged', () => {
+  const folded = foldUsage({
+    files: [
+      fileOf('2026-07-26', 1, 's1', { skillLoads: { 'merge-to-main': 2 }, checks: { work: { runs: 5, failures: 1 } } }),
+      fileOf('2026-07-27', 2, 's2', { skillLoads: { 'writing-tests': 1 } }),
+    ],
+    prior: {}, today: '2026-07-28',
+  });
+  const reread = decodeUsage(JSON.parse(renderUsageFile(encodeUsage(folded))));
+  assert.equal(reread.foldedThrough, folded.foldedThrough);
+  assert.deepEqual(reread.days['2026-07-26'].skillLoads, { 'merge-to-main': 2 });
+  assert.equal(reread.days['2026-07-26'].checks.work.failures, 1);
+  assert.equal(reread.weeks['2026-W30'].captures, 1);
+  // …and folding again from the re-read prior lands in the same place, which is what
+  // the next night's run actually does.
+  const again = foldUsage({ files: [], prior: reread, today: '2026-07-28' });
+  assert.deepEqual(again.weeks, folded.weeks);
+});
+
+test('the file states the vocabulary its tuples are spelled in', () => {
+  const file = encodeUsage(foldUsage({
+    files: [fileOf('2026-07-26', 1, 's1', { checks: { work: { runs: 5, failures: 1 } } })],
+    prior: {}, today: '2026-07-27',
+  }));
+  assert.equal(file.version, USAGE_VERSION);
+  assert.deepEqual(file.fields.checks, [...USAGE_FIELDS.checks]);
+  const tuple = file.days['2026-07-26'].checks.work;
+  assert.equal(tuple[file.fields.checks.indexOf('runs')], 5);
+  assert.equal(tuple[file.fields.checks.indexOf('failures')], 1);
+});
+
+test('an empty counter group is omitted from the file, never written as {}', () => {
+  const file = encodeUsage(foldUsage({
+    files: [fileOf('2026-07-26', 1, 's1', {})], prior: {}, today: '2026-07-27',
+  }));
+  const row = file.days['2026-07-26'];
+  assert.equal(row.tasks, undefined);
+  assert.equal(row.taskExec, undefined);
+  assert.deepEqual(decodeUsage(file).days['2026-07-26'].tasks, {}, 'and it reads back as the empty map it means');
+});
+
+test('a version-1 file decodes as itself — the fold reads back weeks it froze earlier', () => {
+  const v1 = {
+    version: 1,
+    foldedThrough: '2026-07-26',
+    runsFoldedThrough: '2026-07-26T00:00:00Z',
+    days: {},
+    weeks: {
+      '2026-W30': {
+        days: 3, captures: 4, merges: 4, sessionDays: 3, userMessages: 40, userCommands: 1,
+        skillLoads: { 'merge-to-main': 3 }, checks: { work: { runs: 9, failures: 2 } }, checkFindings: {},
+      },
+    },
+  };
+  const decoded = decodeUsage(v1);
+  assert.equal(decoded.weeks['2026-W30'].skillLoads['merge-to-main'], 3);
+  // …and the next fold writes it out in the new shape without recounting anything.
+  const folded = foldUsage({ files: [fileOf('2026-07-27', 1, 's1', {})], prior: decoded, today: '2026-07-28' });
+  const file = encodeUsage(folded);
+  assert.equal(file.version, USAGE_VERSION);
+  assert.equal(file.weeks['2026-W30'].totals[file.fields.week.indexOf('captures')], 4);
+});
+
+test('the first fold after the upgrade rewrites the whole file, losing nothing', () => {
+  // The answer to "is there a migration": no. The fold rewrites the file wholesale
+  // every run from its decoded prior, so the version-1 file a repo is carrying is
+  // converted by its next ordinary run — and the watermarks come across untouched, so
+  // nothing is re-counted and no day is re-folded into a week that already has it.
+  const v1 = {
+    version: 1,
+    foldedThrough: '2026-07-26',
+    runsFoldedThrough: '2026-07-26T03:00:00Z',
+    days: {
+      '2026-07-26': {
+        captures: 2, merges: 2, sessions: 1, userMessages: 9, userCommands: 1,
+        skillLoads: { 'merge-to-main': 2 },
+        checks: { work: { runs: 9, failures: 2, errors: 0, blocking: 3, advisory: 0, ciRuns: 0, ciFailures: 0 } },
+        checkFindings: { 'task-lifecycle': { blocking: 3, advisory: 0 } },
+        tasks: { 'tidy-repo/tidy-issues': { agent: 1, prework: 0, skipped: 5, failed: 0, deferred: 0 } },
+        taskExec: { 'tidy-repo/tidy-issues': { success: 1, failed: 0, 'task-gone': 0, invalid: 0 } },
+      },
+    },
+    weeks: {
+      '2026-W30': {
+        days: 3, captures: 4, merges: 4, sessionDays: 3, userMessages: 40, userCommands: 1,
+        skillLoads: { 'merge-to-main': 3 },
+        checks: { work: { runs: 20, failures: 5, errors: 0, blocking: 8, advisory: 0, ciRuns: 0, ciFailures: 0 } },
+        checkFindings: { 'task-lifecycle': { blocking: 8, advisory: 0 } },
+        tasks: { 'tidy-repo/tidy-issues': { agent: 3, prework: 0, skipped: 15, failed: 0, deferred: 0 } },
+        taskExec: { 'tidy-repo/tidy-issues': { success: 3, failed: 0, 'task-gone': 0, invalid: 0 } },
+      },
+    },
+  };
+  // No new sources at all: the run that finds nothing to count still converts the file.
+  const written = encodeUsage(foldUsage({ files: [], prior: decodeUsage(v1), today: '2026-07-27' }));
+  const back = decodeUsage(written);
+  assert.equal(written.version, USAGE_VERSION);
+  assert.equal(written.foldedThrough, v1.foldedThrough, 'the day watermark does not move');
+  assert.equal(written.runsFoldedThrough, v1.runsFoldedThrough, 'nor the run watermark');
+  assert.deepEqual(back.weeks, v1.weeks, 'every frozen week row survives the conversion intact');
+  // The day tier behaves exactly as it does on any other run — nothing about the
+  // conversion is special. The capture-derived counters recompute from the live files
+  // (none here), and the scheduler's task rows are carried forward on their own window,
+  // which is what keeps a repo whose sessions are all unattended from showing nothing.
+  assert.deepEqual(back.days['2026-07-26'].tasks, v1.days['2026-07-26'].tasks);
+  assert.equal(back.days['2026-07-26'].captures, 0, 'no capture file, no capture-derived count');
+  assert.deepEqual(back.days['2026-07-26'].taskExec, {}, 'and those come from captures too');
+});
+
+test('adding and removing a pack, skill or task is pure key presence', () => {
+  // Names are literal keys, never dictionary ids, precisely so this holds: a skill
+  // that appears carries a key from the day it appears, one that is retired simply
+  // stops having one, and no frozen row anywhere has to be renumbered.
+  const before = encodeUsage(foldUsage({
+    files: [fileOf('2026-07-26', 1, 's1', { skillLoads: { 'old-skill': 2 } })], prior: {}, today: '2026-07-27',
+  }));
+  const after = encodeUsage(foldUsage({
+    files: [fileOf('2026-07-26', 1, 's1', { skillLoads: { 'new-skill': 1 } })], prior: {}, today: '2026-07-27',
+  }));
+  assert.deepEqual(Object.keys(before.days['2026-07-26'].skillLoads), ['old-skill']);
+  assert.deepEqual(Object.keys(after.days['2026-07-26'].skillLoads), ['new-skill']);
+  // The one thing that must NOT move: every other row's encoding is untouched by it.
+  assert.deepEqual(before.days['2026-07-26'].totals, after.days['2026-07-26'].totals);
+  assert.deepEqual(before.fields, after.fields);
+});
+
+test('a counter a row predates stays unknown in the file, never a fabricated zero', () => {
+  // A week frozen before a field existed has no key for it. The tuple slot is `null`,
+  // and it decodes back to no key — the fold then starts that field from the first day
+  // that actually carried it, instead of claiming the week saw zero of them.
+  const prior = {
+    foldedThrough: '2026-07-26',
+    weeks: { '2026-W30': { days: 2, captures: 3, merges: 3, sessionDays: 2, skillLoads: {} } },
+    days: {},
+  };
+  const file = encodeUsage(foldUsage({ files: [], prior, today: '2026-07-27' }));
+  const totals = file.weeks['2026-W30'].totals;
+  assert.equal(totals[file.fields.week.indexOf('captures')], 3);
+  assert.equal(totals[file.fields.week.indexOf('userMessages')], null);
+  assert.ok(!('userMessages' in decodeUsage(file).weeks['2026-W30']));
 });
