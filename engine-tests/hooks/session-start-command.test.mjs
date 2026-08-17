@@ -50,7 +50,7 @@ test('orchestrator runs steps in order, forwards only step stdout, logs the life
   // order, followed by the one-line confirmation footer; the timestamped log
   // goes to stderr + the file, never stdout.
   assert.ok(r.stdout.startsWith('PACKSTEP\nSUMMARY\n'), r.stdout);
-  assert.match(r.stdout, /^Claudinite session-start: ran 6 steps \(mount-skills, selftest, pack-session-start, env-check, interview-check, session-summary\) at .+\.$/m);
+  assert.match(r.stdout, /^Claudinite session-start: ran 7 steps \(git-config, mount-skills, selftest, pack-session-start, env-check, interview-check, session-summary\) at .+\.$/m);
   // No prose step, and none may come back (#807): static pack prose rides CLAUDE.md,
   // on a channel that does not truncate. This hook carries only what a session can
   // learn at session time.
@@ -65,6 +65,29 @@ test('orchestrator runs steps in order, forwards only step stdout, logs the life
     'session-summary: start', 'session-summary: done exit=0',
     'run=testrun orchestrator: done',
   ]) assert.ok(log.includes(s), `log missing line: ${s}\n--- log ---\n${log}`);
+});
+
+test('the git-config step configures the CLONE, and is silent where there is no repo', () => {
+  // The config is per-clone: set at environment-image build time it would be gone
+  // from a fresh checkout, so the assertion is on the repo the session actually has.
+  const corpus = makeCorpus();
+  const projectDir = mkdtempSync(join(tmpdir(), 'claudinite-proj-'));
+  spawnSync('git', ['init', '-q'], { cwd: projectDir });
+  const r = run(corpus, projectDir);
+  assert.equal(r.status, 0);
+  const cfg = (key) =>
+    spawnSync('git', ['-C', projectDir, 'config', '--get', key], { encoding: 'utf8' }).stdout.trim();
+  assert.equal(cfg('merge.ours.driver'), 'true');
+  assert.equal(cfg('rerere.enabled'), 'true');
+  assert.doesNotMatch(r.stdout, /WARNING/);
+  assert.doesNotMatch(r.stdout, /merge\.ours/, 'the step writes nothing into the session context');
+
+  // No repo (a project dir that is not a checkout): fail-soft, logged, no warning.
+  const bare = mkdtempSync(join(tmpdir(), 'claudinite-norepo-'));
+  const r2 = run(corpus, bare);
+  assert.equal(r2.status, 0);
+  assert.doesNotMatch(r2.stdout, /WARNING/);
+  assert.match(readFileSync(join(bare, '.claudinite-hooks.log'), 'utf8'), /git-config: no git repo at/);
 });
 
 test('the self-test judges a tree the converging steps have already converged', () => {

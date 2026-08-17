@@ -244,10 +244,11 @@ through the normal PR flow.
 ## Part 9 — cloud environment setup (Claude Code on the web)
 
 The web base image ships no toolchains; installs belong in the environment **image** (built
-once, snapshotted), not a per-session hook. The corpus holds the one generic script —
-[`engine/hooks/environment-setup-command.sh`](engine/hooks/environment-setup-command.sh), vendored into
-`.claudinite/shared/engine/vendoring/` — identical for every project: paste its full body into the
-environment's **Setup script** field and rebuild. It runs each active pack's declared installs
+once, snapshotted), not a per-session hook. The script to paste is a pack's, not core's —
+[`packs/README.md`](packs/README.md#environment-requirements) names it and the pack that owns it.
+Its body is identical for every project: paste it whole into the environment's **Setup script**
+field and rebuild (`find .claudinite/shared -name environment-setup-command.sh` locates it in a
+mount). It runs each active pack's declared installs
 (`env.mjs install`, driven by the declaration); the SessionStart `env.mjs check` then only
 *probes* and halt-gates on a genuinely missing prerequisite. The network policy must reach what
 the active packs install from (npm registry, `pub.dev`, …) — the corpus itself is already in the

@@ -18,7 +18,7 @@ vendored into every mount regardless of declaration, so a member session can see
 | <img src="grow_with_claudinite/badge.svg" width="18" height="18" alt=""> [grow_with_claudinite](grow_with_claudinite/README.md) | declared (seeded by `--init`, opt-out by removal) | 1 | 0 — growth member-side tasks (extract over activity + conversations / dedup / pack discovery / prose-to-checks) + in-session merge capture |
 | <img src="tidy-repo/badge.svg" width="18" height="18" alt=""> [tidy-repo](tidy-repo/README.md) | declared (seeded by `--init`, opt-out by removal) | 0 | 2 (policy (assess-only-vs-act) + 3 per-dimension tidy tasks (issues daily, PRs/branches weekly)) |
 | <img src="sheepdog/badge.svg" width="18" height="18" alt=""> [sheepdog](sheepdog/README.md) | declared (opt-in; the fleet-enforcer repo only) | 1 | 0 (fleet-enforcer marker + config + the agentless `fleet-roster` daily task (coverage + freshness in one walk)) |
-| <img src="claude-code-web-users-support/badge.svg" width="18" height="18" alt=""> [claude-code-web-users-support](claude-code-web-users-support/RULES.md) | declared (seeded by `--init`) | 2 | 3 (what a project offers people working from the web — today, their personal interaction preferences) |
+| <img src="claude-code-web-users-support/badge.svg" width="18" height="18" alt=""> [claude-code-web-users-support](claude-code-web-users-support/RULES.md) | declared (seeded by `--init`) | 2 | 4 (what a project offers people working from the web — their personal interaction preferences, and the environment Setup script body) |
 | <img src="canary-probe/badge.svg" width="18" height="18" alt=""> [canary-probe](canary-probe/README.md) | declared (opt-in; the canary repo only) | 0 | 0 (one inert workflow, seeded then converged — the live proof of the workflow-delivery lane) |
 | <img src="claudinite-dashboard/badge.svg" width="18" height="18" alt=""> [claudinite-dashboard](claudinite-dashboard/README.md) | declared (opt-in) | 0 | 0 (a browser dashboard over scheduler state, published to Pages; adoption seeds the deploy workflow) |
 | <img src="github-actions/badge.svg" width="18" height="18" alt=""> [github-actions](github-actions/) | `.github/workflows/` | 9 | 0 |
@@ -256,7 +256,7 @@ setup: (p) => (p.dirs?.length ? p.dirs : ['.']).map((d) => `( cd "${d}" && npm c
 
 [`env-requirements.mjs`](../engine/pack_loader/env-requirements.mjs) drives everything from the repo's **active** packs (same activation as prose/checks):
 
-- `node .claudinite/shared/engine/pack_loader/env-requirements.mjs install` runs every active pack's `setup` in the checkout. The corpus's one generic [`environment-setup-command.sh`](../engine/hooks/environment-setup-command.sh) (vendored into every consumer) calls this.
+- `node .claudinite/shared/engine/pack_loader/env-requirements.mjs install` runs every active pack's `setup` in the checkout. The corpus's one generic [`environment-setup-command.sh`](claude-code-web-users-support/environment-setup-command.sh) — the web pack's, pasted into the environment's Setup script field — calls this.
 - `node .claudinite/shared/engine/pack_loader/env-requirements.mjs check` runs at session start (web only) and **asserts** — it runs each `probe` directly against the running environment and injects the halt-gate context if a requirement is missing. No version flag: the probes are the source of truth, and a genuinely new requirement fails its probe and prompts a re-run. Never installs.
 - `node .claudinite/shared/engine/pack_loader/env-requirements.mjs plan` prints what `install` would run (review / debug).
 
@@ -302,7 +302,7 @@ manifest.
 | **Hardcoded conformance checks** | **94** — every rule the runner carries: each pack's own, its bundled skills' checks, and the contributed barriers, plus the canon home's own [canon-curation](../.claudinite/local/packs/canon-curation/README.md) and [claudinite](../.claudinite/local/packs/claudinite/RULES.md) local packs |
 | PreToolUse guard | 1 (remote-branch-delete) |
 | Platform setting | 1 (squash-only) |
-| **Prose rules** — every rule in a pack's `RULES.md` | **381** across 23 packs, **21,477 words** |
+| **Prose rules** — every rule in a pack's `RULES.md` | **382** across 23 packs, **21,575 words** |
 | Prose — research-project playbook (class pack) | 54 |
 | Prose — spec-driven-product playbook (class pack) | 26 |
 
