@@ -18,8 +18,8 @@ lesson at the strongest mechanism available — a check where the rule is determ
   prompt.
 
 - **Designing anything that spans repos** — split it: a self-contained per-repo half in the
-  canon, the aggregation half as a Sheepdog fleet task. No repo list exists anywhere in canon
-  code; Sheepdog enumerates members at runtime. A derived fleet artifact lands there as a daily
+  canon, the aggregation half as a Shepherd fleet task. No repo list exists anywhere in canon
+  code; Shepherd enumerates members at runtime. A derived fleet artifact lands there as a daily
   auto-merged PR of a `GENERATED` file, never a commit to its `main`.
 
 - **Choosing a value right for nearly every project** — keep it in the pack's own code: ask
@@ -34,7 +34,7 @@ lesson at the strongest mechanism available — a check where the rule is determ
   have the automation report when it is missing rather than degrade silently.
 
 - **Landing a change to what members receive** — force a member to receive it in the same
-  session: drive Sheepdog's `fleet-baseline` with `follow`, report per member unasked, and attach
+  session: drive Shepherd's `fleet-baseline` with `follow`, report per member unasked, and attach
   the repos that verification needs rather than offering to. A dispatch is not a result; 204 means
   queued.
 
@@ -166,7 +166,7 @@ lesson at the strongest mechanism available — a check where the rule is determ
 
 - **Retiring or reshaping a protocol the engine exposes** (a dispatch input, a stub's declared
   interface) — sweep for callers **outside this repo**, not just what greps locally. `FORCE_TASKS`'s
-  replacement broke Sheepdog's only caller because the migration enumerated this repo's own
+  replacement broke Shepherd's only caller because the migration enumerated this repo's own
   callers and missed the cross-repo one (#929); two independently-maintained stub copies at the
   same path declaring different input names is the same failure from the other side (#801, #907)
   — the two spellings *are* the protocol, and they live in different trees.
