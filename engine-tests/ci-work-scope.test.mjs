@@ -45,6 +45,11 @@ test('CI fetches that base ref before the sweep — a fresh checkout carries no 
   assert.ok(fetch && fetch.includes('git fetch'), 'ci.yml no longer fetches origin/main for the work sweep');
 });
 
+test('CI errors on an empty scope — the runner is as silent about judging nothing as about a clean sweep', () => {
+  assert.match(CI, /work scope: \$changed changed file\(s\)/);
+  assert.match(CI, /\[ "\$changed" -gt 0 \] \|\|/);
+});
+
 // The integration half: the runner really does answer in the shape CI invokes it,
 // against this repo's own tree — the real-tree run the fixture cannot stand in for.
 test('the runner answers cleanly in CI\'s exact invocation against the real tree', () => {

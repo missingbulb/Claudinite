@@ -86,6 +86,14 @@ jobs:
         if: ${{ github.event_name != 'push' && !startsWith(github.head_ref || github.ref_name, 'claudinite/') }}
         run: |
           git fetch --no-tags --quiet origin +refs/heads/main:refs/remotes/origin/main
+          # The runner is SILENT on a clean sweep, and equally silent on a sweep that
+          # judged nothing — so the scope is printed, and an empty one is an error
+          # rather than a pass. Every branch reaching this step changed at least one
+          # file; zero means the base did not resolve, which is the failure this whole
+          # step exists to stop being invisible.
+          changed=$(git diff --name-only origin/main...HEAD | wc -l)
+          echo "work scope: $changed changed file(s) vs origin/main"
+          [ "$changed" -gt 0 ] || { echo "::error::no diff against origin/main — the work sweep would judge nothing"; exit 1; }
           node engine/checks/check_the_work.mjs --changed --base origin/main
       - name: Growth write-surface gate
         # The lifecycle's capture runs (extract, dedup) are bounded to the repo's own
