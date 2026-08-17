@@ -256,7 +256,7 @@ setup: (p) => (p.dirs?.length ? p.dirs : ['.']).map((d) => `( cd "${d}" && npm c
 
 [`env-requirements.mjs`](../engine/pack_loader/env-requirements.mjs) drives everything from the repo's **active** packs (same activation as prose/checks):
 
-- `node .claudinite/shared/engine/pack_loader/env-requirements.mjs install` runs every active pack's `setup` in the checkout. The corpus's one generic [`environment-setup-command.sh`](../engine/hooks/environment-setup-command.sh) (vendored into every consumer) calls this.
+- `node .claudinite/shared/engine/pack_loader/env-requirements.mjs install` runs every active pack's `setup` in the checkout. The corpus's one generic [`environment-setup-command.sh`](claude-code-web-users-support/environment-setup-command.sh) — the web pack's, pasted into the environment's Setup script field — calls this.
 - `node .claudinite/shared/engine/pack_loader/env-requirements.mjs check` runs at session start (web only) and **asserts** — it runs each `probe` directly against the running environment and injects the halt-gate context if a requirement is missing. No version flag: the probes are the source of truth, and a genuinely new requirement fails its probe and prompts a re-run. Never installs.
 - `node .claudinite/shared/engine/pack_loader/env-requirements.mjs plan` prints what `install` would run (review / debug).
 
@@ -302,7 +302,7 @@ manifest.
 | **Hardcoded conformance checks** | **94** — every rule the runner carries: each pack's own, its bundled skills' checks, and the contributed barriers, plus the canon home's own [canon-curation](../.claudinite/local/packs/canon-curation/README.md) and [claudinite](../.claudinite/local/packs/claudinite/RULES.md) local packs |
 | PreToolUse guard | 1 (remote-branch-delete) |
 | Platform setting | 1 (squash-only) |
-| **Prose rules** — every rule in a pack's `RULES.md` | **381** across 23 packs, **21,477 words** |
+| **Prose rules** — every rule in a pack's `RULES.md` | **382** across 23 packs, **21,575 words** |
 | Prose — research-project playbook (class pack) | 54 |
 | Prose — spec-driven-product playbook (class pack) | 26 |
 

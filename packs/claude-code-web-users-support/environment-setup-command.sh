@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Claudinite cloud environment setup — generic, identical for every project and
-# owned by the corpus (vendored into .claudinite/shared/engine/hooks/), so a
-# project commits no copy of its own.
+# owned by the corpus (vendored into
+# .claudinite/shared/packs/claude-code-web-users-support/), so a project commits
+# no copy of its own.
 #
 # HOW TO USE: paste this full body into the Claude Code Web environment's "Setup
 # script" field. It runs once when the environment image is built, as root,
