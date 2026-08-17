@@ -193,11 +193,37 @@ test('an id naming nothing is REPORTED, never silently dropped', () => {
   assert.match(unmatched[0].why, /no declared pack owns/);
 });
 
-test('a task whose standing item is closed reports unmatched rather than waking nothing quietly', () => {
+test('a task whose standing item is CLOSED is forced by minting a new one', () => {
+  // The gap is the common case, not an edge: a task that completes closes its item
+  // and the next appears only at its anchor, so a daily task has no item for most
+  // of the day. A force that reported "nothing to wake" there would fail on most
+  // members most of the time — which is exactly what a fleet converge lever cannot do.
   const closed = [item({ task: 'update', labels: [], state: 'closed', created_at: '2026-08-16T00:00:00Z' })];
-  const { wake, unmatched } = planWake('update', wakeTasks, closed);
+  const { wake, create, unmatched } = planWake('update', wakeTasks, closed);
   assert.deepEqual(wake, []);
-  assert.match(unmatched[0].why, /no open standing item/);
+  assert.deepEqual(unmatched, []);
+  assert.equal(create.length, 1);
+  assert.equal(create[0].id, 'p/update');
+  assert.equal(create[0].taskPath, 'packs/p/tasks/update/task.md');
+});
+
+test('a task that has never had an item at all is also minted, not refused', () => {
+  const { create, unmatched } = planWake('update', wakeTasks, []);
+  assert.deepEqual(unmatched, []);
+  assert.equal(create.length, 1);
+});
+
+test('a minted item consumes the current occurrence, so the tick does not double it', () => {
+  // It carries origin:schedule for exactly this reason — planTick's occurrence
+  // guard is scoped to that label, and an item outside the family would let the
+  // next tick create a second one beside it.
+  const now = '2026-08-16T10:00:00Z';
+  const minted = item({
+    task: 'update', labels: ['origin:schedule', 'task:ready'],
+    created_at: now, updated_at: now,
+  });
+  const { ops } = planTick({ tasks: [task('update', 'daily')], items: [minted], now, schedule: SCHEDULE });
+  assert.deepEqual(kinds(ops, 'create'), [], 'the tick must not mint a second standing item beside the forced one');
 });
 
 test('an item already in flight is left alone — waking it would drop an episode boundary on a live claim', () => {

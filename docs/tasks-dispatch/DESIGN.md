@@ -669,9 +669,16 @@ comes from a file under review.
   `task:ready` is not bookkeeping: `pickOrder` (§6.1) admits on that label
   alone, so an item merely stripped of `task:blocked` wears no state any
   executor selects on, and the run reports `nothing ready to pick up` —
-  indistinguishable from a healthy idle run. Cross-repo, the enforcer does
-  not perform this edit itself; it dispatches the member's scheduler with a
-  `wake` input and the member's own tick applies the recipe (§14). The executor evaluates the
+  indistinguishable from a healthy idle run. **When the standing item does
+  not exist, forcing MINTS it** — a completed task closes its item and the
+  next appears only at its anchor, so for most of a daily task's day there
+  is nothing to wake, and refusing there would make a fleet-wide converge
+  lever fail on most members most of the time. The minted item is an
+  ordinary `origin:schedule` standing item: it consumes the current
+  occurrence (so the tick does not create a second one beside it) and leaves
+  the next anchor's alone. Cross-repo, the enforcer does not perform any of
+  this itself; it dispatches the member's scheduler with a `wake` input and
+  the member's own tick applies the recipe (§14). The executor evaluates the
   precondition at pick like always; a no-go rolls the item again with the
   reason on record, so a force that finds no work *says so* where the
   operator will read it. Truly unconditional force: say so in a Context line
