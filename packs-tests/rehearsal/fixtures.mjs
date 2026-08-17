@@ -28,11 +28,12 @@
 //                 newly-added optional field must not be rejected by an engine that
 //                 defines it. The vocabulary is closed, so every widening of it is
 //                 only additive on paper until a consumer's own manifest carries the
-//                 new key through validation. It carries `seedOps` for the same
-//                 reason — and note that a LOCAL pack declaring one seeds nothing,
-//                 because only the install flow reads the field and local packs have
-//                 no install; the fixture proves the manifest VALIDATES, which is the
-//                 half a member can be broken by.
+//                 new key through validation. It carries `seedOps` and
+//                 `adoptionHandover` for the same reason — and note that a LOCAL pack
+//                 declaring either does nothing, because only the install flow reads
+//                 them and local packs have no install; the fixture proves the
+//                 manifest VALIDATES, which is the half a member can be broken by.
+//                 Every future widening of the vocabulary belongs here too.
 //   legacy-task   a local pack whose scheduled task still declares the DEPRECATED
 //                 task-level `session_scope` — the shape a consumer that predates
 //                 the 2026-08-09 retirement still has on disk. It holds the
@@ -154,6 +155,7 @@ const PACK_VERSIONED = `export default {
   version: 3,
   minEngineVersion: 1,
   seedOps: [{ template: 'RULES.md', dest: 'SEEDED-BY-FIXTURE.md' }],
+  adoptionHandover: [{ step: 'Flip the fixture switch', breaks: 'nothing — this pack is a rehearsal fixture', done: 'never; nobody adopts a fixture' }],
   ruleRoutingGuidance: {
     belongs: 'the fixture project\\'s own invariants, for rehearsal purposes only',
     excludes: 'anything portable — that belongs in a canon pack',
