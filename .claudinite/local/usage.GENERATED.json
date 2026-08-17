@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "foldedThrough": "2026-08-15",
-  "runsFoldedThrough": "2026-08-16T04:20:57Z",
+  "foldedThrough": "2026-08-16",
+  "runsFoldedThrough": "2026-08-17T03:33:16Z",
   "days": {
     "2026-07-19": {
       "captures": 5,
@@ -2088,46 +2088,65 @@
       }
     },
     "2026-08-16": {
-      "captures": 4,
-      "merges": 4,
-      "sessions": 3,
-      "userMessages": 19,
+      "captures": 18,
+      "merges": 18,
+      "sessions": 14,
+      "userMessages": 55,
       "userCommands": 0,
       "skillLoads": {
-        "github-actions-scheduling": 1
+        "github-actions-scheduling": 1,
+        "merge-to-main": 6,
+        "prose-to-checks": 1,
+        "writing-claudinite-skills": 1
       },
       "checks": {
         "work": {
-          "runs": 14,
-          "failures": 2,
+          "runs": 41,
+          "failures": 7,
           "errors": 0,
-          "blocking": 3,
+          "blocking": 9,
           "advisory": 0,
           "ciRuns": 0,
           "ciFailures": 0
         },
         "world": {
-          "runs": 12,
-          "failures": 0,
+          "runs": 76,
+          "failures": 4,
           "errors": 0,
-          "blocking": 0,
-          "advisory": 350,
+          "blocking": 6,
+          "advisory": 2377,
           "ciRuns": 0,
           "ciFailures": 0
         }
       },
       "checkFindings": {
+        "barrier": {
+          "blocking": 1,
+          "advisory": 0
+        },
         "comment-classification": {
+          "blocking": 5,
+          "advisory": 0
+        },
+        "config": {
           "blocking": 1,
           "advisory": 0
         },
         "consumer-safe-change": {
-          "blocking": 1,
+          "blocking": 2,
           "advisory": 0
+        },
+        "declared-check-messages": {
+          "blocking": 8,
+          "advisory": 0
+        },
+        "file-placement": {
+          "blocking": 0,
+          "advisory": 48
         },
         "rules-line-length": {
           "blocking": 0,
-          "advisory": 4
+          "advisory": 46
         },
         "squash-merge-history": {
           "blocking": 1,
@@ -2135,9 +2154,46 @@
         },
         "task-phase-discipline": {
           "blocking": 0,
-          "advisory": 2
+          "advisory": 10
         }
       },
+      "tasks": {},
+      "taskExec": {
+        "<pack>/<task>": {
+          "success": 3,
+          "failed": 0,
+          "task-gone": 0,
+          "invalid": 0
+        },
+        "canon-curation/growth-discover-packs": {
+          "success": 1,
+          "failed": 0,
+          "task-gone": 0,
+          "invalid": 0
+        }
+      }
+    },
+    "2026-08-17": {
+      "captures": 1,
+      "merges": 1,
+      "sessions": 1,
+      "userMessages": 4,
+      "userCommands": 1,
+      "skillLoads": {
+        "merge-to-main": 1
+      },
+      "checks": {
+        "work": {
+          "runs": 2,
+          "failures": 0,
+          "errors": 0,
+          "blocking": 0,
+          "advisory": 0,
+          "ciRuns": 0,
+          "ciFailures": 0
+        }
+      },
+      "checkFindings": {},
       "tasks": {},
       "taskExec": {}
     }
@@ -2605,11 +2661,11 @@
       }
     },
     "2026-W33": {
-      "days": 6,
-      "captures": 65,
-      "merges": 64,
-      "sessionDays": 45,
-      "userMessages": 169,
+      "days": 7,
+      "captures": 83,
+      "merges": 82,
+      "sessionDays": 59,
+      "userMessages": 224,
       "userCommands": 11,
       "skillLoads": {
         "engineering-practices": 1,
@@ -2617,48 +2673,53 @@
         "extract-from-conversations": 3,
         "file-placement": 1,
         "git-github:merge-to-main": 1,
-        "merge-to-main": 2,
-        "prose-to-checks": 2,
+        "github-actions-scheduling": 1,
+        "merge-to-main": 8,
+        "prose-to-checks": 3,
         "single-issue-triage": 26,
         "single-pr-status": 3,
-        "writing-claudinite-skills": 1,
+        "writing-claudinite-skills": 2,
         "writing-tests": 1
       },
       "checks": {
         "work": {
-          "runs": 274,
-          "failures": 62,
+          "runs": 315,
+          "failures": 69,
           "errors": 0,
-          "blocking": 86,
+          "blocking": 95,
           "advisory": 0,
           "ciRuns": 0,
           "ciFailures": 0
         },
         "world": {
-          "runs": 326,
-          "failures": 5,
+          "runs": 402,
+          "failures": 9,
           "errors": 0,
-          "blocking": 22,
-          "advisory": 5988,
+          "blocking": 28,
+          "advisory": 8365,
           "ciRuns": 2,
           "ciFailures": 0
         }
       },
       "checkFindings": {
         "barrier": {
-          "blocking": 7,
+          "blocking": 8,
           "advisory": 0
         },
         "comment-classification": {
-          "blocking": 45,
+          "blocking": 50,
+          "advisory": 0
+        },
+        "config": {
+          "blocking": 1,
           "advisory": 0
         },
         "consumer-safe-change": {
-          "blocking": 9,
+          "blocking": 11,
           "advisory": 0
         },
         "declared-check-messages": {
-          "blocking": 14,
+          "blocking": 22,
           "advisory": 0
         },
         "dedup-prune-integrity": {
@@ -2675,7 +2736,7 @@
         },
         "file-placement": {
           "blocking": 0,
-          "advisory": 113
+          "advisory": 161
         },
         "reference-integrity": {
           "blocking": 23,
@@ -2683,10 +2744,10 @@
         },
         "rules-line-length": {
           "blocking": 0,
-          "advisory": 80
+          "advisory": 126
         },
         "squash-merge-history": {
-          "blocking": 7,
+          "blocking": 8,
           "advisory": 0
         },
         "task-lifecycle": {
@@ -2695,7 +2756,7 @@
         },
         "task-phase-discipline": {
           "blocking": 0,
-          "advisory": 74
+          "advisory": 84
         }
       },
       "tasks": {
@@ -2758,13 +2819,13 @@
       },
       "taskExec": {
         "<pack>/<task>": {
-          "success": 1,
+          "success": 4,
           "failed": 0,
           "task-gone": 0,
           "invalid": 0
         },
         "canon-curation/growth-discover-packs": {
-          "success": 1,
+          "success": 2,
           "failed": 0,
           "task-gone": 0,
           "invalid": 0
