@@ -24,8 +24,8 @@ import { deliverGenerated, baseTip, readAt, remoteUrl } from '../../../../engine
 import { main as sweep, inactiveToday, renderFleetFile, FLEET_USAGE_PATH } from './aggregate-fleet-usage.mjs';
 
 const PR_BRANCH_PREFIX = 'claudinite/fleet-usage';
-const slotId = process.env.CLAUDINITE_SLOT_ID || '';
-const log = (s) => console.log(`fleet-usage${slotId ? ` [${slotId}]` : ''}: ${s}`);
+const item = process.env.CLAUDINITE_ITEM || '';
+const log = (s) => console.log(`fleet-usage${item ? ` [#${item}]` : ''}: ${s}`);
 
 // `generatedAt` changes every day, so comparing the whole file would open a PR daily
 // even on a fleet where nothing moved. Compare everything else: an unchanged fleet

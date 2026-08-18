@@ -15,8 +15,8 @@ import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { LABEL } from './protocol.mjs';
 
-const slotId = process.env.CLAUDINITE_SLOT_ID || '';
-const log = (s) => console.log(`adopt-requested-packs${slotId ? ` [${slotId}]` : ''}: ${s}`);
+const item = process.env.CLAUDINITE_ITEM || '';
+const log = (s) => console.log(`adopt-requested-packs${item ? ` [#${item}]` : ''}: ${s}`);
 
 // The one read: this repo's open issues under the protocol label. PRs are filtered
 // out — the issues API returns both, and a PR carrying the label is not a work list.

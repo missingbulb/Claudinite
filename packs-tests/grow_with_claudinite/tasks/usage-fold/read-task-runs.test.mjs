@@ -4,7 +4,7 @@ import {
   makeReader, schedulerRuns, runLogText, readTaskRuns, lookbackFrom,
   MAX_RUNS_PER_FOLD, FIRST_FOLD_LOOKBACK_DAYS,
 } from '../../../../packs/grow_with_claudinite/tasks/usage-fold/read-task-runs.mjs';
-import { renderTaskRun } from '../../../../engine/scheduler/run-record.mjs';
+import { TASK_RUN_TAG } from '../../../../engine/scheduler/run-record.mjs';
 
 // A fake API: paths → responses, so the whole read is exercised without a network.
 // Every response shape below is the one GitHub actually answers with — a runs list
@@ -25,17 +25,16 @@ function fakeApi(routes) {
 }
 
 const stamped = (line) => `2026-07-29T04:44:12.3456789Z ${line}`;
-const jobLog = (...recs) => [
+// A record line as the retired slot scheduler wrote it. Spelled out here rather
+// than rendered: the writer is gone (#974) and this reader's job is exactly to keep
+// reading logs it already left, so the fixture must be the literal past shape.
+const jobLog = (...lines) => [
   stamped('##[group]Run node engine/scheduler/run.mjs'),
   stamped('## Claudinite scheduler'),
-  ...recs.map((r) => stamped(renderTaskRun(r))),
+  ...lines.map(stamped),
 ].join('\n');
 
-const run = (pack, task, outcome) => ({
-  pack, task, slotId: 'd2026-07-29', run: outcome !== 'skipped',
-  ...(outcome === 'agent' ? { dispatch: { action: 'create' } } : {}),
-  ...(outcome === 'preprocess' ? { inline: true, preprocessing: true, preworkResult: { ok: true } } : {}),
-});
+const run = (pack, task, outcome) => `${TASK_RUN_TAG} v1 ${pack}/${task} [d2026-07-29] ${outcome}`;
 
 test('schedulerRuns takes completed runs past the watermark, oldest first', () => {
   const { reader } = fakeApi({

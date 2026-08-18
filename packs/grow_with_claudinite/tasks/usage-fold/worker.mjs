@@ -36,8 +36,8 @@ const BRANCH = 'conversation-logs';
 export const USAGE_PATH = '.claudinite/local/usage.GENERATED.json';
 const PR_BRANCH_PREFIX = 'claudinite/usage-fold';
 
-const slotId = process.env.CLAUDINITE_SLOT_ID || '';
-const log = (s) => console.log(`usage-fold${slotId ? ` [${slotId}]` : ''}: ${s}`);
+const item = process.env.CLAUDINITE_ITEM || '';
+const log = (s) => console.log(`usage-fold${item ? ` [#${item}]` : ''}: ${s}`);
 
 const git = (root, args) => execFileSync('git', ['-C', root, ...args], {
   encoding: 'utf8',

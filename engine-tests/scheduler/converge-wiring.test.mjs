@@ -283,27 +283,7 @@ test('convergeWiring: reports every surface it changed, and is idempotent', asyn
   assert.deepEqual((await convergeWiring(root, REPO, STUB)).changed, []);
 });
 
-// ── The override input, on the REAL shipped YAML ────────────────────────────
-// Every test above runs against a synthetic STUB, which is right for the
-// converge logic and useless for this: the override reaches a task only if the
-// actual files declare the input AND pass it through as CLAUDINITE_OVERRIDES.
-// Miss either half and forcing silently does nothing — the run goes green, the
-// task just never fires. So assert on the files that ship.
-
 const ENGINE_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-
-// The SLOT stub's forcing lever: the override reaches a task only if the file
-// declares the input AND passes it through as CLAUDINITE_OVERRIDES. Miss either
-// half and forcing silently does nothing — the run goes green, the task just never
-// fires. (The queue has no equivalent: forcing there is waking an item, so the
-// tick declares a bare workflow_dispatch and no input at all.)
-test('the vendored consumer stub declares the overrides input and pipes it to CLAUDINITE_OVERRIDES', () => {
-  const text = readFileSync(join(ENGINE_ROOT, 'engine/scheduler/stubs/claudinite-scheduler.yml'), 'utf8');
-  assert.match(text, /workflow_dispatch:\s*\n\s+inputs:\s*\n\s+overrides:/, 'must declare the `overrides` workflow_dispatch input');
-  assert.match(text, /CLAUDINITE_OVERRIDES:\s*\$\{\{\s*inputs\.overrides\s*\}\}/, 'must pass the input to the engine as CLAUDINITE_OVERRIDES');
-  const schedulerJob = text.slice(0, text.indexOf('report-failure:'));
-  assert.ok(schedulerJob.includes('CLAUDINITE_OVERRIDES'), 'the env must sit on the scheduler job, not the failure reporter');
-});
 
 // ── The canon's own copy against the stub it ships ──────────────────────────
 // THE HOME IS THE LAST REPO TO RECEIVE ITS OWN STUB CHANGES: every member gets
@@ -488,18 +468,11 @@ test('convergeWiring writes the executor workflow beside the cron one, secrets s
 });
 
 test('an endpoint\'s token secret is stamped exactly like a required_secret', async () => {
-  const { declaredSecrets, dispatchMode } = await import('../../engine/scheduler/converge-wiring.mjs');
+  const { declaredSecrets } = await import('../../engine/scheduler/converge-wiring.mjs');
   const root = mkRepo();
   writeFileSync(join(root, '.claudinite-checks.json'), JSON.stringify({ packs: [] }));
   const config = { packs: [], taskScheduler: { dispatch: 'queue', endpoints: { default: { url: 'https://x', tokenSecret: 'CCR_TOKEN' } } } };
   assert.deepEqual(await declaredSecrets(root, config), ['CCR_TOKEN']);
-  assert.equal(dispatchMode(config), 'queue');
-  // ABSENCE IS THE QUEUE. This is the fleet flip: a member's next converge changes
-  // its answer with no edit to any file the member owns. The retired slot scheduler
-  // is the thing a repo must now ask for by name.
-  assert.equal(dispatchMode({}), 'queue', 'an unset dispatch is the queue');
-  assert.equal(dispatchMode({ taskScheduler: {} }), 'queue');
-  assert.equal(dispatchMode({ taskScheduler: { dispatch: 'slots' } }), 'slots', 'slots is opt-in by name');
 });
 
 test('the vendored stubs are what the converge is written against', () => {

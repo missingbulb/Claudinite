@@ -1,5 +1,5 @@
 import { finding } from '../../engine/checks/helpers/findings.mjs';
-import { FREQUENCIES } from '../../engine/scheduler/slots.mjs';
+import { FREQUENCIES } from '../../engine/scheduler/calendar.mjs';
 import { MODEL_FAMILIES } from '../../engine/scheduler/model-map.mjs';
 import { OUTCOMES, SIGNAL_NAMES } from '../../engine/scheduler/task-contract.mjs';
 

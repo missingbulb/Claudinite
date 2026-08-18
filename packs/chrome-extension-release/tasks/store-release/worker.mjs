@@ -46,7 +46,7 @@ async function gh(path, { method = 'GET', body } = {}) {
 export async function main() {
   const repo = process.env.CLAUDINITE_REPO || process.env.GITHUB_REPOSITORY;
   const ref = process.env.CLAUDINITE_DEFAULT_BRANCH || 'main';
-  const slotId = process.env.CLAUDINITE_SLOT_ID || '';
+  const item = process.env.CLAUDINITE_ITEM || '';
   if (!repo) { console.error('store-release: no repo in env (CLAUDINITE_REPO/GITHUB_REPOSITORY)'); process.exit(1); }
   if (!process.env.GITHUB_TOKEN) { console.error('store-release: no GITHUB_TOKEN in env'); process.exit(1); }
 
@@ -58,10 +58,10 @@ export async function main() {
     body: { ref, inputs: { mode: DISPATCH_MODE } },
   });
   if (res.status !== 204) {
-    console.error(`store-release [${slotId}]: dispatching ${ORCHESTRATOR_FILE} (mode ${DISPATCH_MODE}) on ${ref} returned ${res.status}`);
+    console.error(`store-release [#${item}]: dispatching ${ORCHESTRATOR_FILE} (mode ${DISPATCH_MODE}) on ${ref} returned ${res.status}`);
     process.exit(1);
   }
-  console.log(`store-release [${slotId}]: dispatched ${ORCHESTRATOR_FILE} (mode ${DISPATCH_MODE}) on ${ref}`);
+  console.log(`store-release [#${item}]: dispatched ${ORCHESTRATOR_FILE} (mode ${DISPATCH_MODE}) on ${ref}`);
 
   // STUB (unchanged from the pre-conversion worker): this triggers the daily
   // release and hands off. The full Stage-2 would then AWAIT the dispatched run

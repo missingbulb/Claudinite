@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildSignalContext } from '../../engine/scheduler/run.mjs';
+import { buildSignalContext } from '../../engine/scheduler/signals/context.mjs';
 import { collectSignals } from '../../engine/scheduler/signals/index.mjs';
 import { loadConfig } from '../../engine/checks/helpers/repo-context.mjs';
 import storeRelease from '../../packs/chrome-extension-release/tasks/store-release/task.mjs';
@@ -96,7 +96,7 @@ test('every ctx key the collectors read is populated by the real construction', 
     const unwired = read.filter((k) => !built.has(k) && !(k in NOT_FROM_CONSTRUCTION));
     assert.deepEqual(unwired, [],
       `signals/index.mjs reads ctx.${unwired.join(', ctx.')} but buildSignalContext never sets it — `
-      + 'a precondition reading it gets a permanent null. Populate it in run.mjs, or document the exemption.');
+      + 'a precondition reading it gets a permanent null. Populate it in signals/context.mjs, or document the exemption.');
   });
 });
 

@@ -32,7 +32,7 @@ import { join } from 'node:path';
 import { makeGh } from '../../fleet-api.mjs';
 import { parseSheepdogConfig } from '../../fleet-config.mjs';
 import { deliverGenerated, baseTip, pushGenerated, readAt, remoteUrl } from '../../../../engine/scheduler/deliver-generated.mjs';
-import { parseOverrides } from '../../../../engine/scheduler/run.mjs';
+import { parseParamBag, contextText } from '../../param-bag.mjs';
 import { parseDigestConfig } from './digest-config.mjs';
 import { collectDay, previousDay } from './collect-fleet-day.mjs';
 
@@ -49,8 +49,8 @@ export const DIGESTS_DIR = 'digests';
 // PR instead of opening its own. Naming the artifact, not the task, keeps the match
 // exact.
 const PR_BRANCH_PREFIX = 'claudinite/fleet-digest-brief';
-const slotId = process.env.CLAUDINITE_SLOT_ID || '';
-const log = (s) => console.log(`fleet-digest${slotId ? ` [${slotId}]` : ''}: ${s}`);
+const item = process.env.CLAUDINITE_ITEM || '';
+const log = (s) => console.log(`fleet-digest${item ? ` [#${item}]` : ''}: ${s}`);
 
 export const digestPath = (date) => `${DIGESTS_DIR}/${date}.md`;
 
@@ -60,21 +60,18 @@ export const digestPath = (date) => `${DIGESTS_DIR}/${date}.md`;
 // reads. Longer histories are several runs, deliberately.
 const MAX_BACKFILL = 30;
 
-// A one-time (or after-an-outage) catch-up, requested through the mechanism the
-// scheduler already has: `CLAUDINITE_OVERRIDES`, the single free-form KEY=value string
-// a manual workflow_dispatch carries. The engine understands only `FORCE_TASKS` and
-// says of the rest that "anything else in the bag is parsed and ignored, which is what
-// leaves room for a future override without a schema" (run.mjs) — this is that room.
-// Prework inherits the Action env whole, so the key arrives here untouched.
+// A one-time (or after-an-outage) catch-up, requested through the mechanism the queue
+// already has: the item's Context, which prework reads as `CLAUDINITE_CONTEXT`.
 //
-// So a backfill needs no new workflow, no new input, and no new secret:
+// So a backfill needs no new workflow, no new input, and no new secret — it is an
+// ordinary hand-created item carrying one parameter:
 //
-//   Run workflow → overrides: FORCE_TASKS=fleet-digest,DIGEST_BACKFILL_DAYS=7
+//   create-work-item sheepdog/fleet-digest --context "DIGEST_BACKFILL_DAYS=7"
 //
 // Returns null when absent or unusable — never a partial guess, since the difference
 // between "backfill 7 days" and "backfill 0 days" is a whole run's work.
-export function parseBackfillDays(rawOverrides) {
-  const bag = parseOverrides(rawOverrides);
+export function parseBackfillDays(rawContext) {
+  const bag = parseParamBag(rawContext);
   if (!('DIGEST_BACKFILL_DAYS' in bag)) return null;
   const n = Number(bag.DIGEST_BACKFILL_DAYS);
   if (!Number.isFinite(n) || n < 1) return null;
@@ -241,7 +238,7 @@ export async function main() {
   const digest = parseDigestConfig(declaration);
 
   const now = new Date();
-  const backfill = parseBackfillDays(process.env.CLAUDINITE_OVERRIDES);
+  const backfill = parseBackfillDays(contextText());
   const dates = backfill ? backfillDates(now, backfill) : [previousDay(now)];
   const baseSha = baseTip(root, remoteUrl(repo, token), base);
 

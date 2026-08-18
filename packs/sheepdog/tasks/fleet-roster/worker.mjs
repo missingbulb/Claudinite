@@ -16,8 +16,8 @@
 import { pathToFileURL } from 'node:url';
 import { main as sweep } from './check-fleet-roster.mjs';
 
-const slotId = process.env.CLAUDINITE_SLOT_ID || '';
-const log = (s) => console.log(`fleet-roster${slotId ? ` [${slotId}]` : ''}: ${s}`);
+const item = process.env.CLAUDINITE_ITEM || '';
+const log = (s) => console.log(`fleet-roster${item ? ` [#${item}]` : ''}: ${s}`);
 
 export async function main() {
   // The sweep resolves the HOME repo — the one whose sheepdog pack entry carries

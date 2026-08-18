@@ -431,33 +431,25 @@ test('packRecordsInGap is that pack\'s records only', () => {
   assert.deepEqual(packRecordsInGap('sheepdog', { packVersions: { sheepdog: 99 } }), []);
 });
 
-test('a queue-dispatch member is owed the executor workflow, and a slot member is not', async () => {
+test('a member is owed the executor workflow beside its tick', async () => {
   // The tick and the executor are ONE mechanism in two files: the tick only creates
   // and readies work items, so a member holding the tick without the executor has a
   // generator with no worker — a queue that fills every hour and is never drained,
   // which reads from outside exactly like a repo whose tasks all declined. This lane
-  // staged only the scheduler path, so that state was reachable for every member the
-  // fleet flip touches.
-  const slots = makeMember({ packs: ['basics'], taskScheduler: { dispatch: 'slots' } });
-  const queue = makeMember();   // absence IS the queue — the fleet flip's whole mechanism
-  for (const root of [slots, queue]) assert.deepEqual((await applyVendor(root)).errors, []);
+  // staged only the scheduler path, so that state was reachable for every member.
+  const queue = makeMember();
+  assert.deepEqual((await applyVendor(queue)).errors, []);
   const readerFor = (root) => (p) => (existsSync(join(root, p)) ? readFileSync(join(root, p), 'utf8') : null);
 
   const owed = await pendingExecutorWorkflow(queue, readerFor(queue));
   assert.equal(owed.error, null);
-  assert.ok(owed.pending, 'a queue-dispatch member with no executor workflow is owed one');
+  assert.ok(owed.pending, 'a member with no executor workflow is owed one');
   assert.equal(owed.pending.path, EXECUTOR_WORKFLOW);
 
   // Not a template: the env block is the union of every task's required_secrets and
   // each configured endpoint's token secret, which is the whole reason this file
   // cannot simply be vendored like the stub it is built from.
   assert.match(owed.pending.content, /issues:\s*\n\s*types: \[labeled\]/, 'the label-event trigger survives the stamp');
-
-  // A slot member owes NOTHING here, and that null must not be confused with a fault:
-  // most of the fleet sits in this state until its own config says `queue`.
-  const none = await pendingExecutorWorkflow(slots, readerFor(slots));
-  assert.equal(none.pending, null, 'a slot-dispatch member is owed no executor file');
-  assert.equal(none.error, null, 'and owing nothing is not an error');
 
   // An unreadable stub is "cannot answer", never "already converged" — the same
   // distinction the scheduler lane above had to learn.
@@ -471,5 +463,5 @@ test('a queue-dispatch member is owed the executor workflow, and a slot member i
   const staged = run.withheld.map((w) => w.path);
   assert.ok(staged.includes(EXECUTOR_WORKFLOW), `the executor workflow is staged: ${staged.join(', ')}`);
   assert.ok(staged.includes(SCHEDULER_WORKFLOW), 'beside the scheduler workflow, in the same cycle');
-  for (const root of [slots, queue]) rmSync(root, { recursive: true, force: true });
+  rmSync(queue, { recursive: true, force: true });
 });

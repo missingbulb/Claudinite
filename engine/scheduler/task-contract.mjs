@@ -4,7 +4,7 @@
 // `validate-dispatch` validate against this one function, so the accepted shape
 // can never drift between the two surfaces.
 
-import { FREQUENCIES } from './slots.mjs';
+import { FREQUENCIES } from './calendar.mjs';
 import { MODEL_FAMILIES } from './model-map.mjs';
 import { EXECUTING_LEASH_MS } from './queue/leases.mjs';
 
