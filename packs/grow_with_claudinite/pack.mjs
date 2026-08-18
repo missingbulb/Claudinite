@@ -72,7 +72,7 @@ import growthWriteScope from './growth-write-scope.mjs';
 // active sets retention_days itself.
 export default {
   id: 'grow_with_claudinite',
-  version: 5,
+  version: 6,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'rules and tasks for capturing and maintaining lessons in local packs — extraction, dedup, revalidation, conversation logs, skill-usage folding',
