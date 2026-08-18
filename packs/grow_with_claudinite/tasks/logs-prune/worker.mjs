@@ -32,8 +32,8 @@ import { planPrune } from './prune-logs.mjs';
 
 const PUSH_ATTEMPTS = 3;
 
-const slotId = process.env.CLAUDINITE_SLOT_ID || '';
-const log = (s) => console.log(`logs-prune${slotId ? ` [${slotId}]` : ''}: ${s}`);
+const item = process.env.CLAUDINITE_ITEM || '';
+const log = (s) => console.log(`logs-prune${item ? ` [#${item}]` : ''}: ${s}`);
 
 const git = (root, args, opts = {}) => execFileSync('git', ['-C', root, ...args], {
   encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], ...opts,
