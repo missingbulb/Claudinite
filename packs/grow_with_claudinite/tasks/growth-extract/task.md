@@ -23,7 +23,7 @@ do not widen it.
 - **Default branch.** `main` stands for **this repository's default branch** — substitute whatever the repo uses.
 - **Access split — local git for repo content, MCP for the issue/PR API.** The repo's own content is plain
   **local git** in the checkout: the commits, the `conversation-logs` branch and its files
-  (`git fetch`/`show`/`push`), and staging the lesson edits onto a branch. Reading issue/PR activity,
+  (`git fetch`/`show` — read-only), and staging the lesson edits onto a branch. Reading issue/PR activity,
   opening the PR and delivering it, posting the exchange summaries and the tracking-issue log go
   through the session's **GitHub MCP tools** (`mcp__github__*`). The unattended run has no shell GitHub
   access — the shell reaches only a git-over-HTTPS proxy scoped to one repo, with no REST credential — so
@@ -43,17 +43,9 @@ re-derive any of it here.
 2. **Conversation half — the [extract-from-conversations](../../skills/extract-from-conversations/SKILL.md)
    skill**, over the repo's captured logs. `git fetch origin conversation-logs`, then list its files
    (`git ls-tree --name-only origin/conversation-logs`); no branch, or no `*.jsonl`, and this half is done.
-   Give each log captured in the recent window a **pass** (its filename carries the capture stamp;
-   corpus dedup makes an overlapping re-read harmless, so err toward re-reading the last several days), and
-   post the skill's provenance summary for each rule that actually lands.
-3. **Mark what you passed over.** For every log this run gave a pass, write an empty sidecar
-   `<log>.processed` beside it on the `conversation-logs` branch and push (commit message ending
-   `[skip ci]`). That marker is what makes a capture prunable at all: the agentless
-   [logs-prune](../logs-prune/task.md) task deletes only captures carrying one, and holds anything else
-   forever however old it gets. The branch is never merged and its history is never rewritten — plain add
-   and remove commits only. This push to the non-default logs branch is outside the outcome taxonomy
-   (DESIGN §1).
-4. **Upgrade pass — the [prose-to-checks](../../skills/prose-to-checks/SKILL.md) skill, over what *this run*
+   The skill owns **which** logs a run reads; read exactly that set, and post the skill's provenance
+   summary for each rule that actually lands.
+3. **Upgrade pass — the [prose-to-checks](../../skills/prose-to-checks/SKILL.md) skill, over what *this run*
    just wrote.** Both halves route down the local promotion ladder as they go, but a lesson written as prose
    under time pressure is exactly where a convertible rule hides. So before opening the PR, take the prose
    this run added and ask the skill's questions of it: does it clear the working-rule gate, and does it
@@ -118,10 +110,9 @@ and **on the default delivery no human reviews the PR before it lands** — CI g
 - **Never widen past the Context window** — the halves it declares live, the substantive commits and the
   touched PRs/issues named there are the scope; do not re-decide it. That includes the upgrade pass: this
   run's own additions, never the standing backlog.
-- **Never merge `conversation-logs`** anywhere, and never rewrite its history — plain add and remove commits only.
 - **Never paste the conversation onto an issue** — not raw JSONL, not a rendered transcript, not the turns
   themselves. Each landed rule gets one ≤200-word summary of the exchange behind it, and nothing more.
-- **Never delete a log at all** — retention is the [logs-prune](../logs-prune/task.md) task's job, and it
-  acts only on what this run marked processed. Writing the marker is this run's whole say in the matter.
+- **Never write to the `conversation-logs` branch at all** — reading it is this run's whole business with
+  it. Retention is the agentless `logs-prune` task's job, on the capture stamps alone.
 - **Don't add noise** — a duplicate or hallucinated "lesson" is worse than adding nothing, the more so when
   its PR usually lands with no human review to catch it.

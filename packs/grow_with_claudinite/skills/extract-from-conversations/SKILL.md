@@ -90,17 +90,20 @@ relevant work, and close with a terse verdict (a concrete change, or an explicit
 recurring question converted this way is one the user never has to ask again — and it's where a *measured*
 retrospective comes from: the user's recurring efficiency questions, answered pre-emptively, with numbers.
 
-## Re-reading a log is cheap, and a re-read may overturn the first pass
+## Two windows per run: the newest day, and the oldest day still on the branch
 
-A captured log gets its pass within a day or so of capture, and stays on the branch until retention takes
-it — so err toward re-reading the last several days rather than stopping at yesterday. A re-read is a real
-re-read, not a formality: a friction signal that looked situational the first time may have recurred since,
-and a lesson landed since may have made a keeper redundant. Both directions are legitimate outcomes, and
-corpus dedup makes an overlapping pass harmless.
+Every run reads exactly two sets of captures, both taken from the filename stamps:
 
-**Mark each log you pass over** — an empty `<log>.processed` sidecar beside it on the branch. That marker is
-the whole coupling between reading a log and deleting it: the retention prune is a separate, agentless task
-that removes only captures carrying one, so a log nothing ever read is held rather than aged out.
+- **the last 24 hours** — the fresh pass, over what was captured since the previous run;
+- **the first 24 hours on the branch** — every capture stamped within 24h of the oldest one still there.
+  This is the hindsight pass, and it is a real re-read rather than a formality: a friction signal that
+  looked situational when it was fresh may have recurred since, and a lesson landed since may have made a
+  keeper redundant. Both directions are legitimate outcomes, and corpus dedup makes the overlap harmless.
+
+The two windows are also what keeps deletion honest. Retention is an agentless task that prunes on the
+stamp alone, with no handshake back to this one — safe because the branch is read from its oldest end
+every run, so a capture reaches retention having been read. Reading less than the oldest window silently
+breaks that; reading more is only wasted effort.
 
 ## Provenance: summarize the exchange, never paste it
 

@@ -10,7 +10,7 @@
 //      off — capture-only adoption, and the fail-safe default);
 //   2. fetch the orphan `conversation-logs` branch and list it (plain local git —
 //      the branch is in this repo, so one tree read beats any REST round-trip);
-//   3. plan, and commit the removals onto the branch tip.
+//   3. delete every capture past retention, in one commit onto the branch tip.
 //
 // THE CHECKOUT IS NEVER TOUCHED. The scheduler runs every due task in one checkout,
 // so this builds its tree through plumbing against a throwaway index and pushes the
@@ -90,22 +90,18 @@ export async function main() {
     const tip = git(root, ['rev-parse', 'FETCH_HEAD']).trim();
     const names = git(root, ['ls-tree', '--name-only', tip]).split('\n').filter(Boolean);
     const plan = planPrune({ names, retentionDays, now: new Date().toISOString() });
-    const held = plan.holding.length
-      ? `; holding ${plan.holding.length} aged capture(s) no extract run has marked processed`
-      : '';
 
     if (plan.delete.length === 0) {
-      log(`${plan.logCount} capture(s) on the branch, nothing deletable past ${retentionDays}d${held}`);
+      log(`${plan.logCount} capture(s) on the branch, none past ${retentionDays}d`);
       return;
     }
 
-    const captures = plan.delete.filter((p) => p.endsWith('.jsonl')).length;
     try {
       pushRemovals(root, {
         remote,
         tip,
         paths: plan.delete,
-        message: `Claudinite: prune ${captures} processed conversation log(s) past ${retentionDays}d retention [skip ci]`,
+        message: `Claudinite: prune ${plan.delete.length} conversation log(s) past ${retentionDays}d retention [skip ci]`,
       });
     } catch (e) {
       // Almost always a capture that landed mid-run: re-plan against the new tip.
@@ -113,7 +109,7 @@ export async function main() {
       log(`push rejected (attempt ${attempt}/${PUSH_ATTEMPTS}) — re-planning against the new tip`);
       continue;
     }
-    log(`pruned ${captures} processed capture(s) past ${retentionDays}d, ${plan.delete.length} path(s) in total${held}`);
+    log(`pruned ${plan.delete.length} of ${plan.logCount} capture(s), past ${retentionDays}d`);
     return;
   }
 }

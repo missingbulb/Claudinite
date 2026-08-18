@@ -192,16 +192,6 @@ test('growth-extract: a quiet repo never fires it, however old its logs are', ()
   assert.match(v.reason, /nothing to extract/);
 });
 
-test('growth-extract: every run is told to mark what it read, and never to delete', () => {
-  // The marker is the whole coupling to the agentless prune: a log this run passes
-  // over but does not mark is held on the branch forever.
-  const ctx = extract.precondition({
-    commits: { substantiveChange: true, list: [{ sha: 'abcdef1234', substantive: true }] },
-  }).context.join(' ');
-  assert.match(ctx, /\.processed/);
-  assert.match(ctx, /deleting a log yourself is never this run's job/);
-});
-
 // --- growth-dedup (the pruning stage) ----------------------------------------
 
 test('growth-dedup: weekly/opus/merged-pr — the prune PR is delivered to land', () => {
@@ -288,7 +278,9 @@ test('logs-prune: daily/agentless/none — its whole write is on a non-default b
   assert.deepEqual(logsPrune.precondition_signals, ['conversationLogs']);
   // An agentless task's whole work is its preprocessing — with none it does nothing.
   assert.equal(logsPrune.prework, 'node worker.mjs');
-  assert.ok(logsPrune.prework_timeout > 0);
+  // One fetch and at most one push: the bound guards a hung network call, and is
+  // nowhere near headroom for work.
+  assert.ok(logsPrune.prework_timeout > 0 && logsPrune.prework_timeout <= 60);
 });
 
 test('logs-prune: fires on age alone, which is what makes it independent of activity', () => {

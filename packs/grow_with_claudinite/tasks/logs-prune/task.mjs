@@ -11,12 +11,13 @@
 // arm whose only job was to fire the prune on a quiet repo, so a repo with nothing
 // to extract still paid an opus dispatch on the nights one log aged out.
 //
-// WHAT THE SPLIT COST, AND WHAT PAYS IT. The prune used to be coupled to a
-// judgment step — an aged log got a final pass before deletion, and deletion was
-// the ack that it happened. An agentless task pruning on age alone would delete
-// captures nobody ever mined. So consumption is a fact the extract run RECORDS: it
-// marks each log it passes over (`<log>.processed`, prune-logs.mjs), and this task
-// deletes only what carries that marker. It ages out nothing on its own authority.
+// WHAT MAKES AGE ENOUGH. The prune used to be coupled to a judgment step — an aged
+// log got a final pass before deletion — so pruning on the calendar risked deleting
+// a capture nothing had read. What removes the risk is the extract run's READING
+// WINDOW, not a per-file handshake between the two tasks: growth-extract reads from
+// the oldest end of the branch on every run, against a retention measured in days,
+// so a capture reaches retention having been read. The extract-from-conversations
+// skill owns that window; this task owns the arithmetic.
 //
 // Self-contained (imports nothing): the whole contract is this default export.
 
@@ -29,18 +30,19 @@ export default {
   // branch, which is outside the outcome taxonomy (per-project-scheduling DESIGN §1).
   expected_outcome: 'none',
   prework: 'node worker.mjs',
-  // One tree read and at most one commit-and-push, all local git against a branch
-  // that holds a bounded number of small files. 300s is far beyond that, and well
-  // inside the executor's claim leash.
-  prework_timeout: 300,
+  // One ls-remote, one fetch, one tree read, at most one push — against a branch
+  // whose size retention itself bounds. Seconds. The bound is protection against a
+  // hung network call, not headroom for work, so it sits just past the slowest
+  // plausible fetch rather than at the leash.
+  prework_timeout: 60,
 
   // The AGE arm, inherited from growth-extract's second precondition arm — which
   // existed only to fire the prune on a quiet repo and left with it.
   //
   // It tests the age, not "a branch exists and retention is configured": that pair
   // is true on every capturing repo every day. The worker is cheap enough that a
-  // run finding nothing marked costs seconds, but a precondition that is true
-  // forever once true is not a trigger at all.
+  // run finding nothing costs seconds, but a precondition that is true forever
+  // once true is not a trigger at all.
   precondition(signals) {
     const logs = signals.conversationLogs ?? {};
     const retention = logs.retentionDays;

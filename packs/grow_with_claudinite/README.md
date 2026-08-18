@@ -15,14 +15,14 @@ scheduler (`engine/scheduler/discover.mjs`) wherever the pack is declared:
 
 | Task | Runs when | Where it lands |
 |---|---|---|
-| `growth-extract` ([tasks/growth-extract/task.md](tasks/growth-extract/task.md)) | the project changed in the window | the repo's own local packs, via a PR that auto-merges after CI, plus a `processed` marker per log it read |
+| `growth-extract` ([tasks/growth-extract/task.md](tasks/growth-extract/task.md)) | the project changed in the window | the repo's own local packs, via a PR that auto-merges after CI |
 | `growth-dedup` ([tasks/growth-dedup/task.md](tasks/growth-dedup/task.md)) | weekly, when the canon or the project's local packs moved in the week | the repo's own local packs, via a PR that auto-merges after CI |
 | `growth-discover-packs` ([tasks/growth-discover-packs/task.md](tasks/growth-discover-packs/task.md)) | weekly | a new **local** pack in the repo's own `.claudinite/local/packs/`, via a reviewed PR |
 | `prose-to-checks-sweep` ([tasks/prose-to-checks-sweep/task.md](tasks/prose-to-checks-sweep/task.md)) | weekly (no-ops cheaply on a quiet corpus) | a PR converting always-testable pack prose into checks |
 | `rule-revalidation` ([tasks/rule-revalidation/task.md](tasks/rule-revalidation/task.md)) | weekly | a reviewed PR correcting rules whose environment claim no longer probes true |
 
-(Plus two agentless daily tasks: [usage-fold](tasks/usage-fold/task.md), described below, and
-[logs-prune](tasks/logs-prune/task.md), retention on the conversation-logs branch.)
+(Plus two agentless daily tasks over the conversation-logs branch: [usage-fold](tasks/usage-fold/task.md),
+described below, and `logs-prune` — retention, [tasks/logs-prune/worker.mjs](tasks/logs-prune/worker.mjs).)
 
 ## Extraction is one task over two sources
 
@@ -31,7 +31,7 @@ scheduler (`engine/scheduler/discover.mjs`) wherever the pack is declared:
 1. [extract-from-activity](skills/extract-from-activity/SKILL.md) over the window's commits, merged
    PRs and issue discussion;
 2. [extract-from-conversations](skills/extract-from-conversations/SKILL.md) over the logs captured
-   from working sessions (marking each log it reads processed);
+   from working sessions;
 3. [prose-to-checks](skills/prose-to-checks/SKILL.md) over the prose **that run just wrote**, to see
    whether any of it upgrades to a check before the PR opens.
 
@@ -105,13 +105,12 @@ GitHub MCP tools.
    never pasted there, it is far too verbose for an issue —
    **extraction is the only path to permanence**: a log that yields no rule gets no comment,
    and its conversation is gone once retention deletes it (a deliberate owner call).
-3. **Deletion — the agentless [logs-prune](tasks/logs-prune/task.md) task**, daily, over the same
-   branch. It removes a capture only when it is **both** past `config.retention_days` **and** carrying
-   the `<log>.processed` sidecar the extract run wrote: age is arithmetic this task owns, while whether
-   anything ever read the log is a fact only the extract run knows. So a capture nobody mined is held,
-   not aged out — the worker reports how many it is holding, so a repo whose extract stopped running
-   does not read as a quiet one. **Unset retention = the prune deletes nothing** (capture-only,
-   fail-safe).
+3. **Deletion — the agentless `logs-prune` task**
+   ([tasks/logs-prune/worker.mjs](tasks/logs-prune/worker.mjs)), daily, over the same branch: every
+   capture past `config.retention_days` is removed, on the stamp in its filename alone. What makes
+   that safe without an agent is the reading window above — the extract run reads from the oldest end
+   of the branch on every run, so a capture reaches retention having been read. **Unset retention = the
+   prune deletes nothing** (capture-only, fail-safe).
 
 No adoption question over it — `retention_days` stays unset (hidden) by default, which is
 fail-safe (capture-only). A project that wants the prune active sets `config.retention_days`

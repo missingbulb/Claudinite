@@ -63,7 +63,6 @@ export default {
     if (prs.length) context.push(`PRs touched in the window: ${prs.map((n) => `#${n}`).join(', ')}.`);
     if (issues.length) context.push(`Issues touched in the window: ${issues.map((n) => `#${n}`).join(', ')}.`);
     context.push('Conversation half IS in scope: a substantive merge means fresh captures on origin/conversation-logs — run the fresh pass over the recent window.');
-    context.push('Mark every log you pass over with its `<log>.processed` sidecar on the logs branch. That marker is the ONLY thing that ever makes a capture prunable — the logs-prune task deletes nothing that lacks one — and deleting a log yourself is never this run\'s job.');
 
     return { run: true, reason: `${shas.length} substantive commit(s) in the window`, context };
   },
