@@ -1,4 +1,4 @@
-# Scheduled tasks — the per-project scheduling mechanism
+# Tasks — the per-project work mechanism
 
 How a repo's own Claudinite work runs. A repo schedules **itself**, and
 every occurrence of every task is an **issue in that repo** — a `[claudinite-work]`
