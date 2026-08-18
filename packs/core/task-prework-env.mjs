@@ -18,7 +18,11 @@ import { PREWORK_ENV_VARS } from '../../engine/scheduler/queue/prework-run.mjs';
 // GENERIC BY CONSTRUCTION: the legal set is the key set of the object the executor
 // builds, imported rather than restated, so a variable added to or removed from the
 // prework contract changes what this accepts with no edit here.
+// A task's own code. Tests are out: a test naming a retired variable is naming it
+// as a fixture, which is exactly what a regression test for this rule must be free
+// to do.
 const TASK_FILE = /(^|\/)tasks\/[^/]+\/.+\.mjs$/;
+const TEST_FILE = /\.test\.mjs$/;
 const READS = /\bCLAUDINITE_[A-Z0-9_]+\b/g;
 
 const rule = {
@@ -30,7 +34,7 @@ const rule = {
 
   run(ctx) {
     const out = [];
-    for (const file of ctx.files.filter((f) => TASK_FILE.test(f))) {
+    for (const file of ctx.files.filter((f) => TASK_FILE.test(f) && !TEST_FILE.test(f))) {
       const text = ctx.read(file);
       if (text === null) continue;
       // Comments strip in BOTH directions: this rule's own prose names the retired

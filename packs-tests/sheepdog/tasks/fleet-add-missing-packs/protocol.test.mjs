@@ -33,8 +33,8 @@ test('label and titles agree across the boundary', () => {
 
 test('the task id the enforcer fires is the member task\'s directory id', () => {
   // The other half of the coupling the worker's MEMBER_TASK constant names: the
-  // scheduler resolves FORCE_TASKS against task ids, so a rename of the member task
-  // silently turns every fan-out into a no-op without this pin.
+  // member's tick resolves the `wake` input against task ids, so a rename of the
+  // member task silently turns every fan-out into a no-op without this pin.
   assert.equal(MEMBER_TASK, memberDecl.id);
 });
 

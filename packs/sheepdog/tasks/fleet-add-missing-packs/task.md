@@ -9,7 +9,7 @@ The task is parameterised over the two ways a pack comes to be missing ([`params
 | run | parameters | first stage |
 |---|---|---|
 | weekly (scheduled) | `--scan-for-needed-packs=true --repos=all-covered-members`, on the `prework` line in [`task.mjs`](task.mjs) | the **scan** ([`scan-for-needed-packs.mjs`](scan-for-needed-packs.mjs)): fingerprint every covered member's tree against the canon corpus and *suspect* what its declaration does not carry |
-| forced (hand-started) | the scheduler's override bag: `FORCE_TASKS=fleet-add-missing-packs`, `SCAN_FOR_NEEDED_PACKS=false`, `REPOS=Alpha Beta`, `ADD_PACKS=<ids>`, `PACK_CONFIG=<pack>.<key>=<v>`, `PACK_ANSWER=<pack>.<question>=<answer>` (values space-separated — the bag splits on commas) | the **force** ([`force-add-packs.mjs`](force-add-packs.mjs)): the owner names the packs, repos, config and interview answers — nothing is suspected, because it was decided |
+| forced (hand-created item) | the item's Context, one `--context` line each: `SCAN_FOR_NEEDED_PACKS=false`, `REPOS=Alpha Beta`, `ADD_PACKS=<ids>`, `PACK_CONFIG=<pack>.<key>=<v>`, `PACK_ANSWER=<pack>.<question>=<answer>` (values space-separated — the bag splits on commas) | the **force** ([`force-add-packs.mjs`](force-add-packs.mjs)): the owner names the packs, repos, config and interview answers — nothing is suspected, because it was decided |
 
 A force **refuses itself entirely** — before any issue is written — on an unknown pack id, a repo that is not a covered member or is dormant, `all-covered-members` as a target, or **any adoption-interview question the overrides did not answer**: an answer is the owner's to give, never one this task may infer.
 
@@ -18,7 +18,7 @@ A force **refuses itself entirely** — before any issue is written — on an un
 Both stages end the same way, per member with work ([`protocol.mjs`](protocol.mjs)):
 
 1. **Converge one work-list issue in that member** under the `add-packs` label — `Add packs: requested for this repo` (a decision, carrying the exact declaration entries as JSON, config and answers included) or `Add packs: suspected from this repo’s shape` (a suspicion, carrying the evidence and the fingerprints the REST sweep could not decide).
-2. **Fire that member's own scheduler** with `FORCE_TASKS=adopt-requested-packs`. A forced run evaluates only that task (engine contract, #749).
+2. **Wake that member's own `adopt-requested-packs` item** by dispatching its scheduler with `wake: adopt-requested-packs`. The wake lever names one task and touches nothing else (engine contract, #749).
 
 The member's task reads its own issue, its own executor confirms/adopts with the repo checked out, and one reviewed PR lands *there*. The enforcer **dispatches**; the member **executes**. Nothing here writes to any member's tree, and no agent anywhere needs cross-repo access — the one fleet credential is `FLEET_GITHUB_TOKEN` (Contents read, Issues read/write, Actions read+write).
 

@@ -71,10 +71,10 @@ test('each syntax is caught on its own', () => {
 });
 
 test('an underscore inside a word is not emphasis', () => {
-  // Real briefs name real identifiers: FORCE_TASKS and DIGEST_BACKFILL_DAYS are the
+  // Real briefs name real identifiers: DIGEST_BACKFILL_DAYS and FLEET_GITHUB_TOKEN are the
   // fleet's own override keys, and a rule that flagged them would push the brief into
   // paraphrasing facts rather than stating them.
-  assert.deepEqual(rule.run(ctx({ [DATED]: 'Fleet operations\n\nBackfill via FORCE_TASKS and DIGEST_BACKFILL_DAYS.\n' })), []);
+  assert.deepEqual(rule.run(ctx({ [DATED]: 'Fleet operations\n\nBackfill via DIGEST_BACKFILL_DAYS over FLEET_GITHUB_TOKEN.\n' })), []);
 });
 
 test('only the dated briefs are subjects', () => {

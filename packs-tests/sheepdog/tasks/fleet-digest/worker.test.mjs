@@ -16,16 +16,16 @@ import { parseBackfillDays, backfillDates, asOf, planBriefs, plain, renderNudge 
 const NOW = '2026-08-09T05:00:00Z';
 
 test('the override is read out of the bag the scheduler already carries', () => {
-  assert.equal(parseBackfillDays('FORCE_TASKS=fleet-digest,DIGEST_BACKFILL_DAYS=7'), 7);
+  assert.equal(parseBackfillDays('DIGEST_BACKFILL_DAYS=7'), 7);
   assert.equal(parseBackfillDays('DIGEST_BACKFILL_DAYS=1'), 1);
-  assert.equal(parseBackfillDays('DIGEST_BACKFILL_DAYS=7\nFORCE_TASKS=fleet-digest'), 7, 'newline-separated too');
+  assert.equal(parseBackfillDays('Created by hand.\nDIGEST_BACKFILL_DAYS=7'), 7, 'newline-separated, beside the item\'s prose');
 });
 
 test('absent or unusable means no backfill — never a partial guess', () => {
   // "backfill 7 days" and "backfill 0 days" are a whole run's work apart.
   assert.equal(parseBackfillDays(undefined), null);
   assert.equal(parseBackfillDays(''), null);
-  assert.equal(parseBackfillDays('FORCE_TASKS=fleet-digest'), null);
+  assert.equal(parseBackfillDays('Created by hand — no precondition asserts there is work to do.'), null);
   assert.equal(parseBackfillDays('DIGEST_BACKFILL_DAYS=0'), null);
   assert.equal(parseBackfillDays('DIGEST_BACKFILL_DAYS=-3'), null);
   assert.equal(parseBackfillDays('DIGEST_BACKFILL_DAYS=lots'), null);
@@ -163,7 +163,7 @@ test('a title that quotes an identifier is flattened, never reproduced raw', () 
   assert.equal(plain('Convert the `Comment class:` menu-restating rule to a check'),
     'Convert the "Comment class:" menu-restating rule to a check');
   assert.equal(plain('**Rebuild** the promotion PR'), 'Rebuild the promotion PR');
-  assert.equal(plain('FORCE_TASKS keeps its underscores'), 'FORCE_TASKS keeps its underscores');
+  assert.equal(plain('DIGEST_BACKFILL_DAYS keeps its underscores'), 'DIGEST_BACKFILL_DAYS keeps its underscores');
 });
 
 test('the nudge names the repo, the last change and a bare URL', () => {

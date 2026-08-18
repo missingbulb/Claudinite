@@ -50,7 +50,7 @@ test('adopt-requested-packs: its precondition admits its own forced item', () =>
   // the enforcer's own item `outcome:obsolete` without running it.
   const v = decl.precondition();
   assert.equal(v.run, true);
-  assert.doesNotMatch(v.reason ?? '', /FORCE_TASKS/, 'the slot-era force lever no longer exists');
+  assert.doesNotMatch(v.reason ?? '', /FORCE_TASKS|CLAUDINITE_OVERRIDES/, 'the slot-era force lever is deleted');
 });
 
 test('adopt-requested-packs: two stages — a cheap gate, then the agent, iff work exists', () => {

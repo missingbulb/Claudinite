@@ -73,16 +73,16 @@
 // The pack carries NO workflow of its own: every sweep runs Action-side inside the
 // repo's one scheduler workflow, where the secret is already reachable, and the two
 // operator levers (fleet-baseline; a forced fleet-add-missing-packs) are `manual` /
-// forced runs of that same workflow — Run workflow → `overrides: FORCE_TASKS=…`. The
+// hand-created work items on that same queue — `create-work-item <pack>/<task>`. The
 // standalone fleet-baseline workflow this pack once kept in the enforcer's .github/
 // (the one file the nightly converge could never push itself, #649) was retired
 // 2026-08-11 (#749, packs/sheepdog/migrations/2026-08-11-fleet-baseline-task) along with its
 // follow-the-fleet report: dispatching is the enforcer's job, reporting is each
 // member's own.
 //
-// Everything else — the SCHEDULER (engine/scheduler/run.mjs), the
-// orchestrator/daily-run, the task engine (engine/scheduler/), scheduling — is CORE and
-// pack-agnostic; the planner never runs, dispatches, or depends on these sweeps.
+// Everything else — the tick, the executor, the task engine (engine/scheduler/),
+// scheduling — is CORE and pack-agnostic; none of it runs, dispatches, or depends on
+// these sweeps.
 //
 // THREE CHECKS. Two are the digest's, and live in its task folder because nothing else
 // reads them: `digest-plain-text` holds the landed briefs to plain text (they are sent

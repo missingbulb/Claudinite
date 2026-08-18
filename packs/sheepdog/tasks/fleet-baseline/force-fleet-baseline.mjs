@@ -1,6 +1,6 @@
 // The fleet-baseline DISPATCH — the enforcer's manual lever over the whole fleet:
 // force every covered member to baseline NOW, instead of waiting for each one's next
-// hourly slot. It fires each member's OWN scheduler with `FORCE_TASKS=baselining` —
+// anchor. It dispatches each member's OWN scheduler with `wake: baselining` —
 // the same button the owner would press in that repo's Actions tab, pressed across
 // the fleet in one run. Nothing is baselined here: each member converges its own
 // mount, with its own token, under its own scheduler and its own delivery policy.
@@ -57,7 +57,7 @@ export const FORCED_TASK = 'update';
 // of bare names or full `owner/name`, lowercased, or null for "every member". A bare
 // name is qualified with the configured owner, because that is the only owner this
 // sweep can reach and typing it twenty times is friction with no upside.
-// Space-separated, never comma-separated — the override bag splits keys on commas.
+// Space-separated, never comma-separated — the parameter bag splits keys on commas.
 export function parseRepoFilter(raw, owner) {
   const names = String(raw ?? '').split(/\s+/).map((s) => s.trim()).filter(Boolean);
   if (!names.length) return null;
