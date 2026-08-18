@@ -7,7 +7,7 @@ import {
 } from './fleet.mjs';
 import { activitySeries, fleetBenefits, delta } from './activity.mjs';
 import {
-  $, el, ago, duration, head, emptyRow, repoLink, tiles, segmentBar,
+  $, el, ago, duration, groupedHead, columnCount, groupStarts, emptyRow, repoLink, tiles, segmentBar,
   reasonNodes, stackedColumns, chartLegend, windowFigure,
   LEVEL_GLYPH, STATE_ORDER, STATE_COLOR, STATE_UI, OUTCOME_COLOR,
 } from './ui.mjs';
@@ -51,7 +51,7 @@ async function readMember(repo, token, { withTree = true } = {}) {
 
     // A member that does not run Claudinite needs no further reads — and skipping
     // them is most of the saving on a fleet where not everything is adopted.
-    if (!declaration) return { repo, declaration: null, defaultBranch: meta.default_branch, head };
+    if (!declaration) return { repo, declaration: null, defaultBranch: meta.default_branch, head, stars: meta.stars };
 
     const [tree, issuePage, runs] = await Promise.all([
       withTree ? gh.listTreeAtSha(repo, sha, token).catch(() => null) : Promise.resolve(null),
@@ -65,6 +65,8 @@ async function readMember(repo, token, { withTree = true } = {}) {
       repo,
       declaration,
       defaultBranch: meta.default_branch,
+      stars: meta.stars,
+      archived: meta.archived,
       sha,
       head,
       paths: tree?.paths ?? null,
@@ -108,6 +110,52 @@ const MOUNT_UI = {
   unknown: { label: '—', cls: 'idle' },
 };
 
+// The member grid, as three questions rather than one wall of columns:
+//
+//   STATUS      — what kind of repo is this, and is it alive.
+//   CLAUDINITE  — what the machinery is doing here.
+//   WORK        — what is waiting on a person.
+//
+// The identity pair at the left belongs to none of them: the name and the reason this
+// row is where it is are how you read every other cell.
+//
+// Every column is derived from a read the page ALREADY makes. Four fields the issue
+// asked for are absent for that reason and not by oversight — rule tokens, test counts
+// and time saved would each need a member's own file read, and conversation-log
+// sessions a branch listing. They are named in the panel's own note rather than
+// guessed at.
+const MEMBER_GROUPS = [
+  ['', ['Member', 'Health']],
+  ['Status', ['CI', 'Stars', 'Last commit']],
+  ['Claudinite', ['Packs', 'Tasks', 'Queue', 'Recent outcomes', 'Mount', 'Scheduler']],
+  ['Work — waiting on a person', ['Issues', 'Pull requests']],
+];
+
+// The same split, one level down: a task's identity, where it stands right now, and
+// what it has done. `Parked` sits under Now because it is a live state, not a record.
+const FLEET_TASK_GROUPS = [
+  ['', ['Task']],
+  ['Now', ['Members', 'Open', 'Parked']],
+  ['History', ['Succeeded', 'No outcome']],
+];
+
+const MEMBER_COLS = columnCount(MEMBER_GROUPS);
+const MEMBER_STARTS = groupStarts(MEMBER_GROUPS);
+
+// The group's first cell carries the same rule the header band draws, so the three
+// questions stay legible down the length of the table.
+const banded = (cells) => cells.map((cell, i) => {
+  if (MEMBER_STARTS.includes(i)) cell.classList.add('group-start');
+  return cell;
+});
+
+const CI_UI = {
+  passing: { label: 'passing', cls: 'ok' },
+  failing: { label: 'failing', cls: 'critical' },
+  running: { label: 'running', cls: 'info' },
+  unknown: { label: '—', cls: 'info' },
+};
+
 function memberRow(s, onOpen, now) {
   const open = (e) => { e.preventDefault(); onOpen(s.repo); };
 
@@ -119,7 +167,7 @@ function memberRow(s, onOpen, now) {
   if (s.status !== 'adopted') {
     return el('tr', { className: `lvl-${s.level} muted-row` }, [
       name,
-      el('td', { colSpan: 5 }, reasonNodes(s.reasons)),
+      el('td', { colSpan: MEMBER_COLS - 2 }, reasonNodes(s.reasons)),
       el('td', { className: 'nw' }, [el('a', { href: `?repo=${encodeURIComponent(s.repo)}`, textContent: 'open', onclick: open })]),
     ]);
   }
@@ -128,6 +176,30 @@ function memberRow(s, onOpen, now) {
   const health = el('td', {}, s.reasons.length
     ? reasonNodes(s.reasons)
     : [el('span', { className: 'warn ok', textContent: `${LEVEL_GLYPH.ok} healthy` })]);
+
+  // --- Status: the repo itself ---------------------------------------------------
+
+  const ciUi = CI_UI[s.ci?.state] ?? CI_UI.unknown;
+  const ci = el('td', { className: 'nw' }, [
+    el('div', { className: `warn ${ciUi.cls}`, textContent: ciUi.label }),
+    el('div', { className: 'sub', textContent: s.ci?.at ? ago(s.ci.at, now) : 'no run on the default branch' }),
+  ]);
+
+  const stars = el('td', { className: 'num nw', textContent: s.stars == null ? '—' : String(s.stars) });
+
+  const commit = el('td', { className: 'nw sub', textContent: s.lastCommit ? ago(s.lastCommit, now) : '—' });
+
+  // --- Claudinite: what the machinery is doing here -------------------------------
+
+  const packs = el('td', { className: 'num nw' }, [
+    el('div', { textContent: String(s.packs.length) }),
+    el('div', { className: 'sub', textContent: 'declared' }),
+  ]);
+
+  const tasks = el('td', { className: 'num nw' }, [
+    el('div', { textContent: s.declaredTasks == null ? '—' : String(s.declaredTasks) }),
+    el('div', { className: 'sub', textContent: 'declared' }),
+  ]);
 
   // Queue: the state mix as one thin bar plus the counts that are non-zero, so a
   // member with nothing open reads as empty rather than as a row of zeros.
@@ -138,16 +210,20 @@ function memberRow(s, onOpen, now) {
     el('div', { className: 'sub', textContent: counts.length ? counts.join(' · ') : 'nothing open' }),
   ]);
 
-  const outcomeBar = segmentBar([
-    ['done', s.outcomes[OUTCOME_DONE], OUTCOME_COLOR[OUTCOME_DONE]],
-    ['delivered', s.outcomes[OUTCOME_DELIVERED], OUTCOME_COLOR[OUTCOME_DELIVERED]],
-    ['obsolete', s.outcomes[OUTCOME_OBSOLETE], OUTCOME_COLOR[OUTCOME_OBSOLETE]],
-    ['no outcome', s.outcomes.none, OUTCOME_COLOR.none],
-  ], { width: 92 });
-
-  const activity = el('td', {}, [
-    outcomeBar,
+  const outcomes = el('td', {}, [
+    segmentBar([
+      ['done', s.outcomes[OUTCOME_DONE], OUTCOME_COLOR[OUTCOME_DONE]],
+      ['delivered', s.outcomes[OUTCOME_DELIVERED], OUTCOME_COLOR[OUTCOME_DELIVERED]],
+      ['obsolete', s.outcomes[OUTCOME_OBSOLETE], OUTCOME_COLOR[OUTCOME_OBSOLETE]],
+      ['no outcome', s.outcomes.none, OUTCOME_COLOR.none],
+    ], { width: 92 }),
     el('div', { className: 'sub', textContent: s.lastActivity ? ago(s.lastActivity, now) : (s.closedSeen ? 'unknown' : 'nothing closed yet') }),
+  ]);
+
+  const m = MOUNT_UI[s.mount.state] ?? MOUNT_UI.unknown;
+  const mount = el('td', { className: 'nw' }, [
+    el('div', { className: `warn ${m.cls}`, textContent: m.label }),
+    el('div', { className: 'sub num', textContent: s.mount.ref ? s.mount.ref.slice(0, 7) : '—' }),
   ]);
 
   const runs = el('td', { className: 'nw' }, [
@@ -160,18 +236,28 @@ function memberRow(s, onOpen, now) {
     el('div', { className: 'sub', textContent: s.runs.lastAt ? ago(s.runs.lastAt, now) : '—' }),
   ]);
 
-  const m = MOUNT_UI[s.mount.state] ?? MOUNT_UI.unknown;
-  const mount = el('td', { className: 'nw' }, [
-    el('div', { className: `warn ${m.cls}`, textContent: m.label }),
-    el('div', { className: 'sub num', textContent: s.mount.ref ? s.mount.ref.slice(0, 7) : '—' }),
+  // --- Work: what is waiting on a person ------------------------------------------
+
+  // Issues that are NOT queue items, and open pull requests. Both are inside the
+  // issue page's window, so an old enough one is not counted — "in the window" is
+  // said once under the table rather than in every cell.
+  const issues = el('td', { className: 'num nw' }, [
+    el('div', { textContent: String(s.work?.issues ?? 0) }),
+    el('div', { className: 'sub', textContent: s.work?.issuesOldest ? `oldest ${duration(now - s.work.issuesOldest)}` : '—' }),
   ]);
 
-  const tasks = el('td', { className: 'num nw' }, [
-    el('div', { textContent: s.declaredTasks == null ? '—' : String(s.declaredTasks) }),
-    el('div', { className: 'sub', textContent: `${s.packs.length} packs` }),
+  const prs = el('td', { className: 'num nw' }, [
+    el('div', { textContent: String(s.work?.prs ?? 0) }),
+    el('div', {
+      className: 'sub',
+      textContent: s.work?.prsOldest
+        ? `oldest ${duration(now - s.work.prsOldest)}${s.work.drafts ? ` · ${s.work.drafts} draft` : ''}`
+        : (s.work?.drafts ? `${s.work.drafts} draft` : '—'),
+    }),
   ]);
 
-  return el('tr', { className: `lvl-${s.level}` }, [name, health, queue, activity, runs, mount, tasks]);
+  return el('tr', { className: `lvl-${s.level}` },
+    banded([name, health, ci, stars, commit, packs, tasks, queue, outcomes, mount, runs, issues, prs]));
 }
 
 // --- what the machinery bought ---------------------------------------------------
@@ -289,7 +375,7 @@ const pendingRow = (repo) => el('tr', { className: 'pending-row' }, [
     el('span', { className: 'name', textContent: repo.split('/')[1] ?? repo }),
     el('div', { className: 'sub' }, [repoLink(repo)]),
   ]),
-  el('td', { colSpan: 6 }, [el('span', { className: 'sub', textContent: 'reading…' })]),
+  el('td', { colSpan: MEMBER_COLS - 1 }, [el('span', { className: 'sub', textContent: 'reading…' })]),
 ]);
 
 function renderFleet(summaries, reads, now, onOpen, canon, progress = null, digests = null) {
@@ -318,8 +404,8 @@ function renderFleet(summaries, reads, now, onOpen, canon, progress = null, dige
     ? `${progress.done}/${progress.total} repos read — figures below cover those`
     : (progress ? `${progress.total} repos read` : '');
 
-  const body = head($('fleet'), ['Member', 'Health', 'Queue', 'Recent outcomes', 'Scheduler', 'Mount', 'Tasks']);
-  if (!summaries.length) { body.append(emptyRow(7, 'No members in the roster.')); return; }
+  const body = groupedHead($('fleet'), MEMBER_GROUPS);
+  if (!summaries.length) { body.append(emptyRow(MEMBER_COLS, 'No members in the roster.')); return; }
   for (const s of rankMembers(resolved)) body.append(memberRow(s, onOpen, now));
   for (const repo of pending) body.append(pendingRow(repo));
 
@@ -331,8 +417,8 @@ function renderFleet(summaries, reads, now, onOpen, canon, progress = null, dige
   renderActivity(activitySeries(resolvedReads, { now }));
 
   const spread = taskSpread(resolvedReads, now).filter((t) => t.members > 0);
-  const tbody = head($('fleet-tasks'), ['Task', 'Members', 'Open', 'Parked', 'Succeeded', 'No outcome']);
-  if (!spread.length) tbody.append(emptyRow(6, 'No work items seen across the fleet.'));
+  const tbody = groupedHead($('fleet-tasks'), FLEET_TASK_GROUPS);
+  if (!spread.length) tbody.append(emptyRow(columnCount(FLEET_TASK_GROUPS), 'No work items seen across the fleet.'));
   for (const t of spread.slice(0, 25)) {
     tbody.append(el('tr', { className: t.parked ? 'lvl-critical' : '' }, [
       el('td', {}, [

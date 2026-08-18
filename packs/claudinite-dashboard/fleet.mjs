@@ -95,7 +95,10 @@ export function mountState(stamp, canon = null, now = null) {
 // at. `read` is what the loader managed to fetch; a member it could not read arrives
 // with `error` set and every other field absent.
 export function summariseMember(read, { now, canon = null } = {}) {
-  const { repo, error = null, declaration = null, items = null, runs = null, paths = null } = read ?? {};
+  const {
+    repo, error = null, declaration = null, items = null, runs = null, paths = null,
+    prs = null, head = null, stars = null, defaultBranch = null,
+  } = read ?? {};
 
   if (error) {
     // A read the page DECLINED to make is not the same fact as one it could not make:
@@ -154,6 +157,7 @@ export function summariseMember(read, { now, canon = null } = {}) {
     .sort((a, b) => b - a)[0] ?? null;
 
   const runSummary = summariseRuns(runs ?? [], now);
+  const ci = ciStatus(runs ?? [], defaultBranch);
   const mount = mountState(declaration.claudinite, canon, now);
 
   const reasons = [];
@@ -187,6 +191,11 @@ export function summariseMember(read, { now, canon = null } = {}) {
   if (declaredTasks !== null && declaredTasks > 0 && work.length === 0) {
     reasons.push({ level: 'serious', text: `${declaredTasks} task${declaredTasks > 1 ? 's' : ''} declared, no work item ever created` });
   }
+  if (ci.state === 'failing') {
+    // The member's own CI, said in the member's own words: this is not the scheduler
+    // failing, and the two must not read as the same alarm.
+    reasons.push({ level: 'warning', text: 'the repo\'s own CI is failing on its default branch' });
+  }
   if (declaration.packs?.length === 0) {
     reasons.push({ level: 'warning', text: 'declares no packs' });
   }
@@ -207,6 +216,10 @@ export function summariseMember(read, { now, canon = null } = {}) {
     outcomes,
     lastActivity,
     runs: runSummary,
+    ci,
+    stars,
+    lastCommit: head?.committedAt ? ms(head.committedAt) : null,
+    work: humanWork(items, prs, now),
     mount,
     schedule: declaration.taskScheduler ?? null,
   };
@@ -222,6 +235,43 @@ function describeReadError(error) {
   if (status === 403) return 'forbidden — rate limit, or your credential lacks access';
   if (status === 401) return 'your credential was rejected';
   return error?.message ? `unreadable — ${error.message}` : 'unreadable';
+}
+
+// The repo's OWN CI, which is a different question from the scheduler's health: one
+// says whether this project builds, the other whether Claudinite is running here. They
+// are read from the same list and must never be conflated — a green scheduler on a
+// repo whose tests are red is not a healthy member.
+//
+// The default branch's most recent completed run is the answer; a `schedule` run is
+// excluded because that is the queue's own tick, reported separately.
+export function ciStatus(runs, defaultBranch) {
+  const mine = (runs ?? []).filter((r) => r.event !== 'schedule'
+    && (!defaultBranch || !r.head_branch || r.head_branch === defaultBranch));
+  const inFlight = mine.some((r) => r.status === 'in_progress' || r.status === 'queued');
+  const last = mine.find((r) => r.status === 'completed');
+  if (!last) return { state: inFlight ? 'running' : 'unknown', at: null, name: null };
+  const state = last.conclusion === 'success' ? 'passing'
+    : (last.conclusion === 'cancelled' || last.conclusion === 'skipped') ? 'unknown'
+      : 'failing';
+  return { state: inFlight ? 'running' : state, at: ms(last.created_at), name: last.name ?? null, url: last.html_url ?? null };
+}
+
+// What is waiting on a PERSON here, as opposed to on the queue: issues that are not
+// Claudinite work items, and open pull requests. Both come out of the issue page the
+// row already reads, so this costs nothing and stops at that window — an issue older
+// than the window is not counted, and the panel says the window is a window.
+export function humanWork(items, prs, now) {
+  const open = (items ?? []).filter((i) => i.state === 'open' && !isWorkItem(i));
+  const oldest = (list) => list.map((i) => ms(i.created_at)).filter(Boolean).sort((a, b) => a - b)[0] ?? null;
+  const openPrs = (prs ?? []).filter((p) => !p.draft);
+  return {
+    issues: open.length,
+    issuesOldest: oldest(open),
+    prs: openPrs.length,
+    drafts: (prs ?? []).length - openPrs.length,
+    prsOldest: oldest(openPrs),
+    now,
+  };
 }
 
 // The scheduler's own health. Only the workflow that drives the queue matters here —

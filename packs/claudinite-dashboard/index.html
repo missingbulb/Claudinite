@@ -191,6 +191,24 @@
                font-size: 12.5px; max-width: 78ch; text-transform: none; letter-spacing: 0; font-weight: 400; }
   .info-body strong { color: var(--ink); }
 
+  /* --- grouped header bands --- */
+  /* A wide row is three questions, not twelve columns. The band names them and a
+     single rule carries each group down the table — a heavier treatment (a wash, a
+     border box) would fight the severity edge the rows already use. */
+  tr.band th { padding-bottom: 2px; border-bottom: 0; font-size: 10px;
+               color: var(--ink-2); letter-spacing: 0.08em; }
+  tr.band th.group { border-left: 1px solid var(--rule); padding-left: 12px; }
+  tr.band th.group.blank { border-left: 0; }
+  th.group-start, td.group-start { border-left: 1px solid var(--rule); }
+  /* A grouped grid is wide by construction. Given the choice between squeezing every
+     column until its text wraps to five lines and scrolling the panel, scroll: the
+     groups exist so a reader can go to the one question they came for. */
+  #fleet { min-width: 1500px; }
+  #roster { min-width: 1080px; }
+  /* Health is prose and needs room to be one line per reason; every other column is a
+     number or a chip and can stay narrow. */
+  #fleet th:nth-child(2), #fleet td:nth-child(2) { min-width: 240px; }
+
   /* The benefits block leads the page, so it is allowed one step more presence than
      the status tiles that follow it — and the delta line is the point of each tile. */
   .tiles.benefits .tile { border-color: var(--rule); }
@@ -313,6 +331,15 @@
         has. One item parked for a human outranks forty healthy ones, because the first needs you today
         and the second is the system working. A member that cannot be read, one that does not run
         Claudinite, and one that is fine are three different rows and never collapse into a zero.
+      </p>
+      <p class="info-body" id="info-members-2" hidden>
+        The columns are grouped as three questions: <strong>Status</strong> — what kind of repo this is
+        and whether it is alive; <strong>Claudinite</strong> — what the machinery is doing here;
+        <strong>Work</strong> — what is waiting on a person. Every column comes from a read this page
+        already makes, which is also why four things are missing: rule tokens, test counts and time
+        saved would each need a member's own files read, and conversation-log sessions a branch listing.
+        Issues and pull requests are counted <em>within the issue window</em> — the most recent hundred
+        — so an older one is not counted rather than counted wrongly.
       </p>
       <p class="legend">Click a member to open its scheduler in full.</p>
       <div class="panel scroll"><table id="fleet"></table></div>

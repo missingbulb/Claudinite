@@ -219,10 +219,13 @@ async function boot() {
   // markup beside the heading it explains, so there is no second copy in the code.
   for (const b of document.querySelectorAll('button.info')) {
     b.addEventListener('click', () => {
-      const body = $(`info-${b.dataset.info}`);
-      if (!body) return;
-      body.hidden = !body.hidden;
-      b.setAttribute('aria-expanded', String(!body.hidden));
+      // A heading may explain itself in more than one paragraph (`info-x`, `info-x-2`,
+      // …); they open and close together, since they are one explanation.
+      const bodies = [$(`info-${b.dataset.info}`), $(`info-${b.dataset.info}-2`)].filter(Boolean);
+      if (!bodies.length) return;
+      const show = bodies[0].hidden;
+      for (const body of bodies) body.hidden = !show;
+      b.setAttribute('aria-expanded', String(show));
     });
   }
   $('purge').addEventListener('click', () => { clearAll(); render(); });

@@ -177,7 +177,13 @@ async function conditional(path, token, { transform = (x) => x } = {}) {
 
 export const getRepo = (repo, token) =>
   conditional(`/repos/${repo}`, token, {
-    transform: (r) => ({ default_branch: r.default_branch, private: r.private, full_name: r.full_name }),
+    // `stargazers_count` rides along in a response the page already makes: what KIND
+    // of repo this is belongs in the fleet row's Status group, and asking separately
+    // for it would be a per-member call the budget does not have.
+    transform: (r) => ({
+      default_branch: r.default_branch, private: r.private, full_name: r.full_name,
+      stars: r.stargazers_count ?? null, archived: Boolean(r.archived),
+    }),
   });
 
 // The head commit of the default branch — the cache key everything immutable hangs

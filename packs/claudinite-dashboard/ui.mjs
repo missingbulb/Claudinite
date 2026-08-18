@@ -129,6 +129,37 @@ export function tiles(node, rows) {
   ])));
 }
 
+// --- grouped table heads --------------------------------------------------------
+
+// A header BAND above the column names, so a wide row reads as a few questions rather
+// than as a wall of columns. `groups` is `[title, [col, …]]`; a group whose title is
+// empty spans its columns unlabelled, which is what the identity column at the left
+// edge wants — it belongs to no question.
+export const groupedHead = (table, groups) => {
+  table.replaceChildren();
+  table.append(el('thead', {}, [
+    el('tr', { className: 'band' }, groups.map(([title, cols]) =>
+      el('th', { colSpan: cols.length, className: title ? 'group' : 'group blank', textContent: title }))),
+    el('tr', {}, groups.flatMap(([, cols], gi) => cols.map((c, ci) =>
+      el('th', { className: ci === 0 && gi > 0 ? 'group-start' : '', textContent: c })))),
+  ]));
+  return table.appendChild(el('tbody'));
+};
+
+export const columnCount = (groups) => groups.reduce((n, [, cols]) => n + cols.length, 0);
+
+// Which cells start a group, so the body can carry the same vertical rule the band
+// draws. Returns the flat column indexes a `groupedHead(groups)` would open a group at.
+export const groupStarts = (groups) => {
+  const out = [];
+  let i = 0;
+  for (const [gi, [, cols]] of groups.entries()) {
+    if (gi > 0) out.push(i);
+    i += cols.length;
+  }
+  return out;
+};
+
 // --- the day chart --------------------------------------------------------------
 
 // A stacked column per day. SVG rather than divs because the whole point is comparing

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   summariseMember, summariseRuns, mountState, rankMembers, rollUp, packSpread, taskSpread,
-  MOUNT_STALE_MS,
+  ciStatus, MOUNT_STALE_MS,
 } from '../../packs/claudinite-dashboard/fleet.mjs';
 import {
   BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN,
@@ -306,4 +306,61 @@ test('a stalled mount says how long, and one declared task is not "1 tasks"', ()
 
   const one = summariseMember(read({ items: [], paths: ['packs/basics/tasks/task-janitor/task.mjs'] }), { now: NOW, canon: CANON });
   assert.match(one.reasons.find((r) => /no work item/.test(r.text)).text, /^1 task declared/);
+});
+
+// --- the member grid's three groups ----------------------------------------------
+
+test('CI is the default branch\'s own runs, never the scheduler\'s', () => {
+  const runs = [
+    { event: 'schedule', status: 'completed', conclusion: 'failure', head_branch: 'main', created_at: '2026-08-17T10:00:00Z' },
+    { event: 'push', status: 'completed', conclusion: 'success', head_branch: 'main', created_at: '2026-08-17T09:00:00Z' },
+  ];
+  assert.equal(ciStatus(runs, 'main').state, 'passing');
+});
+
+test('CI reports failing, and a run in flight outranks the last conclusion', () => {
+  const failed = [{ event: 'push', status: 'completed', conclusion: 'failure', head_branch: 'main', created_at: '2026-08-17T09:00:00Z' }];
+  assert.equal(ciStatus(failed, 'main').state, 'failing');
+  assert.equal(ciStatus([{ event: 'push', status: 'in_progress', head_branch: 'main', created_at: '2026-08-17T09:00:00Z' }, ...failed], 'main').state, 'running');
+});
+
+test('a branch that is not the default one says nothing about CI here', () => {
+  const runs = [{ event: 'push', status: 'completed', conclusion: 'failure', head_branch: 'a-branch', created_at: '2026-08-17T09:00:00Z' }];
+  assert.equal(ciStatus(runs, 'main').state, 'unknown');
+});
+
+test('a failing repo CI is a reason, and is not the scheduler failing', () => {
+  const s = summariseMember(read({
+    runs: [
+      { event: 'push', status: 'completed', conclusion: 'failure', head_branch: 'main', created_at: '2026-08-17T09:00:00Z' },
+      { event: 'schedule', status: 'completed', conclusion: 'success', head_branch: 'main', created_at: '2026-08-17T10:00:00Z' },
+    ],
+    defaultBranch: 'main',
+  }), { now: NOW, canon: CANON });
+  assert.equal(s.ci.state, 'failing');
+  assert.equal(s.runs.consecutiveFailures, 0);
+  assert.ok(s.reasons.some((r) => /own CI is failing/.test(r.text)));
+});
+
+test('the Work group counts issues that are not queue items, and open PRs', () => {
+  const plain = { ...item(), number: 41, title: 'a plain issue', created_at: '2026-08-10T00:00:00Z' };
+  const s = summariseMember(read({
+    items: [item(), plain, { ...plain, number: 42, state: 'closed' }],
+    prs: [
+      { number: 7, title: 'a pr', created_at: '2026-08-12T00:00:00Z', draft: false },
+      { number: 8, title: 'a draft', created_at: '2026-08-13T00:00:00Z', draft: true },
+    ],
+  }), { now: NOW, canon: CANON });
+
+  assert.equal(s.work.issues, 1);
+  assert.equal(s.work.issuesOldest, Date.parse('2026-08-10T00:00:00Z'));
+  assert.equal(s.work.prs, 1);
+  assert.equal(s.work.drafts, 1);
+});
+
+test('the head commit and the repo\'s stars ride along from reads already made', () => {
+  const s = summariseMember(read({ head: { sha: 'abc', committedAt: '2026-08-16T00:00:00Z' }, stars: 12 }),
+    { now: NOW, canon: CANON });
+  assert.equal(s.stars, 12);
+  assert.equal(s.lastCommit, Date.parse('2026-08-16T00:00:00Z'));
 });
