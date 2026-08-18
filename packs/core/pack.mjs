@@ -22,7 +22,7 @@ import taskPreworkEnv from './task-prework-env.mjs';
 // what puts it there.
 export default {
   id: 'core',
-  version: 4,
+  version: 5,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'using Claudinite itself — the vendored mount, the pack declaration, bootstrapping, adopting packs, the self-refresh update, the scheduled-task contract',

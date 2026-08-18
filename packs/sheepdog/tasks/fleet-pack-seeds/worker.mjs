@@ -9,9 +9,9 @@
 // Failure is the escalation path. The sweep THROWS when a member could not be read or
 // a declaration could not be written (an unusable token, a protected branch, a file
 // that changed under the run); this worker turns that into a non-zero exit, and the
-// scheduler treats a non-zero prework subprocess as a failed task — it converges one
-// open `needs-human` issue for the task family (engine/scheduler/run.mjs) instead of
-// handing off to any agent.
+// executor treats a non-zero prework subprocess as a failed task — it converges the
+// item to `needs-human` (engine/scheduler/queue/executor.mjs) instead of handing off
+// to any agent.
 
 import { pathToFileURL } from 'node:url';
 import { main as sweep } from './check-fleet-pack-seeds.mjs';

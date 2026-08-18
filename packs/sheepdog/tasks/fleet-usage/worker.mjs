@@ -14,9 +14,9 @@
 //
 // Failure is the escalation path. The sweep THROWS when its config or token is
 // unusable, or when enumeration comes back empty; this worker turns that into a
-// non-zero exit, and the scheduler treats a non-zero preprocessing subprocess as a
-// failed task — it converges one open `needs-human` issue for the task family
-// (engine/scheduler/run.mjs) instead of handing off to any agent.
+// non-zero exit, and the executor treats a non-zero prework subprocess as a failed
+// task — it converges the item to `needs-human`
+// (engine/scheduler/queue/executor.mjs) instead of handing off to any agent.
 
 import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';

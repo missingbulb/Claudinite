@@ -29,7 +29,7 @@ const stamped = (line) => `2026-07-29T04:44:12.3456789Z ${line}`;
 // than rendered: the writer is gone (#974) and this reader's job is exactly to keep
 // reading logs it already left, so the fixture must be the literal past shape.
 const jobLog = (...lines) => [
-  stamped('##[group]Run node engine/scheduler/run.mjs'),
+  stamped('##[group]Run node <the retired slot scheduler>'),
   stamped('## Claudinite scheduler'),
   ...lines.map(stamped),
 ].join('\n');
