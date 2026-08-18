@@ -64,7 +64,7 @@ and retires, while the sweep keeps converging every member the fleet acquires af
 
 **The digest** is the one output addressed to a *person* rather than to the machinery: a dated
 plain-text brief of what the fleet actually did, one file a morning, plus a prod about a project that
-has gone quiet. Its collector filters Claudinite's own maintenance PRs and dispatch issues out of
+has gone quiet. Its collector filters Claudinite's own maintenance PRs and work items out of
 **every** stream it reads — the machine is the fleet's busiest actor, and rank by size or by
 discussion and its own bookkeeping does not merely appear in the results, it wins them. The brief is
 plain text despite its `.md` name because it is *sent*, verbatim, through a renderer that neither

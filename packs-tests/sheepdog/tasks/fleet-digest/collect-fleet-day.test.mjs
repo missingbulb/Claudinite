@@ -59,6 +59,11 @@ test('the fleet\'s own dispatch issues are machine-filed, not accomplishments', 
   // Regression, from the first real backfill: three of one day's six shortlist slots
   // were `[claudinite-task]` issues. They do not merely appear — they WIN, because an
   // issue's weight counts its discussion and the executor comments on every stage.
+  // The queue's vocabulary is the one that matters going forward — every occurrence
+  // of every task in every member is one of these. A filter that knew only the
+  // retired prefix would hand the whole fleet's scheduled work to the shortlist.
+  assert.ok(isMachineIssue({ title: '[claudinite-work] grow_with_claudinite/growth-extract' }));
+  assert.ok(isMachineIssue({ title: '[claudinite-work] sheepdog/fleet-baseline (Alpha Beta)' }));
   assert.ok(isMachineIssue({ title: '[claudinite-task] grow_with_claudinite/growth-extract d2026-07-26' }));
   assert.ok(isMachineIssue({ title: '[claudinite-task] chrome-extension-release/store-release d2026-07-26' }));
   assert.ok(isMachineIssue({ title: 'Claudinite scheduler run failed' }), 'the escalation issue too');
@@ -167,18 +172,18 @@ test('issues closed in the window rank alongside PRs; ones merely updated do not
     'the substantial issue outranks the tiny PR, and the other three are not closures in this window');
 });
 
-test('a dispatch issue is counted as machine-filed and never shortlisted', async () => {
+test('a work item is counted as machine-filed and never shortlisted', async () => {
   const day = await collect(fleetRoutes({
     prs: [pr(1)],
     details: { 1: { additions: 5, deletions: 0 } },
     issues: [
       // Weighted far above the real PR by its executor comment thread — exactly how it
       // crowded out real work before the filter existed.
-      { number: 20, title: '[claudinite-task] basics/baselining d2026-08-08', body: 'x'.repeat(3000), comments: 25, closed_at: '2026-08-08T09:00:00Z', html_url: 'u' },
+      { number: 20, title: '[claudinite-work] basics/baselining', body: 'x'.repeat(3000), comments: 25, closed_at: '2026-08-08T09:00:00Z', html_url: 'u' },
       { number: 21, title: 'A real bug someone hit', body: 'x'.repeat(100), comments: 1, closed_at: '2026-08-08T09:00:00Z', html_url: 'u' },
     ],
   }));
-  assert.deepEqual(day.shortlist.map((i) => i.number), [21, 1], 'the dispatch issue is gone, despite outweighing both');
+  assert.deepEqual(day.shortlist.map((i) => i.number), [21, 1], 'the work item is gone, despite outweighing both');
   assert.equal(day.maintenance, 1, 'and it is reported, not silently dropped');
   assert.equal(day.considered, 2);
 });

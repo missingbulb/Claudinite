@@ -247,9 +247,9 @@ lesson at the strongest mechanism available — a check where the rule is determ
 ## Scheduled tasks
 
 - **Choosing a task's cadence** — take it from how often the signal actually moves. A
-  precondition reading `sharedMount` fires nearly every night and spends an opus dispatch on it;
+  precondition reading `sharedMount` fires nearly every night and spends an opus session on it;
   where the work isn't latency-sensitive, daily buys noise, not freshness, and a weekly run still
-  sees all 7 days because `windowStart` widens to the widest due task's period.
+  sees all 7 days because a task's signal window is its OWN period plus an hour of slack.
 
 - **After any scheduler-mechanism flip** (how forced/manual work is dispatched, how a
   precondition is evaluated) — re-audit every task whose precondition assumed the old mechanism.
@@ -267,14 +267,17 @@ lesson at the strongest mechanism available — a check where the rule is determ
 
 - **Writing a task whose output is a regenerated file** — land it through
   `engine/scheduler/deliver-generated.mjs` and read its prior state from the fetched base, not
-  local HEAD. Every due task in a run shares one checkout, so a worker that checks out a branch or
-  leaves an index behind hands the next task a tree it did not expect. (`basics/baselining` is the
-  deliberate exception.)
+  local HEAD. One executor run drains several items from one checkout, so a worker that checks out
+  a branch or leaves an index behind hands the next item a tree it did not expect.
+  (`basics/baselining` is the deliberate exception.)
 
-- **Wanting to exercise a task Action-side** — invoke its worker directly, or move the slot
-  hour and wait for the cron. Dueness is stateless, so a `workflow_dispatch` outside the slot's
-  window succeeds, prints `- no tasks due`, and does nothing — looking exactly like a healthy
-  run.
+- **Wanting to exercise a task Action-side** — dispatch the scheduler workflow with its `wake`
+  input naming the task, which clears the standing item's wait and puts it back in the queue; the
+  post-tick drain then picks it up in the same run. The precondition is still evaluated at pickup,
+  so a wake that finds no work SAYS so on the item — a forced run that does nothing is a verdict,
+  not a failure. (Under the retired slot scheduler this did not work at all: dueness was stateless,
+  so an off-window `workflow_dispatch` printed `- no tasks due` and looked exactly like a healthy
+  run.)
 
 - **Converging an unattended run** — do the final label/comment/close sequence as the run's very
   next action once the outcome is known, not deferred to a checklist recalled from memory at the
@@ -286,9 +289,10 @@ lesson at the strongest mechanism available — a check where the rule is determ
 
 ## Proving a change
 
-- **Testing a change to a task's triggering** — drive the real `planRun` from a deliberately
-  non-due slot. The due list is computed before any precondition runs, so a test starting inside
-  that gate proves only "works once evaluated".
+- **Testing a change to a task's triggering** — drive the real `planTick` from a clock at which
+  the task's anchor has NOT come. Instantiation is decided before any precondition runs, so a test
+  that starts from an item already in the queue proves only "works once instantiated" and says
+  nothing about whether the occurrence is ever created.
 
 - **Testing a fail-soft step** — assert the positive effect (the output IS emitted), never
   `status === 0`, which fail-soft makes meaningless. The engine is vendored verbatim, so one such

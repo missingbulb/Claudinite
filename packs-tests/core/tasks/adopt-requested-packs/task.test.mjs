@@ -62,7 +62,7 @@ test('adopt-requested-packs: two stages — a cheap gate, then the agent, iff wo
   assert.ok(existsSync(join(taskDir, 'task.md')));
   assert.ok(Number.isInteger(decl.agent_execution_timeout) && decl.agent_execution_timeout > 0);
   // The conditional handoff: a forced run with an empty work list must end quietly,
-  // with no dispatch issue and no agent — a re-fire after the work landed is normal.
+  // with no agent phase — a re-fire after the work landed is normal.
   assert.match(workerSrc, /CLAUDINITE_REQUEST_AGENT/);
 });
 

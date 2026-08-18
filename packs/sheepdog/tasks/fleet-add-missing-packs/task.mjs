@@ -20,7 +20,7 @@
 //   ADD_PACKS=<ids>              the owner already decided: REQUEST these packs,
 //                                with this config and these interview answers, in
 //                                these named repos. What a FORCED run sends, through
-//                                the scheduler's override bag — see worker.mjs for
+//                                the item's Context — see worker.mjs for
 //                                the full override set and params.mjs for why
 //                                neither parameter has a default.
 // Both converge the same protocol issues (protocol.mjs) and fire the same

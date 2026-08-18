@@ -1,6 +1,6 @@
-// The fleet-add-missing-packs prework entry point — the script the scheduler runs
+// The fleet-add-missing-packs prework entry point — the script the executor runs
 // as `node worker.mjs …` (cwd = this task dir, bounded by prework_timeout). The
-// WHOLE task: `agent_model: 'none'`, no dispatch issue here, no enforcer-side agent.
+// WHOLE task: `agent_model: 'none'`, no agent phase on the enforcer side.
 //
 // THE FAN-OUT MODEL (#749). This task used to end in an agent stage that ran
 // adopt-pack against members from the ENFORCER's session — which failed in
@@ -31,8 +31,8 @@
 // Failure is the escalation path. Anything unusable — a parameter that was not
 // sent, a pack that does not exist, an interview question the force did not answer,
 // a member that could not be swept or fired — throws, and this worker turns that
-// into a non-zero exit; the scheduler converges one open `needs-human` issue for
-// the task family. A run that could not see (or reach) what it was acting on must
+// into a non-zero exit; the executor converges the item to
+// `needs-human`. A run that could not see (or reach) what it was acting on must
 // not report itself green.
 
 import { appendFileSync } from 'node:fs';
@@ -63,7 +63,7 @@ const emit = (text) => {
 
 export async function main() {
   // GITHUB_REPOSITORY names the HOME repo — the one whose sheepdog entry carries the
-  // fleet config. Actions sets it; CLAUDINITE_REPO is the scheduler's own name for
+  // fleet config. Actions sets it; CLAUDINITE_REPO is prework's own name for
   // the same fact, so fall back rather than depending on which is present.
   if (!process.env.GITHUB_REPOSITORY && process.env.CLAUDINITE_REPO) {
     process.env.GITHUB_REPOSITORY = process.env.CLAUDINITE_REPO;
@@ -202,7 +202,7 @@ async function run({ gh, home, owner, canonRepo, packs, params }) {
   }
 }
 
-// Run only when invoked directly (the scheduler's `node worker.mjs …`), never on import.
+// Run only when invoked directly (prework's `node worker.mjs …`), never on import.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((e) => { console.error(`fleet-add-missing-packs failed: ${e.message}`); process.exit(1); });
 }

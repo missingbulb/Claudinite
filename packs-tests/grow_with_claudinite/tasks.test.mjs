@@ -100,7 +100,7 @@ test('rule-revalidation: an empty/invalid pack_paths falls back to the default',
 
 // The two probe rules are BINDING scope, not advice in task.md: the worst outcome
 // available to this task is a session with narrow reach rewriting a rule into "you
-// cannot do X", which is unfalsifiable afterwards. The dispatch issue has to carry
+// cannot do X", which is unfalsifiable afterwards. The work item has to carry
 // both, on every run, whatever the paths are.
 test('rule-revalidation: every run carries the read-only and unprobed rules as binding context', () => {
   for (const config of [{}, { pack_paths: ['packs'] }]) {

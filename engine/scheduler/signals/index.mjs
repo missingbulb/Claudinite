@@ -149,7 +149,7 @@ const COLLECTORS = {
     const open = await paged(gh, `/repos/${ctx.repo}/issues?state=open&sort=updated&direction=desc`);
     const since = new Date(ctx.sinceIso);
     // Exclude PRs (the issues endpoint returns both) and the scheduler's own
-    // dispatch issues / standing trackers — invisible to signals (DESIGN §3.3).
+    // work items / standing trackers — invisible to signals (DESIGN §3.3).
     const real = open.filter((i) => !i.pull_request
       && !/^\[claudinite-(task|work)\]/.test(i.title ?? '')
       && !/^(claudinite tracker:|auto-improvements tracker\b|repo tidy tracker$)/i.test((i.title ?? '').trim()));

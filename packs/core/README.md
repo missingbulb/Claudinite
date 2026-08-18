@@ -79,7 +79,7 @@ against each declared pack's questions:
 
 | Task | frequency | Runs when |
 |---|---|---|
-| `update` | daily (02:00 slot) | the mount is behind the canon, or a declared pack moved |
+| `update` | daily (02:00 anchor) | the mount is behind the canon, or a declared pack moved |
 | `adopt-requested-packs` | daily | the repo carries an open pack-adoption request |
 
 `update` is the per-repo self-refresh — the task that converges a member's mount and stamps it. It

@@ -1,4 +1,4 @@
-// The fleet-roster prework entry point — the script the scheduler runs as
+// The fleet-roster prework entry point — the script the executor runs as prework,
 // `node worker.mjs` (cwd = this task dir, bounded by prework_timeout).
 //
 // It holds NO sweep logic. The sweep is `check-fleet-roster.mjs`, its SIBLING in this

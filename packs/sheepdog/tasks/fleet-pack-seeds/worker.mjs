@@ -1,4 +1,4 @@
-// The fleet-pack-seeds prework entry point — the script the scheduler runs as
+// The fleet-pack-seeds prework entry point — the script the executor runs as prework,
 // `node worker.mjs` (cwd = this task dir, bounded by prework_timeout).
 //
 // It holds NO sweep logic. The sweep is `check-fleet-pack-seeds.mjs`, its SIBLING in
@@ -33,7 +33,7 @@ export async function main() {
   log('sweep complete');
 }
 
-// Run only when invoked directly (the scheduler's `node worker.mjs`), never on import.
+// Run only when invoked directly (prework's `node worker.mjs`), never on import.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((e) => { console.error(`fleet-pack-seeds failed: ${e.message}`); process.exit(1); });
 }

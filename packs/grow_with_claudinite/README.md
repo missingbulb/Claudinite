@@ -36,7 +36,7 @@ scheduler (`engine/scheduler/discover.mjs`) wherever the pack is declared:
 
 Everything lands in **one** PR, delivered to land where the repo's delivery settings allow
 (`engine/scheduler/deliver-pr.md`). The two extraction halves used to be two tasks firing in
-the same nightly slot against the same local packs; they share the lesson bar, the promotion ladder
+the same nightly anchor against the same local packs; they share the lesson bar, the promotion ladder
 and the dedup surface ([extracting-lessons.md](extracting-lessons.md)), so the split bought nothing
 and cost a second opus dispatch, a second PR, and two runs deduping against a corpus the other was
 concurrently writing.
@@ -91,8 +91,8 @@ GitHub MCP tools.
    **Unattended sessions capture through the same step, deliberately not through the hook.** A
    scheduled task's executor session ends by having its container reclaimed, which is exactly
    the ending no `SessionEnd` fires on — so the executor runs the engine's runner itself as its
-   last step and names its dispatch issue in `CLAUDINITE_SESSION_ISSUE`, which this step uses in
-   place of `0`. Those logs therefore file under the task that ran (the dispatch issue's title
+   last step and names its work item in `CLAUDINITE_SESSION_ISSUE`, which this step uses in
+   place of `0`. Those logs therefore file under the task that ran (the item's title
    names `pack/task`), and the work no human watched becomes as countable as the work one did.
 2. **Fresh pass — the conversation half of [growth-extract](tasks/growth-extract/task.md)**
    (precondition: a substantive merge, or a log actually past retention so the age-based prune still

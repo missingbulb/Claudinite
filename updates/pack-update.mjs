@@ -212,7 +212,7 @@ export function applyStageFor(specs, withheld = []) {
   const asked = specs.filter((m) => m.applyStage);
   if (!asked.length && !withheld.length) return { needed: false };
   // The reason names the CONDITION and the ARTIFACTS BY IDENTITY, and stops there —
-  // it becomes `reason.detail` on the dispatch issue, and the payload it rides in
+  // it becomes `reason.detail` on the work item, and the payload it rides in
   // carries identifiers, never instructions (updates/terminals.mjs). So a record that
   // asked for a session is named, not quoted: its `applyStage.instructions` are in
   // the mount the update just vendored, on the branch the session is given, and the
@@ -381,7 +381,7 @@ export async function packUpdate(targetRoot, {
   const selftest = runSelfTest(targetRoot, selfTestRun);
   const decision = deliveryDecision({ selftestOk: selftest.ok, delivery, forceMergeOnRedCi });
   // A wiring failure rides out on `detail`, which the worker already prints and which
-  // becomes the PR body and the dispatch issue's reason. Appended rather than given a
+  // becomes the PR body and the work item's reason. Appended rather than given a
   // field of its own, because a new field only reaches a member when its worker
   // catches up a cycle later, and `detail` reaches every fielded worker today.
   const wiringError = [wiring.error, executor.error].filter(Boolean).join('; ') || null;

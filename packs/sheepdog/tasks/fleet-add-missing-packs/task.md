@@ -30,4 +30,4 @@ The member's task reads its own issue, its own executor confirms/adopts with the
 
 ## Failure is loud
 
-A member that could not be swept is `unknown` — never "fitted" — and a member whose scheduler refused the dispatch (missing workflow, PAT without Actions write, workflow disabled) is a work list nobody will act on. Both are named in the summary and fail the run; the scheduler converges a `needs-human` issue for the task family.
+A member that could not be swept is `unknown` — never "fitted" — and a member whose scheduler workflow refused the wake dispatch (missing workflow, PAT without Actions write, workflow disabled) is a work list nobody will act on. Both are named in the summary and fail the run; the executor converges the item to `needs-human`.

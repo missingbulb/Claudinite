@@ -15,7 +15,7 @@
 // outcome, used verbatim as the counter key in the aggregate, so there is no
 // mapping table between "what the run said" and "what the fold counted" to drift.
 export const TASK_RUN_OUTCOMES = Object.freeze([
-  // A dispatch issue was filed: an executor session runs this task with an agent.
+  // A dispatch issue was filed: an agent session ran this task.
   'agent',
   // The task ran with NO agent — an `agent_model: none` task (prework is the
   // whole task), or an agentful one whose prework requested no agent phase.

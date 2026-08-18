@@ -1,4 +1,4 @@
-// The fleet-usage preprocessing entry point — the script the scheduler runs as
+// The fleet-usage prework entry point — the script the executor runs as prework,
 // `node worker.mjs` (cwd = this task dir, bounded by prework_timeout).
 //
 // It holds NO aggregation logic. The sweep is `aggregate-fleet-usage.mjs`, its
@@ -121,7 +121,7 @@ export async function main() {
     + `${pr.merged ? ' (landed)' : pr.delivery === 'review' ? ' (left for review)' : ''}`);
 }
 
-// Run only when invoked directly (the scheduler's `node worker.mjs`), never on import.
+// Run only when invoked directly (prework's `node worker.mjs`), never on import.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((e) => { console.error(`fleet-usage failed: ${e.message}`); process.exit(1); });
 }

@@ -41,4 +41,4 @@ The standalone `fleet-baseline.yml` workflow (retired 2026-08-11, #749) lived in
 
 ## Failure is loud
 
-A member that could not be dispatched — a missing scheduler, a PAT without Actions write, a workflow GitHub disabled — is named in the summary under `failed`, and the sweep exits non-zero. The scheduler converges a `needs-human` issue for the task family, so a broken grant escalates rather than silently leaving part of the fleet unforced.
+A member that could not be dispatched — a missing scheduler workflow, a PAT without Actions write, a workflow GitHub disabled — is named in the summary under `failed`, and the sweep exits non-zero. The executor converges the item to `needs-human`, so a broken grant escalates rather than silently leaving part of the fleet unforced.

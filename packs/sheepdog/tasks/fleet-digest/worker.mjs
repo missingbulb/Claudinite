@@ -17,7 +17,7 @@
 //
 // The shortlist reaches the agent THROUGH THE REPOSITORY (DESIGN §3's rule, not a
 // convention worth bending): a force-pushed data branch, named to the agent in the
-// dispatch issue's `Delivered` section. It is not landed on the default branch —
+// work item's `Delivered` section. It is not landed on the default branch —
 // scaffolding for one night's judgment is not part of the record the fleet keeps, and
 // a daily commit of it would be pure churn. The RECORD is `digests/<date>.md`, which
 // the agent lands.

@@ -22,7 +22,7 @@ import { normalizeTaskDeclaration, validateTaskDeclaration } from './task-contra
 // Discover every task the repo's active packs contribute. Returns
 // `{ tasks, errors }` where each task is
 // `{ pack, id, taskDir, taskPath, decl }` — `taskPath` is the repo-relative
-// path to the worker file's directory's task.md (the dispatch issue's first
+// path to the worker file's directory's task.md (the work item's first
 // line), `decl` the validated declaration.
 export async function discoverTasks(root, config) {
   const errors = [];

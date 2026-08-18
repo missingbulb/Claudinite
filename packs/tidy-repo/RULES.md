@@ -1,6 +1,6 @@
 # tidy-repo — the repo tidy-up policy
 
-The PR/branch/issue sweep, active wherever this pack is declared. The repo's own scheduler runs the
+The PR/branch/issue sweep, active wherever this pack is declared. The repo's own queue runs the
 pack's three maintenance tasks — `tidy-issues`, `tidy-prs`, `tidy-branches`, one per dimension; this is
 the policy they follow. The per-object **method** lives in the pack's skills
 ([single-branch-status](skills/single-branch-status/SKILL.md),

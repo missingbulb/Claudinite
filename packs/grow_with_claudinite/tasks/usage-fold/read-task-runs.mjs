@@ -68,7 +68,7 @@ export function makeReader({ token = process.env.GITHUB_TOKEN, api = API, fetchI
 export const lookbackFrom = (nowIso, days = FIRST_FOLD_LOOKBACK_DAYS) =>
   new Date(new Date(nowIso).getTime() - days * 86400000).toISOString();
 
-// The scheduler runs to read this fold: completed runs started strictly after the
+// The scheduler-workflow runs to read this fold: completed runs started strictly after the
 // watermark, oldest first.
 //
 // Only COMPLETED runs — an in-progress run's log is still being written, and the

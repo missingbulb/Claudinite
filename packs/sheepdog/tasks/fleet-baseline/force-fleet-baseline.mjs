@@ -9,7 +9,7 @@
 //
 // IT DOES NOT WAIT. A dispatch queues a run; what the queued run then does is that
 // member's own story, told where a member always tells it — its maintenance PR, its
-// dispatch issues, its own failure escalation. The old workflow's FOLLOW half (watch
+// work items, its own failure escalation. The old workflow's FOLLOW half (watch
 // every forced member to a terminal state, render a fleet report) was the reason the
 // lever had to be a standalone workflow with a 45-minute sleep in it; giving the
 // report up is what lets the lever be an ordinary manual task on the ordinary

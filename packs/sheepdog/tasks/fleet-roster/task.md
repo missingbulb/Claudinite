@@ -60,6 +60,6 @@ Its *implementation* scans every repo under the owner, but its declaration, sche
 
 ## Failure is loud, and now per-question
 
-A repo whose **declaration** cannot be read or parsed is `unknown` to **both** questions — it is the input they share. A repo whose **mount probe** fails (the scheduler read, canon's compare) is `unknown` to the **freshness** question alone: the coverage question already read that declaration successfully and keeps its verdict.
+A repo whose **declaration** cannot be read or parsed is `unknown` to **both** questions — it is the input they share. A repo whose **mount probe** fails (the stamp read, canon's compare) is `unknown` to the **freshness** question alone: the coverage question already read that declaration successfully and keeps its verdict.
 
-Either kind fails the run: no issue is opened for an unknown repo, no open issue is closed on its behalf, and the sweep exits non-zero with both halves' unknowns named together. The scheduler treats a non-zero prework subprocess as a failed task and converges a `needs-human` issue, so an unusable token or scope escalates rather than silently shrinking the fleet.
+Either kind fails the run: no issue is opened for an unknown repo, no open issue is closed on its behalf, and the sweep exits non-zero with both halves' unknowns named together. The executor treats a non-zero prework subprocess as a failed task and converges the item to `needs-human`, so an unusable token or scope escalates rather than silently shrinking the fleet.

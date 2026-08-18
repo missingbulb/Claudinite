@@ -2,7 +2,7 @@
 // stage: count THIS repo's open `add-packs` work-list issues and request the agent
 // iff any exist. A forced run with an empty work list (a re-fire after the work
 // landed, a hand-press on a repo with nothing asked of it) ends here, quietly, with
-// no dispatch issue and no agent.
+// no agent phase.
 //
 // It reads over the ordinary Action GITHUB_TOKEN — the one sanctioned non-MCP
 // surface — against this repo's OWN issues; nothing here reaches any other repo.
@@ -57,7 +57,7 @@ export async function main() {
   log(`agent requested — ${open.length} open work list(s): ${open.map((i) => `#${i.number} (${i.title})`).join('; ')}`);
 }
 
-// Run only when invoked directly (the scheduler's `node worker.mjs`), never on import.
+// Run only when invoked directly (prework's `node worker.mjs`), never on import.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((e) => { console.error(`adopt-requested-packs failed: ${e.message}`); process.exit(1); });
 }
