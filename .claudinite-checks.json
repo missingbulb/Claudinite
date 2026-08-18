@@ -109,6 +109,11 @@
   ],
   "accept": [
     {
+      "rule": "task-prework-env",
+      "path": "packs/core/tasks/update/worker.mjs",
+      "reason": "the update worker has a SECOND, deliberate caller: .github/workflows/canary-rehearsal.yml drives it directly to qualify a release ref, and CLAUDINITE_CANON_REF is that harness's own parameter, set there and read nowhere else. The rule's concern is a parameter channel that has silently stopped being delivered; this one is delivered by the workflow beside it, in the same repo, and its absence under prework is the normal case the worker already handles (rehearsalRef null = a real cycle)"
+    },
+    {
       "rule": "reference-integrity",
       "path": "docs/per-project-scheduling/",
       "reason": "the per-project-scheduling DESIGN/MIGRATION pair is the historical record of migration #394 — it names the central routine and planner files this migration deleted precisely because deleting them is what it records; rewriting those names would falsify the record, so its inbound-reference dangling is deliberate and permanent"

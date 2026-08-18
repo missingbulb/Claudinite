@@ -3,6 +3,7 @@ import conformanceWorkflow from './conformance-workflow.mjs';
 import conformanceWorkScope from './conformance-work-scope.mjs';
 import taskDeclarationShape from './task-declaration-shape.mjs';
 import taskDeclarationMatchesFolder from './task-declaration-matches-folder.mjs';
+import taskPreworkEnv from './task-prework-env.mjs';
 
 // Claudinite's own surface in a repo that runs it: the vendored mount, the
 // declaration that activates a pack, adopting Claudinite and adopting a pack,
@@ -55,6 +56,9 @@ export default {
     // (task-phase-discipline) is a declared check in declared-checks.json.
     taskDeclarationShape,
     taskDeclarationMatchesFolder,
+    // …and the environment that contract hands a task's prework, which is the half
+    // no declaration states and nothing else can catch.
+    taskPreworkEnv,
   ],
   workRules: [],
   // Bootstrapping a repo, and adding a pack to one already bootstrapped. Both

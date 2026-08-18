@@ -7,15 +7,15 @@
 // There is no occurrence IDENTITY here, and that is the point: under the
 // work-item queue an occurrence is identified by the item's issue number, so the
 // calendar owns the instants and nothing else. `queue/anchors.mjs` is the only
-// consumer of the arithmetic; the vocabulary below is read by the task contract
-// and by `packs/core/task-declaration-shape.mjs`.
+// consumer of the arithmetic; the vocabulary below is what the task contract and
+// the author-time declaration check read.
 //
 // All times are UTC (the `schedule` values are UTC by contract). This module
 // never reads the clock itself — `now` is always injected — so every answer is
 // deterministic and testable.
 
-// The legal frequency tokens. `task-declaration-shape` is what rejects anything
-// outside this set at author time.
+// The legal frequency tokens — the vocabulary the runtime contract validates
+// against and the author-time declaration check rejects anything outside.
 //
 // `manual` is the one non-cadence: a manual task has no occurrence at all, so the
 // tick never instantiates it and it runs only from an item created by hand
