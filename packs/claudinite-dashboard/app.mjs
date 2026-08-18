@@ -77,7 +77,10 @@ function renderAuth(viewer) {
     box.append(
       el('img', { className: 'avatar', src: viewer.avatar_url, alt: '', width: 22, height: 22 }),
       el('span', { className: 'hint', textContent: viewer.login }),
-      el('button', { textContent: 'Sign out', onclick: () => { auth.signOut(); location.reload(); } }),
+      // Signing out drops the CACHE as well as the credential. Everything stored was
+      // read as this person — a private repo's issues included — and a token that dies
+      // with the tab while its data outlives it on a shared machine is not a sign-out.
+      el('button', { textContent: 'Sign out', onclick: () => { auth.signOut(); clearAll(); location.reload(); } }),
     );
     return;
   }
