@@ -96,7 +96,7 @@ export function taskDeclarationPaths(paths, config) {
 // read for.
 // The key must open the line or follow a `{` / `,` — anchoring on the line start
 // alone would miss a declaration written on one line, and anchoring on nothing
-// would let `prework` be found inside `agent_prework`. The value may close on a
+// would let `code_work` be found inside `agent_code_work`. The value may close on a
 // comma, the object's brace, or the line's end, so a last field without a trailing
 // comma still reads.
 const at = (field) => `(?:^|[{,])\\s*${field}:\\s*`;
@@ -123,7 +123,7 @@ export function parseDeclaration(text) {
     agent_model: scalar(src, 'agent_model'),
     expected_outcome: scalar(src, 'expected_outcome'),
     interrupt_policy: scalar(src, 'interrupt_policy'),
-    prework: scalar(src, 'prework'),
+    code_work: scalar(src, 'code_work'),
     agent_execution_timeout: scalar(src, 'agent_execution_timeout'),
     precondition_signals: stringArray(src, 'precondition_signals'),
     // A task may decline to run; whether it CAN is the difference between "did not

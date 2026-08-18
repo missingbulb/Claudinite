@@ -2,7 +2,7 @@
 // The sheepdog pack's fleet PACK-SEED sweep — the enforcer making sure every member
 // declares the packs this fleet has decided its repos should run, with the parameters
 // only the fleet knows. Run by this pack's `fleet-pack-seeds` scheduled task, whose
-// worker calls `main()` below as the task's `prework`, Action-side inside the enforcer
+// worker calls `main()` below as the task's `code_work`, Action-side inside the enforcer
 // repo's scheduler workflow where FLEET_GITHUB_TOKEN is reachable. Still runnable by
 // hand (`node check-fleet-pack-seeds.mjs`) via the CLI guard at the foot.
 //

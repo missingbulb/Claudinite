@@ -49,10 +49,10 @@ test('validateTaskDeclaration: an agentless (none) task needs preprocessing but 
   const none = { ...validTask, agent_model: 'none', expected_outcome: 'none' };
   delete none.agent_execution_timeout;
   // a bare none task with no preprocessing does nothing → flagged
-  assert.match(validateTaskDeclaration(none)[0].what, /declares no "prework"/);
+  assert.match(validateTaskDeclaration(none)[0].what, /declares no "code_work"/);
   // with preprocessing + its timeout it is clean, and needs no execution bound
   assert.deepEqual(
-    validateTaskDeclaration({ ...none, prework: 'node worker.mjs', prework_timeout: 120 }),
+    validateTaskDeclaration({ ...none, code_work: 'node worker.mjs', code_work_timeout: 120 }),
     [],
   );
 });
@@ -60,7 +60,7 @@ test('validateTaskDeclaration: an agentless (none) task needs preprocessing but 
 test('validateTaskDeclaration: agent_instructions is required for an agentic task but not applicable to none', () => {
   // a none task with NO agent_instructions at all is clean — the field is not
   // applicable when there is no agent.
-  const none = { ...validTask, agent_model: 'none', expected_outcome: 'none', prework: 'node worker.mjs', prework_timeout: 120 };
+  const none = { ...validTask, agent_model: 'none', expected_outcome: 'none', code_work: 'node worker.mjs', code_work_timeout: 120 };
   delete none.agent_execution_timeout;
   delete none.agent_instructions;
   assert.deepEqual(validateTaskDeclaration(none), []);
@@ -70,26 +70,26 @@ test('validateTaskDeclaration: agent_instructions is required for an agentic tas
   assert.match(validateTaskDeclaration(noInstructions)[0].what, /no string "agent_instructions"/);
 });
 
-test('validateTaskDeclaration validates prework + its required timeout and containment', () => {
+test('validateTaskDeclaration validates code_work + its required timeout and containment', () => {
   const none = { ...validTask, agent_model: 'none', expected_outcome: 'none' };
   delete none.agent_execution_timeout;
   // preprocessing without a timeout is rejected
   assert.match(
-    validateTaskDeclaration({ ...none, prework: 'node prepare.mjs' })[0].what,
-    /"prework_timeout" is not a positive integer/,
+    validateTaskDeclaration({ ...none, code_work: 'node prepare.mjs' })[0].what,
+    /"code_work_timeout" is not a positive integer/,
   );
   // a task-local command with a timeout is accepted
   assert.deepEqual(
-    validateTaskDeclaration({ ...none, prework: 'node prepare.mjs', prework_timeout: 120 }),
+    validateTaskDeclaration({ ...none, code_work: 'node prepare.mjs', code_work_timeout: 120 }),
     [],
   );
   // an absolute path or a `..` traversal is rejected
   assert.match(
-    validateTaskDeclaration({ ...none, prework: 'node /usr/bin/x.mjs', prework_timeout: 120 })[0].what,
+    validateTaskDeclaration({ ...none, code_work: 'node /usr/bin/x.mjs', code_work_timeout: 120 })[0].what,
     /reaches outside the task directory/,
   );
   assert.match(
-    validateTaskDeclaration({ ...none, prework: 'node ../evil.mjs', prework_timeout: 120 })[0].what,
+    validateTaskDeclaration({ ...none, code_work: 'node ../evil.mjs', code_work_timeout: 120 })[0].what,
     /reaches outside the task directory/,
   );
 });
@@ -225,17 +225,17 @@ test('verifyOutcome enforces each ceiling and always allows no-change', () => {
 
 // --- the 2026-08-06 rename boundary ------------------------------------------
 // Consumer local packs rename on their own clock, so the LEGACY field names must
-// stay a valid way to declare prework: normalized at the door (discover,
+// stay a valid way to declare code_work: normalized at the door (discover,
 // resolve-dispatch), canonical everywhere downstream.
-test('normalizeTaskDeclaration maps legacy agent_preprocessing names to prework, canonical winning on conflict', async () => {
+test('normalizeTaskDeclaration maps legacy agent_preprocessing names to code_work, canonical winning on conflict', async () => {
   const { normalizeTaskDeclaration } = await import('../../engine/scheduler/task-contract.mjs');
   const n = normalizeTaskDeclaration({ agent_preprocessing: 'node w.mjs', agent_preprocessing_timeout: 60, agent_model: 'none' });
-  assert.equal(n.prework, 'node w.mjs');
-  assert.equal(n.prework_timeout, 60);
+  assert.equal(n.code_work, 'node w.mjs');
+  assert.equal(n.code_work_timeout, 60);
   assert.equal(n.agent_preprocessing, undefined);
   assert.equal(n.agent_preprocessing_timeout, undefined);
   // Both present → canonical wins; nothing is destroyed silently elsewhere.
-  assert.equal(normalizeTaskDeclaration({ prework: 'node a.mjs', agent_preprocessing: 'node b.mjs' }).prework, 'node a.mjs');
+  assert.equal(normalizeTaskDeclaration({ code_work: 'node a.mjs', agent_preprocessing: 'node b.mjs' }).code_work, 'node a.mjs');
   // Non-objects pass through for validate to report.
   assert.equal(normalizeTaskDeclaration(null), null);
 });
@@ -260,7 +260,7 @@ test('after / on_interrupt / invocation_endpoint are optional and validated when
   const base = {
     id: 't', frequency: 'daily', precondition_signals: [], agent_model: 'none',
     expected_outcome: 'none', precondition: () => ({ run: true }),
-    prework: 'node w.mjs', prework_timeout: 60,
+    code_work: 'node w.mjs', code_work_timeout: 60,
   };
   assert.deepEqual(validateTaskDeclaration(base), [], 'declaring none of them is legal');
   assert.deepEqual(validateTaskDeclaration({ ...base, after: ['core/update'], on_interrupt: 'needs-human', invocation_endpoint: 'fleet' }), []);
@@ -276,26 +276,26 @@ test('after / on_interrupt / invocation_endpoint are optional and validated when
   bad({ invocation_endpoint: 'https://example.invalid/x' }, /kebab-case endpoint name/);
 });
 
-// F17 — the constraint that has no other home: a prework legally allowed to
+// F17 — the constraint that has no other home: a code-work legally allowed to
 // outlive the executor's claim leash is reclaimed WHILE ALIVE, and the failure is
 // a livelock (every tenure reclaimed before it can finish), not one duplicate run.
-test('a prework_timeout reaching the executing leash is rejected at author time (F17)', async () => {
+test('a code_work_timeout reaching the executing leash is rejected at author time (F17)', async () => {
   const { validateTaskDeclaration } = await import('../../engine/scheduler/task-contract.mjs');
   const { EXECUTING_LEASH_MS } = await import('../../engine/scheduler/queue/leases.mjs');
   const base = {
     id: 't', frequency: 'daily', precondition_signals: [], agent_model: 'none',
-    expected_outcome: 'none', precondition: () => ({ run: true }), prework: 'node w.mjs',
+    expected_outcome: 'none', precondition: () => ({ run: true }), code_work: 'node w.mjs',
   };
   const seconds = EXECUTING_LEASH_MS / 1000;
-  assert.deepEqual(validateTaskDeclaration({ ...base, prework_timeout: seconds - 1 }), []);
-  const problems = validateTaskDeclaration({ ...base, prework_timeout: seconds });
+  assert.deepEqual(validateTaskDeclaration({ ...base, code_work_timeout: seconds - 1 }), []);
+  const problems = validateTaskDeclaration({ ...base, code_work_timeout: seconds });
   assert.equal(problems.length, 1);
   assert.match(problems[0].what, /claim leash/);
 });
 
 // The corpus itself must satisfy that constraint — a rule proven only on fixtures
 // says nothing about the tasks this repo actually ships.
-test('every task this repo carries declares a prework bound under the leash', async () => {
+test('every task this repo carries declares a code_work bound under the leash', async () => {
   const { discoverTasks } = await import('../../engine/scheduler/discover.mjs');
   const { loadConfig } = await import('../../engine/checks/helpers/repo-context.mjs');
   const { EXECUTING_LEASH_MS } = await import('../../engine/scheduler/queue/leases.mjs');
@@ -303,8 +303,8 @@ test('every task this repo carries declares a prework bound under the leash', as
   const { tasks } = await discoverTasks(root, loadConfig(root));
   assert.ok(tasks.length > 0, 'the scan must actually reach this repo\'s tasks');
   for (const t of tasks) {
-    if (t.decl.prework === undefined) continue;
-    assert.ok(t.decl.prework_timeout * 1000 < EXECUTING_LEASH_MS,
-      `${t.pack}/${t.id} declares prework_timeout ${t.decl.prework_timeout}s`);
+    if (t.decl.code_work === undefined) continue;
+    assert.ok(t.decl.code_work_timeout * 1000 < EXECUTING_LEASH_MS,
+      `${t.pack}/${t.id} declares code_work_timeout ${t.decl.code_work_timeout}s`);
   }
 });

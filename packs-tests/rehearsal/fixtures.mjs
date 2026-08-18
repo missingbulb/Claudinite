@@ -44,12 +44,12 @@
 //                 vendor + the sweeps, never the scheduler, so that a lingering
 //                 field still routes to the fleet label is a unit test's job
 //                 (engine-tests/scheduler/session-scope.test.mjs).
-//   prework-env   a local pack whose agentless task carries a WORKER — the half no
-//                 other shape has, and the half `task-prework-env` (blocking, core)
+//   code_work-env   a local pack whose agentless task carries a WORKER — the half no
+//                 other shape has, and the half `task-code-work-env` (blocking, core)
 //                 judges. A member's task code is member-owned and nothing converges
 //                 it, so a rule that reads it can turn a member red overnight through
 //                 no act of its own; this shape holds that harmless by carrying a
-//                 worker that reads the prework contract's variables and nothing else,
+//                 worker that reads the code-work contract's variables and nothing else,
 //                 which is what every member's task code already does.
 //   growth-member a member enrolled in the growth lifecycle, carrying the local
 //                 packs its capture runs write. The growth stages ship blocking
@@ -206,8 +206,8 @@ const LEGACY_TASK = `export default {
 };
 `;
 
-const PACK_PREWORK_ENV = `export default {
-  id: 'fixture-prework',
+const PACK_CODE_WORK_ENV = `export default {
+  id: 'fixture-code-work',
   ruleRoutingGuidance: {
     belongs: 'the fixture project\\'s own scheduled work, for rehearsal purposes only',
     excludes: 'anything portable — that belongs in a canon pack',
@@ -220,24 +220,24 @@ const PACK_PREWORK_ENV = `export default {
 };
 `;
 
-const PREWORK_TASK = `export default {
-  id: 'prework-only',
+const CODE_WORK_TASK = `export default {
+  id: 'code-work-only',
   frequency: 'daily',
   precondition_signals: [],
   agent_model: 'none',
   expected_outcome: 'none',
-  prework: 'node worker.mjs',
-  prework_timeout: 60,
+  code_work: 'node worker.mjs',
+  code_work_timeout: 60,
   precondition() {
     return { run: false, reason: 'a rehearsal fixture task — never runs' };
   },
 };
 `;
 
-// Reads the prework contract and nothing else — the shape a member's own worker
-// has. `task-prework-env` is blocking, so a member carrying a worker like this
+// Reads the code-work contract and nothing else — the shape a member's own worker
+// has. `task-code-work-env` is blocking, so a member carrying a worker like this
 // must stay green the night that rule arrives.
-const PREWORK_WORKER = `const item = process.env.CLAUDINITE_ITEM || '';
+const CODE_WORK_WORKER = `const item = process.env.CLAUDINITE_ITEM || '';
 const root = process.env.CLAUDINITE_REPO_ROOT;
 const params = process.env.CLAUDINITE_CONTEXT ?? '';
 console.log(\`fixture [#\${item}] \${root} \${params.length}\`);
@@ -282,15 +282,15 @@ export const FIXTURES = [
     },
   },
   {
-    name: 'prework-env',
-    why: 'a local pack whose task carries a worker — the member-owned code `task-prework-env` reads, and the half no other shape has',
+    name: 'code_work-env',
+    why: 'a local pack whose task carries a worker — the member-owned code `task-code-work-env` reads, and the half no other shape has',
     files: {
-      'README.md': '# fixture-prework-env\n\nA rehearsal fixture.\n',
-      '.claudinite-checks.json': checks(['basics', 'local/fixture-prework']),
-      '.claudinite/local/packs/fixture-prework/pack.mjs': PACK_PREWORK_ENV,
-      '.claudinite/local/packs/fixture-prework/RULES.md': '# fixture-prework\n\nNo standing rules.\n',
-      '.claudinite/local/packs/fixture-prework/tasks/prework-only/task.mjs': PREWORK_TASK,
-      '.claudinite/local/packs/fixture-prework/tasks/prework-only/worker.mjs': PREWORK_WORKER,
+      'README.md': '# fixture-code-work-env\n\nA rehearsal fixture.\n',
+      '.claudinite-checks.json': checks(['basics', 'local/fixture-code-work']),
+      '.claudinite/local/packs/fixture-code-work/pack.mjs': PACK_CODE_WORK_ENV,
+      '.claudinite/local/packs/fixture-code-work/RULES.md': '# fixture-code-work\n\nNo standing rules.\n',
+      '.claudinite/local/packs/fixture-code-work/tasks/code-work-only/task.mjs': CODE_WORK_TASK,
+      '.claudinite/local/packs/fixture-code-work/tasks/code-work-only/worker.mjs': CODE_WORK_WORKER,
     },
   },
   {

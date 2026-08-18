@@ -31,12 +31,12 @@ A fictional but realistic repo, tasks drawn from the real fleet:
 
 | task | frequency (anchor) | model | ceiling | notes |
 |---|---|---|---|---|
-| `basics/baselining` | daily-2h (02:00Z) | sonnet | merged-pr | prework converges the mount; conditional hand-off |
+| `basics/baselining` | daily-2h (02:00Z) | sonnet | merged-pr | code-work converges the mount; conditional hand-off |
 | `grow/growth-extract` | daily-1h (03:00Z) | opus | merged-pr | `after: ['basics/baselining']` |
 | `grow/growth-promote` | daily (04:00Z) | opus | open-pr | canon repo; `after: ['grow/growth-extract']` |
 | `tidy/tidy-issues` | daily (04:00Z) | sonnet | none | precondition: issue touched in window |
-| `gcec/create-extractor` | hourly | sonnet | open-pr | prework-heavy, conditional hand-off |
-| `chrome/store-release` | daily (04:00Z) | none | none | agentless: prework only |
+| `gcec/create-extractor` | hourly | sonnet | open-pr | code-work-heavy, conditional hand-off |
+| `chrome/store-release` | daily (04:00Z) | none | none | agentless: code-work only |
 | `sheepdog/fleet-baseline` | manual | sonnet | merged-pr | fan-out target |
 
 Constants: tick cron minute **:17** (hourly); executor = post-tick drain job +
@@ -72,7 +72,7 @@ and the question: one occurrence, one verdict.)*
 - **04:17:40** the tick's own executor job drains: picks #900, lease
   (read/swap/comment/re-read) — clean claim, `task:executing`.
 - **04:18** precondition re-run: still true; Context refreshed (same two
-  issues). No prework declared. Hand-off: body gets its sections, swap to
+  issues). No code-work declared. Hand-off: body gets its sections, swap to
   `task:agent`, hand-off comment, API call → session `s-123`.
 - **04:34** agent validates the item in code, triages the two issues within
   Context, verifies ceiling (`none`: no PR opened — ok), comments the result,
@@ -113,7 +113,7 @@ GitHub drops the 02:17, 03:17 and 04:17 fires; the first tick lands **05:41**.
     blocked by #911.
   - tidy-issues, store-release: independent → #913, #914 `task:ready`.
 - **05:42** executors drain: #910 claimed (baselining), #913, #914 run in
-  parallel — they never depended on the mount ordering. Baselining's prework
+  parallel — they never depended on the mount ordering. Baselining's code-work
   converges the mount **06:02**; no judgment needed → no hand-off; closes
   #910 `outcome:done` **06:03**.
 - **06:17** tick job 2: #911's blocker closed → `task:ready`; picked 06:18;
@@ -192,7 +192,7 @@ harmless.
 
 ### S8 — executor dies after claiming
 
-- **04:20** E1 claims #931 (baselining), prework starts converging the mount.
+- **04:20** E1 claims #931 (baselining), code-work starts converging the mount.
 - **04:22** the runner is killed (spot eviction / job cancelled). #931 sits
   `task:executing`, half a converge branch pushed.
 - Leash: `task:executing` with no activity past **1h** → strip back to
@@ -203,17 +203,17 @@ harmless.
   owner 2026-08-13; DESIGN §11 amended.*
 - **05:17 (as decided — the reclaim rides the tick, F4 accepted)** tick strips
   #931 → ready; E3 claims **05:18**,
-  precondition re-runs, prework **re-runs over the half-done converge** — so
-  prework must be re-entrant after a crash. It already must be today (a
-  scheduler run that dies mid-prework leaves the slot due; the next run
+  precondition re-runs, code-work **re-runs over the half-done converge** — so
+  code-work must be re-entrant after a crash. It already must be today (a
+  scheduler run that dies mid-code-work leaves the slot due; the next run
   re-runs it), but the doc never said so → **F12**: state re-entrancy as an
-  explicit prework contract requirement. *Amended in DESIGN.md §6.*
+  explicit code-work contract requirement. *Amended in DESIGN.md §6.*
 
 **Verdict: two findings (F4 latency-home, F12 contract gap); no unsoundness.**
 
 ### S9 — CCR API transiently down at hand-off
 
-- **04:19** E1 finishes #932's prework, calls the API — 503. Retries 2s/4s/8s
+- **04:19** E1 finishes #932's code-work, calls the API — 503. Retries 2s/4s/8s
   — still 503. Design as written: converge `needs-human`.
 - But the same minute, E2 is handing off #933 and E3 #934: a **10-minute CCR
   outage converges every in-flight item to `needs-human`**, and a human must
@@ -350,7 +350,7 @@ event waits for the janitor's daily re-arm — up to ~25h.)
 
 ### S17 — delayed validation of a real-world change
 
-- **Day 1, 04:20** store-release prework submits extension v2.4 to the store
+- **Day 1, 04:20** store-release code-work submits extension v2.4 to the store
   review queue; converges its item #950 `outcome:delivered` (closed), and
   creates follow-up #951: `Blocked-by: #950`, `Not-before: Day 3 04:00Z`,
   `task:blocked`, Context: "validate v2.4 review outcome".
@@ -397,7 +397,7 @@ Noted in §15 as a known limitation, revisit on evidence.
   now documented as the sanctioned lever — write-gated, same as label-based
   authorization everywhere else in the system).
 - **09:01** label event → executor claims, precondition re-runs (still
-  true), prework now succeeds, normal run.
+  true), code-work now succeeds, normal run.
 - Note the tick never re-created a second item meanwhile: the open
   `needs-human` item held the backlog guard (§5) — one broken task, one
   item, however many days it takes.
@@ -492,7 +492,7 @@ once — named in DESIGN §5.
   executor iterations' worth of API traffic per roll, all on one issue.
   Cheap against quotas (~100 writes/day), noisy on that one item's timeline;
   the roll writes no comment, so it is timeline events, not comment spam.
-- **14:40** a request arrives; **15:17** the item readies, picks, prework
+- **14:40** a request arrives; **15:17** the item readies, picks, code-work
   triages, agent requested → runs. Latency ≤1h, parity with today.
 
 **Verdict: holds, with the churn named and accepted (DESIGN §5).**
@@ -618,12 +618,12 @@ design and executable:
   prior run. GitHub documents no such cross-node freshness bound. Rather
   than assume, the tick self-heals: more than one open family item → close
   all but the oldest, `outcome:obsolete`, dedupe comment.
-- **S31 / F17 — the leash arithmetic.** A prework bound that reaches the
+- **S31 / F17 — the leash arithmetic.** A code-work bound that reaches the
   executing leash is reclaimed *alive*, and the failure mode is a
   **livelock**, not one duplicate: every tenure is reclaimed before it can
-  finish, prework re-executes each cycle, nothing ever converges (the sim
+  finish, code-work re-executes each cycle, nothing ever converges (the sim
   run shows reclaim/claim/evaluate repeating for 8 straight hours). Fixed
-  twice over: leash > prework-timeout as a wiring-time conformance check,
+  twice over: leash > code-work-timeout as a wiring-time conformance check,
   and the executor re-verifying its own lease at every state transition so
   a reclaimed-but-alive runner abandons instead of handing off.
 - **S32 / F15 — the pick filters race.** Mutex and yield are read from
@@ -834,7 +834,7 @@ workflow checks as its first act, exiting cleanly having fired nothing.
 | **F9** | **design bug** | same-tick `after` wiring depends on task iteration order (S4) | first fixed by topological iteration; **retired unbuilt** by the standing-item model — `after` moved to the pick-time yield (S23/S24), so creation order stopped mattering |
 | **F6** | **design bug** | forcing can run a task concurrently with itself (S15) | **fixed in DESIGN §6/§8**: same-title pick mutex + create-time warning; the standing-item model removes the common case outright (force = wake the existing item, S14′) |
 | **F3** | policy gap | as-written hand-off failure policy turns platform blips into triage load (S9) | first fixed with bounded revert-and-retry; **superseded 2026-08-15 (§I)**: no retry exists to bound — refused converges `needs-human` at once (S9a), unanswered is settled by the agent leash (S10b) |
-| **F12** | contract gap | prework re-runs after an executor death; re-entrancy was never stated (S8) | **fixed in DESIGN §6**: re-entrancy is an explicit prework requirement (it was already implicitly required today) |
+| **F12** | contract gap | code-work re-runs after an executor death; re-entrancy was never stated (S8) | **fixed in DESIGN §6**: re-entrancy is an explicit code-work requirement (it was already implicitly required today) |
 | **F13** | **design bug** | the occurrence guard's created-at half alone double-executes: a rolled item that runs today was created yesterday, so after it closes the same-day tick creates a second item for the same occurrence (S26) | **fixed in DESIGN §5**: the guard is created-at-or-after A *or closed*-at-or-after A. Caught by the simulator's first run — no prose replay had seen it |
 | **F14** | **design bug** | a blocked item whose dependency never resolves waits silently forever: §11 claimed the stale escalation covers it, but that rule keys on ready-age and a blocked item is never ready (S18's fan-in) | **fixed in DESIGN §11**: a third janitor rule — blocked with unresolved blockers past ~2 days gets an escalation comment, labels untouched. Caught by making S18 executable |
 | **F15** | **design bug** | the pick filters (same-title mutex, `after` yield) read stale state — two executors can claim different items the filters should serialize (S32) | **fixed in DESIGN §6.1**: post-claim re-verify; the later claim (comment order) reverts itself to ready |

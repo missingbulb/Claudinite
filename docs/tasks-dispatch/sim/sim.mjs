@@ -404,7 +404,7 @@ export function makeSim({
     const myClaim = it.comments.filter((c) => c.kind === 'claim').at(-1);
     const mineStill = () => it.state === 'open' && has(it, 'task:executing') &&
       it.comments.filter((c) => c.kind === 'claim').at(-1) === myClaim;
-    const workMs = (task.preworkMinutes ?? 1) * MIN;
+    const workMs = (task.codeWorkMinutes ?? 1) * MIN;
     const diesAtMin = crashDuringWorkOf.has(it.taskId)
       ? crashDuringWorkOf.get(it.taskId) : null;
     if (diesAtMin !== null) crashDuringWorkOf.delete(it.taskId);
@@ -438,7 +438,7 @@ export function makeSim({
     schedule(now + workMs, () => {
       if (!mineStill()) return; // reclaimed while (presumed) dead: the run is gone
       it.lastActivity = now;
-      if (task.preworkFails?.(world, now)) {
+      if (task.codeWorkFails?.(world, now)) {
         endEpisode(it);                       // F24: a park strikes its claim
         swap(it, 'task:executing', 'needs-human');
         record('work-failed', { task: it.taskId, issue: it.number });

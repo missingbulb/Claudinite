@@ -3,7 +3,7 @@
 //
 // WHERE THEY COME FROM. A forced run is an item created by hand —
 // `create-work-item sheepdog/fleet-baseline --context "REPOS=Alpha Beta"` — and
-// the executor hands that item's Context to prework as `CLAUDINITE_CONTEXT`, one
+// the executor hands that item's Context to code_work as `CLAUDINITE_CONTEXT`, one
 // line per bullet. So this is the whole channel: no workflow input, no free-form
 // override box, nothing the queue does not already carry.
 //
@@ -36,7 +36,7 @@ export function parseParamBag(raw) {
   return out;
 }
 
-// The raw Context text a prework subprocess is handed. Named here rather than
+// The raw Context text a code-work subprocess is handed. Named here rather than
 // read inline in each worker so the three tasks cannot disagree about which
 // variable carries it.
 export const contextText = (env = process.env) => env.CLAUDINITE_CONTEXT ?? '';

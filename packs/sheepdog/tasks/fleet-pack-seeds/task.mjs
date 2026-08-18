@@ -1,6 +1,6 @@
 // sheepdog task: fleet-pack-seeds — does every member declare the packs this fleet
-// standardizes on? `agent_model: 'none'` with `prework: 'node worker.mjs'`: the whole
-// pass is deterministic code the executor runs as prework — no agent, no dispatch
+// standardizes on? `agent_model: 'none'` with `code_work: 'node worker.mjs'`: the whole
+// pass is deterministic code the executor runs as code-work — no agent, no dispatch
 // issue. The worker calls its sibling, the sweep (check-fleet-pack-seeds.mjs): read
 // every covered member's declaration and add the seeds it lacks.
 //
@@ -36,15 +36,15 @@ export default {
   id: 'fleet-pack-seeds',
   frequency: 'daily',                    // a member becomes writable the moment its nightly converge vendors the pack — daily is what turns that into "the next morning"
   precondition_signals: [],              // no signal — the sweep reads the fleet itself, over the PAT
-  agent_model: 'none',                   // pure code — no agent (task-prework DESIGN §4)
+  agent_model: 'none',                   // pure code — no agent (task-code-work DESIGN §4)
   expected_outcome: 'none',              // it writes to MEMBERS, never to this repo: no PR here, ever
-  prework: 'node worker.mjs',
+  code_work: 'node worker.mjs',
   // Two or three REST reads per member (declaration, whether each seeded pack is on its
   // disk, and one PUT for the members being written) plus the enumeration, all serial,
   // with a secondary rate limit making it slower still. The same 900s the other sweeps
   // carry, for the same reason: ~10x the expected walk while staying inside the hourly
   // cadence.
-  prework_timeout: 900,
+  code_work_timeout: 900,
   required_secrets: ['FLEET_GITHUB_TOKEN'], // the account-spanning PAT — this sweep needs Contents WRITE on it, unlike the read-only two
 
   // Fire daily unconditionally. Every input lives OUTSIDE this repo — another member's

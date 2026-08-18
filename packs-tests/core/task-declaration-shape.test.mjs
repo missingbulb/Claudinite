@@ -74,13 +74,13 @@ test('task-declaration-shape: a none task needs no execution bound but flags pre
   precondition_signals: ['release'],
   agent_model: 'none',
   expected_outcome: 'none',
-  prework: 'node worker.mjs',
+  code_work: 'node worker.mjs',
   precondition() { return { run: false }; },
 };
 `;
   const whats = run({ [TASK]: noneTask }).map((f) => f.what).join(' | ');
   assert.doesNotMatch(whats, /agent_execution_timeout/);        // none = no agent, no bound needed
-  assert.match(whats, /no numeric "prework_timeout"/);
+  assert.match(whats, /no numeric "code_work_timeout"/);
 });
 
 test('task-declaration-shape: flags an agentless (none) task that declares no preprocessing', () => {
@@ -94,7 +94,7 @@ test('task-declaration-shape: flags an agentless (none) task that declares no pr
 };
 `;
   const whats = run({ [TASK]: bareNone }).map((f) => f.what).join(' | ');
-  assert.match(whats, /declares no "prework"/);
+  assert.match(whats, /declares no "code_work"/);
 });
 
 test('task-declaration-shape: a none task with no agent_instructions is clean — the field is not applicable', () => {
@@ -104,8 +104,8 @@ test('task-declaration-shape: a none task with no agent_instructions is clean �
   precondition_signals: ['release'],
   agent_model: 'none',
   expected_outcome: 'none',
-  prework: 'node worker.mjs',
-  prework_timeout: 120,
+  code_work: 'node worker.mjs',
+  code_work_timeout: 120,
   precondition() { return { run: false }; },
 };
 `;
@@ -115,7 +115,7 @@ test('task-declaration-shape: a none task with no agent_instructions is clean �
 test('task-declaration-shape: flags a preprocessing command that escapes the task directory', () => {
   const bad = goodTask.replace(
     '  agent_execution_timeout: 1800,\n',
-    "  agent_execution_timeout: 1800,\n  prework: 'node ../evil.mjs',\n  prework_timeout: 120,\n",
+    "  agent_execution_timeout: 1800,\n  code_work: 'node ../evil.mjs',\n  code_work_timeout: 120,\n",
   );
   const whats = run({ [TASK]: bad }).map((f) => f.what).join(' | ');
   assert.match(whats, /reaches outside the task directory/);
@@ -124,15 +124,15 @@ test('task-declaration-shape: flags a preprocessing command that escapes the tas
 test('task-declaration-shape: a well-formed task with preprocessing + both timeouts is clean', () => {
   const withPrep = goodTask.replace(
     '  agent_execution_timeout: 1800,\n',
-    "  agent_execution_timeout: 1800,\n  prework: 'node prepare.mjs',\n  prework_timeout: 300,\n",
+    "  agent_execution_timeout: 1800,\n  code_work: 'node prepare.mjs',\n  code_work_timeout: 300,\n",
   );
   assert.deepEqual(run({ [TASK]: withPrep }), []);
 });
 
 // The 2026-08-06 rename boundary: a member's local pack still declaring the
-// legacy prework names must keep working — the loader normalizes them — and the
+// legacy code_work names must keep working — the loader normalizes them — and the
 // vendor refresh must not turn its CI red over files nothing has renamed yet.
-// So the legacy declaration is contract-complete (no missing-prework, no
+// So the legacy declaration is contract-complete (no missing-code_work, no
 // missing-timeout findings) and earns exactly one ADVISORY rename nudge.
 test('task-declaration-shape: legacy agent_preprocessing names satisfy the contract, advisory rename only', () => {
   const legacy = goodTask
@@ -143,5 +143,5 @@ test('task-declaration-shape: legacy agent_preprocessing names satisfy the contr
   assert.equal(findings.length, 1, JSON.stringify(findings));
   assert.equal(findings[0].severity, 'advisory');
   assert.match(findings[0].what, /legacy name/);
-  assert.match(findings[0].fix, /"agent_preprocessing" → "prework"/);
+  assert.match(findings[0].fix, /"agent_preprocessing" → "code_work"/);
 });

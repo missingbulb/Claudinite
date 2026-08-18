@@ -1,5 +1,5 @@
 // The executor loop end to end against a fake GitHub — pick, claim, evaluate,
-// prework, hand off, converge. The pure rules are tested beside this; what this
+// code_work, hand off, converge. The pure rules are tested beside this; what this
 // pins is that the SHELL actually drives them to a terminal state, which is the
 // thing a fixture over the rules alone can never say.
 
@@ -75,15 +75,15 @@ const drive = (repo, tasks, over = {}) => runExecutor({
   gh: repo.gh, repo: 'o/r', root: '/tmp', config: CONFIG, tasks,
   executorId: 'E1', maxItems: 2, now: () => new Date('2026-08-14T04:20:00Z'),
   collectSignalsFor: async () => ({}),
-  runTaskPrework: async () => ({ ok: true, agentRequested: false }),
+  runTaskCodeWork: async () => ({ ok: true, agentRequested: false }),
   invokeAgent: async () => ({ ok: true, sessionId: 's-1' }),
   log: () => {},
   ...over,
 });
 
-test('a go verdict with agentless prework closes the item outcome:done', async () => {
+test('a go verdict with agentless code_work closes the item outcome:done', async () => {
   const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
-  const done = await drive(repo, [task('a', { agent_model: 'none', prework: 'node w.mjs', prework_timeout: 60 })]);
+  const done = await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })]);
   assert.deepEqual(done, [{ issue: 1, outcome: 'outcome:done' }]);
   const issue = repo.find(1);
   assert.equal(issue.state, 'closed');
@@ -91,10 +91,10 @@ test('a go verdict with agentless prework closes the item outcome:done', async (
   assert.equal(issue.labels.includes('task:executing'), false);
 });
 
-test('prework that names a live artifact converges outcome:delivered instead', async () => {
+test('code_work that names a live artifact converges outcome:delivered instead', async () => {
   const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
-  await drive(repo, [task('a', { agent_model: 'none', prework: 'node w.mjs', prework_timeout: 60 })], {
-    runTaskPrework: async () => ({ ok: true, agentRequested: false, delivered: ['PR: #7 (open)'] }),
+  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], {
+    runTaskCodeWork: async () => ({ ok: true, agentRequested: false, delivered: ['PR: #7 (open)'] }),
   });
   assert.ok(repo.find(1).labels.includes('outcome:delivered'));
 });
@@ -134,7 +134,7 @@ test('a hand-off swaps to task:agent and invokes exactly one session', async () 
   const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
   const invocations = [];
   const done = await drive(repo, [task('a')], {
-    runTaskPrework: async () => ({ ok: true, agentRequested: true }),
+    runTaskCodeWork: async () => ({ ok: true, agentRequested: true }),
     invokeAgent: async (args) => { invocations.push(args); return { ok: true, sessionId: 's-9' }; },
   });
   assert.deepEqual(done, [{ issue: 1, outcome: 'agent' }]);
@@ -153,7 +153,7 @@ test('a refused invocation converges to triage: no session exists and a retry ca
   const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
   const done = await drive(repo, [task('a')], {
     maxItems: 1,
-    runTaskPrework: async () => ({ ok: true, agentRequested: true }),
+    runTaskCodeWork: async () => ({ ok: true, agentRequested: true }),
     invokeAgent: async () => ({ ok: false, answered: true, error: 'endpoint "default" returned 401' }),
   });
   assert.deepEqual(done, [{ issue: 1, outcome: 'needs-human' }]);
@@ -173,7 +173,7 @@ test('an unanswered invocation leaves the item with the agent and says the outco
   let calls = 0;
   const done = await drive(repo, [task('a')], {
     maxItems: 1,
-    runTaskPrework: async () => ({ ok: true, agentRequested: true }),
+    runTaskCodeWork: async () => ({ ok: true, agentRequested: true }),
     invokeAgent: async () => { calls += 1; return { ok: false, answered: false, error: 'no answer: socket timeout' }; },
   });
   assert.deepEqual(done, [{ issue: 1, outcome: 'unknown' }]);
@@ -185,11 +185,11 @@ test('an unanswered invocation leaves the item with the agent and says the outco
   assert.ok(issue.comments.some((c) => c.body.includes('may or may not have started')));
 });
 
-test('failed prework converges to triage and never hands off', async () => {
+test('failed code_work converges to triage and never hands off', async () => {
   const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
   let invoked = 0;
-  await drive(repo, [task('a', { prework: 'node w.mjs', prework_timeout: 60 })], {
-    runTaskPrework: async () => ({ ok: false, why: 'prework exited 1', detail: 'stack' }),
+  await drive(repo, [task('a', { code_work: 'node w.mjs', code_work_timeout: 60 })], {
+    runTaskCodeWork: async () => ({ ok: false, why: 'code_work exited 1', detail: 'stack' }),
     invokeAgent: async () => { invoked += 1; return { ok: true }; },
   });
   assert.equal(invoked, 0);
@@ -201,8 +201,8 @@ test('failed prework converges to triage and never hands off', async () => {
 // names exactly which secret to set.
 test('a declared-but-unconfigured secret names itself on the item', async () => {
   const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
-  await drive(repo, [task('a', { prework: 'node w.mjs', prework_timeout: 60, required_secrets: ['STORE_TOKEN'] })], {
-    runTaskPrework: async () => ({ ok: true, missingSecrets: ['STORE_TOKEN'] }),
+  await drive(repo, [task('a', { code_work: 'node w.mjs', code_work_timeout: 60, required_secrets: ['STORE_TOKEN'] })], {
+    runTaskCodeWork: async () => ({ ok: true, missingSecrets: ['STORE_TOKEN'] }),
   });
   const issue = repo.find(1);
   assert.ok(issue.labels.includes('needs-human'));
@@ -237,7 +237,7 @@ test('an executor that loses the lease abandons the item untouched and picks ano
     { ...workItem(1, 'a', ['task:ready', 'origin:schedule']), comments: [rival] },
     workItem(2, 'b', ['task:ready', 'origin:schedule']),
   ]);
-  const done = await drive(repo, [task('a'), task('b', { agent_model: 'none', prework: 'node w.mjs', prework_timeout: 60 })]);
+  const done = await drive(repo, [task('a'), task('b', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })]);
   assert.deepEqual(done.map((d) => d.issue), [2], 'it moved on to a different item');
   assert.equal(repo.find(1).state, 'open');
 });
@@ -250,7 +250,7 @@ test('the loop stops at maxItems even with more ready work', async () => {
   ]);
   // Three same-title items: the mutex means only one is pickable at a time, and
   // each converges before the next is picked.
-  const done = await drive(repo, [task('a', { agent_model: 'none', prework: 'node w.mjs', prework_timeout: 60 })], { maxItems: 2 });
+  const done = await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], { maxItems: 2 });
   assert.equal(done.length, 2);
 });
 
@@ -301,7 +301,7 @@ test('a losing claimant strikes its own claim too — otherwise it owns the NEXT
   // A rival already holds this episode; E1 claims, loses, and walks away.
   const rival = { id: 50, body: '<!-- claudinite-claim -->\nClaimed by executor `E9` at t.' };
   const repo = fakeRepo([{ ...workItem(1, 'a', ['task:ready', 'origin:schedule']), comments: [rival] }]);
-  const agentless = task('a', { agent_model: 'none', prework: 'node w.mjs', prework_timeout: 60 });
+  const agentless = task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 });
 
   await drive(repo, [agentless]);
   assert.equal(repo.find(1).state, 'open', 'E1 left the item to its holder');

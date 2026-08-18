@@ -1,5 +1,5 @@
-// The fleet-roster prework entry point — the script the executor runs as prework,
-// `node worker.mjs` (cwd = this task dir, bounded by prework_timeout).
+// The fleet-roster code-work entry point — the script the executor runs as code-work,
+// `node worker.mjs` (cwd = this task dir, bounded by code_work_timeout).
 //
 // It holds NO sweep logic. The sweep is `check-fleet-roster.mjs`, its SIBLING in this
 // task folder — nothing outside this task uses it, so that is where it lives; this
@@ -10,7 +10,7 @@
 // Failure is the escalation path. The sweep THROWS when a repo could not be classified
 // ("unknown is neither uncovered nor behind") or when its config/token is unusable;
 // this worker turns that into a non-zero exit, and the executor treats a non-zero
-// prework subprocess as a failed task — it converges the item to `needs-human`
+// code-work subprocess as a failed task — it converges the item to `needs-human`
 // (engine/scheduler/queue/executor.mjs) instead of handing off to any agent.
 
 import { pathToFileURL } from 'node:url';

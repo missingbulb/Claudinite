@@ -1,6 +1,6 @@
 # Fleet baseline — force every member to baseline now
 
-**This task runs no agent, and no schedule.** It is `frequency: manual` with `agent_model: none`: the tick never instantiates it, and the whole pass is the deterministic [`worker.mjs`](worker.mjs) → [`force-fleet-baseline.mjs`](force-fleet-baseline.mjs) the executor runs as prework when — and only when — a human creates an item for it. This file is the human-facing record of what that is; there is no agent phase.
+**This task runs no agent, and no schedule.** It is `frequency: manual` with `agent_model: none`: the tick never instantiates it, and the whole pass is the deterministic [`worker.mjs`](worker.mjs) → [`force-fleet-baseline.mjs`](force-fleet-baseline.mjs) the executor runs as code-work when — and only when — a human creates an item for it. This file is the human-facing record of what that is; there is no agent phase.
 
 ## How to pull the lever
 

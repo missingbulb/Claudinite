@@ -1,7 +1,7 @@
 // The usage fold's SECOND source, and a HISTORICAL one: the retired slot scheduler's
 // own Actions runs (skill-usage-metrics DESIGN §4.2). Each of its runs printed one
 // machine-readable record per due task saying what it did with it — dispatched an
-// agent, ran it as prework only, skipped it on its precondition, failed it, or
+// agent, ran it as code-work only, skipped it on its precondition, failed it, or
 // deferred it. This module reads those records back out of the run logs.
 //
 // NOTHING WRITES THEM ANY MORE (#974). The reader stays because the logs it reads are

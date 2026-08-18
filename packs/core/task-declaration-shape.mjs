@@ -25,7 +25,7 @@ const strField = (text, key) => {
 const rule = {
   id: 'task-declaration-shape',
   severity: 'blocking',
-  description: 'A tasks/<name>/task.mjs default-exports the full task contract (id, frequency, precondition_signals, agent_model, expected_outcome, agent_instructions, precondition) with legal enum values; an agentic task bounds its run with agent_execution_timeout, and any prework carries a timeout and stays task-local',
+  description: 'A tasks/<name>/task.mjs default-exports the full task contract (id, frequency, precondition_signals, agent_model, expected_outcome, agent_instructions, precondition) with legal enum values; an agentic task bounds its run with agent_execution_timeout, and any code_work carries a timeout and stays task-local',
   doc: 'packs/core/scheduled-tasks.md',
   why: 'the tick and executor read agent_model/expected_outcome/frequency from this file, not the work item — an illegal or missing value means a task never fires, fires wrong, or writes past its ceiling',
 
@@ -64,25 +64,35 @@ const rule = {
         flag('declares no "precondition" function', 'add a precondition(signals, config) that returns { run, reason, context? }');
       }
 
-      // The prework/timeout guards (task-prework DESIGN §2). Numeric presence is
-      // a cheap `<key>: <digit>` regex, matching the runtime contract. The legacy
-      // field names (`agent_preprocessing[_timeout]`, pre-2026-08-06) still
-      // satisfy the contract — the loader normalizes them — but earn their own
-      // rename finding so the fleet converges on the canonical names.
+      // The code_work/timeout guards (task-code-work DESIGN §2). Numeric presence is
+      // a cheap `<key>: <digit>` regex, matching the runtime contract. TWO
+      // generations of legacy field names still satisfy the contract — the loader
+      // normalizes both — but each earns its own rename finding so the fleet
+      // converges on the canonical names.
       const hasNum = (...keys) => keys.some((key) => new RegExp(`\\b${key}:\\s*\\d`).test(text));
-      const legacyPrework = /\bagent_preprocessing:\s*['"]/.test(text);
-      const hasPrework = /\bprework:\s*['"]/.test(text) || legacyPrework;
-      if (legacyPrework) {
+      const LEGACY_CODE_WORK = [
+        { field: 'agent_preprocessing', timeout: 'agent_preprocessing_timeout' },
+        { field: 'prework', timeout: 'prework_timeout' },
+      ];
+      const legacyDeclared = LEGACY_CODE_WORK.filter(({ field }) => new RegExp(`\\b${field}:\\s*['"]`).test(text));
+      const hasCodeWork = /\bcode_work:\s*['"]/.test(text) || legacyDeclared.length > 0;
+      for (const { field, timeout } of legacyDeclared) {
         // ADVISORY, deliberately, on a blocking rule: the legacy names still
         // satisfy the runtime contract (normalized at load), and a member's
         // vendor refresh must not turn its CI red over files nothing has renamed
-        // yet — the 2026-08-06 migration note drives the rename; this finding
-        // only keeps it visible until it lands.
-        out.push(finding(rule, { file, severity: 'advisory', what: 'declares prework under the legacy name "agent_preprocessing"', fix: 'rename "agent_preprocessing" → "prework" and "agent_preprocessing_timeout" → "prework_timeout" (the phases of task execution are prework, then agentic work)' }));
+        // yet. This finding IS the durable driver of the rename — it names the
+        // exact edit and does not age out, which is why neither rename ships a
+        // migration note.
+        out.push(finding(rule, {
+          file,
+          severity: 'advisory',
+          what: `declares code_work under the legacy name "${field}"`,
+          fix: `rename "${field}" → "code_work" and "${timeout}" → "code_work_timeout" (the two phases of task execution are code-work, then agentic-work — neither is named for the other)`,
+        }));
       }
       // `session_scope` lost its last reader with the slot scheduler (#974): the
       // queue routes a hand-off by `invocation_endpoint`, and nothing anywhere
-      // asks a task what its scope is. ADVISORY, like the prework rename above and
+      // asks a task what its scope is. ADVISORY, like the code-work rename above and
       // for the same reason — the field still VALIDATES, so a member's vendor
       // refresh must not turn its CI red over a declaration nobody has edited yet;
       // this only keeps the dead field visible until it is dropped.
@@ -99,16 +109,16 @@ const rule = {
       if (model && MODEL_FAMILIES.includes(model) && model !== 'none' && !hasNum('agent_execution_timeout')) {
         flag('an agentic task (agent_model !== "none") declares no numeric "agent_execution_timeout"', 'add "agent_execution_timeout": seconds bounding the agentic run');
       }
-      if (model === 'none' && !hasPrework) {
-        flag('an agentless task (agent_model: "none") declares no "prework"', 'add "prework" (a none task does its work in that subprocess) — or give the task an agent_model');
+      if (model === 'none' && !hasCodeWork) {
+        flag('an agentless task (agent_model: "none") declares no "code_work"', 'add "code_work" (a none task does its work in that subprocess) — or give the task an agent_model');
       }
-      if (hasPrework) {
-        const prep = strField(text, 'prework') ?? strField(text, 'agent_preprocessing');
+      if (hasCodeWork) {
+        const prep = LEGACY_CODE_WORK.reduce((found, { field }) => found ?? strField(text, field), strField(text, 'code_work'));
         if (prep && (/(^|\s)\//.test(prep) || prep.includes('..'))) {
-          flag('"prework" reaches outside the task directory (absolute path or "..")', 'reference a sibling script only, e.g. "node prepare.mjs"');
+          flag('"code_work" reaches outside the task directory (absolute path or "..")', 'reference a sibling script only, e.g. "node prepare.mjs"');
         }
-        if (!hasNum('prework_timeout', 'agent_preprocessing_timeout')) {
-          flag('"prework" is set but declares no numeric "prework_timeout"', 'add "prework_timeout": seconds after which the subprocess is killed');
+        if (!hasNum('code_work_timeout', ...LEGACY_CODE_WORK.map(({ timeout }) => timeout))) {
+          flag('"code_work" is set but declares no numeric "code_work_timeout"', 'add "code_work_timeout": seconds after which the subprocess is killed');
         }
       }
     }

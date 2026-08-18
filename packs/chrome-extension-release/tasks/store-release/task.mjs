@@ -1,7 +1,7 @@
 // chrome-extension-release task: store-release — the pack-contributed release
 // trigger (per-project-scheduling DESIGN §6). STRUCTURAL Stage 2: `model: 'none'`
 // means the whole decision is code and there is NO agent phase —
-// the executor runs `worker.mjs` as prework. This task ABSORBS the
+// the executor runs `worker.mjs` as code-work. This task ABSORBS the
 // release workflow's own independent 00:30 cron: the workflow becomes push +
 // workflow_dispatch only, and this task is the one place that fires its daily
 // leg, so the scheduler stays the repo's only cron (DESIGN §3, decision §11.6).
@@ -14,10 +14,10 @@ export default {
   id: 'store-release',
   frequency: 'daily',              // the 04:00 anchor (DESIGN §2) — replaces the workflow's own 00:30 cron
   precondition_signals: ['release', 'commits'],
-  agent_model: 'none',                   // pure code — no agent (task-prework DESIGN §4)
+  agent_model: 'none',                   // pure code — no agent (task-code-work DESIGN §4)
   expected_outcome: 'none',                 // it only TRIGGERS the gated publish workflow; publishing stays behind that workflow's own guards
-  prework: 'node worker.mjs',      // the executor runs this as prework (cwd = this task dir) — DESIGN §3
-  prework_timeout: 120,            // the dispatch is a quick REST call; a tight bound (the await-the-run Stage 2 would widen it)
+  code_work: 'node worker.mjs',      // the executor runs this as code_work (cwd = this task dir) — DESIGN §3
+  code_work_timeout: 120,            // the dispatch is a quick REST call; a tight bound (the await-the-run Stage 2 would widen it)
 
   // Detect a deployable change since the last release, entirely in code:
   //   (a) the manifest version has advanced past the latest published release

@@ -1,6 +1,6 @@
 # Adopt the packs this repo's work list asks for
 
-You are here because prework found at least one open **`add-packs`** issue in **this** repo — the work list a fleet enforcer placed here (its sheepdog `fleet-add-missing-packs` task) before firing this scheduler. Your job: turn that work list into **one reviewed PR on this repo**. The whole of *how* is the [adopt-pack](../../skills/adopt-pack/SKILL.md) skill — declaring, the interview, re-vendoring, scaffolding, getting the checks green, landing. Don't re-derive it here.
+You are here because code-work found at least one open **`add-packs`** issue in **this** repo — the work list a fleet enforcer placed here (its sheepdog `fleet-add-missing-packs` task) before firing this scheduler. Your job: turn that work list into **one reviewed PR on this repo**. The whole of *how* is the [adopt-pack](../../skills/adopt-pack/SKILL.md) skill — declaring, the interview, re-vendoring, scaffolding, getting the checks green, landing. Don't re-derive it here.
 
 ## The work list
 
@@ -11,7 +11,7 @@ The open issues labelled `add-packs` in this repo ([`protocol.mjs`](protocol.mjs
 | `Add packs: requested for this repo` | a **decision** — the fleet owner named the packs, and the issue's JSON block is the exact declaration entries to write, `config` and `answers` included (the answers are the owner's interview answers, already given) | adopt it verbatim (§2) — never re-litigate whether it was wanted |
 | `Add packs: suspected from this repo’s shape` | a **suspicion** — the weekly fleet scan fingerprinted file shapes against packs this repo does not declare | confirm each pack first (§1), adopt what survives, decline the rest with a reason |
 
-An empty work list never reaches you — prework requests no agent for one. If both issues are open, they are one adoption: one PR covers both.
+An empty work list never reaches you — code-work requests no agent for one. If both issues are open, they are one adoption: one PR covers both.
 
 ## 1. Confirm a *suspicion* before acting on it
 

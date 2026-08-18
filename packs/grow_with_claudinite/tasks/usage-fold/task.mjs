@@ -1,7 +1,7 @@
 // grow_with_claudinite task: usage-fold — the per-repo skill-usage aggregate
 // (skill-usage-metrics DESIGN §5). `agent_model: 'none'` with
-// `prework: 'node worker.mjs'`: the whole pass is deterministic code the
-// executor runs as prework — no agent phase, seconds of runtime.
+// `code_work: 'node worker.mjs'`: the whole pass is deterministic code the
+// executor runs as code-work — no agent phase, seconds of runtime.
 //
 // WHY: a skill is MOUNTED per repo, but mounting only puts a name and a one-line
 // description into the session prompt — actually LOADING it is model discretion, and
@@ -24,14 +24,14 @@ export default {
   id: 'usage-fold',
   frequency: 'daily',                    // day rows are the unit; a day closes once
   precondition_signals: ['conversationLogs'],
-  agent_model: 'none',                   // pure code — no agent (task-prework DESIGN §4)
+  agent_model: 'none',                   // pure code — no agent (task-code-work DESIGN §4)
   expected_outcome: 'merged-pr',         // the regenerated GENERATED aggregate rides a PR landed per the repo's delivery settings
-  prework: 'node worker.mjs',
+  code_work: 'node worker.mjs',
   // One tree read plus one blob read per capture file in the ~10-day window, all
   // local git, then one PR. A busy repo captures a few files a day, so this is
   // seconds; 600s is ~100x that, generous enough that a huge backlog on a first fold
   // still completes while a hung run is killed well inside the hourly cadence.
-  prework_timeout: 600,
+  code_work_timeout: 600,
 
   // Always runs. Deliberately NOT gated on fresh captures, nor on the logs branch
   // existing at all: the fold has two sources, and the second one — the scheduler's

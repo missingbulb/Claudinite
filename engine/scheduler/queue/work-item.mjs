@@ -99,7 +99,7 @@ const BLOCKED_BY_RE = /^Blocked-by:[ \t]*(.*)$/m;
 
 // Build a work item body. The first line is the task path — the only thing an
 // executor reads to locate the worker, validated in code before anything trusts
-// it. Everything behavior-defining (model, ceiling, worker content, prework
+// it. Everything behavior-defining (model, ceiling, worker content, code_work
 // command) is read from the tracked task files at HEAD, never from here.
 export function workItemBody({
   taskPath, notBefore = null, blockedBy = [], context = [], delivered = [], reason = null,
@@ -119,7 +119,7 @@ export function workItemBody({
     );
   }
   if (reason) lines.push('', '### Why the agent is here', '', `- ${reason}`);
-  if (delivered.length) lines.push('', '### Delivered by prework', '', ...delivered.map((d) => `- ${d}`));
+  if (delivered.length) lines.push('', '### Delivered by code_work', '', ...delivered.map((d) => `- ${d}`));
   return lines.join('\n') + '\n';
 }
 
@@ -139,7 +139,7 @@ export function parseWorkItemBody(body) {
 // item was born with. Read back rather than kept only for the agent to read,
 // because an operator's PARAMETERS ride here: `create-work-item --context
 // "REPOS=Alpha Beta"` is how a forced run says what it is running on, and the
-// executor hands these lines to prework as `CLAUDINITE_CONTEXT`.
+// executor hands these lines to code_work as `CLAUDINITE_CONTEXT`.
 //
 // A section runs to the next `### ` heading or to the end of the body — the same
 // bounds `withSection` writes to — and only `- ` bullets count, so the prose
@@ -166,7 +166,7 @@ export const mergeContext = (...groups) => [...new Set(groups.flat().filter((l) 
 // Stamp (or clear) `Not-before` on an existing body, in place where the field is
 // already present and directly under the task path otherwise. Text surgery rather
 // than a rebuild: the body also carries the creating precondition's Context and
-// prework's Delivered section, which belong to whoever wrote them.
+// code-work's Delivered section, which belong to whoever wrote them.
 export function withNotBefore(body, iso) {
   const text = String(body ?? '');
   if (NOT_BEFORE_RE.test(text)) {
@@ -182,7 +182,7 @@ export function withNotBefore(body, iso) {
   return lines.join('\n');
 }
 
-// Set a section of an item body (the Context, prework's Delivered, the agent's Why)
+// Set a section of an item body (the Context, code-work's Delivered, the agent's Why)
 // — replacing one of the same heading if it is already there, appending otherwise.
 //
 // REPLACING IS THE WHOLE POINT, and appending was a live bug (#879). Every standing

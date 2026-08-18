@@ -8,7 +8,7 @@
 // assuming. So adding this task changes nothing for a member until someone writes
 // the flag into its declaration.
 //
-// Two stages, like baselining's. The DETERMINISTIC flows are `prework`
+// Two stages, like baselining's. The DETERMINISTIC flows are `code_work`
 // (worker.mjs): they converge the mount, run the version-ranged migrations, gate on
 // the converged tree's self-test, open the PR, and act on the terminal. The AGENT
 // stage runs only when the pack flow's apply stage is needed — the pack's new rules
@@ -27,8 +27,8 @@ export default {
   expected_outcome: 'merged-pr',
   agent_instructions: 'task.md',
 
-  prework: 'node worker.mjs',
-  prework_timeout: 900,
+  code_work: 'node worker.mjs',
+  code_work_timeout: 900,
   agent_execution_timeout: 1800,
 
   // PURE over the collected signals. It gates only that the worker RUNS; the worker

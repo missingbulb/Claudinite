@@ -59,10 +59,10 @@ test('withNotBefore stamps in place, inserts under the task path, and clears', (
   assert.equal(parseWorkItemBody(withNotBefore(restamped, null)).notBefore, null);
 });
 
-test('withSection appends prework\'s delivered artifacts without disturbing the body', () => {
+test('withSection appends code_work\'s delivered artifacts without disturbing the body', () => {
   const body = workItemBody({ taskPath: 'p/t/task.md' });
-  const out = withSection(body, 'Delivered by prework', ['PR: #12 (open)']);
-  assert.match(out, /### Delivered by prework\n\n- PR: #12 \(open\)/);
+  const out = withSection(body, 'Delivered by code_work', ['PR: #12 (open)']);
+  assert.match(out, /### Delivered by code_work\n\n- PR: #12 \(open\)/);
   assert.equal(parseWorkItemBody(out).taskPath, 'p/t/task.md');
 });
 
@@ -105,14 +105,14 @@ test('a section is replaced in place, so a body round-tripped twice has one of e
   assert.match(twice, /#3/);
 
   // A heading not yet present still appends — replacing must not cost the append.
-  const delivered = withSection(twice, 'Delivered by prework', ['a branch']);
-  assert.equal(delivered.match(/^### Delivered by prework$/gm).length, 1);
+  const delivered = withSection(twice, 'Delivered by code_work', ['a branch']);
+  assert.equal(delivered.match(/^### Delivered by code_work$/gm).length, 1);
   assert.equal(delivered.match(/^### Context$/gm).length, 1, 'and the neighbour is untouched');
 
   // Position is held, not migrated to the bottom: a replaced section stays where the
   // reader learned it, and every later section survives intact.
   const again = withSection(delivered, 'Context', ['Issues to triage: #4.']);
-  assert.ok(again.indexOf('### Context') < again.indexOf('### Delivered by prework'),
+  assert.ok(again.indexOf('### Context') < again.indexOf('### Delivered by code_work'),
     'the replaced section keeps its position');
   assert.match(again, /- a branch/, 'and the section after it is not swallowed');
 

@@ -16,44 +16,44 @@ function cast() {
   return [
     {
       id: 'basics/baselining', frequency: 'daily-2h', outcome: 'done',
-      preworkMinutes: 21, agentMinutes: 30,
+      codeWorkMinutes: 21, agentMinutes: 30,
       precondition: (w) => ({ run: !!w.mountBehind, reason: 'mount converged, no pending notes' }),
       requestsAgent: (w) => !!w.baseliningNeedsJudgment,
-      preworkFails: (w) => !!w.mountBroken,
+      codeWorkFails: (w) => !!w.mountBroken,
     },
     {
       id: 'grow/growth-extract', frequency: 'daily-1h', after: ['basics/baselining'],
-      outcome: 'done', preworkMinutes: 2, agentMinutes: 35,
+      outcome: 'done', codeWorkMinutes: 2, agentMinutes: 35,
       precondition: (w) => ({ run: !!w.extractHasLessons, reason: 'nothing new to extract' }),
     },
     {
       id: 'grow/growth-promote', frequency: 'daily', after: ['grow/growth-extract'],
-      outcome: 'done', preworkMinutes: 1, agentMinutes: 2,
+      outcome: 'done', codeWorkMinutes: 1, agentMinutes: 2,
       precondition: (w) => ({ run: !!w.promoteHasCandidates, reason: 'nothing staged' }),
     },
     {
       id: 'tidy/tidy-issues', frequency: 'daily', outcome: 'done',
-      preworkMinutes: 1, agentMinutes: 16,
+      codeWorkMinutes: 1, agentMinutes: 16,
       precondition: (w, now) => ({
         run: w.issueTouchedAt != null && now - w.issueTouchedAt <= 24 * 3600e3,
         reason: 'no issue touched in window',
       }),
     },
     {
-      id: 'chrome/store-release', frequency: 'daily', outcome: 'done', preworkMinutes: 3,
+      id: 'chrome/store-release', frequency: 'daily', outcome: 'done', codeWorkMinutes: 3,
       precondition: (w) => ({ run: !!w.releasePending, reason: 'nothing to release' }),
     },
     {
       id: 'gcec/create-extractor', frequency: 'hourly', outcome: 'done',
-      preworkMinutes: 4, agentMinutes: 10,
+      codeWorkMinutes: 4, agentMinutes: 10,
       precondition: (w) => ({ run: !!w.pendingRequest, reason: 'no eligible requests' }),
     },
     {
       id: 'tidy/tidy-prs', frequency: 'weekly', outcome: 'done',
-      preworkMinutes: 1, agentMinutes: 5,
+      codeWorkMinutes: 1, agentMinutes: 5,
       precondition: (w) => ({ run: !!w.stalePrs, reason: 'no stale PRs' }),
     },
-    { id: 'sheepdog/fleet-baseline', frequency: 'manual', outcome: 'done', preworkMinutes: 1, agentMinutes: 5 },
+    { id: 'sheepdog/fleet-baseline', frequency: 'manual', outcome: 'done', codeWorkMinutes: 1, agentMinutes: 5 },
   ];
 }
 
@@ -294,7 +294,7 @@ test('S25 adoption: first ask lands on the real anchor, not the first tick', () 
 });
 
 // ---- S8-flavored — a dead executor's claim is reclaimed by the tick's leash
-// and the item is simply re-picked; prework re-entrancy is the contract.
+// and the item is simply re-picked; code_work re-entrancy is the contract.
 test('S8 dead executor: leash reclaim, re-pick, converge', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
@@ -478,13 +478,13 @@ test('S16 lost label event: the poll picks it up within a tick', () => {
 test('S17 follow-up validates on day 3, closes obsolete when all landed', () => {
   const tasks = cast().concat([{
     id: 'chrome/store-validate', frequency: 'manual', outcome: 'done',
-    preworkMinutes: 1, agentMinutes: 5,
+    codeWorkMinutes: 1, agentMinutes: 5,
     precondition: (w) => ({ run: !!w.storeRejected, reason: 'v2.4 live — landed on its own' }),
   }]);
   const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
   let followUp;
   sim.at('2026-08-12T04:00Z', ({ world }) => { world.releasePending = true; });
-  sim.at('2026-08-12T04:25Z', (s) => { // prework delivered; create the follow-up
+  sim.at('2026-08-12T04:25Z', (s) => { // code_work delivered; create the follow-up
     const parent = s.family('chrome/store-release').find((i) => !i.seeded);
     followUp = s.createItem('chrome/store-validate', {
       blockedBy: [parent.number], notBefore: T('2026-08-14T04:00Z'),
@@ -502,7 +502,7 @@ test('S17 follow-up validates on day 3, closes obsolete when all landed', () => 
 test('S17b follow-up finds the store rejected the release, and runs', () => {
   const tasks = cast().concat([{
     id: 'chrome/store-validate', frequency: 'manual', outcome: 'done',
-    preworkMinutes: 1, agentMinutes: 5,
+    codeWorkMinutes: 1, agentMinutes: 5,
     precondition: (w) => ({ run: !!w.storeRejected, reason: 'v2.4 live' }),
   }]);
   const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
@@ -526,7 +526,7 @@ test('S17b follow-up finds the store rejected the release, and runs', () => {
 // (F14) surfaces the starving fan-in, and a human close unsticks everything.
 test('S18 fan-out: stuck member escalates, fan-in proceeds after the human acts', () => {
   const tasks = cast().concat([{
-    id: 'sheepdog/fleet-status', frequency: 'manual', outcome: 'done', preworkMinutes: 2,
+    id: 'sheepdog/fleet-status', frequency: 'manual', outcome: 'done', codeWorkMinutes: 2,
   }]);
   const sim = makeSim({ tasks }).seedSteadyState('2026-08-10T00:00Z');
   const members = [];
@@ -573,7 +573,7 @@ test('S19 re-queue after a fix: needs-human -> ready -> normal run', () => {
 // HAND close runs no engine code; S18 keeps the tick as that path's backstop.)
 test('S33 fan-in readies within minutes of its last blocker closing', () => {
   const tasks = cast().concat([{
-    id: 'sheepdog/fleet-status', frequency: 'manual', outcome: 'done', preworkMinutes: 2,
+    id: 'sheepdog/fleet-status', frequency: 'manual', outcome: 'done', codeWorkMinutes: 2,
   }]);
   const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
   const members = [];
@@ -642,7 +642,7 @@ test('S34 busy morning: every run settles exactly one item; re-dispatch chains t
 // remains the backstop behind all of it.
 test('S36 dead run mid-queue: failure-redispatch keeps the train moving; the leash recovers the item', () => {
   const tasks = ['c1', 'c2', 'c3', 'c4', 'c5'].map((n) => ({
-    id: `x/${n}`, frequency: 'daily', outcome: 'done', preworkMinutes: 5,
+    id: `x/${n}`, frequency: 'daily', outcome: 'done', codeWorkMinutes: 5,
     precondition: () => ({ run: true }),
   }));
   const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
@@ -677,7 +677,7 @@ test('S36 dead run mid-queue: failure-redispatch keeps the train moving; the lea
 // exactly where they were, no labels touched, nothing lost.
 test('S37 suspend-all: workflows exit at start, the queue freezes in place', () => {
   const tasks = ['c1', 'c2', 'c3', 'c4', 'c5'].map((n) => ({
-    id: `x/${n}`, frequency: 'daily', outcome: 'done', preworkMinutes: 5,
+    id: `x/${n}`, frequency: 'daily', outcome: 'done', codeWorkMinutes: 5,
     precondition: () => ({ run: true }),
   }));
   const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
@@ -712,9 +712,9 @@ test('S37 suspend-all: workflows exit at start, the queue freezes in place', () 
 // reclaims the cancelled run's claim, drains the queue, converges all.
 test('S38 resume after a hold: clearing the variable + the next tick recovers everything', () => {
   const tasks = [
-    { id: 'x/slow', frequency: 'daily', outcome: 'done', preworkMinutes: 30,
+    { id: 'x/slow', frequency: 'daily', outcome: 'done', codeWorkMinutes: 30,
       precondition: () => ({ run: true }) },
-    { id: 'x/quick', frequency: 'daily', outcome: 'done', preworkMinutes: 3,
+    { id: 'x/quick', frequency: 'daily', outcome: 'done', codeWorkMinutes: 3,
       precondition: () => ({ run: true }) },
   ];
   const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
@@ -844,7 +844,7 @@ test('S31 heartbeat interval >= executing leash is refused at wiring (F17 refram
 
 test('S31b the livelock heartbeats prevent: silent long work reclaimed alive, forever', () => {
   const tasks = [{
-    id: 'x/slow', frequency: 'daily', outcome: 'done', preworkMinutes: 130, // > 1h leash
+    id: 'x/slow', frequency: 'daily', outcome: 'done', codeWorkMinutes: 130, // > 1h leash
     precondition: () => ({ run: true }),
   }];
   const sim = makeSim({ tasks, heartbeatsDisabled: true }).seedSteadyState('2026-08-12T00:00Z');
@@ -859,7 +859,7 @@ test('S31b the livelock heartbeats prevent: silent long work reclaimed alive, fo
 
 test('S31c long work with heartbeats: never reclaimed alive, converges once', () => {
   const tasks = [{
-    id: 'x/slow', frequency: 'daily', outcome: 'done', preworkMinutes: 130, // > 1h leash — legal now
+    id: 'x/slow', frequency: 'daily', outcome: 'done', codeWorkMinutes: 130, // > 1h leash — legal now
     precondition: () => ({ run: true }),
   }];
   const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
@@ -873,7 +873,7 @@ test('S31c long work with heartbeats: never reclaimed alive, converges once', ()
 
 test('S31d dead executor mid-long-work: recovery is bounded by the leash, not the work', () => {
   const tasks = [{
-    id: 'x/slow', frequency: 'daily', outcome: 'done', preworkMinutes: 130,
+    id: 'x/slow', frequency: 'daily', outcome: 'done', codeWorkMinutes: 130,
     precondition: () => ({ run: true }),
   }];
   const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');

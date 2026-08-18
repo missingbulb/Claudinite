@@ -138,7 +138,7 @@ can still teach us.
 | **Workflow concurrency between the tick and a long drain** | the tick and drain share a workflow whose `concurrency` group holds the next cron fire until the whole run ends — a drain doing hours of real work starves the hourly tick | the decoupling wiring (work-as-work review, DESIGN §10): the drain must run outside the tick's serializing group once work may legally outlive an hour; platform config the sim cannot see, verified in the migration burst |
 | **Secrets & permissions** | Actions secret storage, env stamping, write-gating of labels/comments | prose + conformance checks (§14 secrets path); burst row B4/B7 |
 | **Search index** | minutes-stale, eventually consistent | never used by the design (F11) — the REST issue list is the only read |
-| **Real prework/agent content** | side effects, repos, PRs, sessions | durations and verdicts are scenario inputs; the outcome ceiling and record formats are the engine's existing tested surface |
+| **Real code-work/agent content** | side effects, repos, PRs, sessions | durations and verdicts are scenario inputs; the outcome ceiling and record formats are the engine's existing tested surface |
 
 Fidelity grows only when a scenario needs it — an entry leaves this table by
 becoming modeled, never by being forgotten.

@@ -1,6 +1,6 @@
 # Fleet: get every member declaring the packs it is missing
 
-**This task runs no agent.** It is `agent_model: none` with a parameterised `prework` ([`worker.mjs`](worker.mjs)), so the whole pass is deterministic code the executor runs as prework. This file is the human-facing record of what that code does; there is no agent phase on the enforcer side. The *agentic* half of the job belongs to each member's own **adopt-requested-packs** task (grow_with_claudinite) — see "The fan-out model" below.
+**This task runs no agent.** It is `agent_model: none` with a parameterised `code_work` ([`worker.mjs`](worker.mjs)), so the whole pass is deterministic code the executor runs as code-work. This file is the human-facing record of what that code does; there is no agent phase on the enforcer side. The *agentic* half of the job belongs to each member's own **adopt-requested-packs** task (grow_with_claudinite) — see "The fan-out model" below.
 
 ## Two first stages, one parameter set
 
@@ -8,7 +8,7 @@ The task is parameterised over the two ways a pack comes to be missing ([`params
 
 | run | parameters | first stage |
 |---|---|---|
-| weekly (scheduled) | `--scan-for-needed-packs=true --repos=all-covered-members`, on the `prework` line in [`task.mjs`](task.mjs) | the **scan** ([`scan-for-needed-packs.mjs`](scan-for-needed-packs.mjs)): fingerprint every covered member's tree against the canon corpus and *suspect* what its declaration does not carry |
+| weekly (scheduled) | `--scan-for-needed-packs=true --repos=all-covered-members`, on the `code_work` line in [`task.mjs`](task.mjs) | the **scan** ([`scan-for-needed-packs.mjs`](scan-for-needed-packs.mjs)): fingerprint every covered member's tree against the canon corpus and *suspect* what its declaration does not carry |
 | forced (hand-created item) | the item's Context, one `--context` line each: `SCAN_FOR_NEEDED_PACKS=false`, `REPOS=Alpha Beta`, `ADD_PACKS=<ids>`, `PACK_CONFIG=<pack>.<key>=<v>`, `PACK_ANSWER=<pack>.<question>=<answer>` (values space-separated — the bag splits on commas) | the **force** ([`force-add-packs.mjs`](force-add-packs.mjs)): the owner names the packs, repos, config and interview answers — nothing is suspected, because it was decided |
 
 A force **refuses itself entirely** — before any issue is written — on an unknown pack id, a repo that is not a covered member or is dormant, `all-covered-members` as a target, or **any adoption-interview question the overrides did not answer**: an answer is the owner's to give, never one this task may infer.

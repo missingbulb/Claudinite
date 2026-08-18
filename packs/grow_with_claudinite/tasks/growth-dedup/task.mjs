@@ -36,8 +36,8 @@ export default {
   // there, deliberately, because a signal is a cheap gate any task may declare,
   // not one task's research. The hand-off is unconditional (worker.mjs) —
   // the precondition below is the only place this run may be declined.
-  prework: 'node worker.mjs',
-  prework_timeout: 600,                     // one commit listing plus a read per window commit
+  code_work: 'node worker.mjs',
+  code_work_timeout: 600,                     // one commit listing plus a read per window commit
 
   // Gate: the repo must actually track local packs (no local packs → nothing to
   // prune, self-skip). Given local packs, run when the mounted canon this repo

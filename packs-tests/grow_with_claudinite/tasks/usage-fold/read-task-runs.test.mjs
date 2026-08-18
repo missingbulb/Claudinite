@@ -90,7 +90,7 @@ test('readTaskRuns dates each record by the run it came from, and advances the w
   });
   assert.deepEqual(records, [
     { date: '2026-07-28', pack: 'tidy-repo', task: 'tidy-issues', slotId: 'd2026-07-29', outcome: 'agent' },
-    { date: '2026-07-29', pack: 'grow_with_claudinite', task: 'usage-fold', slotId: 'd2026-07-29', outcome: 'prework' },
+    { date: '2026-07-29', pack: 'grow_with_claudinite', task: 'usage-fold', slotId: 'd2026-07-29', outcome: 'code-work' },
     { date: '2026-07-29', pack: 'tidy-repo', task: 'tidy-issues', slotId: 'd2026-07-29', outcome: 'skipped' },
   ]);
   assert.equal(watermark, '2026-07-29T04:44:00Z');

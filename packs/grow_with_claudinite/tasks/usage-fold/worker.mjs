@@ -1,5 +1,5 @@
-// The usage-fold prework entry point — the script the executor runs as prework,
-// `node worker.mjs` (cwd = this task dir, bounded by prework_timeout).
+// The usage-fold code-work entry point — the script the executor runs as code-work,
+// `node worker.mjs` (cwd = this task dir, bounded by code_work_timeout).
 // The whole task: no agent phase.
 //
 // It holds NO counting logic. The counting and folding are `fold-usage.mjs`, its
@@ -172,7 +172,7 @@ export async function main() {
     + `${pr.merged ? ' (landed)' : pr.delivery === 'review' ? ' (left for review)' : ''}`);
 }
 
-// Run only when invoked directly (prework's `node worker.mjs`), never on import.
+// Run only when invoked directly (code-work's `node worker.mjs`), never on import.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((e) => { console.error(`usage-fold failed: ${e.message}`); process.exit(1); });
 }

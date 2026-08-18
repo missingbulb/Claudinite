@@ -27,13 +27,14 @@ test('a line parses through the Actions timestamp prefix a fetched log carries',
 });
 
 test('a trailing carriage return does not defeat the parse', () => {
-  assert.ok(parseTaskRun(`${TASK_RUN_TAG} v1 basics/baselining [h2026-07-29T04] prework\r`));
+  assert.ok(parseTaskRun(`${TASK_RUN_TAG} v1 basics/baselining [h2026-07-29T04] code-work\r`));
 });
 
-test('the pre-rename outcome word still parses, normalized to prework', () => {
+test('both pre-rename outcome words still parse, normalized to code-work', () => {
   // Runs logged before the 2026-08-06 phase-language rename say `preprocess`;
   // the fold must count them under the canonical key, not drop them.
-  assert.equal(parseTaskRun(`${TASK_RUN_TAG} v1 a/b [d2026-07-29] preprocess`).outcome, 'prework');
+  assert.equal(parseTaskRun(`${TASK_RUN_TAG} v1 a/b [d2026-07-29] preprocess`).outcome, 'code-work');
+  assert.equal(parseTaskRun(`${TASK_RUN_TAG} v1 a/b [d2026-07-29] prework`).outcome, 'code-work');
 });
 
 test('anything that is not a record of this version parses to null', () => {
@@ -48,10 +49,10 @@ test('parseTaskRuns picks its own lines out of a whole job log', () => {
     '2026-07-29T04:44:01Z ## Claudinite scheduler',
     '2026-07-29T04:44:01Z - tidy-repo/tidy-issues [d2026-07-29] create — no dispatch issue yet',
     `2026-07-29T04:44:02Z ${TASK_RUN_TAG} v1 tidy-repo/tidy-issues [d2026-07-29] agent`,
-    `2026-07-29T04:44:02Z ${TASK_RUN_TAG} v1 grow_with_claudinite/usage-fold [d2026-07-29] prework`,
+    `2026-07-29T04:44:02Z ${TASK_RUN_TAG} v1 grow_with_claudinite/usage-fold [d2026-07-29] code-work`,
     '2026-07-29T04:44:03Z ##[endgroup]',
   ].join('\n');
-  assert.deepEqual(parseTaskRuns(log).map((r) => `${r.task}:${r.outcome}`), ['tidy-issues:agent', 'usage-fold:prework']);
+  assert.deepEqual(parseTaskRuns(log).map((r) => `${r.task}:${r.outcome}`), ['tidy-issues:agent', 'usage-fold:code-work']);
   assert.deepEqual(parseTaskRuns(''), []);
 });
 

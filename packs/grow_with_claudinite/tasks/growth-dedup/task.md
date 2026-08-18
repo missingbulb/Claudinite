@@ -34,7 +34,7 @@ the canon now covers. It lands the run's prunes through a single PR against the 
 
 ## Start by reading the canon window diff
 
-**Prework already ran** — [worker.mjs](worker.mjs), the deterministic first phase of this task — and wrote
+**Code-work already ran** — [worker.mjs](worker.mjs), the deterministic first phase of this task — and wrote
 what the mounted canon **added** in this window into the tracking issue's body: per declared pack, the added
 prose lines file by file, and the ids of any checks the window introduced. Your dispatch names that issue.
 **Read it before opening a single local pack.**
@@ -83,16 +83,16 @@ worker only frames the unattended run around it.
 
 ## Tracking
 
-The task's standing log is the issue the work item's **Delivered by prework** section names (`Issue: #<n>`).
-Prework found or opened it and has already rewritten its body with this run's brief.
+The task's standing log is the issue the work item's **Delivered by code-work** section names (`Issue: #<n>`).
+Code-work found or opened it and has already rewritten its body with this run's brief.
 
 **That number is a required input.** A work item that does not carry it is a failed run, not a lighter one: converge to `needs-human` naming the missing input.
 Never search for a tracker by title and never create one — the brief
 you are working from lives on a specific issue, and any issue you find yourself is a different one. Never
-re-write the body prework just wrote, and **never open, close, or reopen it**: its state carries no meaning,
+re-write the body code-work just wrote, and **never open, close, or reopen it**: its state carries no meaning,
 only the log does.
 
-Its **body** is prework's, rewritten every run: this window's canon diff, the brief you started from. Leave it
+Its **body** is code-work's, rewritten every run: this window's canon diff, the brief you started from. Leave it
 alone. The **comments** are yours: log each run that changed a doc as a **dated comment** — naming what was
 pruned and the canon line that now covers it. A run that prunes nothing logs nothing.
 

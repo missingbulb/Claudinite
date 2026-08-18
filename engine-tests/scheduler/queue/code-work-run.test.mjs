@@ -1,13 +1,13 @@
-// What prework hands the agentic phase, on the queue's dispatch path — the twin of
+// What code_work hands the agentic phase, on the queue's dispatch path — the twin of
 // dispatch.mjs's `deliveredLines` for the slot path. The two render the same payload
 // into different carriers (a work item's section vs a dispatch issue's body), so a key
 // added to one and not the other is dropped silently on half the fleet.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { deliveredLines, missingSecrets } from '../../../engine/scheduler/queue/prework-run.mjs';
+import { deliveredLines, missingSecrets } from '../../../engine/scheduler/queue/code-work-run.mjs';
 
-test('an artifact prework created is named by identity', () => {
+test('an artifact code_work created is named by identity', () => {
   assert.deepEqual(deliveredLines({ pr: 7, branch: 'claudinite/x' }), [
     'PR: #7 (open)',
     'Branch: `claudinite/x`',
@@ -15,11 +15,11 @@ test('an artifact prework created is named by identity', () => {
   assert.match(deliveredLines({ pr: 7, merged: true })[0], /already merged/);
 });
 
-// A task that keeps a standing record resolves it in its OWN prework and passes the
+// A task that keeps a standing record resolves it in its OWN code_work and passes the
 // number on through this payload. Both live workers were already writing
 // `delivered.issue` and nothing rendered it, so the number reached no agent and the
 // agentic phase went hunting for the issue by title instead.
-test('an ISSUE prework resolved reaches the agent', () => {
+test('an ISSUE code_work resolved reaches the agent', () => {
   assert.deepEqual(deliveredLines({ issue: 42 }), ["Issue: #42 — write this run's record there."]);
 });
 

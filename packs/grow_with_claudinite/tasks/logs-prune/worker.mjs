@@ -1,5 +1,5 @@
 // The logs-prune preprocessing entry point — the script the scheduler runs as
-// `node worker.mjs` (cwd = this task dir, bounded by prework_timeout). The whole
+// `node worker.mjs` (cwd = this task dir, bounded by code_work_timeout). The whole
 // task: no agent, no dispatch issue.
 //
 // It holds no decision logic: what is deletable is `prune-logs.mjs`, its sibling in

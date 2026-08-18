@@ -6,7 +6,7 @@
 // { owner, kind, exclude, canonRepo, staleDays, packSeeds }), and the
 // account-spanning sweeps
 // that ARE the cross-repo reach the pack adds — each with the ordinary agentless
-// scheduled task that runs it (the sweep IS its prework, and its
+// scheduled task that runs it (the sweep IS its code-work, and its
 // required_secrets is what asks the repo for FLEET_GITHUB_TOKEN):
 //
 //   tasks/fleet-roster/check-fleet-roster.mjs          is a repo a MEMBER, and is that
@@ -55,7 +55,7 @@
 // stage, and only for the half that is genuinely judgment — the collector ranks a day BY
 // SIZE, which is arithmetic, and the agent picks the accomplishments out of that
 // shortlist, which is a reading of the text. On a day the fleet merged nothing the
-// prework writes the brief itself and requests no agent: the dated series is what makes a
+// code_work writes the brief itself and requests no agent: the dated series is what makes a
 // MISSING brief legible as a fault rather than as a slow Tuesday, but "nothing happened"
 // needs no model. It arrived from the enforcer's own local pack in #954; what made it
 // portable is that the task ends at a written file, so it holds no address, no recipient

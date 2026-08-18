@@ -24,7 +24,7 @@ test('adopt-requested-packs: manual, sonnet, ceilinged at open-pr', () => {
   assert.equal(decl.id, 'adopt-requested-packs');   // must match its directory name (discover.mjs)
   // `manual`: the work only exists when the fleet places it, and the fleet fires this
   // scheduler in the same breath. A cadence would re-ask a question whose answer
-  // arrives by push — and run this task's prework in every member, every slot.
+  // arrives by push — and run this task's code_work in every member, every slot.
   assert.equal(decl.frequency, 'manual');
   assert.equal(decl.agent_model, 'sonnet');
   // The ceiling is the guard that matters most: declaring a pack switches on
@@ -54,9 +54,9 @@ test('adopt-requested-packs: its precondition admits its own forced item', () =>
 });
 
 test('adopt-requested-packs: two stages — a cheap gate, then the agent, iff work exists', () => {
-  assert.equal(decl.prework, 'node worker.mjs');
-  assert.ok(!decl.prework.includes('..'));
-  assert.ok(Number.isInteger(decl.prework_timeout) && decl.prework_timeout > 0);
+  assert.equal(decl.code_work, 'node worker.mjs');
+  assert.ok(!decl.code_work.includes('..'));
+  assert.ok(Number.isInteger(decl.code_work_timeout) && decl.code_work_timeout > 0);
   assert.notEqual(decl.agent_model, 'none');
   assert.equal(decl.agent_instructions, 'task.md');
   assert.ok(existsSync(join(taskDir, 'task.md')));

@@ -1,9 +1,18 @@
 # Scheduled tasks — the per-project scheduling mechanism
 
-How a repo's recurring Claudinite work runs. A repo schedules **itself**, and
+How a repo's own Claudinite work runs. A repo schedules **itself**, and
 every occurrence of every task is an **issue in that repo** — a `[claudinite-work]`
 work item whose labels are its state. That is the work-item queue; what follows is
 the contract a task is written to, not how the queue works internally.
+
+**A cadence is one way an occurrence is created, not what a task is.** A task is a
+unit of the repo's own work with a precondition, a code-work phase and optionally an
+agentic-work phase; `frequency` says only how often the queue offers to run it, and
+`manual` — no cadence at all — is a first-class value. Work that fires on an event,
+on a condition, or on a force is a task in exactly the same sense as work that fires
+nightly, and reads the same contract. Anything reachable from the executor belongs
+here rather than in a workflow of its own; see the cron rule below for the narrow
+case that genuinely cannot be.
 
 Three responsibilities, strictly separated (owner, 2026-08-06):
 
@@ -14,7 +23,7 @@ Three responsibilities, strictly separated (owner, 2026-08-06):
    dead executor claims. It evaluates no precondition and collects no signal.
 2. **The executor** — a pull worker over the queue (the tick's post-tick drain,
    and a `labeled`-event run for latency) that picks the next ready item, claims
-   it, evaluates **that one task's** precondition, runs its prework, and either
+   it, evaluates **that one task's** precondition, runs its code-work, and either
    converges the item or hands off to an agent session.
 3. **The task-janitor** — an ordinary daily task (`basics/task-janitor`,
    `agent_model: none`) that owns everything about the queue that is *nobody's
@@ -40,13 +49,17 @@ than by replaying a ledger.
   `workflow_dispatch` trigger (whose one `wake` input is how a task is forced,
   here or from another repo), and a call into the vendored tick — no logic of its own
   (schema and behaviour changes ride the vendor refresh, not workflow edits). It
-  is the repo's **only** cron; the executor's workflow beside it carries none. Recurring work that had its own cron'd workflow
-  becomes a **task**, and that workflow is deleted — its steps move into the
-  task's worker. Don't keep it as a dispatch-only workflow for the task to fire:
-  that is two files and two edit sites for one job, and a workflow whose only
-  caller is the thing that replaced it. (A workflow that must run *as an Action*
-  for something a task cannot reach — an Actions-only secret, say — is the
-  exception, and even then the task owns the schedule.) Off-band or multiple
+  is the repo's **only** cron; the executor's workflow beside it carries none. Work
+  that had its own cron'd workflow becomes a **task**, and that workflow is deleted
+  — its steps move into the task's worker. So does work with no cron at all: an
+  event-driven or condition-gated job becomes a task on `frequency: 'manual'`, woken
+  by whatever knows the event happened. Don't keep either as a dispatch-only workflow
+  for the task to fire: that is two files and two edit sites for one job, and a
+  workflow whose only caller is the thing that replaced it. (A workflow that must run
+  *as an Action* for something a task cannot reach — an Actions-only secret, an OIDC
+  identity a deploy target demands — is the exception. Even then the task owns the
+  trigger and the decision to run; the workflow carries only the step that needs the
+  Action's own privileges.) Off-band or multiple
   crons, or a missing concurrency/dispatch guard, break staggering, double-run
   safety, or manual runs.
 
@@ -64,10 +77,10 @@ than by replaying a ledger.
   static and runtime views can't drift. A task declares **no session scope** — see
   the next entry.
 
-- **A task's code reads only the environment prework is handed.** Prework runs as
+- **A task's code reads only the environment code-work is handed.** Code-work runs as
   a subprocess with a fixed set of `CLAUDINITE_*` variables — `REPO_ROOT`, `REPO`,
   `DEFAULT_BRANCH`, `ITEM`, `PACK`, `TASK`, `CONTEXT`, `REQUEST_AGENT` — and
-  `task-prework-env` (blocking) rejects a read of anything else. A variable nobody
+  `task-code-work-env` (blocking) rejects a read of anything else. A variable nobody
   sets is `undefined`, the parse of it yields empty, and the run goes green having
   quietly done something other than what it was asked: that is how three fleet
   tasks kept taking their parameters through a channel the queue had stopped
@@ -87,33 +100,33 @@ than by replaying a ledger.
 
 - **Every run is bounded.** An agentic task (`agent_model !== none`) declares
   `agent_execution_timeout` — seconds bounding the agentic run
-  (task-prework design §2, §6 — see issue #394).
+  (task-code-work design §2, §6 — see issue #394).
   There is no platform wall-clock kill for a launched agent session, so the
   bound is best-effort: the hand-off surfaces it into the session's brief ("fail
   after N minutes") and the agent leash catches a session that never converges its
   item. Set it generously — extreme protection against a runaway, not a scheduling
   knob.
 
-- **A task says which repo secrets it needs.** Prework runs Action-side, so repo
+- **A task says which repo secrets it needs.** Code-work runs Action-side, so repo
   Actions secrets are reachable there and nowhere else in a task's life (an agent
   session carries none). A task lists what it needs in `required_secrets`; the
-  wiring converge stamps each name into the workflows that run prework — the tick's
+  wiring converge stamps each name into the workflows that run code-work — the tick's
   drain and the executor — so a worker reads it as ordinary environment. A declared
-  secret the repo has not configured is **named, not guessed at**: prework is the
+  secret the repo has not configured is **named, not guessed at**: code-work is the
   only code that sees a secret's value, so the executor converges the item to
   `needs-human` saying exactly which one is missing. Nothing else fails; the task
   that needs the secret just doesn't work yet. The consequence worth designing
   around: **a workflow that exists only to hold a secret is redundant** — fold its
-  work into the task's prework rather than dispatching and polling a second
+  work into the task's code-work rather than dispatching and polling a second
   workflow from an agent.
 
 - **A standing tracker belongs to the task that keeps one, not to the machinery.**
   Nothing in the contract declares a tracker and no task is expected to want one. A
   task that keeps an aggregated record across runs resolves the issue in its **own**
-  prework and passes the number to its agentic phase the ordinary way — the hand-off
+  code-work and passes the number to its agentic phase the ordinary way — the hand-off
   payload's `delivered.issue`, which the executor renders into the work item as an `Issue:` line
   the worker doc points at. The exact-title lookup and the create-then-close pair are
-  a library that prework may call (`engine/scheduler/tracker.mjs`), never a phase:
+  a library that code-work may call (`engine/scheduler/tracker.mjs`), never a phase:
   whether a run with nothing to say should mint a tracker at all is the task's own
   judgment, and tidy-repo's three answer no.
 
@@ -128,7 +141,7 @@ gate as pure code) beside **`task.md`** (the worker spec the executing agent
 follows), plus any deterministic helpers. The precondition both asserts
 need-to-run and pre-decides scope: its `context` lines join the item's own
 Context as binding constraints the agent may not re-litigate. `agent_model:
-none` replaces the worker doc with an inline `.mjs` the executor runs as prework
+none` replaces the worker doc with an inline `.mjs` the executor runs as code-work
 — no agent phase, and the item closes on that subprocess's outcome. This is the
 scheduled-task shape of the unattended-agents routine-folder convention; the
 issue-driven-dispatch security rule (the issue is data, the task path is
@@ -151,13 +164,13 @@ Declare one only when its rule applies.
   task declaration is vendored verbatim into every consuming repo, so deployment detail and
   anything adjacent to a credential stay in that repo's own config.
 
-A task's `prework_timeout` must stay under the executor's one-hour claim leash — a prework
+A task's `code_work_timeout` must stay under the executor's one-hour claim leash — a code-work
 that can outlive it is reclaimed while still running, and the item livelocks. The declaration
 contract enforces this; do not raise a timeout past it, split the work instead.
 
 ## The precondition is the ONLY decision point
 
-Task execution is **two similar, consecutive phases**: deterministic **prework**
+Task execution is **two similar, consecutive phases**: deterministic **code-work**
 (a subprocess the executor runs, Action-side) and **agentic work** (the session
 the executor hands off to, following task.md). Neither phase is "preparation" for the
 other, and — the rule that matters — **neither may decide whether the task
@@ -173,12 +186,12 @@ runs**. That decision is the precondition's alone:
 - **"The work ran and produced nothing" is always legal** — that is an empty
   outcome, not a skip. The line: did the phase *do* the work and find it empty,
   or *decline* to do it?
-- The conditional agent hand-off (a prework worker requesting the agentic phase
-  via `CLAUDINITE_REQUEST_AGENT`) escalates on **work prework could not do** —
+- The conditional agent hand-off (a code-work worker requesting the agentic phase
+  via `CLAUDINITE_REQUEST_AGENT`) escalates on **work code-work could not do** —
   never on a re-check of whether the run should have happened.
 
 The `task-phase-discipline` world check (advisory, heuristic) hunts for tasks
-that escape this — skip-language in task.md, cycle-skip strings in prework
+that escape this — skip-language in task.md, cycle-skip strings in code-work
 workers.
 
 ## Ordering between tasks is `after`, not a claim on the run

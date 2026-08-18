@@ -22,7 +22,7 @@ here only once baselining has converged the mount to include it). The mount is n
 Reconciling a local pack against a whole canon is a search with no shape: most canon lines have been there
 for months, and if they were going to cover a local item they mostly already did on an earlier pass. What
 makes an item newly prunable is a canon **change**. So when the reconciliation has a window, work its diff
-before reading any local pack. The unattended run is handed that diff — its prework writes the window's canon
+before reading any local pack. The unattended run is handed that diff — its code-work writes the window's canon
 additions into the task's tracking issue — and an owner asking in-session can usually name a window ("since we
 last did this") and read it the same way. Either way, the candidate list is:
 

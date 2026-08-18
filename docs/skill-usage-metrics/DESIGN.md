@@ -455,7 +455,7 @@ scheduler. A repo that has never captured folds its task rows and nothing else.
     "week": ["days","captures","merges","sessionDays","userMessages","userCommands"],
     "checks": ["runs","failures","errors","blocking","advisory","ciRuns","ciFailures"],
     "checkFindings": ["blocking","advisory"],
-    "tasks": ["agent","prework","skipped","failed","deferred"],
+    "tasks": ["agent","code_work","skipped","failed","deferred"],
     "taskExec": ["success","failed","task-gone","invalid"]
   },
   "days": {
@@ -538,7 +538,7 @@ PR), and the agentless run costs seconds.
 Written by **`fleet-usage`**: an agentless daily task of the **sheepdog**
 pack, alongside `fleet-census` and `fleet-freshness` and shaped exactly like
 them — the sweep (`aggregate-fleet-usage.mjs`, inside the task's folder) *is*
-the `prework`, `required_secrets` asks for `FLEET_GITHUB_TOKEN`,
+the `code_work`, `required_secrets` asks for `FLEET_GITHUB_TOKEN`,
 and members are enumerated via `fleet-api.mjs` from the sheepdog config entry.
 It runs only where the sheepdog pack is declared — the fleet-enforcer repo.
 

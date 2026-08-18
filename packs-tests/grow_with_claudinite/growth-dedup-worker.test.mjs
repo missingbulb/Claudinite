@@ -12,7 +12,7 @@ import {
   handoffDetail,
 } from '../../packs/grow_with_claudinite/tasks/growth-dedup/worker.mjs';
 
-// The growth-dedup prework: what the mounted canon ADDED in the window, which is
+// The growth-dedup code_work: what the mounted canon ADDED in the window, which is
 // the only thing that can newly cover a local item. Pure functions over the
 // commit records the API returns, so the whole detection tests with no live
 // GitHub; main() is the thin I/O shell around them.

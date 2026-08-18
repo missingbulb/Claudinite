@@ -73,11 +73,11 @@ test('aggregate keeps each member\'s task invocations at week x repo x task grai
   // already folded and the file's note must say plainly that they are history — a
   // reader comparing them against a later period would read a dead source as a fleet
   // that stopped working.
-  const taskRow = (over) => ({ agent: 0, prework: 0, skipped: 0, failed: 0, deferred: 0, ...over });
+  const taskRow = (over) => ({ agent: 0, code_work: 0, skipped: 0, failed: 0, deferred: 0, ...over });
   const file = aggregate({
     members: [
       member('owner/alpha', { '2026-W30': week({
-        tasks: { 'tidy-repo/tidy-issues': taskRow({ agent: 7 }), 'grow_with_claudinite/usage-fold': taskRow({ prework: 7, skipped: 161 }) },
+        tasks: { 'tidy-repo/tidy-issues': taskRow({ agent: 7 }), 'grow_with_claudinite/usage-fold': taskRow({ code_work: 7, skipped: 161 }) },
       }) }),
       member('owner/beta', { '2026-W30': week({ tasks: { 'tidy-repo/tidy-issues': taskRow({ skipped: 7 }) } }) }),
       // A member still on an older fold carries no `tasks` key at all — it must land as

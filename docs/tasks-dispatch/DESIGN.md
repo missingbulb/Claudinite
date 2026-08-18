@@ -10,8 +10,8 @@ the slot machinery of
 [per-project-scheduling DESIGN §3–§5](../per-project-scheduling/DESIGN.md) and
 amends several of its §12 decisions (each amendment is named where it happens).
 What it does **not** touch: the task folder anatomy (§1), the precondition
-contract, prework and its secrets model
-([task-prework DESIGN](../task-prework/DESIGN.md)), the outcome ceiling, the
+contract, code-work and its secrets model
+([task-code-work DESIGN](../task-code-work/DESIGN.md)), the outcome ceiling, the
 security posture (the issue is data; behavior comes from tracked files), and the
 usage-metrics records.
 
@@ -154,7 +154,7 @@ The Context section below is binding scope — do not re-decide it.
 ### Context
 - <the creating precondition's binding lines, verbatim — unchanged>
 
-### Delivered by prework
+### Delivered by code-work
 - <written by the executor at hand-off, unchanged shape>
 ```
 
@@ -504,7 +504,7 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
    (owner correction, 2026-08-15): for most of the fleet it is the whole task —
    long-running, crash-prone, PR-creating — and the agent phase is the
    sometimes-important judgment minority. The contract key is still spelled
-   `prework` (renaming a vendored key is a migration, tracked separately);
+   `code_work` (renaming a vendored key is a migration, tracked separately);
    the design calls the phase what it is. Three requirements, the first
    stated explicitly since SCENARIOS S8/F12:
    - **Re-entrant** — a dead executor's claim is reclaimed and the item
@@ -530,7 +530,7 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
    `outcome:delivered` when the work's payload names a live artifact), close,
    done — the quiet-on-success property survives as a *closed* item rather
    than no item, which is the better trade: the run is now visible.
-6. **Hand off**: write `### Delivered by prework` / `### Why the agent is
+6. **Hand off**: write `### Delivered by code-work` / `### Why the agent is
    here` into the body (unchanged shapes), swap `task:executing → task:agent`,
    post the hand-off comment carrying a fresh **invocation nonce**, then
    **fire the invocation endpoint exactly once** with a payload naming this
@@ -1007,7 +1007,7 @@ executor had to be told and check. Reach is which endpoint a task names.
 
 Survives unchanged: the task folder and contract (plus the new optional
 `after` and `on_interrupt`), preconditions as the only decision point (evaluated at admission and
-at pickup, §6.4), the work step (contract key `prework`) and `required_secrets`, outcome ceilings and
+at pickup, §6.4), the work step (contract key `code_work`) and `required_secrets`, outcome ceilings and
 `verify-outcome`, the claim lease, one-agent-one-item, terminal convergence,
 `claudinite-task-exec` records and the usage fold (plus outcome labels as a
 second, queryable census), the janitor as sole recovery site, dormancy (the
@@ -1227,7 +1227,7 @@ deployment coupling did not:
 14. **The work step is the work** (§6.5) — the executor-side subprocess is the
     whole task for most of the fleet; the agent phase is the judgment
     minority. The design names the phase **the work step**; the vendored
-    contract key stays spelled `prework` until its own rename migration
+    contract key stays spelled `code_work` until its own rename migration
     (tracked in the follow-up issue), because renaming a key every member's
     files carry is a fleet migration, not a doc edit.
 15. **Heartbeat comments during the work step** (§6.5, §11) — *changed the

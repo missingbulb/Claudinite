@@ -3,26 +3,26 @@ import assert from 'node:assert/strict';
 import { existsSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { runPrework, preworkFailure, agentRequestPath, clearAgentRequest, agentRequested, readAgentRequest } from '../../engine/scheduler/prework.mjs';
+import { runCodeWork, codeWorkFailure, agentRequestPath, clearAgentRequest, agentRequested, readAgentRequest } from '../../engine/scheduler/code-work.mjs';
 
 const NODE = process.execPath; // the running node, so the tests don't assume PATH
 
-test('runPrework: a clean exit is ok', async () => {
-  const r = await runPrework(`"${NODE}" -e "process.exit(0)"`, { taskDir: process.cwd(), env: process.env, timeoutSeconds: 10 });
+test('runCodeWork: a clean exit is ok', async () => {
+  const r = await runCodeWork(`"${NODE}" -e "process.exit(0)"`, { taskDir: process.cwd(), env: process.env, timeoutSeconds: 10 });
   assert.equal(r.ok, true);
   assert.equal(r.timedOut, false);
   assert.equal(r.code, 0);
 });
 
-test('runPrework: a non-zero exit is a failure carrying the code', async () => {
-  const r = await runPrework(`"${NODE}" -e "process.exit(3)"`, { taskDir: process.cwd(), env: process.env, timeoutSeconds: 10 });
+test('runCodeWork: a non-zero exit is a failure carrying the code', async () => {
+  const r = await runCodeWork(`"${NODE}" -e "process.exit(3)"`, { taskDir: process.cwd(), env: process.env, timeoutSeconds: 10 });
   assert.equal(r.ok, false);
   assert.equal(r.timedOut, false);
   assert.equal(r.code, 3);
 });
 
-test('runPrework: an overrun is hard-killed and reported timedOut', async () => {
-  const r = await runPrework(`"${NODE}" -e "setTimeout(()=>{}, 10000)"`, { taskDir: process.cwd(), env: process.env, timeoutSeconds: 0.3 });
+test('runCodeWork: an overrun is hard-killed and reported timedOut', async () => {
+  const r = await runCodeWork(`"${NODE}" -e "setTimeout(()=>{}, 10000)"`, { taskDir: process.cwd(), env: process.env, timeoutSeconds: 0.3 });
   assert.equal(r.ok, false);
   assert.equal(r.timedOut, true);
   assert.notEqual(r.signal, null); // killed by signal, not a clean exit
@@ -34,29 +34,29 @@ test('runPrework: an overrun is hard-killed and reported timedOut', async () => 
 // because the grandchild holds the stdio pipes open until it finishes anyway.
 // So the assertion is the side effect: the work the worker would have done past
 // its bound must never appear.
-test('runPrework: the timeout kills the worker itself, not just the shell around it', async () => {
-  const marker = join(tmpdir(), `claudinite-prework-kill-${process.pid}-${Date.now()}`);
+test('runCodeWork: the timeout kills the worker itself, not just the shell around it', async () => {
+  const marker = join(tmpdir(), `claudinite-code_work-kill-${process.pid}-${Date.now()}`);
   rmSync(marker, { force: true });
   const cmd = `"${NODE}" -e "setTimeout(()=>require('fs').writeFileSync(process.argv[1],'survived'),1500)" "${marker}"`;
   const started = Date.now();
-  const r = await runPrework(cmd, { taskDir: process.cwd(), env: process.env, timeoutSeconds: 0.3 });
+  const r = await runCodeWork(cmd, { taskDir: process.cwd(), env: process.env, timeoutSeconds: 0.3 });
   assert.equal(r.timedOut, true);
   // Resolving is not enough: it must resolve when the kill lands, not when the
   // worker would have finished on its own.
-  assert.ok(Date.now() - started < 1200, `runPrework waited out the worker (${Date.now() - started}ms)`);
+  assert.ok(Date.now() - started < 1200, `runCodeWork waited out the worker (${Date.now() - started}ms)`);
   await new Promise((res) => setTimeout(res, 1800)); // past when the worker would have written
-  assert.equal(existsSync(marker), false, 'the worker outlived its prework_timeout and kept working');
+  assert.equal(existsSync(marker), false, 'the worker outlived its code_work_timeout and kept working');
   rmSync(marker, { force: true });
 });
 
-test('runPrework: the child inherits the injected env', async () => {
+test('runCodeWork: the child inherits the injected env', async () => {
   const cmd = `"${NODE}" -e "process.exit(process.env.CLAUDINITE_SLOT_ID === 'd2026' ? 0 : 1)"`;
-  const r = await runPrework(cmd, { taskDir: process.cwd(), env: { ...process.env, CLAUDINITE_SLOT_ID: 'd2026' }, timeoutSeconds: 10 });
+  const r = await runCodeWork(cmd, { taskDir: process.cwd(), env: { ...process.env, CLAUDINITE_SLOT_ID: 'd2026' }, timeoutSeconds: 10 });
   assert.equal(r.ok, true);
 });
 
-test('runPrework: a command that cannot start is a failure, not a throw', async () => {
-  const r = await runPrework('definitely-not-a-real-command-xyz', { taskDir: process.cwd(), env: process.env, timeoutSeconds: 10 });
+test('runCodeWork: a command that cannot start is a failure, not a throw', async () => {
+  const r = await runCodeWork('definitely-not-a-real-command-xyz', { taskDir: process.cwd(), env: process.env, timeoutSeconds: 10 });
   assert.equal(r.ok, false);
 });
 
@@ -64,10 +64,10 @@ test('runPrework: a command that cannot start is a failure, not a throw', async 
 // Before it was echoed, a failed worker read as a bare `preprocessing exited 1` and
 // diagnosing one meant reproducing it by hand.
 
-test('runPrework: the child output is echoed as it arrives, tagged by stream', async () => {
+test('runCodeWork: the child output is echoed as it arrives, tagged by stream', async () => {
   const seen = [];
   const cmd = `"${NODE}" -e "process.stdout.write('converging\\n'); process.stderr.write('rejected\\n')"`;
-  const r = await runPrework(cmd, {
+  const r = await runCodeWork(cmd, {
     taskDir: process.cwd(), env: process.env, timeoutSeconds: 10,
     echo: (chunk, stream) => seen.push([stream, chunk]),
   });
@@ -79,10 +79,10 @@ test('runPrework: the child output is echoed as it arrives, tagged by stream', a
   assert.equal(r.stderr, 'rejected\n');
 });
 
-test('runPrework: a worker killed at its timeout still echoed what it printed first', async () => {
+test('runCodeWork: a worker killed at its timeout still echoed what it printed first', async () => {
   const seen = [];
   const cmd = `"${NODE}" -e "process.stdout.write('got this far\\n'); setTimeout(()=>{}, 10000)"`;
-  const r = await runPrework(cmd, {
+  const r = await runCodeWork(cmd, {
     taskDir: process.cwd(), env: process.env, timeoutSeconds: 0.5,
     echo: (chunk) => seen.push(chunk),
   });
@@ -92,8 +92,8 @@ test('runPrework: a worker killed at its timeout still echoed what it printed fi
   assert.deepEqual(seen, ['got this far\n']);
 });
 
-test('runPrework: a broken echo sink never fails the run', async () => {
-  const r = await runPrework(`"${NODE}" -e "console.log('hi')"`, {
+test('runCodeWork: a broken echo sink never fails the run', async () => {
+  const r = await runCodeWork(`"${NODE}" -e "console.log('hi')"`, {
     taskDir: process.cwd(),
     env: process.env,
     timeoutSeconds: 10,
@@ -103,10 +103,10 @@ test('runPrework: a broken echo sink never fails the run', async () => {
   assert.equal(r.stdout, 'hi\n'); // and the collection is unaffected
 });
 
-test('preworkFailure: distinguishes a timeout from a non-zero exit', () => {
-  assert.match(preworkFailure({ timedOut: true, code: null, stderr: '' }), /exceeded its prework_timeout/);
-  assert.match(preworkFailure({ timedOut: false, code: 2, stderr: '' }), /exited 2/);
-  assert.match(preworkFailure({ timedOut: false, code: null, stderr: 'boom\n' }), /could not run: boom/);
+test('codeWorkFailure: distinguishes a timeout from a non-zero exit', () => {
+  assert.match(codeWorkFailure({ timedOut: true, code: null, stderr: '' }), /exceeded its code_work_timeout/);
+  assert.match(codeWorkFailure({ timedOut: false, code: 2, stderr: '' }), /exited 2/);
+  assert.match(codeWorkFailure({ timedOut: false, code: null, stderr: 'boom\n' }), /could not run: boom/);
 });
 
 test('agentRequestPath is deterministic per (pack, task, slot)', () => {

@@ -41,10 +41,10 @@ test('fleet-baseline: its precondition admits its own forced item', () => {
   assert.doesNotMatch(v.reason ?? '', /FORCE_TASKS|CLAUDINITE_OVERRIDES/, 'the slot-era force lever is deleted');
 });
 
-test('fleet-baseline: prework is bounded and task-local', () => {
-  assert.equal(decl.prework, 'node worker.mjs');
-  assert.ok(!decl.prework.includes('..'));
-  assert.ok(Number.isInteger(decl.prework_timeout) && decl.prework_timeout > 0);
+test('fleet-baseline: code_work is bounded and task-local', () => {
+  assert.equal(decl.code_work, 'node worker.mjs');
+  assert.ok(!decl.code_work.includes('..'));
+  assert.ok(Number.isInteger(decl.code_work_timeout) && decl.code_work_timeout > 0);
   assert.ok(existsSync(join(taskDir, 'worker.mjs')));
   assert.deepEqual(decl.required_secrets, ['FLEET_GITHUB_TOKEN']);
 });

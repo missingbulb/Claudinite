@@ -242,7 +242,7 @@ lesson at the strongest mechanism available — a check where the rule is determ
 
 - **Spawning a child process from a worker** — pass an explicit `cwd`, resolved to a root that
   cannot vanish (`--root`, then `CLAUDE_PROJECT_DIR`, then `cwd`). The converge deletes the tree
-  its own prework runs inside, so children die at `process.cwd()` before doing anything. Keep
+  its own code-work runs inside, so children die at `process.cwd()` before doing anything. Keep
   "could not run" distinguishable from "had nothing to run": a crash sharing a benign outcome code
   is unobservable.
 
