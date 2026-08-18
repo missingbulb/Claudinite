@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Claudinite tasks</title>
+<title>Fleet status</title>
 <style>
   /* Light is the base palette; the dark steps are their own selected values under
      both the OS setting and an explicit toggle, never an automatic inversion. */
@@ -178,6 +178,29 @@
   .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px;
             color: var(--ink-2); margin-bottom: 10px; }
 
+  /* --- "why does this number matter" --- */
+  /* Every heading can explain itself in place. A dashboard's numbers are only worth
+     showing if a reader knows what would make them bad, and a legend nobody can find
+     is the same as no legend. */
+  button.info { border: 0; background: none; padding: 0 0 0 6px; color: var(--muted);
+                font-size: 12px; line-height: 1; cursor: pointer; }
+  button.info:hover { color: var(--s-blue); }
+  button.info[aria-expanded="true"] { color: var(--s-blue); }
+  .info-body { margin: -4px 0 12px; padding: 10px 12px; border-left: 3px solid var(--rule);
+               background: var(--surface); border-radius: 0 8px 8px 0; color: var(--ink-2);
+               font-size: 12.5px; max-width: 78ch; text-transform: none; letter-spacing: 0; font-weight: 400; }
+  .info-body strong { color: var(--ink); }
+
+  tr.pending-row td { color: var(--muted); }
+  #fleet-progress { font-size: 12px; color: var(--muted); margin: 0 0 10px; }
+  .pill { font-size: 12px; border: 1px solid var(--border); border-radius: 999px;
+          padding: 2px 9px; color: var(--ink-2); background: var(--surface); }
+  .pill.warn-pill { border-color: var(--serious); color: var(--serious); }
+  .pill.stop-pill { border-color: var(--critical); color: var(--critical); }
+  .notice { border-left: 3px solid var(--serious); background: var(--surface);
+            padding: 10px 14px; border-radius: 0 8px 8px 0; margin-bottom: 14px; color: var(--ink-2); }
+  .notice b { color: var(--ink); }
+
   .empty { padding: 22px; text-align: center; color: var(--muted); }
   .err { border-left: 3px solid var(--critical); background: var(--surface);
          padding: 10px 14px; border-radius: 0 8px 8px 0; margin-bottom: 14px; }
@@ -193,11 +216,11 @@
 
 <header class="topbar">
   <div class="topbar-in">
-    <h1>Claudinite tasks</h1>
+    <h1>Fleet status</h1>
     <span id="crumb" class="crumb" hidden></span>
     <button id="reload" title="Re-read (cached data is revalidated, not refetched)">Reload</button>
     <span class="grow"></span>
-    <span id="rate" class="hint"></span>
+    <span id="rate" class="pill" hidden></span>
     <button id="purge" title="Drop every cached response and re-read from GitHub">Clear cache</button>
     <span id="auth" class="authbox"></span>
     <button id="theme" title="Toggle light / dark">◐</button>
@@ -230,16 +253,34 @@
   </details>
 
   <div id="fleet-view" hidden>
+    <h2>Fleet at a glance <button class="info" type="button" data-info="tiles" aria-expanded="false" title="Why these numbers">&#9432;</button></h2>
+    <p class="info-body" id="info-tiles" hidden>
+      Each tile counts <strong>members</strong>, never things. "47 open items" is not a number
+      anyone acts on; "3 members need you" is — it is the length of this morning's list. A tile
+      is coloured only when it is reporting something, so a coloured tile always means look here.
+    </p>
+    <p id="fleet-progress"></p>
     <div class="tiles" id="fleet-tiles"></div>
 
     <section>
-      <h2>Members — worst first</h2>
+      <h2>Members — worst first <button class="info" type="button" data-info="members" aria-expanded="false" title="Why this ordering">&#9432;</button></h2>
+      <p class="info-body" id="info-members" hidden>
+        Ordered by the <strong>worst thing that is true</strong> of each member, not by how much it
+        has. One item parked for a human outranks forty healthy ones, because the first needs you today
+        and the second is the system working. A member that cannot be read, one that does not run
+        Claudinite, and one that is fine are three different rows and never collapse into a zero.
+      </p>
       <p class="legend">Click a member to open its scheduler in full.</p>
       <div class="panel scroll"><table id="fleet"></table></div>
     </section>
 
     <section>
-      <h2>Tasks across the fleet</h2>
+      <h2>Tasks across the fleet <button class="info" type="button" data-info="fleet-tasks" aria-expanded="false" title="Why this panel exists">&#9432;</button></h2>
+      <p class="info-body" id="info-fleet-tasks" hidden>
+        The one question no single repo's page can answer. A task ships from a shared pack, so it runs
+        in every member that declares it — and the same task parked in four members at once is a
+        <strong>canon problem</strong>, while in any one repo it looks like that repo's bad luck.
+      </p>
       <p class="legend">
         A shared pack's task, everywhere it runs. One parked in several members at once is
         the pack's problem, not any one member's.
@@ -248,16 +289,31 @@
     </section>
 
     <section>
-      <h2>Pack adoption</h2>
+      <h2>Pack adoption <button class="info" type="button" data-info="packs" aria-expanded="false" title="Why this panel exists">&#9432;</button></h2>
+      <p class="info-body" id="info-packs" hidden>
+        Who a change to a pack would reach. Before editing a pack's rules or its checks, this is the
+        blast radius; after, it is how many members have to converge before the change is real.
+      </p>
       <div class="chips" id="fleet-packs"></div>
     </section>
   </div>
 
   <div id="repo-view" hidden>
+  <h2>This repo at a glance <button class="info" type="button" data-info="repo-tiles" aria-expanded="false" title="Why these numbers">&#9432;</button></h2>
+  <p class="info-body" id="info-repo-tiles" hidden>
+    <strong>Parked</strong> and <strong>past a leash</strong> are the two that mean work has stopped:
+    the first is waiting on a person, the second has been sitting in a machine state longer than its
+    cadence allows. The rest are context for reading those two.
+  </p>
   <div class="tiles" id="tiles"></div>
 
   <section>
-    <h2>Task roster — every declared task</h2>
+    <h2>Task roster — every declared task <button class="info" type="button" data-info="roster" aria-expanded="false" title="Why every task">&#9432;</button></h2>
+    <p class="info-body" id="info-roster" hidden>
+      Every <strong>declared</strong> task gets a row, including one that has never run — which is
+      usually the thing you opened this for. A list derived from the work items would omit it
+      silently, and a task that never fired looks identical to one that has nothing to do.
+    </p>
     <div class="legend">
       <span><i class="sw" style="background:var(--good)"></i>done</span>
       <span><i class="sw" style="background:var(--s-violet)"></i>delivered</span>
@@ -268,12 +324,22 @@
   </section>
 
   <section>
-    <h2>Queue — open work items</h2>
+    <h2>Queue — open work items <button class="info" type="button" data-info="queue" aria-expanded="false" title="What the queue is">&#9432;</button></h2>
+    <p class="info-body" id="info-queue" hidden>
+      One open issue per piece of scheduled work, labelled with the state it is in. <strong>Idle</strong>
+      is how long it has sat in that state: a long idle in a machine state is the queue stuck, and a
+      long idle in <em>needs human</em> is you.
+    </p>
     <div class="panel scroll"><table id="queue"></table></div>
   </section>
 
   <section>
-    <h2>Scheduler runs</h2>
+    <h2>Scheduler runs <button class="info" type="button" data-info="runs" aria-expanded="false" title="Which runs these are">&#9432;</button></h2>
+    <p class="info-body" id="info-runs" hidden>
+      The Actions runs behind the queue. A run that fails is not the same as a task that fails —
+      the first means the scheduler never got to decide anything, which is why a member whose runs
+      are red reads as broken even when every task looks healthy.
+    </p>
     <div class="panel scroll"><table id="runs"></table></div>
   </section>
   </div>
