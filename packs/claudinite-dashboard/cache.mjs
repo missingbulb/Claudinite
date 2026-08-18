@@ -148,6 +148,20 @@ export const ageing = {
   },
 };
 
+// --- the rate-limit snapshot ----------------------------------------------------
+
+// The last thing GitHub said about this credential's budget, kept so a FRESH TAB can
+// plan its first load instead of discovering the limit by hitting it. It is a fact
+// about the viewer rather than about any repo, so it survives `clearAll` being aimed
+// at stale data — but not the version bump, which drops everything.
+export const rateState = {
+  get() {
+    const hit = read('rate:state');
+    return hit ? { ...hit.data, at: hit.at } : null;
+  },
+  set(data) { return write('rate:state', { at: now(), data }); },
+};
+
 // --- projections ----------------------------------------------------------------
 
 // What actually gets stored for an issue. The full API payload carries reactions,

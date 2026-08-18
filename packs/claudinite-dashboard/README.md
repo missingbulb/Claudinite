@@ -123,6 +123,25 @@ Two ways to get one:
 - **A pasted token** — the fallback, and the local-development path. Needs
   read-only **Contents**, **Issues** and **Actions**.
 
+### What each credential is worth
+
+The reason sign-in is not a nicety. GitHub's limits, per hour:
+
+| Credential | Limit |
+|---|---|
+| unauthenticated | **60**, per IP address |
+| a user token — PAT, OAuth, or a GitHub App user token | **5,000**, shared across every app acting for that user |
+| a GitHub App *installation* token | 5,000 minimum, up to 12,500 by size |
+| an Actions `GITHUB_TOKEN` | 1,000, per repository |
+
+A twelve-member sweep costs around 75 requests cold. So an unconfigured deployment —
+no `clientId`, nobody pasting a token — exceeds the whole anonymous hour on its
+**first load**, and 5,000/hour is not an optimisation over that, it is 83×. There is
+no higher tier available to a page that runs as its viewer: an installation token
+would raise the ceiling, but only by putting a shared credential behind a backend,
+which would show every viewer everything that app can see. That is a different
+product, not a bigger limit.
+
 ### Why "just use my existing GitHub login" is not on that list
 
 It cannot be. A browser will not send github.com's session cookies to
@@ -149,6 +168,28 @@ Three strategies, because the data has three shapes — see
 | Repo content (task declarations, the tree) | keyed by **commit SHA**, never expires | a path at a sha cannot change, so an unmoved `main` costs zero calls |
 | Open items, runs, repo metadata | **ETag** revalidation | a `304` is free — it does not count against the rate limit, so this is fresh data at no cost |
 | Closed-issue history pages | **24h TTL** | settled, but not addressable by a sha |
+
+A fourth thing decides how hard those three are leaned on: **the budget policy**
+([`budget.mjs`](budget.mjs)), planned before a load starts and re-planned on every
+one. It exists because caching alone still *asks* — an ETag revalidation costs no
+primary budget but is still a request, and a cold entry has nothing to revalidate.
+
+| Budget, measured in whole page loads | Mode | What changes |
+|---|---|---|
+| 20 loads or more | `live` | everything revalidated — today's behaviour |
+| 6–20 | `tight` | anything read in the last 5m is served with no request |
+| 1–6 | `low` | …in the last 30m |
+| under 1 | `scarce` | …until the rate limit resets, and the spend stops short of the viewer's last requests |
+| spent | `frozen` | no requests at all; the page serves what it has and says so |
+
+The rung that matters is `scarce`: the staleness floor reaches the **reset**, so a
+full page refresh costs nothing until the window rolls. Three supporting pieces make
+that hold up — the free `GET /rate_limit` preflight and a budget carried across page
+loads (so a fresh tab plans before it spends rather than learning the limit by hitting
+it), and a latch on a `403`/`429` with nothing left (so eleven more members do not each
+spend a request discovering the same thing; requests *made* are what the secondary
+limit counts). A withheld read is its own state everywhere it surfaces — a row that
+says the page declined to spend, never one that says the repo is broken.
 
 Measured on this repo, cold versus warm: **21 requests → 4**, and the warm load
 spends **zero** rate limit (its four requests are all 304s). The open queue is still

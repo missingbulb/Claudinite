@@ -98,15 +98,20 @@ export function summariseMember(read, { now, canon = null } = {}) {
   const { repo, error = null, declaration = null, items = null, runs = null, paths = null } = read ?? {};
 
   if (error) {
+    // A read the page DECLINED to make is not the same fact as one it could not make:
+    // the repo is fine, the budget is not, and the row must not read as a fault of the
+    // member. It is raised a rung above a permissions miss because it is the one the
+    // viewer can act on — sign in, or wait for the reset.
+    const withheld = error?.status === 'budget';
     return {
       repo,
-      status: 'unreadable',
-      level: 'info',
+      status: withheld ? 'withheld' : 'unreadable',
+      level: withheld ? 'warning' : 'info',
       error,
       // Not being able to read a member is not the member being broken. It is almost
       // always a private repo outside this viewer's grant, so it is reported at the
       // bottom of the page rather than raised as an alarm.
-      reasons: [{ level: 'info', text: describeReadError(error) }],
+      reasons: [{ level: withheld ? 'warning' : 'info', text: describeReadError(error) }],
     };
   }
 
@@ -212,6 +217,7 @@ export function summariseMember(read, { now, canon = null } = {}) {
 // fact rather than a fault.
 function describeReadError(error) {
   const status = error?.status;
+  if (status === 'budget') return 'not read — this page is holding back your last requests; sign in or wait for the reset';
   if (status === 404) return 'not visible to you — the roster names it, your credential cannot see it';
   if (status === 403) return 'forbidden — rate limit, or your credential lacks access';
   if (status === 401) return 'your credential was rejected';
@@ -273,6 +279,7 @@ export function rollUp(summaries) {
     adopted: adopted.length,
     notAdopted: summaries.filter((s) => s.status === 'not-adopted').length,
     unreadable: summaries.filter((s) => s.status === 'unreadable').length,
+    withheld: summaries.filter((s) => s.status === 'withheld').length,
     needAttention: adopted.filter((s) => levelRank(s.level) <= levelRank('serious')).length,
     parkedMembers: adopted.filter((s) => s.parked > 0).length,
     parkedItems: adopted.reduce((n, s) => n + s.parked, 0),
