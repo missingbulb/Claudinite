@@ -5,10 +5,10 @@ import * as gh from './github.mjs';
 import {
   summariseMember, rankMembers, rollUp, packSpread, taskSpread,
 } from './fleet.mjs';
-import { activitySeries } from './activity.mjs';
+import { activitySeries, fleetBenefits, delta } from './activity.mjs';
 import {
   $, el, ago, duration, head, emptyRow, repoLink, tiles, segmentBar,
-  reasonNodes, stackedColumns, chartLegend,
+  reasonNodes, stackedColumns, chartLegend, windowFigure,
   LEVEL_GLYPH, STATE_ORDER, STATE_COLOR, STATE_UI, OUTCOME_COLOR,
 } from './ui.mjs';
 import { OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE } from '../../engine/scheduler/queue/work-item.mjs';
@@ -174,6 +174,50 @@ function memberRow(s, onOpen, now) {
   return el('tr', { className: `lvl-${s.level}` }, [name, health, queue, activity, runs, mount, tasks]);
 }
 
+// --- what the machinery bought ---------------------------------------------------
+
+// The block above everything else, and the only one that opens on what the machinery
+// is FOR rather than on what is broken. Its content is decided in `activity.mjs`; the
+// two rules that keep it honest are worth restating where it is drawn:
+//
+//   NO VANITY TOTAL. Every figure is this week's, against last week's. A number that
+//   only ever grows is a decoration.
+//
+//   NOTHING INVENTED. No estimated hours saved, no multiplier, no score — only counts
+//   of things that individually happened, from reads the page already made. Two
+//   quantities the issue asked for are deliberately ABSENT rather than approximated:
+//   checks enforced (a member's check count is not in any read this page makes) and
+//   anything expressed in time saved (nothing measures it).
+function renderBenefits(b) {
+  const node = $('fleet-benefits');
+  const runsPassed = b.current.runs - b.current.runsFailed;
+  const prevPassed = b.previous.runs - b.previous.runsFailed;
+
+  // `replaceChildren` renders a null child as the text "null", so the optional tile is
+  // filtered out rather than passed through.
+  node.replaceChildren(...[
+    windowFigure(b.current.completed, 'work items completed',
+      delta(b.current.completed, b.previous.completed),
+      `in ${b.current.members} member(s)`),
+    windowFigure(b.current.unattended, 'of those, closed with nobody in the loop',
+      delta(b.current.unattended, b.previous.unattended),
+      'not parked for a human when it closed'),
+    windowFigure(b.current.parked, 'items that did need a person',
+      delta(b.current.parked, b.previous.parked),
+      'the honest other half of the figure above', { better: 'down' }),
+    windowFigure(runsPassed, 'scheduler runs passed',
+      delta(runsPassed, prevPassed),
+      b.current.runsFailed ? `${b.current.runsFailed} failed` : 'none failed'),
+    // No delta: a mount stamp carries ONE date, so last week's figure would count
+    // members whose last converge happens to sit in that window, not members that
+    // converged then. A comparison built on that would read as a fleet slowing down.
+    windowFigure(`${b.converged}/${b.members}`, 'members converged on their own', null,
+      `in the last ${b.windowDays} days`),
+    b.digests === null ? null
+      : windowFigure(b.digests, 'digests written', null, 'of the last two days'),
+  ].filter(Boolean));
+}
+
 // --- the activity panel ----------------------------------------------------------
 
 // The one panel that answers "what has this fleet been doing". Everything else here
@@ -248,7 +292,7 @@ const pendingRow = (repo) => el('tr', { className: 'pending-row' }, [
   el('td', { colSpan: 6 }, [el('span', { className: 'sub', textContent: 'reading…' })]),
 ]);
 
-function renderFleet(summaries, reads, now, onOpen, canon, progress = null) {
+function renderFleet(summaries, reads, now, onOpen, canon, progress = null, digests = null) {
   const resolved = summaries.filter(Boolean);
   const pending = summaries.map((s, i) => (s ? null : reads.names?.[i])).filter(Boolean);
   const roll = rollUp(resolved);
@@ -282,9 +326,11 @@ function renderFleet(summaries, reads, now, onOpen, canon, progress = null) {
   // Tasks across the fleet. This is the view a per-repo page structurally cannot
   // give: a shared pack's task parked in four members at once is a canon problem,
   // and in any single repo it looks like that repo's bad luck.
-  renderActivity(activitySeries(reads.filter(Boolean), { now }));
+  const resolvedReads = reads.filter(Boolean);
+  renderBenefits(fleetBenefits(resolvedReads, { now, digests }));
+  renderActivity(activitySeries(resolvedReads, { now }));
 
-  const spread = taskSpread(reads.filter(Boolean), now).filter((t) => t.members > 0);
+  const spread = taskSpread(resolvedReads, now).filter((t) => t.members > 0);
   const tbody = head($('fleet-tasks'), ['Task', 'Members', 'Open', 'Parked', 'Succeeded', 'No outcome']);
   if (!spread.length) tbody.append(emptyRow(6, 'No work items seen across the fleet.'));
   for (const t of spread.slice(0, 25)) {

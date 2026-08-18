@@ -171,10 +171,16 @@ export function fleetBenefits(reads, { now, windowDays = 7, digests = null } = {
 
     for (const read of readable) {
       for (const i of (read.items ?? []).filter(isWorkItem)) {
+        const labels = i.labels ?? [];
+        // An item that needed a person is counted whether or not it has closed —
+        // being parked IS the event, and the ones still sitting there are the whole
+        // point. `updated_at` is when its label was last written, which is the
+        // closest thing the queue leaves to "when it was handed over".
+        if (labels.includes(NEEDS_HUMAN) && inWindow(ms(i.updated_at), from, to)) parked += 1;
+
         if (i.state !== 'closed') continue;
         const at = ms(i.closed_at) ?? ms(i.updated_at);
         if (!inWindow(at, from, to)) continue;
-        const labels = i.labels ?? [];
         const outcome = outcomeOfLabels(labels);
         if (outcome === OUTCOME_DONE || outcome === OUTCOME_DELIVERED) {
           completed += 1;
@@ -187,7 +193,6 @@ export function fleetBenefits(reads, { now, windowDays = 7, digests = null } = {
           // says so rather than claiming more than the labels can carry.
           if (!labels.includes(NEEDS_HUMAN)) unattended += 1;
         }
-        if (labels.includes(NEEDS_HUMAN)) parked += 1;
       }
       for (const r of read.runs ?? []) {
         if (!inWindow(ms(r.created_at), from, to)) continue;

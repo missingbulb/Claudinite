@@ -191,6 +191,13 @@
                font-size: 12.5px; max-width: 78ch; text-transform: none; letter-spacing: 0; font-weight: 400; }
   .info-body strong { color: var(--ink); }
 
+  /* The benefits block leads the page, so it is allowed one step more presence than
+     the status tiles that follow it — and the delta line is the point of each tile. */
+  .tiles.benefits .tile { border-color: var(--rule); }
+  .tiles.benefits .v { font-size: 28px; }
+  .sub.delta.good { color: var(--good); }
+  .sub.delta.bad { color: var(--serious); }
+
   /* --- activity charts --- */
   .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
             gap: 10px; }
@@ -267,6 +274,16 @@
   </details>
 
   <div id="fleet-view" hidden>
+    <h2>What Claudinite did for this fleet this week <button class="info" type="button" data-info="benefits" aria-expanded="false" title="What these figures are">&#9432;</button></h2>
+    <p class="info-body" id="info-benefits" hidden>
+      The work the machinery did that nobody had to do — <strong>in a window</strong>, this week
+      against last, because a total that only ever grows tells you nothing about today. Every
+      figure is a count of things that individually happened, from reads this page already makes.
+      There is no estimate of hours saved and no score: nothing here measures those, so nothing
+      here claims them.
+    </p>
+    <div class="tiles benefits" id="fleet-benefits"></div>
+
     <h2>Fleet at a glance <button class="info" type="button" data-info="tiles" aria-expanded="false" title="Why these numbers">&#9432;</button></h2>
     <p class="info-body" id="info-tiles" hidden>
       Each tile counts <strong>members</strong>, never things. "47 open items" is not a number

@@ -142,6 +142,19 @@ test('an item closed while parked is completed work a human was pulled into', ()
   assert.equal(b.current.parked, 1);
 });
 
+test('an item still sitting parked counts as one that needed a person', () => {
+  const b = fleetBenefits([read({
+    items: [{
+      ...closedWork('2026-08-17T09:00:00Z', [NEEDS_HUMAN]),
+      state: 'open',
+      closed_at: null,
+      updated_at: '2026-08-17T09:00:00Z',
+    }],
+  })], { now: NOW, windowDays: 7 });
+  assert.equal(b.current.parked, 1);
+  assert.equal(b.current.completed, 0);
+});
+
 test('an outcome-less closure is not counted as completed work', () => {
   const b = fleetBenefits([read({ items: [closedWork('2026-08-17T09:00:00Z', [READY])] })],
     { now: NOW, windowDays: 7 });

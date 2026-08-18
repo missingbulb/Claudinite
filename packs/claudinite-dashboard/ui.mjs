@@ -203,13 +203,18 @@ export const chartLegend = (series) =>
 // A number with its change against the window before it. The arrow is never the whole
 // message — the previous window's figure is spelled out, because a delta with nothing
 // to compare it against is the vanity total this panel exists to avoid.
-export function windowFigure(value, label, change, note) {
+//
+// Which DIRECTION is good is the caller's to say: more completed work is progress and
+// more items needing a person is not, and a green up-arrow on the second would read as
+// a boast about the fleet needing more hand-holding.
+export function windowFigure(value, label, change, note, { better = 'up' } = {}) {
   const arrow = change?.dir === 'up' ? '▲' : change?.dir === 'down' ? '▼' : '—';
+  const sense = !change || change.dir === 'flat' ? 'flat' : (change.dir === better ? 'good' : 'bad');
   return el('div', { className: 'tile' }, [
     el('div', { className: 'v num', textContent: String(value) }),
     el('div', { className: 'k', textContent: label }),
     change
-      ? el('div', { className: `sub delta ${change.dir}`, textContent: `${arrow} ${change.by} vs the week before` })
+      ? el('div', { className: `sub delta ${sense}`, textContent: `${arrow} ${change.by} vs the week before` })
       : null,
     note ? el('div', { className: 'sub', textContent: note }) : null,
   ]);
