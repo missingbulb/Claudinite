@@ -2,7 +2,7 @@
 
 The [growth lifecycle](../../README.md)'s central stage: read the target members' local packs, lift the portable lessons into the shared canon, and open a PR against the canon's default branch **for the owner to approve**. Declared only by the Claudinite home repo, so it runs **once, centrally**, never per project.
 
-You run under the executor, dispatched by a `ready-for-agent-fleet` issue whose **Context section is binding scope**: it names the exact target members (those whose local packs changed in the window). Work exactly that list — the fleet enumeration already happened in the precondition; **do not enumerate the fleet yourself or widen past the Context**.
+You run from a work item the executor handed off whose **Context section is binding scope**: it names the exact target members (those whose local packs changed in the window). Work exactly that list — the fleet enumeration already happened in the precondition; **do not enumerate the fleet yourself or widen past the Context**.
 
 The task's declared outcome ceiling is **`open-pr`**: promotion is the **judgment gate before shared canon**. It opens a PR and **never arms auto-merge** — the owner approves it. But don't lean on that review as the portability check: [extract](../../../../../../packs/grow_with_claudinite/tasks/growth-extract/task.md) stays project-specific by design, so it's no second opinion, and the owner can't re-derive every portability call. This task's judgment is the real thing between a bad rule and every project that reads the canon — keep the bar high (dedupe against the whole corpus; default to reject when unsure).
 

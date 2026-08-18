@@ -1,6 +1,6 @@
 // sheepdog task: fleet-pack-seeds — does every member declare the packs this fleet
 // standardizes on? `agent_model: 'none'` with `prework: 'node worker.mjs'`: the whole
-// pass is deterministic code the scheduler runs as a subprocess — no agent, no dispatch
+// pass is deterministic code the executor runs as prework — no agent, no dispatch
 // issue. The worker calls its sibling, the sweep (check-fleet-pack-seeds.mjs): read
 // every covered member's declaration and add the seeds it lacks.
 //

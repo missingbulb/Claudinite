@@ -164,41 +164,60 @@ adoption:
    — edit it, move it, or delete it, and nothing will argue. A README belongs to its repo,
    and a nightly-derived row would put a README diff in the update commit every time
    the declaration moved.
-3. **Labels need no step** — the scheduler ensures `ready-for-agent`,
-   `agent-running`, `needs-human`, and `workflow-failure` exist (create-if-missing,
-   idempotent) before it dispatches, so they materialize on the first run and
+3. **Labels need no step** — the tick and the executor ensure the queue's labels
+   (`task:blocked`, `task:ready`, `task:urgent`, `task:executing`, `task:agent`,
+   `origin:schedule`, `needs-human`, the `outcome:*` set) exist before applying any
+   of them (create-if-missing, idempotent), so they materialize on the first run and
    self-heal if deleted. No one-off creation, nothing to forget.
 4. **Write the `taskScheduler` key** into `.claudinite-checks.json` (defaults:
-   `{ "dailyHour": 4, "weeklyDay": "Sun", "monthlyDay": 1 }`, all UTC) — this is the
-   cutover marker: the central routine stops planning the repo the same night, and its
-   own scheduler + self-update take over the refresh.
-5. **Create the label-wired executor routine** via the trigger API, named
-   `Claudinite executor - <repo>`, with the launcher prompt
-   `Execute the Claudinite executor: .claudinite/shared/engine/scheduler/executor.md`.
-   The finished routine fires on the `ready-for-agent` label event, runs Sonnet 5, and
-   has sources = **this repo alone** (not the Claudinite canon — task-prework
-   DESIGN §7/E5: the update runner fetches canon Action-side, so no executor task needs it in
-   session).
+   `{ "dailyHour": 4, "weeklyDay": "Sun", "monthlyDay": 1 }`, all UTC) — the repo's
+   own anchors, from which the tick decides when each task's item comes due.
+5. **Create the executor routine and wire it as an invocation endpoint.** The
+   executor starts an agent session with an **API call**, not a label event, so this
+   is two halves that only work together — and a repo with one half has a queue that
+   fills and never hands anything off.
 
-   The API sets only name, prompt and environment; **the repo binding, the trigger
-   event, the label filter and the model are UI-only**, so every routine an agent
-   creates arrives unfinished. Do not file a separate issue for the remainder — a
-   config that lives away from the thing it configures is a config someone reads once
-   and never reconciles. **Carry the leftover steps in the routine's own prompt**, as a
-   block below the launcher line whose last instruction is to delete itself:
+   a. **Create the routine** via the trigger API, named `Claudinite executor - <repo>`,
+      whose whole stored prompt is the one line
+      `Execute the Claudinite work item: .claudinite/shared/engine/scheduler/queue/instructions.md`.
+      Everything a task session does comes from that tracked file; a prompt carrying
+      instructions of its own is behavior nobody reviews. Sources = **this repo alone**
+      (not the Claudinite canon — the update runner fetches canon Action-side, so no
+      task needs it in session).
+
+   b. **Point the repo at it.** Take the routine's API trigger URL and add it to
+      `.claudinite-checks.json` under the key every task uses unless it names another:
+
+      ```json
+      "taskScheduler": { "endpoints": { "default": {
+        "url": "https://api.anthropic.com/v1/claude_code/routines/<trigger-id>/fire",
+        "tokenSecret": "CCR_ROUTINE_TOKEN"
+      } } }
+      ```
+
+      `tokenSecret` is the **name** of a repo Actions secret, never a token — the
+      config is tracked, so nothing adjacent to a credential goes in it. Set that
+      secret to the routine's bearer token.
+
+   The API sets only name, prompt and environment; **the repo binding and the model
+   are UI-only**, so every routine an agent creates arrives unfinished. Do not file a
+   separate issue for the remainder — a config that lives away from the thing it
+   configures is a config someone reads once and never reconciles. **Carry the
+   leftover steps in the routine's own prompt**, as a block below the launcher line
+   whose last instruction is to delete itself:
 
    > `--- SETUP — delete this block once done, leaving only the line above ---`
    > 1. Model → Sonnet 5.
    > 2. Repo → `<owner>/<repo>`, and that repo alone (source and outcome).
-   > 3. GitHub trigger → "Issue: Labeled".
-   > 4. Filter → Labels: is one of: `ready-for-agent`.
 
    The routine then states its own unfinished-ness where the owner is already looking to
    fix it, and finishing it and clearing the block are the same edit — so a
    half-configured executor cannot quietly pass for a working one.
 
-During the rollout the owner drives each repo's cutover in a session (MIGRATION.md); the
-old enrollment issue and the central routine are retired at Phase 4.
+   Neither half fails silently if it is missing: the hand-off names exactly what is
+   unset — the endpoint, its `url`, its `tokenSecret`, or the secret itself — on the
+   work item, and converges that item to `needs-human`. Agentless tasks keep working
+   throughout, since they never reach this path.
 
 ## Part 7 — categorize the project (declare its class pack)
 

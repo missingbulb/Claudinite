@@ -1,7 +1,7 @@
 // sheepdog task: fleet-usage — the fleet-wide skill-usage aggregate, as a scheduled
 // task. `agent_model: 'none'` with `prework: 'node worker.mjs'`: the
-// whole pass is deterministic code the scheduler runs as a subprocess — no agent, no
-// dispatch issue. The worker calls its sibling, the sweep
+// whole pass is deterministic code the executor runs as prework — no agent
+// phase. The worker calls its sibling, the sweep
 // (aggregate-fleet-usage.mjs): read every member's own usage aggregate and rebuild
 // this repo's `usage-fleet.GENERATED.json` as a pure function of them.
 //

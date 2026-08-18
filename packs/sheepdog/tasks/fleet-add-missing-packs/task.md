@@ -1,6 +1,6 @@
 # Fleet: get every member declaring the packs it is missing
 
-**This task runs no agent.** It is `agent_model: none` with a parameterised `prework` ([`worker.mjs`](worker.mjs)), so the whole pass is deterministic code the scheduler runs as a subprocess. This file is the human-facing record of what that code does; there is no dispatch issue and no enforcer-side subagent. The *agentic* half of the job belongs to each member's own **adopt-requested-packs** task (grow_with_claudinite) — see "The fan-out model" below.
+**This task runs no agent.** It is `agent_model: none` with a parameterised `prework` ([`worker.mjs`](worker.mjs)), so the whole pass is deterministic code the executor runs as prework. This file is the human-facing record of what that code does; there is no agent phase on the enforcer side. The *agentic* half of the job belongs to each member's own **adopt-requested-packs** task (grow_with_claudinite) — see "The fan-out model" below.
 
 ## Two first stages, one parameter set
 

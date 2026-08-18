@@ -5,7 +5,7 @@ read what the wiki already knows, research only what its own backlog flags, writ
 find little or nothing — no new citable material means no branch, no PR, and that is the documented good
 outcome.** A padded or fabricated update is worse than none.
 
-You run under the executor, dispatched by a `ready-for-agent` issue; GitHub access is the session's
+You run from a work item the executor handed off; GitHub access is the session's
 **GitHub MCP tools** (`mcp__github__*`) — never `gh`/`curl`/a clone. "Default branch" below means the repo's
 actual default branch. The wiki set is derived **structurally**: every `README.md` at depth ≥ 2 under
 `product-wiki/`, excluding the `product-wiki/product-requirements/` and `product-wiki/sample-data/` subtrees.
@@ -52,7 +52,7 @@ Neither mode yields citable material → stop. No commit, no log entry, no PR.
 A unique branch per run, commits touching only `product-wiki/**` minus `product-requirements/`, one
 **PR — never a push to the default branch directly** — carrying the **`product-wiki-growth` label**. The
 label is load-bearing: it is how the next run's precondition sees this PR at all, so a PR opened without it
-will be stacked on by the following slot — label it whether or not the PR then lands.
+will be stacked on by the following week's run — label it whether or not the PR then lands.
 Then hand it to the one delivery procedure (`deliver-pr.md`) and do what it says. PR body: the question(s)
 researched, what changed where, the citations added, and the open questions left for the next run.
 

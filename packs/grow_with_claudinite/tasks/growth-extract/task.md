@@ -8,7 +8,7 @@ edits through a single PR **delivered to land** (on the default delivery setting
 checks pass, with no human review — daily capture never piles up as review requests); finding nothing to add
 on a given run is a perfectly good outcome.
 
-You run under the executor, dispatched by a `ready-for-agent` issue whose **Context section is binding
+You run from a work item the executor handed off whose **Context section is binding
 scope**: it names which halves are live, the substantive commit shas and the PRs/issues touched in the
 window, and whether the retention prune is due. That is the work; do not widen it.
 

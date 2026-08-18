@@ -34,7 +34,7 @@
 
 export default {
   id: 'fleet-digest',
-  // The 05:00 slot, an hour after the fleet sweeps at 04:00. Nothing here depends on
+  // The 05:00 anchor, an hour after the fleet sweeps at 04:00. Nothing here depends on
   // them, but a brief written while the census is still running would report a fleet
   // in mid-sweep, and the owner reads one story about the fleet each morning, in order.
   frequency: 'daily+1h',

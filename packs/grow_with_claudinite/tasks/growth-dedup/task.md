@@ -3,7 +3,7 @@
 The growth lifecycle's pruning stage: reconcile this repo's **local packs** against the shared **canon** it
 consumes (Claudinite, vendored read-only), pruning local items — a pack's prose line, or a whole local check —
 the canon now covers. It lands the run's prunes through a single PR against the repo's default branch,
-**delivered to land** per the repo's own delivery settings. Often there's nothing to prune, and that's fine. You run under the executor, dispatched by a `ready-for-agent` issue, whose
+**delivered to land** per the repo's own delivery settings. Often there's nothing to prune, and that's fine. You run from a work item the executor handed off, whose
 **Context** is **binding scope — not a hint** (the executor will not let you re-decide or widen it).
 
 > This task only prunes local packs against the canon; lifting local items up into the canon is the central

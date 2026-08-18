@@ -1,6 +1,6 @@
 # Fleet pack seeds — does every member declare what this fleet standardizes on?
 
-**This task runs no agent.** It is `agent_model: none` with `prework: node worker.mjs`, so the whole pass is the deterministic [`worker.mjs`](worker.mjs) the scheduler runs as a subprocess, which calls its sibling in this folder, the sweep ([`check-fleet-pack-seeds.mjs`](check-fleet-pack-seeds.mjs)). This file is the human-facing record of what that worker does; there is no dispatch issue and no subagent.
+**This task runs no agent.** It is `agent_model: none` with `prework: node worker.mjs`, so the whole pass is the deterministic [`worker.mjs`](worker.mjs) the executor runs as prework, which calls its sibling in this folder, the sweep ([`check-fleet-pack-seeds.mjs`](check-fleet-pack-seeds.mjs)). This file is the human-facing record of what that worker does; there is no agent phase.
 
 ## Why it exists
 

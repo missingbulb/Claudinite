@@ -2,7 +2,7 @@
 
 The **assess-only** advisory watch of the jwt pack: a monthly pass checking the repo's JWT/JOSE
 libraries against published security advisories. You run under the executor, dispatched by a
-`ready-for-agent` issue. GitHub access is **MCP-only** (`mcp__github__*`).
+work item the executor handed off. GitHub access is **MCP-only** (`mcp__github__*`).
 
 The task's declared outcome ceiling is **`none`**: **never open a PR, edit a dependency manifest, or
 comment anywhere but this task's own tracker issue.** You recommend; a human bumps.
