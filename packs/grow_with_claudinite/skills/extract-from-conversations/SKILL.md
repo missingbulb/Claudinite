@@ -90,12 +90,17 @@ relevant work, and close with a terse verdict (a concrete change, or an explicit
 recurring question converted this way is one the user never has to ask again — and it's where a *measured*
 retrospective comes from: the user's recurring efficiency questions, answered pre-emptively, with numbers.
 
-## Two passes per log, and the second one may overturn the first
+## Re-reading a log is cheap, and a re-read may overturn the first pass
 
-A captured log gets a **fresh pass** within a day of capture and a **final hindsight pass** just before
-retention deletes it, against the corpus as it stands by then. The hindsight pass is a real re-read, not a
-formality: a friction signal that looked situational the first time may have recurred since, and a lesson
-landed since may have made a keeper redundant. Both directions are legitimate outcomes.
+A captured log gets its pass within a day or so of capture, and stays on the branch until retention takes
+it — so err toward re-reading the last several days rather than stopping at yesterday. A re-read is a real
+re-read, not a formality: a friction signal that looked situational the first time may have recurred since,
+and a lesson landed since may have made a keeper redundant. Both directions are legitimate outcomes, and
+corpus dedup makes an overlapping pass harmless.
+
+**Mark each log you pass over** — an empty `<log>.processed` sidecar beside it on the branch. That marker is
+the whole coupling between reading a log and deleting it: the retention prune is a separate, agentless task
+that removes only captures carrying one, so a log nothing ever read is held rather than aged out.
 
 ## Provenance: summarize the exchange, never paste it
 

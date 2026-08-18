@@ -9,8 +9,8 @@ checks pass, with no human review — daily capture never piles up as review req
 on a given run is a perfectly good outcome.
 
 You run from a work item the executor handed off whose **Context section is binding
-scope**: it names which halves are live, the substantive commit shas and the PRs/issues touched in the
-window, and whether the retention prune is due. That is the work; do not widen it.
+scope**: it names the substantive commit shas and the PRs/issues touched in the window. That is the work;
+do not widen it.
 
 > This is the **unattended daily** capture. It writes only the repo's *own* local packs, so — **unlike** an
 > owner-requested, in-session retrospective (which delivers a PR for a human to review) — it opens a PR and
@@ -23,7 +23,7 @@ window, and whether the retention prune is due. That is the work; do not widen i
 - **Default branch.** `main` stands for **this repository's default branch** — substitute whatever the repo uses.
 - **Access split — local git for repo content, MCP for the issue/PR API.** The repo's own content is plain
   **local git** in the checkout: the commits, the `conversation-logs` branch and its files
-  (`git fetch`/`show`/`rm`/`push`), and staging the lesson edits onto a branch. Reading issue/PR activity,
+  (`git fetch`/`show`/`push`), and staging the lesson edits onto a branch. Reading issue/PR activity,
   opening the PR and delivering it, posting the exchange summaries and the tracking-issue log go
   through the session's **GitHub MCP tools** (`mcp__github__*`). The unattended run has no shell GitHub
   access — the shell reaches only a git-over-HTTPS proxy scoped to one repo, with no REST credential — so
@@ -39,21 +39,20 @@ The **method** for each source lives in its skill; this worker only frames the r
 re-derive any of it here.
 
 1. **Activity half — the [extract-from-activity](../../skills/extract-from-activity/SKILL.md) skill**, over
-   exactly the commits, merged PRs and issues named in Context. **Skip this half entirely when Context says
-   the activity half is not in scope** (a quiet repo whose only reason to run was the retention prune).
+   exactly the commits, merged PRs and issues named in Context.
 2. **Conversation half — the [extract-from-conversations](../../skills/extract-from-conversations/SKILL.md)
    skill**, over the repo's captured logs. `git fetch origin conversation-logs`, then list its files
    (`git ls-tree --name-only origin/conversation-logs`); no branch, or no `*.jsonl`, and this half is done.
-   Give each log captured in the recent window a **fresh pass** (its filename carries the capture stamp;
+   Give each log captured in the recent window a **pass** (its filename carries the capture stamp;
    corpus dedup makes an overlapping re-read harmless, so err toward re-reading the last several days), and
    post the skill's provenance summary for each rule that actually lands.
-3. **Retention prune**, when Context says it is due. Read `retention_days` from this repo's
-   `.claudinite-checks.json` (the grow_with_claudinite entry's `config.retention_days`) — unset means this
-   step is skipped entirely (capture-only adoption). For each log whose filename stamp is older than
-   `retention_days` days: give it the **final hindsight pass** the skill describes (anything it still yields
-   lands like any other keeper), then `git rm` it on the `conversation-logs` branch and push (commit message
-   ending `[skip ci]`). The branch is never merged and its history is never rewritten — plain add/remove
-   commits only. This push to the non-default logs branch is outside the outcome taxonomy (DESIGN §1).
+3. **Mark what you passed over.** For every log this run gave a pass, write an empty sidecar
+   `<log>.processed` beside it on the `conversation-logs` branch and push (commit message ending
+   `[skip ci]`). That marker is what makes a capture prunable at all: the agentless
+   [logs-prune](../logs-prune/task.md) task deletes only captures carrying one, and holds anything else
+   forever however old it gets. The branch is never merged and its history is never rewritten — plain add
+   and remove commits only. This push to the non-default logs branch is outside the outcome taxonomy
+   (DESIGN §1).
 4. **Upgrade pass — the [prose-to-checks](../../skills/prose-to-checks/SKILL.md) skill, over what *this run*
    just wrote.** Both halves route down the local promotion ladder as they go, but a lesson written as prose
    under time pressure is exactly where a convertible rule hides. So before opening the PR, take the prose
@@ -95,8 +94,8 @@ The task's standing log is the issue titled exactly, in this repo:
 Find it **by that exact title, never a fuzzy match or a hard-coded number** (a bare number can dangle, and it
 differs per repo). A run that finds no issue under the exact title just creates one (closed) — creation always
 lands an issue open and ignores a `state: closed` argument, so create it and close it in a second call.
-**Never open, close, or reopen it** afterward — its state carries no meaning, only the log does. When a run adds a lesson,
-converts one to a check, or prunes logs, log it as a **dated comment** — not a sub-issue — so the issue
+**Never open, close, or reopen it** afterward — its state carries no meaning, only the log does. When a run adds a lesson or
+converts one to a check, log it as a **dated comment** — not a sub-issue — so the issue
 accumulates a scrollable history, each entry naming **what happened and where**. A run that changed nothing
 logs nothing. (A repo that still carries a closed `Claudinite tracker: Conversation Extract` issue from when
 the halves were two tasks keeps it as history — never post to it, never reopen it.)
@@ -122,7 +121,7 @@ and **on the default delivery no human reviews the PR before it lands** — CI g
 - **Never merge `conversation-logs`** anywhere, and never rewrite its history — plain add and remove commits only.
 - **Never paste the conversation onto an issue** — not raw JSONL, not a rendered transcript, not the turns
   themselves. Each landed rule gets one ≤200-word summary of the exchange behind it, and nothing more.
-- **Never delete a log younger than retention, and never delete anything while `retention_days` is unset** —
-  deletion is the ack that both passes happened.
+- **Never delete a log at all** — retention is the [logs-prune](../logs-prune/task.md) task's job, and it
+  acts only on what this run marked processed. Writing the marker is this run's whole say in the matter.
 - **Don't add noise** — a duplicate or hallucinated "lesson" is worse than adding nothing, the more so when
   its PR usually lands with no human review to catch it.

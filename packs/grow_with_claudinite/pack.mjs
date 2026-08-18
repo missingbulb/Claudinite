@@ -31,9 +31,14 @@ import growthWriteScope from './growth-write-scope.mjs';
 // the ones that do; it is safe to double-write because capture deltas on the session
 // id. growth-extract's conversation half then mines those pushed logs on its own
 // access model — the logs branch is in the repo, so reading it, committing lessons to
-// local packs, and pruning aged logs are plain local git; only posting the short
-// summary behind each extracted rule on its issue uses the GitHub MCP tools —
-// pruning logs past config.retention_days.
+// local packs, and marking each log it read `<log>.processed` are plain local git;
+// only posting the short summary behind each extracted rule on its issue uses the
+// GitHub MCP tools. RETENTION IS A SEPARATE, AGENTLESS TASK (tasks/logs-prune/):
+// deleting a capture past config.retention_days is arithmetic on dates, and keeping
+// it inside the opus run also kept a precondition arm alive whose only job was to
+// dispatch that run on a quiet repo. The two stay coupled through the marker — the
+// prune deletes only what an extract run recorded as consumed, and ages out nothing
+// on its own authority.
 //
 // And it owns the SKILL-USAGE metric the promotion ladder's skill-vs-prose call was
 // missing: usage-fold (tasks/usage-fold/) counts skill loads and their activity
