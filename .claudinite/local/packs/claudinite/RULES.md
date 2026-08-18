@@ -180,6 +180,17 @@ lesson at the strongest mechanism available — a check where the rule is determ
   worker this ref ships. Retire it by reading the field: the condition is that no member's
   *vendored* worker calls it.
 
+- **Renaming or deleting an `engine/` module a `packs/` file imports** — leave a shim at the old
+  path re-exporting what it named, for the same reason and by the same rule as `updates/*` above:
+  the engine lane and the pack lane deliver in separate PRs on separate cycles, and pack delivery is
+  version-gated per pack, so every member spends a window holding the NEW engine beside an OLD pack.
+  The failure is worse than a broken task — a pack that fails to load fails the mount's self-test,
+  the converge then refuses to land AT ALL, and the member cannot receive the pack version that
+  would have fixed it (#1004: a green run, an unmoved stamp, and a `needs-human` PR). Ask which
+  symbols are fielded by walking the TRUNK's pack history, never `--all` — an import that only ever
+  existed on an unmerged branch is not fielded, and scanning every ref fires on whatever is in
+  flight.
+
 - **Changing a vendored stub** — edit the canon's own `.github/workflows/` copy in the same
   commit and diff the two whole files. The canon has no converge, so its copy drifts invisibly
   until it is a permission denial in production.
