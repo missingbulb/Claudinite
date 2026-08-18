@@ -28,6 +28,8 @@ Everything else is optional `config` on the declaration:
 | `rosterFile` | — | A file in the repo listing members; more than one makes the **fleet overview** the landing view |
 | `repos` | — | An inline roster instead of a file |
 | `canonRepo` | — | The reference member mounts are compared against; unset means freshness reads *unknown* rather than being guessed |
+| `digestsRepo` | — | The repo the fleet's morning briefs are written into (the enforcer's); unset turns the digests panel off |
+| `digestsPath` | `digests` | The directory inside it |
 | `clientId`, `exchangeUrl` | — | Both together turn on **Sign in with GitHub**; either alone does nothing |
 | `redirectUri` | the page's URL | Override when the callback differs |
 | `defaultRepo` | this repo | Which repo a single-repo deployment shows |
@@ -77,8 +79,11 @@ second. So nothing on it is a total for its own sake.
 
 | Panel | Answers |
 |---|---|
+| **What Claudinite did this week** | The work the machinery did that nobody had to do — this week against last |
+| **The last two mornings** | Yesterday's and the day before's fleet digest, when the deployment names a `digestsRepo` |
+| **Fleet activity** | What the fleet *did* per day — work closed by outcome, runs and their pass rate, which members moved at all |
 | **Rollup tiles** | How many *members* need a human — not how many items exist |
-| **Members** | Every member ranked worst-first: its health with reasons, its open queue mix, recent outcomes, scheduler health, mount freshness, task count |
+| **Members** | Every member ranked worst-first, in three column groups: **Status** (its own CI, stars, when it last moved), **Claudinite** (packs, tasks, queue, outcomes, mount, scheduler) and **Work** (issues and pull requests waiting on a person) |
 | **Tasks across the fleet** | One task, everywhere it runs — a shared pack's task parked in four members at once is a canon problem no single repo's page reveals |
 | **Pack adoption** | Which packs are in use and how widely — who a change to a pack would reach |
 
@@ -98,6 +103,26 @@ alarm competing with a genuinely broken member.
 independently, so a private repo or a rate-limit stumble becomes a row that says so
 rather than a blank page.
 
+**A healthy fleet and a dead one look identical to a fault-finder.** Every panel that
+answers "where do I need to look" reads zero after a good week — and after a month of
+nobody touching anything. So two panels answer the other question instead. **Fleet
+activity** plots what happened per day: work closed by outcome, scheduler runs and
+their pass rate, and which members moved at all. Above them, **what Claudinite did
+this week** counts the work nobody had to do — completed items, how many of those
+closed with nobody in the loop, how many did need a person — this week against last.
+
+Two rules keep that block honest, and they are why some obvious figures are missing
+from it. **No vanity total**: every figure is bounded by a window, because a number
+that only grows says nothing about today. **Nothing invented**: no estimated hours
+saved, no score. Checks enforced and rule tokens are not there because no read this
+page makes can count them, and a plausible guess in a tile is worse than a gap.
+
+Every figure in both panels comes from reads the page already makes — the issue page,
+the runs list, and the head commit whose date arrives with the sha the cache is keyed
+by. What that costs is depth rather than requests: one issue page and thirty runs do
+not reach back a fortnight on a busy member, so each series states the day before
+which it is a floor rather than a count.
+
 Two signals are visible *only* here, because no single repo's page has the
 comparison:
 
@@ -108,6 +133,24 @@ comparison:
 - **A scheduler that never ran** — a member that declares tasks and has never
   produced a work item is not idle, it is unwired. Every per-repo number for it is a
   perfectly healthy zero.
+
+## The morning briefs
+
+The `sheepdog` fleet-digest task writes the fleet's morning brief to
+`digests/<date>.md` in the enforcer's repo. The page shows **yesterday's and the day
+before's**, from the two dated files, when the deployment names `digestsRepo` — the
+repo is named rather than assumed, because the repo running the digest task is usually
+not the one publishing this page.
+
+A day with no file is a **normal state** — the task had nothing to report, or has not
+run — and reads as that, never as an error. A repo the viewer cannot read is a third
+state again, and says so.
+
+The brief is **plain text despite its `.md` name**: its writer's contract forbids
+markdown, because the file is read out verbatim through a renderer that parses none.
+So the page's reader is a few rules over lines — a title, sections, `• ` items, bare
+URLs — in [`digest.mjs`](digest.mjs), and not a Markdown library, which would be the
+wrong reader for the file as well as a dependency for a page that has none.
 
 ## Who it runs as
 

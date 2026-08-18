@@ -9,7 +9,8 @@
     "Every key below is optional. `canonRepo` is what the fleet view compares each",
     "member's mount against; unset means member freshness reads unknown rather than",
     "being guessed. `rosterUrl`/`repos` with more than one member makes the fleet",
-    "overview the landing view."
+    "overview the landing view. `digestsRepo` is where the fleet's morning briefs are",
+    "written — unset simply turns that panel off."
   ],
 
   "clientId": "Iv1.0123456789abcdef",
@@ -18,6 +19,8 @@
   "scope": null,
 
   "canonRepo": "missingbulb/Claudinite",
+  "digestsRepo": "missingbulb/Shepherd",
+  "digestsPath": "digests",
   "rosterUrl": "./fleet-roster.GENERATED.json",
   "repos": [],
   "defaultRepo": "missingbulb/Claudinite"

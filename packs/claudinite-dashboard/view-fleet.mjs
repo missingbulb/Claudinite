@@ -6,6 +6,7 @@ import {
   summariseMember, rankMembers, rollUp, packSpread, taskSpread,
 } from './fleet.mjs';
 import { activitySeries, fleetBenefits, delta } from './activity.mjs';
+import { digestDates, digestPath, digestEntry } from './digest.mjs';
 import {
   $, el, ago, duration, groupedHead, columnCount, groupStarts, emptyRow, repoLink, tiles, segmentBar,
   reasonNodes, stackedColumns, chartLegend, windowFigure,
@@ -96,6 +97,36 @@ async function readCanon(config, token) {
     return { repo: config.canonRepo, ref, engineVersion };
   } catch {
     return null;
+  }
+}
+
+// The last two days' briefs, from wherever the fleet keeps them. Optional in every
+// direction: no `digestsRepo` configured means the panel is not part of this
+// deployment, and a day with no file is a normal state rather than an error — the task
+// had nothing to report, or has not run yet.
+//
+// Content at a path in a repo, so both reads are immutable-cacheable by sha and a warm
+// load costs nothing. The 404 for a missing day is cached the same way, so a fleet
+// whose digest task is idle does not re-ask every load.
+async function readDigests(config, token) {
+  if (!config?.digestsRepo) return null;
+  const dates = digestDates(Date.now());
+  try {
+    const meta = await gh.getRepo(config.digestsRepo, token);
+    const sha = await gh.getHeadSha(config.digestsRepo, meta.default_branch, token);
+    return await Promise.all(dates.map(async (date) => {
+      try {
+        const text = await gh.getTextAtSha(config.digestsRepo, sha, digestPath(config.digestsPath, date), token);
+        return digestEntry(date, text);
+      } catch (error) {
+        return digestEntry(date, null, error);
+      }
+    }));
+  } catch (error) {
+    // The repo itself could not be read — a permissions fact about the viewer, not a
+    // statement about any day's brief. Every day reports it rather than reading as
+    // "nothing was written".
+    return dates.map((date) => digestEntry(date, null, error));
   }
 }
 
@@ -304,6 +335,56 @@ function renderBenefits(b) {
   ].filter(Boolean));
 }
 
+// --- the digests panel -----------------------------------------------------------
+
+const BLOCK_TAG = { title: 'h3', section: 'h4', item: 'li', para: 'p' };
+
+// One card per day. The brief is plain text by its writer's contract, so this is
+// headings, paragraphs and links — never a Markdown renderer, which would be the wrong
+// reader for the file and a dependency for a page that has none.
+function digestCard(entry, repo, dir) {
+  const kids = [el('div', { className: 'k', textContent: entry.date })];
+
+  if (entry.state === 'missing') {
+    kids.push(el('p', { className: 'sub', textContent: 'No brief for this day — the digest task had nothing to report, or has not run.' }));
+  } else if (entry.state === 'unreadable') {
+    kids.push(el('p', { className: 'sub', textContent: `Not read — ${entry.error?.message ?? 'the digest repo could not be read'}.` }));
+  } else if (entry.state === 'empty') {
+    kids.push(el('p', { className: 'sub', textContent: 'The file for this day is empty.' }));
+  }
+
+  let list = null;
+  for (const b of entry.blocks) {
+    const nodes = b.runs.map((r) => (r.href
+      ? el('a', { href: r.href, target: '_blank', rel: 'noopener', textContent: r.text })
+      : r.text));
+    if (b.kind === 'item') {
+      if (!list) { list = el('ul', { className: 'digest-items' }); kids.push(list); }
+      list.append(el('li', {}, nodes));
+      continue;
+    }
+    list = null;
+    kids.push(el(BLOCK_TAG[b.kind] ?? 'p', {}, nodes));
+  }
+
+  if (entry.state === 'written' && repo) {
+    kids.push(el('div', { className: 'sub' }, [
+      el('a', {
+        href: `https://github.com/${repo}/blob/HEAD/${digestPath(dir, entry.date)}`,
+        target: '_blank', rel: 'noopener', textContent: 'the file',
+      }),
+    ]));
+  }
+  return el('div', { className: 'chart-card digest' }, kids);
+}
+
+function renderDigests(entries, config) {
+  const section = $('fleet-digests-section');
+  if (!entries) { section.hidden = true; return; }
+  section.hidden = false;
+  $('fleet-digests').replaceChildren(...entries.map((e) => digestCard(e, config?.digestsRepo, config?.digestsPath)));
+}
+
 // --- the activity panel ----------------------------------------------------------
 
 // The one panel that answers "what has this fleet been doing". Everything else here
@@ -378,7 +459,7 @@ const pendingRow = (repo) => el('tr', { className: 'pending-row' }, [
   el('td', { colSpan: MEMBER_COLS - 1 }, [el('span', { className: 'sub', textContent: 'reading…' })]),
 ]);
 
-function renderFleet(summaries, reads, now, onOpen, canon, progress = null, digests = null) {
+function renderFleet(summaries, reads, now, onOpen, canon, progress = null, digests = null, canonConfig = null) {
   const resolved = summaries.filter(Boolean);
   const pending = summaries.map((s, i) => (s ? null : reads.names?.[i])).filter(Boolean);
   const roll = rollUp(resolved);
@@ -413,6 +494,7 @@ function renderFleet(summaries, reads, now, onOpen, canon, progress = null, dige
   // give: a shared pack's task parked in four members at once is a canon problem,
   // and in any single repo it looks like that repo's bad luck.
   const resolvedReads = reads.filter(Boolean);
+  renderDigests(digests, canonConfig);
   renderBenefits(fleetBenefits(resolvedReads, { now, digests }));
   renderActivity(activitySeries(resolvedReads, { now }));
 
@@ -451,6 +533,9 @@ export async function loadFleet({ repos, token, config, onOpen, onError, onProgr
   const now = Date.now();
 
   const canon = await readCanon(config, token);
+  // Read before the sweep so the panel is there from the first paint: it is two small
+  // reads, and it is the thing a viewer opening this page in the morning came for.
+  const digests = await readDigests(config, token);
 
   // Rendered on every arrival rather than once at the end: the page is useful from
   // the first member back, and the member a viewer opened it for may be the first.
@@ -458,7 +543,7 @@ export async function loadFleet({ repos, token, config, onOpen, onError, onProgr
   reads.names = repos;
   const summaries = new Array(repos.length).fill(null);
   let done = 0;
-  const paint = () => renderFleet(summaries, reads, now, onOpen, canon, { done, total: repos.length });
+  const paint = () => renderFleet(summaries, reads, now, onOpen, canon, { done, total: repos.length }, digests, config);
   paint();
 
   await pool(repos, async (repo, i) => {
@@ -478,5 +563,5 @@ export async function loadFleet({ repos, token, config, onOpen, onError, onProgr
   }
 
   paint();
-  return { summaries: summaries.filter(Boolean), now, canon };
+  return { summaries: summaries.filter(Boolean), now, canon, digests };
 }
