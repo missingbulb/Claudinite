@@ -7,8 +7,8 @@
 // (each pack carries its own resolved `dir`).
 //
 // Frequency filtering is deliberately NOT done here — discover returns every
-// active, well-formed task; the run entrypoint intersects them with the due
-// slots (slots.mjs). Keeping the two apart keeps each pure and separately
+// active, well-formed task; the tick intersects them with the current anchors
+// (queue/anchors.mjs). Keeping the two apart keeps each pure and separately
 // testable. A task whose task.mjs fails to import or violates the declaration
 // contract is dropped into `errors` (fail-soft, per-task), never sinking the
 // scan.

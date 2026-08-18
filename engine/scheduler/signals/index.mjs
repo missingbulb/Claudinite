@@ -7,7 +7,7 @@
 // Pure over the injected `gh` reader and a `ctx` of already-resolved facts, so
 // the whole layer tests against a fake `gh` with no live GitHub. The ctx facts a
 // collector cannot fetch for itself (manifest version, local-pack presence,
-// retention) are read off the checkout by run.mjs — see signals/local.mjs.
+// retention) are read off the checkout by signals/context.mjs — see signals/local.mjs.
 
 import { LOCAL_PACK_ROOTS } from './local.mjs';
 
