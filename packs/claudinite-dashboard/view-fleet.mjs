@@ -164,8 +164,22 @@ function memberRow(s, onOpen, now) {
   return el('tr', { className: `lvl-${s.level}` }, [name, health, queue, activity, runs, mount, tasks]);
 }
 
-function renderFleet(summaries, reads, now, onOpen, canon) {
-  const roll = rollUp(summaries);
+// A member whose read has not landed yet. It is a row from the first paint rather
+// than a gap that fills in, because a fleet page that appears all at once at the end
+// looks broken for the whole sweep — and on a slow or throttled read, the sweep is
+// most of the time the viewer spends here.
+const pendingRow = (repo) => el('tr', { className: 'pending-row' }, [
+  el('td', {}, [
+    el('span', { className: 'name', textContent: repo.split('/')[1] ?? repo }),
+    el('div', { className: 'sub' }, [repoLink(repo)]),
+  ]),
+  el('td', { colSpan: 6 }, [el('span', { className: 'sub', textContent: 'reading…' })]),
+]);
+
+function renderFleet(summaries, reads, now, onOpen, canon, progress = null) {
+  const resolved = summaries.filter(Boolean);
+  const pending = summaries.map((s, i) => (s ? null : reads.names?.[i])).filter(Boolean);
+  const roll = rollUp(resolved);
 
   tiles($('fleet-tiles'), [
     [roll.needAttention, 'members need you', roll.needAttention ? 'var(--critical)' : null,
@@ -181,16 +195,24 @@ function renderFleet(summaries, reads, now, onOpen, canon) {
       [roll.notAdopted ? `${roll.notAdopted} not adopted` : '', roll.unreadable ? `${roll.unreadable} unreadable` : ''].filter(Boolean).join(', ')],
   ]);
 
+  // Every number above is a number about the members READ SO FAR, and a partial
+  // rollup that does not say so is a wrong one. The count is stated rather than the
+  // page waiting to be sure.
+  $('fleet-progress').textContent = progress && progress.done < progress.total
+    ? `${progress.done}/${progress.total} repos read — figures below cover those`
+    : (progress ? `${progress.total} repos read` : '');
+
   const body = head($('fleet'), ['Member', 'Health', 'Queue', 'Recent outcomes', 'Scheduler', 'Mount', 'Tasks']);
   if (!summaries.length) { body.append(emptyRow(7, 'No members in the roster.')); return; }
-  for (const s of rankMembers(summaries)) body.append(memberRow(s, onOpen, now));
+  for (const s of rankMembers(resolved)) body.append(memberRow(s, onOpen, now));
+  for (const repo of pending) body.append(pendingRow(repo));
 
   // Tasks across the fleet. This is the view a per-repo page structurally cannot
   // give: a shared pack's task parked in four members at once is a canon problem,
   // and in any single repo it looks like that repo's bad luck.
-  const spread = taskSpread(reads, now).filter((t) => t.members > 0);
+  const spread = taskSpread(reads.filter(Boolean), now).filter((t) => t.members > 0);
   const tbody = head($('fleet-tasks'), ['Task', 'Members', 'Open', 'Parked', 'Succeeded', 'No outcome']);
-  if (!spread.length) { tbody.append(emptyRow(6, 'No work items seen across the fleet.')); return; }
+  if (!spread.length) tbody.append(emptyRow(6, 'No work items seen across the fleet.'));
   for (const t of spread.slice(0, 25)) {
     tbody.append(el('tr', { className: t.parked ? 'lvl-critical' : '' }, [
       el('td', {}, [
@@ -209,7 +231,7 @@ function renderFleet(summaries, reads, now, onOpen, canon) {
     ]));
   }
 
-  const packs = packSpread(summaries);
+  const packs = packSpread(resolved);
   $('fleet-packs').replaceChildren(...packs.map((p) =>
     el('span', { className: 'chip', title: `${p.members} member(s)` }, [
       p.pack, el('b', { className: 'count', textContent: String(p.members) }),
@@ -223,22 +245,32 @@ export async function loadFleet({ repos, token, config, onOpen, onError, onProgr
   const now = Date.now();
 
   const canon = await readCanon(config, token);
+
+  // Rendered on every arrival rather than once at the end: the page is useful from
+  // the first member back, and the member a viewer opened it for may be the first.
+  const reads = new Array(repos.length).fill(null);
+  reads.names = repos;
+  const summaries = new Array(repos.length).fill(null);
   let done = 0;
-  const reads = await pool(repos, async (repo) => {
+  const paint = () => renderFleet(summaries, reads, now, onOpen, canon, { done, total: repos.length });
+  paint();
+
+  await pool(repos, async (repo, i) => {
     const r = await readMember(repo, token);
+    reads[i] = r;
+    summaries[i] = summariseMember(r, { now, canon });
     done += 1;
     onProgress?.(done, repos.length, repo);
+    paint();
     return r;
   });
-
-  const summaries = reads.map((r) => summariseMember(r, { now, canon }));
-  const failed = summaries.filter((s) => s.status === 'unreadable');
+  const failed = summaries.filter((s) => s?.status === 'unreadable');
   // Surfaced once at the top rather than as twelve separate errors: on a fleet, some
   // members being invisible to you is the normal case, not an incident.
   if (failed.length === repos.length && repos.length > 0) {
     onError?.(`None of the ${repos.length} members could be read — check that you are signed in with an account that can see them.`);
   }
 
-  renderFleet(summaries, reads, now, onOpen, canon);
-  return { summaries, now, canon };
+  paint();
+  return { summaries: summaries.filter(Boolean), now, canon };
 }

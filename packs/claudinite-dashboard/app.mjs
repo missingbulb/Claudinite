@@ -9,6 +9,7 @@ import * as gh from './github.mjs';
 import * as auth from './auth.mjs';
 import { loadConfig, loadRoster } from './config.mjs';
 import { clearAll, stats } from './cache.mjs';
+import { planPolicy, credentialAdvice, MINUTE_MS } from './budget.mjs';
 import { $, el } from './ui.mjs';
 import { loadRepo } from './view-repo.mjs';
 import { loadFleet } from './view-fleet.mjs';
@@ -17,6 +18,42 @@ let CONFIG = null;
 let ROSTER = [];
 
 const showError = (msg) => $('errors').append(el('div', { className: 'err', textContent: msg }));
+const showNotice = (msg) => $('errors').append(el('div', { className: 'notice', textContent: msg }));
+
+// --- rate budget ----------------------------------------------------------------
+
+// How this load will be paid for, decided BEFORE it starts. The budget is whatever
+// GitHub last told us — carried across page loads, and confirmed by the free
+// `/rate_limit` preflight when it has aged — so a fresh tab plans on the real number
+// instead of discovering the limit by running into it.
+async function planBudget(token) {
+  const carried = gh.restoreRate();
+  // The preflight costs no primary budget. Skipped only when the carried number is
+  // young enough to still be true.
+  if (!Number.isFinite(gh.rate.remaining) || Date.now() - (carried?.at ?? 0) > 2 * MINUTE_MS) {
+    await gh.preflightRate(token);
+  }
+  const plan = planPolicy({
+    remaining: gh.rate.remaining,
+    limit: gh.rate.limit,
+    reset: gh.rate.reset,
+    memberCount: wantsFleet() ? ROSTER.length : 1,
+  });
+  gh.setPolicy(plan);
+  return plan;
+}
+
+// The pill is the honest version of "why is this not fresh". A page that quietly
+// serves an hour-old fleet without saying so is worse than one that refuses.
+function renderRatePill(plan) {
+  const pill = $('rate');
+  pill.hidden = false;
+  pill.className = `pill${plan.mode === 'frozen' || plan.mode === 'scarce' ? ' stop-pill' : (plan.mode === 'low' || plan.mode === 'tight' ? ' warn-pill' : '')}`;
+  const left = Number.isFinite(gh.rate.remaining) ? `${gh.rate.remaining}/${gh.rate.limit ?? '?'}` : 'budget unknown';
+  const held = plan.minAge > 0 ? ` · cached ${Math.round(plan.minAge / MINUTE_MS)}m` : '';
+  pill.textContent = `${left} · ${plan.tier}${held}`;
+  pill.title = plan.reason;
+}
 
 const repoParam = () => new URL(location.href).searchParams.get('repo');
 const wantsFleet = () => !repoParam() && ROSTER.length > 1;
@@ -80,12 +117,10 @@ const showView = (which) => {
 function footer(parts) {
   const c = stats();
   // The bar carries the short version; the footer below carries the full accounting.
-  $('rate').textContent = Number.isFinite(gh.rate.remaining)
-    ? `${gh.rate.remaining} left · ${gh.rate.spent} spent`
-    : '';
   $('footnote').textContent = [
     ...parts,
-    `this load: ${gh.rate.spent} API calls, ${gh.rate.revalidated} revalidated free, ${gh.rate.served} from cache`,
+    `this load: ${gh.rate.spent} API calls, ${gh.rate.revalidated} revalidated free, ${gh.rate.served} from cache`
+      + (gh.rate.withheld ? `, ${gh.rate.withheld} withheld to save rate limit` : ''),
     `cache ${(c.bytes / 1024).toFixed(0)}KB in ${c.entries} entries`,
     `read ${new Date().toISOString().replace('T', ' ').slice(0, 16)}Z`,
   ].join(' · ');
@@ -102,6 +137,12 @@ async function render() {
   $('reload').disabled = true;
 
   const token = auth.currentToken();
+  const plan = await planBudget(token);
+  renderRatePill(plan);
+  const advice = credentialAdvice(plan.tier, { oauth: auth.isOAuthConfigured(CONFIG) });
+  if (advice) showNotice(advice.text);
+  if (plan.mode === 'frozen' || plan.mode === 'scarce') showNotice(plan.reason);
+
   let viewer = null;
   try {
     if (token) viewer = await gh.getViewer(token);
@@ -171,6 +212,16 @@ async function boot() {
   renderAuth(null);
 
   $('reload').addEventListener('click', render);
+  // Each heading can say why its numbers are worth reading. The text lives in the
+  // markup beside the heading it explains, so there is no second copy in the code.
+  for (const b of document.querySelectorAll('button.info')) {
+    b.addEventListener('click', () => {
+      const body = $(`info-${b.dataset.info}`);
+      if (!body) return;
+      body.hidden = !body.hidden;
+      b.setAttribute('aria-expanded', String(!body.hidden));
+    });
+  }
   $('purge').addEventListener('click', () => { clearAll(); render(); });
   $('theme').addEventListener('click', () => {
     const dark = matchMedia('(prefers-color-scheme: dark)').matches;
