@@ -1,7 +1,7 @@
 // The signal collectors (per-project-scheduling DESIGN §3.3). Each reads a
 // bounded, cheap slice of the repo's GitHub state (or local disk) for one signal
-// name; `collectSignals` gathers only the union the due tasks declared, so a
-// non-daily slot never pays for daily tasks' signals. Every collector takes the
+// name; `collectSignals` gathers only the union the PICKED task declared, so an
+// hourly task never pays for a daily task's signals. Every collector takes the
 // shared `(gh, ctx)` and returns a plain data object a precondition reads.
 //
 // Pure over the injected `gh` reader and a `ctx` of already-resolved facts, so

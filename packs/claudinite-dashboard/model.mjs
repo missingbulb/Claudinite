@@ -234,7 +234,7 @@ export function buildRoster({ tasks = [], items = [], now, schedule }) {
     // and `manual` genuinely has none — the two are different and render differently.
     let next = null;
     let anchorNote = null;
-    if (freq === 'manual') anchorNote = 'manual — only a forced run';
+    if (freq === 'manual') anchorNote = 'manual — only a hand-created item';
     else if (!freq) anchorNote = 'frequency unknown';
     else if (!schedule) anchorNote = 'no schedule configured';
     else next = nextAnchor(freq, schedule, now);

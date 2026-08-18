@@ -59,10 +59,9 @@ export const SAMPLING_NOTE = 'Captured sessions only — sessions that merged, p
   + 'what "the agent was in the loop on it" means — and a nightly or post-merge run nobody looked at '
   + 'does not, because nothing was corrected. CI can only see a run that PRINTED something, so its '
   + 'share is carried separately as ciRuns/ciFailures. Every check number is a floor on activations, '
-  + 'never an over-count. The `tasks` rows are the ONE exception to all of the above: they come from '
-  + "each member's scheduler run records rather than from a captured session, so they are a census of "
-  + 'scheduled work — every due task of every run, whether or not any session was ever captured — '
-  + 'bounded only by how far back that member has been folding them.';
+  + 'never an over-count. The `tasks` rows are HISTORICAL: they came from the retired slot '
+  + "scheduler's run records rather than from a captured session, and nothing writes that record any "
+  + 'more, so they stop where that mechanism did and are not comparable to a later period.';
 
 // --- the pure aggregation -----------------------------------------------------
 

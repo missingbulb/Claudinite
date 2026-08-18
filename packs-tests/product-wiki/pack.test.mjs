@@ -429,7 +429,7 @@ test('wiki-growth task: every signal the precondition reads is declared, and the
     `worker doc missing: ${wikiGrowth.agent_instructions}`);
 });
 
-test('wiki-growth precondition: the weekly slot IS the trigger; a wiki move only adds context', () => {
+test('wiki-growth precondition: the weekly anchor IS the trigger; a wiki move only adds context', () => {
   const quiet = wikiGrowth.precondition({});
   assert.equal(quiet.run, true);
   assert.equal(quiet.reason, 'weekly product-wiki growth pass');
@@ -450,7 +450,7 @@ test('wiki-growth precondition: the weekly slot IS the trigger; a wiki move only
 // used to be a task.md preflight — the agentic phase deciding to skip a run the
 // precondition had granted — and moved here when the prs signal grew labels.
 // Everything else always runs: a wiki grows on research availability, not repo
-// activity, so the weekly slot itself is the trigger and the worker's own stop
+// activity, so the weekly anchor itself is the trigger and the worker's own stop
 // condition (no citable material → no branch, no PR) is an empty OUTCOME, not a
 // skip. Pin both directions.
 test('wiki-growth precondition: declines ONLY while a labeled growth PR sits open', () => {

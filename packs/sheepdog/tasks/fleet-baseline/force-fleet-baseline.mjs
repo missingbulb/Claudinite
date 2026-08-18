@@ -20,7 +20,7 @@
 // WHY IT EXISTS. Under per-project scheduling every member baselines itself hourly,
 // so the fleet needs no push in the ordinary case. The cases it is FOR are the
 // un-ordinary ones: a canon change the fleet should pick up now rather than over the
-// next day, and the tail of members whose next slot is hours away. A forced run
+// next day, and the tail of members whose next anchor is hours away. A forced run
 // bypasses baselining's precondition (the engine records it as forced), so a member
 // with nothing to do converges to a cheap no-op — safe to over-use, only wasteful.
 //

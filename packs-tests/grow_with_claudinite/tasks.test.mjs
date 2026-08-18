@@ -113,7 +113,7 @@ test('rule-revalidation: every run carries the read-only and unprobed rules as b
 // --- growth-extract (the capture stage — BOTH sources in one task) -----------
 //
 // The activity half and the conversation half were two tasks firing in the same
-// nightly slot against the same local packs. They are one task now, so the
+// nightly anchor against the same local packs. They are one task now, so the
 // precondition has two independent arms and the Context has to say WHICH halves
 // are live — a run woken only by an aged log must not invent an activity window.
 
@@ -238,7 +238,7 @@ test('growth-extract: a substantive run with nothing prunable is told NOT to del
 // --- growth-dedup (the pruning stage) ----------------------------------------
 
 test('growth-dedup: weekly/opus/merged-pr — the prune PR is delivered to land', () => {
-  // Weekly, not daily: a member's mount moves most nights, so a daily slot fired
+  // Weekly, not daily: a member's mount moves most nights, so a daily anchor started
   // this opus dispatch (and its PR) nearly every night for prunes nobody is
   // waiting on. Both signals are window-scoped, so the week's movement is
   // batched into one run, never missed.

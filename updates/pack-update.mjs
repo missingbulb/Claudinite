@@ -161,12 +161,10 @@ export async function pendingSchedulerWorkflow(targetRoot, fullName, read) {
   }
 }
 
-// The executor workflow, which exists only for a member dispatching through the
-// work-item queue (tasks-dispatch DESIGN §10). Separate from the scheduler lane above
-// because the two answer different questions: every member owes a workflow at the
-// scheduler path, and a slot-dispatch member owes NO executor file at all — so the
-// pending answer here is legitimately null for most of the fleet, and stays null
-// until that repo's config says `queue`.
+// The executor workflow (tasks-dispatch DESIGN §10). Separate from the scheduler
+// lane above because the two answer different questions: one is the cron shim at a
+// fixed path, the other is the event-driven drain beside it — but every member owes
+// both, so a null answer here means already-converged, never not-applicable.
 //
 // It has to converge in the SAME cycle as the tick, which is the whole reason this
 // lane exists. The tick and the executor are one mechanism split across two files:
