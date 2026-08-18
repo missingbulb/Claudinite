@@ -8,8 +8,9 @@ vendored mount it is: fetch the canon once (the one network moment), `--init` th
 declaration + run the adoption interview, vendor the snapshot into tracked
 `.claudinite/shared/` (`vendoring/apply-vendor-set.mjs` — whole-set + stamp), track it, register the
 single SessionStart orchestrator plus the Stop/PreToolUse hooks at their `shared/` paths, wire the
-world-scope sweep into the project's test/CI flow (its own `check_the_world.mjs` step — adding a
-minimal flow if the repo has none; the Stop hook carries only the work-scope checks), open the
+world- and work-scope sweeps into the project's test/CI flow (a `check_the_world.mjs` step for the
+tree and a `ci-work-scope.mjs` step for the change — adding a minimal flow if the repo has none;
+the Stop hook runs the work scope too, but only where a session runs), open the
 maintenance-enrollment issue, categorize the project, and land the sweep green.
 
 Bootstrap is the one place `apply-vendor-set.mjs` is the right tool, and only because the repo is at

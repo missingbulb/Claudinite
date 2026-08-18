@@ -34,6 +34,7 @@ not prose: the session that has lost its rules is the session least able to noti
 | `rules-index-current` | critical | correctness | check: blocking |
 | `claudinite-isolation` | high | complexity | check: blocking |
 | `conformance-workflow` | high | correctness | check: advisory |
+| `conformance-work-scope` | high | correctness | check: advisory |
 | `scheduler-workflow-shape` | high | correctness | check: blocking |
 | `task-declaration-shape` | high | correctness | check: blocking |
 | `task-declaration-matches-folder` | high | correctness | check: blocking |
@@ -45,6 +46,7 @@ What goes wrong when one fires:
 - `rules-index-current` — the generated index is missing, stale or unimported: the repo's packs contribute no prose to any session.
 - `claudinite-isolation` — the repo's own code reaches into `.claudinite/`, so the next canon refactor is a breaking migration for code the canon does not own (a declared `forbidReferences` [barrier](../barriers/README.md) edge).
 - `conformance-workflow` — nothing in CI runs the world sweep unfiltered on a pull request, so conformance is ungated and the maintenance PR never lands.
+- `conformance-work-scope` — CI gates the tree but not the change, so every commit-scoped rule is enforced only where a session's Stop hook happens to run.
 - `scheduler-workflow-shape` — the vendored scheduler's cron, concurrency or dispatch guard has drifted: staggering, double-run safety or manual runs break.
 - `task-declaration-shape` — a task declaration the scheduler reads is incomplete or illegal, so the task never fires or fires wrong.
 - `task-declaration-matches-folder` — a declaration disagrees with its folder: discovery drops it into `errors` and every run keeps reporting healthy without it.
