@@ -19,7 +19,7 @@ const SOURCE = /\.(mjs|cjs|js|jsx|ts|tsx)$/;
 
 export default {
   id: 'headless-browser',
-  version: 2,
+  version: 3,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs:

@@ -14,7 +14,8 @@ particular call still exists — the shape the corpus rejects outright.
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
 | Resolve binary, never download | high | correctness | prose: 123 words |
-| Reinstalling the driver repeats the download danger | high | correctness | prose: 77 words |
+| Reinstalling the driver repeats the download danger | high | correctness | prose: 130 words |
+| Stub an unvendored CDN library's API | medium | correctness | prose: 114 words |
 | Pin the build for pixels | high | correctness | prose: 87 words |
 | Zero-diff costs whole recipe | medium | correctness | prose: 95 words |
 | Fake origin, abort by default | high | correctness | prose: 80 words |

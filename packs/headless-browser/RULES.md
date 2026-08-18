@@ -23,8 +23,20 @@ into a workflow belongs to [github-actions](../github-actions/). This pack is th
 - **A fresh install of the driver package is the same danger from upstream.** Reinstalling the
   package to fix an import error just as easily resolves to a newer release than the one paired
   with the environment's pinned browser — it then hunts for a browser build the image was never
-  given and fails asking for a network install the sandbox cannot make. Resolve the
-  already-installed package by its global path instead of adding a second copy.
+  given and fails asking for a network install the sandbox cannot make. A reinstall run from the
+  repo root instead of a scratchpad can dodge that failure outright (a version happens to
+  resolve that works) and still cost you: it dirties the tracked `package.json`, its lockfile and
+  `node_modules`, which then need a manual revert before anything can be committed. Resolve the
+  already-installed package by its global path instead of adding a second copy, at any depth in
+  the tree.
+
+- **When a page depends on a third-party library loaded from a CDN you have not vendored,
+  stub the library's own API surface rather than trying to make the CDN reachable.** A default
+  network abort (above) leaves the page's global for that library undefined, so every call into
+  it throws and the render comes back empty — indistinguishable from a product bug unless you
+  know the cause. Grep the code under test for the handful of calls it actually makes (a mapping
+  or charting library often boils down to a handful of constructors and methods) and install a
+  minimal no-op implementation of just those as an init script, before the page's own scripts run.
 
 - **A committed pixel golden is only comparable under the exact build that rendered it.** Two
   browsers a version apart rasterise text and shadows differently, so a comparison across them
