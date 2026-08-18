@@ -24,7 +24,7 @@
 const NS = 'claudinite-dashboard';
 // Bump when a stored shape changes: entries from an older writer are dropped rather
 // than misread, which is cheaper and safer than migrating a cache.
-const VERSION = 1;
+const VERSION = 2;
 export const DAY_MS = 24 * 3600e3;
 
 const key = (k) => `${NS}:v${VERSION}:${k}`;
@@ -183,6 +183,17 @@ export const projectIssue = (i) => ({
   comments: i.comments ?? 0,
   // Only an OPEN item's body is ever read (Not-before / Blocked-by / task path).
   body: String(i.state ?? '').toLowerCase() === 'open' ? String(i.body ?? '').slice(0, BODY_KEEP) : '',
+});
+
+// An open pull request, kept only for what a "waiting on a person" count needs. The
+// body is dropped outright: nothing reads a PR's text here.
+export const projectPull = (p) => ({
+  number: p.number,
+  title: p.title,
+  created_at: p.created_at,
+  updated_at: p.updated_at,
+  draft: Boolean(p.draft),
+  user: p.user?.login ?? null,
 });
 
 export const projectRun = (r) => ({

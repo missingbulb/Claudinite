@@ -5,9 +5,11 @@ import * as gh from './github.mjs';
 import {
   summariseMember, rankMembers, rollUp, packSpread, taskSpread,
 } from './fleet.mjs';
+import { activitySeries } from './activity.mjs';
 import {
   $, el, ago, duration, head, emptyRow, repoLink, tiles, segmentBar,
-  reasonNodes, LEVEL_GLYPH, STATE_ORDER, STATE_COLOR, STATE_UI, OUTCOME_COLOR,
+  reasonNodes, stackedColumns, chartLegend,
+  LEVEL_GLYPH, STATE_ORDER, STATE_COLOR, STATE_UI, OUTCOME_COLOR,
 } from './ui.mjs';
 import { OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE } from '../../engine/scheduler/queue/work-item.mjs';
 
@@ -36,7 +38,10 @@ async function pool(items, worker, limit = CONCURRENCY) {
 async function readMember(repo, token, { withTree = true } = {}) {
   try {
     const meta = await gh.getRepo(repo, token);
-    const sha = await gh.getHeadSha(repo, meta.default_branch, token);
+    // The head commit, kept whole: its date is when this member last landed anything,
+    // and it arrives in the call the content cache already makes for the sha.
+    const head = await gh.getHead(repo, meta.default_branch, token);
+    const sha = head.sha;
     const configText = await gh.getTextAtSha(repo, sha, '.claudinite-checks.json', token);
 
     let declaration = null;
@@ -46,7 +51,7 @@ async function readMember(repo, token, { withTree = true } = {}) {
 
     // A member that does not run Claudinite needs no further reads — and skipping
     // them is most of the saving on a fleet where not everything is adopted.
-    if (!declaration) return { repo, declaration: null, defaultBranch: meta.default_branch };
+    if (!declaration) return { repo, declaration: null, defaultBranch: meta.default_branch, head };
 
     const [tree, issuePage, runs] = await Promise.all([
       withTree ? gh.listTreeAtSha(repo, sha, token).catch(() => null) : Promise.resolve(null),
@@ -61,8 +66,13 @@ async function readMember(repo, token, { withTree = true } = {}) {
       declaration,
       defaultBranch: meta.default_branch,
       sha,
+      head,
       paths: tree?.paths ?? null,
       items: issuePage.issues,
+      // Whether that page reached the end of this member's history. The activity
+      // series needs it to tell a quiet day from a day it simply could not see.
+      itemsComplete: issuePage.complete,
+      prs: issuePage.prs ?? [],
       runs,
     };
   } catch (error) {
@@ -164,6 +174,68 @@ function memberRow(s, onOpen, now) {
   return el('tr', { className: `lvl-${s.level}` }, [name, health, queue, activity, runs, mount, tasks]);
 }
 
+// --- the activity panel ----------------------------------------------------------
+
+// The one panel that answers "what has this fleet been doing". Everything else here
+// is fault-finding, and fault-finding cannot distinguish a good week from a dead one:
+// healthy means every count is zero, and so does abandoned.
+//
+// Two charts rather than one, because the two series answer different questions and
+// share no scale: work CLOSED is the fleet's output, runs are the machinery that
+// produced it, and stacking them together would let a noisy scheduler read as
+// productivity.
+const WORK_SERIES = [
+  { label: 'done', color: OUTCOME_COLOR[OUTCOME_DONE], value: (d) => d.work[OUTCOME_DONE] },
+  { label: 'delivered', color: OUTCOME_COLOR[OUTCOME_DELIVERED], value: (d) => d.work[OUTCOME_DELIVERED] },
+  { label: 'obsolete', color: OUTCOME_COLOR[OUTCOME_OBSOLETE], value: (d) => d.work[OUTCOME_OBSOLETE] },
+  { label: 'no outcome', color: OUTCOME_COLOR.none, value: (d) => d.work.none },
+  { label: 'other issues closed', color: 'var(--s-blue)', value: (d) => d.otherClosed },
+];
+
+const RUN_SERIES = [
+  { label: 'runs passed', color: 'var(--good)', value: (d) => d.runs.success },
+  { label: 'runs failed', color: 'var(--critical)', value: (d) => d.runs.failure },
+  { label: 'runs other', color: 'var(--muted)', value: (d) => d.runs.other },
+];
+
+function renderActivity(series) {
+  const charts = $('fleet-activity');
+  const pass = series.totals.runs
+    ? Math.round(((series.totals.runs - series.totals.runsFailed) / series.totals.runs) * 100)
+    : null;
+
+  // Which members moved AT ALL. A fleet where two of twelve did anything is a fact
+  // about the fleet, and it is invisible in any per-member row.
+  const movement = el('div', { className: 'movement' }, [
+    el('div', { className: 'v num', textContent: `${series.moved.length}/${series.members}` }),
+    el('div', { className: 'k', textContent: 'members moved in the window' }),
+    el('div', { className: 'sub', textContent: series.quiet.length ? `quiet: ${series.quiet.map((r) => r.split('/')[1] ?? r).join(', ')}` : 'every readable member did something' }),
+    series.unread ? el('div', { className: 'sub', textContent: `${series.unread} member(s) unread — not counted either way` }) : null,
+  ]);
+
+  charts.replaceChildren(
+    el('div', { className: 'chart-card' }, [
+      el('div', { className: 'k', textContent: `${series.totals.workClosed} work items closed · ${series.totals.otherClosed} other issues` }),
+      chartLegend(WORK_SERIES),
+      stackedColumns(series.days, WORK_SERIES),
+      // A window that reaches past what one issue page holds is a floor, not a count,
+      // and a chart that does not say so reads as a fleet that went quiet.
+      series.horizon.issues
+        ? el('div', { className: 'sub', textContent: `before ${series.horizon.issues} this is a floor — one issue page per member does not reach further back` })
+        : null,
+    ]),
+    el('div', { className: 'chart-card' }, [
+      el('div', { className: 'k', textContent: pass == null ? 'no scheduler runs in the window' : `${series.totals.runs} runs · ${pass}% passed` }),
+      chartLegend(RUN_SERIES),
+      stackedColumns(series.days, RUN_SERIES),
+      series.horizon.runs
+        ? el('div', { className: 'sub', textContent: `before ${series.horizon.runs} this is a floor — the last 30 runs per member do not reach further back` })
+        : null,
+    ]),
+    el('div', { className: 'chart-card' }, [movement]),
+  );
+}
+
 // A member whose read has not landed yet. It is a row from the first paint rather
 // than a gap that fills in, because a fleet page that appears all at once at the end
 // looks broken for the whole sweep — and on a slow or throttled read, the sweep is
@@ -210,6 +282,8 @@ function renderFleet(summaries, reads, now, onOpen, canon, progress = null) {
   // Tasks across the fleet. This is the view a per-repo page structurally cannot
   // give: a shared pack's task parked in four members at once is a canon problem,
   // and in any single repo it looks like that repo's bad luck.
+  renderActivity(activitySeries(reads.filter(Boolean), { now }));
+
   const spread = taskSpread(reads.filter(Boolean), now).filter((t) => t.members > 0);
   const tbody = head($('fleet-tasks'), ['Task', 'Members', 'Open', 'Parked', 'Succeeded', 'No outcome']);
   if (!spread.length) tbody.append(emptyRow(6, 'No work items seen across the fleet.'));

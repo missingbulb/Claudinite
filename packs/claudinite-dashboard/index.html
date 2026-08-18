@@ -191,6 +191,20 @@
                font-size: 12.5px; max-width: 78ch; text-transform: none; letter-spacing: 0; font-weight: 400; }
   .info-body strong { color: var(--ink); }
 
+  /* --- activity charts --- */
+  .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 10px; }
+  .chart-card { background: var(--surface); border: 1px solid var(--border);
+                border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .chart-card .k { font-size: 12px; color: var(--ink-2); }
+  .chart-wrap { display: flex; flex-direction: column; gap: 5px; }
+  svg.chart { width: 100%; height: 84px; display: block; }
+  svg.chart rect.col { opacity: .92; }
+  svg.chart rect.col:hover { opacity: 1; }
+  .chart-axis { display: flex; justify-content: space-between; gap: 8px; }
+  .movement .v { font-size: 25px; line-height: 1.15; }
+  .movement .k { font-size: 12px; color: var(--ink-2); margin: 2px 0 6px; }
+
   tr.pending-row td { color: var(--muted); }
   #fleet-progress { font-size: 12px; color: var(--muted); margin: 0 0 10px; }
   .pill { font-size: 12px; border: 1px solid var(--border); border-radius: 999px;
@@ -261,6 +275,19 @@
     </p>
     <p id="fleet-progress"></p>
     <div class="tiles" id="fleet-tiles"></div>
+
+    <section>
+      <h2>Fleet activity <button class="info" type="button" data-info="activity" aria-expanded="false" title="Why this panel exists">&#9432;</button></h2>
+      <p class="info-body" id="info-activity" hidden>
+        Every other panel here answers <em>where do I need to look</em>, and after a good week they
+        are all zero — which is exactly what a dead fleet looks like too. This is the other reading:
+        <strong>what happened</strong>, per day. Every figure comes from reads the page already makes,
+        so the panel costs no extra request; what that costs instead is depth, and where a series
+        runs past what one page of issues or thirty runs can see it says so rather than drawing a
+        confident zero.
+      </p>
+      <div class="charts" id="fleet-activity"></div>
+    </section>
 
     <section>
       <h2>Members — worst first <button class="info" type="button" data-info="members" aria-expanded="false" title="Why this ordering">&#9432;</button></h2>

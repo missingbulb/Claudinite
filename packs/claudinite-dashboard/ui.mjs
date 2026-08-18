@@ -128,3 +128,89 @@ export function tiles(node, rows) {
     hint ? el('div', { className: 'sub', textContent: hint }) : null,
   ])));
 }
+
+// --- the day chart --------------------------------------------------------------
+
+// A stacked column per day. SVG rather than divs because the whole point is comparing
+// heights across a fortnight, and one element per segment with a `<title>` gives the
+// hover text for free.
+//
+// The scale is stated, never implied: an unlabelled column chart invites reading two
+// panels' bars against each other when their maxima differ.
+export function stackedColumns(days, series, { height = 84, label = (d) => d.day } = {}) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const svgEl = (tag, attrs = {}) => {
+    const n = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, String(v));
+    return n;
+  };
+  // `append` returns nothing, so the title is built and filled before it goes in.
+  const titled = (node, text) => {
+    const t = svgEl('title');
+    t.textContent = text;
+    node.append(t);
+    return node;
+  };
+
+  const totals = days.map((d) => series.reduce((n, s) => n + (s.value(d) || 0), 0));
+  const peak = Math.max(1, ...totals);
+  const cols = Math.max(1, days.length);
+  const gap = 3;
+  const width = 100;                       // a viewBox unit grid; the CSS sizes it
+  const colW = (width - gap * (cols - 1)) / cols;
+
+  const svg = svgEl('svg', {
+    viewBox: `0 0 ${width} ${height}`, preserveAspectRatio: 'none',
+    class: 'chart', role: 'img',
+    'aria-label': `${days.length} days, peak ${peak} on ${days[totals.indexOf(peak)]?.day ?? '—'}`,
+  });
+
+  days.forEach((d, i) => {
+    const x = i * (colW + gap);
+    let y = height;
+    let drawn = false;
+    for (const s of series) {
+      const v = s.value(d) || 0;
+      if (!v) continue;
+      const h = (v / peak) * (height - 2);
+      y -= h;
+      drawn = true;
+      svg.append(titled(svgEl('rect', { x, y, width: colW, height: h, fill: s.color, class: 'col' }),
+        `${label(d)} — ${v} ${s.label}`));
+    }
+    if (!drawn) {
+      svg.append(titled(svgEl('rect', { x, y: height - 1, width: colW, height: 1, fill: 'var(--rule)' }),
+        `${label(d)} — nothing`));
+    }
+  });
+
+  return el('div', { className: 'chart-wrap' }, [
+    svg,
+    el('div', { className: 'chart-axis' }, [
+      el('span', { className: 'sub', textContent: days[0]?.day ?? '' }),
+      el('span', { className: 'sub', textContent: `peak ${peak}/day` }),
+      el('span', { className: 'sub', textContent: days[days.length - 1]?.day ?? '' }),
+    ]),
+  ]);
+}
+
+export const chartLegend = (series) =>
+  el('div', { className: 'legend' }, series.map((s) =>
+    el('span', {}, [el('i', { className: 'sw', style: `background:${s.color}` }), s.label])));
+
+// --- windowed figures -----------------------------------------------------------
+
+// A number with its change against the window before it. The arrow is never the whole
+// message — the previous window's figure is spelled out, because a delta with nothing
+// to compare it against is the vanity total this panel exists to avoid.
+export function windowFigure(value, label, change, note) {
+  const arrow = change?.dir === 'up' ? '▲' : change?.dir === 'down' ? '▼' : '—';
+  return el('div', { className: 'tile' }, [
+    el('div', { className: 'v num', textContent: String(value) }),
+    el('div', { className: 'k', textContent: label }),
+    change
+      ? el('div', { className: `sub delta ${change.dir}`, textContent: `${arrow} ${change.by} vs the week before` })
+      : null,
+    note ? el('div', { className: 'sub', textContent: note }) : null,
+  ]);
+}
