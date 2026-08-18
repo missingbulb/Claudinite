@@ -48,6 +48,30 @@ test('does not flag an empty OUTCOME, or a scope carved by the precondition\'s C
   assert.deepEqual(findings, []);
 });
 
+// A REQUIRED INPUT THE DISPATCH DID NOT CARRY IS A FAILURE, NOT A SKIP (owner,
+// 2026-08-17): an agentic phase must state what it requires and stop without it,
+// so the doc that does so cannot be the thing this rule flags. The exemption keys
+// on the terminal state it names — converging to `needs-human` is the opposite of
+// quietly deciding the run was not needed.
+test('does not flag stopping on a missing required input, which converges to needs-human', () => {
+  const findings = run({ [MD]: [
+    '**That number is a required input.** A dispatch that does not carry it is a failed run: converge to `needs-human` naming the missing input.',
+    'If the dispatch names no branch, stop and converge to needs-human — never fall back to the newest branch.',
+  ].join('\n') });
+  assert.deepEqual(findings, []);
+});
+
+// …and the exemption must not swallow the shape the rule exists for: a doc that
+// mentions the failure state elsewhere still gets flagged for a real skip.
+test('still flags a discretionary skip in a doc that also mentions needs-human', () => {
+  const findings = run({ [MD]: [
+    'A failed run converges to needs-human.',
+    'If a PR is already open, do not run this cycle — stop and leave it.',
+  ].join('\n') });
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].line, 2);
+});
+
 test('flags a prework worker that logs a discretionary cycle skip (the baselining shape)', () => {
   const findings = run({ [WORKER]: [
     'export function deliver() {',

@@ -107,6 +107,16 @@ than by replaying a ledger.
   work into the task's prework rather than dispatching and polling a second
   workflow from an agent.
 
+- **A standing tracker belongs to the task that keeps one, not to the machinery.**
+  Nothing in the contract declares a tracker and no task is expected to want one. A
+  task that keeps an aggregated record across runs resolves the issue in its **own**
+  prework and passes the number to its agentic phase the ordinary way — the hand-off
+  payload's `delivered.issue`, which the executor renders into the work item as an `Issue:` line
+  the worker doc points at. The exact-title lookup and the create-then-close pair are
+  a library that prework may call (`engine/scheduler/tracker.mjs`), never a phase:
+  whether a run with nothing to say should mint a tracker at all is the task's own
+  judgment, and tidy-repo's three answer no.
+
 Both guards are **relevance-first**: inert until their artifact exists, so
 on a repo with neither artifact they are a no-op.
 
