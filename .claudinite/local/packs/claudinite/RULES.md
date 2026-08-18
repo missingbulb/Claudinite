@@ -51,6 +51,15 @@ lesson at the strongest mechanism available — a check where the rule is determ
   validation vocabulary or a bespoke `configSchema` type system on the manifest — built and
   reverted in #919 ("That's why we have schemas").
 
+- **Wanting to share logic between two sibling packs** — never put it in `engine/`; that breaks
+  pack independence by forcing every consumer of one pack to inherit the other's rules and
+  behaviour. First check whether the sharing is even necessary — self-describing data (each side
+  states its own field vocabulary) can remove the need to interpret another pack's format at all.
+  Where genuine duplication remains, the owner's call is outright per-pack duplication over a
+  shared module with a drift guard: pack independence overrides the usual shared-constant
+  convention here (#959: "why do you even need a drift guard? Just write the json. Don't
+  overkill.").
+
 ## Working with the owner and the session's tools
 
 - **Answering "why did it fail?"** — lead with the throwing call site: `file:line`, the
@@ -78,7 +87,24 @@ lesson at the strongest mechanism available — a check where the rule is determ
   CI/PR check status is not this repo's case for `Monitor` or a `curl`/shell poll loop** — this
   sandbox proxy-blocks `api.github.com`, so both silently report "still running" until they time
   out (measured ~26 minutes lost across two PRs waiting past an already-green check, #880). Read
-  the head sha's check runs with the GitHub MCP tool instead.
+  the head sha's check runs with the GitHub MCP tool instead, on a short rolling-backoff interval
+  rather than either extreme — a fixed ~5s cadence burned 14 calls across one 67s wait, and a
+  single guessed-length sleep burned ~390s across four blind calls in another (#960, #939). Once a
+  background watcher is already polling that same signal, wait for its notification instead of
+  also hand-polling the MCP tool in a tight loop alongside it — caught mid-run at 8 redundant
+  calls in 40 seconds (#974). Pushing a **second-or-later** commit to an already-open,
+  agent-authored PR does not by itself trigger `pull_request` CI — GitHub's recursion guard
+  suppresses that event for a token-backed identity's push — so dispatch
+  `mcp__github__actions_run_trigger` (`workflow_dispatch`) right after such a push instead of
+  polling and discovering the gap (#958, #960).
+
+- **Writing a step a human must do by hand into an issue** — hyperlink every requested GitHub
+  settings change to the deepest existing settings URL, never a breadcrumb trail: a breadcrumb
+  goes stale the moment GitHub reorganizes a settings page, where a URL keeps working or
+  redirects. Never list a step that only asks for a platform default GitHub already ships (e.g.
+  "enable squash merging" on a fresh repo, which ships with all three methods on) — a checklist
+  whose items are mostly no-ops teaches the reader to skim it, exactly what the checklist exists
+  to prevent (#952, owner-authored).
 
 - **Replying to an owner comment that raises more than one claim** — answer **every** claim in
   that first reply, including the one you intend to push back on. A claim left silently
@@ -98,6 +124,18 @@ lesson at the strongest mechanism available — a check where the rule is determ
   first feature you are building for it. The directory name is the pack's public id, spelled in
   every member's declaration, so another casing costs a fleet-wide rename. `grow_with_claudinite`
   is grandfathered. (convertible → prose-to-checks)
+
+- **Starting a new Claudinite-facing capability** (a tool, a dashboard, anything meant to reach
+  more than the current repo) — decide **which distribution model it is** before writing the
+  first file: a member-local tool, always-on engine code, or an opt-in pack with its own
+  adoption/scaffolding. Nothing prompts this choice on its own, and getting it wrong costs a full
+  move-and-rewrite cycle per correction — one session paid it three times in a row before landing
+  on "opt-in pack" (#934).
+
+- **Editing or adding a rule to a canon pack's `RULES.md`** — add or update that pack's
+  `README.md` rule-index row (name under 8 words, exact word count) in the **same** change.
+  `check_the_world.mjs` passing is not evidence this is done — it's a different runner; only
+  `node --test packs-tests/rule-index.test.mjs` (or the full suite) catches the drift (#870).
 
 - **Looking for a skill and not finding it in `.claude/skills/`** — read
   `packs/<pack>/skills/<name>/SKILL.md` out of the tracked tree. Mounting filters on the *literal*
@@ -207,12 +245,52 @@ lesson at the strongest mechanism available — a check where the rule is determ
   `packVersions`), never `claudinite.updated` alone: a held stamp pins `updated` behind a pending
   note, so a mount converging hourly can look a week stale.
 
+- **Needing a new `.github/workflows/` file for a pack's capability** — the nightly update can
+  never write there; the Action's own `GITHUB_TOKEN` is refused on that path. It can only arrive
+  by being *seeded* at an adoption/install moment (a human- or session-held credential), never by
+  ordinary convergence — the deliberate split behind every deploy-workflow pack: freeze the
+  seeded stub, keep the logic it calls converging out of the mount (#935).
+
+- **Tightening a validated vocabulary both the engine and a member's *vendored* packs must
+  agree on** — the engine ships every commit but a member's packs ship only on a version bump, so
+  a spelling change can reach the engine's rejection logic before it reaches any member's packs,
+  parking the very PR that would carry the fix — invisibly, since a scheduled task can report
+  `outcome:done` while sitting on a freeze it caused (#938).
+
+- **Deciding where setup-time state or a new capability lives** — classify the state by its
+  persistence scope (per-environment-image-build vs. per-clone) before choosing the mechanism
+  that sets it, and put a capability tied to one runtime surface (e.g. the web session's Setup
+  script field) in the pack that owns that surface, never the generic engine that merely executes
+  it (#956).
+
+- **Reading a uniform signal across every fleet member right after a shared mechanism changes**
+  — a rate-limited, unauthenticated `api.github.com` probe can return a clean-looking uniform
+  negative across every target, and a uniform stamp/ref shared by the whole fleet can mean "not
+  yet past its nightly anchor" rather than "frozen." Check for a rate-limit signal explicitly
+  before trusting a uniform empty sweep, and check timing — has each member's own convergence
+  window actually passed — before generalizing one member's confirmed fault to the fleet. Never
+  reuse a signal already known unreliable to corroborate a different theory (#801, #939: a "the
+  entire fleet is frozen" claim stood uncorrected for ~10 hours).
+
+- **Retiring or migrating a dispatch/config parameter channel** — a parameter that stops being
+  read must fail loudly, never silently default. A dropped safety knob (e.g. `DRY_RUN`) defaults
+  to the operation's *most dangerous* mode — live, unscoped — not a safe one; audit that a
+  parameter's producer and consumer still agree after every interface migration (#974,
+  owner-authored).
+
 ## Scheduled tasks
 
 - **Choosing a task's cadence** — take it from how often the signal actually moves. A
   precondition reading `sharedMount` fires nearly every night and spends an opus dispatch on it;
   where the work isn't latency-sensitive, daily buys noise, not freshness, and a weekly run still
   sees all 7 days because `windowStart` widens to the widest due task's period.
+
+- **After any scheduler-mechanism flip** (how forced/manual work is dispatched, how a
+  precondition is evaluated) — re-audit every task whose precondition assumed the old mechanism.
+  A stale `run: false` that was previously "consulted by nothing" becomes a live self-closing
+  landmine under the new mechanism — the third instance of this exact class in this repo (#929,
+  #921, #971); grep for `frequency: 'manual'` plus its precondition text, not just the flipped
+  mechanism's own callers.
 
 - **Writing a task's precondition** — gate on the objects' own movement in the window (a
   `touched` list, a tip-commit date the collector actually carries), never on standing state,
@@ -282,7 +360,28 @@ lesson at the strongest mechanism available — a check where the rule is determ
 - **Surveying whether something exists in the tree** — a code-search hit is evidence; a
   code-search miss is not. Survey by reading each file.
 
+- **Writing a diff/change-scoped CI check** (one that only judges what changed) — guard two
+  silent-pass failure modes. An unresolved base ref (`actions/checkout` leaves no local tracking
+  ref for it) collapses the diff to empty, which passes every rule with no output — fetch the
+  base explicitly and hard-fail on a zero-size scope, since a silent tool can't distinguish
+  "judged nothing" from "judged clean" (#966). And a wiring/guard test that re-invokes the real
+  checker against the actual current branch fails for the wrong reason whenever that branch
+  happens to violate the rule — assert only that the runner *answers* cleanly (a well-formed
+  exit), never that *this branch* passes (#970, confirmed independently in the debugging session
+  behind it).
+
+- **Sweeping references to a renamed or retiring entity** — recompute any golden test value that
+  derives from the old name from the live function, never guess the new one; and keep a dated
+  historical record (a migration log naming what existed then) unrenamed — renaming it would
+  falsify the record. Distinguish "same thing renamed" (live references move) from "separate
+  thing retiring" (the record documenting the old one stays put) before sweeping (#957).
+
 ## Editing, branching and merging here
+
+- **Making a throwaway probe commit on a scratch branch to see a check fail** — `git commit -am`
+  stages *every* modified file, not just the probe's own change; a subsequent `git branch -D` of
+  that scratch branch discards any real in-progress edit it swept up along with the probe. Stash
+  or otherwise isolate real pending edits first (#939).
 
 - **Editing a repo's JSON config** — patch it as anchored text; never re-serialize. A
   round-trip rewrites what it wasn't asked to (`ensure_ascii` escapes, indent, key order, trailing
