@@ -59,7 +59,9 @@ export default {
   // 8: the FLEET_GITHUB_TOKEN the digest needs is stated once, in its own
   // fleet-token.mjs, and rendered into the missing-secret message, the adoption step
   // and a 403's hint — additive, no migration (#1030).
-  version: 8,
+  // 9: adoption hands over the sign-in decision as well as the Pages setting — prose
+  // and a handover entry, so a member gains a checkbox and nothing else changes.
+  version: 9,
   minEngineVersion: 4,
   ruleRoutingGuidance: {
     belongs: 'the browser dashboard over Claudinite scheduler state, the site that publishes it, and the fleet morning brief it reads',

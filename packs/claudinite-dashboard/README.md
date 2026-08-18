@@ -245,6 +245,29 @@ would raise the ceiling, but only by putting a shared credential behind a backen
 which would show every viewer everything that app can see. That is a different
 product, not a bigger limit.
 
+### Who has to register the app — one owner, not one fleet
+
+Sign-in belongs to **whoever owns the deployment**, and it is not inheritable. A
+fleet's second, fifth and tenth dashboard reuse one registration: a GitHub App holds
+up to ten callback URLs, and with wildcard matching a single `https://<user>.github.io/`
+covers every project Pages site on that host, so a new deployment only copies the two
+config keys.
+
+A **different** owner cannot reuse it, and the reason is not policy but mechanism:
+
+- a private App "can only be installed on the account that owns the app. Only members
+  of the organization that owns it can authorize it" — a stranger cannot even sign in;
+- making it public lets anyone authorize it, but a user access token "can only access
+  resources that both the user and app can access", so until they install that App on
+  their own account every member row still reads *not visible to you*;
+- and if they did install it, their callback URL would have to live in someone else's
+  App and their tokens would be minted by someone else's endpoint. That is a trust
+  relationship, not a configuration.
+
+So the ladder for an adopter with no app of their own is the token box, which needs no
+registration and is the same 5,000/hour. Sign-in is the button they add later, for
+their own fleet, with their own app.
+
 ### Why "just use my existing GitHub login" is not on that list
 
 It cannot be. A browser will not send github.com's session cookies to
