@@ -21,6 +21,11 @@ export default {
   // run — the existing pile got the same triage last time it moved, and re-deriving
   // it costs an agent run per day to rewrite the tracker with itself.
   //
+  // The task's own triage comments are the one write that lands on the issues this
+  // gate watches, so re-announcing a standing verdict would arm tomorrow's run
+  // forever (#988). single-issue-triage does not make that write; nothing here
+  // filters it out after the fact.
+  //
   // A substantive default-branch move WIDENS an already-triggered run to every open
   // issue, because a real commit can implement an issue the issue itself never
   // recorded — but it no longer wakes the task by itself. On any repo whose `main`

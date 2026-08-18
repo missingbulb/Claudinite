@@ -203,3 +203,24 @@ test('each worker reconciles its OWN tracker by exact title — three tasks neve
     assert.match(worker, /nothing to record/, `${id}/task.md does not gate its tracker write on having something to record`);
   }
 });
+
+// The self-trigger the touched-gate could not see (#988): a triage comment is an
+// issue update, so a run that re-announces a verdict it already posted is the next
+// window's `touched` and wakes itself, indefinitely. The fix is to not make that
+// write — so the skill's no-repeat rule, and the marker that lets a run recognise
+// its own prior verdict, are what these assert.
+test('single-issue-triage: an unchanged verdict is posted nowhere, and carries its own action name', () => {
+  const skill = readFileSync(join(PACK_DIR, 'skills/single-issue-triage/SKILL.md'), 'utf8');
+  assert.match(skill, /post nothing and change nothing/i,
+    'single-issue-triage does not forbid re-posting a verdict it already posted');
+  assert.match(skill, /<!-- claudinite:tidy-issues verdict=/,
+    'single-issue-triage defines no marker, so a run cannot recognise its own prior verdict');
+  assert.match(skill, /\bunchanged\b/,
+    'the return vocabulary carries no `unchanged`, so the worker cannot tell it apart from `left`');
+});
+
+test('tidy-issues: its worker knows an unchanged verdict is not an action', () => {
+  const worker = readFileSync(join(taskDir('tidy-issues'), 'task.md'), 'utf8');
+  assert.match(worker, /\bunchanged\b/,
+    'tidy-issues/task.md does not say what an unchanged verdict means for its tracker');
+});
