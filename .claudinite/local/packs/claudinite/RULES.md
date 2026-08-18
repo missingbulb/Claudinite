@@ -51,14 +51,13 @@ lesson at the strongest mechanism available — a check where the rule is determ
   validation vocabulary or a bespoke `configSchema` type system on the manifest — built and
   reverted in #919 ("That's why we have schemas").
 
-- **Wanting to share logic between two sibling packs** — never put it in `engine/`; that breaks
-  pack independence by forcing every consumer of one pack to inherit the other's rules and
-  behaviour. First check whether the sharing is even necessary — self-describing data (each side
-  states its own field vocabulary) can remove the need to interpret another pack's format at all.
-  Where genuine duplication remains, the owner's call is outright per-pack duplication over a
-  shared module with a drift guard: pack independence overrides the usual shared-constant
-  convention here (#959: "why do you even need a drift guard? Just write the json. Don't
-  overkill.").
+- **Wanting to share logic between two sibling packs** — never put it in `engine/`, which breaks
+  the package-manager model, and never make one pack depend on the other, which is what breaks
+  pack independence. First check whether the sharing is even necessary — self-describing data
+  (each side states its own field vocabulary) can remove the need to interpret another pack's
+  format at all. Where identical code is still needed, consider duplicating it, possibly with a
+  drift guard; sometimes duplication between packs is fine (#959: "why do you even need a drift
+  guard? Just write the json. Don't overkill.").
 
 ## Working with the owner and the session's tools
 
@@ -87,24 +86,14 @@ lesson at the strongest mechanism available — a check where the rule is determ
   CI/PR check status is not this repo's case for `Monitor` or a `curl`/shell poll loop** — this
   sandbox proxy-blocks `api.github.com`, so both silently report "still running" until they time
   out (measured ~26 minutes lost across two PRs waiting past an already-green check, #880). Read
-  the head sha's check runs with the GitHub MCP tool instead, on a short rolling-backoff interval
-  rather than either extreme — a fixed ~5s cadence burned 14 calls across one 67s wait, and a
-  single guessed-length sleep burned ~390s across four blind calls in another (#960, #939). Once a
-  background watcher is already polling that same signal, wait for its notification instead of
-  also hand-polling the MCP tool in a tight loop alongside it — caught mid-run at 8 redundant
-  calls in 40 seconds (#974). Pushing a **second-or-later** commit to an already-open,
-  agent-authored PR does not by itself trigger `pull_request` CI — GitHub's recursion guard
-  suppresses that event for a token-backed identity's push — so dispatch
-  `mcp__github__actions_run_trigger` (`workflow_dispatch`) right after such a push instead of
-  polling and discovering the gap (#958, #960).
+  the head sha's check runs with the GitHub MCP tool instead. Poll it on a rolling backoff, or
+  not at all when a background watcher already reports that signal.
 
-- **Writing a step a human must do by hand into an issue** — hyperlink every requested GitHub
-  settings change to the deepest existing settings URL, never a breadcrumb trail: a breadcrumb
-  goes stale the moment GitHub reorganizes a settings page, where a URL keeps working or
-  redirects. Never list a step that only asks for a platform default GitHub already ships (e.g.
-  "enable squash merging" on a fresh repo, which ships with all three methods on) — a checklist
-  whose items are mostly no-ops teaches the reader to skim it, exactly what the checklist exists
-  to prevent (#952, owner-authored).
+- **Writing a step a human must do by hand into an issue** — when asking for a manual action,
+  make absolutely sure it is needed: a checklist whose items are mostly no-ops teaches the reader
+  to skim it, exactly what the checklist exists to prevent. Make the breadcrumb trail a
+  hyperlink, to the deepest existing settings URL — a link keeps working or redirects where a
+  written-out trail goes stale the moment GitHub reorganizes the page (#952, owner-authored).
 
 - **Replying to an owner comment that raises more than one claim** — answer **every** claim in
   that first reply, including the one you intend to push back on. A claim left silently
@@ -131,11 +120,6 @@ lesson at the strongest mechanism available — a check where the rule is determ
   adoption/scaffolding. Nothing prompts this choice on its own, and getting it wrong costs a full
   move-and-rewrite cycle per correction — one session paid it three times in a row before landing
   on "opt-in pack" (#934).
-
-- **Editing or adding a rule to a canon pack's `RULES.md`** — add or update that pack's
-  `README.md` rule-index row (name under 8 words, exact word count) in the **same** change.
-  `check_the_world.mjs` passing is not evidence this is done — it's a different runner; only
-  `node --test packs-tests/rule-index.test.mjs` (or the full suite) catches the drift (#870).
 
 - **Looking for a skill and not finding it in `.claude/skills/`** — read
   `packs/<pack>/skills/<name>/SKILL.md` out of the tracked tree. Mounting filters on the *literal*
@@ -245,24 +229,6 @@ lesson at the strongest mechanism available — a check where the rule is determ
   `packVersions`), never `claudinite.updated` alone: a held stamp pins `updated` behind a pending
   note, so a mount converging hourly can look a week stale.
 
-- **Needing a new `.github/workflows/` file for a pack's capability** — the nightly update can
-  never write there; the Action's own `GITHUB_TOKEN` is refused on that path. It can only arrive
-  by being *seeded* at an adoption/install moment (a human- or session-held credential), never by
-  ordinary convergence — the deliberate split behind every deploy-workflow pack: freeze the
-  seeded stub, keep the logic it calls converging out of the mount (#935).
-
-- **Tightening a validated vocabulary both the engine and a member's *vendored* packs must
-  agree on** — the engine ships every commit but a member's packs ship only on a version bump, so
-  a spelling change can reach the engine's rejection logic before it reaches any member's packs,
-  parking the very PR that would carry the fix — invisibly, since a scheduled task can report
-  `outcome:done` while sitting on a freeze it caused (#938).
-
-- **Deciding where setup-time state or a new capability lives** — classify the state by its
-  persistence scope (per-environment-image-build vs. per-clone) before choosing the mechanism
-  that sets it, and put a capability tied to one runtime surface (e.g. the web session's Setup
-  script field) in the pack that owns that surface, never the generic engine that merely executes
-  it (#956).
-
 - **Reading a uniform signal across every fleet member right after a shared mechanism changes**
   — a rate-limited, unauthenticated `api.github.com` probe can return a clean-looking uniform
   negative across every target, and a uniform stamp/ref shared by the whole fleet can mean "not
@@ -360,21 +326,11 @@ lesson at the strongest mechanism available — a check where the rule is determ
 - **Surveying whether something exists in the tree** — a code-search hit is evidence; a
   code-search miss is not. Survey by reading each file.
 
-- **Writing a diff/change-scoped CI check** (one that only judges what changed) — guard two
-  silent-pass failure modes. An unresolved base ref (`actions/checkout` leaves no local tracking
-  ref for it) collapses the diff to empty, which passes every rule with no output — fetch the
-  base explicitly and hard-fail on a zero-size scope, since a silent tool can't distinguish
-  "judged nothing" from "judged clean" (#966). And a wiring/guard test that re-invokes the real
-  checker against the actual current branch fails for the wrong reason whenever that branch
-  happens to violate the rule — assert only that the runner *answers* cleanly (a well-formed
-  exit), never that *this branch* passes (#970, confirmed independently in the debugging session
-  behind it).
+- **Writing check-the-work** — make sure you validate it fails: create the conditions that fail
+  the check and see it go red (#966, #970).
 
-- **Sweeping references to a renamed or retiring entity** — recompute any golden test value that
-  derives from the old name from the live function, never guess the new one; and keep a dated
-  historical record (a migration log naming what existed then) unrenamed — renaming it would
-  falsify the record. Distinguish "same thing renamed" (live references move) from "separate
-  thing retiring" (the record documenting the old one stays put) before sweeping (#957).
+- **Renaming an entity** — sweep for references in code and comments, don't change historical
+  records, and re-render generated files rather than editing them by hand (#957).
 
 ## Editing, branching and merging here
 
