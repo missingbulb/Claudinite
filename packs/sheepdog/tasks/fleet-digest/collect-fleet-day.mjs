@@ -15,6 +15,7 @@
 
 import { paged, readDeclaration, isDormant } from '../../fleet-api.mjs';
 import { isDispatchTitle } from '../../../../engine/scheduler/dispatch.mjs';
+import { isWorkItemTitle } from '../../../../engine/scheduler/queue/work-item.mjs';
 
 // How many pages of a repo's closed pull requests the walk will read before giving
 // up. 100 per page, so three pages is 300 closed PRs — comfortably more than any
@@ -76,25 +77,28 @@ export function isMaintenance(pr) {
 }
 
 // The same question for an ISSUE, and it needs its own answer because the fleet files
-// far more issues at itself than a human ever does: every scheduled task that needs an
-// agent opens a `[claudinite-task]` dispatch issue in the member it runs against, and
+// far more issues at itself than a human ever does: every occurrence of every
+// scheduled task is a `[claudinite-work]` item in the member it runs against, and
 // the escalation path opens `Claudinite scheduler run failed` on top of that.
 //
 // Left unfiltered these do not merely appear in the brief — they WIN it. An issue's
-// weight counts its discussion, and a dispatch issue accumulates a comment per stage
-// from the executor working it, so machinery that closed itself outranks a person's
-// day. The first real backfill put three of one day's six shortlist slots into
-// `[claudinite-task]` issues, which is the exact failure isMaintenance was written to
+// weight counts its discussion, and a work item accumulates a comment per stage from
+// the executor and the session working it, so machinery that closed itself outranks a
+// person's day. The first real backfill put three of one day's six shortlist slots
+// into machine issues, which is the exact failure isMaintenance was written to
 // prevent for pull requests, arriving through the door nobody guarded.
 //
-// The title test is the engine's own (`isDispatchTitle`) rather than a private regex:
-// it is the same exclusion the signal collectors apply so the scheduler never treats
-// its own dispatch issues as work, and a second spelling of that rule here would be a
-// second thing to keep in step with the dispatch-title format.
+// BOTH TITLE VOCABULARIES, and each test is the engine's own rather than a private
+// regex — the same exclusion the signal collectors apply so a repo never treats its
+// own machinery as work. `[claudinite-work]` is what the queue files and is the one
+// that matters going forward; `[claudinite-task]` is the retired slot mechanism's,
+// kept because a member's closed issues from before the retirement are still inside
+// the digest's lookback and would flood a backfill.
 export function isMachineIssue(issue) {
   const title = issue?.title ?? '';
   const login = issue?.user?.login ?? '';
-  return isDispatchTitle(title)
+  return isWorkItemTitle(title)
+    || isDispatchTitle(title)
     || /^claudinite\b/i.test(title)
     || issue?.user?.type === 'Bot'
     || login.endsWith('[bot]');

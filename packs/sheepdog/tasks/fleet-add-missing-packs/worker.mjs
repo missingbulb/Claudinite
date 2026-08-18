@@ -1,15 +1,15 @@
-// The fleet-add-missing-packs prework entry point — the script the scheduler runs
+// The fleet-add-missing-packs prework entry point — the script the executor runs
 // as `node worker.mjs …` (cwd = this task dir, bounded by prework_timeout). The
-// WHOLE task: `agent_model: 'none'`, no dispatch issue here, no enforcer-side agent.
+// WHOLE task: `agent_model: 'none'`, no agent phase on the enforcer side.
 //
 // THE FAN-OUT MODEL (#749). This task used to end in an agent stage that ran
 // adopt-pack against members from the ENFORCER's session — which failed in
 // production the first time it ran, because the enforcer's executor is (correctly)
 // scoped to the enforcer repo alone. Now the enforcer only DISPATCHES: each half
-// converges a work-list issue IN the member (protocol.mjs) and fires that member's
-// own scheduler with `FORCE_TASKS=adopt-requested-packs`; the member's own task
-// reads its own issue, its own executor adopts with the repo checked out, and the
-// reviewed PR lands there. No agent anywhere needs cross-repo access.
+// converges a work-list issue IN the member (protocol.mjs) and wakes that member's
+// own standing item for `adopt-requested-packs`; the member's own task reads its
+// own issue, its own executor adopts with the repo checked out, and the reviewed
+// PR lands there. No agent anywhere needs cross-repo access.
 //
 // It holds no scan logic and no force logic — those are its siblings,
 // scan-for-needed-packs.mjs (what might a member want?) and force-add-packs.mjs
@@ -19,20 +19,20 @@
 //
 // TWO CALL SITES, NO DEFAULTS (params.mjs has the reasoning):
 //   weekly   task.mjs's prework line — `--scan-for-needed-packs=true --repos=all-covered-members`
-//   forced   the scheduler's manual-run override bag, inherited through CLAUDINITE_OVERRIDES:
-//              FORCE_TASKS=fleet-add-missing-packs
-//              SCAN_FOR_NEEDED_PACKS=false
-//              REPOS=Alpha Beta Gamma
-//              ADD_PACKS=some-pack
-//              PACK_CONFIG=some-pack.repo=owner/Store
-//              PACK_ANSWER=some-pack.store=owner/Store — the fleet's store
+//   forced   a hand-created item's Context, inherited through CLAUDINITE_CONTEXT:
+//              create-work-item sheepdog/fleet-add-missing-packs \
+//                --context "SCAN_FOR_NEEDED_PACKS=false" \
+//                --context "REPOS=Alpha Beta Gamma" \
+//                --context "ADD_PACKS=some-pack" \
+//                --context "PACK_CONFIG=some-pack.repo=owner/Store" \
+//                --context "PACK_ANSWER=some-pack.store=owner/Store — the fleet's store"
 //            (keys split on commas, so values are space-separated and comma-free.)
 //
 // Failure is the escalation path. Anything unusable — a parameter that was not
 // sent, a pack that does not exist, an interview question the force did not answer,
 // a member that could not be swept or fired — throws, and this worker turns that
-// into a non-zero exit; the scheduler converges one open `needs-human` issue for
-// the task family. A run that could not see (or reach) what it was acting on must
+// into a non-zero exit; the executor converges the item to
+// `needs-human`. A run that could not see (or reach) what it was acting on must
 // not report itself green.
 
 import { appendFileSync } from 'node:fs';
@@ -40,6 +40,7 @@ import { pathToFileURL } from 'node:url';
 import { makeGh, paged, DECLARATION, fireScheduler } from '../../fleet-api.mjs';
 import { parseSheepdogConfig } from '../../fleet-config.mjs';
 import { parseParams } from './params.mjs';
+import { parseParamBag, contextText } from '../../param-bag.mjs';
 import { loadCanonPacks } from './canon-packs.mjs';
 import { runScan, renderFitSummary } from './scan-for-needed-packs.mjs';
 import {
@@ -52,34 +53,17 @@ import {
 // directory name is the other half of this coupling, pinned by the protocol test.
 export const MEMBER_TASK = 'adopt-requested-packs';
 
-const slotId = process.env.CLAUDINITE_SLOT_ID || '';
-const log = (s) => console.log(`fleet-add-missing-packs${slotId ? ` [${slotId}]` : ''}: ${s}`);
+const item = process.env.CLAUDINITE_ITEM || '';
+const log = (s) => console.log(`fleet-add-missing-packs${item ? ` [#${item}]` : ''}: ${s}`);
 
 const emit = (text) => {
   console.log(text);
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${text}\n`);
 };
 
-// The override bag, re-parsed here rather than imported from the engine: this worker
-// runs as a SUBPROCESS of the scheduler and inherits `CLAUDINITE_OVERRIDES` as text,
-// and a pack importing an engine module for four lines of splitting is the coupling
-// packs exist to avoid. The shape is the engine's (`A=1,B=2`, newline-separated,
-// bare key ⇒ `'true'`) and is asserted against it in this task's tests.
-export function parseOverrideBag(raw) {
-  const out = {};
-  for (const part of String(raw ?? '').split(/[,\n]/)) {
-    const token = part.trim();
-    if (!token) continue;
-    const eq = token.indexOf('=');
-    if (eq === -1) out[token] = 'true';
-    else out[token.slice(0, eq).trim()] = token.slice(eq + 1).trim();
-  }
-  return out;
-}
-
 export async function main() {
   // GITHUB_REPOSITORY names the HOME repo — the one whose sheepdog entry carries the
-  // fleet config. Actions sets it; CLAUDINITE_REPO is the scheduler's own name for
+  // fleet config. Actions sets it; CLAUDINITE_REPO is prework's own name for
   // the same fact, so fall back rather than depending on which is present.
   if (!process.env.GITHUB_REPOSITORY && process.env.CLAUDINITE_REPO) {
     process.env.GITHUB_REPOSITORY = process.env.CLAUDINITE_REPO;
@@ -87,7 +71,7 @@ export async function main() {
 
   const params = parseParams({
     argv: process.argv.slice(2),
-    overrides: parseOverrideBag(process.env.CLAUDINITE_OVERRIDES),
+    params: parseParamBag(contextText()),
   });
   log(params.forced
     ? `FORCED run — scan=${params.scan}, repos=${(params.repos ?? []).join(' ') || 'all-covered-members'}, packs=${params.addPacks.join(' ') || 'none'}`
@@ -145,7 +129,7 @@ async function run({ gh, home, owner, canonRepo, packs, params }) {
     if (unanswered.length) {
       throw new Error(`${unanswered.length} adoption-interview question(s) were not answered, so this run was refused entirely: `
         + `${unanswered.map((u) => `${u.pack}.${u.question} ("${u.prompt}")`).join('; ')}. `
-        + 'Send each as `PACK_ANSWER…=<pack>.<question>=<the answer>` in the overrides — an answer is the owner\'s to give, '
+        + 'Send each as `PACK_ANSWER…=<pack>.<question>=<the answer>` as a `--context` line — an answer is the owner\'s to give, '
         + 'never one this task may infer (adopt-pack, "when nobody is there to ask").');
     }
   }
@@ -218,7 +202,7 @@ async function run({ gh, home, owner, canonRepo, packs, params }) {
   }
 }
 
-// Run only when invoked directly (the scheduler's `node worker.mjs …`), never on import.
+// Run only when invoked directly (prework's `node worker.mjs …`), never on import.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((e) => { console.error(`fleet-add-missing-packs failed: ${e.message}`); process.exit(1); });
 }

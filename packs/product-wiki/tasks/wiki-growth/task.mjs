@@ -10,10 +10,9 @@
 // The open-growth-PR gate lives HERE, in the precondition (DESIGN §12: the
 // precondition is the ONLY decision point — it used to be a task.md preflight,
 // which was the agentic phase deciding to skip a run its precondition had
-// already granted). It is not subsumed by the scheduler: planDispatch guards at
-// most one open dispatch ISSUE per (pack, task) — it never looks at pull
-// requests, and a completed run closes its issue while leaving the growth PR
-// open for review. This gate is the only thing standing between an unreviewed
+// already granted). It is not subsumed by the queue: the queue guards at most one
+// live ITEM per task — it never looks at pull requests, and a completed run closes
+// its item while leaving the growth PR open for review. This gate is the only thing standing between an unreviewed
 // PR and a second round of research stacked on top of it.
 //
 // Self-contained (imports nothing): the whole contract is this default export.
@@ -31,7 +30,7 @@ export default {
   agent_instructions: 'task.md',
   agent_execution_timeout: 2700,            // open-web research is the least predictable of the tasks — very generous
 
-  // The weekly slot is the trigger — a wiki grows on research availability, not
+  // The weekly anchor is the trigger — a wiki grows on research availability, not
   // repo activity — EXCEPT while a previous round's growth PR sits unreviewed:
   // then this run is declined here, in code, rather than granted and abandoned
   // by the agent. The worker's own stop condition (no citable material → no

@@ -14,8 +14,8 @@ repo — the canon home itself, as `local/canon-curation`. Its `tasks/<name>/` f
 the home repo's own scheduler exactly like a canon pack's.
 
 **Declaration cardinality is the mechanism.** A pack's tasks run once per *declaring* repo, so a
-pack only the home repo declares yields exactly one dispatch per task per slot — "central, once"
-with no bespoke orchestrator step. Un-declaring the pack freezes canon absorption without touching
+pack only the home repo declares yields exactly one work item per task per occurrence — "central,
+once" with no bespoke orchestrator step. Un-declaring the pack freezes canon absorption without touching
 the members' side ([grow_with_claudinite](../../../../packs/grow_with_claudinite/README.md)).
 
 | Task | Runs when | Where it lands |
@@ -85,32 +85,23 @@ consumer-side Action, no cross-repo PAT, no labelled-issue up-path. The planner 
 `fleetMembers` aggregate (which members changed, and what they declare), and the gate hands the
 worker the changed participants as `targets`.
 
-**This pack's tasks need the fleet executor routine — a second routine, only in this repo.** Both
-tasks here declare the **deprecated** task-level `session_scope: 'fleet'` — they are its one
-sanctioned holdout ([scheduled-tasks.md](../../../../packs/core/scheduled-tasks.md)): the canon's
-ordinary executor does not hold the fleet, so the second label is what keeps that grant off it; each
-declaration site carries the comment pacifying the `@deprecated` warning — so the scheduler files
-their dispatches under
-`ready-for-agent-fleet` rather than `ready-for-agent`, and a *distinct* CCR routine runs them: named
-`Claudinite executor - fleet`, fired by the **`ready-for-agent-fleet`** label event, with sources =
-this repo **and every participating member** (that cross-repo reach is the whole reason the scope is
-split, and is exactly what must stay off an ordinary project's `self` executor). Its launcher prompt
-is the ordinary one **plus the scope word**:
+**This pack's tasks reach every member, so they name the wider invocation endpoint.** Both tasks
+here declare `invocation_endpoint: 'fleet'` — a key into this repo's own
+`taskScheduler.endpoints`, mapping to a routine whose sources are this repo **and every
+participating member**. That cross-repo reach is the whole reason a second endpoint exists, and is
+exactly what must stay off the endpoint an ordinary hand-off calls.
 
-```
-Execute the Claudinite executor: engine/scheduler/executor.md fleet
-```
+Reach is a property of **which endpoint is called**, and of nothing else: there is no session scope
+anywhere in the system, and no label routes a hand-off ([scheduled-tasks.md](../../../../packs/core/scheduled-tasks.md)).
+The `session_scope: 'fleet'` these tasks used to declare lost its last reader with the slot
+scheduler and is gone from both.
 
-That last word is load-bearing and easy to lose: `resolve-dispatch.mjs` defaults an unnamed scope to
-`self`, so a fleet routine whose prompt omits it declines every dispatch as `scope-mismatch` and
-changes nothing. That verdict is the one stop the shell exits **non-zero** on (`15`), precisely
-because of what follows. The failure is **silent and permanent on GitHub** — the session stops
-without commenting, the
-scheduler re-arms the issue on its next hourly pass, and the pair repeats forever, so the only
-symptom is a `ready-for-agent-fleet` issue that keeps getting re-labeled and never runs. Nothing
-repo-side can catch it: like the per-repo executor routine baselining checks by hand, this routine is
-CCR config, not a GitHub artifact an Action can see. If promote or discover-packs has quietly stopped
-producing anything, read the routine's prompt first.
+The failure mode moved with the mechanism, and moved in the right direction. A misconfigured
+endpoint used to be **silent and permanent**: a dispatch label nothing picked up, re-armed hourly,
+repeating forever with no comment anywhere. Now the hand-off is a synchronous API call, so an
+endpoint this repo has not configured — or one whose token secret is unset — converges the item to
+`needs-human` naming what is missing, on the item itself. If promote or discover-packs has quietly
+stopped producing anything, read its most recent work item; the reason is written there.
 
 The session-scoped sibling of this nightly lifecycle — mining a single working session for lessons
 — lives with [the growth pack's extract-from-conversations skill](../../../../packs/grow_with_claudinite/skills/extract-from-conversations/SKILL.md)

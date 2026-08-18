@@ -1,4 +1,4 @@
-// The fleet-pack-seeds prework entry point — the script the scheduler runs as
+// The fleet-pack-seeds prework entry point — the script the executor runs as prework,
 // `node worker.mjs` (cwd = this task dir, bounded by prework_timeout).
 //
 // It holds NO sweep logic. The sweep is `check-fleet-pack-seeds.mjs`, its SIBLING in
@@ -9,15 +9,15 @@
 // Failure is the escalation path. The sweep THROWS when a member could not be read or
 // a declaration could not be written (an unusable token, a protected branch, a file
 // that changed under the run); this worker turns that into a non-zero exit, and the
-// scheduler treats a non-zero prework subprocess as a failed task — it converges one
-// open `needs-human` issue for the task family (engine/scheduler/run.mjs) instead of
-// handing off to any agent.
+// executor treats a non-zero prework subprocess as a failed task — it converges the
+// item to `needs-human` (engine/scheduler/queue/executor.mjs) instead of handing off
+// to any agent.
 
 import { pathToFileURL } from 'node:url';
 import { main as sweep } from './check-fleet-pack-seeds.mjs';
 
-const slotId = process.env.CLAUDINITE_SLOT_ID || '';
-const log = (s) => console.log(`fleet-pack-seeds${slotId ? ` [${slotId}]` : ''}: ${s}`);
+const item = process.env.CLAUDINITE_ITEM || '';
+const log = (s) => console.log(`fleet-pack-seeds${item ? ` [#${item}]` : ''}: ${s}`);
 
 export async function main() {
   // The sweep resolves the HOME repo — the one whose sheepdog pack entry carries
@@ -33,7 +33,7 @@ export async function main() {
   log('sweep complete');
 }
 
-// Run only when invoked directly (the scheduler's `node worker.mjs`), never on import.
+// Run only when invoked directly (prework's `node worker.mjs`), never on import.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((e) => { console.error(`fleet-pack-seeds failed: ${e.message}`); process.exit(1); });
 }

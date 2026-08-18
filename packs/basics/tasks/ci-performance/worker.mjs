@@ -15,8 +15,8 @@ import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { makeGh } from '../../../../engine/scheduler/signals/gh.mjs';
 
-const slotId = process.env.CLAUDINITE_SLOT_ID || '';
-const log = (s) => console.log(`ci-performance${slotId ? ` [${slotId}]` : ''}: ${s}`);
+const item = process.env.CLAUDINITE_ITEM || '';
+const log = (s) => console.log(`ci-performance${item ? ` [#${item}]` : ''}: ${s}`);
 
 export const WINDOW_DAYS = 7;
 // A regression has to clear BOTH bars. The ratio alone fires on a fast workflow

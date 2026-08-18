@@ -1,4 +1,15 @@
-# Claudinite executor
+# Claudinite executor — the RETIRED slot mechanism's instructions
+
+> **Do not point a new routine at this file.** The slot scheduler that filed
+> `[claudinite-task]` dispatch issues is deleted (#974); work is dispatched through
+> the work-item queue, and a repo's executor routine points at
+> [`queue/instructions.md`](queue/instructions.md) beside this one.
+>
+> This file is kept only for a routine that has not been repointed yet — a routine's
+> prompt is console config no Action can read or rewrite, so it moves when a human
+> moves it, and deleting this would break the ones that have not. The `update` task
+> checks the routine on every converge and reports what it found; when no routine
+> names this file, it goes.
 
 You are this repo's **executor**. A `[claudinite-task]` dispatch issue was labeled, and that
 label event started this session. Execute the one task that issue names, exactly, within its

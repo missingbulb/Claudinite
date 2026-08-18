@@ -1,80 +1,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  TASK_RUN_OUTCOMES, TASK_RUN_TAG, emptyTaskRun, taskRunOutcome,
-  renderTaskRun, renderTaskRuns, parseTaskRun, parseTaskRuns,
+  TASK_RUN_OUTCOMES, TASK_RUN_TAG, emptyTaskRun, parseTaskRun, parseTaskRuns,
   TASK_EXEC_STATUSES, TASK_EXEC_TAG, renderTaskExec, parseTaskExec, parseTaskExecs,
 } from '../../engine/scheduler/run-record.mjs';
 import { execRecordLine } from '../../engine/scheduler/record-exec.mjs';
 
-const rec = (over = {}) => ({ pack: 'grow_with_claudinite', task: 'usage-fold', slotId: 'd2026-07-29', run: true, ...over });
-
-// --- what a run did with a task -----------------------------------------------
-
-test('a task its precondition skipped is a skip, whatever else it declared', () => {
-  assert.equal(taskRunOutcome(rec({ run: false, reason: 'nothing to do' })), 'skipped');
-  assert.equal(taskRunOutcome(rec({ run: false, inline: true, prework: true })), 'skipped');
-});
-
-test('a filed dispatch is an agent run; a suppressed or already-filed one is a deferral', () => {
-  assert.equal(taskRunOutcome(rec({ dispatch: { action: 'create' } })), 'agent');
-  // at-most-one-open: the work was wanted and no new agent run started. Counting this
-  // as an agent run would report executions that never happened; counting it as a
-  // skip would hide a task whose dispatches are piling up unrun.
-  assert.equal(taskRunOutcome(rec({ dispatch: { action: 'suppress', openIssue: 7 } })), 'deferred');
-  assert.equal(taskRunOutcome(rec({ dispatch: { action: 'skip' } })), 'deferred');
-});
-
-test('a task deferred by another task\'s exclusive claim is a deferral, not a skip', () => {
-  // Same reasoning as at-most-one-open above: the precondition DID find work, and
-  // this run chose not to do it. Counting it as a skip would make a repo whose
-  // nightly chain is repeatedly held back look exactly like one with nothing to do.
-  assert.equal(taskRunOutcome(rec({ deferred: 'deferred — basics/baselining claimed this run exclusively' })), 'deferred');
-  // Deferral is decided before prework, so the flag can ride a record that
-  // would otherwise have read as a prework run.
-  assert.equal(taskRunOutcome(rec({ deferred: 'x', inline: true })), 'deferred');
-});
-
-test('an agentless task that ran its prework is a prework run', () => {
-  assert.equal(taskRunOutcome(rec({ inline: true, prework: true, preworkResult: { ok: true } })), 'prework');
-});
-
-test('an agentful task whose prework requested no agent is a prework run, not a skip', () => {
-  // The conditional-handoff case: the task RAN — it just absorbed its work into the
-  // deterministic pass. Reporting it as a skip would make a task that quietly did its
-  // job indistinguishable from one whose precondition said there was nothing to do.
-  const quiet = rec({ prework: true, preworkResult: { ok: true }, agentRequested: false, dispatch: { action: 'create' } });
-  assert.equal(taskRunOutcome(quiet), 'prework');
-  const escalated = rec({ prework: true, preworkResult: { ok: true }, agentRequested: true, dispatch: { action: 'create' } });
-  assert.equal(taskRunOutcome(escalated), 'agent');
-});
-
-test('failed prework is its own outcome — never a quiet prework run', () => {
-  // The one number here whose right value is zero. Folding it into `preprocess` would
-  // make a task that fails every night look exactly like one that works every night.
-  const failed = rec({ prework: true, inline: true, preworkResult: { ok: false, code: 1 } });
-  assert.equal(taskRunOutcome(failed), 'failed');
-  const failedAgentful = rec({ prework: true, preworkResult: { ok: false, timedOut: true }, dispatch: { action: 'create' } });
-  assert.equal(taskRunOutcome(failedAgentful), 'failed');
-});
-
-test('every outcome the deriver can produce is in the declared vocabulary', () => {
-  // The fold keys its counters on these words verbatim, so an outcome the vocabulary
-  // does not list would be silently dropped there rather than counted.
-  const cases = [
-    rec({ run: false }), rec({ dispatch: { action: 'create' } }), rec({ dispatch: { action: 'suppress' } }),
-    rec({ inline: true }), rec({ prework: true, agentRequested: false }),
-    rec({ preworkResult: { ok: false } }),
-  ];
-  for (const c of cases) assert.ok(TASK_RUN_OUTCOMES.includes(taskRunOutcome(c)), taskRunOutcome(c));
-});
-
 // --- the line format -----------------------------------------------------------
 
-test('render and parse round-trip — the whole point of them living in one file', () => {
-  const r = rec({ dispatch: { action: 'create' } });
-  assert.equal(renderTaskRun(r), `${TASK_RUN_TAG} v1 grow_with_claudinite/usage-fold [d2026-07-29] agent`);
-  assert.deepEqual(parseTaskRun(renderTaskRun(r)), {
+// The slot scheduler wrote these lines and is retired (#974); what survives is the
+// READER, against the shape those runs left in logs still inside Actions retention.
+// So the pins below are literal lines, not a round trip through a renderer that no
+// longer exists.
+test('a record of the shape the slot scheduler emitted parses to its four fields', () => {
+  assert.deepEqual(parseTaskRun(`${TASK_RUN_TAG} v1 grow_with_claudinite/usage-fold [d2026-07-29] agent`), {
     pack: 'grow_with_claudinite', task: 'usage-fold', slotId: 'd2026-07-29', outcome: 'agent',
   });
 });
@@ -114,12 +53,6 @@ test('parseTaskRuns picks its own lines out of a whole job log', () => {
   ].join('\n');
   assert.deepEqual(parseTaskRuns(log).map((r) => `${r.task}:${r.outcome}`), ['tidy-issues:agent', 'usage-fold:prework']);
   assert.deepEqual(parseTaskRuns(''), []);
-});
-
-test('renderTaskRuns emits one line per evaluation', () => {
-  const lines = renderTaskRuns([rec({ dispatch: { action: 'create' } }), rec({ task: 'growth-extract', run: false })]).split('\n');
-  assert.equal(lines.length, 2);
-  assert.equal(parseTaskRuns(lines.join('\n')).length, 2);
 });
 
 test('emptyTaskRun carries every outcome at zero, so a row shape never depends on history', () => {

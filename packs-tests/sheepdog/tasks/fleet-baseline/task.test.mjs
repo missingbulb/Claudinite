@@ -21,9 +21,8 @@ test('fleet-baseline: the declaration satisfies the task contract', () => {
 
 test('fleet-baseline: manual, agentless, outcome none — an operator lever, not a cadence', () => {
   assert.equal(decl.id, 'fleet-baseline');          // must match its directory name (discover.mjs)
-  // `manual` is the whole point: dueSlots skips it unconditionally, so the ONLY way
-  // it runs is FORCE_TASKS on a hand-started run — the workflow_dispatch button,
-  // relocated onto the ordinary scheduler.
+  // `manual` is the whole point: the tick never instantiates it, so the ONLY way it
+  // runs is a work item created by hand.
   assert.equal(decl.frequency, 'manual');
   assert.equal(decl.agent_model, 'none');
   assert.equal(decl.expected_outcome, 'none');
@@ -39,7 +38,7 @@ test('fleet-baseline: its precondition admits its own forced item', () => {
   // lever silently stopped working at the flip.
   const v = decl.precondition();
   assert.equal(v.run, true);
-  assert.doesNotMatch(v.reason ?? '', /FORCE_TASKS/, 'the slot-era force lever no longer exists');
+  assert.doesNotMatch(v.reason ?? '', /FORCE_TASKS|CLAUDINITE_OVERRIDES/, 'the slot-era force lever is deleted');
 });
 
 test('fleet-baseline: prework is bounded and task-local', () => {

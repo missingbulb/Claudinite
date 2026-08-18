@@ -6,7 +6,7 @@ This is the only thing that notices a technology in use across the fleet with **
 
 **Why central.** One run sees every member, so **first-sight dedup is free**: the third member using a technology is recognised as the same gap as the first, in the same pass, with no cross-run state and no chance of three repos each proposing the same pack.
 
-You run under the executor, dispatched by a `ready-for-agent-fleet` issue whose **Context section is binding scope**: it names the exact members to sweep. Work exactly that list — the fleet enumeration already happened in the precondition; **do not enumerate the fleet yourself or widen past the Context**. Finding nothing unhomed is a perfectly good, common outcome.
+You run from a work item the executor handed off whose **Context section is binding scope**: it names the exact members to sweep. Work exactly that list — the fleet enumeration already happened in the precondition; **do not enumerate the fleet yourself or widen past the Context**. Finding nothing unhomed is a perfectly good, common outcome.
 
 The task's declared outcome ceiling is **`open-pr`**: a new canon pack is read by every repo that declares it, so it opens a PR and **never arms auto-merge** — the owner approves it.
 

@@ -64,7 +64,7 @@ and retires, while the sweep keeps converging every member the fleet acquires af
 
 **The digest** is the one output addressed to a *person* rather than to the machinery: a dated
 plain-text brief of what the fleet actually did, one file a morning, plus a prod about a project that
-has gone quiet. Its collector filters Claudinite's own maintenance PRs and dispatch issues out of
+has gone quiet. Its collector filters Claudinite's own maintenance PRs and work items out of
 **every** stream it reads — the machine is the fleet's busiest actor, and rank by size or by
 discussion and its own bookkeeping does not merely appear in the results, it wins them. The brief is
 plain text despite its `.md` name because it is *sent*, verbatim, through a renderer that neither
@@ -149,12 +149,12 @@ a green outcome; and a member the pack-seed sweep cannot reach opens no issue, c
 behalf, and exits non-zero. A non-zero preprocessing subprocess fails the task, and the scheduler
 converges one open `needs-human` issue for it.
 
-**The two operator levers ride the scheduler, not a workflow.** `fleet-baseline` is the first
-`manual`-frequency task: never due on any cadence, it runs only when the owner presses *Run
-workflow* on the vendored scheduler with `overrides: FORCE_TASKS=fleet-baseline` (plus `REPOS=…`,
-`DRY_RUN=true`, `INCLUDE_DORMANT=true` as wanted) — firing every covered member's own scheduler
-with `FORCE_TASKS=baselining` so the fleet picks canon up now instead of over the next day. A
-forced fleet-add-missing-packs run is the second lever, same button, its own overrides. Neither
+**The two operator levers ride the work-item queue, not a workflow.** `fleet-baseline` is the first
+`manual`-frequency task: never instantiated on any cadence, it runs only from an item the owner
+creates by hand — `create-work-item sheepdog/fleet-baseline`, with `REPOS=…`, `DRY_RUN=true`,
+`INCLUDE_DORMANT=true` as `--context` lines — which wakes every covered member's own standing
+`baselining` item so the fleet picks canon up now instead of over the next day. A forced
+fleet-add-missing-packs item is the second lever, same command, its own Context. Neither
 waits on what it fired: a dispatch queues a member's own run, and each member reports its own
 outcome where it always does. (The standalone fleet-baseline workflow, its fleet-wide follow
 report, and the `.github/` managed copy it required were retired 2026-08-11 —
@@ -240,9 +240,9 @@ asks the owner for it. A workflow that exists only to hold a secret is redundant
 | Reading unknown in a report | high | correctness | prose: 64 words |
 | Judging whether a member is behind | high | correctness | prose: 62 words |
 | Answering why the fleet did not move | medium | complexity | prose: 52 words |
-| Pushing canon to the whole fleet now | low | complexity | prose: 88 words |
-| Catching the digest up after an outage | low | complexity | prose: 61 words |
-| Adding a pack across the fleet | medium | complexity | prose: 50 words |
+| Pushing canon to the whole fleet now | low | complexity | prose: 119 words |
+| Catching the digest up after an outage | low | complexity | prose: 66 words |
+| Adding a pack across the fleet | medium | complexity | prose: 53 words |
 | Granting or repairing FLEETGITHUBTOKEN | high | correctness | prose: 53 words |
 | A fan-out task reporting no-permission | medium | complexity | prose: 50 words |
 

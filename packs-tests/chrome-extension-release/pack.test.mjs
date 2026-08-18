@@ -179,7 +179,7 @@ jobs:
   schedule:
     runs-on: ubuntu-latest
     steps:
-      - run: node .claudinite/shared/engine/scheduler/run.mjs
+      - run: node .claudinite/shared/engine/scheduler/queue/tick.mjs
 `;
   // De-cron'd orchestrator: keeps push + workflow_dispatch, drops the schedule block.
   const deCronOrchestrator = ORCHESTRATOR.replace('  schedule:\n    - cron: "30 0 * * *"\n', '');

@@ -27,7 +27,7 @@ test('chrome-extension-release contributes store-release as a structural task, n
 });
 
 test('store-release: agentless (model none) — the preprocessing worker IS the task', () => {
-  assert.equal(storeRelease.agent_model, 'none'); // the whole decision is code; no agent, no dispatch issue
+  assert.equal(storeRelease.agent_model, 'none'); // the whole decision is code; no agent phase
   assert.equal(storeRelease.frequency, 'daily');
   assert.equal(storeRelease.expected_outcome, 'none'); // it only triggers the gated publish workflow
   assert.deepEqual(storeRelease.precondition_signals, ['release', 'commits']);

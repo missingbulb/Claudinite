@@ -360,7 +360,7 @@ test('capture with --issue 0 files a no-issue capture holding exactly the post-m
 });
 
 test('the session-end step captures under the issue its launcher named, or 0 when it named none', () => {
-  // The unattended path end to end: the executor names its dispatch issue, this step
+  // The unattended path end to end: the session names its work item, this step
   // passes it to capture, and the log lands filed under the task that ran. Nothing
   // else about the capture differs — same script, same filename shape, same delta.
   const STEP = join(packDir, 'session-end.mjs');
@@ -371,7 +371,7 @@ test('the session-end step captures under the issue its launcher named, or 0 whe
       env: { ...process.env, CLAUDINITE_SESSION_ISSUE: '772', CLAUDINITE_TRANSCRIPT: transcript, CLAUDE_PROJECT_DIR: work },
     });
     assert.ok(originFiles(origin, 'conversation-logs').some((f) => f.includes('--issue-772--')),
-      `expected a capture filed under the dispatch issue, got: ${originFiles(origin, 'conversation-logs')}`);
+      `expected a capture filed under the work item, got: ${originFiles(origin, 'conversation-logs')}`);
 
     // A hook firing carries no issue, and a junk value is ignored rather than passed on
     // to capture's argument validation.

@@ -26,7 +26,7 @@ test('basics contributes the update task structurally, not as a pack.mjs slot', 
   assert.equal(update.id, 'update');
 });
 
-test('update declaration: the 02:00 slot, an apply stage only when needed, deterministic prework', () => {
+test('update declaration: the 02:00 anchor, an apply stage only when needed, deterministic prework', () => {
   assert.equal(update.frequency, 'daily-2h'); // a repo's mount is converged before anything reads it
   assert.equal(update.agent_model, 'sonnet'); // the apply stage, requested only when a pack's rules moved
   assert.equal(update.expected_outcome, 'merged-pr');

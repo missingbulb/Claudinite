@@ -17,7 +17,7 @@ import growthWriteScope from './growth-write-scope.mjs';
 // extract-from-conversations skill over the captured logs, then the prose-to-checks
 // skill over the prose it just wrote, and lands all of it in one PR delivered
 // per the repo's delivery settings.
-// The halves were two tasks firing in the same nightly slot against the same local
+// The halves were two tasks firing at the same nightly anchor against the same local
 // packs; they shared the bar, the ladder and the dedup surface, so the split bought
 // nothing and cost a second opus dispatch, a second PR, and two runs deduping
 // against a corpus the other was concurrently writing.
@@ -67,7 +67,7 @@ import growthWriteScope from './growth-write-scope.mjs';
 // active sets retention_days itself.
 export default {
   id: 'grow_with_claudinite',
-  version: 3,
+  version: 4,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'rules and tasks for capturing and maintaining lessons in local packs — extraction, dedup, revalidation, conversation logs, skill-usage folding',

@@ -1,6 +1,6 @@
 # Fleet roster — one walk, two questions about every repo under the owner
 
-**This task runs no agent.** It is `agent_model: none` with `prework: node worker.mjs`, so the whole pass is the deterministic [`worker.mjs`](worker.mjs) the scheduler runs as a subprocess, which calls its sibling in this folder, the sweep ([`check-fleet-roster.mjs`](check-fleet-roster.mjs)). This file is the human-facing record of what that worker does; there is no dispatch issue and no subagent.
+**This task runs no agent.** It is `agent_model: none` with `prework: node worker.mjs`, so the whole pass is the deterministic [`worker.mjs`](worker.mjs) the executor runs as prework, which calls its sibling in this folder, the sweep ([`check-fleet-roster.mjs`](check-fleet-roster.mjs)). This file is the human-facing record of what that worker does; there is no agent phase.
 
 ## What it does
 
@@ -50,7 +50,7 @@ Every repo lands in exactly one bucket per question, and the two disagree on pur
 
 ## Why daily, and what it costs
 
-The freshness question was weekly because drift is measured in days and a daily re-ask could not change its answer. Merged, that argument buys nothing: the walk runs daily for the coverage question regardless, and gating half the task on a cadence it computed itself would reimplement dueness — which is stateless in the engine (a slot is due iff its time falls in `(last successful run, now]`) and not something a task can ask about from inside itself.
+The freshness question was weekly because drift is measured in days and a daily re-ask could not change its answer. Merged, that argument buys nothing: the walk runs daily for the coverage question regardless, and gating half the task on a cadence it computed itself would reimplement dueness — which the engine owns (the tick instantiates a task's item when its anchor comes) and is not something a task can ask about from inside itself.
 
 So the freshness probe runs daily too, at roughly **two extra REST reads per covered member** on the six days that used to be coverage-only. **This merge is not an API-call saving and is not claimed as one.** What it buys is one roster instead of two that can disagree; drift converging within a day rather than a week is the side benefit.
 
@@ -60,6 +60,6 @@ Its *implementation* scans every repo under the owner, but its declaration, sche
 
 ## Failure is loud, and now per-question
 
-A repo whose **declaration** cannot be read or parsed is `unknown` to **both** questions — it is the input they share. A repo whose **mount probe** fails (the scheduler read, canon's compare) is `unknown` to the **freshness** question alone: the coverage question already read that declaration successfully and keeps its verdict.
+A repo whose **declaration** cannot be read or parsed is `unknown` to **both** questions — it is the input they share. A repo whose **mount probe** fails (the stamp read, canon's compare) is `unknown` to the **freshness** question alone: the coverage question already read that declaration successfully and keeps its verdict.
 
-Either kind fails the run: no issue is opened for an unknown repo, no open issue is closed on its behalf, and the sweep exits non-zero with both halves' unknowns named together. The scheduler treats a non-zero prework subprocess as a failed task and converges a `needs-human` issue, so an unusable token or scope escalates rather than silently shrinking the fleet.
+Either kind fails the run: no issue is opened for an unknown repo, no open issue is closed on its behalf, and the sweep exits non-zero with both halves' unknowns named together. The executor treats a non-zero prework subprocess as a failed task and converges the item to `needs-human`, so an unusable token or scope escalates rather than silently shrinking the fleet.

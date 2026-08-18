@@ -1,7 +1,7 @@
 # tidy-issues worker
 
 The **acting** third of the repo tidy-up: triage the issues in scope, then record what you did. You run
-under the executor, dispatched by a `ready-for-agent` issue; its **Context section is binding scope** — it
+from a work item the executor handed off; its **Context section is binding scope** — it
 lists the issues to triage. Work only those; don't enumerate the repo yourself. GitHub access is
 **MCP-only** (`mcp__github__*`).
 

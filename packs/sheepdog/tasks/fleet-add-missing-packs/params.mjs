@@ -17,11 +17,11 @@
 //   the weekly run   task.mjs's `prework` command line — `--scan-for-needed-packs=true
 //                    --repos=all-covered-members`, which is the declaration saying, in the
 //                    file a reader opens first, exactly what the cadence does.
-//   a FORCED run     the scheduler's manual-run override bag (`CLAUDINITE_OVERRIDES`,
-//                    engine/scheduler/run.mjs), which the prework subprocess inherits.
-//                    Overrides WIN over the command line, because the whole point of a
-//                    hand-started run is to run this task as something other than what
-//                    the weekly declaration says.
+//   a FORCED run     a hand-created item's Context (`CLAUDINITE_CONTEXT`, parsed by
+//                    the pack's param-bag.mjs), which the prework subprocess inherits.
+//                    Context parameters WIN over the command line, because the whole
+//                    point of a hand-created item is to run this task as something
+//                    other than what the weekly declaration says.
 //
 // A default would defeat both: the reason the fleet-wide scan is safe is that it is
 // spelled out where it is scheduled, and the reason a force is safe is that every repo it
@@ -29,15 +29,15 @@
 // weekly run sends it explicitly, so no call site can reach the fleet by omission.
 //
 // Pure: parsing and validation only, no I/O, no environment reads. The worker hands it
-// `argv` and the parsed override bag; every rejection is a thrown Error whose message is
-// the fix.
+// `argv` and the parsed Context parameters; every rejection is a thrown Error whose
+// message is the fix.
 
 // The literal a caller sends to mean "every covered, non-dormant member under the
 // configured owner" — the scan's fleet-wide scope, said out loud.
 export const ALL_MEMBERS = 'all-covered-members';
 
-// A list value is SPACE-separated, never comma-separated: the override bag splits keys on
-// commas (`parseOverrides`), so a comma inside a value would silently become a second,
+// A list value is SPACE-separated, never comma-separated: the parameter bag splits keys
+// on commas (`param-bag.mjs`), so a comma inside a value would silently become a second,
 // unknown key. Both call sites use the same splitter so the two are never subtly
 // different.
 const list = (raw) => String(raw ?? '').split(/\s+/).map((s) => s.trim()).filter(Boolean);
@@ -65,7 +65,7 @@ function bool(name, raw) {
 }
 
 // `<packId>.<key>=<value>` — the shape both the config and the answer entries take in the
-// override bag, where a comma cannot appear in a value. Keys may be dotted
+// parameter bag, where a comma cannot appear in a value. Keys may be dotted
 // (`pack.a.b=v` → `{ a: { b: 'v' } }`) so a nested config is expressible without JSON.
 function entry(kind, raw) {
   const text = String(raw).trim();
@@ -99,13 +99,13 @@ function foldEntries(kind, raws) {
   return out;
 }
 
-// Every override key whose name starts with `prefix` — `PACK_CONFIG`, `PACK_CONFIG_2`,
+// Every parameter key whose name starts with `prefix` — `PACK_CONFIG`, `PACK_CONFIG_2`,
 // `PACK_CONFIG_store`, … . The bag is a flat map with one value per key, so a run that
 // sets two config keys on one pack needs two DISTINCT keys; the suffix is free-form
 // because its only job is to make them distinct. Sorted, so the report and any error
 // name them in a stable order.
-function prefixed(overrides, prefix) {
-  return Object.keys(overrides).filter((k) => k.startsWith(prefix)).sort().map((k) => overrides[k]);
+function prefixed(params, prefix) {
+  return Object.keys(params).filter((k) => k.startsWith(prefix)).sort().map((k) => params[k]);
 }
 
 // The whole contract: what this run is, resolved from the two call sites.
@@ -114,15 +114,15 @@ function prefixed(overrides, prefix) {
 //
 // `repos` is null when `allMembers` is true — a caller that wants the fleet gets the
 // keyword's meaning, never a list it could accidentally treat as complete.
-export function parseParams({ argv = [], overrides = {} } = {}) {
+export function parseParams({ argv = [], params = {} } = {}) {
   const cli = parseArgv(argv);
-  const pick = (flag, key) => (overrides[key] !== undefined ? overrides[key] : cli[flag]);
+  const pick = (flag, key) => (params[key] !== undefined ? params[key] : cli[flag]);
 
   const rawScan = pick('scan-for-needed-packs', 'SCAN_FOR_NEEDED_PACKS');
   if (rawScan === undefined) {
     throw new Error('scan_for_needed_packs was not sent. This parameter has no default: the weekly run '
       + 'sends `--scan-for-needed-packs=true` from task.mjs, and a forced run sends '
-      + '`SCAN_FOR_NEEDED_PACKS=false` in the scheduler\'s overrides.');
+      + '`--context "SCAN_FOR_NEEDED_PACKS=false"` when the item is created.');
   }
   const scan = bool('scan_for_needed_packs', rawScan);
 
@@ -130,7 +130,7 @@ export function parseParams({ argv = [], overrides = {} } = {}) {
   if (rawRepos === undefined || !list(rawRepos).length) {
     throw new Error(`repos was not sent. This parameter has no default: send \`${ALL_MEMBERS}\` for the whole `
       + 'fleet (what the weekly run sends) or a space-separated list of repo names (bare `Name` or '
-      + '`owner/Name`). Space-separated, not comma-separated — the override bag splits keys on commas.');
+      + '`owner/Name`). Space-separated, not comma-separated — the parameter bag splits keys on commas.');
   }
   const names = list(rawRepos);
   const allMembers = names.includes(ALL_MEMBERS);
@@ -139,8 +139,8 @@ export function parseParams({ argv = [], overrides = {} } = {}) {
   }
 
   const addPacks = list(pick('add-packs', 'ADD_PACKS'));
-  const packConfig = foldEntries('PACK_CONFIG', prefixed(overrides, 'PACK_CONFIG'));
-  const packAnswers = foldEntries('PACK_ANSWER', prefixed(overrides, 'PACK_ANSWER'));
+  const packConfig = foldEntries('PACK_CONFIG', prefixed(params, 'PACK_CONFIG'));
+  const packAnswers = foldEntries('PACK_ANSWER', prefixed(params, 'PACK_ANSWER'));
 
   if (!scan && !addPacks.length) {
     throw new Error('this run would do nothing: scan_for_needed_packs is false and no packs were named. '
@@ -168,9 +168,9 @@ export function parseParams({ argv = [], overrides = {} } = {}) {
     addPacks,
     packConfig,
     packAnswers,
-    // A run is FORCED when the override bag steered it — the flag the report leads with,
-    // because "who asked for this" is the first thing a reader of an unattended run's
-    // output needs to know.
-    forced: Object.keys(overrides).some((k) => k !== 'FORCE_TASKS'),
+    // A run is FORCED when a Context parameter steered it — the flag the report leads
+    // with, because "who asked for this" is the first thing a reader of an unattended
+    // run's output needs to know.
+    forced: Object.keys(params).length > 0,
   };
 }

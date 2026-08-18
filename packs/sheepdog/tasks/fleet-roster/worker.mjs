@@ -1,4 +1,4 @@
-// The fleet-roster prework entry point — the script the scheduler runs as
+// The fleet-roster prework entry point — the script the executor runs as prework,
 // `node worker.mjs` (cwd = this task dir, bounded by prework_timeout).
 //
 // It holds NO sweep logic. The sweep is `check-fleet-roster.mjs`, its SIBLING in this
@@ -9,15 +9,15 @@
 //
 // Failure is the escalation path. The sweep THROWS when a repo could not be classified
 // ("unknown is neither uncovered nor behind") or when its config/token is unusable;
-// this worker turns that into a non-zero exit, and the scheduler treats a non-zero
-// prework subprocess as a failed task — it converges one open `needs-human` issue for
-// the task family (engine/scheduler/run.mjs) instead of handing off to any agent.
+// this worker turns that into a non-zero exit, and the executor treats a non-zero
+// prework subprocess as a failed task — it converges the item to `needs-human`
+// (engine/scheduler/queue/executor.mjs) instead of handing off to any agent.
 
 import { pathToFileURL } from 'node:url';
 import { main as sweep } from './check-fleet-roster.mjs';
 
-const slotId = process.env.CLAUDINITE_SLOT_ID || '';
-const log = (s) => console.log(`fleet-roster${slotId ? ` [${slotId}]` : ''}: ${s}`);
+const item = process.env.CLAUDINITE_ITEM || '';
+const log = (s) => console.log(`fleet-roster${item ? ` [#${item}]` : ''}: ${s}`);
 
 export async function main() {
   // The sweep resolves the HOME repo — the one whose sheepdog pack entry carries

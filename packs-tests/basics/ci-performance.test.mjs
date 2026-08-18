@@ -9,7 +9,7 @@ import {
   MIN_RUNS_PER_WINDOW, REGRESSION_SECONDS,
 } from '../../packs/basics/tasks/ci-performance/worker.mjs';
 import decl from '../../packs/basics/tasks/ci-performance/task.mjs';
-import { runPrecondition } from '../../engine/scheduler/run.mjs';
+import { evaluatePrecondition } from '../../engine/scheduler/queue/executor.mjs';
 
 const NOW = Date.parse('2026-08-15T12:00:00Z');
 const daysAgo = (d) => new Date(NOW - d * 86400 * 1000).toISOString();
@@ -113,13 +113,13 @@ test('an empty ledger produces a report rather than an error', () => {
   assert.match(reportBody(summary, { repo: 'o/r', nowIso: 'now' }), /no completed runs/);
 });
 
-// Driven through runPrecondition — the scheduler's own caller — rather than by
+// Driven through evaluatePrecondition — the executor's own caller — rather than by
 // calling the precondition directly. Calling it directly proves only that it does
 // what the test imagines it is passed: this precondition was first written to take
 // `{ signals }`, its direct-call test passed, and the real caller (which passes the
 // signals object itself) got `precondition threw` on every run.
 test('the precondition gates on movement in the window, not on CI existing', () => {
-  const verdict = (signals) => runPrecondition({ decl }, signals, {});
+  const verdict = (signals) => evaluatePrecondition({ decl }, signals, {});
   assert.equal(verdict({ commits: { count: 0 }, prs: { touched: [] } }).run, false);
   assert.equal(verdict({ commits: { count: 4 }, prs: { touched: [] } }).run, true);
   assert.equal(verdict({ commits: { count: 0 }, prs: { touched: [7] } }).run, true);

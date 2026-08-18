@@ -26,14 +26,13 @@ the surface a session actually has (an unattended or web session carries no `gh`
 actions_run_trigger(method: "run_workflow", owner: …, repo: …,
                     workflow_id: "claudinite-scheduler.yml",
                     ref: "main",                                  # see below
-                    inputs: { overrides: "FORCE_TASKS=update" })
+                    inputs: { wake: "update" })
 ```
 
 `ref` is the **default branch**, not whatever branch you are on: a `workflow_dispatch` always runs the
 workflow definition from the default branch, so dispatching against a feature branch neither picks up
 a workflow you only added there nor changes which definition runs. In a local session with `gh`
-authenticated, `gh workflow run claudinite-scheduler.yml -f overrides=FORCE_TASKS=update` is the same
-call.
+authenticated, `gh workflow run claudinite-scheduler.yml -f wake=update` is the same call.
 
 Then **watch it to a terminal state** — a forced run is how you see a change to scheduled machinery
 work *now*, and parking it on "check tomorrow" is the failure this lever exists to prevent. A

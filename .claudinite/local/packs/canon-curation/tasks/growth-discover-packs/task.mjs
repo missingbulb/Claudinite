@@ -23,14 +23,11 @@ export default {
   id: 'growth-discover-packs',
   frequency: 'weekly',                   // the fleet's stacks are slow-moving — a weekly sweep, not a daily one
   precondition_signals: ['fleet'],       // canon-only aggregate: who the members are and what they declare
-  // @deprecated-ok — sanctioned holdout: the canon's ordinary executor does not hold
-  // the fleet, and this task reads every member's tree, so its dispatch must reach
-  // the separate fleet routine (ready-for-agent-fleet).
-  session_scope: 'fleet',
-  // …and its queue-dispatch replacement (tasks-dispatch DESIGN §12): reach is a
-  // property of WHICH endpoint the executor calls, so a task needing more than an
-  // ordinary session names one. The key resolves in this repo's own config; until
-  // it is configured, hand-off converges the item to triage naming what is missing.
+  // This task reads every member's tree, which an ordinary session in this repo does
+  // not reach (tasks-dispatch DESIGN §12). Reach is a property of WHICH endpoint the
+  // hand-off calls, so a task needing more than an ordinary session names one; the
+  // key resolves in this repo's own config, and until it is configured the hand-off
+  // converges the item to triage naming what is missing.
   invocation_endpoint: 'fleet',
   agent_model: 'opus',                   // judging what is genuinely canon-worthy and authoring a pack is heavy judgment
   expected_outcome: 'open-pr',           // a new canon pack every repo will read — owner-approved, never auto-merged

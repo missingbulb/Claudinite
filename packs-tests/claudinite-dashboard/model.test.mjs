@@ -38,7 +38,7 @@ const item = (over = {}) => ({
 test('the engine modules the page imports stay browser-pure', async () => {
   const imported = [
     'engine/checks/helpers/code-scanning.mjs',
-    'engine/scheduler/slots.mjs',
+    'engine/scheduler/calendar.mjs',
     'engine/scheduler/queue/anchors.mjs',
     'engine/scheduler/queue/leases.mjs',
     'engine/scheduler/queue/work-item.mjs',

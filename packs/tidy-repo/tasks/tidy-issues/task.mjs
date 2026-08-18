@@ -9,7 +9,7 @@
 
 export default {
   id: 'tidy-issues',
-  frequency: 'daily',                       // the 04:00 slot (DESIGN §2) — the one tidy dimension that ACTS, so latency matters
+  frequency: 'daily',                       // the 04:00 anchor (DESIGN §2) — the one tidy dimension that ACTS, so latency matters
   precondition_signals: ['issues', 'commits'],
   agent_model: 'sonnet',                    // "implemented in main" is a judgment call against main's current content
   expected_outcome: 'none',                 // writes ISSUES only (the triage actions + its own tracker) — never a PR
@@ -38,9 +38,9 @@ export default {
     const open = (signals.issues?.open ?? []).map((i) => i.number);
     const touched = signals.issues?.touched ?? [];
 
-    // The scheduler's issues signal already hides the dispatch issues and the
-    // standing trackers, so neither can ever be triaged as project work — nor can
-    // either of them count as the touch that triggers a run.
+    // The issues signal already hides Claudinite's own issues — the queue's work
+    // items and the standing trackers — so none can ever be triaged as project
+    // work, nor count as the touch that triggers a run.
     if (!touched.length) return { run: false, reason: 'no issues touched in the window' };
 
     const scope = substantive ? open : touched;

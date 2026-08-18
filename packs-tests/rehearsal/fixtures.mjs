@@ -44,6 +44,13 @@
 //                 vendor + the sweeps, never the scheduler, so that a lingering
 //                 field still routes to the fleet label is a unit test's job
 //                 (engine-tests/scheduler/session-scope.test.mjs).
+//   prework-env   a local pack whose agentless task carries a WORKER — the half no
+//                 other shape has, and the half `task-prework-env` (blocking, core)
+//                 judges. A member's task code is member-owned and nothing converges
+//                 it, so a rule that reads it can turn a member red overnight through
+//                 no act of its own; this shape holds that harmless by carrying a
+//                 worker that reads the prework contract's variables and nothing else,
+//                 which is what every member's task code already does.
 //   growth-member a member enrolled in the growth lifecycle, carrying the local
 //                 packs its capture runs write. The growth stages ship blocking
 //                 work rules scoped to those runs, so this is the shape that
@@ -199,6 +206,43 @@ const LEGACY_TASK = `export default {
 };
 `;
 
+const PACK_PREWORK_ENV = `export default {
+  id: 'fixture-prework',
+  ruleRoutingGuidance: {
+    belongs: 'the fixture project\\'s own scheduled work, for rehearsal purposes only',
+    excludes: 'anything portable — that belongs in a canon pack',
+  },
+  detect: null,
+  marker: null,
+  prose: 'RULES.md',
+  worldRules: [],
+  workRules: [],
+};
+`;
+
+const PREWORK_TASK = `export default {
+  id: 'prework-only',
+  frequency: 'daily',
+  precondition_signals: [],
+  agent_model: 'none',
+  expected_outcome: 'none',
+  prework: 'node worker.mjs',
+  prework_timeout: 60,
+  precondition() {
+    return { run: false, reason: 'a rehearsal fixture task — never runs' };
+  },
+};
+`;
+
+// Reads the prework contract and nothing else — the shape a member's own worker
+// has. `task-prework-env` is blocking, so a member carrying a worker like this
+// must stay green the night that rule arrives.
+const PREWORK_WORKER = `const item = process.env.CLAUDINITE_ITEM || '';
+const root = process.env.CLAUDINITE_REPO_ROOT;
+const params = process.env.CLAUDINITE_CONTEXT ?? '';
+console.log(\`fixture [#\${item}] \${root} \${params.length}\`);
+`;
+
 export const FIXTURES = [
   {
     name: 'local-rules',
@@ -235,6 +279,18 @@ export const FIXTURES = [
       '.claudinite/local/packs/fixture-legacy/tasks/legacy-scoped/task.mjs': LEGACY_TASK,
       '.claudinite/local/packs/fixture-legacy/tasks/legacy-scoped/task.md':
         '# legacy-scoped\n\nA rehearsal fixture task. Its precondition never fires.\n',
+    },
+  },
+  {
+    name: 'prework-env',
+    why: 'a local pack whose task carries a worker — the member-owned code `task-prework-env` reads, and the half no other shape has',
+    files: {
+      'README.md': '# fixture-prework-env\n\nA rehearsal fixture.\n',
+      '.claudinite-checks.json': checks(['basics', 'local/fixture-prework']),
+      '.claudinite/local/packs/fixture-prework/pack.mjs': PACK_PREWORK_ENV,
+      '.claudinite/local/packs/fixture-prework/RULES.md': '# fixture-prework\n\nNo standing rules.\n',
+      '.claudinite/local/packs/fixture-prework/tasks/prework-only/task.mjs': PREWORK_TASK,
+      '.claudinite/local/packs/fixture-prework/tasks/prework-only/worker.mjs': PREWORK_WORKER,
     },
   },
   {

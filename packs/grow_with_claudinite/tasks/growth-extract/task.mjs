@@ -8,7 +8,7 @@
 // procedure). Worker: task.md.
 //
 // The two halves were separate tasks (growth-extract + conversation-extract)
-// firing in the same daily slot, each opening its own PR against the same local
+// firing at the same daily anchor, each opening its own PR against the same local
 // packs on the same night. They shared the lesson bar, the promotion ladder, the
 // dedup surface and the landing mechanics, so splitting them bought nothing and
 // cost a second opus dispatch, a second PR, and two runs deduping against a
@@ -18,12 +18,12 @@
 
 export default {
   id: 'growth-extract',
-  frequency: 'daily-1h',           // the 03:00 slot — lessons captured from an already-converged mount (DESIGN §2)
-  // …and, where the repo dispatches through the work-item queue, the ordering the
-  // anchor hour only IMPLIES, declared (tasks-dispatch DESIGN §9): this task reads
-  // a mount `core/update` converges, so it yields while that task's item is live
-  // this cycle and runs the moment it converges — or rolls. Ignored under slot
-  // dispatch, where the staggered anchors carry the same intent.
+  frequency: 'daily-1h',           // the 03:00 anchor — lessons captured from an already-converged mount (DESIGN §2)
+  // …and the ordering the anchor hour only IMPLIES, declared (tasks-dispatch
+  // DESIGN §9): this task reads a mount `core/update` converges, so it yields while
+  // that task's item is live this cycle and runs the moment it converges — or
+  // rolls. The staggered anchor hours express the same intent and cannot enforce
+  // it; this can.
   after: ['core/update'],
   precondition_signals: ['commits', 'prs', 'issues', 'conversationLogs'],
   agent_model: 'opus',                   // generalizing/curating lessons is the heaviest judgment, and the default delivery lands the PR with no human review

@@ -67,10 +67,12 @@ test('aggregate carries each member\'s current day window, for the fast view', (
 });
 
 test('aggregate keeps each member\'s task invocations at week x repo x task grain', () => {
-  // A different population from everything else in the file: these come from each
-  // member's SCHEDULER, not from a captured session, so they are a census of scheduled
-  // work. The fleet view is what tells "this task's precondition never fires here" from
-  // "it never fires anywhere" — the second is a broken task, the first is a quiet repo.
+  // A different population from everything else in the file: these came from each
+  // member's retired SLOT SCHEDULER, not from a captured session. Nothing writes that
+  // record any more (#974, #994), so the aggregation is kept for the rows members have
+  // already folded and the file's note must say plainly that they are history — a
+  // reader comparing them against a later period would read a dead source as a fleet
+  // that stopped working.
   const taskRow = (over) => ({ agent: 0, prework: 0, skipped: 0, failed: 0, deferred: 0, ...over });
   const file = aggregate({
     members: [
@@ -88,7 +90,8 @@ test('aggregate keeps each member\'s task invocations at week x repo x task grai
   assert.equal(weekRow(file, '2026-W30', 'owner/beta').tasks['tidy-repo/tidy-issues'].agent, 0,
     'the same task did no agent work in the other member — visible, not absent');
   assert.deepEqual(weekRow(file, '2026-W30', 'owner/gamma').tasks, {});
-  assert.match(file._note, /census of\s+scheduled work/, 'and the file states that these rows are not a sample');
+  assert.match(file._note, /`tasks` rows are HISTORICAL/,
+    'and the file says so — a reader must not compare them against a period after the retirement');
 });
 
 test('aggregate keeps the check activations at the same week x repo x rule grain', () => {

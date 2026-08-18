@@ -7,7 +7,7 @@ import { NEEDS_HUMAN } from './engine-update.mjs';
 // The rule the design is emphatic about: **every non-green end looks the same**.
 // An unanswered interview, an agentic repair that left checks red, a migration that
 // could not complete, a pack whose engine is too old — none of them is a special
-// case with its own handling. The PR stays open, the dispatch issue is labelled,
+// case with its own handling. The PR stays open, the work item is labelled,
 // the run stops. Interviews were one instance of that rule, never the rule.
 //
 // PRECEDENCE, most-specific first, and the order is the point:
@@ -65,7 +65,7 @@ export function terminalFor(outcome) {
 //
 // So the apply stage is told three things, each from where it belongs: WHY, as
 // `reason.detail` from the terminal below; WHAT TO DO, from task.md, which the
-// dispatch issue's first line links; and WHAT TO DO IT TO, from the branch — the
+// work item's first line links; and WHAT TO DO IT TO, from the branch — the
 // staged workflow files and the migration record named in the reason, both of which
 // the session reads out of the repository like any other fact about it.
 

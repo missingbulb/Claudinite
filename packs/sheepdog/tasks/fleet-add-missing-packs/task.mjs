@@ -20,7 +20,7 @@
 //   ADD_PACKS=<ids>              the owner already decided: REQUEST these packs,
 //                                with this config and these interview answers, in
 //                                these named repos. What a FORCED run sends, through
-//                                the scheduler's override bag — see worker.mjs for
+//                                the item's Context — see worker.mjs for
 //                                the full override set and params.mjs for why
 //                                neither parameter has a default.
 // Both converge the same protocol issues (protocol.mjs) and fire the same
@@ -58,9 +58,10 @@ export default {
   // answer changed. Cheap to no-op: a fleet that declares what it should converges
   // nothing, fires nobody, and the run is one read-only sweep.
   //
-  // A FORCED run never consults this — the engine records a forced task as run with
-  // its precondition unevaluated — which is exactly what makes the override bag the
-  // way to run this task as something other than its weekly self.
+  // A hand-created item runs this precondition too (the queue evaluates it at pick,
+  // tasks-dispatch DESIGN §6.4), and it says yes unconditionally — so what makes a
+  // forced run different is its Context, not a bypass: the parameters there are what
+  // run this task as something other than its weekly self.
   precondition() {
     return { run: true, reason: 'weekly fleet scan for packs a member is missing (no-ops cheaply on a fleet whose members already declare what their shape suspects)' };
   },

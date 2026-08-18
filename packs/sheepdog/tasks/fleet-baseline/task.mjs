@@ -1,28 +1,27 @@
 // sheepdog task: fleet-baseline — the enforcer's MANUAL lever: force every covered
-// member (or the ones named) to baseline NOW instead of at its next hourly slot.
+// member (or the ones named) to baseline NOW instead of at its next anchor.
 //
 // `frequency: 'manual'` — the first task on the non-cadence (#749). It answers no
-// recurring question, so it is never due on any schedule; the ONLY way it runs is a
-// hand-started scheduler run carrying `FORCE_TASKS=fleet-baseline`, optionally with
-// its parameters in the same override bag:
+// recurring question, so the tick never instantiates it; the ONLY way it runs is a
+// work item created by hand, optionally carrying its parameters as Context lines:
 //
-//   FORCE_TASKS=fleet-baseline
-//   REPOS=Alpha Beta                (optional — omit for every covered member; space-separated)
-//   DRY_RUN=true                    (optional — report what would fire, fire nothing)
-//   INCLUDE_DORMANT=true            (optional — dormant members are skipped by default)
+//   create-work-item sheepdog/fleet-baseline
+//   --context "REPOS=Alpha Beta"        (optional — omit for every covered member; space-separated)
+//   --context "DRY_RUN=true"            (optional — report what would fire, fire nothing)
+//   --context "INCLUDE_DORMANT=true"    (optional — dormant members are skipped by default)
 //
 // This replaces the pack's standalone fleet-baseline WORKFLOW (retired 2026-08-11,
 // #749). The workflow existed for two reasons that are both gone: its FOLLOW half
-// (watch every member to a terminal state — a 45-minute sleep no serialized scheduler
-// run should hold) is given up, and its typed `workflow_dispatch` inputs are carried
-// by the override bag instead. What the workflow shape COST is what this shape
+// (watch every member to a terminal state — a 45-minute sleep no serialized run
+// should hold) is given up, and its typed `workflow_dispatch` inputs are carried by
+// the item's Context instead. What the workflow shape COST is what this shape
 // recovers: the `.github/` managed copy was the one file the nightly converge could
 // not push (#649's withhold-and-hand-to-the-agent path), while a task rides the
 // ordinary vendor refresh like everything else.
 //
 // `agent_model: 'none'` — pure code. The whole pass is the dispatch sweep
 // (force-fleet-baseline.mjs, invoked by worker.mjs): enumerate the fleet over the
-// PAT, fire each covered member's own scheduler with FORCE_TASKS=baselining, report
+// PAT, wake each covered member's own `baselining` item, report
 // the full roster. Nothing agentic happens HERE — each member's own converge may hand
 // off to that member's own agent, which is the fan-out model's point: the enforcer
 // dispatches, the member executes, and no agent anywhere needs cross-repo access.

@@ -36,7 +36,7 @@ import { finding } from '../../../../engine/checks/helpers/findings.mjs';
 // every canon commit would be turned off within a week, and then it would be
 // worth nothing on the day it mattered.
 const SCHEMA = 'engine/pack_loader/pack-schema.mjs';
-const STUB = 'engine/scheduler/stubs/claudinite-scheduler.yml';
+const STUB = 'engine/scheduler/stubs/claudinite-tick.yml';
 // A record folder, not the machinery beside it: registry/apply edits are engine
 // work and carry no member across anything. A record lives under the flow that
 // owns it — the engine's own, or one pack's — so both homes count (#768).

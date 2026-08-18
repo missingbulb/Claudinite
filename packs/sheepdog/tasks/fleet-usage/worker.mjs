@@ -1,4 +1,4 @@
-// The fleet-usage preprocessing entry point — the script the scheduler runs as
+// The fleet-usage prework entry point — the script the executor runs as prework,
 // `node worker.mjs` (cwd = this task dir, bounded by prework_timeout).
 //
 // It holds NO aggregation logic. The sweep is `aggregate-fleet-usage.mjs`, its
@@ -14,9 +14,9 @@
 //
 // Failure is the escalation path. The sweep THROWS when its config or token is
 // unusable, or when enumeration comes back empty; this worker turns that into a
-// non-zero exit, and the scheduler treats a non-zero preprocessing subprocess as a
-// failed task — it converges one open `needs-human` issue for the task family
-// (engine/scheduler/run.mjs) instead of handing off to any agent.
+// non-zero exit, and the executor treats a non-zero prework subprocess as a failed
+// task — it converges the item to `needs-human`
+// (engine/scheduler/queue/executor.mjs) instead of handing off to any agent.
 
 import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -24,8 +24,8 @@ import { deliverGenerated, baseTip, readAt, remoteUrl } from '../../../../engine
 import { main as sweep, inactiveToday, renderFleetFile, FLEET_USAGE_PATH } from './aggregate-fleet-usage.mjs';
 
 const PR_BRANCH_PREFIX = 'claudinite/fleet-usage';
-const slotId = process.env.CLAUDINITE_SLOT_ID || '';
-const log = (s) => console.log(`fleet-usage${slotId ? ` [${slotId}]` : ''}: ${s}`);
+const item = process.env.CLAUDINITE_ITEM || '';
+const log = (s) => console.log(`fleet-usage${item ? ` [#${item}]` : ''}: ${s}`);
 
 // `generatedAt` changes every day, so comparing the whole file would open a PR daily
 // even on a fleet where nothing moved. Compare everything else: an unchanged fleet
@@ -121,7 +121,7 @@ export async function main() {
     + `${pr.merged ? ' (landed)' : pr.delivery === 'review' ? ' (left for review)' : ''}`);
 }
 
-// Run only when invoked directly (the scheduler's `node worker.mjs`), never on import.
+// Run only when invoked directly (prework's `node worker.mjs`), never on import.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((e) => { console.error(`fleet-usage failed: ${e.message}`); process.exit(1); });
 }

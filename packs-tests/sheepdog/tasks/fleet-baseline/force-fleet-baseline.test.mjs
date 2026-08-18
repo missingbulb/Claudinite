@@ -7,13 +7,12 @@ import { parseRepoFilter, classifyScope, FORCED_TASK } from '../../../../packs/s
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../../../..');
 import { classifyDispatch } from '../../../../packs/sheepdog/fleet-api.mjs';
-import { parseOverrideBag } from '../../../../packs/sheepdog/tasks/fleet-baseline/worker.mjs';
-import { parseOverrides } from '../../../../engine/scheduler/run.mjs';
+import { parseParamBag } from '../../../../packs/sheepdog/param-bag.mjs';
 
 // The dispatch sweep's pure decision tables. The I/O half is one enumeration and
 // one POST per member over primitives fleet-api.test.mjs covers; what must not
 // drift silently is WHO is in scope, WHAT a dispatch status means, and HOW the
-// override bag's parameters reach the sweep.
+// item's Context parameters reach the sweep.
 
 test('the forced member-side task is one a member actually runs', () => {
   // `update` since #768 Phase 5 retired the task this lever used to force. Pinned
@@ -77,15 +76,29 @@ test('classifyDispatch: every status is a DIFFERENT thing for the reader to do',
   assert.equal(classifyDispatch(500).state, 'error');
 });
 
-// --- the worker's override plumbing ---------------------------------------------
+// --- the worker's parameter plumbing --------------------------------------------
+// The sweep's two SAFETY knobs live here: `REPOS` bounds the blast radius and
+// `DRY_RUN` withholds the writes. Under the slot scheduler they rode
+// `CLAUDINITE_OVERRIDES`, which the queue never sets — so both read as absent and
+// every run was unscoped and live (#974). They ride the item's Context now, and
+// what this pins is that the operator's line survives the parse.
 
-test('the worker\'s bag parser agrees with the engine\'s, and maps the sweep\'s parameters', () => {
-  const raw = 'FORCE_TASKS=fleet-baseline,REPOS=Alpha Beta,DRY_RUN=true,INCLUDE_DORMANT';
-  assert.deepEqual(parseOverrideBag(raw), parseOverrides(raw));
-  const bag = parseOverrideBag(raw);
+test('the sweep\'s parameters come off the item\'s Context lines', () => {
+  const context = ['REPOS=Alpha Beta', 'DRY_RUN=true', 'INCLUDE_DORMANT'].join('\n');
+  const bag = parseParamBag(context);
   assert.equal(bag.REPOS, 'Alpha Beta');       // space-separated survives; commas would not
   assert.equal(bag.DRY_RUN, 'true');
   assert.equal(bag.INCLUDE_DORMANT, 'true');   // bare key ⇒ 'true'
+});
+
+test('the prose an item is born with contributes no parameter', () => {
+  // The failure mode this forbids: a birth note or a precondition's reason parsed as
+  // keys, so an unparameterized run reports itself as steered — or worse, a stray
+  // word lands on a key that means something.
+  assert.deepEqual(parseParamBag(
+    'Created by hand — no precondition asserts there is work to do. Do only what the '
+    + 'task file specifies, and converge to a no-op if there is nothing.',
+  ), {});
 });
 
 // --- the cross-repo forcing protocol (#929) -------------------------------------
@@ -93,8 +106,8 @@ test('the worker\'s bag parser agrees with the engine\'s, and maps the sweep\'s 
 // workflow declares the inputs it will accept. GitHub 422s a dispatch naming an
 // undeclared input, so these two spellings ARE the protocol — and they live in
 // different trees, one shipped as a stub and one sent from a pack. When they last
-// disagreed (the flip dropped the slot stub's `overrides` without porting the
-// caller) every fleet-wide force refused, and the only symptom was a per-member
+// disagreed (the flip dropped the slot workflow's `overrides` input without porting
+// the caller) every fleet-wide force refused, and the only symptom was a per-member
 // error string that blamed the member's repo settings.
 
 test('the input fleet-api sends is one the tick stub declares', async () => {

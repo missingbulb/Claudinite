@@ -53,32 +53,35 @@ config schema — is [README.md](README.md). This file is what a session **here*
 
 ## Running the manual levers
 
-- **Pushing canon to the whole fleet now** — press *Run workflow* on this repo's vendored
-  scheduler and force the task:
+- **Pushing canon to the whole fleet now** — create the work item, from a checkout of this repo:
 
   ```
-  overrides: FORCE_TASKS=fleet-baseline
+  node .claudinite/shared/engine/scheduler/queue/create-work-item.mjs sheepdog/fleet-baseline
   ```
 
-  Add `REPOS=owner/a,owner/b` to narrow it, `DRY_RUN=true` to see the list without dispatching, or
-  `INCLUDE_DORMANT=true` to reach members that stopped their own scheduler on purpose. It queues one
+  Add `--context "REPOS=owner/a owner/b"` to narrow it (space-separated: a Context line splits on
+  commas), `--context "DRY_RUN=true"` to see the list without dispatching, or
+  `--context "INCLUDE_DORMANT=true"` to reach members that stopped their own scheduler on purpose.
+  Both knobs are read from the item's Context and nowhere else — an item created without them runs
+  unscoped and live. It queues one
   run per member and does not wait; each member reports its own outcome in its own repo. A member
   with nothing to do converges to a cheap no-op, so over-using it is wasteful rather than unsafe.
 
-- **Catching the digest up after an outage** — same button, with the day count:
+- **Catching the digest up after an outage** — the same lever, with the day count:
 
   ```
-  overrides: FORCE_TASKS=fleet-digest,DIGEST_BACKFILL_DAYS=7
+  node .claudinite/shared/engine/scheduler/queue/create-work-item.mjs sheepdog/fleet-digest \
+    --context "DIGEST_BACKFILL_DAYS=7"
   ```
 
   It covers the N most recent complete UTC days, oldest first, skips any day that already has a
   brief, and is bounded at 30 days a run — so it is safe to re-run and safe to overlap with the
   daily task.
 
-- **Adding a pack across the fleet** — force `fleet-add-missing-packs` with `ADD_PACKS=…`
-  rather than editing anything. No pack is named anywhere in this pack's code: every id comes from
-  config or from the run's own overrides, which is what keeps the enforcer from becoming a second
-  place packs are known.
+- **Adding a pack across the fleet** — create a `fleet-add-missing-packs` item with
+  `--context "ADD_PACKS=…"` rather than editing anything. No pack is named anywhere in this pack's
+  code: every id comes from config or from the item's own Context, which is what keeps the
+  enforcer from becoming a second place packs are known.
 
 ## Credentials
 

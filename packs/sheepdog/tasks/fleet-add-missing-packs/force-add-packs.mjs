@@ -12,7 +12,7 @@
 //
 // WHAT CROSSES THE REPO BOUNDARY is an issue and a button-press, nothing else: the
 // work-list issue carries the decision (packs, config, the owner's interview answers,
-// rendered as the JSON the declaration will carry), and the scheduler dispatch names
+// rendered as the JSON the declaration will carry), and the wake dispatch names
 // exactly one task. The adoption itself — declaration edit, re-vendor, scaffold, PR —
 // happens in the member, under the member's own declaration's guards.
 //

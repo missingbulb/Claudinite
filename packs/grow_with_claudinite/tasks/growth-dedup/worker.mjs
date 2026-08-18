@@ -194,7 +194,7 @@ export function renderBrief(summary, { sinceIso }) {
   return `${body.slice(0, MAX_BRIEF_BYTES)}\n\n_**Truncated at ${MAX_BRIEF_BYTES} bytes** — this window moved more of the canon than one issue body holds._\n`;
 }
 
-/** The one line the dispatch issue shows for why the agent is here. */
+/** The one line the work item shows for why the agent is here. */
 export function handoffDetail(summary) {
   const packs = Object.keys(summary.packs);
   if (!packs.length) return 'no canon pack moved in the window — comparing against the mounted canon as a whole';

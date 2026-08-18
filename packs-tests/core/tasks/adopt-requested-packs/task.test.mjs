@@ -50,7 +50,7 @@ test('adopt-requested-packs: its precondition admits its own forced item', () =>
   // the enforcer's own item `outcome:obsolete` without running it.
   const v = decl.precondition();
   assert.equal(v.run, true);
-  assert.doesNotMatch(v.reason ?? '', /FORCE_TASKS/, 'the slot-era force lever no longer exists');
+  assert.doesNotMatch(v.reason ?? '', /FORCE_TASKS|CLAUDINITE_OVERRIDES/, 'the slot-era force lever is deleted');
 });
 
 test('adopt-requested-packs: two stages — a cheap gate, then the agent, iff work exists', () => {
@@ -62,7 +62,7 @@ test('adopt-requested-packs: two stages — a cheap gate, then the agent, iff wo
   assert.ok(existsSync(join(taskDir, 'task.md')));
   assert.ok(Number.isInteger(decl.agent_execution_timeout) && decl.agent_execution_timeout > 0);
   // The conditional handoff: a forced run with an empty work list must end quietly,
-  // with no dispatch issue and no agent — a re-fire after the work landed is normal.
+  // with no agent phase — a re-fire after the work landed is normal.
   assert.match(workerSrc, /CLAUDINITE_REQUEST_AGENT/);
 });
 
@@ -84,8 +84,12 @@ test('adopt-requested-packs: the brief routes the HOW to adopt-pack and splits r
   assert.match(briefSrc, /not planned/);
 });
 
-test('adopt-requested-packs: the brief forbids merging, cross-repo reach, and the trigger labels', () => {
+test('adopt-requested-packs: the brief forbids merging, cross-repo reach, and the queue vocabulary', () => {
   assert.match(briefSrc, /Never merge/);
   assert.match(briefSrc, /Never touch another repo/);
-  assert.match(briefSrc, /ready-for-agent-fleet/);
+  // The work list is an ordinary issue. A `task:` label on it would be read as
+  // queue state by the tick and the executor, which is not what anyone applying it
+  // meant.
+  assert.match(briefSrc, /Never apply a `task:` label/);
+  assert.doesNotMatch(briefSrc, /ready-for-agent/, 'the slot dispatch labels are gone');
 });

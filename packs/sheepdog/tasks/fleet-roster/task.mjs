@@ -5,7 +5,7 @@
 //   is that membership still MEANING anything?    → `fleet-drift` issues
 //
 // `agent_model: 'none'` with `prework: 'node worker.mjs'`: the whole pass is
-// deterministic code the scheduler runs as a subprocess — no agent, no dispatch issue.
+// deterministic code the executor runs as prework — no agent phase.
 // The worker calls its sibling, the sweep (check-fleet-roster.mjs), which enumerates
 // the fleet once, reads each repo's declaration once, and hands the resulting roster to
 // the two issue families (adoption-issues.mjs, drift-issues.mjs).
@@ -21,9 +21,9 @@
 // measured in DAYS and a daily re-ask could not change its answer. Merged, that
 // argument buys nothing: the walk runs daily for the coverage question regardless, and
 // the alternative — half the task gated on a weekly cadence it computed itself — would
-// reimplement dueness, which is stateless in the engine (a slot is due iff its time
-// falls in `(last successful run, now]`) and not a thing a task can ask about from
-// inside itself. So the freshness probe now runs daily too: roughly two extra REST
+// reimplement dueness, which the engine owns (the tick instantiates a task's item
+// when its anchor comes) and which is not a thing a task can ask about from inside
+// itself. So the freshness probe now runs daily too: roughly two extra REST
 // reads per covered member on the six days that used to be coverage-only. The merge is
 // not an API-call saving and is not claimed as one — what it buys is one roster instead
 // of two that can disagree. Drift converging within a day rather than a week is the
