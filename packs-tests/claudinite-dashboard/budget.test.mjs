@@ -85,3 +85,11 @@ test('the anonymous viewer is told what being logged in to github.com does not b
   assert.match(a.text, /github\.com/);
   assert.equal(credentialAdvice('user'), null);
 });
+
+// The first load of a fresh tab has not spoken to GitHub yet, so no header has said
+// what the limit is — and that is precisely the load where "you are anonymous, and
+// your github.com session is not a credential" needs saying.
+test('no credential at all reads as anonymous before any header has said so', () => {
+  assert.ok(credentialAdvice('unknown', { hasToken: false }));
+  assert.equal(credentialAdvice('unknown', { hasToken: true }), null);
+});

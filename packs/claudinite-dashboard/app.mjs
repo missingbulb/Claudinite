@@ -139,7 +139,7 @@ async function render() {
   const token = auth.currentToken();
   const plan = await planBudget(token);
   renderRatePill(plan);
-  const advice = credentialAdvice(plan.tier, { oauth: auth.isOAuthConfigured(CONFIG) });
+  const advice = credentialAdvice(plan.tier, { oauth: auth.isOAuthConfigured(CONFIG), hasToken: Boolean(token) });
   if (advice) showNotice(advice.text);
   if (plan.mode === 'frozen' || plan.mode === 'scarce') showNotice(plan.reason);
 

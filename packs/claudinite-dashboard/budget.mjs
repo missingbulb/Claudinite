@@ -126,8 +126,11 @@ export function planPolicy({ remaining = null, limit = null, reset = null, membe
 // What the viewer is told about their credential. The anonymous case is the one worth
 // a sentence: the owner's instinct is that being logged in to github.com in this
 // browser counts, and it does not — api.github.com never sees that session.
-export function credentialAdvice(tier, { oauth = false } = {}) {
-  if (tier === 'anonymous') {
+export function credentialAdvice(tier, { oauth = false, hasToken = false } = {}) {
+  // No credential at all is anonymous whatever the headers said — and the headers may
+  // have said nothing, because the very first load has not spoken to GitHub yet. That
+  // first load is exactly when this sentence is worth reading.
+  if (tier === 'anonymous' || (tier === 'unknown' && !hasToken)) {
     return {
       level: 'serious',
       text: 'Not signed in to this page — GitHub allows 60 requests per hour per IP address, which one fleet sweep exceeds. '
