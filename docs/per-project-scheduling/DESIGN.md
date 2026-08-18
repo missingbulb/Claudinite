@@ -111,8 +111,7 @@ export default {
   the executor treats them as constraints the agent may not re-litigate (if the
   precondition can rule a PR irrelevant in code, the agent never re-decides it).
   A precondition is cheap and local: decision logic and API reads/writes only —
-  never network fetches of external pages, never long work (see the
-  create-extractor row in §6 for the boundary in practice).
+  never network fetches of external pages, never long work.
 - Per-task project settings ride the already-sanctioned container — the pack
   entry's `config` in `.claudinite-checks.json`. No new per-task engine keys.
 - The self-contained-module rule carries over: `task.mjs` imports nothing, so
@@ -333,7 +332,7 @@ refresh, not workflow edits). It runs
 `fullSweep`, `full_sweep_supported`, and the hash-stagger retire: "weekly" is now
 a declaration, not a gate trick. And the scheduler is **the only cron in the
 repo** — the release workflow's independent 00:30 cron is absorbed into the
-store-release task (§6), so recurring work has exactly one trigger surface.
+store-release task, so recurring work has exactly one trigger surface.
 
 ## 4. The dispatch issue — exactly-once, bounded, recoverable
 
@@ -512,35 +511,14 @@ the exact routine config (trigger event, filter label, model, launcher prompt)
 in one enclosed block — the only human action left in wiring a repo into
 maintenance.
 
-## 6. Task-by-task mapping
+## 6. Where a task's own facts live
 
-Per-project tasks — run by every declaring repo's own scheduler:
-
-| Task (pack) | frequency | precondition_signals | agent_model | expected_outcome | Notes |
-|---|---|---|---|---|---|
-| baselining (basics) | daily-2h | stamp, sharedMount | sonnet | merged-pr | **Now a per-repo self-refresh, not a fleet pass**: converge own `.claudinite/shared/` to canon head, apply pending migration notes (the old fleet apply pass folds in here), advance the stamp — delivered on the per-cycle `claudinite/maintenance-*` PR, delivery per member config. **Superseded by task-prework DESIGN §7/E4–E5**: the deterministic converge is now `prework` fetching **public** canon Action-side (no in-session canon checkout — E5 drops canon from the executor's sources), and the agent stage runs only on the nights judgment is left (conditional hand-off). Precondition fires ~daily via the stamp-age fallback (`canonHead` is null now — the worker fetches canon, not the Action). The canon repo skips naturally (no shared mount). |
-| growth-extract (grow_with_claudinite) | daily-1h | commits, prs, issues, conversationLogs | opus | merged-pr | Precondition = substantiveChange OR a log actually past retention; context = the commit/PR/issue lists **and which halves are live**. **As built: one task over both sources.** Designed (and first built) as two tasks — `growth-extract` over activity, `conversation-extract` over the captured logs — firing in the same 03:00 slot against the same local packs. They share the lesson bar, the promotion ladder and the dedup surface, so the split cost a second opus dispatch, a second PR, and two runs deduping against a corpus the other was concurrently writing. The worker now runs the `extract-from-activity` and `extract-from-conversations` skills in turn, then `prose-to-checks` over the prose it just wrote, and lands all of it in one auto-merging PR. The age-based retention prune still fires correctly on quiet repos — as its own precondition arm, with Context saying the activity half is out of scope. |
-| growth-dedup (grow_with_claudinite) | weekly | localPacks, sharedMount, commits | opus | merged-pr | `relevantCanonChanged` → `sharedMount`; movement, not the calendar, is what wakes it — a quiet repo skips. **Weekly as built (#582), designed `daily+1h`**: a member's mount moves most nights, so the daily slot fired an opus dispatch and a PR nightly for prunes nobody waits on. The window-scoped signals batch the week's movement into one run (§2). **Delivered to land as built (#730), designed `open-pr`**: the standing owner-gated PR bought review nobody performed on a prune nobody waits on, so the ceiling rose to `merged-pr` — a `review`-delivery member still degrades it to open-pr, keeping the gate a member-config call rather than a hardcoded one. |
-| tidy-issues (tidy-repo) | daily | issues, commits | sonnet | none | The undeclared-canon carve-out dies: the canon repo declares tidy-repo like everyone else. **One task per tidy dimension** (the single `repo-tidy` pass split, #481): the acting dimension. Trigger = an issue touched in the window; scope = those issues, widened to every open issue when the default branch ALSO moved substantively — that move is what can make an old issue implemented, so the "full sweep" is signal-triggered, never a calendar flag. The move does not *wake* the task, only widen it: on a repo whose `main` moves most days, waking on it re-triaged every open issue daily. |
-| tidy-prs (tidy-repo) | weekly | prs | sonnet | none | Assess-only. Gated on an open PR being opened or updated in the window; full whenever it runs (scope = every open PR, since a verdict is relative to the others). A PR verdict is a standing recommendation, not a same-day alert, so the full sweep is the **frequency declaration** — consistent with `fullSweep` retiring in §3. An untouched set of open PRs yields the verdicts already in the tracker, so it is not re-swept. |
-| tidy-branches (tidy-repo) | weekly | branches | sonnet | none | Assess-only. Gated on a branch being created or pushed in the window (the `branches` signal carries tip dates for exactly this; a push to the default or an infra branch does not count); full whenever it runs, since a branch verdict is relative to the others. Branch cruft accumulates on a weekly clock. Excludes the presumed default names and the infra branches (`conversation-logs`, `claudinite/maintenance`); the worker owns excluding the repo's *real* default branch. |
-| wiki-growth (product-wiki) | weekly | commits | opus | open-pr | The open-growth-PR preflight is subsumed by the at-most-one-open-issue guard + a precondition check. |
-| store-release (chrome-extension-release) | daily | release, commits | none | none | **Absorbs the release workflow's independent 00:30 cron**: the precondition detects a deployable change since the last release (or an unreleased manifest bump); the inline worker dispatches the `Release to Chrome Store` workflow in daily mode and awaits it. The workflow becomes push + `workflow_dispatch` only; its conformance check flips from *requiring* the contract cron to *forbidding* any cron. |
-| create-extractor (gcec, local) | **hourly** | issues | sonnet | open-pr | **Revised by task-prework (§9), as built.** The *precondition* is only the cheap gate it can be from signals alone: is any open request issue eligible (not already claimed or handed to a human)? Everything deterministic — triage, closing the requests that need no work, branch + scaffold, the page fetch its `required_secrets` pays for, and the draft PR — is `prework`, which needs the issue bodies, GitHub writes, and network fetch a precondition may not do. The agent is requested (conditional hand-off) only when there is genuinely something left to write. The user-facing request issue stays; the dispatch issue references it. |
-| auto-fallback-coverage (gcec, local) | daily | commits | opus | open-pr | `preconditions.sh` becomes the precondition over `commits`. Fixes the live cadence bug (daily spec vs weekly cron: ~6/7 of windows currently unexamined). |
-| fleet-freshness (sheepdog) | weekly | none | none | none | **Added after this design, by what this design caused.** Making every member maintain itself removed the last outside look at a member: one whose scheduler was never vendored, was deleted, or was auto-disabled after 60 quiet days is still `covered` to the census and files no failure issue, because nothing runs there to fail — self-maintenance cannot detect its own absence. This sweep probes each covered member's declaration, scheduler workflow, and stamped ref against Claudinite's default branch, and classifies drift by root cause (`no-stamp` → `no-scheduler` → `ref-not-on-trunk` → `behind`), converging `fleet-drift` issues. Same classification as its sibling: an ordinary pack task whose *implementation* spans the fleet. Weekly because drift is measured in days (`staleDays`, default 14); it shares the census's PAT and adds no scope. |
-| fleet-census (sheepdog) | daily | none | none | none | **An ordinary pack task, not a fleet mechanism**: its *implementation* — preprocessing that runs the census with the account-spanning PAT, declared as `required_secrets` — happens to scan every repo under the owner, but its declaration, scheduling, and lifecycle are exactly those of any pack task. This classification is noted in the sheepdog pack's RULES.md and in the task file itself. (As designed here this was a dispatch-only workflow holding the PAT; #472 folded it into preprocessing, since a workflow existing only to hold a secret is redundant once a task can declare one.) |
-
-Canon-repo tasks — the canon's own packs on the same machinery. Only three are
-genuinely fleet-scoped (they need the `fleet` signal / cross-repo reach); the
-rest of what the old central routine did has moved above:
-
-| Task | frequency | agent_model | expected_outcome | Fleet-scoped? | Notes |
-|---|---|---|---|---|---|
-| growth-promote (canon-curation) | daily | opus | open-pr | yes | Reads members' local packs (`fleet` signal: which members' local packs changed); writes the canon; owner-gated PR. 04:00, after the fleet's 03:00 extracts. |
-| growth-discover-packs (canon-curation) | weekly | opus | open-pr | yes | Moves from member-scheduled/centrally-executed to plainly central: one weekly sweep over members; first-sight dedup is trivial with a single run. |
-| migrations-retire (canon-curation) | daily+1h | none | open-pr | yes | Apply evidence is now per-repo (each member's stamp advances when its own baselining applies notes), so the retire guard reads member stamps + `legacyPresent` probes over the `fleet` signal — the same five-condition guard with per-repo stamps replacing the in-memory same-cycle handoff. No artifact plumbing. |
-| prose-to-checks-sweep (canon-curation) | **daily** | opus | open-pr | no | Not a fleet thing — a canon task going over the canon's own prose. Daily per owner decision. **Weekly as built**, and a per-repo grow_with_claudinite task rather than a canon-local one: growth-extract now runs the same skill over its *own* additions every night, so fresh prose never waits for the sweep and what the sweep sees is a standing backlog that moves on a weekly clock. |
+There is no inventory here. A task's frequency, signals, model, outcome ceiling
+and the reasoning behind each are its `task.mjs` declaration and the comment
+above it (§1) — one place, next to the code the scheduler actually reads. A
+table restating them is a second copy that goes stale the first time a task is
+retuned, and it grew a running history of every such retune besides. This design
+owns the *mechanism*; `packs/<pack>/tasks/` owns which tasks exist.
 
 ## 7. Recoverability semantics (the message-semantics contract)
 
@@ -571,8 +549,8 @@ rest of what the old central routine did has moved above:
 1. **Per repo (identical, vendored)**: `claudinite-scheduler.yml` — **the only
    cron in the repo** — plus one label-fired executor routine (thin pointer to
    the vendored `executor.md`).
-2. **Canon repo only**: the four tasks in §6's second table — ordinary tasks of
-   that repo, three of them fleet-scoped by signal, none by mechanism.
+2. **Canon repo only**: the canon-curation tasks — ordinary tasks of that repo,
+   some fleet-scoped by signal, none by mechanism.
 3. **Deleted**: the "All Missing Bulb Repos - Daily Maintenance" CCR trigger,
    both GCEC CCR triggers, `routines/auto-all-repos-maintenance.md`,
    `routines/fleet/` (planner, registry, local-tasks, schedule, gates, signals),
@@ -651,8 +629,7 @@ classification note — landed with this PR), and GCEC's `CLAUDE.md` / gcec
 8. **Census and prose-to-checks are not fleet tasks** (review): the census is an
    ordinary sheepdog pack task whose implementation happens to scan the fleet;
    prose-to-checks is a canon-local task, **daily**. *(Prose-to-checks since
-   became a per-repo grow_with_claudinite task and moved to `weekly` — see the
-   as-built note in §6, table 2.)*
+   became a per-repo grow_with_claudinite task and moved to `weekly`.)*
 9. **Growth chain ordered across the four daily slots** (review): baselining +
    migrations-apply `daily-2h` (02:00) → extract `daily-1h` (03:00) → promote
    `daily` (04:00) → dedup `daily+1h` (05:00). *(Dedup since moved to `weekly`,

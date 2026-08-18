@@ -6,6 +6,7 @@ import proseToChecks from '../../packs/grow_with_claudinite/tasks/prose-to-check
 import extract from '../../packs/grow_with_claudinite/tasks/growth-extract/task.mjs';
 import dedup from '../../packs/grow_with_claudinite/tasks/growth-dedup/task.mjs';
 import usageFold from '../../packs/grow_with_claudinite/tasks/usage-fold/task.mjs';
+import logsPrune from '../../packs/grow_with_claudinite/tasks/logs-prune/task.mjs';
 import revalidation from '../../packs/grow_with_claudinite/tasks/rule-revalidation/task.mjs';
 
 // grow_with_claudinite per-repo task declarations + preconditions
@@ -117,11 +118,13 @@ test('rule-revalidation: every run carries the read-only and unprobed rules as b
 // precondition has two independent arms and the Context has to say WHICH halves
 // are live — a run woken only by an aged log must not invent an activity window.
 
-test('growth-extract: daily-1h/opus/merged-pr over the window AND the logs signals', () => {
+test('growth-extract: daily-1h/opus/merged-pr over the window signals alone', () => {
   assert.equal(extract.frequency, 'daily-1h');
   assert.equal(extract.agent_model, 'opus');
   assert.equal(extract.expected_outcome, 'merged-pr'); // additive local-pack edits auto-merge after CI
-  assert.deepEqual(extract.precondition_signals, ['commits', 'prs', 'issues', 'conversationLogs']);
+  // The logs signal left with the retention prune (logs-prune owns it now): this
+  // task's only reason to run is activity, so a quiet night costs no opus dispatch.
+  assert.deepEqual(extract.precondition_signals, ['commits', 'prs', 'issues']);
 });
 
 test('growth-extract: a SUBSTANTIVE default-branch change fires it (a bot bump does not)', () => {
@@ -178,61 +181,15 @@ test('growth-extract: a substantive merge puts the conversation half in scope to
   assert.match(ctx, /Conversation half IS in scope/);
 });
 
-test('growth-extract: the age-based prune fires on a quiet repo — with the activity half OFF', () => {
-  // A log ages out on wall time, not on the repo changing. The Context must say the
-  // activity half is out of scope, or the worker mines a window that never happened.
+test('growth-extract: a quiet repo never fires it, however old its logs are', () => {
+  // The age arm is gone with the prune. A log ageing out is logs-prune's business,
+  // and waking an opus dispatch for it was exactly what that arm cost.
   const v = extract.precondition({
     commits: { substantiveChange: false },
     conversationLogs: { present: true, retentionDays: 10, oldestLogAgeDays: 14 },
   });
-  assert.equal(v.run, true);
-  assert.match(v.reason, /retention 10d/);
-  const ctx = v.context.join(' ');
-  assert.match(ctx, /Activity half is NOT in scope/);
-  assert.match(ctx, /Retention prune IS due/);
-});
-
-// The regression this gate exists for: "a logs branch exists and retention is
-// configured" is true on every capturing repo every day, so without the age test
-// an opus agent was dispatched daily to find nothing.
-test('growth-extract: a quiet repo whose logs are all YOUNGER than retention does NOT fire', () => {
-  const v = extract.precondition({
-    commits: { substantiveChange: false },
-    conversationLogs: { present: true, retentionDays: 10, oldestLogAgeDays: 3 },
-  });
   assert.equal(v.run, false);
-  assert.match(v.reason, /nothing to extract or prune/);
-  // The boundary: at exactly retention the log has not yet aged OUT.
-  assert.equal(extract.precondition({
-    commits: { substantiveChange: false },
-    conversationLogs: { present: true, retentionDays: 10, oldestLogAgeDays: 10 },
-  }).run, false);
-});
-
-test('growth-extract: quiet with no logs branch, retention unset, or an empty branch', () => {
-  assert.equal(extract.precondition({ commits: {}, conversationLogs: { present: false } }).run, false);
-  assert.equal(extract.precondition({ commits: {}, conversationLogs: { present: true } }).run, false);
-  // A branch with retention set but no logs at all — no age to compare.
-  assert.equal(extract.precondition({
-    commits: {},
-    conversationLogs: { present: true, retentionDays: 10, oldestLogAgeDays: null },
-  }).run, false);
-});
-
-test('growth-extract: a substantive run with nothing prunable is told NOT to delete', () => {
-  // Both halves live but the prune is not due — the Context says so positively, so
-  // the run cannot read "conversation half in scope" as licence to delete.
-  const configured = extract.precondition({
-    commits: { substantiveChange: true, list: [] },
-    conversationLogs: { present: true, retentionDays: 10, oldestLogAgeDays: 3 },
-  }).context.join(' ');
-  assert.match(configured, /Retention prune is NOT due.*Delete nothing/);
-
-  const unset = extract.precondition({
-    commits: { substantiveChange: true, list: [] },
-    conversationLogs: { present: true },
-  }).context.join(' ');
-  assert.match(unset, /retention is unset.*Delete nothing/);
+  assert.match(v.reason, /nothing to extract/);
 });
 
 // --- growth-dedup (the pruning stage) ----------------------------------------
@@ -308,4 +265,47 @@ test('usage-fold: no logs branch is no longer a skip — the scheduler run recor
   assert.equal(v.run, true);
   assert.match(v.reason, /task-run records only/);
   assert.equal(usageFold.precondition({}).run, true, 'and a missing signal does not wedge it either');
+});
+
+// --- logs-prune (retention on the conversation-logs branch) ------------------
+
+test('logs-prune: daily/agentless/none — its whole write is on a non-default branch', () => {
+  assert.equal(logsPrune.id, 'logs-prune');
+  assert.equal(logsPrune.frequency, 'daily');
+  assert.equal(logsPrune.agent_model, 'none');
+  // No PR at all: remove commits on the logs branch sit outside the outcome taxonomy.
+  assert.equal(logsPrune.expected_outcome, 'none');
+  assert.deepEqual(logsPrune.precondition_signals, ['conversationLogs']);
+  // An agentless task's whole work is its preprocessing — with none it does nothing.
+  assert.equal(logsPrune.prework, 'node worker.mjs');
+  // One fetch and at most one push: the bound guards a hung network call, and is
+  // nowhere near headroom for work.
+  assert.ok(logsPrune.prework_timeout > 0 && logsPrune.prework_timeout <= 60);
+});
+
+test('logs-prune: fires on age alone, which is what makes it independent of activity', () => {
+  // The arm growth-extract used to carry, in the task that can act on it without
+  // an opus dispatch. A repo gone quiet still ages its logs out.
+  const v = logsPrune.precondition({
+    conversationLogs: { present: true, retentionDays: 10, oldestLogAgeDays: 14 },
+  });
+  assert.equal(v.run, true);
+  assert.match(v.reason, /retention 10d/);
+});
+
+test('logs-prune: no branch, unset retention, or nothing aged yet — all silent', () => {
+  assert.match(logsPrune.precondition({ conversationLogs: { present: false } }).reason, /nothing captured/);
+  assert.match(logsPrune.precondition({}).reason, /nothing captured/);
+  assert.match(logsPrune.precondition({ conversationLogs: { present: true } }).reason, /retention_days is unset/);
+  for (const signals of [
+    { conversationLogs: { present: true, retentionDays: 10, oldestLogAgeDays: 3 } },
+    // The boundary: at exactly retention the log has not yet aged OUT.
+    { conversationLogs: { present: true, retentionDays: 10, oldestLogAgeDays: 10 } },
+    // A branch with retention set but no logs at all — no age to compare.
+    { conversationLogs: { present: true, retentionDays: 10, oldestLogAgeDays: null } },
+  ]) {
+    const v = logsPrune.precondition(signals);
+    assert.equal(v.run, false);
+    assert.match(v.reason, /nothing to prune/);
+  }
 });
