@@ -22,7 +22,7 @@
 // instead and `prose` stays null.
 //
 // TWO CHECKS, AND A TASK, ALL THE DIGEST'S. `tasks/fleet-digest/` writes the fleet's
-// dated morning brief that the fleet page reads (it moved here from the `sheepdog`
+// dated morning brief that the fleet page reads (it moved here from the `claudinite-fleet-sheepdog`
 // pack, which enumerated the fleet but never showed anyone the result). Its two checks
 // live in its own folder because nothing else reads them: `digest-plain-text` holds the
 // landed briefs to plain text — they are sent verbatim through a renderer that neither
@@ -52,9 +52,9 @@ import { fleetTokenHandoverStep } from './tasks/fleet-digest/fleet-token.mjs';
 
 export default {
   id: 'claudinite-dashboard',
-  // 7: the fleet-digest task arrives from the sheepdog pack, with its two checks. A
+  // 7: the fleet-digest task arrives from the claudinite-fleet-sheepdog pack, with its two checks. A
   // declaring repo gains a daily task; nothing in a member is rewritten, and the task
-  // still reads an enforcer's existing `sheepdog` config as its legacy source, so the
+  // still reads an enforcer's existing `claudinite-fleet-sheepdog` config as its legacy source, so the
   // bump carries no migration record.
   // 8: the FLEET_GITHUB_TOKEN the digest needs is stated once, in its own
   // fleet-token.mjs, and rendered into the missing-secret message, the adoption step

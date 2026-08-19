@@ -155,7 +155,7 @@ comparison:
 
 [`tasks/fleet-digest/`](tasks/fleet-digest/task.md) writes one file a morning at
 `digests/<date>.md`: the few things the fleet actually accomplished the day before,
-plus one project worth returning to. It was the `sheepdog` pack's sixth sweep until it
+plus one project worth returning to. It was the `claudinite-fleet-sheepdog` pack's sixth sweep until it
 moved here — that pack enumerates the fleet, but this is the pack whose page reads the
 result, and the producer and its only reader are now one adoption.
 
@@ -179,7 +179,7 @@ Everything it needs is optional, on this pack's own declaration `config`:
 | `digest.pick` | `4` | how many accomplishments the brief names (the shortlist is `ceil(pick × 1.5)`, so the agent has a real choice rather than a ranking to transcribe) |
 | `digest.nudge` | on, 7 days | the "worth returning to" prod. `false` switches it off; `{ "quietDays": 21 }` widens the window |
 
-An enforcer that declared `owner`, `exclude` or `digest` on its **`sheepdog`** entry
+An enforcer that declared `owner`, `exclude` or `digest` on its **`claudinite-fleet-sheepdog`** entry
 before the move needs to change nothing: [`digest-config.mjs`](tasks/fleet-digest/digest-config.mjs)
 reads this pack's entry first and falls back to that one, and every run logs which it
 used — a dropped `exclude` list would otherwise widen the brief silently.
@@ -400,7 +400,7 @@ tool hardcodes no queue label of its own.
 The digest task is the one part of this pack that does **not** run in a browser, and it
 keeps its own trimmed copies of the two cross-repo helpers it needs
 ([`fleet-reads.mjs`](tasks/fleet-digest/fleet-reads.mjs),
-[`param-bag.mjs`](tasks/fleet-digest/param-bag.mjs)) rather than importing the `sheepdog`
+[`param-bag.mjs`](tasks/fleet-digest/param-bag.mjs)) rather than importing the `claudinite-fleet-sheepdog`
 pack's. Two packs adopted independently must not depend on each other, and what is
 duplicated is a token-authenticated fetch, a pagination loop and a file read — the REST
 API's shape, not a decision either pack can drift on.

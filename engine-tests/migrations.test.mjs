@@ -329,7 +329,9 @@ test('sheepdog-fleet-baseline migration: gated on declaring the pack, and on not
   const read = (decl) => async (p) => (p === '.claudinite-checks.json' ? decl : null);
 
   // Both declaration forms, since both are legal.
-  assert.equal(await m.appliesTo(read(JSON.stringify({ packs: [{ id: 'sheepdog', config: {} }] }))), true);
+  assert.equal(await m.appliesTo(read(JSON.stringify({ packs: [{ id: 'claudinite-fleet-sheepdog', config: {} }] }))), true);
+  assert.equal(await m.appliesTo(read(JSON.stringify({ packs: ['claudinite-fleet-sheepdog'] }))), true);
+  // And under the spelling an enforcer's declaration carried when the record landed.
   assert.equal(await m.appliesTo(read(JSON.stringify({ packs: ['sheepdog'] }))), true);
   assert.equal(await m.appliesTo(read(JSON.stringify({ packs: ['basics'] }))), false);
   assert.equal(await m.appliesTo(read('not json')), false);
@@ -447,13 +449,13 @@ test('every record lives under the flow that owns it — the engine, or one pack
 
 test('flowOf reads the owning flow off the path — no record declares which it is', () => {
   assert.deepEqual(flowOf('engine/migrations/2026-08-06-x'), { flow: 'engine' });
-  assert.deepEqual(flowOf('packs/sheepdog/migrations/2026-08-11-y'), { flow: 'pack', pack: 'sheepdog' });
+  assert.deepEqual(flowOf('packs/claudinite-fleet-sheepdog/migrations/2026-08-11-y'), { flow: 'pack', pack: 'claudinite-fleet-sheepdog' });
 });
 
 test('installedFor keeps "the stamp says nothing" distinct from a real number', () => {
-  const stamp = { engineVersion: 3, packVersions: { sheepdog: 2, tidy: 0 } };
+  const stamp = { engineVersion: 3, packVersions: { 'claudinite-fleet-sheepdog': 2, tidy: 0 } };
   assert.equal(installedFor('engine/migrations/2026-01-01-a', stamp), 3);
-  assert.equal(installedFor('packs/sheepdog/migrations/2026-01-01-a', stamp), 2);
+  assert.equal(installedFor('packs/claudinite-fleet-sheepdog/migrations/2026-01-01-a', stamp), 2);
   assert.equal(installedFor('packs/tidy/migrations/2026-01-01-a', stamp), 0, 'a real zero is a version, not an absence');
   assert.equal(installedFor('packs/never-heard-of/migrations/2026-01-01-a', stamp), undefined);
   assert.equal(installedFor('engine/migrations/2026-01-01-a', null), undefined);

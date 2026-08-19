@@ -48,7 +48,7 @@ import taskMdOnlyWhenAgentic from './task-md-only-when-agentic.mjs';
 // missing: usage-fold (tasks/usage-fold/) counts skill loads and their activity
 // denominators out of those same captured logs into a small tracked aggregate.
 // Fleet-wide aggregation is NOT here — the canon knows mechanisms, never repos; that
-// is the sheepdog pack's job, in the fleet-enforcer repo.
+// is the claudinite-fleet-sheepdog pack's job, in the fleet-enforcer repo.
 //
 // ADOPTION IS NOT HERE. `adopt-claudinite`, `adopt-pack` and the
 // adopt-requested-packs task were bundled in this pack for want of a better home;
@@ -79,11 +79,11 @@ export default {
   // 13: the task contract's prose carries the queue's current label vocabulary and
   // the precondition's two additions — the occurrence argument, and the verdict a
   // precondition gives when it cannot answer.
-  version: 13,
+  version: 14,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'authoring Claudinite content here — lesson extraction, dedup, revalidation, conversation logs, skill-usage folding, the task contract',
-    excludes: 'this repo\'s Claudinite status — mount, declaration, adoption, update — claudinite-lifecycle; issue/PR housekeeping — tidy-repo; fleet sweeps — sheepdog',
+    excludes: 'this repo\'s Claudinite status — mount, declaration, adoption, update — claudinite-lifecycle; issue/PR housekeeping — tidy-repo; fleet sweeps — claudinite-fleet-sheepdog',
   },
   badge: 'badge.svg',
   detect: null,

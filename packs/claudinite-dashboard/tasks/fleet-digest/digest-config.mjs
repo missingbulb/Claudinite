@@ -12,12 +12,12 @@
 // deployment that configures nothing still gets its dated file, covering its own
 // owner's repos.
 //
-// THE SHEEPDOG FALLBACK IS DELIBERATE AND NAMED. This task lived in the `sheepdog`
+// THE SHEEPDOG FALLBACK IS DELIBERATE AND NAMED. This task lived in the `claudinite-fleet-sheepdog`
 // pack until it moved here, and read `owner`/`exclude`/`digest` off THAT entry — an
 // enforcer's declaration still carries them there. Rather than have a moved task
 // silently start covering a different set of repos (an `exclude` list that stops being
 // read is exactly the parameter that fails quietly), the reader falls back to the
-// sheepdog entry when this pack's entry does not carry the key, and SAYS which one it
+// claudinite-fleet-sheepdog entry when this pack's entry does not carry the key, and SAYS which one it
 // used. It is a read of a JSON key that may not exist, never an import: the two packs
 // stay independent and either can be adopted without the other.
 //
@@ -82,9 +82,13 @@ export function parseNudge(raw) {
   };
 }
 
-// The entry a pack id names on an already-parsed `.claudinite-checks.json`.
+import { canonicalPackId } from '../../../../engine/pack_loader/renamed-packs.mjs';
+
+// The entry a pack id names on an already-parsed `.claudinite-checks.json`. Matched
+// through the engine's rename map, so an enforcer whose declaration still spells a
+// pack the way it was written keeps the config it wrote.
 const entryConfig = (cfg, id) => (Array.isArray(cfg?.packs) ? cfg.packs : [])
-  .find((e) => e?.id === id)?.config ?? null;
+  .find((e) => typeof e?.id === 'string' && canonicalPackId(e.id) === id)?.config ?? null;
 
 // Parse this task's whole configuration off an already-parsed `.claudinite-checks.json`.
 // Pure — no I/O, no environment — so the task and its tests see exactly the same
@@ -92,11 +96,11 @@ const entryConfig = (cfg, id) => (Array.isArray(cfg?.packs) ? cfg.packs : [])
 // configured comes from.
 //
 // `source` reports where each fleet key was actually read from, so a run's log can say
-// "covering an-owner, excluding 2 repos (from the sheepdog entry)" rather than leaving
+// "covering an-owner, excluding 2 repos (from the claudinite-fleet-sheepdog entry)" rather than leaving
 // a reader to guess which declaration won.
 export function parseDigestConfig(cfg, home = '') {
   const mine = entryConfig(cfg, 'claudinite-dashboard');
-  const legacy = entryConfig(cfg, 'sheepdog');
+  const legacy = entryConfig(cfg, 'claudinite-fleet-sheepdog');
 
   const raw = [mine?.digest, legacy?.digest].find((d) => d && typeof d === 'object' && !Array.isArray(d));
   const d = raw ?? {};
@@ -104,16 +108,16 @@ export function parseDigestConfig(cfg, home = '') {
   const pick = positiveInt(d.pick, DEFAULT_PICK, MAX_PICK);
 
   const ownerFrom = typeof mine?.owner === 'string' ? 'entry'
-    : typeof legacy?.owner === 'string' ? 'sheepdog' : 'repo';
+    : typeof legacy?.owner === 'string' ? 'claudinite-fleet-sheepdog' : 'repo';
   const owner = String(
     ownerFrom === 'entry' ? mine.owner
-      : ownerFrom === 'sheepdog' ? legacy.owner
+      : ownerFrom === 'claudinite-fleet-sheepdog' ? legacy.owner
         : String(home).split('/')[0],
   ).toLowerCase();
 
   const excludeFrom = Array.isArray(mine?.exclude) ? 'entry'
-    : Array.isArray(legacy?.exclude) ? 'sheepdog' : 'none';
-  const excludeList = excludeFrom === 'entry' ? mine.exclude : excludeFrom === 'sheepdog' ? legacy.exclude : [];
+    : Array.isArray(legacy?.exclude) ? 'claudinite-fleet-sheepdog' : 'none';
+  const excludeList = excludeFrom === 'entry' ? mine.exclude : excludeFrom === 'claudinite-fleet-sheepdog' ? legacy.exclude : [];
   const exclude = new Set(excludeList.map((x) => String(x).toLowerCase()));
 
   return {
@@ -124,6 +128,6 @@ export function parseDigestConfig(cfg, home = '') {
     // works (give the agent a real choice), not a knob a fleet has an opinion about.
     shortlist: Math.ceil(pick * OVERFETCH),
     nudge: parseNudge(d.nudge),
-    source: { owner: ownerFrom, exclude: excludeFrom, digest: mine?.digest ? 'entry' : (legacy?.digest ? 'sheepdog' : 'default') },
+    source: { owner: ownerFrom, exclude: excludeFrom, digest: mine?.digest ? 'entry' : (legacy?.digest ? 'claudinite-fleet-sheepdog' : 'default') },
   };
 }

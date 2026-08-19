@@ -17,7 +17,7 @@
 //
 // WHY IT LIVES IN THE DASHBOARD PACK. It writes the dated series this pack's fleet
 // page reads: the producer and the only thing that surfaces it are one adoption. It
-// was the `sheepdog` pack's sixth sweep until it moved here, and what it brought with
+// was the `claudinite-fleet-sheepdog` pack's sixth sweep until it moved here, and what it brought with
 // it is the cross-repo enumeration — a trimmed copy in `fleet-reads.mjs` rather than
 // an import, because two independently-adopted packs must not depend on each other.
 //

@@ -3,11 +3,11 @@
 // primitive here at all, because the digest writes exactly one file and writes it in
 // this repo, through the engine's own delivery.
 //
-// WHY A SECOND COPY OF THIS. The sheepdog pack keeps the same primitives at
-// `packs/sheepdog/fleet-api.mjs` for its own sweeps, and this is a deliberate
+// WHY A SECOND COPY OF THIS. The claudinite-fleet-sheepdog pack keeps the same primitives at
+// `packs/claudinite-fleet-sheepdog/fleet-api.mjs` for its own sweeps, and this is a deliberate
 // duplicate of the four the digest uses rather than an import of them: a pack that
 // imports another pack's module is a dependency between packs, and the two are
-// adopted independently — an enforcer runs sheepdog, and this pack is adopted by
+// adopted independently — an enforcer runs claudinite-fleet-sheepdog, and this pack is adopted by
 // anyone who wants the page. The duplicated surface is a token-authenticated fetch, a
 // pagination loop and a file read; it is the GitHub REST API's shape, not a decision
 // either pack can drift on.

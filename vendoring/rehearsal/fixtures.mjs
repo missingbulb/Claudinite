@@ -396,7 +396,7 @@ module.exports = { issue, check };
   },
   {
     name: 'sheepdog-enforcer',
-    why: 'the fleet-enforcer shape: a repo declaring `sheepdog` with a packSeeds entry AND its own declaration of the seeded pack — the two configs a blocking rule now requires to agree, proving a conforming enforcer converges green',
+    why: 'the fleet-enforcer shape: a repo declaring `claudinite-fleet-sheepdog` with a packSeeds entry AND its own declaration of the seeded pack — the two configs a blocking rule now requires to agree, proving a conforming enforcer converges green',
     files: {
       'README.md': '# fixture-sheepdog-enforcer\n\nA rehearsal fixture.\n',
       // The enforcer states the seeded pack's config twice, exactly as a real one
@@ -408,7 +408,7 @@ module.exports = { issue, check };
       '.claudinite-checks.json': checks([
         'basics',
         {
-          id: 'sheepdog',
+          id: 'claudinite-fleet-sheepdog',
           config: {
             owner: 'fixture-owner',
             kind: 'user',

@@ -35,7 +35,7 @@ const setStamp = (root, patch) => {
 test('a pack owns its own directory and nothing else', () => {
   assert.equal(isPackFile('packs/basics/RULES.md', 'basics'), true);
   assert.equal(isPackFile('packs/basics/migrations/2026-01-01-x/migration.mjs', 'basics'), true);
-  assert.equal(isPackFile('packs/sheepdog/RULES.md', 'basics'), false);
+  assert.equal(isPackFile('packs/claudinite-fleet-sheepdog/RULES.md', 'basics'), false);
   assert.equal(isPackFile('engine/selftest.mjs', 'basics'), false, 'the engine tree is the engine flow\'s');
   assert.equal(isPackFile('packs/directory.GENERATED.md', 'basics'), false, 'the catalog is no pack\'s');
 });
@@ -357,19 +357,19 @@ test('the records decide the apply stage, and what they say reaches the session'
     'a deterministic record must be deliverable without an agent');
 
   const asks = {
-    dir: 'packs/sheepdog/migrations/2026-08-13-roster',
+    dir: 'packs/claudinite-fleet-sheepdog/migrations/2026-08-13-roster',
     id: 'roster',
     applyStage: { why: 'the roster rules meet each member\'s own tasks', instructions: 'Re-home any task the new roster shape orphans.' },
   };
   const stage = applyStageFor([mechanical, asks]);
   assert.equal(stage.needed, true);
-  assert.deepEqual(stage.packs, ['sheepdog'], 'only the pack that RAISED the record is in scope');
-  assert.deepEqual(stage.records, ['packs/sheepdog/migrations/2026-08-13-roster']);
+  assert.deepEqual(stage.packs, ['claudinite-fleet-sheepdog'], 'only the pack that RAISED the record is in scope');
+  assert.deepEqual(stage.records, ['packs/claudinite-fleet-sheepdog/migrations/2026-08-13-roster']);
 
   // The record is NAMED, not quoted. Its instructions are on the branch, in the mount
   // the update just vendored; the reason carries an identifier so the session can find
   // them, because a request payload may not carry instructions (code-work.mjs).
-  assert.match(stage.why, /packs\/sheepdog\/migrations\/2026-08-13-roster/, 'the session must be able to find the record');
+  assert.match(stage.why, /packs\/claudinite-fleet-sheepdog\/migrations\/2026-08-13-roster/, 'the session must be able to find the record');
   assert.match(stage.why, /roster rules meet/);
   assert.ok(!stage.why.includes('Re-home any task'), 'the instructions travel through the repo, never the payload');
   assert.equal(terminalFor({ status: 'ok', applyStage: stage, decision: { action: 'merge', why: 'green' } }).why, stage.why);
@@ -426,9 +426,9 @@ test('dry run judges the whole plan and writes nothing', async () => {
 });
 
 test('packRecordsInGap is that pack\'s records only', () => {
-  const behind = packRecordsInGap('sheepdog', { packVersions: { sheepdog: 0 } });
-  assert.ok(behind.every((d) => d.startsWith('packs/sheepdog/migrations/')), behind.join(', '));
-  assert.deepEqual(packRecordsInGap('sheepdog', { packVersions: { sheepdog: 99 } }), []);
+  const behind = packRecordsInGap('claudinite-fleet-sheepdog', { packVersions: { 'claudinite-fleet-sheepdog': 0 } });
+  assert.ok(behind.every((d) => d.startsWith('packs/claudinite-fleet-sheepdog/migrations/')), behind.join(', '));
+  assert.deepEqual(packRecordsInGap('claudinite-fleet-sheepdog', { packVersions: { 'claudinite-fleet-sheepdog': 99 } }), []);
 });
 
 test('a member is owed the executor workflow beside its tick', async () => {

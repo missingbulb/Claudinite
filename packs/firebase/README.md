@@ -38,7 +38,7 @@ pipeline alone, and App Check attestation so only store-installed builds reach t
 | Test the rules themselves empirically | high | correctness | prose: 37 words |
 | Cross-language contracts get mirrored test vectors. | high | correctness | prose: 44 words |
 | Keep the Firebase project root self-contained | medium | complexity | prose: 71 words |
-| Commit .firebaserc with a safe default | critical | correctness | prose: 31 words |
+| Commit .firebaserc with a safe default | critical | correctness | prose: 33 words |
 | Smoke-load the built entrypoint | high | correctness | prose: 36 words + check (`firebase/functions-predeploy-build`) |
 
 ## Checks

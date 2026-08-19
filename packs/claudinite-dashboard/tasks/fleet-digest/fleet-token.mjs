@@ -5,14 +5,14 @@
 //
 // WHY A TABLE AND NOT A SENTENCE. The requirement is per-read, and the per-read
 // subsets are not the answer: a person grants the token once. Writing each read's own
-// needs where that read lives is how the sheepdog pack ended up stating five different
+// needs where that read lives is how the claudinite-fleet-sheepdog pack ended up stating five different
 // subsets, none of them the grant, and how a fleet ran two days without
 // `Pull requests: read` — the permission only this digest needs, and only once a
 // member is PRIVATE, because a fine-grained PAT reads a public repo's pull requests
 // without it (#1030).
 //
-// WHY A SECOND COPY. The sheepdog pack states its own sweeps' grant in
-// `packs/sheepdog/fleet-token.mjs`, for the same reason `fleet-reads.mjs` beside this
+// WHY A SECOND COPY. The claudinite-fleet-sheepdog pack states its own sweeps' grant in
+// `packs/claudinite-fleet-sheepdog/fleet-token.mjs`, for the same reason `fleet-reads.mjs` beside this
 // file duplicates that pack's REST primitives: the two packs are adopted
 // independently, and a pack that imports another pack's module is a dependency between
 // them. The two tables are NOT the same requirement — this pack reads, that one also
@@ -56,7 +56,7 @@ export function fleetTokenGrant() {
 }
 
 // One secret name, possibly two packs wanting different things of it.
-const SHARED = `A repo that also runs the sheepdog pack shares this one secret with its sweeps, `
+const SHARED = `A repo that also runs the claudinite-fleet-sheepdog pack shares this one secret with its sweeps, `
   + `which additionally write and dispatch — grant the union of both packs' tables.`;
 
 // The message the digest throws when the secret is absent.

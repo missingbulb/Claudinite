@@ -17,7 +17,7 @@ import { resolve } from 'node:path';
 // BYPASSED the precondition entirely ("a forced run bypasses it by design") and
 // the declared verdict was consulted by nothing. The queue reversed that
 // deliberately, which silently turned every such lever into a task that cannot be
-// run at all — `sheepdog/fleet-baseline`, the fleet's converge lever, among them.
+// run at all — `claudinite-fleet-sheepdog/fleet-baseline`, the fleet's converge lever, among them.
 test('no manual task refuses its own forced item', async () => {
   const files = execFileSync('git', ['ls-files', 'packs/*/tasks/*/task.mjs'], { encoding: 'utf8' })
     .split('\n').filter(Boolean);

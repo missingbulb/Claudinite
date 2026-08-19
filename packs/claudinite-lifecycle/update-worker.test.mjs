@@ -22,10 +22,10 @@ test('a branch carries its date and a seed, so two runs on one day cannot collid
 test('the PR text leads with the terminal, then what moved', () => {
   const { title, body } = updatePullText(
     { action: 'needs-human', why: 'the converged tree FAILED its self-test' },
-    { engine: { from: 1, to: 2 }, packs: { plan: [{ id: 'basics', from: 1, to: 2 }, { id: 'sheepdog', from: 3, to: 3 }] } },
+    { engine: { from: 1, to: 2 }, packs: { plan: [{ id: 'basics', from: 1, to: 2 }, { id: 'claudinite-fleet-sheepdog', from: 3, to: 3 }] } },
   );
   assert.equal(title, 'Claudinite update: engine v1 → v2 and 1 pack upgraded');
-  assert.ok(!title.includes('sheepdog'), 'a pack that did not move is not news');
+  assert.ok(!title.includes('claudinite-fleet-sheepdog'), 'a pack that did not move is not news');
   assert.match(body, /- basics 1 → 2/, 'the per-pack detail lives in the body');
   assert.match(body.split('\n')[0], /needs-human/, 'the first line says which terminal fired');
   assert.match(body, /FAILED its self-test/);

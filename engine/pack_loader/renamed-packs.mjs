@@ -46,6 +46,7 @@ export const RENAMED_PACKS = Object.freeze({
   // Renamed (#1079): a pack whose subject is a Claudinite feature carries the prefix
   // that says so.
   'canary-probe': 'claudinite-canary-repo',
+  sheepdog: 'claudinite-fleet-sheepdog',
 });
 
 // The canon id a spelling resolves to. Canon packs only — a LOCAL pack lives in the

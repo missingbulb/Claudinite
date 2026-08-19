@@ -53,9 +53,9 @@ test('an install stamps the latest version and fetches NO migration records', as
 
 test('an install never runs a record even for a pack that has them', async () => {
   const root = makeRepo();
-  const r = await installPacks(root, ['sheepdog'], { dryRun: true });
+  const r = await installPacks(root, ['claudinite-fleet-sheepdog'], { dryRun: true });
   assert.equal(r.dryRun, true);
-  assert.equal(r.records, 0, 'sheepdog carries records; a fresh install fetches none of them');
+  assert.equal(r.records, 0, 'claudinite-fleet-sheepdog carries records; a fresh install fetches none of them');
   rmSync(root, { recursive: true, force: true });
 });
 

@@ -268,7 +268,7 @@ const COLLECTORS = {
 
   // Fleet aggregate — canon-only, over the fleet PAT (DESIGN §3.3). A consumer
   // cannot declare it; the collector returns null unless the caller supplied a
-  // fleet reader (wired on the canon/sheepdog repos in Phase 2).
+  // fleet reader (wired on the canon and fleet-enforcer repos in Phase 2).
   // THE REQUEST READ (tasks-dispatch DESIGN §16.4). Unlike every collector beside
   // it, this one reads a single named object rather than a window: the issue THIS
   // item was created for, off `ctx.item.request`. That is what the precondition's

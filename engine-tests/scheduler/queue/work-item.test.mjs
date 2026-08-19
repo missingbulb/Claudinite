@@ -16,10 +16,10 @@ import {
 test('a work-item title round-trips, with and without a qualifier', () => {
   assert.equal(workItemTitle({ pack: 'claudinite-lifecycle', task: 'update' }), '[claudinite-work] claudinite-lifecycle/update');
   assert.deepEqual(parseWorkItemTitle('[claudinite-work] claudinite-lifecycle/update'), { pack: 'claudinite-lifecycle', task: 'update', qualifier: null });
-  assert.equal(workItemTitle({ pack: 'sheepdog', task: 'fleet-baseline', qualifier: 'member-repo-x' }),
-    '[claudinite-work] sheepdog/fleet-baseline member-repo-x');
-  assert.deepEqual(parseWorkItemTitle('[claudinite-work] sheepdog/fleet-baseline member-repo-x'),
-    { pack: 'sheepdog', task: 'fleet-baseline', qualifier: 'member-repo-x' });
+  assert.equal(workItemTitle({ pack: 'claudinite-fleet-sheepdog', task: 'fleet-baseline', qualifier: 'member-repo-x' }),
+    '[claudinite-work] claudinite-fleet-sheepdog/fleet-baseline member-repo-x');
+  assert.deepEqual(parseWorkItemTitle('[claudinite-work] claudinite-fleet-sheepdog/fleet-baseline member-repo-x'),
+    { pack: 'claudinite-fleet-sheepdog', task: 'fleet-baseline', qualifier: 'member-repo-x' });
 });
 
 test('the slot mechanism\'s titles are invisible here — the two families are disjoint (S29)', () => {

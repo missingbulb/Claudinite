@@ -13,7 +13,7 @@
 // to move a specific fleet off a specific old shape, and it stops shipping once it
 // ages out of the vendoring window. Nothing standing is left naming
 // `missingbulb/Shepherd` — the durable path is the pack's adoption question (new
-// repos) and the sheepdog pack's fleet-preferences sweep, which reads the store
+// repos) and the claudinite-fleet-sheepdog pack's fleet-preferences sweep, which reads the store
 // from the enforcer repo's own config and so serves any fleet.
 //
 // SEED, NEVER OVERRIDE (the `declarePacks` op's contract): a repo that already

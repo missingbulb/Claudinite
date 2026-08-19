@@ -5,7 +5,7 @@ import rule, { contractChanges, carriesConsumers } from './consumer-safe-change.
 const SCHEMA = 'engine/pack_loader/pack-schema.mjs';
 const STUB = 'engine/scheduler/stubs/claudinite-tick.yml';
 const RECORD = 'engine/migrations/2026-08-01-thing/migration.mjs';
-const PACK_RECORD = 'packs/sheepdog/migrations/2026-08-01-thing/migration.mjs';
+const PACK_RECORD = 'packs/claudinite-fleet-sheepdog/migrations/2026-08-01-thing/migration.mjs';
 const FIXTURES = 'vendoring/rehearsal/fixtures.mjs';
 
 const BLOCKING_RULE = `import { finding } from '../x.mjs';
