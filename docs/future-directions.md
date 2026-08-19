@@ -30,9 +30,9 @@ natural home: a sweep keeps them true, where adoption only sets them once and ca
 later flip.
 
 It is not done because **`FLEET_GITHUB_TOKEN` is not an admin token**. Both endpoints require
-admin on the member, and this pack's PAT deliberately carries only Metadata + Contents read and
-Issues read/write — widening it to admin-on-every-repo to fix a two-field settings drift is a
-poor trade.
+admin on the member, and this pack's PAT deliberately carries no administration permission at all
+(`packs/sheepdog/fleet-token.mjs` holds what it does carry) — widening it to admin-on-every-repo to
+fix a two-field settings drift is a poor trade.
 
 So the settings stay an owner action, and the sweeps report the *symptom* — a member stuck
 `behind` — never the cause. Revisit if a narrower administration scope appears, or if the fleet

@@ -243,7 +243,7 @@ asks the owner for it. A workflow that exists only to hold a secret is redundant
 | Pushing canon to the whole fleet now | low | complexity | prose: 119 words |
 | Catching the digest up after an outage | low | complexity | prose: 66 words |
 | Adding a pack across the fleet | medium | complexity | prose: 53 words |
-| Granting or repairing FLEETGITHUBTOKEN | high | correctness | prose: 53 words |
+| Granting or repairing FLEETGITHUBTOKEN | high | correctness | prose: 77 words |
 | A fan-out task reporting no-permission | medium | complexity | prose: 50 words |
 
 ## Checks

@@ -45,6 +45,7 @@
 import { pathToFileURL } from 'node:url';
 import { makeGh, paged, readDeclaration, isDormant, DECLARATION } from '../../fleet-api.mjs';
 import { parseSheepdogConfig } from '../../fleet-config.mjs';
+import { requireFleetToken } from '../../fleet-token.mjs';
 export const MEMBER_USAGE_PATH = '.claudinite/local/usage.GENERATED.json';
 export const FLEET_USAGE_PATH = 'usage-fleet.GENERATED.json';
 export const FLEET_VERSION = 2;
@@ -211,13 +212,8 @@ async function readUsage(gh, fullName, path = MEMBER_USAGE_PATH) {
 // guard below keeps the standalone run. Returns the built file — the worker owns
 // delivering it, so this stays a pure "read the fleet, build the object" pass.
 export async function main({ now = new Date() } = {}) {
-  const token = process.env.FLEET_GITHUB_TOKEN;
+  const token = requireFleetToken();
   const home = process.env.GITHUB_REPOSITORY;
-  if (!token) {
-    throw new Error('FLEET_GITHUB_TOKEN is not set. Add a repo secret with a fine-grained PAT '
-      + '(this account, ALL repositories, Metadata read, Contents read) — the default GITHUB_TOKEN '
-      + 'sees only this repo and cannot read the fleet.');
-  }
   if (!home || !home.includes('/')) throw new Error('GITHUB_REPOSITORY is not set (owner/repo)');
   const gh = makeGh(token);
 

@@ -86,10 +86,11 @@ config schema — is [README.md](README.md). This file is what a session **here*
 ## Credentials
 
 - **Granting or repairing `FLEET_GITHUB_TOKEN`** — a fine-grained PAT spanning the owner's
-  repositories, with Metadata read, **Contents read and write**, Issues read/write, Pull requests
-  read, and **Actions read and write**. Contents write is the pack-seed sweep writing one
-  declaration into each member; Actions write is the two fan-out tasks dispatching another member's
-  workflow.
+  repositories, granting every row of [fleet-token.mjs](fleet-token.mjs), which pairs each
+  permission with the sweep that forces it. Grant the whole list at once, never the subset one
+  sweep needs: a partial grant runs the sweeps it satisfies green and fails the rest deep in a run,
+  which is how an enforcer swept for days before its first private member revealed that Pull
+  requests read was missing.
 
 - **A fan-out task reporting `no-permission`** — the PAT is missing Actions:
   read and write, and every member answers `403`. It is a grant to fix once, so widen the token

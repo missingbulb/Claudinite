@@ -7,6 +7,7 @@ import { dirname, join } from 'node:path';
 import { validateTaskDeclaration } from '../../../../engine/scheduler/task-contract.mjs';
 import decl from '../../../../packs/sheepdog/tasks/fleet-pack-seeds/task.mjs';
 import roster from '../../../../packs/sheepdog/tasks/fleet-roster/task.mjs';
+import { FLEET_TOKEN_PERMISSIONS } from '../../../../packs/sheepdog/fleet-token.mjs';
 
 // The sheepdog pack's fleet-pack-seeds task: the enforcer converging the pack
 // declarations this fleet standardizes on. Same agentless shape as the other
@@ -55,10 +56,15 @@ test('fleet-pack-seeds: the sweep is the code_work, bounded and task-local', () 
 test('fleet-pack-seeds: one fleet secret, shared with the other sweeps — but it needs Contents WRITE', () => {
   assert.deepEqual(decl.required_secrets, ['FLEET_GITHUB_TOKEN']);
   assert.deepEqual(decl.required_secrets, roster.required_secrets);
-  // The scope bump is the sweep's own business to explain: it is the only thing in the
-  // pack that writes to a member, so its token error has to say what the read-only
-  // sweeps never needed.
-  assert.match(sweepSrc, /Contents READ AND WRITE/);
+  // The scope bump is REAL but is no longer this file's to spell: every sweep reads the
+  // one grant from fleet-token.mjs, whose Contents row carries the write and says this
+  // sweep is what forces it. A per-sweep subset here is what left an enforcer a
+  // permission short (missingbulb/Shepherd#37), so what is asserted is that the sweep
+  // takes its token from the shared reader.
+  assert.match(sweepSrc, /requireFleetToken\(\)/);
+  const contents = FLEET_TOKEN_PERMISSIONS.find((p) => p.permission === 'Contents');
+  assert.equal(contents.level, 'read and write');
+  assert.match(contents.why, /pack-seed sweep/);
 });
 
 test('fleet-pack-seeds: fires unconditionally, with a reason', () => {

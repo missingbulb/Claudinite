@@ -50,7 +50,7 @@ export default {
   // dispatch POST per member with findings, all serial with a secondary rate limit.
   // The same 900s the other sweeps carry: ~10x the expected walk.
   code_work_timeout: 900,
-  required_secrets: ['FLEET_GITHUB_TOKEN'], // the account-spanning PAT — Contents read, Issues read/write, Actions read+write
+  required_secrets: ['FLEET_GITHUB_TOKEN'], // the account-spanning PAT — grant per fleet-token.mjs
 
   // Fire weekly unconditionally. Every input lives OUTSIDE this repo — another
   // member's tree, another member's declaration — and no per-repo collector can see

@@ -31,6 +31,7 @@ import { pathToFileURL } from 'node:url';
 import { join } from 'node:path';
 import { makeGh } from '../../fleet-api.mjs';
 import { parseSheepdogConfig } from '../../fleet-config.mjs';
+import { requireFleetToken } from '../../fleet-token.mjs';
 import { deliverGenerated, baseTip, pushGenerated, readAt, remoteUrl } from '../../../../engine/scheduler/deliver-generated.mjs';
 import { parseParamBag, contextText } from '../../param-bag.mjs';
 import { parseDigestConfig } from './digest-config.mjs';
@@ -223,13 +224,9 @@ export async function main() {
   const root = process.env.CLAUDINITE_REPO_ROOT || process.cwd();
   const repo = process.env.GITHUB_REPOSITORY;
   const token = process.env.GITHUB_TOKEN;
-  const fleetToken = process.env.FLEET_GITHUB_TOKEN;
   const base = process.env.CLAUDINITE_DEFAULT_BRANCH || 'main';
   if (!token) throw new Error('GITHUB_TOKEN is not set — the digest cannot deliver anything');
-  if (!fleetToken) {
-    throw new Error('FLEET_GITHUB_TOKEN is not set — configure the account-spanning PAT '
-      + '(this account, ALL repositories, Metadata read, Contents read, Pull requests read, Issues read)');
-  }
+  const fleetToken = requireFleetToken();
 
   // The config is read from the CHECKOUT, not over the API: this is our own repo and
   // the scheduler already has it at the commit this run is reasoning about.

@@ -97,6 +97,7 @@
 // for the same pack, so the two can drift apart silently. That is a fact about seeding,
 // not about any pack seeded — which is why it lives here and not in the pack whose
 // config happened to drift.
+import { fleetTokenGrant, fleetTokenGrantDetail, FLEET_TOKEN } from './fleet-token.mjs';
 import seedsAgree from './seeds-agree.mjs';
 import datedFixtureCollision from './tasks/fleet-digest/dated-fixture-collision.mjs';
 import digestPlainText from './tasks/fleet-digest/digest-plain-text.mjs';
@@ -106,7 +107,10 @@ export default {
   // 2: fleet-digest arrives (#954) — a sixth task, two checks and an optional `digest`
   // config block. Purely additive: nothing in a member is rewritten, so the bump carries
   // no migration record; it exists to deliver the new files to enforcers already on v1.
-  version: 7,
+  // 8: the token grant becomes one statement (fleet-token.mjs) and reaches adoption as
+  // `adoptionHandover`. No member file changes; the bump delivers the handover step to
+  // enforcers that adopted before it existed and were told an incomplete list.
+  version: 8,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'fleet-enforcer duties for the repo watching every other repo — coverage, freshness, usage, standardized packs, the daily fleet brief',
@@ -119,4 +123,27 @@ export default {
   // Audits the enforcer's config as it stands, whatever this session touched: a seed
   // that drifted in an earlier commit is just as silent as one that drifted in this one.
   worldRules: [seedsAgree, digestPlainText, datedFixtureCollision],
+
+  // The one step adoption CANNOT take: minting the account-spanning PAT. Every sweep
+  // here reaches repos this repo's own Action token cannot see, so without it the pack
+  // is declared and inert.
+  //
+  // The grant is RENDERED from fleet-token.mjs rather than written out, because the
+  // failure this handover exists to prevent is a PARTIAL list: an enforcer adopted with
+  // a token short of Pull requests read swept happily for days and then broke on its
+  // first private member, as a bare 403 deep inside the digest (missingbulb/Shepherd#37).
+  // A list that can drift from the code that needs it is the bug, not the wording.
+  adoptionHandover: [
+    {
+      step: `Create a fine-grained PAT over this account's repositories granting ALL of `
+        + `${fleetTokenGrant()}, and add it as the Actions secret ${FLEET_TOKEN}. `
+        + `Per permission — ${fleetTokenGrantDetail().join('; ')}.`,
+      breaks: 'every sweep this pack adds; each one throws on the missing secret, so the enforcer '
+        + 'covers nothing. A PAT granted only PART of the list is worse: the sweeps it satisfies run '
+        + 'green while the rest fail deep in a run, and Pull requests read in particular goes unnoticed '
+        + 'until the fleet gains its first private member',
+      done: 'one run of each sweep completes, the digest included — it is the only one that needs '
+        + 'Pull requests read, so a green digest is what proves the grant whole',
+    },
+  ],
 };

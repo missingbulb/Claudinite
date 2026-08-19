@@ -40,6 +40,7 @@ import {
   makeGh, paged, readDeclaration, isDormant, DECLARATION, SCHEDULER, fireScheduler,
 } from '../../fleet-api.mjs';
 import { parseSheepdogConfig } from '../../fleet-config.mjs';
+import { requireFleetToken } from '../../fleet-token.mjs';
 
 // The exact member-side task this lever forces — the id the member's tick resolves
 // against its own declared packs (`planWake` in engine/scheduler/queue/tick.mjs);
@@ -86,13 +87,8 @@ export function classifyScope(r, { canonRepo, exclude, filter }) {
 // --- main ---------------------------------------------------------------------
 
 export async function main() {
-  const token = process.env.FLEET_GITHUB_TOKEN;
+  const token = requireFleetToken();
   const home = process.env.GITHUB_REPOSITORY;
-  if (!token) {
-    throw new Error('FLEET_GITHUB_TOKEN is not set. Add a repo secret with a fine-grained PAT '
-      + '(this account, ALL repositories, Metadata read, Contents read, and Actions READ AND WRITE) — '
-      + 'the default GITHUB_TOKEN sees only this repo and cannot dispatch another repo\'s workflow.');
-  }
   if (!home || !home.includes('/')) throw new Error('GITHUB_REPOSITORY is not set (owner/repo)');
   const gh = makeGh(token);
 
