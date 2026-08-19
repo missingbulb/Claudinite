@@ -148,7 +148,7 @@ they are a no-op.
 ## The task folder
 
 One directory per task — `<pack>/tasks/<name>/` — holding **`task.mjs`** (the
-self-contained declaration + `precondition(signals, config)`, the eligibility
+self-contained declaration + `precondition(signals, config, item)`, the eligibility
 gate as pure code) beside its worker, plus any deterministic helpers. The
 precondition both asserts need-to-run and pre-decides scope: its `context` lines
 join the item's own Context as binding constraints the agent may not re-litigate.
@@ -189,6 +189,11 @@ Declare one only when its rule applies.
   task declaration is vendored verbatim into every consuming repo, so deployment detail and
   anything adjacent to a credential stay in that repo's own config.
 
+One field is **not** yours to declare: `model_from_request`, which lets a task run
+at the model its ITEM names rather than the one it declares. Exactly one task
+declares it — the engine's own built-in request implementer, which no pack can be —
+and every other task names its own `agent_model`.
+
 A task's `code_work_timeout` must stay under the executor's one-hour claim leash — a code-work
 that can outlive it is reclaimed while still running, and the item livelocks. The declaration
 contract enforces this; do not raise a timeout past it, split the work instead.
@@ -201,6 +206,14 @@ the executor hands off to, following task.md). Neither phase is "preparation" fo
 other, and — the rule that matters — **neither may decide whether the task
 runs**. That decision is the precondition's alone:
 
+- **The precondition sees the occurrence, not just the repo.** Its third argument is
+  this item's own facts, for a verdict about one target where the signals describe a
+  window of activity — a fan-out item's precondition can tell which target it is
+  about. Declare the argument only if you read it.
+- **A precondition that cannot answer says so**, with `{ error: '…' }` rather than a
+  decline: a decline is a decision about the world, and one taken on an API that
+  would not answer is a guess. The item parks open in the failure lane and the
+  ordinary re-queue lever retries it.
 - A task that passes its precondition **runs**. The later phases must not find
   "new reasons to skip" — not timing, not repo state, not "already handled", not
   an open PR elsewhere. If a condition should stop the run, it belongs in the

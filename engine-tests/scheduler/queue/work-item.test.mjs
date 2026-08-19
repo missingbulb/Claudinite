@@ -40,13 +40,17 @@ test('the body carries the task path first and the two scheduling fields', () =>
     taskPath: 'packs/claudinite-lifecycle/tasks/update/task.md',
     notBefore: '2026-08-15T02:00:00.000Z',
     blockedBy: [812, 813],
+    request: null,
+    model: null,
   });
   assert.match(body, /### Context\n- only the mount\n- nothing else/);
 });
 
 test('absence is meaningful: no fields parse to null and an empty list', () => {
   const body = workItemBody({ taskPath: 'packs/x/tasks/y/task.md' });
-  assert.deepEqual(parseWorkItemBody(body), { taskPath: 'packs/x/tasks/y/task.md', notBefore: null, blockedBy: [] });
+  assert.deepEqual(parseWorkItemBody(body), {
+    taskPath: 'packs/x/tasks/y/task.md', notBefore: null, blockedBy: [], request: null, model: null,
+  });
 });
 
 // The roll's whole mechanic: stamp the next anchor onto an item that already

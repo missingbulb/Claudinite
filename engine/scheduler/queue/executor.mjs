@@ -17,7 +17,7 @@ import { pathToFileURL } from 'node:url';
 import { nextAnchor } from './anchors.mjs';
 import {
   READY, URGENT, EXECUTING, AGENT, BLOCKED, NEEDS_HUMAN,
-  TASK_DONE, TASK_OBSOLETE, QUEUE_LABELS, isStandingItem,
+  TASK_DONE, TASK_OBSOLETE, QUEUE_LABELS, REQUEST_LABELS, QUEUED_LABEL, isStandingItem,
   NEEDS_HUMAN_ACTION, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_FAILURE, triageLabelFor,
   CLAIM_MARKER, HANDOFF_MARKER, EPISODE_MARKER,
   parseWorkItemTitle, parseWorkItemBody, parseContextLines, mergeContext, withNotBefore, withSection, hasLabel, DELIVERED_HEADING, LEGACY_DELIVERED_HEADINGS,
@@ -241,11 +241,34 @@ async function executeItem({
 
   // --- the single precondition evaluation (DESIGN §6.4) --------------------
   const at = now();
-  const signals = await collectSignalsFor(task, at);
-  const verdict = evaluatePrecondition(task, signals, config.packConfig?.[task.pack] ?? {});
+  const fields = parseWorkItemBody(item.body);
+  // The signals are collected FOR THIS OCCURRENCE, and the precondition judges over
+  // it: a request item's verdict is about the issue it names, which no signal bundle
+  // can single out on its own (DESIGN §16.4).
+  const signals = await collectSignalsFor(task, at, item);
+  const verdict = evaluatePrecondition(task, signals, config.packConfig?.[task.pack] ?? {}, fields);
+
+  // A PRECONDITION THAT COULD NOT ANSWER IS A RUN FAILURE, NOT A VERDICT (F27). A
+  // decline is a decision about the world; one taken on an API that would not answer
+  // is a guess, and its write-backs cannot land — for a request that would strand
+  // the issue armed-but-queued forever, the request silently eaten. So the item
+  // parks open in the failure lane, where the ordinary re-queue lever retries it
+  // once the API recovers, and nothing is written to whatever it could not read.
+  if (verdict.error) {
+    await converge(api, gh, repo, item.number, EXECUTING, NEEDS_HUMAN_FAILURE, claim,
+      `This run could not be decided: ${verdict.error}\n\nNothing ran and nothing was written. Re-queue this item (remove the \`${NEEDS_HUMAN}\` labels, add \`${READY}\`) once the cause has cleared.`);
+    log(`! #${item.number} ${id}: the precondition could not answer — ${verdict.error}`);
+    return 'needs-human';
+  }
+
   if (verdict.run !== true) {
     const plan = noGoPlan(item, task, schedule, at, verdict.reason || 'no work');
     if (plan.kind === 'close') {
+      // A DECLINED REQUEST IS DISARMED IN THE SAME CONVERGENCE (DESIGN §16.5).
+      // Nothing else would: an issue left carrying `claude-queued` after its run was
+      // refused is one no later tick adopts and no person is told about, and one
+      // whose mark — if re-applied — walks into the same refusal forever.
+      if (fields.request) await declineRequest(api, gh, repo, fields.request, item.number, plan.reason);
       await close(api, gh, repo, item.number, EXECUTING, TASK_OBSOLETE, 'not_planned',
         `The precondition declined and this item has no anchor to roll to: ${plan.reason}`);
       return 'obsolete';
@@ -328,12 +351,23 @@ async function executeItem({
 //
 // A throwing precondition converges to a no-go with the error as its reason: one
 // task's bad verdict is that item's problem, never the executor's.
-export function evaluatePrecondition(task, signals, packConfig = {}) {
+export function evaluatePrecondition(task, signals, packConfig = {}, item = null) {
   try {
-    return task.decl.precondition(signals, packConfig) ?? {};
+    return task.decl.precondition(signals, packConfig, item) ?? {};
   } catch (e) {
     return { run: false, reason: `precondition threw: ${e.message}` };
   }
+}
+
+// The write-back a refused request gets (DESIGN §16.5): one comment saying why, and
+// the queued label off, so the request is disarmed rather than left looking pending.
+// It is the executor's because the executor is what converged the item — whoever
+// converges owns the write-back for the end they converged.
+async function declineRequest(api, gh, repo, request, item, reason) {
+  await api.comment(gh, repo, request,
+    `Not implementing this: ${reason}\n\nThe queued run (#${item}) is closed and \`${QUEUED_LABEL}\` is removed. `
+    + 'If this was wrong, mark the issue again — a request is only run when the person who opened it, or somebody who commented `/claude go`, has push access here.');
+  await api.removeLabel(gh, repo, request, QUEUED_LABEL);
 }
 
 export function rollBody(body, until, reason, at) {
@@ -452,7 +486,7 @@ async function main() {
   const gh = makeGh();
   const { tasks, errors } = await discoverTasks(root, config);
   for (const e of errors) console.log(`! ${e.what}`);
-  await ensureLabels(gh, repo, QUEUE_LABELS);
+  await ensureLabels(gh, repo, [...QUEUE_LABELS, ...REQUEST_LABELS]);
 
   const runUrl = process.env.GITHUB_RUN_ID
     ? `${process.env.GITHUB_SERVER_URL ?? 'https://github.com'}/${repo}/actions/runs/${process.env.GITHUB_RUN_ID}`

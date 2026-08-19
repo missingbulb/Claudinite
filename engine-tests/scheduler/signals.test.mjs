@@ -13,7 +13,7 @@ const ctx = (over = {}) => ({ repo: 'o/r', defaultBranch: 'main', sinceIso: '202
 test('the collector set is the DESIGN §3.3 vocabulary', () => {
   assert.deepEqual(SIGNAL_COLLECTORS.sort(), [
     'branches', 'commits', 'conversationLogs', 'fleet', 'issues',
-    'localPacks', 'prs', 'release', 'sharedMount', 'stamp',
+    'localPacks', 'prs', 'release', 'request', 'sharedMount', 'stamp',
   ].sort());
 });
 

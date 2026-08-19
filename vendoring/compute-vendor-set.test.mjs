@@ -184,9 +184,17 @@ test('regression: the REAL canon tree vendors the WHOLE queue engine, .md includ
   const { readdirSync } = await import('node:fs');
   const { computeVendorSet } = await import('./compute-vendor-set.mjs');
   const { files } = await computeVendorSet(['basics']);
-  const queueDir = new URL('../engine/scheduler/queue/', import.meta.url);
-  const onDisk = readdirSync(queueDir).filter((n) => !n.endsWith('.test.mjs'));
+  // WALKED, not listed: the queue engine has subdirectories now (the engine's own
+  // built-in tasks), and a top-level listing would assert the directory name and
+  // never look inside it — which is how the request task's `task.md` was dropped by
+  // the blanket engine-.md rule while this test stayed green.
+  const walk = (url, prefix) => readdirSync(url, { withFileTypes: true }).flatMap((e) => (
+    e.isDirectory()
+      ? walk(new URL(`${e.name}/`, url), `${prefix}${e.name}/`)
+      : (e.name.endsWith('.test.mjs') ? [] : [`${prefix}${e.name}`])));
+  const onDisk = walk(new URL('../engine/scheduler/queue/', import.meta.url), '');
   assert.ok(onDisk.length > 0, 'the queue engine directory must exist and be non-empty');
+  assert.ok(onDisk.some((n) => n.includes('/')), 'the walk reaches inside the queue engine, not just its top level');
   for (const name of onDisk) {
     assert.ok(files.includes(`engine/scheduler/queue/${name}`),
       `engine/scheduler/queue/${name} is runtime-operational and must vendor — a mount missing it breaks the queue on every member`);
