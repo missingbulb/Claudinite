@@ -4,7 +4,7 @@
 
 ## What it does
 
-Daily, over the `FLEET_GITHUB_TOKEN` PAT: read this (sheepdog) repo's `sheepdog` pack entry `config` (`owner`, `exclude`, `canonRepo`, `staleDays`), read canon's default branch, enumerate every repo that owner owns, and walk it **once** — one declaration read per repo, plus two further reads (scheduler workflow, canon compare) for each member the freshness question actually measures.
+Daily, over the `FLEET_GITHUB_TOKEN` PAT: read this (sheepdog) repo's `sheepdog` pack entry `config` (`owner`, `exclude`, `canonRepo`), read canon's default branch, enumerate every repo that owner owns, and walk it **once** — one declaration read per repo, plus two further reads (scheduler workflow, canon compare) for each member the freshness question actually measures, and canon's own version numbers, read once per distinct pack across the whole walk.
 
 That one roster then answers two questions, each with its own issue family and its own section of the run summary:
 
@@ -30,14 +30,18 @@ For each measured member, by **root cause**, in this precedence:
 | state | meaning |
 |---|---|
 | `no-stamp` | declares packs but was never vendored — no engine on disk at all |
-| `no-scheduler` | no vendored scheduler workflow, so no cron, so it will never baseline itself; every other symptom is downstream of this |
+| `no-scheduler` | no vendored scheduler workflow, so no cron, so it will never refresh itself; every other symptom is downstream of this |
 | `ref-not-on-trunk` | the stamped ref is not a canon commit, or not an ancestor of canon's default branch — vendoring's #328 anti-rewind guard refuses to write, so the repo is **wedged**, not merely late |
-| `behind` | on trunk, but stamped at a commit older than `staleDays` while canon has moved on — baselining has stopped landing |
-| `fresh` | at canon head, or behind it only within the window |
+| `behind` | on trunk, but its stamped `engineVersion` is below canon's or a pack it stamps is below that pack's manifest version in canon — the self-refresh has stopped landing |
+| `fresh` | every version it stamps is at canon's |
 
-### The one assumption
+### What `behind` measures, and what it deliberately does not
 
-Baselining reverts a stamp-only bump, so `claudinite.updated` advances only when canon actually changed that member's vendor set. Age of the **stamped ref** is therefore the honest liveness measure, and `behind` reads *"this member has not picked canon up in `staleDays`"* — not *"canon moved"*. It can still misfire on a member whose vendor set genuinely saw no change in the window; `staleDays` (default **14**) is the knob, and the drift issue says so. That the stamp is not refreshed by the update flows at all is [#786](https://github.com/missingbulb/Claudinite/issues/786), inherited here unchanged.
+The **version gap**, and nothing else. The versioned update flows stamp `engineVersion` and `packVersions` and never rewrite `ref` or `updated`, so on a well-maintained member the stamped ref is frozen at whatever commit first vendored the mount: it is provenance, and its **age** measures nothing. Worse, it does not decay gracefully — every member's ref ages at the same rate, so one arbitrary day the whole fleet crosses any date window at once and the sweep files a drift issue per repo for a fleet that is, by versions, current ([#1025](https://github.com/missingbulb/Claudinite/issues/1025)).
+
+The numbers are read out of **canon** over the API — `engine/version.mjs` and each `packs/<id>/pack.mjs` — never out of the enforcer's own mount, which is itself a member and can be behind. A pack canon no longer carries has no manifest to be behind, so it contributes no gap; an absent number never reads as zero. A stamp carrying neither number is behind by construction: an engine that stamps always stamps.
+
+The stamped ref is still read, for the one thing it honestly says — whether it is a commit on canon's trunk at all, which is the `ref-not-on-trunk` wedge.
 
 ## Who is measured by which question
 
@@ -60,6 +64,6 @@ Its *implementation* scans every repo under the owner, but its declaration, sche
 
 ## Failure is loud, and now per-question
 
-A repo whose **declaration** cannot be read or parsed is `unknown` to **both** questions — it is the input they share. A repo whose **mount probe** fails (the stamp read, canon's compare) is `unknown` to the **freshness** question alone: the coverage question already read that declaration successfully and keeps its verdict.
+A repo whose **declaration** cannot be read or parsed is `unknown` to **both** questions — it is the input they share. A repo whose **mount probe** fails (the scheduler read, canon's compare, canon's version numbers) is `unknown` to the **freshness** question alone: the coverage question already read that declaration successfully and keeps its verdict.
 
 Either kind fails the run: no issue is opened for an unknown repo, no open issue is closed on its behalf, and the sweep exits non-zero with both halves' unknowns named together. The executor treats a non-zero code-work subprocess as a failed task and converges the item to `needs-human`, so an unusable token or scope escalates rather than silently shrinking the fleet.

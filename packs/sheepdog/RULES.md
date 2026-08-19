@@ -42,9 +42,9 @@ config schema — is [README.md](README.md). This file is what a session **here*
 
 - **Judging whether a member is behind** — compare `engineVersion` and `packVersions` against
   canon, never the age of its stamped `ref`. The update flows deliberately never rewrite `ref` or
-  `updated`, so on a well-maintained member the stamp is frozen and its age measures nothing.
-  `staleDays` governs only the legacy date measure, and applies to a member still declaring the
-  retired `baselining` mechanism.
+  `updated`, so the stamp is provenance — which commit first vendored the mount — and stays
+  frozen on a member that is perfectly current. Its age measures nothing, and measuring it
+  calls the whole fleet behind on one arbitrary day.
 
 - **Answering why the fleet did not move** — read the member's own artifacts first: its
   declaration, its stamp, the runs on its head sha. This repo dispatches; each member converges

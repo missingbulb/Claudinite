@@ -3,7 +3,7 @@
 // opt-in (a dedicated sheepdog repo declares it; NOT seeded by --init).
 //
 // The pack is thin: prose (RULES.md), the config schema (the pack entry's config =
-// { owner, kind, exclude, canonRepo, staleDays, packSeeds }), and the
+// { owner, kind, exclude, canonRepo, packSeeds }), and the
 // account-spanning sweeps
 // that ARE the cross-repo reach the pack adds — each with the ordinary agentless
 // scheduled task that runs it (the sweep IS its code-work, and its
@@ -106,7 +106,7 @@ export default {
   // 2: fleet-digest arrives (#954) — a sixth task, two checks and an optional `digest`
   // config block. Purely additive: nothing in a member is rewritten, so the bump carries
   // no migration record; it exists to deliver the new files to enforcers already on v1.
-  version: 7,
+  version: 8,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'fleet-enforcer duties for the repo watching every other repo — coverage, freshness, usage, standardized packs, the daily fleet brief',

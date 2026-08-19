@@ -5,7 +5,7 @@ under an owner. Opt-in (a dedicated sheepdog repo declares it; **not** seeded by
 standardizes the fleet coverage that used to be bespoke Claudinite infrastructure into a declaration.
 
 Thin by design: prose + the config schema (the sheepdog pack entry's `config` = `{ owner, kind, exclude,
-canonRepo, staleDays, packSeeds, digest }`) + six cross-repo **sweeps/levers**, each a
+canonRepo, packSeeds, digest }`) + six cross-repo **sweeps/levers**, each a
 scheduled task whose sweep is its `code_work`. The pack carries **no workflow**, and only the
 digest runs an agent *here* — everything else agentic happens in the *member*, on the fan-out model
 ([#749](https://github.com/missingbulb/Claudinite/issues/749)) — the enforcer dispatches, the
@@ -175,7 +175,7 @@ The enforcer's `.claudinite-checks.json` carries, as its `packs` entry for this 
 
 ```json
 { "id": "sheepdog", "config": { "owner": "missingbulb", "kind": "user", "exclude": ["owner/repo-a"],
-                                "canonRepo": "missingbulb/Claudinite", "staleDays": 14,
+                                "canonRepo": "missingbulb/Claudinite",
                                 "packSeeds": [{ "id": "<a pack>", "config": { … } }],
                                 "digest": { "pick": 4, "nudge": { "quietDays": 7 } } } }
 ```
@@ -186,7 +186,6 @@ The enforcer's `.claudinite-checks.json` carries, as its `packs` entry for this 
 | `kind` | `"user"` | org support is a later addition |
 | `exclude` | none | the repos deliberately kept out, a full `owner/name` each |
 | `canonRepo` | `<owner>/Claudinite` | what a member's installed versions are measured against — named rather than inferred, because a version tells you nothing about where it came from |
-| `staleDays` | `14` | the legacy date measure, for a member still declaring the retired `baselining` mechanism |
 | `packSeeds` | none | what this fleet wants every member to declare, each `{ id, config? }`. The **only** place a pack is named: the sweep carries the mechanism, the fleet carries the choice |
 | `digest` | everything | the brief's knobs, `pick` and `nudge` ([digest-config.mjs](tasks/fleet-digest/digest-config.mjs) spells out what each accepts) |
 
@@ -238,7 +237,7 @@ asks the owner for it. A workflow that exists only to hold a secret is redundant
 | Acting on an add-packs work-list issue | high | correctness | prose: 70 words |
 | Acting on a scanned pack suggestion | medium | correctness | prose: 77 words |
 | Reading unknown in a report | high | correctness | prose: 64 words |
-| Judging whether a member is behind | high | correctness | prose: 62 words |
+| Judging whether a member is behind | high | correctness | prose: 69 words |
 | Answering why the fleet did not move | medium | complexity | prose: 52 words |
 | Pushing canon to the whole fleet now | low | complexity | prose: 119 words |
 | Catching the digest up after an outage | low | complexity | prose: 66 words |
