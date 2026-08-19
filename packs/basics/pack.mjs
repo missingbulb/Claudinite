@@ -1,4 +1,5 @@
 import commentClassification from './comment-classification.mjs';
+import commentClassificationForm from './comment-classification-form.mjs';
 import referenceIntegrity from './reference-integrity.mjs';
 import markdownLinkLabels from './markdown-link-labels.mjs';
 import filePlacement from './file-placement.mjs';
@@ -19,7 +20,7 @@ export default {
   // against the stamped version, and what gets stamped is this manifest's number — so
   // a record declaring a version above it would re-apply every cycle, forever,
   // draining never.
-  version: 5,
+  version: 6,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'cross-project working discipline, issue-branch-PR lifecycle, repo hygiene, doc/reference integrity and the baseline engineering, testing and debugging skills',
@@ -50,6 +51,7 @@ export default {
   // these.
   workRules: [
     commentClassification,
+    commentClassificationForm,
     referenceIntegrity,
   ],
   // The baseline skills — general engineering practice every project's work

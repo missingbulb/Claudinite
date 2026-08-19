@@ -4,6 +4,7 @@ import { makeRepo, deletePath, cleanup, git, writeFiles, makeTranscript, declare
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import { runRule } from '../../engine/checks/helpers/work.mjs';
 import commentClassification from '../../packs/basics/comment-classification.mjs';
+import commentClassificationForm from '../../packs/basics/comment-classification-form.mjs';
 import referenceIntegrity from '../../packs/basics/reference-integrity.mjs';
 import linkLabels from '../../packs/basics/markdown-link-labels.mjs';
 import filePlacement from '../../packs/basics/file-placement.mjs';
@@ -636,6 +637,72 @@ test('comment-classification: silent without a transcript (CI) and on an empty c
   try {
     assert.equal(runRule(commentClassification, buildContext({ root, mode: 'changed' })).length, 0);
     assert.equal(runWithTranscript(commentClassification, root, [toolResult()]).length, 0);
+  } finally { cleanup(root); }
+});
+
+// --- comment-classification-form: the `Comment class:` line must carry the
+// class alone — every class token on it is declared, however the line phrases them.
+
+test('comment-classification-form: fires when the explanation smuggles another class on the same line', () => {
+  const root = makeRepo({ changed: { 'a.md': 'x\n' } });
+  try {
+    const findings = runWithTranscript(commentClassificationForm, root, [
+      owner('is this the right approach?'),
+      reply('Comment class: other — unrelated to any feature request.'),
+    ]);
+    assert.equal(findings.length, 1);
+    assert.match(findings[0].what, /`feature`/);
+    assert.match(findings[0].what, /`other`/);
+  } finally { cleanup(root); }
+});
+
+test('comment-classification-form: fires when the menu is pasted verbatim', () => {
+  const root = makeRepo({ changed: { 'a.md': 'x\n' } });
+  try {
+    const findings = runWithTranscript(commentClassificationForm, root, [
+      owner('what should we do here?'),
+      reply('Comment class: correction | feature | process-change | other'),
+    ]);
+    assert.equal(findings.length, 1);
+  } finally { cleanup(root); }
+});
+
+test('comment-classification-form: passes a bare class alone on its own line, explanation on the next', () => {
+  const root = makeRepo({ changed: { 'a.md': 'x\n' } });
+  try {
+    const findings = runWithTranscript(commentClassificationForm, root, [
+      owner('is this the right approach?'),
+      reply('Comment class: other\nNot a feature or a correction — just answering the question.'),
+    ]);
+    assert.equal(findings.length, 0);
+  } finally { cleanup(root); }
+});
+
+test('comment-classification-form: passes markdown-emphasised bare class and a genuinely mixed comma list', () => {
+  const root = makeRepo({ changed: { 'a.md': 'x\n' } });
+  try {
+    const bold = runWithTranscript(commentClassificationForm, root, [
+      owner('please add the widget'),
+      reply('**Comment class: other**\nActually a process note, not code.'),
+    ]);
+    assert.equal(bold.length, 0);
+    const mixed = runWithTranscript(commentClassificationForm, root, [
+      owner('please add the widget, and by the way that guard was wrong'),
+      reply('Comment class: correction, feature'),
+    ]);
+    assert.equal(mixed.length, 0);
+  } finally { cleanup(root); }
+});
+
+test('comment-classification-form: silent with no classification line at all, or no transcript (CI)', () => {
+  const root = makeRepo({ changed: { 'a.md': 'x\n' } });
+  try {
+    const unclassified = runWithTranscript(commentClassificationForm, root, [
+      owner('please add the widget'),
+      reply('On it — adding the widget now.'),
+    ]);
+    assert.equal(unclassified.length, 0);
+    assert.equal(runRule(commentClassificationForm, buildContext({ root, mode: 'changed' })).length, 0);
   } finally { cleanup(root); }
 });
 
