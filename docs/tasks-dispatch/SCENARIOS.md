@@ -351,7 +351,7 @@ event waits for the janitor's daily re-arm — up to ~25h.)
 ### S17 — delayed validation of a real-world change
 
 - **Day 1, 04:20** store-release code-work submits extension v2.4 to the store
-  review queue; converges its item #950 `outcome:delivered` (closed), and
+  review queue; converges its item #950 `outcome:done` (closed), and
   creates follow-up #951: `Blocked-by: #950`, `Not-before: Day 3 04:00Z`,
   `task:blocked`, Context: "validate v2.4 review outcome".
 - **Day 1–2** every tick's job 2 sees #951: blocker closed ✓, not-before not
@@ -979,6 +979,7 @@ further adoption, at whatever model the new label asks for.
 | **F24** | **design bug** | F18's episode boundary was stated as a rule ("earliest claim since the item last became ready") and implemented over only the paths that already wrote a comment; the roll and the `needs-human` park end an episode silently and leave the claim standing, so the next claimant loses to a dead one — the roll costs a leash period, the park livelocks forever (S39) | **fixed in DESIGN §6.2**: letting go of an open item kills your claim — the departing executor strikes its own claim comment, which ends the episode without the timeline entry §5 refuses. Found on live traffic (a member's first re-queue), not in simulation |
 | **F25** | **design bug** | one open park stops its task being scheduled at all: the standing-item guard cannot tell a fault from an inbox, so a permission gap parked `missingbulb/Shepherd`'s `fleet-digest` for two days behind one item while its dashboard read healthy ([#1032](https://github.com/missingbulb/Claudinite/issues/1032), Shepherd#37) | **fixed in DESIGN §4/§5**: the guard is conditional — only a `failure` park (and any park an older engine left unclassified) holds the lane; `action`, `decision` and `approval` are one person's inbox and the schedule goes on around them (S40, and S11/S12′ rewritten to the new property). Found in production, not in simulation — the sim had encoded the old behaviour as an assertion |
 | **F23** | **sim fidelity bug** | the simulator modeled the executor as an instantaneous unbounded loop — items' work started concurrently, nothing modeled run boundaries or what triggers the next run — so F21's occupancy model had no executable teeth (§I) | **fixed in the sim**: a run performs one item (structural — DESIGN §15.22), picks urgent-then-random, and records its trigger, the failure continuation included (§15.23); asserted by S34/S36, with S4's chain re-verified under it |
+| **F26** | doc bug | §9's follow-up bullet and S17 still had a run *ending* `outcome:delivered` after the 2026-08-19 triage split retired it as written-by-nothing | **fixed**: a run that delivered something long-running closes `outcome:done`; the retired label keeps its read-only row in §4 |
 
 What the exercise did **not** find: any scenario where work is lost silently,
 executed with no record, or where two mechanisms disagree about an item's

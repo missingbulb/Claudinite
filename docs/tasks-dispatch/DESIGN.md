@@ -812,7 +812,7 @@ by the tick (§5). Three patterns fall out, all from the sketch:
 
 - **Follow-up validation.** A task whose run delivered something long-running
   (a store submission, an armed auto-merge, a real-world change that settles
-  over days) ends `outcome:delivered` and creates its own follow-up item:
+  over days) closes `outcome:done` and creates its own follow-up item:
   `Blocked-by: #<this item>` (satisfied the moment this item closes) +
   `Not-before: <now + settle time>`. The tick readies it when the time passes;
   an executor then re-runs its precondition — which checks whether the world
