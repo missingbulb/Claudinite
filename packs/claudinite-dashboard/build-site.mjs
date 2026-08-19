@@ -96,6 +96,7 @@ await writeFile(join(OUT, 'index.html'), `<!doctype html>
 <head>
 <meta charset="utf-8">
 <title>Claudinite tasks</title>
+<link rel="icon" href="./${HOME}/favicon.svg" type="image/svg+xml">
 <meta http-equiv="refresh" content="0; url=./${HOME}/">
 <link rel="canonical" href="./${HOME}/">
 </head>
