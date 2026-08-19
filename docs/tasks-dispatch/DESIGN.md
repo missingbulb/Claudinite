@@ -163,21 +163,30 @@ work step's command — is still read from the tracked task files at HEAD, never
 issue. A work item whose task the repo no longer carries is closed as obsolete,
 exactly like today's exit-14.
 
-**Origin marker.** Items the generator creates carry `origin:schedule`; items
-created by hand, by a task, or by a fan-out do not, and an item adopted from a
-marked issue carries `origin:request` (§16.3). The generator's dedup
-guards (§5) count only `origin:schedule` items, so scheduled work and ad-hoc
-work never suppress each other — a pending follow-up does not silence tomorrow's
-occurrence, and an urgent hand-created item does not consume it either. A task
-whose precondition should care about open follow-ups can see them through the
-`issues` signal, as task-specific logic where it belongs.
+**Standing vs ad-hoc is structural — there is no origin marker** (owner,
+2026-08-19; this deletes `origin:schedule`, and `origin:request` dies unbuilt).
+An **unqualified** item of a task with a frequency *is* that task's standing
+item: the guards (§5) key on the bare title and the frequency read at HEAD, so
+nothing is hand-classified. Everything else is ad-hoc — an item of a `manual`
+task, or any item carrying a qualifier — and sits outside the family by its
+very title, so scheduled work and ad-hoc work never suppress each other: a
+pending follow-up (its own task) does not silence tomorrow's occurrence, and a
+fan-out target (qualified) does not consume it. Two consequences, both
+deliberate: creating an unqualified item of a scheduled task where none is
+open **is** minting its standing item — the same act as §8's force lever, not
+a lookalike — so deliberate concurrency for one task always names a qualifier;
+and a request item needs no marker either, being known by its `Request:` field
+(§16.3). The fielded engine still applies `origin:schedule` until the
+vocabulary migration; the label becomes inert stored data the decoders ignore.
+A task whose precondition should care about open follow-ups can see them
+through the `issues` signal, as task-specific logic where it belongs.
 
 ## 4. The state machine
 
 ```
-                     ┌────────────► closed  outcome:obsolete
+                     ┌────────────► closed  task:obsolete
                      │                    (precondition no longer holds; task gone)
- created ─► task:blocked ─► task:ready ─► task:executing ─► task:agent ─► closed  outcome:done
+ created ─► task:blocked ─► task:ready ─► task:executing ─► task:agent ─► closed  task:done
             (only when       (queue)       (claimed by an     (handed to        open    needs-human
              Blocked-by /                   executor)          a CCR session)           + one of the four
              Not-before                                                                   triage sub-labels
@@ -193,14 +202,22 @@ Labels, the full vocabulary:
 | `task:urgent` | modifier: pick before any non-urgent item | creator (write-gated, like every label) |
 | `task:executing` | an executor holds the claim | executor, on claim |
 | `task:agent` | an agent session owns it | executor, at hand-off |
-| `outcome:done` | succeeded; nothing pending (closed) | executor or agent |
+| `task:done` | succeeded; nothing pending (closed) | executor or agent |
 | `outcome:delivered` | **retired 2026-08-19, still read.** Meant "succeeded and left a live artifact the world still has to act on"; an unmerged PR now parks at `task:needs-human-approval` instead of closing, and nothing else ever wrote it. Closed issues carrying it are stored data, so every decoder still recognises it | — (historical) |
-| `outcome:obsolete` | never ran: the pickup-time precondition said no, or the task is gone from the repo (closed as not planned) | executor |
+| `task:obsolete` | never ran: the pickup-time precondition said no, or the task is gone from the repo (closed as not planned) | executor |
 | `needs-human` | parked for a human — the one triage *state*, and what every guard, sweep and dashboard turns on (open) | anyone, incl. janitor |
 | `task:needs-human-action` | …and something outside the code must change first: a secret set, a scope granted, a routine rewired, an input supplied | anyone, incl. janitor |
 | `task:needs-human-decision` | …and the run stopped mid-flight, so the next step is a choice: re-queue or abandon, does the half-done work stand, was the ceiling violation acceptable | anyone, incl. janitor |
 | `task:needs-human-approval` | …and it **succeeded**, deliberately leaving an unmerged PR. The one park that is not a fault | executor or agent |
 | `task:needs-human-failure` | …and the run broke: a bug, a contract-forbidden shape, a malformed or forged item. The default when nothing else fits | anyone, incl. janitor |
+
+**The terminal labels live in the `task:` namespace** (owner, 2026-08-19):
+`task:done` and `task:obsolete` — one vocabulary for the state machine's live
+*and* terminal states, and the `outcome:` namespace dissolves. The fielded
+engine writes the old spellings (`outcome:done`, `outcome:obsolete`) until the
+vocabulary migration lands; per the stored-data rename rule, decoders map
+every legacy spelling straight to today's, and `outcome:delivered` — which
+nothing writes — stays a recognized legacy spelling forever.
 
 **Every park wears two labels**: `needs-human` *and* exactly one sub-label. The
 state and the routing are different questions — the machine reads the first, a
@@ -213,9 +230,9 @@ direction chosen deliberately: every item an engine older than the split left
 behind, and every kind word a newer engine invents that this one does not know,
 holds the lane rather than silently letting a broken task keep filing work.
 
-**Only a `failure` park holds the task's lane** (§5). An open `origin:schedule`
-item *is* the task's standing item, so while one exists no further occurrence is
-filed — for a break that is the point, since a queue of items that will fail the
+**Only a `failure` park holds the task's lane** (§5). An open unqualified item
+of a scheduled task *is* its standing item (§3), so while one exists no further
+occurrence is filed — for a break that is the point, since a queue of items that will fail the
 same way helps nobody and the silence is the signal. For the other three it is a
 bug: a PR waiting on a reviewer, a decision waiting on its owner and a secret
 waiting to be set are one person's inbox, not a fault in the task, and #1032
@@ -294,8 +311,9 @@ tick(now):
   for task in discoverTasks():                  # NO ordering requirement — the
     if task.frequency == 'manual': continue     # `after` yield is pick-time (§6.1)
     A = mostRecentAnchor(task.frequency, config.taskScheduler, now)
-    family = issues(title == "[claudinite-work] <pack>/<task>",
-                    label "origin:schedule", state ALL)
+    family = issues(title == "[claudinite-work] <pack>/<task>", state ALL)
+                    # the exact bare title — a qualified item is outside the
+                    # family structurally (§3), no marker involved
                     # REST issue list, never the search index (S6/F11)
     # A park that is somebody's INBOX rather than a fault does not hold the
     # lane: it is neither the standing item nor a duplicate of one, so it drops
@@ -308,7 +326,7 @@ tick(now):
     # F16 self-heal first: nothing documents that a REST list from another
     # node sees a creation seconds old, so a stale list can let a duplicate
     # standing item through. Assume it will happen rather than that it won't:
-    # close every open family item but the OLDEST, outcome:obsolete, with a
+    # close every open family item but the OLDEST, task:obsolete, with a
     # dedupe comment. Serialized by the tick's concurrency group.
     if count(i.state == OPEN for i in live) > 1: closeAllButOldest(live)
     if any(i.state == OPEN for i in live):      continue  # the standing item
@@ -322,8 +340,7 @@ tick(now):
     if any(i.created_at >= A or i.closed_at >= A for i in family): continue
     createIssue(title:  "[claudinite-work] <pack>/<task>",
                 body:   taskPath,
-                labels: ["origin:schedule",
-                         family.isEmpty ? "task:blocked" : "task:ready"])
+                labels: [family.isEmpty ? "task:blocked" : "task:ready"])
                 # a brand-new task's FIRST item is born blocked with
                 # Not-before = its next anchor — adoption must not fire
                 # weekly/monthly tasks off-anchor (the old first-run concern)
@@ -344,11 +361,11 @@ And the roll, executor-side (the full pick flow is §6):
 ```text
 on pick, verdict = precondition(signals, config):
   go     -> proceed (work step, hand-off, converge, CLOSE with an outcome)
-  no-go  -> item carries origin:schedule?
+  no-go  -> item is the task's standing item (§3 — unqualified, frequency at HEAD)?
               yes: Not-before = nextAnchor(task.frequency); ready -> blocked;
                    record the reason            # the item ROLLS — not an exit
-              no:  close outcome:obsolete       # an ad-hoc item has no next
-                                                # anchor to roll to (S17)
+              no:  close task:obsolete          # ad-hoc (manual task, or
+                                                # qualified): no anchor to roll to (S17)
 ```
 
 **What this dissolves, all at once:**
@@ -387,7 +404,8 @@ the slot grammar, and it stays dead.
   scheduled task, each stating its next wake. That is ~a dozen standing open
   issues here — read it as the dashboard it is: the issue list *is* the
   scheduler's state, which is what the sketch asked for. Filtering them out
-  of "real issues" views is one label query (`-label:origin:schedule`).
+  of "real issues" views is a title query — every work item wears the
+  `[claudinite-work]` title prefix.
 - **Hourly tasks churn their item.** An hourly task that stays no-go rolls
   ~24 times a day: two label flips and a body edit per roll, on one issue.
   Cheap against API quotas, noisy on that item's timeline; the roll writes no
@@ -409,9 +427,13 @@ the earlier draft, restated for the new shape):
   decision or a secret leaves the lane open, so the next occurrence is filed
   beside it on schedule. It still consumes its own occurrence, so nothing is
   filed until that next anchor.
-- A **forced ad-hoc item** (no `origin:schedule`) is invisible to both
-  guards in both directions, whatever state it ends in — it neither
-  suppresses nor consumes an occurrence (#749's property, kept).
+- A **forced ad-hoc item** (qualified, or a manual task's — §3) is invisible
+  to both guards in both directions, whatever state it ends in — its title is
+  outside the family, so it neither suppresses nor consumes an occurrence
+  (#749's property, now structural). An **unqualified** item of a scheduled
+  task is never ad-hoc: creating one where none is open is minting the
+  standing item (§8), and beside an open one it is a duplicate the F16
+  self-heal closes.
 - **Force-of-a-scheduled-task** is now the wake lever, not an item (§8), so
   the S15 same-title collision cannot arise from the common force at all; the
   pick mutex (§6.1) still covers a deliberately created concurrent item.
@@ -512,7 +534,7 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
      state it should have had is a judgement about what actually ran.
 3. **Validate in code**: the body's first line is a legal task path, the file
    exists at HEAD, the pack is declared, `task.mjs` parses. Task gone → close,
-   `outcome:obsolete`, comment. Malformed → `needs-human` +
+   `task:obsolete`, comment. Malformed → `needs-human` +
    `task:needs-human-failure` (possible forgery, a human must see it),
    unchanged from today.
 4. **Evaluate the precondition — the only place it ever runs** (the sketch's
@@ -522,8 +544,8 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
    the verdict's Context written into the body as the agent's binding scope.
    On **no-go**: a scheduled item **rolls** — `Not-before` stamped with the
    task's next anchor, `task:ready → task:blocked`, the reason recorded — and
-   an ad-hoc item (no `origin:schedule`, so no anchor to roll to) closes
-   `outcome:obsolete` with the reason commented (a follow-up whose world
+   an ad-hoc item (a manual task's, or qualified — no anchor to roll to, §3)
+   closes `task:obsolete` with the reason commented (a follow-up whose world
    settled on its own, S17). **This amends §12.3's "the precondition is the
    only decision point" by re-siting, not weakening it**: still exactly the
    precondition deciding, still one decision point — moved from the scheduler
@@ -586,7 +608,7 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
    it works through its targets; no marker parks at `failure`, which is what
    every worker written before the marker existed does in every run.
 
-   Success, agentless task or no agent requested → converge now: `outcome:done`,
+   Success, agentless task or no agent requested → converge now: `task:done`,
    close, done — the quiet-on-success property survives as a *closed* item
    rather than no item, which is the better trade: the run is now visible.
    **Unless the payload names an unmerged PR**, which is not a finished run but
@@ -662,7 +684,7 @@ must actually tolerate is much narrower:
   and the half-run's artifacts are on the item (Delivered section, the
   PR-number comments the agent posts as it works — the item is the run's own
   inbox/outbox). A re-pick therefore *sees* what already happened and
-  converges `outcome:obsolete` instead of redoing it — check-before-act,
+  converges `task:obsolete` instead of redoing it — check-before-act,
   carried by the mechanism, not by task-author discipline.
 - The residual overlap cases are bounded by the **write ceiling**: the worst
   historical duplicate produced twin PRs — visible, closeable, never
@@ -699,7 +721,7 @@ role: validate the item in code before acting (never trust the prompt more
 than a label event — re-resolve the task path at HEAD), honor the Context as
 binding scope, run `task.md` at the declared model with the declared timeout
 stated plainly, verify the outcome ceiling in code (`verify-outcome`), converge
-the item (`outcome:done`, or a park under one of the four sub-labels + comment),
+the item (`task:done`, or a park under one of the four sub-labels + comment),
 print the `claudinite-task-exec` record, capture the session. One session, one
 item, no queue awareness — unchanged, and now structural: the session never
 receives a queue, only an item.
@@ -743,7 +765,7 @@ comes from a file under review.
   next appears only at its anchor, so for most of a daily task's day there
   is nothing to wake, and refusing there would make a fleet-wide converge
   lever fail on most members most of the time. The minted item is an
-  ordinary `origin:schedule` standing item: it consumes the current
+  ordinary standing item: it consumes the current
   occurrence (so the tick does not create a second one beside it) and leaves
   the next anchor's alone. Cross-repo, the enforcer does not perform any of
   this itself; it dispatches the member's scheduler with a `wake` input and
@@ -812,7 +834,7 @@ by the tick (§5). Three patterns fall out, all from the sketch:
 
 - **Follow-up validation.** A task whose run delivered something long-running
   (a store submission, an armed auto-merge, a real-world change that settles
-  over days) ends `outcome:delivered` and creates its own follow-up item:
+  over days) closes `task:done` and creates its own follow-up item:
   `Blocked-by: #<this item>` (satisfied the moment this item closes) +
   `Not-before: <now + settle time>`. The tick readies it when the time passes;
   an executor then re-runs its precondition — which checks whether the world
@@ -1080,8 +1102,8 @@ Survives unchanged: the task folder and contract (plus the new optional
 `after` and `on_interrupt`), preconditions as the only decision point (evaluated at admission and
 at pickup, §6.4), the work step (contract key `code_work`) and `required_secrets`, outcome ceilings and
 `verify-outcome`, the claim lease, one-agent-one-item, terminal convergence,
-`claudinite-task-exec` records and the usage fold (plus outcome labels as a
-second, queryable census), the janitor as sole recovery site, dormancy (the
+`claudinite-task-exec` records and the usage fold (plus the terminal labels as
+a second, queryable census), the janitor as sole recovery site, dormancy (the
 tick's first gate, before any read), the issue-is-data security posture, the
 one-cron rule.
 
@@ -1101,7 +1123,10 @@ its wiring is exactly four things, all idempotent, all from the vendored
 engine at HEAD:
 
 1. **Labels**, create-if-missing: `task:ready/blocked/executing/agent/urgent`,
-   `origin:schedule`, `needs-human` and its four sub-labels, the `outcome:*` family.
+   `needs-human` and its four sub-labels (until #1050 retires the bare label),
+   and the terminal pair `task:done`/`task:obsolete`. Nothing ensures
+   `outcome:delivered` — nothing applies it; decoders still read it and every
+   other legacy spelling.
 2. **Two vendored workflows**: the tick (cron at the repo's stable hashed
    minute, plus `workflow_dispatch` so an operator or a migration never waits
    for the cron), and the executor (invoked as the tick's drain job and by
@@ -1221,7 +1246,7 @@ the design rather than confirming it, the section it changed is named.
 3. **Timing in a precondition is advisory, not forbidden** (§6.4): permitted
    where the verdict cannot flip between creation and pickup for scheduling
    reasons alone. No check — the property is not mechanically checkable, and
-   the residual failure is a visible `outcome:obsolete`, not a wrong result.
+   the residual failure is a visible `task:obsolete`, not a wrong result.
 4. **A precondition is go/no-go, never maybe-later** (§5) — *changed the
    design twice*. First cut: one verdict per occurrence at the first tick
    after the anchor, which required a `lastTick` read from the Actions ledger
@@ -1361,6 +1386,22 @@ deployment coupling did not:
     next cron tick self-heals everything, or a hand-dispatched **scheduler**
     run (not the bare executor) does it immediately. (S37/S38; wiring rides
     #883.)
+25. **`task:done` / `task:obsolete`** (owner, 2026-08-19) — the `outcome:`
+    namespace dissolves into `task:`: one vocabulary carries the state
+    machine's live and terminal states alike (§4). `outcome:delivered` stays a
+    read-only legacy spelling — nothing writes it. The fielded engine keeps
+    the old spellings until the vocabulary migration; decoders map every
+    legacy spelling straight to today's, per the stored-data rename rule.
+26. **The origin marker is deleted** (owner, 2026-08-19) — *changed the
+    design*: standing vs ad-hoc derives from structure (§3) — an unqualified
+    item of a task with a frequency at HEAD *is* the standing item; a manual
+    task's item, or any qualified item, is ad-hoc; a request item is known by
+    its `Request:` field. `origin:request` dies unbuilt; fielded
+    `origin:schedule` labels become inert stored data the decoders ignore, and
+    the vocabulary migration may strip them from open items. The one semantic
+    shift, accepted: an unqualified ad-hoc twin of a scheduled task ceases to
+    exist as a concept — creating one is minting/waking the standing item
+    (§8's lever), and deliberate concurrency names a qualifier.
 
 ---
 
@@ -1391,7 +1432,7 @@ never wears a `task:` label:
 | label | applied by | means |
 |---|---|---|
 | `claude-task` | a person | implement this issue; the next tick adopts it |
-| `claude-model:opus` \| `:sonnet` \| `:haiku` | a person, optionally | run it at that family — the default when absent |
+| `claude-model:opus` \| `:sonnet` \| `:haiku` | a person, optionally | run it at that family — the default when absent; consumed with the mark (§16.3) |
 | `claude-queued` | the tick, on adoption | a work item exists for this issue |
 | `claude-in-review` | the session | a pull request is open, waiting on a person |
 
@@ -1425,7 +1466,7 @@ parts of this that touch code every member runs.
 ### 16.3 The tick's fourth job — adopt
 
 Beside instantiate, ready and reclaim: **adopt**. For every open issue carrying
-`claude-task`, the tick creates a work item — `origin:request`, born `task:ready`,
+`claude-task`, the tick creates a work item — born `task:ready`,
 titled with the issue as its qualifier (`[claudinite-work] engine/implement-request
 #123`) — whose body carries two new fields:
 
@@ -1436,39 +1477,65 @@ Request: #123                            # the issue this run implements
 Model: sonnet                            # from the issue's claude-model: label
 ```
 
-…and then **consumes the mark**: `claude-task` off, `claude-queued` on. That
-consumption is the whole of the exactly-once guard, and it is the same shape as
-every other guard here — state that clears by being acted on, rather than a history
-search or a watermark. A second tick finds nothing to adopt while an item is live;
-a request that has run is asked again by re-applying `claude-task`, which is the
-only way to ask again.
+…and then **consumes the mark**: `claude-task` off, every `claude-model:*` off,
+`claude-queued` on. That consumption is the whole of the exactly-once guard, and
+it is the same shape as every other guard here — state that clears by being acted
+on, rather than a history search or a watermark. The model labels are consumed
+with the mark so each ask names its model afresh: a label left by an earlier ask
+can never outrank a new one, and the labels standing on the issue always describe
+the pending ask only.
+
+**One issue, one live item.** Adoption checks for a prior open item naming the
+same issue. While one is *live* (ready, executing, or with an agent) the mark
+simply **waits, unconsumed** — a later tick takes it once the run settles, so an
+impatient re-ask can never put a second run onto an issue mid-flight. A prior
+item that *parked* (`needs-human`, any sub-label) is **superseded**: adoption
+closes it `task:obsolete` with a superseding comment, then adopts — so the
+phone-sized retry (re-apply `claude-task`) never leaves its predecessor parked
+forever beside the run that replaced it. Re-marking is one of **two** sanctioned
+retries: the other is §4's ordinary re-queue lever on the parked item itself,
+which re-runs the same item without a new adoption.
 
 Adoption stays inside the tick's contract: it is pure label mechanics over the
 issue list, evaluates no precondition, collects no signal, and forms no judgment
-about *who* marked the issue. It also cannot disturb scheduled work — the dedup and
-occurrence guards count `origin:schedule` items only (§3), and a request carries
-`origin:request`.
+about *who* marked the issue. It also cannot disturb scheduled work: a request item's title
+carries the issue qualifier and its task is `manual`, so it sits outside every
+scheduled family structurally (§3).
 
 ### 16.4 The precondition is the security check — and there is no code-work
 
 The verdict happens where every verdict happens: **once, at pickup, on the
 executor** (§6.4). The built-in task's precondition refuses three ways, each a plain
-no-go that converges the item `outcome:obsolete` (an ad-hoc item has no anchor to
+no-go that converges the item `task:obsolete` (an ad-hoc item has no anchor to
 roll to, and a refusal is nobody's inbox — it closes rather than joining a triage
 lane):
 
 - the issue is closed, or no longer carries `claude-queued` — the request was
   withdrawn between adoption and pickup;
-- the issue's `author_association` is not `OWNER`, `MEMBER` or `COLLABORATOR`,
-  **and** no comment from such an association matches the approval phrase
-  `/claude go`;
-- the issue cannot be read at all.
+- neither the issue's author nor any commenter of the approval phrase
+  `/claude go` **has push permission on the repository**;
+- the issue is definitively **gone** — the API answers that it does not exist.
 
-`author_association` is computed by GitHub from the asker's permission on the
-repository and rides every issue and comment payload, so it is not forgeable by
-anyone who can type — which is what lets "minimal security" be genuinely minimal.
-The approval-comment path exists for the issue somebody else opened: a collaborator
-blesses it without having to re-file it.
+**Push permission is read from the permission API**
+(`GET /repos/{owner}/{repo}/collaborators/{username}/permission`, requiring
+`admin`, `maintain` or `write`), with the payload's `author_association` usable
+only as a prefilter that saves the call. The association alone is deliberately
+not the check: `MEMBER` is any org member whatever their repo permission, and
+`COLLABORATOR` includes read-only collaborators — broader than the push access
+the ask demands. Both facts are server-computed and unforgeable by anyone who
+can type, which is what lets "minimal security" be genuinely minimal; the
+permission read just makes the gate mean what it says. The approval-comment
+path exists for the issue somebody else opened: someone with push blesses it
+without having to re-file it — and the blessing is the *comment*, not the mark:
+applying `claude-task` to another person's issue authorizes nothing by itself.
+
+**A read failure is not a verdict.** A refusal's write-back (§16.5) cannot
+reach an issue it cannot read, so declining on a transient API failure (a rate
+limit, a 500) would strand `claude-queued` on the issue forever over nothing —
+the request silently eaten. Only a definitive *gone* declines; any other read
+failure **fails the run**: the item parks `needs-human` +
+`task:needs-human-failure`, open and visible, and the ordinary re-queue lever
+(§4) retries it once the API recovers.
 
 Two consequences worth stating plainly:
 
@@ -1491,7 +1558,7 @@ Whoever converges the item owns the write-back for the end it converged:
 
 | end | item | who | what the issue gets |
 |---|---|---|---|
-| the precondition declined | `outcome:obsolete`, closed | the executor | one comment saying why, and `claude-queued` removed — the request is disarmed |
+| the precondition declined | `task:obsolete`, closed | the executor | one comment saying why, and `claude-queued` removed — the request is disarmed |
 | a pull request is open | `needs-human` + `task:needs-human-approval`, **open** | the session | `claude-queued` → `claude-in-review` |
 | the run broke | `needs-human` + `task:needs-human-failure`, open | either | **nothing** |
 
@@ -1533,7 +1600,9 @@ anything behavior-defining**, so it is fenced rather than waved through:
   it is engine-owned, so no pack can opt itself in.
 - The value is validated against the model families; anything else falls back to the
   declared default rather than failing, and the run says on the issue which model it
-  actually used.
+  actually used. The labels themselves are consumed at adoption (§16.3), so only the
+  pending ask's choice is ever on the issue — a stale label from an earlier ask
+  cannot outrank a new one.
 - The trust argument: the field is written by the tick from a label, applying a label
   is write-gated, and the precondition re-checks at pickup that a write-access person
   asked. An actor who could edit an item's body to raise the model could equally have
@@ -1568,10 +1637,12 @@ arbitrated and recovered by the same code as any other item, which is the point.
 
 ### 16.10 What this costs in code (for approval)
 
-1. `queue/tick.mjs` — job 4, plus the shell fetching issues by label.
-2. `queue/work-item.mjs` — the `Request:` and `Model:` fields, `origin:request`, and
-   the request labels in the ensured set.
-3. `queue/executor.mjs` — pass the item to the precondition; the decline write-back.
+1. `queue/tick.mjs` — job 4 (including the prior-item wait/supersede guard and the
+   label consumption), plus the shell fetching issues by label.
+2. `queue/work-item.mjs` — the `Request:` and `Model:` fields, and the request
+   labels in the ensured set.
+3. `queue/executor.mjs` — pass the item to the precondition; the decline write-back;
+   the cannot-answer verdict parking in the failure lane (§16.4).
 4. `scheduler/discover.mjs` + `validate-dispatch.mjs` — the built-in task root and
    its path form.
 5. `scheduler/task-contract.mjs` — `model_from_request`, and the precondition's third
@@ -1582,7 +1653,7 @@ arbitrated and recovered by the same code as any other item, which is the point.
 8. `packs/claudinite-growth/skills/writing-tasks/SKILL.md` — the contract prose
    members read.
 
-Played through in the simulator as **S44–S49** ([sim](sim/), SCENARIOS §K); each was
+Played through in the simulator as **S44–S51** ([sim](sim/), SCENARIOS §K); each was
 watched failing against a deliberately broken mechanism before it was believed.
 
 ## Appendix A — the owner's sketch (2026-08-12, verbatim)
