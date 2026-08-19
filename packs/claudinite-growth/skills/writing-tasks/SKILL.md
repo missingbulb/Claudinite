@@ -60,11 +60,17 @@ than by replaying a ledger.
   event-driven or condition-gated job becomes a task on `frequency: 'manual'`, woken
   by whatever knows the event happened. Don't keep either as a dispatch-only workflow
   for the task to fire: that is two files and two edit sites for one job, and a
-  workflow whose only caller is the thing that replaced it. (A workflow that must run
-  *as an Action* for something a task cannot reach — an Actions-only secret, an OIDC
-  identity a deploy target demands — is the exception. Even then the task owns the
-  trigger and the decision to run; the workflow carries only the step that needs the
-  Action's own privileges.) Off-band or multiple
+  workflow whose only caller is the thing that replaced it. (The exception is narrow,
+  and it is **not** about privilege. An Actions-only secret is reachable from
+  code-work, which runs Action-side — `required_secrets`, below. A deploy target's
+  OIDC identity is one `permissions:` line in the executor's own workflow, not a wall.
+  A one-shot external effect is handled by `on_interrupt: 'needs-human'`, not by
+  escaping to a workflow. What genuinely does not fit is the Actions **composition
+  model**: a `uses:` step is resolved by the runner out of workflow YAML, and code-work
+  is itself a step's subprocess, so no task — in any language — can invoke one. Work
+  built on marketplace or composite actions, a Pages deploy being the standing example,
+  keeps a workflow for those steps. Even then the task owns the trigger and the
+  decision to run; the workflow carries only the `uses:` steps.) Off-band or multiple
   crons, or a missing concurrency/dispatch guard, break staggering, double-run
   safety, or manual runs.
 
@@ -135,8 +141,9 @@ than by replaying a ledger.
   whether a run with nothing to say should mint a tracker at all is the task's own
   judgment, and tidy-repo's three answer no.
 
-Both guards are **relevance-first**: inert until their artifact exists, so
-on a repo with neither artifact they are a no-op.
+`task-declaration-shape` and `task-md-only-when-agentic` are **relevance-first**:
+both key off a `tasks/<name>/task.mjs` existing, so on a repo that carries no tasks
+they are a no-op.
 
 ## The task folder
 

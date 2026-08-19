@@ -76,7 +76,7 @@ import taskMdOnlyWhenAgentic from './task-md-only-when-agentic.mjs';
 // active sets retention_days itself.
 export default {
   id: 'claudinite-growth',
-  version: 11,
+  version: 12,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'authoring Claudinite content here — lesson extraction, dedup, revalidation, conversation logs, skill-usage folding, the task contract',
