@@ -103,6 +103,13 @@ A squash-merge creates a new commit on `main` that the branch's own commits are 
 4. **No merge-base** — `git merge-base` fails when a force-push rewrote `main` and orphaned the branch; can't be proven in or out mechanically; needs human review, never an automatic delete.
 5. Otherwise — genuine unmerged work.
 
+### `list_pull_requests`' `merged` field is not a reliable read on its own
+
+It can report `merged: false` with `merged_at` empty for a PR that has, in fact, already landed —
+even with `fields` narrowed to just those. For landed-ness, either grep the base branch's commit
+subjects for the squash-merge's `(#N)`, or call `pull_request_read` `method: get` on the one PR
+you actually care about; don't trust a list call's `merged` field by itself.
+
 ## A push or PR made with the Actions `GITHUB_TOKEN` does not start another workflow
 
 GitHub suppresses workflow runs triggered by the built-in `GITHUB_TOKEN` to prevent recursion, so a workflow's own `git push` or `gh pr create` won't fire another workflow (e.g. a `test` or cache-refresh workflow). The one exception is `workflow_dispatch` / `repository_dispatch` — which is why an automation pipeline that needs the downstream checks to run must dispatch them explicitly. A run dispatched against a branch executes on its head commit, so its checks still attach to the PR. The same suppression covers a Claude session's own app-scoped pushes: creating a PR through the API does fire its `pull_request` run, but a follow-up push to that PR gets **no** `synchronize` run — so don't wait for checks that will never start on the new head; gate by running the CI commands locally, and rely on the post-merge run (merging through the merge API does fire the `push` workflow on the default branch).
@@ -138,6 +145,14 @@ GitHub **Actions** reports results as **check runs**, not the legacy **commit st
 ## To confirm a non-PR run (push / dispatch), read its job logs — it has no PR check runs
 
 A `push` or `workflow_dispatch` run isn't attached to a PR, so the PR-scoped check-run query above doesn't apply to it. Confirm such a run through the GitHub API/MCP tools: `get_job_logs(run_id, failed_only: true)` — "0 failed jobs" means green — or, for a release build, `get_release_by_tag`. `get_job_logs` needs more than a bare `run_id`: it rejects with "job_id is required when failed_only is false" unless you pass `failed_only: true` or fetch a `job_id` first (`list_workflow_jobs`), and it 404s for a job still `in_progress` — wait for the job to finish. Don't `curl` the run's status instead: in a sandboxed session `api.github.com` is proxy-blocked and returns an error body that never matches a success pattern, so a `curl`/`Monitor` poll silently reports "still running" until it times out.
+
+## A workflow-run artifact download resolves to a blob-storage URL a sandboxed session can't reach
+
+`download_workflow_run_artifact` hands back a `*.blob.core.windows.net`-style cloud-storage URL,
+and a sandbox's egress proxy denies it at CONNECT — so a CI-failure artifact the run uploaded (a
+diff image, a captured log dump) is not fetchable that way. Read `get_job_logs` with a generous
+`tail_lines` to learn which step or case failed, then reproduce it locally rather than chasing the
+uploaded artifact's URL.
 
 ## A deleted workflow's old runs outlive it, and no session tool can clear them
 
