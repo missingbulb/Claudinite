@@ -20,6 +20,10 @@ whole argument for its existence.
   re-check on close; the janitor's rules; and the force/re-queue levers.
   `afterMode: 'blocked-by'` exists solely so S24 can demonstrate the
   starvation that ruled that wiring out.
+  Ad-hoc requests (DESIGN §16) are modeled as their own issue store beside the
+  work items: a mark, the tick's adopt job, the built-in request task's
+  precondition, and the two write-backs — each modeled where the engine will
+  leave a mark, never where the rule merely says something happened.
 - [`scenarios.test.mjs`](scenarios.test.mjs) — the play-throughs, numbered
   to match SCENARIOS.md. Each test schedules world events at instants
   (`sim.at('2026-08-12T09:03Z', …)`), runs the clock across a window, and
@@ -77,6 +81,13 @@ test's title in `scenarios.test.mjs`.
 | §11 janitor stale-ready escalation (~2 periods) | `S18`, `S21` (never on a rolling item) |
 | §11 janitor stuck-dependency sweep (F14) | `S18`, `S24` |
 | §4/F7 the human re-queue lever | `S19`, `S12'` |
+| §16.1/§16.3 the mark is consumed on adoption — exactly-once, no history search | `S44`, `S49` |
+| §16.4 the precondition is the security check (author association / approval comment) | `S45`, `S46` |
+| §16.4 the precondition takes the item — a request verdict is about the issue it names | `S48` |
+| §16.5 a request that leaves a PR parks for approval; a refusal closes; a break parks as a fault | `S44`, `S45`, `S49` |
+| §16.5 the write-backs onto the marked issue, and the silence on failure | `S44`, `S45`, `S49` |
+| §16.7 the model label routes the run; an unknown family falls back to the default | `S47` |
+| §16.6 the session's request mode — what it validates and how it implements | **prose** — session behavior, not label mechanics |
 | §15.1 invocation is a CCR API call | failure modes: `S9a`, `S10a`, `S10b`; **prose** for the call contract itself |
 | §15.2 precondition at pickup; forcing loses its exemption | `S14'`, `S16'` |
 | §15.3 timing-in-preconditions is advisory | **prose** — advisory by ruling, unenforceable by design |
