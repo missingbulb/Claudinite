@@ -6,7 +6,7 @@
 // TWO COPIES, ONE SHAPE. Packs import only the engine surface, never each other
 // (pack-independence), so the member-side task carries its own byte-identical copy
 // of this file and a cross-pack test
-// (packs-tests/sheepdog/tasks/fleet-add-missing-packs/protocol.test.mjs) pins the
+// (packs/sheepdog/tasks/fleet-add-missing-packs/protocol.test.mjs) pins the
 // two together. Change either copy and that test names the other.
 //
 // The protocol is deliberately tiny: one label, two converged issue titles, and the

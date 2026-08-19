@@ -1,6 +1,6 @@
 # The LIVE CANARY (#593 phase 3) — the required final step of any core change.
 #
-# The fixture rehearsal (packs-tests/rehearsal/) is the fast gate: hermetic,
+# The fixture rehearsal (vendoring/rehearsal/) is the fast gate: hermetic,
 # seconds, on every PR. It has one honest weakness — a fixture only tests what
 # someone remembered to model. This is the other half: a REAL repo, really
 # adopting Claudinite, really running its own scheduler, converged against this

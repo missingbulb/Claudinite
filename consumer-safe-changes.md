@@ -121,7 +121,7 @@ contributes no rules) their checks stopped running with no other symptom.
 
 So there is a procedure, in three layers, cheapest first.
 
-**1. The fixture rehearsal — automatic, every PR.** `packs-tests/rehearsal/` builds four fixture
+**1. The fixture rehearsal — automatic, every PR.** `vendoring/rehearsal/` builds four fixture
 consumers, one per shape the fleet has, and runs the REAL converge against your working tree:
 `apply-vendor-set` → `converge-wiring` → `engine/migrations/apply`, then `engine/selftest.mjs` and
 `check_the_world`. It runs in **two modes**, and the second is the half people forget:

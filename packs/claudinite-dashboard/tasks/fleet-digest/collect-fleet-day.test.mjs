@@ -1,4 +1,4 @@
-// Run with `node --test packs-tests/claudinite-dashboard/tasks/fleet-digest/*.test.mjs`.
+// Run with `node --test packs/claudinite-dashboard/tasks/fleet-digest/*.test.mjs`.
 //
 // The collector is the half of fleet-digest that must not need an agent to be right,
 // so this is where the load-bearing behaviour is pinned: the maintenance filter (the

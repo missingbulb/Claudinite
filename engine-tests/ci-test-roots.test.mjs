@@ -4,9 +4,9 @@
 // right shape — it is short, it is readable, and it does not enumerate directory depth
 // — but a closed set has one failure mode: a test written somewhere outside it is never
 // run, and CI stays green while covering less. That is not hypothetical. The previous
-// form listed globs per depth (`packs-tests/*/skills/*/*.test.mjs`, …) and `vendoring/`
-// appeared in none of them, so both of its test files went unrun for as long as they
-// existed — a silent 38-test hole nothing reported.
+// form listed one glob per level of nesting, and `vendoring/` appeared in none of them,
+// so both of its test files went unrun for as long as they existed — a silent 38-test
+// hole nothing reported.
 //
 // So the root list is declared in ONE place (ci.yml, where CI actually reads it) and
 // this test holds it honest: every tracked `*.test.mjs` must fall under a declared root,

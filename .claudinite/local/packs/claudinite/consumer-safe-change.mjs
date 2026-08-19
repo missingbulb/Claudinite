@@ -18,7 +18,7 @@ import { finding } from '../../../../engine/checks/helpers/findings.mjs';
 //
 //   a MIGRATION RECORD  — <flow>/migrations/<date>-<name>/migration.mjs, the
 //                         mechanism that rewrites a member on its next converge
-//   a REHEARSAL FIXTURE — packs-tests/rehearsal/fixtures.mjs, which proves a
+//   a REHEARSAL FIXTURE — vendoring/rehearsal/fixtures.mjs, which proves a
 //                         consumer in that shape still converges green
 //
 // Either satisfies it. They answer different questions — "members are moved
@@ -42,7 +42,7 @@ const STUB = 'engine/scheduler/stubs/claudinite-tick.yml';
 // owns it — the engine's own, or one pack's — so both homes count (#768).
 const MIGRATION_RECORD = /^(engine|packs\/[^/]+)\/migrations\/\d{4}-\d{2}-\d{2}-[^/]+\//;
 const MIGRATIONS = '<engine|packs/*>/migrations/<date>-<name>/';
-const FIXTURES = 'packs-tests/rehearsal/fixtures.mjs';
+const FIXTURES = 'vendoring/rehearsal/fixtures.mjs';
 // The canon's own local packs — repo-only content, outside every vendor set.
 const LOCAL_PACKS = '.claudinite/local/packs';
 
@@ -65,7 +65,7 @@ export function contractChanges(changed, read, readBase = () => null) {
     // logic is an ordinary pack edit and stays out of scope: firing on those would
     // make every touch of a blocking rule a migration question, which is the
     // cried-wolf failure this rule is built to avoid.
-    if (!/\.mjs$/.test(file) || file.startsWith('packs-tests/') || file.startsWith('engine-tests/')) continue;
+    if (!/\.mjs$/.test(file) || /\.test\.mjs$/.test(file) || file.startsWith('engine-tests/')) continue;
     // A rule in the canon's OWN local packs reaches no consumer by construction:
     // the vendor set carries engine/ and packs/, never .claudinite/local/, so such a
     // rule runs in exactly one repo — this one — and its severity asks nothing of

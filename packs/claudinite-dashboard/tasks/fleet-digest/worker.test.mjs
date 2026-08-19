@@ -1,4 +1,4 @@
-// Run with `node --test packs-tests/claudinite-dashboard/tasks/fleet-digest/*.test.mjs`.
+// Run with `node --test packs/claudinite-dashboard/tasks/fleet-digest/*.test.mjs`.
 //
 // worker.mjs's decidable parts — which days a run covers, what "now" each is collected
 // as-of, and how those days get sorted into written / quiet / needs-judgment. The

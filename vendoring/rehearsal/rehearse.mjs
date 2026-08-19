@@ -30,7 +30,7 @@ import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
-export const CANON = dirname(dirname(dirname(fileURLToPath(import.meta.url)))); // packs-tests/rehearsal -> canon
+export const CANON = dirname(dirname(dirname(fileURLToPath(import.meta.url)))); // vendoring/rehearsal -> canon
 
 // Every step is captured, never thrown: a rehearsal that dies on step two must
 // still report which step and why, because "it failed" is not actionable and

@@ -86,7 +86,11 @@ async function member(declaration, extraFiles = {}) {
   const dir = await mkdtemp(join(tmpdir(), 'cd-member-'));
   await mkdir(join(dir, '.claudinite/shared/packs'), { recursive: true });
   await cp(join(ROOT, 'engine'), join(dir, '.claudinite/shared/engine'), { recursive: true });
-  await cp(PACK_DIR, join(dir, '.claudinite/shared/packs/claudinite-dashboard'), { recursive: true });
+  // As the vendor set lays it down: a pack's tests sit beside the files they cover and
+  // are dropped on the way into a mount, so a fixture that copied them would be staging
+  // a tree no member ever has.
+  await cp(PACK_DIR, join(dir, '.claudinite/shared/packs/claudinite-dashboard'),
+    { recursive: true, filter: (src) => !src.endsWith('.test.mjs') });
   await writeFile(join(dir, '.claudinite-checks.json'), JSON.stringify(declaration));
   for (const [name, body] of Object.entries(extraFiles)) await writeFile(join(dir, name), body);
   return dir;

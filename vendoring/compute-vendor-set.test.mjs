@@ -4,6 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { execFileSync } from 'node:child_process';
 
 // This test lives at <repo>/vendoring/compute-vendor-set.test.mjs.
 const MOUNT_DIR = dirname(fileURLToPath(import.meta.url)); // <canon>/vendoring/
@@ -266,6 +267,24 @@ test('a bundled skill\'s tests stay canon-side like any other test', async () =>
   assert.deepEqual(errors, []);
   assert.ok(files.includes('packs/alpha/skills/s1/SKILL.md'));
   assert.ok(!files.includes('packs/alpha/skills/s1/helper.test.mjs'));
+});
+
+// The same exclusion, asked of the REAL corpus rather than a fixture. A pack's tests
+// live inside the pack, beside the files they cover, so the only thing keeping them
+// out of every member's mount is the `*.test.mjs` name rule above — and a fixture
+// spelling that rule cannot notice the day it stops selecting the real tree. Both
+// halves are load-bearing: the second asserts the scope is non-empty, so a corpus
+// with no pack tests left can never read as "the exclusion works".
+test('no canon pack ships its tests — over the real corpus, not a fixture', async () => {
+  const { computeVendorSet } = await import(pathToFileURL(join(MOUNT_DIR, 'compute-vendor-set.mjs')));
+  const { loadPacks } = await import(pathToFileURL(join(REPO_ROOT, 'engine/pack_loader/pack-registry.mjs')));
+  const ids = (await loadPacks()).map((p) => p.id);
+  const { files } = await computeVendorSet(ids, { today: '2026-01-01' });
+  assert.deepEqual(files.filter((f) => f.endsWith('.test.mjs')), []);
+
+  const packTests = execFileSync('git', ['ls-files', 'packs/**/*.test.mjs'], { cwd: REPO_ROOT, encoding: 'utf8' })
+    .split('\n').filter(Boolean);
+  assert.ok(packTests.length > 50, `only ${packTests.length} pack tests tracked — this assertion has lost its subject`);
 });
 
 // --- the coherence guard: the set must be import-closed ----------------------
