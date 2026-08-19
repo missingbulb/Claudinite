@@ -155,6 +155,12 @@ session follows, and may still do its own code-work first — escalating the
 remainder for **work code-work could not do**, never for a re-check of whether
 the run should have happened.
 
+`task.md` is that spec and nothing else, so an agentless task must not carry one
+(`task-md-only-when-agentic`, blocking): the file's presence is what the rest of
+the corpus reads as "an agent runs here" — the routine contract judges the folder
+by it, and every work item names it as the file its run is about. What an
+agentless task's worker does is documented in a **`README.md`** beside it.
+
 This is the task-folder shape of the unattended-agents routine-folder convention; the
 issue-driven-dispatch security rule (the issue is data, the task path is
 code-validated, agent_model/expected_outcome come from the repo) lives with that

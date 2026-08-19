@@ -50,7 +50,10 @@
 //                 it, so a rule that reads it can turn a member red overnight through
 //                 no act of its own; this shape holds that harmless by carrying a
 //                 worker that reads the code-work contract's variables and nothing else,
-//                 which is what every member's task code already does.
+//                 which is what every member's task code already does. Its doc is a
+//                 README rather than a `task.md` for the same reason from the other
+//                 side: that is the shape `task-md-only-when-agentic` mandates, and
+//                 the fixture is what proves the rule stays silent on it.
 //   growth-member a member enrolled in the growth lifecycle, carrying the local
 //                 packs its capture runs write. The growth stages ship blocking
 //                 work rules scoped to those runs, so this is the shape that
@@ -291,6 +294,12 @@ export const FIXTURES = [
       '.claudinite/local/packs/fixture-code-work/RULES.md': '# fixture-code-work\n\nNo standing rules.\n',
       '.claudinite/local/packs/fixture-code-work/tasks/code-work-only/task.mjs': CODE_WORK_TASK,
       '.claudinite/local/packs/fixture-code-work/tasks/code-work-only/worker.mjs': CODE_WORK_WORKER,
+      // An agentless task's doc is a README — `task.md` is the spec an agent
+      // session reads, and `task-md-only-when-agentic` (blocking, growth) turns a
+      // folder carrying one red. This is the shape a member holds afterwards, so
+      // the fixture is what says the rule does not fire on it.
+      '.claudinite/local/packs/fixture-code-work/tasks/code-work-only/README.md':
+        '# code-work-only\n\nA rehearsal fixture task. Its worker never runs.\n',
     },
   },
   {

@@ -20,7 +20,7 @@ const rule = {
   id: 'sw/site-config',
   severity: 'blocking',
   description: `${CONFIG_PATH} declares the publish set explicitly — the five required keys, no unknown keys, every published path present`,
-  doc: 'packs/static-website/RELEASE.md',
+  doc: 'packs/static-website/skills/static-site-releases/SKILL.md',
   why: 'the published artifact is an explicit list, so a stale entry silently drops a page from the live site and an unknown key silently does nothing',
 
   run(ctx) {
@@ -30,7 +30,7 @@ const rule = {
       return [finding(rule, {
         file: CONFIG_PATH,
         what: `missing — the pipeline reads every repo value from it (${KEYS.filter((k) => !k.optional).map((k) => k.name).join(', ')})`,
-        fix: `write ${CONFIG_PATH} with all five required keys, explicitly (see the pack's RELEASE.md)`,
+        fix: `write ${CONFIG_PATH} with all five required keys, explicitly (see the static-site-releases skill)`,
       })];
     }
 

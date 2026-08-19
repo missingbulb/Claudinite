@@ -12,7 +12,7 @@ edit the manifest and `package.json` together on a branch (default the next **mi
 `main` via a normal PR — merging the bump *is* cutting the release.
 
 **Date-anchored versions (`<major>.<ymmdd>.<n>`).** A project on this scheme — a static site under
-[the static-website pack's RELEASE.md](../../../../packs/static-website/RELEASE.md) — computes the
+[the static-website pack's static-site-releases skill](../../../../packs/static-website/skills/static-site-releases/SKILL.md) — computes the
 last two parts from the previous version and the UTC date, in its release pipeline, on every push
 that ships. So there is no minor to raise and nothing to compute by hand: **"bump version" means the
 `major`**, the deliberate "this is a new generation of the site" statement. Edit it in every version

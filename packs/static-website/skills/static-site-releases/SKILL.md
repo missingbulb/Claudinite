@@ -1,17 +1,22 @@
-# Static website — versioning, release-on-push and Pages publication standard
+---
+name: static-site-releases
+description: The release standard every static-site repo of ours ships — the date-anchored version scheme, release-on-push, the explicit publish set, .github/site.config, the vendored workflows, the Pages deploy, and the setup a new site repo needs. Use when setting up a site repo, changing or debugging its release pipeline or site.config, or when a static-website check fires.
+---
+
+# Releasing a static site
 
 Every static-site repo of ours ships the **same** pipeline: same workflows, same versioning, same
-publish-set rules, same CI gate. This doc is that contract, the setup for a new site repo, and the
+publish-set rules, same CI gate. This skill is that contract, the setup for a new site repo, and the
 one-time GitHub settings the automation cannot turn on for itself.
 
-The workflow **logic** is authored once, in this pack's [`stubs/`](stubs/) — the
-[orchestrator](stubs/workflows/static-site-release.yml), two `workflow_call`-only **reusable
-workflows** ([publish](stubs/workflows/static-site-publish.yml),
-[deploy](stubs/workflows/static-site-deploy-pages.yml)), the
-[CI gate](stubs/workflows/static-site-ci.yml), and three composite actions
-([read-site-config](stubs/actions/read-site-config/action.yml),
-[bump-site-version](stubs/actions/bump-site-version/action.yml),
-[assemble-site](stubs/actions/assemble-site/action.yml)) — and **vendored into each site repo's own
+The workflow **logic** is authored once, in this pack's [`stubs/`](../../stubs/) — the
+[orchestrator](../../stubs/workflows/static-site-release.yml), two `workflow_call`-only **reusable
+workflows** ([publish](../../stubs/workflows/static-site-publish.yml),
+[deploy](../../stubs/workflows/static-site-deploy-pages.yml)), the
+[CI gate](../../stubs/workflows/static-site-ci.yml), and three composite actions
+([read-site-config](../../stubs/actions/read-site-config/action.yml),
+[bump-site-version](../../stubs/actions/bump-site-version/action.yml),
+[assemble-site](../../stubs/actions/assemble-site/action.yml)) — and **vendored into each site repo's own
 `.github/`**, where the whole pipeline runs with no cross-repo dependency. GitHub resolves a
 reusable workflow or a composite action only from a repo's own `.github/`, never from the shared
 mount, so "the logic lives in the pack" means the pack holds the templates and each repo hosts a
@@ -23,7 +28,7 @@ mount, so "the logic lives in the pack" means the pack holds the templates and e
 ### Versioning — `v<major>.<ymmdd>.<n>`
 
 The site's version is **date-anchored**, and it is computed, never typed. The scheme, and the code
-that computes it, live together in [bump.mjs](stubs/actions/bump-site-version/bump.mjs):
+that computes it, live together in [bump.mjs](../../stubs/actions/bump-site-version/bump.mjs):
 
 | Part | What it is |
 |---|---|
@@ -57,7 +62,7 @@ The rejected alternative is subtractive — "serve the repo except `.claude/` an
 and it fails in the direction that hurts: it publishes every file nobody thought to exclude, and it
 publishes each *new* one silently, the day it lands. An additive list can only publish what the
 repo asked for, and its failure mode (a file that doesn't appear) is visible on the site and caught
-on the PR. Two guards make that concrete, in [assemble-site](stubs/actions/assemble-site/action.yml):
+on the PR. Two guards make that concrete, in [assemble-site](../../stubs/actions/assemble-site/action.yml):
 a publish path that doesn't exist fails the run, and so does an assembled site with no `index.html`
 at its root. Both also run on every pull request, so a broken publish set never reaches `main`.
 
@@ -124,7 +129,7 @@ that matches nothing tracked, a tooling directory in the publish set, and a site
 
 ### The workflows
 
-**One orchestrator per repo** — [`static-site-release.yml`](stubs/workflows/static-site-release.yml),
+**One orchestrator per repo** — [`static-site-release.yml`](../../stubs/workflows/static-site-release.yml),
 named exactly `Release static site`. It owns only the triggers (push to `main`, plus a
 `workflow_dispatch` with `force`) and calls the local publish reusable, which runs:
 
@@ -142,7 +147,7 @@ explicit call rather than a second push trigger, and why the push cannot loop.
 
 A push that touches nothing published is a clean no-op: no bump, no tag, no redeploy.
 
-**CI** — [`static-site-ci.yml`](stubs/workflows/static-site-ci.yml) runs on every pull request with
+**CI** — [`static-site-ci.yml`](../../stubs/workflows/static-site-ci.yml) runs on every pull request with
 **no `paths:` filter**: the Claudinite world sweep, the repo's `test_command`, the build, and a dry
 run of the artifact assembly. The missing path filter is deliberate — a path-filtered conformance
 flow arms auto-merge and then never runs, so the repo's own maintenance PR waits forever.
@@ -153,7 +158,7 @@ flow arms auto-merge and then never runs, so the repo's own maintenance PR waits
    questions (where it's served; what's published). Re-vendor so the pack's tree lands under the
    shared mount.
 2. **Vendor the pipeline** into the repo's own `.github/`: everything under
-   [`stubs/workflows/`](stubs/workflows/) and [`stubs/actions/`](stubs/actions/). There are no
+   [`stubs/workflows/`](../../stubs/workflows/) and [`stubs/actions/`](../../stubs/actions/). There are no
    tokens to replace. A repo whose site deploys somewhere **other** than Pages takes the CI stub
    and the versioning half only, and skips the orchestrator + the two reusables — every rule in
    this pack is gated on the orchestrator, so nothing here fires on it.
@@ -189,7 +194,7 @@ the first release-on-push run fails and opens a `workflow-failure` issue.
       "protected branches only" rule already does; check it if the repo renamed its default branch.
 - [ ] Optional: **Pages → Custom domain**, if this site has one. Note that a custom domain moves
       the site from `/<repo>/` to the domain root — see the relative-URL rule in the pack's
-      [RULES.md](RULES.md).
+      [RULES.md](../../RULES.md).
 
 Close this issue once the first release-on-push run has deployed successfully.
 ```

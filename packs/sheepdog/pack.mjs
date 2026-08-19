@@ -88,7 +88,9 @@ export default {
   // next token error names the whole grant instead of that sweep's subset (#1030).
   // 13: the task contract moved into the claudinite-growth `writing-tasks` skill; the
   // pointers in this pack's README and its three fleet task docs follow it (#975).
-  version: 13,
+  // 14: each fleet task's doc is a README.md — every one of them is agentless, and
+  // task.md is the spec an agent session reads (task-md-only-when-agentic, #1055).
+  version: 14,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'fleet-enforcer duties for the repo watching every other repo — coverage, freshness, usage, standardized packs',

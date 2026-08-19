@@ -13,7 +13,7 @@ import decl from '../../../../packs/sheepdog/tasks/fleet-add-missing-packs/task.
 
 const taskDir = join(dirname(fileURLToPath(import.meta.url)), '../../../../packs/sheepdog/tasks/fleet-add-missing-packs');
 const workerSrc = readFileSync(join(taskDir, 'worker.mjs'), 'utf8');
-const briefSrc = readFileSync(join(taskDir, 'task.md'), 'utf8');
+const briefSrc = readFileSync(join(taskDir, 'README.md'), 'utf8');
 
 test('fleet-add-missing-packs: the declaration satisfies the task contract', () => {
   assert.deepEqual(validateTaskDeclaration(decl), []);

@@ -37,7 +37,7 @@ const rule = {
   id: 'sw/release-workflows',
   severity: 'blocking',
   description: 'The static-site orchestrator and the reusable workflows + composite actions it calls must all be vendored into .github/',
-  doc: 'packs/static-website/RELEASE.md',
+  doc: 'packs/static-website/skills/static-site-releases/SKILL.md',
   why: 'the pipeline runs entirely from the repo own .github/ — a missing leg is a release that half-runs: a bumped version with no deploy, or a deploy of an untested tree',
 
   run(ctx) {

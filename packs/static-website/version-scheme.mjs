@@ -17,7 +17,7 @@ const rule = {
   id: 'sw/version-scheme',
   severity: 'blocking',
   description: 'Every declared version record carries the same <major>.<ymmdd>.<n> version',
-  doc: 'packs/static-website/RELEASE.md',
+  doc: 'packs/static-website/skills/static-site-releases/SKILL.md',
   why: 'a version that is off-scheme cannot be bumped (the release fails), and records that disagree ship a number that matches nothing that was released',
 
   run(ctx) {
