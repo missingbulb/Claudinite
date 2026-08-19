@@ -18,7 +18,7 @@ reports it.
 | Adding a pack | medium | complexity | prose: 27 words |
 | Setting a project up on Claudinite | medium | complexity | prose: 15 words |
 | Deciding which pack owns a lesson | medium | complexity | prose: 59 words |
-| Judging whether Claudinite is current here | medium | correctness | prose: 43 words |
+| Judging whether Claudinite is current here | medium | correctness | prose: 51 words |
 | Writing or changing a scheduled task | high | correctness | prose: 26 words + checks (`task-declaration-shape`, `task-declaration-matches-folder`, `task-prework-env`) |
 | Answering "why did the mount not update" | medium | correctness | prose: 39 words |
 
