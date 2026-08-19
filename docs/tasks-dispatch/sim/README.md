@@ -82,11 +82,13 @@ test's title in `scenarios.test.mjs`.
 | §11 janitor stuck-dependency sweep (F14) | `S18`, `S24` |
 | §4/F7 the human re-queue lever | `S19`, `S12'` |
 | §16.1/§16.3 the mark is consumed on adoption — exactly-once, no history search | `S44`, `S49` |
-| §16.4 the precondition is the security check (author association / approval comment) | `S45`, `S46` |
+| §16.3 one issue, one live item — a live prior item makes the mark wait; a parked one is superseded (F28) | `S49`, `S51` |
+| §16.4 the precondition is the security check (push permission via the permission API / approval comment) | `S45`, `S46` |
 | §16.4 the precondition takes the item — a request verdict is about the issue it names | `S48` |
+| §16.4 a gone issue declines; an unreadable one fails the run instead of guessing (F27) | `S50` |
 | §16.5 a request that leaves a PR parks for approval; a refusal closes; a break parks as a fault | `S44`, `S45`, `S49` |
 | §16.5 the write-backs onto the marked issue, and the silence on failure | `S44`, `S45`, `S49` |
-| §16.7 the model label routes the run; an unknown family falls back to the default | `S47` |
+| §16.7 the model label routes the run; an unknown family falls back; the labels are consumed (F29) | `S47` |
 | §16.6 the session's request mode — what it validates and how it implements | **prose** — session behavior, not label mechanics |
 | §15.1 invocation is a CCR API call | failure modes: `S9a`, `S10a`, `S10b`; **prose** for the call contract itself |
 | §15.2 precondition at pickup; forcing loses its exemption | `S14'`, `S16'` |

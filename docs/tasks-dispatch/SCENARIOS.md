@@ -896,10 +896,11 @@ mutation check caught it).
 ## K. Ad-hoc requests (owner, 2026-08-18 — DESIGN §16)
 
 A person marks an ordinary issue and the queue implements it. What these play
-is not the happy path (S44 is two lines of it) but the four ways a request can
-be something other than what it looks like: asked by the wrong person,
-withdrawn after it was accepted, broken and silently re-run, or asking for a
-model that does not exist.
+is not the happy path (S44 is two lines of it) but the ways a request can be
+something other than what it looks like: asked by the wrong person, withdrawn
+after it was accepted, broken and silently re-run, asking for a model that
+does not exist, pointing at an issue that cannot be read, or re-asked while
+the previous run is still standing.
 
 ### S44 — a marked issue becomes exactly one run
 
@@ -913,18 +914,21 @@ adopts **nothing**: the consumed mark is the exactly-once guard.
 
 ### S45 — an unauthorized mark is refused once, and disarmed
 
-The same play with an issue opened by `NONE` and blessed by nobody. The tick
-adopts it (adoption forms no judgment), the precondition declines, the item
-**closes** `outcome:obsolete` — a refusal is nobody's inbox, so it joins no
-triage lane — and the executor comments on #500 and removes `claude-queued`.
-The disarm is the point: without it every tick for the rest of time re-adopts
-and re-refuses the same issue.
+The same play with an issue opened by someone with no permission on the repo
+and blessed by nobody. The tick adopts it (adoption forms no judgment), the
+precondition declines, the item **closes** `outcome:obsolete` — a refusal is
+nobody's inbox, so it joins no triage lane — and the executor comments on #500
+and removes `claude-queued`. The disarm is the point: without it every tick
+for the rest of time re-adopts and re-refuses the same issue.
 
-### S46 — the approval path
+### S46 — the approval path, judged by permission
 
-An outsider's issue with `/claude go` from an `OWNER` runs and parks for
-review. The same issue with `/claude go` from a `NONE` does not — the phrase
-decides nothing on its own; the association behind it does.
+An outsider's issue with `/claude go` from someone with push runs and parks
+for review. The same issue with `/claude go` from someone without does not —
+the phrase decides nothing on its own; the permission behind it does. And the
+permission is the *API-read* permission, not the payload association (F30): a
+read-only collaborator — who rides every payload as `COLLABORATOR` — is
+refused on their own issue exactly like a stranger.
 
 ### S47 — the model label routes the run
 
@@ -932,7 +936,9 @@ decides nothing on its own; the association behind it does.
 `claude-model:gpt-9` falls back to the default rather than parking a request
 nobody can run. Two marked issues make two items, two runs and two approval
 parks — neither of which delays the other, because an approval park holds no
-lane.
+lane. Adoption consumes the model labels along with the mark (F29), so a
+later re-ask starts from a clean issue — no stale label from this ask can
+outrank the next one's choice.
 
 ### S48 — withdrawal between adoption and pickup
 
@@ -941,13 +947,36 @@ it and before the executor reaches it. The precondition declines, the item
 closes obsolete, and **no session is ever invoked** — the window that exists
 because adoption and the verdict are deliberately in different phases.
 
-### S49 — a broken request stays put
+### S49 — a broken request stays put; re-marking supersedes it
 
 The session fails. The item parks at `task:needs-human-failure` — someone reads
 the trace — and #500 keeps `claude-queued`: nothing mechanical re-arms work that
 writes code, and that standing label is what stops the next tick adopting a
 second run. The person fixes the cause and re-marks the issue: exactly one
-further adoption, at whatever model the new label asks for.
+further adoption, at whatever model the new label asks for — and that adoption
+**supersedes the parked item** (F28), closing it `outcome:obsolete` with a
+comment naming the re-ask, so the retry never leaves its predecessor parked
+forever beside the run that replaced it.
+
+### S50 — gone declines; unreadable fails the run
+
+Two requests meet a broken read at pickup. One's issue is **gone** — the API
+answers it does not exist: a plain decline, `outcome:obsolete`, no session, and
+nothing to write back to. The other's issue exists but **cannot be read** — a
+rate limit, a 500. Declining there would eat the request permanently (F27): the
+decline's own write-back cannot reach the issue, so `claude-queued` would stand
+forever over nothing. Instead the run **fails**: the item parks at
+`task:needs-human-failure`, open and visible, the issue untouched and still
+armed. The API recovers, a human re-queues the item (§4's lever, no new
+adoption), and the run completes to its approval park.
+
+### S51 — an impatient re-ask waits out the live run
+
+`claude-task` is re-applied while the first run is still with its agent. The
+mark **waits on the issue, unconsumed** — the ticks that fire mid-run adopt
+nothing, because one issue gets one live item (F28) — and the tick that finds
+the run settled (parked for review) supersedes that park and adopts the
+waiting mark. Two runs, strictly in sequence, never two sessions on one issue.
 
 ## Findings ledger
 
@@ -980,6 +1009,10 @@ further adoption, at whatever model the new label asks for.
 | **F25** | **design bug** | one open park stops its task being scheduled at all: the standing-item guard cannot tell a fault from an inbox, so a permission gap parked `missingbulb/Shepherd`'s `fleet-digest` for two days behind one item while its dashboard read healthy ([#1032](https://github.com/missingbulb/Claudinite/issues/1032), Shepherd#37) | **fixed in DESIGN §4/§5**: the guard is conditional — only a `failure` park (and any park an older engine left unclassified) holds the lane; `action`, `decision` and `approval` are one person's inbox and the schedule goes on around them (S40, and S11/S12′ rewritten to the new property). Found in production, not in simulation — the sim had encoded the old behaviour as an assertion |
 | **F23** | **sim fidelity bug** | the simulator modeled the executor as an instantaneous unbounded loop — items' work started concurrently, nothing modeled run boundaries or what triggers the next run — so F21's occupancy model had no executable teeth (§I) | **fixed in the sim**: a run performs one item (structural — DESIGN §15.22), picks urgent-then-random, and records its trigger, the failure continuation included (§15.23); asserted by S34/S36, with S4's chain re-verified under it |
 | **F26** | doc bug | §9's follow-up bullet and S17 still had a run *ending* `outcome:delivered` after the 2026-08-19 triage split retired it as written-by-nothing | **fixed**: a run that delivered something long-running closes `outcome:done`; the retired label keeps its read-only row in §4 |
+| **F27** | **design bug** | "the issue cannot be read at all" was a precondition *refusal*: a transient API failure converged the item obsolete while the decline's write-back could not reach the unreadable issue — the request silently eaten, `claude-queued` stranded forever | **fixed in DESIGN §16.4** (owner, 2026-08-19): only a definitive *gone* declines; any other read failure fails the run into the failure park, open and re-queueable (S50) |
+| **F28** | **design bug** | adoption had no prior-item guard: re-applying `claude-task` beside an open item created a second item for the same issue, and the parked predecessor stayed open forever — S49's own retry story walked straight into it | **fixed in DESIGN §16.3** (owner, 2026-08-19): one issue, one live item — a live prior item leaves the mark waiting, unconsumed; a parked one is superseded (closed obsolete) by the new adoption (S49, S51) |
+| **F29** | design gap | model labels accumulated across asks, and multiples resolved by family-precedence order — a stale label from an earlier ask outranked the newest one | **fixed in DESIGN §16.3/§16.7** (owner, 2026-08-19): the model labels are consumed with the mark, so each ask names its model afresh (S47) |
+| **F30** | security precision | §16.4 read `author_association` as "the asker's permission on the repository": `MEMBER` is any org member and `COLLABORATOR` includes read-only collaborators — broader than the push access #1010 asked for | **fixed in DESIGN §16.4** (owner, 2026-08-19): push permission is read from the permission API; the association is at most a prefilter (S46) |
 
 What the exercise did **not** find: any scenario where work is lost silently,
 executed with no record, or where two mechanisms disagree about an item's

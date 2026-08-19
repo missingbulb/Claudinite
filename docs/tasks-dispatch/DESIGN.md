@@ -1391,7 +1391,7 @@ never wears a `task:` label:
 | label | applied by | means |
 |---|---|---|
 | `claude-task` | a person | implement this issue; the next tick adopts it |
-| `claude-model:opus` \| `:sonnet` \| `:haiku` | a person, optionally | run it at that family — the default when absent |
+| `claude-model:opus` \| `:sonnet` \| `:haiku` | a person, optionally | run it at that family — the default when absent; consumed with the mark (§16.3) |
 | `claude-queued` | the tick, on adoption | a work item exists for this issue |
 | `claude-in-review` | the session | a pull request is open, waiting on a person |
 
@@ -1436,12 +1436,24 @@ Request: #123                            # the issue this run implements
 Model: sonnet                            # from the issue's claude-model: label
 ```
 
-…and then **consumes the mark**: `claude-task` off, `claude-queued` on. That
-consumption is the whole of the exactly-once guard, and it is the same shape as
-every other guard here — state that clears by being acted on, rather than a history
-search or a watermark. A second tick finds nothing to adopt while an item is live;
-a request that has run is asked again by re-applying `claude-task`, which is the
-only way to ask again.
+…and then **consumes the mark**: `claude-task` off, every `claude-model:*` off,
+`claude-queued` on. That consumption is the whole of the exactly-once guard, and
+it is the same shape as every other guard here — state that clears by being acted
+on, rather than a history search or a watermark. The model labels are consumed
+with the mark so each ask names its model afresh: a label left by an earlier ask
+can never outrank a new one, and the labels standing on the issue always describe
+the pending ask only.
+
+**One issue, one live item.** Adoption checks for a prior open item naming the
+same issue. While one is *live* (ready, executing, or with an agent) the mark
+simply **waits, unconsumed** — a later tick takes it once the run settles, so an
+impatient re-ask can never put a second run onto an issue mid-flight. A prior
+item that *parked* (`needs-human`, any sub-label) is **superseded**: adoption
+closes it `outcome:obsolete` with a superseding comment, then adopts — so the
+phone-sized retry (re-apply `claude-task`) never leaves its predecessor parked
+forever beside the run that replaced it. Re-marking is one of **two** sanctioned
+retries: the other is §4's ordinary re-queue lever on the parked item itself,
+which re-runs the same item without a new adoption.
 
 Adoption stays inside the tick's contract: it is pure label mechanics over the
 issue list, evaluates no precondition, collects no signal, and forms no judgment
@@ -1459,16 +1471,30 @@ lane):
 
 - the issue is closed, or no longer carries `claude-queued` — the request was
   withdrawn between adoption and pickup;
-- the issue's `author_association` is not `OWNER`, `MEMBER` or `COLLABORATOR`,
-  **and** no comment from such an association matches the approval phrase
-  `/claude go`;
-- the issue cannot be read at all.
+- neither the issue's author nor any commenter of the approval phrase
+  `/claude go` **has push permission on the repository**;
+- the issue is definitively **gone** — the API answers that it does not exist.
 
-`author_association` is computed by GitHub from the asker's permission on the
-repository and rides every issue and comment payload, so it is not forgeable by
-anyone who can type — which is what lets "minimal security" be genuinely minimal.
-The approval-comment path exists for the issue somebody else opened: a collaborator
-blesses it without having to re-file it.
+**Push permission is read from the permission API**
+(`GET /repos/{owner}/{repo}/collaborators/{username}/permission`, requiring
+`admin`, `maintain` or `write`), with the payload's `author_association` usable
+only as a prefilter that saves the call. The association alone is deliberately
+not the check: `MEMBER` is any org member whatever their repo permission, and
+`COLLABORATOR` includes read-only collaborators — broader than the push access
+the ask demands. Both facts are server-computed and unforgeable by anyone who
+can type, which is what lets "minimal security" be genuinely minimal; the
+permission read just makes the gate mean what it says. The approval-comment
+path exists for the issue somebody else opened: someone with push blesses it
+without having to re-file it — and the blessing is the *comment*, not the mark:
+applying `claude-task` to another person's issue authorizes nothing by itself.
+
+**A read failure is not a verdict.** A refusal's write-back (§16.5) cannot
+reach an issue it cannot read, so declining on a transient API failure (a rate
+limit, a 500) would strand `claude-queued` on the issue forever over nothing —
+the request silently eaten. Only a definitive *gone* declines; any other read
+failure **fails the run**: the item parks `needs-human` +
+`task:needs-human-failure`, open and visible, and the ordinary re-queue lever
+(§4) retries it once the API recovers.
 
 Two consequences worth stating plainly:
 
@@ -1533,7 +1559,9 @@ anything behavior-defining**, so it is fenced rather than waved through:
   it is engine-owned, so no pack can opt itself in.
 - The value is validated against the model families; anything else falls back to the
   declared default rather than failing, and the run says on the issue which model it
-  actually used.
+  actually used. The labels themselves are consumed at adoption (§16.3), so only the
+  pending ask's choice is ever on the issue — a stale label from an earlier ask
+  cannot outrank a new one.
 - The trust argument: the field is written by the tick from a label, applying a label
   is write-gated, and the precondition re-checks at pickup that a write-access person
   asked. An actor who could edit an item's body to raise the model could equally have
@@ -1568,10 +1596,12 @@ arbitrated and recovered by the same code as any other item, which is the point.
 
 ### 16.10 What this costs in code (for approval)
 
-1. `queue/tick.mjs` — job 4, plus the shell fetching issues by label.
+1. `queue/tick.mjs` — job 4 (including the prior-item wait/supersede guard and the
+   label consumption), plus the shell fetching issues by label.
 2. `queue/work-item.mjs` — the `Request:` and `Model:` fields, `origin:request`, and
    the request labels in the ensured set.
-3. `queue/executor.mjs` — pass the item to the precondition; the decline write-back.
+3. `queue/executor.mjs` — pass the item to the precondition; the decline write-back;
+   the cannot-answer verdict parking in the failure lane (§16.4).
 4. `scheduler/discover.mjs` + `validate-dispatch.mjs` — the built-in task root and
    its path form.
 5. `scheduler/task-contract.mjs` — `model_from_request`, and the precondition's third
@@ -1582,7 +1612,7 @@ arbitrated and recovered by the same code as any other item, which is the point.
 8. `packs/claudinite-growth/skills/writing-tasks/SKILL.md` — the contract prose
    members read.
 
-Played through in the simulator as **S44–S49** ([sim](sim/), SCENARIOS §K); each was
+Played through in the simulator as **S44–S51** ([sim](sim/), SCENARIOS §K); each was
 watched failing against a deliberately broken mechanism before it was believed.
 
 ## Appendix A — the owner's sketch (2026-08-12, verbatim)

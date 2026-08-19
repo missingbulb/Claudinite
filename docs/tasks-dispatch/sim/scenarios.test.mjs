@@ -1093,7 +1093,7 @@ const parked = (it, kind) => it.labels.has('needs-human') && it.labels.has(`task
 test('S44 a marked issue becomes exactly one run, parked for the reviewer', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
   let req;
-  sim.at('2026-08-18T09:03Z', (s) => { req = s.markIssue({ author: 'OWNER' }); });
+  sim.at('2026-08-18T09:03Z', (s) => { req = s.markIssue({ author: 'owner' }); });
   sim.run('2026-08-18T09:00Z', '2026-08-19T09:00Z');
 
   // One adoption, one item, however many ticks ran across the day.
@@ -1115,7 +1115,7 @@ test('S44 a marked issue becomes exactly one run, parked for the reviewer', () =
 test('S45 an unauthorized mark is refused once, disarmed, and never re-adopted', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
   let req;
-  sim.at('2026-08-18T09:03Z', (s) => { req = s.markIssue({ author: 'NONE' }); });
+  sim.at('2026-08-18T09:03Z', (s) => { req = s.markIssue({ author: 'passer-by' }); });
   sim.run('2026-08-18T09:00Z', '2026-08-19T09:00Z');
 
   const items = sim.requestItems();
@@ -1133,30 +1133,39 @@ test('S45 an unauthorized mark is refused once, disarmed, and never re-adopted',
   assert.equal(adopts(sim).length, 1);
 });
 
-test('S46 an outsider\'s issue runs only on a write-access approval comment', () => {
+test('S46 an outsider\'s issue runs only on an approval comment from someone with push', () => {
   const approved = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
   approved.at('2026-08-18T09:03Z', (s) => s.markIssue({
-    author: 'NONE',
-    comments: [{ login: 'owner', association: 'OWNER', body: '/claude go' }],
+    author: 'stranger',
+    comments: [{ login: 'owner', body: '/claude go' }],
   }));
   approved.run('2026-08-18T09:00Z', '2026-08-19T09:00Z');
   assert.ok(parked(approved.requestItems()[0], 'approval'));
 
-  // The same phrase from someone without write access decides nothing.
+  // The same phrase from someone without push access decides nothing.
   const not = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
   not.at('2026-08-18T09:03Z', (s) => s.markIssue({
-    author: 'NONE',
-    comments: [{ login: 'passer-by', association: 'NONE', body: '/claude go' }],
+    author: 'stranger',
+    comments: [{ login: 'passer-by', body: '/claude go' }],
   }));
   not.run('2026-08-18T09:00Z', '2026-08-19T09:00Z');
   assert.equal(not.requestItems()[0].outcome, 'obsolete');
+
+  // Permission, not association, decides (F30): a read-only collaborator would
+  // ride the payload as COLLABORATOR, but the permission read says no push —
+  // their own issue is refused just like a stranger's.
+  const readOnly = makeSim({ tasks: cast(), collaborators: { owner: 'admin', reader: 'read' } })
+    .seedSteadyState('2026-08-18T00:00Z');
+  readOnly.at('2026-08-18T09:03Z', (s) => s.markIssue({ author: 'reader' }));
+  readOnly.run('2026-08-18T09:00Z', '2026-08-19T09:00Z');
+  assert.equal(readOnly.requestItems()[0].outcome, 'obsolete');
 });
 
 test('S47 the model label routes the run; an unknown family falls back to the default', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
   sim.at('2026-08-18T09:03Z', (s) => {
-    s.markIssue({ author: 'OWNER', model: 'sonnet' });
-    s.markIssue({ author: 'OWNER', model: 'gpt-9' });
+    s.markIssue({ author: 'owner', model: 'sonnet' });
+    s.markIssue({ author: 'owner', model: 'gpt-9' });
   });
   sim.run('2026-08-18T09:00Z', '2026-08-19T09:00Z');
   assert.deepEqual(sim.requestItems().map((i) => i.model), ['sonnet', 'opus']);
@@ -1164,12 +1173,16 @@ test('S47 the model label routes the run; an unknown family falls back to the de
   // approval parks, and neither delays the other.
   assert.equal(sim.requestItems().length, 2);
   assert.ok(sim.requestItems().every((i) => parked(i, 'approval')));
+  // The model labels are consumed with the mark (F29): each ask names its model
+  // afresh, so a label left from an earlier ask can never outrank a new one.
+  assert.ok(sim.requests.every((r) => ![...r.labels].some((l) => l.startsWith('claude-model:'))),
+    'adoption consumed the model labels');
 });
 
 test('S48 a request withdrawn after adoption never reaches an agent', () => {
   const withdrawn = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
   let req;
-  withdrawn.at('2026-08-18T09:03Z', (s) => { req = s.markIssue({ author: 'OWNER' }); });
+  withdrawn.at('2026-08-18T09:03Z', (s) => { req = s.markIssue({ author: 'owner' }); });
   // …between the tick that adopted it and the executor picking it up.
   withdrawn.at('2026-08-18T09:17:20Z', (s) => s.withdrawRequest(req.number));
   withdrawn.run('2026-08-18T09:00Z', '2026-08-18T18:00Z');
@@ -1179,20 +1192,20 @@ test('S48 a request withdrawn after adoption never reaches an agent', () => {
   // Closing the issue is the same answer by a different route.
   const closed = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
   let req2;
-  closed.at('2026-08-18T09:03Z', (s) => { req2 = s.markIssue({ author: 'OWNER' }); });
+  closed.at('2026-08-18T09:03Z', (s) => { req2 = s.markIssue({ author: 'owner' }); });
   closed.at('2026-08-18T09:17:20Z', (s) => s.closeRequestIssue(req2.number));
   closed.run('2026-08-18T09:00Z', '2026-08-18T18:00Z');
   assert.equal(closed.requestItems()[0].outcome, 'obsolete');
 });
 
-test('S49 a failed request parks as a fault and stays put; re-marking is the only way it runs again', () => {
+test('S49 a failed request parks as a fault; re-marking supersedes the park and runs once more', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
   let req;
   sim.at('2026-08-18T09:03Z', (s) => {
     s.updateTask(REQ, { agentFails: () => true });
-    req = s.markIssue({ author: 'OWNER' });
+    req = s.markIssue({ author: 'owner' });
   });
-  sim.run('2026-08-18T09:00Z', '2026-08-19T09:00Z');
+  sim.run('2026-08-18T09:00Z', '2026-08-18T11:00Z');
 
   // A broken run is a `failure` — someone reads the trace — and the ISSUE keeps
   // `claude-queued`: nothing mechanical re-arms work that writes code, and the
@@ -1201,13 +1214,86 @@ test('S49 a failed request parks as a fault and stays put; re-marking is the onl
   assert.deepEqual([...req.labels], ['claude-queued']);
   assert.equal(adopts(sim).length, 1);
 
-  // The human fixes the cause and re-marks it: exactly one further adoption.
-  const again = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
-  let r2;
-  again.at('2026-08-18T09:03Z', (s) => { r2 = s.markIssue({ author: 'OWNER' }); });
-  again.at('2026-08-18T12:00Z', (s) => s.remarkIssue(r2.number, { model: 'haiku' }));
-  again.run('2026-08-18T09:00Z', '2026-08-19T09:00Z');
-  assert.equal(adopts(again).length, 2);
-  assert.deepEqual(again.requestItems().map((i) => i.model), ['opus', 'haiku']);
-  assert.ok(again.requestItems().every((i) => parked(i, 'approval')));
+  // The human fixes the cause and re-marks the issue — the phone-sized retry.
+  // Adoption SUPERSEDES the parked item (F28): the retry closes its predecessor
+  // rather than leaving it parked forever beside the run that replaced it.
+  sim.at('2026-08-18T12:00Z', (s) => {
+    s.updateTask(REQ, { agentFails: () => false });
+    s.remarkIssue(req.number, { model: 'haiku' });
+  });
+  sim.run('2026-08-18T11:00Z', '2026-08-19T09:00Z');
+
+  const [first, second] = sim.requestItems();
+  assert.equal(adopts(sim).length, 2);
+  assert.equal(first.state, 'closed');
+  assert.equal(first.outcome, 'obsolete');
+  assert.equal(sim.log.filter((e) => e.kind === 'supersede' && e.issue === first.number).length, 1);
+  // The new ask's model rides the new mark — the old ask's labels were consumed
+  // at its own adoption, so nothing stale outranks haiku (F29).
+  assert.equal(second.model, 'haiku');
+  assert.ok(parked(second, 'approval'));
+  assert.deepEqual([...req.labels], ['claude-in-review']);
+});
+
+test('S50 a request issue that is GONE declines; one that cannot be READ fails the run', () => {
+  // Definitively gone — the API answers that the issue does not exist: a plain
+  // decline, exactly like a withdrawal (there is nothing left to write back to).
+  const gone = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
+  let g;
+  gone.at('2026-08-18T09:03Z', (s) => { g = s.markIssue({}); });
+  gone.at('2026-08-18T09:17:20Z', (s) => s.deleteRequestIssue(g.number));
+  gone.run('2026-08-18T09:00Z', '2026-08-18T18:00Z');
+  assert.equal(gone.requestItems()[0].outcome, 'obsolete');
+  assert.equal(gone.log.filter((e) => e.kind === 'handoff' && e.task === REQ).length, 0);
+
+  // Transiently unreadable — a rate limit, a 500 — is NOT a verdict (F27):
+  // declining would eat the request permanently (the decline's write-back cannot
+  // reach an issue it cannot read, so `claude-queued` would stand forever over
+  // nothing). It is a run failure: the item parks in the failure lane, open and
+  // visible, and the ordinary re-queue lever retries once the API recovers.
+  const flaky = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
+  let f;
+  flaky.at('2026-08-18T09:03Z', (s) => { f = s.markIssue({}); });
+  flaky.at('2026-08-18T09:17:20Z', (s) => s.setRequestUnreadable(f.number, true));
+  flaky.run('2026-08-18T09:00Z', '2026-08-18T11:00Z');
+
+  const item = flaky.requestItems()[0];
+  assert.ok(flaky.log.some((e) => e.kind === 'evaluate-failed' && e.issue === item.number));
+  assert.ok(parked(item, 'failure'));
+  assert.equal(flaky.log.filter((e) => e.kind === 'request-declined').length, 0);
+  assert.ok(f.labels.has('claude-queued'), 'the request issue is untouched — still armed');
+
+  // The API recovers; the human re-queues the parked item; the run completes.
+  flaky.at('2026-08-18T12:00Z', (s) => {
+    s.setRequestUnreadable(f.number, false);
+    s.requeue(item.number);
+  });
+  flaky.run('2026-08-18T11:00Z', '2026-08-19T09:00Z');
+  assert.ok(parked(item, 'approval'));
+  assert.deepEqual([...f.labels], ['claude-in-review']);
+  assert.equal(adopts(flaky).length, 1, 'the retry rode the SAME item — nothing re-adopted');
+});
+
+test('S51 re-marking while the item is live waits, unconsumed, until the run settles', () => {
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
+  let req;
+  sim.at('2026-08-18T09:03Z', (s) => {
+    s.updateTask(REQ, { agentMinutes: 150 });    // a long run: live across two ticks
+    req = s.markIssue({});
+  });
+  // An impatient re-ask in mid-run must not put a second session onto the same
+  // issue: while the prior item is LIVE the mark waits on the issue, unconsumed,
+  // and the tick that finds the run settled takes it — superseding the park the
+  // settle left behind.
+  sim.at('2026-08-18T09:30Z', (s) => s.remarkIssue(req.number));
+  sim.run('2026-08-18T09:00Z', '2026-08-19T09:00Z');
+
+  assert.equal(adopts(sim).length, 2);
+  assert.ok(adopts(sim)[1].t >= T('2026-08-18T12:00Z'),
+    'the second adoption waited out the live run');
+  const [first, second] = sim.requestItems();
+  assert.equal(first.state, 'closed');
+  assert.equal(first.outcome, 'obsolete');
+  assert.equal(sim.log.filter((e) => e.kind === 'supersede' && e.issue === first.number).length, 1);
+  assert.ok(parked(second, 'approval'));
 });

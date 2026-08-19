@@ -84,19 +84,21 @@ export const MODEL_LABEL_PREFIX = 'claude-model:';
 export const REQUEST_TASK = 'engine/implement-request';
 export const MODEL_FAMILIES = ['opus', 'sonnet', 'haiku'];
 export const DEFAULT_MODEL = 'opus';
-// Write access, as GitHub computes it. The whole of the security check, which is
-// why it is modeled: the precondition reads these off the signal, and a scenario
-// can hand it any association a real payload could carry.
-export const PUSH_ASSOCIATIONS = ['OWNER', 'MEMBER', 'COLLABORATOR'];
+// Push permission, read from the permission API (F30). The payload's
+// `author_association` alone is broader than push — MEMBER is any org member and
+// COLLABORATOR includes read-only collaborators — so it may prefilter, but the
+// verdict is the permission read, which is what the sim models.
+export const PUSH_PERMISSIONS = ['admin', 'maintain', 'write'];
 export const APPROVAL_RE = /^\s*\/claude\s+go\b/im;
 
 // Eligibility over one request's payload — the built-in precondition's core,
-// modeled here in the shape the engine will carry it.
-export function eligible(req) {
-  if (PUSH_ASSOCIATIONS.includes(req.authorAssociation)) return { ok: true, why: 'opened by someone with write access' };
-  const approval = (req.comments ?? []).find((c) => PUSH_ASSOCIATIONS.includes(c.association) && APPROVAL_RE.test(c.body ?? ''));
+// modeled here in the shape the engine will carry it: candidate logins (the
+// author, then approving commenters) judged by their permission on the repo.
+export function eligible(req, permissionOf) {
+  if (PUSH_PERMISSIONS.includes(permissionOf(req.author))) return { ok: true, why: `opened by ${req.author}, who has push access` };
+  const approval = (req.comments ?? []).find((c) => APPROVAL_RE.test(c.body ?? '') && PUSH_PERMISSIONS.includes(permissionOf(c.login)));
   if (approval) return { ok: true, why: `approved by ${approval.login} with /claude go` };
-  return { ok: false, why: 'neither opened nor approved by anyone with write access' };
+  return { ok: false, why: 'neither opened nor approved by anyone with push access' };
 }
 
 // The model a request asks for. An unrecognized family falls back to the default
@@ -117,12 +119,16 @@ export function makeSim({
   staleReadyPeriods = 2,
   staleBlockedMs = 2 * DAY,
   heartbeatsDisabled = false, // S31b only: demonstrate the livelock heartbeats prevent
+  collaborators = { owner: 'admin' }, // login -> repo permission, as the permission API answers (F30)
 } = {}) {
   const registry = new Map(tasks.map((t) => [t.id, t]));
+  const permissionOf = (login) => collaborators[login] ?? 'none';
   // Ordinary issues somebody marked — NOT work items, and never wearing a
   // `task:` label. Their own small vocabulary is the whole request state.
-  const requests = []; // {number,labels:Set,state,authorAssociation,comments:[{login,association,body}]}
-  const requestOf = (n) => requests.find((r) => r.number === n) ?? null;
+  const requests = []; // {number,labels:Set,state,author,unreadable,comments:[{login,body}]}
+  // A deleted issue ('gone') is invisible here, exactly as a 404 makes it: the
+  // precondition sees "does not exist", and no write-back can reach it.
+  const requestOf = (n) => requests.find((r) => r.number === n && r.state !== 'gone') ?? null;
   const titleOf = (id) => `[claudinite-work] ${id}`;
 
   // The built-in request task, always present wherever the queue runs (DESIGN
@@ -141,10 +147,15 @@ export function makeSim({
     // property of the item, not of the task.
     precondition: (_world, _now, item) => {
       const req = requestOf(item?.request);
-      if (!req) return { run: false, reason: `issue #${item?.request} could not be read` };
+      // Transiently unreadable is NOT a verdict (F27): a decline's write-back
+      // cannot reach an issue it cannot read, so declining here would strand
+      // `claude-queued` forever over nothing. It surfaces as a run FAILURE —
+      // the executor parks the item in the failure lane, open and retryable.
+      if (req?.unreadable) return { error: `issue #${req.number} could not be read — refusing to guess` };
+      if (!req) return { run: false, reason: `issue #${item?.request} does not exist` };
       if (req.state !== 'open') return { run: false, reason: `issue #${req.number} was closed before this ran` };
       if (!req.labels.has(QUEUED_LABEL)) return { run: false, reason: `issue #${req.number} no longer carries the queued label — the request was withdrawn` };
-      const verdict = eligible(req);
+      const verdict = eligible(req, permissionOf);
       return verdict.ok
         ? { run: true, reason: `#${req.number}: ${verdict.why}` }
         : { run: false, reason: `#${req.number}: ${verdict.why}` };
@@ -347,12 +358,27 @@ export function makeSim({
     // label becomes the queued one — so the gate clears by being acted on and a
     // second tick finds nothing to adopt. Re-requesting is re-applying the label.
     for (const req of requests.filter((r) => r.state === 'open' && r.labels.has(REQUEST_LABEL))) {
+      // One issue, one live item (F28). While a prior item is LIVE the mark
+      // waits on the issue, unconsumed — a later tick takes it. A prior item
+      // that PARKED is superseded by the re-ask: closed here, so the retry
+      // never leaves its predecessor parked forever beside the run replacing it.
+      const prior = issues.filter((i) => i.state === 'open' && i.origin === 'request' && i.request === req.number);
+      if (prior.some((i) => !has(i, 'needs-human'))) continue;
+      for (const p of prior) {
+        unpark(p);
+        p.comments.push({ t: now, body: `superseded: #${req.number} was re-marked` });
+        close(p, 'obsolete');
+        record('supersede', { task: p.taskId, issue: p.number, request: req.number });
+      }
       const it = createIssue({
         taskId: REQUEST_TASK, origin: 'request',
         labels: ['task:ready'], qualifier: `#${req.number}`,
         request: req.number, model: modelFor(req.labels),
       });
       req.labels.delete(REQUEST_LABEL);
+      // The model labels are consumed with the mark (F29): each ask names its
+      // model afresh, so a label left by an earlier ask never outranks a new one.
+      for (const l of [...req.labels]) if (l.startsWith(MODEL_LABEL_PREFIX)) req.labels.delete(l);
       req.labels.add(QUEUED_LABEL);
       record('adopt', { task: REQUEST_TASK, issue: it.number, request: req.number, model: it.model });
     }
@@ -377,7 +403,7 @@ export function makeSim({
     const req = requestOf(it.request);
     if (!req) return;
     req.labels.delete(QUEUED_LABEL);
-    req.comments.push({ login: 'claudinite', association: 'OWNER', body: `Not implementing this: ${why}` });
+    req.comments.push({ login: 'claudinite', body: `Not implementing this: ${why}` });
     record('request-declined', { issue: req.number, item: it.number, why });
   }
   function reviewRequest(it) {
@@ -533,6 +559,16 @@ export function makeSim({
     // request item's verdict is about the issue it names, which no signal bundle
     // can single out on its own.
     const verdict = task.precondition ? task.precondition(world, now, it) : { run: true };
+    // A precondition that CANNOT ANSWER is a run failure, not a verdict (F27):
+    // the item parks in the failure lane, open and visible, and the re-queue
+    // lever retries it — where a decline would converge on a guess.
+    if (verdict.error) {
+      record('evaluate-failed', { task: it.taskId, issue: it.number, why: verdict.error });
+      endEpisode(it);                           // F24: a park strikes its claim
+      park(it, 'task:executing', 'failure');
+      onSettled();
+      return;
+    }
     record('evaluate', { task: it.taskId, issue: it.number, run: verdict.run !== false });
     if (verdict.run === false) {
       if (it.origin === 'schedule') { // roll
@@ -736,14 +772,14 @@ export function makeSim({
     requestIssue: (n) => requestOf(n),
 
     // A person marks an ordinary issue (DESIGN §16.1). `author` is the issue
-    // author's association — the thing the precondition judges — and `model` the
-    // optional family label. No latency sugar: adoption is the tick's job, so a
-    // mark waits for the next one.
-    markIssue({ author = 'OWNER', model = null, comments = [] } = {}) {
+    // author's login — the precondition judges its repo permission — and `model`
+    // the optional family label. No latency sugar: adoption is the tick's job,
+    // so a mark waits for the next one.
+    markIssue({ author = 'owner', model = null, comments = [] } = {}) {
       const req = {
         number: requests.length + 500,
         labels: new Set([REQUEST_LABEL, ...(model ? [`${MODEL_LABEL_PREFIX}${model}`] : [])]),
-        state: 'open', authorAssociation: author, comments: [...comments],
+        state: 'open', author, comments: [...comments],
       };
       requests.push(req);
       record('mark', { issue: req.number, author, model });
@@ -752,8 +788,14 @@ export function makeSim({
     // A person withdraws a request after it was adopted, or closes the issue.
     withdrawRequest(number) { requestOf(number).labels.delete(QUEUED_LABEL); return sim; },
     closeRequestIssue(number) { requestOf(number).state = 'closed'; return sim; },
-    // Re-marking an issue a run already finished with — the sanctioned way to ask
-    // again, and the only one.
+    // The issue stops existing (a 404): reads answer "not there", writes reach
+    // nothing. Distinct from unreadable below — gone is a fact, not a fault.
+    deleteRequestIssue(number) { requestOf(number).state = 'gone'; return sim; },
+    // A transient API failure: the issue exists but cannot be read right now.
+    setRequestUnreadable(number, on = true) { requestOf(number).unreadable = on; return sim; },
+    // Re-marking an issue — the phone-sized way to ask again; adoption
+    // supersedes a parked predecessor (F28), and the item-side re-queue lever
+    // (DESIGN §4) remains the other sanctioned retry.
     remarkIssue(number, { model = null } = {}) {
       const req = requestOf(number);
       req.labels.delete(IN_REVIEW_LABEL);
@@ -938,8 +980,10 @@ export function makeSim({
       }
       for (;;) {
         queue.sort((a, b) => a.t - b.t || a.seq - b.seq);
+        // Peek before shifting: an event beyond `to` must SURVIVE for a later
+        // run() segment — a scenario may run in phases to assert a mid-state.
+        if (!queue.length || queue[0].t >= to) break;
         const ev = queue.shift();
-        if (!ev || ev.t >= to) break;
         now = ev.t;
         ev.fn();
       }
