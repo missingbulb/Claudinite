@@ -126,6 +126,14 @@ test('S45 — an issue nobody with push asked for is refused, as a plain no-go',
   assert.equal(v.error, undefined, 'a refusal is a verdict, not a failure');
 });
 
+test('the passing verdict adds no Context of its own — adoption already bound the item', () => {
+  // Two writers of the same binding scope render as two near-identical bullets in
+  // the one section the session reads (#1074/#1075, the first live request).
+  const v = verdict(req({ authorPermission: 'admin' }));
+  assert.equal(v.run, true);
+  assert.equal(v.context, undefined);
+});
+
 test('S46 — the verdict is the PERMISSION, not the association (F30)', () => {
   assert.equal(verdict(req({ author: 'owner', authorPermission: 'admin' })).run, true);
   assert.equal(verdict(req({ authorPermission: 'write' })).run, true);
