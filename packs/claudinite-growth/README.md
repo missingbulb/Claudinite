@@ -153,7 +153,7 @@ rephrase, the keep-test, and the shrink-only discipline. The pack also bundles
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Writing or changing a scheduled task | high | correctness | prose: 26 words + checks (`task-declaration-shape`, `task-declaration-matches-folder`, `task-prework-env`) |
+| Writing or changing a scheduled task | high | correctness | prose: 26 words + checks (`task-declaration-shape`, `task-declaration-matches-folder`, `task-code-work-env`) |
 
 ## Coded rules
 
@@ -238,7 +238,7 @@ Extract writes into it, promote reads from it, dedup prunes within it — all ag
 | `routine-structure` | medium | complexity | check: blocking |
 | `task-declaration-shape` | high | correctness | check: blocking |
 | `task-declaration-matches-folder` | high | correctness | check: blocking |
-| `task-prework-env` | high | correctness | check: blocking |
+| `task-code-work-env` | high | correctness | check: blocking |
 | `task-phase-discipline` | medium | complexity | check: advisory |
 
 The last four are the **scheduled-task contract** ([scheduled-tasks.md](scheduled-tasks.md)), which
@@ -249,5 +249,5 @@ the repo carries a `tasks/<name>/task.mjs` of its own.
 
 - `task-declaration-shape` — a task declaration the scheduler reads is incomplete or illegal, so the task never fires or fires wrong.
 - `task-declaration-matches-folder` — a declaration disagrees with its folder: discovery drops it into `errors` and every run keeps reporting healthy without it.
-- `task-prework-env` — a task reads a `CLAUDINITE_*` variable prework never sets, so a parameter (a scope filter, a dry-run switch) silently never arrives and the run goes green in its most dangerous mode.
+- `task-code-work-env` — a task reads a `CLAUDINITE_*` variable code-work never sets, so a parameter (a scope filter, a dry-run switch) silently never arrives and the run goes green in its most dangerous mode.
 - `task-phase-discipline` — a task decides not to run after its precondition already said run, hiding the decision from the run records.

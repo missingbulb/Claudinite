@@ -106,7 +106,7 @@ export default {
   // 2: fleet-digest arrives (#954) — a sixth task, two checks and an optional `digest`
   // config block. Purely additive: nothing in a member is rewritten, so the bump carries
   // no migration record; it exists to deliver the new files to enforcers already on v1.
-  version: 8,
+  version: 9,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'fleet-enforcer duties for the repo watching every other repo — coverage, freshness, usage, standardized packs, the daily fleet brief',

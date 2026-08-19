@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
-import rule from '../../packs/core/task-code-work-env.mjs';
+import rule from '../../packs/claudinite-growth/task-code-work-env.mjs';
 import { CODE_WORK_ENV_VARS } from '../../engine/scheduler/queue/code-work-run.mjs';
 
 const ctx = (files) => ({ files: Object.keys(files), read: (f) => files[f] ?? null });

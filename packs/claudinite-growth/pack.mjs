@@ -1,6 +1,6 @@
 import taskDeclarationShape from './task-declaration-shape.mjs';
 import taskDeclarationMatchesFolder from './task-declaration-matches-folder.mjs';
-import taskPreworkEnv from './task-prework-env.mjs';
+import taskCodeWorkEnv from './task-code-work-env.mjs';
 import dedupIntegrity from './dedup-integrity.mjs';
 import growthWriteScope from './growth-write-scope.mjs';
 
@@ -99,9 +99,9 @@ export default {
   worldRules: [
     taskDeclarationShape,
     taskDeclarationMatchesFolder,
-    // …and the environment that contract hands a task's prework, which is the half
+    // …and the environment that contract hands a task's code-work, which is the half
     // no declaration states and nothing else can catch.
-    taskPreworkEnv,
+    taskCodeWorkEnv,
   ],
   workRules: [dedupIntegrity, growthWriteScope],
   skills: [
