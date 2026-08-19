@@ -452,9 +452,9 @@ task — the dashboard reading, priced in DESIGN §5.
 ### S13′ — "obsolete at pickup" becomes the roll
 
 - Old S13: precondition true at creation, false at pickup → close
-  `outcome:obsolete`. Under the standing-item model there *is* no creation
+  `task:obsolete`. Under the standing-item model there *is* no creation
   verdict; the pick verdict is the only one, and a scheduled no-go rolls
-  instead of closing. `outcome:obsolete` narrows to: task gone from the repo
+  instead of closing. `task:obsolete` narrows to: task gone from the repo
   (S20), and ad-hoc items whose reason to exist lapsed (S17's follow-up
   finding the store already live). F2 ("an occurrence that fires-and-obsoletes
   is spent") dissolves — there is no fire-then-obsolete path left for
@@ -559,7 +559,7 @@ event (S16), the follow-up (S17/S17b), the fan-out with a stuck member
 deltas and one more spec bug:
 
 - **S12′ (delta):** old S12 ends with the re-queued item closing
-  `outcome:obsolete`; under the standing-item model the re-ask's no-go
+  `task:obsolete`; under the standing-item model the re-ask's no-go
   **rolls** the scheduled item instead — same safety (the precondition
   re-run is still what makes crash-retry safe), better record (the reason
   and the next wake live on the item).
@@ -617,7 +617,7 @@ design and executable:
   occurrence guards assume the tick's REST list sees an item created by a
   prior run. GitHub documents no such cross-node freshness bound. Rather
   than assume, the tick self-heals: more than one open family item → close
-  all but the oldest, `outcome:obsolete`, dedupe comment.
+  all but the oldest, `task:obsolete`, dedupe comment.
 - **S31 / F17 — the leash arithmetic.** A code-work bound that reaches the
   executing leash is reclaimed *alive*, and the failure mode is a
   **livelock**, not one duplicate: every tenure is reclaimed before it can
@@ -817,8 +817,9 @@ consequences of there being one word.
 ### S40 — the lane rule, from both sides (replaces an assertion, not a scenario)
 
 The finding that started it (**F25**) was not simulated at all: it was
-measured in production. An open `origin:schedule` item *is* its task's standing
-item, so any park stopped the task being scheduled — `missingbulb/Shepherd`'s
+measured in production. An open standing item (an
+unqualified item of a scheduled task — DESIGN §3) is what holds its lane, so
+any park stopped the task being scheduled — `missingbulb/Shepherd`'s
 `fleet-digest` failed once on a permission gap, its item sat parked, and **no
 item was ever filed behind it for two days** while the four sweeps whose items
 had closed kept running normally. The dashboard read healthy and the series
@@ -904,8 +905,9 @@ the previous run is still standing.
 
 ### S44 — a marked issue becomes exactly one run
 
-09:03 the owner marks issue #500. 09:17 the tick adopts it: one item,
-`origin:request`, `Model: opus` (no model label ⇒ the default), and #500's mark
+09:03 the owner marks issue #500. 09:17 the tick adopts it: one item —
+structurally ad-hoc, its title qualified by the issue and its task `manual`
+(DESIGN §3) — `Model: opus` (no model label ⇒ the default), and #500's mark
 becomes `claude-queued`. The post-tick drain picks it, the precondition passes
 on the author's write access, the hand-off fires once, and the session leaves a
 pull request — so the item **parks open at `task:needs-human-approval`** rather
@@ -916,7 +918,7 @@ adopts **nothing**: the consumed mark is the exactly-once guard.
 
 The same play with an issue opened by someone with no permission on the repo
 and blessed by nobody. The tick adopts it (adoption forms no judgment), the
-precondition declines, the item **closes** `outcome:obsolete` — a refusal is
+precondition declines, the item **closes** `task:obsolete` — a refusal is
 nobody's inbox, so it joins no triage lane — and the executor comments on #500
 and removes `claude-queued`. The disarm is the point: without it every tick
 for the rest of time re-adopts and re-refuses the same issue.
@@ -954,14 +956,14 @@ the trace — and #500 keeps `claude-queued`: nothing mechanical re-arms work th
 writes code, and that standing label is what stops the next tick adopting a
 second run. The person fixes the cause and re-marks the issue: exactly one
 further adoption, at whatever model the new label asks for — and that adoption
-**supersedes the parked item** (F28), closing it `outcome:obsolete` with a
+**supersedes the parked item** (F28), closing it `task:obsolete` with a
 comment naming the re-ask, so the retry never leaves its predecessor parked
 forever beside the run that replaced it.
 
 ### S50 — gone declines; unreadable fails the run
 
 Two requests meet a broken read at pickup. One's issue is **gone** — the API
-answers it does not exist: a plain decline, `outcome:obsolete`, no session, and
+answers it does not exist: a plain decline, `task:obsolete`, no session, and
 nothing to write back to. The other's issue exists but **cannot be read** — a
 rate limit, a 500. Declining there would eat the request permanently (F27): the
 decline's own write-back cannot reach the issue, so `claude-queued` would stand
@@ -1008,7 +1010,7 @@ waiting mark. Two runs, strictly in sequence, never two sessions on one issue.
 | **F24** | **design bug** | F18's episode boundary was stated as a rule ("earliest claim since the item last became ready") and implemented over only the paths that already wrote a comment; the roll and the `needs-human` park end an episode silently and leave the claim standing, so the next claimant loses to a dead one — the roll costs a leash period, the park livelocks forever (S39) | **fixed in DESIGN §6.2**: letting go of an open item kills your claim — the departing executor strikes its own claim comment, which ends the episode without the timeline entry §5 refuses. Found on live traffic (a member's first re-queue), not in simulation |
 | **F25** | **design bug** | one open park stops its task being scheduled at all: the standing-item guard cannot tell a fault from an inbox, so a permission gap parked `missingbulb/Shepherd`'s `fleet-digest` for two days behind one item while its dashboard read healthy ([#1032](https://github.com/missingbulb/Claudinite/issues/1032), Shepherd#37) | **fixed in DESIGN §4/§5**: the guard is conditional — only a `failure` park (and any park an older engine left unclassified) holds the lane; `action`, `decision` and `approval` are one person's inbox and the schedule goes on around them (S40, and S11/S12′ rewritten to the new property). Found in production, not in simulation — the sim had encoded the old behaviour as an assertion |
 | **F23** | **sim fidelity bug** | the simulator modeled the executor as an instantaneous unbounded loop — items' work started concurrently, nothing modeled run boundaries or what triggers the next run — so F21's occupancy model had no executable teeth (§I) | **fixed in the sim**: a run performs one item (structural — DESIGN §15.22), picks urgent-then-random, and records its trigger, the failure continuation included (§15.23); asserted by S34/S36, with S4's chain re-verified under it |
-| **F26** | doc bug | §9's follow-up bullet and S17 still had a run *ending* `outcome:delivered` after the 2026-08-19 triage split retired it as written-by-nothing | **fixed**: a run that delivered something long-running closes `outcome:done`; the retired label keeps its read-only row in §4 |
+| **F26** | doc bug | §9's follow-up bullet and S17 still had a run *ending* `outcome:delivered` after the 2026-08-19 triage split retired it as written-by-nothing | **fixed**: a run that delivered something long-running closes `task:done` (fielded spelling `outcome:done` until the vocabulary rename — §15.25); the retired label keeps its read-only row in §4 |
 | **F27** | **design bug** | "the issue cannot be read at all" was a precondition *refusal*: a transient API failure converged the item obsolete while the decline's write-back could not reach the unreadable issue — the request silently eaten, `claude-queued` stranded forever | **fixed in DESIGN §16.4** (owner, 2026-08-19): only a definitive *gone* declines; any other read failure fails the run into the failure park, open and re-queueable (S50) |
 | **F28** | **design bug** | adoption had no prior-item guard: re-applying `claude-task` beside an open item created a second item for the same issue, and the parked predecessor stayed open forever — S49's own retry story walked straight into it | **fixed in DESIGN §16.3** (owner, 2026-08-19): one issue, one live item — a live prior item leaves the mark waiting, unconsumed; a parked one is superseded (closed obsolete) by the new adoption (S49, S51) |
 | **F29** | design gap | model labels accumulated across asks, and multiples resolved by family-precedence order — a stale label from an earlier ask outranked the newest one | **fixed in DESIGN §16.3/§16.7** (owner, 2026-08-19): the model labels are consumed with the mark, so each ask names its model afresh (S47) |

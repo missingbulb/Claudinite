@@ -173,15 +173,19 @@ test('S5 three-day outage: one catch-up ask, no backfill', () => {
 });
 
 // ---- S13' — an ad-hoc item's no-go closes it (no anchor to roll to).
+// Ad-hoc is STRUCTURAL (DESIGN §3): a qualifier is what makes this item ad-hoc —
+// an unqualified item of a scheduled task would BE the standing item, and roll.
 test("S13' ad-hoc no-go closes obsolete instead of rolling", () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
-  sim.at('2026-08-12T10:00Z', (s) => s.createItem('tidy/tidy-issues', { urgent: true }));
+  let adhoc;
+  sim.at('2026-08-12T10:00Z', (s) => { adhoc = s.createItem('tidy/tidy-issues', { urgent: true, qualifier: 'one-off' }); });
   sim.run('2026-08-12T05:00Z', '2026-08-12T12:00Z'); // start past the 04:17 tick: scheduled item exists rolled
 
-  const adhoc = sim.issues.find((i) => i.origin === 'manual');
   assert.equal(adhoc.state, 'closed');
   assert.equal(adhoc.outcome, 'obsolete');
   assert.equal(adhoc.rolls.length, 0, 'ad-hoc items never roll');
+  // …and the standing item is untouched by the ad-hoc twin: still one, still rolled.
+  assert.equal(sim.family('tidy/tidy-issues').filter((i) => i.state === 'open').length, 1);
 });
 
 // ---- S14'/S16' — forcing is waking the standing item; a force that finds no
@@ -477,32 +481,36 @@ test("S12' re-queue after work landed: the re-ask rolls, and the task kept runni
   assert.notEqual(closed[0].number, it.number, 'and it is not the parked one');
 });
 
-// ---- S15 — ad-hoc item while the scheduled twin is mid-execution: the
-// same-title mutex makes it wait, not run beside it.
+// ---- S15 — a same-title twin while the scheduled item is mid-execution: the
+// same-title mutex makes it wait, not run beside it. Under the structural rule
+// (DESIGN §3) an unqualified duplicate is an unsanctioned creation — the wake
+// lever is the sanctioned impatience — but a write-gated human can always make
+// one, and the mutex must still serialize it.
 test('S15 force-while-executing: the mutex queues the twin', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
   // 04:20: agent is mid-run (16m); an impatient operator creates a twin
-  sim.at('2026-08-12T04:20Z', (s) => s.createItem('tidy/tidy-issues', { urgent: true }));
+  let twin;
+  sim.at('2026-08-12T04:20Z', (s) => { twin = s.createItem('tidy/tidy-issues', { urgent: true }); });
   sim.run('2026-08-12T00:00Z', '2026-08-12T12:00Z');
 
-  const scheduled = sim.family('tidy/tidy-issues').find((i) => !i.seeded);
-  const adhoc = sim.issues.find((i) => i.origin === 'manual');
+  const scheduled = sim.family('tidy/tidy-issues').find((i) => !i.seeded && i !== twin);
   const schedClose = scheduled.closedAt;
-  const adhocEval = sim.log.find((e) => e.kind === 'evaluate' && e.issue === adhoc.number);
-  assert.ok(adhocEval.t >= schedClose, 'the twin waited for the scheduled run to converge');
-  assert.equal(adhoc.state, 'closed', 'then had its own verdict');
+  const twinEval = sim.log.find((e) => e.kind === 'evaluate' && e.issue === twin.number);
+  assert.ok(twinEval.t >= schedClose, 'the twin waited for the scheduled run to converge');
+  assert.equal(twin.state, 'closed', 'then had its own verdict');
 });
 
 // ---- S16 — urgent item, lost label event: the tick drain is the guarantee;
 // worst-case latency is one tick interval, not a day.
 test('S16 lost label event: the poll picks it up within a tick', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
-  sim.at('2026-08-12T14:00Z', (s) =>
-    s.createItem('sheepdog/fleet-baseline', { urgent: true, eventLost: true }));
+  let it;
+  sim.at('2026-08-12T14:00Z', (s) => {
+    it = s.createItem('sheepdog/fleet-baseline', { urgent: true, eventLost: true });
+  });
   sim.run('2026-08-12T12:00Z', '2026-08-12T16:00Z');
 
-  const it = sim.issues.find((i) => i.origin === 'manual');
   const evalAt = sim.log.find((e) => e.kind === 'evaluate' && e.issue === it.number);
   assert.ok(evalAt, 'picked without any event');
   assert.ok(evalAt.t >= T('2026-08-12T14:17Z') && evalAt.t <= T('2026-08-12T14:18Z'),
@@ -1102,7 +1110,9 @@ test('S44 a marked issue becomes exactly one run, parked for the reviewer', () =
   assert.equal(items.length, 1);
   assert.equal(items[0].request, req.number);
   assert.equal(items[0].model, 'opus');               // no model label ⇒ the default
-  assert.equal(items[0].origin, 'request');           // never origin:schedule — it consumes no occurrence
+  // Structurally ad-hoc — a manual task, a qualified title — so it consumes no
+  // scheduled occurrence and needs no marker to say so (DESIGN §3).
+  assert.ok(items[0].title.endsWith(` #${req.number}`));
   // The run succeeded and left a PR, so it parks for approval rather than
   // closing — and that park is not a fault, so it holds nobody's lane.
   assert.ok(parked(items[0], 'approval'));

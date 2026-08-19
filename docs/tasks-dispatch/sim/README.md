@@ -66,7 +66,7 @@ test's title in `scenarios.test.mjs`.
 | §6.1 same-title mutex; qualifiers parallelize | `S15`, `S18` |
 | §6.1 the `after` yield (not Blocked-by) | `S4`, `S23`, `S23b`, `S24` |
 | §6.2 the verified claim lease, N executors | `S7` |
-| §6.4 the single evaluation site; roll vs close by origin | `S3'`, `S13'`, `S17` |
+| §6.4 the single evaluation site; roll vs close structurally (standing rolls, ad-hoc closes — §3) | `S3'`, `S13'`, `S17` |
 | §6.5 work-step failure → needs-human; re-entrant re-pick | `S19`, `S8` |
 | §6.5 heartbeat comments: the leash measures executor death, not work duration | `S31c`, `S31d` |
 | §6.5 durable record: the terminal comment carries the exec record + artifacts | **prose** — comment content, not label mechanics |
@@ -114,6 +114,8 @@ test's title in `scenarios.test.mjs`.
 | §15.22 one run performs one item — structural; every run records its trigger | `S34` (F23) |
 | §15.23 a dead run must not stall the train — the failure-continuation job | `S36` |
 | §15.24 the operator hold (`CLAUDINITE_TASKS_SUSPEND_ALL`) and the tick-alone resume | `S37`, `S38` |
+| §15.25 `task:done`/`task:obsolete` — the `outcome:` namespace dissolves | **prose** — a label spelling; the sim stores outcomes as values, not labels |
+| §15.26 no origin marker — standing vs ad-hoc is structural (unqualified + frequency at HEAD) | `S13'` (qualified ad-hoc closes; unqualified would roll), `S15`, `S17`, `S44` |
 | §14 bootstrap: first-item rule; old-vocabulary issues untouched | `S25`, `S29` |
 | §14 updates: declaration changes apply at the next evaluation; the stamped wake is the one carried fact | `S28` |
 | §14 secrets: the missing-secret needs-human posture | `S9a` (the refused hand-off's same convergence); storage/stamping/rotation **prose** — Actions-platform behavior |

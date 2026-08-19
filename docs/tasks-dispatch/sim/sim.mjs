@@ -174,7 +174,7 @@ export function makeSim({
       `heartbeat interval (${heartbeatMinutes}m) reaches the executing leash — F17 (reframed)`);
   }
 
-  const issues = []; // {number,title,taskId,origin,labels:Set,state,createdAt,closedAt,readySince,lastActivity,notBefore,blockedBy:[],outcome,rolls:[],comments:[],escalated,sessions:[],quarantined}
+  const issues = []; // {number,title,taskId,labels:Set,state,createdAt,closedAt,readySince,lastActivity,notBefore,blockedBy:[],outcome,rolls:[],comments:[],escalated,sessions:[],quarantined}
   const log = []; // {t,kind,task,issue,...}
   const world = {}; // scenario-owned signal state, read by precondition fns
   const queue = []; // {t,seq,fn}
@@ -200,8 +200,17 @@ export function makeSim({
 
   const open = () => issues.filter((i) => i.state === 'open');
   const has = (i, l) => i.labels.has(l);
-  const family = (taskId) =>
-    issues.filter((i) => i.title === titleOf(taskId) && i.origin === 'schedule');
+  // Standing vs ad-hoc is STRUCTURAL (DESIGN §3, owner 2026-08-19 — no origin
+  // marker): an item bearing a task's bare unqualified title, where that task
+  // has a frequency at HEAD, IS the task's standing item. An item of a manual
+  // task, or any item carrying a qualifier, is ad-hoc — outside the family by
+  // its very title, so invisible to occurrence accounting with nothing
+  // hand-classified.
+  const family = (taskId) => issues.filter((i) => i.title === titleOf(taskId));
+  const isStanding = (i) => {
+    const task = registry.get(i.taskId);
+    return !!task && task.frequency !== 'manual' && i.title === titleOf(i.taskId);
+  };
   const standingItem = (taskId) => family(taskId).find((i) => i.state === 'open');
 
   // A park is TWO labels, because that is what the engine writes (DESIGN §4):
@@ -233,12 +242,12 @@ export function makeSim({
     && !has(i, 'task:needs-human-decision')
     && !has(i, 'task:needs-human-approval');
 
-  function createIssue({ taskId, origin, labels, notBefore = null, blockedBy = [], urgent = false, qualifier = null, request = null, model = null }) {
+  function createIssue({ taskId, labels, notBefore = null, blockedBy = [], urgent = false, qualifier = null, request = null, model = null }) {
     const it = {
       request, model,
       number: issues.length + 900,
       title: titleOf(taskId) + (qualifier ? ` ${qualifier}` : ''),
-      taskId, origin,
+      taskId,
       labels: new Set(labels.concat(urgent ? ['task:urgent'] : [])),
       state: 'open',
       createdAt: now, closedAt: null,
@@ -249,7 +258,7 @@ export function makeSim({
       sessions: [], quarantined: false,
     };
     issues.push(it);
-    record('create', { task: taskId, issue: it.number, origin });
+    record('create', { task: taskId, issue: it.number });
     return it;
   }
 
@@ -336,8 +345,8 @@ export function makeSim({
           : [];
       const born = firstEver || blockedByUp.length > 0 ? 'task:blocked' : 'task:ready';
       createIssue({
-        taskId: task.id, origin: 'schedule',
-        labels: ['origin:schedule', born],
+        taskId: task.id,
+        labels: [born],
         notBefore: firstEver ? nextAnchor(task.frequency, now) : null,
         blockedBy: blockedByUp,
       });
@@ -362,7 +371,7 @@ export function makeSim({
       // waits on the issue, unconsumed — a later tick takes it. A prior item
       // that PARKED is superseded by the re-ask: closed here, so the retry
       // never leaves its predecessor parked forever beside the run replacing it.
-      const prior = issues.filter((i) => i.state === 'open' && i.origin === 'request' && i.request === req.number);
+      const prior = issues.filter((i) => i.state === 'open' && i.request === req.number);
       if (prior.some((i) => !has(i, 'needs-human'))) continue;
       for (const p of prior) {
         unpark(p);
@@ -371,7 +380,7 @@ export function makeSim({
         record('supersede', { task: p.taskId, issue: p.number, request: req.number });
       }
       const it = createIssue({
-        taskId: REQUEST_TASK, origin: 'request',
+        taskId: REQUEST_TASK,
         labels: ['task:ready'], qualifier: `#${req.number}`,
         request: req.number, model: modelFor(req.labels),
       });
@@ -429,7 +438,7 @@ export function makeSim({
               (has(o, 'task:executing') || has(o, 'task:agent')))) return false;
         // the `after` yield: skip while the upstream's standing item is live
         // this cycle (a rolled or needs-human upstream does not block — S23)
-        if (afterMode === 'yield' && i.origin === 'schedule') {
+        if (afterMode === 'yield' && isStanding(i)) {
           const ups = registry.get(i.taskId)?.after ?? [];
           if (ups.some((up) => live(up))) return false;
         }
@@ -528,7 +537,7 @@ export function makeSim({
       // because the request task is the first agentic task whose every successful
       // run ends that way.
       if (task.deliversOpenPr?.(world, now)) {
-        if (it.origin === 'request') reviewRequest(it);
+        if (it.request != null) reviewRequest(it);
         park(it, 'task:agent', 'approval');
         record('delivered-open-pr', { task: it.taskId, issue: it.number });
         return;
@@ -571,7 +580,7 @@ export function makeSim({
     }
     record('evaluate', { task: it.taskId, issue: it.number, run: verdict.run !== false });
     if (verdict.run === false) {
-      if (it.origin === 'schedule') { // roll
+      if (isStanding(it)) { // roll
         it.notBefore = nextAnchor(task.frequency, now);
         it.rolls.push({ t: now, reason: verdict.reason ?? 'no work' });
         endEpisode(it);                       // F24: the roll strikes its claim
@@ -581,7 +590,7 @@ export function makeSim({
         // A declined request tells the ISSUE so and disarms it, in the same
         // convergence: nothing else would, and an un-disarmed issue would be
         // re-adopted and re-refused on every tick forever.
-        if (it.origin === 'request') declineRequest(it, verdict.reason ?? 'the precondition declined');
+        if (it.request != null) declineRequest(it, verdict.reason ?? 'the precondition declined');
         close(it, 'obsolete'); // ad-hoc: no anchor to roll to (S17)
       }
       onSettled();
@@ -676,9 +685,9 @@ export function makeSim({
       const live = has(o, 'task:executing') || has(o, 'task:agent');
       if (!live) return false;
       if (o.title === it.title) return true; // twin
-      if (afterMode === 'yield' && it.origin === 'schedule') {
+      if (afterMode === 'yield' && isStanding(it)) {
         const ups = registry.get(it.taskId)?.after ?? [];
-        if (ups.some((up) => o.title === titleOf(up) && o.origin === 'schedule')) return true;
+        if (ups.some((up) => o.title === titleOf(up) && isStanding(o))) return true;
       }
       return false;
     });
@@ -768,7 +777,7 @@ export function makeSim({
   const droppedTicks = [];
   const sim = {
     issues, log, world, requests,
-    requestItems: () => issues.filter((i) => i.origin === 'request'),
+    requestItems: () => issues.filter((i) => i.request != null),
     requestIssue: (n) => requestOf(n),
 
     // A person marks an ordinary issue (DESIGN §16.1). `author` is the issue
@@ -827,7 +836,7 @@ export function makeSim({
         const a = mostRecentAnchor(task.frequency, t0);
         issues.push({
           number: issues.length + 800, title: titleOf(task.id), taskId: task.id,
-          origin: 'schedule', labels: new Set(['origin:schedule']), state: 'closed',
+          labels: new Set(), state: 'closed',
           createdAt: a, closedAt: a + 30 * MIN, readySince: null, lastActivity: a,
           notBefore: null, blockedBy: [], outcome: 'done', rolls: [], comments: [],
           escalated: false, seeded: true,
@@ -851,12 +860,16 @@ export function makeSim({
       return it;
     },
 
-    // ad-hoc work is creating an item (DESIGN §8) — origin manual.
+    // ad-hoc work is creating an item (DESIGN §8). Deliberate concurrency for a
+    // scheduled task names a qualifier (DESIGN §3): an UNQUALIFIED item of a
+    // scheduled task is structurally its standing item, so creating one where
+    // none is open is minting, and beside an open one it is a duplicate the
+    // tick's self-heal closes.
     // eventLost models a dropped `labeled` webhook (S16): no immediate
     // executor run fires; the next tick's drain is the guarantee.
     createItem(taskId, { urgent = false, notBefore = null, blockedBy = [], qualifier = null, eventLost = false } = {}) {
       const born = notBefore !== null || blockedBy.length ? 'task:blocked' : 'task:ready';
-      const it = createIssue({ taskId, origin: 'manual', labels: [born], notBefore, blockedBy, urgent, qualifier });
+      const it = createIssue({ taskId, labels: [born], notBefore, blockedBy, urgent, qualifier });
       if (born === 'task:ready' && !eventLost) schedule(now + 1 * MIN, () => executorRun('E1', 'label-event'));
       return it;
     },
@@ -881,7 +894,7 @@ export function makeSim({
     // outside the [claudinite-work] family — the tick must never touch it
     foreignIssue(title) {
       const it = {
-        number: issues.length + 700, title, taskId: null, origin: 'foreign',
+        number: issues.length + 700, title, taskId: null,
         labels: new Set(['agent-dispatch']), state: 'open',
         createdAt: now, closedAt: null, readySince: null, lastActivity: now,
         notBefore: null, blockedBy: [], outcome: null, rolls: [], comments: [],
@@ -925,7 +938,7 @@ export function makeSim({
     // F16's precondition: a tick whose issue list was stale created a second
     // standing item. Injected directly — the sim's own tick can't produce it.
     injectDuplicateStanding(taskId) {
-      return createIssue({ taskId, origin: 'schedule', labels: ['origin:schedule', 'task:ready'] });
+      return createIssue({ taskId, labels: ['task:ready'] });
     },
 
     // ---- platform failure injection (S9/S10) -------------------------------
