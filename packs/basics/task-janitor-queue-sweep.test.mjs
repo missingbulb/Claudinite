@@ -57,7 +57,7 @@ test('a dead agent claim parks at decision — what the dead session left behind
 });
 
 test('a stateless item parks at decision — which state it should have had is a judgement', async () => {
-  const { gh, added } = janitorGh([workItem(31, ['origin:schedule'])]);
+  const { gh, added } = janitorGh([workItem(31, [])]);
   const out = await quiet(() => sweepQueue(gh, 'o/r', at('2026-07-02T00:00:00Z')));
   assert.deepEqual(out.stateless, [31]);
   assert.deepEqual(labelsOn(added, 31), [NEEDS_HUMAN, NEEDS_HUMAN_DECISION]);
