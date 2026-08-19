@@ -24,12 +24,32 @@ test('the PR text leads with the terminal, then what moved', () => {
     { action: 'needs-human', why: 'the converged tree FAILED its self-test' },
     { engine: { from: 1, to: 2 }, packs: { plan: [{ id: 'basics', from: 1, to: 2 }, { id: 'sheepdog', from: 3, to: 3 }] } },
   );
-  assert.match(title, /engine 1 → 2/);
-  assert.match(title, /basics 1 → 2/);
+  assert.equal(title, 'Claudinite update: engine v1 → v2 and 1 pack upgraded');
   assert.ok(!title.includes('sheepdog'), 'a pack that did not move is not news');
+  assert.match(body, /- basics 1 → 2/, 'the per-pack detail lives in the body');
   assert.match(body.split('\n')[0], /needs-human/, 'the first line says which terminal fired');
   assert.match(body, /FAILED its self-test/);
   assert.match(body, /stays open/);
+});
+
+test('the title summarizes packs by count rather than naming every one', () => {
+  const plan = [
+    { id: 'basics', from: 5, to: 7 },
+    { id: 'claudinite-lifecycle', from: 6, to: 8 },
+    { id: 'git-github', from: 3, to: 4 },
+    { id: 'claudinite-growth', from: 6, to: 7 },
+    { id: 'tidy-repo', from: 4, to: 5 },
+  ];
+  const { title, body } = updatePullText({ action: 'merge', why: 'green' }, { engine: { from: 4, to: 5 }, packs: { plan } });
+  assert.equal(title, 'Claudinite update: engine v4 → v5 and 5 packs upgraded');
+  for (const p of plan) assert.match(body, new RegExp(`- ${p.id} ${p.from} → ${p.to}`), 'every move is still in the body');
+});
+
+test('each half of the title appears only when that half moved', () => {
+  const engineOnly = updatePullText({ action: 'merge', why: 'green' }, { engine: { from: 4, to: 5 }, packs: { plan: [{ id: 'basics', from: 2, to: 2 }] } });
+  assert.equal(engineOnly.title, 'Claudinite update: engine v4 → v5');
+  const packsOnly = updatePullText({ action: 'merge', why: 'green' }, { engine: { from: 5, to: 5 }, packs: { plan: [{ id: 'basics', from: 1, to: 2 }, { id: 'tidy-repo', from: 4, to: 5 }] } });
+  assert.equal(packsOnly.title, 'Claudinite update: 2 packs upgraded');
 });
 
 test('the PR text says plainly when nothing moved', () => {
@@ -40,7 +60,7 @@ test('the PR text says plainly when nothing moved', () => {
 
 test('an unstamped repo reads as unstamped, not as version zero', () => {
   const { title } = updatePullText({ action: 'merge', why: 'green' }, { engine: { from: null, to: 2 }, packs: { plan: [] } });
-  assert.match(title, /engine unstamped → 2/);
+  assert.equal(title, 'Claudinite update: engine unstamped → v2');
 });
 
 test('the apply-stage body says the merge waits on the repair', () => {
