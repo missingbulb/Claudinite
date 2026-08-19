@@ -28,9 +28,10 @@ self-refresh, and the contract a scheduled task is written to.
   pack that owns the territory may be absent and invisible. When the owning pack is merely too
   narrow, widen its `ruleRoutingGuidance.belongs` rather than opening a local pack beside it.
 
-- **Judging whether Claudinite is current here** — read the stamp's `ref`, `engineVersion` and
-  `packVersions`, never `claudinite.updated` on its own: a held stamp pins `updated` behind a
-  pending note while the mount keeps converging normally, so it looks stalest when it is fine.
+- **Judging whether Claudinite is current here** — read the stamp's `engineVersion` and
+  `packVersions`, never `claudinite.updated` or `ref`: the versioned flows stamp versions and
+  nothing else, so those two hold the provenance of the last full re-vendor rather than of this
+  mount, and a member converging nightly reads as weeks stale.
 
 - **Writing or changing a scheduled task** — [scheduled-tasks.md](scheduled-tasks.md) is the
   contract, and the precondition is the only place a task may decide not to run.
