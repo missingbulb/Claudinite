@@ -21,7 +21,7 @@
 //
 // `agent_model: 'none'` — pure code. The whole pass is the dispatch sweep
 // (force-fleet-baseline.mjs, invoked by worker.mjs): enumerate the fleet over the
-// PAT, wake each covered member's own `baselining` item, report
+// PAT, wake each covered member's own `update` item, report
 // the full roster. Nothing agentic happens HERE — each member's own converge may hand
 // off to that member's own agent, which is the fan-out model's point: the enforcer
 // dispatches, the member executes, and no agent anywhere needs cross-repo access.

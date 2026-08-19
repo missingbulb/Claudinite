@@ -37,7 +37,7 @@ export async function main() {
   if (params.DRY_RUN !== undefined) process.env.FLEET_BASELINE_DRY_RUN = params.DRY_RUN;
   if (params.INCLUDE_DORMANT !== undefined) process.env.FLEET_BASELINE_INCLUDE_DORMANT = params.INCLUDE_DORMANT;
 
-  log(`baselining across the fleet${params.REPOS ? ` (repos: ${params.REPOS})` : ''}${params.DRY_RUN === 'true' ? ' [dry run]' : ''}`);
+  log(`waking the update task across the fleet${params.REPOS ? ` (repos: ${params.REPOS})` : ''}${params.DRY_RUN === 'true' ? ' [dry run]' : ''}`);
   await sweep();
   log('dispatch complete — each member baselines itself and reports in its own repo');
 }

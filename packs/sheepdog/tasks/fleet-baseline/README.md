@@ -25,7 +25,7 @@ Values are space-separated because the parameter bag splits `KEY=value` pairs on
 
 ## What it does
 
-Enumerate every repo under the configured owner over the `FLEET_GITHUB_TOKEN` PAT and, for each **covered, non-dormant** member, dispatch that member's own `claudinite-scheduler.yml` with `wake: baselining` — the same button the owner would press in that repo's Actions tab, pressed across the fleet in one run. The wake lever names one task, so each member does exactly one thing: baseline.
+Enumerate every repo under the configured owner over the `FLEET_GITHUB_TOKEN` PAT and, for each **covered, non-dormant** member, dispatch that member's own `claudinite-scheduler.yml` with `wake: update` — the same button the owner would press in that repo's Actions tab, pressed across the fleet in one run. The wake lever names one task, so each member does exactly one thing: converge its mount.
 
 Nothing is baselined *here*, and nothing is written to any member — no commit, no issue, no comment. Each member converges its own mount, with its own token, under its own scheduler and delivery policy; if its converge needs an agent, that member's own executor runs it. The enforcer **dispatches**; the member **executes**. That is the whole trust model: no agent anywhere needs cross-repo access, and the one fleet credential is the PAT with Actions write.
 
