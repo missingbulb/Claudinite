@@ -1,6 +1,6 @@
 // The fleet-baseline DISPATCH — the enforcer's manual lever over the whole fleet:
 // force every covered member to baseline NOW, instead of waiting for each one's next
-// anchor. It dispatches each member's OWN scheduler with `wake: baselining` —
+// anchor. It dispatches each member's OWN scheduler with `wake: update` —
 // the same button the owner would press in that repo's Actions tab, pressed across
 // the fleet in one run. Nothing is baselined here: each member converges its own
 // mount, with its own token, under its own scheduler and its own delivery policy.
@@ -20,9 +20,10 @@
 // WHY IT EXISTS. Under per-project scheduling every member baselines itself hourly,
 // so the fleet needs no push in the ordinary case. The cases it is FOR are the
 // un-ordinary ones: a canon change the fleet should pick up now rather than over the
-// next day, and the tail of members whose next anchor is hours away. A forced run
-// bypasses baselining's precondition (the engine records it as forced), so a member
-// with nothing to do converges to a cheap no-op — safe to over-use, only wasteful.
+// next day, and the tail of members whose next anchor is hours away. A wake clears
+// the item's wait and re-readies it; the executor still evaluates the task's own
+// precondition at pick, so a member with nothing to do converges to a cheap no-op —
+// safe to over-use, only wasteful.
 //
 // THE TOKEN. FLEET_GITHUB_TOKEN, the same account-spanning PAT the sweeps use, plus
 // ONE scope the read-only ones do not need: **Actions: read and write** on the
@@ -175,7 +176,7 @@ export async function main() {
     '',
     // The dispatch API returns 204 with no body, so there is no run id to link here:
     // each member's own workflow page is the honest destination.
-    '_A dispatch only queues a run. Each member reports its own baselining the way it_',
+    '_A dispatch only queues a run. Each member reports its own update the way it_',
     '_always does — a maintenance PR, or a failure issue in that repo._',
   ].filter(Boolean).join('\n');
 

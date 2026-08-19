@@ -127,7 +127,7 @@ converges one open `needs-human` issue for it.
 `manual`-frequency task: never instantiated on any cadence, it runs only from an item the owner
 creates by hand — `create-work-item sheepdog/fleet-baseline`, with `REPOS=…`, `DRY_RUN=true`,
 `INCLUDE_DORMANT=true` as `--context` lines — which wakes every covered member's own standing
-`baselining` item so the fleet picks canon up now instead of over the next day. A forced
+`update` item so the fleet picks canon up now instead of over the next day. A forced
 fleet-add-missing-packs item is the second lever, same command, its own Context. Neither
 waits on what it fired: a dispatch queues a member's own run, and each member reports its own
 outcome where it always does. (The standalone fleet-baseline workflow, its fleet-wide follow
