@@ -19,11 +19,11 @@ export default {
   // against the stamped version, and what gets stamped is this manifest's number — so
   // a record declaring a version above it would re-apply every cycle, forever,
   // draining never.
-  version: 10,
+  version: 11,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'cross-project working discipline, issue-branch-PR lifecycle, repo hygiene, doc/reference integrity and the baseline engineering, testing and debugging skills',
-    excludes: 'technology-specific content — its own tech pack; GitHub Actions workflow or platform behaviour — github-actions; git procedure — git-github',
+    excludes: 'technology-specific content — its own tech pack; git procedure and GitHub Actions workflow or platform behaviour — git-github',
   },
   badge: 'badge.svg',
   detect: null,

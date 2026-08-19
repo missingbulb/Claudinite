@@ -19,13 +19,13 @@ const SOURCE = /\.(mjs|cjs|js|jsx|ts|tsx)$/;
 
 export default {
   id: 'headless-browser',
-  version: 4,
+  version: 5,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs:
       'driving a real browser from code — resolving and pinning the build, faking the page world, capture mechanics',
     excludes:
-      'which engine a UI golden needs and its review gate — basics writing-tests; workflow wiring — github-actions',
+      'which engine a UI golden needs and its review gate — basics writing-tests; workflow wiring — git-github',
   },
   badge: 'badge.svg',
   marker: 'a browser-automation driver (playwright / puppeteer, or a .launch( call) referenced in JS/TS source',

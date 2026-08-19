@@ -3,15 +3,15 @@ import assert from 'node:assert/strict';
 import { makeRepo, cleanup, declaredCheck, ruleTester } from '../../engine-tests/helpers.mjs';
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 
-const secretsInJobIf = declaredCheck('packs/github-actions', 'gha/secrets-in-job-if');
-const runPipefail = declaredCheck('packs/github-actions', 'gha/run-pipefail');
-const checkoutSubmodules = declaredCheck('packs/github-actions', 'gha/checkout-submodules');
-const scheduledEscalation = declaredCheck('packs/github-actions', 'gha/scheduled-failure-escalation');
-const labelCreate = declaredCheck('packs/github-actions', 'gha/label-create-before-add');
-const uniqueBranch = declaredCheck('packs/github-actions', 'gha/unique-automation-branch');
-const pagesArtifactSymlinks = declaredCheck('packs/github-actions', 'gha/pages-artifact-symlinks');
-const noScheduledFleetExecutor = declaredCheck('packs/github-actions', 'gha/no-scheduled-fleet-executor');
-const cronMinuteOffTheHour = declaredCheck('packs/github-actions', 'gha/cron-minute-off-the-hour');
+const secretsInJobIf = declaredCheck('packs/git-github', 'gha/secrets-in-job-if');
+const runPipefail = declaredCheck('packs/git-github', 'gha/run-pipefail');
+const checkoutSubmodules = declaredCheck('packs/git-github', 'gha/checkout-submodules');
+const scheduledEscalation = declaredCheck('packs/git-github', 'gha/scheduled-failure-escalation');
+const labelCreate = declaredCheck('packs/git-github', 'gha/label-create-before-add');
+const uniqueBranch = declaredCheck('packs/git-github', 'gha/unique-automation-branch');
+const pagesArtifactSymlinks = declaredCheck('packs/git-github', 'gha/pages-artifact-symlinks');
+const noScheduledFleetExecutor = declaredCheck('packs/git-github', 'gha/no-scheduled-fleet-executor');
+const cronMinuteOffTheHour = declaredCheck('packs/git-github', 'gha/cron-minute-off-the-hour');
 
 const run = (rule, root) => rule.run(buildContext({ root, mode: 'all' }));
 const WF = '.github/workflows/x.yml';

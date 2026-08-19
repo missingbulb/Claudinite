@@ -18,11 +18,11 @@ const hasMarkerNearRoot = (ctx, marker) =>
 
 export default {
   id: 'macos',
-  version: 2,
+  version: 3,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'native macOS apps: app-bundle assembly, TCC usage strings, Hardened Runtime entitlements, Developer ID signing, notarization and DMG distribution',
-    excludes: 'Mac App Store submission — app-store-release; iPhone app targets — ios; workflow YAML mechanics — github-actions',
+    excludes: 'Mac App Store submission — app-store-release; iPhone app targets — ios; workflow YAML mechanics — git-github',
   },
   badge: 'badge.svg',
   marker: 'Package.swift (at the repo root or one directory down)',

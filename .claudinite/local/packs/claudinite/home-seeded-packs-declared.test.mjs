@@ -111,7 +111,7 @@ test('home-seeded-packs-declared: silent in a repo that carries no canon packs/ 
   const root = makeRepo({
     base: {
       '.claudinite/shared/packs/basics/pack.mjs': packModule('basics', { seeded: true }),
-      '.claudinite-checks.json': settings(['github-actions']),
+      '.claudinite-checks.json': settings(['git-github']),
     },
   });
   try {

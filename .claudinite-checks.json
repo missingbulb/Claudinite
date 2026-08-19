@@ -2,7 +2,6 @@
   "packs": [
     "claudinite-lifecycle",
     "basics",
-    "github-actions",
     {
       "id": "claudinite-growth",
       "config": {
@@ -50,8 +49,7 @@
               {
                 "path": ".github/workflows/chrome-extension-daily-release.yml",
                 "to": [
-                  "packs/chrome-extension",
-                  "packs/github-actions"
+                  "packs/chrome-extension"
                 ],
                 "reason": "decouple(release-infra): chrome-extension reusable release infra hosted in the core .github/ tree; being vendored out (#276)"
               },

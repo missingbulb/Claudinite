@@ -66,11 +66,13 @@ export default {
   // 11: mount freshness judged on stamped versions against the canon's live ones
   // (never ref/updated), and the scheduler panels re-derived for the standing-item
   // model — next asks, roll records, triage-split parks. Page-only; no migration.
-  version: 11,
+  // 12: the workflow-practice neighbour is git-github now that github-actions
+  // collapsed into it (#1079).
+  version: 12,
   minEngineVersion: 4,
   ruleRoutingGuidance: {
     belongs: 'the browser dashboard over Claudinite scheduler state, the site that publishes it, and the fleet morning brief it reads',
-    excludes: 'how the scheduler behaves — core; workflow practice — github-actions; product sites — static-website',
+    excludes: 'how the scheduler behaves — core; workflow practice — git-github; product sites — static-website',
   },
   badge: 'badge.svg',
 

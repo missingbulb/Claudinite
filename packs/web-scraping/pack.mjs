@@ -18,13 +18,13 @@
 
 export default {
   id: 'web-scraping',
-  version: 3,
+  version: 4,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs:
       'acquiring data from a site you do not own: finding its data surface, fetching defensively, caching raw payloads',
     excludes:
-      'Actions triggers and secrets wiring — that is github-actions; publishing a site you own — that is static-website',
+      'Actions triggers and secrets wiring — that is git-github; publishing a site you own — that is static-website',
   },
   badge: 'badge.svg',
   marker: null,

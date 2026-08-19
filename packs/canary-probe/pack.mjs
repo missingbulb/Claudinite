@@ -45,11 +45,11 @@
 // shape a fleet-wide workflow fix would take.
 export default {
   id: 'canary-probe',
-  version: 2,
+  version: 3,
   minEngineVersion: 3,
   ruleRoutingGuidance: {
     belongs: 'the inert probe workflow the canon delivers to its canary to prove workflow materialization works end to end',
-    excludes: 'real CI and release workflows — github-actions owns workflow practice, each release pack owns its own pipeline',
+    excludes: 'real CI and release workflows — git-github owns workflow practice, each release pack owns its own pipeline',
   },
   badge: 'badge.svg',
   detect: null,
