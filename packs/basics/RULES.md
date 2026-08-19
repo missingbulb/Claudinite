@@ -152,6 +152,20 @@
   and the call is rejected without it. A rejection leaves no fallback armed, which is what the
   `unattended-agents` skill's re-issue rule is for.
 
+- **Waiting on a condition with no shell-testable signal** (a PR's check-run status, anything
+  reachable only through an MCP tool) — don't fake it with an `until` loop wrapped around a
+  condition that is already true or false the instant it's evaluated, which is a blind sleep
+  wearing a loop, and don't rely on a bare `wait`: each Bash call is a fresh shell, so a `wait` in
+  a new invocation has no earlier backgrounded job to wait on and returns immediately, having
+  waited on nothing. Issue a short, bounded command with `run_in_background: true`, treat it as
+  one poll interval whose result you actually consume, and re-check the real signal after it.
+
+- **Discovering a fix that belongs in a repo outside this session's write scope** — treat the
+  missing scope like a denied fetch above: a policy boundary, not an obstacle to route around.
+  Don't retry a different remote, hunt for a wider credential, or edit a read-only mirrored copy in
+  place to compensate. Finish and verify the change where you can reach it, then package it as a
+  diff/patch on an issue in a repo you can write to, for a session with the right scope to apply.
+
 ## Warnings and findings
 
 - **Seeing a build, test or CI warning** — fix it rather than tolerate it, with a small, targeted
@@ -284,6 +298,12 @@ For every new task:
   field: decide it explicitly and rewrite the disclosure before the code. Expect the claim in more
   than one place — grep the whole surface for the standing absolutes it touches ("no tracking",
   "no cookies", "no external assets") and reconcile every hit.
+
+- **Changing an observable behavior your own docs make a claim about** — not only privacy: a
+  README stating when a site deploys, what a job's cadence is, or which targets it supports is a
+  checkable claim the same way a privacy promise is. Grep the doc surface for what the change
+  falsifies and correct it in the same commit; left to a later pass, the doc goes on describing
+  behavior the code no longer has.
 
 - **Driving an external runtime more than once in a session** — a headless browser, a device, a
   REPL, a deploy target — write one parameterised driver into the scratchpad, taking the target,
