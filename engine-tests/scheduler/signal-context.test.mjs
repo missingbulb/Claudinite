@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { buildSignalContext } from '../../engine/scheduler/signals/context.mjs';
 import { collectSignals } from '../../engine/scheduler/signals/index.mjs';
 import { loadConfig } from '../../engine/checks/helpers/repo-context.mjs';
-import storeRelease from '../../packs/chrome-extension-release/tasks/store-release/task.mjs';
+import storeRelease from '../../packs/chrome-extension/tasks/store-release/task.mjs';
 import dedup from '../../packs/claudinite-growth/tasks/growth-dedup/task.mjs';
 import logsPrune from '../../packs/claudinite-growth/tasks/logs-prune/task.mjs';
 
@@ -38,6 +38,10 @@ const CHECKS_JSON = JSON.stringify({
 const FULL = {
   '.claudinite-checks.json': CHECKS_JSON,
   'manifest.json': JSON.stringify({ manifest_version: 3, name: 'x', version: '1.4.0' }) + '\n',
+  // The release orchestrator, by its contract name: store-release declines outright
+  // on a repo that does not publish (#1057), so without this the manifest-ahead
+  // trigger below could never be reached.
+  '.github/workflows/chrome-extension-release.yml': 'name: Release to Chrome Store\non:\n  push:\n',
   '.claudinite/local/packs/mine/pack.mjs': 'export default { id: "mine" };\n',
 };
 
@@ -105,6 +109,7 @@ test('buildSignalContext populates every ctx key the collectors read', () => {
     const ctx = ctxFor(root);
     // The three that were read but never set — a collector cannot invent them.
     assert.equal(ctx.manifestVersion, '1.4.0');
+    assert.equal(ctx.shipsReleasePipeline, true);
     assert.equal(ctx.hasLocalPacks, true);
     assert.equal(ctx.retentionDays, 10);
     // ...alongside the ones that always worked, so this is a whole-shape guard.
@@ -117,6 +122,7 @@ test('buildSignalContext: absent manifest, no local packs, no retention → the 
   withRepo({ '.claudinite-checks.json': JSON.stringify({ packs: ['basics'] }) + '\n' }, (root) => {
     const ctx = ctxFor(root);
     assert.equal(ctx.manifestVersion, null);
+    assert.equal(ctx.shipsReleasePipeline, false); // explicit false — the task's gate reads it
     assert.equal(ctx.hasLocalPacks, false); // explicit false, not null — the self-skip depends on it
     assert.equal(ctx.retentionDays, null);
   });

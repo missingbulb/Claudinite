@@ -193,7 +193,7 @@ const COLLECTORS = {
   async release(gh, ctx) {
     const { status, json } = await gh(`/repos/${ctx.repo}/releases/latest`);
     const latestTag = status === 200 ? (json?.tag_name ?? null) : null; // 404 → no release yet
-    return { latestTag, manifestVersion: ctx.manifestVersion ?? null };
+    return { latestTag, manifestVersion: ctx.manifestVersion ?? null, shipsPipeline: ctx.shipsReleasePipeline ?? null };
   },
 
   // Whether the repo carries local packs, and whether a window commit touched

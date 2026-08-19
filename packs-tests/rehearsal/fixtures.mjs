@@ -54,6 +54,15 @@
 //                 README rather than a `task.md` for the same reason from the other
 //                 side: that is the shape `task-md-only-when-agentic` mandates, and
 //                 the fixture is what proves the rule stays silent on it.
+//   codes-an-extension
+//                 a member declaring chrome-extension with a manifest and NO release
+//                 pipeline. The pack absorbed chrome-extension-release (#1057), so its
+//                 release rules — six of them blocking, and each asking for a file
+//                 (release config, privacy page, README sections) — now reach every
+//                 extension repo instead of only the ones that declared the release
+//                 pack. This shape is what says the shipping gate holds them off a
+//                 repo that only codes one; without it, canon CI proves nothing,
+//                 because the canon publishes no extension.
 //   growth-member a member enrolled in the growth lifecycle, carrying the local
 //                 packs its capture runs write. The growth stages ship blocking
 //                 work rules scoped to those runs, so this is the shape that
@@ -322,6 +331,17 @@ export const FIXTURES = [
       // its one import line — a member's CLAUDE.md is the member's.
       'CLAUDE.md': '# fixture-pre-rules-index\n\nBuild with `make`. Run `make test` before committing.\n',
       '.gitattributes': 'usage.GENERATED.json merge=ours\n',
+    },
+  },
+  {
+    name: 'codes-an-extension',
+    why: 'an extension repo that does not publish — the shape the chrome-extension collapse newly exposes to the release rules, which must stay inert on it',
+    files: {
+      'README.md': '# fixture-codes-an-extension\n\nA rehearsal fixture.\n',
+      '.claudinite-checks.json': checks(['basics', 'chrome-extension']),
+      // A manifest is the pack's whole fingerprint, so the pack is active here; what
+      // must not fire is everything gated on shipping.
+      'manifest.json': JSON.stringify({ manifest_version: 3, name: 'fixture', version: '0.1.0' }, null, 2) + '\n',
     },
   },
   {

@@ -20,6 +20,7 @@ export function buildSignalContext({ root, repo, defaultBranch, now, sinceIso, c
     repo, defaultBranch, now, sinceIso, config,
     activePacks: config.packs, fleet,
     manifestVersion: local.manifestVersion,
+    shipsReleasePipeline: local.shipsReleasePipeline,
     hasLocalPacks: local.hasLocalPacks,
     retentionDays: local.retentionDays,
   };

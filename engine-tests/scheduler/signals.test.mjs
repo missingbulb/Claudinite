@@ -232,7 +232,9 @@ test('conversationLogs: the collector parses exactly what the pack\'s capture st
 test('release: a 404 latest release means no release yet', async () => {
   const gh = fakeGh([[/\/releases\/latest/, { status: 404, json: null }]]);
   const out = await collectSignals(gh, ctx({ manifestVersion: '1.2.0' }), ['release']);
-  assert.deepEqual(out.release, { latestTag: null, manifestVersion: '1.2.0' });
+  // shipsPipeline is null here, not false: the ctx seam supplies no checkout, and
+  // "the collector could not read one" is not the same answer as "it does not ship".
+  assert.deepEqual(out.release, { latestTag: null, manifestVersion: '1.2.0', shipsPipeline: null });
 });
 
 test('sharedMount: only DECLARED packs whose vendored files changed are reported', async () => {
