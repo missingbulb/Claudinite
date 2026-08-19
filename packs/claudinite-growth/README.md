@@ -144,8 +144,10 @@ Each stage's **method** lives in a skill, so the task doc frames the unattended 
 method is available to an owner asking in-session. Extract's three are listed above;
 [**growth-dedup**](skills/growth-dedup/SKILL.md) is the dedup stage's — what to prune, strip, or
 rephrase, the keep-test, and the shrink-only discipline. The pack also bundles
-[unattended-agents](skills/unattended-agents/SKILL.md) and
-[generate-project-instructions](skills/generate-project-instructions/SKILL.md). Adoption itself —
+[unattended-agents](skills/unattended-agents/SKILL.md),
+[generate-project-instructions](skills/generate-project-instructions/SKILL.md) and
+[**writing-tasks**](skills/writing-tasks/SKILL.md) — the contract a `tasks/<name>/task.mjs` and
+its worker are written to, which is what the three task checks below judge against. Adoption itself —
 `adopt-claudinite`, `adopt-pack` and the `adopt-requested-packs` task — is the
 [claudinite-lifecycle](../claudinite-lifecycle/README.md) pack's: its subject is Claudinite's own surface, not lesson capture.
 
@@ -153,7 +155,8 @@ rephrase, the keep-test, and the shrink-only discipline. The pack also bundles
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Writing or changing a scheduled task | high | correctness | prose: 26 words + checks (`task-declaration-shape`, `task-declaration-matches-folder`, `task-code-work-env`) |
+| Writing or changing a task | high | correctness | prose: 63 words + checks (`task-declaration-shape`, `task-declaration-matches-folder`, `task-code-work-env`) |
+| Wanting a job to run in Actions | high | complexity | prose: 55 words + check (`scheduler-workflow-shape`) |
 
 ## Coded rules
 
@@ -241,7 +244,7 @@ Extract writes into it, promote reads from it, dedup prunes within it — all ag
 | `task-code-work-env` | high | correctness | check: blocking |
 | `task-phase-discipline` | medium | complexity | check: advisory |
 
-The last four are the **scheduled-task contract** ([scheduled-tasks.md](scheduled-tasks.md)), which
+The last four are the **task contract** ([the writing-tasks skill](skills/writing-tasks/SKILL.md)), which
 lives here rather than in [claudinite-lifecycle](../claudinite-lifecycle/README.md) because it judges
 whether a task is *written* correctly — authoring, the subject of this pack — and not whether
 Claudinite is *working* in the repo, which is that one's. Relevance-first: all four are inert until

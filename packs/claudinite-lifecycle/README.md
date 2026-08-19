@@ -45,7 +45,7 @@ What goes wrong when one fires:
 - `conformance-work-scope` — CI gates the tree but not the change, so every commit-scoped rule is enforced only where a session's Stop hook happens to run.
 - `scheduler-workflow-shape` — the vendored scheduler's cron, concurrency or dispatch guard has drifted: staggering, double-run safety or manual runs break.
 
-The **scheduled-task contract** — `scheduled-tasks.md` and its four checks — is deliberately NOT
+The **task contract** — [the writing-tasks skill](../claudinite-growth/skills/writing-tasks/SKILL.md) and its four checks — is deliberately NOT
 here. Those ask whether a task is *written* correctly, which is authoring; every check above asks
 whether Claudinite is *working* in this repo. They live in
 [claudinite-growth](../claudinite-growth/README.md) with the rest of the authoring surface.

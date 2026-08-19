@@ -85,7 +85,7 @@ implementation detail ([#749](https://github.com/missingbulb/Claudinite/issues/7
 missing-packs design ended in an enforcer-side agent stage, and its very first production run stopped
 at `needs-human` because the enforcer's executor is — correctly — scoped to the enforcer repo alone.
 What crosses a repo boundary is an issue and a `workflow_dispatch`, both over `FLEET_GITHUB_TOKEN`;
-the deprecated task-level `session_scope` ([scheduled-tasks.md](../claudinite-growth/scheduled-tasks.md)) has no
+the deprecated task-level `session_scope` ([the writing-tasks skill](../claudinite-growth/skills/writing-tasks/SKILL.md)) has no
 place here.
 
 A member that declares itself **dormant** (`"dormant": true` in its own declaration) is out of the
@@ -198,7 +198,7 @@ There is **no coverage workflow**: preprocessing runs Action-side inside the rep
 workflow, where the Actions secret is already reachable, and each task's
 `required_secrets: ['FLEET_GITHUB_TOKEN']` stamps the name into that workflow's env — which is what
 asks the owner for it. A workflow that exists only to hold a secret is redundant
-([scheduled-tasks.md](../claudinite-growth/scheduled-tasks.md)).
+([the writing-tasks skill](../claudinite-growth/skills/writing-tasks/SKILL.md)).
 
 ## Rules (`RULES.md`)
 

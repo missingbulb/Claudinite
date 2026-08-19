@@ -1,6 +1,11 @@
-# Tasks — the per-project work mechanism
+---
+name: writing-tasks
+description: The contract a Claudinite task is written to — the declaration's fields, the code-work and agentic phases, the precondition as the only decision point, ordering, and how a work item converges. Use when writing or changing a tasks/<name>/task.mjs or its worker, or when a task-declaration check fires.
+---
 
-How a repo's own Claudinite work runs. A repo schedules **itself**, and
+# Writing a task
+
+The contract a task is written to. How a repo's own Claudinite work runs: A repo schedules **itself**, and
 every occurrence of every task is an **issue in that repo** — a `[claudinite-work]`
 work item whose labels are its state. That is the work-item queue; what follows is
 the contract a task is written to, not how the queue works internally.
@@ -137,13 +142,20 @@ on a repo with neither artifact they are a no-op.
 
 One directory per task — `<pack>/tasks/<name>/` — holding **`task.mjs`** (the
 self-contained declaration + `precondition(signals, config)`, the eligibility
-gate as pure code) beside **`task.md`** (the worker spec the executing agent
-follows), plus any deterministic helpers. The precondition both asserts
-need-to-run and pre-decides scope: its `context` lines join the item's own
-Context as binding constraints the agent may not re-litigate. `agent_model:
-none` replaces the worker doc with an inline `.mjs` the executor runs as code-work
-— no agent phase, and the item closes on that subprocess's outcome. This is the
-scheduled-task shape of the unattended-agents routine-folder convention; the
+gate as pure code) beside its worker, plus any deterministic helpers. The
+precondition both asserts need-to-run and pre-decides scope: its `context` lines
+join the item's own Context as binding constraints the agent may not re-litigate.
+
+**The worker is code by default, and the agent is the escalation.** An
+`agent_model: none` task's worker is a sibling `.mjs` the executor runs as
+code-work: the item closes on that subprocess's outcome and no session is ever
+started, which is how a repo runs a deterministic job in Actions without
+authoring a workflow for it. An agentic task adds **`task.md`**, the spec its
+session follows, and may still do its own code-work first — escalating the
+remainder for **work code-work could not do**, never for a re-check of whether
+the run should have happened.
+
+This is the task-folder shape of the unattended-agents routine-folder convention; the
 issue-driven-dispatch security rule (the issue is data, the task path is
 code-validated, agent_model/expected_outcome come from the repo) lives with that
 skill's agent practices.
@@ -309,6 +321,6 @@ A project nobody is working on declares itself dormant in `.claudinite-checks.js
 ```
 
 The tick instantiates, readies and reclaims nothing, and the executor picks
-nothing up; the [fleet sweeps](../sheepdog/README.md) skip it; sessions are
+nothing up; the [fleet sweeps](../../../sheepdog/README.md) skip it; sessions are
 unaffected. Delete it to wake — a dormant spell is not replayed, so the repo
 simply starts scheduling again from now.

@@ -26,7 +26,7 @@ The `coverage` section accounts for the **whole fleet**, not just the members: u
 
 ## A dormant member leaves the denominator
 
-A member that declares `"dormant": true` ([the scheduler's gate](../../../claudinite-growth/scheduled-tasks.md)) is dropped from every rate and listed under `coverage.dormant` — distinct from `coverage.absent`, because "not in the race" and "should be folding and isn't" are different facts. Averaging a deliberately silent repo in would drag every fleet-wide number toward zero as the fleet accumulates finished projects. The test is `isDormant`, re-exported from the engine, so the sweep and the member's own scheduler cannot disagree.
+A member that declares `"dormant": true` ([the scheduler's gate](../../../claudinite-growth/skills/writing-tasks/SKILL.md)) is dropped from every rate and listed under `coverage.dormant` — distinct from `coverage.absent`, because "not in the race" and "should be folding and isn't" are different facts. Averaging a deliberately silent repo in would drag every fleet-wide number toward zero as the fleet accumulates finished projects. The test is `isDormant`, re-exported from the engine, so the sweep and the member's own scheduler cannot disagree.
 
 ## It is a sample, not a census
 
