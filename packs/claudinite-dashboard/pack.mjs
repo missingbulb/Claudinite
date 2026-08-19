@@ -61,7 +61,9 @@ export default {
   // and a 403's hint — additive, no migration (#1030).
   // 9: adoption hands over the sign-in decision as well as the Pages setting — prose
   // and a handover entry, so a member gains a checkbox and nothing else changes.
-  version: 9,
+  // 10: the page carries a favicon — a file the mount has to deliver, so the version
+  // moves; nothing in a member's tree changes shape and there is no migration.
+  version: 10,
   minEngineVersion: 4,
   ruleRoutingGuidance: {
     belongs: 'the browser dashboard over Claudinite scheduler state, the site that publishes it, and the fleet morning brief it reads',
