@@ -7,6 +7,8 @@ import {
   DELIVERED_HEADING, LEGACY_DELIVERED_HEADINGS,
   TRIAGE_LABELS, NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_APPROVAL,
   NEEDS_HUMAN_FAILURE, triageLabelFor, isBlockingPark,
+  TASK_DONE, TASK_OBSOLETE, OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE, outcomeOf,
+  LAST_VERDICT_HEADING, lastVerdictLines, parseLastVerdict,
 } from '../../../engine/scheduler/queue/work-item.mjs';
 
 // The title is the identity's readable half; the ISSUE NUMBER is the identity.
@@ -171,4 +173,52 @@ test('only a fault park holds the task\'s lane', () => {
 test('every triage label is one the executor guarantees before applying', () => {
   const ensured = new Set(QUEUE_LABELS.map((l) => l.name));
   for (const l of TRIAGE_LABELS) assert.ok(ensured.has(l), l);
+});
+
+// --- outcome decoding ------------------------------------------------------------
+
+// The stored-data rename rule, decode side: `task:done`/`task:obsolete` are today's
+// spellings (DESIGN §4, §15.25) and every legacy spelling maps STRAIGHT to them —
+// including `outcome:delivered`, which nothing writes any more but closed issues
+// carry forever.
+test('outcomeOf maps every spelling, legacy and current, to the canonical word', () => {
+  const at = (...labels) => ({ labels });
+  assert.equal(outcomeOf(at(TASK_DONE)), 'done');
+  assert.equal(outcomeOf(at(OUTCOME_DONE)), 'done');
+  assert.equal(outcomeOf(at(OUTCOME_DELIVERED)), 'delivered');
+  assert.equal(outcomeOf(at(TASK_OBSOLETE)), 'obsolete');
+  assert.equal(outcomeOf(at(OUTCOME_OBSOLETE)), 'obsolete');
+  assert.equal(outcomeOf(at('task:ready', 'needs-human')), null);
+  assert.equal(outcomeOf(at()), null);
+  assert.equal(outcomeOf(undefined), null);
+});
+
+// --- the roll's Last verdict section -----------------------------------------------
+
+// Written on every no-go roll and read back by anything that answers "why didn't it
+// run" (the dashboard above all). Serializer and parser live together so the shape
+// has one home.
+test('parseLastVerdict reads back exactly what lastVerdictLines wrote', () => {
+  const body = withSection('task/path\n', LAST_VERDICT_HEADING,
+    lastVerdictLines({ at: '2026-08-16T05:00:00Z', reason: 'no PRs in window', until: '2026-08-17T04:00:00Z' }));
+  const v = parseLastVerdict(body);
+  assert.equal(v.at, '2026-08-16T05:00:00Z');
+  assert.equal(v.reason, 'no PRs in window');
+  assert.equal(v.until, '2026-08-17T04:00:00Z');
+});
+
+test('parseLastVerdict is null on a body that never rolled, and tolerates a missing wake', () => {
+  assert.equal(parseLastVerdict('task/path\n\nExecute the Claudinite task above.\n'), null);
+  const body = withSection('task/path\n', LAST_VERDICT_HEADING,
+    lastVerdictLines({ at: '2026-08-16T05:00:00Z', reason: 'gone', until: null }));
+  const v = parseLastVerdict(body);
+  assert.equal(v.reason, 'gone');
+  assert.equal(v.until, null);
+});
+
+// A reason containing an em-dash of its own must not truncate the parse.
+test('parseLastVerdict keeps a reason that carries the separator', () => {
+  const body = withSection('task/path\n', LAST_VERDICT_HEADING,
+    lastVerdictLines({ at: '2026-08-16T05:00:00Z', reason: 'quiet — nothing moved', until: '2026-08-17T04:00:00Z' }));
+  assert.equal(parseLastVerdict(body).reason, 'quiet — nothing moved');
 });

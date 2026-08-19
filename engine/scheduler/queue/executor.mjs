@@ -20,7 +20,8 @@ import {
   OUTCOME_DONE, OUTCOME_OBSOLETE, QUEUE_LABELS,
   NEEDS_HUMAN_ACTION, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_FAILURE, triageLabelFor,
   CLAIM_MARKER, HANDOFF_MARKER, EPISODE_MARKER,
-  parseWorkItemTitle, parseWorkItemBody, parseContextLines, mergeContext, withNotBefore, withSection, hasLabel, DELIVERED_HEADING, LEGACY_DELIVERED_HEADINGS } from './work-item.mjs';
+  parseWorkItemTitle, parseWorkItemBody, parseContextLines, mergeContext, withNotBefore, withSection, hasLabel, DELIVERED_HEADING, LEGACY_DELIVERED_HEADINGS,
+  LAST_VERDICT_HEADING, lastVerdictLines } from './work-item.mjs';
 
 // How many items one executor run may take before it stops. Small on purpose: an
 // executor is code iterating a queue, and more capacity is more executors, not a
@@ -332,10 +333,7 @@ export function evaluatePrecondition(task, signals, packConfig = {}) {
 
 export function rollBody(body, until, reason, at) {
   const stamped = withNotBefore(body, until);
-  return withSection(stamped, 'Last verdict', [
-    `${at} — the precondition declined: ${reason}`,
-    `Asked again at ${until}.`,
-  ]);
+  return withSection(stamped, LAST_VERDICT_HEADING, lastVerdictLines({ at, reason, until }));
 }
 
 // Hand off to an agent session (DESIGN §6.6). ONE call per item, ever — which is
