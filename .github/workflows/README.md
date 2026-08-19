@@ -6,8 +6,8 @@ own CI sits beside the release reusable workflows some consuming repos still ref
 ## Retiring — the chrome-extension release plumbing is being vendored out
 
 The four release reusable workflows + three composite actions below **exist solely for the
-`chrome-extension-release` pack** and are on their way OUT of this core tree (#276). The pack now
-holds them as templates ([`packs/chrome-extension-release/stubs/`](../../packs/chrome-extension-release/stubs/)),
+`chrome-extension` pack** and are on their way OUT of this core tree (#276). The pack now
+holds them as templates ([`packs/chrome-extension/stubs/`](../../packs/chrome-extension/stubs/)),
 and the `chrome-release-vendoring` migration vendors the full set into each consumer's own
 `.github/` — so a consumer runs the whole pipeline locally, with **no** cross-repo `@main`
 dependency. Once every consumer has vendored (0 repos on the `@main` shape, confirmed by hand
@@ -49,6 +49,6 @@ Composite actions (`../actions/`):
 | [`../actions/report-failure`](../actions/report-failure) | every scheduled/reusable workflow here, and consumers directly |
 
 The vendored templates that supersede these live under
-[`packs/chrome-extension-release/stubs/`](../../packs/chrome-extension-release/stubs/) (the
-orchestrator at [`packs/chrome-extension-release/stubs/workflows/chrome-extension-release.yml`](../../packs/chrome-extension-release/stubs/workflows/chrome-extension-release.yml));
-the standard is [`packs/chrome-extension-release/RELEASE.md`](../../packs/chrome-extension-release/RELEASE.md).
+[`packs/chrome-extension/stubs/`](../../packs/chrome-extension/stubs/) (the
+orchestrator at [`packs/chrome-extension/stubs/workflows/chrome-extension-release.yml`](../../packs/chrome-extension/stubs/workflows/chrome-extension-release.yml));
+the standard is the [`chrome-store-releases` skill](../../packs/chrome-extension/skills/chrome-store-releases/SKILL.md).

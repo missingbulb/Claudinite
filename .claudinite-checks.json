@@ -43,42 +43,31 @@
               {
                 "path": ".github/workflows/README.md",
                 "to": [
-                  "packs/chrome-extension",
-                  "packs/chrome-extension-release"
+                  "packs/chrome-extension"
                 ],
-                "reason": "decouple(release-infra): the core .github/ README documents the chrome-extension-release plumbing being vendored out of core (#276)"
+                "reason": "decouple(release-infra): the core .github/ README documents the chrome-extension release plumbing being vendored out of core (#276)"
               },
               {
                 "path": ".github/workflows/chrome-extension-daily-release.yml",
                 "to": [
                   "packs/chrome-extension",
-                  "packs/chrome-extension-release",
                   "packs/github-actions"
                 ],
-                "reason": "decouple(release-infra): chrome-extension-release reusable release infra hosted in the core .github/ tree; being vendored out (#276)"
+                "reason": "decouple(release-infra): chrome-extension reusable release infra hosted in the core .github/ tree; being vendored out (#276)"
               },
               {
                 "path": ".github/workflows/chrome-extension-publish-store.yml",
                 "to": [
-                  "packs/chrome-extension",
-                  "packs/chrome-extension-release"
+                  "packs/chrome-extension"
                 ],
-                "reason": "decouple(release-infra): chrome-extension-release reusable release infra hosted in the core .github/ tree; being vendored out (#276)"
+                "reason": "decouple(release-infra): chrome-extension reusable release infra hosted in the core .github/ tree; being vendored out (#276)"
               },
               {
                 "path": ".github/workflows/chrome-extension-release.yml",
                 "to": [
-                  "packs/chrome-extension",
-                  "packs/chrome-extension-release"
+                  "packs/chrome-extension"
                 ],
-                "reason": "decouple(release-infra): chrome-extension-release reusable release infra hosted in the core .github/ tree; being vendored out (#276)"
-              },
-              {
-                "path": ".github/actions/read-release-config/read-config.mjs",
-                "to": [
-                  "packs/chrome-extension-release"
-                ],
-                "reason": "decouple(release-infra): a chrome-release composite action in the core .github/ tree; being vendored out (#276)"
+                "reason": "decouple(release-infra): chrome-extension reusable release infra hosted in the core .github/ tree; being vendored out (#276)"
               },
               {
                 "path": "extending.md",
@@ -92,7 +81,8 @@
                 "path": "engine/pack_loader/renamed-packs.mjs",
                 "to": [
                   "packs/claudinite-lifecycle",
-                  "packs/claudinite-growth"
+                  "packs/claudinite-growth",
+                  "packs/chrome-extension"
                 ],
                 "reason": "inherent(#1022): a map from a pack's old id to its current one IS a list of pack names — there is nothing else for it to be made of, and the loader must hold it so a member declaring either spelling keeps its packs"
               },
