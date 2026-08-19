@@ -1,5 +1,5 @@
 // grow_with_claudinite task: logs-prune — retention on the `conversation-logs`
-// branch. `agent_model: 'none'` with `prework: 'node worker.mjs'`: the whole pass
+// branch. `agent_model: 'none'` with `code_work: 'node worker.mjs'`: the whole pass
 // is deterministic code the scheduler runs as a subprocess — no agent, no dispatch
 // issue, seconds of runtime. The same shape usage-fold already has over the same
 // branch.
@@ -25,16 +25,16 @@ export default {
   id: 'logs-prune',
   frequency: 'daily',                    // a log ages out on wall time; the branch is read locally, so a run costs seconds
   precondition_signals: ['conversationLogs'],
-  agent_model: 'none',                   // pure code — no agent (task-prework DESIGN §4)
+  agent_model: 'none',                   // pure code — no agent (task-code-work DESIGN §4)
   // It opens no PR: its whole write is remove commits on the non-default logs
   // branch, which is outside the outcome taxonomy (per-project-scheduling DESIGN §1).
   expected_outcome: 'none',
-  prework: 'node worker.mjs',
+  code_work: 'node worker.mjs',
   // One ls-remote, one fetch, one tree read, at most one push — against a branch
   // whose size retention itself bounds. Seconds. The bound is protection against a
   // hung network call, not headroom for work, so it sits just past the slowest
   // plausible fetch rather than at the leash.
-  prework_timeout: 60,
+  code_work_timeout: 60,
 
   // The AGE arm, inherited from growth-extract's second precondition arm — which
   // existed only to fire the prune on a quiet repo and left with it.

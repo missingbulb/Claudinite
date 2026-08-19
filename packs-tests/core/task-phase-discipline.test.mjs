@@ -1,5 +1,5 @@
 // The precondition-is-the-only-gate hunt (owner, 2026-08-06): flags task.md
-// instructions and prework workers that decide to skip the run in a later phase.
+// instructions and code-work workers that decide to skip the run in a later phase.
 // Heuristic and advisory by design — the fixtures below are the real shapes the
 // 2026-08-06 audit found, plus the legal shapes it must NOT flag.
 
@@ -72,7 +72,7 @@ test('still flags a discretionary skip in a doc that also mentions needs-human',
   assert.equal(findings[0].line, 2);
 });
 
-test('flags a prework worker that logs a discretionary cycle skip (the baselining shape)', () => {
+test('flags a code_work worker that logs a discretionary cycle skip (the baselining shape)', () => {
   const findings = run({ [WORKER]: [
     'export function deliver() {',
     "  console.log(`baselining: PR still stands — leaving this cycle's converge undelivered`);",

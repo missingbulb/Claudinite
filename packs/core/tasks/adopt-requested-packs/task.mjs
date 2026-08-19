@@ -6,7 +6,7 @@
 // fingerprint scan SUSPECTS them, or the owner REQUESTS them by hand with config and
 // interview answers decided — and, per member, converges one `add-packs` work-list
 // issue HERE and dispatches THIS repo's scheduler with `wake: adopt-requested-packs`.
-// This task is what that firing runs: prework counts the repo's own open work-list
+// This task is what that firing runs: code-work counts the repo's own open work-list
 // issues and requests the agent iff any exist; the agent adopts with the repo
 // checked out, under this repo's own executor and grant, and lands one reviewed PR
 // here. The enforcer dispatches, the member executes — no agent anywhere needs
@@ -33,8 +33,8 @@ export default {
   agent_model: 'sonnet',                 // applies existing packs by an existing skill; confirmation judgment is bounded and reviewed
   expected_outcome: 'open-pr',           // a new pack switches on checks in this repo's CI — always reviewed, never auto-merged
   agent_instructions: 'task.md',
-  prework: 'node worker.mjs',
-  prework_timeout: 120,                  // one labeled-issue list against this repo's own API
+  code_work: 'node worker.mjs',
+  code_work_timeout: 120,                  // one labeled-issue list against this repo's own API
   // Adopting packs is a declaration edit, an interview transcription, a re-vendor, a
   // scaffold and a PR. Generous, because it is a runaway bound and not a scheduling
   // knob.

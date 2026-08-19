@@ -3,7 +3,7 @@
 Write this fleet's **morning brief** for one day: the few things the owner actually
 accomplished, and one project worth returning to.
 
-Prework has already done everything that is not judgment. It enumerated the fleet,
+Code-work has already done everything that is not judgment. It enumerated the fleet,
 found every pull request merged and every issue closed during the day, dropped the
 Claudinite maintenance PRs, ranked what was left **by size of change**, and pushed the
 top slice to a data branch. You are here for the one thing it could not do: **read
@@ -23,19 +23,19 @@ These are the owner's, verbatim in intent, and they are not negotiable:
   candidate's own title, body and discussion are what you have, and they are enough. An
   item you cannot summarize from its own text is an item that ranks below one you can.
 - **Do not widen past the shortlist.** The item's Context is binding scope.
-  Never enumerate the fleet, never search for items prework did not hand you, and never
+  Never enumerate the fleet, never search for items code-work did not hand you, and never
   substitute an item you happen to know about.
 - **Be very succinct.** Hard ceiling of **20 words per item**. Shorter is better. No
   preamble, no throat-clearing, no "this PR appears to".
 
 ## 1. Read the shortlist
 
-The item's **`### Delivered by prework`** section names a branch. Read
+The item's **`### Delivered by code-work`** section names a branch. Read
 `shortlist.json` from it — over your GitHub tools, at that ref.
 
 **That branch is a required input.** A work item that names none — or names one whose `shortlist.json` is not there — is a failed run: converge to `needs-human` naming what was missing.
 Never fall back to the newest branch, to a shortlist from an earlier run, or to enumerating the
-fleet yourself — the whole point of the shortlist is that prework decided which candidates this
+fleet yourself — the whole point of the shortlist is that code-work decided which candidates this
 brief covers.
 
 > **It will not come back inline, and what does come back is not yet JSON.** The shortlist
@@ -129,7 +129,7 @@ branch of your own. **One pull request for the whole run**, however many days yo
 `merged-pr`; this repo's `maintenance.delivery` decides whether it lands unreviewed, and
 that procedure reads it.
 
-**Do not touch the shortlist branch.** It is prework's, it is force-pushed nightly, and
+**Do not touch the shortlist branch.** It is code-work's, it is force-pushed nightly, and
 nothing downstream reads it after you.
 
 **The landed file is the whole deliverable.** An ad-hoc session reads it out verbatim
@@ -140,7 +140,7 @@ has to read as the finished brief, not as notes for one.
 
 `digests/<date>.md` on the default branch means that day's brief has already been
 written — a re-dispatch, or a run that landed and was re-armed. **Do not rewrite it:**
-the brief is the record of a day, and a day has one. Prework filters those days out
+the brief is the record of a day, and a day has one. Code-work filters those days out
 before the shortlist reaches you, so a written day is not a decision you are being asked
 to make — it is an entry whose work is already done, and its outcome is empty. Write the
 entries that are not, and name the already-written ones when you close the run out. A run

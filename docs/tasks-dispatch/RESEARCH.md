@@ -104,8 +104,8 @@ Worth doing only if a stalled-executor incident ever actually occurs.
 mechanism exists because a CPU-blocked event loop stops renewing the lock
 while the job is still running — double execution by *hang*, not crash
 ([BullMQ stalled jobs](https://docs.bullmq.io/guide/jobs/stalled)). Our
-equivalent: an Actions runner that hangs past the 1h leash while its prework
-still runs. The reclaimed item re-runs prework beside the zombie. Prework
+equivalent: an Actions runner that hangs past the 1h leash while its code-work
+still runs. The reclaimed item re-runs code-work beside the zombie. Code-work
 re-entrancy (F12) covers sequential re-runs; *concurrent* overlap is the
 stalled-worker case, and our answer is the platform's job timeout (the
 executor workflow's `timeout-minutes` must be ≤ the executing leash, so a
@@ -236,7 +236,7 @@ Named, so the next reader doesn't re-derive and re-propose them:
 
 - **Heartbeat renewal** (BullMQ lock renewal, SQS `ChangeMessageVisibility`,
   Temporal heartbeats): our executor iterations are minutes long; a static
-  1h leash bounds them fine. Revisit only if prework ever legitimately runs
+  1h leash bounds them fine. Revisit only if code-work ever legitimately runs
   longer than the leash.
 - **Fencing tokens checked at every resource** (Kleppmann's full remedy):
   GitHub can't check them; our effects tolerate stale actors by idempotency

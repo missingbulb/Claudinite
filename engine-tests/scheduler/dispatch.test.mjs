@@ -46,12 +46,12 @@ test('dispatchBody puts the task path first and includes Context only when prese
 // --- the Delivered section ---
 // The agent's source for what preprocessing created: a PR number and a branch ref.
 
-test('dispatchBody names the artifacts preprocessing created, by identity', () => {
+test('dispatchBody names the artifacts code-work created, by identity', () => {
   const body = dispatchBody({
     taskPath: 'p/task.md', pack: 'basics', task: 'baselining', slotId: 'd2026-08-06',
     delivered: { branch: 'claudinite/maintenance-2026-08-06-l0i4gd', pr: 71, merged: false },
   });
-  assert.match(body, /### Delivered by prework/);
+  assert.match(body, /### Delivered by code-work/);
   assert.match(body, /- PR: #71 \(open\)/);
   assert.match(body, /- Branch: `claudinite\/maintenance-2026-08-06-l0i4gd`/);
 });
@@ -97,7 +97,7 @@ test('dispatchBody puts why before what — the reason decides which artifacts m
     reason: { code: 'withheld-workflows', detail: '1 workflow file(s) the Action token cannot push' },
     delivered: { branch: 'claudinite/maintenance-2026-08-06-l0i4gd', pr: 71, merged: false },
   });
-  assert.ok(body.indexOf('### Why the agent is here') < body.indexOf('### Delivered by prework'));
+  assert.ok(body.indexOf('### Why the agent is here') < body.indexOf('### Delivered by code-work'));
 });
 
 test('dispatchBody omits the Why section when no reason was named — never a false claim', () => {

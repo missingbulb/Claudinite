@@ -41,9 +41,9 @@ test('fleet-roster: an ordinary pack task — not wired as a fleet mechanism', (
 });
 
 test('fleet-roster: the sweep is the preprocessing, bounded and task-local', () => {
-  assert.equal(decl.prework, 'node worker.mjs');
-  assert.ok(!decl.prework.includes('..'));   // contract: no traversal out of the task dir
-  assert.ok(Number.isInteger(decl.prework_timeout) && decl.prework_timeout > 0);
+  assert.equal(decl.code_work, 'node worker.mjs');
+  assert.ok(!decl.code_work.includes('..'));   // contract: no traversal out of the task dir
+  assert.ok(Number.isInteger(decl.code_work_timeout) && decl.code_work_timeout > 0);
   assert.ok(existsSync(join(taskDir, 'worker.mjs')));
   assert.equal(decl.agent_instructions, undefined);   // vestigial field dropped: none task, no agent to instruct
 });
@@ -104,7 +104,7 @@ test('fleet-roster: running the worker reaches the sweep, and its failure exits 
   // Behavioural, no network: with no FLEET_GITHUB_TOKEN the sweep throws before its
   // first fetch, so the message on stderr proves the worker actually got into
   // check-fleet-roster.mjs — and the non-zero exit is the escalation path (the
-  // scheduler converges a failed prework subprocess to a `needs-human` issue).
+  // scheduler converges a failed code-work subprocess to a `needs-human` issue).
   const env = { ...process.env, GITHUB_REPOSITORY: 'acme/sheepdog' };
   delete env.FLEET_GITHUB_TOKEN;
   const { code, stderr } = await new Promise((resolve) => {

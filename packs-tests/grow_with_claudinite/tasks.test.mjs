@@ -207,13 +207,13 @@ test('growth-dedup: weekly/opus/merged-pr — the prune PR is delivered to land'
   assert.deepEqual(dedup.precondition_signals, ['localPacks', 'sharedMount', 'commits']);
 });
 
-test('growth-dedup: prework detects the canon window diff before the agentic phase', () => {
-  // The detection is deterministic code over commit records, so it is prework's
+test('growth-dedup: code_work detects the canon window diff before the agentic phase', () => {
+  // The detection is deterministic code over commit records, so it is code-work's
   // half — inside the pack, beside task.mjs. The bound stays under the executor's
   // claim leash, which validateTaskDeclaration enforces for every task.
-  assert.equal(dedup.prework, 'node worker.mjs');
-  assert.ok(Number.isInteger(dedup.prework_timeout) && dedup.prework_timeout > 0);
-  // Prework + a non-`none` agent_model is the CONDITIONAL hand-off, so the model
+  assert.equal(dedup.code_work, 'node worker.mjs');
+  assert.ok(Number.isInteger(dedup.code_work_timeout) && dedup.code_work_timeout > 0);
+  // Code-work + a non-`none` agent_model is the CONDITIONAL hand-off, so the model
   // has to stay declared or the judgment half never runs.
   assert.equal(dedup.agent_model, 'opus');
 });
@@ -244,8 +244,8 @@ test('usage-fold: daily/agentless/merged-pr, on the conversationLogs signal alon
   assert.equal(usageFold.expected_outcome, 'merged-pr');
   assert.deepEqual(usageFold.precondition_signals, ['conversationLogs']);
   // An agentless task's whole work is its preprocessing — with none it does nothing.
-  assert.equal(usageFold.prework, 'node worker.mjs');
-  assert.ok(usageFold.prework_timeout > 0);
+  assert.equal(usageFold.code_work, 'node worker.mjs');
+  assert.ok(usageFold.code_work_timeout > 0);
 });
 
 test('usage-fold: a logs branch is the whole precondition — it runs on a quiet repo too', () => {
@@ -277,10 +277,10 @@ test('logs-prune: daily/agentless/none — its whole write is on a non-default b
   assert.equal(logsPrune.expected_outcome, 'none');
   assert.deepEqual(logsPrune.precondition_signals, ['conversationLogs']);
   // An agentless task's whole work is its preprocessing — with none it does nothing.
-  assert.equal(logsPrune.prework, 'node worker.mjs');
+  assert.equal(logsPrune.code_work, 'node worker.mjs');
   // One fetch and at most one push: the bound guards a hung network call, and is
   // nowhere near headroom for work.
-  assert.ok(logsPrune.prework_timeout > 0 && logsPrune.prework_timeout <= 60);
+  assert.ok(logsPrune.code_work_timeout > 0 && logsPrune.code_work_timeout <= 60);
 });
 
 test('logs-prune: fires on age alone, which is what makes it independent of activity', () => {

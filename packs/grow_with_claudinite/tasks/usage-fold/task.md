@@ -1,6 +1,6 @@
 # Usage fold — count skill loads and their denominators from the captured logs
 
-**This task runs no agent.** It is `agent_model: none` with `prework: node worker.mjs`, so the whole pass is the deterministic [`worker.mjs`](worker.mjs) the executor runs as prework, which calls its sibling in this folder, the counting and folding core ([`fold-usage.mjs`](fold-usage.mjs)). This file is the human-facing record of what that worker does; there is no agent phase.
+**This task runs no agent.** It is `agent_model: none` with `code-work: node worker.mjs`, so the whole pass is the deterministic [`worker.mjs`](worker.mjs) the executor runs as code-work, which calls its sibling in this folder, the counting and folding core ([`fold-usage.mjs`](fold-usage.mjs)). This file is the human-facing record of what that worker does; there is no agent phase.
 
 ## What it does
 
@@ -14,7 +14,7 @@ What it counts, per bucket:
 - **`userMessages`** — genuine human turns. **`userCommands`** — every typed `/command`.
 - **`checks`**, per scope (`work` / `world`) — `runs` (observed activations), `failures` (runs that reported a blocking finding), `errors` (the runner could not launch), the `blocking`/`advisory` finding volume, and `ciRuns`/`ciFailures` (the CI subset of the first two). **`checkFindings`**, per rule id — which rule caught what.
 
-- **`tasks`**, per `pack/task` — **historical only.** These rows counted what the retired slot scheduler did with each due task (`agent`, `prework`, `skipped`, `failed`, `deferred`). Nothing writes that record any more, so these rows stop growing as the last slot-era logs age out of Actions retention. The reader stays because the logs inside that window are still real; see "The task invocations are a census" below for what replaces it and what does not.
+- **`tasks`**, per `pack/task` — **historical only.** These rows counted what the retired slot scheduler did with each due task (`agent`, `code_work`, `skipped`, `failed`, `deferred`). Nothing writes that record any more, so these rows stop growing as the last slot-era logs age out of Actions retention. The reader stays because the logs inside that window are still real; see "The task invocations are a census" below for what replaces it and what does not.
 - **`taskExec`**, per `pack/task` — what the **agent session** did with the item it was handed, distilled from the captured conversation logs: `success`, `failed`, `task-gone` (the item named a task the repo no longer carries), `invalid`. Counted off the machine-readable `claudinite-task-exec` records the session prints (`record-exec.mjs`; format owned by `engine/scheduler/run-record.mjs`), deduped on the full record tuple per capture file — never scraped from the agent's prose. A sample, of the sessions that captured.
 
 The denominators are the point. A raw load count cannot tell healthy-rare from broken — a version-bump skill loading rarely is fine — so the question is loads *against the sessions where that skill's own declared trigger plausibly applied.*
@@ -41,7 +41,7 @@ Two consequences, both mechanism rather than policy. Actions stamps every log li
 
 ## The task invocations were a census, and are not being replaced by one yet
 
-Everything above is read out of *sessions*, so it sees only what was captured. A whole half of what this repo does opens no session at all — a precondition that finds nothing to do, an agentless task whose whole work is its prework, an item that yielded to another. None of that leaves a transcript, and the first of them is the most common thing scheduling does.
+Everything above is read out of *sessions*, so it sees only what was captured. A whole half of what this repo does opens no session at all — a precondition that finds nothing to do, an agentless task whose whole work is its code-work, an item that yielded to another. None of that leaves a transcript, and the first of them is the most common thing scheduling does.
 
 The `tasks` rows used to answer that from the other side: the slot scheduler printed one line per due task into its own Actions log (`claudinite-task-run v1 <pack>/<task> [<slot>] <outcome>`), so every due task was counted whether or not anything captured. **That writer is gone with the slot scheduler**, and the queue does not print an equivalent — each occurrence's outcome now lives on its own work item, as an `outcome:*` label, which is a better record and a different read entirely.
 

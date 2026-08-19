@@ -1,5 +1,5 @@
-// The fleet-pack-seeds prework entry point — the script the executor runs as prework,
-// `node worker.mjs` (cwd = this task dir, bounded by prework_timeout).
+// The fleet-pack-seeds code-work entry point — the script the executor runs as code-work,
+// `node worker.mjs` (cwd = this task dir, bounded by code_work_timeout).
 //
 // It holds NO sweep logic. The sweep is `check-fleet-pack-seeds.mjs`, its SIBLING in
 // this task folder — nothing outside this task uses it, so that is where it lives;
@@ -9,7 +9,7 @@
 // Failure is the escalation path. The sweep THROWS when a member could not be read or
 // a declaration could not be written (an unusable token, a protected branch, a file
 // that changed under the run); this worker turns that into a non-zero exit, and the
-// executor treats a non-zero prework subprocess as a failed task — it converges the
+// executor treats a non-zero code-work subprocess as a failed task — it converges the
 // item to `needs-human` (engine/scheduler/queue/executor.mjs) instead of handing off
 // to any agent.
 
@@ -33,7 +33,7 @@ export async function main() {
   log('sweep complete');
 }
 
-// Run only when invoked directly (prework's `node worker.mjs`), never on import.
+// Run only when invoked directly (code-work's `node worker.mjs`), never on import.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((e) => { console.error(`fleet-pack-seeds failed: ${e.message}`); process.exit(1); });
 }

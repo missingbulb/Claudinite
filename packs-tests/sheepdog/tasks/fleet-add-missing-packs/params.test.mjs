@@ -35,9 +35,9 @@ test('a boolean is `true` or `false` and nothing else', () => {
   assert.throws(() => parseParams({ argv: ['--scan-for-needed-packs=1', '--repos=Alpha'] }), /must be exactly/);
 });
 
-test('an unrecognised prework argument fails rather than being ignored', () => {
+test('an unrecognised code_work argument fails rather than being ignored', () => {
   assert.throws(() => parseArgv(['--repos']), /expected `--<name>=<value>`/);
-  assert.throws(() => parseArgv(['-r=x']), /unrecognised prework argument/);
+  assert.throws(() => parseArgv(['-r=x']), /unrecognised code_work argument/);
 });
 
 // --- Context parameters win ----------------------------------------------------

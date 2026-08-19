@@ -2,23 +2,23 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
-import rule from '../../packs/core/task-prework-env.mjs';
-import { PREWORK_ENV_VARS } from '../../engine/scheduler/queue/prework-run.mjs';
+import rule from '../../packs/core/task-code-work-env.mjs';
+import { CODE_WORK_ENV_VARS } from '../../engine/scheduler/queue/code-work-run.mjs';
 
 const ctx = (files) => ({ files: Object.keys(files), read: (f) => files[f] ?? null });
 const WORKER = 'packs/demo/tasks/thing/worker.mjs';
 
-test('a task reading a variable prework never sets is a finding', () => {
+test('a task reading a variable code_work never sets is a finding', () => {
   const f = rule.run(ctx({ [WORKER]: 'const bag = process.env.CLAUDINITE_OVERRIDES;\n' }));
   assert.equal(f.length, 1);
   assert.match(f[0].what, /CLAUDINITE_OVERRIDES/);
   assert.match(f[0].fix, /CLAUDINITE_CONTEXT/);
 });
 
-test('every variable the prework contract sets is accepted', () => {
+test('every variable the code_work contract sets is accepted', () => {
   // Quantified over the contract rather than a copy of it: a variable added to
-  // `preworkEnv` must be legal here the moment it is added, with no edit.
-  const src = PREWORK_ENV_VARS.map((n) => `process.env.${n};`).join('\n');
+  // `codeWorkEnv` must be legal here the moment it is added, with no edit.
+  const src = CODE_WORK_ENV_VARS.map((n) => `process.env.${n};`).join('\n');
   assert.deepEqual(rule.run(ctx({ [WORKER]: src })), []);
 });
 

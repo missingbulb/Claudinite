@@ -32,13 +32,13 @@ export default {
   id: 'fleet-baseline',
   frequency: 'manual',                   // an operator lever — never due on any cadence, runs only when forced
   precondition_signals: [],              // no signal — nothing recurring to predict
-  agent_model: 'none',                   // pure code: enumerate, fire, report (task-prework DESIGN §4)
+  agent_model: 'none',                   // pure code: enumerate, fire, report (task-code-work DESIGN §4)
   expected_outcome: 'none',              // it queues Actions runs in MEMBERS; it writes nothing here or there
-  prework: 'node worker.mjs',
+  code_work: 'node worker.mjs',
   // One enumeration plus a declaration read and one dispatch POST per member, all
   // serial with a secondary rate limit on top — the same order of walk as the other
   // sweeps, minus their content reads. 900s is ~10x the expected time.
-  prework_timeout: 900,
+  code_work_timeout: 900,
   required_secrets: ['FLEET_GITHUB_TOKEN'], // the account-spanning PAT, WITH Actions read+write (a dispatch is an Actions write)
 
   // Never due on its own — `manual` means the tick never instantiates this task,

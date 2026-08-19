@@ -1,5 +1,5 @@
-// The fleet-baseline prework entry point — the script the executor runs as
-// `node worker.mjs` (cwd = this task dir, bounded by prework_timeout) when a
+// The fleet-baseline code-work entry point — the script the executor runs as
+// `node worker.mjs` (cwd = this task dir, bounded by code_work_timeout) when a
 // hand-created work item for this task is picked.
 //
 // It holds NO dispatch logic. The sweep is `force-fleet-baseline.mjs`, its SIBLING in
@@ -41,7 +41,7 @@ export async function main() {
   log('dispatch complete — each member baselines itself and reports in its own repo');
 }
 
-// Run only when invoked directly (prework's `node worker.mjs`), never on import.
+// Run only when invoked directly (code-work's `node worker.mjs`), never on import.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((e) => { console.error(`fleet-baseline failed: ${e.message}`); process.exit(1); });
 }

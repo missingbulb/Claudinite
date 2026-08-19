@@ -6,7 +6,7 @@ standardizes the fleet coverage that used to be bespoke Claudinite infrastructur
 
 Thin by design: prose + the config schema (the sheepdog pack entry's `config` = `{ owner, kind, exclude,
 canonRepo, staleDays, packSeeds, digest }`) + six cross-repo **sweeps/levers**, each a
-scheduled task whose sweep is its `prework`. The pack carries **no workflow**, and only the
+scheduled task whose sweep is its `code_work`. The pack carries **no workflow**, and only the
 digest runs an agent *here* — everything else agentic happens in the *member*, on the fan-out model
 ([#749](https://github.com/missingbulb/Claudinite/issues/749)) — the enforcer dispatches, the
 member executes:
@@ -95,9 +95,9 @@ every member as fitted while testing almost nothing. Its report names the corpus
 so a shrunken denominator is visible rather than silent.
 
 **Two tasks have an agent stage, and both split the same way** — everything decidable in code
-stays in the agentless `prework`, and the agent is reached only for the part that is genuinely a
+stays in the agentless `code_work`, and the agent is reached only for the part that is genuinely a
 judgment. For the **digest** that is picking the day's real accomplishments out of a size-ranked
-shortlist; on a day the fleet merged nothing the prework writes the brief itself and requests no
+shortlist; on a day the fleet merged nothing the code-work writes the brief itself and requests no
 agent, because "nothing happened" needs no model but a *missing* file in a dated series has to stay
 legible as a fault. For the **fit sweep** it is a judgment plus a repo edit — confirming the
 suspicion and running the [adopt-pack](../core/skills/adopt-pack/SKILL.md) skill against the member —
@@ -111,7 +111,7 @@ missing-packs design ended in an enforcer-side agent stage, and its very first p
 at `needs-human` because the enforcer's executor is — correctly — scoped to the enforcer repo alone.
 What crosses a repo boundary is an issue and a `workflow_dispatch`, both over `FLEET_GITHUB_TOKEN`;
 the deprecated task-level `session_scope` ([scheduled-tasks.md](../core/scheduled-tasks.md)) has no
-place here. The digest's agent is not an exception — it reads what its prework already fetched and
+place here. The digest's agent is not an exception — it reads what its code-work already fetched and
 writes one file in this repo.
 
 A member that declares itself **dormant** (`"dormant": true` in its own declaration) is out of the

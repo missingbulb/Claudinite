@@ -1,5 +1,5 @@
-// The fleet-add-missing-packs prework entry point — the script the executor runs
-// as `node worker.mjs …` (cwd = this task dir, bounded by prework_timeout). The
+// The fleet-add-missing-packs code-work entry point — the script the executor runs
+// as `node worker.mjs …` (cwd = this task dir, bounded by code_work_timeout). The
 // WHOLE task: `agent_model: 'none'`, no agent phase on the enforcer side.
 //
 // THE FAN-OUT MODEL (#749). This task used to end in an agent stage that ran
@@ -18,7 +18,7 @@
 // pack corpus, and the firing loop.
 //
 // TWO CALL SITES, NO DEFAULTS (params.mjs has the reasoning):
-//   weekly   task.mjs's prework line — `--scan-for-needed-packs=true --repos=all-covered-members`
+//   weekly   task.mjs's code-work line — `--scan-for-needed-packs=true --repos=all-covered-members`
 //   forced   a hand-created item's Context, inherited through CLAUDINITE_CONTEXT:
 //              create-work-item sheepdog/fleet-add-missing-packs \
 //                --context "SCAN_FOR_NEEDED_PACKS=false" \
@@ -63,7 +63,7 @@ const emit = (text) => {
 
 export async function main() {
   // GITHUB_REPOSITORY names the HOME repo — the one whose sheepdog entry carries the
-  // fleet config. Actions sets it; CLAUDINITE_REPO is prework's own name for
+  // fleet config. Actions sets it; CLAUDINITE_REPO is code-work's own name for
   // the same fact, so fall back rather than depending on which is present.
   if (!process.env.GITHUB_REPOSITORY && process.env.CLAUDINITE_REPO) {
     process.env.GITHUB_REPOSITORY = process.env.CLAUDINITE_REPO;
@@ -202,7 +202,7 @@ async function run({ gh, home, owner, canonRepo, packs, params }) {
   }
 }
 
-// Run only when invoked directly (prework's `node worker.mjs …`), never on import.
+// Run only when invoked directly (code-work's `node worker.mjs …`), never on import.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((e) => { console.error(`fleet-add-missing-packs failed: ${e.message}`); process.exit(1); });
 }

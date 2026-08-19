@@ -368,7 +368,7 @@ test('the records decide the apply stage, and what they say reaches the session'
 
   // The record is NAMED, not quoted. Its instructions are on the branch, in the mount
   // the update just vendored; the reason carries an identifier so the session can find
-  // them, because a request payload may not carry instructions (prework.mjs).
+  // them, because a request payload may not carry instructions (code-work.mjs).
   assert.match(stage.why, /packs\/sheepdog\/migrations\/2026-08-13-roster/, 'the session must be able to find the record');
   assert.match(stage.why, /roster rules meet/);
   assert.ok(!stage.why.includes('Re-home any task'), 'the instructions travel through the repo, never the payload');

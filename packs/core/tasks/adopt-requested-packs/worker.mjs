@@ -1,4 +1,4 @@
-// The adopt-requested-packs prework — the conditional gate in front of the agent
+// The adopt-requested-packs code-work — the conditional gate in front of the agent
 // stage: count THIS repo's open `add-packs` work-list issues and request the agent
 // iff any exist. A forced run with an empty work list (a re-fire after the work
 // landed, a hand-press on a repo with nothing asked of it) ends here, quietly, with
@@ -9,7 +9,7 @@
 // What it hands the agent is the ISSUE SURFACE, not a data channel: the work lists
 // stay in the issues, and the agent reads them under its own instructions (task.md).
 // The request file carries only the condition's name and the issue numbers this run
-// found (identifiers, per the prework contract's one named exception).
+// found (identifiers, per the code-work contract's one named exception).
 
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -57,7 +57,7 @@ export async function main() {
   log(`agent requested — ${open.length} open work list(s): ${open.map((i) => `#${i.number} (${i.title})`).join('; ')}`);
 }
 
-// Run only when invoked directly (prework's `node worker.mjs`), never on import.
+// Run only when invoked directly (code-work's `node worker.mjs`), never on import.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((e) => { console.error(`adopt-requested-packs failed: ${e.message}`); process.exit(1); });
 }

@@ -1,9 +1,9 @@
 import { finding } from '../../engine/checks/helpers/findings.mjs';
 import { stripComments } from '../../engine/checks/helpers/code-scanning.mjs';
-import { PREWORK_ENV_VARS } from '../../engine/scheduler/queue/prework-run.mjs';
+import { CODE_WORK_ENV_VARS } from '../../engine/scheduler/queue/code-work-run.mjs';
 
-// A task's code may read only the CLAUDINITE_* variables prework is actually
-// handed (`preworkEnv`, tasks-dispatch DESIGN §6.5). Anything else is a variable
+// A task's code may read only the CLAUDINITE_* variables code-work is actually
+// handed (`codeWorkEnv`, tasks-dispatch DESIGN §6.5). Anything else is a variable
 // nobody sets, which fails in the one way nothing catches: `process.env.X` is
 // `undefined`, the worker's parse of it yields an empty result, and the run goes
 // green having quietly done something other than what it was asked.
@@ -17,7 +17,7 @@ import { PREWORK_ENV_VARS } from '../../engine/scheduler/queue/prework-run.mjs';
 //
 // GENERIC BY CONSTRUCTION: the legal set is the key set of the object the executor
 // builds, imported rather than restated, so a variable added to or removed from the
-// prework contract changes what this accepts with no edit here.
+// code-work contract changes what this accepts with no edit here.
 // A task's own code. Tests are out: a test naming a retired variable is naming it
 // as a fixture, which is exactly what a regression test for this rule must be free
 // to do.
@@ -26,9 +26,9 @@ const TEST_FILE = /\.test\.mjs$/;
 const READS = /\bCLAUDINITE_[A-Z0-9_]+\b/g;
 
 const rule = {
-  id: 'task-prework-env',
+  id: 'task-code-work-env',
   severity: 'blocking',
-  description: 'A task\'s code reads only the CLAUDINITE_* environment variables prework is handed (CLAUDINITE_REPO_ROOT, CLAUDINITE_REPO, CLAUDINITE_DEFAULT_BRANCH, CLAUDINITE_ITEM, CLAUDINITE_PACK, CLAUDINITE_TASK, CLAUDINITE_CONTEXT, CLAUDINITE_REQUEST_AGENT)',
+  description: 'A task\'s code reads only the CLAUDINITE_* environment variables code_work is handed (CLAUDINITE_REPO_ROOT, CLAUDINITE_REPO, CLAUDINITE_DEFAULT_BRANCH, CLAUDINITE_ITEM, CLAUDINITE_PACK, CLAUDINITE_TASK, CLAUDINITE_CONTEXT, CLAUDINITE_REQUEST_AGENT)',
   doc: 'packs/core/scheduled-tasks.md',
   why: 'a variable nothing sets reads as undefined and the run still goes green — a parameter channel that has stopped being delivered leaves the operation in its unscoped, unguarded mode with no signal at all',
 
@@ -41,11 +41,11 @@ const rule = {
       // variable, and so does any note explaining why a task stopped reading one.
       const seen = new Set(stripComments(text).match(READS) ?? []);
       for (const name of [...seen].sort()) {
-        if (PREWORK_ENV_VARS.includes(name)) continue;
+        if (CODE_WORK_ENV_VARS.includes(name)) continue;
         out.push(finding(rule, {
           file,
-          what: `reads \`${name}\`, which prework never sets`,
-          fix: `take the value from the item's Context (\`CLAUDINITE_CONTEXT\`, one line per bullet, set by \`create-work-item --context\`) — the prework contract sets ${PREWORK_ENV_VARS.join(', ')} and nothing else`,
+          what: `reads \`${name}\`, which code_work never sets`,
+          fix: `take the value from the item's Context (\`CLAUDINITE_CONTEXT\`, one line per bullet, set by \`create-work-item --context\`) — the code_work contract sets ${CODE_WORK_ENV_VARS.join(', ')} and nothing else`,
         }));
       }
     }

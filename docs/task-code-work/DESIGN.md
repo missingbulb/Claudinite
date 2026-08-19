@@ -1,4 +1,4 @@
-# Task prework — design
+# Task code-work — design
 
 A capability added to the per-project scheduler
 ([`../per-project-scheduling/DESIGN.md`](../per-project-scheduling/DESIGN.md));
@@ -9,15 +9,15 @@ gate the design are in §8.
 status, the phase/task tracking, and remaining work live in the tracking issue,
 **#394**, not here.
 
-> **Renamed (owner, 2026-08-06):** this record now describes the **prework**
-> phase — contract fields `prework` / `prework_timeout` (legacy
-> `agent_preprocessing*` accepted and normalized at load). Prework and agentic
+> **Renamed (owner, 2026-08-06):** this record now describes the **code-work**
+> phase — contract fields `code_work` / `code_work_timeout` (legacy
+> `agent_preprocessing*` accepted and normalized at load). Code-work and agentic
 > work are similar, consecutive phases of one task execution; neither decides
 > whether the task runs — that is the precondition's alone
 > (per-project-scheduling DESIGN §12). The prose below predates the rename and
 > keeps its original vocabulary where quoting history.
 
-The shape: a task may declare a **prework** stage — a command the scheduler
+The shape: a task may declare a **code-work** stage — a command the scheduler
 runs as a subprocess, Action-side, **after** it files the tracking issue and
 **before** any agent starts. Deterministic code work moves out of the agentic
 run and into that stage; the agent (when there is one) starts against a repo the
@@ -65,12 +65,12 @@ export default {
   // …existing: id, frequency, precondition_signals, agent_model,
   //   expected_outcome, agent_instructions, precondition…
 
-  prework: 'node prepare.mjs',   // OPTIONAL. A command run as a subprocess before the agent.
+  code-work: 'node prepare.mjs',   // OPTIONAL. A command run as a subprocess before the agent.
                                              //   Its executable MUST be a script beside task.mjs (same
                                              //   self-contained, auditable rule as agent_instructions).
                                              //   Omitted → no preprocessing stage (today's behaviour).
-  prework_timeout: 300,          // seconds. Hard kill of the subprocess; exceeding it FAILS the
-                                             //   task. Required whenever prework is set.
+  code_work_timeout: 300,          // seconds. Hard kill of the subprocess; exceeding it FAILS the
+                                             //   task. Required whenever code-work is set.
   agent_execution_timeout: 900,              // seconds. Bounds the agentic run (see §6 for what "bounds"
                                              //   means — it is a lifecycle bound, not a compute kill).
                                              //   Required whenever agent_model !== 'none'.
@@ -85,18 +85,18 @@ export default {
 Rules the `task-declaration-shape` check (basics pack) and `validate-dispatch`
 enforce against this one contract:
 
-- `prework`, if present, is a non-empty string whose first token
+- `code_work`, if present, is a non-empty string whose first token
   resolves to a file in the task directory (no absolute paths, no reaching
   outside the task dir) — the same containment the worker-file rule already gives
   `agent_instructions`.
-- `prework_timeout` is a positive integer and is **required** when
-  `prework` is set.
+- `code_work_timeout` is a positive integer and is **required** when
+  `code_work` is set.
 - `agent_execution_timeout` is a positive integer and is **required** when
   `agent_model !== 'none'`. There is **always** a bound on an agentic run.
 - `required_secrets`, if present, is an array of secret names. That is the whole
   rule: whether the repo has configured them is a fact about the repo, answered by
   the wiring converge and baselining, never at author time (§9).
-- `agent_model: none` with **no** `prework` is now an error: an
+- `agent_model: none` with **no** `code_work` is now an error: an
   agentless task with no preprocessing does nothing. (`none` used to imply the
   inline `worker.mjs` — that path is folded into preprocessing; see §4.)
 
@@ -108,16 +108,16 @@ Preprocessing splits a run into up to two stages with a later label:
 
 ```
 precondition passes
-  └─ if prework is set:
+  └─ if code-work is set:
         spawn it as a subprocess (cwd = the task dir, Action GITHUB_TOKEN + CLAUDINITE_* in env),
-        bounded by prework_timeout (hard SIGKILL on overrun)
+        bounded by code_work_timeout (hard SIGKILL on overrun)
         ├─ non-zero exit / timeout  → converge to ONE open `needs-human` issue for the
         │                             family (at-most-one-open, no spam); STOP (task failed)
         └─ success
              ├─ agent_model === none → done, NO issue on success (quiet, as the retired
              │                         in-process inline path was)
              └─ agent_model !== none → file the `ready-for-agent` hand-off issue → executor fires (§5)
-  └─ if prework is NOT set (agent task, no prep):
+  └─ if code-work is NOT set (agent task, no prep):
         file `ready-for-agent` immediately (exactly today's behaviour)
 ```
 
@@ -132,7 +132,7 @@ precondition passes
 
 > **As-built (E4) — CONDITIONAL hand-off.** The `agent_model !== none → always
 > file` rule above is now *conditional* for a task that ALSO declares
-> `prework`: such a task hands off to the agent **only when its worker
+> `code_work`: such a task hands off to the agent **only when its worker
 > requests it**. The scheduler passes the worker a signal path in
 > `CLAUDINITE_REQUEST_AGENT`; after a successful preprocessing it files
 > `ready-for-agent` **iff** the worker created that file, and otherwise the night is
@@ -160,7 +160,7 @@ intact.
 **The exception: the artifacts this run created** (owner decision, 2026-08-06).
 A worker that opens a branch or a PR writes their identifiers into the
 agent-request file, and `dispatch.mjs` renders them as a `### Delivered by
-prework` section — a PR number and a branch ref, which is how the agent
+code-work` section — a PR number and a branch ref, which is how the agent
 addresses them. An agent left to rediscover them instead can only search, and a
 search that finds nothing is indistinguishable from nothing having been created.
 
@@ -174,20 +174,20 @@ exists.**
 ## 4. The `agent_model: none` path is now preprocessing
 
 The in-process inline-worker path (`run.mjs` lines ~191–198) is retired. A
-pure-code task declares `prework` + `agent_model: none`, and the
+pure-code task declares `code_work` + `agent_model: none`, and the
 scheduler runs it as a subprocess like any other preprocessing — it simply has no
 agent stage after. `store-release` converts directly:
 
 ```js
 // before: agent_model:'none', agent_instructions:'worker.mjs' (run in-process)
-// after:  agent_model:'none', prework:'node worker.mjs',
-//         prework_timeout: 120
+// after:  agent_model:'none', code-work:'node worker.mjs',
+//         code_work_timeout: 120
 ```
 
 Gain: subprocess isolation and a real timeout for what is today an unbounded
 in-process `await`. `store-release`'s deferred Stage-2 "await the dispatched
 release run" (the #398 carry-forward) becomes safe to add — the await is now
-bounded by `prework_timeout` instead of running unbounded inside the
+bounded by `code_work_timeout` instead of running unbounded inside the
 scheduler process.
 
 ## 5. The preprocessing→agent handoff (agent tasks with prep)
@@ -212,7 +212,7 @@ inventing a second mechanism.
 The two timeouts are **not** symmetric, because the scheduler owns the
 preprocessing process but not the agent's session.
 
-- **`prework_timeout` — a hard kill.** The subprocess is the
+- **`code_work_timeout` — a hard kill.** The subprocess is the
   scheduler's child; it is killed on the deadline and the overrun fails the task
   (comment + `needs-human`). Fully enforced, second-precise.
 

@@ -280,7 +280,7 @@ export async function applyMigration(migration, io) {
 
 // THE `agentic` FIELD IS RETIRED (#768 Phase 5), and its successor is `applyStage`
 // below. A record used to carry `agentic: { model, instructions }` — member-side
-// adaptation no script could do — and baselining's prework read it to decide whether
+// adaptation no script could do — and baselining's code-work read it to decide whether
 // a pending note needed an agent stage, holding the member's stamp until one ran.
 //
 // What the successor drops is the MODEL knob. Which model runs a session is the

@@ -17,8 +17,8 @@ machinery — no separate central mechanism survives.
 > executor (runs exactly its one issue — no cleanups, no sweeps), and a third
 > **task-janitor** responsibility (an ordinary daily `basics` task) that owns all
 > dispatch-issue recovery and health review. The precondition is a task's ONLY
-> run/no-run decision point; the execution phases are named **prework** and
-> **agentic work** (`prework` / `prework_timeout` in the contract, legacy
+> run/no-run decision point; the execution phases are named **code-work** and
+> **agentic work** (`code_work` / `code_work_timeout` in the contract, legacy
 > `agent_preprocessing*` accepted); and a dispatch naming a task the repo no
 > longer carries is **closed** by the executor, not parked on `needs-human`.
 > Where the sections below say otherwise (§5's scheduler-side maintenance pass,
@@ -88,7 +88,7 @@ export default {
   (as-built 2026-08-11, #749): the task is never due on any schedule and runs only
   when a hand-started run forces it — the operator-lever shape, for work that
   answers no recurring question but wants the task apparatus (contract validation,
-  prework, the dispatch issue) when a human pulls it. `daily±Nh` offsets the repo's
+  code-work, the dispatch issue) when a human pulls it. `daily±Nh` offsets the repo's
   daily anchor hour (§2); weekly/monthly fire at the anchor hour on the configured day.
 - **`precondition_signals`** — the scheduler collects only the union of what the *due* tasks
   declare; a non-daily slot never pays for daily tasks' signals.
@@ -387,9 +387,9 @@ sessions burn on empty hours.
   survives a single-model routine).
 - **Launcher prompt** (thin pointer, per the unattended-agents rule):
   `Execute the Claudinite executor: .claudinite/shared/engine/scheduler/executor.md`.
-- **Session sources** are the **member repo alone** (task-prework DESIGN
+- **Session sources** are the **member repo alone** (task-code-work DESIGN
   §7/E5). The executor no longer needs the canon checkout: baselining fetches
-  PUBLIC canon **Action-side** in its `prework` worker and reads
+  PUBLIC canon **Action-side** in its `code_work` worker and reads
   migration notes from the member's own vendored mount, so a project-only session
   is all the ambient scope executor work requires. (Superseded the earlier model,
   where the canon rode in the session sources so the baselining task could run the
@@ -662,12 +662,12 @@ These override the earlier sections where they conflict.
    failures may stop a run, discretion may not, and an empty outcome is always
    legal. Enforced as doctrine in `scheduled-tasks.md` and hunted by the
    advisory `task-phase-discipline` world check (basics).
-4. **The phases are named prework and agentic work** — similar, consecutive
+4. **The phases are named code-work and agentic work** — similar, consecutive
    parts of one task execution, neither framed as serving the other. Contract:
-   `prework` / `prework_timeout` (legacy `agent_preprocessing` /
+   `code_work` / `code_work_timeout` (legacy `agent_preprocessing` /
    `agent_preprocessing_timeout` accepted and normalized at load; the shape
-   check flags them for rename). The task-prework design record moved to
-   `docs/task-prework/`; the run-record outcome word is `prework` (the parser
+   check flags them for rename). The task-code-work design record moved to
+   `docs/task-code-work/`; the run-record outcome word is `code_work` (the parser
    still reads `preprocess` from pre-rename logs).
 5. **Task statuses are distilled from the conversation logs, in hard-coded
    code.** Executor-side terminal states print a machine-readable
@@ -677,7 +677,7 @@ These override the earlier sections where they conflict.
    `run-record.mjs`). The captured executor transcripts carry them to the
    conversation-logs branch, and the fully automatic `usage-fold` task counts
    them (`taskExec` rows) beside the scheduler-side census — invocations,
-   precondition passes, prework runs, failures, deferrals (§ skill-usage-metrics
+   precondition passes, code-work runs, failures, deferrals (§ skill-usage-metrics
    DESIGN §4.2/§4.3).
 6. **Invocation stays label-event-wired.** Migrating executor invocation to a
    URL-invoked routine was considered and declined: the label is both the

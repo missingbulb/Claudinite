@@ -4,8 +4,8 @@
 //   is this repo a MEMBER?                        → `fleet-adoption` issues
 //   is that membership still MEANING anything?    → `fleet-drift` issues
 //
-// `agent_model: 'none'` with `prework: 'node worker.mjs'`: the whole pass is
-// deterministic code the executor runs as prework — no agent phase.
+// `agent_model: 'none'` with `code_work: 'node worker.mjs'`: the whole pass is
+// deterministic code the executor runs as code-work — no agent phase.
 // The worker calls its sibling, the sweep (check-fleet-roster.mjs), which enumerates
 // the fleet once, reads each repo's declaration once, and hands the resulting roster to
 // the two issue families (adoption-issues.mjs, drift-issues.mjs).
@@ -45,16 +45,16 @@ export default {
   id: 'fleet-roster',
   frequency: 'daily',                    // the coverage question's cadence — a repo created, adopted or archived under the owner should not wait a week
   precondition_signals: [],              // no signal — the sweep reads the fleet itself, over the PAT
-  agent_model: 'none',                   // pure code — no agent (task-prework DESIGN §4)
+  agent_model: 'none',                   // pure code — no agent (task-code-work DESIGN §4)
   expected_outcome: 'none',              // the honest ceiling: it opens ADOPTION and DRIFT issues, never a PR — it reports, it does not repair
-  prework: 'node worker.mjs',
+  code_work: 'node worker.mjs',
   // The walk covers EVERY repo in the fleet: one paged enumeration, one declaration
   // read per repo, two further reads per measured member (scheduler workflow, canon
   // compare), then both issue convergences — all serial, and a secondary rate limit
   // makes it slower still. The same 900s both predecessors carried: ~10x the expected
   // walk while staying well inside the hourly scheduler cadence, so a hung sweep is
   // killed long before the next run could collide with it.
-  prework_timeout: 900,
+  code_work_timeout: 900,
   required_secrets: ['FLEET_GITHUB_TOKEN'], // the account-spanning PAT the sweep reads the fleet with
 
   // Fire daily unconditionally. Every input lives OUTSIDE this repo — another repo's

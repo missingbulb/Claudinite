@@ -109,14 +109,14 @@
   ],
   "accept": [
     {
-      "rule": "task-prework-env",
+      "rule": "task-code-work-env",
       "path": "packs/core/tasks/update/worker.mjs",
-      "reason": "the update worker has a SECOND, deliberate caller: .github/workflows/canary-rehearsal.yml drives it directly to qualify a release ref, and CLAUDINITE_CANON_REF is that harness's own parameter, set there and read nowhere else. The rule's concern is a parameter channel that has silently stopped being delivered; this one is delivered by the workflow beside it, in the same repo, and its absence under prework is the normal case the worker already handles (rehearsalRef null = a real cycle)"
+      "reason": "the update worker has a SECOND, deliberate caller: .github/workflows/canary-rehearsal.yml drives it directly to qualify a release ref, and CLAUDINITE_CANON_REF is that harness's own parameter, set there and read nowhere else. The rule's concern is a parameter channel that has silently stopped being delivered; this one is delivered by the workflow beside it, in the same repo, and its absence under code-work is the normal case the worker already handles (rehearsalRef null = a real cycle)"
     },
     {
       "rule": "reference-integrity",
-      "path": "docs/task-prework/",
-      "reason": "the task-prework DESIGN is the dated record of migration #405 \u2014 it names the slot scheduler's entry point as the staging it was changing, and #974 has since deleted that module. The reference is dangling because the record is true of the moment it describes; repointing it at the queue's executor would make the document describe a design that never happened. Same standing as the per-project-scheduling entry below"
+      "path": "docs/task-code-work/",
+      "reason": "the task-code-work DESIGN is the dated record of migration #405 \u2014 it names the slot scheduler's entry point as the staging it was changing, and #974 has since deleted that module. The reference is dangling because the record is true of the moment it describes; repointing it at the queue's executor would make the document describe a design that never happened. Same standing as the per-project-scheduling entry below"
     },
     {
       "rule": "reference-integrity",

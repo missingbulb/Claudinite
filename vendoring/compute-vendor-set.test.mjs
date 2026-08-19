@@ -65,7 +65,7 @@ function makeCanon({ packs = [], skills = [], packDirectory = true } = {}) {
   // declaration reaches, never "everything that happens to be in the canon"
   writeAt(root, 'canon-only/notes.md', 'canon-side\n');
   // migrations: the applier + registry + the RECENT record folders vendor
-  // (task-prework §7); aged records, the README and tests do not. Records sit
+  // (task-code-work §7); aged records, the README and tests do not. Records sit
   // under the flow that owns them — the engine's own here, and a pack's below —
   // so both walks are exercised. Stubs: structural inclusion, recency by
   // folder-name date prefix.

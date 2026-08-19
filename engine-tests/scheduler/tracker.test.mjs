@@ -1,8 +1,8 @@
-// The standing-tracker helpers a task's own prework calls. What these pin is the
+// The standing-tracker helpers a task's own code-work calls. What these pin is the
 // two ways the private copies they replace went wrong — a text-ranked search
 // landing on a sibling task's tracker, and a failed search reading as "none
-// exists" — plus the re-entrancy every prework helper owes, since a reclaimed
-// claim runs prework again over its own half-done work.
+// exists" — plus the re-entrancy every code-work helper owes, since a reclaimed
+// claim runs code-work again over its own half-done work.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -89,7 +89,7 @@ test('createTracker opens and then closes — two calls, because create ignores 
 });
 
 test('find-or-create twice creates exactly one tracker', async () => {
-  // Re-entrancy, not idempotence by luck: a reclaimed claim re-runs prework, and a
+  // Re-entrancy, not idempotence by luck: a reclaimed claim re-runs code-work, and a
   // second tracker is a silent fork of the log.
   const { gh, state } = fakeGh();
   const first = await findOrCreateTracker(gh, 'o/r', 'Claudinite tracker: Growth Dedup');

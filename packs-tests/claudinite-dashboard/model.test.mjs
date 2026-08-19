@@ -96,7 +96,7 @@ test('parseDeclaration lifts the scalar fields', () => {
       precondition_signals: ['commits', 'prs'],
       agent_model: 'sonnet',
       expected_outcome: 'open-pr',
-      prework_timeout: 300,
+      code_work_timeout: 300,
       precondition(signals) { return { run: true }; },
     };
   `);

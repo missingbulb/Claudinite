@@ -26,12 +26,12 @@ test('basics contributes the update task structurally, not as a pack.mjs slot', 
   assert.equal(update.id, 'update');
 });
 
-test('update declaration: the 02:00 anchor, an apply stage only when needed, deterministic prework', () => {
+test('update declaration: the 02:00 anchor, an apply stage only when needed, deterministic code_work', () => {
   assert.equal(update.frequency, 'daily-2h'); // a repo's mount is converged before anything reads it
   assert.equal(update.agent_model, 'sonnet'); // the apply stage, requested only when a pack's rules moved
   assert.equal(update.expected_outcome, 'merged-pr');
   assert.deepEqual(update.precondition_signals, ['stamp', 'sharedMount']);
-  assert.equal(update.prework, 'node worker.mjs');
+  assert.equal(update.code_work, 'node worker.mjs');
   assert.ok(existsSync(join(TASK_DIR, 'worker.mjs')), 'the deterministic update worker must exist');
   assert.ok(existsSync(join(TASK_DIR, update.agent_instructions)), `worker doc missing: ${update.agent_instructions}`);
 });

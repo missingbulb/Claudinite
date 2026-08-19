@@ -40,15 +40,15 @@ test('fleet-add-missing-packs: declares no session scope — nothing agentic run
   assert.equal(pack.sessionScope, undefined);   // and no pack-level spelling either
 });
 
-test('fleet-add-missing-packs: prework is bounded, task-local, and SENDS both parameters', () => {
+test('fleet-add-missing-packs: code_work is bounded, task-local, and SENDS both parameters', () => {
   // No defaults anywhere (params.mjs): the declaration is where a reader looks first
   // to learn what the cadence does, so what the cadence does is written here, and no
   // call site can reach the whole fleet by omission.
-  assert.match(decl.prework, /^node worker\.mjs /);
-  assert.match(decl.prework, /--scan-for-needed-packs=true/);
-  assert.match(decl.prework, /--repos=all-covered-members/);
-  assert.ok(!decl.prework.includes('..'));   // contract: no traversal out of the task dir
-  assert.ok(Number.isInteger(decl.prework_timeout) && decl.prework_timeout > 0);
+  assert.match(decl.code_work, /^node worker\.mjs /);
+  assert.match(decl.code_work, /--scan-for-needed-packs=true/);
+  assert.match(decl.code_work, /--repos=all-covered-members/);
+  assert.ok(!decl.code_work.includes('..'));   // contract: no traversal out of the task dir
+  assert.ok(Number.isInteger(decl.code_work_timeout) && decl.code_work_timeout > 0);
   assert.ok(existsSync(join(taskDir, 'worker.mjs')));
 });
 

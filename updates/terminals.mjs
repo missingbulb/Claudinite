@@ -57,7 +57,7 @@ export function terminalFor(outcome) {
 // It restated `packs/core/tasks/update/task.md` §2–5 from a second home that could
 // drift from the first, with no test able to notice. And it was the natural place to
 // put a withheld workflow's CONTENT, which is exactly where content must not go: the
-// scheduler's rule for the code→agent boundary (engine/scheduler/prework.mjs) is that
+// scheduler's rule for the code→agent boundary (engine/scheduler/code-work.mjs) is that
 // a request payload carries identifiers and the NAME of the condition that fired,
 // "never findings and never instructions — everything else travels through the
 // repository." Content routed through a payload leaves the PR's diff, and a workflow

@@ -1,5 +1,5 @@
-// The fleet-digest PREWORK entry point — `node worker.mjs`, run as a subprocess by
-// the scheduler (cwd = this task dir, bounded by prework_timeout).
+// The fleet-digest CODE-WORK entry point — `node worker.mjs`, run as a subprocess by
+// the scheduler (cwd = this task dir, bounded by code_work_timeout).
 //
 // It holds no ranking logic (that is its sibling, collect-fleet-day.mjs) and no
 // prose judgment (that is task.md, in the agent stage). What it does is the plumbing
@@ -9,7 +9,7 @@
 //                             agent, which reads them and writes the brief.
 //   THE DAY HAD NONE        → write the quiet-day brief here and request NO agent.
 //
-// The second half is the point of the conditional handoff (task-prework DESIGN §3,
+// The second half is the point of the conditional handoff (task-code-work DESIGN §3,
 // E4): a fleet that merged nothing yesterday needs a brief that SAYS so — silence
 // would be indistinguishable from a broken task — but it does not need a model to
 // write four words, and dispatching one nightly to find nothing is the cost this
@@ -61,7 +61,7 @@ export const digestPath = (date) => `${DIGESTS_DIR}/${date}.md`;
 const MAX_BACKFILL = 30;
 
 // A one-time (or after-an-outage) catch-up, requested through the mechanism the queue
-// already has: the item's Context, which prework reads as `CLAUDINITE_CONTEXT`.
+// already has: the item's Context, which code-work reads as `CLAUDINITE_CONTEXT`.
 //
 // So a backfill needs no new workflow, no new input, and no new secret — it is an
 // ordinary hand-created item carrying one parameter:
@@ -171,7 +171,7 @@ export function renderSummary(day, { agent }) {
 }
 
 // Collect each requested day and sort it into one of three piles: already written,
-// quiet (no judgment needed — prework writes it), or needing the agent.
+// quiet (no judgment needed — code-work writes it), or needing the agent.
 //
 // Extracted from main so the loop is testable without a git remote. The three-way
 // split IS the backfill: a run that mislabelled a quiet day as needing judgment would
@@ -271,7 +271,7 @@ export async function main() {
       files: quietFiles,
       message: `Claudinite: fleet operations brief${days > 1 ? 's' : ''} (${days} quiet day${days > 1 ? 's' : ''})`,
       title: `Claudinite: fleet operations brief${days > 1 ? 's' : ''} — ${days} quiet day${days > 1 ? 's' : ''}`,
-      body: `Nothing merged or closed on ${days} day(s). Written by prework; no agent ran.\n\n${Object.keys(quietFiles).map((p) => `- \`${p}\``).join('\n')}`,
+      body: `Nothing merged or closed on ${days} day(s). Written by code_work; no agent ran.\n\n${Object.keys(quietFiles).map((p) => `- \`${p}\``).join('\n')}`,
     });
     log(`${days} quiet day(s) — ${pr.reused ? 'updated' : 'opened'} PR ${pr.number !== null ? `#${pr.number}` : `on ${pr.branch}`}${pr.merged ? ' (landed)' : ''}`);
   }

@@ -4,6 +4,7 @@ import {
   WORK_PREFIX, workItemTitle, parseWorkItemTitle, isWorkItemTitle,
   workItemBody, parseWorkItemBody, withNotBefore, withSection,
   QUEUE_LABELS, STATE_LABELS, labelNames, hasLabel,
+  DELIVERED_HEADING, LEGACY_DELIVERED_HEADINGS,
 } from '../../../engine/scheduler/queue/work-item.mjs';
 
 // The title is the identity's readable half; the ISSUE NUMBER is the identity.
@@ -59,10 +60,10 @@ test('withNotBefore stamps in place, inserts under the task path, and clears', (
   assert.equal(parseWorkItemBody(withNotBefore(restamped, null)).notBefore, null);
 });
 
-test('withSection appends prework\'s delivered artifacts without disturbing the body', () => {
+test('withSection appends code_work\'s delivered artifacts without disturbing the body', () => {
   const body = workItemBody({ taskPath: 'p/t/task.md' });
-  const out = withSection(body, 'Delivered by prework', ['PR: #12 (open)']);
-  assert.match(out, /### Delivered by prework\n\n- PR: #12 \(open\)/);
+  const out = withSection(body, 'Delivered by code-work', ['PR: #12 (open)']);
+  assert.match(out, /### Delivered by code-work\n\n- PR: #12 \(open\)/);
   assert.equal(parseWorkItemBody(out).taskPath, 'p/t/task.md');
 });
 
@@ -105,17 +106,39 @@ test('a section is replaced in place, so a body round-tripped twice has one of e
   assert.match(twice, /#3/);
 
   // A heading not yet present still appends — replacing must not cost the append.
-  const delivered = withSection(twice, 'Delivered by prework', ['a branch']);
-  assert.equal(delivered.match(/^### Delivered by prework$/gm).length, 1);
+  const delivered = withSection(twice, 'Delivered by code-work', ['a branch']);
+  assert.equal(delivered.match(/^### Delivered by code-work$/gm).length, 1);
   assert.equal(delivered.match(/^### Context$/gm).length, 1, 'and the neighbour is untouched');
 
   // Position is held, not migrated to the bottom: a replaced section stays where the
   // reader learned it, and every later section survives intact.
   const again = withSection(delivered, 'Context', ['Issues to triage: #4.']);
-  assert.ok(again.indexOf('### Context') < again.indexOf('### Delivered by prework'),
+  assert.ok(again.indexOf('### Context') < again.indexOf('### Delivered by code-work'),
     'the replaced section keeps its position');
   assert.match(again, /- a branch/, 'and the section after it is not swallowed');
 
   // The fields above the first heading are untouched by any of it.
   assert.match(again, /^packs\/p\/tasks\/t\/task\.md$/m);
+});
+
+
+// The delivered section's heading has been renamed twice with the phase. A live work
+// item's body carries whichever word was current when its section was first written,
+// and a re-entrant run updates that section rather than appending beside it — so the
+// heading has to be located by its OLD spellings too, not just today's.
+test('a delivered section written under an older heading is updated, not duplicated', () => {
+  for (const legacy of LEGACY_DELIVERED_HEADINGS) {
+    const body = `task/path\n\nExecute the Claudinite task above.\n\n### ${legacy}\n\n- PR: #12 (open)\n`;
+    const out = withSection(body, DELIVERED_HEADING, ['PR: #12 (merged)'], LEGACY_DELIVERED_HEADINGS);
+    assert.equal(out.match(/^### Delivered by /gm).length, 1, `${legacy} should leave exactly one delivered section`);
+    assert.match(out, /### Delivered by code-work\n\n- PR: #12 \(merged\)/);
+    assert.doesNotMatch(out, new RegExp(`### ${legacy}`));
+  }
+});
+
+// And the ordinary re-entrant case still holds under the constant.
+test('withSection is re-entrant under the canonical heading', () => {
+  const once = withSection('task/path\n', DELIVERED_HEADING, ['a branch'], LEGACY_DELIVERED_HEADINGS);
+  const twice = withSection(once, DELIVERED_HEADING, ['a branch'], LEGACY_DELIVERED_HEADINGS);
+  assert.equal(twice.match(/^### Delivered by /gm).length, 1);
 });

@@ -1,6 +1,6 @@
 # Fleet usage — recompute the fleet-wide skill-usage aggregate
 
-**This task runs no agent.** It is `agent_model: none` with `prework: node worker.mjs`, so the whole pass is the deterministic [`worker.mjs`](worker.mjs) the executor runs as prework, which calls its sibling in this folder, the sweep ([`aggregate-fleet-usage.mjs`](aggregate-fleet-usage.mjs)). This file is the human-facing record of what that worker does; there is no agent phase.
+**This task runs no agent.** It is `agent_model: none` with `code-work: node worker.mjs`, so the whole pass is the deterministic [`worker.mjs`](worker.mjs) the executor runs as code-work, which calls its sibling in this folder, the sweep ([`aggregate-fleet-usage.mjs`](aggregate-fleet-usage.mjs)). This file is the human-facing record of what that worker does; there is no agent phase.
 
 ## What it does
 

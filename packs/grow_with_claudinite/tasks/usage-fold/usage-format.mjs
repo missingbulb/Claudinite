@@ -29,7 +29,7 @@
 // fully-spelled objects — decodes as itself, which is what lets a fold read back the
 // weeks it froze under earlier code without any rollout ordering.
 
-import { TASK_RUN_OUTCOMES, TASK_EXEC_STATUSES } from '../../../../engine/scheduler/run-record.mjs';
+import { TASK_RUN_OUTCOMES, TASK_EXEC_STATUSES, LEGACY_TASK_RUN_OUTCOMES } from '../../../../engine/scheduler/run-record.mjs';
 
 export const USAGE_VERSION = 2;
 
@@ -104,8 +104,25 @@ export function decodeRow(row, totalsFields, fields = {}) {
   for (const group of COUNTER_GROUPS) {
     const vocab = fields[group] ?? USAGE_FIELDS[group];
     out[group] = Object.fromEntries(
-      Object.entries(row?.[group] ?? {}).map(([k, tuple]) => [k, decodeCounters(tuple, vocab)]),
+      Object.entries(row?.[group] ?? {}).map(([k, tuple]) => [k, renameLegacyCounters(group, decodeCounters(tuple, vocab))]),
     );
+  }
+  return out;
+}
+
+// A counter key that has been RENAMED is not a retired field: the count it holds is
+// still this row's, under a word the vocabulary no longer spells. Expanding against
+// the file's own header gets it back under the old name; this puts it under the new
+// one, so the next encode carries it instead of dropping it on the floor. Only the
+// `tasks` group has renames — the outcome words, which have moved twice.
+function renameLegacyCounters(group, counters) {
+  if (group !== 'tasks') return counters;
+  const out = {};
+  for (const [name, value] of Object.entries(counters)) {
+    const canonical = LEGACY_TASK_RUN_OUTCOMES[name] ?? name;
+    // Summed, not overwritten: a row can carry both spellings when it was last
+    // written across a rename, and both are counts of the same thing.
+    out[canonical] = (out[canonical] ?? 0) + (value ?? 0);
   }
   return out;
 }

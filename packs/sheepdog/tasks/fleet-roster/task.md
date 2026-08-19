@@ -1,6 +1,6 @@
 # Fleet roster — one walk, two questions about every repo under the owner
 
-**This task runs no agent.** It is `agent_model: none` with `prework: node worker.mjs`, so the whole pass is the deterministic [`worker.mjs`](worker.mjs) the executor runs as prework, which calls its sibling in this folder, the sweep ([`check-fleet-roster.mjs`](check-fleet-roster.mjs)). This file is the human-facing record of what that worker does; there is no agent phase.
+**This task runs no agent.** It is `agent_model: none` with `code-work: node worker.mjs`, so the whole pass is the deterministic [`worker.mjs`](worker.mjs) the executor runs as code-work, which calls its sibling in this folder, the sweep ([`check-fleet-roster.mjs`](check-fleet-roster.mjs)). This file is the human-facing record of what that worker does; there is no agent phase.
 
 ## What it does
 
@@ -62,4 +62,4 @@ Its *implementation* scans every repo under the owner, but its declaration, sche
 
 A repo whose **declaration** cannot be read or parsed is `unknown` to **both** questions — it is the input they share. A repo whose **mount probe** fails (the stamp read, canon's compare) is `unknown` to the **freshness** question alone: the coverage question already read that declaration successfully and keeps its verdict.
 
-Either kind fails the run: no issue is opened for an unknown repo, no open issue is closed on its behalf, and the sweep exits non-zero with both halves' unknowns named together. The executor treats a non-zero prework subprocess as a failed task and converges the item to `needs-human`, so an unusable token or scope escalates rather than silently shrinking the fleet.
+Either kind fails the run: no issue is opened for an unknown repo, no open issue is closed on its behalf, and the sweep exits non-zero with both halves' unknowns named together. The executor treats a non-zero code-work subprocess as a failed task and converges the item to `needs-human`, so an unusable token or scope escalates rather than silently shrinking the fleet.

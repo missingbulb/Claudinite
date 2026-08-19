@@ -122,7 +122,7 @@ can still teach us.
 
 | unmodeled element | what the real world does | what defends the design there |
 |---|---|---|
-| **Cron delivery** | `schedule:` is a request to queue: fires land minutes-to-tens-of-minutes late, are silently dropped under load, and GitHub disables schedules after 60 days of repo inactivity ([github-actions-scheduling](../../../.claude/skills/github-actions-scheduling/SKILL.md)) | late/dropped fires ARE modeled abstractly (`dropTicks`/`tickAt` — S4, S5); every rule derives due-ness from durable state, never from "the cron fired"; the 60-day disable is inherited risk, mitigated as today (repo activity from the mechanism's own writes) |
+| **Cron delivery** | `schedule:` is a request to queue: fires land minutes-to-tens-of-minutes late, are silently dropped under load, and GitHub disables schedules after 60 days of repo inactivity ([github-actions-scheduling](../../../packs/github-actions/skills/github-actions-scheduling/SKILL.md)) | late/dropped fires ARE modeled abstractly (`dropTicks`/`tickAt` — S4, S5); every rule derives due-ness from durable state, never from "the cron fired"; the 60-day disable is inherited risk, mitigated as today (repo activity from the mechanism's own writes) |
 | **Actions start latency** | a queued workflow may wait minutes before running; the drain is not really at tick+40s | nothing depends on start latency; all deadlines (leashes, staleness) are hours against minutes of jitter |
 | **Tick serialization** | two ticks racing is prevented by the workflow `concurrency` group, an Actions feature the sim assumes rather than models | S6 models the *guards* under a duplicated fire; the group is platform config, verified in the migration burst (B1) |
 | **REST list freshness** | no documented bound on when a list from another node reflects a creation seconds old | **F16**: the tick assumes duplicates WILL happen and self-heals (close all open family items but the oldest) — S30 |
@@ -138,7 +138,7 @@ can still teach us.
 | **Workflow concurrency between the tick and a long drain** | the tick and drain share a workflow whose `concurrency` group holds the next cron fire until the whole run ends — a drain doing hours of real work starves the hourly tick | the decoupling wiring (work-as-work review, DESIGN §10): the drain must run outside the tick's serializing group once work may legally outlive an hour; platform config the sim cannot see, verified in the migration burst |
 | **Secrets & permissions** | Actions secret storage, env stamping, write-gating of labels/comments | prose + conformance checks (§14 secrets path); burst row B4/B7 |
 | **Search index** | minutes-stale, eventually consistent | never used by the design (F11) — the REST issue list is the only read |
-| **Real prework/agent content** | side effects, repos, PRs, sessions | durations and verdicts are scenario inputs; the outcome ceiling and record formats are the engine's existing tested surface |
+| **Real code-work/agent content** | side effects, repos, PRs, sessions | durations and verdicts are scenario inputs; the outcome ceiling and record formats are the engine's existing tested surface |
 
 Fidelity grows only when a scenario needs it — an entry leaves this table by
 becoming modeled, never by being forgotten.

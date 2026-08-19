@@ -14,11 +14,11 @@
 // error that fails the run before anything is read or written. Both call sites therefore
 // state what they want, in full:
 //
-//   the weekly run   task.mjs's `prework` command line — `--scan-for-needed-packs=true
+//   the weekly run   task.mjs's `code_work` command line — `--scan-for-needed-packs=true
 //                    --repos=all-covered-members`, which is the declaration saying, in the
 //                    file a reader opens first, exactly what the cadence does.
 //   a FORCED run     a hand-created item's Context (`CLAUDINITE_CONTEXT`, parsed by
-//                    the pack's param-bag.mjs), which the prework subprocess inherits.
+//                    the pack's param-bag.mjs), which the code-work subprocess inherits.
 //                    Context parameters WIN over the command line, because the whole
 //                    point of a hand-created item is to run this task as something
 //                    other than what the weekly declaration says.
@@ -42,13 +42,13 @@ export const ALL_MEMBERS = 'all-covered-members';
 // different.
 const list = (raw) => String(raw ?? '').split(/\s+/).map((s) => s.trim()).filter(Boolean);
 
-// `--flag=value` command-line pairs, the form task.mjs's `prework` string uses. Anything
+// `--flag=value` command-line pairs, the form task.mjs's `code_work` string uses. Anything
 // not in that shape is a typo worth failing on rather than ignoring.
 export function parseArgv(argv = []) {
   const out = {};
   for (const arg of argv) {
     const m = /^--([a-z][a-z0-9-]*)=(.*)$/.exec(String(arg));
-    if (!m) throw new Error(`unrecognised prework argument \`${arg}\` — expected \`--<name>=<value>\``);
+    if (!m) throw new Error(`unrecognised code_work argument \`${arg}\` — expected \`--<name>=<value>\``);
     out[m[1]] = m[2];
   }
   return out;

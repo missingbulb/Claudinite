@@ -98,7 +98,7 @@ export const WORKFLOW_DIR = '.github/workflows/';
 // to be recomputed by the hand that performs it.
 //
 // THE CONTENT TRAVELS THROUGH THE REPOSITORY, not through the dispatch. That is the
-// scheduler's standing rule for the code→agent boundary (engine/scheduler/prework.mjs):
+// scheduler's standing rule for the code→agent boundary (engine/scheduler/code-work.mjs):
 // a request payload may carry identifiers and the NAME of the condition that fired,
 // "never findings and never instructions" — everything else goes through the repo.
 // Two things fall out of obeying it, and both are worth more than the shortcut. The

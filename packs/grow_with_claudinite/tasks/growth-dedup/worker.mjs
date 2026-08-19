@@ -1,11 +1,11 @@
-// The growth-dedup PREWORK: detect what the mounted canon changed in the window,
+// The growth-dedup CODE-WORK: detect what the mounted canon changed in the window,
 // and write the brief the agentic phase starts from.
 //
 // A run woken by canon movement used to be told only WHICH declared packs moved.
 // A pack is a corpus, so that sent the run re-reading all of it for coverage that
 // mostly predates the window, while the thing that can NEWLY cover a local item —
 // what the canon ADDED in those days — was nowhere in the dispatch. Detecting it
-// is deterministic code over the commit records, which is prework's half of the
+// is deterministic code over the commit records, which is code-work's half of the
 // task, not the agent's.
 //
 // Two kinds of addition, and the second is why a prose-only read is not enough: a
@@ -13,12 +13,12 @@
 // local item more strongly than a stated line does, and it is invisible in the
 // prose corpus. The brief carries both.
 //
-// The channel is the REPOSITORY, per the prework contract (task-prework DESIGN
+// The channel is the REPOSITORY, per the code-work contract (task-code-work DESIGN
 // §3): no code→agent data channel exists, so the brief is written into this
 // task's own standing tracker issue and the hand-off payload carries only its
 // number. The body is rewritten each run — it describes THIS window, so a second
 // copy would be a stale one. The tracker's COMMENTS stay the agentic phase's
-// prune log; prework never comments.
+// prune log; code-work never comments.
 
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -26,7 +26,7 @@ import { makeGh } from '../../../../engine/scheduler/signals/gh.mjs';
 import { loadConfig } from '../../../../engine/checks/helpers/repo-context.mjs';
 import { findOrCreateTracker, writeTracker } from '../../../../engine/scheduler/tracker.mjs';
 
-const log = (s) => console.log(`growth-dedup prework: ${s}`);
+const log = (s) => console.log(`growth-dedup code_work: ${s}`);
 
 // The window this task's own cadence covers — `frequency: 'weekly'` in task.mjs.
 export const WINDOW_DAYS = 7;
@@ -135,7 +135,7 @@ export function renderBrief(summary, { sinceIso }) {
   push(
     `# Canon window diff — since ${sinceIso}`,
     '',
-    'Written by the `growth-dedup` prework at the top of each run, and rewritten every run:',
+    'Written by the `growth-dedup` code_work at the top of each run, and rewritten every run:',
     'this describes the CURRENT window only. It is where the run starts, not what it may cite —',
     'a prune may still quote an older line in one of these packs.',
     '',
@@ -245,7 +245,7 @@ async function main() {
 
   // ALWAYS hand off. The precondition already decided this run happens, and an
   // empty canon window still leaves the repo's fresh local items to re-check, so
-  // there is no condition here to re-litigate — only work prework cannot do:
+  // there is no condition here to re-litigate — only work code-work cannot do:
   // judging whether an added canon line genuinely covers a local item.
   const requestPath = process.env.CLAUDINITE_REQUEST_AGENT;
   if (!requestPath) throw new Error('CLAUDINITE_REQUEST_AGENT is not set — cannot hand off to the agentic phase');
@@ -259,5 +259,5 @@ async function main() {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((e) => { console.error(`growth-dedup prework failed: ${e.message}`); process.exit(1); });
+  main().catch((e) => { console.error(`growth-dedup code_work failed: ${e.message}`); process.exit(1); });
 }
