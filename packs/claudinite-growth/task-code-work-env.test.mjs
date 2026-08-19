@@ -35,7 +35,7 @@ test('only files under a task directory are in scope', () => {
 test('a test beside a task is not the task', () => {
   // A regression test for this very rule has to name a retired variable as a
   // fixture; flagging that would make the rule unable to be tested.
-  assert.deepEqual(rule.run(ctx({ 'packs-tests/demo/tasks/thing/worker.test.mjs': 'process.env.CLAUDINITE_OVERRIDES;\n' })), []);
+  assert.deepEqual(rule.run(ctx({ 'packs/demo/tasks/thing/worker.test.mjs': 'process.env.CLAUDINITE_OVERRIDES;\n' })), []);
 });
 
 // The pattern-selects-inputs guard: a scope regex left behind by a layout change

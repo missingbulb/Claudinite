@@ -1,4 +1,4 @@
-// Run with `node --test packs-tests/claudinite-dashboard/tasks/fleet-digest/*.test.mjs`.
+// Run with `node --test packs/claudinite-dashboard/tasks/fleet-digest/*.test.mjs`.
 //
 // What these prove is mostly about DEFAULTS, because the config's whole promise is
 // that a fleet can adopt the digest without answering a single question — and that

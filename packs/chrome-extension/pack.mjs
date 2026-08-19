@@ -25,7 +25,7 @@ export default {
   id: 'chrome-extension',
   // 3: absorbed chrome-extension-release — its rules, stubs, task, migration record
   // and standard live here now, relevance-gated on the repo shipping the pipeline.
-  version: 3,
+  version: 4,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'writing and shipping a Chrome extension: MV3 service-worker, permission, content-script and auth gotchas, plus Web Store release, versioning and privacy',

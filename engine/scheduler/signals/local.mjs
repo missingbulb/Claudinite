@@ -46,8 +46,8 @@ function readManifestVersion(root) {
 // enough, and the pair is the release standard's own test.
 //
 // The spelling lives here rather than being imported because the engine depends on no
-// pack; the pack's own SHIPS_PIPELINE_* regexes are the other copy, and
-// packs-tests/chrome-extension/release.test.mjs fails if the two disagree.
+// pack; the release pack's own SHIPS_PIPELINE_* regexes are the other copy, and the
+// drift test beside them fails if the two disagree.
 const SHIPS_PIPELINE_TEXT = /^(?:name:\s*['"]?(?:Release to Chrome Store|Release)['"]?\s*|manifest_path=.*)$/m;
 
 function readShipsReleasePipeline(root) {

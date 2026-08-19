@@ -8,7 +8,7 @@ import rule from '../../../../packs/claudinite-dashboard/tasks/fleet-digest/date
 
 // The digest's own worker test — the file the rule exists to keep honest, and the one whose
 // real content the last case reads back. Named once here rather than spelled at each use.
-const SUBJECT = 'packs-tests/claudinite-dashboard/tasks/fleet-digest/worker.test.mjs';
+const SUBJECT = 'packs/claudinite-dashboard/tasks/fleet-digest/worker.test.mjs';
 
 // Only `read` and `allFiles` are touched; anything else would be a rule reaching too far.
 const ctx = (fs) => ({ allFiles: Object.keys(fs), read: (p) => (p in fs ? fs[p] : null) });

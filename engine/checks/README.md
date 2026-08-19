@@ -15,7 +15,7 @@ node engine/checks/check_the_work.mjs              # work scope: rules judging t
 node engine/checks/check_the_world.mjs --list      # machine-readable catalog of every rule, both scopes
 node engine/checks/check_the_world.mjs --init      # write .claudinite-checks.json — the baseline plus the fingerprinted packs
 
-node --test engine/test/*.test.mjs packs-tests/*.test.mjs packs-tests/*/*.test.mjs packs-tests/*/skills/*/*.test.mjs skills/*.test.mjs mount/*.test.mjs   # the test suite, as CI runs it
+node --test $(git ls-files '*.test.mjs')   # the test suite; CI sweeps the same files from its declared roots
 ```
 
 Exit 1 when blocking findings exist; advisory findings never fail a run. In a consuming repo
@@ -159,7 +159,7 @@ One module per rule under `../packs/<pack>/`, exporting
 `../packs/<pack>/pack.mjs` manifest. The failure message *is* the instruction: `what` states the
 violation, `why` the one-line motivation, `fix` the exact remedy, `doc` the corpus doc that owns
 the depth. Write the fixture test first and see it fail — each pack carries one
-`../packs-tests/<pack>/pack.test.mjs` beside the rules it proves, sharing the scratch-git-repo harness
+`<pack>/pack.test.mjs`, inside the pack, beside the rules it proves, sharing the scratch-git-repo harness
 [engine-tests/helpers.mjs](../../engine-tests/helpers.mjs); a violating fixture must find, a clean one must not.
 A new rule ships at its real severity, fail-fast: `blocking` when a finding is a defect to
 fix, `advisory` only when the rule's own semantics are directional (a smell to judge). A whole

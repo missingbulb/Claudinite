@@ -6,7 +6,7 @@ skill's job (declare, interview, re-vendor, scaffold). A fingerprint marker only
 pack is wanted — declaring it is always the project's call.
 
 GENERATED — do not hand-edit. Rendered from the pack manifests by the canon's
-`packs-tests/pack-directory.test.mjs`; regenerate by running that test in a canon checkout.
+`engine-tests/pack-directory.test.mjs`; regenerate by running that test in a canon checkout.
 
 | Pack | What it covers | Not this pack | Activation | Requires |
 |---|---|---|---|---|

@@ -17,7 +17,7 @@ import { main as addPacks } from '../../packs/sheepdog/tasks/fleet-add-missing-p
 // missing has to be the union — defensible per-sweep messages are how a fleet went two
 // days without `Pull requests: read` (#1030). These tests hold the union. The digest
 // that needed that permission now lives in claudinite-dashboard and states its own
-// grant; packs-tests/claudinite-dashboard/tasks/fleet-digest/fleet-token.test.mjs
+// grant; packs/claudinite-dashboard/tasks/fleet-digest/fleet-token.test.mjs
 // holds that one.
 
 const SWEEPS = [
@@ -80,8 +80,11 @@ test('a 403 is attributed to the permission that would fix it', () => {
 // prose ("dispatching is an Actions write"); two or more in the same breath is a LIST,
 // and a list belongs in exactly one file.
 test('no file in the pack spells a permission list but fleet-token.mjs', () => {
+  // The pack's own tests are out of scope: a test that asserts on the grant has to
+  // name the permissions it is asserting about, and no test text reaches a member.
   const files = execFileSync('git', ['ls-files', 'packs/sheepdog'], { encoding: 'utf8' })
-    .split('\n').filter(Boolean).filter((f) => f !== 'packs/sheepdog/fleet-token.mjs');
+    .split('\n').filter(Boolean)
+    .filter((f) => f !== 'packs/sheepdog/fleet-token.mjs' && !f.endsWith('.test.mjs'));
   const names = FLEET_TOKEN_PERMISSIONS.map((p) => p.permission).join('|');
   const pair = new RegExp(`(${names})\\b[^.\\n]{0,12}?\\b(read and write|read/write|read \\+ write|read|write)\\b`, 'gi');
   const offenders = [];

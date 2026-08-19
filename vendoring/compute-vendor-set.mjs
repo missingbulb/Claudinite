@@ -28,7 +28,8 @@ export { SHARED_SUBDIR };
 // tests (they live in engine-tests/, mirroring its structure — #385), so the
 // engine walk is a plain copy minus *.md — engine docs are canon-maintainer
 // reference, read upstream when needed, while a pack's .md files are the
-// payload and ride its directory below (pack tests live in packs-tests/, not in packs/).
+// payload and ride its directory below. A pack's tests sit beside the files they
+// cover, inside the pack, and are dropped by the same *.test.mjs rule as the rest.
 export { ENGINE_DIR_ROOTS };
 
 const isTest = (name) => name.endsWith('.test.mjs');
@@ -133,7 +134,7 @@ export async function computeVendorSet(declaredEntries, { today, installed = nul
   // is canon-side breakage — a mount silently without it would blind the whole
   // fleet to the catalog — so it aborts the converge like any other set error.
   if (existsSync(join(canonRoot, PACK_DIRECTORY_FILE))) files.add(PACK_DIRECTORY_FILE);
-  else errors.push({ what: `${PACK_DIRECTORY_FILE} is missing from the canon tree`, fix: 'regenerate it (its drift test in packs-tests/ renders it from the pack manifests) and commit it' });
+  else errors.push({ what: `${PACK_DIRECTORY_FILE} is missing from the canon tree`, fix: 'regenerate it (its drift test in engine-tests/ renders it from the pack manifests) and commit it' });
 
   const packs = await loadPacks();
   const byId = new Map(packs.map((p) => [p.id, p]));

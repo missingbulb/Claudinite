@@ -6,7 +6,7 @@ const SCHEMA = 'engine/pack_loader/pack-schema.mjs';
 const STUB = 'engine/scheduler/stubs/claudinite-tick.yml';
 const RECORD = 'engine/migrations/2026-08-01-thing/migration.mjs';
 const PACK_RECORD = 'packs/sheepdog/migrations/2026-08-01-thing/migration.mjs';
-const FIXTURES = 'packs-tests/rehearsal/fixtures.mjs';
+const FIXTURES = 'vendoring/rehearsal/fixtures.mjs';
 
 const BLOCKING_RULE = `import { finding } from '../x.mjs';
 const rule = {
@@ -66,7 +66,7 @@ test('ordinary engine and pack edits are not contract surfaces', () => {
 });
 
 test('test files are never contract surfaces, even when they contain a blocking rule', () => {
-  assert.deepEqual(contractChanges(['packs-tests/basics/x.test.mjs'], () => BLOCKING_RULE), []);
+  assert.deepEqual(contractChanges(['packs/basics/x.test.mjs'], () => BLOCKING_RULE), []);
   assert.deepEqual(contractChanges(['engine-tests/x.test.mjs'], () => BLOCKING_RULE), []);
 });
 

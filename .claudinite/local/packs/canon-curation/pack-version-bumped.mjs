@@ -15,8 +15,12 @@ import { finding } from '../../../../engine/checks/helpers/findings.mjs';
 // delivers fixes. Seven repos sat frozen for five days.
 //
 // So the invariant this rule holds is one line: A CHANGE UNDER `packs/<id>/` IS A
-// CHANGE TO THAT PACK'S VERSION. Every byte counts, because every byte ships in
-// the same directory copy — prose, a skill, a check module, a migration record.
+// CHANGE TO THAT PACK'S VERSION. Every SHIPPING byte counts, because every one of
+// them rides the same directory copy — prose, a skill, a check module, a migration
+// record. A pack's tests sit beside the files they cover and are the one thing in
+// that directory no vendor set carries (compute-vendor-set drops `*.test.mjs`), so
+// nobody is waiting on them and a bump for one would re-deliver every pack in the
+// tree to say nothing.
 // It is the pack-side twin of `engine-release-record` (the claudinite local pack),
 // which holds the same line for `ENGINE_VERSION`.
 //
@@ -27,11 +31,12 @@ const LOCAL_PACKS = '.claudinite/local/packs';
 // The pack ids a changed-file list touches, in first-seen order. Anchored at
 // `packs/<id>/` so the canon's own local packs (which vendor nowhere, carry no
 // version and reach no member) and the tree's own files (`packs/README.md`,
-// `packs/directory.GENERATED.md`) are outside it by construction.
+// `packs/directory.GENERATED.md`) are outside it by construction. Tests drop out for
+// the same reason the local packs do: nothing delivers them.
 export function packsTouched(changed) {
   const ids = [];
   for (const file of changed ?? []) {
-    if (file.startsWith(`${LOCAL_PACKS}/`)) continue;
+    if (file.startsWith(`${LOCAL_PACKS}/`) || file.endsWith('.test.mjs')) continue;
     const m = /^packs\/([^/]+)\//.exec(file);
     if (m && !ids.includes(m[1])) ids.push(m[1]);
   }

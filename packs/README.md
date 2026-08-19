@@ -6,7 +6,7 @@ Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session
 
 This table is the canon maintainer's view. The catalog **consumers** receive is
 [`directory.GENERATED.md`](directory.GENERATED.md) — rendered from the pack manifests by its drift
-test (`packs-tests/pack-directory.test.mjs`, which regenerates it locally and asserts it in CI) and
+test (`engine-tests/pack-directory.test.mjs`, which regenerates it locally and asserts it in CI) and
 vendored into every mount regardless of declaration, so a member session can see what it could adopt.
 
 | Pack | Active when | Checks | Prose rules |
@@ -155,12 +155,12 @@ The prose index lists **every** rule, in the order `RULES.md` states them:
   privacy, disclosure, store or platform policy). One per rule, the dominant one.
 - **Enforcement** — the mechanism and its price. `prose: <n> words` is what the rule *costs*: every
   declaring repo pays those words in every session's context, counted by
-  [`../packs-tests/rule-index.mjs`](../packs-tests/rule-index.mjs). `check: blocking | advisory` is
+  [`../engine-tests/rule-index.mjs`](../engine-tests/rule-index.mjs). `check: blocking | advisory` is
   how the engine reports a finding. A rule carried both ways names the check too.
 
 Neither table describes what a rule says — the prose and the check's own failure message do that.
 
-Both indexes are held to the tree by [`../packs-tests/rule-index.test.mjs`](../packs-tests/rule-index.test.mjs):
+Both indexes are held to the tree by [`../engine-tests/rule-index.test.mjs`](../engine-tests/rule-index.test.mjs):
 the rows must match `RULES.md` one-for-one with the right word counts, every check the pack runs must
 appear, and both vocabularies are closed. That guard is what makes a second listing of the rules safe
 here — an earlier hand-kept index drifted into claiming a prose rule that never existed (#777) — so

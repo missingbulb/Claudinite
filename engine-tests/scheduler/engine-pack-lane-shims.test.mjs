@@ -44,7 +44,14 @@ function fieldedEngineImports() {
   const text = git('log', TRUNK, '--format=%H', '-p', '--unified=0', '--', 'packs/');
   const out = new Map();
   const RE = /^\+\s*import\s*\{([^}]*)\}\s*from\s*'[^']*?engine\/([^']+)'/;
+  // A pack's tests live inside the pack and are dropped from every vendor set, so no
+  // member ever holds one — their imports are not fielded, and counting them would
+  // pin an engine symbol alive on the strength of a file nobody installs. The `+++`
+  // header names the file each run of added lines belongs to.
+  let file = '';
   for (const line of text.split('\n')) {
+    if (line.startsWith('+++ ')) { file = line.slice(4).replace(/^b\//, ''); continue; }
+    if (file.endsWith('.test.mjs')) continue;
     const m = RE.exec(line);
     if (!m) continue;
     const path = `engine/${m[2].replace(/^(\.\.\/)+/, '')}`;

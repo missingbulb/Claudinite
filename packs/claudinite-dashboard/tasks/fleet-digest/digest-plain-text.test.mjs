@@ -1,4 +1,4 @@
-// See-it-fail proof for digest-plain-text. Run with `node --test packs-tests/claudinite-dashboard/tasks/fleet-digest/*.test.mjs`.
+// See-it-fail proof for digest-plain-text. Run with `node --test packs/claudinite-dashboard/tasks/fleet-digest/*.test.mjs`.
 // The violating fixture is the shape every brief had before this rule — the markdown template
 // task.md specified, which the notification renderer delivered as its own source code.
 import { test } from 'node:test';
