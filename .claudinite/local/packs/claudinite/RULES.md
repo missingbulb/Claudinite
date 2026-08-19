@@ -59,6 +59,13 @@ lesson at the strongest mechanism available — a check where the rule is determ
   drift guard; sometimes duplication between packs is fine (#959: "why do you even need a drift
   guard? Just write the json. Don't overkill.").
 
+- **Surfacing a number a human reads as a report card** (a dashboard tile, a digest, a fleet
+  rollup) — never a monotonic cumulative total, which says nothing about today, and never a figure
+  nothing measures (no estimated hours saved, no score). Report a **window against the previous
+  window**. Where a field can't be had from the reads already being made, name it as absent in the
+  surface's own note rather than approximating it: a stated gap is information, a guess is not
+  (owner, #1001).
+
 ## Working with the owner and the session's tools
 
 - **Answering "why did it fail?"** — lead with the throwing call site: `file:line`, the
@@ -141,6 +148,14 @@ lesson at the strongest mechanism available — a check where the rule is determ
   `relevantWhen`): if it needs a comment to be read, it needs a better name. Declarations live in
   `packs/<pack>/declared-checks.json`, which cannot hold one, and borrow nothing from prose — no
   `description`, no `doc`; the line the agent reads is `failureMessage`.
+
+- **Writing a check that reads the session transcript** — screen the harness's own **plain-text**
+  pseudo-turns, not only the tag-wrapped ones. `humanText` in
+  `engine/checks/helpers/session-transcript.mjs` drops a user entry that starts with `<`, which
+  lets a bracketed marker straight through: `comment-classification` blocked a session on
+  `[Request interrupted by user for tool use]` as "the owner's latest comment". A conversation rule
+  fires at the Stop hook, where a false positive spends a whole cycle on something no edit can
+  clear — so its fixture carries an interruption marker beside a real owner turn.
 
 ## The engine, the mount and what reaches members
 
@@ -330,6 +345,9 @@ lesson at the strongest mechanism available — a check where the rule is determ
 - **Restoring source after a deliberate see-it-fail mutation** — `git checkout -- <file>` (or
   `git stash`) at the moment of mutating, never a `.bak` copy taken earlier: a `.bak` predates
   whatever else you edited in between, and restoring from it silently destroys that work (#922).
+  `git checkout --` restores from the index, so it destroys *uncommitted* work in the same file
+  just as thoroughly. Commit or stage the real edit **before** mutating anything to see it fail,
+  and only mutate a file whose current state you are ready to throw away (#1010).
 
 - **Running the test suite** — `node --test $(git ls-files '*.test.mjs')`. There is no test
   script, and every hand-written glob under-runs it silently: `node --test <dir>` doesn't recurse,
@@ -338,14 +356,40 @@ lesson at the strongest mechanism available — a check where the rule is determ
   re-run the ~55s suite to re-slice the same unchanged output (five reruns cost 4.5 minutes for
   five different greps, #930, #931).
 
+- **Iterating on a sweep across many files** — while iterating, run only the test files the edit
+  touches plus `check_the_work`; spend the whole suite and `check_the_world` once, at the end,
+  before the commit. Both are whole-tree aggregates whose verdict cannot turn on one file of a
+  sweep, and re-running them per edit is what the session actually costs: of one night's tool
+  wall-clock, the session that landed #993 spent 18 full-suite runs (18 min) and 22 world sweeps
+  (7 min) out of 26 min, #941's spent 22 (22 min) and 27 (12 min) out of 33 min, and #992's 7 and
+  8 out of 14 min.
+
 - **Surveying whether something exists in the tree** — a code-search hit is evidence; a
   code-search miss is not. Survey by reading each file.
+
+- **Documenting or relying on a named knob** (a declaration field, an env var, a config key, a
+  counter series) — the corpus naming it is not evidence it exists: grep for the code that
+  **reads** it and the code that **writes** it first. One window turned up all three misses.
+  Designed and never built, documented as live: `CLAUDINITE_TASKS_SUSPEND_ALL`, beside `exclusive`
+  which had retired with its mechanism (#975). A writer with no reader left: `session_scope`, with
+  nothing saying so (#993). And a reader with no writer left: the usage fold's `tasks` census,
+  whose parser outlived the log lines it read, so the rows keep counting plausibly until the
+  Actions retention window ages out and then count nothing (#994). That last shape is the one to
+  design against — deleting a writer is the same change as marking its series historical, never
+  something to notice later when the numbers reach zero.
 
 - **Writing check-the-work** — make sure you validate it fails: create the conditions that fail
   the check and see it go red (#966, #970).
 
 - **Renaming an entity** — sweep for references in code and comments, don't change historical
   records, and re-render generated files rather than editing them by hand (#957).
+
+- **Renaming a word that is also stored data** (a counter key, a wire word, a label) — the sweep
+  is not finished at the code. A persisted aggregate holds rows keyed by the old spelling, so the
+  **decode** side must rename them too, or the next encode writes those historical counts as
+  `null` — silently, and only for the old rows. And on a *second* rename of one name, map every
+  legacy spelling **straight to today's** rather than chaining one normalization onto the last, so
+  a declaration written for the oldest vocabulary still normalizes in a single pass (#1013).
 
 ## Editing, branching and merging here
 
