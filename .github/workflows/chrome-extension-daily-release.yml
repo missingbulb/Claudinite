@@ -1,6 +1,6 @@
 name: "Chrome extension: Daily Auto-Release (reusable)"
 
-# Reusable workflow of the chrome-extension-release standard — the logic behind
+# Reusable workflow of the Chrome Web Store release standard — the logic behind
 # every extension repo's daily release. workflow_call ONLY: it never runs in
 # Claudinite itself; the calling repo's single `release.yml` stub owns the
 # schedule/dispatch triggers and the `concurrency: daily-release` guard, and

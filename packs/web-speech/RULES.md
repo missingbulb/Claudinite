@@ -8,8 +8,8 @@ gotchas, knowledge you carry into the code rather than state a tool can read off
 the repo.
 
 > Some of these APIs (`chrome.tts`) are extension-only; where a rule touches
-> MV3 service-worker / content-script mechanics, the general extension gotchas
-> live in the [`chrome-extension`](../chrome-extension/RULES.md) pack.
+> MV3 service-worker / content-script mechanics, only the speech-API facet is
+> here — the general extension gotcha underneath is not.
 
 ## Speech-to-text (`webkitSpeechRecognition` / Web Speech API)
 

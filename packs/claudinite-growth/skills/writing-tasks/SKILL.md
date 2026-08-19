@@ -327,6 +327,5 @@ A project nobody is working on declares itself dormant in `.claudinite-checks.js
 ```
 
 The tick instantiates, readies and reclaims nothing, and the executor picks
-nothing up; the [fleet sweeps](../../../sheepdog/README.md) skip it; sessions are
-unaffected. Delete it to wake — a dormant spell is not replayed, so the repo
+nothing up; the fleet sweeps skip it; sessions are unaffected. Delete it to wake — a dormant spell is not replayed, so the repo
 simply starts scheduling again from now.

@@ -1,6 +1,6 @@
 name: "Chrome extension: Create Package (reusable)"
 
-# Reusable workflow of the chrome-extension-release standard — the logic behind
+# Reusable workflow of the Chrome Web Store release standard — the logic behind
 # every extension repo's release "create-package" job. workflow_call ONLY: it
 # never runs in Claudinite itself; the calling repo's single `release.yml` stub
 # owns the triggers and passes NO repo values. All repo-specific values come from

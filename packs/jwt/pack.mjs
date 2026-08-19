@@ -17,7 +17,7 @@ const SOURCE = /\.(mjs|cjs|js|jsx|ts|tsx|py)$/;
 
 export default {
   id: 'jwt',
-  version: 3,
+  version: 4,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'minting and validating JSON Web Tokens: algorithm pinning, claim validation, key strength and secrecy, expiry, JWE',

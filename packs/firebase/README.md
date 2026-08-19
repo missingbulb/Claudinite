@@ -7,8 +7,7 @@ fan-out), testing without live infrastructure (pure-logic extraction, the rules 
 themselves are under test), and deploy layout (predeploy build hooks, committed project aliases).
 Mostly prose — the two mechanical halves of the deploy layout are checks. Earned in
 missingbulb/ShoutsAndWhispers (Firestore + Functions + FCM + Google sign-in). Environment
-separation and store gating are deliberately NOT here — that is the opt-in
-[firebase-release](../firebase-release/README.md) pack.
+separation and store gating are deliberately not here.
 
 ## Rules (`RULES.md`)
 
