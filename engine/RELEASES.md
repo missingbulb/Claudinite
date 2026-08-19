@@ -48,7 +48,7 @@ worth naming, not on every merge.
 | 2 | 2026-08-12 | [run 31633584458](https://github.com/missingbulb/Claudinite/actions/runs/31633584458) | Migration records gain regex rewrites and the `normalizeLocalDeclarations` codemod, and `local-pack-namespace` starts rewriting local-pack declarations to `local/<id>` — the first release whose records actually change a member's own files. |
 | 3 | 2026-08-13 | [run 31655440833](https://github.com/missingbulb/Claudinite/actions/runs/31655440833) | Baselining retired (#768 Phase 5): the task, its escalation codes and the `migrations/` compatibility entry points are gone, the `agentic:` migration field is rejected rather than ignored, and `updates` becomes the default mechanism. Freshness is measured by version rather than by the age of a ref the update flows never write. |
 | 4 | 2026-08-14 | [run 31826589868](https://github.com/missingbulb/Claudinite/actions/runs/31826589868) | A `needs-human` dispatch issue no longer stops its task (#821): the scheduler's guard suppresses on a live claim rather than on any open issue, so an escalation awaits triage instead of shutting the lane until a person closes it by hand. Bounded — a second unresolved escalation holds the lane, under a verdict of its own that leads the run summary. |
-| 5 | 2026-08-19 | not yet | The pack renames (#1022): `core` → `claudinite-lifecycle`, `grow_with_claudinite` → `claudinite-growth`, and the scheduled-task authoring contract moved between them. The record converges each member's declaration and moves its mount directories; the loader tolerance (`engine/pack_loader/renamed-packs.mjs`) makes that record's timing irrelevant by resolving both spellings, so no member can be caught holding a declaration and a mount that disagree — which for the pack carrying `update` would cost it the machinery that delivers its own repair. |
+| 5 | 2026-08-19 | [run 32248529901](https://github.com/missingbulb/Claudinite/actions/runs/32248529901) | The pack renames (#1022): `core` → `claudinite-lifecycle`, `grow_with_claudinite` → `claudinite-growth`, and the scheduled-task authoring contract moved between them. The record converges each member's declaration and moves its mount directories; the loader tolerance (`engine/pack_loader/renamed-packs.mjs`) makes that record's timing irrelevant by resolving both spellings, so no member can be caught holding a declaration and a mount that disagree — which for the pack carrying `update` would cost it the machinery that delivers its own repair. |
 
 Version 1's rehearsal is the automatic post-merge run against `8dbb096`, the
 commit that introduced the constant — the procedure above landed after it, so
@@ -68,3 +68,9 @@ now fails unless the run says in words that it converged.
 Version 4's was dispatched against `e416aed1` — this change's tree, with only the
 run id in the row you are reading edited after it.
 
+Version 5's was dispatched against `93ca7bd` — this change's tree, with only the
+run id in the row you are reading edited after it. It converged the canary through
+BOTH flows (`update: engine`, then `update: packs`) and the converged tree passed
+its self-test, which is what qualifies the rename specifically: the canary held a
+declaration and a mount spelled the old way when the run began, and the packs
+loaded anyway.
