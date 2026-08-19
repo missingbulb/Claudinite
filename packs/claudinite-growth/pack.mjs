@@ -3,6 +3,7 @@ import taskDeclarationMatchesFolder from './task-declaration-matches-folder.mjs'
 import taskCodeWorkEnv from './task-code-work-env.mjs';
 import dedupIntegrity from './dedup-integrity.mjs';
 import growthWriteScope from './growth-write-scope.mjs';
+import taskMdOnlyWhenAgentic from './task-md-only-when-agentic.mjs';
 
 // Opt into the growth lifecycle: a repo declaring claudinite-growth contributes its
 // hard-won lessons up to the Claudinite canon and prunes them back out once the canon
@@ -75,10 +76,10 @@ import growthWriteScope from './growth-write-scope.mjs';
 // active sets retention_days itself.
 export default {
   id: 'claudinite-growth',
-  version: 9,
+  version: 10,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
-    belongs: 'authoring Claudinite content here — lesson extraction, dedup, revalidation, conversation logs, skill-usage folding, the scheduled-task contract',
+    belongs: 'authoring Claudinite content here — lesson extraction, dedup, revalidation, conversation logs, skill-usage folding, the task contract',
     excludes: 'this repo\'s Claudinite status — mount, declaration, adoption, update — claudinite-lifecycle; issue/PR housekeeping — tidy-repo; fleet sweeps — sheepdog',
   },
   badge: 'badge.svg',
@@ -99,6 +100,7 @@ export default {
   worldRules: [
     taskDeclarationShape,
     taskDeclarationMatchesFolder,
+    taskMdOnlyWhenAgentic,
     // …and the environment that contract hands a task's code-work, which is the half
     // no declaration states and nothing else can catch.
     taskCodeWorkEnv,

@@ -13,11 +13,11 @@ member executes:
 
 | sweep | task | asks |
 |---|---|---|
-| [check-fleet-roster.mjs](tasks/fleet-roster/check-fleet-roster.mjs) → [adoption-issues.mjs](tasks/fleet-roster/adoption-issues.mjs) + [drift-issues.mjs](tasks/fleet-roster/drift-issues.mjs) | [fleet-roster](tasks/fleet-roster/task.md) (daily) | is this repo a **member**, and is that membership still **meaning** anything? → adoption issues + drift issues |
-| [scan-for-needed-packs.mjs](tasks/fleet-add-missing-packs/scan-for-needed-packs.mjs) + [force-add-packs.mjs](tasks/fleet-add-missing-packs/force-add-packs.mjs) | [fleet-add-missing-packs](tasks/fleet-add-missing-packs/task.md) (weekly, and forceable) | which packs is a member missing — the ones its **shape** suspects, or the ones the owner named? → a work-list issue *in* each member + that member's scheduler fired; the member's own agent adopts |
-| [aggregate-fleet-usage.mjs](tasks/fleet-usage/aggregate-fleet-usage.mjs) | [fleet-usage](tasks/fleet-usage/task.md) (daily) | what does the fleet **actually use**? → `usage-fleet.GENERATED.json` |
-| [check-fleet-pack-seeds.mjs](tasks/fleet-pack-seeds/check-fleet-pack-seeds.mjs) | [fleet-pack-seeds](tasks/fleet-pack-seeds/task.md) (daily) | does a member declare what this fleet **standardizes on**? → the declaration, written |
-| [force-fleet-baseline.mjs](tasks/fleet-baseline/force-fleet-baseline.mjs) | [fleet-baseline](tasks/fleet-baseline/task.md) (`manual` — forced runs only) | make every member baseline **now** → each member's own run, reported in its own repo |
+| [check-fleet-roster.mjs](tasks/fleet-roster/check-fleet-roster.mjs) → [adoption-issues.mjs](tasks/fleet-roster/adoption-issues.mjs) + [drift-issues.mjs](tasks/fleet-roster/drift-issues.mjs) | [fleet-roster](tasks/fleet-roster/README.md) (daily) | is this repo a **member**, and is that membership still **meaning** anything? → adoption issues + drift issues |
+| [scan-for-needed-packs.mjs](tasks/fleet-add-missing-packs/scan-for-needed-packs.mjs) + [force-add-packs.mjs](tasks/fleet-add-missing-packs/force-add-packs.mjs) | [fleet-add-missing-packs](tasks/fleet-add-missing-packs/README.md) (weekly, and forceable) | which packs is a member missing — the ones its **shape** suspects, or the ones the owner named? → a work-list issue *in* each member + that member's scheduler fired; the member's own agent adopts |
+| [aggregate-fleet-usage.mjs](tasks/fleet-usage/aggregate-fleet-usage.mjs) | [fleet-usage](tasks/fleet-usage/README.md) (daily) | what does the fleet **actually use**? → `usage-fleet.GENERATED.json` |
+| [check-fleet-pack-seeds.mjs](tasks/fleet-pack-seeds/check-fleet-pack-seeds.mjs) | [fleet-pack-seeds](tasks/fleet-pack-seeds/README.md) (daily) | does a member declare what this fleet **standardizes on**? → the declaration, written |
+| [force-fleet-baseline.mjs](tasks/fleet-baseline/force-fleet-baseline.mjs) | [fleet-baseline](tasks/fleet-baseline/README.md) (`manual` — forced runs only) | make every member baseline **now** → each member's own run, reported in its own repo |
 
 **The roster carries two questions** because they are asked of the same repos from the same walk
 ([#788](https://github.com/missingbulb/Claudinite/issues/788)). The freshness half exists because

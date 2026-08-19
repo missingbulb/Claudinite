@@ -21,7 +21,7 @@ scheduler (`engine/scheduler/discover.mjs`) wherever the pack is declared:
 | `prose-to-checks-sweep` ([tasks/prose-to-checks-sweep/task.md](tasks/prose-to-checks-sweep/task.md)) | weekly (no-ops cheaply on a quiet corpus) | a PR converting always-testable pack prose into checks |
 | `rule-revalidation` ([tasks/rule-revalidation/task.md](tasks/rule-revalidation/task.md)) | weekly | a reviewed PR correcting rules whose environment claim no longer probes true |
 
-(Plus two agentless daily tasks over the conversation-logs branch: [usage-fold](tasks/usage-fold/task.md),
+(Plus two agentless daily tasks over the conversation-logs branch: [usage-fold](tasks/usage-fold/README.md),
 described below, and `logs-prune` — retention, [tasks/logs-prune/worker.mjs](tasks/logs-prune/worker.mjs).)
 
 ## Extraction is one task over two sources
@@ -125,7 +125,7 @@ skill-vs-prose call had no empirical feedback: a skill whose trigger never fires
 one that fires daily, and a "skill" that loads in every session (rules wearing a skill's clothes)
 looked exactly like a genuinely activity-scoped one.
 
-The [usage-fold](tasks/usage-fold/task.md) task closes that loop — daily, agentless, seconds. It
+The [usage-fold](tasks/usage-fold/README.md) task closes that loop — daily, agentless, seconds. It
 counts skill loads **and their denominators** (captures, merges, sessions, user messages, user
 commands) out of the logs this pack already captures, into
 `.claudinite/local/usage.GENERATED.json`: day rows recomputed statelessly inside the raw retention
@@ -135,7 +135,7 @@ skill's own declared trigger plausibly applied*. Zeros are implicit (a skill wit
 key), which is what makes "never loads" visible: diff the file against the repo's mounted skills.
 
 Fleet-wide aggregation is deliberately **not** here — the canon knows mechanisms, never repos. It is
-the sheepdog pack's [`fleet-usage`](../sheepdog/tasks/fleet-usage/task.md) task, in the fleet-enforcer
+the sheepdog pack's [`fleet-usage`](../sheepdog/tasks/fleet-usage/README.md) task, in the fleet-enforcer
 repo, which is the only place that knows who the members are.
 
 ## Skills
@@ -147,7 +147,11 @@ rephrase, the keep-test, and the shrink-only discipline. The pack also bundles
 [unattended-agents](skills/unattended-agents/SKILL.md),
 [generate-project-instructions](skills/generate-project-instructions/SKILL.md) and
 [**writing-tasks**](skills/writing-tasks/SKILL.md) — the contract a `tasks/<name>/task.mjs` and
-its worker are written to, which is what the three task checks below judge against. Adoption itself —
+its worker are written to: the declaration's fields, the code-work and agentic phases, the
+precondition as the only place a task may decide not to run, and how a work item converges. That
+contract is what the four task checks below judge against, and it is a skill rather than a rule
+because it is wanted when a task is being written, not carried by every session in every repo.
+Adoption itself —
 `adopt-claudinite`, `adopt-pack` and the `adopt-requested-packs` task — is the
 [claudinite-lifecycle](../claudinite-lifecycle/README.md) pack's: its subject is Claudinite's own surface, not lesson capture.
 
@@ -155,7 +159,6 @@ its worker are written to, which is what the three task checks below judge again
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Writing or changing a task | high | correctness | prose: 63 words + checks (`task-declaration-shape`, `task-declaration-matches-folder`, `task-code-work-env`) |
 | Wanting a job to run in Actions | high | complexity | prose: 55 words + check (`scheduler-workflow-shape`) |
 
 ## Coded rules
@@ -242,15 +245,17 @@ Extract writes into it, promote reads from it, dedup prunes within it — all ag
 | `task-declaration-shape` | high | correctness | check: blocking |
 | `task-declaration-matches-folder` | high | correctness | check: blocking |
 | `task-code-work-env` | high | correctness | check: blocking |
+| `task-md-only-when-agentic` | high | correctness | check: blocking |
 | `task-phase-discipline` | medium | complexity | check: advisory |
 
-The last four are the **task contract** ([the writing-tasks skill](skills/writing-tasks/SKILL.md)), which
+The last five are the **task contract** ([the writing-tasks skill](skills/writing-tasks/SKILL.md)), which
 lives here rather than in [claudinite-lifecycle](../claudinite-lifecycle/README.md) because it judges
 whether a task is *written* correctly — authoring, the subject of this pack — and not whether
-Claudinite is *working* in the repo, which is that one's. Relevance-first: all four are inert until
+Claudinite is *working* in the repo, which is that one's. Relevance-first: all five are inert until
 the repo carries a `tasks/<name>/task.mjs` of its own.
 
 - `task-declaration-shape` — a task declaration the scheduler reads is incomplete or illegal, so the task never fires or fires wrong.
 - `task-declaration-matches-folder` — a declaration disagrees with its folder: discovery drops it into `errors` and every run keeps reporting healthy without it.
 - `task-code-work-env` — a task reads a `CLAUDINITE_*` variable code-work never sets, so a parameter (a scope filter, a dry-run switch) silently never arrives and the run goes green in its most dangerous mode.
+- `task-md-only-when-agentic` — an agentless task carries a `task.md`, which the corpus reads as "an agent runs here": prose no session will ever open, judged by the routine contract and named by every work item as the file the run is about.
 - `task-phase-discipline` — a task decides not to run after its precondition already said run, hiding the decision from the run records.
