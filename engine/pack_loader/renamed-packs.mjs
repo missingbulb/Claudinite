@@ -25,9 +25,18 @@
 // no member's declaration and no member's stamped `packVersions` still carries that
 // spelling. Until then it is load-bearing for exactly the repos that have not
 // converged, which are the repos least able to complain.
+//
+// A pack ABSORBED into another is the same map entry: its id resolves to the pack
+// that now carries its rules, so a member declaring the absorbed one activates the
+// survivor instead of activating nothing. The declaration then holds two ids that
+// resolve to one, which is what `applyPackRenames` merges (registry.mjs).
 export const RENAMED_PACKS = Object.freeze({
   core: 'claudinite-lifecycle',
   grow_with_claudinite: 'claudinite-growth',
+  // Absorbed, not renamed: the release standard collapsed into the coding pack,
+  // and the release rules gate on the repo shipping the pipeline rather than on a
+  // second declaration (#1057).
+  'chrome-extension-release': 'chrome-extension',
 });
 
 // The canon id a spelling resolves to. Canon packs only — a LOCAL pack lives in the
