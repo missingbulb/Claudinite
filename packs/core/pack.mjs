@@ -22,7 +22,7 @@ import taskCodeWorkEnv from './task-code-work-env.mjs';
 // what puts it there.
 export default {
   id: 'core',
-  version: 7,
+  version: 8,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'using Claudinite itself — the vendored mount, the pack declaration, bootstrapping, adopting packs, the self-refresh update, the scheduled-task contract',
