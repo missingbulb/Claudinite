@@ -71,6 +71,41 @@ export function nextAnchor(frequency, now) {
 
 // ---- the simulator ----------------------------------------------------------
 
+// ---- ad-hoc requests (DESIGN §16) ------------------------------------------
+// The request vocabulary lives on an ORDINARY issue and is written by the tick
+// and by whoever converges the item — never by a person past the first mark.
+export const REQUEST_LABEL = 'claude-task';
+export const QUEUED_LABEL = 'claude-queued';
+// Not "done": the run's success leaves a PR a person must still merge, and the
+// item parks at `task:needs-human-approval` rather than closing. The issue says
+// what is true of it — a change is written and waiting on review.
+export const IN_REVIEW_LABEL = 'claude-in-review';
+export const MODEL_LABEL_PREFIX = 'claude-model:';
+export const REQUEST_TASK = 'engine/implement-request';
+export const MODEL_FAMILIES = ['opus', 'sonnet', 'haiku'];
+export const DEFAULT_MODEL = 'opus';
+// Write access, as GitHub computes it. The whole of the security check, which is
+// why it is modeled: the precondition reads these off the signal, and a scenario
+// can hand it any association a real payload could carry.
+export const PUSH_ASSOCIATIONS = ['OWNER', 'MEMBER', 'COLLABORATOR'];
+export const APPROVAL_RE = /^\s*\/claude\s+go\b/im;
+
+// Eligibility over one request's payload — the built-in precondition's core,
+// modeled here in the shape the engine will carry it.
+export function eligible(req) {
+  if (PUSH_ASSOCIATIONS.includes(req.authorAssociation)) return { ok: true, why: 'opened by someone with write access' };
+  const approval = (req.comments ?? []).find((c) => PUSH_ASSOCIATIONS.includes(c.association) && APPROVAL_RE.test(c.body ?? ''));
+  if (approval) return { ok: true, why: `approved by ${approval.login} with /claude go` };
+  return { ok: false, why: 'neither opened nor approved by anyone with write access' };
+}
+
+// The model a request asks for. An unrecognized family falls back to the default
+// rather than to nothing — a request nobody can run would look accepted forever.
+export function modelFor(labels) {
+  const asked = [...labels].filter((l) => l.startsWith(MODEL_LABEL_PREFIX)).map((l) => l.slice(MODEL_LABEL_PREFIX.length));
+  return MODEL_FAMILIES.find((f) => asked.includes(f)) ?? DEFAULT_MODEL;
+}
+
 export function makeSim({
   tasks,
   afterMode = 'yield', // 'yield' (the design) | 'blocked-by' (S24's rejected wiring)
@@ -84,7 +119,37 @@ export function makeSim({
   heartbeatsDisabled = false, // S31b only: demonstrate the livelock heartbeats prevent
 } = {}) {
   const registry = new Map(tasks.map((t) => [t.id, t]));
+  // Ordinary issues somebody marked — NOT work items, and never wearing a
+  // `task:` label. Their own small vocabulary is the whole request state.
+  const requests = []; // {number,labels:Set,state,authorAssociation,comments:[{login,association,body}]}
+  const requestOf = (n) => requests.find((r) => r.number === n) ?? null;
   const titleOf = (id) => `[claudinite-work] ${id}`;
+
+  // The built-in request task, always present wherever the queue runs (DESIGN
+  // §16.2): `manual`, so the tick never puts it on a calendar — an item exists
+  // only because an issue was marked. Its precondition IS the security check, and
+  // it declares no code-work at all, so a request goes issue → item → agent with
+  // nothing in between to carry a payload.
+  registry.set(REQUEST_TASK, {
+    id: REQUEST_TASK,
+    frequency: 'manual',
+    agentMinutes: 45,
+    ceiling: 'open-pr',
+    deliversOpenPr: () => true,           // every successful run leaves a PR to review
+    // Evaluated at pickup like every other precondition, and — the one addition
+    // the contract needs — over THIS item, because which request it is about is a
+    // property of the item, not of the task.
+    precondition: (_world, _now, item) => {
+      const req = requestOf(item?.request);
+      if (!req) return { run: false, reason: `issue #${item?.request} could not be read` };
+      if (req.state !== 'open') return { run: false, reason: `issue #${req.number} was closed before this ran` };
+      if (!req.labels.has(QUEUED_LABEL)) return { run: false, reason: `issue #${req.number} no longer carries the queued label — the request was withdrawn` };
+      const verdict = eligible(req);
+      return verdict.ok
+        ? { run: true, reason: `#${req.number}: ${verdict.why}` }
+        : { run: false, reason: `#${req.number}: ${verdict.why}` };
+    },
+  });
 
   // F17, reframed by the work-as-work review (2026-08-15): the leash no longer
   // has to exceed every task's work bound — heartbeat comments during the work
@@ -157,8 +222,9 @@ export function makeSim({
     && !has(i, 'task:needs-human-decision')
     && !has(i, 'task:needs-human-approval');
 
-  function createIssue({ taskId, origin, labels, notBefore = null, blockedBy = [], urgent = false, qualifier = null }) {
+  function createIssue({ taskId, origin, labels, notBefore = null, blockedBy = [], urgent = false, qualifier = null, request = null, model = null }) {
     const it = {
+      request, model,
       number: issues.length + 900,
       title: titleOf(taskId) + (qualifier ? ` ${qualifier}` : ''),
       taskId, origin,
@@ -275,6 +341,21 @@ export function makeSim({
         record('ready', { task: it.taskId, issue: it.number });
       }
     }
+    // job 4: ADOPT a marked issue (DESIGN §16.3) — label mechanics like the other
+    // three: no precondition, no signal, no judgment about WHO marked it (that is
+    // the precondition's, at pickup). The mark is CONSUMED here — the request
+    // label becomes the queued one — so the gate clears by being acted on and a
+    // second tick finds nothing to adopt. Re-requesting is re-applying the label.
+    for (const req of requests.filter((r) => r.state === 'open' && r.labels.has(REQUEST_LABEL))) {
+      const it = createIssue({
+        taskId: REQUEST_TASK, origin: 'request',
+        labels: ['task:ready'], qualifier: `#${req.number}`,
+        request: req.number, model: modelFor(req.labels),
+      });
+      req.labels.delete(REQUEST_LABEL);
+      req.labels.add(QUEUED_LABEL);
+      record('adopt', { task: REQUEST_TASK, issue: it.number, request: req.number, model: it.model });
+    }
     // job 3: reclaim dead executor claims
     for (const it of open().filter((i) => has(i, 'task:executing'))) {
       if (now - it.lastActivity >= executingLeashMs) {
@@ -284,6 +365,27 @@ export function makeSim({
         record('reclaim', { task: it.taskId, issue: it.number });
       }
     }
+  }
+
+  // The two write-backs onto the request issue (DESIGN §16.5). Whoever converges
+  // the item owns the write-back for the end it converged: the executor for a
+  // declined request, the session for a run that left a PR. A run that FAILED
+  // writes nothing and leaves the queued label standing — re-arming work that
+  // writes code is a person's decision, and that standing label is also what stops
+  // the tick adopting the same request a second time.
+  function declineRequest(it, why) {
+    const req = requestOf(it.request);
+    if (!req) return;
+    req.labels.delete(QUEUED_LABEL);
+    req.comments.push({ login: 'claudinite', association: 'OWNER', body: `Not implementing this: ${why}` });
+    record('request-declined', { issue: req.number, item: it.number, why });
+  }
+  function reviewRequest(it) {
+    const req = requestOf(it.request);
+    if (!req) return;
+    req.labels.delete(QUEUED_LABEL);
+    req.labels.add(IN_REVIEW_LABEL);
+    record('request-in-review', { issue: req.number, item: it.number });
   }
 
   // ---- the executor (DESIGN §6) ---------------------------------------------
@@ -394,6 +496,17 @@ export function makeSim({
         record('agent-failed', { task: it.taskId, issue: it.number });
         return;
       }
+      // The agentic mirror of the code-work approval park below: a SESSION that
+      // deliberately left an unmerged PR is in the same position as a worker that
+      // did — succeeded, not finished, waiting on a named reviewer. Modeled here
+      // because the request task is the first agentic task whose every successful
+      // run ends that way.
+      if (task.deliversOpenPr?.(world, now)) {
+        if (it.origin === 'request') reviewRequest(it);
+        park(it, 'task:agent', 'approval');
+        record('delivered-open-pr', { task: it.taskId, issue: it.number });
+        return;
+      }
       close(it, task.outcome ?? 'done');
     });
   }
@@ -416,7 +529,10 @@ export function makeSim({
       return; // died mid-claim: labels stay, the leash reclaim recovers (S8)
     }
     // the single precondition evaluation (DESIGN §6.4)
-    const verdict = task.precondition ? task.precondition(world, now) : { run: true };
+    // The precondition takes the ITEM as well as the signals (DESIGN §16.4): a
+    // request item's verdict is about the issue it names, which no signal bundle
+    // can single out on its own.
+    const verdict = task.precondition ? task.precondition(world, now, it) : { run: true };
     record('evaluate', { task: it.taskId, issue: it.number, run: verdict.run !== false });
     if (verdict.run === false) {
       if (it.origin === 'schedule') { // roll
@@ -426,6 +542,10 @@ export function makeSim({
         swap(it, 'task:executing', 'task:blocked');
         record('roll', { task: it.taskId, issue: it.number, until: iso(it.notBefore) });
       } else {
+        // A declined request tells the ISSUE so and disarms it, in the same
+        // convergence: nothing else would, and an un-disarmed issue would be
+        // re-adopted and re-refused on every tick forever.
+        if (it.origin === 'request') declineRequest(it, verdict.reason ?? 'the precondition declined');
         close(it, 'obsolete'); // ad-hoc: no anchor to roll to (S17)
       }
       onSettled();
@@ -611,7 +731,37 @@ export function makeSim({
   // ---- the scenario DSL -----------------------------------------------------
   const droppedTicks = [];
   const sim = {
-    issues, log, world,
+    issues, log, world, requests,
+    requestItems: () => issues.filter((i) => i.origin === 'request'),
+    requestIssue: (n) => requestOf(n),
+
+    // A person marks an ordinary issue (DESIGN §16.1). `author` is the issue
+    // author's association — the thing the precondition judges — and `model` the
+    // optional family label. No latency sugar: adoption is the tick's job, so a
+    // mark waits for the next one.
+    markIssue({ author = 'OWNER', model = null, comments = [] } = {}) {
+      const req = {
+        number: requests.length + 500,
+        labels: new Set([REQUEST_LABEL, ...(model ? [`${MODEL_LABEL_PREFIX}${model}`] : [])]),
+        state: 'open', authorAssociation: author, comments: [...comments],
+      };
+      requests.push(req);
+      record('mark', { issue: req.number, author, model });
+      return req;
+    },
+    // A person withdraws a request after it was adopted, or closes the issue.
+    withdrawRequest(number) { requestOf(number).labels.delete(QUEUED_LABEL); return sim; },
+    closeRequestIssue(number) { requestOf(number).state = 'closed'; return sim; },
+    // Re-marking an issue a run already finished with — the sanctioned way to ask
+    // again, and the only one.
+    remarkIssue(number, { model = null } = {}) {
+      const req = requestOf(number);
+      req.labels.delete(IN_REVIEW_LABEL);
+      req.labels.add(REQUEST_LABEL);
+      if (model) req.labels.add(`${MODEL_LABEL_PREFIX}${model}`);
+      record('mark', { issue: number, remark: true });
+      return req;
+    },
     family, standingItem,
 
     // "at time X, Y happens"

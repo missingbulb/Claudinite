@@ -1077,3 +1077,137 @@ test('S43 the human re-queue leaves no triage label behind', () => {
   assert.equal(after.includes('needs-human'), false);
   assert.ok(after.includes('task:ready'), 'and it went back into the queue');
 });
+
+// ---- K. Ad-hoc requests (DESIGN §16, owner 2026-08-18) --------------------
+// "A way to mark an issue as 'let claude do this task', and the next executor
+// run picks it up." The mark is a label on an ORDINARY issue; the tick adopts it
+// into a work item; the built-in request task's precondition is the security
+// check; there is no code-work at all. These play the paths that decide whether
+// the mechanism is safe: who may ask, what a refusal does, and what a request
+// that changed its mind between adoption and pickup does.
+
+const REQ = 'engine/implement-request';
+const adopts = (sim) => sim.log.filter((e) => e.kind === 'adopt');
+const parked = (it, kind) => it.labels.has('needs-human') && it.labels.has(`task:needs-human-${kind}`);
+
+test('S44 a marked issue becomes exactly one run, parked for the reviewer', () => {
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
+  let req;
+  sim.at('2026-08-18T09:03Z', (s) => { req = s.markIssue({ author: 'OWNER' }); });
+  sim.run('2026-08-18T09:00Z', '2026-08-19T09:00Z');
+
+  // One adoption, one item, however many ticks ran across the day.
+  assert.equal(adopts(sim).length, 1);
+  const items = sim.requestItems();
+  assert.equal(items.length, 1);
+  assert.equal(items[0].request, req.number);
+  assert.equal(items[0].model, 'opus');               // no model label ⇒ the default
+  assert.equal(items[0].origin, 'request');           // never origin:schedule — it consumes no occurrence
+  // The run succeeded and left a PR, so it parks for approval rather than
+  // closing — and that park is not a fault, so it holds nobody's lane.
+  assert.ok(parked(items[0], 'approval'));
+  assert.equal(items[0].state, 'open');
+  // …and the issue says what is true of it: a change is written, awaiting review.
+  assert.deepEqual([...req.labels].sort(), ['claude-in-review']);
+  assert.equal(sim.log.filter((e) => e.kind === 'handoff' && e.task === REQ).length, 1);
+});
+
+test('S45 an unauthorized mark is refused once, disarmed, and never re-adopted', () => {
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
+  let req;
+  sim.at('2026-08-18T09:03Z', (s) => { req = s.markIssue({ author: 'NONE' }); });
+  sim.run('2026-08-18T09:00Z', '2026-08-19T09:00Z');
+
+  const items = sim.requestItems();
+  assert.equal(items.length, 1);
+  assert.equal(items[0].outcome, 'obsolete');         // declined: no anchor to roll to
+  assert.equal(sim.log.filter((e) => e.kind === 'handoff' && e.task === REQ).length, 0);
+  // A refusal is not a park: nothing here is anybody's inbox, so it closes rather
+  // than joining a triage lane.
+  assert.equal(items[0].labels.has('needs-human'), false);
+  // The issue is told and disarmed — the label that would re-trigger is gone, so a
+  // day of further ticks adopts nothing. Without the disarm this is an hourly
+  // refusal loop on somebody else's issue.
+  assert.equal(sim.log.filter((e) => e.kind === 'request-declined').length, 1);
+  assert.deepEqual([...req.labels], []);
+  assert.equal(adopts(sim).length, 1);
+});
+
+test('S46 an outsider\'s issue runs only on a write-access approval comment', () => {
+  const approved = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
+  approved.at('2026-08-18T09:03Z', (s) => s.markIssue({
+    author: 'NONE',
+    comments: [{ login: 'owner', association: 'OWNER', body: '/claude go' }],
+  }));
+  approved.run('2026-08-18T09:00Z', '2026-08-19T09:00Z');
+  assert.ok(parked(approved.requestItems()[0], 'approval'));
+
+  // The same phrase from someone without write access decides nothing.
+  const not = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
+  not.at('2026-08-18T09:03Z', (s) => s.markIssue({
+    author: 'NONE',
+    comments: [{ login: 'passer-by', association: 'NONE', body: '/claude go' }],
+  }));
+  not.run('2026-08-18T09:00Z', '2026-08-19T09:00Z');
+  assert.equal(not.requestItems()[0].outcome, 'obsolete');
+});
+
+test('S47 the model label routes the run; an unknown family falls back to the default', () => {
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
+  sim.at('2026-08-18T09:03Z', (s) => {
+    s.markIssue({ author: 'OWNER', model: 'sonnet' });
+    s.markIssue({ author: 'OWNER', model: 'gpt-9' });
+  });
+  sim.run('2026-08-18T09:00Z', '2026-08-19T09:00Z');
+  assert.deepEqual(sim.requestItems().map((i) => i.model), ['sonnet', 'opus']);
+  // Two requests, two items — they are separate work, not one batch. Two
+  // approval parks, and neither delays the other.
+  assert.equal(sim.requestItems().length, 2);
+  assert.ok(sim.requestItems().every((i) => parked(i, 'approval')));
+});
+
+test('S48 a request withdrawn after adoption never reaches an agent', () => {
+  const withdrawn = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
+  let req;
+  withdrawn.at('2026-08-18T09:03Z', (s) => { req = s.markIssue({ author: 'OWNER' }); });
+  // …between the tick that adopted it and the executor picking it up.
+  withdrawn.at('2026-08-18T09:17:20Z', (s) => s.withdrawRequest(req.number));
+  withdrawn.run('2026-08-18T09:00Z', '2026-08-18T18:00Z');
+  assert.equal(withdrawn.requestItems()[0].outcome, 'obsolete');
+  assert.equal(withdrawn.log.filter((e) => e.kind === 'handoff' && e.task === REQ).length, 0);
+
+  // Closing the issue is the same answer by a different route.
+  const closed = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
+  let req2;
+  closed.at('2026-08-18T09:03Z', (s) => { req2 = s.markIssue({ author: 'OWNER' }); });
+  closed.at('2026-08-18T09:17:20Z', (s) => s.closeRequestIssue(req2.number));
+  closed.run('2026-08-18T09:00Z', '2026-08-18T18:00Z');
+  assert.equal(closed.requestItems()[0].outcome, 'obsolete');
+});
+
+test('S49 a failed request parks as a fault and stays put; re-marking is the only way it runs again', () => {
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
+  let req;
+  sim.at('2026-08-18T09:03Z', (s) => {
+    s.updateTask(REQ, { agentFails: () => true });
+    req = s.markIssue({ author: 'OWNER' });
+  });
+  sim.run('2026-08-18T09:00Z', '2026-08-19T09:00Z');
+
+  // A broken run is a `failure` — someone reads the trace — and the ISSUE keeps
+  // `claude-queued`: nothing mechanical re-arms work that writes code, and the
+  // standing label is what stops the next tick adopting a second run.
+  assert.ok(parked(sim.requestItems()[0], 'failure'));
+  assert.deepEqual([...req.labels], ['claude-queued']);
+  assert.equal(adopts(sim).length, 1);
+
+  // The human fixes the cause and re-marks it: exactly one further adoption.
+  const again = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
+  let r2;
+  again.at('2026-08-18T09:03Z', (s) => { r2 = s.markIssue({ author: 'OWNER' }); });
+  again.at('2026-08-18T12:00Z', (s) => s.remarkIssue(r2.number, { model: 'haiku' }));
+  again.run('2026-08-18T09:00Z', '2026-08-19T09:00Z');
+  assert.equal(adopts(again).length, 2);
+  assert.deepEqual(again.requestItems().map((i) => i.model), ['opus', 'haiku']);
+  assert.ok(again.requestItems().every((i) => parked(i, 'approval')));
+});
