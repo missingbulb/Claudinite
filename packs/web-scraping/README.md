@@ -69,7 +69,7 @@ Each was already written; none is new material.
 
 | What moved | From | Landed in |
 |---|---|---|
-| The datacenter-IP diagnosis: a fetch that works locally and 403s from CI is the IP, not the User-Agent; the residential/rendering proxy is the answer, and a target still blocked through it is un-cacheable | `packs/basics/RULES.md` (deleted there in this change) | **A fetch that works on your machine and fails from CI** |
+| The datacenter-IP diagnosis: a fetch that works locally and 403s from CI is the IP, not the User-Agent; the residential/rendering proxy is the answer, and a target still blocked through it is un-cacheable | the baseline prose (deleted there in this change) | **A fetch that works on your machine and fails from CI** |
 | Cross a time zone exactly once, at the ingest edge — including the downstream double-conversion and the device-clock "now" | `missingbulb/EdFringeNow`'s local `edfringe-data` pack | **Converting an instant to the domain's local time** (landed with the pack) and **Taking a "now"** |
 | A conversion change is a full-snapshot change: regenerate from the raw record, and expect the boundary to move records between partitions | `missingbulb/EdFringeNow`'s local `edfringe-data` pack | **Changing the conversion** |
 | Read an ambiguous value by what the page declares, centrally — the numeric slash date resolved from a positive locale signal, and `Z` as serialization rather than the subject's zone | `missingbulb/GoogleCalendarEventCreator`'s local `gcec` pack | **Parsing a value whose format is ambiguous** |

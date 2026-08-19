@@ -18,7 +18,7 @@
 
 export default {
   id: 'web-scraping',
-  version: 2,
+  version: 3,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs:

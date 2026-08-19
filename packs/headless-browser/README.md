@@ -37,11 +37,10 @@ particular call still exists — the shape the corpus rejects outright.
 
 ## Boundary
 
-The [writing-tests](../basics/skills/writing-tests/SKILL.md) skill owns which engine a UI golden
-should use, the tolerance a browser golden may carry, self-skipping where no browser is present,
-and the re-baselining approval gate — this pack restates none of it, and its "zero-diff costs the
-whole recipe" rule is written to complement that guidance rather than contradict it.
-[github-actions](../github-actions/) owns wiring the run into a workflow.
+This pack is the browser itself. Which engine a UI golden should use, the tolerance it may carry,
+self-skipping where no browser is present, the re-baselining approval gate, and wiring the run into
+a workflow are all deliberately not here — the "zero-diff costs the whole recipe" rule is written to
+complement that testing guidance rather than restate or contradict it.
 
 Provenance: distilled from three fleet members that drive a browser from code, independently and
 for different reasons. `missingbulb/EdFringeNow` — a pinned-Chromium visual-requirements harness:

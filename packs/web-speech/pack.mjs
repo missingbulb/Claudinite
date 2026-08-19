@@ -15,7 +15,7 @@ const SOURCE = /\.(mjs|cjs|js|jsx|ts|tsx)$/;
 
 export default {
   id: 'web-speech',
-  version: 2,
+  version: 3,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'browser voice I/O gotchas — SpeechRecognition results and errors, speechSynthesis and chrome.tts, mic permission and lifecycle',

@@ -4,10 +4,10 @@ Driving a real browser from your own process — a page loaded, faked, driven an
 rather than by a user. True whether the output is a golden image, a build artifact, or an
 assertion about behaviour, and whether the driver is Playwright or Puppeteer.
 
-Two neighbours own ground this pack deliberately does not restate: **which** engine a UI golden
-should be rendered with, what tolerance it may carry, and the approval gate before re-baselining
-one belong to the [writing-tests](../basics/skills/writing-tests/SKILL.md) skill; wiring the run
-into a workflow belongs to [github-actions](../github-actions/). This pack is the browser itself.
+This pack is the browser itself, and deliberately restates none of the ground either side of it:
+**which** engine a UI golden should be rendered with, what tolerance it may carry, and the approval
+gate before re-baselining one are testing decisions, and wiring the run into a workflow is a
+workflow one.
 
 ## Getting a browser
 

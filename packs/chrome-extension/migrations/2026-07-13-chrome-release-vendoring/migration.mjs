@@ -28,7 +28,7 @@
 // migration's own tests. (A past automated retirement deleted them on fleet
 // telemetry alone and broke the canon's CI with 53 stale-ref findings.)
 const STUB = '.github/workflows/chrome-extension-release.yml';
-const S = 'packs/chrome-extension-release/stubs';
+const S = 'packs/chrome-extension/stubs';
 
 export default {
   id: 'chrome-release-vendoring',

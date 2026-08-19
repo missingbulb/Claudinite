@@ -134,9 +134,8 @@ count cannot tell healthy-rare from broken, so the question is loads *against th
 skill's own declared trigger plausibly applied*. Zeros are implicit (a skill with no loads has no
 key), which is what makes "never loads" visible: diff the file against the repo's mounted skills.
 
-Fleet-wide aggregation is deliberately **not** here — the canon knows mechanisms, never repos. It is
-the sheepdog pack's [`fleet-usage`](../sheepdog/tasks/fleet-usage/README.md) task, in the fleet-enforcer
-repo, which is the only place that knows who the members are.
+Fleet-wide aggregation is deliberately **not** here — the canon knows mechanisms, never repos, so
+it belongs to the fleet-enforcer repo, the only place that knows who the members are.
 
 ## Skills
 
@@ -151,9 +150,8 @@ its worker are written to: the declaration's fields, the code-work and agentic p
 precondition as the only place a task may decide not to run, and how a work item converges. That
 contract is what the four task checks below judge against, and it is a skill rather than a rule
 because it is wanted when a task is being written, not carried by every session in every repo.
-Adoption itself —
-`adopt-claudinite`, `adopt-pack` and the `adopt-requested-packs` task — is the
-[claudinite-lifecycle](../claudinite-lifecycle/README.md) pack's: its subject is Claudinite's own surface, not lesson capture.
+Adoption itself — `adopt-claudinite`, `adopt-pack` and the `adopt-requested-packs` task — is not
+here: its subject is Claudinite's own surface, not lesson capture.
 
 ## Rules (`RULES.md`)
 
@@ -249,9 +247,8 @@ Extract writes into it, promote reads from it, dedup prunes within it — all ag
 | `task-phase-discipline` | medium | complexity | check: advisory |
 
 The last five are the **task contract** ([the writing-tasks skill](skills/writing-tasks/SKILL.md)), which
-lives here rather than in [claudinite-lifecycle](../claudinite-lifecycle/README.md) because it judges
-whether a task is *written* correctly — authoring, the subject of this pack — and not whether
-Claudinite is *working* in the repo, which is that one's. Relevance-first: all five are inert until
+lives here because it judges whether a task is *written* correctly — authoring, the subject of this
+pack — and not whether Claudinite is *working* in the repo. Relevance-first: all five are inert until
 the repo carries a `tasks/<name>/task.mjs` of its own.
 
 - `task-declaration-shape` — a task declaration the scheduler reads is incomplete or illegal, so the task never fires or fires wrong.

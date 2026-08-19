@@ -6,16 +6,16 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runRule } from '../../engine/checks/helpers/work.mjs';
-import releasePack from '../../packs/chrome-extension-release/pack.mjs';
-import releaseWorkflows from '../../packs/chrome-extension-release/release-workflows.mjs';
+import pack from '../../packs/chrome-extension/pack.mjs';
+import releaseWorkflows, { shipsReleasePipeline, SHIPS_PIPELINE_PATH_RE, SHIPS_PIPELINE_TEXT_RE } from '../../packs/chrome-extension/release-workflows.mjs';
 
-const templateTokens = declaredCheck('packs/chrome-extension-release', 'cer/template-tokens');
-const releaseConfig = declaredCheck('packs/chrome-extension-release', 'cer/release-config');
-const versionSync = declaredCheck('packs/chrome-extension-release', 'cer/version-sync');
-const releaseLayout = declaredCheck('packs/chrome-extension-release', 'cer/release-layout');
-const readmeSections = declaredCheck('packs/chrome-extension-release', 'cer/readme-sections');
-const privacyPermissionAlignment = declaredCheck('packs/chrome-extension-release', 'cer/privacy-permission-alignment');
-const permissionAddedStoreIssue = declaredCheck('packs/chrome-extension-release', 'cer/permission-added-store-issue');
+const templateTokens = declaredCheck('packs/chrome-extension', 'cer/template-tokens');
+const releaseConfig = declaredCheck('packs/chrome-extension', 'cer/release-config');
+const versionSync = declaredCheck('packs/chrome-extension', 'cer/version-sync');
+const releaseLayout = declaredCheck('packs/chrome-extension', 'cer/release-layout');
+const readmeSections = declaredCheck('packs/chrome-extension', 'cer/readme-sections');
+const privacyPermissionAlignment = declaredCheck('packs/chrome-extension', 'cer/privacy-permission-alignment');
+const permissionAddedStoreIssue = declaredCheck('packs/chrome-extension', 'cer/permission-added-store-issue');
 
 const repoRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 
@@ -99,6 +99,10 @@ const RELEASE_CONFIG = [
   '',
 ].join('\n');
 
+// Every rule the release half contributes — the coded one and the seven declared.
+const RELEASE_RULES = [releaseWorkflows, templateTokens, releaseConfig, versionSync,
+  releaseLayout, privacyPermissionAlignment, permissionAddedStoreIssue, readmeSections];
+
 // The full conformant fixture; individual tests break one piece at a time.
 const CONFORMANT = {
   'extension/manifest.json': MANIFEST,
@@ -112,7 +116,7 @@ const CONFORMANT = {
 test('a fully conformant extension repo is clean across the pack', () => {
   const root = makeRepo({ base: CONFORMANT });
   try {
-    for (const rule of [releaseWorkflows, templateTokens, releaseConfig, versionSync, releaseLayout, privacyPermissionAlignment, permissionAddedStoreIssue, readmeSections]) {
+    for (const rule of RELEASE_RULES) {
       assert.deepEqual(run(rule, root), [], `rule ${rule.id} should be clean`);
     }
   } finally { cleanup(root); }
@@ -323,30 +327,35 @@ test('permission-added-store-issue: silent when no permission was added', () => 
   } finally { cleanup(root); }
 });
 
-test('pack fingerprint: opt-in — a manifest alone does not trip detect; the vendored orchestrator does', () => {
+test('shipping gate: a repo that only codes an extension carries the pack and none of its release rules', () => {
+  // The pack's fingerprint is the manifest, so it is active here; what must stay
+  // silent is the release half, which asks for a config, a privacy page and README
+  // sections this repo has no reason to have (#1057).
   const codingOnly = makeRepo({ base: { 'extension/manifest.json': MANIFEST } });
-  const shipping = makeRepo({ base: CONFORMANT });
   try {
-    assert.equal(releasePack.detect(buildContext({ root: codingOnly, mode: 'all' })), false);
-    assert.equal(releasePack.detect(buildContext({ root: shipping, mode: 'all' })), true);
-  } finally { cleanup(codingOnly); cleanup(shipping); }
+    assert.equal(pack.detect(buildContext({ root: codingOnly, mode: 'all' })), true, 'the pack itself is active');
+    assert.equal(shipsReleasePipeline(buildContext({ root: codingOnly, mode: 'all' })), false);
+    for (const rule of RELEASE_RULES) {
+      assert.deepEqual(run(rule, codingOnly), [], `rule ${rule.id} must be inert on a repo that does not publish`);
+    }
+  } finally { cleanup(codingOnly); }
 });
 
-test('pack fingerprint: the pre-vendoring @main orchestrator still fingerprints as carrying the pack', () => {
+test('shipping gate: the pre-vendoring @main orchestrator still reads as shipping', () => {
   const files = { ...CONFORMANT, '.github/workflows/chrome-extension-release.yml': LEGACY_ORCHESTRATOR };
   const root = makeRepo({ base: files });
   try {
-    assert.equal(releasePack.detect(buildContext({ root, mode: 'all' })), true);
+    assert.equal(shipsReleasePipeline(buildContext({ root, mode: 'all' })), true);
   } finally { cleanup(root); }
 });
 
-test('pack fingerprint: a legacy "Release"-named orchestrator still fingerprints; the rule flags the stale name', () => {
+test('shipping gate: a legacy "Release"-named orchestrator still ships; the rule flags the stale name', () => {
   const files = { ...CONFORMANT };
   files['.github/workflows/chrome-extension-release.yml'] = ORCHESTRATOR
     .replace('name: Release to Chrome Store', 'name: Release');
   const root = makeRepo({ base: files });
   try {
-    assert.equal(releasePack.detect(buildContext({ root, mode: 'all' })), true);
+    assert.equal(shipsReleasePipeline(buildContext({ root, mode: 'all' })), true);
     assert.ok(run(releaseWorkflows, root).some((f) => /name: is "Release"/.test(f.what)));
   } finally { cleanup(root); }
 });
@@ -366,9 +375,55 @@ test('readme-sections: flags a README missing the Install or Releasing section',
 // permission-added check watches the same arrays for growth — and a declaration
 // borrows nothing, so the drift guard lives here rather than in a shared module.
 test('the permission-alignment and permission-added declarations watch the same manifest keys', () => {
-  const specs = JSON.parse(readFileSync(join(repoRoot, 'packs/chrome-extension-release/declared-checks.json'), 'utf8'));
+  const specs = JSON.parse(readFileSync(join(repoRoot, 'packs/chrome-extension/declared-checks.json'), 'utf8'));
   const byId = (id) => specs.find((s) => s.id === id);
   assert.deepEqual(
     byId('cer/permission-added-store-issue').forbidAddedValueInArray[0].atFields,
     byId('cer/privacy-permission-alignment').extractValueSets[0].valuesOfArraysAtFields);
+});
+
+// --- the shipping gate has three copies, and they must agree (#1057) ---------
+// The gate is spelled three times because three layers ask it and none of them can
+// import the others: the coded rule (release-workflows.mjs), the seven declared
+// checks (declared-checks.json, which cannot import at all), and the scheduler's
+// `release` signal (engine/scheduler/signals/local.mjs, which may not import a pack
+// — the engine depends on no pack). One drifting copy is silent in the worst way:
+// the checks and the task would disagree about whether a repo publishes.
+test('shipping gate: the declared checks carry the same test as the coded predicate', () => {
+  const specs = JSON.parse(readFileSync(join(repoRoot, 'packs/chrome-extension/declared-checks.json'), 'utf8'));
+  const cer = specs.filter((s) => s.id.startsWith('cer/'));
+  assert.equal(cer.length, specs.length, 'every declared check here is a release check');
+  for (const spec of cer) {
+    const gate = spec.relevantWhen?.someTrackedFileContains;
+    assert.ok(gate, `${spec.id} must be gated on the repo shipping`);
+    assert.equal(gate.pathMatching, `/${SHIPS_PIPELINE_PATH_RE.source}/`, `${spec.id} path gate`);
+    assert.equal(gate.text, `/${SHIPS_PIPELINE_TEXT_RE.source}/m`, `${spec.id} text gate`);
+  }
+});
+
+test('shipping gate: the scheduler signal answers what the pack rules answer', async () => {
+  const { localSignalContext } = await import('../../engine/scheduler/signals/local.mjs');
+  // One matrix, both readers. Each row is a repo shape that has actually mattered:
+  // a publisher, a publisher known only by its release config, the canon's own copies
+  // of the reusable workflows, and a repo that just codes an extension.
+  const SHAPES = [
+    ['a publisher', { ...CONFORMANT }, true],
+    ['a publisher whose orchestrator was renamed away', (() => {
+      const f = { ...CONFORMANT };
+      f['.github/workflows/chrome-extension-release.yml'] = ORCHESTRATOR.replace('name: Release to Chrome Store', 'name: Ship It');
+      return f;
+    })(), true],
+    ['the canon, hosting the reusables it does not publish from', {
+      '.github/workflows/chrome-extension-publish-store.yml': WF('Chrome extension: Publish to Chrome Web Store (reusable)'),
+      '.github/workflows/chrome-extension-daily-release.yml': WF('Chrome extension: Daily Auto-Release (reusable)'),
+    }, false],
+    ['a repo that only codes an extension', { 'extension/manifest.json': MANIFEST }, false],
+  ];
+  for (const [why, files, expected] of SHAPES) {
+    const root = makeRepo({ base: files });
+    try {
+      assert.equal(shipsReleasePipeline(buildContext({ root, mode: 'all' })), expected, `pack rules: ${why}`);
+      assert.equal(localSignalContext(root).shipsReleasePipeline, expected, `scheduler signal: ${why}`);
+    } finally { cleanup(root); }
+  }
 });

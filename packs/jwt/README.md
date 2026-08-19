@@ -12,9 +12,8 @@ JWT libraries have a history of critical vulnerabilities, and an advisory can pu
 repo's own history stands still — so the watch runs on the calendar, not on repo movement, and
 records its picture in a standing tracker issue.
 
-Scope: generic JWT practice. The Google-issuer validator config is the
-[`google-identity`](../google-identity/README.md) pack's turf; OAuth token acquisition in browser
-clients is [`chrome-extension`](../chrome-extension/README.md)'s.
+Scope: generic JWT practice — not the Google-issuer validator's own config, and not OAuth
+token acquisition in a browser client.
 
 _Provenance: distilled from **The JWT Handbook** (Sebastián E. Peyrott, Auth0, v0.14.2) — chapters
 2–6 (applications, JWS/JWE/JWK structure) and Annex A (pitfalls, attacks, best current practices)._

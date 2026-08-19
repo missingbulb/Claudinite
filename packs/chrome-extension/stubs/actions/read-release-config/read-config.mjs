@@ -77,7 +77,7 @@ const repoName = process.env.REPO_NAME;
 if (!repoName) fail('REPO_NAME env is required (github.event.repository.name).');
 
 if (!existsSync(CONFIG_PATH)) {
-  fail(`${CONFIG_PATH} is required — every extension repo declares its release config explicitly (see the chrome-extension-release standard in Claudinite).`);
+  fail(`${CONFIG_PATH} is required — every extension repo declares its release config explicitly (see the Chrome Web Store release standard in Claudinite).`);
 }
 
 const cfg = parseConfig(readFileSync(CONFIG_PATH, 'utf8'));

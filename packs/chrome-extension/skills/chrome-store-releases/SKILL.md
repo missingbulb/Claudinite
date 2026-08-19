@@ -1,14 +1,19 @@
-# Chrome extension — release & Chrome Web Store publication standard
+---
+name: chrome-store-releases
+description: The Chrome Web Store release standard every extension repo of ours ships — the vendored release workflows and composite actions, .github/release.config, versioning and the packaged artifact, the store secrets, the README install sections, and the manual Chrome Web Store steps. Use when setting up an extension repo to publish, changing or debugging its release pipeline, or when a cer/ check fires.
+---
+
+# Releasing a Chrome extension to the Web Store
 
 Every Chrome-extension repo of ours ships the **same** release pipeline: same workflows, same
 Chrome Web Store API usage, same secrets, same versioning and artifact rules, same README install
-sections. This doc is that contract, the setup steps for a new extension repo, and the manual
+sections. This skill is that contract, the setup steps for a new extension repo, and the manual
 Chrome Web Store actions the automation can't do. The workflow **logic** is authored once, in this
-pack's [`stubs/`](stubs/) — the [orchestrator](stubs/workflows/chrome-extension-release.yml), the
+pack's [`stubs/`](../../stubs/) — the [orchestrator](../../stubs/workflows/chrome-extension-release.yml), the
 four `workflow_call`-only **reusable workflows**, and the
-[report-failure](stubs/actions/report-failure/action.yml),
-[read-release-config](stubs/actions/read-release-config/action.yml) and
-[bump-extension-patch](stubs/actions/bump-extension-patch/action.yml) composite actions — and
+[report-failure](../../stubs/actions/report-failure/action.yml),
+[read-release-config](../../stubs/actions/read-release-config/action.yml) and
+[bump-extension-patch](../../stubs/actions/bump-extension-patch/action.yml) composite actions — and
 **vendored into each extension repo's own `.github/`**, where the whole pipeline runs with no
 cross-repo dependency. GitHub only resolves a reusable workflow or composite action from a repo's
 own `.github/`, so "the logic lives in the pack" means the pack holds the templates and each repo
@@ -61,7 +66,7 @@ general names so other standards reuse them as-is. When in doubt, prefix.
   the signing key + client id are injected into both. (A repo with no `API_BASE_URL` — no backend —
   produces two byte-identical zips; the split is a no-op there.)
 
-**Workflow** — **one** orchestrator per repo, [`chrome-extension-release.yml`](stubs/workflows/chrome-extension-release.yml), named exactly
+**Workflow** — **one** orchestrator per repo, [`chrome-extension-release.yml`](../../stubs/workflows/chrome-extension-release.yml), named exactly
 `Release to Chrome Store`. It owns only the triggers; its three `if:`-guarded jobs each call a **local**
 reusable workflow (`./.github/workflows/…`, all vendored alongside it). The failure reporter keys
 tracking issues on the **per-operation** names baked into the reusable workflows (`Release: Create
@@ -198,9 +203,9 @@ in the repo's first-publication issue).*
 ## Setting up a new extension repo
 
 1. Declare the pack in `.claudinite-checks.json`; baselining then **vendors the release set** — the
-   [orchestrator](stubs/workflows/chrome-extension-release.yml) plus the reusable workflows under
-   [`stubs/workflows/`](stubs/workflows/) and the composite actions under
-   [`stubs/actions/`](stubs/actions/) — into this repo's own `.github/`. (Setting up before the next
+   [orchestrator](../../stubs/workflows/chrome-extension-release.yml) plus the reusable workflows under
+   [`stubs/workflows/`](../../stubs/workflows/) and the composite actions under
+   [`stubs/actions/`](../../stubs/actions/) — into this repo's own `.github/`. (Setting up before the next
    nightly pass? Copy those two trees yourself; there are no tokens to replace.) Then write the
    **required** `.github/release.config` (dotenv) with **all five** keys, explicitly — no defaults:
    `manifest_path`, `package_json_path`, `setup_command` (`""` = no install), `test_command`,
@@ -253,7 +258,7 @@ extension; the upstream reference is
    [developer dashboard](https://chrome.google.com/webstore/devconsole) (one-time $5 fee).
 2. **Add new item** → upload the release zip. If the extension pins its ID with a manifest
    `key` (needed when OAuth redirect URIs depend on a stable ID — see
-   [the chrome-extension pack RULES](../chrome-extension/RULES.md)), the **first** upload must NOT contain the
+   [the chrome-extension pack RULES](../../RULES.md)), the **first** upload must NOT contain the
    `key`: the store assigns the ID at first upload, and you copy the dashboard's Package-tab
    public key back into the build afterwards. Record the 32-char item ID → the
    `CHROME_EXTENSION_ID` secret.

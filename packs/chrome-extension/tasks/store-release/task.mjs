@@ -1,4 +1,4 @@
-// chrome-extension-release task: store-release — the pack-contributed release
+// chrome-extension task: store-release — the pack-contributed release
 // trigger (per-project-scheduling DESIGN §6). STRUCTURAL Stage 2: `model: 'none'`
 // means the whole decision is code and there is NO agent phase —
 // the executor runs `worker.mjs` as code-work. This task ABSORBS the
@@ -30,6 +30,17 @@ export default {
   // precondition is the cheap pre-filter; the workflow is the exact gate.
   precondition(signals) {
     const rel = signals.release ?? {};
+
+    // Does this repo publish at all? The pack is fingerprinted on the manifest, so
+    // it is active on every extension repo, including the ones that only code one —
+    // and the daily leg this task fires is a workflow such a repo does not have.
+    // `shipsPipeline` is the same orchestrator-name test the release checks gate on
+    // (#1057); null means the collector could not read the checkout, which is not a
+    // reason to fire a release.
+    if (rel.shipsPipeline !== true) {
+      return { run: false, reason: 'this repo does not ship the Chrome Web Store pipeline' };
+    }
+
     const shipped = norm(rel.manifestVersion);
     const released = norm(rel.latestTag);
     const manifestAhead = shipped !== '' && shipped !== released;

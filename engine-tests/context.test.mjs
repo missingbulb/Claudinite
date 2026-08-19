@@ -34,13 +34,13 @@ test('loadConfig: a pack entry object normalizes — id into packs, config into 
         config: { rules: [{ from: 'a', to: 'b' }] },
         rules: { 'file-placement': 'advisory' },
         accept: [{ rule: 'reference-integrity', path: 'x.md', reason: 'why' }] },
-      { id: 'chrome-extension', via: ['chrome-extension-release'] },
+      { id: 'firebase', via: ['firebase-release'] },
     ],
   }) } });
   try {
     const cfg = loadConfig(root);
     assert.deepEqual(cfg.errors, []);
-    assert.deepEqual(cfg.packs, ['basics', 'barriers', 'chrome-extension']);
+    assert.deepEqual(cfg.packs, ['basics', 'barriers', 'firebase']);
     assert.deepEqual(cfg.packConfig, { barriers: { rules: [{ from: 'a', to: 'b' }] } });
     assert.deepEqual(cfg.rules, { 'file-placement': 'advisory' });
     // The entry-sourced acceptance carries its provenance: the pack that motivated it.

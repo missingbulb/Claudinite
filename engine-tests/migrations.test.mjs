@@ -660,3 +660,71 @@ test('applyPackRenames: idempotent, and blind to everything outside the packs ar
   assert.deepEqual(second.done, [], 'a converged declaration is a no-op');
   assert.equal(second.written, null, 'and is not rewritten at all');
 });
+
+// --- an ABSORBED pack: two declared ids that become one (#1057) --------------
+// The chrome-extension-release collapse is the first rename whose target is a pack
+// the member ALREADY declares — chrome-extension was the absorbed pack's `requires`,
+// so every member carrying one carried both. The op therefore has to merge, and what
+// it merges is the member's own writing: the config it answered at adoption, the
+// severities it chose, the acceptances standing against findings that would
+// otherwise come straight back.
+test('applyPackRenames: an absorbed pack merges into the entry that already exists', async () => {
+  const { applyPackRenames } = await import('../engine/migrations/registry.mjs');
+  const rec = (await import('../packs/chrome-extension/migrations/2026-08-19-chrome-release-collapse/migration.mjs')).default;
+  const declaration = JSON.stringify({
+    packs: [
+      'basics',
+      { id: 'chrome-extension', accept: [{ rule: 'ce/content-script-module-syntax', path: 'src/', reason: 'bundled' }] },
+      { id: 'chrome-extension-release', config: { store_id: 'abc' }, accept: [{ rule: 'cer/readme-sections', path: 'README.md', reason: 'template lands later' }] },
+    ],
+  }, null, 2);
+  let written = null;
+  const done = await applyPackRenames(rec, {
+    read: async () => declaration, write: async (_f, c) => { written = c; },
+  });
+  assert.equal(done.length, 2, `expected the rename and the merge, got ${JSON.stringify(done)}`);
+  const packs = JSON.parse(written).packs;
+  assert.deepEqual(packs, [
+    'basics',
+    {
+      id: 'chrome-extension',
+      accept: [
+        { rule: 'ce/content-script-module-syntax', path: 'src/', reason: 'bundled' },
+        { rule: 'cer/readme-sections', path: 'README.md', reason: 'template lands later' },
+      ],
+      config: { store_id: 'abc' },
+    },
+  ], 'one entry, in the surviving id\'s original position, carrying both sides');
+
+  const again = await applyPackRenames(rec, {
+    read: async () => written, write: async () => { assert.fail('nothing left to write'); },
+  });
+  assert.deepEqual(again, [], 'a converged declaration is a no-op');
+});
+
+test('applyPackRenames: a string entry absorbing an object keeps the object side', async () => {
+  const { applyPackRenames } = await import('../engine/migrations/registry.mjs');
+  const rec = (await import('../packs/chrome-extension/migrations/2026-08-19-chrome-release-collapse/migration.mjs')).default;
+  let written = null;
+  await applyPackRenames(rec, {
+    read: async () => JSON.stringify({
+      packs: ['chrome-extension', { id: 'chrome-extension-release', config: { store_id: 'abc' } }],
+    }, null, 2),
+    write: async (_f, c) => { written = c; },
+  });
+  assert.deepEqual(JSON.parse(written).packs, [{ id: 'chrome-extension', config: { store_id: 'abc' } }],
+    'the survivor is promoted to an object rather than dropping the absorbed config');
+});
+
+test('mergeDeclarationEntries: the survivor wins a conflict, arrays union', async () => {
+  const { mergeDeclarationEntries } = await import('../engine/migrations/registry.mjs');
+  assert.deepEqual(
+    mergeDeclarationEntries(
+      { id: 'p', config: { a: 1, keep: 'survivor' }, via: ['basics'] },
+      { id: 'q', config: { b: 2, keep: 'absorbed' }, via: ['basics', 'other'] },
+    ),
+    { id: 'p', config: { a: 1, keep: 'survivor', b: 2 }, via: ['basics', 'other'] },
+  );
+  assert.deepEqual(mergeDeclarationEntries({ id: 'p', config: { a: 1 } }, 'q'), { id: 'p', config: { a: 1 } },
+    'a plain-string entry carries an id and nothing else, so there is nothing to take from it');
+});

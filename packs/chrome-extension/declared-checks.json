@@ -1,6 +1,12 @@
 [
   {
     "id": "cer/template-tokens",
+    "relevantWhen": {
+      "someTrackedFileContains": {
+        "pathMatching": "/^\\.github\\/(?:workflows\\/[^/]+\\.ya?ml|release\\.config)$/",
+        "text": "/^(?:name:\\s*['\"]?(?:Release to Chrome Store|Release)['\"]?\\s*|manifest_path=.*)$/m"
+      }
+    },
     "severity": "blocking",
     "failureMessage": "the setup contract says: grep for __ afterwards; no token may survive",
     "scanFiles": "/^\\.github\\/workflows\\/[^/]+\\.ya?ml$/",
@@ -15,6 +21,12 @@
   },
   {
     "id": "cer/release-config",
+    "relevantWhen": {
+      "someTrackedFileContains": {
+        "pathMatching": "/^\\.github\\/(?:workflows\\/[^/]+\\.ya?ml|release\\.config)$/",
+        "text": "/^(?:name:\\s*['\"]?(?:Release to Chrome Store|Release)['\"]?\\s*|manifest_path=.*)$/m"
+      }
+    },
     "severity": "blocking",
     "failureMessage": "the release config is explicit with no defaults — a missing/typo'd key would ship the wrong thing with no signal",
     "checkKeyValueFile": [
@@ -42,6 +54,12 @@
   },
   {
     "id": "cer/version-sync",
+    "relevantWhen": {
+      "someTrackedFileContains": {
+        "pathMatching": "/^\\.github\\/(?:workflows\\/[^/]+\\.ya?ml|release\\.config)$/",
+        "text": "/^(?:name:\\s*['\"]?(?:Release to Chrome Store|Release)['\"]?\\s*|manifest_path=.*)$/m"
+      }
+    },
     "severity": "blocking",
     "failureMessage": "a version that diverges ships the wrong number to the store or refuses to publish",
     "checkParsedFiles": [
@@ -66,6 +84,12 @@
   },
   {
     "id": "cer/release-layout",
+    "relevantWhen": {
+      "someTrackedFileContains": {
+        "pathMatching": "/^\\.github\\/(?:workflows\\/[^/]+\\.ya?ml|release\\.config)$/",
+        "text": "/^(?:name:\\s*['\"]?(?:Release to Chrome Store|Release)['\"]?\\s*|manifest_path=.*)$/m"
+      }
+    },
     "severity": "blocking",
     "failureMessage": "the privacy page deploys from PRIVACY.md, and the store listing points at that live URL",
     "requirePaths": [
@@ -78,6 +102,12 @@
   },
   {
     "id": "cer/readme-sections",
+    "relevantWhen": {
+      "someTrackedFileContains": {
+        "pathMatching": "/^\\.github\\/(?:workflows\\/[^/]+\\.ya?ml|release\\.config)$/",
+        "text": "/^(?:name:\\s*['\"]?(?:Release to Chrome Store|Release)['\"]?\\s*|manifest_path=.*)$/m"
+      }
+    },
     "severity": "blocking",
     "failureMessage": "every extension repo documents install and release the same way, from the standard template",
     "fix": "copy it from the README template in the release standard and fill in the repo values",
@@ -100,6 +130,12 @@
   },
   {
     "id": "cer/permission-added-store-issue",
+    "relevantWhen": {
+      "someTrackedFileContains": {
+        "pathMatching": "/^\\.github\\/(?:workflows\\/[^/]+\\.ya?ml|release\\.config)$/",
+        "text": "/^(?:name:\\s*['\"]?(?:Release to Chrome Store|Release)['\"]?\\s*|manifest_path=.*)$/m"
+      }
+    },
     "severity": "advisory",
     "failureMessage": "the store requires a written justification per permission and blocks publishing the new version until the dashboard carries it; that step is manual, so a proactive issue beats the reactive publish failure",
     "scope": "work",
@@ -115,6 +151,12 @@
   },
   {
     "id": "cer/privacy-permission-alignment",
+    "relevantWhen": {
+      "someTrackedFileContains": {
+        "pathMatching": "/^\\.github\\/(?:workflows\\/[^/]+\\.ya?ml|release\\.config)$/",
+        "text": "/^(?:name:\\s*['\"]?(?:Release to Chrome Store|Release)['\"]?\\s*|manifest_path=.*)$/m"
+      }
+    },
     "severity": "blocking",
     "failureMessage": "the deployed privacy policy must disclose everything the extension can access; an undisclosed permission is a store-review and trust failure",
     "extractValueSets": [

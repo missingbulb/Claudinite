@@ -16,8 +16,8 @@ import { canonicalPackVersions, RENAMED_PACKS } from '../../engine/pack_loader/r
 // the baselining backfill): declaring a pack materializes its `requires`.
 const PACKS = [
   { id: 'basics' },
-  { id: 'chrome-extension' },
-  { id: 'chrome-extension-release', requires: ['chrome-extension'] },
+  { id: 'firebase' },
+  { id: 'firebase-release', requires: ['firebase'] },
   { id: 'a', requires: ['b'] },
   { id: 'b', requires: ['c'] },
   { id: 'c' },
@@ -61,8 +61,8 @@ test('declTokenFor: the writer-side token — canonical namespaced for a local p
 
 test('resolveDeclaredPacks: materializes a required pack right after its dependent, with via provenance', () => {
   assert.deepEqual(
-    resolveDeclaredPacks(['basics', 'chrome-extension-release'], PACKS),
-    ['basics', 'chrome-extension-release', { id: 'chrome-extension', via: ['chrome-extension-release'] }],
+    resolveDeclaredPacks(['basics', 'firebase-release'], PACKS),
+    ['basics', 'firebase-release', { id: 'firebase', via: ['firebase-release'] }],
   );
 });
 
@@ -75,20 +75,20 @@ test('resolveDeclaredPacks: transitive — one declared pack pulls the whole cha
 });
 
 test('resolveDeclaredPacks: idempotent — an already-complete declaration is unchanged', () => {
-  const complete = ['chrome-extension', 'chrome-extension-release'];
+  const complete = ['firebase', 'firebase-release'];
   assert.deepEqual(resolveDeclaredPacks(complete, PACKS), complete);
-  const materialized = ['chrome-extension-release', { id: 'chrome-extension', via: ['chrome-extension-release'] }];
+  const materialized = ['firebase-release', { id: 'firebase', via: ['firebase-release'] }];
   assert.deepEqual(resolveDeclaredPacks(materialized, PACKS), materialized);
 });
 
 test('resolveDeclaredPacks: no duplicates when a dependency is also declared; a user-authored entry stays verbatim', () => {
-  // chrome-extension appears once even though it's both declared and required —
+  // firebase appears once even though it's both declared and required —
   // and because the project declared it itself (no `via`), it gets none added.
   assert.deepEqual(
-    resolveDeclaredPacks(['chrome-extension-release', 'chrome-extension'], PACKS),
-    ['chrome-extension-release', 'chrome-extension'],
+    resolveDeclaredPacks(['firebase-release', 'firebase'], PACKS),
+    ['firebase-release', 'firebase'],
   );
-  const configured = ['chrome-extension-release', { id: 'chrome-extension', config: { x: 1 } }];
+  const configured = ['firebase-release', { id: 'firebase', config: { x: 1 } }];
   assert.deepEqual(resolveDeclaredPacks(configured, PACKS), configured);
 });
 
@@ -96,8 +96,8 @@ test('resolveDeclaredPacks: a via entry is recomputed as dependents come and go'
   // The dependent was dropped: the materialized entry stays (droppable, the
   // project's call) but its via empties, marking the orphan.
   assert.deepEqual(
-    resolveDeclaredPacks([{ id: 'chrome-extension', via: ['chrome-extension-release'] }], PACKS),
-    [{ id: 'chrome-extension', via: [] }],
+    resolveDeclaredPacks([{ id: 'firebase', via: ['firebase-release'] }], PACKS),
+    [{ id: 'firebase', via: [] }],
   );
 });
 

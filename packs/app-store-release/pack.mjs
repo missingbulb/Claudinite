@@ -4,7 +4,7 @@
 // as they are earned. Expected first source: missingbulb/ShoutsAndWhispers.
 export default {
   id: 'app-store-release',
-  version: 1,
+  version: 2,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'shipping to the Apple App Store: App Store Connect, provisioning, App Attest, TestFlight, review guidelines, release cadence',

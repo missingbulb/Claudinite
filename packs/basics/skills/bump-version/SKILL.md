@@ -7,7 +7,7 @@ The mechanics are the consuming project's — its release/workflow doc names whi
 the version and how a release follows.
 
 **Semantic versions (`X.Y.Z`).** For a Chrome-extension repo the standard applies
-([the chrome-extension-release pack's RELEASE.md](../../../../packs/chrome-extension-release/RELEASE.md)):
+([the chrome-extension pack's chrome-store-releases skill](../../../../packs/chrome-extension/skills/chrome-store-releases/SKILL.md)):
 edit the manifest and `package.json` together on a branch (default the next **minor**), land on
 `main` via a normal PR — merging the bump *is* cutting the release.
 

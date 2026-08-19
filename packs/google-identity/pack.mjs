@@ -12,7 +12,7 @@
 // chrome-extension pack's turf; this pack owns the *validator* side.
 export default {
   id: 'google-identity',
-  version: 2,
+  version: 3,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'server-side Google Sign-In ID token validation: audience pinning, issuer and email_verified checks, JWT authorizer/OIDC verifier config',

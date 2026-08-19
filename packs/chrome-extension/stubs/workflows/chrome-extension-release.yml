@@ -1,6 +1,6 @@
 name: Release to Chrome Store
 
-# The ONE orchestrator of the chrome-extension-release standard. It owns only the
+# The ONE orchestrator of the Chrome Web Store release standard. It owns only the
 # triggers; the logic — create-package, daily auto-release, and Chrome Web Store
 # publish — lives in the reusable workflows this repo carries alongside it in
 # `.github/workflows/` (all vendored from the chrome-extension-release pack, so

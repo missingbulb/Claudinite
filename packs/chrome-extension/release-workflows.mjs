@@ -1,7 +1,7 @@
 import { finding } from '../../engine/checks/helpers/findings.mjs';
 import { migrationActive } from '../../engine/checks/helpers/active-migrations.mjs';
 
-// The chrome-extension-release pipeline is VENDORED into each consumer's own
+// The Chrome-Web-Store release pipeline is VENDORED into each consumer's own
 // .github/: the orchestrator (this STUB_FILE, named "Release to Chrome Store")
 // owns the triggers and calls three LOCAL reusable workflows, which — with the
 // privacy-page reusable and three composite actions — the pack materializes
@@ -52,6 +52,36 @@ export const VENDORED_ACTIONS = ['read-release-config', 'bump-extension-patch', 
 
 export const VENDORING_MIGRATION = 'chrome-release-vendoring';
 
+// DOES THIS REPO SHIP TO THE STORE? The whole release half of this pack is gated on
+// it, coded rule and declared checks alike — coding an extension pulls the pack in
+// (its fingerprint is the manifest), and a repo that never publishes must not be
+// asked for a release config, a privacy page or a README release section.
+//
+// TWO SIGNALS, EITHER ONE ENOUGH, because each alone leaves the rule that judges it
+// unreachable: gate only on the orchestrator's name and a repo that renamed it loses
+// every release check silently — including the one that says to rename it back —
+// and gate only on `.github/release.config` and the check that requires that file
+// can never fire. Together each is the other's backstop.
+//
+// The orchestrator is matched by NAME, never by path: Claudinite's own core tree
+// carries files at those paths named "… (reusable)", so a path test would make the
+// canon fingerprint itself. The legacy pre-rename name still counts — a repo on it is
+// shipping, and cer/release-workflows is what tells it to rename (#1057; the name
+// test was this pack's `detect` before the collapse).
+//
+// DUPLICATED, DELIBERATELY: the declared checks in declared-checks.json cannot
+// import, so each carries the same two signals as one `relevantWhen`
+// `someTrackedFileContains` — a path union and a text union, which is how that
+// vocabulary spells "either file says so". packs-tests/chrome-extension/release.test.mjs
+// runs the JSON gate and this function over one matrix of repos and fails if they
+// ever disagree, so keep both literals unbroken.
+export const SHIPS_PIPELINE_PATH_RE = /^\.github\/(?:workflows\/[^/]+\.ya?ml|release\.config)$/;
+export const SHIPS_PIPELINE_TEXT_RE = /^(?:name:\s*['"]?(?:Release to Chrome Store|Release)['"]?\s*|manifest_path=.*)$/m;
+
+export function shipsReleasePipeline(ctx) {
+  return ctx.tracked.some((f) => SHIPS_PIPELINE_PATH_RE.test(f) && SHIPS_PIPELINE_TEXT_RE.test(ctx.read(f) ?? ''));
+}
+
 // A repo is on the pre-vendoring shape when its orchestrator still calls one of
 // Claudinite's core release workflows @main.
 const LEGACY_CANON_REF = /missingbulb\/Claudinite\/\.github\/workflows\/chrome-extension-[a-z-]+\.yml@/;
@@ -60,19 +90,25 @@ const rule = {
   id: 'cer/release-workflows',
   severity: 'blocking',
   description: 'The orchestrator (chrome-extension-release.yml, named "Release to Chrome Store", daily at the contract cron) and the reusable workflows + composite actions it calls must be vendored into .github/',
-  doc: 'packs/chrome-extension-release/RELEASE.md',
+  doc: 'packs/chrome-extension/skills/chrome-store-releases/SKILL.md',
   why: 'every extension repo ships the same pipeline entirely from its own .github/ — vendored from the pack, kept in sync by baselining, with no cross-repo @main dependency',
 
   // opts.tolerateLegacy defaults to whether the vendoring migration is still live;
   // tests pass it explicitly to exercise the in-flight and retired states.
   run(ctx, { tolerateLegacy = migrationActive(VENDORING_MIGRATION) } = {}) {
+    // RELEVANCE FIRST: a repo that codes an extension but does not publish one
+    // ships no pipeline and is asked for nothing here.
+    if (!shipsReleasePipeline(ctx)) return [];
+
     const path = `.github/workflows/${STUB_FILE}`;
     const text = ctx.read(path);
     if (text === null) {
+      // Shipping (some workflow carries the orchestrator's name) but not from the
+      // contract's path — the set cannot be kept in sync where it is.
       return [finding(rule, {
         file: path,
         what: `${STUB_FILE} is missing`,
-        fix: 'copy the vendored release set from the chrome-extension-release pack (stubs/workflows/ + stubs/actions/); the orchestrator is stubs/workflows/chrome-extension-release.yml',
+        fix: 'copy the vendored release set from this pack (stubs/workflows/ + stubs/actions/); the orchestrator is stubs/workflows/chrome-extension-release.yml',
       })];
     }
 
@@ -138,7 +174,7 @@ const rule = {
         out.push(finding(rule, {
           file: `.github/workflows/${wf}`,
           what: `vendored reusable workflow ${wf} is missing`,
-          fix: `copy it from the chrome-extension-release pack (stubs/workflows/${wf})`,
+          fix: `copy it from the chrome-extension pack (stubs/workflows/${wf})`,
         }));
       }
     }
@@ -147,7 +183,7 @@ const rule = {
         out.push(finding(rule, {
           file: `.github/actions/${act}/action.yml`,
           what: `vendored composite action ${act} is missing`,
-          fix: `copy it from the chrome-extension-release pack (stubs/actions/${act}/)`,
+          fix: `copy it from the chrome-extension pack (stubs/actions/${act}/)`,
         }));
       }
     }

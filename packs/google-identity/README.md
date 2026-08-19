@@ -6,8 +6,8 @@ reliable structural fingerprint, so it is declared by hand. **Prose-free:** the 
 [`google-id-token-validation`](skills/google-id-token-validation/SKILL.md) skill, whose
 check-the-work rules run at every Stop and in CI — each failure message is the rule.
 
-Scope: the **validator** side of Google auth. Obtaining the ID token in a browser/extension
-client lives in the [`chrome-extension`](../chrome-extension/README.md) pack.
+Scope: the **validator** side of Google auth — not obtaining the ID token in a browser or
+extension client.
 
 _Provenance: distilled from missingbulb/TLDR — its backend authenticates users with Google ID
 tokens validated at an API Gateway JWT authorizer._
