@@ -268,6 +268,26 @@ So the ladder for an adopter with no app of their own is the token box, which ne
 registration and is the same 5,000/hour. Sign-in is the button they add later, for
 their own fleet, with their own app.
 
+#### Turning sign-in on
+
+The four steps, in the order they unblock each other. Adoption files them as a tracking
+issue rather than leaving them here to be met after the first anonymous viewer gives up.
+
+1. **Register a GitHub App** with read-only **Contents**, **Issues** and **Actions**, and
+   *Request user authorization (OAuth) during installation* enabled. The callback URL is
+   the deployed page — or the `https://<user>.github.io/` root with **wildcard matching**,
+   which covers every project Pages site on that host. Note the client id, generate a
+   client secret.
+2. **Install it** on the account holding the repos the dashboard reads. Per *account*, not
+   per repo: a user token reaches only what the app is installed on, so an uninstalled
+   account renders every member row as *not visible to you*.
+3. **Deploy [`oauth-exchange.example.mjs`](oauth-exchange.example.mjs)** with that id and
+   secret in its environment. One deployment serves every dashboard the same owner runs.
+4. **Set `clientId` and `exchangeUrl`** in the declaration's `config`. Either alone does
+   nothing — the pair is what makes the button appear.
+
+Done when a signed-in viewer's rate pill reads `…/5000 · user`.
+
 ### Why "just use my existing GitHub login" is not on that list
 
 It cannot be. A browser will not send github.com's session cookies to

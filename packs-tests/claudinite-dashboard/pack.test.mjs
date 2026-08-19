@@ -233,6 +233,28 @@ test('the pack declares its human-only step in the shape the rule requires', () 
   assert.match(pack.adoptionHandover[0].step, /Pages/i);
 });
 
+// The second human-only step, and the one an adopter would otherwise meet as "why is
+// this page rate-limited". Sign-in cannot be automated for the same reason Pages
+// cannot: registering an app and hosting the code-to-token exchange are a console and
+// a credential, and neither is inheritable from the fleet that wrote this pack.
+//
+// It is ONE entry deliberately. For a member reading its own repo through a pasted
+// token the answer is "nothing to do" at the identical 5,000/hour, so four
+// unconditional checkboxes would be mostly no-ops — which is what teaches a reader to
+// skim the list that exists to stop them skimming. The decision is what every adopter
+// owes; the mechanics live in the README.
+test('the pack hands over the sign-in decision, not just the Pages setting', () => {
+  const signin = pack.adoptionHandover.find((h) => /sign in|authenticat/i.test(h.step));
+  assert.ok(signin, 'no handover entry covers how viewers authenticate');
+  assert.match(signin.step, /clientId/, 'it names the pair that actually turns the button on');
+  assert.match(signin.step, /README/i, 'and points at where the mechanics are');
+  // The trap this guards: an entry that reads as mandatory when the deployment may
+  // legitimately have nothing to do.
+  assert.match(signin.step, /nothing to do|leave it/i, 'the do-nothing answer is stated as an answer');
+  assert.match(signin.breaks, /60 requests\/hour|anonymous/i, 'what being undone actually costs');
+  assert.match(signin.done, /5000|token box/, 'and something that can close it either way');
+});
+
 // The point of the field over a README line: a README is read after the deploy has
 // already failed. This asserts the install flow actually surfaces it.
 test('the install flow reports the handover so adoption cannot miss it', async (t) => {
@@ -246,6 +268,7 @@ test('the install flow reports the handover so adoption cannot miss it', async (
 
   assert.match(stdout, /only a human can do/, 'the handover is printed');
   assert.match(stdout, /\[ \] \(claudinite-dashboard\) Enable GitHub Pages/);
+  assert.match(stdout, /\[ \] \(claudinite-dashboard\) Decide how this dashboard authenticates/);
   assert.match(stdout, /while off:/);
   assert.match(stdout, /done when:/);
   // And the thing it is a handover FOR actually landed.
