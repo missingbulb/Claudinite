@@ -1,4 +1,4 @@
-<img src="badge.svg" width="24" height="24" alt=""> canary-probe
+<img src="badge.svg" width="24" height="24" alt=""> claudinite-canary-repo
 
 The canon's live proof that it can deliver a file into a member's `.github/workflows/`.
 

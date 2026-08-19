@@ -43,6 +43,9 @@ export const RENAMED_PACKS = Object.freeze({
   // Absorbed too (#1079): the Firebase release standard became a skill in the pack
   // that owns the technology, so shipping stops being a second thing to declare.
   'firebase-release': 'firebase',
+  // Renamed (#1079): a pack whose subject is a Claudinite feature carries the prefix
+  // that says so.
+  'canary-probe': 'claudinite-canary-repo',
 });
 
 // The canon id a spelling resolves to. Canon packs only — a LOCAL pack lives in the

@@ -94,13 +94,18 @@ export const badgeFiles = (root = REPO) =>
 // What every badge file SHOULD contain, given what it currently contains:
 // path → re-rendered text. A file this tool cannot parse is reported instead,
 // never overwritten.
+//
+// The colour and glyph come from the file, which owns them; the ID comes from the
+// PATH, which owns that. Reading the id back out of the title would carry a renamed
+// pack's old name forward forever — the title, the aria-label and the gradient id all
+// still spelling a pack that no longer exists, and a restyle reporting nothing to do.
 export function restyleAll(root = REPO) {
   const files = new Map();
   const unreadable = [];
   for (const rel of badgeFiles(root)) {
     const spec = parseBadge(readFileSync(join(root, rel), 'utf8'));
     if (spec === null) unreadable.push(rel);
-    else files.set(rel, renderBadge(spec));
+    else files.set(rel, renderBadge({ ...spec, id: idForBadge(rel) }));
   }
   return { files, unreadable };
 }

@@ -43,7 +43,7 @@ export default {
   },
 
   materialize: [
-    { template: 'packs/canary-probe/stubs/workflows/claudinite-workflow-probe.yml', dest: PROBE },
+    { template: 'packs/claudinite-canary-repo/stubs/workflows/claudinite-workflow-probe.yml', dest: PROBE },
   ],
 
   // Nothing to leave behind: this record exists to keep a copy current, not to move a

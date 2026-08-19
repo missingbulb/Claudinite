@@ -1,7 +1,7 @@
 # The Claudinite workflow-delivery probe — the canon's proof that it can write here.
 #
 # This file is MANAGED BY THE CANON. It is seeded at adoption and kept byte-current by a
-# record in the canary-probe pack; edit the template in the pack, never this copy, or the
+# record in the claudinite-canary-repo pack; edit the template in the pack, never this copy, or the
 # next update pass will simply put it back.
 #
 # It exists to be delivered, not to run. `.github/workflows/` is the one path the

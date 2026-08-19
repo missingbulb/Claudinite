@@ -620,7 +620,7 @@ test('applyPackRenames: converges a real member declaration, entry objects and a
     read: async (f) => (f === '.claudinite-checks.json' ? before : null),
     write: async (_f, c) => { written = c; },
   });
-  assert.equal(done.length, 2, `expected both renames, got ${JSON.stringify(done)}`);
+  assert.equal(done.length, 3, `expected every rename this map carries, got ${JSON.stringify(done)}`);
   const after = JSON.parse(written);
   assert.deepEqual(after.packs, [
     'basics',
@@ -630,7 +630,7 @@ test('applyPackRenames: converges a real member declaration, entry objects and a
     'tidy-repo',
     'local/canary',
     { id: 'claude-code-web-users-support', config: { repo: 'missingbulb/Shepherd' } },
-    'canary-probe',
+    'claudinite-canary-repo',
     'claudinite-lifecycle',
   ], 'ids move; config, via and order do not');
 });

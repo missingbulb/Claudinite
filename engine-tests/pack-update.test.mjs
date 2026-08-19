@@ -251,10 +251,10 @@ test('a RECORD materializing a workflow is withheld too, not written where the t
   // guards against is not a wrong file — it is the Action's token refusing the push and
   // GitHub rejecting the whole ref, failing the entire converge.
   //
-  // Driven through the real canary-probe record, not a fixture, because the thing worth
+  // Driven through the real claudinite-canary-repo record, not a fixture, because the thing worth
   // pinning is that a record shipped in this corpus travels the lane — a fake record
   // would only prove that `write` can be called.
-  const root = makeMember({ packs: ['basics', 'canary-probe'] });
+  const root = makeMember({ packs: ['basics', 'claudinite-canary-repo'] });
   assert.deepEqual((await applyVendor(root)).errors, []);
   const probe = '.github/workflows/claudinite-workflow-probe.yml';
 
@@ -262,7 +262,7 @@ test('a RECORD materializing a workflow is withheld too, not written where the t
   // stale content, and a real gap for the record at version 2 to close.
   mkdirSync(join(root, '.github', 'workflows'), { recursive: true });
   writeFileSync(join(root, probe), 'name: Claudinite workflow probe\non:\n  workflow_dispatch:\n');
-  setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { basics: 99, 'canary-probe': 1 } });
+  setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { basics: 99, 'claudinite-canary-repo': 1 } });
 
   const first = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
   const staged = first.withheld.find((w) => w.path === probe);
@@ -274,7 +274,7 @@ test('a RECORD materializing a workflow is withheld too, not written where the t
   // reviewer sees it and the apply stage can find it.
   assert.equal(readFileSync(join(root, probe), 'utf8'), 'name: Claudinite workflow probe\non:\n  workflow_dispatch:\n',
     'the flow must not write what its caller cannot push');
-  const template = readFileSync('packs/canary-probe/stubs/workflows/claudinite-workflow-probe.yml', 'utf8');
+  const template = readFileSync('packs/claudinite-canary-repo/stubs/workflows/claudinite-workflow-probe.yml', 'utf8');
   assert.equal(readFileSync(join(root, staged.staged), 'utf8'), template, 'and the staged copy is the pack template, byte for byte');
   assert.equal(first.applyStage.needed, true, 'an undelivered workflow is outstanding work');
 
@@ -297,7 +297,7 @@ test('a workflow materialization is SKIPPED, never written, by a caller that can
   // hand-run apply, CI — must still refuse, and must SAY so rather than skip silently,
   // because a silent skip reads as "already current".
   const record = (await loadMigrations()).find((m) => m.id === 'workflow-probe-current');
-  assert.ok(record, 'the canary-probe record is what this test is about');
+  assert.ok(record, 'the claudinite-canary-repo record is what this test is about');
   const probe = '.github/workflows/claudinite-workflow-probe.yml';
   const writes = [];
   const io = {
