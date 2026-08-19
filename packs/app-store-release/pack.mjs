@@ -4,11 +4,11 @@
 // as they are earned. Expected first source: missingbulb/ShoutsAndWhispers.
 export default {
   id: 'app-store-release',
-  version: 2,
+  version: 3,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'shipping to the Apple App Store: App Store Connect, provisioning, App Attest, TestFlight, review guidelines, release cadence',
-    excludes: 'iOS coding, Info.plist and Xcode project practices — that is ios; backend environment split — firebase-release',
+    excludes: 'iOS coding, Info.plist and Xcode project practices — that is ios; backend environment split — firebase',
   },
   badge: 'badge.svg',
   marker: null,

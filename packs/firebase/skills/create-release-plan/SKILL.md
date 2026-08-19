@@ -1,4 +1,9 @@
-# Firebase release — environments, provenance, attestation
+---
+name: create-release-plan
+description: The Firebase release standard — two separate dev/prod projects with the committed default pinned to dev, prod config injected only by the release pipeline, App Check attestation gating, and deliberate promotion. Use when planning a Firebase-backed app's first release, splitting a project into dev and prod, or wiring prod config and App Check into a release pipeline.
+---
+
+# Planning a Firebase release — environments, provenance, attestation
 
 The release standard for Firebase-backed apps. **Decided ahead of first exercise** (from TLDR's
 worked AWS split + the design in ShoutsAndWhispers `docs/ENVIRONMENTS.md`); refine on the first

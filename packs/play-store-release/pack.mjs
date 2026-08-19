@@ -4,7 +4,7 @@
 // as they are earned. Expected first source: missingbulb/ShoutsAndWhispers.
 export default {
   id: 'play-store-release',
-  version: 2,
+  version: 3,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'shipping an Android app to Google Play — Play Console, signing, integrity, staged rollout',

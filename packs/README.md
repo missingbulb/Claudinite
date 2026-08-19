@@ -33,8 +33,7 @@ vendored into every mount regardless of declaration, so a member session can see
 | <img src="html/badge.svg" width="18" height="18" alt=""> [html](html/README.md) | declared | 0 | 4 |
 | <img src="static-website/badge.svg" width="18" height="18" alt=""> [static-website](static-website/README.md) | declared (opt-in); marker: the `Release static site` orchestrator | 3 | 8 (+ RELEASE contract) |
 | <img src="flutter/badge.svg" width="18" height="18" alt=""> [flutter](flutter/README.md) | pubspec.yaml | 0 | 15 |
-| <img src="firebase/badge.svg" width="18" height="18" alt=""> [firebase](firebase/README.md) | `firebase.json` | 2 | 18 (rules / functions / deploy discipline) |
-| <img src="firebase-release/badge.svg" width="18" height="18" alt=""> [firebase-release](firebase-release/README.md) | declared (opt-in) | 0 | 6 (dev/prod split + App Check store gating) |
+| <img src="firebase/badge.svg" width="18" height="18" alt=""> [firebase](firebase/README.md) | `firebase.json` | 2 | 18 (rules / functions / deploy discipline) + 1 skill: create-release-plan |
 | <img src="android/badge.svg" width="18" height="18" alt=""> [android](android/) | `AndroidManifest.xml` | 0 | 0 (stub) |
 | <img src="ios/badge.svg" width="18" height="18" alt=""> [ios](ios/) | `ios/Runner/Info.plist` | 0 | 0 (stub) |
 | <img src="macos/badge.svg" width="18" height="18" alt=""> [macos](macos/README.md) | `Package.swift` near root | 3 | 31 (bundle / TCC + Hardened Runtime / on-device speech / Developer ID + notarization / lifecycle) |
@@ -82,7 +81,7 @@ The `"packs"` list and the rest of `.claudinite-checks.json` are validated **whe
 
 ## Pack dependencies (`requires`)
 
-A pack states the packs it depends on in an optional `requires` field on its `pack.mjs` — a plain array of pack ids: a release pack builds on its coding pack (`firebase-release` requires `firebase`) and a project-class pack leans on the framework that implements it (`spec-driven-product` requires `executable-requirements`).
+A pack states the packs it depends on in an optional `requires` field on its `pack.mjs` — a plain array of pack ids: a project-class pack leans on the framework that implements it (`spec-driven-product` requires `executable-requirements`).
 
 This is **not a check** — a pack can't be imported without its dependencies, so the resolution happens **when the declaration is written**, at bootstrap `--init` and the update backfill ([bootstrap.md](../bootstrap.md) Part 2): [`resolveDeclaredPacks`](../engine/pack_loader/pack-registry.mjs) pulls each declared pack's transitive `requires` closure into `.claudinite-checks.json`. The prerequisite is materialized and visible in the file — droppable like every other entry, the same reason `basics` is written explicitly rather than defaulted — rather than resolved implicitly at run time. Declared ids keep their order; each pack's pulled-in dependencies land right after it.
 
@@ -103,7 +102,7 @@ ruleRoutingGuidance: {
 
 Both sides are required and each is capped at **20 words**. The cap is a readability budget, not a style rule: the whole set is rendered as the two middle columns of [`directory.GENERATED.md`](directory.GENERATED.md), the catalog a session reads when deciding where a rule, doc, skill or check goes. Guess-by-default lands everything in `basics` — that is the failure this field exists to stop. (Until #807 the same rows were also injected into every session as a routing table; that duplicated the catalog on the one channel that charges for it, so the catalog is now the single home.)
 
-Write `excludes` to **name the pack that owns the other side** wherever one exists (`— that is firebase-release`), so the table routes rather than merely refuses. A boundary that is **true of every pack carries no routing information** and wastes the row: "anything portable belongs in the canon" is the local-pack rule restated, not this local pack's edge. State what separates a pack from its **nearest neighbours** — the packs a reader would actually confuse it with. Sibling packs that split a domain (a technology pack and its `-release` pack, `basics` and `git-github`) are where the pair earns its keep, and their two declarations should agree on where the line falls. "No pack fits" is a real answer — it means a new pack, or the project's own `local_packs/` — never the baseline as a fallback.
+Write `excludes` to **name the pack that owns the other side** wherever one exists (`— that is app-store-release`), so the table routes rather than merely refuses. A boundary that is **true of every pack carries no routing information** and wastes the row: "anything portable belongs in the canon" is the local-pack rule restated, not this local pack's edge. State what separates a pack from its **nearest neighbours** — the packs a reader would actually confuse it with. Sibling packs that split a domain (`basics` and `git-github`, a mobile pack and its store-release pack) are where the pair earns its keep, and their two declarations should agree on where the line falls. "No pack fits" is a real answer — it means a new pack, or the project's own `local_packs/` — never the baseline as a fallback.
 
 The catalog covers every canon pack, whether or not a repo declares it — a session weighing what to adopt needs the ones it does *not* hold. It is vendored into every mount for that reason. Local packs declare `ruleRoutingGuidance` on the same terms, and state their boundary in their own prose.
 
