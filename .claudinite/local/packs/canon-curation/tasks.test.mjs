@@ -6,7 +6,7 @@ import discover from './tasks/growth-discover-packs/task.mjs';
 // The canon-curation fleet-scoped task preconditions (per-project-scheduling
 // DESIGN §6 table 2): growth-promote reads which members changed their local
 // packs, growth-discover-packs sweeps the members' stacks for technologies the
-// canon does not home. (prose-to-checks-sweep moved to grow_with_claudinite as a
+// canon does not home. (prose-to-checks-sweep moved to claudinite-growth as a
 // per-repo task; migration records need no curation task at all — they are kept
 // forever, and vendoring's recency window decides what ships.)
 // Each precondition is pure over the collected signals, so it tests directly
@@ -14,7 +14,7 @@ import discover from './tasks/growth-discover-packs/task.mjs';
 
 const member = (over = {}) => ({
   repo: 'acme/app', defaultBranch: 'main',
-  activePacks: ['grow_with_claudinite'], packConfigs: {},
+  activePacks: ['claudinite-growth'], packConfigs: {},
   hasLocalPacks: true, localPacksChanged: true, stamp: null, schedulesItself: false,
   ...over,
 });
@@ -46,7 +46,7 @@ test('growth-promote: fires on participating members whose local packs changed',
 
 test('growth-promote: skips a member that opted out of promotion', () => {
   const v = promote.precondition({ fleet: { members: [
-    member({ repo: 'acme/opt', packConfigs: { grow_with_claudinite: { promote: false } } }),
+    member({ repo: 'acme/opt', packConfigs: { 'claudinite-growth': { promote: false } } }),
   ] } });
   assert.equal(v.run, false);
 });
@@ -63,7 +63,7 @@ test('growth-promote: skips when there is no fleet signal or the enumeration err
 });
 
 // --- growth-discover-packs (the FLEET sweep) ---------------------------------
-// Not to be confused with its per-repo namesake in grow_with_claudinite, which
+// Not to be confused with its per-repo namesake in claudinite-growth, which
 // authors a repo's own LOCAL packs. This one is the central canon-gap sweep.
 
 test('growth-discover-packs: declaration is weekly/opus/open-pr, fleet-reaching over the fleet signal', () => {

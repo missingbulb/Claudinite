@@ -86,7 +86,7 @@
 // `core-undeclared` fixture below pins that shape deliberately, once, instead of
 // it being every fixture's accidental default.
 const checks = (packs, extra = {}) => JSON.stringify({
-  packs: packs.includes('core') ? packs : ['core', ...packs],
+  packs: packs.includes('claudinite-lifecycle') ? packs : ['claudinite-lifecycle', ...packs],
   taskScheduler: { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 },
   maintenance: { delivery: 'auto-merge' },
   // `updated` is set per MODE by the runner (fresh vs stale), never here.
@@ -504,7 +504,7 @@ NSApplication.shared.run()
     files: {
       'README.md': '# fixture-core-undeclared\n\nA rehearsal fixture.\n',
       // The one fixture that bypasses the `checks()` helper's `core` prepend, on
-      // purpose. `core-declared` became blocking in #844, and the question a
+      // purpose. `claudinite-lifecycle-declared` became blocking in #844, and the question a
       // consumer-safe change has to answer is whether that severity can turn a
       // member red overnight. It cannot, and this is the proof rather than the
       // argument: activation reads the literal `packs` list, so in the only repo
@@ -528,7 +528,7 @@ NSApplication.shared.run()
     why: 'a member enrolled in the growth lifecycle, with the local packs its capture runs write',
     files: {
       'README.md': '# fixture-growth-member\n\nA rehearsal fixture.\n',
-      '.claudinite-checks.json': checks(['basics', 'grow_with_claudinite', 'local/fixture-local']),
+      '.claudinite-checks.json': checks(['basics', 'claudinite-growth', 'local/fixture-local']),
       '.claudinite/local/packs/fixture-local/pack.mjs': PACK_LOCAL_RULES,
       '.claudinite/local/packs/fixture-local/demo-rule.mjs': DEMO_RULE,
       '.claudinite/local/packs/fixture-local/RULES.md': '# fixture-local\n\nNo standing rules.\n',

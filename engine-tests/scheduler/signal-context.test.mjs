@@ -8,8 +8,8 @@ import { buildSignalContext } from '../../engine/scheduler/signals/context.mjs';
 import { collectSignals } from '../../engine/scheduler/signals/index.mjs';
 import { loadConfig } from '../../engine/checks/helpers/repo-context.mjs';
 import storeRelease from '../../packs/chrome-extension-release/tasks/store-release/task.mjs';
-import dedup from '../../packs/grow_with_claudinite/tasks/growth-dedup/task.mjs';
-import logsPrune from '../../packs/grow_with_claudinite/tasks/logs-prune/task.mjs';
+import dedup from '../../packs/claudinite-growth/tasks/growth-dedup/task.mjs';
+import logsPrune from '../../packs/claudinite-growth/tasks/logs-prune/task.mjs';
 
 // The collectors take an injected `ctx` — which makes them unit-testable with no
 // repo, and also makes it possible for a key NOTHING EVER SETS to look healthy
@@ -32,7 +32,7 @@ const withRepo = (files, fn) => {
 // A checkout that exercises all three: a manifest version, a local pack, and a
 // pack entry carrying `retention_days`.
 const CHECKS_JSON = JSON.stringify({
-  packs: ['basics', { id: 'grow_with_claudinite', config: { retention_days: 10 } }],
+  packs: ['basics', { id: 'claudinite-growth', config: { retention_days: 10 } }],
 }, null, 2) + '\n';
 
 const FULL = {
@@ -109,7 +109,7 @@ test('buildSignalContext populates every ctx key the collectors read', () => {
     assert.equal(ctx.retentionDays, 10);
     // ...alongside the ones that always worked, so this is a whole-shape guard.
     assert.equal(ctx.repo, 'o/r');
-    assert.deepEqual(ctx.activePacks, ['basics', 'grow_with_claudinite']);
+    assert.deepEqual(ctx.activePacks, ['basics', 'claudinite-growth']);
   });
 });
 

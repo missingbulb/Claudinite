@@ -118,7 +118,7 @@ lesson at the strongest mechanism available — a check where the rule is determ
 
 - **Naming a new canon pack** — kebab-case, named for the surface it serves rather than the
   first feature you are building for it. The directory name is the pack's public id, spelled in
-  every member's declaration, so another casing costs a fleet-wide rename. `grow_with_claudinite`
+  every member's declaration, so another casing costs a fleet-wide rename. `claudinite-growth`
   is grandfathered. (convertible → prose-to-checks)
 
 - **Starting a new Claudinite-facing capability** (a tool, a dashboard, anything meant to reach
@@ -289,7 +289,7 @@ lesson at the strongest mechanism available — a check where the rule is determ
   which is true forever once true. A signal true most days — a substantive `main` move — may
   only *widen* an already-triggered run. The gate is not the scope: where a verdict is relative to
   the rest of the set, newness gates and the full set stays the scope. (portable →
-  `core/scheduled-tasks.md`)
+  `claudinite-growth/scheduled-tasks.md`)
 
 - **Writing a task whose output is a regenerated file** — land it through
   `engine/scheduler/deliver-generated.mjs` and read its prior state from the fetched base, not
@@ -430,7 +430,7 @@ lesson at the strongest mechanism available — a check where the rule is determ
 - **Merging in a session that also has a consumer repo in its sources** — resolve the merge
   skill by *target repo*, not by which skill matched first. The consumer's skill wins on name and
   is followed to the letter, silently skipping the canon-only steps — repeatedly the post-merge
-  conversation capture (`node packs/grow_with_claudinite/capture-log.mjs --issue <n>`), which is
+  conversation capture (`node packs/claudinite-growth/capture-log.mjs --issue <n>`), which is
   part of the merge, not an optional epilogue.
 
 - **Having work that completes or corrects an open PR** — put it on that PR's branch. A

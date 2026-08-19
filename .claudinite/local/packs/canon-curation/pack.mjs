@@ -5,7 +5,7 @@ import packVersionBumped from './pack-version-bumped.mjs';
 // promoting members' lessons into the shared canon (the growth lifecycle's
 // central stage), sweeping the fleet's stacks for technologies the canon does
 // not yet home, and policing the corpus's packs/ tree.
-// (Prose-to-checks is no longer canon-only: it moved to grow_with_claudinite as a
+// (Prose-to-checks is no longer canon-only: it moved to claudinite-growth as a
 // per-repo task with a `pack_paths` config — the canon runs it over its own packs/
 // + local packs like any repo, per the per-project-scheduling redesign.)
 //
@@ -19,7 +19,7 @@ import packVersionBumped from './pack-version-bumped.mjs';
 // declaration cardinality is what makes its tasks central-once: a pack task
 // runs per DECLARING repo, so one declaring repo means one unit per night, with
 // no bespoke orchestrator step. Un-declaring it freezes canon absorption
-// without touching the members' side (grow_with_claudinite).
+// without touching the members' side (claudinite-growth).
 export default {
   id: 'canon-curation',
   ruleRoutingGuidance: {

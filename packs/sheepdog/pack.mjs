@@ -45,7 +45,7 @@
 // `ADD_PACKS`… — no defaults; the weekly declaration sends its own explicitly, a forced
 // run sends the rest through the scheduler's override bag) and it runs NO agent here: it
 // converges a work-list issue IN each member and fires that member's own scheduler, whose
-// adopt-requested-packs task (grow_with_claudinite) adopts with the repo checked out —
+// adopt-requested-packs task (claudinite-growth) adopts with the repo checked out —
 // the fan-out model (#749): the enforcer dispatches, the member executes, and no agent
 // anywhere needs cross-repo access.
 //
@@ -110,7 +110,7 @@ export default {
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'fleet-enforcer duties for the repo watching every other repo — coverage, freshness, usage, standardized packs, the daily fleet brief',
-    excludes: 'anything a member does to itself — tidying is tidy-repo, lesson capture is grow_with_claudinite',
+    excludes: 'anything a member does to itself — tidying is tidy-repo, lesson capture is claudinite-growth',
   },
   badge: 'badge.svg',
   detect: null,

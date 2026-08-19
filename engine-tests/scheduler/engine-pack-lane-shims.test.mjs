@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 // module is therefore a stale caller of an instantly-current engine, and an engine
 // module it names may not simply vanish.
 //
-// It vanished once (#1004). `packs/core/task-declaration-shape.mjs` imported
+// It vanished once (#1004). `packs/claudinite-lifecycle/task-declaration-shape.mjs` imported
 // `engine/scheduler/slots.mjs`, #974 renamed that to `calendar.mjs`, and the next
 // member to converge got a mount whose `core` pack would not load — which fails the
 // self-test, which makes the converge refuse to land AT ALL, so the member could not

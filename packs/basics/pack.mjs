@@ -34,7 +34,7 @@ export default {
   // the closure is what puts Claudinite's own rules in front of every session, and
   // `barriers` arrives with it. git-github carries the git/GitHub side of the task
   // lifecycle (#385).
-  requires: ['core', 'git-github'],
+  requires: ['claudinite-lifecycle', 'git-github'],
   // Rules that audit the repo as it stands, whatever this session did.
   // warning-suppression and rules-line-length are declared checks in this
   // pack's declared-checks.json, discovered structurally beside these.

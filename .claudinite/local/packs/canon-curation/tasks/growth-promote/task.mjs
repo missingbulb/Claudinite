@@ -29,7 +29,7 @@ export default {
   agent_execution_timeout: 2700,         // reading N members + generalizing + authoring a PR — generous bound, extreme protection
 
   // Fire when a participating member changed its local packs in the window. A
-  // participant declares grow_with_claudinite and carries local packs (the only
+  // participant declares claudinite-growth and carries local packs (the only
   // source promote reads); the growth entry's `{ config: { promote: false } }`
   // opts a member out of promotion while it keeps extracting/deduping locally
   // (absent or true = participate). A member whose local packs didn't move in the
@@ -40,8 +40,8 @@ export default {
     if (!fleet) return { run: false, reason: 'no fleet signal (FLEET_GITHUB_TOKEN unset, or not the canon repo)' };
     if (fleet.error) return { run: false, reason: `fleet enumeration failed — ${fleet.error} (retiring/promoting nothing on unproven fleet state)` };
     const participants = (fleet.members ?? [])
-      .filter((m) => m.activePacks.includes('grow_with_claudinite') && m.hasLocalPacks)
-      .filter((m) => m.packConfigs?.grow_with_claudinite?.promote !== false);
+      .filter((m) => m.activePacks.includes('claudinite-growth') && m.hasLocalPacks)
+      .filter((m) => m.packConfigs?.['claudinite-growth']?.promote !== false);
     const changed = participants.filter((m) => m.localPacksChanged);
     if (!changed.length) return { run: false, reason: 'no participating member changed its local packs in the window' };
     const repos = changed.map((m) => m.repo);

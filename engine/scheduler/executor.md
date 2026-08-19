@@ -73,7 +73,7 @@ goes through your GitHub tools.
    and it says `invalid` on a zero exit.
 
    **Announce your dispatch before you act**: quote the printed `brief:` line prominently in
-   chat — bold, on its own line, e.g. **`Task: grow_with_claudinite/growth-dedup (slot
+   chat — bold, on its own line, e.g. **`Task: claudinite-growth/growth-dedup (slot
    d2026-07-29) — issue #546, model opus, outcome ceiling open-pr, timeout 1800s`** — so
    everything after this has one unambiguous subject a human skimming the session sees at a
    glance. Run that issue and nothing else — every other dispatch in the queue already has

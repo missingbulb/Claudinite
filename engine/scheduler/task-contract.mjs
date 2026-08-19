@@ -165,7 +165,7 @@ export function validateTaskDeclaration(raw) {
   // states, generically.
   if (decl.after !== undefined
       && !(Array.isArray(decl.after) && decl.after.every((s) => typeof s === 'string' && /^[^/\s]+\/[^/\s]+$/.test(s)))) {
-    bad('"after" is not an array of "<pack>/<task>" ids', 'e.g. "after": ["core/update"] — this task yields while those are live this cycle');
+    bad('"after" is not an array of "<pack>/<task>" ids', 'e.g. "after": ["claudinite-lifecycle/update"] — this task yields while those are live this cycle');
   }
 
   // `on_interrupt` — the ack-early/ack-late dial (DESIGN §6). Most of this fleet's

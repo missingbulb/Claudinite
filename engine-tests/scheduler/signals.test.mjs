@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { collectSignals, SIGNAL_COLLECTORS } from '../../engine/scheduler/signals/index.mjs';
-import { logFilename } from '../../packs/grow_with_claudinite/capture-log.mjs';
+import { logFilename } from '../../packs/claudinite-growth/capture-log.mjs';
 
 // A fake gh keyed by regex → response (matches the fleet planner's test seam).
 const fakeGh = (routes) => async (path) => {

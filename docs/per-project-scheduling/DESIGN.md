@@ -45,7 +45,7 @@ packs/<pack>/tasks/<task-name>/
 > The two conformance guards for this shape (`task-declaration-shape`,
 > `scheduler-workflow-shape`) live in the **basics** pack, not a separate one —
 > scheduling is baseline discipline (see
-> [`packs/core/scheduled-tasks.md`](../../packs/core/scheduled-tasks.md)).
+> [`packs/claudinite-growth/scheduled-tasks.md`](../../packs/claudinite-growth/scheduled-tasks.md)).
 
 Alongside this migration, `.claudinite/local_packs/` is renamed to
 `.claudinite/local/packs/` (owner decision, §11): packs then sit at one uniform
@@ -629,7 +629,7 @@ classification note — landed with this PR), and GCEC's `CLAUDE.md` / gcec
 8. **Census and prose-to-checks are not fleet tasks** (review): the census is an
    ordinary sheepdog pack task whose implementation happens to scan the fleet;
    prose-to-checks is a canon-local task, **daily**. *(Prose-to-checks since
-   became a per-repo grow_with_claudinite task and moved to `weekly`.)*
+   became a per-repo claudinite-growth task and moved to `weekly`.)*
 9. **Growth chain ordered across the four daily slots** (review): baselining +
    migrations-apply `daily-2h` (02:00) → extract `daily-1h` (03:00) → promote
    `daily` (04:00) → dedup `daily+1h` (05:00). *(Dedup since moved to `weekly`,

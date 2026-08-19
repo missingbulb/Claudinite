@@ -133,14 +133,14 @@ test('the member-side tick resolves the very id this lever sends', async () => {
   // member's own declared tasks. A bare id must be owned by exactly one canon pack,
   // or planWake refuses it as ambiguous and the force silently wakes nothing.
   const { planWake } = await import('../../../../engine/scheduler/queue/tick.mjs');
-  const tasks = [{ pack: 'core', id: FORCED_TASK }];
+  const tasks = [{ pack: 'claudinite-lifecycle', id: FORCED_TASK }];
   const items = [{
     number: 1, state: 'open', labels: ['task:blocked'],
     title: `[claudinite-work] core/${FORCED_TASK}`,
   }];
   const { wake, unmatched } = planWake(FORCED_TASK, tasks, items);
   assert.deepEqual(unmatched, [], `the tick must resolve "${FORCED_TASK}" — this is the exact string fleet-baseline dispatches`);
-  assert.deepEqual(wake, [{ id: `core/${FORCED_TASK}`, issue: 1 }]);
+  assert.deepEqual(wake, [{ id: `claudinite-lifecycle/${FORCED_TASK}`, issue: 1 }]);
 });
 
 test('the 422 message names the stale-mount cause, not just the disabled-workflow one', () => {

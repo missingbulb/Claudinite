@@ -67,9 +67,9 @@ test('the page states no queue label of its own', async () => {
 // --- declarations --------------------------------------------------------------
 
 test('declaredPackDirs maps shared and local packs to both roots', () => {
-  const dirs = declaredPackDirs({ packs: ['basics', { id: 'core' }, 'local/claudinite'] });
+  const dirs = declaredPackDirs({ packs: ['basics', { id: 'claudinite-lifecycle' }, 'local/claudinite'] });
   assert.deepEqual(dirs.get('basics'), ['packs/basics', '.claudinite/shared/packs/basics']);
-  assert.deepEqual(dirs.get('core'), ['packs/core', '.claudinite/shared/packs/core']);
+  assert.deepEqual(dirs.get('claudinite-lifecycle'), ['packs/claudinite-lifecycle', '.claudinite/shared/packs/claudinite-lifecycle']);
   assert.deepEqual(dirs.get('local/claudinite'), ['.claudinite/local/packs/claudinite']);
 });
 
@@ -78,13 +78,13 @@ test('taskDeclarationPaths takes only declared packs, from either root', () => {
     'packs/basics/tasks/ci-performance/task.mjs',
     'packs/basics/tasks/ci-performance/worker.mjs',       // not a declaration
     'packs/sheepdog/tasks/fleet-roster/task.mjs',          // pack not declared
-    '.claudinite/shared/packs/core/tasks/update/task.mjs',
+    '.claudinite/shared/packs/claudinite-lifecycle/tasks/update/task.mjs',
     '.claudinite/local/packs/claudinite/tasks/growth/task.mjs',
     'packs-tests/basics/tasks/ci-performance/task.mjs',    // tests, not a pack root
   ];
-  const found = taskDeclarationPaths(paths, { packs: ['basics', 'core', 'local/claudinite'] });
+  const found = taskDeclarationPaths(paths, { packs: ['basics', 'claudinite-lifecycle', 'local/claudinite'] });
   assert.deepEqual(found.map((f) => `${f.pack}/${f.task}`), [
-    'basics/ci-performance', 'core/update', 'local/claudinite/growth',
+    'basics/ci-performance', 'claudinite-lifecycle/update', 'local/claudinite/growth',
   ]);
 });
 
@@ -196,7 +196,7 @@ test('blocked warns only past the stuck threshold, and needs-human always', () =
 
 const tasks = [
   { pack: 'basics', task: 'ci-performance', path: 'packs/basics/tasks/ci-performance/task.mjs', declaration: { frequency: 'weekly', agent_model: 'sonnet' } },
-  { pack: 'core', task: 'update', path: 'packs/core/tasks/update/task.mjs', declaration: { frequency: 'hourly' } },
+  { pack: 'claudinite-lifecycle', task: 'update', path: 'packs/claudinite-lifecycle/tasks/update/task.mjs', declaration: { frequency: 'hourly' } },
 ];
 
 test('every declared task gets a row, including one that has never run', () => {
@@ -211,7 +211,7 @@ test('a row picks up its open item and its closed history', () => {
     item({ number: 900, labels: [READY] }),
     item({ number: 880, state: 'closed', labels: [OUTCOME_DONE], created_at: '2026-08-09T04:00:00Z', closed_at: '2026-08-09T06:00:00Z' }),
     item({ number: 860, state: 'closed', labels: [OUTCOME_DELIVERED], created_at: '2026-08-02T04:00:00Z', closed_at: '2026-08-02T06:00:00Z' }),
-    item({ number: 700, title: '[claudinite-work] core/update', state: 'closed', labels: [OUTCOME_DONE] }),
+    item({ number: 700, title: '[claudinite-work] claudinite-lifecycle/update', state: 'closed', labels: [OUTCOME_DONE] }),
   ];
   const rows = buildRoster({ tasks, items, now: NOW, schedule: SCHEDULE });
   const ci = rows.find((r) => r.task === 'ci-performance');

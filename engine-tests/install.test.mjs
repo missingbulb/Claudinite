@@ -188,7 +188,7 @@ test('the apply stage\'s duties live in its task file, and none were dropped wit
   // read them and where they duplicated the task file that the dispatch issue links.
   // Retiring it is only safe if every duty it carried still has a home — so this
   // asserts the home, not the wording.
-  const task = readFileSync('packs/core/tasks/update/task.md', 'utf8');
+  const task = readFileSync('packs/claudinite-lifecycle/tasks/update/task.md', 'utf8');
   assert.match(task, /executor routine/, 'the one verification no Action can make');
   assert.match(task, /needs-human/);
   assert.match(task, /\.claudinite\/pending-workflows\//, 'the withheld-workflow lane (#797)');
@@ -197,7 +197,7 @@ test('the apply stage\'s duties live in its task file, and none were dropped wit
 
   // And the payload must stay identifiers-only: the worker may name the condition,
   // never carry the instructions (engine/scheduler/code-work.mjs).
-  const worker = readFileSync('packs/core/tasks/update/worker.mjs', 'utf8');
+  const worker = readFileSync('packs/claudinite-lifecycle/tasks/update/worker.mjs', 'utf8');
   assert.ok(!worker.includes('brief:'), 'this ref\'s worker carries no rendered brief — the export survives only for fielded ones');
 });
 

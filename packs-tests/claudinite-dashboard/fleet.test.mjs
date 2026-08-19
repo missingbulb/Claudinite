@@ -13,7 +13,7 @@ const NOW = Date.parse('2026-08-17T12:00:00Z');
 const CANON = { repo: 'o/canon', ref: 'canonsha', engineVersion: 4 };
 
 const decl = (over = {}) => ({
-  packs: ['core', 'basics'],
+  packs: ['claudinite-lifecycle', 'basics'],
   taskScheduler: { dailyHour: 4 },
   claudinite: { ref: 'canonsha', engineVersion: 4, updated: '2026-08-17T00:00:00Z' },
   ...over,
@@ -224,22 +224,22 @@ test('rollUp never counts an unreadable member as healthy', () => {
 
 test('packSpread ranks packs by how many members carry them', () => {
   const spread = packSpread([
-    { packs: ['core', 'basics'] }, { packs: ['core'] }, { packs: ['core', 'tidy-repo'] },
+    { packs: ['claudinite-lifecycle', 'basics'] }, { packs: ['claudinite-lifecycle'] }, { packs: ['claudinite-lifecycle', 'tidy-repo'] },
   ]);
-  assert.deepEqual(spread[0], { pack: 'core', members: 3 });
-  assert.deepEqual(spread.map((p) => p.pack), ['core', 'basics', 'tidy-repo']);
+  assert.deepEqual(spread[0], { pack: 'claudinite-lifecycle', members: 3 });
+  assert.deepEqual(spread.map((p) => p.pack), ['claudinite-lifecycle', 'basics', 'tidy-repo']);
 });
 
 // The fleet-only view: one task, everywhere it runs. A shared pack's task parked in
 // several members at once is a canon problem that no single repo's page reveals.
 test('taskSpread aggregates one task across members, parked first', () => {
   const reads = [
-    { repo: 'o/a', items: [item({ title: '[claudinite-work] core/update', labels: [NEEDS_HUMAN] })] },
-    { repo: 'o/b', items: [item({ title: '[claudinite-work] core/update', labels: [NEEDS_HUMAN] })] },
+    { repo: 'o/a', items: [item({ title: '[claudinite-work] claudinite-lifecycle/update', labels: [NEEDS_HUMAN] })] },
+    { repo: 'o/b', items: [item({ title: '[claudinite-work] claudinite-lifecycle/update', labels: [NEEDS_HUMAN] })] },
     { repo: 'o/c', items: [item({ title: '[claudinite-work] basics/task-janitor', state: 'closed', labels: [OUTCOME_DONE] })] },
   ];
   const spread = taskSpread(reads, NOW);
-  assert.equal(spread[0].key, 'core/update');
+  assert.equal(spread[0].key, 'claudinite-lifecycle/update');
   assert.equal(spread[0].members, 2);
   assert.equal(spread[0].parked, 2);
   assert.equal(spread[1].key, 'basics/task-janitor');
@@ -250,9 +250,9 @@ test('taskSpread counts a closed item with no outcome as failed, and obsolete as
   const reads = [{
     repo: 'o/a',
     items: [
-      item({ number: 1, title: '[claudinite-work] core/update', state: 'closed', labels: [] }),
-      item({ number: 2, title: '[claudinite-work] core/update', state: 'closed', labels: [OUTCOME_OBSOLETE] }),
-      item({ number: 3, title: '[claudinite-work] core/update', state: 'closed', labels: [OUTCOME_DELIVERED] }),
+      item({ number: 1, title: '[claudinite-work] claudinite-lifecycle/update', state: 'closed', labels: [] }),
+      item({ number: 2, title: '[claudinite-work] claudinite-lifecycle/update', state: 'closed', labels: [OUTCOME_OBSOLETE] }),
+      item({ number: 3, title: '[claudinite-work] claudinite-lifecycle/update', state: 'closed', labels: [OUTCOME_DELIVERED] }),
     ],
   }];
   const [row] = taskSpread(reads, NOW);

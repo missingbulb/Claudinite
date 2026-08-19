@@ -24,10 +24,10 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
 test('pack-discovery-entry-await: fires on a top-level await in a module a skill checks.mjs imports', () => {
   const root = makeRepo({
     base: {
-      'packs/grow_with_claudinite/pack.mjs': packModule('grow_with_claudinite'),
-      'packs/grow_with_claudinite/skills/adopt/checks.mjs':
+      'packs/claudinite-growth/pack.mjs': packModule('claudinite-growth'),
+      'packs/claudinite-growth/skills/adopt/checks.mjs':
         "import { state } from './interview.mjs';\nexport default [state];\n",
-      'packs/grow_with_claudinite/skills/adopt/interview.mjs': cliModule('await check();'),
+      'packs/claudinite-growth/skills/adopt/interview.mjs': cliModule('await check();'),
     },
   });
   try {
@@ -35,7 +35,7 @@ test('pack-discovery-entry-await: fires on a top-level await in a module a skill
     assert.equal(findings.length, 1);
     assert.equal(findings[0].rule, 'pack-discovery-entry-await');
     assert.equal(findings[0].severity, 'blocking');
-    assert.equal(findings[0].file, 'packs/grow_with_claudinite/skills/adopt/interview.mjs');
+    assert.equal(findings[0].file, 'packs/claudinite-growth/skills/adopt/interview.mjs');
     assert.match(findings[0].fix, /\.catch\(/);
   } finally {
     cleanup(root);
@@ -59,10 +59,10 @@ test('pack-discovery-entry-await: follows the graph transitively through a pack.
 test('pack-discovery-entry-await: the safe form — work started after evaluation — is quiet', () => {
   const root = makeRepo({
     base: {
-      'packs/grow_with_claudinite/pack.mjs': packModule('grow_with_claudinite'),
-      'packs/grow_with_claudinite/skills/adopt/checks.mjs':
+      'packs/claudinite-growth/pack.mjs': packModule('claudinite-growth'),
+      'packs/claudinite-growth/skills/adopt/checks.mjs':
         "import { state } from './interview.mjs';\nexport default [state];\n",
-      'packs/grow_with_claudinite/skills/adopt/interview.mjs':
+      'packs/claudinite-growth/skills/adopt/interview.mjs':
         cliModule("check().catch((e) => process.stderr.write(`${e.message}\\n`));"),
     },
   });
@@ -78,7 +78,7 @@ test('pack-discovery-entry-await: a CLI worker outside the discovery graph may a
     base: {
       'packs/basics/pack.mjs': packModule('basics'),
       // Nothing in the pack tree imports it — the scheduler spawns it as a process.
-      'packs/core/tasks/update/worker.mjs': cliModule('await check();'),
+      'packs/claudinite-lifecycle/tasks/update/worker.mjs': cliModule('await check();'),
       'engine/scheduler/queue/executor.mjs': cliModule('await check();'),
     },
   });

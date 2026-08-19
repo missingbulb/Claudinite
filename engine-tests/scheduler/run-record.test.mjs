@@ -13,8 +13,8 @@ import { execRecordLine } from '../../engine/scheduler/record-exec.mjs';
 // So the pins below are literal lines, not a round trip through a renderer that no
 // longer exists.
 test('a record of the shape the slot scheduler emitted parses to its four fields', () => {
-  assert.deepEqual(parseTaskRun(`${TASK_RUN_TAG} v1 grow_with_claudinite/usage-fold [d2026-07-29] agent`), {
-    pack: 'grow_with_claudinite', task: 'usage-fold', slotId: 'd2026-07-29', outcome: 'agent',
+  assert.deepEqual(parseTaskRun(`${TASK_RUN_TAG} v1 claudinite-growth/usage-fold [d2026-07-29] agent`), {
+    pack: 'claudinite-growth', task: 'usage-fold', slotId: 'd2026-07-29', outcome: 'agent',
   });
 });
 
@@ -38,7 +38,7 @@ test('both pre-rename outcome words still parse, normalized to code-work', () =>
 });
 
 test('anything that is not a record of this version parses to null', () => {
-  assert.equal(parseTaskRun('- grow_with_claudinite/usage-fold [d2026-07-29] run-inline — fold 3 logs'), null);
+  assert.equal(parseTaskRun('- claudinite-growth/usage-fold [d2026-07-29] run-inline — fold 3 logs'), null);
   assert.equal(parseTaskRun(`${TASK_RUN_TAG} v2 a/b [d2026-07-29] agent`), null, 'a future shape is not half-read');
   assert.equal(parseTaskRun(`${TASK_RUN_TAG} v1 a/b [d2026-07-29] exploded`), null, 'an unknown outcome mints no counter');
   assert.equal(parseTaskRun(''), null);
@@ -49,7 +49,7 @@ test('parseTaskRuns picks its own lines out of a whole job log', () => {
     '2026-07-29T04:44:01Z ## Claudinite scheduler',
     '2026-07-29T04:44:01Z - tidy-repo/tidy-issues [d2026-07-29] create — no dispatch issue yet',
     `2026-07-29T04:44:02Z ${TASK_RUN_TAG} v1 tidy-repo/tidy-issues [d2026-07-29] agent`,
-    `2026-07-29T04:44:02Z ${TASK_RUN_TAG} v1 grow_with_claudinite/usage-fold [d2026-07-29] code-work`,
+    `2026-07-29T04:44:02Z ${TASK_RUN_TAG} v1 claudinite-growth/usage-fold [d2026-07-29] code-work`,
     '2026-07-29T04:44:03Z ##[endgroup]',
   ].join('\n');
   assert.deepEqual(parseTaskRuns(log).map((r) => `${r.task}:${r.outcome}`), ['tidy-issues:agent', 'usage-fold:code-work']);
