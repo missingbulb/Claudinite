@@ -15,7 +15,7 @@ import versionScheme from './version-scheme.mjs';
 // fires on that repo. The declaration is still what activates the pack.
 export default {
   id: 'static-website',
-  version: 2,
+  version: 3,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'shipping and serving a static site: date-anchored versioning, release on push, the publish set, Pages deploy, client-side caching',
@@ -49,4 +49,8 @@ export default {
   ],
 
   worldRules: [releaseWorkflows, siteConfig, versionScheme],
+  // The standard itself — the contract the three rules above judge against, and the
+  // setup a new site repo needs. A skill rather than prose: it is wanted when a
+  // pipeline is being set up or debugged, not carried by every session in the repo.
+  skills: ['static-site-releases'],
 };
