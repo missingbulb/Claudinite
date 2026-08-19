@@ -42,6 +42,7 @@ test('the body carries the task path first and the two scheduling fields', () =>
     blockedBy: [812, 813],
     request: null,
     model: null,
+    merge: null,
   });
   assert.match(body, /### Context\n- only the mount\n- nothing else/);
 });
@@ -49,7 +50,7 @@ test('the body carries the task path first and the two scheduling fields', () =>
 test('absence is meaningful: no fields parse to null and an empty list', () => {
   const body = workItemBody({ taskPath: 'packs/x/tasks/y/task.md' });
   assert.deepEqual(parseWorkItemBody(body), {
-    taskPath: 'packs/x/tasks/y/task.md', notBefore: null, blockedBy: [], request: null, model: null,
+    taskPath: 'packs/x/tasks/y/task.md', notBefore: null, blockedBy: [], request: null, model: null, merge: null,
   });
 });
 
