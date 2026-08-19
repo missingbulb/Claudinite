@@ -1450,8 +1450,9 @@ person to merge it (§16.5).
 
 The engine ships **one** task, `engine/implement-request`, wherever the queue runs
 — `frequency: 'manual'` (the tick never puts it on a calendar; an item exists only
-because an issue was marked), `expected_outcome: 'open-pr'` (it opens a pull
-request for review and the executor enforces in code that it never merges), no
+because an issue was marked), `expected_outcome: 'merged-pr'` (it opens a pull
+request for review, and lands it only where the asker authorized that in advance
+for a narrow diff — §16.11; at first it was ceilinged at `open-pr`), no
 `after`, and **no code-work phase at all**.
 
 Shipping it as a task rather than as a special item shape is what keeps this from
@@ -1679,6 +1680,52 @@ cannot reach `api.github.com`, so it is a question for the first real run — an
 failure mode is deliberately loud rather than silent: a permission read that answers
 anything but 200/404 is `unreadable`, which fails the run into the failure lane with
 the status on the item, and no request is approved or refused on a guess.
+
+### 16.11 Deferred requests — blocked, chained, and sometimes landed (owner, 2026-08-19)
+
+> *"I need to have a skill that will allow me to make a comment on a change that
+> will be done after current work is done … which will create an issue, blocked on
+> the currently working PR or issue … and do not ask for approval for commit for
+> [comments/README, tests, code in a single directory] … If I ask for another
+> '/do-later' task in the same session — the blocking should be the previous
+> do-later task, so I create a chain of work."*
+
+A follow-up spotted mid-session is a request like any other; what it needs beyond
+§16 is a way to say **not yet**, and a way to say **you need not ask me about this
+one**. Both ride the vocabulary that already exists — nothing here is a third
+mechanism.
+
+**Not yet is `Blocked-by:`.** A marked issue may name what it waits on in the very
+field a work item uses, and adoption carries the still-open ones onto the item it
+births, which is then born `task:blocked`. Job 2 of the tick releases it when they
+close, on any origin, exactly as it releases a fan-in. So the chain the owner asked
+for is not a feature at all: each deferral names the previous deferral's issue, and
+the queue serializes them. A blocker already closed at adoption is dropped rather
+than born and immediately readied, and an unreadable one is never read as closed —
+delay, never release, as everywhere else here.
+
+**"Don't ask me" is `claude-automerge`, and it is per ask.** The label is consumed
+with the mark like the model labels, so an authorization can never linger into a
+later ask, and adoption copies it onto the item as `Merge: if-narrow`. The built-in
+task's ceiling therefore becomes `merged-pr` — but a ceiling is a maximum, not an
+instruction: with no `Merge:` field the worker opens a pull request and parks at the
+approval lane precisely as before, which is what every ordinary marked issue keeps
+getting.
+
+**Narrow is measured, not judged.** `tasks/implement-request/narrow-diff.mjs`
+classifies the run's own diff: documentation, test files and comment-only edits
+never count, and what remains must be code within a **single directory**. Anything
+wider parks for approval and says which directories made it wide. The comment
+stripping is C-family and reuses the checks helper, so a file whose language it does
+not model counts as code — the safe end of a verdict that decides whether a change
+lands unattended. Two things the worker doc says flatly, because the failure mode
+here is a session talking itself into a merge: the verdict comes from the classifier
+and never from the session's reading, and a change is never re-shaped to fit it.
+
+**What the session does with all of this** is the `do-later` skill in
+`claudinite-growth` — which blocker to name, the model family read off the running
+session, and the one case that withholds the authorization outright: *the owner
+saying they want to review this one outranks how small the change looks*.
 
 ## Appendix A — the owner's sketch (2026-08-12, verbatim)
 

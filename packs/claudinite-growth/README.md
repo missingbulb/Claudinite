@@ -150,6 +150,10 @@ its worker are written to: the declaration's fields, the code-work and agentic p
 precondition as the only place a task may decide not to run, and how a work item converges. That
 contract is what the four task checks below judge against, and it is a skill rather than a rule
 because it is wanted when a task is being written, not carried by every session in every repo.
+[**do-later**](skills/do-later/SKILL.md) is the other end of the same subject — putting work INTO
+the queue rather than authoring what runs there: a change the owner defers mid-session becomes a
+marked issue blocked behind the work in flight and behind the previous deferral, so a session's
+asks chain instead of racing.
 Adoption itself — `adopt-claudinite`, `adopt-pack` and the `adopt-requested-packs` task — is not
 here: its subject is Claudinite's own surface, not lesson capture.
 

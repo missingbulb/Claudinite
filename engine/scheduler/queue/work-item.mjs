@@ -132,7 +132,7 @@ export function outcomeOf(issue) {
 }
 
 // --- the request vocabulary (DESIGN §16.1) ------------------------------------
-// Four labels in their own namespace, worn by an ORDINARY issue somebody marked —
+// Five labels in their own namespace, worn by an ORDINARY issue somebody marked —
 // never by a work item, which is why they are not in the `task:` namespace and why
 // nothing here reads them off an item. They are here beside the item's own
 // vocabulary because they are the other half of the same compatibility surface.
@@ -146,6 +146,13 @@ export const REQUEST_LABEL = 'claude-task';
 export const QUEUED_LABEL = 'claude-queued';
 export const IN_REVIEW_LABEL = 'claude-in-review';
 export const MODEL_LABEL_PREFIX = 'claude-model:';
+
+// The merge authorization (§16.11): the asker says up front that this request's
+// change may land without their approval WHEN ITS DIFF IS NARROW — the run still
+// judges the diff, and a wide one parks for review exactly as an unauthorized
+// request does. Consumed with the mark like the model labels, so each ask
+// authorizes afresh and a label left by an earlier ask never carries into a new one.
+export const AUTOMERGE_LABEL = 'claude-automerge';
 
 // The families a request may ask for, and the one it gets when it asks for
 // nothing. `none` is not among them: a request is implemented by a session, so an
@@ -162,6 +169,7 @@ export const REQUEST_LABELS = [
   { name: REQUEST_LABEL, color: '1d76db', description: 'Claudinite: implement this issue — the next tick queues a run for it' },
   { name: QUEUED_LABEL, color: 'fbca04', description: 'Claudinite: a work item exists for this issue' },
   { name: IN_REVIEW_LABEL, color: '5319e7', description: 'Claudinite: a pull request is open for this issue, waiting on a person' },
+  { name: AUTOMERGE_LABEL, color: '0e8a16', description: 'Claudinite: land this request without approval if its diff is narrow (docs, tests, comments, code in one directory)' },
   ...REQUEST_MODELS.map((f) => ({
     name: `${MODEL_LABEL_PREFIX}${f}`, color: 'ededed',
     description: `Claudinite: run this request at the ${f} family`,
@@ -271,7 +279,7 @@ export const EPISODE_MARKER = '<!-- claudinite-episode -->';
 export const NOT_BEFORE_FIELD = 'Not-before';
 export const BLOCKED_BY_FIELD = 'Blocked-by';
 
-// The two fields a REQUEST item carries (DESIGN §16.3). `Request` is the issue this
+// The three fields a REQUEST item carries (DESIGN §16.3, §16.11). `Request` is the issue this
 // run implements — the whole payload, since the request task has no code-work phase
 // to hand one over. `Model` is the family the asker chose, copied here by the tick
 // from a write-gated label and read only by a task that declares
@@ -279,6 +287,14 @@ export const BLOCKED_BY_FIELD = 'Blocked-by';
 // behaviour, which is why it is fenced rather than waved through (§16.7).
 export const REQUEST_FIELD = 'Request';
 export const MODEL_FIELD = 'Model';
+
+// `Merge` is the asker's standing authorization, copied here from the
+// write-gated `claude-automerge` label. Its one value is `if-narrow`: the run may
+// land its own pull request when the diff classifier calls the diff narrow, and
+// must park for approval otherwise. An absent field is the default — never merge —
+// so an item an older tick wrote reads as unauthorized rather than as authorized.
+export const MERGE_FIELD = 'Merge';
+export const MERGE_IF_NARROW = 'if-narrow';
 
 // The heading the delivered-artifacts section carries in a work item body. One
 // home, because it is written in three places and MATCHED when a re-entrant run
@@ -297,6 +313,7 @@ const NOT_BEFORE_RE = /^Not-before:[ \t]*(.*)$/m;
 const BLOCKED_BY_RE = /^Blocked-by:[ \t]*(.*)$/m;
 const REQUEST_RE = /^Request:[ \t]*#?(\d+)/m;
 const MODEL_RE = /^Model:[ \t]*(\S+)/m;
+const MERGE_RE = /^Merge:[ \t]*(\S+)/m;
 
 // Build a work item body. The first line is the task path — the only thing an
 // executor reads to locate the worker, validated in code before anything trusts
@@ -304,7 +321,7 @@ const MODEL_RE = /^Model:[ \t]*(\S+)/m;
 // command) is read from the tracked task files at HEAD, never from here.
 export function workItemBody({
   taskPath, notBefore = null, blockedBy = [], context = [], delivered = [], reason = null,
-  request = null, model = null,
+  request = null, model = null, merge = null,
 }) {
   const lines = [taskPath, ''];
   const fields = [];
@@ -312,6 +329,7 @@ export function workItemBody({
   if (blockedBy.length) fields.push(`${BLOCKED_BY_FIELD}: ${blockedBy.map((n) => `#${n}`).join(', ')}`);
   if (request) fields.push(`${REQUEST_FIELD}: #${request}`);
   if (model) fields.push(`${MODEL_FIELD}: ${model}`);
+  if (merge) fields.push(`${MERGE_FIELD}: ${merge}`);
   if (fields.length) lines.push(...fields, '');
   lines.push('Execute the Claudinite task above.');
   if (context.length) {
@@ -327,6 +345,14 @@ export function workItemBody({
   return lines.join('\n') + '\n';
 }
 
+// The `Blocked-by` numbers a body names, from a work item's body or from an
+// ORDINARY issue's — a request marked for implementation states what it waits on in
+// the same field spelling, and adoption carries it onto the item it births (§16.11).
+export function parseBlockedBy(body) {
+  const bb = BLOCKED_BY_RE.exec(String(body ?? ''))?.[1] ?? '';
+  return [...bb.matchAll(/#(\d+)/g)].map((m) => Number(m[1]));
+}
+
 // Parse an item body back into the facts the tick and the executor read. A body
 // with no first line, or whose fields are absent, yields nulls — absence is
 // meaningful everywhere here and is never filled in with a default.
@@ -334,15 +360,19 @@ export function parseWorkItemBody(body) {
   const text = String(body ?? '');
   const taskPath = text.split('\n').map((l) => l.trim()).find((l) => l !== '') ?? null;
   const nb = NOT_BEFORE_RE.exec(text)?.[1]?.trim() || null;
-  const bb = BLOCKED_BY_RE.exec(text)?.[1] ?? '';
-  const blockedBy = [...bb.matchAll(/#(\d+)/g)].map((m) => Number(m[1]));
+  const blockedBy = parseBlockedBy(text);
   const request = REQUEST_RE.exec(text) ? Number(REQUEST_RE.exec(text)[1]) : null;
   // An unrecognised family reads as absent rather than as itself: the item's model
   // is behaviour-defining, so the only values that leave this parser are ones the
   // engine can actually dispatch at (§16.7).
   const askedModel = MODEL_RE.exec(text)?.[1] ?? null;
   const model = REQUEST_MODELS.includes(askedModel) ? askedModel : null;
-  return { taskPath, notBefore: nb, blockedBy, request, model };
+  // Same fencing as the model: an unrecognised authorization reads as absent, and
+  // absent is the safe end of this field — a run that cannot read its permission
+  // opens a pull request and waits.
+  const askedMerge = MERGE_RE.exec(text)?.[1] ?? null;
+  const merge = askedMerge === MERGE_IF_NARROW ? askedMerge : null;
+  return { taskPath, notBefore: nb, blockedBy, request, model, merge };
 }
 
 // The item's own `### Context` bullets, in order — the binding scope a hand-created

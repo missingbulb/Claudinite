@@ -22,7 +22,7 @@ const REQUEST_TASK = {
   taskPath: TASK_PATH, decl: requestTask,
 };
 
-const marked = (number, labels = ['claude-task']) => ({ number, title: `A thing to do`, state: 'open', labels });
+const marked = (number, labels = ['claude-task'], body = '') => ({ number, title: `A thing to do`, body, state: 'open', labels });
 
 let seq = 700;
 const requestItem = (request, labels, over = {}) => ({
@@ -46,7 +46,7 @@ test('S44 — a marked issue becomes one item, and the consumed mark is the exac
   assert.equal(adopt.title, '[claudinite-work] engine/implement-request #500');
   assert.deepEqual(adopt.labels, ['task:ready'], 'born ready — a request has no anchor to wait for');
   assert.deepEqual(parseWorkItemBody(adopt.body), {
-    taskPath: TASK_PATH, notBefore: null, blockedBy: [], request: 500, model: 'opus',
+    taskPath: TASK_PATH, notBefore: null, blockedBy: [], request: 500, model: 'opus', merge: null,
   });
   assert.deepEqual(adopt.consume, ['claude-task']);
 
@@ -324,7 +324,7 @@ test('the precondition is handed THIS occurrence\'s own facts, not just the sign
   };
   await drive(repo, req({ authorPermission: 'admin' }), { tasks: [spy] });
 
-  assert.deepEqual(seen, [{ taskPath: TASK_PATH, notBefore: null, blockedBy: [], request: 500, model: 'sonnet' }]);
+  assert.deepEqual(seen, [{ taskPath: TASK_PATH, notBefore: null, blockedBy: [], request: 500, model: 'sonnet', merge: null }]);
 });
 
 test('the request task is the one task allowed to read its item\'s model', () => {
@@ -333,6 +333,59 @@ test('the request task is the one task allowed to read its item\'s model', () =>
   // statically), so the two have to be held together from outside.
   assert.equal(`engine/${requestTask.id}`, REQUEST_TASK_ID);
   assert.equal(requestTask.model_from_request, true);
-  assert.equal(requestTask.expected_outcome, 'open-pr', 'it opens a PR for review and can never merge one');
+  // The ceiling PERMITS a merge (§16.11) — what decides whether one happens is the
+  // item's `Merge:` field, asserted below, and the diff classifier the worker runs.
+  assert.equal(requestTask.expected_outcome, 'merged-pr');
   assert.equal(requestTask.code_work, undefined, 'and has no code-work phase to carry a payload');
+});
+
+// --- §16.11: a deferred request — blocked, chained, and its merge authorization --
+
+test('a marked issue that names open blockers is adopted BLOCKED, and released when they close', () => {
+  const req = marked(500, ['claude-task'], 'Do the rename after the current work.\n\nBlocked-by: #480, #481\n');
+  const [adopt] = ops({ requests: [req], stateOf: (n) => (n === 481 ? 'closed' : 'open') })
+    .filter((o) => o.kind === 'adopt');
+
+  assert.deepEqual(adopt.labels, ['task:blocked'], 'born blocked — the follow-up waits on the work in flight');
+  // The closed blocker is dropped: an item is not born waiting on something that
+  // already happened.
+  assert.deepEqual(parseWorkItemBody(adopt.body).blockedBy, [480]);
+  assert.deepEqual(adopt.blockedBy, [480]);
+
+  // Job 2 releases it, on any origin, once the blocker closes — the same mechanic a
+  // fan-in rides, which is what makes the chain of deferrals work at all.
+  const item = requestItem(500, ['task:blocked'], { body: `${TASK_PATH}\n\nBlocked-by: #480\nRequest: #500\nModel: opus\n` });
+  assert.deepEqual(
+    ops({ items: [item], stateOf: () => 'open' }).filter((o) => o.kind === 'ready'), [],
+    'while the blocker is open the item stays blocked',
+  );
+  assert.deepEqual(
+    ops({ items: [item], stateOf: () => 'closed' }).filter((o) => o.kind === 'ready'),
+    [{ kind: 'ready', issue: item.number }],
+  );
+});
+
+test('an unreadable blocker delays the request rather than releasing it', () => {
+  const item = requestItem(500, ['task:blocked'], { body: `${TASK_PATH}\n\nBlocked-by: #480\nRequest: #500\n` });
+  assert.deepEqual(ops({ items: [item], stateOf: () => null }).filter((o) => o.kind === 'ready'), []);
+});
+
+test('`claude-automerge` becomes the item\'s Merge field, and is consumed with the mark', () => {
+  const [authorized] = ops({ requests: [marked(500, ['claude-task', 'claude-automerge'])] })
+    .filter((o) => o.kind === 'adopt');
+  assert.equal(parseWorkItemBody(authorized.body).merge, 'if-narrow');
+  assert.equal(authorized.merge, 'if-narrow');
+  // Consumed with the mark, so an authorization can never linger into a later ask.
+  assert.deepEqual(authorized.consume.sort(), ['claude-automerge', 'claude-task']);
+
+  // …and the ordinary marked issue is untouched by any of this: no field, and the
+  // worker's default is to open a pull request and park.
+  const [plain] = ops({ requests: [marked(501)] }).filter((o) => o.kind === 'adopt');
+  assert.equal(parseWorkItemBody(plain.body).merge, null);
+});
+
+test('the ceiling permits the authorized merge, and an unrecognised authorization reads as absent', () => {
+  assert.equal(requestTask.expected_outcome, 'merged-pr');
+  const body = `${TASK_PATH}\n\nRequest: #500\nMerge: whenever-i-feel-like-it\n`;
+  assert.equal(parseWorkItemBody(body).merge, null, 'only the one value authorizes anything');
 });
