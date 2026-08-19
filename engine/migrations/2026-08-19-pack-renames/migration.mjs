@@ -38,32 +38,10 @@ export default {
     { canonical: '.claudinite/shared/packs/claudinite-growth', legacy: ['.claudinite/shared/packs/grow_with_claudinite'] },
   ],
 
-  // Anchored text edits, never a re-serialization: a round-trip through JSON.parse
-  // would rewrite indentation, key order and escapes the member never asked to change.
-  //
-  // PRECISION OVER COMPLETENESS, deliberately. `core` is an ordinary word and an
-  // ordinary directory name, so a pattern loose enough to catch every spelling would
-  // also rewrite a member's own `{ "from": "core", "to": "ui/*" }` barrier rule and
-  // silently unhook it. Each pattern below can only match the declaration's own
-  // vocabulary: a `packVersions` key, an entry object's `id`, or an element of the
-  // `packs` array itself. Anything this misses stays readable anyway — the loader
-  // tolerance resolves both spellings — which is the trade this record is free to
-  // make and a record without that tolerance behind it would not be.
-  rewrite: [
-    {
-      file: '.claudinite-checks.json',
-      replace: [
-        // A stamped version's key.
-        { pattern: /"core"(\s*:)/g, to: '"claudinite-lifecycle"$1' },
-        { pattern: /"grow_with_claudinite"(\s*:)/g, to: '"claudinite-growth"$1' },
-        // An entry object's id.
-        { pattern: /("id"\s*:\s*)"core"/g, to: '$1"claudinite-lifecycle"' },
-        { pattern: /("id"\s*:\s*)"grow_with_claudinite"/g, to: '$1"claudinite-growth"' },
-        // A bare string element of `packs`, anchored on the array that holds it — a
-        // pack is declared once, so one match per file is the whole real case.
-        { pattern: /("packs"\s*:\s*\[(?:[^\]]*?,)?\s*)"core"(\s*[,\]])/g, to: '$1"claudinite-lifecycle"$2' },
-        { pattern: /("packs"\s*:\s*\[(?:[^\]]*?,)?\s*)"grow_with_claudinite"(\s*[,\]])/g, to: '$1"claudinite-growth"$2' },
-      ],
-    },
-  ],
+  // THE DECLARATION IS NOT THIS RECORD'S ANY MORE. It carried a textual rewrite of
+  // the packs array that could not cross a nested array in an entry object, so it
+  // converged nothing; the repair is structural and lives in the record beside this
+  // one (2026-08-19-pack-renames-declaration, #1041). Removed rather than fixed in
+  // place: a member already stamped at this record's version never runs it again, so
+  // a fix here would reach only the repos that were never affected.
 };
