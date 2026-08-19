@@ -15,7 +15,9 @@
 //     "scope":       "repo",                             // classic OAuth Apps only
 //     "rosterUrl":   "./fleet-roster.GENERATED.json",    // the repo selector's source
 //     "repos":       ["owner/a", "owner/b"],             // an inline roster instead
-//     "defaultRepo": "owner/a"
+//     "defaultRepo": "owner/a",
+//     "digestsRepo": "owner/enforcer",                  // where the fleet digests are written
+//     "digestsPath": "digests"                           // the directory inside it
 //   }
 
 export const DEFAULTS = {
@@ -26,6 +28,11 @@ export const DEFAULTS = {
   rosterUrl: null,
   repos: [],
   defaultRepo: null,
+  // The fleet's morning briefs live in whichever repo runs the digest task — the fleet
+  // enforcer's, never this one by assumption — so the repo is named rather than
+  // guessed, and an unset key means this deployment has no digests panel.
+  digestsRepo: null,
+  digestsPath: 'digests',
 };
 
 export async function loadConfig(url = './dashboard.config.json') {

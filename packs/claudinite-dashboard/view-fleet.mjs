@@ -5,9 +5,12 @@ import * as gh from './github.mjs';
 import {
   summariseMember, rankMembers, rollUp, packSpread, taskSpread,
 } from './fleet.mjs';
+import { activitySeries, fleetBenefits, delta } from './activity.mjs';
+import { digestDates, digestPath, digestEntry } from './digest.mjs';
 import {
-  $, el, ago, duration, head, emptyRow, repoLink, tiles, segmentBar,
-  reasonNodes, LEVEL_GLYPH, STATE_ORDER, STATE_COLOR, STATE_UI, OUTCOME_COLOR,
+  $, el, ago, duration, groupedHead, columnCount, groupStarts, emptyRow, repoLink, tiles, segmentBar,
+  reasonNodes, stackedColumns, chartLegend, windowFigure,
+  LEVEL_GLYPH, STATE_ORDER, STATE_COLOR, STATE_UI, OUTCOME_COLOR,
 } from './ui.mjs';
 import { OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE } from '../../engine/scheduler/queue/work-item.mjs';
 
@@ -36,7 +39,10 @@ async function pool(items, worker, limit = CONCURRENCY) {
 async function readMember(repo, token, { withTree = true } = {}) {
   try {
     const meta = await gh.getRepo(repo, token);
-    const sha = await gh.getHeadSha(repo, meta.default_branch, token);
+    // The head commit, kept whole: its date is when this member last landed anything,
+    // and it arrives in the call the content cache already makes for the sha.
+    const head = await gh.getHead(repo, meta.default_branch, token);
+    const sha = head.sha;
     const configText = await gh.getTextAtSha(repo, sha, '.claudinite-checks.json', token);
 
     let declaration = null;
@@ -46,7 +52,7 @@ async function readMember(repo, token, { withTree = true } = {}) {
 
     // A member that does not run Claudinite needs no further reads — and skipping
     // them is most of the saving on a fleet where not everything is adopted.
-    if (!declaration) return { repo, declaration: null, defaultBranch: meta.default_branch };
+    if (!declaration) return { repo, declaration: null, defaultBranch: meta.default_branch, head, stars: meta.stars };
 
     const [tree, issuePage, runs] = await Promise.all([
       withTree ? gh.listTreeAtSha(repo, sha, token).catch(() => null) : Promise.resolve(null),
@@ -60,9 +66,16 @@ async function readMember(repo, token, { withTree = true } = {}) {
       repo,
       declaration,
       defaultBranch: meta.default_branch,
+      stars: meta.stars,
+      archived: meta.archived,
       sha,
+      head,
       paths: tree?.paths ?? null,
       items: issuePage.issues,
+      // Whether that page reached the end of this member's history. The activity
+      // series needs it to tell a quiet day from a day it simply could not see.
+      itemsComplete: issuePage.complete,
+      prs: issuePage.prs ?? [],
       runs,
     };
   } catch (error) {
@@ -87,6 +100,36 @@ async function readCanon(config, token) {
   }
 }
 
+// The last two days' briefs, from wherever the fleet keeps them. Optional in every
+// direction: no `digestsRepo` configured means the panel is not part of this
+// deployment, and a day with no file is a normal state rather than an error — the task
+// had nothing to report, or has not run yet.
+//
+// Content at a path in a repo, so both reads are immutable-cacheable by sha and a warm
+// load costs nothing. The 404 for a missing day is cached the same way, so a fleet
+// whose digest task is idle does not re-ask every load.
+async function readDigests(config, token) {
+  if (!config?.digestsRepo) return null;
+  const dates = digestDates(Date.now());
+  try {
+    const meta = await gh.getRepo(config.digestsRepo, token);
+    const sha = await gh.getHeadSha(config.digestsRepo, meta.default_branch, token);
+    return await Promise.all(dates.map(async (date) => {
+      try {
+        const text = await gh.getTextAtSha(config.digestsRepo, sha, digestPath(config.digestsPath, date), token);
+        return digestEntry(date, text);
+      } catch (error) {
+        return digestEntry(date, null, error);
+      }
+    }));
+  } catch (error) {
+    // The repo itself could not be read — a permissions fact about the viewer, not a
+    // statement about any day's brief. Every day reports it rather than reading as
+    // "nothing was written".
+    return dates.map((date) => digestEntry(date, null, error));
+  }
+}
+
 // --- render ---------------------------------------------------------------------
 
 const MOUNT_UI = {
@@ -96,6 +139,52 @@ const MOUNT_UI = {
   stalled: { label: 'stalled', cls: 'warning' },
   none: { label: 'no stamp', cls: 'warning' },
   unknown: { label: '—', cls: 'idle' },
+};
+
+// The member grid, as three questions rather than one wall of columns:
+//
+//   STATUS      — what kind of repo is this, and is it alive.
+//   CLAUDINITE  — what the machinery is doing here.
+//   WORK        — what is waiting on a person.
+//
+// The identity pair at the left belongs to none of them: the name and the reason this
+// row is where it is are how you read every other cell.
+//
+// Every column is derived from a read the page ALREADY makes. Four fields the issue
+// asked for are absent for that reason and not by oversight — rule tokens, test counts
+// and time saved would each need a member's own file read, and conversation-log
+// sessions a branch listing. They are named in the panel's own note rather than
+// guessed at.
+const MEMBER_GROUPS = [
+  ['', ['Member', 'Health']],
+  ['Status', ['CI', 'Stars', 'Last commit']],
+  ['Claudinite', ['Packs', 'Tasks', 'Queue', 'Recent outcomes', 'Mount', 'Scheduler']],
+  ['Work — waiting on a person', ['Issues', 'Pull requests']],
+];
+
+// The same split, one level down: a task's identity, where it stands right now, and
+// what it has done. `Parked` sits under Now because it is a live state, not a record.
+const FLEET_TASK_GROUPS = [
+  ['', ['Task']],
+  ['Now', ['Members', 'Open', 'Parked']],
+  ['History', ['Succeeded', 'No outcome']],
+];
+
+const MEMBER_COLS = columnCount(MEMBER_GROUPS);
+const MEMBER_STARTS = groupStarts(MEMBER_GROUPS);
+
+// The group's first cell carries the same rule the header band draws, so the three
+// questions stay legible down the length of the table.
+const banded = (cells) => cells.map((cell, i) => {
+  if (MEMBER_STARTS.includes(i)) cell.classList.add('group-start');
+  return cell;
+});
+
+const CI_UI = {
+  passing: { label: 'passing', cls: 'ok' },
+  failing: { label: 'failing', cls: 'critical' },
+  running: { label: 'running', cls: 'info' },
+  unknown: { label: '—', cls: 'info' },
 };
 
 function memberRow(s, onOpen, now) {
@@ -109,7 +198,7 @@ function memberRow(s, onOpen, now) {
   if (s.status !== 'adopted') {
     return el('tr', { className: `lvl-${s.level} muted-row` }, [
       name,
-      el('td', { colSpan: 5 }, reasonNodes(s.reasons)),
+      el('td', { colSpan: MEMBER_COLS - 2 }, reasonNodes(s.reasons)),
       el('td', { className: 'nw' }, [el('a', { href: `?repo=${encodeURIComponent(s.repo)}`, textContent: 'open', onclick: open })]),
     ]);
   }
@@ -118,6 +207,30 @@ function memberRow(s, onOpen, now) {
   const health = el('td', {}, s.reasons.length
     ? reasonNodes(s.reasons)
     : [el('span', { className: 'warn ok', textContent: `${LEVEL_GLYPH.ok} healthy` })]);
+
+  // --- Status: the repo itself ---------------------------------------------------
+
+  const ciUi = CI_UI[s.ci?.state] ?? CI_UI.unknown;
+  const ci = el('td', { className: 'nw' }, [
+    el('div', { className: `warn ${ciUi.cls}`, textContent: ciUi.label }),
+    el('div', { className: 'sub', textContent: s.ci?.at ? ago(s.ci.at, now) : 'no run on the default branch' }),
+  ]);
+
+  const stars = el('td', { className: 'num nw', textContent: s.stars == null ? '—' : String(s.stars) });
+
+  const commit = el('td', { className: 'nw sub', textContent: s.lastCommit ? ago(s.lastCommit, now) : '—' });
+
+  // --- Claudinite: what the machinery is doing here -------------------------------
+
+  const packs = el('td', { className: 'num nw' }, [
+    el('div', { textContent: String(s.packs.length) }),
+    el('div', { className: 'sub', textContent: 'declared' }),
+  ]);
+
+  const tasks = el('td', { className: 'num nw' }, [
+    el('div', { textContent: s.declaredTasks == null ? '—' : String(s.declaredTasks) }),
+    el('div', { className: 'sub', textContent: 'declared' }),
+  ]);
 
   // Queue: the state mix as one thin bar plus the counts that are non-zero, so a
   // member with nothing open reads as empty rather than as a row of zeros.
@@ -128,16 +241,20 @@ function memberRow(s, onOpen, now) {
     el('div', { className: 'sub', textContent: counts.length ? counts.join(' · ') : 'nothing open' }),
   ]);
 
-  const outcomeBar = segmentBar([
-    ['done', s.outcomes[OUTCOME_DONE], OUTCOME_COLOR[OUTCOME_DONE]],
-    ['delivered', s.outcomes[OUTCOME_DELIVERED], OUTCOME_COLOR[OUTCOME_DELIVERED]],
-    ['obsolete', s.outcomes[OUTCOME_OBSOLETE], OUTCOME_COLOR[OUTCOME_OBSOLETE]],
-    ['no outcome', s.outcomes.none, OUTCOME_COLOR.none],
-  ], { width: 92 });
-
-  const activity = el('td', {}, [
-    outcomeBar,
+  const outcomes = el('td', {}, [
+    segmentBar([
+      ['done', s.outcomes[OUTCOME_DONE], OUTCOME_COLOR[OUTCOME_DONE]],
+      ['delivered', s.outcomes[OUTCOME_DELIVERED], OUTCOME_COLOR[OUTCOME_DELIVERED]],
+      ['obsolete', s.outcomes[OUTCOME_OBSOLETE], OUTCOME_COLOR[OUTCOME_OBSOLETE]],
+      ['no outcome', s.outcomes.none, OUTCOME_COLOR.none],
+    ], { width: 92 }),
     el('div', { className: 'sub', textContent: s.lastActivity ? ago(s.lastActivity, now) : (s.closedSeen ? 'unknown' : 'nothing closed yet') }),
+  ]);
+
+  const m = MOUNT_UI[s.mount.state] ?? MOUNT_UI.unknown;
+  const mount = el('td', { className: 'nw' }, [
+    el('div', { className: `warn ${m.cls}`, textContent: m.label }),
+    el('div', { className: 'sub num', textContent: s.mount.ref ? s.mount.ref.slice(0, 7) : '—' }),
   ]);
 
   const runs = el('td', { className: 'nw' }, [
@@ -150,18 +267,184 @@ function memberRow(s, onOpen, now) {
     el('div', { className: 'sub', textContent: s.runs.lastAt ? ago(s.runs.lastAt, now) : '—' }),
   ]);
 
-  const m = MOUNT_UI[s.mount.state] ?? MOUNT_UI.unknown;
-  const mount = el('td', { className: 'nw' }, [
-    el('div', { className: `warn ${m.cls}`, textContent: m.label }),
-    el('div', { className: 'sub num', textContent: s.mount.ref ? s.mount.ref.slice(0, 7) : '—' }),
+  // --- Work: what is waiting on a person ------------------------------------------
+
+  // Issues that are NOT queue items, and open pull requests. Both are inside the
+  // issue page's window, so an old enough one is not counted — "in the window" is
+  // said once under the table rather than in every cell.
+  const issues = el('td', { className: 'num nw' }, [
+    el('div', { textContent: String(s.work?.issues ?? 0) }),
+    el('div', { className: 'sub', textContent: s.work?.issuesOldest ? `oldest ${duration(now - s.work.issuesOldest)}` : '—' }),
   ]);
 
-  const tasks = el('td', { className: 'num nw' }, [
-    el('div', { textContent: s.declaredTasks == null ? '—' : String(s.declaredTasks) }),
-    el('div', { className: 'sub', textContent: `${s.packs.length} packs` }),
+  const prs = el('td', { className: 'num nw' }, [
+    el('div', { textContent: String(s.work?.prs ?? 0) }),
+    el('div', {
+      className: 'sub',
+      textContent: s.work?.prsOldest
+        ? `oldest ${duration(now - s.work.prsOldest)}${s.work.drafts ? ` · ${s.work.drafts} draft` : ''}`
+        : (s.work?.drafts ? `${s.work.drafts} draft` : '—'),
+    }),
   ]);
 
-  return el('tr', { className: `lvl-${s.level}` }, [name, health, queue, activity, runs, mount, tasks]);
+  return el('tr', { className: `lvl-${s.level}` },
+    banded([name, health, ci, stars, commit, packs, tasks, queue, outcomes, mount, runs, issues, prs]));
+}
+
+// --- what the machinery bought ---------------------------------------------------
+
+// The block above everything else, and the only one that opens on what the machinery
+// is FOR rather than on what is broken. Its content is decided in `activity.mjs`; the
+// two rules that keep it honest are worth restating where it is drawn:
+//
+//   NO VANITY TOTAL. Every figure is this week's, against last week's. A number that
+//   only ever grows is a decoration.
+//
+//   NOTHING INVENTED. No estimated hours saved, no multiplier, no score — only counts
+//   of things that individually happened, from reads the page already made. Two
+//   quantities the issue asked for are deliberately ABSENT rather than approximated:
+//   checks enforced (a member's check count is not in any read this page makes) and
+//   anything expressed in time saved (nothing measures it).
+function renderBenefits(b) {
+  const node = $('fleet-benefits');
+  const runsPassed = b.current.runs - b.current.runsFailed;
+  const prevPassed = b.previous.runs - b.previous.runsFailed;
+
+  // `replaceChildren` renders a null child as the text "null", so the optional tile is
+  // filtered out rather than passed through.
+  node.replaceChildren(...[
+    windowFigure(b.current.completed, 'work items completed',
+      delta(b.current.completed, b.previous.completed),
+      `in ${b.current.members} member(s)`),
+    windowFigure(b.current.unattended, 'of those, closed with nobody in the loop',
+      delta(b.current.unattended, b.previous.unattended),
+      'not parked for a human when it closed'),
+    windowFigure(b.current.parked, 'items that did need a person',
+      delta(b.current.parked, b.previous.parked),
+      'the honest other half of the figure above', { better: 'down' }),
+    windowFigure(runsPassed, 'scheduler runs passed',
+      delta(runsPassed, prevPassed),
+      b.current.runsFailed ? `${b.current.runsFailed} failed` : 'none failed'),
+    // No delta: a mount stamp carries ONE date, so last week's figure would count
+    // members whose last converge happens to sit in that window, not members that
+    // converged then. A comparison built on that would read as a fleet slowing down.
+    windowFigure(`${b.converged}/${b.members}`, 'members converged on their own', null,
+      `in the last ${b.windowDays} days`),
+    b.digests === null ? null
+      : windowFigure(b.digests, 'digests written', null, 'of the last two days'),
+  ].filter(Boolean));
+}
+
+// --- the digests panel -----------------------------------------------------------
+
+const BLOCK_TAG = { title: 'h3', section: 'h4', item: 'li', para: 'p' };
+
+// One card per day. The brief is plain text by its writer's contract, so this is
+// headings, paragraphs and links — never a Markdown renderer, which would be the wrong
+// reader for the file and a dependency for a page that has none.
+function digestCard(entry, repo, dir) {
+  const kids = [el('div', { className: 'k', textContent: entry.date })];
+
+  if (entry.state === 'missing') {
+    kids.push(el('p', { className: 'sub', textContent: 'No brief for this day — the digest task had nothing to report, or has not run.' }));
+  } else if (entry.state === 'unreadable') {
+    kids.push(el('p', { className: 'sub', textContent: `Not read — ${entry.error?.message ?? 'the digest repo could not be read'}.` }));
+  } else if (entry.state === 'empty') {
+    kids.push(el('p', { className: 'sub', textContent: 'The file for this day is empty.' }));
+  }
+
+  let list = null;
+  for (const b of entry.blocks) {
+    const nodes = b.runs.map((r) => (r.href
+      ? el('a', { href: r.href, target: '_blank', rel: 'noopener', textContent: r.text })
+      : r.text));
+    if (b.kind === 'item') {
+      if (!list) { list = el('ul', { className: 'digest-items' }); kids.push(list); }
+      list.append(el('li', {}, nodes));
+      continue;
+    }
+    list = null;
+    kids.push(el(BLOCK_TAG[b.kind] ?? 'p', {}, nodes));
+  }
+
+  if (entry.state === 'written' && repo) {
+    kids.push(el('div', { className: 'sub' }, [
+      el('a', {
+        href: `https://github.com/${repo}/blob/HEAD/${digestPath(dir, entry.date)}`,
+        target: '_blank', rel: 'noopener', textContent: 'the file',
+      }),
+    ]));
+  }
+  return el('div', { className: 'chart-card digest' }, kids);
+}
+
+function renderDigests(entries, config) {
+  const section = $('fleet-digests-section');
+  if (!entries) { section.hidden = true; return; }
+  section.hidden = false;
+  $('fleet-digests').replaceChildren(...entries.map((e) => digestCard(e, config?.digestsRepo, config?.digestsPath)));
+}
+
+// --- the activity panel ----------------------------------------------------------
+
+// The one panel that answers "what has this fleet been doing". Everything else here
+// is fault-finding, and fault-finding cannot distinguish a good week from a dead one:
+// healthy means every count is zero, and so does abandoned.
+//
+// Two charts rather than one, because the two series answer different questions and
+// share no scale: work CLOSED is the fleet's output, runs are the machinery that
+// produced it, and stacking them together would let a noisy scheduler read as
+// productivity.
+const WORK_SERIES = [
+  { label: 'done', color: OUTCOME_COLOR[OUTCOME_DONE], value: (d) => d.work[OUTCOME_DONE] },
+  { label: 'delivered', color: OUTCOME_COLOR[OUTCOME_DELIVERED], value: (d) => d.work[OUTCOME_DELIVERED] },
+  { label: 'obsolete', color: OUTCOME_COLOR[OUTCOME_OBSOLETE], value: (d) => d.work[OUTCOME_OBSOLETE] },
+  { label: 'no outcome', color: OUTCOME_COLOR.none, value: (d) => d.work.none },
+  { label: 'other issues closed', color: 'var(--s-blue)', value: (d) => d.otherClosed },
+];
+
+const RUN_SERIES = [
+  { label: 'runs passed', color: 'var(--good)', value: (d) => d.runs.success },
+  { label: 'runs failed', color: 'var(--critical)', value: (d) => d.runs.failure },
+  { label: 'runs other', color: 'var(--muted)', value: (d) => d.runs.other },
+];
+
+function renderActivity(series) {
+  const charts = $('fleet-activity');
+  const pass = series.totals.runs
+    ? Math.round(((series.totals.runs - series.totals.runsFailed) / series.totals.runs) * 100)
+    : null;
+
+  // Which members moved AT ALL. A fleet where two of twelve did anything is a fact
+  // about the fleet, and it is invisible in any per-member row.
+  const movement = el('div', { className: 'movement' }, [
+    el('div', { className: 'v num', textContent: `${series.moved.length}/${series.members}` }),
+    el('div', { className: 'k', textContent: 'members moved in the window' }),
+    el('div', { className: 'sub', textContent: series.quiet.length ? `quiet: ${series.quiet.map((r) => r.split('/')[1] ?? r).join(', ')}` : 'every readable member did something' }),
+    series.unread ? el('div', { className: 'sub', textContent: `${series.unread} member(s) unread — not counted either way` }) : null,
+  ]);
+
+  charts.replaceChildren(
+    el('div', { className: 'chart-card' }, [
+      el('div', { className: 'k', textContent: `${series.totals.workClosed} work items closed · ${series.totals.otherClosed} other issues` }),
+      chartLegend(WORK_SERIES),
+      stackedColumns(series.days, WORK_SERIES),
+      // A window that reaches past what one issue page holds is a floor, not a count,
+      // and a chart that does not say so reads as a fleet that went quiet.
+      series.horizon.issues
+        ? el('div', { className: 'sub', textContent: `before ${series.horizon.issues} this is a floor — one issue page per member does not reach further back` })
+        : null,
+    ]),
+    el('div', { className: 'chart-card' }, [
+      el('div', { className: 'k', textContent: pass == null ? 'no scheduler runs in the window' : `${series.totals.runs} runs · ${pass}% passed` }),
+      chartLegend(RUN_SERIES),
+      stackedColumns(series.days, RUN_SERIES),
+      series.horizon.runs
+        ? el('div', { className: 'sub', textContent: `before ${series.horizon.runs} this is a floor — the last 30 runs per member do not reach further back` })
+        : null,
+    ]),
+    el('div', { className: 'chart-card' }, [movement]),
+  );
 }
 
 // A member whose read has not landed yet. It is a row from the first paint rather
@@ -173,10 +456,10 @@ const pendingRow = (repo) => el('tr', { className: 'pending-row' }, [
     el('span', { className: 'name', textContent: repo.split('/')[1] ?? repo }),
     el('div', { className: 'sub' }, [repoLink(repo)]),
   ]),
-  el('td', { colSpan: 6 }, [el('span', { className: 'sub', textContent: 'reading…' })]),
+  el('td', { colSpan: MEMBER_COLS - 1 }, [el('span', { className: 'sub', textContent: 'reading…' })]),
 ]);
 
-function renderFleet(summaries, reads, now, onOpen, canon, progress = null) {
+function renderFleet(summaries, reads, now, onOpen, canon, progress = null, digests = null, canonConfig = null) {
   const resolved = summaries.filter(Boolean);
   const pending = summaries.map((s, i) => (s ? null : reads.names?.[i])).filter(Boolean);
   const roll = rollUp(resolved);
@@ -202,17 +485,22 @@ function renderFleet(summaries, reads, now, onOpen, canon, progress = null) {
     ? `${progress.done}/${progress.total} repos read — figures below cover those`
     : (progress ? `${progress.total} repos read` : '');
 
-  const body = head($('fleet'), ['Member', 'Health', 'Queue', 'Recent outcomes', 'Scheduler', 'Mount', 'Tasks']);
-  if (!summaries.length) { body.append(emptyRow(7, 'No members in the roster.')); return; }
+  const body = groupedHead($('fleet'), MEMBER_GROUPS);
+  if (!summaries.length) { body.append(emptyRow(MEMBER_COLS, 'No members in the roster.')); return; }
   for (const s of rankMembers(resolved)) body.append(memberRow(s, onOpen, now));
   for (const repo of pending) body.append(pendingRow(repo));
 
   // Tasks across the fleet. This is the view a per-repo page structurally cannot
   // give: a shared pack's task parked in four members at once is a canon problem,
   // and in any single repo it looks like that repo's bad luck.
-  const spread = taskSpread(reads.filter(Boolean), now).filter((t) => t.members > 0);
-  const tbody = head($('fleet-tasks'), ['Task', 'Members', 'Open', 'Parked', 'Succeeded', 'No outcome']);
-  if (!spread.length) tbody.append(emptyRow(6, 'No work items seen across the fleet.'));
+  const resolvedReads = reads.filter(Boolean);
+  renderDigests(digests, canonConfig);
+  renderBenefits(fleetBenefits(resolvedReads, { now, digests }));
+  renderActivity(activitySeries(resolvedReads, { now }));
+
+  const spread = taskSpread(resolvedReads, now).filter((t) => t.members > 0);
+  const tbody = groupedHead($('fleet-tasks'), FLEET_TASK_GROUPS);
+  if (!spread.length) tbody.append(emptyRow(columnCount(FLEET_TASK_GROUPS), 'No work items seen across the fleet.'));
   for (const t of spread.slice(0, 25)) {
     tbody.append(el('tr', { className: t.parked ? 'lvl-critical' : '' }, [
       el('td', {}, [
@@ -245,6 +533,9 @@ export async function loadFleet({ repos, token, config, onOpen, onError, onProgr
   const now = Date.now();
 
   const canon = await readCanon(config, token);
+  // Read before the sweep so the panel is there from the first paint: it is two small
+  // reads, and it is the thing a viewer opening this page in the morning came for.
+  const digests = await readDigests(config, token);
 
   // Rendered on every arrival rather than once at the end: the page is useful from
   // the first member back, and the member a viewer opened it for may be the first.
@@ -252,7 +543,7 @@ export async function loadFleet({ repos, token, config, onOpen, onError, onProgr
   reads.names = repos;
   const summaries = new Array(repos.length).fill(null);
   let done = 0;
-  const paint = () => renderFleet(summaries, reads, now, onOpen, canon, { done, total: repos.length });
+  const paint = () => renderFleet(summaries, reads, now, onOpen, canon, { done, total: repos.length }, digests, config);
   paint();
 
   await pool(repos, async (repo, i) => {
@@ -272,5 +563,5 @@ export async function loadFleet({ repos, token, config, onOpen, onError, onProgr
   }
 
   paint();
-  return { summaries: summaries.filter(Boolean), now, canon };
+  return { summaries: summaries.filter(Boolean), now, canon, digests };
 }

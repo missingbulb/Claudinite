@@ -11,7 +11,7 @@
 // distinguishes calls that SPENT budget from 304s that did not, because "how much
 // did that cost" is the question a viewer asks when a fleet sweep feels slow.
 
-import { immutable, validated, ageing, rateState, projectIssue, projectRun, DAY_MS } from './cache.mjs';
+import { immutable, validated, ageing, rateState, projectIssue, projectPull, projectRun, DAY_MS } from './cache.mjs';
 
 const API = 'https://api.github.com';
 
@@ -177,15 +177,27 @@ async function conditional(path, token, { transform = (x) => x } = {}) {
 
 export const getRepo = (repo, token) =>
   conditional(`/repos/${repo}`, token, {
-    transform: (r) => ({ default_branch: r.default_branch, private: r.private, full_name: r.full_name }),
+    // `stargazers_count` rides along in a response the page already makes: what KIND
+    // of repo this is belongs in the fleet row's Status group, and asking separately
+    // for it would be a per-member call the budget does not have.
+    transform: (r) => ({
+      default_branch: r.default_branch, private: r.private, full_name: r.full_name,
+      stars: r.stargazers_count ?? null, archived: Boolean(r.archived),
+    }),
   });
 
 // The head commit of the default branch — the cache key everything immutable hangs
 // off. One cheap call buys the right to skip every content read when nothing landed.
-export const getHeadSha = (repo, branch, token) =>
+//
+// Its DATE is kept alongside the sha because the same response already carries it:
+// "when did this repo last move" is a fleet question that would otherwise cost a
+// per-member call, and a read already made is the only kind #995's budget allows.
+export const getHead = (repo, branch, token) =>
   conditional(`/repos/${repo}/commits/${encodeURIComponent(branch)}`, token, {
-    transform: (c) => c.sha,
+    transform: (c) => ({ sha: c.sha, committedAt: c.commit?.committer?.date ?? c.commit?.author?.date ?? null }),
   });
+
+export const getHeadSha = async (repo, branch, token) => (await getHead(repo, branch, token)).sha;
 
 // A file's text AT A SHA, therefore immutable and cached forever. This is where the
 // bulk of a repeat load's savings come from: a roster of task declarations is one
@@ -240,6 +252,7 @@ export async function listTreeAtSha(repo, sha, token) {
 export async function listIssues(repo, token, { pages = 5, perPage = 100, historyTtl = null } = {}) {
   const ttl = historyTtl ?? policy.historyTtl ?? DAY_MS;
   const out = [];
+  const prs = [];
   let scanned = 0;
   let complete = false;
   let fromCache = 0;
@@ -248,9 +261,17 @@ export async function listIssues(repo, token, { pages = 5, perPage = 100, histor
   // length says nothing about whether more pages exist — a page of pure PRs would
   // read as the end of history. Pagination is decided by the raw page length, which
   // is therefore carried alongside the projection, cached and all.
+  //
+  // The PRs are not thrown away either: an open pull request is work waiting on a
+  // person, which is exactly what the fleet row's Work group reports, and it arrives
+  // in a response the page was making anyway.
   const project = (body) => {
     const list = Array.isArray(body) ? body : [];
-    return { items: list.filter((i) => !i.pull_request).map(projectIssue), raw: list.length };
+    return {
+      items: list.filter((i) => !i.pull_request).map(projectIssue),
+      prs: list.filter((i) => i.pull_request && String(i.state ?? '').toLowerCase() === 'open').map(projectPull),
+      raw: list.length,
+    };
   };
 
   for (let page = 1; page <= pages; page += 1) {
@@ -285,10 +306,11 @@ export async function listIssues(repo, token, { pages = 5, perPage = 100, histor
     }
 
     out.push(...batch.items);
+    prs.push(...(batch.prs ?? []));
     scanned += batch.raw;
     if (batch.raw < perPage) { complete = true; break; }
   }
-  return { issues: out, scanned, complete, fromCache };
+  return { issues: out, prs, scanned, complete, fromCache };
 }
 
 export const listRuns = (repo, token, perPage = 40) =>

@@ -191,6 +191,55 @@
                font-size: 12.5px; max-width: 78ch; text-transform: none; letter-spacing: 0; font-weight: 400; }
   .info-body strong { color: var(--ink); }
 
+  /* --- grouped header bands --- */
+  /* A wide row is three questions, not twelve columns. The band names them and a
+     single rule carries each group down the table — a heavier treatment (a wash, a
+     border box) would fight the severity edge the rows already use. */
+  tr.band th { padding-bottom: 2px; border-bottom: 0; font-size: 10px;
+               color: var(--ink-2); letter-spacing: 0.08em; }
+  tr.band th.group { border-left: 1px solid var(--rule); padding-left: 12px; }
+  tr.band th.group.blank { border-left: 0; }
+  th.group-start, td.group-start { border-left: 1px solid var(--rule); }
+  /* A grouped grid is wide by construction. Given the choice between squeezing every
+     column until its text wraps to five lines and scrolling the panel, scroll: the
+     groups exist so a reader can go to the one question they came for. */
+  #fleet { min-width: 1500px; }
+  #roster { min-width: 1080px; }
+  /* Health is prose and needs room to be one line per reason; every other column is a
+     number or a chip and can stay narrow. */
+  #fleet th:nth-child(2), #fleet td:nth-child(2) { min-width: 240px; }
+
+  /* The benefits block leads the page, so it is allowed one step more presence than
+     the status tiles that follow it — and the delta line is the point of each tile. */
+  .tiles.benefits .tile { border-color: var(--rule); }
+  .tiles.benefits .v { font-size: 28px; }
+  .sub.delta.good { color: var(--good); }
+  .sub.delta.bad { color: var(--serious); }
+
+  /* --- activity charts --- */
+  .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 10px; }
+  .chart-card { background: var(--surface); border: 1px solid var(--border);
+                border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .chart-card .k { font-size: 12px; color: var(--ink-2); }
+  .chart-wrap { display: flex; flex-direction: column; gap: 5px; }
+  svg.chart { width: 100%; height: 84px; display: block; }
+  svg.chart rect.col { opacity: .92; }
+  svg.chart rect.col:hover { opacity: 1; }
+  .chart-axis { display: flex; justify-content: space-between; gap: 8px; }
+  .movement .v { font-size: 25px; line-height: 1.15; }
+
+  /* The digest is prose, so it is set as prose — the only place on this page that is.
+     Its own headings come from the file and must not inherit the panel headings'
+     uppercase tracking, which would shout a sentence. */
+  .chart-card.digest h3 { font-size: 14px; margin: 0; letter-spacing: 0; text-transform: none; }
+  .chart-card.digest h4 { font-size: 12px; margin: 6px 0 0; color: var(--ink-2); font-weight: 600;
+                          letter-spacing: 0; text-transform: none; }
+  .chart-card.digest p { margin: 0; color: var(--ink-2); }
+  .chart-card.digest ul.digest-items { margin: 0; padding-left: 18px; color: var(--ink-2); }
+  .chart-card.digest ul.digest-items li { margin-bottom: 6px; }
+  .movement .k { font-size: 12px; color: var(--ink-2); margin: 2px 0 6px; }
+
   tr.pending-row td { color: var(--muted); }
   #fleet-progress { font-size: 12px; color: var(--muted); margin: 0 0 10px; }
   .pill { font-size: 12px; border: 1px solid var(--border); border-radius: 999px;
@@ -253,6 +302,16 @@
   </details>
 
   <div id="fleet-view" hidden>
+    <h2>What Claudinite did for this fleet this week <button class="info" type="button" data-info="benefits" aria-expanded="false" title="What these figures are">&#9432;</button></h2>
+    <p class="info-body" id="info-benefits" hidden>
+      The work the machinery did that nobody had to do — <strong>in a window</strong>, this week
+      against last, because a total that only ever grows tells you nothing about today. Every
+      figure is a count of things that individually happened, from reads this page already makes.
+      There is no estimate of hours saved and no score: nothing here measures those, so nothing
+      here claims them.
+    </p>
+    <div class="tiles benefits" id="fleet-benefits"></div>
+
     <h2>Fleet at a glance <button class="info" type="button" data-info="tiles" aria-expanded="false" title="Why these numbers">&#9432;</button></h2>
     <p class="info-body" id="info-tiles" hidden>
       Each tile counts <strong>members</strong>, never things. "47 open items" is not a number
@@ -262,6 +321,30 @@
     <p id="fleet-progress"></p>
     <div class="tiles" id="fleet-tiles"></div>
 
+    <section id="fleet-digests-section" hidden>
+      <h2>The last two mornings <button class="info" type="button" data-info="digests" aria-expanded="false" title="What these are">&#9432;</button></h2>
+      <p class="info-body" id="info-digests" hidden>
+        The fleet's own morning brief — what the fleet accomplished that day, and the project worth
+        returning to — written by the digest task into the enforcer repo, one file per day. A day
+        with no brief is a <strong>normal state</strong>: the task had nothing to report, or has not
+        run yet. Both files are content at a path, so a warm load costs nothing to show them.
+      </p>
+      <div class="charts" id="fleet-digests"></div>
+    </section>
+
+    <section>
+      <h2>Fleet activity <button class="info" type="button" data-info="activity" aria-expanded="false" title="Why this panel exists">&#9432;</button></h2>
+      <p class="info-body" id="info-activity" hidden>
+        Every other panel here answers <em>where do I need to look</em>, and after a good week they
+        are all zero — which is exactly what a dead fleet looks like too. This is the other reading:
+        <strong>what happened</strong>, per day. Every figure comes from reads the page already makes,
+        so the panel costs no extra request; what that costs instead is depth, and where a series
+        runs past what one page of issues or thirty runs can see it says so rather than drawing a
+        confident zero.
+      </p>
+      <div class="charts" id="fleet-activity"></div>
+    </section>
+
     <section>
       <h2>Members — worst first <button class="info" type="button" data-info="members" aria-expanded="false" title="Why this ordering">&#9432;</button></h2>
       <p class="info-body" id="info-members" hidden>
@@ -269,6 +352,15 @@
         has. One item parked for a human outranks forty healthy ones, because the first needs you today
         and the second is the system working. A member that cannot be read, one that does not run
         Claudinite, and one that is fine are three different rows and never collapse into a zero.
+      </p>
+      <p class="info-body" id="info-members-2" hidden>
+        The columns are grouped as three questions: <strong>Status</strong> — what kind of repo this is
+        and whether it is alive; <strong>Claudinite</strong> — what the machinery is doing here;
+        <strong>Work</strong> — what is waiting on a person. Every column comes from a read this page
+        already makes, which is also why four things are missing: rule tokens, test counts and time
+        saved would each need a member's own files read, and conversation-log sessions a branch listing.
+        Issues and pull requests are counted <em>within the issue window</em> — the most recent hundred
+        — so an older one is not counted rather than counted wrongly.
       </p>
       <p class="legend">Click a member to open its scheduler in full.</p>
       <div class="panel scroll"><table id="fleet"></table></div>

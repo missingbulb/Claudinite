@@ -35,7 +35,7 @@
 // has to be frozen is frozen.
 export default {
   id: 'claudinite-dashboard',
-  version: 3,
+  version: 4,
   minEngineVersion: 4,
   ruleRoutingGuidance: {
     belongs: 'the browser dashboard over Claudinite scheduler state, and the static site that publishes it',
@@ -67,6 +67,8 @@ export default {
   //   repos       — an inline roster instead of a URL
   //   clientId    — GitHub App / OAuth App client id, for the sign-in button
   //   exchangeUrl — the code-to-token endpoint that sign-in needs
+  //   digestsRepo — where the fleet's morning briefs are written; unset turns that panel off
+  //   digestsPath — the directory inside it (defaults to `digests`)
   questions: [],
 
   // The one step adoption CANNOT take, stated where the install flow can print it and

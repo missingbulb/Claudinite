@@ -128,3 +128,125 @@ export function tiles(node, rows) {
     hint ? el('div', { className: 'sub', textContent: hint }) : null,
   ])));
 }
+
+// --- grouped table heads --------------------------------------------------------
+
+// A header BAND above the column names, so a wide row reads as a few questions rather
+// than as a wall of columns. `groups` is `[title, [col, …]]`; a group whose title is
+// empty spans its columns unlabelled, which is what the identity column at the left
+// edge wants — it belongs to no question.
+export const groupedHead = (table, groups) => {
+  table.replaceChildren();
+  table.append(el('thead', {}, [
+    el('tr', { className: 'band' }, groups.map(([title, cols]) =>
+      el('th', { colSpan: cols.length, className: title ? 'group' : 'group blank', textContent: title }))),
+    el('tr', {}, groups.flatMap(([, cols], gi) => cols.map((c, ci) =>
+      el('th', { className: ci === 0 && gi > 0 ? 'group-start' : '', textContent: c })))),
+  ]));
+  return table.appendChild(el('tbody'));
+};
+
+export const columnCount = (groups) => groups.reduce((n, [, cols]) => n + cols.length, 0);
+
+// Which cells start a group, so the body can carry the same vertical rule the band
+// draws. Returns the flat column indexes a `groupedHead(groups)` would open a group at.
+export const groupStarts = (groups) => {
+  const out = [];
+  let i = 0;
+  for (const [gi, [, cols]] of groups.entries()) {
+    if (gi > 0) out.push(i);
+    i += cols.length;
+  }
+  return out;
+};
+
+// --- the day chart --------------------------------------------------------------
+
+// A stacked column per day. SVG rather than divs because the whole point is comparing
+// heights across a fortnight, and one element per segment with a `<title>` gives the
+// hover text for free.
+//
+// The scale is stated, never implied: an unlabelled column chart invites reading two
+// panels' bars against each other when their maxima differ.
+export function stackedColumns(days, series, { height = 84, label = (d) => d.day } = {}) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const svgEl = (tag, attrs = {}) => {
+    const n = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, String(v));
+    return n;
+  };
+  // `append` returns nothing, so the title is built and filled before it goes in.
+  const titled = (node, text) => {
+    const t = svgEl('title');
+    t.textContent = text;
+    node.append(t);
+    return node;
+  };
+
+  const totals = days.map((d) => series.reduce((n, s) => n + (s.value(d) || 0), 0));
+  const peak = Math.max(1, ...totals);
+  const cols = Math.max(1, days.length);
+  const gap = 3;
+  const width = 100;                       // a viewBox unit grid; the CSS sizes it
+  const colW = (width - gap * (cols - 1)) / cols;
+
+  const svg = svgEl('svg', {
+    viewBox: `0 0 ${width} ${height}`, preserveAspectRatio: 'none',
+    class: 'chart', role: 'img',
+    'aria-label': `${days.length} days, peak ${peak} on ${days[totals.indexOf(peak)]?.day ?? '—'}`,
+  });
+
+  days.forEach((d, i) => {
+    const x = i * (colW + gap);
+    let y = height;
+    let drawn = false;
+    for (const s of series) {
+      const v = s.value(d) || 0;
+      if (!v) continue;
+      const h = (v / peak) * (height - 2);
+      y -= h;
+      drawn = true;
+      svg.append(titled(svgEl('rect', { x, y, width: colW, height: h, fill: s.color, class: 'col' }),
+        `${label(d)} — ${v} ${s.label}`));
+    }
+    if (!drawn) {
+      svg.append(titled(svgEl('rect', { x, y: height - 1, width: colW, height: 1, fill: 'var(--rule)' }),
+        `${label(d)} — nothing`));
+    }
+  });
+
+  return el('div', { className: 'chart-wrap' }, [
+    svg,
+    el('div', { className: 'chart-axis' }, [
+      el('span', { className: 'sub', textContent: days[0]?.day ?? '' }),
+      el('span', { className: 'sub', textContent: `peak ${peak}/day` }),
+      el('span', { className: 'sub', textContent: days[days.length - 1]?.day ?? '' }),
+    ]),
+  ]);
+}
+
+export const chartLegend = (series) =>
+  el('div', { className: 'legend' }, series.map((s) =>
+    el('span', {}, [el('i', { className: 'sw', style: `background:${s.color}` }), s.label])));
+
+// --- windowed figures -----------------------------------------------------------
+
+// A number with its change against the window before it. The arrow is never the whole
+// message — the previous window's figure is spelled out, because a delta with nothing
+// to compare it against is the vanity total this panel exists to avoid.
+//
+// Which DIRECTION is good is the caller's to say: more completed work is progress and
+// more items needing a person is not, and a green up-arrow on the second would read as
+// a boast about the fleet needing more hand-holding.
+export function windowFigure(value, label, change, note, { better = 'up' } = {}) {
+  const arrow = change?.dir === 'up' ? '▲' : change?.dir === 'down' ? '▼' : '—';
+  const sense = !change || change.dir === 'flat' ? 'flat' : (change.dir === better ? 'good' : 'bad');
+  return el('div', { className: 'tile' }, [
+    el('div', { className: 'v num', textContent: String(value) }),
+    el('div', { className: 'k', textContent: label }),
+    change
+      ? el('div', { className: `sub delta ${sense}`, textContent: `${arrow} ${change.by} vs the week before` })
+      : null,
+    note ? el('div', { className: 'sub', textContent: note }) : null,
+  ]);
+}

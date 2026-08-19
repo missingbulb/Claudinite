@@ -7,9 +7,24 @@ import {
   NEEDS_HUMAN, OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE,
 } from './model.mjs';
 import {
-  $, el, ago, until, stamp, duration, chip, head, emptyRow, issueLink, tiles,
-  segmentBar, warnNodes, OUTCOME_COLOR,
+  $, el, ago, until, stamp, duration, chip, head, groupedHead, columnCount, groupStarts,
+  emptyRow, issueLink, tiles, segmentBar, warnNodes, OUTCOME_COLOR,
 } from './ui.mjs';
+
+// The roster answers three questions about a task and they do not mix: what it was
+// DECLARED as, where it stands NOW, and what it has done. Same split as the fleet
+// grid's, one level down.
+const ROSTER_GROUPS = [
+  ['', ['Task']],
+  ['Declared', ['Cadence', 'Model', 'Ceiling']],
+  ['Now', ['Current item', 'Next anchor']],
+  ['History', ['Last outcome', 'Outcomes seen']],
+];
+const ROSTER_STARTS = groupStarts(ROSTER_GROUPS);
+const bandedRoster = (cells) => cells.map((cell, i) => {
+  if (ROSTER_STARTS.includes(i)) cell.classList.add('group-start');
+  return cell;
+});
 
 function renderTiles(rows, open, runs, now) {
   const inflight = runs.filter((r) => r.status === 'in_progress' || r.status === 'queued');
@@ -28,8 +43,11 @@ function renderTiles(rows, open, runs, now) {
 }
 
 function renderRoster(rows, repo, now, scanComplete) {
-  const body = head($('roster'), ['Task', 'Cadence', 'Model', 'Ceiling', 'Now', 'Next anchor', 'Last outcome', 'History']);
-  if (!rows.length) { body.append(emptyRow(8, 'No declared task has a tasks/ directory in this repo.')); return; }
+  const body = groupedHead($('roster'), ROSTER_GROUPS);
+  if (!rows.length) {
+    body.append(emptyRow(columnCount(ROSTER_GROUPS), 'No declared task has a tasks/ directory in this repo.'));
+    return;
+  }
 
   for (const r of rows.sort((a, b) => (a.nextAnchor?.getTime() ?? Infinity) - (b.nextAnchor?.getTime() ?? Infinity))) {
     const d = r.declaration ?? {};
@@ -41,7 +59,7 @@ function renderRoster(rows, repo, now, scanComplete) {
         el('div', { className: 'sub' }, [issueLink(repo, r.current.number), ` · ${duration(r.current.idleMs)} idle`])])
       : el('td', {}, [el('span', { className: 'sub', textContent: 'no open item' })]);
 
-    body.append(el('tr', {}, [
+    body.append(el('tr', {}, bandedRoster([
       el('td', {}, [
         el('div', { className: 'name', textContent: r.task }),
         el('div', { className: 'sub', textContent: r.pack }),
@@ -67,7 +85,7 @@ function renderRoster(rows, repo, now, scanComplete) {
         segmentBar(Object.entries(tally).map(([k, n]) => [k.replace('outcome:', ''), n, OUTCOME_COLOR[k]])),
         el('div', { className: 'sub num', textContent: `${r.history.length} closed` }),
       ]),
-    ]));
+    ])));
   }
 }
 
