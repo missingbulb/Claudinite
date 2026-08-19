@@ -893,6 +893,62 @@ mutation check caught it).
 
 ---
 
+## K. Ad-hoc requests (owner, 2026-08-18 — DESIGN §16)
+
+A person marks an ordinary issue and the queue implements it. What these play
+is not the happy path (S44 is two lines of it) but the four ways a request can
+be something other than what it looks like: asked by the wrong person,
+withdrawn after it was accepted, broken and silently re-run, or asking for a
+model that does not exist.
+
+### S44 — a marked issue becomes exactly one run
+
+09:03 the owner marks issue #500. 09:17 the tick adopts it: one item,
+`origin:request`, `Model: opus` (no model label ⇒ the default), and #500's mark
+becomes `claude-queued`. The post-tick drain picks it, the precondition passes
+on the author's write access, the hand-off fires once, and the session leaves a
+pull request — so the item **parks open at `task:needs-human-approval`** rather
+than closing, and #500 moves to `claude-in-review`. A further day of ticks
+adopts **nothing**: the consumed mark is the exactly-once guard.
+
+### S45 — an unauthorized mark is refused once, and disarmed
+
+The same play with an issue opened by `NONE` and blessed by nobody. The tick
+adopts it (adoption forms no judgment), the precondition declines, the item
+**closes** `outcome:obsolete` — a refusal is nobody's inbox, so it joins no
+triage lane — and the executor comments on #500 and removes `claude-queued`.
+The disarm is the point: without it every tick for the rest of time re-adopts
+and re-refuses the same issue.
+
+### S46 — the approval path
+
+An outsider's issue with `/claude go` from an `OWNER` runs and parks for
+review. The same issue with `/claude go` from a `NONE` does not — the phrase
+decides nothing on its own; the association behind it does.
+
+### S47 — the model label routes the run
+
+`claude-model:sonnet` reaches the item as `Model: sonnet`.
+`claude-model:gpt-9` falls back to the default rather than parking a request
+nobody can run. Two marked issues make two items, two runs and two approval
+parks — neither of which delays the other, because an approval park holds no
+lane.
+
+### S48 — withdrawal between adoption and pickup
+
+The label is stripped (or the issue closed) at 09:17:20, after the tick adopted
+it and before the executor reaches it. The precondition declines, the item
+closes obsolete, and **no session is ever invoked** — the window that exists
+because adoption and the verdict are deliberately in different phases.
+
+### S49 — a broken request stays put
+
+The session fails. The item parks at `task:needs-human-failure` — someone reads
+the trace — and #500 keeps `claude-queued`: nothing mechanical re-arms work that
+writes code, and that standing label is what stops the next tick adopting a
+second run. The person fixes the cause and re-marks the issue: exactly one
+further adoption, at whatever model the new label asks for.
+
 ## Findings ledger
 
 | # | severity | what | resolution |

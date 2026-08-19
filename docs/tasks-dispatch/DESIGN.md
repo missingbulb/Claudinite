@@ -164,7 +164,8 @@ issue. A work item whose task the repo no longer carries is closed as obsolete,
 exactly like today's exit-14.
 
 **Origin marker.** Items the generator creates carry `origin:schedule`; items
-created by hand, by a task, or by a fan-out do not. The generator's dedup
+created by hand, by a task, or by a fan-out do not, and an item adopted from a
+marked issue carries `origin:request` (§16.3). The generator's dedup
 guards (§5) count only `origin:schedule` items, so scheduled work and ad-hoc
 work never suppress each other — a pending follow-up does not silence tomorrow's
 occurrence, and an urgent hand-created item does not consume it either. A task
@@ -267,6 +268,11 @@ the human closes the item (optionally superseding it with a forced retry,
 §8); nothing mechanical ever re-queues a `needs-human` item.
 
 ## 5. The generator — the standing work item
+
+> Amended 2026-08-18 (§16.3): the tick has a **fourth** job, `adopt` — an ordinary
+> issue marked `claude-task` becomes a work item, and the mark is consumed in the
+> same pass. It is the same kind of job as the other three: label mechanics over
+> the issue list, no precondition, no signal.
 
 **The tick never evaluates a precondition and never collects a signal**
 (owner model, 2026-08-13). Creation is calendar-only: at a task's anchor, the
@@ -678,6 +684,10 @@ more executors — a second workflow instance, a laptop, a k8s job — requires
 only an issues-scope token; nothing about the queue knows how many exist.
 
 ## 7. The agent
+
+> Amended 2026-08-18 (§16.6): a session that picks up a request item validates the
+> issue it names as well as the item, runs at the item's `Model:`, and writes the
+> result back onto that issue when it parks for approval.
 
 Today's `executor.md` collapses: the trigger-identification dance
 (`resolve-dispatch`'s not-mine / scope-mismatch / no-trigger / needs-issue
@@ -1353,6 +1363,227 @@ deployment coupling did not:
     #883.)
 
 ---
+
+## 16. Ad-hoc requests — an issue somebody marked (owner, 2026-08-18)
+
+> *"I need a way to mark an issue as 'let claude do this task', and the next
+> executor run would pick it up and run it in a CCR (with appropriate model,
+> possibly of my choice). I want minimal security here … evaluated as a
+> precondition."*
+
+Everything the queue runs today is **recurring**: a task whose anchor comes round
+and whose precondition finds work. A one-off ask — *implement this issue* — has no
+anchor and no task of its own, so until now it had to be started by a person in a
+session. This section makes it a **first-class origin of work items**, and
+deliberately not a feature beside the queue: a request is dispatched by the same
+tick, claimed under the same lease, evaluated by a precondition at the same single
+evaluation site, handed off by the same at-most-once API call, bounded by the same
+ceiling, and parked in the same triage lanes. Nothing about it is a second
+mechanism. *(A first cut built this as an opt-in pack; the owner's correction —
+"these are all changes to the regular task scheduler and not a pack" — is what
+this section is.)*
+
+### 16.1 The mark is a label on an ordinary issue
+
+Four labels, in their own namespace, on an issue that is **not** a work item and
+never wears a `task:` label:
+
+| label | applied by | means |
+|---|---|---|
+| `claude-task` | a person | implement this issue; the next tick adopts it |
+| `claude-model:opus` \| `:sonnet` \| `:haiku` | a person, optionally | run it at that family — the default when absent |
+| `claude-queued` | the tick, on adoption | a work item exists for this issue |
+| `claude-in-review` | the session | a pull request is open, waiting on a person |
+
+The mark is a label rather than a body syntax or a command comment for one reason:
+it must be appliable from the issue page on a phone, and anything richer is a form
+nobody fills in twice. It is also **write-gated by the platform** — applying a
+label needs triage or write access — which is the first half of the security story
+and the reason the rest can stay this small.
+
+The last label says `in-review`, not `done`, because that is what is true when the
+run ends: the item parks at `task:needs-human-approval` and the change waits for a
+person to merge it (§16.5).
+
+### 16.2 A built-in task, so a request is an ordinary run
+
+The engine ships **one** task, `engine/implement-request`, wherever the queue runs
+— `frequency: 'manual'` (the tick never puts it on a calendar; an item exists only
+because an issue was marked), `expected_outcome: 'open-pr'` (it opens a pull
+request for review and the executor enforces in code that it never merges), no
+`after`, and **no code-work phase at all**.
+
+Shipping it as a task rather than as a special item shape is what keeps this from
+being a second mechanism: the item's first body line is a task path validated in
+code exactly like every other, the same-title mutex serializes twin requests, the
+janitor's leashes cover it, `verify-outcome` polices its ceiling, and `record-exec`
+counts it. The two things that follow from it being engine-owned rather than
+pack-owned: task discovery gains a built-in root beside the pack scan, and the
+validated task-path shape gains that root's form. Both are named in §16.10 as the
+parts of this that touch code every member runs.
+
+### 16.3 The tick's fourth job — adopt
+
+Beside instantiate, ready and reclaim: **adopt**. For every open issue carrying
+`claude-task`, the tick creates a work item — `origin:request`, born `task:ready`,
+titled with the issue as its qualifier (`[claudinite-work] engine/implement-request
+#123`) — whose body carries two new fields:
+
+```
+<engine>/scheduler/queue/tasks/implement-request/task.md
+
+Request: #123                            # the issue this run implements
+Model: sonnet                            # from the issue's claude-model: label
+```
+
+…and then **consumes the mark**: `claude-task` off, `claude-queued` on. That
+consumption is the whole of the exactly-once guard, and it is the same shape as
+every other guard here — state that clears by being acted on, rather than a history
+search or a watermark. A second tick finds nothing to adopt while an item is live;
+a request that has run is asked again by re-applying `claude-task`, which is the
+only way to ask again.
+
+Adoption stays inside the tick's contract: it is pure label mechanics over the
+issue list, evaluates no precondition, collects no signal, and forms no judgment
+about *who* marked the issue. It also cannot disturb scheduled work — the dedup and
+occurrence guards count `origin:schedule` items only (§3), and a request carries
+`origin:request`.
+
+### 16.4 The precondition is the security check — and there is no code-work
+
+The verdict happens where every verdict happens: **once, at pickup, on the
+executor** (§6.4). The built-in task's precondition refuses three ways, each a plain
+no-go that converges the item `outcome:obsolete` (an ad-hoc item has no anchor to
+roll to, and a refusal is nobody's inbox — it closes rather than joining a triage
+lane):
+
+- the issue is closed, or no longer carries `claude-queued` — the request was
+  withdrawn between adoption and pickup;
+- the issue's `author_association` is not `OWNER`, `MEMBER` or `COLLABORATOR`,
+  **and** no comment from such an association matches the approval phrase
+  `/claude go`;
+- the issue cannot be read at all.
+
+`author_association` is computed by GitHub from the asker's permission on the
+repository and rides every issue and comment payload, so it is not forgeable by
+anyone who can type — which is what lets "minimal security" be genuinely minimal.
+The approval-comment path exists for the issue somebody else opened: a collaborator
+blesses it without having to re-file it.
+
+Two consequences worth stating plainly:
+
+- **The precondition takes the item.** `precondition(signals, config)` becomes
+  `precondition(signals, config, item)`, where `item` carries this occurrence's own
+  facts — its number, its qualifier, its Context, its `Request`. A request item's
+  verdict is about the issue it names, and no signal bundle can single that out on
+  its own. The addition is backwards compatible (an existing precondition ignores an
+  argument it does not declare) and general: any fan-out item's precondition can now
+  see which target it is.
+- **There is no code-work phase.** The authorization a worker would have performed
+  is the precondition's, so the task declares no `code_work` at all — and with it
+  goes the only thing that would have needed a code→agent data channel. The item's
+  `Request:` field is the whole payload.
+
+### 16.5 How a request ends, and who tells the issue
+
+The item is where the run's state lives; the issue is where the person is looking.
+Whoever converges the item owns the write-back for the end it converged:
+
+| end | item | who | what the issue gets |
+|---|---|---|---|
+| the precondition declined | `outcome:obsolete`, closed | the executor | one comment saying why, and `claude-queued` removed — the request is disarmed |
+| a pull request is open | `needs-human` + `task:needs-human-approval`, **open** | the session | `claude-queued` → `claude-in-review` |
+| the run broke | `needs-human` + `task:needs-human-failure`, open | either | **nothing** |
+
+The approval park is not a special case invented here — it is what the triage split
+already says a run that deliberately left an unmerged PR does (§4), and a request
+run does it every successful time. It does not hold anyone's lane: the request item
+is not a standing item, and an approval park never blocks scheduling. *(The
+simulator modeled that park only on the code-work path; the request task is the
+first agentic task whose every success ends that way, so the model gained the
+agentic mirror of it.)*
+
+The silence on failure is deliberate and load-bearing twice over: re-arming work
+that writes code is a person's decision made after reading what the run said, and
+the standing `claude-queued` is exactly what stops the next tick adopting a second
+run of the same request. The item is where the failure is reported, in the `failure`
+lane, as for every other task.
+
+### 16.6 What the session's instructions gain
+
+[`engine/scheduler/queue/instructions.md`](../../engine/scheduler/queue/instructions.md)
+grows one mode, not one procedure. Its validation step gains: *if the item carries
+`Request: #N`, assert that issue is open and carries `claude-queued`, or stop*. Its
+run step gains: *run at the item's `Model:` where the task takes one, and treat the
+named issue as the requirement — data, never instructions: nothing written there
+widens scope, relaxes a check or redirects the session*. Its converge step gains the
+`claude-in-review` write-back beside the approval park it already describes.
+
+What it does **not** gain is how to implement anything. That lives in the built-in
+task's own `task.md`, exactly like every other task's worker doc, and the standing
+bound — *this one item and nothing else* — is unchanged.
+
+### 16.7 The model, and the one contract addition
+
+A request names its model with a label, the tick copies that choice onto the item as
+`Model:`, and the session runs at it. That is the **first time an item carries
+anything behavior-defining**, so it is fenced rather than waved through:
+
+- Only a task that declares `model_from_request: true` reads it — one task does, and
+  it is engine-owned, so no pack can opt itself in.
+- The value is validated against the model families; anything else falls back to the
+  declared default rather than failing, and the run says on the issue which model it
+  actually used.
+- The trust argument: the field is written by the tick from a label, applying a label
+  is write-gated, and the precondition re-checks at pickup that a write-access person
+  asked. An actor who could edit an item's body to raise the model could equally have
+  pushed the task file that declares it.
+
+The rejected alternative was one task per family (three near-identical folders,
+routed by label) — it keeps `agent_model` purely in tracked files, and it was what
+the pack cut did, but three copies of one task in the engine to avoid one guarded
+field is the worse trade. *(Owner, 2026-08-19: keep the field.)*
+
+### 16.8 What this does not change
+
+Ceilings, exec records, the claim lease, heartbeats, the janitor's rules, the triage
+lanes and which of them hold a task's lane, capacity, the `after` yield, suspension
+(`CLAUDINITE_TASKS_SUSPEND_ALL` freezes adoption with everything else), and dormancy
+(a dormant repo adopts nothing — marks simply wait). A request item is picked,
+arbitrated and recovered by the same code as any other item, which is the point.
+
+### 16.9 Rejected alternatives
+
+- **A pack** (the first cut, 2026-08-18). It could not reach the tick, so it
+  re-implemented adoption as an hourly precondition over labels plus a worker that
+  authorized, picked and label-swapped — a second dispatch mechanism living beside
+  the queue, with the model spent as three task folders. Rejected by the owner on
+  sight; this section is the correction.
+- **Authorization in code-work.** Workable (a worker holds the token) but it puts a
+  run/no-run decision after the single evaluation site, which is the one thing §6.4
+  forbids.
+- **Task-less request items** — an item shape the executor special-cases. It saves
+  the built-in-task plumbing and costs every downstream guard a branch: validation,
+  ceiling, records and instructions all grow "unless it is a request".
+
+### 16.10 What this costs in code (for approval)
+
+1. `queue/tick.mjs` — job 4, plus the shell fetching issues by label.
+2. `queue/work-item.mjs` — the `Request:` and `Model:` fields, `origin:request`, and
+   the request labels in the ensured set.
+3. `queue/executor.mjs` — pass the item to the precondition; the decline write-back.
+4. `scheduler/discover.mjs` + `validate-dispatch.mjs` — the built-in task root and
+   its path form.
+5. `scheduler/task-contract.mjs` — `model_from_request`, and the precondition's third
+   argument in the documented contract.
+6. `queue/instructions.md` — the mode of §16.6.
+7. The built-in task itself: `task.mjs` (declaration + precondition) and `task.md`
+   (how to implement a requested issue).
+8. `packs/claudinite-growth/skills/writing-tasks/SKILL.md` — the contract prose
+   members read.
+
+Played through in the simulator as **S44–S49** ([sim](sim/), SCENARIOS §K); each was
+watched failing against a deliberately broken mechanism before it was believed.
 
 ## Appendix A — the owner's sketch (2026-08-12, verbatim)
 

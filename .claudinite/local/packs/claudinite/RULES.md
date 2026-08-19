@@ -117,7 +117,10 @@ lesson at the strongest mechanism available — a check where the rule is determ
   and point at it from the issue or PR, not from a pack file: `docs/` is outside the vendor set.
 
 - **Naming a new canon pack** — kebab-case, named for the surface it serves rather than the
-  first feature you are building for it. The directory name is the pack's public id, spelled in
+  first feature you are building for it. A pack whose subject is a **Claudinite feature itself**,
+  rather than a technology or a way of working, carries the `claudinite-` prefix
+  (`claudinite-lifecycle`, `claudinite-growth`, `claudinite-dashboard`) — owner, 2026-08-18.
+  The directory name is the pack's public id, spelled in
   every member's declaration, so another casing costs a fleet-wide rename. `claudinite-growth`
   is grandfathered. (convertible → prose-to-checks)
 
