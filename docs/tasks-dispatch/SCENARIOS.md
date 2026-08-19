@@ -804,6 +804,73 @@ workflow checks as its first act, exiting cleanly having fired nothing.
   recovery a minute sooner; a bare executor would drain ready items but skip
   the reclaim/ready half.
 
+## J. The triage split (owner, 2026-08-19)
+
+`needs-human` was one word for fifteen different situations, and a person
+opening the queue could not tell a secret nobody set (five seconds) from a
+worker that crashed (an afternoon) from a PR waiting to be merged (not a fault
+at all). It splits by **remedy** into four sub-labels worn beside it —
+`action`, `decision`, `approval`, `failure` (DESIGN §4) — and the split turns
+out to carry two behaviours that were never anyone's decision, only
+consequences of there being one word.
+
+### S40 — the lane rule, from both sides (replaces an assertion, not a scenario)
+
+The finding that started it (**F25**) was not simulated at all: it was
+measured in production. An open `origin:schedule` item *is* its task's standing
+item, so any park stopped the task being scheduled — `missingbulb/Shepherd`'s
+`fleet-digest` failed once on a permission gap, its item sat parked, and **no
+item was ever filed behind it for two days** while the four sweeps whose items
+had closed kept running normally. The dashboard read healthy and the series
+simply stopped.
+
+The split makes the guard conditional, and the two existing scenarios that
+asserted the old behaviour are where it shows:
+
+- **S11** (dead agent, the leash parks the item) asserted *"the backlog guard
+  held — no second item while triage sits open"*. A dead session is a
+  `decision` park, so the next day's occurrence is now filed beside it: the
+  incident waits for a person while the task keeps working.
+- **S12′** (the human re-queue after a dead agent) asserted *no* closed item at
+  all. The next anchor's item now runs normally — two anchors, two items, not a
+  double execution of one occurrence, and the same-title pick mutex (S15) still
+  forbids the two running at once, since a park is neither executing nor with an
+  agent.
+
+A `failure` park still holds the lane, and so does a park wearing no sub-label:
+every item an engine older than the split left behind, and every kind word a
+newer engine invents that this one does not know. That is the direction that
+has to be safe — a broken task filing work forever is worse than a stopped one.
+
+### S41 — the worker's own triage verdict
+
+The executor sees an exit code and nothing more, so it cannot tell a token
+missing a scope from an exception in the worker's own code. A worker that knows
+prints `claudinite-needs-human: <kind> — <detail>` before exiting non-zero and
+the park routes on it (**S41**); a worker that says nothing parks at `failure`
+and holds the lane (**S41b**), which is what every worker written before the
+marker existed does in every run.
+
+### S42 — the approval park
+
+A run that deliberately left an unmerged PR **succeeded**, but it is not
+finished: it is waiting on a named reviewer. Closing it as `outcome:delivered`
+hid that from every surface that counts open work, so it parks open instead —
+and does not hold the lane, because the reviewer's silence must delay only the
+review. Two anchors pass, two items are filed, and the unreviewed PRs
+accumulate visibly rather than silently stopping the task. `outcome:delivered`
+loses its only writer and stays readable for the closed issues that carry it.
+
+### S43 — the road back clears both labels
+
+A re-queue that stripped only `needs-human` would leave a live item still
+wearing a triage sub-label: a shape no rule defines, and one the janitor's
+stateless repair cannot catch either, since the item does wear `task:ready`.
+The lever clears both. Asserted at the moment the lever is pulled, not at the
+end of the run — by then the re-queued item has run and closed, taking every
+label with it, and the test would pass over nothing (it did, once, before the
+mutation check caught it).
+
 ### The prose-only findings (no scenario can carry them)
 
 - **F19 — a long drain starves the tick.** The drain job shares the cron
@@ -854,6 +921,7 @@ workflow checks as its first act, exiting cleanly having fired nothing.
 | **F21** | sizing gap | throughput was priced as if drains were free; a drain's real throughput is its serial work-step occupancy (§I) | **stated in DESIGN §10**: `maxItems` and executor width as the primary capacity parameters, self-re-dispatch for drain-until-empty, the oldest-first fairness exposure named |
 | **F22** | contract gap | the durable per-run record was implicit — Actions logs expire, and an agentless run leaves no other trace (§I) | **fixed in DESIGN §6.5**: the terminal comment carries the `claudinite-task-exec` record and every artifact the work created |
 | **F24** | **design bug** | F18's episode boundary was stated as a rule ("earliest claim since the item last became ready") and implemented over only the paths that already wrote a comment; the roll and the `needs-human` park end an episode silently and leave the claim standing, so the next claimant loses to a dead one — the roll costs a leash period, the park livelocks forever (S39) | **fixed in DESIGN §6.2**: letting go of an open item kills your claim — the departing executor strikes its own claim comment, which ends the episode without the timeline entry §5 refuses. Found on live traffic (a member's first re-queue), not in simulation |
+| **F25** | **design bug** | one open park stops its task being scheduled at all: the standing-item guard cannot tell a fault from an inbox, so a permission gap parked `missingbulb/Shepherd`'s `fleet-digest` for two days behind one item while its dashboard read healthy ([#1032](https://github.com/missingbulb/Claudinite/issues/1032), Shepherd#37) | **fixed in DESIGN §4/§5**: the guard is conditional — only a `failure` park (and any park an older engine left unclassified) holds the lane; `action`, `decision` and `approval` are one person's inbox and the schedule goes on around them (S40, and S11/S12′ rewritten to the new property). Found in production, not in simulation — the sim had encoded the old behaviour as an assertion |
 | **F23** | **sim fidelity bug** | the simulator modeled the executor as an instantaneous unbounded loop — items' work started concurrently, nothing modeled run boundaries or what triggers the next run — so F21's occupancy model had no executable teeth (§I) | **fixed in the sim**: a run performs one item (structural — DESIGN §15.22), picks urgent-then-random, and records its trigger, the failure continuation included (§15.23); asserted by S34/S36, with S4's chain re-verified under it |
 
 What the exercise did **not** find: any scenario where work is lost silently,

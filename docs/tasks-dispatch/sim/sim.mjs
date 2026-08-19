@@ -128,6 +128,35 @@ export function makeSim({
     issues.filter((i) => i.title === titleOf(taskId) && i.origin === 'schedule');
   const standingItem = (taskId) => family(taskId).find((i) => i.state === 'open');
 
+  // A park is TWO labels, because that is what the engine writes (DESIGN §4):
+  // `needs-human` is the state every rule filters on, the sub-label is what the
+  // human is being asked for. Modeling only the first would make the sim agree
+  // with the rule's INTENT while diverging from the artifact — exactly the blind
+  // spot that hid the episode-boundary livelock (F24).
+  const TRIAGE = ['action', 'decision', 'approval', 'failure'];
+  const triageLabel = (kind) => `task:needs-human-${TRIAGE.includes(kind) ? kind : 'failure'}`;
+  const park = (it, from, kind) => {
+    if (from) it.labels.delete(from);
+    it.labels.add('needs-human');
+    it.labels.add(triageLabel(kind));
+  };
+  // The road back (DESIGN §4) clears BOTH labels — a re-queue that stripped only
+  // the state would leave a live item still wearing a triage sub-label, which is
+  // a shape no rule defines.
+  const unpark = (it) => {
+    it.labels.delete('needs-human');
+    for (const k of TRIAGE) it.labels.delete(triageLabel(k));
+  };
+
+  // Only a fault park holds the task's lane. A park wearing NO sub-label blocks
+  // too — every item an engine older than the split left behind, which is the
+  // direction that must be safe.
+  const blockingPark = (i) =>
+    has(i, 'needs-human')
+    && !has(i, 'task:needs-human-action')
+    && !has(i, 'task:needs-human-decision')
+    && !has(i, 'task:needs-human-approval');
+
   function createIssue({ taskId, origin, labels, notBefore = null, blockedBy = [], urgent = false, qualifier = null }) {
     const it = {
       number: issues.length + 900,
@@ -205,7 +234,13 @@ export function makeSim({
       // item through (nothing guarantees a REST list from another node sees a
       // creation seconds old), close every open one but the oldest. The tick
       // is serialized (concurrency group), so this cannot race itself.
+      // A park that is somebody's inbox rather than a fault is neither the
+      // standing item nor a duplicate of one, so it leaves both tests and the
+      // schedule goes on around it (#1032: conflating them parked Shepherd's
+      // fleet-digest for two days behind one permission gap). It stays in `fam`
+      // for the occurrence guard below — it DID consume its own occurrence.
       const openFam = fam.filter((i) => i.state === 'open')
+        .filter((i) => !has(i, 'needs-human') || blockingPark(i))
         .sort((a, b) => a.number - b.number);
       for (const dup of openFam.slice(1)) {
         close(dup, 'obsolete');
@@ -322,7 +357,7 @@ export function makeSim({
     swap(it, 'task:executing', 'task:agent');
     if (world._apiRefusedUntil != null && now < world._apiRefusedUntil) {
       record('handoff-refused', { task: it.taskId, issue: it.number });
-      swap(it, 'task:agent', 'needs-human');
+      park(it, 'task:agent', 'action'); // a token, a URL or a routine is wrong
       return;
     }
     if (world._apiUnanswered) {
@@ -355,7 +390,7 @@ export function makeSim({
     schedule(now + task.agentMinutes * MIN, () => {
       if (it.state !== 'open') return;
       if (task.agentFails?.(world, now)) {
-        swap(it, 'task:agent', 'needs-human');
+        park(it, 'task:agent', 'failure');
         record('agent-failed', { task: it.taskId, issue: it.number });
         return;
       }
@@ -440,14 +475,30 @@ export function makeSim({
       it.lastActivity = now;
       if (task.codeWorkFails?.(world, now)) {
         endEpisode(it);                       // F24: a park strikes its claim
-        swap(it, 'task:executing', 'needs-human');
-        record('work-failed', { task: it.taskId, issue: it.number });
+        // The worker's own triage marker routes the park where it left one; a
+        // worker that said nothing about why it failed parks at `failure`.
+        const kind = task.codeWorkTriage?.(world, now) ?? 'failure';
+        park(it, 'task:executing', kind);
+        record('work-failed', { task: it.taskId, issue: it.number, triage: kind });
         onSettled();
         return;
       }
       const wantsAgent = task.agentMinutes != null &&
         (task.requestsAgent ? task.requestsAgent(world, now) : true);
-      if (!wantsAgent) { close(it, task.outcome ?? 'done'); onSettled(); return; }
+      if (!wantsAgent) {
+        // A run that deliberately left an UNMERGED PR succeeded but is not
+        // finished — it is waiting on a named reviewer, so it parks OPEN rather
+        // than closing. The one park that is not a fault, and it does not hold
+        // the lane: the reviewer's silence delays only the review.
+        if (task.deliversOpenPr?.(world, now)) {
+          endEpisode(it);                     // F24: a park strikes its claim
+          park(it, 'task:executing', 'approval');
+          record('delivered-open-pr', { task: it.taskId, issue: it.number });
+          onSettled();
+          return;
+        }
+        close(it, task.outcome ?? 'done'); onSettled(); return;
+      }
       handOff(it, task);
       onSettled(); // the hand-off ends the executor's occupancy, not the item
     });
@@ -527,7 +578,7 @@ export function makeSim({
       const per = registry.has(it.taskId) ? periodMs(registry.get(it.taskId).frequency) : DAY;
       if (it.readySince !== null && now - it.readySince >= staleReadyPeriods * per) {
         it.escalated = true;
-        swap(it, 'task:ready', 'needs-human');
+        park(it, 'task:ready', 'action'); // the lane is not draining; the fix is outside the item
         record('escalate', { task: it.taskId, issue: it.number, rule: 'stale-ready' });
       }
     }
@@ -536,7 +587,8 @@ export function makeSim({
     for (const it of open().filter((i) => has(i, 'task:agent'))) {
       if (now - it.lastActivity >= agentLeashMs) {
         const dead = it.sessions.at(-1)?.id ?? 'unknown';
-        swap(it, 'task:agent', 'needs-human');
+        // what the dead session left behind decides whether this re-queues
+        park(it, 'task:agent', 'decision');
         it.comments.push({ t: now, body: `agent session ${dead} went silent past the leash` });
         record('agent-reclaim', { task: it.taskId, issue: it.number, session: dead });
       }
@@ -600,7 +652,7 @@ export function makeSim({
       if (has(it, 'task:blocked')) swap(it, 'task:blocked', 'task:ready');
       // The hand-wake writes its own episode-marker comment (create-work-item),
       // unlike the bare human re-queue — so forcing ends the episode itself.
-      if (has(it, 'needs-human')) { it.labels.delete('needs-human'); it.labels.add('task:ready'); it.readySince = now; endEpisode(it); }
+      if (has(it, 'needs-human')) { unpark(it); it.labels.add('task:ready'); it.readySince = now; endEpisode(it); }
       if (urgent) it.labels.add('task:urgent');
       record('force', { task: taskId, issue: it.number });
       schedule(now + 1 * MIN, () => executorRun('E1', 'label-event')); // the labeled event's latency sugar
@@ -710,7 +762,7 @@ export function makeSim({
     // apply task:ready — the same lever forcing uses
     requeue(number) {
       const it = issues.find((i) => i.number === number);
-      it.labels.delete('needs-human');
+      unpark(it);
       it.labels.delete('task:blocked');
       it.notBefore = null;
       it.labels.add('task:ready');

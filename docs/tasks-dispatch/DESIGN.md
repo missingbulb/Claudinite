@@ -177,9 +177,9 @@ whose precondition should care about open follow-ups can see them through the
                      ┌────────────► closed  outcome:obsolete
                      │                    (precondition no longer holds; task gone)
  created ─► task:blocked ─► task:ready ─► task:executing ─► task:agent ─► closed  outcome:done
-            (only when       (queue)       (claimed by an     (handed to        closed  outcome:delivered
-             Blocked-by /                   executor)          a CCR session)   open    needs-human
-             Not-before
+            (only when       (queue)       (claimed by an     (handed to        open    needs-human
+             Blocked-by /                   executor)          a CCR session)           + one of the four
+             Not-before                                                                   triage sub-labels
              present)
 ```
 
@@ -193,9 +193,35 @@ Labels, the full vocabulary:
 | `task:executing` | an executor holds the claim | executor, on claim |
 | `task:agent` | an agent session owns it | executor, at hand-off |
 | `outcome:done` | succeeded; nothing pending (closed) | executor or agent |
-| `outcome:delivered` | succeeded **and left a live artifact the world still has to act on** — an open PR awaiting review, an armed auto-merge, a store submission (closed; usually paired with a validation follow-up, §9) | executor or agent |
+| `outcome:delivered` | **retired 2026-08-19, still read.** Meant "succeeded and left a live artifact the world still has to act on"; an unmerged PR now parks at `task:needs-human-approval` instead of closing, and nothing else ever wrote it. Closed issues carrying it are stored data, so every decoder still recognises it | — (historical) |
 | `outcome:obsolete` | never ran: the pickup-time precondition said no, or the task is gone from the repo (closed as not planned) | executor |
-| `needs-human` | failed, or anomalous — the one triage state (open) | anyone, incl. janitor |
+| `needs-human` | parked for a human — the one triage *state*, and what every guard, sweep and dashboard turns on (open) | anyone, incl. janitor |
+| `task:needs-human-action` | …and something outside the code must change first: a secret set, a scope granted, a routine rewired, an input supplied | anyone, incl. janitor |
+| `task:needs-human-decision` | …and the run stopped mid-flight, so the next step is a choice: re-queue or abandon, does the half-done work stand, was the ceiling violation acceptable | anyone, incl. janitor |
+| `task:needs-human-approval` | …and it **succeeded**, deliberately leaving an unmerged PR. The one park that is not a fault | executor or agent |
+| `task:needs-human-failure` | …and the run broke: a bug, a contract-forbidden shape, a malformed or forged item. The default when nothing else fits | anyone, incl. janitor |
+
+**Every park wears two labels**: `needs-human` *and* exactly one sub-label. The
+state and the routing are different questions — the machine reads the first, a
+person reads the second — and collapsing them would have meant a migration to
+land rather than an additive write (the collapse is #1050's, once the fleet has
+converged past the split).
+
+**A park wearing no sub-label reads as `failure`.** That is the compatibility
+direction chosen deliberately: every item an engine older than the split left
+behind, and every kind word a newer engine invents that this one does not know,
+holds the lane rather than silently letting a broken task keep filing work.
+
+**Only a `failure` park holds the task's lane** (§5). An open `origin:schedule`
+item *is* the task's standing item, so while one exists no further occurrence is
+filed — for a break that is the point, since a queue of items that will fail the
+same way helps nobody and the silence is the signal. For the other three it is a
+bug: a PR waiting on a reviewer, a decision waiting on its owner and a secret
+waiting to be set are one person's inbox, not a fault in the task, and #1032
+measured what conflating them costs — a permission gap parked `missingbulb/Shepherd`'s
+`fleet-digest` for two days while its dashboard read healthy, because no item was
+ever filed behind the parked one. So the generator drops non-blocking parks from
+both the standing-item test and the duplicate sweep beside it.
 
 This is the sketch's lifecycle with two adjustments, both argued for rather
 than assumed:
@@ -208,17 +234,21 @@ than assumed:
   claim comment — which the lease protocol requires anyway — carries *who*
   (executor id, run URL) and *when*. Same for `task:agent`: the hand-off
   comment names the CCR session.
-- **`succeeded-with-unexpected-result` becomes `outcome:delivered`, and it is
-  narrower.** "Unexpected" would blur two things that must not blur: a run that
-  legitimately left a pending artifact within its ceiling (open-pr task → open
-  PR: *expected*, but the world hasn't finished with it), and a run that
-  violated its ceiling (a `none` task that opened a PR) — the latter stays a
-  **failure** converging to `needs-human`, exactly as today's `verify-outcome`
-  enforces. `delivered` marks the first case only, and is the natural anchor
-  for a validation follow-up.
+- **`succeeded-with-unexpected-result` became `outcome:delivered`, and then
+  became a park.** "Unexpected" would blur two things that must not blur: a run
+  that legitimately left a pending artifact within its ceiling (open-pr task →
+  open PR: *expected*, but the world hasn't finished with it), and a run that
+  violated its ceiling (a `none` task that opened a PR). The second is still a
+  **failure**, now `task:needs-human-decision` — someone must say whether the
+  overreach stands — exactly as `verify-outcome` enforces. The first turned out
+  not to be a terminal state at all: a PR nobody has merged is waiting on a
+  named person, and closing the item hid that from every surface that counts
+  open work, so it parks at `task:needs-human-approval` and stays open. It does
+  not hold the lane, so the reviewer's silence delays only the review.
 
 Terminal-state discipline is unchanged: every item converges exactly once to
-exactly one of the four ends, with one comment saying what happened.
+exactly one end — one of the two closes, or a park under one of the four
+sub-labels — with one comment saying what happened.
 
 **Label writes are granular, always** ([RESEARCH](RESEARCH.md) §2): add and
 remove named labels (REST POST/DELETE), never write the label *set* (PUT,
@@ -229,8 +259,8 @@ executors and a tick all moving labels, this is a correctness rule, not a
 style preference.
 
 **The road back from `needs-human`** (SCENARIOS S12/S19, F7): a human who has
-resolved the cause re-queues the item by removing `needs-human` and applying
-`task:ready` — the sanctioned retry lever, write-gated like every label
+resolved the cause re-queues the item by removing `needs-human` and its
+sub-label and applying `task:ready` — the sanctioned retry lever, write-gated like every label
 operation here. The next pickup re-runs the precondition (§6.4), which is what
 makes the retry safe even when the failed run half-did its work. Alternatively
 the human closes the item (optionally superseding it with a forced retry,
@@ -261,13 +291,21 @@ tick(now):
     family = issues(title == "[claudinite-work] <pack>/<task>",
                     label "origin:schedule", state ALL)
                     # REST issue list, never the search index (S6/F11)
+    # A park that is somebody's INBOX rather than a fault does not hold the
+    # lane: it is neither the standing item nor a duplicate of one, so it drops
+    # out of the two OPEN tests below and the schedule goes on around it. A
+    # `failure` park, and any park an older engine left unclassified, stays in
+    # (§4). It stays in `family` for the occurrence guard further down, which is
+    # the point: the parked item DID consume its own occurrence, so the next
+    # item is filed at the next anchor and not immediately.
+    live = [i for i in family if not (i has "needs-human" and not blockingPark(i))]
     # F16 self-heal first: nothing documents that a REST list from another
     # node sees a creation seconds old, so a stale list can let a duplicate
     # standing item through. Assume it will happen rather than that it won't:
     # close every open family item but the OLDEST, outcome:obsolete, with a
     # dedupe comment. Serialized by the tick's concurrency group.
-    if count(i.state == OPEN for i in family) > 1: closeAllButOldest(family)
-    if any(i.state == OPEN for i in family):    continue  # the standing item
+    if count(i.state == OPEN for i in live) > 1: closeAllButOldest(live)
+    if any(i.state == OPEN for i in live):      continue  # the standing item
                                                           # already exists
     # the occurrence guard has TWO halves (F13, caught by the simulator): an
     # item CREATED at-or-after A covers this occurrence — and so does an item
@@ -357,10 +395,14 @@ the slot grammar, and it stays dead.
 **Errored and forced items against the guards** (unchanged in substance from
 the earlier draft, restated for the new shape):
 
-- A **failed run** converges its item open + `needs-human` (a real exit — the
-  roll is only for no-go verdicts, never for failures). The open item *is*
+- A **failed run** parks its item open + `needs-human` (a real exit — the
+  roll is only for no-go verdicts, never for failures). A `failure` park *is*
   the backlog guard: no new item until a human closes or re-queues it — one
-  broken task, one triage item, however long it takes.
+  broken task, one triage item, however long it takes. The other three
+  sub-labels are **not** guards (§4): a park that only wants a reviewer, a
+  decision or a secret leaves the lane open, so the next occurrence is filed
+  beside it on schedule. It still consumes its own occurrence, so nothing is
+  filed until that next anchor.
 - A **forced ad-hoc item** (no `origin:schedule`) is invisible to both
   guards in both directions, whatever state it ends in — it neither
   suppresses nor consumes an occurrence (#749's property, kept).
@@ -460,12 +502,13 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
      label at all**, invisible to every rule that filters by state. The
      janitor gains the repair (§11): an open work item wearing neither a
      `task:*` state nor `needs-human` is off the state machine entirely →
-     `needs-human`, a human's to look at (same posture as a malformed
-     item).
+     `needs-human` + `task:needs-human-decision`, a human's to look at — which
+     state it should have had is a judgement about what actually ran.
 3. **Validate in code**: the body's first line is a legal task path, the file
    exists at HEAD, the pack is declared, `task.mjs` parses. Task gone → close,
-   `outcome:obsolete`, comment. Malformed → `needs-human` (possible forgery, a
-   human must see it), unchanged from today.
+   `outcome:obsolete`, comment. Malformed → `needs-human` +
+   `task:needs-human-failure` (possible forgery, a human must see it),
+   unchanged from today.
 4. **Evaluate the precondition — the only place it ever runs** (the sketch's
    "evaluates preconditions", now literally once). Creation was calendar-only
    (§5), so this is not a re-check of anything — it is *the* verdict, over
@@ -525,11 +568,24 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
      agentless task this comment is the *only* durable trace of the run, which
      is what makes it non-optional.
 
-   Failure → comment + `needs-human`, `task:executing` removed. Success,
-   agentless task or no agent requested → converge now: `outcome:done` (or
-   `outcome:delivered` when the work's payload names a live artifact), close,
-   done — the quiet-on-success property survives as a *closed* item rather
-   than no item, which is the better trade: the run is now visible.
+   Failure → comment + `needs-human` + a sub-label, `task:executing` removed —
+   and **the worker chooses which sub-label**. The executor sees an exit code
+   and nothing else, so it cannot tell a token missing a scope (a person's
+   five-second fix) from an exception in the worker's own code (an afternoon);
+   a worker that knows prints `claudinite-needs-human: <kind> — <detail>` on
+   either stream before exiting non-zero and the park routes on it. Read from
+   the output rather than a file, because it must survive the SIGKILL at
+   `code_work_timeout` — output is echoed live, a file written at exit is never
+   written at all. The last marker wins, so a sweep may revise its verdict as
+   it works through its targets; no marker parks at `failure`, which is what
+   every worker written before the marker existed does in every run.
+
+   Success, agentless task or no agent requested → converge now: `outcome:done`,
+   close, done — the quiet-on-success property survives as a *closed* item
+   rather than no item, which is the better trade: the run is now visible.
+   **Unless the payload names an unmerged PR**, which is not a finished run but
+   a waiting reviewer: that parks at `task:needs-human-approval`, open, and does
+   not hold the lane.
 6. **Hand off**: write `### Delivered by code-work` / `### Why the agent is
    here` into the body (unchanged shapes), swap `task:executing → task:agent`,
    post the hand-off comment carrying a fresh **invocation nonce**, then
@@ -550,7 +606,8 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
    Three outcomes, and the third is the whole point:
    - **fired** — a session exists; the item is the agent's.
    - **refused** (a status came back) — no session, and the cause is a token,
-     a URL or a routine, which no retry fixes: converge `needs-human` naming it.
+     a URL or a routine, which no retry fixes: converge `needs-human` +
+     `task:needs-human-action` naming it.
    - **unanswered** (a timeout, a dropped connection) — the session may or may
      not exist, and nothing may guess. The item **stays** `task:agent` with a
      comment saying the outcome is unknown; whichever way it went is settled by
@@ -610,7 +667,9 @@ effect (a store submission, an external notification, a payment-shaped
 action): the contract gains **`on_interrupt: 'requeue' | 'needs-human'`**
 (default `'requeue'`). Declaring `'needs-human'` makes every recovery path
 that would re-execute — leash reclaim (§11), the human re-queue lever (§4) —
-converge to triage instead: **at-most-once plus a human**. This is the ack-early/ack-late dial every queue exposes, and
+converge to triage instead (`task:needs-human-decision`: whether the
+interrupted run left anything behind is exactly the choice being handed over):
+**at-most-once plus a human**. This is the ack-early/ack-late dial every queue exposes, and
 Celery ships ack-early as its *default* precisely so non-idempotent tasks
 are never silently re-run ([RESEARCH](RESEARCH.md) §1); here the safe-side
 default stays `'requeue'` because most of this fleet's tasks are
@@ -630,7 +689,7 @@ role: validate the item in code before acting (never trust the prompt more
 than a label event — re-resolve the task path at HEAD), honor the Context as
 binding scope, run `task.md` at the declared model with the declared timeout
 stated plainly, verify the outcome ceiling in code (`verify-outcome`), converge
-the item (`outcome:done` / `outcome:delivered` / `needs-human` + comment),
+the item (`outcome:done`, or a park under one of the four sub-labels + comment),
 print the `claudinite-task-exec` record, capture the session. One session, one
 item, no queue awareness — unchanged, and now structural: the session never
 receives a queue, only an item.
@@ -799,7 +858,7 @@ which is the platform-agnosticism the sketch asks for. One vendored module owns
 parse/serialize of the two fields; nothing else touches them.
 
 Cycles: the tick readies nothing in a `Blocked-by` cycle, forever, and the
-stale escalation (§11) surfaces it as `needs-human` after ~2 periods — the
+stale escalation (§11) surfaces it as `needs-human` + `task:needs-human-action` after ~2 periods — the
 same convergence-not-prevention posture as the rest of the system. The tick
 does not attempt cycle detection; the janitor's health review may.
 
@@ -875,7 +934,7 @@ enumerates executors, which is why adding one requires telling no one.
 | executor run died with items still queued | n/a (one implicit executor; the next slot was a day away) | **the failure-continuation job** (owner, 2026-08-15): `needs: execute`, `if: failure() \|\| cancelled()` re-dispatches on a fresh runner, so the *queue* resumes in ~a minute while the dead run's own item waits for the leash; the tick drain is the backstop when the whole workflow run is lost (§10, S36) |
 | agent session died mid-run | janitor: stale `agent-running` → `needs-human` after ~3h | same, on `task:agent` (a hand-off comment names the session, so the janitor can say *which* session died) |
 | CCR invocation lost | undetectable (label event fired into the void); surfaced only by re-arm/stale | **synchronous**: a refused call converges `needs-human` with the error at once; an unanswered call leaves the item with the agent and the agent leash settles it — one call per item, never retried (§6.6) |
-| item never picked up | stale dispatch escalation, period parsed from the slot id's leading char | same escalation, period read from the task's declared `frequency` at HEAD (or a default for ad-hoc items) — no title parsing; the stale item converges `needs-human`, out of the queue |
+| item never picked up | stale dispatch escalation, period parsed from the slot id's leading char | same escalation, period read from the task's declared `frequency` at HEAD (or a default for ad-hoc items) — no title parsing; the stale item converges `needs-human` + `task:needs-human-action` — the lane is not being drained and the fix is outside the item — and leaves the queue |
 | dependency never resolves | n/a | **the stale-ready rule cannot see it** — a blocked item is never ready (F14, caught by the simulator against S18's claim). The janitor gains a third rule: a blocked item whose blockers have not resolved for ~2 days gets an escalation *comment* — labels untouched, so the item still proceeds by itself the moment its blockers resolve; a human who decides it is dead closes it by hand |
 
 The janitor remains an ordinary daily task and shrinks twice over: re-arm and
@@ -887,11 +946,13 @@ janitor" split, deliberately: the split's purpose was that recovery happen
 rule that runs once per tick satisfies that as fully as one that runs once per
 day. What stays with the janitor is everything needing judgment or a longer
 horizon — four rules and a review: the dead *agent* claim (`task:agent`
-silent past ~3h → `needs-human`, the hand-off comment naming which session
+silent past ~3h → `needs-human` + `task:needs-human-decision` (what the dead
+session left behind decides whether this re-queues), the hand-off comment naming which session
 died), the stale-ready escalation (unpicked past ~2 periods →
 `needs-human`), the stuck-dependency sweep (F14 above — comment-only), the
 stateless-item repair (an open work item wearing neither a `task:*` state
-nor `needs-human` — a torn label swap's leavings, §6.2 → `needs-human`),
+nor `needs-human` — a torn label swap's leavings, §6.2 → `needs-human` +
+`task:needs-human-decision`),
 and the health review, which gains the queue (ready-item age, blocked-item
 depth, outcome mix) as its subject and can now compute all of it from
 issues.
@@ -989,7 +1050,7 @@ in a task's life, and Action-side is precisely where the executor runs; the
 agent session it invokes still carries no secrets, unchanged. Baselining asks
 the owner (the standing-issue posture) for any endpoint secret the repo
 declares but has not configured; until then the tasks naming that endpoint
-converge `needs-human` at hand-off with the missing secret named — the same
+converge `needs-human` + `task:needs-human-action` at hand-off with the missing secret named — the same
 "nothing fails, the task just doesn't work yet" posture `required_secrets`
 has.
 
@@ -1030,7 +1091,7 @@ its wiring is exactly four things, all idempotent, all from the vendored
 engine at HEAD:
 
 1. **Labels**, create-if-missing: `task:ready/blocked/executing/agent/urgent`,
-   `origin:schedule`, `needs-human`, the `outcome:*` family.
+   `origin:schedule`, `needs-human` and its four sub-labels, the `outcome:*` family.
 2. **Two vendored workflows**: the tick (cron at the repo's stable hashed
    minute, plus `workflow_dispatch` so an operator or a migration never waits
    for the cron), and the executor (invoked as the tick's drain job and by
@@ -1110,8 +1171,8 @@ executor workflow is the only consumer. End to end:
    session-creation token is simply the default endpoint's entry.
 7. **Missing secret** — declared but not configured: baselining asks the
    owner on its standing issue (the adoption-interview posture), and until
-   set, execution converges the affected item `needs-human` naming the
-   missing secret — at the work step for `required_secrets`, at hand-off for an
+   set, execution parks the affected item `needs-human` +
+   `task:needs-human-action` naming the missing secret — at the work step for `required_secrets`, at hand-off for an
    endpoint token. Nothing fails silently; the task just doesn't work yet.
 8. **Rotation** — rotate the value in repo settings; nothing else changes,
    because names are the interface everywhere above.

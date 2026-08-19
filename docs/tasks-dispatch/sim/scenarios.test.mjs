@@ -57,6 +57,21 @@ function cast() {
   ];
 }
 
+// The triage-split cast (S41–S43), kept OUT of `cast()` on purpose: these two
+// always-run tasks would add executor contention to every other scenario, and
+// S15's mutex timing is sensitive to exactly that.
+const SEEDS = {
+  id: 'sheepdog/fleet-seeds', frequency: 'daily', outcome: 'done', codeWorkMinutes: 2,
+  precondition: () => ({ run: true }),
+  codeWorkFails: (w) => !!w.patScopeMissing,
+  codeWorkTriage: () => 'action', // the PAT lacks Contents: write — a person grants it
+};
+const REGENERATE = {
+  id: 'site/regenerate', frequency: 'daily', outcome: 'done', codeWorkMinutes: 2,
+  precondition: () => ({ run: true }),
+  deliversOpenPr: () => true,
+};
+
 const evals = (sim, task) => sim.log.filter((e) => e.kind === 'evaluate' && e.task === task);
 const closedOf = (sim, task) =>
   sim.family(task).filter((i) => !i.seeded && i.state === 'closed' && i.outcome != null);
@@ -416,14 +431,31 @@ test('S11 dead agent: janitor leash converges needs-human, names the session', (
   assert.match(reclaim.session, /^s-\d+$/, 'the dead session is named');
   const it = sim.family('tidy/tidy-issues').find((i) => !i.seeded);
   assert.ok(it.labels.has('needs-human'));
-  assert.equal(sim.family('tidy/tidy-issues').filter((i) => !i.seeded && i.state === 'open').length, 1,
-    'the backlog guard held — no second item while triage sits open');
+  // A dead session is a `decision` park — whether the interrupted run left
+  // anything behind is the choice being handed over — and a decision is one
+  // person's inbox, not a fault in the task. So it does NOT hold the lane: the
+  // next day's occurrence is filed beside it, which is the #1032 delta (before
+  // the split this asserted "no second item while triage sits open", and a
+  // permission gap parked Shepherd's fleet-digest for two days on exactly that).
+  assert.ok(it.labels.has('task:needs-human-decision'));
+  const openNow = sim.family('tidy/tidy-issues').filter((i) => !i.seeded && i.state === 'open');
+  assert.equal(openNow.length, 2, 'the parked item, and the next occurrence filed around it');
+  assert.equal(openNow.filter((i) => i.labels.has('needs-human')).length, 1,
+    'exactly one of them is the park');
 });
 
 // ---- S12' — agent did the work, died before converging; the human re-queue
 // re-evaluates, and under the standing-item model the no-go ROLLS the item
 // (the §H delta from old S12's close-obsolete: the item lives on).
-test("S12' re-queue after work landed: the re-ask rolls, nothing duplicates", () => {
+//
+// Since the triage split this also exercises the lane rule from the other side.
+// The dead-agent park is a `decision`, so it does not freeze the task: the next
+// day's anchor files its own item, which runs normally while yesterday's
+// incident waits for a person. That is not a double execution of one occurrence
+// — two anchors, two items — and the same-title pick mutex still forbids the two
+// running at once, since a park is neither executing nor with an agent (S15
+// owns that property).
+test("S12' re-queue after work landed: the re-ask rolls, and the task kept running", () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
   sim.at('2026-08-12T04:10Z', (s) => s.crashNextAgentOf('tidy/tidy-issues'));
@@ -438,7 +470,11 @@ test("S12' re-queue after work landed: the re-ask rolls, nothing duplicates", ()
   assert.equal(it.state, 'open', 'not closed obsolete — rolled (the §H delta)');
   assert.ok(it.labels.has('task:blocked'));
   assert.equal(it.rolls.length, 1, 'the re-ask found no work and rolled with the reason');
-  assert.equal(closedOf(sim, 'tidy/tidy-issues').length, 0, 'no duplicate execution');
+  // The 13th's occurrence ran on its own item while the 12th's sat parked — the
+  // schedule went on around the incident rather than stopping for it.
+  const closed = closedOf(sim, 'tidy/tidy-issues');
+  assert.equal(closed.length, 1, "the next day's occurrence ran on its own item");
+  assert.notEqual(closed[0].number, it.number, 'and it is not the parked one');
 });
 
 // ---- S15 — ad-hoc item while the scheduled twin is mid-execution: the
@@ -962,4 +998,82 @@ test('S39b a parked item a human re-queues is claimable by another executor at o
   assert.deepEqual(sim.log.filter((e) => e.kind === 'claim-lost'), [],
     're-queued work must be claimable — a claim standing from the parked episode livelocks it forever');
   assert.ok(sim.log.some((e) => e.kind === 'claim' && e.exec === 'E2'), 'E2 held the item');
+});
+
+
+// ---- S41 — the worker's own triage verdict routes the park ------------------
+// The executor sees an exit code and nothing more, so it cannot tell a token
+// missing a scope from a bug in the worker. A worker that knows says so, and the
+// park lands in the lane whose remedy actually matches (DESIGN §4, §6.5).
+test('S41 a worker that names its failure class parks there, not at failure', () => {
+  const sim = makeSim({ tasks: [SEEDS] });
+  sim.at('2026-08-12T00:00Z', ({ world }) => { world.patScopeMissing = true; });
+  sim.run('2026-08-12T00:00Z', '2026-08-13T12:00Z');
+
+  const parked = sim.issues.find((i) => i.taskId === 'sheepdog/fleet-seeds' && i.labels.has('needs-human'));
+  assert.ok(parked, 'the failing run parked');
+  assert.ok(parked.labels.has('task:needs-human-action'), "the worker's verdict, not the default");
+  assert.equal(parked.labels.has('task:needs-human-failure'), false, 'and only one sub-label');
+  assert.ok(sim.log.some((e) => e.kind === 'work-failed' && e.triage === 'action'));
+});
+
+// A worker that says nothing is the compatibility case — every worker written
+// before the marker existed, in every run. An unexplained break is a break.
+test('S41b a worker that says nothing parks at failure, and holds the lane', () => {
+  const sim = makeSim({ tasks: [{ ...SEEDS, codeWorkTriage: undefined }] });
+  sim.at('2026-08-12T00:00Z', ({ world }) => { world.patScopeMissing = true; });
+  sim.run('2026-08-12T00:00Z', '2026-08-14T12:00Z');
+
+  const fam = sim.family('sheepdog/fleet-seeds');
+  const parked = fam.find((i) => i.labels.has('needs-human'));
+  assert.ok(parked.labels.has('task:needs-human-failure'));
+  assert.equal(fam.filter((i) => i.state === 'open').length, 1,
+    'the lane is held — two days of anchors passed and nothing was filed behind it');
+});
+
+// ---- S42 — the approval park: succeeded, and waiting on a reviewer ----------
+// The one park that is not a fault. It stays OPEN, because closing it would hide
+// an unreviewed PR from every surface that counts open work — and it does NOT
+// hold the lane, because the reviewer's silence must delay only the review.
+test('S42 a run that left an unmerged PR parks open for approval and keeps its schedule', () => {
+  const sim = makeSim({ tasks: [REGENERATE] });
+  sim.run('2026-08-12T00:00Z', '2026-08-14T12:00Z');
+
+  const fam = sim.family('site/regenerate');
+  const parked = fam.filter((i) => i.labels.has('task:needs-human-approval'));
+  assert.ok(parked.length >= 1, 'the delivering run parked for approval');
+  assert.ok(parked.every((i) => i.state === 'open'), 'open — a waiting reviewer is not a closed item');
+  // Two anchors passed and each filed its own item, around the ones still parked.
+  assert.ok(fam.length >= 2, 'the schedule went on around the unreviewed PR');
+  assert.ok(sim.log.filter((e) => e.kind === 'delivered-open-pr').length >= 2);
+});
+
+// ---- S43 — the road back clears BOTH labels --------------------------------
+// A re-queue that stripped only the state would leave a live item still wearing
+// a triage sub-label: a shape no rule defines, and one the janitor's stateless
+// repair would not catch either, since the item does wear `task:ready`.
+test('S43 the human re-queue leaves no triage label behind', () => {
+  const sim = makeSim({ tasks: [SEEDS] });
+  sim.at('2026-08-12T00:00Z', ({ world }) => { world.patScopeMissing = true; });
+  // A task's first-ever item is born BLOCKED until its next real anchor (S25),
+  // so nothing can park before the 13th — re-queue after that, or this asserts
+  // over an item that never failed.
+  // Asserted AT the re-queue, not at the end of the run: the invariant is about
+  // the item's state the moment the lever is pulled, and by the end the re-queued
+  // item has run and closed, taking every label with it.
+  let after = null;
+  sim.at('2026-08-13T09:00Z', (s) => {
+    s.world.patScopeMissing = false; // the scope was granted
+    const parked = s.issues.find((i) => i.labels.has('needs-human'));
+    assert.ok(parked, 'precondition of this scenario: something is parked to re-queue');
+    s.requeue(parked.number);
+    after = [...parked.labels];
+  });
+  sim.run('2026-08-12T00:00Z', '2026-08-13T18:00Z');
+
+  assert.ok(after, 'the re-queue ran');
+  assert.deepEqual(after.filter((l) => l.startsWith('task:needs-human-')), [],
+    'no sub-label survived the re-queue');
+  assert.equal(after.includes('needs-human'), false);
+  assert.ok(after.includes('task:ready'), 'and it went back into the queue');
 });
