@@ -14,6 +14,7 @@
 // (engine/scheduler/queue/executor.mjs) instead of handing off to any agent.
 
 import { pathToFileURL } from 'node:url';
+import { fleetWorkerFailed } from '../../fleet-api.mjs';
 import { main as sweep } from './check-fleet-roster.mjs';
 
 const item = process.env.CLAUDINITE_ITEM || '';
@@ -35,5 +36,5 @@ export async function main() {
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) {
-  main().catch((e) => { console.error(`fleet-roster failed: ${e.message}`); process.exit(1); });
+  main().catch((e) => fleetWorkerFailed('fleet-roster', e));
 }

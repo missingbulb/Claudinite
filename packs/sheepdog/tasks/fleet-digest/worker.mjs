@@ -28,6 +28,7 @@
 
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+import { fleetWorkerFailed } from '../../fleet-api.mjs';
 import { join } from 'node:path';
 import { makeGh } from '../../fleet-api.mjs';
 import { parseSheepdogConfig } from '../../fleet-config.mjs';
@@ -320,5 +321,5 @@ export async function main() {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((e) => { console.error(`fleet-digest failed: ${e.message}`); process.exit(1); });
+  main().catch((e) => fleetWorkerFailed('fleet-digest', e));
 }

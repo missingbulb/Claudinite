@@ -16,6 +16,7 @@ import { mostRecentAnchor, nextAnchor } from './anchors.mjs';
 import { EXECUTING_LEASH_MS } from './leases.mjs';
 import {
   WORK_PREFIX, BLOCKED, READY, EXECUTING, AGENT, ORIGIN_SCHEDULE, NEEDS_HUMAN, OUTCOME_OBSOLETE,
+  NEEDS_HUMAN_DECISION, isBlockingPark,
   QUEUE_LABELS, EPISODE_MARKER, workItemTitle, parseWorkItemTitle, parseWorkItemBody,
   workItemBody, labelNames, hasLabel,
 } from './work-item.mjs';
@@ -54,8 +55,14 @@ export function planTick({
     // The family is title-EXACT (no qualifier) and `origin:schedule` only, so
     // ad-hoc and fan-out items neither suppress nor consume an occurrence (§3).
     const family = items.filter((i) => (i.title ?? '').trim() === title && hasLabel(i, ORIGIN_SCHEDULE));
+    // A park that is somebody's INBOX rather than a fault — a PR to approve, a
+    // choice to make, a secret to set — does not hold the lane: it is neither this
+    // task's standing item nor a duplicate of it, so it drops out here entirely and
+    // the schedule goes on around it. A `failure` park (and any park an older engine
+    // left unclassified) stays in, and holding the lane is the point.
     const open = family
       .filter((i) => i.state === 'open' && !closedByThisTick.has(i.number))
+      .filter((i) => !hasLabel(i, NEEDS_HUMAN) || isBlockingPark(i))
       .sort((a, b) => a.number - b.number);
 
     // F16 self-heal, FIRST: nothing documents that a REST list from another node
@@ -127,6 +134,9 @@ export function planTick({
     const oneShot = parsed && policyOf.get(`${parsed.pack}/${parsed.task}`) === 'needs-human';
     ops.push({
       kind: 'reclaim', issue: item.number, to: oneShot ? NEEDS_HUMAN : READY,
+      // What the human is being asked for: whether the interrupted run left
+      // anything behind, and so whether this re-queues at all — a decision.
+      triage: oneShot ? NEEDS_HUMAN_DECISION : null,
       reason: oneShot
         ? `The executor holding this item went silent for over ${minutes} minutes. This task declares \`on_interrupt: 'needs-human'\`, so nothing re-queues it automatically — check whether the interrupted run left anything behind, then re-queue it by hand.`
         : `Reclaimed: the executor holding this item went silent for over ${minutes} minutes. Returning it to the queue.`,
@@ -291,6 +301,7 @@ async function main() {
       await comment(gh, repo, op.issue, `${EPISODE_MARKER}\n${op.reason}`);
       await removeLabel(gh, repo, op.issue, EXECUTING);
       await addLabel(gh, repo, op.issue, op.to);
+      if (op.triage) await addLabel(gh, repo, op.issue, op.triage);
       console.log(`- reclaimed #${op.issue} -> ${op.to}`);
     } else if (op.kind === 'dedupe') {
       await comment(gh, repo, op.issue, op.reason);

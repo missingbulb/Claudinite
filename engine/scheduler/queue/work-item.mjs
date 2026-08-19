@@ -27,7 +27,66 @@ export const EXECUTING = 'task:executing';
 export const AGENT = 'task:agent';
 export const ORIGIN_SCHEDULE = 'origin:schedule';
 export const NEEDS_HUMAN = 'needs-human';
+
+// The TRIAGE SUB-LABELS. `needs-human` says an item is parked; these say what the
+// human parked with it is expected to DO, which is the whole difference between a
+// queue a person can skim and one they have to read. Every park wears BOTH:
+// `needs-human` stays the single state the machine reads (every guard, sweep and
+// dashboard already turns on it), and the sub-label is the human's routing.
+//
+// The four are disjoint by REMEDY, not by cause:
+//   action   — something outside the code must change: a secret set, a scope
+//              granted, a routine's prompt or endpoint fixed, an item re-created
+//              with the parameter it was missing. Mechanical; no judgement.
+//   decision — the run stopped mid-flight and what happens next is a choice:
+//              re-queue or abandon, does the half-done work stand, was the
+//              ceiling violation acceptable.
+//   approval — the run SUCCEEDED and deliberately left an unmerged PR. The only
+//              park that is not a fault; the human merges it or closes it.
+//   failure  — the run broke: a bug, a contract-forbidden shape, a malformed or
+//              forged item. Someone diagnoses and fixes code.
+// `failure` is the default a park falls back to, so an unclassified park reads as
+// "diagnose me" rather than quietly joining the mechanical lane.
+const triage = (kind) => `task:needs-human-${kind}`;
+export const NEEDS_HUMAN_ACTION = triage('action');
+export const NEEDS_HUMAN_DECISION = triage('decision');
+export const NEEDS_HUMAN_APPROVAL = triage('approval');
+export const NEEDS_HUMAN_FAILURE = triage('failure');
+export const TRIAGE_LABELS = Object.freeze([
+  NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_FAILURE,
+]);
+// WHICH PARKS HOLD THE TASK'S LANE. An open `origin:schedule` item IS the task's
+// standing item, so while one exists the generator files no further occurrence
+// (`planTick` job 1) — which for a park means the task stops being scheduled at
+// all until a human clears it. That is right for a `failure`: filing a queue of
+// items that will break the same way helps nobody, and the silence is the signal.
+// It is wrong for the other three, which are a person's inbox, not a fault in the
+// task: a PR waiting to be approved, a choice waiting to be made and a secret
+// waiting to be set must not also stop tomorrow's run.
+//
+// A park wearing NO sub-label blocks, which is what makes this safe on the way in:
+// every item parked by an engine older than the sub-labels, and every kind word a
+// future engine invents that this one does not know, holds the lane rather than
+// silently letting a broken task keep filing work.
+export const isBlockingPark = (item) =>
+  hasLabel(item, NEEDS_HUMAN)
+  && !hasLabel(item, NEEDS_HUMAN_ACTION)
+  && !hasLabel(item, NEEDS_HUMAN_DECISION)
+  && !hasLabel(item, NEEDS_HUMAN_APPROVAL);
+
+// A kind word (from a worker's own triage marker, or a call site) to its label.
+// Anything unrecognised is a `failure`: a worker that misspells its class has a
+// bug, which is exactly what that lane means.
+export const triageLabelFor = (kind) =>
+  (TRIAGE_LABELS.includes(triage(kind)) ? triage(kind) : NEEDS_HUMAN_FAILURE);
+
 export const OUTCOME_DONE = 'outcome:done';
+// @deprecated Nothing writes this since the approval park: a run that left an
+// unmerged PR no longer CLOSES as delivered, it parks at
+// `task:needs-human-approval` and waits to be merged. Kept exported, kept in
+// `QUEUE_LABELS`, and still read everywhere it was read — closed issues carrying
+// it are stored data, and a decoder that stopped recognising it would turn every
+// historical delivered run into an un-outcomed one.
 export const OUTCOME_DELIVERED = 'outcome:delivered';
 export const OUTCOME_OBSOLETE = 'outcome:obsolete';
 
@@ -47,7 +106,11 @@ export const QUEUE_LABELS = [
   { name: EXECUTING, color: 'fbca04', description: 'Claudinite queue: an executor holds the claim' },
   { name: AGENT, color: '1d76db', description: 'Claudinite queue: an agent session owns this item' },
   { name: ORIGIN_SCHEDULE, color: 'ededed', description: 'Claudinite queue: created by the generator tick at a task anchor' },
-  { name: NEEDS_HUMAN, color: 'b60205', description: 'Claudinite queue: failed or anomalous — the one triage state' },
+  { name: NEEDS_HUMAN, color: 'b60205', description: 'Claudinite queue: parked for a human — the one triage state' },
+  { name: NEEDS_HUMAN_ACTION, color: 'b60205', description: 'Claudinite triage: a human must change something outside the code' },
+  { name: NEEDS_HUMAN_DECISION, color: 'd93f0b', description: 'Claudinite triage: a human must choose what happens next' },
+  { name: NEEDS_HUMAN_APPROVAL, color: '5319e7', description: 'Claudinite triage: succeeded and left an unmerged PR to approve' },
+  { name: NEEDS_HUMAN_FAILURE, color: 'b60205', description: 'Claudinite triage: the run broke — diagnose and fix' },
   { name: OUTCOME_DONE, color: '0e8a16', description: 'Claudinite queue: succeeded, nothing pending' },
   { name: OUTCOME_DELIVERED, color: '5319e7', description: 'Claudinite queue: succeeded and left a live artifact the world still has to act on' },
   { name: OUTCOME_OBSOLETE, color: 'ededed', description: 'Claudinite queue: never ran — the precondition said no, or the task is gone' },

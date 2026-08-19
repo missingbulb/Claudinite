@@ -254,3 +254,37 @@ test('an empty spec asks for nothing at all', () => {
     assert.deepEqual([r.wake, r.already, r.unmatched], [[], [], []]);
   }
 });
+
+// --- job 1: a park only holds the lane when it is a fault ----------------------
+
+// The lane rule, from both sides. An open `origin:schedule` item IS the task's
+// standing item, so while one exists no further occurrence is filed — which for a
+// broken run is the point (a queue of items that will break the same way helps
+// nobody) and for a person's inbox is a bug: a PR nobody has reviewed must not
+// stop tomorrow's run.
+test('a non-blocking park does not suppress the next occurrence', () => {
+  for (const triage of ['task:needs-human-approval', 'task:needs-human-action', 'task:needs-human-decision']) {
+    const parked = item({
+      task: 'x', labels: ['origin:schedule', 'needs-human', triage],
+      created_at: '2026-08-13T04:00:00Z',
+    });
+    const { ops } = planTick({
+      tasks: [task('x', 'daily')], items: [parked], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE,
+    });
+    assert.equal(kinds(ops, 'create').length, 1, triage);
+    // …and the parked item is not mistaken for a duplicate of the new one.
+    assert.deepEqual(kinds(ops, 'dedupe'), [], triage);
+  }
+});
+
+test('a failure park — and an unclassified one — holds the task\'s lane', () => {
+  for (const labels of [['needs-human', 'task:needs-human-failure'], ['needs-human']]) {
+    const parked = item({
+      task: 'x', labels: ['origin:schedule', ...labels], created_at: '2026-08-13T04:00:00Z',
+    });
+    const { ops } = planTick({
+      tasks: [task('x', 'daily')], items: [parked], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE,
+    });
+    assert.deepEqual(kinds(ops, 'create'), [], labels.join('+'));
+  }
+});

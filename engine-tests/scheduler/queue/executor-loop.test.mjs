@@ -91,12 +91,64 @@ test('a go verdict with agentless code_work closes the item outcome:done', async
   assert.equal(issue.labels.includes('task:executing'), false);
 });
 
-test('code_work that names a live artifact converges outcome:delivered instead', async () => {
+// A run that deliberately left an unmerged PR SUCCEEDED, but it is not finished:
+// it is waiting on a reviewer, and closing it would hide that from every surface
+// that counts open work. So it parks — the one park that is not a fault.
+test('code_work that opened a PR parks the item for approval instead of closing', async () => {
   const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
   await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], {
-    runTaskCodeWork: async () => ({ ok: true, agentRequested: false, delivered: ['PR: #7 (open)'] }),
+    runTaskCodeWork: async () => ({ ok: true, agentRequested: false, delivered: ['PR: #7 (open)'], openPr: 7 }),
   });
-  assert.ok(repo.find(1).labels.includes('outcome:delivered'));
+  const issue = repo.find(1);
+  assert.equal(issue.state, 'open');
+  assert.ok(issue.labels.includes('needs-human'));
+  assert.ok(issue.labels.includes('task:needs-human-approval'));
+  assert.equal(issue.labels.includes('outcome:delivered'), false);
+  assert.match(issue.comments.at(-1).body, /#7/);
+});
+
+// …and a delivered artifact that is NOT a PR awaiting a person — a branch, an
+// already-merged PR — asks nobody for anything, so it still closes.
+test('code_work that delivered no open PR still closes outcome:done', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
+  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], {
+    runTaskCodeWork: async () => ({ ok: true, agentRequested: false, delivered: ['Branch: `x`'], openPr: null }),
+  });
+  const issue = repo.find(1);
+  assert.equal(issue.state, 'closed');
+  assert.ok(issue.labels.includes('outcome:done'));
+});
+
+// The executor sees an exit code; only the worker knows whether that was a scope
+// it lacked or a bug in its own code. Its marker is what routes the park.
+test('a failed code_work parks at the class its worker declared', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
+  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], {
+    runTaskCodeWork: async () => ({ ok: false, why: 'code-work exited 1', triage: { kind: 'action', detail: 'PAT lacks Actions: write' } }),
+  });
+  const issue = repo.find(1);
+  assert.ok(issue.labels.includes('needs-human'));
+  assert.ok(issue.labels.includes('task:needs-human-action'));
+  assert.match(issue.comments.at(-1).body, /PAT lacks Actions: write/);
+});
+
+// No marker is not "assume the cheap lane": an unexplained break is a break.
+test('a failed code_work that said nothing parks at failure', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
+  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], {
+    runTaskCodeWork: async () => ({ ok: false, why: 'code-work exited 1' }),
+  });
+  assert.ok(repo.find(1).labels.includes('task:needs-human-failure'));
+});
+
+// A declared secret nobody configured is the definitive `action`: no code changes,
+// somebody sets a value.
+test('an unconfigured declared secret parks at action', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
+  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], {
+    runTaskCodeWork: async () => ({ ok: true, agentRequested: false, missingSecrets: ['FLEET_GITHUB_TOKEN'] }),
+  });
+  assert.ok(repo.find(1).labels.includes('task:needs-human-action'));
 });
 
 // The model's whole trick: a no-go does not close the item, it ROLLS it, so the

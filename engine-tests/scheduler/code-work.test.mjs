@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { existsSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { runCodeWork, codeWorkFailure, agentRequestPath, clearAgentRequest, agentRequested, readAgentRequest } from '../../engine/scheduler/code-work.mjs';
+import { runCodeWork, codeWorkFailure, agentRequestPath, clearAgentRequest, agentRequested, readAgentRequest, readTriageMarker } from '../../engine/scheduler/code-work.mjs';
 
 const NODE = process.execPath; // the running node, so the tests don't assume PATH
 
@@ -157,4 +157,26 @@ test('readAgentRequest: a bare marker, empty file, or garbage names nothing — 
   }
   clearAgentRequest(path);
   assert.equal(readAgentRequest(path), null);   // absent → no payload at all
+});
+
+// --- the worker's own triage verdict ------------------------------------------
+
+// The executor reads an exit code and cannot tell a missing scope from a bug. This
+// is the one line a worker gets to say which, and it has to survive being read out
+// of a live output stream — a worker SIGKILLed at its timeout writes no file.
+test('a worker\'s triage marker is read off its output, last one winning', () => {
+  assert.deepEqual(
+    readTriageMarker('sweeping\nclaudinite-needs-human: action — PAT lacks Actions: write\ndone'),
+    { kind: 'action', detail: 'PAT lacks Actions: write' },
+  );
+  // A sweep may revise its verdict as it works through its targets.
+  assert.deepEqual(
+    readTriageMarker('claudinite-needs-human: action\nclaudinite-needs-human: failure — threw on repo 3'),
+    { kind: 'failure', detail: 'threw on repo 3' },
+  );
+  // Absence is the whole compatibility story: every worker written before this
+  // says nothing, and says it in every run.
+  assert.equal(readTriageMarker('just a normal failure\n'), null);
+  assert.equal(readTriageMarker(''), null);
+  assert.deepEqual(readTriageMarker('claudinite-needs-human: decision'), { kind: 'decision', detail: null });
 });

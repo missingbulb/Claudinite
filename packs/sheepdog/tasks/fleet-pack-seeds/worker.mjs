@@ -14,6 +14,7 @@
 // to any agent.
 
 import { pathToFileURL } from 'node:url';
+import { fleetWorkerFailed } from '../../fleet-api.mjs';
 import { main as sweep } from './check-fleet-pack-seeds.mjs';
 
 const item = process.env.CLAUDINITE_ITEM || '';
@@ -35,5 +36,5 @@ export async function main() {
 
 // Run only when invoked directly (code-work's `node worker.mjs`), never on import.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((e) => { console.error(`fleet-pack-seeds failed: ${e.message}`); process.exit(1); });
+  main().catch((e) => fleetWorkerFailed('fleet-pack-seeds', e));
 }

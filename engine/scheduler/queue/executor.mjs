@@ -17,7 +17,8 @@ import { pathToFileURL } from 'node:url';
 import { nextAnchor } from './anchors.mjs';
 import {
   READY, URGENT, EXECUTING, AGENT, BLOCKED, NEEDS_HUMAN, ORIGIN_SCHEDULE,
-  OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE, QUEUE_LABELS,
+  OUTCOME_DONE, OUTCOME_OBSOLETE, QUEUE_LABELS,
+  NEEDS_HUMAN_ACTION, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_FAILURE, triageLabelFor,
   CLAIM_MARKER, HANDOFF_MARKER, EPISODE_MARKER,
   parseWorkItemTitle, parseWorkItemBody, parseContextLines, mergeContext, withNotBefore, withSection, hasLabel, DELIVERED_HEADING, LEGACY_DELIVERED_HEADINGS } from './work-item.mjs';
 
@@ -217,7 +218,7 @@ async function executeItem({
 
   // --- validate in code, before anything trusts the issue ------------------
   if (!parsed || !taskPath) {
-    await converge(api, gh, repo, item.number, EXECUTING, NEEDS_HUMAN, claim,
+    await converge(api, gh, repo, item.number, EXECUTING, NEEDS_HUMAN_FAILURE, claim,
       'This work item is malformed — its title or first body line does not name a task. Possible forgery; a human should look at it.');
     return 'needs-human';
   }
@@ -227,7 +228,7 @@ async function executeItem({
     return 'obsolete';
   }
   if (task.taskPath !== taskPath) {
-    await converge(api, gh, repo, item.number, EXECUTING, NEEDS_HUMAN, claim,
+    await converge(api, gh, repo, item.number, EXECUTING, NEEDS_HUMAN_FAILURE, claim,
       `This item's task path (\`${taskPath}\`) is not where \`${id}\` lives at HEAD (\`${task.taskPath}\`). Not running it.`);
     return 'needs-human';
   }
@@ -267,29 +268,44 @@ async function executeItem({
   if (task.decl.code_work) {
     const result = await runTaskCodeWork(task, { item, context });
     if (!result.ok) {
-      await converge(api, gh, repo, item.number, EXECUTING, NEEDS_HUMAN, claim,
-        `Code-work failed: ${result.why}${result.detail ? `\n\n\`\`\`\n${result.detail}\n\`\`\`` : ''}`);
+      // The worker's own verdict routes the park where it left one; a worker that
+      // said nothing about why it failed is a `failure` — the lane that means
+      // "someone reads the trace", which is the only safe default for a run whose
+      // cause is unknown.
+      await converge(api, gh, repo, item.number, EXECUTING, triageLabelFor(result.triage?.kind), claim,
+        `Code-work failed: ${result.why}${result.triage?.detail ? `\n\nThe worker's own verdict: ${result.triage.detail}` : ''}`
+        + `${result.detail ? `\n\n\`\`\`\n${result.detail}\n\`\`\`` : ''}`);
       return 'needs-human';
     }
     if (result.missingSecrets?.length) {
-      await converge(api, gh, repo, item.number, EXECUTING, NEEDS_HUMAN, claim,
-        `This task declares repo Actions secrets that are not configured: ${result.missingSecrets.join(', ')}. Set them in repo settings and re-queue this item (remove \`needs-human\`, add \`task:ready\`).`);
+      await converge(api, gh, repo, item.number, EXECUTING, NEEDS_HUMAN_ACTION, claim,
+        `This task declares repo Actions secrets that are not configured: ${result.missingSecrets.join(', ')}. Set them in repo settings and re-queue this item (remove the \`needs-human\` labels, add \`task:ready\`).`);
       return 'needs-human';
     }
     if (!result.agentRequested) {
-      const outcome = result.delivered?.length ? OUTCOME_DELIVERED : OUTCOME_DONE;
-      await close(api, gh, repo, item.number, EXECUTING, outcome, 'completed',
+      // A run that deliberately left an UNMERGED PR is not finished, it is waiting
+      // on a person — so the item stays OPEN at `task:needs-human-approval` rather
+      // than closing as delivered. It does not hold the task's lane while it waits
+      // (`isBlockingPark`): the next occurrence is filed on schedule around it, so
+      // an unreviewed PR delays nobody but its reviewer.
+      if (result.openPr) {
+        await converge(api, gh, repo, item.number, EXECUTING, NEEDS_HUMAN_APPROVAL, claim,
+          `Code-work did this run's work and opened a PR for you to approve:\n${result.delivered.map((d) => `- ${d}`).join('\n')}`
+          + `\n\nMerge or close #${result.openPr}, then close this item. This task keeps running on schedule meanwhile.`);
+        return 'needs-human';
+      }
+      await close(api, gh, repo, item.number, EXECUTING, OUTCOME_DONE, 'completed',
         result.delivered?.length
-          ? `Code-work did this run's work and left a live artifact:\n${result.delivered.map((d) => `- ${d}`).join('\n')}`
+          ? `Code-work did this run's work and left:\n${result.delivered.map((d) => `- ${d}`).join('\n')}`
           : 'Code-work did this run\'s work; no agent was needed.');
-      return outcome;
+      return OUTCOME_DONE;
     }
     return handOff({ api, gh, repo, item, task, id, context, result, executorId, claim, invokeAgent, config, log });
   }
 
   // An agentless task with no code-work does nothing (the contract forbids it).
   if (task.decl.agent_model === 'none') {
-    await converge(api, gh, repo, item.number, EXECUTING, NEEDS_HUMAN, claim,
+    await converge(api, gh, repo, item.number, EXECUTING, NEEDS_HUMAN_FAILURE, claim,
       'This task is agentless but declares no code_work, so there is nothing to run — a contract-forbidden shape that reached the queue.');
     return 'needs-human';
   }
@@ -348,8 +364,8 @@ async function handOff({ api, gh, repo, item, task, id, context, result, executo
   if (invocation.answered) {
     // The endpoint refused, so no session exists and none will: a token, a URL or
     // a routine is wrong, and every future pick would be refused the same way.
-    await converge(api, gh, repo, item.number, AGENT, NEEDS_HUMAN, claim,
-      `Could not start an agent session: ${invocation.error}\n\nNo session was started. Fix the invocation endpoint, then re-queue this item (remove \`${NEEDS_HUMAN}\`, add \`${READY}\`).`);
+    await converge(api, gh, repo, item.number, AGENT, NEEDS_HUMAN_ACTION, claim,
+      `Could not start an agent session: ${invocation.error}\n\nNo session was started. Fix the invocation endpoint, then re-queue this item (remove the \`${NEEDS_HUMAN}\` labels, add \`${READY}\`).`);
     return 'needs-human';
   }
   // NOTHING CAME BACK, and this is the case the whole design turns on: the call
@@ -392,10 +408,13 @@ async function strikeClaim(api, gh, repo, claim) {
 // Every exit converges the item exactly once, with one comment saying what
 // happened — the terminal-state discipline the incidents bought. The claim sits
 // before the body so every state argument is grouped ahead of the prose.
-async function converge(api, gh, repo, number, from, to, claim, body) {
+// Park an item for a human. BOTH labels, always: `needs-human` is the state every
+// guard and sweep reads, `triage` is what the human is being asked for.
+async function converge(api, gh, repo, number, from, triage, claim, body) {
   await strikeClaim(api, gh, repo, claim);
   await api.comment(gh, repo, number, body);
-  await api.swapLabel(gh, repo, number, from, to);
+  await api.swapLabel(gh, repo, number, from, NEEDS_HUMAN);
+  await api.addLabel(gh, repo, number, triage);
 }
 
 async function close(api, gh, repo, number, from, outcome, stateReason, body) {

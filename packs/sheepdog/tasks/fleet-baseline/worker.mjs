@@ -17,6 +17,7 @@
 // converges the item to `needs-human`.
 
 import { pathToFileURL } from 'node:url';
+import { fleetWorkerFailed } from '../../fleet-api.mjs';
 import { main as sweep } from './force-fleet-baseline.mjs';
 import { parseParamBag, contextText } from '../../param-bag.mjs';
 
@@ -43,5 +44,5 @@ export async function main() {
 
 // Run only when invoked directly (code-work's `node worker.mjs`), never on import.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((e) => { console.error(`fleet-baseline failed: ${e.message}`); process.exit(1); });
+  main().catch((e) => fleetWorkerFailed('fleet-baseline', e));
 }
