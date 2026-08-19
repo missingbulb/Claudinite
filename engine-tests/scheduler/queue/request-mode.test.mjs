@@ -302,8 +302,28 @@ test('an eligible request is handed to a session, at the model its item names', 
   assert.deepEqual(repo.find(500).labels, ['claude-queued']);
 });
 
+test('the precondition is handed THIS occurrence\'s own facts, not just the signals', async () => {
+  // The third argument (§16.4) is what lets a verdict be about one target. Nothing
+  // else in this file would notice it going missing: the request task reads its
+  // issue out of the signal the collector filled from that same field.
+  const seen = [];
+  const item = requestItem(500, ['task:ready'], { number: 1 });
+  item.body = `${TASK_PATH}\n\nRequest: #500\nModel: sonnet\n`;
+  const repo = fakeRepo([item, { number: 500, title: 'a thing', labels: ['claude-queued'], body: '' }]);
+  const spy = {
+    ...REQUEST_TASK,
+    decl: { ...requestTask, precondition: (signals, config, occurrence) => { seen.push(occurrence); return { run: false, reason: 'looked' }; } },
+  };
+  await drive(repo, req({ authorPermission: 'admin' }), { tasks: [spy] });
+
+  assert.deepEqual(seen, [{ taskPath: TASK_PATH, notBefore: null, blockedBy: [], request: 500, model: 'sonnet' }]);
+});
+
 test('the request task is the one task allowed to read its item\'s model', () => {
   assert.equal(REQUEST_TASK_ID, 'engine/implement-request');
+  // The declaration spells its id literally (the shape check parses this file
+  // statically), so the two have to be held together from outside.
+  assert.equal(`engine/${requestTask.id}`, REQUEST_TASK_ID);
   assert.equal(requestTask.model_from_request, true);
   assert.equal(requestTask.expected_outcome, 'open-pr', 'it opens a PR for review and can never merge one');
   assert.equal(requestTask.code_work, undefined, 'and has no code-work phase to carry a payload');

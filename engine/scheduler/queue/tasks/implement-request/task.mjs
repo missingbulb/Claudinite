@@ -7,8 +7,6 @@
 // no code-work phase at all: the authorization a worker would have performed is the
 // precondition's, and the item's `Request:` field is the whole payload.
 
-import { REQUEST_TASK } from '../../../built-in-tasks.mjs';
-
 // Push permission, as the permission API answers it. `triage` and `read` are
 // deliberately not here: the ask was push access, and a read-only collaborator
 // rides every webhook payload as `COLLABORATOR` (F30).
@@ -27,7 +25,10 @@ export function eligibility(req) {
 }
 
 export default {
-  id: REQUEST_TASK,
+  // The literal, not the constant beside it in `built-in-tasks.mjs`: the
+  // declaration-shape check reads this file statically and cannot resolve an
+  // import. The two are pinned to each other in request-mode.test.mjs.
+  id: 'implement-request',
   // MANUAL: the tick never puts this on a calendar. An item exists only because an
   // issue was marked, which is what makes a request a first-class origin of work
   // rather than a schedule nobody asked for.
