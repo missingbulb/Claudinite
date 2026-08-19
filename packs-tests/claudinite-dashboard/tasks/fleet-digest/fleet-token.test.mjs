@@ -36,8 +36,12 @@ test('the digest names the whole grant when the token is missing', async () => {
 
 test('one secret, two packs: the message says grant the union', () => {
   assert.match(missingFleetTokenError('detail.').message, /sheepdog/);
-  assert.match(pack.adoptionHandover.at(-1).step, new RegExp(fleetTokenGrant().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-  assert.match(pack.adoptionHandover.at(-1).step, /FLEET_GITHUB_TOKEN/);
+  // Found by what it is about, not by where it sits: the pack hands over several
+  // human-only steps and their order is not this test's business — pinning the last
+  // one made any new entry fail here instead of where it was added.
+  const step = pack.adoptionHandover.find((h) => /FLEET_GITHUB_TOKEN/.test(h.step));
+  assert.ok(step, 'no handover entry asks for the fleet token');
+  assert.match(step.step, new RegExp(fleetTokenGrant().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
 });
 
 test('a 403 mid-walk is attributed to the permission that would fix it', async () => {
