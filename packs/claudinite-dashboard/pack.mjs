@@ -59,7 +59,9 @@ export default {
   // 8: the FLEET_GITHUB_TOKEN the digest needs is stated once, in its own
   // fleet-token.mjs, and rendered into the missing-secret message, the adoption step
   // and a 403's hint — additive, no migration (#1030).
-  version: 8,
+  // 9: adoption hands over the sign-in decision as well as the Pages setting — prose
+  // and a handover entry, so a member gains a checkbox and nothing else changes.
+  version: 9,
   minEngineVersion: 4,
   ruleRoutingGuidance: {
     belongs: 'the browser dashboard over Claudinite scheduler state, the site that publishes it, and the fleet morning brief it reads',
@@ -122,6 +124,24 @@ export default {
     // read in front of it needed is how a fleet went two days short one permission
     // (#1030).
     fleetTokenHandoverStep(),
+    // ONE entry, not the four mechanical steps, because for many deployments the right
+    // answer is "nothing" — a member's own dashboard read with a pasted token is on the
+    // same 5,000/hour as a signed-in one. What every adopter does have to meet is the
+    // DECISION, since until someone makes it their page reads GitHub anonymously; four
+    // unconditional checkboxes that are mostly no-ops teach the reader to skim exactly
+    // the list that exists to stop them skimming. The mechanics live in the README,
+    // where they are read at the moment the answer is yes.
+    {
+      step: 'Decide how this dashboard authenticates its viewers: leave it on the pasted-token box (nothing to do), '
+        + 'or give it a Sign in button — register a GitHub App with read-only Contents, Issues and Actions, install it on '
+        + 'the account holding these repos, deploy the pack\'s oauth-exchange example, and set `clientId` and `exchangeUrl` '
+        + 'on this pack\'s declaration. See "Who has to register the app" in the pack README: one App serves every '
+        + 'deployment you own, and none can be inherited from another owner.',
+      breaks: 'nothing fails, but a viewer who has not pasted a token reads GitHub anonymously at 60 requests/hour per IP — '
+        + 'which one fleet sweep exceeds, so the page serves cached data or empty rows until the hour rolls',
+      done: 'a signed-in viewer sees the rate pill read “…/5000 · user”, or this repo has recorded that the token box is '
+        + 'this deployment\'s answer',
+    },
   ],
 
   // Seeded, never converged: `.github/workflows/` cannot be written by the nightly, so

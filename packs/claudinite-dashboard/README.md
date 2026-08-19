@@ -245,6 +245,49 @@ would raise the ceiling, but only by putting a shared credential behind a backen
 which would show every viewer everything that app can see. That is a different
 product, not a bigger limit.
 
+### Who has to register the app — one owner, not one fleet
+
+Sign-in belongs to **whoever owns the deployment**, and it is not inheritable. A
+fleet's second, fifth and tenth dashboard reuse one registration: a GitHub App holds
+up to ten callback URLs, and with wildcard matching a single `https://<user>.github.io/`
+covers every project Pages site on that host, so a new deployment only copies the two
+config keys.
+
+A **different** owner cannot reuse it, and the reason is not policy but mechanism:
+
+- a private App "can only be installed on the account that owns the app. Only members
+  of the organization that owns it can authorize it" — a stranger cannot even sign in;
+- making it public lets anyone authorize it, but a user access token "can only access
+  resources that both the user and app can access", so until they install that App on
+  their own account every member row still reads *not visible to you*;
+- and if they did install it, their callback URL would have to live in someone else's
+  App and their tokens would be minted by someone else's endpoint. That is a trust
+  relationship, not a configuration.
+
+So the ladder for an adopter with no app of their own is the token box, which needs no
+registration and is the same 5,000/hour. Sign-in is the button they add later, for
+their own fleet, with their own app.
+
+#### Turning sign-in on
+
+The four steps, in the order they unblock each other. Adoption files them as a tracking
+issue rather than leaving them here to be met after the first anonymous viewer gives up.
+
+1. **Register a GitHub App** with read-only **Contents**, **Issues** and **Actions**, and
+   *Request user authorization (OAuth) during installation* enabled. The callback URL is
+   the deployed page — or the `https://<user>.github.io/` root with **wildcard matching**,
+   which covers every project Pages site on that host. Note the client id, generate a
+   client secret.
+2. **Install it** on the account holding the repos the dashboard reads. Per *account*, not
+   per repo: a user token reaches only what the app is installed on, so an uninstalled
+   account renders every member row as *not visible to you*.
+3. **Deploy [`oauth-exchange.example.mjs`](oauth-exchange.example.mjs)** with that id and
+   secret in its environment. One deployment serves every dashboard the same owner runs.
+4. **Set `clientId` and `exchangeUrl`** in the declaration's `config`. Either alone does
+   nothing — the pair is what makes the button appear.
+
+Done when a signed-in viewer's rate pill reads `…/5000 · user`.
+
 ### Why "just use my existing GitHub login" is not on that list
 
 It cannot be. A browser will not send github.com's session cookies to
