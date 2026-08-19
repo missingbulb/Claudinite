@@ -1,4 +1,4 @@
-// Run with `node --test packs-tests/sheepdog/tasks/fleet-digest/*.test.mjs`.
+// Run with `node --test packs-tests/claudinite-dashboard/tasks/fleet-digest/*.test.mjs`.
 //
 // The collector is the half of fleet-digest that must not need an agent to be right,
 // so this is where the load-bearing behaviour is pinned: the maintenance filter (the
@@ -9,7 +9,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   collectDay, enumerateMembers, isMaintenance, isMachineIssue, prWeight, issueWeight, pickNudge, previousDay,
-} from '../../../../packs/sheepdog/tasks/fleet-digest/collect-fleet-day.mjs';
+} from '../../../../packs/claudinite-dashboard/tasks/fleet-digest/collect-fleet-day.mjs';
 
 const b64 = (s) => Buffer.from(s, 'utf8').toString('base64');
 const DECL = JSON.stringify({ packs: ['basics'] });

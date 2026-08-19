@@ -1,7 +1,7 @@
 // The fleet's morning brief, as the dashboard reads it. Pure: no clock, no I/O, no DOM.
 //
-// The `sheepdog` fleet-digest task writes one file per day at `digests/<date>.md` in
-// the fleet enforcer's repo — the few things the fleet actually accomplished, and the
+// This pack's own `fleet-digest` task writes one file per day at `digests/<date>.md`
+// in the fleet enforcer's repo — the few things the fleet actually accomplished, and the
 // project worth returning to. Nothing surfaced it until now, and the dashboard is
 // where someone is already looking.
 //

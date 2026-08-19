@@ -30,10 +30,9 @@ import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { fleetWorkerFailed } from '../../fleet-api.mjs';
 import { join } from 'node:path';
-import { makeGh } from '../../fleet-api.mjs';
-import { parseSheepdogConfig } from '../../fleet-config.mjs';
+import { makeGh } from './fleet-reads.mjs';
 import { deliverGenerated, baseTip, pushGenerated, readAt, remoteUrl } from '../../../../engine/scheduler/deliver-generated.mjs';
-import { parseParamBag, contextText } from '../../param-bag.mjs';
+import { parseParamBag, contextText } from './param-bag.mjs';
 import { parseDigestConfig } from './digest-config.mjs';
 import { collectDay, previousDay } from './collect-fleet-day.mjs';
 
@@ -67,7 +66,7 @@ const MAX_BACKFILL = 30;
 // So a backfill needs no new workflow, no new input, and no new secret — it is an
 // ordinary hand-created item carrying one parameter:
 //
-//   create-work-item sheepdog/fleet-digest --context "DIGEST_BACKFILL_DAYS=7"
+//   create-work-item claudinite-dashboard/fleet-digest --context "DIGEST_BACKFILL_DAYS=7"
 //
 // Returns null when absent or unusable — never a partial guess, since the difference
 // between "backfill 7 days" and "backfill 0 days" is a whole run's work.
@@ -127,7 +126,7 @@ export function renderQuietDay({ date, members, maintenance, nudge }) {
     '',
   ];
   if (nudge) lines.push(...renderNudge(nudge), '');
-  lines.push('Written by the sheepdog fleet-digest task. No agent ran: there was nothing to judge.');
+  lines.push('Written by the fleet-digest task. No agent ran: there was nothing to judge.');
   return `${lines.join('\n')}\n`;
 }
 
@@ -235,8 +234,8 @@ export async function main() {
   // The config is read from the CHECKOUT, not over the API: this is our own repo and
   // the scheduler already has it at the commit this run is reasoning about.
   const declaration = JSON.parse(readFileSync(join(root, '.claudinite-checks.json'), 'utf8'));
-  const { owner, exclude } = parseSheepdogConfig(declaration, repo);
-  const digest = parseDigestConfig(declaration);
+  const digest = parseDigestConfig(declaration, repo);
+  const { owner, exclude } = digest;
 
   const now = new Date();
   const backfill = parseBackfillDays(contextText());
@@ -244,6 +243,10 @@ export async function main() {
   const baseSha = baseTip(root, remoteUrl(repo, token), base);
 
   if (backfill) log(`BACKFILL: ${backfill} day(s), ${dates[0]} … ${dates[dates.length - 1]}`);
+  // Which declaration each fleet key came from, said out loud: this task read them off
+  // the `sheepdog` entry until it moved here, and a run that quietly covered a
+  // different set of repos than the last one would look identical to one that did not.
+  log(`covering ${owner} (${digest.source.owner}), ${exclude.size} excluded (${digest.source.exclude})`);
   log(`pick ${digest.pick} of a ${digest.shortlist}-item shortlist`
     + `${digest.nudge.enabled ? `, nudge after ${digest.nudge.quietDays}d quiet` : ', nudge off'}`);
 

@@ -1,9 +1,9 @@
-// See-it-fail proof for digest-plain-text. Run with `node --test packs-tests/sheepdog/tasks/fleet-digest/*.test.mjs`.
+// See-it-fail proof for digest-plain-text. Run with `node --test packs-tests/claudinite-dashboard/tasks/fleet-digest/*.test.mjs`.
 // The violating fixture is the shape every brief had before this rule — the markdown template
 // task.md specified, which the notification renderer delivered as its own source code.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import rule from '../../../../packs/sheepdog/tasks/fleet-digest/digest-plain-text.mjs';
+import rule from '../../../../packs/claudinite-dashboard/tasks/fleet-digest/digest-plain-text.mjs';
 
 // Only `read` and `allFiles` are touched; anything else would be a rule reaching too far.
 const ctx = (fs) => ({ allFiles: Object.keys(fs), read: (p) => (p in fs ? fs[p] : null) });
@@ -80,7 +80,7 @@ test('an underscore inside a word is not emphasis', () => {
 test('only the dated briefs are subjects', () => {
   assert.deepEqual(rule.run(ctx({
     'digests/README.md': MARKDOWN_BRIEF,
-    'packs/sheepdog/tasks/fleet-digest/task.md': MARKDOWN_BRIEF,
+    'packs/claudinite-dashboard/tasks/fleet-digest/task.md': MARKDOWN_BRIEF,
     'README.md': MARKDOWN_BRIEF,
   })), [], 'documentation about the series is read on GitHub, never sent, and is markdown on purpose');
 });

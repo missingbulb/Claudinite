@@ -1,4 +1,4 @@
-// sheepdog task: fleet-digest — the owner's morning brief about the FLEET,
+// claudinite-dashboard task: fleet-digest — the owner's morning brief about the FLEET,
 // as a scheduled task. What did I accomplish yesterday, and what have I let go quiet?
 //
 // It replaces a hand-run daily routine, and the shape of that routine is the whole
@@ -15,20 +15,22 @@
 // a quiet day still gets a dated file, because a missing brief must mean a FAULT and
 // not a slow Tuesday, but it does not need a model to say "nothing happened".
 //
-// CLASSIFICATION, the same note every other sheepdog task carries: an ORDINARY PACK
-// TASK, not a fleet mechanism. Its *implementation* reads every member over a PAT, but
-// its declaration, scheduling and lifecycle are those of any pack task — it is active
-// because the repo declares the sheepdog pack. Hence no `fleet` signal and no session
-// scope of its own.
+// WHY IT LIVES IN THE DASHBOARD PACK. It writes the dated series this pack's fleet
+// page reads: the producer and the only thing that surfaces it are one adoption. It
+// was the `sheepdog` pack's sixth sweep until it moved here, and what it brought with
+// it is the cross-repo enumeration — a trimmed copy in `fleet-reads.mjs` rather than
+// an import, because two independently-adopted packs must not depend on each other.
 //
-// It was a local pack in the enforcer repo until #954, on the reasoning that a brief is
-// addressed to THIS fleet's owner about what THIS owner counts as an accomplishment.
-// What made it portable is that neither claim survived contact with the code: the task
-// ends at a written file, so it holds no address, no recipient and no transport, and
-// what it counts as an accomplishment is `pick` and `nudge` — two config knobs, both
-// defaulted. What is left is the fleet-shaped half — enumerate the members, rank a day
-// by size, filter the machine's own artifacts out — which is the sheepdog pack's whole
-// subject.
+// WHAT ADOPTING THIS PACK NOW COSTS. A repo that declares `claudinite-dashboard` for
+// the page alone gets this task too, and it needs `FLEET_GITHUB_TOKEN` to run: without
+// that secret the executor parks the item asking for it. There is no config gate — the
+// pack's own README says so plainly, so the cost is stated where someone adopting
+// reads it rather than discovered from a parked item.
+//
+// CLASSIFICATION: an ORDINARY PACK TASK. Its *implementation* reads every repo under
+// the owner over a PAT, but its declaration, scheduling and lifecycle are those of any
+// pack task — it is active because the repo declares this pack. Hence no `fleet`
+// signal and no session scope of its own.
 //
 // Self-contained (imports nothing): the whole contract is this default export.
 
@@ -60,8 +62,9 @@ export default {
   // by the collector). Serial, so sized like the other fleet sweeps: ~10x the expected
   // walk, well inside the hourly scheduler cadence.
   code_work_timeout: 900,
-  // The account-spanning PAT every sheepdog sweep reads the fleet with. The digest
-  // needs Pull requests READ on top of what the census already asks for.
+  // The account-spanning PAT the fleet reads run under — this repo's only secret, and
+  // the reason this task cannot run in a repo that has not configured one. It needs
+  // Metadata, Contents, Issues and Pull requests READ, across all repositories.
   required_secrets: ['FLEET_GITHUB_TOKEN'],
 
   // Fire daily, unconditionally. There is deliberately no "only if something

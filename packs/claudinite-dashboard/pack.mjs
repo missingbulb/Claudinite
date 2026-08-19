@@ -16,10 +16,23 @@
 // (`.claudinite/shared/packs/<id>/` beside `.claudinite/shared/engine/`), which is
 // why the pack can be read straight out of the mount with nothing rewritten.
 //
-// NO CHECKS, NO PROSE. It enforces nothing and there is no way to write the dashboard
-// wrongly in a consuming repo — it is a page, not a practice. Prose here would cost
-// every session in every declaring repo tokens for something no session acts on, so
-// its README carries the explanation instead and `prose` stays null.
+// NO PROSE. There is no way to write the dashboard wrongly in a consuming repo — it is
+// a page, not a practice — and prose here would cost every session in every declaring
+// repo tokens for something no session acts on. Its README carries the explanation
+// instead and `prose` stays null.
+//
+// TWO CHECKS, AND A TASK, ALL THE DIGEST'S. `tasks/fleet-digest/` writes the fleet's
+// dated morning brief that the fleet page reads (it moved here from the `sheepdog`
+// pack, which enumerated the fleet but never showed anyone the result). Its two checks
+// live in its own folder because nothing else reads them: `digest-plain-text` holds the
+// landed briefs to plain text — they are sent verbatim through a renderer that neither
+// parses markdown nor keeps line breaks — and `dated-fixture-collision` keeps the
+// task's own test fixtures out of the year range the fleet writes real briefs in.
+//
+// THE TASK IS NOT GATED, and that is the cost of declaring this pack: a repo that wants
+// only the page gets the digest task too, and the task needs `FLEET_GITHUB_TOKEN` to
+// read every repo under the owner. Without that secret the executor parks its item
+// asking for one. The README says so where someone deciding to adopt will read it.
 //
 // PUBLISHING IS THE ADOPTION MOMENT. `.github/workflows/` is the one directory the
 // nightly update can never push to (the Action's `GITHUB_TOKEN` is refused there), so
@@ -33,12 +46,19 @@
 // the engine's tick. So the assembly logic keeps converging with the canon while the
 // workflow — the part that cannot converge — stays a one-time seed. Only the file that
 // has to be frozen is frozen.
+import datedFixtureCollision from './tasks/fleet-digest/dated-fixture-collision.mjs';
+import digestPlainText from './tasks/fleet-digest/digest-plain-text.mjs';
+
 export default {
   id: 'claudinite-dashboard',
+  // 6: the fleet-digest task arrives from the sheepdog pack, with its two checks. A
+  // declaring repo gains a daily task; nothing in a member is rewritten, and the task
+  // still reads an enforcer's existing `sheepdog` config as its legacy source, so the
+  // bump carries no migration record.
   version: 6,
   minEngineVersion: 4,
   ruleRoutingGuidance: {
-    belongs: 'the browser dashboard over Claudinite scheduler state, and the static site that publishes it',
+    belongs: 'the browser dashboard over Claudinite scheduler state, the site that publishes it, and the fleet morning brief it reads',
     excludes: 'how the scheduler behaves — core; workflow practice — github-actions; product sites — static-website',
   },
   badge: 'badge.svg',
@@ -52,7 +72,10 @@ export default {
 
   // A page, not a practice — see the header.
   prose: null,
-  worldRules: [],
+  // Audits the landed briefs and the task's own fixtures as they stand, whatever this
+  // session touched: a markdown brief that landed last week is just as unreadable in the
+  // owner's inbox as one that landed today.
+  worldRules: [digestPlainText, datedFixtureCollision],
   workRules: [],
 
   // Nothing to ask. Every fork this pack has is answered by a default that is right for
@@ -69,6 +92,9 @@ export default {
   //   exchangeUrl — the code-to-token endpoint that sign-in needs
   //   digestsRepo — where the fleet's morning briefs are written; unset turns that panel off
   //   digestsPath — the directory inside it (defaults to `digests`)
+  //   owner       — whose repos the fleet-digest task covers (defaults to this repo's owner)
+  //   exclude     — repos it keeps out (defaults to none)
+  //   digest      — { pick, nudge } — how many items a brief names, and the quiet-project prod
   questions: [],
 
   // The one step adoption CANNOT take, stated where the install flow can print it and

@@ -1,4 +1,4 @@
-// Run with `node --test packs-tests/sheepdog/tasks/fleet-digest/*.test.mjs`.
+// Run with `node --test packs-tests/claudinite-dashboard/tasks/fleet-digest/*.test.mjs`.
 //
 // worker.mjs's decidable parts — which days a run covers, what "now" each is collected
 // as-of, and how those days get sorted into written / quiet / needs-judgment. The
@@ -11,7 +11,7 @@
 // make reachable without one.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseBackfillDays, backfillDates, asOf, planBriefs, plain, renderNudge } from '../../../../packs/sheepdog/tasks/fleet-digest/worker.mjs';
+import { parseBackfillDays, backfillDates, asOf, planBriefs, plain, renderNudge } from '../../../../packs/claudinite-dashboard/tasks/fleet-digest/worker.mjs';
 
 const NOW = '2026-08-09T05:00:00Z';
 

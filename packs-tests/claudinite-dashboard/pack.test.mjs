@@ -32,12 +32,25 @@ test('the pack is opt-in and never fingerprinted', () => {
   assert.equal(pack.seededByDefault, false);
 });
 
-test('it enforces nothing and costs no session prose', () => {
+test('it costs no session prose, and every check it runs is the digest\'s', () => {
   // A page is not a practice: there is no way to write the dashboard wrongly in a
   // consuming repo, and prose here would bill every session in every declaring repo.
   assert.equal(pack.prose, null);
-  assert.deepEqual(pack.worldRules, []);
+  // The two checks arrived with the fleet-digest task and guard its output and its own
+  // fixtures — nothing about the page. Both are world rules: a brief that landed last
+  // week is as unreadable in the owner's inbox as one that landed in this change.
+  assert.deepEqual(pack.worldRules.map((r) => r.id), ['digest-plain-text', 'dated-fixture-collision']);
   assert.deepEqual(pack.workRules, []);
+});
+
+// The cost of declaring this pack, stated as a test because it is the thing an adopter
+// is most likely to be surprised by: the page comes with a daily task that reads every
+// repo under the owner, and that task cannot run without the fleet PAT.
+test('declaring the pack brings the fleet-digest task, and it names the secret it needs', async () => {
+  const task = (await import(join(PACK_DIR, 'tasks/fleet-digest/task.mjs'))).default;
+  assert.equal(task.id, 'fleet-digest');
+  assert.equal(task.frequency, 'daily+1h');
+  assert.deepEqual(task.required_secrets, ['FLEET_GITHUB_TOKEN']);
 });
 
 // The whole point of the remodel: adoption is what wires the deploy, because

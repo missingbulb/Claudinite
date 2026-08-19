@@ -5,9 +5,9 @@ under an owner. Opt-in (a dedicated sheepdog repo declares it; **not** seeded by
 standardizes the fleet coverage that used to be bespoke Claudinite infrastructure into a declaration.
 
 Thin by design: prose + the config schema (the sheepdog pack entry's `config` = `{ owner, kind, exclude,
-canonRepo, packSeeds, digest }`) + six cross-repo **sweeps/levers**, each a
-scheduled task whose sweep is its `code_work`. The pack carries **no workflow**, and only the
-digest runs an agent *here* — everything else agentic happens in the *member*, on the fan-out model
+canonRepo, packSeeds }`) + five cross-repo **sweeps/levers**, each a
+scheduled task whose sweep is its `code_work`. The pack carries **no workflow**, and nothing agentic
+happens *here* — it happens in the *member*, on the fan-out model
 ([#749](https://github.com/missingbulb/Claudinite/issues/749)) — the enforcer dispatches, the
 member executes:
 
@@ -18,7 +18,6 @@ member executes:
 | [aggregate-fleet-usage.mjs](tasks/fleet-usage/aggregate-fleet-usage.mjs) | [fleet-usage](tasks/fleet-usage/task.md) (daily) | what does the fleet **actually use**? → `usage-fleet.GENERATED.json` |
 | [check-fleet-pack-seeds.mjs](tasks/fleet-pack-seeds/check-fleet-pack-seeds.mjs) | [fleet-pack-seeds](tasks/fleet-pack-seeds/task.md) (daily) | does a member declare what this fleet **standardizes on**? → the declaration, written |
 | [force-fleet-baseline.mjs](tasks/fleet-baseline/force-fleet-baseline.mjs) | [fleet-baseline](tasks/fleet-baseline/task.md) (`manual` — forced runs only) | make every member baseline **now** → each member's own run, reported in its own repo |
-| [collect-fleet-day.mjs](tasks/fleet-digest/collect-fleet-day.mjs) | [fleet-digest](tasks/fleet-digest/task.md) (daily, an hour after the rest) | what did the fleet **accomplish** yesterday, and what has it let go **quiet**? → `digests/<date>.md` |
 
 **The roster carries two questions** because they are asked of the same repos from the same walk
 ([#788](https://github.com/missingbulb/Claudinite/issues/788)). The freshness half exists because
@@ -62,44 +61,20 @@ instead — a `declarePacks` op applied by each member's own update run, in the 
 commit that vendors the pack's code. The sweep is the **standing** half: a migration record is dated
 and retires, while the sweep keeps converging every member the fleet acquires after it is gone.
 
-**The digest** is the one output addressed to a *person* rather than to the machinery: a dated
-plain-text brief of what the fleet actually did, one file a morning, plus a prod about a project that
-has gone quiet. Its collector filters Claudinite's own maintenance PRs and work items out of
-**every** stream it reads — the machine is the fleet's busiest actor, and rank by size or by
-discussion and its own bookkeeping does not merely appear in the results, it wins them. The brief is
-plain text despite its `.md` name because it is *sent*, verbatim, through a renderer that neither
-parses markdown nor keeps line breaks; the `digest-plain-text` check holds the landed series to that.
-It runs at `daily+1h`, an hour behind the other sweeps: nothing in it depends on them, but a brief
-written while the census is still running reports a fleet in mid-sweep, and the owner reads one story
-about the fleet each morning, in order.
-
-Its two config knobs sit under `digest` on the pack entry:
-
-| key | default | what it does |
-|---|---|---|
-| `pick` | `4` | how many accomplishments the brief names (the shortlist is `ceil(pick × 1.5)`, so the agent has a real choice to make rather than a ranking to transcribe) |
-| `nudge` | on, 7 days | the "worth returning to" prod. `false` switches it off; `{ "quietDays": 21 }` widens the window |
-
-**Quiet is measured on meaningful merges, never on pushes.** Every member's mount is converged
-nightly, so `pushed_at` is fresh on every repo in this fleet every day and would report the whole
-fleet as permanently active.
-
-It came from the enforcer's own local pack in
-[#954](https://github.com/missingbulb/Claudinite/issues/954): the task ends at a written file, so it
-carries no address, no recipient and no transport, and what a fleet has an opinion about is `pick` and
-`nudge` — two config knobs, both defaulted.
+The **fleet digest** — the dated morning brief of what the fleet actually did — used to be the
+sixth sweep here. It now lives in the [claudinite-dashboard](../claudinite-dashboard/README.md)
+pack, which owns the page that reads the series it writes; an enforcer's existing `owner`,
+`exclude` and `digest` config on *this* entry is still what it reads, so nothing in a declaration
+had to change.
 
 The fit sweep fingerprints against a scratch clone of `canonRepo`, never against this repo's own
 mount — the mount carries only the packs the enforcer declares, and sweeping against it would report
 every member as fitted while testing almost nothing. Its report names the corpus it measured against,
 so a shrunken denominator is visible rather than silent.
 
-**Two tasks have an agent stage, and both split the same way** — everything decidable in code
+**The fit sweep's agent stage splits the way every one here does** — everything decidable in code
 stays in the agentless `code_work`, and the agent is reached only for the part that is genuinely a
-judgment. For the **digest** that is picking the day's real accomplishments out of a size-ranked
-shortlist; on a day the fleet merged nothing the code-work writes the brief itself and requests no
-agent, because "nothing happened" needs no model but a *missing* file in a dated series has to stay
-legible as a fault. For the **fit sweep** it is a judgment plus a repo edit — confirming the
+judgment. Here it is a judgment plus a repo edit — confirming the
 suspicion and running the [adopt-pack](../claudinite-lifecycle/skills/adopt-pack/SKILL.md) skill against the member —
 while enumerate, fingerprint and converge-the-issues stay in code. That one is ceilinged at `open-pr`
 and never auto-merges: declaring a pack switches on conformance checks that run in that member's CI
@@ -111,8 +86,7 @@ missing-packs design ended in an enforcer-side agent stage, and its very first p
 at `needs-human` because the enforcer's executor is — correctly — scoped to the enforcer repo alone.
 What crosses a repo boundary is an issue and a `workflow_dispatch`, both over `FLEET_GITHUB_TOKEN`;
 the deprecated task-level `session_scope` ([scheduled-tasks.md](../claudinite-growth/scheduled-tasks.md)) has no
-place here. The digest's agent is not an exception — it reads what its code-work already fetched and
-writes one file in this repo.
+place here.
 
 A member that declares itself **dormant** (`"dormant": true` in its own declaration) is out of the
 roster's freshness half, out of the fit sweep, out of the usage denominator, and never written to by the
@@ -176,8 +150,7 @@ The enforcer's `.claudinite-checks.json` carries, as its `packs` entry for this 
 ```json
 { "id": "sheepdog", "config": { "owner": "missingbulb", "kind": "user", "exclude": ["owner/repo-a"],
                                 "canonRepo": "missingbulb/Claudinite",
-                                "packSeeds": [{ "id": "<a pack>", "config": { … } }],
-                                "digest": { "pick": 4, "nudge": { "quietDays": 7 } } } }
+                                "packSeeds": [{ "id": "<a pack>", "config": { … } }] } }
 ```
 
 | key | default | what it is |
@@ -187,7 +160,6 @@ The enforcer's `.claudinite-checks.json` carries, as its `packs` entry for this 
 | `exclude` | none | the repos deliberately kept out, a full `owner/name` each |
 | `canonRepo` | `<owner>/Claudinite` | what a member's installed versions are measured against — named rather than inferred, because a version tells you nothing about where it came from |
 | `packSeeds` | none | what this fleet wants every member to declare, each `{ id, config? }`. The **only** place a pack is named: the sweep carries the mechanism, the fleet carries the choice |
-| `digest` | everything | the brief's knobs, `pick` and `nudge` ([digest-config.mjs](tasks/fleet-digest/digest-config.mjs) spells out what each accepts) |
 
 Every key defaults, so an existing sheepdog config keeps working untouched.
 [fleet-config.mjs](fleet-config.mjs) is the one reader of all of it.
@@ -206,13 +178,11 @@ implementation, never in how a task is wired.
 | `fleet-usage` | daily | none | `merged-pr` |
 | `fleet-pack-seeds` | daily | none | none |
 | `fleet-baseline` | manual | none | none |
-| `fleet-digest` | `daily+1h` | sonnet | `merged-pr` |
 
 The cadences follow what each question can change on. Roster is daily on its coverage question, and
 its freshness half rides along rather than gating on a weekly clock it would have to compute; usage
 is daily because the members fold daily; pack seeds is daily because a member becomes writable the
-moment its nightly converge vendors the pack, which makes daily mean "the next morning"; the digest
-is `daily+1h` so it reads a fleet the other sweeps have finished with.
+moment its nightly converge vendors the pack, which makes daily mean "the next morning".
 
 Two ceilings are `merged-pr` because those tasks' output *is* a tracked file: an auto-merging PR
 keeps the write inside the outcome taxonomy, lets this repo's CI gate a malformed one, and makes the
@@ -240,7 +210,6 @@ asks the owner for it. A workflow that exists only to hold a secret is redundant
 | Judging whether a member is behind | high | correctness | prose: 69 words |
 | Answering why the fleet did not move | medium | complexity | prose: 52 words |
 | Pushing canon to the whole fleet now | low | complexity | prose: 119 words |
-| Catching the digest up after an outage | low | complexity | prose: 66 words |
 | Adding a pack across the fleet | medium | complexity | prose: 53 words |
 | Granting or repairing FLEETGITHUBTOKEN | high | correctness | prose: 53 words |
 | A fan-out task reporting no-permission | medium | complexity | prose: 50 words |
@@ -250,5 +219,3 @@ asks the owner for it. A workflow that exists only to hold a secret is redundant
 | Check | Severity | Reason | Enforcement |
 |---|---|---|---|
 | `fleet-pack-seed-agrees` | medium | correctness | check: blocking |
-| `digest-plain-text` | medium | correctness | check: blocking |
-| `dated-fixture-collision` | medium | correctness | check: blocking |
