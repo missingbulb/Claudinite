@@ -583,29 +583,14 @@ test('applyMigration runs every op — the vocabulary has one runner, not one pe
 });
 
 // --- the 2026-08-19 pack renames -------------------------------------------
-// `core` is an ordinary word and an ordinary directory name, so this record's
-// patterns are the part that can go wrong: too loose and they unhook a member's own
-// barrier rule; too tight and they converge nothing. Both halves are asserted here.
-test('pack-renames: converges every declaration form, and nothing that merely says "core"', async () => {
+// This record owns the MOUNT half only. Its declaration rewrite was textual, could
+// not cross a nested array in an entry object, and converged nothing in the field;
+// the structural replacement lives in the -declaration record (#1041), and is
+// asserted below against a real member declaration.
+test('pack-renames: carries no declaration rewrite — that half is a record of its own', async () => {
   const rec = (await import('../engine/migrations/2026-08-19-pack-renames/migration.mjs')).default;
-  const before = JSON.stringify({
-    packs: ['basics', 'core', { id: 'grow_with_claudinite', config: { promote: false } }, 'local/core'],
-    claudinite: { engineVersion: 4, packVersions: { core: 6, basics: 3, grow_with_claudinite: 6 } },
-    // A member whose own source tree has a core/ directory guarded by a barrier.
-    config: { rules: [{ from: 'core', to: 'ui/*' }] },
-  }, null, 2);
-  let after = before;
-  for (const r of rec.rewrite[0].replace) after = after.replace(r.pattern, r.to);
-  const parsed = JSON.parse(after);
-
-  assert.deepEqual(parsed.packs, [
-    'basics', 'claudinite-lifecycle', { id: 'claudinite-growth', config: { promote: false } }, 'local/core',
-  ], 'a bare element, an entry object and a local token each converge on their own terms');
-  assert.deepEqual(parsed.claudinite.packVersions,
-    { 'claudinite-lifecycle': 6, basics: 3, 'claudinite-growth': 6 },
-    'a stamped version under an old key must move with the id, or the pack reads as never installed');
-  assert.equal(parsed.config.rules[0].from, 'core',
-    "a member's own core/ directory is not this record's business");
+  assert.equal(rec.rewrite, undefined,
+    'a textual rewrite of the declaration is what #1041 removed — the structural op replaces it');
 });
 
 test('pack-renames: the mount directories move, and only from the old path', async () => {
@@ -615,4 +600,63 @@ test('pack-renames: the mount directories move, and only from the old path', asy
     '.claudinite/shared/packs/core': '.claudinite/shared/packs/claudinite-lifecycle',
     '.claudinite/shared/packs/grow_with_claudinite': '.claudinite/shared/packs/claudinite-growth',
   });
+});
+
+// --- the declaration half of the pack renames (#1041) -----------------------
+// The fixture is a REAL member declaration, captured off the canary before it
+// converged, and it is real on purpose. The regex this op replaced passed a
+// synthetic fixture and converged nothing in the field: the synthetic one had an
+// entry object with a plain config, the real one has entry objects with nested
+// `via` arrays, and the nesting was the whole bug. A fixture written from the same
+// understanding as the code can only ever agree with it.
+const REAL_DECLARATION = new URL('./fixtures/member-declaration-pre-rename.json', import.meta.url);
+
+test('applyPackRenames: converges a real member declaration, entry objects and all', async () => {
+  const { applyPackRenames } = await import('../engine/migrations/registry.mjs');
+  const rec = (await import('../engine/migrations/2026-08-19-pack-renames-declaration/migration.mjs')).default;
+  const before = readFileSync(REAL_DECLARATION, 'utf8');
+  let written = null;
+  const done = await applyPackRenames(rec, {
+    read: async (f) => (f === '.claudinite-checks.json' ? before : null),
+    write: async (_f, c) => { written = c; },
+  });
+  assert.equal(done.length, 2, `expected both renames, got ${JSON.stringify(done)}`);
+  const after = JSON.parse(written);
+  assert.deepEqual(after.packs, [
+    'basics',
+    { id: 'barriers', via: ['basics'] },
+    { id: 'git-github', via: ['basics'] },
+    'claudinite-growth',
+    'tidy-repo',
+    'local/canary',
+    { id: 'claude-code-web-users-support', config: { repo: 'missingbulb/Shepherd' } },
+    'canary-probe',
+    'claudinite-lifecycle',
+  ], 'ids move; config, via and order do not');
+});
+
+test('applyPackRenames: idempotent, and blind to everything outside the packs array', async () => {
+  const { applyPackRenames } = await import('../engine/migrations/registry.mjs');
+  const rec = (await import('../engine/migrations/2026-08-19-pack-renames-declaration/migration.mjs')).default;
+  const run = async (text) => {
+    let written = null;
+    const done = await applyPackRenames(rec, {
+      read: async () => text, write: async (_f, c) => { written = c; },
+    });
+    return { done, written };
+  };
+  // A member whose own source tree has a core/ directory under a barrier rule, and
+  // a local pack that happens to share a renamed pack's old name.
+  const declaration = JSON.stringify({
+    packs: ['core', 'local/core'],
+    config: { rules: [{ from: 'core', to: 'ui/*' }] },
+  }, null, 2);
+  const first = await run(declaration);
+  const parsed = JSON.parse(first.written);
+  assert.deepEqual(parsed.packs, ['claudinite-lifecycle', 'local/core']);
+  assert.equal(parsed.config.rules[0].from, 'core', "a member's own core/ directory is untouched");
+
+  const second = await run(first.written);
+  assert.deepEqual(second.done, [], 'a converged declaration is a no-op');
+  assert.equal(second.written, null, 'and is not rewritten at all');
 });
