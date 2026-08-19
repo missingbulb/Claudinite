@@ -56,7 +56,7 @@ export default {
     // (task-phase-discipline) is a declared check in declared-checks.json.
     taskDeclarationShape,
     taskDeclarationMatchesFolder,
-    // …and the environment that contract hands a task's code_work, which is the half
+    // …and the environment that contract hands a task's code-work, which is the half
     // no declaration states and nothing else can catch.
     taskCodeWorkEnv,
   ],

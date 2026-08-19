@@ -150,7 +150,7 @@ test('a quiet day is written as a finished brief, not a stub', async () => {
 });
 
 test('a quiet day is plain text, like every other brief', async () => {
-  // It is sent verbatim through a renderer that shows markdown raw, and code_work writes
+  // It is sent verbatim through a renderer that shows markdown raw, and code-work writes
   // this one itself — so the constraint the agent works under binds the code equally.
   const r = await plan(['1999-03-04']);
   const brief = r.quietFiles['digests/1999-03-04.md'];

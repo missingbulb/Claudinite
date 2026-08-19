@@ -11,7 +11,7 @@
 // to the script beside task.mjs (the containment the contract enforces); the repo
 // root and item context are handed in via CLAUDINITE_* env so the worker can act
 // on the whole repo. Nothing the subprocess prints is threaded into the agent —
-// code_work communicates only through the repository (DESIGN §3).
+// code-work communicates only through the repository (DESIGN §3).
 //
 // THE LOG IS NOT THAT CHANNEL. The child's output is ECHOED to the scheduler's own
 // stdout/stderr as it arrives, so the Action log carries what the worker actually
@@ -19,7 +19,7 @@
 // log, and §3's "communicate only through the repository" is untouched. It is echoed
 // LIVE rather than dumped at exit for the case that needs it most — a worker SIGKILLed
 // at its timeout, whose buffered output would otherwise die with it. Before this,
-// a failed worker surfaced as a bare `code_work exited 1` plus a three-line
+// a failed worker surfaced as a bare `code-work exited 1` plus a three-line
 // stderr tail in an issue, and diagnosing one meant reproducing it by hand.
 
 import { spawn } from 'node:child_process';
@@ -74,14 +74,14 @@ export function runCodeWork(command, {
 }
 
 // The conditional-handoff signal (task-code-work DESIGN §3, E4). A task with
-// BOTH code_work AND a non-`none` agent_model hands off to the agent
+// BOTH code-work AND a non-`none` agent_model hands off to the agent
 // ONLY when its worker requests it — so a task can absorb its work into
-// code_work and be AGENTLESS on the quiet nights. The scheduler hands the
+// code-work and be AGENTLESS on the quiet nights. The scheduler hands the
 // worker this path via CLAUDINITE_REQUEST_AGENT and hands off to an agent iff
 // the worker created it. It is a pure control signal: the worker communicates
 // DATA to the agent only through the repository, never through this file (DESIGN
 // §3, "no code→agent data channel"). The hand-off condition must name work
-// code_work COULD not do — never re-check whether the run should have happened;
+// code-work COULD not do — never re-check whether the run should have happened;
 // the precondition already decided that.
 export function agentRequestPath({ pack, task, slotId }) {
   return join(tmpdir(), `claudinite-request-agent-${pack}-${task}-${slotId}`);
@@ -113,10 +113,10 @@ export function readAgentRequest(path) {
   try { return JSON.parse(raw); } catch { return {}; }
 }
 
-// A one-line reason for the job summary / an issue comment when code_work
+// A one-line reason for the job summary / an issue comment when code-work
 // fails — distinguishing a timeout kill from a non-zero exit.
 export function codeWorkFailure(result) {
   if (result.timedOut) return 'code_work exceeded its code_work_timeout and was killed';
-  if (result.code !== null) return `code_work exited ${result.code}`;
+  if (result.code !== null) return `code-work exited ${result.code}`;
   return `code_work could not run: ${result.stderr.trim().split('\n').pop() || 'unknown error'}`;
 }

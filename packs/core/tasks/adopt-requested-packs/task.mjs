@@ -6,7 +6,7 @@
 // fingerprint scan SUSPECTS them, or the owner REQUESTS them by hand with config and
 // interview answers decided — and, per member, converges one `add-packs` work-list
 // issue HERE and dispatches THIS repo's scheduler with `wake: adopt-requested-packs`.
-// This task is what that firing runs: code_work counts the repo's own open work-list
+// This task is what that firing runs: code-work counts the repo's own open work-list
 // issues and requests the agent iff any exist; the agent adopts with the repo
 // checked out, under this repo's own executor and grant, and lands one reviewed PR
 // here. The enforcer dispatches, the member executes — no agent anywhere needs

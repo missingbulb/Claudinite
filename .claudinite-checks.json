@@ -111,7 +111,7 @@
     {
       "rule": "task-code-work-env",
       "path": "packs/core/tasks/update/worker.mjs",
-      "reason": "the update worker has a SECOND, deliberate caller: .github/workflows/canary-rehearsal.yml drives it directly to qualify a release ref, and CLAUDINITE_CANON_REF is that harness's own parameter, set there and read nowhere else. The rule's concern is a parameter channel that has silently stopped being delivered; this one is delivered by the workflow beside it, in the same repo, and its absence under code_work is the normal case the worker already handles (rehearsalRef null = a real cycle)"
+      "reason": "the update worker has a SECOND, deliberate caller: .github/workflows/canary-rehearsal.yml drives it directly to qualify a release ref, and CLAUDINITE_CANON_REF is that harness's own parameter, set there and read nowhere else. The rule's concern is a parameter channel that has silently stopped being delivered; this one is delivered by the workflow beside it, in the same repo, and its absence under code-work is the normal case the worker already handles (rehearsalRef null = a real cycle)"
     },
     {
       "rule": "reference-integrity",

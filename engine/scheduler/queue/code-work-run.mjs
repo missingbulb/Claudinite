@@ -6,9 +6,9 @@
 // things the queue states explicitly:
 //
 //  - RE-ENTRANCY IS THE REQUIREMENT, NOT IDEMPOTENCY (§6). A dead executor's
-//    claim is reclaimed and the item re-picked, so code_work can run again over its
+//    claim is reclaimed and the item re-picked, so code-work can run again over its
 //    own half-done work. That is convergence — check what exists, continue from
-//    there — and it was always true of code_work; the contract simply never said so.
+//    there — and it was always true of code-work; the contract simply never said so.
 //    Concurrent overlap with a zombie run is excluded by construction (the
 //    executor job's timeout-minutes ≤ the executing leash), never asked of a task.
 //  - A DECLARED SECRET THAT IS NOT CONFIGURED IS NAMED, NOT GUESSED AT (§14.7).
@@ -23,7 +23,7 @@ import { runCodeWork, codeWorkFailure, agentRequestPath, clearAgentRequest, agen
 export const missingSecrets = (names = [], env = process.env) =>
   names.filter((n) => env[n] === undefined);
 
-// The CLAUDINITE_* variables code_work is handed, and the whole of them: a worker
+// The CLAUDINITE_* variables code-work is handed, and the whole of them: a worker
 // reading any other one is reading something nobody sets, which is silent and
 // permanent (a `CLAUDINITE_OVERRIDES` left over from the slot scheduler read as an
 // empty bag, so a fleet sweep's REPOS filter and DRY_RUN switch were inert and
@@ -88,7 +88,7 @@ export function codeWorkRunner({ root, repo, defaultBranch, env = process.env })
   };
 }
 
-// What code_work created, by identity — the agent's only source for those
+// What code-work created, by identity — the agent's only source for those
 // artifacts, and (absent an agent) what makes an outcome `delivered` rather than
 // `done`. Absence is meaningful: a worker that created nothing writes no
 // `delivered`, and the item then says nothing about artifacts rather than
@@ -99,7 +99,7 @@ export function deliveredLines(delivered) {
   if (pr) out.push(`PR: #${pr}${merged ? ' (already merged — open your own PR for further work)' : ' (open)'}`);
   if (branch) out.push(`Branch: \`${branch}\``);
   // An ISSUE this run resolved for the agent to write to — a task's standing
-  // tracker, typically, found or created by its own code_work. Rendered for the same
+  // tracker, typically, found or created by its own code-work. Rendered for the same
   // reason a PR number is: the agent's only source for it is this line, and without
   // it a worker that took the trouble to resolve one hands over nothing.
   if (issue) out.push(`Issue: #${issue} — write this run's record there.`);

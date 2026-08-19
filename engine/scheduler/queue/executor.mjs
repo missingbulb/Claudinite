@@ -1,6 +1,6 @@
 // The executor (tasks-dispatch DESIGN §6) — a pull worker over the queue. Each
 // iteration: pick the next ready item, claim it by a verified lease, evaluate the
-// precondition (THE only place it is ever evaluated), then on a go run code_work and
+// precondition (THE only place it is ever evaluated), then on a go run code-work and
 // either converge (agentless) or hand off to an agent session; on a no-go roll a
 // scheduled item to its next anchor with the reason on record.
 //
@@ -11,7 +11,7 @@
 // enumerates executors; identity is self-declared in the claim comment.
 //
 // The pure decisions live at the top and test with fixtures; the shell below is
-// the GitHub/code_work/invocation I/O around them.
+// the GitHub/code-work/invocation I/O around them.
 
 import { pathToFileURL } from 'node:url';
 import { nextAnchor } from './anchors.mjs';
@@ -19,8 +19,7 @@ import {
   READY, URGENT, EXECUTING, AGENT, BLOCKED, NEEDS_HUMAN, ORIGIN_SCHEDULE,
   OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE, QUEUE_LABELS,
   CLAIM_MARKER, HANDOFF_MARKER, EPISODE_MARKER,
-  parseWorkItemTitle, parseWorkItemBody, parseContextLines, mergeContext, withNotBefore, withSection, hasLabel,
-} from './work-item.mjs';
+  parseWorkItemTitle, parseWorkItemBody, parseContextLines, mergeContext, withNotBefore, withSection, hasLabel, DELIVERED_HEADING, LEGACY_DELIVERED_HEADINGS } from './work-item.mjs';
 
 // How many items one executor run may take before it stops. Small on purpose: an
 // executor is code iterating a queue, and more capacity is more executors, not a
@@ -258,10 +257,10 @@ async function executeItem({
     return 'rolled';
   }
 
-  // --- code_work (unchanged contract), then converge or hand off -------------
+  // --- code-work (unchanged contract), then converge or hand off -------------
   // The item's OWN Context is scope too, not decoration: an operator's parameters
   // (`create-work-item --context "REPOS=Alpha Beta"`) live there and nowhere else,
-  // so code_work sees the union of what the item was created with and what this
+  // so code-work sees the union of what the item was created with and what this
   // occurrence's precondition added. Passing only the verdict's half is what made
   // a hand-created item's parameters unreachable (#974).
   const context = mergeContext(parseContextLines(item.body), verdict.context ?? []);
@@ -288,7 +287,7 @@ async function executeItem({
     return handOff({ api, gh, repo, item, task, id, context, result, executorId, claim, invokeAgent, config, log });
   }
 
-  // An agentless task with no code_work does nothing (the contract forbids it).
+  // An agentless task with no code-work does nothing (the contract forbids it).
   if (task.decl.agent_model === 'none') {
     await converge(api, gh, repo, item.number, EXECUTING, NEEDS_HUMAN, claim,
       'This task is agentless but declares no code_work, so there is nothing to run — a contract-forbidden shape that reached the queue.');
@@ -331,7 +330,7 @@ async function handOff({ api, gh, repo, item, task, id, context, result, executo
   const nonce = `${item.number}-${Math.random().toString(36).slice(2, 10)}`;
   let body = item.body;
   if (context.length) body = withSection(body, 'Context', context);
-  if (result.delivered?.length) body = withSection(body, 'Delivered by code_work', result.delivered);
+  if (result.delivered?.length) body = withSection(body, DELIVERED_HEADING, result.delivered, LEGACY_DELIVERED_HEADINGS);
   if (result.reason) body = withSection(body, 'Why the agent is here', [result.reason]);
   await gh(`/repos/${repo}/issues/${item.number}`, { method: 'PATCH', body: { body } });
 

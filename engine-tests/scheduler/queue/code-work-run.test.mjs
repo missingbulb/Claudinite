@@ -1,4 +1,4 @@
-// What code_work hands the agentic phase, on the queue's dispatch path — the twin of
+// What code-work hands the agentic phase, on the queue's dispatch path — the twin of
 // dispatch.mjs's `deliveredLines` for the slot path. The two render the same payload
 // into different carriers (a work item's section vs a dispatch issue's body), so a key
 // added to one and not the other is dropped silently on half the fleet.
@@ -15,7 +15,7 @@ test('an artifact code_work created is named by identity', () => {
   assert.match(deliveredLines({ pr: 7, merged: true })[0], /already merged/);
 });
 
-// A task that keeps a standing record resolves it in its OWN code_work and passes the
+// A task that keeps a standing record resolves it in its OWN code-work and passes the
 // number on through this payload. Both live workers were already writing
 // `delivered.issue` and nothing rendered it, so the number reached no agent and the
 // agentic phase went hunting for the issue by title instead.

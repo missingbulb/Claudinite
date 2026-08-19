@@ -18,7 +18,7 @@
 // task's own standing tracker issue and the hand-off payload carries only its
 // number. The body is rewritten each run — it describes THIS window, so a second
 // copy would be a stale one. The tracker's COMMENTS stay the agentic phase's
-// prune log; code_work never comments.
+// prune log; code-work never comments.
 
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -245,7 +245,7 @@ async function main() {
 
   // ALWAYS hand off. The precondition already decided this run happens, and an
   // empty canon window still leaves the repo's fresh local items to re-check, so
-  // there is no condition here to re-litigate — only work code_work cannot do:
+  // there is no condition here to re-litigate — only work code-work cannot do:
   // judging whether an added canon line genuinely covers a local item.
   const requestPath = process.env.CLAUDINITE_REQUEST_AGENT;
   if (!requestPath) throw new Error('CLAUDINITE_REQUEST_AGENT is not set — cannot hand off to the agentic phase');

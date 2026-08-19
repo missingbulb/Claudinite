@@ -15,7 +15,7 @@
 // for the human and the agent to read, not to parse.
 
 // The label every add-packs work-list issue in a member carries. The member task's
-// code_work counts open issues under it; the enforcer's sweep converges them.
+// code-work counts open issues under it; the enforcer's sweep converges them.
 export const LABEL = 'add-packs';
 
 // Exactly one converged issue per kind per member — the title IS the convergence key.

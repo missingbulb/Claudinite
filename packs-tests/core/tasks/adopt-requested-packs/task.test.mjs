@@ -24,7 +24,7 @@ test('adopt-requested-packs: manual, sonnet, ceilinged at open-pr', () => {
   assert.equal(decl.id, 'adopt-requested-packs');   // must match its directory name (discover.mjs)
   // `manual`: the work only exists when the fleet places it, and the fleet fires this
   // scheduler in the same breath. A cadence would re-ask a question whose answer
-  // arrives by push — and run this task's code_work in every member, every slot.
+  // arrives by push — and run this task's code-work in every member, every slot.
   assert.equal(decl.frequency, 'manual');
   assert.equal(decl.agent_model, 'sonnet');
   // The ceiling is the guard that matters most: declaring a pack switches on

@@ -61,7 +61,7 @@ export const digestPath = (date) => `${DIGESTS_DIR}/${date}.md`;
 const MAX_BACKFILL = 30;
 
 // A one-time (or after-an-outage) catch-up, requested through the mechanism the queue
-// already has: the item's Context, which code_work reads as `CLAUDINITE_CONTEXT`.
+// already has: the item's Context, which code-work reads as `CLAUDINITE_CONTEXT`.
 //
 // So a backfill needs no new workflow, no new input, and no new secret — it is an
 // ordinary hand-created item carrying one parameter:
@@ -171,7 +171,7 @@ export function renderSummary(day, { agent }) {
 }
 
 // Collect each requested day and sort it into one of three piles: already written,
-// quiet (no judgment needed — code_work writes it), or needing the agent.
+// quiet (no judgment needed — code-work writes it), or needing the agent.
 //
 // Extracted from main so the loop is testable without a git remote. The three-way
 // split IS the backfill: a run that mislabelled a quiet day as needing judgment would

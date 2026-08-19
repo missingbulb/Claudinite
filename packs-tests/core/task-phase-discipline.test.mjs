@@ -1,5 +1,5 @@
 // The precondition-is-the-only-gate hunt (owner, 2026-08-06): flags task.md
-// instructions and code_work workers that decide to skip the run in a later phase.
+// instructions and code-work workers that decide to skip the run in a later phase.
 // Heuristic and advisory by design — the fixtures below are the real shapes the
 // 2026-08-06 audit found, plus the legal shapes it must NOT flag.
 

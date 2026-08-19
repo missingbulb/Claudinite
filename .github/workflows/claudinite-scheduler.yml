@@ -65,7 +65,7 @@ jobs:
 
   # The post-tick drain. `timeout-minutes` MUST stay ≤ the engine's executing
   # leash (60m): a hung runner has to be killed by the platform before its claim
-  # is reaped and the item re-picked, or a zombie's code_work runs beside its
+  # is reaped and the item re-picked, or a zombie's code-work runs beside its
   # replacement's.
   drain:
     needs: tick

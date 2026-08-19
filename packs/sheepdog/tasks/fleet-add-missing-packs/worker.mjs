@@ -18,7 +18,7 @@
 // pack corpus, and the firing loop.
 //
 // TWO CALL SITES, NO DEFAULTS (params.mjs has the reasoning):
-//   weekly   task.mjs's code_work line — `--scan-for-needed-packs=true --repos=all-covered-members`
+//   weekly   task.mjs's code-work line — `--scan-for-needed-packs=true --repos=all-covered-members`
 //   forced   a hand-created item's Context, inherited through CLAUDINITE_CONTEXT:
 //              create-work-item sheepdog/fleet-add-missing-packs \
 //                --context "SCAN_FOR_NEEDED_PACKS=false" \

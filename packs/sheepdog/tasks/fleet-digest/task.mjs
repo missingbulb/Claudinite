@@ -66,7 +66,7 @@ export default {
 
   // Fire daily, unconditionally. There is deliberately no "only if something
   // happened" gate: whether anything happened is precisely what the run finds out,
-  // and it can only find out by looking at the other repos. The code_work decides
+  // and it can only find out by looking at the other repos. The code-work decides
   // for itself whether the day needs an agent.
   precondition() {
     return {

@@ -55,7 +55,7 @@
 // stage, and only for the half that is genuinely judgment — the collector ranks a day BY
 // SIZE, which is arithmetic, and the agent picks the accomplishments out of that
 // shortlist, which is a reading of the text. On a day the fleet merged nothing the
-// code_work writes the brief itself and requests no agent: the dated series is what makes a
+// code-work writes the brief itself and requests no agent: the dated series is what makes a
 // MISSING brief legible as a fault rather than as a slow Tuesday, but "nothing happened"
 // needs no model. It arrived from the enforcer's own local pack in #954; what made it
 // portable is that the task ends at a written file, so it holds no address, no recipient

@@ -130,9 +130,9 @@ test('task-declaration-shape: a well-formed task with preprocessing + both timeo
 });
 
 // The 2026-08-06 rename boundary: a member's local pack still declaring the
-// legacy code_work names must keep working — the loader normalizes them — and the
+// legacy code-work names must keep working — the loader normalizes them — and the
 // vendor refresh must not turn its CI red over files nothing has renamed yet.
-// So the legacy declaration is contract-complete (no missing-code_work, no
+// So the legacy declaration is contract-complete (no missing-code-work, no
 // missing-timeout findings) and earns exactly one ADVISORY rename nudge.
 test('task-declaration-shape: legacy agent_preprocessing names satisfy the contract, advisory rename only', () => {
   const legacy = goodTask

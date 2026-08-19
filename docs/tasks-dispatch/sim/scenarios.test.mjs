@@ -294,7 +294,7 @@ test('S25 adoption: first ask lands on the real anchor, not the first tick', () 
 });
 
 // ---- S8-flavored — a dead executor's claim is reclaimed by the tick's leash
-// and the item is simply re-picked; code_work re-entrancy is the contract.
+// and the item is simply re-picked; code-work re-entrancy is the contract.
 test('S8 dead executor: leash reclaim, re-pick, converge', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });

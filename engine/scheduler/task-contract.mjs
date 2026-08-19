@@ -11,7 +11,7 @@ import { EXECUTING_LEASH_MS } from './queue/leases.mjs';
 // A declared timeout is always a whole number of seconds, > 0.
 const isPositiveInt = (n) => Number.isInteger(n) && n > 0;
 
-// A code_work command must stay inside its own task directory — no absolute
+// A code-work command must stay inside its own task directory — no absolute
 // path and no `..` traversal in the command string — the same containment the
 // worker-file rule gives agent_instructions (task-code-work DESIGN §2).
 const escapesTaskDir = (cmd) => /(^|\s)\//.test(cmd) || cmd.includes('..');
@@ -22,7 +22,7 @@ const escapesTaskDir = (cmd) => /(^|\s)\//.test(cmd) || cmd.includes('..');
 // of two peers, and a task may declare only it.
 //
 // Two renames have reached these fields (2026-08-06 agent_preprocessing →
-// prework, 2026-08-18 prework → code_work); both legacy spellings stay accepted
+// prework, 2026-08-18 prework → code-work); both legacy spellings stay accepted
 // here, since a consumer's own local packs rename on their own clock. Every
 // legacy key maps straight to today's canonical name rather than to its
 // immediate successor, so a declaration written for the oldest vocabulary
@@ -147,7 +147,7 @@ export function validateTaskDeclaration(raw) {
     } else if (decl.code_work_timeout * 1000 >= EXECUTING_LEASH_MS) {
       // F17: a code-work legally allowed to outlive the executing leash is reclaimed
       // WHILE ALIVE, and the failure is not one duplicate run but a livelock —
-      // every tenure reclaimed before it can finish, code_work re-executing each
+      // every tenure reclaimed before it can finish, code-work re-executing each
       // cycle, the occurrence never converging. The leash is the engine's, so the
       // comparison is made where a declaration is judged.
       bad(`"code_work_timeout" (${decl.code_work_timeout}s) reaches the executor's ${EXECUTING_LEASH_MS / 60e3}-minute claim leash`,
@@ -208,7 +208,7 @@ export function validateTaskDeclaration(raw) {
   }
 
   // An agentless task (agent_model: none) runs no agent, so its ONLY work is
-  // code_work — a `none` task with no code_work does nothing (DESIGN §4, retiring
+  // code-work — a `none` task with no code-work does nothing (DESIGN §4, retiring
   // the in-process inline path). Require the command.
   if (decl.agent_model === 'none' && decl.code_work === undefined) {
     bad('an agentless task (agent_model: "none") declares no "code_work"', 'add "code_work" (a none task does its work in that subprocess) — or give the task an agent_model');

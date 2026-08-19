@@ -64,7 +64,7 @@ const rule = {
         flag('declares no "precondition" function', 'add a precondition(signals, config) that returns { run, reason, context? }');
       }
 
-      // The code_work/timeout guards (task-code-work DESIGN §2). Numeric presence is
+      // The code-work/timeout guards (task-code-work DESIGN §2). Numeric presence is
       // a cheap `<key>: <digit>` regex, matching the runtime contract. TWO
       // generations of legacy field names still satisfy the contract — the loader
       // normalizes both — but each earns its own rename finding so the fleet

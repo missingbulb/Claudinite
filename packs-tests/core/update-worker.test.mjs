@@ -197,7 +197,7 @@ test('the apply-stage brief tells the session to LAND its own delivery, not to w
 
 test('the needs-human terminal exits NON-ZERO, so the work item does not close outcome:done', async () => {
   // #939's invisibility, pinned. A parked PR means the converge DELIVERED NOTHING,
-  // but the runner returned normally, so the executor saw a clean code_work and closed
+  // but the runner returned normally, so the executor saw a clean code-work and closed
   // the item `outcome:done`. Every member's nightly update reported success for five
   // days while the whole fleet sat frozen on one canon ref. The executor's contract
   // is `if (!result.ok)` -> needs-human, so the exit code is the entire signal.

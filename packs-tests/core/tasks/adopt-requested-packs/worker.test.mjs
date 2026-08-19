@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { main, openWorkLists } from '../../../../packs/core/tasks/adopt-requested-packs/worker.mjs';
 import { LABEL } from '../../../../packs/core/tasks/adopt-requested-packs/protocol.mjs';
 
-// The code_work gate: request the agent iff this repo has an open `add-packs` work
+// The code-work gate: request the agent iff this repo has an open `add-packs` work
 // list. Exercised through the real main() with fetch stubbed, because the property
 // under test is the END-TO-END decision — env in, request file (or its absence) out.
 

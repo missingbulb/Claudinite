@@ -44,7 +44,7 @@
 //                 vendor + the sweeps, never the scheduler, so that a lingering
 //                 field still routes to the fleet label is a unit test's job
 //                 (engine-tests/scheduler/session-scope.test.mjs).
-//   code_work-env   a local pack whose agentless task carries a WORKER — the half no
+//   code-work-env   a local pack whose agentless task carries a WORKER — the half no
 //                 other shape has, and the half `task-code-work-env` (blocking, core)
 //                 judges. A member's task code is member-owned and nothing converges
 //                 it, so a rule that reads it can turn a member red overnight through

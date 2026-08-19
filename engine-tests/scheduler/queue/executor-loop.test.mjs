@@ -1,5 +1,5 @@
 // The executor loop end to end against a fake GitHub — pick, claim, evaluate,
-// code_work, hand off, converge. The pure rules are tested beside this; what this
+// code-work, hand off, converge. The pure rules are tested beside this; what this
 // pins is that the SHELL actually drives them to a terminal state, which is the
 // thing a fixture over the rules alone can never say.
 

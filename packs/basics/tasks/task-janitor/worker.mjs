@@ -1,4 +1,4 @@
-// The task-janitor's code_work — the whole task (agent_model: none). The ONE
+// The task-janitor's code-work — the whole task (agent_model: none). The ONE
 // home of dispatch-issue recovery and health review, moved out of the
 // scheduler's hourly run (owner, 2026-08-06: scheduler creates, executor
 // executes its one issue, janitor cleans up). This file is the I/O shell; the

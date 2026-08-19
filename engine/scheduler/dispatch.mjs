@@ -101,16 +101,16 @@ export const isDispatchTitle = (title) => parseDispatchTitle(title) !== null;
 // only thing the executor reads to locate the worker; everything below is human
 // framing plus the precondition's binding Context. The Context block is emitted
 // only when the precondition produced lines (an empty scope has nothing to bind).
-// The `### Delivered` section — what this run's code_work created, by identity. It is
+// The `### Delivered` section — what this run's code-work created, by identity. It is
 // the agent's only source for those artifacts.
 //
-// Absence is meaningful: no section means code_work created nothing, so never write a
+// Absence is meaningful: no section means code-work created nothing, so never write a
 // placeholder here.
 export function deliveredLines(delivered) {
   const { branch = null, pr = null, merged = false } = delivered ?? {};
   if (!branch && !pr) return [];
   return [
-    '### Delivered by code_work',
+    '### Delivered by code-work',
     'The artifacts this run created — the ones to work on.',
     '',
     ...(pr ? [`- PR: #${pr}${merged ? ' (already merged — open your own PR for further work)' : ' (open)'}`] : []),
@@ -121,7 +121,7 @@ export function deliveredLines(delivered) {
 // The `### Why the agent is here` section — which of code-work's escalation
 // conditions fired. The worker knows it exactly; without this the agent re-derives it
 // from the repo, and a re-derivation that disagrees with the truth is how a run ends up
-// reporting "code_work created nothing" about a cycle that just merged a PR
+// reporting "code-work created nothing" about a cycle that just merged a PR
 // (EdFringeAllocator#82).
 //
 // The condition and its counts, never the findings — those stay in the repo (DESIGN §3).

@@ -2,7 +2,7 @@ import { finding } from '../../engine/checks/helpers/findings.mjs';
 import { stripComments } from '../../engine/checks/helpers/code-scanning.mjs';
 import { CODE_WORK_ENV_VARS } from '../../engine/scheduler/queue/code-work-run.mjs';
 
-// A task's code may read only the CLAUDINITE_* variables code_work is actually
+// A task's code may read only the CLAUDINITE_* variables code-work is actually
 // handed (`codeWorkEnv`, tasks-dispatch DESIGN §6.5). Anything else is a variable
 // nobody sets, which fails in the one way nothing catches: `process.env.X` is
 // `undefined`, the worker's parse of it yields an empty result, and the run goes
@@ -17,7 +17,7 @@ import { CODE_WORK_ENV_VARS } from '../../engine/scheduler/queue/code-work-run.m
 //
 // GENERIC BY CONSTRUCTION: the legal set is the key set of the object the executor
 // builds, imported rather than restated, so a variable added to or removed from the
-// code_work contract changes what this accepts with no edit here.
+// code-work contract changes what this accepts with no edit here.
 // A task's own code. Tests are out: a test naming a retired variable is naming it
 // as a fixture, which is exactly what a regression test for this rule must be free
 // to do.
