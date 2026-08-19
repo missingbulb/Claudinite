@@ -356,7 +356,12 @@ export async function packUpdate(targetRoot, {
   // 3. Stamp each updated pack's version. Written per pack rather than wholesale, so
   //    a pack this run did not touch keeps the number it really has.
   const next = JSON.parse(readFileSync(settingsPath, 'utf8'));
-  const packVersions = { ...(next.claudinite?.packVersions ?? {}) };
+  // Canonicalized on the way OUT as well as in. The read side has to tolerate a
+  // version stamped under a pack's old id; the write side must not carry that
+  // spelling forward, or the two keys sit in the stamp together forever — the newer
+  // one authoritative, the older one indistinguishable from a real pack nobody has
+  // heard of, and the rename impossible to ever call finished (#1041).
+  const packVersions = { ...canonicalPackVersions(next.claudinite?.packVersions ?? {}) };
   for (const p of plan) if (p.to !== null) packVersions[p.id] = p.to;
   next.claudinite = { ...(next.claudinite ?? {}), packVersions };
   writeFileSync(settingsPath, `${JSON.stringify(next, null, 2)}\n`);
