@@ -2,7 +2,7 @@
 // `sheepdog` pack entry config.
 //
 // It deliberately does NOT re-parse what fleet-config.mjs already owns (owner,
-// exclude, canonRepo, staleDays, packSeeds). The digest reads those through that
+// exclude, canonRepo, packSeeds). The digest reads those through that
 // module; this one covers only the block that is the digest's alone, which is why it
 // lives in the task folder rather than beside fleet-config.mjs:
 //

@@ -17,13 +17,19 @@
 // coverage half calls it covered, and it files no failure issue because nothing runs
 // there to fail. Self-maintenance cannot detect its own absence.
 //
-// THE ONE ASSUMPTION, stated plainly: baselining reverts a stamp-only bump, so
-// `claudinite.updated` advances only when canon actually changed that member's vendor
-// set. Age of the STAMPED REF is therefore the honest liveness measure, and `behind`
-// reads "this member has not picked canon up in staleDays" — not "canon moved". It can
-// still misfire on a member whose vendor set genuinely saw no change in that window;
-// `staleDays` (default 14) is the knob, and the issue body says so. That the stamp is
-// not refreshed by the update flows at all is #786, which this module inherits unchanged.
+// WHAT `behind` MEASURES: the VERSION GAP, and nothing else. The versioned update
+// flows stamp `engineVersion` and `packVersions` and deliberately never rewrite `ref`
+// or `updated`, so on a well-maintained member the stamped ref is frozen at whatever
+// commit first vendored it and its AGE measures nothing at all. A date measure over
+// that stamp does not decay gracefully either: every member's ref ages at the same
+// rate, so one arbitrary day the whole fleet crosses the window at once and the sweep
+// files a drift issue per repo for a fleet that is, by versions, current (#1025).
+//
+// So a member is behind when its stamped engine version is below canon's, or any pack
+// it stamps is below that pack's manifest version in canon — read out of CANON over
+// the API, never out of the enforcer's own mount, which is itself a member and can be
+// behind. The stamped ref is still read for what it honestly is, provenance: whether
+// it is a commit on canon's trunk at all, which is the #328 wedge.
 //
 // Read-only toward every member: the only writes are the enforcer repo's own drift
 // issues and their label.
@@ -53,13 +59,15 @@ const MARKER_RE = /<!-- fleet-freshness: ([a-z-]+) -->/;
 // --- classification (pure) ----------------------------------------------------
 
 // `compare` is what canon's compare endpoint said about `stampedRef → canon default
-// branch`, normalized to { status, aheadBy, baseDateMs }, or null when the ref is not
-// a commit in canon at all. Kept free of I/O so every branch is testable directly.
+// branch`, normalized to { status }, or null when the ref is not a commit in canon at
+// all. `installed` is the member's own stamp ({ engineVersion, packVersions }) and
+// `canon` the same two numbers read out of canon for exactly the packs that stamp
+// names. Kept free of I/O so every branch is testable directly.
 //
 // The precedence is about ROOT CAUSE, not the order the facts arrive in: a member with
 // no scheduler is ALSO behind, and reporting "behind" would send the reader chasing a
 // symptom of the missing cron.
-export function classifyFreshness({ stampedRef, hasScheduler, compare, nowMs, staleDays }) {
+export function classifyFreshness({ stampedRef, hasScheduler, compare, installed, canon }) {
   if (!stampedRef) {
     return { state: 'no-stamp', detail: `${DECLARATION} carries no claudinite.ref — the repo declares packs but has never been vendored` };
   }
@@ -75,51 +83,138 @@ export function classifyFreshness({ stampedRef, hasScheduler, compare, nowMs, st
   if (compare.status !== 'identical' && compare.status !== 'ahead') {
     return { state: 'ref-not-on-trunk', detail: `the stamped ref ${stampedRef} is not an ancestor of canon's default branch (compare says "${compare.status}")` };
   }
-  const ageDays = (nowMs - compare.baseDateMs) / 86_400_000;
-  if (compare.aheadBy > 0 && ageDays > staleDays) {
+  // A stamp carrying neither number was written before the versioned flows existed,
+  // so it cannot be current by construction — an engine that stamps always stamps.
+  const packIds = Object.keys(installed.packVersions);
+  if (installed.engineVersion === null && packIds.length === 0) {
     return {
       state: 'behind',
-      detail: `stamped at ${stampedRef} (${Math.floor(ageDays)} days old), ${compare.aheadBy} canon commit(s) behind — over the ${staleDays}-day window`,
+      detail: `stamped at ${stampedRef} with no engineVersion and no packVersions — the mount predates the versioned update flows and has not been refreshed by them`,
     };
   }
-  return { state: FRESH, detail: compare.aheadBy > 0 ? `${compare.aheadBy} canon commit(s) behind, within the ${staleDays}-day window` : 'at canon head' };
+  // An absent canon number is not a zero: a pack retired from canon has no manifest
+  // to be behind, and comparing against a missing entry would report every member
+  // that still stamps it.
+  const gaps = [];
+  if (installed.engineVersion !== null && canon.engineVersion !== null && installed.engineVersion < canon.engineVersion) {
+    gaps.push(`engine v${installed.engineVersion} → v${canon.engineVersion}`);
+  }
+  for (const id of packIds.sort()) {
+    const here = installed.packVersions[id];
+    const there = canon.packVersions[id];
+    if (typeof here === 'number' && typeof there === 'number' && here < there) {
+      gaps.push(`${id} v${here} → v${there}`);
+    }
+  }
+  if (gaps.length) return { state: 'behind', detail: `behind canon by ${gaps.join(', ')}` };
+  return {
+    state: FRESH,
+    detail: `engine v${installed.engineVersion ?? '—'}, ${packIds.length} declared pack(s) at canon versions`,
+  };
+}
+
+// --- canon's own version numbers ----------------------------------------------
+
+// What a member is measured AGAINST, read out of canon over the API. Not out of this
+// repo's checkout: the enforcer runs a vendored mount like any other member, so its
+// own engine/version.mjs says what the ENFORCER received, which is a different
+// question and can be older.
+//
+// Both numbers are extracted from source with an anchored line match rather than by
+// importing the modules, because the sweep has no canon checkout to import from and
+// the two literals are the whole payload. A file whose number cannot be read THROWS —
+// the caller turns that into UNKNOWN for the member, which fails the run, and a
+// guessed version would silently reclassify the fleet.
+//
+// Memoized per reader, promise and all: one reader is built per sweep and every
+// member consults it, so canon is read once per distinct pack rather than once per
+// member per pack.
+const ENGINE_VERSION_RE = /^export const ENGINE_VERSION = (\d+);$/m;
+const PACK_VERSION_RE = /^ {2}version: (\d+),$/m;
+
+export function canonVersions(gh, canonRepo) {
+  const packs = new Map();
+  let engine = null;
+  const source = async (path) => {
+    const res = await gh(`/repos/${canonRepo}/contents/${encodeURI(path)}`);
+    if (res.status === 404) return null;
+    if (res.status !== 200 || typeof res.json?.content !== 'string') throw new Error(`${canonRepo}:${path} returned ${res.status}`);
+    return Buffer.from(res.json.content, 'base64').toString('utf8');
+  };
+  return {
+    engine() {
+      engine ??= (async () => {
+        const text = await source('engine/version.mjs');
+        const m = text && ENGINE_VERSION_RE.exec(text);
+        if (!m) throw new Error(`canon ${canonRepo} has no readable ENGINE_VERSION in engine/version.mjs`);
+        return Number(m[1]);
+      })();
+      return engine;
+    },
+    // null when canon carries no such pack — a pack the member still stamps but canon
+    // has retired. Distinct from a manifest that is there and unreadable, which throws.
+    pack(id) {
+      if (!packs.has(id)) {
+        packs.set(id, (async () => {
+          const text = await source(`packs/${id}/pack.mjs`);
+          if (text === null) return null;
+          const m = PACK_VERSION_RE.exec(text);
+          if (!m) throw new Error(`canon ${canonRepo} has no readable version in packs/${id}/pack.mjs`);
+          return Number(m[1]);
+        })());
+      }
+      return packs.get(id);
+    },
+  };
 }
 
 // --- the per-member mount probe -----------------------------------------------
 
-// The two reads this half adds on top of the declaration the roster walk already made:
-// the scheduler workflow's presence, and canon's view of the stamped ref. It is handed
-// the declaration rather than re-reading it, which is the whole point of the merge —
-// the coverage half needed the same file, and a member was being read twice.
+// The reads this half adds on top of the declaration the roster walk already made:
+// the scheduler workflow's presence, canon's view of the stamped ref, and canon's
+// version numbers for the packs this member stamps. It is handed the declaration
+// rather than re-reading it, which is the whole point of the merge — the coverage half
+// needed the same file, and a member was being read twice.
+//
+// `canon` is the shared reader built once per sweep, so the per-member cost of the
+// version half is bounded by how many packs this member declares that no earlier
+// member did — usually none.
 //
 // Throws on anything indeterminate; the caller turns that into UNKNOWN for this half
 // alone. A member whose mount cannot be probed is still one whose declaration was read,
 // so the coverage half keeps its verdict.
-export async function probeMount(gh, fullName, declaration, { canonRepo, canonBranch }) {
-  const stampedRef = declaration?.claudinite?.ref ?? null;
+export async function probeMount(gh, fullName, declaration, { canonRepo, canonBranch, canon }) {
+  const stamp = declaration?.claudinite ?? {};
+  const stampedRef = stamp.ref ?? null;
 
   const wf = await gh(`/repos/${fullName}/contents/${SCHEDULER}`);
   if (wf.status !== 200 && wf.status !== 404) throw new Error(`${SCHEDULER} check returned ${wf.status}`);
   const hasScheduler = wf.status === 200;
 
+  const stamped = stamp.packVersions;
+  const installed = {
+    engineVersion: typeof stamp.engineVersion === 'number' ? stamp.engineVersion : null,
+    packVersions: stamped && typeof stamped === 'object' && !Array.isArray(stamped) ? stamped : {},
+  };
+  const canonAt = { engineVersion: null, packVersions: {} };
+
   let compare = null;
   if (stampedRef) {
-    // per_page=1 because the commit list is irrelevant here — only the counts, the
-    // status, and the base commit's date are read, and a wide-open compare over a
-    // fortnight of canon is a needlessly large payload.
+    // per_page=1 because neither the commit list nor the counts are read — only the
+    // status, which is all `ref-not-on-trunk` needs, and a wide-open compare over
+    // months of canon is a needlessly large payload.
     const c = await gh(`/repos/${canonRepo}/compare/${stampedRef}...${canonBranch}?per_page=1`);
     if (c.status === 404) compare = null; // not a canon commit — classify(), not an error
     else if (c.status !== 200 || !c.json) throw new Error(`comparing ${stampedRef} against ${canonRepo}@${canonBranch} returned ${c.status}`);
-    else {
-      compare = {
-        status: c.json.status,
-        aheadBy: c.json.ahead_by ?? 0,
-        baseDateMs: Date.parse(c.json.base_commit?.commit?.committer?.date ?? ''),
-      };
-      if (!Number.isFinite(compare.baseDateMs)) throw new Error(`canon returned no usable date for ${stampedRef}`);
+    else compare = { status: c.json.status };
+
+    canonAt.engineVersion = await canon.engine();
+    for (const id of Object.keys(installed.packVersions)) {
+      const there = await canon.pack(id);
+      if (there !== null) canonAt.packVersions[id] = there;
     }
   }
-  return { stampedRef, hasScheduler, compare };
+  return { stampedRef, hasScheduler, compare, installed, canon: canonAt };
 }
 
 // --- issue bodies -------------------------------------------------------------
@@ -144,17 +239,18 @@ const FIXES = {
     'commit that IS on the default branch.',
   ],
   behind: [
-    'The scheduler workflow exists but its baselining is not landing. Check the repo\'s',
+    'The scheduler workflow exists but the self-refresh is not landing. Check the repo\'s',
     'recent `Claudinite scheduler` runs: a disabled workflow (GitHub disables cron on repos',
-    'with no activity for 60 days), a failing baselining task, or a maintenance PR that',
-    'never merges all look like this.',
+    'with no activity for 60 days), a failing update task, or a maintenance PR that never',
+    'merges all look like this.',
     '',
-    'If instead this member\'s vendor set legitimately saw no change in the window, the',
-    'window is wrong, not the repo — raise `staleDays` on the sheepdog pack entry\'s config.',
+    'The gap above is read from the stamped `engineVersion`/`packVersions` against canon\'s',
+    'own numbers, so it closes only when an update flow actually re-stamps the mount — the',
+    'stamped `ref` is provenance and is expected never to move.',
   ],
 };
 
-function driftBody(fullName, { state, detail }, staleDays) {
+function driftBody(fullName, { state, detail }) {
   return [
     marker(state),
     `\`${fullName}\` is covered — it carries a tracked \`${DECLARATION}\` — but it is not keeping up with canon.`,
@@ -165,7 +261,7 @@ function driftBody(fullName, { state, detail }, staleDays) {
     '',
     ...FIXES[state],
     '',
-    `This issue is converged by the daily fleet-roster task (window: ${staleDays} days): it closes`,
+    'This issue is converged by the daily fleet-roster task: it closes',
     'itself `completed` once the repo is fresh again, and `not planned` once the repo leaves the',
     'fleet (excluded, deleted, archived, or no longer covered). A close without either gets',
     'reopened while the repo stays behind.',
@@ -180,7 +276,7 @@ function driftBody(fullName, { state, detail }, staleDays) {
 // actually changed, because a sweep over a fleet that is slow to heal would otherwise
 // turn every thread into a wall of identical notes. That restraint is what lets this
 // half ride the daily cadence rather than the weekly one it used to have.
-export async function convergeDrift(gh, home, { unhealthy, healthySet, goneSet, dormantSet = new Set(), staleDays }) {
+export async function convergeDrift(gh, home, { unhealthy, healthySet, goneSet, dormantSet = new Set() }) {
   const actions = [];
   const { open: openIssues, closed } = await labeledIssues(gh, home, LABEL);
   const open = new Map(openIssues.map((i) => [i.title, i]));
@@ -193,7 +289,7 @@ export async function convergeDrift(gh, home, { unhealthy, healthySet, goneSet, 
       const was = MARKER_RE.exec(existing.body ?? '')?.[1];
       if (was === verdict.state) continue; // same story as yesterday — say nothing
       await gh(`/repos/${home}/issues/${existing.number}`, {
-        method: 'PATCH', body: { body: driftBody(fullName, verdict, staleDays) },
+        method: 'PATCH', body: { body: driftBody(fullName, verdict) },
       });
       await gh(`/repos/${home}/issues/${existing.number}/comments`, {
         method: 'POST', body: { body: `The sweep's verdict changed: \`${was ?? 'unrecorded'}\` → \`${verdict.state}\`. ${verdict.detail}.` },
@@ -206,7 +302,7 @@ export async function convergeDrift(gh, home, { unhealthy, healthySet, goneSet, 
     if (prior && prior.state_reason === 'not_planned') continue; // closed as out-of-fleet; re-adding it is the standing fix
     if (prior) {
       await gh(`/repos/${home}/issues/${prior.number}`, {
-        method: 'PATCH', body: { state: 'open', body: driftBody(fullName, verdict, staleDays) },
+        method: 'PATCH', body: { state: 'open', body: driftBody(fullName, verdict) },
       });
       await gh(`/repos/${home}/issues/${prior.number}/comments`, {
         method: 'POST', body: { body: `Reopened by the sweep: \`${fullName}\` has fallen behind again (${verdict.state}). ${verdict.detail}.` },
@@ -215,7 +311,7 @@ export async function convergeDrift(gh, home, { unhealthy, healthySet, goneSet, 
     } else {
       const { status, json } = await gh(`/repos/${home}/issues`, {
         method: 'POST',
-        body: { title, body: driftBody(fullName, verdict, staleDays), labels: [LABEL] },
+        body: { title, body: driftBody(fullName, verdict), labels: [LABEL] },
       });
       if (status !== 201) throw new Error(`creating drift issue for ${fullName} returned ${status}`);
       actions.push(`opened #${json.number} (${fullName}: ${verdict.state})`);
@@ -260,12 +356,12 @@ export async function convergeDrift(gh, home, { unhealthy, healthySet, goneSet, 
 // directly. `fresh` is `[{ fullName, detail }]`; `outOfScope` entries carry their
 // reason inline.
 export function renderFreshnessSummary({
-  owner, home, canonRepo, canonBranch, staleDays, fresh, unhealthy, dormant, outOfScope, unknown, actions,
+  owner, home, canonRepo, canonBranch, fresh, unhealthy, dormant, outOfScope, unknown, actions,
 }) {
   const notMeasured = [`\`${home}\` — the enforcer, swept by its own scheduler`];
   if (canonRepo.toLowerCase() !== home.toLowerCase()) notMeasured.push(`\`${canonRepo}\` — canon, with no vendored mount to be stale`);
   return [
-    `# Fleet freshness sweep — ${owner} (window: ${staleDays} days, canon: ${canonRepo}@${canonBranch})`,
+    `# Fleet freshness sweep — ${owner} (measured by stamped versions against canon: ${canonRepo}@${canonBranch})`,
     '',
     '| fresh | behind | no scheduler | no stamp | off trunk | dormant | out of scope | unknown |',
     '| --- | --- | --- | --- | --- | --- | --- | --- |',

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   buildRoster, coverageView, freshnessView,
 } from '../../../../packs/sheepdog/tasks/fleet-roster/check-fleet-roster.mjs';
+import { canonVersions } from '../../../../packs/sheepdog/tasks/fleet-roster/drift-issues.mjs';
 
 // The merged walk (#788). What is worth locking down is not that the two questions
 // still get answered — their own modules' tests cover that — but that the walk reads
@@ -10,15 +11,19 @@ import {
 // disagreements below are the ones the two separate sweeps used to reach by accident;
 // here they are deliberate, and a test says so.
 
-const DAY = 86_400_000;
-const NOW = Date.parse('2026-08-13T12:00:00Z');
 const HOME = 'o/sheepdog';
 const CANON = 'o/Claudinite';
 
+const CANON_SOURCE = {
+  'engine/version.mjs': 'export const ENGINE_VERSION = 4;\n',
+  'packs/basics/pack.mjs': "export default {\n  id: 'basics',\n  version: 7,\n};\n",
+};
+
 const repo = (name, over = {}) => ({ name, full_name: `o/${name}`, archived: false, fork: false, ...over });
 
-// A fake API over declarations, scheduler-workflow presence, and canon compares.
-// Records every path so "read once" is an assertion rather than a claim.
+// A fake API over declarations, scheduler-workflow presence, canon compares and
+// canon's own version numbers. Records every path so "read once" is an assertion
+// rather than a claim.
 function fakeGh({ declarations = {}, schedulers = [], compares = {}, errors = {} } = {}) {
   const seen = [];
   const gh = async (path) => {
@@ -39,10 +44,14 @@ function fakeGh({ declarations = {}, schedulers = [], compares = {}, errors = {}
     if (m) {
       const c = compares[m[1]];
       if (!c) return { status: 404, json: null };
-      return {
-        status: 200,
-        json: { status: c.status, ahead_by: c.aheadBy, base_commit: { commit: { committer: { date: new Date(NOW - c.ageDays * DAY).toISOString() } } } },
-      };
+      return { status: 200, json: { status: c.status } };
+    }
+
+    // Canon's own numbers — the source every member is measured against.
+    const text = CANON_SOURCE[path.replace(`/repos/${CANON}/contents/`, '')];
+    if (path.startsWith(`/repos/${CANON}/contents/`)) {
+      if (text === undefined) return { status: 404, json: null };
+      return { status: 200, json: { content: Buffer.from(text).toString('base64') } };
     }
     throw new Error(`unexpected path ${path}`);
   };
@@ -50,10 +59,15 @@ function fakeGh({ declarations = {}, schedulers = [], compares = {}, errors = {}
 }
 
 const walk = (gh, repos, over = {}) => buildRoster(gh, repos, {
-  home: HOME, canonRepo: CANON, canonBranch: 'main', exclude: new Set(), staleDays: 14, nowMs: NOW, ...over,
+  home: HOME, canonRepo: CANON, canonBranch: 'main', exclude: new Set(), canonVersions: canonVersions(gh, CANON), ...over,
 });
 
-const declOf = (ref, over = {}) => ({ packs: [{ id: 'basics' }], claudinite: { ref }, ...over });
+// `current` stamps exactly what CANON_SOURCE says; anything lower is a gap.
+const declOf = (ref, over = {}, stamp = {}) => ({
+  packs: [{ id: 'basics' }],
+  claudinite: { ref, engineVersion: 4, packVersions: { basics: 7 }, ...stamp },
+  ...over,
+});
 
 // --- the walk reads each repo once --------------------------------------------
 
@@ -61,12 +75,12 @@ test('buildRoster: the declaration is read once per repo, and both questions use
   const { gh, seen } = fakeGh({
     declarations: { 'o/alpha': declOf('abc') },
     schedulers: ['o/alpha'],
-    compares: { abc: { status: 'identical', aheadBy: 0, ageDays: 0 } },
+    compares: { abc: { status: 'identical' } },
   });
   await walk(gh, [repo('alpha')]);
   const declReads = seen.filter((p) => p.endsWith('.claudinite-checks.json'));
   assert.equal(declReads.length, 1, 'the two questions shared one declaration read — this is the merge');
-  assert.equal(seen.length, 3, 'declaration + scheduler workflow + canon compare');
+  assert.equal(seen.length, 5, 'declaration + scheduler workflow + canon compare + canon engine + canon basics');
 });
 
 test('buildRoster: the enforcer, archived repos and forks are never read at all', async () => {
@@ -177,16 +191,18 @@ test('a failed mount probe is unknown to freshness ALONE — coverage keeps its 
 
 test('a measured member carries its freshness verdict through to the view', async () => {
   const { gh } = fakeGh({
-    declarations: { 'o/alpha': declOf('abc'), 'o/late': declOf('old') },
+    declarations: { 'o/alpha': declOf('abc'), 'o/late': declOf('old', {}, { engineVersion: 3 }) },
     schedulers: ['o/alpha', 'o/late'],
     compares: {
-      abc: { status: 'identical', aheadBy: 0, ageDays: 0 },
-      old: { status: 'ahead', aheadBy: 37, ageDays: 20 },
+      abc: { status: 'identical' },
+      // The healthy member's ref is the OLDER of the two and canon has moved far past
+      // it: on a date measure that is what "behind" looked like, and it is fresh.
+      old: { status: 'ahead' },
     },
   });
   const roster = await walk(gh, [repo('alpha'), repo('late')]);
   const f = freshnessView(roster);
-  assert.deepEqual(f.fresh, [{ fullName: 'o/alpha', detail: 'at canon head' }]);
+  assert.deepEqual(f.fresh, [{ fullName: 'o/alpha', detail: 'engine v4, 1 declared pack(s) at canon versions' }]);
   assert.equal(f.unhealthy.length, 1);
   assert.equal(f.unhealthy[0].fullName, 'o/late');
   assert.equal(f.unhealthy[0].state, 'behind');
@@ -196,8 +212,8 @@ test('a measured member carries its freshness verdict through to the view', asyn
 
 test('a member with no scheduler is reported by root cause, not by its downstream staleness', async () => {
   const { gh } = fakeGh({
-    declarations: { 'o/cronless': declOf('old') },
-    compares: { old: { status: 'ahead', aheadBy: 90, ageDays: 60 } },
+    declarations: { 'o/cronless': declOf('old', {}, { engineVersion: 1 }) },
+    compares: { old: { status: 'ahead' } },
   });
   const roster = await walk(gh, [repo('cronless')]);
   assert.equal(freshnessView(roster).unhealthy[0].state, 'no-scheduler');

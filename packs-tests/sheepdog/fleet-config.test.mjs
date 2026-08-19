@@ -45,15 +45,12 @@ test('parseSheepdogConfig: packSeeds is the fleet\'s own vocabulary, and default
   assert.deepEqual(parseSheepdogConfig({ packs: [{ id: 'sheepdog', config: { packSeeds: 'a-pack' } }] }, 'a/f').packSeeds, []);
 });
 
-test('parseSheepdogConfig: canonRepo and staleDays default, so an existing config keeps working', () => {
+test('parseSheepdogConfig: canonRepo defaults, so an existing config keeps working', () => {
   const bare = parseSheepdogConfig({ packs: [{ id: 'sheepdog', config: { owner: 'MissingBulb' } }] }, 'missingbulb/shepherd');
   assert.equal(bare.canonRepo, 'missingbulb/Claudinite');
-  assert.equal(bare.staleDays, 14);
-  const set = parseSheepdogConfig({ packs: [{ id: 'sheepdog', config: { owner: 'acme', canonRepo: 'acme/Fork', staleDays: 3 } }] }, 'acme/fleet');
+  const set = parseSheepdogConfig({ packs: [{ id: 'sheepdog', config: { owner: 'acme', canonRepo: 'acme/Fork' } }] }, 'acme/fleet');
   assert.equal(set.canonRepo, 'acme/Fork');
-  assert.equal(set.staleDays, 3);
-  // a nonsense window falls back rather than disabling the sweep (0 would flag everything)
-  for (const staleDays of [0, -5, 'soon', null]) {
-    assert.equal(parseSheepdogConfig({ packs: [{ id: 'sheepdog', config: { owner: 'a', staleDays } }] }, 'a/f').staleDays, 14, String(staleDays));
-  }
+  // `staleDays` was the retired date window (#1025). A config still carrying it is
+  // read, not rejected — the enforcer's own file is not rewritten by this change.
+  assert.equal(parseSheepdogConfig({ packs: [{ id: 'sheepdog', config: { owner: 'a', staleDays: 3 } }] }, 'a/f').staleDays, undefined);
 });

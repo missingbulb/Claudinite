@@ -21,7 +21,7 @@ const log = (s) => console.log(`fleet-roster${item ? ` [#${item}]` : ''}: ${s}`)
 
 export async function main() {
   // The sweep resolves the HOME repo — the one whose sheepdog pack entry carries
-  // `{ owner, exclude, canonRepo, staleDays }`, and the one both issue families land
+  // `{ owner, exclude, canonRepo }`, and the one both issue families land
   // in — from GITHUB_REPOSITORY. Actions sets it and the subprocess inherits it;
   // CLAUDINITE_REPO is the scheduler's own name for the same fact, so fall back to it
   // rather than depending on which of the two happens to be present.
