@@ -90,7 +90,7 @@ export default {
   // pointers in this pack's README and its three fleet task docs follow it (#975).
   // 14: each fleet task's doc is a README.md — every one of them is agentless, and
   // task.md is the spec an agent session reads (task-md-only-when-agentic, #1055).
-  version: 14,
+  version: 15,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'fleet-enforcer duties for the repo watching every other repo — coverage, freshness, usage, standardized packs',
