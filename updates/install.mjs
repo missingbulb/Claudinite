@@ -149,7 +149,9 @@ export async function installPacks(targetRoot, ids, {
   // migrated into it, so nothing may imply it was.
   const next = JSON.parse(readFileSync(settingsPath, 'utf8'));
   next.packs = declared;
-  const packVersions = { ...(next.claudinite?.packVersions ?? {}) };
+  // Same canonicalization as the update flow's stamp write: a legacy key carried
+  // forward here would outlive every rename that has already happened.
+  const packVersions = { ...canonicalPackVersions(next.claudinite?.packVersions ?? {}) };
   for (const { id, version } of install) if (version !== null) packVersions[id] = version;
   next.claudinite = { ...(next.claudinite ?? {}), packVersions };
   writeFileSync(settingsPath, `${JSON.stringify(next, null, 2)}\n`);

@@ -465,3 +465,20 @@ test('a member is owed the executor workflow beside its tick', async () => {
   assert.ok(staged.includes(SCHEDULER_WORKFLOW), 'beside the scheduler workflow, in the same cycle');
   rmSync(queue, { recursive: true, force: true });
 });
+
+// The stamp is written as well as read, and both sides have to agree about a
+// renamed pack. Measured on a real member (LaughCounter, #1041): the read side
+// canonicalized, the write side spread the raw keys back, and the stamp ended up
+// carrying `core: 6` beside `claudinite-lifecycle: 8` — the newer key
+// authoritative, the older one permanent, and the rename never finishable.
+test('the stamp write drops a legacy pack key rather than carrying it forward', async () => {
+  const { canonicalPackVersions } = await import('../engine/pack_loader/renamed-packs.mjs');
+  const raw = { basics: 7, core: 6, grow_with_claudinite: 6 };
+  const plan = [{ id: 'claudinite-lifecycle', to: 8 }, { id: 'claudinite-growth', to: 7 }];
+  // Exactly the expression the flow uses at its stamp step.
+  const packVersions = { ...canonicalPackVersions(raw) };
+  for (const p of plan) if (p.to !== null) packVersions[p.id] = p.to;
+  assert.deepEqual(packVersions, { basics: 7, 'claudinite-lifecycle': 8, 'claudinite-growth': 7 });
+  assert.ok(!Object.hasOwn(packVersions, 'core'), 'the old key must not survive the write');
+  assert.ok(!Object.hasOwn(packVersions, 'grow_with_claudinite'), 'nor the other one');
+});
