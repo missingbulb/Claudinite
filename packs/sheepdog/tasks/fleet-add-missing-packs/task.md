@@ -1,6 +1,6 @@
 # Fleet: get every member declaring the packs it is missing
 
-**This task runs no agent.** It is `agent_model: none` with a parameterised `code_work` ([`worker.mjs`](worker.mjs)), so the whole pass is deterministic code the executor runs as code-work. This file is the human-facing record of what that code does; there is no agent phase on the enforcer side. The *agentic* half of the job belongs to each member's own **adopt-requested-packs** task (grow_with_claudinite) — see "The fan-out model" below.
+**This task runs no agent.** It is `agent_model: none` with a parameterised `code_work` ([`worker.mjs`](worker.mjs)), so the whole pass is deterministic code the executor runs as code-work. This file is the human-facing record of what that code does; there is no agent phase on the enforcer side. The *agentic* half of the job belongs to each member's own **adopt-requested-packs** task (claudinite-growth) — see "The fan-out model" below.
 
 ## Two first stages, one parameter set
 

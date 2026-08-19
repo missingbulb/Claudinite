@@ -38,7 +38,7 @@ test('home-seeded-packs-declared: reports every undeclared seeded pack, not just
     base: {
       'packs/basics/pack.mjs': packModule('basics', { seeded: true }),
       // Newly seeded upstream; baselining is gated !isHome, so they never arrive here.
-      'packs/grow_with_claudinite/pack.mjs': packModule('grow_with_claudinite', { seeded: true }),
+      'packs/claudinite-growth/pack.mjs': packModule('claudinite-growth', { seeded: true }),
       'packs/tidy-repo/pack.mjs': packModule('tidy-repo', { seeded: true }),
       '.claudinite-checks.json': settings(['basics']),
     },
@@ -47,7 +47,7 @@ test('home-seeded-packs-declared: reports every undeclared seeded pack, not just
     const findings = run(root);
     assert.equal(findings.length, 2);
     const ids = findings.map((f) => f.what).join(' ');
-    assert.match(ids, /grow_with_claudinite/);
+    assert.match(ids, /claudinite-growth/);
     assert.match(ids, /tidy-repo/);
     for (const finding of findings) {
       assert.equal(finding.rule, 'home-seeded-packs-declared');
@@ -62,8 +62,8 @@ test('home-seeded-packs-declared: reports every undeclared seeded pack, not just
 test('home-seeded-packs-declared: an entry object declares the pack just as a bare id does', () => {
   const root = makeRepo({
     base: {
-      'packs/grow_with_claudinite/pack.mjs': packModule('grow_with_claudinite', { seeded: true }),
-      '.claudinite-checks.json': settings([{ id: 'grow_with_claudinite', config: { promote: false } }]),
+      'packs/claudinite-growth/pack.mjs': packModule('claudinite-growth', { seeded: true }),
+      '.claudinite-checks.json': settings([{ id: 'claudinite-growth', config: { promote: false } }]),
     },
   });
   try {

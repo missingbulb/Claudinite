@@ -7,7 +7,7 @@
 // to the enforcer repo alone, and "the enforcer's session is provisioned with the
 // fleet" turned out to be an assumption, not a fact. The agentic work moved to where
 // the access already is: each member's own adopt-requested-packs task
-// (grow_with_claudinite). This task DISPATCHES — it converges a work-list issue in
+// (claudinite-growth). This task DISPATCHES — it converges a work-list issue in
 // the member and fires that member's scheduler — and the member EXECUTES, with the
 // repo checked out, under its own declaration's guards. No agent anywhere needs
 // cross-repo access.

@@ -7,7 +7,7 @@
 // (`node aggregate-fleet-usage.mjs`) via the CLI guard at the foot.
 //
 // WHY IT EXISTS. Each member folds ITS OWN skill-usage aggregate (the
-// grow_with_claudinite pack's usage-fold task). A member can therefore answer "does
+// claudinite-growth pack's usage-fold task). A member can therefore answer "does
 // this skill ever load HERE" — and cannot answer the question the promotion ladder
 // actually asks, which is whether a skill earns its place ACROSS THE FLEET. A skill
 // that never loads in one repo may simply not be that repo's subject; a skill that

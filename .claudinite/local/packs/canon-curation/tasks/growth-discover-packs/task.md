@@ -2,7 +2,7 @@
 
 One weekly pass over **every member**: read what the fleet is actually built on, subtract what the shared canon already homes, and open a PR **for the owner to approve** authoring the pack that is missing. Declared only by Claudinite, so it runs **once, centrally**, never per project.
 
-This is the only thing that notices a technology in use across the fleet with **no canon pack**. Its per-repo namesake in [grow_with_claudinite](../../../../../../packs/grow_with_claudinite/tasks/growth-discover-packs/task.md) is the other side of the same line: that one authors a repo's **own local** packs and is barred from re-creating what a canon pack homes. It cannot close a canon gap; you can, and only you.
+This is the only thing that notices a technology in use across the fleet with **no canon pack**. Its per-repo namesake in [claudinite-growth](../../../../../../packs/claudinite-growth/tasks/growth-discover-packs/task.md) is the other side of the same line: that one authors a repo's **own local** packs and is barred from re-creating what a canon pack homes. It cannot close a canon gap; you can, and only you.
 
 **Why central.** One run sees every member, so **first-sight dedup is free**: the third member using a technology is recognised as the same gap as the first, in the same pass, with no cross-run state and no chance of three repos each proposing the same pack.
 
@@ -20,7 +20,7 @@ The task's declared outcome ceiling is **`open-pr`**: a new canon pack is read b
 
 ### 1. Manifest each member's stack
 
-For each member named in Context, catalogue what it is built on, exactly as the per-repo task's [manifest step](../../../../../../packs/grow_with_claudinite/tasks/growth-discover-packs/task.md) specifies — the same three axes, the same per-item fields, the same **never infer from "projects like this usually…"** rule, the same comprehensive-over-concise bias. That step owns the method; do not re-derive or re-state it here. The only adaptation: you read the member over the API rather than a working checkout, and you keep one manifest **per member**, tagged with the repo it came from.
+For each member named in Context, catalogue what it is built on, exactly as the per-repo task's [manifest step](../../../../../../packs/claudinite-growth/tasks/growth-discover-packs/task.md) specifies — the same three axes, the same per-item fields, the same **never infer from "projects like this usually…"** rule, the same comprehensive-over-concise bias. That step owns the method; do not re-derive or re-state it here. The only adaptation: you read the member over the API rather than a working checkout, and you keep one manifest **per member**, tagged with the repo it came from.
 
 Do not consult the canon shelf yet, and decide nothing about packs — this step only observes.
 
@@ -41,7 +41,7 @@ Prefer a candidate **more than one member** uses — that is the evidence a pack
 
 ### 4. Author the pack — from the members' real usage
 
-Author `packs/<name>/` using the pack-writing mechanics [the generate-project-instructions skill](../../../../../../packs/grow_with_claudinite/skills/generate-project-instructions/SKILL.md) owns — descend the promotion ladder, add the `marker`/`detect` fingerprint when the technology carries a reliable one (`detect: null` otherwise), write `RULES.md`/`pack.mjs`/`README.md`, and add its `packs/README.md` index row. Apply that method; do not re-derive it.
+Author `packs/<name>/` using the pack-writing mechanics [the generate-project-instructions skill](../../../../../../packs/claudinite-growth/skills/generate-project-instructions/SKILL.md) owns — descend the promotion ladder, add the `marker`/`detect` fingerprint when the technology carries a reliable one (`detect: null` otherwise), write `RULES.md`/`pack.mjs`/`README.md`, and add its `packs/README.md` index row. Apply that method; do not re-derive it.
 
 Two rules from the per-repo task carry over unchanged, and are the ones this task most easily breaks because it is writing from *other* repos' evidence:
 

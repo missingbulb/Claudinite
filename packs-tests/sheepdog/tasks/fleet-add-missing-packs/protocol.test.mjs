@@ -4,9 +4,9 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import * as enforcerSide from '../../../../packs/sheepdog/tasks/fleet-add-missing-packs/protocol.mjs';
-import * as memberSide from '../../../../packs/core/tasks/adopt-requested-packs/protocol.mjs';
+import * as memberSide from '../../../../packs/claudinite-lifecycle/tasks/adopt-requested-packs/protocol.mjs';
 import { MEMBER_TASK } from '../../../../packs/sheepdog/tasks/fleet-add-missing-packs/worker.mjs';
-import memberDecl from '../../../../packs/core/tasks/adopt-requested-packs/task.mjs';
+import memberDecl from '../../../../packs/claudinite-lifecycle/tasks/adopt-requested-packs/task.mjs';
 
 // The add-packs protocol is a contract between two packs that may not import each
 // other (pack-independence), so each carries its own copy and THIS test is the one
@@ -21,7 +21,7 @@ test('the two protocol copies are byte-identical', () => {
   // diff away from being a change to both, and review sees the protocol move once.
   assert.equal(
     at('packs/sheepdog/tasks/fleet-add-missing-packs/protocol.mjs'),
-    at('packs/core/tasks/adopt-requested-packs/protocol.mjs'),
+    at('packs/claudinite-lifecycle/tasks/adopt-requested-packs/protocol.mjs'),
   );
 });
 

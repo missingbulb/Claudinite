@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 // Bootstrap (bootstrap.md) STANDS UP a Claudinite consumer; the update task
-// (packs/core/tasks/update/task.md) is "is Claudinite STILL set up correctly"
+// (packs/claudinite-lifecycle/tasks/update/task.md) is "is Claudinite STILL set up correctly"
 // — the periodic realignment. Every artifact bootstrap creates can later drift (a
 // deleted workflow, a removed routine, an unanswered interview after a pack change),
 // so realignment must re-verify/repair the SAME surface, or a broken mechanism stays
@@ -23,8 +23,8 @@ import { dirname, join } from 'node:path';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const bootstrap = readFileSync(join(root, 'bootstrap.md'), 'utf8');
 const realignment = [
-  'packs/core/tasks/update/task.md',
-  'packs/core/tasks/update/worker.mjs',
+  'packs/claudinite-lifecycle/tasks/update/task.md',
+  'packs/claudinite-lifecycle/tasks/update/worker.mjs',
   'updates/engine-update.mjs',
   'updates/pack-update.mjs',
   'updates/install.mjs',

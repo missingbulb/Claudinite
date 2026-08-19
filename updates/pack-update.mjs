@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { computeVendorSet, SHARED_SUBDIR } from '../vendoring/compute-vendor-set.mjs';
 import { loadPacks, resolveDeclaredPacks, packEntryId } from '../engine/pack_loader/pack-registry.mjs';
 import { ENGINE_VERSION } from '../engine/version.mjs';
+import { canonicalPackVersions } from '../engine/pack_loader/renamed-packs.mjs';
 import { migrationDirs, migrationApplies, flowOf, DECLARATION_FILE } from '../engine/checks/helpers/active-migrations.mjs';
 import { loadMigrations, applyMigration } from '../engine/migrations/registry.mjs';
 import { NEEDS_HUMAN, runSelfTest, deliveryDecision } from './engine-update.mjs';
@@ -245,7 +246,11 @@ export async function packUpdate(targetRoot, {
   catch (e) { return outcome(NEEDS_HUMAN, `${DECLARATION_FILE} is not valid JSON: ${e.message}`); }
 
   const stamp = raw.claudinite ?? null;
-  const installed = stamp && typeof stamp === 'object' ? stamp : null;
+  // `packVersions` keyed by whatever spelling this member last stamped: a pack renamed
+  // since then reads as never-installed unless the keys are canonicalized here too.
+  const installed = stamp && typeof stamp === 'object'
+    ? { ...stamp, packVersions: canonicalPackVersions(stamp.packVersions ?? {}) }
+    : null;
   const declared = Array.isArray(raw.packs) ? raw.packs : [];
   const packs = await loadPacks();
 

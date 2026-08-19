@@ -4,7 +4,7 @@
 // actually built on, subtract what packs/ already homes, and open a reviewed PR
 // authoring the missing pack.
 //
-// Distinct from the same-named per-repo task in grow_with_claudinite, which
+// Distinct from the same-named per-repo task in claudinite-growth, which
 // authors a repo's OWN local packs and is explicitly barred from re-creating
 // what a canon pack homes. This one is the other side of that line: it is the
 // only thing that notices a technology in use ACROSS the fleet with no canon

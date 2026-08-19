@@ -217,14 +217,14 @@ test('apply.mjs really performs the pack-declaration op — the wire, not just t
       encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: root },
     });
     assert.match(out, /declared claude-code-web-users-support/);
-    assert.match(out, /declared core/);
+    assert.match(out, /declared claudinite-lifecycle/);
     const after = JSON.parse(readFileSync(join(root, '.claudinite-checks.json'), 'utf8'));
     // Every seed record the corpus carries, applied in record order onto the
     // declaration the fixture started from.
     assert.deepEqual(after.packs, [
       'basics',
       { id: 'claude-code-web-users-support', config: { repo: 'missingbulb/Shepherd' } },
-      'core',
+      'claudinite-lifecycle',
     ]);
     // …and running it again writes nothing at all.
     assert.equal(execFileSync(process.execPath, [join(canon, 'engine/migrations/apply.mjs')], {
@@ -580,4 +580,39 @@ test('applyMigration runs every op — the vocabulary has one runner, not one pe
   const after = JSON.parse(w.written['.claudinite-checks.json']);
   assert.deepEqual(after.packs, ['local/mine', 'added'], 'normalization and declaration both ran');
   assert.ok(applied.length >= 3, applied.join(' | '));
+});
+
+// --- the 2026-08-19 pack renames -------------------------------------------
+// `core` is an ordinary word and an ordinary directory name, so this record's
+// patterns are the part that can go wrong: too loose and they unhook a member's own
+// barrier rule; too tight and they converge nothing. Both halves are asserted here.
+test('pack-renames: converges every declaration form, and nothing that merely says "core"', async () => {
+  const rec = (await import('../engine/migrations/2026-08-19-pack-renames/migration.mjs')).default;
+  const before = JSON.stringify({
+    packs: ['basics', 'core', { id: 'grow_with_claudinite', config: { promote: false } }, 'local/core'],
+    claudinite: { engineVersion: 4, packVersions: { core: 6, basics: 3, grow_with_claudinite: 6 } },
+    // A member whose own source tree has a core/ directory guarded by a barrier.
+    config: { rules: [{ from: 'core', to: 'ui/*' }] },
+  }, null, 2);
+  let after = before;
+  for (const r of rec.rewrite[0].replace) after = after.replace(r.pattern, r.to);
+  const parsed = JSON.parse(after);
+
+  assert.deepEqual(parsed.packs, [
+    'basics', 'claudinite-lifecycle', { id: 'claudinite-growth', config: { promote: false } }, 'local/core',
+  ], 'a bare element, an entry object and a local token each converge on their own terms');
+  assert.deepEqual(parsed.claudinite.packVersions,
+    { 'claudinite-lifecycle': 6, basics: 3, 'claudinite-growth': 6 },
+    'a stamped version under an old key must move with the id, or the pack reads as never installed');
+  assert.equal(parsed.config.rules[0].from, 'core',
+    "a member's own core/ directory is not this record's business");
+});
+
+test('pack-renames: the mount directories move, and only from the old path', async () => {
+  const rec = (await import('../engine/migrations/2026-08-19-pack-renames/migration.mjs')).default;
+  const moves = Object.fromEntries(rec.aliases.map((a) => [a.legacy[0], a.canonical]));
+  assert.deepEqual(moves, {
+    '.claudinite/shared/packs/core': '.claudinite/shared/packs/claudinite-lifecycle',
+    '.claudinite/shared/packs/grow_with_claudinite': '.claudinite/shared/packs/claudinite-growth',
+  });
 });

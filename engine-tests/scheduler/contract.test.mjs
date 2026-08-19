@@ -143,20 +143,20 @@ const caps = ({ existsPaths, declared = ['gcec'], task = validTask }) => ({
 });
 
 test('DISPATCH_PATH_RE accepts shared/, local/, and the canon root packs/ forms — nothing else', () => {
-  assert.ok(DISPATCH_PATH_RE.test('.claudinite/shared/packs/core/tasks/update/task.md')); // consumer canon pack
+  assert.ok(DISPATCH_PATH_RE.test('.claudinite/shared/packs/claudinite-lifecycle/tasks/update/task.md')); // consumer canon pack
   assert.ok(DISPATCH_PATH_RE.test(goodPath));                                                    // local pack
-  assert.ok(DISPATCH_PATH_RE.test('packs/grow_with_claudinite/tasks/growth-extract/task.md'));   // the CANON's own root pack
+  assert.ok(DISPATCH_PATH_RE.test('packs/claudinite-growth/tasks/growth-extract/task.md'));   // the CANON's own root pack
   assert.ok(!DISPATCH_PATH_RE.test('.claudinite/local/packs/gcec/tasks/create-extractor/task.mjs')); // not task.md
   assert.ok(!DISPATCH_PATH_RE.test('src/packs/gcec/tasks/create-extractor/task.md'));            // prefix must be exactly a mount root or nothing
   assert.ok(!DISPATCH_PATH_RE.test('.claudinite/local/packs/gcec/tasks/create-extractor/task.md#x')); // trailing junk
 });
 
 test('validateDispatchBody resolves pack/task from the canon root packs/ form', () => {
-  const root = 'packs/grow_with_claudinite/tasks/growth-extract/task.md';
+  const root = 'packs/claudinite-growth/tasks/growth-extract/task.md';
   const mjs = root.replace('task.md', 'task.mjs');
-  const v = validateDispatchBody(`${root}\n`, caps({ existsPaths: [root, mjs], declared: ['grow_with_claudinite'] }));
+  const v = validateDispatchBody(`${root}\n`, caps({ existsPaths: [root, mjs], declared: ['claudinite-growth'] }));
   assert.equal(v.ok, true);
-  assert.equal(v.pack, 'grow_with_claudinite');
+  assert.equal(v.pack, 'claudinite-growth');
   assert.equal(v.task, 'growth-extract');
 });
 
@@ -263,14 +263,14 @@ test('after / on_interrupt / invocation_endpoint are optional and validated when
     code_work: 'node w.mjs', code_work_timeout: 60,
   };
   assert.deepEqual(validateTaskDeclaration(base), [], 'declaring none of them is legal');
-  assert.deepEqual(validateTaskDeclaration({ ...base, after: ['core/update'], on_interrupt: 'needs-human', invocation_endpoint: 'fleet' }), []);
+  assert.deepEqual(validateTaskDeclaration({ ...base, after: ['claudinite-lifecycle/update'], on_interrupt: 'needs-human', invocation_endpoint: 'fleet' }), []);
 
   const bad = (patch, re) => {
     const problems = validateTaskDeclaration({ ...base, ...patch });
     assert.equal(problems.length, 1, JSON.stringify(patch));
     assert.match(problems[0].what, re);
   };
-  bad({ after: 'core/update' }, /"after" is not an array/);
+  bad({ after: 'claudinite-lifecycle/update' }, /"after" is not an array/);
   bad({ after: ['update'] }, /"after" is not an array/);          // a bare id names no pack
   bad({ on_interrupt: 'retry' }, /"on_interrupt"/);
   bad({ invocation_endpoint: 'https://example.invalid/x' }, /kebab-case endpoint name/);

@@ -10,8 +10,8 @@ import {
 // The title is the identity's readable half; the ISSUE NUMBER is the identity.
 // Nothing ever encodes a date here — that was the slot grammar.
 test('a work-item title round-trips, with and without a qualifier', () => {
-  assert.equal(workItemTitle({ pack: 'core', task: 'update' }), '[claudinite-work] core/update');
-  assert.deepEqual(parseWorkItemTitle('[claudinite-work] core/update'), { pack: 'core', task: 'update', qualifier: null });
+  assert.equal(workItemTitle({ pack: 'claudinite-lifecycle', task: 'update' }), '[claudinite-work] claudinite-lifecycle/update');
+  assert.deepEqual(parseWorkItemTitle('[claudinite-work] claudinite-lifecycle/update'), { pack: 'claudinite-lifecycle', task: 'update', qualifier: null });
   assert.equal(workItemTitle({ pack: 'sheepdog', task: 'fleet-baseline', qualifier: 'member-repo-x' }),
     '[claudinite-work] sheepdog/fleet-baseline member-repo-x');
   assert.deepEqual(parseWorkItemTitle('[claudinite-work] sheepdog/fleet-baseline member-repo-x'),
@@ -19,21 +19,21 @@ test('a work-item title round-trips, with and without a qualifier', () => {
 });
 
 test('the slot mechanism\'s titles are invisible here — the two families are disjoint (S29)', () => {
-  assert.equal(parseWorkItemTitle('[claudinite-task] core/update d2026-08-14'), null);
+  assert.equal(parseWorkItemTitle('[claudinite-task] claudinite-lifecycle/update d2026-08-14'), null);
   assert.equal(isWorkItemTitle('Some ordinary issue'), false);
   assert.equal(isWorkItemTitle(`${WORK_PREFIX} basics/task-janitor`), true);
 });
 
 test('the body carries the task path first and the two scheduling fields', () => {
   const body = workItemBody({
-    taskPath: 'packs/core/tasks/update/task.md',
+    taskPath: 'packs/claudinite-lifecycle/tasks/update/task.md',
     notBefore: '2026-08-15T02:00:00.000Z',
     blockedBy: [812, 813],
     context: ['only the mount', 'nothing else'],
   });
-  assert.match(body.split('\n')[0], /^packs\/core\/tasks\/update\/task\.md$/);
+  assert.match(body.split('\n')[0], /^packs\/claudinite-lifecycle\/tasks\/update\/task\.md$/);
   assert.deepEqual(parseWorkItemBody(body), {
-    taskPath: 'packs/core/tasks/update/task.md',
+    taskPath: 'packs/claudinite-lifecycle/tasks/update/task.md',
     notBefore: '2026-08-15T02:00:00.000Z',
     blockedBy: [812, 813],
   });

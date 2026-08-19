@@ -100,7 +100,7 @@ judgment. For the **digest** that is picking the day's real accomplishments out 
 shortlist; on a day the fleet merged nothing the code-work writes the brief itself and requests no
 agent, because "nothing happened" needs no model but a *missing* file in a dated series has to stay
 legible as a fault. For the **fit sweep** it is a judgment plus a repo edit — confirming the
-suspicion and running the [adopt-pack](../core/skills/adopt-pack/SKILL.md) skill against the member —
+suspicion and running the [adopt-pack](../claudinite-lifecycle/skills/adopt-pack/SKILL.md) skill against the member —
 while enumerate, fingerprint and converge-the-issues stay in code. That one is ceilinged at `open-pr`
 and never auto-merges: declaring a pack switches on conformance checks that run in that member's CI
 from the moment they land.
@@ -110,7 +110,7 @@ implementation detail ([#749](https://github.com/missingbulb/Claudinite/issues/7
 missing-packs design ended in an enforcer-side agent stage, and its very first production run stopped
 at `needs-human` because the enforcer's executor is — correctly — scoped to the enforcer repo alone.
 What crosses a repo boundary is an issue and a `workflow_dispatch`, both over `FLEET_GITHUB_TOKEN`;
-the deprecated task-level `session_scope` ([scheduled-tasks.md](../core/scheduled-tasks.md)) has no
+the deprecated task-level `session_scope` ([scheduled-tasks.md](../claudinite-growth/scheduled-tasks.md)) has no
 place here. The digest's agent is not an exception — it reads what its code-work already fetched and
 writes one file in this repo.
 
@@ -225,7 +225,7 @@ There is **no coverage workflow**: preprocessing runs Action-side inside the rep
 workflow, where the Actions secret is already reachable, and each task's
 `required_secrets: ['FLEET_GITHUB_TOKEN']` stamps the name into that workflow's env — which is what
 asks the owner for it. A workflow that exists only to hold a secret is redundant
-([scheduled-tasks.md](../core/scheduled-tasks.md)).
+([scheduled-tasks.md](../claudinite-growth/scheduled-tasks.md)).
 
 ## Rules (`RULES.md`)
 

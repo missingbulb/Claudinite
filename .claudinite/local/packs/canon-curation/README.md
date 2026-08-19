@@ -4,7 +4,7 @@ Claudinite's own curation duties — the fleet-facing work only **Claudinite** r
 members' lessons into the shared canon, sweeping the fleet's stacks for technologies the canon does
 not yet home, and policing the corpus's `packs/` tree. (The
 prose-to-checks backlog sweep is no longer canon-only — it moved to
-[grow_with_claudinite](../../../../packs/grow_with_claudinite/README.md) as a per-repo task with a
+[claudinite-growth](../../../../packs/claudinite-growth/README.md) as a per-repo task with a
 `pack_paths` config, so every repo sweeps its own packs and Claudinite also its core `packs/`.) A
 **local pack** of the canon home
 (`.claudinite/local/packs/`, by owner decision 2026-07-19: Claudinite-maintaining-Claudinite is
@@ -16,7 +16,7 @@ the home repo's own scheduler exactly like a canon pack's.
 **Declaration cardinality is the mechanism.** A pack's tasks run once per *declaring* repo, so a
 pack only the home repo declares yields exactly one work item per task per occurrence — "central,
 once" with no bespoke orchestrator step. Un-declaring the pack freezes canon absorption without touching
-the members' side ([grow_with_claudinite](../../../../packs/grow_with_claudinite/README.md)).
+the members' side ([claudinite-growth](../../../../packs/claudinite-growth/README.md)).
 
 | Task | Runs when | Where it lands |
 |---|---|---|
@@ -40,7 +40,7 @@ the members' side ([grow_with_claudinite](../../../../packs/grow_with_claudinite
   and open an owner-reviewed PR authoring the missing `packs/<tech>/`. A pack is authored because
   particular members' files demonstrated it, so each of those members also gets an issue asking it to
   adopt the pack once the PR merges and its mount carries it. Its per-repo namesake in
-  [grow_with_claudinite](../../../../packs/grow_with_claudinite/tasks/growth-discover-packs/task.md)
+  [claudinite-growth](../../../../packs/claudinite-growth/tasks/growth-discover-packs/task.md)
   is the other side of that line — it authors a repo's own **local** packs and may never re-create what
   a canon pack homes, so only this task can close a canon gap. (Promote's stub-minting is narrower
   still: one lesson's technology, minted as a seed; this task authors from the whole fleet's usage.)
@@ -54,13 +54,13 @@ the members' side ([grow_with_claudinite](../../../../packs/grow_with_claudinite
 
 How a lesson is learned in a consuming project, lifted into the shared canon when it's portable,
 and pruned back out of the project once the canon owns it. Two packs split it by who declares them:
-**[grow_with_claudinite](../../../../packs/grow_with_claudinite/README.md)** (member-side: extract + dedup + pack
+**[claudinite-growth](../../../../packs/claudinite-growth/README.md)** (member-side: extract + dedup + pack
 discovery, seeded, opt-out by removal) and **canon-curation** (this pack, the central stage).
 
 ```
-EXTRACT   per member    → auto-merging PR against the member's main   (grow_with_claudinite)
+EXTRACT   per member    → auto-merging PR against the member's main   (claudinite-growth)
 PROMOTE   central, once → PR against Claudinite's main                (canon-curation)
-DEDUP     per member    → PR against the member's main                (grow_with_claudinite)
+DEDUP     per member    → PR against the member's main                (claudinite-growth)
 ```
 
 All three are ordinary, **independent** planner units — there is no barrier and no phase ordering.
@@ -77,7 +77,7 @@ wrongful prune deletes a real local lesson. Extract lands through an **auto-merg
 member's `main` — it writes only that project's own local packs, so it earns a CI gate and a PR trail
 but not a human reviewer; auto-merge keeps the fleet's daily lesson-capture from flooding review
 requests. (An owner-requested, in-session retrospective delivers a PR for a human to review — see
-[extracting-lessons.md](../../../../packs/grow_with_claudinite/extracting-lessons.md).)
+[extracting-lessons.md](../../../../packs/claudinite-growth/extracting-lessons.md).)
 
 **Central execution, no plumbing.** Promote runs from the Claudinite home repo with a fleet-wide
 token, so it reads every participating member and opens its canon PR directly here — no
@@ -92,7 +92,7 @@ participating member**. That cross-repo reach is the whole reason a second endpo
 exactly what must stay off the endpoint an ordinary hand-off calls.
 
 Reach is a property of **which endpoint is called**, and of nothing else: there is no session scope
-anywhere in the system, and no label routes a hand-off ([scheduled-tasks.md](../../../../packs/core/scheduled-tasks.md)).
+anywhere in the system, and no label routes a hand-off ([scheduled-tasks.md](../../../../packs/claudinite-growth/scheduled-tasks.md)).
 The `session_scope: 'fleet'` these tasks used to declare lost its last reader with the slot
 scheduler and is gone from both.
 
@@ -104,7 +104,7 @@ endpoint this repo has not configured — or one whose token secret is unset —
 stopped producing anything, read its most recent work item; the reason is written there.
 
 The session-scoped sibling of this nightly lifecycle — mining a single working session for lessons
-— lives with [the growth pack's extract-from-conversations skill](../../../../packs/grow_with_claudinite/skills/extract-from-conversations/SKILL.md)
+— lives with [the growth pack's extract-from-conversations skill](../../../../packs/claudinite-growth/skills/extract-from-conversations/SKILL.md)
 (applied by the conversation half of its growth-extract daily task over captured logs), and the
 member-side method docs (extract, dedup, pack discovery, and how a project's local packs are
-identified) live with [grow_with_claudinite](../../../../packs/grow_with_claudinite/README.md).
+identified) live with [claudinite-growth](../../../../packs/claudinite-growth/README.md).

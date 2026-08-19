@@ -68,7 +68,7 @@ test('interview: a stale answer is advisory (never run-failing); pending questio
   // stays unanswered — which must NOT surface in the sweep (an unattended nightly
   // run can't answer it; only SessionStart may nudge).
   const root = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({
-    packs: ['core', { id: 'barriers', answers: { 'old-id': 'kept intent' } }],
+    packs: ['claudinite-lifecycle', { id: 'barriers', answers: { 'old-id': 'kept intent' } }],
   }) } });
   try {
     const r = runCli(root);
@@ -271,13 +271,13 @@ test('--init writes the pack declaration once and is idempotent', () => {
     assert.ok(existsSync(join(root, '.claudinite-checks.json')));
     const first = readFileSync(join(root, '.claudinite-checks.json'), 'utf8');
     // No pack is active by default, so --init materializes the seeded-by-default
-    // declared packs: basics and core plus grow_with_claudinite, tidy-repo and
+    // declared packs: basics and core plus claudinite-growth, tidy-repo and
     // claude-code-web-users-support (each opt-out by removal) — and the requires
     // closure: basics pulls core and git-github in, core pulls the barriers
     // mechanism pack in, each materialized with its provenance (`via`). core is
     // seeded AND required, so it appears once, in the seeded order, with no `via`.
     assert.deepEqual(JSON.parse(first).packs,
-      ['basics', 'core', { id: 'barriers', via: ['core'] }, { id: 'git-github', via: ['basics'] }, 'claude-code-web-users-support', 'grow_with_claudinite', 'tidy-repo']);
+      ['basics', 'claudinite-lifecycle', { id: 'barriers', via: ['claudinite-lifecycle'] }, { id: 'git-github', via: ['basics'] }, 'claude-code-web-users-support', 'claudinite-growth', 'tidy-repo']);
     // The delivery selection is materialized, never an implicit default —
     // and it is the ONLY key beside the declaration: empty rules/accept
     // boilerplate is noise, not settings (#385).
@@ -322,11 +322,11 @@ test('no pack runs undeclared — basics included', () => {
 });
 
 test('a skill-owned check rides its owning pack\'s activation, and is listed', () => {
-  // routine-structure is bundled in grow_with_claudinite
-  // (packs/grow_with_claudinite/skills/unattended-agents/): it runs when that
+  // routine-structure is bundled in claudinite-growth
+  // (packs/claudinite-growth/skills/unattended-agents/): it runs when that
   // pack is declared and stays silent when no pack is.
   const artifact = { 'dev/routines/demo/routine.md': 'Run `bash dev/routines/demo/preconditions.sh`.\n' };
-  const declared = makeRepo({ changed: { ...artifact, '.claudinite-checks.json': JSON.stringify({ packs: ['grow_with_claudinite'] }) } });
+  const declared = makeRepo({ changed: { ...artifact, '.claudinite-checks.json': JSON.stringify({ packs: ['claudinite-growth'] }) } });
   const undeclared = makeRepo({ changed: { ...artifact } });
   try {
     const r = runCli(declared);

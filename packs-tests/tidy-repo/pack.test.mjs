@@ -169,7 +169,7 @@ test('tidy-branches: a standing pile of branches that nothing moved is not re-sw
 });
 
 test('tidy-branches: ignores the orphan conversation-logs and the maintenance delivery branch', () => {
-  // conversation-logs is a grow_with_claudinite log stream and
+  // conversation-logs is a claudinite-growth log stream and
   // claudinite/maintenance is Claudinite's own delivery branch — never project
   // work, so neither may reach the branch review.
   const v = tidyBranches.precondition(S({

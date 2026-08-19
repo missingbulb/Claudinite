@@ -1,12 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, cpSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
+
+const REPO_ROOT = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 import {
   resolveDeclaredPacks, packEntryId, isActive, discoverPacks, loadPacks,
   LOCAL_DECL_PREFIX, declTokenFor,
 } from '../../engine/pack_loader/pack-registry.mjs';
+import { canonicalPackVersions, RENAMED_PACKS } from '../../engine/pack_loader/renamed-packs.mjs';
 
 // The import closure the declaration is written through (bootstrap `--init` and
 // the baselining backfill): declaring a pack materializes its `requires`.
@@ -279,4 +283,71 @@ test('loadPacks: thin array wrapper over discoverPacks', async () => {
   const packs = await loadPacks();
   assert.ok(Array.isArray(packs));
   assert.ok(packs.some((p) => p.id === 'basics'));
+});
+
+// --- renamed packs ---------------------------------------------------------
+// The rename tolerance is what keeps a member from going dark for a cycle: its
+// declaration and its mount are renamed by different halves of one converge, and
+// nothing may depend on which half landed first. These assertions are ABOUT the
+// legacy spellings, so a repo-wide rename sweep must never "fix" them into the new
+// ones — that leaves the test asserting today's id maps to itself, which is green
+// and vacuous.
+test('packEntryId: a renamed pack resolves to its current id from either spelling', () => {
+  assert.equal(packEntryId('core'), 'claudinite-lifecycle');
+  assert.equal(packEntryId({ id: 'grow_with_claudinite', config: {} }), 'claudinite-growth');
+  assert.equal(packEntryId('claudinite-lifecycle'), 'claudinite-lifecycle');
+});
+
+test('packEntryId: a local pack keeps its own namespace', () => {
+  assert.equal(packEntryId(`${LOCAL_DECL_PREFIX}core`), 'core');
+});
+
+test('isActive: a declaration still carrying the old spelling activates the renamed pack', () => {
+  const config = { packs: ['core', { id: 'grow_with_claudinite' }] };
+  assert.equal(isActive({ id: 'claudinite-lifecycle' }, config), true);
+  assert.equal(isActive({ id: 'claudinite-growth' }, config), true);
+});
+
+test('resolveDeclaredPacks: the old spelling pulls in the renamed pack requires', () => {
+  const packs = [{ id: 'claudinite-lifecycle', requires: ['barriers'] }, { id: 'barriers' }];
+  const ids = resolveDeclaredPacks(['core'], packs).map(packEntryId);
+  assert.deepEqual(ids, ['claudinite-lifecycle', 'barriers']);
+});
+
+test('canonicalPackVersions: a version stamped under the old key is not read as absent', () => {
+  assert.deepEqual(canonicalPackVersions({ core: 6, basics: 3 }), { 'claudinite-lifecycle': 6, basics: 3 });
+  // Mid-converge a declaration can carry both; today's spelling is the one the
+  // flows wrote, so it wins rather than being clobbered by the residue.
+  assert.deepEqual(canonicalPackVersions({ core: 5, 'claudinite-lifecycle': 6 }), { 'claudinite-lifecycle': 6 });
+});
+
+// Every legacy spelling maps STRAIGHT to a live pack id, never to another legacy
+// one: a chain would need as many normalization passes as there have been renames.
+test('RENAMED_PACKS: no legacy spelling points at another legacy spelling', () => {
+  for (const to of Object.values(RENAMED_PACKS)) {
+    assert.ok(!Object.hasOwn(RENAMED_PACKS, to), `${to} is itself renamed — map the older spelling straight to today's`);
+  }
+});
+
+// A mount can hold a pack directory the rename record already moved while the
+// pack.mjs inside it still carries the old id — the tree is replaced only once the
+// canon ships a version above the one that repo has. The pack must still activate,
+// or it goes inert taking its checks, prose and tasks with it, silently.
+test('discoverPacks: a mounted pack still announcing its old id activates under its current one', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'claudinite-corpus-'));
+  try {
+    // A real corpus: the loader resolves packs/ relative to its own location, so the
+    // fixture copies the loader in rather than passing a root it does not take.
+    cpSync(join(REPO_ROOT, 'engine', 'pack_loader'), join(root, 'engine', 'pack_loader'), { recursive: true });
+    mkdirSync(join(root, 'packs', 'claudinite-lifecycle'), { recursive: true });
+    writeFileSync(join(root, 'packs', 'claudinite-lifecycle', 'pack.mjs'),
+      "export default { id: 'core', detect: null, worldRules: [], ruleRoutingGuidance: { belongs: 'x', excludes: 'y' } };\n");
+    const registry = await import(pathToFileURL(join(root, 'engine', 'pack_loader', 'pack-registry.mjs')).href);
+    const { packs } = await registry.discoverPacks({});
+    assert.deepEqual(packs.map((p) => p.id), ['claudinite-lifecycle'],
+      'the stale id resolves to the pack it has become');
+    assert.equal(registry.isActive(packs[0], { packs: ['claudinite-lifecycle'] }), true);
+    assert.equal(registry.isActive(packs[0], { packs: ['core'] }), true,
+      'and a declaration not yet converged still activates it');
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });

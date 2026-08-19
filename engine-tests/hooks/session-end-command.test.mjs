@@ -89,13 +89,13 @@ test('a repo with no declaration at all exits clean', () => {
   } finally { cleanup(root); }
 });
 
-test('the grow_with_claudinite pack ships the capture step the runner picks up', () => {
+test('the claudinite-growth pack ships the capture step the runner picks up', () => {
   // The one coupling worth pinning across the engine/pack boundary: the runner looks
   // for `session-end.mjs` in a pack dir, and this pack's whole SessionEnd capture
   // depends on being found by exactly that name. A rename on either side is silent.
   const packStep = join(dirname(fileURLToPath(import.meta.url)), '..', '..',
-    'packs', 'grow_with_claudinite', 'session-end.mjs');
-  assert.ok(existsSync(packStep), 'grow_with_claudinite/session-end.mjs is what the runner discovers');
+    'packs', 'claudinite-growth', 'session-end.mjs');
+  assert.ok(existsSync(packStep), 'claudinite-growth/session-end.mjs is what the runner discovers');
   const source = readFileSync(packStep, 'utf8');
   assert.match(source, /CLAUDINITE_SESSION_ISSUE/, 'and it reads the issue the runner passes on');
   assert.match(source, /'0'/, 'defaulting to issue 0 — no associated issue — when none was named');

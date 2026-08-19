@@ -5,14 +5,14 @@ import {
 } from '../../../../packs/sheepdog/tasks/fleet-usage/aggregate-fleet-usage.mjs';
 import { unchanged, renderUsageSummary } from '../../../../packs/sheepdog/tasks/fleet-usage/worker.mjs';
 import task from '../../../../packs/sheepdog/tasks/fleet-usage/task.mjs';
-import { USAGE_PATH } from '../../../../packs/grow_with_claudinite/tasks/usage-fold/worker.mjs';
+import { USAGE_PATH } from '../../../../packs/claudinite-growth/tasks/usage-fold/worker.mjs';
 // The sweep itself imports no format code — it copies members' rows through. These
 // tests read a row back the way any consumer of the file does: with the header that
 // member published beside its rows. The codec is imported here only to BUILD a
 // realistic member fixture and to read one back, never by the code under test.
 import {
   USAGE_FIELDS, decodeRow, encodeUsageFile,
-} from '../../../../packs/grow_with_claudinite/tasks/usage-fold/usage-format.mjs';
+} from '../../../../packs/claudinite-growth/tasks/usage-fold/usage-format.mjs';
 
 const member = (repo, weeks, days = {}, foldedThrough = '2026-07-27') => ({
   repo, usage: { version: 1, foldedThrough, days, weeks },
@@ -77,7 +77,7 @@ test('aggregate keeps each member\'s task invocations at week x repo x task grai
   const file = aggregate({
     members: [
       member('owner/alpha', { '2026-W30': week({
-        tasks: { 'tidy-repo/tidy-issues': taskRow({ agent: 7 }), 'grow_with_claudinite/usage-fold': taskRow({ code_work: 7, skipped: 161 }) },
+        tasks: { 'tidy-repo/tidy-issues': taskRow({ agent: 7 }), 'claudinite-growth/usage-fold': taskRow({ code_work: 7, skipped: 161 }) },
       }) }),
       member('owner/beta', { '2026-W30': week({ tasks: { 'tidy-repo/tidy-issues': taskRow({ skipped: 7 }) } }) }),
       // A member still on an older fold carries no `tasks` key at all — it must land as

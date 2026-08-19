@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  mkdtempSync, mkdirSync, writeFileSync, readFileSync, copyFileSync,
+  mkdtempSync, mkdirSync, writeFileSync, readFileSync, cpSync,
   existsSync, lstatSync, readlinkSync, realpathSync, symlinkSync, rmSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -19,13 +19,11 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 // one shape, #385).
 function makeCorpus({ packs }, root = mkdtempSync(join(tmpdir(), 'claudinite-corpus-'))) {
   mkdirSync(join(root, 'packs'), { recursive: true });
-  mkdirSync(join(root, 'engine', 'pack_loader'), { recursive: true });
-  mkdirSync(join(root, 'engine', 'pack_loader'), { recursive: true });
-  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-registry.mjs'), join(root, 'engine', 'pack_loader', 'pack-registry.mjs'));
-  // The registry validates every manifest against the spec, so the fake corpus
-  // needs the spec module too — it is part of the loader, not an optional extra.
-  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-schema.mjs'), join(root, 'engine', 'pack_loader', 'pack-schema.mjs'));
-  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'mount-skills.mjs'), join(root, 'engine', 'pack_loader', 'mount-skills.mjs'));
+  // The WHOLE loader directory, never an enumerated subset: the registry pulls in
+  // its siblings (the manifest spec, the renamed-pack map) and a fixture listing
+  // files by hand goes quietly fail-soft the day one is added — mounting nothing
+  // and reporting success.
+  cpSync(join(REPO_ROOT, 'engine', 'pack_loader'), join(root, 'engine', 'pack_loader'), { recursive: true });
   for (const [id, def] of Object.entries(packs)) {
     const { skills = [], ...manifest } = def;
     mkdirSync(join(root, 'packs', id), { recursive: true });

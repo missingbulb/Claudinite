@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  mkdtempSync, mkdirSync, writeFileSync, copyFileSync, rmSync, readFileSync,
+  mkdtempSync, mkdirSync, writeFileSync, cpSync, rmSync, readFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
@@ -23,9 +23,9 @@ function makeCorpus(packs) {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-corpus-'));
   mkdirSync(join(root, 'packs'), { recursive: true });
   mkdirSync(join(root, 'engine', 'pack_loader'), { recursive: true });
-  for (const f of ['pack-registry.mjs', 'pack-schema.mjs', 'run-pack-session-start.mjs']) {
-    copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', f), join(root, 'engine', 'pack_loader', f));
-  }
+  // The whole loader directory — see mount-skills.test.mjs: an enumerated subset
+  // breaks fail-soft the day the registry gains a sibling.
+  cpSync(join(REPO_ROOT, 'engine', 'pack_loader'), join(root, 'engine', 'pack_loader'), { recursive: true });
   for (const [id, { step, ...manifest }] of Object.entries(packs)) {
     mkdirSync(join(root, 'packs', id), { recursive: true });
     writeFileSync(

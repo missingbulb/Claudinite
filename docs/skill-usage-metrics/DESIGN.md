@@ -61,9 +61,9 @@ The canon knows **mechanisms**, never repos. The fleet-enforcer repo knows
 
 | piece | home | knows about |
 |---|---|---|
-| capture (merge + SessionEnd + the executor's explicit call) | `grow_with_claudinite` pack (canon) | its own session, its own logs branch |
+| capture (merge + SessionEnd + the executor's explicit call) | `claudinite-growth` pack (canon) | its own session, its own logs branch |
 | the task-run record format | `engine/scheduler/run-record.mjs` (core) | the scheduler's own outcomes — no pack, no repo |
-| `usage-fold` (daily) | `grow_with_claudinite/tasks/usage-fold/` (canon) | its own logs branch, its own aggregate file |
+| `usage-fold` (daily) | `claudinite-growth/tasks/usage-fold/` (canon) | its own logs branch, its own aggregate file |
 | `fleet-usage` (daily) | `sheepdog/tasks/fleet-usage/` (canon pack; runs only where sheepdog is declared) | nothing hardcoded — members enumerated at runtime from the sheepdog config (`{ owner, kind, exclude, canonRepo }`) via `fleet-api.mjs`, exactly as `fleet-census` does |
 | the fleet aggregate | the fleet-enforcer repo's default branch | — |
 
@@ -129,7 +129,7 @@ consumer's `.claude/settings.json` like its siblings) runs capture with
   and the post-merge tail of merging ones); every miss leaves exactly today's
   behaviour. No correctness anywhere depends on the hook having fired.
 - **Fail-soft.** It swallows every error, logs the attempt via `hooklog`, and
-  must never block a session from ending. Absent `grow_with_claudinite` in the
+  must never block a session from ending. Absent `claudinite-growth` in the
   repo's declared packs, it exits without acting.
 - Scrubbing is the existing capture scrub, unchanged — the hook adds a capture
   *event*, not a new write path.
@@ -404,7 +404,7 @@ and sit beside the §4.2 census; the two populations stay distinct keys.
 
 ## 5. The per-repo aggregate — `.claudinite/local/usage.GENERATED.json`
 
-Written by **`usage-fold`**: an agentless daily task of `grow_with_claudinite`
+Written by **`usage-fold`**: an agentless daily task of `claudinite-growth`
 (deterministic preprocessing, no agent, cheapest possible run), outcome
 `merged-pr` — the worker opens a PR with the regenerated file and arms
 auto-merge; a byte-identical recompute opens nothing. It lives under
@@ -480,7 +480,7 @@ there is no shared renderer, because a row on a line is a few lines of code and
 the two files have different shapes.
 
 The format lives in the fold's own task folder
-(`grow_with_claudinite/tasks/usage-fold/usage-format.mjs`), beside the only code
+(`claudinite-growth/tasks/usage-fold/usage-format.mjs`), beside the only code
 that writes the file and the only code that reads it back — its own next run.
 **The header in the file is what every other consumer reads**, which is why the
 vocabulary is declared in the data rather than in a module: §6's fleet sweep

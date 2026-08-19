@@ -4,6 +4,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { computeVendorSet, SHARED_SUBDIR } from '../vendoring/compute-vendor-set.mjs';
 import { loadPacks, resolveDeclaredPacks, packEntryId } from '../engine/pack_loader/pack-registry.mjs';
 import { ENGINE_VERSION } from '../engine/version.mjs';
+import { canonicalPackVersions } from '../engine/pack_loader/renamed-packs.mjs';
 import { DECLARATION_FILE } from '../engine/checks/helpers/active-migrations.mjs';
 import { NEEDS_HUMAN, runSelfTest, deliveryDecision } from './engine-update.mjs';
 import { isPackFile } from './pack-update.mjs';
@@ -87,7 +88,11 @@ export async function installPacks(targetRoot, ids, {
   try { raw = JSON.parse(readFileSync(settingsPath, 'utf8')); }
   catch (e) { return outcome(NEEDS_HUMAN, `${DECLARATION_FILE} is not valid JSON: ${e.message}`); }
 
-  const installed = raw.claudinite && typeof raw.claudinite === 'object' ? raw.claudinite : null;
+  const rawStamp = raw.claudinite && typeof raw.claudinite === 'object' ? raw.claudinite : null;
+  // Canonicalized before planInstall reads it: a renamed pack whose version sits under
+  // the old key would otherwise be "not installed", and installing re-stamps it at
+  // latest having run none of the records in its gap.
+  const installed = rawStamp && { ...rawStamp, packVersions: canonicalPackVersions(rawStamp.packVersions ?? {}) };
   const engineVersion = typeof installed?.engineVersion === 'number' ? installed.engineVersion : ENGINE_VERSION;
   // `packs` is injectable for the same reason `selfTestRun` is: the seed-op path is
   // only reachable through a manifest that declares one, and the canon deliberately

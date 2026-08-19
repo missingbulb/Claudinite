@@ -11,11 +11,11 @@ vendored into every mount regardless of declaration, so a member session can see
 
 | Pack | Active when | Checks | Prose rules |
 |---|---|---|---|
-| <img src="core/badge.svg" width="18" height="18" alt=""> [core](core/README.md) | declared (seeded by `--init`, mandatory — pulled in via `basics` `requires`) | 10 | 8 (Claudinite's own surface, plus the scheduled-task contract) |
+| <img src="claudinite-lifecycle/badge.svg" width="18" height="18" alt=""> [claudinite-lifecycle](claudinite-lifecycle/README.md) | declared (seeded by `--init`, mandatory — pulled in via `basics` `requires`) | 10 | 8 (Claudinite's own surface, plus the scheduled-task contract) |
 | <img src="basics/badge.svg" width="18" height="18" alt=""> [basics](basics/README.md) | declared (seeded by `--init`) | 13 | 49 (working-discipline + task-lifecycle) |
 | <img src="barriers/badge.svg" width="18" height="18" alt=""> [barriers](barriers/README.md) | declared (or pulled in via `requires`) | 1 | 0 (config-driven segregation) |
 | <img src="git-github/badge.svg" width="18" height="18" alt=""> [git-github](git-github/README.md) | pulled in via `basics` `requires` | 0 | 0 (2 skills: git-github-advanced, merge-to-main) |
-| <img src="grow_with_claudinite/badge.svg" width="18" height="18" alt=""> [grow_with_claudinite](grow_with_claudinite/README.md) | declared (seeded by `--init`, opt-out by removal) | 1 | 0 — growth member-side tasks (extract over activity + conversations / dedup / pack discovery / prose-to-checks) + in-session merge capture |
+| <img src="claudinite-growth/badge.svg" width="18" height="18" alt=""> [claudinite-growth](claudinite-growth/README.md) | declared (seeded by `--init`, opt-out by removal) | 1 | 0 — growth member-side tasks (extract over activity + conversations / dedup / pack discovery / prose-to-checks) + in-session merge capture |
 | <img src="tidy-repo/badge.svg" width="18" height="18" alt=""> [tidy-repo](tidy-repo/README.md) | declared (seeded by `--init`, opt-out by removal) | 0 | 2 (policy (assess-only-vs-act) + 3 per-dimension tidy tasks (issues daily, PRs/branches weekly)) |
 | <img src="sheepdog/badge.svg" width="18" height="18" alt=""> [sheepdog](sheepdog/README.md) | declared (opt-in; the fleet-enforcer repo only) | 1 | 0 (fleet-enforcer marker + config + the agentless `fleet-roster` daily task (coverage + freshness in one walk)) |
 | <img src="claude-code-web-users-support/badge.svg" width="18" height="18" alt=""> [claude-code-web-users-support](claude-code-web-users-support/RULES.md) | declared (seeded by `--init`) | 2 | 4 (what a project offers people working from the web — their personal interaction preferences, and the environment Setup script body) |
@@ -215,7 +215,7 @@ state: once written, it belongs to the repo — edit it, move it, or delete it.
 
 **The declaration is what makes a row wrong, so the row is refreshed where the declaration changes:**
 adopting a pack re-runs the converge with `--badges`
-([`core/skills/adopt-pack/SKILL.md`](core/skills/adopt-pack/SKILL.md), step 3),
+([`claudinite-lifecycle/skills/adopt-pack/SKILL.md`](claudinite-lifecycle/skills/adopt-pack/SKILL.md), step 3),
 which rewrites the row in place. Nothing else derives it — a repo that edits its declaration by hand
 runs `converge-wiring <owner/repo> --badges` itself, or lives with a stale row.
 
@@ -279,7 +279,7 @@ The answers live **verbatim** on the pack's entry in `.claudinite-checks.json` (
 records the project's intent beside the `config` distilled from it — provenance for the
 configuration, versioned and diffable, and re-derivable if the pack's config shape later changes.
 The **gap** — declared question ids minus answered ids — drives the asking
-([interview.mjs](core/skills/adopt-claudinite/interview.mjs) — the adoption skill's bundled
+([interview.mjs](claudinite-lifecycle/skills/adopt-claudinite/interview.mjs) — the adoption skill's bundled
 machinery): at adoption every question is pending; when the canon later adds
 a question to a pack, just that one surfaces in every consumer; a pack with no questions adds
 nothing. An answered question stays answered — "n/a, none wanted" is an answer, distinct from

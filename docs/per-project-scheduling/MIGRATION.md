@@ -35,7 +35,7 @@ Ground rules for every phase:
 > **Deviations from this plan (as-built):**
 > - **No `scheduled-tasks` pack.** The two new checks (`scheduler-workflow-shape`,
 >   `task-declaration-shape`) live in the **basics** pack, with the doctrine in
->   [`packs/core/scheduled-tasks.md`](../../packs/core/scheduled-tasks.md).
+>   [`packs/claudinite-growth/scheduled-tasks.md`](../../packs/claudinite-growth/scheduled-tasks.md).
 >   Scheduling is baseline discipline, active wherever basics is declared
 >   (everywhere) — so a consumer needs no separate declaration to get the guards.
 > - **Task conversions are ADDITIVE, not a rename.** Each canon pack now carries
@@ -91,7 +91,7 @@ Ground rules for every phase:
    `.claudinite/local_packs/` in the same change.
 3. **Convert canon pack tasks**: each `packs/<p>/run_daily/<t>.mjs` +
    `<t>.worker.md` → `packs/<p>/tasks/<t>/{task.mjs,task.md}` with the
-   declarations per DESIGN.md §6 (grow_with_claudinite's root-level worker docs
+   declarations per DESIGN.md §6 (claudinite-growth's root-level worker docs
    move into their task dirs). Gates become preconditions over the new signals
    object; `smarts` → `model`; `full_sweep_supported` dropped. Two conversions
    are structural, not mechanical:

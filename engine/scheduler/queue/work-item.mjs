@@ -10,6 +10,10 @@
 // additive change is the strongly preferred shape and a rename needs a migration.
 //
 // Parse/serialize of the two fields lives here and nowhere else (DESIGN §9).
+//
+// The one import, and a frozen constant at that: the pack-rename map, which this
+// module needs to keep reading titles written before a rename (see parseWorkItemTitle).
+import { canonicalPackId } from '../../pack_loader/renamed-packs.mjs';
 
 // The title prefix. Disjoint from the slot mechanism's `[claudinite-task]` on
 // purpose: the two mechanisms coexist per-repo behind `taskScheduler.dispatch`,
@@ -66,9 +70,14 @@ export const workItemTitle = ({ pack, task, qualifier = null }) =>
 // pack and task ids are single path segments; the qualifier is whatever follows.
 const TITLE_RE = /^\[claudinite-work\]\s+([^/\s]+)\/([^/\s]+)(?:\s+(\S.*))?$/;
 
+// The pack half is canonicalized on the way out. A work item's title is STORED
+// DATA — it sits on an open GitHub issue that outlives any one converge — so items
+// filed before a pack was renamed still carry the old spelling. Read literally, the
+// tick would not recognise its own live item, would file a second one beside it, and
+// would leave the first orphaned in the queue with nothing ever draining it.
 export function parseWorkItemTitle(title) {
   const m = TITLE_RE.exec(String(title ?? '').trim());
-  return m ? { pack: m[1], task: m[2], qualifier: m[3]?.trim() || null } : null;
+  return m ? { pack: canonicalPackId(m[1]), task: m[2], qualifier: m[3]?.trim() || null } : null;
 }
 
 export const isWorkItemTitle = (title) => parseWorkItemTitle(title) !== null;

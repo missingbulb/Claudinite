@@ -48,7 +48,7 @@ import {
   unknownPacks, unansweredQuestions, qualify,
 } from './force-add-packs.mjs';
 
-// The member-side task every fan-out fires — grow_with_claudinite's, present in
+// The member-side task every fan-out fires — claudinite-growth's, present in
 // every member because that pack is seeded by default. Named once; the member task's
 // directory name is the other half of this coupling, pinned by the protocol test.
 export const MEMBER_TASK = 'adopt-requested-packs';

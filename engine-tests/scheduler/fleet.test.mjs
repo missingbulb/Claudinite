@@ -23,14 +23,14 @@ test('enumerates covered members, excluding the canon, forks and archived repos'
       { name: 'notmine', full_name: 'other/notmine', owner: { login: 'other' }, default_branch: 'main' },
     ] }],
     // app is a covered member; its declaration
-    [/\/repos\/acme\/app\/contents\/\.claudinite-checks\.json/, checksFile({ packs: ['basics', 'grow_with_claudinite'] })],
+    [/\/repos\/acme\/app\/contents\/\.claudinite-checks\.json/, checksFile({ packs: ['basics', 'claudinite-growth'] })],
     [/\/repos\/acme\/app\/contents\/\.claudinite\/local/, { status: 404, json: null }],
     [/\/repos\/acme\/app\/commits/, { status: 200, json: [] }],
   ]);
   const fleet = await readFleet(gh, opts());
   assert.equal(fleet.error, undefined);
   assert.deepEqual(fleet.members.map((m) => m.repo), ['acme/app']); // canon/fork/archived/other excluded
-  assert.deepEqual(fleet.members[0].activePacks, ['basics', 'grow_with_claudinite']);
+  assert.deepEqual(fleet.members[0].activePacks, ['basics', 'claudinite-growth']);
 });
 
 test('an uncovered repo (no declaration file) is not a member', async () => {
@@ -50,7 +50,7 @@ test('an uncovered repo (no declaration file) is not a member', async () => {
 
 test('reads pack configs, the scheduler marker, and the provenance stamp', async () => {
   const decl = {
-    packs: ['basics', { id: 'grow_with_claudinite', config: { promote: false } }],
+    packs: ['basics', { id: 'claudinite-growth', config: { promote: false } }],
     taskScheduler: { dailyHour: 4 },
     claudinite: { updated: '2026-07-10T00:00:00Z', ref: 'abc123' },
   };
@@ -63,8 +63,8 @@ test('reads pack configs, the scheduler marker, and the provenance stamp', async
     [/\/repos\/acme\/app\/commits/, { status: 200, json: [] }],
   ]);
   const [m] = (await readFleet(gh, opts())).members;
-  assert.deepEqual(m.activePacks, ['basics', 'grow_with_claudinite']); // bare ids, both forms
-  assert.deepEqual(m.packConfigs.grow_with_claudinite, { promote: false });
+  assert.deepEqual(m.activePacks, ['basics', 'claudinite-growth']); // bare ids, both forms
+  assert.deepEqual(m.packConfigs['claudinite-growth'], { promote: false });
   assert.equal(m.schedulesItself, true);
   assert.deepEqual(m.stamp, { updated: '2026-07-10T00:00:00Z', ref: 'abc123' });
 });
@@ -74,7 +74,7 @@ test('localPacksChanged fires when a window commit touched a local-pack root (ei
     [/\/user\/repos\?affiliation=owner/, { status: 200, json: [
       { name: 'app', full_name: 'acme/app', owner: { login: 'acme' }, default_branch: 'main' },
     ] }],
-    [/\/repos\/acme\/app\/contents\/\.claudinite-checks\.json/, checksFile({ packs: ['grow_with_claudinite'] })],
+    [/\/repos\/acme\/app\/contents\/\.claudinite-checks\.json/, checksFile({ packs: ['claudinite-growth'] })],
     // has a local pack dir under the canonical root
     [/\/repos\/acme\/app\/contents\/\.claudinite\/local\/packs$/, { status: 200, json: [{ type: 'dir', name: 'app' }] }],
     [/\/repos\/acme\/app\/contents\/\.claudinite\/local_packs$/, { status: 404, json: null }],
@@ -91,7 +91,7 @@ test('localPacksChanged stays false when the window touched only product code', 
     [/\/user\/repos\?affiliation=owner/, { status: 200, json: [
       { name: 'app', full_name: 'acme/app', owner: { login: 'acme' }, default_branch: 'main' },
     ] }],
-    [/\/repos\/acme\/app\/contents\/\.claudinite-checks\.json/, checksFile({ packs: ['grow_with_claudinite'] })],
+    [/\/repos\/acme\/app\/contents\/\.claudinite-checks\.json/, checksFile({ packs: ['claudinite-growth'] })],
     [/\/repos\/acme\/app\/contents\/\.claudinite\/local\/packs$/, { status: 200, json: [{ type: 'dir', name: 'app' }] }],
     [/\/repos\/acme\/app\/contents\/\.claudinite\/local_packs$/, { status: 404, json: null }],
     [/\/repos\/acme\/app\/commits\?/, { status: 200, json: [{ sha: 'c1' }] }],
