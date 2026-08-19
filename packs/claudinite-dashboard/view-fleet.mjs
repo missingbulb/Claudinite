@@ -4,7 +4,9 @@
 import * as gh from './github.mjs';
 import {
   summariseMember, rankMembers, rollUp, packSpread, taskSpread,
+  parseEngineVersion, parsePackVersion,
 } from './fleet.mjs';
+import { canonicalPackVersions } from '../../engine/pack_loader/renamed-packs.mjs';
 import { activitySeries, fleetBenefits, delta } from './activity.mjs';
 import { digestDates, digestPath, digestEntry } from './digest.mjs';
 import {
@@ -12,7 +14,6 @@ import {
   reasonNodes, stackedColumns, chartLegend, windowFigure,
   LEVEL_GLYPH, STATE_ORDER, STATE_COLOR, STATE_UI, OUTCOME_COLOR,
 } from './ui.mjs';
-import { OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE } from '../../engine/scheduler/queue/work-item.mjs';
 
 // Members are read concurrently, but not all at once: a dozen members at six calls
 // each is enough parallel load to trip secondary rate limiting, and the page is not
@@ -86,15 +87,41 @@ async function readMember(repo, token, { withTree = true } = {}) {
 // The canon reference the mount column compares against. Optional by design: with no
 // `canonRepo` configured the column reads `unknown` rather than inventing `current`,
 // and no repo name is ever hardcoded in engine code.
+//
+// The reference is VERSIONS, never a sha: the versioned flows stamp members with
+// `engineVersion`/`packVersions` only, so the canon side is the live `ENGINE_VERSION`
+// out of `engine/version.mjs` plus each pack's `version:` out of its `pack.mjs` —
+// lifted as text like every declaration field, sha-cached like every content read.
+// Pack versions are fetched LAZILY, only for packs some member actually stamps: a
+// fleet's union of declared packs is around a dozen reads where the full canon
+// catalog is three times that, and a warm load pays for none of them.
 async function readCanon(config, token) {
   if (!config?.canonRepo) return null;
   try {
-    const meta = await gh.getRepo(config.canonRepo, token);
-    const ref = await gh.getHeadSha(config.canonRepo, meta.default_branch, token);
-    const text = await gh.getTextAtSha(config.canonRepo, ref, '.claudinite-checks.json', token);
-    let engineVersion = null;
-    try { engineVersion = JSON.parse(text ?? '{}')?.claudinite?.engineVersion ?? null; } catch { /* absent */ }
-    return { repo: config.canonRepo, ref, engineVersion };
+    const repo = config.canonRepo;
+    const meta = await gh.getRepo(repo, token);
+    const ref = await gh.getHeadSha(repo, meta.default_branch, token);
+    // Two-root form: the reference is normally the canon itself (repo root), but a
+    // mount carries both files too, so a deployment pointed at a member still reads.
+    const at = async (path) => (await gh.getTextAtSha(repo, ref, path, token))
+      ?? (await gh.getTextAtSha(repo, ref, `.claudinite/shared/${path}`, token));
+
+    const engineVersion = parseEngineVersion(await at('engine/version.mjs'));
+    const packVersions = {};
+    const pending = new Map();
+    const packVersion = (id) => {
+      // A local pack lives in the member's own tree — the canon has no version for it.
+      if (!id || id.startsWith('local/')) return Promise.resolve(null);
+      if (!pending.has(id)) {
+        pending.set(id, (async () => {
+          const v = parsePackVersion(await at(`packs/${id}/pack.mjs`).catch(() => null));
+          if (v != null) packVersions[id] = v;
+          return v;
+        })());
+      }
+      return pending.get(id);
+    };
+    return { repo, ref, engineVersion, packVersions, packVersion };
   } catch {
     return null;
   }
@@ -136,10 +163,24 @@ const MOUNT_UI = {
   current: { label: 'current', cls: 'ok' },
   behind: { label: 'behind', cls: 'info' },
   'behind-engine': { label: 'old engine', cls: 'serious' },
-  stalled: { label: 'stalled', cls: 'warning' },
+  unversioned: { label: 'no versions', cls: 'warning' },
   none: { label: 'no stamp', cls: 'warning' },
   unknown: { label: '—', cls: 'idle' },
 };
+
+// The mount cell's second line: the versions the verdict was judged on — never the
+// stamp's ref or updated, which are re-vendor provenance and read stale on every
+// healthy member.
+function mountDetail(mount) {
+  if (mount.state === 'behind') return mount.behindPacks.map((p) => `${p.pack} v${p.version}<v${p.canonVersion}`).join(' · ');
+  if (mount.state === 'behind-engine') return `engine v${mount.engineVersion} < v${mount.canonEngineVersion}`;
+  if (mount.engineVersion != null) {
+    const packs = mount.comparedPacks != null ? ` · ${mount.comparedPacks} pack${mount.comparedPacks === 1 ? '' : 's'}` : '';
+    const unknown = mount.unknownPacks ? ` (+${mount.unknownPacks} unpriced)` : '';
+    return `engine v${mount.engineVersion}${packs}${unknown}`;
+  }
+  return '—';
+}
 
 // The member grid, as three questions rather than one wall of columns:
 //
@@ -243,9 +284,9 @@ function memberRow(s, onOpen, now) {
 
   const outcomes = el('td', {}, [
     segmentBar([
-      ['done', s.outcomes[OUTCOME_DONE], OUTCOME_COLOR[OUTCOME_DONE]],
-      ['delivered', s.outcomes[OUTCOME_DELIVERED], OUTCOME_COLOR[OUTCOME_DELIVERED]],
-      ['obsolete', s.outcomes[OUTCOME_OBSOLETE], OUTCOME_COLOR[OUTCOME_OBSOLETE]],
+      ['done', s.outcomes.done, OUTCOME_COLOR.done],
+      ['delivered', s.outcomes.delivered, OUTCOME_COLOR.delivered],
+      ['obsolete', s.outcomes.obsolete, OUTCOME_COLOR.obsolete],
       ['no outcome', s.outcomes.none, OUTCOME_COLOR.none],
     ], { width: 92 }),
     el('div', { className: 'sub', textContent: s.lastActivity ? ago(s.lastActivity, now) : (s.closedSeen ? 'unknown' : 'nothing closed yet') }),
@@ -254,7 +295,7 @@ function memberRow(s, onOpen, now) {
   const m = MOUNT_UI[s.mount.state] ?? MOUNT_UI.unknown;
   const mount = el('td', { className: 'nw' }, [
     el('div', { className: `warn ${m.cls}`, textContent: m.label }),
-    el('div', { className: 'sub num', textContent: s.mount.ref ? s.mount.ref.slice(0, 7) : '—' }),
+    el('div', { className: 'sub num', textContent: mountDetail(s.mount) }),
   ]);
 
   const runs = el('td', { className: 'nw' }, [
@@ -396,9 +437,9 @@ function renderDigests(entries, config) {
 // produced it, and stacking them together would let a noisy scheduler read as
 // productivity.
 const WORK_SERIES = [
-  { label: 'done', color: OUTCOME_COLOR[OUTCOME_DONE], value: (d) => d.work[OUTCOME_DONE] },
-  { label: 'delivered', color: OUTCOME_COLOR[OUTCOME_DELIVERED], value: (d) => d.work[OUTCOME_DELIVERED] },
-  { label: 'obsolete', color: OUTCOME_COLOR[OUTCOME_OBSOLETE], value: (d) => d.work[OUTCOME_OBSOLETE] },
+  { label: 'done', color: OUTCOME_COLOR.done, value: (d) => d.work.done },
+  { label: 'delivered', color: OUTCOME_COLOR.delivered, value: (d) => d.work.delivered },
+  { label: 'obsolete', color: OUTCOME_COLOR.obsolete, value: (d) => d.work.obsolete },
   { label: 'no outcome', color: OUTCOME_COLOR.none, value: (d) => d.work.none },
   { label: 'other issues closed', color: 'var(--s-blue)', value: (d) => d.otherClosed },
 ];
@@ -472,7 +513,7 @@ function renderFleet(summaries, reads, now, onOpen, canon, progress = null, dige
     [roll.failingMembers, 'schedulers failing', roll.failingMembers ? 'var(--critical)' : null,
       roll.neverRan ? `${roll.neverRan} never ran` : ''],
     [roll.behindMembers, 'mounts behind', roll.behindMembers ? 'var(--serious)' : null,
-      canon ? `canon ${canon.ref.slice(0, 7)}` : 'no canon configured'],
+      canon ? (canon.engineVersion != null ? `canon engine v${canon.engineVersion}` : 'canon versions unreadable') : 'no canon configured'],
     [roll.openItems, 'open work items', null, `${roll.inFlight} run(s) in flight`],
     [`${roll.adopted}/${roll.members}`, 'members adopted', null,
       [roll.notAdopted ? `${roll.notAdopted} not adopted` : '', roll.unreadable ? `${roll.unreadable} unreadable` : ''].filter(Boolean).join(', ')],
@@ -549,6 +590,13 @@ export async function loadFleet({ repos, token, config, onOpen, onError, onProgr
   await pool(repos, async (repo, i) => {
     const r = await readMember(repo, token);
     reads[i] = r;
+    // Price this member's stamped packs on the canon side before judging its mount —
+    // lazily and memoized across members, under today's spelling for a stamp written
+    // before a pack rename.
+    if (canon?.packVersion && r.declaration?.claudinite?.packVersions) {
+      const stamped = canonicalPackVersions(r.declaration.claudinite.packVersions);
+      await Promise.all(Object.keys(stamped ?? {}).map(canon.packVersion));
+    }
     summaries[i] = summariseMember(r, { now, canon });
     done += 1;
     onProgress?.(done, repos.length, repo);

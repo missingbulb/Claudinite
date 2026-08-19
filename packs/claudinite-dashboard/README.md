@@ -38,7 +38,7 @@ Everything else is optional `config` on the declaration:
 |---|---|---|
 | `rosterFile` | — | A file in the repo listing members; more than one makes the **fleet overview** the landing view |
 | `repos` | — | An inline roster instead of a file |
-| `canonRepo` | — | The reference member mounts are compared against; unset means freshness reads *unknown* rather than being guessed |
+| `canonRepo` | — | The repo whose live engine and pack versions member stamps are compared against; unset means freshness reads *unknown* rather than being guessed |
 | `digestsRepo` | — | The repo the fleet's morning briefs are read from; unset turns the digests panel off |
 | `digestsPath` | `digests` | The directory inside it |
 | `owner`, `exclude`, `digest` | this repo's owner; none; `pick` 4, `nudge` on | The [fleet-digest task's](#the-morning-briefs) knobs — whose repos a brief covers and what it names |
@@ -74,9 +74,9 @@ node packs/claudinite-dashboard/serve.mjs missingbulb/Claudinite
 
 | Panel | Answers |
 |---|---|
-| **Stat tiles** | How many tasks exist, what is open, what is parked or past a leash, what is running, when the next anchor falls |
-| **Task roster** | Every *declared* task — cadence, model, outcome ceiling, precondition signals, its current work item, its next anchor, its outcome history |
-| **Queue** | Open `[claudinite-work]` items by state, what each waits on, how long it has sat, and which recovery rule is about to claim it |
+| **Stat tiles** | How many tasks exist, what is open, what is parked or tripping a recovery rule, what is running, when the next ask falls |
+| **Task roster** | Every *declared* task — cadence, model, outcome ceiling, precondition signals, its current work item, its **next ask**, its outcome history. The next ask is derived from the standing item where one exists — its stamped wake, a held lane behind a blocking park, a queued or running item — and from the calendar only when no item does |
+| **Queue** | Open `[claudinite-work]` items by state, what each waits on, why its last ask declined, how long it has sat, and which recovery rule is about to claim it |
 | **Scheduler runs** | Recent and in-flight Actions runs |
 
 A task with no work item still gets a row: "never ran" is usually the thing you
@@ -138,10 +138,13 @@ which it is a floor rather than a count.
 Two signals are visible *only* here, because no single repo's page has the
 comparison:
 
-- **Mount drift** — each member's `ref` and `engineVersion` against the canon's.
-  Judged on those and never on `updated` alone, since a held stamp pins `updated`
-  behind a pending note while the mount converges normally. Needs `canonRepo` in the
-  config; without it freshness reads *unknown* rather than being guessed.
+- **Mount drift** — each member's stamped `engineVersion` and `packVersions` against
+  the canon's live ones (`engine/version.mjs`, each declared pack's `pack.mjs`).
+  Never judged on the stamp's `ref` or `updated`: the versioned flows stamp versions
+  and nothing else, so those two hold the provenance of the last *full* re-vendor and
+  read months stale on every healthy member. Needs `canonRepo` in the config; without
+  it freshness reads *unknown* rather than being guessed, and a pack the canon side
+  cannot price is counted unpriced, never judged current.
 - **A scheduler that never ran** — a member that declares tasks and has never
   produced a work item is not idle, it is unwired. Every per-repo number for it is a
   perfectly healthy zero.

@@ -24,11 +24,13 @@
 //   independently and a read that failed becomes a row saying so, so a single private
 //   repo or a rate-limit stumble cannot blank the page.
 
+import { stripComments } from '../../engine/checks/helpers/code-scanning.mjs';
 import { periodMs } from '../../engine/scheduler/queue/anchors.mjs';
 import {
   BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN, URGENT,
-  OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE,
+  NEEDS_HUMAN_APPROVAL, outcomeOf,
 } from '../../engine/scheduler/queue/work-item.mjs';
+import { canonicalPackVersions } from '../../engine/pack_loader/renamed-packs.mjs';
 import { describeItem, isWorkItem, parseWorkItemTitle, taskDeclarationPaths } from './model.mjs';
 
 // Severity ladder, worst first. The order IS the sort, so it is stated once here
@@ -39,54 +41,70 @@ const levelRank = (l) => {
   return i === -1 ? LEVELS.length : i;
 };
 
-// How far behind a member's mount may drift before it is worth saying. A converge
-// runs at least daily, so a member that has not moved in a week has stopped
-// converging rather than merely lagged.
-export const MOUNT_STALE_MS = 7 * 86400e3;
-
 const ms = (t) => (t == null ? null : new Date(t).getTime());
+
+// --- the canon side of the comparison ---------------------------------------------
+
+// The canon's versions are lifted as TEXT, like every declaration field: the page
+// reads the canon over the API, where there is nothing to import. Comment-stripped
+// so prose naming the field can never be mistaken for it, and null — never a guess —
+// when the pattern is not there.
+export function parseEngineVersion(text) {
+  const m = /ENGINE_VERSION\s*=\s*(\d+)/.exec(stripComments(String(text ?? '')));
+  return m ? Number(m[1]) : null;
+}
+
+export function parsePackVersion(text) {
+  const m = /(?:^|[{,\s])version:\s*(\d+)/m.exec(stripComments(String(text ?? '')));
+  return m ? Number(m[1]) : null;
+}
 
 // --- mount freshness ------------------------------------------------------------
 
-// Whether a member's mount is current. Judged on `ref` / `engineVersion` /
-// `packVersions` and NEVER on `updated` alone: a held stamp pins `updated` behind a
-// pending note while the mount keeps converging normally, so a member that is fine
-// looks weeks stale by that field.
+// Whether a member's mount is current. Judged on the stamp's `engineVersion` and
+// `packVersions` and NEVER on `ref` or `updated`: the versioned flows stamp versions
+// and nothing else, so those two hold the provenance of the last FULL re-vendor —
+// a member converging nightly carries a months-old ref and updated forever, and
+// judging either reads every healthy member as behind or stalled (#1065; the same
+// class as #786). `updated` travels through as display-only provenance.
 //
-// `canon` is the reference to compare against, and it is optional — with no canon
+// `canon` is the reference to compare against: its live `engineVersion` and the
+// canon's own per-pack versions (`packVersions`, possibly partial — the loader
+// fetches only the packs members actually stamp). A pack the canon side cannot
+// price is counted `unknownPacks`, never silently judged current. With no canon
 // supplied the honest answer is `unknown`, not `current`.
-export function mountState(stamp, canon = null, now = null) {
-  if (!stamp) return { state: 'none', ref: null, engineVersion: null };
-  const ref = stamp.ref ?? null;
+export function mountState(stamp, canon = null) {
+  if (!stamp) return { state: 'none', engineVersion: null, updated: null };
   const engineVersion = stamp.engineVersion ?? null;
+  // The stamp is stored data: a pack renamed since it was written still keys its
+  // version under the old spelling, which must compare rather than read as unknown.
+  const packVersions = stamp.packVersions ? canonicalPackVersions(stamp.packVersions) : null;
   const updated = stamp.updated ?? null;
 
-  if (!canon?.ref) {
-    // No reference to compare with. `updated` cannot decide freshness, but a mount
-    // that has not been touched in a week says something on its own: the converge
-    // itself has stopped, whatever version it stopped on.
-    const age = now && updated ? ms(now) - ms(updated) : null;
-    if (age !== null && age >= MOUNT_STALE_MS) {
-      return { state: 'stalled', ref, engineVersion, updated, age };
-    }
-    return { state: 'unknown', ref, engineVersion, updated, age };
+  if (engineVersion == null && packVersions == null) {
+    // A stamp with no versions predates the versioned flows entirely — this member
+    // has not converged since they landed, which is its own kind of stale.
+    return { state: 'unversioned', engineVersion, updated };
+  }
+  if (canon?.engineVersion == null) return { state: 'unknown', engineVersion, updated };
+
+  if (Number.isInteger(engineVersion) && engineVersion < canon.engineVersion) {
+    return { state: 'behind-engine', engineVersion, canonEngineVersion: canon.engineVersion, updated };
   }
 
-  if (ref && ref === canon.ref) return { state: 'current', ref, engineVersion, updated };
-
-  // Behind, and the engine major is the part that matters: a member a few packs
-  // behind converges on its own, a member on an older engine may not be able to.
-  const behindEngine = Number.isInteger(engineVersion) && Number.isInteger(canon.engineVersion)
-    && engineVersion < canon.engineVersion;
-  if (behindEngine) return { state: 'behind-engine', ref, engineVersion, updated };
-
-  // Behind is routine — canon moves and members catch up within a day. Behind AND not
-  // having converged in a week is not the same fact: that member is not catching up,
-  // and the gap will only widen. Being behind must not mask a stopped converge.
-  const age = now && updated ? ms(now) - ms(updated) : null;
-  if (age !== null && age >= MOUNT_STALE_MS) return { state: 'stalled', ref, engineVersion, updated, age };
-
-  return { state: 'behind', ref, engineVersion, updated, age };
+  const behindPacks = [];
+  let comparedPacks = 0;
+  let unknownPacks = 0;
+  for (const [pack, version] of Object.entries(packVersions ?? {})) {
+    const canonVersion = canon.packVersions?.[pack];
+    if (canonVersion == null) { unknownPacks += 1; continue; }
+    comparedPacks += 1;
+    if (version < canonVersion) behindPacks.push({ pack, version, canonVersion });
+  }
+  if (behindPacks.length) {
+    return { state: 'behind', engineVersion, behindPacks, comparedPacks, unknownPacks, updated };
+  }
+  return { state: 'current', engineVersion, comparedPacks, unknownPacks, updated };
 }
 
 // --- one member -----------------------------------------------------------------
@@ -142,14 +160,18 @@ export function summariseMember(read, { now, canon = null } = {}) {
   }
 
   const parked = described.filter((d) => d.state === NEEDS_HUMAN);
+  // The triage split (tasks-dispatch DESIGN §4): a failure park — or one an older
+  // engine left unclassified — holds its task's lane; an action or decision park is
+  // a person's inbox; an approval park is a run that SUCCEEDED and waits on a merge.
+  // Three different alarms, because a page that rings identically for all four
+  // teaches the reader to ignore the ring.
+  const holding = parked.filter((d) => d.blockingPark);
+  const approvals = parked.filter((d) => !d.blockingPark && d.triage === NEEDS_HUMAN_APPROVAL);
+  const inbox = parked.filter((d) => !d.blockingPark && d.triage !== NEEDS_HUMAN_APPROVAL);
   const warned = described.filter((d) => d.state !== NEEDS_HUMAN && d.warnings.length);
 
-  const outcomes = { [OUTCOME_DONE]: 0, [OUTCOME_DELIVERED]: 0, [OUTCOME_OBSOLETE]: 0, none: 0 };
-  for (const i of closed) {
-    const labels = i.labels ?? [];
-    const o = [OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE].find((x) => labels.includes(x));
-    outcomes[o ?? 'none'] += 1;
-  }
+  const outcomes = { done: 0, delivered: 0, obsolete: 0, none: 0 };
+  for (const i of closed) outcomes[outcomeOf(i) ?? 'none'] += 1;
 
   const lastActivity = closed
     .map((i) => ms(i.closed_at) ?? ms(i.updated_at))
@@ -158,11 +180,18 @@ export function summariseMember(read, { now, canon = null } = {}) {
 
   const runSummary = summariseRuns(runs ?? [], now);
   const ci = ciStatus(runs ?? [], defaultBranch);
-  const mount = mountState(declaration.claudinite, canon, now);
+  const mount = mountState(declaration.claudinite, canon);
 
+  const n = (count, word) => `${count} ${word}${count > 1 ? 's' : ''}`;
   const reasons = [];
-  if (parked.length) {
-    reasons.push({ level: 'critical', text: `${parked.length} item${parked.length > 1 ? 's' : ''} parked for a human` });
+  if (holding.length) {
+    reasons.push({ level: 'critical', text: `${n(holding.length, 'item')} parked broken — holding the task's lane` });
+  }
+  if (inbox.length) {
+    reasons.push({ level: 'serious', text: `${n(inbox.length, 'item')} parked for a person — an action or a decision` });
+  }
+  if (approvals.length) {
+    reasons.push({ level: 'warning', text: `${n(approvals.length, 'PR')} waiting for approval` });
   }
   if (runSummary.consecutiveFailures > 0) {
     reasons.push({
@@ -171,17 +200,14 @@ export function summariseMember(read, { now, canon = null } = {}) {
     });
   }
   if (warned.length) {
-    reasons.push({ level: 'serious', text: `${warned.length} item${warned.length > 1 ? 's' : ''} past a leash` });
+    reasons.push({ level: 'serious', text: `${n(warned.length, 'item')} tripping a recovery rule` });
   }
   if (mount.state === 'behind-engine') {
     reasons.push({ level: 'serious', text: `mount is on engine v${mount.engineVersion}, canon is v${canon?.engineVersion}` });
-  } else if (mount.state === 'stalled') {
-    reasons.push({
-      level: 'warning',
-      text: `mount has not converged in ${Math.floor(mount.age / 86400e3)} days`,
-    });
   } else if (mount.state === 'behind') {
-    reasons.push({ level: 'info', text: 'mount is behind canon' });
+    reasons.push({ level: 'info', text: `mount behind canon on ${mount.behindPacks.map((p) => p.pack).join(', ')}` });
+  } else if (mount.state === 'unversioned') {
+    reasons.push({ level: 'warning', text: 'mount stamp carries no versions — it predates the versioned update flows' });
   } else if (mount.state === 'none') {
     reasons.push({ level: 'warning', text: 'declares Claudinite but carries no mount stamp' });
   }
@@ -211,6 +237,8 @@ export function summariseMember(read, { now, canon = null } = {}) {
     declaredTasks,
     open: { total: open.length, byState, urgent: described.filter((d) => d.urgent).length },
     parked: parked.length,
+    parkedHolding: holding.length,
+    parkedApprovals: approvals.length,
     warned: warned.length,
     closedSeen: closed.length,
     outcomes,
@@ -321,7 +349,7 @@ export function rankMembers(summaries) {
 // things — "3 members need you" is actionable where "47 open items" is not.
 export function rollUp(summaries) {
   const adopted = summaries.filter((s) => s.status === 'adopted');
-  const outcomes = { [OUTCOME_DONE]: 0, [OUTCOME_DELIVERED]: 0, [OUTCOME_OBSOLETE]: 0, none: 0 };
+  const outcomes = { done: 0, delivered: 0, obsolete: 0, none: 0 };
   for (const s of adopted) for (const [k, v] of Object.entries(s.outcomes ?? {})) outcomes[k] += v;
 
   return {
@@ -336,7 +364,7 @@ export function rollUp(summaries) {
     warnedMembers: adopted.filter((s) => s.warned > 0).length,
     failingMembers: adopted.filter((s) => s.runs?.consecutiveFailures > 0).length,
     neverRan: adopted.filter((s) => s.runs && !s.runs.everRan).length,
-    behindMembers: adopted.filter((s) => ['behind', 'behind-engine', 'stalled'].includes(s.mount?.state)).length,
+    behindMembers: adopted.filter((s) => ['behind', 'behind-engine', 'unversioned'].includes(s.mount?.state)).length,
     openItems: adopted.reduce((n, s) => n + (s.open?.total ?? 0), 0),
     inFlight: adopted.reduce((n, s) => n + (s.runs?.inFlight ?? 0), 0),
     declaredTasks: adopted.reduce((n, s) => n + (s.declaredTasks ?? 0), 0),
@@ -375,9 +403,9 @@ export function taskSpread(reads, now) {
         row.open += 1;
         if ((item.labels ?? []).includes(NEEDS_HUMAN)) row.parked += 1;
       } else {
-        const labels = item.labels ?? [];
-        if (labels.includes(OUTCOME_DONE) || labels.includes(OUTCOME_DELIVERED)) row.done += 1;
-        else if (!labels.includes(OUTCOME_OBSOLETE)) row.failed += 1;
+        const outcome = outcomeOf(item);
+        if (outcome === 'done' || outcome === 'delivered') row.done += 1;
+        else if (outcome !== 'obsolete') row.failed += 1;
       }
     }
   }
