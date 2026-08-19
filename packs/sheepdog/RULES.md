@@ -67,17 +67,6 @@ config schema — is [README.md](README.md). This file is what a session **here*
   run per member and does not wait; each member reports its own outcome in its own repo. A member
   with nothing to do converges to a cheap no-op, so over-using it is wasteful rather than unsafe.
 
-- **Catching the digest up after an outage** — the same lever, with the day count:
-
-  ```
-  node .claudinite/shared/engine/scheduler/queue/create-work-item.mjs sheepdog/fleet-digest \
-    --context "DIGEST_BACKFILL_DAYS=7"
-  ```
-
-  It covers the N most recent complete UTC days, oldest first, skips any day that already has a
-  brief, and is bounded at 30 days a run — so it is safe to re-run and safe to overlap with the
-  daily task.
-
 - **Adding a pack across the fleet** — create a `fleet-add-missing-packs` item with
   `--context "ADD_PACKS=…"` rather than editing anything. No pack is named anywhere in this pack's
   code: every id comes from config or from the item's own Context, which is what keeps the

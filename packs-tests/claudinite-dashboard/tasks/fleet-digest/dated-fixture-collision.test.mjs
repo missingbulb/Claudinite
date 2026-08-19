@@ -4,11 +4,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import rule from '../../../../packs/sheepdog/tasks/fleet-digest/dated-fixture-collision.mjs';
+import rule from '../../../../packs/claudinite-dashboard/tasks/fleet-digest/dated-fixture-collision.mjs';
 
 // The digest's own worker test — the file the rule exists to keep honest, and the one whose
 // real content the last case reads back. Named once here rather than spelled at each use.
-const SUBJECT = 'packs-tests/sheepdog/tasks/fleet-digest/worker.test.mjs';
+const SUBJECT = 'packs-tests/claudinite-dashboard/tasks/fleet-digest/worker.test.mjs';
 
 // Only `read` and `allFiles` are touched; anything else would be a rule reaching too far.
 const ctx = (fs) => ({ allFiles: Object.keys(fs), read: (p) => (p in fs ? fs[p] : null) });
@@ -56,7 +56,7 @@ test('real-looking dates that build no digests/ path are not subjects', () => {
 test('only test files are subjects', () => {
   const text = `writeFileSync('${dated('2026-08-04')}', brief);\n`;
   assert.deepEqual(rule.run(ctx({
-    'packs/sheepdog/tasks/fleet-digest/worker.mjs': text,
+    'packs/claudinite-dashboard/tasks/fleet-digest/worker.mjs': text,
     'digests/README.md': text,
   })), [], 'production code and real artifacts name real dates by design');
 });

@@ -1,11 +1,11 @@
-// Run with `node --test packs-tests/sheepdog/tasks/fleet-digest/*.test.mjs`.
+// Run with `node --test packs-tests/claudinite-dashboard/tasks/fleet-digest/*.test.mjs`.
 //
 // What these prove is mostly about DEFAULTS, because the config's whole promise is
 // that a fleet can adopt the digest without answering a single question — and that
 // the two knobs the owner asked to be configurable really are.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseDigestConfig, parseNudge, DEFAULT_PICK, DEFAULT_QUIET_DAYS } from '../../../../packs/sheepdog/tasks/fleet-digest/digest-config.mjs';
+import { parseDigestConfig, parseNudge, DEFAULT_PICK, DEFAULT_QUIET_DAYS } from '../../../../packs/claudinite-dashboard/tasks/fleet-digest/digest-config.mjs';
 
 const withDigest = (digest) => ({ packs: [{ id: 'sheepdog', config: { owner: 'missingbulb', ...(digest === undefined ? {} : { digest }) } }] });
 
@@ -18,6 +18,60 @@ test('an absent digest block is a valid one — the file still gets written', ()
 
 test('a repo with no sheepdog entry at all still parses to defaults', () => {
   assert.equal(parseDigestConfig({ packs: ['basics'] }).pick, DEFAULT_PICK);
+});
+
+// --- where the fleet keys come from, after the task moved packs -------------------
+
+const entry = (id, config) => ({ id, config });
+
+test('this pack\'s own entry is where the fleet keys are read', () => {
+  const c = parseDigestConfig({
+    packs: [entry('claudinite-dashboard', { owner: 'An-Owner', exclude: ['An-Owner/Scratch'], digest: { pick: 2 } })],
+  }, 'an-owner/Enforcer');
+
+  assert.equal(c.owner, 'an-owner', 'lowercased, because it is compared against API-supplied logins');
+  assert.ok(c.exclude.has('an-owner/scratch'));
+  assert.equal(c.pick, 2);
+  assert.deepEqual(c.source, { owner: 'entry', exclude: 'entry', digest: 'entry' });
+});
+
+test('the sheepdog entry is the legacy source, so a moved task covers the same fleet', () => {
+  // An enforcer declared owner/exclude on its sheepdog entry long before this task
+  // moved here. Reading only this pack's entry would silently widen the brief to every
+  // repo under the owner — a dropped exclude list is exactly the parameter that fails
+  // quietly, so the fallback exists and reports itself.
+  const c = parseDigestConfig({
+    packs: [
+      entry('sheepdog', { owner: 'an-owner', exclude: ['an-owner/scratch'], digest: { pick: 3 } }),
+      entry('claudinite-dashboard', { canonRepo: 'an-owner/Claudinite' }),
+    ],
+  }, 'an-owner/Enforcer');
+
+  assert.equal(c.owner, 'an-owner');
+  assert.ok(c.exclude.has('an-owner/scratch'));
+  assert.equal(c.pick, 3);
+  assert.deepEqual(c.source, { owner: 'sheepdog', exclude: 'sheepdog', digest: 'sheepdog' });
+});
+
+test('this pack\'s entry wins over the legacy one, key by key', () => {
+  const c = parseDigestConfig({
+    packs: [
+      entry('sheepdog', { owner: 'old-owner', exclude: ['old-owner/a'] }),
+      entry('claudinite-dashboard', { owner: 'new-owner' }),
+    ],
+  }, 'new-owner/Enforcer');
+
+  assert.equal(c.owner, 'new-owner');
+  // `exclude` is not on the winning entry, so it still falls back rather than emptying.
+  assert.ok(c.exclude.has('old-owner/a'));
+  assert.deepEqual(c.source, { owner: 'entry', exclude: 'sheepdog', digest: 'default' });
+});
+
+test('an owner nobody configured is the owner of the repo the task runs in', () => {
+  const c = parseDigestConfig({ packs: [entry('claudinite-dashboard', {})] }, 'An-Owner/Dashboard');
+  assert.equal(c.owner, 'an-owner');
+  assert.equal(c.exclude.size, 0);
+  assert.deepEqual(c.source, { owner: 'repo', exclude: 'none', digest: 'default' });
 });
 
 test('there is no delivery config, and a stray key does not become one', () => {

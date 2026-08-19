@@ -391,6 +391,36 @@ module.exports = { issue, check };
     },
   },
   {
+    name: 'dashboard-digest',
+    why: 'a member declaring `claudinite-dashboard` for the page alone — the shape that inherits the fleet-digest task, and with it two blocking checks nobody there asked for, so this proves a conforming member (a plain-text brief, a fixture date outside the fleet\'s year range) converges green rather than going red overnight',
+    files: {
+      'README.md': '# fixture-dashboard-digest\n\nA rehearsal fixture.\n',
+      '.claudinite-checks.json': checks(['basics', 'claudinite-dashboard']),
+      // A landed brief in the shape the task writes: no heading, no markdown bullet,
+      // no link syntax, a bare URL. This is what `digest-plain-text` is quiet on, and
+      // the file the check exists for — a member holds the series, not the canon.
+      'digests/2026-08-17.md': [
+        'Fleet operations — 2026-08-17',
+        '',
+        "Yesterday's biggest work:",
+        '',
+        '• fixture-owner/alpha — #12 Refresh recovers from partial API failures. https://github.com/fixture-owner/alpha/pull/12',
+        '',
+      ].join('\n'),
+      // A member's own test naming a digests/ path, dated in the year the rule steers
+      // toward: 1999 can never collide with a real brief, so the rule stays inert.
+      'dev/digest-path.test.mjs': [
+        "import { test } from 'node:test';",
+        "import assert from 'node:assert/strict';",
+        '',
+        "test('a brief path is built from its date', () => {",
+        "  assert.equal(`digests/${'1999-01-02'}.md`, 'digests/1999-01-02.md');",
+        '});',
+        '',
+      ].join('\n'),
+    },
+  },
+  {
     name: 'macos-app',
     why: 'a member declaring the macos pack over a conforming Mac app — the pack\'s two exit-path rules are blocking, and this proves an app in the shape they are about (AppKit, a capture tap, terminate-time teardown) converges green rather than going red overnight on a rule nobody asked for',
     files: {

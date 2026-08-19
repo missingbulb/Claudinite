@@ -13,7 +13,7 @@
 // (the day and the "now" are arguments). That is what makes the ranking and the
 // maintenance filter testable against fixtures rather than against the live fleet.
 
-import { paged, readDeclaration, isDormant } from '../../fleet-api.mjs';
+import { paged, readDeclaration, isDormant } from './fleet-reads.mjs';
 import { isDispatchTitle } from '../../../../engine/scheduler/dispatch.mjs';
 import { isWorkItemTitle } from '../../../../engine/scheduler/queue/work-item.mjs';
 
