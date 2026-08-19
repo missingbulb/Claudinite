@@ -4,7 +4,7 @@ import {
   normalizeDelivery, resolveDelivery, DEFAULT_DELIVERY, deliveryFromChecks,
   workflowTriggers, ciDispatchPlan, pullCreateError,
   deliveryAction, classifyMergeGate, pullDisposition, mergeReason, failureSummary,
-  landAttempt, LAND_TIMEOUT_MS, openDeliveredPull, disposeOpenPull,
+  landAttempt, LAND_TIMEOUT_MS, LAND_INFLIGHT_TIMEOUT_MS, openDeliveredPull, disposeOpenPull,
 } from '../../engine/scheduler/land-pr.mjs';
 
 // The PURE decision helpers of the shared landing procedure. They grew inside the
@@ -256,12 +256,38 @@ test('landAttempt merges the gated shape in-cycle — the dispatched run passed'
   assert.equal(landAttempt({ delivery: 'auto-merge', runs: [done('success'), done('action_required')] }), 'merge');
 });
 
-test('landAttempt polls while a run is still going, and gives up at the bound', () => {
+test('landAttempt polls while a run is still going, and gives up at the in-flight bound', () => {
   const running = [done('success'), { name: 'CI', status: 'in_progress', conclusion: null }];
   assert.equal(landAttempt({ delivery: 'auto-merge', runs: running, elapsedMs: 0 }), 'poll');
-  assert.equal(landAttempt({ delivery: 'auto-merge', runs: running, elapsedMs: LAND_TIMEOUT_MS - 1 }), 'poll');
-  // At the bound the PR is left standing, which is exactly the pre-existing behaviour.
-  assert.equal(landAttempt({ delivery: 'auto-merge', runs: running, elapsedMs: LAND_TIMEOUT_MS }), 'give-up');
+  assert.equal(landAttempt({ delivery: 'auto-merge', runs: running, elapsedMs: LAND_INFLIGHT_TIMEOUT_MS - 1 }), 'poll');
+  assert.equal(landAttempt({ delivery: 'auto-merge', runs: running, elapsedMs: LAND_INFLIGHT_TIMEOUT_MS }), 'give-up');
+});
+
+// THE 24h OFFSET THAT CAME BACK (#1026). The two bounds answer different
+// questions, and collapsing them into one is what reopened #649's offset on the
+// fleet's slowest member: EdFringeNow's delivery dispatched two runs, one green
+// in 25s and one that took 3m29s, and the poll — bounded at 180s whether or not
+// anything was visibly happening — gave up 26 seconds before the second
+// concluded green. The next cycle's disposal then merged it a day later, so the
+// member ran a converge behind while every run reported success.
+//
+// Nothing-visible is the case that must stay short: a dispatch that registered
+// nothing will never register it. A run we can SEE executing is the opposite —
+// the evidence is coming, and the only question is whether the prework budget
+// outlasts it.
+test('landAttempt waits out a slow check past the visibility bound', () => {
+  const inFlight = [done('success'), { name: 'UI requirements', status: 'in_progress', conclusion: null }];
+  // 183s: where the real run gave up.
+  assert.equal(landAttempt({ delivery: 'auto-merge', runs: inFlight, expected: 2, elapsedMs: 183_000 }), 'poll');
+  // 209s: where the second run actually concluded green.
+  assert.equal(landAttempt({
+    delivery: 'auto-merge',
+    runs: [done('success'), done('success', 'UI requirements')],
+    expected: 2,
+    elapsedMs: 209_000,
+  }), 'merge');
+  // The short bound still governs the case where nothing has appeared at all.
+  assert.equal(landAttempt({ delivery: 'auto-merge', runs: [], expected: 2, elapsedMs: LAND_TIMEOUT_MS }), 'give-up');
 });
 
 // The one place this must NOT mirror disposal. Disposal may close, because the PR
@@ -305,6 +331,20 @@ test('mergeReason names the gated run when there is one, and no false remedy oth
 test('failureSummary names the failing workflows, or the absence of a green one', () => {
   assert.match(failureSummary([done('failure', 'verify'), done('success')]), /verify failure/);
   assert.match(failureSummary([done('action_required')]), /no successful run/);
+});
+
+// The give-up line is the only account anyone gets of why a delivery did not
+// land, and "no successful run on its head sha" read as "CI produced nothing
+// green" on a member whose CI simply had not finished — which cost a wrong
+// repository-settings diagnosis before #1026 was found. A timeout is a statement
+// about the CLOCK, never a verdict on the runs.
+test('failureSummary separates a check still in flight from nothing having succeeded', () => {
+  const summary = failureSummary([done('success'), { name: 'UI requirements', status: 'in_progress', conclusion: null }]);
+  assert.match(summary, /still running/);
+  assert.match(summary, /UI requirements/);
+  assert.doesNotMatch(summary, /no successful run/);
+  // A real failure still outranks it: that is the actionable fact.
+  assert.match(failureSummary([{ name: 'CI', status: 'queued', conclusion: null }, done('failure', 'verify')]), /verify failure/);
 });
 
 // --- disposing of the previous cycle's delivery (#787) -----------------------
