@@ -48,13 +48,36 @@ export function makeGh(token) {
   };
 }
 
+// A failure the FLEET TOKEN'S GRANT explains — a read GitHub refused because the PAT
+// lacks the scope, not because anything is wrong with the code. Tagged rather than
+// described, because the tag survives being re-thrown and the wording does not: the
+// worker's top-level catch prints the triage marker off `e.triage`, so the item parks
+// at `task:needs-human-action` — a person adds a scope — instead of at `failure`,
+// where it would wait for someone to read a stack trace that says nothing.
+export function grantError(message) {
+  const e = new Error(message);
+  e.triage = 'action';
+  return e;
+}
+
+// The worker's `main().catch(…)`. Prints the marker the executor routes on when the
+// error carries a triage tag, then fails the run as before.
+export function fleetWorkerFailed(name, e) {
+  console.error(`${name} failed: ${e.message}`);
+  if (e?.triage) console.error(`claudinite-needs-human: ${e.triage} — ${e.message}`);
+  process.exit(1);
+}
+
 export async function paged(gh, path) {
   const sep = path.includes('?') ? '&' : '?';
   const all = [];
   for (let page = 1; ; page += 1) {
     const { status, json } = await gh(`${path}${sep}per_page=100&page=${page}`);
     if (status !== 200 || !Array.isArray(json)) {
-      throw new Error(`GET ${path} page ${page} failed with status ${status}`);
+      const why = `GET ${path} page ${page} failed with status ${status}`;
+      throw (status === 401 || status === 403)
+        ? grantError(`${why} — the fleet PAT is unusable or lacks the scope this read needs`)
+        : new Error(why);
     }
     all.push(...json);
     if (json.length < 100) return all;

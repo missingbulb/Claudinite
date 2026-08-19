@@ -51,11 +51,11 @@ import digestPlainText from './tasks/fleet-digest/digest-plain-text.mjs';
 
 export default {
   id: 'claudinite-dashboard',
-  // 6: the fleet-digest task arrives from the sheepdog pack, with its two checks. A
+  // 7: the fleet-digest task arrives from the sheepdog pack, with its two checks. A
   // declaring repo gains a daily task; nothing in a member is rewritten, and the task
   // still reads an enforcer's existing `sheepdog` config as its legacy source, so the
   // bump carries no migration record.
-  version: 6,
+  version: 7,
   minEngineVersion: 4,
   ruleRoutingGuidance: {
     belongs: 'the browser dashboard over Claudinite scheduler state, the site that publishes it, and the fleet morning brief it reads',

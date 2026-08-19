@@ -77,11 +77,11 @@ import seedsAgree from './seeds-agree.mjs';
 
 export default {
   id: 'sheepdog',
-  // 10: fleet-digest LEAVES, to the claudinite-dashboard pack — the pack whose page is
+  // 11: fleet-digest LEAVES, to the claudinite-dashboard pack — the pack whose page is
   // the only thing that reads the series it writes. What stays here is an enforcer's
   // `digest`, `owner` and `exclude` config, which the task still reads off this entry
   // as its legacy source, so no enforcer declaration has to change.
-  version: 10,
+  version: 11,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'fleet-enforcer duties for the repo watching every other repo — coverage, freshness, usage, standardized packs',

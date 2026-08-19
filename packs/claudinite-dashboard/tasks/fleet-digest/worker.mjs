@@ -28,9 +28,8 @@
 
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { fleetWorkerFailed } from '../../fleet-api.mjs';
 import { join } from 'node:path';
-import { makeGh } from './fleet-reads.mjs';
+import { makeGh, fleetWorkerFailed } from './fleet-reads.mjs';
 import { deliverGenerated, baseTip, pushGenerated, readAt, remoteUrl } from '../../../../engine/scheduler/deliver-generated.mjs';
 import { parseParamBag, contextText } from './param-bag.mjs';
 import { parseDigestConfig } from './digest-config.mjs';
