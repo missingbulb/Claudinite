@@ -40,7 +40,7 @@ test('anchors are the slot schedule\'s instants with none of its identity', () =
 test('a brand-new task\'s FIRST item is born blocked until its next real anchor (S25)', () => {
   const { ops } = planTick({ tasks: [task('weeklyish', 'weekly')], items: [], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE });
   const [create] = kinds(ops, 'create');
-  assert.deepEqual(create.labels, ['origin:schedule', 'task:blocked']);
+  assert.deepEqual(create.labels, ['task:blocked']);
   assert.equal(parseWorkItemBody(create.body).notBefore, '2026-08-16T04:00:00.000Z');
 });
 
@@ -52,7 +52,7 @@ test('later occurrences are born ready, and a manual task is never instantiated'
   });
   const creates = kinds(ops, 'create');
   assert.equal(creates.length, 1);
-  assert.deepEqual(creates[0].labels, ['origin:schedule', 'task:ready']);
+  assert.deepEqual(creates[0].labels, ['task:ready']);
   assert.equal(parseWorkItemBody(creates[0].body).notBefore, null);
 });
 
@@ -91,15 +91,27 @@ test('a duplicate standing item is closed obsolete, oldest kept (F16)', () => {
 });
 
 test('ad-hoc items neither suppress nor consume a scheduled occurrence (§3)', () => {
-  const adHoc = item({ task: 'daily1', labels: ['task:ready'], created_at: '2026-08-14T09:00:00Z' });
-  const { ops } = planTick({ tasks: [task('daily1', 'daily')], items: [adHoc], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE });
-  assert.equal(kinds(ops, 'create').length, 1, 'an item with no origin:schedule is not in the family');
+  // Ad-hoc is STRUCTURAL (§15.26), so both of its shapes are asserted: a qualified
+  // item for a scheduled task, and a `manual` task's item, which has no anchor to
+  // stand for. Neither is in the daily family, so today's occurrence is still filed.
+  const fanOut = item({ task: 'daily1', qualifier: 'member-x', labels: ['task:ready'], created_at: '2026-08-14T09:00:00Z' });
+  const lever = item({ task: 'lever', labels: ['task:ready'], created_at: '2026-08-14T09:00:00Z' });
+  const { ops } = planTick({
+    tasks: [task('daily1', 'daily'), task('lever', 'manual')],
+    items: [fanOut, lever], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE,
+  });
+  const creates = kinds(ops, 'create');
+  assert.equal(creates.length, 1);
+  assert.equal(creates[0].task, 'daily1', 'the manual task is never instantiated at all');
 });
 
-test('a fan-out qualifier is a different item, not this task\'s standing one', () => {
-  const fanOut = item({ task: 'daily1', qualifier: 'member-x', labels: ['origin:schedule', 'task:ready'], created_at: '2026-08-14T09:00:00Z' });
-  const { ops } = planTick({ tasks: [task('daily1', 'daily')], items: [fanOut], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE });
-  assert.equal(kinds(ops, 'create').length, 1);
+test('an unqualified item for a scheduled task IS that task\'s standing item, marker or no marker', () => {
+  // The origin marker is gone (§15.26) and nothing replaced it with a second one: an
+  // item titled with the task and nothing else, whose task is on a calendar, is the
+  // occurrence — so it suppresses instantiation, and a twin beside it is deduped.
+  const unmarked = item({ task: 'daily1', labels: ['task:ready'], created_at: '2026-08-14T04:10:00Z' });
+  const { ops } = planTick({ tasks: [task('daily1', 'daily')], items: [unmarked], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE });
+  assert.deepEqual(kinds(ops, 'create'), []);
 });
 
 // --- job 2: ready -------------------------------------------------------------
@@ -214,9 +226,9 @@ test('a task that has never had an item at all is also minted, not refused', () 
 });
 
 test('a minted item consumes the current occurrence, so the tick does not double it', () => {
-  // It carries origin:schedule for exactly this reason — planTick's occurrence
-  // guard is scoped to that label, and an item outside the family would let the
-  // next tick create a second one beside it.
+  // It is titled with the task and nothing else for exactly this reason — that is
+  // what makes it the standing item structurally, and an item outside the family
+  // would let the next tick create a second one beside it.
   const now = '2026-08-16T10:00:00Z';
   const minted = item({
     task: 'update', labels: ['origin:schedule', 'task:ready'],

@@ -1537,6 +1537,17 @@ failure **fails the run**: the item parks `needs-human` +
 `task:needs-human-failure`, open and visible, and the ordinary re-queue lever
 (§4) retries it once the API recovers.
 
+**How the read happens, as built (2026-08-19).** A precondition is pure over
+collected signals: it never holds a GitHub client, and handing one to every
+pack's precondition to give this task its two reads would have widened far more
+than the gate it guards. So the reads are a `request` SIGNAL — engine-owned, like
+every other collector — that fetches the issue this item names, its comments, and
+the permission of each candidate login, and returns those facts without judging
+them. The verdict stays exactly where this section puts it: the built-in task's
+precondition, over that read. `gone`, `unreadable` and the permissions are fields
+of the signal; which of them refuses, which fails the run and which passes is the
+precondition's alone.
+
 Two consequences worth stating plainly:
 
 - **The precondition takes the item.** `precondition(signals, config)` becomes
@@ -1655,6 +1666,19 @@ arbitrated and recovered by the same code as any other item, which is the point.
 
 Played through in the simulator as **S44–S51** ([sim](sim/), SCENARIOS §K); each was
 watched failing against a deliberately broken mechanism before it was believed.
+
+Built in #1010, with one addition to the list above: the `request` signal collector
+(see §16.4's amendment), and its name in the contract's signal vocabulary. The
+engine tests mirroring S44–S51 live in
+[`engine-tests/scheduler/queue/request-mode.test.mjs`](../../engine-tests/scheduler/queue/request-mode.test.mjs)
+and were each watched failing against a broken mechanism in turn.
+
+**Unverified at landing:** whether `GET /repos/{o}/{r}/collaborators/{u}/permission`
+answers under the executor workflow's `GITHUB_TOKEN`. The sandbox that built this
+cannot reach `api.github.com`, so it is a question for the first real run — and the
+failure mode is deliberately loud rather than silent: a permission read that answers
+anything but 200/404 is `unreadable`, which fails the run into the failure lane with
+the status on the item, and no request is approved or refused on a guess.
 
 ## Appendix A — the owner's sketch (2026-08-12, verbatim)
 

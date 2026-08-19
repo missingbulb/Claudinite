@@ -148,7 +148,7 @@ they are a no-op.
 ## The task folder
 
 One directory per task — `<pack>/tasks/<name>/` — holding **`task.mjs`** (the
-self-contained declaration + `precondition(signals, config)`, the eligibility
+self-contained declaration + `precondition(signals, config, item)`, the eligibility
 gate as pure code) beside its worker, plus any deterministic helpers. The
 precondition both asserts need-to-run and pre-decides scope: its `context` lines
 join the item's own Context as binding constraints the agent may not re-litigate.
@@ -189,6 +189,11 @@ Declare one only when its rule applies.
   task declaration is vendored verbatim into every consuming repo, so deployment detail and
   anything adjacent to a credential stay in that repo's own config.
 
+One field is **not** yours to declare: `model_from_request`, which lets a task run
+at the model its ITEM names rather than the one it declares. Exactly one task
+declares it — the engine's own built-in request implementer, which no pack can be —
+and every other task names its own `agent_model`.
+
 A task's `code_work_timeout` must stay under the executor's one-hour claim leash — a code-work
 that can outlive it is reclaimed while still running, and the item livelocks. The declaration
 contract enforces this; do not raise a timeout past it, split the work instead.
@@ -201,6 +206,14 @@ the executor hands off to, following task.md). Neither phase is "preparation" fo
 other, and — the rule that matters — **neither may decide whether the task
 runs**. That decision is the precondition's alone:
 
+- **The precondition sees the occurrence, not just the repo.** Its third argument is
+  this item's own facts, for a verdict about one target where the signals describe a
+  window of activity — a fan-out item's precondition can tell which target it is
+  about. Declare the argument only if you read it.
+- **A precondition that cannot answer says so**, with `{ error: '…' }` rather than a
+  decline: a decline is a decision about the world, and one taken on an API that
+  would not answer is a guess. The item parks open in the failure lane and the
+  ordinary re-queue lever retries it.
 - A task that passes its precondition **runs**. The later phases must not find
   "new reasons to skip" — not timing, not repo state, not "already handled", not
   an open PR elsewhere. If a condition should stop the run, it belongs in the
@@ -253,9 +266,15 @@ A work item's **state is its labels**, and there is exactly one state label on i
 at a time: `task:blocked` (waiting on a `Not-before` or a `Blocked-by`),
 `task:ready` (available to pick), `task:executing` (an executor holds the claim),
 `task:agent` (a session owns it). Beside them: `task:urgent` (pick before anything
-non-urgent), `origin:schedule` (the tick created this one at an anchor), and the
-terminal set — `outcome:done`, `outcome:delivered`, `outcome:obsolete`,
-`needs-human`.
+non-urgent) and the terminal set — `task:done`, `task:obsolete`, `needs-human`.
+(A closed item may still wear the retired `outcome:*` spellings of the first two,
+or `outcome:delivered`, which nothing writes any more; every reader accepts them.)
+
+Whether an item is a task's **standing occurrence** or an **ad-hoc run** is not a
+label but a property of the item: the standing one is titled with the task and
+nothing else, and its task is on a calendar. A `manual` task's item and every
+qualified one — a fan-out target, a request naming its issue — are ad-hoc, which
+is what lets them run beside the schedule rather than consuming it.
 
 Two rules follow, and both are about not borrowing the vocabulary:
 
@@ -290,7 +309,7 @@ closing or running anything.
 
 ## Item lifecycle — every exit is terminal, and nothing keeps updating
 
-- **Succeeded, nothing pending** → `outcome:done`, one comment, issue closed.
+- **Succeeded, nothing pending** → `task:done`, one comment, issue closed.
 - **Parked for a human** → `needs-human` **plus one sub-label naming what is being
   asked for**, one comment, issue left open. Nothing keeps updating a parked issue:
   one visible convergence, then it is a person's to look at. Re-queueing it by hand
@@ -313,7 +332,7 @@ closing or running anything.
   nobody, and the silence is the signal. The other three do **not** hold the lane —
   they are one person's inbox, not a fault in the task, so the schedule carries on
   around them.
-- **Never ran** → `outcome:obsolete`, closed as not planned: the precondition
+- **Never ran** → `task:obsolete`, closed as not planned: the precondition
   declined and the item has no anchor to roll to, or the task is gone (file
   removed, pack undeclared). An obsolete item is not an anomaly and gets no
   `needs-human`.

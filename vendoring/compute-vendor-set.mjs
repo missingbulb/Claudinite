@@ -54,6 +54,15 @@ const VENDORED_ENGINE_DOCS = new Set([
   'engine/scheduler/queue/instructions.md',
 ]);
 
+// A BUILT-IN TASK'S WORKER FILE is operational by the same argument, and by PATTERN
+// rather than by name: the engine ships its own tasks (DESIGN §16.2), each a
+// directory whose `task.md` is the spec its session follows, and a mount missing one
+// hands that session nothing to run. A list would have to be extended by whoever adds
+// the next built-in task, silently, in another file.
+const BUILT_IN_TASK_DOC = /^engine\/scheduler\/queue\/tasks\/[^/]+\/task\.md$/;
+
+const vendorsEngineDoc = (rel) => VENDORED_ENGINE_DOCS.has(rel) || BUILT_IN_TASK_DOC.test(rel);
+
 // The migration records a consumer carries in its OWN mount, so the update flows read
 // the notes locally and needs no canon checkout in session. Records live under the
 // flow that owns them — `engine/migrations/<record>/` and
@@ -106,7 +115,7 @@ function walk(relDir, files, errors, { engine = false, today, installed = null }
       const rel = `${relDir}/${entry.name}`;
       // engine .md is canon-maintainer reference and dropped — except the
       // operational whitelist (executor.md) a consumer reads from its own mount.
-      if (engine && entry.name.endsWith('.md') && !VENDORED_ENGINE_DOCS.has(rel)) continue;
+      if (engine && entry.name.endsWith('.md') && !vendorsEngineDoc(rel)) continue;
       files.add(rel);
     }
   }

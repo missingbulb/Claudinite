@@ -166,7 +166,7 @@ adoption:
    the declaration moved.
 3. **Labels need no step** — the tick and the executor ensure the queue's labels
    (`task:blocked`, `task:ready`, `task:urgent`, `task:executing`, `task:agent`,
-   `origin:schedule`, `needs-human`, the `outcome:*` set) exist before applying any
+   `needs-human`, `task:done`, `task:obsolete`) exist before applying any
    of them (create-if-missing, idempotent), so they materialize on the first run and
    self-heal if deleted. No one-off creation, nothing to forget.
 4. **Write the `taskScheduler` key** into `.claudinite-checks.json` (defaults:

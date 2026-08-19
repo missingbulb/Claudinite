@@ -90,7 +90,9 @@ export default {
   // pointers in this pack's README and its three fleet task docs follow it (#975).
   // 14: each fleet task's doc is a README.md — every one of them is agentless, and
   // task.md is the spec an agent session reads (task-md-only-when-agentic, #1055).
-  version: 16,
+  // 17: a task comment names the terminal a declined manual lever closes with in
+  // its current spelling; no behaviour moves.
+  version: 17,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'fleet-enforcer duties for the repo watching every other repo — coverage, freshness, usage, standardized packs',

@@ -1,7 +1,8 @@
 // The work item — the queue's one durable object (tasks-dispatch DESIGN §3, §4).
 // An issue titled `[claudinite-work] <pack>/<task> [qualifier]`, whose labels are
-// its state, whose body's first line is the task path, and whose two optional body
-// fields (`Not-before`, `Blocked-by`) are the only scheduling facts it carries.
+// its state, whose body's first line is the task path, and whose optional body
+// fields (`Not-before`, `Blocked-by`, and a request's `Request` / `Model`) are the
+// only facts it carries beyond that.
 //
 // PURE, and deliberately the whole schema: everything else — anchors, guards,
 // yields, leashes, verdicts — is computed fresh at every tick and pick from the
@@ -9,7 +10,7 @@
 // here is therefore the compatibility surface across engine versions, which is why
 // additive change is the strongly preferred shape and a rename needs a migration.
 //
-// Parse/serialize of the two fields lives here and nowhere else (DESIGN §9).
+// Parse/serialize of those fields lives here and nowhere else (DESIGN §9).
 //
 // The one import, and a frozen constant at that: the pack-rename map, which this
 // module needs to keep reading titles written before a rename (see parseWorkItemTitle).
@@ -25,8 +26,15 @@ export const READY = 'task:ready';
 export const URGENT = 'task:urgent';
 export const EXECUTING = 'task:executing';
 export const AGENT = 'task:agent';
-export const ORIGIN_SCHEDULE = 'origin:schedule';
 export const NEEDS_HUMAN = 'needs-human';
+
+// @deprecated The origin marker (DESIGN §15.26). Nothing writes it and nothing
+// branches on it: whether an item is a task's standing occurrence or an ad-hoc run
+// is STRUCTURAL — see `isStandingItem` — so a marker that could disagree with the
+// structure was a second authority over the same fact. Kept exported and inert
+// because open items filed by an older engine still carry it, and a reader that
+// choked on an unknown label would fail on exactly those.
+export const ORIGIN_SCHEDULE = 'origin:schedule';
 
 // The TRIAGE SUB-LABELS. `needs-human` says an item is parked; these say what the
 // human parked with it is expected to DO, which is the whole difference between a
@@ -55,8 +63,8 @@ export const NEEDS_HUMAN_FAILURE = triage('failure');
 export const TRIAGE_LABELS = Object.freeze([
   NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_FAILURE,
 ]);
-// WHICH PARKS HOLD THE TASK'S LANE. An open `origin:schedule` item IS the task's
-// standing item, so while one exists the generator files no further occurrence
+// WHICH PARKS HOLD THE TASK'S LANE. A task's open STANDING item is the occurrence
+// itself, so while one exists the generator files no further occurrence
 // (`planTick` job 1) — which for a park means the task stops being scheduled at
 // all until a human clears it. That is right for a `failure`: filing a queue of
 // items that will break the same way helps nobody, and the silence is the signal.
@@ -80,7 +88,6 @@ export const isBlockingPark = (item) =>
 export const triageLabelFor = (kind) =>
   (TRIAGE_LABELS.includes(triage(kind)) ? triage(kind) : NEEDS_HUMAN_FAILURE);
 
-export const OUTCOME_DONE = 'outcome:done';
 // @deprecated Nothing writes this since the approval park: a run that left an
 // unmerged PR no longer CLOSES as delivered, it parks at
 // `task:needs-human-approval` and waits to be merged. Kept exported, kept in
@@ -88,13 +95,19 @@ export const OUTCOME_DONE = 'outcome:done';
 // it are stored data, and a decoder that stopped recognising it would turn every
 // historical delivered run into an un-outcomed one.
 export const OUTCOME_DELIVERED = 'outcome:delivered';
+
+// @deprecated The pre-2026-08-19 spellings of the two terminals below. Kept
+// exported so a fielded pack that imports them still loads, and READ wherever an
+// outcome is decoded: labels are stored data on closed issues fleet-wide, so a
+// decoder that stopped recognising these would turn every historical run into an
+// un-outcomed one. Write `TASK_DONE` / `TASK_OBSOLETE`.
+export const OUTCOME_DONE = 'outcome:done';
 export const OUTCOME_OBSOLETE = 'outcome:obsolete';
 
 // Today's terminal spellings (DESIGN §4, §15.25): the `outcome:` namespace dissolves
 // into `task:`, one vocabulary for the state machine's live and terminal states
-// alike. The fielded engine still WRITES the `outcome:*` spellings above until the
-// vocabulary migration lands; these exist so every decoder is ready before the first
-// writer flips.
+// alike. These are what the engine WRITES; the `outcome:*` spellings above are read
+// forever, because a closed issue keeps whatever it was closed under.
 export const TASK_DONE = 'task:done';
 export const TASK_OBSOLETE = 'task:obsolete';
 
@@ -118,6 +131,53 @@ export function outcomeOf(issue) {
   return null;
 }
 
+// --- the request vocabulary (DESIGN §16.1) ------------------------------------
+// Four labels in their own namespace, worn by an ORDINARY issue somebody marked —
+// never by a work item, which is why they are not in the `task:` namespace and why
+// nothing here reads them off an item. They are here beside the item's own
+// vocabulary because they are the other half of the same compatibility surface.
+//
+// The mark is a LABEL rather than a body syntax or a command comment for one
+// reason: it must be appliable from the issue page on a phone. It is also
+// write-gated by the platform — applying a label needs triage or write access —
+// which is the first half of the security story (the second is the precondition's
+// permission read at pickup, §16.4).
+export const REQUEST_LABEL = 'claude-task';
+export const QUEUED_LABEL = 'claude-queued';
+export const IN_REVIEW_LABEL = 'claude-in-review';
+export const MODEL_LABEL_PREFIX = 'claude-model:';
+
+// The families a request may ask for, and the one it gets when it asks for
+// nothing. `none` is not among them: a request is implemented by a session, so an
+// agentless family would name a run that cannot happen.
+export const REQUEST_MODELS = Object.freeze(['opus', 'sonnet', 'haiku']);
+export const DEFAULT_REQUEST_MODEL = 'opus';
+
+export const MODEL_LABELS = REQUEST_MODELS.map((f) => `${MODEL_LABEL_PREFIX}${f}`);
+
+// Every label the request mode applies, ensured like the queue's own. `claude-task`
+// is ensured too although only a person applies it: a label that does not exist is
+// one nobody can find in the picker, and the mark is the whole entry point.
+export const REQUEST_LABELS = [
+  { name: REQUEST_LABEL, color: '1d76db', description: 'Claudinite: implement this issue — the next tick queues a run for it' },
+  { name: QUEUED_LABEL, color: 'fbca04', description: 'Claudinite: a work item exists for this issue' },
+  { name: IN_REVIEW_LABEL, color: '5319e7', description: 'Claudinite: a pull request is open for this issue, waiting on a person' },
+  ...REQUEST_MODELS.map((f) => ({
+    name: `${MODEL_LABEL_PREFIX}${f}`, color: 'ededed',
+    description: `Claudinite: run this request at the ${f} family`,
+  })),
+];
+
+// The model a marked issue asks for, from the labels standing on it. An
+// unrecognised family falls back to the default rather than failing the request:
+// a run nobody can start would look accepted forever. Where several are present the
+// order is REQUEST_MODELS' — the labels are consumed at adoption (§16.3), so the
+// only way to hold two is to apply two for the same ask.
+export const requestModelFromLabels = (labels = []) => {
+  const asked = labels.filter((l) => l.startsWith(MODEL_LABEL_PREFIX)).map((l) => l.slice(MODEL_LABEL_PREFIX.length));
+  return REQUEST_MODELS.find((f) => asked.includes(f)) ?? DEFAULT_REQUEST_MODEL;
+};
+
 // The four state labels an open item may wear. An open item wearing none of them
 // and no `needs-human` is off the state machine entirely — a torn label swap's
 // leavings, which the janitor repairs (DESIGN §6.2, §11).
@@ -133,15 +193,14 @@ export const QUEUE_LABELS = [
   { name: URGENT, color: 'd93f0b', description: 'Claudinite queue: pick this before any non-urgent item' },
   { name: EXECUTING, color: 'fbca04', description: 'Claudinite queue: an executor holds the claim' },
   { name: AGENT, color: '1d76db', description: 'Claudinite queue: an agent session owns this item' },
-  { name: ORIGIN_SCHEDULE, color: 'ededed', description: 'Claudinite queue: created by the generator tick at a task anchor' },
   { name: NEEDS_HUMAN, color: 'b60205', description: 'Claudinite queue: parked for a human — the one triage state' },
   { name: NEEDS_HUMAN_ACTION, color: 'b60205', description: 'Claudinite triage: a human must change something outside the code' },
   { name: NEEDS_HUMAN_DECISION, color: 'd93f0b', description: 'Claudinite triage: a human must choose what happens next' },
   { name: NEEDS_HUMAN_APPROVAL, color: '5319e7', description: 'Claudinite triage: succeeded and left an unmerged PR to approve' },
   { name: NEEDS_HUMAN_FAILURE, color: 'b60205', description: 'Claudinite triage: the run broke — diagnose and fix' },
-  { name: OUTCOME_DONE, color: '0e8a16', description: 'Claudinite queue: succeeded, nothing pending' },
+  { name: TASK_DONE, color: '0e8a16', description: 'Claudinite queue: succeeded, nothing pending' },
   { name: OUTCOME_DELIVERED, color: '5319e7', description: 'Claudinite queue: succeeded and left a live artifact the world still has to act on' },
-  { name: OUTCOME_OBSOLETE, color: 'ededed', description: 'Claudinite queue: never ran — the precondition said no, or the task is gone' },
+  { name: TASK_OBSOLETE, color: 'ededed', description: 'Claudinite queue: never ran — the precondition said no, or the task is gone' },
 ];
 
 // GitHub hands labels back as objects on the issues API and as bare strings in
@@ -173,6 +232,24 @@ export function parseWorkItemTitle(title) {
 
 export const isWorkItemTitle = (title) => parseWorkItemTitle(title) !== null;
 
+// STANDING OR AD-HOC, DERIVED (DESIGN §15.26). A task's standing item is the one
+// the generator files at an anchor: its title names the task and nothing else, and
+// the task it names is on a calendar. Everything else is ad-hoc — a `manual` task
+// (which has no anchor to stand for) and every qualified item (a fan-out target, a
+// request naming its issue), each of which may legitimately run beside the
+// occurrence rather than being it.
+//
+// It is read off the item and the declaration at HEAD rather than off a label the
+// creator applied, because the two could disagree: a marker says what its writer
+// believed, the structure says what the item IS, and the guards that consume this
+// (the occurrence guard, the dedupe, the `after` yield) are only sound on the
+// second. `frequency` is the declared frequency of the task the title names —
+// absent when the repo no longer carries it, which is ad-hoc by the same rule.
+export function isStandingItem(item, frequency) {
+  const parsed = parseWorkItemTitle(item?.title ?? item);
+  return !!parsed && parsed.qualifier === null && frequency != null && frequency !== 'manual';
+}
+
 // --- comment markers ----------------------------------------------------------
 // The three comments the protocol reads back. They are HTML comments so a human
 // reading the item sees prose, and they are here — with the labels and the body
@@ -194,6 +271,15 @@ export const EPISODE_MARKER = '<!-- claudinite-episode -->';
 export const NOT_BEFORE_FIELD = 'Not-before';
 export const BLOCKED_BY_FIELD = 'Blocked-by';
 
+// The two fields a REQUEST item carries (DESIGN §16.3). `Request` is the issue this
+// run implements — the whole payload, since the request task has no code-work phase
+// to hand one over. `Model` is the family the asker chose, copied here by the tick
+// from a write-gated label and read only by a task that declares
+// `model_from_request`; it is the first thing an item carries that defines
+// behaviour, which is why it is fenced rather than waved through (§16.7).
+export const REQUEST_FIELD = 'Request';
+export const MODEL_FIELD = 'Model';
+
 // The heading the delivered-artifacts section carries in a work item body. One
 // home, because it is written in three places and MATCHED when a re-entrant run
 // updates the section it already wrote.
@@ -209,6 +295,8 @@ export const LEGACY_DELIVERED_HEADINGS = Object.freeze([
 
 const NOT_BEFORE_RE = /^Not-before:[ \t]*(.*)$/m;
 const BLOCKED_BY_RE = /^Blocked-by:[ \t]*(.*)$/m;
+const REQUEST_RE = /^Request:[ \t]*#?(\d+)/m;
+const MODEL_RE = /^Model:[ \t]*(\S+)/m;
 
 // Build a work item body. The first line is the task path — the only thing an
 // executor reads to locate the worker, validated in code before anything trusts
@@ -216,11 +304,14 @@ const BLOCKED_BY_RE = /^Blocked-by:[ \t]*(.*)$/m;
 // command) is read from the tracked task files at HEAD, never from here.
 export function workItemBody({
   taskPath, notBefore = null, blockedBy = [], context = [], delivered = [], reason = null,
+  request = null, model = null,
 }) {
   const lines = [taskPath, ''];
   const fields = [];
   if (notBefore) fields.push(`${NOT_BEFORE_FIELD}: ${notBefore}`);
   if (blockedBy.length) fields.push(`${BLOCKED_BY_FIELD}: ${blockedBy.map((n) => `#${n}`).join(', ')}`);
+  if (request) fields.push(`${REQUEST_FIELD}: #${request}`);
+  if (model) fields.push(`${MODEL_FIELD}: ${model}`);
   if (fields.length) lines.push(...fields, '');
   lines.push('Execute the Claudinite task above.');
   if (context.length) {
@@ -245,7 +336,13 @@ export function parseWorkItemBody(body) {
   const nb = NOT_BEFORE_RE.exec(text)?.[1]?.trim() || null;
   const bb = BLOCKED_BY_RE.exec(text)?.[1] ?? '';
   const blockedBy = [...bb.matchAll(/#(\d+)/g)].map((m) => Number(m[1]));
-  return { taskPath, notBefore: nb, blockedBy };
+  const request = REQUEST_RE.exec(text) ? Number(REQUEST_RE.exec(text)[1]) : null;
+  // An unrecognised family reads as absent rather than as itself: the item's model
+  // is behaviour-defining, so the only values that leave this parser are ones the
+  // engine can actually dispatch at (§16.7).
+  const askedModel = MODEL_RE.exec(text)?.[1] ?? null;
+  const model = REQUEST_MODELS.includes(askedModel) ? askedModel : null;
+  return { taskPath, notBefore: nb, blockedBy, request, model };
 }
 
 // The item's own `### Context` bullets, in order — the binding scope a hand-created

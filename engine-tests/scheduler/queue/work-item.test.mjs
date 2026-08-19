@@ -40,13 +40,17 @@ test('the body carries the task path first and the two scheduling fields', () =>
     taskPath: 'packs/claudinite-lifecycle/tasks/update/task.md',
     notBefore: '2026-08-15T02:00:00.000Z',
     blockedBy: [812, 813],
+    request: null,
+    model: null,
   });
   assert.match(body, /### Context\n- only the mount\n- nothing else/);
 });
 
 test('absence is meaningful: no fields parse to null and an empty list', () => {
   const body = workItemBody({ taskPath: 'packs/x/tasks/y/task.md' });
-  assert.deepEqual(parseWorkItemBody(body), { taskPath: 'packs/x/tasks/y/task.md', notBefore: null, blockedBy: [] });
+  assert.deepEqual(parseWorkItemBody(body), {
+    taskPath: 'packs/x/tasks/y/task.md', notBefore: null, blockedBy: [], request: null, model: null,
+  });
 });
 
 // The roll's whole mechanic: stamp the next anchor onto an item that already
@@ -74,9 +78,13 @@ test('withSection appends code_work\'s delivered artifacts without disturbing th
 test('every label the mechanism applies is ensured, and the four states are named', () => {
   const names = QUEUE_LABELS.map((l) => l.name);
   for (const l of STATE_LABELS) assert.ok(names.includes(l), `${l} must be ensurable`);
-  for (const l of ['origin:schedule', 'needs-human', 'outcome:done', 'outcome:delivered', 'outcome:obsolete', 'task:urgent']) {
+  for (const l of ['needs-human', 'task:done', 'task:obsolete', 'outcome:delivered', 'task:urgent']) {
     assert.ok(names.includes(l), `${l} must be ensurable`);
   }
+  // The retired origin marker is NOT ensured: nothing applies it any more, and a
+  // label the mechanism keeps minting is one a reader would keep expecting to mean
+  // something (§15.26).
+  assert.ok(!names.includes('origin:schedule'), 'the retired origin marker is not ensured');
   // Every label carries a colour and a description, so nothing is ever minted
   // grey-and-undocumented by being applied.
   for (const l of QUEUE_LABELS) assert.ok(l.color && l.description, `${l.name} needs a colour and a description`);

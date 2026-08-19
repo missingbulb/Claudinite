@@ -45,7 +45,7 @@ export default {
   // and that IS the request. Hence run: true. The queue evaluates this verdict at
   // pick (tasks-dispatch DESIGN §6.4), unlike the slot mechanism where a forced
   // run bypassed it; a no-go here has no anchor to roll to, so it would close the
-  // enforcer's own item `outcome:obsolete` without running.
+  // enforcer's own item `task:obsolete` without running.
   precondition() {
     return { run: true, reason: 'a work item for this manual lever exists, which is the request to run it' };
   },

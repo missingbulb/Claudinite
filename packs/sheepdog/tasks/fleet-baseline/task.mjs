@@ -46,7 +46,7 @@ export default {
   // Hence run: true. The queue evaluates this verdict at pick (tasks-dispatch
   // DESIGN §6.4), unlike the slot mechanism where a forced run bypassed it; a
   // no-go here has no anchor to roll to, so it would close the operator's own
-  // item `outcome:obsolete` without running. Answering `false` is how this lever
+  // item `task:obsolete` without running. Answering `false` is how this lever
   // stopped working at the flip.
   precondition() {
     return { run: true, reason: 'a work item for this manual lever exists, which is the request to run it' };

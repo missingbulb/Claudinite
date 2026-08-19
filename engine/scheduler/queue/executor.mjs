@@ -16,8 +16,8 @@
 import { pathToFileURL } from 'node:url';
 import { nextAnchor } from './anchors.mjs';
 import {
-  READY, URGENT, EXECUTING, AGENT, BLOCKED, NEEDS_HUMAN, ORIGIN_SCHEDULE,
-  OUTCOME_DONE, OUTCOME_OBSOLETE, QUEUE_LABELS,
+  READY, URGENT, EXECUTING, AGENT, BLOCKED, NEEDS_HUMAN,
+  TASK_DONE, TASK_OBSOLETE, QUEUE_LABELS, REQUEST_LABELS, QUEUED_LABEL, isStandingItem,
   NEEDS_HUMAN_ACTION, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_FAILURE, triageLabelFor,
   CLAIM_MARKER, HANDOFF_MARKER, EPISODE_MARKER,
   parseWorkItemTitle, parseWorkItemBody, parseContextLines, mergeContext, withNotBefore, withSection, hasLabel, DELIVERED_HEADING, LEGACY_DELIVERED_HEADINGS,
@@ -49,18 +49,21 @@ const taskIdOf = (item) => {
 //    would starve every dependent of a quiet upstream forever.
 //
 // `open` is every open work item; `taskAfter(id)` gives a task's declared
-// upstreams as `<pack>/<task>` ids.
-export function pickOrder(open = [], { taskAfter = () => [] } = {}) {
+// upstreams as `<pack>/<task>` ids, and `frequencyOf(id)` that task's declared
+// frequency at HEAD — which is half of what says whether an item is a standing
+// occurrence or an ad-hoc run (§15.26).
+export function pickOrder(open = [], { taskAfter = () => [], frequencyOf = () => null } = {}) {
   const live = (item) => hasLabel(item, READY) || hasLabel(item, EXECUTING) || hasLabel(item, AGENT);
+  const standing = (item) => isStandingItem(item, frequencyOf(taskIdOf(item)));
   const liveUpstream = (upstreamId) => open.some((o) =>
-    taskIdOf(o) === upstreamId && hasLabel(o, ORIGIN_SCHEDULE) && live(o));
+    taskIdOf(o) === upstreamId && standing(o) && live(o));
 
   return open
     .filter((i) => hasLabel(i, READY) && !hasLabel(i, NEEDS_HUMAN))
     .filter((i) => !open.some((o) => o.number !== i.number && titleOf(o) === titleOf(i)
       && (hasLabel(o, EXECUTING) || hasLabel(o, AGENT))))
     .filter((i) => {
-      if (!hasLabel(i, ORIGIN_SCHEDULE)) return true;
+      if (!standing(i)) return true;
       return !taskAfter(taskIdOf(i)).some(liveUpstream);
     })
     .sort((a, b) =>
@@ -106,13 +109,14 @@ export function claimWinner(comments = []) {
 // one item, not one title. If a conflicting item now holds an EARLIER claim
 // (comment id — the same arbiter the lease trusts), this executor reverts its own
 // claim and moves on. Bounded, deterministic, and the earlier claim never notices.
-export function conflictsWithEarlierClaim(item, myClaimId, others, { taskAfter = () => [] } = {}) {
-  const upstreams = hasLabel(item, ORIGIN_SCHEDULE) ? taskAfter(taskIdOf(item)) : [];
+export function conflictsWithEarlierClaim(item, myClaimId, others, { taskAfter = () => [], frequencyOf = () => null } = {}) {
+  const standing = (i) => isStandingItem(i, frequencyOf(taskIdOf(i)));
+  const upstreams = standing(item) ? taskAfter(taskIdOf(item)) : [];
   return others.some((o) => {
     if (o.number === item.number) return false;
     if (!(hasLabel(o, EXECUTING) || hasLabel(o, AGENT))) return false;
     const conflicting = titleOf(o) === titleOf(item)
-      || (upstreams.includes(taskIdOf(o)) && hasLabel(o, ORIGIN_SCHEDULE));
+      || (upstreams.includes(taskIdOf(o)) && standing(o));
     return conflicting && o.claimId != null && o.claimId < myClaimId;
   });
 }
@@ -124,8 +128,8 @@ export function conflictsWithEarlierClaim(item, myClaimId, others, { taskAfter =
 // it closes obsolete with the reason commented (a follow-up whose world settled on
 // its own, S17).
 export function noGoPlan(item, task, schedule, now, reason) {
-  if (!hasLabel(item, ORIGIN_SCHEDULE)) {
-    return { kind: 'close', outcome: OUTCOME_OBSOLETE, stateReason: 'not_planned', reason };
+  if (!isStandingItem(item, task?.decl?.frequency)) {
+    return { kind: 'close', outcome: TASK_OBSOLETE, stateReason: 'not_planned', reason };
   }
   const until = nextAnchor(task.decl.frequency, schedule, now);
   return { kind: 'roll', until: until ? until.toISOString() : null, reason };
@@ -147,11 +151,12 @@ export async function runExecutor({
   const schedule = config.taskScheduler;
   const byId = new Map(tasks.map((t) => [`${t.pack}/${t.id}`, t]));
   const taskAfter = (id) => byId.get(id)?.decl?.after ?? [];
+  const frequencyOf = (id) => byId.get(id)?.decl?.frequency ?? null;
   const done = [];
 
   for (let n = 0; n < maxItems; n += 1) {
     const open = await listOpenWorkItems(gh, repo);
-    const candidate = pickOrder(open, { taskAfter })[0];
+    const candidate = pickOrder(open, { taskAfter, frequencyOf })[0];
     if (!candidate) break;
 
     // --- claim: the verified lease ------------------------------------------
@@ -178,7 +183,7 @@ export async function runExecutor({
 
     // --- post-claim re-verify (F15) -----------------------------------------
     const others = await withClaimIds(api, gh, repo, await listOpenWorkItems(gh, repo), candidate.number);
-    if (conflictsWithEarlierClaim(candidate, winner.id, others, { taskAfter })) {
+    if (conflictsWithEarlierClaim(candidate, winner.id, others, { taskAfter, frequencyOf })) {
       await api.comment(gh, repo, candidate.number,
         `${EPISODE_MARKER}\nReverting this claim: a conflicting item holds an earlier claim this cycle. Returning the item to the queue.`);
       await api.swapLabel(gh, repo, candidate.number, EXECUTING, READY);
@@ -224,7 +229,7 @@ async function executeItem({
     return 'needs-human';
   }
   if (!task) {
-    await close(api, gh, repo, item.number, EXECUTING, OUTCOME_OBSOLETE, 'not_planned',
+    await close(api, gh, repo, item.number, EXECUTING, TASK_OBSOLETE, 'not_planned',
       `\`${id}\` is not a task this repo carries at HEAD (the pack may be undeclared, or the task removed). Closing obsolete.`);
     return 'obsolete';
   }
@@ -236,12 +241,35 @@ async function executeItem({
 
   // --- the single precondition evaluation (DESIGN §6.4) --------------------
   const at = now();
-  const signals = await collectSignalsFor(task, at);
-  const verdict = evaluatePrecondition(task, signals, config.packConfig?.[task.pack] ?? {});
+  const fields = parseWorkItemBody(item.body);
+  // The signals are collected FOR THIS OCCURRENCE, and the precondition judges over
+  // it: a request item's verdict is about the issue it names, which no signal bundle
+  // can single out on its own (DESIGN §16.4).
+  const signals = await collectSignalsFor(task, at, item);
+  const verdict = evaluatePrecondition(task, signals, config.packConfig?.[task.pack] ?? {}, fields);
+
+  // A PRECONDITION THAT COULD NOT ANSWER IS A RUN FAILURE, NOT A VERDICT (F27). A
+  // decline is a decision about the world; one taken on an API that would not answer
+  // is a guess, and its write-backs cannot land — for a request that would strand
+  // the issue armed-but-queued forever, the request silently eaten. So the item
+  // parks open in the failure lane, where the ordinary re-queue lever retries it
+  // once the API recovers, and nothing is written to whatever it could not read.
+  if (verdict.error) {
+    await converge(api, gh, repo, item.number, EXECUTING, NEEDS_HUMAN_FAILURE, claim,
+      `This run could not be decided: ${verdict.error}\n\nNothing ran and nothing was written. Re-queue this item (remove the \`${NEEDS_HUMAN}\` labels, add \`${READY}\`) once the cause has cleared.`);
+    log(`! #${item.number} ${id}: the precondition could not answer — ${verdict.error}`);
+    return 'needs-human';
+  }
+
   if (verdict.run !== true) {
     const plan = noGoPlan(item, task, schedule, at, verdict.reason || 'no work');
     if (plan.kind === 'close') {
-      await close(api, gh, repo, item.number, EXECUTING, OUTCOME_OBSOLETE, 'not_planned',
+      // A DECLINED REQUEST IS DISARMED IN THE SAME CONVERGENCE (DESIGN §16.5).
+      // Nothing else would: an issue left carrying `claude-queued` after its run was
+      // refused is one no later tick adopts and no person is told about, and one
+      // whose mark — if re-applied — walks into the same refusal forever.
+      if (fields.request) await declineRequest(api, gh, repo, fields.request, item.number, plan.reason);
+      await close(api, gh, repo, item.number, EXECUTING, TASK_OBSOLETE, 'not_planned',
         `The precondition declined and this item has no anchor to roll to: ${plan.reason}`);
       return 'obsolete';
     }
@@ -295,11 +323,11 @@ async function executeItem({
           + `\n\nMerge or close #${result.openPr}, then close this item. This task keeps running on schedule meanwhile.`);
         return 'needs-human';
       }
-      await close(api, gh, repo, item.number, EXECUTING, OUTCOME_DONE, 'completed',
+      await close(api, gh, repo, item.number, EXECUTING, TASK_DONE, 'completed',
         result.delivered?.length
           ? `Code-work did this run's work and left:\n${result.delivered.map((d) => `- ${d}`).join('\n')}`
           : 'Code-work did this run\'s work; no agent was needed.');
-      return OUTCOME_DONE;
+      return TASK_DONE;
     }
     return handOff({ api, gh, repo, item, task, id, context, result, executorId, claim, invokeAgent, config, log });
   }
@@ -323,12 +351,23 @@ async function executeItem({
 //
 // A throwing precondition converges to a no-go with the error as its reason: one
 // task's bad verdict is that item's problem, never the executor's.
-export function evaluatePrecondition(task, signals, packConfig = {}) {
+export function evaluatePrecondition(task, signals, packConfig = {}, item = null) {
   try {
-    return task.decl.precondition(signals, packConfig) ?? {};
+    return task.decl.precondition(signals, packConfig, item) ?? {};
   } catch (e) {
     return { run: false, reason: `precondition threw: ${e.message}` };
   }
+}
+
+// The write-back a refused request gets (DESIGN §16.5): one comment saying why, and
+// the queued label off, so the request is disarmed rather than left looking pending.
+// It is the executor's because the executor is what converged the item — whoever
+// converges owns the write-back for the end they converged.
+async function declineRequest(api, gh, repo, request, item, reason) {
+  await api.comment(gh, repo, request,
+    `Not implementing this: ${reason}\n\nThe queued run (#${item}) is closed and \`${QUEUED_LABEL}\` is removed. `
+    + 'If this was wrong, mark the issue again — a request is only run when the person who opened it, or somebody who commented `/claude go`, has push access here.');
+  await api.removeLabel(gh, repo, request, QUEUED_LABEL);
 }
 
 export function rollBody(body, until, reason, at) {
@@ -447,7 +486,7 @@ async function main() {
   const gh = makeGh();
   const { tasks, errors } = await discoverTasks(root, config);
   for (const e of errors) console.log(`! ${e.what}`);
-  await ensureLabels(gh, repo, QUEUE_LABELS);
+  await ensureLabels(gh, repo, [...QUEUE_LABELS, ...REQUEST_LABELS]);
 
   const runUrl = process.env.GITHUB_RUN_ID
     ? `${process.env.GITHUB_SERVER_URL ?? 'https://github.com'}/${repo}/actions/runs/${process.env.GITHUB_RUN_ID}`
