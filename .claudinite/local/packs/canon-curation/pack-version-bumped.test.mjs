@@ -33,6 +33,12 @@ test('the canon\'s own local packs are out of scope — they vendor nowhere and 
   assert.deepEqual(packsTouched(['.claudinite/local/packs/claudinite/RULES.md']), []);
 });
 
+test('a pack\'s own tests are out of scope — no vendor set carries one, so no member is waiting', () => {
+  assert.deepEqual(packsTouched(['packs/demo/pack.test.mjs', 'packs/demo/skills/x/rule.test.mjs']), []);
+  // The pack is still touched when a shipping file changes in the same commit.
+  assert.deepEqual(packsTouched(['packs/demo/pack.test.mjs', 'packs/demo/RULES.md']), ['demo']);
+});
+
 // --- reading the declared version -------------------------------------------
 
 test('the manifest\'s own version is read, never minEngineVersion beside it', () => {

@@ -13,7 +13,7 @@ The `cer/` check ids are kept as they were: a member's `accept` entries name rul
 The gotchas themselves live in [`RULES.md`](RULES.md), grouped by the surface each concerns —
 service worker, content scripts, permissions and host access, sign-in and tokens, extension UI
 surfaces, and introspecting a service worker over CDP. The index below is held against that prose by
-`engine-tests/rule-index.test.mjs`, which is what makes a second listing safe here: an earlier
+the corpus-wide rule-index drift guard, which is what makes a second listing safe here: an earlier
 hand-kept one drifted into claiming a prose rule that never existed (#777).
 
 ## Rules (`RULES.md`)

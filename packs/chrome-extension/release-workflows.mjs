@@ -72,9 +72,9 @@ export const VENDORING_MIGRATION = 'chrome-release-vendoring';
 // DUPLICATED, DELIBERATELY: the declared checks in declared-checks.json cannot
 // import, so each carries the same two signals as one `relevantWhen`
 // `someTrackedFileContains` — a path union and a text union, which is how that
-// vocabulary spells "either file says so". packs/chrome-extension/release.test.mjs
-// runs the JSON gate and this function over one matrix of repos and fails if they
-// ever disagree, so keep both literals unbroken.
+// vocabulary spells "either file says so". A drift guard runs the JSON gate and this
+// function over one matrix of repos and fails if they ever disagree, so keep both
+// literals unbroken.
 export const SHIPS_PIPELINE_PATH_RE = /^\.github\/(?:workflows\/[^/]+\.ya?ml|release\.config)$/;
 export const SHIPS_PIPELINE_TEXT_RE = /^(?:name:\s*['"]?(?:Release to Chrome Store|Release)['"]?\s*|manifest_path=.*)$/m;
 

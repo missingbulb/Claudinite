@@ -18,7 +18,7 @@ import conformanceWorkScope from './conformance-work-scope.mjs';
 // than being what puts it there.
 export default {
   id: 'claudinite-lifecycle',
-  version: 11,
+  version: 12,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'using Claudinite itself — the vendored mount, the pack declaration, bootstrapping, adopting packs, the self-refresh update',
