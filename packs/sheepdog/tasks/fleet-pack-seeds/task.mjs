@@ -45,7 +45,7 @@ export default {
   // carry, for the same reason: ~10x the expected walk while staying inside the hourly
   // cadence.
   code_work_timeout: 900,
-  required_secrets: ['FLEET_GITHUB_TOKEN'], // the account-spanning PAT — this sweep needs Contents WRITE on it, unlike the read-only two
+  required_secrets: ['FLEET_GITHUB_TOKEN'], // the account-spanning PAT; fleet-token.mjs states the grant
 
   // Fire daily unconditionally. Every input lives OUTSIDE this repo — another member's
   // declaration, another member's mount — and no per-repo collector can see either, so

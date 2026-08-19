@@ -39,7 +39,7 @@ export default {
   // serial with a secondary rate limit on top — the same order of walk as the other
   // sweeps, minus their content reads. 900s is ~10x the expected time.
   code_work_timeout: 900,
-  required_secrets: ['FLEET_GITHUB_TOKEN'], // the account-spanning PAT, WITH Actions read+write (a dispatch is an Actions write)
+  required_secrets: ['FLEET_GITHUB_TOKEN'], // the account-spanning PAT; fleet-token.mjs states the grant
 
   // Never due on its own — `manual` means the tick never instantiates this task,
   // so an item exists ONLY because a human created one, and that IS the request.

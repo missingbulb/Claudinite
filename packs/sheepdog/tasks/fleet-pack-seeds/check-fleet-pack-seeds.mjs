@@ -62,6 +62,7 @@ import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { makeGh, paged, fileExists, readDeclaration, putFile, isDormant, DECLARATION } from '../../fleet-api.mjs';
 import { parseSheepdogConfig } from '../../fleet-config.mjs';
+import { missingFleetTokenError } from '../../fleet-token.mjs';
 
 // Where a pack's code sits in a member's tree. Checked rather than assumed: the mount
 // is what makes a declaration legal.
@@ -141,9 +142,8 @@ export async function main() {
   const token = process.env.FLEET_GITHUB_TOKEN;
   const home = process.env.GITHUB_REPOSITORY;
   if (!token) {
-    throw new Error('FLEET_GITHUB_TOKEN is not set. Add a repo secret with a fine-grained PAT '
-      + '(this account, ALL repositories, Metadata read, Contents READ AND WRITE, Issues read/write) — '
-      + 'this sweep writes a declaration into each member, so Contents read alone is not enough.');
+    throw missingFleetTokenError('fleet-pack-seeds',
+      'This sweep writes a declaration into each member, so a read-only grant is not enough.');
   }
   if (!home || !home.includes('/')) throw new Error('GITHUB_REPOSITORY is not set (owner/repo)');
   const gh = makeGh(token);

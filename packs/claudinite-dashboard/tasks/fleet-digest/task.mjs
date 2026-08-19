@@ -63,8 +63,8 @@ export default {
   // walk, well inside the hourly scheduler cadence.
   code_work_timeout: 900,
   // The account-spanning PAT the fleet reads run under — this repo's only secret, and
-  // the reason this task cannot run in a repo that has not configured one. It needs
-  // Metadata, Contents, Issues and Pull requests READ, across all repositories.
+  // the reason this task cannot run in a repo that has not configured one.
+  // fleet-token.mjs, beside this file, states the grant.
   required_secrets: ['FLEET_GITHUB_TOKEN'],
 
   // Fire daily, unconditionally. There is deliberately no "only if something

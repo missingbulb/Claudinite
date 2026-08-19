@@ -10,8 +10,10 @@ because someone declared it. Adopting it wires the GitHub Pages deploy.
 **It also carries the task that writes the briefs the page reads** —
 [`fleet-digest`](tasks/fleet-digest/task.md), daily. That is not gated on anything: a
 repo that declares this pack for the page alone gets the task too, and the task needs
-`FLEET_GITHUB_TOKEN` (an account-spanning PAT: Metadata, Contents, Issues and Pull
-requests, read, across all repositories). Without that secret its work item parks
+`FLEET_GITHUB_TOKEN`, an account-spanning PAT granted exactly what
+[`fleet-token.mjs`](tasks/fleet-digest/fleet-token.mjs)'s table names — the one place
+those permissions are written, and what the adoption handover step hands a human.
+Without that secret its work item parks
 asking for one, and nothing else about the pack is affected. Declare this pack on the
 repo that *is* your fleet's enforcer, and you get both halves; declare it somewhere
 else and either configure the secret or expect the parked item.

@@ -30,6 +30,7 @@ import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { join } from 'node:path';
 import { makeGh, fleetWorkerFailed } from './fleet-reads.mjs';
+import { missingFleetTokenError } from './fleet-token.mjs';
 import { deliverGenerated, baseTip, pushGenerated, readAt, remoteUrl } from '../../../../engine/scheduler/deliver-generated.mjs';
 import { parseParamBag, contextText } from './param-bag.mjs';
 import { parseDigestConfig } from './digest-config.mjs';
@@ -226,8 +227,8 @@ export async function main() {
   const base = process.env.CLAUDINITE_DEFAULT_BRANCH || 'main';
   if (!token) throw new Error('GITHUB_TOKEN is not set — the digest cannot deliver anything');
   if (!fleetToken) {
-    throw new Error('FLEET_GITHUB_TOKEN is not set — configure the account-spanning PAT '
-      + '(this account, ALL repositories, Metadata read, Contents read, Pull requests read, Issues read)');
+    throw missingFleetTokenError(
+      'The collector reads every repository under the owner, which only an account-spanning PAT can see.');
   }
 
   // The config is read from the CHECKOUT, not over the API: this is our own repo and
