@@ -289,7 +289,7 @@ lesson at the strongest mechanism available — a check where the rule is determ
   which is true forever once true. A signal true most days — a substantive `main` move — may
   only *widen* an already-triggered run. The gate is not the scope: where a verdict is relative to
   the rest of the set, newness gates and the full set stays the scope. (portable →
-  `claudinite-growth/scheduled-tasks.md`)
+  `claudinite-growth/skills/writing-tasks/SKILL.md`)
 
 - **Writing a task whose output is a regenerated file** — land it through
   `engine/scheduler/deliver-generated.mjs` and read its prior state from the fetched base, not

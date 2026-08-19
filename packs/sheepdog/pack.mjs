@@ -86,7 +86,9 @@ export default {
   // 12: the FLEET_GITHUB_TOKEN grant is stated once, in fleet-token.mjs, and rendered
   // into every message about it — additive, no migration, delivered so an enforcer's
   // next token error names the whole grant instead of that sweep's subset (#1030).
-  version: 12,
+  // 13: the task contract moved into the claudinite-growth `writing-tasks` skill; the
+  // pointers in this pack's README and its three fleet task docs follow it (#975).
+  version: 13,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'fleet-enforcer duties for the repo watching every other repo — coverage, freshness, usage, standardized packs',

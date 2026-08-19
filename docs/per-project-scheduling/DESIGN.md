@@ -45,7 +45,7 @@ packs/<pack>/tasks/<task-name>/
 > The two conformance guards for this shape (`task-declaration-shape`,
 > `scheduler-workflow-shape`) live in the **basics** pack, not a separate one —
 > scheduling is baseline discipline (see
-> [`packs/claudinite-growth/scheduled-tasks.md`](../../packs/claudinite-growth/scheduled-tasks.md)).
+> [`packs/claudinite-growth/skills/writing-tasks/SKILL.md`](../../packs/claudinite-growth/skills/writing-tasks/SKILL.md)).
 
 Alongside this migration, `.claudinite/local_packs/` is renamed to
 `.claudinite/local/packs/` (owner decision, §11): packs then sit at one uniform
@@ -660,7 +660,7 @@ These override the earlier sections where they conflict.
 3. **The precondition is a task's only decision point.** After it passes, the
    two execution phases must not skip the run for state/timing reasons;
    failures may stop a run, discretion may not, and an empty outcome is always
-   legal. Enforced as doctrine in `scheduled-tasks.md` and hunted by the
+   legal. Enforced as doctrine in the `writing-tasks` skill and hunted by the
    advisory `task-phase-discipline` world check (basics).
 4. **The phases are named code-work and agentic work** — similar, consecutive
    parts of one task execution, neither framed as serving the other. Contract:

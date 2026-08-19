@@ -26,7 +26,7 @@ const rule = {
   id: 'task-declaration-shape',
   severity: 'blocking',
   description: 'A tasks/<name>/task.mjs default-exports the full task contract (id, frequency, precondition_signals, agent_model, expected_outcome, agent_instructions, precondition) with legal enum values; an agentic task bounds its run with agent_execution_timeout, and any code_work carries a timeout and stays task-local',
-  doc: 'packs/claudinite-lifecycle/scheduled-tasks.md',
+  doc: 'packs/claudinite-growth/skills/writing-tasks/SKILL.md',
   why: 'the tick and executor read agent_model/expected_outcome/frequency from this file, not the work item — an illegal or missing value means a task never fires, fires wrong, or writes past its ceiling',
 
   run(ctx) {
