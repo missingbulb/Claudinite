@@ -5,6 +5,8 @@ import {
   workItemBody, parseWorkItemBody, withNotBefore, withSection,
   QUEUE_LABELS, STATE_LABELS, labelNames, hasLabel,
   DELIVERED_HEADING, LEGACY_DELIVERED_HEADINGS,
+  TRIAGE_LABELS, NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_APPROVAL,
+  NEEDS_HUMAN_FAILURE, triageLabelFor, isBlockingPark,
 } from '../../../engine/scheduler/queue/work-item.mjs';
 
 // The title is the identity's readable half; the ISSUE NUMBER is the identity.
@@ -141,4 +143,32 @@ test('withSection is re-entrant under the canonical heading', () => {
   const once = withSection('task/path\n', DELIVERED_HEADING, ['a branch'], LEGACY_DELIVERED_HEADINGS);
   const twice = withSection(once, DELIVERED_HEADING, ['a branch'], LEGACY_DELIVERED_HEADINGS);
   assert.equal(twice.match(/^### Delivered by /gm).length, 1);
+});
+
+// --- the triage sub-labels ----------------------------------------------------
+
+test('a kind word maps to its label, and anything unrecognised to failure', () => {
+  assert.equal(triageLabelFor('action'), NEEDS_HUMAN_ACTION);
+  assert.equal(triageLabelFor('approval'), NEEDS_HUMAN_APPROVAL);
+  // A worker that misspells its class has a bug, which is what `failure` means —
+  // and so does an engine reading a kind a newer one invented.
+  assert.equal(triageLabelFor('urgent'), NEEDS_HUMAN_FAILURE);
+  assert.equal(triageLabelFor(undefined), NEEDS_HUMAN_FAILURE);
+});
+
+test('only a fault park holds the task\'s lane', () => {
+  const at = (...labels) => ({ labels });
+  assert.equal(isBlockingPark(at('needs-human', NEEDS_HUMAN_FAILURE)), true);
+  // The compatibility case that has to be safe on the way in: everything parked by
+  // an engine older than these labels wears the bare state and must keep the lane.
+  assert.equal(isBlockingPark(at('needs-human')), true);
+  for (const l of [NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_APPROVAL]) {
+    assert.equal(isBlockingPark(at('needs-human', l)), false, l);
+  }
+  assert.equal(isBlockingPark(at('task:ready')), false);
+});
+
+test('every triage label is one the executor guarantees before applying', () => {
+  const ensured = new Set(QUEUE_LABELS.map((l) => l.name));
+  for (const l of TRIAGE_LABELS) assert.ok(ensured.has(l), l);
 });

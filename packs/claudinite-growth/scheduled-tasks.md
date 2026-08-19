@@ -113,8 +113,8 @@ than by replaying a ledger.
   wiring converge stamps each name into the workflows that run code-work — the tick's
   drain and the executor — so a worker reads it as ordinary environment. A declared
   secret the repo has not configured is **named, not guessed at**: code-work is the
-  only code that sees a secret's value, so the executor converges the item to
-  `needs-human` saying exactly which one is missing. Nothing else fails; the task
+  only code that sees a secret's value, so the executor parks the item at
+  `needs-human` + `task:needs-human-action` saying exactly which one is missing. Nothing else fails; the task
   that needs the secret just doesn't work yet. The consequence worth designing
   around: **a workflow that exists only to hold a secret is redundant** — fold its
   work into the task's code-work rather than dispatching and polling a second
@@ -181,8 +181,22 @@ runs**. That decision is the precondition's alone:
   an open PR elsewhere. If a condition should stop the run, it belongs in the
   precondition, as code over signals, its verdict binding via the item's
   Context.
-- **Failures may stop a run** — a crash, a timeout, an API error converge the
-  item to `needs-human`. Discretion may not.
+- **Failures may stop a run** — a crash, a timeout, an API error park the
+  item at `needs-human`. Discretion may not.
+- **A failing worker may say why it failed.** The executor sees an exit code and
+  nothing more, so it cannot tell a token missing a scope (a person's five-second
+  fix) from an exception in the worker's own code (a bug). A worker that knows
+  prints one line on either stream before exiting non-zero, and the park is routed
+  by it:
+
+  ```
+  claudinite-needs-human: action — FLEET_GITHUB_TOKEN lacks Actions: write
+  ```
+
+  The kind is `action`, `decision`, `approval` or `failure`; the last marker in the
+  output wins, so a worker sweeping many targets may revise its verdict as it goes.
+  No marker — and every worker written before this existed — parks at `failure`,
+  which is the lane that means "someone reads the trace".
 - **"The work ran and produced nothing" is always legal** — that is an empty
   outcome, not a skip. The line: did the phase *do* the work and find it empty,
   or *decline* to do it?
@@ -252,14 +266,28 @@ closing or running anything.
 ## Item lifecycle — every exit is terminal, and nothing keeps updating
 
 - **Succeeded, nothing pending** → `outcome:done`, one comment, issue closed.
-- **Succeeded and left a live artifact** the world still has to act on — an open
-  PR, an armed auto-merge, a store submission → `outcome:delivered`, closed.
-- **Failed or anomalous** → `needs-human`, one comment naming what failed, issue
-  left open. Nothing keeps updating an issue about a failed state: one visible
-  convergence, then it is a human's to look at. Re-queueing it by hand
+- **Parked for a human** → `needs-human` **plus one sub-label naming what is being
+  asked for**, one comment, issue left open. Nothing keeps updating a parked issue:
+  one visible convergence, then it is a person's to look at. Re-queueing it by hand
   (`create-work-item --wake #<n>`) is the sanctioned road back, and the
   precondition is re-evaluated at that pickup — which is what makes the retry safe
-  even when the failed run half-did its work.
+  even when the failed run half-did its work. The four:
+  - `task:needs-human-approval` — succeeded, and deliberately left an unmerged PR
+    for a person to merge or close. The only park that is not a fault.
+  - `task:needs-human-action` — something outside the code must change before this
+    can run: a secret set, a scope granted, a routine rewired, an input supplied.
+  - `task:needs-human-decision` — the run stopped mid-flight and the next step is a
+    choice: re-queue or abandon, does the half-done work stand, was the ceiling
+    violation acceptable.
+  - `task:needs-human-failure` — the run broke. A bug, a contract-forbidden shape, a
+    malformed item. The default when nothing else fits.
+
+  **An open item is the task's standing item, and a `failure` park therefore stops
+  the task being scheduled** — no further occurrence is filed until it is woken or
+  closed. That is deliberate: a queue of items that will break the same way helps
+  nobody, and the silence is the signal. The other three do **not** hold the lane —
+  they are one person's inbox, not a fault in the task, so the schedule carries on
+  around them.
 - **Never ran** → `outcome:obsolete`, closed as not planned: the precondition
   declined and the item has no anchor to roll to, or the task is gone (file
   removed, pack undeclared). An obsolete item is not an anomaly and gets no

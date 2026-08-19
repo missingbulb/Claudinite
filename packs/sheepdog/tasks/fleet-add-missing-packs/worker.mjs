@@ -37,6 +37,7 @@
 
 import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+import { fleetWorkerFailed } from '../../fleet-api.mjs';
 import { makeGh, paged, DECLARATION, fireScheduler } from '../../fleet-api.mjs';
 import { parseSheepdogConfig } from '../../fleet-config.mjs';
 import { parseParams } from './params.mjs';
@@ -204,7 +205,7 @@ async function run({ gh, home, owner, canonRepo, packs, params }) {
 
 // Run only when invoked directly (code-work's `node worker.mjs …`), never on import.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((e) => { console.error(`fleet-add-missing-packs failed: ${e.message}`); process.exit(1); });
+  main().catch((e) => fleetWorkerFailed('fleet-add-missing-packs', e));
 }
 
 // Re-exported for the tests and for a hand-run: `qualify` is how a name typed in the

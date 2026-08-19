@@ -25,6 +25,8 @@ import {
 import {
   WORK_PREFIX, BLOCKED, READY, URGENT, EXECUTING, AGENT, NEEDS_HUMAN,
   OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE, STATE_LABELS,
+  TRIAGE_LABELS, NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_APPROVAL,
+  NEEDS_HUMAN_FAILURE, isBlockingPark,
   CLAIM_MARKER, HANDOFF_MARKER, EPISODE_MARKER,
   parseWorkItemTitle, parseWorkItemBody, hasLabel, labelNames,
 } from '../../engine/scheduler/queue/work-item.mjs';
@@ -148,6 +150,17 @@ export function stateOf(item) {
   return 'unlabelled';
 }
 
+// The park's sub-label, or null for one wearing none (an older engine's, or an
+// agent that skipped it). An item can only wear one meaningfully; first wins.
+export const triageOf = (item) => TRIAGE_LABELS.find((l) => hasLabel(item, l)) ?? null;
+
+const TRIAGE_TEXT = {
+  [NEEDS_HUMAN_APPROVAL]: 'a PR to approve',
+  [NEEDS_HUMAN_ACTION]: 'something to change outside the code',
+  [NEEDS_HUMAN_DECISION]: 'a decision to make',
+  [NEEDS_HUMAN_FAILURE]: 'a break to diagnose, holding the task\'s lane',
+};
+
 export function outcomeOf(item) {
   for (const o of [OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE]) if (hasLabel(item, o)) return o;
   return null;
@@ -177,7 +190,16 @@ export function warningsFor(item, now, { periodFor = () => null } = {}) {
   if (state === BLOCKED && idle >= STUCK_BLOCKED_MS) {
     out.push({ level: 'warning', text: 'blocked for over 2 days' });
   }
-  if (state === NEEDS_HUMAN) out.push({ level: 'critical', text: 'parked for a human' });
+  if (state === NEEDS_HUMAN) {
+    // What the park is asking for, and whether it is holding the task's lane —
+    // an approval waiting on a reviewer is not the same alarm as a broken run
+    // that has stopped its task being scheduled at all.
+    const t = triageOf(item);
+    out.push({
+      level: isBlockingPark(item) ? 'critical' : 'warning',
+      text: t ? `parked for a human — ${TRIAGE_TEXT[t]}` : 'parked for a human — unclassified, holding the task\'s lane',
+    });
+  }
   if (state === 'torn') out.push({ level: 'warning', text: 'wearing more than one state label' });
   if (state === 'unlabelled') out.push({ level: 'warning', text: 'open with no state label' });
   return out;

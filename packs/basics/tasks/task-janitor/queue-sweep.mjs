@@ -22,6 +22,7 @@ import {
 } from '../../../../engine/scheduler/queue/janitor-rules.mjs';
 import {
   READY, AGENT, EXECUTING, BLOCKED, NEEDS_HUMAN, QUEUE_LABELS, HANDOFF_MARKER,
+  NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION,
   parseWorkItemBody, hasLabel,
 } from '../../../../engine/scheduler/queue/work-item.mjs';
 import { listOpenWorkItems } from '../../../../engine/scheduler/queue/read.mjs';
@@ -48,19 +49,22 @@ export async function sweepQueue(gh, repo, now, { tasks = [], log = console.log 
 
   if (stale.length || deadAgents.length || stateless.length) await ensureLabels(gh, repo, QUEUE_LABELS);
 
-  const escalate = async (item, body, dropLabel) => {
+  // Both labels, as everywhere: the state the machine reads plus what the human is
+  // being asked for.
+  const escalate = async (item, body, dropLabel, triage) => {
     await comment(gh, repo, item.number, body);
     if (dropLabel) await removeLabel(gh, repo, item.number, dropLabel);
     await addLabel(gh, repo, item.number, NEEDS_HUMAN);
+    await addLabel(gh, repo, item.number, triage);
   };
 
   for (const item of stale) {
-    await escalate(item, staleReadyComment(item), READY);
+    await escalate(item, staleReadyComment(item), READY, NEEDS_HUMAN_ACTION);
     log(`escalated stale-ready #${item.number} → ${NEEDS_HUMAN}`);
     result.staleReady.push(item.number);
   }
   for (const item of deadAgents) {
-    await escalate(item, deadAgentComment(item, await sessionNote(gh, repo, item)), AGENT);
+    await escalate(item, deadAgentComment(item, await sessionNote(gh, repo, item)), AGENT, NEEDS_HUMAN_DECISION);
     log(`reclaimed a dead agent claim on #${item.number} → ${NEEDS_HUMAN}`);
     result.deadAgents.push(item.number);
   }
@@ -74,7 +78,7 @@ export async function sweepQueue(gh, repo, now, { tasks = [], log = console.log 
     result.stuck.push(item.number);
   }
   for (const item of stateless) {
-    await escalate(item, statelessComment(), null);
+    await escalate(item, statelessComment(), null, NEEDS_HUMAN_DECISION);
     log(`repaired stateless #${item.number} → ${NEEDS_HUMAN}`);
     result.stateless.push(item.number);
   }
