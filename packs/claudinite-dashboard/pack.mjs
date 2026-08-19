@@ -48,6 +48,7 @@
 // has to be frozen is frozen.
 import datedFixtureCollision from './tasks/fleet-digest/dated-fixture-collision.mjs';
 import digestPlainText from './tasks/fleet-digest/digest-plain-text.mjs';
+import { fleetTokenHandoverStep } from './tasks/fleet-digest/fleet-token.mjs';
 
 export default {
   id: 'claudinite-dashboard',
@@ -55,7 +56,10 @@ export default {
   // declaring repo gains a daily task; nothing in a member is rewritten, and the task
   // still reads an enforcer's existing `sheepdog` config as its legacy source, so the
   // bump carries no migration record.
-  version: 7,
+  // 8: the FLEET_GITHUB_TOKEN the digest needs is stated once, in its own
+  // fleet-token.mjs, and rendered into the missing-secret message, the adoption step
+  // and a 403's hint — additive, no migration (#1030).
+  version: 8,
   minEngineVersion: 4,
   ruleRoutingGuidance: {
     belongs: 'the browser dashboard over Claudinite scheduler state, the site that publishes it, and the fleet morning brief it reads',
@@ -112,6 +116,12 @@ export default {
       breaks: 'the deploy job fails on every run; the build still succeeds, so nothing else is affected',
       done: 'the Pages URL serves the dashboard, and the Claudinite dashboard workflow is green',
     },
+    // The fleet-digest task's credential, and a person is the only one who can mint it.
+    // RENDERED from the task's own fleet-token.mjs rather than written here, so the
+    // human granting it is handed the complete list: a message stating only what the
+    // read in front of it needed is how a fleet went two days short one permission
+    // (#1030).
+    fleetTokenHandoverStep(),
   ],
 
   // Seeded, never converged: `.github/workflows/` cannot be written by the nightly, so

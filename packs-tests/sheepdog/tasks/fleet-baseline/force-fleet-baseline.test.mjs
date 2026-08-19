@@ -71,7 +71,7 @@ test('classifyDispatch: every status is a DIFFERENT thing for the reader to do',
   assert.equal(classifyDispatch(204).state, 'fired');
   assert.equal(classifyDispatch(404).state, 'no-scheduler');
   assert.equal(classifyDispatch(403).state, 'no-permission');
-  assert.match(classifyDispatch(403).detail, /Actions: write/);
+  assert.match(classifyDispatch(403).detail, /Actions: read and write/);
   assert.equal(classifyDispatch(422).state, 'not-dispatchable');
   assert.equal(classifyDispatch(500).state, 'error');
 });

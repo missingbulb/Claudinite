@@ -137,8 +137,11 @@ report, and the `.github/` managed copy it required were retired 2026-08-11 —
 
 Each sweep lives **inside its task's folder**, because nothing outside that task uses it. Only what
 they all share sits at the pack root: [fleet-api.mjs](fleet-api.mjs) (the cross-repo REST
-primitives, including the one that fires a member's scheduler) and
-[fleet-config.mjs](fleet-config.mjs) (the one reader of this pack's entry `config`).
+primitives, including the one that fires a member's scheduler),
+[fleet-config.mjs](fleet-config.mjs) (the one reader of this pack's entry `config`) and
+[fleet-token.mjs](fleet-token.mjs) (the one statement of what `FLEET_GITHUB_TOKEN` must be granted —
+every "token is not set" message, the adoption handover step and a `403`'s hint are rendered from its
+table, so no sweep ever states a subset of its own).
 
 The rest of the machinery — running the daily-run, the task engine (`engine/scheduler/`), scheduling —
 is Claudinite **core**. What a session in an enforcer repo has to get right: [RULES.md](RULES.md).
@@ -211,8 +214,8 @@ asks the owner for it. A workflow that exists only to hold a secret is redundant
 | Answering why the fleet did not move | medium | complexity | prose: 52 words |
 | Pushing canon to the whole fleet now | low | complexity | prose: 119 words |
 | Adding a pack across the fleet | medium | complexity | prose: 53 words |
-| Granting or repairing FLEETGITHUBTOKEN | high | correctness | prose: 53 words |
-| A fan-out task reporting no-permission | medium | complexity | prose: 50 words |
+| Granting or repairing FLEETGITHUBTOKEN | high | correctness | prose: 52 words |
+| A sweep reporting 403 or no-permission | medium | complexity | prose: 48 words |
 
 ## Checks
 

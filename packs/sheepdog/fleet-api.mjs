@@ -14,6 +14,7 @@
 // change in someone else's repo" then has exactly one answer to read.
 
 import { isDormant } from '../../engine/checks/helpers/repo-context.mjs';
+import { forbiddenHint } from './fleet-token.mjs';
 
 const API = 'https://api.github.com';
 
@@ -77,8 +78,10 @@ export async function paged(gh, path) {
     const { status, json } = await gh(`${path}${sep}per_page=100&page=${page}`);
     if (status !== 200 || !Array.isArray(json)) {
       const why = `GET ${path} page ${page} failed with status ${status}`;
+      // A 403 is a grant short one permission, not a broken endpoint: name which one,
+      // or the run reports a bare status a hundred requests into a sweep (#1030).
       throw (status === 401 || status === 403)
-        ? grantError(`${why} — the fleet PAT is unusable or lacks the scope this read needs`)
+        ? grantError(`${why}${status === 403 ? forbiddenHint(path) : ' — the fleet PAT is unusable'}`)
         : new Error(why);
     }
     all.push(...json);
@@ -113,7 +116,8 @@ export async function fileExists(gh, fullName, path) {
   const { status } = await gh(`/repos/${fullName}/contents/${path}`);
   if (status === 200) return true;
   if (status === 404) return false;
-  throw new Error(`marker check ${fullName}:${path} returned ${status}`);
+  throw new Error(`marker check ${fullName}:${path} returned ${status}`
+    + (status === 403 ? forbiddenHint(`/repos/${fullName}/contents/`) : ''));
 }
 
 // One file's text and its blob sha, or null when the repo has no such file. The sha
@@ -123,7 +127,10 @@ export async function fileExists(gh, fullName, path) {
 export async function readFile(gh, fullName, path) {
   const res = await gh(`/repos/${fullName}/contents/${encodeURI(path)}`);
   if (res.status === 404) return null;
-  if (res.status !== 200 || typeof res.json?.content !== 'string') throw new Error(`${fullName}:${path} returned ${res.status}`);
+  if (res.status !== 200 || typeof res.json?.content !== 'string') {
+    throw new Error(`${fullName}:${path} returned ${res.status}`
+      + (res.status === 403 ? forbiddenHint(`/repos/${fullName}/contents/`) : ''));
+  }
   return { text: Buffer.from(res.json.content, 'base64').toString('utf8'), sha: res.json.sha };
 }
 
@@ -160,7 +167,7 @@ export async function putFile(gh, fullName, { path, text, sha, message }) {
   if (status === 200 || status === 201) return json?.commit?.sha ?? null;
   if (status === 409) throw new Error(`${fullName}:${path} changed under the sweep (409) — not written this run`);
   if (status === 403 || status === 404) {
-    throw grantError(`writing ${fullName}:${path} returned ${status} — the fleet PAT needs Contents WRITE on this repo (${json?.message ?? 'no message'})`);
+    throw grantError(`writing ${fullName}:${path} returned ${status}${forbiddenHint(`/repos/${fullName}/contents/`)} (${json?.message ?? 'no message'})`);
   }
   throw new Error(`writing ${fullName}:${path} returned ${status} (${json?.message ?? 'no message'})`);
 }
@@ -228,7 +235,7 @@ export function classifyDispatch(status) {
       // queued".
       return { state: 'no-scheduler', detail: `no ${SCHEDULER} on the default branch, or Actions is disabled — nothing there can run its own tasks` };
     case 403:
-      return { state: 'no-permission', detail: 'the PAT lacks Actions: write on this repo — dispatching a workflow is an Actions write, a scope the read-only sweeps never needed' };
+      return { state: 'no-permission', detail: `dispatching a workflow was refused${forbiddenHint('/actions/workflows/dispatches')}` };
     case 422:
       // Two unrelated causes share this status, and the fix is opposite in each, so
       // the message names both rather than guessing. GitHub disables a repo's

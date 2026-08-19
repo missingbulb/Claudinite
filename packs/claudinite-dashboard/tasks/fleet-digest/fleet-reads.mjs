@@ -17,6 +17,7 @@
 // cannot make.
 
 import { isDormant } from '../../../../engine/checks/helpers/repo-context.mjs';
+import { forbiddenHint } from './fleet-token.mjs';
 
 const API = 'https://api.github.com';
 
@@ -75,8 +76,10 @@ export async function paged(gh, path) {
     const { status, json } = await gh(`${path}${sep}per_page=100&page=${page}`);
     if (status !== 200 || !Array.isArray(json)) {
       const why = `GET ${path} page ${page} failed with status ${status}`;
+      // A 403 is a grant short one permission, not a broken endpoint: name which one,
+      // or the run reports a bare status a hundred requests into a walk (#1030).
       throw (status === 401 || status === 403)
-        ? grantError(`${why} — the fleet PAT is unusable or lacks the scope this read needs`)
+        ? grantError(`${why}${status === 403 ? forbiddenHint(path) : ' — the fleet PAT is unusable'}`)
         : new Error(why);
     }
     all.push(...json);
@@ -88,7 +91,10 @@ export async function paged(gh, path) {
 export async function readFile(gh, fullName, path) {
   const res = await gh(`/repos/${fullName}/contents/${encodeURI(path)}`);
   if (res.status === 404) return null;
-  if (res.status !== 200 || typeof res.json?.content !== 'string') throw new Error(`${fullName}:${path} returned ${res.status}`);
+  if (res.status !== 200 || typeof res.json?.content !== 'string') {
+    throw new Error(`${fullName}:${path} returned ${res.status}`
+      + (res.status === 403 ? forbiddenHint(`/repos/${fullName}/contents/`) : ''));
+  }
   return { text: Buffer.from(res.json.content, 'base64').toString('utf8'), sha: res.json.sha };
 }
 

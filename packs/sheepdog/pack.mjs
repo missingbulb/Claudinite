@@ -24,7 +24,8 @@
 //
 // Each sweep lives INSIDE its task's folder — nothing outside that task uses it.
 // The pack root holds only what they all need: fleet-api.mjs (the cross-repo REST
-// primitives) and fleet-config.mjs (the one reader of this pack entry's config).
+// primitives), fleet-config.mjs (the one reader of this pack entry's config) and
+// fleet-token.mjs (the one statement of what FLEET_GITHUB_TOKEN must be granted).
 //
 // ROSTER carries two questions rather than one because they are asked of the same
 // repos from the same walk (#788): coverage, and — because per-project scheduling made
@@ -74,6 +75,7 @@
 // not about any pack seeded — which is why it lives here and not in the pack whose
 // config happened to drift.
 import seedsAgree from './seeds-agree.mjs';
+import { fleetTokenHandoverStep } from './fleet-token.mjs';
 
 export default {
   id: 'sheepdog',
@@ -81,7 +83,10 @@ export default {
   // the only thing that reads the series it writes. What stays here is an enforcer's
   // `digest`, `owner` and `exclude` config, which the task still reads off this entry
   // as its legacy source, so no enforcer declaration has to change.
-  version: 11,
+  // 12: the FLEET_GITHUB_TOKEN grant is stated once, in fleet-token.mjs, and rendered
+  // into every message about it — additive, no migration, delivered so an enforcer's
+  // next token error names the whole grant instead of that sweep's subset (#1030).
+  version: 12,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'fleet-enforcer duties for the repo watching every other repo — coverage, freshness, usage, standardized packs',
@@ -94,4 +99,11 @@ export default {
   // Audits the enforcer's config as it stands, whatever this session touched: a seed
   // that drifted in an earlier commit is just as silent as one that drifted in this one.
   worldRules: [seedsAgree],
+
+  // The token is the whole pack's one credential and only a human can mint it. The step
+  // is RENDERED from fleet-token.mjs rather than written here, because the failure this
+  // exists to prevent is a person granting a subset (#1030): a sweep's own message names
+  // what that sweep needs, and five such messages assemble into a grant missing exactly
+  // the permission no other sweep exercises. What adoption presents is the union.
+  adoptionHandover: [fleetTokenHandoverStep()],
 };

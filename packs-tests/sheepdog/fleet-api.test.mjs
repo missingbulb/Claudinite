@@ -57,10 +57,10 @@ test('putFile: the ONE write, sha-guarded — a 403/404 names the missing scope,
   assert.equal(seen[0].body.sha, 's1', 'the read\'s sha is the precondition');
   assert.equal(Buffer.from(seen[0].body.content, 'base64').toString('utf8'), 'x');
 
-  // The token scope is the likely cause of both, and the message has to say so — the
-  // sweeps ran read-only across the fleet before this write existed.
+  // The token scope is the likely cause of both, and the message has to say so — named
+  // from fleet-token.mjs's table rather than spelled here (#1030).
   for (const status of [403, 404]) {
-    await assert.rejects(() => putFile(responder(status), 'o/m', { path: 'p', text: 'x', message: 'm' }), /Contents WRITE/);
+    await assert.rejects(() => putFile(responder(status), 'o/m', { path: 'p', text: 'x', message: 'm' }), /missing Contents/);
   }
   // The file moved under the run: this run does not write, the next one re-decides.
   await assert.rejects(() => putFile(responder(409), 'o/m', { path: 'p', text: 'x', sha: 'stale', message: 'm' }), /changed under the sweep/);

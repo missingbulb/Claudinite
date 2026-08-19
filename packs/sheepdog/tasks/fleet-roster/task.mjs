@@ -55,7 +55,7 @@ export default {
   // walk while staying well inside the hourly scheduler cadence, so a hung sweep is
   // killed long before the next run could collide with it.
   code_work_timeout: 900,
-  required_secrets: ['FLEET_GITHUB_TOKEN'], // the account-spanning PAT the sweep reads the fleet with
+  required_secrets: ['FLEET_GITHUB_TOKEN'], // the account-spanning PAT; fleet-token.mjs states the grant
 
   // Fire daily unconditionally. Every input lives OUTSIDE this repo — another repo's
   // declaration, another member's workflow, canon's head — and no per-repo collector

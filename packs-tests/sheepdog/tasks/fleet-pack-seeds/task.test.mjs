@@ -52,13 +52,13 @@ test('fleet-pack-seeds: the sweep is the code_work, bounded and task-local', () 
   assert.equal(decl.agent_instructions, undefined);   // vestigial field dropped: none task, no agent to instruct
 });
 
-test('fleet-pack-seeds: one fleet secret, shared with the other sweeps — but it needs Contents WRITE', () => {
+test('fleet-pack-seeds: one fleet secret, and one place the grant is stated', () => {
   assert.deepEqual(decl.required_secrets, ['FLEET_GITHUB_TOKEN']);
   assert.deepEqual(decl.required_secrets, roster.required_secrets);
-  // The scope bump is the sweep's own business to explain: it is the only thing in the
-  // pack that writes to a member, so its token error has to say what the read-only
-  // sweeps never needed.
-  assert.match(sweepSrc, /Contents READ AND WRITE/);
+  // The sweep needs a scope the read-only ones never did, and says so — but it renders
+  // the GRANT from fleet-token.mjs rather than stating its own subset, which is what
+  // let a fleet run for two days short one permission (#1030).
+  assert.match(sweepSrc, /missingFleetTokenError\('fleet-pack-seeds'/);
 });
 
 test('fleet-pack-seeds: fires unconditionally, with a reason', () => {

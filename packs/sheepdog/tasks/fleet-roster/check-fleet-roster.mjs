@@ -49,6 +49,7 @@ import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { makeGh, paged, readDeclaration, isDormant, ensureLabel, DECLARATION } from '../../fleet-api.mjs';
 import { parseSheepdogConfig } from '../../fleet-config.mjs';
+import { missingFleetTokenError } from '../../fleet-token.mjs';
 import * as adoption from './adoption-issues.mjs';
 import * as drift from './drift-issues.mjs';
 
@@ -166,9 +167,8 @@ export async function main() {
   const token = process.env.FLEET_GITHUB_TOKEN;
   const home = process.env.GITHUB_REPOSITORY;
   if (!token) {
-    throw new Error('FLEET_GITHUB_TOKEN is not set. Add a repo secret with a fine-grained PAT '
-      + '(this account, ALL repositories, Metadata read, Contents read + Issues read/write) — '
-      + 'the default GITHUB_TOKEN sees only this repo and cannot sweep the fleet.');
+    throw missingFleetTokenError('fleet-roster',
+      'The default GITHUB_TOKEN sees only this repo and cannot sweep the fleet.');
   }
   if (!home || !home.includes('/')) throw new Error('GITHUB_REPOSITORY is not set (owner/repo)');
   const gh = makeGh(token);
