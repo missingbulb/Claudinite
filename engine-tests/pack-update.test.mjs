@@ -482,3 +482,30 @@ test('the stamp write drops a legacy pack key rather than carrying it forward', 
   assert.ok(!Object.hasOwn(packVersions, 'core'), 'the old key must not survive the write');
   assert.ok(!Object.hasOwn(packVersions, 'grow_with_claudinite'), 'nor the other one');
 });
+
+test('a pack the canon renamed takes its old mount directory with it', async () => {
+  // What the sweep is for. Vendoring replaces a tree PER DECLARED ID, and a rename
+  // changes the id — so the directory the pack used to be vendored under matches
+  // nothing and is never touched again. It does not lie there harmlessly: a mounted
+  // pack's own id is canonicalized on load, so the abandoned copy announces the id the
+  // live one has, and the member runs two packs of that name, one of them frozen at the
+  // content it was renamed from.
+  //
+  // Driven through a REAL rename (core -> claudinite-lifecycle) rather than a fixture
+  // map, because the property worth pinning is that the spellings this corpus actually
+  // ships are the ones swept.
+  const root = makeMember({ packs: ['basics', 'claudinite-lifecycle'] });
+  assert.deepEqual((await applyVendor(root)).errors, []);
+  const legacy = join(root, MOUNT, 'packs', 'core');
+  mkdirSync(legacy, { recursive: true });
+  writeFileSync(join(legacy, 'pack.mjs'), "export default { id: 'core', version: 1 };\n");
+
+  // A gap on the renamed pack and nothing else: version 13 with no record above 1, so
+  // this run is the vendor step and only the vendor step.
+  setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { basics: 99, 'claudinite-lifecycle': 12 } });
+  await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
+
+  assert.ok(!existsSync(legacy), 'the abandoned directory is the second copy of a pack the member already has');
+  assert.ok(existsSync(join(root, MOUNT, 'packs', 'claudinite-lifecycle', 'pack.mjs')), 'and the live one is laid down');
+  rmSync(root, { recursive: true, force: true });
+});
