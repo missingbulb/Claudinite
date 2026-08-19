@@ -90,6 +90,34 @@ export const OUTCOME_DONE = 'outcome:done';
 export const OUTCOME_DELIVERED = 'outcome:delivered';
 export const OUTCOME_OBSOLETE = 'outcome:obsolete';
 
+// Today's terminal spellings (DESIGN §4, §15.25): the `outcome:` namespace dissolves
+// into `task:`, one vocabulary for the state machine's live and terminal states
+// alike. The fielded engine still WRITES the `outcome:*` spellings above until the
+// vocabulary migration lands; these exist so every decoder is ready before the first
+// writer flips.
+export const TASK_DONE = 'task:done';
+export const TASK_OBSOLETE = 'task:obsolete';
+
+// The stored-data rename rule, decode side: every spelling ever written maps
+// STRAIGHT to the canonical word, in one pass — including `outcome:delivered`,
+// which nothing writes any more but closed issues carry forever.
+const OUTCOME_SPELLINGS = new Map([
+  [TASK_DONE, 'done'], [OUTCOME_DONE, 'done'],
+  [OUTCOME_DELIVERED, 'delivered'],
+  [TASK_OBSOLETE, 'obsolete'], [OUTCOME_OBSOLETE, 'obsolete'],
+]);
+
+// The one outcome an issue's labels carry, as the canonical word ('done',
+// 'delivered', 'obsolete') or null. Everything that tallies or renders outcomes
+// decodes through here, so a spelling change is one map entry and not a sweep.
+export function outcomeOf(issue) {
+  for (const l of labelNames(issue)) {
+    const o = OUTCOME_SPELLINGS.get(l);
+    if (o) return o;
+  }
+  return null;
+}
+
 // The four state labels an open item may wear. An open item wearing none of them
 // and no `needs-human` is off the state machine entirely — a torn label swap's
 // leavings, which the janitor repairs (DESIGN §6.2, §11).
@@ -229,9 +257,9 @@ export function parseWorkItemBody(body) {
 // A section runs to the next `### ` heading or to the end of the body — the same
 // bounds `withSection` writes to — and only `- ` bullets count, so the prose
 // framing around a section contributes nothing.
-export function parseContextLines(body) {
+function sectionLines(body, heading) {
   const lines = String(body ?? '').split('\n');
-  const at = lines.findIndex((l) => l.trim() === '### Context');
+  const at = lines.findIndex((l) => l.trim() === `### ${heading}`);
   if (at === -1) return [];
   const out = [];
   for (const line of lines.slice(at + 1)) {
@@ -240,6 +268,32 @@ export function parseContextLines(body) {
     if (m) out.push(m[1].trim());
   }
   return out;
+}
+
+export const parseContextLines = (body) => sectionLines(body, 'Context');
+
+// --- the roll's record ----------------------------------------------------------
+
+// The section a no-go roll keeps on the item: the last declined reason and the next
+// wake, REPLACED on every roll (the item is a status line, not a log — the timeline
+// carries the history). Serializer and parser live together so the shape has one
+// home; the executor writes it, and anything answering "why didn't it run" — the
+// dashboard above all — reads it back.
+export const LAST_VERDICT_HEADING = 'Last verdict';
+
+export function lastVerdictLines({ at, reason, until }) {
+  const lines = [`${at} — the precondition declined: ${reason}`];
+  if (until) lines.push(`Asked again at ${until}.`);
+  return lines;
+}
+
+export function parseLastVerdict(body) {
+  const lines = sectionLines(body, LAST_VERDICT_HEADING);
+  // The reason may carry the separator itself, so the split is on the FIRST match.
+  const first = /^(.*?) — the precondition declined: ([\s\S]*)$/.exec(lines[0] ?? '');
+  if (!first) return null;
+  const until = lines.map((l) => /^Asked again at (.*?)\.?$/.exec(l)).find(Boolean)?.[1] ?? null;
+  return { at: first[1], reason: first[2], until };
 }
 
 // Fold a second set of Context lines into the first, keeping order and dropping

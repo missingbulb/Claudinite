@@ -5,7 +5,6 @@
 
 import {
   BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN,
-  OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE,
 } from '../../engine/scheduler/queue/work-item.mjs';
 
 export const $ = (id) => document.getElementById(id);
@@ -51,10 +50,12 @@ export const STATE_UI = {
 // through, so a row reads left to right as progress.
 export const STATE_ORDER = [BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN];
 
+// Keyed by the canonical outcome words `outcomeOf` decodes to, so a spelling
+// migration in the labels never reaches this table.
 export const OUTCOME_COLOR = {
-  [OUTCOME_DONE]: 'var(--good)',
-  [OUTCOME_DELIVERED]: 'var(--s-violet)',
-  [OUTCOME_OBSOLETE]: 'var(--muted)',
+  done: 'var(--good)',
+  delivered: 'var(--s-violet)',
+  obsolete: 'var(--muted)',
   none: 'var(--critical)',
 };
 

@@ -24,19 +24,24 @@ import {
 } from '../../engine/scheduler/queue/leases.mjs';
 import {
   WORK_PREFIX, BLOCKED, READY, URGENT, EXECUTING, AGENT, NEEDS_HUMAN,
-  OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE, STATE_LABELS,
+  STATE_LABELS, outcomeOf as decodeOutcome,
   TRIAGE_LABELS, NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_APPROVAL,
-  NEEDS_HUMAN_FAILURE, isBlockingPark,
+  NEEDS_HUMAN_FAILURE, isBlockingPark, parseLastVerdict,
   CLAIM_MARKER, HANDOFF_MARKER, EPISODE_MARKER,
   parseWorkItemTitle, parseWorkItemBody, hasLabel, labelNames,
 } from '../../engine/scheduler/queue/work-item.mjs';
 
 export {
   WORK_PREFIX, BLOCKED, READY, URGENT, EXECUTING, AGENT, NEEDS_HUMAN,
-  OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE,
   EXECUTING_LEASH_MS, AGENT_LEASH_MS, STUCK_BLOCKED_MS, STALE_READY_PERIODS,
   parseWorkItemTitle, nextAnchor, mostRecentAnchor, periodMs,
 };
+
+// How long a due item may sit blocked before the page calls the tick out. The tick
+// is the repo's one cron, hourly; two fires of slack keeps a single late fire from
+// reading as a fault. Not an engine constant because nothing engine-side measures
+// this — the tick readies due items on its next fire, whenever that is.
+export const DUE_SLACK_MS = 2 * 3600e3;
 
 const ms = (t) => (t == null ? null : new Date(t).getTime());
 
@@ -161,10 +166,9 @@ const TRIAGE_TEXT = {
   [NEEDS_HUMAN_FAILURE]: 'a break to diagnose, holding the task\'s lane',
 };
 
-export function outcomeOf(item) {
-  for (const o of [OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE]) if (hasLabel(item, o)) return o;
-  return null;
-}
+// The outcome as its canonical word ('done' | 'delivered' | 'obsolete' | null) —
+// the engine's decoder, which maps every legacy spelling straight to today's.
+export const outcomeOf = decodeOutcome;
 
 // How long the item has sat where it is. Every transition is a label write, so
 // `updated_at` is the last touch — the same quantity the janitor's rules count.
@@ -173,7 +177,10 @@ const idleMs = (item, now) => ms(now) - (ms(item?.updated_at) ?? ms(item?.create
 // Warnings, each mirroring a real recovery rule rather than a display heuristic, so
 // what the page flags is what the engine will actually act on — and how long the
 // viewer waits for it.
-export function warningsFor(item, now, { periodFor = () => null } = {}) {
+//
+// `isOpen(number)` answers whether a `Blocked-by` issue is still open — true, false,
+// or null for one outside what the caller fetched. Unknown is never alarmed on.
+export function warningsFor(item, now, { periodFor = () => null, isOpen = () => null } = {}) {
   const out = [];
   const state = stateOf(item);
   const idle = idleMs(item, now);
@@ -187,8 +194,30 @@ export function warningsFor(item, now, { periodFor = () => null } = {}) {
     const per = periodFor(`${parseWorkItemTitle(item.title)?.pack}/${parseWorkItemTitle(item.title)?.task}`) ?? 86400e3;
     if (idle >= STALE_READY_PERIODS * per) out.push({ level: 'serious', text: 'ready but unpicked for ~2 periods' });
   }
-  if (state === BLOCKED && idle >= STUCK_BLOCKED_MS) {
-    out.push({ level: 'warning', text: 'blocked for over 2 days' });
+  if (state === BLOCKED) {
+    // The standing-item model: blocked is the queue's healthy quiet state, not a
+    // fault. A rolled item waiting out its Not-before never warns; what does warn is
+    // the two things the engine would actually act on — dependencies unresolved past
+    // the janitor's threshold, and an item DUE that the tick has failed to ready.
+    const { notBefore, blockedBy } = parseWorkItemBody(item.body);
+    const wake = ms(notBefore);
+    const depStates = blockedBy.map((n) => isOpen(n));
+    if (wake !== null && wake > ms(now)) {
+      // waiting out its stamped wake — healthy, whatever its age
+    } else if (depStates.some((s) => s === true)) {
+      if (idle >= STUCK_BLOCKED_MS) {
+        out.push({ level: 'warning', text: `blocked on ${blockedBy.map((n) => `#${n}`).join(', ')} for over 2 days — the janitor flags stuck dependencies` });
+      }
+    } else if (!depStates.some((s) => s === null)) {
+      // Nothing blocks it any more: the next tick readies it. Due only measures from
+      // the stamped wake — with dependencies the closing time is not on this item,
+      // and a guess would alarm on an item that became due minutes ago.
+      if (wake !== null && ms(now) - wake >= DUE_SLACK_MS) {
+        out.push({ level: 'serious', text: 'due but not readied — is the tick running?' });
+      } else if (wake === null && blockedBy.length === 0 && idle >= DUE_SLACK_MS) {
+        out.push({ level: 'serious', text: 'due but not readied — is the tick running?' });
+      }
+    }
   }
   if (state === NEEDS_HUMAN) {
     // What the park is asking for, and whether it is holding the task's lane —
@@ -209,17 +238,22 @@ export function warningsFor(item, now, { periodFor = () => null } = {}) {
 export function describeItem(item, now, opts = {}) {
   const parsed = parseWorkItemTitle(item.title) ?? { pack: null, task: null, qualifier: null };
   const body = parseWorkItemBody(item.body);
+  const state = stateOf(item);
   return {
     number: item.number,
     key: parsed.pack && parsed.task ? `${parsed.pack}/${parsed.task}` : null,
     ...parsed,
-    state: stateOf(item),
+    state,
     outcome: outcomeOf(item),
+    triage: triageOf(item),
+    blockingPark: state === NEEDS_HUMAN && isBlockingPark(item),
     urgent: hasLabel(item, URGENT),
     labels: labelNames(item),
     notBefore: body.notBefore,
     blockedBy: body.blockedBy,
     taskPath: body.taskPath,
+    // The roll's record: when the last ask declined, why, and the stamped wake.
+    lastVerdict: parseLastVerdict(item.body),
     createdAt: item.created_at,
     updatedAt: item.updated_at,
     closedAt: item.closed_at ?? null,
@@ -234,7 +268,7 @@ export function describeItem(item, now, opts = {}) {
 // One row per DECLARED task, whether or not it has ever run — a task that has never
 // produced an item is exactly the interesting case, and an issue-derived list would
 // omit it entirely.
-export function buildRoster({ tasks = [], items = [], now, schedule }) {
+export function buildRoster({ tasks = [], items = [], now, schedule, isOpen }) {
   const byKey = new Map();
   for (const it of items) {
     const p = parseWorkItemTitle(it.title);
@@ -261,6 +295,10 @@ export function buildRoster({ tasks = [], items = [], now, schedule }) {
     else if (!schedule) anchorNote = 'no schedule configured';
     else next = nextAnchor(freq, schedule, now);
 
+    const current = open.length
+      ? describeItem(open[0], now, { periodFor: () => (freq ? periodMs(freq) : null), isOpen })
+      : null;
+
     return {
       key,
       pack: t.pack,
@@ -271,7 +309,8 @@ export function buildRoster({ tasks = [], items = [], now, schedule }) {
       nextAnchor: next,
       anchorNote,
       periodMs: freq && freq !== 'manual' ? periodMs(freq) : null,
-      current: open.length ? describeItem(open[0], now, { periodFor: () => (freq ? periodMs(freq) : null) }) : null,
+      current,
+      nextAsk: nextAskOf(current, next, anchorNote),
       openCount: open.length,
       lastClosed: closed.length ? describeItem(closed[0], now) : null,
       history: closed.map((i) => describeItem(i, now)),
@@ -279,10 +318,37 @@ export function buildRoster({ tasks = [], items = [], now, schedule }) {
   });
 }
 
+// What will actually happen to this task next, derived from the standing item where
+// one exists — the calendar answers only when no item does (the next instantiation).
+// This is where the standing-item model's facts become the roster's advice:
+//   - the stamped Not-before IS the schedule (DESIGN §14, S28), so it wins over the
+//     computed anchor;
+//   - a blocking park stops the task being scheduled at all (§4) — showing an anchor
+//     there would promise a run that will never be filed;
+//   - a non-blocking park consumed its occurrence but leaves the lane open, so the
+//     next anchor stands beside it.
+function nextAskOf(current, anchor, anchorNote) {
+  if (!current) return anchor ? { kind: 'anchor', at: anchor } : { kind: 'note', note: anchorNote };
+  if (current.state === READY) return { kind: 'ready', urgent: current.urgent };
+  if (current.state === EXECUTING || current.state === AGENT) {
+    return { kind: 'running', phase: current.state === AGENT ? 'agent' : 'executor' };
+  }
+  if (current.state === NEEDS_HUMAN) {
+    if (current.blockingPark) return { kind: 'held' };
+    return anchor ? { kind: 'anchor', at: anchor } : { kind: 'note', note: anchorNote };
+  }
+  if (current.state === BLOCKED) {
+    if (current.notBefore) return { kind: 'wake', at: new Date(current.notBefore) };
+    return current.blockedBy.length ? { kind: 'deps', on: current.blockedBy } : { kind: 'ready-soon' };
+  }
+  // torn / unlabelled — off the state machine until the janitor repairs it.
+  return { kind: 'off-machine' };
+}
+
 // Outcome tallies over the closed items the scan actually saw. `scanned` travels
 // with them: every count here is over a window, and a window is not "all of it".
 export function outcomeTally(rows) {
-  const t = { [OUTCOME_DONE]: 0, [OUTCOME_DELIVERED]: 0, [OUTCOME_OBSOLETE]: 0, none: 0 };
+  const t = { done: 0, delivered: 0, obsolete: 0, none: 0 };
   for (const r of rows) for (const h of r.history) t[h.outcome ?? 'none'] += 1;
   return t;
 }

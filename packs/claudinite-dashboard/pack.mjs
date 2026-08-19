@@ -63,7 +63,10 @@ export default {
   // and a handover entry, so a member gains a checkbox and nothing else changes.
   // 10: the page carries a favicon — a file the mount has to deliver, so the version
   // moves; nothing in a member's tree changes shape and there is no migration.
-  version: 10,
+  // 11: mount freshness judged on stamped versions against the canon's live ones
+  // (never ref/updated), and the scheduler panels re-derived for the standing-item
+  // model — next asks, roll records, triage-split parks. Page-only; no migration.
+  version: 11,
   minEngineVersion: 4,
   ruleRoutingGuidance: {
     belongs: 'the browser dashboard over Claudinite scheduler state, the site that publishes it, and the fleet morning brief it reads',

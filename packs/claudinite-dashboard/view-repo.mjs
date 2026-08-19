@@ -4,7 +4,7 @@
 import * as gh from './github.mjs';
 import {
   buildRoster, describeItem, isWorkItem, parseDeclaration, taskDeclarationPaths, periodMs,
-  NEEDS_HUMAN, OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE,
+  NEEDS_HUMAN,
 } from './model.mjs';
 import {
   $, el, ago, until, stamp, duration, chip, head, groupedHead, columnCount, groupStarts,
@@ -17,7 +17,7 @@ import {
 const ROSTER_GROUPS = [
   ['', ['Task']],
   ['Declared', ['Cadence', 'Model', 'Ceiling']],
-  ['Now', ['Current item', 'Next anchor']],
+  ['Now', ['Current item', 'Next ask']],
   ['History', ['Last outcome', 'Outcomes seen']],
 ];
 const ROSTER_STARTS = groupStarts(ROSTER_GROUPS);
@@ -30,16 +30,61 @@ function renderTiles(rows, open, runs, now) {
   const inflight = runs.filter((r) => r.status === 'in_progress' || r.status === 'queued');
   const parked = open.filter((i) => i.state === NEEDS_HUMAN);
   const warned = open.filter((i) => i.warnings.length && i.state !== NEEDS_HUMAN);
-  const soonest = rows.map((r) => r.nextAnchor).filter(Boolean).sort((a, b) => a - b)[0] ?? null;
+  // The soonest DATED ask. A ready or running task is acting now, not "in 0m", so it
+  // is the queue panel's news rather than this tile's.
+  const soonest = rows.map((r) => r.nextAsk?.at).filter(Boolean).sort((a, b) => a - b)[0] ?? null;
 
   tiles($('tiles'), [
     [rows.length, 'tasks declared'],
     [open.length, 'open work items'],
     [parked.length, 'parked for a human', parked.length ? 'var(--critical)' : null],
-    [warned.length, 'past a leash', warned.length ? 'var(--serious)' : null],
+    [warned.length, 'tripping recovery', warned.length ? 'var(--serious)' : null],
     [inflight.length, 'runs in flight', inflight.length ? 'var(--s-yellow)' : null],
-    [soonest ? until(soonest, now).replace('in ', '') : '—', 'to next anchor'],
+    [soonest ? until(soonest, now).replace('in ', '') : '—', 'to next ask'],
   ]);
+}
+
+// The Next ask cell: what will actually happen to this task next, and — where the
+// standing item rolled — why the last ask declined. The lever each state answers to
+// is one line, because the reader's next question is always "so what do I do".
+function nextAskCell(r, now) {
+  const ask = r.nextAsk ?? { kind: 'note', note: r.anchorNote };
+  const sub = (text) => el('div', { className: 'sub', textContent: text });
+  const declined = r.current?.lastVerdict
+    ? el('div', { className: 'sub', textContent: `last ask declined: ${r.current.lastVerdict.reason}` }) : null;
+  switch (ask.kind) {
+    case 'ready':
+      return el('td', {}, [el('div', { textContent: ask.urgent ? 'queued — urgent, next pick' : 'queued — next pick' })]);
+    case 'running':
+      return el('td', {}, [el('div', { textContent: `running now (${ask.phase})` })]);
+    case 'wake':
+      return el('td', { className: 'num' }, [el('div', { textContent: until(ask.at, now) }), sub(stamp(ask.at.toISOString())), declined]);
+    case 'anchor':
+      return el('td', { className: 'num' }, [el('div', { textContent: until(ask.at, now) }), sub(stamp(ask.at.toISOString()))]);
+    case 'held':
+      return el('td', {}, [
+        el('div', { className: 'warn critical', textContent: 'schedule held' }),
+        sub('no next run until the park is cleared or re-queued'),
+      ]);
+    case 'deps':
+      return el('td', {}, [el('div', { textContent: `after ${ask.on.map((n) => `#${n}`).join(', ')}` })]);
+    case 'ready-soon':
+      return el('td', {}, [el('div', { textContent: 'due — the next tick readies it' })]);
+    case 'off-machine':
+      return el('td', {}, [el('div', { className: 'warn warning', textContent: 'off the state machine — janitor repairs it' })]);
+    default:
+      return el('td', {}, [sub(ask.note ?? '—')]);
+  }
+}
+
+// Sort key for the roster: what acts soonest first. Acting now beats every date,
+// dated asks order by time, and a held or unreadable schedule sinks to the bottom —
+// it has no "next".
+function askOrder(r) {
+  const ask = r.nextAsk ?? { kind: 'note' };
+  if (ask.kind === 'ready' || ask.kind === 'running' || ask.kind === 'ready-soon') return 0;
+  if (ask.at) return ask.at.getTime();
+  return Infinity;
 }
 
 function renderRoster(rows, repo, now, scanComplete) {
@@ -49,9 +94,9 @@ function renderRoster(rows, repo, now, scanComplete) {
     return;
   }
 
-  for (const r of rows.sort((a, b) => (a.nextAnchor?.getTime() ?? Infinity) - (b.nextAnchor?.getTime() ?? Infinity))) {
+  for (const r of rows.sort((a, b) => askOrder(a) - askOrder(b))) {
     const d = r.declaration ?? {};
-    const tally = { [OUTCOME_DONE]: 0, [OUTCOME_DELIVERED]: 0, [OUTCOME_OBSOLETE]: 0, none: 0 };
+    const tally = { done: 0, delivered: 0, obsolete: 0, none: 0 };
     for (const h of r.history) tally[h.outcome ?? 'none'] += 1;
 
     const nowCell = r.current
@@ -73,16 +118,13 @@ function renderRoster(rows, repo, now, scanComplete) {
       el('td', { className: 'nw', textContent: d.agent_model ?? '—' }),
       el('td', { className: 'nw', textContent: d.expected_outcome ?? '—' }),
       nowCell,
-      el('td', { className: 'num' }, [
-        el('div', { textContent: r.nextAnchor ? until(r.nextAnchor, now) : '—' }),
-        el('div', { className: 'sub', textContent: r.nextAnchor ? stamp(r.nextAnchor.toISOString()) : (r.anchorNote ?? '') }),
-      ]),
+      nextAskCell(r, now),
       el('td', {}, r.lastClosed
-        ? [el('div', { textContent: (r.lastClosed.outcome ?? 'none').replace('outcome:', '') }),
+        ? [el('div', { textContent: r.lastClosed.outcome ?? 'none' }),
           el('div', { className: 'sub', textContent: ago(r.lastClosed.closedAt, now) })]
         : [el('span', { className: 'sub', textContent: scanComplete ? 'never run' : 'none in window' })]),
       el('td', {}, [
-        segmentBar(Object.entries(tally).map(([k, n]) => [k.replace('outcome:', ''), n, OUTCOME_COLOR[k]])),
+        segmentBar(Object.entries(tally).map(([k, n]) => [k, n, OUTCOME_COLOR[k]])),
         el('div', { className: 'sub num', textContent: `${r.history.length} closed` }),
       ]),
     ])));
@@ -98,7 +140,7 @@ function renderQueue(open, repo, now) {
   for (const i of open.sort((a, b) => rank(a) - rank(b) || b.idleMs - a.idleMs)) {
     const waiting = [];
     if (i.blockedBy.length) waiting.push(`blocked by ${i.blockedBy.map((n) => `#${n}`).join(', ')}`);
-    if (i.notBefore) waiting.push(`not before ${stamp(i.notBefore)}`);
+    if (i.notBefore) waiting.push(`wakes ${stamp(i.notBefore)}`);
 
     body.append(el('tr', {}, [
       el('td', {}, [issueLink(repo, i.number), i.urgent ? el('span', { className: 'chip urgent', textContent: 'urgent' }) : null]),
@@ -107,7 +149,12 @@ function renderQueue(open, repo, now) {
         el('div', { className: 'sub', textContent: i.pack ?? '' }),
       ]),
       el('td', {}, [chip(i.state), ...warnNodes(i.warnings)]),
-      el('td', { className: 'sub', textContent: waiting.join(' · ') || '—' }),
+      el('td', { className: 'sub' }, [
+        el('div', { textContent: waiting.join(' · ') || '—' }),
+        // The roll's record: why the last ask declined, so "why didn't it run" is
+        // answered on the row instead of a click into the issue.
+        i.lastVerdict ? el('div', { className: 'sub', textContent: `declined: ${i.lastVerdict.reason}` }) : null,
+      ]),
       el('td', { className: 'num', textContent: duration(i.idleMs) }),
       el('td', { className: 'num', textContent: String(i.comments) }),
     ]));
@@ -167,12 +214,16 @@ export async function loadRepo({ repo, token, onError }) {
   })));
 
   const items = issuePage.issues.filter(isWorkItem);
-  const rows = buildRoster({ tasks, items, now, schedule });
+  // Whether a Blocked-by issue is still open, from the page already fetched. A
+  // blocker outside that window answers null — unknown, which is never alarmed on.
+  const byNumber = new Map(issuePage.issues.map((i) => [i.number, i.state === 'open']));
+  const isOpen = (n) => byNumber.get(n) ?? null;
+  const rows = buildRoster({ tasks, items, now, schedule, isOpen });
   const periodFor = (k) => {
     const f = rows.find((r) => r.key === k)?.frequency;
     return f && f !== 'manual' ? periodMs(f) : null;
   };
-  const open = items.filter((i) => i.state === 'open').map((i) => describeItem(i, now, { periodFor }));
+  const open = items.filter((i) => i.state === 'open').map((i) => describeItem(i, now, { periodFor, isOpen }));
 
   renderTiles(rows, open, runs, now);
   renderRoster(rows, repo, now, issuePage.complete);

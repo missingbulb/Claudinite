@@ -47,9 +47,9 @@ test('closed work lands on its own day, stacked by outcome', () => {
   })], { now: NOW, days: 3 });
 
   const byDay = Object.fromEntries(s.days.map((d) => [d.day, d]));
-  assert.equal(byDay['2026-08-17'].work[OUTCOME_DONE], 1);
-  assert.equal(byDay['2026-08-17'].work[OUTCOME_DELIVERED], 1);
-  assert.equal(byDay['2026-08-18'].work[OUTCOME_OBSOLETE], 1);
+  assert.equal(byDay['2026-08-17'].work.done, 1);
+  assert.equal(byDay['2026-08-17'].work.delivered, 1);
+  assert.equal(byDay['2026-08-18'].work.obsolete, 1);
   assert.equal(byDay['2026-08-18'].work.none, 1);
   assert.equal(byDay['2026-08-16'].workClosed, 0);
   assert.equal(s.totals.workClosed, 4);

@@ -1,21 +1,35 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
 import {
   summariseMember, summariseRuns, mountState, rankMembers, rollUp, packSpread, taskSpread,
-  ciStatus, MOUNT_STALE_MS,
+  ciStatus, parseEngineVersion, parsePackVersion,
 } from '../../packs/claudinite-dashboard/fleet.mjs';
+import { ENGINE_VERSION } from '../../engine/version.mjs';
+import dashboardPack from '../../packs/claudinite-dashboard/pack.mjs';
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 import {
-  BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN,
-  OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE,
+  BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_DECISION,
+  OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE, TASK_DONE,
 } from '../../engine/scheduler/queue/work-item.mjs';
 
 const NOW = Date.parse('2026-08-17T12:00:00Z');
-const CANON = { repo: 'o/canon', ref: 'canonsha', engineVersion: 4 };
+const CANON = { repo: 'o/canon', ref: 'canonsha', engineVersion: 4, packVersions: { 'claudinite-lifecycle': 3, basics: 5 } };
 
+// The stamp's `ref` and `updated` are deliberately ANCIENT here: the versioned flows
+// stamp versions and nothing else, so those two hold the provenance of the last full
+// re-vendor — a healthy member's fixtures must look exactly like this, and every
+// test over `decl()` doubles as proof that neither field is ever judged.
 const decl = (over = {}) => ({
   packs: ['claudinite-lifecycle', 'basics'],
   taskScheduler: { dailyHour: 4 },
-  claudinite: { ref: 'canonsha', engineVersion: 4, updated: '2026-08-17T00:00:00Z' },
+  claudinite: {
+    ref: 'a-january-full-revendor-sha', updated: '2026-01-05T00:00:00Z',
+    engineVersion: 4, packVersions: { 'claudinite-lifecycle': 3, basics: 5 },
+  },
   ...over,
 });
 
@@ -75,11 +89,30 @@ test('a healthy adopted member has no reasons and reads ok', () => {
 
 // --- attention is earned ---------------------------------------------------------
 
-test('a parked item is critical and names itself', () => {
+// The triage split (tasks-dispatch DESIGN §4): only a failure park — or one an older
+// engine left unclassified — holds its task's lane. The other three are a person's
+// inbox, and a fleet view that alarms identically on all four teaches the reader to
+// ignore the alarm.
+test('an unclassified park is critical — it is holding the task\'s lane', () => {
   const s = summariseMember(read({ items: [item({ labels: [NEEDS_HUMAN] })] }), { now: NOW, canon: CANON });
   assert.equal(s.level, 'critical');
   assert.equal(s.parked, 1);
-  assert.match(s.reasons[0].text, /parked for a human/);
+  assert.match(s.reasons[0].text, /holding.*lane/);
+});
+
+test('an action or decision park is serious, and an approval park is a waiting PR', () => {
+  const decision = summariseMember(
+    read({ items: [item({ labels: [NEEDS_HUMAN, NEEDS_HUMAN_DECISION] })] }), { now: NOW, canon: CANON },
+  );
+  assert.equal(decision.level, 'serious');
+  assert.match(decision.reasons[0].text, /parked for a person/);
+
+  const approval = summariseMember(
+    read({ items: [item({ labels: [NEEDS_HUMAN, NEEDS_HUMAN_APPROVAL] })] }), { now: NOW, canon: CANON },
+  );
+  assert.equal(approval.level, 'warning');
+  assert.match(approval.reasons[0].text, /waiting for approval/);
+  assert.equal(approval.parked, 1, 'an approval park still counts as parked');
 });
 
 test('an item past its leash is serious, and counted apart from parked', () => {
@@ -122,33 +155,74 @@ test('a member declaring no tasks is not accused of never running them', () => {
 
 // --- mount freshness -------------------------------------------------------------
 
-test('a matching ref is current', () => {
-  assert.equal(mountState({ ref: 'canonsha', engineVersion: 4 }, CANON).state, 'current');
+// The defect this whole block exists to keep out (#1065, same class as #786): the
+// versioned flows stamp `engineVersion`/`packVersions` and nothing else, so `ref`
+// and `updated` hold the provenance of the LAST FULL RE-VENDOR. A mount converging
+// nightly carries a months-old ref and updated forever — judging either reads every
+// healthy member as behind or stalled.
+test('freshness is judged on versions, never on ref or updated', () => {
+  const stamp = {
+    ref: 'a-january-full-revendor-sha', updated: '2026-01-05T00:00:00Z',
+    engineVersion: 4, packVersions: { 'claudinite-lifecycle': 3, basics: 5 },
+  };
+  assert.equal(mountState(stamp, CANON).state, 'current');
 });
 
-test('an older engine version outranks merely being behind', () => {
-  assert.equal(mountState({ ref: 'old', engineVersion: 3 }, CANON).state, 'behind-engine');
-  assert.equal(mountState({ ref: 'old', engineVersion: 4 }, CANON).state, 'behind');
+test('an older engine version outranks pack lag', () => {
+  const stamp = { engineVersion: 3, packVersions: { basics: 4 } };
+  const s = mountState(stamp, CANON);
+  assert.equal(s.state, 'behind-engine');
+  assert.equal(s.canonEngineVersion, 4);
 });
 
-// The rule this encodes: a held stamp pins `updated` behind a pending note while the
-// mount converges normally, so freshness is judged on ref/engineVersion — never on
-// `updated` alone.
-test('a stale updated date never makes a ref-matching mount look behind', () => {
-  const ancient = { ref: 'canonsha', engineVersion: 4, updated: '2026-01-01T00:00:00Z' };
-  assert.equal(mountState(ancient, CANON, NOW).state, 'current');
+test('a pack behind canon reads behind and names the pack', () => {
+  const s = mountState({ engineVersion: 4, packVersions: { 'claudinite-lifecycle': 2, basics: 5 } }, CANON);
+  assert.equal(s.state, 'behind');
+  assert.deepEqual(s.behindPacks, [{ pack: 'claudinite-lifecycle', version: 2, canonVersion: 3 }]);
+});
+
+// The stored-data rename rule at this read: a stamp written before a pack rename
+// still keys the version under the old spelling, and must compare — not read as an
+// unknown pack.
+test('a renamed pack\'s stamped spelling still compares against canon', () => {
+  const s = mountState({ engineVersion: 4, packVersions: { core: 2, basics: 5 } }, CANON);
+  assert.equal(s.state, 'behind');
+  assert.deepEqual(s.behindPacks, [{ pack: 'claudinite-lifecycle', version: 2, canonVersion: 3 }]);
+});
+
+// A pack the canon reference cannot price (the read failed, or it is a local pack)
+// is an unknown, never silently "current".
+test('a pack canon carries no version for is counted unknown, not judged', () => {
+  const s = mountState({ engineVersion: 4, packVersions: { basics: 5, 'some-new-pack': 1 } }, CANON);
+  assert.equal(s.state, 'current');
+  assert.equal(s.unknownPacks, 1);
+  assert.equal(s.comparedPacks, 1);
 });
 
 test('with no canon configured freshness is unknown, not current', () => {
-  const s = mountState({ ref: 'x', engineVersion: 4, updated: new Date(NOW).toISOString() }, null, NOW);
+  const s = mountState({ engineVersion: 4, packVersions: { basics: 5 } }, null);
   assert.equal(s.state, 'unknown');
 });
 
-// Without a canon to compare against, a mount that has not moved in a week still says
-// something: the converge itself has stopped.
-test('with no canon, a long-untouched mount reads as stalled', () => {
-  const old = { ref: 'x', engineVersion: 4, updated: new Date(NOW - MOUNT_STALE_MS - 1).toISOString() };
-  assert.equal(mountState(old, null, NOW).state, 'stalled');
+// A stamp with no versions at all predates the versioned flows — that member has not
+// converged since they landed, which is worth a flag of its own.
+test('a stamp carrying no versions reads unversioned', () => {
+  assert.equal(mountState({ ref: 'x', updated: '2026-08-17T00:00:00Z' }, CANON).state, 'unversioned');
+});
+
+// The canon side of the comparison is lifted as text off the real files, so the
+// parsers are proven against those files themselves — a fixture spelling the same
+// pattern would only prove the matching.
+test('the version parsers read the canon\'s own real files', async () => {
+  const engineText = await readFile(resolve(ROOT, 'engine/version.mjs'), 'utf8');
+  assert.equal(parseEngineVersion(engineText), ENGINE_VERSION);
+  const packText = await readFile(resolve(ROOT, 'packs/claudinite-dashboard/pack.mjs'), 'utf8');
+  assert.equal(parsePackVersion(packText), dashboardPack.version);
+});
+
+test('the version parsers answer null — never a guess — on text without the field', () => {
+  assert.equal(parseEngineVersion('// ENGINE_VERSION = 9 in prose only\nexport const x = 1;\n'), null);
+  assert.equal(parsePackVersion('export default { id: "x", agentVersion: 3 };\n'), null);
 });
 
 test('a member declaring Claudinite with no stamp is flagged', () => {
@@ -260,6 +334,25 @@ test('taskSpread counts a closed item with no outcome as failed, and obsolete as
   assert.equal(row.done, 1);
 });
 
+// The vocabulary migration's decode side: `task:done` is today's spelling and the
+// `outcome:*` labels are the fielded engine's — a member mid-migration carries both,
+// and the tallies must read them as one vocabulary.
+test('outcomes decode every spelling to the canonical words', () => {
+  const closed = (number, labels) => item({ number, state: 'closed', labels, closed_at: '2026-08-17T06:00:00Z' });
+  const s = summariseMember(read({
+    items: [closed(1, [OUTCOME_DONE]), closed(2, [TASK_DONE]), closed(3, [OUTCOME_DELIVERED]), closed(4, [OUTCOME_OBSOLETE])],
+  }), { now: NOW, canon: CANON });
+  assert.equal(s.outcomes.done, 2);
+  assert.equal(s.outcomes.delivered, 1);
+  assert.equal(s.outcomes.obsolete, 1);
+  assert.equal(s.outcomes.none, 0);
+});
+
+test('taskSpread reads task:done as done', () => {
+  const reads = [{ repo: 'o/a', items: [item({ state: 'closed', labels: [TASK_DONE] })] }];
+  assert.equal(taskSpread(reads, NOW)[0].done, 1);
+});
+
 test('taskSpread ignores issues that are not work items', () => {
   const reads = [{ repo: 'o/a', items: [item({ title: 'Claudinite tracker: Tidy Issues' })] }];
   assert.deepEqual(taskSpread(reads, NOW), []);
@@ -282,28 +375,17 @@ test('the open state mix is counted per state, with unknown states kept apart', 
   assert.equal(s.open.byState.other, 1, 'an unlabelled item is not silently folded into a real state');
 });
 
-// Being behind canon is routine — members catch up within a day. Being behind AND not
-// having converged in a week is a stopped converge, and the routine state must not
-// mask it.
-test('behind plus a week without converging reads as stalled, not merely behind', () => {
-  const fresh = { ref: 'old', engineVersion: 4, updated: new Date(NOW - 3600e3).toISOString() };
-  const stopped = { ref: 'old', engineVersion: 4, updated: new Date(NOW - MOUNT_STALE_MS - 1).toISOString() };
-  assert.equal(mountState(fresh, CANON, NOW).state, 'behind');
-  assert.equal(mountState(stopped, CANON, NOW).state, 'stalled');
-});
-
-test('an old engine outranks a stalled converge — it may be why the converge stopped', () => {
-  const both = { ref: 'old', engineVersion: 3, updated: new Date(NOW - MOUNT_STALE_MS - 1).toISOString() };
-  assert.equal(mountState(both, CANON, NOW).state, 'behind-engine');
-});
-
-test('a stalled mount says how long, and one declared task is not "1 tasks"', () => {
+test('a behind mount is a reason that names the packs, at routine severity', () => {
   const s = summariseMember(
-    read({ items: [item()], declaration: decl({ claudinite: { ref: 'old', engineVersion: 4, updated: new Date(NOW - 9 * 86400e3).toISOString() } }) }),
+    read({ items: [item()], declaration: decl({ claudinite: { engineVersion: 4, packVersions: { 'claudinite-lifecycle': 2, basics: 5 } } }) }),
     { now: NOW, canon: CANON },
   );
-  assert.match(s.reasons.find((r) => /converged/.test(r.text)).text, /9 days/);
+  const reason = s.reasons.find((r) => /behind canon/.test(r.text));
+  assert.equal(reason.level, 'info', 'behind is routine — the nightly converge catches it up');
+  assert.match(reason.text, /claudinite-lifecycle/);
+});
 
+test('one declared task is not "1 tasks"', () => {
   const one = summariseMember(read({ items: [], paths: ['packs/basics/tasks/task-janitor/task.mjs'] }), { now: NOW, canon: CANON });
   assert.match(one.reasons.find((r) => /no work item/.test(r.text)).text, /^1 task declared/);
 });

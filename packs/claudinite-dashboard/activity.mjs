@@ -18,9 +18,7 @@
 // day at the far end of the window is under-read rather than empty, and every series
 // carries the horizon past which it stops being a count and starts being a floor.
 
-import {
-  NEEDS_HUMAN, OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE,
-} from '../../engine/scheduler/queue/work-item.mjs';
+import { NEEDS_HUMAN, outcomeOf } from '../../engine/scheduler/queue/work-item.mjs';
 import { isWorkItem } from './model.mjs';
 
 export const DAY_MS = 86400e3;
@@ -40,9 +38,6 @@ export function dayLadder(now, days) {
   return Array.from({ length: days }, (_, i) => dayKey(start + i * DAY_MS));
 }
 
-const outcomeOfLabels = (labels = []) =>
-  [OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE].find((o) => labels.includes(o)) ?? null;
-
 // --- the daily series -----------------------------------------------------------
 
 // Work closed, runs finished and members moving, per day. `reads` is the fleet
@@ -53,7 +48,7 @@ export function activitySeries(reads, { now, days = 14 } = {}) {
   const index = new Map(ladder.map((d, i) => [d, i]));
   const blank = () => ladder.map((day) => ({
     day,
-    work: { [OUTCOME_DONE]: 0, [OUTCOME_DELIVERED]: 0, [OUTCOME_OBSOLETE]: 0, none: 0 },
+    work: { done: 0, delivered: 0, obsolete: 0, none: 0 },
     workClosed: 0,
     otherClosed: 0,
     runs: { success: 0, failure: 0, other: 0 },
@@ -85,7 +80,7 @@ export function activitySeries(reads, { now, days = 14 } = {}) {
       series[slot].movers.add(read.repo);
       if (isWorkItem(i)) {
         series[slot].workClosed += 1;
-        series[slot].work[outcomeOfLabels(i.labels) ?? 'none'] += 1;
+        series[slot].work[outcomeOf(i) ?? 'none'] += 1;
       } else {
         series[slot].otherClosed += 1;
       }
@@ -181,8 +176,8 @@ export function fleetBenefits(reads, { now, windowDays = 7, digests = null } = {
         if (i.state !== 'closed') continue;
         const at = ms(i.closed_at) ?? ms(i.updated_at);
         if (!inWindow(at, from, to)) continue;
-        const outcome = outcomeOfLabels(labels);
-        if (outcome === OUTCOME_DONE || outcome === OUTCOME_DELIVERED) {
+        const outcome = outcomeOf(i);
+        if (outcome === 'done' || outcome === 'delivered') {
           completed += 1;
           members.add(read.repo);
           // The parked label is the record of a human being pulled in: the queue puts
