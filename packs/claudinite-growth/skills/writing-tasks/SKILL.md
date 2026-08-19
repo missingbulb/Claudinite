@@ -253,9 +253,15 @@ A work item's **state is its labels**, and there is exactly one state label on i
 at a time: `task:blocked` (waiting on a `Not-before` or a `Blocked-by`),
 `task:ready` (available to pick), `task:executing` (an executor holds the claim),
 `task:agent` (a session owns it). Beside them: `task:urgent` (pick before anything
-non-urgent), `origin:schedule` (the tick created this one at an anchor), and the
-terminal set — `outcome:done`, `outcome:delivered`, `outcome:obsolete`,
-`needs-human`.
+non-urgent) and the terminal set — `task:done`, `task:obsolete`, `needs-human`.
+(A closed item may still wear the retired `outcome:*` spellings of the first two,
+or `outcome:delivered`, which nothing writes any more; every reader accepts them.)
+
+Whether an item is a task's **standing occurrence** or an **ad-hoc run** is not a
+label but a property of the item: the standing one is titled with the task and
+nothing else, and its task is on a calendar. A `manual` task's item and every
+qualified one — a fan-out target, a request naming its issue — are ad-hoc, which
+is what lets them run beside the schedule rather than consuming it.
 
 Two rules follow, and both are about not borrowing the vocabulary:
 
@@ -290,7 +296,7 @@ closing or running anything.
 
 ## Item lifecycle — every exit is terminal, and nothing keeps updating
 
-- **Succeeded, nothing pending** → `outcome:done`, one comment, issue closed.
+- **Succeeded, nothing pending** → `task:done`, one comment, issue closed.
 - **Parked for a human** → `needs-human` **plus one sub-label naming what is being
   asked for**, one comment, issue left open. Nothing keeps updating a parked issue:
   one visible convergence, then it is a person's to look at. Re-queueing it by hand
@@ -313,7 +319,7 @@ closing or running anything.
   nobody, and the silence is the signal. The other three do **not** hold the lane —
   they are one person's inbox, not a fault in the task, so the schedule carries on
   around them.
-- **Never ran** → `outcome:obsolete`, closed as not planned: the precondition
+- **Never ran** → `task:obsolete`, closed as not planned: the precondition
   declined and the item has no anchor to roll to, or the task is gone (file
   removed, pack undeclared). An obsolete item is not an anomaly and gets no
   `needs-human`.

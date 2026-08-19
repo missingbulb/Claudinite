@@ -15,7 +15,7 @@ import { pathToFileURL } from 'node:url';
 import { mostRecentAnchor, nextAnchor } from './anchors.mjs';
 import { EXECUTING_LEASH_MS } from './leases.mjs';
 import {
-  WORK_PREFIX, BLOCKED, READY, EXECUTING, AGENT, ORIGIN_SCHEDULE, NEEDS_HUMAN, OUTCOME_OBSOLETE,
+  WORK_PREFIX, BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN, TASK_OBSOLETE,
   NEEDS_HUMAN_DECISION, isBlockingPark,
   QUEUE_LABELS, EPISODE_MARKER, workItemTitle, parseWorkItemTitle, parseWorkItemBody,
   workItemBody, labelNames, hasLabel,
@@ -29,7 +29,7 @@ export { EXECUTING_LEASH_MS };
 const ms = (t) => (t == null ? null : new Date(t).getTime());
 
 // The ops `planTick` emits, each a label-and-body mechanic the shell applies:
-//   { kind: 'dedupe',  issue, reason }            close, outcome:obsolete
+//   { kind: 'dedupe',  issue, reason }            close, task:obsolete
 //   { kind: 'create',  pack, task, labels, body } a task's standing item
 //   { kind: 'ready',   issue }                    task:blocked -> task:ready
 //   { kind: 'reclaim', issue, reason }            task:executing -> task:ready
@@ -52,9 +52,11 @@ export function planTick({
   for (const task of tasks) {
     if (task.decl.frequency === 'manual') continue;
     const title = workItemTitle({ pack: task.pack, task: task.id });
-    // The family is title-EXACT (no qualifier) and `origin:schedule` only, so
-    // ad-hoc and fan-out items neither suppress nor consume an occurrence (§3).
-    const family = items.filter((i) => (i.title ?? '').trim() === title && hasLabel(i, ORIGIN_SCHEDULE));
+    // The family is title-EXACT, which is also what makes it STRUCTURALLY the
+    // standing family (§15.26): this task is on a calendar and the title carries no
+    // qualifier, so a fan-out target or a request — qualified, both of them — is a
+    // different title and neither suppresses nor consumes an occurrence (§3).
+    const family = items.filter((i) => (i.title ?? '').trim() === title);
     // A park that is somebody's INBOX rather than a fault — a PR to approve, a
     // choice to make, a secret to set — does not hold the lane: it is neither this
     // task's standing item nor a duplicate of it, so it drops out here entirely and
@@ -98,7 +100,7 @@ export function planTick({
     const notBefore = firstEver ? nextAnchor(task.decl.frequency, schedule, now).toISOString() : null;
     ops.push({
       kind: 'create', pack: task.pack, task: task.id, title,
-      labels: [ORIGIN_SCHEDULE, firstEver ? BLOCKED : READY],
+      labels: [firstEver ? BLOCKED : READY],
       body: workItemBody({
         taskPath: task.taskPath,
         notBefore,
@@ -170,7 +172,7 @@ export function planTick({
 // case rather than an edge: a daily task is missing its item for most of the day.
 // A force that reported "nothing to wake" there would fail on most members most of
 // the time, which is precisely what a fleet-wide converge lever must not do. The
-// minted item is an ordinary standing item, `origin:schedule` and all: it consumes
+// minted item is an ordinary standing item — same title, no qualifier: it consumes
 // the CURRENT occurrence, so the tick does not then create a second one beside it,
 // and it leaves the next anchor's occurrence untouched.
 export function planWake(spec, tasks = [], items = []) {
@@ -305,7 +307,7 @@ async function main() {
       console.log(`- reclaimed #${op.issue} -> ${op.to}`);
     } else if (op.kind === 'dedupe') {
       await comment(gh, repo, op.issue, op.reason);
-      await addLabel(gh, repo, op.issue, OUTCOME_OBSOLETE);
+      await addLabel(gh, repo, op.issue, TASK_OBSOLETE);
       await closeIssue(gh, repo, op.issue, 'not_planned');
       console.log(`- deduped #${op.issue}`);
     }
@@ -331,7 +333,7 @@ async function main() {
       const res = await createIssue(gh, repo, {
         title: workItemTitle({ pack: c.pack, task: c.task }),
         body: workItemBody({ taskPath: c.taskPath, context: [FORCED_WAKE_CONTEXT] }),
-        labels: [ORIGIN_SCHEDULE, READY],
+        labels: [READY],
       });
       if (res.number) console.log(`- created #${res.number} ${c.id} (forced: it had no open standing item)`);
       else { console.log(`! could not create a work item for ${c.id}: ${res.status}`); process.exitCode = 1; }

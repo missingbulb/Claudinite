@@ -74,9 +74,13 @@ test('withSection appends code_work\'s delivered artifacts without disturbing th
 test('every label the mechanism applies is ensured, and the four states are named', () => {
   const names = QUEUE_LABELS.map((l) => l.name);
   for (const l of STATE_LABELS) assert.ok(names.includes(l), `${l} must be ensurable`);
-  for (const l of ['origin:schedule', 'needs-human', 'outcome:done', 'outcome:delivered', 'outcome:obsolete', 'task:urgent']) {
+  for (const l of ['needs-human', 'task:done', 'task:obsolete', 'outcome:delivered', 'task:urgent']) {
     assert.ok(names.includes(l), `${l} must be ensurable`);
   }
+  // The retired origin marker is NOT ensured: nothing applies it any more, and a
+  // label the mechanism keeps minting is one a reader would keep expecting to mean
+  // something (§15.26).
+  assert.ok(!names.includes('origin:schedule'), 'the retired origin marker is not ensured');
   // Every label carries a colour and a description, so nothing is ever minted
   // grey-and-undocumented by being applied.
   for (const l of QUEUE_LABELS) assert.ok(l.color && l.description, `${l.name} needs a colour and a description`);

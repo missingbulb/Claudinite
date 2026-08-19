@@ -25,8 +25,15 @@ export const READY = 'task:ready';
 export const URGENT = 'task:urgent';
 export const EXECUTING = 'task:executing';
 export const AGENT = 'task:agent';
-export const ORIGIN_SCHEDULE = 'origin:schedule';
 export const NEEDS_HUMAN = 'needs-human';
+
+// @deprecated The origin marker (DESIGN §15.26). Nothing writes it and nothing
+// branches on it: whether an item is a task's standing occurrence or an ad-hoc run
+// is STRUCTURAL — see `isStandingItem` — so a marker that could disagree with the
+// structure was a second authority over the same fact. Kept exported and inert
+// because open items filed by an older engine still carry it, and a reader that
+// choked on an unknown label would fail on exactly those.
+export const ORIGIN_SCHEDULE = 'origin:schedule';
 
 // The TRIAGE SUB-LABELS. `needs-human` says an item is parked; these say what the
 // human parked with it is expected to DO, which is the whole difference between a
@@ -80,7 +87,6 @@ export const isBlockingPark = (item) =>
 export const triageLabelFor = (kind) =>
   (TRIAGE_LABELS.includes(triage(kind)) ? triage(kind) : NEEDS_HUMAN_FAILURE);
 
-export const OUTCOME_DONE = 'outcome:done';
 // @deprecated Nothing writes this since the approval park: a run that left an
 // unmerged PR no longer CLOSES as delivered, it parks at
 // `task:needs-human-approval` and waits to be merged. Kept exported, kept in
@@ -88,13 +94,19 @@ export const OUTCOME_DONE = 'outcome:done';
 // it are stored data, and a decoder that stopped recognising it would turn every
 // historical delivered run into an un-outcomed one.
 export const OUTCOME_DELIVERED = 'outcome:delivered';
+
+// @deprecated The pre-2026-08-19 spellings of the two terminals below. Kept
+// exported so a fielded pack that imports them still loads, and READ wherever an
+// outcome is decoded: labels are stored data on closed issues fleet-wide, so a
+// decoder that stopped recognising these would turn every historical run into an
+// un-outcomed one. Write `TASK_DONE` / `TASK_OBSOLETE`.
+export const OUTCOME_DONE = 'outcome:done';
 export const OUTCOME_OBSOLETE = 'outcome:obsolete';
 
 // Today's terminal spellings (DESIGN §4, §15.25): the `outcome:` namespace dissolves
 // into `task:`, one vocabulary for the state machine's live and terminal states
-// alike. The fielded engine still WRITES the `outcome:*` spellings above until the
-// vocabulary migration lands; these exist so every decoder is ready before the first
-// writer flips.
+// alike. These are what the engine WRITES; the `outcome:*` spellings above are read
+// forever, because a closed issue keeps whatever it was closed under.
 export const TASK_DONE = 'task:done';
 export const TASK_OBSOLETE = 'task:obsolete';
 
@@ -133,15 +145,14 @@ export const QUEUE_LABELS = [
   { name: URGENT, color: 'd93f0b', description: 'Claudinite queue: pick this before any non-urgent item' },
   { name: EXECUTING, color: 'fbca04', description: 'Claudinite queue: an executor holds the claim' },
   { name: AGENT, color: '1d76db', description: 'Claudinite queue: an agent session owns this item' },
-  { name: ORIGIN_SCHEDULE, color: 'ededed', description: 'Claudinite queue: created by the generator tick at a task anchor' },
   { name: NEEDS_HUMAN, color: 'b60205', description: 'Claudinite queue: parked for a human — the one triage state' },
   { name: NEEDS_HUMAN_ACTION, color: 'b60205', description: 'Claudinite triage: a human must change something outside the code' },
   { name: NEEDS_HUMAN_DECISION, color: 'd93f0b', description: 'Claudinite triage: a human must choose what happens next' },
   { name: NEEDS_HUMAN_APPROVAL, color: '5319e7', description: 'Claudinite triage: succeeded and left an unmerged PR to approve' },
   { name: NEEDS_HUMAN_FAILURE, color: 'b60205', description: 'Claudinite triage: the run broke — diagnose and fix' },
-  { name: OUTCOME_DONE, color: '0e8a16', description: 'Claudinite queue: succeeded, nothing pending' },
+  { name: TASK_DONE, color: '0e8a16', description: 'Claudinite queue: succeeded, nothing pending' },
   { name: OUTCOME_DELIVERED, color: '5319e7', description: 'Claudinite queue: succeeded and left a live artifact the world still has to act on' },
-  { name: OUTCOME_OBSOLETE, color: 'ededed', description: 'Claudinite queue: never ran — the precondition said no, or the task is gone' },
+  { name: TASK_OBSOLETE, color: 'ededed', description: 'Claudinite queue: never ran — the precondition said no, or the task is gone' },
 ];
 
 // GitHub hands labels back as objects on the issues API and as bare strings in
@@ -172,6 +183,24 @@ export function parseWorkItemTitle(title) {
 }
 
 export const isWorkItemTitle = (title) => parseWorkItemTitle(title) !== null;
+
+// STANDING OR AD-HOC, DERIVED (DESIGN §15.26). A task's standing item is the one
+// the generator files at an anchor: its title names the task and nothing else, and
+// the task it names is on a calendar. Everything else is ad-hoc — a `manual` task
+// (which has no anchor to stand for) and every qualified item (a fan-out target, a
+// request naming its issue), each of which may legitimately run beside the
+// occurrence rather than being it.
+//
+// It is read off the item and the declaration at HEAD rather than off a label the
+// creator applied, because the two could disagree: a marker says what its writer
+// believed, the structure says what the item IS, and the guards that consume this
+// (the occurrence guard, the dedupe, the `after` yield) are only sound on the
+// second. `frequency` is the declared frequency of the task the title names —
+// absent when the repo no longer carries it, which is ad-hoc by the same rule.
+export function isStandingItem(item, frequency) {
+  const parsed = parseWorkItemTitle(item?.title ?? item);
+  return !!parsed && parsed.qualifier === null && frequency != null && frequency !== 'manual';
+}
 
 // --- comment markers ----------------------------------------------------------
 // The three comments the protocol reads back. They are HTML comments so a human

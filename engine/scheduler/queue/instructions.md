@@ -63,7 +63,7 @@ instructions.
 
    | label | when |
    |---|---|
-   | `outcome:done` | succeeded, nothing pending — close the issue |
+   | `task:done` | succeeded, nothing pending — close the issue |
    | `needs-human` | anything else — leave the issue open, and add exactly one of the four below |
 
    Every park wears `needs-human` **and** one sub-label saying what you are asking

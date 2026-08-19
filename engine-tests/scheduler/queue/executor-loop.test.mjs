@@ -81,13 +81,13 @@ const drive = (repo, tasks, over = {}) => runExecutor({
   ...over,
 });
 
-test('a go verdict with agentless code_work closes the item outcome:done', async () => {
-  const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
+test('a go verdict with agentless code_work closes the item task:done', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
   const done = await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })]);
-  assert.deepEqual(done, [{ issue: 1, outcome: 'outcome:done' }]);
+  assert.deepEqual(done, [{ issue: 1, outcome: 'task:done' }]);
   const issue = repo.find(1);
   assert.equal(issue.state, 'closed');
-  assert.ok(issue.labels.includes('outcome:done'));
+  assert.ok(issue.labels.includes('task:done'));
   assert.equal(issue.labels.includes('task:executing'), false);
 });
 
@@ -95,7 +95,7 @@ test('a go verdict with agentless code_work closes the item outcome:done', async
 // it is waiting on a reviewer, and closing it would hide that from every surface
 // that counts open work. So it parks — the one park that is not a fault.
 test('code_work that opened a PR parks the item for approval instead of closing', async () => {
-  const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
   await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], {
     runTaskCodeWork: async () => ({ ok: true, agentRequested: false, delivered: ['PR: #7 (open)'], openPr: 7 }),
   });
@@ -109,20 +109,20 @@ test('code_work that opened a PR parks the item for approval instead of closing'
 
 // …and a delivered artifact that is NOT a PR awaiting a person — a branch, an
 // already-merged PR — asks nobody for anything, so it still closes.
-test('code_work that delivered no open PR still closes outcome:done', async () => {
-  const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
+test('code_work that delivered no open PR still closes task:done', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
   await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], {
     runTaskCodeWork: async () => ({ ok: true, agentRequested: false, delivered: ['Branch: `x`'], openPr: null }),
   });
   const issue = repo.find(1);
   assert.equal(issue.state, 'closed');
-  assert.ok(issue.labels.includes('outcome:done'));
+  assert.ok(issue.labels.includes('task:done'));
 });
 
 // The executor sees an exit code; only the worker knows whether that was a scope
 // it lacked or a bug in its own code. Its marker is what routes the park.
 test('a failed code_work parks at the class its worker declared', async () => {
-  const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
   await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], {
     runTaskCodeWork: async () => ({ ok: false, why: 'code-work exited 1', triage: { kind: 'action', detail: 'PAT lacks Actions: write' } }),
   });
@@ -134,7 +134,7 @@ test('a failed code_work parks at the class its worker declared', async () => {
 
 // No marker is not "assume the cheap lane": an unexplained break is a break.
 test('a failed code_work that said nothing parks at failure', async () => {
-  const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
   await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], {
     runTaskCodeWork: async () => ({ ok: false, why: 'code-work exited 1' }),
   });
@@ -144,7 +144,7 @@ test('a failed code_work that said nothing parks at failure', async () => {
 // A declared secret nobody configured is the definitive `action`: no code changes,
 // somebody sets a value.
 test('an unconfigured declared secret parks at action', async () => {
-  const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
   await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], {
     runTaskCodeWork: async () => ({ ok: true, agentRequested: false, missingSecrets: ['FLEET_GITHUB_TOKEN'] }),
   });
@@ -154,7 +154,7 @@ test('an unconfigured declared secret parks at action', async () => {
 // The model's whole trick: a no-go does not close the item, it ROLLS it, so the
 // item itself carries "asked, declined, wakes at T" and the tick needs no ledger.
 test('a no-go verdict rolls a scheduled item to its next anchor, blocked', async () => {
-  const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
   const done = await drive(repo, [task('a', { precondition: () => ({ run: false, reason: 'no work' }) })]);
   assert.deepEqual(done, [{ issue: 1, outcome: 'rolled' }]);
   const issue = repo.find(1);
@@ -168,22 +168,23 @@ test('a no-go verdict rolls a scheduled item to its next anchor, blocked', async
 });
 
 test('a no-go on an ad-hoc item closes it obsolete — there is no anchor to roll to (S17)', async () => {
-  const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
-  await drive(repo, [task('a', { precondition: () => ({ run: false, reason: 'the world settled' }) })]);
+  // Ad-hoc by structure: a `manual` task has no calendar to roll to (§15.26).
+  const repo = fakeRepo([workItem(1, 'lever', ['task:ready'])]);
+  await drive(repo, [task('lever', { frequency: 'manual', precondition: () => ({ run: false, reason: 'the world settled' }) })]);
   const issue = repo.find(1);
   assert.equal(issue.state, 'closed');
-  assert.ok(issue.labels.includes('outcome:obsolete'));
+  assert.ok(issue.labels.includes('task:obsolete'));
 });
 
 test('a precondition that throws converges the item rather than sinking the run', async () => {
-  const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
   const done = await drive(repo, [task('a', { precondition: () => { throw new Error('boom'); } })]);
   assert.deepEqual(done.map((d) => d.outcome), ['rolled']);
   assert.match(repo.find(1).body, /precondition threw: boom/);
 });
 
 test('a hand-off swaps to task:agent and invokes exactly one session', async () => {
-  const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
   const invocations = [];
   const done = await drive(repo, [task('a')], {
     runTaskCodeWork: async () => ({ ok: true, agentRequested: true }),
@@ -202,7 +203,7 @@ test('a hand-off swaps to task:agent and invokes exactly one session', async () 
 // never will — a token, a URL or a routine is wrong — so the item goes to a human
 // rather than round the loop again.
 test('a refused invocation converges to triage: no session exists and a retry cannot help', async () => {
-  const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
   const done = await drive(repo, [task('a')], {
     maxItems: 1,
     runTaskCodeWork: async () => ({ ok: true, agentRequested: true }),
@@ -221,7 +222,7 @@ test('a refused invocation converges to triage: no session exists and a retry ca
 // stays with the agent, and an existing rule — the janitor's agent leash — settles
 // it either way.
 test('an unanswered invocation leaves the item with the agent and says the outcome is unknown', async () => {
-  const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
   let calls = 0;
   const done = await drive(repo, [task('a')], {
     maxItems: 1,
@@ -238,7 +239,7 @@ test('an unanswered invocation leaves the item with the agent and says the outco
 });
 
 test('failed code_work converges to triage and never hands off', async () => {
-  const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
   let invoked = 0;
   await drive(repo, [task('a', { code_work: 'node w.mjs', code_work_timeout: 60 })], {
     runTaskCodeWork: async () => ({ ok: false, why: 'code_work exited 1', detail: 'stack' }),
@@ -252,7 +253,7 @@ test('failed code_work converges to triage and never hands off', async () => {
 // §14.7 — nothing fails silently; the task just doesn't work yet, and the item
 // names exactly which secret to set.
 test('a declared-but-unconfigured secret names itself on the item', async () => {
-  const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
   await drive(repo, [task('a', { code_work: 'node w.mjs', code_work_timeout: 60, required_secrets: ['STORE_TOKEN'] })], {
     runTaskCodeWork: async () => ({ ok: true, missingSecrets: ['STORE_TOKEN'] }),
   });
@@ -262,7 +263,7 @@ test('a declared-but-unconfigured secret names itself on the item', async () => 
 });
 
 test('an item whose task the repo no longer carries closes obsolete, like exit-14 did', async () => {
-  const repo = fakeRepo([workItem(1, 'gone', ['task:ready', 'origin:schedule'])]);
+  const repo = fakeRepo([workItem(1, 'gone', ['task:ready'])]);
   const done = await drive(repo, [task('a')]);
   assert.deepEqual(done, [{ issue: 1, outcome: 'obsolete' }]);
   assert.equal(repo.find(1).state, 'closed');
@@ -286,8 +287,8 @@ test('an item pointing somewhere other than where its task lives at HEAD is refu
 test('an executor that loses the lease abandons the item untouched and picks another', async () => {
   const rival = { id: 1, body: '<!-- claudinite-claim -->\nClaimed by executor `E0` at earlier.' };
   const repo = fakeRepo([
-    { ...workItem(1, 'a', ['task:ready', 'origin:schedule']), comments: [rival] },
-    workItem(2, 'b', ['task:ready', 'origin:schedule']),
+    { ...workItem(1, 'a', ['task:ready']), comments: [rival] },
+    workItem(2, 'b', ['task:ready']),
   ]);
   const done = await drive(repo, [task('a'), task('b', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })]);
   assert.deepEqual(done.map((d) => d.issue), [2], 'it moved on to a different item');
@@ -296,9 +297,9 @@ test('an executor that loses the lease abandons the item untouched and picks ano
 
 test('the loop stops at maxItems even with more ready work', async () => {
   const repo = fakeRepo([
-    workItem(1, 'a', ['task:ready', 'origin:schedule']),
-    workItem(2, 'a', ['task:ready', 'origin:schedule']),
-    workItem(3, 'a', ['task:ready', 'origin:schedule']),
+    workItem(1, 'a', ['task:ready']),
+    workItem(2, 'a', ['task:ready']),
+    workItem(3, 'a', ['task:ready']),
   ]);
   // Three same-title items: the mutex means only one is pickable at a time, and
   // each converges before the next is picked.
@@ -314,14 +315,14 @@ test('the loop stops at maxItems even with more ready work', async () => {
 // shape the whole burst missed and live traffic found.
 
 test('a second executor wins immediately on a ROLLED item — the first strike killed its claim (F24)', async () => {
-  const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
   const declines = task('a', { precondition: () => ({ run: false, reason: 'no work' }) });
 
   await drive(repo, [declines]);                                   // E1 claims, rolls, strikes
   assert.deepEqual(repo.find(1).labels.filter((l) => l.startsWith('task:')), ['task:blocked']);
 
   // The tick readies it at the next anchor; a DIFFERENT executor picks it up.
-  repo.find(1).labels = ['task:ready', 'origin:schedule'];
+  repo.find(1).labels = ['task:ready'];
   const done = await drive(repo, [declines], { executorId: 'E2' });
 
   assert.deepEqual(done, [{ issue: 1, outcome: 'rolled' }],
@@ -333,7 +334,7 @@ test('a second executor wins immediately on a ROLLED item — the first strike k
 });
 
 test('a second executor wins immediately on a PARKED item a human re-queued (F24)', async () => {
-  const repo = fakeRepo([workItem(1, 'a', ['task:ready', 'origin:schedule'])]);
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
   const agentic = task('a');
 
   // E1 claims, hands off, the endpoint refuses → parked needs-human, claim struck.
@@ -342,7 +343,7 @@ test('a second executor wins immediately on a PARKED item a human re-queued (F24
 
   // The sanctioned re-queue, exactly as the park's own comment instructs (F7):
   // drop needs-human, add task:ready. Nothing else — no marker, no cleanup.
-  repo.find(1).labels = ['task:ready', 'origin:schedule'];
+  repo.find(1).labels = ['task:ready'];
   const done = await drive(repo, [agentic], { executorId: 'E2' });
 
   assert.deepEqual(done, [{ issue: 1, outcome: 'agent' }],
@@ -352,7 +353,7 @@ test('a second executor wins immediately on a PARKED item a human re-queued (F24
 test('a losing claimant strikes its own claim too — otherwise it owns the NEXT episode (F24)', async () => {
   // A rival already holds this episode; E1 claims, loses, and walks away.
   const rival = { id: 50, body: '<!-- claudinite-claim -->\nClaimed by executor `E9` at t.' };
-  const repo = fakeRepo([{ ...workItem(1, 'a', ['task:ready', 'origin:schedule']), comments: [rival] }]);
+  const repo = fakeRepo([{ ...workItem(1, 'a', ['task:ready']), comments: [rival] }]);
   const agentless = task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 });
 
   await drive(repo, [agentless]);
@@ -363,9 +364,9 @@ test('a losing claimant strikes its own claim too — otherwise it owns the NEXT
   // the earliest of the new episode and nothing can ever take the item.
   const issue = repo.find(1);
   issue.comments.push({ id: 60, body: '<!-- claudinite-episode -->\nreclaimed: executor went silent' });
-  issue.labels = ['task:ready', 'origin:schedule'];
+  issue.labels = ['task:ready'];
 
   const done = await drive(repo, [agentless], { executorId: 'E2' });
-  assert.deepEqual(done, [{ issue: 1, outcome: 'outcome:done' }],
+  assert.deepEqual(done, [{ issue: 1, outcome: 'task:done' }],
     'E2 must win the fresh episode — a loser\'s leftover claim must not outlive its own episode');
 });
