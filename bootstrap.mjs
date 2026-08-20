@@ -1,0 +1,188 @@
+#!/usr/bin/env node
+// The executable form of bootstrap.md: one idempotent invocation, run FROM the
+// fetched canon tree AGAINST a consumer checkout, that performs every mechanical
+// part of adoption — seed the declaration, declare the requested packs and record
+// their interview answers, vendor the snapshot, track it, converge the wiring
+// (hooks, workflows, rules index, seed local pack, badge row), anchor the
+// scheduler, seed a minimal sweeps CI where none exists — then self-test, sweep,
+// and report what is left for the session: the pending interview questions
+// (batched, for ONE AskUserQuestion pass) and the steps only a human can take.
+//
+//   node <canon>/bootstrap.mjs --target <consumer-root> --repo <owner>/<repo>
+//        [--packs id,id,…] [--answer <pack>/<question>=<text>]… [--ref <sha>]
+//
+// Adoption is version zero, which is the one state where whole-set vendoring is
+// safe (see the adopt-claudinite skill on why a stamped repo must never re-run
+// this). Re-running DURING adoption is the designed loop: record the interview
+// answers and invoke again — everything converged stays converged.
+import { existsSync, readFileSync, writeFileSync, appendFileSync, readdirSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { discoverPacks, resolveDeclaredPacks, packEntryId } from './engine/pack_loader/pack-registry.mjs';
+import { seedDeclaration } from './engine/checks/helpers/seed-declaration.mjs';
+import { loadConfig } from './engine/checks/helpers/repo-context.mjs';
+import { applyVendor } from './vendoring/apply-vendor-set.mjs';
+import { convergeWiring, declaredSecrets } from './engine/scheduler/converge-wiring.mjs';
+import { unansweredQuestions } from './updates/install.mjs';
+import { runSelfTest } from './updates/engine-update.mjs';
+
+const canonRoot = dirname(fileURLToPath(import.meta.url));
+const args = process.argv.slice(2);
+const value = (flag) => (args.includes(flag) ? args[args.indexOf(flag) + 1] : null);
+const values = (flag) => args.flatMap((a, i) => (a === flag ? [args[i + 1]] : []));
+const fail = (msg) => { console.error(`bootstrap: ${msg}`); process.exit(1); };
+
+const target = value('--target') ?? process.cwd();
+const fullName = value('--repo');
+if (!fullName || !/^[^/]+\/[^/]+$/.test(fullName)) fail('need --repo <owner>/<repo> — the wiring (cron minute, local pack, executor) is a function of the full name');
+const requested = values('--packs').flatMap((v) => v.split(',')).map((s) => s.trim()).filter(Boolean);
+const answers = values('--answer').map((raw) => {
+  const m = /^([^/=]+)\/([^=]+)=([\s\S]*)$/.exec(raw);
+  if (!m) fail(`--answer wants <pack>/<question>=<text>, got: ${raw}`);
+  return { pack: m[1], question: m[2], text: m[3] };
+});
+
+const { packs, errors: packErrors } = await discoverPacks({ localRoot: target });
+if (packErrors.length) fail(packErrors.map((e) => e.what).join('; '));
+const byId = new Map(packs.map((p) => [p.id, p]));
+for (const id of requested) if (!byId.has(id)) fail(`--packs names no canon pack: "${id}" (see packs/directory.GENERATED.md)`);
+for (const a of answers) {
+  const q = byId.get(a.pack)?.questions?.find((q) => q.id === a.question);
+  if (!q) fail(`--answer names no adoption question: ${a.pack}/${a.question}`);
+}
+
+// 1. The declaration: seed if absent, then fold in the requested packs and the
+// recorded answers. Structural rewrite is safe here and only here — during
+// adoption the file is this script's own JSON.stringify output, not a
+// hand-formatted settings file (the anchored-text rule protects the latter).
+const seedResult = seedDeclaration(target, packs);
+console.log(seedResult.existed ? 'bootstrap: declaration exists — converging it' : 'bootstrap: seeded .claudinite-checks.json');
+const declPath = seedResult.path;
+const decl = JSON.parse(readFileSync(declPath, 'utf8'));
+const declared = Array.isArray(decl.packs) ? decl.packs : [];
+for (const id of requested) {
+  if (!declared.some((e) => packEntryId(e) === id)) { declared.push(id); console.log(`bootstrap: declared ${id}`); }
+}
+decl.packs = resolveDeclaredPacks(declared, packs);
+for (const a of answers) {
+  const i = decl.packs.findIndex((e) => packEntryId(e) === a.pack);
+  if (i === -1) fail(`--answer for "${a.pack}", which is not declared — add it via --packs`);
+  const entry = typeof decl.packs[i] === 'object' ? decl.packs[i] : { id: decl.packs[i] };
+  entry.answers = { ...(entry.answers ?? {}), [a.question]: a.text };
+  decl.packs[i] = entry;
+  console.log(`bootstrap: recorded answer ${a.pack}/${a.question}`);
+  const distill = byId.get(a.pack).questions.find((q) => q.id === a.question).distill;
+  if (distill) console.log(`  distill: ${distill}`);
+}
+// The scheduler anchors (bootstrap.md's defaults), materialized so the file the
+// owner would edit shows them.
+if (!decl.taskScheduler) decl.taskScheduler = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
+writeFileSync(declPath, `${JSON.stringify(decl, null, 2)}\n`);
+
+// 2. Vendor the snapshot (whole-set + stamp; aborts before any write on error).
+const vendored = await applyVendor(target, { ref: value('--ref') ?? null });
+if (vendored.errors.length) fail(vendored.errors.map((e) => `${e.what}\n  fix: ${e.fix}`).join('\n'));
+console.log(`bootstrap: vendored ${vendored.files} files (engine ${vendored.stamp.engineVersion}${vendored.stamp.ref ? `, ref ${vendored.stamp.ref.slice(0, 12)}` : ''})`);
+
+// 3. Track it: the two hook-log ignore lines are the WHOLE ignore contract (#385).
+const ignorePath = join(target, '.gitignore');
+const ignoreText = existsSync(ignorePath) ? readFileSync(ignorePath, 'utf8') : '';
+const missing = ['/.claudinite-hooks.log', '/.claudinite-hooks.log.tmp'].filter((l) => !ignoreText.split('\n').includes(l));
+if (missing.length) {
+  appendFileSync(ignorePath, (ignoreText && !ignoreText.endsWith('\n') ? '\n' : '') + missing.map((l) => `${l}\n`).join(''));
+  console.log(`bootstrap: .gitignore ${missing.join(', ')}`);
+}
+
+// 4. Converge the wiring — hooks, both workflows at the vendored stubs, the rules
+// index and its CLAUDE.md import, the badge row and the repo's own local pack
+// (the two one-time seeds only bootstrap passes).
+const stubs = join(target, '.claudinite/shared/engine/scheduler/stubs');
+const stubPath = join(stubs, 'claudinite-scheduler.yml');
+if (!existsSync(stubPath)) fail(`vendored stub not found at ${stubPath}`);
+const executorStub = existsSync(join(stubs, 'claudinite-executor.yml')) ? readFileSync(join(stubs, 'claudinite-executor.yml'), 'utf8') : null;
+const config = loadConfig(target);
+const secretNames = await declaredSecrets(target, config);
+const wiring = await convergeWiring(target, fullName, readFileSync(stubPath, 'utf8'), secretNames,
+  { badges: true, seedLocalPack: true, executorStub });
+if (wiring.error) fail(wiring.error);
+console.log(wiring.changed.length ? `bootstrap: wiring — ${wiring.changed.join(', ')}` : 'bootstrap: wiring: already converged');
+
+// 5. A place both sweeps deterministically run at each change (bootstrap.md's
+// test/CI part). Seeded only when NO workflow runs the world sweep — a repo with
+// its own CI keeps it, and adds the two steps there instead (reported below).
+// One-time seed: the repo owns the file from here.
+const CI_WORKFLOW = '.github/workflows/claudinite-ci.yml';
+const workflowsDir = join(target, '.github', 'workflows');
+const sweepWired = existsSync(workflowsDir) && readdirSync(workflowsDir)
+  .some((f) => /\.ya?ml$/.test(f) && readFileSync(join(workflowsDir, f), 'utf8').includes('check_the_world.mjs'));
+if (!sweepWired) {
+  writeFileSync(join(target, CI_WORKFLOW), `name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  claudinite-sweeps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: \${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Conformance sweep (world scope)
+        run: node .claudinite/shared/engine/checks/check_the_world.mjs
+      - name: Conformance sweep (work scope)
+        run: node .claudinite/shared/engine/checks/ci-work-scope.mjs --branch "\${{ github.head_ref || github.ref_name }}"
+`);
+  console.log(`bootstrap: seeded ${CI_WORKFLOW}`);
+} else if (!existsSync(join(target, CI_WORKFLOW))) {
+  console.log('bootstrap: a workflow already runs the world sweep — add the work sweep beside it if missing (bootstrap.md, the CI part)');
+}
+
+// 6. Stage what this run wrote, so the sweep below judges tracked content and the
+// adoption commit is one `git commit` away. Only the surfaces bootstrap owns —
+// never `-A`, which would sweep up whatever else the checkout holds.
+try {
+  const paths = ['.gitignore', '.gitattributes', '.claudinite-checks.json', '.claudinite', '.claude/settings.json', '.github/workflows', 'CLAUDE.md', 'README.md']
+    .filter((p) => existsSync(join(target, p)));
+  execFileSync('git', ['add', '--', ...paths], { cwd: target, stdio: ['ignore', 'pipe', 'pipe'] });
+  console.log(`bootstrap: staged ${paths.join(', ')}`);
+} catch { console.log('bootstrap: not a git checkout — staging skipped'); }
+
+// 7. Gate and report. The self-test failing is genuine breakage (exit 1); world
+// findings on an existing codebase are the expected backlog (bootstrap.md) and
+// are reported, not fatal.
+const selftest = runSelfTest(target);
+console.log(selftest.ok ? 'selftest: ok' : `selftest: FAILED\n${selftest.output}`);
+let sweep = { status: 0, output: '' };
+try {
+  sweep.output = execFileSync(process.execPath, [join(target, '.claudinite/shared/engine/checks/check_the_world.mjs'), '--root', target],
+    { encoding: 'utf8', cwd: target, stdio: ['ignore', 'pipe', 'pipe'] });
+} catch (e) { sweep = { status: e.status ?? 1, output: `${e.stdout ?? ''}${e.stderr ?? ''}` }; }
+console.log(sweep.status === 0 ? 'world sweep: green' : `world sweep: findings to clear or accept before landing —\n${sweep.output.trim()}`);
+
+const pending = unansweredQuestions(packs, decl.packs);
+if (pending.length) {
+  console.log(`\nPENDING ADOPTION QUESTIONS (${pending.length}) — ask them ALL in ONE AskUserQuestion pass (batch up to 4 per call), then re-run this same command with an --answer per reply:`);
+  for (const p of pending) {
+    console.log(`  ${p.pack}/${p.question}: ${p.prompt}`);
+    const distill = byId.get(p.pack)?.questions?.find((q) => q.id === p.question)?.distill;
+    if (distill) console.log(`    distill: ${distill}`);
+  }
+}
+const handover = decl.packs.flatMap((e) => (byId.get(packEntryId(e))?.adoptionHandover ?? []).map((s) => ({ pack: packEntryId(e), ...s })));
+if (handover.length) {
+  console.log(`\nHANDOVER — ${handover.length} step(s) only a human can do; give them their own issue:`);
+  for (const h of handover) {
+    console.log(`  [ ] (${h.pack}) ${h.step}`);
+    if (h.breaks) console.log(`        while off: ${h.breaks}`);
+    if (h.done) console.log(`        done when: ${h.done}`);
+  }
+}
+console.log(`\nNEXT: ${pending.length ? 'interview → re-run → ' : ''}commit (reference the adoption issue — create it BEFORE committing), push, PR. Then the executor routine + repo binding (bootstrap.md, the scheduling part).`);
+if (!selftest.ok) process.exit(1);
