@@ -18,7 +18,7 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Finishing a change | high | correctness | prose: 33 words |
 | Changing scheduled or unattended machinery | high | correctness | prose: 36 words |
 | Planning a migration | medium | complexity | prose: 68 words + skill (`writing-migration-plans`) |
-| When verifying now is genuinely impossible | medium | complexity | prose: 40 words |
+| When verifying now is genuinely impossible | high | correctness | prose: 109 words + skill (`verify-in-production`) |
 | Receiving feedback that flags a misunderstanding | medium | complexity | prose: 29 words |
 | Writing anything | low | complexity | prose: 18 words |
 | Auditing an artifact against its source | high | correctness | prose: 35 words |

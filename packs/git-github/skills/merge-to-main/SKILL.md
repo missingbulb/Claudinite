@@ -23,6 +23,14 @@ The two divergent points — **`squash`** as the method and **CI gating** — ar
 Once the merge has landed and local `main` is synced, run the growth pack's capture step:
 `node .claudinite/shared/packs/claudinite-growth/capture-log.mjs --issue <n>` (from the canon repo itself: `node packs/claudinite-growth/capture-log.mjs --issue <n>`), `<n>` being the issue your `Closes #<issue>` named. Deterministic, seconds-long; it pushes the conversation to the orphan `conversation-logs` branch. It runs **here, in-session, because it needs the live transcript** — the lessons extraction then happens later, in the conversation half of the repo's scheduled `growth-extract` task (MCP-native, with a rethink window), so there is nothing to schedule and no in-session lessons pass (the capture step's own pack owns that standard). A later merge in the same session just runs capture again — it captures the delta. In the rare repo that removed the `claudinite-growth` pack from `.claudinite-checks.json`, skip this step.
 
+## After the merge: file the production check (every session, every user)
+
+Then run the basics pack's [verify-in-production](../../../basics/skills/verify-in-production/SKILL.md)
+skill, in the same breath and equally unasked. It decides whether this change is one whose proof
+lives somewhere the repo cannot see — most are not, and file nothing — and where it is, files the
+issue that comes back once the change is actually live. Never offer the owner to check on it later
+instead; that is the human memory the mechanism replaces.
+
 ## Don't
 
 - **Don't** re-read the issue to confirm it closed — `Closes #<issue>` does that on merge; trust it.
