@@ -20,7 +20,9 @@ points below (merge method, CI gating). Don't go hunting for one it doesn't name
    the repo doesn't declare `claudinite-growth`. A later merge in the same session runs it again.
 7. Run the basics pack's
    [verify-in-production](../../../basics/skills/verify-in-production/SKILL.md) skill, unasked.
-   It decides whether this change needs a production check at all — most don't — and files the
-   issue that comes back once the change is live. Never offer the owner to check later instead.
+   This step is that skill's **only** trigger — it files against what the squash actually landed,
+   which is why it runs here and not when the code was written or the PR opened. It decides
+   whether this change needs a production check at all — most don't — and files the issue that
+   comes back once the change is live. Never offer the owner to check later instead.
 
 Don't re-read the issue to confirm it closed — `Closes #<issue>` does that on merge.

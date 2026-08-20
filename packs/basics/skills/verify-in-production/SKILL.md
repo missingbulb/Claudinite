@@ -1,15 +1,36 @@
 ---
 name: verify-in-production
-description: Decide whether a change that just landed can only be proven in production, and if so file the verification that comes back on its own once it is live. Use at the end of every change, beside the conversation capture — not on request.
+description: Decide whether a change that has merged can only be proven in production, and if so file the verification that comes back on its own once it is live. Use immediately after the merge, beside the conversation capture — never before, and not on request.
 ---
 
 # Verify in production
 
 A change is finished when someone has watched it work. Most changes you can watch **now**, and
 that is the rule — this skill is only for the rest: a change whose proof lives somewhere the
-repo cannot see yet. It fires **automatically at the end of a change**, unasked. You are filing
-the proof, not doing the work — and the proof itself runs unattended: an automatic check, end
-to end, with a person entering only where no automatic check can exist.
+repo cannot see yet. You are filing the proof, not doing the work — and the proof itself runs
+unattended: an automatic check, end to end, with a person entering
+only where no automatic check can exist.
+
+## When it fires: after the merge, never before
+
+**The PR must have merged.** This skill runs as a step of the merge, unasked — `merge-to-main`
+calls it once the squash has landed — and at no other moment. Not when the code is written, not
+when the PR opens, not while review is in flight.
+
+The reason is that a PR can be **rejected**, and a branch that is still open can be rewritten
+under you. Both leave a verification whose premise never reached `main`:
+
+- A **rewritten branch** makes the brief describe a change that no longer exists. #1121 was filed
+  against a scope its PR then dropped; the verification was moot before the merge it waited on.
+- A **rejected PR** is worse, because the queue cannot tell it from a merge. A blocked item
+  releases on its blocker being *closed*, and nothing reads `merged` — so the item goes ready,
+  reads an `In-production-when:` that can never become true, pushes `Not-before:` forward by
+  `Retry-every:` without comment, and repeats indefinitely. No janitor rule reclaims it: the
+  stale-ready sweep cannot see an item sleeping on a future `Not-before`, and the
+  stuck-dependency sweep exempts an item whose blockers have closed.
+
+So there is no such thing as filing this early and letting the queue sort it out. Wait for the
+merge, then read **what actually landed** — the merged diff, not the branch you remember writing.
 
 ## First: does this file anything at all?
 
@@ -40,10 +61,12 @@ could not be watched now, then, each spelled verbatim on its own line:
 Original-issue: #<the change's issue>
 In-production-when: <the concrete artifact to read, and what makes it true>
 Verify: <what to observe, and what counts as a pass>
-Blocked-by: #<the change's PR>
 Not-before: <ISO instant just past the expected release>
 Retry-every: <how far to push Not-before when not yet live, e.g. 1 day>
 ```
+
+No `Blocked-by:`. You are filing after the merge, so the change's PR has already closed and
+there is nothing left to wait on but the release itself.
 
 - **`Original-issue:`** is where a failure lands — the issue the change was done under, which
   the run reopens if the verification fails. Make the verification that issue's **sub-issue**
@@ -59,9 +82,8 @@ Retry-every: <how far to push Not-before when not yet live, e.g. 1 day>
   run can make**: an API response, a file at a URL, an issue's state. "Issue #100 on that repo
   is closed with a comment citing the scheduler runs" beats "check tidy-issues works". Only where no
   automatic check can exist may `Verify:` name a person's step, spelled out exactly.
-- **`Blocked-by:`/`Not-before:`** are the queue's own wait fields: adoption holds the run until
-  the PR has closed **and** the moment has passed. Aim `Not-before:` just past the release you
-  expect — the re-arm covers a miss, so don't pad it.
+- **`Not-before:`** is the queue's own wait field: adoption holds the run until the moment has
+  passed. Aim it just past the release you expect — the re-arm covers a miss, so don't pad it.
 - **`Retry-every:`** is the extension you are prescribing: when the run finds the change not
   yet live, it pushes `Not-before:` forward by exactly this much. Size it to the release you
   wait on — a nightly converge retries daily, a next-session rule in minutes.
