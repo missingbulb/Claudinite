@@ -209,7 +209,7 @@ export function planTick({
 // its standing item, and this is that same lever reached from OUTSIDE the repo: the
 // fleet enforcer dispatches this workflow with the task ids it wants run now, and
 // the member wakes its own items with its own token. The enforcer therefore needs
-// no issue access anywhere — the fan-out model the sheepdog pack is built on, where
+// no issue access anywhere — the fan-out model the enforcer's sweeps are built on, where
 // the enforcer dispatches and the member executes.
 //
 // An id is `pack/task` or a bare `task` resolved against this repo's own discovered

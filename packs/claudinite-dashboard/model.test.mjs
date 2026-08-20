@@ -81,7 +81,7 @@ test('taskDeclarationPaths takes only declared packs, from either root', () => {
   const paths = [
     'packs/basics/tasks/ci-performance/task.mjs',
     'packs/basics/tasks/ci-performance/worker.mjs',       // not a declaration
-    'packs/sheepdog/tasks/fleet-roster/task.mjs',          // pack not declared
+    'packs/claudinite-fleet-sheepdog/tasks/fleet-roster/task.mjs',          // pack not declared
     '.claudinite/shared/packs/claudinite-lifecycle/tasks/update/task.mjs',
     '.claudinite/local/packs/claudinite/tasks/growth/task.mjs',
     'packs/basics/tasks/ci-performance/task.test.mjs',     // the test beside it, not the declaration

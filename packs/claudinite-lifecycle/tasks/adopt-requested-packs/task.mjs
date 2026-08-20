@@ -1,7 +1,7 @@
 // claudinite-growth task: adopt-requested-packs — adopt the packs this repo's
 // `add-packs` work-list issues ask for, in THIS repo, by this repo's own agent.
 //
-// THE MEMBER HALF OF THE FLEET FAN-OUT (#749). A fleet enforcer (the sheepdog
+// THE MEMBER HALF OF THE FLEET FAN-OUT (#749). A fleet enforcer (the claudinite-fleet-sheepdog
 // pack's fleet-add-missing-packs task) decides a member is missing packs — a weekly
 // fingerprint scan SUSPECTS them, or the owner REQUESTS them by hand with config and
 // interview answers decided — and, per member, converges one `add-packs` work-list

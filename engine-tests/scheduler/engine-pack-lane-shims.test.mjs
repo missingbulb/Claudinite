@@ -100,11 +100,11 @@ test('the shims re-export rather than re-declare, so they cannot drift from the 
 });
 
 test('the one duplicated body agrees with the pack that owns it now', async () => {
-  // `parseOverrides` cannot re-export: its home is sheepdog's param-bag.mjs, and the
+  // `parseOverrides` cannot re-export: its home is claudinite-fleet-sheepdog's param-bag.mjs, and the
   // engine may not import a pack. So it is duplicated, and this is the drift guard —
   // run against the real logic in both directions, not a string compare.
   const { parseOverrides } = await import(join(ROOT, 'engine/scheduler/run.mjs'));
-  const { parseParamBag } = await import(join(ROOT, 'packs/sheepdog/param-bag.mjs'));
+  const { parseParamBag } = await import(join(ROOT, 'packs/claudinite-fleet-sheepdog/param-bag.mjs'));
   for (const raw of [
     'DIGEST_BACKFILL_DAYS=7',
     'A=1,B=2',

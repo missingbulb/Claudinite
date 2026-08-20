@@ -25,11 +25,13 @@ export default {
   id: 'chrome-extension',
   // 3: absorbed chrome-extension-release — its rules, stubs, task, migration record
   // and standard live here now, relevance-gated on the repo shipping the pipeline.
-  version: 4,
+  // 5: the generic-workflow-lint neighbour is git-github now that github-actions
+  // collapsed into it (#1079).
+  version: 5,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'writing and shipping a Chrome extension: MV3 service-worker, permission, content-script and auth gotchas, plus Web Store release, versioning and privacy',
-    excludes: 'generic workflow lint rules — github-actions; shipping to a different store — the app-store-release and play-store-release packs',
+    excludes: 'generic workflow lint rules — git-github; shipping to a different store — the app-store-release and play-store-release packs',
   },
   badge: 'badge.svg',
   marker: 'a manifest.json declaring manifest_version',

@@ -35,7 +35,7 @@ const setStamp = (root, patch) => {
 test('a pack owns its own directory and nothing else', () => {
   assert.equal(isPackFile('packs/basics/RULES.md', 'basics'), true);
   assert.equal(isPackFile('packs/basics/migrations/2026-01-01-x/migration.mjs', 'basics'), true);
-  assert.equal(isPackFile('packs/sheepdog/RULES.md', 'basics'), false);
+  assert.equal(isPackFile('packs/claudinite-fleet-sheepdog/RULES.md', 'basics'), false);
   assert.equal(isPackFile('engine/selftest.mjs', 'basics'), false, 'the engine tree is the engine flow\'s');
   assert.equal(isPackFile('packs/directory.GENERATED.md', 'basics'), false, 'the catalog is no pack\'s');
 });
@@ -251,10 +251,10 @@ test('a RECORD materializing a workflow is withheld too, not written where the t
   // guards against is not a wrong file — it is the Action's token refusing the push and
   // GitHub rejecting the whole ref, failing the entire converge.
   //
-  // Driven through the real canary-probe record, not a fixture, because the thing worth
+  // Driven through the real claudinite-canary-repo record, not a fixture, because the thing worth
   // pinning is that a record shipped in this corpus travels the lane — a fake record
   // would only prove that `write` can be called.
-  const root = makeMember({ packs: ['basics', 'canary-probe'] });
+  const root = makeMember({ packs: ['basics', 'claudinite-canary-repo'] });
   assert.deepEqual((await applyVendor(root)).errors, []);
   const probe = '.github/workflows/claudinite-workflow-probe.yml';
 
@@ -262,7 +262,7 @@ test('a RECORD materializing a workflow is withheld too, not written where the t
   // stale content, and a real gap for the record at version 2 to close.
   mkdirSync(join(root, '.github', 'workflows'), { recursive: true });
   writeFileSync(join(root, probe), 'name: Claudinite workflow probe\non:\n  workflow_dispatch:\n');
-  setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { basics: 99, 'canary-probe': 1 } });
+  setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { basics: 99, 'claudinite-canary-repo': 1 } });
 
   const first = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
   const staged = first.withheld.find((w) => w.path === probe);
@@ -274,7 +274,7 @@ test('a RECORD materializing a workflow is withheld too, not written where the t
   // reviewer sees it and the apply stage can find it.
   assert.equal(readFileSync(join(root, probe), 'utf8'), 'name: Claudinite workflow probe\non:\n  workflow_dispatch:\n',
     'the flow must not write what its caller cannot push');
-  const template = readFileSync('packs/canary-probe/stubs/workflows/claudinite-workflow-probe.yml', 'utf8');
+  const template = readFileSync('packs/claudinite-canary-repo/stubs/workflows/claudinite-workflow-probe.yml', 'utf8');
   assert.equal(readFileSync(join(root, staged.staged), 'utf8'), template, 'and the staged copy is the pack template, byte for byte');
   assert.equal(first.applyStage.needed, true, 'an undelivered workflow is outstanding work');
 
@@ -297,7 +297,7 @@ test('a workflow materialization is SKIPPED, never written, by a caller that can
   // hand-run apply, CI — must still refuse, and must SAY so rather than skip silently,
   // because a silent skip reads as "already current".
   const record = (await loadMigrations()).find((m) => m.id === 'workflow-probe-current');
-  assert.ok(record, 'the canary-probe record is what this test is about');
+  assert.ok(record, 'the claudinite-canary-repo record is what this test is about');
   const probe = '.github/workflows/claudinite-workflow-probe.yml';
   const writes = [];
   const io = {
@@ -357,19 +357,19 @@ test('the records decide the apply stage, and what they say reaches the session'
     'a deterministic record must be deliverable without an agent');
 
   const asks = {
-    dir: 'packs/sheepdog/migrations/2026-08-13-roster',
+    dir: 'packs/claudinite-fleet-sheepdog/migrations/2026-08-13-roster',
     id: 'roster',
     applyStage: { why: 'the roster rules meet each member\'s own tasks', instructions: 'Re-home any task the new roster shape orphans.' },
   };
   const stage = applyStageFor([mechanical, asks]);
   assert.equal(stage.needed, true);
-  assert.deepEqual(stage.packs, ['sheepdog'], 'only the pack that RAISED the record is in scope');
-  assert.deepEqual(stage.records, ['packs/sheepdog/migrations/2026-08-13-roster']);
+  assert.deepEqual(stage.packs, ['claudinite-fleet-sheepdog'], 'only the pack that RAISED the record is in scope');
+  assert.deepEqual(stage.records, ['packs/claudinite-fleet-sheepdog/migrations/2026-08-13-roster']);
 
   // The record is NAMED, not quoted. Its instructions are on the branch, in the mount
   // the update just vendored; the reason carries an identifier so the session can find
   // them, because a request payload may not carry instructions (code-work.mjs).
-  assert.match(stage.why, /packs\/sheepdog\/migrations\/2026-08-13-roster/, 'the session must be able to find the record');
+  assert.match(stage.why, /packs\/claudinite-fleet-sheepdog\/migrations\/2026-08-13-roster/, 'the session must be able to find the record');
   assert.match(stage.why, /roster rules meet/);
   assert.ok(!stage.why.includes('Re-home any task'), 'the instructions travel through the repo, never the payload');
   assert.equal(terminalFor({ status: 'ok', applyStage: stage, decision: { action: 'merge', why: 'green' } }).why, stage.why);
@@ -426,9 +426,9 @@ test('dry run judges the whole plan and writes nothing', async () => {
 });
 
 test('packRecordsInGap is that pack\'s records only', () => {
-  const behind = packRecordsInGap('sheepdog', { packVersions: { sheepdog: 0 } });
-  assert.ok(behind.every((d) => d.startsWith('packs/sheepdog/migrations/')), behind.join(', '));
-  assert.deepEqual(packRecordsInGap('sheepdog', { packVersions: { sheepdog: 99 } }), []);
+  const behind = packRecordsInGap('claudinite-fleet-sheepdog', { packVersions: { 'claudinite-fleet-sheepdog': 0 } });
+  assert.ok(behind.every((d) => d.startsWith('packs/claudinite-fleet-sheepdog/migrations/')), behind.join(', '));
+  assert.deepEqual(packRecordsInGap('claudinite-fleet-sheepdog', { packVersions: { 'claudinite-fleet-sheepdog': 99 } }), []);
 });
 
 test('a member is owed the executor workflow beside its tick', async () => {
@@ -481,4 +481,31 @@ test('the stamp write drops a legacy pack key rather than carrying it forward', 
   assert.deepEqual(packVersions, { basics: 7, 'claudinite-lifecycle': 8, 'claudinite-growth': 7 });
   assert.ok(!Object.hasOwn(packVersions, 'core'), 'the old key must not survive the write');
   assert.ok(!Object.hasOwn(packVersions, 'grow_with_claudinite'), 'nor the other one');
+});
+
+test('a pack the canon renamed takes its old mount directory with it', async () => {
+  // What the sweep is for. Vendoring replaces a tree PER DECLARED ID, and a rename
+  // changes the id — so the directory the pack used to be vendored under matches
+  // nothing and is never touched again. It does not lie there harmlessly: a mounted
+  // pack's own id is canonicalized on load, so the abandoned copy announces the id the
+  // live one has, and the member runs two packs of that name, one of them frozen at the
+  // content it was renamed from.
+  //
+  // Driven through a REAL rename (core -> claudinite-lifecycle) rather than a fixture
+  // map, because the property worth pinning is that the spellings this corpus actually
+  // ships are the ones swept.
+  const root = makeMember({ packs: ['basics', 'claudinite-lifecycle'] });
+  assert.deepEqual((await applyVendor(root)).errors, []);
+  const legacy = join(root, MOUNT, 'packs', 'core');
+  mkdirSync(legacy, { recursive: true });
+  writeFileSync(join(legacy, 'pack.mjs'), "export default { id: 'core', version: 1 };\n");
+
+  // A gap on the renamed pack and nothing else: version 13 with no record above 1, so
+  // this run is the vendor step and only the vendor step.
+  setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { basics: 99, 'claudinite-lifecycle': 12 } });
+  await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
+
+  assert.ok(!existsSync(legacy), 'the abandoned directory is the second copy of a pack the member already has');
+  assert.ok(existsSync(join(root, MOUNT, 'packs', 'claudinite-lifecycle', 'pack.mjs')), 'and the live one is laid down');
+  rmSync(root, { recursive: true, force: true });
 });

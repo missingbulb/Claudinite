@@ -63,7 +63,7 @@ test('only test files are subjects', () => {
 
 test('the read-only canon mount is not policed', () => {
   assert.deepEqual(rule.run(ctx({
-    '.claudinite/shared/packs/sheepdog/some.test.mjs': `'${dated('2026-08-04')}'\n`,
+    '.claudinite/shared/packs/claudinite-fleet-sheepdog/some.test.mjs': `'${dated('2026-08-04')}'\n`,
   })), []);
 });
 

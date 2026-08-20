@@ -7,7 +7,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseDigestConfig, parseNudge, DEFAULT_PICK, DEFAULT_QUIET_DAYS } from '../../../../packs/claudinite-dashboard/tasks/fleet-digest/digest-config.mjs';
 
-const withDigest = (digest) => ({ packs: [{ id: 'sheepdog', config: { owner: 'missingbulb', ...(digest === undefined ? {} : { digest }) } }] });
+const withDigest = (digest) => ({ packs: [{ id: 'claudinite-fleet-sheepdog', config: { owner: 'missingbulb', ...(digest === undefined ? {} : { digest }) } }] });
 
 test('an absent digest block is a valid one — the file still gets written', () => {
   const c = parseDigestConfig(withDigest(undefined));
@@ -16,7 +16,7 @@ test('an absent digest block is a valid one — the file still gets written', ()
   assert.deepEqual(c.nudge, { enabled: true, quietDays: DEFAULT_QUIET_DAYS });
 });
 
-test('a repo with no sheepdog entry at all still parses to defaults', () => {
+test('a repo with no claudinite-fleet-sheepdog entry at all still parses to defaults', () => {
   assert.equal(parseDigestConfig({ packs: ['basics'] }).pick, DEFAULT_PICK);
 });
 
@@ -35,14 +35,14 @@ test('this pack\'s own entry is where the fleet keys are read', () => {
   assert.deepEqual(c.source, { owner: 'entry', exclude: 'entry', digest: 'entry' });
 });
 
-test('the sheepdog entry is the legacy source, so a moved task covers the same fleet', () => {
-  // An enforcer declared owner/exclude on its sheepdog entry long before this task
+test('the claudinite-fleet-sheepdog entry is the legacy source, so a moved task covers the same fleet', () => {
+  // An enforcer declared owner/exclude on its claudinite-fleet-sheepdog entry long before this task
   // moved here. Reading only this pack's entry would silently widen the brief to every
   // repo under the owner — a dropped exclude list is exactly the parameter that fails
   // quietly, so the fallback exists and reports itself.
   const c = parseDigestConfig({
     packs: [
-      entry('sheepdog', { owner: 'an-owner', exclude: ['an-owner/scratch'], digest: { pick: 3 } }),
+      entry('claudinite-fleet-sheepdog', { owner: 'an-owner', exclude: ['an-owner/scratch'], digest: { pick: 3 } }),
       entry('claudinite-dashboard', { canonRepo: 'an-owner/Claudinite' }),
     ],
   }, 'an-owner/Enforcer');
@@ -50,13 +50,25 @@ test('the sheepdog entry is the legacy source, so a moved task covers the same f
   assert.equal(c.owner, 'an-owner');
   assert.ok(c.exclude.has('an-owner/scratch'));
   assert.equal(c.pick, 3);
-  assert.deepEqual(c.source, { owner: 'sheepdog', exclude: 'sheepdog', digest: 'sheepdog' });
+  assert.deepEqual(c.source, { owner: 'claudinite-fleet-sheepdog', exclude: 'claudinite-fleet-sheepdog', digest: 'claudinite-fleet-sheepdog' });
+});
+
+test('the legacy entry is found under the spelling the enforcer wrote it with', () => {
+  // The enforcer entry this falls back to was written before the pack was renamed, and
+  // a declaration converges on its own schedule — so an enforcer whose file still says
+  // `sheepdog` must keep the exclude list it configured, not silently widen the brief.
+  const c = parseDigestConfig({
+    packs: [entry('sheepdog', { owner: 'an-owner', exclude: ['an-owner/scratch'] })],
+  }, 'an-owner/Enforcer');
+
+  assert.equal(c.owner, 'an-owner');
+  assert.ok(c.exclude.has('an-owner/scratch'));
 });
 
 test('this pack\'s entry wins over the legacy one, key by key', () => {
   const c = parseDigestConfig({
     packs: [
-      entry('sheepdog', { owner: 'old-owner', exclude: ['old-owner/a'] }),
+      entry('claudinite-fleet-sheepdog', { owner: 'old-owner', exclude: ['old-owner/a'] }),
       entry('claudinite-dashboard', { owner: 'new-owner' }),
     ],
   }, 'new-owner/Enforcer');
@@ -64,7 +76,7 @@ test('this pack\'s entry wins over the legacy one, key by key', () => {
   assert.equal(c.owner, 'new-owner');
   // `exclude` is not on the winning entry, so it still falls back rather than emptying.
   assert.ok(c.exclude.has('old-owner/a'));
-  assert.deepEqual(c.source, { owner: 'entry', exclude: 'sheepdog', digest: 'default' });
+  assert.deepEqual(c.source, { owner: 'entry', exclude: 'claudinite-fleet-sheepdog', digest: 'default' });
 });
 
 test('an owner nobody configured is the owner of the repo the task runs in', () => {

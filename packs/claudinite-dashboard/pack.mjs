@@ -22,7 +22,7 @@
 // instead and `prose` stays null.
 //
 // TWO CHECKS, AND A TASK, ALL THE DIGEST'S. `tasks/fleet-digest/` writes the fleet's
-// dated morning brief that the fleet page reads (it moved here from the `sheepdog`
+// dated morning brief that the fleet page reads (it moved here from the `claudinite-fleet-sheepdog`
 // pack, which enumerated the fleet but never showed anyone the result). Its two checks
 // live in its own folder because nothing else reads them: `digest-plain-text` holds the
 // landed briefs to plain text — they are sent verbatim through a renderer that neither
@@ -52,9 +52,9 @@ import { fleetTokenHandoverStep } from './tasks/fleet-digest/fleet-token.mjs';
 
 export default {
   id: 'claudinite-dashboard',
-  // 7: the fleet-digest task arrives from the sheepdog pack, with its two checks. A
+  // 7: the fleet-digest task arrives from the claudinite-fleet-sheepdog pack, with its two checks. A
   // declaring repo gains a daily task; nothing in a member is rewritten, and the task
-  // still reads an enforcer's existing `sheepdog` config as its legacy source, so the
+  // still reads an enforcer's existing `claudinite-fleet-sheepdog` config as its legacy source, so the
   // bump carries no migration record.
   // 8: the FLEET_GITHUB_TOKEN the digest needs is stated once, in its own
   // fleet-token.mjs, and rendered into the missing-secret message, the adoption step
@@ -66,11 +66,13 @@ export default {
   // 11: mount freshness judged on stamped versions against the canon's live ones
   // (never ref/updated), and the scheduler panels re-derived for the standing-item
   // model — next asks, roll records, triage-split parks. Page-only; no migration.
-  version: 11,
+  // 12: the workflow-practice neighbour is git-github now that github-actions
+  // collapsed into it (#1079).
+  version: 12,
   minEngineVersion: 4,
   ruleRoutingGuidance: {
     belongs: 'the browser dashboard over Claudinite scheduler state, the site that publishes it, and the fleet morning brief it reads',
-    excludes: 'how the scheduler behaves — core; workflow practice — github-actions; product sites — static-website',
+    excludes: 'how the scheduler behaves — core; workflow practice — git-github; product sites — static-website',
   },
   badge: 'badge.svg',
 

@@ -15,18 +15,19 @@ import versionScheme from './version-scheme.mjs';
 // fires on that repo. The declaration is still what activates the pack.
 export default {
   id: 'static-website',
-  version: 3,
+  version: 4,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'shipping and serving a static site: date-anchored versioning, release on push, the publish set, Pages deploy, client-side caching',
-    excludes: 'hand-authored markup gotchas — html; generic workflow lint — github-actions; store publication — the release packs',
+    excludes: 'hand-authored markup gotchas — html; generic workflow lint — git-github; store publication — the release packs',
   },
   badge: 'badge.svg',
   marker: `.github/workflows/${STUB_FILE} (named "${STUB_NAME}")`,
   detect: shipsPipeline,
-  // The site is HTML served over GitHub Actions — the markup pack and the
-  // workflow-platform pack are what this standard is built on top of.
-  requires: ['html', 'github-actions'],
+  // The site is HTML served over GitHub Actions. Only the markup pack is named
+  // here: the workflow-platform rules live in git-github, which basics' own
+  // `requires` already materializes into every declaration.
+  requires: ['html'],
   prose: 'RULES.md',
 
   // Adoption interview. Two questions, both genuine forks in the road that the

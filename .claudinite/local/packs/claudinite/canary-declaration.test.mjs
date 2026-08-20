@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 // The canary binding lives in the TRACKED declaration, on the local/claudinite
 // pack entry's `config.canaryRepo` — the same pack-entry config mechanism the
-// sheepdog pack uses for its fleet scope.
+// claudinite-fleet-sheepdog pack uses for its fleet scope.
 //
 // It is deliberately NOT a GitHub repository variable. A variable is invisible in
 // the tree, absent from every diff, and cannot be reviewed beside the workflow

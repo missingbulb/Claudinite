@@ -37,6 +37,16 @@ export const RENAMED_PACKS = Object.freeze({
   // and the release rules gate on the repo shipping the pipeline rather than on a
   // second declaration (#1057).
   'chrome-extension-release': 'chrome-extension',
+  // Absorbed too (#1079): the workflow-YAML rules moved in beside the git/GitHub
+  // procedure they were always the platform half of.
+  'github-actions': 'git-github',
+  // Absorbed too (#1079): the Firebase release standard became a skill in the pack
+  // that owns the technology, so shipping stops being a second thing to declare.
+  'firebase-release': 'firebase',
+  // Renamed (#1079): a pack whose subject is a Claudinite feature carries the prefix
+  // that says so.
+  'canary-probe': 'claudinite-canary-repo',
+  sheepdog: 'claudinite-fleet-sheepdog',
 });
 
 // The canon id a spelling resolves to. Canon packs only — a LOCAL pack lives in the

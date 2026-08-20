@@ -35,7 +35,7 @@ test('the digest names the whole grant when the token is missing', async () => {
 });
 
 test('one secret, two packs: the message says grant the union', () => {
-  assert.match(missingFleetTokenError('detail.').message, /sheepdog/);
+  assert.match(missingFleetTokenError('detail.').message, /claudinite-fleet-sheepdog/);
   // Found by what it is about, not by where it sits: the pack hands over several
   // human-only steps and their order is not this test's business — pinning the last
   // one made any new entry fail here instead of where it was added.

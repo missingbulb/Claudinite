@@ -36,7 +36,7 @@ test('the engine half is the engine tree plus the catalog nothing else owns', ()
   assert.equal(isEngineFile('engine/selftest.mjs'), true);
   assert.equal(isEngineFile('packs/directory.GENERATED.md'), true, 'the catalog ships with every mount, so no pack owns it');
   assert.equal(isEngineFile('packs/basics/RULES.md'), false);
-  assert.equal(isEngineFile('packs/sheepdog/migrations/2026-08-11-x/migration.mjs'), false, 'a pack\'s records are the pack flow\'s');
+  assert.equal(isEngineFile('packs/claudinite-fleet-sheepdog/migrations/2026-08-11-x/migration.mjs'), false, 'a pack\'s records are the pack flow\'s');
 });
 
 test('the gap is engine records only, and empties as the repo catches up', () => {

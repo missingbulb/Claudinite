@@ -6,8 +6,17 @@ Function patterns (verified-token identity, validation, transactional rate limit
 fan-out), testing without live infrastructure (pure-logic extraction, the rules emulator when rules
 themselves are under test), and deploy layout (predeploy build hooks, committed project aliases).
 Mostly prose — the two mechanical halves of the deploy layout are checks. Earned in
-missingbulb/ShoutsAndWhispers (Firestore + Functions + FCM + Google sign-in). Environment
-separation and store gating are deliberately not here.
+missingbulb/ShoutsAndWhispers (Firestore + Functions + FCM + Google sign-in).
+
+Environment separation and store gating are the release standard, and load only when a project is
+planning one: [create-release-plan](skills/create-release-plan/SKILL.md) — two fully separate
+dev/prod projects with everything committed pointing at dev, prod config injected by the release
+pipeline alone, and App Check attestation so only store-installed builds reach the prod backend.
+
+> **Status: the release standard was decided ahead of first exercise.** Distilled from
+> missingbulb/TLDR's worked AWS split and decided for Firebase in missingbulb/ShoutsAndWhispers;
+> no project has run a release through it yet. Expect refinement — and conformance checks — when
+> the first release exercises it.
 
 ## Rules (`RULES.md`)
 
@@ -29,7 +38,7 @@ separation and store gating are deliberately not here.
 | Test the rules themselves empirically | high | correctness | prose: 37 words |
 | Cross-language contracts get mirrored test vectors. | high | correctness | prose: 44 words |
 | Keep the Firebase project root self-contained | medium | complexity | prose: 71 words |
-| Commit .firebaserc with a safe default | critical | correctness | prose: 31 words |
+| Commit .firebaserc with a safe default | critical | correctness | prose: 33 words |
 | Smoke-load the built entrypoint | high | correctness | prose: 36 words + check (`firebase/functions-predeploy-build`) |
 
 ## Checks

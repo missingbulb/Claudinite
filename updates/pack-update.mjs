@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { computeVendorSet, SHARED_SUBDIR } from '../vendoring/compute-vendor-set.mjs';
 import { loadPacks, resolveDeclaredPacks, packEntryId } from '../engine/pack_loader/pack-registry.mjs';
 import { ENGINE_VERSION } from '../engine/version.mjs';
-import { canonicalPackVersions } from '../engine/pack_loader/renamed-packs.mjs';
+import { canonicalPackVersions, RENAMED_PACKS } from '../engine/pack_loader/renamed-packs.mjs';
 import { migrationDirs, migrationApplies, flowOf, DECLARATION_FILE } from '../engine/checks/helpers/active-migrations.mjs';
 import { loadMigrations, applyMigration } from '../engine/migrations/registry.mjs';
 import { NEEDS_HUMAN, runSelfTest, deliveryDecision } from './engine-update.mjs';
@@ -47,6 +47,18 @@ const canonRoot = dirname(dirname(fileURLToPath(import.meta.url))); // <canon>/u
 // tree and the catalog belong to the engine flow, which is what keeps two flows
 // converging one mount from ever fighting over a file.
 export const isPackFile = (rel, id) => rel.startsWith(`packs/${id}/`);
+
+// The mount directories a pack has been vendored under BEFORE — every spelling that
+// resolves to this id today (renamed-packs.mjs). A rename moves a pack's canon
+// directory, and the vendor step below replaces a tree per id: the old directory
+// matches no id any more, so without this it would sit in the mount forever holding a
+// complete, loadable copy of the pack. That copy is not inert — `discoverPacks`
+// canonicalizes a mounted pack's own id, so the stale tree announces the SAME id as
+// the live one and the member runs the pack twice, one of them frozen at whatever it
+// was renamed from. Swept here rather than by a migration record so the cleanup is a
+// property of renaming, not something each rename has to remember.
+export const legacySpellingsOf = (id) =>
+  Object.entries(RENAMED_PACKS).filter(([, to]) => to === id).map(([from]) => from);
 
 // The records this repo still needs for one pack, oldest first — the same predicate
 // the engine flow ranges over, with that pack's number instead of the engine's.
@@ -276,9 +288,13 @@ export async function packUpdate(targetRoot, {
 
   // 1. Replace each declared pack's tree wholesale — per pack, so a pack that is no
   //    longer declared keeps its files until the flow that owns removal takes them,
-  //    and a pack this run does not touch is never disturbed.
+  //    and a pack this run does not touch is never disturbed. A pack the canon has
+  //    RENAMED takes its old directories with it (legacySpellingsOf above).
   const sharedDir = join(targetRoot, SHARED_SUBDIR);
-  for (const id of ids) rmSync(join(sharedDir, 'packs', id), { recursive: true, force: true });
+  for (const id of ids) {
+    rmSync(join(sharedDir, 'packs', id), { recursive: true, force: true });
+    for (const legacy of legacySpellingsOf(id)) rmSync(join(sharedDir, 'packs', legacy), { recursive: true, force: true });
+  }
   for (const file of packFiles) {
     const dest = join(sharedDir, file);
     mkdirSync(dirname(dest), { recursive: true });

@@ -244,15 +244,15 @@ test('--list emits the machine-readable rule catalog', () => {
 });
 
 test("a pack's rules run only when it is declared", () => {
-  // A marker (here a workflow) only suspects a pack is wanted — it never forces
-  // one. So an undeclared github-actions pack stays silent (its rules don't run),
-  // and declaring it turns them on. Whether to declare is the project's call.
+  // A pack's rules run only where the project declared it. So the `gha/` checks stay
+  // silent in a repo whose declaration does not name git-github — workflows present or
+  // not — and declaring it turns them on. Whether to declare is the project's call.
   const wf = { '.github/workflows/x.yml': 'name: x\non: push\njobs:\n  t:\n    runs-on: ubuntu-latest\n    if: ${{ secrets.T }}\n    steps:\n      - run: echo hi\n' };
   const undeclared = makeRepo({
     changed: { ...wf, '.claudinite-checks.json': JSON.stringify({ packs: ['basics'] }) },
   });
   const declared = makeRepo({
-    changed: { ...wf, '.claudinite-checks.json': JSON.stringify({ packs: ['basics', 'github-actions'] }) },
+    changed: { ...wf, '.claudinite-checks.json': JSON.stringify({ packs: ['basics', 'git-github'] }) },
   });
   try {
     const u = runCli(undeclared);

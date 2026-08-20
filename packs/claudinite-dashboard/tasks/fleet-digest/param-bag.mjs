@@ -1,5 +1,5 @@
 // The operator's PARAMETERS for a forced run of this task, out of the work item's
-// Context. A copy of the sheepdog pack's `param-bag.mjs`, for the same reason
+// Context. A copy of the claudinite-fleet-sheepdog pack's `param-bag.mjs`, for the same reason
 // `fleet-reads.mjs` is one: two independently-adopted packs must not import each
 // other, and the parser is twenty lines of a format the queue defines.
 //

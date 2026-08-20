@@ -2,7 +2,6 @@
   "packs": [
     "claudinite-lifecycle",
     "basics",
-    "github-actions",
     {
       "id": "claudinite-growth",
       "config": {
@@ -50,8 +49,7 @@
               {
                 "path": ".github/workflows/chrome-extension-daily-release.yml",
                 "to": [
-                  "packs/chrome-extension",
-                  "packs/github-actions"
+                  "packs/chrome-extension"
                 ],
                 "reason": "decouple(release-infra): chrome-extension reusable release infra hosted in the core .github/ tree; being vendored out (#276)"
               },
@@ -82,7 +80,10 @@
                 "to": [
                   "packs/claudinite-lifecycle",
                   "packs/claudinite-growth",
-                  "packs/chrome-extension"
+                  "packs/chrome-extension",
+                  "packs/git-github",
+                  "packs/claudinite-canary-repo",
+                  "packs/claudinite-fleet-sheepdog"
                 ],
                 "reason": "inherent(#1022): a map from a pack's old id to its current one IS a list of pack names — there is nothing else for it to be made of, and the loader must hold it so a member declaring either spelling keeps its packs"
               },

@@ -244,7 +244,7 @@ export async function main() {
 
   if (backfill) log(`BACKFILL: ${backfill} day(s), ${dates[0]} … ${dates[dates.length - 1]}`);
   // Which declaration each fleet key came from, said out loud: this task read them off
-  // the `sheepdog` entry until it moved here, and a run that quietly covered a
+  // the `claudinite-fleet-sheepdog` entry until it moved here, and a run that quietly covered a
   // different set of repos than the last one would look identical to one that did not.
   log(`covering ${owner} (${digest.source.owner}), ${exclude.size} excluded (${digest.source.exclude})`);
   log(`pick ${digest.pick} of a ${digest.shortlist}-item shortlist`

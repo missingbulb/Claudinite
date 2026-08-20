@@ -63,7 +63,7 @@ test('the fleet\'s own dispatch issues are machine-filed, not accomplishments', 
   // of every task in every member is one of these. A filter that knew only the
   // retired prefix would hand the whole fleet's scheduled work to the shortlist.
   assert.ok(isMachineIssue({ title: '[claudinite-work] claudinite-growth/growth-extract' }));
-  assert.ok(isMachineIssue({ title: '[claudinite-work] sheepdog/fleet-baseline (Alpha Beta)' }));
+  assert.ok(isMachineIssue({ title: '[claudinite-work] claudinite-fleet-sheepdog/fleet-baseline (Alpha Beta)' }));
   assert.ok(isMachineIssue({ title: '[claudinite-task] claudinite-growth/growth-extract d2026-07-26' }));
   assert.ok(isMachineIssue({ title: '[claudinite-task] chrome-extension-release/store-release d2026-07-26' }));
   assert.ok(isMachineIssue({ title: 'Claudinite scheduler run failed' }), 'the escalation issue too');
