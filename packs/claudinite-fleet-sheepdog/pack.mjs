@@ -65,7 +65,7 @@
 // follow-the-fleet report: dispatching is the enforcer's job, reporting is each
 // member's own.
 //
-// Everything else — the tick, the executor, the task engine (engine/scheduler/),
+// Everything else — the scheduler run, the executor, the task engine (engine/scheduler/),
 // scheduling — is CORE and pack-agnostic; none of it runs, dispatches, or depends on
 // these sweeps.
 //
@@ -95,7 +95,7 @@ export default {
   // 18: renamed from `sheepdog` — the pack's subject is a Claudinite feature, so it
   // carries the prefix that says so. The config reader takes an enforcer's entry under
   // either spelling, since a declaration converges on its own schedule.
-  version: 18,
+  version: 19,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'fleet-enforcer duties for the repo watching every other repo — coverage, freshness, usage, standardized packs',

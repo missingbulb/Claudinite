@@ -9,7 +9,7 @@
 // bullet. So this is the whole channel: no workflow input, no override box.
 //
 // WHY A FILTER AND NOT A SPLIT. Context is BINDING SCOPE first and parameters second:
-// an item is born carrying prose (the tick's birth note, a precondition's reason), so
+// an item is born carrying prose (the scheduler run's birth note, a precondition's reason), so
 // a token counts as a parameter only when it looks like one — a SHOUTING key,
 // optionally with a value — and everything else is scope for the agent to read.
 //

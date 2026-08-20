@@ -19,7 +19,7 @@ conversation — the issue body is the whole brief. State the change, the files 
 surfaces it touches if you know them, what "done" looks like, and anything the
 owner ruled out. Size it to its idea; a rename is a sentence.
 
-Give the body these two lines, verbatim in this spelling — the tick reads the
+Give the body these two lines, verbatim in this spelling — the scheduler run reads the
 first one:
 
 ```
@@ -46,7 +46,7 @@ falling back to (2).
 
 Apply all three (`mcp__github__issue_write`, `labels`):
 
-- **`claude-task`** — the mark. The next tick adopts the issue into a work item,
+- **`claude-task`** — the mark. The next scheduler run adopts the issue into a work item,
   blocked on what you named, and releases it once those close.
 - **`claude-model:<family>`** — the family **this** session is running, so the
   deferred work is done by what the owner is working with now. Read it with
@@ -61,8 +61,8 @@ Apply all three (`mcp__github__issue_write`, `labels`):
   outranks how small the change looks.
 
 If a label does not exist in the repository yet, the mark cannot be applied (the
-API refuses an unknown label, and only the tick creates them). Say so in your
-reply and leave the issue filed — the labels appear on the next tick, and the
+API refuses an unknown label, and only the scheduler run creates them). Say so in your
+reply and leave the issue filed — the labels appear on the next scheduler run, and the
 owner can mark it from the issue page.
 
 ## Then say what you filed

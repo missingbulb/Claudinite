@@ -48,7 +48,7 @@ Everything else is optional `config` on the declaration:
 
 ## Why a pack and not engine code
 
-Nothing converges, ticks or executes because the dashboard exists, and a member that
+Nothing converges, scheduler runs or executes because the dashboard exists, and a member that
 never looks at it should not carry it. Engine code is what every member *runs*; this
 is content a member opts into. Being a pack also buys it a version and migration
 lane, a declaration that gates it, and an adoption moment at which the deploy can be
@@ -384,7 +384,7 @@ Two things about that split are deliberate:
   directory the nightly update cannot push to, so a deploy workflow can only arrive by
   being written at adoption — and it never converges after. It is therefore a thin
   shim that calls `build-site.mjs` out of the mount, exactly as the scheduler stub
-  calls the engine's tick. Only the file that must be frozen is frozen.
+  calls the engine's scheduler run. Only the file that must be frozen is frozen.
 
 - **It follows the scheduler rather than only a push.** The mount is the page's
   source, and the push that moves it is a Claudinite update PR auto-merged by the

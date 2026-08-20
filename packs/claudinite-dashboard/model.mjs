@@ -37,10 +37,10 @@ export {
   parseWorkItemTitle, nextAnchor, mostRecentAnchor, periodMs,
 };
 
-// How long a due item may sit blocked before the page calls the tick out. The tick
+// How long a due item may sit blocked before the page calls the scheduler run out. The scheduler run
 // is the repo's one cron, hourly; two fires of slack keeps a single late fire from
 // reading as a fault. Not an engine constant because nothing engine-side measures
-// this — the tick readies due items on its next fire, whenever that is.
+// this — the scheduler run readies due items on its next fire, whenever that is.
 export const DUE_SLACK_MS = 2 * 3600e3;
 
 const ms = (t) => (t == null ? null : new Date(t).getTime());
@@ -185,7 +185,7 @@ export function warningsFor(item, now, { periodFor = () => null, isOpen = () => 
   const state = stateOf(item);
   const idle = idleMs(item, now);
   if (state === EXECUTING && idle >= EXECUTING_LEASH_MS) {
-    out.push({ level: 'serious', text: 'executing past the leash — the next tick reclaims it' });
+    out.push({ level: 'serious', text: 'executing past the leash — the next scheduler run reclaims it' });
   }
   if (state === AGENT && idle >= AGENT_LEASH_MS) {
     out.push({ level: 'serious', text: 'agent claim past the leash — the janitor reclaims it' });
@@ -198,7 +198,7 @@ export function warningsFor(item, now, { periodFor = () => null, isOpen = () => 
     // The standing-item model: blocked is the queue's healthy quiet state, not a
     // fault. A rolled item waiting out its Not-before never warns; what does warn is
     // the two things the engine would actually act on — dependencies unresolved past
-    // the janitor's threshold, and an item DUE that the tick has failed to ready.
+    // the janitor's threshold, and an item DUE that the scheduler run has failed to ready.
     const { notBefore, blockedBy } = parseWorkItemBody(item.body);
     const wake = ms(notBefore);
     const depStates = blockedBy.map((n) => isOpen(n));
@@ -209,13 +209,13 @@ export function warningsFor(item, now, { periodFor = () => null, isOpen = () => 
         out.push({ level: 'warning', text: `blocked on ${blockedBy.map((n) => `#${n}`).join(', ')} for over 2 days — the janitor flags stuck dependencies` });
       }
     } else if (!depStates.some((s) => s === null)) {
-      // Nothing blocks it any more: the next tick readies it. Due only measures from
+      // Nothing blocks it any more: the next scheduler run readies it. Due only measures from
       // the stamped wake — with dependencies the closing time is not on this item,
       // and a guess would alarm on an item that became due minutes ago.
       if (wake !== null && ms(now) - wake >= DUE_SLACK_MS) {
-        out.push({ level: 'serious', text: 'due but not readied — is the tick running?' });
+        out.push({ level: 'serious', text: 'due but not readied — is the scheduler run running?' });
       } else if (wake === null && blockedBy.length === 0 && idle >= DUE_SLACK_MS) {
-        out.push({ level: 'serious', text: 'due but not readied — is the tick running?' });
+        out.push({ level: 'serious', text: 'due but not readied — is the scheduler run running?' });
       }
     }
   }

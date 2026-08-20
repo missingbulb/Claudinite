@@ -175,7 +175,7 @@ test('the scheduler workflow is staged for a lane that can push it, and clears o
   // Delivered — and now the flow must go quiet, or every member sits permanently at
   // `apply-stage` and no update ever merges again.
   // Both files, because a member on the default dispatch is a QUEUE member and the
-  // tick without its executor is a generator with no worker (#874).
+  // scheduler run without its executor is a generator with no worker (#874).
   assert.deepEqual(deliverStaged(root).sort(), ['claudinite-executor.yml', 'claudinite-scheduler.yml']);
   const second = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
   assert.deepEqual(second.withheld, [], 'a converged workflow is owed nothing');
@@ -431,9 +431,9 @@ test('packRecordsInGap is that pack\'s records only', () => {
   assert.deepEqual(packRecordsInGap('claudinite-fleet-sheepdog', { packVersions: { 'claudinite-fleet-sheepdog': 99 } }), []);
 });
 
-test('a member is owed the executor workflow beside its tick', async () => {
-  // The tick and the executor are ONE mechanism in two files: the tick only creates
-  // and readies work items, so a member holding the tick without the executor has a
+test('a member is owed the executor workflow beside its scheduler run', async () => {
+  // The scheduler run and the executor are ONE mechanism in two files: the scheduler run only creates
+  // and readies work items, so a member holding the scheduler run without the executor has a
   // generator with no worker — a queue that fills every hour and is never drained,
   // which reads from outside exactly like a repo whose tasks all declined. This lane
   // staged only the scheduler path, so that state was reachable for every member.
@@ -457,7 +457,7 @@ test('a member is owed the executor workflow beside its tick', async () => {
   assert.equal(blind.pending, null);
   assert.ok(blind.error, 'a missing stub must be reported, not read as converged');
 
-  // …and the whole flow stages it beside the tick, in one cycle, through the same
+  // …and the whole flow stages it beside the scheduler run, in one cycle, through the same
   // withhold lane — the property the fleet flip actually depends on.
   const run = await packUpdate(queue, { fullName: 'o/r', selfTestRun: () => 'ok' });
   const staged = run.withheld.map((w) => w.path);

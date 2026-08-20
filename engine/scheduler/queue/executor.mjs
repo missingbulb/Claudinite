@@ -6,7 +6,7 @@
 //
 // An executor's whole interface is issue read/write plus the repo at HEAD, which
 // is what makes it platform-agnostic: the reference deployment is a job in the
-// vendored workflows (the tick's post-tick drain, and a `labeled`-event run for
+// vendored workflows (the scheduler run's post-scheduler run drain, and a `labeled`-event run for
 // latency), but a runner anywhere with an issues-scope token qualifies. Nothing
 // enumerates executors; identity is self-declared in the claim comment.
 //
@@ -129,7 +129,7 @@ export function conflictsWithEarlierClaim(item, myClaimId, others, { taskAfter =
 
 // The no-go outcome (DESIGN §6.4). A SCHEDULED item rolls — `Not-before` stamped
 // with the task's next anchor, ready → blocked, the reason recorded — so the item
-// itself carries "asked, declined, wakes at T" and the tick is a pure function of
+// itself carries "asked, declined, wakes at T" and the scheduler run is a pure function of
 // the clock and the issue list. An AD-HOC item has no next anchor to roll to, so
 // it closes obsolete with the reason commented (a follow-up whose world settled on
 // its own, S17).
@@ -148,7 +148,7 @@ const nowIso = () => new Date().toISOString();
 // ONE EXECUTOR RUN PERFORMS ONE ITEM (DESIGN §6, §10, decision §15.22). Not a
 // configured maximum — the essence of an executor: it claims one item, sees it to
 // its settle, and ends. Capacity is executor width, and the queue drains as a
-// CHAIN of runs, each cause on the record (§10): the tick's own drain job, a
+// CHAIN of runs, each cause on the record (§10): the scheduler run's own drain job, a
 // label event, the close-time drain, this run's own `redispatch`, and the
 // workflow's failure-continuation job when a run dies before reaching it.
 //
@@ -156,7 +156,7 @@ const nowIso = () => new Date().toISOString();
 // this episode's earlier claim — ends without dispatching anything. Retrying a
 // lost race here would be a second pick attempt racing the very executor that
 // won, and re-dispatching over a claim we just reverted is a two-executor
-// dispatch loop; in both cases the winner's own chain (or the tick behind it)
+// dispatch loop; in both cases the winner's own chain (or the scheduler run behind it)
 // carries the queue.
 //
 // Injected seams keep the run testable end to end without GitHub, code-work
@@ -225,7 +225,7 @@ export async function runExecutor({
       const res = await redispatch();
       log(res?.ok
         ? `- ${left.length} item(s) still pickable — dispatched a fresh executor run`
-        : `! ${left.length} item(s) still pickable but the re-dispatch failed (${res?.status ?? 'no status'}) — the tick's drain is the backstop`);
+        : `! ${left.length} item(s) still pickable but the re-dispatch failed (${res?.status ?? 'no status'}) — the scheduler run's drain is the backstop`);
     }
   }
   return done;
@@ -300,7 +300,7 @@ async function executeItem({
     if (plan.kind === 'close') {
       // A DECLINED REQUEST IS DISARMED IN THE SAME CONVERGENCE (DESIGN §16.5).
       // Nothing else would: an issue left carrying `claude-queued` after its run was
-      // refused is one no later tick adopts and no person is told about, and one
+      // refused is one no later scheduler run adopts and no person is told about, and one
       // whose mark — if re-applied — walks into the same refusal forever.
       if (fields.request) await declineRequest(api, gh, repo, fields.request, item.number, plan.reason);
       // A DECLINE IS A COMPLETED RUN, not a failure: the executor asked, got a
@@ -333,7 +333,7 @@ async function executeItem({
   const context = mergeContext(parseContextLines(item.body), verdict.context ?? []);
   if (task.decl.code_work) {
     // The work step may legitimately run for hours (§15.15). While it does, the
-    // item's only sign of life is this beat — which is also what the tick's leash
+    // item's only sign of life is this beat — which is also what the scheduler run's leash
     // measures, so a long run is legal rather than reclaimed underneath itself.
     const result = await withHeartbeat(() => runTaskCodeWork(task, { item, context }), {
       intervalMs: heartbeatMs,
@@ -478,7 +478,7 @@ async function handOff({ api, gh, repo, item, task, id, context, result, executo
 //
 // Struck BEFORE the label swap, so the crash window degrades the safe way: an
 // executor that dies between the two leaves the item `task:executing` with a
-// spent claim, which the tick's leash reclaim already recovers. Striking after
+// spent claim, which the scheduler run's leash reclaim already recovers. Striking after
 // would leave exactly the state this fixes — parked, re-queued by a human, and
 // unclaimable forever.
 async function strikeClaim(api, gh, repo, claim) {
@@ -520,7 +520,7 @@ async function converge(api, gh, repo, item, from, triage, claim, body, status =
 
 // A close is also the moment a dependent may become due (§15.19): whoever closes
 // an item releases what it was holding, in code, and the run's own re-dispatch
-// then finds it. The tick stays the backstop for every close this code never
+// then finds it. The scheduler run stays the backstop for every close this code never
 // performs — a human's, or a session that stopped early.
 async function close(api, gh, repo, item, from, outcome, stateReason, body, status, ctx = {}) {
   await api.comment(gh, repo, item.number, body + recordFor(item, status));

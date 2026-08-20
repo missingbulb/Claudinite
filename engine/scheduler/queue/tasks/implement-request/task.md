@@ -79,5 +79,5 @@ now re-opens that question.
 A request you cannot implement is a **failure park**, not a quiet success: park the
 item `needs-human` + `task:needs-human-failure` with what you found, and leave the
 request issue exactly as it is. Its standing `claude-queued` is deliberate — it is
-what stops the next tick queueing a second run of the same request, and re-arming
+what stops the next scheduler run queueing a second run of the same request, and re-arming
 work that writes code is a person's decision made after reading what you said.

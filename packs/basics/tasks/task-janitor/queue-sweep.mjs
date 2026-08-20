@@ -2,9 +2,9 @@
 // half of this task that runs where `taskScheduler.dispatch` is `"queue"`.
 //
 // It shrinks twice over against the slot-mechanism sweep beside it. The re-arm and
-// its grace window are GONE: an executor polls on the tick's cron, so a lost label
+// its grace window are GONE: an executor polls on the scheduler run's cron, so a lost label
 // event is latency and never the only delivery. And the executing-leash reclaim
-// moved to the TICK — a deterministic label rule, serialized and hourly, which
+// moved to the SCHEDULER RUN — a deterministic label rule, serialized and hourly, which
 // recovers a dead executor's item in ~2h instead of ~25h.
 //
 // What is left is everything needing judgment or a longer horizon: the dead agent
@@ -26,7 +26,7 @@ import {
   parseWorkItemBody, hasLabel,
 } from '../../../../engine/scheduler/queue/work-item.mjs';
 import { listOpenWorkItems } from '../../../../engine/scheduler/queue/read.mjs';
-import { ensureLabels, addLabel, removeLabel, comment, listComments } from '../../../../engine/scheduler/github.mjs';
+import { ensureLabels, addLabel, removeLabel, comment, listComments, readIssue } from '../../../../engine/scheduler/github.mjs';
 
 export async function sweepQueue(gh, repo, now, { tasks = [], log = console.log } = {}) {
   const open = await listOpenWorkItems(gh, repo);
@@ -77,7 +77,19 @@ export async function sweepQueue(gh, repo, now, { tasks = [], log = console.log 
     log(`surfaced stuck dependency on #${item.number} (blocked by ${unresolved.map((n) => `#${n}`).join(', ')})`);
     result.stuck.push(item.number);
   }
+  // CONFIRM BEFORE ACTING, and only here. This rule's premise is that the state it
+  // is reading is TORN — but a swap in flight is indistinguishable from one that
+  // tore, and `open` is a snapshot taken seconds earlier. An executor that settles
+  // an item inside that window gets its finished work parked `needs-human`, which
+  // is a false triage signal a person then has to read (#1104: #1101 closed
+  // `task:done` at 12:50:13Z and was escalated at 12:50:21Z). The other three rules
+  // turn on a clock rather than on a transient, so they need no second read.
   for (const item of stateless) {
+    const fresh = await readIssue(gh, repo, item.number);
+    if (!fresh || fresh.state !== 'open' || statelessItems([fresh]).length === 0) {
+      log(`- #${item.number} settled between this sweep's read and its write — left alone`);
+      continue;
+    }
     await escalate(item, statelessComment(), null, NEEDS_HUMAN_DECISION);
     log(`repaired stateless #${item.number} → ${NEEDS_HUMAN}`);
     result.stateless.push(item.number);

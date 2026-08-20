@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import rule, { contractChanges, carriesConsumers } from './consumer-safe-change.mjs';
 
 const SCHEMA = 'engine/pack_loader/pack-schema.mjs';
-const STUB = 'engine/scheduler/stubs/claudinite-tick.yml';
+const STUB = 'engine/scheduler/stubs/claudinite-scheduler.yml';
 const RECORD = 'engine/migrations/2026-08-01-thing/migration.mjs';
 const PACK_RECORD = 'packs/claudinite-fleet-sheepdog/migrations/2026-08-01-thing/migration.mjs';
 const FIXTURES = 'vendoring/rehearsal/fixtures.mjs';

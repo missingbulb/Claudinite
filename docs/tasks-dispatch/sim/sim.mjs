@@ -1,7 +1,7 @@
 // A discrete-event simulator of the tasks-dispatch spec (DESIGN.md), so the
 // scenario play-throughs in SCENARIOS.md are executable instead of prose-only.
 //
-// What it models faithfully: virtual time, the tick's three jobs (calendar-only
+// What it models faithfully: virtual time, the scheduler run's three jobs (calendar-only
 // instantiation with both guards and the first-item rule, readiness, the
 // executing-leash reclaim), the executor loop (pick order, same-title mutex,
 // the `after` yield, claim, validate, the single precondition evaluation, the
@@ -72,7 +72,7 @@ export function nextAnchor(frequency, now) {
 // ---- the simulator ----------------------------------------------------------
 
 // ---- ad-hoc requests (DESIGN §16) ------------------------------------------
-// The request vocabulary lives on an ORDINARY issue and is written by the tick
+// The request vocabulary lives on an ORDINARY issue and is written by the scheduler run
 // and by whoever converges the item — never by a person past the first mark.
 export const REQUEST_LABEL = 'claude-task';
 export const QUEUED_LABEL = 'claude-queued';
@@ -111,7 +111,7 @@ export function modelFor(labels) {
 export function makeSim({
   tasks,
   afterMode = 'yield', // 'yield' (the design) | 'blocked-by' (S24's rejected wiring)
-  tickMinute = 17,
+  schedulerRunMinute = 17,
   executingLeashMs = 1 * HOUR,
   agentLeashMs = 3 * HOUR,
   heartbeatMinutes = 15, // the executor's activity comment cadence during the work step
@@ -132,7 +132,7 @@ export function makeSim({
   const titleOf = (id) => `[claudinite-work] ${id}`;
 
   // The built-in request task, always present wherever the queue runs (DESIGN
-  // §16.2): `manual`, so the tick never puts it on a calendar — an item exists
+  // §16.2): `manual`, so the scheduler run never puts it on a calendar — an item exists
   // only because an issue was marked. Its precondition IS the security check, and
   // it declares no code-work at all, so a request goes issue → item → agent with
   // nothing in between to carry a payload.
@@ -274,7 +274,7 @@ export function makeSim({
   // new episode" is what made this simulator unable to reproduce F24: it encoded
   // the rule's intent, so the paths that end an episode without writing anything
   // looked correct here and livelocked in production. So the epoch advances
-  // exactly where the engine leaves a mark — the tick's reclaim, the F15 revert,
+  // exactly where the engine leaves a mark — the scheduler run's reclaim, the F15 revert,
   // and the departing executor's strike on a roll or a park (DESIGN §6.2).
   //
   // A human re-queue deliberately does NOT advance it: a human editing labels
@@ -291,7 +291,7 @@ export function makeSim({
     // F1, reopened 2026-08-15: whoever closes an item — executor or agent —
     // also re-checks blocked items' readiness in code (Blocked-by all closed,
     // Not-before passed) and a drain follows, so chain links proceed in
-    // minutes instead of waiting out the tick. The tick's readiness job stays
+    // minutes instead of waiting out the scheduler run. The scheduler run's readiness job stays
     // the backstop; a HAND close runs no engine code and is covered by it.
     for (const b of open().filter((i) => has(i, 'task:blocked'))) {
       const blockersDone = b.blockedBy.every(
@@ -307,10 +307,10 @@ export function makeSim({
     }
   }
 
-  // ---- the tick (DESIGN §5): pure function of the clock and the issue list --
-  function tick() {
-    if (suspendedAll) { record('suspended-skip', { workflow: 'tick' }); return; }
-    record('tick', {});
+  // ---- the scheduler run (DESIGN §5): pure function of the clock and the issue list --
+  function schedulerRun() {
+    if (suspendedAll) { record('suspended-skip', { workflow: 'scheduler-run' }); return; }
+    record('scheduler-run', {});
     // job 1: instantiate — calendar-only, no preconditions, no signals
     for (const task of registry.values()) {
       if (task.frequency === 'manual') continue;
@@ -318,7 +318,7 @@ export function makeSim({
       const fam = family(task.id);
       // F16 self-heal: if a stale issue list ever let a duplicate standing
       // item through (nothing guarantees a REST list from another node sees a
-      // creation seconds old), close every open one but the oldest. The tick
+      // creation seconds old), close every open one but the oldest. The scheduler run
       // is serialized (concurrency group), so this cannot race itself.
       // A park that is somebody's inbox rather than a fault is neither the
       // standing item nor a duplicate of one, so it leaves both tests and the
@@ -365,10 +365,10 @@ export function makeSim({
     // three: no precondition, no signal, no judgment about WHO marked it (that is
     // the precondition's, at pickup). The mark is CONSUMED here — the request
     // label becomes the queued one — so the gate clears by being acted on and a
-    // second tick finds nothing to adopt. Re-requesting is re-applying the label.
+    // second scheduler run finds nothing to adopt. Re-requesting is re-applying the label.
     for (const req of requests.filter((r) => r.state === 'open' && r.labels.has(REQUEST_LABEL))) {
       // One issue, one live item (F28). While a prior item is LIVE the mark
-      // waits on the issue, unconsumed — a later tick takes it. A prior item
+      // waits on the issue, unconsumed — a later scheduler run takes it. A prior item
       // that PARKED is superseded by the re-ask: closed here, so the retry
       // never leaves its predecessor parked forever beside the run replacing it.
       const prior = issues.filter((i) => i.state === 'open' && i.request === req.number);
@@ -407,7 +407,7 @@ export function makeSim({
   // declined request, the session for a run that left a PR. A run that FAILED
   // writes nothing and leaves the queued label standing — re-arming work that
   // writes code is a person's decision, and that standing label is also what stops
-  // the tick adopting the same request a second time.
+  // the scheduler run adopting the same request a second time.
   function declineRequest(it, why) {
     const req = requestOf(it.request);
     if (!req) return;
@@ -589,7 +589,7 @@ export function makeSim({
       } else {
         // A declined request tells the ISSUE so and disarms it, in the same
         // convergence: nothing else would, and an un-disarmed issue would be
-        // re-adopted and re-refused on every tick forever.
+        // re-adopted and re-refused on every scheduler run forever.
         if (it.request != null) declineRequest(it, verdict.reason ?? 'the precondition declined');
         close(it, 'obsolete'); // ad-hoc: no anchor to roll to (S17)
       }
@@ -707,7 +707,7 @@ export function makeSim({
   // items it RE-DISPATCHES a fresh run (`workflow_dispatch`, which the
   // default GITHUB_TOKEN may fire), so the queue drains run by run and a
   // run's timeout sizes to a single work bound. Every run records its
-  // trigger — tick-drain | label-event | close-drain | re-dispatch |
+  // trigger — scheduler-run-drain | label-event | close-drain | re-dispatch |
   // failure-redispatch — so tests assert WHAT caused each run, not just that
   // items converged.
   let runSeq = 0;
@@ -774,7 +774,7 @@ export function makeSim({
   }
 
   // ---- the scenario DSL -----------------------------------------------------
-  const droppedTicks = [];
+  const droppedSchedulerRuns = [];
   const sim = {
     issues, log, world, requests,
     requestItems: () => issues.filter((i) => i.request != null),
@@ -782,7 +782,7 @@ export function makeSim({
 
     // A person marks an ordinary issue (DESIGN §16.1). `author` is the issue
     // author's login — the precondition judges its repo permission — and `model`
-    // the optional family label. No latency sugar: adoption is the tick's job,
+    // the optional family label. No latency sugar: adoption is the scheduler run's job,
     // so a mark waits for the next one.
     markIssue({ author = 'owner', model = null, comments = [] } = {}) {
       const req = {
@@ -818,12 +818,12 @@ export function makeSim({
     // "at time X, Y happens"
     at(isoTime, fn) { schedule(T(isoTime), () => fn(sim)); return sim; },
 
-    // GitHub drops scheduled fires in [from, to) — the ticks simply don't run
-    dropTicks(fromIso, toIso) { droppedTicks.push([T(fromIso), T(toIso)]); return sim; },
-    // one late/manual tick outside the cron grid (with its post-tick drain)
-    tickAt(isoTime) {
-      schedule(T(isoTime), tick);
-      schedule(T(isoTime) + 40_000, () => executorRun('E1', 'tick-drain'));
+    // GitHub drops scheduled fires in [from, to) — the scheduler runs simply don't run
+    dropSchedulerRuns(fromIso, toIso) { droppedSchedulerRuns.push([T(fromIso), T(toIso)]); return sim; },
+    // one late/manual scheduler run outside the cron grid (with its post-scheduler run drain)
+    schedulerRunAt(isoTime) {
+      schedule(T(isoTime), schedulerRun);
+      schedule(T(isoTime) + 40_000, () => executorRun('E1', 'scheduler-run-drain'));
       return sim;
     },
 
@@ -864,9 +864,9 @@ export function makeSim({
     // scheduled task names a qualifier (DESIGN §3): an UNQUALIFIED item of a
     // scheduled task is structurally its standing item, so creating one where
     // none is open is minting, and beside an open one it is a duplicate the
-    // tick's self-heal closes.
+    // scheduler run's self-heal closes.
     // eventLost models a dropped `labeled` webhook (S16): no immediate
-    // executor run fires; the next tick's drain is the guarantee.
+    // executor run fires; the next scheduler run's drain is the guarantee.
     createItem(taskId, { urgent = false, notBefore = null, blockedBy = [], qualifier = null, eventLost = false } = {}) {
       const born = notBefore !== null || blockedBy.length ? 'task:blocked' : 'task:ready';
       const it = createIssue({ taskId, labels: [born], notBefore, blockedBy, urgent, qualifier });
@@ -883,7 +883,7 @@ export function makeSim({
     // the task file disappears from HEAD (S20): validate-in-code closes obsolete
     removeTask(taskId) { registry.delete(taskId); return sim; },
 
-    // a declaration change lands at HEAD (S28): the very next tick/pick reads
+    // a declaration change lands at HEAD (S28): the very next scheduler run/pick reads
     // the new frequency/after/precondition — items carry no schedule to migrate
     updateTask(taskId, patch) {
       registry.set(taskId, { ...registry.get(taskId), ...patch });
@@ -891,7 +891,7 @@ export function makeSim({
     },
 
     // an issue from another mechanism/vocabulary (S29): present in the repo,
-    // outside the [claudinite-work] family — the tick must never touch it
+    // outside the [claudinite-work] family — the scheduler run must never touch it
     foreignIssue(title) {
       const it = {
         number: issues.length + 700, title, taskId: null,
@@ -935,8 +935,8 @@ export function makeSim({
       return sim;
     },
 
-    // F16's precondition: a tick whose issue list was stale created a second
-    // standing item. Injected directly — the sim's own tick can't produce it.
+    // F16's precondition: a scheduler run whose issue list was stale created a second
+    // standing item. Injected directly — the sim's own scheduler run can't produce it.
     injectDuplicateStanding(taskId) {
       return createIssue({ taskId, labels: ['task:ready'] });
     },
@@ -958,8 +958,8 @@ export function makeSim({
       return sim;
     },
     // the operator hold (DESIGN §8): set/clear the suspend-all variable. Resume
-    // needs no dispatch of its own — the next cron tick self-heals — but the
-    // impatient path is a hand-dispatched scheduler run (tickAt models it).
+    // needs no dispatch of its own — the next cron scheduler run self-heals — but the
+    // impatient path is a hand-dispatched scheduler run (schedulerRunAt models it).
     suspendAll() { suspendedAll = true; record('suspend', {}); return sim; },
     resumeAll() { suspendedAll = false; record('resume', {}); return sim; },
 
@@ -978,15 +978,15 @@ export function makeSim({
       return sim;
     },
 
-    // run the clock: hourly ticks at :tickMinute (each with its post-tick
+    // run the clock: hourly scheduler runs at :schedulerRunMinute (each with its post-scheduler run
     // drain), a daily janitor, then drain the event queue strictly in order
     run(fromIso, toIso) {
       const from = T(fromIso), to = T(toIso);
-      for (let t = Math.ceil(from / HOUR) * HOUR + tickMinute * MIN; t < to; t += HOUR) {
+      for (let t = Math.ceil(from / HOUR) * HOUR + schedulerRunMinute * MIN; t < to; t += HOUR) {
         if (t < from) continue;
-        if (droppedTicks.some(([a, b]) => t >= a && t < b)) continue;
-        schedule(t, tick);
-        schedule(t + 40_000, () => executorRun('E1', 'tick-drain'));
+        if (droppedSchedulerRuns.some(([a, b]) => t >= a && t < b)) continue;
+        schedule(t, schedulerRun);
+        schedule(t + 40_000, () => executorRun('E1', 'scheduler-run-drain'));
       }
       for (let t = Math.ceil(from / DAY) * DAY + 4 * HOUR + 3 * MIN; t < to; t += DAY) {
         if (t >= from) schedule(t, janitor);

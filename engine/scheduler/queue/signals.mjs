@@ -1,5 +1,5 @@
 // Signal collection for ONE picked task (tasks-dispatch DESIGN §5, §6.4). The
-// tick performs no GitHub read beyond the issue list, so the whole cost of
+// scheduler run performs no GitHub read beyond the issue list, so the whole cost of
 // signals moved here — where exactly one task's declared union is collected, once
 // per period per task, at the moment its verdict is asked for.
 //

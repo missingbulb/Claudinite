@@ -17,7 +17,7 @@ test('the skill carries the discernment test — most changes file nothing', () 
 });
 
 test('what it files is a request the queue adopts, not a mechanism beside it', () => {
-  assert.match(skill, /`claude-task`/, 'the mark is what makes the tick adopt the issue');
+  assert.match(skill, /`claude-task`/, 'the mark is what makes the scheduler run adopt the issue');
   assert.match(skill, /Blocked-by:/, 'without the PR blocker the run races the merge');
   assert.match(skill, /Not-before:/, 'without the delay the run fires before the release it waits on');
   assert.doesNotMatch(skill, /claude-automerge.*apply/i, 'a verification has nothing to merge');

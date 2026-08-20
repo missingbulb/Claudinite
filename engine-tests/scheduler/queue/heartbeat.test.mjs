@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import {
   HEARTBEAT_MARKER, heartbeatComment, lastLivenessAt, withHeartbeat,
 } from '../../../engine/scheduler/queue/heartbeat.mjs';
-import { planTick } from '../../../engine/scheduler/queue/tick.mjs';
+import { planSchedulerRun } from '../../../engine/scheduler/queue/scheduler-run.mjs';
 import { CLAIM_MARKER, EPISODE_MARKER } from '../../../engine/scheduler/queue/work-item.mjs';
 
 const claim = (at, extra = '') => ({ created_at: at, body: `${CLAIM_MARKER}\nClaimed by executor \`E1\`.${extra}` });
@@ -39,7 +39,7 @@ const executing = (over = {}) => ({
   body: 'packs/p/tasks/a/task.md\n', created_at: '2026-08-20T03:00:00Z',
   updated_at: '2026-08-20T03:00:00Z', ...over,
 });
-const reclaims = (item, now) => planTick({
+const reclaims = (item, now) => planSchedulerRun({
   tasks: [], items: [item], now: new Date(now), schedule: SCHEDULE,
 }).ops.filter((o) => o.kind === 'reclaim');
 

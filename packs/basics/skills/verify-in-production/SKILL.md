@@ -57,7 +57,7 @@ Retry-every: <how far to push Not-before when not yet live, e.g. 1 day>
   production condition, and neither is elapsed time.
 - **`Verify:`** is an assertion with a pass condition, not a topic — and a read an **unattended
   run can make**: an API response, a file at a URL, an issue's state. "Issue #100 on that repo
-  is closed with a comment citing the ticks" beats "check tidy-issues works". Only where no
+  is closed with a comment citing the scheduler runs" beats "check tidy-issues works". Only where no
   automatic check can exist may `Verify:` name a person's step, spelled out exactly.
 - **`Blocked-by:`/`Not-before:`** are the queue's own wait fields: adoption holds the run until
   the PR has closed **and** the moment has passed. Aim `Not-before:` just past the release you
@@ -66,10 +66,10 @@ Retry-every: <how far to push Not-before when not yet live, e.g. 1 day>
   yet live, it pushes `Not-before:` forward by exactly this much. Size it to the release you
   wait on — a nightly converge retries daily, a next-session rule in minutes.
 
-Then the labels, as `/do-later` applies them: **`claude-task`** (the mark the tick adopts) and
+Then the labels, as `/do-later` applies them: **`claude-task`** (the mark the scheduler run adopts) and
 **`claude-model:sonnet`** (reading a live artifact and judging an assertion against it). Never
 `claude-automerge` — a verification has nothing to merge. If `claude-task` doesn't exist in the
-repo yet, say so and leave the issue — the labels appear on the next tick.
+repo yet, say so and leave the issue — the labels appear on the next scheduler run.
 
 ## Tell the run how to converge
 
@@ -83,7 +83,7 @@ decides nothing: it executes this playbook.
    saying what was asserted, what happened instead and where you read it; comment here linking
    that; close this issue as completed — the verification did its job by finding the fault.
 3. **Not yet live** → push `Not-before:` forward by `Retry-every:`, re-apply `claude-task` and
-   `claude-model:sonnet`, and leave the issue open — the next tick re-adopts it. No comment;
+   `claude-model:sonnet`, and leave the issue open — the next scheduler run re-adopts it. No comment;
    the bumped field is the record.
 
 ## Then say what you filed

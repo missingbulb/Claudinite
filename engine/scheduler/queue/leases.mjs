@@ -1,5 +1,5 @@
 // The queue's leases and bounds, in one place because three surfaces must agree
-// on them (tasks-dispatch DESIGN §11): the tick reclaims on the executing leash,
+// on them (tasks-dispatch DESIGN §11): the scheduler run reclaims on the executing leash,
 // the janitor sweeps on the agent leash and the stale bounds, and the task
 // contract rejects at author time any code-work whose declared timeout reaches the
 // executing leash (F17 — a code-work reclaimed while alive livelocks its item).

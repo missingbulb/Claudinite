@@ -5,7 +5,7 @@
 // only facts it carries beyond that.
 //
 // PURE, and deliberately the whole schema: everything else — anchors, guards,
-// yields, leashes, verdicts — is computed fresh at every tick and pick from the
+// yields, leashes, verdicts — is computed fresh at every scheduler run and pick from the
 // engine and the declarations at HEAD (DESIGN §14). The label-and-field vocabulary
 // here is therefore the compatibility surface across engine versions, which is why
 // additive change is the strongly preferred shape and a rename needs a migration.
@@ -65,7 +65,7 @@ export const TRIAGE_LABELS = Object.freeze([
 ]);
 // WHICH PARKS HOLD THE TASK'S LANE. A task's open STANDING item is the occurrence
 // itself, so while one exists the generator files no further occurrence
-// (`planTick` job 1) — which for a park means the task stops being scheduled at
+// (`planSchedulerRun` job 1) — which for a park means the task stops being scheduled at
 // all until a human clears it. That is right for a `failure`: filing a queue of
 // items that will break the same way helps nobody, and the silence is the signal.
 // It is wrong for the other three, which are a person's inbox, not a fault in the
@@ -166,7 +166,7 @@ export const MODEL_LABELS = REQUEST_MODELS.map((f) => `${MODEL_LABEL_PREFIX}${f}
 // is ensured too although only a person applies it: a label that does not exist is
 // one nobody can find in the picker, and the mark is the whole entry point.
 export const REQUEST_LABELS = [
-  { name: REQUEST_LABEL, color: '1d76db', description: 'Claudinite: implement this issue — the next tick queues a run for it' },
+  { name: REQUEST_LABEL, color: '1d76db', description: 'Claudinite: implement this issue — the next scheduler run queues a run for it' },
   { name: QUEUED_LABEL, color: 'fbca04', description: 'Claudinite: a work item exists for this issue' },
   { name: IN_REVIEW_LABEL, color: '5319e7', description: 'Claudinite: a pull request is open for this issue, waiting on a person' },
   { name: AUTOMERGE_LABEL, color: '0e8a16', description: 'Claudinite: land this request without approval if its diff is narrow (docs, tests, comments, code in one directory)' },
@@ -231,7 +231,7 @@ const TITLE_RE = /^\[claudinite-work\]\s+([^/\s]+)\/([^/\s]+)(?:\s+(\S.*))?$/;
 // The pack half is canonicalized on the way out. A work item's title is STORED
 // DATA — it sits on an open GitHub issue that outlives any one converge — so items
 // filed before a pack was renamed still carry the old spelling. Read literally, the
-// tick would not recognise its own live item, would file a second one beside it, and
+// scheduler run would not recognise its own live item, would file a second one beside it, and
 // would leave the first orphaned in the queue with nothing ever draining it.
 export function parseWorkItemTitle(title) {
   const m = TITLE_RE.exec(String(title ?? '').trim());
@@ -281,7 +281,7 @@ export const BLOCKED_BY_FIELD = 'Blocked-by';
 
 // The three fields a REQUEST item carries (DESIGN §16.3, §16.11). `Request` is the issue this
 // run implements — the whole payload, since the request task has no code-work phase
-// to hand one over. `Model` is the family the asker chose, copied here by the tick
+// to hand one over. `Model` is the family the asker chose, copied here by the scheduler run
 // from a write-gated label and read only by a task that declares
 // `model_from_request`; it is the first thing an item carries that defines
 // behaviour, which is why it is fenced rather than waved through (§16.7).
@@ -292,7 +292,7 @@ export const MODEL_FIELD = 'Model';
 // write-gated `claude-automerge` label. Its one value is `if-narrow`: the run may
 // land its own pull request when the diff classifier calls the diff narrow, and
 // must park for approval otherwise. An absent field is the default — never merge —
-// so an item an older tick wrote reads as unauthorized rather than as authorized.
+// so an item an older scheduler run wrote reads as unauthorized rather than as authorized.
 export const MERGE_FIELD = 'Merge';
 export const MERGE_IF_NARROW = 'if-narrow';
 
@@ -353,7 +353,7 @@ export function parseBlockedBy(body) {
   return [...bb.matchAll(/#(\d+)/g)].map((m) => Number(m[1]));
 }
 
-// Parse an item body back into the facts the tick and the executor read. A body
+// Parse an item body back into the facts the scheduler run and the executor read. A body
 // with no first line, or whose fields are absent, yields nulls — absence is
 // meaningful everywhere here and is never filled in with a default.
 export function parseWorkItemBody(body) {
@@ -454,7 +454,7 @@ export function withNotBefore(body, iso) {
 // REPLACING IS THE WHOLE POINT, and appending was a live bug (#879). Every standing
 // item is born carrying a `### Context`, and the hand-off writes Context again — so
 // an append leaves TWO sections of that name, while the session is told to read "the
-// issue's Context section", singular. The one it reads first is then the tick's birth
+// issue's Context section", singular. The one it reads first is then the scheduler run's birth
 // note and the binding scope is in the other, which fails silently whichever section
 // the agent picks. It also grows: an item re-queued through hand-off twice carried a
 // third.

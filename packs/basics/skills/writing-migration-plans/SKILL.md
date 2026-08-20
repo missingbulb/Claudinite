@@ -73,7 +73,7 @@ a step that was sorted wrong. Move it, or say in the plan why it genuinely canno
 
 ## Working through the plan
 
-Once the plan is agreed, the issue body's plan is **append-only**. While implementing, tick its
+Once the plan is agreed, the issue body's plan is **append-only**. While implementing, scheduler run its
 checkboxes and add below it — a comment, or a new section for what the work turned up — and never
 edit, reword, condense or re-order what was already there.
 

@@ -54,7 +54,7 @@ Every repo lands in exactly one bucket per question, and the two disagree on pur
 
 ## Why daily, and what it costs
 
-The freshness question was weekly because drift is measured in days and a daily re-ask could not change its answer. Merged, that argument buys nothing: the walk runs daily for the coverage question regardless, and gating half the task on a cadence it computed itself would reimplement dueness — which the engine owns (the tick instantiates a task's item when its anchor comes) and is not something a task can ask about from inside itself.
+The freshness question was weekly because drift is measured in days and a daily re-ask could not change its answer. Merged, that argument buys nothing: the walk runs daily for the coverage question regardless, and gating half the task on a cadence it computed itself would reimplement dueness — which the engine owns (the scheduler run instantiates a task's item when its anchor comes) and is not something a task can ask about from inside itself.
 
 So the freshness probe runs daily too, at roughly **two extra REST reads per covered member** on the six days that used to be coverage-only. **This merge is not an API-call saving and is not claimed as one.** What it buys is one roster instead of two that can disagree; drift converging within a day rather than a week is the side benefit.
 

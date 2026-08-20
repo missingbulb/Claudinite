@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { planTick, planWake } from '../../../engine/scheduler/queue/tick.mjs';
+import { planSchedulerRun, planWake } from '../../../engine/scheduler/queue/scheduler-run.mjs';
 import { mostRecentAnchor, nextAnchor, periodMs } from '../../../engine/scheduler/queue/anchors.mjs';
 import { parseWorkItemBody } from '../../../engine/scheduler/queue/work-item.mjs';
 
@@ -38,7 +38,7 @@ test('anchors are the slot schedule\'s instants with none of its identity', () =
 // --- job 1: instantiate -------------------------------------------------------
 
 test('a brand-new task\'s FIRST item is born blocked until its next real anchor (S25)', () => {
-  const { ops } = planTick({ tasks: [task('weeklyish', 'weekly')], items: [], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE });
+  const { ops } = planSchedulerRun({ tasks: [task('weeklyish', 'weekly')], items: [], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE });
   const [create] = kinds(ops, 'create');
   assert.deepEqual(create.labels, ['task:blocked']);
   assert.equal(parseWorkItemBody(create.body).notBefore, '2026-08-16T04:00:00.000Z');
@@ -46,7 +46,7 @@ test('a brand-new task\'s FIRST item is born blocked until its next real anchor 
 
 test('later occurrences are born ready, and a manual task is never instantiated', () => {
   const yesterday = item({ task: 'daily1', labels: ['origin:schedule'], state: 'closed', created_at: '2026-08-13T04:10:00Z', closed_at: '2026-08-13T05:00:00Z' });
-  const { ops } = planTick({
+  const { ops } = planSchedulerRun({
     tasks: [task('daily1', 'daily'), task('lever', 'manual')],
     items: [yesterday], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE,
   });
@@ -58,33 +58,33 @@ test('later occurrences are born ready, and a manual task is never instantiated'
 
 test('an open standing item suppresses instantiation however long it has stood', () => {
   const standing = item({ task: 'daily1', labels: ['origin:schedule', 'task:blocked'], created_at: '2026-06-01T04:10:00Z' });
-  const { ops } = planTick({ tasks: [task('daily1', 'daily')], items: [standing], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE });
+  const { ops } = planSchedulerRun({ tasks: [task('daily1', 'daily')], items: [standing], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE });
   assert.equal(kinds(ops, 'create').length, 0);
 });
 
 // F13 — the half a creation-time-only guard misses. A rolled item created in an
 // earlier period, run and CLOSED today, has consumed today's occurrence; without
-// the closed_at half the very next tick mints a second item for the same
+// the closed_at half the very next scheduler run mints a second item for the same
 // occurrence, which is a double execution.
 test('the occurrence guard has both halves: created-at-or-after AND closed-at-or-after (F13)', () => {
   const ranToday = item({
     task: 'daily1', labels: ['origin:schedule'], state: 'closed',
     created_at: '2026-08-10T04:10:00Z', closed_at: '2026-08-14T04:30:00Z',
   });
-  const after = planTick({ tasks: [task('daily1', 'daily')], items: [ranToday], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE });
+  const after = planSchedulerRun({ tasks: [task('daily1', 'daily')], items: [ranToday], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE });
   assert.equal(kinds(after.ops, 'create').length, 0, 'today\'s occurrence was already consumed by the item that ran and closed today');
 
   // …and tomorrow it instantiates again, so the guard bounds one occurrence only.
-  const tomorrow = planTick({ tasks: [task('daily1', 'daily')], items: [ranToday], now: '2026-08-15T10:00:00Z', schedule: SCHEDULE });
+  const tomorrow = planSchedulerRun({ tasks: [task('daily1', 'daily')], items: [ranToday], now: '2026-08-15T10:00:00Z', schedule: SCHEDULE });
   assert.equal(kinds(tomorrow.ops, 'create').length, 1);
 });
 
 // F16 — nothing documents that a REST list from another node sees a creation
-// seconds old, so the tick assumes a duplicate WILL happen and self-heals first.
+// seconds old, so the scheduler run assumes a duplicate WILL happen and self-heals first.
 test('a duplicate standing item is closed obsolete, oldest kept (F16)', () => {
   const a = item({ task: 'daily1', labels: ['origin:schedule', 'task:ready'], created_at: '2026-08-14T04:10:00Z' });
   const b = item({ task: 'daily1', labels: ['origin:schedule', 'task:ready'], created_at: '2026-08-14T04:11:00Z' });
-  const { ops } = planTick({ tasks: [task('daily1', 'daily')], items: [a, b], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE });
+  const { ops } = planSchedulerRun({ tasks: [task('daily1', 'daily')], items: [a, b], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE });
   const dedupes = kinds(ops, 'dedupe');
   assert.deepEqual(dedupes.map((o) => o.issue), [b.number]);
   assert.equal(kinds(ops, 'create').length, 0, 'the surviving standing item still suppresses instantiation');
@@ -96,7 +96,7 @@ test('ad-hoc items neither suppress nor consume a scheduled occurrence (§3)', (
   // stand for. Neither is in the daily family, so today's occurrence is still filed.
   const fanOut = item({ task: 'daily1', qualifier: 'member-x', labels: ['task:ready'], created_at: '2026-08-14T09:00:00Z' });
   const lever = item({ task: 'lever', labels: ['task:ready'], created_at: '2026-08-14T09:00:00Z' });
-  const { ops } = planTick({
+  const { ops } = planSchedulerRun({
     tasks: [task('daily1', 'daily'), task('lever', 'manual')],
     items: [fanOut, lever], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE,
   });
@@ -110,7 +110,7 @@ test('an unqualified item for a scheduled task IS that task\'s standing item, ma
   // item titled with the task and nothing else, whose task is on a calendar, is the
   // occurrence — so it suppresses instantiation, and a twin beside it is deduped.
   const unmarked = item({ task: 'daily1', labels: ['task:ready'], created_at: '2026-08-14T04:10:00Z' });
-  const { ops } = planTick({ tasks: [task('daily1', 'daily')], items: [unmarked], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE });
+  const { ops } = planSchedulerRun({ tasks: [task('daily1', 'daily')], items: [unmarked], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE });
   assert.deepEqual(kinds(ops, 'create'), []);
 });
 
@@ -121,9 +121,9 @@ test('a blocked item readies when its time has passed and its blockers have clos
     task: 'daily1', labels: ['origin:schedule', 'task:blocked'], created_at: '2026-08-13T04:10:00Z',
     body: 'packs/p/tasks/daily1/task.md\n\nNot-before: 2026-08-14T04:00:00Z\n',
   });
-  const early = planTick({ tasks: [], items: [sleeping], now: '2026-08-14T03:00:00Z', schedule: SCHEDULE });
+  const early = planSchedulerRun({ tasks: [], items: [sleeping], now: '2026-08-14T03:00:00Z', schedule: SCHEDULE });
   assert.equal(kinds(early.ops, 'ready').length, 0);
-  const due = planTick({ tasks: [], items: [sleeping], now: '2026-08-14T04:10:00Z', schedule: SCHEDULE });
+  const due = planSchedulerRun({ tasks: [], items: [sleeping], now: '2026-08-14T04:10:00Z', schedule: SCHEDULE });
   assert.deepEqual(kinds(due.ops, 'ready').map((o) => o.issue), [sleeping.number]);
 });
 
@@ -132,17 +132,17 @@ test('an unreadable or open blocker delays rather than releases', () => {
     task: 'follow', labels: ['task:blocked'], created_at: '2026-08-13T04:10:00Z',
     body: 'packs/p/tasks/follow/task.md\n\nBlocked-by: #500, #501\n',
   });
-  const bothOpen = planTick({ tasks: [], items: [blocked], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE, stateOf: () => 'open' });
+  const bothOpen = planSchedulerRun({ tasks: [], items: [blocked], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE, stateOf: () => 'open' });
   assert.equal(kinds(bothOpen.ops, 'ready').length, 0);
-  const unknown = planTick({ tasks: [], items: [blocked], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE, stateOf: () => null });
+  const unknown = planSchedulerRun({ tasks: [], items: [blocked], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE, stateOf: () => null });
   assert.equal(kinds(unknown.ops, 'ready').length, 0, 'an unknown blocker is never treated as closed');
-  const settled = planTick({ tasks: [], items: [blocked], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE, stateOf: () => 'closed' });
+  const settled = planSchedulerRun({ tasks: [], items: [blocked], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE, stateOf: () => 'closed' });
   assert.equal(kinds(settled.ops, 'ready').length, 1);
 });
 
-test('an item in triage is never readied by the tick — only a human re-queues it', () => {
+test('an item in triage is never readied by the scheduler run — only a human re-queues it', () => {
   const triage = item({ task: 'daily1', labels: ['origin:schedule', 'task:blocked', 'needs-human'], created_at: '2026-08-13T04:10:00Z' });
-  const { ops } = planTick({ tasks: [], items: [triage], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE });
+  const { ops } = planSchedulerRun({ tasks: [], items: [triage], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE });
   assert.equal(kinds(ops, 'ready').length, 0);
 });
 
@@ -150,9 +150,9 @@ test('an item in triage is never readied by the tick — only a human re-queues 
 
 test('a claim silent past the leash is reclaimed to the queue', () => {
   const stuck = item({ task: 'daily1', labels: ['origin:schedule', 'task:executing'], created_at: '2026-08-14T04:10:00Z', updated_at: '2026-08-14T04:15:00Z' });
-  const early = planTick({ tasks: [task('daily1', 'daily')], items: [stuck], now: '2026-08-14T04:50:00Z', schedule: SCHEDULE });
+  const early = planSchedulerRun({ tasks: [task('daily1', 'daily')], items: [stuck], now: '2026-08-14T04:50:00Z', schedule: SCHEDULE });
   assert.equal(kinds(early.ops, 'reclaim').length, 0);
-  const late = planTick({ tasks: [task('daily1', 'daily')], items: [stuck], now: '2026-08-14T05:30:00Z', schedule: SCHEDULE });
+  const late = planSchedulerRun({ tasks: [task('daily1', 'daily')], items: [stuck], now: '2026-08-14T05:30:00Z', schedule: SCHEDULE });
   assert.deepEqual(kinds(late.ops, 'reclaim').map((o) => o.to), ['task:ready']);
 });
 
@@ -160,7 +160,7 @@ test('a claim silent past the leash is reclaimed to the queue', () => {
 // re-queued by a recovery path — at-most-once plus a human.
 test('a task declaring on_interrupt: needs-human is reclaimed to triage, not to the queue', () => {
   const stuck = item({ task: 'oneshot', labels: ['origin:schedule', 'task:executing'], created_at: '2026-08-14T04:10:00Z', updated_at: '2026-08-14T04:15:00Z' });
-  const { ops } = planTick({
+  const { ops } = planSchedulerRun({
     tasks: [task('oneshot', 'daily', { on_interrupt: 'needs-human' })],
     items: [stuck], now: '2026-08-14T05:30:00Z', schedule: SCHEDULE,
   });
@@ -168,9 +168,9 @@ test('a task declaring on_interrupt: needs-human is reclaimed to triage, not to 
   assert.match(kinds(ops, 'reclaim')[0].reason, /on_interrupt/);
 });
 
-test('the tick evaluates nothing: a task with a precondition that throws is still instantiated', () => {
-  const throwing = task('daily1', 'daily', { precondition() { throw new Error('the tick must never call me'); } });
-  const { ops } = planTick({ tasks: [throwing], items: [], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE });
+test('the scheduler run evaluates nothing: a task with a precondition that throws is still instantiated', () => {
+  const throwing = task('daily1', 'daily', { precondition() { throw new Error('the scheduler run must never call me'); } });
+  const { ops } = planSchedulerRun({ tasks: [throwing], items: [], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE });
   assert.equal(kinds(ops, 'create').length, 1);
 });
 
@@ -225,17 +225,17 @@ test('a task that has never had an item at all is also minted, not refused', () 
   assert.equal(create.length, 1);
 });
 
-test('a minted item consumes the current occurrence, so the tick does not double it', () => {
+test('a minted item consumes the current occurrence, so the scheduler run does not double it', () => {
   // It is titled with the task and nothing else for exactly this reason — that is
   // what makes it the standing item structurally, and an item outside the family
-  // would let the next tick create a second one beside it.
+  // would let the next scheduler run create a second one beside it.
   const now = '2026-08-16T10:00:00Z';
   const minted = item({
     task: 'update', labels: ['origin:schedule', 'task:ready'],
     created_at: now, updated_at: now,
   });
-  const { ops } = planTick({ tasks: [task('update', 'daily')], items: [minted], now, schedule: SCHEDULE });
-  assert.deepEqual(kinds(ops, 'create'), [], 'the tick must not mint a second standing item beside the forced one');
+  const { ops } = planSchedulerRun({ tasks: [task('update', 'daily')], items: [minted], now, schedule: SCHEDULE });
+  assert.deepEqual(kinds(ops, 'create'), [], 'the scheduler run must not mint a second standing item beside the forced one');
 });
 
 test('an item already in flight is left alone — waking it would drop an episode boundary on a live claim', () => {
@@ -280,7 +280,7 @@ test('a non-blocking park does not suppress the next occurrence', () => {
       task: 'x', labels: ['origin:schedule', 'needs-human', triage],
       created_at: '2026-08-13T04:00:00Z',
     });
-    const { ops } = planTick({
+    const { ops } = planSchedulerRun({
       tasks: [task('x', 'daily')], items: [parked], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE,
     });
     assert.equal(kinds(ops, 'create').length, 1, triage);
@@ -294,7 +294,7 @@ test('a failure park — and an unclassified one — holds the task\'s lane', ()
     const parked = item({
       task: 'x', labels: ['origin:schedule', ...labels], created_at: '2026-08-13T04:00:00Z',
     });
-    const { ops } = planTick({
+    const { ops } = planSchedulerRun({
       tasks: [task('x', 'daily')], items: [parked], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE,
     });
     assert.deepEqual(kinds(ops, 'create'), [], labels.join('+'));

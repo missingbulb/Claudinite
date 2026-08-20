@@ -1,12 +1,12 @@
 // WHEN A BLOCKED ITEM MAY RUN, and who releases it (tasks-dispatch DESIGN §9,
 // decision §15.19). Two callers ask the same question at different moments: the
-// tick, hourly, over every open item; and whoever CLOSES an item, immediately,
+// scheduler run, hourly, over every open item; and whoever CLOSES an item, immediately,
 // over the dependents that item was holding. The predicate lives here so those
 // two can never answer it differently — the failure that shape produces is a
 // chain link that waits an hour on one path and runs at once on the other, with
 // nothing red to say which is right.
 //
-// The tick stays the backstop, deliberately: a close performed by a HUMAN (or by
+// The scheduler run stays the backstop, deliberately: a close performed by a HUMAN (or by
 // a session that stopped early) runs none of this, and the hourly pass is what
 // makes that harmless rather than a chain that never resumes.
 
@@ -26,7 +26,7 @@ export function isReleasable(item, { stateOf = () => null, nowMs = Date.now() } 
 
 // Which open items were waiting on THIS one, and are now free. Scoped to items
 // naming `closedIssue` among their blockers: a close is not a general readiness
-// sweep, and treating it as one would have every close re-derive the whole tick.
+// sweep, and treating it as one would have every close re-derive the whole scheduler run.
 export function releasedBy(closedIssue, open = [], { stateOf = () => null, nowMs = Date.now() } = {}) {
   const dependsOnIt = (i) => parseWorkItemBody(i.body).blockedBy.includes(closedIssue);
   return open.filter((i) => dependsOnIt(i) && isReleasable(i, { stateOf, nowMs }));

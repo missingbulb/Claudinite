@@ -110,13 +110,13 @@ test('the prose an item is born with contributes no parameter', () => {
 // the caller) every fleet-wide force refused, and the only symptom was a per-member
 // error string that blamed the member's repo settings.
 
-test('the input fleet-api sends is one the tick stub declares', async () => {
+test('the input fleet-api sends is one the scheduler run stub declares', async () => {
   const { readFileSync } = await import('node:fs');
   const apiSrc = readFileSync(join(ROOT, 'packs/claudinite-fleet-sheepdog/fleet-api.mjs'), 'utf8');
   const sent = [...apiSrc.matchAll(/inputs:\s*\{\s*([A-Za-z_][\w]*)\s*:/g)].map((m) => m[1]);
   assert.ok(sent.length, 'fleet-api must dispatch with at least one named input');
 
-  for (const stub of ['engine/scheduler/stubs/claudinite-tick.yml', '.github/workflows/claudinite-scheduler.yml']) {
+  for (const stub of ['engine/scheduler/stubs/claudinite-scheduler.yml', '.github/workflows/claudinite-scheduler.yml']) {
     const yml = readFileSync(join(ROOT, stub), 'utf8');
     const block = yml.match(/workflow_dispatch:\s*\n\s+inputs:\s*\n([\s\S]*?)\n(?=\S|\n\S)/);
     assert.ok(block, `${stub} must declare workflow_dispatch inputs — a bare workflow_dispatch 422s every named input`);
@@ -128,18 +128,18 @@ test('the input fleet-api sends is one the tick stub declares', async () => {
   }
 });
 
-test('the member-side tick resolves the very id this lever sends', async () => {
+test('the member-side scheduler run resolves the very id this lever sends', async () => {
   // FORCED_TASK travels as a `wake` input and is resolved by planWake against the
   // member's own declared tasks. A bare id must be owned by exactly one canon pack,
   // or planWake refuses it as ambiguous and the force silently wakes nothing.
-  const { planWake } = await import('../../../../engine/scheduler/queue/tick.mjs');
+  const { planWake } = await import('../../../../engine/scheduler/queue/scheduler-run.mjs');
   const tasks = [{ pack: 'claudinite-lifecycle', id: FORCED_TASK }];
   const items = [{
     number: 1, state: 'open', labels: ['task:blocked'],
     title: `[claudinite-work] core/${FORCED_TASK}`,
   }];
   const { wake, unmatched } = planWake(FORCED_TASK, tasks, items);
-  assert.deepEqual(unmatched, [], `the tick must resolve "${FORCED_TASK}" — this is the exact string fleet-baseline dispatches`);
+  assert.deepEqual(unmatched, [], `the scheduler run must resolve "${FORCED_TASK}" — this is the exact string fleet-baseline dispatches`);
   assert.deepEqual(wake, [{ id: `claudinite-lifecycle/${FORCED_TASK}`, issue: 1 }]);
 });
 

@@ -126,7 +126,7 @@ test("S3' mid-window work waits for the next anchor, then runs", () => {
   assert.equal(closedOf(sim, 'tidy/tidy-issues').length, 1);
 });
 
-// ---- S4 — the late-fire night: all cron fires drop, one late tick at 05:41,
+// ---- S4 — the late-fire night: all cron fires drop, one late scheduler run at 05:41,
 // and the chain still runs the same morning, in order, via the pick-time yield.
 test('S4 late fire: the chain completes the same morning, ordered', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
@@ -135,8 +135,8 @@ test('S4 late fire: the chain completes the same morning, ordered', () => {
     world.extractHasLessons = true;   // and so does the rest of the chain
     world.promoteHasCandidates = true;
   });
-  sim.dropTicks('2026-08-12T00:00Z', '2026-08-12T05:41Z');
-  sim.tickAt('2026-08-12T05:41Z');
+  sim.dropSchedulerRuns('2026-08-12T00:00Z', '2026-08-12T05:41Z');
+  sim.schedulerRunAt('2026-08-12T05:41Z');
   sim.run('2026-08-12T00:00Z', '2026-08-12T09:00Z');
 
   const [base] = closedOf(sim, 'basics/baselining');
@@ -150,22 +150,22 @@ test('S4 late fire: the chain completes the same morning, ordered', () => {
   const baseClaim = sim.log.find((e) => e.kind === 'evaluate' && e.task === 'basics/baselining');
   const extractClaim = sim.log.find((e) => e.kind === 'evaluate' && e.task === 'grow/growth-extract');
   assert.ok(extractClaim.t >= base.closedAt, 'yield held while upstream ran');
-  assert.ok(baseClaim.t >= T('2026-08-12T05:41Z'), 'nothing happened before the late tick');
+  assert.ok(baseClaim.t >= T('2026-08-12T05:41Z'), 'nothing happened before the late scheduler run');
   // F1 (reopened 2026-08-15): the close-time drain picks the yielded dependent
-  // in minutes — chain links no longer wait out the tick
+  // in minutes — chain links no longer wait out the scheduler run
   assert.ok(extractClaim.t <= base.closedAt + 5 * 60e3, 'picked within minutes of the upstream closing');
 });
 
-// ---- S5 — the tick is down for three days: rolled items simply wake on the
-// first tick back; exactly one catch-up ask per task, no backfill.
+// ---- S5 — the scheduler run is down for three days: rolled items simply wake on the
+// first scheduler run back; exactly one catch-up ask per task, no backfill.
 test('S5 three-day outage: one catch-up ask, no backfill', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-11T00:00Z');
-  sim.dropTicks('2026-08-11T09:00Z', '2026-08-14T10:00Z');
+  sim.dropSchedulerRuns('2026-08-11T09:00Z', '2026-08-14T10:00Z');
   sim.run('2026-08-11T00:00Z', '2026-08-14T23:00Z');
 
   const asks = evals(sim, 'tidy/tidy-issues');
   assert.equal(asks.length, 2, 'Tuesday once, Friday once — Wed/Thu gone, not backfilled');
-  assert.ok(asks[1].t >= T('2026-08-14T10:17Z'), 'catch-up on the first tick back');
+  assert.ok(asks[1].t >= T('2026-08-14T10:17Z'), 'catch-up on the first scheduler run back');
   const it = sim.standingItem('tidy/tidy-issues');
   assert.equal(sim.family('tidy/tidy-issues').filter((i) => i.state === 'open').length, 1,
     'still exactly one standing item');
@@ -179,7 +179,7 @@ test("S13' ad-hoc no-go closes obsolete instead of rolling", () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   let adhoc;
   sim.at('2026-08-12T10:00Z', (s) => { adhoc = s.createItem('tidy/tidy-issues', { urgent: true, qualifier: 'one-off' }); });
-  sim.run('2026-08-12T05:00Z', '2026-08-12T12:00Z'); // start past the 04:17 tick: scheduled item exists rolled
+  sim.run('2026-08-12T05:00Z', '2026-08-12T12:00Z'); // start past the 04:17 scheduler run: scheduled item exists rolled
 
   assert.equal(adhoc.state, 'closed');
   assert.equal(adhoc.outcome, 'obsolete');
@@ -299,7 +299,7 @@ test('S24 blocked-by wiring starves the chain; the yield does not', () => {
 
 // ---- S25 — adoption: a brand-new task's first item is born blocked until its
 // next real anchor, so a fresh repo never fires weekly work off-anchor.
-test('S25 adoption: first ask lands on the real anchor, not the first tick', () => {
+test('S25 adoption: first ask lands on the real anchor, not the first scheduler run', () => {
   const sim = makeSim({ tasks: cast() }) // no seeded history — a fresh repo
     .run('2026-08-12T00:00Z', '2026-08-13T00:00Z'); // Wednesday
 
@@ -312,7 +312,7 @@ test('S25 adoption: first ask lands on the real anchor, not the first tick', () 
   assert.ok(asks[0].t >= T('2026-08-12T04:00Z'), 'not before the 04:00 anchor');
 });
 
-// ---- S8-flavored — a dead executor's claim is reclaimed by the tick's leash
+// ---- S8-flavored — a dead executor's claim is reclaimed by the scheduler run's leash
 // and the item is simply re-picked; code-work re-entrancy is the contract.
 test('S8 dead executor: leash reclaim, re-pick, converge', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
@@ -339,17 +339,17 @@ test('backlog guard: a failed run blocks new occurrences until re-queued', () =>
   assert.equal(evals(sim, 'basics/baselining').length, 1, 'not re-asked while broken');
 });
 
-// ---- S6 — double-fire: two ticks in the same minute, one item.
-test('S6 double tick: the occurrence guard holds under a duplicate fire', () => {
+// ---- S6 — double-fire: two scheduler runs in the same minute, one item.
+test('S6 double scheduler run: the occurrence guard holds under a duplicate fire', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
-  sim.dropTicks('2026-08-12T04:00Z', '2026-08-12T05:00Z'); // replace the cron fire…
-  sim.tickAt('2026-08-12T04:17:05Z');                       // …with a duplicated one
-  sim.tickAt('2026-08-12T04:17:20Z');
+  sim.dropSchedulerRuns('2026-08-12T04:00Z', '2026-08-12T05:00Z'); // replace the cron fire…
+  sim.schedulerRunAt('2026-08-12T04:17:05Z');                       // …with a duplicated one
+  sim.schedulerRunAt('2026-08-12T04:17:20Z');
   sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
 
   const fam = sim.family('tidy/tidy-issues').filter((i) => !i.seeded);
-  assert.equal(fam.length, 1, 'one item despite two ticks');
+  assert.equal(fam.length, 1, 'one item despite two scheduler runs');
   assert.equal(closedOf(sim, 'tidy/tidy-issues').length, 1, 'and it ran once');
 });
 
@@ -361,8 +361,8 @@ test('S7 executor race: earliest claim wins, loser takes the next item', () => {
     world.issueTouchedAt = T('2026-08-12T04:00Z'); // tidy-issues has work
     world.releasePending = true;                   // store-release has work
   });
-  sim.dropTicks('2026-08-12T04:00Z', '2026-08-12T05:00Z');
-  sim.tickAt('2026-08-12T04:17Z'); // creates both items; the race lands just
+  sim.dropSchedulerRuns('2026-08-12T04:00Z', '2026-08-12T05:00Z');
+  sim.schedulerRunAt('2026-08-12T04:17Z'); // creates both items; the race lands just
   sim.raceExecutorsAt('2026-08-12T04:17:35Z', ['E1', 'E2']); // before its drain
   sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
 
@@ -501,9 +501,9 @@ test('S15 force-while-executing: the mutex queues the twin', () => {
   assert.equal(twin.state, 'closed', 'then had its own verdict');
 });
 
-// ---- S16 — urgent item, lost label event: the tick drain is the guarantee;
-// worst-case latency is one tick interval, not a day.
-test('S16 lost label event: the poll picks it up within a tick', () => {
+// ---- S16 — urgent item, lost label event: the scheduler run drain is the guarantee;
+// worst-case latency is one scheduler run interval, not a day.
+test('S16 lost label event: the poll picks it up within a scheduler run', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   let it;
   sim.at('2026-08-12T14:00Z', (s) => {
@@ -514,7 +514,7 @@ test('S16 lost label event: the poll picks it up within a tick', () => {
   const evalAt = sim.log.find((e) => e.kind === 'evaluate' && e.issue === it.number);
   assert.ok(evalAt, 'picked without any event');
   assert.ok(evalAt.t >= T('2026-08-12T14:17Z') && evalAt.t <= T('2026-08-12T14:18Z'),
-    'at the next tick drain — events are latency sugar, listing is the guarantee');
+    'at the next scheduler run drain — events are latency sugar, listing is the guarantee');
 });
 
 // ---- S17 — delayed validation: Blocked-by + Not-before, then the pick
@@ -613,8 +613,8 @@ test('S19 re-queue after a fix: needs-human -> ready -> normal run', () => {
 
 // ---- S33 — the readiness re-check on close (F1, reopened 2026-08-15): when a
 // mechanism close resolves the last Blocked-by edge, the closing side readies
-// the dependent in code and a drain follows — minutes, not the next tick. (A
-// HAND close runs no engine code; S18 keeps the tick as that path's backstop.)
+// the dependent in code and a drain follows — minutes, not the next scheduler run. (A
+// HAND close runs no engine code; S18 keeps the scheduler run as that path's backstop.)
 test('S33 fan-in readies within minutes of its last blocker closing', () => {
   const tasks = cast().concat([{
     id: 'sheepdog/fleet-status', frequency: 'manual', outcome: 'done', codeWorkMinutes: 2,
@@ -632,17 +632,17 @@ test('S33 fan-in readies within minutes of its last blocker closing', () => {
 
   const lastMemberClose = Math.max(...members.map((i) => i.closedAt));
   const readied = sim.log.find((e) => e.kind === 'ready' && e.issue === fanIn.number);
-  assert.equal(readied.by, 'close', 'readied by the closing side, not the tick');
+  assert.equal(readied.by, 'close', 'readied by the closing side, not the scheduler run');
   assert.ok(readied.t - lastMemberClose < 60e3, 'readiness followed the close immediately');
   assert.equal(fanIn.state, 'closed');
   assert.equal(fanIn.outcome, 'done');
   assert.ok(fanIn.closedAt - lastMemberClose <= 10 * 60e3,
-    'the fan-in ran minutes after its last blocker, not a tick later');
+    'the fan-in ran minutes after its last blocker, not a scheduler run later');
 });
 
 // ---- S34 — one run, one item (the executor's essence, not a configured
 // value): a busy morning with several tasks' work drains ONE ITEM PER RUN,
-// and what causes each next run is on the record — the tick's own drain job
+// and what causes each next run is on the record — the scheduler run's own drain job
 // first, then self-re-dispatch (workflow_dispatch, which the default
 // GITHUB_TOKEN may fire) and the close-time drain, never a wait for the cron.
 test('S34 busy morning: every run settles exactly one item; re-dispatch chains the queue', () => {
@@ -665,9 +665,9 @@ test('S34 busy morning: every run settles exactly one item; re-dispatch chains t
   const [tidy] = closedOf(sim, 'tidy/tidy-issues');
   const [store] = closedOf(sim, 'chrome/store-release');
   assert.ok(tidy && store, 'both converged');
-  assert.ok(store.closedAt < T('2026-08-12T05:00Z'), 'well before the next tick could have helped');
+  assert.ok(store.closedAt < T('2026-08-12T05:00Z'), 'well before the next scheduler run could have helped');
   const triggers = sim.log.filter((e) => e.kind === 'executor-run').map((e) => e.trigger);
-  assert.ok(triggers.includes('tick-drain'), 'the first run is the tick workflow\'s own drain job');
+  assert.ok(triggers.includes('scheduler-run-drain'), 'the first run is the scheduler run workflow\'s own drain job');
   assert.ok(triggers.includes('re-dispatch'), 'a full run re-dispatched a fresh one for the remainder');
   // each pick belongs to a named run, so occupancy is auditable per run
   const picks = sim.log.filter((e) => e.kind === 'pick');
@@ -682,7 +682,7 @@ test('S34 busy morning: every run settles exactly one item; re-dispatch chains t
 // work, and the run executing one of them DIES mid-work. The workflow's
 // failure-continuation job (needs: execute, if: failure() || cancelled(), on
 // a fresh runner) re-dispatches, so the four remaining items drain within
-// minutes; the crashed ITEM alone waits for the leash reclaim, and the tick
+// minutes; the crashed ITEM alone waits for the leash reclaim, and the scheduler run
 // remains the backstop behind all of it.
 test('S36 dead run mid-queue: failure-redispatch keeps the train moving; the leash recovers the item', () => {
   const tasks = ['c1', 'c2', 'c3', 'c4', 'c5'].map((n) => ({
@@ -706,7 +706,7 @@ test('S36 dead run mid-queue: failure-redispatch keeps the train moving; the lea
     assert.ok(done.closedAt < T('2026-08-12T05:00Z'), `${t.id} did not wait out the hour`);
   }
   // the crashed item: reclaimed by the leash (from its last activity), then
-  // re-picked and converged — recovery bounded by leash + tick, not lost
+  // re-picked and converged — recovery bounded by leash + scheduler run, not lost
   assert.equal(sim.log.filter((e) => e.kind === 'reclaim' && e.task === 'x/c3').length, 1);
   const [c3] = closedOf(sim, 'x/c3');
   assert.ok(c3, 'the crashed item converged after the reclaim');
@@ -716,7 +716,7 @@ test('S36 dead run mid-queue: failure-redispatch keeps the train moving; the lea
 });
 
 // ---- S37 — the operator hold (owner, 2026-08-16): CLAUDINITE_TASKS_SUSPEND_ALL
-// set mid-morning. Every workflow — tick, executor, janitor — exits at its
+// set mid-morning. Every workflow — scheduler run, executor, janitor — exits at its
 // first act; the re-dispatch train parks one hop later at most; items freeze
 // exactly where they were, no labels touched, nothing lost.
 test('S37 suspend-all: workflows exit at start, the queue freezes in place', () => {
@@ -739,10 +739,10 @@ test('S37 suspend-all: workflows exit at start, the queue freezes in place', () 
     assert.ok(pickedBefore.has(c.issue), `#${c.issue} closed post-hold without a pre-hold pick`);
   }
   // the parked runs are visible, workflow by workflow: the re-dispatch that was
-  // already in flight, then every hourly tick
+  // already in flight, then every hourly scheduler run
   const skips = sim.log.filter((e) => e.kind === 'suspended-skip');
   assert.ok(skips.some((e) => e.workflow === 'executor'), 'the in-flight follow-up run parked');
-  assert.ok(skips.filter((e) => e.workflow === 'tick').length >= 3, 'every cron fire exited at start');
+  assert.ok(skips.filter((e) => e.workflow === 'scheduler-run').length >= 3, 'every cron fire exited at start');
   // and the queue is frozen, not lost: every never-picked item still sits ready
   const openReady = sim.issues.filter((i) => !i.seeded && i.state === 'open');
   assert.equal(openReady.length, 5 - pickedBefore.size, 'unpicked items all survived the hold');
@@ -752,9 +752,9 @@ test('S37 suspend-all: workflows exit at start, the queue freezes in place', () 
 // ---- S38 — cancel + suspend, then resume (owner, 2026-08-16): the user
 // cancels a stalled run (intent 1 is the continuation's business), suspends
 // the queue before the continuation lands (intent 2), and later resumes by
-// clearing the variable — the next cron tick alone self-heals everything:
+// clearing the variable — the next cron scheduler run alone self-heals everything:
 // reclaims the cancelled run's claim, drains the queue, converges all.
-test('S38 resume after a hold: clearing the variable + the next tick recovers everything', () => {
+test('S38 resume after a hold: clearing the variable + the next scheduler run recovers everything', () => {
   const tasks = [
     { id: 'x/slow', frequency: 'daily', outcome: 'done', codeWorkMinutes: 30,
       precondition: () => ({ run: true }) },
@@ -777,18 +777,18 @@ test('S38 resume after a hold: clearing the variable + the next tick recovers ev
     'the cancelled run\'s continuation fired one re-dispatch, which parked at start');
   assert.equal(sim.log.filter((e) => e.kind === 'evaluate' && e.t >= hold[0] && e.t < hold[1]).length,
     0, 'the hold held');
-  // after clearing the variable, the 10:17 cron tick alone recovers: it
+  // after clearing the variable, the 10:17 cron scheduler run alone recovers: it
   // reclaims the cancelled run's silent claim (leash long expired during the
   // hold) and its drain converges the whole queue — no manual dispatch needed
   const reclaim = sim.log.find((e) => e.kind === 'reclaim' && e.task === 'x/slow');
-  assert.ok(reclaim && reclaim.t >= hold[1], 'the first tick back reclaimed the cancelled claim');
+  assert.ok(reclaim && reclaim.t >= hold[1], 'the first scheduler run back reclaimed the cancelled claim');
   for (const id of ['x/slow', 'x/quick']) {
     const [done] = closedOf(sim, id);
     assert.ok(done, `${id} converged after resume`);
     assert.ok(done.closedAt >= hold[1], `${id} converged after the hold lifted`);
   }
   assert.ok(closedOf(sim, 'x/slow')[0].closedAt < T('2026-08-12T11:30Z'),
-    'recovery took the tick + the work bound, not another day');
+    'recovery took the scheduler run + the work bound, not another day');
 });
 
 // ---- S26 — the guard's second half must not over-block either: after a
@@ -839,7 +839,7 @@ test('S28 declaration change mid-flight: the standing item follows HEAD', () => 
 });
 
 // ---- S29 — bootstrap into a repo with old-mechanism issues: the disjoint
-// title family means the tick neither reads nor touches them.
+// title family means the scheduler run neither reads nor touches them.
 test('S29 old-vocabulary issues are invisible to the new mechanism', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   let relic;
@@ -858,9 +858,9 @@ test('S29 old-vocabulary issues are invisible to the new mechanism', () => {
 
 // ---- S30 — a stale issue list let a duplicate standing item through (F16):
 // nothing documents REST-list read-your-writes across runs, so the design
-// self-heals instead of assuming — the next tick closes every open standing
+// self-heals instead of assuming — the next scheduler run closes every open standing
 // item but the oldest.
-test('S30 duplicate standing item: the next tick self-heals (F16)', () => {
+test('S30 duplicate standing item: the next scheduler run self-heals (F16)', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   let dup;
   sim.at('2026-08-12T04:30Z', (s) => { dup = s.injectDuplicateStanding('tidy/tidy-issues'); });
@@ -927,9 +927,9 @@ test('S31d dead executor mid-long-work: recovery is bounded by the leash, not th
   const crash = sim.log.find((e) => e.kind === 'executor-crash');
   const reclaim = sim.log.find((e) => e.kind === 'reclaim');
   assert.ok(crash && reclaim, 'died, then reclaimed');
-  // last heartbeat was at +30m; the leash (1h) reclaims from there at a tick —
+  // last heartbeat was at +30m; the leash (1h) reclaims from there at a scheduler run —
   // hours, not the 130m work bound plus anything
-  assert.ok(reclaim.t - crash.t <= 2 * 3600e3, 'reclaimed within ~leash+tick of the death');
+  assert.ok(reclaim.t - crash.t <= 2 * 3600e3, 'reclaimed within ~leash+scheduler run of the death');
   assert.equal(closedOf(sim, 'x/slow').length, 1, 're-picked and converged (the work step is re-entrant)');
 });
 
@@ -941,8 +941,8 @@ test('S32 twin-title race: post-claim re-verify serializes, later claim reverts'
   const tasks = cast().filter((t) => t.id === 'tidy/tidy-issues');
   const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
-  sim.dropTicks('2026-08-12T04:00Z', '2026-08-12T05:00Z');
-  sim.tickAt('2026-08-12T04:16Z'); // scheduled item exists ready…
+  sim.dropSchedulerRuns('2026-08-12T04:00Z', '2026-08-12T05:00Z');
+  sim.schedulerRunAt('2026-08-12T04:16Z'); // scheduled item exists ready…
   sim.at('2026-08-12T04:16:20Z', (s) =>
     s.createItem('tidy/tidy-issues', { urgent: true, eventLost: true })); // …and its twin
   sim.raceExecutorsAt('2026-08-12T04:16:35Z', ['E1', 'E2'], { spread: true }); // before the drain
@@ -976,9 +976,9 @@ test('S39 a rolled item is claimable by another executor on its next anchor (F24
   const tasks = cast().filter((t) => t.id === 'tidy/tidy-issues');
   const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T00:00Z', ({ world }) => { world.issueTouchedAt = null; }); // declines: every anchor rolls
-  // Day 1's tick-drain (E1) claims, declines and ROLLS — ending that episode
-  // silently. Day 2's tick readies the item again; a DIFFERENT executor reaches
-  // it between the tick (:17) and the drain (:17:40).
+  // Day 1's scheduler-run-drain (E1) claims, declines and ROLLS — ending that episode
+  // silently. Day 2's scheduler run readies the item again; a DIFFERENT executor reaches
+  // it between the scheduler run (:17) and the drain (:17:40).
   sim.raceExecutorsAt('2026-08-13T04:17:20Z', ['E2']);
   sim.run('2026-08-12T00:00Z', '2026-08-14T00:00Z');
 
@@ -1088,7 +1088,7 @@ test('S43 the human re-queue leaves no triage label behind', () => {
 
 // ---- K. Ad-hoc requests (DESIGN §16, owner 2026-08-18) --------------------
 // "A way to mark an issue as 'let claude do this task', and the next executor
-// run picks it up." The mark is a label on an ORDINARY issue; the tick adopts it
+// run picks it up." The mark is a label on an ORDINARY issue; the scheduler run adopts it
 // into a work item; the built-in request task's precondition is the security
 // check; there is no code-work at all. These play the paths that decide whether
 // the mechanism is safe: who may ask, what a refusal does, and what a request
@@ -1104,7 +1104,7 @@ test('S44 a marked issue becomes exactly one run, parked for the reviewer', () =
   sim.at('2026-08-18T09:03Z', (s) => { req = s.markIssue({ author: 'owner' }); });
   sim.run('2026-08-18T09:00Z', '2026-08-19T09:00Z');
 
-  // One adoption, one item, however many ticks ran across the day.
+  // One adoption, one item, however many scheduler runs ran across the day.
   assert.equal(adopts(sim).length, 1);
   const items = sim.requestItems();
   assert.equal(items.length, 1);
@@ -1136,7 +1136,7 @@ test('S45 an unauthorized mark is refused once, disarmed, and never re-adopted',
   // than joining a triage lane.
   assert.equal(items[0].labels.has('needs-human'), false);
   // The issue is told and disarmed — the label that would re-trigger is gone, so a
-  // day of further ticks adopts nothing. Without the disarm this is an hourly
+  // day of further scheduler runs adopts nothing. Without the disarm this is an hourly
   // refusal loop on somebody else's issue.
   assert.equal(sim.log.filter((e) => e.kind === 'request-declined').length, 1);
   assert.deepEqual([...req.labels], []);
@@ -1193,7 +1193,7 @@ test('S48 a request withdrawn after adoption never reaches an agent', () => {
   const withdrawn = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
   let req;
   withdrawn.at('2026-08-18T09:03Z', (s) => { req = s.markIssue({ author: 'owner' }); });
-  // …between the tick that adopted it and the executor picking it up.
+  // …between the scheduler run that adopted it and the executor picking it up.
   withdrawn.at('2026-08-18T09:17:20Z', (s) => s.withdrawRequest(req.number));
   withdrawn.run('2026-08-18T09:00Z', '2026-08-18T18:00Z');
   assert.equal(withdrawn.requestItems()[0].outcome, 'obsolete');
@@ -1219,7 +1219,7 @@ test('S49 a failed request parks as a fault; re-marking supersedes the park and 
 
   // A broken run is a `failure` — someone reads the trace — and the ISSUE keeps
   // `claude-queued`: nothing mechanical re-arms work that writes code, and the
-  // standing label is what stops the next tick adopting a second run.
+  // standing label is what stops the next scheduler run adopting a second run.
   assert.ok(parked(sim.requestItems()[0], 'failure'));
   assert.deepEqual([...req.labels], ['claude-queued']);
   assert.equal(adopts(sim).length, 1);
@@ -1288,12 +1288,12 @@ test('S51 re-marking while the item is live waits, unconsumed, until the run set
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
   let req;
   sim.at('2026-08-18T09:03Z', (s) => {
-    s.updateTask(REQ, { agentMinutes: 150 });    // a long run: live across two ticks
+    s.updateTask(REQ, { agentMinutes: 150 });    // a long run: live across two scheduler runs
     req = s.markIssue({});
   });
   // An impatient re-ask in mid-run must not put a second session onto the same
   // issue: while the prior item is LIVE the mark waits on the issue, unconsumed,
-  // and the tick that finds the run settled takes it — superseding the park the
+  // and the scheduler run that finds the run settled takes it — superseding the park the
   // settle left behind.
   sim.at('2026-08-18T09:30Z', (s) => s.remarkIssue(req.number));
   sim.run('2026-08-18T09:00Z', '2026-08-19T09:00Z');

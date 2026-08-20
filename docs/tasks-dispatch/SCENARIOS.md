@@ -9,7 +9,7 @@ finding and says what was done about it — some amended DESIGN.md in this same
 change, some are owner calls added to its §15.
 
 > **Read §H, then §I, for the current mechanism.** Sections A–G record rounds
-> one and two (the tick-evaluates models); the owner's **standing-item model**
+> one and two (the scheduler run-evaluates models); the owner's **standing-item model**
 > (2026-08-13) replaced generation, and §H replays everything it touches. §I
 > records the **work-as-work review** (2026-08-15) — the correction that the
 > work step IS the work — and the invocation reversal (at-most-once, the
@@ -39,7 +39,7 @@ A fictional but realistic repo, tasks drawn from the real fleet:
 | `chrome/store-release` | daily (04:00Z) | none | none | agentless: code-work only |
 | `sheepdog/fleet-baseline` | manual | sonnet | merged-pr | fan-out target |
 
-Constants: tick cron minute **:17** (hourly); executor = post-tick drain job +
+Constants: scheduler run cron minute **:17** (hourly); executor = post-scheduler run drain job +
 `task:ready`-labeled event runs; janitor = a daily item around 04:00; leashes —
 `task:executing` 1h, `task:agent` 3h, unpicked-`task:ready` ~2 periods; work-step
 heartbeat every **15m** (§I). "E1/E2" are executor iterations (workflow runs);
@@ -51,25 +51,25 @@ heartbeat every **15m** (§I). "E1/E2" are executor iterations (workflow runs);
 
 ### S1 — quiet night, nothing to do
 
-- **02:17** tick: baselining — occurrence guard passes (no item ≥ 02:00),
+- **02:17** scheduler run: baselining — occurrence guard passes (no item ≥ 02:00),
   backlog guard passes, precondition: mount converged yesterday, stamp fresh →
   `run: false`. No item. Same for every other task at its hour.
 - **03:17–23:17** nothing re-evaluates: each occurrence had its one verdict at
-  the first tick at-or-after its anchor, and a no-go spends it. Zero items
+  the first scheduler run at-or-after its anchor, and a no-go spends it. Zero items
   created, zero further preconditions run, all day.
 
 **Verdict: holds.** *(Replayed after the 2026-08-13 go/no-go ruling. As first
-drafted, the design re-evaluated every unfired occurrence each tick — 24
+drafted, the design re-evaluated every unfired occurrence each scheduler run — 24
 precondition runs and signal collections per quiet daily task, a ~×20 read
 amplification, which is what F10 asked about. The ruling removed both the cost
 and the question: one occurrence, one verdict.)*
 
 ### S2 — happy path, one agentic task
 
-- **04:02** a contributor closes two issues; **04:17** tick: tidy-issues
+- **04:02** a contributor closes two issues; **04:17** scheduler run: tidy-issues
   precondition sees issues touched in window → item #900 created,
   `task:ready`, Context naming the two issues.
-- **04:17:40** the tick's own executor job drains: picks #900, lease
+- **04:17:40** the scheduler run's own executor job drains: picks #900, lease
   (read/swap/comment/re-read) — clean claim, `task:executing`.
 - **04:18** precondition re-run: still true; Context refreshed (same two
   issues). No code-work declared. Hand-off: body gets its sections, swap to
@@ -85,7 +85,7 @@ of it readable on #900.
 
 - **04:17** tidy-issues precondition: nothing touched → no-go. The occurrence
   is spent.
-- **09:03** someone updates an old issue. **09:17** tick: the evaluate-once
+- **09:03** someone updates an old issue. **09:17** scheduler run: the evaluate-once
   gate holds (this occurrence already had its verdict) → nothing happens.
 - **Tomorrow 04:17** the next occurrence evaluates, sees the issue touched
   inside its window, and runs.
@@ -102,9 +102,9 @@ today's behaviour, so it is parity, not a regression.
 
 ### S4 — the late-fire night (the exclusive-claim replacement, end to end)
 
-GitHub drops the 02:17, 03:17 and 04:17 fires; the first tick lands **05:41**.
+GitHub drops the 02:17, 03:17 and 04:17 fires; the first scheduler run lands **05:41**.
 
-- **05:41** tick job 1, iterating in dependency order (**F9** — see below):
+- **05:41** scheduler-run job 1, iterating in dependency order (**F9** — see below):
   - baselining: A = 02:00, no item since → precondition true (stamp stale) →
     item #910, `task:ready`.
   - growth-extract: A = 03:00 → true; `after: [basics/baselining]` and #910 is
@@ -116,32 +116,32 @@ GitHub drops the 02:17, 03:17 and 04:17 fires; the first tick lands **05:41**.
   parallel — they never depended on the mount ordering. Baselining's code-work
   converges the mount **06:02**; no judgment needed → no hand-off; closes
   #910 `outcome:done` **06:03**.
-- **06:17** tick job 2: #911's blocker closed → `task:ready`; picked 06:18;
+- **06:17** scheduler-run job 2: #911's blocker closed → `task:ready`; picked 06:18;
   extract's agent lands its PR **06:55**, closes #911 `outcome:done`.
-- **07:17** tick readies #912; promote runs **07:20**.
+- **07:17** scheduler run readies #912; promote runs **07:20**.
 
 **Verdict: holds, and strictly better than today.** Today this night either
 runs the chain *beside* baselining (pre-exclusive) or baselining claims the
 run and extract/promote **lose the whole day** (deferred slots are spent).
-Here the chain completes the same morning, ordered, ~1h of tick-quantized
+Here the chain completes the same morning, ordered, ~1h of scheduler run-quantized
 latency per link. Two findings anyway:
 
 - **F9 (bug in the design as written):** §5's pseudocode iterates
   `discoverTasks()` in arbitrary order. If growth-extract is processed
-  *before* baselining in the same tick, `openScheduledItemsOf(after)` finds
+  *before* baselining in the same scheduler run, `openScheduledItemsOf(after)` finds
   nothing — baselining's item doesn't exist yet — and extract is created
   `task:ready`, running beside the mount converge. Job 1 must iterate in
   topological order of `after` edges (cycles: fall back to declaration order
   and warn). *Amended in DESIGN.md §5.*
 - **F1 (optimization, not defect):** dependency readiness is quantized to the
-  tick — each chain link waits for the next :17. Optional improvement, same
+  scheduler run — each chain link waits for the next :17. Optional improvement, same
   event+poll shape as pickup: the converger, on closing an item, checks in
   code for open `task:blocked` items naming it and readies those whose
-  conditions now hold; the tick stays the backstop. *Added to §15.*
+  conditions now hold; the scheduler run stays the backstop. *Added to §15.*
 
-### S5 — the tick is down for three days
+### S5 — the scheduler run is down for three days
 
-Workflow disabled Tuesday 09:00, re-enabled Friday 10:00; first tick **10:17
+Workflow disabled Tuesday 09:00, re-enabled Friday 10:00; first scheduler run **10:17
 Friday**.
 
 - Every daily task: A = Friday 04:00 (etc.) — only the **most recent** anchor
@@ -149,7 +149,7 @@ Friday**.
   and Thursday are gone, not backfilled. Weekly tasks: A = last Sunday —
   evaluated once if it never fired (occurrence guard finds no item ≥ A).
 - Items that were already open Tuesday sat untouched (executors run from the
-  tick's workflow in the default deployment, so they were down too);
+  scheduler run's workflow in the default deployment, so they were down too);
   unpicked-`task:ready` items older than ~2 periods get janitor escalation
   Friday — visible, once.
 
@@ -159,7 +159,7 @@ family instead of the Actions run history.
 
 ### S6 — double-fire and index lag
 
-- **04:17:05 and 04:17:20** two tick runs start (GitHub duplicate fire). The
+- **04:17:05 and 04:17:20** two scheduler runs start (GitHub duplicate fire). The
   workflow `concurrency` group serializes them; run 2 starts after run 1
   finished creating #920.
 - Run 2's occurrence guard must *see* #920 seconds after creation. If the
@@ -178,7 +178,7 @@ sharp.) *Amended in DESIGN.md §5.*
 
 ### S7 — two executors race for one item
 
-- **04:17:40** E1 (post-tick drain) and E2 (label-event run for the same
+- **04:17:40** E1 (post-scheduler run drain) and E2 (label-event run for the same
   item) both list ready items and pick #930.
 - **04:17:42** E1: read (ready present) → swap → claim comment `c1`.
 - **04:17:43** E2: read — raced, still sees `task:ready` (its read predates
@@ -198,10 +198,10 @@ harmless.
 - Leash: `task:executing` with no activity past **1h** → strip back to
   `task:ready` with a comment. As first drafted this ran on the **daily**
   janitor, so the strip waited up to ~25h → **F4**: the reclaim should ride
-  the **tick** (a deterministic label rule, serialized, hourly), leaving the
+  the **scheduler run** (a deterministic label rule, serialized, hourly), leaving the
   janitor the judgment-heavy sweeps. Worst case then ~2h. *Accepted by the
   owner 2026-08-13; DESIGN §11 amended.*
-- **05:17 (as decided — the reclaim rides the tick, F4 accepted)** tick strips
+- **05:17 (as decided — the reclaim rides the scheduler run, F4 accepted)** scheduler run strips
   #931 → ready; E3 claims **05:18**,
   precondition re-runs, code-work **re-runs over the half-done converge** — so
   code-work must be re-entrant after a crash. It already must be today (a
@@ -220,7 +220,7 @@ harmless.
   hand-reset each. The failure isn't the items' — it's the platform's, and it
   is transient → **F3**: on hand-off failure after in-run retries, **revert**
   `task:executing → task:ready` with an attempt-counter comment
-  (`handoff-attempts: 2`); each later pickup retries with the tick cadence as
+  (`handoff-attempts: 2`); each later pickup retries with the scheduler run cadence as
   natural backoff; converge to `needs-human` only at N attempts (say 5, ~5h of
   outage). Visible at every step, bounded, and no human cost for a blip.
   *Amended in DESIGN.md §6.*
@@ -308,7 +308,7 @@ Parity with today (a spent slot) in the worst case, better in S3's case.
   superseded by #941.
 - **10:01** label event → executor picks #941 first (urgent), runs clean,
   `outcome:done`.
-- **Tue 04:17** tick: occurrence guard — was an `origin:schedule` item
+- **Tue 04:17** scheduler run: occurrence guard — was an `origin:schedule` item
   created ≥ Tue 04:00? No (#941 doesn't count, #940 was Monday's) → backlog
   guard — #940 closed, nothing open → normal Tuesday evaluation.
 
@@ -339,11 +339,11 @@ execution of one task via forcing; fixed with a same-title pick mutex.**
 
 - **14:00** urgent item #944 created; the `labeled` webhook delivery is
   dropped (Actions outage). No executor run fires.
-- **14:17** tick's drain executor lists ready items — #944 is there
+- **14:17** scheduler run's drain executor lists ready items — #944 is there
   (listing, not events) — picked first as urgent, runs 14:18.
 
 **Verdict: holds** — events are latency sugar; the poll is the guarantee.
-Worst-case urgent latency = one tick interval. (Compare today: a lost label
+Worst-case urgent latency = one scheduler run interval. (Compare today: a lost label
 event waits for the janitor's daily re-arm — up to ~25h.)
 
 ## F. Follow-ups, fan-out, fan-in
@@ -354,7 +354,7 @@ event waits for the janitor's daily re-arm — up to ~25h.)
   review queue; converges its item #950 `outcome:done` (closed), and
   creates follow-up #951: `Blocked-by: #950`, `Not-before: Day 3 04:00Z`,
   `task:blocked`, Context: "validate v2.4 review outcome".
-- **Day 1–2** every tick's job 2 sees #951: blocker closed ✓, not-before not
+- **Day 1–2** every scheduler run's job 2 sees #951: blocker closed ✓, not-before not
   reached ✗ → stays blocked. Nothing picks it; no cost.
 - **Day 3, 04:17** not-before passed → `task:ready`; **04:18** executor:
   precondition re-run — store API says v2.4 **live** → close #951
@@ -363,7 +363,7 @@ event waits for the janitor's daily re-arm — up to ~25h.)
   and files the fix PR or converges `needs-human`.)*
 
 **Verdict: holds** — the sketch's "blocked by this work + blocked by time"
-plays out with no machinery beyond the two body fields and the tick.
+plays out with no machinery beyond the two body fields and the scheduler run.
 
 ### S18 — fleet fan-out with a fan-in, one member stuck
 
@@ -378,7 +378,7 @@ plays out with no machinery beyond the two body fields and the tick.
   blocked.
 - #970 itself trips the same stale escalation ~2 days later → a second
   `needs-human`. A human closes member-x's item (fixing or writing it off);
-  next tick readies #970; the fan-in task reports 19/20 with member-x's
+  next scheduler run readies #970; the fan-in task reports 19/20 with member-x's
   outcome label telling the story.
 
 **Verdict: holds, slowly.** Everything converges and everything is visible,
@@ -398,7 +398,7 @@ Noted in §15 as a known limitation, revisit on evidence.
   authorization everywhere else in the system).
 - **09:01** label event → executor claims, precondition re-runs (still
   true), code-work now succeeds, normal run.
-- Note the tick never re-created a second item meanwhile: the open
+- Note the scheduler run never re-created a second item meanwhile: the open
   `needs-human` item held the backlog guard (§5) — one broken task, one
   item, however many days it takes.
 
@@ -410,31 +410,31 @@ written path from `needs-human` back to execution.
 - **Mon** pack undeclared; task directory gone from HEAD. Its item #965
   (created last week, `task:ready`) is picked **Tue 04:18**: executor step 3
   fails to resolve the task path at HEAD → close #965 `outcome:obsolete`
-  ("task gone"), comment. The tick never creates another (task no longer
+  ("task gone"), comment. The scheduler run never creates another (task no longer
   discovered).
 
 **Verdict: holds** — parity with today's exit-14, one hop earlier.
 
 ## H. Replay under the standing-item model (owner proposal, 2026-08-13)
 
-The owner's third-round proposal: *the tick creates a daily task's item
+The owner's third-round proposal: *the scheduler run creates a daily task's item
 automatically; a failed precondition marks the item delayed until tomorrow's
 time.* Every scenario above was replayed under it (with `after` compiled to
 the pick-time yield — see S24 for why the literal `Blocked-by` reading cannot
-work). Unchanged: S2 (happy path), S5–S12 (tick outage, double-tick,
+work). Unchanged: S2 (happy path), S5–S12 (scheduler run outage, double-scheduler run,
 executor races and deaths, hand-off failures — none touch generation),
 S17–S20 (ad-hoc items keep their old lifecycle: a no-go *closes* them, since
 they have no anchor to roll to). What changes, and what is new:
 
 ### S1′ — quiet night
 
-- **02:17** tick creates baselining's item #900 `task:ready` — no precondition
+- **02:17** scheduler run creates baselining's item #900 `task:ready` — no precondition
   asked, creation is calendar-only. **02:18** executor picks #900, collects
   baselining's signals, evaluates: no-go (mount converged, no pending notes) →
   stamps `Not-before: <tomorrow 02:00Z>`, swaps to `task:blocked`, records the
   reason. The item **rolls**. Same for each task at its anchor.
 - Rest of the day: nothing — the items sit blocked with their wake times
-  visible. **One evaluation per task per day**, executor-side; the tick
+  visible. **One evaluation per task per day**, executor-side; the scheduler run
   evaluated nothing and collected nothing. (F10's 24-attempts cost: gone.)
 
 **Verdict: holds.** The issue list now always shows one open blocked item per
@@ -533,7 +533,7 @@ found in replay, fixed in the design.**
 - tidy-issues' item #900, created Tuesday 04:17, rolls (quiet Tuesday). An
   issue is touched Tuesday evening; Wednesday 04:17 readies #900, the pick
   says go, the agent finishes and **closes #900 at 04:34 Wednesday**.
-- **05:17 Wednesday tick, with the occurrence guard as first drafted**
+- **05:17 Wednesday scheduler run, with the occurrence guard as first drafted**
   ("skip if any family item was *created* at-or-after A"): no open item; the
   most recent item was created *Tuesday* 04:17 < A (Wednesday 04:00) → the
   guard passes → **a second Wednesday item is created**, evaluates go (the
@@ -551,7 +551,7 @@ executable, fixed in the spec, pinned by S3′'s test.**
 ### The executable round (owner request, 2026-08-13 — every scenario a test)
 
 All of A–G's still-live scenarios gained tests in [`sim/`](sim/): the double
-tick (S6), the executor race and the lease (S7), the hand-off failure modes
+scheduler run (S6), the executor race and the lease (S7), the hand-off failure modes
 (S9a/S9b), the duplicate-session agent lease (S10), agent death and the
 janitor's leash (S11), the force-while-executing mutex (S15), the lost label
 event (S16), the follow-up (S17/S17b), the fan-out with a stuck member
@@ -589,7 +589,7 @@ deltas and one more spec bug:
   An operator wanting the new cadence immediately wakes the item (§8).
 - The general rule this pins (DESIGN §14): declarations apply at the next
   evaluation because everything but `Not-before` is computed from HEAD at
-  every tick and pick; only a label/field **grammar** change needs a
+  every scheduler run and pick; only a label/field **grammar** change needs a
   migration note, and the simulator is where such a change is rehearsed.
 
 **Verdict: holds, with the stamped-wake precision the simulator forced.**
@@ -598,8 +598,8 @@ deltas and one more spec bug:
 
 - A repo flips to the queue with an open slot-era issue
   (`[claudinite-task] basics/baselining d2026-08-11`, `agent-dispatch`).
-- A full day of ticks, drains, and the janitor: the relic's state, labels,
-  and comments are byte-identical after — the tick's family list is
+- A full day of scheduler runs, drains, and the janitor: the relic's state, labels,
+  and comments are byte-identical after — the scheduler run's family list is
   title-filtered and every sweep is `task:*`-label-scoped — while the new
   mechanism runs its own `[claudinite-work]` item beside it. Disjoint
   families are what make the migration flag two-directional (DESIGN §14).
@@ -614,9 +614,9 @@ something GitHub does not promise. Four findings, all now explicit in the
 design and executable:
 
 - **S30 / F16 — a stale issue list duplicates the standing item.** The
-  occurrence guards assume the tick's REST list sees an item created by a
+  occurrence guards assume the scheduler run's REST list sees an item created by a
   prior run. GitHub documents no such cross-node freshness bound. Rather
-  than assume, the tick self-heals: more than one open family item → close
+  than assume, the scheduler run self-heals: more than one open family item → close
   all but the oldest, `task:obsolete`, dedupe comment.
 - **S31 / F17 — the leash arithmetic.** A code-work bound that reaches the
   executing leash is reclaimed *alive*, and the failure mode is a
@@ -664,9 +664,9 @@ of what the simulator deliberately does not model — and what defends the
 design at each unmodeled boundary — is
 [`sim/README.md`](sim/README.md)'s "The unsimulated world".
 
-### S25 — adoption's first tick (new)
+### S25 — adoption's first scheduler run (new)
 
-- A freshly wired repo's first tick creates *every* task's item — including
+- A freshly wired repo's first scheduler run creates *every* task's item — including
   weekly and monthly tasks whose anchors are days past. Evaluated
   immediately, an always-true weekly task would fire off-anchor on the
   least-proven repo (the old first-run concern, #522). So a task's **first**
@@ -731,10 +731,10 @@ The heartbeat replaces that arithmetic:
 ### S33 — the readiness re-check at close (F1, reopened)
 
 Two fan-out members converge; the close of the second readies the fan-in **in
-code, within the minute**, and the follow-on drain runs it — no tick in the
+code, within the minute**, and the follow-on drain runs it — no scheduler run in the
 path (`ready` carries `by: close`). S4 gains the matching assertion on the
 yield side: the chain's dependent is picked within minutes of its upstream
-closing. A close by hand still runs no engine code; S18 keeps the tick as
+closing. A close by hand still runs no engine code; S18 keeps the scheduler run as
 that path's backstop, unchanged.
 
 ### S34/S36 — run granularity, and what causes the next run (F23)
@@ -749,7 +749,7 @@ run?"*). The sim now models runs as first-class objects. **A run performs one
 item** — not a bound but the executor's essence (owner, same day: *"An
 executor performs a task. It's not a current value. It's the essence of
 it."*): claim, see it to its settle (roll, close, hand-off, failure), end.
-**Every run records its cause**: `tick-drain` — the cron workflow's own drain
+**Every run records its cause**: `scheduler-run-drain` — the cron workflow's own drain
 job, started by the job graph, no event involved; `label-event` — a foreign
 token's `task:ready`/`task:urgent`; `close-drain` — the converge path, when
 its readiness re-check leaves something pickable; `re-dispatch` — a finished
@@ -763,7 +763,7 @@ identically.
 - **S34** (two tasks with real work plus the day's rolls): every completed
   run settled **at most one item**, the working runs exactly one; both work
   items converged well inside the hour, so the record must show — and does —
-  `tick-drain` first, then `re-dispatch`/`close-drain` chaining the queue
+  `scheduler-run-drain` first, then `re-dispatch`/`close-drain` chaining the queue
   dry with no second cron fire involved.
 - **S36** (the broken train — owner question: *"the 2nd executor fails, or
   dies, or times out — what will cause the third executor to start?"*): five
@@ -774,7 +774,7 @@ identically.
   cancellation, or runner loss, its one step re-dispatching the workflow. The
   test asserts the four unaffected items drained within minutes with no cron
   fire involved, the crashed item alone waited out the leash reclaim and then
-  converged, and no run ever settled more than its one item. The hourly tick
+  converged, and no run ever settled more than its one item. The hourly scheduler run
   drain remains the backstop for the case where the whole run vanishes,
   continuation job included.
 
@@ -797,10 +797,10 @@ workflow checks as its first act, exiting cleanly having fired nothing.
 - **S38 (cancel + suspend, then resume)**: the user cancels a stalled run
   mid-work AND suspends before its continuation lands — intent 2 overrides
   intent 1's train, the continuation's re-dispatch parks. Hours later the
-  variable is cleared, **and nothing else is done**: the next cron tick alone
+  variable is cleared, **and nothing else is done**: the next cron scheduler run alone
   reclaims the cancelled run's long-silent claim, readies what came due, and
   its drain converges the whole queue. The impatient path — a hand-dispatched
-  *scheduler* run (tick + drain), not a bare executor run — is the same
+  *scheduler* run (scheduler run + drain), not a bare executor run — is the same
   recovery a minute sooner; a bare executor would drain ready items but skip
   the reclaim/ready half.
 
@@ -874,11 +874,11 @@ mutation check caught it).
 
 ### The prose-only findings (no scenario can carry them)
 
-- **F19 — a long drain starves the tick.** The drain job shares the cron
+- **F19 — a long drain starves the scheduler run.** The drain job shares the cron
   workflow's serializing `concurrency` group, so once the heartbeat legalizes
   multi-hour work, a busy drain holds the next hourly fire — instantiation,
   readiness and the leash reclaim all stall behind the very work they
-  schedule. Fixed in DESIGN §10: the serialization scopes to the tick alone;
+  schedule. Fixed in DESIGN §10: the serialization scopes to the scheduler run alone;
   executor work runs outside it. The sim cannot see workflow concurrency
   (unsimulated-world row); the migration burst verifies the wiring.
 - **F21 — throughput was priced as if drains were free.** A drain's real
@@ -905,22 +905,22 @@ the previous run is still standing.
 
 ### S44 — a marked issue becomes exactly one run
 
-09:03 the owner marks issue #500. 09:17 the tick adopts it: one item —
+09:03 the owner marks issue #500. 09:17 the scheduler run adopts it: one item —
 structurally ad-hoc, its title qualified by the issue and its task `manual`
 (DESIGN §3) — `Model: opus` (no model label ⇒ the default), and #500's mark
-becomes `claude-queued`. The post-tick drain picks it, the precondition passes
+becomes `claude-queued`. The post-scheduler run drain picks it, the precondition passes
 on the author's write access, the hand-off fires once, and the session leaves a
 pull request — so the item **parks open at `task:needs-human-approval`** rather
-than closing, and #500 moves to `claude-in-review`. A further day of ticks
+than closing, and #500 moves to `claude-in-review`. A further day of scheduler runs
 adopts **nothing**: the consumed mark is the exactly-once guard.
 
 ### S45 — an unauthorized mark is refused once, and disarmed
 
 The same play with an issue opened by someone with no permission on the repo
-and blessed by nobody. The tick adopts it (adoption forms no judgment), the
+and blessed by nobody. The scheduler run adopts it (adoption forms no judgment), the
 precondition declines, the item **closes** `task:obsolete` — a refusal is
 nobody's inbox, so it joins no triage lane — and the executor comments on #500
-and removes `claude-queued`. The disarm is the point: without it every tick
+and removes `claude-queued`. The disarm is the point: without it every scheduler run
 for the rest of time re-adopts and re-refuses the same issue.
 
 ### S46 — the approval path, judged by permission
@@ -944,7 +944,7 @@ outrank the next one's choice.
 
 ### S48 — withdrawal between adoption and pickup
 
-The label is stripped (or the issue closed) at 09:17:20, after the tick adopted
+The label is stripped (or the issue closed) at 09:17:20, after the scheduler run adopted
 it and before the executor reaches it. The precondition declines, the item
 closes obsolete, and **no session is ever invoked** — the window that exists
 because adoption and the verdict are deliberately in different phases.
@@ -953,7 +953,7 @@ because adoption and the verdict are deliberately in different phases.
 
 The session fails. The item parks at `task:needs-human-failure` — someone reads
 the trace — and #500 keeps `claude-queued`: nothing mechanical re-arms work that
-writes code, and that standing label is what stops the next tick adopting a
+writes code, and that standing label is what stops the next scheduler run adopting a
 second run. The person fixes the cause and re-marks the issue: exactly one
 further adoption, at whatever model the new label asks for — and that adoption
 **supersedes the parked item** (F28), closing it `task:obsolete` with a
@@ -975,8 +975,8 @@ adoption), and the run completes to its approval park.
 ### S51 — an impatient re-ask waits out the live run
 
 `claude-task` is re-applied while the first run is still with its agent. The
-mark **waits on the issue, unconsumed** — the ticks that fire mid-run adopt
-nothing, because one issue gets one live item (F28) — and the tick that finds
+mark **waits on the issue, unconsumed** — the scheduler runs that fire mid-run adopt
+nothing, because one issue gets one live item (F28) — and the scheduler run that finds
 the run settled (parked for review) supersedes that park and adopts the
 waiting mark. Two runs, strictly in sequence, never two sessions on one issue.
 
@@ -985,25 +985,25 @@ waiting mark. Two runs, strictly in sequence, never two sessions on one issue.
 | # | severity | what | resolution |
 |---|---|---|---|
 | **F5** | **design bug** | CCR invocation is at-least-once under timeout retry → two sessions on one item (S10) | first fixed with an agent-side claim lease; **superseded 2026-08-15 (§I)**: invocation is at-most-once — one call per item, never retried — so no second session can exist and the lease deleted (S10a/S10b are the replacement tests; the nonce survives as a replay check) |
-| **F9** | **design bug** | same-tick `after` wiring depends on task iteration order (S4) | first fixed by topological iteration; **retired unbuilt** by the standing-item model — `after` moved to the pick-time yield (S23/S24), so creation order stopped mattering |
+| **F9** | **design bug** | same-scheduler run `after` wiring depends on task iteration order (S4) | first fixed by topological iteration; **retired unbuilt** by the standing-item model — `after` moved to the pick-time yield (S23/S24), so creation order stopped mattering |
 | **F6** | **design bug** | forcing can run a task concurrently with itself (S15) | **fixed in DESIGN §6/§8**: same-title pick mutex + create-time warning; the standing-item model removes the common case outright (force = wake the existing item, S14′) |
 | **F3** | policy gap | as-written hand-off failure policy turns platform blips into triage load (S9) | first fixed with bounded revert-and-retry; **superseded 2026-08-15 (§I)**: no retry exists to bound — refused converges `needs-human` at once (S9a), unanswered is settled by the agent leash (S10b) |
 | **F12** | contract gap | code-work re-runs after an executor death; re-entrancy was never stated (S8) | **fixed in DESIGN §6**: re-entrancy is an explicit code-work requirement (it was already implicitly required today) |
-| **F13** | **design bug** | the occurrence guard's created-at half alone double-executes: a rolled item that runs today was created yesterday, so after it closes the same-day tick creates a second item for the same occurrence (S26) | **fixed in DESIGN §5**: the guard is created-at-or-after A *or closed*-at-or-after A. Caught by the simulator's first run — no prose replay had seen it |
+| **F13** | **design bug** | the occurrence guard's created-at half alone double-executes: a rolled item that runs today was created yesterday, so after it closes the same-day scheduler run creates a second item for the same occurrence (S26) | **fixed in DESIGN §5**: the guard is created-at-or-after A *or closed*-at-or-after A. Caught by the simulator's first run — no prose replay had seen it |
 | **F14** | **design bug** | a blocked item whose dependency never resolves waits silently forever: §11 claimed the stale escalation covers it, but that rule keys on ready-age and a blocked item is never ready (S18's fan-in) | **fixed in DESIGN §11**: a third janitor rule — blocked with unresolved blockers past ~2 days gets an escalation comment, labels untouched. Caught by making S18 executable |
 | **F15** | **design bug** | the pick filters (same-title mutex, `after` yield) read stale state — two executors can claim different items the filters should serialize (S32) | **fixed in DESIGN §6.1**: post-claim re-verify; the later claim (comment order) reverts itself to ready |
-| **F16** | implicit assumption | the occurrence guards assume the tick's REST list sees creations from prior runs; GitHub documents no cross-node freshness bound (S30) | **made explicit + defended in DESIGN §5**: the tick self-heals — more than one open family item closes all but the oldest |
+| **F16** | implicit assumption | the occurrence guards assume the scheduler run's REST list sees creations from prior runs; GitHub documents no cross-node freshness bound (S30) | **made explicit + defended in DESIGN §5**: the scheduler run self-heals — more than one open family item closes all but the oldest |
 | **F17** | **design bug** | a work bound reaching the executing leash livelocks the occurrence: reclaimed alive every cycle, the work re-runs forever, never converges (S31b) | first fixed as leash > work-bound; **reframed 2026-08-15 (§I, F20)**: heartbeat comments during the work step — the leash measures executor death, not work duration; the wiring check shrinks to heartbeat interval < leash (S31, S31c, S31d); the transition lease re-verify stays |
 | **F18** | **design bug** | lifetime-scoped claim arbitration lets dead claims (from reverts/reclaims) outrank every future claimant — the item livelocks; masked in single-executor tests (S32) | **fixed in DESIGN §6.2**: the arbiter is episode-scoped — earliest claim since the item last became ready, by comment id |
-| **F11** | implementation constraint | guards over the search index race its lag; back-to-back serialized ticks make it sharp (S6) | **fixed in DESIGN §5**: guards read the REST issue list, never search |
+| **F11** | implementation constraint | guards over the search index race its lag; back-to-back serialized scheduler runs make it sharp (S6) | **fixed in DESIGN §5**: guards read the REST issue list, never search |
 | **F7** | doc gap | no written path from `needs-human` back to execution (S12, S19) | **fixed in DESIGN §4**: strip `needs-human` + apply `task:ready` is the sanctioned re-queue |
-| **F4** | **decided** | executing-leash reclaim on the daily janitor = up to ~25h stall for a dead executor (S8) | **accepted 2026-08-13**: the reclaim rides the tick (deterministic label rule, ~2h worst case); janitor keeps the judgment sweeps — DESIGN §11 |
+| **F4** | **decided** | executing-leash reclaim on the daily janitor = up to ~25h stall for a dead executor (S8) | **accepted 2026-08-13**: the reclaim rides the scheduler run (deterministic label rule, ~2h worst case); janitor keeps the judgment sweeps — DESIGN §11 |
 | **F10** | **decided** | mid-window firing costs up to 24 precondition evaluations + signal collections per unfired daily occurrence (S1/S3) | **resolved twice**: first by the go/no-go ruling (one verdict per occurrence — which required a ledger read), then properly by the standing-item model (S1′): the verdict is one-per-period at pick, the memory is the item's own `Not-before`, no ledger at all |
-| **F1** | **decided** | chain readiness quantized to the tick, ~1h/link (S4) | declined 2026-08-13; **reopened and accepted 2026-08-15 (§I)**: under the work-as-work model the ~1h/link stacks on drain occupancy — whoever closes an item re-checks its dependents' readiness in code, the tick stays the backstop (S33, S4) |
+| **F1** | **decided** | chain readiness quantized to the scheduler run, ~1h/link (S4) | declined 2026-08-13; **reopened and accepted 2026-08-15 (§I)**: under the work-as-work model the ~1h/link stacks on drain occupancy — whoever closes an item re-checks its dependents' readiness in code, the scheduler run stays the backstop (S33, S4) |
 | **F2** | dissolved | an occurrence that fires-and-obsoletes is spent for the period (S13) | the standing-item model has no fire-then-obsolete path for scheduled work — the pick verdict is the only verdict, and a no-go rolls (S13′) |
 | — | accepted | fan-in stalls on one stuck child until a human acts (S18) | documented here; no quorum/deadline semantics at this scale |
 | **F8** | migration detail | signal collectors' self-trigger exclusions must cover `[claudinite-work]` titles and the new labels | **noted in DESIGN §14** |
-| **F19** | **design bug** | a long drain holds the cron workflow's concurrency group and starves the hourly tick — legal the moment the heartbeat legalizes multi-hour work (§I) | **fixed in DESIGN §10**: the serialization scopes to the tick alone; executor work runs outside it. Unsimulable (workflow concurrency); the migration burst verifies the wiring |
+| **F19** | **design bug** | a long drain holds the cron workflow's concurrency group and starves the hourly scheduler run — legal the moment the heartbeat legalizes multi-hour work (§I) | **fixed in DESIGN §10**: the serialization scopes to the scheduler run alone; executor work runs outside it. Unsimulable (workflow concurrency); the migration burst verifies the wiring |
 | **F20** | **design bug** | one global executing leash must exceed the heaviest task's work bound, so a single slow task slows every dead-executor recovery fleet-wide (§I) | **fixed in DESIGN §6.5/§11**: heartbeat comments during the work step; F17's wiring check reframed (S31, S31b, S31c, S31d) |
 | **F21** | sizing gap | throughput was priced as if drains were free; a drain's real throughput is its serial work-step occupancy (§I) | **stated in DESIGN §10**: `maxItems` and executor width as the primary capacity parameters, self-re-dispatch for drain-until-empty, the oldest-first fairness exposure named |
 | **F22** | contract gap | the durable per-run record was implicit — Actions logs expire, and an agentless run leaves no other trace (§I) | **fixed in DESIGN §6.5**: the terminal comment carries the `claudinite-task-exec` record and every artifact the work created |

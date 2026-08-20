@@ -149,7 +149,7 @@ export function packMark(count, mount) {
 }
 
 // `unknown` is not `current`: with no canon configured there is nothing to compare
-// against, and a tick there would claim a check that never happened.
+// against, and a scheduler run there would claim a check that never happened.
 const packList = (mount) => (mount.behindPacks ?? [])
   .map((p) => `${p.pack} v${p.version} < canon v${p.canonVersion}`).join('\n');
 

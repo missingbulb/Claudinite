@@ -1,14 +1,14 @@
 # Claudinite work-item executor (tasks-dispatch DESIGN §6, §10) — a pull worker
 # over the queue. ONE RUN PERFORMS ONE ITEM (§15.22), and the queue drains as a
-# chain of runs: the tick dispatches this workflow every hour, a run that settled
+# chain of runs: the scheduler run dispatches this workflow every hour, a run that settled
 # its item dispatches the next, and the continuation job below covers a run that
-# died before it could. It carries NO cron of its own — the tick's hourly dispatch
+# died before it could. It carries NO cron of its own — the scheduler run's hourly dispatch
 # is the guaranteed delivery, so a lost `task:ready` label event is latency lost
 # and never work lost.
 #
 # THIS IS THE ONLY PLACE SECRETS LIVE (DESIGN §14). The wiring converge stamps
 # every task's declared `required_secrets`, plus each configured invocation
-# endpoint's token secret, into the step env below by name — the tick and the
+# endpoint's token secret, into the step env below by name — the scheduler run and the
 # janitor get none, because they never execute task code. Code-work is the only task
 # code that ever sees a value; the agent hop carries nothing.
 #
@@ -107,11 +107,11 @@ jobs:
             // The chain has died three times running: this is not one bad runner,
             // and dispatching a fourth would spend the day proving it. Escalate to
             // the same one-open-issue surface the scheduler's own failures use, and
-            // let the hourly tick be what tries again.
+            // let the hourly scheduler run be what tries again.
             const { owner, repo } = context.repo;
             const title = 'Claudinite executor chain failed repeatedly';
             await github.rest.issues.createLabel({ owner, repo, name: 'workflow-failure', color: 'b60205', description: 'Claudinite scheduler: a scheduler run or task failed' }).catch(() => {});
-            const body = `Three consecutive executor runs died before finishing their item. The chain stops here; the next hourly tick will dispatch a fresh one.\n\nThe last run: ${run}`;
+            const body = `Three consecutive executor runs died before finishing their item. The chain stops here; the next hourly scheduler run will dispatch a fresh one.\n\nThe last run: ${run}`;
             const found = await github.rest.search.issuesAndPullRequests({ q: `repo:${owner}/${repo} is:issue is:open in:title "${title}"` });
             if (found.data.total_count > 0) await github.rest.issues.createComment({ owner, repo, issue_number: found.data.items[0].number, body });
             else await github.rest.issues.create({ owner, repo, title, labels: ['workflow-failure'], body });

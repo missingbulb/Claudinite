@@ -25,7 +25,7 @@ jobs:
   schedule:
     runs-on: ubuntu-latest
     steps:
-      - run: node .claudinite/shared/engine/scheduler/queue/tick.mjs
+      - run: node .claudinite/shared/engine/scheduler/queue/scheduler-run.mjs
 `;
 
 const run = (files) => {

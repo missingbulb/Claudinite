@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 
 // A `manual` task's gate IS a human creating its work item. Nothing else can put
-// one in the queue: the tick skips `frequency: 'manual'` outright, so an item
+// one in the queue: the scheduler run skips `frequency: 'manual'` outright, so an item
 // exists only because someone asked for this task to run.
 //
 // The executor evaluates the precondition at pick regardless (tasks-dispatch

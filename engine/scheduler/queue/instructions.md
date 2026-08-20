@@ -104,7 +104,7 @@ instructions.
    names the pull request (which is why `--pr` is required there); on a failure it
    writes nothing at all and leaves `claude-queued` standing — re-arming work that
    writes code is a person's decision, and that standing label is what stops the
-   next tick queueing a second run of the same request.
+   next scheduler run queueing a second run of the same request.
 
    Only `task:needs-human-failure` (and a park with no sub-label at all) holds the
    task's lane — while one is open the generator files no further occurrence of

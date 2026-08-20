@@ -88,7 +88,7 @@ than its lease expires, so *"pick the lease as your acceptable redelivery
 latency, not as the longest possible job"*
 ([SQS](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html)).
 That maxim is finding **F4** stated from outside: a 1h executing-leash
-reclaimed daily is a lease evaluated 24× too slowly; riding the tick is the
+reclaimed daily is a lease evaluated 24× too slowly; riding the scheduler run is the
 literature-conform answer. The claim-comment protocol itself is what the
 lease literature calls verify-after-write, and Kleppmann's warning names our
 residual exposure precisely: a **stalled** executor (not dead — a hung
@@ -132,14 +132,14 @@ Sidekiq's 25 error-retries *vs* 3-orphan-recoveries-in-72h kill, BullMQ
 the crash-ish loop; `needs-human` is our DLQ — terminal, inspectable,
 human-replayed, never silent deletion, never infinite retry. One refinement
 worth taking: retries should back off **with jitter** (Sidekiq's
-`count⁴ + rand`, Celery's capped full jitter) — our tick cadence is the
-backoff, and the tick minute is already repo-hashed, which is the jitter.
+`count⁴ + rand`, Celery's capped full jitter) — our scheduler run cadence is the
+backoff, and the scheduler run minute is already repo-hashed, which is the jitter.
 Nothing to add; noting the correspondence.
 
 **`Blocked-by`/`Not-before` (§9) are durable timers + join edges; S18 is a
 named problem.** "Wait 2 days then validate" is Temporal `workflow.sleep`,
 SFN `Wait`, Argo `suspend.duration` — always a persisted timer, never a
-sleeping process; ours is a body field the tick polls, the same thing at
+sleeping process; ours is a body field the scheduler run polls, the same thing at
 1/hour resolution. The join semantics question has a vocabulary: Airflow
 trigger rules (`all_success` deadlocks on one failed branch; `all_done` is
 the join that tolerates it). Our "closed is closed, outcome checked by the
@@ -158,7 +158,7 @@ webhooks**
 and sub-issues have a REST API since Dec 2024. The design's §9 assumed
 mirror-only value; the primitives are now real enough to *be* the edge
 store. The body fields stay the parsed truth (platform-agnosticism is a
-stated goal, and body fields survive any tracker), but the tick mirroring
+stated goal, and body fields survive any tracker), but the scheduler run mirroring
 into native dependencies is now cheap and buys the graph UI for free —
 upgraded from "where available" to "do it" in §9.
 
@@ -212,7 +212,7 @@ states. Divergence noted, kept.
 > firing is out. The pricing below stands as the record of what was weighed,
 > and one piece of it became load-bearing in a way the question didn't
 > anticipate: with no re-evaluation, nothing in the issue family records that
-> an occurrence was evaluated and declined, so the tick reads `lastTick` from
+> an occurrence was evaluated and declined, so the scheduler run reads `lastSchedulerRun` from
 > the Actions ledger (DESIGN §5) — the design's one remaining side-channel
 > read, and its unreadable-ledger fallback is K8s `startingDeadlineSeconds`
 > straight out of §1's taxonomy.
@@ -220,9 +220,9 @@ states. Divergence noted, kept.
 Airflow's sensor modes give F10 its vocabulary: **poke** (hold a slot,
 check often) vs **reschedule** (wake, check, sleep — cheap, latent), and
 deferrable operators exist because thousands of idle pollers were the real
-cost at their scale. Our tick *is* a reschedule-mode sensor with a 1h poke
+cost at their scale. Our scheduler run *is* a reschedule-mode sensor with a 1h poke
 interval and a shared probe (one signal collection covers every unfired
-task), so the per-tick marginal cost is API reads only. The literature
+task), so the per-scheduler run marginal cost is API reads only. The literature
 doesn't decide the owner call, but it prices it: continuous evaluation is a
 sensor pattern engines consider normal *when the poll is cheap and shared* —
 which ours is; once-per-occurrence is the anacron model. Both are legitimate;

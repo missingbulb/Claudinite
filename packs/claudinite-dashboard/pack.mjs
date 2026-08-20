@@ -2,7 +2,7 @@
 // scheduler is doing, published as a static site.
 //
 // WHY A PACK AND NOT ENGINE CODE. The dashboard is not part of running the scheduler:
-// nothing converges, ticks or executes because it exists, and a member that never
+// nothing converges, scheduler runs or executes because it exists, and a member that never
 // looks at it should not carry it. Engine code is what every member runs; this is
 // content a member OPTS INTO, and adoptable content in this corpus is a pack. That
 // also buys it the things a pack has and engine code does not — its own version and
@@ -43,7 +43,7 @@
 //
 // THE BUILD SCRIPT DELIBERATELY IS NOT SEEDED. `build-site.mjs` lives in the pack and
 // is read out of the mount by the seeded workflow, exactly as the scheduler stub reads
-// the engine's tick. So the assembly logic keeps converging with the canon while the
+// the engine's scheduler run. So the assembly logic keeps converging with the canon while the
 // workflow — the part that cannot converge — stays a one-time seed. Only the file that
 // has to be frozen is frozen.
 import datedFixtureCollision from './tasks/fleet-digest/dated-fixture-collision.mjs';
@@ -68,7 +68,7 @@ export default {
   // model — next asks, roll records, triage-split parks. Page-only; no migration.
   // 12: the workflow-practice neighbour is git-github now that github-actions
   // collapsed into it (#1079).
-  version: 13,
+  version: 14,
   minEngineVersion: 4,
   ruleRoutingGuidance: {
     belongs: 'the browser dashboard over Claudinite scheduler state, the site that publishes it, and the fleet morning brief it reads',

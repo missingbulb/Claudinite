@@ -1,7 +1,7 @@
 // The request implementer (tasks-dispatch DESIGN §16) — the engine's one built-in
 // task, and the only one that may read an item's `Model`.
 //
-// A person marks an ordinary issue `claude-task`; the tick adopts it into a work
+// A person marks an ordinary issue `claude-task`; the scheduler run adopts it into a work
 // item naming that issue; this task's precondition decides, at pickup, whether the
 // run happens; the session implements the issue and leaves a pull request. There is
 // no code-work phase at all: the authorization a worker would have performed is the
@@ -29,7 +29,7 @@ export default {
   // declaration-shape check reads this file statically and cannot resolve an
   // import. The two are pinned to each other in request-mode.test.mjs.
   id: 'implement-request',
-  // MANUAL: the tick never puts this on a calendar. An item exists only because an
+  // MANUAL: the scheduler run never puts this on a calendar. An item exists only because an
   // issue was marked, which is what makes a request a first-class origin of work
   // rather than a schedule nobody asked for.
   frequency: 'manual',

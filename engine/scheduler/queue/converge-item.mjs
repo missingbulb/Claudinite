@@ -115,7 +115,7 @@ export async function convergeItem(api, gh, repo, plan, { now = () => new Date()
   // A REQUEST ITEM WRITES BACK TO ITS ISSUE, on the one end that is its business
   // (§16.5). Only the approval park: a failure deliberately writes nothing and
   // leaves `claude-queued` standing, because re-arming work that writes code is a
-  // person's decision and that standing label is what stops the next tick queueing
+  // person's decision and that standing label is what stops the next scheduler run queueing
   // a second run of the same request.
   const { request } = parseWorkItemBody(item.body ?? '');
   if (request && plan.outcome === 'approval') {

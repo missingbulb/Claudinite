@@ -21,7 +21,7 @@ test('fleet-baseline: the declaration satisfies the task contract', () => {
 
 test('fleet-baseline: manual, agentless, outcome none — an operator lever, not a cadence', () => {
   assert.equal(decl.id, 'fleet-baseline');          // must match its directory name (discover.mjs)
-  // `manual` is the whole point: the tick never instantiates it, so the ONLY way it
+  // `manual` is the whole point: the scheduler run never instantiates it, so the ONLY way it
   // runs is a work item created by hand.
   assert.equal(decl.frequency, 'manual');
   assert.equal(decl.agent_model, 'none');

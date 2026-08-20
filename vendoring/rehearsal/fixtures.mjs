@@ -74,9 +74,10 @@
 //                 workflow change spends an unbounded window with members running
 //                 the old copy against the new engine. This shape is what says that
 //                 window is harmless rather than assumed to be: it carries the
-//                 pre-§15.16 tick (whose drain RAN an executor inside the tick's
-//                 concurrency group, with task secrets stamped into it) beside a
-//                 current mount.
+//                 pre-§15.16 workflow (whose drain RAN an executor inside the
+//                 scheduler's concurrency group, with task secrets stamped into it)
+//                 beside a current mount — and, since #877, one that still names
+//                 the retired `tick.mjs` entry point the rename left a shim at.
 //   pre-rules-index
 //                 a member in the shape EVERY member has the night #807 reaches it:
 //                 a CLAUDE.md of its own, no rules index, no import, no merge
@@ -264,7 +265,7 @@ const params = process.env.CLAUDINITE_CONTEXT ?? '';
 console.log(\`fixture [#\${item}] \${root} \${params.length}\`);
 `;
 
-const OLD_TICK_WORKFLOW = `name: Claudinite scheduler
+const OLD_SCHEDULER_WORKFLOW = `name: Claudinite scheduler
 
 on:
   schedule:
@@ -649,7 +650,7 @@ NSApplication.shared.run()
     files: {
       'README.md': '# fixture-old-workflows\n\nA rehearsal fixture.\n',
       '.claudinite-checks.json': checks(['basics']),
-      '.github/workflows/claudinite-scheduler.yml': OLD_TICK_WORKFLOW,
+      '.github/workflows/claudinite-scheduler.yml': OLD_SCHEDULER_WORKFLOW,
     },
   },
   {

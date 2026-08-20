@@ -20,7 +20,7 @@ export default {
   // a record declaring a version above it would re-apply every cycle, forever,
   // draining never.
   // 12: the `do-later` skill — deferring a change into work that comes back on its own.
-  version: 15,
+  version: 16,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'cross-project working discipline, issue-branch-PR lifecycle, repo hygiene, doc/reference integrity and the baseline engineering, testing and debugging skills',

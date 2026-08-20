@@ -378,7 +378,7 @@ lesson at the strongest mechanism available — a check where the rule is determ
 
 - **Wanting to exercise a task Action-side** — dispatch the scheduler workflow with its `wake`
   input naming the task, which clears the standing item's wait and puts it back in the queue; the
-  post-tick drain then picks it up in the same run. The precondition is still evaluated at pickup,
+  post-scheduler run drain then picks it up in the same run. The precondition is still evaluated at pickup,
   so a wake that finds no work SAYS so on the item — a forced run that does nothing is a verdict,
   not a failure. (Under the retired slot scheduler this did not work at all: dueness was stateless,
   so an off-window `workflow_dispatch` printed `- no tasks due` and looked exactly like a healthy
@@ -405,7 +405,7 @@ lesson at the strongest mechanism available — a check where the rule is determ
 
 ## Proving a change
 
-- **Testing a change to a task's triggering** — drive the real `planTick` from a clock at which
+- **Testing a change to a task's triggering** — drive the real `planSchedulerRun` from a clock at which
   the task's anchor has NOT come. Instantiation is decided before any precondition runs, so a test
   that starts from an item already in the queue proves only "works once instantiated" and says
   nothing about whether the occurrence is ever created.

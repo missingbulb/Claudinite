@@ -73,7 +73,7 @@ export function validateDispatchBody(body, { exists, isPackDeclared, loadTask })
   if (problems.length) return reject(`${mjsPath} is not a valid task declaration: ${problems.map((p) => p.what).join('; ')}`, { pack, task });
 
   // The model a task that reads its item's choice runs at (DESIGN §16.7). The field
-  // is written by the tick from a write-gated label and validated on the way out of
+  // is written by the scheduler run from a write-gated label and validated on the way out of
   // the parser, so an unrecognised family has already become absent here and the
   // declared default stands — a request nobody can run would look accepted forever.
   const model = (decl.model_from_request && parseWorkItemBody(body).model) || decl.agent_model;

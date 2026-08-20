@@ -69,7 +69,7 @@ function nextAskCell(r, now) {
     case 'deps':
       return el('td', {}, [el('div', { textContent: `after ${ask.on.map((n) => `#${n}`).join(', ')}` })]);
     case 'ready-soon':
-      return el('td', {}, [el('div', { textContent: 'due — the next tick readies it' })]);
+      return el('td', {}, [el('div', { textContent: 'due — the next scheduler run readies it' })]);
     case 'off-machine':
       return el('td', {}, [el('div', { className: 'warn warning', textContent: 'off the state machine — janitor repairs it' })]);
     default:

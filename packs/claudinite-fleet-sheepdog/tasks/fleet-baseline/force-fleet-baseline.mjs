@@ -43,8 +43,8 @@ import {
 import { parseSheepdogConfig } from '../../fleet-config.mjs';
 import { missingFleetTokenError } from '../../fleet-token.mjs';
 
-// The exact member-side task this lever forces — the id the member's tick resolves
-// against its own declared packs (`planWake` in engine/scheduler/queue/tick.mjs);
+// The exact member-side task this lever forces — the id the member's scheduler run resolves
+// against its own declared packs (`planWake` in engine/scheduler/queue/scheduler-run.mjs);
 // named as a constant so the coupling is one line to find, not a string buried in a
 // request body.
 //
