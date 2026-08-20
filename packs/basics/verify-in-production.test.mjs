@@ -18,9 +18,25 @@ test('the skill carries the discernment test — most changes file nothing', () 
 
 test('what it files is a request the queue adopts, not a mechanism beside it', () => {
   assert.match(skill, /`claude-task`/, 'the mark is what makes the scheduler run adopt the issue');
-  assert.match(skill, /Blocked-by:/, 'without the PR blocker the run races the merge');
   assert.match(skill, /Not-before:/, 'without the delay the run fires before the release it waits on');
   assert.doesNotMatch(skill, /claude-automerge.*apply/i, 'a verification has nothing to merge');
+});
+
+// FILED ONLY AFTER THE MERGE (#1128). A PR can be REJECTED, and the queue cannot tell
+// that from a merge: `readiness.mjs` releases a blocked item when its blocker is
+// `closed`, and nothing anywhere reads `merged`. A verification filed pre-merge against
+// a PR that is then rejected reads an `In-production-when:` that can never come true,
+// re-arms silently by `Retry-every:` forever, and no janitor rule reclaims it — rule A
+// cannot see an item sleeping on a future `Not-before`, and rule C exempts one whose
+// blockers have closed. So the trigger moves to the merge and the field that
+// accommodated the early file goes away.
+test('the brief is filed only after the merge, and carries no PR blocker', () => {
+  assert.match(skill, /after the merge, never before/i,
+    'nothing stops a session filing this the moment the PR opens');
+  assert.match(skill, /rejected/i,
+    'the skill never says a rejected PR is why filing early is wrong');
+  assert.doesNotMatch(skill, /^Blocked-by:/m,
+    'the template still tells the filer to block on the PR — the field that invited the premature file');
 });
 
 // The verification is AUTOMATIC end to end: the filed check must be one an

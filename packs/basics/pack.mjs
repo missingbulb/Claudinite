@@ -24,7 +24,9 @@ export default {
   // 60820.2: a migration's cleanup is filed as work that returns, never written as a
   // later phase (writing-migration-plans).
   // 60820.3: the comment classification stays a rule and stops being a check (#1114).
-  version: '60820.3',
+  // 60820.4: verify-in-production files only after the PR merges — a rejected PR closes
+  // like a merged one, so filing early strands the verification in a silent retry loop (#1128).
+  version: '60820.4',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'cross-project working discipline, issue-branch-PR lifecycle, repo hygiene, doc/reference integrity and the baseline engineering, testing and debugging skills',

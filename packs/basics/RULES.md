@@ -65,9 +65,11 @@ change, independent of any one project.
   flight, an effect that only appears once the change is deployed, converged or loaded by a later
   session) — the follow-up is a mechanism that comes to you, never a human's memory and never an
   offer to the owner to go and check later. File it with
-  [verify-in-production](skills/verify-in-production/SKILL.md), unasked, as part of finishing the
-  change: it owns both halves — whether this change needs one at all (most don't; a test that ran
-  is already the mechanism), and the issue that states what puts the change in production and what
+  [verify-in-production](skills/verify-in-production/SKILL.md), unasked, **once the PR has
+  merged** and never before — a PR can be rejected, and a still-open branch can be rewritten
+  under you, either of which strands a verification whose premise never reached `main`. The
+  skill owns both halves — whether this change needs one at all (most don't; a test that ran is
+  already the mechanism), and the issue that states what puts the change in production and what
   proves it works there.
 
 - **Receiving feedback that flags a misunderstanding** — check whether the artifact is already
