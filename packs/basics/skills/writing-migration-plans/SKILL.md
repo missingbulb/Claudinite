@@ -1,6 +1,6 @@
 ---
 name: writing-migration-plans
-description: Where a plan and a design live, and how to order a plan's phases so nothing stalls mid-run — the plan is a tracking issue (never a MIGRATION.md or plan document), the design doc carries only the end state with rationale and alternatives; front-load the out-of-band setup, collapse the review gates into one stacked-PR pass, leave only executable steps, and keep the tracking issue append-only while implementing. Use BEFORE writing any DESIGN.md, migration plan, phased implementation plan, rollout or cutover plan — including the moment you are about to create a docs/<initiative>/ file — and when working through a plan's tracking issue.
+description: Where a plan and a design live, and how to order a plan's phases so nothing stalls mid-run — the plan is a tracking issue (never a plan document in the repo), the design doc carries only the end state with rationale and alternatives; front-load the out-of-band setup, collapse the review gates into one stacked-PR pass, leave only executable steps, and keep the tracking issue append-only while implementing. Use BEFORE writing any DESIGN.md, migration plan, phased implementation plan, rollout or cutover plan — including the moment you are about to create a docs/<initiative>/ file — and when working through a plan's tracking issue.
 ---
 
 # Writing migration and implementation plans
@@ -30,9 +30,9 @@ other's job:
   keeps handling them (a decode map, an accepted input) — as mechanism, not as
   history.
 - **The migration is work, not a document.** Its plan lives in the tracking issue
-  and nowhere else — never a `MIGRATION.md` or any plan file in the repo. A plan
-  document goes stale the moment work starts and cannot be checked off; the issue
-  is checkable, append-only, and dies with the work.
+  and nowhere else — never a plan or migration document committed to the repo. A
+  plan document goes stale the moment work starts and cannot be checked off; the
+  issue is checkable, append-only, and dies with the work.
 
 ## The three blocks, and where each belongs
 
