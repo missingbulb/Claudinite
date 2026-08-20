@@ -46,7 +46,10 @@ Retry-every: <how far to push Not-before when not yet live, e.g. 1 day>
 ```
 
 - **`Original-issue:`** is where a failure lands — the issue the change was done under, which
-  the run reopens if the verification fails.
+  the run reopens if the verification fails. Make the verification that issue's **sub-issue**
+  too (`mcp__github__sub_issue_write`, method `add`, `issue_number` the original,
+  `sub_issue_id` the **id** the create call returned, not its number), so the change it proves
+  shows what is still unproven about it.
 - **`In-production-when:`** names a thing to *read*, never a duration to wait. "`missingbulb/Shepherd`'s
   `.claudinite-checks.json` stamps `packVersions.tidy-repo` at 8 or higher." "The live site's
   `/version.json` reports a version past 4.2.0." "Any session started after this landed — check
