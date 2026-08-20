@@ -23,19 +23,17 @@ import {
   parseWorkItemTitle, parseWorkItemBody, parseContextLines, mergeContext, withNotBefore, withSection, hasLabel, DELIVERED_HEADING, LEGACY_DELIVERED_HEADINGS,
   LAST_VERDICT_HEADING, lastVerdictLines } from './work-item.mjs';
 
-// How many items one executor run may take before it stops. Small on purpose: an
-// executor is code iterating a queue, and more capacity is more executors, not a
-// longer loop (DESIGN §10).
-export const DEFAULT_MAX_ITEMS = 3;
-
 const titleOf = (item) => (item.title ?? '').trim();
 const taskIdOf = (item) => {
   const p = parseWorkItemTitle(item.title);
   return p ? `${p.pack}/${p.task}` : null;
 };
 
-// The pick order (DESIGN §6.1): urgent first, then oldest-created, with two skip
-// rules read live at pick time.
+// The pick order (DESIGN §6.1): urgent first, then RANDOM among the ready, with
+// two skip rules read live at pick time. Random rather than oldest-first because
+// nothing leans on FIFO aging — the stale-ready escalation is period-scale — while
+// a deterministic order lets one unlucky head dominate every run of a chain
+// (DESIGN §15.20).
 //
 //  - SAME-TITLE MUTEX (S15/F6): skip an item whose exact title has another open
 //    item executing or handed to an agent — one task, one execution at a time,
@@ -51,12 +49,17 @@ const taskIdOf = (item) => {
 // `open` is every open work item; `taskAfter(id)` gives a task's declared
 // upstreams as `<pack>/<task>` ids, and `frequencyOf(id)` that task's declared
 // frequency at HEAD — which is half of what says whether an item is a standing
-// occurrence or an ad-hoc run (§15.26).
-export function pickOrder(open = [], { taskAfter = () => [], frequencyOf = () => null } = {}) {
+// occurrence or an ad-hoc run (§15.26). `random` is the tie-break draw, injected
+// so a test can pin an order the production call deliberately does not have.
+export function pickOrder(open = [], { taskAfter = () => [], frequencyOf = () => null, random = Math.random } = {}) {
   const live = (item) => hasLabel(item, READY) || hasLabel(item, EXECUTING) || hasLabel(item, AGENT);
   const standing = (item) => isStandingItem(item, frequencyOf(taskIdOf(item)));
   const liveUpstream = (upstreamId) => open.some((o) =>
     taskIdOf(o) === upstreamId && standing(o) && live(o));
+  // One draw per item, taken once: a comparator that called `random()` per
+  // comparison would not be a consistent ordering, and `Array.sort` on one is
+  // free to produce anything at all.
+  const draw = new Map(open.map((i) => [i.number, random()]));
 
   return open
     .filter((i) => hasLabel(i, READY) && !hasLabel(i, NEEDS_HUMAN))
@@ -68,8 +71,7 @@ export function pickOrder(open = [], { taskAfter = () => [], frequencyOf = () =>
     })
     .sort((a, b) =>
       (hasLabel(b, URGENT) ? 1 : 0) - (hasLabel(a, URGENT) ? 1 : 0)
-      || new Date(a.created_at) - new Date(b.created_at)
-      || a.number - b.number);
+      || draw.get(a.number) - draw.get(b.number));
 }
 
 // The claim comment carries WHO and WHEN — the executor id and its run URL —
@@ -139,12 +141,26 @@ export function noGoPlan(item, task, schedule, now, reason) {
 
 const nowIso = () => new Date().toISOString();
 
-// One executor run. Injected seams keep the loop testable end to end without
-// GitHub, code-work subprocesses or an invocation endpoint.
+// ONE EXECUTOR RUN PERFORMS ONE ITEM (DESIGN §6, §10, decision §15.22). Not a
+// configured maximum — the essence of an executor: it claims one item, sees it to
+// its settle, and ends. Capacity is executor width, and the queue drains as a
+// CHAIN of runs, each cause on the record (§10): the tick's own drain job, a
+// label event, the close-time drain, this run's own `redispatch`, and the
+// workflow's failure-continuation job when a run dies before reaching it.
+//
+// A run that never gets its item — nothing pickable, or another executor holds
+// this episode's earlier claim — ends without dispatching anything. Retrying a
+// lost race here would be a second pick attempt racing the very executor that
+// won, and re-dispatching over a claim we just reverted is a two-executor
+// dispatch loop; in both cases the winner's own chain (or the tick behind it)
+// carries the queue.
+//
+// Injected seams keep the run testable end to end without GitHub, code-work
+// subprocesses or an invocation endpoint.
 export async function runExecutor({
   gh, repo, root, config, tasks, executorId, runUrl = null,
-  maxItems = DEFAULT_MAX_ITEMS, now = () => new Date(),
-  collectSignalsFor, runTaskCodeWork, invokeAgent, log = console.log,
+  now = () => new Date(), random = Math.random,
+  collectSignalsFor, runTaskCodeWork, invokeAgent, redispatch = null, log = console.log,
 }) {
   const api = await import('../github.mjs');
   const { listOpenWorkItems } = await import('./read.mjs');
@@ -154,48 +170,59 @@ export async function runExecutor({
   const frequencyOf = (id) => byId.get(id)?.decl?.frequency ?? null;
   const done = [];
 
-  for (let n = 0; n < maxItems; n += 1) {
-    const open = await listOpenWorkItems(gh, repo);
-    const candidate = pickOrder(open, { taskAfter, frequencyOf })[0];
-    if (!candidate) break;
+  const open = await listOpenWorkItems(gh, repo);
+  const candidate = pickOrder(open, { taskAfter, frequencyOf, random })[0];
+  if (!candidate) return done;
 
-    // --- claim: the verified lease ------------------------------------------
-    await api.swapLabel(gh, repo, candidate.number, READY, EXECUTING);
-    await api.comment(gh, repo, candidate.number, claimComment({
-      executor: executorId, runUrl, at: nowIso(),
-    }));
-    const comments = await api.listComments(gh, repo, candidate.number);
-    const winner = claimWinner(comments);
-    const mine = [...comments]
-      .sort((a, b) => a.id - b.id)
-      .filter((c) => (c.body ?? '').includes(CLAIM_MARKER) && (c.body ?? '').includes(`executor \`${executorId}\``))
-      .at(-1);
-    if (!winner || winner.id !== mine?.id) {
-      // The loser reverts nothing — the winner's labels already stand — and moves
-      // on to a DIFFERENT item, read from live state on the next iteration. It
-      // does strike its own claim (F24): letting go covers losing too, and a
-      // claim left behind here outlives the winner's episode and becomes the
-      // earliest of the NEXT one, moving the livelock one episode along.
-      await strikeClaim(api, gh, repo, mine);
-      log(`- #${candidate.number}: another executor holds this episode's earliest claim — moving on`);
-      continue;
+  // --- claim: the verified lease --------------------------------------------
+  await api.swapLabel(gh, repo, candidate.number, READY, EXECUTING);
+  await api.comment(gh, repo, candidate.number, claimComment({
+    executor: executorId, runUrl, at: nowIso(),
+  }));
+  const comments = await api.listComments(gh, repo, candidate.number);
+  const winner = claimWinner(comments);
+  const mine = [...comments]
+    .sort((a, b) => a.id - b.id)
+    .filter((c) => (c.body ?? '').includes(CLAIM_MARKER) && (c.body ?? '').includes(`executor \`${executorId}\``))
+    .at(-1);
+  if (!winner || winner.id !== mine?.id) {
+    // The loser reverts nothing — the winner's labels already stand. It does
+    // strike its own claim (F24): letting go covers losing too, and a claim left
+    // behind here outlives the winner's episode and becomes the earliest of the
+    // NEXT one, moving the livelock one episode along.
+    await strikeClaim(api, gh, repo, mine);
+    log(`- #${candidate.number}: another executor holds this episode's earliest claim — this run stands down`);
+    return done;
+  }
+
+  // --- post-claim re-verify (F15) -------------------------------------------
+  const others = await withClaimIds(api, gh, repo, await listOpenWorkItems(gh, repo), candidate.number);
+  if (conflictsWithEarlierClaim(candidate, winner.id, others, { taskAfter, frequencyOf })) {
+    await api.comment(gh, repo, candidate.number,
+      `${EPISODE_MARKER}\nReverting this claim: a conflicting item holds an earlier claim this cycle. Returning the item to the queue.`);
+    await api.swapLabel(gh, repo, candidate.number, EXECUTING, READY);
+    log(`- #${candidate.number}: reverted — a conflicting item claimed earlier`);
+    return done;
+  }
+
+  const outcome = await executeItem({
+    api, gh, repo, root, config, schedule, byId, item: candidate, executorId,
+    claim: winner, now, collectSignalsFor, runTaskCodeWork, invokeAgent, log,
+  });
+  done.push({ issue: candidate.number, outcome });
+
+  // --- the chain: hand the remainder to a fresh run -------------------------
+  // Read live, after the settle: this item's convergence may have readied a
+  // dependent, and another executor may have taken what was pickable when this
+  // run started.
+  if (redispatch) {
+    const left = pickOrder(await listOpenWorkItems(gh, repo), { taskAfter, frequencyOf, random });
+    if (left.length) {
+      const res = await redispatch();
+      log(res?.ok
+        ? `- ${left.length} item(s) still pickable — dispatched a fresh executor run`
+        : `! ${left.length} item(s) still pickable but the re-dispatch failed (${res?.status ?? 'no status'}) — the tick's drain is the backstop`);
     }
-
-    // --- post-claim re-verify (F15) -----------------------------------------
-    const others = await withClaimIds(api, gh, repo, await listOpenWorkItems(gh, repo), candidate.number);
-    if (conflictsWithEarlierClaim(candidate, winner.id, others, { taskAfter, frequencyOf })) {
-      await api.comment(gh, repo, candidate.number,
-        `${EPISODE_MARKER}\nReverting this claim: a conflicting item holds an earlier claim this cycle. Returning the item to the queue.`);
-      await api.swapLabel(gh, repo, candidate.number, EXECUTING, READY);
-      log(`- #${candidate.number}: reverted — a conflicting item claimed earlier`);
-      continue;
-    }
-
-    const outcome = await executeItem({
-      api, gh, repo, root, config, schedule, byId, item: candidate, executorId,
-      claim: winner, now, collectSignalsFor, runTaskCodeWork, invokeAgent, log,
-    });
-    done.push({ issue: candidate.number, outcome });
   }
   return done;
 }
@@ -464,10 +491,10 @@ async function close(api, gh, repo, number, from, outcome, stateReason, body) {
 // --- CLI ----------------------------------------------------------------------
 
 async function main() {
-  const { makeGh, actionRepoContext } = await import('../signals/gh.mjs');
+  const { makeGh, actionRepoContext, EXECUTOR_WORKFLOW_FILE } = await import('../signals/gh.mjs');
   const { discoverTasks } = await import('../discover.mjs');
   const { loadConfig, isDormant } = await import('../../checks/helpers/repo-context.mjs');
-  const { ensureLabels } = await import('../github.mjs');
+  const { ensureLabels, dispatchWorkflow } = await import('../github.mjs');
   const { collectSignalsForTask } = await import('./signals.mjs');
   const { codeWorkRunner } = await import('./code-work-run.mjs');
   const { agentInvoker } = await import('./invoke.mjs');
@@ -496,10 +523,10 @@ async function main() {
     gh, repo, root, config, tasks,
     executorId: process.env.CLAUDINITE_EXECUTOR_ID || `actions-${process.env.GITHUB_RUN_ID ?? 'local'}`,
     runUrl,
-    maxItems: Number(process.env.CLAUDINITE_MAX_ITEMS) || DEFAULT_MAX_ITEMS,
     collectSignalsFor: collectSignalsForTask({ gh, repo, root, config, defaultBranch }),
     runTaskCodeWork: codeWorkRunner({ root, repo, defaultBranch }),
     invokeAgent: agentInvoker({ repo, config }),
+    redispatch: () => dispatchWorkflow(gh, repo, EXECUTOR_WORKFLOW_FILE, defaultBranch),
   });
 
   console.log(done.length
