@@ -64,7 +64,12 @@ lesson at the strongest mechanism available — a check where the rule is determ
   nothing measures (no estimated hours saved, no score). Report a **window against the previous
   window**. Where a field can't be had from the reads already being made, name it as absent in the
   surface's own note rather than approximating it: a stated gap is information, a guess is not
-  (owner, #1001).
+  (owner, #1001). Before windowing a count, check whether it is built from an event log or from a
+  point-in-time **stamp**: windowing a stamp-derived figure (e.g. "members that converged last
+  week", counted from each member's single last-converge date) can read a steady, healthy
+  population as declining purely from where stamps land relative to the window boundary — reserve
+  the window-over-window shape for counts genuinely built from things that happened inside the
+  window (#1008).
 
 ## Working with the owner and the session's tools
 
@@ -106,6 +111,21 @@ lesson at the strongest mechanism available — a check where the rule is determ
   that first reply, including the one you intend to push back on. A claim left silently
   unaddressed, even when the rest of the reply is right, just makes the owner re-raise it later
   (#864: a placement objection went unanswered for 55 minutes before the owner repeated it).
+
+- **Repeating a design doc's stated architectural rationale** — verify each of its claimed
+  grounds against the current code (declared secrets, executor permissions) before reciting it
+  again, especially once a direct challenge has already found it wrong once. The same overstated
+  "a task structurally cannot hold this permission" argument was corrected twice in one session —
+  once for a GitHub Pages deploy, again minutes later for a chrome-extension release — because
+  code-work already runs inside the executor's own Action job with the permissions in question
+  (#1069).
+
+- **An owner reversing a standing decision** — the fix is not answering the question that
+  prompted it, it is finding and purging every place in the repo (docs, comments, code defaults)
+  that still states the old decision, and recording the new one where a future session reads it
+  before ever asserting the stale version again. One reversal (turning local scheduling on,
+  moving `canon-curation`) had to be repeated five times before a session treated it as a
+  durable-artifact problem rather than a one-off answer (#364).
 
 ## Authoring packs, prose and checks
 
@@ -160,6 +180,23 @@ lesson at the strongest mechanism available — a check where the rule is determ
   fires at the Stop hook, where a false positive spends a whole cycle on something no edit can
   clear — so its fixture carries an interruption marker beside a real owner turn.
 
+- **A doc reached only by following a link out of `RULES.md` or a check's `doc:`/`More:` line** —
+  if it is a how-to wanted at authoring time rather than prose every session should carry, convert
+  it into a skill (frontmatter + description) invocable by description, not a doc chained through
+  links nobody follows cold (#975).
+
+- **A check declaration's `doc:` field** — nothing ever opens it; it only renders into a finding's
+  `More:` line when the check actually fires. A stale pointer left by a file move can sit broken
+  indefinitely with nothing to catch it — grep for and re-verify every `doc:` field by hand
+  whenever you move or rename the file it points at (#975).
+
+- **A check built to catch a thing being missing or misnamed** — don't gate the check's own
+  relevance on the single signal it exists to validate. Gating solely on "does the orchestrating
+  file still have the expected name" makes the exact failure the check exists to catch (a rename)
+  also the thing that silences the check — the run that should say "rename it back" never fires.
+  Use two independent signals, either sufficient, so at least one survives when the other is the
+  thing that broke (#1060).
+
 ## The engine, the mount and what reaches members
 
 - **Writing a path, regex or command against the mount** — write the two-root form: the
@@ -179,6 +216,19 @@ lesson at the strongest mechanism available — a check where the rule is determ
   paths, not schemas — so if the answer is "nothing", accept the legacy shape in
   `normalizeManifest` until a carrier exists. Never let a stale declaration degrade to *fewer
   checks running* rather than a failure.
+
+- **Renaming a pack whose config a member writes into their own repo** — the rename map fixes
+  code-side id resolution, but it cannot rewrite a member's own already-committed config, which
+  converges on its own separate schedule or never. A reader consuming that config keeps resolving
+  both the new key and every legacy spelling explicitly and permanently: rewriting the write side
+  to the new name (the fix for the fleet's own persisted data) only helps where the engine itself
+  owns the write, not data a member wrote into their own repo (#1081).
+
+- **Checking whether an actor may trigger a privileged automated action off a GitHub issue/PR
+  payload** — read the actor's permission from the collaborators-permission API
+  (`GET /repos/{o}/{r}/collaborators/{u}/permission`), never the payload's `author_association`:
+  `MEMBER` covers any org member regardless of repo permission, and `COLLABORATOR` includes
+  read-only collaborators — both broader than push access (#1067).
 
 - **Extending what a copied stub reads** — make the new config key optional, fail the run when
   it is declared-but-unset, and let declaring it trigger a staleness check (`build_vars` /
@@ -232,11 +282,37 @@ lesson at the strongest mechanism available — a check where the rule is determ
   `ok`. Judge the fleet by members' stamps, never by run conclusions — the stamp is the only
   artifact that moves when delivery actually worked.
 
+- **A single timeout bound covering two different waits** ("has this even started" vs. "is
+  something already running about to finish") reintroduces the bug a prior fix closed, on
+  whichever side crosses the shorter phase's real need. Split the bound to match what each phase
+  is actually waiting on, sized from that work's own declared budget rather than a round number —
+  and once a bound is hit, the give-up message must never read as a verdict on the work: "no
+  successful run yet" is a statement about the clock, not about the runs, and collapsing the two
+  sent a reader chasing a wrong repository-settings diagnosis for CI that was simply still running
+  (#1027).
+
 - **Writing generated content into a size-capped GitHub API field** (an issue or PR body) —
   budget it explicitly, in two tiers: an always-complete compact summary plus best-effort detail
   rationed to a byte budget with an explicit omitted-count, never a single unbounded write that
   can 422 outright at the ~64KB cap. `growth-dedup`'s brief rendered 350KB against that limit and
   would have failed the run at its first step.
+
+- **Writing a generated title whose naive content scales with a variable-length list** (a PR
+  title, a notification headline) — collapse the list to a count and keep the per-item detail in
+  the body. A title is a summary surface, not a second body, and grows unreadable exactly where a
+  long list makes every character compete for space (#1048).
+
+- **Preflighting a required grant or permission** — a probe is only as good as the environment it
+  runs against; where the failure is conditional (a scope that 403s only under a specific
+  condition, e.g. a private repo), a probe run where that condition isn't met reports a
+  false-positive pass. Prefer attributing a real observed 403 to the permission that would fix it
+  over guessing from an unrepresentative probe (#1052).
+
+- **Introducing a finer-grained classification of an existing catch-all state** — default
+  whatever an older or unaware writer produces (or a future writer's not-yet-known category) to
+  the most conservative member of the new set, not the most lenient. An unlabelled park now reads
+  as the blocking `failure` lane rather than a soft one, so a writer that predates the split fails
+  safe instead of silently landing in a lane nobody watches (#1051).
 
 - **Adding a fleet task** — fail loudly on a Context target it cannot reach rather than
   proceeding on a partial list, and treat a member as un-adopted until the routine's repo scope
@@ -316,6 +392,17 @@ lesson at the strongest mechanism available — a check where the rule is determ
   one of them. `outcome:done` means nothing is left for anyone to act on; never close it while a
   PR, branch, or open question from this run is still live.
 
+- **Decomposing a pipeline into chained tasks** — chain stages by preconditions that each
+  re-derive the world's actual state, never by parameters or Context passed forward. A run
+  interrupted mid-pipeline then self-heals on the next pick instead of needing `on_interrupt`
+  handling at every stage, and `on_interrupt: 'needs-human'` narrows to the one stage whose side
+  effect is genuinely non-idempotent (#1073).
+
+- **Passing a diagnostic verdict out of a subprocess that may be killed at its own timeout
+  ceiling** — write it to the live output stream (stdout/stderr), never to a file meant to be
+  written at exit: already-printed output survives a `SIGKILL`, a file written on the way out is
+  never written at all if the kill lands first (#1051).
+
 ## Proving a change
 
 - **Testing a change to a task's triggering** — drive the real `planTick` from a clock at which
@@ -344,6 +431,16 @@ lesson at the strongest mechanism available — a check where the rule is determ
   advances state on every transition matching the rule's description, rather than only where the
   real engine leaves a mark, is correct by construction and blind to exactly the silent paths
   where the two diverge — which is where the bug lived (an episode-boundary livelock, #925).
+
+- **Asserting a mid-run invariant in a simulator or test** — capture it at the exact moment the
+  state holds, not after the run continues past it. A check re-queued before an item had ever left
+  a state asserted over an item that never actually failed; by the end of the run normal
+  convergence had already cleared the evidence the assertion meant to catch (#1054).
+
+- **A test that derives its answer by walking git history** (which imports are still fielded, from
+  trunk) — guard explicitly against a shallow clone and fail loudly rather than silently evaluate
+  over whatever partial history happens to be present. A shallow checkout would otherwise let the
+  test pass vacuously exactly when the real answer needs history it doesn't have (#1013).
 
 - **Restoring source after a deliberate see-it-fail mutation** — `git checkout -- <file>` (or
   `git stash`) at the moment of mutating, never a `.bak` copy taken earlier: a `.bak` predates
@@ -403,7 +500,12 @@ lesson at the strongest mechanism available — a check where the rule is determ
 
 - **Editing a repo's JSON config** — patch it as anchored text; never re-serialize. A
   round-trip rewrites what it wasn't asked to (`ensure_ascii` escapes, indent, key order, trailing
-  newline) while nothing fails and tests stay green. (portable → `repo-text-sweeps`)
+  newline) while nothing fails and tests stay green. (portable → `repo-text-sweeps`) **Exception:**
+  when the target can sit inside a nested array within an entry object (e.g. a pack's own
+  `via`/`config` array nested inside its `{"id": …}` entry), an anchored regex cannot cross the
+  nested closing bracket, so every element after it goes silently unreached — and a fixture built
+  without that nesting proves nothing, since it spells the same gap the pattern has. Parse and
+  rewrite structurally there instead, preserving key order/config/`via`/answers by hand (#1042).
 
 - **Returning to a branch that waited** — after `git fetch`, re-verify the *premise*, unasked:
   read what the new commits did to the surface you are changing and say whether the problem is
