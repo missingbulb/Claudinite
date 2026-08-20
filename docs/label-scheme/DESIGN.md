@@ -102,8 +102,8 @@ Planned (standing) items keep their own issues and the `[claudinite-work]` title
   `task:status:needs-human-approval`, so the wiki-growth precondition declines
   while an open item of its own task wears that status, instead of hunting a
   labeled PR.
-- **`fleet-adoption` / `fleet-drift`** — out of scope pending an owner decision
-  (see #1119). They are not queue state: the daily fleet-roster task's private
+- **`fleet-adoption` / `fleet-drift`** — stay as they are (owner decision,
+  2026-08-20). They are not queue state: the daily fleet-roster task's private
   convergence keys for its human-inbox issues in the enforcer repo.
 
 ## Compatibility
