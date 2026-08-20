@@ -83,8 +83,8 @@ test('the seeded workflow follows the scheduler, by a name the engine actually s
   const named = /workflow_run:\s*\n\s*workflows:\s*\['([^']+)'\]/.exec(yml);
   assert.ok(named, 'the stub must follow the scheduler rather than declare a cron of its own');
 
-  const tick = await readFile(resolve(ROOT, 'engine/scheduler/stubs/claudinite-tick.yml'), 'utf8');
-  assert.match(tick, new RegExp(`^name:\\s*${named[1]}\\s*$`, 'm'),
+  const schedulerRun = await readFile(resolve(ROOT, 'engine/scheduler/stubs/claudinite-scheduler.yml'), 'utf8');
+  assert.match(schedulerRun, new RegExp(`^name:\\s*${named[1]}\\s*$`, 'm'),
     `the stub follows "${named[1]}", which no engine stub declares`);
 });
 

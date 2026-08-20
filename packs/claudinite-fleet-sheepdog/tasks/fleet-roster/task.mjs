@@ -21,7 +21,7 @@
 // measured in DAYS and a daily re-ask could not change its answer. Merged, that
 // argument buys nothing: the walk runs daily for the coverage question regardless, and
 // the alternative — half the task gated on a weekly cadence it computed itself — would
-// reimplement dueness, which the engine owns (the tick instantiates a task's item
+// reimplement dueness, which the engine owns (the scheduler run instantiates a task's item
 // when its anchor comes) and which is not a thing a task can ask about from inside
 // itself. So the freshness probe now runs daily too: roughly two extra REST
 // reads per covered member on the six days that used to be coverage-only. The merge is

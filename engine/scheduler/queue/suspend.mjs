@@ -15,9 +15,9 @@
 // the leash exists to recover — so an in-flight run may close an item after the
 // hold goes on. Nothing NEW is ever picked.
 //
-// Resume needs no code: clear the variable and the next tick reclaims, readies and
+// Resume needs no code: clear the variable and the next scheduler run reclaims, readies and
 // drains on its own. The impatient path is dispatching the SCHEDULER workflow, not
-// the bare executor — the tick is what re-derives the world.
+// the bare executor — the scheduler run is what re-derives the world.
 
 export const SUSPEND_ALL_VAR = 'CLAUDINITE_TASKS_SUSPEND_ALL';
 
@@ -32,4 +32,4 @@ export const isSuspended = (env = process.env) =>
 export const suspendedNotice = () =>
   `- ${SUSPEND_ALL_VAR} is set: the queue is held. Nothing is picked up, created, readied or reclaimed.\n`
   + '  Clear the variable in repo settings (Settings → Secrets and variables → Actions → Variables) to resume;'
-  + ' the next scheduled tick recovers everything on its own.';
+  + ' the next scheduled scheduler run recovers everything on its own.';

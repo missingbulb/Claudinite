@@ -302,7 +302,7 @@ function memberRow(s, onOpen, now) {
   // --- Claudinite: what the machinery is doing here -------------------------------
 
   // How much Claudinite is declared here, wearing whether it is current. Two facts
-  // read together, and the second is a tick on nearly every row — so it earns a
+  // read together, and the second is a scheduler run on nearly every row — so it earns a
   // corner of the first rather than a column beside it, with the versions on hover.
   const packs = el('td', { className: 'nw' }, [packMark(s.packs.length, s.mount)]);
 

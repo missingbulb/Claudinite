@@ -134,12 +134,12 @@ export function stagedFiles(targetRoot) {
 // clone: the engine flow refreshed it earlier in the same cycle, and reading the
 // member's copy is what makes this agree with `converge-wiring.mjs`'s own CLI —
 // the thing a human runs by hand, and the thing bootstrap runs at adoption.
-// The tick and its drain sit at the path the slot scheduler used to hold
+// The scheduler run and its drain sit at the path the slot scheduler used to hold
 // (tasks-dispatch DESIGN §14), so this lane needs to know only one stub. The
 // argument is kept because every caller has the member's config in hand and the
 // signature is what fielded callers pass.
 const STUB_DIR = '.claudinite/shared/engine/scheduler/stubs/';
-export const stubFor = () => `${STUB_DIR}claudinite-tick.yml`;
+export const stubFor = () => `${STUB_DIR}claudinite-scheduler.yml`;
 
 // The scheduler workflow this member should be carrying, as `{ pending, error }`.
 // `pending` is null when the file is already converged; `error` is set when the
@@ -179,10 +179,10 @@ export async function pendingSchedulerWorkflow(targetRoot, fullName, read) {
 // fixed path, the other is the event-driven drain beside it — but every member owes
 // both, so a null answer here means already-converged, never not-applicable.
 //
-// It has to converge in the SAME cycle as the tick, which is the whole reason this
-// lane exists. The tick and the executor are one mechanism split across two files:
-// the tick creates and readies work items and nothing else, so a member that received
-// the tick without the executor has a generator with no worker — a queue that fills
+// It has to converge in the SAME cycle as the scheduler run, which is the whole reason this
+// lane exists. The scheduler run and the executor are one mechanism split across two files:
+// the scheduler run creates and readies work items and nothing else, so a member that received
+// the scheduler run without the executor has a generator with no worker — a queue that fills
 // every hour and is never drained, looking exactly like a repo whose tasks all
 // declined. Delivering the pair together is what keeps that state unreachable.
 export const EXECUTOR_STUB = `${STUB_DIR}claudinite-executor.yml`;

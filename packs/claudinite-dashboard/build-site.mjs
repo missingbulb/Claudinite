@@ -2,7 +2,7 @@
 //
 // Lives in the pack rather than in the member, and is read out of `.claudinite/shared/`
 // by the seeded workflow — the same shape as the scheduler stub reading the engine's
-// tick. So the assembly logic keeps converging with the canon while only the workflow,
+// scheduler run. So the assembly logic keeps converging with the canon while only the workflow,
 // the file that cannot converge, is frozen at adoption.
 //
 // Run from the member's root:

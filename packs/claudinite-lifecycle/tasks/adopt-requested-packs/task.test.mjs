@@ -88,7 +88,7 @@ test('adopt-requested-packs: the brief forbids merging, cross-repo reach, and th
   assert.match(briefSrc, /Never merge/);
   assert.match(briefSrc, /Never touch another repo/);
   // The work list is an ordinary issue. A `task:` label on it would be read as
-  // queue state by the tick and the executor, which is not what anyone applying it
+  // queue state by the scheduler run and the executor, which is not what anyone applying it
   // meant.
   assert.match(briefSrc, /Never apply a `task:` label/);
   assert.doesNotMatch(briefSrc, /ready-for-agent/, 'the slot dispatch labels are gone');

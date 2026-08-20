@@ -141,7 +141,7 @@ test('an approval park hands its request issue to the reviewer', async () => {
 
 // A failure writes NOTHING to the request and leaves `claude-queued` standing:
 // re-arming work that writes code is a person's decision, and that standing label
-// is what stops the next tick queueing a second run of the same request.
+// is what stops the next scheduler run queueing a second run of the same request.
 test('a failure park leaves the request armed and says nothing to it', async () => {
   const repo = fakeRepo([
     item({ body: 'packs/p/tasks/a/task.md\n\nRequest: #42\n' }),
@@ -185,7 +185,7 @@ test('a park releases nothing', async () => {
   assert.deepEqual(repo.find(8).labels, ['task:blocked']);
 });
 
-// --- the predicate, shared with the tick ---------------------------------------
+// --- the predicate, shared with the scheduler run ---------------------------------------
 
 test('the readiness predicate holds an item its Not-before still covers', () => {
   const soon = blocked(8, [7], { body: 'packs/p/tasks/b/task.md\n\nNot-before: 2026-08-20T12:00:00Z\n' });
@@ -196,7 +196,7 @@ test('the readiness predicate holds an item its Not-before still covers', () => 
 
 test('an unreadable blocker delays rather than releases', () => {
   // stateOf answers null for a number nothing could resolve — convergence, not
-  // prevention: the item waits for the tick rather than running on a guess.
+  // prevention: the item waits for the scheduler run rather than running on a guess.
   assert.equal(isReleasable(blocked(8, [7]), { stateOf: () => null }), false);
 });
 

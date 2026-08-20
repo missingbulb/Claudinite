@@ -176,7 +176,7 @@ test('regression (fleet executor-broken): the REAL canon tree vendors the operat
     'the live queue instructions.md must be in the vendor set — the routine\'s stored prompt points a queue session at it in the mount');
 });
 
-// The queue engine is runtime-only: every file under it is read by a tick, an
+// The queue engine is runtime-only: every file under it is read by a scheduler run, an
 // executor or the agent session those hand off to, and none of it is
 // maintainer reference. So the blanket engine-.md drop must never take anything
 // here, whatever a future file is called.

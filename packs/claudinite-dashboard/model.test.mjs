@@ -213,15 +213,15 @@ test('an item waiting out a future Not-before is healthy, however long it has sa
   assert.equal(warningsFor(rolled, NOW).length, 0);
 });
 
-// Once the wake has passed, the next tick readies the item within the hour; sitting
-// long past it means the tick is not running — the fault the old "blocked too long"
+// Once the wake has passed, the next scheduler run readies the item within the hour; sitting
+// long past it means the scheduler run is not running — the fault the old "blocked too long"
 // warning could never distinguish from a quiet week.
-test('an item due past the tick slack is flagged as the tick\'s fault', () => {
+test('an item due past the scheduler run slack is flagged as the scheduler run\'s fault', () => {
   const at = (msAgo) => item({ labels: [BLOCKED], body: `p/t\n\nNot-before: ${new Date(NOW - msAgo).toISOString()}\n` });
   const [w] = warningsFor(at(DUE_SLACK_MS + 60e3), NOW);
   assert.equal(w.level, 'serious');
   assert.match(w.text, /due but not readied/);
-  assert.equal(warningsFor(at(DUE_SLACK_MS - 60e3), NOW).length, 0, 'inside the slack is the tick\'s normal latency');
+  assert.equal(warningsFor(at(DUE_SLACK_MS - 60e3), NOW).length, 0, 'inside the slack is the scheduler run\'s normal latency');
 });
 
 test('unresolved dependencies warn past the janitor threshold; unknown ones are never alarmed on', () => {

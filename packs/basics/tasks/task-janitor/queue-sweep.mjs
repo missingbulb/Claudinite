@@ -2,9 +2,9 @@
 // half of this task that runs where `taskScheduler.dispatch` is `"queue"`.
 //
 // It shrinks twice over against the slot-mechanism sweep beside it. The re-arm and
-// its grace window are GONE: an executor polls on the tick's cron, so a lost label
+// its grace window are GONE: an executor polls on the scheduler run's cron, so a lost label
 // event is latency and never the only delivery. And the executing-leash reclaim
-// moved to the TICK — a deterministic label rule, serialized and hourly, which
+// moved to the SCHEDULER RUN — a deterministic label rule, serialized and hourly, which
 // recovers a dead executor's item in ~2h instead of ~25h.
 //
 // What is left is everything needing judgment or a longer horizon: the dead agent

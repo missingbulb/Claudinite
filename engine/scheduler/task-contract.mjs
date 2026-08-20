@@ -133,7 +133,7 @@ export function validateTaskDeclaration(raw) {
   /**
    * model_from_request — OPTIONAL, and reserved to the engine's own built-in task.
    * A task that declares it runs at the model the ITEM names (`Model:`, written by
-   * the tick from a write-gated label), falling back to `agent_model` when the item
+   * the scheduler run from a write-gated label), falling back to `agent_model` when the item
    * names none. It is the only field that lets anything on an item define behaviour,
    * so it is fenced rather than waved through (DESIGN §16.7): the shape check accepts
    * only `true`, and discovery gives pack tasks no way to be the built-in one.

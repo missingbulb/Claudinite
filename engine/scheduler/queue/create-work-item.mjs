@@ -18,10 +18,10 @@
 // FORCING AD-HOC WORK IS CREATING AN ITEM — a parameterized run, a `manual` task,
 // a fan-out target. Ad-hoc is STRUCTURAL (DESIGN §15.26): a `manual` task has no
 // anchor to stand for, and a qualified title is a different title from the standing
-// one — so such an item is invisible to the tick's guards in both directions,
+// one — so such an item is invisible to the scheduler run's guards in both directions,
 // neither suppressing tomorrow's occurrence nor consuming it. Which is why an
 // UNQUALIFIED item for a scheduled task is refused below: it would BE that task's
-// standing item, and the tick's dedupe would close one of the two.
+// standing item, and the scheduler run's dedupe would close one of the two.
 
 import { pathToFileURL } from 'node:url';
 import {
@@ -78,11 +78,11 @@ export async function createWorkItem(gh, repo, { pack, task, taskPath, frequency
   const title = workItemTitle({ pack, task, qualifier: opts.qualifier });
 
   // An unqualified item for a SCHEDULED task is that task's standing item by
-  // construction, not a run beside it — the tick would treat the pair as duplicate
+  // construction, not a run beside it — the scheduler run would treat the pair as duplicate
   // standing items and close the younger. The two levers that do what the operator
   // meant are named rather than guessed at.
   if (frequency !== null && frequency !== 'manual' && !opts.qualifier) {
-    return { ok: false, error: `${pack}/${task} runs on a \`${frequency}\` schedule, so an unqualified item for it IS its standing item — the tick would close one of the two as a duplicate. To run it now, wake its standing item (\`--wake #N\`, or the scheduler workflow's \`wake\` input); to run it beside the schedule, give this item a \`--qualifier\` naming what makes it a different run.` };
+    return { ok: false, error: `${pack}/${task} runs on a \`${frequency}\` schedule, so an unqualified item for it IS its standing item — the scheduler run would close one of the two as a duplicate. To run it now, wake its standing item (\`--wake #N\`, or the scheduler workflow's \`wake\` input); to run it beside the schedule, give this item a \`--qualifier\` naming what makes it a different run.` };
   }
 
   // The pick-time mutex means a new item QUEUES behind an open twin rather than

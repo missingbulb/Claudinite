@@ -204,7 +204,7 @@ export const SCHEDULER = 'claudinite-scheduler.yml';
 // Fire one member's scheduler at ONE task id. Under the work-item queue, forcing a
 // scheduled task is WAKING ITS STANDING ITEM (tasks-dispatch DESIGN §8) — an issue
 // edit, not an override bag — and the `wake` input is how this repo asks for that
-// without touching the member's issues itself: the member's own tick does the wake,
+// without touching the member's issues itself: the member's own scheduler run does the wake,
 // with the member's own token, and the drain that follows runs it. Keeping the write
 // on the member's side is what holds this pack's fleet PAT at Actions write; the
 // enforcer editing issues across the fleet would need issue write on every repository.

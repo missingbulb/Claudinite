@@ -6,7 +6,7 @@
 // LABEL WRITES ARE GRANULAR, ALWAYS (tasks-dispatch DESIGN §4, RESEARCH §2): add
 // and remove NAMED labels (POST/DELETE), never write the label SET (PUT). A
 // set-write replaces from a stale snapshot and clobbers concurrent transitions —
-// a bug class GitHub's own CLI shipped (cli/cli#4861) — and with a tick and
+// a bug class GitHub's own CLI shipped (cli/cli#4861) — and with a scheduler run and
 // several executors all moving labels at once, that is a correctness rule rather
 // than a style preference.
 

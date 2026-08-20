@@ -40,7 +40,7 @@ export default {
   // knob.
   agent_execution_timeout: 3600,
 
-  // Never due on its own — `manual` means the tick never instantiates this task,
+  // Never due on its own — `manual` means the scheduler run never instantiates this task,
   // so an item exists ONLY because the fleet enforcer (or a human) created one,
   // and that IS the request. Hence run: true. The queue evaluates this verdict at
   // pick (tasks-dispatch DESIGN §6.4), unlike the slot mechanism where a forced

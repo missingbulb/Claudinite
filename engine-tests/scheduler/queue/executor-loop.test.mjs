@@ -157,7 +157,7 @@ test('an unconfigured declared secret parks at action', async () => {
 });
 
 // The model's whole trick: a no-go does not close the item, it ROLLS it, so the
-// item itself carries "asked, declined, wakes at T" and the tick needs no ledger.
+// item itself carries "asked, declined, wakes at T" and the scheduler run needs no ledger.
 test('a no-go verdict rolls a scheduled item to its next anchor, blocked', async () => {
   const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
   const done = await drive(repo, [task('a', { precondition: () => ({ run: false, reason: 'no work' }) })]);
@@ -359,7 +359,7 @@ test('a run that lost the claim race dispatches nothing', async () => {
 
 // The dispatch is a WRITE, and a token without `actions: write` 403s it while
 // returning a plausible body. The run says so rather than logging a chain that
-// never started — the tick's drain is what recovers the remainder.
+// never started — the scheduler run's drain is what recovers the remainder.
 test('a failed re-dispatch is reported, not swallowed', async () => {
   const repo = fakeRepo([workItem(1, 'a', ['task:ready']), workItem(2, 'b', ['task:ready'])]);
   const lines = [];
@@ -385,7 +385,7 @@ test('a second executor wins immediately on a ROLLED item — the first strike k
   await drive(repo, [declines]);                                   // E1 claims, rolls, strikes
   assert.deepEqual(repo.find(1).labels.filter((l) => l.startsWith('task:')), ['task:blocked']);
 
-  // The tick readies it at the next anchor; a DIFFERENT executor picks it up.
+  // The scheduler run readies it at the next anchor; a DIFFERENT executor picks it up.
   repo.find(1).labels = ['task:ready'];
   const done = await drive(repo, [declines], { executorId: 'E2' });
 

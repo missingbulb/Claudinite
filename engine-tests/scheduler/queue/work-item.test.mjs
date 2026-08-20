@@ -101,7 +101,7 @@ test('a section is replaced in place, so a body round-tripped twice has one of e
   // #879, found on the queue's first live hand-off: every standing item is born with
   // a `### Context`, the hand-off writes Context again, and an append left TWO — with
   // the session told to read "the Context section", singular. The section it reads
-  // first was the tick's birth note; the binding scope was in the other one.
+  // first was the scheduler run's birth note; the binding scope was in the other one.
   const born = workItemBody({
     taskPath: 'packs/p/tasks/t/task.md',
     context: ['born blocked until its first anchor'],

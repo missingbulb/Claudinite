@@ -282,7 +282,7 @@ function describeReadError(error) {
 // repo whose tests are red is not a healthy member.
 //
 // The default branch's most recent completed run is the answer; a `schedule` run is
-// excluded because that is the queue's own tick, reported separately.
+// excluded because that is the queue's own scheduler run, reported separately.
 export function ciStatus(runs, defaultBranch) {
   const mine = (runs ?? []).filter((r) => r.event !== 'schedule'
     && (!defaultBranch || !r.head_branch || r.head_branch === defaultBranch));

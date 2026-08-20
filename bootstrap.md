@@ -164,14 +164,14 @@ adoption:
    — edit it, move it, or delete it, and nothing will argue. A README belongs to its repo,
    and a nightly-derived row would put a README diff in the update commit every time
    the declaration moved.
-3. **Labels need no step** — the tick and the executor ensure the queue's labels
+3. **Labels need no step** — the scheduler run and the executor ensure the queue's labels
    (`task:blocked`, `task:ready`, `task:urgent`, `task:executing`, `task:agent`,
    `needs-human`, `task:done`, `task:obsolete`) exist before applying any
    of them (create-if-missing, idempotent), so they materialize on the first run and
    self-heal if deleted. No one-off creation, nothing to forget.
 4. **Write the `taskScheduler` key** into `.claudinite-checks.json` (defaults:
    `{ "dailyHour": 4, "weeklyDay": "Sun", "monthlyDay": 1 }`, all UTC) — the repo's
-   own anchors, from which the tick decides when each task's item comes due.
+   own anchors, from which the scheduler run decides when each task's item comes due.
 5. **Create the executor routine and wire it as an invocation endpoint.** The
    executor starts an agent session with an **API call**, not a label event, so this
    is two halves that only work together — and a repo with one half has a queue that

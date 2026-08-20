@@ -1,12 +1,12 @@
 // The ad-hoc request mode (tasks-dispatch DESIGN §16), against the real modules.
 // The simulator plays S44–S51 over a model of the design; these assert the same
-// properties of the code that ships — adoption's label mechanics in `planTick`, the
+// properties of the code that ships — adoption's label mechanics in `planSchedulerRun`, the
 // read in the `request` collector, the verdict in the built-in task's precondition,
 // and the two write-backs in the executor.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { planTick } from '../../../engine/scheduler/queue/tick.mjs';
+import { planSchedulerRun } from '../../../engine/scheduler/queue/scheduler-run.mjs';
 import { runExecutor } from '../../../engine/scheduler/queue/executor.mjs';
 import { collectSignals } from '../../../engine/scheduler/signals/index.mjs';
 import requestTask, { eligibility } from '../../../engine/scheduler/queue/tasks/implement-request/task.mjs';
@@ -32,7 +32,7 @@ const requestItem = (request, labels, over = {}) => ({
   state: 'open', labels, created_at: NOW, updated_at: NOW, closed_at: null, ...over,
 });
 
-const ops = (over = {}) => planTick({
+const ops = (over = {}) => planSchedulerRun({
   tasks: [REQUEST_TASK], items: [], requests: [], now: NOW, schedule: SCHEDULE, ...over,
 }).ops;
 
@@ -54,7 +54,7 @@ test('S44 — a marked issue becomes one item, and the consumed mark is the exac
   // sits outside every scheduled family (§3) rather than being anybody's occurrence.
   assert.equal(requestTask.frequency, 'manual');
 
-  // The tick after the mark was consumed adopts nothing: the issue now carries only
+  // The scheduler run after the mark was consumed adopts nothing: the issue now carries only
   // the queued label, and no state anywhere says "this was already done".
   const later = ops({
     requests: [marked(500, ['claude-queued'])],
@@ -64,7 +64,7 @@ test('S44 — a marked issue becomes one item, and the consumed mark is the exac
 });
 
 test('a repo whose engine has no request task adopts nothing — the marks simply wait', () => {
-  const adopts = planTick({ tasks: [], items: [], requests: [marked(500)], now: NOW, schedule: SCHEDULE })
+  const adopts = planSchedulerRun({ tasks: [], items: [], requests: [marked(500)], now: NOW, schedule: SCHEDULE })
     .ops.filter((o) => o.kind === 'adopt');
   assert.deepEqual(adopts, []);
 });
@@ -103,7 +103,7 @@ test('S49 — a re-ask supersedes a PARKED prior run rather than queueing beside
   const [supersede] = plan.filter((o) => o.kind === 'supersede');
   assert.equal(supersede.issue, parked.number);
   assert.match(supersede.reason, /#500 was marked again/);
-  assert.equal(plan.filter((o) => o.kind === 'adopt').length, 1, 'and the re-ask is adopted in the same tick');
+  assert.equal(plan.filter((o) => o.kind === 'adopt').length, 1, 'and the re-ask is adopted in the same scheduler run');
 });
 
 test('an item for a DIFFERENT request never holds this one back', () => {
@@ -275,7 +275,7 @@ test('S45 — a declined request is disarmed on the issue in the same convergenc
   assert.deepEqual(done.map((d) => d.outcome), ['obsolete']);
   assert.equal(repo.find(1).state, 'closed');
   assert.ok(repo.find(1).labels.includes('task:obsolete'));
-  // The disarm is the point: without it every tick from here re-adopts and re-refuses.
+  // The disarm is the point: without it every scheduler run from here re-adopts and re-refuses.
   assert.deepEqual(repo.find(500).labels, []);
   assert.match(repo.find(500).comments.at(-1).body, /Not implementing this/);
 });

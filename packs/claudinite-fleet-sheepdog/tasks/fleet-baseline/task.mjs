@@ -2,7 +2,7 @@
 // member (or the ones named) to baseline NOW instead of at its next anchor.
 //
 // `frequency: 'manual'` — the first task on the non-cadence (#749). It answers no
-// recurring question, so the tick never instantiates it; the ONLY way it runs is a
+// recurring question, so the scheduler run never instantiates it; the ONLY way it runs is a
 // work item created by hand, optionally carrying its parameters as Context lines:
 //
 //   create-work-item claudinite-fleet-sheepdog/fleet-baseline
@@ -41,7 +41,7 @@ export default {
   code_work_timeout: 900,
   required_secrets: ['FLEET_GITHUB_TOKEN'], // the account-spanning PAT; fleet-token.mjs states the grant
 
-  // Never due on its own — `manual` means the tick never instantiates this task,
+  // Never due on its own — `manual` means the scheduler run never instantiates this task,
   // so an item exists ONLY because a human created one, and that IS the request.
   // Hence run: true. The queue evaluates this verdict at pick (tasks-dispatch
   // DESIGN §6.4), unlike the slot mechanism where a forced run bypassed it; a

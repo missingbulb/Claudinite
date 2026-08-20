@@ -42,12 +42,12 @@ test('every workflow stamps the hold, and every entry point reads it', () => {
   for (const wf of [
     '.github/workflows/claudinite-scheduler.yml',
     '.github/workflows/claudinite-executor.yml',
-    'engine/scheduler/stubs/claudinite-tick.yml',
+    'engine/scheduler/stubs/claudinite-scheduler.yml',
     'engine/scheduler/stubs/claudinite-executor.yml',
   ]) {
     assert.match(read(wf), new RegExp(`${SUSPEND_ALL_VAR}: \\$\\{\\{ vars\\.${SUSPEND_ALL_VAR} \\}\\}`), wf);
   }
-  for (const entry of ['engine/scheduler/queue/tick.mjs', 'engine/scheduler/queue/executor.mjs']) {
+  for (const entry of ['engine/scheduler/queue/scheduler-run.mjs', 'engine/scheduler/queue/executor.mjs']) {
     assert.match(read(entry), /isSuspended\(\)/, entry);
   }
 });
@@ -55,7 +55,7 @@ test('every workflow stamps the hold, and every entry point reads it', () => {
 // FIRST ACT means before the config load and before the first API call: a gate
 // that ran after them would read the world it is meant not to touch.
 test('the gate is the first thing either entry point does', () => {
-  for (const entry of ['engine/scheduler/queue/tick.mjs', 'engine/scheduler/queue/executor.mjs']) {
+  for (const entry of ['engine/scheduler/queue/scheduler-run.mjs', 'engine/scheduler/queue/executor.mjs']) {
     const main = read(entry).slice(read(entry).indexOf('async function main() {'));
     const gate = main.indexOf('isSuspended()');
     const firstRead = Math.min(
@@ -84,11 +84,11 @@ test('no executor run is capped at the leash any more', () => {
     'a cap at or under the leash is the retired F17 arithmetic, not a wedged-runner backstop');
 });
 
-// The drain must not sit in the tick's concurrency group (§15.16). It leaves by
+// The drain must not sit in the scheduler run's concurrency group (§15.16). It leaves by
 // dispatching the executor workflow rather than being one — which is also why it
 // needs no secrets and no work bound.
-test('the tick workflow starts the drain rather than running it', () => {
-  const tick = read('engine/scheduler/stubs/claudinite-tick.yml');
-  assert.match(tick, /createWorkflowDispatch/, 'the drain dispatches');
-  assert.doesNotMatch(tick, /queue\/executor\.mjs/, 'and never runs an executor inside the tick\'s group');
+test('the scheduler run workflow starts the drain rather than running it', () => {
+  const schedulerRun = read('engine/scheduler/stubs/claudinite-scheduler.yml');
+  assert.match(schedulerRun, /createWorkflowDispatch/, 'the drain dispatches');
+  assert.doesNotMatch(schedulerRun, /queue\/executor\.mjs/, 'and never runs an executor inside the scheduler run\'s group');
 });
