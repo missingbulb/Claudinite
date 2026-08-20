@@ -157,6 +157,10 @@ For every new task:
    `Fixes #123`, or `Closes #123`).
 3. Update the issue's status (comments / close) as work progresses and when it's done.
 
+- **Spotting a change that should wait until the work in flight lands** — file it as work that
+  comes back on its own rather than doing it now or trusting anyone to remember it: the
+  [do-later](skills/do-later/SKILL.md) skill, which queues it behind what it waits on.
+
 - **Handing over a step only a human can perform** (flipping a repository or console setting,
   granting a permission, adding a secret) — first confirm you genuinely can't do it yourself, then
   give it **its own issue**, never a note in the PR body, with a checkbox per step, what breaks

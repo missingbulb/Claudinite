@@ -1450,9 +1450,9 @@ person to merge it (§16.5).
 
 The engine ships **one** task, `engine/implement-request`, wherever the queue runs
 — `frequency: 'manual'` (the tick never puts it on a calendar; an item exists only
-because an issue was marked), `expected_outcome: 'open-pr'` (it opens a pull
-request for review and the executor enforces in code that it never merges), no
-`after`, and **no code-work phase at all**.
+because an issue was marked), `expected_outcome: 'merged-pr'` (a ceiling, not an
+instruction: it opens a pull request for review, and lands one only in the single
+authorized case §16.11 defines), no `after`, and **no code-work phase at all**.
 
 Shipping it as a task rather than as a special item shape is what keeps this from
 being a second mechanism: the item's first body line is a task path validated in
@@ -1679,6 +1679,58 @@ cannot reach `api.github.com`, so it is a question for the first real run — an
 failure mode is deliberately loud rather than silent: a permission read that answers
 anything but 200/404 is `unreadable`, which fails the run into the failure lane with
 the status on the item, and no request is approved or refused on a guess.
+
+### 16.11 A request that waits, and one that may land
+
+Two dimensions §16 left fixed: a request runs as soon as it is picked, and its run
+always ends at a person. Deferred work needs both to open — *not yet*, and *do not
+ask me about this one* — and both ride vocabulary that already exists rather than
+adding a mechanism beside the queue.
+
+**Waiting is `Blocked-by:`.** A marked issue may name what it waits on in the field
+a work item already uses. Adoption carries the still-open ones onto the item it
+births, which is then born `task:blocked`; job 2 releases it when they close, on
+any origin, exactly as it releases a fan-in. Chaining follows for free: an issue
+whose blocker is the previous deferral's issue is serialized behind it, so a chain
+is an emergent property of the field rather than a feature of its own.
+
+Two rules keep the gate one-directional. A blocker already closed at adoption is
+dropped rather than born and immediately readied — an item never waits on something
+that has happened. An unreadable blocker is never read as closed, so a failed read
+delays the request instead of releasing it, the convergence-not-prevention posture
+this design takes everywhere.
+
+**Landing is `claude-automerge` → `Merge: if-narrow`.** The authorization is a
+label, write-gated like the mark and consumed with it, so it describes the pending
+ask only and can never linger into a later one. Adoption copies it onto the item as
+a field, and the field — not the issue, not a comment on it — is what the worker
+reads: the request issue stays data (§16.6), and an actor who could edit an item's
+body to forge the field could equally have pushed the task file, the same trust
+argument the `Model:` field rests on (§16.7).
+
+The built-in task's ceiling therefore has to be `merged-pr`. A ceiling is a
+maximum, not an instruction: with no `Merge:` field the worker opens a pull request
+and parks at the approval lane, so an ordinary marked issue gets what §16 always
+gave it, and the authorized case is the only one that can land at all. The
+alternative — a second built-in task differing only in its ceiling — was rejected
+for the reason §16.7 rejected one task per model family: a copy of a task to avoid
+one guarded field is the worse trade.
+
+**The verdict is measured, not judged.** `tasks/implement-request/narrow-diff.mjs`
+classifies the run's own diff: documentation, test files and comment-only edits
+never count, and what remains must be code within a single directory. Anything
+wider parks and names the directories that made it wide. Deciding this in code
+rather than in the worker's prose is the point — a session judging whether its own
+change is small enough to merge is precisely the judgment that should not be the
+session's. Two consequences of that posture: comment stripping is C-family (it
+reuses the checks helper), so a file whose language the parser does not model
+counts as code, and the worker doc forbids re-shaping a change to fit the
+classifier — a wide change waiting for its asker is a correct outcome.
+
+**The session side is a skill**, `basics/do-later`: which blocker to name, the
+model family read off the running session, and the one case that withholds the
+authorization outright — an explicit ask to review this change outranks any
+measurement of how small it is.
 
 ## Appendix A — the owner's sketch (2026-08-12, verbatim)
 
