@@ -68,6 +68,15 @@
 //                 work rules scoped to those runs, so this is the shape that
 //                 answers whether an enrolled member's ORDINARY converge stays
 //                 green under them.
+//   old-workflows a member still holding the PREVIOUS shape of its two workflow
+//                 files. `.github/workflows/` is the one path a converge cannot
+//                 push — it is staged and lands as a PR somebody merges — so every
+//                 workflow change spends an unbounded window with members running
+//                 the old copy against the new engine. This shape is what says that
+//                 window is harmless rather than assumed to be: it carries the
+//                 pre-§15.16 tick (whose drain RAN an executor inside the tick's
+//                 concurrency group, with task secrets stamped into it) beside a
+//                 current mount.
 //   pre-rules-index
 //                 a member in the shape EVERY member has the night #807 reaches it:
 //                 a CLAUDE.md of its own, no rules index, no import, no merge
@@ -253,6 +262,58 @@ const CODE_WORK_WORKER = `const item = process.env.CLAUDINITE_ITEM || '';
 const root = process.env.CLAUDINITE_REPO_ROOT;
 const params = process.env.CLAUDINITE_CONTEXT ?? '';
 console.log(\`fixture [#\${item}] \${root} \${params.length}\`);
+`;
+
+const OLD_TICK_WORKFLOW = `name: Claudinite scheduler
+
+on:
+  schedule:
+    - cron: '10 * * * *'
+  workflow_dispatch:
+    inputs:
+      wake:
+        description: 'Task ids to run now'
+        required: false
+        type: string
+
+concurrency:
+  group: claudinite-tick
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Instantiate, ready and reclaim work items
+        env:
+          GITHUB_TOKEN: \${{ github.token }}
+          CLAUDINITE_WAKE: \${{ inputs.wake }}
+        run: node .claudinite/shared/engine/scheduler/queue/tick.mjs
+
+  drain:
+    needs: tick
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Drain the queue
+        env:
+          GITHUB_TOKEN: \${{ github.token }}
+          # claudinite:secrets
+        run: node .claudinite/shared/engine/scheduler/queue/executor.mjs
 `;
 
 export const FIXTURES = [
@@ -580,6 +641,15 @@ NSApplication.shared.run()
         maintenance: { delivery: 'auto-merge' },
         claudinite: { updated: null },
       }, null, 2) + '\n',
+    },
+  },
+  {
+    name: 'old-workflows',
+    why: 'a member still holding the previous workflow shape — the window every workflow change opens, since `.github/workflows/` is the one path a converge cannot push',
+    files: {
+      'README.md': '# fixture-old-workflows\n\nA rehearsal fixture.\n',
+      '.claudinite-checks.json': checks(['basics']),
+      '.github/workflows/claudinite-scheduler.yml': OLD_TICK_WORKFLOW,
     },
   },
   {

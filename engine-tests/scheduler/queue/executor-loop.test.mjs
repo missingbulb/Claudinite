@@ -499,3 +499,19 @@ test('an executor close readies the dependent it was holding', async () => {
   await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })]);
   assert.deepEqual(repo.find(2).labels, ['task:ready'], 'the chain link runs now, not in an hour');
 });
+
+// The beat, driven through the shell: a work step long enough to need one gets
+// one, on the item, from the executor holding it.
+test('a long work step leaves heartbeats on its own item', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
+  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], {
+    heartbeatMs: 5,
+    runTaskCodeWork: async () => {
+      await new Promise((r) => setTimeout(r, 40));
+      return { ok: true, agentRequested: false };
+    },
+  });
+  const beats = repo.find(1).comments.filter((c) => c.body.includes('<!-- claudinite-heartbeat -->'));
+  assert.ok(beats.length >= 2, `the item stayed live through the work (got ${beats.length})`);
+  assert.match(beats[0].body, /executor `E1`/);
+});

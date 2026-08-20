@@ -14,8 +14,10 @@
 // the GitHub/code-work/invocation I/O around them.
 
 import { pathToFileURL } from 'node:url';
+import { isSuspended, suspendedNotice } from './suspend.mjs';
 import { nextAnchor } from './anchors.mjs';
 import { readyDependents } from './readiness.mjs';
+import { HEARTBEAT_MS, heartbeatComment, withHeartbeat } from './heartbeat.mjs';
 import { renderTaskExec } from '../run-record.mjs';
 import {
   READY, URGENT, EXECUTING, AGENT, BLOCKED, NEEDS_HUMAN,
@@ -161,7 +163,7 @@ const nowIso = () => new Date().toISOString();
 // subprocesses or an invocation endpoint.
 export async function runExecutor({
   gh, repo, root, config, tasks, executorId, runUrl = null,
-  now = () => new Date(), random = Math.random,
+  now = () => new Date(), random = Math.random, heartbeatMs = HEARTBEAT_MS,
   collectSignalsFor, runTaskCodeWork, invokeAgent, redispatch = null, log = console.log,
 }) {
   const api = await import('../github.mjs');
@@ -209,7 +211,7 @@ export async function runExecutor({
 
   const outcome = await executeItem({
     api, gh, repo, root, config, schedule, byId, item: candidate, executorId,
-    claim: winner, now, collectSignalsFor, runTaskCodeWork, invokeAgent, log,
+    claim: winner, now, heartbeatMs, collectSignalsFor, runTaskCodeWork, invokeAgent, log,
   });
   done.push({ issue: candidate.number, outcome });
 
@@ -244,7 +246,7 @@ async function withClaimIds(api, gh, repo, items, selfNumber) {
 // One claimed item, from validation through to a terminal state (or a hand-off).
 async function executeItem({
   api, gh, repo, root, config, schedule, byId, item, executorId, claim,
-  now, collectSignalsFor, runTaskCodeWork, invokeAgent, log,
+  now, heartbeatMs, collectSignalsFor, runTaskCodeWork, invokeAgent, log,
 }) {
   // What a close needs beyond the item itself: the clock for a dependent's
   // `Not-before`, and somewhere to say what it released.
@@ -330,7 +332,15 @@ async function executeItem({
   // a hand-created item's parameters unreachable (#974).
   const context = mergeContext(parseContextLines(item.body), verdict.context ?? []);
   if (task.decl.code_work) {
-    const result = await runTaskCodeWork(task, { item, context });
+    // The work step may legitimately run for hours (§15.15). While it does, the
+    // item's only sign of life is this beat — which is also what the tick's leash
+    // measures, so a long run is legal rather than reclaimed underneath itself.
+    const result = await withHeartbeat(() => runTaskCodeWork(task, { item, context }), {
+      intervalMs: heartbeatMs,
+      log,
+      beat: (minutes) => api.comment(gh, repo, item.number,
+        heartbeatComment({ executor: executorId, at: nowIso(), minutes })),
+    });
     if (!result.ok) {
       // The worker's own verdict routes the park where it left one; a worker that
       // said nothing about why it failed is a `failure` — the lane that means
@@ -523,6 +533,10 @@ async function close(api, gh, repo, item, from, outcome, stateReason, body, stat
 // --- CLI ----------------------------------------------------------------------
 
 async function main() {
+  // THE OPERATOR HOLD, FIRST ACT (§15.24) — before the config load, before the
+  // first API call, so a held queue reads nothing and writes nothing rather than
+  // deriving the world and then declining to act on it.
+  if (isSuspended()) { console.log('## Claudinite executor\n'); console.log(suspendedNotice()); return; }
   const { makeGh, actionRepoContext, EXECUTOR_WORKFLOW_FILE } = await import('../signals/gh.mjs');
   const { discoverTasks } = await import('../discover.mjs');
   const { loadConfig, isDormant } = await import('../../checks/helpers/repo-context.mjs');
