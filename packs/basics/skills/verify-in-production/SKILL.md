@@ -7,8 +7,9 @@ description: Decide whether a change that just landed can only be proven in prod
 
 A change is finished when someone has watched it work. Most changes you can watch **now**, and
 that is the rule — this skill is only for the rest: a change whose proof lives somewhere the
-repo cannot see yet. It fires **automatically at the end of a change**, unasked, the way the
-conversation capture does. You are filing the proof, not doing the work.
+repo cannot see yet. It fires **automatically at the end of a change**, unasked. You are filing
+the proof, not doing the work — and the proof itself runs unattended: an automatic check, end
+to end, with a person entering only where no automatic check can exist.
 
 ## First: does this file anything at all?
 
@@ -24,8 +25,8 @@ Most changes **file nothing.** Run the test in this order and stop at the first 
    moment — a member repo once it converges, a site once it deploys, a session once it reloads
    its rules — that is what you file.
 
-The bar is *could not be watched now*, not *would be nice to double-check*. A verification you
-file for a change already covered by a test is noise a person has to read and close.
+The bar is *could not be watched now*, not *would be nice to double-check*. A verification
+filed for a change already covered by a test is a wasted run re-proving what the suite proved.
 
 ## What you file
 
@@ -36,28 +37,31 @@ verifies will never see this conversation and may be days away. Say what changed
 could not be watched now, then, each spelled verbatim on its own line:
 
 ```
+Original-issue: #<the change's issue>
 In-production-when: <the concrete artifact to read, and what makes it true>
 Verify: <what to observe, and what counts as a pass>
-Give-up-after: <YYYY-MM-DD>
 Blocked-by: #<the change's PR>
 Not-before: <ISO instant just past the expected release>
+Retry-every: <how far to push Not-before when not yet live, e.g. 1 day>
 ```
 
+- **`Original-issue:`** is where a failure lands — the issue the change was done under, which
+  the run reopens if the verification fails.
 - **`In-production-when:`** names a thing to *read*, never a duration to wait. "`missingbulb/Shepherd`'s
   `.claudinite-checks.json` stamps `packVersions.tidy-repo` at 8 or higher." "The live site's
   `/version.json` reports a version past 4.2.0." "Any session started after this landed — check
   the vendored copy under `.claudinite/shared/` carries the new text." A merge is not a
   production condition, and neither is elapsed time.
-- **`Verify:`** is an assertion with a pass condition, not a topic. "Issue #100 on that repo is
-  closed with a comment citing the ticks" beats "check tidy-issues works". Name the evidence
-  you expect to be able to point at.
-- **`Give-up-after:`** is the date past which nobody should keep asking — a few days past the
-  release you are waiting on. A change that never reached production is itself news, and this
-  is what turns it into one comment instead of a standing chore.
+- **`Verify:`** is an assertion with a pass condition, not a topic — and a read an **unattended
+  run can make**: an API response, a file at a URL, an issue's state. "Issue #100 on that repo
+  is closed with a comment citing the ticks" beats "check tidy-issues works". Only where no
+  automatic check can exist may `Verify:` name a person's step, spelled out exactly.
 - **`Blocked-by:`/`Not-before:`** are the queue's own wait fields: adoption holds the run until
   the PR has closed **and** the moment has passed. Aim `Not-before:` just past the release you
-  expect (the nightly converge plus slack, the next deploy window, +10 minutes for a
-  next-session rule) — the run's own re-arm covers a miss, so don't pad it.
+  expect — the re-arm covers a miss, so don't pad it.
+- **`Retry-every:`** is the extension you are prescribing: when the run finds the change not
+  yet live, it pushes `Not-before:` forward by exactly this much. Size it to the release you
+  wait on — a nightly converge retries daily, a next-session rule in minutes.
 
 Then the labels, as `/do-later` applies them: **`claude-task`** (the mark the tick adopts) and
 **`claude-model:sonnet`** (reading a live artifact and judging an assertion against it). Never
@@ -66,22 +70,19 @@ repo yet, say so and leave the issue — the labels appear on the next tick.
 
 ## Tell the run how to converge
 
-End the body with instructions to the run itself (the issue is its whole brief):
+End the body with instructions to the run itself — the issue is its whole brief, and the run
+decides nothing: it executes this playbook.
 
 1. Read `In-production-when:` against the real artifact. Never infer it from a merge, a green
    run, or elapsed time.
 2. **Live** → run `Verify:`. Passes: comment the evidence actually read (the version, the value,
-   the URL) and close this issue as completed. Fails: file a new issue describing what was
-   asserted, what happened instead and where you read it; comment here linking it; close this
-   issue as completed — the verification did its job by finding the fault, and fixing it is
-   separate work with its own review.
-3. **Not yet live, and today is before `Give-up-after:`** → re-arm: edit this issue's
-   `Not-before:` to the next sensible moment (capped at `Give-up-after:`), re-apply
-   `claude-task` and `claude-model:sonnet`, and leave the issue open — the next tick re-adopts
-   it. No comment; the bumped field is the record.
-4. **Not yet live, past `Give-up-after:`** → comment that the change never reached production
-   by that date and what the last read showed, and close as not planned.
+   the URL) and close this issue as completed. Fails: reopen `Original-issue:` with a comment
+   saying what was asserted, what happened instead and where you read it; comment here linking
+   that; close this issue as completed — the verification did its job by finding the fault.
+3. **Not yet live** → push `Not-before:` forward by `Retry-every:`, re-apply `claude-task` and
+   `claude-model:sonnet`, and leave the issue open — the next tick re-adopts it. No comment;
+   the bumped field is the record.
 
 ## Then say what you filed
 
-One line back to the owner: the issue link, what it waits on, and when it gives up.
+One line back to the owner: the issue link, what it waits on, and its retry cadence.
