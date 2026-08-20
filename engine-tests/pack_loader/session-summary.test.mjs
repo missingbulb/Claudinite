@@ -119,12 +119,23 @@ test('a channel that is absent or empty leaves the engine facets standing alone'
   } finally { rmSync(corpus, { recursive: true, force: true }); rmSync(project, { recursive: true, force: true }); }
 });
 
-test('directs the session to open its first reply with the line', () => {
+// The directive is read by a model that has just been handed several lines and must
+// pick one. Every property below exists because the obvious phrasing loses that pick:
+// a session that was told to repeat "that line" opened its reply with the sentence
+// carrying those words, which was the last line it had been given.
+test('directs the session to open its first reply with the summary line, unambiguously', () => {
   const corpus = makeCorpus({ alpha: {} });
   const project = makeProject({ packs: ['alpha'] });
   try {
     const out = run(corpus, project);
-    assert.match(out, /open your first reply of this session with that line/i);
+    // The summary appears once: two copies are two candidates to choose between.
+    assert.equal(out.match(/Claudinite loaded,/g).length, 1);
+    // The directive disclaims itself, so the sentence cannot read as the thing to say.
+    assert.match(out, /not text to repeat/i);
+    // No deixis: nothing points at a line the reader has to resolve for itself.
+    assert.doesNotMatch(out, /\bthat line\b/i);
+    // And the line to say is what the directive ends on — last in, first out.
+    assert.match(out.trimEnd(), /:\n+Claudinite loaded, 1 pack, 0 checks, 0 rule tokens, 0 available skills\.$/);
   } finally { rmSync(corpus, { recursive: true, force: true }); rmSync(project, { recursive: true, force: true }); }
 });
 
