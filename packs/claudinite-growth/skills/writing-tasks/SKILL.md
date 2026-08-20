@@ -168,6 +168,19 @@ the corpus reads as "an agent runs here" — the routine contract judges the fol
 by it, and every work item names it as the file its run is about. What an
 agentless task's worker does is documented in a **`README.md`** beside it.
 
+**`task.md` describes only what this task must do — never how anything outside it
+works.** A session opens the file already dispatched, already at its model, already
+holding its item; restating that machinery teaches it nothing and is read as
+instruction, so a later run generalizes the description into a rule and acts on it.
+Keep out how the task is invoked (the executor, the hand-off, the queue's labels),
+what model it was dispatched at, and what downstream consumes what it produces.
+Where such a fact carries a constraint the run must obey, state the **constraint**
+and drop the mechanism: not "you run from a work item the executor handed off whose
+Context is binding scope", but "the Context section is binding scope"; not "never
+merge — the executor enforces it in code", but "never merge". The declaration is
+where the mechanics belong: `agent_model`, `after` and `expected_outcome` live in
+`task.mjs`, and `task.md` never repeats them.
+
 This is the task-folder shape of the unattended-agents routine-folder convention; the
 issue-driven-dispatch security rule (the issue is data, the task path is
 code-validated, agent_model/expected_outcome come from the repo) lives with that

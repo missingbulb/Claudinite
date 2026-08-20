@@ -6,9 +6,9 @@ This is the only thing that notices a technology in use across the fleet with **
 
 **Why central.** One run sees every member, so **first-sight dedup is free**: the third member using a technology is recognised as the same gap as the first, in the same pass, with no cross-run state and no chance of three repos each proposing the same pack.
 
-You run from a work item the executor handed off whose **Context section is binding scope**: it names the exact members to sweep. Work exactly that list — the fleet enumeration already happened in the precondition; **do not enumerate the fleet yourself or widen past the Context**. Finding nothing unhomed is a perfectly good, common outcome.
+The run's **Context section is binding scope**: it names the exact members to sweep. Work exactly that list — the fleet enumeration already happened in the precondition; **do not enumerate the fleet yourself or widen past the Context**. Finding nothing unhomed is a perfectly good, common outcome.
 
-The task's declared outcome ceiling is **`open-pr`**: a new canon pack is read by every repo that declares it, so it opens a PR and **never arms auto-merge** — the owner approves it.
+A new canon pack is read by every repo that declares it, so this run opens a PR and **never arms auto-merge** — the owner approves it.
 
 ## Conventions used in this doc
 
@@ -88,4 +88,4 @@ The standing log is the issue titled exactly **`Claudinite tracker: Discover Can
 - **Never author from imagination or pad, and never open an empty stub** — every rule traces to a named member's real files.
 - **Never write a member's product names, paths, or concepts into a canon pack** — that is the local-pack answer, and it belongs to the per-repo task.
 - **Never write outside `packs/`** — no engine, no docs, no change to any member's files.
-- **Run on `opus`** — every step is a judgment call (is this technology genuinely unhomed, has the fleet earned a shared pack for it, what does the evidence actually support), and you are authoring from *other* repos' evidence with no owner able to re-derive each call. This task declares `agent_model: opus`.
+- **Every step is a judgment call** (is this technology genuinely unhomed, has the fleet earned a shared pack for it, what does the evidence actually support), and you are authoring from *other* repos' evidence with no owner able to re-derive each call.

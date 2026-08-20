@@ -5,9 +5,8 @@ read what the wiki already knows, research only what its own backlog flags, writ
 find little or nothing — no new citable material means no branch, no PR, and that is the documented good
 outcome.** A padded or fabricated update is worse than none.
 
-You run from a work item the executor handed off; GitHub access is the session's
-**GitHub MCP tools** (`mcp__github__*`) — never `gh`/`curl`/a clone. "Default branch" below means the repo's
-actual default branch. The wiki set is derived **structurally**: every `README.md` at depth ≥ 2 under
+GitHub access is the session's **GitHub MCP tools** (`mcp__github__*`) — never `gh`/`curl`/a clone.
+"Default branch" below means the repo's actual default branch. The wiki set is derived **structurally**: every `README.md` at depth ≥ 2 under
 `product-wiki/`, excluding the `product-wiki/product-requirements/` and `product-wiki/sample-data/` subtrees.
 
 There is no preflight: whether this run happens was decided by the task's **precondition** (it declines while
@@ -64,8 +63,8 @@ title, never by number, never opened/closed as state (open it if missing). One d
 a failed unattended run). Clean no-ops stay silent — the pack's freshness advisory is the prolonged-silence
 observer.
 
-`agent_model: opus` — reading a wiki, judging which of its open questions is worth this run, and telling a
-citable finding from a plausible one is the heaviest judgment in the task set.
+Reading a wiki, judging which of its open questions is worth this run, and telling a citable finding from
+a plausible one is the heaviest judgment in the task set — weigh each accordingly.
 
 ## What this worker must never do
 

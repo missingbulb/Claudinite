@@ -36,7 +36,7 @@ Close out on your work item as usual: the packs adopted with the PR link, the pa
 
 ## What you must not do
 
-- **Never merge.** This task is ceilinged at `open-pr` and the executor enforces it in code (`verify-outcome.mjs`); merging fails the run.
+- **Never merge.** Open the PR and leave it for review.
 - **Never declare a pack you did not confirm** (suspected) **or that was not requested**, and never guess an interview answer — see adopt-pack's rule. If you believe a *requested* entry is wrong, say so on the issue and leave it for a human; never quietly adopt something else in its place.
 - **Never touch another repo.** The work list is this repo's; the fleet's sweep owns everything cross-repo.
-- **Never apply a `task:` label to the work-list issue.** They are the queue's state vocabulary, read by the tick and the executor; the work list is an ordinary issue, not a work item.
+- **Never apply a `task:` label to the work-list issue.** Those labels are the queue's state vocabulary; the work list is an ordinary issue, not a work item.

@@ -2,9 +2,9 @@
 
 The [growth lifecycle](../../README.md)'s central stage: read the target members' local packs, lift the portable lessons into the shared canon, and open a PR against the canon's default branch **for the owner to approve**. Declared only by the Claudinite home repo, so it runs **once, centrally**, never per project.
 
-You run from a work item the executor handed off whose **Context section is binding scope**: it names the exact target members (those whose local packs changed in the window). Work exactly that list — the fleet enumeration already happened in the precondition; **do not enumerate the fleet yourself or widen past the Context**.
+The run's **Context section is binding scope**: it names the exact target members (those whose local packs changed in the window). Work exactly that list — the fleet enumeration already happened in the precondition; **do not enumerate the fleet yourself or widen past the Context**.
 
-The task's declared outcome ceiling is **`open-pr`**: promotion is the **judgment gate before shared canon**. It opens a PR and **never arms auto-merge** — the owner approves it. But don't lean on that review as the portability check: [extract](../../../../../../packs/claudinite-growth/tasks/growth-extract/task.md) stays project-specific by design, so it's no second opinion, and the owner can't re-derive every portability call. This task's judgment is the real thing between a bad rule and every project that reads the canon — keep the bar high (dedupe against the whole corpus; default to reject when unsure).
+Promotion is the **judgment gate before shared canon**. This run opens a PR and **never arms auto-merge** — the owner approves it. But don't lean on that review as the portability check: [extract](../../../../../../packs/claudinite-growth/tasks/growth-extract/task.md) stays project-specific by design, so it's no second opinion, and the owner can't re-derive every portability call. This task's judgment is the real thing between a bad rule and every project that reads the canon — keep the bar high (dedupe against the whole corpus; default to reject when unsure).
 
 ## Conventions used in this doc
 
@@ -54,4 +54,4 @@ The standing self-improvement log is the issue titled exactly **`Claudinite trac
 - **Never promote a product-specific or one-off item** — it stays in that project's local packs.
 - **Never weaken, restate, or duplicate an existing rule** — fold a genuine sharpening in per [item-routing.md](../../item-routing.md) instead.
 - **Never widen past the Context member list**, and **never touch a member repo** — this task only reads members and writes the canon PR.
-- **Run on `opus`** — every step is a judgment call (portability, duplication, ownership, how to generalize without distorting), and a downgraded model ships a plausible-but-wrong *acceptance* the owner's review is least likely to catch. This task declares `agent_model: opus`; the executor dispatches its subagent there.
+- **Every step is a judgment call** (portability, duplication, ownership, how to generalize without distorting), and a plausible-but-wrong *acceptance* is what the owner's review is least likely to catch.

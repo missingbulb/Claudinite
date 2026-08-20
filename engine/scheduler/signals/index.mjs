@@ -22,9 +22,26 @@ import { APPROVAL_RE } from '../built-in-tasks.mjs';
 // repo activity to every precondition watching issues, so a collector that had
 // not learned the new title would wake tasks on the queue's own churn.
 const HOUSEKEEPING = /\[skip ci\]|(^|\n)\s*baselin(e|ing)\b|claudinite[ -](baselin|maintenance|growth|task|work)|seed default-on/i;
-const isSubstantive = (c) => {
+
+// …and a THIRD exclusion the message cannot express: a commit that touched
+// nothing outside `.claudinite/` moved the repo's own working rules, not the
+// project. Every consumer of `substantiveChange` means "genuine project work" by
+// it — an issue was implemented (tidy-issues), something shippable changed
+// (store-release), there is a lesson to extract (growth-extract) — and none of
+// those is true of a corpus edit. Message and author cannot catch it: a human
+// landing a lesson PR writes an ordinary message under their own login, so the
+// growth lifecycle's own landed output re-armed it the next night and a repo
+// could never go quiet (TLDR #319).
+//
+// `files` is `[]` when the commit's detail read failed, which is UNKNOWN, not
+// "touched only .claudinite/" — a bare `every` is vacuously true on it and would
+// silently retire the trigger for every commit the API would not detail. Require
+// at least one known path before the exclusion can apply.
+const CORPUS_ONLY = (files) => files.length > 0 && files.every((f) => f.startsWith('.claudinite/'));
+const isSubstantive = (c, files) => {
   const login = c.author?.login ?? '';
   if (login.endsWith('[bot]')) return false;
+  if (CORPUS_ONLY(files)) return false;
   return !HOUSEKEEPING.test(c.commit?.message ?? '');
 };
 
@@ -79,8 +96,12 @@ async function pagedWindow(gh, path, inWindow) {
 }
 
 // A merged PR is mineable unless it is bot work or one of Claudinite's own
-// automated writes — the SAME two exclusions `isSubstantive` and the `issues`
-// collector apply, kept together on purpose. The housekeeping regex already covers
+// automated writes — the same author/message exclusions `isSubstantive` and the
+// `issues` collector apply, kept together on purpose. It does NOT carry the
+// corpus-only exclusion: the PR listing has no file list, and resolving one per
+// PR would cost a read per PR across the whole window. It does not need to —
+// a corpus-only PR's merge commit is already non-substantive, so no task with a
+// `commits`-gated precondition ever reaches this listing on its account. The housekeeping regex already covers
 // the growth tasks' own `Claudinite growth: …` PRs and the scheduler's
 // `[claudinite-task]` titles, so the self-trigger guards survive the widening.
 const isMinablePr = (p) => {
@@ -96,7 +117,7 @@ async function windowCommits(gh, repo, branch, sinceIso) {
   for (const c of list) {
     const d = await gh(`/repos/${repo}/commits/${c.sha}`);
     const files = d.status === 200 ? (d.json?.files ?? []).map((f) => f.filename).filter(Boolean) : [];
-    detailed.push({ sha: c.sha, message: c.commit?.message ?? '', author: c.author?.login ?? null, substantive: isSubstantive(c), files });
+    detailed.push({ sha: c.sha, message: c.commit?.message ?? '', author: c.author?.login ?? null, substantive: isSubstantive(c, files), files });
   }
   return detailed;
 }

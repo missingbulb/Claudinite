@@ -261,3 +261,50 @@ test('a collector that throws is isolated under its key', async () => {
   const out = await collectSignals(gh, ctx(), ['branches']);
   assert.match(out.branches.error, /boom/);
 });
+
+// --- commits: Claudinite's own corpus is not project work --------------------
+// A commit touching nothing but `.claudinite/` moves the repo's working rules,
+// not the project. It implements no issue (tidy-issues), ships no user-visible
+// change (store-release) and is not a lesson to extract (growth-extract) — yet a
+// human-authored one wearing an ordinary message passed every existing exclusion,
+// so the growth lifecycle's own landed output re-armed it the next night and a
+// repo could never go quiet (TLDR #319).
+
+test('commits: a .claudinite/-only commit is not substantive', async () => {
+  const gh = fakeGh([
+    [/\/commits\?sha=/, { status: 200, json: [
+      { sha: 'e', commit: { message: 'Restore the pack-scope rule growth-dedup pruned' }, author: { login: 'dev' } },
+    ] }],
+    [/\/commits\/e$/, { status: 200, json: { files: [{ filename: '.claudinite/local/packs/tldr/RULES.md' }] } }],
+  ]);
+  const out = await collectSignals(gh, ctx(), ['commits']);
+  assert.equal(out.commits.substantiveChange, false);
+});
+
+test('commits: a commit touching .claudinite/ AND project code stays substantive', async () => {
+  const gh = fakeGh([
+    [/\/commits\?sha=/, { status: 200, json: [
+      { sha: 'f', commit: { message: 'Add the thing, and a rule about it' }, author: { login: 'dev' } },
+    ] }],
+    [/\/commits\/f$/, { status: 200, json: { files: [
+      { filename: '.claudinite/local/packs/x/RULES.md' }, { filename: 'src/app.js' },
+    ] } }],
+  ]);
+  const out = await collectSignals(gh, ctx(), ['commits']);
+  assert.equal(out.commits.substantiveChange, true);
+});
+
+// An unreadable commit detail yields `files: []`. Unknown is not "touched only
+// .claudinite/" — vacuous `every` would silently retire the trigger for every
+// commit the API would not detail.
+test('commits: an unreadable file list never reads as .claudinite/-only', async () => {
+  const gh = fakeGh([
+    [/\/commits\?sha=/, { status: 200, json: [
+      { sha: 'g', commit: { message: 'real work' }, author: { login: 'dev' } },
+    ] }],
+    // no /commits/g route → 404 → files: []
+  ]);
+  const out = await collectSignals(gh, ctx(), ['commits']);
+  assert.deepEqual(out.commits.touchedPaths, []);
+  assert.equal(out.commits.substantiveChange, true);
+});
