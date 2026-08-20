@@ -237,3 +237,12 @@ test('single-issue-triage: a fully-ticked checklist prompts a completion check, 
   assert.match(skill, /partially[- ]ticked/i,
     'the skill does not say a partially-ticked list is not a completion signal');
 });
+
+// A manual-steps issue (a console setting, a routine only a human can touch) has no
+// repo-side artifact to verify against, so verify-against-`main` alone would send
+// every one of them to `comment` forever.
+test('single-issue-triage: an ask with no repo-side artifact closes on the author\'s own ticks', () => {
+  const skill = readFileSync(join(PACK_DIR, 'skills/single-issue-triage/SKILL.md'), 'utf8');
+  assert.match(skill, /no repo-side artifact/i,
+    'the skill leaves a manual-steps issue with no closing condition but main, which can never carry it');
+});
