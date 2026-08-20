@@ -1,8 +1,10 @@
 // The executor (tasks-dispatch DESIGN §6) — a pull worker over the queue. Each
-// iteration: pick the next ready item, claim it by a verified lease, evaluate the
-// precondition (THE only place it is ever evaluated), then on a go run code-work and
-// either converge (agentless) or hand off to an agent session; on a no-go roll a
-// scheduled item to its next anchor with the reason on record.
+// iteration: pick the next ready item, claim it by a verified lease, re-evaluate
+// the precondition (the scheduler run asked once at the anchor; a chained stage
+// re-derives world state rather than trusting a verdict passed forward), then on
+// a go run code-work and either converge (agentless) or hand off to an agent
+// session; on a no-go close the item with the reason on record — the next
+// occurrence is the scheduler run's ask at the task's next anchor (#1115).
 //
 // An executor's whole interface is issue read/write plus the repo at HEAD, which
 // is what makes it platform-agnostic: the reference deployment is a job in the
@@ -15,12 +17,11 @@
 
 import { pathToFileURL } from 'node:url';
 import { isSuspended, suspendedNotice } from './suspend.mjs';
-import { nextAnchor } from './anchors.mjs';
 import { readyDependents } from './readiness.mjs';
 import { HEARTBEAT_MS, heartbeatComment, withHeartbeat } from './heartbeat.mjs';
 import { renderTaskExec } from '../run-record.mjs';
 import {
-  READY, URGENT, EXECUTING, AGENT, BLOCKED, NEEDS_HUMAN,
+  READY, URGENT, EXECUTING, AGENT, NEEDS_HUMAN,
   TASK_DONE, TASK_OBSOLETE, QUEUE_LABELS, REQUEST_LABELS, QUEUED_LABEL, isStandingItem,
   NEEDS_HUMAN_ACTION, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_FAILURE, triageLabelFor,
   CLAIM_MARKER, HANDOFF_MARKER, EPISODE_MARKER,
@@ -42,13 +43,11 @@ const taskIdOf = (item) => {
 //  - SAME-TITLE MUTEX (S15/F6): skip an item whose exact title has another open
 //    item executing or handed to an agent — one task, one execution at a time,
 //    while a fan-out's distinct qualifiers still parallelize.
-//  - THE `after` YIELD (S24): skip a scheduled item whose task declares `after:
+//  - THE `after` YIELD (S23): skip a scheduled item whose task declares `after:
 //    [T]` while T's standing item is live THIS CYCLE (ready / executing / agent).
-//    A rolled upstream (blocked until its next anchor: it declined this cycle)
-//    does not block, and neither does one sitting `needs-human` — a broken
-//    upstream must not halt its dependents indefinitely. Deliberately NOT a
-//    `Blocked-by` edge: a standing item that rolls never closes, so blocked-by
-//    would starve every dependent of a quiet upstream forever.
+//    A declined upstream holds nothing back — it has no item at all (a no files
+//    only a board row, #1115) — and neither does one sitting `needs-human`: a
+//    broken upstream must not halt its dependents indefinitely.
 //
 // `open` is every open work item; `taskAfter(id)` gives a task's declared
 // upstreams as `<pack>/<task>` ids, and `frequencyOf(id)` that task's declared
@@ -127,18 +126,23 @@ export function conflictsWithEarlierClaim(item, myClaimId, others, { taskAfter =
   });
 }
 
-// The no-go outcome (DESIGN §6.4). A SCHEDULED item rolls — `Not-before` stamped
-// with the task's next anchor, ready → blocked, the reason recorded — so the item
-// itself carries "asked, declined, wakes at T" and the scheduler run is a pure function of
-// the clock and the issue list. An AD-HOC item has no next anchor to roll to, so
-// it closes obsolete with the reason commented (a follow-up whose world settled on
-// its own, S17).
+// The no-go outcome (DESIGN §6.4, as amended by #1115): every decline CLOSES
+// the item with the reason. The roll — `Not-before` stamped, open-blocked,
+// waiting out the period — is gone: "asked and declined" lives on the schedule
+// board, and a scheduled item's next occurrence is the scheduler run's ask at
+// its next anchor (the closed-at half of the occurrence guard keeps this
+// period consumed). `standing` marks whether the close should say so.
+// The `(item, task, schedule, now, reason)` signature is kept — callers and
+// fielded tests pass all five, and the standing/ad-hoc distinction still
+// shapes the close's wording.
 export function noGoPlan(item, task, schedule, now, reason) {
-  if (!isStandingItem(item, task?.decl?.frequency)) {
-    return { kind: 'close', outcome: TASK_OBSOLETE, stateReason: 'not_planned', reason };
-  }
-  const until = nextAnchor(task.decl.frequency, schedule, now);
-  return { kind: 'roll', until: until ? until.toISOString() : null, reason };
+  return {
+    kind: 'close',
+    outcome: TASK_OBSOLETE,
+    stateReason: 'not_planned',
+    reason,
+    standing: isStandingItem(item, task?.decl?.frequency),
+  };
 }
 
 // --- the shell ----------------------------------------------------------------
@@ -297,31 +301,20 @@ async function executeItem({
 
   if (verdict.run !== true) {
     const plan = noGoPlan(item, task, schedule, at, verdict.reason || 'no work');
-    if (plan.kind === 'close') {
-      // A DECLINED REQUEST IS DISARMED IN THE SAME CONVERGENCE (DESIGN §16.5).
-      // Nothing else would: an issue left carrying `claude-queued` after its run was
-      // refused is one no later scheduler run adopts and no person is told about, and one
-      // whose mark — if re-applied — walks into the same refusal forever.
-      if (fields.request) await declineRequest(api, gh, repo, fields.request, item.number, plan.reason);
-      // A DECLINE IS A COMPLETED RUN, not a failure: the executor asked, got a
-      // no, and closed the occurrence — so the record says `success` and the
-      // reason sits beside it in the same comment.
-      await close(api, gh, repo, item, EXECUTING, TASK_OBSOLETE, 'not_planned',
-        `The precondition declined and this item has no anchor to roll to: ${plan.reason}`, 'success', ctx);
-      return 'obsolete';
-    }
-    // The roll writes no comment — the `Not-before` bump IS the record, and an
-    // hourly task that stays quiet would otherwise fill its own timeline (§5).
-    // Which is exactly why the claim is STRUCK rather than closed by a marker
-    // comment: the episode has to end here (F24) without costing a timeline entry.
-    await strikeClaim(api, gh, repo, claim);
-    await gh(`/repos/${repo}/issues/${item.number}`, {
-      method: 'PATCH',
-      body: { body: rollBody(item.body, plan.until, plan.reason, at.toISOString()) },
-    });
-    await api.swapLabel(gh, repo, item.number, EXECUTING, BLOCKED);
-    log(`- #${item.number} ${id}: rolled to ${plan.until} — ${plan.reason}`);
-    return 'rolled';
+    // A DECLINED REQUEST IS DISARMED IN THE SAME CONVERGENCE (DESIGN §16.5).
+    // Nothing else would: an issue left carrying `claude-queued` after its run was
+    // refused is one no later scheduler run adopts and no person is told about, and one
+    // whose mark — if re-applied — walks into the same refusal forever.
+    if (fields.request) await declineRequest(api, gh, repo, fields.request, item.number, plan.reason);
+    // A DECLINE IS A COMPLETED RUN, not a failure: the executor asked, got a
+    // no, and closed the occurrence — so the record says `success` and the
+    // reason sits beside it in the same comment.
+    await close(api, gh, repo, item, EXECUTING, TASK_OBSOLETE, 'not_planned',
+      `The precondition declined: ${plan.reason}`
+      + (plan.standing
+        ? '\n\nThis task\'s next occurrence is decided at its next anchor; declined occurrences are recorded on the schedule board.'
+        : ''), 'success', ctx);
+    return 'obsolete';
   }
 
   // --- code-work (unchanged contract), then converge or hand off -------------
@@ -386,9 +379,6 @@ async function executeItem({
   return handOff({ api, gh, repo, item, task, id, context, result: {}, executorId, claim, invokeAgent, config, log });
 }
 
-// The roll's body edit: stamp the next anchor and keep the last reason where an
-// operator reads it. The reason REPLACES the previous one — the item is a status
-// line, not a log; its timeline carries the history.
 // Run one task's precondition. THE only place a precondition is ever called, so a
 // test that drives this drives what production drives — a precondition first
 // written to take `{ signals }` passed its own direct-call test and threw on every
@@ -415,6 +405,10 @@ async function declineRequest(api, gh, repo, request, item, reason) {
   await api.removeLabel(gh, repo, request, QUEUED_LABEL);
 }
 
+// @deprecated The roll retired with #1115 — nothing writes this any more. Kept
+// exported because bodies the fielded roll wrote are stored data: the
+// round-trip test over this writer is what pins `parseLastVerdict`'s decode,
+// which the migration and the dashboard still read.
 export function rollBody(body, until, reason, at) {
   const stamped = withNotBefore(body, until);
   return withSection(stamped, LAST_VERDICT_HEADING, lastVerdictLines({ at, reason, until }));

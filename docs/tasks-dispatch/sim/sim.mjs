@@ -1,17 +1,23 @@
 // A discrete-event simulator of the tasks-dispatch spec (DESIGN.md), so the
 // scenario play-throughs in SCENARIOS.md are executable instead of prose-only.
 //
-// What it models faithfully: virtual time, the scheduler run's three jobs (calendar-only
-// instantiation with both guards and the first-item rule, readiness, the
-// executing-leash reclaim), the executor loop (pick order, same-title mutex,
-// the `after` yield, claim, validate, the single precondition evaluation, the
-// roll, the work step/hand-off/converge as timed phases, heartbeat comments
-// during the work step so the leash measures executor death rather than work
-// duration), at-most-once invocation (one call per item, never retried — the
-// fired/refused/unanswered trichotomy of DESIGN §6.6), the readiness re-check
-// on close (F1, reopened 2026-08-15), the janitor's stale-ready escalation,
-// and the force-is-waking lever. `afterMode: 'blocked-by'` exists solely so
-// S24 can demonstrate the starvation that ruled that wiring out.
+// What it models faithfully: virtual time, the scheduler run's jobs (the
+// evaluate-at-anchor instantiation — precondition asked when the anchor comes,
+// an item filed only on a yes, a no recorded as a row on the schedule board,
+// fail-open on any read the scheduler cannot make — with both occurrence
+// guards and the first-item rule; readiness; adoption; the executing-leash
+// reclaim; the one-time sleeping-item migration), the schedule board as a
+// modeled ARTIFACT (rows the engine actually writes, a write log, and the
+// absent/corrupt degradations — never the rule's intent), the executor loop
+// (pick order, same-title mutex, the `after` yield, claim, validate, the
+// pick-time precondition re-evaluation whose no-go CLOSES the item — the roll
+// is gone — the work step/hand-off/converge as timed phases, heartbeat
+// comments during the work step so the leash measures executor death rather
+// than work duration), at-most-once invocation (one call per item, never
+// retried — the fired/refused/unanswered trichotomy of DESIGN §6.6), the
+// readiness re-check on close (F1, reopened 2026-08-15), the janitor's
+// stale-ready escalation, and the force lever (waking where an item exists,
+// minting where none does — the common case once declines file nothing).
 //
 // What it deliberately does NOT model is inventoried in README.md's "The
 // unsimulated world" — one row per boundary (cron delivery, list freshness,
@@ -110,7 +116,6 @@ export function modelFor(labels) {
 
 export function makeSim({
   tasks,
-  afterMode = 'yield', // 'yield' (the design) | 'blocked-by' (S24's rejected wiring)
   schedulerRunMinute = 17,
   executingLeashMs = 1 * HOUR,
   agentLeashMs = 3 * HOUR,
@@ -176,6 +181,37 @@ export function makeSim({
 
   const issues = []; // {number,title,taskId,labels:Set,state,createdAt,closedAt,readySince,lastActivity,notBefore,blockedBy:[],outcome,rolls:[],comments:[],escalated,sessions:[],quarantined}
   const log = []; // {t,kind,task,issue,...}
+
+  // ---- the schedule board (DESIGN §5, decision §15.28) ----------------------
+  // Modeled as what the engine WRITES: one issue (`[claudinite-schedule]`),
+  // whose body is a table of rows — one per scheduled task — parsed back on
+  // every scheduler run as the watermark. `exists`/`corrupt` model the two
+  // degradations the design must survive: a deleted board reads as absent, a
+  // mangled body degrades to absent per-row; both fail toward evaluating.
+  // A write REPLACES the body from the rows this run could parse plus the rows
+  // it changed — so a corrupt board's unparsable rows are genuinely lost on
+  // the next write, which is the artifact-level truth a rows-always-survive
+  // model would hide.
+  const board = { exists: false, corrupt: false, rows: new Map() }; // taskId -> {frequency,lastAsked,verdict,reason}
+  const boardRow = (taskId) => (!board.exists || board.corrupt ? null : board.rows.get(taskId) ?? null);
+  // The change test compares the AUTHORITATIVE columns only (last asked,
+  // verdict, reason) — never the derived next-window column, which is
+  // recomputed at write time and would otherwise turn every scheduler run into a
+  // rewrite (F31, caught by S58 against a body-diff first cut).
+  function writeBoardRow(taskId, frequency, lastAsked, verdict, reason) {
+    const prev = boardRow(taskId);
+    if (prev && prev.lastAsked === lastAsked && prev.verdict === verdict && prev.reason === reason) return;
+    if (!board.exists) { board.exists = true; record('board-create', {}); }
+    if (board.corrupt) { board.rows.clear(); board.corrupt = false; } // rewrite replaces the mangled body
+    board.rows.set(taskId, { frequency, lastAsked, verdict, reason });
+    record('board-write', { task: taskId, verdict, lastAsked: iso(lastAsked) });
+  }
+  // Which tasks the scheduler cannot collect signals for (a missing
+  // credential) — the fail-open lever the scenarios pull.
+  const signalsUnavailable = new Set();
+  // The issue-creation API refuses the next create for these tasks (a 4xx/5xx
+  // on the POST) — the write-failure half of F31's scenario.
+  const failNextCreateOf = new Set();
   const world = {}; // scenario-owned signal state, read by precondition fns
   const queue = []; // {t,seq,fn}
   let seq = 0;
@@ -307,11 +343,33 @@ export function makeSim({
     }
   }
 
-  // ---- the scheduler run (DESIGN §5): pure function of the clock and the issue list --
+  // ---- the scheduler run (DESIGN §5): decides at the anchor, files only work ----
   function schedulerRun() {
     if (suspendedAll) { record('suspended-skip', { workflow: 'scheduler-run' }); return; }
     record('scheduler-run', {});
-    // job 1: instantiate — calendar-only, no preconditions, no signals
+    // one-time migration (#1115): the sleeping standing items the roll model
+    // left behind — open, blocked, a FUTURE Not-before, no blockers, a roll on
+    // record — close with a comment, their last verdict seeded onto the board.
+    // Idempotent by construction: a closed item never matches again, and a
+    // seeded row is written only where none exists. Items waiting on a blocker
+    // or on a first-ever/adoption Not-before (no roll on record) are untouched.
+    for (const it of open().filter((i) => has(i, 'task:blocked') && !has(i, 'needs-human'))) {
+      if (!isStanding(it) || it.blockedBy.length || it.rolls.length === 0) continue;
+      if (it.notBefore === null || it.notBefore <= now) continue;
+      const last = it.rolls.at(-1);
+      if (!boardRow(it.taskId)) {
+        writeBoardRow(it.taskId, registry.get(it.taskId)?.frequency ?? null, last.t, 'no', last.reason);
+      }
+      it.comments.push({ t: now, body: 'closing: declined occurrences now live on the schedule board, not as sleeping items' });
+      close(it, 'obsolete');
+      record('migrate-sleeping', { task: it.taskId, issue: it.number });
+    }
+    // job 1: instantiate — the precondition is asked WHEN THE ANCHOR COMES,
+    // and an item is filed only on a yes (owner, 2026-08-20, #1115). A no is a
+    // board row; a read the scheduler cannot make fails OPEN — the item is
+    // created exactly as the calendar-only model did, and the executor (which
+    // holds the credentials) decides at pick. Never fewer runs because a read
+    // failed.
     for (const task of registry.values()) {
       if (task.frequency === 'manual') continue;
       const A = mostRecentAnchor(task.frequency, now);
@@ -335,21 +393,47 @@ export function makeSim({
       if (openFam.length > 0) continue; // standing item exists
       // occurrence guard, both halves (F13): an item CREATED at-or-after A
       // covers this occurrence — and so does an item CLOSED at-or-after A,
-      // because a rolled item created in an earlier period that ran today
-      // consumed today's occurrence. Creation-time alone double-executes.
+      // because an item created for this occurrence that ran and closed today
+      // consumed it. Creation-time alone double-executes.
       if (fam.some((i) => i.createdAt >= A || (i.closedAt ?? -Infinity) >= A)) continue;
-      const firstEver = fam.length === 0;
-      const blockedByUp =
-        afterMode === 'blocked-by'
-          ? (task.after ?? []).map((up) => standingItem(up)?.number).filter(Boolean)
-          : [];
-      const born = firstEver || blockedByUp.length > 0 ? 'task:blocked' : 'task:ready';
-      createIssue({
-        taskId: task.id,
-        labels: [born],
-        notBefore: firstEver ? nextAnchor(task.frequency, now) : null,
-        blockedBy: blockedByUp,
-      });
+      // A brand-new task's FIRST item is created without an ask, born blocked
+      // until its next real anchor (S25) — adoption must not fire weekly or
+      // monthly work off-anchor.
+      if (fam.length === 0) {
+        createIssue({ taskId: task.id, labels: ['task:blocked'], notBefore: nextAnchor(task.frequency, now) });
+        continue;
+      }
+      // The board is the watermark: a row whose last-asked equals this anchor
+      // means this occurrence was already asked and DECLINED — do not re-ask.
+      // Scoped to declined rows only (F31): a go/fail-open verdict's cover is
+      // the item it created — its occurrence guard is above — and a go row
+      // honored as a gate would eat the occurrence whenever the item's own
+      // CREATE failed after the row landed. An absent or unparsable row fails
+      // toward evaluating (at most one redundant evaluation; the guards above
+      // still prevent a double run).
+      const row = boardRow(task.id);
+      if (row && row.verdict === 'no' && row.lastAsked === A) continue;
+      // Evaluate — the injectable seam in the engine; here, the task's own
+      // precondition over the scenario's world. A precondition that throws is
+      // fail-open too: at the anchor, an error is never a verdict.
+      let verdict;
+      if (signalsUnavailable.has(task.id)) verdict = { error: 'signals unavailable to the scheduler' };
+      else {
+        try { verdict = task.precondition ? task.precondition(world, now, null) ?? {} : { run: true }; }
+        catch (e) { verdict = { error: `precondition threw: ${e.message}` }; }
+      }
+      record('anchor-evaluate', { task: task.id, run: verdict.error ? null : verdict.run !== false });
+      if (verdict.run === false) {
+        writeBoardRow(task.id, task.frequency, A, 'no', verdict.reason ?? 'no work');
+        continue; // no work, no item
+      }
+      writeBoardRow(task.id, task.frequency, A, verdict.error ? 'fail-open' : 'go',
+        verdict.error ?? verdict.reason ?? '');
+      if (failNextCreateOf.delete(task.id)) {
+        record('create-failed', { task: task.id });
+        continue; // the POST was refused; nothing exists for this occurrence
+      }
+      createIssue({ taskId: task.id, labels: ['task:ready'] });
     }
     // job 2: ready whatever is due
     for (const it of open().filter((i) => has(i, 'task:blocked'))) {
@@ -438,7 +522,7 @@ export function makeSim({
               (has(o, 'task:executing') || has(o, 'task:agent')))) return false;
         // the `after` yield: skip while the upstream's standing item is live
         // this cycle (a rolled or needs-human upstream does not block — S23)
-        if (afterMode === 'yield' && isStanding(i)) {
+        if (isStanding(i)) {
           const ups = registry.get(i.taskId)?.after ?? [];
           if (ups.some((up) => live(up))) return false;
         }
@@ -563,11 +647,18 @@ export function makeSim({
       schedule(now + 1 * MIN, () => executorRun('E-failover', 'failure-redispatch'));
       return; // died mid-claim: labels stay, the leash reclaim recovers (S8)
     }
-    // the single precondition evaluation (DESIGN §6.4)
+    // the pick-time precondition evaluation (DESIGN §6.4) — the executor
+    // re-derives the verdict even where the scheduler run already asked at the
+    // anchor: a chained stage re-derives world state, and the board's row is a
+    // watermark, never a verdict carried forward.
     // The precondition takes the ITEM as well as the signals (DESIGN §16.4): a
     // request item's verdict is about the issue it names, which no signal bundle
-    // can single out on its own.
-    const verdict = task.precondition ? task.precondition(world, now, it) : { run: true };
+    // can single out on its own. A throw here is a DECLINE (the engine's
+    // evaluatePrecondition catches it) — one task's bad verdict is that item's
+    // problem, never the executor's; only the anchor-side ask fails open.
+    let verdict;
+    try { verdict = task.precondition ? task.precondition(world, now, it) ?? {} : { run: true }; }
+    catch (e) { verdict = { run: false, reason: `precondition threw: ${e.message}` }; }
     // A precondition that CANNOT ANSWER is a run failure, not a verdict (F27):
     // the item parks in the failure lane, open and visible, and the re-queue
     // lever retries it — where a decline would converge on a guess.
@@ -580,19 +671,17 @@ export function makeSim({
     }
     record('evaluate', { task: it.taskId, issue: it.number, run: verdict.run !== false });
     if (verdict.run === false) {
-      if (isStanding(it)) { // roll
-        it.notBefore = nextAnchor(task.frequency, now);
-        it.rolls.push({ t: now, reason: verdict.reason ?? 'no work' });
-        endEpisode(it);                       // F24: the roll strikes its claim
-        swap(it, 'task:executing', 'task:blocked');
-        record('roll', { task: it.taskId, issue: it.number, until: iso(it.notBefore) });
-      } else {
-        // A declined request tells the ISSUE so and disarms it, in the same
-        // convergence: nothing else would, and an un-disarmed issue would be
-        // re-adopted and re-refused on every scheduler run forever.
-        if (it.request != null) declineRequest(it, verdict.reason ?? 'the precondition declined');
-        close(it, 'obsolete'); // ad-hoc: no anchor to roll to (S17)
-      }
+      // The roll is gone (#1115): a decline CLOSES the item with the reason —
+      // standing and ad-hoc alike. For a standing item the next occurrence is
+      // the scheduler run's ask at the next anchor (the closed-at guard half keeps
+      // this period consumed); "asked and declined" lives on the board, not as
+      // an open sleeping issue.
+      // A declined request tells the ISSUE so and disarms it, in the same
+      // convergence: nothing else would, and an un-disarmed issue would be
+      // re-adopted and re-refused on every scheduler run forever.
+      if (it.request != null) declineRequest(it, verdict.reason ?? 'the precondition declined');
+      close(it, 'obsolete');
+      record('decline-close', { task: it.taskId, issue: it.number, reason: verdict.reason ?? 'no work' });
       onSettled();
       return;
     }
@@ -685,7 +774,7 @@ export function makeSim({
       const live = has(o, 'task:executing') || has(o, 'task:agent');
       if (!live) return false;
       if (o.title === it.title) return true; // twin
-      if (afterMode === 'yield' && isStanding(it)) {
+      if (isStanding(it)) {
         const ups = registry.get(it.taskId)?.after ?? [];
         if (ups.some((up) => o.title === titleOf(up) && isStanding(o))) return true;
       }
@@ -845,10 +934,17 @@ export function makeSim({
       return sim;
     },
 
-    // forcing a scheduled task = waking its standing item (DESIGN §8)
+    // forcing a scheduled task = waking its standing item where one exists,
+    // MINTING one where none does (DESIGN §8) — the common case once a decline
+    // files nothing: for most of a quiet task's day there is no item to wake.
     force(taskId, { urgent = true } = {}) {
-      const it = standingItem(taskId);
-      if (!it) throw new Error(`no standing item for ${taskId}`);
+      let it = standingItem(taskId);
+      if (!it) {
+        it = createIssue({ taskId, labels: ['task:ready'], urgent });
+        record('force', { task: taskId, issue: it.number, minted: true });
+        schedule(now + 1 * MIN, () => executorRun('E1', 'label-event'));
+        return it;
+      }
       it.notBefore = null;
       if (has(it, 'task:blocked')) swap(it, 'task:blocked', 'task:ready');
       // The hand-wake writes its own episode-marker comment (create-work-item),
@@ -939,6 +1035,39 @@ export function makeSim({
     // standing item. Injected directly — the sim's own scheduler run can't produce it.
     injectDuplicateStanding(taskId) {
       return createIssue({ taskId, labels: ['task:ready'] });
+    },
+
+    // ---- the schedule board's levers (#1115) -------------------------------
+    board,
+    boardWrites: () => log.filter((e) => e.kind === 'board-write'),
+    // Somebody deletes the board issue: every row is gone, reads answer absent.
+    deleteBoard() { board.exists = false; board.corrupt = false; board.rows.clear(); record('board-delete', {}); return sim; },
+    // Somebody mangles the body: the issue exists but no row parses. The next
+    // write replaces the whole body, so the mangled rows are genuinely lost.
+    corruptBoard() { board.corrupt = true; record('board-corrupt', {}); return sim; },
+    // The scheduler run cannot collect this task's signals (a missing
+    // credential): its anchor-side ask fails OPEN — the item is created as the
+    // calendar-only model created it, and the executor decides at pick.
+    setSignalsUnavailable(taskId, on = true) {
+      if (on) signalsUnavailable.add(taskId); else signalsUnavailable.delete(taskId);
+      return sim;
+    },
+    // The next work-item POST for this task is refused (F31's write failure).
+    failNextCreateOf(taskId) { failNextCreateOf.add(taskId); return sim; },
+    // An old-engine leftover for the migration scenarios: a standing item the
+    // roll model left sleeping — open, blocked, a future Not-before, the last
+    // decline in its rolls (the Last-verdict section, artifact-wise).
+    seedSleepingItem(taskId, { rolledAtIso, notBeforeIso, reason = 'no work', blockedBy = [] }) {
+      const it = {
+        number: issues.length + 850, title: titleOf(taskId), taskId,
+        labels: new Set(['task:blocked']), state: 'open',
+        createdAt: T(rolledAtIso) - 30 * MIN, closedAt: null, readySince: null,
+        lastActivity: T(rolledAtIso), notBefore: T(notBeforeIso), blockedBy,
+        outcome: null, rolls: [{ t: T(rolledAtIso), reason }], comments: [],
+        escalated: false, sessions: [], quarantined: false,
+      };
+      issues.push(it);
+      return it;
     },
 
     // ---- platform failure injection (S9/S10) -------------------------------
