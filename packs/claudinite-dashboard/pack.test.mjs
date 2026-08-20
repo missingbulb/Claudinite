@@ -72,6 +72,30 @@ test('the seeded workflow is a shim over the mount, holding no build logic', asy
   assert.doesNotMatch(yml, /vars\.DASHBOARD_/, 'settings belong in .claudinite-checks.json, not in the frozen stub');
 });
 
+// The catch-up trigger, and the one string in it this pack does not own. A push that
+// moves a member's mount is made by the Actions token, which fires no workflow — so
+// the deploy hangs off the vendored scheduler finishing instead. `workflow_run` names
+// that workflow by its DISPLAY NAME, and a name that does not match any workflow is
+// not an error: the trigger simply never fires, and the site quietly stops being
+// republished. Which is the exact failure this trigger was added to fix.
+test('the seeded workflow follows the scheduler, by a name the engine actually ships', async () => {
+  const yml = await readFile(join(PACK_DIR, pack.seedOps[0].template), 'utf8');
+  const named = /workflow_run:\s*\n\s*workflows:\s*\['([^']+)'\]/.exec(yml);
+  assert.ok(named, 'the stub must follow the scheduler rather than declare a cron of its own');
+
+  const tick = await readFile(resolve(ROOT, 'engine/scheduler/stubs/claudinite-tick.yml'), 'utf8');
+  assert.match(tick, new RegExp(`^name:\\s*${named[1]}\\s*$`, 'm'),
+    `the stub follows "${named[1]}", which no engine stub declares`);
+});
+
+// The repo's own rule, and the reason this is a `workflow_run` and not a `cron`: the
+// vendored scheduler is a member's ONE permitted schedule.
+test('the seeded workflow declares no cron of its own', async () => {
+  const yml = await readFile(join(PACK_DIR, pack.seedOps[0].template), 'utf8');
+  assert.doesNotMatch(yml, /^\s*schedule:/m,
+    'a second cron competes with the scheduler that owns every recurring job');
+});
+
 test('the build script is NOT seeded — it has to keep converging', () => {
   const dests = pack.seedOps.map((o) => o.dest);
   assert.ok(!dests.some((d) => d.includes('build-site')), 'build-site.mjs must stay in the mount');

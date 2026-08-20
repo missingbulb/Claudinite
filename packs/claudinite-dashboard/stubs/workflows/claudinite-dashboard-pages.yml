@@ -26,6 +26,18 @@ on:
       - '.claudinite/shared/engine/**'
       - '.claudinite-checks.json'
       - '.github/workflows/claudinite-dashboard-pages.yml'
+  # The push trigger above cannot see the one push that moves the mount most often.
+  # Claudinite's own update PRs are auto-merged by the Actions token, and a push made
+  # with `GITHUB_TOKEN` deliberately fires no workflow — so every converge lands
+  # silently and the site keeps serving whatever the last human merge built.
+  #
+  # The catch-up hangs off the scheduler rather than a `cron:` of its own, because the
+  # vendored scheduler is this repo's one permitted schedule. Following it is not
+  # competing with it: the cadence stays the scheduler's, and this only asks, each time
+  # it finishes, whether the page's sources have moved since the last deploy.
+  workflow_run:
+    workflows: ['Claudinite scheduler']
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -43,11 +55,34 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+
+      # The scheduler finishes every hour, and on almost all of those the page's
+      # sources are exactly what was deployed last time. A cache entry keyed on those
+      # sources is the cheapest available answer to "has anything moved": a hit means
+      # this same tree is already live, and the run stops here. The entry is written
+      # only once the deploy has succeeded, so a failed one is retried rather than
+      # recorded as done. A `push` or a hand dispatch skips the question — those are
+      # asked for, and a forced republish must not be answered with a cache hit.
+      - name: What the page would be built from
+        id: sources
+        run: echo "key=dashboard-deployed-${{ hashFiles('.claudinite/shared/packs/claudinite-dashboard/**', '.claudinite/shared/engine/**', '.claudinite-checks.json', '**/*.GENERATED.json') }}" >> "$GITHUB_OUTPUT"
+
+      - name: Is that already deployed?
+        id: deployed
+        if: github.event_name == 'workflow_run'
+        uses: actions/cache/restore@v4
+        with:
+          path: .deployed
+          key: ${{ steps.sources.outputs.key }}
+          lookup-only: true
+
       - uses: actions/setup-node@v5
+        if: steps.deployed.outputs.cache-hit != 'true'
         with:
           node-version: 24
 
       - name: Assemble the site
+        if: steps.deployed.outputs.cache-hit != 'true'
         run: node .claudinite/shared/packs/claudinite-dashboard/build-site.mjs
 
       # The build exits clean with no `_site` when the mount does not yet carry the
@@ -55,6 +90,7 @@ jobs:
       # and deploying an empty artifact would replace a working site with a 404.
       - name: Is there a site to publish?
         id: built
+        if: steps.deployed.outputs.cache-hit != 'true'
         run: |
           if [ -f _site/index.html ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
@@ -73,6 +109,7 @@ jobs:
 
     outputs:
       ready: ${{ steps.built.outputs.ready }}
+      key: ${{ steps.sources.outputs.key }}
 
   deploy:
     needs: build
@@ -84,3 +121,11 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+      # Now, and only now, is this tree deployed — which is what the next scheduler
+      # wake-up reads to decide it has nothing to do.
+      - run: mkdir -p .deployed && echo "${{ github.sha }}" > .deployed/sha
+      - uses: actions/cache/save@v4
+        with:
+          path: .deployed
+          key: ${{ needs.build.outputs.key }}

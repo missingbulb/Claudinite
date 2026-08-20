@@ -363,6 +363,21 @@ Two things about that split are deliberate:
   being written at adoption — and it never converges after. It is therefore a thin
   shim that calls `build-site.mjs` out of the mount, exactly as the scheduler stub
   calls the engine's tick. Only the file that must be frozen is frozen.
+
+- **It follows the scheduler rather than only a push.** The mount is the page's
+  source, and the push that moves it is a Claudinite update PR auto-merged by the
+  Actions token — which fires no workflow, by GitHub's design. A deployment triggered
+  on `push` alone therefore keeps serving whatever the last *human* merge built, for
+  as long as nobody merges by hand: Shepherd's sat two pack versions behind for days,
+  still rendering a mount verdict the pack had already deleted. So the stub also
+  triggers on the vendored scheduler completing — the member's one permitted
+  schedule, followed rather than competed with — and asks an Actions cache entry,
+  keyed on the page's sources, whether this exact tree is already live before it
+  builds anything.
+
+  **An already-adopted deployment does not get this.** Nothing converges
+  `.github/workflows/`, so an existing member's copy has to be brought in line by
+  hand, once.
 - **The staged tree mirrors the mount's layout**, publishing at
   `/packs/claudinite-dashboard/` with the root as a redirect. That is load-bearing, not
   tidiness: the page imports the queue's modules by relative path so it cannot drift
