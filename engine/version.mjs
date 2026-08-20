@@ -40,7 +40,7 @@ export const ENGINE_VERSION = '60820.1';
 // against a canon at 13 is behind by an unknown amount of time, and the fleet
 // surfaces that as a number a reader has to go and date by hand.
 //
-// LEGACY TOLERANCE, until 2026-08-27 (#1101). Versions were plain positive integers
+// LEGACY TOLERANCE, until 2026-08-27 (#1106). Versions were plain positive integers
 // until 2026-08-20, and the integers are still sitting in every member's stamp, in
 // each pack's `minEngineVersion` floor and in every migration record's range. So a
 // legacy integer parses here as `<n>.0` — below every date-anchored version, which
@@ -81,7 +81,7 @@ export const isVersion = (v) => parseVersion(v) !== null;
 // What a manifest or a release may WRITE: a real version, never the install floor.
 export const isDeclaredVersion = (v) => isVersion(v) && v !== 0;
 
-// True for the retiring spelling only — the one thing the removal change (#1101)
+// True for the retiring spelling only — the one thing the removal change (#1106)
 // greps for, and what a reader needing to say "this predates the scheme" asks.
 export const isLegacyVersion = (v) => typeof v === 'number' && Number.isInteger(v) && v >= 0;
 
