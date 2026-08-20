@@ -224,3 +224,16 @@ test('tidy-issues: its worker knows an unchanged verdict is not an action', () =
   assert.match(worker, /\bunchanged\b/,
     'tidy-issues/task.md does not say what an unchanged verdict means for its tracker');
 });
+
+// The strongest completion signal an issue can carry is its own checklist, fully
+// ticked — and it is a claim by the author, not proof, so it enters the
+// close-if-implemented rung rather than short-circuiting it (#1087).
+test('single-issue-triage: a fully-ticked checklist prompts a completion check, and a partial one does not', () => {
+  const skill = readFileSync(join(PACK_DIR, 'skills/single-issue-triage/SKILL.md'), 'utf8');
+  assert.match(skill, /every checkbox .*ticked/i,
+    'single-issue-triage never reads the issue body\'s checkboxes');
+  assert.match(skill, /a claim.*not proof/i,
+    'a ticked checklist is treated as proof of completion, bypassing the verify-against-main safeguard');
+  assert.match(skill, /partially[- ]ticked/i,
+    'the skill does not say a partially-ticked list is not a completion signal');
+});
