@@ -62,8 +62,13 @@ change, independent of any one project.
   [writing-migration-plans](skills/writing-migration-plans/SKILL.md) owns that sort.
 
 - **When verifying now is genuinely impossible** (an external release window, an upstream fix in
-  flight) — make the follow-up a mechanism that comes to you: a scheduled task, a watched PR, an
-  issue something converges. Never a human's memory.
+  flight, an effect that only appears once the change is deployed, converged or loaded by a later
+  session) — the follow-up is a mechanism that comes to you, never a human's memory and never an
+  offer to the owner to go and check later. File it with
+  [verify-in-production](skills/verify-in-production/SKILL.md), unasked, as part of finishing the
+  change: it owns both halves — whether this change needs one at all (most don't; a test that ran
+  is already the mechanism), and the issue that states what puts the change in production and what
+  proves it works there.
 
 - **Receiving feedback that flags a misunderstanding** — check whether the artifact is already
   correct before expanding it; if it is, say so and push back rather than edit.

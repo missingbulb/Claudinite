@@ -1694,6 +1694,13 @@ any origin, exactly as it releases a fan-in. Chaining follows for free: an issue
 whose blocker is the previous deferral's issue is serialized behind it, so a chain
 is an emergent property of the field rather than a feature of its own.
 
+**And waiting on a moment is `Not-before:`.** The same carry, for the item's other
+wait field: adoption copies a still-future `Not-before:` from the marked issue onto
+the item, which is then born `task:blocked` until job 2's clock releases it. A
+deferred verification is the standing case — a run that finds its world not yet
+ready re-marks its own issue with a bumped date, and without the carry the next
+pick would come within the hour, forever.
+
 Two rules keep the gate one-directional. A blocker already closed at adoption is
 dropped rather than born and immediately readied — an item never waits on something
 that has happened. An unreadable blocker is never read as closed, so a failed read
