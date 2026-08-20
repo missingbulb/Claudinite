@@ -365,6 +365,24 @@ test('a marked issue that names open blockers is adopted BLOCKED, and released w
   );
 });
 
+// `Not-before:` rides the same rule as `Blocked-by:` — the field a work item
+// already uses, carried at adoption — so a deferred request can wait on a moment
+// as well as an issue. The re-arm loop depends on it: a run that finds its world
+// not ready re-marks its issue with a bumped date, and without the carry the next
+// pick comes within the hour, forever.
+test('a marked issue with a future Not-before is adopted BLOCKED until that moment', () => {
+  const [adopt] = ops({ requests: [marked(500, ['claude-task'], 'Verify once live.\n\nNot-before: 2099-01-01T00:00:00Z\n')] })
+    .filter((o) => o.kind === 'adopt');
+  assert.deepEqual(adopt.labels, ['task:blocked']);
+  assert.equal(parseWorkItemBody(adopt.body).notBefore, '2099-01-01T00:00:00Z');
+});
+
+test('a Not-before already past holds nothing back', () => {
+  const [adopt] = ops({ requests: [marked(500, ['claude-task'], 'Late.\n\nNot-before: 2020-01-01T00:00:00Z\n')] })
+    .filter((o) => o.kind === 'adopt');
+  assert.deepEqual(adopt.labels, ['task:ready']);
+});
+
 test('an unreadable blocker delays the request rather than releasing it', () => {
   const item = requestItem(500, ['task:blocked'], { body: `${TASK_PATH}\n\nBlocked-by: #480\nRequest: #500\n` });
   assert.deepEqual(ops({ items: [item], stateOf: () => null }).filter((o) => o.kind === 'ready'), []);
