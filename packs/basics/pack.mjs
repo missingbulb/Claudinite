@@ -1,4 +1,3 @@
-import commentClassification from './comment-classification.mjs';
 import referenceIntegrity from './reference-integrity.mjs';
 import markdownLinkLabels from './markdown-link-labels.mjs';
 import filePlacement from './file-placement.mjs';
@@ -24,7 +23,8 @@ export default {
   // in retires here, and every pack in the canon restarts from the same day.
   // 60820.2: a migration's cleanup is filed as work that returns, never written as a
   // later phase (writing-migration-plans).
-  version: '60820.2',
+  // 60820.3: the comment classification stays a rule and stops being a check (#1114).
+  version: '60820.3',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'cross-project working discipline, issue-branch-PR lifecycle, repo hygiene, doc/reference integrity and the baseline engineering, testing and debugging skills',
@@ -54,7 +54,6 @@ export default {
   // are declared checks carrying scope: "work", discovered structurally beside
   // these.
   workRules: [
-    commentClassification,
     referenceIntegrity,
   ],
   // The baseline skills — general engineering practice every project's work

@@ -7,7 +7,7 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
 | Starting any requested change | high | correctness | prose: 59 words |
-| Replying to an owner comment | high | complexity | prose: 109 words + check (`comment-classification`) |
+| Replying to an owner comment | high | complexity | prose: 109 words |
 | Acting on a correction | high | correctness | prose: 39 words |
 | Acting on a feature | high | correctness | prose: 39 words |
 | Acting on a process change | medium | complexity | prose: 67 words |
@@ -75,7 +75,6 @@ The working-discipline rules with a deterministic signature. The world rules rea
 | `claude-md-length` | medium | performance | check: advisory |
 | `generated-merge-driver` | medium | correctness | check: advisory |
 | `catalog-completeness` | medium | complexity | check: blocking |
-| `comment-classification` | high | complexity | check: blocking |
 | `reference-integrity` | medium | correctness | check: blocking |
 | `task-lifecycle` | medium | complexity | check: blocking |
 | `squash-merge-history` | high | correctness | check: blocking |
