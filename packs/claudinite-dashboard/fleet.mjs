@@ -32,6 +32,7 @@ import {
 } from '../../engine/scheduler/queue/work-item.mjs';
 import { canonicalPackVersions } from '../../engine/pack_loader/renamed-packs.mjs';
 import { describeItem, isWorkItem, parseWorkItemTitle, taskDeclarationPaths } from './model.mjs';
+import { commitDays } from './activity.mjs';
 
 // Severity ladder, worst first. The order IS the sort, so it is stated once here
 // rather than implied by comparisons scattered through the render.
@@ -115,7 +116,7 @@ export function mountState(stamp, canon = null) {
 export function summariseMember(read, { now, canon = null } = {}) {
   const {
     repo, error = null, declaration = null, items = null, runs = null, paths = null,
-    prs = null, head = null, stars = null, defaultBranch = null,
+    prs = null, head = null, stars = null, defaultBranch = null, commits = undefined,
   } = read ?? {};
 
   if (error) {
@@ -239,6 +240,7 @@ export function summariseMember(read, { now, canon = null } = {}) {
     parked: parked.length,
     parkedHolding: holding.length,
     parkedApprovals: approvals.length,
+    parkedInbox: inbox.length,
     warned: warned.length,
     closedSeen: closed.length,
     outcomes,
@@ -247,6 +249,9 @@ export function summariseMember(read, { now, canon = null } = {}) {
     ci,
     stars,
     lastCommit: head?.committedAt ? ms(head.committedAt) : null,
+    // Null all the way through when the read did not happen, so the row draws "not
+    // read" rather than an empty quarter that reads as a repo nobody touched.
+    commits: commitDays(commits, { now }),
     work: humanWork(items, prs, now),
     mount,
     schedule: declaration.taskScheduler ?? null,
@@ -361,6 +366,10 @@ export function rollUp(summaries) {
     needAttention: adopted.filter((s) => levelRank(s.level) <= levelRank('serious')).length,
     parkedMembers: adopted.filter((s) => s.parked > 0).length,
     parkedItems: adopted.reduce((n, s) => n + s.parked, 0),
+    parkedHolding: adopted.reduce((n, s) => n + (s.parkedHolding ?? 0), 0),
+    parkedInbox: adopted.reduce((n, s) => n + (s.parkedInbox ?? 0), 0),
+    parkedApprovals: adopted.reduce((n, s) => n + (s.parkedApprovals ?? 0), 0),
+    warnedItems: adopted.reduce((n, s) => n + (s.warned ?? 0), 0),
     warnedMembers: adopted.filter((s) => s.warned > 0).length,
     failingMembers: adopted.filter((s) => s.runs?.consecutiveFailures > 0).length,
     neverRan: adopted.filter((s) => s.runs && !s.runs.everRan).length,
@@ -370,6 +379,28 @@ export function rollUp(summaries) {
     declaredTasks: adopted.reduce((n, s) => n + (s.declaredTasks ?? 0), 0),
     outcomes,
   };
+}
+
+// WHAT the human attention is, not how much of it there is. "3 members need you"
+// is the length of this morning's list; it does not say whether that is three merges
+// to approve or three broken lanes, and those are not the same morning.
+//
+// The split already exists one level down — `summariseMember` separates a failure
+// park from an inbox park from an approval park precisely because a page that rings
+// identically for all of them teaches its reader to ignore the ring — and the rollup
+// used to throw it away and re-merge them into one word.
+//
+// Ordered worst first, and a kind nobody is waiting on is absent rather than zero.
+export function attentionBreakdown(roll) {
+  const n = (count, one, many) => `${count} ${count === 1 ? one : many}`;
+  return [
+    roll.parkedHolding && { level: 'critical', text: `${n(roll.parkedHolding, 'task', 'tasks')} broken` },
+    roll.failingMembers && { level: 'critical', text: `${n(roll.failingMembers, 'scheduler', 'schedulers')} failing` },
+    roll.parkedInbox && { level: 'serious', text: `${n(roll.parkedInbox, 'item', 'items')} needing a decision` },
+    roll.warnedItems && { level: 'serious', text: `${n(roll.warnedItems, 'item', 'items')} tripping a recovery rule` },
+    roll.parkedApprovals && { level: 'warning', text: `${n(roll.parkedApprovals, 'item', 'items')} needing approval` },
+    roll.neverRan && { level: 'serious', text: `${n(roll.neverRan, 'scheduler', 'schedulers')} never ran` },
+  ].filter(Boolean);
 }
 
 // Which packs the fleet uses, and how widely. Answers the question the canon actually

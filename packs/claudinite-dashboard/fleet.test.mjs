@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import {
   summariseMember, summariseRuns, mountState, rankMembers, rollUp, packSpread, taskSpread,
-  ciStatus, parseEngineVersion, parsePackVersion,
+  ciStatus, parseEngineVersion, parsePackVersion, attentionBreakdown,
 } from '../../packs/claudinite-dashboard/fleet.mjs';
 import { ENGINE_VERSION } from '../../engine/version.mjs';
 import dashboardPack from '../../packs/claudinite-dashboard/pack.mjs';
@@ -445,4 +445,47 @@ test('the head commit and the repo\'s stars ride along from reads already made',
     { now: NOW, canon: CANON });
   assert.equal(s.stars, 12);
   assert.equal(s.lastCommit, Date.parse('2026-08-16T00:00:00Z'));
+});
+
+// --- what kind of human attention -------------------------------------------------
+
+// The rollup counts MEMBERS, which is the length of the morning's list. What the list
+// is made of is a separate question, and merging three merges to approve with three
+// broken lanes into one word is what this exists to stop.
+test('the attention breakdown names each kind of park separately', () => {
+  const rows = attentionBreakdown({
+    parkedHolding: 1, parkedInbox: 1, parkedApprovals: 3,
+    failingMembers: 0, warnedItems: 0, neverRan: 0,
+  });
+  assert.deepEqual(rows.map((r) => r.text), [
+    '1 task broken', '1 item needing a decision', '3 items needing approval',
+  ]);
+});
+
+test('the breakdown is worst first, so the top line is the one to act on', () => {
+  const rows = attentionBreakdown({
+    parkedApprovals: 2, parkedInbox: 1, parkedHolding: 1, failingMembers: 1,
+    warnedItems: 1, neverRan: 1,
+  });
+  assert.deepEqual(rows.map((r) => r.level),
+    ['critical', 'critical', 'serious', 'serious', 'warning', 'serious']);
+});
+
+// A kind nobody is waiting on is ABSENT. A tile that lists "0 items needing approval"
+// beside a real alarm is teaching its reader to skim the list.
+test('a kind with nothing waiting on it is left out, not reported as zero', () => {
+  assert.deepEqual(attentionBreakdown({
+    parkedHolding: 0, parkedInbox: 0, parkedApprovals: 0,
+    failingMembers: 0, warnedItems: 0, neverRan: 0,
+  }), []);
+});
+
+test('the rollup carries the split the breakdown reads', () => {
+  const roll = rollUp([
+    summariseMember(read({ items: [item({ labels: [NEEDS_HUMAN, NEEDS_HUMAN_APPROVAL] })] }), { now: NOW, canon: CANON }),
+    summariseMember(read({ repo: 'o/b', items: [item({ labels: [NEEDS_HUMAN] })] }), { now: NOW, canon: CANON }),
+  ]);
+  assert.equal(roll.parkedApprovals, 1);
+  assert.equal(roll.parkedHolding, 1, 'an unclassified park falls back to failure, which holds the lane');
+  assert.equal(roll.parkedInbox, 0);
 });

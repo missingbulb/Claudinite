@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  activitySeries, fleetBenefits, dayLadder, dayKey, delta,
+  activitySeries, fleetBenefits, dayLadder, dayKey, delta, commitDays,
 } from '../../packs/claudinite-dashboard/activity.mjs';
 import {
   READY, NEEDS_HUMAN, OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE,
@@ -174,4 +174,55 @@ test('digests are counted from what was actually found, and null when none was l
   const withDigests = fleetBenefits([read()], { now: NOW, digests: [{ text: 'a' }, { text: null }] });
   assert.equal(withDigests.digests, 1);
   assert.equal(fleetBenefits([read()], { now: NOW }).digests, null);
+});
+
+// --- commitDays ------------------------------------------------------------------
+
+// A week as `/stats/commit_activity` sends it: a UTC-Sunday epoch second, and seven
+// daily counts from Sunday.
+const week = (sundayIso, days) => ({ week: Date.parse(sundayIso) / 1000, days });
+
+test('a week of counts lands on its own UTC days, Sunday first', () => {
+  const r = commitDays([week('2026-08-16T00:00:00Z', [1, 2, 0, 4, 0, 0, 0])], { now: NOW, days: 7 });
+  const by = Object.fromEntries(r.days.map((d) => [d.day, d.count]));
+  assert.equal(by['2026-08-16'], 1);
+  assert.equal(by['2026-08-17'], 2);
+  assert.equal(by['2026-08-18'], 0);
+  assert.equal(r.total, 3);      // the window ends today, so Tuesday's 4 is not in it
+  assert.equal(r.peak, 2);
+});
+
+test('the window ends today and runs back N days', () => {
+  const r = commitDays([], { now: NOW, days: 90 });
+  assert.equal(r.days.length, 90);
+  assert.equal(r.days[89].day, dayKey(NOW));
+});
+
+// The three empty answers the graph has to keep apart. A page that renders all of
+// them as blank squares tells a viewer a repo was quiet when in fact it was not read.
+test('a read that did not happen is null, and is not a quiet repo', () => {
+  assert.equal(commitDays(null, { now: NOW }), null);
+  assert.equal(commitDays(undefined, { now: NOW }), null);
+});
+
+test('a day the reported year does not cover is unread, never a zero', () => {
+  const r = commitDays([week('2026-08-16T00:00:00Z', [1, 0, 0, 0, 0, 0, 0])], { now: NOW, days: 7 });
+  assert.equal(r.days[0].count, null);          // 2026-08-12, outside the one week given
+  assert.equal(r.days[0].day, '2026-08-12');
+  assert.equal(r.unread, 4);   // 12th-15th precede the single week supplied
+  assert.equal(r.total, 1);
+});
+
+test('a repo with commits reported and none made is quiet, not unread', () => {
+  const r = commitDays([week('2026-08-16T00:00:00Z', [0, 0, 0, 0, 0, 0, 0])], { now: NOW, days: 3 });
+  assert.deepEqual(r.days.map((d) => d.count), [0, 0, 0]);
+  assert.equal(r.unread, 0);
+  assert.equal(r.total, 0);
+  assert.equal(r.peak, 0);
+});
+
+test('a malformed week is skipped rather than throwing the row away', () => {
+  const r = commitDays([{ week: null, days: [9] }, week('2026-08-16T00:00:00Z', [3, 0, 0, 0, 0, 0, 0])],
+    { now: NOW, days: 3 });
+  assert.equal(r.total, 3);
 });

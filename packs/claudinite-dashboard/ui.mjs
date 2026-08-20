@@ -100,6 +100,114 @@ export function segmentBar(segments, { width = 108, title = (l, n) => `${n} ${l}
   return bar;
 }
 
+// --- the member row's compact marks ----------------------------------------------
+
+// A fleet grid is thirteen columns wide, and three of them were spending a whole
+// column each on something a glyph carries: a star count, a pass/fail word, and one
+// relative date. These three fold that back — the row reads at the same glance and
+// gives the width to the panels that need it.
+
+// The star count, as the mark itself over the number. It rides ahead of the name
+// rather than in the Status group because it is not a health signal: it says what
+// KIND of repo this is, which is the frame you read the rest of the row in.
+export const starMark = (stars) => el('div', {
+  className: 'stars',
+  title: stars == null ? 'stars unknown' : `${stars} stargazer${stars === 1 ? '' : 's'}`,
+}, [
+  el('div', { className: 'glyph', textContent: '★' }),
+  el('div', { className: 'n num', textContent: stars == null ? '—' : String(stars) }),
+]);
+
+// CI as a dot with its age under it. The dot is never the whole message — it carries
+// a `title` and an `aria-label` in words, because a colour alone is unreadable to a
+// reader who cannot see the difference between this green and this red.
+export function ciDot(ui, when) {
+  return el('div', { className: 'ci-dot' }, [
+    el('i', {
+      className: `dot ${ui.cls}`,
+      role: 'img',
+      title: `CI ${ui.label}`,
+      'aria-label': `CI ${ui.label}`,
+    }),
+    el('div', { className: 'sub', textContent: when }),
+  ]);
+}
+
+// A member's last 90 days of commits, as GitHub draws them: a column per week, a row
+// per weekday, shaded by how many commits landed that day.
+//
+// The scale is EACH ROW'S OWN peak, so a square's darkness compares days within one
+// member and never across two. A fleet-wide scale was the alternative and it is
+// worse: one member merging a vendored tree flattens every other row to blank, which
+// is exactly the reading — "nothing happens in these repos" — that the graph exists
+// to disprove. The peak is in the hover text so the scale is never guessed at.
+//
+// Three empty states, and they are three different facts. `null` days are outside the
+// year of statistics the API returns; a null series is a read that did not happen
+// (withheld for budget, or GitHub still computing); and zeroes are a repo that was
+// genuinely quiet.
+const COMMIT_LEVELS = 4;
+
+export function commitGraph(series, { cell = 4, gap = 1, note = null } = {}) {
+  if (!series) return el('div', { className: 'sub', textContent: 'not read' });
+
+  const NS = 'http://www.w3.org/2000/svg';
+  const svgEl = (tag, attrs = {}) => {
+    const n = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, String(v));
+    return n;
+  };
+
+  const { days, peak, total, unread } = series;
+  // Sunday-first columns, like GitHub's, so a reader who knows that grid reads this
+  // one. The first column is short whenever the window opens mid-week.
+  const weekday = (day) => new Date(`${day}T00:00:00Z`).getUTCDay();
+  const columns = [];
+  for (const d of days) {
+    const w = weekday(d.day);
+    if (!columns.length || w === 0) columns.push(new Array(7).fill(undefined));
+    columns[columns.length - 1][w] = d;
+  }
+
+  const width = columns.length * (cell + gap) - gap;
+  const height = 7 * (cell + gap) - gap;
+  const svg = svgEl('svg', {
+    viewBox: `0 0 ${width} ${height}`, width, height,
+    class: 'commits', role: 'img',
+    'aria-label': `${total} commits in the last ${days.length} days, busiest day ${peak}`,
+  });
+
+  columns.forEach((col, ci) => {
+    col.forEach((d, wi) => {
+      if (!d) return;
+      // A day with no count is not a day with none: outside the data, it is drawn as
+      // the empty square's own colour and says so on hover.
+      const level = d.count == null || peak === 0 ? 0
+        : (d.count === 0 ? 0 : Math.max(1, Math.ceil((d.count / peak) * COMMIT_LEVELS)));
+      const rect = svgEl('rect', {
+        x: ci * (cell + gap), y: wi * (cell + gap), width: cell, height: cell, rx: 1,
+        class: `commit-cell l${level}${d.count == null ? ' unread' : ''}`,
+      });
+      const t = svgEl('title');
+      t.textContent = d.count == null
+        ? `${d.day} — outside the year of history GitHub reports`
+        : `${d.day} — ${d.count} commit${d.count === 1 ? '' : 's'}`;
+      rect.append(t);
+      svg.append(rect);
+    });
+  });
+
+  return el('div', { className: 'commit-graph' }, [
+    svg,
+    // One line under the grid, not two: this column's whole point is that it says
+    // more than the date it replaced WITHOUT costing more width than the date did.
+    el('div', {
+      className: 'sub',
+      textContent: [total === 0 && !unread ? 'none' : String(total), note].filter(Boolean).join(' · '),
+    }),
+  ]);
+}
+
 // --- tables ---------------------------------------------------------------------
 
 export const head = (table, cols) => {
@@ -117,16 +225,95 @@ export const issueLink = (repo, n) =>
 export const repoLink = (repo) =>
   el('a', { href: `https://github.com/${repo}`, target: '_blank', rel: 'noopener', textContent: repo });
 
+// --- counting up ----------------------------------------------------------------
+
+// A fleet load repaints on EVERY member's read landing, so a headline number is
+// rebuilt a dozen times in a couple of seconds and each rebuild replaces the digits
+// outright. The eye reads that as flicker rather than as arrival: you cannot tell
+// whether 7 became 9 or whether two different numbers were drawn.
+//
+// So a number that CHANGED tweens from what the reader was last shown to what it is
+// now, and only that. A first paint has nothing to count from and simply appears; a
+// value that did not move is not re-animated; anything non-numeric — `3/12`, `—` —
+// has nothing to interpolate and is set outright.
+//
+// `key` is the identity across paints, because the node is not: `replaceChildren`
+// discards the element the last tween was writing into. It is the tile's own label,
+// which is what makes two tiles two counters.
+const displayed = new Map();
+const inFlight = new Map();
+
+const COUNT_MS = 400;
+
+// Motion here is decoration on a page whose job is fault-finding, so a reader who has
+// asked the platform for less of it gets the number and none of the movement.
+const stillness = () => typeof matchMedia === 'function'
+  && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// Decelerating, so the counter reads as landing on its value rather than as stopping
+// mid-climb.
+const ease = (t) => 1 - (1 - t) ** 3;
+
+export function countUp(node, key, value) {
+  const stop = inFlight.get(key);
+  if (stop) { stop(); inFlight.delete(key); }
+
+  const to = Number(value);
+  const from = displayed.get(key);
+  const set = (n) => { node.textContent = String(n); };
+
+  if (!Number.isFinite(to) || typeof requestAnimationFrame !== 'function' || stillness()) {
+    set(value);
+    displayed.set(key, Number.isFinite(to) ? to : null);
+    return node;
+  }
+  if (!Number.isFinite(from) || from === to) {
+    set(to);
+    displayed.set(key, to);
+    return node;
+  }
+
+  const t0 = performance.now();
+  let frame = 0;
+  const step = (t) => {
+    // Clamped at BOTH ends. A rAF callback is handed the timestamp of the frame it
+    // belongs to, which can predate the `performance.now()` taken while scheduling it
+    // — and a fractionally negative progress run through an ease that overshoots
+    // backwards drew a counter passing through −12 on its way up from zero.
+    const p = Math.min(1, Math.max(0, (t - t0) / COUNT_MS));
+    const at = Math.round(from + (to - from) * ease(p));
+    set(at);
+    displayed.set(key, p < 1 ? at : to);
+    if (p < 1) frame = requestAnimationFrame(step);
+    else inFlight.delete(key);
+  };
+  // The landing value is recorded up front, so a tween cut short by the next paint
+  // still leaves the counter's memory on the number that paint asked for.
+  displayed.set(key, from);
+  set(from);
+  frame = requestAnimationFrame(step);
+  inFlight.set(key, () => cancelAnimationFrame(frame));
+  return node;
+}
+
+// Forget every counter — the next paint's numbers then appear rather than climb.
+// What a cleared cache and a switched view have in common: the figures after are not
+// a continuation of the figures before, and tweening between them would draw a
+// change that did not happen.
+export const resetCountUps = () => { for (const stop of inFlight.values()) stop(); inFlight.clear(); displayed.clear(); };
+
 // --- tiles ----------------------------------------------------------------------
 
 // `[value, label, color?, hint?]`. Colour is applied only when the tile is reporting
 // something — a zero never gets an alarm colour, so a coloured tile always means
-// "look at this".
+// "look at this". `hint` may be nodes rather than a string where the tile itemises
+// what its number is made of.
 export function tiles(node, rows) {
   node.replaceChildren(...rows.map(([v, k, color, hint]) => el('div', { className: 'tile' }, [
-    el('div', { className: 'v num', textContent: String(v), style: color ? `color:${color}` : '' }),
+    countUp(el('div', { className: 'v num', style: color ? `color:${color}` : '' }), k, v),
     el('div', { className: 'k', textContent: k }),
-    hint ? el('div', { className: 'sub', textContent: hint }) : null,
+    hint == null || hint === '' ? null
+      : (typeof hint === 'string' ? el('div', { className: 'sub', textContent: hint }) : hint),
   ])));
 }
 
@@ -243,7 +430,7 @@ export function windowFigure(value, label, change, note, { better = 'up' } = {})
   const arrow = change?.dir === 'up' ? '▲' : change?.dir === 'down' ? '▼' : '—';
   const sense = !change || change.dir === 'flat' ? 'flat' : (change.dir === better ? 'good' : 'bad');
   return el('div', { className: 'tile' }, [
-    el('div', { className: 'v num', textContent: String(value) }),
+    countUp(el('div', { className: 'v num' }), label, value),
     el('div', { className: 'k', textContent: label }),
     change
       ? el('div', { className: `sub delta ${sense}`, textContent: `${arrow} ${change.by} vs the week before` })

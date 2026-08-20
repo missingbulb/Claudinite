@@ -204,11 +204,18 @@
   /* A grouped grid is wide by construction. Given the choice between squeezing every
      column until its text wraps to five lines and scrolling the panel, scroll: the
      groups exist so a reader can go to the one question they came for. */
-  #fleet { min-width: 1500px; }
+  /* The grid's floor, and it is a floor rather than a fit: a table this wide would
+     otherwise collapse its columns into unreadable slivers before the panel decides
+     to scroll. Folding Stars into the member cell, CI into a dot and the last-commit
+     date into a 90-day graph is what let this come down from 1500. */
+  #fleet { min-width: 1300px; }
   #roster { min-width: 1080px; }
   /* Health is prose and needs room to be one line per reason; every other column is a
      number or a chip and can stay narrow. */
-  #fleet th:nth-child(2), #fleet td:nth-child(2) { min-width: 240px; }
+  /* The reasons cell, by class rather than by position — it holds whole sentences and
+     needs room to wrap, and a positional selector silently retargets the moment a
+     column moves. */
+  #fleet th:nth-child(2), #fleet td.health { min-width: 210px; }
 
   /* The benefits block leads the page, so it is allowed one step more presence than
      the status tiles that follow it — and the delta line is the point of each tile. */
@@ -254,10 +261,59 @@
   .empty { padding: 22px; text-align: center; color: var(--muted); }
   .err { border-left: 3px solid var(--critical); background: var(--surface);
          padding: 10px 14px; border-radius: 0 8px 8px 0; margin-bottom: 14px; }
-  details.setup { background: var(--surface); border: 1px solid var(--border);
-                  border-radius: 10px; padding: 12px 14px; margin-bottom: 20px; }
-  details.setup summary { cursor: pointer; font-weight: 600; }
-  details.setup p, details.setup li { color: var(--ink-2); }
+  /* The explainer rides in the topbar and opens OVER the page. It answers a question
+     you have once — "what is this thing doing with my credential" — and as a block in
+     the flow it pushed the content it explains down the screen on every load after
+     that one. `position: fixed` rather than absolute: the topbar is sticky, and an
+     absolutely-positioned panel inside it is clipped by the bar's own height. */
+  details.setup { position: relative; }
+  details.setup > summary { cursor: pointer; list-style: none; font-size: 12px;
+                  border: 1px solid var(--border); border-radius: 999px;
+                  padding: 2px 9px; color: var(--ink-2); background: var(--surface); }
+  details.setup > summary::-webkit-details-marker { display: none; }
+  details.setup > summary:hover { border-color: var(--ink-2); color: var(--ink); }
+  details.setup[open] > summary { border-color: var(--ink-2); color: var(--ink); }
+  .setup-body { position: fixed; top: 52px; right: 20px; z-index: 20; width: min(480px, calc(100vw - 40px));
+                max-height: calc(100vh - 72px); overflow: auto;
+                background: var(--surface); border: 1px solid var(--border);
+                border-radius: 10px; padding: 4px 16px 12px;
+                box-shadow: 0 12px 32px color-mix(in srgb, var(--ink) 18%, transparent); }
+  .setup-body p, .setup-body li { color: var(--ink-2); }
+  .setup-body p:last-child { margin-bottom: 4px; }
+
+  /* The member cell: the star mark ahead of the name, so `Stars` costs no column. */
+  .member { display: flex; gap: 9px; align-items: baseline; }
+  .stars { text-align: center; flex: none; min-width: 26px; }
+  .stars .glyph { font-size: 11px; line-height: 1; color: var(--s-yellow); }
+  .stars .n { font-size: 12px; color: var(--ink-2); }
+
+  /* CI as a dot with its age under it, in place of a word and a column. */
+  .ci-dot { text-align: center; min-width: 42px; }
+  .ci-dot .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+                 background: var(--muted); }
+  .ci-dot .dot.ok { background: var(--good); }
+  .ci-dot .dot.critical { background: var(--critical); }
+  .ci-dot .dot.info { background: var(--muted); }
+  .ci-dot .sub { margin-top: 3px; }
+
+  /* The 90-day commit grid. Five steps, empty plus four, like the graph it echoes. */
+  .commit-graph svg.commits { display: block; }
+  .commit-cell { fill: var(--rule); }
+  .commit-cell.l1 { fill: color-mix(in srgb, var(--good) 30%, var(--rule)); }
+  .commit-cell.l2 { fill: color-mix(in srgb, var(--good) 55%, var(--rule)); }
+  .commit-cell.l3 { fill: color-mix(in srgb, var(--good) 78%, var(--rule)); }
+  .commit-cell.l4 { fill: var(--good); }
+  /* A day outside the reported year is not a quiet day, and must not look like one. */
+  .commit-cell.unread { fill: none; stroke: var(--rule); stroke-width: 0.5; }
+  .commit-graph .sub { margin-top: 3px; }
+
+  /* The grid is the widest thing on the page and every column is earning its place,
+     so its cells are tighter than the repo view's roomier tables. */
+  #fleet td, #fleet th { padding-left: 9px; padding-right: 9px; }
+
+  /* The attention tile's itemisation — what kind of human attention, not how much. */
+  .needs { display: flex; flex-direction: column; gap: 2px; margin-top: 3px; }
+  .needs .warn { font-size: 11.5px; }
   code { background: color-mix(in srgb, var(--ink) 7%, transparent);
          padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
 </style>
@@ -271,6 +327,31 @@
     <button id="reload" title="Re-read (cached data is revalidated, not refetched)">Reload</button>
     <span class="grow"></span>
     <span id="rate" class="pill" hidden></span>
+    <details class="setup" id="setup">
+      <summary>How this reads your repo</summary>
+      <div class="setup-body">
+      <p>
+      Everything happens in this browser tab. The page calls <code>api.github.com</code>
+      directly as <strong>you</strong>, so <strong>your own GitHub permissions are the only
+      access control</strong> — there is no backend, no shared credential, and this page can
+      show you nothing your account cannot already read. Your credential is held for this
+      tab only (<code>sessionStorage</code>) and is sent to GitHub and nowhere else.
+      </p>
+      <p>
+      Where sign-in is configured, <em>Sign in with GitHub</em> authorizes once and everything
+      afterwards runs as you. Otherwise the page falls back to a pasted token, which needs
+      <em>read-only</em> Contents, Issues and Actions.
+      </p>
+      <p class="hint">
+      Responses are cached in this browser: repo content is keyed by commit SHA, live data is
+      revalidated with ETags (a <code>304</code> costs no rate limit), settled history ages
+      out after 24 hours, and a member's commit graph — the one read here that is decoration
+      rather than a fault signal — after six, and not at all when the budget is tight.
+      <em>Clear cache</em> forces a cold read. Pass <code>?repo=owner/name</code>
+      to jump straight to a repo.
+      </p>
+      </div>
+    </details>
     <button id="purge" title="Drop every cached response and re-read from GitHub">Clear cache</button>
     <span id="auth" class="authbox"></span>
     <button id="theme" title="Toggle light / dark">◐</button>
@@ -279,28 +360,6 @@
 
 <div class="wrap">
   <div id="errors"></div>
-
-  <details class="setup" id="setup">
-    <summary>How this reads your repo</summary>
-    <p>
-      Everything happens in this browser tab. The page calls <code>api.github.com</code>
-      directly as <strong>you</strong>, so <strong>your own GitHub permissions are the only
-      access control</strong> — there is no backend, no shared credential, and this page can
-      show you nothing your account cannot already read. Your credential is held for this
-      tab only (<code>sessionStorage</code>) and is sent to GitHub and nowhere else.
-    </p>
-    <p>
-      Where sign-in is configured, <em>Sign in with GitHub</em> authorizes once and everything
-      afterwards runs as you. Otherwise the page falls back to a pasted token, which needs
-      <em>read-only</em> Contents, Issues and Actions.
-    </p>
-    <p class="hint">
-      Responses are cached in this browser: repo content is keyed by commit SHA, live data is
-      revalidated with ETags (a <code>304</code> costs no rate limit), and settled history ages
-      out after 24 hours. <em>Clear cache</em> forces a cold read. Pass <code>?repo=owner/name</code>
-      to jump straight to a repo.
-    </p>
-  </details>
 
   <div id="fleet-view" hidden>
     <h2>What Claudinite did for this fleet this week <button class="info" type="button" data-info="benefits" aria-expanded="false" title="What these figures are">&#9432;</button></h2>
@@ -362,6 +421,16 @@
         saved would each need a member's own files read, and conversation-log sessions a branch listing.
         Issues and pull requests are counted <em>within the issue window</em> — the most recent hundred
         — so an older one is not counted rather than counted wrongly.
+      </p>
+      <p class="info-body" id="info-members-3" hidden>
+        <strong>Commits</strong> is the last 90 days, a square per day, shaded against
+        <em>that row's own busiest day</em> — so darkness compares two days in one repo and never two
+        repos. A hollow square is a day outside the year GitHub reports statistics for, which is not the
+        same as a quiet one, and a cell reading <em>not read</em> is this page declining to spend the
+        request: the graph is the one thing here that is decoration rather than a fault signal, so it is
+        the first thing a tight budget goes without. <strong>Stars</strong> sit beside the repo name
+        rather than in a column, because they say what kind of repo this is rather than whether it is
+        healthy.
       </p>
       <p class="legend">Click a member to open its scheduler in full.</p>
       <div class="panel scroll"><table id="fleet"></table></div>

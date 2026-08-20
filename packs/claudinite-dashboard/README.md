@@ -95,11 +95,19 @@ second. So nothing on it is a total for its own sake.
 | **The last two mornings** | Yesterday's and the day before's fleet digest, when the deployment names a `digestsRepo` |
 | **Fleet activity** | What the fleet *did* per day — work closed by outcome, runs and their pass rate, which members moved at all |
 | **Rollup tiles** | How many *members* need a human — not how many items exist |
-| **Members** | Every member ranked worst-first, in three column groups: **Status** (its own CI, stars, when it last moved), **Claudinite** (packs, tasks, queue, outcomes, mount, scheduler) and **Work** (issues and pull requests waiting on a person) |
+| **Members** | Every member ranked worst-first, in three column groups: **Status** (its own CI, and 90 days of commits), **Claudinite** (packs, tasks, queue, outcomes, mount, scheduler) and **Work** (issues and pull requests waiting on a person). Stars ride in the member cell rather than a column of their own — they say what kind of repo this is, not whether it is healthy |
 | **Tasks across the fleet** | One task, everywhere it runs — a shared pack's task parked in four members at once is a canon problem no single repo's page reveals |
 | **Pack adoption** | Which packs are in use and how widely — who a change to a pack would reach |
 
 Three rules shape it, and they are in [`fleet.mjs`](fleet.mjs):
+
+**A count of members is not a description of the morning.** Every attention figure
+counts *members*, because "47 open items" is not a list anyone works through. But a
+member surfaces for one of several different reasons, and the rollup itemises which:
+three pull requests to approve and three broken task lanes are the same number and
+not the same day's work. The split comes from `summariseMember`, which already
+separates a failure park from an inbox park from an approval park; the tile reads it
+rather than re-merging it into one word.
 
 **Attention is earned, not counted.** A member surfaces because something is *true*
 of it — an item parked, a leash blown, a scheduler failing, a mount that stopped
@@ -240,7 +248,7 @@ The reason sign-in is not a nicety. GitHub's limits, per hour:
 | a GitHub App *installation* token | 5,000 minimum, up to 12,500 by size |
 | an Actions `GITHUB_TOKEN` | 1,000, per repository |
 
-A twelve-member sweep costs around 75 requests cold. So an unconfigured deployment —
+A twelve-member sweep costs around 85 requests cold. So an unconfigured deployment —
 no `clientId`, nobody pasting a token — exceeds the whole anonymous hour on its
 **first load**, and 5,000/hour is not an optimisation over that, it is 83×. There is
 no higher tier available to a page that runs as its viewer: an installation token
@@ -317,6 +325,7 @@ Three strategies, because the data has three shapes — see
 | Repo content (task declarations, the tree) | keyed by **commit SHA**, never expires | a path at a sha cannot change, so an unmoved `main` costs zero calls |
 | Open items, runs, repo metadata | **ETag** revalidation | a `304` is free — it does not count against the rate limit, so this is fresh data at no cost |
 | Closed-issue history pages | **24h TTL** | settled, but not addressable by a sha |
+| A member's year of commit activity | **6h TTL**, and skipped entirely below `tight` | the only read here that is decoration; a few hours old is the same answer, and a tight budget goes without it before it goes without a queue |
 
 A fourth thing decides how hard those three are leaned on: **the budget policy**
 ([`budget.mjs`](budget.mjs)), planned before a load starts and re-planned on every
@@ -327,7 +336,7 @@ primary budget but is still a request, and a cold entry has nothing to revalidat
 |---|---|---|
 | 20 loads or more | `live` | everything revalidated — today's behaviour |
 | 6–20 | `tight` | anything read in the last 5m is served with no request |
-| 1–6 | `low` | …in the last 30m |
+| 1–6 | `low` | …in the last 30m, and the commit graphs are not read at all |
 | under 1 | `scarce` | …until the rate limit resets, and the spend stops short of the viewer's last requests |
 | spent | `frozen` | no requests at all; the page serves what it has and says so |
 

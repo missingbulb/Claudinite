@@ -68,7 +68,7 @@ export default {
   // model — next asks, roll records, triage-split parks. Page-only; no migration.
   // 12: the workflow-practice neighbour is git-github now that github-actions
   // collapsed into it (#1079).
-  version: 12,
+  version: 13,
   minEngineVersion: 4,
   ruleRoutingGuidance: {
     belongs: 'the browser dashboard over Claudinite scheduler state, the site that publishes it, and the fleet morning brief it reads',

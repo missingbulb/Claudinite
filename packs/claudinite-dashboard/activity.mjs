@@ -231,3 +231,42 @@ export function delta(current, previous) {
   const by = current - previous;
   return { dir: by > 0 ? 'up' : by < 0 ? 'down' : 'flat', by: Math.abs(by) };
 }
+
+// --- one member's commit history -------------------------------------------------
+
+// The last N days of a member's commits, as a flat oldest-first ladder — the shape a
+// GitHub-style square grid draws straight from.
+//
+// The input is `/stats/commit_activity`: 52 weeks, each a UTC-Sunday start and seven
+// daily counts. This is the ONE read on the fleet page that is not derived from
+// something already fetched, which is why it is priced as decoration everywhere it
+// appears — and why its three empty answers must stay distinguishable. `null` is "not
+// read" (withheld, or GitHub still computing the statistics) and is NOT the same fact
+// as an array of zeroes, which is a repo that genuinely did nothing.
+//
+// A day the year does not cover is `null` rather than `0` for the same reason: a
+// window wider than the data is under-read at its far end, not quiet there.
+export function commitDays(weeks, { now, days = 90 } = {}) {
+  if (!Array.isArray(weeks)) return null;
+
+  const byDay = new Map();
+  for (const w of weeks) {
+    const start = Number(w?.week);
+    if (!Number.isFinite(start)) continue;
+    (w.days ?? []).forEach((count, i) => {
+      byDay.set(dayKey(start * 1000 + i * DAY_MS), Number(count) || 0);
+    });
+  }
+
+  const ladder = dayLadder(now, days);
+  const rows = ladder.map((day) => ({ day, count: byDay.has(day) ? byDay.get(day) : null }));
+  const counted = rows.filter((r) => r.count != null);
+  return {
+    days: rows,
+    total: counted.reduce((n, r) => n + r.count, 0),
+    peak: counted.reduce((n, r) => Math.max(n, r.count), 0),
+    // Days inside the window the year of statistics did not reach. Stated rather than
+    // drawn as blank squares that read as quiet ones.
+    unread: rows.length - counted.length,
+  };
+}

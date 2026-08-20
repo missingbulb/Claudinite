@@ -3,15 +3,15 @@
 
 import * as gh from './github.mjs';
 import {
-  summariseMember, rankMembers, rollUp, packSpread, taskSpread,
+  summariseMember, rankMembers, rollUp, packSpread, taskSpread, attentionBreakdown,
   parseEngineVersion, parsePackVersion,
 } from './fleet.mjs';
 import { canonicalPackVersions } from '../../engine/pack_loader/renamed-packs.mjs';
-import { activitySeries, fleetBenefits, delta } from './activity.mjs';
+import { activitySeries, fleetBenefits, delta, commitDays } from './activity.mjs';
 import { digestDates, digestPath, digestEntry } from './digest.mjs';
 import {
   $, el, ago, duration, groupedHead, columnCount, groupStarts, emptyRow, repoLink, tiles, segmentBar,
-  reasonNodes, stackedColumns, chartLegend, windowFigure,
+  reasonNodes, stackedColumns, chartLegend, windowFigure, starMark, ciDot, commitGraph,
   LEVEL_GLYPH, STATE_ORDER, STATE_COLOR, STATE_UI, OUTCOME_COLOR,
 } from './ui.mjs';
 
@@ -55,12 +55,18 @@ async function readMember(repo, token, { withTree = true } = {}) {
     // them is most of the saving on a fleet where not everything is adopted.
     if (!declaration) return { repo, declaration: null, defaultBranch: meta.default_branch, head, stars: meta.stars };
 
-    const [tree, issuePage, runs] = await Promise.all([
+    const [tree, issuePage, runs, commits] = await Promise.all([
       withTree ? gh.listTreeAtSha(repo, sha, token).catch(() => null) : Promise.resolve(null),
       // One page is the whole live queue plus recent history, which is all a fleet row
       // needs. Deep history is the per-repo view's job.
       gh.listIssues(repo, token, { pages: 1 }).catch(() => ({ issues: [] })),
-      gh.listRuns(repo, token, 30).catch(() => []),
+      // No per-page of its own: the repo view reads the same URL, and a different
+      // depth here would be a second cache entry for one question.
+      gh.listRuns(repo, token).catch(() => []),
+      // Decoration, and the only read here that is. It withholds itself when the
+      // budget is tight, and a failure is a row without a graph rather than a row
+      // that could not be read.
+      gh.commitActivity(repo, token).catch(() => null),
     ]);
 
     return {
@@ -78,6 +84,7 @@ async function readMember(repo, token, { withTree = true } = {}) {
       itemsComplete: issuePage.complete,
       prs: issuePage.prs ?? [],
       runs,
+      commits,
     };
   } catch (error) {
     return { repo, error };
@@ -171,8 +178,17 @@ const MOUNT_UI = {
 // The mount cell's second line: the versions the verdict was judged on — never the
 // stamp's ref or updated, which are re-vendor provenance and read stale on every
 // healthy member.
+// The full list is the `title`; the cell names one pack and counts the rest. A member
+// behind on six packs is one fact — "behind, and here is one of them" — and spelling
+// all six inline made this the widest column in the grid after Health.
+const MOUNT_PACKS_SHOWN = 1;
+
 function mountDetail(mount) {
-  if (mount.state === 'behind') return mount.behindPacks.map((p) => `${p.pack} v${p.version}<v${p.canonVersion}`).join(' · ');
+  if (mount.state === 'behind') {
+    const all = mount.behindPacks.map((p) => `${p.pack} v${p.version}<v${p.canonVersion}`);
+    const shown = all.slice(0, MOUNT_PACKS_SHOWN).join(' · ');
+    return all.length > MOUNT_PACKS_SHOWN ? `${shown} +${all.length - MOUNT_PACKS_SHOWN} more` : shown;
+  }
   if (mount.state === 'behind-engine') return `engine v${mount.engineVersion} < v${mount.canonEngineVersion}`;
   if (mount.engineVersion != null) {
     const packs = mount.comparedPacks != null ? ` · ${mount.comparedPacks} pack${mount.comparedPacks === 1 ? '' : 's'}` : '';
@@ -198,7 +214,7 @@ function mountDetail(mount) {
 // guessed at.
 const MEMBER_GROUPS = [
   ['', ['Member', 'Health']],
-  ['Status', ['CI', 'Stars', 'Last commit']],
+  ['Status', ['CI', 'Commits']],
   ['Claudinite', ['Packs', 'Tasks', 'Queue', 'Recent outcomes', 'Mount', 'Scheduler']],
   ['Work — waiting on a person', ['Issues', 'Pull requests']],
 ];
@@ -231,10 +247,16 @@ const CI_UI = {
 function memberRow(s, onOpen, now) {
   const open = (e) => { e.preventDefault(); onOpen(s.repo); };
 
-  const name = el('td', {}, [
-    el('a', { href: `?repo=${encodeURIComponent(s.repo)}`, className: 'name', textContent: s.repo.split('/')[1] ?? s.repo, onclick: open }),
-    el('div', { className: 'sub' }, [repoLink(s.repo)]),
-  ]);
+  // Stars fold in here rather than holding a column of their own: the count is not a
+  // health signal, it is what KIND of repo this is, which is the frame the rest of
+  // the row is read in.
+  const name = el('td', {}, [el('div', { className: 'member' }, [
+    starMark(s.stars),
+    el('div', {}, [
+      el('a', { href: `?repo=${encodeURIComponent(s.repo)}`, className: 'name', textContent: s.repo.split('/')[1] ?? s.repo, onclick: open }),
+      el('div', { className: 'sub' }, [repoLink(s.repo)]),
+    ]),
+  ])]);
 
   if (s.status !== 'adopted') {
     return el('tr', { className: `lvl-${s.level} muted-row` }, [
@@ -245,21 +267,25 @@ function memberRow(s, onOpen, now) {
   }
 
   // Health: the worst reason, spelled out. Never a bare colour.
-  const health = el('td', {}, s.reasons.length
+  //
+  // Capped in CSS rather than left to the table: this is the one cell holding whole
+  // sentences, and its max-content is what set the width of the entire grid — every
+  // other column was being stretched to fit a reason nobody needs on one line.
+  const health = el('td', { className: 'health' }, s.reasons.length
     ? reasonNodes(s.reasons)
     : [el('span', { className: 'warn ok', textContent: `${LEVEL_GLYPH.ok} healthy` })]);
 
   // --- Status: the repo itself ---------------------------------------------------
 
   const ciUi = CI_UI[s.ci?.state] ?? CI_UI.unknown;
-  const ci = el('td', { className: 'nw' }, [
-    el('div', { className: `warn ${ciUi.cls}`, textContent: ciUi.label }),
-    el('div', { className: 'sub', textContent: s.ci?.at ? ago(s.ci.at, now) : 'no run on the default branch' }),
+  const ci = el('td', { className: 'nw' }, [ciDot(ciUi, s.ci?.at ? ago(s.ci.at, now) : 'no run')]);
+
+  // Where a single "3h ago" used to sit. One date says whether a repo moved today; a
+  // quarter of them says whether it is being worked on — and that is the question the
+  // Status group is actually asking.
+  const commit = el('td', { className: 'nw' }, [
+    commitGraph(s.commits, { note: s.lastCommit ? `last ${duration(now - s.lastCommit)}` : null }),
   ]);
-
-  const stars = el('td', { className: 'num nw', textContent: s.stars == null ? '—' : String(s.stars) });
-
-  const commit = el('td', { className: 'nw sub', textContent: s.lastCommit ? ago(s.lastCommit, now) : '—' });
 
   // --- Claudinite: what the machinery is doing here -------------------------------
 
@@ -295,7 +321,13 @@ function memberRow(s, onOpen, now) {
   const m = MOUNT_UI[s.mount.state] ?? MOUNT_UI.unknown;
   const mount = el('td', { className: 'nw' }, [
     el('div', { className: `warn ${m.cls}`, textContent: m.label }),
-    el('div', { className: 'sub num', textContent: mountDetail(s.mount) }),
+    el('div', {
+      className: 'sub num',
+      textContent: mountDetail(s.mount),
+      title: s.mount.state === 'behind'
+        ? s.mount.behindPacks.map((p) => `${p.pack} v${p.version} < canon v${p.canonVersion}`).join('\n')
+        : '',
+    }),
   ]);
 
   const runs = el('td', { className: 'nw' }, [
@@ -329,7 +361,7 @@ function memberRow(s, onOpen, now) {
   ]);
 
   return el('tr', { className: `lvl-${s.level}` },
-    banded([name, health, ci, stars, commit, packs, tasks, queue, outcomes, mount, runs, issues, prs]));
+    banded([name, health, ci, commit, packs, tasks, queue, outcomes, mount, runs, issues, prs]));
 }
 
 // --- what the machinery bought ---------------------------------------------------
@@ -493,10 +525,13 @@ function renderActivity(series) {
 // looks broken for the whole sweep — and on a slow or throttled read, the sweep is
 // most of the time the viewer spends here.
 const pendingRow = (repo) => el('tr', { className: 'pending-row' }, [
-  el('td', {}, [
-    el('span', { className: 'name', textContent: repo.split('/')[1] ?? repo }),
-    el('div', { className: 'sub' }, [repoLink(repo)]),
-  ]),
+  el('td', {}, [el('div', { className: 'member' }, [
+    starMark(null),
+    el('div', {}, [
+      el('span', { className: 'name', textContent: repo.split('/')[1] ?? repo }),
+      el('div', { className: 'sub' }, [repoLink(repo)]),
+    ]),
+  ])]),
   el('td', { colSpan: MEMBER_COLS - 1 }, [el('span', { className: 'sub', textContent: 'reading…' })]),
 ]);
 
@@ -505,9 +540,17 @@ function renderFleet(summaries, reads, now, onOpen, canon, progress = null, dige
   const pending = summaries.map((s, i) => (s ? null : reads.names?.[i])).filter(Boolean);
   const roll = rollUp(resolved);
 
+  // The headline tile counts MEMBERS, which is the length of the morning's list — but
+  // the list is only actionable once it says what kind of attention each is waiting
+  // for. Three merges to approve and three broken lanes are not the same morning.
+  const needs = attentionBreakdown(roll);
+
   tiles($('fleet-tiles'), [
     [roll.needAttention, 'members need you', roll.needAttention ? 'var(--critical)' : null,
-      roll.needAttention ? 'parked, failing, or past a leash' : 'nothing is on fire'],
+      needs.length
+        ? el('div', { className: 'needs' }, needs.map((r) =>
+          el('div', { className: `warn ${r.level}`, textContent: `${LEVEL_GLYPH[r.level]} ${r.text}` })))
+        : 'nothing is on fire'],
     [roll.parkedItems, 'items parked', roll.parkedItems ? 'var(--critical)' : null,
       roll.parkedMembers ? `across ${roll.parkedMembers} member(s)` : ''],
     [roll.failingMembers, 'schedulers failing', roll.failingMembers ? 'var(--critical)' : null,
