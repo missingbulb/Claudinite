@@ -20,7 +20,7 @@ export default {
   id: 'claudinite-lifecycle',
   // 13: two task comments name the terminal a run closes with in its current
   // spelling; no behaviour moves.
-  version: 16,
+  version: '60820.1',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'using Claudinite itself — the vendored mount, the pack declaration, bootstrapping, adopting packs, the self-refresh update',

@@ -15,7 +15,7 @@ import versionScheme from './version-scheme.mjs';
 // fires on that repo. The declaration is still what activates the pack.
 export default {
   id: 'static-website',
-  version: 4,
+  version: '60820.1',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'shipping and serving a static site: date-anchored versioning, release on push, the publish set, Pages deploy, client-side caching',

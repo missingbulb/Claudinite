@@ -4,6 +4,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { computeVendorSet, SHARED_SUBDIR } from '../vendoring/compute-vendor-set.mjs';
 import { loadPacks, resolveDeclaredPacks, packEntryId } from '../engine/pack_loader/pack-registry.mjs';
 import { ENGINE_VERSION } from '../engine/version.mjs';
+import { isVersion, versionAbove } from '../engine/version.mjs';
 import { canonicalPackVersions } from '../engine/pack_loader/renamed-packs.mjs';
 import { DECLARATION_FILE } from '../engine/checks/helpers/active-migrations.mjs';
 import { NEEDS_HUMAN, runSelfTest, deliveryDecision } from './engine-update.mjs';
@@ -41,12 +42,12 @@ export function planInstall(packs, ids, installed, { engineVersion = ENGINE_VERS
   for (const id of ids ?? []) {
     const pack = byId.get(id);
     if (!pack) { refused.push({ id, why: `"${id}" names no canon pack` }); continue; }
-    if (typeof stamped[id] === 'number') {
+    if (isVersion(stamped[id])) {
       refused.push({ id, why: `"${id}" is already installed at version ${stamped[id]} — that is an update, not an install` });
       continue;
     }
     const needs = pack.minEngineVersion;
-    if (typeof needs === 'number' && needs > engineVersion) {
+    if (isVersion(needs) && versionAbove(needs, engineVersion)) {
       refused.push({ id, why: `"${id}" needs engine ${needs}; this repo runs engine ${engineVersion}` });
       continue;
     }
@@ -93,7 +94,7 @@ export async function installPacks(targetRoot, ids, {
   // the old key would otherwise be "not installed", and installing re-stamps it at
   // latest having run none of the records in its gap.
   const installed = rawStamp && { ...rawStamp, packVersions: canonicalPackVersions(rawStamp.packVersions ?? {}) };
-  const engineVersion = typeof installed?.engineVersion === 'number' ? installed.engineVersion : ENGINE_VERSION;
+  const engineVersion = isVersion(installed?.engineVersion) ? installed.engineVersion : ENGINE_VERSION;
   // `packs` is injectable for the same reason `selfTestRun` is: the seed-op path is
   // only reachable through a manifest that declares one, and the canon deliberately
   // has none yet.

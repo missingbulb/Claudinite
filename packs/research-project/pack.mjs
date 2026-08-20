@@ -4,7 +4,7 @@
 // (session-continuity, reading-source-articles) are noted in RULES.md.
 export default {
   id: 'research-project',
-  version: 2,
+  version: '60820.1',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'methodology for iterating an algorithm over sample inputs against annotated ground truth — scoring, phases, session continuity',

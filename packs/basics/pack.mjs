@@ -20,7 +20,9 @@ export default {
   // a record declaring a version above it would re-apply every cycle, forever,
   // draining never.
   // 12: the `do-later` skill — deferring a change into work that comes back on its own.
-  version: 16,
+  // 60820.1: versions become date-anchored (#1100) — the counter this list is written
+  // in retires here, and every pack in the canon restarts from the same day.
+  version: '60820.1',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'cross-project working discipline, issue-branch-PR lifecycle, repo hygiene, doc/reference integrity and the baseline engineering, testing and debugging skills',

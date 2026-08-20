@@ -43,7 +43,7 @@ import storeFileNames from './store-file-names.mjs';
 
 export default {
   id: 'claude-code-web-users-support',
-  version: 3,
+  version: '60820.1',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'what a project offers people working from Claude Code on the web, where the session knows who they are',

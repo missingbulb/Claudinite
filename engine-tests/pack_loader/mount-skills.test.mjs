@@ -24,6 +24,9 @@ function makeCorpus({ packs }, root = mkdtempSync(join(tmpdir(), 'claudinite-cor
   // files by hand goes quietly fail-soft the day one is added — mounting nothing
   // and reporting success.
   cpSync(join(REPO_ROOT, 'engine', 'pack_loader'), join(root, 'engine', 'pack_loader'), { recursive: true });
+  // pack-schema validates a version against the engine's version module, which sits
+  // beside pack_loader in the real tree.
+  cpSync(join(REPO_ROOT, 'engine', 'version.mjs'), join(root, 'engine', 'version.mjs'));
   for (const [id, def] of Object.entries(packs)) {
     const { skills = [], ...manifest } = def;
     mkdirSync(join(root, 'packs', id), { recursive: true });

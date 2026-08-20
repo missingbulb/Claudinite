@@ -6,6 +6,11 @@ migration's range is written against, and what a pack's `minEngineVersion` is
 checked against (`docs/versioned-updates/DESIGN.md` §2). This file is the log of
 those versions and the evidence behind each.
 
+The version is date-anchored `<day>.<n>` — `60820.1` for the first release cut on
+2026-08-20. [`version.mjs`](version.mjs) states the shape and computes the next
+one (`nextVersion`); rows 1 to 6 below predate the format and are the plain
+counter it replaced.
+
 ## What a release is
 
 **A release is the commit that bumps `ENGINE_VERSION`, and a bump is only
@@ -25,7 +30,8 @@ on every PR only tests what someone remembered to model; this is the other half.
 2. Dispatch **Canary rehearsal** with `ref` = your branch
    (`.github/workflows/canary-rehearsal.yml` → Run workflow), and wait for it.
    A red canary is not a release — fix the branch and rehearse again.
-3. In the same change: bump `ENGINE_VERSION`, and add a row below for the new
+3. In the same change: set `ENGINE_VERSION` to `nextVersion` of the one standing
+   — a new day restarts the running number at 1 — and add a row below for the new
    version linking the run that passed.
 4. Merge. The version now on `main` is the release.
 
@@ -50,6 +56,7 @@ worth naming, not on every merge.
 | 4 | 2026-08-14 | [run 31826589868](https://github.com/missingbulb/Claudinite/actions/runs/31826589868) | A `needs-human` dispatch issue no longer stops its task (#821): the scheduler's guard suppresses on a live claim rather than on any open issue, so an escalation awaits triage instead of shutting the lane until a person closes it by hand. Bounded — a second unresolved escalation holds the lane, under a verdict of its own that leads the run summary. |
 | 5 | 2026-08-19 | [run 32267881121](https://github.com/missingbulb/Claudinite/actions/runs/32267881121) | The pack renames (#1022): `core` → `claudinite-lifecycle`, `grow_with_claudinite` → `claudinite-growth`, and the scheduled-task authoring contract moved between them. The record converges each member's declaration and moves its mount directories; the loader tolerance (`engine/pack_loader/renamed-packs.mjs`) makes that record's timing irrelevant by resolving both spellings, so no member can be caught holding a declaration and a mount that disagree — which for the pack carrying `update` would cost it the machinery that delivers its own repair. |
 | 6 | 2026-08-19 | [run 32270294377](https://github.com/missingbulb/Claudinite/actions/runs/32270294377) | The declaration half of the pack renames (#1041). Version 5 moved every member's mount directories and stamped `packVersions` keys but never rewrote the `packs` array: it did that textually, anchored on `"packs": [` so a member's own `{ "from": "core" }` barrier rule could not be caught by accident, and the anchor could not cross the nested array in an entry object like `{ "id": "barriers", "via": ["basics"] }`. Replaced by a structural op (`applyPackRenames`) driven by the engine's own rename map. A separate record because a repo already stamped 5 never runs the 5 record again — and a converged member is exactly the one whose declaration still needs moving. |
+| 60820.1 | 2026-08-20 | [run 32371130795](https://github.com/missingbulb/Claudinite/actions/runs/32371130795) | Versions become date-anchored `<day>.<n>` (#1100). The engine and every pack restart from one day; every reader takes a legacy integer too, sorting below every date-anchored version, until #1106 removes the tolerance. |
 
 Version 1's rehearsal is the automatic post-merge run against `8dbb096`, the
 commit that introduced the constant — the procedure above landed after it, so
@@ -68,6 +75,10 @@ now fails unless the run says in words that it converged.
 
 Version 4's was dispatched against `e416aed1` — this change's tree, with only the
 run id in the row you are reading edited after it.
+
+Version 60820.1's was dispatched against `1f05d43` — this change's tree. Two edits
+landed after it: the row you are reading, and an issue number corrected in a comment
+in `version.mjs`, neither of which any code reads.
 
 Version 5's was dispatched against `93ca7bd` — this change's tree, with only the
 run id in the row you are reading edited after it. It converged the canary through

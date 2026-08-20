@@ -33,6 +33,9 @@
 //                 declaring either does nothing, because only the install flow reads
 //                 them and local packs have no install; the fixture proves the
 //                 manifest VALIDATES, which is the half a member can be broken by.
+//                 It carries the field in BOTH spellings — the legacy integer and the
+//                 date-anchored `<day>.<n>` (#1100) — because a widening that only
+//                 accepts the new one rejects every member not touched since.
 //                 Every future widening of the vocabulary belongs here too.
 //   legacy-task   a local pack whose scheduled task still declares the DEPRECATED
 //                 task-level `session_scope` — the shape a consumer that predates
@@ -185,6 +188,28 @@ const PACK_VERSIONED = `export default {
   minEngineVersion: 1,
   seedOps: [{ template: 'RULES.md', dest: 'SEEDED-BY-FIXTURE.md' }],
   adoptionHandover: [{ step: 'Flip the fixture switch', breaks: 'nothing — this pack is a rehearsal fixture', done: 'never; nobody adopts a fixture' }],
+  ruleRoutingGuidance: {
+    belongs: 'the fixture project\\'s own invariants, for rehearsal purposes only',
+    excludes: 'anything portable — that belongs in a canon pack',
+  },
+  detect: null,
+  marker: null,
+  prose: 'RULES.md',
+  worldRules: [],
+  workRules: [],
+};
+`;
+
+// The same shape one format on: a local pack declaring the DATE-ANCHORED version
+// the corpus writes from 2026-08-20 (#1100). It sits beside the legacy-integer one
+// above rather than replacing it, because the widening is only real if BOTH spellings
+// validate — a member's own manifest may carry either for as long as the tolerance
+// lasts, and an engine that accepted only the new one would reject every consumer
+// that has not been touched since.
+const PACK_DATED = `export default {
+  id: 'fixture-dated',
+  version: '60820.1',
+  minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'the fixture project\\'s own invariants, for rehearsal purposes only',
     excludes: 'anything portable — that belongs in a canon pack',
@@ -375,12 +400,14 @@ export const FIXTURES = [
   },
   {
     name: 'versioned-local',
-    why: 'a local pack declaring the manifest version fields — proves the widened vocabulary validates on a CONSUMER-authored manifest, not only on the canon\'s own',
+    why: 'local packs declaring the manifest version fields in BOTH spellings — proves the widened vocabulary validates on a CONSUMER-authored manifest, not only on the canon\'s own',
     files: {
       'README.md': '# fixture-versioned\n\nA rehearsal fixture.\n',
-      '.claudinite-checks.json': checks(['basics', 'local/fixture-versioned']),
+      '.claudinite-checks.json': checks(['basics', 'local/fixture-versioned', 'local/fixture-dated']),
       '.claudinite/local/packs/fixture-versioned/pack.mjs': PACK_VERSIONED,
       '.claudinite/local/packs/fixture-versioned/RULES.md': '# fixture-versioned\n\nNo standing rules.\n',
+      '.claudinite/local/packs/fixture-dated/pack.mjs': PACK_DATED,
+      '.claudinite/local/packs/fixture-dated/RULES.md': '# fixture-dated\n\nNo standing rules.\n',
     },
   },
   {

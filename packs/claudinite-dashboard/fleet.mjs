@@ -31,6 +31,7 @@ import {
   NEEDS_HUMAN_APPROVAL, outcomeOf,
 } from '../../engine/scheduler/queue/work-item.mjs';
 import { canonicalPackVersions } from '../../engine/pack_loader/renamed-packs.mjs';
+import { VERSION_SOURCE, versionFromLiteral, isVersion, versionAbove } from '../../engine/version.mjs';
 import { describeItem, isWorkItem, parseWorkItemTitle, taskDeclarationPaths } from './model.mjs';
 import { commitDays } from './activity.mjs';
 
@@ -50,14 +51,17 @@ const ms = (t) => (t == null ? null : new Date(t).getTime());
 // reads the canon over the API, where there is nothing to import. Comment-stripped
 // so prose naming the field can never be mistaken for it, and null — never a guess —
 // when the pattern is not there.
+const ENGINE_VERSION_RE = new RegExp(String.raw`ENGINE_VERSION\s*=\s*'?(${VERSION_SOURCE})'?`);
+const PACK_VERSION_RE = new RegExp(String.raw`(?:^|[{,\s])version:\s*'?(${VERSION_SOURCE})'?`, 'm');
+
 export function parseEngineVersion(text) {
-  const m = /ENGINE_VERSION\s*=\s*(\d+)/.exec(stripComments(String(text ?? '')));
-  return m ? Number(m[1]) : null;
+  const m = ENGINE_VERSION_RE.exec(stripComments(String(text ?? '')));
+  return m ? versionFromLiteral(m[1]) : null;
 }
 
 export function parsePackVersion(text) {
-  const m = /(?:^|[{,\s])version:\s*(\d+)/m.exec(stripComments(String(text ?? '')));
-  return m ? Number(m[1]) : null;
+  const m = PACK_VERSION_RE.exec(stripComments(String(text ?? '')));
+  return m ? versionFromLiteral(m[1]) : null;
 }
 
 // --- mount freshness ------------------------------------------------------------
@@ -89,7 +93,7 @@ export function mountState(stamp, canon = null) {
   }
   if (canon?.engineVersion == null) return { state: 'unknown', engineVersion, updated };
 
-  if (Number.isInteger(engineVersion) && engineVersion < canon.engineVersion) {
+  if (isVersion(engineVersion) && versionAbove(canon.engineVersion, engineVersion)) {
     return { state: 'behind-engine', engineVersion, canonEngineVersion: canon.engineVersion, updated };
   }
 
@@ -100,7 +104,7 @@ export function mountState(stamp, canon = null) {
     const canonVersion = canon.packVersions?.[pack];
     if (canonVersion == null) { unknownPacks += 1; continue; }
     comparedPacks += 1;
-    if (version < canonVersion) behindPacks.push({ pack, version, canonVersion });
+    if (versionAbove(canonVersion, version)) behindPacks.push({ pack, version, canonVersion });
   }
   if (behindPacks.length) {
     return { state: 'behind', engineVersion, behindPacks, comparedPacks, unknownPacks, updated };

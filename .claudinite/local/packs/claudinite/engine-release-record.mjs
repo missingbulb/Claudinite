@@ -1,4 +1,5 @@
 import { finding } from '../../../../engine/checks/helpers/findings.mjs';
+import { VERSION_SOURCE, versionFromLiteral, compareVersions, versionsEqual } from '../../../../engine/version.mjs';
 
 // An ENGINE RELEASE is a bump of ENGINE_VERSION, and a bump is only legitimate
 // once the live canary rehearsal has passed against the tree being released
@@ -29,18 +30,20 @@ const RUN_URL = /https:\/\/github\.com\/[^/\s]+\/[^/\s]+\/actions\/runs\/\d+/;
 
 // The declared version in a version.mjs source, or null when it says nothing
 // (a missing file at the base — the module's first appearance).
+const ENGINE_VERSION_RE = new RegExp(String.raw`export const ENGINE_VERSION = '?(${VERSION_SOURCE})'?\s*;`);
 export function declaredVersion(text) {
-  const m = /export const ENGINE_VERSION = (\d+)\s*;/.exec(text ?? '');
-  return m ? Number(m[1]) : null;
+  const m = ENGINE_VERSION_RE.exec(text ?? '');
+  return m ? versionFromLiteral(m[1]) : null;
 }
 
 // Does the log carry a row for this version citing a rehearsal run? The row is a
-// table row whose first cell is the bare number, so the log stays a table a human
+// table row whose first cell is the bare version, so the log stays a table a human
 // reads rather than a machine format the check invented.
+const ROW_VERSION_RE = new RegExp(String.raw`^\|\s*(${VERSION_SOURCE})\s*\|`);
 export function releaseRowFor(text, version) {
   for (const line of (text ?? '').split('\n')) {
-    const m = /^\|\s*(\d+)\s*\|/.exec(line.trim());
-    if (m && Number(m[1]) === version) return RUN_URL.test(line) ? 'ok' : 'no-run';
+    const m = ROW_VERSION_RE.exec(line.trim());
+    if (m && versionsEqual(versionFromLiteral(m[1]), version)) return RUN_URL.test(line) ? 'ok' : 'no-run';
   }
   return 'missing';
 }
@@ -59,9 +62,9 @@ const rule = {
     const head = declaredVersion(work.read(VERSION_FILE));
     const base = declaredVersion(work.readBase(VERSION_FILE));
     if (head === null) return [];                       // not a version edit (or a deletion — other rules own that)
-    if (base !== null && head === base) return [];      // the file changed, the version did not: an ordinary engine edit
+    if (versionsEqual(head, base)) return [];      // the file changed, the version did not: an ordinary engine edit
 
-    if (base !== null && head < base) {
+    if (base !== null && compareVersions(head, base) < 0) {
       return [finding(rule, {
         file: VERSION_FILE,
         what: `ENGINE_VERSION moves backwards, ${base} → ${head}`,

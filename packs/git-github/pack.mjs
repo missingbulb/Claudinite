@@ -15,7 +15,7 @@ export default {
   id: 'git-github',
   // 6: the github-actions pack is absorbed here — its skill, its nine `gha/`
   // checks, and the routing that used to name it as the neighbour.
-  version: 8,
+  version: '60820.1',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'git and GitHub procedure and platform: commit layering, branch and merge mechanics, workflow YAML, triggers, secrets, scheduling',

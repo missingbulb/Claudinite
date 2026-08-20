@@ -27,7 +27,7 @@ export default {
   // and standard live here now, relevance-gated on the repo shipping the pipeline.
   // 5: the generic-workflow-lint neighbour is git-github now that github-actions
   // collapsed into it (#1079).
-  version: 5,
+  version: '60820.1',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'writing and shipping a Chrome extension: MV3 service-worker, permission, content-script and auth gotchas, plus Web Store release, versioning and privacy',
