@@ -1,7 +1,8 @@
-// Signal collection for ONE picked task (tasks-dispatch DESIGN §5, §6.4). The
-// scheduler run performs no GitHub read beyond the issue list, so the whole cost of
-// signals moved here — where exactly one task's declared union is collected, once
-// per period per task, at the moment its verdict is asked for.
+// Signal collection for ONE task (tasks-dispatch DESIGN §5, §6.4): exactly that
+// task's declared union, collected at the moment a verdict is asked for. Two
+// callers ask — the scheduler run at the task's anchor (#1115; a read it cannot
+// make fails open there) and the executor at pick, which re-derives rather than
+// trusting the anchor's answer forward.
 //
 // The lookback is that task's own period plus an hour of slack: stateless, and
 // overlap is absorbed by the preconditions' own dedupe, exactly as the slot

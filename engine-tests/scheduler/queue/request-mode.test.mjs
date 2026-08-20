@@ -32,14 +32,14 @@ const requestItem = (request, labels, over = {}) => ({
   state: 'open', labels, created_at: NOW, updated_at: NOW, closed_at: null, ...over,
 });
 
-const ops = (over = {}) => planSchedulerRun({
+const ops = async (over = {}) => (await planSchedulerRun({
   tasks: [REQUEST_TASK], items: [], requests: [], now: NOW, schedule: SCHEDULE, ...over,
-}).ops;
+})).ops;
 
 // --- S44: a marked issue becomes exactly one run ------------------------------
 
-test('S44 — a marked issue becomes one item, and the consumed mark is the exactly-once guard', () => {
-  const adopts = ops({ requests: [marked(500)] }).filter((o) => o.kind === 'adopt');
+test('S44 — a marked issue becomes one item, and the consumed mark is the exactly-once guard', async () => {
+  const adopts = (await ops({ requests: [marked(500)] })).filter((o) => o.kind === 'adopt');
   assert.equal(adopts.length, 1);
   const [adopt] = adopts;
   assert.equal(adopt.request, 500);
@@ -56,59 +56,59 @@ test('S44 — a marked issue becomes one item, and the consumed mark is the exac
 
   // The scheduler run after the mark was consumed adopts nothing: the issue now carries only
   // the queued label, and no state anywhere says "this was already done".
-  const later = ops({
+  const later = await ops({
     requests: [marked(500, ['claude-queued'])],
     items: [requestItem(500, ['task:agent'])],
   });
   assert.deepEqual(later.filter((o) => o.kind === 'adopt'), []);
 });
 
-test('a repo whose engine has no request task adopts nothing — the marks simply wait', () => {
-  const adopts = planSchedulerRun({ tasks: [], items: [], requests: [marked(500)], now: NOW, schedule: SCHEDULE })
+test('a repo whose engine has no request task adopts nothing — the marks simply wait', async () => {
+  const adopts = (await planSchedulerRun({ tasks: [], items: [], requests: [marked(500)], now: NOW, schedule: SCHEDULE }))
     .ops.filter((o) => o.kind === 'adopt');
   assert.deepEqual(adopts, []);
 });
 
 // --- S47: the model label routes the run --------------------------------------
 
-test('S47 — the model label reaches the item, an unknown family falls back, and both are consumed (F29)', () => {
-  const [sonnet] = ops({ requests: [marked(500, ['claude-task', 'claude-model:sonnet'])] }).filter((o) => o.kind === 'adopt');
+test('S47 — the model label reaches the item, an unknown family falls back, and both are consumed (F29)', async () => {
+  const [sonnet] = (await ops({ requests: [marked(500, ['claude-task', 'claude-model:sonnet'])] })).filter((o) => o.kind === 'adopt');
   assert.equal(parseWorkItemBody(sonnet.body).model, 'sonnet');
   assert.deepEqual(sonnet.consume.sort(), ['claude-model:sonnet', 'claude-task']);
 
   // An unrecognised family runs at the default rather than parking a request nobody
   // can start — and its label is consumed too, so the next ask starts clean.
-  const [unknown] = ops({ requests: [marked(500, ['claude-task', 'claude-model:gpt-9'])] }).filter((o) => o.kind === 'adopt');
+  const [unknown] = (await ops({ requests: [marked(500, ['claude-task', 'claude-model:gpt-9'])] })).filter((o) => o.kind === 'adopt');
   assert.equal(parseWorkItemBody(unknown.body).model, 'opus');
   assert.deepEqual(unknown.consume.sort(), ['claude-model:gpt-9', 'claude-task']);
 
   // Two marked issues make two items, neither aware of the other.
-  const two = ops({ requests: [marked(500), marked(501)] }).filter((o) => o.kind === 'adopt');
+  const two = (await ops({ requests: [marked(500), marked(501)] })).filter((o) => o.kind === 'adopt');
   assert.deepEqual(two.map((o) => o.request), [500, 501]);
 });
 
 // --- S51 / S49: one issue, one live item (F28) --------------------------------
 
-test('S51 — a re-ask waits, unconsumed, while the previous run is still live', () => {
+test('S51 — a re-ask waits, unconsumed, while the previous run is still live', async () => {
   for (const state of ['task:ready', 'task:executing', 'task:agent']) {
-    const plan = ops({ requests: [marked(500)], items: [requestItem(500, [state])] });
+    const plan = await ops({ requests: [marked(500)], items: [requestItem(500, [state])] });
     assert.deepEqual(plan.filter((o) => o.kind === 'adopt'), [], `a ${state} prior item holds the mark back`);
     assert.deepEqual(plan.filter((o) => o.kind === 'supersede'), [], 'and nothing is closed while it runs');
   }
 });
 
-test('S49 — a re-ask supersedes a PARKED prior run rather than queueing beside it', () => {
+test('S49 — a re-ask supersedes a PARKED prior run rather than queueing beside it', async () => {
   const parked = requestItem(500, ['needs-human', 'task:needs-human-failure']);
-  const plan = ops({ requests: [marked(500)], items: [parked] });
+  const plan = await ops({ requests: [marked(500)], items: [parked] });
   const [supersede] = plan.filter((o) => o.kind === 'supersede');
   assert.equal(supersede.issue, parked.number);
   assert.match(supersede.reason, /#500 was marked again/);
   assert.equal(plan.filter((o) => o.kind === 'adopt').length, 1, 'and the re-ask is adopted in the same scheduler run');
 });
 
-test('an item for a DIFFERENT request never holds this one back', () => {
+test('an item for a DIFFERENT request never holds this one back', async () => {
   const other = requestItem(499, ['task:agent']);
-  assert.equal(ops({ requests: [marked(500)], items: [other] }).filter((o) => o.kind === 'adopt').length, 1);
+  assert.equal((await ops({ requests: [marked(500)], items: [other] })).filter((o) => o.kind === 'adopt').length, 1);
 });
 
 // --- the precondition: the security check (S45, S46, S48, S50) ----------------
@@ -341,9 +341,9 @@ test('the request task is the one task allowed to read its item\'s model', () =>
 
 // --- §16.11: a deferred request — blocked, chained, and its merge authorization --
 
-test('a marked issue that names open blockers is adopted BLOCKED, and released when they close', () => {
+test('a marked issue that names open blockers is adopted BLOCKED, and released when they close', async () => {
   const req = marked(500, ['claude-task'], 'Do the rename after the current work.\n\nBlocked-by: #480, #481\n');
-  const [adopt] = ops({ requests: [req], stateOf: (n) => (n === 481 ? 'closed' : 'open') })
+  const [adopt] = (await ops({ requests: [req], stateOf: (n) => (n === 481 ? 'closed' : 'open') }))
     .filter((o) => o.kind === 'adopt');
 
   assert.deepEqual(adopt.labels, ['task:blocked'], 'born blocked — the follow-up waits on the work in flight');
@@ -356,11 +356,11 @@ test('a marked issue that names open blockers is adopted BLOCKED, and released w
   // fan-in rides, which is what makes the chain of deferrals work at all.
   const item = requestItem(500, ['task:blocked'], { body: `${TASK_PATH}\n\nBlocked-by: #480\nRequest: #500\nModel: opus\n` });
   assert.deepEqual(
-    ops({ items: [item], stateOf: () => 'open' }).filter((o) => o.kind === 'ready'), [],
+    (await ops({ items: [item], stateOf: () => 'open' })).filter((o) => o.kind === 'ready'), [],
     'while the blocker is open the item stays blocked',
   );
   assert.deepEqual(
-    ops({ items: [item], stateOf: () => 'closed' }).filter((o) => o.kind === 'ready'),
+    (await ops({ items: [item], stateOf: () => 'closed' })).filter((o) => o.kind === 'ready'),
     [{ kind: 'ready', issue: item.number }],
   );
 });
@@ -370,26 +370,26 @@ test('a marked issue that names open blockers is adopted BLOCKED, and released w
 // as well as an issue. The re-arm loop depends on it: a run that finds its world
 // not ready re-marks its issue with a bumped date, and without the carry the next
 // pick comes within the hour, forever.
-test('a marked issue with a future Not-before is adopted BLOCKED until that moment', () => {
-  const [adopt] = ops({ requests: [marked(500, ['claude-task'], 'Verify once live.\n\nNot-before: 2099-01-01T00:00:00Z\n')] })
+test('a marked issue with a future Not-before is adopted BLOCKED until that moment', async () => {
+  const [adopt] = (await ops({ requests: [marked(500, ['claude-task'], 'Verify once live.\n\nNot-before: 2099-01-01T00:00:00Z\n')] }))
     .filter((o) => o.kind === 'adopt');
   assert.deepEqual(adopt.labels, ['task:blocked']);
   assert.equal(parseWorkItemBody(adopt.body).notBefore, '2099-01-01T00:00:00Z');
 });
 
-test('a Not-before already past holds nothing back', () => {
-  const [adopt] = ops({ requests: [marked(500, ['claude-task'], 'Late.\n\nNot-before: 2020-01-01T00:00:00Z\n')] })
+test('a Not-before already past holds nothing back', async () => {
+  const [adopt] = (await ops({ requests: [marked(500, ['claude-task'], 'Late.\n\nNot-before: 2020-01-01T00:00:00Z\n')] }))
     .filter((o) => o.kind === 'adopt');
   assert.deepEqual(adopt.labels, ['task:ready']);
 });
 
-test('an unreadable blocker delays the request rather than releasing it', () => {
+test('an unreadable blocker delays the request rather than releasing it', async () => {
   const item = requestItem(500, ['task:blocked'], { body: `${TASK_PATH}\n\nBlocked-by: #480\nRequest: #500\n` });
-  assert.deepEqual(ops({ items: [item], stateOf: () => null }).filter((o) => o.kind === 'ready'), []);
+  assert.deepEqual((await ops({ items: [item], stateOf: () => null })).filter((o) => o.kind === 'ready'), []);
 });
 
-test('`claude-automerge` becomes the item\'s Merge field, and is consumed with the mark', () => {
-  const [authorized] = ops({ requests: [marked(500, ['claude-task', 'claude-automerge'])] })
+test('`claude-automerge` becomes the item\'s Merge field, and is consumed with the mark', async () => {
+  const [authorized] = (await ops({ requests: [marked(500, ['claude-task', 'claude-automerge'])] }))
     .filter((o) => o.kind === 'adopt');
   assert.equal(parseWorkItemBody(authorized.body).merge, 'if-narrow');
   assert.equal(authorized.merge, 'if-narrow');
@@ -398,7 +398,7 @@ test('`claude-automerge` becomes the item\'s Merge field, and is consumed with t
 
   // …and the ordinary marked issue is untouched by any of this: no field, and the
   // worker's default is to open a pull request and park.
-  const [plain] = ops({ requests: [marked(501)] }).filter((o) => o.kind === 'adopt');
+  const [plain] = (await ops({ requests: [marked(501)] })).filter((o) => o.kind === 'adopt');
   assert.equal(parseWorkItemBody(plain.body).merge, null);
 });
 

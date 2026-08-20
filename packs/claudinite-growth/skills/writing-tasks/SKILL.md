@@ -191,7 +191,7 @@ skill's agent practices.
 Declare one only when its rule applies.
 
 - **`after: ['<pack>/<task>']`** — this task yields while a named upstream's item is live
-  *this cycle*, and picks up the moment it converges or rolls. Declare it when your task
+  *this cycle*, and picks up the moment it converges. Declare it when your task
   reads what another task produces; never as a general priority hint. It is not a
   `Blocked-by` edge and must not be described as one.
 - **`on_interrupt: 'requeue' | 'needs-human'`** (default `requeue`) — declare `needs-human`
@@ -263,7 +263,7 @@ workers.
 
 A task that reads what another task produces declares **`after:
 ['<pack>/<task>']`**: its item yields while that upstream's item is live this
-cycle, and picks up the moment the upstream converges or rolls. Nothing else
+cycle, and picks up the moment the upstream converges. Nothing else
 orders tasks — there is no run to claim, because there is no run: each item is
 picked, decided and executed on its own, so a task that must go second says which
 task it goes after and the queue holds it there.
@@ -346,13 +346,12 @@ closing or running anything.
   they are one person's inbox, not a fault in the task, so the schedule carries on
   around them.
 - **Never ran** → `task:obsolete`, closed as not planned: the precondition
-  declined and the item has no anchor to roll to, or the task is gone (file
-  removed, pack undeclared). An obsolete item is not an anomaly and gets no
-  `needs-human`.
-- **Declined with an anchor to roll to** → not terminal at all. The item's
-  `Not-before` is bumped to its next anchor and it returns to `task:blocked`. The
-  bump *is* the record: no comment, because an hourly task that stayed quiet would
-  otherwise fill its own timeline.
+  declined, or the task is gone (file removed, pack undeclared). An obsolete item
+  is not an anomaly and gets no `needs-human`. A scheduled task's next occurrence
+  is the scheduler run's ask at its next anchor — and most declines never make an
+  item at all: the scheduler run asks the precondition when the anchor comes,
+  files an item only on a yes, and records a no as a row on the repo's schedule
+  board (the one open `[claudinite-schedule]` issue).
 - Every terminal state is recorded in code as a `claudinite-task-exec` line
   (`record-exec.mjs`), so the usage fold counts task statuses out of the captured
   conversation logs deterministically.
