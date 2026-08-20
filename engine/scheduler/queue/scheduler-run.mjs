@@ -1,15 +1,20 @@
-// The generator's scheduler run (tasks-dispatch DESIGN §5) — a pure function of the clock
-// and the issue list, and the whole of the queue's scheduled machinery.
+// The generator's scheduler run (tasks-dispatch DESIGN §5) — the whole of the
+// queue's scheduled machinery: it decides at the anchor and files an issue
+// only when there is work (#1115, decision §15.28).
 //
-// Four jobs, all deterministic label mechanics: INSTANTIATE each recurring
-// task's standing item when its anchor comes, READY blocked items whose
-// dependencies have resolved and whose not-before has passed, ADOPT the issues
-// somebody marked for implementation, and RECLAIM dead executor claims. It evaluates NO precondition and collects NO signal — the
-// verdict happens once per period, at pickup, on the executor (§6.4) — which is
-// what deletes the run-ledger watermark the slot machinery needed.
+// Four jobs: INSTANTIATE — when a recurring task's anchor comes, evaluate its
+// precondition through the injectable `evaluate` seam and create the work
+// item only on a yes (a no is a row on the schedule board; a read the
+// scheduler cannot make fails OPEN and creates the item for the executor to
+// decide); READY blocked items whose dependencies have resolved and whose
+// not-before has passed; ADOPT the issues somebody marked for implementation;
+// and RECLAIM dead executor claims. The executor still re-evaluates at pick
+// (§6.4) — the board's verdict is a watermark, never a verdict carried
+// forward — plus a one-time migration retiring the roll model's sleeping
+// standing items onto the board.
 //
 // `planSchedulerRun` is the decision core, kept injectable so it tests with fixtures; the
-// CLI shell below wires the GitHub reads and applies the ops.
+// CLI shell below wires the GitHub reads, the signal-collection seam, and applies the ops.
 
 import { pathToFileURL } from 'node:url';
 import { isSuspended, suspendedNotice } from './suspend.mjs';
@@ -21,10 +26,11 @@ import {
   WORK_PREFIX, BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN, TASK_OBSOLETE,
   NEEDS_HUMAN_DECISION, isBlockingPark,
   QUEUE_LABELS, EPISODE_MARKER, workItemTitle, parseWorkItemTitle, parseWorkItemBody,
-  workItemBody, labelNames, hasLabel,
+  workItemBody, labelNames, hasLabel, parseLastVerdict,
   REQUEST_LABEL, QUEUED_LABEL, REQUEST_LABELS, MODEL_LABEL_PREFIX, requestModelFromLabels,
   AUTOMERGE_LABEL, MERGE_IF_NARROW, parseBlockedBy,
 } from './work-item.mjs';
+import { VERDICT_NO, VERDICT_GO, VERDICT_FAIL_OPEN } from './schedule-board.mjs';
 import { REQUEST_TASK_ID } from '../built-in-tasks.mjs';
 
 // The scheduler run owns the executing-leash reclaim because it is deterministic and
@@ -41,6 +47,8 @@ const ms = (t) => (t == null ? null : new Date(t).getTime());
 //   { kind: 'reclaim', issue, reason }            task:executing -> task:ready
 //   { kind: 'adopt',   request, title, body, … }  a marked issue becomes an item
 //   { kind: 'supersede', issue, request, reason } a parked prior run of a re-ask
+//   { kind: 'retire-sleeping', issue, reason }    migration: a roll-model sleeping item closes
+//   { kind: 'board',   rows }                     rewrite the schedule board (rows changed)
 //
 // `items` is every `[claudinite-work]` issue the shell fetched (state=all for the
 // scheduled families, open for the rest), each `{ number, title, body, state,
@@ -48,17 +56,73 @@ const ms = (t) => (t == null ? null : new Date(t).getTime());
 // state of a `Blocked-by` target that may not be a work item at all; an unknown
 // number is never treated as closed, so an unreadable blocker delays rather than
 // releases (the convergence-not-prevention posture).
-export function planSchedulerRun({
+//
+// `evaluate(task)` is the anchor-side ask (#1115): async, returning the
+// precondition's verdict `{ run, reason, … }` or `{ error }` where the
+// scheduler could not decide — a missing credential, a failed signal read, a
+// throwing precondition. An error FAILS OPEN: the item is created exactly as
+// the calendar-only model created it and the executor decides at pick. With
+// no seam wired (`evaluate: null` — a fixture, or an older shell) every
+// occurrence fails open the same way, which IS the old behaviour.
+//
+// `board` is the parsed schedule board: `{ rows: Map<taskKey, row> }` (see
+// schedule-board.mjs), or null where it could not be read — which reads as
+// absent and evaluates. Only a row whose verdict is `no` and whose lastAsked
+// equals the current anchor suppresses a re-ask (F31).
+export async function planSchedulerRun({
   tasks, items = [], requests = [], now, schedule, executingLeashMs = EXECUTING_LEASH_MS,
-  stateOf = () => null,
+  stateOf = () => null, evaluate = null, board = null,
 }) {
   const nowMs = ms(now);
   const ops = [];
   const closedByThisRun = new Set();
+  const boardRows = new Map(board?.rows ?? []);
+  let boardChanged = false;
+  const writeRow = (key, frequency, lastAsked, verdict, reason) => {
+    const prev = boardRows.get(key);
+    // Only the authoritative columns count as change; the next-window column
+    // is derived at render time and must never cause a rewrite by itself.
+    if (prev && prev.lastAsked === lastAsked && prev.verdict === verdict && (prev.reason ?? '') === (reason ?? '')) return;
+    boardRows.set(key, { task: key, frequency, lastAsked, verdict, reason: reason ?? '' });
+    boardChanged = true;
+  };
 
-  // ---- job 1: instantiate — calendar-only, no preconditions, no signals ----
+  // ---- the one-time migration (#1115): retire the roll model's leavings ----
+  // A sleeping standing item — open, blocked, a FUTURE Not-before, no
+  // blockers, a Last-verdict section proving it was rolled — closes with its
+  // verdict seeded onto the board. Idempotent: closed items never match
+  // again, and a seeded row is written only where none exists. Untouched:
+  // items waiting on a blocker, and first-ever/adoption Not-befores (no
+  // Last-verdict section — they were never rolled). Gated on the seam being
+  // wired, so a fixture driving the calendar-only shape sees no migration.
+  if (evaluate) {
+    const byId = new Map(tasks.map((t) => [`${t.pack}/${t.id}`, t]));
+    for (const item of items) {
+      if (item.state !== 'open' || !hasLabel(item, BLOCKED) || hasLabel(item, NEEDS_HUMAN)) continue;
+      const parsed = parseWorkItemTitle(item.title);
+      if (!parsed || parsed.qualifier !== null) continue;
+      const key = parsed ? `${parsed.pack}/${parsed.task}` : null;
+      const freq = byId.get(key)?.decl?.frequency ?? null;
+      if (freq == null || freq === 'manual') continue; // not a standing item
+      const { notBefore, blockedBy } = parseWorkItemBody(item.body);
+      if (blockedBy.length) continue;
+      if (!notBefore || (ms(notBefore) ?? -Infinity) <= nowMs) continue;
+      const verdict = parseLastVerdict(item.body);
+      if (!verdict) continue; // never rolled: a first-ever/adoption wait
+      if (!boardRows.has(key)) writeRow(key, freq, verdict.at ?? null, VERDICT_NO, verdict.reason ?? '');
+      closedByThisRun.add(item.number);
+      ops.push({
+        kind: 'retire-sleeping', issue: item.number, pack: parsed.pack, task: parsed.task,
+        reason: 'Closing: a declined occurrence now lives as a row on the schedule board '
+          + `(\`[claudinite-schedule]\`), not as a sleeping work item. The next ask happens at this task's next anchor.`,
+      });
+    }
+  }
+
+  // ---- job 1: instantiate — evaluate at the anchor; a yes files the item ----
   for (const task of tasks) {
     if (task.decl.frequency === 'manual') continue;
+    const key = `${task.pack}/${task.id}`;
     const title = workItemTitle({ pack: task.pack, task: task.id });
     // The family is title-EXACT, which is also what makes it STRUCTURALLY the
     // standing family (§15.26): this task is on a calendar and the title carries no
@@ -93,18 +157,41 @@ export function planSchedulerRun({
     const anchorMs = anchor.getTime();
     // The occurrence guard has TWO halves (F13): an item CREATED at-or-after the
     // anchor covers this occurrence — and so does an item CLOSED at-or-after it,
-    // because a rolled item created in an earlier period that ran and closed today
+    // because an item created in an earlier period that ran and closed today
     // consumed today's occurrence. With the created_at half alone, the very next
     // scheduler run after such a close creates a second item for the same occurrence: a
-    // double execution.
+    // double execution. An item this very run retired counts as closed now.
     const covered = family.some((i) =>
-      (ms(i.created_at) ?? -Infinity) >= anchorMs || (ms(i.closed_at) ?? -Infinity) >= anchorMs);
+      (ms(i.created_at) ?? -Infinity) >= anchorMs
+      || (ms(i.closed_at) ?? -Infinity) >= anchorMs
+      || closedByThisRun.has(i.number));
     if (covered) continue;
 
-    // A brand-new task's FIRST item is born blocked until its NEXT real anchor, so
-    // adoption never fires weekly or monthly work off-anchor on the least-proven
-    // repo (S25). Everything after that is born ready.
+    // A brand-new task's FIRST item is born blocked until its NEXT real anchor —
+    // created without an ask, so adoption never fires weekly or monthly work
+    // off-anchor on the least-proven repo (S25).
     const firstEver = family.length === 0;
+    if (!firstEver && evaluate) {
+      // The watermark: this anchor was already asked and DECLINED. Scoped to
+      // declined rows only (F31, and see schedule-board.mjs): a go/fail-open
+      // verdict's cover is the item it created, judged by the guards above.
+      const row = boardRows.get(key);
+      if (row && row.verdict === VERDICT_NO && (ms(row.lastAsked) ?? NaN) === anchorMs) continue;
+
+      const verdict = (await evaluate(task)) ?? {};
+      const lastAsked = anchor.toISOString();
+      if (verdict.error) {
+        // Fail open: never fewer runs because a read failed — the executor,
+        // which holds the credentials, decides at pick (§6.4).
+        writeRow(key, task.decl.frequency, lastAsked, VERDICT_FAIL_OPEN, verdict.error);
+      } else if (verdict.run !== true) {
+        // No work, no item: the row is the whole record of this occurrence.
+        writeRow(key, task.decl.frequency, lastAsked, VERDICT_NO, verdict.reason || 'no work');
+        continue;
+      } else {
+        writeRow(key, task.decl.frequency, lastAsked, VERDICT_GO, verdict.reason || '');
+      }
+    }
     const notBefore = firstEver ? nextAnchor(task.decl.frequency, schedule, now).toISOString() : null;
     ops.push({
       kind: 'create', pack: task.pack, task: task.id, title,
@@ -231,6 +318,12 @@ export function planSchedulerRun({
         : `Reclaimed: the executor holding this item went silent for over ${minutes} minutes. Returning it to the queue.`,
     });
   }
+
+  // ---- the board write, LAST and only on change ---------------------------
+  // A run that moved no row writes nothing — record changes, never scans —
+  // and the board is created lazily: the first row that needs writing is
+  // what mints the issue.
+  if (boardChanged) ops.push({ kind: 'board', rows: [...boardRows.values()] });
 
   return { ops };
 }
@@ -362,7 +455,7 @@ async function main() {
   const { ensureLabels, addLabel, removeLabel, comment, closeIssue, createIssue, listComments } = await import('../github.mjs');
 
   const root = process.cwd();
-  const { repo } = actionRepoContext();
+  const { repo, defaultBranch } = actionRepoContext();
   if (!repo) { console.error('GITHUB_REPOSITORY not set — not in an Actions context'); process.exit(1); }
   const config = loadConfig(root);
 
@@ -410,8 +503,46 @@ async function main() {
     item.livenessAt = lastLivenessAt(await listComments(gh, repo, item.number));
   }
 
-  const { ops } = planSchedulerRun({
+  // The schedule board (#1115): read as the watermark, rewritten only when a
+  // row changes. An unreadable listing reads as absent — evaluate fail-open —
+  // and additionally forbids the write: never write what you could not read,
+  // or a transient read failure mints a second board.
+  const { findScheduleBoard, parseScheduleBoard, renderScheduleBoard, scheduleBoardTitle } =
+    await import('./schedule-board.mjs');
+  const boardFetch = await findScheduleBoard(gh, repo);
+  const board = boardFetch.readable && boardFetch.issue
+    ? { rows: parseScheduleBoard(boardFetch.issue.body) } : null;
+
+  // The anchor-side ask: this task's declared signals, then its precondition —
+  // any read the scheduler cannot make is an `error`, which fails OPEN in the
+  // plan. The scheduler stub holds no FLEET_GITHUB_TOKEN (unlike the executor
+  // workflow), so a fleet task always fails open here and the executor decides.
+  const { collectSignalsForTask } = await import('./signals.mjs');
+  const collectFor = collectSignalsForTask({ gh, repo, root, config, defaultBranch });
+  const evaluate = async (task) => {
+    if (typeof task.decl.precondition !== 'function') return { error: 'the task declares no precondition' };
+    const names = task.decl.precondition_signals ?? [];
+    if (names.includes('fleet')) {
+      const { makeFleetGh } = await import('../signals/fleet.mjs');
+      if (!makeFleetGh()) return { error: 'the `fleet` signal needs FLEET_GITHUB_TOKEN, which the scheduler run does not hold' };
+    }
+    let signals;
+    try { signals = await collectFor(task, now, null); }
+    catch (e) { return { error: `signal collection failed: ${e.message}` }; }
+    for (const n of names) {
+      if (signals?.[n]?.error) return { error: `the \`${n}\` signal failed: ${signals[n].error}` };
+    }
+    // NOT the executor's evaluatePrecondition: that seam turns a throw into a
+    // decline, which is right at pick (one task's bad verdict is that item's
+    // problem) and wrong here — at the anchor an error is never a verdict, it
+    // fails open.
+    try { return task.decl.precondition(signals, config.packConfig?.[task.pack] ?? {}, null) ?? {}; }
+    catch (e) { return { error: `precondition threw: ${e.message}` }; }
+  };
+
+  const { ops } = await planSchedulerRun({
     tasks, items, requests, now, schedule: config.taskScheduler, stateOf: (n) => known.get(n) ?? null,
+    evaluate, board,
   });
 
   if (ops.some((o) => o.kind === 'create' || o.kind === 'adopt')) await ensureLabels(gh, repo, QUEUE_LABELS);
@@ -476,6 +607,34 @@ async function main() {
       await addLabel(gh, repo, op.issue, TASK_OBSOLETE);
       await closeIssue(gh, repo, op.issue, 'not_planned');
       console.log(`- deduped #${op.issue}`);
+    } else if (op.kind === 'retire-sleeping') {
+      await comment(gh, repo, op.issue, op.reason);
+      await addLabel(gh, repo, op.issue, TASK_OBSOLETE);
+      await closeIssue(gh, repo, op.issue, 'not_planned');
+      console.log(`- retired sleeping item #${op.issue} ${op.pack}/${op.task} onto the schedule board`);
+    } else if (op.kind === 'board') {
+      if (!boardFetch.readable) {
+        // Never write what could not be read: a blind create could mint a
+        // second board. The rows this run derived are re-derived next run.
+        console.log('! the schedule board could not be listed — skipping its rewrite this run');
+      } else if (boardFetch.issue) {
+        const res = await gh(`/repos/${repo}/issues/${boardFetch.issue.number}`, {
+          method: 'PATCH',
+          body: { body: renderScheduleBoard(op.rows, { now, schedule: config.taskScheduler }) },
+        });
+        console.log(res.status === 200
+          ? `- schedule board #${boardFetch.issue.number} updated (${op.rows.length} row(s))`
+          : `! could not update schedule board #${boardFetch.issue.number}: ${res.status}`);
+      } else {
+        const res = await createIssue(gh, repo, {
+          title: scheduleBoardTitle(),
+          body: renderScheduleBoard(op.rows, { now, schedule: config.taskScheduler }),
+          labels: [],
+        });
+        console.log(res.number
+          ? `- schedule board created as #${res.number} (${op.rows.length} row(s))`
+          : `! could not create the schedule board: ${res.status}`);
+      }
     }
   }
 

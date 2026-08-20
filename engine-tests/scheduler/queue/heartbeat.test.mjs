@@ -25,7 +25,7 @@ test('liveness is the newest live claim or heartbeat', () => {
 // #924, exactly: an executor that LOST the claim race strikes its own claim and
 // walks away. That strike is a comment, so the issue's `updated_at` moves — and a
 // clock read off the issue would defer the reclaim of an item nobody holds.
-test('a struck claim is not a sign of life', () => {
+test('a struck claim is not a sign of life', async () => {
   const struck = claim('2026-08-20T05:00:00Z', `\n\n${EPISODE_MARKER}\nThis claim is spent.`);
   assert.equal(lastLivenessAt([claim('2026-08-20T04:00:00Z'), struck]), '2026-08-20T04:00:00.000Z');
   assert.equal(lastLivenessAt([struck]), null);
@@ -39,28 +39,28 @@ const executing = (over = {}) => ({
   body: 'packs/p/tasks/a/task.md\n', created_at: '2026-08-20T03:00:00Z',
   updated_at: '2026-08-20T03:00:00Z', ...over,
 });
-const reclaims = (item, now) => planSchedulerRun({
+const reclaims = async (item, now) => (await planSchedulerRun({
   tasks: [], items: [item], now: new Date(now), schedule: SCHEDULE,
-}).ops.filter((o) => o.kind === 'reclaim');
+})).ops.filter((o) => o.kind === 'reclaim');
 
-test('a beating holder is not reclaimed, however long its work runs', () => {
+test('a beating holder is not reclaimed, however long its work runs', async () => {
   const item = executing({ livenessAt: '2026-08-20T09:50:00Z', updated_at: '2026-08-20T09:50:00Z' });
-  assert.deepEqual(reclaims(item, '2026-08-20T10:00:00Z'), [], 'six hours in and still alive');
+  assert.deepEqual(await reclaims(item, '2026-08-20T10:00:00Z'), [], 'six hours in and still alive');
 });
 
-test('a silent holder is reclaimed even though the item was commented on', () => {
+test('a silent holder is reclaimed even though the item was commented on', async () => {
   // The item was touched ten minutes ago — by somebody else — while its holder
   // has said nothing for two hours. The issue's clock says fresh; the holder's
   // says dead, and the holder's is the one that decides.
   const item = executing({ livenessAt: '2026-08-20T08:00:00Z', updated_at: '2026-08-20T09:50:00Z' });
-  assert.equal(reclaims(item, '2026-08-20T10:00:00Z').length, 1);
+  assert.equal((await reclaims(item, '2026-08-20T10:00:00Z')).length, 1);
 });
 
-test('an unreadable liveness falls back to the issue clock rather than reclaiming blind', () => {
+test('an unreadable liveness falls back to the issue clock rather than reclaiming blind', async () => {
   const fresh = executing({ livenessAt: null, updated_at: '2026-08-20T09:50:00Z' });
-  assert.deepEqual(reclaims(fresh, '2026-08-20T10:00:00Z'), []);
+  assert.deepEqual(await reclaims(fresh, '2026-08-20T10:00:00Z'), []);
   const stale = executing({ livenessAt: null, updated_at: '2026-08-20T08:00:00Z' });
-  assert.equal(reclaims(stale, '2026-08-20T10:00:00Z').length, 1);
+  assert.equal((await reclaims(stale, '2026-08-20T10:00:00Z')).length, 1);
 });
 
 // --- the beat itself -----------------------------------------------------------

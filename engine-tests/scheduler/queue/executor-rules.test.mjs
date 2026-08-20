@@ -158,23 +158,27 @@ test('an upstream that claimed earlier forces its dependent to revert (F15)', ()
   assert.equal(conflictsWithEarlierClaim(mine, 9, [other], { taskAfter, frequencyOf }), false);
 });
 
-// --- the roll -----------------------------------------------------------------
+// --- the no-go close (the roll is gone, #1115) ---------------------------------
 
-test('a scheduled item ROLLS to its next anchor; an ad-hoc one closes obsolete (S17)', () => {
+test('every no-go CLOSES; only the wording still knows standing from ad-hoc (#1115)', () => {
   const task = { decl: { frequency: 'daily' } };
   const scheduled = it({ task: 'a', labels: ['task:executing'] });
   const plan = noGoPlan(scheduled, task, SCHEDULE, new Date('2026-08-14T04:20:00Z'), 'nothing to do');
-  assert.equal(plan.kind, 'roll');
-  assert.equal(plan.until, '2026-08-15T04:00:00.000Z');
+  assert.equal(plan.kind, 'close');
+  assert.equal(plan.outcome, 'task:obsolete');
+  assert.equal(plan.stateReason, 'not_planned');
+  assert.equal(plan.standing, true, 'the close says the schedule goes on at the next anchor');
 
-  // Ad-hoc by its qualifier, and ad-hoc by its task having no calendar: both close,
-  // because neither has an anchor to roll to.
+  // Ad-hoc by its qualifier, and ad-hoc by its task having no calendar.
   const qualified = it({ task: 'a', qualifier: '#42', labels: ['task:executing'] });
-  assert.equal(noGoPlan(qualified, task, SCHEDULE, new Date('2026-08-14T04:20:00Z'), 'settled on its own').kind, 'close');
+  assert.equal(noGoPlan(qualified, task, SCHEDULE, new Date('2026-08-14T04:20:00Z'), 'settled on its own').standing, false);
   const lever = it({ task: 'lever', labels: ['task:executing'] });
-  assert.equal(noGoPlan(lever, { decl: { frequency: 'manual' } }, SCHEDULE, new Date('2026-08-14T04:20:00Z'), 'nothing asked').kind, 'close');
+  assert.equal(noGoPlan(lever, { decl: { frequency: 'manual' } }, SCHEDULE, new Date('2026-08-14T04:20:00Z'), 'nothing asked').standing, false);
 });
 
+// The writer is @deprecated (nothing rolls any more) but bodies the fielded
+// roll wrote are stored data — this round-trip is what pins parseLastVerdict's
+// decode, which the migration and the dashboard read.
 test('the roll stamps the wake and keeps ONE verdict — the item is a status line, not a log', () => {
   const body = 'packs/p/tasks/a/task.md\n\nExecute the Claudinite task above.\n';
   const first = rollBody(body, '2026-08-15T04:00:00.000Z', 'no work', '2026-08-14T04:20:00Z');

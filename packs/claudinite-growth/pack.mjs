@@ -79,7 +79,9 @@ export default {
   // 13: the task contract's prose carries the queue's current label vocabulary and
   // the precondition's two additions — the occurrence argument, and the verdict a
   // precondition gives when it cannot answer.
-  version: '60820.1',
+  // 60820.2: writing-tasks stops teaching the roll — a decline is a schedule-board
+  // row at the anchor, and a pick-time no-go closes its item (#1115).
+  version: '60820.2',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'authoring Claudinite content here — lesson extraction, dedup, revalidation, conversation logs, skill-usage folding, the task contract',

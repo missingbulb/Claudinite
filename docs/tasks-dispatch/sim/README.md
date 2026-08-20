@@ -11,15 +11,16 @@ whole argument for its existence.
 
 - [`sim.mjs`](sim.mjs) — the model: a virtual clock and an ordered event
   queue (no threads, no waits, no wall clock), an in-memory issue store, and
-  the mechanism as DESIGN.md specifies it — the scheduler run's three jobs; executor
+  the mechanism as DESIGN.md specifies it — the scheduler run's jobs; executor
   RUNS as first-class objects (one item each, urgent-then-random pick under a
   seeded PRNG, the verified lease, a recorded trigger: scheduler-run-drain /
   label-event / close-drain / re-dispatch / failure-redispatch); the work
   step → hand-off → converge as timed phases with heartbeat comments;
   at-most-once invocation (fired / refused / unanswered); the readiness
   re-check on close; the janitor's rules; and the force/re-queue levers.
-  `afterMode: 'blocked-by'` exists solely so S24 can demonstrate the
-  starvation that ruled that wiring out.
+  Since #1115 the scheduler run evaluates at the anchor and the schedule
+  board is a modeled ARTIFACT — rows the engine writes, a write log, and the
+  absent/corrupt/refused-create degradations — never the rule's intent.
   Ad-hoc requests (DESIGN §16) are modeled as their own issue store beside the
   work items: a mark, the scheduler run's adopt job, the built-in request task's
   precondition, and the two write-backs — each modeled where the engine will
@@ -55,18 +56,18 @@ test's title in `scenarios.test.mjs`.
 
 | design item | validated by |
 |---|---|
-| §5 calendar-only creation; the scheduler run evaluates nothing | `S1'` (zero handoffs, one ask per task) |
+| §5 evaluate-at-anchor: no work, no item (#1115) | `S1'` (one ask per task, zero items), `S52`, `S3'` |
 | §5 occurrence guard, both halves (F13) | `S3'` (no double execution), `S26b` (next anchor still fires), `S6` (double scheduler run) |
 | §5 standing-item guard (one open item per task) | `S21`, `S5` |
-| §5 the roll: no-go → Not-before next anchor | `S1'`, `S14'`, `S21`, `S22` |
+| §5 a decline is a board row; a pick-time no-go CLOSES (the roll is gone) | `S21`, `S22`, `S12'`, `S14'` |
 | §5 first-item adoption rule | `S25` |
 | §5 backlog guard: needs-human suppresses occurrences | `backlog`, `S11` |
 | §5 catch-up: most recent occurrence only, no backfill | `S5` |
 | §6.1 pick order — urgent first, then random among the ready (seeded) | `S16` (urgent precedence); the whole suite runs under the shuffle |
 | §6.1 same-title mutex; qualifiers parallelize | `S15`, `S18` |
-| §6.1 the `after` yield (not Blocked-by) | `S4`, `S23`, `S23b`, `S24` |
+| §6.1 the `after` yield (not Blocked-by) | `S4`, `S23`, `S23b`, `S24` (a quiet upstream holds nothing) |
 | §6.2 the verified claim lease, N executors | `S7` |
-| §6.4 the single evaluation site; roll vs close structurally (standing rolls, ad-hoc closes — §3) | `S3'`, `S13'`, `S17` |
+| §6.4 the pick-time re-evaluation; every no-go closes (#1115) | `S3'`, `S13'`, `S17`, `S59` |
 | §6.5 work-step failure → needs-human; re-entrant re-pick | `S19`, `S8` |
 | §6.5 heartbeat comments: the leash measures executor death, not work duration | `S31c`, `S31d` |
 | §6.5 durable record: the terminal comment carries the exec record + artifacts | **prose** — comment content, not label mechanics |
@@ -78,8 +79,8 @@ test's title in `scenarios.test.mjs`.
 | §9 fan-out/fan-in | `S18` |
 | §11 executing-leash reclaim on the scheduler run | `S8` |
 | §11 janitor agent leash (~3h) names the dead session | `S11` |
-| §11 janitor stale-ready escalation (~2 periods) | `S18`, `S21` (never on a rolling item) |
-| §11 janitor stuck-dependency sweep (F14) | `S18`, `S24` |
+| §11 janitor stale-ready escalation (~2 periods) | `S18`, `S21` (never on a quiet task — it has no item) |
+| §11 janitor stuck-dependency sweep (F14) | `S18` |
 | §4/F7 the human re-queue lever | `S19`, `S12'` |
 | §16.1/§16.3 the mark is consumed on adoption — exactly-once, no history search | `S44`, `S49` |
 | §16.3 one issue, one live item — a live prior item makes the mark wait; a parked one is superseded (F28) | `S49`, `S51` |
@@ -102,7 +103,7 @@ test's title in `scenarios.test.mjs`.
 | §15.10 ref-creation CAS claims | **prose** — recorded alternative, not designed in |
 | §15.11 invocation idempotency key | **answered: none exists** — the modeled defense is at-most-once invocation (`S9a`, `S10a`, `S10b`) |
 | §15.12 the no-go record alternative | **prose** — superseded by §15.13 |
-| §15.13 the standing work item | `S1'`, `S21`, `S25`, `S26b`, `S12'` |
+| §15.13 the standing work item | superseded in part by §15.28 (the roll and unconditional creation); what stands: `S25`, `S26b`, `S15`, `S30` |
 | §15.14 the work step is the work (naming; contract key unchanged) | **prose** — vocabulary, not mechanics |
 | §15.15 heartbeat comments during the work step | `S31`, `S31b`, `S31c`, `S31d` |
 | §15.16 the scheduler run never waits on a drain | **prose** — workflow concurrency wiring (see "The unsimulated world") |
@@ -115,10 +116,11 @@ test's title in `scenarios.test.mjs`.
 | §15.23 a dead run must not stall the train — the failure-continuation job | `S36` |
 | §15.24 the operator hold (`CLAUDINITE_TASKS_SUSPEND_ALL`) and the scheduler run-alone resume | `S37`, `S38` |
 | §15.25 `task:done`/`task:obsolete` — the `outcome:` namespace dissolves | **prose** — a label spelling; the sim stores outcomes as values, not labels |
-| §15.26 no origin marker — standing vs ad-hoc is structural (unqualified + frequency at HEAD) | `S13'` (qualified ad-hoc closes; unqualified would roll), `S15`, `S17`, `S44` |
+| §15.26 no origin marker — standing vs ad-hoc is structural (unqualified + frequency at HEAD) | `S13'`, `S15`, `S17`, `S44`, `S57` (an open unqualified item preempts the anchor's ask) |
 | §15.27 the tick is the scheduler run, with `tick.mjs` kept as an entry-point shim | **live-only** — a rename of a module path and a workflow's `run:` line; nothing the sim models changes, and what has to hold is that a member's un-converged workflow still starts a run (`scheduler-run-entry-shim.test.mjs`) |
+| §15.28 no work, no item — evaluate at the anchor, the schedule board as watermark, fail-open, the migration | `S52`, `S53`, `S54`, `S54b`, `S55`, `S56`, `S57`, `S58`, `S59`, `S60` (F31) |
 | §14 bootstrap: first-item rule; old-vocabulary issues untouched | `S25`, `S29` |
-| §14 updates: declaration changes apply at the next evaluation; the stamped wake is the one carried fact | `S28` |
+| §14 updates: declaration changes apply at the next scheduler run — nothing durable carries a schedule | `S28` |
 | §14 secrets: the missing-secret needs-human posture | `S9a` (the refused hand-off's same convergence); storage/stamping/rotation **prose** — Actions-platform behavior |
 | §5 F16 duplicate-standing-item self-heal | `S30` |
 | §11 F17 (reframed): heartbeat interval < leash; the livelock heartbeats prevent; transition lease re-verify | `S31`, `S31b`, `S31c`, `S31d` |
@@ -145,7 +147,7 @@ can still teach us.
 | **Label API atomicity** | a swap is two calls; no CAS; either can fail or land alone | labels are visibility + pick filter, never the arbiter — comments arbitrate (§6.2); a torn swap's stateless item is repaired by the janitor's fourth rule; modeled atomically here, defended structurally there |
 | **Comment ordering** | `created_at` has 1-second granularity (simultaneous claims tie); comment **ids** are server-assigned, strictly increasing | the design orders by id, never timestamp (§6.2); the sim's `seq` models exactly that id order |
 | **Claim-comment interleaving** | true API interleaving between executors | modeled as stale-snapshot races (`raceExecutorsAt` — S7, S32), which covers the protocol's decision points but not GitHub's own consistency between a comment post and a comment list; residual assumption: a comment list read after posting includes all earlier-id comments |
-| **Body-edit lost updates** | two concurrent body edits: last write wins, no merge | single-writer-per-state by construction: only the claim winner edits the body, only the roll's owner stamps `Not-before`; residual: a human editing concurrently with the executor loses one edit — accepted, the record comments survive |
+| **Body-edit lost updates** | two concurrent body edits: last write wins, no merge | single-writer-per-state by construction: only the claim winner edits an item's body, and only the scheduler run (serialized by its concurrency group) rewrites the board; residual: a human editing concurrently loses one edit — accepted, the record comments survive |
 | **Event delivery** | `labeled` webhook events are droppable | modeled only as `eventLost` on creation (S16); every flow is poll-guaranteed by the scheduler run's drain — events are latency sugar everywhere by design |
 | **Rate limits / quotas** | API quotas, secondary rate limits | costs estimated in DESIGN §5 (hourly-task churn); not modeled; the burst (B-rows) observes real consumption |
 | **Clocks** | runner clocks skew; only server timestamps are trustworthy | no rule compares runner clocks; ordering is by server-assigned ids, durations by server timestamps; anchors tolerate minute-scale skew by construction (scheduler run-quantized) |

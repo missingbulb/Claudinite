@@ -16,18 +16,20 @@ security posture (the issue is data; behavior comes from tracked files), and the
 usage-metrics records.
 
 The shape in one paragraph: **work items are issues, available for work; any
-number of executors pull from them.** A thin generator — one scheduler run on the repo's one cron — gives every
-recurring task a standing work item at its anchor and flips blocked items
-ready — pure label mechanics, no preconditions, no signals. An executor — a
-GitHub Action by default, but anything that can read issues — picks up the
-next ready item, claims it by label, evaluates the precondition (the only
-place it ever runs): on a go it runs the work step and hands off to agentic work (a
-CCR session invoked by API); on a no-go the item **rolls** — stamped
-not-before the task's next anchor, blocked, reason recorded — so the item
-itself carries "asked, declined, wakes at T". Follow-ups, fan-outs, urgency,
-and one-off forcing are all just *creating or waking work items*. There is no
-slot id, no run-ledger watermark, no exclusive claim, and no label-event
-re-arm.
+number of executors pull from them — and an issue exists only when there is
+work.** The generator — one scheduler run on the repo's one cron — asks each
+recurring task's precondition when its anchor comes and files its work item
+only on a yes (#1115, decision §15.28); a no is a row on the repo's one
+**schedule board** issue, and a read the scheduler cannot make fails open into
+an item the executor decides. An executor — a GitHub Action by default, but
+anything that can read issues — picks up the next ready item, claims it by
+label, re-evaluates the precondition (a chained stage re-derives world state):
+on a go it runs the work step and hands off to agentic work (a CCR session
+invoked by API); on a no-go it **closes** the item with the reason. Follow-ups,
+fan-outs, urgency, and one-off forcing are all just *creating or waking work
+items*. There is no slot id, no exclusive claim, and no label-event re-arm;
+the one watermark is the board's declined rows, and it fails toward asking
+again, never toward skipping.
 
 ---
 
@@ -102,17 +104,18 @@ Four roles, strictly separated (this refines, rather than replaces, the
 2026-08-06 three-responsibility split — the scheduler's job splits in two and
 shrinks):
 
-1. **The generator** — a thin scheduled run (the repo's one cron, unchanged
-   rule). Three jobs, all deterministic label mechanics over the issue list:
-   *instantiate* each recurring task's standing item when its time comes,
-   *ready* blocked items whose dependencies have resolved and whose not-before
-   has passed, and *reclaim* dead executor claims. It evaluates no
-   preconditions and collects no signals (§5); it executes nothing.
+1. **The generator** — a scheduled run (the repo's one cron, unchanged rule).
+   Three jobs: *instantiate* — when a recurring task's anchor comes, collect
+   its signals, ask its precondition, and file its work item only on a yes
+   (§5); *ready* blocked items whose dependencies have resolved and whose
+   not-before has passed; and *reclaim* dead executor claims. It executes
+   nothing, and it never turns a read failure into a skipped run — anything it
+   cannot decide it files for the executor to decide.
 2. **Executors** — any number of pull workers. Each iteration: pick the next
    ready item (urgent first), claim it, evaluate the precondition — the only
    place it is ever evaluated — then on a go run the work step and either finish
    (agentless task) or invoke the agentic phase and hand the item to it; on a
-   no-go, roll a scheduled item to its next anchor (§5). An executor is
+   no-go, close the item with the reason (§5, as amended by #1115). An executor is
    platform-agnostic by construction: its whole interface is issue read/write
    plus the repo at HEAD. More capacity = more executors.
 3. **Agents** — CCR sessions, one per handed-off item, invoked by the executor.
@@ -122,11 +125,14 @@ shrinks):
    dead agent claims, stale-item escalation, queue health review. The re-arm
    retires (§11).
 
-The queue itself is the repo's issues, and under the standing-item model that
-sentence is complete: everything the system knows — including "this task was
-asked, declined, and wakes again at T" — is on a work item. No plan file, no
-watermark, no ledger read. The scheduler run is a pure function of the clock and the
-issue list; which is what the sketch means by *visibility into state*.
+The queue's open issues are exactly the work that needs doing or a human: a
+work item exists only where a precondition said yes, or where the scheduler
+could not ask and filed one for the executor to decide. What is NOT work — the
+asked-and-declined record — lives on one open issue per repo, the schedule
+board (§5), never as a sleeping work item. The scheduler run is a function of
+the clock, the issue list, the board, and the signals it collects at each
+anchor; §5 says why that last read came back after being deliberately deleted,
+and what bounds it.
 
 ## 3. The work item
 
@@ -284,159 +290,160 @@ makes the retry safe even when the failed run half-did its work. Alternatively
 the human closes the item (optionally superseding it with a forced retry,
 §8); nothing mechanical ever re-queues a `needs-human` item.
 
-## 5. The generator — the standing work item
+## 5. The generator — decide at the anchor, file only work
 
-> Amended 2026-08-18 (§16.3): the scheduler run has a **fourth** job, `adopt` — an ordinary
-> issue marked `claude-task` becomes a work item, and the mark is consumed in the
-> same pass. It is the same kind of job as the other three: label mechanics over
-> the issue list, no precondition, no signal.
+> Rewritten 2026-08-20 (#1115, decision §15.28). The section this replaces was
+> built on the standing-item roll: creation was calendar-only, the scheduler run
+> evaluated nothing, a no-go rolled the item forward, and the run was "a pure
+> function of the clock and the issue list". That purity was itself the
+> deliberate deletion of the slot scheduler's watermark machinery, and this
+> section un-decides half of it, on purpose — the roll's price arrived as 12 of
+> 46 open issues being permanently-asleep machine bookkeeping and an executor
+> session dispatched per declined occurrence. §15.28 records the decision and
+> the alternatives; §H/§L in SCENARIOS.md replay the model.
 
-**The scheduler run never evaluates a precondition and never collects a signal**
-(owner model, 2026-08-13). Creation is calendar-only: at a task's anchor, the
-scheduler run creates its work item *unconditionally* — the precondition speaks later,
-at pickup, on the executor (§6.4), which is where the original sketch had it
-all along. What happens on a no-go is the model's whole trick: the item is
-**not closed** — the executor stamps it `Not-before: <the task's next anchor>`,
-swaps it back to `task:blocked`, records the reason, and the item **rolls
-forward**. The next anchor readies it again; the next pick re-asks. One ask
-per period, exactly — go/no-go preserved — and the memory of "evaluated,
-declined, ask again at T" is carried **on the item itself**, in the one place
-this design keeps state.
+**No work, no item.** When a task's anchor comes, the scheduler run collects
+that task's declared signals, asks its precondition — through an injectable
+`evaluate(task)` seam, so the decision core stays pure and fixture-testable —
+and creates the work item only on a **yes**. A **no** creates nothing: it is
+recorded as a row on the repo's one **schedule board** issue. Anything the
+scheduler cannot decide — a credential it does not hold (the scheduler stub
+carries no `FLEET_GITHUB_TOKEN`; the executor workflow does), a signal read
+that failed, a precondition that threw — **fails open**: the item is created
+exactly as the calendar-only model created it, and the executor decides at
+pick. Never fewer runs because a read failed.
+
+The invariant this trades away, and the one it keeps. The scheduler run is no
+longer a pure function of the clock and the issue list — it collects signals,
+once per task per period, at the anchor. What it keeps, and what actually
+mattered about the purity, is that **no durable scheduler state can silently
+eat a run**: the board is the only watermark, it gates only occurrences that
+were genuinely asked and declined, and every degradation — absent row, deleted
+board, mangled body, unreadable listing — resolves to "evaluate again", at the
+cost of one redundant evaluation and never a double run (the occurrence guard
+below still holds). This is not the slot scheduler's run-ledger returned: that
+ledger was a side-channel whose *unreadability had to fail the whole run*,
+because reading past it would advance it over slots it never evaluated. The
+board fails soft in the exact place the ledger failed hard.
 
 ```text
 scheduler run(now):
   if dormant: return                            # before any read, as today
 
-  # ---- job 1: instantiate (calendar-only; no preconditions, no signals) ----
-  for task in discoverTasks():                  # NO ordering requirement — the
-    if task.frequency == 'manual': continue     # `after` yield is pick-time (§6.1)
+  # ---- the one-time migration (#1115) ------------------------------------
+  # The roll model's sleeping items — open, blocked, a FUTURE Not-before, no
+  # Blocked-by, a Last-verdict section proving a roll — close with a comment,
+  # their last verdict seeded onto the board. Idempotent; items waiting on a
+  # blocker or on a first-ever/adoption Not-before are untouched.
+
+  # ---- job 1: instantiate — evaluate at the anchor -----------------------
+  for task in discoverTasks():
+    if task.frequency == 'manual': continue
     A = mostRecentAnchor(task.frequency, config.taskScheduler, now)
     family = issues(title == "[claudinite-work] <pack>/<task>", state ALL)
-                    # the exact bare title — a qualified item is outside the
-                    # family structurally (§3), no marker involved
-                    # REST issue list, never the search index (S6/F11)
-    # A park that is somebody's INBOX rather than a fault does not hold the
-    # lane: it is neither the standing item nor a duplicate of one, so it drops
-    # out of the two OPEN tests below and the schedule goes on around it. A
-    # `failure` park, and any park an older engine left unclassified, stays in
-    # (§4). It stays in `family` for the occurrence guard further down, which is
-    # the point: the parked item DID consume its own occurrence, so the next
-    # item is filed at the next anchor and not immediately.
+                    # title-EXACT; REST issue list, never search (S6/F11)
     live = [i for i in family if not (i has "needs-human" and not blockingPark(i))]
-    # F16 self-heal first: nothing documents that a REST list from another
-    # node sees a creation seconds old, so a stale list can let a duplicate
-    # standing item through. Assume it will happen rather than that it won't:
-    # close every open family item but the OLDEST, task:obsolete, with a
-    # dedupe comment. Serialized by the scheduler run's concurrency group.
-    if count(i.state == OPEN for i in live) > 1: closeAllButOldest(live)
-    if any(i.state == OPEN for i in live):      continue  # the standing item
-                                                          # already exists
-    # the occurrence guard has TWO halves (F13, caught by the simulator): an
-    # item CREATED at-or-after A covers this occurrence — and so does an item
-    # CLOSED at-or-after A, because a rolled item created in an earlier
-    # period that ran and closed today consumed today's occurrence. With the
-    # created_at half alone, the very next scheduler run after such a close creates a
-    # second item for the same occurrence: a double execution.
+    if count(i.state == OPEN for i in live) > 1: closeAllButOldest(live)   # F16
+    if any(i.state == OPEN for i in live):      continue  # the item exists
+    # occurrence guard, BOTH halves (F13): created-at-or-after A, or
+    # closed-at-or-after A — an item that ran and closed today consumed today
     if any(i.created_at >= A or i.closed_at >= A for i in family): continue
-    createIssue(title:  "[claudinite-work] <pack>/<task>",
-                body:   taskPath,
-                labels: [family.isEmpty ? "task:blocked" : "task:ready"])
-                # a brand-new task's FIRST item is born blocked with
-                # Not-before = its next anchor — adoption must not fire
-                # weekly/monthly tasks off-anchor (the old first-run concern)
+    if family.isEmpty:                          # first-ever: no ask (S25)
+      create(labels: task:blocked, Not-before: nextAnchor); continue
+    # the WATERMARK: a declined row for this anchor means do not re-ask.
+    # Scoped to declined rows only (F31): a go row is record, never a gate.
+    row = board[task]
+    if row.verdict == 'no' and row.lastAsked == A: continue
+    verdict = evaluate(task)                    # signals + precondition
+    if verdict.error:  board[task] = fail-open; create(task:ready)  # executor decides
+    elif verdict.run:  board[task] = go;        create(task:ready)
+    else:              board[task] = no         # no work, no item
 
-  # ---- job 2: ready whatever is due --------------------------------------
-  for item in issues(label "task:blocked", state OPEN):   # any origin
-    {blockedBy, notBefore} = parseBody(item)
-    if all(issues(blockedBy).state == CLOSED) and now >= notBefore:
-      swapLabel(item, "task:blocked" -> "task:ready")
-
-  # ---- job 3: reclaim dead executor claims (§11) --------------------------
-  for item in issues(label "task:executing", state OPEN):
-    if noActivitySince(item, EXECUTING_LEASH): stripToReady(item, comment)
+  # ---- job 2: ready whatever is due (unchanged) ---------------------------
+  # ---- job 4: adopt marked issues (§16.3, unchanged) ----------------------
+  # ---- job 3: reclaim dead executor claims (§11, unchanged) ---------------
+  # ---- the board write, LAST and only when a row changed ------------------
 ```
 
-And the roll, executor-side (the full pick flow is §6):
+And at pick, executor-side (the full flow is §6): the executor **re-evaluates**
+— a chained stage re-derives world state rather than trusting a verdict passed
+forward, so the board's row is a watermark, never a verdict — and a no-go
+**closes** the item, `task:obsolete`, with the reason in the close comment.
+The roll is gone: no `Not-before` stamp, no open-blocked resting state, no
+executor session spent on standing down.
 
-```text
-on pick, verdict = precondition(signals, config):
-  go     -> proceed (work step, hand-off, converge, CLOSE with an outcome)
-  no-go  -> item is the task's standing item (§3 — unqualified, frequency at HEAD)?
-              yes: Not-before = nextAnchor(task.frequency); ready -> blocked;
-                   record the reason            # the item ROLLS — not an exit
-              no:  close task:obsolete          # ad-hoc (manual task, or
-                                                # qualified): no anchor to roll to (S17)
-```
+**The schedule board.** One open issue per repo, titled with the exact prefix
+`[claudinite-schedule]`, body a table with one row per scheduled task: task id,
+frequency, last-asked anchor, verdict, a short reason, and the next window
+(derived fresh from `anchors.mjs` at every write — display, never data).
+Rules, each load-bearing:
 
-**What this dissolves, all at once:**
+- **It is the watermark**: a row whose verdict is `no` and whose last-asked
+  equals the current anchor means this occurrence was asked and declined — do
+  not re-ask. Only declined rows gate (F31): a `go` row must never suppress a
+  re-ask, because the item creation beside it can fail after the row lands,
+  and the row would then eat the occurrence — fewer runs because a *write*
+  failed, the exact inversion of fail-open.
+- **It is a first authority for exactly one fact** — "asked at anchor A,
+  declined, because R" — which is written nowhere else once the roll is gone.
+  Every other column derives from the declarations and the anchors.
+- **Rewrite only when a row actually changes** (the authoritative columns:
+  last-asked, verdict, reason — never the derived next-window). A run that
+  asked nothing writes nothing; a quiet day is zero writes.
+- **Created lazily**, by the first row that needs writing — never ahead of one.
+- **Parse/serialize lives in one module**, `queue/schedule-board.mjs`, the way
+  `work-item.mjs` owns the item's schema. A malformed or partially-parsable
+  board degrades to absent per-row; an unreadable issue *listing* additionally
+  forbids the write (never write what you could not read — a blind create
+  could mint a second board). The body is budgeted two-tier under the ~64KB
+  field cap, trivial at ~25 rows.
+- **Invisible to everything else**: it is not a `[claudinite-work]` title, so
+  the family match, `listOpenWorkItems` and the janitor never see it; and the
+  `issues` signal collector excludes `/^\[claudinite-(task|work|schedule)\]/`,
+  so a board rewrite can never read as repo activity and wake tidy-issues on
+  the queue's own churn (the F8 class).
 
-- **The evaluate-once ledger.** No `lastSchedulerRun`, no Actions-ledger read, no
-  grace fallback: "was this occurrence evaluated" is answered by the standing
-  item's own `Not-before`. §1's side-channel complaint is fully satisfied
-  again — the scheduler run is a pure function of the clock and the issue list.
-- **The 24-attempts cost (F10).** The scheduler run evaluates nothing; the precondition
-  runs once per wake, i.e. once per period per task. Signals are collected by
-  the executor for the one picked task — the scheduler run performs no GitHub reads
-  beyond the issue list.
-- **Declined occurrences were invisible in every earlier model** — no-go
-  meant no item (or a ledger entry nobody sees). Now a quiet task's item shows
-  its last ask, its reason, and its next wake, on its timeline. This closes
-  the last gap in the sketch's *visibility into state*.
-- **Forcing needs no item creation in the common case** (§8): the standing
-  item exists, so force = wake it — strip `task:blocked`, clear `Not-before`,
-  optionally add `task:urgent`. The same lever as the human re-queue (§4),
-  which is no accident.
-- **F9 (topological creation order) retires unbuilt**: `after` no longer
-  wires `Blocked-by` at creation — see §6.1/§9 — so the scheduler run's iteration
-  order stops mattering.
-
-**Titles carry no timestamp, and never will** (owner question, answered
-plainly): every item of a task shares the bare title `[claudinite-work]
-<pack>/<task>`; successive items are told apart by issue number, which is the
-identity (§3). The optional qualifier exists only for deliberately concurrent
-items (fan-out targets). Nothing ever parses a date out of a title — that was
-the slot grammar, and it stays dead.
+**What this buys**, measured against the roll model it replaces: open issues
+are only work-in-flight or a human's inbox (the ~12 permanently-sleeping
+items go to at most 1 open board); issue-number burn drops below the roll
+model's (a decline consumes no number at all); and a declined occurrence
+costs one scheduler-side evaluation instead of a whole dispatched executor
+session.
 
 **The costs, named:**
 
-- **The issue list's baseline changes meaning.** A quiet repo used to show
-  zero open scheduler issues; now it shows one open (blocked) item per
-  scheduled task, each stating its next wake. That is ~a dozen standing open
-  issues here — read it as the dashboard it is: the issue list *is* the
-  scheduler's state, which is what the sketch asked for. Filtering them out
-  of "real issues" views is a title query — every work item wears the
-  `[claudinite-work]` title prefix.
-- **Hourly tasks churn their item.** An hourly task that stays no-go rolls
-  ~24 times a day: two label flips and a body edit per roll, on one issue.
-  Cheap against API quotas, noisy on that item's timeline; the roll writes no
-  comment (the `Not-before` bump is the record) so the noise is timeline
-  events, not comment spam. Named and accepted — one issue absorbs it.
-- **A long-quiet task's item lives for months.** That is the feature wearing
-  its cost: the item is the task's standing status line, and its age is
-  information ("quiet since June"), not staleness — the janitor's stale rule
-  keys on `task:ready` age, which a properly rolling item never accumulates.
+- **Signals are collected twice for an occurrence that runs** — scheduler run
+  at the anchor, executor at pick. Accepted: it is the re-derive rule, and it
+  is paid only on occurrences that do work, against a saving on every one
+  that does not.
+- **A task whose signals need a credential the scheduler lacks pays the old
+  price**: every occurrence fails open into a created-then-declined issue
+  (one closed issue per occurrence — today the two `fleet`-signal tasks).
+  Accepted as the cost of never skipping on a read failure; it ends if the
+  scheduler stub ever holds the credential.
+- **The board's next-window column goes stale between writes** — it is
+  recomputed only when a row changes. The frequency column beside it is what
+  a reader derives a fresh answer from; claudinite-dashboard is the live
+  surface.
+- **A declined occurrence is no longer an open issue's timeline** — the board
+  row keeps only the LAST ask per task. History of declines is not kept
+  anywhere, deliberately: nothing read the roll's history either (the item
+  was "a status line, not a log").
 
-**Errored and forced items against the guards** (unchanged in substance from
-the earlier draft, restated for the new shape):
+**Errored and forced items against the guards** (restated for the new shape):
 
-- A **failed run** parks its item open + `needs-human` (a real exit — the
-  roll is only for no-go verdicts, never for failures). A `failure` park *is*
-  the backlog guard: no new item until a human closes or re-queues it — one
-  broken task, one triage item, however long it takes. The other three
-  sub-labels are **not** guards (§4): a park that only wants a reviewer, a
-  decision or a secret leaves the lane open, so the next occurrence is filed
-  beside it on schedule. It still consumes its own occurrence, so nothing is
-  filed until that next anchor.
-- A **forced ad-hoc item** (qualified, or a manual task's — §3) is invisible
-  to both guards in both directions, whatever state it ends in — its title is
-  outside the family, so it neither suppresses nor consumes an occurrence
-  (#749's property, now structural). An **unqualified** item of a scheduled
-  task is never ad-hoc: creating one where none is open is minting the
-  standing item (§8), and beside an open one it is a duplicate the F16
-  self-heal closes.
-- **Force-of-a-scheduled-task** is now the wake lever, not an item (§8), so
-  the S15 same-title collision cannot arise from the common force at all; the
-  pick mutex (§6.1) still covers a deliberately created concurrent item.
+- A **failed run** parks its item open + `needs-human` exactly as before — a
+  real exit; a `failure` park still holds the task's lane (§4), and a
+  non-blocking park leaves it open, with the next occurrence ASKED (and filed
+  only on a yes) beside it.
+- A **forced ad-hoc item** (qualified, or a manual task's — §3) stays
+  invisible to both guards in both directions.
+- **Force-of-a-scheduled-task MINTS the standing item in the common case**
+  (§8): between occurrences there is now no item at all for a quiet task, so
+  the wake lever's minting half — built for the gap after a completed run —
+  becomes the ordinary path. An open minted item preempts the anchor's ask
+  entirely (it IS the standing item, §3), so a decline racing a hand-created
+  item resolves structurally: no row, no duplicate (S57).
 
 ## 6. The executor — pick up, claim, prepare, hand off
 
@@ -460,14 +467,15 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
    - **The `after` yield** (SCENARIOS S24): skip a scheduled item whose task
      declares `after: [T]` while T's standing item is `task:ready`,
      `task:executing`, or `task:agent` — yield *while the upstream is live
-     this cycle*, nothing more. A rolled upstream (blocked until its next
-     anchor: it declined this cycle) does not block, and neither does one
-     sitting `needs-human` — a broken upstream must not halt its dependents
-     indefinitely, the same bound the old exclusive claim drew at three days.
-     This is deliberately **not** a `Blocked-by` edge: a standing item that
-     rolls never closes, so wiring `after` as blocked-by-the-item would
-     starve every dependent of a quiet upstream forever — the one real trap
-     in the standing-item model, caught in replay (S24).
+     this cycle*, nothing more. A declined upstream does not block — it has
+     no item at all (#1115: a no files only a board row) — and neither does
+     one sitting `needs-human`: a broken upstream must not halt its
+     dependents indefinitely, the same bound the old exclusive claim drew at
+     three days. This is deliberately **not** a `Blocked-by` edge: `after`
+     names the upstream's live states, and a `Blocked-by` on an item that
+     may never exist has nothing to point at. (Under the roll model this
+     trap was sharper still — a rolling item never closed, starving every
+     dependent forever; S24 kept that record until the roll retired.)
 
    **The filters are advisory at pick time (F15)**: they read possibly-stale
    state, so two executors can pass them simultaneously and claim
@@ -508,14 +516,16 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
    - **Letting go of an open item kills your claim (F24)**: the boundary is
      a *rule about every path that ends an episode*, not a property of the
      three that happened to write a comment. An executor that stops owning
-     an item without closing it — the roll, every `needs-human` park, and a
+     an item without closing it — every `needs-human` park (and, before #1115
+     retired it, the roll), and a
      claimant that *lost* the arbitration — **strikes its own claim**,
      appending the episode marker to the claim comment it already wrote. The
      loser matters as much as the winner: its claim is younger than the
      winner's, so it survives the winner's own strike and becomes the
      earliest claim of the *next* episode, moving the livelock one episode
      along rather than removing it. That satisfies the boundary with no new
-     timeline entry, which is what lets the roll keep its silence (§5); a
+     timeline entry, which is what let the roll keep its silence while it
+     existed; a
      marker *comment* there would put one on every declining hourly task,
      every hour. Only a claim's author strikes it, so a claim can be
      withdrawn but never forged earlier, and comment ids still give the
@@ -537,19 +547,19 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
    `task:obsolete`, comment. Malformed → `needs-human` +
    `task:needs-human-failure` (possible forgery, a human must see it),
    unchanged from today.
-4. **Evaluate the precondition — the only place it ever runs** (the sketch's
-   "evaluates preconditions", now literally once). Creation was calendar-only
-   (§5), so this is not a re-check of anything — it is *the* verdict, over
-   signals the executor collects for this one task. On **go**: proceed, with
-   the verdict's Context written into the body as the agent's binding scope.
-   On **no-go**: a scheduled item **rolls** — `Not-before` stamped with the
-   task's next anchor, `task:ready → task:blocked`, the reason recorded — and
-   an ad-hoc item (a manual task's, or qualified — no anchor to roll to, §3)
-   closes `task:obsolete` with the reason commented (a follow-up whose world
-   settled on its own, S17). **This amends §12.3's "the precondition is the
-   only decision point" by re-siting, not weakening it**: still exactly the
-   precondition deciding, still one decision point — moved from the scheduler
-   run to the pick — and the work step and the agent still may not skip; the
+4. **Re-evaluate the precondition — the verdict that becomes a run.** The
+   scheduler run already asked once, at the anchor (§5, #1115); the executor
+   asks again over freshly collected signals, because a chained stage
+   re-derives world state rather than trusting a verdict passed forward — the
+   board's row is a watermark, never a verdict. On **go**: proceed, with the
+   pick-time verdict's Context written into the body as the agent's binding
+   scope. On **no-go**: the item **closes**, `task:obsolete`, with the reason
+   in the close comment (#1115 — standing and ad-hoc alike; a standing
+   item's close also points at the schedule board, and the closed-at half of
+   the occurrence guard keeps the period consumed). **This keeps §12.3's "the
+   precondition is the only decision point" in spirit**: still exactly the
+   precondition deciding, at two sites that ask the same question of the
+   same code — and the work step and the agent still may not skip; the
    doctrine's target (later phases inventing "new reasons to skip") is
    untouched.
 
@@ -557,11 +567,12 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
    calendar ones** (owner's condition, 2026-08-13). "Is there work?" is a
    question about the world; "has it been more than a day?" is the scheduler's
    own question leaking into a task, and under this model it is doubly wrong —
-   the item already *carries* its schedule in `Not-before`, so a calendar
-   precondition would be a second clock disagreeing with the first. Timing
-   belongs to `frequency`, the anchors, and `Not-before`. The rule is
+   the schedule already lives in the anchors and the board's watermark, so a
+   calendar precondition would be a second clock disagreeing with the first.
+   Timing belongs to `frequency`, the anchors, and — for follow-ups and
+   deferred requests — `Not-before`. The rule is
    **advisory** by owner ruling: no mechanical check (the property is not
-   checkable), and the residual exposure is an item rolled with a calendar
+   checkable), and the residual exposure is an occurrence declined with a calendar
    reason in its record — visible, and it costs a cycle, not correctness. The one live offender is resolved by
    ruling rather than grandfathered: **baselining's `ageDays > 1` gate is
    dropped outright** (owner, 2026-08-13: "the wrong precondition"). Its
@@ -649,7 +660,7 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
 
 **An executor run performs one item** — not a configured maximum but the
 executor's essence (owner, 2026-08-15): claim it, see it through to its
-settle (roll, close, hand-off, or failure), end. The run's `timeout-minutes`
+settle (close, hand-off, or failure), end. The run's `timeout-minutes`
 sizes to a single work bound, a platform kill loses at most one item's
 progress, and self-re-dispatch (§10) chains the rest at ~a minute of spin-up
 per item. Each item's claim is independently leased, so executor concurrency
@@ -761,16 +772,16 @@ comes from a file under review.
   alone, so an item merely stripped of `task:blocked` wears no state any
   executor selects on, and the run reports `nothing ready to pick up` —
   indistinguishable from a healthy idle run. **When the standing item does
-  not exist, forcing MINTS it** — a completed task closes its item and the
-  next appears only at its anchor, so for most of a daily task's day there
-  is nothing to wake, and refusing there would make a fleet-wide converge
-  lever fail on most members most of the time. The minted item is an
+  not exist, forcing MINTS it — and under #1115 that is the ordinary case**:
+  a decline files nothing and a completed task closes its item, so for most
+  of a quiet task's day there is nothing to wake, and refusing there would
+  make a fleet-wide converge lever fail on most members most of the time. The minted item is an
   ordinary standing item: it consumes the current
   occurrence (so the scheduler run does not create a second one beside it) and leaves
   the next anchor's alone. Cross-repo, the enforcer does not perform any of
   this itself; it dispatches the member's scheduler with a `wake` input and
   the member's own scheduler run applies the recipe (§14). The executor evaluates the
-  precondition at pick like always; a no-go rolls the item again with the
+  precondition at pick like always; a no-go closes the item with the
   reason on record, so a force that finds no work *says so* where the
   operator will read it. Truly unconditional force: say so in a Context line
   the task's precondition honors — but the default stands that even forced
@@ -846,15 +857,16 @@ by the scheduler run (§5). Three patterns fall out, all from the sketch:
   **pick-time yield** (§6.1), *not* to a `Blocked-by` edge: the executor
   skips the dependent while the upstream's standing item is live
   (ready/executing/agent) this cycle, and picks it the moment the upstream
-  converges — or rolls. The distinction is load-bearing under the
-  standing-item model: `Blocked-by` requires the blocker *closed*, and a
-  standing item that rolls never closes, so wiring `after` as blocked-by
-  would starve every dependent of a quiet upstream forever (S24 — the one
-  trap found replaying the model). As a yield: on the late-fire night all
-  chain items are created together, baselining runs first, extract and
-  promote follow *the same night* in order; on the routine night where
-  baselining's precondition declines and its item rolls, extract is pickable
-  a minute later. Nothing is spent, no task claims a run, and the engine
+  converges. The distinction is load-bearing: `Blocked-by` requires the
+  blocker *closed*, and a quiet upstream may have no item at all (#1115 — a
+  declined anchor files only a board row), so there is nothing for an edge
+  to name. (Under the retired roll model the trap was a rolling item that
+  never closed, starving every dependent forever — S24's record.) As a
+  yield: on the late-fire night all chain items are created together,
+  baselining runs first, extract and promote follow *the same night* in
+  order; on the routine night where baselining's precondition declines at
+  its anchor, no baselining item exists and extract is pickable a minute
+  after its own yes. Nothing is spent, no task claims a run, and the engine
   still never knows what baselining is — `after` names a task id, and the
   pick filter reads item states, generically. §12's exclusive-claim
   machinery (and its stated throughput cost) deletes. `Blocked-by` remains
@@ -1167,13 +1179,14 @@ verdicts — is **computed fresh at every scheduler run and pick from the engine
 declarations at HEAD**. That one property decides every update question:
 
 - **A task declaration change** (frequency, `after`, precondition, secrets)
-  applies to its standing item at the item's next evaluation, with no
-  migration and no relabeling. One precision the simulator pinned (S28): the
-  stamped `Not-before` is the *one* scheduling fact an item carries, so a
-  frequency change takes effect **at the wake already stamped** — the item
-  sleeps out its old wake, is judged there by the new precondition, and the
-  next roll targets the new anchor. An operator who wants the new cadence
-  sooner wakes the item — the force lever, as everywhere.
+  applies at the very next scheduler run, with no migration and no
+  relabeling: a declined task holds no item at all, and the board's row is a
+  watermark, not a wake, so nothing durable carries a schedule to migrate
+  (S28, re-pinned under #1115). A frequency change may cost one extra ask on
+  the day it lands — the new calendar's current occurrence is not covered by
+  the old anchor's row — and never a double run, because the occurrence
+  guard's closed-at half covers a same-period item that already ran. An item
+  already in flight finishes under the declaration it was picked with.
 - **An engine change** lands through the ordinary update flow (engine release
   → members' baselining converges the vendored workflows). In-flight items
   survive by construction: a run that claimed an item finishes it on the code
@@ -1268,7 +1281,9 @@ the design rather than confirming it, the section it changed is named.
    owner's **standing-item model** (decision 13 below): the verdict stays
    once-per-period, and the memory moves onto the item itself (`Not-before`
    roll), deleting the ledger read entirely. Mid-window firing stays out; a
-   task wanting finer latency declares a finer `frequency`.
+   task wanting finer latency declares a finer `frequency`. *(The memory's
+   home moved again with decision 28: the roll retired, and "asked, declined"
+   became a schedule-board row. Go/no-go, once per period, stands.)*
 5. **The fleet concept is eliminated** (§12, §13) — *changed the design*.
    Wider reach is a different invocation endpoint, declared by the task that
    needs it. `ready-for-agent-fleet`, the second executor routine, and
@@ -1324,7 +1339,11 @@ Standing entries — no decision needed now:
     compiles to a pick-time yield, not a `Blocked-by` edge — a rolling item
     never closes, so blocked-by would starve dependents of a quiet upstream
     forever (S24). Titles carry no timestamp; the issue number is the
-    identity, as ever.
+    identity, as ever. *(Superseded in part by decision 28, 2026-08-20: the
+    unconditional creation and the roll retired — the scheduler run now asks
+    at the anchor and a decline is a board row, not an open item. What
+    stands: no slot id, no exclusive claim, the pick-time yield, forcing as
+    waking/minting, and the occurrence guard.)*
 
 The work-as-work review (owner, 2026-08-15). The correcting premise, in the
 owner's words: *"The pre work is not pre work. It's work. Sometimes there's
@@ -1435,6 +1454,45 @@ deployment coupling did not:
     spelling for the same reason. Both retire when no member's workflow still
     names `tick.mjs` — read the members' files, do not guess a date.
 
+28. **No work, no item — the scheduler run decides at the anchor, and the
+    watermark is the schedule board** (owner, 2026-08-20,
+    [#1115](https://github.com/missingbulb/Claudinite/issues/1115)) — *changed
+    the design*: §5 is rewritten around it, and it supersedes decision 13's
+    unconditional creation and roll. The scheduler run evaluates each task's
+    precondition when its anchor comes (the injectable `evaluate` seam; the
+    executor still re-evaluates at pick) and files a work item only on a yes;
+    a no is a row on the one open `[claudinite-schedule]` issue per repo;
+    anything the scheduler cannot read fails open into an item the executor
+    decides. The alternatives, and why each lost:
+
+    - *No watermark at all — re-ask every hour.* Affordable on the per-repo
+      token (~4% of the 1000/hr budget), but the two `fleet`-signal tasks
+      enumerate every owned repo per evaluation (~100–130 reads, 1–2 minutes),
+      so hourly re-asking is ~24× today's cost for a verdict that moves at
+      most daily — and the "win" is a bug: a task whose signal turns true at
+      15:00 would fire off-anchor, quietly redefining what `daily-1h` /
+      `daily-2h` mean for the nightly chain, which is ordered against a
+      converged mount, not clock latency.
+    - *A repo variable / the Actions cache / a Project.* Each needs something
+      the vendored scheduler stub does not have: `variables: write`, a 7-day
+      eviction window, or a credential `GITHUB_TOKEN` never gets. The board
+      needs only `issues: write`, already in the stub, so it ships through
+      the nightly converge with no per-member action.
+    - *An orphan ref.* Feasible (`contents: write` is there), but it adds
+      push machinery to a run that is pure issue mechanics, and shows a
+      human nothing.
+    - *A closed board.* Identical mechanics, zero visible machine issues;
+      rejected because the record would then be readable only through
+      claudinite-dashboard — an opt-in pack most members do not declare and
+      that `engine/` cannot depend on.
+
+    Why the board is not the slot scheduler's deleted run-ledger returned: the
+    ledger was a platform side channel whose unreadability had to fail the
+    whole run; the board is beside the work, first authority for exactly one
+    fact ("asked at A, declined"), and every failure of it degrades to one
+    redundant evaluation — it fails toward evaluating, never toward skipping
+    (F31 pins the one place that could have inverted: a go row never gates).
+
 ---
 
 ## 16. Ad-hoc requests — an issue somebody marked (owner, 2026-08-18)
@@ -1536,10 +1594,11 @@ scheduled family structurally (§3).
 
 ### 16.4 The precondition is the security check — and there is no code-work
 
-The verdict happens where every verdict happens: **once, at pickup, on the
-executor** (§6.4). The built-in task's precondition refuses three ways, each a plain
-no-go that converges the item `task:obsolete` (an ad-hoc item has no anchor to
-roll to, and a refusal is nobody's inbox — it closes rather than joining a triage
+The verdict happens where every request verdict happens: **at pickup, on the
+executor** (§6.4 — the request task is `manual`, so the scheduler run's
+anchor-side ask never applies to it). The built-in task's precondition refuses
+three ways, each a plain no-go that converges the item `task:obsolete` (a
+refusal is nobody's inbox — it closes rather than joining a triage
 lane):
 
 - the issue is closed, or no longer carries `claude-queued` — the request was

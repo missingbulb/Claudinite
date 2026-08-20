@@ -70,7 +70,9 @@ export default {
   // collapsed into it (#1079).
   // 60820.1: versions become date-anchored (#1100) — the counter this list is written
   // in retires here, and every pack in the canon restarts from the same day.
-  version: '60820.1',
+  // 60820.2: fleet-digest's machine-issue filter learns the schedule board's
+  // `[claudinite-schedule]` title (#1115).
+  version: '60820.2',
   minEngineVersion: 4,
   ruleRoutingGuidance: {
     belongs: 'the browser dashboard over Claudinite scheduler state, the site that publishes it, and the fleet morning brief it reads',

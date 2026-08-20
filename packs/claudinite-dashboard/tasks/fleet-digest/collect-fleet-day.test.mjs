@@ -64,6 +64,9 @@ test('the fleet\'s own dispatch issues are machine-filed, not accomplishments', 
   // retired prefix would hand the whole fleet's scheduled work to the shortlist.
   assert.ok(isMachineIssue({ title: '[claudinite-work] claudinite-growth/growth-extract' }));
   assert.ok(isMachineIssue({ title: '[claudinite-work] claudinite-fleet-sheepdog/fleet-baseline (Alpha Beta)' }));
+  // the schedule board (#1115): rewritten by every verdict change, and a body
+  // that would otherwise WIN the brief on sheer accumulated weight
+  assert.ok(isMachineIssue({ title: '[claudinite-schedule] the schedule board' }));
   assert.ok(isMachineIssue({ title: '[claudinite-task] claudinite-growth/growth-extract d2026-07-26' }));
   assert.ok(isMachineIssue({ title: '[claudinite-task] chrome-extension-release/store-release d2026-07-26' }));
   assert.ok(isMachineIssue({ title: 'Claudinite scheduler run failed' }), 'the escalation issue too');

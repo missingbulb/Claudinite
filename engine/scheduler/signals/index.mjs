@@ -172,9 +172,11 @@ const COLLECTORS = {
     const open = await paged(gh, `/repos/${ctx.repo}/issues?state=open&sort=updated&direction=desc`);
     const since = new Date(ctx.sinceIso);
     // Exclude PRs (the issues endpoint returns both) and the scheduler's own
-    // work items / standing trackers — invisible to signals (DESIGN §3.3).
+    // work items, its schedule board, and standing trackers — invisible to
+    // signals (DESIGN §3.3). The board especially: every rewrite would land in
+    // `issues.touched` and wake tidy-issues on the queue's own churn (F8).
     const real = open.filter((i) => !i.pull_request
-      && !/^\[claudinite-(task|work)\]/.test(i.title ?? '')
+      && !/^\[claudinite-(task|work|schedule)\]/.test(i.title ?? '')
       && !/^(claudinite tracker:|auto-improvements tracker\b|repo tidy tracker$)/i.test((i.title ?? '').trim()));
     return {
       open: real.map((i) => ({ number: i.number, title: i.title, updatedAt: i.updated_at, labels: (i.labels ?? []).map((l) => l.name ?? l) })),

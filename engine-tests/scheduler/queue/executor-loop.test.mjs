@@ -156,20 +156,23 @@ test('an unconfigured declared secret parks at action', async () => {
   assert.ok(repo.find(1).labels.includes('task:needs-human-action'));
 });
 
-// The model's whole trick: a no-go does not close the item, it ROLLS it, so the
-// item itself carries "asked, declined, wakes at T" and the scheduler run needs no ledger.
-test('a no-go verdict rolls a scheduled item to its next anchor, blocked', async () => {
+// The roll is gone (#1115): a scheduled item's no-go CLOSES it with the reason
+// on record — the next occurrence is the scheduler run's ask at the task's next
+// anchor, and "asked, declined" lives on the schedule board, not on an open
+// sleeping issue.
+test('a no-go verdict closes a scheduled item with the reason — the roll is gone (#1115)', async () => {
   const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
   const done = await drive(repo, [task('a', { precondition: () => ({ run: false, reason: 'no work' }) })]);
-  assert.deepEqual(done, [{ issue: 1, outcome: 'rolled' }]);
+  assert.deepEqual(done, [{ issue: 1, outcome: 'obsolete' }]);
   const issue = repo.find(1);
-  assert.equal(issue.state, 'open');
-  assert.deepEqual(issue.labels.filter((l) => l.startsWith('task:')), ['task:blocked']);
-  assert.equal(parseWorkItemBody(issue.body).notBefore, '2026-08-15T04:00:00.000Z');
-  assert.match(issue.body, /no work/);
-  // The roll writes no comment — the Not-before bump IS the record — so an hourly
-  // task that stays quiet does not fill its own timeline.
-  assert.deepEqual(issue.comments.filter((c) => !c.body.includes('claudinite-claim')), []);
+  assert.equal(issue.state, 'closed');
+  assert.ok(issue.labels.includes('task:obsolete'));
+  assert.equal(parseWorkItemBody(issue.body).notBefore, null, 'no Not-before is ever stamped');
+  // The close comment carries the reason and points at the board — and for a
+  // decline the record says success: the executor asked, got a no, closed.
+  const closeComment = issue.comments.find((c) => c.body.includes('declined'));
+  assert.match(closeComment.body, /no work/);
+  assert.match(closeComment.body, /schedule board/);
 });
 
 test('a no-go on an ad-hoc item closes it obsolete — there is no anchor to roll to (S17)', async () => {
@@ -184,8 +187,13 @@ test('a no-go on an ad-hoc item closes it obsolete — there is no anchor to rol
 test('a precondition that throws converges the item rather than sinking the run', async () => {
   const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
   const done = await drive(repo, [task('a', { precondition: () => { throw new Error('boom'); } })]);
-  assert.deepEqual(done.map((d) => d.outcome), ['rolled']);
-  assert.match(repo.find(1).body, /precondition threw: boom/);
+  // A throw at pick is a DECLINE (one task's bad verdict is that item's
+  // problem, never the executor's); only the scheduler run's anchor-side ask
+  // treats a throw as fail-open.
+  assert.deepEqual(done.map((d) => d.outcome), ['obsolete']);
+  const issue = repo.find(1);
+  assert.equal(issue.state, 'closed');
+  assert.ok(issue.comments.some((c) => /precondition threw: boom/.test(c.body)));
 });
 
 test('a hand-off swaps to task:agent and invokes exactly one session', async () => {
@@ -378,24 +386,9 @@ test('a failed re-dispatch is reported, not swallowed', async () => {
 // exposes it is a SECOND executor arriving after the first let the item go — the
 // shape the whole burst missed and live traffic found.
 
-test('a second executor wins immediately on a ROLLED item — the first strike killed its claim (F24)', async () => {
-  const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
-  const declines = task('a', { precondition: () => ({ run: false, reason: 'no work' }) });
-
-  await drive(repo, [declines]);                                   // E1 claims, rolls, strikes
-  assert.deepEqual(repo.find(1).labels.filter((l) => l.startsWith('task:')), ['task:blocked']);
-
-  // The scheduler run readies it at the next anchor; a DIFFERENT executor picks it up.
-  repo.find(1).labels = ['task:ready'];
-  const done = await drive(repo, [declines], { executorId: 'E2' });
-
-  assert.deepEqual(done, [{ issue: 1, outcome: 'rolled' }],
-    'E2 must run the item, not lose the lease to E1\'s spent claim');
-  // Still no roll comment: the strike is an edit to a comment that already exists.
-  const issue = repo.find(1);
-  assert.deepEqual(issue.comments.filter((c) => !c.body.includes('claudinite-claim')), [],
-    'striking must not cost a timeline entry — that is why the roll can use it');
-});
+// The ROLLED half of F24 retired with the roll itself (#1115): a decline now
+// CLOSES its item, nothing re-claims a closed issue, and the silent-episode
+// class narrows to the park — the test below.
 
 test('a second executor wins immediately on a PARKED item a human re-queued (F24)', async () => {
   const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);

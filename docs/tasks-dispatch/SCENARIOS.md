@@ -417,6 +417,13 @@ written path from `needs-human` back to execution.
 
 ## H. Replay under the standing-item model (owner proposal, 2026-08-13)
 
+> Superseded record for the ROLL half (2026-08-20, #1115 — see §L): a declined
+> occurrence no longer rolls an open item forward; it files nothing and lands
+> as a row on the schedule board, and a pick-time no-go closes its item. The
+> occurrence guard, the pick-time yield, forcing-as-waking/minting and the
+> first-item rule all stand; the tests behind S1′/S3′/S5/S13′/S14′/S21/S22/
+> S23/S26b/S28 are re-pinned to the new model in `sim/scenarios.test.mjs`.
+
 The owner's third-round proposal: *the scheduler run creates a daily task's item
 automatically; a failed precondition marks the item delayed until tomorrow's
 time.* Every scenario above was replayed under it (with `after` compiled to
@@ -980,6 +987,91 @@ nothing, because one issue gets one live item (F28) — and the scheduler run th
 the run settled (parked for review) supersedes that park and adopts the
 waiting mark. Two runs, strictly in sequence, never two sessions on one issue.
 
+## L. No work, no item — the schedule board (owner, 2026-08-20, #1115)
+
+The scheduler run evaluates the precondition when the anchor comes and files a
+work item only on a yes; a no is a row on the per-repo `[claudinite-schedule]`
+board issue, the watermark ("have I asked this task about this anchor?"). It
+fails toward evaluating, never toward skipping, and the executor still
+re-evaluates at pick. DESIGN §5 (rewritten) and §15.28 carry the mechanism and
+the decision; these scenarios are its executable edges.
+
+### S52 — a decline files no item; the board is created lazily
+
+04:17, tidy-issues' anchor: signals collected, precondition says no. Nothing is
+created except — on the first decline ever — the board itself, whose row for
+the task names the anchor asked about, the verdict, the reason and the
+frequency. A quiet repo's open issues: at most the one board.
+
+### S53 — the watermark holds between anchors
+
+The ~28 hourly scheduler runs between two daily anchors re-ask nothing: the
+row's `no` at this anchor is the gate. The next anchor is a new question and is
+asked.
+
+### S54/S54b — a deleted or corrupt board fails open, bounded
+
+The board is deleted (or its body mangled) at noon. The 12:17 run finds no row
+— absent reads as absent — and re-asks: exactly one redundant evaluation per
+task, whose rewritten row then holds every later run back. Never a double run:
+a task that RAN this period is covered by the occurrence guard's closed-at
+half, not by the board, so it is not even re-asked. A corrupt body degrades
+per-row and the next write replaces it wholesale.
+
+### S55 — signal collection fails for one task; the others are untouched
+
+The scheduler holds no `FLEET_GITHUB_TOKEN`, so a fleet task's anchor-side ask
+errors. Fail-open: its item is created exactly as the calendar-only model
+created it — one per occurrence — and the executor, which holds the
+credential, decides at pick (day 1 declines and closes; day 2 finds work and
+runs). Every other task still decides at the anchor and files nothing. Never
+fewer runs because a read failed; the per-occurrence issue for such tasks is
+the named, accepted cost (DESIGN §5).
+
+### S56 — the migration, idempotent, sparing the waiting
+
+The first run that understands the new shape closes the roll model's sleeping
+items — open, blocked, a future `Not-before`, no `Blocked-by`, a Last-verdict
+section proving a roll — with a comment, and seeds each item's last verdict as
+its board row. Running the pass again (every scheduler run runs it) closes
+nothing twice. Untouched: an item waiting on a blocker, a first-ever/adoption
+`Not-before` (no Last-verdict section), and a rolled item whose wake has
+passed — that one is due, and job 2 readies it for an ordinary pick.
+
+### S57 — a decline racing a hand-created item
+
+A person mints the unqualified item at 04:10; the 04:17 anchor finds an open
+standing item and never asks — no row, no duplicate, no dedupe. The executor
+evaluates the minted item on its own (and, declining, closes it). The reverse
+order is S14′: the anchor's decline is a row, the later mint is evaluated on
+its own, and the closed-at guard plus the watermark keep the occurrence single.
+
+### S58 — write only what changed
+
+An hourly task declining all day moves only its own row, once per ask; a
+scheduler run that asked nothing writes nothing (tidy-repo's "record changes,
+never scans", artifact-side). The change test compares the authoritative
+columns only — last-asked, verdict, reason — never the derived next-window
+column, which is recomputed at write time.
+
+### S59 — the verdict flips between the anchor and the pick
+
+The anchor says go and files the item; the world changes in the seconds before
+the drain; the executor re-evaluates, declines, and closes it. One anchor-side
+ask, one pick-side evaluation, no re-run for the rest of the period — the
+board's verdict is a watermark, never a verdict carried forward.
+
+### S60 — F31: a go row must never gate
+
+Found by this simulator, red before the fix: the anchor says go, writes its
+row, and the item CREATE fails (a refused POST). If the watermark honored go
+rows, the next run would read "asked" and skip — the occurrence silently
+eaten, fewer runs because a *write* failed, the exact inversion of fail-open.
+The watermark is therefore scoped to declined rows only; a go (and a
+fail-open) verdict's cover is the item it created, judged by the occurrence
+guard. The engine test "a yes files the item; the board records the go but
+never gates on it (F31)" pins the same property engine-side.
+
 ## Findings ledger
 
 | # | severity | what | resolution |
@@ -1015,6 +1107,7 @@ waiting mark. Two runs, strictly in sequence, never two sessions on one issue.
 | **F28** | **design bug** | adoption had no prior-item guard: re-applying `claude-task` beside an open item created a second item for the same issue, and the parked predecessor stayed open forever — S49's own retry story walked straight into it | **fixed in DESIGN §16.3** (owner, 2026-08-19): one issue, one live item — a live prior item leaves the mark waiting, unconsumed; a parked one is superseded (closed obsolete) by the new adoption (S49, S51) |
 | **F29** | design gap | model labels accumulated across asks, and multiples resolved by family-precedence order — a stale label from an earlier ask outranked the newest one | **fixed in DESIGN §16.3/§16.7** (owner, 2026-08-19): the model labels are consumed with the mark, so each ask names its model afresh (S47) |
 | **F30** | security precision | §16.4 read `author_association` as "the asker's permission on the repository": `MEMBER` is any org member and `COLLABORATOR` includes read-only collaborators — broader than the push access #1010 asked for | **fixed in DESIGN §16.4** (owner, 2026-08-19): push permission is read from the permission API; the association is at most a prefilter (S46) |
+| **F31** | **design bug** | the schedule board's go rows, read as watermark, eat an occurrence whenever the item's create fails after the row lands — fewer runs because a WRITE failed, the inversion of #1115's fail-open rule (S60) | **fixed in DESIGN §5/§15.28**: the watermark is scoped to declined rows only; a go/fail-open verdict's cover is the item it created, judged by the occurrence guard. Caught by the simulator before any engine code ran |
 
 What the exercise did **not** find: any scenario where work is lost silently,
 executed with no record, or where two mechanisms disagree about an item's
