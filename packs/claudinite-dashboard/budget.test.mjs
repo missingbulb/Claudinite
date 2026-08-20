@@ -93,3 +93,21 @@ test('no credential at all reads as anonymous before any header has said so', ()
   assert.ok(credentialAdvice('unknown', { hasToken: false }));
   assert.equal(credentialAdvice('unknown', { hasToken: true }), null);
 });
+
+// Decoration — the member commit graph — is what a tight budget goes without first.
+// It is read while there is real headroom and not at all once the page is rationing,
+// because a request spent on how busy a repo looked is a request not available to the
+// twelfth member's queue.
+test('decoration is read only while there is headroom to spare', () => {
+  const at = (remaining) => planPolicy({ remaining, limit: 5000, memberCount: 12, now: NOW });
+  assert.equal(at(5000).mode, 'live');
+  assert.equal(at(5000).extras, true);
+  assert.equal(at(1200).mode, 'tight');
+  assert.equal(at(1200).extras, true);
+  assert.equal(at(400).mode, 'low');
+  assert.equal(at(400).extras, false, 'rationing stops at the decoration first');
+  assert.equal(at(60).mode, 'scarce');
+  assert.equal(at(60).extras, false);
+  assert.equal(at(0).mode, 'frozen');
+  assert.equal(at(0).extras, false);
+});

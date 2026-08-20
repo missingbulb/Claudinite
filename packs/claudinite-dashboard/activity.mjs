@@ -231,3 +231,69 @@ export function delta(current, previous) {
   const by = current - previous;
   return { dir: by > 0 ? 'up' : by < 0 ? 'down' : 'flat', by: Math.abs(by) };
 }
+
+// --- one member's commit history -------------------------------------------------
+
+// The last N days of a member's commits, as a flat oldest-first ladder — the shape a
+// GitHub-style square grid draws straight from.
+//
+// The input is `/stats/commit_activity`: 52 weeks, each a UTC-Sunday start and seven
+// daily counts. This is the ONE read on the fleet page that is not derived from
+// something already fetched, which is why it is priced as decoration everywhere it
+// appears — and why its three empty answers must stay distinguishable. `null` is "not
+// read" (withheld, or GitHub still computing the statistics) and is NOT the same fact
+// as an array of zeroes, which is a repo that genuinely did nothing.
+//
+// A day the year does not cover is `null` rather than `0` for the same reason: a
+// window wider than the data is under-read at its far end, not quiet there.
+export function commitDays(weeks, { now, days = 90 } = {}) {
+  if (!Array.isArray(weeks)) return null;
+
+  const byDay = new Map();
+  for (const w of weeks) {
+    const start = Number(w?.week);
+    if (!Number.isFinite(start)) continue;
+    (w.days ?? []).forEach((count, i) => {
+      byDay.set(dayKey(start * 1000 + i * DAY_MS), Number(count) || 0);
+    });
+  }
+
+  const ladder = dayLadder(now, days);
+  const rows = ladder.map((day) => ({ day, count: byDay.has(day) ? byDay.get(day) : null }));
+  const counted = rows.filter((r) => r.count != null);
+  return {
+    days: rows,
+    buckets: bucketWeekly(rows),
+    total: counted.reduce((n, r) => n + r.count, 0),
+    peak: counted.reduce((n, r) => Math.max(n, r.count), 0),
+    // Days inside the window the year of statistics did not reach. Stated rather than
+    // drawn as blank squares that read as quiet ones.
+    unread: rows.length - counted.length,
+  };
+}
+
+// The same window in weeks, which is the resolution a QUARTER of history is legible
+// at. Drawn daily, an ordinary repo's weekend is a trough and a Tuesday a spike, so a
+// 90-point curve across a column is a sawtooth that hides the only thing the column is
+// for: whether this repo is being worked on, and whether it always was.
+//
+// The daily counts are kept — they are the total, the peak and the hover — and only
+// the drawn line is smoothed. Weeks run back from today, so the OLDEST bucket is the
+// short one, and a week is null only when every day in it was unread; a week that was
+// partly read is a real sum over what there was.
+const WEEK = 7;
+
+export function bucketWeekly(rows) {
+  const out = [];
+  for (let end = rows.length; end > 0; end -= WEEK) {
+    const slice = rows.slice(Math.max(0, end - WEEK), end);
+    const read = slice.filter((r) => r.count != null);
+    out.unshift({
+      from: slice[0].day,
+      to: slice[slice.length - 1].day,
+      days: slice.length,
+      count: read.length ? read.reduce((n, r) => n + r.count, 0) : null,
+    });
+  }
+  return out;
+}

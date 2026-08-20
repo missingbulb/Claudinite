@@ -3,15 +3,16 @@
 
 import * as gh from './github.mjs';
 import {
-  summariseMember, rankMembers, rollUp, packSpread, taskSpread,
+  summariseMember, rankMembers, rollUp, packSpread, taskSpread, attentionBreakdown,
+  memberAttention, fleetAttention, estimateMinutes, MINUTES_PER_PARK,
   parseEngineVersion, parsePackVersion,
 } from './fleet.mjs';
 import { canonicalPackVersions } from '../../engine/pack_loader/renamed-packs.mjs';
-import { activitySeries, fleetBenefits, delta } from './activity.mjs';
+import { activitySeries, fleetBenefits, delta, commitDays } from './activity.mjs';
 import { digestDates, digestPath, digestEntry } from './digest.mjs';
 import {
   $, el, ago, duration, groupedHead, columnCount, groupStarts, emptyRow, repoLink, tiles, segmentBar,
-  reasonNodes, stackedColumns, chartLegend, windowFigure,
+  reasonNodes, stackedColumns, chartLegend, windowFigure, starMark, ciMark, commitGraph, packMark,
   LEVEL_GLYPH, STATE_ORDER, STATE_COLOR, STATE_UI, OUTCOME_COLOR,
 } from './ui.mjs';
 
@@ -55,12 +56,18 @@ async function readMember(repo, token, { withTree = true } = {}) {
     // them is most of the saving on a fleet where not everything is adopted.
     if (!declaration) return { repo, declaration: null, defaultBranch: meta.default_branch, head, stars: meta.stars };
 
-    const [tree, issuePage, runs] = await Promise.all([
+    const [tree, issuePage, runs, commits] = await Promise.all([
       withTree ? gh.listTreeAtSha(repo, sha, token).catch(() => null) : Promise.resolve(null),
       // One page is the whole live queue plus recent history, which is all a fleet row
       // needs. Deep history is the per-repo view's job.
       gh.listIssues(repo, token, { pages: 1 }).catch(() => ({ issues: [] })),
-      gh.listRuns(repo, token, 30).catch(() => []),
+      // No per-page of its own: the repo view reads the same URL, and a different
+      // depth here would be a second cache entry for one question.
+      gh.listRuns(repo, token).catch(() => []),
+      // Decoration, and the only read here that is. It withholds itself when the
+      // budget is tight, and a failure is a row without a graph rather than a row
+      // that could not be read.
+      gh.commitActivity(repo, token).catch(() => null),
     ]);
 
     return {
@@ -78,6 +85,7 @@ async function readMember(repo, token, { withTree = true } = {}) {
       itemsComplete: issuePage.complete,
       prs: issuePage.prs ?? [],
       runs,
+      commits,
     };
   } catch (error) {
     return { repo, error };
@@ -159,48 +167,35 @@ async function readDigests(config, token) {
 
 // --- render ---------------------------------------------------------------------
 
-const MOUNT_UI = {
-  current: { label: 'current', cls: 'ok' },
-  behind: { label: 'behind', cls: 'info' },
-  'behind-engine': { label: 'old engine', cls: 'serious' },
-  unversioned: { label: 'no versions', cls: 'warning' },
-  none: { label: 'no stamp', cls: 'warning' },
-  unknown: { label: '—', cls: 'idle' },
-};
-
-// The mount cell's second line: the versions the verdict was judged on — never the
-// stamp's ref or updated, which are re-vendor provenance and read stale on every
-// healthy member.
-function mountDetail(mount) {
-  if (mount.state === 'behind') return mount.behindPacks.map((p) => `${p.pack} v${p.version}<v${p.canonVersion}`).join(' · ');
-  if (mount.state === 'behind-engine') return `engine v${mount.engineVersion} < v${mount.canonEngineVersion}`;
-  if (mount.engineVersion != null) {
-    const packs = mount.comparedPacks != null ? ` · ${mount.comparedPacks} pack${mount.comparedPacks === 1 ? '' : 's'}` : '';
-    const unknown = mount.unknownPacks ? ` (+${mount.unknownPacks} unpriced)` : '';
-    return `engine v${mount.engineVersion}${packs}${unknown}`;
-  }
-  return '—';
-}
-
 // The member grid, as three questions rather than one wall of columns:
 //
-//   STATUS      — what kind of repo is this, and is it alive.
-//   CLAUDINITE  — what the machinery is doing here.
-//   WORK        — what is waiting on a person.
+//   ACTIVITY    — is anyone working on this repo.
+//   WAITING     — what is on a person's plate here, and roughly how long it is.
+//   CLAUDINITE  — what the machinery is doing.
 //
-// The identity pair at the left belongs to none of them: the name and the reason this
-// row is where it is are how you read every other cell.
+// They are in that order because it is the order a reader asks them in: a repo nobody
+// touches and a repo with a queue behind it are different problems, and what the
+// scheduler is doing only matters once you know which one you are looking at.
 //
-// Every column is derived from a read the page ALREADY makes. Four fields the issue
-// asked for are absent for that reason and not by oversight — rule tokens, test counts
-// and time saved would each need a member's own file read, and conversation-log
+// The identity pair at the left belongs to none of them. Stars, CI and the name are
+// how you recognise the row; the reasons beside them are why it is where it is.
+//
+// Every column but one is derived from a read the page ALREADY makes. Four fields the
+// issue asked for are absent for that reason and not by oversight — rule tokens, test
+// counts and time saved would each need a member's own file read, and conversation-log
 // sessions a branch listing. They are named in the panel's own note rather than
-// guessed at.
+// guessed at. The exception is the commit graph, which is priced as decoration.
+//
+// `Tasks — declared` is gone, and that one WAS a read the page makes: it is the whole
+// reason each member's tree is fetched. The count answered "how much is wired up
+// here", which the pack count answers more directly and without a number that means
+// nothing until you know which packs. The tree is still read — "declares tasks and has
+// never produced a work item" is a finding only it can make.
 const MEMBER_GROUPS = [
-  ['', ['Member', 'Health']],
-  ['Status', ['CI', 'Stars', 'Last commit']],
-  ['Claudinite', ['Packs', 'Tasks', 'Queue', 'Recent outcomes', 'Mount', 'Scheduler']],
-  ['Work — waiting on a person', ['Issues', 'Pull requests']],
+  ['', ['Member']],
+  ['Activity', ['Commits']],
+  ['Waiting on a person', ['Est.', 'What it is', 'Issues', 'Pull requests']],
+  ['Claudinite', ['Packs', 'Queue', 'Recent outcomes', 'Scheduler']],
 ];
 
 // The same split, one level down: a task's identity, where it stands right now, and
@@ -210,6 +205,22 @@ const FLEET_TASK_GROUPS = [
   ['Now', ['Members', 'Open', 'Parked']],
   ['History', ['Succeeded', 'No outcome']],
 ];
+
+// Reason kinds the row already SHOWS somewhere of their own — parks in the Waiting
+// group with an estimate beside them, the mount as a badge on the pack count, CI as a
+// dot by the name. Spelling those out again in prose was the same fact twice and, at
+// 180px of sentences, the column that decided how wide the whole grid was.
+//
+// What is left is rare and has no cell: "declares no packs", and a scheduler fault
+// the runs column reports as a state but not as a sentence. So it goes UNDER THE NAME
+// when there is any, and costs nothing on the rows — nearly all of them — where there
+// is not. The ranking is untouched: `summariseMember` still weighs every reason, and
+// only the rendering filters, so a member at the top for a park still shows its park
+// one cell to the right.
+//
+// Kept beside the group list, because the two move together: folding a signal into a
+// mark is what puts its kind in here.
+const SHOWN_ELSEWHERE = new Set(['park', 'mount', 'ci']);
 
 const MEMBER_COLS = columnCount(MEMBER_GROUPS);
 const MEMBER_STARTS = groupStarts(MEMBER_GROUPS);
@@ -231,47 +242,69 @@ const CI_UI = {
 function memberRow(s, onOpen, now) {
   const open = (e) => { e.preventDefault(); onOpen(s.repo); };
 
-  const name = el('td', {}, [
-    el('a', { href: `?repo=${encodeURIComponent(s.repo)}`, className: 'name', textContent: s.repo.split('/')[1] ?? s.repo, onclick: open }),
-    el('div', { className: 'sub' }, [repoLink(s.repo)]),
-  ]);
+  // Two marks ahead of the name, neither of them a column: stars say what KIND of
+  // repo this is, and CI whether it builds. Both are read as part of identifying the
+  // row rather than as findings, which is why they sit with the name and not in a
+  // question group of their own.
+  const ciUi = CI_UI[s.ci?.state] ?? CI_UI.unknown;
+  const identity = (kids) => el('td', { className: 'member-cell' }, [el('div', { className: 'member' }, [
+    starMark(s.stars),
+    ciMark(ciUi, s.ci?.at ? duration(now - s.ci.at) : 'no run'),
+    el('div', {}, [
+      el('a', { href: `?repo=${encodeURIComponent(s.repo)}`, className: 'name', textContent: s.repo.split('/')[1] ?? s.repo, onclick: open }),
+      el('div', { className: 'sub' }, [repoLink(s.repo)]),
+      ...kids,
+    ]),
+  ])]);
+  const name = identity([]);
 
   if (s.status !== 'adopted') {
     return el('tr', { className: `lvl-${s.level} muted-row` }, [
       name,
-      el('td', { colSpan: MEMBER_COLS - 2 }, reasonNodes(s.reasons)),
+      el('td', { colSpan: MEMBER_COLS - 2 }, reasonNodes(s.reasons)),   // the last cell is the open link
       el('td', { className: 'nw' }, [el('a', { href: `?repo=${encodeURIComponent(s.repo)}`, textContent: 'open', onclick: open })]),
     ]);
   }
 
-  // Health: the worst reason, spelled out. Never a bare colour.
-  const health = el('td', {}, s.reasons.length
-    ? reasonNodes(s.reasons)
-    : [el('span', { className: 'warn ok', textContent: `${LEVEL_GLYPH.ok} healthy` })]);
+  // Whatever is left once every reason with a cell of its own is dropped — see
+  // SHOWN_ELSEWHERE. Usually nothing, and then the name cell is the plain one.
+  const spoken = s.reasons.filter((r) => !SHOWN_ELSEWHERE.has(r.kind));
+  const identified = spoken.length ? identity(reasonNodes(spoken)) : name;
 
-  // --- Status: the repo itself ---------------------------------------------------
+  // --- Activity: is this repo being worked on ------------------------------------
 
-  const ciUi = CI_UI[s.ci?.state] ?? CI_UI.unknown;
-  const ci = el('td', { className: 'nw' }, [
-    el('div', { className: `warn ${ciUi.cls}`, textContent: ciUi.label }),
-    el('div', { className: 'sub', textContent: s.ci?.at ? ago(s.ci.at, now) : 'no run on the default branch' }),
+  // Where a single "3h ago" used to sit. One date says whether a repo moved today; a
+  // quarter of them, as a shape, says whether it is being worked on — which is the
+  // question the group is actually asking, and the reason it is no longer called
+  // "Status".
+  const commit = el('td', { className: 'nw' }, [
+    commitGraph(s.commits, { note: s.lastCommit ? `last ${duration(now - s.lastCommit)}` : null }),
   ]);
 
-  const stars = el('td', { className: 'num nw', textContent: s.stars == null ? '—' : String(s.stars) });
+  // --- Waiting on a person -------------------------------------------------------
 
-  const commit = el('td', { className: 'nw sub', textContent: s.lastCommit ? ago(s.lastCommit, now) : '—' });
+  // The estimate, and immediately beside it what the estimate is made of. A number
+  // with no breakdown is a number nobody can check; a breakdown with no total is a
+  // list nobody can prioritise between rows.
+  const attention = memberAttention(s);
+  const minutes = estimateMinutes(attention);
+  const est = el('td', { className: 'num nw' }, [
+    el('div', { className: 'est num', textContent: minutes ? String(minutes) : '—' }),
+    el('div', { className: 'sub', textContent: minutes ? 'min' : '' }),
+  ]);
+
+  const needs = attentionBreakdown(attention);
+  const what = el('td', {}, needs.length
+    ? [el('div', { className: 'needs' }, needs.map((r) =>
+      el('div', { className: `warn ${r.level}`, textContent: `${LEVEL_GLYPH[r.level]} ${r.text}` })))]
+    : [el('span', { className: 'sub', textContent: 'nothing waiting' })]);
 
   // --- Claudinite: what the machinery is doing here -------------------------------
 
-  const packs = el('td', { className: 'num nw' }, [
-    el('div', { textContent: String(s.packs.length) }),
-    el('div', { className: 'sub', textContent: 'declared' }),
-  ]);
-
-  const tasks = el('td', { className: 'num nw' }, [
-    el('div', { textContent: s.declaredTasks == null ? '—' : String(s.declaredTasks) }),
-    el('div', { className: 'sub', textContent: 'declared' }),
-  ]);
+  // How much Claudinite is declared here, wearing whether it is current. Two facts
+  // read together, and the second is a tick on nearly every row — so it earns a
+  // corner of the first rather than a column beside it, with the versions on hover.
+  const packs = el('td', { className: 'nw' }, [packMark(s.packs.length, s.mount)]);
 
   // Queue: the state mix as one thin bar plus the counts that are non-zero, so a
   // member with nothing open reads as empty rather than as a row of zeros.
@@ -290,12 +323,6 @@ function memberRow(s, onOpen, now) {
       ['no outcome', s.outcomes.none, OUTCOME_COLOR.none],
     ], { width: 92 }),
     el('div', { className: 'sub', textContent: s.lastActivity ? ago(s.lastActivity, now) : (s.closedSeen ? 'unknown' : 'nothing closed yet') }),
-  ]);
-
-  const m = MOUNT_UI[s.mount.state] ?? MOUNT_UI.unknown;
-  const mount = el('td', { className: 'nw' }, [
-    el('div', { className: `warn ${m.cls}`, textContent: m.label }),
-    el('div', { className: 'sub num', textContent: mountDetail(s.mount) }),
   ]);
 
   const runs = el('td', { className: 'nw' }, [
@@ -329,7 +356,7 @@ function memberRow(s, onOpen, now) {
   ]);
 
   return el('tr', { className: `lvl-${s.level}` },
-    banded([name, health, ci, stars, commit, packs, tasks, queue, outcomes, mount, runs, issues, prs]));
+    banded([identified, commit, est, what, issues, prs, packs, queue, outcomes, runs]));
 }
 
 // --- what the machinery bought ---------------------------------------------------
@@ -493,10 +520,13 @@ function renderActivity(series) {
 // looks broken for the whole sweep — and on a slow or throttled read, the sweep is
 // most of the time the viewer spends here.
 const pendingRow = (repo) => el('tr', { className: 'pending-row' }, [
-  el('td', {}, [
-    el('span', { className: 'name', textContent: repo.split('/')[1] ?? repo }),
-    el('div', { className: 'sub' }, [repoLink(repo)]),
-  ]),
+  el('td', {}, [el('div', { className: 'member' }, [
+    starMark(null),
+    el('div', {}, [
+      el('span', { className: 'name', textContent: repo.split('/')[1] ?? repo }),
+      el('div', { className: 'sub' }, [repoLink(repo)]),
+    ]),
+  ])]),
   el('td', { colSpan: MEMBER_COLS - 1 }, [el('span', { className: 'sub', textContent: 'reading…' })]),
 ]);
 
@@ -505,15 +535,25 @@ function renderFleet(summaries, reads, now, onOpen, canon, progress = null, dige
   const pending = summaries.map((s, i) => (s ? null : reads.names?.[i])).filter(Boolean);
   const roll = rollUp(resolved);
 
+  // The headline tile counts MEMBERS, which is the length of the morning's list — but
+  // the list is only actionable once it says what kind of attention each is waiting
+  // for. Three merges to approve and three broken lanes are not the same morning.
+  const needs = attentionBreakdown(fleetAttention(roll));
+
   tiles($('fleet-tiles'), [
     [roll.needAttention, 'members need you', roll.needAttention ? 'var(--critical)' : null,
-      roll.needAttention ? 'parked, failing, or past a leash' : 'nothing is on fire'],
+      needs.length
+        ? el('div', { className: 'needs' }, needs.map((r) =>
+          el('div', { className: `warn ${r.level}`, textContent: `${LEVEL_GLYPH[r.level]} ${r.text}` })))
+        : 'nothing is on fire'],
     [roll.parkedItems, 'items parked', roll.parkedItems ? 'var(--critical)' : null,
       roll.parkedMembers ? `across ${roll.parkedMembers} member(s)` : ''],
     [roll.failingMembers, 'schedulers failing', roll.failingMembers ? 'var(--critical)' : null,
       roll.neverRan ? `${roll.neverRan} never ran` : ''],
     [roll.behindMembers, 'mounts behind', roll.behindMembers ? 'var(--serious)' : null,
       canon ? (canon.engineVersion != null ? `canon engine v${canon.engineVersion}` : 'canon versions unreadable') : 'no canon configured'],
+    [estimateMinutes(fleetAttention(roll)), 'minutes of your time', null,
+      `at ${MINUTES_PER_PARK} min a parked item`],
     [roll.openItems, 'open work items', null, `${roll.inFlight} run(s) in flight`],
     [`${roll.adopted}/${roll.members}`, 'members adopted', null,
       [roll.notAdopted ? `${roll.notAdopted} not adopted` : '', roll.unreadable ? `${roll.unreadable} unreadable` : ''].filter(Boolean).join(', ')],

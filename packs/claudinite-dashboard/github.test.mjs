@@ -1,5 +1,9 @@
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile, readdir } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+import { stripComments } from '../../engine/checks/helpers/code-scanning.mjs';
 
 class Mem {
   constructor() { this.m = new Map(); }
@@ -162,4 +166,74 @@ test('an expired history ttl refetches', async () => {
   assert.equal(historyFetches, 1);
   await gh.listIssues('o/r', 't', { pages: 2, historyTtl: 0 });   // nothing is fresh at ttl 0
   assert.equal(historyFetches, 2);
+});
+
+// --- commit activity --------------------------------------------------------------
+
+test('commit activity is fetched once and served from the ttl cache after', async () => {
+  const gh = await load();
+  let fetches = 0;
+  globalThis.fetch = async () => { fetches += 1; return res([{ week: 1, days: [1, 0, 0, 0, 0, 0, 0] }], { headers: RATE }); };
+  assert.deepEqual(await gh.commitActivity('o/r', 't'), [{ week: 1, days: [1, 0, 0, 0, 0, 0, 0] }]);
+  await gh.commitActivity('o/r', 't');
+  assert.equal(fetches, 1);
+});
+
+// GitHub computes these statistics lazily. A 202 is "ask again", and caching it would
+// leave a member showing an empty year until the entry aged out.
+test('a 202 is not cached, so the next load asks again instead of showing an empty year', async () => {
+  const gh = await load();
+  let fetches = 0;
+  globalThis.fetch = async () => { fetches += 1; return res(null, { status: 202, headers: RATE }); };
+  assert.equal(await gh.commitActivity('o/r', 't'), null);
+  await gh.commitActivity('o/r', 't');
+  assert.equal(fetches, 2);
+});
+
+// The graph is decoration, and decoration is what a tight budget goes without first.
+// It withholds rather than reading, and says `undefined` — which the row renders as
+// "not read", never as a repo that made no commits.
+test('a policy that forbids extras withholds the read rather than spending on it', async () => {
+  const gh = await load();
+  let fetches = 0;
+  globalThis.fetch = async () => { fetches += 1; return res([], { headers: RATE }); };
+  gh.setPolicy({ extras: false });
+  assert.equal(await gh.commitActivity('o/r', 't'), undefined);
+  assert.equal(fetches, 0);
+  assert.equal(gh.rate.withheld, 1);
+});
+
+// --- one runs URL, not two --------------------------------------------------------
+
+// The cache is keyed by URL, so a caller passing its own page size makes a second
+// entry for the same question: the fleet view asked for 30 and the repo view for 40,
+// and opening a member re-fetched the list the fleet page already held.
+test('both views ask for the same runs URL, so the second is a cache hit', async () => {
+  const gh = await load();
+  const urls = [];
+  globalThis.fetch = async (u) => {
+    urls.push(String(u));
+    return res({ workflow_runs: [] }, { headers: { ...RATE, etag: 'W/"a"' } });
+  };
+  await gh.listRuns('o/r', 't');                     // as the fleet view calls it
+  await gh.listRuns('o/r', 't', gh.RUNS_PER_PAGE);   // as the repo view calls it
+  assert.equal(urls[0], urls[1]);
+  assert.match(urls[0], new RegExp(`per_page=${gh.RUNS_PER_PAGE}$`));
+});
+
+// The drift guard for the above: the shared page size is only shared while nobody
+// passes their own. A third argument at a call site is the exact regression — one
+// caller asking for 30 while the constant says 40 — and it is invisible at runtime,
+// because both URLs work and simply cache separately.
+test('no caller overrides the shared runs page size', async () => {
+  const dir = dirname(fileURLToPath(import.meta.url));
+  const sources = (await readdir(dir))
+    .filter((f) => f.endsWith('.mjs') && !f.endsWith('.test.mjs'));
+  const offenders = [];
+  for (const f of sources) {
+    const code = stripComments(await readFile(resolve(dir, f), 'utf8'));
+    // Two arguments is the shared default; a third is an override.
+    if (/\blistRuns\s*\([^)]*,[^)]*,[^)]*\)/.test(code)) offenders.push(f);
+  }
+  assert.deepEqual(offenders, [], 'pass no page size — the constant is the whole point');
 });

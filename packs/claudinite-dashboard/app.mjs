@@ -10,7 +10,7 @@ import * as auth from './auth.mjs';
 import { loadConfig, loadRoster } from './config.mjs';
 import { clearAll, stats } from './cache.mjs';
 import { planPolicy, credentialAdvice, MINUTE_MS } from './budget.mjs';
-import { $, el } from './ui.mjs';
+import { $, el, resetCountUps } from './ui.mjs';
 import { loadRepo } from './view-repo.mjs';
 import { loadFleet } from './view-fleet.mjs';
 
@@ -45,14 +45,40 @@ async function planBudget(token) {
 
 // The pill is the honest version of "why is this not fresh". A page that quietly
 // serves an hour-old fleet without saying so is worse than one that refuses.
-function renderRatePill(plan) {
+//
+// It is LIVE, not a reading taken at the start. The plan is decided before the sweep
+// and the sweep is what spends the budget, so a pill drawn once — as this was — shows
+// the viewer the number from before every request that would have changed it. The
+// figure a viewer opens this for is what is left NOW.
+//
+// The plan itself is not re-decided mid-load: this load reads under the policy it was
+// planned with, and re-planning halfway would make a row's freshness depend on where
+// in the sweep it happened to land. Only the number moves.
+let currentPlan = null;
+let pillQueued = false;
+
+function renderRatePill(plan = currentPlan) {
+  if (!plan) return;
+  currentPlan = plan;
   const pill = $('rate');
   pill.hidden = false;
   pill.className = `pill${plan.mode === 'frozen' || plan.mode === 'scarce' ? ' stop-pill' : (plan.mode === 'low' || plan.mode === 'tight' ? ' warn-pill' : '')}`;
   const left = Number.isFinite(gh.rate.remaining) ? `${gh.rate.remaining}/${gh.rate.limit ?? '?'}` : 'budget unknown';
   const held = plan.minAge > 0 ? ` · cached ${Math.round(plan.minAge / MINUTE_MS)}m` : '';
-  pill.textContent = `${left} · ${plan.tier}${held}`;
-  pill.title = plan.reason;
+  const spent = gh.rate.spent ? ` · −${gh.rate.spent} this load` : '';
+  pill.textContent = `${left} · ${plan.tier}${held}${spent}`;
+  pill.title = `${plan.reason}\nthis load so far: ${gh.rate.spent} spent, ${gh.rate.revalidated} revalidated free, ${gh.rate.served} from cache`;
+}
+
+// A fleet sweep can restate the budget eighty times in a few seconds. Redrawing the
+// pill on each would be eighty layouts for a number the eye reads once, so the
+// arrivals are coalesced onto the next frame.
+function ratePillLater() {
+  if (pillQueued || !currentPlan) return;
+  pillQueued = true;
+  const draw = () => { pillQueued = false; renderRatePill(); };
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(draw);
+  else draw();
 }
 
 const repoParam = () => new URL(location.href).searchParams.get('repo');
@@ -112,7 +138,11 @@ function renderCrumb(repo) {
   );
 }
 
+// Switching views is not a change in a number, it is a DIFFERENT set of numbers under
+// the same labels — so the counters forget rather than tween from one to the other and
+// draw a movement nothing made.
 const showView = (which) => {
+  if ($('fleet-view').hidden !== (which !== 'fleet')) resetCountUps();
   $('fleet-view').hidden = which !== 'fleet';
   $('repo-view').hidden = which !== 'repo';
 };
@@ -199,6 +229,8 @@ async function render() {
   } finally {
     inFlight = false;
     $('reload').disabled = false;
+    // The last word on what this load cost, after the coalesced updates have stopped.
+    renderRatePill();
   }
 }
 
@@ -214,21 +246,38 @@ async function boot() {
   ROSTER = await loadRoster(CONFIG);
   renderAuth(null);
 
+  // The pill tracks the budget as the sweep spends it, rather than reporting what it
+  // was before the sweep began.
+  gh.onRateChange(ratePillLater);
+
   $('reload').addEventListener('click', render);
   // Each heading can say why its numbers are worth reading. The text lives in the
   // markup beside the heading it explains, so there is no second copy in the code.
   for (const b of document.querySelectorAll('button.info')) {
     b.addEventListener('click', () => {
       // A heading may explain itself in more than one paragraph (`info-x`, `info-x-2`,
-      // …); they open and close together, since they are one explanation.
-      const bodies = [$(`info-${b.dataset.info}`), $(`info-${b.dataset.info}-2`)].filter(Boolean);
+      // …); they open and close together, since they are one explanation. Counted up
+      // until one is missing rather than checked against a fixed pair — a third
+      // paragraph used to be written, sit in the markup and never open.
+      const bodies = [];
+      for (let i = 1; ; i += 1) {
+        const body = $(`info-${b.dataset.info}${i === 1 ? '' : `-${i}`}`);
+        if (!body) break;
+        bodies.push(body);
+      }
       if (!bodies.length) return;
       const show = bodies[0].hidden;
       for (const body of bodies) body.hidden = !show;
       b.setAttribute('aria-expanded', String(show));
     });
   }
-  $('purge').addEventListener('click', () => { clearAll(); render(); });
+  $('purge').addEventListener('click', () => { clearAll(); resetCountUps(); render(); });
+  // A panel that floats over the page has to close the way one does — clicking away
+  // from it, not only by finding the control that opened it again.
+  document.addEventListener('click', (e) => {
+    const setup = $('setup');
+    if (setup.open && !setup.contains(e.target)) setup.open = false;
+  });
   $('theme').addEventListener('click', () => {
     const dark = matchMedia('(prefers-color-scheme: dark)').matches;
     const cur = document.documentElement.dataset.theme || (dark ? 'dark' : 'light');

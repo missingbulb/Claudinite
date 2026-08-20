@@ -27,10 +27,17 @@ export const rate = {
 
 export const resetCounters = () => { rate.spent = 0; rate.revalidated = 0; rate.served = 0; rate.withheld = 0; };
 
+// Told whenever GitHub restates the budget, so a display of it can be the LIVE figure
+// rather than the one the load was planned on. A fleet sweep spends over the seconds
+// it runs, and a readout taken before those reads answers "how many calls have I
+// left" as of before everything that would change the answer.
+let onRate = null;
+export const onRateChange = (fn) => { onRate = fn; };
+
 // The budget policy this page is reading under. `budget.mjs` decides it; everything
 // here only obeys it. The default is the old unconditional behaviour, so a caller
 // that never sets one behaves exactly as before.
-export let policy = { mode: 'live', minAge: 0, historyTtl: DAY_MS, spendCeiling: Infinity };
+export let policy = { mode: 'live', minAge: 0, historyTtl: DAY_MS, spendCeiling: Infinity, extras: true };
 export const setPolicy = (p) => { policy = { ...policy, ...p }; };
 
 // Refusing to spend is not an error in the data — it is this page choosing to keep
@@ -99,6 +106,9 @@ function noteRate(res) {
     rate.exhaustedUntil = null;
   }
   rateState.set({ remaining: rate.remaining, limit: rate.limit, reset: rate.reset, exhaustedUntil: rate.exhaustedUntil });
+  // Never let a display's failure break a read: this is a readout, and the sweep
+  // behind it matters more than the number beside it.
+  try { onRate?.(rate); } catch { /* a broken readout is not a broken load */ }
 }
 
 // The one call GitHub does not charge for: `/rate_limit` reports the budget without
@@ -313,10 +323,52 @@ export async function listIssues(repo, token, { pages = 5, perPage = 100, histor
   return { issues: out, prs, scanned, complete, fromCache };
 }
 
-export const listRuns = (repo, token, perPage = 40) =>
+// How many runs a caller asks for. ONE number for both views, because the cache is
+// keyed by URL: asking for 30 here and 40 there makes two entries for one question,
+// so opening a member from the fleet page re-fetched a list it already held and kept
+// a second near-identical copy in a ~5MB quota. Whatever depth the deeper view needs
+// is what the shallower one asks for too.
+export const RUNS_PER_PAGE = 40;
+
+export const listRuns = (repo, token, perPage = RUNS_PER_PAGE) =>
   conditional(`/repos/${repo}/actions/runs?per_page=${perPage}`, token, {
     transform: (r) => (r.workflow_runs ?? []).map(projectRun),
   });
+
+// A year of daily commit counts in one response — 52 weeks, each with its 7 days.
+// The fleet row's commit graph is the only reader, and reading it any other way costs
+// a pagination loop over `/commits` per member.
+//
+// Cached on a TTL rather than revalidated, because it is the one read here that is
+// DECORATION: it says how busy a repo has been, and a few hours old is the same
+// answer. Under budget pressure it is not read at all — `withheld` is a state the
+// graph renders as "not read", never as a quiet repo.
+//
+// GitHub computes these statistics lazily and answers `202` with an empty body while
+// it does. That is "ask again later", not "no commits": it is returned as null and
+// NOT cached, so the next load asks again instead of showing an empty year.
+export const COMMIT_ACTIVITY_TTL = 6 * 3600e3;
+
+export async function commitActivity(repo, token) {
+  const ck = `commit-activity:${repo}`;
+  const hit = ageing.get(ck, COMMIT_ACTIVITY_TTL);
+  if (hit !== undefined) { rate.served += 1; return hit; }
+
+  if (frozen() || !budgetLeft() || !policy.extras) { rate.withheld += 1; return undefined; }
+
+  const path = `/repos/${repo}/stats/commit_activity`;
+  const res = await raw(path, { token });
+  rate.spent += 1;
+  if (res.status === 202) return null;               // still being computed — ask again next load
+  if (res.status === 204) { ageing.set(ck, []); return []; }   // a repo with no commits at all
+  if (!res.ok) throw await fail(res, path);
+  const weeks = (await res.json()) ?? [];
+  const out = Array.isArray(weeks)
+    ? weeks.map((w) => ({ week: w.week, days: Array.isArray(w.days) ? w.days : [] }))
+    : [];
+  ageing.set(ck, out);
+  return out;
+}
 
 export const listComments = (repo, number, token) =>
   conditional(`/repos/${repo}/issues/${number}/comments?per_page=100`, token);

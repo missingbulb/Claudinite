@@ -8,8 +8,8 @@
 //   unauthenticated   60 requests/hour, per IP address
 //   a user token   5,000 requests/hour, per user (shared across every app they use)
 //
-// A fleet sweep costs roughly six requests per member on a cold cache. Twelve members
-// is ~72 — over the anonymous budget for the whole hour on the FIRST load, and the
+// A fleet sweep costs roughly seven requests per member on a cold cache. Twelve
+// members is ~84 — over the anonymous budget for the whole hour on the FIRST load, and the
 // page then spends the rest of that hour rendering "unreadable" rows for repos that
 // are perfectly fine. Caching alone does not save it, because the existing strategies
 // all still make a request: an ETag revalidation is free of the PRIMARY limit but it
@@ -26,10 +26,11 @@
 // one-repo page than to a forty-member fleet.
 
 // Requests one member costs on a cold cache: repo metadata, head sha, the
-// declaration, the tree, one issues page, one runs page. A warm member costs fewer
-// and a not-adopted one costs three, so this is the ceiling rather than the average —
-// budgeting against the ceiling is what keeps the last member on the list readable.
-export const COST_PER_MEMBER = 6;
+// declaration, the tree, one issues page, one runs page, and a year of commit
+// activity for the row's graph. A warm member costs fewer and a not-adopted one costs
+// three, so this is the ceiling rather than the average — budgeting against the
+// ceiling is what keeps the last member on the list readable.
+export const COST_PER_MEMBER = 7;
 
 // The page's own fixed overhead: the viewer, plus the canon reference the fleet's
 // mount column compares against.
@@ -73,6 +74,9 @@ const CEIL_MIN_AGE = HOUR_MS;   // a reset is at most an hour out, so nothing is
 //   minAge        a cached entry younger than this is served WITHOUT a request
 //   historyTtl    how long settled issue history stays good
 //   spendCeiling  how many rate-limit-spending requests this load may make
+//   extras        whether DECORATION may be read at all. A figure that tells you a
+//                 repo has been busy is worth a request when there are thousands
+//                 left and worth none when the next fault-finding read might not fit
 //   reason        one sentence, shown to the viewer — the page never silently throttles
 export function planPolicy({ remaining = null, limit = null, reset = null, memberCount = 1, now = Date.now() } = {}) {
   const cost = estimateCost(memberCount);
@@ -84,7 +88,7 @@ export function planPolicy({ remaining = null, limit = null, reset = null, membe
   // response teaches us the budget and every load after this one is planned.
   if (!Number.isFinite(remaining)) {
     return {
-      mode: 'live', tier, cost, minAge: 0, historyTtl: DAY_MS, spendCeiling: Infinity,
+      mode: 'live', tier, cost, minAge: 0, historyTtl: DAY_MS, spendCeiling: Infinity, extras: true,
       reason: 'budget not known yet — reading live',
     };
   }
@@ -95,30 +99,30 @@ export function planPolicy({ remaining = null, limit = null, reset = null, membe
 
   if (spendable <= 0) {
     return {
-      mode: 'frozen', tier, cost, minAge: untilReset, historyTtl: 30 * DAY_MS, spendCeiling: 0,
+      mode: 'frozen', tier, cost, minAge: untilReset, historyTtl: 30 * DAY_MS, spendCeiling: 0, extras: false,
       reason: `rate limit spent — showing cached data only${msToReset ? `, for another ${Math.ceil(msToReset / MINUTE_MS)}m` : ''}`,
     };
   }
   if (headroom < 1) {
     return {
-      mode: 'scarce', tier, cost, minAge: untilReset, historyTtl: 30 * DAY_MS, spendCeiling: spendable,
+      mode: 'scarce', tier, cost, minAge: untilReset, historyTtl: 30 * DAY_MS, spendCeiling: spendable, extras: false,
       reason: `only ${remaining} requests left — cached data is served as-is until the limit resets`,
     };
   }
   if (headroom < 6) {
     return {
-      mode: 'low', tier, cost, minAge: 30 * MINUTE_MS, historyTtl: 7 * DAY_MS, spendCeiling: spendable,
+      mode: 'low', tier, cost, minAge: 30 * MINUTE_MS, historyTtl: 7 * DAY_MS, spendCeiling: spendable, extras: false,
       reason: `${remaining} requests left — anything read in the last 30m is served from cache`,
     };
   }
   if (headroom < 20) {
     return {
-      mode: 'tight', tier, cost, minAge: 5 * MINUTE_MS, historyTtl: 3 * DAY_MS, spendCeiling: spendable,
+      mode: 'tight', tier, cost, minAge: 5 * MINUTE_MS, historyTtl: 3 * DAY_MS, spendCeiling: spendable, extras: true,
       reason: `${remaining} requests left — anything read in the last 5m is served from cache`,
     };
   }
   return {
-    mode: 'live', tier, cost, minAge: 0, historyTtl: DAY_MS, spendCeiling: spendable,
+    mode: 'live', tier, cost, minAge: 0, historyTtl: DAY_MS, spendCeiling: spendable, extras: true,
     reason: `${remaining} requests left — everything revalidated`,
   };
 }
