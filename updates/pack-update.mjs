@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { computeVendorSet, SHARED_SUBDIR } from '../vendoring/compute-vendor-set.mjs';
 import { loadPacks, resolveDeclaredPacks, packEntryId } from '../engine/pack_loader/pack-registry.mjs';
 import { ENGINE_VERSION } from '../engine/version.mjs';
+import { isVersion, versionAbove } from '../engine/version.mjs';
 import { canonicalPackVersions, RENAMED_PACKS } from '../engine/pack_loader/renamed-packs.mjs';
 import { migrationDirs, migrationApplies, flowOf, DECLARATION_FILE } from '../engine/checks/helpers/active-migrations.mjs';
 import { loadMigrations, applyMigration } from '../engine/migrations/registry.mjs';
@@ -87,13 +88,13 @@ export function planPackUpdates(packs, declared, installed, { today, engineVersi
     const from = installed?.packVersions?.[id];
     const to = pack.version;
     const needs = pack.minEngineVersion;
-    const blocked = typeof needs === 'number' && needs > engineVersion
+    const blocked = isVersion(needs) && versionAbove(needs, engineVersion)
       ? `pack "${id}" version ${to} needs engine ${needs}; this repo runs engine ${engineVersion}`
       : null;
     plan.push({
       id,
-      from: typeof from === 'number' ? from : null,
-      to: typeof to === 'number' ? to : null,
+      from: isVersion(from) ? from : null,
+      to: isVersion(to) ? to : null,
       blocked,
       records: packRecordsInGap(id, installed, { today }),
     });
@@ -269,7 +270,7 @@ export async function packUpdate(targetRoot, {
   // The engine the TARGET runs, not the one this canon ships: a member is updated
   // engine-first, and a pack update that read the canon's number would enforce
   // `minEngineVersion` against an engine the repo does not have.
-  const engineVersion = typeof installed?.engineVersion === 'number' ? installed.engineVersion : ENGINE_VERSION;
+  const engineVersion = isVersion(installed?.engineVersion) ? installed.engineVersion : ENGINE_VERSION;
   const plan = planPackUpdates(packs, declared, installed, { today, engineVersion });
 
   const blocked = plan.filter((p) => p.blocked);

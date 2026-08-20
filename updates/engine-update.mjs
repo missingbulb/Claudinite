@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { computeVendorSet, SHARED_SUBDIR } from '../vendoring/compute-vendor-set.mjs';
 import { PACK_DIRECTORY_FILE } from '../engine/pack_loader/pack-registry.mjs';
 import { ENGINE_VERSION } from '../engine/version.mjs';
+import { isVersion } from '../engine/version.mjs';
 import { migrationDirs, migrationApplies, flowOf, DECLARATION_FILE } from '../engine/checks/helpers/active-migrations.mjs';
 import { loadMigrations, applyMigration } from '../engine/migrations/registry.mjs';
 import { convergeWiring } from '../engine/scheduler/converge-wiring.mjs';
@@ -133,7 +134,7 @@ export async function engineUpdate(targetRoot, {
   catch (e) { return outcome(NEEDS_HUMAN, `${DECLARATION_FILE} is not valid JSON: ${e.message}`); }
 
   const stamp = raw.claudinite ?? null;
-  const installed = stamp && typeof stamp.engineVersion === 'number' ? stamp : null;
+  const installed = stamp && isVersion(stamp.engineVersion) ? stamp : null;
   const from = installed?.engineVersion ?? null;
 
   // The gap, decided before anything is touched.

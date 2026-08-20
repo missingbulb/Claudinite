@@ -17,7 +17,7 @@ const SOURCE = /\.(html?|mjs|cjs|jsx?|tsx?)$/;
 
 export default {
   id: 'leaflet',
-  version: 2,
+  version: '60820.1',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'map rendering with the Leaflet library — map init options, tile layers, markers and divIcons, CDN plugin pinning',

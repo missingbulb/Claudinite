@@ -18,7 +18,7 @@ export default {
   // 4: the firebase-release pack is absorbed here — its release standard is now the
   // create-release-plan skill, loaded when a project plans a release rather than
   // declared by a repo that has decided it is ready to ship.
-  version: 4,
+  version: '60820.1',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'building on Firebase: Firestore rules, callable Cloud Function patterns, FCM, emulator testing, deploy layout, dev/prod release split',

@@ -8,6 +8,7 @@ import { terminalFor } from '../updates/terminals.mjs';
 import { NEEDS_HUMAN } from '../updates/engine-update.mjs';
 import { loadPacks } from '../engine/pack_loader/pack-registry.mjs';
 import { validateManifest } from '../engine/pack_loader/pack-schema.mjs';
+import { isDeclaredVersion } from '../engine/version.mjs';
 
 const MOUNT = join('.claudinite', 'shared');
 const makeRepo = (declaration = { packs: [] }) => {
@@ -103,7 +104,7 @@ test('the requires closure is installed and STAMPED, not just vendored', async (
   const pulled = r.install.map((i) => i.id).filter((id) => id !== 'basics');
   assert.ok(pulled.length, 'basics pulls a closure in — otherwise this test proves nothing');
   for (const id of pulled) {
-    assert.equal(typeof stamped[id], 'number', `${id} was vendored but left unversioned`);
+    assert.ok(isDeclaredVersion(stamped[id]), `${id} was vendored but left unversioned`);
   }
   // …and the closure is INSTALLED, not DECLARED: what a repo declares is its own
   // choice, and `requires` is the canon's inference from it.

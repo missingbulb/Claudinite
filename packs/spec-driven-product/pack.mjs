@@ -5,7 +5,7 @@
 // stay in the platform's release surface (e.g. the chrome-extension pack's).
 export default {
   id: 'spec-driven-product',
-  version: 3,
+  version: '60820.1',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'playbook for shipping a small end-user product from an executable spec — leaf claims, owner-owned expecteds, green-main releases',

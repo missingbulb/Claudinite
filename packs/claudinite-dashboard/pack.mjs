@@ -68,7 +68,9 @@ export default {
   // model — next asks, roll records, triage-split parks. Page-only; no migration.
   // 12: the workflow-practice neighbour is git-github now that github-actions
   // collapsed into it (#1079).
-  version: 14,
+  // 60820.1: versions become date-anchored (#1100) — the counter this list is written
+  // in retires here, and every pack in the canon restarts from the same day.
+  version: '60820.1',
   minEngineVersion: 4,
   ruleRoutingGuidance: {
     belongs: 'the browser dashboard over Claudinite scheduler state, the site that publishes it, and the fleet morning brief it reads',

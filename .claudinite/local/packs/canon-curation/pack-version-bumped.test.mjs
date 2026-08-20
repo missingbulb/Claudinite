@@ -48,13 +48,15 @@ test('the manifest\'s own version is read, never minEngineVersion beside it', ()
 
 // --- the invariant ----------------------------------------------------------
 
-test('editing a pack without bumping its version fires, naming the next number', () => {
+test('editing a pack without bumping its version fires, naming the next version', () => {
   const findings = run(['packs/demo/RULES.md'], { 'packs/demo/pack.mjs': manifest(1) }, { 'packs/demo/pack.mjs': manifest(1) });
   assert.equal(findings.length, 1);
   assert.equal(findings[0].severity, 'blocking');
   assert.equal(findings[0].file, 'packs/demo/pack.mjs');
   assert.match(findings[0].what, /leaves its version at 1/);
-  assert.match(findings[0].fix, /to 2/);
+  // The remedy is today's next version, so it is matched by shape rather than pinned
+  // to a value that would go stale overnight.
+  assert.match(findings[0].fix, /to '\d{5,6}\.1'/);
 });
 
 test('a bump alongside the edit passes', () => {

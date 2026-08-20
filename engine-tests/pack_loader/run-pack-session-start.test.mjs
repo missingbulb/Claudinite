@@ -26,6 +26,9 @@ function makeCorpus(packs) {
   // The whole loader directory — see mount-skills.test.mjs: an enumerated subset
   // breaks fail-soft the day the registry gains a sibling.
   cpSync(join(REPO_ROOT, 'engine', 'pack_loader'), join(root, 'engine', 'pack_loader'), { recursive: true });
+  // pack-schema validates a version against the engine's version module, which sits
+  // beside pack_loader in the real tree.
+  cpSync(join(REPO_ROOT, 'engine', 'version.mjs'), join(root, 'engine', 'version.mjs'));
   for (const [id, { step, ...manifest }] of Object.entries(packs)) {
     mkdirSync(join(root, 'packs', id), { recursive: true });
     writeFileSync(

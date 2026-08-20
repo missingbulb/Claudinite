@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { discoverPacks } from '../engine/pack_loader/pack-registry.mjs';
-import { ENGINE_VERSION } from '../engine/version.mjs';
+import { ENGINE_VERSION, isDeclaredVersion, versionAbove } from '../engine/version.mjs';
 
 // Every canon pack declares both version fields. The manifest spec cannot require
 // them — a member's own local packs are repo-owned, carry no version, and nothing
@@ -18,13 +18,13 @@ test('every canon pack declares a version and the engine version it needs', asyn
   assert.ok(packs.length > 20, `only ${packs.length} packs discovered — this test is asserting over the wrong tree`);
 
   for (const pack of packs) {
-    assert.ok(Number.isInteger(pack.version) && pack.version > 0,
-      `pack "${pack.id}" declares no version — add "version: 1" to packs/${pack.id}/pack.mjs`);
-    assert.ok(Number.isInteger(pack.minEngineVersion) && pack.minEngineVersion > 0,
+    assert.ok(isDeclaredVersion(pack.version),
+      `pack "${pack.id}" declares no version — add a date-anchored "version" to packs/${pack.id}/pack.mjs`);
+    assert.ok(isDeclaredVersion(pack.minEngineVersion),
       `pack "${pack.id}" declares no minEngineVersion — add "minEngineVersion: 1" to packs/${pack.id}/pack.mjs`);
     // A pack that asks for an engine newer than the one it ships beside could never
     // apply anywhere: the canon is the newest engine that exists.
-    assert.ok(pack.minEngineVersion <= ENGINE_VERSION,
+    assert.ok(!versionAbove(pack.minEngineVersion, ENGINE_VERSION),
       `pack "${pack.id}" requires engine version ${pack.minEngineVersion}, above the canon's own ${ENGINE_VERSION}`);
   }
 });

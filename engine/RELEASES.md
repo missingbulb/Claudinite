@@ -6,6 +6,11 @@ migration's range is written against, and what a pack's `minEngineVersion` is
 checked against (`docs/versioned-updates/DESIGN.md` §2). This file is the log of
 those versions and the evidence behind each.
 
+The version is date-anchored `<day>.<n>` — `60820.1` for the first release cut on
+2026-08-20. [`version.mjs`](version.mjs) states the shape and computes the next
+one (`nextVersion`); rows 1 to 6 below predate the format and are the plain
+counter it replaced.
+
 ## What a release is
 
 **A release is the commit that bumps `ENGINE_VERSION`, and a bump is only
@@ -25,7 +30,8 @@ on every PR only tests what someone remembered to model; this is the other half.
 2. Dispatch **Canary rehearsal** with `ref` = your branch
    (`.github/workflows/canary-rehearsal.yml` → Run workflow), and wait for it.
    A red canary is not a release — fix the branch and rehearse again.
-3. In the same change: bump `ENGINE_VERSION`, and add a row below for the new
+3. In the same change: set `ENGINE_VERSION` to `nextVersion` of the one standing
+   — a new day restarts the running number at 1 — and add a row below for the new
    version linking the run that passed.
 4. Merge. The version now on `main` is the release.
 

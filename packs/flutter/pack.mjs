@@ -10,7 +10,7 @@ const hasMarkerNearRoot = (ctx, marker) =>
 
 export default {
   id: 'flutter',
-  version: 2,
+  version: '60820.1',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'widget-tree architecture, ports and fakes, widget-test and golden mechanics, pub and analyze toolchain habits for Flutter',

@@ -339,6 +339,9 @@ test('discoverPacks: a mounted pack still announcing its old id activates under 
     // A real corpus: the loader resolves packs/ relative to its own location, so the
     // fixture copies the loader in rather than passing a root it does not take.
     cpSync(join(REPO_ROOT, 'engine', 'pack_loader'), join(root, 'engine', 'pack_loader'), { recursive: true });
+    // pack-schema validates a version against the engine's version module, which sits
+    // beside pack_loader in the real tree.
+    cpSync(join(REPO_ROOT, 'engine', 'version.mjs'), join(root, 'engine', 'version.mjs'));
     mkdirSync(join(root, 'packs', 'claudinite-lifecycle'), { recursive: true });
     writeFileSync(join(root, 'packs', 'claudinite-lifecycle', 'pack.mjs'),
       "export default { id: 'core', detect: null, worldRules: [], ruleRoutingGuidance: { belongs: 'x', excludes: 'y' } };\n");

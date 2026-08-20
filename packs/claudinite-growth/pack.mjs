@@ -79,7 +79,7 @@ export default {
   // 13: the task contract's prose carries the queue's current label vocabulary and
   // the precondition's two additions — the occurrence argument, and the verdict a
   // precondition gives when it cannot answer.
-  version: 16,
+  version: '60820.1',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'authoring Claudinite content here — lesson extraction, dedup, revalidation, conversation logs, skill-usage folding, the task contract',

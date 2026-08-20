@@ -46,6 +46,15 @@ can absorb it**, and constrains the engine so its flow needs none of them.
 
 ## 2. The engine: versioned, cloned, never agentic
 
+**The version format is date-anchored `<day>.<n>`** — `60820.1`, where the day
+part is `(year - 2020) * 10000 + month * 100 + day` and `n` is the running
+number of versions cut on that day. Engine and pack versions share it, and
+`engine/version.mjs` owns the parsing, the ordering and the comparison every
+flow below makes. It replaces a plain monotonic counter (2026-08-20, #1100):
+the ordering the flows need is unchanged, and a version now says *when* it was
+cut without a second lookup. Every reader accepts a legacy integer as well,
+below every date-anchored version, until the fleet has re-stamped.
+
 1. **The engine has running versions.** A release is a qualified snapshot
    (the live canary rehearsal runs against it once, per release, instead of
    the fleet discovering breakage per repo per night).
@@ -88,7 +97,7 @@ can absorb it**, and constrains the engine so its flow needs none of them.
 
 ## 3. Packs: versioned, deterministic core, bounded agentic tail
 
-6. **Each pack has a version number**, and **each pack version declares the
+6. **Each pack has a version**, in the same date-anchored format, and **each pack version declares the
    minimum engine version it requires**, enforced by the updater: a pack
    update never applies past the installed engine (§5). This is what makes
    the split coherent — the current single-snapshot guarantee ("the set and

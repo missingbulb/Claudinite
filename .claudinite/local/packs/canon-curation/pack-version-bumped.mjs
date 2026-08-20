@@ -1,4 +1,5 @@
 import { finding } from '../../../../engine/checks/helpers/findings.mjs';
+import { VERSION_SOURCE, versionFromLiteral, compareVersions, nextVersion } from '../../../../engine/version.mjs';
 
 // A PACK'S CONTENT IS DELIVERED ON ITS VERSION NUMBER, and on nothing else. The
 // engine tree vendors wholesale on every converge; a pack's directory ships only
@@ -46,9 +47,10 @@ export function packsTouched(changed) {
 // The `version:` a pack manifest declares, or null when it declares none (a
 // manifest that is absent on one side of the diff, or one the schema check owns).
 // The preceding-character class is what keeps `minEngineVersion:` out of it.
+const PACK_VERSION_RE = new RegExp(String.raw`(?:^|[\s{,])version:\s*'?(${VERSION_SOURCE})'?`, 'm');
 export function declaredPackVersion(text) {
-  const m = /(?:^|[\s{,])version:\s*(\d+)/m.exec(text ?? '');
-  return m ? Number(m[1]) : null;
+  const m = PACK_VERSION_RE.exec(text ?? '');
+  return m ? versionFromLiteral(m[1]) : null;
 }
 
 const rule = {
@@ -67,16 +69,17 @@ const rule = {
       if (head === null) continue;                     // the pack was deleted, or declares no version — other rules own that
       const base = declaredPackVersion(work.readBase(manifest));
       if (base === null) continue;                     // a pack this change introduces: its first version ships to everyone
-      if (head > base) continue;
+      const moved = compareVersions(head, base);
+      if (moved > 0) continue;
 
       findings.push(finding(rule, {
         file: manifest,
-        what: head === base
+        what: moved === 0
           ? `this change edits packs/${id}/ but leaves its version at ${head}`
           : `packs/${id}/ moves its version backwards, ${base} → ${head}`,
-        fix: head === base
-          ? `raise \`version\` in ${manifest} to ${base + 1} — the number is the whole delivery signal, so an edit that `
-            + 'does not move it stays in the canon forever'
+        fix: moved === 0
+          ? `raise \`version\` in ${manifest} to '${nextVersion(base)}' — the version is the whole delivery signal, so an edit `
+            + 'that does not move it stays in the canon forever'
           : 'pack versions only ever increase — the update flow reads them as an ordering, so a lowered number tells '
             + 'every member it is already up to date',
       }));

@@ -35,6 +35,7 @@
 // issues and their label.
 
 import { labeledIssues, DECLARATION } from '../../fleet-api.mjs';
+import { VERSION_SOURCE, versionFromLiteral, isVersion, versionAbove } from '../../../../engine/version.mjs';
 
 const LABEL = 'fleet-drift';
 const LABEL_SPEC = { color: 'D93F0B', description: 'Covered member whose Claudinite mount has fallen behind canon' };
@@ -96,13 +97,13 @@ export function classifyFreshness({ stampedRef, hasScheduler, compare, installed
   // to be behind, and comparing against a missing entry would report every member
   // that still stamps it.
   const gaps = [];
-  if (installed.engineVersion !== null && canon.engineVersion !== null && installed.engineVersion < canon.engineVersion) {
+  if (installed.engineVersion !== null && canon.engineVersion !== null && versionAbove(canon.engineVersion, installed.engineVersion)) {
     gaps.push(`engine v${installed.engineVersion} → v${canon.engineVersion}`);
   }
   for (const id of packIds.sort()) {
     const here = installed.packVersions[id];
     const there = canon.packVersions[id];
-    if (typeof here === 'number' && typeof there === 'number' && here < there) {
+    if (isVersion(here) && isVersion(there) && versionAbove(there, here)) {
       gaps.push(`${id} v${here} → v${there}`);
     }
   }
@@ -129,8 +130,8 @@ export function classifyFreshness({ stampedRef, hasScheduler, compare, installed
 // Memoized per reader, promise and all: one reader is built per sweep and every
 // member consults it, so canon is read once per distinct pack rather than once per
 // member per pack.
-const ENGINE_VERSION_RE = /^export const ENGINE_VERSION = (\d+);$/m;
-const PACK_VERSION_RE = /^ {2}version: (\d+),$/m;
+const ENGINE_VERSION_RE = new RegExp(String.raw`^export const ENGINE_VERSION = '?(${VERSION_SOURCE})'?;$`, 'm');
+const PACK_VERSION_RE = new RegExp(String.raw`^ {2}version: '?(${VERSION_SOURCE})'?,$`, 'm');
 
 export function canonVersions(gh, canonRepo) {
   const packs = new Map();
@@ -147,7 +148,7 @@ export function canonVersions(gh, canonRepo) {
         const text = await source('engine/version.mjs');
         const m = text && ENGINE_VERSION_RE.exec(text);
         if (!m) throw new Error(`canon ${canonRepo} has no readable ENGINE_VERSION in engine/version.mjs`);
-        return Number(m[1]);
+        return versionFromLiteral(m[1]);
       })();
       return engine;
     },
@@ -160,7 +161,7 @@ export function canonVersions(gh, canonRepo) {
           if (text === null) return null;
           const m = PACK_VERSION_RE.exec(text);
           if (!m) throw new Error(`canon ${canonRepo} has no readable version in packs/${id}/pack.mjs`);
-          return Number(m[1]);
+          return versionFromLiteral(m[1]);
         })());
       }
       return packs.get(id);
@@ -193,7 +194,7 @@ export async function probeMount(gh, fullName, declaration, { canonRepo, canonBr
 
   const stamped = stamp.packVersions;
   const installed = {
-    engineVersion: typeof stamp.engineVersion === 'number' ? stamp.engineVersion : null,
+    engineVersion: isVersion(stamp.engineVersion) ? stamp.engineVersion : null,
     packVersions: stamped && typeof stamped === 'object' && !Array.isArray(stamped) ? stamped : {},
   };
   const canonAt = { engineVersion: null, packVersions: {} };
