@@ -504,14 +504,21 @@ test('an executor close readies the dependent it was holding', async () => {
 // one, on the item, from the executor holding it.
 test('a long work step leaves heartbeats on its own item', async () => {
   const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
+  const beatsSoFar = () => repo.find(1).comments.filter((c) => c.body.includes('<!-- claudinite-heartbeat -->'));
   await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], {
     heartbeatMs: 5,
+    // The step holds itself open UNTIL the beat has landed twice, rather than
+    // sleeping long enough that it probably has. A fixed window against a 5ms
+    // interval is a race the loaded machine wins: under the full suite at eight
+    // workers this read one beat and failed on ~3 runs in 4. The ceiling is what
+    // keeps a heartbeat that never fires a failed assertion rather than a hang.
     runTaskCodeWork: async () => {
-      await new Promise((r) => setTimeout(r, 40));
+      const deadline = Date.now() + 5000;
+      while (beatsSoFar().length < 2 && Date.now() < deadline) await new Promise((r) => setTimeout(r, 5));
       return { ok: true, agentRequested: false };
     },
   });
-  const beats = repo.find(1).comments.filter((c) => c.body.includes('<!-- claudinite-heartbeat -->'));
+  const beats = beatsSoFar();
   assert.ok(beats.length >= 2, `the item stayed live through the work (got ${beats.length})`);
   assert.match(beats[0].body, /executor `E1`/);
 });
