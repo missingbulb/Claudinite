@@ -10,7 +10,10 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeSim, T } from './sim.mjs';
+import { makeSim, T, NH, READY, ORIGIN_AD_HOC, ORIGIN_PLANNED, statusOf } from './sim.mjs';
+
+// a park is one status label now; these read it the way the machine does
+const isParked = (it) => (statusOf(it) ?? '').startsWith(NH(''));
 
 function cast() {
   return [
@@ -185,7 +188,7 @@ test("S13' ad-hoc no-go closes obsolete instead of rolling", () => {
   sim.run('2026-08-12T05:00Z', '2026-08-12T12:00Z'); // start past the 04:17 ask: the scheduled decline is a board row
 
   assert.equal(adhoc.state, 'closed');
-  assert.equal(adhoc.outcome, 'obsolete');
+  assert.equal(adhoc.outcome, 'rejected');
   // …and the ad-hoc twin neither consumed nor disturbed the scheduled family:
   // the anchor's decline sits on the board, and no unqualified item exists.
   assert.equal(sim.family('tidy/tidy-issues').filter((i) => i.state === 'open').length, 0);
@@ -203,7 +206,7 @@ test("S14' force mints the standing item; no-go closes with a reason", () => {
   assert.ok(sim.log.some((e) => e.kind === 'force' && e.minted), 'nothing to wake — the force minted');
   const forced = sim.family('tidy/tidy-issues').find((i) => !i.seeded);
   assert.equal(forced.state, 'closed');
-  assert.equal(forced.outcome, 'obsolete', 'the forced ask found no work and said so');
+  assert.equal(forced.outcome, 'rejected', 'the forced ask found no work and said so');
   assert.equal(sim.log.find((e) => e.kind === 'decline-close' && e.issue === forced.number).reason,
     'no issue touched in window', 'the force reads its answer');
   assert.equal(evals(sim, 'tidy/tidy-issues').length, 1, 'the executor evaluated the forced item once');
@@ -227,7 +230,7 @@ test('S20 removed task: standing item closes obsolete at next pick', () => {
 
   const it = sim.family('tidy/tidy-issues').find((i) => i.createdAt >= T('2026-08-12T00:00Z'));
   assert.equal(it.state, 'closed');
-  assert.equal(it.outcome, 'obsolete');
+  assert.equal(it.outcome, 'rejected');
 });
 
 // ---- S21 — the quiet month: no items at all, five weekly board asks, zero
@@ -285,7 +288,7 @@ test('S23b needs-human upstream does not halt the chain', () => {
   });
   sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
 
-  assert.ok(sim.standingItem('basics/baselining').labels.has('needs-human'), 'upstream broke');
+  assert.ok(isParked(sim.standingItem('basics/baselining')), 'upstream broke');
   assert.equal(closedOf(sim, 'grow/growth-extract').length, 1, 'extract still ran');
 });
 
@@ -344,7 +347,7 @@ test('backlog guard: a failed run blocks new occurrences until re-queued', () =>
 
   const fam = sim.family('basics/baselining').filter((i) => i.createdAt >= T('2026-08-12T00:00Z'));
   assert.equal(fam.length, 1, 'no second item while needs-human sits open');
-  assert.ok(fam[0].labels.has('needs-human'));
+  assert.ok(isParked(fam[0]));
   assert.equal(evals(sim, 'basics/baselining').length, 1, 'not re-asked while broken');
 });
 
@@ -398,12 +401,12 @@ test('S9a refused invocation: needs-human at once, naming the cause', () => {
 
   const it = sim.family('tidy/tidy-issues').find((i) => !i.seeded);
   assert.equal(sim.log.filter((e) => e.kind === 'handoff-refused').length, 1, 'one call, ever');
-  assert.ok(it.labels.has('needs-human'), 'triage, with the refusal on record');
+  assert.ok(isParked(it), 'triage, with the refusal on record');
   assert.equal(it.sessions.length, 0, 'no session was ever started');
 });
 
 // ---- S10 — the UNANSWERED call (timeout / dropped connection): the session
-// may or may not exist and nothing may guess, so the item STAYS task:agent.
+// may or may not exist and nothing may guess, so the item STAYS task:status:running-agent.
 // Whichever way it went is settled by rules that already exist.
 test('S10a unanswered but the session started: it converges the item itself', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
@@ -428,7 +431,7 @@ test('S10b unanswered and no session: the agent leash brings it to triage', () =
   assert.equal(it.sessions.length, 0, 'the call created nothing');
   assert.ok(sim.log.some((e) => e.kind === 'agent-reclaim' && e.issue === it.number),
     "the janitor's agent leash swept the silent item");
-  assert.ok(it.labels.has('needs-human'), 'triage — no retry ever risked a duplicate session');
+  assert.ok(isParked(it), 'triage — no retry ever risked a duplicate session');
 });
 
 // ---- S11 — agent dies mid-run: the janitor's 3h agent leash converges the
@@ -445,14 +448,14 @@ test('S11 dead agent: janitor leash converges needs-human, names the session', (
   assert.ok(reclaim, 'the leash fired');
   assert.match(reclaim.session, /^s-\d+$/, 'the dead session is named');
   const it = sim.family('tidy/tidy-issues').find((i) => !i.seeded);
-  assert.ok(it.labels.has('needs-human'));
+  assert.ok(isParked(it));
   // A dead session is a `decision` park — whether the interrupted run left
   // anything behind is the choice being handed over — and a decision is one
   // person's inbox, not a fault in the task. So it does NOT hold the lane: the
   // next day's occurrence is asked and filed beside it, which is the #1032
   // delta (before the split a park froze the task's schedule outright, and a
   // permission gap parked Shepherd's fleet-digest for two days on exactly that).
-  assert.ok(it.labels.has('task:needs-human-decision'));
+  assert.ok(it.labels.has('task:status:needs-human-decision'));
   const beside = sim.family('tidy/tidy-issues')
     .filter((i) => !i.seeded && i.createdAt >= T('2026-08-13T04:00Z'));
   assert.equal(beside.length, 1, "the next day's occurrence was filed around the park");
@@ -477,7 +480,7 @@ test("S12' re-queue after work landed: the re-ask closes with the reason", () =>
 
   const it = sim.family('tidy/tidy-issues').find((i) => !i.seeded);
   assert.equal(it.state, 'closed', 'the re-ask found no work and closed the incident item');
-  assert.equal(it.outcome, 'obsolete');
+  assert.equal(it.outcome, 'rejected');
   assert.ok(sim.log.some((e) => e.kind === 'decline-close' && e.issue === it.number),
     'with the reason on its record');
   // The 13th's own occurrence was still asked — the incident never froze the
@@ -546,7 +549,7 @@ test('S17 follow-up validates on day 3, closes obsolete when all landed', () => 
   assert.equal(evalsOf.length, 1, 'untouched until its day');
   assert.ok(evalsOf[0].t >= T('2026-08-14T04:00Z'), 'not before Day 3 04:00');
   assert.equal(followUp.state, 'closed');
-  assert.equal(followUp.outcome, 'obsolete', 'the world settled on its own');
+  assert.equal(followUp.outcome, 'rejected', 'the world settled on its own');
 });
 
 test('S17b follow-up finds the store rejected the release, and runs', () => {
@@ -589,7 +592,7 @@ test('S18 fan-out: stuck member escalates, fan-in proceeds after the human acts'
     s.quarantine(members[2].number); // repo-x's executor is broken
   });
   // day 3: a human writes the stuck member off
-  sim.at('2026-08-13T09:00Z', (s) => s.closeByHand(members[2].number, 'obsolete'));
+  sim.at('2026-08-13T09:00Z', (s) => s.closeByHand(members[2].number, 'rejected'));
   sim.run('2026-08-10T00:00Z', '2026-08-14T00:00Z');
 
   assert.equal(members[0].state, 'closed');
@@ -755,7 +758,7 @@ test('S37 suspend-all: workflows exit at start, the queue freezes in place', () 
   // and the queue is frozen, not lost: every never-picked item still sits ready
   const openReady = sim.issues.filter((i) => !i.seeded && i.state === 'open');
   assert.equal(openReady.length, 5 - pickedBefore.size, 'unpicked items all survived the hold');
-  for (const it of openReady) assert.ok(it.labels.has('task:ready'), `#${it.number} froze as ready`);
+  for (const it of openReady) assert.ok(it.labels.has('task:status:waiting-for-executor'), `#${it.number} froze as ready`);
 });
 
 // ---- S38 — cancel + suspend, then resume (owner, 2026-08-16): the user
@@ -884,7 +887,7 @@ test('S30 duplicate standing item: the next scheduler run self-heals (F16)', () 
   sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
 
   assert.equal(dup.state, 'closed');
-  assert.equal(dup.outcome, 'obsolete');
+  assert.equal(dup.outcome, 'rejected');
   assert.ok(sim.log.some((e) => e.kind === 'dedupe' && e.issue === dup.number));
   const openFam = sim.family('tidy/tidy-issues').filter((i) => i.state === 'open');
   assert.ok(openFam.every((i) => i.number === first.number), 'only the oldest may survive');
@@ -991,11 +994,11 @@ test('S39b a parked item a human re-queues is claimable by another executor at o
   sim.at('2026-08-12T00:00Z', ({ world }) => { world.mountBehind = true; world.mountBroken = true; });
   sim.run('2026-08-12T00:00Z', '2026-08-12T06:00Z');
 
-  const parked = sim.issues.find((i) => i.labels.has('needs-human'));
+  const parked = sim.issues.find((i) => isParked(i));
   assert.ok(parked, 'the work step failed, so the item parked for a human');
 
   // The sanctioned re-queue (F7) and nothing else: strip needs-human, apply
-  // task:ready. No marker, no cleanup — the strike already happened.
+  // task:status:waiting-for-executor. No marker, no cleanup — the strike already happened.
   sim.at('2026-08-12T07:00Z', (s) => { s.world.mountBroken = false; s.requeue(parked.number); });
   sim.raceExecutorsAt('2026-08-12T07:00:30Z', ['E2']);
   sim.run('2026-08-12T06:00Z', '2026-08-12T14:00Z');
@@ -1015,10 +1018,10 @@ test('S41 a worker that names its failure class parks there, not at failure', ()
   sim.at('2026-08-12T00:00Z', ({ world }) => { world.patScopeMissing = true; });
   sim.run('2026-08-12T00:00Z', '2026-08-13T12:00Z');
 
-  const parked = sim.issues.find((i) => i.taskId === 'sheepdog/fleet-seeds' && i.labels.has('needs-human'));
+  const parked = sim.issues.find((i) => i.taskId === 'sheepdog/fleet-seeds' && isParked(i));
   assert.ok(parked, 'the failing run parked');
-  assert.ok(parked.labels.has('task:needs-human-action'), "the worker's verdict, not the default");
-  assert.equal(parked.labels.has('task:needs-human-failure'), false, 'and only one sub-label');
+  assert.ok(parked.labels.has('task:status:needs-human-action'), "the worker's verdict, not the default");
+  assert.equal(parked.labels.has('task:status:needs-human-failure'), false, 'and only one sub-label');
   assert.ok(sim.log.some((e) => e.kind === 'work-failed' && e.triage === 'action'));
 });
 
@@ -1030,8 +1033,8 @@ test('S41b a worker that says nothing parks at failure, and holds the lane', () 
   sim.run('2026-08-12T00:00Z', '2026-08-14T12:00Z');
 
   const fam = sim.family('sheepdog/fleet-seeds');
-  const parked = fam.find((i) => i.labels.has('needs-human'));
-  assert.ok(parked.labels.has('task:needs-human-failure'));
+  const parked = fam.find((i) => isParked(i));
+  assert.ok(parked.labels.has('task:status:needs-human-failure'));
   assert.equal(fam.filter((i) => i.state === 'open').length, 1,
     'the lane is held — two days of anchors passed and nothing was filed behind it');
 });
@@ -1045,7 +1048,7 @@ test('S42 a run that left an unmerged PR parks open for approval and keeps its s
   sim.run('2026-08-12T00:00Z', '2026-08-14T12:00Z');
 
   const fam = sim.family('site/regenerate');
-  const parked = fam.filter((i) => i.labels.has('task:needs-human-approval'));
+  const parked = fam.filter((i) => i.labels.has('task:status:needs-human-approval'));
   assert.ok(parked.length >= 1, 'the delivering run parked for approval');
   assert.ok(parked.every((i) => i.state === 'open'), 'open — a waiting reviewer is not a closed item');
   // Two anchors passed and each filed its own item, around the ones still parked.
@@ -1056,7 +1059,7 @@ test('S42 a run that left an unmerged PR parks open for approval and keeps its s
 // ---- S43 — the road back clears BOTH labels --------------------------------
 // A re-queue that stripped only the state would leave a live item still wearing
 // a triage sub-label: a shape no rule defines, and one the janitor's stateless
-// repair would not catch either, since the item does wear `task:ready`.
+// repair would not catch either, since the item does wear `task:status:waiting-for-executor`.
 test('S43 the human re-queue leaves no triage label behind', () => {
   const sim = makeSim({ tasks: [SEEDS] });
   sim.at('2026-08-12T00:00Z', ({ world }) => { world.patScopeMissing = true; });
@@ -1069,7 +1072,7 @@ test('S43 the human re-queue leaves no triage label behind', () => {
   let after = null;
   sim.at('2026-08-13T09:00Z', (s) => {
     s.world.patScopeMissing = false; // the scope was granted
-    const parked = s.issues.find((i) => i.labels.has('needs-human'));
+    const parked = s.issues.find((i) => isParked(i));
     assert.ok(parked, 'precondition of this scenario: something is parked to re-queue');
     s.requeue(parked.number);
     after = [...parked.labels];
@@ -1077,10 +1080,10 @@ test('S43 the human re-queue leaves no triage label behind', () => {
   sim.run('2026-08-12T00:00Z', '2026-08-13T18:00Z');
 
   assert.ok(after, 'the re-queue ran');
-  assert.deepEqual(after.filter((l) => l.startsWith('task:needs-human-')), [],
+  assert.deepEqual(after.filter((l) => l.startsWith('task:status:needs-human-')), [],
     'no sub-label survived the re-queue');
-  assert.equal(after.includes('needs-human'), false);
-  assert.ok(after.includes('task:ready'), 'and it went back into the queue');
+  assert.equal(after.some((l) => l.startsWith(NH(''))), false);
+  assert.ok(after.includes('task:status:waiting-for-executor'), 'and it went back into the queue');
 });
 
 // ---- K. Ad-hoc requests (DESIGN §16, owner 2026-08-18) --------------------
@@ -1093,7 +1096,7 @@ test('S43 the human re-queue leaves no triage label behind', () => {
 
 const REQ = 'engine/implement-request';
 const adopts = (sim) => sim.log.filter((e) => e.kind === 'adopt');
-const parked = (it, kind) => it.labels.has('needs-human') && it.labels.has(`task:needs-human-${kind}`);
+const parked = (it, kind) => isParked(it) && it.labels.has(`task:status:needs-human-${kind}`);
 
 test('S44 a marked issue becomes exactly one run, parked for the reviewer', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
@@ -1107,15 +1110,17 @@ test('S44 a marked issue becomes exactly one run, parked for the reviewer', () =
   assert.equal(items.length, 1);
   assert.equal(items[0].request, req.number);
   assert.equal(items[0].model, 'opus');               // no model label ⇒ the default
-  // Structurally ad-hoc — a manual task, a qualified title — so it consumes no
-  // scheduled occurrence and needs no marker to say so (DESIGN §3).
-  assert.ok(items[0].title.endsWith(` #${req.number}`));
+  // ONE issue: the marked issue IS the item — same number, shared labels —
+  // wearing the ad-hoc origin that keeps it out of every scheduled family.
+  assert.equal(items[0].number, req.number);
+  assert.ok(items[0].labels === req.labels, 'the item labels ARE the issue labels');
   // The run succeeded and left a PR, so it parks for approval rather than
   // closing — and that park is not a fault, so it holds nobody's lane.
   assert.ok(parked(items[0], 'approval'));
   assert.equal(items[0].state, 'open');
-  // …and the issue says what is true of it: a change is written, awaiting review.
-  assert.deepEqual([...req.labels].sort(), ['claude-in-review']);
+  // …and the issue says what is true of it — the approval park IS the
+  // in-review state, on the same labels, beside the lifelong mark.
+  assert.deepEqual([...req.labels].sort(), [ORIGIN_AD_HOC, NH('approval')].sort());
   assert.equal(sim.log.filter((e) => e.kind === 'handoff' && e.task === REQ).length, 1);
 });
 
@@ -1127,16 +1132,17 @@ test('S45 an unauthorized mark is refused once, disarmed, and never re-adopted',
 
   const items = sim.requestItems();
   assert.equal(items.length, 1);
-  assert.equal(items[0].outcome, 'obsolete');         // declined: no anchor to roll to
+  assert.equal(items[0].outcome, 'rejected');         // declined: no anchor to roll to
   assert.equal(sim.log.filter((e) => e.kind === 'handoff' && e.task === REQ).length, 0);
-  // A refusal is not a park: nothing here is anybody's inbox, so it closes rather
-  // than joining a triage lane.
-  assert.equal(items[0].labels.has('needs-human'), false);
-  // The issue is told and disarmed — the label that would re-trigger is gone, so a
-  // day of further scheduler runs adopts nothing. Without the disarm this is an hourly
+  // A refusal is not a park: nothing here is anybody's inbox. The terminal
+  // status stands on the STILL-OPEN issue — the run's verdict is not the
+  // issue's validity — and that standing status is the disarm: a day of
+  // further scheduler runs adopts nothing. Without it this is an hourly
   // refusal loop on somebody else's issue.
+  assert.equal(isParked(items[0]), false);
+  assert.equal(req.state, 'open');
   assert.equal(sim.log.filter((e) => e.kind === 'request-declined').length, 1);
-  assert.deepEqual([...req.labels], []);
+  assert.deepEqual([...req.labels].sort(), [ORIGIN_AD_HOC, 'task:status:rejected'].sort());
   assert.equal(adopts(sim).length, 1);
 });
 
@@ -1156,7 +1162,7 @@ test('S46 an outsider\'s issue runs only on an approval comment from someone wit
     comments: [{ login: 'passer-by', body: '/claude go' }],
   }));
   not.run('2026-08-18T09:00Z', '2026-08-19T09:00Z');
-  assert.equal(not.requestItems()[0].outcome, 'obsolete');
+  assert.equal(not.requestItems()[0].outcome, 'rejected');
 
   // Permission, not association, decides (F30): a read-only collaborator would
   // ride the payload as COLLABORATOR, but the permission read says no push —
@@ -1165,10 +1171,10 @@ test('S46 an outsider\'s issue runs only on an approval comment from someone wit
     .seedSteadyState('2026-08-18T00:00Z');
   readOnly.at('2026-08-18T09:03Z', (s) => s.markIssue({ author: 'reader' }));
   readOnly.run('2026-08-18T09:00Z', '2026-08-19T09:00Z');
-  assert.equal(readOnly.requestItems()[0].outcome, 'obsolete');
+  assert.equal(readOnly.requestItems()[0].outcome, 'rejected');
 });
 
-test('S47 the model label routes the run; an unknown family falls back to the default', () => {
+test('S47 the body model routes the run; an unknown family falls back to the default', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
   sim.at('2026-08-18T09:03Z', (s) => {
     s.markIssue({ author: 'owner', model: 'sonnet' });
@@ -1180,10 +1186,10 @@ test('S47 the model label routes the run; an unknown family falls back to the de
   // approval parks, and neither delays the other.
   assert.equal(sim.requestItems().length, 2);
   assert.ok(sim.requestItems().every((i) => parked(i, 'approval')));
-  // The model labels are consumed with the mark (F29): each ask names its model
-  // afresh, so a label left from an earlier ask can never outrank a new one.
-  assert.ok(sim.requests.every((r) => ![...r.labels].some((l) => l.startsWith('claude-model:'))),
-    'adoption consumed the model labels');
+  // The model is a BODY parameter now, gated on the author's push access and
+  // re-read at every adoption — nothing stale to consume, and the lifelong
+  // mark stays on both issues.
+  assert.ok(sim.requests.every((r) => r.labels.has(ORIGIN_AD_HOC)));
 });
 
 test('S48 a request withdrawn after adoption never reaches an agent', () => {
@@ -1193,19 +1199,21 @@ test('S48 a request withdrawn after adoption never reaches an agent', () => {
   // …between the scheduler run that adopted it and the executor picking it up.
   withdrawn.at('2026-08-18T09:17:20Z', (s) => s.withdrawRequest(req.number));
   withdrawn.run('2026-08-18T09:00Z', '2026-08-18T18:00Z');
-  assert.equal(withdrawn.requestItems()[0].outcome, 'obsolete');
+  assert.equal(withdrawn.requestItems()[0].outcome, 'rejected');
   assert.equal(withdrawn.log.filter((e) => e.kind === 'handoff' && e.task === REQ).length, 0);
 
-  // Closing the issue is the same answer by a different route.
+  // Closing the issue is the same answer with no run at all: one issue means
+  // closing it closes the item, so there is nothing left to pick or decline.
   const closed = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
   let req2;
   closed.at('2026-08-18T09:03Z', (s) => { req2 = s.markIssue({ author: 'owner' }); });
   closed.at('2026-08-18T09:17:20Z', (s) => s.closeRequestIssue(req2.number));
   closed.run('2026-08-18T09:00Z', '2026-08-18T18:00Z');
-  assert.equal(closed.requestItems()[0].outcome, 'obsolete');
+  assert.equal(closed.requestItems()[0].state, 'closed');
+  assert.equal(closed.log.filter((e) => e.kind === 'handoff' && e.task === REQ).length, 0);
 });
 
-test('S49 a failed request parks as a fault; re-marking supersedes the park and runs once more', () => {
+test('S49 a failed request parks as a fault; clearing the status re-runs the same record', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
   let req;
   sim.at('2026-08-18T09:03Z', (s) => {
@@ -1214,50 +1222,49 @@ test('S49 a failed request parks as a fault; re-marking supersedes the park and 
   });
   sim.run('2026-08-18T09:00Z', '2026-08-18T11:00Z');
 
-  // A broken run is a `failure` — someone reads the trace — and the ISSUE keeps
-  // `claude-queued`: nothing mechanical re-arms work that writes code, and the
-  // standing label is what stops the next scheduler run adopting a second run.
+  // A broken run is a `failure` — someone reads the trace — and the standing
+  // park status is what stops the next scheduler run re-adopting: nothing
+  // mechanical re-arms work that writes code.
   assert.ok(parked(sim.requestItems()[0], 'failure'));
-  assert.deepEqual([...req.labels], ['claude-queued']);
   assert.equal(adopts(sim).length, 1);
 
-  // The human fixes the cause and re-marks the issue — the phone-sized retry.
-  // Adoption SUPERSEDES the parked item (F28): the retry closes its predecessor
-  // rather than leaving it parked forever beside the run that replaced it.
+  // The human fixes the cause and clears the status — the phone-sized retry,
+  // and the ONE lever (the old model's re-mark and re-queue collapse into it).
+  // The same record re-enters the queue; there is no predecessor to supersede
+  // because there is only one issue to begin with.
   sim.at('2026-08-18T12:00Z', (s) => {
     s.updateTask(REQ, { agentFails: () => false });
     s.remarkIssue(req.number, { model: 'haiku' });
   });
   sim.run('2026-08-18T11:00Z', '2026-08-19T09:00Z');
 
-  const [first, second] = sim.requestItems();
+  assert.equal(sim.requestItems().length, 1, 'one issue, one record — re-asked, not re-filed');
+  const item = sim.requestItems()[0];
   assert.equal(adopts(sim).length, 2);
-  assert.equal(first.state, 'closed');
-  assert.equal(first.outcome, 'obsolete');
-  assert.equal(sim.log.filter((e) => e.kind === 'supersede' && e.issue === first.number).length, 1);
-  // The new ask's model rides the new mark — the old ask's labels were consumed
-  // at its own adoption, so nothing stale outranks haiku (F29).
-  assert.equal(second.model, 'haiku');
-  assert.ok(parked(second, 'approval'));
-  assert.deepEqual([...req.labels], ['claude-in-review']);
+  assert.ok(adopts(sim)[1].readopt);
+  // The new ask's model is re-gated from the body as it stands now — nothing
+  // stale outranks haiku (F29's guarantee, with no label to consume).
+  assert.equal(item.model, 'haiku');
+  assert.ok(parked(item, 'approval'));
+  assert.deepEqual([...req.labels].sort(), [ORIGIN_AD_HOC, NH('approval')].sort());
 });
 
 test('S50 a request issue that is GONE declines; one that cannot be READ fails the run', () => {
-  // Definitively gone — the API answers that the issue does not exist: a plain
-  // decline, exactly like a withdrawal (there is nothing left to write back to).
+  // Definitively gone — the API answers that the issue does not exist. One
+  // issue means the item went with it: nothing to pick, nothing to decline,
+  // and no write-back to strand.
   const gone = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
   let g;
   gone.at('2026-08-18T09:03Z', (s) => { g = s.markIssue({}); });
   gone.at('2026-08-18T09:17:20Z', (s) => s.deleteRequestIssue(g.number));
   gone.run('2026-08-18T09:00Z', '2026-08-18T18:00Z');
-  assert.equal(gone.requestItems()[0].outcome, 'obsolete');
+  assert.notEqual(gone.requestItems()[0].state, 'open');
   assert.equal(gone.log.filter((e) => e.kind === 'handoff' && e.task === REQ).length, 0);
 
   // Transiently unreadable — a rate limit, a 500 — is NOT a verdict (F27):
-  // declining would eat the request permanently (the decline's write-back cannot
-  // reach an issue it cannot read, so `claude-queued` would stand forever over
-  // nothing). It is a run failure: the item parks in the failure lane, open and
-  // visible, and the ordinary re-queue lever retries once the API recovers.
+  // declining would eat the request permanently over nothing. It is a run
+  // failure: the item parks in the failure lane, open and visible, and the
+  // one re-ask lever retries once the API recovers.
   const flaky = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
   let f;
   flaky.at('2026-08-18T09:03Z', (s) => { f = s.markIssue({}); });
@@ -1268,7 +1275,7 @@ test('S50 a request issue that is GONE declines; one that cannot be READ fails t
   assert.ok(flaky.log.some((e) => e.kind === 'evaluate-failed' && e.issue === item.number));
   assert.ok(parked(item, 'failure'));
   assert.equal(flaky.log.filter((e) => e.kind === 'request-declined').length, 0);
-  assert.ok(f.labels.has('claude-queued'), 'the request issue is untouched — still armed');
+  assert.ok(f.labels.has(ORIGIN_AD_HOC), 'the mark stands — still armed');
 
   // The API recovers; the human re-queues the parked item; the run completes.
   flaky.at('2026-08-18T12:00Z', (s) => {
@@ -1277,11 +1284,11 @@ test('S50 a request issue that is GONE declines; one that cannot be READ fails t
   });
   flaky.run('2026-08-18T11:00Z', '2026-08-19T09:00Z');
   assert.ok(parked(item, 'approval'));
-  assert.deepEqual([...f.labels], ['claude-in-review']);
+  assert.deepEqual([...f.labels].sort(), [ORIGIN_AD_HOC, NH('approval')].sort());
   assert.equal(adopts(flaky).length, 1, 'the retry rode the SAME item — nothing re-adopted');
 });
 
-test('S51 re-marking while the item is live waits, unconsumed, until the run settles', () => {
+test('S51 an impatient re-ask mid-run changes nothing; after the park it re-runs the record', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
   let req;
   sim.at('2026-08-18T09:03Z', (s) => {
@@ -1289,20 +1296,24 @@ test('S51 re-marking while the item is live waits, unconsumed, until the run set
     req = s.markIssue({});
   });
   // An impatient re-ask in mid-run must not put a second session onto the same
-  // issue: while the prior item is LIVE the mark waits on the issue, unconsumed,
-  // and the scheduler run that finds the run settled takes it — superseding the park the
-  // settle left behind.
+  // issue — and under one issue it structurally CANNOT: the mark already
+  // stands, the status says a run owns it, and there is nothing to apply. The
+  // re-ask lever bites only once the run has settled into a park.
   sim.at('2026-08-18T09:30Z', (s) => s.remarkIssue(req.number));
   sim.run('2026-08-18T09:00Z', '2026-08-19T09:00Z');
 
+  assert.equal(sim.log.filter((e) => e.kind === 'mark' && e.refused === 'live').length, 1,
+    'the mid-run re-ask was a no-op');
+  assert.equal(adopts(sim).length, 1, 'one adoption, one session — nothing raced the live run');
+  assert.equal(sim.log.filter((e) => e.kind === 'handoff' && e.task === REQ).length, 1);
+  const item = sim.requestItems()[0];
+  assert.ok(parked(item, 'approval'));
+
+  // Now the run has settled: the same lever re-runs the same record.
+  sim.at('2026-08-19T10:00Z', (s) => s.remarkIssue(req.number));
+  sim.run('2026-08-19T09:00Z', '2026-08-19T15:00Z');
   assert.equal(adopts(sim).length, 2);
-  assert.ok(adopts(sim)[1].t >= T('2026-08-18T12:00Z'),
-    'the second adoption waited out the live run');
-  const [first, second] = sim.requestItems();
-  assert.equal(first.state, 'closed');
-  assert.equal(first.outcome, 'obsolete');
-  assert.equal(sim.log.filter((e) => e.kind === 'supersede' && e.issue === first.number).length, 1);
-  assert.ok(parked(second, 'approval'));
+  assert.ok(adopts(sim)[1].readopt);
 });
 
 // ---- L. No work, no item — the schedule board (owner, 2026-08-20, #1115) ----
@@ -1391,7 +1402,7 @@ test('S55 signals unavailable for one task: fail-open item, executor decides; ot
   assert.equal(fam.length, 2, 'an item per occurrence — fail-open never files fewer');
   assert.equal(sim.board.rows.get('basics/baselining').verdict, 'fail-open');
   // day 1: the executor's own evaluation declined, and the item closed
-  assert.equal(fam[0].outcome, 'obsolete');
+  assert.equal(fam[0].outcome, 'rejected');
   assert.ok(sim.log.some((e) => e.kind === 'decline-close' && e.issue === fam[0].number));
   // day 2: the executor's evaluation found the work and ran it
   assert.equal(fam[1].outcome, 'done');
@@ -1420,7 +1431,7 @@ test('S56 the migration closes sleeping items once, seeds the board, and spares 
   sim.run('2026-08-12T00:00Z', '2026-08-12T03:00Z');
 
   assert.equal(sleeping.state, 'closed');
-  assert.equal(sleeping.outcome, 'obsolete');
+  assert.equal(sleeping.outcome, 'rejected');
   assert.equal(sim.log.filter((e) => e.kind === 'migrate-sleeping').length, 1,
     'closed exactly once across repeated runs — idempotent');
   const row = sim.board.rows.get('tidy/tidy-prs');
@@ -1430,7 +1441,7 @@ test('S56 the migration closes sleeping items once, seeds the board, and spares 
   // first-ever items (fresh repo, no history): born blocked with a future
   // Not-before and NO roll on record — the migration must not eat them
   const firstEver = sim.standingItem('tidy/tidy-issues');
-  assert.ok(firstEver && firstEver.labels.has('task:blocked'), 'the first-ever item still waits');
+  assert.ok(firstEver && firstEver.labels.has('task:status:blocked'), 'the first-ever item still waits');
 });
 
 // ---- S57 — a decline racing a hand-created item. An open unqualified item
@@ -1445,7 +1456,7 @@ test('S57 a hand-minted item preempts the anchor ask; no row, no duplicate', () 
     'the open minted item held the lane — the anchor never asked');
   const fam = sim.family('tidy/tidy-issues').filter((i) => !i.seeded);
   assert.equal(fam.length, 1, 'no second item was ever filed beside it');
-  assert.equal(fam[0].outcome, 'obsolete', 'the executor evaluated the minted item and declined');
+  assert.equal(fam[0].outcome, 'rejected', 'the executor evaluated the minted item and declined');
   assert.equal(sim.log.filter((e) => e.kind === 'dedupe').length, 0);
   // and the other race order: the anchor declines FIRST, a mint follows —
   // covered by S14' (the forced item is evaluated on its own; the closed-at
@@ -1489,7 +1500,7 @@ test('S59 a go at the anchor, a no at pick: the executor\'s verdict wins, once',
 
   assert.equal(asks(sim, 'tidy/tidy-issues')[0].run, true, 'the anchor said go and filed the item');
   const it = sim.family('tidy/tidy-issues').find((i) => !i.seeded);
-  assert.equal(it.outcome, 'obsolete', 'the pick re-derived the world and declined');
+  assert.equal(it.outcome, 'rejected', 'the pick re-derived the world and declined');
   assert.ok(sim.log.some((e) => e.kind === 'decline-close' && e.issue === it.number));
   assert.equal(evals(sim, 'tidy/tidy-issues').length, 1, 'one pick-time evaluation');
   // and the rest of the day re-runs nothing: the closed item covers the
@@ -1517,4 +1528,107 @@ test('S60 a go row outliving a failed create must not eat the occurrence (F31)',
   assert.ok(a.length >= 2, 'the occurrence was re-asked after the refused write');
   const [done] = closedOf(sim, 'tidy/tidy-issues');
   assert.ok(done, 'and the work ran within the hour — never fewer runs because a write failed');
+});
+
+// ---- M. The label vocabulary (owner, 2026-08-20, #1119): the sim writes the
+// canonical `task:status:`/`task:origin:` spellings and decodes every spelling
+// a fielded engine ever wrote. Two directions, both artifact-level: the labels
+// the mechanism EMITS at each transition, and its REACTION to labels that
+// already exist — including the old vocabulary on open items.
+
+const labelsOf = (it) => [...it.labels].sort();
+
+// ---- S61 — one item's whole life, read off the label artifact: the origin at
+// birth, one mutually-exclusive status per phase, the terminal status AND the
+// origin on the closed issue. Nothing else, at any point.
+test('S61 the emitted labels: origin at birth, one status per phase, terminal + origin at close', () => {
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
+  sim.at('2026-08-12T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
+  const seen = [];
+  const it = () => sim.family('tidy/tidy-issues').find((i) => !i.seeded);
+  sim.at('2026-08-12T04:17:10Z', () => seen.push(labelsOf(it())));  // filed at the anchor ask
+  sim.at('2026-08-12T04:17:50Z', () => seen.push(labelsOf(it())));  // claimed by the drain
+  sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
+
+  assert.deepEqual(seen[0], ['task:origin:planned', 'task:status:waiting-for-executor'],
+    'born ready, wearing the planned origin — the generator says what it filed');
+  assert.deepEqual(seen[1], ['task:origin:planned', 'task:status:running-executor'],
+    'the claim swaps the one status; the origin never moves');
+  const closed = it();
+  assert.equal(closed.state, 'closed');
+  assert.deepEqual(labelsOf(closed), ['task:origin:planned', 'task:status:done'],
+    'the terminal status goes ON at close, and the closed issue keeps its origin');
+});
+
+// ---- S62 — the decode direction: open items a FIELDED engine left behind,
+// wearing the old vocabulary. The scheduler and executor must react to them as
+// to their own — and the first transition the new engine writes comes out
+// canonical, which is how the fleet converges with no mass relabel.
+test('S62 legacy-labeled items drain; the first write canonicalizes; a legacy pair still routes', () => {
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
+  let legacy;
+  sim.at('2026-08-12T05:00Z', (s) => {
+    legacy = s.legacyIssue('sheepdog/fleet-baseline', ['task:ready'], { qualifier: 'o/member' });
+  });
+  sim.schedulerRunAt('2026-08-12T05:30Z'); // nothing watches a legacy label event; the drain finds it
+  sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
+
+  assert.equal(legacy.state, 'closed', 'the old-vocabulary item was picked and driven to its end');
+  assert.ok(!legacy.labels.has('task:ready'), 'the first transition cleared the legacy spelling');
+  assert.ok(legacy.labels.has('task:status:done'), 'and every write after it is canonical');
+});
+
+// ---- S62b — the legacy park PAIR routes by its sub-label: an approval park
+// from the old engine holds nobody's lane (the next occurrence still files),
+// while a BARE legacy `needs-human` — kind unknown — decodes as failure and
+// blocks, the conservative direction the decode must preserve.
+test('S62b a legacy approval pair spares the lane; a bare legacy park blocks it', () => {
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
+  sim.at('2026-08-12T00:30Z', (s) => {
+    s.legacyIssue('tidy/tidy-issues', ['needs-human', 'task:needs-human-approval']);
+    s.legacyIssue('gcec/create-extractor', ['needs-human']);
+    s.world.issueTouchedAt = T('2026-08-12T04:00Z');
+    s.world.extractorRequestOpen = true;
+  });
+  sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
+
+  const tidy = sim.family('tidy/tidy-issues').filter((i) => !i.seeded);
+  assert.equal(tidy.length, 2, 'the approval pair did not consume the lane — the 04:17 occurrence filed beside it');
+  assert.ok(tidy.some((i) => i.state === 'closed' && i.labels.has('task:status:done')), 'and it ran');
+  assert.ok(tidy.some((i) => i.state === 'open'), 'while the legacy park sat untouched, its PR still in review');
+  assert.equal(sim.family('gcec/create-extractor').filter((i) => !i.seeded).length, 1,
+    'the bare park holds the lane: no hourly occurrence files behind it');
+});
+
+// ---- S63 — a kind this engine does not know (a future writer, a typo) reads
+// as failure — the unclassifiable park must block, never silently join an
+// inbox lane nobody treats as urgent.
+test('S63 an unknown park kind decodes as failure and holds the lane', () => {
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
+  sim.at('2026-08-12T00:30Z', (s) => {
+    s.legacyIssue('tidy/tidy-issues', ['needs-human', 'task:needs-human-shrugged']);
+    s.world.issueTouchedAt = T('2026-08-12T04:00Z');
+  });
+  sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
+  assert.equal(sim.family('tidy/tidy-issues').filter((i) => !i.seeded).length, 1,
+    'the unknown kind blocked the lane — no new occurrence behind an unread trace');
+});
+
+// ---- S64 — the request's whole life on ONE issue, read off the labels: the
+// bare mark, the adopted shape, the running shape, and the approval park that
+// IS the in-review state — the lifelong mark beside exactly one status.
+test('S64 the request labels: bare mark, adopted, running, in review — one issue throughout', () => {
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-18T00:00Z');
+  let req; const seen = [];
+  sim.at('2026-08-18T09:03Z', (s) => { req = s.markIssue({ author: 'owner' }); });
+  sim.at('2026-08-18T09:10Z', () => seen.push(labelsOf(req)));      // marked, awaiting adoption
+  sim.at('2026-08-18T09:17:30Z', () => seen.push(labelsOf(req)));   // adopted by the 09:17 scheduler run
+  sim.at('2026-08-18T09:20Z', () => seen.push(labelsOf(req)));      // handed to the session
+  sim.run('2026-08-18T09:00Z', '2026-08-18T18:00Z');
+
+  assert.deepEqual(seen[0], ['task:origin:ad-hoc'], 'the mark alone — no status is what adoption keys on');
+  assert.deepEqual(seen[1], ['task:origin:ad-hoc', 'task:status:waiting-for-executor']);
+  assert.deepEqual(seen[2], ['task:origin:ad-hoc', 'task:status:running-agent']);
+  assert.deepEqual(labelsOf(req), ['task:origin:ad-hoc', 'task:status:needs-human-approval'],
+    'the approval park is the in-review state, beside the mark that never comes off');
 });

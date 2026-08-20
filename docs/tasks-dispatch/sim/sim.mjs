@@ -77,16 +77,40 @@ export function nextAnchor(frequency, now) {
 
 // ---- the simulator ----------------------------------------------------------
 
-// ---- ad-hoc requests (DESIGN §16) ------------------------------------------
-// The request vocabulary lives on an ORDINARY issue and is written by the scheduler run
-// and by whoever converges the item — never by a person past the first mark.
-export const REQUEST_LABEL = 'claude-task';
-export const QUEUED_LABEL = 'claude-queued';
-// Not "done": the run's success leaves a PR a person must still merge, and the
-// item parks at `task:needs-human-approval` rather than closing. The issue says
-// what is true of it — a change is written and waiting on review.
-export const IN_REVIEW_LABEL = 'claude-in-review';
-export const MODEL_LABEL_PREFIX = 'claude-model:';
+// ---- the label vocabulary (DESIGN §4; the vocabulary migration, #1119) ------
+// The sim WRITES canonical spellings only and DECODES every spelling ever
+// written: open items created by a fielded engine wear the old labels, and the
+// mechanism must react to them exactly as to its own. statusOf is that decode —
+// one pass, straight to today's spelling.
+export const STATUS_PREFIX = 'task:status:';
+export const READY = 'task:status:waiting-for-executor';
+export const NH = (kind) => `task:status:needs-human-${kind}`;
+export const ORIGIN_PLANNED = 'task:origin:planned';
+export const ORIGIN_AD_HOC = 'task:origin:ad-hoc';
+export const ORIGIN_GITHUB = 'task:origin:github';
+const TRIAGE = ['action', 'decision', 'approval', 'failure'];
+// Legacy flat spellings → canonical. The legacy two-label park pair is handled
+// in statusOf ahead of these (the sub-label decides; bare or unknown reads as
+// failure, the conservative lane), because an old park kept its pair beside
+// whatever state label a torn transition left behind.
+const LEGACY_STATUS = new Map([
+  ['task:blocked', 'task:status:blocked'],
+  ['task:ready', READY],
+  ['task:executing', 'task:status:running-executor'],
+  ['task:agent', 'task:status:running-agent'],
+  ['task:done', 'task:status:done'], ['outcome:done', 'task:status:done'],
+  ['task:obsolete', 'task:status:rejected'], ['outcome:obsolete', 'task:status:rejected'],
+]);
+export function statusOf(i) {
+  for (const l of i.labels) if (l.startsWith(STATUS_PREFIX)) return l;
+  for (const l of i.labels) {
+    const m = /^task:needs-human-(.+)$/.exec(l);
+    if (m) return NH(TRIAGE.includes(m[1]) ? m[1] : 'failure');
+  }
+  if (i.labels.has('needs-human')) return NH('failure');
+  for (const l of i.labels) { const c = LEGACY_STATUS.get(l); if (c) return c; }
+  return null;
+}
 export const REQUEST_TASK = 'engine/implement-request';
 export const MODEL_FAMILIES = ['opus', 'sonnet', 'haiku'];
 export const DEFAULT_MODEL = 'opus';
@@ -107,11 +131,14 @@ export function eligible(req, permissionOf) {
   return { ok: false, why: 'neither opened nor approved by anyone with push access' };
 }
 
-// The model a request asks for. An unrecognized family falls back to the default
-// rather than to nothing — a request nobody can run would look accepted forever.
-export function modelFor(labels) {
-  const asked = [...labels].filter((l) => l.startsWith(MODEL_LABEL_PREFIX)).map((l) => l.slice(MODEL_LABEL_PREFIX.length));
-  return MODEL_FAMILIES.find((f) => asked.includes(f)) ?? DEFAULT_MODEL;
+// The model a request asks for — a BODY parameter now, not a label, honored
+// only when the issue AUTHOR holds push access (the body is author-editable
+// where a label is write-gated). An unrecognized family falls back to the
+// default rather than to nothing — a request nobody can run would look
+// accepted forever — and an ungated author's ask runs at the default too.
+export function gatedModel(req, permissionOf) {
+  if (!PUSH_PERMISSIONS.includes(permissionOf(req.author))) return DEFAULT_MODEL;
+  return MODEL_FAMILIES.includes(req.model) ? req.model : DEFAULT_MODEL;
 }
 
 export function makeSim({
@@ -128,9 +155,11 @@ export function makeSim({
 } = {}) {
   const registry = new Map(tasks.map((t) => [t.id, t]));
   const permissionOf = (login) => collaborators[login] ?? 'none';
-  // Ordinary issues somebody marked — NOT work items, and never wearing a
-  // `task:` label. Their own small vocabulary is the whole request state.
-  const requests = []; // {number,labels:Set,state,author,unreadable,comments:[{login,body}]}
+  // Ordinary issues somebody marked. Under the one-issue model the marked
+  // issue BECOMES the work item at adoption — the item record shares the
+  // issue's label Set, so a status written on one is written on both, which is
+  // the artifact-level truth of "the issue is the item".
+  const requests = []; // {number,labels:Set,state,author,model,unreadable,comments:[{login,body}]}
   // A deleted issue ('gone') is invisible here, exactly as a 404 makes it: the
   // precondition sees "does not exist", and no write-back can reach it.
   const requestOf = (n) => requests.find((r) => r.number === n && r.state !== 'gone') ?? null;
@@ -159,7 +188,7 @@ export function makeSim({
       if (req?.unreadable) return { error: `issue #${req.number} could not be read — refusing to guess` };
       if (!req) return { run: false, reason: `issue #${item?.request} does not exist` };
       if (req.state !== 'open') return { run: false, reason: `issue #${req.number} was closed before this ran` };
-      if (!req.labels.has(QUEUED_LABEL)) return { run: false, reason: `issue #${req.number} no longer carries the queued label — the request was withdrawn` };
+      if (!req.labels.has(ORIGIN_AD_HOC)) return { run: false, reason: `issue #${req.number} no longer carries the mark — the request was withdrawn` };
       const verdict = eligible(req, permissionOf);
       return verdict.ok
         ? { run: true, reason: `#${req.number}: ${verdict.why}` }
@@ -236,58 +265,46 @@ export function makeSim({
 
   const open = () => issues.filter((i) => i.state === 'open');
   const has = (i, l) => i.labels.has(l);
-  // Standing vs ad-hoc is STRUCTURAL (DESIGN §3, owner 2026-08-19 — no origin
-  // marker): an item bearing a task's bare unqualified title, where that task
-  // has a frequency at HEAD, IS the task's standing item. An item of a manual
-  // task, or any item carrying a qualifier, is ad-hoc — outside the family by
-  // its very title, so invisible to occurrence accounting with nothing
-  // hand-classified.
+  // The ORIGIN LABEL is the authority on standing vs ad-hoc (DESIGN §3, owner
+  // 2026-08-20, reversing 2026-08-19's marker-free rule): `task:origin:planned`
+  // marks the task's calendar occurrence, everything else is ad-hoc. The
+  // structural read — bare unqualified title of a task with a frequency at
+  // HEAD — survives only as the decode fallback for items that predate the
+  // scheme and carry no origin at all.
   const family = (taskId) => issues.filter((i) => i.title === titleOf(taskId));
   const isStanding = (i) => {
+    const o = originOf(i);
+    if (o) return o === ORIGIN_PLANNED;
     const task = registry.get(i.taskId);
     return !!task && task.frequency !== 'manual' && i.title === titleOf(i.taskId);
   };
   const standingItem = (taskId) => family(taskId).find((i) => i.state === 'open');
 
-  // A park is TWO labels, because that is what the engine writes (DESIGN §4):
-  // `needs-human` is the state every rule filters on, the sub-label is what the
-  // human is being asked for. Modeling only the first would make the sim agree
-  // with the rule's INTENT while diverging from the artifact — exactly the blind
-  // spot that hid the episode-boundary livelock (F24).
-  const TRIAGE = ['action', 'decision', 'approval', 'failure'];
-  const triageLabel = (kind) => `task:needs-human-${TRIAGE.includes(kind) ? kind : 'failure'}`;
-  const park = (it, from, kind) => {
-    if (from) it.labels.delete(from);
-    it.labels.add('needs-human');
-    it.labels.add(triageLabel(kind));
-  };
-  // The road back (DESIGN §4) clears BOTH labels — a re-queue that stripped only
-  // the state would leave a live item still wearing a triage sub-label, which is
-  // a shape no rule defines.
-  const unpark = (it) => {
-    it.labels.delete('needs-human');
-    for (const k of TRIAGE) it.labels.delete(triageLabel(k));
-  };
+  // A park is ONE label (DESIGN §4, the vocabulary migration): the machine
+  // filters on the `task:status:needs-human-` prefix and a person reads the
+  // kind off the same label's tail. The legacy two-label pair decodes through
+  // statusOf, modeled there because that is what old items actually wear —
+  // modeling only the intent is the blind spot that hid F24.
+  const triageLabel = (kind) => NH(TRIAGE.includes(kind) ? kind : 'failure');
+  const park = (it, _from, kind) => setStatus(it, triageLabel(kind));
+  // The road back clears the status, restoring the no-status shape; the
+  // re-queue lever then applies the ready status explicitly.
+  const unpark = (it) => clearStatus(it);
+  const isParked = (i) => (statusOf(i) ?? '').startsWith(NH(''));
+  // Only a fault park holds the task's lane — and the decode sends a bare
+  // legacy park and every unknown kind here, the direction that must be safe.
+  const blockingPark = (i) => statusOf(i) === NH('failure');
 
-  // Only a fault park holds the task's lane. A park wearing NO sub-label blocks
-  // too — every item an engine older than the split left behind, which is the
-  // direction that must be safe.
-  const blockingPark = (i) =>
-    has(i, 'needs-human')
-    && !has(i, 'task:needs-human-action')
-    && !has(i, 'task:needs-human-decision')
-    && !has(i, 'task:needs-human-approval');
-
-  function createIssue({ taskId, labels, notBefore = null, blockedBy = [], urgent = false, qualifier = null, request = null, model = null }) {
+  function createIssue({ taskId, labels, notBefore = null, blockedBy = [], urgent = false, qualifier = null, request = null, model = null, origin = ORIGIN_PLANNED }) {
     const it = {
       request, model,
       number: issues.length + 900,
       title: titleOf(taskId) + (qualifier ? ` ${qualifier}` : ''),
       taskId,
-      labels: new Set(labels.concat(urgent ? ['task:urgent'] : [])),
+      labels: new Set(labels.concat(urgent ? ['task:urgent'] : []).concat(origin ? [origin] : [])),
       state: 'open',
       createdAt: now, closedAt: null,
-      readySince: labels.includes('task:ready') ? now : null,
+      readySince: labels.includes('task:status:waiting-for-executor') ? now : null,
       lastActivity: now,
       notBefore, blockedBy,
       outcome: null, rolls: [], comments: [], escalated: false,
@@ -298,12 +315,23 @@ export function makeSim({
     return it;
   }
 
-  function swap(it, from, to) {
-    it.labels.delete(from);
+  // Statuses are mutually exclusive: a write clears every spelling of every
+  // status — canonical, legacy flat, legacy pair — before adding the new one,
+  // so a decoded legacy item comes out canonical from its first transition.
+  function clearStatus(it) {
+    for (const l of [...it.labels]) {
+      if (l.startsWith(STATUS_PREFIX) || LEGACY_STATUS.has(l)
+        || l === 'needs-human' || l.startsWith('task:needs-human-')) it.labels.delete(l);
+    }
+  }
+  function setStatus(it, to) {
+    clearStatus(it);
     it.labels.add(to);
-    it.readySince = to === 'task:ready' ? now : null;
+    it.readySince = to === READY ? now : null;
     it.lastActivity = now;
   }
+  const is = (i, status) => statusOf(i) === status;
+  const originOf = (i) => [...i.labels].find((l) => l.startsWith('task:origin:')) ?? null;
 
   // F18/F24: the episode boundary is an ARTIFACT on the item, not a property of
   // the label transition. Modelling it as "every transition into ready opens a
@@ -322,19 +350,23 @@ export function makeSim({
     it.state = 'closed';
     it.closedAt = now;
     it.outcome = outcome;
-    for (const l of [...it.labels]) if (l.startsWith('task:')) it.labels.delete(l);
+    // the terminal status goes ON; urgency ends with the item; the ORIGIN stays
+    // for life — the closed issue keeps saying where it came from
+    clearStatus(it);
+    it.labels.delete('task:urgent');
+    it.labels.add(outcome === 'done' ? 'task:status:done' : 'task:status:rejected');
     record('close', { task: it.taskId, issue: it.number, outcome });
     // F1, reopened 2026-08-15: whoever closes an item — executor or agent —
     // also re-checks blocked items' readiness in code (Blocked-by all closed,
     // Not-before passed) and a drain follows, so chain links proceed in
     // minutes instead of waiting out the scheduler run. The scheduler run's readiness job stays
     // the backstop; a HAND close runs no engine code and is covered by it.
-    for (const b of open().filter((i) => has(i, 'task:blocked'))) {
+    for (const b of open().filter((i) => is(i, 'task:status:blocked'))) {
       const blockersDone = b.blockedBy.every(
         (n) => issues.find((x) => x.number === n)?.state === 'closed'
       );
       if (blockersDone && (b.notBefore === null || now >= b.notBefore)) {
-        swap(b, 'task:blocked', 'task:ready');
+        setStatus(b, 'task:status:waiting-for-executor');
         record('ready', { task: b.taskId, issue: b.number, by: 'close' });
       }
     }
@@ -353,7 +385,7 @@ export function makeSim({
     // Idempotent by construction: a closed item never matches again, and a
     // seeded row is written only where none exists. Items waiting on a blocker
     // or on a first-ever/adoption Not-before (no roll on record) are untouched.
-    for (const it of open().filter((i) => has(i, 'task:blocked') && !has(i, 'needs-human'))) {
+    for (const it of open().filter((i) => is(i, 'task:status:blocked'))) {
       if (!isStanding(it) || it.blockedBy.length || it.rolls.length === 0) continue;
       if (it.notBefore === null || it.notBefore <= now) continue;
       const last = it.rolls.at(-1);
@@ -361,7 +393,7 @@ export function makeSim({
         writeBoardRow(it.taskId, registry.get(it.taskId)?.frequency ?? null, last.t, 'no', last.reason);
       }
       it.comments.push({ t: now, body: 'closing: declined occurrences now live on the schedule board, not as sleeping items' });
-      close(it, 'obsolete');
+      close(it, 'rejected');
       record('migrate-sleeping', { task: it.taskId, issue: it.number });
     }
     // job 1: instantiate — the precondition is asked WHEN THE ANCHOR COMES,
@@ -384,10 +416,10 @@ export function makeSim({
       // fleet-digest for two days behind one permission gap). It stays in `fam`
       // for the occurrence guard below — it DID consume its own occurrence.
       const openFam = fam.filter((i) => i.state === 'open')
-        .filter((i) => !has(i, 'needs-human') || blockingPark(i))
+        .filter((i) => !isParked(i) || blockingPark(i))
         .sort((a, b) => a.number - b.number);
       for (const dup of openFam.slice(1)) {
-        close(dup, 'obsolete');
+        close(dup, 'rejected');
         record('dedupe', { task: task.id, issue: dup.number });
       }
       if (openFam.length > 0) continue; // standing item exists
@@ -400,7 +432,7 @@ export function makeSim({
       // until its next real anchor (S25) — adoption must not fire weekly or
       // monthly work off-anchor.
       if (fam.length === 0) {
-        createIssue({ taskId: task.id, labels: ['task:blocked'], notBefore: nextAnchor(task.frequency, now) });
+        createIssue({ taskId: task.id, labels: ['task:status:blocked'], notBefore: nextAnchor(task.frequency, now) });
         continue;
       }
       // The board is the watermark: a row whose last-asked equals this anchor
@@ -433,15 +465,15 @@ export function makeSim({
         record('create-failed', { task: task.id });
         continue; // the POST was refused; nothing exists for this occurrence
       }
-      createIssue({ taskId: task.id, labels: ['task:ready'] });
+      createIssue({ taskId: task.id, labels: ['task:status:waiting-for-executor'] });
     }
     // job 2: ready whatever is due
-    for (const it of open().filter((i) => has(i, 'task:blocked'))) {
+    for (const it of open().filter((i) => is(i, 'task:status:blocked'))) {
       const blockersDone = it.blockedBy.every(
         (n) => issues.find((x) => x.number === n)?.state === 'closed'
       );
       if (blockersDone && (it.notBefore === null || now >= it.notBefore)) {
-        swap(it, 'task:blocked', 'task:ready');
+        setStatus(it, 'task:status:waiting-for-executor');
         record('ready', { task: it.taskId, issue: it.number });
       }
     }
@@ -450,35 +482,50 @@ export function makeSim({
     // the precondition's, at pickup). The mark is CONSUMED here — the request
     // label becomes the queued one — so the gate clears by being acted on and a
     // second scheduler run finds nothing to adopt. Re-requesting is re-applying the label.
-    for (const req of requests.filter((r) => r.state === 'open' && r.labels.has(REQUEST_LABEL))) {
-      // One issue, one live item (F28). While a prior item is LIVE the mark
-      // waits on the issue, unconsumed — a later scheduler run takes it. A prior item
-      // that PARKED is superseded by the re-ask: closed here, so the retry
-      // never leaves its predecessor parked forever beside the run replacing it.
-      const prior = issues.filter((i) => i.state === 'open' && i.request === req.number);
-      if (prior.some((i) => !has(i, 'needs-human'))) continue;
-      for (const p of prior) {
-        unpark(p);
-        p.comments.push({ t: now, body: `superseded: #${req.number} was re-marked` });
-        close(p, 'obsolete');
-        record('supersede', { task: p.taskId, issue: p.number, request: req.number });
+    // ---- job 4: adopt the marked issues (DESIGN §16.3, one-issue) ----------
+    // The marked issue IS the work item. The exactly-once guard is the mark
+    // with NO status: adoption writes the first status, and any status — live,
+    // parked or terminal — blocks re-adoption until a person clears it, which
+    // makes clearing the status the ONE re-ask lever (§4's re-queue and §16.3's
+    // re-mark used to be two; the one-issue shape collapses them).
+    for (const req of requests.filter((r) => r.state === 'open'
+        && r.labels.has(ORIGIN_AD_HOC) && statusOf(r) === null)) {
+      const prior = issues.find((i) => i.request === req.number);
+      if (prior) {
+        // the same record re-enters the queue — a cleared park or a cleared
+        // terminal is a re-ask, and the engine's write marks the episode. The
+        // model is re-gated from the body as it stands NOW: each ask names its
+        // model afresh, and nothing stale outranks it (F29's guarantee, kept
+        // without any label to consume).
+        prior.model = gatedModel(req, permissionOf);
+        prior.state = 'open'; prior.closedAt = null; prior.outcome = null;
+        setStatus(prior, READY);
+        endEpisode(prior);
+        record('adopt', { task: REQUEST_TASK, issue: prior.number, request: req.number, model: prior.model, readopt: true });
+        continue;
       }
-      const it = createIssue({
-        taskId: REQUEST_TASK,
-        labels: ['task:ready'], qualifier: `#${req.number}`,
-        request: req.number, model: modelFor(req.labels),
-      });
-      req.labels.delete(REQUEST_LABEL);
-      // The model labels are consumed with the mark (F29): each ask names its
-      // model afresh, so a label left by an earlier ask never outranks a new one.
-      for (const l of [...req.labels]) if (l.startsWith(MODEL_LABEL_PREFIX)) req.labels.delete(l);
-      req.labels.add(QUEUED_LABEL);
-      record('adopt', { task: REQUEST_TASK, issue: it.number, request: req.number, model: it.model });
+      // The machine block, appended at adoption: the task path and the gated
+      // parameters. The model is honored only when the AUTHOR holds push
+      // access (§16.7) — the body is author-editable where a label was
+      // write-gated, so an ungated ask still runs, at the default.
+      const model = gatedModel(req, permissionOf);
+      const it = {
+        request: req.number, model,
+        number: req.number, title: `request #${req.number}`, taskId: REQUEST_TASK,
+        labels: req.labels, // ONE issue: the item's labels ARE the issue's
+        state: 'open', createdAt: now, closedAt: null,
+        readySince: now, lastActivity: now,
+        notBefore: null, blockedBy: [],
+        outcome: null, rolls: [], comments: [], escalated: false,
+        sessions: [], quarantined: false,
+      };
+      issues.push(it);
+      setStatus(it, READY);
+      record('adopt', { task: REQUEST_TASK, issue: it.number, request: req.number, model });
     }
-    // job 3: reclaim dead executor claims
-    for (const it of open().filter((i) => has(i, 'task:executing'))) {
+    for (const it of open().filter((i) => is(i, 'task:status:running-executor'))) {
       if (now - it.lastActivity >= executingLeashMs) {
-        swap(it, 'task:executing', 'task:ready');
+        setStatus(it, 'task:status:waiting-for-executor');
         it.comments.push({ t: now, body: 'reclaimed: executor went silent past the leash' });
         endEpisode(it);
         record('reclaim', { task: it.taskId, issue: it.number });
@@ -492,34 +539,32 @@ export function makeSim({
   // writes nothing and leaves the queued label standing — re-arming work that
   // writes code is a person's decision, and that standing label is also what stops
   // the scheduler run adopting the same request a second time.
+  // A refused request DISARMS on the issue itself (§16.5): the terminal
+  // status stands on the issue — which stays whatever open/closed state its
+  // author keeps it in, because the run's verdict is not the issue's validity —
+  // and blocks re-adoption until a person clears it (the re-ask lever). The
+  // one comment says why. There is no separate in-review write-back: the
+  // approval park IS the in-review state, on the same labels.
   function declineRequest(it, why) {
     const req = requestOf(it.request);
     if (!req) return;
-    req.labels.delete(QUEUED_LABEL);
-    req.comments.push({ login: 'claudinite', body: `Not implementing this: ${why}` });
-    record('request-declined', { issue: req.number, item: it.number, why });
-  }
-  function reviewRequest(it) {
-    const req = requestOf(it.request);
-    if (!req) return;
-    req.labels.delete(QUEUED_LABEL);
-    req.labels.add(IN_REVIEW_LABEL);
-    record('request-in-review', { issue: req.number, item: it.number });
+    req.comments.push({ login: 'claudinite', body: `declined: ${why}` });
+    record('request-declined', { issue: req.number, why });
   }
 
   // ---- the executor (DESIGN §6) ---------------------------------------------
   function pickable() {
-    const ready = open().filter((i) => has(i, 'task:ready'));
+    const ready = open().filter((i) => is(i, 'task:status:waiting-for-executor'));
     const live = (taskId) => {
       const s = standingItem(taskId);
-      return s && ['task:ready', 'task:executing', 'task:agent'].some((l) => has(s, l));
+      return s && ['task:status:waiting-for-executor', 'task:status:running-executor', 'task:status:running-agent'].some((l) => has(s, l));
     };
     return ready
       .filter((i) => !i.quarantined) // an item no live executor can reach (S18)
       .filter((i) => {
         // same-title mutex: one task, one execution at a time
         if (open().some((o) => o !== i && o.title === i.title &&
-              (has(o, 'task:executing') || has(o, 'task:agent')))) return false;
+              (is(o, 'task:status:running-executor') || is(o, 'task:status:running-agent')))) return false;
         // the `after` yield: skip while the upstream's standing item is live
         // this cycle (a rolled or needs-human upstream does not block — S23)
         if (isStanding(i)) {
@@ -545,10 +590,8 @@ export function makeSim({
   // item; a racing executor's stale read is modeled by passing the snapshot
   // taken before the rival's swap landed.
   function claim(it, execId, preRead) {
-    if (!preRead.has('task:ready') || preRead.has('needs-human') ||
-        preRead.has('task:executing') || preRead.has('task:agent')) return false;
-    it.labels.delete('task:ready');
-    it.labels.add('task:executing');
+    if (statusOf({ labels: preRead }) !== READY) return false;
+    setStatus(it, 'task:status:running-executor');
     it.readySince = null;
     it.lastActivity = now;
     it.comments.push({ t: now, seq: seq++, kind: 'claim', exec: execId });
@@ -561,7 +604,7 @@ export function makeSim({
   }
 
   // Hand-off + invocation (DESIGN §6.6, as amended 2026-08-15): swap to
-  // task:agent, then fire the endpoint EXACTLY ONCE — never retried, because a
+  // task:status:running-agent, then fire the endpoint EXACTLY ONCE — never retried, because a
   // retry is only safe when the first call is known to have done nothing, and
   // the unanswered case is exactly where nothing can be known. Three outcomes:
   //  - fired      → a session exists; the item is the agent's
@@ -569,16 +612,16 @@ export function makeSim({
   //                 token / URL / routine is wrong, which no retry fixes):
   //                 converge needs-human naming the cause
   //  - unanswered → the session may or may not exist and nothing may guess:
-  //                 the item STAYS task:agent with the outcome-unknown comment;
+  //                 the item STAYS task:status:running-agent with the outcome-unknown comment;
   //                 a session that started converges it, one that never did
   //                 leaves it silent until the janitor's agent leash (§11)
   // At-most-once invocation is what deleted the agent-side claim lease: two
   // sessions can never arrive at one item, so there is nothing to arbitrate.
   function handOff(it, task) {
-    swap(it, 'task:executing', 'task:agent');
+    setStatus(it, 'task:status:running-agent');
     if (world._apiRefusedUntil != null && now < world._apiRefusedUntil) {
       record('handoff-refused', { task: it.taskId, issue: it.number });
-      park(it, 'task:agent', 'action'); // a token, a URL or a routine is wrong
+      park(it, 'task:status:running-agent', 'action'); // a token, a URL or a routine is wrong
       return;
     }
     if (world._apiUnanswered) {
@@ -599,9 +642,9 @@ export function makeSim({
   }
 
   function startAgentSession(s, it, task) {
-    if (it.state !== 'open' || !has(it, 'task:agent')) return;
+    if (it.state !== 'open' || !is(it, 'task:status:running-agent')) return;
     // No agent-side claim (DESIGN §7, amended 2026-08-15): the session checks,
-    // not claims — the item wears task:agent and the fire's nonce matches the
+    // not claims — the item wears task:status:running-agent and the fire's nonce matches the
     // newest hand-off, both modeled by the guard above.
     it.lastActivity = now;
     if (crashAgentOf.delete(it.taskId)) {
@@ -611,7 +654,7 @@ export function makeSim({
     schedule(now + task.agentMinutes * MIN, () => {
       if (it.state !== 'open') return;
       if (task.agentFails?.(world, now)) {
-        park(it, 'task:agent', 'failure');
+        park(it, 'task:status:running-agent', 'failure');
         record('agent-failed', { task: it.taskId, issue: it.number });
         return;
       }
@@ -621,8 +664,7 @@ export function makeSim({
       // because the request task is the first agentic task whose every successful
       // run ends that way.
       if (task.deliversOpenPr?.(world, now)) {
-        if (it.request != null) reviewRequest(it);
-        park(it, 'task:agent', 'approval');
+        park(it, 'task:status:running-agent', 'approval');
         record('delivered-open-pr', { task: it.taskId, issue: it.number });
         return;
       }
@@ -665,7 +707,7 @@ export function makeSim({
     if (verdict.error) {
       record('evaluate-failed', { task: it.taskId, issue: it.number, why: verdict.error });
       endEpisode(it);                           // F24: a park strikes its claim
-      park(it, 'task:executing', 'failure');
+      park(it, 'task:status:running-executor', 'failure');
       onSettled();
       return;
     }
@@ -678,9 +720,22 @@ export function makeSim({
       // an open sleeping issue.
       // A declined request tells the ISSUE so and disarms it, in the same
       // convergence: nothing else would, and an un-disarmed issue would be
-      // re-adopted and re-refused on every scheduler run forever.
-      if (it.request != null) declineRequest(it, verdict.reason ?? 'the precondition declined');
-      close(it, 'obsolete');
+      // re-adopted and re-refused on every scheduler run forever. The terminal
+      // status stands on the still-open issue (the issue's open/closed belongs
+      // to its author); a gone or already-closed issue closes the item too.
+      if (it.request != null) {
+        declineRequest(it, verdict.reason ?? 'the precondition declined');
+        endEpisode(it);
+        const req = requestOf(it.request);
+        if (req && req.state === 'open') {
+          setStatus(it, 'task:status:rejected');
+          it.outcome = 'rejected';
+        } else {
+          close(it, 'rejected');
+        }
+      } else {
+        close(it, 'rejected');
+      }
       record('decline-close', { task: it.taskId, issue: it.number, reason: verdict.reason ?? 'no work' });
       onSettled();
       return;
@@ -691,7 +746,7 @@ export function makeSim({
     // re-pick puts a newer claim on the item, and the stale runner must see
     // it and abandon silently rather than hand off work it no longer owns.
     const myClaim = it.comments.filter((c) => c.kind === 'claim').at(-1);
-    const mineStill = () => it.state === 'open' && has(it, 'task:executing') &&
+    const mineStill = () => it.state === 'open' && is(it, 'task:status:running-executor') &&
       it.comments.filter((c) => c.kind === 'claim').at(-1) === myClaim;
     const workMs = (task.codeWorkMinutes ?? 1) * MIN;
     const diesAtMin = crashDuringWorkOf.has(it.taskId)
@@ -732,7 +787,7 @@ export function makeSim({
         // The worker's own triage marker routes the park where it left one; a
         // worker that said nothing about why it failed parks at `failure`.
         const kind = task.codeWorkTriage?.(world, now) ?? 'failure';
-        park(it, 'task:executing', kind);
+        park(it, 'task:status:running-executor', kind);
         record('work-failed', { task: it.taskId, issue: it.number, triage: kind });
         onSettled();
         return;
@@ -746,7 +801,7 @@ export function makeSim({
         // the lane: the reviewer's silence delays only the review.
         if (task.deliversOpenPr?.(world, now)) {
           endEpisode(it);                     // F24: a park strikes its claim
-          park(it, 'task:executing', 'approval');
+          park(it, 'task:status:running-executor', 'approval');
           record('delivered-open-pr', { task: it.taskId, issue: it.number });
           onSettled();
           return;
@@ -764,14 +819,14 @@ export function makeSim({
   // pair, or an upstream and its dependent. The lease protects one item, not
   // one title. So after WINNING a claim, re-verify the filters against live
   // state: if a conflicting item now holds an EARLIER claim (comment order —
-  // the same arbiter the lease trusts), revert this claim to task:ready and
+  // the same arbiter the lease trusts), revert this claim to task:status:waiting-for-executor and
   // move on. Bounded (one revert), deterministic (comment order), and the
   // earlier claim never even notices.
   function postClaimVerify(it, execId) {
     const myClaim = it.comments.filter((c) => c.kind === 'claim').at(-1);
     const conflicts = open().filter((o) => {
       if (o === it) return false;
-      const live = has(o, 'task:executing') || has(o, 'task:agent');
+      const live = is(o, 'task:status:running-executor') || is(o, 'task:status:running-agent');
       if (!live) return false;
       if (o.title === it.title) return true; // twin
       if (isStanding(it)) {
@@ -784,7 +839,7 @@ export function makeSim({
       o.comments.filter((c) => c.kind === 'claim').at(-1)?.seq < myClaim.seq);
     if (!earlier) return true;
     endEpisode(it);
-    swap(it, 'task:executing', 'task:ready');
+    setStatus(it, 'task:status:waiting-for-executor');
     record('claim-reverted', { task: it.taskId, issue: it.number, exec: execId });
     return false;
   }
@@ -816,7 +871,7 @@ export function makeSim({
       if (!claim(it, execId, new Set(it.labels))) return step(); // loser tries another item
       if (!postClaimVerify(it, execId)) return step();
       const task = registry.get(it.taskId);
-      if (!task) { close(it, 'obsolete'); return settle(); } // validate: task gone (S20)
+      if (!task) { close(it, 'rejected'); return settle(); } // validate: task gone (S20)
       record('pick', { run: runId, exec: execId, task: it.taskId, issue: it.number });
       executeClaimed(it, task, settle);
     };
@@ -828,21 +883,21 @@ export function makeSim({
     if (suspendedAll) { record('suspended-skip', { workflow: 'janitor' }); return; }
     // rule A — stale-ready: an item no executor picked for ~2 periods comes
     // out of the queue as a human's problem (S18's stuck member)
-    for (const it of open().filter((i) => has(i, 'task:ready') && !i.escalated)) {
+    for (const it of open().filter((i) => is(i, 'task:status:waiting-for-executor') && !i.escalated)) {
       const per = registry.has(it.taskId) ? periodMs(registry.get(it.taskId).frequency) : DAY;
       if (it.readySince !== null && now - it.readySince >= staleReadyPeriods * per) {
         it.escalated = true;
-        park(it, 'task:ready', 'action'); // the lane is not draining; the fix is outside the item
+        park(it, 'task:status:waiting-for-executor', 'action'); // the lane is not draining; the fix is outside the item
         record('escalate', { task: it.taskId, issue: it.number, rule: 'stale-ready' });
       }
     }
-    // rule B — the agent leash: task:agent silent past ~3h means the session
+    // rule B — the agent leash: task:status:running-agent silent past ~3h means the session
     // died; converge needs-human, naming the dead session (S11)
-    for (const it of open().filter((i) => has(i, 'task:agent'))) {
+    for (const it of open().filter((i) => is(i, 'task:status:running-agent'))) {
       if (now - it.lastActivity >= agentLeashMs) {
         const dead = it.sessions.at(-1)?.id ?? 'unknown';
         // what the dead session left behind decides whether this re-queues
-        park(it, 'task:agent', 'decision');
+        park(it, 'task:status:running-agent', 'decision');
         it.comments.push({ t: now, body: `agent session ${dead} went silent past the leash` });
         record('agent-reclaim', { task: it.taskId, issue: it.number, session: dead });
       }
@@ -852,7 +907,7 @@ export function makeSim({
     // stay untouched, so the item still proceeds by itself the moment its
     // blockers resolve. Sleeping items (future Not-before, blockers closed)
     // and rolling items (no blockers) never match.
-    for (const it of open().filter((i) => has(i, 'task:blocked') && !i.escalated)) {
+    for (const it of open().filter((i) => is(i, 'task:status:blocked') && !i.escalated)) {
       const blocked = it.blockedBy.some((n) => issues.find((x) => x.number === n)?.state !== 'closed');
       if (blocked && now - it.createdAt >= staleBlockedMs) {
         it.escalated = true;
@@ -876,29 +931,48 @@ export function makeSim({
     markIssue({ author = 'owner', model = null, comments = [] } = {}) {
       const req = {
         number: requests.length + 500,
-        labels: new Set([REQUEST_LABEL, ...(model ? [`${MODEL_LABEL_PREFIX}${model}`] : [])]),
-        state: 'open', author, comments: [...comments],
+        labels: new Set([ORIGIN_AD_HOC]),
+        state: 'open', author, model, comments: [...comments],
       };
       requests.push(req);
       record('mark', { issue: req.number, author, model });
       return req;
     },
     // A person withdraws a request after it was adopted, or closes the issue.
-    withdrawRequest(number) { requestOf(number).labels.delete(QUEUED_LABEL); return sim; },
-    closeRequestIssue(number) { requestOf(number).state = 'closed'; return sim; },
+    withdrawRequest(number) { requestOf(number).labels.delete(ORIGIN_AD_HOC); return sim; },
+    closeRequestIssue(number) {
+      const req = requestOf(number); req.state = 'closed';
+      const it = issues.find((i) => i.request === number && i.state === 'open');
+      if (it) { it.state = 'closed'; it.closedAt = now; } // one issue: closing it closes the item
+      return sim;
+    },
     // The issue stops existing (a 404): reads answer "not there", writes reach
     // nothing. Distinct from unreadable below — gone is a fact, not a fault.
-    deleteRequestIssue(number) { requestOf(number).state = 'gone'; return sim; },
+    deleteRequestIssue(number) {
+      const req = requestOf(number); req.state = 'gone';
+      const it = issues.find((i) => i.request === number && i.state === 'open');
+      if (it) it.state = 'gone';
+      return sim;
+    },
     // A transient API failure: the issue exists but cannot be read right now.
     setRequestUnreadable(number, on = true) { requestOf(number).unreadable = on; return sim; },
     // Re-marking an issue — the phone-sized way to ask again; adoption
     // supersedes a parked predecessor (F28), and the item-side re-queue lever
     // (DESIGN §4) remains the other sanctioned retry.
+    // The phone-sized re-ask: clear the status, leaving the bare mark — the
+    // next scheduler run re-adopts the same record. One lever for park,
+    // rejection and review alike.
     remarkIssue(number, { model = null } = {}) {
       const req = requestOf(number);
-      req.labels.delete(IN_REVIEW_LABEL);
-      req.labels.add(REQUEST_LABEL);
-      if (model) req.labels.add(`${MODEL_LABEL_PREFIX}${model}`);
+      const st = statusOf(req);
+      const settled = st === null || st.startsWith(NH('')) || st === 'task:status:rejected' || st === 'task:status:done';
+      // While the run is LIVE there is nothing to ask again — the mark already
+      // stands and the status says a run owns it, so an impatient re-ask
+      // changes nothing (the one-issue mirror of "the mark waits, unconsumed").
+      if (!settled) { record('mark', { issue: number, remark: true, refused: 'live' }); return req; }
+      if (st !== null) clearStatus(req);
+      req.labels.add(ORIGIN_AD_HOC);
+      if (model) req.model = model;
       record('mark', { issue: number, remark: true });
       return req;
     },
@@ -940,16 +1014,16 @@ export function makeSim({
     force(taskId, { urgent = true } = {}) {
       let it = standingItem(taskId);
       if (!it) {
-        it = createIssue({ taskId, labels: ['task:ready'], urgent });
+        it = createIssue({ taskId, labels: ['task:status:waiting-for-executor'], urgent });
         record('force', { task: taskId, issue: it.number, minted: true });
         schedule(now + 1 * MIN, () => executorRun('E1', 'label-event'));
         return it;
       }
       it.notBefore = null;
-      if (has(it, 'task:blocked')) swap(it, 'task:blocked', 'task:ready');
+      if (is(it, 'task:status:blocked')) setStatus(it, READY);
       // The hand-wake writes its own episode-marker comment (create-work-item),
       // unlike the bare human re-queue — so forcing ends the episode itself.
-      if (has(it, 'needs-human')) { unpark(it); it.labels.add('task:ready'); it.readySince = now; endEpisode(it); }
+      if (isParked(it)) { setStatus(it, READY); endEpisode(it); }
       if (urgent) it.labels.add('task:urgent');
       record('force', { task: taskId, issue: it.number });
       schedule(now + 1 * MIN, () => executorRun('E1', 'label-event')); // the labeled event's latency sugar
@@ -964,9 +1038,13 @@ export function makeSim({
     // eventLost models a dropped `labeled` webhook (S16): no immediate
     // executor run fires; the next scheduler run's drain is the guarantee.
     createItem(taskId, { urgent = false, notBefore = null, blockedBy = [], qualifier = null, eventLost = false } = {}) {
-      const born = notBefore !== null || blockedBy.length ? 'task:blocked' : 'task:ready';
-      const it = createIssue({ taskId, labels: [born], notBefore, blockedBy, urgent, qualifier });
-      if (born === 'task:ready' && !eventLost) schedule(now + 1 * MIN, () => executorRun('E1', 'label-event'));
+      const born = notBefore !== null || blockedBy.length ? 'task:status:blocked' : 'task:status:waiting-for-executor';
+      // an unqualified item of a scheduled task IS its standing occurrence
+      // (minting), so it is planned; a qualifier or a manual task is ad-hoc
+      const adHoc = qualifier !== null || registry.get(taskId)?.frequency === 'manual';
+      const it = createIssue({ taskId, labels: [born], notBefore, blockedBy, urgent, qualifier,
+        origin: adHoc ? ORIGIN_AD_HOC : ORIGIN_PLANNED });
+      if (born === 'task:status:waiting-for-executor' && !eventLost) schedule(now + 1 * MIN, () => executorRun('E1', 'label-event'));
       return it;
     },
 
@@ -976,7 +1054,7 @@ export function makeSim({
     crashDuringWorkOf(taskId, minutes) { crashDuringWorkOf.set(taskId, minutes); return sim; },
     crashNextAgentOf(taskId) { crashAgentOf.add(taskId); return sim; },
 
-    // the task file disappears from HEAD (S20): validate-in-code closes obsolete
+    // the task file disappears from HEAD (S20): validate-in-code closes rejected
     removeTask(taskId) { registry.delete(taskId); return sim; },
 
     // a declaration change lands at HEAD (S28): the very next scheduler run/pick reads
@@ -984,6 +1062,24 @@ export function makeSim({
     updateTask(taskId, patch) {
       registry.set(taskId, { ...registry.get(taskId), ...patch });
       return sim;
+    },
+
+    // an open work item left by a FIELDED engine (S62): the old vocabulary on
+    // the wire, exactly as stored — the decode must react to it as to its own,
+    // and the first transition the engine writes comes out canonical
+    legacyIssue(taskId, labels, { qualifier = null } = {}) {
+      const it = {
+        number: issues.length + 600,
+        title: titleOf(taskId) + (qualifier ? ` ${qualifier}` : ''),
+        taskId, labels: new Set(labels), state: 'open',
+        createdAt: now, closedAt: null,
+        readySince: labels.includes('task:ready') ? now : null, lastActivity: now,
+        notBefore: null, blockedBy: [], outcome: null, rolls: [], comments: [],
+        escalated: false, sessions: [], quarantined: false,
+      };
+      issues.push(it);
+      record('create', { task: taskId, issue: it.number, legacy: true });
+      return it;
     },
 
     // an issue from another mechanism/vocabulary (S29): present in the repo,
@@ -1034,7 +1130,7 @@ export function makeSim({
     // F16's precondition: a scheduler run whose issue list was stale created a second
     // standing item. Injected directly — the sim's own scheduler run can't produce it.
     injectDuplicateStanding(taskId) {
-      return createIssue({ taskId, labels: ['task:ready'] });
+      return createIssue({ taskId, labels: ['task:status:waiting-for-executor'] });
     },
 
     // ---- the schedule board's levers (#1115) -------------------------------
@@ -1060,7 +1156,7 @@ export function makeSim({
     seedSleepingItem(taskId, { rolledAtIso, notBeforeIso, reason = 'no work', blockedBy = [] }) {
       const it = {
         number: issues.length + 850, title: titleOf(taskId), taskId,
-        labels: new Set(['task:blocked']), state: 'open',
+        labels: new Set(['task:status:blocked']), state: 'open',
         createdAt: T(rolledAtIso) - 30 * MIN, closedAt: null, readySince: null,
         lastActivity: T(rolledAtIso), notBefore: T(notBeforeIso), blockedBy,
         outcome: null, rolls: [{ t: T(rolledAtIso), reason }], comments: [],
@@ -1079,7 +1175,7 @@ export function makeSim({
 
     // ---- fleet / human levers ----------------------------------------------
     quarantine(number) { issues.find((i) => i.number === number).quarantined = true; return sim; },
-    closeByHand(number, outcome = 'obsolete') {
+    closeByHand(number, outcome = 'rejected') {
       const it = issues.find((i) => i.number === number);
       it.state = 'closed'; it.closedAt = now; it.outcome = outcome;
       for (const l of [...it.labels]) if (l.startsWith('task:') || l === 'needs-human') it.labels.delete(l);
@@ -1093,13 +1189,13 @@ export function makeSim({
     resumeAll() { suspendedAll = false; record('resume', {}); return sim; },
 
     // the sanctioned human re-queue (F7, DESIGN §4): strip needs-human,
-    // apply task:ready — the same lever forcing uses
+    // apply task:status:waiting-for-executor — the same lever forcing uses
     requeue(number) {
       const it = issues.find((i) => i.number === number);
       unpark(it);
-      it.labels.delete('task:blocked');
+      it.labels.delete('task:status:blocked');
       it.notBefore = null;
-      it.labels.add('task:ready');
+      it.labels.add('task:status:waiting-for-executor');
       it.readySince = now;
       it.lastActivity = now;
       record('requeue', { task: it.taskId, issue: it.number });
