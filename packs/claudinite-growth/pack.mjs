@@ -110,7 +110,6 @@ export default {
   ],
   workRules: [dedupIntegrity, growthWriteScope],
   skills: [
-    'do-later',
     'extract-from-activity',
     'extract-from-conversations',
     'generate-project-instructions',

@@ -19,7 +19,8 @@ export default {
   // against the stamped version, and what gets stamped is this manifest's number — so
   // a record declaring a version above it would re-apply every cycle, forever,
   // draining never.
-  version: 11,
+  // 12: the `do-later` skill — deferring a change into work that comes back on its own.
+  version: 12,
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'cross-project working discipline, issue-branch-PR lifecycle, repo hygiene, doc/reference integrity and the baseline engineering, testing and debugging skills',
@@ -66,6 +67,7 @@ export default {
     'authoring-agent-docs',
     'bug-investigation',
     'bump-version',
+    'do-later',
     'ci-performance-evaluation',
     'file-placement',
     'repo-text-sweeps',
