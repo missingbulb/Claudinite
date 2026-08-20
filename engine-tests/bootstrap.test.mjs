@@ -5,16 +5,18 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { hashedCron } from './engine/scheduler/hash-minute.mjs';
-import { packIdForRepo } from './engine/scheduler/converge-wiring.mjs';
+import { hashedCron } from '../engine/scheduler/hash-minute.mjs';
+import { packIdForRepo } from '../engine/scheduler/converge-wiring.mjs';
 
 // Integration suite for bootstrap.mjs, THE one-shot adoption orchestrator: it runs
 // the real canon (this checkout) against a fresh fixture repo, because the whole
 // point of the script is that a fresh adoption needs nothing but this invocation —
 // a hermetic mini-canon would prove the plumbing while missing exactly the
 // cross-module wiring (vendor set → converge-wiring → sweeps) the script exists
-// to sequence.
-const CANON = dirname(fileURLToPath(import.meta.url));
+// to sequence. It lives in engine-tests/ with the canon's other top-level-folder
+// tests: ci.yml's test roots don't cover the repo root, where bootstrap.mjs sits
+// beside its doc.
+const CANON = dirname(dirname(fileURLToPath(import.meta.url)));
 const BOOTSTRAP = join(CANON, 'bootstrap.mjs');
 const REPO = 'acme/WidgetWorks';
 const LOCAL_PACK_ID = packIdForRepo(REPO);
