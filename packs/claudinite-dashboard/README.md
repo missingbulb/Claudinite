@@ -95,11 +95,19 @@ second. So nothing on it is a total for its own sake.
 | **The last two mornings** | Yesterday's and the day before's fleet digest, when the deployment names a `digestsRepo` |
 | **Fleet activity** | What the fleet *did* per day — work closed by outcome, runs and their pass rate, which members moved at all |
 | **Rollup tiles** | How many *members* need a human — not how many items exist |
-| **Members** | Every member ranked worst-first, in three column groups: **Status** (its own CI, and 90 days of commits), **Claudinite** (packs, tasks, queue, outcomes, mount, scheduler) and **Work** (issues and pull requests waiting on a person). Stars ride in the member cell rather than a column of their own — they say what kind of repo this is, not whether it is healthy |
+| **Members** | Every member ranked worst-first, in three column groups asked in the order a reader asks them: **Activity** (90 days of commits, as a weekly curve), **Waiting on a person** (an estimate in minutes, what it is made of, then issues and pull requests) and **Claudinite** (packs wearing the mount's verdict, queue, outcomes, scheduler). Stars and CI ride in the member cell — they are how you recognise a row, not findings about it |
 | **Tasks across the fleet** | One task, everywhere it runs — a shared pack's task parked in four members at once is a canon problem no single repo's page reveals |
 | **Pack adoption** | Which packs are in use and how widely — who a change to a pack would reach |
 
 Three rules shape it, and they are in [`fleet.mjs`](fleet.mjs):
+
+**An estimate is published as an assumption, or not at all.** The Waiting group puts
+a number of minutes on each member, at a flat rate per parked item, and the rate is a
+single exported constant that the page states in its own note. Nothing here measures
+how long a park actually takes; a per-kind estimate would be the same guess wearing
+more decimal places, and the honest form of a number nothing measures is one you can
+argue with. A broken scheduler is deliberately outside it — that is not a queue of
+work to get through — though it is still reported beside it.
 
 **A count of members is not a description of the morning.** Every attention figure
 counts *members*, because "47 open items" is not a list anyone works through. But a
@@ -326,6 +334,11 @@ Three strategies, because the data has three shapes — see
 | Open items, runs, repo metadata | **ETag** revalidation | a `304` is free — it does not count against the rate limit, so this is fresh data at no cost |
 | Closed-issue history pages | **24h TTL** | settled, but not addressable by a sha |
 | A member's year of commit activity | **6h TTL**, and skipped entirely below `tight` | the only read here that is decoration; a few hours old is the same answer, and a tight budget goes without it before it goes without a queue |
+
+The **commit curve** is drawn by week, not by day. Ninety daily points across a table
+column is a sawtooth of weekends and Tuesdays, and a sawtooth has no shape to read —
+which is the whole reason the column exists rather than the single date it replaced.
+The daily counts are kept: they are the total, the peak and the hover.
 
 A fourth thing decides how hard those three are leaned on: **the budget policy**
 ([`budget.mjs`](budget.mjs)), planned before a load starts and re-planned on every

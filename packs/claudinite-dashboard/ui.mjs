@@ -121,8 +121,11 @@ export const starMark = (stars) => el('div', {
 // CI as a dot with its age under it. The dot is never the whole message — it carries
 // a `title` and an `aria-label` in words, because a colour alone is unreadable to a
 // reader who cannot see the difference between this green and this red.
-export function ciDot(ui, when) {
-  return el('div', { className: 'ci-dot' }, [
+//
+// The age is bare: "7h", not "7h ago". In a column of them the word is on every row
+// and carries no information, and the header says what the number is.
+export function ciMark(ui, when) {
+  return el('div', { className: 'ci-mark' }, [
     el('i', {
       className: `dot ${ui.cls}`,
       role: 'img',
@@ -133,22 +136,48 @@ export function ciDot(ui, when) {
   ]);
 }
 
-// A member's last 90 days of commits, as GitHub draws them: a column per week, a row
-// per weekday, shaded by how many commits landed that day.
-//
-// The scale is EACH ROW'S OWN peak, so a square's darkness compares days within one
-// member and never across two. A fleet-wide scale was the alternative and it is
-// worse: one member merging a vendored tree flattens every other row to blank, which
-// is exactly the reading — "nothing happens in these repos" — that the graph exists
-// to disprove. The peak is in the hover text so the scale is never guessed at.
-//
-// Three empty states, and they are three different facts. `null` days are outside the
-// year of statistics the API returns; a null series is a read that did not happen
-// (withheld for budget, or GitHub still computing); and zeroes are a repo that was
-// genuinely quiet.
-const COMMIT_LEVELS = 4;
+// The pack count, with the mount's verdict worn as a badge on it. Two facts that are
+// read together — how much Claudinite is declared here, and whether what is declared
+// is current — and almost always the badge says the same thing, so it earns a corner
+// rather than a column. The detail is the hover.
+export function packMark(count, mount) {
+  const badge = MOUNT_BADGE[mount?.state] ?? MOUNT_BADGE.unknown;
+  return el('div', { className: 'pack-mark', title: badge.title(mount) }, [
+    el('div', { className: 'n num', textContent: count == null ? '—' : String(count) }),
+    el('div', { className: `badge ${badge.cls}`, textContent: badge.glyph, role: 'img', 'aria-label': badge.title(mount) }),
+  ]);
+}
 
-export function commitGraph(series, { cell = 4, gap = 1, note = null } = {}) {
+// `unknown` is not `current`: with no canon configured there is nothing to compare
+// against, and a tick there would claim a check that never happened.
+const packList = (mount) => (mount.behindPacks ?? [])
+  .map((p) => `${p.pack} v${p.version} < canon v${p.canonVersion}`).join('\n');
+
+const MOUNT_BADGE = {
+  current: { glyph: '✓', cls: 'ok', title: (m) => `mount current — engine v${m.engineVersion}` },
+  behind: { glyph: '⏱', cls: 'info', title: (m) => `mount behind canon:\n${packList(m)}` },
+  'behind-engine': { glyph: '⏱', cls: 'serious', title: (m) => `mount on engine v${m.engineVersion}, canon is v${m.canonEngineVersion}` },
+  unversioned: { glyph: '?', cls: 'warning', title: () => 'the mount stamp carries no versions — it predates the versioned update flows' },
+  none: { glyph: '?', cls: 'warning', title: () => 'declares Claudinite but carries no mount stamp' },
+  unknown: { glyph: '·', cls: 'idle', title: () => 'mount freshness unknown — no canon configured to compare against' },
+};
+
+// A member's last 90 days of commits, as a filled area over time.
+//
+// A curve rather than a grid of day-squares: at this size the question a reader is
+// asking is "is this repo being worked on, and was it always" — a shape answers that
+// across the column in one glance, where 90 separate squares have to be counted.
+//
+// Drawn WEEKLY. A quarter at daily resolution is a sawtooth — an ordinary repo's
+// weekend is a trough and its Tuesday a spike — and a sawtooth has no shape to read.
+// The daily counts still supply the total, the peak and the hover.
+//
+// Three empty states, and they are three different facts. A null series is a read
+// that did not happen (withheld for budget, or GitHub still computing); a null DAY is
+// outside the year of statistics the API returns; and zeroes are a repo that was
+// genuinely quiet. The curve breaks over unread days rather than drawing them at the
+// floor, so a gap in the data never renders as a quiet stretch.
+export function commitGraph(series, { width = 108, height = 26, note = null } = {}) {
   if (!series) return el('div', { className: 'sub', textContent: 'not read' });
 
   const NS = 'http://www.w3.org/2000/svg';
@@ -158,49 +187,50 @@ export function commitGraph(series, { cell = 4, gap = 1, note = null } = {}) {
     return n;
   };
 
-  const { days, peak, total, unread } = series;
-  // Sunday-first columns, like GitHub's, so a reader who knows that grid reads this
-  // one. The first column is short whenever the window opens mid-week.
-  const weekday = (day) => new Date(`${day}T00:00:00Z`).getUTCDay();
-  const columns = [];
-  for (const d of days) {
-    const w = weekday(d.day);
-    if (!columns.length || w === 0) columns.push(new Array(7).fill(undefined));
-    columns[columns.length - 1][w] = d;
-  }
-
-  const width = columns.length * (cell + gap) - gap;
-  const height = 7 * (cell + gap) - gap;
+  const { days, buckets, total, peak, unread } = series;
   const svg = svgEl('svg', {
-    viewBox: `0 0 ${width} ${height}`, width, height,
+    viewBox: `0 0 ${width} ${height}`, preserveAspectRatio: 'none',
     class: 'commits', role: 'img',
-    'aria-label': `${total} commits in the last ${days.length} days, busiest day ${peak}`,
+    'aria-label': `${total} commits over ${days.length} days, busiest day ${peak}`,
   });
 
-  columns.forEach((col, ci) => {
-    col.forEach((d, wi) => {
-      if (!d) return;
-      // A day with no count is not a day with none: outside the data, it is drawn as
-      // the empty square's own colour and says so on hover.
-      const level = d.count == null || peak === 0 ? 0
-        : (d.count === 0 ? 0 : Math.max(1, Math.ceil((d.count / peak) * COMMIT_LEVELS)));
-      const rect = svgEl('rect', {
-        x: ci * (cell + gap), y: wi * (cell + gap), width: cell, height: cell, rx: 1,
-        class: `commit-cell l${level}${d.count == null ? ' unread' : ''}`,
-      });
-      const t = svgEl('title');
-      t.textContent = d.count == null
-        ? `${d.day} — outside the year of history GitHub reports`
-        : `${d.day} — ${d.count} commit${d.count === 1 ? '' : 's'}`;
-      rect.append(t);
-      svg.append(rect);
-    });
+  const step = buckets.length > 1 ? width / (buckets.length - 1) : width;
+  // Scaled to the row's own busiest WEEK. A shared scale across members was the
+  // alternative and it is worse: one member vendoring a tree flattens every other row
+  // to a floor, which is the reading — "nothing happens in these repos" — the column
+  // exists to disprove. The hover carries the numbers, so the scale is never guessed.
+  const top = buckets.reduce((n, b) => Math.max(n, b.count ?? 0), 0);
+  const y = (count) => height - 1 - (top > 0 ? (count / top) * (height - 2) : 0);
+
+  // Contiguous runs of READ weeks. A run of one still draws, so a single week
+  // surrounded by unread ones is visible rather than dropped.
+  let run = [];
+  const flush = () => {
+    if (!run.length) { return; }
+    const line = run.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ');
+    svg.append(svgEl('path', {
+      d: `${line} L${run[run.length - 1].x.toFixed(2)},${height} L${run[0].x.toFixed(2)},${height} Z`,
+      class: 'commit-area',
+    }));
+    svg.append(svgEl('path', { d: line, class: 'commit-line' }));
+    run = [];
+  };
+  buckets.forEach((b, i) => {
+    if (b.count == null) { flush(); return; }
+    run.push({ x: i * step, y: y(b.count) });
   });
+  flush();
+
+  const title = svgEl('title');
+  title.textContent = [
+    `${total} commit${total === 1 ? '' : 's'} over ${days.length} days, by week`,
+    peak ? `busiest day ${peak}, busiest week ${top}` : null,
+    unread ? `${unread} day(s) outside the year GitHub reports` : null,
+  ].filter(Boolean).join(' · ');
+  svg.append(title);
 
   return el('div', { className: 'commit-graph' }, [
     svg,
-    // One line under the grid, not two: this column's whole point is that it says
-    // more than the date it replaced WITHOUT costing more width than the date did.
     el('div', {
       className: 'sub',
       textContent: [total === 0 && !unread ? 'none' : String(total), note].filter(Boolean).join(' · '),

@@ -208,14 +208,13 @@
      otherwise collapse its columns into unreadable slivers before the panel decides
      to scroll. Folding Stars into the member cell, CI into a dot and the last-commit
      date into a 90-day graph is what let this come down from 1500. */
-  #fleet { min-width: 1300px; }
+  #fleet { min-width: 1090px; }
   #roster { min-width: 1080px; }
   /* Health is prose and needs room to be one line per reason; every other column is a
      number or a chip and can stay narrow. */
-  /* The reasons cell, by class rather than by position — it holds whole sentences and
-     needs room to wrap, and a positional selector silently retargets the moment a
-     column moves. */
-  #fleet th:nth-child(2), #fleet td.health { min-width: 210px; }
+  /* The identity cell holds whole sentences on the rare row that has a reason left to
+     spell out, so it needs room to wrap rather than to stretch the grid. */
+  #fleet td.member-cell { min-width: 210px; max-width: 280px; }
 
   /* The benefits block leads the page, so it is allowed one step more presence than
      the status tiles that follow it — and the delta line is the point of each tile. */
@@ -287,25 +286,37 @@
   .stars .glyph { font-size: 11px; line-height: 1; color: var(--s-yellow); }
   .stars .n { font-size: 12px; color: var(--ink-2); }
 
-  /* CI as a dot with its age under it, in place of a word and a column. */
-  .ci-dot { text-align: center; min-width: 42px; }
-  .ci-dot .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%;
-                 background: var(--muted); }
-  .ci-dot .dot.ok { background: var(--good); }
-  .ci-dot .dot.critical { background: var(--critical); }
-  .ci-dot .dot.info { background: var(--muted); }
-  .ci-dot .sub { margin-top: 3px; }
+  /* CI as a dot with its age under it, beside the name rather than in a column. */
+  .ci-mark { text-align: center; flex: none; min-width: 30px; }
+  .ci-mark .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+                  background: var(--muted); }
+  .ci-mark .dot.ok { background: var(--good); }
+  .ci-mark .dot.critical { background: var(--critical); }
+  .ci-mark .dot.info { background: var(--muted); }
+  .ci-mark .sub { margin-top: 3px; }
 
-  /* The 90-day commit grid. Five steps, empty plus four, like the graph it echoes. */
-  .commit-graph svg.commits { display: block; }
-  .commit-cell { fill: var(--rule); }
-  .commit-cell.l1 { fill: color-mix(in srgb, var(--good) 30%, var(--rule)); }
-  .commit-cell.l2 { fill: color-mix(in srgb, var(--good) 55%, var(--rule)); }
-  .commit-cell.l3 { fill: color-mix(in srgb, var(--good) 78%, var(--rule)); }
-  .commit-cell.l4 { fill: var(--good); }
-  /* A day outside the reported year is not a quiet day, and must not look like one. */
-  .commit-cell.unread { fill: none; stroke: var(--rule); stroke-width: 0.5; }
-  .commit-graph .sub { margin-top: 3px; }
+  /* The 90-day commit curve. `vector-effect` keeps the stroke a hairline through the
+     non-uniform viewBox scale — without it a 108-unit box stretched to 108px of a
+     26px-tall row draws a line thick horizontally and invisible vertically. */
+  .commit-graph svg.commits { display: block; width: 100%; height: 26px; }
+  .commit-area { fill: color-mix(in srgb, var(--good) 22%, transparent); }
+  .commit-line { fill: none; stroke: var(--good); stroke-width: 1;
+                 vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+  .commit-graph .sub { margin-top: 2px; }
+
+  /* The pack count wearing the mount's verdict. */
+  .pack-mark { position: relative; display: inline-block; padding-right: 13px; }
+  .pack-mark .n { font-size: 19px; line-height: 1.1; }
+  .pack-mark .badge { position: absolute; top: -1px; right: 0; font-size: 12px; line-height: 1; }
+  .pack-mark .badge.ok { color: var(--good); }
+  .pack-mark .badge.info { color: var(--s-blue); }
+  .pack-mark .badge.serious { color: var(--serious); }
+  .pack-mark .badge.warning { color: var(--serious); }
+  .pack-mark .badge.idle { color: var(--muted); }
+
+  /* The estimate. Big, because it is the one figure on the row that is a quantity of
+     YOUR time rather than a count of the machine's things. */
+  .est { font-size: 19px; line-height: 1.1; }
 
   /* The grid is the widest thing on the page and every column is earning its place,
      so its cells are tighter than the repo view's roomier tables. */
@@ -414,23 +425,35 @@
         Claudinite, and one that is fine are three different rows and never collapse into a zero.
       </p>
       <p class="info-body" id="info-members-2" hidden>
-        The columns are grouped as three questions: <strong>Status</strong> — what kind of repo this is
-        and whether it is alive; <strong>Claudinite</strong> — what the machinery is doing here;
-        <strong>Work</strong> — what is waiting on a person. Every column comes from a read this page
-        already makes, which is also why four things are missing: rule tokens, test counts and time
-        saved would each need a member's own files read, and conversation-log sessions a branch listing.
-        Issues and pull requests are counted <em>within the issue window</em> — the most recent hundred
-        — so an older one is not counted rather than counted wrongly.
+        The columns are grouped as three questions, in the order you ask them:
+        <strong>Activity</strong> — is anyone working on this repo; <strong>Waiting on a person</strong>
+        — what is on your plate here and roughly how long it is; <strong>Claudinite</strong> — what the
+        machinery is doing. Stars and CI sit beside the name rather than in columns, because they are
+        how you recognise the row rather than findings about it. Every column but the commit curve comes
+        from a read this page already makes, which is also why four things are missing: rule tokens,
+        test counts and time saved would each need a member's own files read, and conversation-log
+        sessions a branch listing. Issues and pull requests are counted <em>within the issue window</em>
+        — the most recent hundred — so an older one is not counted rather than counted wrongly.
       </p>
       <p class="info-body" id="info-members-3" hidden>
-        <strong>Commits</strong> is the last 90 days, a square per day, shaded against
-        <em>that row's own busiest day</em> — so darkness compares two days in one repo and never two
-        repos. A hollow square is a day outside the year GitHub reports statistics for, which is not the
-        same as a quiet one, and a cell reading <em>not read</em> is this page declining to spend the
-        request: the graph is the one thing here that is decoration rather than a fault signal, so it is
-        the first thing a tight budget goes without. <strong>Stars</strong> sit beside the repo name
-        rather than in a column, because they say what kind of repo this is rather than whether it is
-        healthy.
+        <strong>Commits</strong> is the last 90 days as a curve, drawn <em>by week</em> — a quarter at
+        daily resolution is a sawtooth of weekends and Tuesdays with no shape to read — and scaled to
+        <em>that row's own busiest week</em>, so height compares two weeks in one repo and never two
+        repos. The number beneath is the real total, and the hover carries both peaks. A break in the
+        curve is a stretch outside the year GitHub reports statistics for, which is not the same as a
+        quiet one; a cell reading <em>not read</em> is this page declining to spend the request, since
+        this is the one figure here that is decoration rather than a fault signal and so the first
+        thing a tight budget goes without.
+      </p>
+      <p class="info-body" id="info-members-4" hidden>
+        <strong>Est.</strong> is a deliberately crude figure: every item parked for a person, at a flat
+        <strong>7 minutes</strong> each. Nothing here measures how long a park actually takes, and the
+        honest way to publish a number nothing measures is to publish the assumption where you can argue
+        with it. A broken <em>scheduler</em> is not counted into it — that is not a queue of work to get
+        through — though it is still reported. <strong>Packs</strong> wears the mount's verdict as a
+        badge: a tick when what is declared here is current, a timer when it is behind, and the versions
+        on hover. Two facts read together, and the second says the same thing on nearly every row, so it
+        earns a corner rather than a column.
       </p>
       <p class="legend">Click a member to open its scheduler in full.</p>
       <div class="panel scroll"><table id="fleet"></table></div>

@@ -263,10 +263,37 @@ export function commitDays(weeks, { now, days = 90 } = {}) {
   const counted = rows.filter((r) => r.count != null);
   return {
     days: rows,
+    buckets: bucketWeekly(rows),
     total: counted.reduce((n, r) => n + r.count, 0),
     peak: counted.reduce((n, r) => Math.max(n, r.count), 0),
     // Days inside the window the year of statistics did not reach. Stated rather than
     // drawn as blank squares that read as quiet ones.
     unread: rows.length - counted.length,
   };
+}
+
+// The same window in weeks, which is the resolution a QUARTER of history is legible
+// at. Drawn daily, an ordinary repo's weekend is a trough and a Tuesday a spike, so a
+// 90-point curve across a column is a sawtooth that hides the only thing the column is
+// for: whether this repo is being worked on, and whether it always was.
+//
+// The daily counts are kept — they are the total, the peak and the hover — and only
+// the drawn line is smoothed. Weeks run back from today, so the OLDEST bucket is the
+// short one, and a week is null only when every day in it was unread; a week that was
+// partly read is a real sum over what there was.
+const WEEK = 7;
+
+export function bucketWeekly(rows) {
+  const out = [];
+  for (let end = rows.length; end > 0; end -= WEEK) {
+    const slice = rows.slice(Math.max(0, end - WEEK), end);
+    const read = slice.filter((r) => r.count != null);
+    out.unshift({
+      from: slice[0].day,
+      to: slice[slice.length - 1].day,
+      days: slice.length,
+      count: read.length ? read.reduce((n, r) => n + r.count, 0) : null,
+    });
+  }
+  return out;
 }

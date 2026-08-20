@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  activitySeries, fleetBenefits, dayLadder, dayKey, delta, commitDays,
+  activitySeries, fleetBenefits, dayLadder, dayKey, delta, commitDays, bucketWeekly,
 } from '../../packs/claudinite-dashboard/activity.mjs';
 import {
   READY, NEEDS_HUMAN, OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE,
@@ -225,4 +225,37 @@ test('a malformed week is skipped rather than throwing the row away', () => {
   const r = commitDays([{ week: null, days: [9] }, week('2026-08-16T00:00:00Z', [3, 0, 0, 0, 0, 0, 0])],
     { now: NOW, days: 3 });
   assert.equal(r.total, 3);
+});
+
+// --- weekly buckets ----------------------------------------------------------------
+
+// A quarter of history drawn day by day is a sawtooth: an ordinary repo's weekend is a
+// trough and its Tuesday a spike, and a sawtooth has no shape to read. The daily counts
+// stay — they are the total, the peak and the hover — and only the drawn line smooths.
+test('the window buckets into weeks, running back from today', () => {
+  const r = commitDays([week('2026-08-16T00:00:00Z', [1, 2, 3, 0, 0, 0, 0])], { now: NOW, days: 21 });
+  assert.equal(r.buckets.length, 3);
+  assert.equal(r.buckets[2].to, dayKey(NOW), 'the newest bucket ends today');
+  assert.equal(r.buckets[2].count, 6);
+  assert.equal(r.total, 6, 'the daily total is unchanged by the bucketing');
+});
+
+// The OLDEST bucket is the short one, because the newest has to end on today — a
+// window that ended a partial week early would drop the days a reader looks at first.
+test('an uneven window leaves the short bucket at the old end', () => {
+  const rows = Array.from({ length: 10 }, (_, i) => ({ day: `d${i}`, count: 1 }));
+  const b = bucketWeekly(rows);
+  assert.deepEqual(b.map((x) => x.days), [3, 7]);
+  assert.deepEqual(b.map((x) => x.count), [3, 7]);
+});
+
+// Unread is not quiet, at the week level too: a week nothing was read for is null and
+// breaks the curve, where a week that was PARTLY read is a real sum over what there was.
+test('a week is null only when every day in it was unread', () => {
+  const b = bucketWeekly([
+    ...Array.from({ length: 7 }, (_, i) => ({ day: `a${i}`, count: null })),
+    ...Array.from({ length: 7 }, (_, i) => ({ day: `b${i}`, count: i < 3 ? null : 2 })),
+  ]);
+  assert.equal(b[0].count, null);
+  assert.equal(b[1].count, 8, 'four read days at 2 each');
 });

@@ -4,6 +4,7 @@
 import * as gh from './github.mjs';
 import {
   summariseMember, rankMembers, rollUp, packSpread, taskSpread, attentionBreakdown,
+  memberAttention, fleetAttention, estimateMinutes, MINUTES_PER_PARK,
   parseEngineVersion, parsePackVersion,
 } from './fleet.mjs';
 import { canonicalPackVersions } from '../../engine/pack_loader/renamed-packs.mjs';
@@ -11,7 +12,7 @@ import { activitySeries, fleetBenefits, delta, commitDays } from './activity.mjs
 import { digestDates, digestPath, digestEntry } from './digest.mjs';
 import {
   $, el, ago, duration, groupedHead, columnCount, groupStarts, emptyRow, repoLink, tiles, segmentBar,
-  reasonNodes, stackedColumns, chartLegend, windowFigure, starMark, ciDot, commitGraph,
+  reasonNodes, stackedColumns, chartLegend, windowFigure, starMark, ciMark, commitGraph, packMark,
   LEVEL_GLYPH, STATE_ORDER, STATE_COLOR, STATE_UI, OUTCOME_COLOR,
 } from './ui.mjs';
 
@@ -166,57 +167,35 @@ async function readDigests(config, token) {
 
 // --- render ---------------------------------------------------------------------
 
-const MOUNT_UI = {
-  current: { label: 'current', cls: 'ok' },
-  behind: { label: 'behind', cls: 'info' },
-  'behind-engine': { label: 'old engine', cls: 'serious' },
-  unversioned: { label: 'no versions', cls: 'warning' },
-  none: { label: 'no stamp', cls: 'warning' },
-  unknown: { label: '—', cls: 'idle' },
-};
-
-// The mount cell's second line: the versions the verdict was judged on — never the
-// stamp's ref or updated, which are re-vendor provenance and read stale on every
-// healthy member.
-// The full list is the `title`; the cell names one pack and counts the rest. A member
-// behind on six packs is one fact — "behind, and here is one of them" — and spelling
-// all six inline made this the widest column in the grid after Health.
-const MOUNT_PACKS_SHOWN = 1;
-
-function mountDetail(mount) {
-  if (mount.state === 'behind') {
-    const all = mount.behindPacks.map((p) => `${p.pack} v${p.version}<v${p.canonVersion}`);
-    const shown = all.slice(0, MOUNT_PACKS_SHOWN).join(' · ');
-    return all.length > MOUNT_PACKS_SHOWN ? `${shown} +${all.length - MOUNT_PACKS_SHOWN} more` : shown;
-  }
-  if (mount.state === 'behind-engine') return `engine v${mount.engineVersion} < v${mount.canonEngineVersion}`;
-  if (mount.engineVersion != null) {
-    const packs = mount.comparedPacks != null ? ` · ${mount.comparedPacks} pack${mount.comparedPacks === 1 ? '' : 's'}` : '';
-    const unknown = mount.unknownPacks ? ` (+${mount.unknownPacks} unpriced)` : '';
-    return `engine v${mount.engineVersion}${packs}${unknown}`;
-  }
-  return '—';
-}
-
 // The member grid, as three questions rather than one wall of columns:
 //
-//   STATUS      — what kind of repo is this, and is it alive.
-//   CLAUDINITE  — what the machinery is doing here.
-//   WORK        — what is waiting on a person.
+//   ACTIVITY    — is anyone working on this repo.
+//   WAITING     — what is on a person's plate here, and roughly how long it is.
+//   CLAUDINITE  — what the machinery is doing.
 //
-// The identity pair at the left belongs to none of them: the name and the reason this
-// row is where it is are how you read every other cell.
+// They are in that order because it is the order a reader asks them in: a repo nobody
+// touches and a repo with a queue behind it are different problems, and what the
+// scheduler is doing only matters once you know which one you are looking at.
 //
-// Every column is derived from a read the page ALREADY makes. Four fields the issue
-// asked for are absent for that reason and not by oversight — rule tokens, test counts
-// and time saved would each need a member's own file read, and conversation-log
+// The identity pair at the left belongs to none of them. Stars, CI and the name are
+// how you recognise the row; the reasons beside them are why it is where it is.
+//
+// Every column but one is derived from a read the page ALREADY makes. Four fields the
+// issue asked for are absent for that reason and not by oversight — rule tokens, test
+// counts and time saved would each need a member's own file read, and conversation-log
 // sessions a branch listing. They are named in the panel's own note rather than
-// guessed at.
+// guessed at. The exception is the commit graph, which is priced as decoration.
+//
+// `Tasks — declared` is gone, and that one WAS a read the page makes: it is the whole
+// reason each member's tree is fetched. The count answered "how much is wired up
+// here", which the pack count answers more directly and without a number that means
+// nothing until you know which packs. The tree is still read — "declares tasks and has
+// never produced a work item" is a finding only it can make.
 const MEMBER_GROUPS = [
-  ['', ['Member', 'Health']],
-  ['Status', ['CI', 'Commits']],
-  ['Claudinite', ['Packs', 'Tasks', 'Queue', 'Recent outcomes', 'Mount', 'Scheduler']],
-  ['Work — waiting on a person', ['Issues', 'Pull requests']],
+  ['', ['Member']],
+  ['Activity', ['Commits']],
+  ['Waiting on a person', ['Est.', 'What it is', 'Issues', 'Pull requests']],
+  ['Claudinite', ['Packs', 'Queue', 'Recent outcomes', 'Scheduler']],
 ];
 
 // The same split, one level down: a task's identity, where it stands right now, and
@@ -226,6 +205,22 @@ const FLEET_TASK_GROUPS = [
   ['Now', ['Members', 'Open', 'Parked']],
   ['History', ['Succeeded', 'No outcome']],
 ];
+
+// Reason kinds the row already SHOWS somewhere of their own — parks in the Waiting
+// group with an estimate beside them, the mount as a badge on the pack count, CI as a
+// dot by the name. Spelling those out again in prose was the same fact twice and, at
+// 180px of sentences, the column that decided how wide the whole grid was.
+//
+// What is left is rare and has no cell: "declares no packs", and a scheduler fault
+// the runs column reports as a state but not as a sentence. So it goes UNDER THE NAME
+// when there is any, and costs nothing on the rows — nearly all of them — where there
+// is not. The ranking is untouched: `summariseMember` still weighs every reason, and
+// only the rendering filters, so a member at the top for a park still shows its park
+// one cell to the right.
+//
+// Kept beside the group list, because the two move together: folding a signal into a
+// mark is what puts its kind in here.
+const SHOWN_ELSEWHERE = new Set(['park', 'mount', 'ci']);
 
 const MEMBER_COLS = columnCount(MEMBER_GROUPS);
 const MEMBER_STARTS = groupStarts(MEMBER_GROUPS);
@@ -247,57 +242,69 @@ const CI_UI = {
 function memberRow(s, onOpen, now) {
   const open = (e) => { e.preventDefault(); onOpen(s.repo); };
 
-  // Stars fold in here rather than holding a column of their own: the count is not a
-  // health signal, it is what KIND of repo this is, which is the frame the rest of
-  // the row is read in.
-  const name = el('td', {}, [el('div', { className: 'member' }, [
+  // Two marks ahead of the name, neither of them a column: stars say what KIND of
+  // repo this is, and CI whether it builds. Both are read as part of identifying the
+  // row rather than as findings, which is why they sit with the name and not in a
+  // question group of their own.
+  const ciUi = CI_UI[s.ci?.state] ?? CI_UI.unknown;
+  const identity = (kids) => el('td', { className: 'member-cell' }, [el('div', { className: 'member' }, [
     starMark(s.stars),
+    ciMark(ciUi, s.ci?.at ? duration(now - s.ci.at) : 'no run'),
     el('div', {}, [
       el('a', { href: `?repo=${encodeURIComponent(s.repo)}`, className: 'name', textContent: s.repo.split('/')[1] ?? s.repo, onclick: open }),
       el('div', { className: 'sub' }, [repoLink(s.repo)]),
+      ...kids,
     ]),
   ])]);
+  const name = identity([]);
 
   if (s.status !== 'adopted') {
     return el('tr', { className: `lvl-${s.level} muted-row` }, [
       name,
-      el('td', { colSpan: MEMBER_COLS - 2 }, reasonNodes(s.reasons)),
+      el('td', { colSpan: MEMBER_COLS - 2 }, reasonNodes(s.reasons)),   // the last cell is the open link
       el('td', { className: 'nw' }, [el('a', { href: `?repo=${encodeURIComponent(s.repo)}`, textContent: 'open', onclick: open })]),
     ]);
   }
 
-  // Health: the worst reason, spelled out. Never a bare colour.
-  //
-  // Capped in CSS rather than left to the table: this is the one cell holding whole
-  // sentences, and its max-content is what set the width of the entire grid — every
-  // other column was being stretched to fit a reason nobody needs on one line.
-  const health = el('td', { className: 'health' }, s.reasons.length
-    ? reasonNodes(s.reasons)
-    : [el('span', { className: 'warn ok', textContent: `${LEVEL_GLYPH.ok} healthy` })]);
+  // Whatever is left once every reason with a cell of its own is dropped — see
+  // SHOWN_ELSEWHERE. Usually nothing, and then the name cell is the plain one.
+  const spoken = s.reasons.filter((r) => !SHOWN_ELSEWHERE.has(r.kind));
+  const identified = spoken.length ? identity(reasonNodes(spoken)) : name;
 
-  // --- Status: the repo itself ---------------------------------------------------
-
-  const ciUi = CI_UI[s.ci?.state] ?? CI_UI.unknown;
-  const ci = el('td', { className: 'nw' }, [ciDot(ciUi, s.ci?.at ? ago(s.ci.at, now) : 'no run')]);
+  // --- Activity: is this repo being worked on ------------------------------------
 
   // Where a single "3h ago" used to sit. One date says whether a repo moved today; a
-  // quarter of them says whether it is being worked on — and that is the question the
-  // Status group is actually asking.
+  // quarter of them, as a shape, says whether it is being worked on — which is the
+  // question the group is actually asking, and the reason it is no longer called
+  // "Status".
   const commit = el('td', { className: 'nw' }, [
     commitGraph(s.commits, { note: s.lastCommit ? `last ${duration(now - s.lastCommit)}` : null }),
   ]);
 
+  // --- Waiting on a person -------------------------------------------------------
+
+  // The estimate, and immediately beside it what the estimate is made of. A number
+  // with no breakdown is a number nobody can check; a breakdown with no total is a
+  // list nobody can prioritise between rows.
+  const attention = memberAttention(s);
+  const minutes = estimateMinutes(attention);
+  const est = el('td', { className: 'num nw' }, [
+    el('div', { className: 'est num', textContent: minutes ? String(minutes) : '—' }),
+    el('div', { className: 'sub', textContent: minutes ? 'min' : '' }),
+  ]);
+
+  const needs = attentionBreakdown(attention);
+  const what = el('td', {}, needs.length
+    ? [el('div', { className: 'needs' }, needs.map((r) =>
+      el('div', { className: `warn ${r.level}`, textContent: `${LEVEL_GLYPH[r.level]} ${r.text}` })))]
+    : [el('span', { className: 'sub', textContent: 'nothing waiting' })]);
+
   // --- Claudinite: what the machinery is doing here -------------------------------
 
-  const packs = el('td', { className: 'num nw' }, [
-    el('div', { textContent: String(s.packs.length) }),
-    el('div', { className: 'sub', textContent: 'declared' }),
-  ]);
-
-  const tasks = el('td', { className: 'num nw' }, [
-    el('div', { textContent: s.declaredTasks == null ? '—' : String(s.declaredTasks) }),
-    el('div', { className: 'sub', textContent: 'declared' }),
-  ]);
+  // How much Claudinite is declared here, wearing whether it is current. Two facts
+  // read together, and the second is a tick on nearly every row — so it earns a
+  // corner of the first rather than a column beside it, with the versions on hover.
+  const packs = el('td', { className: 'nw' }, [packMark(s.packs.length, s.mount)]);
 
   // Queue: the state mix as one thin bar plus the counts that are non-zero, so a
   // member with nothing open reads as empty rather than as a row of zeros.
@@ -316,18 +323,6 @@ function memberRow(s, onOpen, now) {
       ['no outcome', s.outcomes.none, OUTCOME_COLOR.none],
     ], { width: 92 }),
     el('div', { className: 'sub', textContent: s.lastActivity ? ago(s.lastActivity, now) : (s.closedSeen ? 'unknown' : 'nothing closed yet') }),
-  ]);
-
-  const m = MOUNT_UI[s.mount.state] ?? MOUNT_UI.unknown;
-  const mount = el('td', { className: 'nw' }, [
-    el('div', { className: `warn ${m.cls}`, textContent: m.label }),
-    el('div', {
-      className: 'sub num',
-      textContent: mountDetail(s.mount),
-      title: s.mount.state === 'behind'
-        ? s.mount.behindPacks.map((p) => `${p.pack} v${p.version} < canon v${p.canonVersion}`).join('\n')
-        : '',
-    }),
   ]);
 
   const runs = el('td', { className: 'nw' }, [
@@ -361,7 +356,7 @@ function memberRow(s, onOpen, now) {
   ]);
 
   return el('tr', { className: `lvl-${s.level}` },
-    banded([name, health, ci, commit, packs, tasks, queue, outcomes, mount, runs, issues, prs]));
+    banded([identified, commit, est, what, issues, prs, packs, queue, outcomes, runs]));
 }
 
 // --- what the machinery bought ---------------------------------------------------
@@ -543,7 +538,7 @@ function renderFleet(summaries, reads, now, onOpen, canon, progress = null, dige
   // The headline tile counts MEMBERS, which is the length of the morning's list — but
   // the list is only actionable once it says what kind of attention each is waiting
   // for. Three merges to approve and three broken lanes are not the same morning.
-  const needs = attentionBreakdown(roll);
+  const needs = attentionBreakdown(fleetAttention(roll));
 
   tiles($('fleet-tiles'), [
     [roll.needAttention, 'members need you', roll.needAttention ? 'var(--critical)' : null,
@@ -557,6 +552,8 @@ function renderFleet(summaries, reads, now, onOpen, canon, progress = null, dige
       roll.neverRan ? `${roll.neverRan} never ran` : ''],
     [roll.behindMembers, 'mounts behind', roll.behindMembers ? 'var(--serious)' : null,
       canon ? (canon.engineVersion != null ? `canon engine v${canon.engineVersion}` : 'canon versions unreadable') : 'no canon configured'],
+    [estimateMinutes(fleetAttention(roll)), 'minutes of your time', null,
+      `at ${MINUTES_PER_PARK} min a parked item`],
     [roll.openItems, 'open work items', null, `${roll.inFlight} run(s) in flight`],
     [`${roll.adopted}/${roll.members}`, 'members adopted', null,
       [roll.notAdopted ? `${roll.notAdopted} not adopted` : '', roll.unreadable ? `${roll.unreadable} unreadable` : ''].filter(Boolean).join(', ')],

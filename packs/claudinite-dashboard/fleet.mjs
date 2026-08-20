@@ -184,47 +184,53 @@ export function summariseMember(read, { now, canon = null } = {}) {
   const mount = mountState(declaration.claudinite, canon);
 
   const n = (count, word) => `${count} ${word}${count > 1 ? 's' : ''}`;
+  // Every reason carries a `kind`, because the row shows some of these twice
+  // otherwise: parks have their own column with an estimate beside them, the mount
+  // is a badge on the pack count, and CI is a dot. The RANKING still reads all of
+  // them — a member is ordered by everything true of it — and only the rendering
+  // drops what already has a cell of its own.
   const reasons = [];
   if (holding.length) {
-    reasons.push({ level: 'critical', text: `${n(holding.length, 'item')} parked broken — holding the task's lane` });
+    reasons.push({ kind: 'park', level: 'critical', text: `${n(holding.length, 'item')} parked broken — holding the task's lane` });
   }
   if (inbox.length) {
-    reasons.push({ level: 'serious', text: `${n(inbox.length, 'item')} parked for a person — an action or a decision` });
+    reasons.push({ kind: 'park', level: 'serious', text: `${n(inbox.length, 'item')} parked for a person — an action or a decision` });
   }
   if (approvals.length) {
-    reasons.push({ level: 'warning', text: `${n(approvals.length, 'PR')} waiting for approval` });
+    reasons.push({ kind: 'park', level: 'warning', text: `${n(approvals.length, 'PR')} waiting for approval` });
   }
   if (runSummary.consecutiveFailures > 0) {
     reasons.push({
+      kind: 'scheduler',
       level: runSummary.consecutiveFailures > 1 ? 'critical' : 'serious',
       text: `scheduler last run failed${runSummary.consecutiveFailures > 1 ? ` (${runSummary.consecutiveFailures} in a row)` : ''}`,
     });
   }
   if (warned.length) {
-    reasons.push({ level: 'serious', text: `${n(warned.length, 'item')} tripping a recovery rule` });
+    reasons.push({ kind: 'park', level: 'serious', text: `${n(warned.length, 'item')} tripping a recovery rule` });
   }
   if (mount.state === 'behind-engine') {
-    reasons.push({ level: 'serious', text: `mount is on engine v${mount.engineVersion}, canon is v${canon?.engineVersion}` });
+    reasons.push({ kind: 'mount', level: 'serious', text: `mount is on engine v${mount.engineVersion}, canon is v${canon?.engineVersion}` });
   } else if (mount.state === 'behind') {
-    reasons.push({ level: 'info', text: `mount behind canon on ${mount.behindPacks.map((p) => p.pack).join(', ')}` });
+    reasons.push({ kind: 'mount', level: 'info', text: `mount behind canon on ${mount.behindPacks.map((p) => p.pack).join(', ')}` });
   } else if (mount.state === 'unversioned') {
-    reasons.push({ level: 'warning', text: 'mount stamp carries no versions — it predates the versioned update flows' });
+    reasons.push({ kind: 'mount', level: 'warning', text: 'mount stamp carries no versions — it predates the versioned update flows' });
   } else if (mount.state === 'none') {
-    reasons.push({ level: 'warning', text: 'declares Claudinite but carries no mount stamp' });
+    reasons.push({ kind: 'mount', level: 'warning', text: 'declares Claudinite but carries no mount stamp' });
   }
   // A repo that declares tasks and has never produced a work item is not idle — its
   // scheduler is not running. That is invisible in every per-repo number here, which
   // is exactly why the fleet view is the place it shows up.
   if (declaredTasks !== null && declaredTasks > 0 && work.length === 0) {
-    reasons.push({ level: 'serious', text: `${declaredTasks} task${declaredTasks > 1 ? 's' : ''} declared, no work item ever created` });
+    reasons.push({ kind: 'scheduler', level: 'serious', text: `${declaredTasks} task${declaredTasks > 1 ? 's' : ''} declared, no work item ever created` });
   }
   if (ci.state === 'failing') {
     // The member's own CI, said in the member's own words: this is not the scheduler
     // failing, and the two must not read as the same alarm.
-    reasons.push({ level: 'warning', text: 'the repo\'s own CI is failing on its default branch' });
+    reasons.push({ kind: 'ci', level: 'warning', text: 'the repo\'s own CI is failing on its default branch' });
   }
   if (declaration.packs?.length === 0) {
-    reasons.push({ level: 'warning', text: 'declares no packs' });
+    reasons.push({ kind: 'packs', level: 'warning', text: 'declares no packs' });
   }
 
   const level = reasons.length ? reasons.map((r) => r.level).sort((a, b) => levelRank(a) - levelRank(b))[0] : 'ok';
@@ -381,6 +387,50 @@ export function rollUp(summaries) {
   };
 }
 
+// --- what a person is actually holding -------------------------------------------
+
+// What one parked item costs a person, in minutes. A flat rate deliberately: the page
+// has no measurement of how long a park actually takes, and the honest way to publish
+// a number nothing measures is to publish the ASSUMPTION and let it be argued with,
+// rather than to dress a guess up as a per-kind estimate. Refine it here, in one
+// place, when there is something real to refine it from.
+export const MINUTES_PER_PARK = 7;
+
+// The vocabulary both the per-member row and the fleet rollup speak, so one function
+// itemises both. Each field is a count of THINGS waiting; the two callers differ only
+// in whether their things are one member's or the whole fleet's.
+const attentionCounts = ({
+  broken = 0, decisions = 0, approvals = 0, tripping = 0,
+  schedulersFailing = 0, schedulersNeverRan = 0,
+} = {}) => ({ broken, decisions, approvals, tripping, schedulersFailing, schedulersNeverRan });
+
+// One member's attention, in the same shape the rollup uses.
+export const memberAttention = (s) => attentionCounts({
+  broken: s.parkedHolding ?? 0,
+  decisions: s.parkedInbox ?? 0,
+  approvals: s.parkedApprovals ?? 0,
+  tripping: s.warned ?? 0,
+});
+
+// The fleet's. Schedulers are counted in MEMBERS here rather than in items, because a
+// scheduler is a member-shaped thing — there is one per repo.
+export const fleetAttention = (roll) => attentionCounts({
+  broken: roll.parkedHolding,
+  decisions: roll.parkedInbox,
+  approvals: roll.parkedApprovals,
+  tripping: roll.warnedItems,
+  schedulersFailing: roll.failingMembers,
+  schedulersNeverRan: roll.neverRan,
+});
+
+// Minutes of a person's time the parked work represents. Scheduler faults are NOT in
+// it: a broken scheduler is not a queue of tasks to work through, and adding it would
+// make the figure mean two different things at once.
+export function estimateMinutes(counts) {
+  const c = attentionCounts(counts);
+  return (c.broken + c.decisions + c.approvals + c.tripping) * MINUTES_PER_PARK;
+}
+
 // WHAT the human attention is, not how much of it there is. "3 members need you"
 // is the length of this morning's list; it does not say whether that is three merges
 // to approve or three broken lanes, and those are not the same morning.
@@ -391,15 +441,16 @@ export function rollUp(summaries) {
 // used to throw it away and re-merge them into one word.
 //
 // Ordered worst first, and a kind nobody is waiting on is absent rather than zero.
-export function attentionBreakdown(roll) {
+export function attentionBreakdown(counts) {
+  const c = attentionCounts(counts);
   const n = (count, one, many) => `${count} ${count === 1 ? one : many}`;
   return [
-    roll.parkedHolding && { level: 'critical', text: `${n(roll.parkedHolding, 'task', 'tasks')} broken` },
-    roll.failingMembers && { level: 'critical', text: `${n(roll.failingMembers, 'scheduler', 'schedulers')} failing` },
-    roll.parkedInbox && { level: 'serious', text: `${n(roll.parkedInbox, 'item', 'items')} needing a decision` },
-    roll.warnedItems && { level: 'serious', text: `${n(roll.warnedItems, 'item', 'items')} tripping a recovery rule` },
-    roll.parkedApprovals && { level: 'warning', text: `${n(roll.parkedApprovals, 'item', 'items')} needing approval` },
-    roll.neverRan && { level: 'serious', text: `${n(roll.neverRan, 'scheduler', 'schedulers')} never ran` },
+    c.broken && { level: 'critical', text: `${n(c.broken, 'task', 'tasks')} broken` },
+    c.schedulersFailing && { level: 'critical', text: `${n(c.schedulersFailing, 'scheduler', 'schedulers')} failing` },
+    c.decisions && { level: 'serious', text: `${n(c.decisions, 'item', 'items')} needing a decision` },
+    c.tripping && { level: 'serious', text: `${n(c.tripping, 'item', 'items')} tripping a recovery rule` },
+    c.approvals && { level: 'warning', text: `${n(c.approvals, 'item', 'items')} needing approval` },
+    c.schedulersNeverRan && { level: 'serious', text: `${n(c.schedulersNeverRan, 'scheduler', 'schedulers')} never ran` },
   ].filter(Boolean);
 }
 

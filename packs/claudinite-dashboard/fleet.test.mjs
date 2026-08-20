@@ -6,6 +6,7 @@ import { dirname, resolve } from 'node:path';
 import {
   summariseMember, summariseRuns, mountState, rankMembers, rollUp, packSpread, taskSpread,
   ciStatus, parseEngineVersion, parsePackVersion, attentionBreakdown,
+  memberAttention, fleetAttention, estimateMinutes, MINUTES_PER_PARK,
 } from '../../packs/claudinite-dashboard/fleet.mjs';
 import { ENGINE_VERSION } from '../../engine/version.mjs';
 import dashboardPack from '../../packs/claudinite-dashboard/pack.mjs';
@@ -453,10 +454,7 @@ test('the head commit and the repo\'s stars ride along from reads already made',
 // is made of is a separate question, and merging three merges to approve with three
 // broken lanes into one word is what this exists to stop.
 test('the attention breakdown names each kind of park separately', () => {
-  const rows = attentionBreakdown({
-    parkedHolding: 1, parkedInbox: 1, parkedApprovals: 3,
-    failingMembers: 0, warnedItems: 0, neverRan: 0,
-  });
+  const rows = attentionBreakdown({ broken: 1, decisions: 1, approvals: 3 });
   assert.deepEqual(rows.map((r) => r.text), [
     '1 task broken', '1 item needing a decision', '3 items needing approval',
   ]);
@@ -464,8 +462,8 @@ test('the attention breakdown names each kind of park separately', () => {
 
 test('the breakdown is worst first, so the top line is the one to act on', () => {
   const rows = attentionBreakdown({
-    parkedApprovals: 2, parkedInbox: 1, parkedHolding: 1, failingMembers: 1,
-    warnedItems: 1, neverRan: 1,
+    approvals: 2, decisions: 1, broken: 1, schedulersFailing: 1,
+    tripping: 1, schedulersNeverRan: 1,
   });
   assert.deepEqual(rows.map((r) => r.level),
     ['critical', 'critical', 'serious', 'serious', 'warning', 'serious']);
@@ -474,10 +472,27 @@ test('the breakdown is worst first, so the top line is the one to act on', () =>
 // A kind nobody is waiting on is ABSENT. A tile that lists "0 items needing approval"
 // beside a real alarm is teaching its reader to skim the list.
 test('a kind with nothing waiting on it is left out, not reported as zero', () => {
-  assert.deepEqual(attentionBreakdown({
-    parkedHolding: 0, parkedInbox: 0, parkedApprovals: 0,
-    failingMembers: 0, warnedItems: 0, neverRan: 0,
-  }), []);
+  assert.deepEqual(attentionBreakdown({}), []);
+  assert.deepEqual(attentionBreakdown({ broken: 0, approvals: 0 }), []);
+});
+
+// One vocabulary, two callers. The row and the fleet tile itemise through the same
+// function, so the two can never describe the same parks in different words.
+test('a member and the fleet reach the breakdown through the same counts', () => {
+  const one = summariseMember(
+    read({ items: [item({ labels: [NEEDS_HUMAN, NEEDS_HUMAN_APPROVAL] })] }), { now: NOW, canon: CANON },
+  );
+  assert.deepEqual(memberAttention(one),
+    { broken: 0, decisions: 0, approvals: 1, tripping: 0, schedulersFailing: 0, schedulersNeverRan: 0 });
+  assert.deepEqual(attentionBreakdown(memberAttention(one)).map((r) => r.text), ['1 item needing approval']);
+
+  // The fixture member has no scheduled runs, so the fleet side legitimately carries a
+  // scheduler fact the member row's own counts do not — a member-shaped thing, counted
+  // in members, and only the fleet has more than one member to count.
+  const roll = fleetAttention(rollUp([one]));
+  assert.equal(roll.approvals, 1);
+  assert.deepEqual(attentionBreakdown(roll).map((r) => r.text),
+    ['1 item needing approval', '1 scheduler never ran']);
 });
 
 test('the rollup carries the split the breakdown reads', () => {
@@ -488,4 +503,35 @@ test('the rollup carries the split the breakdown reads', () => {
   assert.equal(roll.parkedApprovals, 1);
   assert.equal(roll.parkedHolding, 1, 'an unclassified park falls back to failure, which holds the lane');
   assert.equal(roll.parkedInbox, 0);
+});
+
+// --- the estimate ------------------------------------------------------------------
+
+// A flat rate, and the point of it is that it is visible and arguable rather than
+// dressed up. What matters is that it is applied consistently and that nothing which
+// is not a queue of work for a person is counted into it.
+test('every parked item costs the same flat estimate', () => {
+  assert.equal(estimateMinutes({ broken: 1, decisions: 1, approvals: 1, tripping: 1 }), 4 * MINUTES_PER_PARK);
+  assert.equal(estimateMinutes({}), 0);
+});
+
+// A broken scheduler is not a queue of tasks to work through, and folding it in would
+// make the figure mean two things at once.
+test('a scheduler fault is not minutes of a person\'s time', () => {
+  assert.equal(estimateMinutes({ schedulersFailing: 3, schedulersNeverRan: 2 }), 0);
+  assert.ok(attentionBreakdown({ schedulersFailing: 3 }).length, 'but it is still reported');
+});
+
+// The reason a row can drop a park from its prose without losing it: the ranking
+// reads every reason, and only the rendering filters by kind.
+test('every reason carries the kind that says where the row shows it', () => {
+  const s = summariseMember(
+    read({ items: [item({ labels: [NEEDS_HUMAN, NEEDS_HUMAN_APPROVAL] })] }),
+    { now: NOW, canon: { engineVersion: 99, packVersions: {} } },
+  );
+  assert.ok(s.reasons.length >= 2);
+  for (const r of s.reasons) assert.ok(r.kind, `a reason with no kind cannot be placed: ${r.text}`);
+  assert.ok(s.reasons.some((r) => r.kind === 'park'));
+  assert.ok(s.reasons.some((r) => r.kind === 'mount'));
+  assert.equal(s.level, 'serious', 'the level still weighs the reasons the row will not spell out');
 });
