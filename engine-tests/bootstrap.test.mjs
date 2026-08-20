@@ -88,6 +88,10 @@ test('bootstrap converges a fresh repo in one invocation', () => {
   assert.ok(out.includes('product-wiki/users'), 'unanswered question listed');
   assert.ok(out.includes('product-wiki/market'), 'unanswered question listed');
   assert.ok(/selftest: ok/.test(out), `selftest ran green in:\n${out}`);
+
+  // The adoption session starts with no Claudinite loaded, so no SessionEnd hook
+  // captures it — the report must tell the session to run the capture itself.
+  assert.ok(out.includes('capture-log.mjs --issue'), `report names the conversation capture in:\n${out}`);
 });
 
 test('bootstrap re-run is idempotent and records late answers', () => {

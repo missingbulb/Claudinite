@@ -184,5 +184,5 @@ if (handover.length) {
     if (h.done) console.log(`        done when: ${h.done}`);
   }
 }
-console.log(`\nNEXT: ${pending.length ? 'interview → re-run → ' : ''}commit (reference the adoption issue — create it BEFORE committing), push, PR. Then the executor routine + repo binding (bootstrap.md, the scheduling part).`);
+console.log(`\nNEXT: ${pending.length ? 'interview → re-run → ' : ''}commit (reference the adoption issue — create it BEFORE committing), push, PR. Once it lands: capture this session — Claudinite was not loaded when it started, so no SessionEnd hook will — with \`node .claudinite/shared/packs/claudinite-growth/capture-log.mjs --issue <adoption-issue>\`. Then the executor routine + repo binding (bootstrap.md, the scheduling part).`);
 if (!selftest.ok) process.exit(1);
