@@ -21,11 +21,36 @@ const it = ({ task = 'a', labels = ['task:ready'], created_at = '2026-08-14T04:0
 
 // --- pick order ---------------------------------------------------------------
 
-test('urgent first, then oldest-created', () => {
-  const old = it({ task: 'a', created_at: '2026-08-14T01:00:00Z' });
-  const mid = it({ task: 'b', created_at: '2026-08-14T02:00:00Z' });
+test('urgent first, always — whatever the draw says', () => {
+  const a = it({ task: 'a', created_at: '2026-08-14T01:00:00Z' });
+  const b = it({ task: 'b', created_at: '2026-08-14T02:00:00Z' });
   const urgent = it({ task: 'c', created_at: '2026-08-14T03:00:00Z', labels: ['task:ready', 'task:urgent'] });
-  assert.deepEqual(pickOrder([mid, old, urgent]).map((i) => i.number), [urgent.number, old.number, mid.number]);
+  // The draw is taken in input order, so this one hands the urgent item the
+  // WORST key: it still sorts first, because urgency outranks the draw.
+  const seq = [0.1, 0.2, 0.9];
+  let n = 0;
+  assert.equal(pickOrder([b, a, urgent], { random: () => seq[n++] })[0].number, urgent.number);
+});
+
+// §15.20: the order among the ready is RANDOM, not oldest-first. A test that
+// pinned one order would pass on a comparator that never shuffles, so this one
+// asserts the property instead — every ready item reaches the head over enough
+// draws, which a deterministic order can never do.
+test('among the ready, the head varies across runs (§15.20)', () => {
+  const items = ['a', 'b', 'c'].map((t, n) => it({ task: t, created_at: `2026-08-14T0${n + 1}:00:00Z` }));
+  const heads = new Set();
+  for (let n = 0; n < 200; n += 1) heads.add(pickOrder(items)[0].number);
+  assert.equal(heads.size, items.length, 'every ready item was picked first at least once');
+});
+
+// …and the draw is injectable, so a caller that needs one fixed order gets it.
+test('an injected draw fixes the order it would otherwise randomize', () => {
+  const one = it({ task: 'a' });
+  const two = it({ task: 'b' });
+  const seq = [0.9, 0.1];
+  let n = 0;
+  assert.deepEqual(pickOrder([one, two], { random: () => seq[n++] }).map((i) => i.number),
+    [two.number, one.number]);
 });
 
 test('the same-title mutex serializes twins and lets fan-out qualifiers through (S15/F6)', () => {
@@ -64,8 +89,8 @@ test('an ad-hoc item never yields — `after` is a scheduled-chain property', ()
   // `manual` task's item. Neither yields, and neither is yielded to.
   const qualified = it({ task: 'down', qualifier: '#42', labels: ['task:ready'] });
   const lever = it({ task: 'lever', labels: ['task:ready'] });
-  assert.deepEqual(pickOrder([up, qualified, lever], { taskAfter, frequencyOf }).map((i) => i.number),
-    [qualified.number, lever.number]);
+  assert.deepEqual(pickOrder([up, qualified, lever], { taskAfter, frequencyOf }).map((i) => i.number).sort(),
+    [qualified.number, lever.number].sort(), 'both admitted — the order between them is the draw\'s');
 });
 
 test('a live AD-HOC upstream is not the upstream the yield waits on', () => {
