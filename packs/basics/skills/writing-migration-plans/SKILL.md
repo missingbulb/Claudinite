@@ -34,7 +34,11 @@ a step handed to a human that you could have taken is the most expensive kind of
 
 The exception is the genuinely destructive step — deleting the old store, revoking the old
 credential, removing the compatibility shim. Those are not setup; they are the migration's tail,
-and they belong after the cutover has been observed working.
+and they belong after the cutover has been observed working — which is **not** a later phase. A
+cleanup phase falls due long after the run that would have done it ended, and nothing brings it
+back. File it as work that comes back on its own (basics' *Spotting a change that should wait*),
+in the same change that creates the thing it cleans up, naming what closes it and what to remove.
+Then the owner can forget about it, which is the point.
 
 **2. Review and authorization gates — collapsed into one pass.** Every phase that ships code is a
 gate: the owner must read it and approve it before the next phase can start. A plan with four
@@ -97,6 +101,7 @@ Run the same sort over it. The findings worth raising, in order of what they cos
 
 1. A secret, permission, environment or account created **after** code that depends on it.
 2. More than one review gate — two or more phases that each end in "open a PR and wait".
-3. A destructive step scheduled before the replacement has been observed working.
+3. A destructive step scheduled before the replacement has been observed working, or a
+   cleanup written as a phase rather than filed as work that returns.
 4. A phase with no stated exit condition, or one only a person can judge.
 5. A step handed to a human that the agent could have performed itself.

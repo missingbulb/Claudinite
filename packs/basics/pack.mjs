@@ -22,7 +22,9 @@ export default {
   // 12: the `do-later` skill — deferring a change into work that comes back on its own.
   // 60820.1: versions become date-anchored (#1100) — the counter this list is written
   // in retires here, and every pack in the canon restarts from the same day.
-  version: '60820.1',
+  // 60820.2: a migration's cleanup is filed as work that returns, never written as a
+  // later phase (writing-migration-plans).
+  version: '60820.2',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'cross-project working discipline, issue-branch-PR lifecycle, repo hygiene, doc/reference integrity and the baseline engineering, testing and debugging skills',
