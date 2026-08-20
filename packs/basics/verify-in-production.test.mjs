@@ -39,6 +39,13 @@ test('a failing run reopens the original issue the filed brief names', () => {
   assert.match(skill, /reopen/i);
 });
 
+// The hierarchy, not just the field: a verification hangs under the change it
+// proves, so the original issue shows what is still unproven about it.
+test('the verification is filed as a sub-issue of the original', () => {
+  assert.match(skill, /sub-issue/i, 'the skill never links the verification under the change it proves');
+  assert.match(skill, /sub_issue_write/, 'nothing says how to make the link');
+});
+
 // Not-live-yet re-arms silently, by the extension the FILER stated — the run just
 // executes its playbook, deciding nothing.
 test('a not-yet-live run re-arms by the filed Retry-every, mark and field only', () => {
