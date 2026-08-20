@@ -460,3 +460,42 @@ test('dispatchWorkflow judges the POST by status, never by its body', async () =
   assert.deepEqual(await dispatchWorkflow(gh, 'o/denied', 'claudinite-executor.yml', 'main'),
     { ok: false, status: 403 });
 });
+
+// --- the durable record, and the release a close performs (§15.18, §15.19) -----
+//
+// The executor converges the agentless majority itself, and for those runs the
+// item is the only trace that outlives the Actions log.
+
+test('an executor close writes the execution record onto the item', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
+  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })]);
+  assert.match(repo.find(1).comments.at(-1).body, /claudinite-task-exec v1 p\/a \[#1\] success/);
+});
+
+test('a park in the failure lane records the run as failed', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
+  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], {
+    runTaskCodeWork: async () => ({ ok: false, why: 'boom' }),
+  });
+  assert.match(repo.find(1).comments.at(-1).body, /claudinite-task-exec v1 p\/a \[#1\] failed/);
+});
+
+// An approval park is a run that SUCCEEDED and left a PR — neither `success` (the
+// item is open) nor `failed` (nothing broke). Absence is the honest answer.
+test('an approval park writes no record at all', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
+  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], {
+    runTaskCodeWork: async () => ({ ok: true, agentRequested: false, delivered: ['PR: #7 (open)'], openPr: 7 }),
+  });
+  assert.doesNotMatch(repo.find(1).comments.at(-1).body, /claudinite-task-exec/);
+});
+
+test('an executor close readies the dependent it was holding', async () => {
+  const dependent = {
+    ...workItem(2, 'b', ['task:blocked']),
+    body: 'packs/p/tasks/b/task.md\n\nBlocked-by: #1\n',
+  };
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready']), dependent]);
+  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })]);
+  assert.deepEqual(repo.find(2).labels, ['task:ready'], 'the chain link runs now, not in an hour');
+});
