@@ -15,6 +15,8 @@
 
 import { pathToFileURL } from 'node:url';
 import { nextAnchor } from './anchors.mjs';
+import { readyDependents } from './readiness.mjs';
+import { renderTaskExec } from '../run-record.mjs';
 import {
   READY, URGENT, EXECUTING, AGENT, BLOCKED, NEEDS_HUMAN,
   TASK_DONE, TASK_OBSOLETE, QUEUE_LABELS, REQUEST_LABELS, QUEUED_LABEL, isStandingItem,
@@ -244,6 +246,9 @@ async function executeItem({
   api, gh, repo, root, config, schedule, byId, item, executorId, claim,
   now, collectSignalsFor, runTaskCodeWork, invokeAgent, log,
 }) {
+  // What a close needs beyond the item itself: the clock for a dependent's
+  // `Not-before`, and somewhere to say what it released.
+  const ctx = { now, log };
   const parsed = parseWorkItemTitle(item.title);
   const { taskPath } = parseWorkItemBody(item.body);
   const id = parsed ? `${parsed.pack}/${parsed.task}` : null;
@@ -251,18 +256,18 @@ async function executeItem({
 
   // --- validate in code, before anything trusts the issue ------------------
   if (!parsed || !taskPath) {
-    await converge(api, gh, repo, item.number, EXECUTING, NEEDS_HUMAN_FAILURE, claim,
-      'This work item is malformed — its title or first body line does not name a task. Possible forgery; a human should look at it.');
+    await converge(api, gh, repo, item, EXECUTING, NEEDS_HUMAN_FAILURE, claim,
+      'This work item is malformed — its title or first body line does not name a task. Possible forgery; a human should look at it.', 'invalid');
     return 'needs-human';
   }
   if (!task) {
-    await close(api, gh, repo, item.number, EXECUTING, TASK_OBSOLETE, 'not_planned',
-      `\`${id}\` is not a task this repo carries at HEAD (the pack may be undeclared, or the task removed). Closing obsolete.`);
+    await close(api, gh, repo, item, EXECUTING, TASK_OBSOLETE, 'not_planned',
+      `\`${id}\` is not a task this repo carries at HEAD (the pack may be undeclared, or the task removed). Closing obsolete.`, 'task-gone', ctx);
     return 'obsolete';
   }
   if (task.taskPath !== taskPath) {
-    await converge(api, gh, repo, item.number, EXECUTING, NEEDS_HUMAN_FAILURE, claim,
-      `This item's task path (\`${taskPath}\`) is not where \`${id}\` lives at HEAD (\`${task.taskPath}\`). Not running it.`);
+    await converge(api, gh, repo, item, EXECUTING, NEEDS_HUMAN_FAILURE, claim,
+      `This item's task path (\`${taskPath}\`) is not where \`${id}\` lives at HEAD (\`${task.taskPath}\`). Not running it.`, 'invalid');
     return 'needs-human';
   }
 
@@ -282,7 +287,7 @@ async function executeItem({
   // parks open in the failure lane, where the ordinary re-queue lever retries it
   // once the API recovers, and nothing is written to whatever it could not read.
   if (verdict.error) {
-    await converge(api, gh, repo, item.number, EXECUTING, NEEDS_HUMAN_FAILURE, claim,
+    await converge(api, gh, repo, item, EXECUTING, NEEDS_HUMAN_FAILURE, claim,
       `This run could not be decided: ${verdict.error}\n\nNothing ran and nothing was written. Re-queue this item (remove the \`${NEEDS_HUMAN}\` labels, add \`${READY}\`) once the cause has cleared.`);
     log(`! #${item.number} ${id}: the precondition could not answer — ${verdict.error}`);
     return 'needs-human';
@@ -296,8 +301,11 @@ async function executeItem({
       // refused is one no later tick adopts and no person is told about, and one
       // whose mark — if re-applied — walks into the same refusal forever.
       if (fields.request) await declineRequest(api, gh, repo, fields.request, item.number, plan.reason);
-      await close(api, gh, repo, item.number, EXECUTING, TASK_OBSOLETE, 'not_planned',
-        `The precondition declined and this item has no anchor to roll to: ${plan.reason}`);
+      // A DECLINE IS A COMPLETED RUN, not a failure: the executor asked, got a
+      // no, and closed the occurrence — so the record says `success` and the
+      // reason sits beside it in the same comment.
+      await close(api, gh, repo, item, EXECUTING, TASK_OBSOLETE, 'not_planned',
+        `The precondition declined and this item has no anchor to roll to: ${plan.reason}`, 'success', ctx);
       return 'obsolete';
     }
     // The roll writes no comment — the `Not-before` bump IS the record, and an
@@ -328,13 +336,13 @@ async function executeItem({
       // said nothing about why it failed is a `failure` — the lane that means
       // "someone reads the trace", which is the only safe default for a run whose
       // cause is unknown.
-      await converge(api, gh, repo, item.number, EXECUTING, triageLabelFor(result.triage?.kind), claim,
+      await converge(api, gh, repo, item, EXECUTING, triageLabelFor(result.triage?.kind), claim,
         `Code-work failed: ${result.why}${result.triage?.detail ? `\n\nThe worker's own verdict: ${result.triage.detail}` : ''}`
         + `${result.detail ? `\n\n\`\`\`\n${result.detail}\n\`\`\`` : ''}`);
       return 'needs-human';
     }
     if (result.missingSecrets?.length) {
-      await converge(api, gh, repo, item.number, EXECUTING, NEEDS_HUMAN_ACTION, claim,
+      await converge(api, gh, repo, item, EXECUTING, NEEDS_HUMAN_ACTION, claim,
         `This task declares repo Actions secrets that are not configured: ${result.missingSecrets.join(', ')}. Set them in repo settings and re-queue this item (remove the \`needs-human\` labels, add \`task:ready\`).`);
       return 'needs-human';
     }
@@ -345,15 +353,15 @@ async function executeItem({
       // (`isBlockingPark`): the next occurrence is filed on schedule around it, so
       // an unreviewed PR delays nobody but its reviewer.
       if (result.openPr) {
-        await converge(api, gh, repo, item.number, EXECUTING, NEEDS_HUMAN_APPROVAL, claim,
+        await converge(api, gh, repo, item, EXECUTING, NEEDS_HUMAN_APPROVAL, claim,
           `Code-work did this run's work and opened a PR for you to approve:\n${result.delivered.map((d) => `- ${d}`).join('\n')}`
-          + `\n\nMerge or close #${result.openPr}, then close this item. This task keeps running on schedule meanwhile.`);
+          + `\n\nMerge or close #${result.openPr}, then close this item. This task keeps running on schedule meanwhile.`, null);
         return 'needs-human';
       }
-      await close(api, gh, repo, item.number, EXECUTING, TASK_DONE, 'completed',
+      await close(api, gh, repo, item, EXECUTING, TASK_DONE, 'completed',
         result.delivered?.length
           ? `Code-work did this run's work and left:\n${result.delivered.map((d) => `- ${d}`).join('\n')}`
-          : 'Code-work did this run\'s work; no agent was needed.');
+          : 'Code-work did this run\'s work; no agent was needed.', 'success', ctx);
       return TASK_DONE;
     }
     return handOff({ api, gh, repo, item, task, id, context, result, executorId, claim, invokeAgent, config, log });
@@ -361,8 +369,8 @@ async function executeItem({
 
   // An agentless task with no code-work does nothing (the contract forbids it).
   if (task.decl.agent_model === 'none') {
-    await converge(api, gh, repo, item.number, EXECUTING, NEEDS_HUMAN_FAILURE, claim,
-      'This task is agentless but declares no code_work, so there is nothing to run — a contract-forbidden shape that reached the queue.');
+    await converge(api, gh, repo, item, EXECUTING, NEEDS_HUMAN_FAILURE, claim,
+      'This task is agentless but declares no code_work, so there is nothing to run — a contract-forbidden shape that reached the queue.', 'invalid');
     return 'needs-human';
   }
   return handOff({ api, gh, repo, item, task, id, context, result: {}, executorId, claim, invokeAgent, config, log });
@@ -428,7 +436,7 @@ async function handOff({ api, gh, repo, item, task, id, context, result, executo
   if (invocation.answered) {
     // The endpoint refused, so no session exists and none will: a token, a URL or
     // a routine is wrong, and every future pick would be refused the same way.
-    await converge(api, gh, repo, item.number, AGENT, NEEDS_HUMAN_ACTION, claim,
+    await converge(api, gh, repo, item, AGENT, NEEDS_HUMAN_ACTION, claim,
       `Could not start an agent session: ${invocation.error}\n\nNo session was started. Fix the invocation endpoint, then re-queue this item (remove the \`${NEEDS_HUMAN}\` labels, add \`${READY}\`).`);
     return 'needs-human';
   }
@@ -472,20 +480,44 @@ async function strikeClaim(api, gh, repo, claim) {
 // Every exit converges the item exactly once, with one comment saying what
 // happened — the terminal-state discipline the incidents bought. The claim sits
 // before the body so every state argument is grouped ahead of the prose.
+//
+// THE COMMENT CARRIES THE EXECUTION RECORD (DESIGN §6.5, §15.18). Actions logs
+// expire, and for an agentless run — the majority — the item is the only durable
+// trace there will ever be, so the record goes where the item is rather than into
+// a log that ages out. The bracketed field is this item's issue number, which is
+// the only join from a record back to the work it describes.
+// A status of `null` writes NO record, and that is the honest answer for a park
+// that is not a failure: the vocabulary's `success` means "ran to completion and
+// the issue was closed" and `failed` means the run broke, so an approval park —
+// a run that succeeded and left a PR for a person — is neither. Absence is a
+// state of its own; inventing a fifth status is a change to stored data every
+// decoder in the fleet would have to learn.
+const recordFor = (item, status) => {
+  const parsed = status ? parseWorkItemTitle(item.title) : null;
+  return parsed
+    ? `\n\n\`\`\`\n${renderTaskExec({ pack: parsed.pack, task: parsed.task, slotId: `#${item.number}`, status })}\n\`\`\``
+    : '';
+};
+
 // Park an item for a human. BOTH labels, always: `needs-human` is the state every
 // guard and sweep reads, `triage` is what the human is being asked for.
-async function converge(api, gh, repo, number, from, triage, claim, body) {
+async function converge(api, gh, repo, item, from, triage, claim, body, status = 'failed') {
   await strikeClaim(api, gh, repo, claim);
-  await api.comment(gh, repo, number, body);
-  await api.swapLabel(gh, repo, number, from, NEEDS_HUMAN);
-  await api.addLabel(gh, repo, number, triage);
+  await api.comment(gh, repo, item.number, body + recordFor(item, status));
+  await api.swapLabel(gh, repo, item.number, from, NEEDS_HUMAN);
+  await api.addLabel(gh, repo, item.number, triage);
 }
 
-async function close(api, gh, repo, number, from, outcome, stateReason, body) {
-  await api.comment(gh, repo, number, body);
-  await api.removeLabel(gh, repo, number, from);
-  await api.addLabel(gh, repo, number, outcome);
-  await api.closeIssue(gh, repo, number, stateReason);
+// A close is also the moment a dependent may become due (§15.19): whoever closes
+// an item releases what it was holding, in code, and the run's own re-dispatch
+// then finds it. The tick stays the backstop for every close this code never
+// performs — a human's, or a session that stopped early.
+async function close(api, gh, repo, item, from, outcome, stateReason, body, status, ctx = {}) {
+  await api.comment(gh, repo, item.number, body + recordFor(item, status));
+  await api.removeLabel(gh, repo, item.number, from);
+  await api.addLabel(gh, repo, item.number, outcome);
+  await api.closeIssue(gh, repo, item.number, stateReason);
+  await readyDependents(api, gh, repo, item.number, ctx);
 }
 
 // --- CLI ----------------------------------------------------------------------

@@ -14,6 +14,7 @@
 import { pathToFileURL } from 'node:url';
 import { mostRecentAnchor, nextAnchor } from './anchors.mjs';
 import { EXECUTING_LEASH_MS } from './leases.mjs';
+import { isReleasable } from './readiness.mjs';
 import {
   WORK_PREFIX, BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN, TASK_OBSOLETE,
   NEEDS_HUMAN_DECISION, isBlockingPark,
@@ -118,13 +119,11 @@ export function planTick({
   }
 
   // ---- job 2: ready whatever is due (any origin) --------------------------
+  // The same predicate a CLOSE asks (§15.19) — one definition, so the hourly pass
+  // and the close-time release can never disagree about what "due" means.
   for (const item of items) {
-    if (item.state !== 'open' || closedByThisTick.has(item.number)) continue;
-    if (!hasLabel(item, BLOCKED) || hasLabel(item, NEEDS_HUMAN)) continue;
-    const { notBefore, blockedBy } = parseWorkItemBody(item.body);
-    const blockersDone = blockedBy.every((n) => stateOf(n) === 'closed');
-    const timeReached = notBefore === null || nowMs >= ms(notBefore);
-    if (blockersDone && timeReached) ops.push({ kind: 'ready', issue: item.number });
+    if (closedByThisTick.has(item.number)) continue;
+    if (isReleasable(item, { stateOf, nowMs })) ops.push({ kind: 'ready', issue: item.number });
   }
 
   // ---- job 4: adopt the issues somebody marked (DESIGN §16.3) -------------

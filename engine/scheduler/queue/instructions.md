@@ -67,7 +67,22 @@ instructions.
    finish. A `none` task may not open a PR; an `open-pr` task may not merge one.
    Exceeding the ceiling is a failure, not a success with a surprise.
 
-6. **Converge the issue exactly once**, with one comment saying what happened:
+6. **Converge the issue exactly once — in code, not by hand.** One command
+   performs every side effect the transition needs: the comment, the label swap,
+   the outcome label, the `claudinite-task-exec` record on the item, the close
+   with the right state reason, the request write-back, and the release of
+   anything that was blocked on this item.
+
+   ```bash
+   node <engine>/scheduler/queue/converge-item.mjs --issue <n> \
+     --outcome done|approval|action|decision|failure \
+     --summary '<what happened>' [--pr <n>]
+   ```
+
+   **You supply the judgment — which outcome, and the prose.** Everything below
+   is how to choose; nothing below is yours to perform. If the command refuses,
+   read what it says: it means this item is not yours to converge, and doing it
+   by hand anyway is how an item ends up closed wearing `task:agent`.
 
    | label | when |
    |---|---|
@@ -84,30 +99,21 @@ instructions.
    | `task:needs-human-decision` | you stopped mid-flight and what happens next is a choice — you ran out of time, or you exceeded the declared ceiling and someone must say whether that stands |
    | `task:needs-human-failure` | the run broke: a bug, a contract-forbidden shape, a malformed or forged item. Use this when you are unsure |
 
-   **A `Request: #N` item writes back to that issue too**, and only on the two ends
-   that are its business: on the approval park, swap `claude-queued` for
-   `claude-in-review` and name the pull request; on a **failure**, write nothing at
-   all and leave `claude-queued` standing — re-arming work that writes code is a
-   person's decision, and that standing label is what stops the next tick queueing a
-   second run of the same request.
+   **A `Request: #N` item writes back to that issue too**, and the command does
+   it: on the approval park it swaps `claude-queued` for `claude-in-review` and
+   names the pull request (which is why `--pr` is required there); on a failure it
+   writes nothing at all and leaves `claude-queued` standing — re-arming work that
+   writes code is a person's decision, and that standing label is what stops the
+   next tick queueing a second run of the same request.
 
    Only `task:needs-human-failure` (and a park with no sub-label at all) holds the
    task's lane — while one is open the generator files no further occurrence of
    this task. The other three wait for their human while the schedule carries on,
    so leaving one open costs nobody but the person it names.
 
-   Then print the `claudinite-task-exec` record, whichever way it went — a failed
-   run is the one most worth having a record of. The bracketed field is the
-   occurrence's identity, and under the queue that is **this item's issue number**
-   — write `[#<n>]`, not `[unknown]`, because it is the only thing tying the record
-   back to the work it describes:
-
-   ```bash
-   node <engine>/scheduler/record-exec.mjs <pack>/<task> '#<n>' <success|failed>
-   ```
-
-   It prints the line into this session's transcript; it is a printed line, not a
-   GitHub write, so run it exactly once.
+   The `claudinite-task-exec` record goes onto the item, in the same comment, and
+   the command writes it — Actions logs expire and the item does not, so the item
+   is where a record has to live. Nothing here is yours to print by hand.
 
 7. **Capture this session before you end it.** Last step, after the item is
    converged, and run it whichever way step 6 went:
