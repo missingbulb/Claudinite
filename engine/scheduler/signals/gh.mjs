@@ -39,6 +39,11 @@ export function makeGh({ token = process.env.GITHUB_TOKEN, api = API, fetchImpl 
 // for the task-invocation records.
 export const SCHEDULER_WORKFLOW_FILE = 'claudinite-scheduler.yml';
 
+// The executor workflow's file name, same contract: identical in every member,
+// and the target of every `workflow_dispatch` in the queue's chain (DESIGN §10) —
+// the close-time drain, a run's own re-dispatch, and the failure continuation.
+export const EXECUTOR_WORKFLOW_FILE = 'claudinite-executor.yml';
+
 // The repo slug (owner/name) and default branch the workflow runs against, from
 // the Actions environment. `GITHUB_REPOSITORY` is always set in a workflow;
 // `GITHUB_REF_NAME` is the branch for a scheduled/dispatch run on the default branch.

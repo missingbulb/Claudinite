@@ -12,10 +12,15 @@
 # TWO JOBS, IN ORDER. The tick is pure label mechanics over the issue list —
 # instantiate each task's standing item at its anchor, ready what is due, reclaim
 # dead executor claims — and evaluates no precondition and collects no signal. The
-# drain is an ordinary executor run: it picks up what the tick just created, which
-# is what keeps the common case's latency at zero even with no `labeled` event
-# delivered. Lost events are therefore never the only delivery — they are latency
-# sugar, which is what retires the re-arm.
+# drain then STARTS an executor run for what the tick just created, which is what
+# keeps the common case's latency at zero even with no `labeled` event delivered.
+# Lost events are therefore never the only delivery — they are latency sugar,
+# which is what retires the re-arm.
+#
+# The drain dispatches rather than executes, and that is the point: this workflow's
+# concurrency group serializes TICKS, and an executor run inside it would make each
+# hour's tick queue behind the previous hour's work — which the heartbeat, by making
+# long work legal, turned from theoretical into likely (DESIGN §15.16).
 #
 # `workflow_dispatch` is not a convenience: it is the never-wait-for-the-cron
 # lever every forced run, migration and validation burst depends on. Its one
@@ -61,31 +66,38 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           CLAUDINITE_WAKE: ${{ inputs.wake }}
+          # The operator hold (DESIGN §8): set this repo variable to `true` and
+          # every entry point exits at its first act, having fired nothing.
+          CLAUDINITE_TASKS_SUSPEND_ALL: ${{ vars.CLAUDINITE_TASKS_SUSPEND_ALL }}
         run: node engine/scheduler/queue/tick.mjs
 
-  # The post-tick drain. `timeout-minutes` MUST stay ≤ the engine's executing
-  # leash (60m): a hung runner has to be killed by the platform before its claim
-  # is reaped and the item re-picked, or a zombie's code-work runs beside its
-  # replacement's.
+  # THE POST-TICK DRAIN, DISPATCHED RATHER THAN RUN HERE (DESIGN §10, §15.16).
+  # The tick's concurrency group serializes ticks — its duplicate-item self-heal
+  # depends on that — and a drain running inside the group would make every hour's
+  # tick queue behind the previous hour's work. Since the heartbeat made long work
+  # legal, that is no longer a theoretical wait. So the drain is a `workflow_dispatch`
+  # of the executor workflow: it starts in its own group, on its own runner, and
+  # this job's success means "the drain was started", never "the drain finished".
+  #
+  # This is still the guaranteed delivery. A label event may be lost; this fires
+  # every hour whatever happens.
   drain:
     needs: tick
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    permissions:
+      actions: write
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/github-script@v7
         with:
-          node-version: 24
-      - name: Drain the queue
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          # On a member this block is stamped by the wiring converge (the
-          # `# claudinite:secrets` marker in the stub); the canon has no converge,
-          # so its own list is written here, by hand, in the same commit.
-          FLEET_GITHUB_TOKEN: ${{ secrets.FLEET_GITHUB_TOKEN }}
-          CCR_ROUTINE_TOKEN: ${{ secrets.CCR_ROUTINE_TOKEN }}
-          CCR_FLEET_ROUTINE_TOKEN: ${{ secrets.CCR_FLEET_ROUTINE_TOKEN }}
-        run: node engine/scheduler/queue/executor.mjs
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'claudinite-executor.yml',
+              ref: context.payload.repository?.default_branch
+                ?? context.ref.replace('refs/heads/', ''),
+            });
+            core.info('dispatched the executor to drain whatever this tick created');
 
   # A scheduled run reaches no one when it goes red, so escalate a whole-run
   # failure to a human-visible `workflow-failure` issue. Converges to ONE open

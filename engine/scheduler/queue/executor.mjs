@@ -14,7 +14,11 @@
 // the GitHub/code-work/invocation I/O around them.
 
 import { pathToFileURL } from 'node:url';
+import { isSuspended, suspendedNotice } from './suspend.mjs';
 import { nextAnchor } from './anchors.mjs';
+import { readyDependents } from './readiness.mjs';
+import { HEARTBEAT_MS, heartbeatComment, withHeartbeat } from './heartbeat.mjs';
+import { renderTaskExec } from '../run-record.mjs';
 import {
   READY, URGENT, EXECUTING, AGENT, BLOCKED, NEEDS_HUMAN,
   TASK_DONE, TASK_OBSOLETE, QUEUE_LABELS, REQUEST_LABELS, QUEUED_LABEL, isStandingItem,
@@ -23,19 +27,17 @@ import {
   parseWorkItemTitle, parseWorkItemBody, parseContextLines, mergeContext, withNotBefore, withSection, hasLabel, DELIVERED_HEADING, LEGACY_DELIVERED_HEADINGS,
   LAST_VERDICT_HEADING, lastVerdictLines } from './work-item.mjs';
 
-// How many items one executor run may take before it stops. Small on purpose: an
-// executor is code iterating a queue, and more capacity is more executors, not a
-// longer loop (DESIGN §10).
-export const DEFAULT_MAX_ITEMS = 3;
-
 const titleOf = (item) => (item.title ?? '').trim();
 const taskIdOf = (item) => {
   const p = parseWorkItemTitle(item.title);
   return p ? `${p.pack}/${p.task}` : null;
 };
 
-// The pick order (DESIGN §6.1): urgent first, then oldest-created, with two skip
-// rules read live at pick time.
+// The pick order (DESIGN §6.1): urgent first, then RANDOM among the ready, with
+// two skip rules read live at pick time. Random rather than oldest-first because
+// nothing leans on FIFO aging — the stale-ready escalation is period-scale — while
+// a deterministic order lets one unlucky head dominate every run of a chain
+// (DESIGN §15.20).
 //
 //  - SAME-TITLE MUTEX (S15/F6): skip an item whose exact title has another open
 //    item executing or handed to an agent — one task, one execution at a time,
@@ -51,12 +53,17 @@ const taskIdOf = (item) => {
 // `open` is every open work item; `taskAfter(id)` gives a task's declared
 // upstreams as `<pack>/<task>` ids, and `frequencyOf(id)` that task's declared
 // frequency at HEAD — which is half of what says whether an item is a standing
-// occurrence or an ad-hoc run (§15.26).
-export function pickOrder(open = [], { taskAfter = () => [], frequencyOf = () => null } = {}) {
+// occurrence or an ad-hoc run (§15.26). `random` is the tie-break draw, injected
+// so a test can pin an order the production call deliberately does not have.
+export function pickOrder(open = [], { taskAfter = () => [], frequencyOf = () => null, random = Math.random } = {}) {
   const live = (item) => hasLabel(item, READY) || hasLabel(item, EXECUTING) || hasLabel(item, AGENT);
   const standing = (item) => isStandingItem(item, frequencyOf(taskIdOf(item)));
   const liveUpstream = (upstreamId) => open.some((o) =>
     taskIdOf(o) === upstreamId && standing(o) && live(o));
+  // One draw per item, taken once: a comparator that called `random()` per
+  // comparison would not be a consistent ordering, and `Array.sort` on one is
+  // free to produce anything at all.
+  const draw = new Map(open.map((i) => [i.number, random()]));
 
   return open
     .filter((i) => hasLabel(i, READY) && !hasLabel(i, NEEDS_HUMAN))
@@ -68,8 +75,7 @@ export function pickOrder(open = [], { taskAfter = () => [], frequencyOf = () =>
     })
     .sort((a, b) =>
       (hasLabel(b, URGENT) ? 1 : 0) - (hasLabel(a, URGENT) ? 1 : 0)
-      || new Date(a.created_at) - new Date(b.created_at)
-      || a.number - b.number);
+      || draw.get(a.number) - draw.get(b.number));
 }
 
 // The claim comment carries WHO and WHEN — the executor id and its run URL —
@@ -139,12 +145,26 @@ export function noGoPlan(item, task, schedule, now, reason) {
 
 const nowIso = () => new Date().toISOString();
 
-// One executor run. Injected seams keep the loop testable end to end without
-// GitHub, code-work subprocesses or an invocation endpoint.
+// ONE EXECUTOR RUN PERFORMS ONE ITEM (DESIGN §6, §10, decision §15.22). Not a
+// configured maximum — the essence of an executor: it claims one item, sees it to
+// its settle, and ends. Capacity is executor width, and the queue drains as a
+// CHAIN of runs, each cause on the record (§10): the tick's own drain job, a
+// label event, the close-time drain, this run's own `redispatch`, and the
+// workflow's failure-continuation job when a run dies before reaching it.
+//
+// A run that never gets its item — nothing pickable, or another executor holds
+// this episode's earlier claim — ends without dispatching anything. Retrying a
+// lost race here would be a second pick attempt racing the very executor that
+// won, and re-dispatching over a claim we just reverted is a two-executor
+// dispatch loop; in both cases the winner's own chain (or the tick behind it)
+// carries the queue.
+//
+// Injected seams keep the run testable end to end without GitHub, code-work
+// subprocesses or an invocation endpoint.
 export async function runExecutor({
   gh, repo, root, config, tasks, executorId, runUrl = null,
-  maxItems = DEFAULT_MAX_ITEMS, now = () => new Date(),
-  collectSignalsFor, runTaskCodeWork, invokeAgent, log = console.log,
+  now = () => new Date(), random = Math.random, heartbeatMs = HEARTBEAT_MS,
+  collectSignalsFor, runTaskCodeWork, invokeAgent, redispatch = null, log = console.log,
 }) {
   const api = await import('../github.mjs');
   const { listOpenWorkItems } = await import('./read.mjs');
@@ -154,48 +174,59 @@ export async function runExecutor({
   const frequencyOf = (id) => byId.get(id)?.decl?.frequency ?? null;
   const done = [];
 
-  for (let n = 0; n < maxItems; n += 1) {
-    const open = await listOpenWorkItems(gh, repo);
-    const candidate = pickOrder(open, { taskAfter, frequencyOf })[0];
-    if (!candidate) break;
+  const open = await listOpenWorkItems(gh, repo);
+  const candidate = pickOrder(open, { taskAfter, frequencyOf, random })[0];
+  if (!candidate) return done;
 
-    // --- claim: the verified lease ------------------------------------------
-    await api.swapLabel(gh, repo, candidate.number, READY, EXECUTING);
-    await api.comment(gh, repo, candidate.number, claimComment({
-      executor: executorId, runUrl, at: nowIso(),
-    }));
-    const comments = await api.listComments(gh, repo, candidate.number);
-    const winner = claimWinner(comments);
-    const mine = [...comments]
-      .sort((a, b) => a.id - b.id)
-      .filter((c) => (c.body ?? '').includes(CLAIM_MARKER) && (c.body ?? '').includes(`executor \`${executorId}\``))
-      .at(-1);
-    if (!winner || winner.id !== mine?.id) {
-      // The loser reverts nothing — the winner's labels already stand — and moves
-      // on to a DIFFERENT item, read from live state on the next iteration. It
-      // does strike its own claim (F24): letting go covers losing too, and a
-      // claim left behind here outlives the winner's episode and becomes the
-      // earliest of the NEXT one, moving the livelock one episode along.
-      await strikeClaim(api, gh, repo, mine);
-      log(`- #${candidate.number}: another executor holds this episode's earliest claim — moving on`);
-      continue;
+  // --- claim: the verified lease --------------------------------------------
+  await api.swapLabel(gh, repo, candidate.number, READY, EXECUTING);
+  await api.comment(gh, repo, candidate.number, claimComment({
+    executor: executorId, runUrl, at: nowIso(),
+  }));
+  const comments = await api.listComments(gh, repo, candidate.number);
+  const winner = claimWinner(comments);
+  const mine = [...comments]
+    .sort((a, b) => a.id - b.id)
+    .filter((c) => (c.body ?? '').includes(CLAIM_MARKER) && (c.body ?? '').includes(`executor \`${executorId}\``))
+    .at(-1);
+  if (!winner || winner.id !== mine?.id) {
+    // The loser reverts nothing — the winner's labels already stand. It does
+    // strike its own claim (F24): letting go covers losing too, and a claim left
+    // behind here outlives the winner's episode and becomes the earliest of the
+    // NEXT one, moving the livelock one episode along.
+    await strikeClaim(api, gh, repo, mine);
+    log(`- #${candidate.number}: another executor holds this episode's earliest claim — this run stands down`);
+    return done;
+  }
+
+  // --- post-claim re-verify (F15) -------------------------------------------
+  const others = await withClaimIds(api, gh, repo, await listOpenWorkItems(gh, repo), candidate.number);
+  if (conflictsWithEarlierClaim(candidate, winner.id, others, { taskAfter, frequencyOf })) {
+    await api.comment(gh, repo, candidate.number,
+      `${EPISODE_MARKER}\nReverting this claim: a conflicting item holds an earlier claim this cycle. Returning the item to the queue.`);
+    await api.swapLabel(gh, repo, candidate.number, EXECUTING, READY);
+    log(`- #${candidate.number}: reverted — a conflicting item claimed earlier`);
+    return done;
+  }
+
+  const outcome = await executeItem({
+    api, gh, repo, root, config, schedule, byId, item: candidate, executorId,
+    claim: winner, now, heartbeatMs, collectSignalsFor, runTaskCodeWork, invokeAgent, log,
+  });
+  done.push({ issue: candidate.number, outcome });
+
+  // --- the chain: hand the remainder to a fresh run -------------------------
+  // Read live, after the settle: this item's convergence may have readied a
+  // dependent, and another executor may have taken what was pickable when this
+  // run started.
+  if (redispatch) {
+    const left = pickOrder(await listOpenWorkItems(gh, repo), { taskAfter, frequencyOf, random });
+    if (left.length) {
+      const res = await redispatch();
+      log(res?.ok
+        ? `- ${left.length} item(s) still pickable — dispatched a fresh executor run`
+        : `! ${left.length} item(s) still pickable but the re-dispatch failed (${res?.status ?? 'no status'}) — the tick's drain is the backstop`);
     }
-
-    // --- post-claim re-verify (F15) -----------------------------------------
-    const others = await withClaimIds(api, gh, repo, await listOpenWorkItems(gh, repo), candidate.number);
-    if (conflictsWithEarlierClaim(candidate, winner.id, others, { taskAfter, frequencyOf })) {
-      await api.comment(gh, repo, candidate.number,
-        `${EPISODE_MARKER}\nReverting this claim: a conflicting item holds an earlier claim this cycle. Returning the item to the queue.`);
-      await api.swapLabel(gh, repo, candidate.number, EXECUTING, READY);
-      log(`- #${candidate.number}: reverted — a conflicting item claimed earlier`);
-      continue;
-    }
-
-    const outcome = await executeItem({
-      api, gh, repo, root, config, schedule, byId, item: candidate, executorId,
-      claim: winner, now, collectSignalsFor, runTaskCodeWork, invokeAgent, log,
-    });
-    done.push({ issue: candidate.number, outcome });
   }
   return done;
 }
@@ -215,8 +246,11 @@ async function withClaimIds(api, gh, repo, items, selfNumber) {
 // One claimed item, from validation through to a terminal state (or a hand-off).
 async function executeItem({
   api, gh, repo, root, config, schedule, byId, item, executorId, claim,
-  now, collectSignalsFor, runTaskCodeWork, invokeAgent, log,
+  now, heartbeatMs, collectSignalsFor, runTaskCodeWork, invokeAgent, log,
 }) {
+  // What a close needs beyond the item itself: the clock for a dependent's
+  // `Not-before`, and somewhere to say what it released.
+  const ctx = { now, log };
   const parsed = parseWorkItemTitle(item.title);
   const { taskPath } = parseWorkItemBody(item.body);
   const id = parsed ? `${parsed.pack}/${parsed.task}` : null;
@@ -224,18 +258,18 @@ async function executeItem({
 
   // --- validate in code, before anything trusts the issue ------------------
   if (!parsed || !taskPath) {
-    await converge(api, gh, repo, item.number, EXECUTING, NEEDS_HUMAN_FAILURE, claim,
-      'This work item is malformed — its title or first body line does not name a task. Possible forgery; a human should look at it.');
+    await converge(api, gh, repo, item, EXECUTING, NEEDS_HUMAN_FAILURE, claim,
+      'This work item is malformed — its title or first body line does not name a task. Possible forgery; a human should look at it.', 'invalid');
     return 'needs-human';
   }
   if (!task) {
-    await close(api, gh, repo, item.number, EXECUTING, TASK_OBSOLETE, 'not_planned',
-      `\`${id}\` is not a task this repo carries at HEAD (the pack may be undeclared, or the task removed). Closing obsolete.`);
+    await close(api, gh, repo, item, EXECUTING, TASK_OBSOLETE, 'not_planned',
+      `\`${id}\` is not a task this repo carries at HEAD (the pack may be undeclared, or the task removed). Closing obsolete.`, 'task-gone', ctx);
     return 'obsolete';
   }
   if (task.taskPath !== taskPath) {
-    await converge(api, gh, repo, item.number, EXECUTING, NEEDS_HUMAN_FAILURE, claim,
-      `This item's task path (\`${taskPath}\`) is not where \`${id}\` lives at HEAD (\`${task.taskPath}\`). Not running it.`);
+    await converge(api, gh, repo, item, EXECUTING, NEEDS_HUMAN_FAILURE, claim,
+      `This item's task path (\`${taskPath}\`) is not where \`${id}\` lives at HEAD (\`${task.taskPath}\`). Not running it.`, 'invalid');
     return 'needs-human';
   }
 
@@ -255,7 +289,7 @@ async function executeItem({
   // parks open in the failure lane, where the ordinary re-queue lever retries it
   // once the API recovers, and nothing is written to whatever it could not read.
   if (verdict.error) {
-    await converge(api, gh, repo, item.number, EXECUTING, NEEDS_HUMAN_FAILURE, claim,
+    await converge(api, gh, repo, item, EXECUTING, NEEDS_HUMAN_FAILURE, claim,
       `This run could not be decided: ${verdict.error}\n\nNothing ran and nothing was written. Re-queue this item (remove the \`${NEEDS_HUMAN}\` labels, add \`${READY}\`) once the cause has cleared.`);
     log(`! #${item.number} ${id}: the precondition could not answer — ${verdict.error}`);
     return 'needs-human';
@@ -269,8 +303,11 @@ async function executeItem({
       // refused is one no later tick adopts and no person is told about, and one
       // whose mark — if re-applied — walks into the same refusal forever.
       if (fields.request) await declineRequest(api, gh, repo, fields.request, item.number, plan.reason);
-      await close(api, gh, repo, item.number, EXECUTING, TASK_OBSOLETE, 'not_planned',
-        `The precondition declined and this item has no anchor to roll to: ${plan.reason}`);
+      // A DECLINE IS A COMPLETED RUN, not a failure: the executor asked, got a
+      // no, and closed the occurrence — so the record says `success` and the
+      // reason sits beside it in the same comment.
+      await close(api, gh, repo, item, EXECUTING, TASK_OBSOLETE, 'not_planned',
+        `The precondition declined and this item has no anchor to roll to: ${plan.reason}`, 'success', ctx);
       return 'obsolete';
     }
     // The roll writes no comment — the `Not-before` bump IS the record, and an
@@ -295,19 +332,27 @@ async function executeItem({
   // a hand-created item's parameters unreachable (#974).
   const context = mergeContext(parseContextLines(item.body), verdict.context ?? []);
   if (task.decl.code_work) {
-    const result = await runTaskCodeWork(task, { item, context });
+    // The work step may legitimately run for hours (§15.15). While it does, the
+    // item's only sign of life is this beat — which is also what the tick's leash
+    // measures, so a long run is legal rather than reclaimed underneath itself.
+    const result = await withHeartbeat(() => runTaskCodeWork(task, { item, context }), {
+      intervalMs: heartbeatMs,
+      log,
+      beat: (minutes) => api.comment(gh, repo, item.number,
+        heartbeatComment({ executor: executorId, at: nowIso(), minutes })),
+    });
     if (!result.ok) {
       // The worker's own verdict routes the park where it left one; a worker that
       // said nothing about why it failed is a `failure` — the lane that means
       // "someone reads the trace", which is the only safe default for a run whose
       // cause is unknown.
-      await converge(api, gh, repo, item.number, EXECUTING, triageLabelFor(result.triage?.kind), claim,
+      await converge(api, gh, repo, item, EXECUTING, triageLabelFor(result.triage?.kind), claim,
         `Code-work failed: ${result.why}${result.triage?.detail ? `\n\nThe worker's own verdict: ${result.triage.detail}` : ''}`
         + `${result.detail ? `\n\n\`\`\`\n${result.detail}\n\`\`\`` : ''}`);
       return 'needs-human';
     }
     if (result.missingSecrets?.length) {
-      await converge(api, gh, repo, item.number, EXECUTING, NEEDS_HUMAN_ACTION, claim,
+      await converge(api, gh, repo, item, EXECUTING, NEEDS_HUMAN_ACTION, claim,
         `This task declares repo Actions secrets that are not configured: ${result.missingSecrets.join(', ')}. Set them in repo settings and re-queue this item (remove the \`needs-human\` labels, add \`task:ready\`).`);
       return 'needs-human';
     }
@@ -318,15 +363,15 @@ async function executeItem({
       // (`isBlockingPark`): the next occurrence is filed on schedule around it, so
       // an unreviewed PR delays nobody but its reviewer.
       if (result.openPr) {
-        await converge(api, gh, repo, item.number, EXECUTING, NEEDS_HUMAN_APPROVAL, claim,
+        await converge(api, gh, repo, item, EXECUTING, NEEDS_HUMAN_APPROVAL, claim,
           `Code-work did this run's work and opened a PR for you to approve:\n${result.delivered.map((d) => `- ${d}`).join('\n')}`
-          + `\n\nMerge or close #${result.openPr}, then close this item. This task keeps running on schedule meanwhile.`);
+          + `\n\nMerge or close #${result.openPr}, then close this item. This task keeps running on schedule meanwhile.`, null);
         return 'needs-human';
       }
-      await close(api, gh, repo, item.number, EXECUTING, TASK_DONE, 'completed',
+      await close(api, gh, repo, item, EXECUTING, TASK_DONE, 'completed',
         result.delivered?.length
           ? `Code-work did this run's work and left:\n${result.delivered.map((d) => `- ${d}`).join('\n')}`
-          : 'Code-work did this run\'s work; no agent was needed.');
+          : 'Code-work did this run\'s work; no agent was needed.', 'success', ctx);
       return TASK_DONE;
     }
     return handOff({ api, gh, repo, item, task, id, context, result, executorId, claim, invokeAgent, config, log });
@@ -334,8 +379,8 @@ async function executeItem({
 
   // An agentless task with no code-work does nothing (the contract forbids it).
   if (task.decl.agent_model === 'none') {
-    await converge(api, gh, repo, item.number, EXECUTING, NEEDS_HUMAN_FAILURE, claim,
-      'This task is agentless but declares no code_work, so there is nothing to run — a contract-forbidden shape that reached the queue.');
+    await converge(api, gh, repo, item, EXECUTING, NEEDS_HUMAN_FAILURE, claim,
+      'This task is agentless but declares no code_work, so there is nothing to run — a contract-forbidden shape that reached the queue.', 'invalid');
     return 'needs-human';
   }
   return handOff({ api, gh, repo, item, task, id, context, result: {}, executorId, claim, invokeAgent, config, log });
@@ -401,7 +446,7 @@ async function handOff({ api, gh, repo, item, task, id, context, result, executo
   if (invocation.answered) {
     // The endpoint refused, so no session exists and none will: a token, a URL or
     // a routine is wrong, and every future pick would be refused the same way.
-    await converge(api, gh, repo, item.number, AGENT, NEEDS_HUMAN_ACTION, claim,
+    await converge(api, gh, repo, item, AGENT, NEEDS_HUMAN_ACTION, claim,
       `Could not start an agent session: ${invocation.error}\n\nNo session was started. Fix the invocation endpoint, then re-queue this item (remove the \`${NEEDS_HUMAN}\` labels, add \`${READY}\`).`);
     return 'needs-human';
   }
@@ -445,29 +490,57 @@ async function strikeClaim(api, gh, repo, claim) {
 // Every exit converges the item exactly once, with one comment saying what
 // happened — the terminal-state discipline the incidents bought. The claim sits
 // before the body so every state argument is grouped ahead of the prose.
+//
+// THE COMMENT CARRIES THE EXECUTION RECORD (DESIGN §6.5, §15.18). Actions logs
+// expire, and for an agentless run — the majority — the item is the only durable
+// trace there will ever be, so the record goes where the item is rather than into
+// a log that ages out. The bracketed field is this item's issue number, which is
+// the only join from a record back to the work it describes.
+// A status of `null` writes NO record, and that is the honest answer for a park
+// that is not a failure: the vocabulary's `success` means "ran to completion and
+// the issue was closed" and `failed` means the run broke, so an approval park —
+// a run that succeeded and left a PR for a person — is neither. Absence is a
+// state of its own; inventing a fifth status is a change to stored data every
+// decoder in the fleet would have to learn.
+const recordFor = (item, status) => {
+  const parsed = status ? parseWorkItemTitle(item.title) : null;
+  return parsed
+    ? `\n\n\`\`\`\n${renderTaskExec({ pack: parsed.pack, task: parsed.task, slotId: `#${item.number}`, status })}\n\`\`\``
+    : '';
+};
+
 // Park an item for a human. BOTH labels, always: `needs-human` is the state every
 // guard and sweep reads, `triage` is what the human is being asked for.
-async function converge(api, gh, repo, number, from, triage, claim, body) {
+async function converge(api, gh, repo, item, from, triage, claim, body, status = 'failed') {
   await strikeClaim(api, gh, repo, claim);
-  await api.comment(gh, repo, number, body);
-  await api.swapLabel(gh, repo, number, from, NEEDS_HUMAN);
-  await api.addLabel(gh, repo, number, triage);
+  await api.comment(gh, repo, item.number, body + recordFor(item, status));
+  await api.swapLabel(gh, repo, item.number, from, NEEDS_HUMAN);
+  await api.addLabel(gh, repo, item.number, triage);
 }
 
-async function close(api, gh, repo, number, from, outcome, stateReason, body) {
-  await api.comment(gh, repo, number, body);
-  await api.removeLabel(gh, repo, number, from);
-  await api.addLabel(gh, repo, number, outcome);
-  await api.closeIssue(gh, repo, number, stateReason);
+// A close is also the moment a dependent may become due (§15.19): whoever closes
+// an item releases what it was holding, in code, and the run's own re-dispatch
+// then finds it. The tick stays the backstop for every close this code never
+// performs — a human's, or a session that stopped early.
+async function close(api, gh, repo, item, from, outcome, stateReason, body, status, ctx = {}) {
+  await api.comment(gh, repo, item.number, body + recordFor(item, status));
+  await api.removeLabel(gh, repo, item.number, from);
+  await api.addLabel(gh, repo, item.number, outcome);
+  await api.closeIssue(gh, repo, item.number, stateReason);
+  await readyDependents(api, gh, repo, item.number, ctx);
 }
 
 // --- CLI ----------------------------------------------------------------------
 
 async function main() {
-  const { makeGh, actionRepoContext } = await import('../signals/gh.mjs');
+  // THE OPERATOR HOLD, FIRST ACT (§15.24) — before the config load, before the
+  // first API call, so a held queue reads nothing and writes nothing rather than
+  // deriving the world and then declining to act on it.
+  if (isSuspended()) { console.log('## Claudinite executor\n'); console.log(suspendedNotice()); return; }
+  const { makeGh, actionRepoContext, EXECUTOR_WORKFLOW_FILE } = await import('../signals/gh.mjs');
   const { discoverTasks } = await import('../discover.mjs');
   const { loadConfig, isDormant } = await import('../../checks/helpers/repo-context.mjs');
-  const { ensureLabels } = await import('../github.mjs');
+  const { ensureLabels, dispatchWorkflow } = await import('../github.mjs');
   const { collectSignalsForTask } = await import('./signals.mjs');
   const { codeWorkRunner } = await import('./code-work-run.mjs');
   const { agentInvoker } = await import('./invoke.mjs');
@@ -496,10 +569,10 @@ async function main() {
     gh, repo, root, config, tasks,
     executorId: process.env.CLAUDINITE_EXECUTOR_ID || `actions-${process.env.GITHUB_RUN_ID ?? 'local'}`,
     runUrl,
-    maxItems: Number(process.env.CLAUDINITE_MAX_ITEMS) || DEFAULT_MAX_ITEMS,
     collectSignalsFor: collectSignalsForTask({ gh, repo, root, config, defaultBranch }),
     runTaskCodeWork: codeWorkRunner({ root, repo, defaultBranch }),
     invokeAgent: agentInvoker({ repo, config }),
+    redispatch: () => dispatchWorkflow(gh, repo, EXECUTOR_WORKFLOW_FILE, defaultBranch),
   });
 
   console.log(done.length

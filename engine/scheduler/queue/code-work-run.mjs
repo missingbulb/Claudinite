@@ -9,8 +9,10 @@
 //    claim is reclaimed and the item re-picked, so code-work can run again over its
 //    own half-done work. That is convergence — check what exists, continue from
 //    there — and it was always true of code-work; the contract simply never said so.
-//    Concurrent overlap with a zombie run is excluded by construction (the
-//    executor job's timeout-minutes ≤ the executing leash), never asked of a task.
+//    Since the heartbeat replaced the run cap (§15.15), overlap is no longer
+//    excluded by construction: a partitioned runner keeps working while its beats
+//    fail to post, its claim is reclaimed on that silence, and the replacement
+//    starts. Re-entrancy is what makes that safe, which is why it is the contract.
 //  - A DECLARED SECRET THAT IS NOT CONFIGURED IS NAMED, NOT GUESSED AT (§14.7).
 //    Code-work is the only task code that ever sees a secret VALUE, so this is the
 //    one place that can tell "unset" from "empty", and the item converges to

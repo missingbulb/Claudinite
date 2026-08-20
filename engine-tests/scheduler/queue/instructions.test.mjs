@@ -20,9 +20,16 @@ const TEXT = readFileSync(
   'utf8',
 );
 
-test('a queue session is told to print its execution record, keyed to the item', () => {
-  assert.match(TEXT, /record-exec\.mjs/, 'names the recorder');
-  assert.match(TEXT, /\[#<n>\]/, 'and says the bracketed field is the item number');
+// The terminal transition is CODE the session calls, not a checklist it performs
+// (#892, DESIGN §15.18): five ordered side effects done by hand at the end of a
+// long run is how two live runs closed items wearing `task:agent`, or with no
+// execution record at all. What this pins is that the instructions hand the
+// mechanics to the command and keep only the judgment.
+test('a queue session converges through the command, not by hand', () => {
+  assert.match(TEXT, /converge-item\.mjs/, 'names the converge command');
+  assert.match(TEXT, /--outcome done\|approval\|action\|decision\|failure/, 'and its outcome vocabulary');
+  assert.doesNotMatch(TEXT, /record-exec\.mjs/,
+    'the item carries its own record now — a session that also prints one double-counts it');
 });
 
 test('a queue session is told to capture itself, with the item as the issue', () => {

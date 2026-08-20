@@ -71,9 +71,14 @@ const task = (id, decl = {}) => ({
   decl: { id, frequency: 'daily', agent_model: 'sonnet', precondition: () => ({ run: true }), ...decl },
 });
 
+// `random` is pinned ascending so a fixture with several pickable items picks the
+// FIRST one it lists — production's draw is random (§15.20) and a test that let it
+// vary would be a coin flip, not a test.
+const ascendingDraw = () => { let n = 0; return () => (n += 1) / 1000; };
+
 const drive = (repo, tasks, over = {}) => runExecutor({
   gh: repo.gh, repo: 'o/r', root: '/tmp', config: CONFIG, tasks,
-  executorId: 'E1', maxItems: 2, now: () => new Date('2026-08-14T04:20:00Z'),
+  executorId: 'E1', now: () => new Date('2026-08-14T04:20:00Z'), random: ascendingDraw(),
   collectSignalsFor: async () => ({}),
   runTaskCodeWork: async () => ({ ok: true, agentRequested: false }),
   invokeAgent: async () => ({ ok: true, sessionId: 's-1' }),
@@ -205,7 +210,6 @@ test('a hand-off swaps to task:agent and invokes exactly one session', async () 
 test('a refused invocation converges to triage: no session exists and a retry cannot help', async () => {
   const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
   const done = await drive(repo, [task('a')], {
-    maxItems: 1,
     runTaskCodeWork: async () => ({ ok: true, agentRequested: true }),
     invokeAgent: async () => ({ ok: false, answered: true, error: 'endpoint "default" returned 401' }),
   });
@@ -225,7 +229,6 @@ test('an unanswered invocation leaves the item with the agent and says the outco
   const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
   let calls = 0;
   const done = await drive(repo, [task('a')], {
-    maxItems: 1,
     runTaskCodeWork: async () => ({ ok: true, agentRequested: true }),
     invokeAgent: async () => { calls += 1; return { ok: false, answered: false, error: 'no answer: socket timeout' }; },
   });
@@ -283,28 +286,89 @@ test('an item pointing somewhere other than where its task lives at HEAD is refu
 });
 
 // The lease's whole point, driven through the shell: an executor that is not this
-// episode's earliest claimant touches nothing and moves on.
-test('an executor that loses the lease abandons the item untouched and picks another', async () => {
+// episode's earliest claimant touches nothing and stands down. It does NOT go
+// looking for another item — the winner is mid-run on this queue and carries the
+// chain from here (§15.22).
+test('an executor that loses the lease abandons the item untouched and ends its run', async () => {
   const rival = { id: 1, body: '<!-- claudinite-claim -->\nClaimed by executor `E0` at earlier.' };
   const repo = fakeRepo([
     { ...workItem(1, 'a', ['task:ready']), comments: [rival] },
     workItem(2, 'b', ['task:ready']),
   ]);
   const done = await drive(repo, [task('a'), task('b', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })]);
-  assert.deepEqual(done.map((d) => d.issue), [2], 'it moved on to a different item');
+  assert.deepEqual(done, [], 'nothing settled — the run stood down');
   assert.equal(repo.find(1).state, 'open');
+  assert.equal(repo.find(2).state, 'open', 'the other item was left for the winner\'s chain');
 });
 
-test('the loop stops at maxItems even with more ready work', async () => {
+// --- one run, one item, and the chain (DESIGN §10, §15.22, S34) ---------------
+//
+// The structural claim, not a configured cap: however much work is pickable, a
+// run settles ONE item and hands the rest to a fresh run. A cap would be a number
+// to raise; this is the shape of an executor.
+
+test('a run settles exactly one item however much work is ready', async () => {
   const repo = fakeRepo([
     workItem(1, 'a', ['task:ready']),
-    workItem(2, 'a', ['task:ready']),
-    workItem(3, 'a', ['task:ready']),
+    workItem(2, 'b', ['task:ready']),
+    workItem(3, 'c', ['task:ready']),
   ]);
-  // Three same-title items: the mutex means only one is pickable at a time, and
-  // each converges before the next is picked.
-  const done = await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], { maxItems: 2 });
-  assert.equal(done.length, 2);
+  // Three DIFFERENT titles, so the same-title mutex is not what stops the run —
+  // all three are pickable at once and the run still performs one.
+  const agentless = (id) => task(id, { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 });
+  const done = await drive(repo, ['a', 'b', 'c'].map(agentless));
+  assert.deepEqual(done, [{ issue: 1, outcome: 'task:done' }]);
+  assert.equal(repo.find(2).state, 'open', 'the second item was left for the next run');
+  assert.equal(repo.find(3).state, 'open');
+});
+
+test('a run that settled its item dispatches a fresh one for the remainder', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready']), workItem(2, 'b', ['task:ready'])]);
+  let dispatches = 0;
+  const agentless = (id) => task(id, { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 });
+  await drive(repo, ['a', 'b'].map(agentless), {
+    redispatch: async () => { dispatches += 1; return { ok: true, status: 204 }; },
+  });
+  assert.equal(dispatches, 1, 'the chain continued');
+});
+
+test('a run that emptied the queue dispatches nothing — the chain ends', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
+  let dispatches = 0;
+  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], {
+    redispatch: async () => { dispatches += 1; return { ok: true, status: 204 }; },
+  });
+  assert.equal(dispatches, 0);
+});
+
+// A run that never got an item did no work, and the executor that beat it owns
+// the chain. Re-dispatching here would be this run arguing with the winner —
+// and after a REVERT it would dispatch over an item it just returned to the
+// queue, which is two executors dispatching each other for as long as they
+// overlap.
+test('a run that lost the claim race dispatches nothing', async () => {
+  const rival = { id: 50, body: '<!-- claudinite-claim -->\nClaimed by executor `E0` at earlier.' };
+  const repo = fakeRepo([{ ...workItem(1, 'a', ['task:ready']), comments: [rival] }]);
+  let dispatches = 0;
+  const done = await drive(repo, [task('a')], {
+    redispatch: async () => { dispatches += 1; return { ok: true, status: 204 }; },
+  });
+  assert.deepEqual(done, []);
+  assert.equal(dispatches, 0);
+});
+
+// The dispatch is a WRITE, and a token without `actions: write` 403s it while
+// returning a plausible body. The run says so rather than logging a chain that
+// never started — the tick's drain is what recovers the remainder.
+test('a failed re-dispatch is reported, not swallowed', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready']), workItem(2, 'b', ['task:ready'])]);
+  const lines = [];
+  const agentless = (id) => task(id, { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 });
+  await drive(repo, ['a', 'b'].map(agentless), {
+    redispatch: async () => ({ ok: false, status: 403 }),
+    log: (l) => lines.push(l),
+  });
+  assert.ok(lines.some((l) => l.startsWith('!') && l.includes('403')), lines.join('\n'));
 });
 
 // --- F24: letting go of an open item kills your claim --------------------------
@@ -369,4 +433,85 @@ test('a losing claimant strikes its own claim too — otherwise it owns the NEXT
   const done = await drive(repo, [agentless], { executorId: 'E2' });
   assert.deepEqual(done, [{ issue: 1, outcome: 'task:done' }],
     'E2 must win the fresh episode — a loser\'s leftover claim must not outlive its own episode');
+});
+
+// --- the dispatch write itself -------------------------------------------------
+//
+// The chain's one non-issue write. A 204 is the ONLY success: `actions: write`
+// missing returns a 403 with a body that reads like any other response, so a
+// caller that judged the body would report a chain it never started.
+
+test('dispatchWorkflow judges the POST by status, never by its body', async () => {
+  const { dispatchWorkflow } = await import('../../../engine/scheduler/github.mjs');
+  const seen = [];
+  const gh = async (path, opts) => {
+    seen.push({ path, ...opts });
+    return path.includes('denied')
+      ? { status: 403, json: { message: 'Resource not accessible by integration' } }
+      : { status: 204, json: null };
+  };
+  assert.deepEqual(await dispatchWorkflow(gh, 'o/r', 'claudinite-executor.yml', 'main'),
+    { ok: true, status: 204 });
+  assert.deepEqual(seen[0], {
+    path: '/repos/o/r/actions/workflows/claudinite-executor.yml/dispatches',
+    method: 'POST',
+    body: { ref: 'main' },
+  });
+  assert.deepEqual(await dispatchWorkflow(gh, 'o/denied', 'claudinite-executor.yml', 'main'),
+    { ok: false, status: 403 });
+});
+
+// --- the durable record, and the release a close performs (§15.18, §15.19) -----
+//
+// The executor converges the agentless majority itself, and for those runs the
+// item is the only trace that outlives the Actions log.
+
+test('an executor close writes the execution record onto the item', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
+  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })]);
+  assert.match(repo.find(1).comments.at(-1).body, /claudinite-task-exec v1 p\/a \[#1\] success/);
+});
+
+test('a park in the failure lane records the run as failed', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
+  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], {
+    runTaskCodeWork: async () => ({ ok: false, why: 'boom' }),
+  });
+  assert.match(repo.find(1).comments.at(-1).body, /claudinite-task-exec v1 p\/a \[#1\] failed/);
+});
+
+// An approval park is a run that SUCCEEDED and left a PR — neither `success` (the
+// item is open) nor `failed` (nothing broke). Absence is the honest answer.
+test('an approval park writes no record at all', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
+  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], {
+    runTaskCodeWork: async () => ({ ok: true, agentRequested: false, delivered: ['PR: #7 (open)'], openPr: 7 }),
+  });
+  assert.doesNotMatch(repo.find(1).comments.at(-1).body, /claudinite-task-exec/);
+});
+
+test('an executor close readies the dependent it was holding', async () => {
+  const dependent = {
+    ...workItem(2, 'b', ['task:blocked']),
+    body: 'packs/p/tasks/b/task.md\n\nBlocked-by: #1\n',
+  };
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready']), dependent]);
+  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })]);
+  assert.deepEqual(repo.find(2).labels, ['task:ready'], 'the chain link runs now, not in an hour');
+});
+
+// The beat, driven through the shell: a work step long enough to need one gets
+// one, on the item, from the executor holding it.
+test('a long work step leaves heartbeats on its own item', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
+  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], {
+    heartbeatMs: 5,
+    runTaskCodeWork: async () => {
+      await new Promise((r) => setTimeout(r, 40));
+      return { ok: true, agentRequested: false };
+    },
+  });
+  const beats = repo.find(1).comments.filter((c) => c.body.includes('<!-- claudinite-heartbeat -->'));
+  assert.ok(beats.length >= 2, `the item stayed live through the work (got ${beats.length})`);
+  assert.match(beats[0].body, /executor `E1`/);
 });

@@ -34,12 +34,23 @@ test('convergeSchedulerWorkflow: writes the stub with the repo-hashed cron, and 
 // `required_secrets` IS that list and the wiring converge writes it. These cover
 // the whole delivery mechanism — there is no other secrets code.
 
-const ENV_STUB = "jobs:\n  schedule:\n    steps:\n      - name: Evaluate\n        env:\n          GITHUB_TOKEN: ${{ github.token }}\n        run: node run.mjs\n";
+// A stub shaped like a real one: the marker is where secrets go, and it is the
+// ONLY place they go.
+const ENV_STUB = "jobs:\n  schedule:\n    steps:\n      - name: Evaluate\n        env:\n          GITHUB_TOKEN: ${{ github.token }}\n          # claudinite:secrets\n        run: node run.mjs\n";
+const NO_MARKER_STUB = "jobs:\n  tick:\n    steps:\n      - name: Tick\n        env:\n          GITHUB_TOKEN: ${{ github.token }}\n        run: node tick.mjs\n";
 
-test('withDeclaredSecrets: stamps each declared name beside GITHUB_TOKEN', () => {
+test('withDeclaredSecrets: stamps each declared name at the marker', () => {
   const out = withDeclaredSecrets(ENV_STUB, ['SOME_API_KEY', 'OTHER_KEY']);
-  assert.match(out, /GITHUB_TOKEN: \$\{\{ github\.token \}\}\n {10}SOME_API_KEY: \$\{\{ secrets\.SOME_API_KEY \}\}\n {10}OTHER_KEY: \$\{\{ secrets\.OTHER_KEY \}\}\n/);
+  assert.match(out, /# claudinite:secrets\n {10}SOME_API_KEY: \$\{\{ secrets\.SOME_API_KEY \}\}\n {10}OTHER_KEY: \$\{\{ secrets\.OTHER_KEY \}\}\n/);
   assert.match(out, /^ {8}run: node run\.mjs$/m);   // the step is otherwise untouched
+});
+
+// MARKER OR NOTHING (§15.16). A stub with no marker is a job that runs no task
+// code — the tick, whose drain now dispatches the executor rather than being one —
+// and the design says that job must never hold a task secret. The fallback this
+// used to carry would have stamped every one of them into exactly that job.
+test('withDeclaredSecrets: a stub with no marker is left alone, not stamped anyway', () => {
+  assert.equal(withDeclaredSecrets(NO_MARKER_STUB, ['SOME_API_KEY']), NO_MARKER_STUB);
 });
 
 test('withDeclaredSecrets: no declarations leaves the stub byte-identical', () => {
@@ -63,6 +74,7 @@ test('convergeSchedulerWorkflow: the declared secrets land in the written workfl
   assert.equal(convergeSchedulerWorkflow(root, REPO, stub, ['SOME_API_KEY']), true);
   const written = readFileSync(join(root, SCHEDULER_WORKFLOW), 'utf8');
   assert.match(written, /SOME_API_KEY: \$\{\{ secrets\.SOME_API_KEY \}\}/);
+  assert.match(written, /# claudinite:secrets/);
   assert.match(written, new RegExp(`cron: '${hashedCron(REPO).replace(/[*]/g, '\\*')}'`));
   assert.equal(convergeSchedulerWorkflow(root, REPO, stub, ['SOME_API_KEY']), false);
   // and a changed declaration set rewrites it
@@ -480,15 +492,22 @@ test('the vendored stubs are what the converge is written against', () => {
   const tick = readFileSync(join(canon, 'engine/scheduler/stubs/claudinite-tick.yml'), 'utf8');
   const executor = readFileSync(join(canon, 'engine/scheduler/stubs/claudinite-executor.yml'), 'utf8');
   // The marker is the contract between stub and stamper — a stub that lost it
-  // would converge a workflow whose tasks silently have no secrets.
-  assert.equal((tick.match(/^\s*# claudinite:secrets$/gm) ?? []).length, 1);
+  // would converge a workflow whose tasks silently have no secrets. The EXECUTOR
+  // is the only place secrets live (§14), and since the tick's drain became a
+  // dispatch rather than an executor run (§15.16), the tick carries none: a marker
+  // there would be a standing invitation to stamp task secrets into the one job
+  // that never runs task code.
+  assert.equal((tick.match(/^\s*# claudinite:secrets$/gm) ?? []).length, 0);
   assert.equal((executor.match(/^\s*# claudinite:secrets$/gm) ?? []).length, 1);
-  // The executing jobs' timeout must stay under the engine's claim leash (F17).
+  assert.equal((tick.match(/\$\{\{ secrets\./g) ?? []).length, 0, 'the tick holds no secret at all');
+  // The hold reaches every workflow, or it is not a hold (§15.24).
   for (const [name, text] of [['tick', tick], ['executor', executor]]) {
-    for (const m of text.matchAll(/timeout-minutes:\s*(\d+)/g)) {
-      assert.ok(Number(m[1]) <= 60, `${name}: timeout-minutes ${m[1]} exceeds the executing leash`);
-    }
+    assert.match(text, /CLAUDINITE_TASKS_SUSPEND_ALL: \$\{\{ vars\.CLAUDINITE_TASKS_SUSPEND_ALL \}\}/,
+      `${name}: the operator hold must be stamped into its env`);
   }
+  // The run cap that used to bound a work step retired with the heartbeat
+  // (§15.15): a run is bounded by ONE work step now, not by the leash.
+  assert.doesNotMatch(tick, /timeout-minutes/, 'the tick job does no work to bound');
   assert.equal((tick.match(/^\s*- cron:/gm) ?? []).length, 1, 'the tick is the repo\'s only cron');
   assert.equal((executor.match(/^\s*- cron:/gm) ?? []).length, 0, 'the executor has no schedule of its own');
 });

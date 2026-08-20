@@ -898,8 +898,11 @@ does not attempt cycle detection; the janitor's health review may.
 
 The default deployment stays one vendored cron workflow — the repo's only
 cron, rule unchanged — containing the tick job and a drain (the tick runs
-first; the executor drains what it created, which keeps the common case's
-latency at zero even without events). Event triggers (`task:ready` labeled)
+first; the drain then starts an executor for what it created, which keeps the
+common case's latency at zero even without events). **The drain dispatches
+rather than executes**, which is how it leaves the tick's concurrency group
+below: this job's success means the drain was started, never that it
+finished. Event triggers (`task:ready` labeled)
 give urgent and hand-created items sub-minute pickup — with one platform fact
 worth knowing: a label written by a workflow's own `GITHUB_TOKEN` emits no
 triggering event (GitHub's recursion guard), so events only ever come from
@@ -936,7 +939,13 @@ cancellation, runner loss) never reaches its re-dispatch, so the executor
 workflow carries a second job, `needs: execute` with `if: failure() ||
 cancelled()`, which the platform runs on a fresh runner and whose one step
 re-dispatches — a dead run stalls the train by ~a minute, not until the next
-cron fire (S36). Causes 3–5 ride `workflow_dispatch`, which the default
+cron fire (S36). The continuation carries **a depth, capped at three**
+(engine-side, 2026-08-20, not from the review): a run that dies at *startup*
+— a broken engine, a revoked token — dies identically every time, so an
+unguarded continuation dispatches itself for as long as that lasts. At the
+cap the chain stops and escalates to the repo's workflow-failure issue rather
+than going quiet, because a queue that has stopped draining is the one
+failure where every individual run looks like an ordinary death. Causes 3–5 ride `workflow_dispatch`, which the default
 `GITHUB_TOKEN` *is* permitted to fire — the explicit exemption in the same
 recursion guard that suppresses its label events — so no wider credential is
 involved.
@@ -949,7 +958,11 @@ behind the very work they schedule. So the serialization the double-tick
 guard needs (S6) scopes to the **tick alone**, and executor work runs outside
 it: the drain leaves the cron workflow's concurrency group (its own group, or
 the separate executor workflow via dispatch). A deployment where the drain
-can still block the tick is mis-wired even while nothing visibly fails.
+can still block the tick is mis-wired even while nothing visibly fails. The
+engine took the dispatch option, which has a second effect worth naming: the
+drain job runs no task code, so it holds **no secrets at all** — the executor
+workflow is the only place they live, with nothing left beside it to leak
+into.
 
 Executor identity is self-declared in claim comments; the system never
 enumerates executors, which is why adding one requires telling no one.

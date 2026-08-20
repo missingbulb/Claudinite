@@ -103,8 +103,14 @@ const SECRETS_MARKER = /^[ \t]*# claudinite:secrets\b.*$/m;
 export function withDeclaredSecrets(stubText, names = []) {
   if (!names.length) return stubText;
   const lines = names.map((n) => `          ${n}: \${{ secrets.${n} }}`).join('\n');
-  if (SECRETS_MARKER.test(stubText)) return stubText.replace(SECRETS_MARKER, (m) => `${m}\n${lines}`);
-  return stubText.replace(/^(\s*GITHUB_TOKEN: \$\{\{ github\.token \}\})$/m, `$1\n${lines}`);
+  // MARKER OR NOTHING. The fallback this used to carry — stamp under the first
+  // `GITHUB_TOKEN` line — was safe only while every stub that reached here ran task
+  // code. The tick stub no longer does (its drain dispatches the executor rather
+  // than running one, §15.16), and a fallback would stamp every task secret into
+  // the one job the design says must never hold one.
+  return SECRETS_MARKER.test(stubText)
+    ? stubText.replace(SECRETS_MARKER, (m) => `${m}\n${lines}`)
+    : stubText;
 }
 
 // Re-converge the scheduler workflow to the vendored stub, with the cron minute set
