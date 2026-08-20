@@ -257,7 +257,7 @@ setup: (p) => (p.dirs?.length ? p.dirs : ['.']).map((d) => `( cd "${d}" && npm c
 - `node .claudinite/shared/engine/pack_loader/env-requirements.mjs check` runs at session start (web only) and **asserts** — it runs each `probe` directly against the running environment and injects the halt-gate context if a requirement is missing. No version flag: the probes are the source of truth, and a genuinely new requirement fails its probe and prompts a re-run. Never installs.
 - `node .claudinite/shared/engine/pack_loader/env-requirements.mjs plan` prints what `install` would run (review / debug).
 
-Wiring a consumer up — the check hook + the pack entries' `config`, with the script pasted from the corpus copy — is [bootstrap.md](../bootstrap.md) Part 8. A pack with no `env` field adds nothing; universal git hygiene lives in the generic script, not a pack.
+Wiring a consumer up — the check hook + the pack entries' `config`, with the script pasted from the corpus copy — is [bootstrap.md](../bootstrap.md) Part 9. A pack with no `env` field adds nothing; universal git hygiene lives in the generic script, not a pack.
 
 ## Adoption interview (`questions`)
 
@@ -283,7 +283,7 @@ nothing. An answered question stays answered — "n/a, none wanted" is an answer
 never-asked.
 
 The posture is **strict at bootstrap, mild everywhere else**. The adoption flow
-([bootstrap.md](../bootstrap.md) Part 6) interviews the owner as part of `--init` — a human is
+([bootstrap.md](../bootstrap.md) Part 2) interviews the owner off `bootstrap.mjs`'s pending-question report — a human is
 present by construction. Outside it, pending questions surface only as a mild SessionStart note
 (the `interview-check` step) telling an interactive session to ask at a natural moment and an
 unattended one to ignore it entirely — **never a conformance finding**, so a nightly update or
