@@ -320,9 +320,9 @@ export async function planSchedulerRun({
   }
 
   // ---- the board write, LAST and only on change ---------------------------
-  // A run that moved no row writes nothing (tidy-repo's "record changes,
-  // never scans", artifact-side), and the board is created lazily: the first
-  // row that needs writing is what mints the issue.
+  // A run that moved no row writes nothing — record changes, never scans —
+  // and the board is created lazily: the first row that needs writing is
+  // what mints the issue.
   if (boardChanged) ops.push({ kind: 'board', rows: [...boardRows.values()] });
 
   return { ops };
