@@ -24,14 +24,6 @@ import versionBumped from './version-bumped.mjs';
 // for is the cheaper of those two.
 export default {
   id: 'chrome-extension',
-  // 3: absorbed chrome-extension-release — its rules, stubs, task, migration record
-  // and standard live here now, relevance-gated on the repo shipping the pipeline.
-  // 5: the generic-workflow-lint neighbour is git-github now that github-actions
-  // collapsed into it (#1079).
-  // 60821.1: the version bump moved out of the release flow and into the change
-  // that earns it (cer/version-bumped); the pipeline ships what it finds on main.
-  // The standard's skill also absorbs the "bump version" trigger phrase, which
-  // basics used to route from a skill of its own (#1150).
   version: '60821.1',
   minEngineVersion: 1,
   ruleRoutingGuidance: {

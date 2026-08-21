@@ -11,34 +11,11 @@ import declaredCheckMessages from './declared-check-messages.mjs';
 // authoritative — dropping it is a deliberate choice).
 export default {
   id: 'basics',
-  // 2 — the mechanism rename (migrations/2026-08-13-mechanism-versioned). The FIRST
-  // bump this pack has taken, and the invariant it establishes: a record's declared
-  // `version` must be ≤ this number, and this number must MOVE for that record to
-  // reach a member already at the previous one. `migrationApplies` is `want > have`
-  // against the stamped version, and what gets stamped is this manifest's number — so
-  // a record declaring a version above it would re-apply every cycle, forever,
-  // draining never.
-  // 12: the `do-later` skill — deferring a change into work that comes back on its own.
-  // 60820.1: versions become date-anchored (#1100) — the counter this list is written
-  // in retires here, and every pack in the canon restarts from the same day.
-  // 60820.2: a migration's cleanup is filed as work that returns, never written as a
-  // later phase (writing-migration-plans).
-  // 60820.3: the comment classification stays a rule and stops being a check (#1114).
-  // 60820.4: verify-in-production files only after the PR merges — a rejected PR closes
-  // like a merged one, so filing early strands the verification in a silent retry loop (#1128).
-  // 60820.5: writing-migration-plans states the two-deliverables contract — the plan
-  // is the tracking issue, never a document in the repo; the design doc carries end
-  // state, rationale and alternatives only.
-  // 60821.1: the janitor's queue sweep decodes an item's status rather than testing
-  // label literals, so it reads items filed in either vocabulary (#1119).
-  // 60821.2: writing-migration-plans is built around chained continuations — all the
-  // code written and approved in one pass, every execution step armed on the previous
-  // step's verification rather than on anyone remembering it.
-  // 60821.3: bump-version retired. It had become a two-entry routing table into
-  // chrome-extension and static-website — packs most members do not declare, so
-  // its links dangled in their mounts — while saying nothing for the release
-  // packs that carry no version scheme at all. The owner's "bump version" phrase
-  // now lives in the description of each skill that owns an answer (#1150).
+  // A migration record's declared `version` must be ≤ this number, and this number must
+  // MOVE for that record to reach a member already at the previous one:
+  // `migrationApplies` is `want > have` against the stamped version, and what gets
+  // stamped is this manifest's number — so a record declaring a version above it would
+  // re-apply every cycle, forever, draining never.
   version: '60821.3',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
