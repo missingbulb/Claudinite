@@ -8,6 +8,8 @@ import {
 } from './fleet.mjs';
 import { readCanon, priceStampedPacks } from './canon.mjs';
 import { activitySeries, fleetBenefits, delta, commitDays } from './activity.mjs';
+import { readUsage } from './usage.mjs';
+import { fleetGrowth } from './fleet-growth.mjs';
 import { digestDates, digestPath, digestEntry } from './digest.mjs';
 import {
   $, el, ago, duration, groupedHead, columnCount, groupStarts, emptyRow, repoLink, tiles, segmentBar,
@@ -55,7 +57,7 @@ async function readMember(repo, token, { withTree = true } = {}) {
     // them is most of the saving on a fleet where not everything is adopted.
     if (!declaration) return { repo, declaration: null, defaultBranch: meta.default_branch, head, stars: meta.stars };
 
-    const [tree, issuePage, runs, commits] = await Promise.all([
+    const [tree, issuePage, runs, commits, usage] = await Promise.all([
       withTree ? gh.listTreeAtSha(repo, sha, token).catch(() => null) : Promise.resolve(null),
       // One page is the whole live queue plus recent history, which is all a fleet row
       // needs. Deep history is the per-repo view's job.
@@ -67,6 +69,11 @@ async function readMember(repo, token, { withTree = true } = {}) {
       // budget is tight, and a failure is a row without a graph rather than a row
       // that could not be read.
       gh.commitActivity(repo, token).catch(() => null),
+      // The member's own past-data plane, keyed by its head sha: one read the first
+      // time a member's branch moves and none afterwards. It is what lets the fleet
+      // page report the two things it structurally could not count before — how much
+      // corpus each member's sessions carry, and how often its checks actually ran.
+      readUsage(repo, sha, token),
     ]);
 
     return {
@@ -85,6 +92,7 @@ async function readMember(repo, token, { withTree = true } = {}) {
       prs: issuePage.prs ?? [],
       runs,
       commits,
+      usage,
     };
   } catch (error) {
     return { repo, error };
@@ -329,7 +337,7 @@ function memberRow(s, onOpen, now) {
 //   quantities the issue asked for are deliberately ABSENT rather than approximated:
 //   checks enforced (a member's check count is not in any read this page makes) and
 //   anything expressed in time saved (nothing measures it).
-function renderBenefits(b) {
+function renderBenefits(b, growth) {
   const node = $('fleet-benefits');
   const runsPassed = b.current.runs - b.current.runsFailed;
   const prevPassed = b.previous.runs - b.previous.runsFailed;
@@ -356,6 +364,20 @@ function renderBenefits(b) {
       `in the last ${b.windowDays} days`),
     b.digests === null ? null
       : windowFigure(b.digests, 'digests written', null, 'of the last two days'),
+    // The two figures this panel used to name as ABSENT: nothing the page read could
+    // count a check activation or the corpus a session carried. Both are in each
+    // member's own usage file now, which the sweep reads anyway.
+    //
+    // Failures rather than runs, and `better: 'up'` on purpose: a check that fires is a
+    // correction that happened inside the session, before the work left the branch. It
+    // is the closest thing this pipeline has to a measure of what the corpus is worth.
+    growth.folding === 0 ? null
+      : windowFigure(growth.current.checkFailures ?? '—', 'check findings caught',
+        growth.previous.checkFailures === null ? null : delta(growth.current.checkFailures ?? 0, growth.previous.checkFailures),
+        `over ${growth.current.checkRuns ?? 0} runs in ${growth.folding} folding member(s)`),
+    growth.tokensPerSession === null ? null
+      : windowFigure(growth.tokensPerSession, 'rule tokens per session', null,
+        'what the corpus costs each session before its first turn', { better: 'down' }),
   ].filter(Boolean));
 }
 
@@ -433,7 +455,44 @@ const RUN_SERIES = [
   { label: 'runs other', color: 'var(--muted)', value: (d) => d.runs.other },
 ];
 
-function renderActivity(series) {
+const CORPUS_SERIES = [
+  { label: 'checks executed', color: 'var(--good)', value: (d) => d.checkRuns },
+  { label: 'of those, catching something', color: 'var(--critical)', value: (d) => d.checkFailures },
+];
+
+// What the corpus did across the fleet, from the members' own folds. Runs and findings
+// share a scale here — unlike the repo page's rule-tokens-against-checks pair — because
+// the second is a SUBSET of the first and reading it as a share is the whole point.
+function corpusCard(growth) {
+  if (!growth.folding) {
+    return el('div', { className: 'chart-card' }, [
+      el('div', { className: 'k', textContent: 'no member folds a usage file yet' }),
+      el('p', {
+        className: 'sub',
+        textContent: 'Check activations and the corpus each session carries come from each member\'s own '
+          + '.claudinite/local/usage.GENERATED.json, written by the claudinite-growth pack\'s usage-fold task.',
+      }),
+    ]);
+  }
+  return el('div', { className: 'chart-card' }, [
+    el('div', {
+      className: 'k',
+      textContent: `${growth.current.checkRuns ?? 0} check run(s) this week across ${growth.folding}/${growth.members} member(s)`,
+    }),
+    chartLegend(CORPUS_SERIES),
+    stackedColumns(growth.days, CORPUS_SERIES),
+    // The census the retired fleet aggregate carried as `coverage.absent`, derived live:
+    // a denominator with an invisible hole in it is worse than no denominator at all.
+    growth.absent.length
+      ? el('div', {
+        className: 'sub',
+        textContent: `not folding, so counted in none of this: ${growth.absent.map((r) => r.split('/')[1] ?? r).join(', ')}`,
+      })
+      : el('div', { className: 'sub', textContent: 'every readable member folds one' }),
+  ]);
+}
+
+function renderActivity(series, growth) {
   const charts = $('fleet-activity');
   const pass = series.totals.runs
     ? Math.round(((series.totals.runs - series.totals.runsFailed) / series.totals.runs) * 100)
@@ -467,6 +526,7 @@ function renderActivity(series) {
         ? el('div', { className: 'sub', textContent: `before ${series.horizon.runs} this is a floor — the last 30 runs per member do not reach further back` })
         : null,
     ]),
+    corpusCard(growth),
     el('div', { className: 'chart-card' }, [movement]),
   );
 }
@@ -532,8 +592,9 @@ function renderFleet(summaries, reads, now, onOpen, canon, progress = null, dige
   // and in any single repo it looks like that repo's bad luck.
   const resolvedReads = reads.filter(Boolean);
   renderDigests(digests, canonConfig);
-  renderBenefits(fleetBenefits(resolvedReads, { now, digests }));
-  renderActivity(activitySeries(resolvedReads, { now }));
+  const growth = fleetGrowth(resolvedReads, { now });
+  renderBenefits(fleetBenefits(resolvedReads, { now, digests }), growth);
+  renderActivity(activitySeries(resolvedReads, { now }), growth);
 
   const spread = taskSpread(resolvedReads, now).filter((t) => t.members > 0);
   const tbody = groupedHead($('fleet-tasks'), FLEET_TASK_GROUPS);

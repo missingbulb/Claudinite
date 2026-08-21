@@ -7,7 +7,7 @@
 
 import * as gh from './github.mjs';
 import * as auth from './auth.mjs';
-import { loadConfig, loadRoster } from './config.mjs';
+import { loadConfig, resolveRoster, isFleetConfig } from './config.mjs';
 import { clearAll, stats } from './cache.mjs';
 import { planPolicy, credentialAdvice, MINUTE_MS } from './budget.mjs';
 import { $, el, resetCountUps } from './ui.mjs';
@@ -82,7 +82,11 @@ function ratePillLater() {
 }
 
 const repoParam = () => new URL(location.href).searchParams.get('repo');
-const wantsFleet = () => !repoParam() && ROSTER.length > 1;
+// The fleet view is what a fleet DEPLOYMENT opens on, decided by the config's shape
+// rather than by how many members the enumeration happened to return: a fleet whose
+// roster read failed, or one that is momentarily down to a single readable member, is
+// still a fleet page and must say so rather than silently becoming that member's own.
+const wantsFleet = () => !repoParam() && isFleetConfig(CONFIG);
 const currentRepo = () => repoParam() || CONFIG?.defaultRepo || ROSTER[0] || '';
 
 function go(repo) {
@@ -170,6 +174,11 @@ async function render() {
   $('reload').disabled = true;
 
   const token = auth.currentToken();
+  // The roster is resolved inside the load, not at boot: an `owner` deployment
+  // enumerates as the VIEWER, so it needs the credential — and the enumeration is
+  // ETag-revalidated, which makes re-resolving it per load free once warm.
+  const roster = await resolveRoster(CONFIG, token, gh);
+  ROSTER = roster.repos;
   const plan = await planBudget(token);
   renderRatePill(plan);
   const advice = credentialAdvice(plan.tier, { oauth: auth.isOAuthConfigured(CONFIG), hasToken: Boolean(token) });
@@ -189,6 +198,8 @@ async function render() {
       renderCrumb(null);
       showView('fleet');
       $('footnote').textContent = `Reading ${ROSTER.length} members…`;
+      if (roster.error) showError('The owner\'s repositories could not be listed — sign in with an account that can see them.');
+      else if (!roster.complete) showNotice('This owner has more repositories than one enumeration reaches; the fleet below is the most recently pushed of them.');
       await loadFleet({
         repos: ROSTER,
         token,
@@ -197,7 +208,7 @@ async function render() {
         onError: showError,
         onProgress: (done, total, repo) => { $('footnote').textContent = `Reading ${done}/${total} — ${repo}…`; },
       });
-      footer([`${ROSTER.length} members`]);
+      footer([`${ROSTER.length} members${roster.source === 'owner' ? ` under ${CONFIG.owner}, as you can see them` : ''}`]);
     } else {
       const repo = currentRepo();
       if (!/^[^/\s]+\/[^/\s]+$/.test(repo)) {
@@ -250,7 +261,6 @@ async function boot() {
   const back = await auth.completeSignIn(CONFIG);
   if (back.status === 'error') showError(back.message);
 
-  ROSTER = await loadRoster(CONFIG);
   renderAuth(null);
 
   // The pill tracks the budget as the sweep spends it, rather than reporting what it
@@ -293,7 +303,11 @@ async function boot() {
   // Back/forward move between the fleet and a deep dive, because the views are URLs.
   addEventListener('popstate', render);
 
-  if (auth.currentToken() || ROSTER.length || repoParam()) render();
+  // Something to show without asking first: a credential, a repo named in the URL, or a
+  // deployment that knows what it covers. The roster itself is no longer part of that
+  // test — an `owner` deployment cannot enumerate anything until there is a credential
+  // to enumerate as.
+  if (auth.currentToken() || repoParam() || isFleetConfig(CONFIG) || CONFIG?.defaultRepo) render();
   else { showView('repo'); $('setup').open = true; }
 }
 

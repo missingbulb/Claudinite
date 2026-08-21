@@ -373,6 +373,36 @@ export async function commitActivity(repo, token) {
 export const listComments = (repo, number, token) =>
   conditional(`/repos/${repo}/issues/${number}/comments?per_page=100`, token);
 
+// Every repo an owner has, as the VIEWER sees them — which is the whole access story
+// of a roster read this way: a repo the viewer cannot see is not in their fleet, and no
+// list stored anywhere can leak one to them.
+//
+// Conditional per page, so a fleet whose membership has not changed revalidates for
+// free. `/users/{owner}/repos` answers for a user and for an organization alike, so
+// there is no account-type probe to get wrong.
+//
+// Pages are capped: a roster this page can sweep is a few dozen members, and an owner
+// with hundreds of repos is not a fleet — the cap is stated by the caller rather than
+// silently truncating into a page that looks complete.
+export async function listOwnerRepos(owner, token, { pages = 3, perPage = 100 } = {}) {
+  const out = [];
+  let complete = false;
+  for (let page = 1; page <= pages; page += 1) {
+    const batch = await conditional(
+      `/users/${encodeURIComponent(owner)}/repos?per_page=${perPage}&sort=pushed&page=${page}`,
+      token,
+      {
+        transform: (list) => (Array.isArray(list) ? list : []).map((r) => ({
+          full_name: r.full_name, archived: Boolean(r.archived), fork: Boolean(r.fork), pushed_at: r.pushed_at ?? null,
+        })),
+      },
+    );
+    out.push(...batch);
+    if (batch.length < perPage) { complete = true; break; }
+  }
+  return { repos: out, complete };
+}
+
 // Who the viewer is. Also the cheapest possible credential check — a bad token fails
 // here rather than three calls into a fleet sweep. Takes no repo: identity is not
 // scoped to one.
