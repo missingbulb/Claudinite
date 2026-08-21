@@ -37,6 +37,9 @@
 //                 date-anchored `<day>.<n>` (#1100) — because a widening that only
 //                 accepts the new one rejects every member not touched since.
 //                 Every future widening of the vocabulary belongs here too.
+//                 `hidden` sits here on the same terms: it decides only whether the
+//                 CANON's catalog names a pack, so a local one carrying it does nothing
+//                 either, and validation is the half that could turn a member red.
 //   legacy-task   a local pack whose scheduled task still declares the DEPRECATED
 //                 task-level `session_scope` — the shape a consumer that predates
 //                 the 2026-08-09 retirement still has on disk. It holds the
@@ -193,6 +196,7 @@ const PACK_VERSIONED = `export default {
   id: 'fixture-versioned',
   version: 3,
   minEngineVersion: 1,
+  hidden: true,
   seedOps: [{ template: 'RULES.md', dest: 'SEEDED-BY-FIXTURE.md' }],
   adoptionHandover: [{ step: 'Flip the fixture switch', breaks: 'nothing — this pack is a rehearsal fixture', done: 'never; nobody adopts a fixture' }],
   ruleRoutingGuidance: {
