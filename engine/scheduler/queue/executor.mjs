@@ -20,8 +20,10 @@ import { isSuspended, suspendedNotice } from './suspend.mjs';
 import { readyDependents } from './readiness.mjs';
 import { HEARTBEAT_MS, heartbeatComment, withHeartbeat } from './heartbeat.mjs';
 import { renderTaskExec } from '../run-record.mjs';
+import { swapStatus, clearStatus } from './apply-status.mjs';
 import {
   READY, URGENT, EXECUTING, AGENT, NEEDS_HUMAN,
+  STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT, isStatus,
   TASK_DONE, TASK_OBSOLETE, QUEUE_LABELS, REQUEST_LABELS, QUEUED_LABEL, isStandingItem,
   NEEDS_HUMAN_ACTION, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_FAILURE, triageLabelFor,
   CLAIM_MARKER, HANDOFF_MARKER, EPISODE_MARKER,
@@ -29,6 +31,9 @@ import {
   LAST_VERDICT_HEADING, lastVerdictLines } from './work-item.mjs';
 
 const titleOf = (item) => (item.title ?? '').trim();
+// An item somebody is executing — the executor holds it, or the agent it handed to
+// does. Decoded, never a literal label test: the item may wear any engine's spelling.
+const running = (item) => isStatus(item, STATUS_RUNNING_EXECUTOR) || isStatus(item, STATUS_RUNNING_AGENT);
 const taskIdOf = (item) => {
   const p = parseWorkItemTitle(item.title);
   return p ? `${p.pack}/${p.task}` : null;
@@ -55,7 +60,7 @@ const taskIdOf = (item) => {
 // occurrence or an ad-hoc run (§15.26). `random` is the tie-break draw, injected
 // so a test can pin an order the production call deliberately does not have.
 export function pickOrder(open = [], { taskAfter = () => [], frequencyOf = () => null, random = Math.random } = {}) {
-  const live = (item) => hasLabel(item, READY) || hasLabel(item, EXECUTING) || hasLabel(item, AGENT);
+  const live = (item) => [STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT].some((s) => isStatus(item, s));
   const standing = (item) => isStandingItem(item, frequencyOf(taskIdOf(item)));
   const liveUpstream = (upstreamId) => open.some((o) =>
     taskIdOf(o) === upstreamId && standing(o) && live(o));
@@ -65,9 +70,9 @@ export function pickOrder(open = [], { taskAfter = () => [], frequencyOf = () =>
   const draw = new Map(open.map((i) => [i.number, random()]));
 
   return open
-    .filter((i) => hasLabel(i, READY) && !hasLabel(i, NEEDS_HUMAN))
+    .filter((i) => isStatus(i, STATUS_READY))
     .filter((i) => !open.some((o) => o.number !== i.number && titleOf(o) === titleOf(i)
-      && (hasLabel(o, EXECUTING) || hasLabel(o, AGENT))))
+      && running(o)))
     .filter((i) => {
       if (!standing(i)) return true;
       return !taskAfter(taskIdOf(i)).some(liveUpstream);
@@ -119,7 +124,7 @@ export function conflictsWithEarlierClaim(item, myClaimId, others, { taskAfter =
   const upstreams = standing(item) ? taskAfter(taskIdOf(item)) : [];
   return others.some((o) => {
     if (o.number === item.number) return false;
-    if (!(hasLabel(o, EXECUTING) || hasLabel(o, AGENT))) return false;
+    if (!running(o)) return false;
     const conflicting = titleOf(o) === titleOf(item)
       || (upstreams.includes(taskIdOf(o)) && standing(o));
     return conflicting && o.claimId != null && o.claimId < myClaimId;
@@ -183,7 +188,7 @@ export async function runExecutor({
   if (!candidate) return done;
 
   // --- claim: the verified lease --------------------------------------------
-  await api.swapLabel(gh, repo, candidate.number, READY, EXECUTING);
+  await swapStatus(api, gh, repo, candidate, STATUS_READY, EXECUTING);
   await api.comment(gh, repo, candidate.number, claimComment({
     executor: executorId, runUrl, at: nowIso(),
   }));
@@ -208,7 +213,7 @@ export async function runExecutor({
   if (conflictsWithEarlierClaim(candidate, winner.id, others, { taskAfter, frequencyOf })) {
     await api.comment(gh, repo, candidate.number,
       `${EPISODE_MARKER}\nReverting this claim: a conflicting item holds an earlier claim this cycle. Returning the item to the queue.`);
-    await api.swapLabel(gh, repo, candidate.number, EXECUTING, READY);
+    await swapStatus(api, gh, repo, candidate, STATUS_RUNNING_EXECUTOR, READY);
     log(`- #${candidate.number}: reverted — a conflicting item claimed earlier`);
     return done;
   }
@@ -240,7 +245,7 @@ export async function runExecutor({
 async function withClaimIds(api, gh, repo, items, selfNumber) {
   const out = [];
   for (const i of items) {
-    if (i.number === selfNumber || !(hasLabel(i, EXECUTING) || hasLabel(i, AGENT))) { out.push(i); continue; }
+    if (i.number === selfNumber || !running(i)) { out.push(i); continue; }
     const winner = claimWinner(await api.listComments(gh, repo, i.number));
     out.push({ ...i, claimId: winner?.id ?? null });
   }
@@ -262,17 +267,17 @@ async function executeItem({
 
   // --- validate in code, before anything trusts the issue ------------------
   if (!parsed || !taskPath) {
-    await converge(api, gh, repo, item, EXECUTING, NEEDS_HUMAN_FAILURE, claim,
+    await converge(api, gh, repo, item, STATUS_RUNNING_EXECUTOR, NEEDS_HUMAN_FAILURE, claim,
       'This work item is malformed — its title or first body line does not name a task. Possible forgery; a human should look at it.', 'invalid');
     return 'needs-human';
   }
   if (!task) {
-    await close(api, gh, repo, item, EXECUTING, TASK_OBSOLETE, 'not_planned',
+    await close(api, gh, repo, item, STATUS_RUNNING_EXECUTOR, TASK_OBSOLETE, 'not_planned',
       `\`${id}\` is not a task this repo carries at HEAD (the pack may be undeclared, or the task removed). Closing obsolete.`, 'task-gone', ctx);
     return 'obsolete';
   }
   if (task.taskPath !== taskPath) {
-    await converge(api, gh, repo, item, EXECUTING, NEEDS_HUMAN_FAILURE, claim,
+    await converge(api, gh, repo, item, STATUS_RUNNING_EXECUTOR, NEEDS_HUMAN_FAILURE, claim,
       `This item's task path (\`${taskPath}\`) is not where \`${id}\` lives at HEAD (\`${task.taskPath}\`). Not running it.`, 'invalid');
     return 'needs-human';
   }
@@ -293,7 +298,7 @@ async function executeItem({
   // parks open in the failure lane, where the ordinary re-queue lever retries it
   // once the API recovers, and nothing is written to whatever it could not read.
   if (verdict.error) {
-    await converge(api, gh, repo, item, EXECUTING, NEEDS_HUMAN_FAILURE, claim,
+    await converge(api, gh, repo, item, STATUS_RUNNING_EXECUTOR, NEEDS_HUMAN_FAILURE, claim,
       `This run could not be decided: ${verdict.error}\n\nNothing ran and nothing was written. Re-queue this item (remove the \`${NEEDS_HUMAN}\` labels, add \`${READY}\`) once the cause has cleared.`);
     log(`! #${item.number} ${id}: the precondition could not answer — ${verdict.error}`);
     return 'needs-human';
@@ -309,7 +314,7 @@ async function executeItem({
     // A DECLINE IS A COMPLETED RUN, not a failure: the executor asked, got a
     // no, and closed the occurrence — so the record says `success` and the
     // reason sits beside it in the same comment.
-    await close(api, gh, repo, item, EXECUTING, TASK_OBSOLETE, 'not_planned',
+    await close(api, gh, repo, item, STATUS_RUNNING_EXECUTOR, TASK_OBSOLETE, 'not_planned',
       `The precondition declined: ${plan.reason}`
       + (plan.standing
         ? '\n\nThis task\'s next occurrence is decided at its next anchor; declined occurrences are recorded on the schedule board.'
@@ -339,14 +344,14 @@ async function executeItem({
       // said nothing about why it failed is a `failure` — the lane that means
       // "someone reads the trace", which is the only safe default for a run whose
       // cause is unknown.
-      await converge(api, gh, repo, item, EXECUTING, triageLabelFor(result.triage?.kind), claim,
+      await converge(api, gh, repo, item, STATUS_RUNNING_EXECUTOR, triageLabelFor(result.triage?.kind), claim,
         `Code-work failed: ${result.why}${result.triage?.detail ? `\n\nThe worker's own verdict: ${result.triage.detail}` : ''}`
         + `${result.detail ? `\n\n\`\`\`\n${result.detail}\n\`\`\`` : ''}`);
       return 'needs-human';
     }
     if (result.missingSecrets?.length) {
-      await converge(api, gh, repo, item, EXECUTING, NEEDS_HUMAN_ACTION, claim,
-        `This task declares repo Actions secrets that are not configured: ${result.missingSecrets.join(', ')}. Set them in repo settings and re-queue this item (remove the \`needs-human\` labels, add \`task:ready\`).`);
+      await converge(api, gh, repo, item, STATUS_RUNNING_EXECUTOR, NEEDS_HUMAN_ACTION, claim,
+        `This task declares repo Actions secrets that are not configured: ${result.missingSecrets.join(', ')}. Set them in repo settings and re-queue this item (remove the \`${NEEDS_HUMAN}\` labels, add \`${READY}\`).`);
       return 'needs-human';
     }
     if (!result.agentRequested) {
@@ -356,12 +361,12 @@ async function executeItem({
       // (`isBlockingPark`): the next occurrence is filed on schedule around it, so
       // an unreviewed PR delays nobody but its reviewer.
       if (result.openPr) {
-        await converge(api, gh, repo, item, EXECUTING, NEEDS_HUMAN_APPROVAL, claim,
+        await converge(api, gh, repo, item, STATUS_RUNNING_EXECUTOR, NEEDS_HUMAN_APPROVAL, claim,
           `Code-work did this run's work and opened a PR for you to approve:\n${result.delivered.map((d) => `- ${d}`).join('\n')}`
           + `\n\nMerge or close #${result.openPr}, then close this item. This task keeps running on schedule meanwhile.`, null);
         return 'needs-human';
       }
-      await close(api, gh, repo, item, EXECUTING, TASK_DONE, 'completed',
+      await close(api, gh, repo, item, STATUS_RUNNING_EXECUTOR, TASK_DONE, 'completed',
         result.delivered?.length
           ? `Code-work did this run's work and left:\n${result.delivered.map((d) => `- ${d}`).join('\n')}`
           : 'Code-work did this run\'s work; no agent was needed.', 'success', ctx);
@@ -372,7 +377,7 @@ async function executeItem({
 
   // An agentless task with no code-work does nothing (the contract forbids it).
   if (task.decl.agent_model === 'none') {
-    await converge(api, gh, repo, item, EXECUTING, NEEDS_HUMAN_FAILURE, claim,
+    await converge(api, gh, repo, item, STATUS_RUNNING_EXECUTOR, NEEDS_HUMAN_FAILURE, claim,
       'This task is agentless but declares no code_work, so there is nothing to run — a contract-forbidden shape that reached the queue.', 'invalid');
     return 'needs-human';
   }
@@ -426,7 +431,7 @@ async function handOff({ api, gh, repo, item, task, id, context, result, executo
   if (result.reason) body = withSection(body, 'Why the agent is here', [result.reason]);
   await gh(`/repos/${repo}/issues/${item.number}`, { method: 'PATCH', body: { body } });
 
-  await api.swapLabel(gh, repo, item.number, EXECUTING, AGENT);
+  await swapStatus(api, gh, repo, item, STATUS_RUNNING_EXECUTOR, AGENT);
   await api.comment(gh, repo, item.number,
     `${HANDOFF_MARKER}\nHanded off by executor \`${executorId}\` — invocation nonce \`${nonce}\`.`);
 
@@ -440,7 +445,7 @@ async function handOff({ api, gh, repo, item, task, id, context, result, executo
   if (invocation.answered) {
     // The endpoint refused, so no session exists and none will: a token, a URL or
     // a routine is wrong, and every future pick would be refused the same way.
-    await converge(api, gh, repo, item, AGENT, NEEDS_HUMAN_ACTION, claim,
+    await converge(api, gh, repo, item, STATUS_RUNNING_AGENT, NEEDS_HUMAN_ACTION, claim,
       `Could not start an agent session: ${invocation.error}\n\nNo session was started. Fix the invocation endpoint, then re-queue this item (remove the \`${NEEDS_HUMAN}\` labels, add \`${READY}\`).`);
     return 'needs-human';
   }
@@ -508,7 +513,7 @@ const recordFor = (item, status) => {
 async function converge(api, gh, repo, item, from, triage, claim, body, status = 'failed') {
   await strikeClaim(api, gh, repo, claim);
   await api.comment(gh, repo, item.number, body + recordFor(item, status));
-  await api.swapLabel(gh, repo, item.number, from, NEEDS_HUMAN);
+  await swapStatus(api, gh, repo, item, from, NEEDS_HUMAN);
   await api.addLabel(gh, repo, item.number, triage);
 }
 
@@ -518,7 +523,7 @@ async function converge(api, gh, repo, item, from, triage, claim, body, status =
 // performs — a human's, or a session that stopped early.
 async function close(api, gh, repo, item, from, outcome, stateReason, body, status, ctx = {}) {
   await api.comment(gh, repo, item.number, body + recordFor(item, status));
-  await api.removeLabel(gh, repo, item.number, from);
+  await clearStatus(api, gh, repo, item, from);
   await api.addLabel(gh, repo, item.number, outcome);
   await api.closeIssue(gh, repo, item.number, stateReason);
   await readyDependents(api, gh, repo, item.number, ctx);

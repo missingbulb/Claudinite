@@ -30,13 +30,19 @@ import { finding } from '../../../../engine/checks/helpers/findings.mjs';
 //
 //   pack-schema.mjs        the manifest vocabulary — #555's exact surface
 //   a rule's `severity`    advisory -> blocking turns a member red overnight
-//   the scheduler stub     every member vendors it verbatim
+//   either workflow stub   every member vendors it verbatim
 //
 // It does NOT fire on ordinary pack or engine edits. A rule that cried wolf on
 // every canon commit would be turned off within a week, and then it would be
 // worth nothing on the day it mattered.
 const SCHEMA = 'engine/pack_loader/pack-schema.mjs';
-const STUB = 'engine/scheduler/stubs/claudinite-scheduler.yml';
+// BOTH stubs: a member vendors the executor's workflow as verbatim as the
+// scheduler's, and its event trigger names label strings literally — the surface a
+// vocabulary change has to carry members across (#1119).
+const STUBS = [
+  'engine/scheduler/stubs/claudinite-scheduler.yml',
+  'engine/scheduler/stubs/claudinite-executor.yml',
+];
 // A record folder, not the machinery beside it: registry/apply edits are engine
 // work and carry no member across anything. A record lives under the flow that
 // owns it — the engine's own, or one pack's — so both homes count (#768).
@@ -54,8 +60,10 @@ export function contractChanges(changed, read, readBase = () => null) {
   if (changed.includes(SCHEMA)) {
     out.push({ file: SCHEMA, what: 'the pack manifest vocabulary — every consumer local pack is validated against it' });
   }
-  if (changed.includes(STUB)) {
-    out.push({ file: STUB, what: 'the scheduler workflow stub — every member vendors it verbatim' });
+  for (const stub of STUBS) {
+    if (changed.includes(stub)) {
+      out.push({ file: stub, what: 'a workflow stub — every member vendors it verbatim' });
+    }
   }
   for (const file of changed) {
     // A rule module that BECAME blocking in this change — either newly added, or

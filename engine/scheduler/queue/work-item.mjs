@@ -21,12 +21,83 @@ import { canonicalPackId } from '../../pack_loader/renamed-packs.mjs';
 // and neither may read the other's issues (DESIGN §14, S29).
 export const WORK_PREFIX = '[claudinite-work]';
 
+// --- the canonical vocabulary (DESIGN §4, the migration of #1119) -------------
+// Every label the machinery writes is one of three things — the item's single
+// STATUS, its lifelong ORIGIN, or the URGENCY flag — and all of them live in the
+// `task:` namespace. These are the spellings a reader compares against: decode
+// first (`statusOf`, `originOf`), then compare, so an item filed by any engine
+// version answers the same question the same way.
+export const STATUS_PREFIX = 'task:status:';
+export const PARK_PREFIX = `${STATUS_PREFIX}needs-human-`;
+
+export const STATUS_BLOCKED = `${STATUS_PREFIX}blocked`;
+export const STATUS_READY = `${STATUS_PREFIX}waiting-for-executor`;
+export const STATUS_RUNNING_EXECUTOR = `${STATUS_PREFIX}running-executor`;
+export const STATUS_RUNNING_AGENT = `${STATUS_PREFIX}running-agent`;
+export const STATUS_NEEDS_HUMAN_ACTION = `${PARK_PREFIX}action`;
+export const STATUS_NEEDS_HUMAN_DECISION = `${PARK_PREFIX}decision`;
+export const STATUS_NEEDS_HUMAN_APPROVAL = `${PARK_PREFIX}approval`;
+export const STATUS_NEEDS_HUMAN_FAILURE = `${PARK_PREFIX}failure`;
+export const STATUS_DONE = `${STATUS_PREFIX}done`;
+export const STATUS_REJECTED = `${STATUS_PREFIX}rejected`;
+
+// The four statuses an OPEN item may wear before it parks or converges. An open
+// item wearing no decodable status at all is off the state machine — a torn label
+// swap's leavings, which the janitor repairs (DESIGN §6.2, §11).
+export const LIVE_STATUSES = Object.freeze([
+  STATUS_BLOCKED, STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT,
+]);
+// The park kinds, in the order a decoder prefers them when an item somehow wears
+// more than one: `failure` first, because it is the conservative lane — the one
+// that holds the task's lane rather than letting a broken task keep filing work.
+export const PARK_KINDS = Object.freeze(['failure', 'action', 'decision', 'approval']);
+export const PARK_STATUSES = Object.freeze(PARK_KINDS.map((k) => `${PARK_PREFIX}${k}`));
+export const STATUS_LABELS = Object.freeze([
+  ...LIVE_STATUSES, ...PARK_STATUSES, STATUS_DONE, STATUS_REJECTED,
+]);
+
+// THE ORIGIN (DESIGN §3, decision §15.29) — who asked for this item, worn for the
+// item's whole life beside whatever status it holds. Read here; the writers arrive
+// with the write-side flip.
+export const ORIGIN_PREFIX = 'task:origin:';
+export const ORIGIN_PLANNED = `${ORIGIN_PREFIX}planned`;
+export const ORIGIN_AD_HOC = `${ORIGIN_PREFIX}ad-hoc`;
+export const ORIGIN_GITHUB = `${ORIGIN_PREFIX}github`;
+export const ORIGIN_LABELS = Object.freeze([ORIGIN_PLANNED, ORIGIN_AD_HOC, ORIGIN_GITHUB]);
+
+// --- the write spellings ------------------------------------------------------
+// What this engine APPLIES. They are separate from the canonical constants above
+// for the length of the migration only: reads decode every spelling, writes carry
+// one, and the flip is these six values changing (#1119).
 export const BLOCKED = 'task:blocked';
 export const READY = 'task:ready';
 export const URGENT = 'task:urgent';
 export const EXECUTING = 'task:executing';
 export const AGENT = 'task:agent';
 export const NEEDS_HUMAN = 'needs-human';
+
+// @deprecated Nothing writes this since the approval park: a run that left an
+// unmerged PR no longer CLOSES as delivered, it parks at
+// `task:needs-human-approval` and waits to be merged. Kept exported, kept in
+// `QUEUE_LABELS`, and still read everywhere it was read — closed issues carrying
+// it are stored data, and a decoder that stopped recognising it would turn every
+// historical delivered run into an un-outcomed one.
+export const OUTCOME_DELIVERED = 'outcome:delivered';
+
+// @deprecated The pre-2026-08-19 spellings of the two terminals below. Kept
+// exported so a fielded pack that imports them still loads, and READ wherever an
+// outcome is decoded: labels are stored data on closed issues fleet-wide, so a
+// decoder that stopped recognising these would turn every historical run into an
+// un-outcomed one. Write `TASK_DONE` / `TASK_OBSOLETE`.
+export const OUTCOME_DONE = 'outcome:done';
+export const OUTCOME_OBSOLETE = 'outcome:obsolete';
+
+// Today's terminal spellings (DESIGN §4, §15.25): the `outcome:` namespace dissolves
+// into `task:`, one vocabulary for the state machine's live and terminal states
+// alike. These are what the engine WRITES; the `outcome:*` spellings above are read
+// forever, because a closed issue keeps whatever it was closed under.
+export const TASK_DONE = 'task:done';
+export const TASK_OBSOLETE = 'task:obsolete';
 
 // @deprecated The origin marker (DESIGN §15.26). Nothing writes it and nothing
 // branches on it: whether an item is a task's standing occurrence or an ad-hoc run
@@ -76,11 +147,84 @@ export const TRIAGE_LABELS = Object.freeze([
 // every item parked by an engine older than the sub-labels, and every kind word a
 // future engine invents that this one does not know, holds the lane rather than
 // silently letting a broken task keep filing work.
-export const isBlockingPark = (item) =>
-  hasLabel(item, NEEDS_HUMAN)
-  && !hasLabel(item, NEEDS_HUMAN_ACTION)
-  && !hasLabel(item, NEEDS_HUMAN_DECISION)
-  && !hasLabel(item, NEEDS_HUMAN_APPROVAL);
+export const isBlockingPark = (item) => statusOf(item) === STATUS_NEEDS_HUMAN_FAILURE;
+
+// --- the decode (DESIGN §4, "legacy spellings — written never, read forever") --
+// Labels are STORED DATA: open items filed by a fielded engine wear its spellings,
+// closed items keep theirs forever, and members converge on their own schedules. So
+// every reader here goes through one pass that maps every spelling ever written
+// straight to today's — never through a literal comparison against one of them.
+const LEGACY_STATUS = new Map([
+  [BLOCKED, STATUS_BLOCKED],
+  [READY, STATUS_READY],
+  [EXECUTING, STATUS_RUNNING_EXECUTOR],
+  [AGENT, STATUS_RUNNING_AGENT],
+  [TASK_DONE, STATUS_DONE], [OUTCOME_DONE, STATUS_DONE],
+  [TASK_OBSOLETE, STATUS_REJECTED], [OUTCOME_OBSOLETE, STATUS_REJECTED],
+]);
+
+const LEGACY_PARK_RE = /^task:needs-human-(.+)$/;
+
+// The park an issue's labels name, canonical, or null. Both shapes decode here:
+// today's single `task:status:needs-human-<kind>` and the legacy pair
+// (`needs-human` plus a sub-label). A kind nobody here knows — a bare legacy park,
+// or a word a newer engine invented — reads as `failure`, the conservative lane.
+function parkOf(names) {
+  const kinds = [
+    ...names.filter((n) => n.startsWith(PARK_PREFIX)).map((n) => n.slice(PARK_PREFIX.length)),
+    ...names.map((n) => LEGACY_PARK_RE.exec(n)?.[1]).filter(Boolean),
+  ];
+  if (!kinds.length && !names.includes(NEEDS_HUMAN)) return null;
+  return `${PARK_PREFIX}${PARK_KINDS.find((k) => kinds.includes(k)) ?? 'failure'}`;
+}
+
+// Every distinct status an issue's labels decode to. One entry per status, so an
+// item mid-flip — wearing a legacy spelling beside its canonical one — reads as the
+// ONE status it is, and only genuinely conflicting labels read as more than one
+// (the dashboard's `torn`).
+export function statusesOn(issue) {
+  const names = labelNames(issue);
+  const out = new Set();
+  const park = parkOf(names);
+  if (park) out.add(park);
+  for (const n of names) {
+    if (STATUS_LABELS.includes(n) && !n.startsWith(PARK_PREFIX)) out.add(n);
+    else if (LEGACY_STATUS.has(n)) out.add(LEGACY_STATUS.get(n));
+  }
+  return [...out];
+}
+
+// THE status an issue wears, canonical, or null for one wearing none. A park wins
+// over anything else present: a torn transition that left a state label beside a
+// park must read as parked, or the queue would pick up an item a human owns.
+export function statusOf(issue) {
+  const worn = statusesOn(issue);
+  return worn.find((s) => s.startsWith(PARK_PREFIX))
+    ?? STATUS_LABELS.find((s) => worn.includes(s))
+    ?? null;
+}
+
+export const isStatus = (issue, status) => statusOf(issue) === status;
+export const isParked = (issue) => (statusOf(issue) ?? '').startsWith(PARK_PREFIX);
+export const parkKindOf = (issue) =>
+  (isParked(issue) ? statusOf(issue).slice(PARK_PREFIX.length) : null);
+
+// The origin an issue wears, or null. Unlike the status there is no legacy
+// spelling to fold in: `origin:schedule` is inert stored data (see ORIGIN_SCHEDULE),
+// and reading it as an origin would put a marker nothing writes back into play.
+export const originOf = (issue) =>
+  labelNames(issue).find((n) => ORIGIN_LABELS.includes(n)) ?? null;
+
+// Every spelling that MEANS `status` — what a transition out of it has to clear,
+// since the item may wear any engine's. Leaving a park clears every park spelling
+// whatever its kind: a re-queue takes the item out of the human's hands entirely.
+export function spellingsOf(status) {
+  if (String(status ?? '').startsWith(PARK_PREFIX)) {
+    return [...PARK_STATUSES, ...PARK_KINDS.map((k) => `task:needs-human-${k}`), NEEDS_HUMAN];
+  }
+  const legacy = [...LEGACY_STATUS].filter(([, canonical]) => canonical === status).map(([l]) => l);
+  return [status, ...legacy];
+}
 
 // A kind word (from a worker's own triage marker, or a call site) to its label.
 // Anything unrecognised is a `failure`: a worker that misspells its class has a
@@ -88,47 +232,22 @@ export const isBlockingPark = (item) =>
 export const triageLabelFor = (kind) =>
   (TRIAGE_LABELS.includes(triage(kind)) ? triage(kind) : NEEDS_HUMAN_FAILURE);
 
-// @deprecated Nothing writes this since the approval park: a run that left an
-// unmerged PR no longer CLOSES as delivered, it parks at
-// `task:needs-human-approval` and waits to be merged. Kept exported, kept in
-// `QUEUE_LABELS`, and still read everywhere it was read — closed issues carrying
-// it are stored data, and a decoder that stopped recognising it would turn every
-// historical delivered run into an un-outcomed one.
-export const OUTCOME_DELIVERED = 'outcome:delivered';
-
-// @deprecated The pre-2026-08-19 spellings of the two terminals below. Kept
-// exported so a fielded pack that imports them still loads, and READ wherever an
-// outcome is decoded: labels are stored data on closed issues fleet-wide, so a
-// decoder that stopped recognising these would turn every historical run into an
-// un-outcomed one. Write `TASK_DONE` / `TASK_OBSOLETE`.
-export const OUTCOME_DONE = 'outcome:done';
-export const OUTCOME_OBSOLETE = 'outcome:obsolete';
-
-// Today's terminal spellings (DESIGN §4, §15.25): the `outcome:` namespace dissolves
-// into `task:`, one vocabulary for the state machine's live and terminal states
-// alike. These are what the engine WRITES; the `outcome:*` spellings above are read
-// forever, because a closed issue keeps whatever it was closed under.
-export const TASK_DONE = 'task:done';
-export const TASK_OBSOLETE = 'task:obsolete';
 
 // The stored-data rename rule, decode side: every spelling ever written maps
 // STRAIGHT to the canonical word, in one pass — including `outcome:delivered`,
 // which nothing writes any more but closed issues carry forever.
-const OUTCOME_SPELLINGS = new Map([
-  [TASK_DONE, 'done'], [OUTCOME_DONE, 'done'],
-  [OUTCOME_DELIVERED, 'delivered'],
-  [TASK_OBSOLETE, 'obsolete'], [OUTCOME_OBSOLETE, 'obsolete'],
-]);
+const OUTCOME_WORDS = new Map([[STATUS_DONE, 'done'], [STATUS_REJECTED, 'obsolete']]);
 
 // The one outcome an issue's labels carry, as the canonical word ('done',
 // 'delivered', 'obsolete') or null. Everything that tallies or renders outcomes
 // decodes through here, so a spelling change is one map entry and not a sweep.
 export function outcomeOf(issue) {
-  for (const l of labelNames(issue)) {
-    const o = OUTCOME_SPELLINGS.get(l);
-    if (o) return o;
-  }
-  return null;
+  // `statusesOn` rather than `statusOf`: a closed item's terminal write is its
+  // outcome even when a park label stands beside it, and park precedence is a
+  // question about LIVE items — what the queue may pick up — not about history.
+  const worn = statusesOn(issue);
+  for (const [status, word] of OUTCOME_WORDS) if (worn.includes(status)) return word;
+  return hasLabel(issue, OUTCOME_DELIVERED) ? 'delivered' : null;
 }
 
 // --- the request vocabulary (DESIGN §16.1) ------------------------------------
@@ -191,6 +310,10 @@ export const requestModelFromLabels = (labels = []) => {
 // leavings, which the janitor repairs (DESIGN §6.2, §11).
 export const STATE_LABELS = [BLOCKED, READY, EXECUTING, AGENT];
 
+// The canonical statuses the same four decode to — what a reader tests against,
+// since an item may wear either engine's spelling (`statusesOn`).
+export { LIVE_STATUSES as STATE_STATUSES };
+
 // Every label this mechanism applies, with the colour and description a bootstrap
 // one-off would have given it. Ensured create-if-missing before anything is
 // applied: GitHub 422s when you apply an unknown label and never creates one on
@@ -209,6 +332,22 @@ export const QUEUE_LABELS = [
   { name: TASK_DONE, color: '0e8a16', description: 'Claudinite queue: succeeded, nothing pending' },
   { name: OUTCOME_DELIVERED, color: '5319e7', description: 'Claudinite queue: succeeded and left a live artifact the world still has to act on' },
   { name: TASK_OBSOLETE, color: 'ededed', description: 'Claudinite queue: never ran — the precondition said no, or the task is gone' },
+  // The canonical vocabulary, ensured BEFORE anything writes it (#1119): a label
+  // that does not exist 422s the write that would apply it, and the ensure pass and
+  // the flip that starts applying these reach a member in separate converges.
+  { name: STATUS_BLOCKED, color: 'c5def5', description: 'Claudinite queue: waiting on Blocked-by and/or Not-before' },
+  { name: STATUS_READY, color: '0e8a16', description: 'Claudinite queue: available for an executor to pick up' },
+  { name: STATUS_RUNNING_EXECUTOR, color: 'fbca04', description: 'Claudinite queue: an executor holds the claim' },
+  { name: STATUS_RUNNING_AGENT, color: '1d76db', description: 'Claudinite queue: an agent session owns this item' },
+  { name: STATUS_NEEDS_HUMAN_ACTION, color: 'b60205', description: 'Claudinite queue: parked — a human must change something outside the code' },
+  { name: STATUS_NEEDS_HUMAN_DECISION, color: 'd93f0b', description: 'Claudinite queue: parked — a human must choose what happens next' },
+  { name: STATUS_NEEDS_HUMAN_APPROVAL, color: '5319e7', description: 'Claudinite queue: parked — succeeded and left an unmerged PR to approve' },
+  { name: STATUS_NEEDS_HUMAN_FAILURE, color: 'b60205', description: 'Claudinite queue: parked — the run broke, diagnose and fix' },
+  { name: STATUS_DONE, color: '0e8a16', description: 'Claudinite queue: succeeded, nothing pending' },
+  { name: STATUS_REJECTED, color: 'ededed', description: 'Claudinite queue: never ran — the precondition said no, or the task is gone' },
+  { name: ORIGIN_PLANNED, color: 'c2e0c6', description: 'Claudinite queue: filed by the schedule — a task\'s own occurrence' },
+  { name: ORIGIN_AD_HOC, color: 'bfd4f2', description: 'Claudinite queue: asked for by a person — a one-issue request or a hand-created run' },
+  { name: ORIGIN_GITHUB, color: 'd4c5f9', description: 'Claudinite queue: filed by the platform itself — a workflow reporting its own failure' },
 ];
 
 // GitHub hands labels back as objects on the issues API and as bare strings in

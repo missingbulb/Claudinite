@@ -18,11 +18,12 @@
 import { pathToFileURL } from 'node:url';
 import { renderTaskExec } from '../run-record.mjs';
 import { readyDependents } from './readiness.mjs';
+import { swapStatus, clearStatus } from './apply-status.mjs';
 import {
-  AGENT, NEEDS_HUMAN, TASK_DONE,
+  AGENT, NEEDS_HUMAN, TASK_DONE, STATUS_RUNNING_AGENT, isStatus,
   NEEDS_HUMAN_ACTION, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_FAILURE,
   QUEUED_LABEL, IN_REVIEW_LABEL,
-  hasLabel, parseWorkItemTitle, parseWorkItemBody,
+  parseWorkItemTitle, parseWorkItemBody,
 } from './work-item.mjs';
 
 // What a session may claim, and what each one means for the item. `record` is the
@@ -62,8 +63,8 @@ export function refusal(item, issue) {
   if (!item) return `#${issue} could not be read`;
   if (!parseWorkItemTitle(item.title ?? '')) return `#${issue} is not a Claudinite work item`;
   if (item.state !== 'open') return `#${issue} is already closed — it was converged once already`;
-  if (!hasLabel(item, AGENT)) {
-    return `#${issue} does not carry \`${AGENT}\` — this session does not hold it, so it is not this session's to converge`;
+  if (!isStatus(item, STATUS_RUNNING_AGENT)) {
+    return `#${issue} is not with an agent (\`${AGENT}\`) — this session does not hold it, so it is not this session's to converge`;
   }
   return null;
 }
@@ -101,7 +102,7 @@ export async function convergeItem(api, gh, repo, plan, { now = () => new Date()
   const rec = recordLine(item, spec.record);
   if (rec) log(rec);
   if (spec.closes) {
-    await api.removeLabel(gh, repo, item.number, AGENT);
+    await clearStatus(api, gh, repo, item, STATUS_RUNNING_AGENT);
     await api.addLabel(gh, repo, item.number, spec.label);
     await api.closeIssue(gh, repo, item.number, spec.stateReason);
     // §15.19: whoever closes an item releases what it was holding.
@@ -110,7 +111,7 @@ export async function convergeItem(api, gh, repo, plan, { now = () => new Date()
   }
   // Every park wears BOTH labels: `needs-human` is the state every guard and
   // sweep reads, the sub-label is what the person is being asked for.
-  await api.swapLabel(gh, repo, item.number, AGENT, NEEDS_HUMAN);
+  await swapStatus(api, gh, repo, item, STATUS_RUNNING_AGENT, NEEDS_HUMAN);
   await api.addLabel(gh, repo, item.number, spec.label);
   // A REQUEST ITEM WRITES BACK TO ITS ISSUE, on the one end that is its business
   // (§16.5). Only the approval park: a failure deliberately writes nothing and

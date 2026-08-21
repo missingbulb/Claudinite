@@ -28,7 +28,7 @@ import { stripComments } from '../../engine/checks/helpers/code-scanning.mjs';
 import { periodMs } from '../../engine/scheduler/queue/anchors.mjs';
 import {
   BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN, URGENT,
-  NEEDS_HUMAN_APPROVAL, outcomeOf,
+  NEEDS_HUMAN_APPROVAL, outcomeOf, isParked,
 } from '../../engine/scheduler/queue/work-item.mjs';
 import { canonicalPackVersions } from '../../engine/pack_loader/renamed-packs.mjs';
 import { VERSION_SOURCE, versionFromLiteral, isVersion, versionAbove } from '../../engine/version.mjs';
@@ -487,7 +487,7 @@ export function taskSpread(reads, now) {
       row.members.add(read.repo);
       if (item.state === 'open') {
         row.open += 1;
-        if ((item.labels ?? []).includes(NEEDS_HUMAN)) row.parked += 1;
+        if (isParked(item)) row.parked += 1;
       } else {
         const outcome = outcomeOf(item);
         if (outcome === 'done' || outcome === 'delivered') row.done += 1;

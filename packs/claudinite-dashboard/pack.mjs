@@ -72,7 +72,10 @@ export default {
   // in retires here, and every pack in the canon restarts from the same day.
   // 60820.2: fleet-digest's machine-issue filter learns the schedule board's
   // `[claudinite-schedule]` title (#1115).
-  version: '60820.2',
+  // 60821.1: item state, triage and parked counts are decoded from the label
+  // vocabulary rather than matched literally, so a member's items read the same
+  // whichever engine filed them (#1119).
+  version: '60821.1',
   minEngineVersion: 4,
   ruleRoutingGuidance: {
     belongs: 'the browser dashboard over Claudinite scheduler state, the site that publishes it, and the fleet morning brief it reads',

@@ -21,12 +21,15 @@ import {
   periodForTasks,
 } from '../../../../engine/scheduler/queue/janitor-rules.mjs';
 import {
-  READY, AGENT, EXECUTING, BLOCKED, NEEDS_HUMAN, QUEUE_LABELS, HANDOFF_MARKER,
+  NEEDS_HUMAN, QUEUE_LABELS, HANDOFF_MARKER,
   NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION,
-  parseWorkItemBody, hasLabel,
+  STATUS_BLOCKED, STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT,
+  isStatus, isParked,
+  parseWorkItemBody,
 } from '../../../../engine/scheduler/queue/work-item.mjs';
 import { listOpenWorkItems } from '../../../../engine/scheduler/queue/read.mjs';
 import { ensureLabels, addLabel, removeLabel, comment, listComments, readIssue } from '../../../../engine/scheduler/github.mjs';
+import { clearStatus } from '../../../../engine/scheduler/queue/apply-status.mjs';
 
 export async function sweepQueue(gh, repo, now, { tasks = [], log = console.log } = {}) {
   const open = await listOpenWorkItems(gh, repo);
@@ -51,20 +54,23 @@ export async function sweepQueue(gh, repo, now, { tasks = [], log = console.log 
 
   // Both labels, as everywhere: the state the machine reads plus what the human is
   // being asked for.
-  const escalate = async (item, body, dropLabel, triage) => {
+  const escalate = async (item, body, from, triage) => {
     await comment(gh, repo, item.number, body);
-    if (dropLabel) await removeLabel(gh, repo, item.number, dropLabel);
+    // Every spelling of the status being left goes: the item may have been filed by
+    // an engine older than this one, and a swap that named one spelling would leave
+    // the other standing (`apply-status`).
+    if (from) await clearStatus({ removeLabel }, gh, repo, item, from);
     await addLabel(gh, repo, item.number, NEEDS_HUMAN);
     await addLabel(gh, repo, item.number, triage);
   };
 
   for (const item of stale) {
-    await escalate(item, staleReadyComment(item), READY, NEEDS_HUMAN_ACTION);
+    await escalate(item, staleReadyComment(item), STATUS_READY, NEEDS_HUMAN_ACTION);
     log(`escalated stale-ready #${item.number} → ${NEEDS_HUMAN}`);
     result.staleReady.push(item.number);
   }
   for (const item of deadAgents) {
-    await escalate(item, deadAgentComment(item, await sessionNote(gh, repo, item)), AGENT, NEEDS_HUMAN_DECISION);
+    await escalate(item, deadAgentComment(item, await sessionNote(gh, repo, item)), STATUS_RUNNING_AGENT, NEEDS_HUMAN_DECISION);
     log(`reclaimed a dead agent claim on #${item.number} → ${NEEDS_HUMAN}`);
     result.deadAgents.push(item.number);
   }
@@ -97,10 +103,10 @@ export async function sweepQueue(gh, repo, now, { tasks = [], log = console.log 
 
   // The health review — the queue as its subject, computable entirely from issues.
   const converged = new Set([...result.staleReady, ...result.deadAgents, ...result.stateless]);
-  const count = (label) => open.filter((i) => hasLabel(i, label) && !converged.has(i.number)).length;
-  log(`health: ${result.open} open work item(s) — ${count(BLOCKED)} blocked, ${count(READY)} ready, `
-    + `${count(EXECUTING)} executing, ${count(AGENT)} with an agent, `
-    + `${open.filter((i) => hasLabel(i, NEEDS_HUMAN)).length + converged.size} needs-human; `
+  const count = (status) => open.filter((i) => isStatus(i, status) && !converged.has(i.number)).length;
+  log(`health: ${result.open} open work item(s) — ${count(STATUS_BLOCKED)} blocked, ${count(STATUS_READY)} ready, `
+    + `${count(STATUS_RUNNING_EXECUTOR)} executing, ${count(STATUS_RUNNING_AGENT)} with an agent, `
+    + `${open.filter(isParked).length + converged.size} needs-human; `
     + `this run escalated ${result.staleReady.length} stale, reclaimed ${result.deadAgents.length} dead agent claim(s), `
     + `surfaced ${result.stuck.length} stuck dependency(ies), repaired ${result.stateless.length} stateless item(s)`);
   return result;

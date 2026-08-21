@@ -38,8 +38,14 @@ jobs:
   execute:
     # A label event on anything else is not this workflow's business — and a
     # workflow_dispatch carries no label at all, so it always runs.
+    # BOTH READY SPELLINGS, for as long as any fielded engine writes the legacy one
+    # (#1119). A workflow's event trigger names label strings LITERALLY — nothing
+    # here decodes — so this list is the one place the migration's two vocabularies
+    # must both appear, and dropping the legacy spelling early makes every item an
+    # older engine readies wait for the hourly scheduler run instead of starting now.
     if: >-
       github.event_name == 'workflow_dispatch'
+      || github.event.label.name == 'task:status:waiting-for-executor'
       || github.event.label.name == 'task:ready'
       || github.event.label.name == 'task:urgent'
     runs-on: ubuntu-latest
@@ -110,9 +116,18 @@ jobs:
             // let the hourly scheduler run be what tries again.
             const { owner, repo } = context.repo;
             const title = 'Claudinite executor chain failed repeatedly';
-            await github.rest.issues.createLabel({ owner, repo, name: 'workflow-failure', color: 'b60205', description: 'Claudinite scheduler: a scheduler run or task failed' }).catch(() => {});
+            // The platform reporting its own failure IS an origin (`task:origin:github`),
+            // and a chain that has died three times is a break to diagnose — the
+            // `failure` park, the one lane that holds a task's lane (#1119).
+            const labels = ['workflow-failure', 'task:origin:github', 'task:status:needs-human-failure'];
+            const ensure = [
+              { name: 'workflow-failure', color: 'b60205', description: 'Claudinite scheduler: a scheduler run or task failed' },
+              { name: 'task:origin:github', color: 'd4c5f9', description: 'Claudinite queue: filed by the platform itself — a workflow reporting its own failure' },
+              { name: 'task:status:needs-human-failure', color: 'b60205', description: 'Claudinite queue: parked — the run broke, diagnose and fix' },
+            ];
+            for (const l of ensure) await github.rest.issues.createLabel({ owner, repo, ...l }).catch(() => {});
             const body = `Three consecutive executor runs died before finishing their item. The chain stops here; the next hourly scheduler run will dispatch a fresh one.\n\nThe last run: ${run}`;
             const found = await github.rest.search.issuesAndPullRequests({ q: `repo:${owner}/${repo} is:issue is:open in:title "${title}"` });
             if (found.data.total_count > 0) await github.rest.issues.createComment({ owner, repo, issue_number: found.data.items[0].number, body });
-            else await github.rest.issues.create({ owner, repo, title, labels: ['workflow-failure'], body });
+            else await github.rest.issues.create({ owner, repo, title, labels, body });
             core.setFailed('the executor chain died three times in a row — escalated');

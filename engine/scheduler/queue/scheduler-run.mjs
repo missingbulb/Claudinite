@@ -20,11 +20,14 @@ import { pathToFileURL } from 'node:url';
 import { isSuspended, suspendedNotice } from './suspend.mjs';
 import { mostRecentAnchor, nextAnchor } from './anchors.mjs';
 import { EXECUTING_LEASH_MS } from './leases.mjs';
+import { swapStatus } from './apply-status.mjs';
 import { isReleasable } from './readiness.mjs';
 import { lastLivenessAt } from './heartbeat.mjs';
 import {
-  WORK_PREFIX, BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN, TASK_OBSOLETE,
+  WORK_PREFIX, BLOCKED, READY, NEEDS_HUMAN, TASK_OBSOLETE,
   NEEDS_HUMAN_DECISION, isBlockingPark,
+  STATUS_BLOCKED, STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT,
+  isStatus, isParked, statusOf,
   QUEUE_LABELS, EPISODE_MARKER, workItemTitle, parseWorkItemTitle, parseWorkItemBody,
   workItemBody, labelNames, hasLabel, parseLastVerdict,
   REQUEST_LABEL, QUEUED_LABEL, REQUEST_LABELS, MODEL_LABEL_PREFIX, requestModelFromLabels,
@@ -98,7 +101,7 @@ export async function planSchedulerRun({
   if (evaluate) {
     const byId = new Map(tasks.map((t) => [`${t.pack}/${t.id}`, t]));
     for (const item of items) {
-      if (item.state !== 'open' || !hasLabel(item, BLOCKED) || hasLabel(item, NEEDS_HUMAN)) continue;
+      if (item.state !== 'open' || !isStatus(item, STATUS_BLOCKED)) continue;
       const parsed = parseWorkItemTitle(item.title);
       if (!parsed || parsed.qualifier !== null) continue;
       const key = parsed ? `${parsed.pack}/${parsed.task}` : null;
@@ -136,7 +139,7 @@ export async function planSchedulerRun({
     // left unclassified) stays in, and holding the lane is the point.
     const open = family
       .filter((i) => i.state === 'open' && !closedByThisRun.has(i.number))
-      .filter((i) => !hasLabel(i, NEEDS_HUMAN) || isBlockingPark(i))
+      .filter((i) => !isParked(i) || isBlockingPark(i))
       .sort((a, b) => a.number - b.number);
 
     // F16 self-heal, FIRST: nothing documents that a REST list from another node
@@ -236,7 +239,7 @@ export async function planSchedulerRun({
     // that replaced it.
     const prior = items.filter((i) => i.state === 'open' && !closedByThisRun.has(i.number)
       && parseWorkItemBody(i.body).request === req.number);
-    if (prior.some((i) => !hasLabel(i, NEEDS_HUMAN))) continue;
+    if (prior.some((i) => !isParked(i))) continue;
     for (const p of prior) {
       closedByThisRun.add(p.number);
       ops.push({
@@ -292,7 +295,7 @@ export async function planSchedulerRun({
   // ---- job 3: reclaim dead executor claims (DESIGN §11) -------------------
   const policyOf = new Map(tasks.map((t) => [`${t.pack}/${t.id}`, t.decl.on_interrupt ?? 'requeue']));
   for (const item of items) {
-    if (item.state !== 'open' || !hasLabel(item, EXECUTING)) continue;
+    if (item.state !== 'open' || !isStatus(item, STATUS_RUNNING_EXECUTOR)) continue;
     // SILENCE IS THE HOLDER'S, not the issue's (§11, #924). `updated_at` moves on
     // any comment — including the one an executor that LOST the claim race writes
     // on its way out — which defers the reclaim of an item nobody is working on.
@@ -373,7 +376,7 @@ export function planWake(spec, tasks = [], items = []) {
       return parsed && parsed.pack === pack && parsed.task === task;
     });
     if (!item) { create.push({ id: `${pack}/${task}`, pack, task, taskPath: owner.taskPath }); continue; }
-    if (IN_FLIGHT.some((l) => hasLabel(item, l))) { already.push({ id, issue: item.number }); continue; }
+    if (IN_FLIGHT.includes(statusOf(item))) { already.push({ id, issue: item.number }); continue; }
     wake.push({ id: `${pack}/${task}`, issue: item.number });
   }
   return { wake, create, already, unmatched };
@@ -385,9 +388,10 @@ export function planWake(spec, tasks = [], items = []) {
 export const FORCED_WAKE_CONTEXT =
   'Minted by a force — this task had no open standing item at the time. The precondition is still evaluated at pick, so converge to a no-op if there is nothing to do.';
 
-// The states that mean someone already holds this item. `task:agent` counts: the
-// work is with a session, and waking would hand a second executor the same item.
-const IN_FLIGHT = [READY, EXECUTING, AGENT];
+// The statuses that mean someone already holds this item — decoded, so an item any
+// engine version filed answers the same. `running-agent` counts: the work is with a
+// session, and waking would hand a second executor the same item.
+const IN_FLIGHT = [STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT];
 
 // --- CLI: the thin I/O shell the vendored scheduler run workflow invokes ---------------
 // Reads the work-item list, plans, applies. All GitHub access is the Action's
@@ -482,7 +486,7 @@ async function main() {
   const known = new Map(items.map((i) => [i.number, i.state]));
   const wanted = new Set();
   for (const i of items) {
-    if (i.state !== 'open' || !i.labels.includes(BLOCKED)) continue;
+    if (i.state !== 'open' || !isStatus(i, STATUS_BLOCKED)) continue;
     for (const n of parseWorkItemBody(i.body).blockedBy) if (!known.has(n)) wanted.add(n);
   }
   // A marked issue's own blockers, for the same reason: adoption decides whether the
@@ -499,7 +503,7 @@ async function main() {
   // One comment read per EXECUTING item — never per item in the repo — so the
   // reclaim can measure the holder's own silence rather than the issue's.
   for (const item of items) {
-    if (item.state !== 'open' || !item.labels.includes(EXECUTING)) continue;
+    if (item.state !== 'open' || !isStatus(item, STATUS_RUNNING_EXECUTOR)) continue;
     item.livenessAt = lastLivenessAt(await listComments(gh, repo, item.number));
   }
 
@@ -557,16 +561,14 @@ async function main() {
       if (res.number) console.log(`- created #${res.number} ${op.pack}/${op.task} [${op.labels.join(' ')}]`);
       else console.log(`! could not create the work item for ${op.pack}/${op.task}: ${res.status}`);
     } else if (op.kind === 'ready') {
-      await removeLabel(gh, repo, op.issue, BLOCKED);
-      await addLabel(gh, repo, op.issue, READY);
+      await swapStatus({ addLabel, removeLabel }, gh, repo, { number: op.issue }, STATUS_BLOCKED, READY);
       console.log(`- readied #${op.issue}`);
     } else if (op.kind === 'reclaim') {
       // The reclaim comment is also the EPISODE BOUNDARY: every claim before it is
       // dead, and arbitrating over dead claims makes one outrank every future live
       // claimant — the item then livelocks through reclaim cycles forever (F18).
       await comment(gh, repo, op.issue, `${EPISODE_MARKER}\n${op.reason}`);
-      await removeLabel(gh, repo, op.issue, EXECUTING);
-      await addLabel(gh, repo, op.issue, op.to);
+      await swapStatus({ addLabel, removeLabel }, gh, repo, { number: op.issue }, STATUS_RUNNING_EXECUTOR, op.to);
       if (op.triage) await addLabel(gh, repo, op.issue, op.triage);
       console.log(`- reclaimed #${op.issue} -> ${op.to}`);
     } else if (op.kind === 'adopt') {

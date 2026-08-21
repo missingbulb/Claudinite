@@ -11,8 +11,9 @@
 
 import { periodMs } from './anchors.mjs';
 import {
-  READY, AGENT, BLOCKED, NEEDS_HUMAN, STATE_LABELS,
-  parseWorkItemTitle, parseWorkItemBody, hasLabel, labelNames,
+  READY, AGENT, NEEDS_HUMAN,
+  STATUS_READY, STATUS_RUNNING_AGENT, STATUS_BLOCKED, isStatus, statusOf,
+  parseWorkItemTitle, parseWorkItemBody,
 } from './work-item.mjs';
 
 export const AGENT_LEASH_MS = 3 * 3600e3;
@@ -28,7 +29,7 @@ const idle = (item, now) => ms(now) - (ms(item.updated_at) ?? ms(item.created_at
 // item whose task is unknown falls back to a day.
 export function staleReadyItems(open = [], now, { periodFor = () => null, factor = STALE_READY_PERIODS } = {}) {
   return open.filter((i) => {
-    if (!hasLabel(i, READY) || hasLabel(i, NEEDS_HUMAN)) return false;
+    if (!isStatus(i, STATUS_READY)) return false;
     const parsed = parseWorkItemTitle(i.title);
     if (!parsed) return false;
     const per = periodFor(`${parsed.pack}/${parsed.task}`) ?? 86400e3;
@@ -44,12 +45,12 @@ export const staleReadyComment = (item) => {
     + `without an executor picking it up. Labeling \`${NEEDS_HUMAN}\` and taking it out of the queue for triage.`;
 };
 
-// Rule B — THE AGENT LEASH. `task:agent` silent past ~3h means the session died.
+// Rule B — THE AGENT LEASH. An item with an agent silent past ~3h means the session died.
 // The hand-off comment names which session, so the escalation can say so. The
 // assumption is stated rather than discovered: a legitimately longer-running agent
 // must comment on its item to reset the activity clock, or it is declared dead.
 export function deadAgentItems(open = [], now, { leashMs = AGENT_LEASH_MS } = {}) {
-  return open.filter((i) => hasLabel(i, AGENT) && !hasLabel(i, NEEDS_HUMAN) && idle(i, now) >= leashMs);
+  return open.filter((i) => isStatus(i, STATUS_RUNNING_AGENT) && idle(i, now) >= leashMs);
 }
 
 export const deadAgentComment = (item, sessionNote = null) =>
@@ -66,7 +67,7 @@ export const deadAgentComment = (item, sessionNote = null) =>
 // a time is the mechanism working.
 export function stuckBlockedItems(open = [], now, { stateOf = () => null, boundMs = STUCK_BLOCKED_MS } = {}) {
   return open.filter((i) => {
-    if (!hasLabel(i, BLOCKED) || hasLabel(i, NEEDS_HUMAN)) return false;
+    if (!isStatus(i, STATUS_BLOCKED)) return false;
     const { blockedBy } = parseWorkItemBody(i.body);
     if (!blockedBy.length) return false;
     if (blockedBy.every((n) => stateOf(n) === 'closed')) return false;
@@ -79,16 +80,13 @@ export const stuckBlockedComment = (item, unresolved) =>
   + `${Math.round(STUCK_BLOCKED_MS / 86400e3)} days. Nothing here is stuck mechanically — it will proceed by itself the moment those close — `
   + 'but if they are never going to, close this item by hand.';
 
-// Rule D — THE STATELESS-ITEM REPAIR. An open work item wearing neither a `task:*`
-// state nor `needs-human` is off the state machine entirely: a torn label swap's
+// Rule D — THE STATELESS-ITEM REPAIR. An open work item whose labels decode to no
+// status at all is off the state machine entirely: a torn label swap's
 // leavings (an executor that died between the remove and the add), invisible to
 // every rule that filters by state. It converges to triage — the same posture a
 // malformed item gets.
 export function statelessItems(open = []) {
-  return open.filter((i) => {
-    const names = labelNames(i);
-    return !names.includes(NEEDS_HUMAN) && !STATE_LABELS.some((l) => names.includes(l));
-  });
+  return open.filter((i) => statusOf(i) === null);
 }
 
 export const statelessComment = () =>

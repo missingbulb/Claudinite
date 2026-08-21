@@ -115,9 +115,17 @@ jobs:
           script: |
             const { owner, repo } = context.repo;
             const title = 'Claudinite scheduler run failed';
-            await github.rest.issues.createLabel({ owner, repo, name: 'workflow-failure', color: 'b60205', description: 'Claudinite scheduler: a scheduler run or task failed' }).catch(() => {});
+            // The platform reporting its own failure IS an origin (`task:origin:github`),
+            // parked in the `failure` lane — the one a person diagnoses (#1119).
+            const labels = ['workflow-failure', 'task:origin:github', 'task:status:needs-human-failure'];
+            const ensure = [
+              { name: 'workflow-failure', color: 'b60205', description: 'Claudinite scheduler: a scheduler run or task failed' },
+              { name: 'task:origin:github', color: 'd4c5f9', description: 'Claudinite queue: filed by the platform itself — a workflow reporting its own failure' },
+              { name: 'task:status:needs-human-failure', color: 'b60205', description: 'Claudinite queue: parked — the run broke, diagnose and fix' },
+            ];
+            for (const l of ensure) await github.rest.issues.createLabel({ owner, repo, ...l }).catch(() => {});
             const run = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
             const body = `The Claudinite scheduler run/drain run failed: ${run}`;
             const found = await github.rest.search.issuesAndPullRequests({ q: `repo:${owner}/${repo} is:issue is:open in:title "${title}"` });
             if (found.data.total_count > 0) await github.rest.issues.createComment({ owner, repo, issue_number: found.data.items[0].number, body });
-            else await github.rest.issues.create({ owner, repo, title, labels: ['workflow-failure'], body });
+            else await github.rest.issues.create({ owner, repo, title, labels, body });
