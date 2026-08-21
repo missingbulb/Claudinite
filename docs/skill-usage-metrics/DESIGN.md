@@ -38,18 +38,21 @@ The shape: session transcripts already record every skill invocation, and the
 check runners leave readable marks in them too. Capture already ships
 transcripts to each repo's orphan `conversation-logs` branch at merge time.
 This design (a) enriches capture with a best-effort session-end event and an
-explicit one for unattended runs, (b) adds a deterministic daily **fold** in each
-repo that counts skill loads, check activations and failures, activity
-denominators, and task invocations into a small tracked aggregate, and (c) adds a
-**fleet sweep** in the sheepdog pack that recomputes a fleet-wide aggregate from
-the members' files into the fleet-enforcer repo. Every stage is deterministic
-code — no agent judgment anywhere in the pipeline.
+explicit one for unattended runs, (b) adds a deterministic **fold** in each repo
+that counts skill loads, check activations and failures, activity denominators,
+what the machinery ran and what each occurrence came to, into a small tracked
+aggregate. It also (c) added a **fleet sweep** recomputing a fleet-wide
+aggregate from the members' files — superseded by the dashboard reading the
+members' files directly (§6). Every stage is deterministic code — no agent
+judgment anywhere in the pipeline.
 
 ```
 transcript ──(merge capture / SessionEnd capture / the executor's own last step)──▶ conversation-logs branch
     conversation-logs ─────┐
-    scheduler run logs ────┴──(usage-fold, per repo, daily)──▶ .claudinite/local/usage.GENERATED.json
-    member usage files ───────(fleet-usage, sheepdog, daily)──▶ usage-fleet.GENERATED.json (enforcer repo)
+    workflow run listings  ├──(usage-fold, per repo, hourly)──▶ .claudinite/local/usage.GENERATED.json
+    closed work items      │                                            │
+    local git + releases ──┘                                            ▼
+                                              the dashboard, per repo and across a fleet
 ```
 
 ---
@@ -63,8 +66,8 @@ The canon knows **mechanisms**, never repos. The fleet-enforcer repo knows
 |---|---|---|
 | capture (merge + SessionEnd + the executor's explicit call) | `claudinite-growth` pack (canon) | its own session, its own logs branch |
 | the task-run record format | `engine/scheduler/run-record.mjs` (core) | the scheduler's own outcomes — no pack, no repo |
-| `usage-fold` (daily) | `claudinite-growth/tasks/usage-fold/` (canon) | its own logs branch, its own aggregate file |
-| `fleet-usage` (daily) | `sheepdog/tasks/fleet-usage/` (canon pack; runs only where sheepdog is declared) | nothing hardcoded — members enumerated at runtime from the sheepdog config (`{ owner, kind, exclude, canonRepo }`) via `fleet-api.mjs`, exactly as `fleet-census` does |
+| `usage-fold` (hourly) | `claudinite-growth/tasks/usage-fold/` (canon) | its own logs branch, its own runs, its own items, its own aggregate file |
+| `fleet-usage` (daily, superseded — §6) | `sheepdog/tasks/fleet-usage/` (canon pack; runs only where sheepdog is declared) | nothing hardcoded — members enumerated at runtime from the sheepdog config (`{ owner, kind, exclude, canonRepo }`) via `fleet-api.mjs`, exactly as `fleet-census` does |
 | the fleet aggregate | the fleet-enforcer repo's default branch | — |
 
 No repo list exists in any code, canon or otherwise. The member set is derived
@@ -404,14 +407,29 @@ and sit beside the §4.2 census; the two populations stay distinct keys.
 
 ## 5. The per-repo aggregate — `.claudinite/local/usage.GENERATED.json`
 
-Written by **`usage-fold`**: an agentless daily task of `claudinite-growth`
+Written by **`usage-fold`**: an agentless task of `claudinite-growth`
 (deterministic preprocessing, no agent, cheapest possible run), outcome
 `merged-pr` — the worker opens a PR with the regenerated file and arms
-auto-merge; a byte-identical recompute opens nothing. It lives under
-`.claudinite/local/` because that is the repo-owned area the vendoring refresh
-never touches — the mount root itself is read-only canon.
+auto-merge; a recompute that differs only in its freshness stamp opens nothing.
+It lives under `.claudinite/local/` because that is the repo-owned area the
+vendoring refresh never touches — the mount root itself is read-only canon.
 
-Two tiers, per the owner's fast-insight requirement:
+**Hourly, gated on movement** (#1158). The file is the whole past-data plane the
+dashboard renders from, so its freshness is the page's; the cadence is
+affordable because the capture files are local git and the REST side is four
+watermarked reads. A quiet hour — no commit on the default branch, no session
+captured — declines, and nothing is lost: the watermarked reads pick up where
+they left off on the next fold that has something to do, and the dashboard tops
+up its freshest hours from the run listing it already fetches.
+
+Three tiers, per the owner's fast-insight requirement:
+
+- **Hours** (right now): the last ~72 hours, keyed by UTC hour — scheduler runs,
+  executor runs and the sessions that captured, plus what each executed. Two
+  sources meeting in one row on different clocks, so they are kept in separate
+  *fields*: the run counts are appended past a watermark, the session counts
+  recomputed every fold. Merging them would make the recompute double the
+  append.
 
 - **Days** (short term): keyed by the capture filename's UTC date. A file's
   stamp is its push moment, so day *D* gains files only during *D* and is
@@ -533,7 +551,18 @@ day they close forward rather than refusing to advance the watermark past them
 Precondition: none — it runs daily. Runs where nothing changed are no-ops (no
 PR), and the agentless run costs seconds.
 
-## 6. The fleet aggregate — `usage-fleet.GENERATED.json`
+## 6. The fleet aggregate — `usage-fleet.GENERATED.json` (superseded)
+
+> **Superseded by the dashboard's fleet page** (#1158). The per-repo files are
+> the record, and the fleet view reads each member's own file *as the viewer*,
+> which is strictly better on the point that matters most here: an aggregate in
+> one repo shows everyone who can read that repo the numbers of every member,
+> including the ones they cannot. The coverage census this file carried is
+> derived live — a rostered member with no usage file *is* the absent row — and
+> the file holds no longer history than the members do, since their week rows
+> are append-once and never pruned. The task and the file are retired in the
+> tail of #1158, after the fleet page's roster stopped reading it. The section
+> below describes what it was.
 
 Written by **`fleet-usage`**: an agentless daily task of the **sheepdog**
 pack, alongside `fleet-census` and `fleet-freshness` and shaped exactly like
@@ -587,7 +616,13 @@ nothing to optimize.
 
 ## 7. Consumers — who learns from this
 
-- **The owner**, ad hoc: both files are small sorted JSON on tracked branches —
+- **The dashboard** (`claudinite-dashboard`), which is the file's principal
+  reader: every panel reaching further back than one page of live reads renders
+  from it, per repo and — read once per member, as the viewer — across a fleet.
+  It imports nothing from this pack: the file declares its own field vocabulary
+  in a `fields` header, and the page decodes against *that*, so a field added or
+  retired here needs no coordinated release between two independent packs.
+- **The owner**, ad hoc: the file is small sorted JSON on a tracked branch —
   readable in the GitHub UI, over MCP, or via `git show`, with full history.
 - **Canon curation** (the promote run): the empirical feedback the rung-4/5
   routing decision currently lacks, in both directions. Never loads across the

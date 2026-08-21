@@ -75,10 +75,13 @@ export default {
   // 60821.1: item state, triage and parked counts are decoded from the label
   // vocabulary rather than matched literally, so a member's items read the same
   // whichever engine filed them (#1119).
-  // 60821.2: the repo page is rebuilt around the repo's own usage fold — at-a-glance
-  // tiles, one work table with three views in place of the roster and queue tables, an
-  // hourly runs graph and a month of what the corpus is doing (#1158). Page-only; a
-  // member gains panels and nothing in its tree changes shape.
+  // 60821.2: both pages are rebuilt around the repos' own usage folds (#1158). The
+  // repo page gains at-a-glance tiles, one work table with three views in place of the
+  // roster and queue tables, an hourly runs graph and a month of what the corpus is
+  // doing; the fleet page reads each member's usage file and enumerates its roster from
+  // an `owner` as the viewer rather than from a stored list. Which dashboard a
+  // deployment builds is decided by that config's shape, so nothing is asked at
+  // adoption. Page-only: a member gains panels and nothing in its tree changes shape.
   version: '60821.2',
   minEngineVersion: 4,
   ruleRoutingGuidance: {

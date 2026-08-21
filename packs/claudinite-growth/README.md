@@ -21,7 +21,7 @@ scheduler (`engine/scheduler/discover.mjs`) wherever the pack is declared:
 | `prose-to-checks-sweep` ([tasks/prose-to-checks-sweep/task.md](tasks/prose-to-checks-sweep/task.md)) | weekly (no-ops cheaply on a quiet corpus) | a PR converting always-testable pack prose into checks |
 | `rule-revalidation` ([tasks/rule-revalidation/task.md](tasks/rule-revalidation/task.md)) | weekly | a reviewed PR correcting rules whose environment claim no longer probes true |
 
-(Plus two agentless daily tasks over the conversation-logs branch: [usage-fold](tasks/usage-fold/README.md),
+(Plus two agentless tasks over the conversation-logs branch: [usage-fold](tasks/usage-fold/README.md) hourly,
 described below, and `logs-prune` — retention, [tasks/logs-prune/worker.mjs](tasks/logs-prune/worker.mjs).)
 
 ## Extraction is one task over two sources
@@ -125,7 +125,7 @@ skill-vs-prose call had no empirical feedback: a skill whose trigger never fires
 one that fires daily, and a "skill" that loads in every session (rules wearing a skill's clothes)
 looked exactly like a genuinely activity-scoped one.
 
-The [usage-fold](tasks/usage-fold/README.md) task closes that loop — daily, agentless, seconds. It
+The [usage-fold](tasks/usage-fold/README.md) task closes that loop — hourly, agentless, seconds. It
 counts skill loads **and their denominators** (captures, merges, sessions, user messages, user
 commands) out of the logs this pack already captures, into
 `.claudinite/local/usage.GENERATED.json`: day rows recomputed statelessly inside the raw retention

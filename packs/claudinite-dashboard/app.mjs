@@ -1,9 +1,13 @@
 // The shell: configure, authenticate, and route between the two views.
 //
-// ROUTING IS THE URL. No `?repo=` and a roster with more than one member means the
-// fleet; anything else means that repo. So the fleet page is what a fleet deployment
-// opens on, a single-member deployment goes straight to its own dashboard with no
-// pointless one-row overview, and every view is a link someone can send.
+// TWO MODES, DECIDED BY THE DEPLOYMENT'S SHAPE. A config that says where more than one
+// member comes from — an `owner` to enumerate, a roster artifact, an explicit list — is
+// a FLEET deployment and opens on the overview; anything else is one repo's own page
+// and opens straight on it, with no pointless one-row fleet view. Not a mode switch
+// anyone sets: the roster source IS the mode, so there is nothing to keep in step.
+//
+// ROUTING WITHIN A MODE IS THE URL. `?repo=` is the deep dive, its absence the landing
+// view, so every view is a link someone can send and the back button works.
 
 import * as gh from './github.mjs';
 import * as auth from './auth.mjs';
@@ -145,10 +149,15 @@ function renderCrumb(repo) {
 // Switching views is not a change in a number, it is a DIFFERENT set of numbers under
 // the same labels — so the counters forget rather than tween from one to the other and
 // draw a movement nothing made.
-const showView = (which) => {
+const showView = (which, repo = null) => {
   if ($('fleet-view').hidden !== (which !== 'fleet')) resetCountUps();
   $('fleet-view').hidden = which !== 'fleet';
   $('repo-view').hidden = which !== 'repo';
+  // The heading says what you are looking at. A repo-mode deployment titled "Fleet
+  // status" is the page telling its one member it is something else.
+  const title = which === 'fleet' ? 'Fleet status' : (repo ? repo.split('/')[1] ?? repo : 'Claudinite');
+  $('title').textContent = title;
+  document.title = which === 'fleet' ? 'Fleet status' : `${title} · Claudinite`;
 };
 
 function footer(parts) {
@@ -217,7 +226,7 @@ async function render() {
         return;
       }
       renderCrumb(repo);
-      showView('repo');
+      showView('repo', repo);
       $('footnote').textContent = `Reading ${repo}…`;
       const r = await loadRepo({ repo, token, config: CONFIG, onError: showError });
       footer([
