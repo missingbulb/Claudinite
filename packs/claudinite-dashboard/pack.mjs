@@ -75,7 +75,9 @@ export default {
   // 60821.1: item state, triage and parked counts are decoded from the label
   // vocabulary rather than matched literally, so a member's items read the same
   // whichever engine filed them (#1119).
-  version: '60821.1',
+  // 60821.2: the page's park column is its own display key now that a park is four
+  // labels and none of them is the old one (#1119).
+  version: '60821.2',
   minEngineVersion: 4,
   ruleRoutingGuidance: {
     belongs: 'the browser dashboard over Claudinite scheduler state, the site that publishes it, and the fleet morning brief it reads',

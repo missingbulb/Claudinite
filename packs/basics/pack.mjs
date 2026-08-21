@@ -34,7 +34,8 @@ export default {
   // 60821.2: writing-migration-plans is built around chained continuations — all the
   // code written and approved in one pass, every execution step armed on the previous
   // step's verification rather than on anyone remembering it.
-  version: '60821.2',
+  // 60821.3: the janitor's sweep writes ONE park label — the write-side flip (#1119).
+  version: '60821.3',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'cross-project working discipline, issue-branch-PR lifecycle, repo hygiene, doc/reference integrity and the baseline engineering, testing and debugging skills',

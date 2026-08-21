@@ -4,7 +4,7 @@
 import * as gh from './github.mjs';
 import {
   buildRoster, describeItem, isWorkItem, parseDeclaration, taskDeclarationPaths, periodMs,
-  NEEDS_HUMAN,
+  PARKED,
 } from './model.mjs';
 import {
   $, el, ago, until, stamp, duration, chip, head, groupedHead, columnCount, groupStarts,
@@ -28,8 +28,8 @@ const bandedRoster = (cells) => cells.map((cell, i) => {
 
 function renderTiles(rows, open, runs, now) {
   const inflight = runs.filter((r) => r.status === 'in_progress' || r.status === 'queued');
-  const parked = open.filter((i) => i.state === NEEDS_HUMAN);
-  const warned = open.filter((i) => i.warnings.length && i.state !== NEEDS_HUMAN);
+  const parked = open.filter((i) => i.state === PARKED);
+  const warned = open.filter((i) => i.warnings.length && i.state !== PARKED);
   // The soonest DATED ask. A ready or running task is acting now, not "in 0m", so it
   // is the queue panel's news rather than this tile's.
   const soonest = rows.map((r) => r.nextAsk?.at).filter(Boolean).sort((a, b) => a - b)[0] ?? null;
@@ -136,7 +136,7 @@ function renderQueue(open, repo, now) {
   if (!open.length) { body.append(emptyRow(6, 'The queue is empty — no open work item.')); return; }
 
   // Parked and warned first: the reason to open this panel is what is wrong.
-  const rank = (i) => (i.state === NEEDS_HUMAN ? 0 : i.warnings.length ? 1 : 2);
+  const rank = (i) => (i.state === PARKED ? 0 : i.warnings.length ? 1 : 2);
   for (const i of open.sort((a, b) => rank(a) - rank(b) || b.idleMs - a.idleMs)) {
     const waiting = [];
     if (i.blockedBy.length) waiting.push(`blocked by ${i.blockedBy.map((n) => `#${n}`).join(', ')}`);

@@ -19,7 +19,7 @@ instructions.
    - the issue's title names that same task, **or** — for a marked issue, whose
      title is the person's own — its machine block's first line is that task's
      worker path,
-   - the issue carries `task:agent`,
+   - the issue carries `task:status:running-agent`,
    - and its newest hand-off comment carries **the nonce you were given**.
 
    And **if the item carries a `Request: #N` field**, one more: that issue is open
@@ -64,8 +64,8 @@ instructions.
    - **Delivered by code-work** names artifacts this run already created — a branch,
      a PR, an issue. Work on those; never make your own duplicates of them.
    - **An input the task file calls required and the issue does not carry stops the
-     run.** Say which one was missing and park this item (`needs-human` +
-     `task:needs-human-action` — the item has to be re-created carrying it). Never
+     run.** Say which one was missing and park this item
+     (`task:status:needs-human-action` — the item has to be re-created carrying it). Never
      reconstruct it — searching for the issue by title, taking the newest branch, or
      inferring the scope substitutes another run's inputs for this one's, and the run
      then reports success on work nobody asked for.
@@ -91,22 +91,22 @@ instructions.
    **You supply the judgment — which outcome, and the prose.** Everything below
    is how to choose; nothing below is yours to perform. If the command refuses,
    read what it says: it means this item is not yours to converge, and doing it
-   by hand anyway is how an item ends up closed wearing `task:agent`.
+   by hand anyway is how an item ends up closed wearing a live status.
 
    | label | when |
    |---|---|
-   | `task:done` | succeeded, nothing pending — close the issue |
-   | `needs-human` | anything else — leave the issue open, and add exactly one of the four below |
+   | `task:status:done` | succeeded, nothing pending — close the issue |
+   | a park | anything else — leave the issue open, wearing exactly one of the four below |
 
-   Every park wears `needs-human` **and** one sub-label saying what you are asking
+   A park is ONE label, and its kind says what you are asking
    a person for. Pick by the REMEDY, not by how the run felt:
 
    | sub-label | when |
    |---|---|
-   | `task:needs-human-approval` | you succeeded and deliberately left an unmerged PR. Name it; the human merges or closes it |
-   | `task:needs-human-action` | something outside the code must change before this can run: a secret, a scope, a routine's wiring, an input this item never carried |
-   | `task:needs-human-decision` | you stopped mid-flight and what happens next is a choice — you ran out of time, or you exceeded the declared ceiling and someone must say whether that stands |
-   | `task:needs-human-failure` | the run broke: a bug, a contract-forbidden shape, a malformed or forged item. Use this when you are unsure |
+   | `task:status:needs-human-approval` | you succeeded and deliberately left an unmerged PR. Name it; the human merges or closes it |
+   | `task:status:needs-human-action` | something outside the code must change before this can run: a secret, a scope, a routine's wiring, an input this item never carried |
+   | `task:status:needs-human-decision` | you stopped mid-flight and what happens next is a choice — you ran out of time, or you exceeded the declared ceiling and someone must say whether that stands |
+   | `task:status:needs-human-failure` | the run broke: a bug, a contract-forbidden shape, a malformed or forged item. Use this when you are unsure |
 
    **A marked issue needs no write-back at all**: it is the item, so the approval
    park it wears *is* the in-review state and the failure park *is* the report (which
@@ -116,7 +116,7 @@ instructions.
    the run said. Only an item filed under the older shadow model writes back to a
    different issue, and the command does that too.
 
-   Only `task:needs-human-failure` (and a park with no sub-label at all) holds the
+   Only `task:status:needs-human-failure` (and a park whose kind cannot be decoded) holds the
    task's lane — while one is open the generator files no further occurrence of
    this task. The other three wait for their human while the schedule carries on,
    so leaving one open costs nobody but the person it names.
