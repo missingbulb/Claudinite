@@ -72,7 +72,8 @@ there is nothing left to wait on but the release itself.
   the run reopens if the verification fails. Make the verification that issue's **sub-issue**
   too (`mcp__github__sub_issue_write`, method `add`, `issue_number` the original,
   `sub_issue_id` the **id** the create call returned, not its number), so the change it proves
-  shows what is still unproven about it.
+  shows what is still unproven about it — [RULES.md](../../RULES.md)' *Filing an issue that
+  belongs under another*, applied where there is no PR left to carry the link.
 - **`In-production-when:`** names a thing to *read*, never a duration to wait. "`missingbulb/Shepherd`'s
   `.claudinite-checks.json` stamps `packVersions.tidy-repo` at 8 or higher." "The live site's
   `/version.json` reports a version past 4.2.0." "Any session started after this landed — check

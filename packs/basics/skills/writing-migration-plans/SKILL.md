@@ -112,6 +112,12 @@ blocked item is released when its blocker closes, which is exactly "the step bef
 Filing the chain up front is what makes it a mechanism rather than a habit — a chain that depends
 on each run remembering to file its successor breaks silently the first time a run parks.
 
+Each link is a **sub-issue of the tracking issue** ([RULES.md](../../RULES.md)' *Filing an issue
+that belongs under another*), so the plan and its chain are one hierarchy read two ways rather
+than two lists that can disagree. Where a link is a PR's merge rather than a run, that PR's body
+closes **the link**, never the tracker: a phase PR carrying `Closes #<tracker>` ends the whole
+migration on its first merge.
+
 Each link's body is its whole brief, because the run that picks it up will never see the
 conversation that planned it. Four things, and the first two are what make the link *chainable*:
 
